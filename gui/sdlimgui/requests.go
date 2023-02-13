@@ -16,11 +16,11 @@
 package sdlimgui
 
 import (
+	"fmt"
 	"image"
 
 	"github.com/jetsetilly/gopher2600/bots"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -41,7 +41,7 @@ func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...gui.FeatureReqDa
 // check length of arguments sent with feature request.
 func argLen(args []gui.FeatureReqData, expectedLen int) error {
 	if len(args) != expectedLen {
-		return curated.Errorf("wrong number of arguments (%d instead of %d)", len(args), expectedLen)
+		return fmt.Errorf("wrong number of arguments (%d instead of %d)", len(args), expectedLen)
 	}
 	return nil
 }
@@ -154,12 +154,12 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		}
 
 	default:
-		err = curated.Errorf("sdlimgui: unsupport feature request (%s)", request.request)
+		err = fmt.Errorf("sdlimgui: unsupport feature request (%s)", request.request)
 	}
 
 	if err == nil {
 		img.polling.featureSetErr <- nil
 	} else {
-		img.polling.featureSetErr <- curated.Errorf("sdlimgui: %s: %v", request.request, err)
+		img.polling.featureSetErr <- fmt.Errorf("sdlimgui: %s: %w", request.request, err)
 	}
 }

@@ -26,7 +26,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -228,13 +227,13 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	if elfFile != "" {
 		ef, err = elf.Open(elfFile)
 		if err != nil {
-			return nil, curated.Errorf("dwarf: %v", err)
+			return nil, fmt.Errorf("dwarf: %w", err)
 		}
 
 	} else {
 		ef, fromCartridge = findELF(romFile)
 		if ef == nil {
-			return nil, curated.Errorf("dwarf: compiled ELF file not found")
+			return nil, fmt.Errorf("dwarf: compiled ELF file not found")
 		}
 	}
 	defer ef.Close()
@@ -246,35 +245,35 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// it's not from the cartridge.
 	if !fromCartridge {
 		if ef.FileHeader.Machine != elf.EM_ARM {
-			return nil, curated.Errorf("dwarf: elf file is not ARM")
+			return nil, fmt.Errorf("dwarf: elf file is not ARM")
 		}
 		if ef.FileHeader.Version != elf.EV_CURRENT {
-			return nil, curated.Errorf("dwarf: elf file is of unknown version")
+			return nil, fmt.Errorf("dwarf: elf file is of unknown version")
 		}
 
 		// big endian byte order is probably fine but we've not tested it
 		if ef.FileHeader.ByteOrder != binary.LittleEndian {
-			return nil, curated.Errorf("dwarf: elf file is not little-endian")
+			return nil, fmt.Errorf("dwarf: elf file is not little-endian")
 		}
 
 		// we do not permit relocatable ELF files unless it's been supplied by
 		// the cartridge. it's not clear what a relocatable ELF file would mean
 		// in this context so we just disallow it
 		if relocatable {
-			return nil, curated.Errorf("dwarf: elf file is relocatable. not permitted for non-ELF cartridges")
+			return nil, fmt.Errorf("dwarf: elf file is relocatable. not permitted for non-ELF cartridges")
 		}
 	}
 
 	// keeping things simple. only 32bit ELF files supported. 64bit files are
 	// probably fine but we've not tested them
 	if ef.Class != elf.ELFCLASS32 {
-		return nil, curated.Errorf("dwarf: only 32bit ELF files are supported")
+		return nil, fmt.Errorf("dwarf: only 32bit ELF files are supported")
 	}
 
 	// no need to continue if ELF file does not have any DWARF data
 	dwrf, err := ef.DWARF()
 	if err != nil {
-		return nil, curated.Errorf("dwarf: no DWARF data in ELF file")
+		return nil, fmt.Errorf("dwarf: no DWARF data in ELF file")
 	}
 
 	// origin address of the ELF .text section
@@ -283,7 +282,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// cartridge coprocessor
 	coproc := cart.GetCoProc()
 	if coproc == nil {
-		return nil, curated.Errorf("dwarf: cartridge has no coprocessor to work with")
+		return nil, fmt.Errorf("dwarf: cartridge has no coprocessor to work with")
 	}
 
 	// acquire origin addresses and debugging sections according to whether the
@@ -291,12 +290,12 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	if relocatable {
 		c, ok := coproc.(mapper.CartCoProcRelocatable)
 		if !ok {
-			return nil, curated.Errorf("dwarf: ELF file is reloctable but the cartridge mapper does not support that")
+			return nil, fmt.Errorf("dwarf: ELF file is reloctable but the cartridge mapper does not support that")
 		}
 		if _, o, ok := c.ELFSection(".text"); ok {
 			executableOrigin = uint64(o)
 		} else {
-			return nil, curated.Errorf("dwarf: no .text section in ELF file")
+			return nil, fmt.Errorf("dwarf: no .text section in ELF file")
 		}
 
 		// always create debugFrame and debugLoc sections even when the
@@ -351,7 +350,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 		data, err = sec.Data()
 		if err != nil {
-			return nil, fmt.Errorf("dwarf: %v", err)
+			return nil, fmt.Errorf("dwarf: %w", err)
 		}
 
 		// 32bit instruction handling
@@ -389,7 +388,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 	bld, err := newBuild(dwrf, src.debugLoc, src.debugFrame)
 	if err != nil {
-		return nil, curated.Errorf("dwarf: %v", err)
+		return nil, fmt.Errorf("dwarf: %w", err)
 	}
 
 	// compile units are made up of many files. the files and filenames are in
@@ -403,7 +402,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			if err == io.EOF {
 				break // for loop
 			}
-			return nil, curated.Errorf("dwarf: %v", err)
+			return nil, fmt.Errorf("dwarf: %w", err)
 		}
 		if e == nil {
 			break // for loop
@@ -430,7 +429,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 			r, err := dwrf.LineReader(e)
 			if err != nil {
-				return nil, curated.Errorf("dwarf: %v", err)
+				return nil, fmt.Errorf("dwarf: %w", err)
 			}
 
 			// loop through files in the compilation unit. entry 0 is always nil
@@ -465,7 +464,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 		default:
 			if len(src.compileUnits) == 0 {
-				return nil, curated.Errorf("dwarf: bad data: no compile unit tag")
+				return nil, fmt.Errorf("dwarf: bad data: no compile unit tag")
 			}
 			src.compileUnits[len(src.compileUnits)-1].children[e.Offset] = e
 		}
@@ -477,7 +476,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		// if there are no regular filenames either then there's nothing
 		// meaningful we can do
 		if len(src.Filenames) == 0 {
-			return nil, curated.Errorf("dwarf: no source files loaded")
+			return nil, fmt.Errorf("dwarf: no source files loaded")
 		}
 
 		// copy filenames to the shortfilename field
@@ -500,7 +499,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// build functions from DWARF data
 	err = bld.buildFunctions(src, executableOrigin)
 	if err != nil {
-		return nil, curated.Errorf("dwarf: %v", err)
+		return nil, fmt.Errorf("dwarf: %w", err)
 	}
 
 	// complete function list with stubs for functions where we don't have any
@@ -509,13 +508,13 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 	// sanity check of functions list
 	if len(src.Functions) != len(src.FunctionNames) {
-		return nil, curated.Errorf("dwarf: unmatched function definitions")
+		return nil, fmt.Errorf("dwarf: unmatched function definitions")
 	}
 
 	// read source lines
 	err = allocateInstructionsToSourceLines(src, dwrf, executableOrigin)
 	if err != nil {
-		return nil, curated.Errorf("dwarf: %v", err)
+		return nil, fmt.Errorf("dwarf: %w", err)
 	}
 
 	// assign functions to every source line
@@ -546,7 +545,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// build types
 	err = bld.buildTypes(src)
 	if err != nil {
-		return nil, curated.Errorf("dwarf: %v", err)
+		return nil, fmt.Errorf("dwarf: %w", err)
 	}
 
 	// build variables
@@ -556,7 +555,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		err = bld.buildVariables(src, ef, nil, executableOrigin)
 	}
 	if err != nil {
-		return nil, curated.Errorf("dwarf: %v", err)
+		return nil, fmt.Errorf("dwarf: %w", err)
 	}
 
 	// add children to global and local variables

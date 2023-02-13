@@ -16,6 +16,8 @@
 package ports
 
 import (
+	"errors"
+
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
@@ -71,10 +73,8 @@ const (
 	PanelPowerOff Event = "PanelPowerOff" // nil
 )
 
-// Sentinal error returned when PanelPowerOff event is received.
-const (
-	PowerOff = "emulated machine has been powered off"
-)
+// sentinal error returned when PanelPowerOff event is received.
+var PowerOff = errors.New("emulated machine has been powered off")
 
 // EventData is the value associated with the event. The underlying type should
 // be restricted to bool, float32, or int. string is also acceptable but for

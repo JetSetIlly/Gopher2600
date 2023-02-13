@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
@@ -120,7 +119,7 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) (bool, er
 		case ports.EventDataPlayback:
 			b, err := strconv.ParseBool(string(d))
 			if err != nil {
-				return false, curated.Errorf("stick: %v: unexpected event data", event)
+				return false, fmt.Errorf("stick: %v: unexpected event data", event)
 			}
 			if b {
 				stk.button = stickFire
@@ -128,7 +127,7 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) (bool, er
 				stk.button = stickNoFire
 			}
 		default:
-			return false, curated.Errorf("stick: %v: unexpected event data", event)
+			return false, fmt.Errorf("stick: %v: unexpected event data", event)
 		}
 		stk.bus.WriteINPTx(stk.buttonInptx, stk.button)
 		return true, nil
@@ -139,10 +138,10 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) (bool, er
 			// ideal path
 		case ports.EventDataPlayback:
 			if len(d) > 0 {
-				return false, curated.Errorf("stick: %v: unexpected event data", event)
+				return false, fmt.Errorf("stick: %v: unexpected event data", event)
 			}
 		default:
-			return false, curated.Errorf("stick: %v: unexpected event data", event)
+			return false, fmt.Errorf("stick: %v: unexpected event data", event)
 		}
 		stk.axis = axisCenter
 		stk.bus.WriteSWCHx(stk.port, stk.axis)
@@ -181,7 +180,7 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) (bool, er
 	case ports.EventDataPlayback:
 		e = ports.EventDataStick(d)
 	default:
-		return false, curated.Errorf("stick: %v: unexpected event data", event)
+		return false, fmt.Errorf("stick: %v: unexpected event data", event)
 	}
 
 	// set/unset bits according to the event data
@@ -193,7 +192,7 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) (bool, er
 		stk.axis = axisCenter
 		stk.axis ^= axis
 	} else {
-		return false, curated.Errorf("stick: %v: unexpected event data (%v)", event, e)
+		return false, fmt.Errorf("stick: %v: unexpected event data (%v)", event, e)
 	}
 
 	// update register

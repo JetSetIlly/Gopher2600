@@ -21,7 +21,6 @@ import (
 	"sync"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/disassembly/symbols"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
@@ -72,7 +71,7 @@ func NewDisassembly(vcs *hardware.VCS) (*Disassembly, *symbols.Symbols, error) {
 
 	dsm.Prefs, err = newPreferences(dsm)
 	if err != nil {
-		return nil, nil, curated.Errorf("disassembly: %v", err)
+		return nil, nil, fmt.Errorf("disassembly: %w", err)
 	}
 
 	return dsm, &dsm.Sym, nil
@@ -86,35 +85,35 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 
 	tv, err := television.NewTelevision("NTSC")
 	if err != nil {
-		return nil, curated.Errorf("disassembly: %v", err)
+		return nil, fmt.Errorf("disassembly: %w", err)
 	}
 
 	vcs, err := hardware.NewVCS(tv, nil)
 	if err != nil {
-		return nil, curated.Errorf("disassembly: %v", err)
+		return nil, fmt.Errorf("disassembly: %w", err)
 	}
 
 	err = vcs.AttachCartridge(cartload, true)
 	if err != nil {
-		return nil, curated.Errorf("disassembly: %v", err)
+		return nil, fmt.Errorf("disassembly: %w", err)
 	}
 
 	dsm, _, err := NewDisassembly(vcs)
 	if err != nil {
-		return nil, curated.Errorf("disassembly: %v", err)
+		return nil, fmt.Errorf("disassembly: %w", err)
 	}
 
 	// ignore errors caused by loading of symbols table - we always get a
 	// standard symbols table even in the event of an error
 	err = dsm.Sym.ReadDASMSymbolsFile(vcs.Mem.Cart)
 	if err != nil {
-		return nil, curated.Errorf("disassembly: %v", err)
+		return nil, fmt.Errorf("disassembly: %w", err)
 	}
 
 	// do disassembly
 	err = dsm.FromMemory()
 	if err != nil {
-		return nil, curated.Errorf("disassembly: %v", err)
+		return nil, fmt.Errorf("disassembly: %w", err)
 	}
 
 	return dsm, nil
@@ -134,7 +133,7 @@ func (dsm *Disassembly) FromMemory() error {
 	copiedBanks, err := dsm.vcs.Mem.Cart.CopyBanks()
 	if err != nil {
 		dsm.crit.Unlock()
-		return curated.Errorf("disassembly: %v", err)
+		return fmt.Errorf("disassembly: %w", err)
 	}
 
 	startingBank := dsm.vcs.Mem.Cart.GetBank(cpubus.Reset).Number
@@ -142,7 +141,7 @@ func (dsm *Disassembly) FromMemory() error {
 	mem := newDisasmMemory(startingBank, copiedBanks)
 	if mem == nil {
 		dsm.crit.Unlock()
-		return curated.Errorf("disassembly: %s", "could not create memory for disassembly")
+		return fmt.Errorf("disassembly: %s", "could not create memory for disassembly")
 	}
 
 	// read symbols file

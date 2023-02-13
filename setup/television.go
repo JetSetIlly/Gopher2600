@@ -18,7 +18,6 @@ package setup
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/hardware"
 )
@@ -45,10 +44,10 @@ func deserialiseTelevisionEntry(fields database.SerialisedEntry) (database.Entry
 
 	// basic sanity check
 	if len(fields) > numtelevisionFields {
-		return nil, curated.Errorf("television: too many fields in television entry")
+		return nil, fmt.Errorf("television: too many fields in television entry")
 	}
 	if len(fields) < numtelevisionFields {
-		return nil, curated.Errorf("television: too few fields in television entry")
+		return nil, fmt.Errorf("television: too few fields in television entry")
 	}
 
 	set.cartHash = fields[televisionFieldCartHash]

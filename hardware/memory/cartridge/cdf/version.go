@@ -17,8 +17,8 @@ package cdf
 
 import (
 	"bytes"
+	"fmt"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 )
 
@@ -225,7 +225,7 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 		ver.fetcherMask = 0xf0000000
 
 	default:
-		return version{}, curated.Errorf("unknown version: %s", v)
+		return version{}, fmt.Errorf("unknown version: %s", v)
 	}
 
 	return ver, nil

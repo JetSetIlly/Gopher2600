@@ -17,10 +17,10 @@
 package panel
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
@@ -166,7 +166,7 @@ func (pan *Panel) HandleEvent(event ports.Event, value ports.EventData) (bool, e
 			var err error
 			v, err = strconv.ParseBool(string(d))
 			if err != nil {
-				return false, curated.Errorf("panel: %v: unexpected event data", event)
+				return false, fmt.Errorf("panel: %v: unexpected event data", event)
 			}
 		}
 	}
@@ -197,7 +197,7 @@ func (pan *Panel) HandleEvent(event ports.Event, value ports.EventData) (bool, e
 		pan.p1pro = !pan.p1pro
 
 	case ports.PanelPowerOff:
-		return false, curated.Errorf(ports.PowerOff)
+		return false, ports.PowerOff
 
 	default:
 		return false, nil

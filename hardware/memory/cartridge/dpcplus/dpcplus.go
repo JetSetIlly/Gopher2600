@@ -18,7 +18,6 @@ package dpcplus
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -78,7 +77,7 @@ func NewDPCplus(instance *instance.Instance, data []byte) (mapper.CartMapper, er
 	// create addresses
 	cart.version, err = newVersion(instance.Prefs.ARM.Model.Get().(string), data)
 	if err != nil {
-		return nil, curated.Errorf("DPC+: %s", err.Error())
+		return nil, fmt.Errorf("DPC+: %s", err.Error())
 	}
 
 	// amount of data used for cartridges
@@ -86,7 +85,7 @@ func NewDPCplus(instance *instance.Instance, data []byte) (mapper.CartMapper, er
 
 	// size check
 	if bankLen <= 0 || bankLen%cart.bankSize != 0 {
-		return nil, curated.Errorf("DPC+: wrong number of bytes in cartridge data")
+		return nil, fmt.Errorf("DPC+: wrong number of bytes in cartridge data")
 	}
 
 	// allocate enough banks
@@ -196,7 +195,7 @@ func (cart *dpcPlus) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	}
 
 	if addr > 0x0027 {
-		return 0, 0, curated.Errorf("DPC+: %v", curated.Errorf(cpubus.AddressError, addr))
+		return 0, 0, fmt.Errorf("DPC+: %w: %04x", cpubus.AddressError, addr)
 	}
 
 	switch addr {
@@ -335,7 +334,7 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	}
 
 	if addr < 0x0028 || addr > 0x007f {
-		return curated.Errorf("DPC+: %v", curated.Errorf(cpubus.AddressError, addr))
+		return fmt.Errorf("DPC+: %w: %04x", cpubus.AddressError, addr)
 	}
 
 	switch addr {
@@ -707,7 +706,7 @@ func (cart *dpcPlus) GetBank(addr uint16) mapper.BankInfo {
 
 // Patch implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Patch(offset int, data uint8) error {
-	return curated.Errorf("DPC+: patching unsupported")
+	return fmt.Errorf("DPC+: patching unsupported")
 }
 
 // AccessPassive implements the mapper.CartMapper interface.

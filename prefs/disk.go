@@ -23,7 +23,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/resources/fs"
 )
 
@@ -84,7 +83,7 @@ func NewDisk(path string) (*Disk, error) {
 func (dsk *Disk) Add(key string, p pref) error {
 	for _, r := range key {
 		if !(r == '.' || r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)) {
-			return curated.Errorf("prefs: %v", fmt.Errorf("illegal character [%c] in key string [%s]", r, key))
+			return fmt.Errorf("prefs: illegal character [%c] in key string [%s]", r, key)
 		}
 	}
 
@@ -98,7 +97,7 @@ func (dsk *Disk) Reset() error {
 	for _, v := range dsk.entries {
 		err := v.Reset()
 		if err != nil {
-			return curated.Errorf("prefs: %v", err)
+			return fmt.Errorf("prefs: %w", err)
 		}
 	}
 
@@ -121,7 +120,7 @@ func (dsk *Disk) Save() (rerr error) {
 	// load *all* existing entries to temporary entryMap
 	_, err := load(dsk.path, &entries, false)
 	if err != nil {
-		return curated.Errorf("prefs: %v", err)
+		return fmt.Errorf("prefs: %w", err)
 	}
 
 	// copy live values to entryMap, overwriting existing entries
@@ -133,12 +132,12 @@ func (dsk *Disk) Save() (rerr error) {
 	// create a new prefs file
 	f, err := fs.Create(dsk.path)
 	if err != nil {
-		return curated.Errorf("prefs: %v", err)
+		return fmt.Errorf("prefs: %w", err)
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			rerr = curated.Errorf("prefs: %v", err)
+			rerr = fmt.Errorf("prefs: %w", err)
 		}
 	}()
 
@@ -148,20 +147,20 @@ func (dsk *Disk) Save() (rerr error) {
 	// add warning label
 	n, err = fmt.Fprintf(f, "%s\n", WarningBoilerPlate)
 	if err != nil {
-		return curated.Errorf("prefs: %v", err)
+		return fmt.Errorf("prefs: %w", err)
 	}
 	if n != len(WarningBoilerPlate)+1 {
-		return curated.Errorf("prefs: %v", "incorrect number of characters written to file")
+		return fmt.Errorf("prefs: incorrect number of characters written to file")
 	}
 
 	// write entries (combination of old and live entries) to disk
 	s := entries.String()
 	n, err = fmt.Fprint(f, s)
 	if err != nil {
-		return curated.Errorf("prefs: %v", err)
+		return fmt.Errorf("prefs: %w", err)
 	}
 	if n != len(s) {
-		return curated.Errorf("prefs: %v", "incorrect number of characters written to file")
+		return fmt.Errorf("prefs: incorrect number of characters written to file")
 	}
 
 	return nil
@@ -212,7 +211,7 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 		case *os.PathError:
 			return 0, nil
 		}
-		return numLoaded, curated.Errorf("prefs: %v", err)
+		return numLoaded, fmt.Errorf("prefs: %w", err)
 	}
 	defer f.Close()
 
@@ -222,7 +221,7 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 	// check validity of file by checking the first line
 	scanner.Scan()
 	if len(scanner.Text()) > 0 && scanner.Text() != WarningBoilerPlate {
-		return 0, curated.Errorf("prefs: %v", fmt.Errorf("not a valid prefs file (%s)", path))
+		return 0, fmt.Errorf("prefs: not a valid prefs file (%s)", path)
 	}
 
 	// key and value strings
@@ -246,7 +245,7 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 		if p, ok := (*entries)[k]; ok {
 			err = p.Set(v)
 			if err != nil {
-				return numLoaded, curated.Errorf("prefs: %v", err)
+				return numLoaded, fmt.Errorf("prefs: %w", err)
 			}
 			numLoaded++
 		} else if !limit {
@@ -256,7 +255,7 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 				var dummy String
 				err = dummy.Set(v)
 				if err != nil {
-					return numLoaded, curated.Errorf("prefs: %v", err)
+					return numLoaded, fmt.Errorf("prefs: %w", err)
 				}
 				(*entries)[k] = &dummy
 			}

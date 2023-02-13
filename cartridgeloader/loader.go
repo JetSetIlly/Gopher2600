@@ -25,7 +25,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -121,14 +120,14 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 	// string or a string only consisting of whitespace, but we do want to
 	// allow filenames with leading/trailing spaces
 	if strings.TrimSpace(filename) == "" {
-		return Loader{}, curated.Errorf("catridgeloader: no filename")
+		return Loader{}, fmt.Errorf("catridgeloader: no filename")
 	}
 
 	// absolute path of filename
 	var err error
 	filename, err = fs.Abs(filename)
 	if err != nil {
-		return Loader{}, curated.Errorf("catridgeloader: %v", err)
+		return Loader{}, fmt.Errorf("catridgeloader: %w", err)
 	}
 
 	mapping = strings.TrimSpace(strings.ToUpper(mapping))
@@ -257,12 +256,12 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 // used.
 func NewLoaderFromEmbed(name string, data []byte, mapping string) (Loader, error) {
 	if len(data) == 0 {
-		return Loader{}, curated.Errorf("catridgeloader: emebedded data is empty")
+		return Loader{}, fmt.Errorf("catridgeloader: emebedded data is empty")
 	}
 
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return Loader{}, curated.Errorf("catridgeloader: no name for embedded data")
+		return Loader{}, fmt.Errorf("catridgeloader: no name for embedded data")
 	}
 
 	mapping = strings.TrimSpace(strings.ToUpper(mapping))
@@ -292,7 +291,7 @@ func (cl Loader) Close() error {
 	err := (**cl.stream).Close()
 	*cl.stream = nil
 	if err != nil {
-		return curated.Errorf("cartridgeloader: %v", err)
+		return fmt.Errorf("cartridgeloader: %w", err)
 	}
 	logger.Logf("cartridgeloader", "stream closed (%s)", cl.Filename)
 
@@ -341,12 +340,12 @@ func (cl *Loader) Load() error {
 	if cl.stream != nil {
 		err := cl.Close()
 		if err != nil {
-			return curated.Errorf("cartridgeloader: %v", err)
+			return fmt.Errorf("cartridgeloader: %w", err)
 		}
 
 		cl.StreamedData, err = os.Open(cl.Filename)
 		if err != nil {
-			return curated.Errorf("cartridgeloader: %v", err)
+			return fmt.Errorf("cartridgeloader: %w", err)
 		}
 		logger.Logf("cartridgeloader", "stream open (%s)", cl.Filename)
 
@@ -372,13 +371,13 @@ func (cl *Loader) Load() error {
 	case "https":
 		resp, err := http.Get(cl.Filename)
 		if err != nil {
-			return curated.Errorf("cartridgeloader: %v", err)
+			return fmt.Errorf("cartridgeloader: %w", err)
 		}
 		defer resp.Body.Close()
 
 		*cl.Data, err = io.ReadAll(resp.Body)
 		if err != nil {
-			return curated.Errorf("cartridgeloader: %v", err)
+			return fmt.Errorf("cartridgeloader: %w", err)
 		}
 
 	case "file":
@@ -390,20 +389,20 @@ func (cl *Loader) Load() error {
 	default:
 		f, err := os.Open(cl.Filename)
 		if err != nil {
-			return curated.Errorf("cartridgeloader: %v", err)
+			return fmt.Errorf("cartridgeloader: %w", err)
 		}
 		defer f.Close()
 
 		*cl.Data, err = io.ReadAll(f)
 		if err != nil {
-			return curated.Errorf("cartridgeloader: %v", err)
+			return fmt.Errorf("cartridgeloader: %w", err)
 		}
 	}
 
 	// generate hash and check for consistency
 	hash := fmt.Sprintf("%x", sha1.Sum(*cl.Data))
 	if cl.Hash != "" && cl.Hash != hash {
-		return curated.Errorf("cartridgeloader: %v", "unexpected hash value")
+		return fmt.Errorf("cartridgeloader: unexpected hash value")
 	}
 	cl.Hash = hash
 

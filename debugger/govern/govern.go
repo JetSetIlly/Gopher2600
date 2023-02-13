@@ -40,6 +40,27 @@ const (
 // State indicates the emulation's state.
 type State int
 
+func (s State) String() string {
+	switch s {
+	case EmulatorStart:
+		return "EmulatorStart"
+	case Initialising:
+		return "Initialising"
+	case Paused:
+		return "Paused"
+	case Stepping:
+		return "Stepping"
+	case Rewinding:
+		return "Rewinding"
+	case Running:
+		return "Running"
+	case Ending:
+		return "Ending"
+	}
+
+	return ""
+}
+
 // List of possible emulation states.
 //
 // EmulatorStart is the default state and should never be entered once the

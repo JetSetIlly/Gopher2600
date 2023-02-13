@@ -21,7 +21,6 @@ package debugger
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -97,12 +96,12 @@ func (dbg *Debugger) RewindToFrame(fn int, last bool) bool {
 			if last {
 				err := dbg.Rewind.GotoLast()
 				if err != nil {
-					return curated.Errorf("push goto last: %v", err)
+					return err
 				}
 			} else {
 				err := dbg.Rewind.GotoFrame(fn)
 				if err != nil {
-					return curated.Errorf("push goto frame: %v", err)
+					return err
 				}
 			}
 
@@ -142,7 +141,7 @@ func (dbg *Debugger) GotoCoords(coords coords.TelevisionCoords) bool {
 
 			err := dbg.Rewind.GotoCoords(coords)
 			if err != nil {
-				return curated.Errorf("push goto coords: %v", err)
+				return err
 			}
 
 			return nil
@@ -187,13 +186,13 @@ func (dbg *Debugger) RerunLastNFrames(frames int) bool {
 		doRewind := func() error {
 			err := dbg.Rewind.RerunLastNFrames(frames)
 			if err != nil {
-				return curated.Errorf("push rerun last N Frame: %v", err)
+				return err
 			}
 
 			if correctCoords {
 				err = dbg.Rewind.GotoCoords(coords)
 				if err != nil {
-					return curated.Errorf("push rerun last N Frame: %v", err)
+					return err
 				}
 			}
 

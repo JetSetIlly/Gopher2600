@@ -16,9 +16,9 @@
 package preferences
 
 import (
+	"fmt"
 	"sync/atomic"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
 )
@@ -100,52 +100,52 @@ func newRevisionPreferences() (*RevisionPreferences, error) {
 
 	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
 	if err != nil {
-		return nil, curated.Errorf("revision: %v", err)
+		return nil, fmt.Errorf("revision: %w", err)
 	}
 
 	p.dsk, err = prefs.NewDisk(pth)
 	if err != nil {
-		return nil, curated.Errorf("revision: %v", err)
+		return nil, fmt.Errorf("revision: %w", err)
 	}
 
 	err = p.dsk.Add("tia.revision.grp0.latevdel", &p.LateVDELGRP0)
 	if err != nil {
-		return nil, curated.Errorf("revision: %v", err)
+		return nil, fmt.Errorf("revision: %w", err)
 	}
 
 	err = p.dsk.Add("tia.revision.grp1.latevdel", &p.LateVDELGRP1)
 	if err != nil {
-		return nil, curated.Errorf("revision: %v", err)
+		return nil, fmt.Errorf("revision: %w", err)
 	}
 
 	err = p.dsk.Add("tia.revision.hmove.laterespx", &p.LateRESPx)
 	if err != nil {
-		return nil, curated.Errorf("revision: %v", err)
+		return nil, fmt.Errorf("revision: %w", err)
 	}
 
 	err = p.dsk.Add("tia.revision.hmove.earlyscancounter", &p.EarlyScancounter)
 	if err != nil {
-		return nil, curated.Errorf("revision: %v", err)
+		return nil, fmt.Errorf("revision: %w", err)
 	}
 
 	err = p.dsk.Add("tia.revision.playfield.latepfx", &p.LatePFx)
 	if err != nil {
-		return nil, curated.Errorf("revision: %v", err)
+		return nil, fmt.Errorf("revision: %w", err)
 	}
 
 	err = p.dsk.Add("tia.revision.playfield.latecolupf", &p.LateCOLUPF)
 	if err != nil {
-		return nil, curated.Errorf("revision: %v", err)
+		return nil, fmt.Errorf("revision: %w", err)
 	}
 
 	err = p.dsk.Add("tia.revision.lostmotck", &p.LostMOTCK)
 	if err != nil {
-		return nil, curated.Errorf("revision: %v", err)
+		return nil, fmt.Errorf("revision: %w", err)
 	}
 
 	err = p.dsk.Add("tia.revision.respx.hmovethreshold", &p.RESPxHBLANK)
 	if err != nil {
-		return nil, curated.Errorf("revision: %v", err)
+		return nil, fmt.Errorf("revision: %w", err)
 	}
 
 	err = p.dsk.Load(true)

@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -714,7 +713,7 @@ func (tv *Television) renderSignals() error {
 		for _, r := range tv.renderers {
 			err := r.SetPixels(tv.signals, tv.currentSignalIdx)
 			if err != nil {
-				return curated.Errorf("television: %v", err)
+				return fmt.Errorf("television: %w", err)
 			}
 		}
 	}
@@ -730,7 +729,7 @@ func (tv *Television) renderSignals() error {
 	if tv.realtimeMixer != nil {
 		err := tv.realtimeMixer.SetAudio(tv.signals[tv.firstSignalIdx:tv.currentSignalIdx])
 		if err != nil {
-			return curated.Errorf("television: %v", err)
+			return fmt.Errorf("television: %w", err)
 		}
 	}
 
@@ -738,7 +737,7 @@ func (tv *Television) renderSignals() error {
 	for _, m := range tv.mixers {
 		err := m.SetAudio(tv.signals[tv.firstSignalIdx:tv.currentSignalIdx])
 		if err != nil {
-			return curated.Errorf("television: %v", err)
+			return fmt.Errorf("television: %w", err)
 		}
 	}
 
@@ -785,7 +784,7 @@ func (tv *Television) SetSpec(spec string) error {
 		tv.state.frameInfo = NewFrameInfo(specification.SpecNTSC)
 		tv.state.auto = true
 	default:
-		return curated.Errorf("television: unsupported spec (%s)", spec)
+		return fmt.Errorf("television: unsupported spec (%s)", spec)
 	}
 
 	tv.state.resizer.initialise(tv)

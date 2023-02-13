@@ -16,6 +16,7 @@
 package recorder
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -23,7 +24,6 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/digest"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
@@ -89,15 +89,15 @@ func NewPlayback(transcript string, checkROM bool) (*Playback, error) {
 
 	tf, err := os.Open(transcript)
 	if err != nil {
-		return nil, curated.Errorf("playback: %v", err)
+		return nil, fmt.Errorf("playback: %w", err)
 	}
 	buffer, err := io.ReadAll(tf)
 	if err != nil {
-		return nil, curated.Errorf("playback: %v", err)
+		return nil, fmt.Errorf("playback: %w", err)
 	}
 	err = tf.Close()
 	if err != nil {
-		return nil, curated.Errorf("playback: %v", err)
+		return nil, fmt.Errorf("playback: %w", err)
 	}
 
 	// convert file contents to an array of lines
@@ -116,7 +116,7 @@ func NewPlayback(transcript string, checkROM bool) (*Playback, error) {
 
 		// ignore lines that don't have enough fields
 		if len(toks) != numFields {
-			return nil, curated.Errorf("playback: expected %d fields at line %d", numFields, i+1)
+			return nil, fmt.Errorf("playback: expected %d fields at line %d", numFields, i+1)
 		}
 
 		// create a new playbackEntry and convert tokens accordingly any errors in the transcript causes failure
@@ -138,7 +138,7 @@ func NewPlayback(transcript string, checkROM bool) (*Playback, error) {
 			case 3:
 				entry.event.Port = plugging.PortPanel
 			default:
-				return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldPortID+1], fieldSep)))
+				return nil, fmt.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldPortID+1], fieldSep)))
 			}
 		}
 
@@ -151,7 +151,7 @@ func NewPlayback(transcript string, checkROM bool) (*Playback, error) {
 
 		entry.event.Time.Frame, err = strconv.Atoi(toks[fieldFrame])
 		if err != nil {
-			return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldFrame+1], fieldSep)))
+			return nil, fmt.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldFrame+1], fieldSep)))
 		}
 
 		// assuming that frames are listed in order in the file. update
@@ -160,12 +160,12 @@ func NewPlayback(transcript string, checkROM bool) (*Playback, error) {
 
 		entry.event.Time.Scanline, err = strconv.Atoi(toks[fieldScanline])
 		if err != nil {
-			return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldScanline+1], fieldSep)))
+			return nil, fmt.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldScanline+1], fieldSep)))
 		}
 
 		entry.event.Time.Clock, err = strconv.Atoi(toks[fieldClock])
 		if err != nil {
-			return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldClock+1], fieldSep)))
+			return nil, fmt.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldClock+1], fieldSep)))
 		}
 
 		entry.hash = toks[fieldHash]
@@ -184,7 +184,7 @@ func NewPlayback(transcript string, checkROM bool) (*Playback, error) {
 func (plb *Playback) AttachToVCSInput(vcs *hardware.VCS) error {
 	// check we're working with correct information
 	if vcs == nil || vcs.TV == nil {
-		return curated.Errorf("playback: no playback hardware available")
+		return fmt.Errorf("playback: no playback hardware available")
 	}
 	plb.vcs = vcs
 
@@ -198,12 +198,12 @@ func (plb *Playback) AttachToVCSInput(vcs *hardware.VCS) error {
 	// specification. some combinations may work but there's no compelling
 	// reason to figure that out just now.
 	if plb.vcs.TV.GetReqSpecID() != plb.TVSpec {
-		return curated.Errorf("playback: recording was made with the %s TV spec. trying to playback with a TV spec of %s.", plb.TVSpec, vcs.TV.GetReqSpecID())
+		return fmt.Errorf("playback: recording was made with the %s TV spec. trying to playback with a TV spec of %s.", plb.TVSpec, vcs.TV.GetReqSpecID())
 	}
 
 	plb.digest, err = digest.NewVideo(plb.vcs.TV)
 	if err != nil {
-		return curated.Errorf("playback: %v", err)
+		return fmt.Errorf("playback: %w", err)
 	}
 
 	// attach playback to all VCS Input system
@@ -212,10 +212,8 @@ func (plb *Playback) AttachToVCSInput(vcs *hardware.VCS) error {
 	return nil
 }
 
-// Sentinal error returned by GetPlayback if a hash error is encountered.
-const (
-	PlaybackHashError = "playback: unexpected input at line %d (frame %d)"
-)
+// sentinal error returned by GetPlayback() if a hash error is encountered.
+var PlaybackHashError = errors.New("unexpected input")
 
 // GetPlayback returns an event and source PortID for an event occurring at the
 // current TV frame/scanline/clock.
@@ -245,7 +243,7 @@ func (plb *Playback) GetPlayback() (ports.TimedInputEvent, error) {
 					Port: plugging.PortUnplugged,
 					Ev:   ports.NoEvent,
 				},
-			}, curated.Errorf(PlaybackHashError, entry.line, c.Frame)
+			}, fmt.Errorf("playback: %w: line %d (frame %d)", PlaybackHashError, entry.line, c.Frame)
 		}
 		return entry.event, nil
 	}

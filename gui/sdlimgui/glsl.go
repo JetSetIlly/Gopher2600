@@ -44,7 +44,7 @@ type glsl struct {
 func newGlsl(img *SdlImgui) (*glsl, error) {
 	err := gl.Init()
 	if err != nil {
-		return nil, fmt.Errorf("glsl: %v", err)
+		return nil, fmt.Errorf("glsl: %w", err)
 	}
 
 	rnd := &glsl{img: img}

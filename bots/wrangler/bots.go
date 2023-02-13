@@ -18,10 +18,11 @@
 package wrangler
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/bots"
 	"github.com/jetsetilly/gopher2600/bots/chess"
 	"github.com/jetsetilly/gopher2600/bots/spacejockey"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -52,7 +53,7 @@ func (b *Bots) ActivateBot(cartHash string) (*bots.Feedback, error) {
 		// NTSC version of VideoChess
 		b.running, err = chess.NewVideoChess(b.input, b.tv, "NTSC")
 		if err != nil {
-			return nil, curated.Errorf("bots: %v", err)
+			return nil, fmt.Errorf("bots: %w", err)
 		}
 		logger.Logf("bots", "%s started", b.running.BotID())
 		b.input.AllowPushedEvents(true)
@@ -61,7 +62,7 @@ func (b *Bots) ActivateBot(cartHash string) (*bots.Feedback, error) {
 		// NTSC version of SpaceJockey
 		b.running, err = spacejockey.NewSpaceJockey(b.input, b.tv, "NTSC")
 		if err != nil {
-			return nil, curated.Errorf("bots: %v", err)
+			return nil, fmt.Errorf("bots: %w", err)
 		}
 		logger.Logf("bots", "%s started", b.running.BotID())
 		b.input.AllowPushedEvents(true)

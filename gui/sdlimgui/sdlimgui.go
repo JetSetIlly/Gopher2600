@@ -16,11 +16,11 @@
 package sdlimgui
 
 import (
+	"fmt"
 	"io"
 	"sync/atomic"
 	"time"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
@@ -143,7 +143,7 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	// path to dear imgui ini file
 	iniPath, err := resources.JoinPath(imguiIniFile)
 	if err != nil {
-		return nil, curated.Errorf("sdlimgui: %v", err)
+		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 	img.io.SetIniFilename(iniPath)
 
@@ -152,12 +152,12 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 
 	img.plt, err = newPlatform(img)
 	if err != nil {
-		return nil, curated.Errorf("sdlimgui: %v", err)
+		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 
 	img.glsl, err = newGlsl(img)
 	if err != nil {
-		return nil, curated.Errorf("sdlimgui: %v", err)
+		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 
 	img.lz = lazyvalues.NewLazyValues(img.dbg)
@@ -168,12 +168,12 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 
 	img.wm, err = newManager(img)
 	if err != nil {
-		return nil, curated.Errorf("sdlimgui: %v", err)
+		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 
 	err = img.wm.loadManagerState()
 	if err != nil {
-		return nil, curated.Errorf("sdlimgui: %v", err)
+		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 
 	// initialise new polling type
@@ -189,20 +189,20 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	// implementation in winAudio which visualises the sound
 	img.audio, err = sdlaudio.NewAudio()
 	if err != nil {
-		return nil, curated.Errorf("sdlimgui: %v", err)
+		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 	img.tv.AddRealtimeAudioMixer(img.audio)
 
 	// load sdlimgui preferences
 	img.prefs, err = newPreferences(img)
 	if err != nil {
-		return nil, curated.Errorf("sdlimgui: %v", err)
+		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 
 	// initialise crt preferences
 	img.crtPrefs, err = crt.NewPreferences()
 	if err != nil {
-		return nil, curated.Errorf("sdlimgui: %v", err)
+		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 
 	// set scaling when IntegerScaling prefs value is changed

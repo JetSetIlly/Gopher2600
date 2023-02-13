@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	rtest "github.com/jetsetilly/gopher2600/hardware/cpu/registers/test"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
@@ -64,7 +63,7 @@ func (mem *mockMem) Clear() {
 
 func (mem mockMem) Read(address uint16) (uint8, error) {
 	if address&0xff00 == 0xff00 {
-		return 0, curated.Errorf(cpubus.AddressError, address)
+		return 0, fmt.Errorf("%w: %04x", cpubus.AddressError, address)
 	}
 	return mem.internal[address], nil
 }
@@ -75,7 +74,7 @@ func (mem mockMem) ReadZeroPage(address uint8) (uint8, error) {
 
 func (mem *mockMem) Write(address uint16, data uint8) error {
 	if address&0xff00 == 0xff00 {
-		return curated.Errorf(cpubus.AddressError, address)
+		return fmt.Errorf("%w: %04x", cpubus.AddressError, address)
 	}
 	mem.internal[address] = data
 	return nil

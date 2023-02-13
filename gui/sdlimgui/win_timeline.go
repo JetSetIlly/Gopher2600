@@ -21,7 +21,6 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -55,7 +54,7 @@ func newWinTimeline(img *SdlImgui) (window, error) {
 
 	win.thmb, err = thumbnailer.NewThumbnailer(win.img.vcs.Instance.Prefs)
 	if err != nil {
-		return nil, curated.Errorf("debugger: %v", err)
+		return nil, fmt.Errorf("debugger: %w", err)
 	}
 
 	gl.GenTextures(1, &win.thmbTexture)

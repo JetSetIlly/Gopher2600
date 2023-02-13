@@ -23,7 +23,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/peripherals"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -481,10 +480,10 @@ func (arm *ARM) updatePrefs() {
 func (arm *ARM) findProgramMemory() error {
 	arm.state.programMemory, arm.state.programMemoryOffset = arm.mem.MapAddress(arm.state.registers[rPC], false)
 	if arm.state.programMemory == nil {
-		return curated.Errorf("can't find program memory (PC %08x)", arm.state.registers[rPC])
+		return fmt.Errorf("can't find program memory (PC %08x)", arm.state.registers[rPC])
 	}
 	if !arm.mem.IsExecutable(arm.state.registers[rPC]) {
-		return curated.Errorf("program memory is not executable (PC %08x)", arm.state.registers[rPC])
+		return fmt.Errorf("program memory is not executable (PC %08x)", arm.state.registers[rPC])
 	}
 
 	arm.state.programMemoryOffset = arm.state.registers[rPC] - arm.state.programMemoryOffset
@@ -565,7 +564,7 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 	arm.resetRegisters()
 
 	if len(args) >= rSP {
-		return curated.Errorf("ARM7: trying to set registers SP, LR or PC")
+		return fmt.Errorf("ARM7: trying to set registers SP, LR or PC")
 	}
 
 	for i := range args {

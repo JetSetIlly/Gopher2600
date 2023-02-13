@@ -16,7 +16,8 @@
 package cartridge
 
 import (
-	"github.com/jetsetilly/gopher2600/curated"
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
@@ -37,7 +38,7 @@ func newEF(instance *instance.Instance, data []byte) (mapper.CartMapper, error) 
 	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, curated.Errorf("EF: %v", "wrong number of bytes in the cartridge data")
+		return nil, fmt.Errorf("EF: wrong number of bytes in the cartridge data")
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {

@@ -16,7 +16,8 @@
 package input
 
 import (
-	"github.com/jetsetilly/gopher2600/curated"
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
@@ -44,7 +45,7 @@ type EventRecorder interface {
 // AttachEventRecorder attaches an EventRecorder implementation.
 func (inp *Input) AttachRecorder(r EventRecorder) error {
 	if inp.playback != nil {
-		return curated.Errorf("input: attach recorder: emulator already has a playback attached")
+		return fmt.Errorf("input: attach recorder: emulator already has a playback attached")
 	}
 	inp.recorder = r
 	return nil
@@ -54,7 +55,7 @@ func (inp *Input) AttachRecorder(r EventRecorder) error {
 // sub-system. EventPlayback can be nil in order to remove the playback.
 func (inp *Input) AttachPlayback(pb EventPlayback) error {
 	if inp.recorder != nil {
-		return curated.Errorf("input: attach playback: emulator already has a recorder attached")
+		return fmt.Errorf("input: attach playback: emulator already has a recorder attached")
 	}
 	inp.playback = pb
 	inp.setHandleFunc()
@@ -94,7 +95,7 @@ func (inp *Input) handlePlaybackEvents() error {
 				select {
 				case inp.toPassenger <- ev:
 				default:
-					return curated.Errorf("input: passenger event queue is full: input dropped")
+					return fmt.Errorf("input: passenger event queue is full: input dropped")
 				}
 			}
 		}

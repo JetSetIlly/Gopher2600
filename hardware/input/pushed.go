@@ -16,7 +16,8 @@
 package input
 
 import (
-	"github.com/jetsetilly/gopher2600/curated"
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 )
 
@@ -35,7 +36,7 @@ func (inp *Input) PushEvent(ev ports.InputEvent) error {
 	select {
 	case inp.pushed <- ev:
 	default:
-		return curated.Errorf("ports: pushed event queue is full: input dropped")
+		return fmt.Errorf("ports: pushed event queue is full: input dropped")
 	}
 	return nil
 }

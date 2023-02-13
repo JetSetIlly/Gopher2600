@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/bots"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -72,12 +71,12 @@ func NewUCI(pathToEngine string, diagnostic chan bots.Diagnostic) (*UCI, error) 
 
 	uci.stdin, err = cmd.StdinPipe()
 	if err != nil {
-		return nil, curated.Errorf("uci: %s", err.Error())
+		return nil, fmt.Errorf("uci: %s", err.Error())
 	}
 
 	uci.stdout, err = cmd.StdoutPipe()
 	if err != nil {
-		return nil, curated.Errorf("uci: %s", err.Error())
+		return nil, fmt.Errorf("uci: %s", err.Error())
 	}
 
 	done := make(chan error)
@@ -98,7 +97,7 @@ func NewUCI(pathToEngine string, diagnostic chan bots.Diagnostic) (*UCI, error) 
 
 	err = <-done
 	if err != nil {
-		return nil, curated.Errorf("uci: %s", err.Error())
+		return nil, fmt.Errorf("uci: %s", err.Error())
 	}
 
 	return uci, nil

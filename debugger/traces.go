@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
@@ -65,7 +64,7 @@ func (trc *traces) clear() {
 // drop a specific tracer by a position in the list.
 func (trc *traces) drop(num int) error {
 	if len(trc.traces)-1 < num {
-		return curated.Errorf("trace #%d is not defined", num)
+		return fmt.Errorf("trace #%d is not defined", num)
 	}
 
 	h := trc.traces[:num]
@@ -166,7 +165,7 @@ func (trc *traces) parseCommand(tokens *commandline.Tokens) error {
 	if ai == nil {
 		ai = trc.dbg.dbgmem.GetAddressInfo(a, false)
 		if ai == nil {
-			return curated.Errorf("invalid trace address (%s) expecting 16-bit address or symbol", a)
+			return fmt.Errorf("invalid trace address (%s) expecting 16-bit address or symbol", a)
 		}
 	}
 
@@ -175,7 +174,7 @@ func (trc *traces) parseCommand(tokens *commandline.Tokens) error {
 	// check to see if trace already exists
 	for _, t := range trc.traces {
 		if t.ai.Address == nt.ai.Address {
-			return curated.Errorf("already being traced (%s)", t)
+			return fmt.Errorf("already being traced (%s)", t)
 		}
 	}
 

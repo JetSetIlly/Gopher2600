@@ -17,13 +17,13 @@ package recorder
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 )
 
 const (
@@ -93,12 +93,12 @@ func (rec *Recorder) writeHeader() error {
 
 	if err != nil {
 		rec.output.Close()
-		return curated.Errorf("recorder: %v", err)
+		return fmt.Errorf("recorder: %w", err)
 	}
 
 	if n != len(line) {
 		rec.output.Close()
-		return curated.Errorf("recorder: output truncated")
+		return fmt.Errorf("recorder: output truncated")
 	}
 
 	return nil
@@ -106,7 +106,7 @@ func (rec *Recorder) writeHeader() error {
 
 func (plb *Playback) readHeader(lines []string, checkROM bool) error {
 	if lines[lineMagicString] != magicString {
-		return curated.Errorf("playback: not a valid transcript (%s)", plb.transcript)
+		return fmt.Errorf("playback: not a valid transcript (%s)", plb.transcript)
 	}
 
 	var err error
@@ -114,7 +114,7 @@ func (plb *Playback) readHeader(lines []string, checkROM bool) error {
 	// read header
 	plb.CartLoad, err = cartridgeloader.NewLoader(lines[lineCartName], "AUTO")
 	if err != nil {
-		return curated.Errorf("playback: %v", err)
+		return fmt.Errorf("playback: %w", err)
 	}
 
 	if checkROM {
@@ -126,11 +126,9 @@ func (plb *Playback) readHeader(lines []string, checkROM bool) error {
 	return nil
 }
 
-// Sentinal errors from IsPlaybackFile().
-const (
-	NotAPlaybackFile   = "playback file: %v"
-	UnsupportedVersion = "playback file: unsupported version (%v)"
-)
+// sentinal errors for IsPlaybackFile()
+var NotAPlaybackFile = errors.New("not a playback file")
+var UnsupportedVersion = errors.New("unsupported version")
 
 // IsPlaybackFile return nil if file is a playback file and is a supported
 // version. If file is not a playback file then the sentinal error
@@ -141,7 +139,7 @@ const (
 func IsPlaybackFile(filename string) error {
 	f, err := os.Open(filename)
 	if err != nil {
-		return curated.Errorf(NotAPlaybackFile, err)
+		return fmt.Errorf("%w: %w", NotAPlaybackFile, err)
 	}
 	defer func() { f.Close() }()
 
@@ -150,34 +148,34 @@ func IsPlaybackFile(filename string) error {
 	// magic string comparison
 	m, err := reader.ReadString('\n')
 	if err != nil {
-		return curated.Errorf(NotAPlaybackFile, err)
+		return fmt.Errorf("%w: %w", NotAPlaybackFile, err)
 	}
 	m = strings.TrimSuffix(m, "\n")
 	if m != magicString {
-		return curated.Errorf(NotAPlaybackFile, "unrecognised format")
+		return fmt.Errorf("%w: unrecognised format", NotAPlaybackFile)
 	}
 
 	// version string comparison
 	v, err := reader.ReadString('\n')
 	if err != nil {
-		return curated.Errorf(NotAPlaybackFile, err)
+		return fmt.Errorf("%w: %w", NotAPlaybackFile, err)
 	}
 	v = strings.TrimSuffix(v, "\n")
 
 	// split into major/minor numbers
 	versionParts := strings.Split(v, ".")
 	if len(versionParts) != 2 {
-		return curated.Errorf(NotAPlaybackFile, "unrecognised format")
+		return fmt.Errorf("%w: unrecognised format", NotAPlaybackFile)
 	}
 
 	// major versions must match
 	if versionMajor != versionParts[0] {
-		return curated.Errorf(UnsupportedVersion, v)
+		return fmt.Errorf("%w: %s", UnsupportedVersion, v)
 	}
 
 	// earlier minor versions are supported
 	if versionMinor < versionParts[1] {
-		return curated.Errorf(UnsupportedVersion, v)
+		return fmt.Errorf("%w: %s", UnsupportedVersion, v)
 	}
 
 	return nil

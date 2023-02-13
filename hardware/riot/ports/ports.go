@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
@@ -416,7 +415,7 @@ func (p *Ports) HandleInputEvent(inp InputEvent) (bool, error) {
 
 	// if error was because of an unhandled event then return without error
 	if err != nil {
-		return handled, curated.Errorf("ports: %v", err)
+		return handled, fmt.Errorf("ports: %w", err)
 	}
 
 	return handled, nil

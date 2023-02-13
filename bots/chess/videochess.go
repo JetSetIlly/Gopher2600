@@ -25,7 +25,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/bots"
 	"github.com/jetsetilly/gopher2600/bots/chess/uci"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -514,7 +513,7 @@ func (bot *videoChessBot) waitForFrames(n int) {
 // NewVideoChess creates a new bot able to play chess (via a UCI engine).
 func NewVideoChess(vcs bots.Input, tv bots.TV, specID string) (bots.Bot, error) {
 	if specID != "NTSC" {
-		return nil, curated.Errorf("videochess: television spec %s is unsupported")
+		return nil, fmt.Errorf("videochess: television spec %s is unsupported", specID)
 	}
 
 	bot := &videoChessBot{
@@ -551,7 +550,7 @@ func NewVideoChess(vcs bots.Input, tv bots.TV, specID string) (bots.Bot, error) 
 		if err != nil {
 			ucii, err = uci.NewUCI("/usr/games/stockfish", bot.feedback.Diagnostic)
 			if err != nil {
-				return nil, curated.Errorf("videochess: %v", err)
+				return nil, fmt.Errorf("videochess: %w", err)
 			}
 		}
 	}

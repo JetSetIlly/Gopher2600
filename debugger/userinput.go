@@ -16,7 +16,8 @@
 package debugger
 
 import (
-	"github.com/jetsetilly/gopher2600/curated"
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/userinput"
@@ -40,7 +41,7 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 	switch ev.(type) {
 	case userinput.EventQuit:
 		dbg.running = false
-		return curated.Errorf(terminal.UserQuit)
+		return terminal.UserQuit
 	}
 
 	// mode specific special input (not passed to the VCS as controller input)
@@ -126,7 +127,7 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 	// pass to VCS controller emulation via the userinput package
 	handled, err := dbg.controllers.HandleUserInput(ev)
 	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+		return fmt.Errorf("debugger: %w", err)
 	}
 
 	// the user input was something that controls the emulation (eg. a joystick

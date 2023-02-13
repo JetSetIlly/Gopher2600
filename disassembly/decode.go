@@ -16,7 +16,8 @@
 package disassembly
 
 import (
-	"github.com/jetsetilly/gopher2600/curated"
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/disassembly/symbols"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
@@ -346,12 +347,12 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 				mc.PC.Load(address)
 				err := mc.ExecuteInstruction(cpu.NilCycleCallback)
 				if err != nil {
-					return curated.Errorf("decode: %v", err)
+					return fmt.Errorf("decode: %w", err)
 				}
 
 				// error on invalid instruction execution
 				if err = mc.LastResult.IsValid(); err != nil {
-					return curated.Errorf("decode: %v", err)
+					return fmt.Errorf("decode: %w", err)
 				}
 
 				// add entry to disassembly
@@ -365,11 +366,11 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 	for b := range dsm.disasmEntries.Entries {
 		for _, a := range dsm.disasmEntries.Entries[b] {
 			if a == nil {
-				return curated.Errorf("decode: not every address has been decoded")
+				return fmt.Errorf("decode: not every address has been decoded")
 			}
 			if a.Level == EntryLevelUnmappable {
 				if a.Result.Defn.OpCode != 0x00 {
-					return curated.Errorf("decode: an unmappable bank address [%#04x bank %d] has a non 0x00 opcode", a.Result.Address, b)
+					return fmt.Errorf("decode: an unmappable bank address [%#04x bank %d] has a non 0x00 opcode", a.Result.Address, b)
 				}
 			}
 		}

@@ -15,32 +15,30 @@
 
 package execution
 
-import (
-	"github.com/jetsetilly/gopher2600/curated"
-)
+import "fmt"
 
 // IsValid checks whether the instance of Result contains information
 // consistent with the instruction definition.
 func (r Result) IsValid() error {
 	if !r.Final {
-		return curated.Errorf("cpu: execution not finalised (bad opcode?)")
+		return fmt.Errorf("cpu: execution not finalised (bad opcode?)")
 	}
 
 	// is PageFault valid given content of Defn
 	if !r.Defn.PageSensitive && r.PageFault {
-		return curated.Errorf("cpu: unexpected page fault")
+		return fmt.Errorf("cpu: unexpected page fault")
 	}
 
 	// byte count
 	if r.ByteCount != r.Defn.Bytes {
-		return curated.Errorf("cpu: unexpected number of bytes read during decode (%d instead of %d)", r.ByteCount, r.Defn.Bytes)
+		return fmt.Errorf("cpu: unexpected number of bytes read during decode (%d instead of %d)", r.ByteCount, r.Defn.Bytes)
 	}
 
 	// if a bug has been triggered, don't perform the number of cycles check
 	if r.CPUBug == "" {
 		if r.Defn.IsBranch() {
 			if r.Cycles != r.Defn.Cycles.Value && r.Cycles != r.Defn.Cycles.Value+1 && r.Cycles != r.Defn.Cycles.Value+2 {
-				return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d or %d)",
+				return fmt.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d or %d)",
 					r.Defn.OpCode,
 					r.Defn.Operator,
 					r.Cycles,
@@ -51,7 +49,7 @@ func (r Result) IsValid() error {
 		} else {
 			if r.Defn.PageSensitive {
 				if r.PageFault && r.Cycles != r.Defn.Cycles.Value && r.Cycles != r.Defn.Cycles.Value+1 {
-					return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d)",
+					return fmt.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d)",
 						r.Defn.OpCode,
 						r.Defn.Operator,
 						r.Cycles,
@@ -60,7 +58,7 @@ func (r Result) IsValid() error {
 				}
 			} else {
 				if r.Cycles != r.Defn.Cycles.Value {
-					return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d)",
+					return fmt.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d)",
 						r.Defn.OpCode,
 						r.Defn.Operator,
 						r.Cycles,

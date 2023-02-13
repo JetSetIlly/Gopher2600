@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
@@ -106,19 +105,19 @@ func (key *Keypad) HandleEvent(event ports.Event, data ports.EventData) (bool, e
 		case ports.EventDataPlayback:
 			n, err := strconv.ParseInt(string(d), 10, 64)
 			if err != nil {
-				return false, curated.Errorf("keypad: %v: unexpected event data", event)
+				return false, fmt.Errorf("keypad: %v: unexpected event data", event)
 			}
 			k = rune(n)
 
 		default:
-			return false, curated.Errorf("keypad: %v: unexpected event data", event)
+			return false, fmt.Errorf("keypad: %v: unexpected event data", event)
 		}
 
 		if k != '1' && k != '2' && k != '3' &&
 			k != '4' && k != '5' && k != '6' &&
 			k != '7' && k != '8' && k != '9' &&
 			k != '*' && k != '0' && k != '#' {
-			return false, curated.Errorf("keypad: unrecognised rune (%v)", k)
+			return false, fmt.Errorf("keypad: unrecognised rune (%v)", k)
 		}
 
 		// note key for use by readKeyboard()
@@ -130,7 +129,7 @@ func (key *Keypad) HandleEvent(event ports.Event, data ports.EventData) (bool, e
 			// expected data
 		case ports.EventDataPlayback:
 			if len(string(d)) > 0 {
-				return false, curated.Errorf("keypad: %v: unexpected event data", event)
+				return false, fmt.Errorf("keypad: %v: unexpected event data", event)
 			}
 		}
 		key.key = noKey

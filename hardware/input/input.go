@@ -16,7 +16,8 @@
 package input
 
 import (
-	"github.com/jetsetilly/gopher2600/curated"
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -99,7 +100,7 @@ func (inp *Input) HandleInputEvent(ev ports.InputEvent) (bool, error) {
 		select {
 		case inp.toPassenger <- ports.TimedInputEvent{Time: inp.tv.GetCoords(), InputEvent: ev}:
 		default:
-			return handled, curated.Errorf("input: passenger event queue is full: input dropped")
+			return handled, fmt.Errorf("input: passenger event queue is full: input dropped")
 		}
 	}
 

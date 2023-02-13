@@ -17,10 +17,10 @@ package elf
 
 import (
 	"debug/elf"
+	"fmt"
 	"sort"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -144,7 +144,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 
 		section.data, err = sec.Data()
 		if err != nil {
-			return nil, curated.Errorf("ELF: %v", err)
+			return nil, fmt.Errorf("ELF: %w", err)
 		}
 
 		// we know about and record data for all sections but we don't load all of them into the corprocessor's memory
@@ -191,7 +191,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 	// symbols used during relocation
 	symbols, err := ef.Symbols()
 	if err != nil {
-		return nil, curated.Errorf("ELF: %v", err)
+		return nil, fmt.Errorf("ELF: %w", err)
 	}
 
 	// relocate all sections
@@ -204,7 +204,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 		// section being relocated
 		var secBeingRelocated *elfSection
 		if idx, ok := mem.sectionsByName[rel.Name[4:]]; !ok {
-			return nil, curated.Errorf("ELF: could not find section corresponding to %s", rel.Name)
+			return nil, fmt.Errorf("ELF: could not find section corresponding to %s", rel.Name)
 		} else {
 			secBeingRelocated = mem.sections[idx]
 		}
@@ -225,7 +225,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 		// (for some reason)
 		relData, err := rel.Data()
 		if err != nil {
-			return nil, curated.Errorf("ELF: %v", err)
+			return nil, fmt.Errorf("ELF: %w", err)
 		}
 
 		// every relocation entry
@@ -375,12 +375,12 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 				// page 32 of "SWS ESPC 0003 A-08"
 
 				if sym.Section == elf.SHN_UNDEF {
-					return nil, curated.Errorf("ELF: %s is undefined", sym.Name)
+					return nil, fmt.Errorf("ELF: %s is undefined", sym.Name)
 				}
 
 				n := ef.Sections[sym.Section].Name
 				if idx, ok := mem.sectionsByName[n]; !ok {
-					return nil, curated.Errorf("ELF: can not find section (%s)", n)
+					return nil, fmt.Errorf("ELF: can not find section (%s)", n)
 				} else {
 					v = mem.sections[idx].origin
 				}
@@ -416,7 +416,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 				logger.Logf("ELF", "relocate %s (%08x) => %08x", n, secBeingRelocated.origin+offset, opcode)
 
 			default:
-				return nil, curated.Errorf("ELF: unhandled ARM relocation type (%v)", relType)
+				return nil, fmt.Errorf("ELF: unhandled ARM relocation type (%v)", relType)
 			}
 		}
 	}

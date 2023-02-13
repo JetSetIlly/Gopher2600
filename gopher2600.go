@@ -16,6 +16,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -26,7 +27,6 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
@@ -256,7 +256,7 @@ func launch(sync *mainSync) {
 
 	if err != nil {
 		// swallow power off error messages. send quit signal with return value of 20 instead
-		if !curated.Has(err, ports.PowerOff) {
+		if !errors.Is(err, ports.PowerOff) {
 			fmt.Printf("* error in %s mode: %s\n", md.String(), err)
 			sync.state <- stateRequest{req: reqQuit, args: 20}
 			return
@@ -734,7 +734,7 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 		if *mode == "" {
 			if err := recorder.IsPlaybackFile(md.GetArg(0)); err == nil {
 				*mode = "PLAYBACK"
-			} else if !curated.Is(err, recorder.NotAPlaybackFile) {
+			} else if !errors.Is(err, recorder.NotAPlaybackFile) {
 				return err
 			} else {
 				*mode = "VIDEO"
@@ -793,7 +793,7 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 			// using carriage return (without newline) at beginning of error
 			// message because we want to overwrite the last output from
 			// RegressAdd()
-			return fmt.Errorf("\rerror adding regression test: %v", err)
+			return fmt.Errorf("\rerror adding regression test: %w", err)
 		}
 	default:
 		return fmt.Errorf("regression tests can only be added one at a time")

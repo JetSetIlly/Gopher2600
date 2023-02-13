@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -75,7 +74,7 @@ func NewSupercharger(instance *instance.Instance, cartload cartridgeloader.Loade
 	// load bios and activate
 	cart.bios, err = loadBIOS(filepath.Dir(cartload.Filename))
 	if err != nil {
-		return nil, curated.Errorf("supercharger: %v", err)
+		return nil, fmt.Errorf("supercharger: %w", err)
 	}
 
 	// set up tape
@@ -85,7 +84,7 @@ func NewSupercharger(instance *instance.Instance, cartload cartridgeloader.Loade
 		cart.state.tape, err = newFastLoad(cart, cartload)
 	}
 	if err != nil {
-		return nil, curated.Errorf("supercharger: %v", err)
+		return nil, fmt.Errorf("supercharger: %w", err)
 	}
 
 	return cart, nil
@@ -158,6 +157,9 @@ func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
 		}
 
 		v, err := cart.state.tape.load()
+		if err != nil {
+			err = fmt.Errorf("supercharger: %w", err)
+		}
 		return v, mapper.CartDrivenPins, err
 	}
 
@@ -195,14 +197,14 @@ func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
 
 				err := cart.notificationHook(cart, notifications.NotifySuperchargerSoundloadEnded)
 				if err != nil {
-					return 0, 0, curated.Errorf("supercharger: %v", err)
+					return 0, 0, fmt.Errorf("supercharger: %w", err)
 				}
 			}
 
 			return cart.bios[addr&0x07ff], mapper.CartDrivenPins, nil
 		}
 
-		return 0, 0, curated.Errorf("supercharger: %v", "ROM is powered off")
+		return 0, 0, fmt.Errorf("supercharger: ROM is powered off")
 	}
 
 	if !peek && cart.state.registers.Delay == 1 {
@@ -282,7 +284,7 @@ func (cart *Supercharger) GetBank(addr uint16) mapper.BankInfo {
 
 // Patch implements the mapper.CartMapper interface.
 func (cart *Supercharger) Patch(_ int, _ uint8) error {
-	return curated.Errorf("supercharger: %v", "not patchable")
+	return fmt.Errorf("supercharger: not patchable")
 }
 
 // AccessPassive implements the mapper.CartMapper interface.

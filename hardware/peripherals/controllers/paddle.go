@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
@@ -133,7 +132,7 @@ func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) (bool, e
 		case ports.EventDataPlayback:
 			b, err := strconv.ParseBool(string(d))
 			if err != nil {
-				return false, curated.Errorf("paddle: %v: unexpected event data", event)
+				return false, fmt.Errorf("paddle: %v: unexpected event data", event)
 			}
 			if b {
 				pdl.fire = paddleFire
@@ -141,7 +140,7 @@ func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) (bool, e
 				pdl.fire = paddleNoFire
 			}
 		default:
-			return false, curated.Errorf("paddle: %v: unexpected event data", event)
+			return false, fmt.Errorf("paddle: %v: unexpected event data", event)
 		}
 
 		pdl.bus.WriteSWCHx(pdl.port, pdl.fire)
@@ -155,11 +154,11 @@ func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) (bool, e
 		case ports.EventDataPlayback:
 			f, err := strconv.ParseFloat(string(d), 32)
 			if err != nil {
-				return false, curated.Errorf("paddle: %v: unexpected event data", event)
+				return false, fmt.Errorf("paddle: %v: unexpected event data", event)
 			}
 			r = float32(f)
 		default:
-			return false, curated.Errorf("paddle: %v: unexpected event data", event)
+			return false, fmt.Errorf("paddle: %v: unexpected event data", event)
 		}
 
 		// reverse value so that we left and right are the correct way around (for a mouse)

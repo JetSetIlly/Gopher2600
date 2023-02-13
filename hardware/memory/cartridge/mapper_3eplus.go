@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -60,7 +59,7 @@ func new3ePlus(instance *instance.Instance, data []byte) (mapper.CartMapper, err
 	}
 
 	if len(data)%cart.bankSize != 0 {
-		return nil, curated.Errorf("3E+: %v", "wrong number of bytes in the cartridge file")
+		return nil, fmt.Errorf("3E+: wrong number of bytes in the cartridge file")
 	}
 
 	numBanks := len(data) / cart.bankSize
@@ -214,7 +213,7 @@ func (cart *m3ePlus) GetBank(addr uint16) mapper.BankInfo {
 // Patch implements the mapper.CartMapper interface.
 func (cart *m3ePlus) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
-		return curated.Errorf("3E+: %v", fmt.Errorf("patch offset too high (%v)", offset))
+		return fmt.Errorf("3E+: patch offset too high (%d)", offset)
 	}
 
 	bank := offset / cart.bankSize

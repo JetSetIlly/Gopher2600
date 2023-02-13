@@ -16,7 +16,6 @@
 package cartridge
 
 import (
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
@@ -74,7 +73,7 @@ func (cart *ejected) GetBank(_ uint16) mapper.BankInfo {
 
 // Patch implements the mapper.CartMapper interface.
 func (cart *ejected) Patch(_ int, _ uint8) error {
-	return curated.Errorf(Ejected)
+	return Ejected
 }
 
 // AccessPassive implements the mapper.CartMapper interface.

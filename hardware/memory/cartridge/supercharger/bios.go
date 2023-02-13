@@ -16,10 +16,10 @@
 package supercharger
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources"
 )
@@ -49,7 +49,7 @@ func loadBIOS(path string) ([]uint8, error) {
 
 		// only accept 2k files
 		if len(d) != 2048 {
-			return nil, curated.Errorf("bios: file (%s) is not 2k", b)
+			return nil, fmt.Errorf("bios: file (%s) is not 2k", b)
 		}
 
 		logger.Logf(biosLogTag, "using %s (from current working directory)", b)
@@ -66,7 +66,7 @@ func loadBIOS(path string) ([]uint8, error) {
 
 		// only accept 2k files
 		if len(d) != 2048 {
-			return nil, curated.Errorf("bios: file (%s) is not 2k", p)
+			return nil, fmt.Errorf("bios: file (%s) is not 2k", p)
 		}
 
 		logger.Logf(biosLogTag, "using %s (from the same path as the game ROM)", p)
@@ -87,14 +87,14 @@ func loadBIOS(path string) ([]uint8, error) {
 
 		// only accept 2k files
 		if len(d) != 2048 {
-			return nil, curated.Errorf("bios: file (%s) is not 2k", p)
+			return nil, fmt.Errorf("bios: file (%s) is not 2k", p)
 		}
 
 		logger.Logf(biosLogTag, "using %s (from the resource path)", p)
 		return d, nil
 	}
 
-	return nil, curated.Errorf("bios: can't find any suitable file")
+	return nil, fmt.Errorf("bios: can't find any suitable file")
 }
 
 func _loadBIOS(biosFilePath string) ([]uint8, error) {

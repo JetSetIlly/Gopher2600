@@ -16,9 +16,10 @@
 package sdlimgui
 
 import (
+	"fmt"
+
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
@@ -77,7 +78,7 @@ func (fnts *glslFonts) mergeFontAwesome(size float32, adjust float32) error {
 	// merge font awesome
 	merge := atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, fnts.defaultFontSize, mergeConfig, glyphBuilder.Build().GlyphRanges)
 	if merge == 0 {
-		return curated.Errorf("font: error loading font-awesome from memory")
+		return fmt.Errorf("font: error loading font-awesome from memory")
 	}
 
 	return nil
@@ -112,7 +113,7 @@ func (rnd *glsl) setupFonts() error {
 		rnd.fonts.largeFontAwesomeSize = 22.0
 		rnd.fonts.largeFontAwesome = atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, rnd.fonts.largeFontAwesomeSize, largeFontAwesomeConfig, largeFontAwesomeBuilder.Build().GlyphRanges)
 		if rnd.fonts.largeFontAwesome == 0 {
-			return curated.Errorf("font: error loading font-awesome from memory")
+			return fmt.Errorf("font: error loading font-awesome from memory")
 		}
 	}
 
@@ -128,7 +129,7 @@ func (rnd *glsl) setupFonts() error {
 		rnd.fonts.veryLargeFontAwesomeSize = 44.0
 		rnd.fonts.veryLargeFontAwesome = atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, rnd.fonts.veryLargeFontAwesomeSize, veryLargeFontAwesomeConfig, veryLargeFontAwesomeBuilder.Build().GlyphRanges)
 		if rnd.fonts.veryLargeFontAwesome == 0 {
-			return curated.Errorf("font: error loading font-awesome from memory")
+			return fmt.Errorf("font: error loading font-awesome from memory")
 		}
 	}
 
@@ -145,7 +146,7 @@ func (rnd *glsl) setupFonts() error {
 		rnd.fonts.gopher2600IconsSize = 60.0
 		rnd.fonts.gopher2600Icons = atlas.AddFontFromMemoryTTFV(fonts.Gopher2600Icons, rnd.fonts.gopher2600IconsSize, gopher2600IconConfig, gopher2600IconBuilder.Build().GlyphRanges)
 		if rnd.fonts.gopher2600Icons == 0 {
-			return curated.Errorf("font: error loading Gopher2600 font from memory")
+			return fmt.Errorf("font: error loading Gopher2600 font from memory")
 		}
 	}
 
@@ -165,14 +166,14 @@ func (rnd *glsl) setupFonts() error {
 		}
 		rnd.fonts.diagram = atlas.AddFontFromMemoryTTFV(fonts.Hack, rnd.fonts.diagramSize, diagramConfig, diagramBuilder.Build().GlyphRanges)
 		if rnd.fonts.diagram == 0 {
-			return curated.Errorf("font: error loading hack font from memory")
+			return fmt.Errorf("font: error loading hack font from memory")
 		}
 	}
 
 	// load source code font
 	err = rnd.fonts.sourceCodeFont(rnd.img.prefs)
 	if err != nil {
-		return curated.Errorf("font: %v", err)
+		return fmt.Errorf("font: %w", err)
 	}
 
 	// create font texture

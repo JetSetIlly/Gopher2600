@@ -16,7 +16,8 @@
 package reflection
 
 import (
-	"github.com/jetsetilly/gopher2600/curated"
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -129,7 +130,7 @@ func (ref *Reflector) render() error {
 	if ref.emulationState != govern.Rewinding {
 		if ref.renderer != nil {
 			if err := ref.renderer.Reflect(ref.history); err != nil {
-				return curated.Errorf("reflection: %v", err)
+				return fmt.Errorf("reflection: %w", err)
 			}
 		}
 	}

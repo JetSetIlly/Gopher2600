@@ -328,7 +328,7 @@ func (varb *SourceVariable) framebase() (uint64, error) {
 
 	fb, err := varb.DeclLine.Function.framebase()
 	if err != nil {
-		return 0, fmt.Errorf("framebase for %s: %v", varb.DeclLine.Function.Name, err)
+		return 0, fmt.Errorf("framebase for %s: %w", varb.DeclLine.Function.Name, err)
 	}
 
 	return fb, nil

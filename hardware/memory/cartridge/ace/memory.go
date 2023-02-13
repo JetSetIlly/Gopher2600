@@ -16,7 +16,8 @@
 package ace
 
 import (
-	"github.com/jetsetilly/gopher2600/curated"
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
@@ -94,11 +95,11 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 
 	switch version {
 	case "ACE-2600":
-		return nil, curated.Errorf("ACE: unocart not yet supported")
+		return nil, fmt.Errorf("ACE: unocart not yet supported")
 	case "ACE-PC00":
 		mem.model = architecture.NewMap(architecture.PlusCart)
 	default:
-		return nil, curated.Errorf("ACE: unrecognised version (%s)", version)
+		return nil, fmt.Errorf("ACE: unrecognised version (%s)", version)
 	}
 
 	// flash creation

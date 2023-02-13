@@ -22,7 +22,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -89,12 +88,12 @@ func NewElf(instance *instance.Instance, pathToROM string, inACE bool) (mapper.C
 	// immediately once all data is rad
 	o, err := os.Open(pathToROM)
 	if err != nil {
-		return nil, curated.Errorf("ELF: %v", err)
+		return nil, fmt.Errorf("ELF: %w", err)
 	}
 	r.data, err = io.ReadAll(o)
 	if err != nil {
 		o.Close()
-		return nil, curated.Errorf("ELF: %v", err)
+		return nil, fmt.Errorf("ELF: %w", err)
 	}
 	o.Close()
 
@@ -103,7 +102,7 @@ func NewElf(instance *instance.Instance, pathToROM string, inACE bool) (mapper.C
 	// offset is stored at initial offset 0x28
 	if inACE {
 		if len(r.data) < 0x30 {
-			return nil, curated.Errorf("ELF: this doesn't look like ELF data embedded in an ACE file")
+			return nil, fmt.Errorf("ELF: this doesn't look like ELF data embedded in an ACE file")
 		}
 		r.offset = int64(r.data[0x28]) | (int64(r.data[0x29]) << 8)
 	}
@@ -111,29 +110,29 @@ func NewElf(instance *instance.Instance, pathToROM string, inACE bool) (mapper.C
 	// ELF file is read via our elfReaderAt instance
 	ef, err := elf.NewFile(r)
 	if err != nil {
-		return nil, curated.Errorf("ELF: %v", err)
+		return nil, fmt.Errorf("ELF: %w", err)
 	}
 	defer ef.Close()
 
 	// keeping things simple. only 32bit ELF files supported
 	if ef.Class != elf.ELFCLASS32 {
-		return nil, curated.Errorf("ELF: only 32bit ELF files are supported")
+		return nil, fmt.Errorf("ELF: only 32bit ELF files are supported")
 	}
 
 	// sanity checks on ELF data
 	if ef.FileHeader.Machine != elf.EM_ARM {
-		return nil, curated.Errorf("ELF: is not ARM")
+		return nil, fmt.Errorf("ELF: is not ARM")
 	}
 	if ef.FileHeader.Version != elf.EV_CURRENT {
-		return nil, curated.Errorf("ELF: unknown version")
+		return nil, fmt.Errorf("ELF: unknown version")
 	}
 	if ef.FileHeader.Type != elf.ET_REL {
-		return nil, curated.Errorf("ELF: is not relocatable")
+		return nil, fmt.Errorf("ELF: is not relocatable")
 	}
 
 	// big endian byte order is probably fine but we've not tested it
 	if ef.FileHeader.ByteOrder != binary.LittleEndian {
-		return nil, curated.Errorf("ELF: is not little-endian")
+		return nil, fmt.Errorf("ELF: is not little-endian")
 	}
 
 	cart := &Elf{
@@ -246,7 +245,7 @@ func (cart *Elf) GetBank(_ uint16) mapper.BankInfo {
 
 // Patch implements the mapper.CartMapper interface.
 func (cart *Elf) Patch(_ int, _ uint8) error {
-	return curated.Errorf("ELF: patching unsupported")
+	return fmt.Errorf("ELF: patching unsupported")
 }
 
 func (cart *Elf) runARM() {

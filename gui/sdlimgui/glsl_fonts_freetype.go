@@ -18,8 +18,9 @@
 package sdlimgui
 
 import (
+	"fmt"
+
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
@@ -50,7 +51,7 @@ func (fnts *glslFonts) setDefaultFont(prefs *preferences) error {
 	fnts.defaultFontSize = float32(defaultFontSize)
 	fnts.defaultFont = atlas.AddFontFromMemoryTTFV(fonts.JetBrainsMono, fnts.defaultFontSize, cfg, builder.Build().GlyphRanges)
 	if fnts.defaultFont == 0 {
-		return curated.Errorf("font: error loading JetBrainsMono font from memory")
+		return fmt.Errorf("font: error loading JetBrainsMono font from memory")
 	}
 
 	fnts.mergeFontAwesome(fnts.defaultFontSize, 1.0)
@@ -76,7 +77,7 @@ func (fnts *glslFonts) sourceCodeFont(prefs *preferences) error {
 	fnts.codeSize = codeSize
 	fnts.code = atlas.AddFontFromMemoryTTFV(fonts.JetBrainsMono, fnts.codeSize, cfg, builder.Build().GlyphRanges)
 	if fnts.code == 0 {
-		return curated.Errorf("font: error loading JetBrainsMono font from memory")
+		return fmt.Errorf("font: error loading JetBrainsMono font from memory")
 	}
 
 	fnts.mergeFontAwesome(fnts.codeSize, 0.0)

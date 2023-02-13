@@ -18,7 +18,6 @@ package cartridge
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -53,7 +52,7 @@ func newSuperbank(instance *instance.Instance, data []byte) (mapper.CartMapper, 
 	}
 
 	if len(data)%cart.bankSize != 0 {
-		return nil, curated.Errorf("SB: %v", "wrong number of bytes in the cartridge data")
+		return nil, fmt.Errorf("SB: wrong number of bytes in the cartridge data")
 	}
 
 	cart.banks = make([][]uint8, len(data)/cart.bankSize)
@@ -124,7 +123,7 @@ func (cart *superbank) GetBank(addr uint16) mapper.BankInfo {
 // Patch implements the mapper.CartMapper interface.
 func (cart *superbank) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
-		return curated.Errorf("SB: %v", fmt.Errorf("patch offset too high (%v)", offset))
+		return fmt.Errorf("SB: patch offset too high (%d)", offset)
 	}
 
 	bank := offset / cart.bankSize

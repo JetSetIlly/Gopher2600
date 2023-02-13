@@ -18,7 +18,6 @@ package memory
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
@@ -271,7 +270,7 @@ func (mem *Memory) Peek(address uint16) (uint8, error) {
 	if area, ok := mem.GetArea(ar).(DebugBus); ok {
 		return area.Peek(ma)
 	}
-	return 0, curated.Errorf(cpubus.AddressError, address)
+	return 0, fmt.Errorf("%w: %04x", cpubus.AddressError, address)
 }
 
 // Poke implements the DebugBus interface.
@@ -280,5 +279,5 @@ func (mem *Memory) Poke(address uint16, data uint8) error {
 	if area, ok := mem.GetArea(ar).(DebugBus); ok {
 		return area.Poke(ma, data)
 	}
-	return curated.Errorf(cpubus.AddressError, address)
+	return fmt.Errorf("%w: %04x", cpubus.AddressError, address)
 }

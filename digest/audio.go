@@ -19,7 +19,6 @@ import (
 	"crypto/sha1"
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
@@ -101,7 +100,7 @@ func (dig *Audio) flushAudio() error {
 	dig.digest = sha1.Sum(dig.buffer)
 	n := copy(dig.buffer, dig.digest[:])
 	if n != len(dig.digest) {
-		return curated.Errorf("digest: audio: digest error while flushing audio stream")
+		return fmt.Errorf("digest: audio: digest error while flushing audio stream")
 	}
 	dig.bufferCt = audioBufferStart
 	return nil

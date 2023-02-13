@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -688,7 +687,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File, coproc mapper.CartCo
 		if fld != nil {
 			av, ok := bld.entries[fld.Val.(dwarf.Offset)]
 			if !ok {
-				return curated.Errorf("found concrete variable without abstract")
+				return fmt.Errorf("found concrete variable without abstract")
 			}
 
 			varb, err = bld.resolveVariableDeclaration(av, src)
@@ -950,7 +949,7 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 
 			fld = e.AttrField(dwarf.AttrHighpc)
 			if fld == nil {
-				return curated.Errorf("AttrLowpc without AttrHighpc for Subprogram")
+				return fmt.Errorf("AttrLowpc without AttrHighpc for Subprogram")
 			}
 
 			switch fld.Class {
@@ -961,7 +960,7 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 				// dwarf-2
 				high = uint64(fld.Val.(uint64))
 			default:
-				return curated.Errorf("AttrLowpc without AttrHighpc for Subprogram")
+				return fmt.Errorf("AttrLowpc without AttrHighpc for Subprogram")
 			}
 
 			// "high address is the first location past the last instruction
@@ -976,7 +975,7 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 			if fld != nil {
 				av, ok := bld.entries[fld.Val.(dwarf.Offset)]
 				if !ok {
-					return curated.Errorf("found inlined subroutine without abstract")
+					return fmt.Errorf("found inlined subroutine without abstract")
 				}
 
 				fn, err := resolve(av)
@@ -1030,12 +1029,12 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 			commitInlinedSubroutine := func(low uint64, high uint64) error {
 				fld := e.AttrField(dwarf.AttrAbstractOrigin)
 				if fld == nil {
-					return curated.Errorf("missing abstract origin for inlined subroutine")
+					return fmt.Errorf("missing abstract origin for inlined subroutine")
 				}
 
 				av, ok := bld.entries[fld.Val.(dwarf.Offset)]
 				if !ok {
-					return curated.Errorf("found inlined subroutine without abstract")
+					return fmt.Errorf("found inlined subroutine without abstract")
 				}
 
 				fn, err := resolve(av)
@@ -1069,7 +1068,7 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 				// high PC
 				fld = e.AttrField(dwarf.AttrHighpc)
 				if fld == nil {
-					return curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine")
+					return fmt.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine")
 				}
 
 				switch fld.Class {
@@ -1080,7 +1079,7 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 					// dwarf-2
 					high = uint64(fld.Val.(uint64))
 				default:
-					return curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine")
+					return fmt.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine")
 				}
 
 				// "high address is the first location past the last instruction

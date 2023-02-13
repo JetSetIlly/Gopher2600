@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
@@ -68,7 +67,7 @@ func newFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error
 	}
 
 	if len(tap.data)%fastLoadBlockSize != 0 {
-		return nil, fmt.Errorf("fastload: %v", "wrong number of bytes in cartridge data")
+		return nil, fmt.Errorf("fastload: wrong number of bytes in cartridge data")
 	}
 	tap.numLoads = len(tap.data) / fastLoadBlockSize
 
@@ -86,7 +85,7 @@ func (tap *FastLoad) snapshot() tape {
 func (tap *FastLoad) load() (uint8, error) {
 	// length check on tape data
 	if len(tap.data) < fastLoadBlockSize {
-		return 0, curated.Errorf("supercharger: fastload: not a supercharger binary")
+		return 0, fmt.Errorf("fastload: not a supercharger binary")
 	}
 
 	// get data for the next multiload
@@ -136,7 +135,7 @@ func (tap *FastLoad) load() (uint8, error) {
 		// look up requested multiload address
 		m, err := ram.Peek(MutliloadByteAddress)
 		if err != nil {
-			return curated.Errorf("supercharger: fastload %v", err)
+			return fmt.Errorf("fastload %w", err)
 		}
 
 		// this is not the mutliload we're looking for
@@ -204,7 +203,7 @@ func (tap *FastLoad) load() (uint8, error) {
 		// poked there already
 		err = mc.LoadPC(0x00fa)
 		if err != nil {
-			return curated.Errorf("supercharger: fastload: %v", err)
+			return fmt.Errorf("fastload: %w", err)
 		}
 
 		// set the value to be used in the first instruction of the bootstrap program

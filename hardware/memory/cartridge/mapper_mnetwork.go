@@ -19,10 +19,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -99,7 +97,7 @@ func newMnetwork(instance *instance.Instance, data []byte) (mapper.CartMapper, e
 	cart.banks = make([][]uint8, len(data)/cart.bankSize)
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, curated.Errorf("E7: %v", "wrong number of bytes in the cartridge data")
+		return nil, fmt.Errorf("E7: wrong number of bytes in the cartridge data")
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {
@@ -189,8 +187,6 @@ func (cart *mnetwork) Access(addr uint16, peek bool) (uint8, uint8, error) {
 			// if address is not in ram space then read from the last rom bank
 			data = cart.banks[cart.NumBanks()-1][addr&0x07ff]
 		}
-	} else {
-		return 0, 0, curated.Errorf("E7: %v", curated.Errorf(cpubus.AddressError, addr))
 	}
 
 	if !peek {
@@ -314,7 +310,7 @@ func (cart *mnetwork) GetBank(addr uint16) mapper.BankInfo {
 // Patch implements the mapper.CartMapper interface.
 func (cart *mnetwork) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
-		return curated.Errorf("E7: %v", fmt.Errorf("patch offset too high (%v)", offset))
+		return fmt.Errorf("E7: patch offset too high (%d)", offset)
 	}
 
 	bank := offset / cart.bankSize

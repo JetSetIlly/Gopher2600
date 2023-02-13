@@ -15,7 +15,7 @@
 
 package rewind
 
-import "github.com/jetsetilly/gopher2600/curated"
+import "fmt"
 
 type PokeHook func(res *State) error
 
@@ -33,7 +33,7 @@ func (r *Rewind) RunPoke(from *State, to *State, poke PokeHook) error {
 
 	err := r.setSplicePoint(fromIdx, to.TV.GetCoords())
 	if err != nil {
-		return curated.Errorf("rewind: %v", err)
+		return fmt.Errorf("rewind: %w", err)
 	}
 
 	return nil

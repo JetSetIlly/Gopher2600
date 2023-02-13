@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -272,14 +271,14 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 					}
 
 				default:
-					return nil, curated.Errorf("invalid target: %s %s", keyword, subkey)
+					return nil, fmt.Errorf("invalid target: %s %s", keyword, subkey)
 				}
 			} else {
-				return nil, curated.Errorf("invalid target: %s", keyword)
+				return nil, fmt.Errorf("invalid target: %s", keyword)
 			}
 
 		default:
-			return nil, curated.Errorf("invalid target: %s", keyword)
+			return nil, fmt.Errorf("invalid target: %s", keyword)
 		}
 	}
 

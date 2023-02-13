@@ -16,9 +16,9 @@
 package cpu
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
@@ -162,14 +162,14 @@ func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 	mc.PhantomMemAccess = false
 
 	if !mc.LastResult.Final && !mc.Interrupted {
-		return curated.Errorf("cpu: load PC indirect invalid mid-instruction")
+		return fmt.Errorf("cpu: load PC indirect invalid mid-instruction")
 	}
 
 	// read 16 bit address from specified indirect address
 
 	lo, err := mc.mem.Read(indirectAddress)
 	if err != nil {
-		if !curated.Has(err, cpubus.AddressError) {
+		if !errors.Is(err, cpubus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -177,7 +177,7 @@ func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 
 	hi, err := mc.mem.Read(indirectAddress + 1)
 	if err != nil {
-		if !curated.Has(err, cpubus.AddressError) {
+		if !errors.Is(err, cpubus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -191,7 +191,7 @@ func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 // LoadPC loads the contents of directAddress into the PC.
 func (mc *CPU) LoadPC(directAddress uint16) error {
 	if !mc.LastResult.Final && !mc.Interrupted {
-		return curated.Errorf("cpu: load PC invalid mid-instruction")
+		return fmt.Errorf("cpu: load PC invalid mid-instruction")
 	}
 
 	mc.PC.Load(directAddress)
@@ -208,7 +208,7 @@ func (mc *CPU) read8Bit(address uint16, phantom bool) (uint8, error) {
 
 	val, err := mc.mem.Read(address)
 	if err != nil {
-		if !curated.Has(err, cpubus.AddressError) {
+		if !errors.Is(err, cpubus.AddressError) {
 			return 0, err
 		}
 		mc.LastResult.Error = err.Error()
@@ -233,7 +233,7 @@ func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
 
 	val, err := mc.mem.Read(uint16(address))
 	if err != nil {
-		if !curated.Has(err, cpubus.AddressError) {
+		if !errors.Is(err, cpubus.AddressError) {
 			return 0, err
 		}
 		mc.LastResult.Error = err.Error()
@@ -257,7 +257,7 @@ func (mc *CPU) write8Bit(address uint16, value uint8, phantom bool) error {
 
 	err := mc.mem.Write(address, value)
 	if err != nil {
-		if !curated.Has(err, cpubus.AddressError) {
+		if !errors.Is(err, cpubus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -275,7 +275,7 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 
 	lo, err := mc.mem.Read(address)
 	if err != nil {
-		if !curated.Has(err, cpubus.AddressError) {
+		if !errors.Is(err, cpubus.AddressError) {
 			return 0, err
 		}
 		mc.LastResult.Error = err.Error()
@@ -290,7 +290,7 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 
 	hi, err := mc.mem.Read(address + 1)
 	if err != nil {
-		if !curated.Has(err, cpubus.AddressError) {
+		if !errors.Is(err, cpubus.AddressError) {
 			return 0, err
 		}
 		mc.LastResult.Error = err.Error()
@@ -328,7 +328,7 @@ func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 	v, err := mc.mem.Read(mc.PC.Address())
 
 	if err != nil {
-		if !curated.Has(err, cpubus.AddressError) {
+		if !errors.Is(err, cpubus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -358,7 +358,7 @@ func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 		// even though all opcodes are defined we'll leave this error check in
 		// just in case something goes wrong with the instruction generator
 		if mc.LastResult.Defn == nil {
-			return curated.Errorf("cpu: unimplemented instruction (%#02x) at (%#04x)", v, mc.PC.Address()-1)
+			return fmt.Errorf("cpu: unimplemented instruction (%#02x) at (%#04x)", v, mc.PC.Address()-1)
 		}
 
 	case loNibble:
@@ -390,7 +390,7 @@ func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 func (mc *CPU) read16BitPC() error {
 	lo, err := mc.mem.Read(mc.PC.Address())
 	if err != nil {
-		if !curated.Has(err, cpubus.AddressError) {
+		if !errors.Is(err, cpubus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -414,7 +414,7 @@ func (mc *CPU) read16BitPC() error {
 
 	hi, err := mc.mem.Read(mc.PC.Address())
 	if err != nil {
-		if !curated.Has(err, cpubus.AddressError) {
+		if !errors.Is(err, cpubus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -510,10 +510,8 @@ func NilCycleCallback() error {
 	return nil
 }
 
-// Sentinal errors returned by ExecuteInstruction.
-const (
-	ResetMidInstruction = "cpu: appears to have been reset mid-instruction"
-)
+// sentinal errors returned by ExecuteInstruction.
+var ResetMidInstruction = errors.New("cpu: appears to have been reset mid-instruction")
 
 // ExecuteInstruction steps CPU forward one instruction. The basic process when
 // executing an instruction is this:
@@ -537,7 +535,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	// a previous call to ExecuteInstruction() has not yet completed. it is
 	// impossible to begin a new instruction
 	if !mc.LastResult.Final && !mc.Interrupted {
-		return curated.Errorf("cpu: starting a new instruction is invalid mid-instruction")
+		return fmt.Errorf("cpu: starting a new instruction is invalid mid-instruction")
 	}
 
 	// reset Interrupted flag
@@ -600,7 +598,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	// immediately
 	defn := mc.LastResult.Defn
 	if defn == nil {
-		return curated.Errorf(ResetMidInstruction)
+		return ResetMidInstruction
 	}
 
 	// get address to use when reading/writing from/to memory (note that in the
@@ -701,7 +699,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 			lo, err = mc.mem.Read(indirectAddress)
 			if err != nil {
-				if !curated.Has(err, cpubus.AddressError) {
+				if !errors.Is(err, cpubus.AddressError) {
 					return err
 				}
 				mc.LastResult.Error = err.Error()
@@ -711,7 +709,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.LastResult.Cycles++
 			err = mc.cycleCallback()
 			if err != nil {
-				if !curated.Has(err, cpubus.AddressError) {
+				if !errors.Is(err, cpubus.AddressError) {
 					return err
 				}
 				mc.LastResult.Error = err.Error()
@@ -927,7 +925,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 	default:
-		return curated.Errorf("cpu: unknown addressing mode for %s", defn.Operator)
+		return fmt.Errorf("cpu: unknown addressing mode for %s", defn.Operator)
 	}
 
 	// read value from memory using address found in AddressingMode switch above only when:
@@ -1760,7 +1758,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 	default:
-		return curated.Errorf("cpu: unknown operator (%s)", defn.Operator)
+		return fmt.Errorf("cpu: unknown operator (%s)", defn.Operator)
 	}
 
 	// for RMW instructions: write altered value back to memory

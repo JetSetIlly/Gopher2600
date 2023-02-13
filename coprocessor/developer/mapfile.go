@@ -16,13 +16,12 @@
 package developer
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	"github.com/jetsetilly/gopher2600/curated"
 )
 
 type entry struct {
@@ -92,14 +91,14 @@ func newMapFile(pathToROM string) (*mapfile, error) {
 	// find objdump file and open it
 	fl := findMapFile(pathToROM)
 	if fl == nil {
-		return nil, curated.Errorf("mapfile: gcc .map file not available (%s)", mapFile)
+		return nil, fmt.Errorf("mapfile: gcc .map file not available (%s)", mapFile)
 	}
 	defer fl.Close()
 
 	// read all data, split into lines
 	data, err := io.ReadAll(fl)
 	if err != nil {
-		return nil, curated.Errorf("mapfile: processing error: %v", err)
+		return nil, fmt.Errorf("mapfile: processing error: %w", err)
 	}
 	lines := strings.Split(string(data), "\n")
 
@@ -132,7 +131,7 @@ func newMapFile(pathToROM string) (*mapfile, error) {
 
 				address, err := strconv.ParseInt(flds[0], 0, 64)
 				if err != nil {
-					return nil, curated.Errorf("mapfile: processing error: %v", err)
+					return nil, fmt.Errorf("mapfile: processing error: %w", err)
 				}
 
 				mf.program = append(mf.program, entry{

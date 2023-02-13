@@ -279,7 +279,7 @@ func (loc *loclist) resolve() (loclistResult, error) {
 	for i := range loc.list {
 		s, err := loc.list[i].resolve(loc)
 		if err != nil {
-			return loclistResult{}, fmt.Errorf("%s: %v", loc.list[i].operator, err)
+			return loclistResult{}, fmt.Errorf("%s: %w", loc.list[i].operator, err)
 		}
 
 		// process result according to the result class

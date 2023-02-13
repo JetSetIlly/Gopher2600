@@ -18,7 +18,6 @@ package setup
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/patch"
@@ -46,10 +45,10 @@ func deserialisePatchEntry(fields database.SerialisedEntry) (database.Entry, err
 
 	// basic sanity check
 	if len(fields) > numPatchFields {
-		return nil, curated.Errorf("patch: too many fields in patch entry")
+		return nil, fmt.Errorf("patch: too many fields in patch entry")
 	}
 	if len(fields) < numPatchFields {
-		return nil, curated.Errorf("patch: too few fields in patch entry")
+		return nil, fmt.Errorf("patch: too few fields in patch entry")
 	}
 
 	set.cartHash = fields[patchFieldCartHash]
@@ -94,7 +93,7 @@ func (set Patch) matchCartHash(hash string) bool {
 func (set Patch) apply(vcs *hardware.VCS) error {
 	_, err := patch.CartridgeMemory(vcs.Mem.Cart, set.patchFile)
 	if err != nil {
-		return curated.Errorf("patch: %v", err)
+		return fmt.Errorf("patch: %w", err)
 	}
 	return nil
 }

@@ -18,7 +18,6 @@ package rewind
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -48,13 +47,13 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 	// create a new TV and VCS to search with
 	searchTV, err := television.NewTelevision("NTSC")
 	if err != nil {
-		return nil, curated.Errorf("rewind: search: %v", err)
+		return nil, fmt.Errorf("rewind: search: %w", err)
 	}
 	_ = searchTV.SetFPSCap(false)
 
 	searchVCS, err := hardware.NewVCS(searchTV, nil)
 	if err != nil {
-		return nil, curated.Errorf("rewind: search: %v", err)
+		return nil, fmt.Errorf("rewind: search: %w", err)
 	}
 
 	// get current screen coordinates. the emulation will run until these
@@ -70,7 +69,7 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 	for !done && searchVCS.CPU.LastResult.Final {
 		err = searchVCS.Step(nil)
 		if err != nil {
-			return nil, curated.Errorf("rewind: search: %v", err)
+			return nil, fmt.Errorf("rewind: search: %w", err)
 		}
 
 		if searchVCS.Mem.LastCPUWrite && searchVCS.Mem.LastCPUAddressMapped == addr {
@@ -112,13 +111,13 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg rune, value uint8, valueMas
 
 	searchTV, err := television.NewTelevision("NTSC")
 	if err != nil {
-		return nil, curated.Errorf("rewind: search: %v", err)
+		return nil, fmt.Errorf("rewind: search: %w", err)
 	}
 	_ = searchTV.SetFPSCap(false)
 
 	searchVCS, err := hardware.NewVCS(searchTV, nil)
 	if err != nil {
-		return nil, curated.Errorf("rewind: search: %v", err)
+		return nil, fmt.Errorf("rewind: search: %w", err)
 	}
 
 	// get current screen coordinates. the emulation will run until these
@@ -153,7 +152,7 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg rune, value uint8, valueMas
 	for !done && searchVCS.CPU.LastResult.Final {
 		err = searchVCS.Step(nil)
 		if err != nil {
-			return nil, curated.Errorf("rewind: search: %v", err)
+			return nil, fmt.Errorf("rewind: search: %w", err)
 		}
 
 		// make snapshot of current state at CPU instruction boundary

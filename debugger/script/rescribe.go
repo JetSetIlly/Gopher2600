@@ -16,11 +16,12 @@
 package script
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 )
 
@@ -45,13 +46,13 @@ func RescribeScript(scriptfile string) (*Rescribe, error) {
 	// open script and defer closing
 	f, err := os.Open(scriptfile)
 	if err != nil {
-		return nil, curated.Errorf("rescribe: %v", err.Error())
+		return nil, fmt.Errorf("rescribe: %w", err)
 	}
 	defer f.Close()
 
 	buffer, err := io.ReadAll(f)
 	if err != nil {
-		return nil, curated.Errorf("rescribe: %v", err.Error())
+		return nil, fmt.Errorf("rescribe: %w", err)
 	}
 
 	scr := &Rescribe{scriptFile: scriptfile}
@@ -86,15 +87,13 @@ func (scr *Rescribe) IsRealTerminal() bool {
 	return false
 }
 
-// Sentinal error returned when Rescribe.TermRead() reaches the expected end of the script.
-const (
-	ScriptEnd = "rescribe: end of script (%s)"
-)
+// sentinal error returned when Rescribe.TermRead() reaches the expected end of the script.
+var ScriptEnd = errors.New("end of rescribe")
 
 // TermRead implements the terminal.Input interface.
 func (scr *Rescribe) TermRead(buffer []byte, _ terminal.Prompt, _ *terminal.ReadEvents) (int, error) {
 	if scr.lineCt > len(scr.lines)-1 {
-		return -1, curated.Errorf(ScriptEnd, scr.scriptFile)
+		return -1, ScriptEnd
 	}
 
 	n := len(scr.lines[scr.lineCt]) + 1

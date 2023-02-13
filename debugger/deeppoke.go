@@ -18,7 +18,6 @@ package debugger
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
@@ -137,7 +136,7 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 		case instructions.Sty:
 			reg = 'Y'
 		default:
-			return deepPoking{}, curated.Errorf("unexpected write sequence (%s)", searchState.CPU.LastResult.String())
+			return deepPoking{}, fmt.Errorf("unexpected write sequence (%s)", searchState.CPU.LastResult.String())
 		}
 
 		searchState, err = dbg.Rewind.SearchRegisterWrite(searchState, reg, value, valueMask)
@@ -163,7 +162,7 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 				poking.area = area
 				return poking, nil
 			default:
-				return deepPoking{}, curated.Errorf("not deeppoking through non-RAM/Cartridge space (%s)", area)
+				return deepPoking{}, fmt.Errorf("not deeppoking through non-RAM/Cartridge space (%s)", area)
 			}
 		case instructions.AbsoluteIndexedX:
 			ma, area := memorymap.MapAddress(searchState.CPU.LastResult.InstructionData, false)
@@ -201,7 +200,7 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 				poking.state = searchState
 				poking.area = area
 			default:
-				return deepPoking{}, curated.Errorf("not deeppoking through non-RAM/Cartridge space (%s)", area)
+				return deepPoking{}, fmt.Errorf("not deeppoking through non-RAM/Cartridge space (%s)", area)
 			}
 		case instructions.ZeroPage:
 			ma, area := memorymap.MapAddress(searchState.CPU.LastResult.InstructionData, false)
@@ -214,7 +213,7 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 				// update the search address and continue with the search
 				searchAddr = poking.addr
 			default:
-				return deepPoking{}, curated.Errorf("not deeppoking through non-RAM space (%s)", area)
+				return deepPoking{}, fmt.Errorf("not deeppoking through non-RAM space (%s)", area)
 			}
 		case instructions.ZeroPageIndexedX:
 			ma, area := memorymap.MapAddress(searchState.CPU.LastResult.InstructionData, false)
@@ -229,7 +228,7 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 				// update the search address and continue with the search
 				searchAddr = poking.addr
 			default:
-				return deepPoking{}, curated.Errorf("not deeppoking through non-RAM space (%s)", area)
+				return deepPoking{}, fmt.Errorf("not deeppoking through non-RAM space (%s)", area)
 			}
 		case instructions.ZeroPageIndexedY:
 			ma, area := memorymap.MapAddress(searchState.CPU.LastResult.InstructionData, false)
@@ -244,7 +243,7 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 				// update the search address and continue with the search
 				searchAddr = poking.addr
 			default:
-				return deepPoking{}, curated.Errorf("not deeppoking through non-RAM space (%s)", area)
+				return deepPoking{}, fmt.Errorf("not deeppoking through non-RAM space (%s)", area)
 			}
 		case instructions.IndirectIndexed:
 			pc := registers.NewProgramCounter(searchState.CPU.LastResult.InstructionData)
@@ -272,16 +271,16 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 				poking.state = searchState
 				poking.area = area
 			default:
-				return deepPoking{}, curated.Errorf("not deeppoking through non-RAM/Cartridge space (%s)", area)
+				return deepPoking{}, fmt.Errorf("not deeppoking through non-RAM/Cartridge space (%s)", area)
 			}
 
 			fallthrough
 		default:
-			return deepPoking{}, curated.Errorf("unsupported addressing mode (%s)", searchState.CPU.LastResult.String())
+			return deepPoking{}, fmt.Errorf("unsupported addressing mode (%s)", searchState.CPU.LastResult.String())
 		}
 	}
 
-	return deepPoking{}, curated.Errorf("deeppoking too deep")
+	return deepPoking{}, fmt.Errorf("deeppoking too deep")
 }
 
 // deepPoke changes the bits at the address according the value of valueMask.

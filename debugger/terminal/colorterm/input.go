@@ -19,10 +19,10 @@
 package colorterm
 
 import (
+	"fmt"
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm/easyterm"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm/easyterm/ansi"
@@ -45,7 +45,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 	// easyterm.KeyInterrupt and easyterm.KeySuspend in particular.
 	err := ct.RawMode()
 	if err != nil {
-		return 0, curated.Errorf("colorterm", err)
+		return 0, fmt.Errorf("colorterm: %w", err)
 	}
 	defer ct.CanonicalMode()
 
@@ -100,7 +100,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 		// wait for an event and respond
 		select {
 		case <-events.IntEvents:
-			return 0, curated.Errorf(terminal.UserInterrupt)
+			return 0, terminal.UserInterrupt
 
 		case ev := <-events.UserInput:
 			ct.EasyTerm.TermPrint(ansi.CursorStore)
@@ -137,18 +137,18 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 				} else {
 					// there is no input so return UserInterrupt error
 					ct.EasyTerm.TermPrint("\r\n")
-					return 0, curated.Errorf(terminal.UserInterrupt)
+					return 0, terminal.UserInterrupt
 				}
 
 			case easyterm.KeySuspend:
 				err := ct.CanonicalMode()
 				if err != nil {
-					return 0, curated.Errorf("colorterm", err)
+					return 0, fmt.Errorf("colorterm: %w", err)
 				}
 				easyterm.SuspendProcess()
 				err = ct.RawMode()
 				if err != nil {
-					return 0, curated.Errorf("colorterm", err)
+					return 0, fmt.Errorf("colorterm: %w", err)
 				}
 
 			case easyterm.KeyTab:

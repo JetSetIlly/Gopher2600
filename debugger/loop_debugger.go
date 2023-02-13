@@ -16,9 +16,9 @@
 package debugger
 
 import (
+	"errors"
 	"io"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
@@ -105,7 +105,7 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 
 		err := dbg.vcs.Step(callback)
 		if err != nil {
-			if curated.Has(err, cpu.ResetMidInstruction) {
+			if errors.Is(err, cpu.ResetMidInstruction) {
 				return nil
 			}
 			return err
@@ -173,11 +173,11 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 		case <-dbg.eventCheckPulse.C:
 			err = dbg.readEventsHandler()
 			if err != nil {
-				if curated.Has(err, terminal.UserInterrupt) {
+				if errors.Is(err, terminal.UserInterrupt) {
 					dbg.handleInterrupt(inputter)
 				} else {
 					// don't print UserQuit error to terminal
-					if !curated.Is(err, terminal.UserQuit) {
+					if errors.Is(err, terminal.UserQuit) {
 						dbg.printLine(terminal.StyleError, "%s", err)
 					}
 				}
@@ -313,7 +313,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 			// read input from terminal inputter and parse/run commands
 			err = dbg.termRead(inputter)
 			if err != nil {
-				if curated.Is(err, script.ScriptEnd) {
+				if errors.Is(err, script.ScriptEnd) {
 					dbg.printLine(terminal.StyleFeedback, err.Error())
 					return nil
 				}
@@ -491,11 +491,6 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 	}
 
 	if stepErr != nil {
-		// exit input loop if error is a plain error
-		if !curated.IsAny(stepErr) {
-			return stepErr
-		}
-
 		// ...set lastStepError instead and allow emulation to halt
 		dbg.lastStepError = true
 		dbg.printLine(terminal.StyleError, "%s", stepErr)
@@ -549,21 +544,11 @@ func (dbg *Debugger) termRead(inputter terminal.Input) error {
 		return nil
 	}
 
-	if !curated.IsAny(err) {
-		switch err {
-		case io.EOF:
-			// treat EOF errors the same as terminal.UserAbort
-			err = curated.Errorf(terminal.UserAbort)
-		default:
-			return err
-		}
-	}
-
-	if curated.Is(err, terminal.UserInterrupt) {
+	if errors.Is(err, terminal.UserInterrupt) {
 		// user interrupts are used to quit or halt an operation
 		dbg.handleInterrupt(inputter)
 
-	} else if curated.Is(err, terminal.UserAbort) {
+	} else if errors.Is(err, terminal.UserAbort) || errors.Is(err, io.EOF) {
 		// like user interrupts, abort are used to quit the application but
 		// more forcibly
 		dbg.running = false
@@ -620,7 +605,7 @@ func (dbg *Debugger) handleInterrupt(inputter terminal.Input) {
 	if err != nil {
 		// another UserInterrupt has occurred. we treat a second UserInterrupt
 		// as thought 'y' was pressed
-		if curated.Is(err, terminal.UserInterrupt) {
+		if errors.Is(err, terminal.UserInterrupt) {
 			confirm[0] = 'y'
 		} else {
 			dbg.printLine(terminal.StyleError, err.Error())

@@ -16,10 +16,10 @@
 package dbgmem
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/disassembly/symbols"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
@@ -96,19 +96,16 @@ func (dbgmem DbgMem) GetAddressInfo(address interface{}, read bool) *AddressInfo
 	return ai
 }
 
-// Formatted errors for Peek() and Poke(). These can be used by other packages,
-// if required, for consistency.
-const (
-	PeekError = "cannot peek address (%v)"
-	PokeError = "cannot poke address (%v)"
-)
+// sentinal errors returns by Peek() and Poke()
+var PeekError = errors.New("cannot peek address")
+var PokeError = errors.New("cannot poke address")
 
 // Peek returns the contents of the memory address, without triggering any side
 // effects. The supplied address can be numeric of symbolic.
 func (dbgmem DbgMem) Peek(address interface{}) (*AddressInfo, error) {
 	ai := dbgmem.GetAddressInfo(address, true)
 	if ai == nil {
-		return nil, curated.Errorf(PeekError, address)
+		return nil, fmt.Errorf("%w: %v", PeekError, address)
 	}
 
 	area := dbgmem.VCS.Mem.GetArea(ai.Area)
@@ -116,8 +113,8 @@ func (dbgmem DbgMem) Peek(address interface{}) (*AddressInfo, error) {
 	var err error
 	ai.Data, err = area.Peek(ai.MappedAddress)
 	if err != nil {
-		if curated.Is(err, cpubus.AddressError) {
-			return nil, curated.Errorf(PeekError, address)
+		if errors.Is(err, cpubus.AddressError) {
+			return nil, fmt.Errorf("%w: %v", PeekError, address)
 		}
 		return nil, err
 	}
@@ -139,15 +136,15 @@ func (dbgmem DbgMem) Poke(address interface{}, data uint8) (*AddressInfo, error)
 	// subsequently read by the CPU, so that means poking to a read address
 	ai := dbgmem.GetAddressInfo(address, true)
 	if ai == nil {
-		return nil, curated.Errorf(PokeError, address)
+		return nil, fmt.Errorf("%w: %v", PokeError, address)
 	}
 
 	area := dbgmem.VCS.Mem.GetArea(ai.Area)
 
 	err := area.Poke(ai.MappedAddress, data)
 	if err != nil {
-		if curated.Is(err, cpubus.AddressError) {
-			return nil, curated.Errorf(PokeError, address)
+		if errors.Is(err, cpubus.AddressError) {
+			return nil, fmt.Errorf("%w: %v", PokeError, address)
 		}
 		return nil, err
 	}

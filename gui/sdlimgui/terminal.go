@@ -18,7 +18,6 @@ package sdlimgui
 import (
 	"sync/atomic"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -123,7 +122,7 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 			return len(inp) + 1, nil
 
 		case <-events.IntEvents:
-			return 0, curated.Errorf(terminal.UserInterrupt)
+			return 0, terminal.UserInterrupt
 
 		case ev := <-events.PushedFunctions:
 			ev()

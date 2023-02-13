@@ -31,8 +31,6 @@ package commandline
 import (
 	"fmt"
 	"strings"
-
-	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // ParseCommandTemplate turns a string representation of a command template
@@ -77,12 +75,12 @@ func ParseCommandTemplate(template []string) (*Commands, error) {
 		// parse the definition for this command
 		p, d, err := parseDefinition(defn, "")
 		if err != nil {
-			return nil, curated.Errorf("parser: %v", fmt.Errorf("%s [line %d, col %d]", err, t, d))
+			return nil, fmt.Errorf("parser: line %d, col %d: %w", t, d, err)
 		}
 
 		// check that parsing was complete
 		if d < len(defn)-1 {
-			return nil, curated.Errorf("parser: %v", fmt.Errorf("outstanding characters in definition [line %d, col %d]", t, d))
+			return nil, fmt.Errorf("parser: [line %d, col %d]: outstanding characters in definition", t, d)
 		}
 
 		// add to list of commands (order doesn't matter at this stage)

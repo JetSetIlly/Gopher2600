@@ -22,8 +22,6 @@ import (
 	"runtime/pprof"
 	"runtime/trace"
 	"strings"
-
-	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // Profile is used to specify the type of profiling to perform by RunProfiler().
@@ -43,18 +41,18 @@ func RunProfiler(profile Profile, filenameHeader string, run func() error) (rerr
 	if profile&ProfileCPU == ProfileCPU {
 		f, err := os.Create(fmt.Sprintf("%s_cpu.profile", filenameHeader))
 		if err != nil {
-			return curated.Errorf("performance; %v", err)
+			return fmt.Errorf("performance; %w", err)
 		}
 		defer func() {
 			err := f.Close()
 			if err != nil {
-				rerr = curated.Errorf("performance; %v", err)
+				rerr = fmt.Errorf("performance; %w", err)
 			}
 		}()
 
 		err = pprof.StartCPUProfile(f)
 		if err != nil {
-			return curated.Errorf("performance; %v", err)
+			return fmt.Errorf("performance; %w", err)
 		}
 		defer pprof.StopCPUProfile()
 	}
@@ -62,18 +60,18 @@ func RunProfiler(profile Profile, filenameHeader string, run func() error) (rerr
 	if profile&ProfileTrace == ProfileTrace {
 		f, err := os.Create(fmt.Sprintf("%s_trace.profile", filenameHeader))
 		if err != nil {
-			return curated.Errorf("performance; %v", err)
+			return fmt.Errorf("performance; %w", err)
 		}
 		defer func() {
 			err := f.Close()
 			if err != nil {
-				rerr = curated.Errorf("performance; %v", err)
+				rerr = fmt.Errorf("performance; %w", err)
 			}
 		}()
 
 		err = trace.Start(f)
 		if err != nil {
-			return curated.Errorf("performance; %v", err)
+			return fmt.Errorf("performance; %w", err)
 		}
 		defer trace.Stop()
 	}
@@ -81,12 +79,12 @@ func RunProfiler(profile Profile, filenameHeader string, run func() error) (rerr
 	if profile&ProfileMem == ProfileMem {
 		f, err := os.Create(fmt.Sprintf("%s_mem.profile", filenameHeader))
 		if err != nil {
-			return curated.Errorf("performance; %v", err)
+			return fmt.Errorf("performance; %w", err)
 		}
 		defer func() {
 			err := f.Close()
 			if err != nil {
-				rerr = curated.Errorf("performance; %v", err)
+				rerr = fmt.Errorf("performance; %w", err)
 			}
 		}()
 
@@ -94,7 +92,7 @@ func RunProfiler(profile Profile, filenameHeader string, run func() error) (rerr
 			runtime.GC()
 			err = pprof.WriteHeapProfile(f)
 			if err != nil {
-				rerr = curated.Errorf("performance; %v", err)
+				rerr = fmt.Errorf("performance; %w", err)
 			}
 		}()
 	}
@@ -129,7 +127,7 @@ func ParseProfileString(profile string) (Profile, error) {
 		case "trace":
 			p |= ProfileTrace
 		default:
-			return p, curated.Errorf("profile: unknown profile type (%s)", t)
+			return p, fmt.Errorf("profile: unknown profile type (%s)", t)
 		}
 	}
 

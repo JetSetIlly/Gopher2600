@@ -16,6 +16,7 @@
 package debugger
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -28,7 +29,6 @@ import (
 	"github.com/jetsetilly/gopher2600/comparison"
 	coprocDev "github.com/jetsetilly/gopher2600/coprocessor/developer"
 	coprocDisasm "github.com/jetsetilly/gopher2600/coprocessor/disassembly"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/script"
@@ -327,20 +327,20 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	// load preferences
 	dbg.Prefs, err = newPreferences()
 	if err != nil {
-		return nil, curated.Errorf("debugger: %v", err)
+		return nil, fmt.Errorf("debugger: %w", err)
 	}
 
 	// creat a new television. this will be used during the initialisation of
 	// the VCS and not referred to directly again
 	tv, err := television.NewTelevision(*opts.Spec)
 	if err != nil {
-		return nil, curated.Errorf("debugger: %v", err)
+		return nil, fmt.Errorf("debugger: %w", err)
 	}
 
 	// create a new VCS instance
 	dbg.vcs, err = hardware.NewVCS(tv, nil)
 	if err != nil {
-		return nil, curated.Errorf("debugger: %v", err)
+		return nil, fmt.Errorf("debugger: %w", err)
 	}
 
 	// create userinput/controllers handler
@@ -358,7 +358,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	// create a new disassembly instance
 	dbg.Disasm, dbg.dbgmem.Sym, err = disassembly.NewDisassembly(dbg.vcs)
 	if err != nil {
-		return nil, curated.Errorf("debugger: %v", err)
+		return nil, fmt.Errorf("debugger: %w", err)
 	}
 
 	// create new coprocessor developer/disassembly instances
@@ -372,7 +372,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	// halting coordination
 	dbg.halting, err = newHaltCoordination(dbg)
 	if err != nil {
-		return nil, curated.Errorf("debugger: %v", err)
+		return nil, fmt.Errorf("debugger: %w", err)
 	}
 
 	// traces
@@ -398,7 +398,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	// create GUI
 	dbg.gui, dbg.term, err = create(dbg)
 	if err != nil {
-		return nil, curated.Errorf("debugger: %v", err)
+		return nil, fmt.Errorf("debugger: %w", err)
 	}
 
 	// add tab completion to terminal
@@ -407,7 +407,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	// create rewind system
 	dbg.Rewind, err = rewind.NewRewind(dbg, dbg)
 	if err != nil {
-		return nil, curated.Errorf("debugger: %v", err)
+		return nil, fmt.Errorf("debugger: %w", err)
 	}
 
 	// add reflection system to the GUI
@@ -439,31 +439,31 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 		dbg.vcs.TV.SetFPSCap(true)
 		err := dbg.gui.SetFeature(gui.ReqMonitorSync, true)
 		if err != nil {
-			return nil, curated.Errorf("debugger: %v", err)
+			return nil, fmt.Errorf("debugger: %w", err)
 		}
 		logger.Log("debugger", "capping FPS to emulated TV")
 	case "MONITOR":
 		dbg.vcs.TV.SetFPSCap(false)
 		err := dbg.gui.SetFeature(gui.ReqMonitorSync, true)
 		if err != nil {
-			return nil, curated.Errorf("debugger: %v", err)
+			return nil, fmt.Errorf("debugger: %w", err)
 		}
 		logger.Log("debugger", "capping FPS to monitor refresh rate")
 	case "NONE":
 		dbg.vcs.TV.SetFPSCap(false)
 		err := dbg.gui.SetFeature(gui.ReqMonitorSync, false)
 		if err != nil {
-			return nil, curated.Errorf("debugger: %v", err)
+			return nil, fmt.Errorf("debugger: %w", err)
 		}
 		logger.Log("debugger", "not capping FPS")
 	default:
-		return nil, curated.Errorf("debugger: unknown fpscap value (%s)", *opts.FpsCap)
+		return nil, fmt.Errorf("debugger: unknown fpscap value (%s)", *opts.FpsCap)
 	}
 
 	// initialise terminal
 	err = dbg.term.Initialise()
 	if err != nil {
-		return nil, curated.Errorf("debugger: %v", err)
+		return nil, fmt.Errorf("debugger: %w", err)
 	}
 
 	return dbg, nil
@@ -631,7 +631,7 @@ func (dbg *Debugger) setMode(mode govern.Mode) error {
 		if dbg.Mode() == govern.ModePlay && dbg.vcs.Mem.Cart.IsEjected() {
 			err = dbg.forceROMSelector()
 			if err != nil {
-				return curated.Errorf("debugger: %v", err)
+				return fmt.Errorf("debugger: %w", err)
 			}
 		} else {
 			dbg.setState(govern.Running)
@@ -656,7 +656,7 @@ func (dbg *Debugger) setMode(mode govern.Mode) error {
 			dbg.RerunLastNFrames(2)
 		}
 	default:
-		return curated.Errorf("emulation mode not supported: %s", mode)
+		return fmt.Errorf("emulation mode not supported: %s", mode)
 	}
 
 	return nil
@@ -699,23 +699,23 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 	} else {
 		cartload, err = cartridgeloader.NewLoader(filename, *dbg.opts.Mapping)
 		if err != nil {
-			return curated.Errorf("debugger: %v", err)
+			return fmt.Errorf("debugger: %w", err)
 		}
 	}
 
 	err = dbg.attachCartridge(cartload)
 	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+		return fmt.Errorf("debugger: %w", err)
 	}
 
 	err = dbg.insertPeripheralsOnStartup(*dbg.opts.Left, *dbg.opts.Right)
 	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+		return fmt.Errorf("debugger: %w", err)
 	}
 
 	err = dbg.setMode(govern.ModeDebugger)
 	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+		return fmt.Errorf("debugger: %w", err)
 	}
 
 	// intialisation script because we're in debugger mode
@@ -726,7 +726,7 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 			err = dbg.inputLoop(scr, false)
 			if err != nil {
 				dbg.term.Silence(false)
-				return curated.Errorf("debugger: %v", err)
+				return fmt.Errorf("debugger: %w", err)
 			}
 
 			dbg.term.Silence(false)
@@ -736,10 +736,10 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 	defer dbg.end()
 	err = dbg.run()
 	if err != nil {
-		if curated.Has(err, terminal.UserQuit) {
+		if errors.Is(err, terminal.UserQuit) {
 			return nil
 		}
-		return curated.Errorf("debugger: %v", err)
+		return fmt.Errorf("debugger: %w", err)
 	}
 
 	return nil
@@ -773,24 +773,24 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 	} else {
 		cartload, err = cartridgeloader.NewLoader(filename, *dbg.opts.Mapping)
 		if err != nil {
-			return curated.Errorf("debugger: %v", err)
+			return fmt.Errorf("debugger: %w", err)
 		}
 	}
 
 	err = recorder.IsPlaybackFile(filename)
 	if err != nil {
-		if !curated.Is(err, recorder.NotAPlaybackFile) {
-			return curated.Errorf("debugger: %v", err)
+		if !errors.Is(err, recorder.NotAPlaybackFile) {
+			return fmt.Errorf("debugger: %w", err)
 		}
 
 		err = dbg.attachCartridge(cartload)
 		if err != nil {
-			return curated.Errorf("debugger: %v", err)
+			return fmt.Errorf("debugger: %w", err)
 		}
 
 		err = dbg.insertPeripheralsOnStartup(*dbg.opts.Left, *dbg.opts.Right)
 		if err != nil {
-			return curated.Errorf("debugger: %v", err)
+			return fmt.Errorf("debugger: %w", err)
 		}
 
 		// apply patch if requested. note that this will be in addition to any
@@ -798,7 +798,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 		if *dbg.opts.PatchFile != "" {
 			_, err := patch.CartridgeMemory(dbg.vcs.Mem.Cart, *dbg.opts.PatchFile)
 			if err != nil {
-				return curated.Errorf("debugger: %v", err)
+				return fmt.Errorf("debugger: %w", err)
 			}
 		}
 
@@ -807,7 +807,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 			fn := unique.Filename("audio", cartload.ShortName())
 			ww, err := wavwriter.NewWavWriter(fn)
 			if err != nil {
-				return curated.Errorf("debugger: %v", err)
+				return fmt.Errorf("debugger: %w", err)
 			}
 			dbg.vcs.TV.AddAudioMixer(ww)
 		}
@@ -818,7 +818,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 		}
 	} else {
 		if *dbg.opts.Record {
-			return curated.Errorf("debugger: cannot make a new recording using a playback file")
+			return fmt.Errorf("debugger: cannot make a new recording using a playback file")
 		}
 
 		dbg.startPlayback(filename)
@@ -826,12 +826,12 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 
 	err = dbg.startComparison(*dbg.opts.ComparisonROM, *dbg.opts.ComparisonPrefs)
 	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+		return fmt.Errorf("debugger: %w", err)
 	}
 
 	err = dbg.setMode(govern.ModePlay)
 	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+		return fmt.Errorf("debugger: %w", err)
 	}
 
 	// wait a very short time to give window time to open. this would be better
@@ -839,12 +839,13 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 	<-time.After(250 * time.Millisecond)
 
 	defer dbg.end()
+
 	err = dbg.run()
 	if err != nil {
-		if curated.Has(err, terminal.UserQuit) {
+		if errors.Is(err, terminal.UserQuit) {
 			return nil
 		}
-		return curated.Errorf("debugger: %v", err)
+		return fmt.Errorf("debugger: %w", err)
 	}
 
 	return nil
@@ -899,13 +900,13 @@ func (dbg *Debugger) run() error {
 			if err != nil {
 				// if we ever encounter a cartridge ejected error in playmode
 				// then simply open up the ROM selector
-				if curated.Has(err, cartridge.Ejected) {
+				if errors.Is(err, cartridge.Ejected) {
 					err = dbg.forceROMSelector()
 					if err != nil {
-						return curated.Errorf("debugger: %v", err)
+						return fmt.Errorf("debugger: %w", err)
 					}
 				} else {
-					return curated.Errorf("debugger: %v", err)
+					return fmt.Errorf("debugger: %w", err)
 				}
 			}
 
@@ -918,23 +919,23 @@ func (dbg *Debugger) run() error {
 				dbg.haltImmediately = true
 			case govern.Rewinding:
 			default:
-				return curated.Errorf("emulation state not supported on *start* of debugging loop: %s", dbg.State())
+				return fmt.Errorf("emulation state not supported on *start* of debugging loop: %s", dbg.State())
 			}
 
 			err := dbg.inputLoop(dbg.term, false)
 			if err != nil {
-				return curated.Errorf("debugger: %v", err)
+				return fmt.Errorf("debugger: %w", err)
 			}
 
 		default:
-			return curated.Errorf("emulation mode not supported: %s", dbg.mode)
+			return fmt.Errorf("emulation mode not supported: %s", dbg.mode)
 		}
 
 		// handle inputLoopRestart and any on-restart function
 		if dbg.unwindLoopRestart != nil {
 			err := dbg.unwindLoopRestart()
 			if err != nil {
-				return curated.Errorf("debugger: %v", err)
+				return fmt.Errorf("debugger: %w", err)
 			}
 			dbg.unwindLoopRestart = nil
 		} else if dbg.State() == govern.Ending {
@@ -946,7 +947,7 @@ func (dbg *Debugger) run() error {
 	if dbg.loader != nil {
 		err := dbg.loader.Close()
 		if err != nil {
-			return curated.Errorf("debugger: %v", err)
+			return fmt.Errorf("debugger: %w", err)
 		}
 	}
 
@@ -1099,7 +1100,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 				if dbg.vcs.Instance.Prefs.PlusROM.NewInstallation {
 					err := dbg.gui.SetFeature(gui.ReqCartridgeNotice, notifications.NotifyPlusROMNewInstallation)
 					if err != nil {
-						return curated.Errorf(err.Error())
+						return fmt.Errorf(err.Error())
 					}
 				}
 			case notifications.NotifyPlusROMNetwork:
@@ -1116,7 +1117,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 
 	// reset of vcs is implied with attach cartridge
 	err := setup.AttachCartridge(dbg.vcs, cartload, false)
-	if err != nil && !curated.Has(err, cartridge.Ejected) {
+	if err != nil && !errors.Is(err, cartridge.Ejected) {
 		logger.Logf("debugger", err.Error())
 		// an error has occurred so attach the ejected cartridge
 		//
@@ -1133,7 +1134,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 		if err != nil {
 			return err
 		}
-		return curated.Errorf("cartridge ejected")
+		return fmt.Errorf("cartridge ejected")
 	}
 
 	// clear existing reflection and counter data
@@ -1378,13 +1379,13 @@ func (dbg *Debugger) reloadCartridge() error {
 
 	err := dbg.insertCartridge("")
 	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+		return fmt.Errorf("debugger: %w", err)
 	}
 
 	// set spec to what it was before the cartridge insertion
 	err = dbg.vcs.TV.SetSpec(spec)
 	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+		return fmt.Errorf("debugger: %w", err)
 	}
 
 	return nil
@@ -1408,12 +1409,12 @@ func (dbg *Debugger) insertCartridge(filename string) error {
 
 	cartload, err := cartridgeloader.NewLoader(filename, "AUTO")
 	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+		return fmt.Errorf("debugger: %w", err)
 	}
 
 	err = dbg.attachCartridge(cartload)
 	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+		return fmt.Errorf("debugger: %w", err)
 	}
 
 	if dbg.forcedROMselection != nil {

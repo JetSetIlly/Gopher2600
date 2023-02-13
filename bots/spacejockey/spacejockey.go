@@ -18,6 +18,7 @@ package spacejockey
 
 import (
 	"crypto/sha1"
+	"fmt"
 	"image"
 	"image/color"
 	"time"
@@ -25,7 +26,6 @@ import (
 	"golang.org/x/image/draw"
 
 	"github.com/jetsetilly/gopher2600/bots"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -260,7 +260,7 @@ type spaceJockeyBot struct {
 // NewSpaceJockey creates a new bot able to play Space Jockey.
 func NewSpaceJockey(vcs bots.Input, tv bots.TV, specID string) (bots.Bot, error) {
 	if specID != "NTSC" {
-		return nil, curated.Errorf("spacejockey: television spec %s is unsupported")
+		return nil, fmt.Errorf("spacejockey: television spec %s is unsupported", specID)
 	}
 
 	bot := &spaceJockeyBot{

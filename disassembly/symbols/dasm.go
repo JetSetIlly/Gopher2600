@@ -23,7 +23,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -47,7 +46,7 @@ func (sym *Symbols) ReadDASMSymbolsFile(cart *cartridge.Cartridge) error {
 
 	err := sym.fromDasm(cart)
 	if err != nil {
-		return curated.Errorf("symbols: %v", err)
+		return fmt.Errorf("symbols: %w", err)
 	}
 
 	return nil
@@ -80,7 +79,7 @@ func (sym *Symbols) fromDasm(cart *cartridge.Cartridge) error {
 
 	data, err := io.ReadAll(sf)
 	if err != nil {
-		return curated.Errorf("dasm: processing error: %v", err)
+		return fmt.Errorf("dasm: processing error: %w", err)
 	}
 	lines := strings.Split(string(data), "\n")
 

@@ -15,7 +15,11 @@
 
 package cpubus
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+import (
+	"errors"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+)
 
 // Reset is the address where the reset address is stored.
 const Reset = uint16(0x1ffc)
@@ -237,8 +241,5 @@ func init() {
 	}
 }
 
-// Sentinal error returned by memory package functions. Note that the error
-// expects a numberic address, which will be formatted as four digit hex.
-const (
-	AddressError = "inaccessible address (%#04x)"
-)
+// sentinal error returned by memory package functions
+var AddressError = errors.New("inaccessible address")

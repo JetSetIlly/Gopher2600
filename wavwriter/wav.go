@@ -26,7 +26,6 @@ import (
 
 	"github.com/go-audio/audio"
 	"github.com/go-audio/wav"
-	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // WavWriter implements the television.AudioMixer interface
@@ -68,13 +67,13 @@ const bitDepth = 16
 func (aw *WavWriter) EndMixing() error {
 	f, err := os.Create(aw.filename)
 	if err != nil {
-		return curated.Errorf("wavwriter: %v", err)
+		return fmt.Errorf("wavwriter: %w", err)
 	}
 	defer f.Close()
 
 	enc := wav.NewEncoder(f, tia.SampleFreq, bitDepth, numChannels, 1)
 	if enc == nil {
-		return curated.Errorf("wavwriter: bad parameters for wav encoding")
+		return fmt.Errorf("wavwriter: bad parameters for wav encoding")
 	}
 	defer enc.Close()
 
@@ -90,7 +89,7 @@ func (aw *WavWriter) EndMixing() error {
 
 	err = enc.Write(buf.AsIntBuffer())
 	if err != nil {
-		return curated.Errorf("wavwriter: %v", err)
+		return fmt.Errorf("wavwriter: %w", err)
 	}
 
 	return nil

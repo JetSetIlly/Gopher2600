@@ -16,6 +16,7 @@
 package terminal
 
 import (
+	"errors"
 	"os"
 
 	"github.com/jetsetilly/gopher2600/userinput"
@@ -51,14 +52,12 @@ type Input interface {
 	IsRealTerminal() bool
 }
 
-// Sentinal errors controlling program exit
-const (
-	UserInterrupt = "user interrupt"
-	UserAbort     = "user abort"
+// sentinal errors controlling program exit
+var UserInterrupt = errors.New("user interrupt")
+var UserAbort = errors.New("user abort")
 
-	// UserQuit indicates an intentional quit and should probably be caught and silenced
-	UserQuit = "user quit"
-)
+// UserQuit indicates an intentional quit and should probably be caught and silenced
+var UserQuit = errors.New("user quit")
 
 // ReadEvents *must* be monitored during a TermRead().
 type ReadEvents struct {
@@ -76,7 +75,7 @@ type ReadEvents struct {
 	PushedFunctions chan func()
 
 	// PushedFunctionsImmediate is the same as PushedFunctions but handlers
-	// must return control to the input loop after the function has run
+	// must return control to the inputloop after the function has run
 	PushedFunctionsImmediate chan func()
 }
 

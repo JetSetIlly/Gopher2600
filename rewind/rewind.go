@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
@@ -163,7 +162,7 @@ func NewRewind(emulation Emulation, runner Runner) (*Rewind, error) {
 
 	r.Prefs, err = newPreferences(r)
 	if err != nil {
-		return nil, curated.Errorf("rewind: %v", err)
+		return nil, fmt.Errorf("rewind: %w", err)
 	}
 
 	r.timeline = newTimeline()
@@ -400,13 +399,13 @@ func (r *Rewind) runFromStateToCoords(fromState *State, toCoords coords.Televisi
 	if fromState.level == levelReset {
 		err := r.vcs.TV.Reset(false)
 		if err != nil {
-			return curated.Errorf("rewind: %v", err)
+			return fmt.Errorf("rewind: %w", err)
 		}
 	}
 
 	err := r.runner.CatchUpLoop(toCoords)
 	if err != nil {
-		return curated.Errorf("rewind: %v", err)
+		return fmt.Errorf("rewind: %w", err)
 	}
 
 	return nil
@@ -523,7 +522,7 @@ func (r *Rewind) RerunLastNFrames(frames int) error {
 	idx := r.findFrameIndex(ff).nearestIdx
 	err := r.setSplicePoint(idx, to.TV.GetCoords())
 	if err != nil {
-		return curated.Errorf("rewind: %v", err)
+		return fmt.Errorf("rewind: %w", err)
 	}
 
 	return nil

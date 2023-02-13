@@ -18,8 +18,6 @@ package database
 import (
 	"fmt"
 	"sort"
-
-	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // arbitrary maximum number of entries.
@@ -66,7 +64,7 @@ func (db *Session) Add(ent Entry) error {
 	}
 
 	if key == maxEntries {
-		return curated.Errorf("database: maximum entries exceeded (max %d)", maxEntries)
+		return fmt.Errorf("database: maximum entries exceeded (max %d)", maxEntries)
 	}
 
 	db.entries[key] = ent
@@ -79,11 +77,11 @@ func (db *Session) Add(ent Entry) error {
 func (db *Session) Delete(key int) error {
 	ent, ok := db.entries[key]
 	if !ok {
-		return curated.Errorf("database: key not available (%s)", key)
+		return fmt.Errorf("database: key not available (%d)", key)
 	}
 
 	if err := ent.CleanUp(); err != nil {
-		return curated.Errorf("database: %v", err)
+		return fmt.Errorf("database: %w", err)
 	}
 
 	delete(db.entries, key)
@@ -100,7 +98,7 @@ func (db Session) ForEach(f func(key int, e Entry) error) error {
 		ent := db.entries[key]
 		err := f(key, ent)
 		if err != nil {
-			return curated.Errorf("database: %v", err)
+			return fmt.Errorf("database: %w", err)
 		}
 	}
 

@@ -16,7 +16,8 @@
 package sdlaudio
 
 import (
-	"github.com/jetsetilly/gopher2600/curated"
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio/mix"
@@ -77,7 +78,7 @@ func NewAudio() (*Audio, error) {
 
 	aud.Prefs, err = NewPreferences()
 	if err != nil {
-		return nil, curated.Errorf("sdlaudio: %v", err)
+		return nil, fmt.Errorf("sdlaudio: %w", err)
 	}
 	aud.stereo = aud.Prefs.Stereo.Get().(bool)
 	aud.discrete = aud.Prefs.Discrete.Get().(bool)
@@ -94,7 +95,7 @@ func NewAudio() (*Audio, error) {
 
 	aud.id, err = sdl.OpenAudioDevice("", false, spec, &actualSpec, 0)
 	if err != nil {
-		return nil, curated.Errorf("sdlaudio: %v", err)
+		return nil, fmt.Errorf("sdlaudio: %w", err)
 	}
 
 	aud.spec = actualSpec
@@ -179,11 +180,11 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 		remaining := int(sdl.GetQueuedAudioSize(aud.id))
 		if aud.bufferCt >= len(aud.buffer) {
 			if err := aud.queueBuffer(); err != nil {
-				return curated.Errorf("sdlaudio", err)
+				return fmt.Errorf("sdlaudio: %w", err)
 			}
 		} else if remaining < realtimeDemand {
 			if err := aud.queueBuffer(); err != nil {
-				return curated.Errorf("sdlaudio", err)
+				return fmt.Errorf("sdlaudio: %w", err)
 			}
 		} else if remaining > maxQueueLength {
 			// if length of sdl: audio: queue is getting too long then clear it

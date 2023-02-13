@@ -16,7 +16,8 @@
 package vcs
 
 import (
-	"github.com/jetsetilly/gopher2600/curated"
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
@@ -81,7 +82,7 @@ func (mem *RIOTMemory) Reset() {
 // Peek is an implementation of memory.DebugBus. Address must be normalised.
 func (mem *RIOTMemory) Peek(address uint16) (uint8, error) {
 	if cpubus.Read[address] == cpubus.NotACPUBusRegister {
-		return 0, curated.Errorf(cpubus.AddressError, address)
+		return 0, fmt.Errorf("%w: %04x", cpubus.AddressError, address)
 	}
 	return mem.memory[address^mem.origin], nil
 }

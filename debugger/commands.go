@@ -25,7 +25,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/script"
@@ -115,7 +114,7 @@ func (dbg *Debugger) tokeniseCommand(cmd string, scribe bool, echo bool) (*comma
 		// fail when the tokens DO match the scriptUnsafe template (ie. when
 		// there is no err from the validate function)
 		if err == nil {
-			return nil, curated.Errorf("'%s' is unsafe to use in scripts", tokens.String())
+			return nil, fmt.Errorf("'%s' is unsafe to use in scripts", tokens.String())
 		}
 
 		// record command if it auto is false (is not a result of an "auto" command
@@ -153,7 +152,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 	switch command {
 	default:
-		return curated.Errorf("%s is not yet implemented", command)
+		return fmt.Errorf("%s is not yet implemented", command)
 
 	case cmdHelp:
 		keyword, ok := tokens.Get()
@@ -258,7 +257,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			case "FRAME":
 				adj = television.AdjFrame
 			default:
-				return curated.Errorf("unknown STEP BACK mode (%s)", mode)
+				return fmt.Errorf("unknown STEP BACK mode (%s)", mode)
 			}
 
 			var coords coords.TelevisionCoords
@@ -1133,7 +1132,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		// "read" address
 		ai := dbg.dbgmem.GetAddressInfo(a, true)
 		if ai == nil {
-			dbg.printLine(terminal.StyleError, fmt.Sprintf(dbgmem.PokeError, a))
+			dbg.printLine(terminal.StyleError, fmt.Sprintf("%s: %v", dbgmem.PokeError, a))
 			return nil
 		}
 		addr := ai.MappedAddress
@@ -1652,7 +1651,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 		if err != nil {
-			return curated.Errorf("%v", err)
+			return err
 		}
 
 		var p ports.Peripheral
@@ -1733,7 +1732,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 		if err != nil {
-			return curated.Errorf("%v", err)
+			return err
 		}
 
 		dbg.printLine(terminal.StyleInstrument, dbg.vcs.RIOT.Ports.Panel.String())
@@ -1826,25 +1825,25 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 	case cmdBreak:
 		err := dbg.halting.breakpoints.parseCommand(tokens)
 		if err != nil {
-			return curated.Errorf("%v", err)
+			return err
 		}
 
 	case cmdTrap:
 		err := dbg.halting.traps.parseCommand(tokens)
 		if err != nil {
-			return curated.Errorf("%v", err)
+			return err
 		}
 
 	case cmdWatch:
 		err := dbg.halting.watches.parseCommand(tokens)
 		if err != nil {
-			return curated.Errorf("%v", err)
+			return err
 		}
 
 	case cmdTrace:
 		err := dbg.traces.parseCommand(tokens)
 		if err != nil {
-			return curated.Errorf("%v", err)
+			return err
 		}
 
 	case cmdList:
@@ -1874,7 +1873,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		s, _ := tokens.Get()
 		num, err := strconv.Atoi(s)
 		if err != nil {
-			return curated.Errorf("drop attribute must be a number (%s)", s)
+			return fmt.Errorf("drop attribute must be a number (%s)", s)
 		}
 
 		drop = strings.ToUpper(drop)

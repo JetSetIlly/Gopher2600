@@ -18,7 +18,6 @@ package ace
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -149,7 +148,7 @@ func (cart *Ace) GetBank(_ uint16) mapper.BankInfo {
 
 // Patch implements the mapper.CartMapper interface.
 func (cart *Ace) Patch(_ int, _ uint8) error {
-	return curated.Errorf("ACE: patching unsupported")
+	return fmt.Errorf("ACE: patching unsupported")
 }
 
 func (cart *Ace) runARM() {

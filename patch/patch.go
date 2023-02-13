@@ -23,7 +23,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/resources"
 )
@@ -41,28 +40,28 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 
 	p, err := resources.JoinPath(patchPath, patchFile)
 	if err != nil {
-		return false, curated.Errorf("patch: %v", err)
+		return false, fmt.Errorf("patch: %w", err)
 	}
 
 	f, err := os.Open(p)
 	if err != nil {
 		switch err.(type) {
 		case *os.PathError:
-			return false, curated.Errorf("patch: %v", fmt.Sprintf("patch file not found (%s)", p))
+			return false, fmt.Errorf("patch: patch file not found (%s)", p)
 		}
-		return false, curated.Errorf("patch: %v", err)
+		return false, fmt.Errorf("patch: %w", err)
 	}
 	defer f.Close()
 
 	// make sure we're at the beginning of the file
 	if _, err = f.Seek(0, io.SeekStart); err != nil {
-		return false, curated.Errorf("patch: %v", err)
+		return false, fmt.Errorf("patch: %w", err)
 	}
 
 	// read file
 	buffer, err := io.ReadAll(f)
 	if err != nil {
-		return false, curated.Errorf("patch: %v", err)
+		return false, fmt.Errorf("patch: %w", err)
 	}
 
 	if len(buffer) <= 1 {
@@ -74,7 +73,7 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 	if buffer[0] == neoComment {
 		err = neoStyle(mem, buffer)
 		if err != nil {
-			return false, curated.Errorf("patch: %v", err)
+			return false, fmt.Errorf("patch: %w", err)
 		}
 		return true, nil
 	}
@@ -82,7 +81,7 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 	// otherwise assume it is a "cmp" style patch file
 	err = cmpStyle(mem, buffer)
 	if err != nil {
-		return false, curated.Errorf("patch: %v", err)
+		return false, fmt.Errorf("patch: %w", err)
 	}
 	return true, nil
 }
@@ -103,13 +102,13 @@ func cmpStyle(mem *cartridge.Cartridge, buffer []byte) error {
 
 		// if there are not three fields then the file is malformed
 		if len(p) != 3 {
-			return curated.Errorf("cmp: line [%d]: malformed", i)
+			return fmt.Errorf("cmp: line [%d]: malformed", i)
 		}
 
 		// ofset is stored as decimal
 		offset, err := strconv.ParseUint(p[0], 10, 16)
 		if err != nil {
-			return curated.Errorf("cmp: line [%d]: %v", i, err)
+			return fmt.Errorf("cmp: line [%d]: %w", i, err)
 		}
 
 		// cmp counts from 1 but we count everything from zero
@@ -118,23 +117,23 @@ func cmpStyle(mem *cartridge.Cartridge, buffer []byte) error {
 		// old and patch bytes are stored as octal(!)
 		old, err := strconv.ParseUint(p[1], 8, 8)
 		if err != nil {
-			return curated.Errorf("cmp: line [%d]: %v", i, err)
+			return fmt.Errorf("cmp: line [%d]: %w", i, err)
 		}
 		patch, err := strconv.ParseUint(p[2], 8, 8)
 		if err != nil {
-			return curated.Errorf("cmp: line [%d]: %v", i, err)
+			return fmt.Errorf("cmp: line [%d]: %w", i, err)
 		}
 
 		// check that the patch is correct
 		o, _ := mem.Peek(uint16(offset))
 		if o != uint8(old) {
-			return curated.Errorf("cmp: line %d: byte at offset %04x does not match expected byte (%02x instead of %02x)", i, offset, o, old)
+			return fmt.Errorf("cmp: line %d: byte at offset %04x does not match expected byte (%02x instead of %02x)", i, offset, o, old)
 		}
 
 		// patch memory
 		err = mem.Patch(int(offset), uint8(patch))
 		if err != nil {
-			return curated.Errorf("cmp: %v", err)
+			return fmt.Errorf("cmp: %w", err)
 		}
 	}
 	return nil
@@ -191,7 +190,7 @@ func neoStyle(mem *cartridge.Cartridge, buffer []byte) error {
 			// patch memory
 			err = mem.Patch(int(offset), uint8(v))
 			if err != nil {
-				return curated.Errorf("neo: line %d: %v", i, err)
+				return fmt.Errorf("neo: line %d: %w", i, err)
 			}
 
 			// advance offset

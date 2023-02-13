@@ -21,8 +21,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-
-	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // Value represents the actual Go preference value.
@@ -69,13 +67,13 @@ func (p *Bool) Set(v Value) error {
 			nv = false
 		}
 	default:
-		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Bool", v))
+		return fmt.Errorf("prefs: cannot convert %T to prefs.Bool", v)
 	}
 
 	if p.hookPre != nil {
 		err := p.hookPre(nv)
 		if err != nil {
-			return curated.Errorf("prefs: %v", err)
+			return fmt.Errorf("prefs: %w", err)
 		}
 	}
 
@@ -85,7 +83,7 @@ func (p *Bool) Set(v Value) error {
 	if p.hookPost != nil {
 		err := p.hookPost(nv)
 		if err != nil {
-			return curated.Errorf("prefs: %v", err)
+			return fmt.Errorf("prefs: %w", err)
 		}
 	}
 
@@ -171,7 +169,7 @@ func (p *String) Set(v Value) error {
 	if p.hookPre != nil {
 		err := p.hookPre(nv)
 		if err != nil {
-			return curated.Errorf("prefs: %v", err)
+			return fmt.Errorf("prefs: %w", err)
 		}
 	}
 
@@ -181,7 +179,7 @@ func (p *String) Set(v Value) error {
 	if p.hookPost != nil {
 		err := p.hookPost(nv)
 		if err != nil {
-			return curated.Errorf("prefs: %v", err)
+			return fmt.Errorf("prefs: %w", err)
 		}
 	}
 
@@ -247,16 +245,16 @@ func (p *Int) Set(v Value) error {
 		var err error
 		nv, err = strconv.Atoi(v)
 		if err != nil {
-			return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Int", v))
+			return fmt.Errorf("prefs: cannot convert %T to prefs.Int", v)
 		}
 	default:
-		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Int", v))
+		return fmt.Errorf("prefs: cannot convert %T to prefs.Int", v)
 	}
 
 	if p.hookPre != nil {
 		err := p.hookPre(nv)
 		if err != nil {
-			return curated.Errorf("prefs: %v", err)
+			return fmt.Errorf("prefs: %w", err)
 		}
 	}
 
@@ -266,7 +264,7 @@ func (p *Int) Set(v Value) error {
 	if p.hookPost != nil {
 		err := p.hookPost(nv)
 		if err != nil {
-			return curated.Errorf("prefs: %v", err)
+			return fmt.Errorf("prefs: %w", err)
 		}
 	}
 
@@ -336,16 +334,16 @@ func (p *Float) Set(v Value) error {
 		var err error
 		nv, err = strconv.ParseFloat(v, 64)
 		if err != nil {
-			return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Float", v))
+			return fmt.Errorf("prefs: cannot convert %T to prefs.Float", v)
 		}
 	default:
-		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Float", v))
+		return fmt.Errorf("prefs: cannot convert %T to prefs.Float", v)
 	}
 
 	if p.hookPre != nil {
 		err := p.hookPre(nv)
 		if err != nil {
-			return curated.Errorf("prefs: %v", err)
+			return fmt.Errorf("prefs: %w", err)
 		}
 	}
 
@@ -355,7 +353,7 @@ func (p *Float) Set(v Value) error {
 	if p.hookPost != nil {
 		err := p.hookPost(nv)
 		if err != nil {
-			return curated.Errorf("prefs: %v", err)
+			return fmt.Errorf("prefs: %w", err)
 		}
 	}
 

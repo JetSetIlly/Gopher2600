@@ -16,12 +16,12 @@
 package performance
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -29,7 +29,7 @@ import (
 )
 
 // sentinal error returned by Run() loop.
-const timedOut = "timed out"
+var timedOut = errors.New("performance timed out")
 
 // Check the performance of the emulator using the supplied cartridge.
 //
@@ -51,19 +51,19 @@ func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, s
 	// create vcs
 	vcs, err := hardware.NewVCS(tv, nil)
 	if err != nil {
-		return curated.Errorf("performance: %v", err)
+		return fmt.Errorf("performance: %w", err)
 	}
 
 	// attach cartridge to the vcs
 	err = setup.AttachCartridge(vcs, cartload, true)
 	if err != nil {
-		return curated.Errorf("performance: %v", err)
+		return fmt.Errorf("performance: %w", err)
 	}
 
 	// parse supplied duration
 	dur, err := time.ParseDuration(duration)
 	if err != nil {
-		return curated.Errorf("performance: %v", err)
+		return fmt.Errorf("performance: %w", err)
 	}
 
 	// get starting frame number (should be 0)
@@ -111,7 +111,7 @@ func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, s
 						// period has finished, return false to cause vcs.Run() to
 						// return
 						if v {
-							return govern.Ending, curated.Errorf(timedOut)
+							return govern.Ending, timedOut
 						}
 
 						// timerChan has returned false which indicates that the
@@ -133,8 +133,8 @@ func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, s
 	// launch runner directly or through the CPU profiler, depending on
 	// supplied arguments
 	err = RunProfiler(profile, "performance", runner)
-	if err != nil && !curated.Is(err, timedOut) {
-		return curated.Errorf("performance: %v", err)
+	if err != nil && !errors.Is(err, timedOut) {
+		return fmt.Errorf("performance: %w", err)
 	}
 
 	// get ending frame number

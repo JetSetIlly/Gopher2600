@@ -15,7 +15,7 @@
 
 package database
 
-import "github.com/jetsetilly/gopher2600/curated"
+import "fmt"
 
 // SelectAll entries in the database. onSelect can be nil.
 //
@@ -74,7 +74,7 @@ func (db Session) SelectKeys(onSelect func(Entry) error, keys ...int) (Entry, er
 	}
 
 	if entry == nil {
-		return nil, curated.Errorf("database: select empty")
+		return nil, fmt.Errorf("database: select empty")
 	}
 
 	return entry, nil

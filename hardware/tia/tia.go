@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
@@ -629,7 +628,7 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister) error {
 	// send signal to television
 	if err := tia.tv.Signal(tia.sig); err != nil {
 		// TODO: handle error
-		return curated.Errorf("TIA: %v", err)
+		return fmt.Errorf("TIA: %w", err)
 	}
 
 	return nil
@@ -811,7 +810,7 @@ func (tia *TIA) QuickStep() error {
 	// send signal to television
 	if err := tia.tv.Signal(tia.sig); err != nil {
 		// TODO: handle error
-		return curated.Errorf("TIA: %v", err)
+		return fmt.Errorf("TIA: %w", err)
 	}
 
 	return nil

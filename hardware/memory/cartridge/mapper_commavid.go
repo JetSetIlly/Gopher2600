@@ -18,7 +18,6 @@ package cartridge
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -72,7 +71,7 @@ func newCommaVid(instance *instance.Instance, data []byte) (mapper.CartMapper, e
 		copy(cart.bankData[2048:], data[:2048])
 		logger.Logf("CV", "placing 2k commavid data at end of cartridge memory")
 	} else {
-		return nil, curated.Errorf("CV: unhandled size for commavid cartridges (%d)", len(data))
+		return nil, fmt.Errorf("CV: unhandled size for commavid cartridges (%d)", len(data))
 	}
 
 	return cart, nil
@@ -150,7 +149,7 @@ func (cart *commavid) GetBank(addr uint16) mapper.BankInfo {
 // Patch implements the mapper.CartMapper interface.
 func (cart *commavid) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize {
-		return curated.Errorf("CV: %v", fmt.Errorf("patch offset too high (%v)", offset))
+		return fmt.Errorf("CV: patch offset too high (%d)", offset)
 	}
 	cart.bankData[offset] = data
 	return nil

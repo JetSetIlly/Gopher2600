@@ -23,7 +23,6 @@ import (
 	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
@@ -74,7 +73,7 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 	// the VCS and not referred to directly again
 	tv, err := television.NewTelevision("AUTO")
 	if err != nil {
-		return nil, curated.Errorf("comparison: %v", err)
+		return nil, fmt.Errorf("comparison: %w", err)
 	}
 	tv.AddPixelRenderer(cmp)
 	tv.SetFPSCap(true)
@@ -82,7 +81,7 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 	// create a new VCS instance
 	cmp.VCS, err = hardware.NewVCS(tv, driverVCS.Instance.Prefs)
 	if err != nil {
-		return nil, curated.Errorf("comparison: %v", err)
+		return nil, fmt.Errorf("comparison: %w", err)
 	}
 	cmp.VCS.Instance.Label = instance.Comparison
 
@@ -101,11 +100,11 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 	sync := make(chan ports.TimedInputEvent, 32)
 	err = cmp.VCS.Input.AttachPassenger(sync)
 	if err != nil {
-		return nil, curated.Errorf("comparison: %v", err)
+		return nil, fmt.Errorf("comparison: %w", err)
 	}
 	err = driverVCS.Input.AttachDriver(sync)
 	if err != nil {
-		return nil, curated.Errorf("comparison: %v", err)
+		return nil, fmt.Errorf("comparison: %w", err)
 	}
 
 	return cmp, nil
@@ -143,7 +142,7 @@ func (cmp *Comparison) Quit() {
 // initialised with the specified cartridge loader.
 func (cmp *Comparison) CreateFromLoader(cartload cartridgeloader.Loader) error {
 	if cmp.IsEmulating() {
-		return curated.Errorf("comparison: emulation already running")
+		return fmt.Errorf("comparison: emulation already running")
 	}
 
 	// loading hook support required for supercharger
@@ -279,9 +278,9 @@ func (cmp *Comparison) diff() error {
 	}
 
 	if cmp.frameInfo.FrameNum > cmp.driver.frameInfo.FrameNum {
-		return curated.Errorf("comparison: comparison emulation is running AHEAD of the driver emulation")
+		return fmt.Errorf("comparison: comparison emulation is running AHEAD of the driver emulation")
 	} else if cmp.frameInfo.FrameNum < cmp.driver.frameInfo.FrameNum-1 {
-		return curated.Errorf("comparison: comparison emulation is running BEHIND of the driver emulation")
+		return fmt.Errorf("comparison: comparison emulation is running BEHIND of the driver emulation")
 	}
 
 	var drvImg *image.RGBA
@@ -292,7 +291,7 @@ func (cmp *Comparison) diff() error {
 	}
 
 	if len(cmp.cropImg.Pix) != len(drvImg.Pix) {
-		return curated.Errorf("comparison: frames are different sizes")
+		return fmt.Errorf("comparison: frames are different sizes")
 	}
 
 	for i := 0; i < len(cmp.cropImg.Pix); i += 4 {

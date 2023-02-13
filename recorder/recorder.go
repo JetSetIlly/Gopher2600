@@ -20,7 +20,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/digest"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
@@ -50,7 +49,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 
 	// check we're working with correct information
 	if vcs == nil || vcs.TV == nil {
-		return nil, curated.Errorf("recorder: hardware is not suitable for recording")
+		return nil, fmt.Errorf("recorder: hardware is not suitable for recording")
 	}
 
 	rec := &Recorder{
@@ -64,7 +63,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	// vcs must be reset too
 	err = rec.vcs.Reset()
 	if err != nil {
-		return nil, curated.Errorf("recorder: %v", err)
+		return nil, fmt.Errorf("recorder: %w", err)
 	}
 
 	// attach recorder to vcs input system
@@ -73,7 +72,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	// video digester for playback verification
 	rec.digest, err = digest.NewVideo(vcs.TV)
 	if err != nil {
-		return nil, curated.Errorf("recorder: %v", err)
+		return nil, fmt.Errorf("recorder: %w", err)
 	}
 
 	// open file
@@ -81,10 +80,10 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	if os.IsNotExist(err) {
 		rec.output, err = os.Create(transcript)
 		if err != nil {
-			return nil, curated.Errorf("recorder: can't create file")
+			return nil, fmt.Errorf("recorder: can't create file")
 		}
 	} else {
-		return nil, curated.Errorf("recorder: file already exists")
+		return nil, fmt.Errorf("recorder: file already exists")
 	}
 
 	// delay writing of header until the first call to transcribe. we're
@@ -112,12 +111,12 @@ func (rec *Recorder) End() error {
 	// write the power off event to the transcript
 	err := rec.RecordEvent(off)
 	if err != nil {
-		return curated.Errorf("recorder: %v", err)
+		return fmt.Errorf("recorder: %w", err)
 	}
 
 	err = rec.output.Close()
 	if err != nil {
-		return curated.Errorf("recorder: %v", err)
+		return fmt.Errorf("recorder: %w", err)
 	}
 
 	return nil
@@ -131,7 +130,7 @@ func (rec *Recorder) RecordEvent(inp ports.TimedInputEvent) error {
 	if !rec.headerWritten {
 		err = rec.writeHeader()
 		if err != nil {
-			return curated.Errorf("recorder: %v", err)
+			return fmt.Errorf("recorder: %w", err)
 		}
 		rec.headerWritten = true
 	}
@@ -143,11 +142,11 @@ func (rec *Recorder) RecordEvent(inp ports.TimedInputEvent) error {
 
 	// sanity checks
 	if rec.output == nil {
-		return curated.Errorf("recorder: recording file is not open")
+		return fmt.Errorf("recorder: recording file is not open")
 	}
 
 	if rec.vcs == nil || rec.vcs.TV == nil {
-		return curated.Errorf("recorder: hardware is not suitable for recording")
+		return fmt.Errorf("recorder: hardware is not suitable for recording")
 	}
 
 	// convert data of nil type to the empty string
@@ -167,10 +166,10 @@ func (rec *Recorder) RecordEvent(inp ports.TimedInputEvent) error {
 
 	n, err := io.WriteString(rec.output, line)
 	if err != nil {
-		return curated.Errorf("recorder: %v", err)
+		return fmt.Errorf("recorder: %w", err)
 	}
 	if n != len(line) {
-		return curated.Errorf("recorder: output truncated")
+		return fmt.Errorf("recorder: output truncated")
 	}
 
 	return nil

@@ -58,7 +58,7 @@ func getPCM(cl cartridgeloader.Loader) (pcmData, error) {
 		// load all data at once
 		buf, err := dec.FullPCMBuffer()
 		if err != nil {
-			return p, fmt.Errorf("soundload: wav: %v", err)
+			return p, fmt.Errorf("soundload: wav: %w", err)
 		}
 		floatBuf := buf.AsFloat32Buffer()
 
@@ -74,14 +74,14 @@ func getPCM(cl cartridgeloader.Loader) (pcmData, error) {
 		// total time of recording in seconds
 		dur, err := dec.Duration()
 		if err != nil {
-			return p, fmt.Errorf("wav: %v", err)
+			return p, fmt.Errorf("wav: %w", err)
 		}
 		p.totalTime = dur.Seconds()
 
 	case ".mp3":
 		dec, err := mp3.NewDecoder(cl.StreamedData)
 		if err != nil {
-			return p, fmt.Errorf("mp3: %v", err)
+			return p, fmt.Errorf("mp3: %w", err)
 		}
 
 		logger.Log(soundloadLogTag, "loading from mp3 file")
@@ -92,7 +92,7 @@ func getPCM(cl cartridgeloader.Loader) (pcmData, error) {
 			var chunkLen int
 			chunkLen, err = dec.Read(chunk)
 			if err != nil && err != io.EOF {
-				return p, fmt.Errorf("mp3: %v", err)
+				return p, fmt.Errorf("mp3: %w", err)
 			}
 
 			// index increment of 4 because:

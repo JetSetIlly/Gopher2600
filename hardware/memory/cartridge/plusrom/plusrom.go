@@ -16,18 +16,19 @@
 package plusrom
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/notifications"
 )
 
-// Sentinal error indicating a specific problem with the attempt to load the
+// sentinal error indicating a specific problem with the attempt to load the
 // child cartridge into the PlusROM.
-const NotAPlusROM = "not a plus rom: %s"
+var NotAPlusROM = errors.New("not a plus rom")
 
 // PlusROM wraps another mapper.CartMapper inside a network aware format.
 type PlusROM struct {
@@ -87,7 +88,7 @@ func NewPlusROM(instance *instance.Instance, child mapper.CartMapper, notificati
 	b := int((a & 0xf000) >> 12)
 
 	if b == 0 || b > cart.NumBanks() {
-		return nil, curated.Errorf(NotAPlusROM, "invalid NMI vector")
+		return nil, fmt.Errorf("%w: invalid NMI vector", NotAPlusROM)
 	}
 
 	// normalise indirect address so it's suitable for indexing bank data
@@ -130,7 +131,7 @@ func NewPlusROM(instance *instance.Instance, child mapper.CartMapper, notificati
 	// fail if host or path is not valid
 	hostValid, pathValid := cart.SetAddrInfo(host.String(), path.String())
 	if !hostValid || !pathValid {
-		return nil, curated.Errorf(NotAPlusROM, "invalid host/path")
+		return nil, fmt.Errorf("%w: invalid host/path", NotAPlusROM)
 	}
 
 	// log success
@@ -140,7 +141,7 @@ func NewPlusROM(instance *instance.Instance, child mapper.CartMapper, notificati
 	if cart.notificationHook != nil {
 		err := cart.notificationHook(cart, notifications.NotifyPlusROMInserted)
 		if err != nil {
-			return nil, curated.Errorf("plusrom %v:", err)
+			return nil, fmt.Errorf("plusrom %w:", err)
 		}
 	}
 
@@ -215,7 +216,7 @@ func (cart *PlusROM) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		cart.net.commit()
 		err := cart.notificationHook(cart, notifications.NotifyPlusROMNetwork)
 		if err != nil {
-			return curated.Errorf("plusrom %v:", err)
+			return fmt.Errorf("plusrom %w:", err)
 		}
 		return nil
 	}

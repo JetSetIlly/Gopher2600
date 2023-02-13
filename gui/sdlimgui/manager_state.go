@@ -21,7 +21,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
@@ -40,18 +39,18 @@ const managerStateNumFields = 3
 func (wm *manager) saveManagerState() (rerr error) {
 	pth, err := resources.JoinPath(managerStateFile)
 	if err != nil {
-		return curated.Errorf("manager state: %v", err)
+		return fmt.Errorf("manager state: %w", err)
 	}
 
 	// create a new state file
 	f, err := fs.Create(pth)
 	if err != nil {
-		return curated.Errorf("manager state: %v", err)
+		return fmt.Errorf("manager state: %w", err)
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			rerr = curated.Errorf("manager state: %v", err)
+			rerr = fmt.Errorf("manager state: %w", err)
 		}
 	}()
 
@@ -59,10 +58,10 @@ func (wm *manager) saveManagerState() (rerr error) {
 	s := fmt.Sprintf("%s\n", prefs.WarningBoilerPlate)
 	n, err := fmt.Fprint(f, s)
 	if err != nil {
-		return curated.Errorf("manager state: %v", err)
+		return fmt.Errorf("manager state: %w", err)
 	}
 	if n != len(s) {
-		return curated.Errorf("manager state: %v", "incorrect number of characters written to file")
+		return fmt.Errorf("manager state: incorrect number of characters written to file")
 	}
 
 	// walk through debugger and playmode window lists and save state of each
@@ -80,10 +79,10 @@ func (wm *manager) saveManagerState() (rerr error) {
 		s := fmt.Sprintf("%s%s%s%s%v\n", govern.ModeDebugger.String(), prefs.KeySep, key, prefs.KeySep, win.debuggerIsOpen())
 		n, err := fmt.Fprint(f, s)
 		if err != nil {
-			return curated.Errorf("manager state: %v", err)
+			return fmt.Errorf("manager state: %w", err)
 		}
 		if n != len(s) {
-			return curated.Errorf("manager state: %v", "incorrect number of characters written to file")
+			return fmt.Errorf("manager state: incorrect number of characters written to file")
 		}
 	}
 
@@ -97,10 +96,10 @@ func (wm *manager) saveManagerState() (rerr error) {
 		s := fmt.Sprintf("%s%s%s%s%v\n", govern.ModePlay.String(), prefs.KeySep, key, prefs.KeySep, win.playmodeIsOpen())
 		n, err := fmt.Fprint(f, s)
 		if err != nil {
-			return curated.Errorf("manager state: %v", err)
+			return fmt.Errorf("manager state: %w", err)
 		}
 		if n != len(s) {
-			return curated.Errorf("manager state: %v", "incorrect number of characters written to file")
+			return fmt.Errorf("manager state: incorrect number of characters written to file")
 		}
 	}
 
@@ -116,7 +115,7 @@ func (wm *manager) saveManagerState() (rerr error) {
 func (wm *manager) loadManagerState() (rerr error) {
 	pth, err := resources.JoinPath(managerStateFile)
 	if err != nil {
-		return curated.Errorf("manager state: %v", err)
+		return fmt.Errorf("manager state: %w", err)
 	}
 
 	// open an existing state file
@@ -126,12 +125,12 @@ func (wm *manager) loadManagerState() (rerr error) {
 		case *os.PathError:
 			return nil
 		}
-		return curated.Errorf("manager state: %v", err)
+		return fmt.Errorf("manager state: %w", err)
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			rerr = curated.Errorf("manager state: %v", err)
+			rerr = fmt.Errorf("manager state: %w", err)
 		}
 	}()
 
@@ -141,7 +140,7 @@ func (wm *manager) loadManagerState() (rerr error) {
 	// check validity of file by checking the first line for the boiler plate warning
 	scanner.Scan()
 	if len(scanner.Text()) > 0 && scanner.Text() != prefs.WarningBoilerPlate {
-		return curated.Errorf("manager state: %v", fmt.Errorf("not a valid manager state file (%s)", pth))
+		return fmt.Errorf("manager state: not a valid manager state file (%s)", pth)
 	}
 
 	// loop through file until EOF

@@ -17,8 +17,6 @@ package database
 
 import (
 	"fmt"
-
-	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // Deserialiser extracts/converts fields from a SerialisedEntry.
@@ -50,7 +48,7 @@ type Entry interface {
 func (db *Session) RegisterEntryType(id string, des Deserialiser) error {
 	if _, ok := db.entryTypes[id]; ok {
 		msg := fmt.Sprintf("trying to register a duplicate entry ID [%s]", id)
-		return curated.Errorf("database: %v", msg)
+		return fmt.Errorf("database: %s", msg)
 	}
 	db.entryTypes[id] = des
 	return nil

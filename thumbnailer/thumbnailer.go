@@ -23,7 +23,6 @@ import (
 	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
@@ -73,7 +72,7 @@ func NewThumbnailer(prefs *preferences.Preferences) (*Thumbnailer, error) {
 	// the VCS and not referred to directly again
 	tv, err := television.NewTelevision("AUTO")
 	if err != nil {
-		return nil, curated.Errorf("thumbnailer: %v", err)
+		return nil, fmt.Errorf("thumbnailer: %w", err)
 	}
 	tv.AddPixelRenderer(thmb)
 	tv.SetFPSCap(true)
@@ -81,7 +80,7 @@ func NewThumbnailer(prefs *preferences.Preferences) (*Thumbnailer, error) {
 	// create a new VCS instance
 	thmb.vcs, err = hardware.NewVCS(tv, prefs)
 	if err != nil {
-		return nil, curated.Errorf("thumbnailer: %v", err)
+		return nil, fmt.Errorf("thumbnailer: %w", err)
 	}
 	thmb.vcs.Instance.Label = instance.Thumbnailer
 

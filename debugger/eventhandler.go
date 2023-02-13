@@ -16,7 +16,6 @@
 package debugger
 
 import (
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 )
 
@@ -32,7 +31,7 @@ func (dbg *Debugger) readEventsHandler() error {
 	for {
 		select {
 		case <-dbg.events.IntEvents:
-			return curated.Errorf(terminal.UserInterrupt)
+			return terminal.UserInterrupt
 
 		case ev := <-dbg.events.UserInput:
 			err := dbg.events.UserInputHandler(ev)

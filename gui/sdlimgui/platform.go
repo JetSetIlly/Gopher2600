@@ -66,7 +66,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 
 	err := sdl.Init(sdl.INIT_EVERYTHING)
 	if err != nil {
-		return nil, fmt.Errorf("sdl: %v", err)
+		return nil, fmt.Errorf("sdl: %w", err)
 	}
 
 	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3)
@@ -84,7 +84,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	plt.mode, err = sdl.GetCurrentDisplayMode(0)
 	if err != nil {
 		sdl.Quit()
-		return nil, fmt.Errorf("sdl: %v", err)
+		return nil, fmt.Errorf("sdl: %w", err)
 	}
 	logger.Logf("sdl", "refresh rate: %dHz", plt.mode.RefreshRate)
 
@@ -98,18 +98,18 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 
 	if err != nil {
 		sdl.Quit()
-		return nil, fmt.Errorf("sdl: %v", err)
+		return nil, fmt.Errorf("sdl: %w", err)
 	}
 
 	glContext, err := plt.window.GLCreateContext()
 	if err != nil {
 		_ = plt.destroy()
-		return nil, fmt.Errorf("sdl: %v", err)
+		return nil, fmt.Errorf("sdl: %w", err)
 	}
 	err = plt.window.GLMakeCurrent(glContext)
 	if err != nil {
 		_ = plt.destroy()
-		return nil, fmt.Errorf("sdl: %v", err)
+		return nil, fmt.Errorf("sdl: %w", err)
 	}
 
 	// default to disabled vsync

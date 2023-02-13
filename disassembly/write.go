@@ -16,9 +16,8 @@
 package disassembly
 
 import (
+	"fmt"
 	"io"
-
-	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // Write the entire disassembly to io.Writer.
@@ -35,7 +34,7 @@ func (dsm *Disassembly) Write(output io.Writer, attr ColumnAttr) error {
 	}
 
 	if ct == 0 {
-		return curated.Errorf("no entries in the disassembly")
+		return fmt.Errorf("no entries in the disassembly")
 	}
 
 	return nil
@@ -57,7 +56,7 @@ func (dsm *Disassembly) WriteBank(output io.Writer, attr ColumnAttr, bank int) e
 	}
 
 	if ct == 0 {
-		return curated.Errorf("no entries in the disassembly for bank %d", bank)
+		return fmt.Errorf("no entries in the disassembly for bank %d", bank)
 	}
 
 	return nil
@@ -69,7 +68,7 @@ func (dsm *Disassembly) WriteAddr(output io.Writer, attr ColumnAttr, addr uint16
 	if e != nil && e.Level >= EntryLevelBlessed {
 		output.Write([]byte(e.StringColumnated(attr)))
 	} else {
-		return curated.Errorf("no blessed disassembly at $%04x", addr)
+		return fmt.Errorf("no blessed disassembly at $%04x", addr)
 	}
 	return nil
 }

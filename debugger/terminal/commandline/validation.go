@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // Validate input string against command defintions.
@@ -51,10 +49,10 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 
 				// special handling for help command
 				if cmd == cmds.helpCommand {
-					return curated.Errorf("no help for %s", strings.ToUpper(arg))
+					return fmt.Errorf("no help for %s", strings.ToUpper(arg))
 				}
 
-				return curated.Errorf("unrecognised argument (%s) for %s", arg, cmd)
+				return fmt.Errorf("unrecognised argument (%s) for %s", arg, cmd)
 			}
 
 			return nil
@@ -75,7 +73,7 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 	if !ok {
 		// we treat arguments in the root-group as though they are required
 		if n.typ == nodeRequired || n.typ == nodeRoot {
-			return curated.Errorf("%s required", n.nodeVerbose())
+			return fmt.Errorf("%s required", n.nodeVerbose())
 		}
 		return nil
 	}
@@ -91,7 +89,7 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 	if n.tag == "" {
 		if n.next == nil {
 			// this shouldn't ever happen. return a plain error if it does
-			return fmt.Errorf("commandline validation: illegal empty node")
+			return fmt.Errorf("illegal empty node")
 		}
 
 		// speculatively validate the next node. don't do anything with any
@@ -212,7 +210,7 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 	}
 
 	if !match {
-		err := curated.Errorf("unrecognised argument (%s)", tok)
+		err := fmt.Errorf("unrecognised argument (%s)", tok)
 
 		// there's still no match but the speculative flag means we were half
 		// expecting it. return error without further consideration

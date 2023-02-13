@@ -23,7 +23,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/resources"
 )
@@ -73,17 +72,17 @@ func initDBSession(db *database.Session) error {
 // RegressList displays all entries in the database.
 func RegressList(output io.Writer) error {
 	if output == nil {
-		return curated.Errorf("regression: list: io.Writer should not be nil (use a nopWriter)")
+		return fmt.Errorf("regression: list: io.Writer should not be nil (use a nopWriter)")
 	}
 
 	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
-		return curated.Errorf("regression: list: %v", err)
+		return fmt.Errorf("regression: list: %w", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
 	if err != nil {
-		return curated.Errorf("regression: list: %v", err)
+		return fmt.Errorf("regression: list: %w", err)
 	}
 	defer db.EndSession(false)
 
@@ -96,24 +95,24 @@ func RegressList(output io.Writer) error {
 // RegressAdd adds a new regression handler to the database.
 func RegressAdd(output io.Writer, reg Regressor) error {
 	if output == nil {
-		return curated.Errorf("regression: add: io.Writer should not be nil (use a nopWriter)")
+		return fmt.Errorf("regression: add: io.Writer should not be nil (use a nopWriter)")
 	}
 
 	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
-		return curated.Errorf("regression: add: %v", err)
+		return fmt.Errorf("regression: add: %w", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityCreating, initDBSession)
 	if err != nil {
-		return curated.Errorf("regression: add: %v", err)
+		return fmt.Errorf("regression: add: %w", err)
 	}
 	defer db.EndSession(true)
 
 	msg := fmt.Sprintf("adding: %s", reg)
 	_, _, err = reg.regress(true, output, msg)
 	if err != nil {
-		return curated.Errorf("regression: add: %v", err)
+		return fmt.Errorf("regression: add: %w", err)
 	}
 
 	output.Write([]byte(ansiClearLine))
@@ -125,11 +124,11 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 // RegressRedux removes and adds an entry using the same parameters.
 func RegressRedux(output io.Writer, confirmation io.Reader) error {
 	if output == nil {
-		return curated.Errorf("regression: redux: io.Writer should not be nil (use a nopWriter)")
+		return fmt.Errorf("regression: redux: io.Writer should not be nil (use a nopWriter)")
 	}
 
 	if confirmation == nil {
-		return curated.Errorf("regression: redux: io.Reader should not be nil")
+		return fmt.Errorf("regression: redux: io.Reader should not be nil")
 	}
 
 	output.Write([]byte("redux is a dangerous operation. it will rerun all compatible regression entries.\n"))
@@ -146,12 +145,12 @@ func RegressRedux(output io.Writer, confirmation io.Reader) error {
 
 	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
-		return curated.Errorf("regression: redux: %v", err)
+		return fmt.Errorf("regression: redux: %w", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityCreating, initDBSession)
 	if err != nil {
-		return curated.Errorf("regression: redux: %v", err)
+		return fmt.Errorf("regression: redux: %w", err)
 	}
 	defer db.EndSession(true)
 
@@ -160,13 +159,13 @@ func RegressRedux(output io.Writer, confirmation io.Reader) error {
 		case *VideoRegression:
 			err = redux(db, output, key, reg)
 			if err != nil {
-				return curated.Errorf("regression: redux: %v", err)
+				return fmt.Errorf("regression: redux: %w", err)
 			}
 
 		case *LogRegression:
 			err = redux(db, output, key, reg)
 			if err != nil {
-				return curated.Errorf("regression: redux: %v", err)
+				return fmt.Errorf("regression: redux: %w", err)
 			}
 
 		default:
@@ -205,11 +204,11 @@ func redux(db *database.Session, output io.Writer, key int, reg Regressor) error
 // file.
 func RegressCleanup(output io.Writer, confirmation io.Reader) error {
 	if output == nil {
-		return curated.Errorf("regression: list: io.Writer should not be nil (use a nopWriter)")
+		return fmt.Errorf("regression: list: io.Writer should not be nil (use a nopWriter)")
 	}
 
 	if confirmation == nil {
-		return curated.Errorf("regression: redux: io.Reader should not be nil")
+		return fmt.Errorf("regression: redux: io.Reader should not be nil")
 	}
 
 	output.Write([]byte("cleanup is a dangerous operation. it will delete all orphaned script files.\n"))
@@ -221,12 +220,12 @@ func RegressCleanup(output io.Writer, confirmation io.Reader) error {
 
 	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
-		return curated.Errorf("regression: cleanup: %v", err)
+		return fmt.Errorf("regression: cleanup: %w", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
 	if err != nil {
-		return curated.Errorf("regression: cleanup: %v", err)
+		return fmt.Errorf("regression: cleanup: %w", err)
 	}
 	defer db.EndSession(false)
 
@@ -247,25 +246,25 @@ func RegressCleanup(output io.Writer, confirmation io.Reader) error {
 			// no support required
 
 		default:
-			return curated.Errorf("not supported (%v)", reg.ID())
+			return fmt.Errorf("not supported (%s)", reg.ID())
 		}
 
 		return nil
 	})
 	if err != nil {
-		return curated.Errorf("regression: cleanup: %v", err)
+		return fmt.Errorf("regression: cleanup: %w", err)
 	}
 
 	// gather list of files on disk in path
 	scriptPth, err := resources.JoinPath(regressionPath, regressionScripts)
 	if err != nil {
-		return curated.Errorf("regression: list: %v", err)
+		return fmt.Errorf("regression: list: %w", err)
 	}
 
 	var filesOnDisk []os.DirEntry
 	filesOnDisk, err = os.ReadDir(scriptPth)
 	if err != nil {
-		return curated.Errorf("regression: cleanup: %v", err)
+		return fmt.Errorf("regression: cleanup: %w", err)
 	}
 
 	// prepare statistics
@@ -283,7 +282,7 @@ func RegressCleanup(output io.Writer, confirmation io.Reader) error {
 
 		n, err := resources.JoinPath(regressionPath, regressionScripts, e.Name())
 		if err != nil {
-			return curated.Errorf("regression: cleanup: %v", err)
+			return fmt.Errorf("regression: cleanup: %w", err)
 		}
 
 		for _, f := range filesReferenced {
@@ -321,39 +320,39 @@ func RegressCleanup(output io.Writer, confirmation io.Reader) error {
 // RegressDelete removes a cartridge from the regression db.
 func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 	if output == nil {
-		return curated.Errorf("regression: delete: io.Writer should not be nil (use a nopWriter)")
+		return fmt.Errorf("regression: delete: io.Writer should not be nil (use a nopWriter)")
 	}
 
 	if confirmation == nil {
-		return curated.Errorf("regression: delete: io.Reader should not be nil")
+		return fmt.Errorf("regression: delete: io.Reader should not be nil")
 	}
 
 	v, err := strconv.Atoi(key)
 	if err != nil {
-		return curated.Errorf("regression: delete: invalid key [%s]", key)
+		return fmt.Errorf("regression: delete: invalid key [%s]", key)
 	}
 
 	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
-		return curated.Errorf("regression: delete: %v", err)
+		return fmt.Errorf("regression: delete: %w", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityModifying, initDBSession)
 	if err != nil {
-		return curated.Errorf("regression: delete: %v", err)
+		return fmt.Errorf("regression: delete: %w", err)
 	}
 	defer db.EndSession(true)
 
 	ent, err := db.SelectKeys(nil, v)
 	if err != nil {
-		return curated.Errorf("regression: delete: %v", err)
+		return fmt.Errorf("regression: delete: %w", err)
 	}
 
 	output.Write([]byte(fmt.Sprintf("%s\ndelete? (y/n): ", ent)))
 	if confirm(confirmation) {
 		err = db.Delete(v)
 		if err != nil {
-			return curated.Errorf("regression: delete: %v", err)
+			return fmt.Errorf("regression: delete: %w", err)
 		}
 		output.Write([]byte(fmt.Sprintf("deleted test #%s from regression database\n", key)))
 	}
@@ -366,17 +365,17 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 // entry should be tested.
 func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
 	if output == nil {
-		return curated.Errorf("regression: run: io.Writer should not be nil (use a nopWriter)")
+		return fmt.Errorf("regression: run: io.Writer should not be nil (use a nopWriter)")
 	}
 
 	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
-		return curated.Errorf("regression: run: %v", err)
+		return fmt.Errorf("regression: run: %w", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
 	if err != nil {
-		return curated.Errorf("regression: run: %v", err)
+		return fmt.Errorf("regression: run: %w", err)
 	}
 	defer db.EndSession(false)
 
@@ -385,7 +384,7 @@ func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
 	for k := range filterKeys {
 		v, err := strconv.Atoi(filterKeys[k])
 		if err != nil {
-			return curated.Errorf("regression: run: invalid key [%s]", filterKeys[k])
+			return fmt.Errorf("regression: run: invalid key [%s]", filterKeys[k])
 		}
 		keysV = append(keysV, v)
 	}
@@ -409,7 +408,7 @@ func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
 		// database entry should also satisfy Regressor interface
 		reg, ok := ent.(Regressor)
 		if !ok {
-			return curated.Errorf("regression: run: database entry does not satisfy Regressor interface")
+			return fmt.Errorf("regression: run: database entry does not satisfy Regressor interface")
 		}
 
 		// run regress() function with message. message does not have a

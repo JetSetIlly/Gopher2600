@@ -18,7 +18,6 @@ package cdf
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -83,7 +82,7 @@ func NewCDF(instance *instance.Instance, version string, data []byte) (mapper.Ca
 	var err error
 	cart.version, err = newVersion(instance.Prefs.ARM.Model.Get().(string), version, data)
 	if err != nil {
-		return nil, curated.Errorf("CDF: %v", err)
+		return nil, fmt.Errorf("CDF: %w", err)
 	}
 
 	// allocate enough banks
@@ -439,7 +438,7 @@ func (cart *cdf) GetBank(addr uint16) mapper.BankInfo {
 
 // Patch implements the mapper.CartMapper interface.
 func (cart *cdf) Patch(offset int, data uint8) error {
-	return curated.Errorf("CDF: patching unsupported")
+	return fmt.Errorf("CDF: patching unsupported")
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
@@ -545,7 +544,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 		case cart.version.mmap.FlashOrigin | 0x000006e2:
 			r.InterruptEvent = "Set music note"
 			if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
-				return r, curated.Errorf("music fetcher index (%d) too high ", val1)
+				return r, fmt.Errorf("music fetcher index (%d) too high ", val1)
 			}
 			cart.state.registers.MusicFetcher[val1].Freq = val2
 			r.NumMemAccess = 2
@@ -554,7 +553,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 			// reset wave
 			r.InterruptEvent = "Reset wave"
 			if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
-				return r, curated.Errorf("music fetcher index (%d) too high ", val1)
+				return r, fmt.Errorf("music fetcher index (%d) too high ", val1)
 			}
 			cart.state.registers.MusicFetcher[val1].Count = 0
 			r.NumMemAccess = 3
@@ -562,7 +561,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 		case cart.version.mmap.FlashOrigin | 0x000006ea:
 			r.InterruptEvent = "Get wave pointer"
 			if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
-				return r, curated.Errorf("music fetcher index (%d) too high ", val1)
+				return r, fmt.Errorf("music fetcher index (%d) too high ", val1)
 			}
 			r.SaveValue = cart.state.registers.MusicFetcher[val1].Count
 			r.SaveRegister = 2
@@ -572,7 +571,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 		case cart.version.mmap.FlashOrigin | 0x000006ee:
 			r.InterruptEvent = "Set wave size"
 			if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
-				return r, curated.Errorf("music fetcher index (%d) too high ", val1)
+				return r, fmt.Errorf("music fetcher index (%d) too high ", val1)
 			}
 			cart.state.registers.MusicFetcher[val1].Waveform = uint8(val2)
 			r.NumMemAccess = 3
@@ -589,7 +588,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 	case cart.version.mmap.FlashOrigin | 0x00000752:
 		r.InterruptEvent = "Set music note"
 		if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
-			return r, curated.Errorf("music fetcher index (%d) too high ", val1)
+			return r, fmt.Errorf("music fetcher index (%d) too high ", val1)
 		}
 		cart.state.registers.MusicFetcher[val1].Freq = val2
 		r.NumMemAccess = 2
@@ -597,7 +596,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 	case cart.version.mmap.FlashOrigin | 0x00000756:
 		r.InterruptEvent = "Reset wave"
 		if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
-			return r, curated.Errorf("music fetcher index (%d) too high ", val1)
+			return r, fmt.Errorf("music fetcher index (%d) too high ", val1)
 		}
 		cart.state.registers.MusicFetcher[val1].Count = 0
 		r.NumMemAccess = 3
@@ -605,7 +604,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 	case cart.version.mmap.FlashOrigin | 0x0000075a:
 		r.InterruptEvent = "Get wave pointer"
 		if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
-			return r, curated.Errorf("music fetcher index (%d) too high ", val1)
+			return r, fmt.Errorf("music fetcher index (%d) too high ", val1)
 		}
 		r.SaveValue = cart.state.registers.MusicFetcher[val1].Count
 		r.SaveRegister = 2
@@ -615,7 +614,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 	case cart.version.mmap.FlashOrigin | 0x0000075e:
 		r.InterruptEvent = "Set wave size"
 		if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
-			return r, curated.Errorf("music fetcher index (%d) too high ", val1)
+			return r, fmt.Errorf("music fetcher index (%d) too high ", val1)
 		}
 		cart.state.registers.MusicFetcher[val1].Waveform = uint8(val2)
 		r.NumMemAccess = 3
@@ -631,7 +630,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 // HotLoad implements the mapper.CartHotLoader interface.
 func (cart *cdf) HotLoad(data []byte) error {
 	if len(data) == 0 {
-		return curated.Errorf("CDF: empty data")
+		return fmt.Errorf("CDF: empty data")
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {

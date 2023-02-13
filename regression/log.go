@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
@@ -61,10 +60,10 @@ func deserialiseLogEntry(fields database.SerialisedEntry) (database.Entry, error
 
 	// basic sanity check
 	if len(fields) > numLogFields {
-		return nil, curated.Errorf("log: too many fields")
+		return nil, fmt.Errorf("log: too many fields")
 	}
 	if len(fields) < numLogFields {
-		return nil, curated.Errorf("log: too few fields")
+		return nil, fmt.Errorf("log: too few fields")
 	}
 
 	var err error
@@ -72,7 +71,7 @@ func deserialiseLogEntry(fields database.SerialisedEntry) (database.Entry, error
 	// string fields need no conversion
 	reg.CartLoad, err = cartridgeloader.NewLoader(fields[videoFieldCartName], fields[videoFieldCartMapping])
 	if err != nil {
-		return nil, curated.Errorf("log: %v", err)
+		return nil, fmt.Errorf("log: %w", err)
 	}
 	reg.TVtype = fields[logFieldTVtype]
 	reg.digest = fields[logFieldDigest]
@@ -82,7 +81,7 @@ func deserialiseLogEntry(fields database.SerialisedEntry) (database.Entry, error
 	reg.NumFrames, err = strconv.Atoi(fields[logFieldNumFrames])
 	if err != nil {
 		msg := fmt.Sprintf("invalid numFrames field [%s]", fields[logFieldNumFrames])
-		return nil, curated.Errorf("log: %v", msg)
+		return nil, fmt.Errorf("log: %s", msg)
 	}
 
 	return reg, nil
@@ -132,7 +131,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	// create headless television. we'll use this to initialise the digester
 	tv, err := television.NewTelevision(reg.TVtype)
 	if err != nil {
-		return false, "", curated.Errorf("log: %v", err)
+		return false, "", fmt.Errorf("log: %w", err)
 	}
 	defer tv.End()
 	tv.SetFPSCap(false)
@@ -140,7 +139,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	// create VCS and attach cartridge
 	vcs, err := hardware.NewVCS(tv, nil)
 	if err != nil {
-		return false, "", curated.Errorf("log: %v", err)
+		return false, "", fmt.Errorf("log: %w", err)
 	}
 
 	// we want the machine in a known state. the easiest way to do this is to
@@ -149,7 +148,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 
 	err = setup.AttachCartridge(vcs, reg.CartLoad, true)
 	if err != nil {
-		return false, "", curated.Errorf("log: %v", err)
+		return false, "", fmt.Errorf("log: %w", err)
 	}
 
 	// display ticker for progress meter
@@ -179,7 +178,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	})
 
 	if err != nil {
-		return false, "", curated.Errorf("log: %v", err)
+		return false, "", fmt.Errorf("log: %w", err)
 	}
 
 	// get hash of log output

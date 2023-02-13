@@ -22,7 +22,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 )
 
@@ -97,7 +96,7 @@ func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, events *t
 	// debugger inputer loop elsewhere
 	select {
 	case <-events.IntEvents:
-		return 0, curated.Errorf(terminal.UserInterrupt)
+		return 0, terminal.UserInterrupt
 	default:
 	}
 

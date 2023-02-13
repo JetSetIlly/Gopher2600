@@ -16,7 +16,8 @@
 package rewind
 
 import (
-	"github.com/jetsetilly/gopher2600/curated"
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -96,23 +97,23 @@ func (tl *Timeline) reset() {
 
 func (tl *Timeline) checkIntegrity() error {
 	if len(tl.FrameNum) != len(tl.TotalScanlines) {
-		return curated.Errorf("timeline arrays are different lengths")
+		return fmt.Errorf("timeline arrays are different lengths")
 	}
 
 	if len(tl.FrameNum) != len(tl.Counts) {
-		return curated.Errorf("timeline arrays are different lengths")
+		return fmt.Errorf("timeline arrays are different lengths")
 	}
 
 	if len(tl.FrameNum) != len(tl.LeftPlayerInput) {
-		return curated.Errorf("timeline arrays are different lengths")
+		return fmt.Errorf("timeline arrays are different lengths")
 	}
 
 	if len(tl.FrameNum) != len(tl.RightPlayerInput) {
-		return curated.Errorf("timeline arrays are different lengths")
+		return fmt.Errorf("timeline arrays are different lengths")
 	}
 
 	if len(tl.FrameNum) != len(tl.PanelInput) {
-		return curated.Errorf("timeline arrays are different lengths")
+		return fmt.Errorf("timeline arrays are different lengths")
 	}
 
 	if len(tl.FrameNum) == 0 {
@@ -123,7 +124,7 @@ func (tl *Timeline) checkIntegrity() error {
 		prev := tl.FrameNum[0]
 		for _, fn := range tl.FrameNum[1:] {
 			if fn != prev+1 {
-				return curated.Errorf("frame numbers in timeline are not consecutive (mising frame %d)", prev+1)
+				return fmt.Errorf("frame numbers in timeline are not consecutive (mising frame %d)", prev+1)
 			}
 			prev = fn
 		}

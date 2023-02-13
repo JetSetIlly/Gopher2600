@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 )
@@ -62,7 +61,7 @@ func (tr *traps) isEmpty() bool {
 // drop the numbered trap from the list.
 func (tr *traps) drop(num int) error {
 	if len(tr.traps)-1 < num {
-		return curated.Errorf("trap #%d is not defined", num)
+		return fmt.Errorf("trap #%d is not defined", num)
 	}
 
 	h := tr.traps[:num]
@@ -121,7 +120,7 @@ func (tr *traps) parseCommand(tokens *commandline.Tokens) error {
 
 		for _, t := range tr.traps {
 			if t.target.label == tgt.label {
-				return curated.Errorf("trap exists (%s)", t)
+				return fmt.Errorf("trap exists (%s)", t)
 			}
 		}
 

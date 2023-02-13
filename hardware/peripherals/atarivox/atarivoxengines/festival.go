@@ -21,7 +21,6 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -66,17 +65,17 @@ func NewFestival(executablePath string) (AtariVoxEngine, error) {
 
 	fest.stdin, err = cmd.StdinPipe()
 	if err != nil {
-		return nil, curated.Errorf("festival: %s", err.Error())
+		return nil, fmt.Errorf("festival: %s", err.Error())
 	}
 
 	fest.stdout, err = cmd.StdoutPipe()
 	if err != nil {
-		return nil, curated.Errorf("festival: %s", err.Error())
+		return nil, fmt.Errorf("festival: %s", err.Error())
 	}
 
 	err = cmd.Start()
 	if err != nil {
-		return nil, curated.Errorf("festival: %s", err.Error())
+		return nil, fmt.Errorf("festival: %s", err.Error())
 	}
 
 	go func() {

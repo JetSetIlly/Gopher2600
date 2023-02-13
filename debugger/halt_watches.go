@@ -20,7 +20,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
@@ -83,7 +82,7 @@ func (wtc *watches) clear() {
 // drop a specific watcher by a position in the list.
 func (wtc *watches) drop(num int) error {
 	if len(wtc.watches)-1 < num {
-		return curated.Errorf("watch #%d is not defined", num)
+		return fmt.Errorf("watch #%d is not defined", num)
 	}
 
 	h := wtc.watches[:num]
@@ -232,9 +231,9 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 	// mapping of the address was unsuccessful
 	if ai == nil {
 		if read {
-			return curated.Errorf("invalid watch address (%s) expecting 16-bit address or a read symbol", a)
+			return fmt.Errorf("invalid watch address (%s) expecting 16-bit address or a read symbol", a)
 		}
-		return curated.Errorf("invalid watch address (%s) expecting 16-bit address or a write symbol", a)
+		return fmt.Errorf("invalid watch address (%s) expecting 16-bit address or a write symbol", a)
 	}
 
 	// get value if possible
@@ -244,7 +243,7 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 	if useVal {
 		val, err = strconv.ParseUint(v, 0, 8)
 		if err != nil {
-			return curated.Errorf("invalid watch value (%s) expecting 8-bit value", a)
+			return fmt.Errorf("invalid watch value (%s) expecting 8-bit value", a)
 		}
 	}
 
@@ -269,7 +268,7 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 		if w.ai.Address == nw.ai.Address &&
 			w.ai.Read == nw.ai.Read &&
 			w.matchValue == nw.matchValue && w.value == nw.value {
-			return curated.Errorf("already being watched (%s)", w)
+			return fmt.Errorf("already being watched (%s)", w)
 		}
 	}
 

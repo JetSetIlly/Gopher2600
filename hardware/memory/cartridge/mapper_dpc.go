@@ -20,7 +20,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -63,7 +62,7 @@ func newDPC(instance *instance.Instance, data []byte) (mapper.CartMapper, error)
 	cart.banks = make([][]uint8, cart.NumBanks())
 
 	if len(data) < cart.bankSize*cart.NumBanks()+staticSize {
-		return nil, curated.Errorf("DPC: %v", "wrong number of bytes in the cartridge data")
+		return nil, fmt.Errorf("DPC: wrong number of bytes in the cartridge data")
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {
@@ -299,7 +298,7 @@ func (cart *dpc) GetBank(addr uint16) mapper.BankInfo {
 // Patch implements the mapper.CartMapper interface.
 func (cart *dpc) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks)+len(cart.static.data) {
-		return curated.Errorf("DPC: %v", fmt.Errorf("patch offset too high (%v)", offset))
+		return fmt.Errorf("DPC: patch offset too high (%d)", offset)
 	}
 
 	staticStart := cart.NumBanks() * cart.bankSize

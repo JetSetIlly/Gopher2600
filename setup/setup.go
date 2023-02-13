@@ -16,8 +16,10 @@
 package setup
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/resources"
@@ -73,16 +75,16 @@ func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader, resetVC
 
 	dbPth, err := resources.JoinPath(setupDBFile)
 	if err != nil {
-		return curated.Errorf("setup: %v", err)
+		return fmt.Errorf("setup: %w", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
 	if err != nil {
-		if curated.Is(err, database.NotAvailable) {
+		if errors.Is(err, database.NotAvailable) {
 			// silently ignore absence of setup database
 			return nil
 		}
-		return curated.Errorf("setup: %v", err)
+		return fmt.Errorf("setup: %w", err)
 	}
 	defer db.EndSession(false)
 
@@ -90,7 +92,7 @@ func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader, resetVC
 		// database entry should also satisfy setupEntry interface
 		set, ok := ent.(setupEntry)
 		if !ok {
-			return curated.Errorf("setup: attach cartridge: database entry does not satisfy setupEntry interface")
+			return fmt.Errorf("setup: attach cartridge: database entry does not satisfy setupEntry interface")
 		}
 
 		if set.matchCartHash(vcs.Mem.Cart.Hash) {
@@ -105,7 +107,7 @@ func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader, resetVC
 
 	_, err = db.SelectAll(onSelect)
 	if err != nil {
-		return curated.Errorf("setup: %v", err)
+		return fmt.Errorf("setup: %w", err)
 	}
 
 	return nil

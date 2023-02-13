@@ -34,6 +34,6 @@
 // in the memory package. In the dbgmem package case, Peek() and Poke() accept
 // symbols as well as numeric addresses.
 //
-// Peek() and Poke() will return Sentinal errors (PeekError and PokeError
+// Peek() and Poke() will return sentinal errors (PeekError and PokeError
 // respectively) if a bus.AddressError is encountered).
 package dbgmem

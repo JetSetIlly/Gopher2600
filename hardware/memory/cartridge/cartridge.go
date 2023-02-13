@@ -16,11 +16,11 @@
 package cartridge
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/cdf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/dpcplus"
@@ -56,10 +56,8 @@ type Cartridge struct {
 	coproc      mapper.CartCoProc
 }
 
-// Sentinal error returned if operation is on the ejected cartridge type.
-const (
-	Ejected = "cartridge ejected"
-)
+// sentinal error returned if operation is on the ejected cartridge type.
+var Ejected = errors.New("cartridge ejected")
 
 // NewCartridge is the preferred method of initialisation for the cartridge
 // type.
@@ -218,7 +216,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	if cartload.Mapping == "" || cartload.Mapping == "AUTO" {
 		err := cart.fingerprint(cartload)
 		if err != nil {
-			return curated.Errorf("cartridge: %v", err)
+			return fmt.Errorf("cartridge: %w", err)
 		}
 
 		// in addition to the regular fingerprint we also check to see if this
@@ -232,12 +230,12 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 				// if the error is a NotAPlusROM error then log the false
 				// positive and return a success, keeping the main cartridge
 				// mapper intact
-				if curated.Is(err, plusrom.NotAPlusROM) {
+				if errors.Is(err, plusrom.NotAPlusROM) {
 					logger.Log("cartridge", err.Error())
 					return nil
 				}
 
-				return curated.Errorf("cartridge: %v", err)
+				return fmt.Errorf("cartridge: %w", err)
 			}
 
 			// we've wrapped the main cartridge mapper inside the PlusROM
@@ -329,7 +327,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	}
 
 	if err != nil {
-		return curated.Errorf("cartridge: %v", err)
+		return fmt.Errorf("cartridge: %w", err)
 	}
 
 	if forceSuperchip {
@@ -402,7 +400,7 @@ func (cart *Cartridge) HotLoad(cartload cartridgeloader.Loader) error {
 		return nil
 	}
 
-	return curated.Errorf("cartridge: %s does not support hotloading", cart.mapper.ID())
+	return fmt.Errorf("cartridge: %s does not support hotloading", cart.mapper.ID())
 }
 
 // GetRegistersBus returns interface to the registers of the cartridge or nil
@@ -499,7 +497,7 @@ func (cart *Cartridge) ROMDump() (string, error) {
 	if rb, ok := cart.mapper.(mapper.CartROMDump); ok {
 		return romdump, rb.ROMDump(romdump)
 	}
-	return "", curated.Errorf("cartridge: %s does not support ROM dumping", cart.mapper.ID())
+	return "", fmt.Errorf("cartridge: %s does not support ROM dumping", cart.mapper.ID())
 }
 
 // BreakpointsEnable implements the mapper.CartCoProc interface.

@@ -16,7 +16,8 @@
 package input
 
 import (
-	"github.com/jetsetilly/gopher2600/curated"
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
@@ -34,7 +35,7 @@ func (inp *Input) handleDrivenEvents() error {
 					return err
 				}
 			} else if coords.GreaterThan(c, ev.Time) {
-				return curated.Errorf("input: driven input seen too late. emulations not synced correctly.")
+				return fmt.Errorf("input: driven input seen too late. emulations not synced correctly.")
 			} else {
 				return nil
 			}
@@ -42,7 +43,7 @@ func (inp *Input) handleDrivenEvents() error {
 			select {
 			case inp.drivenInputEvent = <-inp.fromDriver:
 				if inp.checkForDriven {
-					curated.Errorf("input: driven input received before previous input was processed")
+					fmt.Errorf("input: driven input received before previous input was processed")
 				}
 			default:
 				done = true
@@ -57,7 +58,7 @@ func (inp *Input) handleDrivenEvents() error {
 		select {
 		case inp.drivenInputEvent = <-inp.fromDriver:
 			if inp.checkForDriven {
-				curated.Errorf("input: driven input received before previous input was processed")
+				fmt.Errorf("input: driven input received before previous input was processed")
 			}
 			inp.checkForDriven = true
 		default:
@@ -70,7 +71,7 @@ func (inp *Input) handleDrivenEvents() error {
 // AttachPassenger should be called by an emulation that wants to be driven by another emulation.
 func (inp *Input) AttachPassenger(driver chan ports.TimedInputEvent) error {
 	if inp.toPassenger != nil {
-		return curated.Errorf("input: attach passenger: emulation already defined as an input driver")
+		return fmt.Errorf("input: attach passenger: emulation already defined as an input driver")
 	}
 	inp.fromDriver = driver
 	inp.setHandleFunc()
@@ -80,7 +81,7 @@ func (inp *Input) AttachPassenger(driver chan ports.TimedInputEvent) error {
 // AttachDriver should be called by an emulation that is prepared to drive another emulation.
 func (inp *Input) AttachDriver(passenger chan ports.TimedInputEvent) error {
 	if inp.fromDriver != nil {
-		return curated.Errorf("input: attach driver: emulation already defined as being an input passenger")
+		return fmt.Errorf("input: attach driver: emulation already defined as being an input passenger")
 	}
 	inp.toPassenger = passenger
 	return nil

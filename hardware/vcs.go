@@ -16,8 +16,10 @@
 package hardware
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/input"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
@@ -234,7 +236,7 @@ func (vcs *VCS) Reset() error {
 	// reset PC using reset address in cartridge memory
 	err = vcs.CPU.LoadPCIndirect(cpubus.Reset)
 	if err != nil {
-		if !curated.Is(err, cartridge.Ejected) {
+		if !errors.Is(err, cartridge.Ejected) {
 			return err
 		}
 	}
@@ -267,7 +269,7 @@ func (vcs *VCS) SetClockSpeed(tvSpec string) error {
 			vcs.Clock = palClock
 		}
 	}
-	return curated.Errorf("vcs: cannot set clock speed for unknown tv specification (%s)", tvSpec)
+	return fmt.Errorf("vcs: cannot set clock speed for unknown tv specification (%s)", tvSpec)
 }
 
 // DetatchEmulationExtras removes all possible monitors, recorders, etc. from

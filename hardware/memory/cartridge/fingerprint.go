@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/ace"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/cdf"
@@ -438,7 +437,7 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 
 	default:
 		if sz >= 4096 {
-			return curated.Errorf("unrecognised size (%d bytes)", len(*cartload.Data))
+			return fmt.Errorf("unrecognised size (%d bytes)", len(*cartload.Data))
 		}
 
 		cart.mapper, err = newAtari2k(cart.instance, *cartload.Data)
