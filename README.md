@@ -160,6 +160,8 @@ Undocumented 650x instructions and implementation details in "6502/6510/8500/850
 
 http://www.oxyron.de/html/opcodes02.html
 
+6502 functional tests from https://github.com/Klaus2m5/6502_65C02_functional_tests
+
 US Patent Number 4,644,495 was referenced for the implementation of the DPC cartridge format
 (the format used in Pitfall 2) https://patents.google.com/patent/US4644495/en
 

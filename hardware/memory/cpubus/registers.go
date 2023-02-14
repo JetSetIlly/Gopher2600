@@ -21,11 +21,14 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// Reset is the address where the reset address is stored.
-const Reset = uint16(0x1ffc)
+// NMI is the address where the non-maskable interrupt address is stored.
+const NMI = uint16(0xfffa)
 
-// IRQ is the address where the interrupt address is stored.
-const IRQ = uint16(0x1ffe)
+// Reset is the address where the reset address is stored.
+const Reset = uint16(0xfffc)
+
+// BRK is the address where the interrupt address is stored.
+const BRK = uint16(0xfffe)
 
 // Register represents a named address in RIOT/TIA memory.
 type Register string

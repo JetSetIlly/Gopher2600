@@ -36,7 +36,7 @@ type CPU struct {
 	A      registers.Register
 	X      registers.Register
 	Y      registers.Register
-	SP     registers.Register
+	SP     registers.StackPointer
 	Status registers.StatusRegister
 
 	// some operations only need an accumulator
@@ -94,7 +94,7 @@ func NewCPU(instance *instance.Instance, mem cpubus.Memory) *CPU {
 		A:            registers.NewRegister(0, "A"),
 		X:            registers.NewRegister(0, "X"),
 		Y:            registers.NewRegister(0, "Y"),
-		SP:           registers.NewRegister(0, "SP"),
+		SP:           registers.NewStackPointer(0),
 		Status:       registers.NewStatusRegister(),
 		acc8:         registers.NewRegister(0, "accumulator"),
 		acc16:        registers.NewProgramCounter(0),
@@ -120,7 +120,8 @@ func (mc *CPU) String() string {
 		mc.SP.Label(), mc.SP, mc.Status.Label(), mc.Status)
 }
 
-// Reset reinitialises all registers.
+// Reset reinitialises all registers. Does not load PC with RESET vector. Use
+// cpu.LoadPCIndirect(cpubus.Reset) when appropriate.
 func (mc *CPU) Reset() {
 	mc.LastResult.Reset()
 	mc.Interrupted = true
@@ -134,13 +135,13 @@ func (mc *CPU) Reset() {
 		mc.X.Load(uint8(mc.instance.Random.NoRewind(0xff)))
 		mc.Y.Load(uint8(mc.instance.Random.NoRewind(0xff)))
 		mc.SP.Load(uint8(mc.instance.Random.NoRewind(0xff)))
-		mc.Status.FromValue(uint8(mc.instance.Random.NoRewind(0xff)))
+		mc.Status.Load(uint8(mc.instance.Random.NoRewind(0xff)))
 	} else {
 		mc.PC.Load(0)
 		mc.A.Load(0)
 		mc.X.Load(0)
 		mc.Y.Load(0)
-		mc.SP.Load(255)
+		mc.SP.Load(0xff)
 		mc.Status.Reset()
 	}
 
@@ -1004,7 +1005,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		mc.SP.Add(255, false)
+		mc.SP.Add(0xff, false)
 		mc.LastResult.Cycles++
 		err = mc.cycleCallback()
 		if err != nil {
@@ -1035,7 +1036,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		mc.SP.Add(255, false)
+		mc.SP.Add(0xff, false)
 		mc.LastResult.Cycles++
 		err = mc.cycleCallback()
 		if err != nil {
@@ -1055,7 +1056,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		mc.Status.FromValue(value)
+		mc.Status.Load(value)
 
 	case instructions.Txa:
 		mc.A.Load(mc.X.Value())
@@ -1163,12 +1164,12 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Sign = mc.Y.IsNegative()
 
 	case instructions.Dex:
-		mc.X.Add(255, false)
+		mc.X.Add(0xff, false)
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
 
 	case instructions.Dey:
-		mc.Y.Add(255, false)
+		mc.Y.Add(0xff, false)
 		mc.Status.Zero = mc.Y.IsZero()
 		mc.Status.Sign = mc.Y.IsNegative()
 
@@ -1264,7 +1265,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	case instructions.Dec:
 		r := mc.acc8
 		r.Load(value)
-		r.Add(255, false)
+		r.Add(0xff, false)
 		mc.Status.Zero = r.IsZero()
 		mc.Status.Sign = r.IsNegative()
 		value = r.Value()
@@ -1379,7 +1380,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		mc.SP.Add(255, false)
+		mc.SP.Add(0xff, false)
 		mc.LastResult.Cycles++
 		err = mc.cycleCallback()
 		if err != nil {
@@ -1392,7 +1393,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		mc.SP.Add(255, false)
+		mc.SP.Add(0xff, false)
 		mc.LastResult.Cycles++
 		err = mc.cycleCallback()
 		if err != nil {
@@ -1456,7 +1457,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 		// +1 cycle
-		mc.SP.Add(255, false)
+		mc.SP.Add(0xff, false)
 		mc.LastResult.Cycles++
 		err = mc.cycleCallback()
 		if err != nil {
@@ -1469,7 +1470,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 		// +1 cycle
-		mc.SP.Add(255, false)
+		mc.SP.Add(0xff, false)
 		mc.LastResult.Cycles++
 		err = mc.cycleCallback()
 		if err != nil {
@@ -1483,7 +1484,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 		// +1 cycle
-		mc.SP.Add(255, false)
+		mc.SP.Add(0xff, false)
 		mc.LastResult.Cycles++
 		err = mc.cycleCallback()
 		if err != nil {
@@ -1495,7 +1496,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// perform jump
 		var brkAddress uint16
-		brkAddress, err = mc.read16Bit(cpubus.IRQ)
+		brkAddress, err = mc.read16Bit(cpubus.BRK)
 		if err != nil {
 			return err
 		}
@@ -1522,7 +1523,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		mc.Status.FromValue(value)
+		mc.Status.Load(value)
 
 		// pull program counter (same effect as RTS)
 		if !mc.NoFlowControl {
@@ -1558,7 +1559,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// decrease value...
 		r := mc.acc8
 		r.Load(value)
-		r.Add(255, false)
+		r.Add(0xff, false)
 		value = r.Value()
 
 		// ... and compare with the A register

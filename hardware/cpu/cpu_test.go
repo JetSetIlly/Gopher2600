@@ -21,32 +21,27 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	rtest "github.com/jetsetilly/gopher2600/hardware/cpu/registers/test"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/test"
 )
 
-type mockMem struct {
+type testMem struct {
 	internal []uint8
 }
 
-func newMockMem() *mockMem {
-	mem := &mockMem{}
-
-	// leave some room at the top of memory allocation to allow testing of
-	// invalid memory writes
-	mem.internal = make([]uint8, 0x10000)
-
-	return mem
+func newTestMem() *testMem {
+	return &testMem{
+		internal: make([]uint8, 0x10000),
+	}
 }
 
-func (mem *mockMem) putInstructions(origin uint16, bytes ...uint8) uint16 {
+func (mem *testMem) putInstructions(origin uint16, bytes ...uint8) uint16 {
 	for i, b := range bytes {
 		_ = mem.Write(uint16(i)+origin, b)
 	}
 	return origin + uint16(len(bytes))
 }
 
-func (mem mockMem) assert(t *testing.T, address uint16, value uint8) {
+func (mem testMem) assert(t *testing.T, address uint16, value uint8) {
 	t.Helper()
 	d, _ := mem.Read(address)
 	if d != value {
@@ -55,27 +50,21 @@ func (mem mockMem) assert(t *testing.T, address uint16, value uint8) {
 }
 
 // Clear sets all bytes in memory to zero.
-func (mem *mockMem) Clear() {
+func (mem *testMem) Clear() {
 	for i := 0; i < len(mem.internal); i++ {
 		mem.internal[i] = 0
 	}
 }
 
-func (mem mockMem) Read(address uint16) (uint8, error) {
-	if address&0xff00 == 0xff00 {
-		return 0, fmt.Errorf("%w: %04x", cpubus.AddressError, address)
-	}
+func (mem testMem) Read(address uint16) (uint8, error) {
 	return mem.internal[address], nil
 }
 
-func (mem mockMem) ReadZeroPage(address uint8) (uint8, error) {
+func (mem testMem) ReadZeroPage(address uint8) (uint8, error) {
 	return mem.Read(uint16(address))
 }
 
-func (mem *mockMem) Write(address uint16, data uint8) error {
-	if address&0xff00 == 0xff00 {
-		return fmt.Errorf("%w: %04x", cpubus.AddressError, address)
-	}
+func (mem *testMem) Write(address uint16, data uint8) error {
 	mem.internal[address] = data
 	return nil
 }
@@ -93,7 +82,7 @@ func step(t *testing.T, mc *cpu.CPU) {
 	}
 }
 
-func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -101,25 +90,25 @@ func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	// SEC; CLC; CLI; SEI; SED; CLD; CLV
 	origin = mem.putInstructions(origin, 0x38, 0x18, 0x58, 0x78, 0xf8, 0xd8, 0xb8)
 	step(t, mc) // SEC
-	rtest.EquateRegisters(t, mc.Status, "sv-bdiZC")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdiZC")
 	step(t, mc) // CLC
-	rtest.EquateRegisters(t, mc.Status, "sv-bdiZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdiZc")
 	step(t, mc) // CLI
-	rtest.EquateRegisters(t, mc.Status, "sv-bdiZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdiZc")
 	step(t, mc) // SEI
-	rtest.EquateRegisters(t, mc.Status, "sv-bdIZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIZc")
 	step(t, mc) // SED
-	rtest.EquateRegisters(t, mc.Status, "sv-bDIZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BDIZc")
 	step(t, mc) // CLD
-	rtest.EquateRegisters(t, mc.Status, "sv-bdIZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIZc")
 	step(t, mc) // CLV
-	rtest.EquateRegisters(t, mc.Status, "sv-bdIZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIZc")
 
 	// PHP; PLP
 	_ = mem.putInstructions(origin, 0x08, 0x28)
 	step(t, mc) // PHP
-	rtest.EquateRegisters(t, mc.Status, "sv-bdIZc")
-	rtest.EquateRegisters(t, mc.SP, 254)
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIZc")
+	rtest.EquateRegisters(t, mc.SP.Register, 254)
 
 	// mangle status register
 	mc.Status.Sign = true
@@ -128,11 +117,13 @@ func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 
 	// restore status register
 	step(t, mc) // PLP
-	rtest.EquateRegisters(t, mc.SP, 255)
-	rtest.EquateRegisters(t, mc.Status, "sv-bdIZc")
+	rtest.EquateRegisters(t, mc.SP.Register, 255)
+
+	// break flag is always set on PLP
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIZc")
 }
 
-func testRegsiterArithmetic(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+func testRegsiterArithmetic(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -150,7 +141,7 @@ func testRegsiterArithmetic(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	rtest.EquateRegisters(t, mc.A, 3)
 }
 
-func testRegsiterBitwiseInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+func testRegsiterBitwiseInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -169,31 +160,31 @@ func testRegsiterBitwiseInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	origin = mem.putInstructions(origin, 0x0a, 0x4a, 0x4a)
 	step(t, mc) // ASL
 	rtest.EquateRegisters(t, mc.A, 2)
-	rtest.EquateRegisters(t, mc.Status, "sv-bdizc")
+	rtest.EquateRegisters(t, mc.Status, "sv-Bdizc")
 	step(t, mc) // LSR
 	rtest.EquateRegisters(t, mc.A, 1)
-	rtest.EquateRegisters(t, mc.Status, "sv-bdizc")
+	rtest.EquateRegisters(t, mc.Status, "sv-Bdizc")
 	step(t, mc) // LSR
 	rtest.EquateRegisters(t, mc.A, 0)
-	rtest.EquateRegisters(t, mc.Status, "sv-bdiZC")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdiZC")
 
 	// ROL implied; ROR implied; ROR implied; ROR implied
 	_ = mem.putInstructions(origin, 0x2a, 0x6a, 0x6a, 0x6a)
 	step(t, mc) // ROL
 	rtest.EquateRegisters(t, mc.A, 1)
-	rtest.EquateRegisters(t, mc.Status, "sv-bdizc")
+	rtest.EquateRegisters(t, mc.Status, "sv-Bdizc")
 	step(t, mc) // ROR
 	rtest.EquateRegisters(t, mc.A, 0)
-	rtest.EquateRegisters(t, mc.Status, "sv-bdiZC")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdiZC")
 	step(t, mc) // ROR
 	rtest.EquateRegisters(t, mc.A, 128)
-	rtest.EquateRegisters(t, mc.Status, "Sv-bdizc")
+	rtest.EquateRegisters(t, mc.Status, "Sv-Bdizc")
 	step(t, mc) // ROR
 	rtest.EquateRegisters(t, mc.A, 64)
-	rtest.EquateRegisters(t, mc.Status, "sv-bdizc")
+	rtest.EquateRegisters(t, mc.Status, "sv-Bdizc")
 }
 
-func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -206,16 +197,16 @@ func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	rtest.EquateRegisters(t, mc.X, 6)
 	step(t, mc) // DEX
 	rtest.EquateRegisters(t, mc.X, 5)
-	rtest.EquateRegisters(t, mc.Status, "sv-bdizc")
+	rtest.EquateRegisters(t, mc.Status, "sv-Bdizc")
 
 	// PHA; LDA immediate; PLA
 	origin = mem.putInstructions(origin, 0xa9, 5, 0x48, 0xa9, 0, 0x68)
 	step(t, mc) // LDA #5
 	step(t, mc) // PHA
-	rtest.EquateRegisters(t, mc.SP, 254)
+	rtest.EquateRegisters(t, mc.SP.Register, 254)
 	step(t, mc) // LDA #0
 	rtest.EquateRegisters(t, mc.A, 0)
-	rtest.EquateRegisters(t, mc.Status, "sv-bdiZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdiZc")
 	step(t, mc) // PLA
 	rtest.EquateRegisters(t, mc.A, 5)
 
@@ -242,10 +233,10 @@ func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	rtest.EquateRegisters(t, mc.X, 255)
 	step(t, mc) // LDX #100
 	step(t, mc) // TXS
-	rtest.EquateRegisters(t, mc.SP, 100)
+	rtest.EquateRegisters(t, mc.SP.Register, 100)
 }
 
-func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -320,7 +311,7 @@ func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	}
 }
 
-func testPostIndexedIndirect(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+func testPostIndexedIndirect(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -337,7 +328,7 @@ func testPostIndexedIndirect(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	rtest.EquateRegisters(t, mc.A, 0x03)
 }
 
-func testStorageInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+func testStorageInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -371,7 +362,7 @@ func testStorageInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	mem.assert(t, 0x0100, 0x53)
 }
 
-func testBranching(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+func testBranching(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -436,7 +427,7 @@ func testBranching(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	rtest.EquateRegisters(t, mc.PC, 0x12)
 }
 
-func testBranchingBackwards(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+func testBranchingBackwards(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -463,7 +454,7 @@ func testBranchingBackwards(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	rtest.EquateRegisters(t, mc.PC, 0x1f)
 }
 
-func testBranchingPageFaults(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+func testBranchingPageFaults(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -490,7 +481,7 @@ func testBranchingPageFaults(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	}
 }
 
-func testJumps(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+func testJumps(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -522,7 +513,7 @@ func testJumps(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	rtest.EquateRegisters(t, mc.PC, 0x0003)
 }
 
-func testComparisonInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+func testComparisonInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -530,44 +521,44 @@ func testComparisonInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	// CMP immediate (equality)
 	origin = mem.putInstructions(origin, 0xc9, 0x00)
 	step(t, mc) // CMP $00
-	rtest.EquateRegisters(t, mc.Status, "sv-bdiZC")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdiZC")
 
 	// LDA immediate; CMP immediate
 	origin = mem.putInstructions(origin, 0xa9, 0xf6, 0xc9, 0x18)
 	step(t, mc) // LDA $F6
 	step(t, mc) // CMP $10
-	rtest.EquateRegisters(t, mc.Status, "Sv-bdizC")
+	rtest.EquateRegisters(t, mc.Status, "Sv-BdizC")
 
 	// LDX immediate; CMP immediate
 	origin = mem.putInstructions(origin, 0xa2, 0xf6, 0xe0, 0x18)
 	step(t, mc) // LDX $F6
 	step(t, mc) // CMP $10
-	rtest.EquateRegisters(t, mc.Status, "Sv-bdizC")
+	rtest.EquateRegisters(t, mc.Status, "Sv-BdizC")
 
 	// LDY immediate; CMP immediate
 	origin = mem.putInstructions(origin, 0xa0, 0xf6, 0xc0, 0x18)
 	step(t, mc) // LDY $F6
 	step(t, mc) // CMP $10
-	rtest.EquateRegisters(t, mc.Status, "Sv-bdizC")
+	rtest.EquateRegisters(t, mc.Status, "Sv-BdizC")
 
 	// LDA immediate; CMP immediate
 	origin = mem.putInstructions(origin, 0xa9, 0x18, 0xc9, 0xf6)
 	step(t, mc) // LDA $F6
 	step(t, mc) // CMP $10
-	rtest.EquateRegisters(t, mc.Status, "sv-bdizc")
+	rtest.EquateRegisters(t, mc.Status, "sv-Bdizc")
 
 	// BIT zero page
 	origin = mem.putInstructions(origin, 0x24, 0x01)
 	step(t, mc) // BIT $01
-	rtest.EquateRegisters(t, mc.Status, "sv-bdiZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdiZc")
 
 	// BIT immediate
 	_ = mem.putInstructions(origin, 0x24, 0x01)
 	step(t, mc) // BIT $01
-	rtest.EquateRegisters(t, mc.Status, "sv-bdiZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdiZc")
 }
 
-func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -576,19 +567,19 @@ func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	_ = mem.putInstructions(origin, 0x20, 0x00, 0x01)
 	step(t, mc) // JSR $0100
 	rtest.EquateRegisters(t, mc.PC, 0x0100)
-	mem.assert(t, 255, 0x00)
-	mem.assert(t, 254, 0x02)
-	rtest.EquateRegisters(t, mc.SP, 253)
+	mem.assert(t, 0x01ff, 0x00)
+	mem.assert(t, 0x01fe, 0x02)
+	rtest.EquateRegisters(t, mc.SP.Register, 253)
 
 	_ = mem.putInstructions(0x100, 0x60)
 	step(t, mc) // RTS
 	rtest.EquateRegisters(t, mc.PC, 0x0003)
-	mem.assert(t, 255, 0x00)
-	mem.assert(t, 254, 0x02)
-	rtest.EquateRegisters(t, mc.SP, 255)
+	mem.assert(t, 0x01ff, 0x00)
+	mem.assert(t, 0x01fe, 0x02)
+	rtest.EquateRegisters(t, mc.SP.Register, 255)
 }
 
-func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -601,7 +592,7 @@ func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	rtest.EquateRegisters(t, mc.A, 0x19)
 }
 
-func testBRK(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+func testBRK(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -614,7 +605,7 @@ func testBRK(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	rtest.EquateRegisters(t, mc.PC, 0x00)
 }
 
-func testKIL(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+func testKIL(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
 	mc.Reset()
@@ -628,7 +619,7 @@ func testKIL(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 }
 
 func TestCPU(t *testing.T) {
-	mem := newMockMem()
+	mem := newTestMem()
 	mc := cpu.NewCPU(nil, mem)
 
 	testStatusInstructions(t, mc, mem)

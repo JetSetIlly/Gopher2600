@@ -1070,7 +1070,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					case "Y":
 						reg = &dbg.vcs.CPU.Y
 					case "SP":
-						reg = &dbg.vcs.CPU.SP
+						reg = &dbg.vcs.CPU.SP.Register
 					}
 
 					reg.Load(uint8(v))

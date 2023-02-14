@@ -33,7 +33,9 @@ type StatusRegister struct {
 // NewStatusRegister is the preferred method of initialisation for the status
 // register.
 func NewStatusRegister() StatusRegister {
-	return StatusRegister{}
+	sr := StatusRegister{}
+	sr.Load(0x00)
+	return sr
 }
 
 // Label returns the canonical name for the status register.
@@ -88,7 +90,7 @@ func (sr StatusRegister) String() string {
 
 // Reset status flags to initial state.
 func (sr *StatusRegister) Reset() {
-	sr.FromValue(0)
+	sr.Load(0x00)
 }
 
 // Value converts the StatusRegister struct into a value suitable for pushing
@@ -125,14 +127,16 @@ func (sr StatusRegister) Value() uint8 {
 	return v
 }
 
-// FromValue converts an 8 bit integer (taken from the stack, for example) to
-// the StatusRegister struct receiver.
-func (sr *StatusRegister) FromValue(v uint8) {
+// Load sets the status register flags from an 8 bit integer (which has been
+// taken from the stack, for example)
+func (sr *StatusRegister) Load(v uint8) {
 	sr.Sign = v&0x80 == 0x80
 	sr.Overflow = v&0x40 == 0x40
-	sr.Break = v&0x10 == 0x10
 	sr.DecimalMode = v&0x08 == 0x08
 	sr.InterruptDisable = v&0x04 == 0x04
 	sr.Zero = v&0x02 == 0x02
 	sr.Carry = v&0x01 == 0x01
+
+	// break flags is always set on loading of value
+	sr.Break = true
 }
