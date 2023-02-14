@@ -27,14 +27,9 @@ type SerialisedEntry []string
 
 // Entry represents the generic entry in the database.
 type Entry interface {
-	// ID returns the string that is used to identify the entry type in
+	// EntryType returns the string that is used to identify the entry type in
 	// the database
-	ID() string
-
-	// String should return information about the entry in a human readable
-	// format. by contrast, machine readable representation is returned by the
-	// Serialise function
-	String() string
+	EntryType() string
 
 	// return the Entry data as an instance of SerialisedEntry.
 	Serialise() (SerialisedEntry, error)

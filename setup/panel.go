@@ -25,10 +25,11 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
-const panelSetupID = "panel"
+const panelSetupEntryType = "panel"
 
 const (
 	panelSetupFieldCartHash int = iota
+	panelSetupFieldCartName
 	panelSetupFieldP0
 	panelSetupFieldP1
 	panelSetupFieldCol
@@ -39,6 +40,7 @@ const (
 // PanelSetup is used to adjust the VCS's front panel.
 type PanelSetup struct {
 	cartHash string
+	cartName string
 
 	p0  bool
 	p1  bool
@@ -61,6 +63,7 @@ func deserialisePanelSetupEntry(fields database.SerialisedEntry) (database.Entry
 	var err error
 
 	set.cartHash = fields[panelSetupFieldCartHash]
+	set.cartName = fields[panelSetupFieldCartName]
 
 	if set.p0, err = strconv.ParseBool(fields[panelSetupFieldP0]); err != nil {
 		return nil, fmt.Errorf("panel: invalid player 0 setting")
@@ -79,20 +82,16 @@ func deserialisePanelSetupEntry(fields database.SerialisedEntry) (database.Entry
 	return set, nil
 }
 
-// ID implements the database.Entry interface.
-func (set PanelSetup) ID() string {
-	return panelSetupID
-}
-
-// String implements the database.Entry interface.
-func (set PanelSetup) String() string {
-	return fmt.Sprintf("%s, p0=%v, p1=%v, col=%v\n", set.cartHash, set.p0, set.p1, set.col)
+// EntryType implements the database.Entry interface.
+func (set PanelSetup) EntryType() string {
+	return panelSetupEntryType
 }
 
 // Serialise implements the database.Entry interface.
 func (set *PanelSetup) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
 			set.cartHash,
+			set.cartName,
 			strconv.FormatBool(set.p0),
 			strconv.FormatBool(set.p1),
 			strconv.FormatBool(set.col),
@@ -113,42 +112,42 @@ func (set PanelSetup) matchCartHash(hash string) bool {
 }
 
 // apply implements setupEntry interface.
-func (set PanelSetup) apply(vcs *hardware.VCS) error {
+func (set PanelSetup) apply(vcs *hardware.VCS) (string, error) {
 	if set.p0 {
 		inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetPlayer0Pro, D: true}
 		if _, err := vcs.Input.HandleInputEvent(inp); err != nil {
-			return err
+			return "", err
 		}
 	} else {
 		inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetPlayer0Pro, D: false}
 		if _, err := vcs.Input.HandleInputEvent(inp); err != nil {
-			return err
+			return "", err
 		}
 	}
 
 	if set.p1 {
 		inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetPlayer1Pro, D: true}
 		if _, err := vcs.Input.HandleInputEvent(inp); err != nil {
-			return err
+			return "", err
 		}
 	} else {
 		inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetPlayer1Pro, D: false}
 		if _, err := vcs.Input.HandleInputEvent(inp); err != nil {
-			return err
+			return "", err
 		}
 	}
 
 	if set.col {
 		inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetColor, D: true}
 		if _, err := vcs.Input.HandleInputEvent(inp); err != nil {
-			return err
+			return "", err
 		}
 	} else {
 		inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetColor, D: false}
 		if _, err := vcs.Input.HandleInputEvent(inp); err != nil {
-			return err
+			return "", err
 		}
 	}
 
-	return nil
+	return fmt.Sprintf("panel preset: %s: %s", set.cartName, set.notes), nil
 }

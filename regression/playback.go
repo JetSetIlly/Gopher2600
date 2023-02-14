@@ -33,7 +33,7 @@ import (
 	"github.com/jetsetilly/gopher2600/recorder"
 )
 
-const playbackEntryID = "playback"
+const playbackEntryType = "playback"
 
 const (
 	playbackFieldScript int = iota
@@ -68,19 +68,9 @@ func deserialisePlaybackEntry(fields database.SerialisedEntry) (database.Entry, 
 	return reg, nil
 }
 
-// ID implements the database.Entry interface.
-func (reg PlaybackRegression) ID() string {
-	return playbackEntryID
-}
-
-// String implements the database.Entry interface.
-func (reg PlaybackRegression) String() string {
-	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("[%s] %s", reg.ID(), filepath.Base(reg.Script)))
-	if reg.Notes != "" {
-		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
-	}
-	return s.String()
+// EntryType implements the database.Entry interface.
+func (reg PlaybackRegression) EntryType() string {
+	return playbackEntryType
 }
 
 // Serialise implements the database.Entry interface.
@@ -99,6 +89,16 @@ func (reg PlaybackRegression) CleanUp() error {
 		return nil
 	}
 	return err
+}
+
+// String implements the regression.Regressor interface.
+func (reg PlaybackRegression) String() string {
+	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("[%s] %s", reg.EntryType(), filepath.Base(reg.Script)))
+	if reg.Notes != "" {
+		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
+	}
+	return s.String()
 }
 
 // regress implements the regression.Regressor interface.

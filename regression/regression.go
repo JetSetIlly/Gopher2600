@@ -40,6 +40,11 @@ const regressionScripts = "scripts"
 type Regressor interface {
 	database.Entry
 
+	// String should return information about the entry in a human readable
+	// format. by contrast, machine readable representation is returned by the
+	// Serialise function
+	String() string
+
 	// perform the regression test for the regression type. the newRegression
 	// flag is for convenience really (or "logical binding", as the structured
 	// programmers would have it)
@@ -54,15 +59,15 @@ type Regressor interface {
 // when starting a database session we need to register what entries we will
 // find in the database.
 func initDBSession(db *database.Session) error {
-	if err := db.RegisterEntryType(videoEntryID, deserialiseVideoEntry); err != nil {
+	if err := db.RegisterEntryType(videoEntryType, deserialiseVideoEntry); err != nil {
 		return err
 	}
 
-	if err := db.RegisterEntryType(playbackEntryID, deserialisePlaybackEntry); err != nil {
+	if err := db.RegisterEntryType(playbackEntryType, deserialisePlaybackEntry); err != nil {
 		return err
 	}
 
-	if err := db.RegisterEntryType(logEntryID, deserialiseLogEntry); err != nil {
+	if err := db.RegisterEntryType(logEntryType, deserialiseLogEntry); err != nil {
 		return err
 	}
 
@@ -87,7 +92,11 @@ func RegressList(output io.Writer) error {
 	defer db.EndSession(false)
 
 	return db.ForEach(func(key int, e database.Entry) error {
-		output.Write([]byte(fmt.Sprintf("%03d %s\n", key, e.String())))
+		r, ok := e.(Regressor)
+		if !ok {
+			return fmt.Errorf("regression: list: %s does not implement the Regressor interfrace", e.EntryType())
+		}
+		output.Write([]byte(fmt.Sprintf("%03d %s\n", key, r.String())))
 		return nil
 	})
 }
@@ -246,7 +255,7 @@ func RegressCleanup(output io.Writer, confirmation io.Reader) error {
 			// no support required
 
 		default:
-			return fmt.Errorf("not supported (%s)", reg.ID())
+			return fmt.Errorf("not supported (%s)", reg.EntryType())
 		}
 
 		return nil

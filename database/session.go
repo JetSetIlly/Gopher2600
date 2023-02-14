@@ -125,7 +125,7 @@ func (db *Session) EndSession(commitChanges bool) error {
 				return err
 			}
 
-			s.WriteString(recordHeader(k, v.ID()))
+			s.WriteString(recordHeader(k, v.EntryType()))
 
 			for i := 0; i < len(ser); i++ {
 				s.WriteString(fieldSep)

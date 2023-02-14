@@ -33,7 +33,7 @@ import (
 	"github.com/jetsetilly/gopher2600/setup"
 )
 
-const videoEntryID = "video"
+const videoEntryType = "video"
 
 const (
 	videoFieldCartName int = iota
@@ -120,36 +120,9 @@ func deserialiseVideoEntry(fields database.SerialisedEntry) (database.Entry, err
 	return reg, nil
 }
 
-// ID implements the database.Entry interface.
-func (reg VideoRegression) ID() string {
-	return videoEntryID
-}
-
-// String implements the database.Entry interface.
-func (reg VideoRegression) String() string {
-	s := strings.Builder{}
-
-	state := ""
-	switch reg.State {
-	case StateNone:
-		state = ""
-	case StateTV:
-		state = " [TV state]"
-	case StatePorts:
-		state = " [ports state]"
-	case StateTimer:
-		state = " [timer state]"
-	case StateCPU:
-		state = " [cpu state]"
-	default:
-		state = " [with state]"
-	}
-
-	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d%s", reg.ID(), reg.CartLoad.ShortName(), reg.TVtype, reg.NumFrames, state))
-	if reg.Notes != "" {
-		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
-	}
-	return s.String()
+// EntryType implements the database.Entry interface.
+func (reg VideoRegression) EntryType() string {
+	return videoEntryType
 }
 
 // Serialise implements the database.Entry interface.
@@ -175,6 +148,33 @@ func (reg VideoRegression) CleanUp() error {
 		return nil
 	}
 	return err
+}
+
+// String implements the regression.Regressor interface
+func (reg VideoRegression) String() string {
+	s := strings.Builder{}
+
+	state := ""
+	switch reg.State {
+	case StateNone:
+		state = ""
+	case StateTV:
+		state = " [TV state]"
+	case StatePorts:
+		state = " [ports state]"
+	case StateTimer:
+		state = " [timer state]"
+	case StateCPU:
+		state = " [cpu state]"
+	default:
+		state = " [with state]"
+	}
+
+	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d%s", reg.EntryType(), reg.CartLoad.ShortName(), reg.TVtype, reg.NumFrames, state))
+	if reg.Notes != "" {
+		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
+	}
+	return s.String()
 }
 
 // regress implements the regression.Regressor interface.

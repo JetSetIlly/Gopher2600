@@ -23,11 +23,11 @@ import (
 	"github.com/jetsetilly/gopher2600/patch"
 )
 
-const patchID = "patch"
+const patchEntryType = "patch"
 
 const (
 	patchFieldCartHash int = iota
-	patchFieldPatchFile
+	patchFieldCartName
 	patchFieldNotes
 	numPatchFields
 )
@@ -35,9 +35,9 @@ const (
 // Patch is used to patch cartridge memory after cartridge has been
 // attached/loaded.
 type Patch struct {
-	cartHash  string
-	patchFile string
-	notes     string
+	cartHash string
+	cartName string
+	notes    string
 }
 
 func deserialisePatchEntry(fields database.SerialisedEntry) (database.Entry, error) {
@@ -52,30 +52,24 @@ func deserialisePatchEntry(fields database.SerialisedEntry) (database.Entry, err
 	}
 
 	set.cartHash = fields[patchFieldCartHash]
-	set.patchFile = fields[patchFieldPatchFile]
+	set.cartName = fields[patchFieldCartName]
 	set.notes = fields[patchFieldNotes]
 
 	return set, nil
 }
 
-// ID implements the database.Entry interface.
-func (set Patch) ID() string {
-	return patchID
-}
-
-// String implements the database.Entry interface.
-func (set Patch) String() string {
-	return fmt.Sprintf("%s, %s", set.cartHash, set.patchFile)
+// EntryType implements the database.Entry interface.
+func (set Patch) EntryType() string {
+	return patchEntryType
 }
 
 // Serialise implements the database.Entry interface.
 func (set *Patch) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
-			set.cartHash,
-			set.patchFile,
-			set.notes,
-		},
-		nil
+		set.cartHash,
+		set.cartName,
+		set.notes,
+	}, nil
 }
 
 // CleanUp implements the database.Entry interface.
@@ -90,10 +84,10 @@ func (set Patch) matchCartHash(hash string) bool {
 }
 
 // apply implements setupEntry interface.
-func (set Patch) apply(vcs *hardware.VCS) error {
-	_, err := patch.CartridgeMemory(vcs.Mem.Cart, set.patchFile)
+func (set Patch) apply(vcs *hardware.VCS) (string, error) {
+	_, err := patch.CartridgeMemory(vcs.Mem.Cart, set.cartHash)
 	if err != nil {
-		return fmt.Errorf("patch: %w", err)
+		return "", fmt.Errorf("patch: %w", err)
 	}
-	return nil
+	return fmt.Sprintf("patching cartridge: %s: %s", set.cartName, set.notes), nil
 }

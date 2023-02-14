@@ -22,12 +22,12 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 )
 
-const televisionID = "tv"
+const televisionEntryType = "tv"
 
 const (
 	televisionFieldCartHash int = iota
+	televisionFieldCartName
 	televisionFieldSpec
-	televisionFieldNotes
 	numtelevisionFields
 )
 
@@ -35,8 +35,8 @@ const (
 // attached/loaded.
 type television struct {
 	cartHash string
+	cartName string
 	spec     string
-	notes    string
 }
 
 func deserialiseTelevisionEntry(fields database.SerialisedEntry) (database.Entry, error) {
@@ -51,28 +51,23 @@ func deserialiseTelevisionEntry(fields database.SerialisedEntry) (database.Entry
 	}
 
 	set.cartHash = fields[televisionFieldCartHash]
+	set.cartName = fields[televisionFieldCartName]
 	set.spec = fields[televisionFieldSpec]
-	set.notes = fields[televisionFieldNotes]
 
 	return set, nil
 }
 
-// ID implements the database.Entry interface.
-func (set television) ID() string {
-	return televisionID
-}
-
-// String implements the database.Entry interface.
-func (set television) String() string {
-	return fmt.Sprintf("%s, %s", set.cartHash, set.spec)
+// EntryType implements the database.Entry interface.
+func (set television) EntryType() string {
+	return televisionEntryType
 }
 
 // Serialise implements the database.Entry interface.
 func (set *television) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
 		set.cartHash,
+		set.cartName,
 		set.spec,
-		set.notes,
 	}, nil
 }
 
@@ -88,7 +83,7 @@ func (set television) matchCartHash(hash string) bool {
 }
 
 // apply implements setupEntry interface.
-func (set television) apply(vcs *hardware.VCS) error {
+func (set television) apply(vcs *hardware.VCS) (string, error) {
 	// because the apply function is run after attaching the cartridge to the
 	// VCS, any setup entries will take precedence over any spec in the
 	// cartridge filename.
@@ -97,5 +92,10 @@ func (set television) apply(vcs *hardware.VCS) error {
 	// original spec request is AUTO. In other words, a setup entry will not
 	// take precedence over an explicit startup option.
 
-	return vcs.TV.SetSpecConditional(set.spec)
+	err := vcs.TV.SetSpecConditional(set.spec)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("forcing %s mode: %s", set.spec, set.cartName), nil
 }

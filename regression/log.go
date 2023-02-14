@@ -32,7 +32,7 @@ import (
 	"github.com/jetsetilly/gopher2600/setup"
 )
 
-const logEntryID = "log"
+const logEntryType = "log"
 
 const (
 	logFieldCartName int = iota
@@ -87,20 +87,9 @@ func deserialiseLogEntry(fields database.SerialisedEntry) (database.Entry, error
 	return reg, nil
 }
 
-// ID implements the database.Entry interface.
-func (reg LogRegression) ID() string {
-	return logEntryID
-}
-
-// String implements the database.Entry interface.
-func (reg LogRegression) String() string {
-	s := strings.Builder{}
-
-	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d", reg.ID(), reg.CartLoad.ShortName(), reg.TVtype, reg.NumFrames))
-	if reg.Notes != "" {
-		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
-	}
-	return s.String()
+// EntryType implements the database.Entry interface.
+func (reg LogRegression) EntryType() string {
+	return logEntryType
 }
 
 // Serialise implements the database.Entry interface.
@@ -119,6 +108,17 @@ func (reg *LogRegression) Serialise() (database.SerialisedEntry, error) {
 // CleanUp implements the database.Entry interface.
 func (reg LogRegression) CleanUp() error {
 	return nil
+}
+
+// String implements the regressions.Regressor interface
+func (reg LogRegression) String() string {
+	s := strings.Builder{}
+
+	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d", reg.EntryType(), reg.CartLoad.ShortName(), reg.TVtype, reg.NumFrames))
+	if reg.Notes != "" {
+		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
+	}
+	return s.String()
 }
 
 // regress implements the regression.Regressor interface.

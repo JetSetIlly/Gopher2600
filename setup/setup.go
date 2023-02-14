@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources"
 )
 
@@ -39,23 +40,24 @@ type setupEntry interface {
 	// match the hash stored in the database with the user supplied hash
 	matchCartHash(hash string) bool
 
-	// apply changes indicated in the entry to the VCS
-	apply(vcs *hardware.VCS) error
+	// apply changes indicated in the entry to the VCS. returned string value
+	// will be used for log message
+	apply(vcs *hardware.VCS) (string, error)
 }
 
 // when starting a database session we must add the details of the entry types
 // that will be found in the database.
 func initDBSession(db *database.Session) error {
 	// add entry types
-	if err := db.RegisterEntryType(panelSetupID, deserialisePanelSetupEntry); err != nil {
+	if err := db.RegisterEntryType(panelSetupEntryType, deserialisePanelSetupEntry); err != nil {
 		return err
 	}
 
-	if err := db.RegisterEntryType(patchID, deserialisePatchEntry); err != nil {
+	if err := db.RegisterEntryType(patchEntryType, deserialisePatchEntry); err != nil {
 		return err
 	}
 
-	if err := db.RegisterEntryType(televisionID, deserialiseTelevisionEntry); err != nil {
+	if err := db.RegisterEntryType(televisionEntryType, deserialiseTelevisionEntry); err != nil {
 		return err
 	}
 
@@ -96,10 +98,11 @@ func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader, resetVC
 		}
 
 		if set.matchCartHash(vcs.Mem.Cart.Hash) {
-			err := set.apply(vcs)
+			msg, err := set.apply(vcs)
 			if err != nil {
 				return err
 			}
+			logger.Logf("setup", msg)
 		}
 
 		return nil
