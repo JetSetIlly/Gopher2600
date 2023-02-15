@@ -1,4 +1,4 @@
-compileFlags = '-c 3 -B -wb=false'
+compileFlags = '-c 3 -B -wb=false -trimpath'
 
 # profilingRom = roms/Rsboxing.bin
 # profilingRom = "roms/starpath/02 - Communist Mutants From Space (Ntsc).mp3"
