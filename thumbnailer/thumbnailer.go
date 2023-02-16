@@ -35,6 +35,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/rewind"
+	"github.com/jetsetilly/gopher2600/setup"
 )
 
 // Thumbnailer type handles the emulation necessary for thumbnail image
@@ -181,7 +182,7 @@ func (thmb *Thumbnailer) CreateFromLoader(cartload cartridgeloader.Loader, numFr
 			thmb.isEmulating.Store(false)
 		}()
 
-		err := thmb.vcs.AttachCartridge(cartload, true)
+		err := setup.AttachCartridge(thmb.vcs, cartload, true)
 		if err != nil {
 			logger.Logf("thumbnailer", err.Error())
 			return
