@@ -225,31 +225,6 @@ func (mc *CPU) read8Bit(address uint16, phantom bool) (uint8, error) {
 	return val, nil
 }
 
-// read8BitZero returns 8bit value from the specified zero-page address
-//
-// side-effects:
-//   - calls cycleCallback after memory read
-func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
-	mc.PhantomMemAccess = false
-
-	val, err := mc.mem.Read(uint16(address))
-	if err != nil {
-		if !errors.Is(err, cpubus.AddressError) {
-			return 0, err
-		}
-		mc.LastResult.Error = err.Error()
-	}
-
-	// +1 cycle
-	mc.LastResult.Cycles++
-	err = mc.cycleCallback()
-	if err != nil {
-		return 0, err
-	}
-
-	return val, nil
-}
-
 // write8Bit writes 8 bits to the specified address. there are no side effects
 // on the state of the CPU which means that *cycleCallback must be called by the
 // calling function as appropriate*.
@@ -591,9 +566,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	// change during execution and be used to write back to memory
 	var value uint8
 
-	// whether the data-read should be a zero page read or not
-	var zeroPage bool
-
 	// sometimes the CPU may be reset mid-instruction. if this happens
 	// LastResult.Defn will be nil. there's nothing we can do except return
 	// immediately
@@ -670,8 +642,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// this part of the operation to the operator switch below
 
 	case instructions.ZeroPage:
-		zeroPage = true
-
 		// +1 cycle
 		//
 		// while we must trest the value as an address (ie. as uint16) we
@@ -872,8 +842,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		address = mc.acc16.Address()
 
 	case instructions.ZeroPageIndexedX:
-		zeroPage = true
-
 		// +1 cycles
 		err = mc.read8BitPC(loNibble)
 		if err != nil {
@@ -898,8 +866,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 	case instructions.ZeroPageIndexedY:
-		zeroPage = true
-
 		// used exclusively for LDX ZeroPage,y
 
 		// +1 cycles
@@ -939,21 +905,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	if !(defn.AddressingMode == instructions.Implied || defn.AddressingMode == instructions.Immediate) {
 		if defn.Effect == instructions.Read {
 			// +1 cycle
-			if zeroPage {
-				value, err = mc.read8BitZeroPage(uint8(address))
-			} else {
-				value, err = mc.read8Bit(address, false)
-			}
+			value, err = mc.read8Bit(address, false)
 			if err != nil {
 				return err
 			}
 		} else if defn.Effect == instructions.RMW {
 			// +1 cycle
-			if zeroPage {
-				value, err = mc.read8BitZeroPage(uint8(address))
-			} else {
-				value, err = mc.read8Bit(address, false)
-			}
+			value, err = mc.read8Bit(address, false)
 			if err != nil {
 				return err
 			}
