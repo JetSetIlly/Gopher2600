@@ -179,6 +179,11 @@ func (db *Session) readDBFile() error {
 			continue
 		}
 
+		// comment line
+		if strings.HasPrefix(lines[i], "#") {
+			continue
+		}
+
 		// loop through file until EOF is reached
 		fields := strings.SplitN(lines[i], fieldSep, numLeaderFields+1)
 
