@@ -327,12 +327,8 @@ func (ms *MissileSprite) tick() bool {
 	ms.Enclockifier.tick()
 
 	// tick delayed events. note that the order of these ticks is important.
-	if _, ok := ms.futureReset.Tick(); ok {
-		ms._futureResetPosition()
-	}
-	if v, ok := ms.futureStart.Tick(); ok {
-		ms._futureStartDrawingEvent(v)
-	}
+	ms.futureReset.Tick(ms._futureResetPosition)
+	ms.futureStart.Tick(ms._futureStartDrawingEvent)
 
 	return true
 }
@@ -398,7 +394,7 @@ func (ms *MissileSprite) resetPosition() {
 	ms.futureReset.Schedule(delay, 0)
 }
 
-func (ms *MissileSprite) _futureResetPosition() {
+func (ms *MissileSprite) _futureResetPosition(_ uint8) {
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
 	ms.ResetPixel = ms.tia.tv.GetCoords().Clock

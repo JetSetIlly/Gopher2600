@@ -202,7 +202,7 @@ func (vd *Video) RSYNC(adjustment int) {
 // Tick moves all video elements forward one video cycle. This is the
 // conceptual equivalent of the hardware MOTCK line.
 func (vd *Video) Tick() {
-	if v, ok := vd.writing.Tick(); ok {
+	vd.writing.Tick(func(v uint8) {
 		switch vd.writingRegister {
 		case cpubus.PF0:
 			vd.Playfield.setPF0(v)
@@ -236,62 +236,30 @@ func (vd *Video) Tick() {
 			vd.Player0.setOldGfxData()
 			vd.Ball.setEnableDelay()
 		}
-	}
+	})
 
 	// playfield mush tick every time regardless of hblank or hmove state
-	if vd.Playfield.tick() {
-		vd.tiaHasChanged = true
-	}
+	vd.tiaHasChanged = vd.Playfield.tick() || vd.tiaHasChanged
 
 	// ticking of sprites can be more selective
 	if *vd.tia.hblank {
-		if vd.Player0.tickHBLANK() {
-			vd.tiaHasChanged = true
-		}
-		if vd.Player1.tickHBLANK() {
-			vd.tiaHasChanged = true
-		}
-		if vd.Missile0.tickHBLANK() {
-			vd.tiaHasChanged = true
-		}
-		if vd.Missile1.tickHBLANK() {
-			vd.tiaHasChanged = true
-		}
-		if vd.Ball.tickHBLANK() {
-			vd.tiaHasChanged = true
-		}
+		vd.tiaHasChanged = vd.Player0.tickHBLANK() || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Player1.tickHBLANK() || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Missile0.tickHBLANK() || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Missile1.tickHBLANK() || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Ball.tickHBLANK() || vd.tiaHasChanged
 	} else if vd.tia.hmove.Clk {
-		if vd.Player0.tickHMOVE() {
-			vd.tiaHasChanged = true
-		}
-		if vd.Player1.tickHMOVE() {
-			vd.tiaHasChanged = true
-		}
-		if vd.Missile0.tickHMOVE() {
-			vd.tiaHasChanged = true
-		}
-		if vd.Missile1.tickHMOVE() {
-			vd.tiaHasChanged = true
-		}
-		if vd.Ball.tickHMOVE() {
-			vd.tiaHasChanged = true
-		}
+		vd.tiaHasChanged = vd.Player0.tickHMOVE() || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Player1.tickHMOVE() || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Missile0.tickHMOVE() || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Missile1.tickHMOVE() || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Ball.tickHMOVE() || vd.tiaHasChanged
 	} else {
-		if vd.Player0.tick() {
-			vd.tiaHasChanged = true
-		}
-		if vd.Player1.tick() {
-			vd.tiaHasChanged = true
-		}
-		if vd.Missile0.tick() {
-			vd.tiaHasChanged = true
-		}
-		if vd.Missile1.tick() {
-			vd.tiaHasChanged = true
-		}
-		if vd.Ball.tick() {
-			vd.tiaHasChanged = true
-		}
+		vd.tiaHasChanged = vd.Player0.tick() || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Player1.tick() || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Missile0.tick() || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Missile1.tick() || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Ball.tick() || vd.tiaHasChanged
 	}
 }
 

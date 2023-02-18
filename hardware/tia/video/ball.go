@@ -260,17 +260,13 @@ func (bs *BallSprite) tick() bool {
 	bs.Enclockifier.tick()
 
 	// tick delayed events
-	if _, ok := bs.futureReset.Tick(); ok {
-		bs._futureResetPosition()
-	}
-	if _, ok := bs.futureStart.Tick(); ok {
-		bs._futureStartDrawingEvent()
-	}
+	bs.futureReset.Tick(bs._futureResetPosition)
+	bs.futureStart.Tick(bs._futureStartDrawingEvent)
 
 	return true
 }
 
-func (bs *BallSprite) _futureStartDrawingEvent() {
+func (bs *BallSprite) _futureStartDrawingEvent(_ uint8) {
 	bs.Enclockifier.start()
 }
 
@@ -320,7 +316,7 @@ func (bs *BallSprite) resetPosition() {
 	bs.futureReset.Schedule(delay, 0)
 }
 
-func (bs *BallSprite) _futureResetPosition() {
+func (bs *BallSprite) _futureResetPosition(_ uint8) {
 	// end drawing of sprite in case it has started during the delay
 	// period. believe it or not, we can get rid of this and pixel output
 	// will still be correct (because of how the delayed END signal in the

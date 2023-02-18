@@ -317,15 +317,15 @@ func (tia *TIA) newScanline() {
 
 func (tia *TIA) resolveDelayedEvents() {
 	// actual vblank signal
-	if v, ok := tia.futureVblank.Tick(); ok {
+	tia.futureVblank.Tick(func(v uint8) {
 		tia.pendingEvents--
 		tia.sig &= ^signal.VBlank
 		if v&0x02 == 0x02 {
 			tia.sig |= signal.VBlank
 		}
-	}
+	})
 
-	if _, ok := tia.futureRsyncAlign.Tick(); ok {
+	tia.futureRsyncAlign.Tick(func(v uint8) {
 		tia.pendingEvents--
 		tia.newScanline()
 
@@ -336,26 +336,26 @@ func (tia *TIA) resolveDelayedEvents() {
 		if adj > 0 {
 			tia.Video.RSYNC(adj)
 		}
-	}
+	})
 
-	if _, ok := tia.futureRsyncReset.Tick(); ok {
+	tia.futureRsyncReset.Tick(func(v uint8) {
 		tia.pendingEvents--
 		tia.hsync = polycounter.ResetValue
 		tia.PClk = phaseclock.ResetValue
-	}
+	})
 
-	if _, ok := tia.Hmove.FutureLatch.Tick(); ok {
+	tia.Hmove.FutureLatch.Tick(func(v uint8) {
 		tia.pendingEvents--
 		tia.Hmove.Latch = true
-	}
+	})
 
-	if _, ok := tia.Hmove.Future.Tick(); ok {
+	tia.Hmove.Future.Tick(func(v uint8) {
 		tia.pendingEvents--
 		tia.Video.PrepareSpritesForHMOVE()
 		tia.Hmove.ResetRipple()
-	}
+	})
 
-	if _, ok := tia.futureHsync.Tick(); ok {
+	tia.futureHsync.Tick(func(v uint8) {
 		tia.pendingEvents--
 		switch tia.futureHsyncEvent {
 		case hsyncEventSHB:
@@ -371,7 +371,7 @@ func (tia *TIA) resolveDelayedEvents() {
 		case hsyncEventLRHB:
 			tia.Hblank = false
 		}
-	}
+	})
 }
 
 // Step moves the state of the tia forward one colour clock. If the state of

@@ -404,15 +404,9 @@ func (ps *PlayerSprite) tick() bool {
 	}
 
 	// tick delayed events
-	if v, ok := ps.futureSetNUSIZ.Tick(); ok {
-		ps._futureSetNUSIZ(v)
-	}
-	if _, ok := ps.futureReset.Tick(); ok {
-		ps._futureResetPosition()
-	}
-	if v, ok := ps.futureStart.Tick(); ok {
-		ps._futureStartDrawingEvent(v)
-	}
+	ps.futureSetNUSIZ.Tick(ps._futureSetNUSIZ)
+	ps.futureReset.Tick(ps._futureResetPosition)
+	ps.futureStart.Tick(ps._futureStartDrawingEvent)
 
 	return true
 }
@@ -548,7 +542,7 @@ func (ps *PlayerSprite) resetPosition() {
 	ps.futureReset.Schedule(delay, 0)
 }
 
-func (ps *PlayerSprite) _futureResetPosition() {
+func (ps *PlayerSprite) _futureResetPosition(_ uint8) {
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
 	ps.ResetPixel = ps.tia.tv.GetCoords().Clock

@@ -37,17 +37,15 @@ func (e *Event) Schedule(delay int, value uint8) {
 
 // Tick the event forward one cycle. Should be called once per color clock from
 // the TIA or TIA controlled subsystem (eg. the player sprite).
-func (e *Event) Tick() (uint8, bool) {
+func (e *Event) Tick(f func(v uint8)) {
 	if e.remaining == 0 || e.paused {
-		return 0, false
+		return
 	}
 
 	e.remaining--
 	if e.remaining == 0 {
-		return e.value, true
+		f(e.value)
 	}
-
-	return 0, false
 }
 
 // The number of remaining cycles.
