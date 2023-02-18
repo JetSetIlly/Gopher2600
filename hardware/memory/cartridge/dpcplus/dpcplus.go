@@ -21,7 +21,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -194,10 +193,6 @@ func (cart *dpcPlus) Access(addr uint16, peek bool) (uint8, uint8, error) {
 		return data, mapper.CartDrivenPins, nil
 	}
 
-	if addr > 0x0027 {
-		return 0, 0, fmt.Errorf("DPC+: %w: %04x", cpubus.AddressError, addr)
-	}
-
 	switch addr {
 	// random number generator
 	case 0x00:
@@ -331,10 +326,6 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		if cart.bankswitch(addr) {
 			return nil
 		}
-	}
-
-	if addr < 0x0028 || addr > 0x007f {
-		return fmt.Errorf("DPC+: %w: %04x", cpubus.AddressError, addr)
 	}
 
 	switch addr {
