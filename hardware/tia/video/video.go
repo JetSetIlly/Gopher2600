@@ -243,11 +243,17 @@ func (vd *Video) Tick() {
 
 	// ticking of sprites can be more selective
 	if *vd.tia.hblank {
-		vd.tiaHasChanged = vd.Player0.tickHBLANK() || vd.tiaHasChanged
-		vd.tiaHasChanged = vd.Player1.tickHBLANK() || vd.tiaHasChanged
-		vd.tiaHasChanged = vd.Missile0.tickHBLANK() || vd.tiaHasChanged
-		vd.tiaHasChanged = vd.Missile1.tickHBLANK() || vd.tiaHasChanged
-		vd.tiaHasChanged = vd.Ball.tickHBLANK() || vd.tiaHasChanged
+		if vd.tia.hmove.Clk {
+			// we can check the state of MoreHMOVE for each sprite before
+			// calling tickHBLANK() because sprites are *only* ticked by the
+			// HMOVE Clk when HBLANK is active - and if MoreHMOVE is false
+			// there is nothing else to do
+			vd.tiaHasChanged = (vd.Player0.MoreHMOVE && vd.Player0.tickHBLANK()) || vd.tiaHasChanged
+			vd.tiaHasChanged = (vd.Player1.MoreHMOVE && vd.Player1.tickHBLANK()) || vd.tiaHasChanged
+			vd.tiaHasChanged = (vd.Missile0.MoreHMOVE && vd.Missile0.tickHBLANK()) || vd.tiaHasChanged
+			vd.tiaHasChanged = (vd.Missile1.MoreHMOVE && vd.Missile1.tickHBLANK()) || vd.tiaHasChanged
+			vd.tiaHasChanged = (vd.Ball.MoreHMOVE && vd.Ball.tickHBLANK()) || vd.tiaHasChanged
+		}
 	} else if vd.tia.hmove.Clk {
 		vd.tiaHasChanged = vd.Player0.tickHMOVE() || vd.tiaHasChanged
 		vd.tiaHasChanged = vd.Player1.tickHMOVE() || vd.tiaHasChanged

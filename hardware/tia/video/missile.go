@@ -227,11 +227,6 @@ func (ms *MissileSprite) rsync(adjustment int) {
 }
 
 func (ms *MissileSprite) tickHBLANK() bool {
-	// early return if nothing to do
-	if !ms.tia.hmove.Clk {
-		return false
-	}
-
 	// check to see if there is more movement required for this sprite
 	ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.tia.hmove.Ripple, ms.Hmove)
 	if !ms.MoreHMOVE {

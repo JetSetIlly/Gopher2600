@@ -198,11 +198,6 @@ func (bs *BallSprite) rsync(adjustment int) {
 }
 
 func (bs *BallSprite) tickHBLANK() bool {
-	// early return if nothing to do
-	if !bs.tia.hmove.Clk {
-		return false
-	}
-
 	// check to see if there is more movement required for this sprite
 	bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(bs.tia.hmove.Ripple, bs.Hmove)
 	if !bs.MoreHMOVE {

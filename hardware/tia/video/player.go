@@ -286,11 +286,6 @@ func (ps *PlayerSprite) rsync(adjustment int) {
 }
 
 func (ps *PlayerSprite) tickHBLANK() bool {
-	// early return if nothing to do
-	if !ps.tia.hmove.Clk {
-		return false
-	}
-
 	// check to see if there is more movement required for this sprite
 	ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.tia.hmove.Ripple, ps.Hmove)
 	if !ps.MoreHMOVE {
