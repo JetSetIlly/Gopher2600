@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // the number of synced frames where we can expect things to be in flux.
@@ -406,7 +407,7 @@ func (tv *Television) End() error {
 }
 
 // Signal updates the current state of the television.
-func (tv *Television) Signal(sig signal.SignalAttributes) error {
+func (tv *Television) Signal(sig signal.SignalAttributes) {
 	// examine signal for resizing possibility.
 	//
 	// throttle how often we do this because it's an expensive operation. the
@@ -458,7 +459,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 			if !tv.state.vsyncActive {
 				err := tv.newFrame(false)
 				if err != nil {
-					return err
+					logger.Log("TV", err.Error())
 				}
 			} else {
 				tv.state.scanline = specification.AbsoluteMaxScanlines - 1
@@ -467,7 +468,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 			// if we're not at end of screen then indicate new scanline
 			err := tv.newScanline()
 			if err != nil {
-				return err
+				logger.Log("TV", err.Error())
 			}
 		}
 	}
@@ -503,7 +504,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 			if tv.state.vsyncClocks > 10 {
 				err := tv.newFrame(true)
 				if err != nil {
-					return err
+					logger.Log("TV", err.Error())
 				}
 			}
 			tv.state.vsyncActive = false
@@ -557,10 +558,11 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 
 	// record signal history
 	if tv.currentSignalIdx >= len(tv.signals) {
-		return tv.renderSignals()
+		err := tv.renderSignals()
+		if err != nil {
+			logger.Log("TV", err.Error())
+		}
 	}
-
-	return nil
 }
 
 func (tv *Television) newScanline() error {

@@ -36,7 +36,7 @@ import (
 
 // TV defines the television functions required by the TIA type.
 type TV interface {
-	Signal(signal.SignalAttributes) error
+	Signal(signal.SignalAttributes)
 	GetCoords() coords.TelevisionCoords
 }
 
@@ -378,14 +378,15 @@ func (tia *TIA) resolveDelayedEvents() {
 // TIA memory has changed then the changes will propogate at the correct time.
 // If the state of TIA memory has not changed then execution will be diverted
 // to QuickStep().
-func (tia *TIA) Step(reg chipbus.ChangedRegister) error {
+func (tia *TIA) Step(reg chipbus.ChangedRegister) {
 	// make alterations to video state and playfield
 	update := tia.Update(reg)
 
 	// if update has happened we can jump to QuickStep() for the remainder of
 	// the Step() process
 	if !update {
-		return tia.QuickStep()
+		tia.QuickStep()
+		return
 	}
 
 	// update debugging information
@@ -626,17 +627,12 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister) error {
 	}
 
 	// send signal to television
-	if err := tia.tv.Signal(tia.sig); err != nil {
-		// TODO: handle error
-		return fmt.Errorf("TIA: %w", err)
-	}
-
-	return nil
+	tia.tv.Signal(tia.sig)
 }
 
 // QuickStep ticks the TIA forward one colour clock without checking to see if
 // the state of TIA memory has changed.
-func (tia *TIA) QuickStep() error {
+func (tia *TIA) QuickStep() {
 	// update debugging information
 	tia.videoCycles++
 
@@ -808,10 +804,5 @@ func (tia *TIA) QuickStep() error {
 	}
 
 	// send signal to television
-	if err := tia.tv.Signal(tia.sig); err != nil {
-		// TODO: handle error
-		return fmt.Errorf("TIA: %w", err)
-	}
-
-	return nil
+	tia.tv.Signal(tia.sig)
 }
