@@ -142,9 +142,14 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 
 		var err error
 
-		section.data, err = sec.Data()
-		if err != nil {
-			return nil, fmt.Errorf("ELF: %w", err)
+		// starting with go1.20 reading from a no bit section is
+		if sec.SectionHeader.Type == elf.SHT_NOBITS {
+			section.data = make([]uint8, sec.FileSize)
+		} else {
+			section.data, err = sec.Data()
+			if err != nil {
+				return nil, fmt.Errorf("ELF: %w", err)
+			}
 		}
 
 		// we know about and record data for all sections but we don't load all of them into the corprocessor's memory

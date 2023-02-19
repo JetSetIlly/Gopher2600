@@ -305,7 +305,7 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) {
 	cart.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)
 
 	// if address is the reset address then trigger the reset procedure
-	if (addr&memorymap.CartridgeBits)|memorymap.OriginCart == cpubus.Reset {
+	if (addr&memorymap.CartridgeBits)|memorymap.OriginCart == (cpubus.Reset&memorymap.CartridgeBits)|memorymap.OriginCart {
 		cart.reset()
 	}
 
