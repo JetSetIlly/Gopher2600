@@ -29,8 +29,10 @@ type Static struct {
 	customROM []byte
 
 	// slices of cartData that will be modified during execution
-	driverRAM    []byte
-	dataRAM      []byte
+	driverRAM []byte
+	dataRAM   []byte
+
+	// variablesRAM might be absent in the case of CDFJ+
 	variablesRAM []byte
 }
 
@@ -49,14 +51,21 @@ func (cart *cdf) newCDFstatic(instance *instance.Instance, cartData []byte, r ve
 
 	// there is nothing in cartData to copy into the other RAM areas
 	stc.dataRAM = make([]byte, stc.version.dataMemtopRAM-stc.version.dataOriginRAM+1)
-	stc.variablesRAM = make([]byte, stc.version.variablesMemtopRAM-stc.version.variablesOriginRAM+1)
+
+	// variables ram is not used in CDFJ+
+	if stc.version.variablesMemtopRAM > stc.version.variablesMemtopRAM {
+		stc.variablesRAM = make([]byte, stc.version.variablesMemtopRAM-stc.version.variablesOriginRAM+1)
+	}
 
 	if instance.Prefs.RandomState.Get().(bool) {
 		for i := range stc.dataRAM {
 			stc.dataRAM[i] = uint8(instance.Random.NoRewind(0xff))
 		}
-		for i := range stc.variablesRAM {
-			stc.variablesRAM[i] = uint8(instance.Random.NoRewind(0xff))
+
+		if stc.variablesRAM != nil {
+			for i := range stc.variablesRAM {
+				stc.variablesRAM[i] = uint8(instance.Random.NoRewind(0xff))
+			}
 		}
 	}
 
@@ -85,10 +94,14 @@ func (stc *Static) Snapshot() *Static {
 	n := *stc
 	n.driverRAM = make([]byte, len(stc.driverRAM))
 	n.dataRAM = make([]byte, len(stc.dataRAM))
-	n.variablesRAM = make([]byte, len(stc.variablesRAM))
 	copy(n.driverRAM, stc.driverRAM)
 	copy(n.dataRAM, stc.dataRAM)
-	copy(n.variablesRAM, stc.variablesRAM)
+
+	if stc.variablesRAM != nil {
+		n.variablesRAM = make([]byte, len(stc.variablesRAM))
+		copy(n.variablesRAM, stc.variablesRAM)
+	}
+
 	return &n
 }
 
@@ -102,8 +115,10 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	}
 
 	// variables (RAM)
-	if addr >= stc.version.variablesOriginRAM && addr <= stc.version.variablesMemtopRAM {
-		return &stc.variablesRAM, addr - stc.version.variablesOriginRAM
+	if stc.variablesRAM != nil {
+		if addr >= stc.version.variablesOriginRAM && addr <= stc.version.variablesMemtopRAM {
+			return &stc.variablesRAM, addr - stc.version.variablesOriginRAM
+		}
 	}
 
 	// custom ARM code (ROM)
@@ -132,7 +147,7 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 
 // Segments implements the mapper.CartStatic interface
 func (stc *Static) Segments() []mapper.CartStaticSegment {
-	return []mapper.CartStaticSegment{
+	segments := []mapper.CartStaticSegment{
 		mapper.CartStaticSegment{
 			Name:   "Driver",
 			Origin: stc.version.driverOriginRAM,
@@ -143,12 +158,15 @@ func (stc *Static) Segments() []mapper.CartStaticSegment {
 			Origin: stc.version.dataOriginRAM,
 			Memtop: stc.version.dataMemtopRAM,
 		},
-		mapper.CartStaticSegment{
+	}
+	if stc.variablesRAM != nil {
+		segments = append(segments, mapper.CartStaticSegment{
 			Name:   "Variables",
 			Origin: stc.version.variablesOriginRAM,
 			Memtop: stc.version.variablesMemtopRAM,
-		},
+		})
 	}
+	return segments
 }
 
 // Reference implements the mapper.CartStatic interface
@@ -159,7 +177,7 @@ func (stc *Static) Reference(segment string) ([]uint8, bool) {
 	case "Data":
 		return stc.dataRAM, true
 	case "Variables":
-		return stc.variablesRAM, true
+		return stc.variablesRAM, stc.variablesRAM != nil
 	}
 	return []uint8{}, false
 }
@@ -216,10 +234,12 @@ func (cart *cdf) PutStatic(segment string, idx int, data uint8) bool {
 		cart.state.static.dataRAM[idx] = data
 
 	case "Variables":
-		if idx >= len(cart.state.static.variablesRAM) {
-			return false
+		if cart.state.static.variablesRAM != nil {
+			if idx >= len(cart.state.static.variablesRAM) {
+				return false
+			}
+			cart.state.static.variablesRAM[idx] = data
 		}
-		cart.state.static.variablesRAM[idx] = data
 
 	default:
 		return false
