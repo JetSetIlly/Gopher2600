@@ -53,7 +53,7 @@ func (cart *cdf) newCDFstatic(instance *instance.Instance, cartData []byte, r ve
 	stc.dataRAM = make([]byte, stc.version.dataMemtopRAM-stc.version.dataOriginRAM+1)
 
 	// variables ram is not used in CDFJ+
-	if stc.version.variablesMemtopRAM > stc.version.variablesMemtopRAM {
+	if stc.version.variablesOriginRAM != stc.version.variablesMemtopRAM {
 		stc.variablesRAM = make([]byte, stc.version.variablesMemtopRAM-stc.version.variablesOriginRAM+1)
 	}
 
