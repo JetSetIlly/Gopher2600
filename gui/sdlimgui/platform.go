@@ -27,14 +27,16 @@ import (
 
 const windowTitle = "Gopher2600"
 
-const maxGamepads = 10
+// maximum number of controllers. gamepads and "joysticks" are counted separately
+const maxControllers = 4
 
 type platform struct {
 	img    *SdlImgui
 	window *sdl.Window
 	mode   sdl.DisplayMode
 
-	gamepad []*sdl.GameController
+	gamepads  []*sdl.GameController
+	joysticks []*sdl.Joystick
 
 	// trickle mouse buttons
 	trickleMouseButtonLeft  trickleMouseButton
@@ -116,18 +118,34 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	plt.glSetSwapInterval(0)
 
 	// open all available gamepads
-	plt.gamepad = make([]*sdl.GameController, 0, maxGamepads)
-
-	for i := 0; i < maxGamepads; i++ {
+	plt.gamepads = make([]*sdl.GameController, 0, maxControllers)
+	for i := 0; i < maxControllers; i++ {
 		pad := sdl.GameControllerOpen(i)
 		if pad.Attached() {
 			logger.Logf("sdl", "gamepad: %s", pad.Name())
-			plt.gamepad = append(plt.gamepad, pad)
+			plt.gamepads = append(plt.gamepads, pad)
 		}
 	}
 
-	if len(plt.gamepad) == 0 {
-		logger.Log("sdl", "no gamepad found")
+	// adding joysticks and being careful not to add a joystick that is part of a gamepad
+	plt.joysticks = make([]*sdl.Joystick, 0, maxControllers)
+addingJoysticks:
+	for i := 0; i < maxControllers; i++ {
+		joy := sdl.JoystickOpen(i)
+		if joy.Attached() {
+			for _, pad := range plt.gamepads {
+				if pad.Joystick().InstanceID() == joy.InstanceID() {
+					continue addingJoysticks
+				}
+			}
+
+			logger.Logf("sdl", "joystick: %s", joy.Name())
+			plt.joysticks = append(plt.joysticks, joy)
+		}
+	}
+
+	if len(plt.gamepads) == 0 && len(plt.joysticks) == 0 {
+		logger.Log("sdl", "no gamepad/joysticks found")
 	}
 
 	return plt, nil
@@ -141,7 +159,7 @@ func (plt *platform) glSetSwapInterval(i int) {
 
 // destroy cleans up the resources.
 func (plt *platform) destroy() error {
-	for _, pad := range plt.gamepad {
+	for _, pad := range plt.gamepads {
 		pad.Close()
 	}
 
