@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"fmt"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -27,10 +28,15 @@ import (
 
 const windowTitle = "Gopher2600"
 
-// the controller interface is implemented by SDL joysticks and gamepads. From our point
-// of view we only need to close the controller when we are done with it
-type controller interface {
+// the closeController interface is implemented by SDL joysticks and gamepads. From our point
+// of view we only need to close the closeController when we are done with it
+type closeController interface {
 	Close()
+}
+
+type controller struct {
+	closeController
+	isStelladaptor bool
 }
 
 // global control of gamepad support
@@ -129,13 +135,16 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 			pad = sdl.GameControllerOpen(i)
 		}
 		if supportGamepads && pad.Attached() {
-			logger.Logf("sdl", "gamepad: %s", pad.Name())
-			plt.joysticks = append(plt.joysticks, pad)
+			logger.Logf("sdl", "gamepad: %s", pad.Joystick().Name())
+			plt.joysticks = append(plt.joysticks, controller{closeController: pad})
 		} else {
 			joy := sdl.JoystickOpen(i)
 			if joy.Attached() {
 				logger.Logf("sdl", "joystick: %s", joy.Name())
-				plt.joysticks = append(plt.joysticks, joy)
+				plt.joysticks = append(plt.joysticks, controller{
+					closeController: joy,
+					isStelladaptor:  strings.Contains(strings.ToLower(joy.Name()), "stelladaptor"),
+				})
 			}
 		}
 	}

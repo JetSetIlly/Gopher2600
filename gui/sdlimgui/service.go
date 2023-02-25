@@ -183,7 +183,6 @@ func (img *SdlImgui) Service() {
 			}
 
 		case *sdl.JoyButtonEvent:
-			logger.Logf("joystick event", "%#v", ev)
 			img.smartHideCursor(true)
 
 			button := userinput.GamepadButtonNone
@@ -217,7 +216,6 @@ func (img *SdlImgui) Service() {
 			}
 
 		case *sdl.JoyHatEvent:
-			logger.Logf("joystick event", "%#v", ev)
 			img.smartHideCursor(true)
 
 			dir := userinput.DPadNone
@@ -254,8 +252,39 @@ func (img *SdlImgui) Service() {
 			}
 
 		case *sdl.JoyAxisEvent:
-			logger.Logf("joystick event", "%#v", ev)
-			if supportGamepads {
+			if img.plt.joysticks[ev.Which].isStelladaptor {
+				joy := sdl.JoystickFromInstanceID(ev.Which)
+
+				var vert int16
+				switch joy.Axis(1) {
+				case -32768:
+					// up
+					vert = -userinput.StickDeadzone - 1
+				case 32767:
+					// down
+					vert = userinput.StickDeadzone + 1
+				}
+
+				var horiz int16
+				switch joy.Axis(0) {
+				case -32768:
+					// left
+					horiz = -userinput.StickDeadzone - 1
+				case 32767:
+					// right
+					horiz = userinput.StickDeadzone + 1
+				}
+
+				select {
+				case img.userinput <- userinput.EventGamepadThumbstick{
+					ID:    plugging.PortLeftPlayer,
+					Horiz: horiz,
+					Vert:  vert,
+				}:
+				default:
+					logger.Log("sdlimgui", "dropped stelladaptor event")
+				}
+			} else {
 				pad := sdl.GameControllerFromInstanceID(ev.Which)
 				if pad.Axis(0) > userinput.StickDeadzone || pad.Axis(0) < -userinput.StickDeadzone ||
 					pad.Axis(1) > userinput.StickDeadzone || pad.Axis(1) < -userinput.StickDeadzone ||
