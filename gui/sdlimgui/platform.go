@@ -27,16 +27,21 @@ import (
 
 const windowTitle = "Gopher2600"
 
-// maximum number of controllers. gamepads and "joysticks" are counted separately
-const maxControllers = 4
+// the controller interface is implemented by SDL joysticks and gamepads. From our point
+// of view we only need to close the controller when we are done with it
+type controller interface {
+	Close()
+}
+
+// global control of gamepad support
+const supportGamepads = true
 
 type platform struct {
 	img    *SdlImgui
 	window *sdl.Window
 	mode   sdl.DisplayMode
 
-	gamepads  []*sdl.GameController
-	joysticks []*sdl.Joystick
+	joysticks []controller
 
 	// trickle mouse buttons
 	trickleMouseButtonLeft  trickleMouseButton
@@ -117,35 +122,26 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	// default to disabled vsync
 	plt.glSetSwapInterval(0)
 
-	// open all available gamepads
-	plt.gamepads = make([]*sdl.GameController, 0, maxControllers)
-	for i := 0; i < maxControllers; i++ {
-		pad := sdl.GameControllerOpen(i)
-		if pad.Attached() {
+	// add joysticks
+	for i := 0; i < sdl.NumJoysticks(); i++ {
+		var pad *sdl.GameController
+		if supportGamepads {
+			pad = sdl.GameControllerOpen(i)
+		}
+		if supportGamepads && pad.Attached() {
 			logger.Logf("sdl", "gamepad: %s", pad.Name())
-			plt.gamepads = append(plt.gamepads, pad)
-		}
-	}
-
-	// adding joysticks and being careful not to add a joystick that is part of a gamepad
-	plt.joysticks = make([]*sdl.Joystick, 0, maxControllers)
-addingJoysticks:
-	for i := 0; i < maxControllers; i++ {
-		joy := sdl.JoystickOpen(i)
-		if joy.Attached() {
-			for _, pad := range plt.gamepads {
-				if pad.Joystick().InstanceID() == joy.InstanceID() {
-					continue addingJoysticks
-				}
+			plt.joysticks = append(plt.joysticks, pad)
+		} else {
+			joy := sdl.JoystickOpen(i)
+			if joy.Attached() {
+				logger.Logf("sdl", "joystick: %s", joy.Name())
+				plt.joysticks = append(plt.joysticks, joy)
 			}
-
-			logger.Logf("sdl", "joystick: %s", joy.Name())
-			plt.joysticks = append(plt.joysticks, joy)
 		}
 	}
 
-	if len(plt.gamepads) == 0 && len(plt.joysticks) == 0 {
-		logger.Log("sdl", "no gamepad/joysticks found")
+	if len(plt.joysticks) == 0 {
+		logger.Log("sdl", "no joysticks/gamepads found")
 	}
 
 	return plt, nil
@@ -159,8 +155,8 @@ func (plt *platform) glSetSwapInterval(i int) {
 
 // destroy cleans up the resources.
 func (plt *platform) destroy() error {
-	for _, pad := range plt.gamepads {
-		pad.Close()
+	for _, joy := range plt.joysticks {
+		joy.Close()
 	}
 
 	if plt.window != nil {

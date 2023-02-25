@@ -183,6 +183,7 @@ func (img *SdlImgui) Service() {
 			}
 
 		case *sdl.JoyButtonEvent:
+			logger.Logf("joystick event", "%#v", ev)
 			img.smartHideCursor(true)
 
 			button := userinput.GamepadButtonNone
@@ -216,6 +217,7 @@ func (img *SdlImgui) Service() {
 			}
 
 		case *sdl.JoyHatEvent:
+			logger.Logf("joystick event", "%#v", ev)
 			img.smartHideCursor(true)
 
 			dir := userinput.DPadNone
@@ -252,62 +254,64 @@ func (img *SdlImgui) Service() {
 			}
 
 		case *sdl.JoyAxisEvent:
-			pad := sdl.GameControllerFromInstanceID(ev.Which)
-
-			if pad.Axis(0) > userinput.StickDeadzone || pad.Axis(0) < -userinput.StickDeadzone ||
-				pad.Axis(1) > userinput.StickDeadzone || pad.Axis(1) < -userinput.StickDeadzone ||
-				pad.Axis(3) > userinput.StickDeadzone || pad.Axis(3) < -userinput.StickDeadzone ||
-				pad.Axis(4) > userinput.StickDeadzone || pad.Axis(4) < -userinput.StickDeadzone {
-				img.smartHideCursor(true)
-			}
-
-			switch ev.Axis {
-			case 0:
-				fallthrough
-			case 1:
-				select {
-				case img.userinput <- userinput.EventGamepadThumbstick{
-					ID:         plugging.PortLeftPlayer,
-					Thumbstick: userinput.GamepadThumbstickLeft,
-					Horiz:      pad.Axis(0),
-					Vert:       pad.Axis(1),
-				}:
-				default:
-					logger.Log("sdlimgui", "dropped gamepad axis event")
+			logger.Logf("joystick event", "%#v", ev)
+			if supportGamepads {
+				pad := sdl.GameControllerFromInstanceID(ev.Which)
+				if pad.Axis(0) > userinput.StickDeadzone || pad.Axis(0) < -userinput.StickDeadzone ||
+					pad.Axis(1) > userinput.StickDeadzone || pad.Axis(1) < -userinput.StickDeadzone ||
+					pad.Axis(3) > userinput.StickDeadzone || pad.Axis(3) < -userinput.StickDeadzone ||
+					pad.Axis(4) > userinput.StickDeadzone || pad.Axis(4) < -userinput.StickDeadzone {
+					img.smartHideCursor(true)
 				}
-			case 3:
-				fallthrough
-			case 4:
-				select {
-				case img.userinput <- userinput.EventGamepadThumbstick{
-					ID:         plugging.PortLeftPlayer,
-					Thumbstick: userinput.GamepadThumbstickRight,
-					Horiz:      pad.Axis(3),
-					Vert:       pad.Axis(4),
-				}:
+
+				switch ev.Axis {
+				case 0:
+					fallthrough
+				case 1:
+					select {
+					case img.userinput <- userinput.EventGamepadThumbstick{
+						ID:         plugging.PortLeftPlayer,
+						Thumbstick: userinput.GamepadThumbstickLeft,
+						Horiz:      pad.Axis(0),
+						Vert:       pad.Axis(1),
+					}:
+					default:
+						logger.Log("sdlimgui", "dropped gamepad axis event")
+					}
+				case 3:
+					fallthrough
+				case 4:
+					select {
+					case img.userinput <- userinput.EventGamepadThumbstick{
+						ID:         plugging.PortLeftPlayer,
+						Thumbstick: userinput.GamepadThumbstickRight,
+						Horiz:      pad.Axis(3),
+						Vert:       pad.Axis(4),
+					}:
+					default:
+						logger.Log("sdlimgui", "dropped gamepad axis event")
+					}
 				default:
-					logger.Log("sdlimgui", "dropped gamepad axis event")
 				}
-			default:
-			}
 
-			trigger := userinput.GamepadTriggerNone
-			switch ev.Axis {
-			case 2:
-				trigger = userinput.GamepadTriggerLeft
-			case 5:
-				trigger = userinput.GamepadTriggerRight
-			}
+				trigger := userinput.GamepadTriggerNone
+				switch ev.Axis {
+				case 2:
+					trigger = userinput.GamepadTriggerLeft
+				case 5:
+					trigger = userinput.GamepadTriggerRight
+				}
 
-			if trigger != userinput.GamepadTriggerNone {
-				select {
-				case img.userinput <- userinput.EventGamepadTrigger{
-					ID:      plugging.PortLeftPlayer,
-					Trigger: trigger,
-					Amount:  ev.Value,
-				}:
-				default:
-					logger.Log("sdlimgui", "dropped gamepad axis event")
+				if trigger != userinput.GamepadTriggerNone {
+					select {
+					case img.userinput <- userinput.EventGamepadTrigger{
+						ID:      plugging.PortLeftPlayer,
+						Trigger: trigger,
+						Amount:  ev.Value,
+					}:
+					default:
+						logger.Log("sdlimgui", "dropped gamepad axis event")
+					}
 				}
 			}
 		}
