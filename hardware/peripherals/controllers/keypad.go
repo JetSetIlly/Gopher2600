@@ -47,9 +47,9 @@ func NewKeypad(instance *instance.Instance, port plugging.PortID, bus ports.Peri
 	}
 
 	switch port {
-	case plugging.PortLeftPlayer:
+	case plugging.PortLeft:
 		key.column = [3]chipbus.Register{chipbus.INPT0, chipbus.INPT1, chipbus.INPT4}
-	case plugging.PortRightPlayer:
+	case plugging.PortRight:
 		key.column = [3]chipbus.Register{chipbus.INPT2, chipbus.INPT3, chipbus.INPT5}
 	}
 
@@ -149,9 +149,9 @@ func (key *Keypad) Update(data chipbus.ChangedRegister) bool {
 		var v uint8
 
 		switch key.port {
-		case plugging.PortLeftPlayer:
+		case plugging.PortLeft:
 			v = data.Value & 0xf0
-		case plugging.PortRightPlayer:
+		case plugging.PortRight:
 			v = (data.Value & 0x0f) << 4
 		}
 

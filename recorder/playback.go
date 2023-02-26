@@ -132,9 +132,9 @@ func NewPlayback(transcript string, checkROM bool) (*Playback, error) {
 			case -1:
 				entry.event.Port = plugging.PortUnplugged
 			case 1:
-				entry.event.Port = plugging.PortLeftPlayer
+				entry.event.Port = plugging.PortLeft
 			case 2:
-				entry.event.Port = plugging.PortRightPlayer
+				entry.event.Port = plugging.PortRight
 			case 3:
 				entry.event.Port = plugging.PortPanel
 			default:

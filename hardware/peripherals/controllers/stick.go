@@ -60,9 +60,9 @@ func NewStick(instance *instance.Instance, port plugging.PortID, bus ports.Perip
 	}
 
 	switch port {
-	case plugging.PortLeftPlayer:
+	case plugging.PortLeft:
 		stk.buttonInptx = chipbus.INPT4
-	case plugging.PortRightPlayer:
+	case plugging.PortRight:
 		stk.buttonInptx = chipbus.INPT5
 	}
 

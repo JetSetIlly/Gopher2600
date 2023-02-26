@@ -148,12 +148,12 @@ func (p *Ports) Plug(port plugging.PortID, c NewPeripheral) error {
 			p.Panel.Unplug()
 		}
 		p.Panel = periph
-	case plugging.PortLeftPlayer:
+	case plugging.PortLeft:
 		if p.LeftPlayer != nil {
 			p.LeftPlayer.Unplug()
 		}
 		p.LeftPlayer = periph
-	case plugging.PortRightPlayer:
+	case plugging.PortRight:
 		if p.RightPlayer != nil {
 			p.RightPlayer.Unplug()
 		}
@@ -343,8 +343,8 @@ func (p *Ports) AttachPlugMonitor(m plugging.PlugMonitor) {
 
 	// notify monitor of currently plugged peripherals
 	if p.monitor != nil {
-		p.monitor.Plugged(plugging.PortLeftPlayer, p.LeftPlayer.ID())
-		p.monitor.Plugged(plugging.PortRightPlayer, p.RightPlayer.ID())
+		p.monitor.Plugged(plugging.PortLeft, p.LeftPlayer.ID())
+		p.monitor.Plugged(plugging.PortRight, p.RightPlayer.ID())
 	}
 }
 
@@ -353,9 +353,9 @@ func (p *Ports) PeripheralID(id plugging.PortID) plugging.PeripheralID {
 	switch id {
 	case plugging.PortPanel:
 		return p.Panel.ID()
-	case plugging.PortLeftPlayer:
+	case plugging.PortLeft:
 		return p.LeftPlayer.ID()
-	case plugging.PortRightPlayer:
+	case plugging.PortRight:
 		return p.RightPlayer.ID()
 	}
 
@@ -365,12 +365,12 @@ func (p *Ports) PeripheralID(id plugging.PortID) plugging.PeripheralID {
 // WriteSWCHx implements the peripheral.PeripheralBus interface.
 func (p *Ports) WriteSWCHx(id plugging.PortID, data uint8) {
 	switch id {
-	case plugging.PortLeftPlayer:
+	case plugging.PortLeft:
 		data &= 0xf0               // keep only the bits for player 0
 		data |= p.swcha_mux & 0x0f // combine with the existing player 1 bits
 		p.swcha_mux = data
 		p.riot.ChipWrite(chipbus.SWCHA, p.deriveSWCHA())
-	case plugging.PortRightPlayer:
+	case plugging.PortRight:
 		data = (data & 0xf0) >> 4  // move bits into the player 1 nibble
 		data |= p.swcha_mux & 0xf0 // combine with the existing player 0 bits
 		p.swcha_mux = data
@@ -407,9 +407,9 @@ func (p *Ports) HandleInputEvent(inp InputEvent) (bool, error) {
 	switch inp.Port {
 	case plugging.PortPanel:
 		handled, err = p.Panel.HandleEvent(inp.Ev, inp.D)
-	case plugging.PortLeftPlayer:
+	case plugging.PortLeft:
 		handled, err = p.LeftPlayer.HandleEvent(inp.Ev, inp.D)
-	case plugging.PortRightPlayer:
+	case plugging.PortRight:
 		handled, err = p.RightPlayer.HandleEvent(inp.Ev, inp.D)
 	}
 

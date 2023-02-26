@@ -1623,9 +1623,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		var id plugging.PortID
 		switch strings.ToUpper(player) {
 		case "LEFT":
-			id = plugging.PortLeftPlayer
+			id = plugging.PortLeft
 		case "RIGHT":
-			id = plugging.PortRightPlayer
+			id = plugging.PortRight
 		}
 
 		var err error
@@ -1782,10 +1782,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 		switch port {
 		case "LEFT":
-			inp := ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: event, D: value}
+			inp := ports.InputEvent{Port: plugging.PortLeft, Ev: event, D: value}
 			_, err = dbg.vcs.Input.HandleInputEvent(inp)
 		case "RIGHT":
-			inp := ports.InputEvent{Port: plugging.PortRightPlayer, Ev: event, D: value}
+			inp := ports.InputEvent{Port: plugging.PortRight, Ev: event, D: value}
 			_, err = dbg.vcs.Input.HandleInputEvent(inp)
 		}
 
@@ -1802,18 +1802,18 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		switch port {
 		case "LEFT":
 			if strings.ToUpper(key) == "NONE" {
-				inp := ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.KeypadUp, D: nil}
+				inp := ports.InputEvent{Port: plugging.PortLeft, Ev: ports.KeypadUp, D: nil}
 				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			} else {
-				inp := ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.KeypadDown, D: rune(key[0])}
+				inp := ports.InputEvent{Port: plugging.PortLeft, Ev: ports.KeypadDown, D: rune(key[0])}
 				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			}
 		case "RIGHT":
 			if strings.ToUpper(key) == "NONE" {
-				inp := ports.InputEvent{Port: plugging.PortRightPlayer, Ev: ports.KeypadUp, D: nil}
+				inp := ports.InputEvent{Port: plugging.PortRight, Ev: ports.KeypadUp, D: nil}
 				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			} else {
-				inp := ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.KeypadDown, D: rune(key[0])}
+				inp := ports.InputEvent{Port: plugging.PortLeft, Ev: ports.KeypadDown, D: rune(key[0])}
 				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			}
 		}

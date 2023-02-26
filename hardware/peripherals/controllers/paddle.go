@@ -72,10 +72,10 @@ func NewPaddle(instance *instance.Instance, port plugging.PortID, bus ports.Peri
 
 	// !!TODO: support for paddle player 3 and paddle player 4
 	switch port {
-	case plugging.PortLeftPlayer:
+	case plugging.PortLeft:
 		pdl.inptx = chipbus.INPT0
 		pdl.buttonMask = 0x80
-	case plugging.PortRightPlayer:
+	case plugging.PortRight:
 		pdl.inptx = chipbus.INPT1
 		pdl.buttonMask = 0x40
 	}
@@ -112,7 +112,7 @@ func (pdl *Paddle) PortID() plugging.PortID {
 
 // ID implements the ports.Peripheral interface.
 func (pdl *Paddle) ID() plugging.PeripheralID {
-	return plugging.PeriphPaddle
+	return plugging.PeriphPaddles
 }
 
 // HandleEvent implements the ports.Peripheral interface.
@@ -149,14 +149,13 @@ func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) (bool, e
 		var r float32
 
 		switch d := data.(type) {
-		case float32:
-			r = d
+		case ports.EventDataPaddle:
+			// TODO: support vert paddle
+			r = d[0]
 		case ports.EventDataPlayback:
-			f, err := strconv.ParseFloat(string(d), 32)
-			if err != nil {
-				return false, fmt.Errorf("paddle: %v: unexpected event data", event)
-			}
-			r = float32(f)
+			var vals ports.EventDataPaddle
+			vals.FromString(string(d))
+			r = vals[0]
 		default:
 			return false, fmt.Errorf("paddle: %v: unexpected event data", event)
 		}

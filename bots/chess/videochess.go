@@ -424,7 +424,7 @@ func (bot *videoChessBot) moveCursor(moveCol int, moveRow int, shortcut bool) {
 		}
 
 		for i := 0; i < move; i++ {
-			bot.moveCursorOnceStep(plugging.PortLeftPlayer, direction)
+			bot.moveCursorOnceStep(plugging.PortLeft, direction)
 		}
 	} else {
 		bot.feedback.Diagnostic <- bots.Diagnostic{
@@ -449,21 +449,21 @@ func (bot *videoChessBot) moveCursor(moveCol int, moveRow int, shortcut bool) {
 
 		if moveCol > 0 {
 			for i := 0; i < moveCol; i++ {
-				bot.moveCursorOnceStep(plugging.PortLeftPlayer, ports.Left)
+				bot.moveCursorOnceStep(plugging.PortLeft, ports.Left)
 			}
 		} else if moveCol < 0 {
 			for i := 0; i > moveCol; i-- {
-				bot.moveCursorOnceStep(plugging.PortLeftPlayer, ports.Right)
+				bot.moveCursorOnceStep(plugging.PortLeft, ports.Right)
 			}
 		}
 
 		if moveRow > 0 {
 			for i := 0; i < moveRow; i++ {
-				bot.moveCursorOnceStep(plugging.PortLeftPlayer, ports.Down)
+				bot.moveCursorOnceStep(plugging.PortLeft, ports.Down)
 			}
 		} else if moveRow < 0 {
 			for i := 0; i > moveRow; i-- {
-				bot.moveCursorOnceStep(plugging.PortLeftPlayer, ports.Up)
+				bot.moveCursorOnceStep(plugging.PortLeft, ports.Up)
 			}
 		}
 	}
@@ -484,9 +484,9 @@ func (bot *videoChessBot) moveCursor(moveCol int, moveRow int, shortcut bool) {
 
 	waiting := true
 	for waiting {
-		bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: true})
+		bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Fire, D: true})
 		bot.waitForFrames(downDuration)
-		bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: false})
+		bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Fire, D: false})
 		select {
 		case <-bot.obs.audioFeedback:
 			waiting = false

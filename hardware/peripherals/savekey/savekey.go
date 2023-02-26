@@ -91,7 +91,7 @@ func NewSaveKey(instance *instance.Instance, port plugging.PortID, bus ports.Per
 	//
 	// moreover ROM developers understand that the savekey is to be
 	// plugged into the right player port and don't support left player port
-	if port != plugging.PortRightPlayer {
+	if port != plugging.PortRight {
 		return nil
 	}
 
@@ -187,9 +187,9 @@ func (sk *SaveKey) Update(data chipbus.ChangedRegister) bool {
 	case cpubus.SWCHA:
 		// mask and shift SWCHA value to the normlised value
 		switch sk.port {
-		case plugging.PortLeftPlayer:
+		case plugging.PortLeft:
 			sk.swcha = data.Value & 0xf0
-		case plugging.PortRightPlayer:
+		case plugging.PortRight:
 			sk.swcha = (data.Value & 0x0f) << 4
 		}
 

@@ -107,12 +107,12 @@ func NewVCS(tv *television.Television, prefs *preferences.Preferences) (*VCS, er
 		return nil, err
 	}
 
-	err = vcs.RIOT.Ports.Plug(plugging.PortLeftPlayer, controllers.NewStick)
+	err = vcs.RIOT.Ports.Plug(plugging.PortLeft, controllers.NewStick)
 	if err != nil {
 		return nil, err
 	}
 
-	err = vcs.RIOT.Ports.Plug(plugging.PortRightPlayer, controllers.NewStick)
+	err = vcs.RIOT.Ports.Plug(plugging.PortRight, controllers.NewStick)
 	if err != nil {
 		return nil, err
 	}
@@ -175,11 +175,11 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader, reset bool) err
 		}
 
 		// fingerprint new peripherals. peripherals are not changed if option is not set
-		err = vcs.FingerprintPeripheral(plugging.PortLeftPlayer, cartload)
+		err = vcs.FingerprintPeripheral(plugging.PortLeft, cartload)
 		if err != nil {
 			return err
 		}
-		err = vcs.FingerprintPeripheral(plugging.PortRightPlayer, cartload)
+		err = vcs.FingerprintPeripheral(plugging.PortRight, cartload)
 		if err != nil {
 			return err
 		}

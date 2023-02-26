@@ -17,6 +17,9 @@ package ports
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -33,11 +36,14 @@ type Event string
 const (
 	NoEvent Event = "NoEvent" // nil
 
-	// fire will be interpreted by both stick and paddle depending on which
-	// controller is attached.
+	// fire is the standard fire button present on all controller types
 	Fire Event = "Fire" // bool
 
-	// joystick.
+	// second button is treated as the paired paddle fire button as well as the
+	// B button on a game pad
+	SecondFire Event = "SecondFire" // bool
+
+	// joystick
 	Centre    Event = "Centre"    // nil
 	Up        Event = "Up"        // EventDataStick
 	Down      Event = "Down"      // EventDataStick
@@ -48,17 +54,14 @@ const (
 	RightUp   Event = "RightUp"   // EventDataStick
 	RightDown Event = "RightDown" // EventDataStick
 
-	// gamepad second button
-	SecondFire Event = "SecondFire" // bool
+	// paddles
+	PaddleSet Event = "PaddleSet" // EventDataPaddle
 
-	// paddles.
-	PaddleSet Event = "PaddleSet" // float32
-
-	// keyboard.
+	// keyboard
 	KeypadDown Event = "KeypadDown" // rune
 	KeypadUp   Event = "KeypadUp"   // nil
 
-	// panel.
+	// panel
 	PanelSelect Event = "PanelSelect" // bool
 	PanelReset  Event = "PanelReset"  // bool
 
@@ -87,6 +90,34 @@ type EventDataPlayback string
 
 // Event data for stick types.
 type EventDataStick string
+
+// Event data for paddle types. first entry is for primary paddle for the part
+// (ie. INP0 or INP2) and the second entry is for the secondary paddle (ie.
+// INP1 or INP3)
+type EventDataPaddle [2]float32
+
+// String implements the string.Stringer interface and is intended to be used
+// when writing to a playback file
+func (ev EventDataPaddle) String() string {
+	return fmt.Sprintf("%f;%f", ev[0], ev[1])
+}
+
+// FromString is the inverse of the String() function
+func (ev *EventDataPaddle) FromString(s string) error {
+	// splitting up to two strings. if there's only string in the split then
+	// that's okay and it only means that the EventDataPaddle was written by an
+	// early version of the emulator
+	sp := strings.SplitN(s, ";", 2)
+
+	for i := range sp {
+		f, err := strconv.ParseFloat(sp[i], 32)
+		if err != nil {
+			return err
+		}
+		ev[i] = float32(f)
+	}
+	return nil
+}
 
 // List of valid values for EventDataStick.
 //

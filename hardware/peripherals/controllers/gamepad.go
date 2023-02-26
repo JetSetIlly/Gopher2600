@@ -73,11 +73,11 @@ func NewGamepad(instance *instance.Instance, port plugging.PortID, bus ports.Per
 	}
 
 	switch port {
-	case plugging.PortLeftPlayer:
+	case plugging.PortLeft:
 		pad.buttonInptx = chipbus.INPT4
 		pad.secondInptx = chipbus.INPT1
 		pad.insertedInptx = chipbus.INPT0
-	case plugging.PortRightPlayer:
+	case plugging.PortRight:
 		pad.buttonInptx = chipbus.INPT5
 		pad.secondInptx = chipbus.INPT3
 		pad.insertedInptx = chipbus.INPT2

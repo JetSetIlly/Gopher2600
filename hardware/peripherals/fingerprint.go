@@ -43,7 +43,7 @@ func Fingerprint(port plugging.PortID, data *[]byte) ports.NewPeripheral {
 		return controllers.NewStick
 	}
 
-	if port != plugging.PortRightPlayer && port != plugging.PortLeftPlayer {
+	if port != plugging.PortRight && port != plugging.PortLeft {
 		panic(fmt.Sprintf("cannot fingerprint for port %v", port))
 	}
 
@@ -98,7 +98,7 @@ func matchPattern(patterns [][]byte, data []byte) bool {
 }
 
 func fingerprintSaveKey(port plugging.PortID, data []byte) bool {
-	if port != plugging.PortRightPlayer {
+	if port != plugging.PortRight {
 		return false
 	}
 
@@ -134,7 +134,7 @@ func fingerprintSaveKey(port plugging.PortID, data []byte) bool {
 }
 
 func fingerprintAtariVox(port plugging.PortID, data []byte) bool {
-	if port != plugging.PortRightPlayer {
+	if port != plugging.PortRight {
 		return false
 	}
 
@@ -164,7 +164,7 @@ func fingerprintStick(port plugging.PortID, data []byte) bool {
 	var patterns [][]byte
 
 	switch port {
-	case plugging.PortLeftPlayer:
+	case plugging.PortLeft:
 		patterns = [][]byte{
 			{0x24, 0x0c, 0x10},             // bit INPT4; bpl (joystick games only)
 			{0x24, 0x0c, 0x30},             // bit INPT4; bmi (joystick games only)
@@ -209,7 +209,7 @@ func fingerprintStick(port plugging.PortID, data []byte) bool {
 			{0xa5, 0x3c, 0x29, 0x80, 0xd0}, // lda INPT4|$30; and #$80; bne (joystick games only)
 			{0xad, 0x0c, 0x00, 0x29, 0x80}, // lda.w INPT4|$30; and #$80 (joystick games only)
 		}
-	case plugging.PortRightPlayer:
+	case plugging.PortRight:
 		patterns = [][]byte{
 			{0x24, 0x0d, 0x10},             // bit INPT5; bpl (joystick games only)
 			{0x24, 0x0d, 0x30},             // bit INPT5; bmi (joystick games only)
@@ -247,7 +247,7 @@ func fingerprintKeypad(port plugging.PortID, data []byte) bool {
 	var patterns [][]byte
 
 	switch port {
-	case plugging.PortLeftPlayer:
+	case plugging.PortLeft:
 		patterns = [][]byte{
 			{0x24, 0x38, 0x30},             // bit INPT0|$30; bmi
 			{0xa5, 0x38, 0x10},             // lda INPT0|$30; bpl
@@ -275,7 +275,7 @@ func fingerprintKeypad(port plugging.PortID, data []byte) bool {
 			return matchPattern(patterns, data)
 		}
 
-	case plugging.PortRightPlayer:
+	case plugging.PortRight:
 		patterns = [][]byte{
 			{0x24, 0x3a, 0x30},             // bit INPT2|$30; bmi
 			{0xa5, 0x3a, 0x10},             // lda INPT2|$30; bpl
@@ -308,7 +308,7 @@ func fingerprintGamepad(port plugging.PortID, data []byte) bool {
 	var patterns [][]byte
 
 	switch port {
-	case plugging.PortLeftPlayer:
+	case plugging.PortLeft:
 		patterns = [][]byte{
 			{0x24, 0x09, 0x10}, // bit INPT1; bpl (Genesis only)
 			{0x24, 0x09, 0x30}, // bit INPT1; bmi (paddle ROMS too)
@@ -330,7 +330,7 @@ func fingerprintGamepad(port plugging.PortID, data []byte) bool {
 			{0x25, 0x39, 0x30}, // and INPT1|$30; bmi (Genesis only)
 			{0x25, 0x09, 0x10}, // and INPT1; bpl (Genesis only)
 		}
-	case plugging.PortRightPlayer:
+	case plugging.PortRight:
 		patterns = [][]byte{
 			{0x24, 0x0b, 0x10}, // bit INPT3; bpl
 			{0x24, 0x0b, 0x30}, // bit INPT3; bmi
@@ -352,7 +352,7 @@ func fingerprintPaddle(port plugging.PortID, data []byte) bool {
 	var patterns [][]byte
 
 	switch port {
-	case plugging.PortLeftPlayer:
+	case plugging.PortLeft:
 		patterns = [][]byte{
 			//{ 0x24, 0x08, 0x10 }, // bit INPT0; bpl (many joystick games too!)
 			//{ 0x24, 0x08, 0x30 }, // bit INPT0; bmi (joystick games: Spike's Peak, Sweat, Turbo!)
@@ -378,7 +378,7 @@ func fingerprintPaddle(port plugging.PortID, data []byte) bool {
 			{0xb5, 0x38, 0x49, 0xff, 0x0a}, // lda INPT0|$30,x; eor #$ff; asl (Blackjack)
 			{0xb1, 0xf2, 0x30, 0x02, 0xe6}, // lda ($f2),y; bmi...; inc (Warplock)
 		}
-	case plugging.PortRightPlayer:
+	case plugging.PortRight:
 		patterns = [][]byte{
 			{0x24, 0x0a, 0x10},             // bit INPT2; bpl (no joystick games)
 			{0x24, 0x0a, 0x30},             // bit INPT2; bmi (no joystick games)

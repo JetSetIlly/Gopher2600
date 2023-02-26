@@ -19,14 +19,22 @@ package plugging
 // can be plugged.
 type PortID string
 
-// List of defined PortIDs.
+// List of defined PortIDs. These refer to the physical ports at the back of
+// the console. In the case of paired paddles, two paddles use a single player
+// port so thinking of these ports as left and right "players" might be
+// misleading. So long as restrict our thinking to left and right "ports" we're
+// okay.
 //
-// We could potentially extend this to support a future Quadtari implementation.
+// Also, "left" and "right" are from the point of view of somebody using the
+// console normally (ie. the ports are at the back of the console)
+//
+// Similarly, in the case of devices like the Quadtari, many players can be
+// plugged into a single port
 const (
-	PortUnplugged   PortID = "Unplugged"
-	PortLeftPlayer  PortID = "Left"
-	PortRightPlayer PortID = "Right"
-	PortPanel       PortID = "Panel"
+	PortUnplugged PortID = "Unplugged"
+	PortLeft      PortID = "Left"
+	PortRight     PortID = "Right"
+	PortPanel     PortID = "Panel"
 )
 
 // PeripheralID identifies the class of device a Peripheral implemenation
@@ -39,7 +47,7 @@ const (
 	PeriphPanel    PeripheralID = "Panel"
 	PeriphStick    PeripheralID = "Stick"
 	PeriphGamepad  PeripheralID = "Gamepad"
-	PeriphPaddle   PeripheralID = "Paddle"
+	PeriphPaddles  PeripheralID = "Paddles"
 	PeriphKeypad   PeripheralID = "Keypad"
 	PeriphSavekey  PeripheralID = "Savekey"
 	PeriphAtariVox PeripheralID = "AtariVox"

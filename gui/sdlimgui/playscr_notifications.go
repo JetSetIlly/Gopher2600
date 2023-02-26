@@ -47,7 +47,7 @@ func (pn *peripheralNotification) set(peripheral plugging.PeripheralID) {
 	switch peripheral {
 	case plugging.PeriphStick:
 		pn.icon = fmt.Sprintf("%c", fonts.Stick)
-	case plugging.PeriphPaddle:
+	case plugging.PeriphPaddles:
 		pn.icon = fmt.Sprintf("%c", fonts.Paddle)
 	case plugging.PeriphKeypad:
 		pn.icon = fmt.Sprintf("%c", fonts.Keypad)

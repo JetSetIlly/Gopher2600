@@ -193,7 +193,7 @@ func (bot *spaceJockeyBot) movePlayerUpToY(y int) {
 		return
 	}
 
-	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Up, D: ports.DataStickTrue})
+	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Up, D: ports.DataStickTrue})
 	for y < py && y < py+playerFuzz && py > playerLimitRect.Min.Y {
 		select {
 		case bot.image = <-bot.obs.analysis:
@@ -206,11 +206,11 @@ func (bot *spaceJockeyBot) movePlayerUpToY(y int) {
 			return
 		}
 	}
-	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Up, D: ports.DataStickFalse})
+	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Up, D: ports.DataStickFalse})
 
-	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: true})
+	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Fire, D: true})
 	bot.waitForFrames(1)
-	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: false})
+	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Fire, D: false})
 }
 
 func (bot *spaceJockeyBot) movePlayerDownToY(y int) {
@@ -219,7 +219,7 @@ func (bot *spaceJockeyBot) movePlayerDownToY(y int) {
 		return
 	}
 
-	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Down, D: ports.DataStickTrue})
+	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Down, D: ports.DataStickTrue})
 	for y > py && y > py+playerFuzz && py < playerLimitRect.Max.Y {
 		select {
 		case bot.image = <-bot.obs.analysis:
@@ -232,11 +232,11 @@ func (bot *spaceJockeyBot) movePlayerDownToY(y int) {
 			return
 		}
 	}
-	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Down, D: ports.DataStickFalse})
+	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Down, D: ports.DataStickFalse})
 
-	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: true})
+	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Fire, D: true})
 	bot.waitForFrames(1)
-	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: false})
+	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Fire, D: false})
 }
 
 type spaceJockeyBot struct {
@@ -307,9 +307,9 @@ func NewSpaceJockey(vcs bots.Input, tv bots.TV, specID string) (bots.Bot, error)
 			if cmpSubImage(bot.image, startRect, startHash) {
 				select {
 				case <-time.After(2 * time.Second):
-					bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: true})
+					bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Fire, D: true})
 					bot.waitForFrames(10)
-					bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: false})
+					bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Fire, D: false})
 
 					bot.feedback.Diagnostic <- bots.Diagnostic{
 						Group:      bot.BotID(),

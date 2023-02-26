@@ -83,9 +83,9 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		if err == nil {
 			port := request.args[0].(plugging.PortID)
 			switch port {
-			case plugging.PortLeftPlayer:
+			case plugging.PortLeft:
 				img.playScr.peripheralLeft.set(request.args[1].(plugging.PeripheralID))
-			case plugging.PortRightPlayer:
+			case plugging.PortRight:
 				img.playScr.peripheralRight.set(request.args[1].(plugging.PeripheralID))
 			}
 		}

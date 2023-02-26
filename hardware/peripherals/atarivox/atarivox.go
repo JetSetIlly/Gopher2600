@@ -93,7 +93,7 @@ func NewAtariVox(inst *instance.Instance, port plugging.PortID, bus ports.Periph
 	//
 	// moreover ROM developers understand that the atarivox is to be plugged
 	// into the right player port and don't support left player port
-	if port != plugging.PortRightPlayer {
+	if port != plugging.PortRight {
 		return nil
 	}
 
@@ -216,9 +216,9 @@ func (vox *AtariVox) Update(data chipbus.ChangedRegister) bool {
 	case cpubus.SWCHA:
 		// mask and shift SWCHA value to the normlised value
 		switch vox.port {
-		case plugging.PortLeftPlayer:
+		case plugging.PortLeft:
 			vox.swcha = data.Value & 0xf0
-		case plugging.PortRightPlayer:
+		case plugging.PortRight:
 			vox.swcha = (data.Value & 0x0f) << 4
 		}
 
