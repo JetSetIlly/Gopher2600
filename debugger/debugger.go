@@ -344,8 +344,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	}
 
 	// create userinput/controllers handler
-	dbg.controllers = userinput.NewControllers()
-	dbg.controllers.AddInputHandler(dbg.vcs.Input)
+	dbg.controllers = userinput.NewControllers(dbg.vcs.Input)
 
 	// create bot coordinator
 	dbg.bots = wrangler.NewBots(dbg.vcs.Input, dbg.vcs.TV)

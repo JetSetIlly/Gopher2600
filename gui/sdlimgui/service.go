@@ -254,32 +254,11 @@ func (img *SdlImgui) Service() {
 		case *sdl.JoyAxisEvent:
 			if img.plt.joysticks[ev.Which].isStelladaptor {
 				joy := sdl.JoystickFromInstanceID(ev.Which)
-
-				var vert int16
-				switch joy.Axis(1) {
-				case -32768:
-					// up
-					vert = -userinput.StickDeadzone - 1
-				case 32767:
-					// down
-					vert = userinput.StickDeadzone + 1
-				}
-
-				var horiz int16
-				switch joy.Axis(0) {
-				case -32768:
-					// left
-					horiz = -userinput.StickDeadzone - 1
-				case 32767:
-					// right
-					horiz = userinput.StickDeadzone + 1
-				}
-
 				select {
-				case img.userinput <- userinput.EventGamepadThumbstick{
+				case img.userinput <- userinput.EventStelladaptor{
 					ID:    plugging.PortLeftPlayer,
-					Horiz: horiz,
-					Vert:  vert,
+					Horiz: joy.Axis(0),
+					Vert:  joy.Axis(1),
 				}:
 				default:
 					logger.Log("sdlimgui", "dropped stelladaptor event")

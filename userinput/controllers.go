@@ -28,16 +28,16 @@ const StickDeadzone = 10000
 
 // Controllers keeps track of hardware userinput options.
 type Controllers struct {
-	inputHandlers []HandleInput
+	inputHandler HandleInput
+
+	// trigger handling requires some bookkeeping
 	trigger       GamepadTrigger
-	paddle        float32
+	triggerPaddle float32
 }
 
 // Controllers is the preferred method of initialisation for the Controllers type.
-func NewControllers() *Controllers {
-	return &Controllers{
-		inputHandlers: make([]HandleInput, 0),
-	}
+func NewControllers(h HandleInput) *Controllers {
+	return &Controllers{inputHandler: h}
 }
 
 // handleEvents sends the port/event information to each HandleInput
@@ -46,13 +46,9 @@ func NewControllers() *Controllers {
 // returns True if event has been handled/recognised by at least one of the
 // registered input handlers.
 func (c *Controllers) handleEvents(id plugging.PortID, ev ports.Event, d ports.EventData) (bool, error) {
-	var handled bool
-	for _, h := range c.inputHandlers {
-		v, err := h.HandleInputEvent(ports.InputEvent{Port: id, Ev: ev, D: d})
-		if err != nil {
-			return handled, err
-		}
-		handled = handled || v
+	handled, err := c.inputHandler.HandleInputEvent(ports.InputEvent{Port: id, Ev: ev, D: d})
+	if err != nil {
+		return handled, err
 	}
 	return handled, nil
 }
@@ -104,78 +100,76 @@ func (c *Controllers) differentiateKeyboard(key string, down bool) (bool, error)
 		fireEvData = false
 	}
 
-	for _, h := range c.inputHandlers {
-		switch key {
-		case "Y":
-			if h.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
-				portID = plugging.PortRightPlayer
-				ev = keyEv
-				d = '6'
-			} else {
-				portID = plugging.PortRightPlayer
-				ev = ports.Up
-				d = stickEvData
-			}
-		case "F":
-			if h.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
-				portID = plugging.PortRightPlayer
-				ev = keyEv
-				d = '7'
-			} else {
-				portID = plugging.PortRightPlayer
-				ev = ports.Fire
-				d = fireEvData
-			}
-		case "G":
-			if h.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
-				portID = plugging.PortRightPlayer
-				ev = keyEv
-				d = '8'
-			} else {
-				portID = plugging.PortRightPlayer
-				ev = ports.Left
-				d = stickEvData
-			}
-		case "H":
-			if h.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
-				portID = plugging.PortRightPlayer
-				ev = keyEv
-				d = '9'
-			} else {
-				portID = plugging.PortRightPlayer
-				ev = ports.Down
-				d = stickEvData
-			}
-		case "B":
-			if h.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
-				portID = plugging.PortRightPlayer
-				ev = keyEv
-				d = '0'
-			} else {
-				portID = plugging.PortLeftPlayer
-				ev = ports.SecondFire
-				d = fireEvData
-			}
-		case "6":
-			if h.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
-				portID = plugging.PortRightPlayer
-				ev = keyEv
-				d = '6'
-			} else {
-				portID = plugging.PortRightPlayer
-				ev = ports.SecondFire
-				d = fireEvData
-			}
-		default:
+	switch key {
+	case "Y":
+		if c.inputHandler.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+			portID = plugging.PortRightPlayer
+			ev = keyEv
+			d = '6'
+		} else {
+			portID = plugging.PortRightPlayer
+			ev = ports.Up
+			d = stickEvData
 		}
-
-		// all differentiated keyboard events go to the right player port
-		v, err := h.HandleInputEvent(ports.InputEvent{Port: portID, Ev: ev, D: d})
-		if err != nil {
-			return handled, err
+	case "F":
+		if c.inputHandler.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+			portID = plugging.PortRightPlayer
+			ev = keyEv
+			d = '7'
+		} else {
+			portID = plugging.PortRightPlayer
+			ev = ports.Fire
+			d = fireEvData
 		}
-		handled = handled || v
+	case "G":
+		if c.inputHandler.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+			portID = plugging.PortRightPlayer
+			ev = keyEv
+			d = '8'
+		} else {
+			portID = plugging.PortRightPlayer
+			ev = ports.Left
+			d = stickEvData
+		}
+	case "H":
+		if c.inputHandler.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+			portID = plugging.PortRightPlayer
+			ev = keyEv
+			d = '9'
+		} else {
+			portID = plugging.PortRightPlayer
+			ev = ports.Down
+			d = stickEvData
+		}
+	case "B":
+		if c.inputHandler.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+			portID = plugging.PortRightPlayer
+			ev = keyEv
+			d = '0'
+		} else {
+			portID = plugging.PortLeftPlayer
+			ev = ports.SecondFire
+			d = fireEvData
+		}
+	case "6":
+		if c.inputHandler.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+			portID = plugging.PortRightPlayer
+			ev = keyEv
+			d = '6'
+		} else {
+			portID = plugging.PortRightPlayer
+			ev = ports.SecondFire
+			d = fireEvData
+		}
+	default:
 	}
+
+	// all differentiated keyboard events go to the right player port
+	v, err := c.inputHandler.HandleInputEvent(ports.InputEvent{Port: portID, Ev: ev, D: d})
+	if err != nil {
+		return handled, err
+	}
+	handled = handled || v
 
 	return handled, nil
 }
@@ -404,7 +398,7 @@ func (c *Controllers) gamepadTriggers(ev EventGamepadTrigger) (bool, error) {
 		}
 
 		// left trigger can only move the paddle left
-		if n > c.paddle {
+		if n > c.triggerPaddle {
 			return false, nil
 		}
 	case GamepadTriggerRight:
@@ -418,14 +412,47 @@ func (c *Controllers) gamepadTriggers(ev EventGamepadTrigger) (bool, error) {
 		}
 
 		// right trigger can only move the paddle right
-		if n < c.paddle {
+		if n < c.triggerPaddle {
 			return false, nil
 		}
 	default:
 	}
 
-	c.paddle = n
-	return c.handleEvents(ev.ID, ports.PaddleSet, c.paddle)
+	c.triggerPaddle = n
+	return c.handleEvents(ev.ID, ports.PaddleSet, c.triggerPaddle)
+}
+
+func (c *Controllers) stelladaptor(ev EventStelladaptor) (bool, error) {
+	switch c.inputHandler.PeripheralID(plugging.PortLeftPlayer) {
+	case plugging.PeriphStick:
+		if ev.Horiz > 0 {
+			if ev.Vert > 0 {
+				return c.handleEvents(ev.ID, ports.RightDown, ports.DataStickSet)
+			} else if ev.Vert < 0 {
+				return c.handleEvents(ev.ID, ports.RightUp, ports.DataStickSet)
+			}
+			return c.handleEvents(ev.ID, ports.Right, ports.DataStickSet)
+		} else if ev.Horiz < 0 {
+			if ev.Vert > 0 {
+				return c.handleEvents(ev.ID, ports.LeftDown, ports.DataStickSet)
+			} else if ev.Vert < 0 {
+				return c.handleEvents(ev.ID, ports.LeftUp, ports.DataStickSet)
+			}
+			return c.handleEvents(ev.ID, ports.Left, ports.DataStickSet)
+		} else if ev.Vert > 0 {
+			return c.handleEvents(ev.ID, ports.Down, ports.DataStickSet)
+		} else if ev.Vert < 0 {
+			return c.handleEvents(ev.ID, ports.Up, ports.DataStickSet)
+		}
+
+		return c.handleEvents(ev.ID, ports.Centre, nil)
+
+	case plugging.PeriphPaddle:
+		paddle := float32(int32(ev.Horiz)+32768) / 65535
+		return c.handleEvents(ev.ID, ports.PaddleSet, paddle)
+	}
+
+	return false, nil
 }
 
 // HandleUserInput deciphers the Event and forwards the input to the Atari 2600
@@ -449,23 +476,10 @@ func (c *Controllers) HandleUserInput(ev Event) (bool, error) {
 		return c.gamepadThumbstick(ev)
 	case EventGamepadTrigger:
 		return c.gamepadTriggers(ev)
+	case EventStelladaptor:
+		return c.stelladaptor(ev)
 	default:
 	}
 
 	return false, nil
-}
-
-// Clear current list of input handlers.
-func (c *Controllers) ClearInputHandlers() {
-	c.inputHandlers = c.inputHandlers[0:]
-}
-
-// Add HandleInput implementation to list of input handlers. Each input handler
-// will receive the ports.Event and ports.EventData.
-//
-// In many instances when running two parallel emulators that require the same
-// user input it is better to add the "driver" and "passenger" emulations to
-// RIOT.Ports
-func (c *Controllers) AddInputHandler(h HandleInput) {
-	c.inputHandlers = append(c.inputHandlers, h)
 }
