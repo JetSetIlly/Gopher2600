@@ -265,10 +265,10 @@ func (img *SdlImgui) Service() {
 				}
 			} else {
 				pad := sdl.GameControllerFromInstanceID(ev.Which)
-				if pad.Axis(0) > userinput.StickDeadzone || pad.Axis(0) < -userinput.StickDeadzone ||
-					pad.Axis(1) > userinput.StickDeadzone || pad.Axis(1) < -userinput.StickDeadzone ||
-					pad.Axis(3) > userinput.StickDeadzone || pad.Axis(3) < -userinput.StickDeadzone ||
-					pad.Axis(4) > userinput.StickDeadzone || pad.Axis(4) < -userinput.StickDeadzone {
+				if pad.Axis(0) > userinput.ThumbstickDeadzone || pad.Axis(0) < -userinput.ThumbstickDeadzone ||
+					pad.Axis(1) > userinput.ThumbstickDeadzone || pad.Axis(1) < -userinput.ThumbstickDeadzone ||
+					pad.Axis(3) > userinput.ThumbstickDeadzone || pad.Axis(3) < -userinput.ThumbstickDeadzone ||
+					pad.Axis(4) > userinput.ThumbstickDeadzone || pad.Axis(4) < -userinput.ThumbstickDeadzone {
 					img.smartHideCursor(true)
 				}
 

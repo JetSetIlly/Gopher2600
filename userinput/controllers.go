@@ -24,7 +24,7 @@ import (
 const TriggerDeadzone = 10
 
 // quite a large deadzone for the thumbstick
-const StickDeadzone = 10000
+const ThumbstickDeadzone = 10000
 
 // Controllers keeps track of hardware userinput options.
 type Controllers struct {
@@ -342,23 +342,23 @@ func (c *Controllers) gamepadThumbstick(ev EventGamepadThumbstick) (bool, error)
 		return false, nil
 	}
 
-	if ev.Horiz > StickDeadzone {
-		if ev.Vert > StickDeadzone {
+	if ev.Horiz > ThumbstickDeadzone {
+		if ev.Vert > ThumbstickDeadzone {
 			return c.handleEvents(ev.ID, ports.RightDown, ports.DataStickSet)
-		} else if ev.Vert < -StickDeadzone {
+		} else if ev.Vert < -ThumbstickDeadzone {
 			return c.handleEvents(ev.ID, ports.RightUp, ports.DataStickSet)
 		}
 		return c.handleEvents(ev.ID, ports.Right, ports.DataStickSet)
-	} else if ev.Horiz < -StickDeadzone {
-		if ev.Vert > StickDeadzone {
+	} else if ev.Horiz < -ThumbstickDeadzone {
+		if ev.Vert > ThumbstickDeadzone {
 			return c.handleEvents(ev.ID, ports.LeftDown, ports.DataStickSet)
-		} else if ev.Vert < -StickDeadzone {
+		} else if ev.Vert < -ThumbstickDeadzone {
 			return c.handleEvents(ev.ID, ports.LeftUp, ports.DataStickSet)
 		}
 		return c.handleEvents(ev.ID, ports.Left, ports.DataStickSet)
-	} else if ev.Vert > StickDeadzone {
+	} else if ev.Vert > ThumbstickDeadzone {
 		return c.handleEvents(ev.ID, ports.Down, ports.DataStickSet)
-	} else if ev.Vert < -StickDeadzone {
+	} else if ev.Vert < -ThumbstickDeadzone {
 		return c.handleEvents(ev.ID, ports.Up, ports.DataStickSet)
 	}
 
@@ -423,25 +423,39 @@ func (c *Controllers) gamepadTriggers(ev EventGamepadTrigger) (bool, error) {
 }
 
 func (c *Controllers) stelladaptor(ev EventStelladaptor) (bool, error) {
+
 	switch c.inputHandler.PeripheralID(plugging.PortLeftPlayer) {
 	case plugging.PeriphStick:
-		if ev.Horiz > 0 {
-			if ev.Vert > 0 {
+		// boundary value is compared again incoming axes values
+		//
+		// a better strategy might be just to switch on the values that we know
+		// represent the state of a digital stick (ie. up/down, left/right, at rest)
+		// but I'm not yet confident in the precise values thar are sent by the
+		// stelladapter
+		//
+		// suspected values currently:
+		// 0x007f = at rest
+		// 0x7fff = down (vert axis) right (horiz axis)
+		// 0x8000 = up (vert axis) left (horiz axis)
+		const boundaryValue = 255
+
+		if ev.Horiz > boundaryValue {
+			if ev.Vert > boundaryValue {
 				return c.handleEvents(ev.ID, ports.RightDown, ports.DataStickSet)
-			} else if ev.Vert < 0 {
+			} else if ev.Vert < -boundaryValue {
 				return c.handleEvents(ev.ID, ports.RightUp, ports.DataStickSet)
 			}
 			return c.handleEvents(ev.ID, ports.Right, ports.DataStickSet)
-		} else if ev.Horiz < 0 {
-			if ev.Vert > 0 {
+		} else if ev.Horiz < -boundaryValue {
+			if ev.Vert > boundaryValue {
 				return c.handleEvents(ev.ID, ports.LeftDown, ports.DataStickSet)
-			} else if ev.Vert < 0 {
+			} else if ev.Vert < -boundaryValue {
 				return c.handleEvents(ev.ID, ports.LeftUp, ports.DataStickSet)
 			}
 			return c.handleEvents(ev.ID, ports.Left, ports.DataStickSet)
-		} else if ev.Vert > 0 {
+		} else if ev.Vert > boundaryValue {
 			return c.handleEvents(ev.ID, ports.Down, ports.DataStickSet)
-		} else if ev.Vert < 0 {
+		} else if ev.Vert < -boundaryValue {
 			return c.handleEvents(ev.ID, ports.Up, ports.DataStickSet)
 		}
 
