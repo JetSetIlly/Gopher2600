@@ -18,6 +18,7 @@ package controllers
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
@@ -26,11 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
-// paddle values.
 const (
-	paddleFire   = 0x00
-	paddleNoFire = 0xf0
-
 	// paddleChargeRate governs the rate at which the controller capacitor fills.
 	// the tick value is increased by the sensitivity value every cycle; once
 	// it reaches or exceeds the resistance value, the charge value is
@@ -39,17 +36,17 @@ const (
 	// the following value is found by 1/N where N is the number of ticks
 	// required for the charge value to increase by 1. eg 1/150==0.0067.
 	paddleChargeRate = 0.0067
+
+	// sets the fire button for both paddles to nofire. WriteSWCHx() will shift
+	// the bits into the correct position for the right port
+	paddleNoFire = 0xf0
 )
 
-// Paddle represents the VCS paddle controller type.
-type Paddle struct {
-	port plugging.PortID
-	bus  ports.PeripheralBus
-
+type paddle struct {
 	// register to write puck charge to
 	inptx chipbus.Register
 
-	// button data is always written to SWCHA but which bit depends on the player
+	// button data is always written to SWCHA but which bit depends on the paddle
 	buttonMask uint8
 
 	// values indicating paddle state
@@ -58,65 +55,99 @@ type Paddle struct {
 	ticks      float32
 
 	// the state of the fire button
-	fire uint8
+	fire bool
 }
 
-// NewPaddle is the preferred method of initialisation for the Paddle type
-// Satisifies the ports.NewPeripheral interface and can be used as an argument
-// to ports.AttachPlayer0() and ports.AttachPlayer1().
-func NewPaddle(instance *instance.Instance, port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
-	pdl := &Paddle{
+// Paddles represents a pair of paddles inserted into the same port
+type Paddles struct {
+	port plugging.PortID
+	bus  ports.PeripheralBus
+
+	// maximum of two paddles per paddles pair
+	paddles [2]paddle
+}
+
+// NewPaddlePair is the preferred method of initialisation for the PaddlePair
+// type Satisifies the ports.NewPeripheral interface and can be used as an
+// argument to ports.AttachPlayer0() and ports.AttachPlayer1().
+func NewPaddlePair(instance *instance.Instance, port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
+	pdl := &Paddles{
 		port: port,
 		bus:  bus,
 	}
 
-	// !!TODO: support for paddle player 3 and paddle player 4
 	switch port {
 	case plugging.PortLeft:
-		pdl.inptx = chipbus.INPT0
-		pdl.buttonMask = 0x80
+		// paddle player 0 and 1
+		pdl.paddles[0].inptx = chipbus.INPT0
+		pdl.paddles[1].inptx = chipbus.INPT1
 	case plugging.PortRight:
-		pdl.inptx = chipbus.INPT1
-		pdl.buttonMask = 0x40
+		// paddle player 2 and 3
+		pdl.paddles[0].inptx = chipbus.INPT2
+		pdl.paddles[1].inptx = chipbus.INPT3
 	}
+
+	// button masks are the same for left and right ports. WriteSWCHx() will
+	// shift them into the correct position for the right port
+	pdl.paddles[0].buttonMask = 0x80
+	pdl.paddles[1].buttonMask = 0x40
 
 	return pdl
 }
 
 // Unplug implements the Peripheral interface.
-func (pdl *Paddle) Unplug() {
+func (pdl *Paddles) Unplug() {
+	// no need to go through the paddle pair specific writeSWCHx()
 	pdl.bus.WriteSWCHx(pdl.port, paddleNoFire)
-	pdl.bus.WriteINPTx(pdl.inptx, 0x00) // no charge
+
+	// write no charge value to inptx
+	for i := range pdl.paddles {
+		pdl.bus.WriteINPTx(pdl.paddles[i].inptx, 0x00)
+	}
 }
 
 // Snapshot implements the Peripheral interface.
-func (pdl *Paddle) Snapshot() ports.Peripheral {
+func (pdl *Paddles) Snapshot() ports.Peripheral {
 	n := *pdl
 	return &n
 }
 
 // Plumb implements the ports.Peripheral interface.
-func (pdl *Paddle) Plumb(bus ports.PeripheralBus) {
+func (pdl *Paddles) Plumb(bus ports.PeripheralBus) {
 	pdl.bus = bus
 }
 
 // String implements the ports.Peripheral interface.
-func (pdl *Paddle) String() string {
-	return fmt.Sprintf("paddle: button=%02x charge=%v resistance=%.02f", pdl.fire, pdl.charge, pdl.resistance)
+func (pdl *Paddles) String() string {
+	var s strings.Builder
+	for i := range pdl.paddles {
+		s.WriteString(fmt.Sprintf("paddle: button=%v charge=%v resistance=%.02f\n", pdl.paddles[i].fire, pdl.paddles[i].charge, pdl.paddles[i].resistance))
+	}
+	return s.String()
 }
 
 // PortID implements the ports.Peripheral interface.
-func (pdl *Paddle) PortID() plugging.PortID {
+func (pdl *Paddles) PortID() plugging.PortID {
 	return pdl.port
 }
 
 // ID implements the ports.Peripheral interface.
-func (pdl *Paddle) ID() plugging.PeripheralID {
+func (pdl *Paddles) ID() plugging.PeripheralID {
 	return plugging.PeriphPaddles
 }
 
+func (pdl *Paddles) setFire() {
+	var fire uint8
+	for i := range pdl.paddles {
+		if pdl.paddles[i].fire {
+			fire |= uint8(pdl.paddles[i].buttonMask)
+		}
+	}
+	pdl.bus.WriteSWCHx(pdl.port, ^fire)
+}
+
 // HandleEvent implements the ports.Peripheral interface.
-func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) (bool, error) {
+func (pdl *Paddles) HandleEvent(event ports.Event, data ports.EventData) (bool, error) {
 	switch event {
 	case ports.NoEvent:
 		return false, nil
@@ -124,44 +155,50 @@ func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) (bool, e
 	case ports.Fire:
 		switch d := data.(type) {
 		case bool:
-			if d {
-				pdl.fire = paddleFire
-			} else {
-				pdl.fire = paddleNoFire
-			}
+			pdl.paddles[0].fire = d
 		case ports.EventDataPlayback:
 			b, err := strconv.ParseBool(string(d))
 			if err != nil {
 				return false, fmt.Errorf("paddle: %v: unexpected event data", event)
 			}
-			if b {
-				pdl.fire = paddleFire
-			} else {
-				pdl.fire = paddleNoFire
+			pdl.paddles[0].fire = b
+		default:
+			return false, fmt.Errorf("paddle: %v: unexpected event data", event)
+		}
+
+		pdl.setFire()
+
+	case ports.SecondFire:
+		switch d := data.(type) {
+		case bool:
+			pdl.paddles[1].fire = d
+		case ports.EventDataPlayback:
+			b, err := strconv.ParseBool(string(d))
+			if err != nil {
+				return false, fmt.Errorf("paddle: %v: unexpected event data", event)
+			}
+			pdl.paddles[1].fire = b
+		default:
+			return false, fmt.Errorf("paddle: %v: unexpected event data", event)
+		}
+
+		pdl.setFire()
+
+	case ports.PaddleSet:
+		switch d := data.(type) {
+		case ports.EventDataPaddle:
+			for i := range pdl.paddles {
+				pdl.paddles[i].resistance = 1.0 - d[i]
+			}
+		case ports.EventDataPlayback:
+			var vals ports.EventDataPaddle
+			vals.FromString(string(d))
+			for i := range pdl.paddles {
+				pdl.paddles[i].resistance = 1.0 - vals[i]
 			}
 		default:
 			return false, fmt.Errorf("paddle: %v: unexpected event data", event)
 		}
-
-		pdl.bus.WriteSWCHx(pdl.port, pdl.fire)
-
-	case ports.PaddleSet:
-		var r float32
-
-		switch d := data.(type) {
-		case ports.EventDataPaddle:
-			// TODO: support vert paddle
-			r = d[0]
-		case ports.EventDataPlayback:
-			var vals ports.EventDataPaddle
-			vals.FromString(string(d))
-			r = vals[0]
-		default:
-			return false, fmt.Errorf("paddle: %v: unexpected event data", event)
-		}
-
-		// reverse value so that we left and right are the correct way around (for a mouse)
-		pdl.resistance = 1.0 - r
 
 	default:
 		return false, nil
@@ -171,14 +208,16 @@ func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) (bool, e
 }
 
 // Update implements the ports.Peripheral interface.
-func (pdl *Paddle) Update(data chipbus.ChangedRegister) bool {
+func (pdl *Paddles) Update(data chipbus.ChangedRegister) bool {
 	switch data.Register {
 	case cpubus.VBLANK:
+		// ground paddle's puck when the high bit of VBLANK is set
 		if data.Value&0x80 == 0x80 {
-			// ground paddle's puck
-			pdl.charge = 0x00
-			pdl.ticks = 0.0
-			pdl.bus.WriteINPTx(pdl.inptx, 0x00)
+			for i := range pdl.paddles {
+				pdl.paddles[i].charge = 0x00
+				pdl.paddles[i].ticks = 0.0
+				pdl.bus.WriteINPTx(pdl.paddles[i].inptx, 0x00)
+			}
 		}
 
 	default:
@@ -189,31 +228,32 @@ func (pdl *Paddle) Update(data chipbus.ChangedRegister) bool {
 }
 
 // Step implements the ports.Peripheral interface.
-func (pdl *Paddle) Step() {
-	if pdl.charge < 255 {
-		pdl.ticks += paddleChargeRate
-		if pdl.ticks >= pdl.resistance {
-			pdl.ticks = 0.0
-			pdl.charge++
-			pdl.bus.WriteINPTx(pdl.inptx, pdl.charge)
+func (pdl *Paddles) Step() {
+	for i := range pdl.paddles {
+		if pdl.paddles[i].charge < 255 {
+			pdl.paddles[i].ticks += paddleChargeRate
+			if pdl.paddles[i].ticks >= pdl.paddles[i].resistance {
+				pdl.paddles[i].ticks = 0.0
+				pdl.paddles[i].charge++
+				pdl.bus.WriteINPTx(pdl.paddles[i].inptx, pdl.paddles[i].charge)
+			}
 		}
+
 	}
 
-	// like with the stick we should make sure the fire button retains it's
-	// depressed state. see Stick.Step() function for commentary
-	if pdl.fire != paddleNoFire {
-		pdl.bus.WriteSWCHx(pdl.port, pdl.fire)
-	}
+	pdl.setFire()
 }
 
 // Reset implements the ports.Peripheral interface.
-func (pdl *Paddle) Reset() {
-	pdl.charge = 0
-	pdl.ticks = 0.0
-	pdl.resistance = 0.0
+func (pdl *Paddles) Reset() {
+	for i := range pdl.paddles {
+		pdl.paddles[i].charge = 0
+		pdl.paddles[i].ticks = 0.0
+		pdl.paddles[i].resistance = 0.0
+	}
 }
 
 // IsActive implements the ports.Peripheral interface.
-func (pdl *Paddle) IsActive() bool {
+func (pdl *Paddles) IsActive() bool {
 	return false
 }

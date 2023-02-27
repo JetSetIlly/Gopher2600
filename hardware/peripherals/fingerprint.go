@@ -69,7 +69,7 @@ func Fingerprint(port plugging.PortID, data *[]byte) ports.NewPeripheral {
 		}
 	} else {
 		if fingerprintPaddle(port, *data) {
-			return controllers.NewPaddle
+			return controllers.NewPaddlePair
 		}
 	}
 

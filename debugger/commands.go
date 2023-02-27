@@ -1638,7 +1638,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			case "STICK":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewStick)
 			case "PADDLE":
-				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewPaddle)
+				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewPaddlePair)
 			case "KEYPAD":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewKeypad)
 			case "GAMEPAD":
