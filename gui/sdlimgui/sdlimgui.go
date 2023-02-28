@@ -147,6 +147,12 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	}
 	img.io.SetIniFilename(iniPath)
 
+	// load sdlimgui preferences
+	img.prefs, err = newPreferences(img)
+	if err != nil {
+		return nil, fmt.Errorf("sdlimgui: %w", err)
+	}
+
 	// define colors
 	img.cols = newColors()
 
@@ -192,12 +198,6 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 	img.tv.AddRealtimeAudioMixer(img.audio)
-
-	// load sdlimgui preferences
-	img.prefs, err = newPreferences(img)
-	if err != nil {
-		return nil, fmt.Errorf("sdlimgui: %w", err)
-	}
 
 	// initialise crt preferences
 	img.crtPrefs, err = crt.NewPreferences()

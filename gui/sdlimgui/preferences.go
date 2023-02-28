@@ -66,6 +66,10 @@ type preferences struct {
 	codeFont            prefs.Float
 	codeFontLineSpacing prefs.Int
 
+	// display
+	fastSync   prefs.Bool
+	frameQueue prefs.Int
+
 	// window preferences are split over two prefs.Disk instances, to allow
 	// geometry to be saved at a different time to the fullscreen preference
 	dskWinGeom       *prefs.Disk
@@ -95,6 +99,8 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	p.guiFont.Set(13.0)
 	p.codeFont.Set(15.0)
 	p.codeFontLineSpacing.Set(2.0)
+	p.fastSync.Set(false)
+	p.frameQueue.Set(3)
 	p.glSwapInterval.Set(1)
 
 	// setup preferences
@@ -175,6 +181,16 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("sdlimgui.fonts.codeLineSpacing", &p.codeFontLineSpacing)
+	if err != nil {
+		return nil, err
+	}
+
+	// display options
+	err = p.dsk.Add("sdlimgui.display.fastSync", &p.fastSync)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.display.frameQueue", &p.frameQueue)
 	if err != nil {
 		return nil, err
 	}

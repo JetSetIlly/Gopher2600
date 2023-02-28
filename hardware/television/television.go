@@ -866,7 +866,7 @@ func (tv *Television) GetReqFPS() float32 {
 //
 // IS goroutine safe.
 func (tv *Television) GetActualFPS() (float32, float32) {
-	return tv.lmtr.actual.Load().(float32), tv.lmtr.refreshRate.Load().(float32)
+	return tv.lmtr.measured.Load().(float32), tv.lmtr.refreshRate.Load().(float32)
 }
 
 // GetReqSpecID returns the specification that was requested on creation.

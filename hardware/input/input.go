@@ -37,7 +37,7 @@ type Input struct {
 	ports *ports.Ports
 
 	playback EventPlayback
-	recorder EventRecorder
+	recorder []EventRecorder
 
 	// events pushed onto the input queue
 	pushed      chan ports.InputEvent
@@ -83,8 +83,8 @@ func (inp *Input) HandleInputEvent(ev ports.InputEvent) (bool, error) {
 		return false, nil
 	}
 
-	if inp.recorder != nil {
-		err := inp.recorder.RecordEvent(ports.TimedInputEvent{Time: inp.tv.GetCoords(), InputEvent: ev})
+	for _, r := range inp.recorder {
+		err := r.RecordEvent(ports.TimedInputEvent{Time: inp.tv.GetCoords(), InputEvent: ev})
 		if err != nil {
 			return false, err
 		}

@@ -277,7 +277,7 @@ func (vcs *VCS) SetClockSpeed(tvSpec string) error {
 // recorders and playback, and RIOT plug monitor.
 func (vcs *VCS) DetatchEmulationExtras() {
 	vcs.TIA.Audio.SetTracker(nil)
-	vcs.Input.AttachRecorder(nil)
+	vcs.Input.ClearRecorders()
 	vcs.Input.AttachPlayback(nil)
 	vcs.RIOT.Ports.AttachPlugMonitor(nil)
 }

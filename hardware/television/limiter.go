@@ -38,19 +38,25 @@ type limiter struct {
 	// whether the requested frame rate is equal to the refresh rate
 	matchRefreshRate atomic.Value // bool
 
-	// the actual number of frames per second
-	actual atomic.Value // float32
-
 	// pulse that performs the limiting. the duration of the ticker will be set
 	// when the frame rate changes.
+	pulse *time.Ticker
+
+	// we don't want to measure the frame rate too often because it's
+	// relatively expensive. a simple counter is an effective limiter
 	pulseCt      int
 	pulseCtLimit int
-	pulse        *time.Ticker
 
-	// measurement
-	measureCt      int
-	measureTime    time.Time
+	// pulse that performs the FPS measurement
 	measuringPulse *time.Ticker
+
+	// the measured FPS is the number of frames divided by the amount of
+	// elapsed time since the previous measurement
+	measureTime time.Time
+	measureCt   int
+
+	// the measured number of frames per second
+	measured atomic.Value // float32
 
 	// the number of frames to wait after setRefreshRate() before the frame
 	// limiter is adjusted to match
@@ -74,7 +80,7 @@ func (lmtr *limiter) init(tv *Television) {
 	lmtr.refreshRate.Store(float32(0))
 	lmtr.matchRefreshRate.Store(true)
 	lmtr.requested.Store(float32(0))
-	lmtr.actual.Store(float32(0))
+	lmtr.measured.Store(float32(0))
 	lmtr.pulse = time.NewTicker(time.Millisecond * 10)
 	lmtr.measureTime = time.Now()
 	lmtr.measuringPulse = time.NewTicker(time.Millisecond * 900)
@@ -152,7 +158,7 @@ func (lmtr *limiter) measureActual() {
 	case <-lmtr.measuringPulse.C:
 		t := time.Now()
 		m := float32(lmtr.measureCt) / float32(t.Sub(lmtr.measureTime).Seconds())
-		lmtr.actual.Store(m)
+		lmtr.measured.Store(m)
 
 		// reset time and count ready for next measurement
 		lmtr.measureTime = t

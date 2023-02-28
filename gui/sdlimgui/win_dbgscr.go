@@ -696,7 +696,7 @@ func (win *winDbgScr) render() {
 		elements = win.scr.crit.cropElementPixels
 		overlay = win.scr.crit.cropOverlayPixels
 	} else {
-		pixels = win.scr.crit.pixels
+		pixels = win.scr.crit.presentationPixels
 		elements = win.scr.crit.elementPixels
 		overlay = win.scr.crit.overlayPixels
 	}
@@ -771,8 +771,8 @@ func (win *winDbgScr) setScaling() {
 		w = float32(win.scr.crit.cropPixels.Bounds().Size().X)
 		h = float32(win.scr.crit.cropPixels.Bounds().Size().Y)
 	} else {
-		w = float32(win.scr.crit.pixels.Bounds().Size().X)
-		h = float32(win.scr.crit.pixels.Bounds().Size().Y)
+		w = float32(win.scr.crit.presentationPixels.Bounds().Size().X)
+		h = float32(win.scr.crit.presentationPixels.Bounds().Size().Y)
 	}
 	adjW := w * pixelWidth * win.scr.crit.frameInfo.Spec.AspectBias
 

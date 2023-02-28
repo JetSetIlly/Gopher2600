@@ -67,7 +67,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	}
 
 	// attach recorder to vcs input system
-	vcs.Input.AttachRecorder(rec)
+	vcs.Input.AddRecorder(rec)
 
 	// video digester for playback verification
 	rec.digest, err = digest.NewVideo(vcs.TV)

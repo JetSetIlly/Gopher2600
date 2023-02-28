@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -81,41 +82,41 @@ type screenCrit struct {
 	// the number of consecutive vsyncs seen
 	vsyncCount int
 
-	// the pixels array is used in the presentation texture of the play and debug screen.
-	pixels *image.RGBA
+	// the presentationPixels array is used in the presentation texture of the play and debug screen.
+	presentationPixels *image.RGBA
 
-	// bufferPixels are what we plot pixels to while we wait for a frame to complete.
-	// - the larger the buffer the greater the input lag
-	// - the smaller the buffer the more the emulation will have to wait the
+	// frameQueue are what we plot pixels to while we wait for a frame to complete.
+	// - the larger the queue the greater the input lag
+	// - the smaller the queue the more the emulation will have to wait the
 	//		screen to catch up (see emuWait and emuWaitAck channels)
-	// - a five frame buffer seems good. ten frames can feel laggy
-	bufferPixels []*image.RGBA
+	// - a three to five frame queue seems good. ten frames can feel laggy
+	frameQueue []*image.RGBA
 
-	// the length of each pixel buffer in the bufferPixels array. saves calling
-	// len() multiple times needlessly
-	bufferPixelsCount int
+	// number of pixels (multiplied by the pixel depth) in each entry of the
+	// pixels queue. saves calling len() multiple times needlessly
+	pixelsCount int
 
-	// count of how many of the bufferPixel entries have been used. reset to
-	// numBufferPixels when emulation is paused and reduced every time a new
-	// bufferPixel position is used.
+	// count of how many of entries in the pixel queue have been used. reset to
+	// length of pixels queue when emulation is paused and reduced every time a
+	// new entry is used
 	//
-	// it is used to prevent the renderIdx using a buffer that hasn't been used
-	// recently. this is important after a series of rewind and pause states
+	// it is used to prevent the renderIdx using queue entries that haven't
+	// been used recently. this is important after a series of rewind and pause
+	// states
 	//
 	// * playmode only
-	bufferUsed int
+	queueUsed int
 
-	// which buffer we'll be plotting to and which bufffer we'll be rendering
-	// from. in playmode we make sure these two indexes never meet. in
-	// debugmode we plot and render from the same index, it doesn't matter.
+	// which entry in the queue we'll be plotting to and which one we'll be
+	// rendering from. in playmode we make sure these two indexes never meet.
+	// in debugmode we plot and render from the same index, it doesn't matter.
 	//
 	// * in debug mode these values never change
 	plotIdx       int
 	renderIdx     int
 	prevRenderIdx int
 
-	// element colors and overlay colors are only used in the debugger so we
-	// don't need to replicate the "backing pixels" idea.
+	// element colors and overlay colors are only used in the debugger
 	elementPixels *image.RGBA
 	overlayPixels *image.RGBA
 
@@ -161,10 +162,7 @@ func newScreen(img *SdlImgui) *screen {
 	scr.crit.overlay = reflection.OverlayLabels[reflection.OverlayNone]
 	scr.crit.monitorSync = true
 
-	// allocate memory for pixel buffers etc.
-	scr.allocateBufferPixelsForTV(60)
-
-	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
+	scr.crit.presentationPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 
@@ -177,36 +175,71 @@ func newScreen(img *SdlImgui) *screen {
 	scr.resize(television.NewFrameInfo(specification.SpecNTSC))
 	scr.Reset()
 
+	// register the screen as an event recorder
+	scr.img.vcs.Input.AddRecorder(scr)
+
 	return scr
 }
 
-// allocateBufferPixelsForTV decides on the buffering and syncing policy of the
+// RecordEvent implements the EventRecorder interface
+func (scr *screen) RecordEvent(ev ports.TimedInputEvent) error {
+	if !scr.img.prefs.fastSync.Get().(bool) {
+		return nil
+	}
+
+	// preempt the pixel queue to show the latest frame. roughly equivalent to
+	// "fast sync" option
+	if scr.img.isPlaymode() {
+		scr.crit.section.Lock()
+		defer scr.crit.section.Unlock()
+		scr.crit.renderIdx = scr.crit.plotIdx - 1
+		if scr.crit.renderIdx < 0 {
+			scr.crit.renderIdx += len(scr.crit.frameQueue)
+		}
+	}
+	return nil
+}
+
+// setRefreshRate decides on the buffering and syncing policy of the
 // screen based on the reported TV refresh rate.
-func (scr *screen) allocateBufferPixelsForTV(tvRefreshRate float32) {
-	var l int
+func (scr *screen) setRefreshRate(tvRefreshRate float32) {
+	// check whether to apply monitorsync and decide on the length of the pixel queue
+	scr.crit.monitorSyncInRange = float32(scr.img.plt.mode.RefreshRate)*1.01 >= tvRefreshRate
+	scr.allocateFrameQueue()
+}
 
-	// check whether to apply monitorsync and decide on the length of the pixel buffer
-	if float32(scr.img.plt.mode.RefreshRate)*1.01 >= tvRefreshRate {
-		scr.crit.monitorSyncInRange = true
-		l = 5
-	} else {
-		scr.crit.monitorSyncInRange = false
-		l = 1
+func (scr *screen) allocateFrameQueue() {
+	length := scr.img.prefs.frameQueue.Get().(int)
+	if length == len(scr.crit.frameQueue) {
+		return
 	}
 
-	scr.crit.bufferPixels = make([]*image.RGBA, l)
-	for i := range scr.crit.bufferPixels {
-		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
+	var old *image.RGBA
+	if len(scr.crit.frameQueue) > 0 {
+		old = scr.crit.frameQueue[scr.crit.renderIdx]
 	}
 
-	// note length of bufferPixels
-	scr.crit.bufferPixelsCount = len(scr.crit.bufferPixels[0].Pix)
+	scr.crit.frameQueue = make([]*image.RGBA, length)
+	for i := range scr.crit.frameQueue {
+		scr.crit.frameQueue[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
+	}
 
 	// reset indexes
-	scr.crit.bufferUsed = 0
+	scr.crit.queueUsed = 0
 	scr.crit.plotIdx = 0
 	scr.crit.renderIdx = 0
 	scr.crit.prevRenderIdx = 0
+
+	// note number of pixels in each entry in the pixel queue
+	scr.crit.pixelsCount = len(scr.crit.frameQueue[0].Pix)
+
+	// restore previous render frame to all entries in the queue to ensure we
+	// never get an empty frame by accident
+	if old != nil {
+		for i := range scr.crit.frameQueue {
+			copy(scr.crit.frameQueue[i].Pix, old.Pix)
+		}
+	}
 }
 
 // Reset implements the television.PixelRenderer interface. Note that Reset
@@ -226,25 +259,27 @@ func (scr *screen) Reset() {
 	scr.crit.prevRenderIdx = 0
 }
 
-// clear all pixel information including reflection data.
-//
-// called when screen is reset and also when it is resize.
+// clear pixel information including reflection data. important to do on
+// initialisation because we need to set the alpha channel (because the alpha
+// value never changes we then don't need to write it over and over again in
+// the SetPixels() function)
 //
 // must be called from inside a critical section.
 func (scr *screen) clearPixels() {
-	// clear pixels
-	for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
-		for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
-			scr.crit.pixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-			scr.crit.elementPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-			scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+	for i := range scr.crit.frameQueue {
+		for y := 0; y < scr.crit.presentationPixels.Bounds().Size().Y; y++ {
+			for x := 0; x < scr.crit.presentationPixels.Bounds().Size().X; x++ {
+				scr.crit.frameQueue[i].SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+			}
 		}
 	}
-	for i := range scr.crit.bufferPixels {
-		for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
-			for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
-				scr.crit.bufferPixels[i].SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-			}
+
+	// clear pixels
+	for y := 0; y < scr.crit.presentationPixels.Bounds().Size().Y; y++ {
+		for x := 0; x < scr.crit.presentationPixels.Bounds().Size().X; x++ {
+			scr.crit.presentationPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+			scr.crit.elementPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+			scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 		}
 	}
 
@@ -276,7 +311,7 @@ func (scr *screen) resize(frameInfo television.FrameInfo) {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	scr.allocateBufferPixelsForTV(frameInfo.RefreshRate)
+	scr.setRefreshRate(frameInfo.RefreshRate)
 
 	// do nothing if resize values are the same as previously
 	if scr.crit.frameInfo.Spec.ID == frameInfo.Spec.ID &&
@@ -292,7 +327,7 @@ func (scr *screen) resize(frameInfo television.FrameInfo) {
 		specification.ClksHBlank, scr.crit.frameInfo.VisibleTop,
 		specification.ClksHBlank+specification.ClksVisible, scr.crit.frameInfo.VisibleBottom,
 	)
-	scr.crit.cropPixels = scr.crit.pixels.SubImage(crop).(*image.RGBA)
+	scr.crit.cropPixels = scr.crit.presentationPixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropElementPixels = scr.crit.elementPixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropOverlayPixels = scr.crit.overlayPixels.SubImage(crop).(*image.RGBA)
 
@@ -366,19 +401,19 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 			case govern.Paused:
 				scr.crit.renderIdx = scr.crit.plotIdx
 				scr.crit.prevRenderIdx = scr.crit.plotIdx
-				scr.crit.bufferUsed = len(scr.crit.bufferPixels)
+				scr.crit.queueUsed = len(scr.crit.frameQueue)
 			case govern.Running:
-				if scr.crit.bufferUsed > 0 {
-					scr.crit.bufferUsed--
+				if scr.crit.queueUsed > 0 {
+					scr.crit.queueUsed--
 				}
 
 				scr.crit.plotIdx++
-				if scr.crit.plotIdx >= len(scr.crit.bufferPixels) {
+				if scr.crit.plotIdx >= len(scr.crit.frameQueue) {
 					scr.crit.plotIdx = 0
 				}
 
 				// if plot index has crashed into the render index then
-				if scr.crit.plotIdx == scr.crit.renderIdx {
+				if scr.crit.plotIdx == scr.crit.renderIdx && len(scr.crit.frameQueue) > 1 {
 					// ** screen update not keeping up with emulation **
 
 					// we must unlock the critical section or the gui thread will not
@@ -418,11 +453,11 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	offset := scr.crit.screenrollScanline * 4 * specification.ClksScanline
 
 	for i := range sig {
-		// end of pixel buffer reached but there are still signals to process.
+		// end of pixel queue reached but there are still signals to process.
 		//
 		// this can happen when screen is rolling and offset started off at a
 		// value greater than zero
-		if offset >= scr.crit.bufferPixelsCount {
+		if offset >= scr.crit.pixelsCount {
 			offset = 0
 		}
 
@@ -435,7 +470,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 		}
 
 		// small cap improves performance, see https://golang.org/issue/27857
-		s := scr.crit.bufferPixels[scr.crit.plotIdx].Pix[offset : offset+3 : offset+3]
+		s := scr.crit.frameQueue[scr.crit.plotIdx].Pix[offset : offset+3 : offset+3]
 		s[0] = col.R
 		s[1] = col.G
 		s[2] = col.B
@@ -475,7 +510,7 @@ func (scr *screen) plotOverlay() {
 	offset := scr.crit.screenrollScanline * 4 * specification.ClksScanline
 
 	for i := range scr.crit.reflection {
-		// end of pixel buffer reached but there are still signals to process.
+		// end of pixel queue reached but there are still signals to process.
 		//
 		// this can happen when screen is rolling and offset started off at a
 		// value greater than zero
@@ -579,33 +614,33 @@ func (scr *screen) render() {
 	}
 }
 
-// copy pixels from buffer to the pixels.
+// copy pixels from queue to the lile copy.
 func (scr *screen) copyPixelsDebugmode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	// copy pixels from render buffer to the live copy.
-	copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.plotIdx].Pix)
+	// copy pixels from pixel queue to the live copy.
+	copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.plotIdx].Pix)
 }
 
-// copy pixels from buffer to the pixels.
+// copy pixels from queue to the live copy.
 func (scr *screen) copyPixelsPlaymode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	// the bufferUsed check is important for correct operation of the rewinding
+	// the queueUsed check is important for correct operation of the rewinding
 	// state. without it, the screen will jump after a rewind event
-	if scr.crit.bufferUsed == 0 && scr.crit.monitorSync && scr.crit.monitorSyncInRange {
+	if scr.crit.queueUsed == 0 && scr.crit.monitorSync && scr.crit.monitorSyncInRange {
 		// advance render index
 		prev := scr.crit.prevRenderIdx
 		scr.crit.prevRenderIdx = scr.crit.renderIdx
 		scr.crit.renderIdx++
-		if scr.crit.renderIdx >= len(scr.crit.bufferPixels) {
+		if scr.crit.renderIdx >= len(scr.crit.frameQueue) {
 			scr.crit.renderIdx = 0
 		}
 
 		// render index has bumped into the plotting index. revert render index
-		if scr.crit.renderIdx == scr.crit.plotIdx {
+		if scr.crit.renderIdx == scr.crit.plotIdx && len(scr.crit.frameQueue) > 1 {
 			// ** emulation not keeping up with screen update **
 
 			// undo frame advancement
@@ -621,7 +656,7 @@ func (scr *screen) copyPixelsPlaymode() {
 		}
 	}
 
-	// copy pixels from render buffer to the live copy.
+	// copy pixels from pixel queue to the live copy.
 	//
 	// if emulation is paused we alternate which set of pixels we copy.
 	// currently, we assume that the display kernel is two frames.
@@ -633,12 +668,12 @@ func (scr *screen) copyPixelsPlaymode() {
 	if scr.img.dbg.State() == govern.Paused {
 		activePause := scr.img.prefs.activePause.Get().(bool)
 		if scr.crit.pauseFrame || !activePause {
-			copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+			copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.renderIdx].Pix)
 		} else {
-			copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.prevRenderIdx].Pix)
+			copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.prevRenderIdx].Pix)
 		}
 		scr.crit.pauseFrame = !scr.crit.pauseFrame
 	} else {
-		copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+		copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.renderIdx].Pix)
 	}
 }

@@ -43,20 +43,27 @@ type EventRecorder interface {
 }
 
 // AttachEventRecorder attaches an EventRecorder implementation.
-func (inp *Input) AttachRecorder(r EventRecorder) error {
+func (inp *Input) AddRecorder(r EventRecorder) error {
 	if inp.playback != nil {
 		return fmt.Errorf("input: attach recorder: emulator already has a playback attached")
 	}
-	inp.recorder = r
+	inp.recorder = append(inp.recorder, r)
 	return nil
+}
+
+// ClearRecorders removes all registered event recorders.
+func (inp *Input) ClearRecorders() {
+	inp.recorder = inp.recorder[:0]
 }
 
 // AttachPlayback attaches an EventPlayback implementation to the Input
 // sub-system. EventPlayback can be nil in order to remove the playback.
 func (inp *Input) AttachPlayback(pb EventPlayback) error {
-	if inp.recorder != nil {
-		return fmt.Errorf("input: attach playback: emulator already has a recorder attached")
-	}
+	// we have previously checked whether a recorder was attached before
+	// allowing playback. however, we are now allowing multiple recorders some
+	// of which will never be replayed. moreover, it was never really clear
+	// whether recording a playback file would be an issue. On reflection, I
+	// don't think it would be - but it hasn't been tested
 	inp.playback = pb
 	inp.setHandleFunc()
 	return nil
