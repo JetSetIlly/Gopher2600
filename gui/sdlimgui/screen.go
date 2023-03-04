@@ -112,9 +112,11 @@ type screenCrit struct {
 	// in debugmode we plot and render from the same index, it doesn't matter.
 	//
 	// * in debug mode these values never change
-	plotIdx       int
-	renderIdx     int
-	prevRenderIdx int
+	plotIdx   int
+	renderIdx int
+
+	// whether to sync the plot and render indexes on next render
+	fastSync bool
 
 	// element colors and overlay colors are only used in the debugger
 	elementPixels *image.RGBA
@@ -192,10 +194,7 @@ func (scr *screen) RecordEvent(ev ports.TimedInputEvent) error {
 	if scr.img.isPlaymode() {
 		scr.crit.section.Lock()
 		defer scr.crit.section.Unlock()
-		scr.crit.renderIdx = scr.crit.plotIdx - 1
-		if scr.crit.renderIdx < 0 {
-			scr.crit.renderIdx += len(scr.crit.frameQueue)
-		}
+		scr.crit.fastSync = true
 	}
 	return nil
 }
@@ -228,7 +227,6 @@ func (scr *screen) allocateFrameQueue() {
 	scr.crit.queueUsed = 0
 	scr.crit.plotIdx = 0
 	scr.crit.renderIdx = 0
-	scr.crit.prevRenderIdx = 0
 
 	// note number of pixels in each entry in the pixel queue
 	scr.crit.pixelsCount = len(scr.crit.frameQueue[0].Pix)
@@ -256,7 +254,6 @@ func (scr *screen) Reset() {
 	scr.clearPixels()
 	scr.crit.plotIdx = 0
 	scr.crit.renderIdx = 0
-	scr.crit.prevRenderIdx = 0
 }
 
 // clear pixel information including reflection data. important to do on
@@ -266,6 +263,7 @@ func (scr *screen) Reset() {
 //
 // must be called from inside a critical section.
 func (scr *screen) clearPixels() {
+	// clear pixels in frame queue
 	for i := range scr.crit.frameQueue {
 		for y := 0; y < scr.crit.presentationPixels.Bounds().Size().Y; y++ {
 			for x := 0; x < scr.crit.presentationPixels.Bounds().Size().X; x++ {
@@ -360,8 +358,8 @@ func (scr *screen) Resize(frameInfo television.FrameInfo) error {
 //
 // MUST NOT be called from the gui thread.
 func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
-	// unlocking must be done carefully
 	scr.crit.section.Lock()
+	defer scr.crit.section.Unlock()
 
 	// we'll store frameInfo at the same time as unlocking the critical section
 
@@ -394,45 +392,9 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 			}
 		}
 
-		if scr.crit.monitorSync && scr.crit.monitorSyncInRange {
-			switch scr.img.dbg.State() {
-			case govern.Rewinding:
-				fallthrough
-			case govern.Paused:
-				scr.crit.renderIdx = scr.crit.plotIdx
-				scr.crit.prevRenderIdx = scr.crit.plotIdx
-				scr.crit.queueUsed = len(scr.crit.frameQueue)
-			case govern.Running:
-				if scr.crit.queueUsed > 0 {
-					scr.crit.queueUsed--
-				}
-
-				scr.crit.plotIdx++
-				if scr.crit.plotIdx >= len(scr.crit.frameQueue) {
-					scr.crit.plotIdx = 0
-				}
-
-				// if plot index has crashed into the render index then
-				if scr.crit.plotIdx == scr.crit.renderIdx && len(scr.crit.frameQueue) > 1 {
-					// ** screen update not keeping up with emulation **
-
-					// we must unlock the critical section or the gui thread will not
-					// be able to process the channel
-					scr.crit.frameInfo = frameInfo
-					scr.crit.section.Unlock()
-
-					// pause emulation until screen has caught up
-					scr.emuWait <- true
-					<-scr.emuWaitAck
-
-					return nil
-				}
-			}
-		}
 	}
 
 	scr.crit.frameInfo = frameInfo
-	scr.crit.section.Unlock()
 
 	return nil
 }
@@ -444,8 +406,37 @@ func (scr *screen) NewScanline(scanline int) error {
 
 // SetPixels implements the television.PixelRenderer interface.
 func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
+	// wait flag indicates whether to slow down the emulation
+	// * will only be set in playmode
+	wait := false
+
+	// unlocking must be done carefully
 	scr.crit.section.Lock()
-	defer scr.crit.section.Unlock()
+
+	if scr.img.isPlaymode() {
+		if scr.crit.monitorSync && scr.crit.monitorSyncInRange {
+			switch scr.img.dbg.State() {
+			case govern.Rewinding:
+				fallthrough
+			case govern.Paused:
+				scr.crit.renderIdx = scr.crit.plotIdx
+				scr.crit.queueUsed = len(scr.crit.frameQueue)
+			case govern.Running:
+				if scr.crit.queueUsed > 0 {
+					scr.crit.queueUsed--
+				}
+
+				scr.crit.plotIdx++
+				if scr.crit.plotIdx >= len(scr.crit.frameQueue) {
+					scr.crit.plotIdx = 0
+				}
+
+				// if plot index has crashed into the render index then set wait flag
+				// ** screen update not keeping up with emulation **
+				wait = scr.crit.plotIdx == scr.crit.renderIdx && len(scr.crit.frameQueue) > 1
+			}
+		}
+	}
 
 	var col color.RGBA
 
@@ -455,8 +446,8 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	for i := range sig {
 		// end of pixel queue reached but there are still signals to process.
 		//
-		// this can happen when screen is rolling and offset started off at a
-		// value greater than zero
+		// this can happen when screen is rolling and the initial offset value
+		// was greater than zero
 		if offset >= scr.crit.pixelsCount {
 			offset = 0
 		}
@@ -483,6 +474,15 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	scr.crit.lastScanline = last / specification.ClksScanline
 	scr.crit.lastClock = last % specification.ClksScanline
 
+	scr.crit.section.Unlock()
+
+	// slow emulation until screen has caught up
+	// * wait should only be set to true in playmode
+	if wait {
+		scr.emuWait <- true
+		<-scr.emuWaitAck
+	}
+
 	return nil
 }
 
@@ -502,7 +502,6 @@ func (scr *screen) Reflect(ref []reflection.ReflectedVideoStep) error {
 	return nil
 }
 
-// Reflect implements reflection.Renderer interface.
 func (scr *screen) plotOverlay() {
 	var col color.RGBA
 
@@ -512,8 +511,8 @@ func (scr *screen) plotOverlay() {
 	for i := range scr.crit.reflection {
 		// end of pixel queue reached but there are still signals to process.
 		//
-		// this can happen when screen is rolling and offset started off at a
-		// value greater than zero
+		// this can happen when screen is rolling and the initial offset value
+		// was greater than zero
 		if offset >= len(scr.crit.overlayPixels.Pix) {
 			offset = 0
 		}
@@ -614,7 +613,7 @@ func (scr *screen) render() {
 	}
 }
 
-// copy pixels from queue to the lile copy.
+// copy pixels from queue to the live copy.
 func (scr *screen) copyPixelsDebugmode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
@@ -628,52 +627,29 @@ func (scr *screen) copyPixelsPlaymode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	// the queueUsed check is important for correct operation of the rewinding
-	// state. without it, the screen will jump after a rewind event
-	if scr.crit.queueUsed == 0 && scr.crit.monitorSync && scr.crit.monitorSyncInRange {
-		// advance render index
-		prev := scr.crit.prevRenderIdx
-		scr.crit.prevRenderIdx = scr.crit.renderIdx
-		scr.crit.renderIdx++
-		if scr.crit.renderIdx >= len(scr.crit.frameQueue) {
-			scr.crit.renderIdx = 0
-		}
-
-		// render index has bumped into the plotting index. revert render index
-		if scr.crit.renderIdx == scr.crit.plotIdx && len(scr.crit.frameQueue) > 1 {
-			// ** emulation not keeping up with screen update **
-
-			// undo frame advancement
-			scr.crit.renderIdx = scr.crit.prevRenderIdx
-			scr.crit.prevRenderIdx = prev
-		}
-
-		// let the emulator thread know it's okay to continue as soon as possible
-		select {
-		case <-scr.emuWait:
-			scr.emuWaitAck <- true
-		default:
-		}
-	}
-
-	// copy pixels from pixel queue to the live copy.
-	//
-	// if emulation is paused we alternate which set of pixels we copy.
-	// currently, we assume that the display kernel is two frames.
-	//
-	// this assumption works well in most instances but will sometimes cause
-	// poor results for one frame kernels (depending on the ROM and what is
-	// happening on the screen at the time of the pause ) and will be
-	// sub-optimal for three frame kernels in almost all cases.
-	if scr.img.dbg.State() == govern.Paused {
-		activePause := scr.img.prefs.activePause.Get().(bool)
-		if scr.crit.pauseFrame || !activePause {
-			copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.renderIdx].Pix)
-		} else {
-			copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.prevRenderIdx].Pix)
-		}
-		scr.crit.pauseFrame = !scr.crit.pauseFrame
+	if scr.crit.fastSync {
+		scr.crit.renderIdx = scr.crit.plotIdx
+		scr.crit.fastSync = false
 	} else {
-		copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.renderIdx].Pix)
+		// the queueUsed check is important for correct operation of the rewinding
+		// state. without it, the screen will jump after a rewind event
+		if scr.crit.queueUsed == 0 && scr.crit.monitorSync && scr.crit.monitorSyncInRange {
+			// advance render index
+			if scr.img.dbg.State() != govern.Paused {
+				scr.crit.renderIdx++
+				if scr.crit.renderIdx >= len(scr.crit.frameQueue) {
+					scr.crit.renderIdx = 0
+				}
+			}
+
+			// let the emulator thread know it's okay to continue as soon as possible
+			select {
+			case <-scr.emuWait:
+				scr.emuWaitAck <- true
+			default:
+			}
+		}
 	}
+
+	copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.renderIdx].Pix)
 }

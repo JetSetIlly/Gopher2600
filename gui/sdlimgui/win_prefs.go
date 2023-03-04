@@ -220,20 +220,31 @@ of the ROM.`)
 		imgui.Spacing()
 		win.drawGlSwapInterval()
 
+		frameQueue := int32(win.img.prefs.frameQueue.Get().(int))
+
+		disableFastSync := frameQueue <= 1
+		if disableFastSync {
+			imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+		}
 		imgui.Spacing()
 		fastSync := win.img.prefs.fastSync.Get().(bool)
 		if imgui.Checkbox("Fast Sync", &fastSync) {
 			win.img.prefs.fastSync.Set(fastSync)
 		}
+		if disableFastSync {
+			imgui.PopItemFlag()
+			imgui.PopStyleVar()
+		}
 
 		imgui.Spacing()
-		frameQueue := int32(win.img.prefs.frameQueue.Get().(int))
 		if imgui.SliderInt("Frame Queue Length", &frameQueue, 1, 5) {
 			win.img.prefs.frameQueue.Set(frameQueue)
 			win.img.screen.crit.section.Lock()
 			win.img.screen.allocateFrameQueue()
 			win.img.screen.crit.section.Unlock()
 		}
+
 	}
 }
 
