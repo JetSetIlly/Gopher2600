@@ -149,7 +149,9 @@ func (wtc *watches) check() string {
 		if wtc.dbg.vcs.CPU.PhantomMemAccess {
 			checkString.WriteString(" phantom")
 		}
-		checkString.WriteRune('\n')
+		if checkString.Len() > 0 {
+			checkString.WriteRune('\n')
+		}
 	}
 
 	// note what the last address accessed was
