@@ -114,10 +114,8 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 
 	gl.GenTextures(1, &win.elementsTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 
 	// call setScaling() now so that render() has something to work with - even
 	// though setScaling() is called every draw if the window is open it will
@@ -202,7 +200,11 @@ func (win *winDbgScr) draw() {
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
 
 	imgui.PushStyleColor(imgui.StyleColorDragDropTarget, win.img.cols.Transparent)
-	imgui.ImageButton(imgui.TextureID(win.displayTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+	if !win.crtPreview && win.elements {
+		imgui.ImageButton(imgui.TextureID(win.elementsTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+	} else {
+		imgui.ImageButton(imgui.TextureID(win.displayTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+	}
 	win.paintDragAndDrop()
 	imgui.PopStyleColor()
 
@@ -786,5 +788,8 @@ func (win *winDbgScr) setScaling() {
 
 // textureSpec implements the scalingImage specification
 func (win *winDbgScr) textureSpec() (uint32, float32, float32) {
+	if !win.crtPreview && win.elements {
+		return win.elementsTexture, win.scaledWidth, win.scaledHeight
+	}
 	return win.displayTexture, win.scaledWidth, win.scaledHeight
 }
