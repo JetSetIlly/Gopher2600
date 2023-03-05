@@ -38,8 +38,8 @@ var DbgScrOverlayShader []byte
 //go:embed "dbgscr_helpers.frag"
 var DbgScrHelpersShader []byte
 
-//go:embed "scaling.frag"
-var ScalingShader []byte
+//go:embed "sharpen.frag"
+var SharpenShader []byte
 
 //go:embed "crt_effects.frag"
 var CRTEffectsFragShader []byte

@@ -103,7 +103,7 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 	sh := &crtSequencer{
 		img:                   img,
 		seq:                   framebuffer.NewSequence(5),
-		scalingShader:         newScalingShader(),
+		scalingShader:         newSharpenShader(),
 		phosphorShader:        newPhosphorShader(img),
 		blackCorrectionShader: newBlackCorrectionShader(),
 		blurShader:            newBlurShader(),
@@ -165,8 +165,8 @@ func (sh *crtSequencer) flushPhosphor() {
 // occurs but crt effects are not applied.
 //
 // integerScaling instructs the scaling shader not to perform any smoothing
-func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, integerScaling bool,
-	numScanlines int, numClocks int, scalingImage scalingImage, prefs crtSeqPrefs) uint32 {
+func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool,
+	numScanlines int, numClocks int, scalingImage sharpenImage, prefs crtSeqPrefs) uint32 {
 
 	// we'll be chaining many shaders together so use internal projection
 	env.useInternalProj = true
@@ -183,7 +183,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, inte
 	// scale image
 	if scalingImage != nil {
 		env.srcTextureID = sh.seq.Process(crtSeqProcessedSrc, func() {
-			sh.scalingShader.(*scalingShader).setAttributesArgs(env, scalingImage, integerScaling)
+			sh.scalingShader.(*sharpenShader).setAttributesArgs(env, scalingImage)
 			env.draw()
 		})
 	}

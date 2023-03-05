@@ -303,53 +303,31 @@ func (sh *blendShader) setAttributesArgs(env shaderEnvironment, modulate float32
 	gl.Uniform1i(sh.newFrame, 1)
 }
 
-type scalingShader struct {
+type sharpenShader struct {
 	shader
-	scaledWidth     int32
-	scaledHeight    int32
-	unscaledWidth   int32
-	unscaledHeight  int32
-	unscaledTexture int32
-	integerScaling  int32
+	texture int32
 }
 
-func newScalingShader() shaderProgram {
-	sh := &scalingShader{}
-	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.ScalingShader))
-	sh.unscaledWidth = gl.GetUniformLocation(sh.handle, gl.Str("UnscaledWidth"+"\x00"))
-	sh.unscaledHeight = gl.GetUniformLocation(sh.handle, gl.Str("UnscaledHeight"+"\x00"))
-	sh.scaledWidth = gl.GetUniformLocation(sh.handle, gl.Str("ScaledWidth"+"\x00"))
-	sh.scaledHeight = gl.GetUniformLocation(sh.handle, gl.Str("ScaledHeight"+"\x00"))
-	sh.unscaledTexture = gl.GetUniformLocation(sh.handle, gl.Str("UnscaledTexture"+"\x00"))
-	sh.integerScaling = gl.GetUniformLocation(sh.handle, gl.Str("IntegerScaling"+"\x00"))
+func newSharpenShader() shaderProgram {
+	sh := &sharpenShader{}
+	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.SharpenShader))
+	sh.texture = gl.GetUniformLocation(sh.handle, gl.Str("Texture"+"\x00"))
 	return sh
 }
 
-type scalingImage interface {
-	unscaledTextureSpec() (uint32, float32, float32)
-	scaledTextureSpec() (uint32, float32, float32)
+// sharpenImage is used by the sharpen shader
+type sharpenImage interface {
+	// returns texture ID and the width and height of the texture
+	textureSpec() (uint32, float32, float32)
 }
 
 // nolint: unparam
-func (sh *scalingShader) setAttributesArgs(env shaderEnvironment, scalingImage scalingImage, integerScaling bool) {
-	ut, uw, uh := scalingImage.unscaledTextureSpec()
-	_, w, h := scalingImage.scaledTextureSpec()
-
+func (sh *sharpenShader) setAttributesArgs(env shaderEnvironment, scalingImage sharpenImage) {
+	t, _, _ := scalingImage.textureSpec()
 	sh.shader.setAttributes(env)
-	gl.Uniform1f(sh.unscaledWidth, uw)
-	gl.Uniform1f(sh.unscaledHeight, uh)
-	gl.Uniform1f(sh.scaledWidth, w)
-	gl.Uniform1f(sh.scaledHeight, h)
-
-	if integerScaling {
-		gl.Uniform1i(sh.integerScaling, 1)
-	} else {
-		gl.Uniform1i(sh.integerScaling, 0)
-	}
-
 	gl.ActiveTexture(gl.TEXTURE1)
-	gl.BindTexture(gl.TEXTURE_2D, ut)
-	gl.Uniform1i(sh.unscaledTexture, 1)
+	gl.BindTexture(gl.TEXTURE_2D, t)
+	gl.Uniform1i(sh.texture, 1)
 }
 
 type guiShader struct {

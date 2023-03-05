@@ -50,7 +50,6 @@ type winDbgScr struct {
 	displayTexture  uint32
 	elementsTexture uint32
 	overlayTexture  uint32
-	screenTexture   uint32
 
 	// the pixels we use to clear normalTexture with
 	emptyScaledPixels []uint8
@@ -77,12 +76,10 @@ type winDbgScr struct {
 	screenOrigin imgui.Vec2
 
 	// scaling of texture and calculated dimensions
-	xscaling       float32
-	yscaling       float32
-	scaledWidth    float32
-	scaledHeight   float32
-	unscaledWidth  float32
-	unscaledHeight float32
+	xscaling     float32
+	yscaling     float32
+	scaledWidth  float32
+	scaledHeight float32
 
 	// the dimensions required for the combo widgets
 	specComboDim    imgui.Vec2
@@ -107,20 +104,13 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	// set texture, creation of textures will be done after every call to resize()
 	gl.GenTextures(1, &win.displayTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.displayTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 
 	gl.GenTextures(1, &win.overlayTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.overlayTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-
-	gl.GenTextures(1, &win.screenTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT)
 
 	gl.GenTextures(1, &win.elementsTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
@@ -712,20 +702,13 @@ func (win *winDbgScr) render() {
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(win.emptyScaledPixels))
+			gl.Ptr(pixels.Pix))
 
 		gl.BindTexture(gl.TEXTURE_2D, win.overlayTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(overlay.Bounds().Size().X), int32(overlay.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(overlay.Pix))
-
-		// unscaled screen texture
-		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(pixels.Pix))
 
 		gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
@@ -739,20 +722,13 @@ func (win *winDbgScr) render() {
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(win.emptyScaledPixels))
+			gl.Ptr(pixels.Pix))
 
 		gl.BindTexture(gl.TEXTURE_2D, win.overlayTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(overlay.Bounds().Size().X), int32(overlay.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(overlay.Pix))
-
-		// unscaled screen texture
-		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(pixels.Pix))
 
 		gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
@@ -803,22 +779,12 @@ func (win *winDbgScr) setScaling() {
 	win.xscaling = scaling * pixelWidth * win.scr.crit.frameInfo.Spec.AspectBias
 	win.scaledWidth = w * win.xscaling
 	win.scaledHeight = h * win.yscaling
-	win.unscaledWidth = w
-	win.unscaledHeight = h
 
 	// get numscanlines while we're in critical section
 	win.numScanlines = win.scr.crit.frameInfo.VisibleBottom - win.scr.crit.frameInfo.VisibleTop
 }
 
-// unscaledTextureSpec implements the scalingImage specification
-func (win *winDbgScr) unscaledTextureSpec() (uint32, float32, float32) {
-	if win.elements && !win.crtPreview {
-		return win.elementsTexture, win.unscaledWidth, win.unscaledHeight
-	}
-	return win.screenTexture, win.unscaledWidth, win.unscaledHeight
-}
-
-// unscaledTextureSpec implements the scalingImage specification
-func (win *winDbgScr) scaledTextureSpec() (uint32, float32, float32) {
+// textureSpec implements the scalingImage specification
+func (win *winDbgScr) textureSpec() (uint32, float32, float32) {
 	return win.displayTexture, win.scaledWidth, win.scaledHeight
 }

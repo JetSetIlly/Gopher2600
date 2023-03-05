@@ -106,12 +106,12 @@ func (sh *screenshotSequencer) startProcess(mode screenshotMode) {
 	sh.crt.flushPhosphor()
 }
 
-func (sh *screenshotSequencer) process(env shaderEnvironment, scalingImage scalingImage) {
+func (sh *screenshotSequencer) process(env shaderEnvironment, scalingImage sharpenImage) {
 	if sh.exposureCt <= 0 {
 		return
 	}
 
-	textureID := sh.crt.process(env, true, false,
+	textureID := sh.crt.process(env, true,
 		sh.img.playScr.visibleScanlines, specification.ClksVisible,
 		sh.img.playScr, sh.prefs)
 
@@ -122,8 +122,8 @@ func (sh *screenshotSequencer) process(env shaderEnvironment, scalingImage scali
 }
 
 // SavesJPEG writes the texture to the specified path.
-func (sh *screenshotSequencer) SaveJPEG(textureID uint32, path string, scalingImage scalingImage) {
-	_, width, height := scalingImage.scaledTextureSpec()
+func (sh *screenshotSequencer) SaveJPEG(textureID uint32, path string, scalingImage sharpenImage) {
+	_, width, height := scalingImage.textureSpec()
 	img := image.NewRGBA(image.Rect(0, 0, int(width), int(height)))
 	if img == nil {
 		logger.Log("screenshot", "save failed: cannot allocate image data")

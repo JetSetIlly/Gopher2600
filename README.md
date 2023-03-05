@@ -245,11 +245,12 @@ The following projects are used in the `Gopher2600` project:
 
 Both 6502.ts and Stella were used as reference for the Audio implementation.
 
-Some ideas for the fragment shader taken from:
+Some ideas for the fragment shaders taken from:
 
 * https://github.com/libretro/glsl-shaders/blob/master/crt/shaders/crt-pi.glsl
 * https://www.shadertoy.com/view/ltB3zD
 * https://github.com/mattiasgustavsson/crtview
+* https://gist.github.com/Beefster09/7264303ee4b4b2086f372f1e70e8eddd
 
 The Festival Speech Synthesis System is an optional program that can be run
 alongside the emulator for [AtariVox](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/AtariVox-and-SaveKey) support

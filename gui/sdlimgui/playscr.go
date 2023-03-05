@@ -37,13 +37,8 @@ type playScr struct {
 	// (re)create textures on next render()
 	createTextures bool
 
-	// textures. scaledTexture is the presentation texture. unscaledTexture is
-	// the unscaled pixels from screen that are passed through the scaling shader
-	scaledTexture   uint32
-	unscaledTexture uint32
-
-	// the pixels we use to clear scaledTexture with
-	emptyScaledPixels []uint8
+	// textures. displayTexture is the presentation texture
+	displayTexture uint32
 
 	// the tv screen has captured mouse input
 	isCaptured bool
@@ -52,12 +47,10 @@ type playScr struct {
 	imagePosMax imgui.Vec2
 
 	// scaling of texture and calculated dimensions
-	xscaling       float32
-	yscaling       float32
-	scaledWidth    float32
-	scaledHeight   float32
-	unscaledWidth  float32
-	unscaledHeight float32
+	xscaling     float32
+	yscaling     float32
+	scaledWidth  float32
+	scaledHeight float32
 
 	// number of scanlines in current image. taken from screen but is crit section safe
 	visibleScanlines int
@@ -93,27 +86,18 @@ func newPlayScr(img *SdlImgui) *playScr {
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
-	gl.GenTextures(1, &win.scaledTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.scaledTexture)
+	gl.GenTextures(1, &win.displayTexture)
+	gl.BindTexture(gl.TEXTURE_2D, win.displayTexture)
 
 	// mag and min changed in setScaling() according to whether we want pixel
 	// perfect rendering
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 
 	// clamp to edge is important for LINEAR filtering. not noticeable for
 	// NEAREST filtering
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-
-	// source texture - unscaled screen pixels. parameters the same as for
-	// the screen texture
-	gl.GenTextures(1, &win.unscaledTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.unscaledTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT)
 
 	// set scale and padding on startup. scale and padding will be recalculated
 	// on window resize and textureRenderer.resize()
@@ -129,7 +113,7 @@ func (win *playScr) draw() {
 	defer win.img.screen.crit.section.Unlock()
 
 	dl := imgui.BackgroundDrawList()
-	dl.AddImage(imgui.TextureID(win.scaledTexture), win.imagePosMin, win.imagePosMax)
+	dl.AddImage(imgui.TextureID(win.displayTexture), win.imagePosMin, win.imagePosMax)
 
 	win.peripheralLeft.draw(win)
 	win.peripheralRight.draw(win)
@@ -238,18 +222,8 @@ func (win *playScr) render() {
 
 		// (re)create textures
 
-		// empty pixels for screen texture
-		win.emptyScaledPixels = make([]uint8, int(win.scaledWidth)*int(win.scaledHeight)*4)
-
 		// screen texture
-		gl.BindTexture(gl.TEXTURE_2D, win.scaledTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(win.emptyScaledPixels))
-
-		// unscaled screen texture
-		gl.BindTexture(gl.TEXTURE_2D, win.unscaledTexture)
+		gl.BindTexture(gl.TEXTURE_2D, win.displayTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
@@ -261,14 +235,7 @@ func (win *playScr) render() {
 		// is "unstable"
 
 		// screen texture
-		gl.BindTexture(gl.TEXTURE_2D, win.scaledTexture)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(win.emptyScaledPixels))
-
-		// unscaled screen texture
-		gl.BindTexture(gl.TEXTURE_2D, win.unscaledTexture)
+		gl.BindTexture(gl.TEXTURE_2D, win.displayTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
@@ -320,19 +287,12 @@ func (win *playScr) setScaling() {
 	win.xscaling = scaling * pixelWidth * win.scr.crit.frameInfo.Spec.AspectBias
 	win.scaledWidth = w * win.xscaling
 	win.scaledHeight = h * win.yscaling
-	win.unscaledWidth = w
-	win.unscaledHeight = h
 
 	// get visibleScanlines while we're in critical section
 	win.visibleScanlines = win.scr.crit.frameInfo.VisibleBottom - win.scr.crit.frameInfo.VisibleTop
 }
 
-// unscaledTextureSpec implements the scalingImage specification
-func (win *playScr) unscaledTextureSpec() (uint32, float32, float32) {
-	return win.unscaledTexture, win.unscaledWidth, win.unscaledHeight
-}
-
-// unscaledTextureSpec implements the scalingImage specification
-func (win *playScr) scaledTextureSpec() (uint32, float32, float32) {
-	return win.scaledTexture, win.scaledWidth, win.scaledHeight
+// textureSpec implements the scalingImage specification
+func (win *playScr) textureSpec() (uint32, float32, float32) {
+	return win.displayTexture, win.scaledWidth, win.scaledHeight
 }
