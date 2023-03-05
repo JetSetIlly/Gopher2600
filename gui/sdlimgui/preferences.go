@@ -67,7 +67,6 @@ type preferences struct {
 	codeFontLineSpacing prefs.Int
 
 	// display
-	fastSync   prefs.Bool
 	frameQueue prefs.Int
 
 	// window preferences are split over two prefs.Disk instances, to allow
@@ -99,7 +98,6 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	p.guiFont.Set(13.0)
 	p.codeFont.Set(15.0)
 	p.codeFontLineSpacing.Set(2.0)
-	p.fastSync.Set(false)
 	p.frameQueue.Set(3)
 	p.glSwapInterval.Set(1)
 
@@ -186,14 +184,18 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	}
 
 	// display options
-	err = p.dsk.Add("sdlimgui.display.fastSync", &p.fastSync)
-	if err != nil {
-		return nil, err
-	}
 	err = p.dsk.Add("sdlimgui.display.frameQueue", &p.frameQueue)
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("sdlimgui.display.glswapinterval", &p.glSwapInterval)
+	if err != nil {
+		return nil, err
+	}
+	p.glSwapInterval.SetHookPost(func(v prefs.Value) error {
+		p.img.plt.glSetSwapInterval(v.(int))
+		return nil
+	})
 
 	// audio mute options
 	key = "sdlimgui.debugger.audioMute"
@@ -223,17 +225,6 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 
 	p.audioMutePlaymode.SetHookPost(func(muted prefs.Value) error {
 		p.img.setAudioMute()
-		return nil
-	})
-
-	// swap interval
-	key = "sdlimgui.glswapinterval"
-	err = p.dsk.Add(key, &p.glSwapInterval)
-	if err != nil {
-		return nil, err
-	}
-	p.glSwapInterval.SetHookPost(func(v prefs.Value) error {
-		p.img.plt.glSetSwapInterval(v.(int))
 		return nil
 	})
 

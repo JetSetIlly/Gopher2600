@@ -22,7 +22,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -177,26 +176,7 @@ func newScreen(img *SdlImgui) *screen {
 	scr.resize(television.NewFrameInfo(specification.SpecNTSC))
 	scr.Reset()
 
-	// register the screen as an event recorder
-	scr.img.vcs.Input.AddRecorder(scr)
-
 	return scr
-}
-
-// RecordEvent implements the EventRecorder interface
-func (scr *screen) RecordEvent(ev ports.TimedInputEvent) error {
-	if !scr.img.prefs.fastSync.Get().(bool) {
-		return nil
-	}
-
-	// preempt the pixel queue to show the latest frame. roughly equivalent to
-	// "fast sync" option
-	if scr.img.isPlaymode() {
-		scr.crit.section.Lock()
-		defer scr.crit.section.Unlock()
-		scr.crit.fastSync = true
-	}
-	return nil
 }
 
 // setRefreshRate decides on the buffering and syncing policy of the
@@ -627,27 +607,22 @@ func (scr *screen) copyPixelsPlaymode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	if scr.crit.fastSync {
-		scr.crit.renderIdx = scr.crit.plotIdx
-		scr.crit.fastSync = false
-	} else {
-		// the queueUsed check is important for correct operation of the rewinding
-		// state. without it, the screen will jump after a rewind event
-		if scr.crit.queueUsed == 0 && scr.crit.monitorSync && scr.crit.monitorSyncInRange {
-			// advance render index
-			if scr.img.dbg.State() != govern.Paused {
-				scr.crit.renderIdx++
-				if scr.crit.renderIdx >= len(scr.crit.frameQueue) {
-					scr.crit.renderIdx = 0
-				}
+	// the queueUsed check is important for correct operation of the rewinding
+	// state. without it, the screen will jump after a rewind event
+	if scr.crit.queueUsed == 0 && scr.crit.monitorSync && scr.crit.monitorSyncInRange {
+		// advance render index
+		if scr.img.dbg.State() != govern.Paused {
+			scr.crit.renderIdx++
+			if scr.crit.renderIdx >= len(scr.crit.frameQueue) {
+				scr.crit.renderIdx = 0
 			}
+		}
 
-			// let the emulator thread know it's okay to continue as soon as possible
-			select {
-			case <-scr.emuWait:
-				scr.emuWaitAck <- true
-			default:
-			}
+		// let the emulator thread know it's okay to continue as soon as possible
+		select {
+		case <-scr.emuWait:
+			scr.emuWaitAck <- true
+		default:
 		}
 	}
 

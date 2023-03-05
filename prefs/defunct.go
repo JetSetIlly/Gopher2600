@@ -52,6 +52,8 @@ var defunct = []string{
 	"hiscore.authtoken",
 	"hiscore.server",
 	"hardware.arm7.flashLatency",
+	"sdlimgui.display.fastSync",
+	"sdlimgui.glswapinterval",
 
 	"plusrom.id", // replaced with plusrom.id_v2.1.1
 }
