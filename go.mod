@@ -9,12 +9,13 @@ require (
 	github.com/hajimehoshi/go-mp3 v0.3.3
 	github.com/inkyblackness/imgui-go/v4 v4.4.0
 	github.com/pkg/term v1.1.0
+	github.com/sahilm/fuzzy v0.1.0
 	github.com/veandco/go-sdl2 v0.4.21
-	golang.org/x/image v0.0.0-20220413100746-70e8d0d3baa9
-	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a
+	golang.org/x/image v0.5.0
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f
 )
 
 require (
 	github.com/go-audio/riff v1.0.0 // indirect
-	github.com/sahilm/fuzzy v0.1.0 // indirect
+	github.com/kylelemons/godebug v1.1.0 // indirect
 )
