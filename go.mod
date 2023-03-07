@@ -10,8 +10,8 @@ require (
 	github.com/inkyblackness/imgui-go/v4 v4.4.0
 	github.com/pkg/term v1.1.0
 	github.com/veandco/go-sdl2 v0.4.21
-	golang.org/x/image v0.0.0-20220413100746-70e8d0d3baa9
-	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a
+	golang.org/x/image v0.6.0
+	golang.org/x/sys v0.6.0
 )
 
 require (
