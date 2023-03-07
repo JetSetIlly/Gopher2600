@@ -281,6 +281,14 @@ func (arm *ARM) thumb2SignZeroExtend(opcode uint16) {
 	Rd := opcode & 0x07
 
 	switch op {
+	case 0b00:
+		// "4.6.187 SXTH" in "Thumb-2 Supplement"
+		arm.state.fudge_thumb2disassemble16bit = "SXTH"
+
+		arm.state.registers[Rd] = arm.state.registers[Rm]
+		if arm.state.registers[Rd]&0x8000 == 0x8000 {
+			arm.state.registers[Rd] |= 0xffff0000
+		}
 	case 0b01:
 		// "4.6.185 SXTB" in "Thumb-2 Supplement"
 		arm.state.fudge_thumb2disassemble16bit = "SXTB"
