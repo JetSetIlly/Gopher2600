@@ -57,6 +57,10 @@ type screen struct {
 	gotoCoordsY int
 }
 
+const maxFrameQueue = 10
+const frameQueueIncDelta = 5
+const frameQueueIncVal = 10
+
 // for clarity, variables accessed in the critical section are encapsulated in
 // their own subtype.
 type screenCrit struct {
@@ -89,7 +93,14 @@ type screenCrit struct {
 	// - the smaller the queue the more the emulation will have to wait the
 	//		screen to catch up (see emuWait and emuWaitAck channels)
 	// - a three to five frame queue seems good. ten frames can feel laggy
-	frameQueue []*image.RGBA
+	frameQueue     [maxFrameQueue]*image.RGBA
+	frameQueueLen  int
+	frameQueueAuto bool
+
+	// frame queue count is increased on every dropped frame and decreased on
+	// every on time frame. when it reaches a predetermined threshold the
+	// length of the frame queue is increased (up to a maximum value)
+	frameQueueIncCt int
 
 	// number of pixels (multiplied by the pixel depth) in each entry of the
 	// pixels queue. saves calling len() multiple times needlessly
@@ -111,8 +122,10 @@ type screenCrit struct {
 	// in debugmode we plot and render from the same index, it doesn't matter.
 	//
 	// * in debug mode these values never change
-	plotIdx   int
-	renderIdx int
+	plotIdx       int
+	renderIdx     int
+	plotIdxNext   int
+	renderIdxNext int
 
 	// whether to sync the plot and render indexes on next render
 	fastSync bool
@@ -170,6 +183,14 @@ func newScreen(img *SdlImgui) *screen {
 	// allocate reflection
 	scr.crit.reflection = make([]reflection.ReflectedVideoStep, specification.AbsoluteMaxClks)
 
+	// allocate frame queue images
+	for i := range scr.crit.frameQueue {
+		scr.crit.frameQueue[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
+	}
+
+	// note number of pixels in each entry in the pixel queue
+	scr.crit.pixelsCount = len(scr.crit.frameQueue[0].Pix)
+
 	scr.crit.section.Unlock()
 
 	// default to NTSC. this will change on the first instance of
@@ -181,42 +202,45 @@ func newScreen(img *SdlImgui) *screen {
 
 // setRefreshRate decides on the buffering and syncing policy of the
 // screen based on the reported TV refresh rate.
+//
+// must be called from inside a critical section.
 func (scr *screen) setRefreshRate(tvRefreshRate float32) {
 	// check whether to apply monitorsync and decide on the length of the pixel queue
 	scr.crit.monitorSyncInRange = float32(scr.img.plt.mode.RefreshRate)*1.01 >= tvRefreshRate
-	scr.allocateFrameQueue()
+	scr.setFrameQueue()
 }
 
-func (scr *screen) allocateFrameQueue() {
-	length := scr.img.prefs.frameQueue.Get().(int)
-	if length == len(scr.crit.frameQueue) {
-		return
-	}
+// must be called from inside a critical section.
+func (scr *screen) setFrameQueue() {
+	scr.crit.frameQueueAuto = scr.img.prefs.frameQueueAuto.Get().(bool)
+	scr.crit.frameQueueLen = scr.img.prefs.frameQueue.Get().(int)
 
-	var old *image.RGBA
-	if len(scr.crit.frameQueue) > 0 {
-		old = scr.crit.frameQueue[scr.crit.renderIdx]
-	}
-
-	scr.crit.frameQueue = make([]*image.RGBA, length)
-	for i := range scr.crit.frameQueue {
-		scr.crit.frameQueue[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
-	}
-
-	// reset indexes
-	scr.crit.queueUsed = 0
-	scr.crit.plotIdx = 0
-	scr.crit.renderIdx = 0
-
-	// note number of pixels in each entry in the pixel queue
-	scr.crit.pixelsCount = len(scr.crit.frameQueue[0].Pix)
+	scr.resetFrameQueue()
 
 	// restore previous render frame to all entries in the queue to ensure we
 	// never get an empty frame by accident
+	old := scr.crit.frameQueue[scr.crit.renderIdx]
 	if old != nil {
 		for i := range scr.crit.frameQueue {
 			copy(scr.crit.frameQueue[i].Pix, old.Pix)
 		}
+	}
+}
+
+// must be called from inside a critical section.
+func (scr *screen) resetFrameQueue() {
+	scr.crit.queueUsed = 0
+	scr.crit.plotIdx = 0
+	scr.crit.renderIdx = scr.crit.frameQueueLen / 2
+
+	scr.crit.plotIdxNext = scr.crit.plotIdx + 1
+	if scr.crit.plotIdxNext >= scr.crit.frameQueueLen {
+		scr.crit.plotIdx = 0
+	}
+
+	scr.crit.renderIdxNext = scr.crit.renderIdx + 1
+	if scr.crit.renderIdxNext >= scr.crit.frameQueueLen {
+		scr.crit.renderIdxNext = 0
 	}
 }
 
@@ -232,8 +256,7 @@ func (scr *screen) Reset() {
 	defer scr.crit.section.Unlock()
 
 	scr.clearPixels()
-	scr.crit.plotIdx = 0
-	scr.crit.renderIdx = 0
+	scr.resetFrameQueue()
 }
 
 // clear pixel information including reflection data. important to do on
@@ -400,20 +423,21 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 				fallthrough
 			case govern.Paused:
 				scr.crit.renderIdx = scr.crit.plotIdx
-				scr.crit.queueUsed = len(scr.crit.frameQueue)
+				scr.crit.queueUsed = scr.crit.frameQueueLen
 			case govern.Running:
 				if scr.crit.queueUsed > 0 {
 					scr.crit.queueUsed--
 				}
 
-				scr.crit.plotIdx++
-				if scr.crit.plotIdx >= len(scr.crit.frameQueue) {
-					scr.crit.plotIdx = 0
+				scr.crit.plotIdx = scr.crit.plotIdxNext
+				scr.crit.plotIdxNext++
+				if scr.crit.plotIdxNext >= scr.crit.frameQueueLen {
+					scr.crit.plotIdxNext = 0
 				}
 
 				// if plot index has crashed into the render index then set wait flag
 				// ** screen update not keeping up with emulation **
-				wait = scr.crit.plotIdx == scr.crit.renderIdx && len(scr.crit.frameQueue) > 1
+				wait = scr.crit.plotIdx == scr.crit.renderIdx
 			}
 		}
 	}
@@ -459,8 +483,10 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	// slow emulation until screen has caught up
 	// * wait should only be set to true in playmode
 	if wait {
-		scr.emuWait <- true
-		<-scr.emuWaitAck
+		if scr.crit.frameQueueLen > 1 {
+			scr.emuWait <- true
+			<-scr.emuWaitAck
+		}
 	}
 
 	return nil
@@ -612,9 +638,27 @@ func (scr *screen) copyPixelsPlaymode() {
 	if scr.crit.queueUsed == 0 && scr.crit.monitorSync && scr.crit.monitorSyncInRange {
 		// advance render index
 		if scr.img.dbg.State() != govern.Paused {
-			scr.crit.renderIdx++
-			if scr.crit.renderIdx >= len(scr.crit.frameQueue) {
-				scr.crit.renderIdx = 0
+			// the comparison allows for the renderIndex to be equal to the
+			// plotIdx
+			if scr.crit.renderIdxNext != scr.crit.plotIdxNext {
+				scr.crit.renderIdx = scr.crit.renderIdxNext
+				scr.crit.renderIdxNext++
+				if scr.crit.renderIdxNext >= scr.crit.frameQueueLen {
+					scr.crit.renderIdxNext = 0
+				}
+
+				// adjust frame queue increase counter
+				if scr.crit.frameQueueIncCt > 0 {
+					scr.crit.frameQueueIncCt--
+				}
+			} else {
+				// adjust frame queue increase counter
+				if scr.crit.frameQueueAuto && scr.crit.frameInfo.Stable && scr.crit.frameQueueLen < maxFrameQueue {
+					scr.crit.frameQueueIncCt += frameQueueIncDelta
+					if scr.crit.frameQueueIncCt >= frameQueueIncVal {
+						scr.crit.frameQueueLen++
+					}
+				}
 			}
 		}
 

@@ -183,6 +183,9 @@ func (win *playScr) drawFPS() bool {
 		imgui.Text(string(fonts.NoVSYNC))
 	}
 
+	imguiSeparator()
+	imgui.Text(fmt.Sprintf("%d frame input lag", win.scr.crit.frameQueueLen))
+
 	// if win.img.screen.crit.frameInfo.IsAtariSafe() {
 	// 	imguiSeparator()
 	// 	imgui.Text("atari safe")

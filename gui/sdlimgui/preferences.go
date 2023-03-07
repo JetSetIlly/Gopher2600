@@ -67,7 +67,9 @@ type preferences struct {
 	codeFontLineSpacing prefs.Int
 
 	// display
-	frameQueue prefs.Int
+	frameQueueAuto prefs.Bool
+	frameQueue     prefs.Int
+	glSwapInterval prefs.Int
 
 	// window preferences are split over two prefs.Disk instances, to allow
 	// geometry to be saved at a different time to the fullscreen preference
@@ -76,9 +78,6 @@ type preferences struct {
 
 	// full screen preference. will be set according to the current emulation mode
 	fullScreen prefs.Bool
-
-	// SDL OpenGL swap interval value
-	glSwapInterval prefs.Int
 }
 
 func newPreferences(img *SdlImgui) (*preferences, error) {
@@ -98,7 +97,8 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	p.guiFont.Set(13.0)
 	p.codeFont.Set(15.0)
 	p.codeFontLineSpacing.Set(2.0)
-	p.frameQueue.Set(3)
+	p.frameQueueAuto.Set(false)
+	p.frameQueue.Set(5)
 	p.glSwapInterval.Set(1)
 
 	// setup preferences
@@ -184,6 +184,10 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	}
 
 	// display options
+	err = p.dsk.Add("sdlimgui.display.frameQueueAuto", &p.frameQueueAuto)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("sdlimgui.display.frameQueue", &p.frameQueue)
 	if err != nil {
 		return nil, err

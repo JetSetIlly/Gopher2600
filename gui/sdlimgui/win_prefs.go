@@ -219,14 +219,36 @@ of the ROM.`)
 	if imgui.CollapsingHeader("OpenGL Settings") {
 		imgui.Spacing()
 		win.drawGlSwapInterval()
+	}
+
+	imgui.Spacing()
+	if imgui.CollapsingHeader("Frame Queue") {
+		imgui.Spacing()
+
+		frameQueueAuto := win.img.prefs.frameQueueAuto.Get().(bool)
+		if imgui.Checkbox("Automatic Frame Queue Length", &frameQueueAuto) {
+			win.img.prefs.frameQueueAuto.Set(frameQueueAuto)
+			win.img.screen.crit.section.Lock()
+			win.img.screen.setFrameQueue()
+			win.img.screen.crit.section.Unlock()
+		}
 
 		imgui.Spacing()
+
+		if frameQueueAuto {
+			imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+		}
 		frameQueue := int32(win.img.prefs.frameQueue.Get().(int))
-		if imgui.SliderInt("Frame Queue Length", &frameQueue, 1, 5) {
+		if imgui.SliderInt("Frame Queue Length", &frameQueue, 1, maxFrameQueue) {
 			win.img.prefs.frameQueue.Set(frameQueue)
 			win.img.screen.crit.section.Lock()
-			win.img.screen.allocateFrameQueue()
+			win.img.screen.setFrameQueue()
 			win.img.screen.crit.section.Unlock()
+		}
+		if frameQueueAuto {
+			imgui.PopItemFlag()
+			imgui.PopStyleVar()
 		}
 	}
 }
