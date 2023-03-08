@@ -147,16 +147,17 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	}
 	img.io.SetIniFilename(iniPath)
 
-	// load sdlimgui preferences
-	img.prefs, err = newPreferences(img)
-	if err != nil {
-		return nil, fmt.Errorf("sdlimgui: %w", err)
-	}
-
 	// define colors
 	img.cols = newColors()
 
 	img.plt, err = newPlatform(img)
+	if err != nil {
+		return nil, fmt.Errorf("sdlimgui: %w", err)
+	}
+
+	// initialise preferences after platform initialisation because there are
+	// preference hooks that reference platform fields
+	img.prefs, err = newPreferences(img)
 	if err != nil {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
