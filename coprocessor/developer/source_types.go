@@ -222,6 +222,7 @@ type SourceFunction struct {
 func (fn *SourceFunction) String() string {
 	s := strings.Builder{}
 	s.WriteString(fn.Name)
+	s.WriteString("\n  ")
 	for _, r := range fn.Range {
 		s.WriteString(fmt.Sprintf(" %s", r))
 	}

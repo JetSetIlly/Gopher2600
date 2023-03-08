@@ -18,6 +18,7 @@ package developer
 import (
 	"debug/elf"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -191,6 +192,9 @@ func newFrameSection(data []uint8, byteOrder binary.ByteOrder, coproc frameCopro
 	return frm, nil
 }
 
+// sentinal error returned by framebase()
+var noFDE = errors.New("no FDE")
+
 // coproc implements the loclistFramebase interface
 func (fr *frameSection) framebase() (uint64, error) {
 	// TODO: replace magic number with a PC mnemonic. the mnemonic can then
@@ -208,7 +212,7 @@ func (fr *frameSection) framebase() (uint64, error) {
 		}
 	}
 	if fde == nil {
-		return 0, fmt.Errorf("no FDE for %08x", addr)
+		return 0, fmt.Errorf("%w: %08x", noFDE, addr)
 	}
 	if fde.cie == nil {
 		return 0, fmt.Errorf("no parent CIE for FDE (%08x)", addr)
