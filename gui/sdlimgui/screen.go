@@ -437,7 +437,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 
 				// if plot index has crashed into the render index then set wait flag
 				// ** screen update not keeping up with emulation **
-				wait = scr.crit.plotIdx == scr.crit.renderIdx
+				wait = scr.crit.plotIdx == scr.crit.renderIdx && scr.crit.frameQueueLen > 1
 			}
 		}
 	}
@@ -483,10 +483,8 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	// slow emulation until screen has caught up
 	// * wait should only be set to true in playmode
 	if wait {
-		if scr.crit.frameQueueLen > 1 {
-			scr.emuWait <- true
-			<-scr.emuWaitAck
-		}
+		scr.emuWait <- true
+		<-scr.emuWaitAck
 	}
 
 	return nil
