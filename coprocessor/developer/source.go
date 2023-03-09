@@ -1048,6 +1048,11 @@ func (src *Source) UpdateGlobalVariables() {
 	}
 }
 
+// FramebaseCurrent returns the current framebase value
+func (src *Source) FramebaseCurrent() (uint64, error) {
+	return src.debugFrame.framebase()
+}
+
 // BorrowSource will lock the source code structure for the durction of the
 // supplied function, which will be executed with the source code structure as
 // an argument.

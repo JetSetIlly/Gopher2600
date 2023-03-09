@@ -1563,6 +1563,19 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					}
 				}
 			})
+		case "FRAMEBASE":
+			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+				if src == nil {
+					dbg.printLine(terminal.StyleError, "no source available")
+				}
+
+				fb, err := src.FramebaseCurrent()
+				if err != nil {
+					dbg.printLine(terminal.StyleError, err.Error())
+				} else {
+					dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("%08x", fb))
+				}
+			})
 		case "LINE":
 			arg, ok := tokens.Get()
 			if !ok {

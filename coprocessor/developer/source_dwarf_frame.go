@@ -210,6 +210,10 @@ func (fr *frameSection) framebase() (uint64, error) {
 		return 0, fmt.Errorf("cannot retrieve value from PC of coprocessor")
 	}
 
+	return fr.framebaseForAddr(addr)
+}
+
+func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
 	var fde *frameSectionFDE
 	for _, f := range fr.fde {
 		if addr >= f.startAddress && addr <= f.endAddress {
@@ -217,10 +221,10 @@ func (fr *frameSection) framebase() (uint64, error) {
 		}
 	}
 	if fde == nil {
-		return 0, fmt.Errorf("%w: %08x", noFDE, addr)
+		return 0, fmt.Errorf("%w for address %08x", noFDE, addr)
 	}
 	if fde.cie == nil {
-		return 0, fmt.Errorf("no parent CIE for FDE (%08x)", addr)
+		return 0, fmt.Errorf("no parent CIE for FDE at address %08x", addr)
 	}
 
 	var tab frameTable
@@ -250,8 +254,7 @@ func (fr *frameSection) framebase() (uint64, error) {
 		}
 	}
 
-	var framebase uint32
-	framebase, ok = fr.coproc.CoProcRegister(tab.rows[1].cfaRegister)
+	framebase, ok := fr.coproc.CoProcRegister(tab.rows[1].cfaRegister)
 	if !ok {
 		return 0, fmt.Errorf("error retreiving framebase from register %d", tab.rows[1].cfaRegister)
 	}
