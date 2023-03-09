@@ -45,7 +45,7 @@ func (tab frameTable) String() string {
 }
 
 // returns number of bytes used in instructions array
-func decodeFrameInstruction(instructions []byte, tab *frameTable) (int, error) {
+func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *frameTable) (int, error) {
 	// opcode descriptions taken from "6.4.2 Call Frame Instructions" of
 	// the "DWARF-4 Standard". Page numbers specified in the comment for
 	// each opcode
@@ -366,7 +366,7 @@ func decodeFrameInstruction(instructions []byte, tab *frameTable) (int, error) {
 		// value that is computed by taking the current entry’s location value and adding the value of
 		// delta * code_alignment_factor. All other values in the new row are initially identical
 		// to the current row", page 132
-		tab.rows[0].location += uint32(extendedOpcode)
+		tab.rows[0].location += uint32(extendedOpcode) * uint32(cie.codeAlignment)
 		return 1, nil
 
 	case 0x02:

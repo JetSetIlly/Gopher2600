@@ -164,7 +164,7 @@ func newFrameSection(data []uint8, byteOrder binary.ByteOrder, coproc frameCopro
 			// FDEs all refer to a CIE. we should have already found this
 			cie, ok := frm.cie[id]
 			if !ok {
-				return nil, fmt.Errorf("FDE referes to a CIE that doesn't seem to exist")
+				return nil, fmt.Errorf("FDE refers to a CIE that doesn't seem to exist")
 			}
 			fde.cie = cie
 
@@ -214,9 +214,12 @@ func (fr *frameSection) framebase() (uint64, error) {
 }
 
 func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
+	var tab frameTable
+
 	var fde *frameSectionFDE
 	for _, f := range fr.fde {
 		if addr >= f.startAddress && addr <= f.endAddress {
+			tab.rows[0].location = f.startAddress
 			fde = f
 		}
 	}
@@ -227,11 +230,9 @@ func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
 		return 0, fmt.Errorf("no parent CIE for FDE at address %08x", addr)
 	}
 
-	var tab frameTable
-
 	ptr := 0
 	for ptr < len(fde.cie.instructions) {
-		l, err := decodeFrameInstruction(fde.cie.instructions[ptr:], &tab)
+		l, err := decodeFrameInstruction(fde.cie, fde.cie.instructions[ptr:], &tab)
 		if err != nil {
 			return 0, err
 		}
@@ -242,7 +243,7 @@ func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
 
 	ptr = 0
 	for ptr < len(fde.instructions) {
-		l, err := decodeFrameInstruction(fde.instructions[ptr:], &tab)
+		l, err := decodeFrameInstruction(fde.cie, fde.instructions[ptr:], &tab)
 		if err != nil {
 			return 0, err
 		}
@@ -254,11 +255,11 @@ func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
 		}
 	}
 
-	framebase, ok := fr.coproc.CoProcRegister(tab.rows[1].cfaRegister)
+	framebase, ok := fr.coproc.CoProcRegister(tab.rows[0].cfaRegister)
 	if !ok {
-		return 0, fmt.Errorf("error retreiving framebase from register %d", tab.rows[1].cfaRegister)
+		return 0, fmt.Errorf("error retreiving framebase from register %d", tab.rows[0].cfaRegister)
 	}
-	framebase += tab.rows[1].cfaOffset
+	framebase += tab.rows[0].cfaOffset
 
 	return uint64(framebase), nil
 }
