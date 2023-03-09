@@ -50,6 +50,7 @@ type winDbgScr struct {
 	displayTexture  uint32
 	elementsTexture uint32
 	overlayTexture  uint32
+	magnifyTexture  uint32
 
 	// the pixels we use to clear normalTexture with
 	emptyScaledPixels []uint8
@@ -91,6 +92,10 @@ type winDbgScr struct {
 	// crtPreview option is special. it overrides the other options in the dbgScr to
 	// show an uncropped CRT preview in the dbgscr window.
 	crtPreview bool
+
+	// whether to show magnification in the tooltip
+	showMagnification bool
+	magnifyImage      *image.RGBA
 }
 
 func newWinDbgScr(img *SdlImgui) (window, error) {
@@ -116,6 +121,11 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+
+	gl.GenTextures(1, &win.magnifyTexture)
+	gl.BindTexture(gl.TEXTURE_2D, win.magnifyTexture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
 	// call setScaling() now so that render() has something to work with - even
 	// though setScaling() is called every draw if the window is open it will
@@ -328,6 +338,13 @@ func (win *winDbgScr) draw() {
 			imgui.SameLineV(0, 15)
 			win.drawOverlayCombo()
 			win.drawOverlayColorKey()
+
+			if win.img.screen.crit.overlay == reflection.OverlayLabels[reflection.OverlayNone] {
+				imgui.SameLineV(0, 15)
+				if imgui.Checkbox("Magnification", &win.showMagnification) {
+					win.createTextures = true
+				}
+			}
 		}
 	})
 }
@@ -584,6 +601,18 @@ func (win *winDbgScr) drawReflectionTooltip() {
 				imguiSeparator()
 				imgui.Text(s)
 			}
+
+			if win.showMagnification {
+				imguiSeparator()
+				zoom := 10
+				clip := image.Rect(win.mouse.scaledX-zoom,
+					win.mouse.scaledY-zoom*pixelWidth,
+					win.mouse.scaledX+zoom,
+					win.mouse.scaledY+zoom*pixelWidth)
+				win.magnifyImage = win.scr.crit.presentationPixels.SubImage(clip).(*image.RGBA)
+				imgui.Image(imgui.TextureID(win.magnifyTexture), imgui.Vec2{200, 200})
+			}
+
 		case reflection.OverlayLabels[reflection.OverlayWSYNC]:
 			imguiSeparator()
 			if ref.WSYNC {
@@ -718,6 +747,14 @@ func (win *winDbgScr) render() {
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(elements.Pix))
 
+		if win.magnifyImage != nil {
+			gl.BindTexture(gl.TEXTURE_2D, win.magnifyTexture)
+			gl.TexImage2D(gl.TEXTURE_2D, 0,
+				gl.RGBA, int32(win.magnifyImage.Bounds().Size().X), int32(win.magnifyImage.Bounds().Size().Y), 0,
+				gl.RGBA, gl.UNSIGNED_BYTE,
+				gl.Ptr(win.magnifyImage.Pix))
+		}
+
 		win.createTextures = false
 	} else {
 		gl.BindTexture(gl.TEXTURE_2D, win.displayTexture)
@@ -737,6 +774,14 @@ func (win *winDbgScr) render() {
 			0, 0, int32(elements.Bounds().Size().X), int32(elements.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(elements.Pix))
+
+		if win.magnifyImage != nil {
+			gl.BindTexture(gl.TEXTURE_2D, win.magnifyTexture)
+			gl.TexImage2D(gl.TEXTURE_2D, 0,
+				gl.RGBA, int32(win.magnifyImage.Bounds().Size().X), int32(win.magnifyImage.Bounds().Size().Y), 0,
+				gl.RGBA, gl.UNSIGNED_BYTE,
+				gl.Ptr(win.magnifyImage.Pix))
+		}
 	}
 }
 
