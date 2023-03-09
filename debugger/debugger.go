@@ -289,6 +289,19 @@ type Debugger struct {
 	//
 	// the value will reset to false at the end of a catchup loop
 	catchupEndAdj bool
+
+	// when switching to debug mode from CartYield() we don't want to rewind
+	// and rerun the emulation because the condition which caused the yield
+	// might not happen again
+	//
+	// this is the case when a breakpoint is triggered as a result of user
+	// input. currently, user input is not reinserted into the emulation on the
+	// rerun. it should be possible to do given the input system's flexibility
+	// but for now we'll just use this switch
+	//
+	// the only feature we lose with this is incomplete reflection information
+	// immediately after switching to the debugger
+	noRewindOnSwitchToDebugger bool
 }
 
 // CreateUserInterface is used to initialise the user interface used by the
@@ -651,8 +664,10 @@ func (dbg *Debugger) setMode(mode govern.Mode) error {
 		// an instruction. although correct in terms of coordinates, is
 		// confusing.
 		if prevMode == govern.ModePlay {
-			dbg.catchupEndAdj = true
-			dbg.RerunLastNFrames(2)
+			if !dbg.noRewindOnSwitchToDebugger {
+				dbg.catchupEndAdj = true
+				dbg.RerunLastNFrames(2)
+			}
 		}
 	default:
 		return fmt.Errorf("emulation mode not supported: %s", mode)
@@ -873,7 +888,9 @@ func (dbg *Debugger) CartYield(reason mapper.YieldReason) bool {
 
 	switch dbg.Mode() {
 	case govern.ModePlay:
+		dbg.noRewindOnSwitchToDebugger = true
 		dbg.setMode(govern.ModeDebugger)
+		dbg.noRewindOnSwitchToDebugger = false
 	case govern.ModeDebugger:
 		dbg.inputLoop(dbg.term, true)
 	}
