@@ -60,6 +60,7 @@ func newLoclistSection(data []uint8, byteOrder binary.ByteOrder, coproc loclistC
 // loclistFramebase provides context to the location list. implemented by
 // SourceVariable, SourceFunction and the frame section.
 type loclistFramebase interface {
+	framebaseContext() string
 	framebase() (uint64, error)
 }
 
@@ -309,10 +310,11 @@ func (loc *loclist) resolve() (loclistResult, error) {
 		}
 
 		// always add result value to derivation list
-		loc.derivation = append(loc.derivation, loclistDerivation{
+		d := loclistDerivation{
 			operator: loc.list[i].operator,
 			value:    s.value,
-		})
+		}
+		loc.derivation = append(loc.derivation, d)
 	}
 
 	// return assembled pieces

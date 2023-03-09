@@ -320,6 +320,11 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistSection) {
 	}
 }
 
+// framebaseContextName implements the loclistFramebase interface
+func (varb *SourceVariable) framebaseContext() string {
+	return varb.Name
+}
+
 // framebase implements the loclistFramebase interface
 func (varb *SourceVariable) framebase() (uint64, error) {
 	if varb.DeclLine == nil || varb.DeclLine.Function == nil {

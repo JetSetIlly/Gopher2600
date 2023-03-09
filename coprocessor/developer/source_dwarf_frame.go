@@ -195,6 +195,11 @@ func newFrameSection(data []uint8, byteOrder binary.ByteOrder, coproc frameCopro
 // sentinal error returned by framebase()
 var noFDE = errors.New("no FDE")
 
+// framebaseContext implements the loclistFramebase interface
+func (fr *frameSection) framebaseContext() string {
+	return "framesection"
+}
+
 // coproc implements the loclistFramebase interface
 func (fr *frameSection) framebase() (uint64, error) {
 	// TODO: replace magic number with a PC mnemonic. the mnemonic can then
