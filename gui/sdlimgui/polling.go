@@ -26,8 +26,8 @@ import (
 // service() call. this changes depending primarily on whether we're in debug
 // or play mode.
 const (
-	// no sleep period if emulator is in play state
-	playSleepPeriod = 0
+	// very small sleep period if emulator is in play state
+	playSleepPeriod = 1
 
 	// a small sleep if emulator is in the debugger. this strikes a nice
 	// balance between CPU usage and responsiveness

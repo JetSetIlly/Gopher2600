@@ -58,8 +58,9 @@ type screen struct {
 }
 
 const maxFrameQueue = 10
-const frameQueueIncDelta = 5
-const frameQueueIncVal = 10
+const frameQueueIncDelta = 20
+const frameQueueDecDelta = 1
+const frameQueueIncVal = 40
 
 // for clarity, variables accessed in the critical section are encapsulated in
 // their own subtype.
@@ -127,8 +128,8 @@ type screenCrit struct {
 	plotIdxNext   int
 	renderIdxNext int
 
-	// whether to sync the plot and render indexes on next render
-	fastSync bool
+	//  the previous render index value is used to help smooth frame queue collisions
+	prevRenderIdx int
 
 	// element colors and overlay colors are only used in the debugger
 	elementPixels *image.RGBA
@@ -631,41 +632,62 @@ func (scr *screen) copyPixelsPlaymode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	// the queueUsed check is important for correct operation of the rewinding
+	// let the emulator thread know it's okay to continue as soon as possible
+	select {
+	case <-scr.emuWait:
+		scr.emuWaitAck <- true
+	default:
+	}
+
+	// show pause frames
+	if scr.img.dbg.State() == govern.Paused {
+		if scr.img.prefs.activePause.Get().(bool) {
+			if scr.crit.pauseFrame {
+				copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.prevRenderIdx].Pix)
+				scr.crit.pauseFrame = false
+			} else {
+				copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.renderIdx].Pix)
+				scr.crit.pauseFrame = true
+			}
+		} else {
+			copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.renderIdx].Pix)
+		}
+		return
+	}
+
+	// the bufferUsed check is important for correct operation of the rewinding
 	// state. without it, the screen will jump after a rewind event
 	if scr.crit.queueUsed == 0 && scr.crit.monitorSync && scr.crit.monitorSyncInRange {
 		// advance render index
-		if scr.img.dbg.State() != govern.Paused {
-			// the comparison allows for the renderIndex to be equal to the
-			// plotIdx
-			if scr.crit.renderIdxNext != scr.crit.plotIdxNext {
-				scr.crit.renderIdx = scr.crit.renderIdxNext
-				scr.crit.renderIdxNext++
-				if scr.crit.renderIdxNext >= scr.crit.frameQueueLen {
-					scr.crit.renderIdxNext = 0
-				}
+		prev := scr.crit.prevRenderIdx
+		scr.crit.prevRenderIdx = scr.crit.renderIdx
+		scr.crit.renderIdx++
+		if scr.crit.renderIdx >= scr.crit.frameQueueLen {
+			scr.crit.renderIdx = 0
+		}
 
-				// adjust frame queue increase counter
-				if scr.crit.frameQueueIncCt > 0 {
-					scr.crit.frameQueueIncCt--
+		// render index has bumped into the plotting index. revert render index
+		if scr.crit.renderIdx == scr.crit.plotIdx {
+			// ** emulation not keeping up with screen update **
+
+			// undo frame advancement
+			scr.crit.renderIdx = scr.crit.prevRenderIdx
+			scr.crit.prevRenderIdx = prev
+
+			// adjust frame queue increase counter
+			if scr.crit.frameQueueAuto && scr.crit.frameInfo.Stable && scr.crit.frameQueueLen < maxFrameQueue {
+				scr.crit.frameQueueIncCt += frameQueueIncDelta
+				if scr.crit.frameQueueIncCt >= frameQueueIncVal {
+					scr.crit.frameQueueLen++
 				}
-			} else {
-				// adjust frame queue increase counter
-				if scr.crit.frameQueueAuto && scr.crit.frameInfo.Stable && scr.crit.frameQueueLen < maxFrameQueue {
-					scr.crit.frameQueueIncCt += frameQueueIncDelta
-					if scr.crit.frameQueueIncCt >= frameQueueIncVal {
-						scr.crit.frameQueueLen++
-					}
-				}
+			}
+		} else {
+			// adjust frame queue increase counter
+			if scr.crit.frameQueueIncCt > 0 {
+				scr.crit.frameQueueIncCt -= frameQueueDecDelta
 			}
 		}
 
-		// let the emulator thread know it's okay to continue as soon as possible
-		select {
-		case <-scr.emuWait:
-			scr.emuWaitAck <- true
-		default:
-		}
 	}
 
 	copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.renderIdx].Pix)

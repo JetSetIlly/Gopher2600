@@ -352,11 +352,6 @@ func (img *SdlImgui) Service() {
 		}
 	}
 
-	if img.glsl.fonts.defaultFont != 0 {
-		// imgui.PushFont(img.glsl.fonts.defaultFont)
-		// defer imgui.PopFont()
-	}
-
 	img.renderFrame()
 }
 
