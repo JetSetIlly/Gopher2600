@@ -123,10 +123,8 @@ type screenCrit struct {
 	// in debugmode we plot and render from the same index, it doesn't matter.
 	//
 	// * in debug mode these values never change
-	plotIdx       int
-	renderIdx     int
-	plotIdxNext   int
-	renderIdxNext int
+	plotIdx   int
+	renderIdx int
 
 	//  the previous render index value is used to help smooth frame queue collisions
 	prevRenderIdx int
@@ -233,16 +231,6 @@ func (scr *screen) resetFrameQueue() {
 	scr.crit.queueUsed = 0
 	scr.crit.plotIdx = 0
 	scr.crit.renderIdx = scr.crit.frameQueueLen / 2
-
-	scr.crit.plotIdxNext = scr.crit.plotIdx + 1
-	if scr.crit.plotIdxNext >= scr.crit.frameQueueLen {
-		scr.crit.plotIdx = 0
-	}
-
-	scr.crit.renderIdxNext = scr.crit.renderIdx + 1
-	if scr.crit.renderIdxNext >= scr.crit.frameQueueLen {
-		scr.crit.renderIdxNext = 0
-	}
 }
 
 // Reset implements the television.PixelRenderer interface. Note that Reset
@@ -430,10 +418,9 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 					scr.crit.queueUsed--
 				}
 
-				scr.crit.plotIdx = scr.crit.plotIdxNext
-				scr.crit.plotIdxNext++
-				if scr.crit.plotIdxNext >= scr.crit.frameQueueLen {
-					scr.crit.plotIdxNext = 0
+				scr.crit.plotIdx++
+				if scr.crit.plotIdx >= scr.crit.frameQueueLen {
+					scr.crit.plotIdx = 0
 				}
 
 				// if plot index has crashed into the render index then set wait flag
