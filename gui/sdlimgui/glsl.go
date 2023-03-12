@@ -25,6 +25,7 @@ import (
 const (
 	guiShaderID int = iota
 	colorShaderID
+	sharpenShaderID
 	dbgscrShaderID
 	overlayShaderID
 	playscrShaderID
@@ -62,6 +63,7 @@ func newGlsl(img *SdlImgui) (*glsl, error) {
 func (rnd *glsl) setupShaders() {
 	rnd.shaders[guiShaderID] = newGUIShader()
 	rnd.shaders[colorShaderID] = newColorShader(false)
+	rnd.shaders[sharpenShaderID] = newSharpenShader(false)
 	rnd.shaders[dbgscrShaderID] = newDbgScrShader(rnd.img)
 	rnd.shaders[overlayShaderID] = newDbgScrOverlayShader(rnd.img)
 	rnd.shaders[playscrShaderID] = newPlayscrShader(rnd.img)
@@ -176,8 +178,10 @@ func (rnd *glsl) render() {
 					shader = rnd.shaders[dbgscrShaderID]
 				case rnd.img.wm.dbgScr.overlayTexture:
 					shader = rnd.shaders[overlayShaderID]
-				case rnd.img.wm.dbgScr.magnifyTexture:
-					shader = rnd.shaders[colorShaderID]
+				case rnd.img.wm.dbgScr.tooltipMagnifyTexture:
+					shader = rnd.shaders[sharpenShaderID]
+				case rnd.img.wm.dbgScr.windowMagnifyTexture:
+					shader = rnd.shaders[sharpenShaderID]
 
 				case rnd.img.playScr.displayTexture:
 					shader = rnd.shaders[playscrShaderID]

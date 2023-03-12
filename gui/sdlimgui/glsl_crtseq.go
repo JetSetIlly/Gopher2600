@@ -87,7 +87,7 @@ func newCrtSeqPrefs(prefs *crt.Preferences) crtSeqPrefs {
 type crtSequencer struct {
 	img                   *SdlImgui
 	seq                   *framebuffer.Sequence
-	scalingShader         shaderProgram
+	sharpenShader         shaderProgram
 	phosphorShader        shaderProgram
 	blackCorrectionShader shaderProgram
 	blurShader            shaderProgram
@@ -103,7 +103,7 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 	sh := &crtSequencer{
 		img:                   img,
 		seq:                   framebuffer.NewSequence(5),
-		scalingShader:         newSharpenShader(),
+		sharpenShader:         newSharpenShader(true),
 		phosphorShader:        newPhosphorShader(img),
 		blackCorrectionShader: newBlackCorrectionShader(),
 		blurShader:            newBlurShader(),
@@ -119,7 +119,7 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 
 func (sh *crtSequencer) destroy() {
 	sh.seq.Destroy()
-	sh.scalingShader.destroy()
+	sh.sharpenShader.destroy()
 	sh.phosphorShader.destroy()
 	sh.blackCorrectionShader.destroy()
 	sh.blurShader.destroy()
@@ -166,7 +166,7 @@ func (sh *crtSequencer) flushPhosphor() {
 //
 // integerScaling instructs the scaling shader not to perform any smoothing
 func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool,
-	numScanlines int, numClocks int, scalingImage sharpenImage, prefs crtSeqPrefs) uint32 {
+	numScanlines int, numClocks int, image sharpenImage, prefs crtSeqPrefs) uint32 {
 
 	// we'll be chaining many shaders together so use internal projection
 	env.useInternalProj = true
@@ -180,13 +180,11 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool,
 		phosphorPasses = 3
 	}
 
-	// scale image
-	if scalingImage != nil {
-		env.srcTextureID = sh.seq.Process(crtSeqProcessedSrc, func() {
-			sh.scalingShader.(*sharpenShader).setAttributesArgs(env, scalingImage)
-			env.draw()
-		})
-	}
+	// sharpen image
+	env.srcTextureID = sh.seq.Process(crtSeqProcessedSrc, func() {
+		sh.sharpenShader.(*sharpenShader).setAttributesArgs(env, image)
+		env.draw()
+	})
 
 	// apply ghosting filter to texture. this is useful for the zookeeper brick effect
 	if prefs.Enabled && prefs.Ghosting {

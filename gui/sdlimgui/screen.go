@@ -107,16 +107,14 @@ type screenCrit struct {
 	// pixels queue. saves calling len() multiple times needlessly
 	pixelsCount int
 
-	// count of how many of entries in the pixel queue have been used. reset to
-	// length of pixels queue when emulation is paused and reduced every time a
-	// new entry is used
+	// the number of frames after rewinding/pausing before resuming "normal"
+	// queue traversal
 	//
 	// it is used to prevent the renderIdx using queue entries that haven't
-	// been used recently. this is important after a series of rewind and pause
-	// states
+	// been used recently
 	//
 	// * playmode only
-	queueUsed int
+	queueRecovery int
 
 	// which entry in the queue we'll be plotting to and which one we'll be
 	// rendering from. in playmode we make sure these two indexes never meet.
@@ -228,7 +226,7 @@ func (scr *screen) setFrameQueue() {
 
 // must be called from inside a critical section.
 func (scr *screen) resetFrameQueue() {
-	scr.crit.queueUsed = 0
+	scr.crit.queueRecovery = 0
 	scr.crit.plotIdx = 0
 	scr.crit.renderIdx = scr.crit.frameQueueLen / 2
 }
@@ -411,11 +409,11 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 			case govern.Rewinding:
 				fallthrough
 			case govern.Paused:
+				scr.crit.queueRecovery = scr.crit.frameQueueLen
 				scr.crit.renderIdx = scr.crit.plotIdx
-				scr.crit.queueUsed = scr.crit.frameQueueLen
 			case govern.Running:
-				if scr.crit.queueUsed > 0 {
-					scr.crit.queueUsed--
+				if scr.crit.queueRecovery > 0 {
+					scr.crit.queueRecovery--
 				}
 
 				scr.crit.plotIdx++
@@ -628,7 +626,7 @@ func (scr *screen) copyPixelsPlaymode() {
 
 	// show pause frames
 	if scr.img.dbg.State() == govern.Paused {
-		if scr.img.prefs.activePause.Get().(bool) {
+		if scr.crit.queueRecovery == 0 && scr.img.prefs.activePause.Get().(bool) {
 			if scr.crit.pauseFrame {
 				copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.prevRenderIdx].Pix)
 				scr.crit.pauseFrame = false
@@ -644,7 +642,7 @@ func (scr *screen) copyPixelsPlaymode() {
 
 	// the bufferUsed check is important for correct operation of the rewinding
 	// state. without it, the screen will jump after a rewind event
-	if scr.crit.queueUsed == 0 && scr.crit.monitorSync && scr.crit.monitorSyncInRange {
+	if scr.crit.queueRecovery == 0 && scr.crit.monitorSync && scr.crit.monitorSyncInRange {
 		// advance render index
 		prev := scr.crit.prevRenderIdx
 		scr.crit.prevRenderIdx = scr.crit.renderIdx

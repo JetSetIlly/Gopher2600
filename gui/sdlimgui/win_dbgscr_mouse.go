@@ -22,6 +22,11 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
+type dbgScrMousePoint struct {
+	x int
+	y int
+}
+
 type dbgScrMouse struct {
 	// whether the mouse is inside the screen boundaries
 	valid bool
@@ -36,8 +41,7 @@ type dbgScrMouse struct {
 	// cropped screens are adjusted as required
 	//
 	// use these values to index the reflection array, for example
-	scaledX int
-	scaledY int
+	scaled dbgScrMousePoint
 
 	// mouse position adjusted so that clock and scanline represent the
 	// underlying screen (taking cropped setting into account)
@@ -53,7 +57,7 @@ func (win *winDbgScr) mouseCoords() dbgScrMouse {
 	mouse := dbgScrMouse{}
 
 	mouse.pos = imgui.MousePos().Minus(win.screenOrigin)
-	mouse.offset = win.mouse.scaledX + win.mouse.scaledY*specification.ClksScanline
+	mouse.offset = win.mouse.scaled.x + win.mouse.scaled.y*specification.ClksScanline
 
 	// outside bounds of window
 	mouse.valid = win.mouse.pos.X >= 0.0 && win.mouse.pos.Y >= 0.0 && mouse.offset >= 0 && mouse.offset < len(win.scr.crit.reflection)
@@ -62,17 +66,17 @@ func (win *winDbgScr) mouseCoords() dbgScrMouse {
 	}
 
 	// scaled mouse position coordinates
-	mouse.scaledX = int(mouse.pos.X / win.xscaling)
-	mouse.scaledY = int(mouse.pos.Y / win.yscaling)
+	mouse.scaled.x = int(mouse.pos.X / win.xscaling)
+	mouse.scaled.y = int(mouse.pos.Y / win.yscaling)
 
 	// corresponding clock and scanline values for scaled mouse coordinates
-	mouse.clock = mouse.scaledX
-	mouse.scanline = mouse.scaledY
+	mouse.clock = mouse.scaled.x
+	mouse.scanline = mouse.scaled.y
 
 	// adjust depending on whether screen is cropped (or in CRT Preview)
 	if win.cropped || win.crtPreview {
-		mouse.scaledX += specification.ClksHBlank
-		mouse.scaledY += win.scr.crit.frameInfo.VisibleTop
+		mouse.scaled.x += specification.ClksHBlank
+		mouse.scaled.y += win.scr.crit.frameInfo.VisibleTop
 		mouse.scanline += win.scr.crit.frameInfo.VisibleTop
 	} else {
 		mouse.clock -= specification.ClksHBlank

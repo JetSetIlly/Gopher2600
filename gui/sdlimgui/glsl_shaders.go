@@ -308,9 +308,13 @@ type sharpenShader struct {
 	texture int32
 }
 
-func newSharpenShader() shaderProgram {
+func newSharpenShader(yflipped bool) shaderProgram {
 	sh := &sharpenShader{}
-	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.SharpenShader))
+	if yflipped {
+		sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.SharpenShader))
+	} else {
+		sh.createProgram(string(shaders.StraightVertexShader), string(shaders.SharpenShader))
+	}
 	sh.texture = gl.GetUniformLocation(sh.handle, gl.Str("Texture"+"\x00"))
 	return sh
 }
