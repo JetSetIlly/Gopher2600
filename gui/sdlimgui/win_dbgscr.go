@@ -35,9 +35,6 @@ import (
 
 const winDbgScrID = "TV Screen"
 
-const magnifyMax = 3
-const magnifyMin = 10
-
 type winDbgScr struct {
 	debuggerWin
 
@@ -50,11 +47,9 @@ type winDbgScr struct {
 	createTextures bool
 
 	// textures
-	displayTexture        uint32
-	elementsTexture       uint32
-	overlayTexture        uint32
-	tooltipMagnifyTexture uint32
-	windowMagnifyTexture  uint32
+	displayTexture  uint32
+	elementsTexture uint32
+	overlayTexture  uint32
 
 	// the pixels we use to clear normalTexture with
 	emptyScaledPixels []uint8
@@ -97,36 +92,20 @@ type winDbgScr struct {
 	// show an uncropped CRT preview in the dbgscr window.
 	crtPreview bool
 
-	// whether to show magnification in the tooltip
-	tooltipMagnify bool
-
-	// area of magnification for tooltip
-	tooltipMagnifyClip image.Rectangle
-
-	// the amount of zoom in the tooltip magnification
-	tooltipMagnifyZoom int
-
-	// whether magnification window is open
-	windowMagnifyOpen bool
-
-	// area of magnification for window
-	windowMagnifyClip image.Rectangle
-
-	// centre point of magnification area for window
-	windowMagnifyClipCenter dbgScrMousePoint
-
-	// the amount of zoom in the magnify window
-	windowMagnifyZoom int
+	// magnification fields
+	magnify dbgScrMagnify
 }
 
 func newWinDbgScr(img *SdlImgui) (window, error) {
 	win := &winDbgScr{
-		img:                img,
-		scr:                img.screen,
-		crtPreview:         false,
-		cropped:            true,
-		tooltipMagnifyZoom: 10,
-		windowMagnifyZoom:  10,
+		img:        img,
+		scr:        img.screen,
+		crtPreview: false,
+		cropped:    true,
+		magnify: dbgScrMagnify{
+			tooltipZoom: 10,
+			windowZoom:  10,
+		},
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
@@ -149,15 +128,15 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
-	gl.GenTextures(1, &win.tooltipMagnifyTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.tooltipMagnifyTexture)
+	gl.GenTextures(1, &win.magnify.tooltipTexture)
+	gl.BindTexture(gl.TEXTURE_2D, win.magnify.tooltipTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
-	gl.GenTextures(1, &win.windowMagnifyTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.windowMagnifyTexture)
+	gl.GenTextures(1, &win.magnify.windowTexture)
+	gl.BindTexture(gl.TEXTURE_2D, win.magnify.windowTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
@@ -215,7 +194,7 @@ func (win *winDbgScr) debuggerDraw() {
 	imgui.End()
 
 	// draw magnify window
-	win.drawWindowMagnify()
+	win.magnify.drawWindow(&win.img.io, win.img.cols)
 }
 
 func (win *winDbgScr) draw() {
@@ -285,22 +264,13 @@ func (win *winDbgScr) draw() {
 			}
 			imguiSeparator()
 			if imgui.Selectable(fmt.Sprintf("%c Magnify in Window", fonts.MagnifyingGlass)) {
-				win.setWindowMagnifyClip()
+				win.magnify.setWindowClip(win.mouse)
 			}
 			imgui.EndPopup()
 		}
 
 		// draw tool tip
 		if imgui.IsItemHovered() {
-			if win.tooltipMagnify {
-				_, delta := win.img.io.MouseWheel()
-				if delta < 0 && win.tooltipMagnifyZoom < magnifyMin {
-					win.tooltipMagnifyZoom++
-				} else if delta > 0 && win.tooltipMagnifyZoom > magnifyMax {
-					win.tooltipMagnifyZoom--
-				}
-			}
-
 			win.drawReflectionTooltip()
 		}
 	}
@@ -392,7 +362,7 @@ func (win *winDbgScr) draw() {
 
 			if win.img.screen.crit.overlay == reflection.OverlayLabels[reflection.OverlayNone] {
 				imgui.SameLineV(0, 15)
-				imgui.Checkbox("Magnify", &win.tooltipMagnify)
+				imgui.Checkbox("Magnify", &win.magnify.showInTooltip)
 				imguiTooltipSimple(fmt.Sprintf("Show magnification in tooltip\n%c Mouse wheel to adjust zoom", fonts.Mouse))
 			}
 		}
@@ -592,19 +562,11 @@ func (win *winDbgScr) drawReflectionTooltip() {
 	imguiTooltip(func() {
 		e := win.img.dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
 
-		// show magnification only if: (a) the option is enabled; (b) there is an
-		// instruction behind this pixel; and (c) if there is no overlay
-		if win.tooltipMagnify && e.Address != "" {
-			switch win.scr.crit.overlay {
-			case reflection.OverlayLabels[reflection.OverlayNone]:
-				zoom := win.tooltipMagnifyZoom
-				win.tooltipMagnifyClip = image.Rect(win.mouse.scaled.x-zoom,
-					win.mouse.scaled.y-zoom*pixelWidth,
-					win.mouse.scaled.x+zoom,
-					win.mouse.scaled.y+zoom*pixelWidth)
-				imgui.Image(imgui.TextureID(win.tooltipMagnifyTexture), imgui.Vec2{200, 200})
-				imguiSeparator()
-			}
+		// the magnify tooltip needs to appear before anything else and we only
+		// want to draw it if there is no overlay and there is an instruction
+		// behind the pixel
+		if e.Address != "" && win.scr.crit.overlay == reflection.OverlayLabels[reflection.OverlayNone] {
+			win.magnify.drawTooltip(&win.img.io, win.mouse)
 		}
 
 		imgui.Text(fmt.Sprintf("Scanline: %d", win.mouse.scanline))
@@ -830,29 +792,29 @@ func (win *winDbgScr) render() {
 			gl.Ptr(elements.Pix))
 	}
 
-	if win.tooltipMagnifyClip.Size().X > 0 {
+	if win.magnify.tooltipClip.Size().X > 0 {
 		var pixels *image.RGBA
 		if win.elements {
-			pixels = win.scr.crit.elementPixels.SubImage(win.tooltipMagnifyClip).(*image.RGBA)
+			pixels = win.scr.crit.elementPixels.SubImage(win.magnify.tooltipClip).(*image.RGBA)
 		} else {
-			pixels = win.scr.crit.presentationPixels.SubImage(win.tooltipMagnifyClip).(*image.RGBA)
+			pixels = win.scr.crit.presentationPixels.SubImage(win.magnify.tooltipClip).(*image.RGBA)
 		}
-		gl.BindTexture(gl.TEXTURE_2D, win.tooltipMagnifyTexture)
+		gl.BindTexture(gl.TEXTURE_2D, win.magnify.tooltipTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
 	}
 
-	if win.windowMagnifyClip.Size().X > 0 {
+	if win.magnify.windowClip.Size().X > 0 {
 		var pixels *image.RGBA
 		if win.elements {
-			pixels = win.scr.crit.elementPixels.SubImage(win.windowMagnifyClip).(*image.RGBA)
+			pixels = win.scr.crit.elementPixels.SubImage(win.magnify.windowClip).(*image.RGBA)
 		} else {
-			pixels = win.scr.crit.presentationPixels.SubImage(win.windowMagnifyClip).(*image.RGBA)
+			pixels = win.scr.crit.presentationPixels.SubImage(win.magnify.windowClip).(*image.RGBA)
 		}
 		if !pixels.Bounds().Empty() {
-			gl.BindTexture(gl.TEXTURE_2D, win.windowMagnifyTexture)
+			gl.BindTexture(gl.TEXTURE_2D, win.magnify.windowTexture)
 			gl.TexImage2D(gl.TEXTURE_2D, 0,
 				gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 				gl.RGBA, gl.UNSIGNED_BYTE,
@@ -913,63 +875,4 @@ func (win *winDbgScr) textureSpec() (uint32, float32, float32) {
 		return win.elementsTexture, win.scaledWidth, win.scaledHeight
 	}
 	return win.displayTexture, win.scaledWidth, win.scaledHeight
-}
-
-func (win *winDbgScr) setWindowMagnifyClip() {
-	win.windowMagnifyOpen = true
-	win.windowMagnifyClipCenter = win.mouse.scaled
-	win.windowMagnifyClip = image.Rect(win.windowMagnifyClipCenter.x-win.windowMagnifyZoom,
-		win.windowMagnifyClipCenter.y-win.windowMagnifyZoom*pixelWidth,
-		win.windowMagnifyClipCenter.x+win.windowMagnifyZoom,
-		win.windowMagnifyClipCenter.y+win.windowMagnifyZoom*pixelWidth)
-}
-
-func (win *winDbgScr) zoomWindowMagnifyClip(delta float32) {
-	if delta < 0 && win.windowMagnifyZoom < magnifyMin {
-		win.windowMagnifyZoom++
-	} else if delta > 0 && win.windowMagnifyZoom > magnifyMax {
-		win.windowMagnifyZoom--
-	}
-	win.windowMagnifyClip = image.Rect(win.windowMagnifyClipCenter.x-win.windowMagnifyZoom,
-		win.windowMagnifyClipCenter.y-win.windowMagnifyZoom*pixelWidth,
-		win.windowMagnifyClipCenter.x+win.windowMagnifyZoom,
-		win.windowMagnifyClipCenter.y+win.windowMagnifyZoom*pixelWidth)
-}
-
-func (win *winDbgScr) drawWindowMagnify() {
-	if !win.windowMagnifyOpen {
-		return
-	}
-
-	imgui.SetNextWindowPosV(imgui.Vec2{8, 28}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{200, 200}, imgui.ConditionFirstUseEver)
-
-	if imgui.BeginV("Magnification", &win.windowMagnifyOpen, imgui.WindowFlagsNoScrollbar) {
-		sz := imgui.ContentRegionAvail()
-		if sz.X >= sz.Y {
-			imgui.SetCursorPos(imgui.CursorPos().Plus(imgui.Vec2{(sz.X - sz.Y) / 2.0, 0}))
-			sz = imgui.Vec2{sz.Y, sz.Y}
-		} else {
-			imgui.SetCursorPos(imgui.CursorPos().Plus(imgui.Vec2{0, (sz.Y - sz.X) / 2.0}))
-			sz = imgui.Vec2{sz.X, sz.X}
-		}
-
-		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.Transparent)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
-		imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
-		imgui.ImageButton(imgui.TextureID(win.windowMagnifyTexture), sz)
-
-		if imgui.IsItemHovered() {
-			_, delta := win.img.io.MouseWheel()
-			if delta != 0 {
-				win.zoomWindowMagnifyClip(delta)
-			}
-		}
-
-		imgui.PopStyleVar()
-		imgui.PopStyleColorV(3)
-	}
-
-	imgui.End()
 }
