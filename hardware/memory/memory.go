@@ -195,21 +195,21 @@ func (mem *Memory) Read(address uint16) (uint8, error) {
 	// a good example of this are the TIA addresses. see commentary for TIADriverPins for extensive
 	// explanation
 	if mem.DataBusDriven != 0xff {
-		// this pattern is good for replicating what we see on the pluscart
-		// this matches observations made by Al_Nafuur with the following
-		// binary:
-		//
-		// https://atariage.com/forums/topic/329888-indexed-read-page-crossing-and-sc-ram/
-		//
-		// a different bit pattern can be seen on the Harmony
-		//
-		// https://atariage.com/forums/topic/285759-stella-getting-into-details-help-wanted/
-		data |= mem.LastCPUData & ^mem.DataBusDriven
-
 		// on a real superchip the pins are more indeterminate. for now,
 		// applying an addition random pattern is a good enough emulation for this
 		if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
-			data |= uint8(mem.instance.Random.Rewindable(0xff))
+			data |= uint8(mem.instance.Random.Rewindable(0xff)) & (^mem.DataBusDriven)
+		} else {
+			// this pattern is good for replicating what we see on the pluscart
+			// this matches observations made by Al_Nafuur with the following
+			// binary:
+			//
+			// https://atariage.com/forums/topic/329888-indexed-read-page-crossing-and-sc-ram/
+			//
+			// a different bit pattern can be seen on the Harmony
+			//
+			// https://atariage.com/forums/topic/285759-stella-getting-into-details-help-wanted/
+			data |= mem.LastCPUData & ^mem.DataBusDriven
 		}
 	}
 
