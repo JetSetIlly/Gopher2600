@@ -36,7 +36,7 @@ func (tv *Television) AdjCoords(adj Adj, amount int) coords.TelevisionCoords {
 		if coords.Clock >= specification.ClksScanline {
 			coords.Clock -= specification.ClksScanline
 			coords.Scanline++
-		} else if coords.Clock < 0 {
+		} else if coords.Clock < -specification.ClksHBlank {
 			coords.Clock += specification.ClksScanline
 			coords.Scanline--
 		}
