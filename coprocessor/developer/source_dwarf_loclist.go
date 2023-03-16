@@ -38,7 +38,7 @@ type loclistSection struct {
 func newLoclistSectionFromFile(ef *elf.File, coproc loclistCoproc) (*loclistSection, error) {
 	sec := ef.Section(".debug_loc")
 	if sec == nil {
-		return nil, nil
+		return nil, fmt.Errorf("no .debug_loc section")
 	}
 	data, err := sec.Data()
 	if err != nil {
@@ -48,13 +48,17 @@ func newLoclistSectionFromFile(ef *elf.File, coproc loclistCoproc) (*loclistSect
 }
 
 func newLoclistSection(data []uint8, byteOrder binary.ByteOrder, coproc loclistCoproc) (*loclistSection, error) {
-	loc := &loclistSection{
+	sec := &loclistSection{
 		data:      data,
 		coproc:    coproc,
 		byteOrder: byteOrder,
 	}
 
-	return loc, nil
+	if len(data) == 0 {
+		return nil, fmt.Errorf("empty .debug_loc section")
+	}
+
+	return sec, nil
 }
 
 // loclistFramebase provides context to the location list. implemented by

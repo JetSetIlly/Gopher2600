@@ -725,24 +725,28 @@ func (bld *build) buildVariables(src *Source, ef *elf.File, coproc mapper.CartCo
 		if locfld != nil {
 			switch locfld.Class {
 			case dwarf.ClassLocListPtr:
-				var err error
-				err = bld.debug_loc.newLoclist(varb, locfld.Val.(int64), compilationUnitAddress,
-					func(start, end uint64, loc *loclist) {
-						cp := *varb
-						cp.loclist = loc
-						local := &SourceVariableLocal{
-							SourceVariable: &cp,
-							Range: SourceRange{
-								Start: start,
-								End:   end,
-							},
-						}
+				if bld.debug_loc == nil {
+					logger.Logf("dwarf", "no .debug_loc data for %s", varb.Name)
+				} else {
+					var err error
+					err = bld.debug_loc.newLoclist(varb, locfld.Val.(int64), compilationUnitAddress,
+						func(start, end uint64, loc *loclist) {
+							cp := *varb
+							cp.loclist = loc
+							local := &SourceVariableLocal{
+								SourceVariable: &cp,
+								Range: SourceRange{
+									Start: start,
+									End:   end,
+								},
+							}
 
-						src.locals = append(src.locals, local)
-						src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
-					})
-				if err != nil {
-					logger.Logf("dwarf", "%s: %v", varb.Name, err)
+							src.locals = append(src.locals, local)
+							src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
+						})
+					if err != nil {
+						logger.Logf("dwarf", "%s: %v", varb.Name, err)
+					}
 				}
 
 			case dwarf.ClassExprLoc:
@@ -776,35 +780,39 @@ func (bld *build) buildVariables(src *Source, ef *elf.File, coproc mapper.CartCo
 					}
 				}
 
-				if r, o := bld.debug_loc.decodeLoclistOperationWithOrigin(locfld.Val.([]uint8), globalOrigin); o > 0 {
-					varb.loclist = bld.debug_loc.newLoclistJustContext(varb)
-					varb.loclist.addOperator(r)
+				if bld.debug_loc == nil {
+					logger.Logf("dwarf", "no .debug_loc data for %s", varb.Name)
+				} else {
+					if r, o := bld.debug_loc.decodeLoclistOperationWithOrigin(locfld.Val.([]uint8), globalOrigin); o > 0 {
+						varb.loclist = bld.debug_loc.newLoclistJustContext(varb)
+						varb.loclist.addOperator(r)
 
-					// add variable to list of global variables if there is no
-					// parent function otherwise we treat the variable as a
-					// local variable
-					if varb.DeclLine.Function.Name == stubIndicator {
-						// list of global variables for all compile units
-						src.globals[varb.Name] = varb
-						src.GlobalsByAddress[varb.resolve().address] = varb
-						src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, varb)
+						// add variable to list of global variables if there is no
+						// parent function otherwise we treat the variable as a
+						// local variable
+						if varb.DeclLine.Function.Name == stubIndicator {
+							// list of global variables for all compile units
+							src.globals[varb.Name] = varb
+							src.GlobalsByAddress[varb.resolve().address] = varb
+							src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, varb)
 
-						// note that the file has at least one global variables
-						varb.DeclLine.File.HasGlobals = true
+							// note that the file has at least one global variables
+							varb.DeclLine.File.HasGlobals = true
 
-					} else {
-						for i := range lexStart[lexIdx] {
-							cp := *varb
-							local := &SourceVariableLocal{
-								SourceVariable: &cp,
-								Range: SourceRange{
-									Start: lexStart[lexIdx][i],
-									End:   lexEnd[lexIdx][i],
-								},
+						} else {
+							for i := range lexStart[lexIdx] {
+								cp := *varb
+								local := &SourceVariableLocal{
+									SourceVariable: &cp,
+									Range: SourceRange{
+										Start: lexStart[lexIdx][i],
+										End:   lexEnd[lexIdx][i],
+									},
+								}
+
+								src.locals = append(src.locals, local)
+								src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
 							}
-
-							src.locals = append(src.locals, local)
-							src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
 						}
 					}
 				}
@@ -823,6 +831,9 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 		if fld != nil {
 			switch fld.Class {
 			case dwarf.ClassExprLoc:
+				if bld.debug_loc == nil {
+					return nil, fmt.Errorf("no .debug_loc data for %s", e.Tag)
+				}
 				var err error
 				framebase, err = bld.debug_loc.newLoclistFromSingleOperator(src.debugFrame, fld.Val.([]uint8))
 				if err != nil {
