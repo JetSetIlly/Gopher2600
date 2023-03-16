@@ -53,6 +53,9 @@ type FrameInfo struct {
 	// field
 	RefreshRate float32
 
+	// has the refresh rate changed since the previous frame
+	Jitter bool
+
 	// a VSync frame is one which was generated from a valid VSYNC/VBLANK
 	// sequence and which hasn't cause the update frequency of the television
 	// to change.

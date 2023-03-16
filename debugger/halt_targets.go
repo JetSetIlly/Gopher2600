@@ -197,6 +197,14 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				notInPlaymode: true,
 			}
 
+		case "JITTER":
+			trg = &target{
+				label: "JITTER",
+				value: func() targetValue {
+					return dbg.vcs.TV.GetFrameInfo().Jitter
+				},
+			}
+
 		case "BANK":
 			trg = bankTarget(dbg)
 
