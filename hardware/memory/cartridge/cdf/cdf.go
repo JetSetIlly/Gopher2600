@@ -228,15 +228,13 @@ func (cart *cdf) Access(addr uint16, peek bool) (uint8, uint8, error) {
 			cart.updateDatastreamPointer(reg, jmp)
 
 			return data, mapper.CartDrivenPins, nil
+		} else {
+			cart.state.fastJMP = 0
 		}
 	}
 
-	// any fastjmp preparation that wasn't serviced by the above branch must be
-	// a false positive, by definition.
-	cart.state.fastJMP = 0
-
-	if cart.state.registers.FastFetch && cart.state.fastLoad {
-		cart.state.fastLoad = false
+	if cart.state.registers.FastFetch && cart.state.fastLoad > 0 {
+		cart.state.fastLoad--
 
 		// data fetchers
 		if data >= cart.version.datastreamOffset && data <= cart.version.datastreamOffset+DSCOMM {
@@ -278,24 +276,26 @@ func (cart *cdf) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	}
 
 	// set lda flag if fast fetch mode is on and data returned is LDA #immediate
-	switch data {
-	case ldaImmediate:
-		cart.state.fastLoad = cart.state.registers.FastFetch
-	case ldxImmediate:
-		cart.state.fastLoad = cart.state.registers.FastFetch && cart.version.fastLDX
-	case ldyImmediate:
-		cart.state.fastLoad = cart.state.registers.FastFetch && cart.version.fastLDY
-	}
-
-	// set jmp flag if fast fetch mode is on and data returned is JMP absolute
-	if cart.state.registers.FastFetch && data == jmpAbsolute {
-		// only "jmp absolute" instructions with certain address operands are
-		// treated as "FastJMPs". Generally, this address must be $0000 but in
-		// the case of the CDFJ version an address of $0100 is also acceptable.
-		if cart.banks[cart.state.bank][addr+1]&cart.version.fastJMPmask == 0x00 && cart.banks[cart.state.bank][addr+2] == 0x00 {
-			// JMP operator takes a 16bit operand so we'll count the number of
-			// bytes we've read
-			cart.state.fastJMP = 2
+	if cart.state.registers.FastFetch {
+		switch data {
+		case jmpAbsolute:
+			// only "jmp absolute" instructions with certain address operands are
+			// treated as "FastJMPs". Generally, this address must be $0000 but in
+			// the case of the CDFJ version an address of $0001 is also acceptable
+			if cart.banks[cart.state.bank][(addr+1)&0xffff]&cart.version.fastJMPmask == 0x00 &&
+				cart.banks[cart.state.bank][(addr+2)&0xffff] == 0x00 {
+				cart.state.fastJMP = 2
+			}
+		case ldaImmediate:
+			cart.state.fastLoad = 2
+		case ldxImmediate:
+			if cart.version.fastLDX {
+				cart.state.fastLoad = 2
+			}
+		case ldyImmediate:
+			if cart.version.fastLDY {
+				cart.state.fastLoad = 2
+			}
 		}
 	}
 
@@ -352,7 +352,7 @@ func (cart *cdf) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		cart.state.registers.SampleMode = data&0xf0 != 0xf0
 
 		if !cart.state.registers.FastFetch {
-			cart.state.fastLoad = false
+			cart.state.fastLoad = 0
 			cart.state.fastJMP = 0
 		}
 
@@ -455,6 +455,12 @@ func (cart *cdf) AccessPassive(addr uint16, data uint8) {
 
 // Step implements the mapper.CartMapper interface.
 func (cart *cdf) Step(clock float32) {
+	// reduce fastLoad activation counter. this filters out phantom reads that
+	// look like fastLoad activating instructions
+	if cart.state.fastLoad > 0 {
+		cart.state.fastLoad--
+	}
+
 	// sample rate of 20KHz.
 	//
 	// Step() is called at a rate of 1.19Mhz. so:
