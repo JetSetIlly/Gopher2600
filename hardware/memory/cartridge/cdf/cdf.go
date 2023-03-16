@@ -219,7 +219,11 @@ func (cart *cdf) Access(addr uint16, peek bool) (uint8, uint8, error) {
 
 			// get current address for the data stream
 			jmp := cart.readDatastreamPointer(reg)
-			data = cart.state.static.dataRAM[jmp>>cart.version.fetcherShift]
+			idx := int(jmp >> cart.version.fetcherShift)
+			if idx >= len(cart.state.static.dataRAM) {
+				return 0, mapper.CartDrivenPins, nil
+			}
+			data = cart.state.static.dataRAM[idx]
 			jmp += 1 << cart.version.fetcherShift
 			cart.updateDatastreamPointer(reg, jmp)
 
@@ -319,7 +323,11 @@ func (cart *cdf) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		v := cart.readDatastreamPointer(DSCOMM)
 
 		// write data to ARM RAM
-		cart.state.static.dataRAM[v>>cart.version.fetcherShift] = data
+		idx := int(v >> cart.version.fetcherShift)
+		if idx >= len(cart.state.static.dataRAM) {
+			return nil
+		}
+		cart.state.static.dataRAM[idx] = data
 
 		// advance address value
 		v += 1 << cart.version.fetcherShift

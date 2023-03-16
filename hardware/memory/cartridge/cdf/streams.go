@@ -110,7 +110,12 @@ func (cart *cdf) streamData(reg int) uint8 {
 	addr := cart.readDatastreamPointer(reg)
 	inc := cart.readDatastreamIncrement(reg)
 
-	value := cart.state.static.dataRAM[addr>>cart.version.fetcherShift]
+	idx := int(addr >> cart.version.fetcherShift)
+	if idx >= len(cart.state.static.dataRAM) {
+		return 0
+	}
+	value := cart.state.static.dataRAM[idx]
+
 	addr += inc << cart.version.incrementShift
 	cart.updateDatastreamPointer(reg, addr)
 
