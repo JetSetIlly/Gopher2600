@@ -840,6 +840,9 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 
 				}
 
+				// copy of the registers
+				d.Registers = arm.state.registers
+
 				// basic notes about the last execution of the entry
 				d.ExecutionNotes = arm.disasmExecutionNotes
 

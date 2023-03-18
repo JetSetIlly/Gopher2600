@@ -25,6 +25,9 @@ type DisasmEntry struct {
 	// the address value. the formatted value is in the Address field
 	Addr uint32
 
+	// snapshot of CPU registers at the result of the instruction
+	Registers [NumRegisters]uint32
+
 	// the opcode for the instruction
 	Opcode uint16
 

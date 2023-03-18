@@ -394,5 +394,19 @@ func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry, ln *developer.So
 				imgui.PopStyleColor()
 			}
 		}
+
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
+		if imgui.BeginTable("coprocDisasmTooltip", 2) {
+			for r, v := range e.Registers {
+				imgui.TableNextRow()
+				imgui.TableNextColumn()
+				imgui.Text(fmt.Sprintf("R%d", r))
+				imgui.TableNextColumn()
+				imgui.Text(fmt.Sprintf("%08x", v))
+			}
+			imgui.EndTable()
+		}
 	}, false)
 }
