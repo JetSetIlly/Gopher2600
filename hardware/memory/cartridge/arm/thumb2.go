@@ -285,7 +285,7 @@ func (arm *ARM) thumb2SignZeroExtend(opcode uint16) {
 		// "4.6.187 SXTH" in "Thumb-2 Supplement"
 		arm.state.fudge_thumb2disassemble16bit = "SXTH"
 
-		arm.state.registers[Rd] = arm.state.registers[Rm]
+		arm.state.registers[Rd] = arm.state.registers[Rm] & 0x0000ffff
 		if arm.state.registers[Rd]&0x8000 == 0x8000 {
 			arm.state.registers[Rd] |= 0xffff0000
 		}
@@ -293,7 +293,7 @@ func (arm *ARM) thumb2SignZeroExtend(opcode uint16) {
 		// "4.6.185 SXTB" in "Thumb-2 Supplement"
 		arm.state.fudge_thumb2disassemble16bit = "SXTB"
 
-		arm.state.registers[Rd] = arm.state.registers[Rm]
+		arm.state.registers[Rd] = arm.state.registers[Rm] & 0x000000ff
 		if arm.state.registers[Rd]&0x80 == 0x80 {
 			arm.state.registers[Rd] |= 0xffffff00
 		}
