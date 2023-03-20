@@ -45,6 +45,14 @@ type elfSection struct {
 	executable bool
 }
 
+func (s *elfSection) String() string {
+	return fmt.Sprintf("%s %d %08x %08x", s.name, len(s.data), s.origin, s.memtop)
+}
+
+func (s *elfSection) isEmpty() bool {
+	return s.origin == s.memtop && s.origin == 0
+}
+
 // Snapshot implements the mapper.CartMapper interface.
 func (s *elfSection) Snapshot() *elfSection {
 	n := *s
@@ -175,9 +183,15 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 			}
 		}
 
-		mem.sections = append(mem.sections, section)
-		mem.sectionNames = append(mem.sectionNames, section.name)
-		mem.sectionsByName[section.name] = len(mem.sectionNames) - 1
+		// don't add duplicate sections
+		//
+		// I'm not sure why we would ever have a duplicate section so I'm not
+		// sure what affect this will have in the future
+		if _, ok := mem.sectionsByName[section.name]; !ok {
+			mem.sections = append(mem.sections, section)
+			mem.sectionNames = append(mem.sectionNames, section.name)
+			mem.sectionsByName[section.name] = len(mem.sectionNames) - 1
+		}
 	}
 
 	// sort section names
@@ -556,6 +570,12 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 
 	// accessing ELF sections is very unlikely so do this last
 	for _, s := range mem.sections {
+		// ignore empty ELF sections. if we don't we can encounter false
+		// positives if the ARM is trying to access address zero
+		if s.isEmpty() {
+			continue
+		}
+
 		if addr >= s.origin && addr <= s.memtop {
 			if write && s.readOnly {
 				return nil, addr
