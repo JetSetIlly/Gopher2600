@@ -16,13 +16,12 @@
 package sdlimgui
 
 import (
-	"fmt"
-
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
-type dbgScrMousePoint struct {
+type dbgScrMousePos struct {
 	x int
 	y int
 }
@@ -31,56 +30,73 @@ type dbgScrMouse struct {
 	// whether the mouse is inside the screen boundaries
 	valid bool
 
-	// imgui coords of mouse
-	pos imgui.Vec2
+	// coords of mouse
+	pos dbgScrMousePos
 
-	// offset of mouse from top-left of screen
+	// number of pixels measured from top-left of screen
 	offset int
 
 	// scaled mouse coordinates. top-left corner is zero for uncropped screens.
 	// cropped screens are adjusted as required
 	//
 	// use these values to index the reflection array, for example
-	scaled dbgScrMousePoint
+	scaled dbgScrMousePos
 
 	// mouse position adjusted so that clock and scanline represent the
 	// underlying screen (taking cropped setting into account)
-	clock    int
-	scanline int
+	//
+	// (note that tv.Scanline is equal to scaled.y but that tv.Clock is
+	// different to scaled.x. in the case of television coordinates the value
+	// zero indicates the start of the visible screen and not the left most edge
+	// of the HBLANK)
+	tv coords.TelevisionCoords
 }
 
 func (m dbgScrMouse) String() string {
-	return fmt.Sprintf("Scanline: %d, Clock: %d", m.scanline, m.clock)
+	return m.tv.String()
 }
 
-func (win *winDbgScr) mouseCoords() dbgScrMouse {
+func (win *winDbgScr) mouseFromVec2(pos imgui.Vec2) dbgScrMouse {
 	mouse := dbgScrMouse{}
+	mouse.pos.x = int(pos.X)
+	mouse.pos.y = int(pos.Y)
 
-	mouse.pos = imgui.MousePos().Minus(win.screenOrigin)
+	// scaled mouse position coordinates
+	mouse.scaled.x = int(pos.X / win.xscaling)
+	mouse.scaled.y = int(pos.Y / win.yscaling)
+
+	// offset is number of pixels from top-left of screen counting left-to-right
+	// and top-to-bottom
 	mouse.offset = win.mouse.scaled.x + win.mouse.scaled.y*specification.ClksScanline
 
-	// outside bounds of window
-	mouse.valid = win.mouse.pos.X >= 0.0 && win.mouse.pos.Y >= 0.0 && mouse.offset >= 0 && mouse.offset < len(win.scr.crit.reflection)
+	// check validity of mouse position
+	mouse.valid = win.mouse.pos.x >= 0.0 && win.mouse.pos.y >= 0.0 &&
+		mouse.offset >= 0 && mouse.offset < len(win.scr.crit.reflection)
+
+	// mouse position is not in debug screen area
 	if !mouse.valid {
 		return mouse
 	}
 
-	// scaled mouse position coordinates
-	mouse.scaled.x = int(mouse.pos.X / win.xscaling)
-	mouse.scaled.y = int(mouse.pos.Y / win.yscaling)
-
 	// corresponding clock and scanline values for scaled mouse coordinates
-	mouse.clock = mouse.scaled.x
-	mouse.scanline = mouse.scaled.y
+	mouse.tv.Clock = mouse.scaled.x
+	mouse.tv.Scanline = mouse.scaled.y
+
+	// frame field of the coordinates field is undefined in this context
+	mouse.tv.Frame = coords.FrameIsUndefined
 
 	// adjust depending on whether screen is cropped (or in CRT Preview)
 	if win.cropped || win.crtPreview {
 		mouse.scaled.x += specification.ClksHBlank
 		mouse.scaled.y += win.scr.crit.frameInfo.VisibleTop
-		mouse.scanline += win.scr.crit.frameInfo.VisibleTop
+		mouse.tv.Scanline += win.scr.crit.frameInfo.VisibleTop
 	} else {
-		mouse.clock -= specification.ClksHBlank
+		mouse.tv.Clock -= specification.ClksHBlank
 	}
 
 	return mouse
+}
+
+func (win *winDbgScr) currentMouse() dbgScrMouse {
+	return win.mouseFromVec2(imgui.MousePos().Minus(win.screenOrigin))
 }

@@ -32,7 +32,7 @@ func (win *winDbgScr) paintDragAndDrop() {
 		// drag and drop has ended on a legitimate target
 		payload := imgui.AcceptDragDropPayload(painDragDrop, imgui.DragDropFlagsNone)
 		if payload != nil {
-			mouse := win.mouseCoords()
+			mouse := win.currentMouse()
 			if mouse.valid {
 				ref := win.scr.crit.reflection[mouse.offset]
 
@@ -48,8 +48,8 @@ func (win *winDbgScr) paintDragAndDrop() {
 
 					target := floodFillTarget{}
 					target.coord = win.img.lz.TV.Coords
-					target.coord.Clock = mouse.clock
-					target.coord.Scanline = mouse.scanline
+					target.coord.Clock = mouse.tv.Clock
+					target.coord.Scanline = mouse.tv.Scanline
 					target.offset = mouse.offset
 					ff.build(target)
 

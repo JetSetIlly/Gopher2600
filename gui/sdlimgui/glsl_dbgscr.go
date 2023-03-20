@@ -33,6 +33,11 @@ type dbgScrHelper struct {
 	hblank                 int32 // uniform
 	visibleTop             int32 // uniform
 	visibleBottom          int32 // uniform
+	magShow                int32 // uniform
+	magXmin                int32 // uniform
+	magXmax                int32 // uniform
+	magYmin                int32 // uniform
+	magYmax                int32 // uniform
 	lastNewFrameAtScanline int32 // uniform
 }
 
@@ -48,6 +53,11 @@ func (attr *dbgScrHelper) get(sh shader) {
 	attr.lastNewFrameAtScanline = gl.GetUniformLocation(sh.handle, gl.Str("LastNewFrameAtScanline"+"\x00"))
 	attr.visibleTop = gl.GetUniformLocation(sh.handle, gl.Str("VisibleTop"+"\x00"))
 	attr.visibleBottom = gl.GetUniformLocation(sh.handle, gl.Str("VisibleBottom"+"\x00"))
+	attr.magShow = gl.GetUniformLocation(sh.handle, gl.Str("MagShow"+"\x00"))
+	attr.magXmin = gl.GetUniformLocation(sh.handle, gl.Str("MagXmin"+"\x00"))
+	attr.magXmax = gl.GetUniformLocation(sh.handle, gl.Str("MagXmax"+"\x00"))
+	attr.magYmin = gl.GetUniformLocation(sh.handle, gl.Str("MagYmin"+"\x00"))
+	attr.magYmax = gl.GetUniformLocation(sh.handle, gl.Str("MagYmax"+"\x00"))
 }
 
 func (attr *dbgScrHelper) set(img *SdlImgui) {
@@ -67,8 +77,8 @@ func (attr *dbgScrHelper) set(img *SdlImgui) {
 	gl.Uniform2f(attr.screenDim, width, height)
 
 	// cursor is the coordinates of the *most recent* pixel to be drawn
-	cursorX := img.screen.crit.lastClock
-	cursorY := img.screen.crit.lastScanline
+	cursorX := img.screen.crit.lastX
+	cursorY := img.screen.crit.lastY
 
 	// if crt preview is enabled then force cropping
 	if img.wm.dbgScr.cropped || img.wm.dbgScr.crtPreview {
@@ -85,6 +95,25 @@ func (attr *dbgScrHelper) set(img *SdlImgui) {
 	gl.Uniform1f(attr.visibleTop, float32(img.screen.crit.frameInfo.VisibleTop)*yscaling)
 	gl.Uniform1f(attr.visibleBottom, float32(img.screen.crit.frameInfo.VisibleBottom)*yscaling)
 	gl.Uniform1f(attr.lastNewFrameAtScanline, float32(img.screen.crit.frameInfo.TotalScanlines)*yscaling)
+
+	// window magnification
+	var magXmin, magYmin, magXmax, magYmax float32
+	if img.wm.dbgScr.cropped || img.wm.dbgScr.crtPreview {
+		magXmin = float32(img.wm.dbgScr.magnifyWindow.clip.Min.X-specification.ClksHBlank) * xscaling
+		magYmin = float32(img.wm.dbgScr.magnifyWindow.clip.Min.Y-img.screen.crit.frameInfo.VisibleTop) * yscaling
+		magXmax = float32(img.wm.dbgScr.magnifyWindow.clip.Max.X-specification.ClksHBlank) * xscaling
+		magYmax = float32(img.wm.dbgScr.magnifyWindow.clip.Max.Y-img.screen.crit.frameInfo.VisibleTop) * yscaling
+	} else {
+		magXmin = float32(img.wm.dbgScr.magnifyWindow.clip.Min.X) * xscaling
+		magYmin = float32(img.wm.dbgScr.magnifyWindow.clip.Min.Y) * yscaling
+		magXmax = float32(img.wm.dbgScr.magnifyWindow.clip.Max.X) * xscaling
+		magYmax = float32(img.wm.dbgScr.magnifyWindow.clip.Max.Y) * yscaling
+	}
+	gl.Uniform1i(attr.magShow, boolToInt32(img.wm.dbgScr.magnifyWindow.open))
+	gl.Uniform1f(attr.magXmin, magXmin)
+	gl.Uniform1f(attr.magYmin, magYmin)
+	gl.Uniform1f(attr.magXmax, magXmax)
+	gl.Uniform1f(attr.magYmax, magYmax)
 
 	img.screen.crit.section.Unlock()
 	// end of critical section

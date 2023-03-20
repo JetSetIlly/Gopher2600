@@ -50,6 +50,42 @@ void main()
 		}
 	}
 
+	// magnification guide
+	if (MagShow == 1) {
+		float xmin = pixelX * MagXmin;
+		float xmax = pixelX * MagXmax;
+		float ymin = pixelY * MagYmin;
+		float ymax = pixelY * MagYmax;
+
+		// fade out magnified area
+		if (Frag_UV.x > xmin && Frag_UV.x < xmax && Frag_UV.y > ymin && Frag_UV.y < ymax) {
+		 		Out_Color.r += 0.1;
+		 		Out_Color.g += 0.1;
+		 		Out_Color.b += 0.1;
+				Out_Color.a = 0.5;
+		}
+
+		// alternative magnification guide (dotted line around area)
+		/*
+		if (Frag_UV.x > xmin && Frag_UV.x < xmax && (isNearEqual(Frag_UV.y, ymin, pixelY) || isNearEqual(Frag_UV.y, ymax, pixelY)) ) {
+			if (mod(floor(gl_FragCoord.x), 8) < 5.0) {
+				Out_Color.r = 1.0;
+				Out_Color.g = 1.0;
+				Out_Color.b = 1.0;
+				Out_Color.a = 1.0;
+			}
+		}
+		if (Frag_UV.y > ymin && Frag_UV.y < ymax && (isNearEqual(Frag_UV.x, xmin, pixelX) || isNearEqual(Frag_UV.x, xmax, pixelX))) {
+			if (mod(floor(gl_FragCoord.y), 8) < 5.0) {
+				Out_Color.r = 1.0;
+				Out_Color.g = 1.0;
+				Out_Color.b = 1.0;
+				Out_Color.a = 1.0;
+			}
+		}
+		*/
+	}
+
 	// show cursor. the cursor illustrates the *most recent* pixel to be drawn
 	if (ShowCursor == 1) {
 		// draw cursor if pixel is at the last x/y position

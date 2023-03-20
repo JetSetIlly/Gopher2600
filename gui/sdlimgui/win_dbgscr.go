@@ -61,7 +61,8 @@ type winDbgScr struct {
 	// the tv screen has captured mouse input
 	isCaptured bool
 
-	// imgui coords of mouse
+	// the current position of the actual mouse (not reliable after the frame it
+	// was captured on)
 	mouse dbgScrMouse
 
 	// height of tool bar at bottom of window. valid after first frame.
@@ -93,7 +94,8 @@ type winDbgScr struct {
 	crtPreview bool
 
 	// magnification fields
-	magnify dbgScrMagnify
+	magnifyTooltip dbgScrMagnifyTooltip
+	magnifyWindow  dbgScrMagnifyWindow
 }
 
 func newWinDbgScr(img *SdlImgui) (window, error) {
@@ -102,9 +104,11 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 		scr:        img.screen,
 		crtPreview: false,
 		cropped:    true,
-		magnify: dbgScrMagnify{
-			tooltipZoom: 10,
-			windowZoom:  10,
+		magnifyTooltip: dbgScrMagnifyTooltip{
+			zoom: magnifyDef,
+		},
+		magnifyWindow: dbgScrMagnifyWindow{
+			zoom: magnifyDef,
 		},
 	}
 
@@ -128,15 +132,15 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
-	gl.GenTextures(1, &win.magnify.tooltipTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.magnify.tooltipTexture)
+	gl.GenTextures(1, &win.magnifyTooltip.texture)
+	gl.BindTexture(gl.TEXTURE_2D, win.magnifyTooltip.texture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
-	gl.GenTextures(1, &win.magnify.windowTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.magnify.windowTexture)
+	gl.GenTextures(1, &win.magnifyWindow.texture)
+	gl.BindTexture(gl.TEXTURE_2D, win.magnifyWindow.texture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
@@ -194,7 +198,7 @@ func (win *winDbgScr) debuggerDraw() {
 	imgui.End()
 
 	// draw magnify window
-	win.magnify.drawWindow(&win.img.io, win.img.cols)
+	win.magnifyWindow.draw(&win.img.io, win.img.cols)
 }
 
 func (win *winDbgScr) draw() {
@@ -214,7 +218,7 @@ func (win *winDbgScr) draw() {
 
 	// get mouse position if breakmenu is not open
 	if !imgui.IsPopupOpen(breakMenuPopupID) {
-		win.mouse = win.mouseCoords()
+		win.mouse = win.currentMouse()
 	}
 
 	// push style info for screen and overlay ImageButton(). we're using
@@ -253,18 +257,19 @@ func (win *winDbgScr) draw() {
 		if imgui.BeginPopup(breakMenuPopupID) {
 			imgui.Text("Break on TV Coords")
 			imguiSeparator()
-			if imgui.Selectable(fmt.Sprintf("Scanline %d", win.mouse.scanline)) {
-				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.mouse.scanline))
+			if imgui.Selectable(fmt.Sprintf("Scanline %d", win.mouse.tv.Scanline)) {
+				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.mouse.tv.Scanline))
 			}
-			if imgui.Selectable(fmt.Sprintf("Clock %d", win.mouse.clock)) {
-				win.img.term.pushCommand(fmt.Sprintf("BREAK CL %d", win.mouse.clock))
+			if imgui.Selectable(fmt.Sprintf("Clock %d", win.mouse.tv.Clock)) {
+				win.img.term.pushCommand(fmt.Sprintf("BREAK CL %d", win.mouse.tv.Clock))
 			}
-			if imgui.Selectable(fmt.Sprintf("Scanline %d & Clock %d", win.mouse.scanline, win.mouse.clock)) {
-				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & CL %d", win.mouse.scanline, win.mouse.clock))
+			if imgui.Selectable(fmt.Sprintf("Scanline %d & Clock %d", win.mouse.tv.Scanline, win.mouse.tv.Clock)) {
+				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & CL %d", win.mouse.tv.Scanline, win.mouse.tv.Clock))
 			}
 			imguiSeparator()
 			if imgui.Selectable(fmt.Sprintf("%c Magnify in Window", fonts.MagnifyingGlass)) {
-				win.magnify.setWindowClip(win.mouse)
+				win.magnifyWindow.open = true
+				win.magnifyWindow.setClipCenter(win.mouse)
 			}
 			imgui.EndPopup()
 		}
@@ -275,35 +280,48 @@ func (win *winDbgScr) draw() {
 		}
 	}
 
-	// accept mouse clicks if window is focused
-	if imgui.IsWindowFocused() && imageHovered {
-		// mouse click will cause the rewind goto coords to run only when the
-		// emulation is paused
-		if win.img.dbg.State() == govern.Paused {
-			if imgui.IsMouseDown(0) {
-				coords := coords.TelevisionCoords{
-					Frame:    win.img.lz.TV.Coords.Frame,
-					Scanline: win.mouse.scanline,
-					Clock:    win.mouse.clock,
-				}
+	// if mouse is over tv image then accept mouse clicks
+	// . middle mouse button will control zoom window
+	// . left button button will control rewinding of frame when emulation is paused
+	if imageHovered {
+		if imgui.IsMouseDown(2) {
+			if win.magnifyWindow.open {
+				win.magnifyWindow.setClipCenter(win.mouse)
+			} else if imgui.IsMouseDoubleClicked(2) {
+				win.magnifyWindow.open = true
+				win.magnifyWindow.setClipCenter(win.mouse)
+			}
+		} else {
+			if imgui.IsWindowFocused() {
+				// mouse click will cause the rewind goto coords to run only when the
+				// emulation is paused
+				if win.img.dbg.State() == govern.Paused {
+					if imgui.IsMouseDown(0) {
+						coords := coords.TelevisionCoords{
+							Frame:    win.img.lz.TV.Coords.Frame,
+							Scanline: win.mouse.tv.Scanline,
+							Clock:    win.mouse.tv.Clock,
+						}
 
-				// if mouse is off the end of the screen then adjust the
-				// scanline (we want to goto) to just before the end of the
-				// screen (the actual end of the screen might be a half
-				// scanline - this limiting effect is purely visual so accuracy
-				// isn't paramount)
-				if coords.Scanline >= win.img.screen.crit.frameInfo.TotalScanlines {
-					coords.Scanline = win.img.screen.crit.frameInfo.TotalScanlines - 1
-					if coords.Scanline < 0 {
-						coords.Scanline = 0
+						// if mouse is off the end of the screen then adjust the
+						// scanline (we want to goto) to just before the end of the
+						// screen (the actual end of the screen might be a half
+						// scanline - this limiting effect is purely visual so accuracy
+						// isn't paramount)
+						if coords.Scanline >= win.img.screen.crit.frameInfo.TotalScanlines {
+							coords.Scanline = win.img.screen.crit.frameInfo.TotalScanlines - 1
+							if coords.Scanline < 0 {
+								coords.Scanline = 0
+							}
+						}
+
+						// match against the actual mouse.tv.Scanline not the adjusted scanline
+						if win.img.screen.gotoCoordsX != win.mouse.tv.Clock || win.img.screen.gotoCoordsY != win.img.wm.dbgScr.mouse.tv.Scanline {
+							win.img.screen.gotoCoordsX = win.mouse.tv.Clock
+							win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouse.tv.Scanline
+							win.img.dbg.GotoCoords(coords)
+						}
 					}
-				}
-
-				// match against the actual mouse scanline not the adjusted scanline
-				if win.img.screen.gotoCoordsX != win.mouse.clock || win.img.screen.gotoCoordsY != win.img.wm.dbgScr.mouse.scanline {
-					win.img.screen.gotoCoordsX = win.mouse.clock
-					win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouse.scanline
-					win.img.dbg.GotoCoords(coords)
 				}
 			}
 		}
@@ -362,7 +380,7 @@ func (win *winDbgScr) draw() {
 
 			if win.img.screen.crit.overlay == reflection.OverlayLabels[reflection.OverlayNone] {
 				imgui.SameLineV(0, 15)
-				imgui.Checkbox("Magnify", &win.magnify.showInTooltip)
+				imgui.Checkbox("Magnify on hover", &win.magnifyTooltip.showInTooltip)
 				imguiTooltipSimple(fmt.Sprintf("Show magnification in tooltip\n%c Mouse wheel to adjust zoom", fonts.Mouse))
 			}
 		}
@@ -566,11 +584,11 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		// want to draw it if there is no overlay and there is an instruction
 		// behind the pixel
 		if e.Address != "" && win.scr.crit.overlay == reflection.OverlayLabels[reflection.OverlayNone] {
-			win.magnify.drawTooltip(&win.img.io, win.mouse)
+			win.magnifyTooltip.draw(&win.img.io, win.mouse)
 		}
 
-		imgui.Text(fmt.Sprintf("Scanline: %d", win.mouse.scanline))
-		imgui.Text(fmt.Sprintf("Clock: %d", win.mouse.clock))
+		imgui.Text(fmt.Sprintf("Scanline: %d", win.mouse.tv.Scanline))
+		imgui.Text(fmt.Sprintf("Clock: %d", win.mouse.tv.Clock))
 
 		// early return if there is no instruction behind this pixel
 		if e.Address == "" {
@@ -581,8 +599,8 @@ func (win *winDbgScr) drawReflectionTooltip() {
 
 		// if mouse is over a pixel from the previous frame then show a note
 		// if win.img.dbg.State() == govern.Paused {
-		// 	if win.mouse.scanline > win.img.screen.crit.lastScanline ||
-		// 		(win.mouse.scanline == win.img.screen.crit.lastScanline && win.mouse.clock > win.img.screen.crit.lastClock) {
+		// 	if win.mouse.tv.Scanline > win.img.screen.crit.lastScanline ||
+		// 		(win.mouse.tv.Scanline == win.img.screen.crit.lastScanline && win.mouse.tv.Clock > win.img.screen.crit.lastClock) {
 		// 		imgui.Text("From previous frame")
 		// 		imguiSeparator()
 		// 	}
@@ -792,29 +810,77 @@ func (win *winDbgScr) render() {
 			gl.Ptr(elements.Pix))
 	}
 
-	if win.magnify.tooltipClip.Size().X > 0 {
-		var pixels *image.RGBA
+	if win.magnifyTooltip.clip.Size().X > 0 {
+		var src *image.RGBA
 		if win.elements {
-			pixels = win.scr.crit.elementPixels.SubImage(win.magnify.tooltipClip).(*image.RGBA)
+			src = win.scr.crit.elementPixels
 		} else {
-			pixels = win.scr.crit.presentationPixels.SubImage(win.magnify.tooltipClip).(*image.RGBA)
+			src = win.scr.crit.presentationPixels
 		}
-		gl.BindTexture(gl.TEXTURE_2D, win.magnify.tooltipTexture)
+
+		pixels := src.SubImage(win.magnifyTooltip.clip).(*image.RGBA)
+		if !pixels.Rect.Size().Eq(win.magnifyTooltip.clip.Size()) {
+			if win.magnifyTooltip.clip.Min.X < 0 {
+				win.magnifyTooltip.clip.Max.X -= win.magnifyTooltip.clip.Min.X
+				win.magnifyTooltip.clip.Min.X = 0
+			} else if win.magnifyTooltip.clip.Max.X > pixels.Rect.Max.X {
+				d := win.magnifyTooltip.clip.Max.X - pixels.Rect.Max.X
+				win.magnifyTooltip.clip.Max.X -= d
+				win.magnifyTooltip.clip.Min.X -= d
+			}
+			if win.magnifyTooltip.clip.Min.Y < 0 {
+				win.magnifyTooltip.clip.Max.Y -= win.magnifyTooltip.clip.Min.Y
+				win.magnifyTooltip.clip.Min.Y = 0
+			} else if win.magnifyTooltip.clip.Max.Y > pixels.Rect.Max.Y {
+				d := win.magnifyTooltip.clip.Max.Y - pixels.Rect.Max.Y
+				win.magnifyTooltip.clip.Max.Y -= d
+				win.magnifyTooltip.clip.Min.Y -= d
+			}
+			pixels = src.SubImage(win.magnifyTooltip.clip).(*image.RGBA)
+		}
+
+		gl.BindTexture(gl.TEXTURE_2D, win.magnifyTooltip.texture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
 	}
 
-	if win.magnify.windowClip.Size().X > 0 {
-		var pixels *image.RGBA
+	if win.magnifyWindow.clip.Size().X > 0 {
+		var src *image.RGBA
 		if win.elements {
-			pixels = win.scr.crit.elementPixels.SubImage(win.magnify.windowClip).(*image.RGBA)
+			src = win.scr.crit.elementPixels
 		} else {
-			pixels = win.scr.crit.presentationPixels.SubImage(win.magnify.windowClip).(*image.RGBA)
+			src = win.scr.crit.presentationPixels
 		}
+
+		pixels := src.SubImage(win.magnifyWindow.clip).(*image.RGBA)
+		if !pixels.Rect.Size().Eq(win.magnifyWindow.clip.Size()) {
+			if win.magnifyWindow.clip.Min.X < 0 {
+				win.magnifyWindow.clip.Max.X -= win.magnifyWindow.clip.Min.X
+				win.magnifyWindow.clip.Min.X = 0
+				win.magnifyWindow.centerPoint.x = win.magnifyWindow.clip.Max.X / 2
+			} else if win.magnifyWindow.clip.Max.X > pixels.Rect.Max.X {
+				d := win.magnifyWindow.clip.Max.X - pixels.Rect.Max.X
+				win.magnifyWindow.clip.Max.X -= d
+				win.magnifyWindow.clip.Min.X -= d
+				win.magnifyWindow.centerPoint.x -= d
+			}
+			if win.magnifyWindow.clip.Min.Y < 0 {
+				win.magnifyWindow.clip.Max.Y -= win.magnifyWindow.clip.Min.Y
+				win.magnifyWindow.clip.Min.Y = 0
+				win.magnifyWindow.centerPoint.y = win.magnifyWindow.clip.Max.Y / 2
+			} else if win.magnifyWindow.clip.Max.Y > pixels.Rect.Max.Y {
+				d := win.magnifyWindow.clip.Max.Y - pixels.Rect.Max.Y
+				win.magnifyWindow.clip.Max.Y -= d
+				win.magnifyWindow.clip.Min.Y -= d
+				win.magnifyWindow.centerPoint.y -= d
+			}
+			pixels = src.SubImage(win.magnifyWindow.clip).(*image.RGBA)
+		}
+
 		if !pixels.Bounds().Empty() {
-			gl.BindTexture(gl.TEXTURE_2D, win.magnify.windowTexture)
+			gl.BindTexture(gl.TEXTURE_2D, win.magnifyWindow.texture)
 			gl.TexImage2D(gl.TEXTURE_2D, 0,
 				gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 				gl.RGBA, gl.UNSIGNED_BYTE,

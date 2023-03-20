@@ -178,9 +178,9 @@ func (rnd *glsl) render() {
 					shader = rnd.shaders[dbgscrShaderID]
 				case rnd.img.wm.dbgScr.overlayTexture:
 					shader = rnd.shaders[overlayShaderID]
-				case rnd.img.wm.dbgScr.magnify.tooltipTexture:
+				case rnd.img.wm.dbgScr.magnifyTooltip.texture:
 					shader = rnd.shaders[sharpenShaderID]
-				case rnd.img.wm.dbgScr.magnify.windowTexture:
+				case rnd.img.wm.dbgScr.magnifyWindow.texture:
 					shader = rnd.shaders[sharpenShaderID]
 
 				case rnd.img.playScr.displayTexture:
