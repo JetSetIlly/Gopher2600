@@ -991,7 +991,8 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 
 				fn, err := resolve(av)
 				if err != nil {
-					return err
+					logger.Logf("dwarf", err.Error())
+					continue // build order loop
 				}
 
 				// start/end address of function
@@ -1020,7 +1021,8 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 			} else {
 				fn, err := resolve(e)
 				if err != nil {
-					return err
+					logger.Logf("dwarf", err.Error())
+					continue // build order loop
 				}
 
 				// start/end address of function
@@ -1100,7 +1102,8 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 
 				err := commitInlinedSubroutine(low, high)
 				if err != nil {
-					return err
+					logger.Logf("dwarf", err.Error())
+					continue // build order loop
 				}
 
 			} else {
@@ -1148,7 +1151,8 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 
 					err := commitInlinedSubroutine(low, high)
 					if err != nil {
-						return err
+						logger.Logf("dwarf", err.Error())
+						continue // ranges loop
 					}
 				}
 			}
