@@ -729,7 +729,7 @@ func (cart *dpcPlus) Step(clock float32) {
 
 	// Step ARM state if the ARM program is NOT running
 	if cart.state.callfn.IsActive() {
-		if cart.state.immediateMode {
+		if cart.arm.ImmediateMode() {
 			cart.arm.Step(clock)
 		} else {
 			timerClock := cart.state.callfn.Step(clock, cart.arm.Clk)
@@ -967,7 +967,6 @@ func (cart *dpcPlus) SetYieldHook(hook mapper.CartYieldHook) {
 }
 
 func (cart *dpcPlus) runArm() mapper.YieldReason {
-	cart.state.immediateMode = cart.instance.Prefs.ARM.Immediate.Get().(bool)
 	yld, cycles := cart.arm.Run()
 	cart.state.callfn.Accumulate(cycles)
 	return yld

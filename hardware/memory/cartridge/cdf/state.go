@@ -42,10 +42,6 @@ type State struct {
 
 	// the callfn process is stateful
 	callfn callfn.CallFn
-
-	// the immediate mode state at the moment of ARM invocation. used by the
-	// Step() function when resolving the execution time
-	immediateMode bool
 }
 
 // initialise should be called as soon as convenient.

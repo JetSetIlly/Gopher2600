@@ -375,6 +375,12 @@ func (arm *ARM) CoProcID() string {
 	return string(arm.mmap.ARMArchitecture)
 }
 
+// ImmediateMode returns whether the most recent execution was in immediate mode
+// or not.
+func (arm *ARM) ImmediateMode() bool {
+	return arm.immediateMode
+}
+
 // SetDisassembler implements the mapper.CartCoProc interface.
 func (arm *ARM) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 	arm.disasm = disasm
