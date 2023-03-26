@@ -511,7 +511,7 @@ compatibility.`)
 
 func (win *winPrefs) drawSyncPowerOn() {
 	b := win.img.crtPrefs.SyncPowerOn.Get().(bool)
-	if imgui.Checkbox("Syncronise On Powern##poweron", &b) {
+	if imgui.Checkbox("Syncronise On Power##poweron", &b) {
 		win.img.crtPrefs.SyncPowerOn.Set(b)
 	}
 	imguiTooltipSimple(`Whether the emulated TV visibly synchronises when powered on.`)

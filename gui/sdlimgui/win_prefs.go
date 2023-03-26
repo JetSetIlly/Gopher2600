@@ -152,29 +152,29 @@ func (win *winPrefs) drawGlSwapInterval() {
 	var glSwapInterval string
 
 	const (
-		sync0 = "Immediate updates"
-		sync1 = "Sync with vertical retrace"
-		sync2 = "Adaptive VSYNC"
+		syncImmediate           = "Immediate updates"
+		syncWithVerticalRetrace = "Sync with vertical retrace"
+		syncAdaptive            = "Adaptive VSYNC"
 	)
 
 	switch win.img.prefs.glSwapInterval.Get().(int) {
 	default:
-		glSwapInterval = sync0
+		glSwapInterval = syncImmediate
 	case 1:
-		glSwapInterval = sync1
-	case 2:
-		glSwapInterval = sync2
+		glSwapInterval = syncWithVerticalRetrace
+	case -1:
+		glSwapInterval = syncAdaptive
 	}
 
 	if imgui.BeginCombo("Swap Interval", glSwapInterval) {
-		if imgui.Selectable(sync0) {
+		if imgui.Selectable(syncImmediate) {
 			win.img.prefs.glSwapInterval.Set(0)
 		}
-		if imgui.Selectable(sync1) {
+		if imgui.Selectable(syncWithVerticalRetrace) {
 			win.img.prefs.glSwapInterval.Set(1)
 		}
-		if imgui.Selectable(sync2) {
-			win.img.prefs.glSwapInterval.Set(2)
+		if imgui.Selectable(syncAdaptive) {
+			win.img.prefs.glSwapInterval.Set(-1)
 		}
 		imgui.EndCombo()
 	}
@@ -188,7 +188,7 @@ func (win *winPrefs) drawPlaymodeTab() {
 		win.img.prefs.activePause.Set(activePause)
 	}
 	imguiTooltipSimple(`An 'active' pause screen is one that tries to present
-an television image that is sympathetic to the display kernel
+a television image that is sympathetic to the display kernel
 of the ROM.`)
 
 	imgui.Spacing()
@@ -640,15 +640,19 @@ func (win *winPrefs) drawPlusROMTab() {
 
 func (win *winPrefs) drawDiskButtons() {
 	if imgui.Button("Save All") {
+		err := win.img.prefs.save()
+		if err != nil {
+			logger.Logf("sdlimgui", "could not save (imgui debugger) preferences: %v", err)
+		}
+		err = win.img.crtPrefs.Save()
+		if err != nil {
+			logger.Logf("sdlimgui", "could not save (crt) preferences: %v", err)
+		}
+		err = win.img.audio.Prefs.Save()
+		if err != nil {
+			logger.Logf("sdlimgui", "could not save (sdlaudio) preferences: %v", err)
+		}
 		win.img.dbg.PushFunction(func() {
-			err := win.img.prefs.save()
-			if err != nil {
-				logger.Logf("sdlimgui", "could not save (imgui debugger) preferences: %v", err)
-			}
-			err = win.img.audio.Prefs.Save()
-			if err != nil {
-				logger.Logf("sdlimgui", "could not save (sdlaudio) preferences: %v", err)
-			}
 			err = win.img.vcs.Instance.Prefs.Save()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (vcs) preferences: %v", err)
@@ -669,15 +673,10 @@ func (win *winPrefs) drawDiskButtons() {
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (tia revisions) preferences: %v", err)
 			}
-			err = win.img.crtPrefs.Save()
-			if err != nil {
-				logger.Logf("sdlimgui", "could not save (crt) preferences: %v", err)
-			}
 			err = win.img.dbg.Rewind.Prefs.Save()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (rewind) preferences: %v", err)
 			}
-
 			if win.img.mode.Load().(govern.Mode) == govern.ModeDebugger {
 				err = win.img.dbg.Disasm.Prefs.Save()
 				if err != nil {
@@ -689,15 +688,19 @@ func (win *winPrefs) drawDiskButtons() {
 
 	imgui.SameLine()
 	if imgui.Button("Restore All") {
+		err := win.img.prefs.load()
+		if err != nil {
+			logger.Logf("sdlimgui", "could not restore (imgui debugger) preferences: %v", err)
+		}
+		err = win.img.crtPrefs.Load()
+		if err != nil {
+			logger.Logf("sdlimgui", "could not restore (crt) preferences: %v", err)
+		}
+		err = win.img.audio.Prefs.Load()
+		if err != nil {
+			logger.Logf("sdlimgui", "could not restore (sdlaudio) preferences: %v", err)
+		}
 		win.img.dbg.PushFunction(func() {
-			err := win.img.prefs.load()
-			if err != nil {
-				logger.Logf("sdlimgui", "could not restore (imgui debugger) preferences: %v", err)
-			}
-			err = win.img.audio.Prefs.Load()
-			if err != nil {
-				logger.Logf("sdlimgui", "could not restore (sdlaudio) preferences: %v", err)
-			}
 			err = win.img.vcs.Instance.Prefs.Load()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not restore (vcs) preferences: %v", err)
@@ -718,22 +721,16 @@ func (win *winPrefs) drawDiskButtons() {
 			if err != nil {
 				logger.Logf("sdlimgui", "could not restore (tia revisions) preferences: %v", err)
 			}
-			err = win.img.crtPrefs.Load()
-			if err != nil {
-				logger.Logf("sdlimgui", "could not restore (crt) preferences: %v", err)
-			}
 			err = win.img.dbg.Rewind.Prefs.Load()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not restore (rewind) preferences: %v", err)
 			}
-
 			if win.img.mode.Load().(govern.Mode) == govern.ModeDebugger {
 				err = win.img.dbg.Disasm.Prefs.Load()
 				if err != nil {
 					logger.Logf("sdlimgui", "could not restore (disasm) preferences: %v", err)
 				}
 			}
-
 		})
 
 		if win.img.glsl.fonts.isFreeType() {
