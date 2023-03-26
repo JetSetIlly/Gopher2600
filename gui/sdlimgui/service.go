@@ -51,14 +51,20 @@ func (img *SdlImgui) Service() {
 	}
 
 	// poll for sdl event or timeout
-	ev := img.polling.wait()
+	img.polling.pumpedEvents[0] = img.polling.wait()
 
 	// whether mouse button down event have been polled. if it has and we poll
 	// an up event in the same PollEvent() loop below, then we need to
 	// "trickle" the up and down events over two frames. see commentary for
 	// trickleMouseButton type
-	leftMouseDownPolled := false
-	rightMouseDownPolled := false
+	var leftMouseDownPolled bool
+	var rightMouseDownPolled bool
+
+	// send only one mouse event to the emulation per frame. the mouseMotion
+	// variables below help with this
+	var mouseMotionProcess bool
+	var mouseMotionX int32
+	var mouseMotionY int32
 
 	// some events we want to service even if an event channel has not been
 	// set. very few "modes" will not set a channel but we should be mindful of
@@ -66,269 +72,293 @@ func (img *SdlImgui) Service() {
 	//
 	// for those events that do require an event channel to be defined we wrap
 	// them in select block and log the dropped event in the default case
-	for ; ev != nil; ev = sdl.PollEvent() {
-		switch ev := ev.(type) {
-		case *sdl.QuitEvent:
-			img.quit()
+	if img.polling.pumpedEvents[0] != nil {
 
-		// case *sdl.WindowEvent handled by event filter (see comment in serviceWindowEvent()
+		// events are pumped once per frame
+		sdl.PumpEvents()
 
-		case *sdl.TextInputEvent:
-			if img.hasModal || !img.isCaptured() {
-				img.io.AddInputCharacters(string(ev.Text[:]))
+		// the number of additionalEvents is always one on the first iteration
+		// of the peeping loop
+		additionalEvents := 1
+
+		peeping := true
+		for peeping {
+			peepCt, err := sdl.PeepEvents(img.polling.pumpedEvents[additionalEvents:], sdl.GETEVENT, sdl.FIRSTEVENT, sdl.LASTEVENT)
+			if err != nil {
+				logger.Log("sdlimgui", err.Error())
 			}
 
-		case *sdl.KeyboardEvent:
-			img.smartHideCursor(true)
-			img.serviceKeyboard(ev)
+			// adjust the peepCt by the number of additionalEvents in the queue
+			peepCt += additionalEvents
 
-		case *sdl.MouseMotionEvent:
-			img.smartHideCursor(false)
+			// pump more events after procesing if the pumpedEvents queue is full
+			peeping = peepCt == len(img.polling.pumpedEvents)
 
-		case *sdl.MouseButtonEvent:
-			img.smartHideCursor(false)
+			for i := 0; i < peepCt; i++ {
+				switch ev := img.polling.pumpedEvents[i].(type) {
+				case *sdl.QuitEvent:
+					img.quit()
 
-			// the button event to send
-			var button userinput.MouseButton
+				// case *sdl.WindowEvent handled by event filter (see comment in serviceWindowEvent()
 
-			switch ev.Button {
-			case sdl.BUTTON_LEFT:
-				button = userinput.MouseButtonLeft
-				switch ev.Type {
-				case sdl.MOUSEBUTTONDOWN:
-					leftMouseDownPolled = true
-				case sdl.MOUSEBUTTONUP:
-					if leftMouseDownPolled {
-						img.plt.trickleMouseButtonLeft = trickleMouseDown
-					}
-				}
-
-			case sdl.BUTTON_MIDDLE:
-				if img.isCaptured() {
-					img.setCapture(false)
-				}
-
-			case sdl.BUTTON_RIGHT:
-				button = userinput.MouseButtonRight
-				switch ev.Type {
-				case sdl.MOUSEBUTTONDOWN:
-					rightMouseDownPolled = true
-				case sdl.MOUSEBUTTONUP:
-					if rightMouseDownPolled {
-						img.plt.trickleMouseButtonRight = trickleMouseDown
+				case *sdl.TextInputEvent:
+					if img.hasModal || !img.isCaptured() {
+						img.io.AddInputCharacters(string(ev.Text[:]))
 					}
 
-					// handling of mouse capture/release is done outside of the outside of trickle
-					// mouse polling this means that capturing the mouse requires a physical click
-					// on the macintosh touchpad. I think this is okay but if it's not, the
-					// following code will need to be called during trickle resolution (probably
-					// just a function pointer)
-					if img.isCaptured() {
-						img.setCapture(false)
-						if !img.isPlaymode() {
-							img.term.pushCommand("HALT")
-						}
-					} else if img.isPlaymode() {
-						img.setCapture(true)
-					}
-				}
-			}
-
-			if img.isCaptured() {
-				select {
-				case img.userinput <- userinput.EventMouseButton{
-					Button: button,
-					Down:   ev.Type == sdl.MOUSEBUTTONDOWN}:
-				default:
-					if ev.Type == sdl.MOUSEBUTTONDOWN {
-						logger.Log("sdlimgui", "dropped mouse down event")
-					} else {
-						logger.Log("sdlimgui", "dropped mouse up event")
-					}
-				}
-			}
-
-			// trigger service wake in time for next Service() iteration.
-			// without this, the results of the mouse button will not be
-			// seen until the timeout (in the next iteration) has elapsed.
-			//
-			// eg. closing a window: the window will be drawn on *this*
-			// frame and *this* mouse button press will be acknowledged.
-			// next frame the window will not be drawn. however, the *next*
-			// frame will sleep until the time out - *this* mouse button
-			// event has been consumed. calling alert() ensures there is no
-			// delay in drawing the *next* frame
-			img.polling.alert()
-
-		case *sdl.MouseWheelEvent:
-			var deltaX, deltaY float32
-			if ev.X > 0 {
-				deltaX++
-			} else if ev.X < 0 {
-				deltaX--
-			}
-			if ev.Y > 0 {
-				deltaY++
-			} else if ev.Y < 0 {
-				deltaY--
-			}
-			img.io.AddMouseWheelDelta(-deltaX/4, deltaY/4)
-
-			if img.mode.Load().(govern.Mode) != govern.ModePlay || !img.wm.playmodeWindows[winSelectROMID].playmodeIsOpen() {
-				select {
-				case img.userinput <- userinput.EventMouseWheel{Delta: deltaY}:
-				default:
-					logger.Log("sdlimgui", "dropped mouse wheel event")
-				}
-			}
-
-		case *sdl.JoyButtonEvent:
-			img.smartHideCursor(true)
-
-			button := userinput.GamepadButtonNone
-			switch ev.Button {
-			case 0:
-				button = userinput.GamepadButtonA
-			case 1:
-				button = userinput.GamepadButtonB
-			case 4:
-				button = userinput.GamepadButtonBumperLeft
-			case 5:
-				button = userinput.GamepadButtonBumperRight
-			case 6:
-				button = userinput.GamepadButtonBack
-			case 7:
-				button = userinput.GamepadButtonStart
-			case 8:
-				button = userinput.GamepadButtonGuide
-			}
-
-			if button != userinput.GamepadButtonNone {
-				select {
-				case img.userinput <- userinput.EventGamepadButton{
-					ID:     plugging.PortLeft,
-					Button: button,
-					Down:   ev.State == 1,
-				}:
-				default:
-					logger.Log("sdlimgui", "dropped gamepad button event")
-				}
-			}
-
-		case *sdl.JoyHatEvent:
-			img.smartHideCursor(true)
-
-			dir := userinput.DPadNone
-			switch ev.Value {
-			case sdl.HAT_CENTERED:
-				dir = userinput.DPadCentre
-			case sdl.HAT_UP:
-				dir = userinput.DPadUp
-			case sdl.HAT_DOWN:
-				dir = userinput.DPadDown
-			case sdl.HAT_LEFT:
-				dir = userinput.DPadLeft
-			case sdl.HAT_RIGHT:
-				dir = userinput.DPadRight
-			case sdl.HAT_LEFTUP:
-				dir = userinput.DPadLeftUp
-			case sdl.HAT_LEFTDOWN:
-				dir = userinput.DPadLeftDown
-			case sdl.HAT_RIGHTUP:
-				dir = userinput.DPadRightUp
-			case sdl.HAT_RIGHTDOWN:
-				dir = userinput.DPadRightDown
-			}
-
-			if dir != userinput.DPadNone {
-				select {
-				case img.userinput <- userinput.EventGamepadDPad{
-					ID:        plugging.PortLeft,
-					Direction: dir,
-				}:
-				default:
-					logger.Log("sdlimgui", "dropped gamepad dpad event")
-				}
-			}
-
-		case *sdl.JoyAxisEvent:
-			if img.plt.joysticks[ev.Which].isStelladaptor {
-				joy := sdl.JoystickFromInstanceID(ev.Which)
-				select {
-				case img.userinput <- userinput.EventStelladaptor{
-					ID:    plugging.PortLeft,
-					Horiz: joy.Axis(0),
-					Vert:  joy.Axis(1),
-				}:
-				default:
-					logger.Log("sdlimgui", "dropped stelladaptor event")
-				}
-			} else {
-				pad := sdl.GameControllerFromInstanceID(ev.Which)
-				if pad.Axis(0) > userinput.ThumbstickDeadzone || pad.Axis(0) < -userinput.ThumbstickDeadzone ||
-					pad.Axis(1) > userinput.ThumbstickDeadzone || pad.Axis(1) < -userinput.ThumbstickDeadzone ||
-					pad.Axis(3) > userinput.ThumbstickDeadzone || pad.Axis(3) < -userinput.ThumbstickDeadzone ||
-					pad.Axis(4) > userinput.ThumbstickDeadzone || pad.Axis(4) < -userinput.ThumbstickDeadzone {
+				case *sdl.KeyboardEvent:
 					img.smartHideCursor(true)
-				}
+					img.serviceKeyboard(ev)
 
-				switch ev.Axis {
-				case 0:
-					fallthrough
-				case 1:
-					select {
-					case img.userinput <- userinput.EventGamepadThumbstick{
-						ID:         plugging.PortLeft,
-						Thumbstick: userinput.GamepadThumbstickLeft,
-						Horiz:      pad.Axis(0),
-						Vert:       pad.Axis(1),
-					}:
-					default:
-						logger.Log("sdlimgui", "dropped gamepad axis event")
+				case *sdl.MouseMotionEvent:
+					img.smartHideCursor(false)
+					if img.isCaptured() {
+						mouseMotionX, mouseMotionY, _ = sdl.GetMouseState()
+						mouseMotionProcess = mouseMotionX != img.mouseX || mouseMotionY != img.mouseY
 					}
-				case 3:
-					fallthrough
-				case 4:
-					select {
-					case img.userinput <- userinput.EventGamepadThumbstick{
-						ID:         plugging.PortLeft,
-						Thumbstick: userinput.GamepadThumbstickRight,
-						Horiz:      pad.Axis(3),
-						Vert:       pad.Axis(4),
-					}:
-					default:
-						logger.Log("sdlimgui", "dropped gamepad axis event")
+
+				case *sdl.MouseButtonEvent:
+					img.smartHideCursor(false)
+
+					// the button event to send
+					var button userinput.MouseButton
+
+					switch ev.Button {
+					case sdl.BUTTON_LEFT:
+						button = userinput.MouseButtonLeft
+						switch ev.Type {
+						case sdl.MOUSEBUTTONDOWN:
+							leftMouseDownPolled = true
+						case sdl.MOUSEBUTTONUP:
+							if leftMouseDownPolled {
+								img.plt.trickleMouseButtonLeft = trickleMouseDown
+							}
+						}
+
+					case sdl.BUTTON_MIDDLE:
+						if img.isCaptured() {
+							img.setCapture(false)
+						}
+
+					case sdl.BUTTON_RIGHT:
+						button = userinput.MouseButtonRight
+						switch ev.Type {
+						case sdl.MOUSEBUTTONDOWN:
+							rightMouseDownPolled = true
+						case sdl.MOUSEBUTTONUP:
+							if rightMouseDownPolled {
+								img.plt.trickleMouseButtonRight = trickleMouseDown
+							}
+
+							// handling of mouse capture/release is done outside of the outside of trickle
+							// mouse polling this means that capturing the mouse requires a physical click
+							// on the macintosh touchpad. I think this is okay but if it's not, the
+							// following code will need to be called during trickle resolution (probably
+							// just a function pointer)
+							if img.isCaptured() {
+								img.setCapture(false)
+								if !img.isPlaymode() {
+									img.term.pushCommand("HALT")
+								}
+							} else if img.isPlaymode() {
+								img.setCapture(true)
+							}
+						}
 					}
-				default:
-				}
 
-				trigger := userinput.GamepadTriggerNone
-				switch ev.Axis {
-				case 2:
-					trigger = userinput.GamepadTriggerLeft
-				case 5:
-					trigger = userinput.GamepadTriggerRight
-				}
+					if img.isCaptured() {
+						select {
+						case img.userinput <- userinput.EventMouseButton{
+							Button: button,
+							Down:   ev.Type == sdl.MOUSEBUTTONDOWN}:
+						default:
+							if ev.Type == sdl.MOUSEBUTTONDOWN {
+								logger.Log("sdlimgui", "dropped mouse down event")
+							} else {
+								logger.Log("sdlimgui", "dropped mouse up event")
+							}
+						}
+					}
 
-				if trigger != userinput.GamepadTriggerNone {
-					select {
-					case img.userinput <- userinput.EventGamepadTrigger{
-						ID:      plugging.PortLeft,
-						Trigger: trigger,
-						Amount:  ev.Value,
-					}:
-					default:
-						logger.Log("sdlimgui", "dropped gamepad axis event")
+					// trigger service wake in time for next Service() iteration.
+					// without this, the results of the mouse button will not be
+					// seen until the timeout (in the next iteration) has elapsed.
+					//
+					// eg. closing a window: the window will be drawn on *this*
+					// frame and *this* mouse button press will be acknowledged.
+					// next frame the window will not be drawn. however, the *next*
+					// frame will sleep until the time out - *this* mouse button
+					// event has been consumed. calling alert() ensures there is no
+					// delay in drawing the *next* frame
+					img.polling.alert()
+
+				case *sdl.MouseWheelEvent:
+					var deltaX, deltaY float32
+					if ev.X > 0 {
+						deltaX++
+					} else if ev.X < 0 {
+						deltaX--
+					}
+					if ev.Y > 0 {
+						deltaY++
+					} else if ev.Y < 0 {
+						deltaY--
+					}
+					img.io.AddMouseWheelDelta(-deltaX/4, deltaY/4)
+
+					if img.mode.Load().(govern.Mode) != govern.ModePlay || !img.wm.playmodeWindows[winSelectROMID].playmodeIsOpen() {
+						select {
+						case img.userinput <- userinput.EventMouseWheel{Delta: deltaY}:
+						default:
+							logger.Log("sdlimgui", "dropped mouse wheel event")
+						}
+					}
+
+				case *sdl.JoyButtonEvent:
+					img.smartHideCursor(true)
+
+					button := userinput.GamepadButtonNone
+					switch ev.Button {
+					case 0:
+						button = userinput.GamepadButtonA
+					case 1:
+						button = userinput.GamepadButtonB
+					case 4:
+						button = userinput.GamepadButtonBumperLeft
+					case 5:
+						button = userinput.GamepadButtonBumperRight
+					case 6:
+						button = userinput.GamepadButtonBack
+					case 7:
+						button = userinput.GamepadButtonStart
+					case 8:
+						button = userinput.GamepadButtonGuide
+					}
+
+					if button != userinput.GamepadButtonNone {
+						select {
+						case img.userinput <- userinput.EventGamepadButton{
+							ID:     plugging.PortLeft,
+							Button: button,
+							Down:   ev.State == 1,
+						}:
+						default:
+							logger.Log("sdlimgui", "dropped gamepad button event")
+						}
+					}
+
+				case *sdl.JoyHatEvent:
+					img.smartHideCursor(true)
+
+					dir := userinput.DPadNone
+					switch ev.Value {
+					case sdl.HAT_CENTERED:
+						dir = userinput.DPadCentre
+					case sdl.HAT_UP:
+						dir = userinput.DPadUp
+					case sdl.HAT_DOWN:
+						dir = userinput.DPadDown
+					case sdl.HAT_LEFT:
+						dir = userinput.DPadLeft
+					case sdl.HAT_RIGHT:
+						dir = userinput.DPadRight
+					case sdl.HAT_LEFTUP:
+						dir = userinput.DPadLeftUp
+					case sdl.HAT_LEFTDOWN:
+						dir = userinput.DPadLeftDown
+					case sdl.HAT_RIGHTUP:
+						dir = userinput.DPadRightUp
+					case sdl.HAT_RIGHTDOWN:
+						dir = userinput.DPadRightDown
+					}
+
+					if dir != userinput.DPadNone {
+						select {
+						case img.userinput <- userinput.EventGamepadDPad{
+							ID:        plugging.PortLeft,
+							Direction: dir,
+						}:
+						default:
+							logger.Log("sdlimgui", "dropped gamepad dpad event")
+						}
+					}
+
+				case *sdl.JoyAxisEvent:
+					if img.plt.joysticks[ev.Which].isStelladaptor {
+						joy := sdl.JoystickFromInstanceID(ev.Which)
+						select {
+						case img.userinput <- userinput.EventStelladaptor{
+							ID:    plugging.PortLeft,
+							Horiz: joy.Axis(0),
+							Vert:  joy.Axis(1),
+						}:
+						default:
+							logger.Log("sdlimgui", "dropped stelladaptor event")
+						}
+					} else {
+						pad := sdl.GameControllerFromInstanceID(ev.Which)
+						if pad.Axis(0) > userinput.ThumbstickDeadzone || pad.Axis(0) < -userinput.ThumbstickDeadzone ||
+							pad.Axis(1) > userinput.ThumbstickDeadzone || pad.Axis(1) < -userinput.ThumbstickDeadzone ||
+							pad.Axis(3) > userinput.ThumbstickDeadzone || pad.Axis(3) < -userinput.ThumbstickDeadzone ||
+							pad.Axis(4) > userinput.ThumbstickDeadzone || pad.Axis(4) < -userinput.ThumbstickDeadzone {
+							img.smartHideCursor(true)
+						}
+
+						switch ev.Axis {
+						case 0:
+							fallthrough
+						case 1:
+							select {
+							case img.userinput <- userinput.EventGamepadThumbstick{
+								ID:         plugging.PortLeft,
+								Thumbstick: userinput.GamepadThumbstickLeft,
+								Horiz:      pad.Axis(0),
+								Vert:       pad.Axis(1),
+							}:
+							default:
+								logger.Log("sdlimgui", "dropped gamepad axis event")
+							}
+						case 3:
+							fallthrough
+						case 4:
+							select {
+							case img.userinput <- userinput.EventGamepadThumbstick{
+								ID:         plugging.PortLeft,
+								Thumbstick: userinput.GamepadThumbstickRight,
+								Horiz:      pad.Axis(3),
+								Vert:       pad.Axis(4),
+							}:
+							default:
+								logger.Log("sdlimgui", "dropped gamepad axis event")
+							}
+						default:
+						}
+
+						trigger := userinput.GamepadTriggerNone
+						switch ev.Axis {
+						case 2:
+							trigger = userinput.GamepadTriggerLeft
+						case 5:
+							trigger = userinput.GamepadTriggerRight
+						}
+
+						if trigger != userinput.GamepadTriggerNone {
+							select {
+							case img.userinput <- userinput.EventGamepadTrigger{
+								ID:      plugging.PortLeft,
+								Trigger: trigger,
+								Amount:  ev.Value,
+							}:
+							default:
+								logger.Log("sdlimgui", "dropped gamepad axis event")
+							}
+						}
 					}
 				}
 			}
-		}
-	}
+		} // end of for peeping
 
-	// mouse motion
-	if img.isCaptured() {
-		mx, my, _ := sdl.GetMouseState()
-		if mx != img.mouseX || my != img.mouseY {
+		if mouseMotionProcess {
 			w, h := img.plt.window.GetSize()
 
 			// reduce mouse x and y coordintes to the range 0.0 to 1.0
@@ -336,9 +366,10 @@ func (img *SdlImgui) Service() {
 			//  than 1.0 because we (should) have restricted mouse movement
 			//  to the window (with window.SetGrab(). see the ReqCaptureMouse
 			//  case in the ReqFeature() function)
-			x := float32(mx) / float32(w)
-			y := float32(my) / float32(h)
+			x := float32(mouseMotionX) / float32(w)
+			y := float32(mouseMotionY) / float32(h)
 
+			// forward new position to emulation
 			select {
 			case img.userinput <- userinput.EventMouseMotion{
 				X: x,
@@ -347,8 +378,10 @@ func (img *SdlImgui) Service() {
 			default:
 				logger.Log("sdlimgui", "dropped mouse motion event")
 			}
-			img.mouseX = mx
-			img.mouseY = my
+
+			// store mouse position for future frames
+			img.mouseX = mouseMotionX
+			img.mouseY = mouseMotionY
 		}
 	}
 

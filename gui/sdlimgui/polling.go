@@ -56,6 +56,9 @@ const (
 type polling struct {
 	img *SdlImgui
 
+	// queue of pumped events for the frame
+	pumpedEvents []sdl.Event
+
 	// functions that need to be performed in the main thread are queued for
 	// serving by the service() function
 	service    chan func()
@@ -88,6 +91,7 @@ type polling struct {
 func newPolling(img *SdlImgui) *polling {
 	pol := &polling{
 		img:           img,
+		pumpedEvents:  make([]sdl.Event, 64),
 		service:       make(chan func(), 1),
 		serviceErr:    make(chan error, 1),
 		featureSet:    make(chan featureRequest, 1),
