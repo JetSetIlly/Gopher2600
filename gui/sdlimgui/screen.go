@@ -197,7 +197,7 @@ func newScreen(img *SdlImgui) *screen {
 // must be called from inside a critical section.
 func (scr *screen) setRefreshRate(tvRefreshRate float32) {
 	// check whether to apply monitorsync and decide on the length of the pixel queue
-	scr.crit.monitorSyncInRange = float32(scr.img.plt.mode.RefreshRate)*1.01 >= tvRefreshRate
+	scr.crit.monitorSyncInRange = scr.crit.monitorSync && float32(scr.img.plt.mode.RefreshRate)*1.01 >= tvRefreshRate
 	scr.setFrameQueue()
 }
 
@@ -222,7 +222,11 @@ func (scr *screen) setFrameQueue() {
 func (scr *screen) resetFrameQueue() {
 	scr.crit.queueRecovery = 0
 	scr.crit.plotIdx = 0
-	scr.crit.renderIdx = scr.crit.frameQueueLen / 2
+	if scr.crit.monitorSyncInRange {
+		scr.crit.renderIdx = scr.crit.frameQueueLen / 2
+	} else {
+		scr.crit.renderIdx = scr.crit.plotIdx
+	}
 }
 
 // Reset implements the television.PixelRenderer interface. Note that Reset
@@ -398,7 +402,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	scr.crit.section.Lock()
 
 	if scr.img.isPlaymode() {
-		if scr.crit.monitorSync && scr.crit.monitorSyncInRange {
+		if scr.crit.monitorSyncInRange {
 			switch scr.img.dbg.State() {
 			case govern.Rewinding:
 				fallthrough
@@ -636,7 +640,7 @@ func (scr *screen) copyPixelsPlaymode() {
 
 	// the bufferUsed check is important for correct operation of the rewinding
 	// state. without it, the screen will jump after a rewind event
-	if scr.crit.queueRecovery == 0 && scr.crit.monitorSync && scr.crit.monitorSyncInRange {
+	if scr.crit.queueRecovery == 0 && scr.crit.monitorSyncInRange {
 		// advance render index
 		prev := scr.crit.prevRenderIdx
 		scr.crit.prevRenderIdx = scr.crit.renderIdx
@@ -666,7 +670,6 @@ func (scr *screen) copyPixelsPlaymode() {
 				scr.crit.frameQueueIncCt -= frameQueueDecDelta
 			}
 		}
-
 	}
 
 	copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.renderIdx].Pix)
