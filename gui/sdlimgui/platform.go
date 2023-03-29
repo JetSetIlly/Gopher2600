@@ -82,13 +82,28 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		return nil, fmt.Errorf("sdl: %w", err)
 	}
 
-	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3)
-	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 2)
-	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_FLAGS, sdl.GL_CONTEXT_FORWARD_COMPATIBLE_FLAG)
-	_ = sdl.GLSetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, sdl.GL_CONTEXT_PROFILE_CORE)
-	_ = sdl.GLSetAttribute(sdl.GL_DOUBLEBUFFER, 1)
-	_ = sdl.GLSetAttribute(sdl.GL_DEPTH_SIZE, 24)
-	_ = sdl.GLSetAttribute(sdl.GL_STENCIL_SIZE, 8)
+	major, err := sdl.GLGetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION)
+	if err != nil {
+		return nil, fmt.Errorf("sdl: %w", err)
+	}
+	minor, err := sdl.GLGetAttribute(sdl.GL_CONTEXT_MINOR_VERSION)
+	if err != nil {
+		return nil, fmt.Errorf("sdl: %w", err)
+	}
+	profile, err := sdl.GLGetAttribute(sdl.GL_CONTEXT_PROFILE_MASK)
+	if err != nil {
+		return nil, fmt.Errorf("sdl: %w", err)
+	}
+	var profile_s string
+	switch profile {
+	case sdl.GL_CONTEXT_PROFILE_CORE:
+		profile_s = " core"
+	case sdl.GL_CONTEXT_PROFILE_COMPATIBILITY:
+		profile_s = " compatibility"
+	case sdl.GL_CONTEXT_PROFILE_ES:
+		profile_s = " ES"
+	}
+	logger.Logf("sdl", "using GL version %d.%d%s", major, minor, profile_s)
 
 	plt := &platform{
 		img: img,

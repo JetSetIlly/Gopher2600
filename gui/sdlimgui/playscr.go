@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-gl/gl/v3.2-core/gl"
+	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
@@ -96,8 +96,8 @@ func newPlayScr(img *SdlImgui) *playScr {
 
 	// clamp to edge is important for LINEAR filtering. not noticeable for
 	// NEAREST filtering
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
 
 	// set scale and padding on startup. scale and padding will be recalculated
 	// on window resize and textureRenderer.resize()
