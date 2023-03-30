@@ -127,6 +127,12 @@ type screenCrit struct {
 	//  the previous render index value is used to help smooth frame queue collisions
 	prevRenderIdx int
 
+	// the number of render frames the emulation should wait before resuming.
+	// this should ensure that the plotIdx and renderIdx are kept as far away
+	// from each other as possible, giving the frame queue chance to do it's job
+	// properly
+	emuWaitCt int
+
 	// element colors and overlay colors are only used in the debugger
 	elementPixels *image.RGBA
 	overlayPixels *image.RGBA
@@ -222,11 +228,14 @@ func (scr *screen) setFrameQueue() {
 func (scr *screen) resetFrameQueue() {
 	scr.crit.queueRecovery = 0
 	scr.crit.plotIdx = 0
+
 	if scr.crit.monitorSyncInRange {
 		scr.crit.renderIdx = scr.crit.frameQueueLen / 2
 	} else {
 		scr.crit.renderIdx = scr.crit.plotIdx
 	}
+
+	scr.crit.emuWaitCt = scr.crit.frameQueueLen / 2
 }
 
 // Reset implements the television.PixelRenderer interface. Note that Reset
@@ -462,13 +471,18 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	scr.crit.lastY = last / specification.ClksScanline
 	scr.crit.lastX = last % specification.ClksScanline
 
+	// take a local copy emuWaitCt out of the critical section
+	emuWaitCt := scr.crit.emuWaitCt
+
 	scr.crit.section.Unlock()
 
 	// slow emulation until screen has caught up
 	// * wait should only be set to true in playmode
 	if wait {
-		scr.emuWait <- true
-		<-scr.emuWaitAck
+		for i := 0; i < emuWaitCt; i++ {
+			scr.emuWait <- true
+			<-scr.emuWaitAck
+		}
 	}
 
 	return nil
@@ -612,15 +626,15 @@ func (scr *screen) copyPixelsDebugmode() {
 
 // copy pixels from queue to the live copy.
 func (scr *screen) copyPixelsPlaymode() {
-	scr.crit.section.Lock()
-	defer scr.crit.section.Unlock()
-
 	// let the emulator thread know it's okay to continue as soon as possible
 	select {
 	case <-scr.emuWait:
 		scr.emuWaitAck <- true
 	default:
 	}
+
+	scr.crit.section.Lock()
+	defer scr.crit.section.Unlock()
 
 	// show pause frames
 	if scr.img.dbg.State() == govern.Paused {
@@ -652,7 +666,6 @@ func (scr *screen) copyPixelsPlaymode() {
 		// render index has bumped into the plotting index. revert render index
 		if scr.crit.renderIdx == scr.crit.plotIdx {
 			// ** emulation not keeping up with screen update **
-
 			// undo frame advancement
 			scr.crit.renderIdx = scr.crit.prevRenderIdx
 			scr.crit.prevRenderIdx = prev

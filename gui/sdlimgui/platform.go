@@ -174,7 +174,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 func (plt *platform) glSetSwapInterval(i int) {
 	err := sdl.GLSetSwapInterval(i)
 	if err != nil {
-		logger.Logf("sdl", "GLSwapInterval(%d): %s", i, err.Error())
+		logger.Logf("sdl", "GLSetSwapInterval(%d): %s", i, err.Error())
 	}
 }
 
