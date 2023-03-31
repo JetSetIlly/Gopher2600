@@ -219,12 +219,20 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 			fallthrough
 		case ".WD":
 			fallthrough
+		case ".CDF0":
+			fallthrough
+		case ".CDF1":
+			fallthrough
+		case ".CDFJ":
+			fallthrough
+		case ".CDFJ+":
+			fallthrough
+		case ".DP+":
+			fallthrough
 		case ".DPC":
 			cl.Mapping = ext[1:]
-		case ".DP+":
-			cl.Mapping = "DPC+"
-		case "CDF":
-			cl.Mapping = "CDF"
+		case ".CDF":
+			cl.Mapping = "CDFJ"
 		case ".WAV":
 			fallthrough
 		case ".MP3":

@@ -254,7 +254,8 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 	forceSuperchip := false
 
-	switch strings.ToUpper(cartload.Mapping) {
+	mapping := strings.ToUpper(cartload.Mapping)
+	switch mapping {
 	case "2K":
 		cart.mapper, err = newAtari2k(cart.instance, *cartload.Data)
 	case "4K":
@@ -319,9 +320,20 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newDPC(cart.instance, *cartload.Data)
 	case "DPC+":
 		cart.mapper, err = dpcplus.NewDPCplus(cart.instance, *cartload.Data)
+
 	case "CDF":
-		// CDF mapper defaults to version CDFJ
-		cart.mapper, err = cdf.NewCDF(cart.instance, "CDFJ", *cartload.Data)
+		// CDF defaults to CDFJ
+		mapping = "CDFJ"
+		fallthrough
+	case "CDF0":
+		fallthrough
+	case "CDF1":
+		fallthrough
+	case "CDFJ":
+		fallthrough
+	case "CDFJ+":
+		cart.mapper, err = cdf.NewCDF(cart.instance, mapping, *cartload.Data)
+
 	case "MVC":
 		cart.mapper, err = moviecart.NewMoviecart(cart.instance, cartload)
 	}
