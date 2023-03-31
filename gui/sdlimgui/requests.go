@@ -153,6 +153,16 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			srcWin.gotoSourceLine(ln)
 		}
 
+	case gui.ReqScreenshot:
+		switch len(request.args) {
+		case 0:
+			img.glsl.shaders[playscrShaderID].(*playscrShader).screenshot.startProcess(modeShort, "")
+		case 1:
+			img.glsl.shaders[playscrShaderID].(*playscrShader).screenshot.startProcess(modeShort, request.args[0].(string))
+		default:
+			err = fmt.Errorf("wrong number of arguments (%d instead of 1 or zero)", len(request.args))
+		}
+
 	default:
 		err = fmt.Errorf("sdlimgui: unsupport feature request (%s)", request.request)
 	}

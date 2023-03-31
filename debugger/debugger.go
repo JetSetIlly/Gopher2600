@@ -46,6 +46,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/macro"
 	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/patch"
 	"github.com/jetsetilly/gopher2600/prefs"
@@ -98,6 +99,9 @@ type Debugger struct {
 	// gameplay recorder/playback
 	recorder *recorder.Recorder
 	playback *recorder.Playback
+
+	// macro (only one allowed for the time being)
+	macro *macro.Macro
 
 	// comparison emulator
 	comparison *comparison.Comparison
@@ -681,6 +685,9 @@ func (dbg *Debugger) end() {
 	dbg.endPlayback()
 	dbg.endRecording()
 	dbg.endComparison()
+	if dbg.macro != nil {
+		dbg.macro.Quit()
+	}
 	dbg.bots.Quit()
 
 	dbg.vcs.End()
@@ -838,6 +845,13 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 		dbg.startPlayback(filename)
 	}
 
+	if *dbg.opts.Macro != "" {
+		dbg.macro, err = macro.NewMacro(*dbg.opts.Macro, dbg, dbg.vcs.Input, dbg.vcs.TV, dbg.gui)
+		if err != nil {
+			return fmt.Errorf("debugger: %w", err)
+		}
+	}
+
 	err = dbg.startComparison(*dbg.opts.ComparisonROM, *dbg.opts.ComparisonPrefs)
 	if err != nil {
 		return fmt.Errorf("debugger: %w", err)
@@ -853,6 +867,10 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 	<-time.After(250 * time.Millisecond)
 
 	defer dbg.end()
+
+	if dbg.macro != nil {
+		dbg.macro.Run()
+	}
 
 	err = dbg.run()
 	if err != nil {
@@ -1016,6 +1034,9 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	dbg.endPlayback()
 	dbg.endRecording()
 	dbg.endComparison()
+	if dbg.macro != nil {
+		dbg.macro.Quit()
+	}
 	dbg.bots.Quit()
 
 	// attching a cartridge implies the initialise state

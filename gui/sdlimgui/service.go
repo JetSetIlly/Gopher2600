@@ -486,11 +486,11 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 
 		case sdl.SCANCODE_F12:
 			if ctrl && !shift {
-				img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeVeryLong)
+				img.glsl.shaders[playscrShaderID].(*playscrShader).screenshot.startProcess(modeVeryLong, "")
 			} else if shift && !ctrl {
-				img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeLong)
+				img.glsl.shaders[playscrShaderID].(*playscrShader).screenshot.startProcess(modeLong, "")
 			} else {
-				img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeShort)
+				img.glsl.shaders[playscrShaderID].(*playscrShader).screenshot.startProcess(modeShort, "")
 			}
 
 			img.playScr.emulationNotice.set(notifications.NotifyScreenshot)

@@ -309,6 +309,7 @@ func emulate(emulationMode govern.Mode, md *modalflag.Modes, sync *mainSync) err
 		opts.PatchFile = md.AddString("patch", "", "patch to apply to main emulation (not playback files)")
 		opts.Wav = md.AddBool("wav", false, "record audio to wav file")
 		opts.NoEject = md.AddBool("noeject", false, "a cartridge must be attached at all times. emulator will quit if not")
+		opts.Macro = md.AddString("macro", "", "macro file to be run on trigger")
 	}
 
 	// debugger specific arguments

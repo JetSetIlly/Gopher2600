@@ -75,4 +75,8 @@ const (
 
 	// request for the coprocess source window to open at the specified line
 	ReqCoProcSourceLine FeatureReq = "ReqCoProcSourceLine" // *developer.SourceLine
+
+	// request a screenshot to be taken
+	// optional argument is the filename for the screenshot
+	ReqScreenshot FeatureReq = "ReqScreenshot" // [optional] filename
 )

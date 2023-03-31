@@ -42,6 +42,7 @@ type CommandLineOptions struct {
 	PatchFile        *string
 	Wav              *bool
 	NoEject          *bool
+	Macro            *string
 
 	// debugger only
 	InitScript *string

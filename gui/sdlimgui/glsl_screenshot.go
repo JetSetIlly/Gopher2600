@@ -58,7 +58,9 @@ func (sh *screenshotSequencer) destroy() {
 	sh.crt.destroy()
 }
 
-func (sh *screenshotSequencer) startProcess(mode screenshotMode) {
+// filenameSuffix will be appended to the short filename of the cartridge. if
+// the string is empty then the default suffix is used
+func (sh *screenshotSequencer) startProcess(mode screenshotMode, filenameSuffix string) {
 	sh.mode = mode
 
 	// the tag to indicate exposure time in the filename
@@ -96,10 +98,14 @@ func (sh *screenshotSequencer) startProcess(mode screenshotMode) {
 		sh.prefs.PixelPerfectFade = 1.0
 	}
 
-	if sh.img.crtPrefs.Enabled.Get().(bool) {
-		sh.baseFilename = unique.Filename(fmt.Sprintf("crt_%s", exposureTag), sh.img.vcs.Mem.Cart.ShortName)
+	if len(filenameSuffix) == 0 {
+		if sh.img.crtPrefs.Enabled.Get().(bool) {
+			sh.baseFilename = unique.Filename(fmt.Sprintf("crt_%s", exposureTag), sh.img.vcs.Mem.Cart.ShortName)
+		} else {
+			sh.baseFilename = unique.Filename(fmt.Sprintf("pix_%s", exposureTag), sh.img.vcs.Mem.Cart.ShortName)
+		}
 	} else {
-		sh.baseFilename = unique.Filename(fmt.Sprintf("pix_%s", exposureTag), sh.img.vcs.Mem.Cart.ShortName)
+		sh.baseFilename = fmt.Sprintf("%s_%s", sh.img.vcs.Mem.Cart.ShortName, filenameSuffix)
 	}
 	sh.baseFilename = fmt.Sprintf("%s.jpg", sh.baseFilename)
 

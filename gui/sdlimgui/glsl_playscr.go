@@ -40,10 +40,6 @@ func (sh *playscrShader) destroy() {
 	sh.screenshot.destroy()
 }
 
-func (sh *playscrShader) scheduleScreenshot(mode screenshotMode) {
-	sh.screenshot.startProcess(mode)
-}
-
 func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 	if !sh.img.isPlaymode() {
 		return
