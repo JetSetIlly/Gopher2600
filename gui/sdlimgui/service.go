@@ -103,7 +103,7 @@ func (img *SdlImgui) Service() {
 
 				case *sdl.TextInputEvent:
 					if img.hasModal || !img.isCaptured() {
-						img.io.AddInputCharacters(string(ev.Text[:]))
+						imgui.CurrentIO().AddInputCharacters(string(ev.Text[:]))
 					}
 
 				case *sdl.KeyboardEvent:
@@ -204,7 +204,7 @@ func (img *SdlImgui) Service() {
 					} else if ev.Y < 0 {
 						deltaY--
 					}
-					img.io.AddMouseWheelDelta(-deltaX/4, deltaY/4)
+					imgui.CurrentIO().AddMouseWheelDelta(-deltaX/4, deltaY/4)
 
 					if img.mode.Load().(govern.Mode) != govern.ModePlay || !img.wm.playmodeWindows[winSelectROMID].playmodeIsOpen() {
 						select {
@@ -622,10 +622,10 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 	// remaining keypresses forwarded to imgui io system
 	switch ev.Type {
 	case sdl.KEYDOWN:
-		img.io.KeyPress(int(ev.Keysym.Scancode))
+		imgui.CurrentIO().KeyPress(int(ev.Keysym.Scancode))
 		img.updateKeyModifier()
 	case sdl.KEYUP:
-		img.io.KeyRelease(int(ev.Keysym.Scancode))
+		imgui.CurrentIO().KeyRelease(int(ev.Keysym.Scancode))
 		img.updateKeyModifier()
 	}
 }

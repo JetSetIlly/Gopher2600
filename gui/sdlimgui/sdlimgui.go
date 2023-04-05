@@ -52,10 +52,8 @@ const disabledAlpha = 0.3
 // SdlImgui is an sdl based visualiser using imgui.
 type SdlImgui struct {
 	// the mechanical requirements for the gui
-	io      imgui.IO
-	context *imgui.Context
-	plt     *platform
-	glsl    *glsl
+	plt  *platform
+	glsl *glsl
 
 	// resetFonts value will be reduced to 0 each GUI frame. at value 1 the
 	// fonts will be reset.
@@ -68,7 +66,7 @@ type SdlImgui struct {
 	// the current mode of the underlying
 	mode atomic.Value // govern.Mode
 
-	// taken from the emulation field and assigned in the setEmulation() function
+	// references to parent emulation
 	dbg       *debugger.Debugger
 	tv        *television.Television
 	vcs       *hardware.VCS
@@ -129,15 +127,17 @@ type SdlImgui struct {
 // MUST ONLY be called from the gui thread.
 func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	img := &SdlImgui{
-		context:             imgui.CreateContext(nil),
-		io:                  imgui.CurrentIO(),
+		dbg:                 dbg,
+		tv:                  dbg.TV(),
+		vcs:                 dbg.VCS(),
+		userinput:           dbg.UserInput(),
 		postRenderFunctions: make(chan func(), 100),
 	}
 
-	img.dbg = dbg
-	img.tv = img.dbg.TV()
-	img.vcs = img.dbg.VCS()
-	img.userinput = img.dbg.UserInput()
+	// create imgui context
+	imgui.CreateContext(nil)
+
+	// mode is in the none state at the beginning
 	img.mode.Store(govern.ModeNone)
 
 	// path to dear imgui ini file
@@ -145,7 +145,7 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
-	img.io.SetIniFilename(iniPath)
+	imgui.CurrentIO().SetIniFilename(iniPath)
 
 	// define colors
 	img.cols = newColors()
@@ -264,7 +264,11 @@ func (img *SdlImgui) Destroy(output io.Writer) {
 	// opened in full screen
 	img.glsl.destroy()
 
-	img.context.Destroy()
+	ctx, err := imgui.CurrentContext()
+	if err != nil {
+		output.Write([]byte(err.Error()))
+	}
+	ctx.Destroy()
 }
 
 // GetTerminal implements terminal.Broker interface.

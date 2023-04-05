@@ -39,11 +39,11 @@ type dbgScrMagnifyTooltip struct {
 	zoom int
 }
 
-func (mag *dbgScrMagnifyTooltip) draw(io *imgui.IO, mouse dbgScrMouse) {
+func (mag *dbgScrMagnifyTooltip) draw(mouse dbgScrMouse) {
 	if !mag.showInTooltip {
 		return
 	}
-	_, delta := io.MouseWheel()
+	_, delta := imgui.CurrentIO().MouseWheel()
 	if delta < 0 && mag.zoom < magnifyMin {
 		mag.zoom++
 	} else if delta > 0 && mag.zoom > magnifyMax {
@@ -107,7 +107,7 @@ func (mag *dbgScrMagnifyWindow) adjustClip(drag dbgScrMousePos) {
 	mag.setClip()
 }
 
-func (mag *dbgScrMagnifyWindow) draw(io *imgui.IO, cols *imguiColors) {
+func (mag *dbgScrMagnifyWindow) draw(cols *imguiColors) {
 	if !mag.open {
 		return
 	}
@@ -139,7 +139,7 @@ func (mag *dbgScrMagnifyWindow) draw(io *imgui.IO, cols *imguiColors) {
 
 		if imgui.IsItemHovered() || mag.isDragging {
 			// adjust zoom with mouse wheel
-			_, delta := io.MouseWheel()
+			_, delta := imgui.CurrentIO().MouseWheel()
 			if delta != 0 {
 				mag.adjustZoom(delta)
 			}

@@ -75,6 +75,8 @@ const (
 
 // newPlatform is the preferred method of initialisation for the platform type.
 func newPlatform(img *SdlImgui) (*platform, error) {
+	// the SDL package calls LockOSThread() but we call it here too. it can't
+	// hurt and we never unlock it in any case
 	runtime.LockOSThread()
 
 	err := sdl.Init(sdl.INIT_EVERYTHING)
@@ -212,7 +214,7 @@ func (plt *platform) framebufferSize() [2]float32 {
 func (plt *platform) newFrame() {
 	// Setup display size (every frame to accommodate for window resizing)
 	displaySize := plt.displaySize()
-	plt.img.io.SetDisplaySize(imgui.Vec2{X: displaySize[0], Y: displaySize[1]})
+	imgui.CurrentIO().SetDisplaySize(imgui.Vec2{X: displaySize[0], Y: displaySize[1]})
 
 	// if mouse is captured then do not update imgui mouse information.
 	if !plt.img.isCaptured() {
@@ -220,29 +222,29 @@ func (plt *platform) newFrame() {
 		// so we don't miss click-release events that are shorter than 1 frame.
 		x, y, state := sdl.GetMouseState()
 
-		plt.img.io.SetMousePosition(imgui.Vec2{X: float32(x), Y: float32(y)})
+		imgui.CurrentIO().SetMousePosition(imgui.Vec2{X: float32(x), Y: float32(y)})
 		for i, button := range []uint32{sdl.BUTTON_LEFT, sdl.BUTTON_RIGHT, sdl.BUTTON_MIDDLE} {
-			plt.img.io.SetMouseButtonDown(i, (state&sdl.Button(button)) != 0)
+			imgui.CurrentIO().SetMouseButtonDown(i, (state&sdl.Button(button)) != 0)
 		}
 
 		// trickle event handling will supercede any previous SetMouseButtonDown() calls
 
 		switch plt.trickleMouseButtonLeft {
 		case trickleMouseDown:
-			plt.img.io.SetMouseButtonDown(0, true)
+			imgui.CurrentIO().SetMouseButtonDown(0, true)
 			plt.trickleMouseButtonLeft = trickleMouseUp
 		case trickleMouseUp:
-			plt.img.io.SetMouseButtonDown(0, false)
+			imgui.CurrentIO().SetMouseButtonDown(0, false)
 			plt.trickleMouseButtonLeft = trickleMouseNone
 		case trickleMouseNone:
 		}
 
 		switch plt.trickleMouseButtonRight {
 		case trickleMouseDown:
-			plt.img.io.SetMouseButtonDown(1, true)
+			imgui.CurrentIO().SetMouseButtonDown(1, true)
 			plt.trickleMouseButtonRight = trickleMouseUp
 		case trickleMouseUp:
-			plt.img.io.SetMouseButtonDown(1, false)
+			imgui.CurrentIO().SetMouseButtonDown(1, false)
 			plt.trickleMouseButtonRight = trickleMouseNone
 		case trickleMouseNone:
 		}

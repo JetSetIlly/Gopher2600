@@ -198,7 +198,7 @@ func (win *winDbgScr) debuggerDraw() {
 	imgui.End()
 
 	// draw magnify window
-	win.magnifyWindow.draw(&win.img.io, win.img.cols)
+	win.magnifyWindow.draw(win.img.cols)
 }
 
 func (win *winDbgScr) draw() {
@@ -584,7 +584,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		// want to draw it if there is no overlay and there is an instruction
 		// behind the pixel
 		if e.Address != "" && win.scr.crit.overlay == reflection.OverlayLabels[reflection.OverlayNone] {
-			win.magnifyTooltip.draw(&win.img.io, win.mouse)
+			win.magnifyTooltip.draw(win.mouse)
 		}
 
 		imgui.Text(fmt.Sprintf("Scanline: %d", win.mouse.tv.Scanline))

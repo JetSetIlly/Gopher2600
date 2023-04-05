@@ -47,7 +47,7 @@ func (plt *platform) setKeyMapping() {
 
 	// Keyboard mapping. ImGui will use those indices to peek into the io.KeysDown[] array.
 	for imguiKey, nativeKey := range keys {
-		plt.img.io.KeyMap(imguiKey, nativeKey)
+		imgui.CurrentIO().KeyMap(imguiKey, nativeKey)
 	}
 }
 
@@ -62,7 +62,8 @@ func (img *SdlImgui) updateKeyModifier() {
 		}
 		return
 	}
-	img.io.KeyShift(mapModifier(sdl.KMOD_LSHIFT, sdl.SCANCODE_LSHIFT, sdl.KMOD_RSHIFT, sdl.SCANCODE_RSHIFT))
-	img.io.KeyCtrl(mapModifier(sdl.KMOD_LCTRL, sdl.SCANCODE_LCTRL, sdl.KMOD_RCTRL, sdl.SCANCODE_RCTRL))
-	img.io.KeyAlt(mapModifier(sdl.KMOD_LALT, sdl.SCANCODE_LALT, sdl.KMOD_RALT, sdl.SCANCODE_RALT))
+	io := imgui.CurrentIO()
+	io.KeyShift(mapModifier(sdl.KMOD_LSHIFT, sdl.SCANCODE_LSHIFT, sdl.KMOD_RSHIFT, sdl.SCANCODE_RSHIFT))
+	io.KeyCtrl(mapModifier(sdl.KMOD_LCTRL, sdl.SCANCODE_LCTRL, sdl.KMOD_RCTRL, sdl.SCANCODE_RCTRL))
+	io.KeyAlt(mapModifier(sdl.KMOD_LALT, sdl.SCANCODE_LALT, sdl.KMOD_RALT, sdl.SCANCODE_RALT))
 }
