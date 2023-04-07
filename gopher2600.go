@@ -89,7 +89,7 @@ type guiCreate func() (guiControl, error)
 // usable from the main goroutine.
 type guiControl interface {
 	// cleanup resources used by the gui
-	Destroy(io.Writer)
+	Destroy()
 
 	// Service() should not pause or loop longer than necessary (if at all). It
 	// MUST ONLY by called as part of a larger loop from the main thread. It
@@ -146,7 +146,7 @@ func main() {
 			case reqQuit:
 				done = true
 				if gui != nil {
-					gui.Destroy(os.Stderr)
+					gui.Destroy()
 				}
 
 				if state.args != nil {
@@ -168,7 +168,7 @@ func main() {
 
 				// destroy existing gui
 				if gui != nil {
-					gui.Destroy(os.Stderr)
+					gui.Destroy()
 				}
 
 				gui, err = state.args.(guiCreate)()

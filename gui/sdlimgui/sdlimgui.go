@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"io"
 	"sync/atomic"
 	"time"
 
@@ -239,25 +238,25 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 // Destroy implements GuiCreator interface
 //
 // MUST ONLY be called from the gui thread.
-func (img *SdlImgui) Destroy(output io.Writer) {
+func (img *SdlImgui) Destroy() {
 	err := img.prefs.saveOnExitDsk.Save()
 	if err != nil {
-		output.Write([]byte(err.Error()))
+		logger.Log("sdlimgui", err.Error())
 	}
 
 	err = img.audio.EndMixing()
 	if err != nil {
-		output.Write([]byte(err.Error()))
+		logger.Log("sdlimgui", err.Error())
 	}
 
 	err = img.wm.saveManagerState()
 	if err != nil {
-		output.Write([]byte(err.Error()))
+		logger.Log("sdlimgui", err.Error())
 	}
 
 	err = img.plt.destroy()
 	if err != nil {
-		output.Write([]byte(err.Error()))
+		logger.Log("sdlimgui", err.Error())
 	}
 
 	// destroying glsl after platform or we'll get a panic when window is
@@ -266,7 +265,7 @@ func (img *SdlImgui) Destroy(output io.Writer) {
 
 	ctx, err := imgui.CurrentContext()
 	if err != nil {
-		output.Write([]byte(err.Error()))
+		logger.Log("sdlimgui", err.Error())
 	}
 	ctx.Destroy()
 }
