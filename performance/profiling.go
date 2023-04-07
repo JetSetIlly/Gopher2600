@@ -22,6 +22,8 @@ import (
 	"runtime/pprof"
 	"runtime/trace"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Profile is used to specify the type of profiling to perform by RunProfiler().
@@ -33,58 +35,40 @@ const (
 	ProfileCPU   Profile = 0b0001
 	ProfileMem   Profile = 0b0010
 	ProfileTrace Profile = 0b0100
-	ProfileAll   Profile = 0b0111
+	ProfileBlock Profile = 0b1000
+	ProfileAll   Profile = 0b1111
 )
 
 // RunProfiler runs supplied function "through" the requested Profile types.
-func RunProfiler(profile Profile, filenameHeader string, run func() error) (rerr error) {
+func RunProfiler(profile Profile, filenameHeader string, run func() error) error {
 	if profile&ProfileCPU == ProfileCPU {
 		f, err := os.Create(fmt.Sprintf("%s_cpu.profile", filenameHeader))
 		if err != nil {
-			return fmt.Errorf("performance; %w", err)
+			return fmt.Errorf("performance: %w", err)
 		}
 		defer func() {
 			err := f.Close()
 			if err != nil {
-				rerr = fmt.Errorf("performance; %w", err)
+				logger.Logf("performance", err.Error())
 			}
 		}()
 
 		err = pprof.StartCPUProfile(f)
 		if err != nil {
-			return fmt.Errorf("performance; %w", err)
+			return fmt.Errorf("performance: %w", err)
 		}
 		defer pprof.StopCPUProfile()
-	}
-
-	if profile&ProfileTrace == ProfileTrace {
-		f, err := os.Create(fmt.Sprintf("%s_trace.profile", filenameHeader))
-		if err != nil {
-			return fmt.Errorf("performance; %w", err)
-		}
-		defer func() {
-			err := f.Close()
-			if err != nil {
-				rerr = fmt.Errorf("performance; %w", err)
-			}
-		}()
-
-		err = trace.Start(f)
-		if err != nil {
-			return fmt.Errorf("performance; %w", err)
-		}
-		defer trace.Stop()
 	}
 
 	if profile&ProfileMem == ProfileMem {
 		f, err := os.Create(fmt.Sprintf("%s_mem.profile", filenameHeader))
 		if err != nil {
-			return fmt.Errorf("performance; %w", err)
+			return fmt.Errorf("performance: %w", err)
 		}
 		defer func() {
 			err := f.Close()
 			if err != nil {
-				rerr = fmt.Errorf("performance; %w", err)
+				logger.Logf("performance", err.Error())
 			}
 		}()
 
@@ -92,7 +76,48 @@ func RunProfiler(profile Profile, filenameHeader string, run func() error) (rerr
 			runtime.GC()
 			err = pprof.WriteHeapProfile(f)
 			if err != nil {
-				rerr = fmt.Errorf("performance; %w", err)
+				logger.Logf("performance", err.Error())
+			}
+		}()
+	}
+
+	if profile&ProfileTrace == ProfileTrace {
+		f, err := os.Create(fmt.Sprintf("%s_trace.profile", filenameHeader))
+		if err != nil {
+			return fmt.Errorf("performance: %w", err)
+		}
+		defer func() {
+			err := f.Close()
+			if err != nil {
+				logger.Logf("performance", err.Error())
+			}
+		}()
+
+		err = trace.Start(f)
+		if err != nil {
+			return fmt.Errorf("performance: %w", err)
+		}
+		defer trace.Stop()
+	}
+
+	if profile&ProfileBlock == ProfileBlock {
+		f, err := os.Create(fmt.Sprintf("%s_block.profile", filenameHeader))
+		if err != nil {
+			return fmt.Errorf("performance: %w", err)
+		}
+		defer func() {
+			err := f.Close()
+			if err != nil {
+				logger.Logf("performance", err.Error())
+			}
+		}()
+
+		runtime.SetBlockProfileRate(10000)
+		p := pprof.Lookup("block")
+		defer func() {
+			p.WriteTo(f, 0)
+			if err != nil {
+				logger.Logf("performance", err.Error())
 			}
 		}()
 	}
@@ -126,6 +151,8 @@ func ParseProfileString(profile string) (Profile, error) {
 			p |= ProfileMem
 		case "trace":
 			p |= ProfileTrace
+		case "block":
+			p |= ProfileBlock
 		default:
 			return p, fmt.Errorf("profile: unknown profile type (%s)", t)
 		}
