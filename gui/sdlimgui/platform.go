@@ -92,6 +92,14 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sdl: %w", err)
 	}
+	err = sdl.GLSetAttribute(sdl.GL_CONTEXT_FLAGS, sdl.GL_CONTEXT_FORWARD_COMPATIBLE_FLAG)
+	if err != nil {
+		return nil, fmt.Errorf("sdl: %w", err)
+	}
+	err = sdl.GLSetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, sdl.GL_CONTEXT_PROFILE_CORE)
+	if err != nil {
+		return nil, fmt.Errorf("sdl: %w", err)
+	}
 
 	major, err := sdl.GLGetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION)
 	if err != nil {
