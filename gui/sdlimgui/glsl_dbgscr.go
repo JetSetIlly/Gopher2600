@@ -16,7 +16,7 @@
 package sdlimgui
 
 import (
-	"github.com/go-gl/gl/v2.1/gl"
+	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/shaders"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
