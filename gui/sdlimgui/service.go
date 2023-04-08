@@ -188,9 +188,9 @@ func (img *SdlImgui) Service() {
 					// frame and *this* mouse button press will be acknowledged.
 					// next frame the window will not be drawn. however, the *next*
 					// frame will sleep until the time out - *this* mouse button
-					// event has been consumed. calling alert() ensures there is no
+					// event has been consumed. setting alerted ensures there is no
 					// delay in drawing the *next* frame
-					img.polling.alert()
+					img.polling.alerted = true
 
 				case *sdl.MouseWheelEvent:
 					var deltaX, deltaY float32

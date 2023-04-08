@@ -26,8 +26,11 @@ import (
 // service() call. this changes depending primarily on whether we're in debug
 // or play mode.
 const (
-	// very small sleep period if emulator is in play state
+	// very small sleep period if emulator is in play mode
 	playSleepPeriod = 1
+
+	// slightly longer sleep period if emulator is in play mode and is paused
+	playPausedSleepPeriod = 40
 
 	// a small sleep if emulator is in the debugger. this strikes a nice
 	// balance between CPU usage and responsiveness
@@ -37,7 +40,7 @@ const (
 	// sleep period at all
 	debugSleepPeriodRunning = 1
 
-	// idleSleepPeriod should not be too long because the sleep is not preempted.
+	// debugIdleSleepPeriod should not be too long because the sleep is not preempted.
 	idleSleepPeriod = 500
 
 	// the period of inactivity required before the main sleep period drops to
@@ -101,12 +104,6 @@ func newPolling(img *SdlImgui) *polling {
 	return pol
 }
 
-// alert() forces the next call to wait to resolve immediately.
-func (pol *polling) alert() {
-	// does nothing in playmode but it's cheaper to just set the flag
-	pol.alerted = true
-}
-
 // wait for an SDL event or for a timeout. the timeout duration depends on the
 // state of the emulation and receent user input.
 func (pol *polling) wait() sdl.Event {
@@ -118,20 +115,23 @@ func (pol *polling) wait() sdl.Event {
 	default:
 	}
 
-	if pol.img.isPlaymode() {
-		// wait for new SDL event or until the selected timeout period has elapsed
-		return sdl.WaitEventTimeout(playSleepPeriod)
-	}
-
-	// decide on timeout period
+	// the amount of timeout depends on mode and state
 	var timeout int
 
-	if pol.alerted {
-		pol.alerted = false
+	if pol.img.isPlaymode() {
+		if pol.img.dbg.State() != govern.Paused || pol.img.prefs.activePause.Get().(bool) {
+			timeout = playSleepPeriod
+		} else {
+			if pol.keepAwake {
+				timeout = playPausedSleepPeriod
+			} else {
+				timeout = idleSleepPeriod
+			}
+		}
 	} else {
 		if pol.img.dbg.State() == govern.Running {
 			timeout = debugSleepPeriodRunning
-		} else if pol.keepAwake || pol.img.lz.Debugger.HasChanged {
+		} else if pol.alerted || pol.keepAwake || pol.img.lz.Debugger.HasChanged {
 			timeout = debugSleepPeriod
 		} else {
 			timeout = idleSleepPeriod
@@ -148,6 +148,9 @@ func (pol *polling) wait() sdl.Event {
 		// keepAwake flag set for wakefullnessPeriod milliseconds
 		pol.keepAwake = time.Since(pol.lastEvent).Milliseconds() < wakefullnessPeriod
 	}
+
+	// always reset alerted flag
+	pol.alerted = false
 
 	return ev
 }

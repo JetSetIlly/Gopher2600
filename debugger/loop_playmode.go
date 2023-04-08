@@ -65,6 +65,18 @@ func (dbg *Debugger) playLoop() error {
 
 	// run and handle events
 	return dbg.vcs.Run(func() (govern.State, error) {
+
+		// if emulation is paused then wait until it is unpaused
+		for dbg.state.Load().(govern.State) == govern.Paused {
+			select {
+			case <-dbg.eventCheckPulse.C:
+				err := dbg.readEventsHandler()
+				if err != nil {
+					return govern.Ending, err
+				}
+			}
+		}
+
 		// update counters. because of the way LastResult works we need to make
 		// sure we only use it in the event that the CPU RdyFlag is set
 		//
