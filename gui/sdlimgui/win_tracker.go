@@ -40,6 +40,8 @@ type winTracker struct {
 	whiteKeys       imgui.PackedColor
 	whiteKeysGap    imgui.PackedColor
 	pianoKeysHeight float32
+
+	selection imguiSelection
 }
 
 func newWinTracker(img *SdlImgui) (window, error) {
@@ -49,6 +51,7 @@ func newWinTracker(img *SdlImgui) (window, error) {
 		whiteKeys:    imgui.PackedColorFromVec4(imgui.Vec4{1.0, 1.0, 0.90, 1.0}),
 		whiteKeysGap: imgui.PackedColorFromVec4(imgui.Vec4{0.2, 0.2, 0.2, 1.0}),
 	}
+	win.selection.clear()
 	return win, nil
 }
 
@@ -99,58 +102,44 @@ func (win *winTracker) debuggerDraw() {
 }
 
 func (win *winTracker) draw() {
-	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
-	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
-	defer imgui.PopStyleColorV(2)
-
 	imgui.PushStyleColor(imgui.StyleColorTableHeaderBg, win.img.cols.AudioTrackerHeader)
-	defer imgui.PopStyleColor()
-
-	tableFlags := imgui.TableFlagsNone
-	tableFlags |= imgui.TableFlagsSizingFixedFit
-	tableFlags |= imgui.TableFlagsBordersV
-	tableFlags |= imgui.TableFlagsBordersOuter
-
-	const tableColumns = 14
-
-	tableSetupColumns := func() {
-		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
-		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 15, 1)
-		imgui.TableSetupColumnV("AUDC0", imgui.TableColumnFlagsNone, 40, 2)
-		imgui.TableSetupColumnV("Description", imgui.TableColumnFlagsNone, 80, 2)
-		imgui.TableSetupColumnV("AUDF0", imgui.TableColumnFlagsNone, 40, 3)
-		imgui.TableSetupColumnV("Note", imgui.TableColumnFlagsNone, 30, 3)
-		imgui.TableSetupColumnV("AUDV0", imgui.TableColumnFlagsNone, 40, 4)
-		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 5)
-		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 15, 6)
-		imgui.TableSetupColumnV("AUDC1", imgui.TableColumnFlagsNone, 40, 2)
-		imgui.TableSetupColumnV("Description", imgui.TableColumnFlagsNone, 80, 2)
-		imgui.TableSetupColumnV("AUDF1", imgui.TableColumnFlagsNone, 40, 8)
-		imgui.TableSetupColumnV("Note", imgui.TableColumnFlagsNone, 30, 3)
-		imgui.TableSetupColumnV("AUDV1", imgui.TableColumnFlagsNone, 40, 9)
-	}
-
-	// I can't get the header of the table to freeze in the scroller so I'm
-	// fudging the effect by having a separate table just for the header.
-	if !imgui.BeginTableV("trackerHeader", tableColumns, tableFlags, imgui.Vec2{}, 0) {
-		return
-	}
-	tableSetupColumns()
-	imgui.TableHeadersRow()
-	imgui.EndTable()
+	imgui.PushStyleColor(imgui.StyleColorTableBorderLight, win.img.cols.AudioTrackerBorder)
+	imgui.PushStyleColor(imgui.StyleColorTableBorderStrong, win.img.cols.AudioTrackerBorder)
+	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.AudioTrackerRowHover)
+	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.AudioTrackerRowHover)
+	defer imgui.PopStyleColorV(5)
 
 	// new child that contains the main scrollable table
 	if imgui.BeginChildV("##trackerscroller", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.pianoKeysHeight}, false, 0) {
 		numEntries := len(win.img.lz.Tracker.Entries)
 		if numEntries == 0 {
 			imgui.Spacing()
-			imgui.Text("No audio output/changes yet")
+			imgui.Text("Audio tracker history is empty")
 		} else {
-			if imgui.BeginTableV("tracker", tableColumns, tableFlags, imgui.Vec2{}, 0) {
-				tableSetupColumns()
+			// tracker table
+			const numColumns = 12
+			flgs := imgui.TableFlagsScrollY
+			flgs |= imgui.TableFlagsSizingStretchProp
+			flgs |= imgui.TableFlagsNoHostExtendX
+
+			if imgui.BeginTableV("tracker", numColumns, flgs, imgui.Vec2{}, 0) {
+				imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 15, 0)
+				imgui.TableSetupColumnV("AUDC0", imgui.TableColumnFlagsNone, 40, 1)
+				imgui.TableSetupColumnV("Distortion", imgui.TableColumnFlagsNone, 80, 2)
+				imgui.TableSetupColumnV("AUDF0", imgui.TableColumnFlagsNone, 40, 3)
+				imgui.TableSetupColumnV("Note", imgui.TableColumnFlagsNone, 30, 4)
+				imgui.TableSetupColumnV("AUDV0", imgui.TableColumnFlagsNone, 40, 5)
+				imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 15, 6)
+				imgui.TableSetupColumnV("AUDC1", imgui.TableColumnFlagsNone, 40, 7)
+				imgui.TableSetupColumnV("Distortion", imgui.TableColumnFlagsNone, 80, 8)
+				imgui.TableSetupColumnV("AUDF1", imgui.TableColumnFlagsNone, 40, 9)
+				imgui.TableSetupColumnV("Note", imgui.TableColumnFlagsNone, 30, 10)
+				imgui.TableSetupColumnV("AUDV1", imgui.TableColumnFlagsNone, 40, 11)
+
+				imgui.TableSetupScrollFreeze(0, 1)
+				imgui.TableHeadersRow()
 
 				// altenate row colors at change of frame number
-				var lastEntry tracker.Entry
 				var lastEntryChan0 tracker.Entry
 				var lastEntryChan1 tracker.Entry
 				var altRowCol bool
@@ -162,22 +151,35 @@ func (win *winTracker) draw() {
 						entry := win.img.lz.Tracker.Entries[i]
 
 						imgui.TableNextRow()
-
-						// flip row color
-						if entry.Coords.Frame != lastEntry.Coords.Frame {
-							altRowCol = !altRowCol
-						}
+						altRowCol = !altRowCol
 
 						if altRowCol {
 							imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.AudioTrackerRowAlt)
 							imgui.TableSetBgColor(imgui.TableBgTargetRowBg1, win.img.cols.AudioTrackerRowAlt)
+							if win.selection.inRange(i) {
+								imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.AudioTrackerRowSelectedAlt)
+								imgui.TableSetBgColor(imgui.TableBgTargetRowBg1, win.img.cols.AudioTrackerRowSelectedAlt)
+							}
 						} else {
 							imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.AudioTrackerRow)
 							imgui.TableSetBgColor(imgui.TableBgTargetRowBg1, win.img.cols.AudioTrackerRow)
+							if win.selection.inRange(i) {
+								imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.AudioTrackerRowSelected)
+								imgui.TableSetBgColor(imgui.TableBgTargetRowBg1, win.img.cols.AudioTrackerRowSelected)
+							}
 						}
 
+						// add selectable for row. the text for the selectable
+						// depends on which channel the tracker entry represents
 						imgui.TableNextColumn()
-						imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+						if entry.Channel == 1 || !entry.IsMusical() {
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Transparent)
+						}
+						imgui.SelectableV(string(fonts.MusicNote), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+						if entry.Channel == 1 || !entry.IsMusical() {
+							imgui.PopStyleColor()
+						}
+
 						imguiTooltip(func() {
 							imgui.Text(fmt.Sprintf("Frame: %d", entry.Coords.Frame))
 							imgui.Text(fmt.Sprintf("Scanline: %d", entry.Coords.Scanline))
@@ -185,19 +187,33 @@ func (win *winTracker) draw() {
 						}, true)
 
 						// context menu on right mouse button
-						if imgui.IsItemHovered() && imgui.IsMouseDown(1) {
-							imgui.OpenPopup(trackerContextMenuID)
-							win.contextMenu = entry.Coords
+						if imgui.IsItemHovered() {
+							if imgui.IsMouseClicked(0) {
+								win.selection.dragStart(i)
+							}
+							if imgui.IsMouseDragging(0, 0.0) {
+								win.selection.drag(i)
+							}
+							if imgui.IsMouseDown(1) {
+								imgui.OpenPopup(trackerContextMenuID)
+								win.contextMenu = entry.Coords
+							}
 						}
 						if entry.Coords == win.contextMenu {
 							if imgui.BeginPopup(trackerContextMenuID) {
-								if imgui.Selectable("Rewind to") {
+								if imgui.Selectable("Clear note history") {
+									win.img.dbg.PushFunction(win.img.dbg.Tracker.Reset)
+								}
+								if imgui.Selectable(fmt.Sprintf("Rewind (to %s)", entry.Coords)) {
 									win.img.dbg.GotoCoords(entry.Coords)
 								}
 								imgui.EndPopup()
 							}
 						}
 
+						// if tracker entry is for channel one then skip the
+						// first half-dozen columns and add whatever the 'note
+						// icon' is
 						if entry.Channel == 1 {
 							imgui.TableNextColumn()
 							imgui.TableNextColumn()
@@ -205,21 +221,9 @@ func (win *winTracker) draw() {
 							imgui.TableNextColumn()
 							imgui.TableNextColumn()
 							imgui.TableNextColumn()
-							imgui.TableNextColumn()
-						}
-
-						// convert musical note into something worth showing
-						musicalNote := string(entry.MusicalNote)
-						imgui.TableNextColumn()
-						switch entry.MusicalNote {
-						case tracker.Noise:
-							musicalNote = ""
-						case tracker.Low:
-							musicalNote = ""
-						case tracker.Silence:
-							musicalNote = ""
-						default:
-							imgui.Text(fmt.Sprintf("%c", fonts.MusicNote))
+							if entry.IsMusical() {
+								imgui.Text(string(fonts.MusicNote))
+							}
 						}
 
 						imgui.TableNextColumn()
@@ -229,7 +233,20 @@ func (win *winTracker) draw() {
 						imgui.TableNextColumn()
 						imgui.Text(fmt.Sprintf("%05b", entry.Registers.Freq&0x1f))
 						imgui.TableNextColumn()
-						imgui.Text(musicalNote)
+
+						// convert musical note into something worth showing
+						musicalNote := string(entry.MusicalNote)
+						switch entry.MusicalNote {
+						case tracker.Noise:
+							musicalNote = ""
+						case tracker.Low:
+							musicalNote = ""
+						case tracker.Silence:
+							musicalNote = ""
+						default:
+							imgui.Text(musicalNote)
+						}
+
 						imgui.TableNextColumn()
 
 						// volum column
@@ -253,21 +270,39 @@ func (win *winTracker) draw() {
 						}
 
 						imgui.Text(fmt.Sprintf("%02d %c", entry.Registers.Volume&0x4b, volumeArrow))
-
-						// record last entry for comparison purposes next iteration
-						lastEntry = entry
 					}
 				}
 
-				imgui.EndTable()
-			}
+				if win.img.dbg.State() == govern.Running {
+					imgui.SetScrollHereY(1.0)
+				}
 
-			if win.img.dbg.State() == govern.Running {
-				imgui.SetScrollHereY(1.0)
+				imgui.EndTable()
 			}
 		}
 	}
 	imgui.EndChild()
 
-	win.pianoKeysHeight = win.drawPianoKeys()
+	// don't allow grabbing or movement of window when piano keys are clicked
+	if imgui.BeginChildV("##pianokeys", imgui.Vec2{}, false, imgui.WindowFlagsNoMove) {
+		win.pianoKeysHeight = win.drawPianoKeys()
+	}
+	imgui.EndChild()
+}
+
+// *** replay button not currently used because the replay mechanism is currently unsatisfactory ***
+func (win *winTracker) drawReplayButton() {
+	// disable replay button as appropriate
+	s, e := win.selection.limits()
+	if s == -1 || e == -1 || win.img.dbg.State() != govern.Paused {
+		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+		defer imgui.PopItemFlag()
+		defer imgui.PopStyleVar()
+	}
+
+	if imgui.Button("Replay") {
+		// *** this should be run asynchronously ***
+		win.img.dbg.Tracker.Replay(s, e, win.img.audio)
+	}
 }

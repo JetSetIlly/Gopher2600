@@ -23,7 +23,7 @@ const NoPianoKey = 0
 
 // NoteToPianoKey converts the musical note to the corresponding piano key.
 //
-// Handle sharps but not flats.
+// Black notes are negative values of the white note it is associated with.
 func NoteToPianoKey(note MusicalNote) PianoKey {
 	switch note {
 	case "A#0":

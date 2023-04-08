@@ -137,10 +137,13 @@ type imguiColors struct {
 	AudioOscLine imgui.Vec4
 
 	// audio tracker
-	AudioTrackerHeader   imgui.Vec4
-	AudioTrackerRow      imgui.Vec4
-	AudioTrackerRowAlt   imgui.Vec4
-	AudioTrackerRowHover imgui.Vec4
+	AudioTrackerHeader         imgui.Vec4
+	AudioTrackerRow            imgui.Vec4
+	AudioTrackerRowAlt         imgui.Vec4
+	AudioTrackerRowSelected    imgui.Vec4
+	AudioTrackerRowSelectedAlt imgui.Vec4
+	AudioTrackerRowHover       imgui.Vec4
+	AudioTrackerBorder         imgui.Vec4
 
 	// piano keys
 	PianoKeysBackground imgui.Vec4
@@ -330,10 +333,13 @@ func newColors() *imguiColors {
 		AudioOscLine: imgui.Vec4{0.10, 0.97, 0.29, 1.0},
 
 		// audio tracker
-		AudioTrackerHeader:   imgui.Vec4{0.09, 0.09, 0.09, 1.0},
-		AudioTrackerRow:      imgui.Vec4{0.10, 0.10, 0.10, 1.0},
-		AudioTrackerRowAlt:   imgui.Vec4{0.12, 0.12, 0.12, 1.0},
-		AudioTrackerRowHover: imgui.Vec4{0.12, 0.12, 0.15, 1.0},
+		AudioTrackerHeader:         imgui.Vec4{0.12, 0.25, 0.25, 1.0},
+		AudioTrackerRow:            imgui.Vec4{0.10, 0.15, 0.15, 1.0},
+		AudioTrackerRowAlt:         imgui.Vec4{0.12, 0.17, 0.17, 1.0},
+		AudioTrackerRowSelected:    imgui.Vec4{0.15, 0.25, 0.25, 1.0},
+		AudioTrackerRowSelectedAlt: imgui.Vec4{0.17, 0.27, 0.27, 1.0},
+		AudioTrackerRowHover:       imgui.Vec4{0.14, 0.20, 0.20, 1.0},
+		AudioTrackerBorder:         imgui.Vec4{0.12, 0.25, 0.25, 1.0},
 
 		// piano keys
 		PianoKeysBackground: imgui.Vec4{0.10, 0.09, 0.05, 1.0},

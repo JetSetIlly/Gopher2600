@@ -17,62 +17,84 @@ package tracker
 
 import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
+	"github.com/jetsetilly/gopher2600/rewind"
 )
 
-// Emulation defines as much of the emulation we require access to.
+type Rewind interface {
+	GetState(frame int) *rewind.State
+}
+
 type Emulation interface {
 	State() govern.State
 	TV() *television.Television
 }
 
+// Entry represents a single change of audio for a channel
 type Entry struct {
-	Coords    coords.TelevisionCoords
+	// the (TV) time the change occurred
+	Coords coords.TelevisionCoords
+
+	// which channel the Registers field refers to
 	Channel   int
 	Registers audio.Registers
 
+	// description of the change. the Registers field by comparison contains the
+	// numeric information of the audio change
 	Distortion  string
 	MusicalNote MusicalNote
 	PianoKey    PianoKey
 }
 
+// IsMusical returns true if entry represents a musical note
+func (e Entry) IsMusical() bool {
+	return e.MusicalNote != Noise && e.MusicalNote != Silence && e.MusicalNote != Low
+}
+
+const maxTrackerEntries = 1024
+
 // Tracker implements the audio.Tracker interface and keeps a history of the
-// audio registers over time.
+// audio registers over time
 type Tracker struct {
 	emulation Emulation
+	rewind    Rewind
 
+	// list of tracker entries. length is capped to maxTrackerEntries
 	entries []Entry
 
 	// previous register values so we can compare to see whether the registers
 	// have change and thus worth recording
 	prevRegister [2]audio.Registers
 
+	// the most recent information for each channel. the entries do no need to
+	// have happened at the same time. ie. lastEntry[0] might refer to an audio
+	// change on frame 10 and lastEntry[1] on frame 20
 	lastEntry [2]Entry
+
+	// emulation used for replaying tracker entries. it wil be created on demand
+	// on the first call to Replay()
+	replayEmulation *hardware.VCS
 }
 
-const maxTrackerEntries = 1024
-
-// NewTracker is the preferred method of initialisation for the Tracker type.
-func NewTracker(emulation Emulation) *Tracker {
+// NewTracker is the preferred method of initialisation for the Tracker type
+func NewTracker(emulation Emulation, rewind Rewind) *Tracker {
 	return &Tracker{
 		emulation: emulation,
+		rewind:    rewind,
 		entries:   make([]Entry, 0, maxTrackerEntries),
 	}
 }
 
-// Reset removes all entries from tracker list.
+// Reset removes all entries from tracker list
 func (tr *Tracker) Reset() {
 	tr.entries = tr.entries[:0]
 }
 
-// Tick implements the audio.Tracker interface
-func (tr *Tracker) Tick(channel int, reg audio.Registers) {
-	if tr.emulation.State() == govern.Rewinding {
-		return
-	}
-
+// AudioTick implements the audio.Tracker interface
+func (tr *Tracker) AudioTick(channel int, reg audio.Registers) {
 	changed := !audio.CmpRegisters(reg, tr.prevRegister[channel])
 	tr.prevRegister[channel] = reg
 
@@ -87,23 +109,33 @@ func (tr *Tracker) Tick(channel int, reg audio.Registers) {
 			MusicalNote: LookupMusicalNote(tv, reg),
 		}
 		e.PianoKey = NoteToPianoKey(e.MusicalNote)
-		tr.entries = append(tr.entries, e)
 
-		if len(tr.entries) > maxTrackerEntries {
-			tr.entries = tr.entries[1:]
+		if tr.emulation.State() != govern.Rewinding {
+			// find splice point in tracker
+			splice := len(tr.entries) - 1
+			for splice > 0 && !coords.GreaterThan(e.Coords, tr.entries[splice].Coords) {
+				splice--
+			}
+			tr.entries = tr.entries[:splice+1]
+
+			// add new entry and limit number of entries
+			tr.entries = append(tr.entries, e)
+			if len(tr.entries) > maxTrackerEntries {
+				tr.entries = tr.entries[1:]
+			}
 		}
 
-		// store recent entry
+		// store entry in lastEntry reference
 		tr.lastEntry[channel] = e
 	}
 }
 
-// Copy makes a copy of the Tracker entries.
+// Copy makes a copy of the Tracker entries
 func (tr *Tracker) Copy() []Entry {
 	return tr.entries
 }
 
-// GetLast entry for channel.
+// GetLast entry for channel
 func (tr *Tracker) GetLast(channel int) Entry {
 	return tr.lastEntry[channel]
 }

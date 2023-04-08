@@ -42,7 +42,7 @@ func LookupDistortion(reg audio.Registers) string {
 		// same as 4
 		return "Pure"
 	case 6:
-		return "Puzzy"
+		return "Buzzy/Pure"
 	case 7:
 		return "Reedy"
 	case 8:
@@ -52,7 +52,7 @@ func LookupDistortion(reg audio.Registers) string {
 		return "Reedy"
 	case 10:
 		// same as 6
-		return "Puzzy"
+		return "Buzzy/Pure"
 	case 11:
 		// same as 0
 		return "-"
