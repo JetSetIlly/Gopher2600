@@ -66,17 +66,6 @@ func (dbg *Debugger) playLoop() error {
 	// run and handle events
 	return dbg.vcs.Run(func() (govern.State, error) {
 
-		// if emulation is paused then wait until it is unpaused
-		for dbg.state.Load().(govern.State) == govern.Paused {
-			select {
-			case <-dbg.eventCheckPulse.C:
-				err := dbg.readEventsHandler()
-				if err != nil {
-					return govern.Ending, err
-				}
-			}
-		}
-
 		// update counters. because of the way LastResult works we need to make
 		// sure we only use it in the event that the CPU RdyFlag is set
 		//
@@ -120,19 +109,33 @@ func (dbg *Debugger) playLoop() error {
 		}
 		performanceBrake = 0
 
-		select {
-		case <-dbg.eventCheckPulse.C:
-			err := dbg.readEventsHandler()
-			if err != nil {
-				return govern.Ending, err
+		// how we wait for read events depends on whether the emulation is
+		// paused or not. if emulation is paused then we halt until an event is
+		// received. this reduces CPU usage when paused
+		if dbg.state.Load().(govern.State) == govern.Paused {
+			select {
+			case <-dbg.eventCheckPulse.C:
+				err := dbg.readEventsHandler()
+				if err != nil {
+					return govern.Ending, err
+				}
 			}
-		default:
+		} else {
+			select {
+			case <-dbg.eventCheckPulse.C:
+				err := dbg.readEventsHandler()
+				if err != nil {
+					return govern.Ending, err
+				}
+			default:
+			}
 		}
 
 		if dbg.state.Load().(govern.State) == govern.Running {
 			dbg.Rewind.RecordState()
 		}
 
+		// resolve rewinding
 		if dbg.rewindKeyboardAccumulation != 0 {
 			amount := 0
 			if dbg.rewindKeyboardAccumulation < 0 {

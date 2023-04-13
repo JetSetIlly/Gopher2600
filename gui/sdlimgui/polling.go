@@ -122,11 +122,7 @@ func (pol *polling) wait() sdl.Event {
 		if pol.img.dbg.State() != govern.Paused || pol.img.prefs.activePause.Get().(bool) {
 			timeout = playSleepPeriod
 		} else {
-			if pol.keepAwake {
-				timeout = playPausedSleepPeriod
-			} else {
-				timeout = idleSleepPeriod
-			}
+			timeout = playPausedSleepPeriod
 		}
 	} else {
 		if pol.img.dbg.State() == govern.Running {
