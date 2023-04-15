@@ -200,19 +200,16 @@ func fingerprintDPCplus(b []byte) bool {
 }
 
 func fingerprintCDFJplus(b []byte) (bool, string) {
+	if len(b) < 2048 {
+		return false, ""
+	}
 	if bytes.Contains(b[:2048], []byte("PLUSCDFJ")) {
 		return true, "CDFJ+"
 	}
-
 	return false, ""
 }
 
 func fingerprintCDF(b []byte) (bool, string) {
-	// all CDF formats must be 32k or 64k
-	if len(b) != 32768 {
-		return false, ""
-	}
-
 	count := 0
 	version := ""
 
