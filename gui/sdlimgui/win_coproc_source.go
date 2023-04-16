@@ -32,46 +32,6 @@ import (
 const winCoProcSourceID = "Coprocessor Source"
 const winCoProcSourceMenu = "Source"
 
-// type that can test whether a number is in between (incluside) of the two
-// values in the array
-//
-// the start of the range is index 0 and the end of the range is index 1
-//
-// the inRange() function should be used for inclusion testing and the
-// ordered() function will return the start and end values such that start
-// is always less than or equal to the end value.
-//
-// also handles the developer.DisasmRange
-type lineRange struct {
-	start  int
-	end    int
-	disasm developer.DisasmRange
-}
-
-func (r *lineRange) single(lineNumber int) {
-	r.start = lineNumber
-	r.end = lineNumber
-	r.disasm.Clear()
-}
-
-func (r lineRange) isSingle() bool {
-	return r.start == r.end
-}
-
-func (r lineRange) inRange(l int) bool {
-	if r.end < r.start {
-		return l >= r.end && l <= r.start
-	}
-	return l >= r.start && l <= r.end
-}
-
-func (r lineRange) ordered() (int, int) {
-	if r.start < r.end {
-		return r.start, r.end
-	}
-	return r.end, r.start
-}
-
 type winCoProcSource struct {
 	debuggerWin
 
@@ -82,10 +42,10 @@ type winCoProcSource struct {
 	syntaxHighlighting bool
 	optionsHeight      float32
 
-	lineFuzzy fuzzyFilter
+	selection       imguiSelection
+	selectionDisasm developer.DisasmRange
 
-	selectedLine lineRange
-	selecting    bool
+	lineFuzzy fuzzyFilter
 
 	selectedFileFuzzy     fuzzyFilter
 	selectedShortFileName string
@@ -225,7 +185,7 @@ func (win *winCoProcSource) draw() {
 				// double check validity of focusLine
 				if focusLine != nil && !focusLine.IsStub() {
 					win.selectedShortFileName = focusLine.File.ShortFilename
-					win.selectedLine.single(focusLine.LineNumber)
+					win.selection.single(focusLine.LineNumber)
 					win.updateSelectedFile = true
 				}
 
@@ -310,7 +270,7 @@ func (win *winCoProcSource) drawFileSelection(src *developer.Source) {
 
 		fuzzyFileHook := func(i int) {
 			win.selectedShortFileName = src.ShortFilenames[i]
-			win.selectedLine.single(0)
+			win.selection.clear()
 			win.updateSelectedFile = true
 		}
 
@@ -357,7 +317,7 @@ func (win *winCoProcSource) gotoSourceLine(ln *developer.SourceLine) {
 	win.debuggerSetOpen(true)
 	win.focusYieldLine = false
 	win.selectedShortFileName = ln.File.ShortFilename
-	win.selectedLine.single(ln.LineNumber)
+	win.selection.single(ln.LineNumber)
 	win.uncollapseNext = true
 	win.updateSelectedFile = true
 }
@@ -486,7 +446,7 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 					imgui.TableNextRow()
 
 					// highlight selected line(s)
-					if win.selectedLine.inRange(ln.LineNumber) {
+					if win.selection.inRange(ln.LineNumber) {
 						imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceSelected)
 					}
 
@@ -520,24 +480,20 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 						// add/remove lines before showing the tooltip. this
 						// produces better visual results
 						if imgui.IsMouseClicked(0) {
-							win.selectedLine.single(ln.LineNumber)
-							win.selecting = true
+							win.selection.dragStart(ln.LineNumber)
 						}
-						if imgui.IsMouseDragging(0, 0.0) && win.selecting {
-							win.selectedLine.end = ln.LineNumber
-							win.selectedLine.disasm.Clear()
-							s, e := win.selectedLine.ordered()
+						if imgui.IsMouseDragging(0, 0.0) {
+							win.selection.drag(ln.LineNumber)
+							win.selectionDisasm.Clear()
+							s, e := win.selection.limits()
 							for i := s; i <= e; i++ {
-								win.selectedLine.disasm.Add(win.selectedFile.Content.Lines[i-1])
+								win.selectionDisasm.Add(win.selectedFile.Content.Lines[i-1])
 							}
 						}
-						if imgui.IsMouseReleased(0) {
-							win.selecting = false
-						}
 
-						multiline := !win.selectedLine.isSingle() && win.selectedLine.inRange(ln.LineNumber)
+						multiline := !win.selection.isSingle() && win.selection.inRange(ln.LineNumber)
 						hoverExecutableLine = (!multiline && len(ln.Disassembly) > 0) ||
-							((multiline || win.selecting) && !win.selectedLine.disasm.IsEmpty())
+							(multiline && !win.selectionDisasm.IsEmpty())
 
 						if win.showTooltip {
 							// how we show the asm depends on whether there are
@@ -546,13 +502,6 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 							//
 							// if only a single line is selected then we simply
 							// check that there is are asm entries for that line
-							//
-							// there is also condition to test whether the
-							// multiline selection is in progress (win.selecting).
-							// this is to prevent a frame's worth of flicker caused
-							// by time difference of the mouse running out of range
-							// of the multiline and the new range being setup (see
-							// IsMouseDragging() below)
 							if hoverExecutableLine {
 								imgui.PopFont()
 
@@ -566,8 +515,8 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 
 									// this block is a more developed version of win.img.drawFilenameAndLineNumber()
 									// there is no need to complicate that function
-									if (multiline || win.selecting) && !win.selectedLine.isSingle() {
-										s, e := win.selectedLine.ordered()
+									if multiline && !win.selection.isSingle() {
+										s, e := win.selection.limits()
 										win.img.drawFilenameAndLineNumber(ln.File.Filename, s, e)
 									} else {
 										win.img.drawFilenameAndLineNumber(ln.File.Filename, ln.LineNumber, -1)
@@ -579,8 +528,8 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 
 									// choose which disasm list to use
 									disasm := ln.Disassembly
-									if multiline || win.selecting {
-										disasm = win.selectedLine.disasm.Disasm
+									if multiline {
+										disasm = win.selectionDisasm.Disasm
 									}
 
 									win.img.drawDisasmForCoProc(disasm, ln, multiline)
@@ -664,7 +613,8 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 
 			// scroll to correct line
 			if win.updateSelectedFile {
-				imgui.SetScrollY(clipper.ItemsHeight * float32(win.selectedLine.start-10))
+				s, _ := win.selection.limits()
+				imgui.SetScrollY(clipper.ItemsHeight * float32(s-10))
 			}
 		}
 

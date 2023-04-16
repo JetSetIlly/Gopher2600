@@ -15,6 +15,10 @@
 
 package sdlimgui
 
+// imguiSelection is useful helper for multiline selection
+//
+// use limits() to get start and end points of the selection and the inRange()
+// function for checking if a value is within the selection limits
 type imguiSelection struct {
 	a int
 	b int
@@ -29,8 +33,14 @@ func (sel *imguiSelection) dragStart(i int) {
 	sel.a = i
 	sel.b = i
 }
+
 func (sel *imguiSelection) drag(i int) {
 	sel.b = i
+}
+
+// single() is functionally the same as dragStart()
+func (sel *imguiSelection) single(i int) {
+	sel.dragStart(i)
 }
 
 func (sel imguiSelection) isSingle() bool {
