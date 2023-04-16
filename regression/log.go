@@ -144,7 +144,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 
 	// we want the machine in a known state. the easiest way to do this is to
 	// default the hardware preferences
-	vcs.Instance.Normalise()
+	vcs.Env.Normalise()
 
 	err = setup.AttachCartridge(vcs, reg.CartLoad, true)
 	if err != nil {

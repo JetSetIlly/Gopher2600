@@ -18,7 +18,7 @@ package cartridge
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -58,7 +58,7 @@ import (
 // originally documented in the Stella source
 
 type wicksteadDesign struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	mappingID string
 
@@ -70,9 +70,9 @@ type wicksteadDesign struct {
 	state *wicksteadState
 }
 
-func newWicksteadDesign(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
+func newWicksteadDesign(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
 	cart := &wicksteadDesign{
-		instance:  instance,
+		env:       env,
 		mappingID: "WD",
 		bankSize:  1024,
 		state:     newWicksteadState(),
@@ -134,8 +134,8 @@ func (cart *wicksteadDesign) Plumb() {
 // Reset implements the mapper.CartMapper interface.
 func (cart *wicksteadDesign) Reset() {
 	for i := range cart.state.ram {
-		if cart.instance.Prefs.RandomState.Get().(bool) {
-			cart.state.ram[i] = uint8(cart.instance.Random.NoRewind(0xff))
+		if cart.env.Prefs.RandomState.Get().(bool) {
+			cart.state.ram[i] = uint8(cart.env.Random.NoRewind(0xff))
 		} else {
 			cart.state.ram[i] = 0
 		}

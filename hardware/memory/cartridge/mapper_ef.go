@@ -18,7 +18,7 @@ package cartridge
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
@@ -28,9 +28,9 @@ type ef struct {
 }
 
 // newEF is the preferred method of initialisation for the ef type
-func newEF(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
+func newEF(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
 	cart := &ef{}
-	cart.instance = instance
+	cart.env = env
 	cart.bankSize = 4096
 	cart.mappingID = "EF"
 	cart.banks = make([][]uint8, cart.NumBanks())

@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/rewind"
@@ -44,6 +45,8 @@ func (tr *Tracker) createReplayEmulation(mixer television.AudioMixer) error {
 	return nil
 }
 
+const label = environment.Label("tracker")
+
 // Replay audio from start to end indexes
 func (tr *Tracker) Replay(start int, end int, mixer television.AudioMixer) error {
 	// the replay will run even if the master emulation is running. this may
@@ -57,6 +60,7 @@ func (tr *Tracker) Replay(start int, end int, mixer television.AudioMixer) error
 	}
 
 	rewind.Plumb(tr.replayEmulation, startState, true)
+	tr.replayEmulation.Env.Label = label
 	tr.replayEmulation.DetatchEmulationExtras()
 
 	err := tr.replayEmulation.Run(func() (govern.State, error) {

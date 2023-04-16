@@ -19,7 +19,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey/i2c"
@@ -84,7 +84,7 @@ type SaveKey struct {
 }
 
 // NewSaveKey is the preferred method of initialisation for the SaveKey type.
-func NewSaveKey(instance *instance.Instance, port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
+func NewSaveKey(env *environment.Environment, port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	// there's no technical reason why the savekey can't be attached to the
 	// left player port but to keep things simple (write contention on the
 	// savekey file) we don't allow it

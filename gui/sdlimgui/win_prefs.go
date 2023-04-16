@@ -123,7 +123,7 @@ func (win *winPrefs) draw() {
 	if imgui.BeginTabItem("ARM") {
 		win.drawARMTab()
 		imgui.EndTabItem()
-		setDef = win.img.vcs.Instance.Prefs.ARM
+		setDef = win.img.vcs.Env.Prefs.ARM
 		setDefLabel = "ARM"
 	}
 
@@ -402,14 +402,14 @@ func (win *winPrefs) drawVCS() {
 
 	imgui.Spacing()
 	if imgui.CollapsingHeaderV("Randomisation", imgui.TreeNodeFlagsDefaultOpen) {
-		randState := win.img.vcs.Instance.Prefs.RandomState.Get().(bool)
+		randState := win.img.vcs.Env.Prefs.RandomState.Get().(bool)
 		if imgui.Checkbox("Random State (on startup)", &randState) {
-			win.img.vcs.Instance.Prefs.RandomState.Set(randState)
+			win.img.vcs.Env.Prefs.RandomState.Set(randState)
 		}
 
-		randPins := win.img.vcs.Instance.Prefs.RandomPins.Get().(bool)
+		randPins := win.img.vcs.Env.Prefs.RandomPins.Get().(bool)
 		if imgui.Checkbox("Random Pins", &randPins) {
-			win.img.vcs.Instance.Prefs.RandomPins.Set(randPins)
+			win.img.vcs.Env.Prefs.RandomPins.Set(randPins)
 		}
 	}
 
@@ -493,16 +493,16 @@ func (win *winPrefs) drawVCS() {
 		imgui.Text("to the binary is specified below:")
 
 		imgui.Spacing()
-		binary := win.img.vcs.Instance.Prefs.AtariVox.FestivalBinary.Get().(string)
+		binary := win.img.vcs.Env.Prefs.AtariVox.FestivalBinary.Get().(string)
 		if imgui.InputTextV("##festivalbinary", &binary, imgui.InputTextFlagsEnterReturnsTrue, nil) {
-			win.img.vcs.Instance.Prefs.AtariVox.FestivalBinary.Set(binary)
+			win.img.vcs.Env.Prefs.AtariVox.FestivalBinary.Set(binary)
 			win.img.dbg.PushFunction(win.img.vcs.RIOT.Ports.RestartPeripherals)
 		}
 
 		imgui.Spacing()
-		enabled := win.img.vcs.Instance.Prefs.AtariVox.FestivalEnabled.Get().(bool)
+		enabled := win.img.vcs.Env.Prefs.AtariVox.FestivalEnabled.Get().(bool)
 		if imgui.Checkbox("Enable Festival Output", &enabled) {
-			win.img.vcs.Instance.Prefs.AtariVox.FestivalEnabled.Set(enabled)
+			win.img.vcs.Env.Prefs.AtariVox.FestivalEnabled.Set(enabled)
 			win.img.dbg.PushFunction(win.img.vcs.RIOT.Ports.RestartPeripherals)
 		}
 
@@ -536,9 +536,9 @@ func (win *winPrefs) drawARMTab() {
 		imguiSeparator()
 	}
 
-	immediate := win.img.vcs.Instance.Prefs.ARM.Immediate.Get().(bool)
+	immediate := win.img.vcs.Env.Prefs.ARM.Immediate.Get().(bool)
 	if imgui.Checkbox("Immediate ARM Execution", &immediate) {
-		win.img.vcs.Instance.Prefs.ARM.Immediate.Set(immediate)
+		win.img.vcs.Env.Prefs.ARM.Immediate.Set(immediate)
 	}
 	imguiTooltipSimple("ARM program consumes no 6507 time (like Stella)\nIf this option is set the other ARM settings are irrelevant")
 
@@ -550,7 +550,7 @@ func (win *winPrefs) drawARMTab() {
 	imgui.Spacing()
 
 	var mamState string
-	switch win.img.vcs.Instance.Prefs.ARM.MAM.Get().(int) {
+	switch win.img.vcs.Env.Prefs.ARM.MAM.Get().(int) {
 	case -1:
 		mamState = "Driver"
 	case 0:
@@ -563,16 +563,16 @@ func (win *winPrefs) drawARMTab() {
 	imgui.PushItemWidth(imguiGetFrameDim("Disabled").X + imgui.FrameHeight())
 	if imgui.BeginComboV("Default MAM State##mam", mamState, imgui.ComboFlagsNone) {
 		if imgui.Selectable("Driver") {
-			win.img.vcs.Instance.Prefs.ARM.MAM.Set(-1)
+			win.img.vcs.Env.Prefs.ARM.MAM.Set(-1)
 		}
 		if imgui.Selectable("Disabled") {
-			win.img.vcs.Instance.Prefs.ARM.MAM.Set(0)
+			win.img.vcs.Env.Prefs.ARM.MAM.Set(0)
 		}
 		if imgui.Selectable("Partial") {
-			win.img.vcs.Instance.Prefs.ARM.MAM.Set(1)
+			win.img.vcs.Env.Prefs.ARM.MAM.Set(1)
 		}
 		if imgui.Selectable("Full") {
-			win.img.vcs.Instance.Prefs.ARM.MAM.Set(2)
+			win.img.vcs.Env.Prefs.ARM.MAM.Set(2)
 		}
 		imgui.EndCombo()
 	}
@@ -589,9 +589,9 @@ The MAM should almost never be disabled completely.`)
 
 	imgui.Spacing()
 
-	clk := float32(win.img.vcs.Instance.Prefs.ARM.Clock.Get().(float64))
+	clk := float32(win.img.vcs.Env.Prefs.ARM.Clock.Get().(float64))
 	if imgui.SliderFloatV("Clock Speed", &clk, 50, 80, "%.0f Mhz", imgui.SliderFlagsNone) {
-		win.img.vcs.Instance.Prefs.ARM.Clock.Set(float64(clk))
+		win.img.vcs.Env.Prefs.ARM.Clock.Set(float64(clk))
 	}
 
 	if immediate {
@@ -604,18 +604,18 @@ The MAM should almost never be disabled completely.`)
 	if imgui.CollapsingHeader("Abort Conditions") {
 		imgui.Spacing()
 
-		abortOnIllegalMem := win.img.vcs.Instance.Prefs.ARM.AbortOnIllegalMem.Get().(bool)
+		abortOnIllegalMem := win.img.vcs.Env.Prefs.ARM.AbortOnIllegalMem.Get().(bool)
 		if imgui.Checkbox("Illegal Memory Access", &abortOnIllegalMem) {
-			win.img.vcs.Instance.Prefs.ARM.AbortOnIllegalMem.Set(abortOnIllegalMem)
+			win.img.vcs.Env.Prefs.ARM.AbortOnIllegalMem.Set(abortOnIllegalMem)
 		}
 		imguiTooltipSimple(`Abort thumb program on access to illegal memory. Note that the program
 will always abort if the access is a PC fetch, even if this option is not set.
 
 Illegal accesses will be logged even if program does not abort.`)
 
-		abortOnStackCollision := win.img.vcs.Instance.Prefs.ARM.AbortOnStackCollision.Get().(bool)
+		abortOnStackCollision := win.img.vcs.Env.Prefs.ARM.AbortOnStackCollision.Get().(bool)
 		if imgui.Checkbox("Stack Collision", &abortOnStackCollision) {
-			win.img.vcs.Instance.Prefs.ARM.AbortOnStackCollision.Set(abortOnStackCollision)
+			win.img.vcs.Env.Prefs.ARM.AbortOnStackCollision.Set(abortOnStackCollision)
 		}
 		imguiTooltipSimple(`Abort thumb program if stack pointer overlaps the highest address
 occupied by a variable in the program.
@@ -653,23 +653,23 @@ func (win *winPrefs) drawDiskButtons() {
 			logger.Logf("sdlimgui", "could not save (sdlaudio) preferences: %v", err)
 		}
 		win.img.dbg.PushFunction(func() {
-			err = win.img.vcs.Instance.Prefs.Save()
+			err = win.img.vcs.Env.Prefs.Save()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (vcs) preferences: %v", err)
 			}
-			err = win.img.vcs.Instance.Prefs.ARM.Save()
+			err = win.img.vcs.Env.Prefs.ARM.Save()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (arm) preferences: %v", err)
 			}
-			err = win.img.vcs.Instance.Prefs.AtariVox.Save()
+			err = win.img.vcs.Env.Prefs.AtariVox.Save()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (atarivox) preferences: %v", err)
 			}
-			err = win.img.vcs.Instance.Prefs.PlusROM.Save()
+			err = win.img.vcs.Env.Prefs.PlusROM.Save()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (plusrom) preferences: %v", err)
 			}
-			err = win.img.vcs.Instance.Prefs.Revision.Save()
+			err = win.img.vcs.Env.Prefs.Revision.Save()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (tia revisions) preferences: %v", err)
 			}
@@ -701,23 +701,23 @@ func (win *winPrefs) drawDiskButtons() {
 			logger.Logf("sdlimgui", "could not restore (sdlaudio) preferences: %v", err)
 		}
 		win.img.dbg.PushFunction(func() {
-			err = win.img.vcs.Instance.Prefs.Load()
+			err = win.img.vcs.Env.Prefs.Load()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not restore (vcs) preferences: %v", err)
 			}
-			err = win.img.vcs.Instance.Prefs.ARM.Load()
+			err = win.img.vcs.Env.Prefs.ARM.Load()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not restore (arm) preferences: %v", err)
 			}
-			err = win.img.vcs.Instance.Prefs.AtariVox.Load()
+			err = win.img.vcs.Env.Prefs.AtariVox.Load()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not restore (atarivox) preferences: %v", err)
 			}
-			err = win.img.vcs.Instance.Prefs.PlusROM.Load()
+			err = win.img.vcs.Env.Prefs.PlusROM.Load()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not restore (plusrom) preferences: %v", err)
 			}
-			err = win.img.vcs.Instance.Prefs.Revision.Load()
+			err = win.img.vcs.Env.Prefs.Revision.Load()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not restore (tia revisions) preferences: %v", err)
 			}

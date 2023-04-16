@@ -22,7 +22,7 @@ import (
 	"net/http/httputil"
 	"sync"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -51,8 +51,8 @@ type SendState struct {
 }
 
 type network struct {
-	instance *instance.Instance
-	ai       AddrInfo
+	env *environment.Environment
+	ai  AddrInfo
 
 	send       SendState
 	recvBuffer bytes.Buffer
@@ -71,9 +71,9 @@ type network struct {
 	sendLock sync.Mutex
 }
 
-func newNetwork(instance *instance.Instance) *network {
+func newNetwork(env *environment.Environment) *network {
 	return &network{
-		instance: instance,
+		env:      env,
 		respChan: make(chan bytes.Buffer, 5),
 	}
 }
@@ -144,8 +144,8 @@ func (n *network) transmit() {
 		//
 		id := fmt.Sprintf("agent=Gopher2600; ver=0.17.0; id=%s; nick=%s",
 			// whether or not ID and Nick are valid has been handled in the preferences system
-			n.instance.Prefs.PlusROM.ID.String(),
-			n.instance.Prefs.PlusROM.Nick.String(),
+			n.env.Prefs.PlusROM.ID.String(),
+			n.env.Prefs.PlusROM.Nick.String(),
 		)
 		req.Header.Set("PlusROM-Info", id)
 		logger.Logf("plusrom [net]", "PlusROM-Info: %s", id)
@@ -158,7 +158,7 @@ func (n *network) transmit() {
 		// a generated uuid (starting with "WE") separated by a space
 		// character."
 		//
-		// id := fmt.Sprintf("%s WE%s", n.instance.Prefs.PlusROM.Nick.String(), n.instance.Prefs.PlusROM.ID.String())
+		// id := fmt.Sprintf("%s WE%s", n.env.Prefs.PlusROM.Nick.String(), n.env.Prefs.PlusROM.ID.String())
 		// req.Header.Set("PlusStore-ID", id)
 		// logger.Logf("plusrom [net]", "PlusStore-ID: %s", id)
 		// -----------------------------------------------

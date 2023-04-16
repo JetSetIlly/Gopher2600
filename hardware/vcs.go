@@ -20,9 +20,9 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/input"
-	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
@@ -42,7 +42,7 @@ const ColorClocksPerCPUCycle = 3
 
 // VCS struct is the main container for the emulated components of the VCS.
 type VCS struct {
-	Instance *instance.Instance
+	Env *environment.Environment
 
 	// the television is not "part" of the VCS console but it's part of the VCS system
 	TV *television.Television
@@ -77,32 +77,32 @@ type VCS struct {
 // used for all aspects of emulation: debugging sessions, and regular play.
 //
 // The two arguments must be supplied. In the case of the prefs field it can by
-// nil and a new prefs instance will be created. Providing a non-nil value
-// allows the preferences of more than one VCS instance to be synchronised.
+// nil and a new preferences instance will be created. Providing a non-nil value
+// allows the preferences of more than one VCS emulation to be synchronised.
 //
 // The Instance.Context field should be updated except in the case of the
 // "main" emulation.
 func NewVCS(tv *television.Television, prefs *preferences.Preferences) (*VCS, error) {
-	// set up instance
-	instance, err := instance.NewInstance(tv, prefs)
+	// set up environment
+	env, err := environment.NewEnvironment(tv, prefs)
 	if err != nil {
 		return nil, err
 	}
 
 	// set up hardware
 	vcs := &VCS{
-		Instance: instance,
-		TV:       tv,
-		Clock:    ntscClock,
+		Env:   env,
+		TV:    tv,
+		Clock: ntscClock,
 	}
 
-	vcs.Mem = memory.NewMemory(vcs.Instance)
-	vcs.CPU = cpu.NewCPU(vcs.Instance, vcs.Mem)
-	vcs.RIOT = riot.NewRIOT(vcs.Instance, vcs.Mem.RIOT, vcs.Mem.TIA)
+	vcs.Mem = memory.NewMemory(vcs.Env)
+	vcs.CPU = cpu.NewCPU(vcs.Env, vcs.Mem)
+	vcs.RIOT = riot.NewRIOT(vcs.Env, vcs.Mem.RIOT, vcs.Mem.TIA)
 
 	vcs.Input = input.NewInput(vcs.TV, vcs.RIOT.Ports)
 
-	vcs.TIA, err = tia.NewTIA(vcs.Instance, vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
+	vcs.TIA, err = tia.NewTIA(vcs.Env, vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (vcs *VCS) End() {
 // Plumb the various VCS sub-systems together after a rewind.
 //
 // The fromDifferentEmulation indicates that the State has been created by a
-// different VCS instance than the one being plumbed into.
+// different VCS emulation than the one being plumbed into.
 func (vcs *VCS) Plumb(fromDifferentEmulation bool) {
 	vcs.CPU.Plumb(vcs.Mem)
 	vcs.Mem.Plumb(fromDifferentEmulation)
@@ -215,7 +215,7 @@ func (vcs *VCS) Reset() error {
 	//
 	// TODO: proper Reset() function for the TIA
 	audio := vcs.TIA.Audio
-	vcs.TIA, err = tia.NewTIA(vcs.Instance, vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
+	vcs.TIA, err = tia.NewTIA(vcs.Env, vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
 	if err != nil {
 		return err
 	}

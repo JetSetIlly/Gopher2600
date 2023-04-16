@@ -18,7 +18,7 @@ package atarivox
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox/atarivoxengines"
@@ -41,7 +41,7 @@ const (
 )
 
 type AtariVox struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	port plugging.PortID
 	bus  ports.PeripheralBus
@@ -86,7 +86,7 @@ type AtariVox struct {
 }
 
 // NewAtariVox is the preferred method of initialisation for the AtariVox type.
-func NewAtariVox(inst *instance.Instance, port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
+func NewAtariVox(env *environment.Environment, port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	// there's no technical reason why the atarivox can't be attached to the
 	// left player port but to keep things simple (we don't really want
 	// multiple instances of an atarivox engine) we don't allow it
@@ -98,7 +98,7 @@ func NewAtariVox(inst *instance.Instance, port plugging.PortID, bus ports.Periph
 	}
 
 	vox := &AtariVox{
-		instance:      inst,
+		env:           env,
 		port:          port,
 		bus:           bus,
 		SpeakJetDATA:  i2c.NewTrace(),
@@ -109,14 +109,13 @@ func NewAtariVox(inst *instance.Instance, port plugging.PortID, bus ports.Periph
 	logger.Logf("atarivox", "attached [%v]", vox.port)
 
 	// attach savekey to same port
-	vox.SaveKey = savekey.NewSaveKey(inst, port, bus)
+	vox.SaveKey = savekey.NewSaveKey(env, port, bus)
 
 	return vox
 }
 
 func (vox *AtariVox) activateFestival() {
-	// do nothing if the emulation instance is not he main instance
-	if vox.instance.Label != instance.Main {
+	if !vox.env.IsMainEmulation() {
 		return
 	}
 
@@ -125,10 +124,10 @@ func (vox *AtariVox) activateFestival() {
 		vox.Engine = nil
 	}
 
-	if vox.instance.Prefs.AtariVox.FestivalEnabled.Get().(bool) {
+	if vox.env.Prefs.AtariVox.FestivalEnabled.Get().(bool) {
 		var err error
 
-		vox.Engine, err = atarivoxengines.NewFestival(vox.instance.Prefs.AtariVox.FestivalBinary.Get().(string))
+		vox.Engine, err = atarivoxengines.NewFestival(vox.env.Prefs.AtariVox.FestivalBinary.Get().(string))
 		if err != nil {
 			logger.Logf("atarivox", err.Error())
 		}

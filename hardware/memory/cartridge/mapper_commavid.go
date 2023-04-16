@@ -18,7 +18,7 @@ package cartridge
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -43,7 +43,7 @@ import (
 //
 // https://forums.atariage.com/topic/342021-new-512-bytes-demo-released-gar-nix/
 type commavid struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	mappingID string
 
@@ -54,9 +54,9 @@ type commavid struct {
 	state *commavidState
 }
 
-func newCommaVid(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
+func newCommaVid(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
 	cart := &commavid{
-		instance:  instance,
+		env:       env,
 		bankSize:  4096,
 		mappingID: "CV",
 		state:     newCommaVidState(),
@@ -103,7 +103,7 @@ func (cart *commavid) Reset() {
 	// always starting with random state. this is because Video Life, one of
 	// the few original CommaVid cartridges, expects it for the opening effect
 	for i := range cart.state.ram {
-		cart.state.ram[i] = uint8(cart.instance.Random.NoRewind(0xff))
+		cart.state.ram[i] = uint8(cart.env.Random.NoRewind(0xff))
 	}
 }
 

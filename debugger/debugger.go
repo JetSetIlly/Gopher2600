@@ -1113,7 +1113,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 		} else if _, ok := cart.(*plusrom.PlusROM); ok {
 			switch event {
 			case notifications.NotifyPlusROMInserted:
-				if dbg.vcs.Instance.Prefs.PlusROM.NewInstallation {
+				if dbg.vcs.Env.Prefs.PlusROM.NewInstallation {
 					err := dbg.gui.SetFeature(gui.ReqCartridgeNotice, notifications.NotifyPlusROMNewInstallation)
 					if err != nil {
 						return fmt.Errorf(err.Error())

@@ -19,13 +19,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 type m3e struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	mappingID string
 
@@ -40,9 +40,9 @@ type m3e struct {
 
 // cartridges:
 //   - Sokoboo
-func new3e(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
+func new3e(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
 	cart := &m3e{
-		instance:  instance,
+		env:       env,
 		mappingID: "3E",
 		bankSize:  2048,
 		state:     newM3eState(),
@@ -100,8 +100,8 @@ func (cart *m3e) Plumb() {
 func (cart *m3e) Reset() {
 	for b := range cart.state.ram {
 		for i := range cart.state.ram[b] {
-			if cart.instance.Prefs.RandomState.Get().(bool) {
-				cart.state.ram[b][i] = uint8(cart.instance.Random.NoRewind(0xff))
+			if cart.env.Prefs.RandomState.Get().(bool) {
+				cart.state.ram[b][i] = uint8(cart.env.Random.NoRewind(0xff))
 			} else {
 				cart.state.ram[b][i] = 0
 			}

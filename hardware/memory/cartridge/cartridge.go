@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/cdf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/dpcplus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -35,7 +35,7 @@ import (
 
 // Cartridge defines the information and operations for a VCS cartridge.
 type Cartridge struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	// filename/hash taken from cartridgeloader. choosing not to keep a
 	// reference to the cartridge loader itself.
@@ -61,8 +61,8 @@ var Ejected = errors.New("cartridge ejected")
 
 // NewCartridge is the preferred method of initialisation for the cartridge
 // type.
-func NewCartridge(instance *instance.Instance) *Cartridge {
-	cart := &Cartridge{instance: instance}
+func NewCartridge(env *environment.Environment) *Cartridge {
+	cart := &Cartridge{env: env}
 	cart.Eject()
 	return cart
 }
@@ -77,7 +77,7 @@ func (cart *Cartridge) Snapshot() *Cartridge {
 // Plumb makes sure everything is ship-shape after a rewind event.
 //
 // The fromDifferentEmulation indicates that the State has been created by a
-// different VCS instance than the one being plumbed into.
+// different VCS emulation than the one being plumbed into.
 //
 // See mapper.PlumbFromDifferentEmulation for how this affects mapper
 // implementations.
@@ -224,7 +224,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		// format)
 		if cart.fingerprintPlusROM(cartload) {
 			// try creating a NewPlusROM instance
-			pr, err := plusrom.NewPlusROM(cart.instance, cart.mapper, cartload.NotificationHook)
+			pr, err := plusrom.NewPlusROM(cart.env, cart.mapper, cartload.NotificationHook)
 
 			if err != nil {
 				// if the error is a NotAPlusROM error then log the false
@@ -257,48 +257,48 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	mapping := strings.ToUpper(cartload.Mapping)
 	switch mapping {
 	case "2K":
-		cart.mapper, err = newAtari2k(cart.instance, *cartload.Data)
+		cart.mapper, err = newAtari2k(cart.env, *cartload.Data)
 	case "4K":
-		cart.mapper, err = newAtari4k(cart.instance, *cartload.Data)
+		cart.mapper, err = newAtari4k(cart.env, *cartload.Data)
 	case "F8":
-		cart.mapper, err = newAtari8k(cart.instance, *cartload.Data)
+		cart.mapper, err = newAtari8k(cart.env, *cartload.Data)
 	case "F6":
-		cart.mapper, err = newAtari16k(cart.instance, *cartload.Data)
+		cart.mapper, err = newAtari16k(cart.env, *cartload.Data)
 	case "F4":
-		cart.mapper, err = newAtari32k(cart.instance, *cartload.Data)
+		cart.mapper, err = newAtari32k(cart.env, *cartload.Data)
 	case "2KSC":
-		cart.mapper, err = newAtari2k(cart.instance, *cartload.Data)
+		cart.mapper, err = newAtari2k(cart.env, *cartload.Data)
 		forceSuperchip = true
 	case "4KSC":
-		cart.mapper, err = newAtari4k(cart.instance, *cartload.Data)
+		cart.mapper, err = newAtari4k(cart.env, *cartload.Data)
 		forceSuperchip = true
 	case "F8SC":
-		cart.mapper, err = newAtari8k(cart.instance, *cartload.Data)
+		cart.mapper, err = newAtari8k(cart.env, *cartload.Data)
 		forceSuperchip = true
 	case "F6SC":
-		cart.mapper, err = newAtari16k(cart.instance, *cartload.Data)
+		cart.mapper, err = newAtari16k(cart.env, *cartload.Data)
 		forceSuperchip = true
 	case "F4SC":
-		cart.mapper, err = newAtari32k(cart.instance, *cartload.Data)
+		cart.mapper, err = newAtari32k(cart.env, *cartload.Data)
 		forceSuperchip = true
 	case "CV":
-		cart.mapper, err = newCommaVid(cart.instance, *cartload.Data)
+		cart.mapper, err = newCommaVid(cart.env, *cartload.Data)
 	case "FA":
-		cart.mapper, err = newCBS(cart.instance, *cartload.Data)
+		cart.mapper, err = newCBS(cart.env, *cartload.Data)
 	case "FE":
 		// !!TODO: FE cartridge mapping
 	case "E0":
-		cart.mapper, err = newParkerBros(cart.instance, *cartload.Data)
+		cart.mapper, err = newParkerBros(cart.env, *cartload.Data)
 	case "E7":
-		cart.mapper, err = newMnetwork(cart.instance, *cartload.Data)
+		cart.mapper, err = newMnetwork(cart.env, *cartload.Data)
 	case "3F":
-		cart.mapper, err = newTigervision(cart.instance, *cartload.Data)
+		cart.mapper, err = newTigervision(cart.env, *cartload.Data)
 	case "AR":
-		cart.mapper, err = supercharger.NewSupercharger(cart.instance, cartload)
+		cart.mapper, err = supercharger.NewSupercharger(cart.env, cartload)
 	case "DF":
-		cart.mapper, err = newDF(cart.instance, *cartload.Data)
+		cart.mapper, err = newDF(cart.env, *cartload.Data)
 	case "3E":
-		cart.mapper, err = new3e(cart.instance, *cartload.Data)
+		cart.mapper, err = new3e(cart.env, *cartload.Data)
 	case "E3P":
 		// synonym for 3E+
 		fallthrough
@@ -306,20 +306,20 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		// synonym for 3E+
 		fallthrough
 	case "3E+":
-		cart.mapper, err = new3ePlus(cart.instance, *cartload.Data)
+		cart.mapper, err = new3ePlus(cart.env, *cartload.Data)
 	case "EF":
-		cart.mapper, err = newEF(cart.instance, *cartload.Data)
+		cart.mapper, err = newEF(cart.env, *cartload.Data)
 	case "EFSC":
-		cart.mapper, err = newEF(cart.instance, *cartload.Data)
+		cart.mapper, err = newEF(cart.env, *cartload.Data)
 		forceSuperchip = true
 	case "SB":
-		cart.mapper, err = newSuperbank(cart.instance, *cartload.Data)
+		cart.mapper, err = newSuperbank(cart.env, *cartload.Data)
 	case "WD":
-		cart.mapper, err = newWicksteadDesign(cart.instance, *cartload.Data)
+		cart.mapper, err = newWicksteadDesign(cart.env, *cartload.Data)
 	case "DPC":
-		cart.mapper, err = newDPC(cart.instance, *cartload.Data)
+		cart.mapper, err = newDPC(cart.env, *cartload.Data)
 	case "DPC+":
-		cart.mapper, err = dpcplus.NewDPCplus(cart.instance, *cartload.Data)
+		cart.mapper, err = dpcplus.NewDPCplus(cart.env, *cartload.Data)
 
 	case "CDF":
 		// CDF defaults to CDFJ
@@ -332,10 +332,10 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	case "CDFJ":
 		fallthrough
 	case "CDFJ+":
-		cart.mapper, err = cdf.NewCDF(cart.instance, mapping, *cartload.Data)
+		cart.mapper, err = cdf.NewCDF(cart.env, mapping, *cartload.Data)
 
 	case "MVC":
-		cart.mapper, err = moviecart.NewMoviecart(cart.instance, cartload)
+		cart.mapper, err = moviecart.NewMoviecart(cart.env, cartload)
 	}
 
 	if err != nil {

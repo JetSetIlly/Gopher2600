@@ -52,7 +52,7 @@ func newWinTimeline(img *SdlImgui) (window, error) {
 
 	var err error
 
-	win.thmb, err = thumbnailer.NewThumbnailer(win.img.vcs.Instance.Prefs)
+	win.thmb, err = thumbnailer.NewThumbnailer(win.img.vcs.Env.Prefs)
 	if err != nil {
 		return nil, fmt.Errorf("debugger: %w", err)
 	}

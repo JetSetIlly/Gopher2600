@@ -16,7 +16,7 @@
 package cdf
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
@@ -36,7 +36,7 @@ type Static struct {
 	variablesRAM []byte
 }
 
-func (cart *cdf) newCDFstatic(instance *instance.Instance, cartData []byte, r version) *Static {
+func (cart *cdf) newCDFstatic(env *environment.Environment, cartData []byte, r version) *Static {
 	stc := Static{version: r}
 
 	// ARM driver
@@ -57,14 +57,14 @@ func (cart *cdf) newCDFstatic(instance *instance.Instance, cartData []byte, r ve
 		stc.variablesRAM = make([]byte, stc.version.variablesMemtopRAM-stc.version.variablesOriginRAM+1)
 	}
 
-	if instance.Prefs.RandomState.Get().(bool) {
+	if env.Prefs.RandomState.Get().(bool) {
 		for i := range stc.dataRAM {
-			stc.dataRAM[i] = uint8(instance.Random.NoRewind(0xff))
+			stc.dataRAM[i] = uint8(env.Random.NoRewind(0xff))
 		}
 
 		if stc.variablesRAM != nil {
 			for i := range stc.variablesRAM {
-				stc.variablesRAM[i] = uint8(instance.Random.NoRewind(0xff))
+				stc.variablesRAM[i] = uint8(env.Random.NoRewind(0xff))
 			}
 		}
 	}

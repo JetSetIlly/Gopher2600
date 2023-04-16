@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
@@ -63,7 +63,7 @@ const (
 // NewGamepad is the preferred method of initialisation for the Gamepad type
 // Satisifies the ports.NewPeripheral interface and can be used as an argument
 // to ports.AttachPlayer0() and ports.AttachPlayer1().
-func NewGamepad(instance *instance.Instance, port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
+func NewGamepad(env *environment.Environment, port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	pad := &Gamepad{
 		port:   port,
 		bus:    bus,

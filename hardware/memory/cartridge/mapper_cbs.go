@@ -18,7 +18,7 @@ package cartridge
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -42,7 +42,7 @@ import (
 //
 // https://patents.google.com/patent/US4485457A/en
 type cbs struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	mappingID string
 
@@ -54,9 +54,9 @@ type cbs struct {
 	state *cbsState
 }
 
-func newCBS(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
+func newCBS(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
 	cart := &cbs{
-		instance:  instance,
+		env:       env,
 		mappingID: "FA",
 		bankSize:  4096,
 		state:     newCbsState(),
@@ -101,8 +101,8 @@ func (cart *cbs) Plumb() {
 // Reset implements the mapper.CartMapper interface.
 func (cart *cbs) Reset() {
 	for i := range cart.state.ram {
-		if cart.instance.Prefs.RandomState.Get().(bool) {
-			cart.state.ram[i] = uint8(cart.instance.Random.NoRewind(0xff))
+		if cart.env.Prefs.RandomState.Get().(bool) {
+			cart.state.ram[i] = uint8(cart.env.Random.NoRewind(0xff))
 		} else {
 			cart.state.ram[i] = 0
 		}

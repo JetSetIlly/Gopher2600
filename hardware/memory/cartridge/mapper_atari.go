@@ -20,7 +20,7 @@ import (
 	"math/bits"
 	"os"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -71,7 +71,7 @@ import (
 // Some people have experimented with 1k carts. These are treated like 2k carts.
 
 type atari struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	mappingID string
 
@@ -145,8 +145,8 @@ func (cart *atari) ID() string {
 // Reset implements the mapper.CartMapper interface.
 func (cart *atari) Reset() {
 	for i := range cart.state.ram {
-		if cart.instance.Prefs.RandomState.Get().(bool) {
-			cart.state.ram[i] = uint8(cart.instance.Random.NoRewind(0xff))
+		if cart.env.Prefs.RandomState.Get().(bool) {
+			cart.state.ram[i] = uint8(cart.env.Random.NoRewind(0xff))
 		} else {
 			cart.state.ram[i] = 0
 		}
@@ -288,9 +288,9 @@ type atari4k struct {
 	atari
 }
 
-func newAtari4k(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
+func newAtari4k(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
 	cart := &atari4k{}
-	cart.instance = instance
+	cart.env = env
 	cart.bankSize = 4096
 	cart.mappingID = "4k"
 	cart.banks = make([][]uint8, 1)
@@ -349,7 +349,7 @@ type atari2k struct {
 	mask uint16
 }
 
-func newAtari2k(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
+func newAtari2k(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
 	sz := len(data)
 
 	// support any size less than 4096 bytes that is a power of two
@@ -358,7 +358,7 @@ func newAtari2k(instance *instance.Instance, data []byte) (mapper.CartMapper, er
 	}
 
 	cart := &atari2k{}
-	cart.instance = instance
+	cart.env = env
 	cart.bankSize = sz
 	cart.mappingID = "2k"
 	cart.banks = make([][]uint8, 1)
@@ -419,9 +419,9 @@ type atari8k struct {
 	atari
 }
 
-func newAtari8k(instance *instance.Instance, data []uint8) (mapper.CartMapper, error) {
+func newAtari8k(env *environment.Environment, data []uint8) (mapper.CartMapper, error) {
 	cart := &atari8k{}
-	cart.instance = instance
+	cart.env = env
 	cart.bankSize = 4096
 	cart.mappingID = "F8"
 	cart.banks = make([][]uint8, cart.NumBanks())
@@ -516,9 +516,9 @@ type atari16k struct {
 	atari
 }
 
-func newAtari16k(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
+func newAtari16k(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
 	cart := &atari16k{}
-	cart.instance = instance
+	cart.env = env
 	cart.bankSize = 4096
 	cart.mappingID = "F6"
 	cart.banks = make([][]uint8, cart.NumBanks())
@@ -619,9 +619,9 @@ type atari32k struct {
 	atari
 }
 
-func newAtari32k(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
+func newAtari32k(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
 	cart := &atari32k{}
-	cart.instance = instance
+	cart.env = env
 	cart.bankSize = 4096
 	cart.mappingID = "F4"
 	cart.banks = make([][]uint8, cart.NumBanks())

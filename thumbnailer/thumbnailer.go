@@ -24,8 +24,8 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
@@ -55,6 +55,8 @@ type Thumbnailer struct {
 	Render chan *image.RGBA
 }
 
+const label = environment.Label("thumbnailer")
+
 // NewThumbnailer is the preferred method of initialisation for the Thumbnailer type.
 func NewThumbnailer(prefs *preferences.Preferences) (*Thumbnailer, error) {
 	thmb := &Thumbnailer{
@@ -78,12 +80,12 @@ func NewThumbnailer(prefs *preferences.Preferences) (*Thumbnailer, error) {
 	tv.AddPixelRenderer(thmb)
 	tv.SetFPSCap(true)
 
-	// create a new VCS instance
+	// create a new VCS emulation
 	thmb.vcs, err = hardware.NewVCS(tv, prefs)
 	if err != nil {
 		return nil, fmt.Errorf("thumbnailer: %w", err)
 	}
-	thmb.vcs.Instance.Label = instance.Thumbnailer
+	thmb.vcs.Env.Label = label
 
 	thmb.img = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 

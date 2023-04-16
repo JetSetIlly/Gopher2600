@@ -18,7 +18,7 @@ package cdf
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -26,7 +26,7 @@ import (
 
 // cdf implements the mapper.CartMapper interface.
 type cdf struct {
-	instance  *instance.Instance
+	env       *environment.Environment
 	dev       mapper.CartCoProcDeveloper
 	mappingID string
 
@@ -70,9 +70,9 @@ const (
 )
 
 // NewCDF is the preferred method of initialisation for the CDF type.
-func NewCDF(instance *instance.Instance, version string, data []byte) (mapper.CartMapper, error) {
+func NewCDF(env *environment.Environment, version string, data []byte) (mapper.CartMapper, error) {
 	cart := &cdf{
-		instance:  instance,
+		env:       env,
 		mappingID: "CDF",
 		bankSize:  4096,
 		state:     newCDFstate(),
@@ -80,7 +80,7 @@ func NewCDF(instance *instance.Instance, version string, data []byte) (mapper.Ca
 	}
 
 	var err error
-	cart.version, err = newVersion(instance.Prefs.ARM.Model.Get().(string), version, data)
+	cart.version, err = newVersion(env.Prefs.ARM.Model.Get().(string), version, data)
 	if err != nil {
 		return nil, fmt.Errorf("CDF: %w", err)
 	}
@@ -100,7 +100,7 @@ func NewCDF(instance *instance.Instance, version string, data []byte) (mapper.Ca
 	}
 
 	// initialise static memory
-	cart.state.static = cart.newCDFstatic(instance, data, cart.version)
+	cart.state.static = cart.newCDFstatic(env, data, cart.version)
 
 	// datastream registers need to reference the incrementShift and
 	// fetcherShift values in the version type. we make a copy of these values
@@ -114,7 +114,7 @@ func NewCDF(instance *instance.Instance, version string, data []byte) (mapper.Ca
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart)
+	cart.arm = arm.NewARM(cart.version.mmap, cart.env.Prefs.ARM, cart.state.static, cart)
 
 	return cart, nil
 }
@@ -159,7 +159,7 @@ func (cart *cdf) Plumb() {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *cdf) PlumbFromDifferentEmulation() {
-	cart.arm = arm.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart)
+	cart.arm = arm.NewARM(cart.version.mmap, cart.env.Prefs.ARM, cart.state.static, cart)
 }
 
 // Reset implements the mapper.CartMapper interface.

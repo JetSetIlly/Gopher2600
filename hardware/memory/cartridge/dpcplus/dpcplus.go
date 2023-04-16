@@ -18,7 +18,7 @@ package dpcplus
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -31,7 +31,7 @@ import (
 //
 // https://atariage.com/forums/blogs/entry/11811-dpcarm-part-6-dpc-cartridge-layout/
 type dpcPlus struct {
-	instance  *instance.Instance
+	env       *environment.Environment
 	dev       mapper.CartCoProcDeveloper
 	mappingID string
 
@@ -62,9 +62,9 @@ const (
 )
 
 // NewDPCplus is the preferred method of initialisation for the dpcPlus type.
-func NewDPCplus(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
+func NewDPCplus(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
 	cart := &dpcPlus{
-		instance:  instance,
+		env:       env,
 		mappingID: "DPC+",
 		bankSize:  4096,
 		state:     newDPCPlusState(),
@@ -74,7 +74,7 @@ func NewDPCplus(instance *instance.Instance, data []byte) (mapper.CartMapper, er
 	var err error
 
 	// create addresses
-	cart.version, err = newVersion(instance.Prefs.ARM.Model.Get().(string), data)
+	cart.version, err = newVersion(env.Prefs.ARM.Model.Get().(string), data)
 	if err != nil {
 		return nil, fmt.Errorf("DPC+: %s", err.Error())
 	}
@@ -105,7 +105,7 @@ func NewDPCplus(instance *instance.Instance, data []byte) (mapper.CartMapper, er
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm.NewARM(cart.version.mmap, instance.Prefs.ARM, cart.state.static, cart)
+	cart.arm = arm.NewARM(cart.version.mmap, env.Prefs.ARM, cart.state.static, cart)
 
 	return cart, nil
 }
@@ -150,12 +150,12 @@ func (cart *dpcPlus) Plumb() {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *dpcPlus) PlumbFromDifferentEmulation() {
-	cart.arm = arm.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart)
+	cart.arm = arm.NewARM(cart.version.mmap, cart.env.Prefs.ARM, cart.state.static, cart)
 }
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Reset() {
-	cart.state.initialise(cart.instance.Random, len(cart.banks)-1)
+	cart.state.initialise(cart.env.Random, len(cart.banks)-1)
 }
 
 // Access implements the mapper.CartMapper interface.

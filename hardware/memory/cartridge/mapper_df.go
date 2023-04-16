@@ -18,13 +18,13 @@ package cartridge
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 type df struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	mappingID string
 
@@ -37,9 +37,9 @@ type df struct {
 }
 
 // example ROM: penult RPG.
-func newDF(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
+func newDF(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
 	cart := &df{
-		instance:  instance,
+		env:       env,
 		mappingID: "DF",
 		bankSize:  4096,
 		state:     newDfState(),
@@ -84,8 +84,8 @@ func (cart *df) Plumb() {
 // Reset implements the mapper.CartMapper interface.
 func (cart *df) Reset() {
 	for i := range cart.state.ram {
-		if cart.instance.Prefs.RandomState.Get().(bool) {
-			cart.state.ram[i] = uint8(cart.instance.Random.NoRewind(0xff))
+		if cart.env.Prefs.RandomState.Get().(bool) {
+			cart.state.ram[i] = uint8(cart.env.Random.NoRewind(0xff))
 		} else {
 			cart.state.ram[i] = 0
 		}

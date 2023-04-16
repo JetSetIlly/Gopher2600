@@ -19,10 +19,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
-	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -30,7 +30,7 @@ import (
 // CPU implements the 6507 found as found in the Atari 2600. Register logic is
 // implemented by the Register type in the registers sub-package.
 type CPU struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	PC     registers.ProgramCounter
 	A      registers.Register
@@ -86,9 +86,9 @@ type CPU struct {
 
 // NewCPU is the preferred method of initialisation for the CPU structure. Note
 // that the CPU will be initialised in a random state.
-func NewCPU(instance *instance.Instance, mem cpubus.Memory) *CPU {
+func NewCPU(env *environment.Environment, mem cpubus.Memory) *CPU {
 	return &CPU{
-		instance:     instance,
+		env:          env,
 		mem:          mem,
 		PC:           registers.NewProgramCounter(0),
 		A:            registers.NewRegister(0, "A"),
@@ -127,15 +127,15 @@ func (mc *CPU) Reset() {
 	mc.Interrupted = true
 	mc.Killed = false
 
-	// checking for instance == nil because it's possible for NewCPU to be
-	// called with a nil instance (test package)
-	if mc.instance != nil && mc.instance.Prefs.RandomState.Get().(bool) {
-		mc.PC.Load(uint16(mc.instance.Random.NoRewind(0xffff)))
-		mc.A.Load(uint8(mc.instance.Random.NoRewind(0xff)))
-		mc.X.Load(uint8(mc.instance.Random.NoRewind(0xff)))
-		mc.Y.Load(uint8(mc.instance.Random.NoRewind(0xff)))
-		mc.SP.Load(uint8(mc.instance.Random.NoRewind(0xff)))
-		mc.Status.Load(uint8(mc.instance.Random.NoRewind(0xff)))
+	// checking for env == nil because it's possible for NewCPU to be
+	// called with a nil environment (test package)
+	if mc.env != nil && mc.env.Prefs.RandomState.Get().(bool) {
+		mc.PC.Load(uint16(mc.env.Random.NoRewind(0xffff)))
+		mc.A.Load(uint8(mc.env.Random.NoRewind(0xff)))
+		mc.X.Load(uint8(mc.env.Random.NoRewind(0xff)))
+		mc.Y.Load(uint8(mc.env.Random.NoRewind(0xff)))
+		mc.SP.Load(uint8(mc.env.Random.NoRewind(0xff)))
+		mc.Status.Load(uint8(mc.env.Random.NoRewind(0xff)))
 	} else {
 		mc.PC.Load(0)
 		mc.A.Load(0)

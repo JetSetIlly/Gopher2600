@@ -18,7 +18,7 @@ package timer
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 )
@@ -61,7 +61,7 @@ func (in Divider) String() string {
 type Timer struct {
 	mem chipbus.Memory
 
-	instance *instance.Instance
+	env *environment.Environment
 
 	// the divider value most recently requested by the CPU
 	divider Divider
@@ -82,11 +82,11 @@ type Timer struct {
 }
 
 // NewTimer is the preferred method of initialisation of the Timer type.
-func NewTimer(instance *instance.Instance, mem chipbus.Memory) *Timer {
+func NewTimer(env *environment.Environment, mem chipbus.Memory) *Timer {
 	tmr := &Timer{
-		instance: instance,
-		mem:      mem,
-		divider:  T1024T,
+		env:     env,
+		mem:     mem,
+		divider: T1024T,
 	}
 
 	tmr.Reset()
@@ -98,10 +98,10 @@ func NewTimer(instance *instance.Instance, mem chipbus.Memory) *Timer {
 func (tmr *Timer) Reset() {
 	tmr.pa7 = true
 
-	if tmr.instance.Prefs.RandomState.Get().(bool) {
+	if tmr.env.Prefs.RandomState.Get().(bool) {
 		tmr.divider = T1024T
-		tmr.ticksRemaining = tmr.instance.Random.NoRewind(0xffff)
-		tmr.mem.ChipWrite(chipbus.INTIM, uint8(tmr.instance.Random.NoRewind(0xff)))
+		tmr.ticksRemaining = tmr.env.Random.NoRewind(0xffff)
+		tmr.mem.ChipWrite(chipbus.INTIM, uint8(tmr.env.Random.NoRewind(0xff)))
 	} else {
 		tmr.divider = T1024T
 		tmr.ticksRemaining = int(T1024T)

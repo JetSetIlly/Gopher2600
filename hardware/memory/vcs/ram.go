@@ -18,22 +18,22 @@ package vcs
 import (
 	"encoding/hex"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // RAM represents the 128bytes of RAM in the PIA 6532 chip, found in the Atari
 // VCS.
 type RAM struct {
-	instance *instance.Instance
-	RAM      []uint8
+	env *environment.Environment
+	RAM []uint8
 }
 
 // NewRAM is the preferred method of initialisation for the RAM memory area.
-func NewRAM(instance *instance.Instance) *RAM {
+func NewRAM(env *environment.Environment) *RAM {
 	ram := &RAM{
-		instance: instance,
-		RAM:      make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1),
+		env: env,
+		RAM: make([]uint8, memorymap.MemtopRAM-memorymap.OriginRAM+1),
 	}
 	return ram
 }
@@ -49,8 +49,8 @@ func (ram *RAM) Snapshot() *RAM {
 // Reset contents of RAM.
 func (ram *RAM) Reset() {
 	for i := range ram.RAM {
-		if ram.instance != nil && ram.instance.Prefs.RandomState.Get().(bool) {
-			ram.RAM[i] = uint8(ram.instance.Random.NoRewind(0xff))
+		if ram.env != nil && ram.env.Prefs.RandomState.Get().(bool) {
+			ram.RAM[i] = uint8(ram.env.Random.NoRewind(0xff))
 		} else {
 			ram.RAM[i] = 0
 		}

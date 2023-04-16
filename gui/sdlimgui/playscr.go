@@ -165,7 +165,7 @@ func (win *playScr) drawFPS() bool {
 	imguiSeparator()
 
 	if win.img.lz.Cart.HasCoProcBus {
-		clk := float32(win.img.vcs.Instance.Prefs.ARM.Clock.Get().(float64))
+		clk := float32(win.img.vcs.Env.Prefs.ARM.Clock.Get().(float64))
 		imgui.Text(fmt.Sprintf("%s Clock: %.0f Mhz", win.img.lz.Cart.CoProcID, clk))
 		imguiSeparator()
 	}

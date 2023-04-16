@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -42,7 +42,7 @@ type Panel struct {
 }
 
 // NewPanel is the preferred method of initialisation for the Panel type.
-func NewPanel(instance *instance.Instance, id plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
+func NewPanel(env *environment.Environment, id plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	pan := &Panel{
 		id:    id,
 		bus:   bus,

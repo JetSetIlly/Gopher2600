@@ -20,7 +20,7 @@ import (
 	"io"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -242,7 +242,7 @@ func (s *state) initialise() {
 }
 
 type Moviecart struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	mappingID string
 
@@ -252,9 +252,9 @@ type Moviecart struct {
 	state *state
 }
 
-func NewMoviecart(ins *instance.Instance, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+func NewMoviecart(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
 	cart := &Moviecart{
-		instance:  ins,
+		env:       env,
 		loader:    loader.StreamedData,
 		mappingID: "MC",
 	}
@@ -262,9 +262,8 @@ func NewMoviecart(ins *instance.Instance, loader cartridgeloader.Loader) (mapper
 	cart.state = newState()
 	cart.banks = make([]byte, 4096)
 
-	// if the emulation has been labelled as a thumbnailer then shorten the
-	// title card sequence
-	if ins.Label == instance.Thumbnailer {
+	// shorten title card sequence if this is not the main emulation
+	if !env.IsMainEmulation() {
 		cart.state.shortTitleCard = true
 		cart.state.initialise()
 	}

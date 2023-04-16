@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/notifications"
@@ -32,7 +32,7 @@ var NotAPlusROM = errors.New("not a plus rom")
 
 // PlusROM wraps another mapper.CartMapper inside a network aware format.
 type PlusROM struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	notificationHook notifications.NotificationHook
 
@@ -60,13 +60,13 @@ func (s *state) Plumb() {
 	s.child.Plumb()
 }
 
-func NewPlusROM(instance *instance.Instance, child mapper.CartMapper, notificationHook notifications.NotificationHook) (mapper.CartMapper, error) {
-	cart := &PlusROM{instance: instance}
+func NewPlusROM(env *environment.Environment, child mapper.CartMapper, notificationHook notifications.NotificationHook) (mapper.CartMapper, error) {
+	cart := &PlusROM{env: env}
 	cart.notificationHook = notificationHook
 	cart.state = &state{}
 	cart.state.child = child
 
-	cart.net = newNetwork(cart.instance)
+	cart.net = newNetwork(cart.env)
 
 	// get reference to last bank
 	bank := child.CopyBanks()[cart.NumBanks()-1]

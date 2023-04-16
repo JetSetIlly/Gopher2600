@@ -18,13 +18,13 @@ package cartridge
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 type superbank struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	mappingID string
 
@@ -43,9 +43,9 @@ type superbank struct {
 	// !!TODO: hotspot info for superbank
 }
 
-func newSuperbank(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
+func newSuperbank(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
 	cart := &superbank{
-		instance:  instance,
+		env:       env,
 		mappingID: "SB",
 		bankSize:  4096,
 		state:     newSuperbankState(),

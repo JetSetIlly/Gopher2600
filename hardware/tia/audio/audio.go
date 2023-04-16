@@ -17,6 +17,8 @@ package audio
 
 import (
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/environment"
 )
 
 // Tracker implementations display or otherwise record the state of the audio
@@ -35,6 +37,8 @@ const SampleFreq = 31400
 //
 // https://raw.githubusercontent.com/alekmaul/stella/master/emucore/TIASound.c
 type Audio struct {
+	env *environment.Environment
+
 	// the reference frequency for all sound produced by the TIA is 30Khz.
 	// this is the 3.58Mhz clock, which the TIA operates at, divided by
 	// 114. that's one half of a scanline so we count to 228 and update
@@ -57,8 +61,10 @@ type Audio struct {
 }
 
 // NewAudio is the preferred method of initialisation for the Audio sub-system.
-func NewAudio() *Audio {
-	return &Audio{}
+func NewAudio(env *environment.Environment) *Audio {
+	return &Audio{
+		env: env,
+	}
 }
 
 func (au *Audio) Reset() {

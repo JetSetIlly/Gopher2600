@@ -13,6 +13,5 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package instance provides context for parallel instances of the VCS type
-// (defined in hardware package).
-package instance
+// Package environment provides context for an emulation.
+package environment

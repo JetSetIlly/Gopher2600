@@ -22,7 +22,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
@@ -31,8 +31,8 @@ import (
 
 // Elf implements the mapper.CartMapper interface.
 type Elf struct {
-	instance *instance.Instance
-	dev      mapper.CartCoProcDeveloper
+	env *environment.Environment
+	dev mapper.CartCoProcDeveloper
 
 	version   string
 	pathToROM string
@@ -81,7 +81,7 @@ func (r *elfReaderAt) ReadAt(p []byte, start int64) (n int, err error) {
 }
 
 // NewElf is the preferred method of initialisation for the Elf type.
-func NewElf(instance *instance.Instance, pathToROM string, inACE bool) (mapper.CartMapper, error) {
+func NewElf(env *environment.Environment, pathToROM string, inACE bool) (mapper.CartMapper, error) {
 	r := &elfReaderAt{}
 
 	// open file in the normal way and read all data. close the file
@@ -136,7 +136,7 @@ func NewElf(instance *instance.Instance, pathToROM string, inACE bool) (mapper.C
 	}
 
 	cart := &Elf{
-		instance:  instance,
+		env:       env,
 		pathToROM: pathToROM,
 		yieldHook: mapper.StubCartYieldHook{},
 	}
@@ -146,7 +146,7 @@ func NewElf(instance *instance.Instance, pathToROM string, inACE bool) (mapper.C
 		return nil, err
 	}
 
-	cart.arm = arm.NewARM(cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart)
+	cart.arm = arm.NewARM(cart.mem.model, cart.env.Prefs.ARM, cart.mem, cart)
 	cart.mem.Plumb(cart.arm)
 
 	cart.mem.busStuffingInit()
@@ -188,7 +188,7 @@ func (cart *Elf) PlumbFromDifferentEmulation() {
 	if cart.armState == nil {
 		panic("cannot plumb this ELF instance because the ARM state is nil")
 	}
-	cart.arm = arm.NewARM(cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart)
+	cart.arm = arm.NewARM(cart.mem.model, cart.env.Prefs.ARM, cart.mem, cart)
 	cart.mem.Plumb(cart.arm)
 	cart.arm.Plumb(cart.armState, cart.mem, cart)
 	cart.armState = nil

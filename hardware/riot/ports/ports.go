@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -27,7 +27,7 @@ import (
 
 // Input implements the input/output part of the RIOT (the IO in RIOT).
 type Ports struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	riot chipbus.Memory
 	tia  chipbus.Memory
@@ -77,12 +77,12 @@ type Ports struct {
 }
 
 // NewPorts is the preferred method of initialisation of the Ports type.
-func NewPorts(instance *instance.Instance, riotMem chipbus.Memory, tiaMem chipbus.Memory) *Ports {
+func NewPorts(env *environment.Environment, riotMem chipbus.Memory, tiaMem chipbus.Memory) *Ports {
 	p := &Ports{
-		instance: instance,
-		riot:     riotMem,
-		tia:      tiaMem,
-		latch:    false,
+		env:   env,
+		riot:  riotMem,
+		tia:   tiaMem,
+		latch: false,
 	}
 	return p
 }
@@ -127,7 +127,7 @@ func (p *Ports) Plumb(riotMem chipbus.Memory, tiaMem chipbus.Memory) {
 
 // Plug connects a peripheral to a player port.
 func (p *Ports) Plug(port plugging.PortID, c NewPeripheral) error {
-	periph := c(p.instance, port, p)
+	periph := c(p.env, port, p)
 	if periph == nil {
 		return fmt.Errorf("can't attach peripheral to port (%v)", port)
 	}

@@ -26,8 +26,8 @@ func (img *SdlImgui) drawPlusROMFirstInstallation() {
 		return
 	}
 
-	nick := img.vcs.Instance.Prefs.PlusROM.Nick.String()
-	id := img.vcs.Instance.Prefs.PlusROM.ID.String()
+	nick := img.vcs.Env.Prefs.PlusROM.Nick.String()
+	id := img.vcs.Env.Prefs.PlusROM.ID.String()
 
 	img.hasModal = true
 
@@ -45,11 +45,11 @@ func (img *SdlImgui) drawPlusROMFirstInstallation() {
 		imgui.SameLine()
 
 		if imguiTextInput("##nick", plusnet.MaxNickLength, &nick, true) {
-			err := img.vcs.Instance.Prefs.PlusROM.Nick.Set(nick)
+			err := img.vcs.Env.Prefs.PlusROM.Nick.Set(nick)
 			if err != nil {
 				logger.Logf("sdlimgui", "could not set plusrom nick: %v", err)
 			}
-			err = img.vcs.Instance.Prefs.PlusROM.Save()
+			err = img.vcs.Env.Prefs.PlusROM.Save()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save preferences: %v", err)
 			}
@@ -66,11 +66,11 @@ func (img *SdlImgui) drawPlusROMFirstInstallation() {
 
 		if len(nick) >= 1 {
 			if imgui.Button("I'm happy with my nick") {
-				err := img.vcs.Instance.Prefs.PlusROM.Nick.Set(nick)
+				err := img.vcs.Env.Prefs.PlusROM.Nick.Set(nick)
 				if err != nil {
 					logger.Logf("sdlimgui", "could not set preference value: %v", err)
 				}
-				err = img.vcs.Instance.Prefs.PlusROM.Save()
+				err = img.vcs.Env.Prefs.PlusROM.Save()
 				if err != nil {
 					logger.Logf("sdlimgui", "could not save preferences: %v", err)
 				}

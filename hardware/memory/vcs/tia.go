@@ -18,7 +18,7 @@ package vcs
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -96,7 +96,7 @@ const TIADrivenPins = uint8(0b11000000)
 // TIAMemory defines the information for and operations allowed for those
 // memory mems accessed by the VCS chips as well as the CPU.
 type TIAMemory struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	// memory stores the values read by the CPU and written to by the TIA
 	memory []uint8
@@ -116,10 +116,10 @@ type TIAMemory struct {
 }
 
 // NewTIAMemory is the preferred method of initialisation for the TIA memory chip.
-func NewTIAMemory(instance *instance.Instance) *TIAMemory {
+func NewTIAMemory(env *environment.Environment) *TIAMemory {
 	chip := &TIAMemory{
-		instance: instance,
-		origin:   memorymap.OriginTIA,
+		env:    env,
+		origin: memorymap.OriginTIA,
 	}
 
 	// allocate the minimal amount of memory

@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
-	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -50,7 +50,7 @@ type RIOTports interface {
 
 // TIA contains all the sub-components of the VCS TIA sub-system.
 type TIA struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	tv  TV
 	mem chipbus.Memory
@@ -137,18 +137,18 @@ func (tia *TIA) String() string {
 }
 
 // NewTIA creates a TIA, to be used in a VCS emulation.
-func NewTIA(instance *instance.Instance, tv TV, mem chipbus.Memory, riot RIOTports, cpu *cpu.CPU) (*TIA, error) {
+func NewTIA(env *environment.Environment, tv TV, mem chipbus.Memory, riot RIOTports, cpu *cpu.CPU) (*TIA, error) {
 	tia := &TIA{
-		instance: instance,
-		tv:       tv,
-		mem:      mem,
-		riot:     riot,
-		Hblank:   true,
-		rdyFlag:  &cpu.RdyFlg,
+		env:     env,
+		tv:      tv,
+		mem:     mem,
+		riot:    riot,
+		Hblank:  true,
+		rdyFlag: &cpu.RdyFlg,
 	}
 
-	tia.Audio = audio.NewAudio()
-	tia.Video = video.NewVideo(instance, mem, tv, &tia.PClk, &tia.hsync, &tia.Hblank, &tia.Hmove)
+	tia.Audio = audio.NewAudio(env)
+	tia.Video = video.NewVideo(env, mem, tv, &tia.PClk, &tia.hsync, &tia.Hblank, &tia.Hmove)
 	tia.Hmove.Reset()
 	tia.PClk = phaseclock.ResetValue
 
@@ -172,7 +172,7 @@ func (tia *TIA) Plumb(tv TV, mem chipbus.Memory, riot RIOTports, cpu *cpu.CPU) {
 	tia.mem = mem
 	tia.riot = riot
 	tia.rdyFlag = &cpu.RdyFlg
-	tia.Video.Plumb(tia.instance, tia.mem, tia.tv, &tia.PClk, &tia.hsync, &tia.Hblank, &tia.Hmove)
+	tia.Video.Plumb(tia.env, tia.mem, tia.tv, &tia.PClk, &tia.hsync, &tia.Hblank, &tia.Hmove)
 }
 
 // Update checks to see if ChipData applies tot he TIA and updates accordingly.
@@ -539,13 +539,13 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister) {
 
 			// update playfield color register (depending on TIA revision)
 			if update {
-				if !tia.instance.Prefs.Revision.Live.LateCOLUPF.Load().(bool) {
+				if !tia.env.Prefs.Revision.Live.LateCOLUPF.Load().(bool) {
 					update = tia.Video.UpdatePlayfieldColor(reg)
 				}
 
 				if update {
 					// update playfield bits (depending on TIA revisions)
-					if !tia.instance.Prefs.Revision.Live.LatePFx.Load().(bool) {
+					if !tia.env.Prefs.Revision.Live.LatePFx.Load().(bool) {
 						update = tia.Video.UpdatePlayfield(reg)
 					}
 				}
@@ -560,7 +560,7 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister) {
 
 	// update playfield bits (depending on TIA revisions)
 	if update {
-		if tia.instance.Prefs.Revision.Live.LatePFx.Load().(bool) {
+		if tia.env.Prefs.Revision.Live.LatePFx.Load().(bool) {
 			update = tia.Video.UpdatePlayfield(reg)
 		}
 	}
@@ -602,7 +602,7 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister) {
 
 					if update {
 						// update playfield color register (depending on TIA revision)
-						if tia.instance.Prefs.Revision.Live.LateCOLUPF.Load().(bool) {
+						if tia.env.Prefs.Revision.Live.LateCOLUPF.Load().(bool) {
 							update = tia.Video.UpdatePlayfieldColor(reg)
 							if update {
 								logger.Logf("tia", "memory altered to no affect (%04x=%02x)", reg.Address, reg.Value)

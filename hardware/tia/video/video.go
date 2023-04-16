@@ -16,7 +16,7 @@
 package video
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -107,12 +107,12 @@ type Video struct {
 
 // tia is a convenient packaging of TIA state that is required by the playfield/sprites.
 type tia struct {
-	instance *instance.Instance
-	tv       TV
-	pclk     *phaseclock.PhaseClock
-	hsync    *polycounter.Polycounter
-	hblank   *bool
-	hmove    *hmove.Hmove
+	env    *environment.Environment
+	tv     TV
+	pclk   *phaseclock.PhaseClock
+	hsync  *polycounter.Polycounter
+	hblank *bool
+	hmove  *hmove.Hmove
 }
 
 // NewVideo is the preferred method of initialisation for the Video sub-system.
@@ -128,15 +128,15 @@ type tia struct {
 // The references to the TIA's HBLANK state and whether HMOVE is latched, are
 // required to tune the delays experienced by the various sprite events (eg.
 // reset position).
-func NewVideo(instance *instance.Instance, mem chipbus.Memory, tv TV, pclk *phaseclock.PhaseClock,
+func NewVideo(env *environment.Environment, mem chipbus.Memory, tv TV, pclk *phaseclock.PhaseClock,
 	hsync *polycounter.Polycounter, hblank *bool, hmove *hmove.Hmove) *Video {
 	tia := tia{
-		instance: instance,
-		tv:       tv,
-		pclk:     pclk,
-		hsync:    hsync,
-		hblank:   hblank,
-		hmove:    hmove,
+		env:    env,
+		tv:     tv,
+		pclk:   pclk,
+		hsync:  hsync,
+		hblank: hblank,
+		hmove:  hmove,
 	}
 
 	vd := Video{
@@ -168,17 +168,17 @@ func (vd *Video) Snapshot() *Video {
 }
 
 // Plumb ChipBus into TIA/Video components. Update pointers that refer to parent TIA.
-func (vd *Video) Plumb(instance *instance.Instance, mem chipbus.Memory, tv TV, pclk *phaseclock.PhaseClock,
+func (vd *Video) Plumb(env *environment.Environment, mem chipbus.Memory, tv TV, pclk *phaseclock.PhaseClock,
 	hsync *polycounter.Polycounter, hblank *bool, hmove *hmove.Hmove) {
 	vd.Collisions.Plumb(mem)
 
 	vd.tia = tia{
-		instance: instance,
-		tv:       tv,
-		pclk:     pclk,
-		hsync:    hsync,
-		hblank:   hblank,
-		hmove:    hmove,
+		env:    env,
+		tv:     tv,
+		pclk:   pclk,
+		hsync:  hsync,
+		hblank: hblank,
+		hmove:  hmove,
 	}
 
 	vd.Playfield.Plumb(vd.tia)
@@ -601,7 +601,7 @@ func (vd *Video) UpdateSpritePixels(data chipbus.ChangedRegister) bool {
 	switch data.Register {
 	case cpubus.GRP0:
 		vd.Player0.setGfxData(data.Value)
-		if vd.tia.instance.Prefs.Revision.Live.LateVDELGRP0.Load().(bool) {
+		if vd.tia.env.Prefs.Revision.Live.LateVDELGRP0.Load().(bool) {
 			vd.writing.Schedule(1, 0)
 			vd.writingRegister = data.Register
 		} else {
@@ -610,7 +610,7 @@ func (vd *Video) UpdateSpritePixels(data chipbus.ChangedRegister) bool {
 
 	case cpubus.GRP1:
 		vd.Player1.setGfxData(data.Value)
-		if vd.tia.instance.Prefs.Revision.Live.LateVDELGRP1.Load().(bool) {
+		if vd.tia.env.Prefs.Revision.Live.LateVDELGRP1.Load().(bool) {
 			vd.writing.Schedule(1, 0)
 			vd.writingRegister = data.Register
 		} else {

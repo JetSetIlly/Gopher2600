@@ -192,7 +192,7 @@ func (plb *Playback) AttachToVCSInput(vcs *hardware.VCS) error {
 
 	// we want the machine in a known state. the easiest way to do this is to
 	// default the hardware preferences
-	vcs.Instance.Normalise()
+	vcs.Env.Normalise()
 
 	// validate header. keep it simple and disallow any difference in tv
 	// specification. some combinations may work but there's no compelling

@@ -13,46 +13,36 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package instance
+package environment
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/random"
 )
 
-// Label indicates the context of the instance.
+// Label is used to name the environment
 type Label string
 
-// List of value Label values.
-const (
-	Main        Label = ""
-	Thumbnailer Label = "thumbnailer"
-	Comparison  Label = "comparison"
-)
-
-// Instance defines those parts of the emulation that might change between
-// different instantiations of the VCS type, but is not actually the VCS
-// itself.
-type Instance struct {
-	// the name of the instance. the name can be used to decide if an action is appropriate
+// Environment is used to provide context for an emulation. Particularly useful
+// when using multiple emulations
+type Environment struct {
 	Label Label
 
 	// any randomisation required by the emulation should be retreived through
 	// this structure
 	Random *random.Random
 
-	// the prefrences of the running instance. this instance can be shared
-	// with other running instances of the emulation.
+	// the emulation preferences
 	Prefs *preferences.Preferences
 }
 
-// NewInstance is the preferred method of initialisation for the Instance type.
+// NewEnvironment is the preferred method of initialisation for the Environment type.
 //
 // The two arguments must be supplied. In the case of the prefs field it can by
-// nil and a new prefs instance will be created. Providing a non-nil value
-// allows the preferences of more than one VCS instance to be synchronised.
-func NewInstance(tv random.TV, prefs *preferences.Preferences) (*Instance, error) {
-	ins := &Instance{
+// nil and a new Preferences instance will be created. Providing a non-nil value
+// allows the preferences of more than one VCS emulation to be synchronised.
+func NewEnvironment(tv random.TV, prefs *preferences.Preferences) (*Environment, error) {
+	env := &Environment{
 		Random: random.NewRandom(tv),
 	}
 
@@ -65,18 +55,29 @@ func NewInstance(tv random.TV, prefs *preferences.Preferences) (*Instance, error
 		}
 	}
 
-	ins.Prefs = prefs
+	env.Prefs = prefs
 
-	return ins, nil
+	return env, nil
 }
 
-// Normalise ensures the VCS instance is in an known default state. Useful for
+// Normalise ensures the environment is in an known default state. Useful for
 // regression testing where the initial state must be the same for every run of
 // the test.
-func (ins *Instance) Normalise() {
-	ins.Random.ZeroSeed = true
-	ins.Prefs.SetDefaults()
-	ins.Prefs.Revision.SetDefaults()
-	ins.Prefs.ARM.SetDefaults()
-	ins.Prefs.PlusROM.SetDefaults()
+func (env *Environment) Normalise() {
+	env.Random.ZeroSeed = true
+	env.Prefs.SetDefaults()
+	env.Prefs.Revision.SetDefaults()
+	env.Prefs.ARM.SetDefaults()
+	env.Prefs.PlusROM.SetDefaults()
+}
+
+// IsMainEmulation returns true if the environment is intended for the main
+// emulation in the system
+func (env *Environment) IsMainEmulation() bool {
+	return env.Label == ""
+}
+
+// IsEmulation checks the emulation label and returns true if it matches
+func (env *Environment) IsEmulation(label Label) bool {
+	return env.Label == label
 }

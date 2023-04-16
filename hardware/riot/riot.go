@@ -18,7 +18,7 @@ package riot
 import (
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
@@ -27,7 +27,7 @@ import (
 
 // RIOT represents the PIA 6532 found in the VCS.
 type RIOT struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	mem chipbus.Memory
 
@@ -36,12 +36,12 @@ type RIOT struct {
 }
 
 // NewRIOT is the preferred method of initialisation for the RIOT type.
-func NewRIOT(instance *instance.Instance, mem chipbus.Memory, tiaMem chipbus.Memory) *RIOT {
+func NewRIOT(env *environment.Environment, mem chipbus.Memory, tiaMem chipbus.Memory) *RIOT {
 	return &RIOT{
-		instance: instance,
-		mem:      mem,
-		Timer:    timer.NewTimer(instance, mem),
-		Ports:    ports.NewPorts(instance, mem, tiaMem),
+		env:   env,
+		mem:   mem,
+		Timer: timer.NewTimer(env, mem),
+		Ports: ports.NewPorts(env, mem, tiaMem),
 	}
 }
 

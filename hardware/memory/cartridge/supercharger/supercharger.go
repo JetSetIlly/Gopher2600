@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/notifications"
@@ -45,7 +45,7 @@ type tape interface {
 
 // Supercharger represents a supercharger cartridge.
 type Supercharger struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	mappingID string
 
@@ -60,9 +60,9 @@ type Supercharger struct {
 
 // NewSupercharger is the preferred method of initialisation for the
 // Supercharger type.
-func NewSupercharger(instance *instance.Instance, cartload cartridgeloader.Loader) (mapper.CartMapper, error) {
+func NewSupercharger(env *environment.Environment, cartload cartridgeloader.Loader) (mapper.CartMapper, error) {
 	cart := &Supercharger{
-		instance:         instance,
+		env:              env,
 		mappingID:        "AR",
 		bankSize:         2048,
 		state:            newState(),
@@ -115,7 +115,7 @@ func (cart *Supercharger) Plumb() {
 func (cart *Supercharger) Reset() {
 	for b := range cart.state.ram {
 		for i := range cart.state.ram[b] {
-			cart.state.ram[b][i] = uint8(cart.instance.Random.NoRewind(0xff))
+			cart.state.ram[b][i] = uint8(cart.env.Random.NoRewind(0xff))
 		}
 	}
 

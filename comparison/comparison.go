@@ -24,8 +24,8 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
@@ -58,6 +58,8 @@ type Comparison struct {
 	driver driver
 }
 
+const label = environment.Label("comparison")
+
 // NewComparison is the preferred method of initialisation for the Comparison type.
 func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 	cmp := &Comparison{
@@ -78,12 +80,12 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 	tv.AddPixelRenderer(cmp)
 	tv.SetFPSCap(true)
 
-	// create a new VCS instance
-	cmp.VCS, err = hardware.NewVCS(tv, driverVCS.Instance.Prefs)
+	// create a new VCS emulation
+	cmp.VCS, err = hardware.NewVCS(tv, driverVCS.Env.Prefs)
 	if err != nil {
 		return nil, fmt.Errorf("comparison: %w", err)
 	}
-	cmp.VCS.Instance.Label = instance.Comparison
+	cmp.VCS.Env.Label = label
 
 	cmp.img = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 	cmp.diffImg = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))

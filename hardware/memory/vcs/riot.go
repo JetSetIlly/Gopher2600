@@ -18,14 +18,14 @@ package vcs
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 type RIOTMemory struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	// memory stores the values read by the CPU and written to by the RIOT
 	memory []uint8
@@ -48,10 +48,10 @@ type RIOTMemory struct {
 }
 
 // NewRIOTMemory is the preferred method of initialisation for the RIOT memory mem.
-func NewRIOTMemory(instance *instance.Instance) *RIOTMemory {
+func NewRIOTMemory(env *environment.Environment) *RIOTMemory {
 	chip := &RIOTMemory{
-		instance: instance,
-		origin:   memorymap.OriginRIOT,
+		env:    env,
+		origin: memorymap.OriginRIOT,
 	}
 
 	// allocate the minimal amount of memory

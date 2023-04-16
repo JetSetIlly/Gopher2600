@@ -18,7 +18,7 @@ package cartridge
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -38,7 +38,7 @@ import (
 //   - Lord of the Rings
 //   - etc.
 type parkerBros struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	mappingID string
 
@@ -50,9 +50,9 @@ type parkerBros struct {
 	state *parkerBrosState
 }
 
-func newParkerBros(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
+func newParkerBros(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
 	cart := &parkerBros{
-		instance:  instance,
+		env:       env,
 		mappingID: "E0",
 		bankSize:  1024,
 		state:     newParkerBrosState(),

@@ -58,7 +58,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 
 	// we want the machine in a known state. the easiest way to do this is to
 	// default the hardware preferences
-	vcs.Instance.Normalise()
+	vcs.Env.Normalise()
 
 	// vcs must be reset too
 	err = rec.vcs.Reset()

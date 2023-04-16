@@ -18,7 +18,7 @@ package memory
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -57,7 +57,7 @@ type FieldBus interface {
 
 // Memory is the monolithic representation of the memory in 2600.
 type Memory struct {
-	instance *instance.Instance
+	env *environment.Environment
 
 	RIOT *vcs.RIOTMemory
 	TIA  *vcs.TIAMemory
@@ -92,13 +92,13 @@ type Memory struct {
 }
 
 // NewMemory is the preferred method of initialisation for Memory.
-func NewMemory(instance *instance.Instance) *Memory {
+func NewMemory(env *environment.Environment) *Memory {
 	mem := &Memory{
-		instance: instance,
-		RIOT:     vcs.NewRIOTMemory(instance),
-		TIA:      vcs.NewTIAMemory(instance),
-		RAM:      vcs.NewRAM(instance),
-		Cart:     cartridge.NewCartridge(instance),
+		env:  env,
+		RIOT: vcs.NewRIOTMemory(env),
+		TIA:  vcs.NewTIAMemory(env),
+		RAM:  vcs.NewRAM(env),
+		Cart: cartridge.NewCartridge(env),
 	}
 	mem.Reset()
 	return mem
@@ -121,7 +121,7 @@ func (mem *Memory) Snapshot() *Memory {
 // Plumb makes sure everything is ship-shape after a rewind event.
 //
 // The fromDifferentEmulation indicates that the State has been created by a
-// different VCS instance than the one being plumbed into.
+// different VCS emulation than the one being plumbed into.
 func (mem *Memory) Plumb(fromDifferentEmulation bool) {
 	mem.Cart.Plumb(fromDifferentEmulation)
 }
@@ -197,8 +197,8 @@ func (mem *Memory) Read(address uint16) (uint8, error) {
 	if mem.DataBusDriven != 0xff {
 		// on a real superchip the pins are more indeterminate. for now,
 		// applying an addition random pattern is a good enough emulation for this
-		if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
-			data |= uint8(mem.instance.Random.Rewindable(0xff)) & (^mem.DataBusDriven)
+		if mem.env != nil && mem.env.Prefs.RandomPins.Get().(bool) {
+			data |= uint8(mem.env.Random.Rewindable(0xff)) & (^mem.DataBusDriven)
 		} else {
 			// this pattern is good for replicating what we see on the pluscart
 			// this matches observations made by Al_Nafuur with the following
