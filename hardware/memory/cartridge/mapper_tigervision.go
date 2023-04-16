@@ -100,7 +100,8 @@ func (cart *tigervision) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *tigervision) Plumb() {
+func (cart *tigervision) Plumb(env *environment.Environment) {
+	cart.env = env
 }
 
 // Reset implements the mapper.CartMapper interface.

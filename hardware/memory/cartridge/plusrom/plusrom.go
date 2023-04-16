@@ -56,8 +56,8 @@ func (s *state) Snapshot() *state {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (s *state) Plumb() {
-	s.child.Plumb()
+func (s *state) Plumb(env *environment.Environment) {
+	s.child.Plumb(env)
 }
 
 func NewPlusROM(env *environment.Environment, child mapper.CartMapper, notificationHook notifications.NotificationHook) (mapper.CartMapper, error) {
@@ -167,8 +167,9 @@ func (cart *PlusROM) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *PlusROM) Plumb() {
-	cart.state.Plumb()
+func (cart *PlusROM) Plumb(env *environment.Environment) {
+	cart.env = env
+	cart.state.Plumb(env)
 }
 
 // ID implements the mapper.CartContainer interface.

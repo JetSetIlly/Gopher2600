@@ -263,7 +263,7 @@ func NewMoviecart(env *environment.Environment, loader cartridgeloader.Loader) (
 	cart.banks = make([]byte, 4096)
 
 	// shorten title card sequence if this is not the main emulation
-	if !env.IsMainEmulation() {
+	if !env.IsEmulation(environment.MainEmulation) {
 		cart.state.shortTitleCard = true
 		cart.state.initialise()
 	}
@@ -298,7 +298,8 @@ func (cart *Moviecart) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *Moviecart) Plumb() {
+func (cart *Moviecart) Plumb(env *environment.Environment) {
+	cart.env = env
 }
 
 // Reset implements the mapper.CartMapper interface.

@@ -21,11 +21,17 @@ import (
 	"github.com/jetsetilly/gopher2600/environment"
 )
 
+// TrackerEnvironment defines the subset of the Environment type required
+// by a Tracker implementation
+type TrackerEnvironment interface {
+	IsEmulation(environment.Label) bool
+}
+
 // Tracker implementations display or otherwise record the state of the audio
 // registers for each channel.
 type Tracker interface {
 	// AudioTick is called every video cycle
-	AudioTick(channel int, reg Registers)
+	AudioTick(env TrackerEnvironment, channel int, reg Registers)
 }
 
 // SampleFreq represents the number of samples generated per second. This is
@@ -65,6 +71,11 @@ func NewAudio(env *environment.Environment) *Audio {
 	return &Audio{
 		env: env,
 	}
+}
+
+// Plumb audio into emulation
+func (au *Audio) Plumb(env *environment.Environment) {
+	au.env = env
 }
 
 func (au *Audio) Reset() {
@@ -107,11 +118,11 @@ func (au *Audio) Step() bool {
 	if au.tracker != nil {
 		// it's impossible for both channels to have changed in a single video cycle
 		if au.channel0.registersChanged {
-			au.tracker.AudioTick(0, au.channel0.registers)
+			au.tracker.AudioTick(au.env, 0, au.channel0.registers)
 			au.channel0.registersChanged = false
 			au.registersChanged = true
 		} else if au.channel1.registersChanged {
-			au.tracker.AudioTick(1, au.channel1.registers)
+			au.tracker.AudioTick(au.env, 1, au.channel1.registers)
 			au.channel1.registersChanged = false
 			au.registersChanged = true
 		}

@@ -71,11 +71,8 @@ func (env *Environment) Normalise() {
 	env.Prefs.PlusROM.SetDefaults()
 }
 
-// IsMainEmulation returns true if the environment is intended for the main
-// emulation in the system
-func (env *Environment) IsMainEmulation() bool {
-	return env.Label == ""
-}
+// MainEmulation is the label used for the main emulation
+const MainEmulation = Label("")
 
 // IsEmulation checks the emulation label and returns true if it matches
 func (env *Environment) IsEmulation(label Label) bool {

@@ -153,12 +153,14 @@ func (cart *cdf) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *cdf) Plumb() {
+func (cart *cdf) Plumb(env *environment.Environment) {
+	cart.env = env
 	cart.arm.Plumb(nil, cart.state.static, cart)
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *cdf) PlumbFromDifferentEmulation() {
+func (cart *cdf) PlumbFromDifferentEmulation(env *environment.Environment) {
+	cart.env = env
 	cart.arm = arm.NewARM(cart.version.mmap, cart.env.Prefs.ARM, cart.state.static, cart)
 }
 

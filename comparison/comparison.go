@@ -58,7 +58,7 @@ type Comparison struct {
 	driver driver
 }
 
-const label = environment.Label("comparison")
+const envLabel = environment.Label("comparison")
 
 // NewComparison is the preferred method of initialisation for the Comparison type.
 func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
@@ -85,7 +85,7 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 	if err != nil {
 		return nil, fmt.Errorf("comparison: %w", err)
 	}
-	cmp.VCS.Env.Label = label
+	cmp.VCS.Env.Label = envLabel
 
 	cmp.img = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 	cmp.diffImg = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))

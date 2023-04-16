@@ -54,7 +54,8 @@ func (riot *RIOT) Snapshot() *RIOT {
 }
 
 // Plumb new ChipBusses into the RIOT.
-func (riot *RIOT) Plumb(mem chipbus.Memory, tiaMem chipbus.Memory) {
+func (riot *RIOT) Plumb(env *environment.Environment, mem chipbus.Memory, tiaMem chipbus.Memory) {
+	riot.env = env
 	riot.mem = mem
 	riot.Timer.Plumb(mem)
 	riot.Ports.Plumb(mem, tiaMem)

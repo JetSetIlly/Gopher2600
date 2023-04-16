@@ -96,7 +96,8 @@ func (cart *dpc) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *dpc) Plumb() {
+func (cart *dpc) Plumb(env *environment.Environment) {
+	cart.env = env
 }
 
 // Reset implements the mapper.CartMapper interface.

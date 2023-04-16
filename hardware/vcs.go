@@ -138,10 +138,10 @@ func (vcs *VCS) End() {
 // The fromDifferentEmulation indicates that the State has been created by a
 // different VCS emulation than the one being plumbed into.
 func (vcs *VCS) Plumb(fromDifferentEmulation bool) {
-	vcs.CPU.Plumb(vcs.Mem)
-	vcs.Mem.Plumb(fromDifferentEmulation)
-	vcs.RIOT.Plumb(vcs.Mem.RIOT, vcs.Mem.TIA)
-	vcs.TIA.Plumb(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
+	vcs.CPU.Plumb(vcs.Env, vcs.Mem)
+	vcs.Mem.Plumb(vcs.Env, fromDifferentEmulation)
+	vcs.RIOT.Plumb(vcs.Env, vcs.Mem.RIOT, vcs.Mem.TIA)
+	vcs.TIA.Plumb(vcs.Env, vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
 
 	// reset peripherals after new state has been plumbed. without this,
 	// controllers can feel odd if the newly plumbed state has left RIOT memory

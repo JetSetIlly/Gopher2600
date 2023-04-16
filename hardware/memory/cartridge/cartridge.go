@@ -81,18 +81,19 @@ func (cart *Cartridge) Snapshot() *Cartridge {
 //
 // See mapper.PlumbFromDifferentEmulation for how this affects mapper
 // implementations.
-func (cart *Cartridge) Plumb(fromDifferentEmulation bool) {
+func (cart *Cartridge) Plumb(env *environment.Environment, fromDifferentEmulation bool) {
+	cart.env = env
 	cart.busStuff, cart.hasBusStuff = cart.mapper.(mapper.CartBusStuff)
 	cart.coproc, cart.hasCoProc = cart.mapper.(mapper.CartCoProc)
 
 	if fromDifferentEmulation {
 		if m, ok := cart.mapper.(mapper.PlumbFromDifferentEmulation); ok {
-			m.PlumbFromDifferentEmulation()
+			m.PlumbFromDifferentEmulation(cart.env)
 			return
 		}
 	}
 
-	cart.mapper.Plumb()
+	cart.mapper.Plumb(cart.env)
 }
 
 // Reset volative contents of Cartridge.

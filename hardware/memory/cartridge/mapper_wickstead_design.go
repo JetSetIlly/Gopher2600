@@ -128,7 +128,8 @@ func (cart *wicksteadDesign) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *wicksteadDesign) Plumb() {
+func (cart *wicksteadDesign) Plumb(env *environment.Environment) {
+	cart.env = env
 }
 
 // Reset implements the mapper.CartMapper interface.

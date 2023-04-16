@@ -94,7 +94,7 @@ func (tr *Tracker) Reset() {
 }
 
 // AudioTick implements the audio.Tracker interface
-func (tr *Tracker) AudioTick(channel int, reg audio.Registers) {
+func (tr *Tracker) AudioTick(env audio.TrackerEnvironment, channel int, reg audio.Registers) {
 	changed := !audio.CmpRegisters(reg, tr.prevRegister[channel])
 	tr.prevRegister[channel] = reg
 
@@ -110,18 +110,21 @@ func (tr *Tracker) AudioTick(channel int, reg audio.Registers) {
 		}
 		e.PianoKey = NoteToPianoKey(e.MusicalNote)
 
-		if tr.emulation.State() != govern.Rewinding {
-			// find splice point in tracker
-			splice := len(tr.entries) - 1
-			for splice > 0 && !coords.GreaterThan(e.Coords, tr.entries[splice].Coords) {
-				splice--
-			}
-			tr.entries = tr.entries[:splice+1]
+		// add entry to list of entries only if we're not in the tracker emulation
+		if !env.IsEmulation(envLabel) {
+			if tr.emulation.State() != govern.Rewinding {
+				// find splice point in tracker
+				splice := len(tr.entries) - 1
+				for splice > 0 && !coords.GreaterThan(e.Coords, tr.entries[splice].Coords) {
+					splice--
+				}
+				tr.entries = tr.entries[:splice+1]
 
-			// add new entry and limit number of entries
-			tr.entries = append(tr.entries, e)
-			if len(tr.entries) > maxTrackerEntries {
-				tr.entries = tr.entries[1:]
+				// add new entry and limit number of entries
+				tr.entries = append(tr.entries, e)
+				if len(tr.entries) > maxTrackerEntries {
+					tr.entries = tr.entries[1:]
+				}
 			}
 		}
 

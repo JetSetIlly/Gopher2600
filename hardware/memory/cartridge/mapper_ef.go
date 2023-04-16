@@ -58,7 +58,8 @@ func (cart *ef) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *ef) Plumb() {
+func (cart *ef) Plumb(env *environment.Environment) {
+	cart.env = env
 }
 
 // Access implements the mapper.CartMapper interface.

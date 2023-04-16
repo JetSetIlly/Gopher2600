@@ -109,6 +109,8 @@ func (win *winTracker) draw() {
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.AudioTrackerRowHover)
 	defer imgui.PopStyleColorV(5)
 
+	win.drawReplayButton()
+
 	// new child that contains the main scrollable table
 	if imgui.BeginChildV("##trackerscroller", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.pianoKeysHeight}, false, 0) {
 		numEntries := len(win.img.lz.Tracker.Entries)
@@ -302,7 +304,7 @@ func (win *winTracker) drawReplayButton() {
 	}
 
 	if imgui.Button("Replay") {
-		// *** this should be run asynchronously ***
+		// *** this should be run asynchronously **
 		win.img.dbg.Tracker.Replay(s, e, win.img.audio)
 	}
 }

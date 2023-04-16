@@ -108,8 +108,9 @@ func (mc *CPU) Snapshot() *CPU {
 	return &n
 }
 
-// Plumb a new CPUBus into the CPU.
-func (mc *CPU) Plumb(mem cpubus.Memory) {
+// Plumb CPU into emulation
+func (mc *CPU) Plumb(env *environment.Environment, mem cpubus.Memory) {
+	mc.env = env
 	mc.mem = mem
 }
 

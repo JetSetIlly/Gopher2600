@@ -55,7 +55,7 @@ type Thumbnailer struct {
 	Render chan *image.RGBA
 }
 
-const label = environment.Label("thumbnailer")
+const envLabel = environment.Label("thumbnailer")
 
 // NewThumbnailer is the preferred method of initialisation for the Thumbnailer type.
 func NewThumbnailer(prefs *preferences.Preferences) (*Thumbnailer, error) {
@@ -85,7 +85,7 @@ func NewThumbnailer(prefs *preferences.Preferences) (*Thumbnailer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("thumbnailer: %w", err)
 	}
-	thmb.vcs.Env.Label = label
+	thmb.vcs.Env.Label = envLabel
 
 	thmb.img = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 

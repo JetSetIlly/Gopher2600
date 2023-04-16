@@ -122,8 +122,9 @@ func (mem *Memory) Snapshot() *Memory {
 //
 // The fromDifferentEmulation indicates that the State has been created by a
 // different VCS emulation than the one being plumbed into.
-func (mem *Memory) Plumb(fromDifferentEmulation bool) {
-	mem.Cart.Plumb(fromDifferentEmulation)
+func (mem *Memory) Plumb(env *environment.Environment, fromDifferentEmulation bool) {
+	mem.env = env
+	mem.Cart.Plumb(env, fromDifferentEmulation)
 }
 
 // Reset contents of memory.

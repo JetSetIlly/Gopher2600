@@ -115,7 +115,7 @@ func NewAtariVox(env *environment.Environment, port plugging.PortID, bus ports.P
 }
 
 func (vox *AtariVox) activateFestival() {
-	if !vox.env.IsMainEmulation() {
+	if !vox.env.IsEmulation(environment.MainEmulation) {
 		return
 	}
 

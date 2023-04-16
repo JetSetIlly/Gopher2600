@@ -99,7 +99,8 @@ func (cart *Ace) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *Ace) PlumbFromDifferentEmulation() {
+func (cart *Ace) PlumbFromDifferentEmulation(env *environment.Environment) {
+	cart.env = env
 	if cart.armState == nil {
 		panic("cannot plumb this ACE instance because the ARM state is nil")
 	}
@@ -110,7 +111,8 @@ func (cart *Ace) PlumbFromDifferentEmulation() {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *Ace) Plumb() {
+func (cart *Ace) Plumb(env *environment.Environment) {
+	cart.env = env
 	if cart.armState == nil {
 		panic("cannot plumb this ELF instance because the ARM state is nil")
 	}

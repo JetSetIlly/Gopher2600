@@ -15,6 +15,8 @@
 
 package mapper
 
+import "github.com/jetsetilly/gopher2600/environment"
+
 // CartContainer is a special CartMapper type that wraps another CartMapper.
 // For example, the PlusROM type.
 type CartContainer interface {
@@ -39,7 +41,7 @@ type CartMapper interface {
 	ID() string
 
 	Snapshot() CartMapper
-	Plumb()
+	Plumb(*environment.Environment)
 
 	// reset volatile areas of the cartridge. for many cartridge mappers this
 	// will do nothing but those with registers or ram should perform an
@@ -100,7 +102,7 @@ type CartMapper interface {
 // been created then this interface should be used when available, instead of
 // the normal Plumb().
 type PlumbFromDifferentEmulation interface {
-	PlumbFromDifferentEmulation()
+	PlumbFromDifferentEmulation(*environment.Environment)
 }
 
 // OptionalSuperchip are implemented by CartMapper implementations that require

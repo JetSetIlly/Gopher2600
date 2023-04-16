@@ -315,7 +315,8 @@ func (cart *atari4k) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *atari4k) Plumb() {
+func (cart *atari4k) Plumb(env *environment.Environment) {
+	cart.env = env
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -380,7 +381,8 @@ func (cart *atari2k) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *atari2k) Plumb() {
+func (cart *atari2k) Plumb(env *environment.Environment) {
+	cart.env = env
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -449,7 +451,8 @@ func (cart *atari8k) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *atari8k) Plumb() {
+func (cart *atari8k) Plumb(env *environment.Environment) {
+	cart.env = env
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -546,7 +549,8 @@ func (cart *atari16k) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *atari16k) Plumb() {
+func (cart *atari16k) Plumb(env *environment.Environment) {
+	cart.env = env
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -649,7 +653,8 @@ func (cart *atari32k) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *atari32k) Plumb() {
+func (cart *atari32k) Plumb(env *environment.Environment) {
+	cart.env = env
 }
 
 // NumBanks implements the mapper.CartMapper interface.

@@ -85,7 +85,8 @@ func (cart *superbank) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *superbank) Plumb() {
+func (cart *superbank) Plumb(env *environment.Environment) {
+	cart.env = env
 }
 
 // Reset implements the mapper.CartMapper interface.

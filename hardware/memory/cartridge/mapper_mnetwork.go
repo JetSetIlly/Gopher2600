@@ -135,7 +135,8 @@ func (cart *mnetwork) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *mnetwork) Plumb() {
+func (cart *mnetwork) Plumb(env *environment.Environment) {
+	cart.env = env
 }
 
 // Reset implements the mapper.CartMapper interface.

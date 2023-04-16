@@ -103,7 +103,8 @@ func (cart *m3ePlus) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *m3ePlus) Plumb() {
+func (cart *m3ePlus) Plumb(env *environment.Environment) {
+	cart.env = env
 }
 
 // Reset implements the mapper.CartMapper interface.

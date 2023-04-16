@@ -167,12 +167,14 @@ func (tia *TIA) Snapshot() *TIA {
 }
 
 // Plumb the a new ChipBus into the TIA.
-func (tia *TIA) Plumb(tv TV, mem chipbus.Memory, riot RIOTports, cpu *cpu.CPU) {
+func (tia *TIA) Plumb(env *environment.Environment, tv TV, mem chipbus.Memory, riot RIOTports, cpu *cpu.CPU) {
+	tia.env = env
 	tia.tv = tv
 	tia.mem = mem
 	tia.riot = riot
 	tia.rdyFlag = &cpu.RdyFlg
 	tia.Video.Plumb(tia.env, tia.mem, tia.tv, &tia.PClk, &tia.hsync, &tia.Hblank, &tia.Hmove)
+	tia.Audio.Plumb(tia.env)
 }
 
 // Update checks to see if ChipData applies tot he TIA and updates accordingly.

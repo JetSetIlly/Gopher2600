@@ -16,6 +16,7 @@
 package cartridge
 
 import (
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
@@ -43,7 +44,7 @@ func (cart *ejected) Snapshot() mapper.CartMapper {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *ejected) Plumb() {
+func (cart *ejected) Plumb(_ *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
