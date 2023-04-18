@@ -50,7 +50,6 @@ type LazyValues struct {
 	Peripherals *LazyPeripherals
 	Collisions  *LazyCollisions
 	Ports       *LazyPorts
-	Tracker     *LazyTracker
 	SaveKey     *LazySaveKey
 	Rewind      *LazyRewind
 
@@ -87,7 +86,6 @@ func NewLazyValues(dbg *debugger.Debugger) *LazyValues {
 	val.Peripherals = newLazyPeripherals(val)
 	val.Collisions = newLazyCollisions(val)
 	val.Ports = newLazyPorts(val)
-	val.Tracker = newLazyTracker(val)
 	val.SaveKey = newLazySaveKey(val)
 	val.Rewind = newLazyRewind(val)
 
@@ -123,7 +121,6 @@ func (val *LazyValues) Refresh() {
 		val.Peripherals.update()
 		val.Collisions.update()
 		val.Ports.update()
-		val.Tracker.update()
 		val.SaveKey.update()
 		val.Rewind.update()
 	}
@@ -151,7 +148,6 @@ func (val *LazyValues) Refresh() {
 		val.Peripherals.push()
 		val.Collisions.push()
 		val.Ports.push()
-		val.Tracker.push()
 		val.SaveKey.push()
 		val.Rewind.push()
 		val.refreshScheduled.Store(false)
@@ -168,7 +164,6 @@ func (val *LazyValues) FastRefresh() {
 	if val.refreshDone.Load().(bool) {
 		val.refreshDone.Store(false)
 		val.TV.update()
-		val.Tracker.update()
 		val.Cart.fastUpdate()
 	}
 
@@ -179,7 +174,6 @@ func (val *LazyValues) FastRefresh() {
 
 	val.dbg.PushFunction(func() {
 		val.TV.push()
-		val.Tracker.push()
 		val.Cart.fastPush()
 		val.refreshScheduled.Store(false)
 		val.refreshDone.Store(true)

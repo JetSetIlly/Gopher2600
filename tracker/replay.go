@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/rewind"
 )
 
@@ -50,28 +51,36 @@ func (tr *Tracker) createReplayEmulation(mixer television.AudioMixer) error {
 const envLabel = environment.Label("tracker")
 
 // Replay audio from start to end indexes
-func (tr *Tracker) Replay(start int, end int, mixer television.AudioMixer) error {
+func (tr *Tracker) Replay(start int, end int, mixer television.AudioMixer) {
 	// the replay will run even if the master emulation is running. this may
 	// cause audible issues with the hardware audio mixing
 
 	tr.createReplayEmulation(mixer)
 
-	startState := tr.rewind.GetState(tr.entries[start].Coords.Frame)
+	tr.crit.section.Lock()
+	defer tr.crit.section.Unlock()
+
+	startState := tr.rewind.GetState(tr.crit.Entries[start].Coords.Frame)
 	if startState == nil {
-		return fmt.Errorf("tracker: replay: can't find rewind state for frame %d", tr.entries[start].Coords.Frame)
+		logger.Logf("tracker", "replay: can't find rewind state for frame %d", tr.crit.Entries[start].Coords.Frame)
+		return
 	}
 
 	rewind.Plumb(tr.replayEmulation, startState, true)
 
-	err := tr.replayEmulation.Run(func() (govern.State, error) {
-		if tr.replayEmulation.TV.GetCoords().Frame > tr.entries[end].Coords.Frame {
-			return govern.Ending, nil
-		}
-		return govern.Running, nil
-	})
-	if err != nil {
-		return fmt.Errorf("tracker: replay: %w", err)
-	}
+	// get copy of end frame number so that we don't have to acquire the
+	// criticial section in the replay emulation
+	endFrame := tr.crit.Entries[end].Coords.Frame
 
-	return nil
+	go func() {
+		err := tr.replayEmulation.Run(func() (govern.State, error) {
+			if tr.replayEmulation.TV.GetCoords().Frame > endFrame {
+				return govern.Ending, nil
+			}
+			return govern.Running, nil
+		})
+		if err != nil {
+			logger.Logf("tracker", "replay: %s", err.Error())
+		}
+	}()
 }

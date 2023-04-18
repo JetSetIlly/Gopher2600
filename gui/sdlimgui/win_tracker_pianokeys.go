@@ -28,7 +28,7 @@ func hasBlack(key int) bool {
 
 // drawlist calls to create the piano keys taken from https://github.com/shric/midi/blob/master/src/Piano.cpp
 // licenced under the MIT licence
-func (win *winTracker) drawPianoKeys() float32 {
+func (win *winTracker) drawPianoKeys(history *tracker.History) float32 {
 	keyWidth := imgui.WindowContentRegionWidth() / float32(numPianoKeys)
 	whiteKeyLength := keyWidth * 6.0
 	blackKeyLength := whiteKeyLength * 0.6666
@@ -37,18 +37,18 @@ func (win *winTracker) drawPianoKeys() float32 {
 	p := imgui.CursorScreenPos()
 
 	// strike color is weighted by volume
-	v0 := int(win.img.lz.Tracker.LastEntry[0].Registers.Volume)
-	v1 := int(win.img.lz.Tracker.LastEntry[1].Registers.Volume)
+	v0 := int(history.Recent[0].Registers.Volume)
+	v1 := int(history.Recent[1].Registers.Volume)
 	s0 := (0.5 / float32(16-v0))
 	s1 := (0.5 / float32(16-v1))
 	strike0 := imgui.PackedColorFromVec4(imgui.Vec4{1.0, s0, s0, 1.0})
 	strike1 := imgui.PackedColorFromVec4(imgui.Vec4{s1, 1.0, s1, 1.0})
 
-	c0 := int(win.img.lz.Tracker.LastEntry[0].PianoKey)
+	c0 := int(history.Recent[0].PianoKey)
 	if c0 < 0 || v0 == 0 {
 		c0 = tracker.NoPianoKey
 	}
-	c1 := int(win.img.lz.Tracker.LastEntry[1].PianoKey)
+	c1 := int(history.Recent[1].PianoKey)
 	if c1 < 0 || v1 == 0 {
 		c1 = tracker.NoPianoKey
 	}
@@ -70,15 +70,15 @@ func (win *winTracker) drawPianoKeys() float32 {
 			win.whiteKeysGap, 0, imgui.DrawCornerFlagsNone, 1)
 	}
 
-	c0 = int(win.img.lz.Tracker.LastEntry[0].PianoKey)
-	v0 = int(win.img.lz.Tracker.LastEntry[0].Registers.Volume)
+	c0 = int(history.Recent[0].PianoKey)
+	v0 = int(history.Recent[0].Registers.Volume)
 	if c0 >= 0 || v0 == 0 {
 		c0 = tracker.NoPianoKey
 	} else {
 		c0 *= -1
 	}
-	c1 = int(win.img.lz.Tracker.LastEntry[1].PianoKey)
-	v1 = int(win.img.lz.Tracker.LastEntry[1].Registers.Volume)
+	c1 = int(history.Recent[1].PianoKey)
+	v1 = int(history.Recent[1].Registers.Volume)
 	if c1 >= 0 || v1 == 0 {
 		c1 = tracker.NoPianoKey
 	} else {
