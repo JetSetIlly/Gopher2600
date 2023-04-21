@@ -42,13 +42,13 @@ func (tr *Tracker) createReplayEmulation(mixer television.AudioMixer) error {
 	if err != nil {
 		return fmt.Errorf("tracker: create replay emulation: %w", err)
 	}
-	tr.replayEmulation.Env.Label = envLabel
+	tr.replayEmulation.Env.Label = replayEnv
 	tr.replayEmulation.TIA.Audio.SetTracker(tr)
 
 	return nil
 }
 
-const envLabel = environment.Label("tracker")
+const replayEnv = environment.Label("tracker_replay")
 
 // Replay audio from start to end indexes
 func (tr *Tracker) Replay(start int, end int, mixer television.AudioMixer) {

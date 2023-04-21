@@ -165,7 +165,7 @@ func (tr *Tracker) AudioTick(env audio.TrackerEnvironment, channel int, reg audi
 	}
 
 	// add entry to list of entries only if we're not in the tracker emulation
-	if !env.IsEmulation(envLabel) {
+	if !env.IsEmulation(replayEnv) {
 		if tr.emulation.State() != govern.Rewinding {
 			// find splice point in tracker
 			splice := len(tr.crit.Entries) - 1
