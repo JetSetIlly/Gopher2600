@@ -61,6 +61,21 @@ const instructionsLimit = 1300000
 // stepFunction variations are a result of different ARM architectures
 type stepFunction func(opcode uint16, memIdx int)
 
+// decodeFunction represents one of the functions that decodes a specific group
+// of ARM instructions
+//
+// decodeFunctions can be called in one of two ways:
+//
+//	(1) when the ARM argument is *not* nil it indicates that the function should
+//	   affect the registers and memory of the emulated ARM as appropriate
+//	(2) when the argument *is* nil it indicates that the function should decode
+//	   the opcode only so far as is required to produce a DisasmEntry
+//
+// the return value for decodeFunction can be an instance of DisasmEntry or nil.
+// in the case of (1) it is always nil but in the case of (2) nil indicates an
+// error
+type decodeFunction func(arm *ARM, opcode uint16) *DisasmEntry
+
 type ARMState struct {
 	// ARM registers
 	registers [NumRegisters]uint32
@@ -117,7 +132,7 @@ type ARMState struct {
 	// note that when executing from RAM (which isn't normal) it's possible for
 	// code to be modified (ie. self-modifying code). in that case functionMap
 	// may be unreliable.
-	functionMap []func(_ uint16)
+	functionMap []decodeFunction
 
 	// cycle counting
 
@@ -239,7 +254,7 @@ type ARM struct {
 	//
 	// allocated in NewArm() and added to in findProgramMemory() if an entry
 	// does not exist
-	executionMap map[uint32][]func(_ uint16)
+	executionMap map[uint32][]decodeFunction
 
 	// interface to an optional disassembler
 	disasm mapper.CartCoProcDisassembler
@@ -319,7 +334,7 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 		mmap:         mmap,
 		mem:          mem,
 		hook:         hook,
-		executionMap: make(map[uint32][]func(_ uint16)),
+		executionMap: make(map[uint32][]decodeFunction),
 		disasmCache:  make(map[uint32]DisasmEntry),
 
 		// updated on every updatePrefs(). these are reasonable defaults
@@ -423,7 +438,7 @@ func (arm *ARM) Plumb(state *ARMState, mem SharedMemory, hook CartridgeHook) {
 // ClearCaches should be used very rarely. It empties the instruction and
 // disassembly caches.
 func (arm *ARM) ClearCaches() {
-	arm.executionMap = make(map[uint32][]func(_ uint16))
+	arm.executionMap = make(map[uint32][]decodeFunction)
 	arm.disasmCache = make(map[uint32]DisasmEntry)
 }
 
@@ -497,7 +512,7 @@ func (arm *ARM) findProgramMemory() error {
 	if m, ok := arm.executionMap[arm.state.programMemoryOffset]; ok {
 		arm.state.functionMap = m
 	} else {
-		arm.executionMap[arm.state.programMemoryOffset] = make([]func(_ uint16), len(*arm.state.programMemory))
+		arm.executionMap[arm.state.programMemoryOffset] = make([]decodeFunction, len(*arm.state.programMemory))
 		arm.state.functionMap = arm.executionMap[arm.state.programMemoryOffset]
 	}
 
@@ -630,7 +645,7 @@ func (arm *ARM) Run() (mapper.YieldReason, float32) {
 		return mapper.YieldMemoryAccessError, 0
 	}
 
-	// fill pipeline must happen after resetExecution()
+	// fill pipeline cannot happen immediately after resetRegisters()
 	if !arm.state.interrupt {
 		arm.state.registers[rPC] += 2
 	}
@@ -824,7 +839,7 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 		if arm.disasm != nil {
 			if !arm.state.function32bitDecoding {
 				var cached bool
-				var d DisasmEntry
+				var entry DisasmEntry
 
 				// which opcode to use for the disassembly
 				disasmOpcode := opcode
@@ -832,42 +847,42 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 					disasmOpcode = arm.state.function32bitOpcode
 				}
 
-				d, cached = arm.disasmCache[arm.state.instructionPC]
+				entry, cached = arm.disasmCache[arm.state.instructionPC]
 				if !cached {
-					d, _ = Disassemble(disasmOpcode)
+					entry, _ = Disassemble(disasmOpcode)
 
 					if arm.state.function32bitResolving {
-						d.Is32bit = true
-						d.OpcodeLo = opcode
+						entry.Is32bit = true
+						entry.OpcodeLo = opcode
 					}
 
-					d.Address = fmt.Sprintf("%08x", arm.state.instructionPC)
-					d.Addr = arm.state.instructionPC
+					entry.Address = fmt.Sprintf("%08x", arm.state.instructionPC)
+					entry.Addr = arm.state.instructionPC
 
 				}
 
 				// copy of the registers
-				d.Registers = arm.state.registers
+				entry.Registers = arm.state.registers
 
 				// basic notes about the last execution of the entry
-				d.ExecutionNotes = arm.disasmExecutionNotes
+				entry.ExecutionNotes = arm.disasmExecutionNotes
 
 				// basic cycle information. this relies on cycleOrder not being
 				// reset during 32bit instruction decoding
-				d.Cycles = arm.state.cycleOrder.len()
-				d.CyclesSequence = arm.state.cycleOrder.String()
+				entry.Cycles = arm.state.cycleOrder.len()
+				entry.CyclesSequence = arm.state.cycleOrder.String()
 
 				// cycle details
-				d.MAMCR = int(arm.state.mam.mamcr)
-				d.BranchTrail = arm.state.branchTrail
-				d.MergedIS = arm.state.mergedIS
+				entry.MAMCR = int(arm.state.mam.mamcr)
+				entry.BranchTrail = arm.state.branchTrail
+				entry.MergedIS = arm.state.mergedIS
 
 				// note immediate mode
-				d.ImmediateMode = arm.disasmSummary.ImmediateMode
+				entry.ImmediateMode = arm.disasmSummary.ImmediateMode
 
 				// update cache if necessary
 				if !cached || arm.disasmUpdateNotes {
-					arm.disasmCache[arm.state.instructionPC] = d
+					arm.disasmCache[arm.state.instructionPC] = entry
 				}
 
 				arm.disasmExecutionNotes = ""
@@ -877,7 +892,7 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 				arm.disasmSummary.add(arm.state.cycleOrder)
 
 				// we always send the instruction to the disasm interface
-				arm.disasm.Step(d)
+				arm.disasm.Step(entry)
 			}
 		}
 
@@ -991,14 +1006,15 @@ func (arm *ARM) stepARM7TDMI(opcode uint16, memIdx int) {
 	arm.state.instructionPC = arm.state.executingPC
 	f := arm.state.functionMap[memIdx]
 	if f == nil {
-		f = arm.decodeThumb(opcode)
+		f = decodeThumb(opcode)
 		arm.state.functionMap[memIdx] = f
 	}
-	f(opcode)
+	f(arm, opcode)
 }
 
 func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
-	var f func(uint16)
+	// decode function to execute
+	var df decodeFunction
 
 	// taking a note of whether this is a resolution of a 32bit
 	// instruction. we use this later during the fudge_disassembling
@@ -1009,10 +1025,10 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 	if arm.state.function32bitDecoding {
 		arm.state.function32bitDecoding = false
 		arm.state.function32bitResolving = true
-		f = arm.state.functionMap[memIdx]
-		if f == nil {
-			f = arm.decode32bitThumb2(arm.state.function32bitOpcode)
-			arm.state.functionMap[memIdx] = f
+		df = arm.state.functionMap[memIdx]
+		if df == nil {
+			df = decode32bitThumb2(arm, arm.state.function32bitOpcode)
+			arm.state.functionMap[memIdx] = df
 		}
 	} else {
 		// the opcode is either a 16bit instruction or the first halfword for a
@@ -1025,15 +1041,11 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 		if is32BitThumb2(opcode) {
 			arm.state.function32bitDecoding = true
 			arm.state.function32bitOpcode = opcode
-
-			// we need something for the emulation to run. this is a
-			// clearer alternative to having a flag
-			f = func(_ uint16) {}
 		} else {
-			f = arm.state.functionMap[memIdx]
-			if f == nil {
-				f = arm.decodeThumb2(opcode)
-				arm.state.functionMap[memIdx] = f
+			df = arm.state.functionMap[memIdx]
+			if df == nil {
+				df = decodeThumb2(arm, opcode)
+				arm.state.functionMap[memIdx] = df
 			}
 		}
 
@@ -1050,7 +1062,9 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 		r := arm.state.status.condition(arm.state.status.itCond)
 
 		if r {
-			f(opcode)
+			if df != nil {
+				df(arm, opcode)
+			}
 		} else {
 			// "A7.3.2: Conditional execution of undefined instructions
 			//
@@ -1068,8 +1082,8 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 
 		// shift IT mask
 		arm.state.status.itMask = (arm.state.status.itMask << 1) & 0b1111
-	} else {
-		f(opcode)
+	} else if df != nil {
+		df(arm, opcode)
 	}
 
 	// if arm.state.fudge_disassembling {
@@ -1121,7 +1135,8 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 			if arm.state.fudge_thumb2disassemble16bit != "" {
 				arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, arm.state.fudge_thumb2disassemble16bit)))
 			} else {
-				arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, disassemble(opcode).String())))
+				entry, _ := Disassemble(opcode)
+				arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, entry.String())))
 			}
 			arm.fudge_writer.Write([]byte(arm.String() + "\n"))
 			arm.fudge_writer.Write([]byte(arm.state.status.String() + "\n"))

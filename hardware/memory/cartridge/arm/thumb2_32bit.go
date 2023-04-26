@@ -26,7 +26,7 @@ func is32BitThumb2(opcode uint16) bool {
 	return opcode&0xf800 == 0xe800 || opcode&0xf000 == 0xf000
 }
 
-func (arm *ARM) decode32bitThumb2(opcode uint16) func(uint16) {
+func decode32bitThumb2(arm *ARM, opcode uint16) decodeFunction {
 	// Two tables for top level decoding of 32bit Thumb-2 instructions.
 	//
 	// "3.3 Instruction encoding for 32-bit Thumb instructions" of "Thumb-2 Supplement"
@@ -38,30 +38,30 @@ func (arm *ARM) decode32bitThumb2(opcode uint16) func(uint16) {
 
 	if opcode&0xec00 == 0xec00 {
 		// coprocessor
-		return arm.thumb2Coprocessor
+		return decodeThumb2Coprocessor
 	} else if opcode&0xf800 == 0xf000 {
 		// branches, miscellaneous control
 		//  OR
 		// data processing: immediate, including bitfield and saturate
-		return arm.thumb2BranchesORDataProcessing
+		return decode32bitThumb2BranchesORDataProcessing
 	} else if opcode&0xfe40 == 0xe800 {
 		// load and store multiple, RFE and SRS
-		return arm.thumb2LoadStoreMultiple
+		return decode32bitThumb2LoadStoreMultiple
 	} else if opcode&0xfe40 == 0xe840 {
 		// load and store double and exclusive and table branch
-		return arm.thumb2LoadStoreDoubleEtc
+		return decode32bitThumb2LoadStoreDoubleEtc
 	} else if opcode&0xfe00 == 0xf800 {
 		// load and store single data item, memory hints
-		return arm.thumb2LoadStoreSingle
+		return decode32bitThumb2LoadStoreSingle
 	} else if opcode&0xee00 == 0xea00 {
 		// data processing, no immediate operand
-		return arm.thumb2DataProcessingNonImmediate
+		return decode32bitThumb2DataProcessingNonImmediate
 	}
 
 	panic(fmt.Sprintf("undecoded 32-bit thumb-2 instruction (%04x)", opcode))
 }
 
-func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
+func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *DisasmEntry {
 	// "3.3.2 Data processing instructions, non-immediate" of "Thumb-2 Supplement"
 
 	Rn := arm.state.function32bitOpcode & 0x000f
@@ -853,9 +853,11 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 	} else {
 		panic("reserved data processing instructions, non-immediate")
 	}
+
+	return nil
 }
 
-func (arm *ARM) thumb2LoadStoreDoubleEtc(opcode uint16) {
+func decode32bitThumb2LoadStoreDoubleEtc(arm *ARM, opcode uint16) *DisasmEntry {
 	// "3.3.4 Load/store double and exclusive, and table branch" of "Thumb-2 Supplement"
 
 	p := (arm.state.function32bitOpcode & 0x0100) == 0x0100
@@ -944,17 +946,18 @@ func (arm *ARM) thumb2LoadStoreDoubleEtc(opcode uint16) {
 		// "Load and Store Exclusive"
 		panic("unhandled load and store double and exclusive and table branch (load and store exclusive)")
 	}
+
+	return nil
 }
 
-func (arm *ARM) thumb2BranchesORDataProcessing(opcode uint16) {
+func decode32bitThumb2BranchesORDataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 	if opcode&0x8000 == 0x8000 {
-		arm.thumb2BranchesORMiscControl(opcode)
-	} else {
-		arm.thumb2DataProcessing(opcode)
+		return decode32bitThumb2BranchesORMiscControl(arm, opcode)
 	}
+	return decode32bitThumb2DataProcessing(arm, opcode)
 }
 
-func (arm *ARM) thumb2DataProcessing(opcode uint16) {
+func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 	// "3.3.1 Data processing instructions: immediate, including bitfield and saturate" of "Thumb-2 Supplement"
 
 	if arm.state.function32bitOpcode&0xfa00 == 0xf000 {
@@ -1347,9 +1350,11 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 	} else {
 		panic("reserved data processing instructions: immediate, including bitfield and saturate")
 	}
+
+	return nil
 }
 
-func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
+func decode32bitThumb2LoadStoreSingle(arm *ARM, opcode uint16) *DisasmEntry {
 	// "3.3.3 Load and store single data item, and memory hints" of "Thumb-2 Supplement"
 
 	// Addressing mode discussed in "A4.6.5 Addressing modes" of "ARMv7-M"
@@ -1750,9 +1755,11 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 	} else {
 		panic("unhandled bit pattern in 'load and store single data item, and memory hints'")
 	}
+
+	return nil
 }
 
-func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
+func decode32bitThumb2LoadStoreMultiple(arm *ARM, opcode uint16) *DisasmEntry {
 	// "3.3.5 Load and store multiple, RFE, and SRS" of "Thumb-2 Supplement"
 	//		and
 	// "A5.3.5 Load Multiple and Store Multiple" of "ARMv7-M"
@@ -1965,9 +1972,11 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 	default:
 		panic(fmt.Sprintf("load and store multiple: illegal op (%02b)", op))
 	}
+
+	return nil
 }
 
-func (arm *ARM) thumb2BranchesORMiscControl(opcode uint16) {
+func decode32bitThumb2BranchesORMiscControl(arm *ARM, opcode uint16) *DisasmEntry {
 	// "3.3.6 Branches, miscellaneous control instructions" of "Thumb-2 Supplement"
 
 	if arm.state.function32bitOpcode&0xffe0 == 0xf3e0 {
@@ -1988,13 +1997,15 @@ func (arm *ARM) thumb2BranchesORMiscControl(opcode uint16) {
 	} else if arm.state.function32bitOpcode&0xffe0 == 0xf380 {
 		panic("move to status from register")
 	} else if arm.state.function32bitOpcode&0xf800 == 0xf000 {
-		arm.thumb2Branches(opcode)
+		decode32bitThumb2Branches(arm, opcode)
 	} else {
 		panic(fmt.Sprintf("unimplemented branches, miscellaneous control instructions"))
 	}
+
+	return nil
 }
 
-func (arm *ARM) thumb2Branches(opcode uint16) {
+func decode32bitThumb2Branches(arm *ARM, opcode uint16) *DisasmEntry {
 	// "3.3.6 Branches, miscellaneous control instructions" of "Thumb-2 Supplement"
 	//
 	// branches are in the top half of the table and are differentiated by the
@@ -2087,4 +2098,6 @@ func (arm *ARM) thumb2Branches(opcode uint16) {
 	} else {
 		panic(fmt.Sprintf("unimplemented branches, miscellaneous control instructions"))
 	}
+
+	return nil
 }

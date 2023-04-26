@@ -369,8 +369,8 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 				src.Disassembly[addr32Bit].opcode <<= 16
 				src.Disassembly[addr32Bit].opcode |= uint32(opcode)
 			} else {
-				var disasm arm.DisasmEntry
-				disasm, is32Bit = arm.Disassemble(opcode)
+				var entry mapper.CartCoProcDisasmEntry
+				entry, is32Bit = arm.Disassemble(opcode)
 				addr32Bit = addr
 
 				// create the disassembly entry
@@ -378,7 +378,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 					Addr:        uint32(addr),
 					is32Bit:     is32Bit,
 					opcode:      uint32(opcode),
-					Instruction: disasm.String(),
+					Instruction: entry.String(),
 				}
 			}
 

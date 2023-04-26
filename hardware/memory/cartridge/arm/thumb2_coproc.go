@@ -19,7 +19,7 @@ package arm
 
 import "fmt"
 
-func (arm *ARM) thumb2Coprocessor(opcode uint16) {
+func decodeThumb2Coprocessor(arm *ARM, opcode uint16) *DisasmEntry {
 	// the normal method for dividing the opcode for a thumb instruction is not
 	// used for the coprocesor group of instructions.
 	//
@@ -140,4 +140,5 @@ func (arm *ARM) thumb2Coprocessor(opcode uint16) {
 		panic("undecoded FPU instruction")
 	}
 
+	return nil
 }

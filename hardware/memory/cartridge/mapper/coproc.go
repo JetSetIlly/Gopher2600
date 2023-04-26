@@ -213,6 +213,7 @@ type CartCoProcDisasmSummary interface {
 
 // CartCoProcDisasmEntry represents a single decoded instruction by the coprocessor.
 type CartCoProcDisasmEntry interface {
+	String() string
 	Key() string
 	CSV() string
 }

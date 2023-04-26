@@ -24,84 +24,96 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-func (arm *ARM) decodeThumb(opcode uint16) func(uint16) {
+// returns an instance of the decodeFunction type. if the value is nil then that
+// means the decoding could not complete
+func decodeThumb(opcode uint16) decodeFunction {
 	// working backwards up the table in Figure 5-1 of the ARM7TDMI Data Sheet.
 	if opcode&0xf000 == 0xf000 {
 		// format 19 - Long branch with link
-		return arm.thumbLongBranchWithLink
+		return decodeThumbLongBranchWithLink
 	} else if opcode&0xf000 == 0xe000 {
 		// format 18 - Unconditional branch
-		return arm.thumbUnconditionalBranch
+		return decodeThumbUnconditionalBranch
 	} else if opcode&0xff00 == 0xdf00 {
 		// format 17 - Software interrupt"
-		return arm.thumbSoftwareInterrupt
+		return decodeThumbSoftwareInterrupt
 	} else if opcode&0xf000 == 0xd000 {
 		// format 16 - Conditional branch
-		return arm.thumbConditionalBranch
+		return decodeThumbConditionalBranch
 	} else if opcode&0xf000 == 0xc000 {
 		// format 15 - Multiple load/store
-		return arm.thumbMultipleLoadStore
+		return decodeThumbMultipleLoadStore
 	} else if opcode&0xf600 == 0xb400 {
 		// format 14 - Push/pop registers
-		return arm.thumbPushPopRegisters
+		return decodeThumbPushPopRegisters
 	} else if opcode&0xff00 == 0xb000 {
 		// format 13 - Add offset to stack pointer
-		return arm.thumbAddOffsetToSP
+		return decodeThumbAddOffsetToSP
 	} else if opcode&0xf000 == 0xa000 {
 		// format 12 - Load address
-		return arm.thumbLoadAddress
+		return decodeThumbLoadAddress
 	} else if opcode&0xf000 == 0x9000 {
 		// format 11 - SP-relative load/store
-		return arm.thumbSPRelativeLoadStore
+		return decodeThumbSPRelativeLoadStore
 	} else if opcode&0xf000 == 0x8000 {
 		// format 10 - Load/store halfword
-		return arm.thumbLoadStoreHalfword
+		return decodeThumbLoadStoreHalfword
 	} else if opcode&0xe000 == 0x6000 {
 		// format 9 - Load/store with immediate offset
-		return arm.thumbLoadStoreWithImmOffset
+		return decodeThumbLoadStoreWithImmOffset
 	} else if opcode&0xf200 == 0x5200 {
 		// format 8 - Load/store sign-extended byte/halfword
-		return arm.thumbLoadStoreSignExtendedByteHalford
+		return decodeThumbLoadStoreSignExtendedByteHalford
 	} else if opcode&0xf200 == 0x5000 {
 		// format 7 - Load/store with register offset
-		return arm.thumbLoadStoreWithRegisterOffset
+		return decodeThumbLoadStoreWithRegisterOffset
 	} else if opcode&0xf800 == 0x4800 {
 		// format 6 - PC-relative load
-		return arm.thumbPCrelativeLoad
+		return decodeThumbPCrelativeLoad
 	} else if opcode&0xfc00 == 0x4400 {
 		// format 5 - Hi register operations/branch exchange
-		return arm.thumbHiRegisterOps
+		return decodeThumbHiRegisterOps
 	} else if opcode&0xfc00 == 0x4000 {
 		// format 4 - ALU operations
-		return arm.thumbALUoperations
+		return decodeThumbALUoperations
 	} else if opcode&0xe000 == 0x2000 {
 		// format 3 - Move/compare/add/subtract immediate
-		return arm.thumbMovCmpAddSubImm
+		return decodeThumbMovCmpAddSubImm
 	} else if opcode&0xf800 == 0x1800 {
 		// format 2 - Add/subtract
-		return arm.thumbAddSubtract
+		return decodeThumbAddSubtract
 	} else if opcode&0xe000 == 0x0000 {
 		// format 1 - Move shifted register
-		return arm.thumbMoveShiftedRegister
+		return decodeThumbMoveShiftedRegister
 	}
 
-	panic(fmt.Sprintf("undecoded thumb instruction (%04x)", opcode))
+	return nil
 }
 
-func (arm *ARM) thumbMoveShiftedRegister(opcode uint16) {
+func decodeThumbMoveShiftedRegister(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 1 - Move shifted register
 	op := (opcode & 0x1800) >> 11
 	shift := (opcode & 0x7c0) >> 6
 	srcReg := (opcode & 0x38) >> 3
 	destReg := opcode & 0x07
 
-	// in this class of operation the src register may also be the dest
+	// in this class of operation the srcVal register may also be the dest
 	// register so we need to make a note of the value before it is
 	// overwrittten
-	src := arm.state.registers[srcReg]
+	var srcVal uint32
+	if arm != nil {
+		srcVal = arm.state.registers[srcReg]
+	}
 
 	switch op {
 	case 0b00:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "LSL",
+				Operand:  fmt.Sprintf("R%d, R%d, #$%02x ", destReg, srcReg, shift),
+			}
+		}
+
 		// if immed_5 == 0
 		//	C Flag = unaffected
 		//	Rd = Rm
@@ -110,15 +122,22 @@ func (arm *ARM) thumbMoveShiftedRegister(opcode uint16) {
 		//	Rd = Rm Logical_Shift_Left immed_5
 
 		if shift == 0 {
-			arm.state.registers[destReg] = src
+			arm.state.registers[destReg] = srcVal
 		} else {
 			m := uint32(0x01) << (32 - shift)
 			if arm.state.status.itMask == 0b0000 {
-				arm.state.status.setCarry(src&m == m)
+				arm.state.status.setCarry(srcVal&m == m)
 			}
 			arm.state.registers[destReg] = arm.state.registers[srcReg] << shift
 		}
 	case 0b01:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "LSR",
+				Operand:  fmt.Sprintf("R%d, R%d, #$%02x ", destReg, srcReg, shift),
+			}
+		}
+
 		// if immed_5 == 0
 		//		C Flag = Rm[31]
 		//		Rd = 0
@@ -128,17 +147,24 @@ func (arm *ARM) thumbMoveShiftedRegister(opcode uint16) {
 
 		if shift == 0 {
 			if arm.state.status.itMask == 0b0000 {
-				arm.state.status.setCarry(src&0x80000000 == 0x80000000)
+				arm.state.status.setCarry(srcVal&0x80000000 == 0x80000000)
 			}
 			arm.state.registers[destReg] = 0x00
 		} else {
 			m := uint32(0x01) << (shift - 1)
 			if arm.state.status.itMask == 0b0000 {
-				arm.state.status.setCarry(src&m == m)
+				arm.state.status.setCarry(srcVal&m == m)
 			}
-			arm.state.registers[destReg] = src >> shift
+			arm.state.registers[destReg] = srcVal >> shift
 		}
 	case 0b10:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "ASR",
+				Operand:  fmt.Sprintf("R%d, R%d, #$%02x ", destReg, srcReg, shift),
+			}
+		}
+
 		// if immed_5 == 0
 		//		C Flag = Rm[31]
 		//		if Rm[31] == 0 then
@@ -151,7 +177,7 @@ func (arm *ARM) thumbMoveShiftedRegister(opcode uint16) {
 
 		if shift == 0 {
 			if arm.state.status.itMask == 0b0000 {
-				arm.state.status.setCarry(src&0x80000000 == 0x80000000)
+				arm.state.status.setCarry(srcVal&0x80000000 == 0x80000000)
 			}
 			if arm.state.status.carry {
 				arm.state.registers[destReg] = 0xffffffff
@@ -161,10 +187,10 @@ func (arm *ARM) thumbMoveShiftedRegister(opcode uint16) {
 		} else { // shift > 0
 			m := uint32(0x01) << (shift - 1)
 			if arm.state.status.itMask == 0b0000 {
-				arm.state.status.setCarry(src&m == m)
+				arm.state.status.setCarry(srcVal&m == m)
 			}
-			a := src >> shift
-			if src&0x80000000 == 0x80000000 {
+			a := srcVal >> shift
+			if srcVal&0x80000000 == 0x80000000 {
 				a |= (0xffffffff << (32 - shift))
 			}
 			arm.state.registers[destReg] = a
@@ -187,9 +213,11 @@ func (arm *ARM) thumbMoveShiftedRegister(opcode uint16) {
 	if shift > 0 {
 		arm.Icycle()
 	}
+
+	return nil
 }
 
-func (arm *ARM) thumbAddSubtract(opcode uint16) {
+func decodeThumbAddSubtract(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 2 - Add/subtract
 	immediate := opcode&0x0400 == 0x0400
 	subtract := opcode&0x0200 == 0x0200
@@ -199,17 +227,43 @@ func (arm *ARM) thumbAddSubtract(opcode uint16) {
 
 	// value to work with is either an immediate value or is in a register
 	val := imm
-	if !immediate {
+	if !immediate && arm != nil {
 		val = arm.state.registers[imm]
 	}
 
 	if subtract {
+		if arm == nil {
+			if immediate {
+				return &DisasmEntry{
+					Operator: "SUB",
+					Operand:  fmt.Sprintf("R%d, R%d, #$%02x ", destReg, srcReg, imm),
+				}
+			}
+			return &DisasmEntry{
+				Operator: "SUB",
+				Operand:  fmt.Sprintf("R%d, R%d, R%d ", destReg, srcReg, imm),
+			}
+		}
+
 		if arm.state.status.itMask == 0b0000 {
 			arm.state.status.isCarry(arm.state.registers[srcReg], ^val, 1)
 			arm.state.status.isOverflow(arm.state.registers[srcReg], ^val, 1)
 		}
 		arm.state.registers[destReg] = arm.state.registers[srcReg] - val
 	} else {
+		if arm == nil {
+			if immediate {
+				return &DisasmEntry{
+					Operator: "SUB",
+					Operand:  fmt.Sprintf("R%d, R%d, #$%02x ", destReg, srcReg, imm),
+				}
+			}
+			return &DisasmEntry{
+				Operator: "SUB",
+				Operand:  fmt.Sprintf("R%d, R%d, R%d ", destReg, srcReg, imm),
+			}
+		}
+
 		if arm.state.status.itMask == 0b0000 {
 			arm.state.status.isCarry(arm.state.registers[srcReg], val, 0)
 			arm.state.status.isOverflow(arm.state.registers[srcReg], val, 0)
@@ -224,11 +278,13 @@ func (arm *ARM) thumbAddSubtract(opcode uint16) {
 
 	// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	// - fillPipeline() will be called if necessary
+
+	return nil
 }
 
 // "The instructions in this group perform operations between a Lo register and
 // an 8-bit immediate value".
-func (arm *ARM) thumbMovCmpAddSubImm(opcode uint16) {
+func decodeThumbMovCmpAddSubImm(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 3 - Move/compare/add/subtract immediate
 	op := (opcode & 0x1800) >> 11
 	destReg := (opcode & 0x0700) >> 8
@@ -236,12 +292,26 @@ func (arm *ARM) thumbMovCmpAddSubImm(opcode uint16) {
 
 	switch op {
 	case 0b00:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "MOV",
+				Operand:  fmt.Sprintf("R%d, #$%02x ", destReg, imm),
+			}
+		}
+
 		arm.state.registers[destReg] = imm
 		if arm.state.status.itMask == 0b0000 {
 			arm.state.status.isZero(arm.state.registers[destReg])
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b01:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "CMP",
+				Operand:  fmt.Sprintf("R%d, #$%02x ", destReg, imm),
+			}
+		}
+
 		// status will be set when in IT block
 		arm.state.status.isCarry(arm.state.registers[destReg], ^imm, 1)
 		arm.state.status.isOverflow(arm.state.registers[destReg], ^imm, 1)
@@ -249,6 +319,13 @@ func (arm *ARM) thumbMovCmpAddSubImm(opcode uint16) {
 		arm.state.status.isNegative(cmp)
 		arm.state.status.isZero(cmp)
 	case 0b10:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "ADD",
+				Operand:  fmt.Sprintf("R%d, #$%02x ", destReg, imm),
+			}
+		}
+
 		if arm.state.status.itMask == 0b0000 {
 			arm.state.status.isCarry(arm.state.registers[destReg], imm, 0)
 			arm.state.status.isOverflow(arm.state.registers[destReg], imm, 0)
@@ -259,6 +336,13 @@ func (arm *ARM) thumbMovCmpAddSubImm(opcode uint16) {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b11:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "SUB",
+				Operand:  fmt.Sprintf("R%d, #$%02x ", destReg, imm),
+			}
+		}
+
 		if arm.state.status.itMask == 0b0000 {
 			arm.state.status.isCarry(arm.state.registers[destReg], ^imm, 1)
 			arm.state.status.isOverflow(arm.state.registers[destReg], ^imm, 1)
@@ -272,10 +356,12 @@ func (arm *ARM) thumbMovCmpAddSubImm(opcode uint16) {
 
 	// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	// - fillPipeline() will be called if necessary
+
+	return nil
 }
 
 // "The following instructions perform ALU operations on a Lo register pair".
-func (arm *ARM) thumbALUoperations(opcode uint16) {
+func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 4 - ALU operations
 	op := (opcode & 0x03c0) >> 6
 	srcReg := (opcode & 0x38) >> 3
@@ -287,18 +373,39 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 
 	switch op {
 	case 0b0000:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "AND",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		arm.state.registers[destReg] &= arm.state.registers[srcReg]
 		if arm.state.status.itMask == 0b0000 {
 			arm.state.status.isZero(arm.state.registers[destReg])
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0001:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "EOR",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		arm.state.registers[destReg] ^= arm.state.registers[srcReg]
 		if arm.state.status.itMask == 0b0000 {
 			arm.state.status.isZero(arm.state.registers[destReg])
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0010:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "LSL",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		shift = arm.state.registers[srcReg]
 
 		// if Rs[7:0] == 0
@@ -340,6 +447,13 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0011:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "LSR",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		shift = arm.state.registers[srcReg]
 
 		// if Rs[7:0] == 0 then
@@ -381,6 +495,13 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0100:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "ASR",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		shift = arm.state.registers[srcReg]
 
 		// if Rs[7:0] == 0 then
@@ -424,6 +545,13 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0101:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "ADC",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		if arm.state.status.carry {
 			if arm.state.status.itMask == 0b0000 {
 				arm.state.status.isCarry(arm.state.registers[destReg], arm.state.registers[srcReg], 1)
@@ -443,6 +571,13 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0110:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "SBC",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		if !arm.state.status.carry {
 			if arm.state.status.itMask == 0b0000 {
 				arm.state.status.isCarry(arm.state.registers[destReg], ^arm.state.registers[srcReg], 0)
@@ -462,6 +597,13 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0111:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "ROR",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		shift = arm.state.registers[srcReg]
 
 		// if Rs[7:0] == 0 then
@@ -494,11 +636,25 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b1000:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "TST",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		w := arm.state.registers[destReg] & arm.state.registers[srcReg]
 		// status will be set when in IT block
 		arm.state.status.isZero(w)
 		arm.state.status.isNegative(w)
 	case 0b1001:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "NEG",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		if arm.state.status.itMask == 0b0000 {
 			arm.state.status.isCarry(0, ^arm.state.registers[srcReg], 1)
 			arm.state.status.isOverflow(0, ^arm.state.registers[srcReg], 1)
@@ -509,6 +665,13 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b1010:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "CMP",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		// status will be set when in IT block
 		arm.state.status.isCarry(arm.state.registers[destReg], ^arm.state.registers[srcReg], 1)
 		arm.state.status.isOverflow(arm.state.registers[destReg], ^arm.state.registers[srcReg], 1)
@@ -516,6 +679,13 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 		arm.state.status.isZero(cmp)
 		arm.state.status.isNegative(cmp)
 	case 0b1011:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "CMN",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		// status will be set when in IT block
 		arm.state.status.isCarry(arm.state.registers[destReg], arm.state.registers[srcReg], 0)
 		arm.state.status.isOverflow(arm.state.registers[destReg], arm.state.registers[srcReg], 0)
@@ -523,12 +693,26 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 		arm.state.status.isZero(cmp)
 		arm.state.status.isNegative(cmp)
 	case 0b1100:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "ORR",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		arm.state.registers[destReg] |= arm.state.registers[srcReg]
 		if arm.state.status.itMask == 0b0000 {
 			arm.state.status.isZero(arm.state.registers[destReg])
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b1101:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "MUL",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		mul = true
 		mulOperand = arm.state.registers[srcReg]
 		arm.state.registers[destReg] *= arm.state.registers[srcReg]
@@ -537,12 +721,26 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b1110:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "BIC",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		arm.state.registers[destReg] &= ^arm.state.registers[srcReg]
 		if arm.state.status.itMask == 0b0000 {
 			arm.state.status.isZero(arm.state.registers[destReg])
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b1111:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "MVN",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		arm.state.registers[destReg] = ^arm.state.registers[srcReg]
 		if arm.state.status.itMask == 0b0000 {
 			arm.state.status.isZero(arm.state.registers[destReg])
@@ -595,9 +793,11 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 			arm.Icycle()
 		}
 	}
+
+	return nil
 }
 
-func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
+func decodeThumbHiRegisterOps(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 5 - Hi register operations/branch exchange
 	op := (opcode & 0x300) >> 8
 	hi1 := opcode&0x80 == 0x80
@@ -613,8 +813,20 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 		srcReg += 8
 	}
 
+	// when disassembling format 5 instructions, some documeation suggests that
+	// the registers are labelled Rn or Hn, depending on whether the register is
+	// a "high" register or not. earlier versions of this implementation
+	// followed that convention but for simplicity we now use the Rn form only
+
 	switch op {
 	case 0b00:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "ADD",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		// not two's complement
 		arm.state.registers[destReg] += arm.state.registers[srcReg]
 
@@ -636,8 +848,15 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
 
-		return
+		return nil
 	case 0b01:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "CMP",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		// alu_out = Rn - Rm
 		// N Flag = alu_out[31]
 		// Z Flag = if alu_out == 0 then 1 else 0
@@ -654,8 +873,15 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 		// it's not clear to whether section 5.5 of the "ARM7TDMI-S Technical
 		// Reference Manual r4p3" applies to the CMP instruction
 
-		return
+		return nil
 	case 0b10:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "MOV",
+				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
+			}
+		}
+
 		arm.state.registers[destReg] = arm.state.registers[srcReg]
 
 		// "5.5.5 Using R15 as an operand If R15 is used as an operand, the
@@ -676,8 +902,15 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
 
-		return
+		return nil
 	case 0b11:
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "BX",
+				Operand:  fmt.Sprintf("R%d ", srcReg),
+			}
+		}
+
 		switch arm.mmap.ARMArchitecture {
 		case architecture.ARMv7_M:
 			// register to use is expressed slightly differently
@@ -713,7 +946,7 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 
 			// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 			// - fillPipeline() will be called if necessary
-			return
+			return nil
 		case architecture.ARM7TDMI:
 			thumbMode := arm.state.registers[srcReg]&0x01 == 0x01
 
@@ -740,7 +973,7 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 
 				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 				// - fillPipeline() will be called if necessary
-				return
+				return nil
 			}
 
 			// switch to ARM mode. emulate function call.
@@ -749,7 +982,7 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 				arm.executionError = err
 				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 				//  - interrupted
-				return
+				return nil
 			}
 
 			if arm.disasm != nil {
@@ -772,7 +1005,7 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 				arm.state.yieldReason = mapper.YieldProgramEnded
 				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 				//  - interrupted
-				return
+				return nil
 			}
 
 			// ARM function updates the ARM registers
@@ -792,12 +1025,21 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 			// - fillPipeline() will be called if necessary
 		}
 	}
+
+	return nil
 }
 
-func (arm *ARM) thumbPCrelativeLoad(opcode uint16) {
+func decodeThumbPCrelativeLoad(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 6 - PC-relative load
 	destReg := (opcode & 0x0700) >> 8
 	imm := uint32(opcode&0x00ff) << 2
+
+	if arm == nil {
+		return &DisasmEntry{
+			Operator: "LDR",
+			Operand:  fmt.Sprintf("R%d, [PC, #$%02x] ", destReg, imm),
+		}
+	}
 
 	// "Bit 1 of the PC value is forced to zero for the purpose of this
 	// calculation, so the address is always word-aligned."
@@ -811,9 +1053,11 @@ func (arm *ARM) thumbPCrelativeLoad(opcode uint16) {
 	// - fillPipeline() will be called if necessary
 	arm.Ncycle(dataRead, addr)
 	arm.Icycle()
+
+	return nil
 }
 
-func (arm *ARM) thumbLoadStoreWithRegisterOffset(opcode uint16) {
+func decodeThumbLoadStoreWithRegisterOffset(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 7 - Load/store with register offset
 	load := opcode&0x0800 == 0x0800
 	byteTransfer := opcode&0x0400 == 0x0400
@@ -821,10 +1065,21 @@ func (arm *ARM) thumbLoadStoreWithRegisterOffset(opcode uint16) {
 	baseReg := (opcode & 0x0038) >> 3
 	reg := opcode & 0x0007
 
-	addr := arm.state.registers[baseReg] + arm.state.registers[offsetReg]
+	// the actual address we'll be loading from (or storing to)
+	var addr uint32
+	if arm != nil {
+		addr = arm.state.registers[baseReg] + arm.state.registers[offsetReg]
+	}
 
 	if load {
 		if byteTransfer {
+			if arm == nil {
+				return &DisasmEntry{
+					Operator: "LDRB",
+					Operand:  fmt.Sprintf("R%d, [R%d, R%d]", reg, baseReg, offsetReg),
+				}
+			}
+
 			arm.state.registers[reg] = uint32(arm.read8bit(addr))
 
 			// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
@@ -832,7 +1087,13 @@ func (arm *ARM) thumbLoadStoreWithRegisterOffset(opcode uint16) {
 			arm.Ncycle(dataRead, addr)
 			arm.Icycle()
 
-			return
+			return nil
+		}
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "LDR",
+				Operand:  fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg),
+			}
 		}
 
 		arm.state.registers[reg] = arm.read32bit(addr, true)
@@ -842,25 +1103,41 @@ func (arm *ARM) thumbLoadStoreWithRegisterOffset(opcode uint16) {
 		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
 
-		return
+		return nil
 	}
 
 	if byteTransfer {
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "STRB",
+				Operand:  fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg),
+			}
+		}
+
 		arm.write8bit(addr, uint8(arm.state.registers[reg]))
 
 		// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		arm.storeRegisterCycles(addr)
 
-		return
+		return nil
+	}
+
+	if arm == nil {
+		return &DisasmEntry{
+			Operator: "STR",
+			Operand:  fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg),
+		}
 	}
 
 	arm.write32bit(addr, arm.state.registers[reg], true)
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
+
+	return nil
 }
 
-func (arm *ARM) thumbLoadStoreSignExtendedByteHalford(opcode uint16) {
+func decodeThumbLoadStoreSignExtendedByteHalford(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 8 - Load/store sign-extended byte/halfword
 	hi := opcode&0x0800 == 0x800
 	sign := opcode&0x0400 == 0x400
@@ -868,10 +1145,21 @@ func (arm *ARM) thumbLoadStoreSignExtendedByteHalford(opcode uint16) {
 	baseReg := (opcode & 0x0038) >> 3
 	reg := opcode & 0x0007
 
-	addr := arm.state.registers[baseReg] + arm.state.registers[offsetReg]
+	// the actual address we'll be loading from (or storing to)
+	var addr uint32
+	if arm != nil {
+		addr = arm.state.registers[baseReg] + arm.state.registers[offsetReg]
+	}
 
 	if sign {
 		if hi {
+			if arm == nil {
+				return &DisasmEntry{
+					Operator: "LDSH",
+					Operand:  fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg),
+				}
+			}
+
 			// load sign-extended halfword
 			arm.state.registers[reg] = uint32(arm.read16bit(addr, true))
 
@@ -885,8 +1173,16 @@ func (arm *ARM) thumbLoadStoreSignExtendedByteHalford(opcode uint16) {
 			arm.Ncycle(dataRead, addr)
 			arm.Icycle()
 
-			return
+			return nil
 		}
+
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "LDSB",
+				Operand:  fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg),
+			}
+		}
+
 		// load sign-extended byte
 		arm.state.registers[reg] = uint32(arm.read8bit(addr))
 		if arm.state.registers[reg]&0x0080 == 0x0080 {
@@ -898,10 +1194,17 @@ func (arm *ARM) thumbLoadStoreSignExtendedByteHalford(opcode uint16) {
 		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
 
-		return
+		return nil
 	}
 
 	if hi {
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "LDRH",
+				Operand:  fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg),
+			}
+		}
+
 		// load halfword
 		arm.state.registers[reg] = uint32(arm.read16bit(addr, true))
 
@@ -910,7 +1213,14 @@ func (arm *ARM) thumbLoadStoreSignExtendedByteHalford(opcode uint16) {
 		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
 
-		return
+		return nil
+	}
+
+	if arm == nil {
+		return &DisasmEntry{
+			Operator: "STRH",
+			Operand:  fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg),
+		}
 	}
 
 	// store halfword
@@ -918,9 +1228,11 @@ func (arm *ARM) thumbLoadStoreSignExtendedByteHalford(opcode uint16) {
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
+
+	return nil
 }
 
-func (arm *ARM) thumbLoadStoreWithImmOffset(opcode uint16) {
+func decodeThumbLoadStoreWithImmOffset(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 9 - Load/store with immediate offset
 	load := opcode&0x0800 == 0x0800
 	byteTransfer := opcode&0x1000 == 0x1000
@@ -937,10 +1249,20 @@ func (arm *ARM) thumbLoadStoreWithImmOffset(opcode uint16) {
 	}
 
 	// the actual address we'll be loading from (or storing to)
-	addr := arm.state.registers[baseReg] + uint32(offset)
+	var addr uint32
+	if arm != nil {
+		addr = arm.state.registers[baseReg] + uint32(offset)
+	}
 
 	if load {
 		if byteTransfer {
+			if arm == nil {
+				return &DisasmEntry{
+					Operator: "LDRB",
+					Operand:  fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset),
+				}
+			}
+
 			arm.state.registers[reg] = uint32(arm.read8bit(addr))
 
 			// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
@@ -948,7 +1270,14 @@ func (arm *ARM) thumbLoadStoreWithImmOffset(opcode uint16) {
 			arm.Ncycle(dataRead, addr)
 			arm.Icycle()
 
-			return
+			return nil
+		}
+
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "LDR",
+				Operand:  fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset),
+			}
 		}
 
 		arm.state.registers[reg] = arm.read32bit(addr, true)
@@ -958,26 +1287,42 @@ func (arm *ARM) thumbLoadStoreWithImmOffset(opcode uint16) {
 		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
 
-		return
+		return nil
 	}
 
 	// store
 	if byteTransfer {
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "STRB",
+				Operand:  fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset),
+			}
+		}
+
 		arm.write8bit(addr, uint8(arm.state.registers[reg]))
 
 		// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		arm.storeRegisterCycles(addr)
 
-		return
+		return nil
+	}
+
+	if arm == nil {
+		return &DisasmEntry{
+			Operator: "STR",
+			Operand:  fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset),
+		}
 	}
 
 	arm.write32bit(addr, arm.state.registers[reg], true)
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
+
+	return nil
 }
 
-func (arm *ARM) thumbLoadStoreHalfword(opcode uint16) {
+func decodeThumbLoadStoreHalfword(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 10 - Load/store halfword
 	load := opcode&0x0800 == 0x0800
 	offset := (opcode & 0x07c0) >> 6
@@ -989,9 +1334,19 @@ func (arm *ARM) thumbLoadStoreHalfword(opcode uint16) {
 	offset <<= 1
 
 	// the actual address we'll be loading from (or storing to)
-	addr := arm.state.registers[baseReg] + uint32(offset)
+	var addr uint32
+	if arm != nil {
+		addr = arm.state.registers[baseReg] + uint32(offset)
+	}
 
 	if load {
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "LDRH",
+				Operand:  fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset),
+			}
+		}
+
 		arm.state.registers[reg] = uint32(arm.read16bit(addr, true))
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
@@ -999,16 +1354,25 @@ func (arm *ARM) thumbLoadStoreHalfword(opcode uint16) {
 		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
 
-		return
+		return nil
+	}
+
+	if arm == nil {
+		return &DisasmEntry{
+			Operator: "STRH",
+			Operand:  fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset),
+		}
 	}
 
 	arm.write16bit(addr, uint16(arm.state.registers[reg]), true)
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
+
+	return nil
 }
 
-func (arm *ARM) thumbSPRelativeLoadStore(opcode uint16) {
+func decodeThumbSPRelativeLoadStore(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 11 - SP-relative load/store
 	load := opcode&0x0800 == 0x0800
 	reg := (opcode & 0x07ff) >> 8
@@ -1019,9 +1383,19 @@ func (arm *ARM) thumbSPRelativeLoadStore(opcode uint16) {
 	offset <<= 2
 
 	// the actual address we'll be loading from (or storing to)
-	addr := arm.state.registers[rSP] + offset
+	var addr uint32
+	if arm != nil {
+		addr = arm.state.registers[rSP] + offset
+	}
 
 	if load {
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "LDR",
+				Operand:  fmt.Sprintf("R%d, [SP, #$%02x] ", reg, offset),
+			}
+		}
+
 		arm.state.registers[reg] = arm.read32bit(addr, true)
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
@@ -1029,16 +1403,25 @@ func (arm *ARM) thumbSPRelativeLoadStore(opcode uint16) {
 		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
 
-		return
+		return nil
+	}
+
+	if arm == nil {
+		return &DisasmEntry{
+			Operator: "STR",
+			Operand:  fmt.Sprintf("R%d, [SP, #$%02x] ", reg, offset),
+		}
 	}
 
 	arm.write32bit(addr, arm.state.registers[reg], true)
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
+
+	return nil
 }
 
-func (arm *ARM) thumbLoadAddress(opcode uint16) {
+func decodeThumbLoadAddress(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 12 - Load address
 	sp := opcode&0x0800 == 0x800
 	destReg := (opcode & 0x700) >> 8
@@ -1048,12 +1431,26 @@ func (arm *ARM) thumbLoadAddress(opcode uint16) {
 	offset <<= 2
 
 	if sp {
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "ADD",
+				Operand:  fmt.Sprintf("R%d, [SP, #$%02x] ", destReg, offset),
+			}
+		}
+
 		arm.state.registers[destReg] = arm.state.registers[rSP] + uint32(offset)
 
 		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
 
-		return
+		return nil
+	}
+
+	if arm == nil {
+		return &DisasmEntry{
+			Operator: "ADD",
+			Operand:  fmt.Sprintf("R%d, [PC, #$%02x] ", destReg, offset),
+		}
 	}
 
 	arm.state.registers[destReg] = arm.state.registers[rPC] + uint32(offset)
@@ -1063,9 +1460,11 @@ func (arm *ARM) thumbLoadAddress(opcode uint16) {
 
 	// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	// - fillPipeline() will be called if necessary
+
+	return nil
 }
 
-func (arm *ARM) thumbAddOffsetToSP(opcode uint16) {
+func decodeThumbAddOffsetToSP(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 13 - Add offset to stack pointer
 	sign := opcode&0x80 == 0x80
 	imm := uint32(opcode & 0x7f)
@@ -1076,12 +1475,26 @@ func (arm *ARM) thumbAddOffsetToSP(opcode uint16) {
 	imm <<= 2
 
 	if sign {
+		if arm == nil {
+			return &DisasmEntry{
+				Operator: "ADD",
+				Operand:  fmt.Sprintf("SP, -#%d ", imm),
+			}
+		}
+
 		arm.state.registers[rSP] -= imm
 
 		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - no additional cycles
 
-		return
+		return nil
+	}
+
+	if arm == nil {
+		return &DisasmEntry{
+			Operator: "ADD",
+			Operand:  fmt.Sprintf("SP, #$%02x ", imm),
+		}
 	}
 
 	arm.state.registers[rSP] += imm
@@ -1090,9 +1503,11 @@ func (arm *ARM) thumbAddOffsetToSP(opcode uint16) {
 
 	// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	// - no additional cycles
+
+	return nil
 }
 
-func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
+func decodeThumbPushPopRegisters(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 14 - Push/pop registers
 
 	// the ARM pushes registers in descending order and pops in ascending
@@ -1103,6 +1518,19 @@ func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
 	regList := uint8(opcode & 0x00ff)
 
 	if load {
+		if arm == nil {
+			if pclr {
+				return &DisasmEntry{
+					Operator: "POP",
+					Operand:  fmt.Sprintf("{%s}", reglistToMnemonic(regList, "PC")),
+				}
+			}
+			return &DisasmEntry{
+				Operator: "POP",
+				Operand:  fmt.Sprintf("{%s}", reglistToMnemonic(regList, "")),
+			}
+		}
+
 		// start_address = SP
 		// end_address = SP + 4*(R + Number_Of_Set_Bits_In(register_list))
 		// address = start_address
@@ -1173,7 +1601,20 @@ func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
 		// leave stackpointer at final address
 		arm.state.registers[rSP] = addr
 
-		return
+		return nil
+	}
+
+	if arm == nil {
+		if pclr {
+			return &DisasmEntry{
+				Operator: "PUSH",
+				Operand:  fmt.Sprintf("{%s}", reglistToMnemonic(regList, "LR")),
+			}
+		}
+		return &DisasmEntry{
+			Operator: "PUSH",
+			Operand:  fmt.Sprintf("{%s}", reglistToMnemonic(regList, "")),
+		}
 	}
 
 	// store
@@ -1247,13 +1688,28 @@ func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
 	// update stack pointer. note that this is the address we started the push
 	// sequence from above. this is correct.
 	arm.state.registers[rSP] -= c
+
+	return nil
 }
 
-func (arm *ARM) thumbMultipleLoadStore(opcode uint16) {
+func decodeThumbMultipleLoadStore(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 15 - Multiple load/store
 	load := opcode&0x0800 == 0x0800
 	baseReg := uint32(opcode&0x07ff) >> 8
-	regList := opcode & 0xff
+	regList := uint8(opcode & 0x00ff)
+
+	if arm == nil {
+		if load {
+			return &DisasmEntry{
+				Operator: "LDMIA",
+				Operand:  fmt.Sprintf("R%d!, {%s}", baseReg, reglistToMnemonic(regList, "")),
+			}
+		}
+		return &DisasmEntry{
+			Operator: "STMIA",
+			Operand:  fmt.Sprintf("R%d!, {%s}", baseReg, reglistToMnemonic(regList, "")),
+		}
+	}
 
 	// load/store the registers in the list starting at address
 	// in the base register
@@ -1304,7 +1760,7 @@ func (arm *ARM) thumbMultipleLoadStore(opcode uint16) {
 			arm.state.registers[baseReg] = addr
 		}
 
-		return
+		return nil
 	}
 
 	// store
@@ -1332,12 +1788,52 @@ func (arm *ARM) thumbMultipleLoadStore(opcode uint16) {
 
 	// write back the new base address
 	arm.state.registers[baseReg] = addr
+
+	return nil
 }
 
-func (arm *ARM) thumbConditionalBranch(opcode uint16) {
+func decodeThumbConditionalBranch(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 16 - Conditional branch
 	cond := uint8((opcode & 0x0f00) >> 8)
 	offset := uint32(opcode & 0x00ff)
+
+	if arm == nil {
+		var entry DisasmEntry
+		switch cond {
+		case 0b0000:
+			entry.Operator = "BEQ"
+		case 0b0001:
+			entry.Operator = "BNE"
+		case 0b0010:
+			entry.Operator = "BCS"
+		case 0b0011:
+			entry.Operator = "BCC"
+		case 0b0100:
+			entry.Operator = "BMI"
+		case 0b0101:
+			entry.Operator = "BPL"
+		case 0b0110:
+			entry.Operator = "BVS"
+		case 0b0111:
+			entry.Operator = "BVC"
+		case 0b1000:
+			entry.Operator = "BHI"
+		case 0b1001:
+			entry.Operator = "BLS"
+		case 0b1010:
+			entry.Operator = "BGE"
+		case 0b1011:
+			entry.Operator = "BLT"
+		case 0b1100:
+			entry.Operator = "BGT"
+		case 0b1101:
+			entry.Operator = "BLE"
+		case 0b1110:
+			entry.Operator = "undefined branch"
+		case 0b1111:
+		}
+		return &entry
+	}
 
 	b := arm.state.status.condition(cond)
 
@@ -1372,16 +1868,28 @@ func (arm *ARM) thumbConditionalBranch(opcode uint16) {
 		}
 		arm.disasmUpdateNotes = true
 	}
+
+	return nil
 }
 
-func (arm *ARM) thumbSoftwareInterrupt(opcode uint16) {
+func decodeThumbSoftwareInterrupt(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 17 - Software interrupt"
-	panic(fmt.Sprintf("unimplemented (software interrupt) thumb instruction (%04x)", opcode))
+	if arm != nil {
+		panic(fmt.Sprintf("unimplemented (software interrupt) thumb instruction (%04x)", opcode))
+	}
+	return nil
 }
 
-func (arm *ARM) thumbUnconditionalBranch(opcode uint16) {
+func decodeThumbUnconditionalBranch(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 18 - Unconditional branch
 	offset := uint32(opcode&0x07ff) << 1
+
+	if arm == nil {
+		return &DisasmEntry{
+			Operator: "BAL",
+			Operand:  fmt.Sprintf("$%04x ", offset),
+		}
+	}
 
 	if offset&0x800 == 0x0800 {
 		// two's complement before subtraction
@@ -1394,14 +1902,29 @@ func (arm *ARM) thumbUnconditionalBranch(opcode uint16) {
 
 	// "7.3 Branch ..." in "ARM7TDMI-S Technical Reference Manual r4p3"
 	// - fillPipeline() will be called if necessary
+
+	return nil
 }
 
-func (arm *ARM) thumbLongBranchWithLink(opcode uint16) {
+func decodeThumbLongBranchWithLink(arm *ARM, opcode uint16) *DisasmEntry {
 	// format 19 - Long branch with link
 	low := opcode&0x800 == 0x0800
 	offset := uint32(opcode & 0x07ff)
 
 	// there is no direct ARM equivalent for this instruction.
+
+	if arm == nil {
+		if low {
+			return &DisasmEntry{
+				Operator: "BL",
+				Operand:  fmt.Sprintf("$%08x", offset),
+			}
+		}
+		return &DisasmEntry{
+			Operator: "-",
+			Operand:  "preparation for BL",
+		}
+	}
 
 	if low {
 		// second instruction
@@ -1415,7 +1938,7 @@ func (arm *ARM) thumbLongBranchWithLink(opcode uint16) {
 		// -- no additional cycles for second instruction in BL
 		// -- change of PC is captured by expectedPC check in Run() function loop
 
-		return
+		return nil
 	}
 
 	// first instruction
@@ -1433,4 +1956,6 @@ func (arm *ARM) thumbLongBranchWithLink(opcode uint16) {
 
 	// "7.4 Thumb Branch With Link" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	// -- no additional cycles for first instruction in BL
+
+	return nil
 }
