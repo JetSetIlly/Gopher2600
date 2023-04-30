@@ -170,7 +170,7 @@ func (arm *ARM) thumbMoveShiftedRegister(opcode uint16) {
 			arm.state.registers[destReg] = a
 		}
 
-	case 0x11:
+	case 0b11:
 		panic(fmt.Sprintf("illegal (move shifted register) thumb operation (%04b)", op))
 	}
 
