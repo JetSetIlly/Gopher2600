@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
 )
 
-func (img *SdlImgui) drawDisasmForCoProc(disasm []*developer.SourceDisasm, ln *developer.SourceLine, multiline bool) {
+func (img *SdlImgui) drawDisasmForCoProc(disasm []*developer.SourceInstruction, ln *developer.SourceLine, multiline bool) {
 	imgui.BeginTable("##disasmTable", 3)
 
 	const maxDisasmLines = 10
@@ -58,7 +58,7 @@ func (img *SdlImgui) drawDisasmForCoProc(disasm []*developer.SourceDisasm, ln *d
 		} else {
 			imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceDisasmFade)
 		}
-		imgui.Text(d.Instruction)
+		imgui.Text(d.Disasm.String())
 		imgui.PopStyleColor()
 
 		// limit number of lines unless multiline is true

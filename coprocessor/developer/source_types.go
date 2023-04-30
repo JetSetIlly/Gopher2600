@@ -18,6 +18,8 @@ package developer
 import (
 	"fmt"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 // SourceFileContent lists the lines in a source file
@@ -51,33 +53,47 @@ func (f *SourceFile) IsStub() bool {
 	return f.Filename == stubIndicator
 }
 
-// SourceDisasm is a single disassembled intruction from the ELF binary. Not to
-// be confused with the coprocessor.disassembly package. SourceDisasm instances
-// are intended to be used by static disasemblers.
-type SourceDisasm struct {
+// SourceInstruction is a single intruction from the ELF binary with a reference
+// to a disassembly supplied by the cartridges coprocessor interface.
+//
+// Not to be confused with anything in the the coprocessor.disassembly package.
+// SourceInstruction instances are intended to be used by static disasemblers.
+type SourceInstruction struct {
+	// the address in memory of the instruction
 	Addr uint32
 
-	is32Bit bool
-	opcode  uint32
+	// an opcode may be 16bit or 32bit. the size field indicates how much of the
+	// opcode field is to be used
+	opcode uint32
+	size   int
 
-	Instruction string
+	// the disassembly entry from the cartridge dissassembly. we don't deal with
+	// the details of this type in the coprocessor.developer package
+	Disasm mapper.CartCoProcDisasmEntry
 
+	// the line of source code this diassembly entry is associated with
 	Line *SourceLine
 }
 
 // Opcode returns a string formatted opcode appropriate for the bit length.
-func (d *SourceDisasm) Opcode() string {
-	if d.is32Bit {
+func (d *SourceInstruction) Opcode() string {
+	switch d.size {
+	case 2:
+		return fmt.Sprintf("%04x", d.opcode)
+	case 4:
 		return fmt.Sprintf("%04x %04x", uint16(d.opcode>>16), uint16(d.opcode))
 	}
-	return fmt.Sprintf("%04x", d.opcode)
+	panic(fmt.Sprintf("unsupported opcode size (%d)", d.size))
 }
 
-func (d *SourceDisasm) String() string {
-	if d.is32Bit {
-		return fmt.Sprintf("%#08x %04x %04x %s", d.Addr, uint16(d.opcode>>16), uint16(d.opcode), d.Instruction)
+func (d *SourceInstruction) String() string {
+	switch d.size {
+	case 2:
+		return fmt.Sprintf("%#08x %04x %s", d.Addr, uint16(d.opcode), d.Disasm.String())
+	case 4:
+		return fmt.Sprintf("%#08x %04x %04x %s", d.Addr, uint16(d.opcode>>16), uint16(d.opcode), d.Disasm.String())
 	}
-	return fmt.Sprintf("%#08x %04x %s", d.Addr, uint16(d.opcode), d.Instruction)
+	panic(fmt.Sprintf("unsupported opcode size (%d)", d.size))
 }
 
 type AllSourceLines struct {
@@ -126,11 +142,11 @@ type SourceLine struct {
 	// line divided into parts
 	Fragments []SourceLineFragment
 
-	// the generated assembly for this line. will be empty if line is a comment
-	// or otherwise unsused.
+	// the list of instructions for this line. will be empty if line is not used
+	// in the program (eg. a comment line)
 	//
-	// note that only disassembly for non-linined ranges will be collated
-	Disassembly []*SourceDisasm
+	// note that only instructions for non-inlined ranges will be collated
+	Instruction []*SourceInstruction
 
 	// whether this source line has been responsible for a likely bug (eg. illegal access of memory)
 	Bug bool
@@ -204,8 +220,9 @@ type SourceFunction struct {
 	framebaseLoclist *loclist
 
 	// first source line for each instance of the function. note that the first
-	// line of a function may not have any code directly associated with it.
-	// the Disassembly and Stats fields therefore should not be relied upon.
+	// line of a function may not have any code directly associated with it -
+	// meaning that the Instruction and Stats fields of the DeclLine may be
+	// empty
 	DeclLine *SourceLine
 
 	// stats for the function

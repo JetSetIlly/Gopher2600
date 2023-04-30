@@ -30,7 +30,7 @@ const breakAnywhere = true
 
 func (src *Source) CanBreakpoint(ln *SourceLine) bool {
 	if breakAnywhere {
-		return len(ln.Disassembly) > 0
+		return len(ln.Instruction) > 0
 	}
 	return ln.breakable
 }

@@ -175,7 +175,7 @@ type ARMState struct {
 	function32bitResolving bool
 
 	// the first 16bits of the most recent 32bit instruction
-	function32bitOpcode uint16
+	function32bitOpcodeHi uint16
 
 	// disassembly of 32bit thumb-2
 	// * temporary construct until thumb2Disassemble() is written
@@ -841,19 +841,14 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 				var cached bool
 				var entry DisasmEntry
 
-				// which opcode to use for the disassembly
-				disasmOpcode := opcode
-				if arm.state.function32bitResolving {
-					disasmOpcode = arm.state.function32bitOpcode
-				}
-
 				entry, cached = arm.disasmCache[arm.state.instructionPC]
 				if !cached {
-					entry, _ = Disassemble(disasmOpcode)
-
 					if arm.state.function32bitResolving {
+						entry = Disassemble(arm.state.function32bitOpcodeHi)
 						entry.Is32bit = true
-						entry.OpcodeLo = opcode
+						entry.Opcode = opcode
+					} else {
+						entry = Disassemble(opcode)
 					}
 
 					entry.Address = fmt.Sprintf("%08x", arm.state.instructionPC)
@@ -1027,7 +1022,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 		arm.state.function32bitResolving = true
 		df = arm.state.functionMap[memIdx]
 		if df == nil {
-			df = decode32bitThumb2(arm, arm.state.function32bitOpcode)
+			df = decode32bitThumb2(nil, arm.state.function32bitOpcodeHi)
 			arm.state.functionMap[memIdx] = df
 		}
 	} else {
@@ -1040,7 +1035,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 
 		if is32BitThumb2(opcode) {
 			arm.state.function32bitDecoding = true
-			arm.state.function32bitOpcode = opcode
+			arm.state.function32bitOpcodeHi = opcode
 		} else {
 			df = arm.state.functionMap[memIdx]
 			if df == nil {
@@ -1127,7 +1122,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 			arm.fudge_writer.Write([]byte("*** "))
 		}
 		if fudge_resolving32bitInstruction {
-			arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x %04x :: %s\n", arm.state.instructionPC, arm.state.function32bitOpcode, opcode, arm.state.fudge_thumb2disassemble32bit)))
+			arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x %04x :: %s\n", arm.state.instructionPC, arm.state.function32bitOpcodeHi, opcode, arm.state.fudge_thumb2disassemble32bit)))
 			arm.fudge_writer.Write([]byte(arm.String() + "\n"))
 			arm.fudge_writer.Write([]byte(arm.state.status.String() + "\n"))
 			arm.fudge_writer.Write([]byte("====================\n"))
@@ -1135,7 +1130,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 			if arm.state.fudge_thumb2disassemble16bit != "" {
 				arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, arm.state.fudge_thumb2disassemble16bit)))
 			} else {
-				entry, _ := Disassemble(opcode)
+				entry := Disassemble(opcode)
 				arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, entry.String())))
 			}
 			arm.fudge_writer.Write([]byte(arm.String() + "\n"))

@@ -155,11 +155,11 @@ func (win *winCoProcIllegalAccess) draw() {
 						imgui.Separator()
 						imgui.Spacing()
 						win.img.drawSourceLine(lg.SrcLine, true)
-						if len(lg.SrcLine.Disassembly) > 0 {
+						if len(lg.SrcLine.Instruction) > 0 {
 							imgui.Spacing()
 							imgui.Separator()
 							imgui.Spacing()
-							win.img.drawDisasmForCoProc(lg.SrcLine.Disassembly, lg.SrcLine, false)
+							win.img.drawDisasmForCoProc(lg.SrcLine.Instruction, lg.SrcLine, false)
 						}
 					} else {
 						imgui.Spacing()

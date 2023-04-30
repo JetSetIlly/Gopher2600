@@ -82,8 +82,8 @@ type Source struct {
 	// every compile unit in the dwarf data
 	compileUnits []*compileUnit
 
-	// disassembled binary
-	Disassembly map[uint64]*SourceDisasm
+	// instructions in the source code
+	Instructions map[uint64]*SourceInstruction
 
 	// all the files in all the compile units
 	Files     map[string]*SourceFile
@@ -182,7 +182,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		coprocShim: coprocShim{
 			cart: cart,
 		},
-		Disassembly:      make(map[uint64]*SourceDisasm),
+		Instructions:     make(map[uint64]*SourceInstruction),
 		Files:            make(map[string]*SourceFile),
 		Filenames:        make([]string, 0, 10),
 		FilesByShortname: make(map[string]*SourceFile),
@@ -333,7 +333,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		}
 	}
 
-	// disassemble every word in the ELF file
+	// disassemble every word in the ELF file using the cartridge coprocessor interface
 	//
 	// we could traverse of the progs array of the file here but some ELF files
 	// that we want to support do not have any program headers. we get the same
@@ -366,19 +366,30 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 			if is32Bit {
 				is32Bit = false
-				src.Disassembly[addr32Bit].opcode <<= 16
-				src.Disassembly[addr32Bit].opcode |= uint32(opcode)
+				src.Instructions[addr32Bit].opcode <<= 16
+				src.Instructions[addr32Bit].opcode |= uint32(opcode)
 			} else {
-				var entry mapper.CartCoProcDisasmEntry
-				entry, is32Bit = arm.Disassemble(opcode)
-				addr32Bit = addr
+				disasm := arm.Disassemble(opcode)
 
-				// create the disassembly entry
-				src.Disassembly[addr] = &SourceDisasm{
-					Addr:        uint32(addr),
-					is32Bit:     is32Bit,
-					opcode:      uint32(opcode),
-					Instruction: entry.String(),
+				// size of opcode in instruction
+				size := disasm.Size()
+				if size != 2 && size != 4 {
+					return nil, fmt.Errorf("dwarf: opcode size must be 2 or 4")
+				}
+
+				// if size is 4 then the instruction is 32bit, meaning that the
+				// next 16bit instruction is treated a little differently
+				if size == 4 {
+					is32Bit = true
+					addr32Bit = addr
+				}
+
+				// create the instruction
+				src.Instructions[addr] = &SourceInstruction{
+					Addr:   uint32(addr),
+					opcode: uint32(opcode),
+					size:   size,
+					Disasm: disasm,
 				}
 			}
 
@@ -595,7 +606,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 }
 
 func allocateInstructionsToSourceLines(src *Source, dwrf *dwarf.Data, executableOrigin uint64) error {
-	// find reference for every meaningful source line and link to disassembly
+	// find reference for every meaningful source line and link to instruction
 	for _, e := range src.compileUnits {
 		// the source line we're working on
 		var ln *SourceLine
@@ -634,7 +645,7 @@ func allocateInstructionsToSourceLines(src *Source, dwrf *dwarf.Data, executable
 			// adjust address by executable origin
 			endAddr := le.Address + executableOrigin
 
-			// add breakpoint and disasm information to the source line
+			// add breakpoint and instruction information to the source line
 			if ln != nil && endAddr-startAddr > 0 {
 				// whether line can have a breakpoint on it
 				ln.breakable = ln.breakable || le.IsStmt
@@ -642,25 +653,24 @@ func allocateInstructionsToSourceLines(src *Source, dwrf *dwarf.Data, executable
 				// add address to list of break addresses
 				ln.breakAddress = append(ln.breakAddress, startAddr)
 
-				// add disassembly to source line and add source line to linesByAddress
-				for addr := startAddr; addr < endAddr; addr += 2 {
-					// look for address in disassembly
-					if d, ok := src.Disassembly[addr]; ok {
-						// add disassembly to the list of instructions for the source line
-						ln.Disassembly = append(ln.Disassembly, d)
+				// add instruction to source line and add source line to linesByAddress
+				for addr := startAddr; addr < endAddr; addr++ {
+					// look for address in list of source instructions
+					if ins, ok := src.Instructions[addr]; ok {
+						// add instruction to the list for the source line
+						ln.Instruction = append(ln.Instruction, ins)
 
-						// link source line to disassembly
-						d.Line = ln
+						// link source line to instruction
+						ins.Line = ln
 
 						// add source line to list of lines by address
 						src.LinesByAddress[addr] = ln
 
-						// disassembled instruction is a 32bit instruction so
-						// address must advance by an additional 2 bytes (for a
-						// total of 4 bytes)
-						if d.is32Bit {
-							addr += 2
-						}
+						// advance address value by opcode size. reduce value by
+						// one because the loop increment advances by one
+						// already (which will always apply even if there is no
+						// instruction for the address)
+						addr += uint64(ins.size) - 1
 					}
 				}
 			}
@@ -731,7 +741,7 @@ func findEntryFunction(src *Source) {
 	// assume the function of the first line in the source is the entry
 	// function
 	for _, ln := range src.SortedLines.Lines {
-		if len(ln.Disassembly) > 0 {
+		if len(ln.Instruction) > 0 {
 			src.MainFunction = ln.Function
 			break
 		}

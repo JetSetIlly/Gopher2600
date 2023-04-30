@@ -66,21 +66,19 @@ func decodeThumb2Coprocessor(arm *ARM, opcode uint16) *DisasmEntry {
 
 	// the coproc value for the FPU is either 1010 or 1011. panic for any other value
 	if coproc&0b1110 != 0b1010 {
-		fmt.Printf("%16b %16b\n", arm.state.function32bitOpcode, opcode)
-		fmt.Printf("%04x %04x\n", arm.state.function32bitOpcode, opcode)
 		panic(fmt.Sprintf("unsupported coproc (%04b)", coproc))
 	}
 
 	// T bit
 	// T := (arm.state.function32bitOpcode & 0x1000) >> 12
 
-	if arm.state.function32bitOpcode&0x0fe0 == 0x0c44 {
+	if arm.state.function32bitOpcodeHi&0x0fe0 == 0x0c44 {
 		// "A6.7 64-bit transfers between Arm core and extension registers" of "ARMv7-M"
 		panic("unimplemented FPU 64bit transfer instruction")
-	} else if arm.state.function32bitOpcode&0x0f00 == 0x0e00 && opcode&0x0010 == 0x0010 {
+	} else if arm.state.function32bitOpcodeHi&0x0f00 == 0x0e00 && opcode&0x0010 == 0x0010 {
 		// "A6.6 32-bit transfer between ARM core and extension registers" of "ARM-v7-M"
-		L := (arm.state.function32bitOpcode & 0x0010) >> 4
-		A := (arm.state.function32bitOpcode & 0x00e0) >> 5
+		L := (arm.state.function32bitOpcodeHi & 0x0010) >> 4
+		A := (arm.state.function32bitOpcodeHi & 0x00e0) >> 5
 		// C := (opcode & 0x100) >> 8
 
 		if A == 0b111 {
@@ -105,14 +103,14 @@ func decodeThumb2Coprocessor(arm *ARM, opcode uint16) *DisasmEntry {
 			}
 		}
 
-	} else if arm.state.function32bitOpcode&0x0f00 == 0x0e00 && opcode&0x0010 != 0x0010 {
+	} else if arm.state.function32bitOpcodeHi&0x0f00 == 0x0e00 && opcode&0x0010 != 0x0010 {
 		// "A6.4 Floating-point data-processing instructions" of "ARMv7-M"
 
 		// assume everything will just result in zero values for now
-	} else if arm.state.function32bitOpcode&0x0c00 == 0x0c00 {
+	} else if arm.state.function32bitOpcodeHi&0x0c00 == 0x0c00 {
 		// "A6.5 Extension register load or store instructions" of "ARMv7-M"
-		opcode := (arm.state.function32bitOpcode & 0x01f0) >> 4
-		Rn := arm.state.function32bitOpcode & 0x000f
+		opcode := (arm.state.function32bitOpcodeHi & 0x01f0) >> 4
+		Rn := arm.state.function32bitOpcodeHi & 0x000f
 
 		switch opcode & 0b11011 {
 		case 0b10010:

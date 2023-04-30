@@ -216,6 +216,7 @@ type CartCoProcDisasmEntry interface {
 	String() string
 	Key() string
 	CSV() string
+	Size() int
 }
 
 // CartCoProcDisassembler defines the functions that must be defined for a

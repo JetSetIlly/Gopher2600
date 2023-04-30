@@ -186,8 +186,8 @@ func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries, lastExecu
 	imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0.00, 0)
 	imgui.TableSetupColumnV("MAM", imgui.TableColumnFlagsNone, width*0.025, 1)
 	imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.15, 2)
-	imgui.TableSetupColumnV("Operator", imgui.TableColumnFlagsNone, width*0.05, 3)
-	imgui.TableSetupColumnV("Operands", imgui.TableColumnFlagsNone, width*0.25, 4)
+	imgui.TableSetupColumnV("Operator", imgui.TableColumnFlagsNone, width*0.07, 3)
+	imgui.TableSetupColumnV("Operands", imgui.TableColumnFlagsNone, width*0.23, 4)
 	imgui.TableSetupColumnV("Branch Trail", imgui.TableColumnFlagsNone, width*0.025, 5)
 	imgui.TableSetupColumnV("MergedIS", imgui.TableColumnFlagsNone, width*0.025, 5)
 	imgui.TableSetupColumnV("Cycle Profile", imgui.TableColumnFlagsNone, width*0.30, 6)
@@ -322,11 +322,11 @@ func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry, ln *developer.So
 		imgui.Text("Opcode:")
 		imgui.SameLine()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmByteCode)
-		imgui.Text(fmt.Sprintf("%04x", e.Opcode))
 		if e.Is32bit {
+			imgui.Text(fmt.Sprintf("%04x", e.OpcodeHi))
 			imgui.SameLine()
-			imgui.Text(fmt.Sprintf("%04x", e.OpcodeLo))
 		}
+		imgui.Text(fmt.Sprintf("%04x", e.Opcode))
 		imgui.PopStyleColor()
 
 		imgui.Text("Instruction:")
@@ -364,15 +364,15 @@ func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry, ln *developer.So
 			imguiColorLabelSimple("MAM-2", win.img.cols.CoProcMAM2)
 		}
 
+		if e.MergedIS {
+			imguiColorLabelSimple("Merged I/S Cycle", win.img.cols.CoProcMergedIS)
+		}
+
 		switch e.BranchTrail {
 		case arm.BranchTrailUsed:
 			imguiColorLabelSimple("Branch Trail Used", win.img.cols.CoProcBranchTrailUsed)
 		case arm.BranchTrailFlushed:
 			imguiColorLabelSimple("Branch Trail Flushed", win.img.cols.CoProcBranchTrailFlushed)
-		}
-
-		if e.MergedIS {
-			imguiColorLabelSimple("Merged I/S Cycle", win.img.cols.CoProcMergedIS)
 		}
 
 		if e.ExecutionNotes != "" {
@@ -398,7 +398,8 @@ func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry, ln *developer.So
 		imgui.Spacing()
 		imgui.Separator()
 		imgui.Spacing()
-		if imgui.BeginTable("coprocDisasmTooltip", 2) {
+		imgui.Indent()
+		if imgui.BeginTable("coprocDisasmTooltipRegisters", 2) {
 			for r, v := range e.Registers {
 				imgui.TableNextRow()
 				imgui.TableNextColumn()

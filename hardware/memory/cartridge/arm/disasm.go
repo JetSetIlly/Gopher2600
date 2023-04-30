@@ -31,9 +31,9 @@ type DisasmEntry struct {
 	// the opcode for the instruction
 	Opcode uint16
 
-	// second opcode for 32bit instructions
+	// instruction is 32bit and the high opcode
 	Is32bit  bool
-	OpcodeLo uint16
+	OpcodeHi uint16
 
 	// formated strings based for use by disassemblies
 	Location string
@@ -74,12 +74,21 @@ func (e DisasmEntry) CSV() string {
 	return fmt.Sprintf("%s;%s;%s;%d;%s;%s;%s", e.Address, e.Operator, e.Operand, e.Cycles, e.ExecutionNotes, mergedIS, e.CyclesSequence)
 }
 
-// String returns a very simple representation of the disassembly entry.
+// String implements the CartCoProcDisasmEntry interface. Returns a very simple
+// representation of the disassembly entry.
 func (e DisasmEntry) String() string {
 	if e.Operator == "" {
 		return e.Operand
 	}
 	return fmt.Sprintf("%s %s", e.Operator, e.Operand)
+}
+
+// Size implements the CartCoProcDisasmEntry interface.
+func (e DisasmEntry) Size() int {
+	if e.Is32bit {
+		return 4
+	}
+	return 2
 }
 
 // DisasmSummary implements the CartCoProcDisasmSummary interface.
@@ -111,13 +120,13 @@ func (s *DisasmSummary) add(c cycleOrder) {
 	}
 }
 
-// Disassemble a single opcode. True is returned if the instruction is 32bit
-func Disassemble(opcode uint16) (DisasmEntry, bool) {
+// Disassemble a single opcode, returning a new DisasmEntry.
+func Disassemble(opcode uint16) DisasmEntry {
 	if is32BitThumb2(opcode) {
 		return DisasmEntry{
-			Opcode:  opcode,
-			Operand: "32bit Thumb-2",
-		}, true
+			OpcodeHi: opcode,
+			Operand:  "32bit Thumb-2",
+		}
 	}
 
 	df := decodeThumb(opcode)
@@ -125,7 +134,7 @@ func Disassemble(opcode uint16) (DisasmEntry, bool) {
 		return DisasmEntry{
 			Opcode:  opcode,
 			Operand: "error",
-		}, false
+		}
 	}
 
 	entry := df(nil, opcode)
@@ -133,12 +142,12 @@ func Disassemble(opcode uint16) (DisasmEntry, bool) {
 		return DisasmEntry{
 			Opcode:  opcode,
 			Operand: "error",
-		}, false
+		}
 	}
 
 	entry.Opcode = opcode
 	entry.Operator = strings.ToLower(entry.Operator)
-	return *entry, false
+	return *entry
 }
 
 // converts reglist to a string of register names separated by commas

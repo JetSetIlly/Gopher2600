@@ -1111,11 +1111,11 @@ func (win *winCoProcPerformance) tooltip(load developer.Load,
 			}
 		}
 
-		if showDisasm && len(ln.Disassembly) > 0 {
+		if showDisasm && len(ln.Instruction) > 0 {
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()
-			win.img.drawDisasmForCoProc(ln.Disassembly, ln, false)
+			win.img.drawDisasmForCoProc(ln.Instruction, ln, false)
 		}
 
 	}, true)

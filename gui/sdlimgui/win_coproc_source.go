@@ -42,8 +42,8 @@ type winCoProcSource struct {
 	syntaxHighlighting bool
 	optionsHeight      float32
 
-	selection       imguiSelection
-	selectionDisasm developer.DisasmRange
+	selection      imguiSelection
+	selectionRange developer.InstructionRange
 
 	lineFuzzy fuzzyFilter
 
@@ -484,16 +484,16 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 						}
 						if imgui.IsMouseDragging(0, 0.0) {
 							win.selection.drag(ln.LineNumber)
-							win.selectionDisasm.Clear()
+							win.selectionRange.Clear()
 							s, e := win.selection.limits()
 							for i := s; i <= e; i++ {
-								win.selectionDisasm.Add(win.selectedFile.Content.Lines[i-1])
+								win.selectionRange.Add(win.selectedFile.Content.Lines[i-1])
 							}
 						}
 
 						multiline := !win.selection.isSingle() && win.selection.inRange(ln.LineNumber)
-						hoverExecutableLine = (!multiline && len(ln.Disassembly) > 0) ||
-							(multiline && !win.selectionDisasm.IsEmpty())
+						hoverExecutableLine = (!multiline && len(ln.Instruction) > 0) ||
+							(multiline && !win.selectionRange.IsEmpty())
 
 						if win.showTooltip {
 							// how we show the asm depends on whether there are
@@ -527,9 +527,9 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 									imgui.Spacing()
 
 									// choose which disasm list to use
-									disasm := ln.Disassembly
+									disasm := ln.Instruction
 									if multiline {
-										disasm = win.selectionDisasm.Disasm
+										disasm = win.selectionRange.Instructions
 									}
 
 									win.img.drawDisasmForCoProc(disasm, ln, multiline)
@@ -586,7 +586,7 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 						} else {
 							drawExecutionIndicator(win.img.cols.coProcSourceNoLoad)
 						}
-					} else if len(ln.Disassembly) > 0 {
+					} else if len(ln.Instruction) > 0 {
 						drawExecutionIndicator(win.img.cols.coProcSourceNoLoad)
 					} else {
 						drawExecutionIndicator(win.img.cols.windowBg)

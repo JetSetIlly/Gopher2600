@@ -19,41 +19,40 @@ import (
 	"sort"
 )
 
-// DisasmRange is used to dynamically create a list of SourceDisasm entries.
-type DisasmRange struct {
-	Disasm []*SourceDisasm
+// InstructionRange is used to dynamically create a list of SourceInstruction entries.
+type InstructionRange struct {
+	Instructions []*SourceInstruction
 }
 
 // Len implements the sort.Sort interface.
-func (rng *DisasmRange) Len() int {
-	return len(rng.Disasm)
+func (rng *InstructionRange) Len() int {
+	return len(rng.Instructions)
 }
 
 // Less implements the sort.Sort interface.
-func (rng *DisasmRange) Less(i int, j int) bool {
-	return rng.Disasm[i].Addr < rng.Disasm[j].Addr
+func (rng *InstructionRange) Less(i int, j int) bool {
+	return rng.Instructions[i].Addr < rng.Instructions[j].Addr
 }
 
 // Swap implements the sort.Sort interface.
-func (rng *DisasmRange) Swap(i int, j int) {
-	rng.Disasm[i], rng.Disasm[j] = rng.Disasm[j], rng.Disasm[i]
+func (rng *InstructionRange) Swap(i int, j int) {
+	rng.Instructions[i], rng.Instructions[j] = rng.Instructions[j], rng.Instructions[i]
 }
 
-// Clear all disassembly entires from the range.
-func (rng *DisasmRange) Clear() {
-	rng.Disasm = rng.Disasm[:0]
+// Clear all instructions from the range.
+func (rng *InstructionRange) Clear() {
+	rng.Instructions = rng.Instructions[:0]
 }
 
-// Add the disassembly entries for a SourceLine to the range.
-func (rng *DisasmRange) Add(line *SourceLine) {
-	for _, d := range line.Disassembly {
-		rng.Disasm = append(rng.Disasm, d)
+// Add the instructions for a SourceLine to the range.
+func (rng *InstructionRange) Add(line *SourceLine) {
+	for _, d := range line.Instruction {
+		rng.Instructions = append(rng.Instructions, d)
 	}
-
 	sort.Sort(rng)
 }
 
-// IsEmpty returns true if there are now SourceDisasm entries in the range.
-func (rng *DisasmRange) IsEmpty() bool {
-	return len(rng.Disasm) == 0
+// IsEmpty returns true if there are no instructions entries in the range.
+func (rng *InstructionRange) IsEmpty() bool {
+	return len(rng.Instructions) == 0
 }
