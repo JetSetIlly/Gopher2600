@@ -346,55 +346,26 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 		// section data
 		var data []byte
-		var ptr int
-
 		data, err = sec.Data()
 		if err != nil {
 			return nil, fmt.Errorf("dwarf: %w", err)
 		}
 
-		// 32bit instruction handling
-		var is32Bit bool
-		var addr32Bit uint64
-
-		// address of instruction
-		addr := sec.Addr + executableOrigin
-
-		for ptr < len(data) {
-			opcode := ef.ByteOrder.Uint16(data[ptr:])
-			ptr += 2
-
-			if is32Bit {
-				is32Bit = false
-				src.Instructions[addr32Bit].opcode <<= 16
-				src.Instructions[addr32Bit].opcode |= uint32(opcode)
-			} else {
-				disasm := arm.Disassemble(opcode)
-
-				// size of opcode in instruction
-				size := disasm.Size()
-				if size != 2 && size != 4 {
-					return nil, fmt.Errorf("dwarf: opcode size must be 2 or 4")
+		// disassemble section
+		origin := sec.Addr + executableOrigin
+		_ = arm.StaticDisassemble(arm.StaticDisassembleConfig{
+			Data:      data,
+			Origin:    uint32(origin),
+			ByteOrder: ef.ByteOrder,
+			Callback: func(e arm.DisasmEntry) {
+				src.Instructions[uint64(e.Addr)] = &SourceInstruction{
+					Addr:   e.Addr,
+					opcode: uint32(e.OpcodeHi)<<16 | uint32(e.Opcode),
+					size:   e.Size(),
+					Disasm: e,
 				}
-
-				// if size is 4 then the instruction is 32bit, meaning that the
-				// next 16bit instruction is treated a little differently
-				if size == 4 {
-					is32Bit = true
-					addr32Bit = addr
-				}
-
-				// create the instruction
-				src.Instructions[addr] = &SourceInstruction{
-					Addr:   uint32(addr),
-					opcode: uint32(opcode),
-					size:   size,
-					Disasm: disasm,
-				}
-			}
-
-			addr += 2
-		}
+			},
+		})
 	}
 
 	bld, err := newBuild(dwrf, src.debugLoc, src.debugFrame)

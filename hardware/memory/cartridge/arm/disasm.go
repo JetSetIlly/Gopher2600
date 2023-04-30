@@ -16,33 +16,54 @@
 package arm
 
 import (
+	"encoding/binary"
 	"fmt"
 	"strings"
 )
+
+// The string that will be in the Operator field in the case of a decoding error
+const DisasmEntryErrorOperator = "error:"
 
 // DisasmEntry implements the CartCoProcDisasmEntry interface.
 type DisasmEntry struct {
 	// the address value. the formatted value is in the Address field
 	Addr uint32
 
-	// snapshot of CPU registers at the result of the instruction
-	Registers [NumRegisters]uint32
-
-	// the opcode for the instruction
+	// the opcode for the instruction. in the case of a 32bit instruction, this
+	// will be the second word of the opcode
 	Opcode uint16
 
 	// instruction is 32bit and the high opcode
 	Is32bit  bool
 	OpcodeHi uint16
 
-	// formated strings based for use by disassemblies
-	Location string
-	Address  string
+	// -----------
+
+	// formated address for use by disassemblies. more convenient that the Addr
+	// field in some contexts
+	Address string
+
+	// the operator is the instruction specified by the Opcode field (and
+	// OpcodeHi if the instruction is 32bit)
+	//
+	// the operand is the specific details of the instruction. what registers
+	// and what values are used, etc.
+	//
+	// in the case of an error Operator will contain the DisasmEntryErrorOperator
+	// string and the Operand will be the detaled message of the error
 	Operator string
 	Operand  string
 
+	// -----------
+
+	// the values of the remaining fields are not defined unless the
+	// instruction has been executed
+
 	// basic notes about the last execution of the entry
 	ExecutionNotes string
+
+	// snapshot of CPU registers at the result of the instruction
+	Registers [NumRegisters]uint32
 
 	// basic cycle information
 	Cycles         int
@@ -91,6 +112,18 @@ func (e DisasmEntry) Size() int {
 	return 2
 }
 
+// fillDisasmEntry sets the DisasmEntry fields using information from the
+// emulated ARM. the other fields are not touched so can be set before or after
+// calling the function
+func fillDisasmEntry(arm *ARM, e *DisasmEntry, opcode uint16) {
+	e.Addr = arm.state.instructionPC
+	e.Opcode = opcode
+	e.Is32bit = arm.state.function32bitDecoding
+	e.OpcodeHi = arm.state.function32bitOpcodeHi
+	e.Address = fmt.Sprintf("%08x", arm.state.instructionPC)
+	e.Operator = strings.ToLower(e.Operator)
+}
+
 // DisasmSummary implements the CartCoProcDisasmSummary interface.
 type DisasmSummary struct {
 	// whether this particular execution was run in immediate mode (ie. no cycle counting)
@@ -120,34 +153,62 @@ func (s *DisasmSummary) add(c cycleOrder) {
 	}
 }
 
-// Disassemble a single opcode, returning a new DisasmEntry.
-func Disassemble(opcode uint16) DisasmEntry {
-	if is32BitThumb2(opcode) {
-		return DisasmEntry{
-			OpcodeHi: opcode,
-			Operand:  "32bit Thumb-2",
-		}
-	}
+func (arm *ARM) disassemble(opcode uint16) (DisasmEntry, error) {
+	arm.decodeOnly = true
+	defer func() {
+		arm.decodeOnly = false
+	}()
 
-	df := decodeThumb(opcode)
+	df := arm.decodeThumb(opcode)
 	if df == nil {
-		return DisasmEntry{
-			Opcode:  opcode,
-			Operand: "error",
+		return DisasmEntry{}, fmt.Errorf("error decoding instruction during disassembly")
+	}
+
+	e := df(opcode)
+	if e == nil {
+		return DisasmEntry{}, fmt.Errorf("error decoding instruction during disassembly")
+	}
+
+	fillDisasmEntry(arm, e, opcode)
+
+	return *e, nil
+}
+
+func (arm *ARM) disassembleThumb2(opcode uint16) (DisasmEntry, error) {
+	arm.decodeOnly = true
+	defer func() {
+		arm.decodeOnly = false
+	}()
+
+	var e *DisasmEntry
+
+	if is32BitThumb2(arm.state.function32bitOpcodeHi) {
+		df := arm.decodeThumb2(arm.state.function32bitOpcodeHi)
+		if df == nil {
+			return DisasmEntry{}, fmt.Errorf("error decoding instruction during disassembly")
+		}
+
+		e = df(opcode)
+		if e == nil {
+			e = &DisasmEntry{
+				Operand: "32bit instruction",
+			}
+		}
+
+	} else {
+		df := arm.decodeThumb2(opcode)
+		if df == nil {
+			return DisasmEntry{}, fmt.Errorf("error decoding instruction during disassembly")
+		}
+		e = df(opcode)
+		if e == nil {
+			return DisasmEntry{}, fmt.Errorf("error decoding instruction during disassembly")
 		}
 	}
 
-	entry := df(nil, opcode)
-	if entry == nil {
-		return DisasmEntry{
-			Opcode:  opcode,
-			Operand: "error",
-		}
-	}
+	fillDisasmEntry(arm, e, opcode)
 
-	entry.Opcode = opcode
-	entry.Operator = strings.ToLower(entry.Operator)
-	return *entry
+	return *e, nil
 }
 
 // converts reglist to a string of register names separated by commas
@@ -174,4 +235,82 @@ func reglistToMnemonic(regList uint8, suffix string) string {
 	}
 
 	return s.String()
+}
+
+// StaticDisassembleConfig is used to set the parameters for a static disassembly
+type StaticDisassembleConfig struct {
+	Data      []byte
+	Origin    uint32
+	ByteOrder binary.ByteOrder
+	Callback  func(DisasmEntry)
+}
+
+// StaticDisassemble is used to statically disassemble a block of memory. It is
+// assumed that there is a valid instruction at the start of the block
+//
+// For disassemblies of executed code see the mapper.CartCoProcDisassembler interface
+func StaticDisassemble(config StaticDisassembleConfig) error {
+	arm := &ARM{
+		state: &ARMState{
+			instructionPC: config.Origin,
+		},
+		byteOrder:  config.ByteOrder,
+		decodeOnly: true,
+	}
+
+	// because we're disassembling data that may contain non-executable
+	// instructions (think of the jump tables between functions, for example) it
+	// is likely that we'll encounter a panic raised during instruction
+	// decoding
+	//
+	// panics are useful to have in our implementation because it forces us to
+	// notice and to tackle the problem of unimplemented instructions. however,
+	// as stated, it is not useful to panic during disassembly
+	//
+	// it is necessary therefore, to catch panics and to recover()
+
+	for ptr := 0; ptr < len(config.Data); {
+		opcode := config.ByteOrder.Uint16(config.Data[ptr:])
+
+		if !arm.state.function32bitDecoding && is32BitThumb2(opcode) {
+			arm.state.function32bitOpcodeHi = opcode
+			arm.state.function32bitDecoding = true
+			ptr += 2
+			continue // for loop
+		}
+
+		// see comment about panic recovery above
+		e, err := func() (e DisasmEntry, err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					// there has been an error but we still want to create a DisasmEntry
+					// that can be used in a disassembly output
+					var e DisasmEntry
+					fillDisasmEntry(arm, &e, opcode)
+
+					// the Operator and Operand fields are used for error information
+					e.Operator = DisasmEntryErrorOperator
+					e.Operand = fmt.Sprintf("%v", r)
+				}
+			}()
+			return arm.disassembleThumb2(opcode)
+		}()
+
+		if err == nil {
+			config.Callback(e)
+		}
+
+		if arm.state.function32bitDecoding {
+			arm.state.instructionPC += 4
+		} else {
+			arm.state.instructionPC += 2
+		}
+		ptr += 2
+
+		// reset 32bit fields
+		arm.state.function32bitOpcodeHi = 0
+		arm.state.function32bitDecoding = false
+	}
+
+	return nil
 }

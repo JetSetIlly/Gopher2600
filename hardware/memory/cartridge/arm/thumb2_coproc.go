@@ -19,7 +19,7 @@ package arm
 
 import "fmt"
 
-func decodeThumb2Coprocessor(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumb2Coprocessor(opcode uint16) *DisasmEntry {
 	// the normal method for dividing the opcode for a thumb instruction is not
 	// used for the coprocesor group of instructions.
 	//
@@ -85,7 +85,12 @@ func decodeThumb2Coprocessor(arm *ARM, opcode uint16) *DisasmEntry {
 			panic("unimplemented 32-bit transfer between ARM core and extension registers")
 		} else {
 			// "A7.7.243 VMOV (between Arm core register and single-precision register)" of "ARMv7-M"
-			arm.state.fudge_thumb2disassemble32bit = "VMOV"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "VMOV",
+				}
+			}
 
 			// Vn := arm.state.function32bitOpcode & 0x000f
 			Rt := (opcode & 0xf000) >> 12
@@ -116,20 +121,35 @@ func decodeThumb2Coprocessor(arm *ARM, opcode uint16) *DisasmEntry {
 		case 0b10010:
 			switch Rn {
 			case 0b1101:
-				arm.state.fudge_thumb2disassemble32bit = "VPUSH"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "VPUSH",
+					}
+				}
 			default:
 				panic("unimplemented FPU register load/save instruction (VSTM)")
 			}
 		case 0b10001:
 			fallthrough
 		case 0b11001:
-			arm.state.fudge_thumb2disassemble32bit = "VLDR"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "VLDR",
+				}
+			}
 		case 0b01011:
 			switch Rn {
 			case 0b1101:
 				panic("unimplemented FPU register load/save instruction (VPOP)")
 			default:
-				arm.state.fudge_thumb2disassemble32bit = "VLDM"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "VLDM",
+					}
+				}
 			}
 		default:
 			panic("unimplemented FPU register load/save instruction")

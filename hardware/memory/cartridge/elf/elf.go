@@ -148,6 +148,7 @@ func NewElf(env *environment.Environment, pathToROM string, inACE bool) (mapper.
 
 	cart.arm = arm.NewARM(cart.mem.model, cart.env.Prefs.ARM, cart.mem, cart)
 	cart.mem.Plumb(cart.arm)
+	cart.arm.SetByteOrder(ef.ByteOrder)
 
 	cart.mem.busStuffingInit()
 

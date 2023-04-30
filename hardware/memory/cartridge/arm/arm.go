@@ -16,10 +16,9 @@
 package arm
 
 import (
+	"encoding/binary"
 	"fmt"
-	"io"
 	"math"
-	"os"
 	"strings"
 	"time"
 
@@ -49,11 +48,6 @@ const (
 // 17/09/2022 - raised to 1500000 for marcoj's RPG game
 const cycleLimit = 1500000
 
-// when the cycle limit is reached we run the emulation for a little while
-// longer but with fudge_disassembling turned on. this allow us to debug what
-// instructions are causing the infinite loop (which it most probably will be)
-const raisedCycleLimit = cycleLimit + 1000
-
 // the maximum number of instructions to execute. like cycleLimit but for when
 // running in immediate mode
 const instructionsLimit = 1300000
@@ -74,7 +68,7 @@ type stepFunction func(opcode uint16, memIdx int)
 // the return value for decodeFunction can be an instance of DisasmEntry or nil.
 // in the case of (1) it is always nil but in the case of (2) nil indicates an
 // error
-type decodeFunction func(arm *ARM, opcode uint16) *DisasmEntry
+type decodeFunction func(opcode uint16) *DisasmEntry
 
 type ARMState struct {
 	// ARM registers
@@ -176,12 +170,6 @@ type ARMState struct {
 
 	// the first 16bits of the most recent 32bit instruction
 	function32bitOpcodeHi uint16
-
-	// disassembly of 32bit thumb-2
-	// * temporary construct until thumb2Disassemble() is written
-	fudge_thumb2disassemble32bit string
-	fudge_thumb2disassemble16bit string
-	fudge_disassembling          bool
 }
 
 // Snapshort makes a copy of the ARMState.
@@ -196,6 +184,10 @@ type ARM struct {
 	mmap  architecture.Map
 	mem   SharedMemory
 	hook  CartridgeHook
+
+	// the binary interface for reading data returned by SharedMemory interface.
+	// defaults to LittleEndian
+	byteOrder binary.ByteOrder
 
 	// the function that is called on every step of the cycle. can change
 	// depending on the architecture
@@ -252,9 +244,12 @@ type ARM struct {
 	// collection of functionMap instances. indexed by programMemoryOffset to
 	// retrieve a functionMap
 	//
-	// allocated in NewArm() and added to in findProgramMemory() if an entry
+	// allocated in NewARM() and added to in findProgramMemory() if an entry
 	// does not exist
 	executionMap map[uint32][]decodeFunction
+
+	// only decode an instruction do not execute
+	decodeOnly bool
 
 	// interface to an optional disassembler
 	disasm mapper.CartCoProcDisassembler
@@ -303,28 +298,6 @@ type ARM struct {
 
 	// enable breakpoint checking
 	breakpointsEnabled bool
-
-	// the io.Writer for fudge_disassembling output
-	fudge_writer fudgeWriter
-}
-
-// fudgeWriter aids in the output of the temporary fudge disassembly system
-type fudgeWriter interface {
-	io.Writer
-	fmt.Stringer
-}
-
-// basic writer is a very straightforward implementation of the fudgeWriter
-// interface
-type basicWriter struct{}
-
-func (b *basicWriter) String() string {
-	return ""
-}
-
-func (b *basicWriter) Write(p []byte) (n int, err error) {
-	os.Stdout.Write(p)
-	return len(p), nil
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
@@ -334,6 +307,7 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 		mmap:         mmap,
 		mem:          mem,
 		hook:         hook,
+		byteOrder:    binary.LittleEndian,
 		executionMap: make(map[uint32][]decodeFunction),
 		disasmCache:  make(map[uint32]DisasmEntry),
 
@@ -343,15 +317,6 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 
 		state: &ARMState{},
 	}
-
-	// fudge_disassembling writer
-	// var err error
-	// arm.fudge_writer, err = test.NewRingWriter(10485760) // 10MB
-	// arm.fudge_writer, err = test.NewCappedWriter(1048576) // 1MB
-	// if err != nil {
-	// 	logger.Logf("ARM7", "no fudge disassembly: %s", err.Error())
-	// }
-	arm.fudge_writer = &basicWriter{}
 
 	// slow prefs update by 100ms
 	arm.prefsPulse = time.NewTicker(time.Millisecond * 100)
@@ -379,6 +344,12 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 	arm.updatePrefs()
 
 	return arm
+}
+
+// SetByteOrder changes the binary interface used to read memory returned by the
+// SharedMemory interface
+func (arm *ARM) SetByteOrder(o binary.ByteOrder) {
+	arm.byteOrder = o
 }
 
 // CoProcID implements the mapper.CartCoProc interface.
@@ -700,13 +671,6 @@ func (arm *ARM) BreakpointsEnable(enable bool) {
 }
 
 func (arm *ARM) run() (mapper.YieldReason, float32) {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println(arm.fudge_writer.String())
-			panic(r)
-		}
-	}()
-
 	select {
 	case <-arm.prefsPulse.C:
 		arm.updatePrefs()
@@ -843,17 +807,22 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 
 				entry, cached = arm.disasmCache[arm.state.instructionPC]
 				if !cached {
-					if arm.state.function32bitResolving {
-						entry = Disassemble(arm.state.function32bitOpcodeHi)
-						entry.Is32bit = true
-						entry.Opcode = opcode
-					} else {
-						entry = Disassemble(opcode)
+					switch arm.mmap.ARMArchitecture {
+					case architecture.ARM7TDMI:
+						var err error
+						entry, err = arm.disassemble(opcode)
+						if err != nil {
+							panic(err.Error())
+						}
+					case architecture.ARMv7_M:
+						var err error
+						entry, err = arm.disassembleThumb2(opcode)
+						if err != nil {
+							panic(err.Error())
+						}
+					default:
+						panic(fmt.Sprintf("unhandled ARM architecture: %s", arm.mmap.ARMArchitecture))
 					}
-
-					entry.Address = fmt.Sprintf("%08x", arm.state.instructionPC)
-					entry.Addr = arm.state.instructionPC
-
 				}
 
 				// copy of the registers
@@ -913,19 +882,14 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 
 			// limit the number of cycles used by the ARM program
 			if arm.state.cyclesTotal >= cycleLimit {
-				if arm.state.cyclesTotal >= raisedCycleLimit {
-					logger.Logf("ARM7", "reached cycle limit of %d", cycleLimit)
-					panic("cycle limit")
-					break
-				}
-				arm.state.fudge_disassembling = true
+				logger.Logf("ARM7", "reached cycle limit of %d", cycleLimit)
+				panic("cycle limit")
 			}
 		} else {
 			iterations++
 			if iterations > instructionsLimit {
 				logger.Logf("ARM7", "reached instructions limit of %d", instructionsLimit)
 				panic("instruction limit")
-				break
 			}
 		}
 
@@ -998,23 +962,32 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 }
 
 func (arm *ARM) stepARM7TDMI(opcode uint16, memIdx int) {
-	arm.state.instructionPC = arm.state.executingPC
 	f := arm.state.functionMap[memIdx]
 	if f == nil {
-		f = decodeThumb(opcode)
+		f = arm.decodeThumb(opcode)
 		arm.state.functionMap[memIdx] = f
 	}
-	f(arm, opcode)
+
+	// while the ARM7TDMI/Thumb instruction doesn't have 32bit instructions, in
+	// practice the BL instruction can/should be treated like a 32bit instruction
+	// for disassembly purposes
+	if arm.state.function32bitDecoding {
+		arm.state.function32bitResolving = true
+		arm.state.function32bitDecoding = false
+	} else {
+		arm.state.instructionPC = arm.state.executingPC
+		arm.state.function32bitResolving = false
+		if is32BitThumb2(opcode) {
+			arm.state.function32bitDecoding = true
+		}
+	}
+
+	f(opcode)
 }
 
 func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 	// decode function to execute
 	var df decodeFunction
-
-	// taking a note of whether this is a resolution of a 32bit
-	// instruction. we use this later during the fudge_disassembling
-	// printing
-	fudge_resolving32bitInstruction := arm.state.function32bitDecoding
 
 	// process a 32 bit or 16 bit instruction as appropriate
 	if arm.state.function32bitDecoding {
@@ -1022,7 +995,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 		arm.state.function32bitResolving = true
 		df = arm.state.functionMap[memIdx]
 		if df == nil {
-			df = decode32bitThumb2(nil, arm.state.function32bitOpcodeHi)
+			df = arm.decode32bitThumb2(arm.state.function32bitOpcodeHi)
 			arm.state.functionMap[memIdx] = df
 		}
 	} else {
@@ -1030,25 +1003,21 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 		// 32bit instruction. either way we're not resolving a 32bit
 		// instruction, by defintion
 		arm.state.function32bitResolving = false
+		arm.state.function32bitOpcodeHi = 0x0
 
 		arm.state.instructionPC = arm.state.executingPC
-
 		if is32BitThumb2(opcode) {
 			arm.state.function32bitDecoding = true
 			arm.state.function32bitOpcodeHi = opcode
 		} else {
 			df = arm.state.functionMap[memIdx]
 			if df == nil {
-				df = decodeThumb2(arm, opcode)
+				df = arm.decodeThumb2(opcode)
 				arm.state.functionMap[memIdx] = df
 			}
 		}
 
 	}
-
-	// whether instruction was prevented from executing by IT block. we
-	// use this later during the fudge_disassembling printing
-	fudge_notExecuted := false
 
 	// new 32bit functions always execute
 	// if the opcode indicates that this is a 32bit thumb instruction
@@ -1058,7 +1027,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 
 		if r {
 			if df != nil {
-				df(arm, opcode)
+				df(opcode)
 			}
 		} else {
 			// "A7.3.2: Conditional execution of undefined instructions
@@ -1067,7 +1036,6 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 			// behaves as a NOP and does not cause an exception"
 			//
 			// page A7-179 of the "ARMv7-M Architecture Reference Manual"
-			fudge_notExecuted = true
 		}
 
 		// update IT conditions only if the opcode is not a 32bit opcode
@@ -1078,67 +1046,6 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 		// shift IT mask
 		arm.state.status.itMask = (arm.state.status.itMask << 1) & 0b1111
 	} else if df != nil {
-		df(arm, opcode)
+		df(opcode)
 	}
-
-	// if arm.state.fudge_disassembling {
-	// 	arm.state.fudge_disassembling = opcode != 0x4a7e
-	// 	if !arm.state.fudge_disassembling && arm.fudge_writer != nil {
-	// 		arm.fudge_writer.Write([]byte("---------------------\n\n"))
-	// 	}
-	// } else {
-	// 	arm.state.fudge_disassembling = arm.state.function32bitOpcode == 0xf858 && opcode == 0x3c5c
-	// }
-
-	// if arm.state.registers[rPC] == 0x20000d50 {
-	// 	arm.state.fudge_disassembling = true
-	// }
-
-	// uzlib decompressing map data into memory
-	// if arm.state.executingPC == 0x280236ce {
-	// 	arm.state.fudge_disassembling = true
-	// 	defer func() {
-	// 		if !arm.state.fudge_disassembling && arm.fudge_writer != nil {
-	// 			arm.fudge_writer.Write([]byte("---------------------\n\n"))
-	// 		}
-	// 		arm.state.fudge_disassembling = false
-	// 	}()
-	// }
-
-	// decompressing script into memory
-	// if arm.state.executingPC == 0x28024dcc {
-	// 	arm.state.fudge_disassembling = true
-	// 	defer func() {
-	// 		if !arm.state.fudge_disassembling && arm.fudge_writer != nil {
-	// 			arm.fudge_writer.Write([]byte("---------------------\n\n"))
-	// 		}
-	// 		arm.state.fudge_disassembling = false
-	// 	}()
-	// }
-
-	// when the condition below is true, disassembly is output to fudge_writer.
-	if arm.state.fudge_disassembling && arm.fudge_writer != nil {
-		if fudge_notExecuted {
-			arm.fudge_writer.Write([]byte("*** "))
-		}
-		if fudge_resolving32bitInstruction {
-			arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x %04x :: %s\n", arm.state.instructionPC, arm.state.function32bitOpcodeHi, opcode, arm.state.fudge_thumb2disassemble32bit)))
-			arm.fudge_writer.Write([]byte(arm.String() + "\n"))
-			arm.fudge_writer.Write([]byte(arm.state.status.String() + "\n"))
-			arm.fudge_writer.Write([]byte("====================\n"))
-		} else if !arm.state.function32bitDecoding {
-			if arm.state.fudge_thumb2disassemble16bit != "" {
-				arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, arm.state.fudge_thumb2disassemble16bit)))
-			} else {
-				entry := Disassemble(opcode)
-				arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, entry.String())))
-			}
-			arm.fudge_writer.Write([]byte(arm.String() + "\n"))
-			arm.fudge_writer.Write([]byte(arm.state.status.String() + "\n"))
-			arm.fudge_writer.Write([]byte("====================\n"))
-		}
-	}
-
-	arm.state.fudge_thumb2disassemble32bit = ""
-	arm.state.fudge_thumb2disassemble16bit = ""
 }

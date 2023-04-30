@@ -26,71 +26,71 @@ import (
 
 // returns an instance of the decodeFunction type. if the value is nil then that
 // means the decoding could not complete
-func decodeThumb(opcode uint16) decodeFunction {
+func (arm *ARM) decodeThumb(opcode uint16) decodeFunction {
 	// working backwards up the table in Figure 5-1 of the ARM7TDMI Data Sheet.
 	if opcode&0xf000 == 0xf000 {
 		// format 19 - Long branch with link
-		return decodeThumbLongBranchWithLink
+		return arm.decodeThumbLongBranchWithLink
 	} else if opcode&0xf000 == 0xe000 {
 		// format 18 - Unconditional branch
-		return decodeThumbUnconditionalBranch
+		return arm.decodeThumbUnconditionalBranch
 	} else if opcode&0xff00 == 0xdf00 {
 		// format 17 - Software interrupt"
-		return decodeThumbSoftwareInterrupt
+		return arm.decodeThumbSoftwareInterrupt
 	} else if opcode&0xf000 == 0xd000 {
 		// format 16 - Conditional branch
-		return decodeThumbConditionalBranch
+		return arm.decodeThumbConditionalBranch
 	} else if opcode&0xf000 == 0xc000 {
 		// format 15 - Multiple load/store
-		return decodeThumbMultipleLoadStore
+		return arm.decodeThumbMultipleLoadStore
 	} else if opcode&0xf600 == 0xb400 {
 		// format 14 - Push/pop registers
-		return decodeThumbPushPopRegisters
+		return arm.decodeThumbPushPopRegisters
 	} else if opcode&0xff00 == 0xb000 {
 		// format 13 - Add offset to stack pointer
-		return decodeThumbAddOffsetToSP
+		return arm.decodeThumbAddOffsetToSP
 	} else if opcode&0xf000 == 0xa000 {
 		// format 12 - Load address
-		return decodeThumbLoadAddress
+		return arm.decodeThumbLoadAddress
 	} else if opcode&0xf000 == 0x9000 {
 		// format 11 - SP-relative load/store
-		return decodeThumbSPRelativeLoadStore
+		return arm.decodeThumbSPRelativeLoadStore
 	} else if opcode&0xf000 == 0x8000 {
 		// format 10 - Load/store halfword
-		return decodeThumbLoadStoreHalfword
+		return arm.decodeThumbLoadStoreHalfword
 	} else if opcode&0xe000 == 0x6000 {
 		// format 9 - Load/store with immediate offset
-		return decodeThumbLoadStoreWithImmOffset
+		return arm.decodeThumbLoadStoreWithImmOffset
 	} else if opcode&0xf200 == 0x5200 {
 		// format 8 - Load/store sign-extended byte/halfword
-		return decodeThumbLoadStoreSignExtendedByteHalford
+		return arm.decodeThumbLoadStoreSignExtendedByteHalford
 	} else if opcode&0xf200 == 0x5000 {
 		// format 7 - Load/store with register offset
-		return decodeThumbLoadStoreWithRegisterOffset
+		return arm.decodeThumbLoadStoreWithRegisterOffset
 	} else if opcode&0xf800 == 0x4800 {
 		// format 6 - PC-relative load
-		return decodeThumbPCrelativeLoad
+		return arm.decodeThumbPCrelativeLoad
 	} else if opcode&0xfc00 == 0x4400 {
 		// format 5 - Hi register operations/branch exchange
-		return decodeThumbHiRegisterOps
+		return arm.decodeThumbHiRegisterOps
 	} else if opcode&0xfc00 == 0x4000 {
 		// format 4 - ALU operations
-		return decodeThumbALUoperations
+		return arm.decodeThumbALUoperations
 	} else if opcode&0xe000 == 0x2000 {
 		// format 3 - Move/compare/add/subtract immediate
-		return decodeThumbMovCmpAddSubImm
+		return arm.decodeThumbMovCmpAddSubImm
 	} else if opcode&0xf800 == 0x1800 {
 		// format 2 - Add/subtract
-		return decodeThumbAddSubtract
+		return arm.decodeThumbAddSubtract
 	} else if opcode&0xe000 == 0x0000 {
 		// format 1 - Move shifted register
-		return decodeThumbMoveShiftedRegister
+		return arm.decodeThumbMoveShiftedRegister
 	}
 
 	return nil
 }
 
-func decodeThumbMoveShiftedRegister(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbMoveShiftedRegister(opcode uint16) *DisasmEntry {
 	// format 1 - Move shifted register
 	op := (opcode & 0x1800) >> 11
 	shift := (opcode & 0x7c0) >> 6
@@ -100,14 +100,11 @@ func decodeThumbMoveShiftedRegister(arm *ARM, opcode uint16) *DisasmEntry {
 	// in this class of operation the srcVal register may also be the dest
 	// register so we need to make a note of the value before it is
 	// overwrittten
-	var srcVal uint32
-	if arm != nil {
-		srcVal = arm.state.registers[srcReg]
-	}
+	srcVal := arm.state.registers[srcReg]
 
 	switch op {
 	case 0b00:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "LSL",
 				Operand:  fmt.Sprintf("R%d, R%d, #$%02x ", destReg, srcReg, shift),
@@ -131,7 +128,7 @@ func decodeThumbMoveShiftedRegister(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.registers[destReg] = arm.state.registers[srcReg] << shift
 		}
 	case 0b01:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "LSR",
 				Operand:  fmt.Sprintf("R%d, R%d, #$%02x ", destReg, srcReg, shift),
@@ -158,7 +155,7 @@ func decodeThumbMoveShiftedRegister(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.registers[destReg] = srcVal >> shift
 		}
 	case 0b10:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "ASR",
 				Operand:  fmt.Sprintf("R%d, R%d, #$%02x ", destReg, srcReg, shift),
@@ -217,7 +214,7 @@ func decodeThumbMoveShiftedRegister(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decodeThumbAddSubtract(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbAddSubtract(opcode uint16) *DisasmEntry {
 	// format 2 - Add/subtract
 	immediate := opcode&0x0400 == 0x0400
 	subtract := opcode&0x0200 == 0x0200
@@ -232,7 +229,7 @@ func decodeThumbAddSubtract(arm *ARM, opcode uint16) *DisasmEntry {
 	}
 
 	if subtract {
-		if arm == nil {
+		if arm.decodeOnly {
 			if immediate {
 				return &DisasmEntry{
 					Operator: "SUB",
@@ -251,7 +248,7 @@ func decodeThumbAddSubtract(arm *ARM, opcode uint16) *DisasmEntry {
 		}
 		arm.state.registers[destReg] = arm.state.registers[srcReg] - val
 	} else {
-		if arm == nil {
+		if arm.decodeOnly {
 			if immediate {
 				return &DisasmEntry{
 					Operator: "SUB",
@@ -284,7 +281,7 @@ func decodeThumbAddSubtract(arm *ARM, opcode uint16) *DisasmEntry {
 
 // "The instructions in this group perform operations between a Lo register and
 // an 8-bit immediate value".
-func decodeThumbMovCmpAddSubImm(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbMovCmpAddSubImm(opcode uint16) *DisasmEntry {
 	// format 3 - Move/compare/add/subtract immediate
 	op := (opcode & 0x1800) >> 11
 	destReg := (opcode & 0x0700) >> 8
@@ -292,7 +289,7 @@ func decodeThumbMovCmpAddSubImm(arm *ARM, opcode uint16) *DisasmEntry {
 
 	switch op {
 	case 0b00:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "MOV",
 				Operand:  fmt.Sprintf("R%d, #$%02x ", destReg, imm),
@@ -305,7 +302,7 @@ func decodeThumbMovCmpAddSubImm(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b01:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "CMP",
 				Operand:  fmt.Sprintf("R%d, #$%02x ", destReg, imm),
@@ -319,7 +316,7 @@ func decodeThumbMovCmpAddSubImm(arm *ARM, opcode uint16) *DisasmEntry {
 		arm.state.status.isNegative(cmp)
 		arm.state.status.isZero(cmp)
 	case 0b10:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "ADD",
 				Operand:  fmt.Sprintf("R%d, #$%02x ", destReg, imm),
@@ -336,7 +333,7 @@ func decodeThumbMovCmpAddSubImm(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b11:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "SUB",
 				Operand:  fmt.Sprintf("R%d, #$%02x ", destReg, imm),
@@ -361,7 +358,7 @@ func decodeThumbMovCmpAddSubImm(arm *ARM, opcode uint16) *DisasmEntry {
 }
 
 // "The following instructions perform ALU operations on a Lo register pair".
-func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbALUoperations(opcode uint16) *DisasmEntry {
 	// format 4 - ALU operations
 	op := (opcode & 0x03c0) >> 6
 	srcReg := (opcode & 0x38) >> 3
@@ -373,7 +370,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 
 	switch op {
 	case 0b0000:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "AND",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -386,7 +383,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0001:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "EOR",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -399,7 +396,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0010:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "LSL",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -447,7 +444,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0011:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "LSR",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -495,7 +492,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0100:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "ASR",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -545,7 +542,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0101:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "ADC",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -571,7 +568,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0110:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "SBC",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -597,7 +594,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0111:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "ROR",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -636,7 +633,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b1000:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "TST",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -648,7 +645,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 		arm.state.status.isZero(w)
 		arm.state.status.isNegative(w)
 	case 0b1001:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "NEG",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -665,7 +662,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b1010:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "CMP",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -679,7 +676,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 		arm.state.status.isZero(cmp)
 		arm.state.status.isNegative(cmp)
 	case 0b1011:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "CMN",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -693,7 +690,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 		arm.state.status.isZero(cmp)
 		arm.state.status.isNegative(cmp)
 	case 0b1100:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "ORR",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -706,7 +703,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b1101:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "MUL",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -721,7 +718,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b1110:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "BIC",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -734,7 +731,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b1111:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "MVN",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -797,7 +794,7 @@ func decodeThumbALUoperations(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decodeThumbHiRegisterOps(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) *DisasmEntry {
 	// format 5 - Hi register operations/branch exchange
 	op := (opcode & 0x300) >> 8
 	hi1 := opcode&0x80 == 0x80
@@ -820,7 +817,7 @@ func decodeThumbHiRegisterOps(arm *ARM, opcode uint16) *DisasmEntry {
 
 	switch op {
 	case 0b00:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "ADD",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -850,7 +847,7 @@ func decodeThumbHiRegisterOps(arm *ARM, opcode uint16) *DisasmEntry {
 
 		return nil
 	case 0b01:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "CMP",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -875,7 +872,7 @@ func decodeThumbHiRegisterOps(arm *ARM, opcode uint16) *DisasmEntry {
 
 		return nil
 	case 0b10:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "MOV",
 				Operand:  fmt.Sprintf("R%d, R%d ", destReg, srcReg),
@@ -904,7 +901,7 @@ func decodeThumbHiRegisterOps(arm *ARM, opcode uint16) *DisasmEntry {
 
 		return nil
 	case 0b11:
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "BX",
 				Operand:  fmt.Sprintf("R%d ", srcReg),
@@ -940,7 +937,7 @@ func decodeThumbHiRegisterOps(arm *ARM, opcode uint16) *DisasmEntry {
 				arm.state.registers[rPC] = (target + 2) & 0xfffffffe
 			}
 
-			if arm.disasm != nil {
+			if arm.decodeOnly {
 				arm.disasmUpdateNotes = true
 			}
 
@@ -966,7 +963,7 @@ func decodeThumbHiRegisterOps(arm *ARM, opcode uint16) *DisasmEntry {
 			if thumbMode {
 				arm.state.registers[rPC] = newPC
 
-				if arm.disasm != nil {
+				if arm.decodeOnly {
 					arm.disasmExecutionNotes = "branch exchange to thumb code"
 					arm.disasmUpdateNotes = true
 				}
@@ -985,7 +982,7 @@ func decodeThumbHiRegisterOps(arm *ARM, opcode uint16) *DisasmEntry {
 				return nil
 			}
 
-			if arm.disasm != nil {
+			if arm.decodeOnly {
 				if res.InterruptEvent != "" {
 					arm.disasmExecutionNotes = fmt.Sprintf("ARM function (%08x) %s", arm.state.registers[rPC]-4, res.InterruptEvent)
 				} else {
@@ -1029,12 +1026,12 @@ func decodeThumbHiRegisterOps(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decodeThumbPCrelativeLoad(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbPCrelativeLoad(opcode uint16) *DisasmEntry {
 	// format 6 - PC-relative load
 	destReg := (opcode & 0x0700) >> 8
 	imm := uint32(opcode&0x00ff) << 2
 
-	if arm == nil {
+	if arm.decodeOnly {
 		return &DisasmEntry{
 			Operator: "LDR",
 			Operand:  fmt.Sprintf("R%d, [PC, #$%02x] ", destReg, imm),
@@ -1057,7 +1054,7 @@ func decodeThumbPCrelativeLoad(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decodeThumbLoadStoreWithRegisterOffset(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbLoadStoreWithRegisterOffset(opcode uint16) *DisasmEntry {
 	// format 7 - Load/store with register offset
 	load := opcode&0x0800 == 0x0800
 	byteTransfer := opcode&0x0400 == 0x0400
@@ -1066,14 +1063,11 @@ func decodeThumbLoadStoreWithRegisterOffset(arm *ARM, opcode uint16) *DisasmEntr
 	reg := opcode & 0x0007
 
 	// the actual address we'll be loading from (or storing to)
-	var addr uint32
-	if arm != nil {
-		addr = arm.state.registers[baseReg] + arm.state.registers[offsetReg]
-	}
+	addr := arm.state.registers[baseReg] + arm.state.registers[offsetReg]
 
 	if load {
 		if byteTransfer {
-			if arm == nil {
+			if arm.decodeOnly {
 				return &DisasmEntry{
 					Operator: "LDRB",
 					Operand:  fmt.Sprintf("R%d, [R%d, R%d]", reg, baseReg, offsetReg),
@@ -1089,7 +1083,7 @@ func decodeThumbLoadStoreWithRegisterOffset(arm *ARM, opcode uint16) *DisasmEntr
 
 			return nil
 		}
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "LDR",
 				Operand:  fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg),
@@ -1107,7 +1101,7 @@ func decodeThumbLoadStoreWithRegisterOffset(arm *ARM, opcode uint16) *DisasmEntr
 	}
 
 	if byteTransfer {
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "STRB",
 				Operand:  fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg),
@@ -1122,7 +1116,7 @@ func decodeThumbLoadStoreWithRegisterOffset(arm *ARM, opcode uint16) *DisasmEntr
 		return nil
 	}
 
-	if arm == nil {
+	if arm.decodeOnly {
 		return &DisasmEntry{
 			Operator: "STR",
 			Operand:  fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg),
@@ -1137,7 +1131,7 @@ func decodeThumbLoadStoreWithRegisterOffset(arm *ARM, opcode uint16) *DisasmEntr
 	return nil
 }
 
-func decodeThumbLoadStoreSignExtendedByteHalford(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbLoadStoreSignExtendedByteHalford(opcode uint16) *DisasmEntry {
 	// format 8 - Load/store sign-extended byte/halfword
 	hi := opcode&0x0800 == 0x800
 	sign := opcode&0x0400 == 0x400
@@ -1146,14 +1140,11 @@ func decodeThumbLoadStoreSignExtendedByteHalford(arm *ARM, opcode uint16) *Disas
 	reg := opcode & 0x0007
 
 	// the actual address we'll be loading from (or storing to)
-	var addr uint32
-	if arm != nil {
-		addr = arm.state.registers[baseReg] + arm.state.registers[offsetReg]
-	}
+	addr := arm.state.registers[baseReg] + arm.state.registers[offsetReg]
 
 	if sign {
 		if hi {
-			if arm == nil {
+			if arm.decodeOnly {
 				return &DisasmEntry{
 					Operator: "LDSH",
 					Operand:  fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg),
@@ -1176,7 +1167,7 @@ func decodeThumbLoadStoreSignExtendedByteHalford(arm *ARM, opcode uint16) *Disas
 			return nil
 		}
 
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "LDSB",
 				Operand:  fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg),
@@ -1198,7 +1189,7 @@ func decodeThumbLoadStoreSignExtendedByteHalford(arm *ARM, opcode uint16) *Disas
 	}
 
 	if hi {
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "LDRH",
 				Operand:  fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg),
@@ -1216,7 +1207,7 @@ func decodeThumbLoadStoreSignExtendedByteHalford(arm *ARM, opcode uint16) *Disas
 		return nil
 	}
 
-	if arm == nil {
+	if arm.decodeOnly {
 		return &DisasmEntry{
 			Operator: "STRH",
 			Operand:  fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg),
@@ -1232,7 +1223,7 @@ func decodeThumbLoadStoreSignExtendedByteHalford(arm *ARM, opcode uint16) *Disas
 	return nil
 }
 
-func decodeThumbLoadStoreWithImmOffset(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbLoadStoreWithImmOffset(opcode uint16) *DisasmEntry {
 	// format 9 - Load/store with immediate offset
 	load := opcode&0x0800 == 0x0800
 	byteTransfer := opcode&0x1000 == 0x1000
@@ -1249,14 +1240,11 @@ func decodeThumbLoadStoreWithImmOffset(arm *ARM, opcode uint16) *DisasmEntry {
 	}
 
 	// the actual address we'll be loading from (or storing to)
-	var addr uint32
-	if arm != nil {
-		addr = arm.state.registers[baseReg] + uint32(offset)
-	}
+	addr := arm.state.registers[baseReg] + uint32(offset)
 
 	if load {
 		if byteTransfer {
-			if arm == nil {
+			if arm.decodeOnly {
 				return &DisasmEntry{
 					Operator: "LDRB",
 					Operand:  fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset),
@@ -1273,7 +1261,7 @@ func decodeThumbLoadStoreWithImmOffset(arm *ARM, opcode uint16) *DisasmEntry {
 			return nil
 		}
 
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "LDR",
 				Operand:  fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset),
@@ -1292,7 +1280,7 @@ func decodeThumbLoadStoreWithImmOffset(arm *ARM, opcode uint16) *DisasmEntry {
 
 	// store
 	if byteTransfer {
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "STRB",
 				Operand:  fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset),
@@ -1307,7 +1295,7 @@ func decodeThumbLoadStoreWithImmOffset(arm *ARM, opcode uint16) *DisasmEntry {
 		return nil
 	}
 
-	if arm == nil {
+	if arm.decodeOnly {
 		return &DisasmEntry{
 			Operator: "STR",
 			Operand:  fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset),
@@ -1322,7 +1310,7 @@ func decodeThumbLoadStoreWithImmOffset(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decodeThumbLoadStoreHalfword(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbLoadStoreHalfword(opcode uint16) *DisasmEntry {
 	// format 10 - Load/store halfword
 	load := opcode&0x0800 == 0x0800
 	offset := (opcode & 0x07c0) >> 6
@@ -1334,13 +1322,10 @@ func decodeThumbLoadStoreHalfword(arm *ARM, opcode uint16) *DisasmEntry {
 	offset <<= 1
 
 	// the actual address we'll be loading from (or storing to)
-	var addr uint32
-	if arm != nil {
-		addr = arm.state.registers[baseReg] + uint32(offset)
-	}
+	addr := arm.state.registers[baseReg] + uint32(offset)
 
 	if load {
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "LDRH",
 				Operand:  fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset),
@@ -1357,7 +1342,7 @@ func decodeThumbLoadStoreHalfword(arm *ARM, opcode uint16) *DisasmEntry {
 		return nil
 	}
 
-	if arm == nil {
+	if arm.decodeOnly {
 		return &DisasmEntry{
 			Operator: "STRH",
 			Operand:  fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset),
@@ -1372,7 +1357,7 @@ func decodeThumbLoadStoreHalfword(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decodeThumbSPRelativeLoadStore(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbSPRelativeLoadStore(opcode uint16) *DisasmEntry {
 	// format 11 - SP-relative load/store
 	load := opcode&0x0800 == 0x0800
 	reg := (opcode & 0x07ff) >> 8
@@ -1383,13 +1368,10 @@ func decodeThumbSPRelativeLoadStore(arm *ARM, opcode uint16) *DisasmEntry {
 	offset <<= 2
 
 	// the actual address we'll be loading from (or storing to)
-	var addr uint32
-	if arm != nil {
-		addr = arm.state.registers[rSP] + offset
-	}
+	addr := arm.state.registers[rSP] + offset
 
 	if load {
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "LDR",
 				Operand:  fmt.Sprintf("R%d, [SP, #$%02x] ", reg, offset),
@@ -1406,7 +1388,7 @@ func decodeThumbSPRelativeLoadStore(arm *ARM, opcode uint16) *DisasmEntry {
 		return nil
 	}
 
-	if arm == nil {
+	if arm.decodeOnly {
 		return &DisasmEntry{
 			Operator: "STR",
 			Operand:  fmt.Sprintf("R%d, [SP, #$%02x] ", reg, offset),
@@ -1421,7 +1403,7 @@ func decodeThumbSPRelativeLoadStore(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decodeThumbLoadAddress(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbLoadAddress(opcode uint16) *DisasmEntry {
 	// format 12 - Load address
 	sp := opcode&0x0800 == 0x800
 	destReg := (opcode & 0x700) >> 8
@@ -1431,7 +1413,7 @@ func decodeThumbLoadAddress(arm *ARM, opcode uint16) *DisasmEntry {
 	offset <<= 2
 
 	if sp {
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "ADD",
 				Operand:  fmt.Sprintf("R%d, [SP, #$%02x] ", destReg, offset),
@@ -1446,7 +1428,7 @@ func decodeThumbLoadAddress(arm *ARM, opcode uint16) *DisasmEntry {
 		return nil
 	}
 
-	if arm == nil {
+	if arm.decodeOnly {
 		return &DisasmEntry{
 			Operator: "ADD",
 			Operand:  fmt.Sprintf("R%d, [PC, #$%02x] ", destReg, offset),
@@ -1464,7 +1446,7 @@ func decodeThumbLoadAddress(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decodeThumbAddOffsetToSP(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbAddOffsetToSP(opcode uint16) *DisasmEntry {
 	// format 13 - Add offset to stack pointer
 	sign := opcode&0x80 == 0x80
 	imm := uint32(opcode & 0x7f)
@@ -1475,7 +1457,7 @@ func decodeThumbAddOffsetToSP(arm *ARM, opcode uint16) *DisasmEntry {
 	imm <<= 2
 
 	if sign {
-		if arm == nil {
+		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "ADD",
 				Operand:  fmt.Sprintf("SP, -#%d ", imm),
@@ -1490,7 +1472,7 @@ func decodeThumbAddOffsetToSP(arm *ARM, opcode uint16) *DisasmEntry {
 		return nil
 	}
 
-	if arm == nil {
+	if arm.decodeOnly {
 		return &DisasmEntry{
 			Operator: "ADD",
 			Operand:  fmt.Sprintf("SP, #$%02x ", imm),
@@ -1507,7 +1489,7 @@ func decodeThumbAddOffsetToSP(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decodeThumbPushPopRegisters(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbPushPopRegisters(opcode uint16) *DisasmEntry {
 	// format 14 - Push/pop registers
 
 	// the ARM pushes registers in descending order and pops in ascending
@@ -1518,7 +1500,7 @@ func decodeThumbPushPopRegisters(arm *ARM, opcode uint16) *DisasmEntry {
 	regList := uint8(opcode & 0x00ff)
 
 	if load {
-		if arm == nil {
+		if arm.decodeOnly {
 			if pclr {
 				return &DisasmEntry{
 					Operator: "POP",
@@ -1604,7 +1586,7 @@ func decodeThumbPushPopRegisters(arm *ARM, opcode uint16) *DisasmEntry {
 		return nil
 	}
 
-	if arm == nil {
+	if arm.decodeOnly {
 		if pclr {
 			return &DisasmEntry{
 				Operator: "PUSH",
@@ -1692,13 +1674,13 @@ func decodeThumbPushPopRegisters(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decodeThumbMultipleLoadStore(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbMultipleLoadStore(opcode uint16) *DisasmEntry {
 	// format 15 - Multiple load/store
 	load := opcode&0x0800 == 0x0800
 	baseReg := uint32(opcode&0x07ff) >> 8
 	regList := uint8(opcode & 0x00ff)
 
-	if arm == nil {
+	if arm.decodeOnly {
 		if load {
 			return &DisasmEntry{
 				Operator: "LDMIA",
@@ -1792,12 +1774,12 @@ func decodeThumbMultipleLoadStore(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decodeThumbConditionalBranch(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbConditionalBranch(opcode uint16) *DisasmEntry {
 	// format 16 - Conditional branch
 	cond := uint8((opcode & 0x0f00) >> 8)
 	offset := uint32(opcode & 0x00ff)
 
-	if arm == nil {
+	if arm.decodeOnly {
 		var entry DisasmEntry
 		switch cond {
 		case 0b0000:
@@ -1860,7 +1842,7 @@ func decodeThumbConditionalBranch(arm *ARM, opcode uint16) *DisasmEntry {
 		arm.state.registers[rPC] = newPC
 	}
 
-	if arm.disasm != nil {
+	if arm.decodeOnly {
 		if b {
 			arm.disasmExecutionNotes = "branched"
 		} else {
@@ -1872,19 +1854,16 @@ func decodeThumbConditionalBranch(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decodeThumbSoftwareInterrupt(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbSoftwareInterrupt(opcode uint16) *DisasmEntry {
 	// format 17 - Software interrupt"
-	if arm != nil {
-		panic(fmt.Sprintf("unimplemented (software interrupt) thumb instruction (%04x)", opcode))
-	}
-	return nil
+	panic(fmt.Sprintf("unimplemented (software interrupt) thumb instruction (%04x)", opcode))
 }
 
-func decodeThumbUnconditionalBranch(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbUnconditionalBranch(opcode uint16) *DisasmEntry {
 	// format 18 - Unconditional branch
 	offset := uint32(opcode&0x07ff) << 1
 
-	if arm == nil {
+	if arm.decodeOnly {
 		return &DisasmEntry{
 			Operator: "BAL",
 			Operand:  fmt.Sprintf("$%04x ", offset),
@@ -1906,14 +1885,14 @@ func decodeThumbUnconditionalBranch(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decodeThumbLongBranchWithLink(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumbLongBranchWithLink(opcode uint16) *DisasmEntry {
 	// format 19 - Long branch with link
 	low := opcode&0x800 == 0x0800
 	offset := uint32(opcode & 0x07ff)
 
 	// there is no direct ARM equivalent for this instruction.
 
-	if arm == nil {
+	if arm.decodeOnly {
 		if low {
 			return &DisasmEntry{
 				Operator: "BL",
@@ -1921,8 +1900,8 @@ func decodeThumbLongBranchWithLink(arm *ARM, opcode uint16) *DisasmEntry {
 			}
 		}
 		return &DisasmEntry{
-			Operator: "-",
-			Operand:  "preparation for BL",
+			Operator: "",
+			Operand:  "-",
 		}
 	}
 

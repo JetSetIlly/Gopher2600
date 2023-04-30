@@ -230,7 +230,9 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 		return uint16(arm.mmap.IllegalAccessValue)
 	}
 
-	return uint16((*mem)[addr]) | (uint16((*mem)[addr+1]) << 8)
+	return arm.byteOrder.Uint16((*mem)[addr:])
+
+	// return uint16((*mem)[addr]) | (uint16((*mem)[addr+1]) << 8)
 }
 
 func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
@@ -286,8 +288,10 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 		return
 	}
 
-	(*mem)[addr] = uint8(val)
-	(*mem)[addr+1] = uint8(val >> 8)
+	arm.byteOrder.PutUint16((*mem)[addr:], val)
+
+	// (*mem)[addr] = uint8(val)
+	// (*mem)[addr+1] = uint8(val >> 8)
 }
 
 func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
@@ -343,7 +347,9 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 		return arm.mmap.IllegalAccessValue
 	}
 
-	return uint32((*mem)[addr]) | (uint32((*mem)[addr+1]) << 8) | (uint32((*mem)[addr+2]) << 16) | uint32((*mem)[addr+3])<<24
+	return arm.byteOrder.Uint32((*mem)[addr:])
+
+	// return uint32((*mem)[addr]) | (uint32((*mem)[addr+1]) << 8) | (uint32((*mem)[addr+2]) << 16) | uint32((*mem)[addr+3])<<24
 }
 
 func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
@@ -399,8 +405,10 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 		return
 	}
 
-	(*mem)[addr] = uint8(val)
-	(*mem)[addr+1] = uint8(val >> 8)
-	(*mem)[addr+2] = uint8(val >> 16)
-	(*mem)[addr+3] = uint8(val >> 24)
+	arm.byteOrder.PutUint32((*mem)[addr:], val)
+
+	// (*mem)[addr] = uint8(val)
+	// (*mem)[addr+1] = uint8(val >> 8)
+	// (*mem)[addr+2] = uint8(val >> 16)
+	// (*mem)[addr+3] = uint8(val >> 24)
 }

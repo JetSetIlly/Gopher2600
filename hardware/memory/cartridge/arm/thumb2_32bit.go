@@ -26,7 +26,7 @@ func is32BitThumb2(opcode uint16) bool {
 	return opcode&0xf800 == 0xe800 || opcode&0xf000 == 0xf000
 }
 
-func decode32bitThumb2(arm *ARM, opcode uint16) decodeFunction {
+func (arm *ARM) decode32bitThumb2(opcode uint16) decodeFunction {
 	// Two tables for top level decoding of 32bit Thumb-2 instructions.
 	//
 	// "3.3 Instruction encoding for 32-bit Thumb instructions" of "Thumb-2 Supplement"
@@ -38,30 +38,30 @@ func decode32bitThumb2(arm *ARM, opcode uint16) decodeFunction {
 
 	if opcode&0xec00 == 0xec00 {
 		// coprocessor
-		return decodeThumb2Coprocessor
+		return arm.decodeThumb2Coprocessor
 	} else if opcode&0xf800 == 0xf000 {
 		// branches, miscellaneous control
 		//  OR
 		// data processing: immediate, including bitfield and saturate
-		return decode32bitThumb2BranchesORDataProcessing
+		return arm.decode32bitThumb2BranchesORDataProcessing
 	} else if opcode&0xfe40 == 0xe800 {
 		// load and store multiple, RFE and SRS
-		return decode32bitThumb2LoadStoreMultiple
+		return arm.decode32bitThumb2LoadStoreMultiple
 	} else if opcode&0xfe40 == 0xe840 {
 		// load and store double and exclusive and table branch
-		return decode32bitThumb2LoadStoreDoubleEtc
+		return arm.decode32bitThumb2LoadStoreDoubleEtc
 	} else if opcode&0xfe00 == 0xf800 {
 		// load and store single data item, memory hints
-		return decode32bitThumb2LoadStoreSingle
+		return arm.decode32bitThumb2LoadStoreSingle
 	} else if opcode&0xee00 == 0xea00 {
 		// data processing, no immediate operand
-		return decode32bitThumb2DataProcessingNonImmediate
+		return arm.decode32bitThumb2DataProcessingNonImmediate
 	}
 
 	panic(fmt.Sprintf("undecoded 32-bit thumb-2 instruction (%04x)", opcode))
 }
 
-func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) *DisasmEntry {
 	// "3.3.2 Data processing instructions, non-immediate" of "Thumb-2 Supplement"
 
 	Rn := arm.state.function32bitOpcodeHi & 0x000f
@@ -82,10 +82,15 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 		switch op {
 		case 0b0000:
 			if Rd == rPC && setFlags {
-				panic("TST")
+				panic("unimplemented TST")
 			} else {
 				// "4.6.9 AND (register)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "AND"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "AND",
+					}
+				}
 
 				switch typ {
 				case 0b00:
@@ -133,7 +138,13 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 
 		case 0b0001:
 			// "4.6.16 BIC (register)" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "BIC"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "BIC",
+				}
+			}
+
 			switch typ {
 			case 0b00:
 				// with logical left shift
@@ -211,7 +222,14 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 					if imm5 == 0b00000 {
 						// "4.6.77 MOV (register)" of "Thumb-2 Supplement"
 						// T3 encoding
-						arm.state.fudge_thumb2disassemble32bit = "MOV (register)"
+						if arm.decodeOnly {
+							return &DisasmEntry{
+								Is32bit:  true,
+								Operator: "MOV",
+								Operand:  "register",
+							}
+						}
+
 						arm.state.registers[Rd] = arm.state.registers[Rm]
 						if setFlags {
 							arm.state.status.isNegative(arm.state.registers[Rd])
@@ -227,7 +245,13 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 					} else {
 						// "4.6.68 LSL (immediate)" of "Thumb-2 Supplement"
 						// T2 encoding
-						arm.state.fudge_thumb2disassemble32bit = "LSL (immediate)"
+						if arm.decodeOnly {
+							return &DisasmEntry{
+								Is32bit:  true,
+								Operator: "LSL",
+								Operand:  "immediate",
+							}
+						}
 
 						m := uint32(0x01) << (32 - imm5)
 						carry := arm.state.registers[Rm]&m == m
@@ -243,7 +267,13 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 				case 0b01:
 					// "4.6.70 LSR (immediate)" of "Thumb-2 Supplement"
 					// T2 encoding
-					arm.state.fudge_thumb2disassemble32bit = "LSR (immediate)"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LSR",
+							Operand:  "immediate",
+						}
+					}
 
 					m := uint32(0x01) << (imm5 - 1)
 					carry := arm.state.registers[Rm]&m == m
@@ -258,7 +288,13 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 				case 0b10:
 					// "4.6.10 ASR (immediate)" of "Thumb-2 Supplement"
 					// T2 encoding
-					arm.state.fudge_thumb2disassemble32bit = "ASR (immediate)"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "ASR",
+							Operand:  "immediate",
+						}
+					}
 
 					// whether to set carry bit
 					m := uint32(0x01) << (imm5 - 1)
@@ -285,11 +321,17 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 					if imm5 == 0b00000 {
 						// 4.6.117 RRX Rotate Right
 						// T1 encoding
-						arm.state.fudge_thumb2disassemble32bit = "RRX"
+						panic("unimplemented RRX")
 					} else {
 						// 4.6.115 ROR (immediate)
 						// T1 encoding
-						arm.state.fudge_thumb2disassemble32bit = "ROR (immediate)"
+						if arm.decodeOnly {
+							return &DisasmEntry{
+								Is32bit:  true,
+								Operator: "ROR",
+								Operand:  "immediate",
+							}
+						}
 
 						result, carry := ROR_C(arm.state.registers[Rm], uint32(imm5))
 						arm.state.registers[Rd] = result
@@ -305,7 +347,13 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 				}
 			} else {
 				// "4.6.92 ORR (register)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "ORR (register)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "ORR",
+						Operand:  "register",
+					}
+				}
 
 				var carry bool
 				var result uint32
@@ -347,6 +395,14 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 			// T1 encoding
 
 			if Rn == rPC {
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "MVN",
+						Operand:  "register",
+					}
+				}
+
 				var carry bool
 				var result uint32
 
@@ -422,9 +478,21 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 			}
 
 			if Rd == rPC && setFlags {
-				arm.state.fudge_thumb2disassemble32bit = "TEQ (register)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "TEQ",
+						Operand:  "register",
+					}
+				}
 			} else {
-				arm.state.fudge_thumb2disassemble32bit = "EOR (register)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "EOR",
+						Operand:  "register",
+					}
+				}
 				arm.state.registers[Rd] = result
 			}
 
@@ -441,7 +509,13 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b) CMN", op, typ))
 			} else {
 				// "4.6.4 ADD (register)"
-				arm.state.fudge_thumb2disassemble32bit = "ADD (register)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "ADD",
+						Operand:  "register",
+					}
+				}
 
 				switch typ {
 				case 0b00:
@@ -489,7 +563,13 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 		case 0b1010:
 			// "4.6.2 ADC (register)" of "Thumb-2 Supplement")
 			// T2 encoding
-			arm.state.fudge_thumb2disassemble32bit = "ADC (register)"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "ADC",
+					Operand:  "register",
+				}
+			}
 
 			switch typ {
 			case 0b00:
@@ -518,7 +598,12 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 			if Rd == rPC {
 				// "4.6.30 CMP (register)" of "Thumb-2 Supplement"
 				// T3 encoding
-				arm.state.fudge_thumb2disassemble32bit = "CMP"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "CMP",
+					}
+				}
 
 				switch typ {
 				case 0b00:
@@ -548,7 +633,13 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 			} else {
 				// "4.6.177 SUB (register)" of "Thumb-2 Supplement"
 				// T2 encoding
-				arm.state.fudge_thumb2disassemble32bit = "SUB (register)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "SUB",
+						Operand:  "register",
+					}
+				}
 
 				switch typ {
 				case 0b00:
@@ -596,7 +687,13 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 		case 0b1110:
 			// "4.6.119 RSB (register)" of "Thumb-2 Supplement"
 			// T1 encoding
-			arm.state.fudge_thumb2disassemble32bit = "RSB (register)"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "RSB",
+					Operand:  "register",
+				}
+			}
 
 			switch typ {
 			case 0b00:
@@ -641,7 +738,13 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 			switch op {
 			case 0b00:
 				// "4.6.69 LSL (register)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LSL (register)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "LSL",
+						Operand:  "register",
+					}
+				}
 
 				// whether to set carry bit
 				m := uint32(0x01) << (32 - shift)
@@ -659,7 +762,13 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 
 			case 0b01:
 				// "4.6.71 LSR (register)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LSR (register)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "LSR",
+						Operand:  "register",
+					}
+				}
 
 				// whether to set carry bit
 				m := uint32(0x01) << (shift - 1)
@@ -676,7 +785,13 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 				}
 			case 0b10:
 				// "4.6.11 ASR (register)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "ASR (register)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "ASR",
+						Operand:  "register",
+					}
+				}
 
 				// whether to set carry bit
 				m := uint32(0x01) << (shift - 1)
@@ -713,13 +828,23 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 			case 0b001:
 				if Rn == rPC {
 					// "4.6.226 UXTH" of "Thumb-2 Supplement"
-					arm.state.fudge_thumb2disassemble32bit = "UXTH"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "UXTH",
+						}
+					}
 
 					v, _ := ROR_C(arm.state.registers[Rm], uint32(rot)<<3)
 					arm.state.registers[Rd] = v & 0x0000ffff
 				} else {
 					// "4.6.223 UXTAH" of "Thumb-2 Supplement"
-					arm.state.fudge_thumb2disassemble32bit = "UXTAH"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "UXTAH",
+						}
+					}
 
 					v, _ := ROR_C(arm.state.registers[Rm], uint32(rot)<<3)
 					arm.state.registers[Rd] = arm.state.registers[Rn] + (v & 0x0000ffff)
@@ -727,13 +852,23 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 			case 0b101:
 				if Rn == rPC {
 					// "4.6.224 UXTB" of "Thumb-2 Supplement"
-					arm.state.fudge_thumb2disassemble32bit = "UXTB"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "UXTB",
+						}
+					}
 
 					v, _ := ROR_C(arm.state.registers[Rm], uint32(rot)<<3)
 					arm.state.registers[Rd] = v & 0x000000ff
 				} else {
 					// "4.6.221 UXTAB" of "Thumb-2 Supplement"
-					arm.state.fudge_thumb2disassemble32bit = "UXTAB"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "UXTAB",
+						}
+					}
 
 					v, _ := ROR_C(arm.state.registers[Rm], uint32(rot)<<3)
 					arm.state.registers[Rd] = arm.state.registers[Rn] + (v & 0x000000ff)
@@ -746,9 +881,11 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 		if opcode&0x0080 == 0x0000 {
 			// "SIMD add and subtract"
 			// page 3-21 of "Thumb-2 Supplement"
+			panic(fmt.Sprintf("unhandled SIMD add and subtract (%04x %04x)", arm.state.function32bitOpcodeHi, opcode))
 		} else {
 			// "Other three-register data processing instructions"
 			// page 3-23 of "Thumb-2 Supplement"
+			panic(fmt.Sprintf("unhandled 'three-register data processing instruction' (%04x %04x)", arm.state.function32bitOpcodeHi, opcode))
 		}
 	} else if arm.state.function32bitOpcodeHi&0xff80 == 0xfb00 {
 		// "32-bit multiplies and sum of absolute differences, with or without accumulate"
@@ -761,25 +898,50 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 			if Ra == rPC {
 				// "4.6.84 MUL" of "Thumb-2 Supplement"
 				// T2 encoding
-				arm.state.fudge_thumb2disassemble32bit = "MUL"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "MUL",
+					}
+				}
 
 				// multiplication can be done on signed or unsigned value with
 				// not change in functionality
 				arm.state.registers[Rd] = arm.state.registers[Rn] * arm.state.registers[Rm]
 			} else {
 				// "4.6.74 MLA" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "MLA"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "MLA",
+					}
+				}
+
 				result := int(arm.state.registers[Rn]) * int(arm.state.registers[Rm])
 				result += int(arm.state.registers[Ra])
 				arm.state.registers[Rd] = uint32(result)
 			}
 		} else if op == 0b000 && op2 == 0b0001 {
 			// "4.6.75 MLS" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "MLS"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "MLS",
+				}
+			}
+
 			arm.state.registers[Rd] = uint32(int32(arm.state.registers[Ra]) - int32(arm.state.registers[Rn])*int32(arm.state.registers[Rm]))
 		} else if op == 0b001 && op2 == 0b0000 {
 			if Ra == 0b1111 {
 				// "4.6.149 SMULBB, SMULBT, SMULTB, SMULTT" of "Thumb-2 Supplement"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "SMUL",
+						Operand:  "group of instructions",
+					}
+				}
+
 				nHigh := opcode&0x0020 == 0x0020
 				mHigh := opcode&0x0010 == 0x0010
 
@@ -812,7 +974,12 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 
 		if op == 0b010 && op2 == 0b0000 {
 			// "4.6.207 UMULL" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "UMULL"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "UMULL",
+				}
+			}
 
 			RdLo := (opcode & 0xf000) >> 12
 			RdHi := Rd
@@ -822,7 +989,12 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 			arm.state.registers[RdLo] = uint32(result)
 		} else if op == 0b011 && op2 == 0b1111 {
 			// "4.6.198 UDIV" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "UDIV"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "UDIV",
+				}
+			}
 
 			// don't allow divide by zero
 			if arm.state.registers[Rm] == 0 {
@@ -832,7 +1004,12 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 			}
 		} else if op == 0b001 && op2 == 0b1111 {
 			// "4.6.126 SDIV" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "SDIV"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "SDIV",
+				}
+			}
 
 			if arm.state.registers[Rm] == 0 {
 				// don't allow divide by zero
@@ -857,7 +1034,7 @@ func decode32bitThumb2DataProcessingNonImmediate(arm *ARM, opcode uint16) *Disas
 	return nil
 }
 
-func decode32bitThumb2LoadStoreDoubleEtc(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decode32bitThumb2LoadStoreDoubleEtc(opcode uint16) *DisasmEntry {
 	// "3.3.4 Load/store double and exclusive, and table branch" of "Thumb-2 Supplement"
 
 	p := (arm.state.function32bitOpcodeHi & 0x0100) == 0x0100
@@ -886,13 +1063,25 @@ func decode32bitThumb2LoadStoreDoubleEtc(arm *ARM, opcode uint16) *DisasmEntry {
 
 		if l {
 			// "4.6.50 LDRD (immediate)" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "LDRD (immediate)"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "LDRD",
+					Operand:  "immediate",
+				}
+			}
 
 			arm.state.registers[Rt] = arm.read32bit(addr, true)
 			arm.state.registers[Rt2] = arm.read32bit(addr+4, true)
 		} else {
 			// "4.6.167 STRD (immediate)" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "STRD (immediate)"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "STRD",
+					Operand:  "immediate",
+				}
+			}
 
 			arm.write32bit(addr, arm.state.registers[Rt], true)
 			arm.write32bit(addr+4, arm.state.registers[Rt2], true)
@@ -919,7 +1108,12 @@ func decode32bitThumb2LoadStoreDoubleEtc(arm *ARM, opcode uint16) *DisasmEntry {
 		switch op {
 		case 0b0000:
 			// "4.6.188 TBB" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "TBB"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "TBB",
+				}
+			}
 
 			Rm := opcode & 0x000f
 			idx := arm.state.registers[Rn] + arm.state.registers[Rm]
@@ -930,7 +1124,12 @@ func decode32bitThumb2LoadStoreDoubleEtc(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.registers[rPC] += uint32(halfwords) << 1
 		case 0b0001:
 			// "4.6.189 TBH" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "TBH"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "TBH",
+				}
+			}
 
 			Rm := opcode & 0x000f
 			idx := arm.state.registers[Rn] + (arm.state.registers[Rm] << 1)
@@ -950,14 +1149,14 @@ func decode32bitThumb2LoadStoreDoubleEtc(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decode32bitThumb2BranchesORDataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decode32bitThumb2BranchesORDataProcessing(opcode uint16) *DisasmEntry {
 	if opcode&0x8000 == 0x8000 {
-		return decode32bitThumb2BranchesORMiscControl(arm, opcode)
+		return arm.decode32bitThumb2BranchesORMiscControl(opcode)
 	}
-	return decode32bitThumb2DataProcessing(arm, opcode)
+	return arm.decode32bitThumb2DataProcessing(opcode)
 }
 
-func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) *DisasmEntry {
 	// "3.3.1 Data processing instructions: immediate, including bitfield and saturate" of "Thumb-2 Supplement"
 
 	if arm.state.function32bitOpcodeHi&0xfa00 == 0xf000 {
@@ -984,7 +1183,13 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 		case 0b0000:
 			if Rd == 0b1111 && setFlags {
 				// "4.6.192 TST (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "TST (immediate)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "TST",
+						Operand:  "immediate",
+					}
+				}
 
 				result := arm.state.registers[Rn] & imm32
 				arm.state.status.isNegative(result)
@@ -993,7 +1198,13 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 				// overflow unchanged
 			} else {
 				// "4.6.8 AND (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "AND (immediate)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "AND",
+						Operand:  "immediate",
+					}
+				}
 
 				arm.state.registers[Rd] = arm.state.registers[Rn] & imm32
 				if setFlags {
@@ -1007,7 +1218,14 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 		case 0b0001:
 			// "4.6.15 BIC (immediate)" of "Thumb-2 Supplement"
 			// T1 encoding
-			arm.state.fudge_thumb2disassemble32bit = "BIC (immediate)"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "BIC",
+					Operand:  "immediate",
+				}
+			}
+
 			arm.state.registers[Rd] = arm.state.registers[Rn] & ^imm32
 			if setFlags {
 				arm.state.status.isNegative(arm.state.registers[Rd])
@@ -1020,7 +1238,13 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 			if Rn == 0xf {
 				// "4.6.76 MOV (immediate)" of "Thumb-2 Supplement"
 				// T2 encoding
-				arm.state.fudge_thumb2disassemble32bit = "MOV (immediate)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "MOV",
+						Operand:  "immediate",
+					}
+				}
 
 				arm.state.registers[Rd] = imm32
 				if setFlags {
@@ -1031,7 +1255,13 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 				}
 			} else {
 				// "4.6.91 ORR (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "ORR (immediate)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "ORR",
+						Operand:  "immediate",
+					}
+				}
 
 				arm.state.registers[Rd] = arm.state.registers[Rn] | imm32
 				if setFlags {
@@ -1045,7 +1275,13 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 		case 0b0011:
 			if Rn == 0b1111 {
 				// "4.6.85 MVN (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "MVN (immediate)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "MVN",
+						Operand:  "immediate",
+					}
+				}
 
 				arm.state.registers[Rd] = ^imm32
 				if setFlags {
@@ -1056,7 +1292,13 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 				}
 			} else {
 				// "4.6.89 ORN (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "ORN (immediate)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "ORN",
+						Operand:  "immediate",
+					}
+				}
 
 				arm.state.registers[Rd] = arm.state.registers[Rn] | ^imm32
 				if setFlags {
@@ -1065,8 +1307,6 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 					arm.state.status.setCarry(carry)
 					// overflow unchanged
 				}
-
-				panic("ORN")
 			}
 
 		case 0b0100:
@@ -1074,10 +1314,23 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 
 			if Rd == 0b1111 && setFlags {
 				// "4.6.190 TEQ (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "TEQ (immediate)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "TEQ",
+						Operand:  "immediate",
+					}
+				}
 			} else {
 				// "4.6.36 EOR (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "EOR (immediate)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "EOR",
+						Operand:  "immediate",
+					}
+				}
+
 				arm.state.registers[Rd] = result
 			}
 
@@ -1092,7 +1345,13 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 			if Rd == 0b1111 {
 				// "4.6.27 CMN (immediate)" of "Thumb-2 Supplement"
 				// T1 encoding
-				arm.state.fudge_thumb2disassemble32bit = "CMN (immediate)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "CMN",
+						Operand:  "immediate",
+					}
+				}
 
 				result, carry, overflow := AddWithCarry(arm.state.registers[Rn], imm32, 0)
 				arm.state.status.isNegative(result)
@@ -1103,7 +1362,13 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 				if arm.state.function32bitOpcodeHi&0x100 == 0x100 {
 					// "4.6.3 ADD (immediate)" of "Thumb-2 Supplement"
 					// T3 encoding
-					arm.state.fudge_thumb2disassemble32bit = "ADD (immediate)"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "ADD",
+							Operand:  "immediate",
+						}
+					}
 
 					result, carry, overflow := AddWithCarry(arm.state.registers[Rn], imm32, 0)
 					arm.state.registers[Rd] = result
@@ -1124,7 +1389,13 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 		case 0b1010:
 			// "4.6.1 ADC (immediate)" of "Thumb-2 Supplement"
 			// T1 encoding
-			arm.state.fudge_thumb2disassemble32bit = "ADC (immediate)"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "ADC",
+					Operand:  "immediate",
+				}
+			}
 
 			var c uint32
 			if arm.state.status.carry {
@@ -1144,7 +1415,13 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 		case 0b1011:
 			// "4.6.123 SBC (immediate)" of "Thumb-2 Supplement"
 			// T1 encoding
-			arm.state.fudge_thumb2disassemble32bit = "SBC (immediate)"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "SBC",
+					Operand:  "immediate",
+				}
+			}
 
 			var c uint32
 			if arm.state.status.carry {
@@ -1164,7 +1441,13 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 		case 0b1101:
 			if Rd == 0b1111 {
 				// "4.6.29 CMP (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "CMP (immediate)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "CMP",
+						Operand:  "immediate",
+					}
+				}
 
 				result, carry, overflow := AddWithCarry(arm.state.registers[Rn], ^imm32, 1)
 				arm.state.status.isNegative(result)
@@ -1174,7 +1457,13 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 			} else {
 				// "4.6.176 SUB (immediate)" of "Thumb-2 Supplement"
 				// T3 encoding
-				arm.state.fudge_thumb2disassemble32bit = "SUB (immediate)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "SUB",
+						Operand:  "immediate",
+					}
+				}
 
 				result, carry, overflow := AddWithCarry(arm.state.registers[Rn], ^imm32, 1)
 				arm.state.registers[Rd] = result
@@ -1188,7 +1477,13 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 
 		case 0b1110:
 			// "4.6.118 RSB (immediate)" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "RSB (immediate)"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "RSB",
+					Operand:  "immediate",
+				}
+			}
 
 			result, carry, overflow := AddWithCarry(^arm.state.registers[Rn], imm32, 1)
 			arm.state.registers[Rd] = result
@@ -1226,7 +1521,13 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 			case 0b00:
 				// "4.6.3 ADD (immediate) " of "Thumb-2 Supplement"
 				// T4 encoding (wide addition)
-				arm.state.fudge_thumb2disassemble32bit = "ADDW"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "ADDW",
+						Operand:  "immediate",
+					}
+				}
 
 				result, _, _ := AddWithCarry(arm.state.registers[Rn], imm32, 0)
 				arm.state.registers[Rd] = result
@@ -1239,7 +1540,13 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 			case 0b10:
 				// "4.6.176 SUB (immediate)" of "Thumb-2 Supplement"
 				// T4 encoding (immediate)
-				arm.state.fudge_thumb2disassemble32bit = "SUBW"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "SUBW",
+						Operand:  "immediate",
+					}
+				}
 
 				result, _, _ := AddWithCarry(arm.state.registers[Rn], ^imm32, 1)
 				arm.state.registers[Rd] = result
@@ -1258,7 +1565,13 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 		if op == 0b0 && op2 == 0b00 {
 			// "4.6.76 MOV (immediate)" of "Thumb-2 Supplement"
 			// T3 encoding
-			arm.state.fudge_thumb2disassemble32bit = "MOV"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "MOV",
+					Operand:  "immediate",
+				}
+			}
 
 			i := (arm.state.function32bitOpcodeHi & 0x0400) >> 10
 			imm4 := arm.state.function32bitOpcodeHi & 0x000f
@@ -1282,7 +1595,12 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 		switch op {
 		case 0b010:
 			// "4.6.125 SBFX" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "SBFX"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "SBFX",
+				}
+			}
 
 			Rn := arm.state.function32bitOpcodeHi & 0x000f
 			imm3 := (opcode & 0x7000) >> 12
@@ -1301,7 +1619,12 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 			}
 		case 0b011:
 			// "4.6.14 BFI" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "BFI"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "BFI",
+				}
+			}
 
 			Rn := arm.state.function32bitOpcodeHi & 0x000f
 			imm3 := (opcode & 0x7000) >> 12
@@ -1330,7 +1653,12 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 
 		case 0b110:
 			// "4.6.197 UBFX" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "UBFX"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "UBFX",
+				}
+			}
 
 			Rn := arm.state.function32bitOpcodeHi & 0x000f
 			imm3 := (opcode & 0x7000) >> 12
@@ -1354,7 +1682,7 @@ func decode32bitThumb2DataProcessing(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decode32bitThumb2LoadStoreSingle(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decode32bitThumb2LoadStoreSingle(opcode uint16) *DisasmEntry {
 	// "3.3.3 Load and store single data item, and memory hints" of "Thumb-2 Supplement"
 
 	// Addressing mode discussed in "A4.6.5 Addressing modes" of "ARMv7-M"
@@ -1393,30 +1721,65 @@ func decode32bitThumb2LoadStoreSingle(arm *ARM, opcode uint16) *DisasmEntry {
 
 		switch size {
 		case 0b00:
-			// "4.6.47 LDRB (literal)" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "LDRB (literal PC relative)"
-			arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 			if s {
 				// "4.6.60 LDRSB (literal)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LDRSB (literal PC relative)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "LDRSB",
+						Operand:  "literal PC relative",
+					}
+				}
+				arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 				if arm.state.registers[Rt]&0x80 == 0x80 {
 					arm.state.registers[Rt] |= 0xffffff00
 				}
+			} else {
+				// "4.6.47 LDRB (literal)" of "Thumb-2 Supplement"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "LDRB",
+						Operand:  "literal PC relative",
+					}
+				}
+				arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 			}
 		case 0b01:
-			// "4.6.56 LDRH (literal)" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "LDRH (literal PC relative)"
-			arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 			if s {
 				// "4.6.64 LDRSH (literal)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LDRSH (literal PC relative)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "LDRSH",
+						Operand:  "literal PC relative",
+					}
+				}
+				arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 				if arm.state.registers[Rt]&0x8000 == 0x8000 {
 					arm.state.registers[Rt] |= 0xffff0000
 				}
+			} else {
+				// "4.6.56 LDRH (literal)" of "Thumb-2 Supplement"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "LDRH",
+						Operand:  "literal PC relative",
+					}
+				}
+				arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 			}
 		case 0b10:
 			// "4.6.44 LDR (literal)" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "LDR (literal PC relative)"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "LDR",
+					Operand:  "literal PC relative",
+				}
+			}
+
 			arm.state.registers[Rt] = arm.read32bit(addr, false)
 		default:
 			panic(fmt.Sprintf("unhandled size (%02b) for 'PC +/- imm12'", size))
@@ -1438,46 +1801,98 @@ func decode32bitThumb2LoadStoreSingle(arm *ARM, opcode uint16) *DisasmEntry {
 		switch size {
 		case 0b00:
 			if l {
-				// "4.6.46 LDRB (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LDRB (immediate offset)"
-				arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 				if s {
 					// "4.6.59 LDRSB (immediate)" of "Thumb-2 Supplement"
-					arm.state.fudge_thumb2disassemble32bit = "LDRSB (immediate offset)"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRSB",
+							Operand:  "immediate offset",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 					if arm.state.registers[Rt]&0x80 == 0x80 {
 						arm.state.registers[Rt] |= 0xffffff00
 					}
+				} else {
+					// "4.6.46 LDRB (immediate)" of "Thumb-2 Supplement"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRB",
+							Operand:  "immediate offset",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 				}
 			} else {
 				// "4.6.164 STRB (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "STRB (immediate offset)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "STRB",
+						Operand:  "immediate offset",
+					}
+				}
 				arm.write8bit(addr, uint8(arm.state.registers[Rt]))
 			}
 		case 0b01:
 			if l {
-				// "4.6.55 LDRH (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LDRH (immediate offset)"
-				arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 				if s {
 					// "4.6.63 LDRSH (immediate)" of "Thumb-2 Supplement"
-					arm.state.fudge_thumb2disassemble32bit = "LDRSH (immediate offset)"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDSH",
+							Operand:  "immediate offset",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 					if arm.state.registers[Rt]&0x8000 == 0x8000 {
 						arm.state.registers[Rt] |= 0xffff0000
 					}
+				} else {
+					// "4.6.55 LDRH (immediate)" of "Thumb-2 Supplement"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRH",
+							Operand:  "immediate offset",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 				}
 			} else {
 				// "4.6.172 STRH (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "STRH (immediate offset)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "STRH",
+						Operand:  "immediate offset",
+					}
+				}
 				arm.write16bit(addr, uint16(arm.state.registers[Rt]), false)
 			}
 		case 0b10:
 			if l {
 				// "4.6.43 LDR (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LDR (immediate offset)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "LDR",
+						Operand:  "immediate offset",
+					}
+				}
 				arm.state.registers[Rt] = arm.read32bit(addr, false)
 			} else {
 				// "4.6.162 STR (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "STR (immediate offset)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "STR",
+						Operand:  "immediate offset",
+					}
+				}
 				arm.write32bit(addr, arm.state.registers[Rt], false)
 			}
 		default:
@@ -1499,47 +1914,99 @@ func decode32bitThumb2LoadStoreSingle(arm *ARM, opcode uint16) *DisasmEntry {
 		switch size {
 		case 0b00:
 			if l {
-				// "4.6.46 LDRB (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LDRB (immediate negative offset)"
-				arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 				if s {
 					// "4.6.59 LDRSB (immediate)" of "Thumb-2 Supplement"
-					arm.state.fudge_thumb2disassemble32bit = "LDRSB (immediate negative offset)"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRSB",
+							Operand:  "immediate negative offset",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 					if arm.state.registers[Rt]&0x80 == 0x80 {
 						arm.state.registers[Rt] |= 0xffffff00
 					}
+				} else {
+					// "4.6.46 LDRB (immediate)" of "Thumb-2 Supplement"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRB",
+							Operand:  "immediate negative offset",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 				}
 			} else {
 				// "4.6.164 STRB (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "STRB (immediate negative offset)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "STRB",
+						Operand:  "immediate negative offset",
+					}
+				}
 				arm.write8bit(addr, uint8(arm.state.registers[Rt]))
 			}
 		case 0b01:
 			if l {
-				// "4.6.55 LDRH (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LDRH (immediate negative offset)"
-				arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 				if s {
 					// "4.6.63 LDRSH (immediate)" of "Thumb-2 Supplement"
-					arm.state.fudge_thumb2disassemble32bit = "LDRSH (immediate negative offset)"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRSH",
+							Operand:  "immediate negative offset",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 					if arm.state.registers[Rt]&0x8000 == 0x8000 {
 						arm.state.registers[Rt] |= 0xffff0000
 					}
+				} else {
+					// "4.6.55 LDRH (immediate)" of "Thumb-2 Supplement"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRH",
+							Operand:  "immediate negative offset",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 				}
 			} else {
 				// "4.6.172 STRH (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "STRH (immediate negative offset)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "STRH",
+						Operand:  "immediate negative offset",
+					}
+				}
 				arm.write16bit(addr, uint16(arm.state.registers[Rt]), false)
 			}
 		case 0b10:
 			if l {
 				// "4.6.43 LDR (immediate)" of "Thumb-2 Supplement"
 				// T4 encoding
-				arm.state.fudge_thumb2disassemble32bit = "LDR (immediate negative offset)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "LDR",
+						Operand:  "immediate negative offset",
+					}
+				}
 				arm.state.registers[Rt] = arm.read32bit(addr, false)
 			} else {
 				// "4.6.162 STR (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "STR (immediate negative offset)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "STR",
+						Operand:  "immediate negative offset",
+					}
+				}
 				arm.write32bit(addr, arm.state.registers[Rt], false)
 			}
 		default:
@@ -1562,42 +2029,88 @@ func decode32bitThumb2LoadStoreSingle(arm *ARM, opcode uint16) *DisasmEntry {
 		switch size {
 		case 0b00:
 			if l {
-				// "4.6.46 LDRB (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LDRB (immediate post-index)"
-				arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 				if s {
 					// "4.6.59 LDRSB (immediate)" of "Thumb-2 Supplement"
-					arm.state.fudge_thumb2disassemble32bit = "LDRSB (immediate post-index)"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRB",
+							Operand:  "immediate post-index",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 					if arm.state.registers[Rt]&0x80 == 0x80 {
 						arm.state.registers[Rt] |= 0xffffff00
 					}
+				} else {
+					// "4.6.46 LDRB (immediate)" of "Thumb-2 Supplement"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRB",
+							Operand:  "immediate post-index",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 				}
 			} else {
 				// "4.6.164 STRB (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "STRB (immediate post-index)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "STRB",
+						Operand:  "immediate post-index",
+					}
+				}
 				arm.write8bit(addr, uint8(arm.state.registers[Rt]))
 			}
 		case 0b01:
 			if l {
-				// "4.6.55 LDRH (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LDRH (immediate post-index)"
-				arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 				if s {
 					// "4.6.63 LDRSH (immediate)" of "Thumb-2 Supplement"
-					arm.state.fudge_thumb2disassemble32bit = "LDRSH (immediate post-index)"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRSH",
+							Operand:  "immediate post-index",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 					if arm.state.registers[Rt]&0x8000 == 0x8000 {
 						arm.state.registers[Rt] |= 0xffff0000
 					}
+				} else {
+					// "4.6.55 LDRH (immediate)" of "Thumb-2 Supplement"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRH",
+							Operand:  "immediate post-index",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 				}
 			} else {
 				// "4.6.172 STRH (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "STRH (immediate post-index)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "STRH",
+						Operand:  "immediate post-index",
+					}
+				}
 				arm.write16bit(addr, uint16(arm.state.registers[Rt]), false)
 			}
 		case 0b10:
 			if l {
 				// "4.6.43 LDR (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LDR (immediate post-index)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "LDR",
+						Operand:  "immediate post-index",
+					}
+				}
 				if Rt == rPC {
 					arm.state.registers[Rt] = arm.read32bit(addr, false) + 1
 				} else {
@@ -1605,7 +2118,13 @@ func decode32bitThumb2LoadStoreSingle(arm *ARM, opcode uint16) *DisasmEntry {
 				}
 			} else {
 				// "4.6.162 STR (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "STR (immediate post-index)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "STR",
+						Operand:  "immediate post-index",
+					}
+				}
 				arm.write32bit(addr, arm.state.registers[Rt], false)
 			}
 		default:
@@ -1638,46 +2157,99 @@ func decode32bitThumb2LoadStoreSingle(arm *ARM, opcode uint16) *DisasmEntry {
 		switch size {
 		case 0b00:
 			if l {
-				// "4.6.46 LDRB (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LDRB (immediate pre-index)"
-				arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 				if s {
 					// "4.6.59 LDRSB (immediate)" of "Thumb-2 Supplement"
-					arm.state.fudge_thumb2disassemble32bit = "LDRSB (immediate pre-index)"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRSB",
+							Operand:  "immediate pre-index",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 					if arm.state.registers[Rt]&0x80 == 0x80 {
 						arm.state.registers[Rt] |= 0xffffff00
 					}
+				} else {
+					// "4.6.46 LDRB (immediate)" of "Thumb-2 Supplement"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRB",
+							Operand:  "immediate pre-index",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 				}
 			} else {
 				// "4.6.164 STRB (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "STRB (immediate pre-index)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "STRB",
+						Operand:  "immediate pre-index",
+					}
+				}
 				arm.write8bit(addr, uint8(arm.state.registers[Rt]))
 			}
 		case 0b01:
 			if l {
-				// "4.6.55 LDRH (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LDRH (immediate pre-index)"
 				arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 				if s {
 					// "4.6.63 LDRSH (immediate)" of "Thumb-2 Supplement"
-					arm.state.fudge_thumb2disassemble32bit = "LDRSH (immediate pre-index)"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRSH",
+							Operand:  "immediate pre-index",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 					if arm.state.registers[Rt]&0x8000 == 0x8000 {
 						arm.state.registers[Rt] |= 0xffff0000
 					}
+				} else {
+					// "4.6.55 LDRH (immediate)" of "Thumb-2 Supplement"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRH",
+							Operand:  "immediate pre-index",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 				}
 			} else {
 				// "4.6.172 STRH (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "STRH (immediate pre-index)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "STRH",
+						Operand:  "immediate pre-index",
+					}
+				}
 				arm.write16bit(addr, uint16(arm.state.registers[Rt]), false)
 			}
 		case 0b10:
 			if l {
 				// "4.6.43 LDR (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LDR (immediate offset)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "LDR",
+						Operand:  "immediate offset",
+					}
+				}
 				arm.state.registers[Rt] = arm.read32bit(addr, false)
 			} else {
 				// "4.6.162 STR (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "STR (immediate offset)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "STR",
+						Operand:  "immediate offset",
+					}
+				}
 				arm.write32bit(addr, arm.state.registers[Rt], false)
 			}
 		default:
@@ -1698,30 +2270,64 @@ func decode32bitThumb2LoadStoreSingle(arm *ARM, opcode uint16) *DisasmEntry {
 		if l {
 			switch size {
 			case 0b00:
-				// "4.6.48 LDRB (register)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LDRB (register shifted)"
-				arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 				if s {
 					// "4.6.61 LDRSB (register)" of "Thumb-2 Supplement"
-					arm.state.fudge_thumb2disassemble32bit = "LDRSB (register shifted)"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRSB",
+							Operand:  "register shifted",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 					if arm.state.registers[Rt]&0x80 == 0x80 {
 						arm.state.registers[Rt] |= 0xffffff00
 					}
+				} else {
+					// "4.6.48 LDRB (register)" of "Thumb-2 Supplement"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRB",
+							Operand:  "register shifted",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read8bit(addr))
 				}
 			case 0b01:
-				// "4.6.57 LDRH (register)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LDRH (register shifted)"
-				arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 				if s {
 					// "4.6.65 LDRSH (register)" of "Thumb-2 Supplement"
-					arm.state.fudge_thumb2disassemble32bit = "LDRSH (register shifted)"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRSH",
+							Operand:  "register shifted",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 					if arm.state.registers[Rt]&0x8000 == 0x8000 {
 						arm.state.registers[Rt] |= 0xffff0000
 					}
+				} else {
+					// "4.6.57 LDRH (register)" of "Thumb-2 Supplement"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "LDRH",
+							Operand:  "register shifted",
+						}
+					}
+					arm.state.registers[Rt] = uint32(arm.read16bit(addr, false))
 				}
 			case 0b10:
 				// "4.6.45 LDR (register)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "LDR (register shifted)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "LDR",
+						Operand:  "register shifted",
+					}
+				}
 				arm.state.registers[Rt] = arm.read32bit(addr, false)
 				if Rt == rPC {
 					arm.state.registers[rPC] += 2
@@ -1735,17 +2341,35 @@ func decode32bitThumb2LoadStoreSingle(arm *ARM, opcode uint16) *DisasmEntry {
 			case 0b00:
 				// "4.6.165 STRB (register)" of "Thumb-2 Supplement"
 				// T2 encoding
-				arm.state.fudge_thumb2disassemble32bit = "STRB (register shifted)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "STRB",
+						Operand:  "register shifted",
+					}
+				}
 				arm.write8bit(addr, uint8(arm.state.registers[Rt]))
 			case 0b01:
 				// "4.6.173 STRH (register)" of "Thumb-2 Supplement"
 				// T2 encoding
-				arm.state.fudge_thumb2disassemble32bit = "STRH (register shifted)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "STRH",
+						Operand:  "register shifted",
+					}
+				}
 				arm.write16bit(addr, uint16(arm.state.registers[Rt]), false)
 			case 0b10:
 				// "4.6.163 STR (register)" of "Thumb-2 Supplement"
 				// T2 encoding
-				arm.state.fudge_thumb2disassemble32bit = "STR (register shifted)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "STR",
+						Operand:  "register shifted",
+					}
+				}
 				arm.write32bit(addr, arm.state.registers[Rt], false)
 			default:
 				panic(fmt.Sprintf("unhandled size (%02b) for 'Rn + shifted register' (save)", size))
@@ -1759,7 +2383,7 @@ func decode32bitThumb2LoadStoreSingle(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decode32bitThumb2LoadStoreMultiple(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decode32bitThumb2LoadStoreMultiple(opcode uint16) *DisasmEntry {
 	// "3.3.5 Load and store multiple, RFE, and SRS" of "Thumb-2 Supplement"
 	//		and
 	// "A5.3.5 Load Multiple and Store Multiple" of "ARMv7-M"
@@ -1783,7 +2407,12 @@ func decode32bitThumb2LoadStoreMultiple(arm *ARM, opcode uint16) *DisasmEntry {
 				// T2 encoding
 
 				// Pop multiple registers from the stack
-				arm.state.fudge_thumb2disassemble32bit = "POP (ldmia)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "POP",
+					}
+				}
 
 				regList := opcode & 0xdfff
 				c := uint32(bits.OnesCount16(regList) * 4)
@@ -1811,7 +2440,12 @@ func decode32bitThumb2LoadStoreMultiple(arm *ARM, opcode uint16) *DisasmEntry {
 				// T2 encoding
 
 				// Load multiple (increment after, full descending)
-				arm.state.fudge_thumb2disassemble32bit = "LDMIA/LDMFD"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "LDMIA/LDMFD",
+					}
+				}
 
 				regList := opcode & 0xdfff
 				c := uint32(bits.OnesCount16(regList) * 4)
@@ -1847,7 +2481,12 @@ func decode32bitThumb2LoadStoreMultiple(arm *ARM, opcode uint16) *DisasmEntry {
 			// T2 encoding
 
 			// Store multiple (increment after, empty ascending)
-			arm.state.fudge_thumb2disassemble32bit = "STMIA/STMEA"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "STMIA/STMEA",
+				}
+			}
 
 			regList := opcode & 0x5fff
 			c := uint32(bits.OnesCount16(regList) * 4)
@@ -1881,7 +2520,12 @@ func decode32bitThumb2LoadStoreMultiple(arm *ARM, opcode uint16) *DisasmEntry {
 			// "4.6.41 LDMDB / LDMEA" of "Thumb-2 Supplement"
 
 			// Load multiple (decrement before, empty ascending)
-			arm.state.fudge_thumb2disassemble32bit = "LDMDB/LDMEA"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "LDMDB/LDMEA",
+				}
+			}
 
 			regList := opcode & 0xdfff
 			c := uint32(bits.OnesCount16(regList) * 4)
@@ -1919,7 +2563,12 @@ func decode32bitThumb2LoadStoreMultiple(arm *ARM, opcode uint16) *DisasmEntry {
 				// T2 encoding
 
 				// Push multiple registers to the stack
-				arm.state.fudge_thumb2disassemble32bit = "PUSH (stmdb)"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "PUSH",
+					}
+				}
 
 				regList := opcode & 0x5fff
 				c := (uint32(bits.OnesCount16(regList))) * 4
@@ -1942,7 +2591,12 @@ func decode32bitThumb2LoadStoreMultiple(arm *ARM, opcode uint16) *DisasmEntry {
 				// "4.6.160 STMDB / STMFD" of "Thumb-2 Supplement"
 
 				// Store multiple (decrement before, full descending)
-				arm.state.fudge_thumb2disassemble32bit = "STMDB/STMFD"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "SRMDB/STMFD",
+					}
+				}
 
 				regList := opcode & 0x5fff
 				c := (uint32(bits.OnesCount16(regList))) * 4
@@ -1976,7 +2630,7 @@ func decode32bitThumb2LoadStoreMultiple(arm *ARM, opcode uint16) *DisasmEntry {
 	return nil
 }
 
-func decode32bitThumb2BranchesORMiscControl(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decode32bitThumb2BranchesORMiscControl(opcode uint16) *DisasmEntry {
 	// "3.3.6 Branches, miscellaneous control instructions" of "Thumb-2 Supplement"
 
 	if arm.state.function32bitOpcodeHi&0xffe0 == 0xf3e0 {
@@ -1997,7 +2651,7 @@ func decode32bitThumb2BranchesORMiscControl(arm *ARM, opcode uint16) *DisasmEntr
 	} else if arm.state.function32bitOpcodeHi&0xffe0 == 0xf380 {
 		panic("move to status from register")
 	} else if arm.state.function32bitOpcodeHi&0xf800 == 0xf000 {
-		decode32bitThumb2Branches(arm, opcode)
+		return arm.decode32bitThumb2Branches(opcode)
 	} else {
 		panic(fmt.Sprintf("unimplemented branches, miscellaneous control instructions"))
 	}
@@ -2005,7 +2659,7 @@ func decode32bitThumb2BranchesORMiscControl(arm *ARM, opcode uint16) *DisasmEntr
 	return nil
 }
 
-func decode32bitThumb2Branches(arm *ARM, opcode uint16) *DisasmEntry {
+func (arm *ARM) decode32bitThumb2Branches(opcode uint16) *DisasmEntry {
 	// "3.3.6 Branches, miscellaneous control instructions" of "Thumb-2 Supplement"
 	//
 	// branches are in the top half of the table and are differentiated by the
@@ -2016,7 +2670,13 @@ func decode32bitThumb2Branches(arm *ARM, opcode uint16) *DisasmEntry {
 		// "4.6.12 B" of "Thumb-2 Supplement"
 		// T3 encoding
 		// Conditional Branch
-		arm.state.fudge_thumb2disassemble32bit = "B (cond)"
+		if arm.decodeOnly {
+			return &DisasmEntry{
+				Is32bit:  true,
+				Operator: "B",
+				Operand:  "conditional",
+			}
+		}
 
 		// make sure we're working with 32bit immediate numbers so that we don't
 		// drop bits when shifting
@@ -2037,17 +2697,25 @@ func decode32bitThumb2Branches(arm *ARM, opcode uint16) *DisasmEntry {
 			arm.state.registers[rPC] += imm32
 		}
 
-	} else if opcode&0xd000 == 0xc000 {
-		if opcode&0x01 == 0x01 {
-			panic("reserved branch instruction")
-		}
-		panic("branch with link, chage to ARM")
+	} else if opcode&0xc000 == 0xc000 {
+		// BL and BLX instructions differ by one bit
+		blx := opcode&0x1000 != 0x1000
 
-	} else if opcode&0xd000 == 0xd000 {
 		// "4.6.18 BL, BLX (immediate)" of "Thumb-2 Supplment"
 		// T1 encoding
 		// Long Branch With link
-		arm.state.fudge_thumb2disassemble32bit = "BL"
+		if arm.decodeOnly {
+			if blx {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "BLX",
+				}
+			}
+			return &DisasmEntry{
+				Is32bit:  true,
+				Operator: "BL",
+			}
+		}
 
 		// record PC in link register
 		arm.state.registers[rLR] = (arm.state.registers[rPC]-2)&0xfffffffe | 0x00000001
@@ -2059,13 +2727,27 @@ func decode32bitThumb2Branches(arm *ARM, opcode uint16) *DisasmEntry {
 		j2 := uint32((opcode & 0x800) >> 11)
 		i1 := (^(j1 ^ s)) & 0x01
 		i2 := (^(j2 ^ s)) & 0x01
-		imm10 := uint32(arm.state.function32bitOpcodeHi & 0x3ff)
-		imm11 := uint32(opcode & 0x7ff)
 
-		// immediate 32bit value is sign extended
-		imm32 := (s << 24) | (i1 << 23) | (i2 << 22) | (imm10 << 12) | (imm11 << 1)
-		if s == 0x01 {
-			imm32 |= 0xff000000
+		var imm32 uint32
+
+		if blx {
+			imm10H := uint32(arm.state.function32bitOpcodeHi & 0x3ff)
+			imm10L := uint32(opcode & 0x7ff)
+
+			// immediate 32bit value is sign extended
+			imm32 = (s << 23) | (i1 << 22) | (i2 << 21) | (imm10H << 11) | (imm10L << 2)
+			if s == 0x01 {
+				imm32 |= 0xff000000
+			}
+		} else {
+			imm10 := uint32(arm.state.function32bitOpcodeHi & 0x3ff)
+			imm11 := uint32(opcode & 0x7ff)
+
+			// immediate 32bit value is sign extended
+			imm32 = (s << 24) | (i1 << 23) | (i2 << 22) | (imm10 << 12) | (imm11 << 1)
+			if s == 0x01 {
+				imm32 |= 0xff000000
+			}
 		}
 
 		// adjust PC
@@ -2074,7 +2756,13 @@ func decode32bitThumb2Branches(arm *ARM, opcode uint16) *DisasmEntry {
 	} else if opcode&0xd000 == 0x9000 {
 		// "4.6.12 B" of "Thumb-2 Supplement"
 		// T4 encoding
-		arm.state.fudge_thumb2disassemble32bit = "B (non-cond)"
+		if arm.decodeOnly {
+			return &DisasmEntry{
+				Is32bit:  true,
+				Operator: "B",
+				Operand:  "non-conditional",
+			}
+		}
 
 		// make sure we're working with 32bit immediate numbers so that we don't
 		// drop bits when shifting
