@@ -881,11 +881,26 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) *Disa
 		if opcode&0x0080 == 0x0000 {
 			// "SIMD add and subtract"
 			// page 3-21 of "Thumb-2 Supplement"
-			panic(fmt.Sprintf("unhandled SIMD add and subtract (%04x %04x)", arm.state.function32bitOpcodeHi, opcode))
+			panic(fmt.Sprintf("unhandled SIMD add and subtract"))
 		} else {
 			// "Other three-register data processing instructions"
 			// page 3-23 of "Thumb-2 Supplement"
-			panic(fmt.Sprintf("unhandled 'three-register data processing instruction' (%04x %04x)", arm.state.function32bitOpcodeHi, opcode))
+			op := (arm.state.function32bitOpcodeHi & 0x70) >> 4
+			op2 := (opcode & 0x0070) >> 4
+			if op == 0b011 && op2 == 0b000 {
+				// "4.6.26 CLZ" of "Thumb-2 Supplement"
+				// T1 encoding
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "CLZ",
+					}
+				}
+				c := bits.LeadingZeros32(arm.state.registers[Rm])
+				arm.state.registers[Rd] = uint32(c)
+			} else {
+				panic(fmt.Sprintf("unhandled 'three-register data processing instruction'"))
+			}
 		}
 	} else if arm.state.function32bitOpcodeHi&0xff80 == 0xfb00 {
 		// "32-bit multiplies and sum of absolute differences, with or without accumulate"
