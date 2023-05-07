@@ -133,7 +133,9 @@ func (win *winRAM) draw() {
 			}, true)
 		}
 
-		sp := win.img.lz.CPU.SP.Address()
+		// not using Address() function because the stackpointer is hardwired to
+		// page one addresses. the value in the register is what we need
+		sp := uint16(win.img.lz.CPU.SP.Value())
 
 		// idx is based on original values of type uint16 so the type conversion is safe
 		if sp-memorymap.OriginRAM < uint16(idx) {

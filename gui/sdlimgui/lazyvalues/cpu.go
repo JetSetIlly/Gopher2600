@@ -47,7 +47,7 @@ type LazyCPU struct {
 	A                  registers.Register
 	X                  registers.Register
 	Y                  registers.Register
-	SP                 registers.Register
+	SP                 registers.StackPointer
 	StatusReg          registers.StatusRegister
 	LastResult         execution.Result
 	RTSPrediction      uint16
@@ -82,7 +82,7 @@ func (lz *LazyCPU) update() {
 	lz.A, _ = lz.a.Load().(registers.Register)
 	lz.X, _ = lz.x.Load().(registers.Register)
 	lz.Y, _ = lz.y.Load().(registers.Register)
-	lz.SP, _ = lz.sp.Load().(registers.Register)
+	lz.SP, _ = lz.sp.Load().(registers.StackPointer)
 	lz.StatusReg, _ = lz.statusReg.Load().(registers.StatusRegister)
 	lz.LastResult, _ = lz.lastResult.Load().(execution.Result)
 	lz.RTSPrediction, _ = lz.rtsPrediction.Load().(uint16)
