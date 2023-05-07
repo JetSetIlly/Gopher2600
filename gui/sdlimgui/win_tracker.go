@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
+	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/tracker"
 )
 
@@ -111,7 +112,22 @@ func (win *winTracker) drawReplayButton() {
 	}
 
 	if imgui.Button("Replay") {
-		win.img.dbg.Tracker.Replay(s, e, win.img.audio)
+		// unmute audio for the duration of the replay
+		win.img.audio.Mute(false)
+
+		win.img.dbg.Tracker.Replay(s, e, win.img.audio, func() {
+			// which audio mute preference we're using depends on emulation mode
+			var mutePrefs prefs.Bool
+			if win.img.isPlaymode() {
+				mutePrefs = win.img.prefs.audioMutePlaymode
+			} else {
+				mutePrefs = win.img.prefs.audioMuteDebugger
+			}
+
+			if mutePrefs.Get().(bool) {
+				win.img.audio.Mute(true)
+			}
+		})
 	}
 }
 
@@ -123,18 +139,26 @@ func (win *winTracker) draw() {
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.AudioTrackerRowHover)
 	defer imgui.PopStyleColorV(5)
 
-	// disable replay button as appropriate
-	//
-	// note that this is placed outside of the BorrowTracker() call below. this
-	// is because the button will call the Replay() function which will try to
-	// acquire the tracker lock, which has already been acquired by the borrow
-	// process
-	win.drawReplayButton()
+	// get number of entries before anything else
+	var numEntries int
+	win.img.dbg.Tracker.BorrowTracker(func(history *tracker.History) {
+		numEntries = len(history.Entries)
+	})
+
+	// draw toolbar if history is not empty
+	if numEntries > 0 {
+		// disable replay button as appropriate
+		//
+		// note that this is placed outside of the BorrowTracker() call below. this
+		// is because the button will call the Replay() function which will try to
+		// acquire the tracker lock, which has already been acquired by the borrow
+		// process
+		win.drawReplayButton()
+	}
 
 	win.img.dbg.Tracker.BorrowTracker(func(history *tracker.History) {
 		// new child that contains the main scrollable table
 		if imgui.BeginChildV("##trackerscroller", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.pianoKeysHeight}, false, 0) {
-			numEntries := len(history.Entries)
 			if numEntries == 0 {
 				imgui.Spacing()
 				imgui.Text("Audio tracker history is empty")

@@ -20,7 +20,6 @@ import (
 	"math"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio/mix"
 )
@@ -138,25 +137,7 @@ func (win *winOscilloscope) drawTVLabel(label string) {
 	imgui.AlignTextToFramePadding()
 	imgui.Text(fmt.Sprintf("TV Output (%s)", label))
 	imgui.SameLine()
-
-	var output string
-
-	audioMute := win.img.prefs.audioMuteDebugger.Get().(bool)
-
-	if audioMute {
-		output = string(fonts.AudioMute)
-	} else {
-		output = string(fonts.AudioUnmute)
-	}
-
-	imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)
-	imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.Transparent)
-	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
-	defer imgui.PopStyleColorV(3)
-
-	if imgui.Button(output) {
-		win.img.prefs.audioMuteDebugger.Set(!audioMute)
-	}
+	drawMuteIcon(win.img)
 }
 
 // SetAudio implements protocol.AudioMixer.

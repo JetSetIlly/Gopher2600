@@ -51,7 +51,9 @@ func (tr *Tracker) createReplayEmulation(mixer television.AudioMixer) error {
 const replayEnv = environment.Label("tracker_replay")
 
 // Replay audio from start to end indexes
-func (tr *Tracker) Replay(start int, end int, mixer television.AudioMixer) {
+//
+// The onEnd argument is a function to run when the replay has concluded
+func (tr *Tracker) Replay(start int, end int, mixer television.AudioMixer, onEnd func()) {
 	// the replay will run even if the master emulation is running. this may
 	// cause audible issues with the hardware audio mixing
 
@@ -73,6 +75,8 @@ func (tr *Tracker) Replay(start int, end int, mixer television.AudioMixer) {
 	endFrame := tr.crit.Entries[end].Coords.Frame
 
 	go func() {
+		defer onEnd()
+
 		err := tr.replayEmulation.Run(func() (govern.State, error) {
 			if tr.replayEmulation.TV.GetCoords().Frame > endFrame {
 				return govern.Ending, nil

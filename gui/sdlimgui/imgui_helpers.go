@@ -591,3 +591,24 @@ func drawRegister(id string, val uint8, mask uint8, col imgui.PackedColor, onWri
 	}
 	seq.end()
 }
+
+func drawMuteIcon(img *SdlImgui) {
+	var output string
+
+	audioMute := img.prefs.audioMuteDebugger.Get().(bool)
+
+	if audioMute {
+		output = string(fonts.AudioMute)
+	} else {
+		output = string(fonts.AudioUnmute)
+	}
+
+	imgui.PushStyleColor(imgui.StyleColorButton, img.cols.Transparent)
+	imgui.PushStyleColor(imgui.StyleColorButtonActive, img.cols.Transparent)
+	imgui.PushStyleColor(imgui.StyleColorButtonHovered, img.cols.Transparent)
+	defer imgui.PopStyleColorV(3)
+
+	if imgui.Button(output) {
+		img.prefs.audioMuteDebugger.Set(!audioMute)
+	}
+}
