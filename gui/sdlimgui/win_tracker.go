@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
@@ -116,6 +117,9 @@ func (win *winTracker) drawReplayButton() {
 		win.img.audio.Mute(false)
 
 		win.img.dbg.Tracker.Replay(s, e, win.img.audio, func() {
+			w, _ := time.ParseDuration("0.25s")
+			time.Sleep(w)
+
 			// which audio mute preference we're using depends on emulation mode
 			var mutePrefs prefs.Bool
 			if win.img.isPlaymode() {
