@@ -52,6 +52,10 @@ type platform struct {
 	// trickle mouse buttons
 	trickleMouseButtonLeft  trickleMouseButton
 	trickleMouseButtonRight trickleMouseButton
+
+	// synchronisation with monitor
+	syncDuration time.Duration
+	sync         *time.Ticker
 }
 
 // trickle mouse button is a mechanism that allows a mouse button down/up event
@@ -159,7 +163,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		return nil, fmt.Errorf("sdl: %w", err)
 	}
 
-	// default to disabled vsync
+	// disable VSYNC
 	plt.glSetSwapInterval(0)
 
 	// add joysticks
@@ -194,6 +198,18 @@ func (plt *platform) glSetSwapInterval(i int) {
 	err := sdl.GLSetSwapInterval(i)
 	if err != nil {
 		logger.Logf("sdl", "GLSetSwapInterval(%d): %s", i, err.Error())
+	}
+
+	if i == 0 {
+		// ticker to control update frequency
+		plt.syncDuration = time.Duration(1000000000/int64(plt.mode.RefreshRate)) * time.Nanosecond
+		plt.sync = time.NewTicker(plt.syncDuration)
+	} else {
+		plt.syncDuration = time.Duration(0)
+		if plt.sync != nil {
+			plt.sync.Stop()
+		}
+		plt.sync = nil
 	}
 }
 
@@ -270,6 +286,9 @@ func (plt *platform) newFrame() {
 
 // PostRender performs a buffer swap.
 func (plt *platform) postRender() {
+	if plt.syncDuration > 0 {
+		<-plt.sync.C
+	}
 	plt.window.GLSwap()
 }
 

@@ -28,6 +28,8 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+// var last time.Time
+
 // Service implements GuiCreator interface.
 func (img *SdlImgui) Service() {
 	// handle font reset procedure

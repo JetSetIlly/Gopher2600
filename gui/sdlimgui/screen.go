@@ -656,7 +656,6 @@ func (scr *screen) copyPixelsPlaymode() {
 	// state. without it, the screen will jump after a rewind event
 	if scr.crit.queueRecovery == 0 && scr.crit.monitorSyncInRange {
 		// advance render index
-		prev := scr.crit.prevRenderIdx
 		scr.crit.prevRenderIdx = scr.crit.renderIdx
 		scr.crit.renderIdx++
 		if scr.crit.renderIdx >= scr.crit.frameQueueLen {
@@ -668,7 +667,6 @@ func (scr *screen) copyPixelsPlaymode() {
 			// ** emulation not keeping up with screen update **
 			// undo frame advancement
 			scr.crit.renderIdx = scr.crit.prevRenderIdx
-			scr.crit.prevRenderIdx = prev
 
 			// adjust frame queue increase counter
 			if scr.crit.frameQueueAuto && scr.crit.frameInfo.Stable && scr.crit.frameQueueLen < maxFrameQueue {
