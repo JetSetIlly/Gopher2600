@@ -305,7 +305,8 @@ func (sh *blendShader) setAttributesArgs(env shaderEnvironment, modulate float32
 
 type sharpenShader struct {
 	shader
-	texture int32
+	texture   int32
+	sharpness int32
 }
 
 func newSharpenShader(yflipped bool) shaderProgram {
@@ -316,6 +317,7 @@ func newSharpenShader(yflipped bool) shaderProgram {
 		sh.createProgram(string(shaders.StraightVertexShader), string(shaders.SharpenShader))
 	}
 	sh.texture = gl.GetUniformLocation(sh.handle, gl.Str("Texture"+"\x00"))
+	sh.sharpness = gl.GetUniformLocation(sh.handle, gl.Str("Sharpness"+"\x00"))
 	return sh
 }
 
@@ -326,12 +328,13 @@ type sharpenImage interface {
 }
 
 // nolint: unparam
-func (sh *sharpenShader) setAttributesArgs(env shaderEnvironment, scalingImage sharpenImage) {
+func (sh *sharpenShader) setAttributesArgs(env shaderEnvironment, scalingImage sharpenImage, sharpness int) {
 	t, _, _ := scalingImage.textureSpec()
 	sh.shader.setAttributes(env)
 	gl.ActiveTexture(gl.TEXTURE1)
 	gl.BindTexture(gl.TEXTURE_2D, t)
 	gl.Uniform1i(sh.texture, 1)
+	gl.Uniform1i(sh.sharpness, int32(sharpness))
 }
 
 type guiShader struct {

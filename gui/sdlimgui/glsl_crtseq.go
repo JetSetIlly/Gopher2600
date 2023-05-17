@@ -182,7 +182,9 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool,
 
 	// sharpen image
 	env.srcTextureID = sh.seq.Process(crtSeqProcessedSrc, func() {
-		sh.sharpenShader.(*sharpenShader).setAttributesArgs(env, image)
+		// any sharpen value more than on causes ugly visual artefacts. a value
+		// of zero causes the default sharpen value (four) to be used
+		sh.sharpenShader.(*sharpenShader).setAttributesArgs(env, image, 1)
 		env.draw()
 	})
 

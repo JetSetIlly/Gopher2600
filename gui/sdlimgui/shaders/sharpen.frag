@@ -1,4 +1,5 @@
 uniform sampler2D Texture;
+uniform int Sharpness;
 in vec2 Frag_UV;
 in vec4 Frag_Color;
 out vec4 Out_Color;
@@ -6,11 +7,19 @@ out vec4 Out_Color;
 // sharpen function taken from (licenced under CC0):
 // https://gist.github.com/Beefster09/7264303ee4b4b2086f372f1e70e8eddd
 
-#define sharpness 4
+#define defaultSharpness 4
 
 float sharpen(float pix_coord) {
     float norm = (fract(pix_coord) - 0.5) * 2.0;
     float norm2 = norm * norm;
+
+	int sharpness;
+	if (Sharpness == 0) {
+		sharpness = defaultSharpness;
+	} else {
+		sharpness = Sharpness;
+	}
+
     return floor(pix_coord) + norm * pow(norm2, sharpness) / 2.0 + 0.5;
 }
 
