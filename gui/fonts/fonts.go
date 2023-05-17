@@ -84,6 +84,7 @@ const (
 	TV                     = '\uf108'
 	Geometry               = '\uf568'
 	Inlined                = '\uf03c'
+	Nudge                  = '\uf5e1'
 )
 
 // The first and last unicode points used in the application. We use this to

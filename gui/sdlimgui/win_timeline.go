@@ -43,6 +43,9 @@ type winTimeline struct {
 	thmb        *thumbnailer.Thumbnailer
 	thmbTexture uint32
 	thmbFrame   int
+
+	showThrottle bool
+	showJank     bool
 }
 
 func newWinTimeline(img *SdlImgui) (window, error) {
@@ -297,6 +300,7 @@ func (win *winTimeline) drawTimeline() {
 	imgui.BeginChildV("##timelinetrace_current", traceSize, false, imgui.WindowFlagsNoMove)
 	pos = imgui.CursorScreenPos()
 
+	// jitter
 	for _, i := range scanlineJitter[1:] {
 		dl.AddTriangleFilled(
 			imgui.Vec2{

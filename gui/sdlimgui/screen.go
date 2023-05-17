@@ -55,12 +55,18 @@ type screen struct {
 	// read/write by the GUI thread so doesn't need to be in critical section.
 	gotoCoordsX int
 	gotoCoordsY int
+
+	// nudgeIconCt is used to display a nudge icon in the playscreen information window
+	nudgeIconCt int
 }
 
 const maxFrameQueue = 10
-const frameQueueIncDelta = 20
-const frameQueueDecDelta = 1
-const frameQueueIncVal = 40
+const frameQueueInc = 20
+const frameQueueIncDecay = 5
+const frameQueueIncThreshold = 40
+
+// show nudge icon for (approx) half a second
+const nudgeIconCt = 30
 
 // for clarity, variables accessed in the critical section are encapsulated in
 // their own subtype.
@@ -75,8 +81,11 @@ type screenCrit struct {
 	// whether or not to sync with monitor refresh rate
 	monitorSync bool
 
-	// whether monitorSync is "similar" to emulated TV's refresh rate
-	monitorSyncInRange bool
+	// whether monitorSync is higher than the emulated TV's refresh rate
+	monitorSyncHigh bool
+
+	// whether monitorSync is similar to the emulated TV's refresh rate
+	monitorSyncSimilar bool
 
 	// the scanline currenty used to emulate a screenroll effect. if the value
 	// is zero then no screenroll is currently taking place
@@ -126,12 +135,6 @@ type screenCrit struct {
 
 	//  the previous render index value is used to help smooth frame queue collisions
 	prevRenderIdx int
-
-	// the number of render frames the emulation should wait before resuming.
-	// this should ensure that the plotIdx and renderIdx are kept as far away
-	// from each other as possible, giving the frame queue chance to do it's job
-	// properly
-	emuWaitCt int
 
 	// element colors and overlay colors are only used in the debugger
 	elementPixels *image.RGBA
@@ -202,8 +205,12 @@ func newScreen(img *SdlImgui) *screen {
 //
 // must be called from inside a critical section.
 func (scr *screen) setRefreshRate(tvRefreshRate float32) {
-	// check whether to apply monitorsync and decide on the length of the pixel queue
-	scr.crit.monitorSyncInRange = scr.crit.monitorSync && float32(scr.img.plt.mode.RefreshRate)*1.01 >= tvRefreshRate
+	high := float32(scr.img.plt.mode.RefreshRate) * 1.02
+	low := float32(scr.img.plt.mode.RefreshRate) * 0.98
+
+	scr.crit.monitorSyncHigh = scr.crit.monitorSync && high >= tvRefreshRate
+	scr.crit.monitorSyncSimilar = scr.crit.monitorSync && high >= tvRefreshRate && low <= tvRefreshRate
+
 	scr.setFrameQueue()
 }
 
@@ -229,13 +236,11 @@ func (scr *screen) resetFrameQueue() {
 	scr.crit.queueRecovery = 0
 	scr.crit.plotIdx = 0
 
-	if scr.crit.monitorSyncInRange {
+	if scr.crit.monitorSyncHigh {
 		scr.crit.renderIdx = scr.crit.frameQueueLen / 2
 	} else {
 		scr.crit.renderIdx = scr.crit.plotIdx
 	}
-
-	scr.crit.emuWaitCt = scr.crit.frameQueueLen / 2
 }
 
 // Reset implements the television.PixelRenderer interface. Note that Reset
@@ -388,7 +393,6 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 				scr.crit.screenrollScanline /= 100
 			}
 		}
-
 	}
 
 	scr.crit.frameInfo = frameInfo
@@ -411,7 +415,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	scr.crit.section.Lock()
 
 	if scr.img.isPlaymode() {
-		if scr.crit.monitorSyncInRange {
+		if scr.crit.monitorSyncHigh {
 			switch scr.img.dbg.State() {
 			case govern.Rewinding:
 				fallthrough
@@ -471,18 +475,13 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	scr.crit.lastY = last / specification.ClksScanline
 	scr.crit.lastX = last % specification.ClksScanline
 
-	// take a local copy emuWaitCt out of the critical section
-	emuWaitCt := scr.crit.emuWaitCt
-
 	scr.crit.section.Unlock()
 
 	// slow emulation until screen has caught up
 	// * wait should only be set to true in playmode
 	if wait {
-		for i := 0; i < emuWaitCt; i++ {
-			scr.emuWait <- true
-			<-scr.emuWaitAck
-		}
+		scr.emuWait <- true
+		<-scr.emuWaitAck
 	}
 
 	return nil
@@ -633,6 +632,11 @@ func (scr *screen) copyPixelsPlaymode() {
 	default:
 	}
 
+	// reduce nudge icon count
+	if scr.nudgeIconCt > 0 {
+		scr.nudgeIconCt--
+	}
+
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
@@ -654,7 +658,7 @@ func (scr *screen) copyPixelsPlaymode() {
 
 	// the bufferUsed check is important for correct operation of the rewinding
 	// state. without it, the screen will jump after a rewind event
-	if scr.crit.queueRecovery == 0 && scr.crit.monitorSyncInRange {
+	if scr.crit.queueRecovery == 0 && scr.crit.monitorSyncHigh {
 		// advance render index
 		scr.crit.prevRenderIdx = scr.crit.renderIdx
 		scr.crit.renderIdx++
@@ -668,17 +672,24 @@ func (scr *screen) copyPixelsPlaymode() {
 			// undo frame advancement
 			scr.crit.renderIdx = scr.crit.prevRenderIdx
 
+			// nudge fps cap to try to bring the plot and render indexes back into equilibrium
+			if scr.crit.monitorSyncSimilar && scr.crit.frameInfo.Stable {
+				scr.img.vcs.TV.NudgeFPSCap(scr.crit.frameQueueLen)
+				scr.nudgeIconCt = nudgeIconCt
+			}
+
 			// adjust frame queue increase counter
 			if scr.crit.frameQueueAuto && scr.crit.frameInfo.Stable && scr.crit.frameQueueLen < maxFrameQueue {
-				scr.crit.frameQueueIncCt += frameQueueIncDelta
-				if scr.crit.frameQueueIncCt >= frameQueueIncVal {
+				scr.crit.frameQueueIncCt += frameQueueInc
+				if scr.crit.frameQueueIncCt >= frameQueueIncThreshold {
 					scr.crit.frameQueueLen++
+					scr.crit.frameQueueIncCt = 0
 				}
 			}
 		} else {
 			// adjust frame queue increase counter
 			if scr.crit.frameQueueIncCt > 0 {
-				scr.crit.frameQueueIncCt -= frameQueueDecDelta
+				scr.crit.frameQueueIncCt -= frameQueueIncDecay
 			}
 		}
 	}

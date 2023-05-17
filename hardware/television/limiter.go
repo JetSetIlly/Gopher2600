@@ -72,6 +72,9 @@ type limiter struct {
 	//
 	// is not set if setRate() is called directly
 	matchRefreshRateDelay int
+
+	// nudge the limiter so that it doesn't wait for the specified number of frames
+	nudge int
 }
 
 func (lmtr *limiter) init(tv *Television) {
@@ -126,13 +129,17 @@ func (lmtr *limiter) setRate(fps float32) {
 
 // checkFrame should be called every frame.
 func (lmtr *limiter) checkFrame() {
-	lmtr.measureCt++
+	if lmtr.nudge > 0 {
+		lmtr.nudge--
+	} else {
+		lmtr.measureCt++
 
-	if lmtr.active {
-		lmtr.pulseCt++
-		if lmtr.pulseCt >= lmtr.pulseCtLimit {
-			lmtr.pulseCt = 0
-			<-lmtr.pulse.C
+		if lmtr.active {
+			lmtr.pulseCt++
+			if lmtr.pulseCt >= lmtr.pulseCtLimit {
+				lmtr.pulseCt = 0
+				<-lmtr.pulse.C
+			}
 		}
 	}
 

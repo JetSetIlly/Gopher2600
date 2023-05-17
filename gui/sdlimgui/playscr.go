@@ -185,22 +185,10 @@ func (win *playScr) drawFPS() bool {
 
 	imguiSeparator()
 	imgui.Text(fmt.Sprintf("%d frame input lag", win.scr.crit.frameQueueLen))
-
-	// queueAnalysis := strings.Builder{}
-	// for i := 0; i < win.scr.crit.frameQueueLen; i++ {
-	// 	if i == win.scr.crit.renderIdx {
-	// 		if i == win.scr.crit.plotIdx {
-	// 			queueAnalysis.WriteRune('*')
-	// 		} else {
-	// 			queueAnalysis.WriteRune('r')
-	// 		}
-	// 	} else if i == win.scr.crit.plotIdx {
-	// 		queueAnalysis.WriteRune('p')
-	// 	} else {
-	// 		queueAnalysis.WriteRune('.')
-	// 	}
-	// }
-	// imgui.Text(queueAnalysis.String())
+	if win.scr.nudgeIconCt > 0 {
+		imgui.SameLine()
+		imgui.Text(string(fonts.Nudge))
+	}
 
 	// if win.img.screen.crit.frameInfo.IsAtariSafe() {
 	// 	imguiSeparator()

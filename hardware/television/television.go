@@ -839,6 +839,15 @@ func (tv *Television) SetEmulationState(state govern.State) error {
 	return nil
 }
 
+// NudgeFPSCap stops the FPS limiter for the specified number of frames. A value
+// of zero (or less) will stop any existing nudge
+func (tv *Television) NudgeFPSCap(frames int) {
+	if frames < 0 {
+		frames = 0
+	}
+	tv.lmtr.nudge = frames
+}
+
 // SetFPSCap whether the emulation should wait for FPS limiter. Returns the
 // setting as it was previously.
 func (tv *Television) SetFPSCap(limit bool) bool {
