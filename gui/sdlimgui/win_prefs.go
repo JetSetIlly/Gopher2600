@@ -152,29 +152,35 @@ func (win *winPrefs) drawGlSwapInterval() {
 	var glSwapInterval string
 
 	const (
-		syncImmediate           = "Immediate updates"
-		syncWithVerticalRetrace = "Sync with vertical retrace"
-		syncAdaptive            = "Adaptive VSYNC"
+		descImmediate           = "Immediate updates"
+		descWithVerticalRetrace = "Sync with vertical retrace"
+		descAdaptive            = "Adaptive VSYNC"
+		descTicker              = "Ticker"
 	)
 
 	switch win.img.prefs.glSwapInterval.Get().(int) {
 	default:
-		glSwapInterval = syncImmediate
+		glSwapInterval = descImmediate
 	case 1:
-		glSwapInterval = syncWithVerticalRetrace
+		glSwapInterval = descWithVerticalRetrace
 	case -1:
-		glSwapInterval = syncAdaptive
+		glSwapInterval = descAdaptive
+	case 2:
+		glSwapInterval = descTicker
 	}
 
 	if imgui.BeginCombo("Swap Interval", glSwapInterval) {
-		if imgui.Selectable(syncImmediate) {
-			win.img.prefs.glSwapInterval.Set(0)
+		if imgui.Selectable(descImmediate) {
+			win.img.prefs.glSwapInterval.Set(syncImmediateUpdate)
 		}
-		if imgui.Selectable(syncWithVerticalRetrace) {
-			win.img.prefs.glSwapInterval.Set(1)
+		if imgui.Selectable(descWithVerticalRetrace) {
+			win.img.prefs.glSwapInterval.Set(syncWithVerticalRetrace)
 		}
-		if imgui.Selectable(syncAdaptive) {
-			win.img.prefs.glSwapInterval.Set(-1)
+		if imgui.Selectable(descAdaptive) {
+			win.img.prefs.glSwapInterval.Set(syncAdaptive)
+		}
+		if imgui.Selectable(descTicker) {
+			win.img.prefs.glSwapInterval.Set(syncTicker)
 		}
 		imgui.EndCombo()
 	}

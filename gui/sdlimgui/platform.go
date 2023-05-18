@@ -53,9 +53,8 @@ type platform struct {
 	trickleMouseButtonLeft  trickleMouseButton
 	trickleMouseButtonRight trickleMouseButton
 
-	// synchronisation with monitor
-	syncDuration time.Duration
-	sync         *time.Ticker
+	// use ticker to synchronise with monitor
+	syncTicker *time.Ticker
 }
 
 // trickle mouse button is a mechanism that allows a mouse button down/up event
@@ -163,9 +162,6 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		return nil, fmt.Errorf("sdl: %w", err)
 	}
 
-	// disable VSYNC
-	plt.glSetSwapInterval(0)
-
 	// add joysticks
 	for i := 0; i < sdl.NumJoysticks(); i++ {
 		var pad *sdl.GameController
@@ -194,22 +190,33 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	return plt, nil
 }
 
-func (plt *platform) glSetSwapInterval(i int) {
+// list of swap intervalue values. with the exception of syncTicker all of these
+// are values defined and expected by the SDL.GLSetSwapInterval() function
+const (
+	syncImmediateUpdate     = 0
+	syncWithVerticalRetrace = 1
+	syncAdaptive            = -1
+	syncTicker              = 2
+)
+
+func (plt *platform) setSwapInterval(i int) {
+	if i == syncTicker {
+		// ticker to control update frequency
+		d := time.Duration(1000000000/int64(plt.mode.RefreshRate)) * time.Nanosecond
+		plt.syncTicker = time.NewTicker(d)
+
+		// in reality syncTicker requires us to set GL swap interval to 0
+		i = 0
+	} else {
+		if plt.syncTicker != nil {
+			plt.syncTicker.Stop()
+		}
+		plt.syncTicker = nil
+	}
+
 	err := sdl.GLSetSwapInterval(i)
 	if err != nil {
 		logger.Logf("sdl", "GLSetSwapInterval(%d): %s", i, err.Error())
-	}
-
-	if i == 0 {
-		// ticker to control update frequency
-		plt.syncDuration = time.Duration(1000000000/int64(plt.mode.RefreshRate)) * time.Nanosecond
-		plt.sync = time.NewTicker(plt.syncDuration)
-	} else {
-		plt.syncDuration = time.Duration(0)
-		if plt.sync != nil {
-			plt.sync.Stop()
-		}
-		plt.sync = nil
 	}
 }
 
@@ -286,8 +293,8 @@ func (plt *platform) newFrame() {
 
 // PostRender performs a buffer swap.
 func (plt *platform) postRender() {
-	if plt.syncDuration > 0 {
-		<-plt.sync.C
+	if plt.syncTicker != nil {
+		<-plt.syncTicker.C
 	}
 	plt.window.GLSwap()
 }
