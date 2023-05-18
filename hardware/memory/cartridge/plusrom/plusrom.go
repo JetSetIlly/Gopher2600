@@ -189,7 +189,6 @@ func (cart *PlusROM) Access(addr uint16, peek bool) (data uint8, mask uint8, err
 		// 1FF2 contains the next byte of the response from the host, every
 		// read will increment the receive buffer pointer (receive buffer is
 		// max 256 bytes also!)
-		cart.rewindBoundary = true
 		return cart.net.recv(), mapper.CartDrivenPins, nil
 
 	case 0x0ff3:
