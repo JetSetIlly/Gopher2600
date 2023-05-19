@@ -68,10 +68,10 @@ func (p *Preferences) String() string {
 const (
 	enabled              = true
 	curve                = true
-	roundedCorners       = false
+	roundedCorners       = true
 	bevel                = false
-	shine                = false
-	mask                 = true
+	shine                = true
+	mask                 = false
 	scanlines            = true
 	interference         = true
 	noise                = true
@@ -79,7 +79,7 @@ const (
 	ghosting             = true
 	phosphor             = true
 	curveAmount          = 0.5
-	roundedCornersAmount = 0.04
+	roundedCornersAmount = 0.059
 	maskIntensity        = 0.07
 	maskFine             = 2.9
 	scanlinesIntensity   = 0.08
