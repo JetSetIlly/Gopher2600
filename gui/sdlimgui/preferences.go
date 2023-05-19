@@ -184,14 +184,24 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	}
 
 	// display options
-	err = p.dsk.Add("sdlimgui.display.frameQueueAuto", &p.frameQueueAuto)
-	if err != nil {
-		return nil, err
-	}
+
+	// frameQueueAuto *must* be added after frameQueue so that the auto
+	// post-hook can override the frameQueue value on load as required
 	err = p.dsk.Add("sdlimgui.display.frameQueue", &p.frameQueue)
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("sdlimgui.display.frameQueueAuto", &p.frameQueueAuto)
+	if err != nil {
+		return nil, err
+	}
+	p.frameQueueAuto.SetHookPost(func(v prefs.Value) error {
+		if v.(bool) {
+			p.frameQueue.Set(1)
+		}
+		return nil
+	})
+
 	err = p.dsk.Add("sdlimgui.display.glswapinterval", &p.glSwapInterval)
 	if err != nil {
 		return nil, err

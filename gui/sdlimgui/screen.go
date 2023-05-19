@@ -60,10 +60,13 @@ type screen struct {
 	nudgeIconCt int
 }
 
-const maxFrameQueue = 10
-const frameQueueInc = 20
-const frameQueueIncDecay = 5
-const frameQueueIncThreshold = 40
+// frame queue constant values
+const (
+	maxFrameQueue              = 10
+	frameQueueAutoInc          = 20
+	frameQueueAutoIncDecay     = 1
+	frameQueueAutoIncThreshold = 40
+)
 
 // show nudge icon for (approx) half a second
 const nudgeIconCt = 30
@@ -82,7 +85,7 @@ type screenCrit struct {
 	monitorSync bool
 
 	// whether monitorSync is higher than the emulated TV's refresh rate
-	monitorSyncHigh bool
+	monitorSyncHigher bool
 
 	// whether monitorSync is similar to the emulated TV's refresh rate
 	monitorSyncSimilar bool
@@ -100,16 +103,18 @@ type screenCrit struct {
 
 	// frameQueue are what we plot pixels to while we wait for a frame to complete.
 	// - the larger the queue the greater the input lag
-	// - the smaller the queue the more the emulation will have to wait the
-	//		screen to catch up (see emuWait and emuWaitAck channels)
-	// - a three to five frame queue seems good. ten frames can feel laggy
-	frameQueue     [maxFrameQueue]*image.RGBA
+	// - a three to five frame queue seems good. ten frames can feel very laggy
+	frameQueue [maxFrameQueue]*image.RGBA
+
+	// local copies of frame queue preferences. the underlying preference should
+	// be updated if these values change
 	frameQueueLen  int
 	frameQueueAuto bool
 
 	// frame queue count is increased on every dropped frame and decreased on
-	// every on time frame. when it reaches a predetermined threshold the
-	// length of the frame queue is increased (up to a maximum value)
+	// every on-time frame. when it reaches a predetermined threshold the
+	// length of the frame queue is increased (up to a maximum value). see
+	// frameQueueInc* constant values
 	frameQueueIncCt int
 
 	// number of pixels (multiplied by the pixel depth) in each entry of the
@@ -208,18 +213,20 @@ func (scr *screen) setRefreshRate(tvRefreshRate float32) {
 	high := float32(scr.img.plt.mode.RefreshRate) * 1.02
 	low := float32(scr.img.plt.mode.RefreshRate) * 0.98
 
-	scr.crit.monitorSyncHigh = scr.crit.monitorSync && high >= tvRefreshRate
+	scr.crit.monitorSyncHigher = scr.crit.monitorSync && high >= tvRefreshRate
 	scr.crit.monitorSyncSimilar = scr.crit.monitorSync && high >= tvRefreshRate && low <= tvRefreshRate
 
-	scr.setFrameQueue()
+	scr.updateFrameQueue()
 }
 
 // must be called from inside a critical section.
-func (scr *screen) setFrameQueue() {
+func (scr *screen) updateFrameQueue() {
+	// make local copies of frame queue preferences
 	scr.crit.frameQueueAuto = scr.img.prefs.frameQueueAuto.Get().(bool)
 	scr.crit.frameQueueLen = scr.img.prefs.frameQueue.Get().(int)
 
-	scr.resetFrameQueue()
+	// set queue recovery
+	scr.crit.queueRecovery = scr.crit.frameQueueLen
 
 	// restore previous render frame to all entries in the queue to ensure we
 	// never get an empty frame by accident
@@ -229,14 +236,13 @@ func (scr *screen) setFrameQueue() {
 			copy(scr.crit.frameQueue[i].Pix, old.Pix)
 		}
 	}
-}
 
-// must be called from inside a critical section.
-func (scr *screen) resetFrameQueue() {
-	scr.crit.queueRecovery = 0
+	// set plotIdx to beginning of queue
 	scr.crit.plotIdx = 0
 
-	if scr.crit.monitorSyncHigh {
+	// renderIdx is placed according to status of the monitor refresh value in
+	// relation to the refresh rate of the emulated TV
+	if scr.crit.monitorSyncHigher {
 		scr.crit.renderIdx = scr.crit.frameQueueLen / 2
 	} else {
 		scr.crit.renderIdx = scr.crit.plotIdx
@@ -250,12 +256,11 @@ func (scr *screen) resetFrameQueue() {
 // cartridge is inserted.
 func (scr *screen) Reset() {
 	// we don't call resize on screen Reset
-
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
+	scr.updateFrameQueue()
 	scr.clearPixels()
-	scr.resetFrameQueue()
 }
 
 // clear pixel information including reflection data. important to do on
@@ -415,7 +420,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	scr.crit.section.Lock()
 
 	if scr.img.isPlaymode() {
-		if scr.crit.monitorSyncHigh {
+		if scr.crit.monitorSyncHigher {
 			switch scr.img.dbg.State() {
 			case govern.Rewinding:
 				fallthrough
@@ -434,7 +439,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 
 				// if plot index has crashed into the render index then set wait flag
 				// ** screen update not keeping up with emulation **
-				wait = scr.crit.plotIdx == scr.crit.renderIdx && scr.crit.frameQueueLen > 1
+				wait = scr.crit.plotIdx == scr.crit.renderIdx && scr.crit.frameQueueLen > 2
 			}
 		}
 	}
@@ -658,7 +663,7 @@ func (scr *screen) copyPixelsPlaymode() {
 
 	// the bufferUsed check is important for correct operation of the rewinding
 	// state. without it, the screen will jump after a rewind event
-	if scr.crit.queueRecovery == 0 && scr.crit.monitorSyncHigh {
+	if scr.crit.queueRecovery == 0 && scr.crit.monitorSyncHigher {
 		// advance render index
 		scr.crit.prevRenderIdx = scr.crit.renderIdx
 		scr.crit.renderIdx++
@@ -673,23 +678,26 @@ func (scr *screen) copyPixelsPlaymode() {
 			scr.crit.renderIdx = scr.crit.prevRenderIdx
 
 			// nudge fps cap to try to bring the plot and render indexes back into equilibrium
-			if scr.crit.monitorSyncSimilar && scr.crit.frameInfo.Stable {
+			if scr.crit.monitorSyncSimilar && scr.crit.frameInfo.Stable && scr.crit.frameQueueLen > 2 {
 				scr.img.vcs.TV.NudgeFPSCap(scr.crit.frameQueueLen)
 				scr.nudgeIconCt = nudgeIconCt
 			}
 
 			// adjust frame queue increase counter
 			if scr.crit.frameQueueAuto && scr.crit.frameInfo.Stable && scr.crit.frameQueueLen < maxFrameQueue {
-				scr.crit.frameQueueIncCt += frameQueueInc
-				if scr.crit.frameQueueIncCt >= frameQueueIncThreshold {
-					scr.crit.frameQueueLen++
+				scr.crit.frameQueueIncCt += frameQueueAutoInc
+				if scr.crit.frameQueueIncCt >= frameQueueAutoIncThreshold {
 					scr.crit.frameQueueIncCt = 0
+
+					// increase frame queue and set the underlying preference value
+					scr.crit.frameQueueLen++
+					scr.img.prefs.frameQueue.Set(scr.crit.frameQueueLen)
 				}
 			}
 		} else {
 			// adjust frame queue increase counter
 			if scr.crit.frameQueueIncCt > 0 {
-				scr.crit.frameQueueIncCt -= frameQueueIncDecay
+				scr.crit.frameQueueIncCt -= frameQueueAutoIncDecay
 			}
 		}
 	}

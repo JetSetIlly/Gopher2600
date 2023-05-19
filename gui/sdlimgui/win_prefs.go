@@ -229,14 +229,14 @@ of the ROM.`)
 
 	imgui.Spacing()
 	if imgui.CollapsingHeader("Frame Queue") {
+		win.img.screen.crit.section.Lock()
+
 		imgui.Spacing()
 
 		frameQueueAuto := win.img.prefs.frameQueueAuto.Get().(bool)
 		if imgui.Checkbox("Automatic Frame Queue Length", &frameQueueAuto) {
 			win.img.prefs.frameQueueAuto.Set(frameQueueAuto)
-			win.img.screen.crit.section.Lock()
-			win.img.screen.setFrameQueue()
-			win.img.screen.crit.section.Unlock()
+			win.img.screen.updateFrameQueue()
 		}
 
 		imgui.Spacing()
@@ -245,17 +245,19 @@ of the ROM.`)
 			imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
 			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
 		}
-		frameQueue := int32(win.img.prefs.frameQueue.Get().(int))
+
+		frameQueue := int32(win.img.screen.crit.frameQueueLen)
 		if imgui.SliderInt("Frame Queue Length", &frameQueue, 1, maxFrameQueue) {
 			win.img.prefs.frameQueue.Set(frameQueue)
-			win.img.screen.crit.section.Lock()
-			win.img.screen.setFrameQueue()
-			win.img.screen.crit.section.Unlock()
+			win.img.screen.updateFrameQueue()
 		}
+
 		if frameQueueAuto {
 			imgui.PopItemFlag()
 			imgui.PopStyleVar()
 		}
+
+		win.img.screen.crit.section.Unlock()
 	}
 }
 
