@@ -67,6 +67,9 @@ type manager struct {
 	// menu is always in the very top-left corner of the window it is a good
 	// proxy value
 	screenPos imgui.Vec2
+
+	// is true if mouse is not over any of the playmode windows
+	playmodeHover bool
 }
 
 // windowDef specifies a window creator, the menu it appears in whether it
@@ -212,10 +215,15 @@ func (wm *manager) draw() {
 
 	switch wm.img.mode.Load().(govern.Mode) {
 	case govern.ModePlay:
+		// reset playmodeHover flag by default. it's only ever true if a window is open (and that
+		// window is being hovered over)
+		wm.playmodeHover = false
+
 		// playmode draws the screen and other windows that have been listed
 		// as being safe to draw in playmode
 		for _, w := range wm.playmodeWindows {
 			w.playmodeDraw()
+			wm.playmodeHover = wm.playmodeHover || imgui.IsWindowHoveredV(imgui.HoveredFlagsAnyWindow)
 		}
 	case govern.ModeDebugger:
 		// see commentary for screenPos in windowManager declaration
