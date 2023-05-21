@@ -40,7 +40,7 @@ type winTimeline struct {
 
 	// thumbnailer will be using emulation states created in the main emulation
 	// goroutine so we must thumbnail those states in the same goroutine.
-	thmb        *thumbnailer.Thumbnailer
+	thmb        *thumbnailer.Image
 	thmbTexture uint32
 	thmbFrame   int
 
@@ -55,7 +55,7 @@ func newWinTimeline(img *SdlImgui) (window, error) {
 
 	var err error
 
-	win.thmb, err = thumbnailer.NewThumbnailer(win.img.vcs.Env.Prefs)
+	win.thmb, err = thumbnailer.NewImage(win.img.vcs.Env.Prefs)
 	if err != nil {
 		return nil, fmt.Errorf("debugger: %w", err)
 	}
@@ -431,7 +431,7 @@ func (win *winTimeline) drawTimeline() {
 								if win.img.polling.throttleTimelineThumbnailer() {
 									win.img.dbg.PushFunction(func() {
 										// thumbnailer must be run in the same goroutine as the main emulation
-										win.thmb.SingleFrameFromRewindState(win.img.dbg.Rewind.GetState(rewindHoverFrame))
+										win.thmb.Create(win.img.dbg.Rewind.GetState(rewindHoverFrame))
 									})
 								}
 							}

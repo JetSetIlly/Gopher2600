@@ -51,7 +51,7 @@ type winSelectROM struct {
 	// height of options line at bottom of window. valid after first frame
 	controlHeight float32
 
-	thmb        *thumbnailer.Thumbnailer
+	thmb        *thumbnailer.Anim
 	thmbTexture uint32
 }
 
@@ -66,7 +66,7 @@ func newFileSelector(img *SdlImgui) (window, error) {
 
 	var err error
 
-	win.thmb, err = thumbnailer.NewThumbnailer(win.img.vcs.Env.Prefs)
+	win.thmb, err = thumbnailer.NewAnim(win.img.vcs.Env.Prefs)
 	if err != nil {
 		return nil, fmt.Errorf("debugger: %w", err)
 	}
@@ -411,5 +411,5 @@ func (win *winSelectROM) setSelectedFile(filename string) {
 		return
 	}
 
-	win.thmb.CreateFromLoader(cartload, thumbnailer.UndefinedNumFrames)
+	win.thmb.Create(cartload, thumbnailer.UndefinedNumFrames)
 }
