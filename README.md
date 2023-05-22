@@ -97,16 +97,12 @@ In addition, Stella was used as reference in the following areas:
 * During the development of the CDF cartridge formats. These recent formats don't
 seem to be documented anywhere accept in the Stella source.
 
-* ParkerBros fingerprint taken from Stella. I can't remember why I did this but
-a comment in the fingerprint.go file says I did.
+* Cartridge fingerprints for ParkerBros, Wickstead Design and SCABS.
 
 * As a reference for the audio implementation (the 6502.ts project was also
   referenced for this reason).
 
 * Fingerprint patterns for automated controller/peripheral selection.
-
-* As a reference for the Wickstead Design bankswitching protocol. Only one ROM
-  of this type exists (the `Pursuit of the Pink Panther`).
 
 In all these instances, primary sources of information could not be found.
 
@@ -168,14 +164,12 @@ US Patent Number 4,644,495 was referenced for the implementation of the DPC cart
 US patent 4,485,457A was used to help implement the CBS cartridge format
 https://patents.google.com/patent/US4485457A/en
 
-DPC+ format implemented according to notes provided by Spiceware https://atariage.com/forums/topic/163495-harmony-dpc-programming
-and
+European patent 84300730.3 was used to help implement the SCABS cartridge format
+https://worldwide.espacenet.com/patent/search/family/023848640/publication/EP0116455A2?q=84300730.3
 
-https://atariage.com/forums/blogs/entry/11811-dpcarm-part-6-dpc-cartridge-layout/
+DPC+ format implemented according to notes provided by Spiceware https://atariage.com/forums/topic/163495-harmony-dpc-programming and https://atariage.com/forums/blogs/entry/11811-dpcarm-part-6-dpc-cartridge-layout/
 
-DPC+ARM information on Spiceware's blog
-
-https://atariage.com/forums/blogs/entry/11712-dpc-arm-development/?tab=comments#comment-27116
+DPC+ARM information on Spiceware's blog https://atariage.com/forums/blogs/entry/11712-dpc-arm-development/?tab=comments#comment-27116
 
 The "Mostly Inclusive Atari 2600 Mapper / Selected Hardware Document" (dated 03/04/12) by Kevin Horton
 

@@ -163,20 +163,22 @@ func fingerprintMnetwork(b []byte) bool {
 }
 
 func fingerprintParkerBros(b []byte) bool {
-	// fingerprint patterns taken from Stella CartDetector.cxx
-	for i := 0; i <= len(b)-3; i++ {
-		if (b[i] == 0x8d && b[i+1] == 0xe0 && b[i+2] == 0x1f) ||
-			(b[i] == 0x8d && b[i+1] == 0xe0 && b[i+2] == 0x5f) ||
-			(b[i] == 0x8d && b[i+1] == 0xe9 && b[i+2] == 0xff) ||
-			(b[i] == 0x0c && b[i+1] == 0xe0 && b[i+2] == 0x1f) ||
-			(b[i] == 0xad && b[i+1] == 0xe0 && b[i+2] == 0x1f) ||
-			(b[i] == 0xad && b[i+1] == 0xe9 && b[i+2] == 0xff) ||
-			(b[i] == 0xad && b[i+1] == 0xed && b[i+2] == 0xff) ||
-			(b[i] == 0xad && b[i+1] == 0xf3 && b[i+2] == 0xbf) {
+	// parker bros fingerprint taken from Stella
+	fingerprint := [][]byte{
+		{0x8d, 0xe0, 0x1f}, // STA $1FE0
+		{0x8d, 0xe0, 0x5f}, // STA $5FE0
+		{0x8d, 0xe9, 0xff}, // STA $FFE9
+		{0x0c, 0xe0, 0x1f}, // NOP $1FE0
+		{0xad, 0xe0, 0x1f}, // LDA $1FE0
+		{0xad, 0xe9, 0xff}, // LDA $FFE9
+		{0xad, 0xed, 0xff}, // LDA $FFED
+		{0xad, 0xf3, 0xbf}, // LDA $BFF3
+	}
+	for _, f := range fingerprint {
+		if bytes.Contains(b, f) {
 			return true
 		}
 	}
-
 	return false
 }
 
@@ -190,6 +192,22 @@ func fingerprintDF(b []byte) bool {
 func fingerprintWickstead(b []byte) bool {
 	// wickstead design fingerprint taken from Stella
 	return bytes.Contains(b, []byte{0xa5, 0x39, 0x4c})
+}
+
+func fingerprintSCABS(b []byte) bool {
+	// SCABS fingerprint taken from Stella
+	fingerprint := [][]byte{
+		{0x20, 0x00, 0xd0, 0xc6, 0xc5}, // JSR $D000; DEC $C5
+		{0x20, 0xc3, 0xf8, 0xa5, 0x82}, // JSR $F8C3; LDA $82
+		{0xd0, 0xfB, 0x20, 0x73, 0xfe}, // BNE $FB; JSR $FE73
+		{0x20, 0x00, 0xf0, 0x84, 0xd6}, // JSR $F000; $84, $D6
+	}
+	for _, f := range fingerprint {
+		if bytes.Contains(b, f) {
+			return true
+		}
+	}
+	return false
 }
 
 func fingerprintDPCplus(b []byte) bool {
@@ -273,6 +291,10 @@ func fingerprint8k(data []byte) func(*environment.Environment, []byte) (mapper.C
 
 	if fingerprintWickstead(data) {
 		return newWicksteadDesign
+	}
+
+	if fingerprintSCABS(data) {
+		return newSCABS
 	}
 
 	return newAtari8k
