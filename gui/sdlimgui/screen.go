@@ -213,10 +213,16 @@ func (scr *screen) setRefreshRate(tvRefreshRate float32) {
 	high := float32(scr.img.plt.mode.RefreshRate) * 1.02
 	low := float32(scr.img.plt.mode.RefreshRate) * 0.98
 
-	scr.crit.monitorSyncHigher = scr.crit.monitorSync && high >= tvRefreshRate
-	scr.crit.monitorSyncSimilar = scr.crit.monitorSync && high >= tvRefreshRate && low <= tvRefreshRate
+	higher := scr.crit.monitorSync && high >= tvRefreshRate
+	similar := scr.crit.monitorSync && high >= tvRefreshRate && low <= tvRefreshRate
 
-	scr.updateFrameQueue()
+	// no need to update frame queue if monitor sync higher condition hasn't changed
+	if higher != scr.crit.monitorSyncHigher {
+		scr.updateFrameQueue()
+	}
+
+	scr.crit.monitorSyncHigher = higher
+	scr.crit.monitorSyncSimilar = similar
 }
 
 // must be called from inside a critical section.
@@ -398,6 +404,11 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 				scr.crit.screenrollScanline /= 100
 			}
 		}
+	}
+
+	// refresh rate might have changed
+	if scr.crit.frameInfo.RefreshRate != frameInfo.RefreshRate {
+		scr.setRefreshRate(frameInfo.RefreshRate)
 	}
 
 	scr.crit.frameInfo = frameInfo
