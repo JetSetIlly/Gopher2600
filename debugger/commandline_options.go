@@ -26,7 +26,7 @@ type CommandLineOptions struct {
 	// common to debugger and play modes
 	Log       *bool
 	Spec      *string
-	FpsCap    *string
+	FpsCap    *bool
 	Multiload *int
 	Mapping   *string
 	Left      *string
@@ -63,7 +63,7 @@ func NewCommandLineOptions() CommandLineOptions {
 	return CommandLineOptions{
 		Log:             &b,
 		Spec:            &s,
-		FpsCap:          &s,
+		FpsCap:          &b,
 		Multiload:       &i,
 		Mapping:         &s,
 		Left:            &s,

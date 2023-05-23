@@ -43,11 +43,6 @@ const (
 	// program is ending. gui should do anything required before final exit.
 	ReqEnd FeatureReq = "ReqEnd" // nil
 
-	// whether gui should try to sync with the monitor refresh rate. not all
-	// gui modes have to obey this but for presentation/play modes it's a good
-	// idea to have it set.
-	ReqMonitorSync FeatureReq = "ReqMonitorSync" // bool
-
 	// put gui output into full-screen mode (ie. no window border and content
 	// the size of the monitor).
 	ReqFullScreen FeatureReq = "ReqFullScreen" // bool

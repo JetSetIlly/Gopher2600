@@ -81,13 +81,15 @@ type screenCrit struct {
 	// Resize() and NewFrame()
 	frameInfo television.FrameInfo
 
-	// whether or not to sync with monitor refresh rate
-	monitorSync bool
+	// whether or not emulation is fps capped (to speed of television). the
+	// screen implementation uses this to decide whether to sync with monitor
+	// refresh rate
+	fpsCapped bool
 
-	// whether monitorSync is higher than the emulated TV's refresh rate
+	// whether monitor refresh rate is higher than the emulated TV's refresh rate
 	monitorSyncHigher bool
 
-	// whether monitorSync is similar to the emulated TV's refresh rate
+	// whether monitor refresh rate is similar to the emulated TV's refresh rate
 	monitorSyncSimilar bool
 
 	// the scanline currenty used to emulate a screenroll effect. if the value
@@ -179,7 +181,7 @@ func newScreen(img *SdlImgui) *screen {
 	scr.crit.section.Lock()
 
 	scr.crit.overlay = reflection.OverlayLabels[reflection.OverlayNone]
-	scr.crit.monitorSync = true
+	scr.crit.fpsCapped = true
 
 	scr.crit.presentationPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
@@ -198,38 +200,49 @@ func newScreen(img *SdlImgui) *screen {
 
 	scr.crit.section.Unlock()
 
-	// default to NTSC. this will change on the first instance of
+	// default to NTSC
 	scr.resize(television.NewFrameInfo(specification.SpecNTSC))
 	scr.Reset()
 
 	return scr
 }
 
-// setRefreshRate decides on the buffering and syncing policy of the
-// screen based on the reported TV refresh rate.
+// SetFPSCap implements the television.FPSCap interface
+func (scr *screen) SetFPSCap(limit bool) {
+	scr.crit.section.Lock()
+	defer scr.crit.section.Unlock()
+
+	scr.crit.fpsCapped = limit
+	scr.setSyncPolicy(scr.crit.frameInfo.RefreshRate)
+}
+
+// setSyncPolicy decides on the monitor/tv syncing policy, based on the
+// TV refresh rate and the refresh rate of the monitor
 //
 // must be called from inside a critical section.
-func (scr *screen) setRefreshRate(tvRefreshRate float32) {
+func (scr *screen) setSyncPolicy(tvRefreshRate float32) {
 	high := float32(scr.img.plt.mode.RefreshRate) * 1.02
 	low := float32(scr.img.plt.mode.RefreshRate) * 0.98
 
-	higher := scr.crit.monitorSync && high >= tvRefreshRate
-	similar := scr.crit.monitorSync && high >= tvRefreshRate && low <= tvRefreshRate
+	scr.crit.monitorSyncHigher = scr.crit.fpsCapped && high >= tvRefreshRate
+	scr.crit.monitorSyncSimilar = scr.crit.fpsCapped && high >= tvRefreshRate && low <= tvRefreshRate
 
-	// no need to update frame queue if monitor sync higher condition hasn't changed
-	if higher != scr.crit.monitorSyncHigher {
-		scr.updateFrameQueue()
-	}
-
-	scr.crit.monitorSyncHigher = higher
-	scr.crit.monitorSyncSimilar = similar
+	scr.updateFrameQueue()
 }
 
-// must be called from inside a critical section.
+// updateFrameQueue() is called whenever a frameQueue preference is changed and
+// when setSyncPolicy() deems it necessary
+//
+// must be called from inside a critical section
 func (scr *screen) updateFrameQueue() {
-	// make local copies of frame queue preferences
-	scr.crit.frameQueueAuto = scr.img.prefs.frameQueueAuto.Get().(bool)
-	scr.crit.frameQueueLen = scr.img.prefs.frameQueue.Get().(int)
+	// make local copies of frame queue preferences if fpsCapped is enabled
+	if scr.crit.fpsCapped {
+		scr.crit.frameQueueAuto = scr.img.prefs.frameQueueAuto.Get().(bool)
+		scr.crit.frameQueueLen = scr.img.prefs.frameQueue.Get().(int)
+	} else {
+		scr.crit.frameQueueAuto = false
+		scr.crit.frameQueueLen = 1
+	}
 
 	// set queue recovery
 	scr.crit.queueRecovery = scr.crit.frameQueueLen
@@ -265,7 +278,7 @@ func (scr *screen) Reset() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	scr.updateFrameQueue()
+	scr.setSyncPolicy(scr.crit.frameInfo.RefreshRate)
 	scr.clearPixels()
 }
 
@@ -321,8 +334,6 @@ func (scr *screen) clearPixels() {
 func (scr *screen) resize(frameInfo television.FrameInfo) {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
-
-	scr.setRefreshRate(frameInfo.RefreshRate)
 
 	// do nothing if resize values are the same as previously
 	if scr.crit.frameInfo.Spec.ID == frameInfo.Spec.ID &&
@@ -406,11 +417,12 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 		}
 	}
 
-	// refresh rate might have changed
+	// set sync policy if refresh rate has changed
 	if scr.crit.frameInfo.RefreshRate != frameInfo.RefreshRate {
-		scr.setRefreshRate(frameInfo.RefreshRate)
+		scr.setSyncPolicy(frameInfo.RefreshRate)
 	}
 
+	// record frame info for future reference
 	scr.crit.frameInfo = frameInfo
 
 	return nil

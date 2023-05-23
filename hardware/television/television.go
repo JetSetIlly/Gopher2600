@@ -851,9 +851,17 @@ func (tv *Television) NudgeFPSCap(frames int) {
 // SetFPSCap whether the emulation should wait for FPS limiter. Returns the
 // setting as it was previously.
 func (tv *Television) SetFPSCap(limit bool) bool {
-	active := tv.lmtr.active
+	prev := tv.lmtr.active
 	tv.lmtr.active = limit
-	return active
+
+	// notify all pixel renderers that are interested in the FPS cap
+	for i := range tv.renderers {
+		if r, ok := tv.renderers[i].(PixelRendererFPSCap); ok {
+			r.SetFPSCap(limit)
+		}
+	}
+
+	return prev
 }
 
 // SetFPS requests the number frames per second. This overrides the frame rate of

@@ -20,7 +20,7 @@ import (
 )
 
 // PixelRenderer implementations displays, or otherwise works with, visual
-// information from a television. For example digest.Video.
+// information from a television. For example digest.Video
 //
 // PixelRenderer implementations often find it convenient to maintain a reference to
 // the parent Television implementation and maybe even embed the Television
@@ -34,39 +34,36 @@ import (
 // The most useful source of information though is the FrameInfo type supplied
 // to the PixelRenderer through the Resize() and NewFrame() functions. A
 // current copy of this information is also available from the television type
-// GetFrameInfo() function.
+// GetFrameInfo() function
 type PixelRenderer interface {
 	// Resize is called when the television implementation detects that extra
-	// scanlines are required in the display.
+	// scanlines are required in the display
 	//
-	// Renderers must be prepared to resize to either a smaller or larger size.
+	// Renderers must be prepared to resize to either a smaller or larger size
 	//
-	// Resize can also be called speculatively so implementations should take
-	// care not to perform any resizing unless absolutely necessary.
-	//
-	// The VisibleTop and VisibleBottom fields in the FrameInfor argument,
-	// describe the top and bottom scanline that is *visible* on a normal
-	// screen. pixels outside this range that are sent by SetPixel() can be
-	// handled according to the renderers needs but would not normally be shown
-	// for game-playing purposes.
+	// Note that the Refresh Rate of the TV is not directly connected with the
+	// size of the screen. The RefreshRate is better dealt with in the
+	// NewFrame() function because that will catch instances when the refresh
+	// rate has changed but the size of the screen has not. Although also note
+	// that not all pixel renderer's need to worry about the refresh rate at all
 	Resize(FrameInfo) error
 
-	// NewFrame is called at the start of a new fame.
+	// NewFrame is called at the start of a new frame
 	NewFrame(FrameInfo) error
 
 	// NewScanline is called at the start of a new scanline
 	NewScanline(scanline int) error
 
 	// SetPixels is used to Render a series of signals. The number of signals
-	// will always be television.MaxSignalHistory.
+	// will always be television.MaxSignalHistory
 	//
 	// Producing a 2d image from the signals sent by SetPixels() can easily be
 	// done by first allocating a bitmap of width specification.ClksScanline
 	// and height specification.AbsoluateMaxScanlines. This bitmap will have
-	// television.MaxSignalHistory entries.
+	// television.MaxSignalHistory entries
 	//
 	// Every signal from SetPixels() therefore corresponds to a pixel in the
-	// bitmap - the first entry always referes to the top-left pixel.
+	// bitmap - the first entry always referes to the top-left pixel
 	//
 	// Setting the color of a pixel can be done by extracting the ColorSignal
 	// from the SignalAttributes (see signal package)
@@ -75,15 +72,15 @@ type PixelRenderer interface {
 	// recently set. This is useful to know when showing televison images when
 	// the emulation is paused. All entries upto and including last are from
 	// teh *current* frame. All entries afterwards are from the *previous*
-	// frame.
+	// frame
 	//
 	// If the entry contains signal.NoSignal then that screen pixel has not
-	// been written to recently.
+	// been written to recently
 	//
 	// For renderers that are producing an accurate visual image, the pixel
 	// should always be set to video black if VBLANK is on. Some renderers
 	// however may find it useful to set the pixel to the RGB value regardless
-	// of VBLANK.
+	// of VBLANK
 	//
 	// A very important note is that some ROMs use VBLANK to control pixel
 	// color within the visible display area. For example:
@@ -101,20 +98,27 @@ type PixelRenderer interface {
 	//
 	// Note that a Reset event does not imply a Resize() event. Implementations
 	// should not call the Resize() function as a byproduct of a Reset(). The
-	// television will send an explicit Resize() request if it is appropriate.
+	// television will send an explicit Resize() request if it is appropriate
 	Reset()
 
-	// Some renderers may need to conclude and/or dispose of resources gently.
+	// Some renderers may need to conclude and/or dispose of resources gently
 	EndRendering() error
 }
 
-// FrameTrigger implementations listen for Pause events.
+// PixelRendererFPSCap is an extension to the PixelRenderer interface. Pixel
+// renderers that implement this interface will be notified when the
+// television's frame capping policy is changed
+type PixelRendererFPSCap interface {
+	SetFPSCap(limit bool)
+}
+
+// FrameTrigger implementations listen for Pause events
 type PauseTrigger interface {
 	Pause(pause bool) error
 }
 
 // FrameTrigger implementations listen for NewFrame events. FrameTrigger is a
-// subset of PixelRenderer.
+// subset of PixelRenderer
 type FrameTrigger interface {
 	NewFrame(FrameInfo) error
 }
@@ -127,12 +131,12 @@ type ScanlineTrigger interface {
 
 // AudioMixer implementations work with sound; most probably playing it. An
 // example of an AudioMixer that does not play sound but otherwise works with
-// it is the digest.Audio type.
+// it is the digest.Audio type
 type AudioMixer interface {
 	// for efficiency reasons, SetAudio() implementations can be sent
 	// SignalAttributes values that do not have valid AudioData (ie.
 	// AudioUpdate bit is zero). implemenations should therefore take care when
-	// processing the sig slice.
+	// processing the sig slice
 	//
 	// the general algorithm for processing the sig slice is:
 	//
@@ -152,16 +156,16 @@ type AudioMixer interface {
 	EndMixing() error
 
 	// Reset buffered audio and anything else that might need doing on, for
-	// example, a cartridge change.
+	// example, a cartridge change
 	Reset()
 }
 
 // RealtimeAudioMixer is an extension for the AudioMixer interface.
 // Implementations of this interface expect to be given more audio data on
-// demand.
+// demand
 //
 // MoreAudio() is called periodically (every scanline) and the implementation
-// should return true if more audio data is required immediately.
+// should return true if more audio data is required immediately
 type RealtimeAudioMixer interface {
 	AudioMixer
 	MoreAudio() bool
@@ -169,7 +173,7 @@ type RealtimeAudioMixer interface {
 
 // VCSReturnChannel is used to send information from the TV back to the parent
 // console. Named because I think of it as being similar to the Audio Return
-// Channel (ARC) present in modern TVs.
+// Channel (ARC) present in modern TVs
 type VCSReturnChannel interface {
 	SetClockSpeed(tvSpec string) error
 }

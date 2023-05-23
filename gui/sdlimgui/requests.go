@@ -64,14 +64,6 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			img.end()
 		}
 
-	case gui.ReqMonitorSync:
-		err = argLen(request.args, 1)
-		if err == nil {
-			img.screen.crit.section.Lock()
-			img.screen.crit.monitorSync = request.args[0].(bool)
-			img.screen.crit.section.Unlock()
-		}
-
 	case gui.ReqFullScreen:
 		err = argLen(request.args, 1)
 		if err == nil {

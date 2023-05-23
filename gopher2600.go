@@ -292,7 +292,7 @@ func emulate(emulationMode govern.Mode, md *modalflag.Modes, sync *mainSync) err
 	// arguments common to both play and debugging modes
 	opts.Log = md.AddBool("log", false, "echo debugging log to stdout")
 	opts.Spec = md.AddString("tv", "AUTO", "television specification: AUTO, NTSC, PAL, PAL60")
-	opts.FpsCap = md.AddString("fpscap", "TV", "cap FPS: TV, MONITOR, NONE")
+	opts.FpsCap = md.AddBool("fpscap", true, "cap FPS to emulated match TV")
 	opts.Multiload = md.AddInt("multiload", -1, "force multiload byte (supercharger only; 0 to 255)")
 	opts.Mapping = md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	opts.Left = md.AddString("left", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD")

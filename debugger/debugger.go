@@ -448,33 +448,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	dbg.vcs.RIOT.Ports.AttachPlugMonitor(dbg)
 
 	// set fps cap
-	switch strings.ToUpper(*opts.FpsCap) {
-	case "":
-		fallthrough
-	case "TV":
-		dbg.vcs.TV.SetFPSCap(true)
-		err := dbg.gui.SetFeature(gui.ReqMonitorSync, true)
-		if err != nil {
-			return nil, fmt.Errorf("debugger: %w", err)
-		}
-		logger.Log("debugger", "capping FPS to emulated TV")
-	case "MONITOR":
-		dbg.vcs.TV.SetFPSCap(false)
-		err := dbg.gui.SetFeature(gui.ReqMonitorSync, true)
-		if err != nil {
-			return nil, fmt.Errorf("debugger: %w", err)
-		}
-		logger.Log("debugger", "capping FPS to monitor refresh rate")
-	case "NONE":
-		dbg.vcs.TV.SetFPSCap(false)
-		err := dbg.gui.SetFeature(gui.ReqMonitorSync, false)
-		if err != nil {
-			return nil, fmt.Errorf("debugger: %w", err)
-		}
-		logger.Log("debugger", "not capping FPS")
-	default:
-		return nil, fmt.Errorf("debugger: unknown fpscap value (%s)", *opts.FpsCap)
-	}
+	dbg.vcs.TV.SetFPSCap(*opts.FpsCap)
 
 	// initialise terminal
 	err = dbg.term.Initialise()
