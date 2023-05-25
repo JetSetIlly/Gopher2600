@@ -473,11 +473,11 @@ func (win *winDbgScr) drawCoordsLine() {
 		imgui.Text(fmt.Sprintf("Clock: %d", win.img.lz.TV.Coords.Clock))
 
 		imgui.TableNextColumn()
-		imgui.Text(win.img.lz.TV.LastSignal.String())
+		signal := fmt.Sprintf("%s", win.img.lz.TV.LastSignal.String())
 		if !win.scr.crit.frameInfo.VSync {
-			imgui.SameLineV(10, 0)
-			imgui.Text("UNSYNCED")
+			signal = fmt.Sprintf("%sUNSYNCED", signal)
 		}
+		imgui.Text(signal)
 
 		imgui.EndTable()
 	}
