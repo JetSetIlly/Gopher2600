@@ -290,14 +290,14 @@ func newSharpenShader(yflipped bool) shaderProgram {
 	return sh
 }
 
-// sharpenImage is used by the sharpen shader
-type sharpenImage interface {
+// textureSpec is used by the sharpen shader
+type textureSpec interface {
 	// returns texture ID and the width and height of the texture
 	textureSpec() (uint32, float32, float32)
 }
 
 // nolint: unparam
-func (sh *sharpenShader) setAttributesArgs(env shaderEnvironment, scalingImage sharpenImage, sharpness int) {
+func (sh *sharpenShader) setAttributesArgs(env shaderEnvironment, scalingImage textureSpec, sharpness int) {
 	t, _, _ := scalingImage.textureSpec()
 	sh.shader.setAttributes(env)
 	gl.ActiveTexture(gl.TEXTURE1)

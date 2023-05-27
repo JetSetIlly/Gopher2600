@@ -163,7 +163,7 @@ func (sh *crtSequencer) flushPhosphor() {
 //
 // integerScaling instructs the scaling shader not to perform any smoothing
 func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool,
-	numScanlines int, numClocks int, image sharpenImage, prefs crtSeqPrefs) uint32 {
+	numScanlines int, numClocks int, image textureSpec, prefs crtSeqPrefs) uint32 {
 
 	// we'll be chaining many shaders together so use internal projection
 	env.useInternalProj = true

@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"image/jpeg"
 	"os"
 
@@ -28,64 +29,75 @@ import (
 	"github.com/jetsetilly/gopher2600/resources/unique"
 )
 
-type screenshotMode int
+type screenshotMode string
 
 const (
-	modeShort screenshotMode = iota
-	modeLong
-	modeVeryLong
+	modeSingle    screenshotMode = "single"
+	modeMotion    screenshotMode = "motion"
+	modeComposite screenshotMode = "composite"
 )
 
-type screenshotSequencer struct {
-	img           *SdlImgui
-	buffer        *framebuffer.Sequence
-	sharpenShader shaderProgram
-	crt           *crtSequencer
+type screenshotFinalise func(shaderEnvironment)
 
-	// dimensions of buffer
-	width  int32
-	height int32
+type screenshotSequencer struct {
+	img *SdlImgui
+	crt *crtSequencer
+
+	// the screenshot mode we're working with
+	mode screenshotMode
 
 	// we don't want to start a new process until the working channel is empty
 	working chan bool
 
-	// composited images are returned over the composite channel
-	composite chan *image.RGBA
+	// the number of frames required for the screenshot processing. is reduced
+	// by onw every frame down to zero
+	workingCt int
 
-	// list of exposures and counter
-	exposures  []*image.RGBA
-	exposureCt int
+	// finalise function
+	finalise chan screenshotFinalise
 
 	// name to use for saved file
-	baseFilename string
+	savePath string
+
+	// for composited screenshots we need to sharpen the shader manually
+	compositeSharpen shaderProgram
+
+	// a framebuffer to be used during compositing
+	compositeBuffer *framebuffer.Sequence
+
+	// list of exposures. used to create a composited image
+	compositeExposures []*image.RGBA
 }
 
 // returns texture ID and the width and height of the texture
 func (sh *screenshotSequencer) textureSpec() (uint32, float32, float32) {
-	return sh.buffer.Texture(0), float32(sh.width), float32(sh.height)
+	width, height := sh.compositeBuffer.Dimensions()
+	return sh.compositeBuffer.Texture(0), float32(width), float32(height)
 }
 
-func newscreenshotSequencer(img *SdlImgui) *screenshotSequencer {
+func newScreenshotSequencer(img *SdlImgui) *screenshotSequencer {
 	sh := &screenshotSequencer{
-		img:           img,
-		buffer:        framebuffer.NewSequence(1),
-		sharpenShader: newSharpenShader(true),
-		crt:           newCRTSequencer(img),
-		working:       make(chan bool, 1),
-		composite:     make(chan *image.RGBA, 1),
+		img:      img,
+		working:  make(chan bool, 1),
+		finalise: make(chan screenshotFinalise, 1),
+
+		compositeBuffer:  framebuffer.NewSequence(1),
+		compositeSharpen: newSharpenShader(true),
+		crt:              newCRTSequencer(img),
 	}
 	return sh
 }
 
 func (sh *screenshotSequencer) destroy() {
-	sh.buffer.Destroy()
-	sh.sharpenShader.destroy()
+	sh.compositeBuffer.Destroy()
+	sh.compositeSharpen.destroy()
 	sh.crt.destroy()
 }
 
 // filenameSuffix will be appended to the short filename of the cartridge. if
 // the string is empty then the default suffix is used
 func (sh *screenshotSequencer) startProcess(mode screenshotMode, filenameSuffix string) {
+	// begin screenshot process if possible
 	select {
 	case sh.working <- true:
 	default:
@@ -93,138 +105,230 @@ func (sh *screenshotSequencer) startProcess(mode screenshotMode, filenameSuffix 
 		return
 	}
 
-	// the tag to indicate exposure time in the filename
-	var exposureTag string
-
+	sh.mode = mode
 	switch mode {
-	case modeShort:
-		exposureTag = "short"
-		sh.exposureCt = 1
-	case modeLong:
-		exposureTag = "long"
-		sh.exposureCt = 6
-	case modeVeryLong:
-		exposureTag = "verylong"
-		sh.exposureCt = 12
+	case modeSingle:
+		// single screenshot mode requires just one working frame
+		sh.workingCt = 1
+	case modeMotion:
+		// a generous working frame count is required for motion screenshots so that
+		// large phosphor values have time to accumulate
+		sh.workingCt = 20
+	case modeComposite:
+		// a working count of six is good because it is divisible by both two
+		// and three. this means that screens with flickering elements of both
+		// two and three will work well
+		sh.workingCt = 6
 	}
-	sh.exposures = sh.exposures[:0]
 
+	sh.crt.flushPhosphor()
+	sh.compositeExposures = sh.compositeExposures[:0]
+
+	// prepare file path for when the image needs to be saved
 	if len(filenameSuffix) == 0 {
 		if sh.img.crtPrefs.Enabled.Get().(bool) {
-			sh.baseFilename = unique.Filename(fmt.Sprintf("crt_%s", exposureTag), sh.img.vcs.Mem.Cart.ShortName)
+			sh.savePath = unique.Filename(fmt.Sprintf("crt_%s", mode), sh.img.vcs.Mem.Cart.ShortName)
 		} else {
-			sh.baseFilename = unique.Filename(fmt.Sprintf("pix_%s", exposureTag), sh.img.vcs.Mem.Cart.ShortName)
+			sh.savePath = unique.Filename(fmt.Sprintf("pix_%s", mode), sh.img.vcs.Mem.Cart.ShortName)
 		}
 	} else {
-		sh.baseFilename = fmt.Sprintf("%s_%s", sh.img.vcs.Mem.Cart.ShortName, filenameSuffix)
+		sh.savePath = fmt.Sprintf("%s_%s", sh.img.vcs.Mem.Cart.ShortName, filenameSuffix)
 	}
-	sh.baseFilename = fmt.Sprintf("%s.jpg", sh.baseFilename)
+	sh.savePath = fmt.Sprintf("%s.jpg", sh.savePath)
 }
 
-func (sh *screenshotSequencer) process(env shaderEnvironment, scalingImage sharpenImage) {
-	if sh.exposureCt <= 0 {
-		// if exposure count is zero then we need to check if there is any
-		// composite images to process
+func (sh *screenshotSequencer) process(env shaderEnvironment, scalingImage textureSpec) {
+	if sh.workingCt <= 0 {
 		select {
-		case composite := <-sh.composite:
-			sh.processComposite(env, composite)
-			<-sh.working
+		case f := <-sh.finalise:
+			f(env)
 		default:
 		}
 		return
 	}
 
-	// set up frame buffer
-	sh.width = env.width
-	sh.height = env.height
-	sh.buffer.Setup(sh.width, sh.height)
+	// if working channel is empty then make sure exposure is zero
+	if len(sh.working) == 0 {
+		logger.Log("screenshot", "recovering after a failed screenshot")
+		sh.workingCt = 0
+	}
+
+	switch sh.mode {
+	case modeComposite:
+		sh.compositeProcess(env, scalingImage)
+	default:
+		sh.crtProcess(env, scalingImage)
+	}
+}
+
+func (sh *screenshotSequencer) crtProcess(env shaderEnvironment, scalingImage textureSpec) {
+	prefs := newCrtSeqPrefs(sh.img.crtPrefs)
+
+	if sh.mode == modeMotion {
+		switch sh.workingCt {
+		case 1:
+			prefs.PixelPerfectFade = 1.0
+			prefs.PhosphorLatency = 1.0
+			prefs.PhosphorBloom = 0.1
+		default:
+			prefs.Scanlines = false
+			prefs.Mask = false
+			prefs.Shine = false
+			prefs.Noise = false
+			prefs.Interference = false
+		}
+	}
+
+	textureID := sh.crt.process(env, true,
+		sh.img.playScr.visibleScanlines, specification.ClksVisible,
+		sh.img.playScr, prefs)
+
+	// reduce exposure count and return if there is still more to do
+	sh.workingCt--
+	if sh.workingCt > 0 {
+		return
+	}
+
+	final := image.NewRGBA(image.Rect(0, 0, int(env.width), int(env.height)))
+	if final == nil {
+		logger.Log("screenshot", "save failed: cannot allocate image data")
+		<-sh.working
+		return
+	}
+
+	gl.BindTexture(gl.TEXTURE_2D, textureID)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, textureID, 0)
+	gl.ReadPixels(0, 0, env.width, env.height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(final.Pix))
+
+	sh.finalise <- func(_ shaderEnvironment) {
+		saveJPEG(final, sh.savePath)
+		<-sh.working
+	}
+}
+
+func (sh *screenshotSequencer) compositeProcess(env shaderEnvironment, scalingImage textureSpec) {
+	// set up frame buffer. if dimensions have changed refuse to continue with
+	// screenshot processing
+	if sh.compositeBuffer.Setup(env.width, env.height) {
+		logger.Log("screenshot", "save failed: emulation window has changed dimensions")
+		<-sh.working
+		return
+	}
 
 	// sharpen image from play screen
-	env.srcTextureID = sh.buffer.Process(0, func() {
-		sh.sharpenShader.(*sharpenShader).setAttributesArgs(env, scalingImage, 1)
+	env.srcTextureID = sh.compositeBuffer.Process(0, func() {
+		sh.compositeSharpen.(*sharpenShader).setAttributesArgs(env, scalingImage, 1)
 		env.draw()
 	})
 
 	// retrieve exposure
-	newExposure := image.NewRGBA(image.Rect(0, 0, int(sh.width), int(sh.height)))
+	newExposure := image.NewRGBA(image.Rect(0, 0, int(env.width), int(env.height)))
 	if newExposure == nil {
 		logger.Log("screenshot", "save failed: cannot allocate image data")
-
-		// this is a failure state so we need to drain the working channel
 		<-sh.working
 		return
 	}
 
 	gl.BindTexture(gl.TEXTURE_2D, env.srcTextureID)
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, env.srcTextureID, 0)
-	gl.ReadPixels(0, 0, int32(sh.width), int32(sh.height), gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(newExposure.Pix))
+	gl.ReadPixels(0, 0, env.width, env.height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(newExposure.Pix))
 
 	// add to list of exposures
-	sh.exposures = append(sh.exposures, newExposure)
+	sh.compositeExposures = append(sh.compositeExposures, newExposure)
 
 	// reduce exposure count and return if there is still more to do
-	sh.exposureCt--
-	if sh.exposureCt > 0 {
+	sh.workingCt--
+	if sh.workingCt > 0 {
 		return
 	}
 
 	// composite exposures. we can do this in a separate goroutine. send result
 	// over the composite channel
 	go func() {
-		composite, err := sh.compositeExposures()
-		if err != nil {
-			logger.Logf("screenshot", err.Error())
-			composite = nil
+		var composite *image.RGBA
+
+		switch len(sh.compositeExposures) {
+		case 0:
+			logger.Logf("screenshot", "composition: exposure list is empty")
+		case 1:
+			// if there is only one exposure then the composition is by
+			// defintion already completed
+			composite = sh.compositeExposures[0]
+		default:
+			var err error
+			composite, err = sh.compositeAssemble()
+			if err != nil {
+				logger.Logf("screenshot", err.Error())
+				composite = nil
+			}
 		}
-		sh.composite <- composite
+
+		if composite == nil {
+			<-sh.working
+			return
+		}
+
+		sh.finalise <- func(env shaderEnvironment) {
+			sh.compositeFinalise(env, composite)
+		}
 	}()
 }
 
-func (sh *screenshotSequencer) compositeExposures() (*image.RGBA, error) {
-	rgba := image.NewRGBA(sh.exposures[0].Rect)
+func (sh *screenshotSequencer) compositeAssemble() (*image.RGBA, error) {
+	rgba := image.NewRGBA(sh.compositeExposures[0].Rect)
 	if rgba == nil {
-		return nil, fmt.Errorf("save failed: cannot allocate image data")
+		return nil, fmt.Errorf("composition: cannot allocate image data")
 	}
 
-	width := rgba.Rect.Max.X - rgba.Rect.Min.X
-	height := rgba.Rect.Max.Y - rgba.Rect.Min.Y
+	width, height := sh.compositeBuffer.Dimensions()
 
-	// luminance := func(a color.RGBA) float64 {
-	// 	r := float64(a.R) / 255
-	// 	g := float64(a.G) / 255
-	// 	b := float64(a.B) / 255
-	// 	return r*0.2126 + g*0.7152 + b*0.0722
+	luminance := func(a color.RGBA) float64 {
+		r := float64(a.R) / 255
+		g := float64(a.G) / 255
+		b := float64(a.B) / 255
+		return r*0.2126 + g*0.7152 + b*0.0722
+	}
+
+	// returns true if a is brighter than b
+	brighter := func(a color.RGBA, b color.RGBA) bool {
+		return luminance(a) >= luminance(b)
+	}
+
+	blend := func(a uint8, b uint8) uint8 {
+		A := float64(a)
+		A = A * 0.67
+		B := float64(b)
+		B = B * 0.33
+		return uint8(A + B)
+	}
+
+	// const brightnessAdjust = 1.20
+	// ratio := brightnessAdjust / float64(len(sh.compositeExposures))
+	// accumulate := func(a uint8, b uint8) uint8 {
+	// 	// being careful not to overflow the uint8
+	// 	B := int(float64(b) * ratio)
+	// 	C := int(a) + B
+	// 	if C > 255 {
+	// 		return 255
+	// 	}
+	// 	return uint8(C)
 	// }
 
-	// // returns true if a is brighter than b
-	// brighter := func(a color.RGBA, b color.RGBA) bool {
-	// 	return luminance(a) >= luminance(b)
-	// }
-
-	ratio := 1.0 / float64(len(sh.exposures))
-
-	// blend := func(a uint8, b uint8) uint8 {
-	// 	A := float64(a)
-	// 	A = A * 0.66
-	// 	B := float64(b)
-	// 	B = B * 0.33
-	// 	return uint8(A + B)
-	// }
-
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
+	for y := 0; y < int(height); y++ {
+		for x := 0; x < int(width); x++ {
 			ep := rgba.RGBAAt(x, y)
-			for _, e := range sh.exposures {
+			for _, e := range sh.compositeExposures {
 				np := e.RGBAAt(x, y)
-				// if brighter(np, ep) {
-				// ep.R = blend(ep.R, np.R)
-				// ep.G = blend(ep.G, np.G)
-				// ep.B = blend(ep.B, np.B)
-				// }
 
-				ep.R += uint8(float64(np.R) * ratio)
-				ep.G += uint8(float64(np.G) * ratio)
-				ep.B += uint8(float64(np.B) * ratio)
+				if brighter(np, ep) {
+					ep.R = blend(ep.R, np.R)
+					ep.G = blend(ep.G, np.G)
+					ep.B = blend(ep.B, np.B)
+				}
+
+				// ep.R = accumulate(ep.R, np.R)
+				// ep.G = accumulate(ep.G, np.G)
+				// ep.B = accumulate(ep.B, np.B)
 			}
 			ep.A = 255
 			rgba.SetRGBA(x, y, ep)
@@ -234,36 +338,37 @@ func (sh *screenshotSequencer) compositeExposures() (*image.RGBA, error) {
 	return rgba, nil
 }
 
-// process composite by passing it through the CRT shaders and then saving the image
-func (sh *screenshotSequencer) processComposite(env shaderEnvironment, composite *image.RGBA) {
-	if composite == nil {
-		return
-	}
-
+// finalise composite by passing it through the CRT shaders and then saving the image
+func (sh *screenshotSequencer) compositeFinalise(env shaderEnvironment, composite *image.RGBA) {
+	// copy composite pixels to framebuffer texture
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(composite.Stride)/4)
-	gl.BindTexture(gl.TEXTURE_2D, sh.buffer.Texture(0))
+	gl.BindTexture(gl.TEXTURE_2D, sh.compositeBuffer.Texture(0))
 	gl.TexImage2D(gl.TEXTURE_2D, 0,
 		gl.RGBA, int32(composite.Bounds().Size().X), int32(composite.Bounds().Size().Y), 0,
 		gl.RGBA, gl.UNSIGNED_BYTE,
 		gl.Ptr(composite.Pix))
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
+	env.srcTextureID = sh.compositeBuffer.Texture(0)
 
-	env.srcTextureID = sh.buffer.Texture(0)
-	sh.crt.flushPhosphor()
+	// pass composite image through CRT shaders
 	textureID := sh.crt.process(env, true,
 		sh.img.playScr.visibleScanlines, specification.ClksVisible,
 		sh, newCrtSeqPrefs(sh.img.crtPrefs))
 	gl.BindTexture(gl.TEXTURE_2D, textureID)
-	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, textureID, 0)
-	gl.ReadPixels(0, 0, int32(sh.width), int32(sh.height), gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(composite.Pix))
 
+	// copy processed pixels back into composite image
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, textureID, 0)
+	gl.ReadPixels(0, 0, env.width, env.height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(composite.Pix))
+
+	// save composite image to file
 	go func() {
-		sh.SaveJPEG(composite, sh.baseFilename, sh.img.playScr)
+		saveJPEG(composite, sh.savePath)
+		<-sh.working
 	}()
 }
 
-// SaveJPEG writes the texture to the specified path.
-func (sh *screenshotSequencer) SaveJPEG(rgba *image.RGBA, path string, scalingImage sharpenImage) {
+// saveJPEG writes the texture to the specified path.
+func saveJPEG(rgba *image.RGBA, path string) {
 	f, err := os.Create(path)
 	if err != nil {
 		logger.Logf("screenshot", "save failed: %v", err.Error())

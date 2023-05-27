@@ -30,7 +30,7 @@ func newPlayscrShader(img *SdlImgui) shaderProgram {
 	sh := &playscrShader{
 		img:        img,
 		crt:        newCRTSequencer(img),
-		screenshot: newscreenshotSequencer(img),
+		screenshot: newScreenshotSequencer(img),
 	}
 	return sh
 }

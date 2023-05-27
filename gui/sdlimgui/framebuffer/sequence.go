@@ -16,12 +16,7 @@
 package framebuffer
 
 import (
-	"image"
-	"image/jpeg"
-	"os"
-
 	"github.com/go-gl/gl/v3.2-core/gl"
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Sequence represents the sequence of textures that can be assigned to a framebuffer.
@@ -49,16 +44,27 @@ func (seq *Sequence) Destroy() {
 	gl.DeleteFramebuffers(1, &seq.fbo)
 }
 
-// Setup framebuffer for sepecified width and height. Previous texture data is
-// lost. Returns true if Setup has caused a change in texture data.
+// Setup framebuffer for specified dimensions
 //
-// Changes the state of the frame buffer.
+// Returns true if any previous texture data has been lost. This can happen when
+// the dimensions have changed. By definition, the first call to Setup() will
+// always return false.
+//
+// If the supplied width or height are less than zero the function will return
+// false with no explanation.
 func (seq *Sequence) Setup(width int32, height int32) bool {
+	if width <= 0 || height <= 0 {
+		return false
+	}
+
 	gl.BindFramebuffer(gl.FRAMEBUFFER, seq.fbo)
 
+	// no change to framebuffer
 	if seq.width == width && seq.height == height {
 		return false
 	}
+
+	changed := seq.width != 0 || seq.height != 0
 
 	seq.width = width
 	seq.height = height
@@ -79,7 +85,7 @@ func (seq *Sequence) Setup(width int32, height int32) bool {
 
 	gl.BindRenderbuffer(gl.RENDERBUFFER, seq.rbo)
 
-	return true
+	return changed
 }
 
 // Len returns the number of textures employed in the framebuffer sequence.
@@ -101,7 +107,7 @@ func (seq *Sequence) bind(idxTexture int) uint32 {
 
 // Clear texture. Black pixels.
 func (seq *Sequence) Clear(idxTexture int) {
-	if len(seq.emptyPixels) == 0 {
+	if len(seq.emptyPixels) == 0 || seq.width == 0 || seq.height == 0 {
 		return
 	}
 
@@ -125,46 +131,7 @@ func (seq *Sequence) Process(idxTexture int, draw func()) uint32 {
 	return id
 }
 
-// SavesJPEG writes the texture to the specified path. Does not return any
-// errors but will log using logTag if logTag is not empty.
-func (seq *Sequence) SaveJPEG(idxTexture int, path string, logTag string) {
-	img := image.NewRGBA(image.Rect(0, 0, int(seq.width), int(seq.height)))
-	if img == nil {
-		if logTag != "" {
-			logger.Log(logTag, "save failed: cannot allocate image data")
-		}
-	}
-
-	seq.bind(idxTexture)
-	gl.ReadPixels(0, 0, seq.width, seq.height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
-
-	go func() {
-		f, err := os.Create(path)
-		if err != nil {
-			if logTag != "" {
-				logger.Logf(logTag, "save failed: %v", err.Error())
-			}
-			return
-		}
-
-		err = jpeg.Encode(f, img, &jpeg.Options{Quality: 100})
-		if err != nil {
-			if logTag != "" {
-				logger.Logf(logTag, "save failed: %v", err.Error())
-			}
-			_ = f.Close()
-			return
-		}
-
-		err = f.Close()
-		if err != nil {
-			if logTag != "" {
-				logger.Logf(logTag, "save failed: %v", err.Error())
-			}
-			return
-		}
-
-		// indicate success
-		logger.Logf(logTag, "saved: %s", path)
-	}()
+// Dimensions returns the width and height of the frame buffer used in the sequence
+func (seq *Sequence) Dimensions() (width int32, height int32) {
+	return seq.width, seq.height
 }
