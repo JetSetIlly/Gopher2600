@@ -86,16 +86,13 @@ func newPlayScr(img *SdlImgui) *playScr {
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
-	gl.GenTextures(1, &win.displayTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.displayTexture)
-
-	// mag and min changed in setScaling() according to whether we want pixel
-	// perfect rendering
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-
+	//
 	// clamp to edge is important for LINEAR filtering. not noticeable for
 	// NEAREST filtering
+	gl.GenTextures(1, &win.displayTexture)
+	gl.BindTexture(gl.TEXTURE_2D, win.displayTexture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
 

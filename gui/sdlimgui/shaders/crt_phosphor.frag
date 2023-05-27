@@ -9,5 +9,5 @@ void main()
 {
 	vec4 a = texture(Texture, Frag_UV) * vec4(Latency);
 	vec4 b = texture(NewFrame, Frag_UV);
-	Out_Color = max(a, b * 0.96);
+	Out_Color = max(a, b);
 }

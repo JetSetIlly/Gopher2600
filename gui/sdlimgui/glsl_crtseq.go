@@ -92,7 +92,6 @@ type crtSequencer struct {
 	blackCorrectionShader shaderProgram
 	blurShader            shaderProgram
 	ghostingShader        shaderProgram
-	blendShader           shaderProgram
 	effectsShader         shaderProgram
 	colorShader           shaderProgram
 	effectsShaderFlipped  shaderProgram
@@ -104,14 +103,13 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 		img:                   img,
 		seq:                   framebuffer.NewSequence(5),
 		sharpenShader:         newSharpenShader(true),
-		phosphorShader:        newPhosphorShader(img),
+		phosphorShader:        newPhosphorShader(),
 		blackCorrectionShader: newBlackCorrectionShader(),
 		blurShader:            newBlurShader(),
-		ghostingShader:        newGhostingShader(img),
-		blendShader:           newBlendShader(),
-		effectsShader:         newCrtSeqEffectsShader(img, false),
+		ghostingShader:        newGhostingShader(),
+		effectsShader:         newCrtSeqEffectsShader(false),
 		colorShader:           newColorShader(false),
-		effectsShaderFlipped:  newCrtSeqEffectsShader(img, true),
+		effectsShaderFlipped:  newCrtSeqEffectsShader(true),
 		colorShaderFlipped:    newColorShader(true),
 	}
 	return sh
@@ -124,7 +122,6 @@ func (sh *crtSequencer) destroy() {
 	sh.blackCorrectionShader.destroy()
 	sh.blurShader.destroy()
 	sh.ghostingShader.destroy()
-	sh.blendShader.destroy()
 	sh.effectsShader.destroy()
 	sh.colorShader.destroy()
 	sh.effectsShaderFlipped.destroy()
@@ -233,12 +230,6 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool,
 		// blur result of phosphor a little more
 		env.srcTextureID = sh.seq.Process(crtSeqWorking, func() {
 			sh.blurShader.(*blurShader).setAttributesArgs(env, float32(prefs.Sharpness))
-			env.draw()
-		})
-
-		// // blend blur with src texture
-		env.srcTextureID = sh.seq.Process(crtSeqWorking, func() {
-			sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, 0.32, src)
 			env.draw()
 		})
 

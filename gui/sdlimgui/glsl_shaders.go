@@ -210,16 +210,12 @@ func (sh *blackCorrectionShader) setAttributesArgs(env shaderEnvironment, blackL
 type phosphorShader struct {
 	shader
 
-	img *SdlImgui
-
 	newFrame int32
 	latency  int32
 }
 
-func newPhosphorShader(img *SdlImgui) shaderProgram {
-	sh := &phosphorShader{
-		img: img,
-	}
+func newPhosphorShader() shaderProgram {
+	sh := &phosphorShader{}
 	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTPhosphorFragShader))
 	sh.newFrame = gl.GetUniformLocation(sh.handle, gl.Str("NewFrame"+"\x00"))
 	sh.latency = gl.GetUniformLocation(sh.handle, gl.Str("Latency"+"\x00"))
@@ -262,8 +258,8 @@ type ghostingShader struct {
 	amount    int32
 }
 
-func newGhostingShader(img *SdlImgui) shaderProgram {
-	sh := &ghostingShader{img: img}
+func newGhostingShader() shaderProgram {
+	sh := &ghostingShader{}
 	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTGhostingFragShader))
 	sh.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
 	sh.amount = gl.GetUniformLocation(sh.handle, gl.Str("Amount"+"\x00"))
@@ -274,33 +270,6 @@ func (sh *ghostingShader) setAttributesArgs(env shaderEnvironment, amount float3
 	sh.shader.setAttributes(env)
 	gl.Uniform2f(sh.screenDim, float32(env.width), float32(env.height))
 	gl.Uniform1f(sh.amount, amount)
-}
-
-type blendShader struct {
-	shader
-	newFrame int32
-	modulate int32
-	fade     int32
-}
-
-func newBlendShader() shaderProgram {
-	sh := &blendShader{}
-	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTBlendFragShader))
-	sh.newFrame = gl.GetUniformLocation(sh.handle, gl.Str("NewFrame"+"\x00"))
-	sh.modulate = gl.GetUniformLocation(sh.handle, gl.Str("Modulate"+"\x00"))
-	sh.fade = gl.GetUniformLocation(sh.handle, gl.Str("Fade"+"\x00"))
-	return sh
-}
-
-// nolint: unparam
-func (sh *blendShader) setAttributesArgs(env shaderEnvironment, modulate float32, fade float32, newFrame uint32) {
-	sh.shader.setAttributes(env)
-	gl.Uniform1f(sh.modulate, modulate)
-	gl.Uniform1f(sh.fade, fade)
-
-	gl.ActiveTexture(gl.TEXTURE1)
-	gl.BindTexture(gl.TEXTURE_2D, newFrame)
-	gl.Uniform1i(sh.newFrame, 1)
 }
 
 type sharpenShader struct {

@@ -25,8 +25,6 @@ import (
 type crtSeqEffectsShader struct {
 	shader
 
-	img *SdlImgui
-
 	screenDim            int32
 	numScanlines         int32
 	numClocks            int32
@@ -51,10 +49,8 @@ type crtSeqEffectsShader struct {
 	time                 int32
 }
 
-func newCrtSeqEffectsShader(img *SdlImgui, yflip bool) shaderProgram {
-	sh := &crtSeqEffectsShader{
-		img: img,
-	}
+func newCrtSeqEffectsShader(yflip bool) shaderProgram {
+	sh := &crtSeqEffectsShader{}
 	if yflip {
 		sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTEffectsFragShader))
 	} else {
