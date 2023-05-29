@@ -19,6 +19,7 @@ The key features of the emulator:
 * Network access through [PlusROM](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/PlusROM) emulation
 * [AtariVox and SaveKey](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/AtariVox-and-SaveKey) support
 * CRT Effects
+* Three [screenshot](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Creating-Screenshots) methods
 * Accurate audio reproduction (and optional stereo output)
 * Support for common [TIA revisions](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/TIA-Revisions)
 * Implementation of [Movie Cart](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Movie-Cart)
