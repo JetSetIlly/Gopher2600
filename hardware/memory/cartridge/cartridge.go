@@ -228,14 +228,17 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 			pr, err := plusrom.NewPlusROM(cart.env, cart.mapper, cartload.NotificationHook)
 
 			if err != nil {
-				// if the error is a NotAPlusROM error then log the false
-				// positive and return a success, keeping the main cartridge
-				// mapper intact
+				// check for known PlusROM errors
 				if errors.Is(err, plusrom.NotAPlusROM) {
 					logger.Log("cartridge", err.Error())
 					return nil
 				}
+				if errors.Is(err, plusrom.CannotAdoptROM) {
+					logger.Log("cartridge", err.Error())
+					return nil
+				}
 
+				// we do not recognise the error so return it
 				return fmt.Errorf("cartridge: %w", err)
 			}
 

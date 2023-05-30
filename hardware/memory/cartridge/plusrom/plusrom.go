@@ -26,9 +26,10 @@ import (
 	"github.com/jetsetilly/gopher2600/notifications"
 )
 
-// sentinal error indicating a specific problem with the attempt to load the
+// sentinal errors indicating a specific problem with the attempt to load the
 // child cartridge into the PlusROM.
 var NotAPlusROM = errors.New("not a plus rom")
+var CannotAdoptROM = errors.New("cannot adopt ROM")
 
 // PlusROM wraps another mapper.CartMapper inside a network aware format.
 type PlusROM struct {
@@ -69,41 +70,45 @@ func NewPlusROM(env *environment.Environment, child mapper.CartMapper, notificat
 	cart.net = newNetwork(cart.env)
 
 	// get reference to last bank
-	bank := child.CopyBanks()[cart.NumBanks()-1]
+	banks := child.CopyBanks()
+	if banks == nil {
+		return nil, fmt.Errorf("plusrom: %w: %s is not providing bank data", CannotAdoptROM, child.ID())
+	}
+	lastBank := banks[cart.NumBanks()-1]
 
 	// host/path information is found at address 0x1ffa. we've got a reference
 	// to the last bank above but we need to consider that the last bank might not
 	// take the entirity of the cartridge map.
-	addrMask := uint16(len(bank.Data) - 1)
+	addrMask := uint16(len(lastBank.Data) - 1)
 
 	// host/path information are found at the address pointed to by the following
 	// 16bit address
 	const addrinfoMSB = 0x1ffb
 	const addrinfoLSB = 0x1ffa
 
-	a := uint16(bank.Data[addrinfoLSB&addrMask])
-	a |= (uint16(bank.Data[addrinfoMSB&addrMask]) << 8)
+	a := uint16(lastBank.Data[addrinfoLSB&addrMask])
+	a |= (uint16(lastBank.Data[addrinfoMSB&addrMask]) << 8)
 
 	// get bank to which the NMI vector points
 	b := int((a & 0xf000) >> 12)
 
 	if b == 0 || b > cart.NumBanks() {
-		return nil, fmt.Errorf("%w: invalid NMI vector", NotAPlusROM)
+		return nil, fmt.Errorf("plusrom: %w: invalid NMI vector", NotAPlusROM)
 	}
 
 	// normalise indirect address so it's suitable for indexing bank data
 	a &= addrMask
 
 	// get the bank to which the NMI vector points
-	bank = child.CopyBanks()[b-1]
+	lastBank = child.CopyBanks()[b-1]
 
 	// read path string from the first bank using the indirect address retrieved above
 	path := strings.Builder{}
 	for path.Len() < maxPathLength {
-		if int(a) >= len(bank.Data) {
+		if int(a) >= len(lastBank.Data) {
 			a = 0x0000
 		}
-		c := bank.Data[a]
+		c := lastBank.Data[a]
 
 		a++
 		if c == 0x00 {
@@ -116,10 +121,10 @@ func NewPlusROM(env *environment.Environment, child mapper.CartMapper, notificat
 	// address pointer will be in the correct place.
 	host := strings.Builder{}
 	for host.Len() <= maxHostLength {
-		if int(a) >= len(bank.Data) {
+		if int(a) >= len(lastBank.Data) {
 			a = 0x0000
 		}
-		c := bank.Data[a]
+		c := lastBank.Data[a]
 
 		a++
 		if c == 0x00 {
