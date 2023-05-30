@@ -131,6 +131,29 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) *Disa
 						arm.state.status.setCarry(carry)
 						// overflow unchanged
 					}
+				case 0b10:
+					// with arithmetic right shift
+
+					// carry bit
+					m := uint32(0x01) << (imm5 - 1)
+					carry := arm.state.registers[Rm]&m == m
+
+					// perform shift (with sign extension)
+					signExtend := (arm.state.registers[Rm] & 0x80000000) >> 31
+					shifted := arm.state.registers[Rm] >> imm5
+					if signExtend == 0x01 {
+						shifted |= ^uint32(0) << (32 - imm5)
+					}
+
+					// perform bit clear
+					arm.state.registers[Rd] = arm.state.registers[Rn] & shifted
+
+					if setFlags {
+						arm.state.status.isNegative(arm.state.registers[Rd])
+						arm.state.status.isZero(arm.state.registers[Rd])
+						arm.state.status.setCarry(carry)
+						// overflow unchanged
+					}
 				default:
 					panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b)", op, typ))
 				}
