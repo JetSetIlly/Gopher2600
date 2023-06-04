@@ -385,7 +385,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				dbg.setState(govern.Rewinding)
 				dbg.unwindLoop(dbg.Rewind.GotoLast)
 			} else if arg == "SUMMARY" {
-				dbg.printLine(terminal.StyleInstrument, dbg.Rewind.String())
+				dbg.printLine(terminal.StyleInstrument, dbg.Rewind.Peephole())
 			} else {
 				frame, _ := strconv.Atoi(arg)
 				dbg.setState(govern.Rewinding)

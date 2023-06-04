@@ -68,8 +68,7 @@ type snapshotLevel int
 
 // List of valid SnapshotLevel values.
 const (
-	// reset and boundary entries should only even appear once at the start of
-	// the history, it at all.
+	// reset and boundary entries should only even appear once at the start of the history
 	levelReset snapshotLevel = iota
 	levelBoundary
 
@@ -89,18 +88,21 @@ const (
 	levelTemporary
 )
 
-func (s State) String() string {
+func (s *State) String() string {
+	if s == nil {
+		return "----"
+	}
 	switch s.level {
 	case levelReset:
-		return fmt.Sprintf("r(%d)", s.TV.GetCoords().Frame)
+		return fmt.Sprintf("r%03d", s.TV.GetCoords().Frame)
 	case levelBoundary:
-		return fmt.Sprintf("b(%d)", s.TV.GetCoords().Frame)
+		return fmt.Sprintf("b%03d", s.TV.GetCoords().Frame)
 	case levelExecution:
-		return fmt.Sprintf("e(%d)", s.TV.GetCoords().Frame)
+		return fmt.Sprintf("e%03d", s.TV.GetCoords().Frame)
 	case levelTemporary:
-		return fmt.Sprintf("t(%d)", s.TV.GetCoords().Frame)
+		return fmt.Sprintf("t%03d", s.TV.GetCoords().Frame)
 	}
-	return fmt.Sprintf("%d", s.TV.GetCoords().Frame)
+	return fmt.Sprintf("f%03d", s.TV.GetCoords().Frame)
 }
 
 // an overhead of two is required:
@@ -210,10 +212,8 @@ func (r *Rewind) reset(level snapshotLevel) {
 	r.newFrame = false
 	r.boundaryNextFrame = false
 
-	// start and next equal to begin with. the first call to append() below
-	// will add the new State at the current next index and then advance the
-	// next index ready for the next append()
-	r.start = 1
+	// reset start and next
+	r.start = 0
 	r.next = 1
 
 	// the splice point is checked to see if it is an execution entry and is
@@ -224,19 +224,21 @@ func (r *Rewind) reset(level snapshotLevel) {
 	//
 	// this arrangement of the stand, next and splice indexes means that there
 	// are no special conditions in the append() function.
-	r.splice = 0
-
-	// the first entry is a boundary entry by definition
-	r.entries[r.splice] = &State{level: levelBoundary}
+	r.splice = len(r.entries) - 1
 
 	// add current state as first entry
 	r.append(r.snapshot(level))
+
+	// and as the second entry
+	r.append(r.snapshot(levelFrame))
 
 	// first comparison is to the snapshot of the reset machine
 	r.comparison = r.entries[r.start]
 
 }
 
+// String outputs the entry information for the entire rewind history. The
+// Peephole() funcion is probably a better option.
 func (r *Rewind) String() string {
 	s := strings.Builder{}
 
@@ -263,6 +265,53 @@ func (r *Rewind) String() string {
 	}
 
 	return s.String()
+}
+
+// Peephole outputs a short summary of the state of the rewind system centered
+// on the current splice value
+func (r *Rewind) Peephole() string {
+	const peephole = 5
+
+	var split bool
+	peepi := r.splice - peephole
+	if peepi < 0 {
+		peepi += len(r.entries)
+		split = true
+	}
+	peepj := r.splice + peephole
+	if peepj >= len(r.entries) {
+		peepj -= len(r.entries)
+		if split {
+			panic("length of entries in rewind is too short")
+		}
+		split = true
+	}
+
+	// build output string
+	b := strings.Builder{}
+
+	f := func(i, j int) {
+		for k, e := range r.entries[i:j] {
+			if k+i == r.splice {
+				b.WriteString(fmt.Sprintf("(%s) ", e))
+			} else {
+				b.WriteString(fmt.Sprintf("%s ", e))
+			}
+		}
+	}
+
+	b.WriteString(fmt.Sprintf("[%03d] ", peepi))
+	if split {
+		f(peepi, len(r.entries))
+		b.WriteString(fmt.Sprintf("| "))
+		f(0, peepj)
+	} else {
+		b.WriteString("  ")
+		f(peepi, peepj)
+	}
+	b.WriteString(fmt.Sprintf("[%03d]\n", peepj))
+
+	return b.String()
 }
 
 // the index of the last entry in the circular rewind history to be written to.
@@ -414,14 +463,14 @@ func (r *Rewind) runFromStateToCoords(fromState *State, toCoords coords.Televisi
 // setSplicePoint sets the splice point to the supplied index. the emulation
 // will be run to the supplied frame, scanline, clock point.
 func (r *Rewind) setSplicePoint(fromIdx int, toCoords coords.TelevisionCoords) error {
+	// set new splice point
 	r.splice = fromIdx + 1
 	if r.splice >= len(r.entries) {
 		r.splice -= len(r.entries)
 	}
 
-	fromState := r.entries[fromIdx]
-
 	// plumb in selected entry
+	fromState := r.entries[fromIdx]
 	err := r.runFromStateToCoords(fromState, toCoords)
 	if err != nil {
 		return err
