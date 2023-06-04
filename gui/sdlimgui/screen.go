@@ -235,6 +235,10 @@ func (scr *screen) setSyncPolicy(tvRefreshRate float32) {
 //
 // must be called from inside a critical section
 func (scr *screen) updateFrameQueue() {
+	if scr.img.dbg.State() == govern.Rewinding {
+		return
+	}
+
 	// make local copies of frame queue preferences if fpsCapped is enabled
 	if scr.crit.fpsCapped {
 		scr.crit.frameQueueAuto = scr.img.prefs.frameQueueAuto.Get().(bool)
