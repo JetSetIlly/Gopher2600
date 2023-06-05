@@ -269,14 +269,6 @@ func (sr *resizer) commit(tv *Television) error {
 		// update statble top/bottom values
 		tv.state.frameInfo.VisibleTop = sr.pendingTop
 		tv.state.frameInfo.VisibleBottom = sr.pendingBottom
-
-		// call Resize() for all attached pixel renderers
-		for f := range tv.renderers {
-			err := tv.renderers[f].Resize(tv.state.frameInfo)
-			if err != nil {
-				return err
-			}
-		}
 	}
 
 	return nil

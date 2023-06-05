@@ -36,19 +36,10 @@ import (
 // current copy of this information is also available from the television type
 // GetFrameInfo() function
 type PixelRenderer interface {
-	// Resize is called when the television implementation detects that extra
-	// scanlines are required in the display
-	//
-	// Renderers must be prepared to resize to either a smaller or larger size
-	//
-	// Note that the Refresh Rate of the TV is not directly connected with the
-	// size of the screen. The RefreshRate is better dealt with in the
-	// NewFrame() function because that will catch instances when the refresh
-	// rate has changed but the size of the screen has not. Although also note
-	// that not all pixel renderer's need to worry about the refresh rate at all
-	Resize(FrameInfo) error
-
 	// NewFrame is called at the start of a new frame
+	//
+	// Renderers should be prepared to resize the rendering display to either a
+	// smaller or larger frame size
 	NewFrame(FrameInfo) error
 
 	// NewScanline is called at the start of a new scanline

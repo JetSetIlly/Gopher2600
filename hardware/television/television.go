@@ -797,10 +797,6 @@ func (tv *Television) SetSpec(spec string) error {
 	tv.lmtr.setRate(tv.state.frameInfo.Spec.RefreshRate)
 
 	for _, r := range tv.renderers {
-		err := r.Resize(tv.state.frameInfo)
-		if err != nil {
-			return err
-		}
 		r.Reset()
 	}
 

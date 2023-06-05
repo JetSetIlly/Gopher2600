@@ -339,7 +339,7 @@ func (win *winDbgScr) draw() {
 		// status line
 		imgui.Spacing()
 
-		imgui.SetCursorPos(imgui.CursorPos().Plus(imgui.Vec2{win.imagePadding.X, 0.0}))
+		// imgui.SetCursorPos(imgui.CursorPos().Plus(imgui.Vec2{win.imagePadding.X, 0.0}))
 		win.drawCoordsLine()
 
 		// options line
