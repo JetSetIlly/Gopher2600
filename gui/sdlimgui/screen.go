@@ -81,7 +81,9 @@ type screenCrit struct {
 	// Resize() and NewFrame()
 	frameInfo television.FrameInfo
 
-	// screen will resize on next GUI iteration
+	// screen will resize on next GUI iteration if resize is true. if resizeHold
+	// is true however, the resize will be delayed until the current state is no
+	// longer govern.Rewinding
 	resize bool
 
 	// whether or not emulation is fps capped (to speed of television). the
@@ -353,6 +355,18 @@ func (scr *screen) resize() {
 	if !scr.crit.resize {
 		return
 	}
+
+	// do not resize if emulation is the debugger mode and rewinding state
+	//
+	// this prevents an ugly flickering of the debug screen when the user is
+	// screen-rewinding on a resize boundary
+	//
+	// the cursor/painting-effect still flickers but it's less annoying than the
+	// entire screen flickering
+	if scr.img.dbg.Mode() == govern.ModeDebugger && scr.img.dbg.State() == govern.Rewinding {
+		return
+	}
+
 	scr.crit.resize = false
 
 	// create a cropped image from the main
@@ -383,8 +397,6 @@ func (scr *screen) resize() {
 func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
-
-	// we'll store frameInfo at the same time as unlocking the critical section
 
 	if scr.img.isPlaymode() {
 		// check screen rolling if crtprefs are enabled
@@ -424,8 +436,7 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 	// check if screen needs to be resized
 	//
 	// note that we're only signalling that a resize should take place. it will
-	// be reset to false in the resize() function (we only latch the flag to
-	// true in the condition below)
+	// be reset to false in the resize() function
 	scr.crit.resize = scr.crit.resize ||
 		scr.crit.frameInfo.Spec.ID != frameInfo.Spec.ID ||
 		scr.crit.frameInfo.VisibleTop != frameInfo.VisibleTop ||
