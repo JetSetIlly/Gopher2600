@@ -81,6 +81,9 @@ type screenCrit struct {
 	// Resize() and NewFrame()
 	frameInfo television.FrameInfo
 
+	// screen will resize on next GUI iteration
+	resize bool
+
 	// whether or not emulation is fps capped (to speed of television). the
 	// screen implementation uses this to decide whether to sync with monitor
 	// refresh rate
@@ -201,7 +204,9 @@ func newScreen(img *SdlImgui) *screen {
 	scr.crit.section.Unlock()
 
 	// default to NTSC
-	scr.resize(television.NewFrameInfo(specification.SpecNTSC))
+	scr.crit.frameInfo = television.NewFrameInfo(specification.SpecNTSC)
+	scr.crit.resize = true
+	scr.resize()
 	scr.Reset()
 
 	return scr
@@ -251,9 +256,14 @@ func (scr *screen) updateFrameQueue() {
 	// set queue recovery
 	scr.crit.queueRecovery = scr.crit.frameQueueLen
 
-	// restore previous render frame to all entries in the queue to ensure we
-	// never get an empty frame by accident
-	old := scr.crit.frameQueue[scr.crit.renderIdx]
+	// restore previous plot frame to all entries in the queue
+	var old *image.RGBA
+	switch scr.img.dbg.Mode() {
+	case govern.ModePlay:
+		old = scr.crit.frameQueue[scr.crit.renderIdx]
+	case govern.ModeDebugger:
+		old = scr.crit.frameQueue[scr.crit.plotIdx]
+	}
 	if old != nil {
 		for i := range scr.crit.frameQueue {
 			copy(scr.crit.frameQueue[i].Pix, old.Pix)
@@ -334,19 +344,16 @@ func (scr *screen) clearPixels() {
 	scr.plotOverlay()
 }
 
-// resize() is called by Resize() and by NewScreen().
-func (scr *screen) resize(frameInfo television.FrameInfo) {
+// resize screen if flag has been set during NewFrame(). called from render()
+func (scr *screen) resize() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	// do nothing if resize values are the same as previously
-	if scr.crit.frameInfo.Spec.ID == frameInfo.Spec.ID &&
-		scr.crit.frameInfo.VisibleTop == frameInfo.VisibleTop &&
-		scr.crit.frameInfo.VisibleBottom == frameInfo.VisibleBottom {
+	// do nothing if resize flag is not set
+	if !scr.crit.resize {
 		return
 	}
-
-	scr.crit.frameInfo = frameInfo
+	scr.crit.resize = false
 
 	// create a cropped image from the main
 	crop := image.Rect(
@@ -357,29 +364,17 @@ func (scr *screen) resize(frameInfo television.FrameInfo) {
 	scr.crit.cropElementPixels = scr.crit.elementPixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropOverlayPixels = scr.crit.overlayPixels.SubImage(crop).(*image.RGBA)
 
-	// make sure all pixels are clear
-	scr.clearPixels()
+	// clear pixels if we're in playmode. clearing pixels in debug mode can
+	// cause an ugly black screen flash and when rewinding over a resized frame
+	if scr.img.dbg.Mode() == govern.ModePlay {
+		scr.clearPixels()
+		scr.updateFrameQueue()
+	}
 
 	// resize texture renderers
 	for _, r := range scr.renderers {
 		r.resize()
 	}
-}
-
-// Resize implements the television.PixelRenderer interface
-//
-// called when the television detects a new TV specification.
-//
-// it is also called by the television when the rewind system is used, in order
-// to make sure that the screen specification is accurate.
-//
-// MUST NOT be called from the gui thread.
-func (scr *screen) Resize(frameInfo television.FrameInfo) error {
-	scr.img.polling.service <- func() {
-		scr.resize(frameInfo)
-		scr.img.polling.serviceErr <- nil
-	}
-	return <-scr.img.polling.serviceErr
 }
 
 // NewFrame implements the television.PixelRenderer interface
@@ -426,7 +421,17 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 		scr.setSyncPolicy(frameInfo.RefreshRate)
 	}
 
-	// record frame info for future reference
+	// check if screen needs to be resized
+	//
+	// note that we're only signalling that a resize should take place. it will
+	// be reset to false in the resize() function (we only latch the flag to
+	// true in the condition below)
+	scr.crit.resize = scr.crit.resize ||
+		scr.crit.frameInfo.Spec.ID != frameInfo.Spec.ID ||
+		scr.crit.frameInfo.VisibleTop != frameInfo.VisibleTop ||
+		scr.crit.frameInfo.VisibleBottom != frameInfo.VisibleBottom
+
+	// record frame info
 	scr.crit.frameInfo = frameInfo
 
 	return nil
@@ -635,6 +640,8 @@ func (scr *screen) clearTextureRenderers() {
 
 // called by service loop.
 func (scr *screen) render() {
+	scr.resize()
+
 	if scr.img.isPlaymode() {
 		scr.copyPixelsPlaymode()
 	} else {
