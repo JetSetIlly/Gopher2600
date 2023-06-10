@@ -47,9 +47,9 @@ func (win *winTimer) id() string {
 	return winTimerID
 }
 
-func (win *winTimer) debuggerDraw() {
+func (win *winTimer) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{825, 617}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -59,6 +59,8 @@ func (win *winTimer) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winTimer) draw() {

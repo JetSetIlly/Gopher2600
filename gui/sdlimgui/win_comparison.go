@@ -82,7 +82,7 @@ func (win *winComparison) playmodeSetOpen(open bool) {
 	}
 }
 
-func (win *winComparison) playmodeDraw() {
+func (win *winComparison) playmodeDraw() bool {
 	// receive new thumbnail data and copy to texture
 	select {
 	case img := <-win.render:
@@ -116,7 +116,7 @@ func (win *winComparison) playmodeDraw() {
 	}
 
 	if !win.playmodeOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{75, 75}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -127,6 +127,8 @@ func (win *winComparison) playmodeDraw() {
 
 	win.playmodeGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winComparison) draw() {

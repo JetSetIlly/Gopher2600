@@ -45,13 +45,13 @@ func (win *winPlusROMNick) id() string {
 	return winPlusROMNickID
 }
 
-func (win *winPlusROMNick) debuggerDraw() {
+func (win *winPlusROMNick) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	if !win.img.lz.Cart.IsPlusROM {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{659, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -61,6 +61,8 @@ func (win *winPlusROMNick) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winPlusROMNick) draw() {

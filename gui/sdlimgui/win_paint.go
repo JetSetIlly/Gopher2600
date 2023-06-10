@@ -45,9 +45,9 @@ func (win *winPaint) id() string {
 	return winPaintID
 }
 
-func (win *winPaint) debuggerDraw() {
+func (win *winPaint) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{756, 117}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -57,6 +57,8 @@ func (win *winPaint) debuggerDraw() {
 	}
 
 	imgui.End()
+
+	return true
 }
 
 const painDragDrop = "PAINT"

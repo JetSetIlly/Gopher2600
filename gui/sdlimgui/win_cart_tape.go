@@ -45,13 +45,13 @@ func (win *winCartTape) id() string {
 	return winCartTapeID
 }
 
-func (win *winCartTape) debuggerDraw() {
+func (win *winCartTape) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	if !win.img.lz.Cart.HasTapeBus {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{539, 168}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -62,6 +62,8 @@ func (win *winCartTape) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winCartTape) draw() {

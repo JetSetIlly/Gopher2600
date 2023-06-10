@@ -77,7 +77,7 @@ func (win *winTimeline) id() string {
 
 const timelinePopupID = "timelinePopupID"
 
-func (win *winTimeline) debuggerDraw() {
+func (win *winTimeline) debuggerDraw() bool {
 	// receive new thumbnail data and copy to texture
 	select {
 	case img := <-win.thmb.Render:
@@ -95,7 +95,7 @@ func (win *winTimeline) debuggerDraw() {
 	}
 
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	const winHeightRatio = 0.05
@@ -111,6 +111,8 @@ func (win *winTimeline) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 const (

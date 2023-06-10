@@ -165,9 +165,9 @@ func (win *winDbgScr) id() string {
 
 const breakMenuPopupID = "dbgScreenBreakMenu"
 
-func (win *winDbgScr) debuggerDraw() {
+func (win *winDbgScr) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	win.scr.crit.section.Lock()
@@ -199,6 +199,8 @@ func (win *winDbgScr) debuggerDraw() {
 
 	// draw magnify window
 	win.magnifyWindow.draw(win.img.cols)
+
+	return true
 }
 
 func (win *winDbgScr) draw() {

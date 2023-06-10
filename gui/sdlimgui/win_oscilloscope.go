@@ -73,9 +73,9 @@ func (win *winOscilloscope) id() string {
 	return winOscilloscopeID
 }
 
-func (win *winOscilloscope) debuggerDraw() {
+func (win *winOscilloscope) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{586, 519}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -85,6 +85,8 @@ func (win *winOscilloscope) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winOscilloscope) draw() {

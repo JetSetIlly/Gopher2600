@@ -65,9 +65,9 @@ func (win *winCPU) id() string {
 	return winCPUID
 }
 
-func (win *winCPU) debuggerDraw() {
+func (win *winCPU) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{836, 315}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -78,6 +78,8 @@ func (win *winCPU) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winCPU) draw() {

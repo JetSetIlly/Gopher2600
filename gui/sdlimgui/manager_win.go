@@ -43,6 +43,7 @@ type windowGeometry interface {
 type windowGeom struct {
 	windowPos  imgui.Vec2
 	windowSize imgui.Vec2
+	raise      bool
 }
 
 func (g *windowGeom) update() {
@@ -78,8 +79,8 @@ func (w *playmodeWin) playmodeSetOpen(open bool) {
 	w.playmodeOpen = open
 }
 
-func (w *playmodeWin) playmodeGeometry() windowGeom {
-	return w.playmodeGeom
+func (w *playmodeWin) playmodeGeometry() *windowGeom {
+	return &w.playmodeGeom
 }
 
 // debuggerWin is a partial implementation of the debuggerWindow interface. it
@@ -102,24 +103,24 @@ func (w *debuggerWin) debuggerSetOpen(open bool) {
 	w.debuggerOpen = open
 }
 
-func (w *debuggerWin) debuggerGeometry() windowGeom {
-	return w.debuggerGeom
+func (w *debuggerWin) debuggerGeometry() *windowGeom {
+	return &w.debuggerGeom
 }
 
 type playmodeWindow interface {
 	window
-	playmodeDraw()
+	playmodeDraw() bool
 	playmodeIsOpen() bool
 	playmodeSetOpen(bool)
-	playmodeGeometry() windowGeom
+	playmodeGeometry() *windowGeom
 }
 
 type debuggerWindow interface {
 	window
-	debuggerDraw()
+	debuggerDraw() bool
 	debuggerIsOpen() bool
 	debuggerSetOpen(bool)
-	debuggerGeometry() windowGeom
+	debuggerGeometry() *windowGeom
 }
 
 // toggles a window open according to emulation state

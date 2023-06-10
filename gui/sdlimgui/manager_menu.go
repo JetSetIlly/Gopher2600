@@ -158,6 +158,13 @@ func (wm *manager) drawMenu() {
 		}
 	}
 
+	// fuzzy window match indicator
+	if wm.fuzzyWindows {
+		imgui.Text(" ")
+		s := fmt.Sprintf("%c %s", fonts.MagnifyingGlass, wm.fuzzyMatch)
+		imguiColourButton(wm.img.cols.TitleBgActive, s, imguiGetFrameDim(s))
+	}
+
 	// cartridge info in menubar
 	wdth := imgui.WindowWidth()
 	wdth -= rightJustText(wdth, string(fonts.Disk), false)

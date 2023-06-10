@@ -48,13 +48,13 @@ func (win *winCoProcFunctions) id() string {
 	return winCoProcFunctionsID
 }
 
-func (win *winCoProcFunctions) debuggerDraw() {
+func (win *winCoProcFunctions) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	if !win.img.lz.Cart.HasCoProcBus {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{775, 102}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -68,6 +68,8 @@ func (win *winCoProcFunctions) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winCoProcFunctions) draw() {

@@ -45,13 +45,13 @@ func (win *winSaveKeyEEPROM) id() string {
 	return winSaveKeyEEPROMID
 }
 
-func (win *winSaveKeyEEPROM) debuggerDraw() {
+func (win *winSaveKeyEEPROM) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	if !win.img.lz.SaveKey.SaveKeyActive {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{469, 285}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -64,6 +64,8 @@ func (win *winSaveKeyEEPROM) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winSaveKeyEEPROM) draw() {

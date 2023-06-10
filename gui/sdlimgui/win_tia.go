@@ -69,9 +69,9 @@ func (win *winTIA) id() string {
 }
 
 // draw is called by service loop.
-func (win *winTIA) debuggerDraw() {
+func (win *winTIA) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{X: 31, Y: 470}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
@@ -82,6 +82,8 @@ func (win *winTIA) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winTIA) draw() {

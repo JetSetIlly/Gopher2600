@@ -47,9 +47,9 @@ func (win *winPrefs) init() {
 func (win *winPrefs) id() string {
 	return winPrefsID
 }
-func (win *winPrefs) playmodeDraw() {
+func (win *winPrefs) playmodeDraw() bool {
 	if !win.playmodeOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{100, 40}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -59,11 +59,13 @@ func (win *winPrefs) playmodeDraw() {
 
 	win.playmodeWin.playmodeGeom.update()
 	imgui.End()
+
+	return true
 }
 
-func (win *winPrefs) debuggerDraw() {
+func (win *winPrefs) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{29, 61}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -74,6 +76,8 @@ func (win *winPrefs) debuggerDraw() {
 
 	win.debuggerWin.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 // the sub draw() functions may return a setDefaultPrefs instance. if an

@@ -46,9 +46,9 @@ func (win *winLog) id() string {
 	return winLogID
 }
 
-func (win *winLog) debuggerDraw() {
+func (win *winLog) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{489, 352}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -61,6 +61,8 @@ func (win *winLog) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winLog) draw() {

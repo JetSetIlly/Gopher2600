@@ -44,9 +44,9 @@ func (win *winCollisions) id() string {
 	return winCollisionsID
 }
 
-func (win *winCollisions) debuggerDraw() {
+func (win *winCollisions) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{530, 455}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -56,6 +56,8 @@ func (win *winCollisions) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winCollisions) draw() {

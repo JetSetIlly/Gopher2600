@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
@@ -46,6 +47,10 @@ type manager struct {
 
 	// windows can be open and closed through the menu bar
 	menu map[menuGroup][]menuEntry
+
+	// fuzzy window matching
+	fuzzyWindows bool
+	fuzzyMatch   string
 
 	// some windows need to be referenced beyond the capabilities of the window
 	// interface.
@@ -222,14 +227,14 @@ func (wm *manager) draw() {
 		// playmode draws the screen and other windows that have been listed
 		// as being safe to draw in playmode
 		for _, w := range wm.playmodeWindows {
-			w.playmodeDraw()
+			_ = w.playmodeDraw()
 			wm.playmodeHover = wm.playmodeHover || imgui.IsWindowHoveredV(imgui.HoveredFlagsAnyWindow)
 		}
 	case govern.ModeDebugger:
 		// see commentary for screenPos in windowManager declaration
 		wm.screenPos = imgui.WindowPos()
 
-		// no debugger is ready yet so return immediately
+		// no debugger is not ready yet so return immediately
 		if wm.img.dbg == nil {
 			return
 		}
@@ -265,12 +270,42 @@ func (wm *manager) draw() {
 				w.debuggerDraw()
 			}
 
-			// undo early style push
+			// undo earlier style push
 			imgui.PopStyleColor()
 
 		} else {
+			var fuzzyList []string
+
 			for _, w := range wm.debuggerWindows {
-				w.debuggerDraw()
+				if w.debuggerGeometry().raise {
+					imgui.SetNextWindowFocus()
+					geom := w.debuggerGeometry()
+					geom.raise = false
+				}
+				isOpen := w.debuggerDraw()
+
+				if wm.fuzzyWindows && isOpen {
+					fuzzyList = append(fuzzyList, w.id())
+				}
+			}
+
+			if wm.fuzzyWindows {
+				var match debuggerWindow
+				for _, o := range fuzzyList {
+					if strings.HasPrefix(strings.ToLower(o), wm.fuzzyMatch) {
+						if match != nil {
+							match = nil
+							break // for loop
+						}
+						match = wm.debuggerWindows[o]
+					}
+				}
+				if match != nil {
+					geom := match.debuggerGeometry()
+					geom.raise = true
+				}
+			} else {
+				wm.fuzzyMatch = ""
 			}
 		}
 	}

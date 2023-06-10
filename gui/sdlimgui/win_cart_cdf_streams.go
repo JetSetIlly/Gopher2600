@@ -183,19 +183,19 @@ func (win *winCDFStreams) refreshTextures() {
 	}
 }
 
-func (win *winCDFStreams) debuggerDraw() {
+func (win *winCDFStreams) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	if !win.img.lz.Cart.HasStaticBus {
-		return
+		return false
 	}
 
 	// do not open window if there is no valid cartridge debug bus available
 	_, ok := win.img.lz.Cart.Registers.(cdf.Registers)
 	if !win.img.lz.Cart.HasRegistersBus || !ok {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{100, 100}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -208,6 +208,8 @@ func (win *winCDFStreams) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winCDFStreams) draw() {

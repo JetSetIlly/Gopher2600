@@ -47,15 +47,15 @@ func (win *winSuperchargerRegisters) id() string {
 	return winSuperchargerRegistersID
 }
 
-func (win *winSuperchargerRegisters) debuggerDraw() {
+func (win *winSuperchargerRegisters) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	// do not open window if there is no valid cartridge debug bus available
 	_, ok := win.img.lz.Cart.Registers.(supercharger.Registers)
 	if !win.img.lz.Cart.HasRegistersBus || !ok {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{203, 134}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -65,6 +65,8 @@ func (win *winSuperchargerRegisters) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winSuperchargerRegisters) draw() {

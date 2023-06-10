@@ -48,13 +48,13 @@ func (win *winSaveKeyI2C) id() string {
 	return winSaveKeyI2CID
 }
 
-func (win *winSaveKeyI2C) debuggerDraw() {
+func (win *winSaveKeyI2C) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	if !win.img.lz.SaveKey.SaveKeyActive {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{633, 358}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -64,6 +64,8 @@ func (win *winSaveKeyI2C) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winSaveKeyI2C) draw() {

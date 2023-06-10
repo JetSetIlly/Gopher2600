@@ -84,9 +84,9 @@ func (win *winControl) repeatButtonV(id string, f func(), fill imgui.Vec2) {
 	}
 }
 
-func (win *winControl) debuggerDraw() {
+func (win *winControl) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{699, 45}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -97,6 +97,8 @@ func (win *winControl) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winControl) draw() {

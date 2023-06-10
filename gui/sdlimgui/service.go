@@ -16,7 +16,10 @@
 package sdlimgui
 
 import (
+	"fmt"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -425,11 +428,37 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 		return
 	}
 
-	if ev.Type == sdl.KEYUP {
-		handled := true
+	ctrl := ev.Keysym.Mod&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL || ev.Keysym.Mod&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL
+	shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
 
-		shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
-		ctrl := ev.Keysym.Mod&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL || ev.Keysym.Mod&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL
+	// enable fuzzy window matching based on keyboard modifiers
+	img.wm.fuzzyWindows = ctrl && shift
+
+	if ev.Type == sdl.KEYUP {
+
+		// special handling if fuzzy windows is enabled
+		if img.wm.fuzzyWindows {
+			switch ev.Keysym.Scancode {
+			case sdl.SCANCODE_BACKSPACE:
+				if len(img.wm.fuzzyMatch) > 0 {
+					img.wm.fuzzyMatch = img.wm.fuzzyMatch[:len(img.wm.fuzzyMatch)-1]
+				}
+			case sdl.SCANCODE_SPACE:
+				// dont allow leading space
+				if len(img.wm.fuzzyMatch) > 0 {
+					img.wm.fuzzyMatch = fmt.Sprintf("%s ", img.wm.fuzzyMatch)
+				}
+			default:
+				key := sdl.GetKeyFromScancode(ev.Keysym.Scancode)
+				if unicode.IsPrint(rune(key)) {
+					name := sdl.GetScancodeName(ev.Keysym.Scancode)
+					img.wm.fuzzyMatch = fmt.Sprintf("%s%s", img.wm.fuzzyMatch, strings.ToLower(name))
+				}
+			}
+			return
+		}
+
+		handled := true
 
 		if img.isPlaymode() {
 			switch ev.Keysym.Scancode {
@@ -551,7 +580,6 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			return
 		}
 	} else if ev.Type == sdl.KEYDOWN {
-
 		// for debugger mode we test for the ESC key press on the down event
 		// and not the up event. this is because imgui widgets react to the ESC
 		// key on the down event and we only want to perform our special ESC

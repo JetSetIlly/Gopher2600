@@ -44,13 +44,13 @@ func (win *winCartStatic) id() string {
 	return winCartStaticID
 }
 
-func (win *winCartStatic) debuggerDraw() {
+func (win *winCartStatic) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	if !win.img.lz.Cart.HasStaticBus {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{117, 248}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -64,6 +64,8 @@ func (win *winCartStatic) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winCartStatic) draw() {

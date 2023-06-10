@@ -50,15 +50,15 @@ func (win *winPeripherals) id() string {
 	return winPeripheralsID
 }
 
-func (win *winPeripherals) debuggerDraw() {
+func (win *winPeripherals) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	// don't show the window if either of the controllers are unplugged
 	// !!TODO: show something meaningful for unplugged controllers
 	if win.img.lz.Peripherals.LeftPlayer == nil || win.img.lz.Peripherals.RightPlayer == nil {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{858, 503}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -68,6 +68,8 @@ func (win *winPeripherals) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winPeripherals) draw() {

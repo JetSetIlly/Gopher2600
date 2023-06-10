@@ -67,9 +67,9 @@ func (win *winTracker) id() string {
 	return winTrackerID
 }
 
-func (win *winTracker) playmodeDraw() {
+func (win *winTracker) playmodeDraw() bool {
 	if !win.playmodeIsOpen() {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{494, 274}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -82,13 +82,15 @@ func (win *winTracker) playmodeDraw() {
 
 	win.playmodeWin.playmodeGeom.update()
 	imgui.End()
+
+	return true
 }
 
 const trackerContextMenuID = "trackerContextMenu"
 
-func (win *winTracker) debuggerDraw() {
+func (win *winTracker) debuggerDraw() bool {
 	if !win.debuggerIsOpen() {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{494, 274}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -101,6 +103,8 @@ func (win *winTracker) debuggerDraw() {
 
 	win.debuggerWin.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winTracker) drawReplayButton() {

@@ -51,13 +51,13 @@ func (win *winCartRAM) id() string {
 	return winCartRAMID
 }
 
-func (win *winCartRAM) debuggerDraw() {
+func (win *winCartRAM) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	if !win.img.lz.Cart.HasRAMbus {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{533, 430}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -71,6 +71,8 @@ func (win *winCartRAM) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winCartRAM) draw() {

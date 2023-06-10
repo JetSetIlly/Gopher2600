@@ -85,9 +85,9 @@ func (win *win6507Pinout) id() string {
 	return win6507PinoutID
 }
 
-func (win *win6507Pinout) debuggerDraw() {
+func (win *win6507Pinout) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{756, 117}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -100,6 +100,8 @@ func (win *win6507Pinout) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *win6507Pinout) draw() {

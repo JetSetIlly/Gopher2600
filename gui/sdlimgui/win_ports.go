@@ -47,9 +47,9 @@ func (win *winPorts) id() string {
 	return winPortsID
 }
 
-func (win *winPorts) debuggerDraw() {
+func (win *winPorts) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{462, 121}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -60,6 +60,8 @@ func (win *winPorts) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winPorts) draw() {

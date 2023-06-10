@@ -111,10 +111,10 @@ func (win *winBot) startBotSession(feedback *bots.Feedback) {
 	win.diagnostics = win.diagnostics[:]
 }
 
-func (win *winBot) playmodeDraw() {
+func (win *winBot) playmodeDraw() bool {
 	// no bot feedback instance
 	if win.feedback == nil {
-		return
+		return false
 	}
 
 	// receive new thumbnail data and copy to texture
@@ -148,7 +148,7 @@ func (win *winBot) playmodeDraw() {
 	}
 
 	if !win.playmodeOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{75, 75}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -161,6 +161,8 @@ func (win *winBot) playmodeDraw() {
 
 	win.playmodeGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winBot) draw() {

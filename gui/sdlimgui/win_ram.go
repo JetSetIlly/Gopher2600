@@ -42,9 +42,9 @@ func (win *winRAM) id() string {
 	return winRAMID
 }
 
-func (win *winRAM) debuggerDraw() {
+func (win *winRAM) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{1081, 607}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -54,6 +54,8 @@ func (win *winRAM) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winRAM) draw() {

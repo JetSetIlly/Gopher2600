@@ -109,9 +109,9 @@ func (win *winCoProcSource) id() string {
 
 const sourcePopupID = "sourcePopupID"
 
-func (win *winCoProcSource) debuggerDraw() {
+func (win *winCoProcSource) debuggerDraw() bool {
 	if !win.img.lz.Cart.HasCoProcBus {
-		return
+		return false
 	}
 
 	// check yield state and open the window if necessary
@@ -128,7 +128,7 @@ func (win *winCoProcSource) debuggerDraw() {
 	})
 
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{81, 297}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -152,6 +152,8 @@ func (win *winCoProcSource) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winCoProcSource) draw() {

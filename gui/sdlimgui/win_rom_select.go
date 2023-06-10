@@ -136,11 +136,11 @@ func (win *winSelectROM) playmodeSetOpen(open bool) {
 	}
 }
 
-func (win *winSelectROM) playmodeDraw() {
+func (win *winSelectROM) playmodeDraw() bool {
 	win.render()
 
 	if !win.playmodeOpen {
-		return
+		return false
 	}
 
 	posFlgs := imgui.ConditionAppearing
@@ -154,6 +154,8 @@ func (win *winSelectROM) playmodeDraw() {
 
 	win.playmodeWin.playmodeGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winSelectROM) debuggerSetOpen(open bool) {
@@ -167,11 +169,11 @@ func (win *winSelectROM) debuggerSetOpen(open bool) {
 	}
 }
 
-func (win *winSelectROM) debuggerDraw() {
+func (win *winSelectROM) debuggerDraw() bool {
 	win.render()
 
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	posFlgs := imgui.ConditionFirstUseEver
@@ -185,6 +187,8 @@ func (win *winSelectROM) debuggerDraw() {
 
 	win.debuggerWin.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winSelectROM) render() {

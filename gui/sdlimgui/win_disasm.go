@@ -101,9 +101,9 @@ func (win *winDisasm) id() string {
 	return winDisasmID
 }
 
-func (win *winDisasm) debuggerDraw() {
+func (win *winDisasm) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{1021, 34}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -116,6 +116,8 @@ func (win *winDisasm) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winDisasm) draw() {

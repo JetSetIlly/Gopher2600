@@ -67,13 +67,13 @@ func (win *winCoProcGlobals) id() string {
 
 const globalsPopupID = "globalsPopupID"
 
-func (win *winCoProcGlobals) debuggerDraw() {
+func (win *winCoProcGlobals) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	if !win.img.lz.Cart.HasCoProcBus {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{982, 77}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -87,6 +87,8 @@ func (win *winCoProcGlobals) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winCoProcGlobals) drawFileSelection(src *developer.Source) {

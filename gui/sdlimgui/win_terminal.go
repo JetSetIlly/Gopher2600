@@ -76,7 +76,7 @@ func (win *winTerm) id() string {
 	return winTermID
 }
 
-func (win *winTerm) debuggerDraw() {
+func (win *winTerm) debuggerDraw() bool {
 	done := false
 	for !done {
 		// check for channel activity before we do anything
@@ -104,7 +104,7 @@ func (win *winTerm) debuggerDraw() {
 
 	// window open check must happen *after* channel polling
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{431, 381}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -233,6 +233,8 @@ func (win *winTerm) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winTerm) saveOutput() {

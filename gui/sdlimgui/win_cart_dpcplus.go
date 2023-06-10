@@ -45,15 +45,15 @@ func (win *winDPCplusRegisters) id() string {
 	return winDPCplusRegistersID
 }
 
-func (win *winDPCplusRegisters) debuggerDraw() {
+func (win *winDPCplusRegisters) debuggerDraw() bool {
 	if !win.debuggerOpen {
-		return
+		return false
 	}
 
 	// do not open window if there is no valid cartridge debug bus available
 	_, ok := win.img.lz.Cart.Registers.(dpcplus.Registers)
 	if !win.img.lz.Cart.HasRegistersBus || !ok {
-		return
+		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{256, 192}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -63,6 +63,8 @@ func (win *winDPCplusRegisters) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+
+	return true
 }
 
 func (win *winDPCplusRegisters) draw() {
