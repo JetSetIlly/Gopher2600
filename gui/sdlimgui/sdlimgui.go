@@ -428,6 +428,10 @@ func (img *SdlImgui) setCapture(set bool) {
 	if img.isPlaymode() {
 		img.playScr.isCaptured = set
 	} else {
+		if set {
+			img.wm.dbgScr.debuggerSetOpen(true)
+			img.wm.dbgScr.debuggerGeometry().raise = true
+		}
 		img.wm.dbgScr.isCaptured = set
 	}
 
