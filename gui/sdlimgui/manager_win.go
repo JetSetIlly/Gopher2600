@@ -43,12 +43,17 @@ type windowGeometry interface {
 type windowGeom struct {
 	windowPos  imgui.Vec2
 	windowSize imgui.Vec2
+	focused    bool
 	raise      bool
+
+	// window should not be refocused by the manager when "captured running" is ended
+	noRefocus bool
 }
 
 func (g *windowGeom) update() {
 	g.windowPos = imgui.WindowPos()
 	g.windowSize = imgui.WindowSize()
+	g.focused = imgui.IsWindowFocused()
 }
 
 func (g windowGeom) pos() imgui.Vec2 {

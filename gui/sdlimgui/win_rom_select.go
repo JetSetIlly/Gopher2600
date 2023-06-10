@@ -63,6 +63,7 @@ func newFileSelector(img *SdlImgui) (window, error) {
 		scrollToTop:  true,
 		centreOnFile: true,
 	}
+	win.debuggerGeom.noRefocus = true
 
 	var err error
 

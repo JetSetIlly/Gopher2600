@@ -444,6 +444,36 @@ func (img *SdlImgui) setCapture(set bool) {
 	img.hideCursor(set)
 }
 
+// "captured running" is when the emulation is running inside the debugger and
+// the input has been captured
+//
+// always returns false if the emulation is in playmode
+func (img *SdlImgui) isCapturedRunning() bool {
+	if img.isPlaymode() {
+		return false
+	}
+	return img.wm.dbgScr.isCaptured && img.dbg.State() == govern.Running
+}
+
+// set "captured running". does nothing if the emulation is in playmode
+func (img *SdlImgui) setCapturedRunning(set bool) {
+	if img.isPlaymode() {
+		return
+	}
+
+	if set {
+		img.setCapture(true)
+		img.term.pushCommand("RUN")
+	} else {
+		img.setCapture(false)
+		img.term.pushCommand("HALT")
+		if img.wm.refocusWindow != nil {
+			geom := img.wm.refocusWindow.debuggerGeometry()
+			geom.raise = true
+		}
+	}
+}
+
 // smartly hide cursor based on playmode and capture state. only called from
 // gui thread
 func (img *SdlImgui) smartHideCursor(set bool) {

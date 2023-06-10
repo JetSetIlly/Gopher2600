@@ -43,6 +43,7 @@ func newWinControl(img *SdlImgui) (window, error) {
 	win := &winControl{
 		img: img,
 	}
+	win.debuggerGeom.noRefocus = true
 	return win, nil
 }
 
@@ -265,8 +266,7 @@ func (win *winControl) drawMouseCapture() {
 			label = "Capture input & continue"
 		}
 		if imgui.Button(label) {
-			win.img.setCapture(true)
-			win.img.term.pushCommand("RUN")
+			win.img.setCapturedRunning(true)
 		}
 	}
 }

@@ -161,9 +161,10 @@ func (img *SdlImgui) Service() {
 							// following code will need to be called during trickle resolution (probably
 							// just a function pointer)
 							if img.isCaptured() {
-								img.setCapture(false)
 								if !img.isPlaymode() {
-									img.term.pushCommand("HALT")
+									img.setCapturedRunning(false)
+								} else {
+									img.setCapture(false)
 								}
 							} else if img.isPlaymode() {
 								// set mouse capture if mouse is not over a window
@@ -431,28 +432,28 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 	ctrl := ev.Keysym.Mod&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL || ev.Keysym.Mod&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL
 	shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
 
-	// enable fuzzy window matching based on keyboard modifiers
-	img.wm.fuzzySelection = ctrl && shift
+	// enable window searching based on keyboard modifiers
+	img.wm.searchActive = ctrl && shift
 
 	if ev.Type == sdl.KEYUP {
 
-		// special handling if fuzzy windows is enabled
-		if img.wm.fuzzySelection {
+		// special handling if window searching is enabled
+		if img.wm.searchActive {
 			switch ev.Keysym.Scancode {
 			case sdl.SCANCODE_BACKSPACE:
-				if len(img.wm.fuzzyMatch) > 0 {
-					img.wm.fuzzyMatch = img.wm.fuzzyMatch[:len(img.wm.fuzzyMatch)-1]
+				if len(img.wm.searchString) > 0 {
+					img.wm.searchString = img.wm.searchString[:len(img.wm.searchString)-1]
 				}
 			case sdl.SCANCODE_SPACE:
 				// dont allow leading space
-				if len(img.wm.fuzzyMatch) > 0 {
-					img.wm.fuzzyMatch = fmt.Sprintf("%s ", img.wm.fuzzyMatch)
+				if len(img.wm.searchString) > 0 {
+					img.wm.searchString = fmt.Sprintf("%s ", img.wm.searchString)
 				}
 			default:
 				key := sdl.GetKeyFromScancode(ev.Keysym.Scancode)
 				if unicode.IsPrint(rune(key)) {
 					name := sdl.GetScancodeName(ev.Keysym.Scancode)
-					img.wm.fuzzyMatch = fmt.Sprintf("%s%s", img.wm.fuzzyMatch, strings.ToLower(name))
+					img.wm.searchString = fmt.Sprintf("%s%s", img.wm.searchString, strings.ToLower(name))
 				}
 			}
 			return
@@ -547,7 +548,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				if img.dbg.State() == govern.Paused {
 					img.term.pushCommand("RUN")
 				} else {
-					img.term.pushCommand("HALT")
+					img.setCapturedRunning(false)
 				}
 			}
 
@@ -607,15 +608,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				}
 			case sdl.SCANCODE_ESCAPE:
 				if !imgui.IsAnyItemActive() {
-					if img.isCaptured() {
-						img.setCapture(false)
-						img.term.pushCommand("HALT")
-						return
-					} else {
-						img.setCapture(true)
-						img.term.pushCommand("RUN")
-						return
-					}
+					img.setCapturedRunning(!img.isCapturedRunning())
 				}
 			}
 		}

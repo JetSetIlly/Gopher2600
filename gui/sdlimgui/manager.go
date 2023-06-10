@@ -48,10 +48,16 @@ type manager struct {
 	// windows can be open and closed through the menu bar
 	menu map[menuGroup][]menuEntry
 
-	// fuzzy window matching
-	fuzzySelection bool
-	fuzzyMatch     string
-	fuzzyHotkeys   map[rune]debuggerWindow
+	// search windows
+	searchActive bool
+	searchString string
+
+	// map of hotkeys. assigned as a result of window searching
+	hotkeys map[rune]debuggerWindow
+
+	// the window that is refocused and bought to the front when "captured
+	// running" is ended
+	refocusWindow debuggerWindow
 
 	// some windows need to be referenced beyond the capabilities of the window
 	// interface.
@@ -162,7 +168,7 @@ func newManager(img *SdlImgui) (*manager, error) {
 		playmodeWindows: make(map[string]playmodeWindow),
 		debuggerWindows: make(map[string]debuggerWindow),
 		menu:            make(map[menuGroup][]menuEntry),
-		fuzzyHotkeys:    make(map[rune]debuggerWindow),
+		hotkeys:         make(map[rune]debuggerWindow),
 	}
 
 	// create all window instances and add to specified menu
@@ -276,26 +282,36 @@ func (wm *manager) draw() {
 			imgui.PopStyleColor()
 
 		} else {
-			var fuzzyList []string
+			var searchCandidates []string
 
 			for _, w := range wm.debuggerWindows {
+				geom := w.debuggerGeometry()
+
+				// raise window to front of display
 				if w.debuggerGeometry().raise {
 					imgui.SetNextWindowFocus()
-					geom := w.debuggerGeometry()
 					geom.raise = false
 				}
-				isOpen := w.debuggerDraw()
 
-				if wm.fuzzySelection && isOpen {
-					fuzzyList = append(fuzzyList, w.id())
+				// draw window
+				isDrawn := w.debuggerDraw()
+
+				// set uncapture window
+				if geom.focused && !geom.noRefocus {
+					wm.refocusWindow = w
+				}
+
+				// add to list of search candidates
+				if wm.searchActive && isDrawn {
+					searchCandidates = append(searchCandidates, w.id())
 				}
 			}
 
-			if wm.fuzzySelection {
+			if wm.searchActive {
 				var match debuggerWindow
 
-				for _, o := range fuzzyList {
-					if strings.Contains(strings.ToLower(o), wm.fuzzyMatch) {
+				for _, o := range searchCandidates {
+					if strings.Contains(strings.ToLower(o), wm.searchString) {
 						if match != nil {
 							match = nil
 							break // for loop
@@ -304,9 +320,9 @@ func (wm *manager) draw() {
 					}
 				}
 
-				// no match so use the fuzzyHotkeys array to select a window
-				if match == nil && len(wm.fuzzyMatch) > 0 {
-					match = wm.fuzzyHotkeys[rune(wm.fuzzyMatch[0])]
+				// no match so use the hotkeys array to select a window
+				if match == nil && len(wm.searchString) > 0 {
+					match = wm.hotkeys[rune(wm.searchString[0])]
 					if match != nil {
 						// window has been closed since the preference was set
 						if !match.debuggerIsOpen() {
@@ -321,10 +337,10 @@ func (wm *manager) draw() {
 					geom.raise = true
 
 					// update hotkeys information
-					wm.fuzzyHotkeys[rune(wm.fuzzyMatch[0])] = match
+					wm.hotkeys[rune(wm.searchString[0])] = match
 				}
 			} else {
-				wm.fuzzyMatch = ""
+				wm.searchString = ""
 			}
 		}
 	}

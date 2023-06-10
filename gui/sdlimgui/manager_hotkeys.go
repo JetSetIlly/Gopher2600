@@ -64,7 +64,7 @@ func (wm *manager) saveManagerHotkeys() (rerr error) {
 	}
 
 	// write hotkeys and window name to file
-	for key, win := range wm.fuzzyHotkeys {
+	for key, win := range wm.hotkeys {
 		s := fmt.Sprintf("%c%s%s\n", key, prefs.KeySep, win.id())
 		n, err := fmt.Fprint(f, s)
 		if err != nil {
@@ -130,7 +130,7 @@ func (wm *manager) loadManagerHotkeys() (rerr error) {
 		win := wm.debuggerWindows[spt[1]]
 		if win != nil {
 			if len(key) > 0 {
-				wm.fuzzyHotkeys[rune(key[0])] = win
+				wm.hotkeys[rune(key[0])] = win
 			}
 		}
 	}

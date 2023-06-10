@@ -158,10 +158,10 @@ func (wm *manager) drawMenu() {
 		}
 	}
 
-	// fuzzy window match indicator
-	if wm.fuzzySelection {
+	// window search indicator
+	if wm.searchActive {
 		imgui.Text(" ")
-		s := fmt.Sprintf("%c %s", fonts.MagnifyingGlass, wm.fuzzyMatch)
+		s := fmt.Sprintf("%c %s", fonts.MagnifyingGlass, wm.searchString)
 		imguiColourButton(wm.img.cols.TitleBgActive, s, imguiGetFrameDim(s))
 	}
 
