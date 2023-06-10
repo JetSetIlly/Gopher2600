@@ -182,6 +182,11 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 
+	err = img.wm.loadManagerHotkeys()
+	if err != nil {
+		return nil, fmt.Errorf("sdlimgui: %w", err)
+	}
+
 	// initialise new polling type
 	img.polling = newPolling(img)
 
@@ -250,6 +255,11 @@ func (img *SdlImgui) Destroy() {
 	}
 
 	err = img.wm.saveManagerState()
+	if err != nil {
+		logger.Log("sdlimgui", err.Error())
+	}
+
+	err = img.wm.saveManagerHotkeys()
 	if err != nil {
 		logger.Log("sdlimgui", err.Error())
 	}

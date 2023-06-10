@@ -432,12 +432,12 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 	shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
 
 	// enable fuzzy window matching based on keyboard modifiers
-	img.wm.fuzzyWindows = ctrl && shift
+	img.wm.fuzzySelection = ctrl && shift
 
 	if ev.Type == sdl.KEYUP {
 
 		// special handling if fuzzy windows is enabled
-		if img.wm.fuzzyWindows {
+		if img.wm.fuzzySelection {
 			switch ev.Keysym.Scancode {
 			case sdl.SCANCODE_BACKSPACE:
 				if len(img.wm.fuzzyMatch) > 0 {

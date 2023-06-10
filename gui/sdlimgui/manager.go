@@ -49,8 +49,9 @@ type manager struct {
 	menu map[menuGroup][]menuEntry
 
 	// fuzzy window matching
-	fuzzyWindows bool
-	fuzzyMatch   string
+	fuzzySelection bool
+	fuzzyMatch     string
+	fuzzyHotkeys   map[rune]debuggerWindow
 
 	// some windows need to be referenced beyond the capabilities of the window
 	// interface.
@@ -161,6 +162,7 @@ func newManager(img *SdlImgui) (*manager, error) {
 		playmodeWindows: make(map[string]playmodeWindow),
 		debuggerWindows: make(map[string]debuggerWindow),
 		menu:            make(map[menuGroup][]menuEntry),
+		fuzzyHotkeys:    make(map[rune]debuggerWindow),
 	}
 
 	// create all window instances and add to specified menu
@@ -284,15 +286,16 @@ func (wm *manager) draw() {
 				}
 				isOpen := w.debuggerDraw()
 
-				if wm.fuzzyWindows && isOpen {
+				if wm.fuzzySelection && isOpen {
 					fuzzyList = append(fuzzyList, w.id())
 				}
 			}
 
-			if wm.fuzzyWindows {
+			if wm.fuzzySelection {
 				var match debuggerWindow
+
 				for _, o := range fuzzyList {
-					if strings.HasPrefix(strings.ToLower(o), wm.fuzzyMatch) {
+					if strings.Contains(strings.ToLower(o), wm.fuzzyMatch) {
 						if match != nil {
 							match = nil
 							break // for loop
@@ -300,9 +303,25 @@ func (wm *manager) draw() {
 						match = wm.debuggerWindows[o]
 					}
 				}
+
+				// no match so use the fuzzyHotkeys array to select a window
+				if match == nil && len(wm.fuzzyMatch) > 0 {
+					match = wm.fuzzyHotkeys[rune(wm.fuzzyMatch[0])]
+					if match != nil {
+						// window has been closed since the preference was set
+						if !match.debuggerIsOpen() {
+							match = nil
+						}
+					}
+				}
+
+				// raise matched window on next draw
 				if match != nil {
 					geom := match.debuggerGeometry()
 					geom.raise = true
+
+					// update hotkeys information
+					wm.fuzzyHotkeys[rune(wm.fuzzyMatch[0])] = match
 				}
 			} else {
 				wm.fuzzyMatch = ""
