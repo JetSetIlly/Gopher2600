@@ -38,6 +38,9 @@ type manager struct {
 	// debugger debuggerWindows
 	debuggerWindows map[string]debuggerWindow
 
+	// list of windows that have been drawn most recently
+	drawn map[string]bool
+
 	// draw windows in order of size (smallest at the front) on the next draw()
 	//
 	// using int because we sometimes need to hold the arrangeBySize "signal"
@@ -167,6 +170,7 @@ func newManager(img *SdlImgui) (*manager, error) {
 		windows:         make(map[string]window),
 		playmodeWindows: make(map[string]playmodeWindow),
 		debuggerWindows: make(map[string]debuggerWindow),
+		drawn:           make(map[string]bool),
 		menu:            make(map[menuGroup][]menuEntry),
 		hotkeys:         make(map[rune]debuggerWindow),
 	}
@@ -294,7 +298,7 @@ func (wm *manager) draw() {
 				}
 
 				// draw window
-				isDrawn := w.debuggerDraw()
+				wm.drawn[w.id()] = w.debuggerDraw()
 
 				// set uncapture window
 				if geom.focused && !geom.noRefocus {
@@ -302,7 +306,7 @@ func (wm *manager) draw() {
 				}
 
 				// add to list of search candidates
-				if wm.searchActive && isDrawn {
+				if wm.searchActive && wm.drawn[w.id()] {
 					searchCandidates = append(searchCandidates, w.id())
 				}
 			}
@@ -325,7 +329,7 @@ func (wm *manager) draw() {
 					match = wm.hotkeys[rune(wm.searchString[0])]
 					if match != nil {
 						// window has been closed since the preference was set
-						if !match.debuggerIsOpen() {
+						if !wm.drawn[match.id()] {
 							match = nil
 						}
 					}
