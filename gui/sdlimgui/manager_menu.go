@@ -243,7 +243,7 @@ func (wm *manager) drawMenuEntry(m menuEntry) {
 	// the window that the menu entry refers to
 	w := wm.debuggerWindows[m.windowID]
 
-	// menu entry label. we'll decorate this with an "window open" indicator
+	// menu entry label. we'll decorate this with a "window open" indicator
 	label := m.label
 	if w.debuggerIsOpen() {
 		// checkmark is unicode middle dot - code 00b7

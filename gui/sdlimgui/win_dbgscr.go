@@ -111,7 +111,7 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 			zoom: magnifyDef,
 		},
 	}
-	win.debuggerGeom.noRefocus = true
+	win.debuggerGeom.noFousTracking = true
 
 	// set texture, creation of textures will be done after every call to resize()
 	gl.GenTextures(1, &win.displayTexture)

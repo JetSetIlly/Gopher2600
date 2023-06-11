@@ -363,14 +363,14 @@ func (img *SdlImgui) setEmulationMode(mode govern.Mode) error {
 		img.plt.window.Raise()
 	}
 
-	img.setAudioMute()
+	img.applyAudioMutePreference()
 
 	// small delay before calling smartHideCursor(). this is because SDL will
 	// detect a mouse motion on startup or when the window changes between
 	// emulation modes. rather than dealing with thresholds in the event
 	// handler, it's easy and cleaner to set a short delay
 	time.AfterFunc(250*time.Millisecond, func() {
-		img.smartHideCursor(true)
+		img.smartCursorVisibility(true)
 	})
 
 	return nil
@@ -389,7 +389,8 @@ func (img *SdlImgui) toggleAudioMute() {
 	// indirectly, so there's no need to call it here
 }
 
-func (img *SdlImgui) setAudioMute() {
+// apply the preference for audio mute according to the current playmode
+func (img *SdlImgui) applyAudioMutePreference() {
 	// if there is no prefs instance then return without error. this can happen
 	// when the prefs are being loaded from disk for the first time and the
 	// prefs instance hasn't been returned
@@ -441,7 +442,7 @@ func (img *SdlImgui) setCapture(set bool) {
 	}
 
 	img.plt.window.SetGrab(set)
-	img.hideCursor(set)
+	img.cursorVisibility(set)
 }
 
 // "captured running" is when the emulation is running inside the debugger and
@@ -474,17 +475,9 @@ func (img *SdlImgui) setCapturedRunning(set bool) {
 	}
 }
 
-// smartly hide cursor based on playmode and capture state. only called from
-// gui thread
-func (img *SdlImgui) smartHideCursor(set bool) {
-	if img.isPlaymode() && !img.isCaptured() {
-		img.hideCursor(set)
-	}
-}
-
-// hide mouse cursor. only called from gui thread
-func (img *SdlImgui) hideCursor(hide bool) {
-	if hide {
+// set visiblity of cursor
+func (img *SdlImgui) cursorVisibility(hidden bool) {
+	if hidden {
 		_, err := sdl.ShowCursor(sdl.DISABLE)
 		if err != nil {
 			logger.Log("sdlimgui", err.Error())
@@ -494,5 +487,12 @@ func (img *SdlImgui) hideCursor(hide bool) {
 		if err != nil {
 			logger.Log("sdlimgui", err.Error())
 		}
+	}
+}
+
+// set the visibility of the cursor based on playmode and capture state
+func (img *SdlImgui) smartCursorVisibility(hidden bool) {
+	if img.isPlaymode() && !img.isCaptured() {
+		img.cursorVisibility(hidden)
 	}
 }

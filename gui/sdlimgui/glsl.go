@@ -187,7 +187,7 @@ func (rnd *glsl) render() {
 					shader = rnd.shaders[playscrShaderID]
 				case rnd.img.wm.windows[winSelectROMID].(*winSelectROM).thmbTexture:
 					shader = rnd.shaders[colorShaderID]
-				case rnd.img.wm.timeline.thmbTexture:
+				case rnd.img.wm.windows[winTimelineID].(*winTimeline).thmbTexture:
 					shader = rnd.shaders[colorShaderID]
 				case rnd.img.wm.windows[winComparisonID].(*winComparison).cmpTexture:
 					shader = rnd.shaders[colorShaderID]

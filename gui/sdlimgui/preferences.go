@@ -223,7 +223,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	}
 
 	p.audioMuteDebugger.SetHookPost(func(muted prefs.Value) error {
-		p.img.setAudioMute()
+		p.img.applyAudioMutePreference()
 		return nil
 	})
 
@@ -238,7 +238,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	}
 
 	p.audioMutePlaymode.SetHookPost(func(muted prefs.Value) error {
-		p.img.setAudioMute()
+		p.img.applyAudioMutePreference()
 		return nil
 	})
 

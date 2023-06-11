@@ -32,44 +32,44 @@ type window interface {
 	id() string
 }
 
-type windowGeometry interface {
-	pos() imgui.Vec2
-	size() imgui.Vec2
-}
-
 // size and position of the window. is embedded in playmodeWin and debuggerWin
 // interfaces. for window type that implent interfaces then windowGeom
 // method calls will need to disambiguate which geometry to use
 type windowGeom struct {
-	windowPos  imgui.Vec2
-	windowSize imgui.Vec2
-	focused    bool
-	raise      bool
+	position imgui.Vec2
+	size     imgui.Vec2
 
-	// window should not be refocused by the manager when "captured running" is ended
-	noRefocus bool
+	// whether the window is focused
+	focused bool
+
+	// whether the window should be raised on the next draw
+	raise bool
+
+	// whether this window is focused should not be tracked
+	noFousTracking bool
 }
 
+// update should be called just before the imgui.End() is called
 func (g *windowGeom) update() {
-	g.windowPos = imgui.WindowPos()
-	g.windowSize = imgui.WindowSize()
+	g.position = imgui.WindowPos()
+	g.size = imgui.WindowSize()
 	g.focused = imgui.IsWindowFocused()
 }
 
-func (g windowGeom) pos() imgui.Vec2 {
-	return g.windowPos
-}
-
-func (g windowGeom) size() imgui.Vec2 {
-	return g.windowSize
+type playmodeWindow interface {
+	window
+	playmodeDraw() bool
+	playmodeIsOpen() bool
+	playmodeSetOpen(bool)
+	playmodeGeometry() *windowGeom
 }
 
 // playmodeWin is a partial implementation of the playmodeWindow interface. it
 // does not implement playmodeDraw or the any of the plain window interface.
 type playmodeWin struct {
 	playmodeWindow
-	playmodeOpen bool
 	playmodeGeom windowGeom
+	playmodeOpen bool
 }
 
 func (w playmodeWin) playmodeID(id string) string {
@@ -86,6 +86,14 @@ func (w *playmodeWin) playmodeSetOpen(open bool) {
 
 func (w *playmodeWin) playmodeGeometry() *windowGeom {
 	return &w.playmodeGeom
+}
+
+type debuggerWindow interface {
+	window
+	debuggerDraw() bool
+	debuggerIsOpen() bool
+	debuggerSetOpen(bool)
+	debuggerGeometry() *windowGeom
 }
 
 // debuggerWin is a partial implementation of the debuggerWindow interface. it
@@ -110,22 +118,6 @@ func (w *debuggerWin) debuggerSetOpen(open bool) {
 
 func (w *debuggerWin) debuggerGeometry() *windowGeom {
 	return &w.debuggerGeom
-}
-
-type playmodeWindow interface {
-	window
-	playmodeDraw() bool
-	playmodeIsOpen() bool
-	playmodeSetOpen(bool)
-	playmodeGeometry() *windowGeom
-}
-
-type debuggerWindow interface {
-	window
-	debuggerDraw() bool
-	debuggerIsOpen() bool
-	debuggerSetOpen(bool)
-	debuggerGeometry() *windowGeom
 }
 
 // toggles a window open according to emulation state
