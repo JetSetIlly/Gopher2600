@@ -1628,6 +1628,46 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				// display what we know about line
 				dbg.printLine(terminal.StyleFeedback, l.String())
 			})
+
+		case "CALLERS":
+			arg, ok := tokens.Get()
+			if !ok {
+				dbg.printLine(terminal.StyleError, "function name is required")
+				return nil
+			}
+			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+				callers, ok := src.CallStack.Callers[arg]
+				if !ok {
+					dbg.printLine(terminal.StyleError, fmt.Sprintf("no function named %s has even been called", arg))
+					return
+				}
+
+				const maxDepth = 15
+
+				var f func(functions []*developer.SourceLine, depth int)
+				f = func(functions []*developer.SourceLine, depth int) {
+					indent := strings.Builder{}
+					for i := 0; i < depth; i++ {
+						indent.WriteString("  ")
+					}
+
+					if depth > maxDepth {
+						dbg.printLine(terminal.StyleError, fmt.Sprintf("%stoo deep", indent.String()))
+						return
+					}
+
+					for _, n := range functions {
+						s := fmt.Sprintf("%s (%s:%d)", n.Function.Name, n.File.ShortFilename, n.LineNumber)
+						dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("%s%s", indent.String(), s))
+						if l, ok := src.CallStack.Callers[n.Function.Name]; ok {
+							f(l, depth+1)
+						}
+					}
+				}
+
+				dbg.printLine(terminal.StyleFeedback, arg)
+				f(callers, 1)
+			})
 		}
 
 	case cmdPeripheral:

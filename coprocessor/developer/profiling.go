@@ -16,6 +16,7 @@
 package developer
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -26,6 +27,12 @@ import (
 type CallStack struct {
 	// call stack of running program
 	functions []*SourceFunction
+
+	// list of callers for all executed functions
+	Callers map[string]([]*SourceLine)
+
+	// prevLine is helpful when creating the Callers list
+	prevLine *SourceLine
 }
 
 func (cs *CallStack) String() string {
@@ -123,7 +130,28 @@ func (dev *Developer) ProcessProfiling() {
 				// push function on to callstack if we haven't popped
 				if !popped {
 					dev.source.CallStack.functions = append(dev.source.CallStack.functions, ln.Function)
+
+					// there is always at least one entry in the functions callstack so we can confidently
+					// subtract two from the length after the append above
+					// prev := dev.source.CallStack.functions[len(dev.source.CallStack.functions)-2]
+
+					// create/update callers list for function
+					var n int
+					l, ok := dev.source.CallStack.Callers[ln.Function.Name]
+					if ok {
+						n = sort.Search(len(l), func(i int) bool {
+							return ln == l[i]
+						})
+					}
+					if !ok || (n > len(l) && l[n] != dev.source.CallStack.prevLine) {
+						l = append(l, dev.source.CallStack.prevLine)
+						sort.Slice(l, func(i, j int) bool {
+							return l[i].Function.Name < l[j].Function.Name
+						})
+						dev.source.CallStack.Callers[ln.Function.Name] = l
+					}
 				}
+
 			}
 
 			// accumulate counts for line (and the line's function)
@@ -133,6 +161,9 @@ func (dev *Developer) ProcessProfiling() {
 			for _, fn := range dev.source.CallStack.functions {
 				dev.source.executionProfileCumulative(fn, p.Cycles, k)
 			}
+
+			// record line for future comparison
+			dev.source.CallStack.prevLine = ln
 		}
 	}
 

@@ -204,6 +204,9 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		},
 		ExecutionProfileChanged: true,
 		Breakpoints:             make(map[uint32]bool),
+		CallStack: CallStack{
+			Callers: make(map[string][]*SourceLine),
+		},
 	}
 
 	var err error
