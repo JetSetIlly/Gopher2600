@@ -155,7 +155,7 @@ func (win *winCartStatic) draw() {
 								p2.X += sz
 								dl.AddTriangleFilled(pos, p1, p2, imgui.PackedColorFromVec4(win.img.cols.ValueSymbol))
 
-								imguiTooltip(func() {
+								win.img.imguiTooltip(func() {
 									var value uint32
 									currValue := "??"
 									compValue := "??"
@@ -204,7 +204,7 @@ func (win *winCartStatic) draw() {
 								a := compData[idx]
 								b := currData[idx]
 								if a != b {
-									imguiTooltip(func() {
+									win.img.imguiTooltip(func() {
 										imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
 									}, true)
 								}

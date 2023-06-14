@@ -133,17 +133,17 @@ func (win *winCartRAM) draw() {
 				}
 
 				if okr && okw && read.Symbol == write.Symbol {
-					imguiTooltip(func() {
+					win.img.imguiTooltip(func() {
 						imguiColorLabelSimple(read.Symbol, win.img.cols.ValueSymbol)
 					}, true)
 				} else {
 					if okr {
-						imguiTooltip(func() {
+						win.img.imguiTooltip(func() {
 							imguiColorLabelSimple(read.Symbol, win.img.cols.ValueSymbol)
 						}, true)
 					}
 					if okw {
-						imguiTooltip(func() {
+						win.img.imguiTooltip(func() {
 							imguiColorLabelSimple(write.Symbol, win.img.cols.ValueSymbol)
 						}, true)
 					}
@@ -152,7 +152,7 @@ func (win *winCartRAM) draw() {
 				a := diff.Data[idx]
 				b := current.Data[idx]
 				if a != b {
-					imguiTooltip(func() {
+					win.img.imguiTooltip(func() {
 						imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
 					}, true)
 				}

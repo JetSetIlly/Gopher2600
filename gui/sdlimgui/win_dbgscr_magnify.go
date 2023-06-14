@@ -43,6 +43,7 @@ func (mag *dbgScrMagnifyTooltip) draw(mouse dbgScrMouse) {
 	if !mag.showInTooltip {
 		return
 	}
+
 	_, delta := imgui.CurrentIO().MouseWheel()
 	if delta < 0 && mag.zoom < magnifyMin {
 		mag.zoom++
@@ -56,7 +57,6 @@ func (mag *dbgScrMagnifyTooltip) draw(mouse dbgScrMouse) {
 		mouse.scaled.y+mag.zoom*pixelWidth)
 
 	imgui.Image(imgui.TextureID(mag.texture), imgui.Vec2{200, 200})
-	imguiSeparator()
 }
 
 type dbgScrMagnifyWindow struct {

@@ -150,7 +150,7 @@ func (win *winCoProcDisasm) draw() {
 						if len(dsm.LastExecution) > 0 {
 							imgui.SameLineV(0, 10)
 							imgui.Text(fmt.Sprintf("Total Cycles % 8d", summary.I+summary.N+summary.S))
-							imguiTooltip(func() {
+							win.img.imguiTooltip(func() {
 								imgui.Text(fmt.Sprintf("N cycles: % 8d", summary.N))
 								imgui.Text(fmt.Sprintf("I cycles: % 8d", summary.I))
 								imgui.Text(fmt.Sprintf("S cycles: % 8d", summary.S))
@@ -314,7 +314,7 @@ func (win *winCoProcDisasm) drawEntry(src *developer.Source, e arm.DisasmEntry) 
 }
 
 func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry, ln *developer.SourceLine) {
-	imguiTooltip(func() {
+	win.img.imguiTooltip(func() {
 		imgui.Text("Address:")
 		imgui.SameLine()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)

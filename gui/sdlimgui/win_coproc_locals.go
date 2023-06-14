@@ -150,7 +150,7 @@ func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentL
 		// we could show a tooltip for variables with children but this needs
 		// work. for instance, how do we illustrate a composite type or an
 		// array?
-		imguiTooltip(func() {
+		win.img.imguiTooltip(func() {
 			drawVariableTooltipShort(varb, win.img.cols)
 		}, true)
 
@@ -183,7 +183,7 @@ func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentL
 		}
 
 	} else {
-		imguiTooltip(func() {
+		win.img.imguiTooltip(func() {
 			if varb.ErrorOnResolve != nil {
 				drawVariableTooltipShort(varb, win.img.cols)
 			} else {

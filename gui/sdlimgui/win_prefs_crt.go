@@ -454,7 +454,7 @@ func (win *winPrefs) drawPixelPerfect() bool {
 	}
 	imgui.PopItemWidth()
 
-	imguiTooltipSimple(`The fade slider controls how quickly pixels fade to
+	win.img.imguiTooltipSimple(`The fade slider controls how quickly pixels fade to
 black. It is similar to the phosphor option that is
 available when 'Pixel Perfect' mode is disabled.`)
 
@@ -477,7 +477,7 @@ func (win *winPrefs) drawSyncSpeed() {
 	if imgui.SliderIntV("##syncSpeed", &t, 0, 10, label, 1.0) {
 		win.img.crtPrefs.SyncSpeed.Set(t)
 	}
-	imguiTooltipSimple(`The number of consecutive frames with
+	win.img.imguiTooltipSimple(`The number of consecutive frames with
 a valid VSYNC signal for the screen to be
 considered stable.
 
@@ -502,7 +502,7 @@ func (win *winPrefs) drawSyncSensitivity() {
 		win.img.crtPrefs.SyncSensitivity.Set(t)
 	}
 
-	imguiTooltipSimple(`The number of complete scanlines of VSYNC
+	win.img.imguiTooltipSimple(`The number of complete scanlines of VSYNC
 for the VSYNC signal to be considered valid.
 
 Atari recommended a value 3 to ensure maximum
@@ -514,5 +514,5 @@ func (win *winPrefs) drawSyncPowerOn() {
 	if imgui.Checkbox("Syncronise On Power##poweron", &b) {
 		win.img.crtPrefs.SyncPowerOn.Set(b)
 	}
-	imguiTooltipSimple(`Whether the emulated TV visibly synchronises when powered on.`)
+	win.img.imguiTooltipSimple(`Whether the emulated TV visibly synchronises when powered on.`)
 }

@@ -233,7 +233,7 @@ func (win *winTracker) draw() {
 								imgui.PopStyleColor()
 							}
 
-							imguiTooltip(func() {
+							win.img.imguiTooltip(func() {
 								imgui.Text(fmt.Sprintf("Frame: %d", entry.Coords.Frame))
 								imgui.Text(fmt.Sprintf("Scanline: %d", entry.Coords.Scanline))
 								imgui.Text(fmt.Sprintf("Clock: %d", entry.Coords.Clock))

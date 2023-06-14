@@ -422,7 +422,7 @@ func drawByteGrid(id string, data []uint8, origin uint32,
 // draw grid of bytes with automated diff highlighting and tooltip handling
 //
 // see drawByteGrid() for more flexible alternative.
-func drawByteGridSimple(id string, data []uint8, diff []uint8, diffCol imgui.Vec4, origin uint32, commit func(int, uint8)) {
+func (img *SdlImgui) drawByteGridSimple(id string, data []uint8, diff []uint8, diffCol imgui.Vec4, origin uint32, commit func(int, uint8)) {
 	var a uint8
 	var b uint8
 
@@ -443,7 +443,7 @@ func drawByteGridSimple(id string, data []uint8, diff []uint8, diffCol imgui.Vec
 
 	after := func(idx int) {
 		if a != b {
-			imguiTooltip(func() {
+			img.imguiTooltip(func() {
 				imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", b, fonts.ByteChange, a), diffCol)
 			}, true)
 		}

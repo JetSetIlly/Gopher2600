@@ -36,9 +36,6 @@ type winCoProcPerformance struct {
 
 	img *SdlImgui
 
-	// source shown in tooltip
-	showTooltip bool
-
 	// which kernel to focus on
 	kernelFocus         developer.KernelVCS
 	kernelFocusComboDim imgui.Vec2
@@ -108,7 +105,6 @@ func (tv *coProcPerformanceTV) NewFrame(_ television.FrameInfo) error {
 func newWinCoProcPerformance(img *SdlImgui) (window, error) {
 	win := &winCoProcPerformance{
 		img:               img,
-		showTooltip:       true,
 		kernelFocus:       developer.KernelAny,
 		percentileFigures: true,
 	}
@@ -266,11 +262,9 @@ func (win *winCoProcPerformance) draw() {
 
 			// scale statistics to function is in drawFunctionFilter()
 			imgui.Spacing()
-			imgui.Checkbox("Show Tooltip", &win.showTooltip)
 
 			// reset statistics
 			if win.img.dbg.State() == govern.Paused {
-				imgui.SameLineV(0, 15)
 				if win.tv.schedule.Load().(bool) {
 					if imgui.Button(fmt.Sprintf("%c Reset Now", fonts.Trash)) {
 						win.tv.scheduleReset(false)
@@ -294,7 +288,6 @@ func (win *winCoProcPerformance) draw() {
 					}
 				}
 			} else {
-				imgui.SameLineV(0, 15)
 				if imgui.Button(fmt.Sprintf("%c Reset Statistics", fonts.Trash)) {
 					win.tv.scheduleReset(true)
 				}
@@ -309,8 +302,7 @@ func (win *winCoProcPerformance) draw() {
 				imgui.Text(string(fonts.Warning))
 				imgui.PopStyleColor()
 
-				imguiTooltipSimple(`Source compiled with optimisation. Some figures may
-be misleading`)
+				win.img.imguiTooltipSimple(`Source compiled with optimisation. Some figures may be misleading`)
 
 				imgui.SameLineV(0, 15)
 			}
@@ -518,7 +510,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		win.tooltip(fn.FlatStats.Overall.OverSource, fn, fn.DeclLine, false)
 
 		if optimisedWarning {
-			imguiTooltip(func() {
+			win.img.imguiTooltip(func() {
 				imgui.Spacing()
 				imgui.Separator()
 				imgui.Spacing()
@@ -726,7 +718,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 
 		// tooltip
 		if isStub {
-			imguiTooltipSimple(fmt.Sprintf("This entry represent all lines of code in %s", ln.Function.Name))
+			win.img.imguiTooltipSimple(fmt.Sprintf("This entry represent all lines of code in %s", ln.Function.Name))
 		} else {
 			win.tooltip(ln.Stats.Overall.OverSource, ln.Function, ln, true)
 		}
@@ -860,7 +852,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 	if imgui.Checkbox("Scale Statistics", &win.functionTabScale) {
 		win.windowSortSpecDirty = true
 	}
-	imguiTooltipSimple(`When selected the % values in the table are
+	win.img.imguiTooltipSimple(`When selected the % values in the table are
 scaled so they are relative to the function rather
 thean to the program as a whole.`)
 
@@ -1076,11 +1068,7 @@ func (win *winCoProcPerformance) tooltip(load developer.Load,
 	fn *developer.SourceFunction, ln *developer.SourceLine,
 	showDisasm bool) {
 
-	if !win.showTooltip {
-		return
-	}
-
-	imguiTooltip(func() {
+	win.img.imguiTooltip(func() {
 		if fn.IsStub() {
 			if fn.Name == developer.DriverFunctionName {
 				imgui.Text("Instructions that are executed")

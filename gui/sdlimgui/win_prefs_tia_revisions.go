@@ -43,7 +43,7 @@ func (win *winPrefs) drawTIARev() {
 }
 
 func (win *winPrefs) drawTIARevTooltip(bug revision.Bug) {
-	imguiTooltipSimple(fmt.Sprintf("%s\nNotable ROM: %s", bug.Description(), bug.NotableROM()))
+	win.img.imguiTooltipSimple(fmt.Sprintf("%s\nNotable ROM: %s", bug.Description(), bug.NotableROM()))
 }
 
 func (win *winPrefs) drawLateGRPx() {

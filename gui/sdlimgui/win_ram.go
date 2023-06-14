@@ -111,17 +111,17 @@ func (win *winRAM) draw() {
 		}
 
 		if okr && okw && read.Symbol == write.Symbol {
-			imguiTooltip(func() {
+			win.img.imguiTooltip(func() {
 				imguiColorLabelSimple(read.Symbol, win.img.cols.ValueSymbol)
 			}, true)
 		} else {
 			if okr {
-				imguiTooltip(func() {
+				win.img.imguiTooltip(func() {
 					imguiColorLabelSimple(read.Symbol, win.img.cols.ValueSymbol)
 				}, true)
 			}
 			if okw {
-				imguiTooltip(func() {
+				win.img.imguiTooltip(func() {
 					imguiColorLabelSimple(write.Symbol, win.img.cols.ValueSymbol)
 				}, true)
 			}
@@ -130,7 +130,7 @@ func (win *winRAM) draw() {
 		a := diff[idx]
 		b := win.img.lz.RAM.RAM[idx]
 		if a != b {
-			imguiTooltip(func() {
+			win.img.imguiTooltip(func() {
 				imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
 			}, true)
 		}
@@ -141,7 +141,7 @@ func (win *winRAM) draw() {
 
 		// idx is based on original values of type uint16 so the type conversion is safe
 		if sp-memorymap.OriginRAM < uint16(idx) {
-			imguiTooltip(func() {
+			win.img.imguiTooltip(func() {
 				imguiColorLabelSimple("in stack", win.img.cols.ValueStack)
 				if win.img.lz.CPU.RTSPredictionValid {
 					imgui.Spacing()

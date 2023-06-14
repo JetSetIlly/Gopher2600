@@ -49,9 +49,8 @@ type winDisasm struct {
 	optionsHeight float32
 
 	// options
-	showDetails bool
-	followCPU   bool
-	usingColor  bool
+	followCPU  bool
+	usingColor bool
 
 	// selected bank to display
 	filter       disasmFilter
@@ -80,9 +79,8 @@ type winDisasm struct {
 
 func newWinDisasm(img *SdlImgui) (window, error) {
 	win := &winDisasm{
-		img:         img,
-		showDetails: true,
-		followCPU:   true,
+		img:       img,
+		followCPU: true,
 	}
 	return win, nil
 }
@@ -195,7 +193,7 @@ func (win *winDisasm) drawControlBar() {
 			win.selectedBank = currBank.Number
 			win.filter = filterBank
 		} else {
-			imguiTooltip(func() {
+			win.img.imguiTooltip(func() {
 				if currBank.ExecutingCoprocessor {
 					imgui.Text("Focus on 6507 resume address")
 				} else {
@@ -286,8 +284,6 @@ func (win *winDisasm) drawOptions() {
 		imgui.Spacing()
 		imgui.Separator()
 		imgui.Spacing()
-		imgui.Checkbox("Show Details", &win.showDetails)
-		imgui.SameLineV(0, 15)
 		if imgui.Checkbox("Follow CPU", &win.followCPU) {
 			// goto current PC on option being set to true
 			if win.followCPU {
@@ -312,7 +308,7 @@ func (win *winDisasm) drawOptions() {
 			imgui.SameLineV(0, 15)
 			imgui.AlignTextToFramePadding()
 			imgui.Text(string(fonts.NonCartExecution))
-			imguiTooltipSimple("Executing a non-cartridge address!")
+			win.img.imguiTooltipSimple("Executing a non-cartridge address!")
 		}
 	})
 }
@@ -601,7 +597,7 @@ func (win *winDisasm) drawLabel(e *disassembly.Entry, bank int) {
 }
 
 func (win *winDisasm) drawCoProcTooltip() {
-	imguiTooltipSimple("Coprocessor is executing")
+	win.img.imguiTooltipSimple("Coprocessor is executing")
 }
 
 func (win *winDisasm) drawEntryCoProcessorExecution() {
@@ -661,8 +657,8 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	}
 
 	// tooltip on hover and context menu on right mouse button
-	if win.showDetails && imgui.IsItemHovered() {
-		imguiTooltip(func() {
+	if imgui.IsItemHovered() {
+		win.img.imguiTooltip(func() {
 			imgui.Text("Address:")
 			imgui.SameLine()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)

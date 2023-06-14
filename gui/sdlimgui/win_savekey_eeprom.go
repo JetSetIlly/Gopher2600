@@ -71,7 +71,7 @@ func (win *winSaveKeyEEPROM) debuggerDraw() bool {
 func (win *winSaveKeyEEPROM) draw() {
 	imgui.BeginChildV("eepromData", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)
 
-	drawByteGridSimple("eepromByteGrid", win.img.lz.SaveKey.EEPROMdata, win.img.lz.SaveKey.EEPROMdiskData, win.img.cols.ValueDiff, 0x00, func(idx int, data uint8) {
+	win.img.drawByteGridSimple("eepromByteGrid", win.img.lz.SaveKey.EEPROMdata, win.img.lz.SaveKey.EEPROMdiskData, win.img.cols.ValueDiff, 0x00, func(idx int, data uint8) {
 		win.img.dbg.PushFunction(func() {
 			var sk *savekey.SaveKey
 

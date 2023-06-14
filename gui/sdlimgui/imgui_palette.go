@@ -175,7 +175,7 @@ func (pal *palette) colRect(idx int, col imgui.PackedColor, selected bool) bool 
 
 	// tooltip
 	if hover {
-		imguiTooltip(func() {
+		pal.img.imguiTooltip(func() {
 			imgui.Text(fmt.Sprintf("%02x", idx))
 			imgui.SameLine()
 			imgui.Text(fmt.Sprintf("#%06x", col&0x00ffffff))

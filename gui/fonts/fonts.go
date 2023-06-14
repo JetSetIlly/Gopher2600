@@ -85,6 +85,7 @@ const (
 	Geometry               = '\uf568'
 	Inlined                = '\uf03c'
 	Nudge                  = '\uf5e1'
+	SpeechBubble           = '\uf075'
 )
 
 // The first and last unicode points used in the application. We use this to

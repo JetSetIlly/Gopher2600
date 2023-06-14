@@ -386,7 +386,7 @@ func (win *winTimeline) drawTimeline() {
 			if traceHoverFrame >= traceStartFrame && traceHoverFrame <= traceEndFrame {
 				thumbnail := rewindHoverFrame >= rewindStartFrame && rewindHoverFrame <= rewindEndFrame
 
-				imguiTooltip(func() {
+				win.img.imguiTooltip(func() {
 					flgs := imgui.TableFlagsNone
 					if thumbnail {
 						flgs = imgui.TableFlagsPadOuterX

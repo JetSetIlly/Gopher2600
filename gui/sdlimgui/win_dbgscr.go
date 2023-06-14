@@ -384,7 +384,7 @@ func (win *winDbgScr) draw() {
 			if win.img.screen.crit.overlay == reflection.OverlayLabels[reflection.OverlayNone] {
 				imgui.SameLineV(0, 15)
 				imgui.Checkbox("Magnify on hover", &win.magnifyTooltip.showInTooltip)
-				imguiTooltipSimple(fmt.Sprintf("Show magnification in tooltip\n%c Mouse wheel to adjust zoom", fonts.Mouse))
+				win.img.imguiTooltipSimple(fmt.Sprintf("Show magnification in tooltip\n%c Mouse wheel to adjust zoom", fonts.Mouse))
 			}
 		}
 	})
@@ -424,7 +424,7 @@ func (win *winDbgScr) drawCoordsLine() {
 		// show geometry tooltip if this isn't frame zero
 		frameInfo := win.img.screen.crit.frameInfo
 		if frameInfo.FrameNum != 0 || win.img.lz.TV.Coords.Frame != 0 {
-			imguiTooltip(func() {
+			win.img.imguiTooltip(func() {
 				frameInfo := win.img.screen.crit.frameInfo
 				flgs := imgui.TableFlagsSizingFixedFit
 
@@ -531,17 +531,17 @@ func (win *winDbgScr) drawOverlayCombo() {
 func (win *winDbgScr) drawOverlayComboTooltip() {
 	switch win.img.screen.crit.overlay {
 	case reflection.OverlayLabels[reflection.OverlayWSYNC]:
-		imguiTooltip(func() {
+		win.img.imguiTooltip(func() {
 			imguiColorLabelSimple("WSYNC", win.img.cols.reflectionColors[reflection.WSYNC])
 		}, true)
 	case reflection.OverlayLabels[reflection.OverlayCollision]:
-		imguiTooltip(func() {
+		win.img.imguiTooltip(func() {
 			imguiColorLabelSimple("Collision", win.img.cols.reflectionColors[reflection.Collision])
 			imgui.Spacing()
 			imguiColorLabelSimple("CXCLR", win.img.cols.reflectionColors[reflection.CXCLR])
 		}, true)
 	case reflection.OverlayLabels[reflection.OverlayHMOVE]:
-		imguiTooltip(func() {
+		win.img.imguiTooltip(func() {
 			imguiColorLabelSimple("Delay", win.img.cols.reflectionColors[reflection.HMOVEdelay])
 			imgui.Spacing()
 			imguiColorLabelSimple("Ripple", win.img.cols.reflectionColors[reflection.HMOVEripple])
@@ -549,13 +549,13 @@ func (win *winDbgScr) drawOverlayComboTooltip() {
 			imguiColorLabelSimple("Latch", win.img.cols.reflectionColors[reflection.HMOVElatched])
 		}, true)
 	case reflection.OverlayLabels[reflection.OverlayRSYNC]:
-		imguiTooltip(func() {
+		win.img.imguiTooltip(func() {
 			imguiColorLabelSimple("Align", win.img.cols.reflectionColors[reflection.RSYNCalign])
 			imgui.Spacing()
 			imguiColorLabelSimple("Reset", win.img.cols.reflectionColors[reflection.RSYNCreset])
 		}, true)
 	case reflection.OverlayLabels[reflection.OverlayAudio]:
-		imguiTooltip(func() {
+		win.img.imguiTooltip(func() {
 			imguiColorLabelSimple("Phase 0", win.img.cols.reflectionColors[reflection.AudioPhase0])
 			imgui.Spacing()
 			imguiColorLabelSimple("Phase 1", win.img.cols.reflectionColors[reflection.AudioPhase1])
@@ -563,7 +563,7 @@ func (win *winDbgScr) drawOverlayComboTooltip() {
 			imguiColorLabelSimple("Change", win.img.cols.reflectionColors[reflection.AudioChanged])
 		}, true)
 	case reflection.OverlayLabels[reflection.OverlayCoproc]:
-		imguiTooltip(func() {
+		win.img.imguiTooltip(func() {
 			key := fmt.Sprintf("parallel %s", win.img.lz.Cart.CoProcID)
 			imguiColorLabelSimple(key, win.img.cols.reflectionColors[reflection.CoProcActive])
 		}, true)
@@ -579,15 +579,24 @@ func (win *winDbgScr) drawReflectionTooltip() {
 	// get reflection information
 	ref := win.scr.crit.reflection[win.mouse.offset]
 
-	// draw tooltip
-	imguiTooltip(func() {
-		e := win.img.dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
+	e := win.img.dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
 
-		// the magnify tooltip needs to appear before anything else and we only
-		// want to draw it if there is no overlay and there is an instruction
-		// behind the pixel
-		if e.Address != "" && win.scr.crit.overlay == reflection.OverlayLabels[reflection.OverlayNone] {
+	// the magnify tooltip needs to appear before anything else and we only
+	// want to draw it if there is no overlay and there is an instruction
+	// behind the pixel
+	if e.Address != "" && win.scr.crit.overlay == reflection.OverlayLabels[reflection.OverlayNone] {
+		// we also want to show it regardless of the global tooltip preference
+		// if the magnify show tooltip field is true
+		imguiTooltip(func() {
 			win.magnifyTooltip.draw(win.mouse)
+		}, false, win.magnifyTooltip.showInTooltip)
+	}
+
+	// draw tooltip
+	win.img.imguiTooltip(func() {
+		// separator if we've drawn the magnification
+		if win.magnifyTooltip.showInTooltip {
+			imguiSeparator()
 		}
 
 		imgui.Text(fmt.Sprintf("Scanline: %d", win.mouse.tv.Scanline))

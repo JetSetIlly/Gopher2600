@@ -45,6 +45,7 @@ type preferences struct {
 	// debugger preferences
 	terminalOnError   prefs.Bool
 	audioMuteDebugger prefs.Bool
+	showTooltips      prefs.Bool
 
 	// disasm (there are preferences in the disassembly package that the gui
 	// will want to consider)
@@ -86,6 +87,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	// defaults
 	p.terminalOnError.Set(true)
 	p.audioMuteDebugger.Set(true)
+	p.showTooltips.Set(true)
 	p.colorDisasm.Set(true)
 	p.fpsOverlay.Set(false)
 	p.activePause.Set(false)
@@ -124,6 +126,16 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 
+	key := "sdlimgui.debugger.showTooltips"
+	err = p.dsk.Add(key, &p.showTooltips)
+	if err != nil {
+		return nil, err
+	}
+	err = p.saveOnExitDsk.Add(key, &p.showTooltips)
+	if err != nil {
+		return nil, err
+	}
+
 	err = p.dsk.Add("sdlimgui.debugger.disasm.color", &p.colorDisasm)
 	if err != nil {
 		return nil, err
@@ -132,7 +144,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	// debugger audio mute options later
 
 	// playmode options
-	key := "sdlimgui.playmode.fpsOverlay"
+	key = "sdlimgui.playmode.fpsOverlay"
 	err = p.dsk.Add(key, &p.fpsOverlay)
 	if err != nil {
 		return nil, err

@@ -308,7 +308,7 @@ func (win *winCDFStreams) draw() {
 			imgui.PopStyleVar()
 			imgui.PopStyleColorV(4)
 
-			imguiTooltip(func() {
+			win.img.imguiTooltip(func() {
 				imgui.Text("Datastream ")
 				imgui.SameLine()
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmLocation)

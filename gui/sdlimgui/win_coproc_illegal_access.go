@@ -126,7 +126,7 @@ func (win *winCoProcIllegalAccess) draw() {
 			imgui.PopStyleColorV(2)
 
 			// source on tooltip
-			imguiTooltip(func() {
+			win.img.imguiTooltip(func() {
 				imgui.Text("Executing PC:")
 				imgui.SameLine()
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcIllegalAccessAddress)
@@ -226,7 +226,7 @@ func (win *winCoProcIllegalAccess) draw() {
 				imgui.EndGroup()
 				imgui.SameLine()
 				imgui.Text("Stack collision detected")
-				imguiTooltip(func() {
+				win.img.imguiTooltip(func() {
 					imgui.Text("Memory access is unreliable after a stack collision. Illegal")
 					imgui.Text("accesses are no longer being logged.")
 				}, true)

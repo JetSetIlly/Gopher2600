@@ -89,6 +89,12 @@ type SdlImgui struct {
 	// imgui window management
 	wm *manager
 
+	// if true then a tooltip has been requested. reset after menu is drawn
+	tooltipIndicator bool
+
+	// tooltips will show regardless of show tooltip preferences
+	tooltipForce bool
+
 	// the colors used by the imgui system. includes the TV colors converted to
 	// a suitable format
 	cols *imguiColors

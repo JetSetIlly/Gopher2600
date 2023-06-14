@@ -38,7 +38,6 @@ type winCoProcSource struct {
 	img *SdlImgui
 
 	open               bool
-	showTooltip        bool
 	syntaxHighlighting bool
 	optionsHeight      float32
 
@@ -90,7 +89,6 @@ type winCoProcSource struct {
 func newWinCoProcSource(img *SdlImgui) (window, error) {
 	win := &winCoProcSource{
 		img:                img,
-		showTooltip:        true,
 		syntaxHighlighting: true,
 		focusYieldLine:     true,
 	}
@@ -235,8 +233,6 @@ func (win *winCoProcSource) draw() {
 			}
 			imgui.SameLineV(0, 20)
 			imgui.Checkbox("Highlight Comments & String Literals", &win.syntaxHighlighting)
-			imgui.SameLineV(0, 20)
-			imgui.Checkbox("Show Tooltip", &win.showTooltip)
 		})
 
 		if imgui.BeginPopup(sourcePopupID) {
@@ -497,55 +493,53 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 						hoverExecutableLine = (!multiline && len(ln.Instruction) > 0) ||
 							(multiline && !win.selectionRange.IsEmpty())
 
-						if win.showTooltip {
-							// how we show the asm depends on whether there are
-							// multiple lines selected and whether there is any
-							// diassembly for those lines.
-							//
-							// if only a single line is selected then we simply
-							// check that there is are asm entries for that line
-							if hoverExecutableLine {
-								imgui.PopFont()
+						// how we show the asm depends on whether there are
+						// multiple lines selected and whether there is any
+						// diassembly for those lines.
+						//
+						// if only a single line is selected then we simply
+						// check that there is are asm entries for that line
+						if hoverExecutableLine {
+							imgui.PopFont()
 
-								imguiTooltip(func() {
-									// remove cell/item styling for the duration of the tooltip
-									pad := style.CellPadding()
-									item := style.ItemSpacing()
-									imgui.PopStyleVarV(2)
-									defer imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, pad)
-									defer imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, item)
+							win.img.imguiTooltip(func() {
+								// remove cell/item styling for the duration of the tooltip
+								pad := style.CellPadding()
+								item := style.ItemSpacing()
+								imgui.PopStyleVarV(2)
+								defer imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, pad)
+								defer imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, item)
 
-									// this block is a more developed version of win.img.drawFilenameAndLineNumber()
-									// there is no need to complicate that function
-									if multiline && !win.selection.isSingle() {
-										s, e := win.selection.limits()
-										win.img.drawFilenameAndLineNumber(ln.File.Filename, s, e)
-									} else {
-										win.img.drawFilenameAndLineNumber(ln.File.Filename, ln.LineNumber, -1)
-									}
+								// this block is a more developed version of win.img.drawFilenameAndLineNumber()
+								// there is no need to complicate that function
+								if multiline && !win.selection.isSingle() {
+									s, e := win.selection.limits()
+									win.img.drawFilenameAndLineNumber(ln.File.Filename, s, e)
+								} else {
+									win.img.drawFilenameAndLineNumber(ln.File.Filename, ln.LineNumber, -1)
+								}
 
+								imgui.Spacing()
+								imgui.Separator()
+								imgui.Spacing()
+
+								// choose which disasm list to use
+								disasm := ln.Instruction
+								if multiline {
+									disasm = win.selectionRange.Instructions
+								}
+
+								win.img.drawDisasmForCoProc(disasm, ln, multiline)
+
+								if ln.Function.IsInlined() {
 									imgui.Spacing()
 									imgui.Separator()
 									imgui.Spacing()
+									imgui.Text(fmt.Sprintf("%c This function is inlined", fonts.Inlined))
+								}
+							}, false)
 
-									// choose which disasm list to use
-									disasm := ln.Instruction
-									if multiline {
-										disasm = win.selectionRange.Instructions
-									}
-
-									win.img.drawDisasmForCoProc(disasm, ln, multiline)
-
-									if ln.Function.IsInlined() {
-										imgui.Spacing()
-										imgui.Separator()
-										imgui.Spacing()
-										imgui.Text(fmt.Sprintf("%c This function is inlined", fonts.Inlined))
-									}
-								}, false)
-
-								imgui.PushFont(win.img.glsl.fonts.code)
-							}
+							imgui.PushFont(win.img.glsl.fonts.code)
 						}
 					}
 

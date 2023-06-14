@@ -197,7 +197,7 @@ func (win *winPrefs) drawPlaymodeTab() {
 	if imgui.Checkbox("'Active' Pause Screen", &activePause) {
 		win.img.prefs.activePause.Set(activePause)
 	}
-	imguiTooltipSimple(`An 'active' pause screen is one that tries to present
+	win.img.imguiTooltipSimple(`An 'active' pause screen is one that tries to present
 a television image that is sympathetic to the display kernel
 of the ROM.`)
 
@@ -286,6 +286,13 @@ func (win *winPrefs) drawDebuggerTab() {
 			logger.Logf("sdlimgui", "could not set preference value: %v", err)
 		}
 	}
+
+	showTooltips := win.img.prefs.showTooltips.Get().(bool)
+	if imgui.Checkbox("Show Tooltips", &showTooltips) {
+		win.img.prefs.showTooltips.Set(showTooltips)
+	}
+
+	imgui.Spacing()
 
 	if imgui.CollapsingHeader("6507 Disassembly") {
 		imgui.Spacing()
@@ -539,7 +546,7 @@ func (win *winPrefs) drawVCS() {
 			imgui.AlignTextToFramePadding()
 			imgui.Text(fmt.Sprintf(" %c", fonts.Warning))
 			imgui.PopStyleColor()
-			imguiTooltipSimple(`Emulation audio is currently muted. There will
+			win.img.imguiTooltipSimple(`Emulation audio is currently muted. There will
 be no AtariVox output even though the engine is
 currently enabled.`)
 		}
@@ -558,7 +565,7 @@ func (win *winPrefs) drawARMTab() {
 	if imgui.Checkbox("Immediate ARM Execution", &immediate) {
 		win.img.vcs.Env.Prefs.ARM.Immediate.Set(immediate)
 	}
-	imguiTooltipSimple("ARM program consumes no 6507 time (like Stella)\nIf this option is set the other ARM settings are irrelevant")
+	win.img.imguiTooltipSimple("ARM program consumes no 6507 time (like Stella)\nIf this option is set the other ARM settings are irrelevant")
 
 	if immediate {
 		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
@@ -595,7 +602,7 @@ func (win *winPrefs) drawARMTab() {
 		imgui.EndCombo()
 	}
 	imgui.PopItemWidth()
-	imguiTooltipSimple(`The MAM state at the start of the Thumb program.
+	win.img.imguiTooltipSimple(`The MAM state at the start of the Thumb program.
 
 For most purposes, this should be set to 'Driver'. This means that the emulated driver
 for the cartridge mapper decides what the value should be.
@@ -626,7 +633,7 @@ The MAM should almost never be disabled completely.`)
 		if imgui.Checkbox("Illegal Memory Access", &abortOnIllegalMem) {
 			win.img.vcs.Env.Prefs.ARM.AbortOnIllegalMem.Set(abortOnIllegalMem)
 		}
-		imguiTooltipSimple(`Abort thumb program on access to illegal memory. Note that the program
+		win.img.imguiTooltipSimple(`Abort thumb program on access to illegal memory. Note that the program
 will always abort if the access is a PC fetch, even if this option is not set.
 
 Illegal accesses will be logged even if program does not abort.`)
@@ -635,7 +642,7 @@ Illegal accesses will be logged even if program does not abort.`)
 		if imgui.Checkbox("Stack Collision", &abortOnStackCollision) {
 			win.img.vcs.Env.Prefs.ARM.AbortOnStackCollision.Set(abortOnStackCollision)
 		}
-		imguiTooltipSimple(`Abort thumb program if stack pointer overlaps the highest address
+		win.img.imguiTooltipSimple(`Abort thumb program if stack pointer overlaps the highest address
 occupied by a variable in the program.
 
 Only available when DWARF data is available for the program.

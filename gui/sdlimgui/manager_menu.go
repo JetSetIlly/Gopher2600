@@ -174,7 +174,7 @@ func (wm *manager) drawMenu() {
 
 	if math.IsInf(float64(wm.img.lz.TV.Hz), 0) || wm.img.lz.TV.Hz > wm.img.lz.TV.FrameInfo.Spec.RefreshRate*2 {
 		wdth -= rightJustText(wdth, "- Hz", true)
-		imguiTooltip(func() { imgui.Text("TV refresh rate is indeterminate") }, true)
+		wm.img.imguiTooltip(func() { imgui.Text("TV refresh rate is indeterminate") }, true)
 	} else {
 		wdth -= rightJustText(wdth, fmt.Sprintf("%.2fHz", wm.img.lz.TV.Hz), true)
 	}
@@ -189,6 +189,28 @@ func (wm *manager) drawMenu() {
 		}
 	}
 
+	wdth -= wm.drawTooltipIndicator(wdth)
+	wm.img.tooltipIndicator = false
+}
+
+func (wm *manager) drawTooltipIndicator(wdth float32) float32 {
+	s := fmt.Sprintf("%c", fonts.SpeechBubble)
+	w := imguiGetFrameDim(s).X
+	imgui.SameLineV(wdth-w, 0.0)
+	showTooltips := wm.img.prefs.showTooltips.Get().(bool)
+	if !showTooltips {
+		if !wm.img.tooltipIndicator {
+			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+			defer imgui.PopStyleVar()
+		}
+	}
+	imgui.BeginGroup()
+	imgui.Text(s)
+	imgui.EndGroup()
+	if imgui.IsItemClicked() {
+		wm.img.prefs.showTooltips.Set(!showTooltips)
+	}
+	return w
 }
 
 func rightJustText(width float32, text string, sep bool) float32 {
