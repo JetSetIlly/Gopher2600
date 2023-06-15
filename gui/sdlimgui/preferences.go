@@ -43,13 +43,11 @@ type preferences struct {
 	saveOnExitDsk *prefs.Disk
 
 	// debugger preferences
-	terminalOnError   prefs.Bool
-	audioMuteDebugger prefs.Bool
-	showTooltips      prefs.Bool
-
-	// disasm (there are preferences in the disassembly package that the gui
-	// will want to consider)
-	colorDisasm prefs.Bool
+	terminalOnError       prefs.Bool
+	audioMuteDebugger     prefs.Bool
+	showTooltips          prefs.Bool
+	showTimelineThumbnail prefs.Bool
+	colorDisasm           prefs.Bool
 
 	// playmode preferences
 	audioMutePlaymode prefs.Bool
@@ -88,6 +86,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	p.terminalOnError.Set(true)
 	p.audioMuteDebugger.Set(true)
 	p.showTooltips.Set(true)
+	p.showTimelineThumbnail.Set(true)
 	p.colorDisasm.Set(true)
 	p.fpsOverlay.Set(false)
 	p.activePause.Set(false)
@@ -115,27 +114,18 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 
-	// disk preferences that will be saved on program exit
-	p.saveOnExitDsk, err = prefs.NewDisk(pth)
-	if err != nil {
-		return nil, err
-	}
-
 	err = p.dsk.Add("sdlimgui.debugger.terminalOnError", &p.terminalOnError)
 	if err != nil {
 		return nil, err
 	}
-
-	key := "sdlimgui.debugger.showTooltips"
-	err = p.dsk.Add(key, &p.showTooltips)
+	err = p.dsk.Add("sdlimgui.debugger.showTooltips", &p.showTooltips)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add(key, &p.showTooltips)
+	err = p.dsk.Add("sdlimgui.debugger.showTimelineThumbnail", &p.showTimelineThumbnail)
 	if err != nil {
 		return nil, err
 	}
-
 	err = p.dsk.Add("sdlimgui.debugger.disasm.color", &p.colorDisasm)
 	if err != nil {
 		return nil, err
@@ -144,36 +134,26 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	// debugger audio mute options later
 
 	// playmode options
-	key = "sdlimgui.playmode.fpsOverlay"
-	err = p.dsk.Add(key, &p.fpsOverlay)
+	err = p.dsk.Add("sdlimgui.playmode.fpsOverlay", &p.fpsOverlay)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add(key, &p.fpsOverlay)
-	if err != nil {
-		return nil, err
-	}
-
 	err = p.dsk.Add("sdlimgui.playmode.activePause", &p.activePause)
 	if err != nil {
 		return nil, err
 	}
-
 	err = p.dsk.Add("sdlimgui.playmode.controllerNotifcations", &p.controllerNotifcations)
 	if err != nil {
 		return nil, err
 	}
-
 	err = p.dsk.Add("sdlimgui.playmode.plusromNotifcations", &p.plusromNotifications)
 	if err != nil {
 		return nil, err
 	}
-
 	err = p.dsk.Add("sdlimgui.playmode.superchargerNotifications", &p.superchargerNotifications)
 	if err != nil {
 		return nil, err
 	}
-
 	err = p.dsk.Add("sdlimgui.playmode.audioMuteNotification", &p.audioMuteNotification)
 	if err != nil {
 		return nil, err
@@ -224,35 +204,53 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	})
 
 	// audio mute options
-	key = "sdlimgui.debugger.audioMute"
-	err = p.dsk.Add(key, &p.audioMuteDebugger)
+	err = p.dsk.Add("sdlimgui.debugger.audioMute", &p.audioMuteDebugger)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add(key, &p.audioMuteDebugger)
-	if err != nil {
-		return nil, err
-	}
-
 	p.audioMuteDebugger.SetHookPost(func(muted prefs.Value) error {
 		p.img.applyAudioMutePreference()
 		return nil
 	})
 
-	key = "sdlimgui.playmode.audioMute"
-	err = p.dsk.Add(key, &p.audioMutePlaymode)
+	err = p.dsk.Add("sdlimgui.playmode.audioMute", &p.audioMutePlaymode)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add(key, &p.audioMutePlaymode)
-	if err != nil {
-		return nil, err
-	}
-
 	p.audioMutePlaymode.SetHookPost(func(muted prefs.Value) error {
 		p.img.applyAudioMutePreference()
 		return nil
 	})
+
+	// disk preferences that will be saved on program exit
+	p.saveOnExitDsk, err = prefs.NewDisk(pth)
+	if err != nil {
+		return nil, err
+	}
+	err = p.saveOnExitDsk.Add("sdlimgui.debugger.showTooltips", &p.showTooltips)
+	if err != nil {
+		return nil, err
+	}
+	err = p.saveOnExitDsk.Add("sdlimgui.debugger.showTimelineThumbnail", &p.showTimelineThumbnail)
+	if err != nil {
+		return nil, err
+	}
+	err = p.saveOnExitDsk.Add("sdlimgui.debugger.disasm.color", &p.colorDisasm)
+	if err != nil {
+		return nil, err
+	}
+	err = p.saveOnExitDsk.Add("sdlimgui.playmode.fpsOverlay", &p.fpsOverlay)
+	if err != nil {
+		return nil, err
+	}
+	err = p.saveOnExitDsk.Add("sdlimgui.debugger.audioMute", &p.audioMuteDebugger)
+	if err != nil {
+		return nil, err
+	}
+	err = p.saveOnExitDsk.Add("sdlimgui.playmode.audioMute", &p.audioMutePlaymode)
+	if err != nil {
+		return nil, err
+	}
 
 	// load all preferences off disk
 	err = p.dsk.Load(true)

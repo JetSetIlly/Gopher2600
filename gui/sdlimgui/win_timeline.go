@@ -43,9 +43,6 @@ type winTimeline struct {
 	thmb        *thumbnailer.Image
 	thmbTexture uint32
 	thmbFrame   int
-
-	showThrottle bool
-	showJank     bool
 }
 
 func newWinTimeline(img *SdlImgui) (window, error) {
@@ -125,19 +122,30 @@ const (
 )
 
 func (win *winTimeline) drawKey() {
+	imgui.AlignTextToFramePadding()
 	imguiColorLabelSimple("Scanlines", win.img.cols.TimelineScanlines)
 	imgui.SameLine()
+	imgui.AlignTextToFramePadding()
 	imguiColorLabelSimple("WSYNC", win.img.cols.TimelineWSYNC)
 	imgui.SameLine()
 	if win.img.lz.Cart.HasCoProcBus {
+		imgui.AlignTextToFramePadding()
 		imguiColorLabelSimple(win.img.lz.Cart.CoProcID, win.img.cols.TimelineCoProc)
 		imgui.SameLine()
 	}
+	imgui.AlignTextToFramePadding()
 	imguiColorLabelSimple("Left Player", win.img.cols.TimelineLeftPlayer)
 	imgui.SameLine()
+	imgui.AlignTextToFramePadding()
 	imguiColorLabelSimple("Rewind", win.img.cols.TimelineRewindRange)
 	imgui.SameLine()
+	imgui.AlignTextToFramePadding()
 	imguiColorLabelSimple("Comparison", win.img.cols.TimelineCmpPointer)
+	imgui.SameLineV(0, 15)
+	showThumbnail := win.img.prefs.showTimelineThumbnail.Get().(bool)
+	if imgui.Checkbox("Show Thumbnail", &showThumbnail) {
+		win.img.prefs.showTimelineThumbnail.Set(showThumbnail)
+	}
 }
 
 func (win *winTimeline) drawRewindSummary() {
@@ -384,13 +392,40 @@ func (win *winTimeline) drawTimeline() {
 			traceHoverFrame := traceHoverIdx + traceStartFrame
 
 			if traceHoverFrame >= traceStartFrame && traceHoverFrame <= traceEndFrame {
-				thumbnail := rewindHoverFrame >= rewindStartFrame && rewindHoverFrame <= rewindEndFrame
+				showThumbnail := rewindHoverFrame >= rewindStartFrame && rewindHoverFrame <= rewindEndFrame
+				showThumbnail = showThumbnail && win.img.prefs.showTimelineThumbnail.Get().(bool)
+
+				if showThumbnail {
+					imguiTooltip(func() {
+						// show rewind thumbnail if hover is in range of rewind
+						imgui.TableNextColumn()
+
+						// selecting the correct thumbnail requires different indexing than the timline
+						if win.thmbFrame != rewindHoverFrame {
+							win.thmbFrame = rewindHoverFrame
+
+							// slow the rate at which we generate thumbnails
+							if win.img.polling.throttleTimelineThumbnailer() {
+								win.img.dbg.PushFunction(func() {
+									// thumbnailer must be run in the same goroutine as the main emulation
+									win.thmb.Create(win.img.dbg.Rewind.GetState(rewindHoverFrame))
+								})
+							}
+						}
+
+						imgui.Image(imgui.TextureID(win.thmbTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines}.Times(0.3))
+					}, false, true)
+				}
 
 				win.img.imguiTooltip(func() {
 					flgs := imgui.TableFlagsNone
-					if thumbnail {
+					if showThumbnail {
 						flgs = imgui.TableFlagsPadOuterX
 					}
+					if showThumbnail {
+						imgui.SameLineV(0, 15)
+					}
+
 					if imgui.BeginTableV("timelineTooltip", 2, flgs, imgui.Vec2{}, 10.0) {
 						imgui.TableNextRow()
 						imgui.TableNextColumn()
@@ -420,30 +455,10 @@ func (win *winTimeline) drawTimeline() {
 							imgui.Text(fmt.Sprintf("%.01f%%", win.img.lz.Rewind.Timeline.Ratios[traceHoverIdx].CoProc*100))
 							imgui.PopStyleColor()
 						}
-
-						// show rewind thumbnail if hover is in range of rewind
-						if thumbnail {
-							imgui.TableNextColumn()
-
-							// selecting the correct thumbnail requires different indexing than the timline
-							if win.thmbFrame != rewindHoverFrame {
-								win.thmbFrame = rewindHoverFrame
-
-								// slow the rate at which we generate thumbnails
-								if win.img.polling.throttleTimelineThumbnailer() {
-									win.img.dbg.PushFunction(func() {
-										// thumbnailer must be run in the same goroutine as the main emulation
-										win.thmb.Create(win.img.dbg.Rewind.GetState(rewindHoverFrame))
-									})
-								}
-							}
-
-							imgui.Image(imgui.TextureID(win.thmbTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines}.Times(0.3))
-						}
-
-						imgui.EndTable()
 					}
+					imgui.EndTable()
 				}, false)
+
 			}
 		}
 	}
