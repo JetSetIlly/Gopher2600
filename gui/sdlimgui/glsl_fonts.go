@@ -76,7 +76,7 @@ func (fnts *glslFonts) mergeFontAwesome(size float32, adjust float32) error {
 	glyphBuilder.Add(fonts.FontAwesomeMin, fonts.FontAwesomeMax)
 
 	// merge font awesome
-	merge := atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, fnts.defaultFontSize, mergeConfig, glyphBuilder.Build().GlyphRanges)
+	merge := atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, size, mergeConfig, glyphBuilder.Build().GlyphRanges)
 	if merge == 0 {
 		return fmt.Errorf("font: error loading font-awesome from memory")
 	}
