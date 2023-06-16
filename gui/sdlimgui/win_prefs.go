@@ -292,6 +292,11 @@ func (win *winPrefs) drawDebuggerTab() {
 		win.img.prefs.showTooltips.Set(showTooltips)
 	}
 
+	showTimelineThumbnail := win.img.prefs.showTimelineThumbnail.Get().(bool)
+	if imgui.Checkbox("Show Thumbnail in Timeline", &showTimelineThumbnail) {
+		win.img.prefs.showTimelineThumbnail.Set(showTimelineThumbnail)
+	}
+
 	imgui.Spacing()
 
 	if imgui.CollapsingHeader("6507 Disassembly") {

@@ -40,9 +40,18 @@ type winTimeline struct {
 
 	// thumbnailer will be using emulation states created in the main emulation
 	// goroutine so we must thumbnail those states in the same goroutine.
-	thmb        *thumbnailer.Image
-	thmbTexture uint32
-	thmbFrame   int
+	thmb          *thumbnailer.Image
+	thmbTexture   uint32
+	thmbFrame     int
+	thmbFlipped   bool
+	thmbFlippedCt int
+
+	// mouse hover information
+	isHoveredInRewindArea bool
+	hoverX                float32
+
+	// height of toolbar
+	toolbarHeight float32
 }
 
 func newWinTimeline(img *SdlImgui) (window, error) {
@@ -61,6 +70,8 @@ func newWinTimeline(img *SdlImgui) (window, error) {
 	gl.BindTexture(gl.TEXTURE_2D, win.thmbTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
 
 	return win, nil
 }
@@ -99,11 +110,14 @@ func (win *winTimeline) debuggerDraw() bool {
 	const scanlineRatio = specification.AbsoluteMaxScanlines * winHeightRatio
 
 	imgui.SetNextWindowPosV(imgui.Vec2{39, 722}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{750, 200}, imgui.Vec2{win.img.plt.displaySize()[0] * 0.95, 300})
 
-	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
-		win.drawTimeline()
-		imguiSeparator()
-		win.drawKey()
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
+		win.drawTrace()
+		win.toolbarHeight = imguiMeasureHeight(func() {
+			imguiSeparator()
+			win.drawKey()
+		})
 	}
 
 	win.debuggerGeom.update()
@@ -111,15 +125,6 @@ func (win *winTimeline) debuggerDraw() bool {
 
 	return true
 }
-
-const (
-	traceWidth           = 2
-	traceHeight          = 1
-	inputHeight          = 2
-	rangeHeight          = 5
-	frameIndicatorRadius = 4
-	unmeasuredDotPitch   = traceWidth + 1
-)
 
 func (win *winTimeline) drawKey() {
 	imgui.AlignTextToFramePadding()
@@ -141,72 +146,163 @@ func (win *winTimeline) drawKey() {
 	imgui.SameLine()
 	imgui.AlignTextToFramePadding()
 	imguiColorLabelSimple("Comparison", win.img.cols.TimelineCmpPointer)
-	imgui.SameLineV(0, 15)
-	showThumbnail := win.img.prefs.showTimelineThumbnail.Get().(bool)
-	if imgui.Checkbox("Show Thumbnail", &showThumbnail) {
-		win.img.prefs.showTimelineThumbnail.Set(showThumbnail)
-	}
 }
 
 func (win *winTimeline) drawRewindSummary() {
 	imgui.Text(fmt.Sprintf("Rewind frames: %d to %d", win.img.lz.Rewind.Timeline.AvailableStart, win.img.lz.Rewind.Timeline.AvailableEnd))
 }
 
-func (win *winTimeline) drawTimeline() {
+func (win *winTimeline) drawTrace() {
 	timeline := win.img.lz.Rewind.Timeline
 	dl := imgui.WindowDrawList()
 
-	var traceSize imgui.Vec2
-	var pos imgui.Vec2
-	var traceOffset int
-	var rewindOffset int
+	// size of trace areas
+	const (
+		traceGap         = 5
+		traceRewind      = 3
+		traceInput       = 2
+		traceFrame       = 4
+		tracePlotWidth   = 4
+		tracePlotHeight  = 2
+		traceCursorWidth = 5
+	)
+
+	const traceHeight = traceGap + traceGap + traceRewind + traceGap + traceInput + traceGap + traceFrame*4
+	traceMain := (imgui.ContentRegionAvail().Y - win.toolbarHeight - traceHeight)
 
 	// the width that can be seen in the window at any one time
-	availableWidth := win.img.plt.displaySize()[0] * 0.80
+	// displayWidth := win.img.plt.displaySize()[0] * 0.95
+	displayWidth := imgui.ContentRegionAvail().X
 
-	// whether the timeline is hovered over. each child in the trace group is
-	// tested and the results ORed together
-	hovered := false
+	// the width of the timeline window in frames (ie. number of frames visible)
+	displayWidthInFrames := int(displayWidth / tracePlotWidth)
 
-	// trace group
-	imgui.BeginGroup()
+	// size of entire timeline trace area
+	traceSize := imgui.Vec2{X: displayWidth, Y: traceHeight + traceMain}
 
-	// traceOffset adjusts the placement of the traces in the window
-	//
-	// check if end of timeline overflows the available width
-	if len(timeline.FrameNum)*traceWidth >= int(availableWidth) {
-		traceOffset = len(timeline.FrameNum) - int(availableWidth/traceWidth)
+	// check if end of timeline overflows the available width and adjust offset
+	// so that the trace is right-justified (for want of a better description)
+	var traceOffset int
+	if len(timeline.FrameNum)*tracePlotWidth >= int(displayWidth) {
+		traceOffset = len(timeline.FrameNum) - displayWidthInFrames
 	}
+	traceFrameMax := traceOffset + displayWidthInFrames
 
 	// similar to traceOffset, rewindOffset adjusts the placement of the rewind
-	// range and frame indicators (current, comparison)
-	rewindOffset = traceOffset
+	// range and frame indicators
+	rewindOffset := traceOffset
 	if len(timeline.FrameNum) > 0 {
 		rewindOffset += timeline.FrameNum[0]
 	}
 
-	// list of scanline jitter points to indicate
+	// list of scanline jitter points to indicate. these will be found during
+	// the plot of the scanline trace and then used to draw the jitter
+	// indicators in a second loop
 	var scanlineJitter []int
 	scanlineJitter = append(scanlineJitter, 0)
 
 	// scanline/coproc/WSYNC trace
-	traceSize = imgui.Vec2{X: availableWidth, Y: 75}
 	imgui.BeginChildV("##timelinetrace", traceSize, false, imgui.WindowFlagsNoMove)
-	pos = imgui.CursorScreenPos()
 
-	x := pos.X
+	// the position of the trace widget
+	rootPos := imgui.CursorScreenPos()
+
+	// the Y position of each trace area
+	yPos := rootPos.Y + traceGap
+
+	// rewind start/end X positions
+	rewindStartX := rootPos.X + float32((timeline.AvailableStart-rewindOffset)*tracePlotWidth)
+	rewindEndX := rootPos.X + float32((timeline.AvailableEnd-rewindOffset)*tracePlotWidth)
+
+	// show cursor
+	if win.isHoveredInRewindArea {
+		dl.AddRectFilled(imgui.Vec2{X: win.hoverX - traceCursorWidth/2, Y: rootPos.Y},
+			imgui.Vec2{X: win.hoverX + traceCursorWidth/2, Y: rootPos.Y + traceSize.Y},
+			win.img.cols.timelineHoverCursor)
+
+		// show thumbnail alongside cursor
+		if win.img.prefs.showTimelineThumbnail.Get().(bool) {
+			thumbnailSize := imgui.Vec2{X: specification.ClksVisible * 3, Y: specification.AbsoluteMaxScanlines}
+			thumbnailSize = thumbnailSize.Times(traceSize.Y / specification.AbsoluteMaxScanlines)
+
+			// position thumbnail before or after the cursor depending on flip value
+			// and the proxity of the thumbnail to the timeline boundary
+			//
+			// thumbFlippedCt gives a half-second grace before flip happens.
+			// this looks and feels better
+			var thumbnailPos imgui.Vec2
+			if win.thmbFlipped {
+				thumbnailPos = imgui.Vec2{X: win.hoverX + traceCursorWidth*2, Y: rootPos.Y}
+				if thumbnailPos.X+thumbnailSize.X > rootPos.X+traceSize.X {
+					win.thmbFlippedCt++
+					if win.thmbFlippedCt > int(win.img.plt.mode.RefreshRate/2) {
+						win.thmbFlipped = false
+						thumbnailPos.X = win.hoverX - traceCursorWidth*2 - thumbnailSize.X
+					}
+				} else {
+					win.thmbFlippedCt = 0
+				}
+			} else {
+				thumbnailPos = imgui.Vec2{X: win.hoverX - traceCursorWidth*2 - thumbnailSize.X, Y: rootPos.Y}
+				if thumbnailPos.X < rootPos.X {
+					win.thmbFlippedCt++
+					if win.thmbFlippedCt > int(win.img.plt.mode.RefreshRate/2) {
+						win.thmbFlipped = true
+						thumbnailPos.X = win.hoverX + traceCursorWidth*2
+					}
+				} else {
+					win.thmbFlippedCt = 0
+				}
+			}
+			imgui.SetCursorScreenPos(thumbnailPos)
+
+			imgui.ImageV(imgui.TextureID(win.thmbTexture), thumbnailSize,
+				imgui.Vec2{}, imgui.Vec2{1, 1},
+				win.img.cols.TimelineThumbnailTint, imgui.Vec4{})
+
+			imgui.SetCursorScreenPos(rootPos)
+		}
+	}
+
+	// draw frame guides
+	var fn int
+	if len(timeline.FrameNum) > 0 {
+		fn = timeline.FrameNum[traceOffset] * tracePlotWidth
+	}
+	const guideFrameCount = 20
+	imgui.PushFont(win.img.glsl.fonts.diagram)
+	for i := 1 - (guideFrameCount * tracePlotWidth) - (fn % (guideFrameCount * tracePlotWidth)); i < traceFrameMax*tracePlotWidth; i += guideFrameCount * tracePlotWidth {
+		top := imgui.Vec2{X: rootPos.X + float32(i), Y: rootPos.Y}
+		bot := imgui.Vec2{X: rootPos.X + float32(i), Y: rootPos.Y + traceSize.Y}
+		dl.AddRectFilled(top, bot, win.img.cols.timelineGuides)
+
+		// label frame guides with frame numbers
+		bot.X += 5
+		bot.Y -= win.img.glsl.fonts.diagramSize / 2
+		dl.AddText(bot, win.img.cols.timelineGuidesLabel, fmt.Sprintf("%d", (i-1)/tracePlotWidth))
+	}
+	imgui.PopFont()
+
+	// draw main trace plot
+	plotX := rootPos.X
 	for i := range timeline.FrameNum[traceOffset:] {
+		// adjust index by starting point
 		i += traceOffset
 
-		// plotting from bottom
-		y := pos.Y + traceSize.Y
+		// SCANLINE TRACE
+		plotY := yPos + traceMain
 
 		// scale TotalScanlines value so that it covers the entire height of traceSize
-		y -= float32(timeline.TotalScanlines[i]) * traceSize.Y / specification.AbsoluteMaxScanlines
+		plotY -= float32(timeline.TotalScanlines[i]) * traceMain / specification.AbsoluteMaxScanlines
 
 		// add jitter to trace to indicate changes in value through exaggeration
 		if i > 0 {
 			if timeline.TotalScanlines[i] != timeline.TotalScanlines[i-1] {
+				if timeline.TotalScanlines[i] < timeline.TotalScanlines[i-1] {
+					plotY++
+				} else if timeline.TotalScanlines[i] > timeline.TotalScanlines[i-1] {
+					plotY--
+				}
 
 				// add to jitter history if it hasn't been updated for a while
 				prev := scanlineJitter[len(scanlineJitter)-1]
@@ -214,116 +310,94 @@ func (win *winTimeline) drawTimeline() {
 				if j-prev > 3 {
 					scanlineJitter = append(scanlineJitter, j)
 				}
-
-				if timeline.TotalScanlines[i] < timeline.TotalScanlines[i-1] {
-					y++
-				} else if timeline.TotalScanlines[i] > timeline.TotalScanlines[i-1] {
-					y--
-				}
 			}
 		}
 
-		dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
-			imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
+		// draw scanline trace
+		dl.AddRectFilled(imgui.Vec2{X: plotX, Y: plotY},
+			imgui.Vec2{X: plotX + tracePlotWidth, Y: plotY + tracePlotHeight},
 			win.img.cols.timelineScanlines)
 
-		// plotting timeline counts only if the counts entry is valid
+		// WSYNC TRACE
 
 		// plot WSYNC from the bottom
-		y = pos.Y + traceSize.Y
-		y -= float32(timeline.Counts[i].WSYNC) * traceSize.Y / specification.AbsoluteMaxClks
+		plotY = yPos + traceMain
+		plotY -= float32(timeline.Counts[i].WSYNC) * traceMain / specification.AbsoluteMaxClks
 
 		// add jitter to trace to indicate changes in value through exaggeration
 		if i > 0 {
 			if timeline.Counts[i].WSYNC < timeline.Counts[i-1].WSYNC {
-				y++
+				plotY++
 			} else if timeline.Counts[i].WSYNC > timeline.Counts[i-1].WSYNC {
-				y--
+				plotY--
 			}
 		}
 
 		// plot a dotted line if count isn't valid and a solid line if it is
-		dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
-			imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
+		dl.AddRectFilled(imgui.Vec2{X: plotX, Y: plotY},
+			imgui.Vec2{X: plotX + tracePlotWidth, Y: plotY + tracePlotHeight},
 			win.img.cols.timelineWSYNC)
+
+		// COPROCESSOR TRACE
 
 		// plot coprocessor from the top
 		if win.img.lz.Cart.HasCoProcBus {
-			y = pos.Y
-			y += float32(timeline.Counts[i].CoProc) * traceSize.Y / specification.AbsoluteMaxClks
+			plotY = yPos
+			plotY += float32(timeline.Counts[i].CoProc) * traceMain / specification.AbsoluteMaxClks
 
 			// add jitter to trace to indicate changes in value through exaggeration
 			if i > 0 {
 				if timeline.Counts[i].CoProc < timeline.Counts[i-1].CoProc {
-					y++
+					plotY++
 				} else if timeline.Counts[i].CoProc > timeline.Counts[i-1].CoProc {
-					y--
+					plotY--
 				}
 			}
 
 			// plot a dotted line if count isn't valid and a solid line if it is
-			dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
-				imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
+			dl.AddRectFilled(imgui.Vec2{X: plotX, Y: plotY},
+				imgui.Vec2{X: plotX + tracePlotWidth, Y: plotY + tracePlotHeight},
 				win.img.cols.timelineCoProc)
 		}
 
-		x += traceWidth
+		plotX += tracePlotWidth
 	}
-	imgui.EndChild()
-	hovered = hovered || imgui.IsItemHovered()
+	yPos += traceMain + traceGap
 
 	// input trace
 	// TODO: right player and panel input
-	traceSize = imgui.Vec2{X: availableWidth, Y: inputHeight}
-	imgui.BeginChildV("##timelinetrace_input", traceSize, false, imgui.WindowFlagsNoMove)
-	pos = imgui.CursorScreenPos()
-	x = pos.X
-	y := pos.Y
+	plotX = rootPos.X
 	for i := range timeline.FrameNum[traceOffset:] {
 		i += traceOffset
-
 		if timeline.LeftPlayerInput[i] {
-			dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
-				imgui.Vec2{X: x + traceWidth, Y: y + inputHeight},
+			dl.AddRectFilled(imgui.Vec2{X: plotX, Y: yPos},
+				imgui.Vec2{X: plotX + tracePlotWidth, Y: yPos + traceInput},
 				win.img.cols.timelineLeftPlayer)
 		}
-
-		x += traceWidth
+		plotX += tracePlotWidth
 	}
-	imgui.EndChild()
-	hovered = hovered || imgui.IsItemHovered()
+	yPos += traceInput + traceGap
 
 	// rewind range indicator
-	traceSize = imgui.Vec2{X: availableWidth, Y: rangeHeight}
-	imgui.BeginChildV("##timelinetrace_indicators", traceSize, false, imgui.WindowFlagsNoMove)
-	pos = imgui.CursorScreenPos()
-
-	dl.AddRectFilled(imgui.Vec2{X: pos.X + float32((timeline.AvailableStart-rewindOffset)*traceWidth), Y: pos.Y},
-		imgui.Vec2{X: pos.X + float32((timeline.AvailableEnd-rewindOffset)*traceWidth), Y: pos.Y + traceSize.Y},
+	dl.AddRectFilled(imgui.Vec2{X: rewindStartX, Y: yPos},
+		imgui.Vec2{X: rewindEndX, Y: yPos + traceRewind},
 		win.img.cols.timelineRewindRange)
+	yPos += traceRewind + traceGap
 
-	imgui.EndChild()
-	hovered = hovered || imgui.IsItemHovered()
-
-	// frame indicators
-	traceSize = imgui.Vec2{X: availableWidth, Y: frameIndicatorRadius}
-	imgui.BeginChildV("##timelinetrace_current", traceSize, false, imgui.WindowFlagsNoMove)
-	pos = imgui.CursorScreenPos()
-
-	// jitter
+	// jitter indicators
 	for _, i := range scanlineJitter[1:] {
 		dl.AddTriangleFilled(
 			imgui.Vec2{
-				X: pos.X + float32(i*traceWidth) - frameIndicatorRadius,
-				Y: pos.Y + frameIndicatorRadius*2,
+				X: rootPos.X + float32(i*tracePlotWidth) - traceFrame,
+				Y: yPos + traceFrame*2,
 			},
 			imgui.Vec2{
-				X: pos.X + float32(i*traceWidth),
-				Y: pos.Y,
+				X: rootPos.X + float32(i*tracePlotWidth),
+				Y: yPos,
 			},
 			imgui.Vec2{
-				X: pos.X + float32(i*traceWidth) + frameIndicatorRadius,
-				Y: pos.Y + frameIndicatorRadius*2,
+				X: rootPos.X + float32(i*tracePlotWidth) + traceFrame,
+				Y: yPos + traceFrame*2,
 			},
 			win.img.cols.timelineScanlines)
 	}
@@ -335,37 +409,38 @@ func (win *winTimeline) drawTimeline() {
 		if fr < 0 {
 			// draw triangle indicating that the comparison frame is not
 			// visible on the current timline
-			dl.AddTriangleFilled(imgui.Vec2{X: pos.X - frameIndicatorRadius, Y: pos.Y + frameIndicatorRadius},
-				imgui.Vec2{X: pos.X + frameIndicatorRadius, Y: pos.Y + frameIndicatorRadius*2},
-				imgui.Vec2{X: pos.X + frameIndicatorRadius, Y: pos.Y},
+			dl.AddTriangleFilled(imgui.Vec2{X: rootPos.X - traceFrame, Y: yPos + traceFrame},
+				imgui.Vec2{X: rootPos.X + traceFrame, Y: yPos + traceFrame*2},
+				imgui.Vec2{X: rootPos.X + traceFrame, Y: yPos},
 				win.img.cols.timelineCmpPointer)
 		} else {
-			dl.AddCircleFilled(imgui.Vec2{X: pos.X + float32(fr*traceWidth), Y: pos.Y + frameIndicatorRadius}, frameIndicatorRadius, win.img.cols.timelineCmpPointer)
+			dl.AddCircleFilled(imgui.Vec2{X: rootPos.X + float32(fr*tracePlotWidth), Y: yPos + traceFrame}, traceFrame, win.img.cols.timelineCmpPointer)
 		}
 	}
 
 	// current frame indicator
 	fr := win.img.lz.TV.Coords.Frame - rewindOffset
-	dl.AddCircleFilled(imgui.Vec2{X: pos.X + float32(fr*traceWidth), Y: pos.Y + frameIndicatorRadius}, frameIndicatorRadius, win.img.cols.timelineCurrentPointer)
+	dl.AddCircleFilled(imgui.Vec2{X: rootPos.X + float32(fr*tracePlotWidth), Y: yPos + traceFrame}, traceFrame, win.img.cols.timelineCurrentPointer)
 
+	// end of trace area
 	imgui.EndChild()
-	hovered = hovered || imgui.IsItemHovered()
 
-	imgui.EndGroup()
+	// check for mouse hover over rewindable area
+	mouse := imgui.MousePos()
+	win.isHoveredInRewindArea = mouse.X >= rewindStartX && mouse.X <= rewindEndX &&
+		mouse.Y >= rootPos.Y && mouse.Y <= rootPos.Y+traceSize.Y
+	win.hoverX = mouse.X
 
-	// mouse hover position
-	hoverX := imgui.MousePos().X - pos.X
-
+	// rewind support
+	rewindX := win.hoverX - rootPos.X
 	rewindStartFrame := win.img.lz.Rewind.Timeline.AvailableStart
 	rewindEndFrame := win.img.lz.Rewind.Timeline.AvailableEnd
-	rewindHoverFrame := int(hoverX/traceWidth) + rewindOffset
+	rewindHoverFrame := int(rewindX/tracePlotWidth) + rewindOffset
 
-	// hover and clicking works on the group
-
-	if imgui.IsMouseDown(1) && hovered {
+	if imgui.IsMouseDown(1) && imgui.IsItemHovered() {
 		imgui.OpenPopup(timelinePopupID)
 
-	} else if imgui.IsMouseDown(0) && (hovered || win.rewindingActive) {
+	} else if imgui.IsMouseDown(0) && (win.isHoveredInRewindArea || win.rewindingActive) {
 		win.rewindingActive = true
 
 		// making sure we only call PushRewind() when we need to. also,
@@ -385,80 +460,40 @@ func (win *winTimeline) drawTimeline() {
 	} else {
 		win.rewindingActive = false
 
-		if hovered && len(win.img.lz.Rewind.Timeline.FrameNum) > 0 {
-			traceHoverIdx := int(hoverX/traceWidth) + traceOffset
+		if imgui.IsItemHovered() && len(win.img.lz.Rewind.Timeline.FrameNum) > 0 {
+			traceHoverIdx := int(rewindX/tracePlotWidth) + traceOffset
 			traceStartFrame := win.img.lz.Rewind.Timeline.FrameNum[0]
 			traceEndFrame := win.img.lz.Rewind.Timeline.FrameNum[len(win.img.lz.Rewind.Timeline.FrameNum)-1]
 			traceHoverFrame := traceHoverIdx + traceStartFrame
 
 			if traceHoverFrame >= traceStartFrame && traceHoverFrame <= traceEndFrame {
-				showThumbnail := rewindHoverFrame >= rewindStartFrame && rewindHoverFrame <= rewindEndFrame
-				showThumbnail = showThumbnail && win.img.prefs.showTimelineThumbnail.Get().(bool)
-
-				if showThumbnail {
-					imguiTooltip(func() {
-						// show rewind thumbnail if hover is in range of rewind
-						imgui.TableNextColumn()
-
-						// selecting the correct thumbnail requires different indexing than the timline
-						if win.thmbFrame != rewindHoverFrame {
-							win.thmbFrame = rewindHoverFrame
-
-							// slow the rate at which we generate thumbnails
-							if win.img.polling.throttleTimelineThumbnailer() {
-								win.img.dbg.PushFunction(func() {
-									// thumbnailer must be run in the same goroutine as the main emulation
-									win.thmb.Create(win.img.dbg.Rewind.GetState(rewindHoverFrame))
-								})
-							}
-						}
-
-						imgui.Image(imgui.TextureID(win.thmbTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines}.Times(0.3))
-					}, false, true)
-				}
-
 				win.img.imguiTooltip(func() {
-					flgs := imgui.TableFlagsNone
-					if showThumbnail {
-						flgs = imgui.TableFlagsPadOuterX
-					}
-					if showThumbnail {
-						imgui.SameLineV(0, 15)
-					}
+					imgui.Text(fmt.Sprintf("Frame: %d", traceHoverFrame))
 
-					if imgui.BeginTableV("timelineTooltip", 2, flgs, imgui.Vec2{}, 10.0) {
-						imgui.TableNextRow()
-						imgui.TableNextColumn()
+					// adjust text color slightly - the colors we use for the
+					// plots are too dark
+					textColAdj := imgui.Vec4{0.2, 0.2, 0.2, 0.0}
 
-						imgui.Text(fmt.Sprintf("Frame: %d", traceHoverFrame))
+					imgui.Text("Scanlines:")
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineScanlines.Plus(textColAdj))
+					imgui.SameLine()
+					imgui.Text(fmt.Sprintf("%d", win.img.lz.Rewind.Timeline.TotalScanlines[traceHoverIdx]))
+					imgui.PopStyleColor()
 
-						// adjust text color slightly - the colors we use for the
-						// plots are too dark
-						textColAdj := imgui.Vec4{0.2, 0.2, 0.2, 0.0}
+					imgui.Text("WSYNC:")
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineWSYNC.Plus(textColAdj))
+					imgui.SameLine()
+					imgui.Text(fmt.Sprintf("%.02f%%", win.img.lz.Rewind.Timeline.Ratios[traceHoverIdx].WSYNC*100))
+					imgui.PopStyleColor()
 
-						imgui.Text("Scanlines:")
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineScanlines.Plus(textColAdj))
+					if win.img.lz.Cart.HasCoProcBus {
+						imgui.Text(win.img.lz.Cart.CoProcID)
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineCoProc.Plus(textColAdj))
 						imgui.SameLine()
-						imgui.Text(fmt.Sprintf("%d", win.img.lz.Rewind.Timeline.TotalScanlines[traceHoverIdx]))
+						imgui.Text(fmt.Sprintf("%.02f%%", win.img.lz.Rewind.Timeline.Ratios[traceHoverIdx].CoProc*100))
 						imgui.PopStyleColor()
-
-						imgui.Text("WSYNC:")
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineWSYNC.Plus(textColAdj))
-						imgui.SameLine()
-						imgui.Text(fmt.Sprintf("%.01f%%", win.img.lz.Rewind.Timeline.Ratios[traceHoverIdx].WSYNC*100))
-						imgui.PopStyleColor()
-
-						if win.img.lz.Cart.HasCoProcBus {
-							imgui.Text(win.img.lz.Cart.CoProcID)
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineCoProc.Plus(textColAdj))
-							imgui.SameLine()
-							imgui.Text(fmt.Sprintf("%.01f%%", win.img.lz.Rewind.Timeline.Ratios[traceHoverIdx].CoProc*100))
-							imgui.PopStyleColor()
-						}
 					}
-					imgui.EndTable()
 				}, false)
-
 			}
 		}
 	}
@@ -468,6 +503,16 @@ func (win *winTimeline) drawTimeline() {
 			win.saveToCSV()
 		}
 		imgui.EndPopup()
+	}
+
+	if win.isHoveredInRewindArea {
+		// slow the rate at which we generate thumbnails
+		if win.img.polling.throttleTimelineThumbnailer() {
+			win.img.dbg.PushFunction(func() {
+				// thumbnailer must be run in the same goroutine as the main emulation
+				win.thmb.Create(win.img.dbg.Rewind.GetState(rewindHoverFrame))
+			})
+		}
 	}
 }
 

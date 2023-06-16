@@ -231,10 +231,6 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.debugger.showTimelineThumbnail", &p.showTimelineThumbnail)
-	if err != nil {
-		return nil, err
-	}
 	err = p.saveOnExitDsk.Add("sdlimgui.debugger.disasm.color", &p.colorDisasm)
 	if err != nil {
 		return nil, err

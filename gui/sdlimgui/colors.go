@@ -150,6 +150,7 @@ type imguiColors struct {
 	PianoKeysBorder     imgui.Vec4
 
 	// timeline plot
+	TimelineHoverCursor    imgui.Vec4
 	TimelineMarkers        imgui.Vec4
 	TimelineScanlines      imgui.Vec4
 	TimelineWSYNC          imgui.Vec4
@@ -158,6 +159,9 @@ type imguiColors struct {
 	TimelineCurrentPointer imgui.Vec4
 	TimelineCmpPointer     imgui.Vec4
 	TimelineLeftPlayer     imgui.Vec4
+	TimelineThumbnailTint  imgui.Vec4
+	TimelineGuides         imgui.Vec4
+	TimelineGuidesLabel    imgui.Vec4
 
 	// tia window
 	TIApointer imgui.Vec4
@@ -205,6 +209,7 @@ type imguiColors struct {
 	timerBit               imgui.PackedColor
 	saveKeyBit             imgui.PackedColor
 	saveKeyBitPointer      imgui.PackedColor
+	timelineHoverCursor    imgui.PackedColor
 	timelineMarkers        imgui.PackedColor
 	timelineScanlines      imgui.PackedColor
 	timelineWSYNC          imgui.PackedColor
@@ -213,6 +218,8 @@ type imguiColors struct {
 	timelineCurrentPointer imgui.PackedColor
 	timelineCmpPointer     imgui.PackedColor
 	timelineLeftPlayer     imgui.PackedColor
+	timelineGuides         imgui.PackedColor
+	timelineGuidesLabel    imgui.PackedColor
 	coProcSourceLoad       imgui.PackedColor
 	coProcSourceAvgLoad    imgui.PackedColor
 	coProcSourceMaxLoad    imgui.PackedColor
@@ -346,13 +353,17 @@ func newColors() *imguiColors {
 		PianoKeysBorder:     imgui.Vec4{0.29, 0.20, 0.14, 1.0},
 
 		// timeline
-		TimelineMarkers:   imgui.Vec4{1.00, 1.00, 1.00, 1.0},
-		TimelineScanlines: imgui.Vec4{0.79, 0.04, 0.04, 1.0},
+		TimelineHoverCursor: imgui.Vec4{0.79, 0.38, 0.04, 0.4},
+		TimelineMarkers:     imgui.Vec4{1.00, 1.00, 1.00, 1.0},
+		TimelineScanlines:   imgui.Vec4{0.79, 0.04, 0.04, 1.0},
 		// deferred TimelineWSYNC and TimelineCoProc
 		TimelineRewindRange:    imgui.Vec4{0.79, 0.38, 0.04, 1.0},
 		TimelineCurrentPointer: imgui.Vec4{0.79, 0.38, 0.04, 1.0}, // same as TimelineRewindRange
 		TimelineCmpPointer:     imgui.Vec4{0.30, 0.20, 0.50, 1.0}, // same as ValueDiff
 		TimelineLeftPlayer:     imgui.Vec4{0.38, 0.79, 0.04, 1.0}, // same as TimelineRewindRange
+		TimelineThumbnailTint:  imgui.Vec4{1.0, 1.0, 1.0, 0.2},
+		TimelineGuides:         imgui.Vec4{1.0, 1.0, 1.0, 0.01},
+		TimelineGuidesLabel:    imgui.Vec4{1.0, 1.0, 1.0, 0.1},
 
 		// tia
 		TIApointer: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
@@ -421,6 +432,7 @@ func newColors() *imguiColors {
 	cols.timerBit = imgui.PackedColorFromVec4(cols.TimerBit)
 	cols.saveKeyBit = imgui.PackedColorFromVec4(cols.SaveKeyBit)
 	cols.saveKeyBitPointer = imgui.PackedColorFromVec4(cols.SaveKeyBitPointer)
+	cols.timelineHoverCursor = imgui.PackedColorFromVec4(cols.TimelineHoverCursor)
 	cols.timelineMarkers = imgui.PackedColorFromVec4(cols.TimelineMarkers)
 	cols.timelineScanlines = imgui.PackedColorFromVec4(cols.TimelineScanlines)
 	cols.timelineWSYNC = imgui.PackedColorFromVec4(cols.TimelineWSYNC)
@@ -429,6 +441,8 @@ func newColors() *imguiColors {
 	cols.timelineCurrentPointer = imgui.PackedColorFromVec4(cols.TimelineCurrentPointer)
 	cols.timelineCmpPointer = imgui.PackedColorFromVec4(cols.TimelineCmpPointer)
 	cols.timelineLeftPlayer = imgui.PackedColorFromVec4(cols.TimelineLeftPlayer)
+	cols.timelineGuides = imgui.PackedColorFromVec4(cols.TimelineGuides)
+	cols.timelineGuidesLabel = imgui.PackedColorFromVec4(cols.TimelineGuidesLabel)
 	cols.coProcSourceLoad = imgui.PackedColorFromVec4(cols.CoProcSourceLoad)
 	cols.coProcSourceAvgLoad = imgui.PackedColorFromVec4(cols.CoProcSourceAvgLoad)
 	cols.coProcSourceMaxLoad = imgui.PackedColorFromVec4(cols.CoProcSourceMaxLoad)
