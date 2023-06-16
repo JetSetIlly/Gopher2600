@@ -16,6 +16,7 @@
 package disassembly
 
 import (
+	"fmt"
 	"io"
 	"strings"
 )
@@ -36,7 +37,11 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 		search = strings.ToUpper(search)
 	}
 
+	includeBankNumber := len(dsm.disasmEntries.Entries) > 0
+
 	for b := range dsm.disasmEntries.Entries {
+		bankNumberPrinted := false
+
 		for _, e := range dsm.disasmEntries.Entries[b] {
 			if e != nil && e.Level >= EntryLevelBlessed {
 				var s, m string
@@ -58,6 +63,10 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 				}
 
 				if strings.Contains(m, search) {
+					if includeBankNumber && !bankNumberPrinted {
+						bankNumberPrinted = true
+						output.Write([]byte(fmt.Sprintf("Bank %d\n", b)))
+					}
 					output.Write([]byte(e.StringColumnated(ColumnAttr{})))
 					output.Write([]byte("\n"))
 				}
