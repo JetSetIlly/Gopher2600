@@ -55,7 +55,7 @@ type winSelectROM struct {
 	thmbTexture uint32
 }
 
-func newFileSelector(img *SdlImgui) (window, error) {
+func newSelectROM(img *SdlImgui) (window, error) {
 	win := &winSelectROM{
 		img:          img,
 		showAllFiles: false,
@@ -67,6 +67,10 @@ func newFileSelector(img *SdlImgui) (window, error) {
 
 	var err error
 
+	// it is assumed in the polling routines that if the file rom selector is
+	// open then the thumbnailer is open. if we ever decide that the thumbnailer
+	// should be optional we should change this - we don't want the polling to
+	// be high if there is no reason
 	win.thmb, err = thumbnailer.NewAnim(win.img.vcs.Env.Prefs)
 	if err != nil {
 		return nil, fmt.Errorf("debugger: %w", err)

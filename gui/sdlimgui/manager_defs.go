@@ -36,7 +36,7 @@ type windowDef struct {
 // list of windows to add to the window manager.
 var windowDefs = [...]windowDef{
 	// windows called from "debugger" menu
-	{create: newFileSelector, menu: menuEntry{group: menuDebugger}},
+	{create: newSelectROM, menu: menuEntry{group: menuDebugger}},
 	{create: newWinPrefs, menu: menuEntry{group: menuDebugger}},
 	{create: newWinTerm, menu: menuEntry{group: menuDebugger}},
 	{create: newWinLog, menu: menuEntry{group: menuDebugger}},

@@ -119,13 +119,13 @@ func (pol *polling) wait() sdl.Event {
 	var timeout int
 
 	if pol.img.isPlaymode() {
-		if pol.img.dbg.State() != govern.Paused || pol.img.prefs.activePause.Get().(bool) {
+		if pol.img.dbg.State() != govern.Paused || pol.img.prefs.activePause.Get().(bool) || pol.img.wm.playmodeWindows[winSelectROMID].playmodeIsOpen() {
 			timeout = playSleepPeriod
 		} else {
 			timeout = playPausedSleepPeriod
 		}
 	} else {
-		if pol.img.dbg.State() == govern.Running {
+		if pol.img.dbg.State() == govern.Running || pol.img.wm.debuggerWindows[winSelectROMID].debuggerIsOpen() {
 			timeout = debugSleepPeriodRunning
 		} else if pol.alerted || pol.keepAwake || pol.img.lz.Debugger.HasChanged {
 			timeout = debugSleepPeriod
