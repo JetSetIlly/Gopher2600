@@ -63,6 +63,17 @@ type State struct {
 	TV   *television.State
 }
 
+func (s *State) snapshot() *State {
+	return &State{
+		level: s.level,
+		CPU:   s.CPU.Snapshot(),
+		Mem:   s.Mem.Snapshot(),
+		RIOT:  s.RIOT.Snapshot(),
+		TIA:   s.TIA.Snapshot(),
+		TV:    s.TV.Snapshot(),
+	}
+}
+
 // snapshotLevel indicates the level of snapshot.
 type snapshotLevel int
 
@@ -497,11 +508,15 @@ type findResults struct {
 // note that findFrameIndex() searches for the frame that is two frames before
 // the one that is requested.
 func (r *Rewind) findFrameIndex(frame int) findResults {
-	searchFrame := frame - 1
+	frame--
 	if r.emulation.Mode() == govern.ModeDebugger {
-		searchFrame--
+		frame--
 	}
+	return r.findFrameIndexExact(frame)
+}
 
+// find index of requested frame
+func (r *Rewind) findFrameIndexExact(frame int) findResults {
 	// initialise binary search
 	s := r.start
 	e := r.lastEntryIdx()
@@ -511,13 +526,13 @@ func (r *Rewind) findFrameIndex(frame int) findResults {
 
 	// is requested frame too old (ie. before the start of the array)
 	fn := r.entries[s].TV.GetCoords().Frame
-	if searchFrame < fn {
+	if frame < fn {
 		return findResults{nearestIdx: s, nearestFrame: fn}
 	}
 
 	// is requested frame too new (ie. past the end of the array)
 	fn = r.entries[e].TV.GetCoords().Frame
-	if searchFrame > fn {
+	if frame > fn {
 		return findResults{nearestIdx: e, nearestFrame: fn, future: true}
 	}
 	// the range which we must consider to be a match
@@ -528,7 +543,7 @@ func (r *Rewind) findFrameIndex(frame int) findResults {
 	// which half of the circular array to concentrate on.
 	if s > e {
 		fn := r.entries[len(r.entries)-1].TV.GetCoords().Frame
-		if searchFrame <= fn+freqAdj {
+		if frame <= fn+freqAdj {
 			e = len(r.entries) - 1
 		} else {
 			e = r.start - 1
@@ -544,14 +559,14 @@ func (r *Rewind) findFrameIndex(frame int) findResults {
 
 		// check for match, taking into consideration the gaps introduced by
 		// the frequency value
-		if searchFrame >= fn && searchFrame <= fn+freqAdj {
+		if frame >= fn && frame <= fn+freqAdj {
 			return findResults{nearestIdx: idx, nearestFrame: fn}
 		}
 
-		if searchFrame < fn {
+		if frame < fn {
 			e = idx - 1
 		}
-		if searchFrame > fn {
+		if frame > fn {
 			s = idx + 1
 		}
 	}
@@ -608,9 +623,18 @@ func (r *Rewind) GotoFrame(frame int) error {
 	return r.GotoCoords(coords.TelevisionCoords{Frame: frame, Clock: -specification.ClksHBlank})
 }
 
-// SetComparison points comparison to the most recent rewound entry.
-func (r *Rewind) SetComparison() {
+// SetComparisonToCurrent points comparison to the current state
+func (r *Rewind) SetComparisonToCurrent() {
 	r.comparison = r.GetCurrentState()
+}
+
+// SetComparison points comparison to the supplied state
+func (r *Rewind) SetComparison(frame int) {
+	res := r.findFrameIndexExact(frame)
+	s := r.entries[res.nearestIdx]
+	if s != nil {
+		r.comparison = s.snapshot()
+	}
 }
 
 // NewFrame is in an implementation of television.FrameTrigger.
@@ -628,13 +652,7 @@ func (r *Rewind) GetState(frame int) *State {
 	s := r.entries[res.nearestIdx]
 
 	// return copy of state
-	return &State{
-		TV:   s.TV.Snapshot(),
-		CPU:  s.CPU.Snapshot(),
-		Mem:  s.Mem.Snapshot(),
-		RIOT: s.RIOT.Snapshot(),
-		TIA:  s.TIA.Snapshot(),
-	}
+	return s.snapshot()
 }
 
 // GetCurrentState returns a temporary snapshot of the current state.

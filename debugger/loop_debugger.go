@@ -356,7 +356,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 
 				// update comparison point before execution continues
 				if !nonInstructionQuantum {
-					dbg.Rewind.SetComparison()
+					dbg.Rewind.SetComparisonToCurrent()
 				}
 			} else if inputter.IsInteractive() {
 				dbg.setState(govern.Stepping)
