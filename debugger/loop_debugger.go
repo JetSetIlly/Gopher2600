@@ -177,7 +177,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 					dbg.handleInterrupt(inputter)
 				} else {
 					// don't print UserQuit error to terminal
-					if errors.Is(err, terminal.UserQuit) {
+					if !errors.Is(err, terminal.UserQuit) {
 						dbg.printLine(terminal.StyleError, "%s", err)
 					}
 				}
