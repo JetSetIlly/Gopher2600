@@ -86,7 +86,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	p.terminalOnError.Set(true)
 	p.audioMuteDebugger.Set(true)
 	p.showTooltips.Set(true)
-	p.showTimelineThumbnail.Set(true)
+	p.showTimelineThumbnail.Set(false)
 	p.colorDisasm.Set(true)
 	p.fpsOverlay.Set(false)
 	p.activePause.Set(false)
