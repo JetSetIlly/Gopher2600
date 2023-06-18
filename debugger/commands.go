@@ -400,6 +400,23 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			return nil
 		}
 
+	case cmdComparison:
+		arg, ok := tokens.Get()
+		if ok {
+			switch arg {
+			case "LOCK":
+				dbg.Rewind.LockComparison(true)
+			case "UNLOCK":
+				dbg.Rewind.LockComparison(false)
+				if dbg.State() == govern.Running {
+					dbg.Rewind.UpdateComparison()
+				}
+			default:
+				frame, _ := strconv.Atoi(arg)
+				dbg.Rewind.SetComparison(frame)
+			}
+		}
+
 	case cmdGoto:
 		coords := dbg.vcs.TV.GetCoords()
 

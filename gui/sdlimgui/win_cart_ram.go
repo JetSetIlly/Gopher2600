@@ -78,7 +78,7 @@ func (win *winCartRAM) debuggerDraw() bool {
 func (win *winCartRAM) draw() {
 	// get comparison data. assuming that there is such a thing and that it's
 	// safe to get StaticData from.
-	comp := win.img.lz.Rewind.Comparison.Mem.Cart.GetRAMbus().GetRAM()
+	comp := win.img.lz.Rewind.Comparison.State.Mem.Cart.GetRAMbus().GetRAM()
 
 	imgui.BeginTabBarV("", imgui.TabBarFlagsFittingPolicyScroll)
 	for bank := range win.img.lz.Cart.RAM {

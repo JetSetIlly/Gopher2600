@@ -26,10 +26,10 @@ type LazyRewind struct {
 	val *LazyValues
 
 	timeline   atomic.Value // rewind.Timeline
-	comparison atomic.Value // *rewind.Snapshot
+	comparison atomic.Value // rewind.ComparisonState
 
 	Timeline   rewind.Timeline
-	Comparison *rewind.State
+	Comparison rewind.ComparisonState
 }
 
 func newLazyRewind(val *LazyValues) *LazyRewind {
@@ -45,5 +45,5 @@ func (lz *LazyRewind) push() {
 
 func (lz *LazyRewind) update() {
 	lz.Timeline, _ = lz.timeline.Load().(rewind.Timeline)
-	lz.Comparison, _ = lz.comparison.Load().(*rewind.State)
+	lz.Comparison, _ = lz.comparison.Load().(rewind.ComparisonState)
 }

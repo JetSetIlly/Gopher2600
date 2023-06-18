@@ -86,6 +86,10 @@ const (
 	Inlined                = '\uf03c'
 	Nudge                  = '\uf5e1'
 	SpeechBubble           = '\uf075'
+	TimelineOffScreen      = '\uf0a5'
+	TimelineJitter         = '\uf0de'
+	TimelineComparison     = '\uf02e'
+	TimelineComparisonLock = '\uf023'
 )
 
 // The first and last unicode points used in the application. We use this to

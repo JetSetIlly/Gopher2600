@@ -71,7 +71,7 @@ func (win *winCartStatic) debuggerDraw() bool {
 func (win *winCartStatic) draw() {
 	// get comparison data. assuming that there is such a thing and that it's
 	// safe to get StaticData from.
-	compStatic := win.img.lz.Rewind.Comparison.Mem.Cart.GetStaticBus().GetStatic()
+	compStatic := win.img.lz.Rewind.Comparison.State.Mem.Cart.GetStaticBus().GetStatic()
 
 	// make a note of cell padding value. this changes for the duration of
 	// drawByteGrid() but we want the default value for when we call

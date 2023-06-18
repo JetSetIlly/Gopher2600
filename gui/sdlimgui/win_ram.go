@@ -60,8 +60,8 @@ func (win *winRAM) debuggerDraw() bool {
 
 func (win *winRAM) draw() {
 	var diff []uint8
-	if win.img.lz.Rewind.Comparison != nil {
-		diff = win.img.lz.Rewind.Comparison.Mem.RAM.RAM
+	if win.img.lz.Rewind.Comparison.State != nil {
+		diff = win.img.lz.Rewind.Comparison.State.Mem.RAM.RAM
 	} else {
 		diff = win.img.lz.RAM.RAM
 	}

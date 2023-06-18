@@ -20,13 +20,14 @@ const (
 	cmdReset = "RESET"
 	cmdQuit  = "QUIT"
 
-	cmdRun     = "RUN"
-	cmdStep    = "STEP"
-	cmdHalt    = "HALT"
-	cmdQuantum = "QUANTUM"
-	cmdScript  = "SCRIPT"
-	cmdRewind  = "REWIND"
-	cmdGoto    = "GOTO"
+	cmdRun        = "RUN"
+	cmdStep       = "STEP"
+	cmdHalt       = "HALT"
+	cmdQuantum    = "QUANTUM"
+	cmdScript     = "SCRIPT"
+	cmdRewind     = "REWIND"
+	cmdComparison = "COMPARISON"
+	cmdGoto       = "GOTO"
 
 	cmdInsert    = "INSERT"
 	cmdCartridge = "CARTRIDGE"
@@ -90,6 +91,7 @@ var commandTemplate = []string{
 	cmdQuantum + " (INSTRUCTION|CLOCK)",
 	cmdScript + " [RECORD %<new file>F|END|%<file>F]",
 	cmdRewind + " [%<frame>N|LAST|SUMMARY]",
+	cmdComparison + " [%<frame>N|LOCK|UNLOCK]",
 	cmdGoto + " [%<clock>N] (%<scanline>N) (%<frame>N)",
 
 	cmdInsert + " %<cartridge>F",

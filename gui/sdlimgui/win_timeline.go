@@ -133,10 +133,28 @@ func (win *winTimeline) debuggerDraw() bool {
 				win.saveToCSV()
 			}
 			if win.isHovered {
+				imgui.Spacing()
+				imgui.Separator()
+				imgui.Spacing()
+
 				if imgui.Selectable(fmt.Sprintf("Set Comparison to Frame %d", win.hoverFrame)) {
 					win.img.dbg.PushFunction(func() {
-						win.img.dbg.Rewind.SetComparison(win.hoverFrame)
+						win.img.term.pushCommand(fmt.Sprintf("COMPARISON %d", win.hoverFrame))
 					})
+				}
+
+				var label string
+				var command string
+				if win.img.lz.Rewind.Comparison.Locked {
+					label = "Unlock Comparison Frame"
+					command = "COMPARISON UNLOCK"
+				} else {
+					label = fmt.Sprintf("Lock Comparison Frame (at frame %d)",
+						win.img.lz.Rewind.Comparison.State.TV.GetCoords().Frame)
+					command = "COMPARISON LOCK"
+				}
+				if imgui.Selectable(label) {
+					win.img.term.pushCommand(command)
 				}
 			}
 			imgui.EndPopup()
@@ -181,10 +199,6 @@ func (win *winTimeline) drawToolbar() {
 	imguiColorLabelSimple("Comparison", win.img.cols.TimelineCmpPointer)
 }
 
-func (win *winTimeline) drawRewindSummary() {
-	imgui.Text(fmt.Sprintf("Rewind frames: %d to %d", win.img.lz.Rewind.Timeline.AvailableStart, win.img.lz.Rewind.Timeline.AvailableEnd))
-}
-
 func (win *winTimeline) drawTrace() {
 	timeline := win.img.lz.Rewind.Timeline
 	dl := imgui.WindowDrawList()
@@ -202,9 +216,6 @@ func (win *winTimeline) drawTrace() {
 
 	// the amount to allow for the icons when centering etc.
 	iconRadius := win.img.glsl.fonts.defaultFontSize / 2
-
-	// the radius of the indicator circles/triangles/etc.
-	indicatorRadius := win.img.glsl.fonts.defaultFontSize / 3
 
 	// the width that can be seen in the window at any one time. reduce by the
 	// iconRadius*2 value to allow for the TV icon (current frame icon) when it
@@ -449,50 +460,38 @@ func (win *winTimeline) drawTrace() {
 
 	// jitter indicators
 	for _, i := range scanlineJitter[1:] {
-		dl.AddTriangleFilled(
-			imgui.Vec2{
-				X: rootPos.X + float32(i*plotWidth) - indicatorRadius,
-				Y: yPos + indicatorRadius*2,
-			},
-			imgui.Vec2{
-				X: rootPos.X + float32(i*plotWidth),
-				Y: yPos,
-			},
-			imgui.Vec2{
-				X: rootPos.X + float32(i*plotWidth) + indicatorRadius,
-				Y: yPos + indicatorRadius*2,
-			},
-			win.img.cols.timelineScanlines)
+		pos := imgui.Vec2{X: rootPos.X + float32(i*plotWidth), Y: yPos}
+		dl.AddText(pos, win.img.cols.timelineScanlines, string(fonts.TimelineJitter))
 	}
 
 	// comparison frame indicator
-	if win.img.lz.Rewind.Comparison != nil && len(timeline.FrameNum) > 0 {
-		fr := win.img.lz.Rewind.Comparison.TV.GetCoords().Frame - rewindOffset
+	if win.img.lz.Rewind.Comparison.State != nil && len(timeline.FrameNum) > 0 {
+		fr := win.img.lz.Rewind.Comparison.State.TV.GetCoords().Frame - rewindOffset
 
 		if fr < 0 {
-			// draw triangle indicating that the comparison frame is not visible
-			dl.AddTriangleFilled(imgui.Vec2{X: rootPos.X - indicatorRadius, Y: yPos + indicatorRadius},
-				imgui.Vec2{X: rootPos.X + indicatorRadius, Y: yPos + indicatorRadius*2},
-				imgui.Vec2{X: rootPos.X + indicatorRadius, Y: yPos},
-				win.img.cols.timelineCmpPointer)
+			// indicate that the comparison frame is not visible
+			pos := imgui.Vec2{X: rootPos.X - iconRadius, Y: yPos}
+			dl.AddText(pos, win.img.cols.timelineCmpPointer, string(fonts.TimelineOffScreen))
 		} else {
-			dl.AddCircleFilled(imgui.Vec2{X: rootPos.X + float32(fr*plotWidth), Y: yPos + indicatorRadius}, indicatorRadius, win.img.cols.timelineCmpPointer)
+			pos := imgui.Vec2{X: rootPos.X + float32(fr*plotWidth) - iconRadius, Y: yPos}
+			if win.img.lz.Rewind.Comparison.Locked {
+				dl.AddText(pos, win.img.cols.timelineCmpPointer, string(fonts.TimelineComparisonLock))
+			} else {
+				dl.AddText(pos, win.img.cols.timelineCmpPointer, string(fonts.TimelineComparison))
+			}
 		}
 	}
 
 	// current frame indicator
 	fr := win.img.lz.TV.Coords.Frame - rewindOffset
 	if fr < 0 {
-		// draw triangle indicating that the current frame is not visible
-		// if the comparison frame indicator is also not visible then this
-		// triangle (the current frame triangle) supercedes it
-		dl.AddTriangleFilled(imgui.Vec2{X: rootPos.X - indicatorRadius, Y: yPos + indicatorRadius},
-			imgui.Vec2{X: rootPos.X + indicatorRadius, Y: yPos + indicatorRadius*2},
-			imgui.Vec2{X: rootPos.X + indicatorRadius, Y: yPos},
-			win.img.cols.timelineRewindRange)
+		// indicate that the current frame indicator is not visible
+		pos := imgui.Vec2{X: rootPos.X - iconRadius, Y: yPos}
+		dl.AddText(pos, win.img.cols.timelineRewindRange, string(fonts.TimelineOffScreen))
+	} else {
+		dl.AddText(imgui.Vec2{X: rootPos.X + float32(fr*plotWidth) - iconRadius, Y: yPos},
+			win.img.cols.timelineRewindRange, string(fonts.TV))
 	}
-	dl.AddText(imgui.Vec2{X: rootPos.X + float32(fr*plotWidth) - iconRadius, Y: yPos},
-		win.img.cols.timelineRewindRange, string(fonts.TV))
 
 	// end of trace area
 	imgui.EndChild()

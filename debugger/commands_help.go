@@ -69,6 +69,9 @@ comments.  Comments are line oriented and are indicated by the # character.`,
 be 'current' execution state. If numbered frame is not in rewind history,
 emulation will move to the nearest frame that is.`,
 
+	cmdComparison: `Alter the comparison state. The comparison state is used to highlight
+differences in RAM displays, for example.`,
+
 	cmdGoto: `Run emulation to the specified clock, scanline, frame. Note that the values
 are specified in what might be considered the "reverse" order. This means the scanline and
 frame values are optional. 

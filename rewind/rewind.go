@@ -151,7 +151,8 @@ type Rewind struct {
 	splice int
 
 	// pointer to the comparison point
-	comparison *State
+	comparison       *State
+	comparisonLocked bool
 
 	// coordinates of execution state
 	executionCoords coords.TelevisionCoords
@@ -623,8 +624,11 @@ func (r *Rewind) GotoFrame(frame int) error {
 	return r.GotoCoords(coords.TelevisionCoords{Frame: frame, Clock: -specification.ClksHBlank})
 }
 
-// SetComparisonToCurrent points comparison to the current state
-func (r *Rewind) SetComparisonToCurrent() {
+// UpdateComparison points comparison to the current state
+func (r *Rewind) UpdateComparison() {
+	if r.comparisonLocked {
+		return
+	}
 	r.comparison = r.GetCurrentState()
 }
 
@@ -635,6 +639,11 @@ func (r *Rewind) SetComparison(frame int) {
 	if s != nil {
 		r.comparison = s.snapshot()
 	}
+}
+
+// LockComparison stops the comparison point from being updated
+func (r *Rewind) LockComparison(locked bool) {
+	r.comparisonLocked = locked
 }
 
 // NewFrame is in an implementation of television.FrameTrigger.
@@ -660,8 +669,17 @@ func (r *Rewind) GetCurrentState() *State {
 	return r.snapshot(levelTemporary)
 }
 
+// ComparisonState is returned by GetComparisonState()
+type ComparisonState struct {
+	State  *State
+	Locked bool
+}
+
 // GetComparisonState gets a reference to current comparison point. This is not
-// a copy of the state but the actual state.
-func (r *Rewind) GetComparisonState() *State {
-	return r.comparison
+// a copy of the state but the actual state. Also returns the
+func (r *Rewind) GetComparisonState() ComparisonState {
+	return ComparisonState{
+		State:  r.comparison.snapshot(),
+		Locked: r.comparisonLocked,
+	}
 }
