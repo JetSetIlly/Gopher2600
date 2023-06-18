@@ -37,11 +37,10 @@ type winTimeline struct {
 
 	// thumbnailer will be using emulation states created in the main emulation
 	// goroutine so we must thumbnail those states in the same goroutine.
-	thmb          *thumbnailer.Image
-	thmbTexture   uint32
-	thmbFrame     int
-	thmbFlipped   bool
-	thmbFlippedCt int
+	thmb        *thumbnailer.Image
+	thmbTexture uint32
+	thmbFrame   int
+	thumbLeft   bool
 
 	// mouse hover information
 	isHovered  bool
@@ -320,43 +319,27 @@ func (win *winTimeline) drawTrace() {
 			imgui.Vec2{X: win.hoverX + cursorWidth/2, Y: rootPos.Y + traceSize.Y},
 			win.img.cols.timelineHoverCursor)
 
-		// show thumbnail alongside cursor
 		if win.img.prefs.showTimelineThumbnail.Get().(bool) {
-			thumbnailSize := imgui.Vec2{X: specification.ClksVisible * 3, Y: specification.AbsoluteMaxScanlines}
-			thumbnailSize = thumbnailSize.Times(traceSize.Y / specification.AbsoluteMaxScanlines)
+			sz := imgui.Vec2{X: specification.ClksVisible * 3, Y: specification.AbsoluteMaxScanlines}.Times(traceSize.Y / specification.AbsoluteMaxScanlines)
 
-			// position thumbnail before or after the cursor depending on flip value
-			// and the proxity of the thumbnail to the timeline boundary
-			//
-			// thumbFlippedCt gives a half-second grace before flip happens.
-			// this looks and feels better
-			var thumbnailPos imgui.Vec2
-			if win.thmbFlipped {
-				thumbnailPos = imgui.Vec2{X: win.hoverX + cursorWidth*2, Y: rootPos.Y}
-				if thumbnailPos.X+thumbnailSize.X > rootPos.X+traceSize.X {
-					win.thmbFlippedCt++
-					if win.thmbFlippedCt > int(win.img.plt.mode.RefreshRate/2) {
-						win.thmbFlipped = false
-						thumbnailPos.X = win.hoverX - cursorWidth*2 - thumbnailSize.X
-					}
-				} else {
-					win.thmbFlippedCt = 0
+			// show thumbnail on either the left or right of the timeline window
+			var pos imgui.Vec2
+			if win.thumbLeft {
+				pos = imgui.Vec2{X: rootPos.X + iconRadius*2, Y: rootPos.Y}
+				if win.hoverX <= pos.X+sz.X {
+					win.thumbLeft = false
+					pos.X = rootPos.X + availableWidth - sz.X - iconRadius*2
 				}
 			} else {
-				thumbnailPos = imgui.Vec2{X: win.hoverX - cursorWidth*2 - thumbnailSize.X, Y: rootPos.Y}
-				if thumbnailPos.X < rootPos.X {
-					win.thmbFlippedCt++
-					if win.thmbFlippedCt > int(win.img.plt.mode.RefreshRate/4) {
-						win.thmbFlipped = true
-						thumbnailPos.X = win.hoverX + cursorWidth*2
-					}
-				} else {
-					win.thmbFlippedCt = 0
+				pos = imgui.Vec2{X: rootPos.X + availableWidth - sz.X - iconRadius*2, Y: rootPos.Y}
+				if win.hoverX >= pos.X {
+					win.thumbLeft = true
+					pos.X = rootPos.X + iconRadius*2
 				}
 			}
-			imgui.SetCursorScreenPos(thumbnailPos)
+			imgui.SetCursorScreenPos(pos)
 
-			imgui.ImageV(imgui.TextureID(win.thmbTexture), thumbnailSize,
+			imgui.ImageV(imgui.TextureID(win.thmbTexture), sz,
 				imgui.Vec2{}, imgui.Vec2{1, 1},
 				win.img.cols.TimelineThumbnailTint, imgui.Vec4{})
 
