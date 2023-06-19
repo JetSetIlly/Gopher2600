@@ -204,7 +204,12 @@ func (cart *Ace) Step(clock float32) {
 
 // IterateBank implements the mapper.CartMapper interface.
 func (cart *Ace) CopyBanks() []mapper.BankContent {
-	return nil
+	c := make([]mapper.BankContent, 1)
+	c[0] = mapper.BankContent{Number: 0,
+		Data:    cart.mem.vcsProgram,
+		Origins: []uint16{memorymap.OriginCart},
+	}
+	return c
 }
 
 // implements arm.CartridgeHook interface.
