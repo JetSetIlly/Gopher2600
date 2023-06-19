@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/ace"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/cdf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/dpcplus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -320,6 +321,8 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newSuperbank(cart.env, *cartload.Data)
 	case "WD":
 		cart.mapper, err = newWicksteadDesign(cart.env, *cartload.Data)
+	case "ACE":
+		cart.mapper, err = ace.NewAce(cart.env, *cartload.Data)
 	case "DPC":
 		cart.mapper, err = newDPC(cart.env, *cartload.Data)
 	case "DPC+":

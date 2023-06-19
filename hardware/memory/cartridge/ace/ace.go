@@ -30,9 +30,8 @@ type Ace struct {
 	env *environment.Environment
 	dev mapper.CartCoProcDeveloper
 
-	version string
-	arm     *arm.ARM
-	mem     *aceMemory
+	arm *arm.ARM
+	mem *aceMemory
 
 	// the hook that handles cartridge yields
 	yieldHook mapper.CartYieldHook
@@ -48,15 +47,14 @@ type Ace struct {
 }
 
 // NewAce is the preferred method of initialisation for the Ace type.
-func NewAce(env *environment.Environment, version string, data []byte) (mapper.CartMapper, error) {
+func NewAce(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
 	cart := &Ace{
 		env:       env,
-		version:   version,
 		yieldHook: mapper.StubCartYieldHook{},
 	}
 
 	var err error
-	cart.mem, err = newAceMemory(version, data)
+	cart.mem, err = newAceMemory(data)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +76,7 @@ func (cart *Ace) MappedBanks() string {
 
 // ID implements the mapper.CartMapper interface.
 func (cart *Ace) ID() string {
-	return fmt.Sprintf("ACE (%s)", cart.version)
+	return fmt.Sprintf("ACE (%s)", cart.mem.header.version)
 }
 
 // Snapshot implements the mapper.CartMapper interface.

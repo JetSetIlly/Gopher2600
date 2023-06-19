@@ -44,9 +44,9 @@ func fingerprintElf(b []byte, anywhere bool) bool {
 	return false
 }
 
-func fingerprintAce(b []byte) (bool, string, bool) {
+func fingerprintAce(b []byte) (bool, bool) {
 	if len(b) < 144 {
-		return false, "", false
+		return false, false
 	}
 
 	// some ACE files embed an ELF file inside the ACE data. these files are
@@ -58,14 +58,18 @@ func fingerprintAce(b []byte) (bool, string, bool) {
 	wrappedELF = wrappedELF && fingerprintElf(b, true)
 
 	if bytes.Contains(b[:144], []byte("ACE-2600")) {
-		return true, "ACE-2600", wrappedELF
+		return true, wrappedELF
 	}
 
 	if bytes.Contains(b[:144], []byte("ACE-PC00")) {
-		return true, "ACE-PC00", wrappedELF
+		return true, wrappedELF
 	}
 
-	return false, "", false
+	if bytes.Contains(b[:144], []byte("ACE-UF00")) {
+		return true, wrappedELF
+	}
+
+	return false, false
 }
 
 func fingerprint3e(b []byte) bool {
@@ -344,12 +348,12 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 		return err
 	}
 
-	if ok, version, wrappedElf := fingerprintAce(*cartload.Data); ok {
+	if ok, wrappedElf := fingerprintAce(*cartload.Data); ok {
 		if wrappedElf {
 			cart.mapper, err = elf.NewElf(cart.env, cart.Filename, true)
 			return err
 		}
-		cart.mapper, err = ace.NewAce(cart.env, version, *cartload.Data)
+		cart.mapper, err = ace.NewAce(cart.env, *cartload.Data)
 		return err
 	}
 

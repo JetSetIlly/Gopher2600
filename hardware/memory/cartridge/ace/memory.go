@@ -20,13 +20,35 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 type interruptARM interface {
 	Interrupt()
 }
 
+type aceHeader struct {
+	version       string
+	driverName    string
+	driverVersion uint32
+	romSize       uint32
+	checksum      uint32
+	entry         uint32
+}
+
+const (
+	aceHeaderMagic         = 0
+	aceHeaderDriverName    = 8
+	aceHeaderDriverVersion = 24
+	aceHeaderROMSize       = 28
+	aceHeaderROMChecksum   = 32
+	aceHeaderEntryPoint    = 36
+	aceStartOfVCSProgram   = 40
+)
+
 type aceMemory struct {
+	header aceHeader
+
 	model   architecture.Map
 	resetSP uint32
 	resetLR uint32
@@ -52,16 +74,6 @@ type aceMemory struct {
 
 	arm interruptARM
 }
-
-const (
-	aceHeaderMagic         = 0
-	aceHeaderDriverName    = 9
-	aceHeaderDriverVersion = 24
-	aceHeaderROMSize       = 28
-	aceHeaderROMChecksum   = 32
-	aceHeaderEntryPoint    = 36
-	aceStartOfVCSProgram   = 40
-)
 
 const (
 	DATA_MODER = 0x40020800
@@ -90,16 +102,49 @@ func (mem *aceMemory) setDataMode(out bool) {
 	}
 }
 
-func newAceMemory(version string, data []byte) (*aceMemory, error) {
+func newAceMemory(data []byte) (*aceMemory, error) {
 	mem := &aceMemory{}
 
-	switch version {
-	case "ACE-2600":
-		return nil, fmt.Errorf("ACE: unocart not yet supported")
+	// read header
+	mem.header.version = string(data[:aceHeaderDriverName])
+	logger.Logf("ACE", "header: version name: %s", mem.header.version)
+
+	mem.header.driverName = string(data[aceHeaderDriverName:aceHeaderDriverVersion])
+	logger.Logf("ACE", "header: driver name: %s", mem.header.driverName)
+
+	mem.header.driverVersion = (uint32(data[aceHeaderDriverVersion])) |
+		(uint32(data[aceHeaderDriverVersion+1]) << 8) |
+		(uint32(data[aceHeaderDriverVersion+2]) << 16) |
+		(uint32(data[aceHeaderDriverVersion+3]) << 24)
+	logger.Logf("ACE", "header: driver version: %08x", mem.header.driverVersion)
+
+	mem.header.romSize = (uint32(data[aceHeaderROMSize])) |
+		(uint32(data[aceHeaderROMSize+1]) << 8) |
+		(uint32(data[aceHeaderROMSize+2]) << 16) |
+		(uint32(data[aceHeaderROMSize+3]) << 24)
+	logger.Logf("ACE", "header: romsize: %08x", mem.header.romSize)
+
+	mem.header.checksum = (uint32(data[aceHeaderROMChecksum])) |
+		(uint32(data[aceHeaderROMChecksum+1]) << 8) |
+		(uint32(data[aceHeaderROMChecksum+2]) << 16) |
+		(uint32(data[aceHeaderROMChecksum+3]) << 24)
+	logger.Logf("ACE", "header: checksum: %08x", mem.header.checksum)
+
+	mem.header.entry = (uint32(data[aceHeaderEntryPoint])) |
+		(uint32(data[aceHeaderEntryPoint+1]) << 8) |
+		(uint32(data[aceHeaderEntryPoint+2]) << 16) |
+		(uint32(data[aceHeaderEntryPoint+3]) << 24)
+	logger.Logf("ACE", "header: entrypoint: %08x", mem.header.entry)
+
+	switch mem.header.version {
 	case "ACE-PC00":
 		mem.model = architecture.NewMap(architecture.PlusCart)
+	case "ACE-UF00":
+		mem.model = architecture.NewMap(architecture.PlusCart)
+	case "ACE-2600":
+		fallthrough
 	default:
-		return nil, fmt.Errorf("ACE: unrecognised version (%s)", version)
+		return nil, fmt.Errorf("ACE: version: %s not supported", mem.header.version)
 	}
 
 	// flash creation
@@ -120,35 +165,16 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 	mem.sramOrigin = mem.model.SRAMOrigin
 	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram)) - 1
 
-	romSize := (uint32(data[aceHeaderROMSize])) |
-		(uint32(data[aceHeaderROMSize+1]) << 8) |
-		(uint32(data[aceHeaderROMSize+2]) << 16) |
-		(uint32(data[aceHeaderROMSize+3]) << 24)
-
-	// ignoring checksum
-
-	entryPoint := (uint32(data[aceHeaderEntryPoint])) |
-		(uint32(data[aceHeaderEntryPoint+1]) << 8) |
-		(uint32(data[aceHeaderEntryPoint+2]) << 16) |
-		(uint32(data[aceHeaderEntryPoint+3]) << 24)
-
 	// reset values for SP, LR and PC
 	mem.resetSP = mem.model.FlashOrigin + uint32(flashSize) - 4
 	mem.resetLR = mem.model.FlashOrigin
-	mem.resetPC = mem.model.FlashOrigin + entryPoint
+	mem.resetPC = mem.model.FlashOrigin + mem.header.entry
 
-	// align reset PC value. this needs to be done now in order for the
-	// dataOffset calculation to be correct
+	// align reset PC value
 	mem.resetPC &= 0xfffffffe
 
-	// offset into the data array for start of ARM program. not entirely sure
-	// of the significance of the jumpVector value or what it refers to
-	const jumpVector = 0x08020200
-	dataOffset := mem.resetPC - jumpVector - mem.model.FlashOrigin
-
 	// copy arm program
-	mem.armProgram = make([]byte, romSize)
-	copy(mem.armProgram, data[dataOffset:])
+	mem.armProgram = data[mem.header.entry-1:]
 	mem.armOrigin = mem.resetPC
 	mem.armMemtop = mem.armOrigin + uint32(len(mem.armProgram)) - 1
 

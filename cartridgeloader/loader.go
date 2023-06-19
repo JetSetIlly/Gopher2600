@@ -219,6 +219,8 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 			fallthrough
 		case ".WD":
 			fallthrough
+		case ".ACE":
+			fallthrough
 		case ".CDF0":
 			fallthrough
 		case ".CDF1":
