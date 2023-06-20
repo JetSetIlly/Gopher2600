@@ -111,14 +111,19 @@ func (e DisasmEntry) Size() int {
 	return 2
 }
 
-// fillDisasmEntry sets the DisasmEntry fields using information from the
-// emulated ARM. the other fields are not touched so can be set before or after
-// calling the function
+// fillDisasmEntry sets the DisasmEntry fields using information from the emulated ARM
+//
+// the Is32bit field will remain true if it has previously been set to true
 func fillDisasmEntry(arm *ARM, e *DisasmEntry, opcode uint16) {
 	e.Addr = arm.state.instructionPC
 	e.Opcode = opcode
-	e.Is32bit = arm.state.function32bitDecoding
 	e.OpcodeHi = arm.state.function32bitOpcodeHi
 	e.Address = fmt.Sprintf("%08x", arm.state.instructionPC)
 	e.Operator = strings.ToLower(e.Operator)
+
+	// deciding whether the instruction is 32bit or not needs to cover three
+	// 1) when the flag has already been set explicitely
+	// 2) when the instruction is only being decoded (static disassembly)
+	// 3) when the instruction has actually been executed, or resolved (live disassembly)
+	e.Is32bit = e.Is32bit || arm.state.function32bitDecoding || arm.state.function32bitResolving
 }

@@ -60,6 +60,7 @@ func (arm *ARM) disassembleThumb2(opcode uint16) (DisasmEntry, error) {
 		if e == nil {
 			e = &DisasmEntry{
 				Operand: "32bit instruction",
+				Is32bit: true,
 			}
 		}
 
