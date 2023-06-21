@@ -29,6 +29,11 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+// it is sometimes convenient to dissassemble every instruction and to print it
+// to stdout for inspection. we most likely need this during the early stages of
+// debugging of a new cartridge type
+const useCartCoProcDisassemblerStdout = false
+
 // register names.
 const (
 	rSB = 9 + iota // static base
@@ -316,6 +321,11 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 		clklenFlash: 4.0,
 
 		state: &ARMState{},
+	}
+
+	// disassembly printed to stdout
+	if useCartCoProcDisassemblerStdout {
+		arm.disasm = &mapper.CartCoProcDisassemblerStdout{}
 	}
 
 	// slow prefs update by 100ms
@@ -855,8 +865,30 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 				// update program cycles
 				arm.disasmSummary.add(arm.state.cycleOrder)
 
+				// additional output for disassembler of type CartCoProcDisassemblerStdout type
+				var isDisasmStdout bool
+				if _, isDisasmStdout = arm.disasm.(*mapper.CartCoProcDisassemblerStdout); isDisasmStdout {
+					fmt.Printf("%08x: ", entry.Addr)
+					if entry.Is32bit {
+						fmt.Printf("%04x %04x ", entry.OpcodeHi, entry.Opcode)
+					} else {
+						fmt.Printf("%04x       ", entry.Opcode)
+					}
+				}
+
 				// we always send the instruction to the disasm interface
 				arm.disasm.Step(entry)
+
+				// additional output for disassembler of type CartCoProcDisassemblerStdout type
+				if isDisasmStdout {
+					for i, r := range arm.state.registers {
+						fmt.Printf("\tR%02d: %08x\t", i, r)
+						if (i+1)%4 == 0 {
+							fmt.Println()
+						}
+					}
+					fmt.Println()
+				}
 			}
 		}
 
