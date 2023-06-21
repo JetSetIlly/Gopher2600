@@ -245,25 +245,8 @@ func (win *winCoProcPerformance) draw() {
 				imgui.EndCombo()
 			}
 
-			imgui.SameLineV(0, 15)
-			if imgui.Checkbox("Percentile Figures", &win.percentileFigures) {
-				win.windowSortSpecDirty = true
-			}
-
-			imgui.SameLineV(0, 15)
-			imgui.Checkbox("Hide Unexecuted Items", &win.hideUnusedEntries)
-
-			if win.tabSelected == functionTab {
-				imgui.SameLineV(0, 15)
-				if imgui.Checkbox("Cumulative Figures", &win.cumulative) {
-					win.windowSortSpecDirty = true
-				}
-			}
-
-			// scale statistics to function is in drawFunctionFilter()
-			imgui.Spacing()
-
 			// reset statistics
+			imgui.SameLineV(0, 15)
 			if win.img.dbg.State() == govern.Paused {
 				if win.tv.schedule.Load().(bool) {
 					if imgui.Button(fmt.Sprintf("%c Reset Now", fonts.Trash)) {
@@ -290,6 +273,22 @@ func (win *winCoProcPerformance) draw() {
 			} else {
 				if imgui.Button(fmt.Sprintf("%c Reset Statistics", fonts.Trash)) {
 					win.tv.scheduleReset(true)
+				}
+			}
+
+			imgui.Spacing()
+
+			imgui.Checkbox("Hide Unexecuted Items", &win.hideUnusedEntries)
+
+			imgui.SameLineV(0, 15)
+			if imgui.Checkbox("Percentile Figures", &win.percentileFigures) {
+				win.windowSortSpecDirty = true
+			}
+
+			if win.tabSelected == functionTab {
+				imgui.SameLineV(0, 15)
+				if imgui.Checkbox("Cumulative Figures", &win.cumulative) {
+					win.windowSortSpecDirty = true
 				}
 			}
 
