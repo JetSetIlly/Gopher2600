@@ -259,20 +259,28 @@ func (bld *build) buildTypes(src *Source) error {
 				if fld != nil {
 					switch fld.Class {
 					case dwarf.ClassConstant:
-						memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
-						memb.loclist.addOperator(loclistOperator{
-							resolve: func(loc *loclist) (loclistStack, error) {
-								return loclistStack{
-									class: stackClassSingleAddress,
-									value: uint32(fld.Val.(int64)),
-								}, nil
-							},
-							operator: "member offset",
-						})
+						if bld.debug_loc == nil {
+							logger.Logf("dwarf", "no .debug_loc data for %s", memb.Name)
+						} else {
+							memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
+							memb.loclist.addOperator(loclistOperator{
+								resolve: func(loc *loclist) (loclistStack, error) {
+									return loclistStack{
+										class: stackClassSingleAddress,
+										value: uint32(fld.Val.(int64)),
+									}, nil
+								},
+								operator: "member offset",
+							})
+						}
 					case dwarf.ClassExprLoc:
-						memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
-						r, _ := bld.debug_loc.decodeLoclistOperation(fld.Val.([]uint8))
-						memb.loclist.addOperator(r)
+						if bld.debug_loc == nil {
+							logger.Logf("dwarf", "no .debug_loc data for %s", memb.Name)
+						} else {
+							memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
+							r, _ := bld.debug_loc.decodeLoclistOperation(fld.Val.([]uint8))
+							memb.loclist.addOperator(r)
+						}
 					default:
 						continue
 					}
