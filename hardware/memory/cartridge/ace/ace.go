@@ -62,9 +62,10 @@ func NewAce(env *environment.Environment, data []byte) (mapper.CartMapper, error
 	cart.arm = arm.NewARM(cart.mem.model, cart.env.Prefs.ARM, cart.mem, cart)
 	cart.mem.Plumb(cart.arm)
 
-	logger.Logf("ACE", "vcs program: %08x to %08x", cart.mem.vcsOrigin, cart.mem.vcsMemtop)
-	logger.Logf("ACE", "arm program: %08x to %08x", cart.mem.armOrigin, cart.mem.armMemtop)
-	logger.Logf("ACE", "sram: %08x to %08x (%dbytes)", cart.mem.sramOrigin, cart.mem.sramMemtop, len(cart.mem.sram))
+	logger.Logf("ACE", "ccm: %08x to %08x", cart.mem.sramOrigin, cart.mem.sramMemtop)
+	logger.Logf("ACE", "flash: %08x to %08x", cart.mem.flashOrigin, cart.mem.flashMemtop)
+	logger.Logf("ACE", "vcs program: %08x to %08x", cart.mem.flashVCSOrigin, cart.mem.flashVCSMemtop)
+	logger.Logf("ACE", "arm program: %08x to %08x", cart.mem.flashARMOrigin, cart.mem.flashARMMemtop)
 
 	return cart, nil
 }
@@ -204,7 +205,7 @@ func (cart *Ace) Step(clock float32) {
 func (cart *Ace) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, 1)
 	c[0] = mapper.BankContent{Number: 0,
-		Data:    cart.mem.vcsProgram,
+		Data:    cart.mem.flashVCS,
 		Origins: []uint16{memorymap.OriginCart},
 	}
 	return c
