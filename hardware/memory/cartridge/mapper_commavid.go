@@ -192,7 +192,7 @@ func (cart *commavid) CopyBanks() []mapper.BankContent {
 	return c
 }
 
-// rewindable state for the CBS cartridge.
+// rewindable state for commavid cartridges
 type commavidState struct {
 	// commavid cartridges are distinguished for having 1k of onboard ram
 	ram []uint8
