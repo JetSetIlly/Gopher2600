@@ -39,8 +39,19 @@ type winTimeline struct {
 	// goroutine so we must thumbnail those states in the same goroutine.
 	thmb        *thumbnailer.Image
 	thmbTexture uint32
-	thmbFrame   int
-	thumbLeft   bool
+
+	// whether the thumbnail is being shown on the left of the timeline rather
+	// than the right
+	thumbLeft bool
+
+	// which frame was the last thumbnail generated for. used to prevent another
+	// thumbnail being generated for the same frame
+	thmbFrame int
+
+	// throttle the number of thumbnails that are being generated at once. if
+	// channel is full then the thumbnail is being generated. the channel is
+	// drained once the thumbnail creation has completed
+	thmbRunning chan bool
 
 	// mouse hover information
 	isHovered  bool
@@ -67,7 +78,8 @@ type winTimeline struct {
 
 func newWinTimeline(img *SdlImgui) (window, error) {
 	win := &winTimeline{
-		img: img,
+		img:         img,
+		thmbRunning: make(chan bool, 1),
 	}
 
 	var err error
@@ -171,14 +183,21 @@ func (win *winTimeline) debuggerDraw() bool {
 	win.debuggerGeom.update()
 	imgui.End()
 
-	if win.isHovered || win.scrubbing {
-		hoverFrame := win.hoverFrame
-		// slow the rate at which we generate thumbnails
-		if win.img.polling.throttleTimelineThumbnailer() {
-			win.img.dbg.PushFunction(func() {
-				// thumbnailer must be run in the same goroutine as the main emulation
-				win.thmb.Create(win.img.dbg.Rewind.GetState(hoverFrame))
-			})
+	if (win.isHovered || win.scrubbing) && win.img.prefs.showTimelineThumbnail.Get().(bool) {
+		if win.thmbFrame != win.hoverFrame {
+			select {
+			case win.thmbRunning <- true:
+				win.thmbFrame = win.hoverFrame
+				hoverFrame := win.hoverFrame
+				win.img.dbg.PushFunction(func() {
+					// thumbnailer must be run in the same goroutine as the main emulation
+					win.thmb.Create(win.img.dbg.Rewind.GetState(hoverFrame))
+					<-win.thmbRunning
+				})
+			default:
+				// if a thumbnail is currently being generated then we need to
+				// carry on with the GUI thread without delay
+			}
 		}
 	}
 
