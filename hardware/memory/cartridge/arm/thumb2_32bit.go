@@ -896,6 +896,38 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) *Disa
 					v, _ := ROR_C(arm.state.registers[Rm], uint32(rot)<<3)
 					arm.state.registers[Rd] = arm.state.registers[Rn] + (v & 0x000000ff)
 				}
+
+			case 0b100:
+				if Rn == 0b1111 {
+					// "4.6.185 SXTB" of "Thumb-2 Supplement"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "SXTB",
+						}
+					}
+
+					v, _ := ROR_C(arm.state.registers[Rm], uint32(rot)<<3)
+					arm.state.registers[Rd] = v & 0x000000ff
+					if arm.state.registers[Rd]&0x80 == 0x80 {
+						arm.state.registers[Rd] |= 0xffffff00
+					}
+				} else {
+					// "4.6.182 SXTAB" of "Thumb-2 Supplement"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "SXTAB",
+						}
+					}
+
+					v, _ := ROR_C(arm.state.registers[Rm], uint32(rot)<<3)
+					arm.state.registers[Rd] = arm.state.registers[Rn] + (v & 0x000000ff)
+					if arm.state.registers[Rd]&0x80 == 0x80 {
+						arm.state.registers[Rd] |= 0xffffff00
+					}
+				}
+
 			default:
 				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (sign or zero extension with opt addition) (%03b)", op))
 			}
