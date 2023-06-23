@@ -257,8 +257,26 @@ func newAceMemory(data []byte) (*aceMemory, error) {
 	// pluscart revision number
 	copy(mem.flash[24:28], []byte{0x00, 0x00, 0x00, 0x03})
 
+	// GPIO addresses
+	mem.flash[28] = uint8(ADDR_IDR & 0xff)
+	mem.flash[29] = uint8((ADDR_IDR >> 8) & 0xff)
+	mem.flash[30] = uint8((ADDR_IDR >> 16) & 0xff)
+	mem.flash[31] = uint8((ADDR_IDR >> 24) & 0xff)
+	mem.flash[32] = uint8((DATA_IDR) & 0xff)
+	mem.flash[33] = uint8((DATA_IDR >> 8) & 0xff)
+	mem.flash[34] = uint8((DATA_IDR >> 16) & 0xff)
+	mem.flash[35] = uint8((DATA_IDR >> 24) & 0xff)
+	mem.flash[36] = uint8((DATA_ODR) & 0xff)
+	mem.flash[37] = uint8((DATA_ODR >> 8) & 0xff)
+	mem.flash[38] = uint8((DATA_ODR >> 16) & 0xff)
+	mem.flash[39] = uint8((DATA_ODR >> 24) & 0xff)
+	mem.flash[40] = uint8((DATA_MODER) & 0xff)
+	mem.flash[41] = uint8((DATA_MODER >> 8) & 0xff)
+	mem.flash[42] = uint8((DATA_MODER >> 16) & 0xff)
+	mem.flash[43] = uint8((DATA_MODER >> 24) & 0xff)
+
 	// end of argument indicator
-	copy(mem.flash[28:32], []byte{0x00, 0x26, 0xe4, 0xac})
+	copy(mem.flash[44:48], []byte{0x00, 0x26, 0xe4, 0xac})
 
 	// GPIO pins
 	mem.gpio = make([]byte, GPIO_SIZE)
