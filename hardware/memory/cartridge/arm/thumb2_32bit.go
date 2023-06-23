@@ -848,6 +848,37 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) *Disa
 			rot := (opcode & 0x0030) >> 4
 
 			switch op {
+			case 0b000:
+				if Rn == rPC {
+					// "4.6.187 SXTH" of "Thumb-2 Supplement"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "SXTH",
+						}
+					}
+
+					v, _ := ROR_C(arm.state.registers[Rm], uint32(rot)<<3)
+					arm.state.registers[Rd] = v & 0x0000ffff
+					if arm.state.registers[Rd]&0x8000 == 0x8000 {
+						arm.state.registers[Rd] |= 0xffff0000
+					}
+				} else {
+					// "4.6.184 SXTAH" of "Thumb-2 Supplement"
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "SXTAH",
+						}
+					}
+
+					v, _ := ROR_C(arm.state.registers[Rm], uint32(rot)<<3)
+					arm.state.registers[Rd] = arm.state.registers[Rn] + (v & 0x0000ffff)
+					if arm.state.registers[Rd]&0x8000 == 0x8000 {
+						arm.state.registers[Rd] |= 0xffff0000
+					}
+				}
+
 			case 0b001:
 				if Rn == rPC {
 					// "4.6.226 UXTH" of "Thumb-2 Supplement"
