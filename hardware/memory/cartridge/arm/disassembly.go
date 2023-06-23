@@ -29,12 +29,12 @@ func (arm *ARM) disassemble(opcode uint16) (DisasmEntry, error) {
 
 	df := arm.decodeThumb(opcode)
 	if df == nil {
-		return DisasmEntry{}, fmt.Errorf("error decoding instruction during disassembly")
+		return DisasmEntry{}, fmt.Errorf("error decoding thumb instruction during disassembly")
 	}
 
 	e := df(opcode)
 	if e == nil {
-		return DisasmEntry{}, fmt.Errorf("error decoding instruction during disassembly")
+		return DisasmEntry{}, fmt.Errorf("error executing thumb instruction during disassembly")
 	}
 
 	fillDisasmEntry(arm, e, opcode)
@@ -53,7 +53,8 @@ func (arm *ARM) disassembleThumb2(opcode uint16) (DisasmEntry, error) {
 	if is32BitThumb2(arm.state.function32bitOpcodeHi) {
 		df := arm.decodeThumb2(arm.state.function32bitOpcodeHi)
 		if df == nil {
-			return DisasmEntry{}, fmt.Errorf("error decoding instruction during disassembly")
+			return DisasmEntry{}, fmt.Errorf("error decoding 32bit thumb-2 instruction during disassembly: %04x %04x",
+				arm.state.function32bitOpcodeHi, opcode)
 		}
 
 		e = df(opcode)
@@ -67,11 +68,11 @@ func (arm *ARM) disassembleThumb2(opcode uint16) (DisasmEntry, error) {
 	} else {
 		df := arm.decodeThumb2(opcode)
 		if df == nil {
-			return DisasmEntry{}, fmt.Errorf("error decoding instruction during disassembly")
+			return DisasmEntry{}, fmt.Errorf("error decoding 16bit thumb2 instruction during disassembly: %04x", opcode)
 		}
 		e = df(opcode)
 		if e == nil {
-			return DisasmEntry{}, fmt.Errorf("error decoding instruction during disassembly")
+			return DisasmEntry{}, fmt.Errorf("error executing 16bit thumb2 instruction during disassembly: %04x", opcode)
 		}
 	}
 

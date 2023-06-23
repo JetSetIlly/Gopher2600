@@ -218,6 +218,11 @@ func (arm *ARM) decodeThumb2ReverseBytes(opcode uint16) *DisasmEntry {
 }
 
 func (arm *ARM) decodeThumb2ChangeProcessorState(opcode uint16) *DisasmEntry {
+	if arm.decodeOnly {
+		return &DisasmEntry{
+			Operator: "CPSID",
+		}
+	}
 	logger.Logf("ARM7", "CPSID instruction does nothing")
 	return nil
 }
