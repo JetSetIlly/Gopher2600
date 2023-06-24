@@ -81,82 +81,81 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) *Disa
 
 		switch op {
 		case 0b0000:
-			if Rd == rPC && setFlags {
-				panic("unimplemented TST")
-			} else {
-				// "4.6.9 AND (register)" of "Thumb-2 Supplement"
-				if arm.decodeOnly {
+			// "4.6.193 TST (register)" of "Thumb-2 Supplement"
+			// and
+			// "4.6.9 AND (register)" of "Thumb-2 Supplement"
+
+			// whether this is a TST instruction or not
+			tst := Rd == rPC && setFlags
+
+			// disassembly only
+			if arm.decodeOnly {
+				if tst {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "TST",
+					}
+				} else {
 					return &DisasmEntry{
 						Is32bit:  true,
 						Operator: "AND",
 					}
 				}
+			}
 
-				switch typ {
-				case 0b00:
-					// with logical left shift
+			var shifted uint32
+			var carry bool
 
-					// carry bit
-					m := uint32(0x01) << (32 - imm5)
-					carry := arm.state.registers[Rm]&m == m
+			switch typ {
+			case 0b00:
+				// with logical left shift
 
-					// perform shift
-					shifted := arm.state.registers[Rm] << imm5
+				// carry bit
+				m := uint32(0x01) << (32 - imm5)
+				carry = arm.state.registers[Rm]&m == m
 
-					// perform AND
-					arm.state.registers[Rd] = arm.state.registers[Rn] & shifted
+				// perform shift
+				shifted = arm.state.registers[Rm] << imm5
+			case 0b01:
+				// with logical right shift
 
-					if setFlags {
-						arm.state.status.isNegative(arm.state.registers[Rd])
-						arm.state.status.isZero(arm.state.registers[Rd])
-						arm.state.status.setCarry(carry)
-						// overflow unchanged
-					}
-				case 0b01:
-					// with logical right shift
+				// carry bit
+				m := uint32(0x01) << (imm5 - 1)
+				carry = arm.state.registers[Rm]&m == m
 
-					// carry bit
-					m := uint32(0x01) << (imm5 - 1)
-					carry := arm.state.registers[Rm]&m == m
+				// perform shift
+				shifted = (arm.state.registers[Rm] >> imm5)
+			case 0b10:
+				// with arithmetic right shift
 
-					// perform shift
-					shifted := (arm.state.registers[Rm] >> imm5)
+				// carry bit
+				m := uint32(0x01) << (imm5 - 1)
+				carry = arm.state.registers[Rm]&m == m
 
-					// perform AND
-					arm.state.registers[Rd] = arm.state.registers[Rn] & shifted
-
-					if setFlags {
-						arm.state.status.isNegative(arm.state.registers[Rd])
-						arm.state.status.isZero(arm.state.registers[Rd])
-						arm.state.status.setCarry(carry)
-						// overflow unchanged
-					}
-				case 0b10:
-					// with arithmetic right shift
-
-					// carry bit
-					m := uint32(0x01) << (imm5 - 1)
-					carry := arm.state.registers[Rm]&m == m
-
-					// perform shift (with sign extension)
-					signExtend := (arm.state.registers[Rm] & 0x80000000) >> 31
-					shifted := arm.state.registers[Rm] >> imm5
-					if signExtend == 0x01 {
-						shifted |= ^uint32(0) << (32 - imm5)
-					}
-
-					// perform bit clear
-					arm.state.registers[Rd] = arm.state.registers[Rn] & shifted
-
-					if setFlags {
-						arm.state.status.isNegative(arm.state.registers[Rd])
-						arm.state.status.isZero(arm.state.registers[Rd])
-						arm.state.status.setCarry(carry)
-						// overflow unchanged
-					}
-				default:
-					panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b)", op, typ))
+				// perform shift (with sign extension)
+				signExtend := (arm.state.registers[Rm] & 0x80000000) >> 31
+				shifted = arm.state.registers[Rm] >> imm5
+				if signExtend == 0x01 {
+					shifted |= ^uint32(0) << (32 - imm5)
 				}
+			default:
+				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b)", op, typ))
+			}
+
+			// perform AND operation
+			result := arm.state.registers[Rn] & shifted
+
+			// store result in register if this is the AND instruction
+			if !tst {
+				arm.state.registers[Rd] = result
+			}
+
+			// change status register
+			if setFlags {
+				arm.state.status.isNegative(result)
+				arm.state.status.isZero(result)
+				arm.state.status.setCarry(carry)
+				// overflow unchanged
 			}
 
 		case 0b0001:
