@@ -185,7 +185,7 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 	// check 16 bit alignment
 	misaligned := addr&0x01 != 0x00
 	if misaligned && (requiresAlignment || arm.mmap.UnalignTrap) {
-		logger.Logf("ARM7", "misaligned 16 bit read (%08x) (PC: %08x)", addr, arm.state.registers[rPC])
+		logger.Logf("ARM7", "misaligned 16 bit read (%08x) (PC: %08x)", addr, arm.state.instructionPC)
 	}
 
 	var mem *[]uint8
@@ -243,7 +243,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 	// check 16 bit alignment
 	misaligned := addr&0x01 != 0x00
 	if misaligned && (requiresAlignment || arm.mmap.UnalignTrap) {
-		logger.Logf("ARM7", "misaligned 16 bit write (%08x) (PC: %08x)", addr, arm.state.registers[rPC])
+		logger.Logf("ARM7", "misaligned 16 bit write (%08x) (PC: %08x)", addr, arm.state.instructionPC)
 	}
 
 	var mem *[]uint8
@@ -302,7 +302,7 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 	// check 32 bit alignment
 	misaligned := addr&0x03 != 0x00
 	if misaligned && (requiresAlignment || arm.mmap.UnalignTrap) {
-		logger.Logf("ARM7", "misaligned 32 bit read (%08x) (PC: %08x)", addr, arm.state.registers[rPC])
+		logger.Logf("ARM7", "misaligned 32 bit read (%08x) (PC: %08x)", addr, arm.state.instructionPC)
 	}
 
 	var mem *[]uint8
@@ -360,7 +360,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 	// check 32 bit alignment
 	misaligned := addr&0x03 != 0x00
 	if misaligned && (requiresAlignment || arm.mmap.UnalignTrap) {
-		logger.Logf("ARM7", "misaligned 32 bit write (%08x) (PC: %08x)", addr, arm.state.registers[rPC])
+		logger.Logf("ARM7", "misaligned 32 bit write (%08x) (PC: %08x)", addr, arm.state.instructionPC)
 	}
 
 	var mem *[]uint8
