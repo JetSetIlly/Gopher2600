@@ -734,7 +734,7 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 
 		// check program counter
 		memIdx := int(arm.state.executingPC) - int(arm.state.programMemoryOffset)
-		if memIdx < 0 || memIdx > arm.state.programMemoryLen {
+		if memIdx < 0 || memIdx >= arm.state.programMemoryLen-1 {
 			// program counter is out-of-range so find program memory again
 			// (using the PC value)
 			err = arm.findProgramMemory()
@@ -746,7 +746,7 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 
 			// if it's still out-of-range then give up with an error
 			memIdx = int(arm.state.executingPC) - int(arm.state.programMemoryOffset)
-			if memIdx < 0 || memIdx > arm.state.programMemoryLen {
+			if memIdx < 0 || memIdx >= arm.state.programMemoryLen-1 {
 				logger.Logf("ARM7", "can't find executable memory for PC (%08x)", arm.state.executingPC)
 				break // for loop
 			}
