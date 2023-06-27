@@ -81,6 +81,8 @@ type SoundLoad struct {
 	// without load() being called and for the tape to continue "playing". once
 	// stepLimiter reaches the stepLimit value, the tape stops
 	stepLimiter int
+
+	threshold float32
 }
 
 // newSoundLoad is the preferred method of initialisation for the SoundLoad type.
@@ -120,6 +122,13 @@ func newSoundLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, erro
 	tap.regulator = int(math.Round(1190000.0 / tap.pcm.sampleRate))
 	logger.Logf(soundloadLogTag, "tape regulator: %d", tap.regulator)
 
+	// threshold value is the average value in the PCM data
+	var total float32
+	for _, d := range tap.pcm.data {
+		total += d
+	}
+	tap.threshold = total / float32(len(tap.pcm.data))
+
 	// rewind tape to start of header
 	tap.Rewind()
 
@@ -147,7 +156,7 @@ func (tap *SoundLoad) load() (uint8, error) {
 		logger.Log(soundloadLogTag, "tape playing")
 	}
 
-	if tap.pcm.data[tap.idx] > 0.0 {
+	if tap.pcm.data[tap.idx] > tap.threshold {
 		return 0x01, nil
 	}
 	return 0x00, nil
