@@ -305,7 +305,7 @@ func (cart *mnetwork) GetBank(addr uint16) mapper.BankInfo {
 		return mapper.BankInfo{Number: cart.state.ram256byteIdx, IsRAM: true, IsSegmented: true, Segment: 1}
 	}
 
-	return mapper.BankInfo{Number: 7, IsRAM: false, IsSegmented: true, Segment: 1}
+	return mapper.BankInfo{Number: cart.NumBanks() - 1, IsRAM: false, IsSegmented: true, Segment: 1}
 }
 
 // Patch implements the mapper.CartMapper interface.
