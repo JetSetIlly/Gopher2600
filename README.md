@@ -1,24 +1,24 @@
-<img align="left" src="https://github.com/JetSetIlly/Gopher2600-Dev-Docs/blob/master/gopher2600_logo/logo4.png" width="250" alt="gopher2600 logo"/>
+<img align="right" src="https://github.com/JetSetIlly/Gopher2600-Dev-Docs/blob/master/gopher2600_logo/logo4.png" width="250" alt="gopher2600 logo"/>
 
 # Gopher2600
 
-Gopher2600 is an emulator for the Atari 2600 written in the Go language.
+Gopher2600 is an emulator for the Atari 2600 written in Go.
 
-The accuracy of the emulation is very high and there are no known outstanding
-problems with the 6507, TIA and RIOT chip emulation. Emulation of the ARM chip
-is currently limited to the Thumb subset of instructions but it does include
-accurate cycle counting and performance monitoring.
+Accuracy is very high and and there are no known proplems with the emulation of the 6507, TIA or RIOT chips.
 
-It is an ongoing project and bug reports are welcome.
-<br clear="left">
+Emulation of the ARM chip is currently limited to the Thumb subset of instructions but it does include accurate cycle counting and performance monitoring.
+<br clear="right">
 
 The key features of the emulator:
 
-* [Support for many of the known cartridge formats](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supported-Cartridge-Mappers) including the [Supercharger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supercharger)
+* [Support for many of the known cartridge formats](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supported-Cartridge-Mappers)
+    * emulation of the [Supercharger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supercharger) - supports loading from WAV files
 * Emulation of the [ARM7TDMI](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/ATM7TDMI-Emulation) as found in the `Harmony` cartridge
+	* Preliminary support for the ARMv7-M as used in the `UnoCart` and `PlusCart` is also included
 * Network access through [PlusROM](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/PlusROM) emulation
 * [AtariVox and SaveKey](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/AtariVox-and-SaveKey) support
-* CRT Effects
+    * Speech support via `Festival`
+* CRT TV Effects
 * Three [screenshot](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Creating-Screenshots) methods
 * Accurate audio reproduction (and optional stereo output)
 * Support for common [TIA revisions](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/TIA-Revisions)
@@ -30,12 +30,11 @@ The key features of the emulator:
 
 The graphical [debugger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Debugger):
 
-* Optional Color Clock level interaction
+* CPU Clock and Color Clock level interaction
 * Breakpoints, traps, watches on various CPU, TIA and RIOT targets
-* Specialist windows for specific cartridge types (eg. supercharger tape)
-* Terminal interface (headless operation optional)
 * Script recording and playback
-* ARM peformance monitoring
+* ARM peformance profiling 
+* Terminal interface (headless operation optional)
 
 Logo is based on [Gopherize.me](https://github.com/matryer/gopherize.me) which itself is based on the work of [Ashley McNamara](https://github.com/ashleymcnamara/gophers) and is [licensed under the Creative Commons](https://github.com/ashleymcnamara/gophers/blob/master/LICENSE).
 
@@ -57,16 +56,14 @@ The following [screenshots](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/C
 		<td align="center">
 			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/chiphead.jpg" height="150" alt="chiphead"/>
 		</td>
-	</tr>
-	<tr>
 		<td align="center">
 			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/thrust.jpg" height="150" alt="thrust"/>
 		</td>
+	</tr>
+	<tr>
 		<td align="center">
 			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/mangoesdown.jpg" height="150" alt="man goes down"/>
 		</td>
-	</tr>
-	<tr>
 		<td align="center">
 			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/beast.jpg" height="150" alt="soul of the beast"/>
 		</td>
