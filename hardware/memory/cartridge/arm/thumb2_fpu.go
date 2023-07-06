@@ -415,6 +415,40 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) *DisasmEntry {
 				addr += 4
 			}
 		}
+	case 0b01010:
+		// "A7.7.258 VSTM" of "ARMv7-M"
+		if arm.decodeOnly {
+			return &DisasmEntry{
+				Is32bit:  true,
+				Operator: "VSTM",
+			}
+		}
+
+		add := arm.state.function32bitOpcodeHi&0x0080 == 0x0080
+		imm8 := opcode & 0x00ff
+		imm32 := uint32(imm8 << 2)
+		Vd := (opcode & 0xf000) >> 12
+		D := (arm.state.function32bitOpcodeHi & 0x0040) >> 6
+		Rn := arm.state.function32bitOpcodeHi & 0x000f
+
+		addr := arm.state.registers[Rn]
+		if add {
+			addr += imm32
+		} else {
+			addr -= imm32
+		}
+
+		if opcode&0x0100 == 0x0100 {
+			// 64bit floats (T1 encoding)
+			d := (D << 4) | Vd
+			arm.write32bit(addr, arm.state.fpu.Registers[d], true)
+			addr += 4
+			arm.write32bit(addr, arm.state.fpu.Registers[d+1], true)
+		} else {
+			// 32bit floats (T2 encoding)
+			d := (Vd << 1) | D
+			arm.write32bit(addr, arm.state.fpu.Registers[d], true)
+		}
 	default:
 		panic("unimplemented FPU register load/save instruction")
 	}
