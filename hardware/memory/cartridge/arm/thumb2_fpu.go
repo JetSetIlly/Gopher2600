@@ -60,6 +60,29 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 	if !T {
 		switch opc1 & 0b1011 {
 		case 0b0011:
+			D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
+			Vn := arm.state.function32bitOpcodeHi & 0x000f
+			Vd := (opcode & 0xf000) >> 12
+			sz := (opcode & 0x0100) == 0x0100
+			N := (opcode & 0x0080) >> 7
+			M := (opcode & 0x0020) >> 5
+			Vm := opcode & 0x000f
+
+			var d uint16
+			var n uint16
+			var m uint16
+
+			if sz {
+				d = (D << 4) | Vd
+				n = (N << 4) | Vn
+				m = (M << 4) | Vm
+				panic("double precision VADD")
+			} else {
+				d = (Vd << 1) | D
+				n = (Vn << 1) | N
+				m = (Vm << 1) | M
+			}
+
 			switch opc3 & 0b01 {
 			case 0b00:
 				// "A7.7.225 VADD" of "ARMv7-M"
@@ -70,31 +93,24 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 					}
 				}
 
-				D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
-				Vn := arm.state.function32bitOpcodeHi & 0x000f
-				Vd := (opcode & 0xf000) >> 12
-				sz := (opcode & 0x0100) == 0x0100
-				N := (opcode & 0x0080) >> 7
-				M := (opcode & 0x0020) >> 5
-				Vm := opcode & 0x000f
-
-				if sz {
-					// d := (D << 4) | Vd
-					// n := (N << 4) | Vn
-					// m := (M << 4) | Vm
-					panic("double precision VADD")
-				} else {
-					d := (Vd << 1) | D
-					n := (Vn << 1) | N
-					m := (Vm << 1) | M
-					arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPAdd(
-						uint64(arm.state.fpu.Registers[n]), uint64(arm.state.fpu.Registers[m]),
-						32, true))
-					return nil
-				}
+				arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPAdd(
+					uint64(arm.state.fpu.Registers[n]), uint64(arm.state.fpu.Registers[m]),
+					32, true))
+				return nil
 
 			case 0b01:
-				panic("unimplemented VSUB")
+				// "A7.7.260 VSUB" of "ARMv7-M"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "VSUB",
+					}
+				}
+
+				arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPSub(
+					uint64(arm.state.fpu.Registers[n]), uint64(arm.state.fpu.Registers[m]),
+					32, true))
+				return nil
 			}
 
 		case 0b1000:
