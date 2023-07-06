@@ -38,7 +38,7 @@ func (arm *ARM) decode32bitThumb2(opcode uint16) decodeFunction {
 
 	if opcode&0xec00 == 0xec00 {
 		// coprocessor
-		return arm.decodeThumb2Coprocessor
+		return arm.decodeThumb2Coproc
 	} else if opcode&0xf800 == 0xf000 {
 		// branches, miscellaneous control
 		//  OR

@@ -231,8 +231,6 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 	}
 
 	return arm.byteOrder.Uint16((*mem)[addr:])
-
-	// return uint16((*mem)[addr]) | (uint16((*mem)[addr+1]) << 8)
 }
 
 func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
@@ -289,9 +287,6 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 	}
 
 	arm.byteOrder.PutUint16((*mem)[addr:], val)
-
-	// (*mem)[addr] = uint8(val)
-	// (*mem)[addr+1] = uint8(val >> 8)
 }
 
 func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
@@ -348,8 +343,6 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 	}
 
 	return arm.byteOrder.Uint32((*mem)[addr:])
-
-	// return uint32((*mem)[addr]) | (uint32((*mem)[addr+1]) << 8) | (uint32((*mem)[addr+2]) << 16) | uint32((*mem)[addr+3])<<24
 }
 
 func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
@@ -406,9 +399,12 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 	}
 
 	arm.byteOrder.PutUint32((*mem)[addr:], val)
+}
 
-	// (*mem)[addr] = uint8(val)
-	// (*mem)[addr+1] = uint8(val >> 8)
-	// (*mem)[addr+2] = uint8(val >> 16)
-	// (*mem)[addr+3] = uint8(val >> 24)
+func align(address uint32, alignment uint32) uint32 {
+	// page D6-817 of "ARMv7-M"
+	//
+	// "If x and y are integers, Align(x,y) = y * (x DIV y) is an integer"
+
+	return (address / alignment) * alignment
 }

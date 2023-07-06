@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/fpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/peripherals"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
@@ -84,6 +85,7 @@ type ARMState struct {
 	rng    peripherals.RNG
 	timer  peripherals.Timer
 	timer2 peripherals.Timer2
+	fpu    fpu.FPU
 
 	// the PC of the opcode being processed and the PC of the instruction being
 	// executed
