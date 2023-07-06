@@ -102,18 +102,18 @@ func TestBool(t *testing.T) {
 	var w prefs.Bool
 	var x prefs.Bool
 	err = dsk.Add("test", &v)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 	err = dsk.Add("testB", &w)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 	err = dsk.Add("testC", &x)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	err = v.Set(true)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 	err = w.Set("foo")
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 	err = x.Set("true")
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	err = dsk.Save()
 	if err != nil {
@@ -136,10 +136,10 @@ func TestString(t *testing.T) {
 
 	var v prefs.String
 	err = dsk.Add("foo", &v)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	err = v.Set("bar")
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	err = dsk.Save()
 	if err != nil {
@@ -161,19 +161,19 @@ func TestFloat(t *testing.T) {
 
 	var v prefs.Float
 	err = dsk.Add("foo", &v)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	err = v.Set("bar")
-	test.ExpectedFailure(t, err)
+	test.ExpectFailure(t, err)
 
 	err = v.Set(1.0)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	err = v.Set(2.0)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	err = v.Set(-3.0)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	err = dsk.Save()
 	if err != nil {
@@ -194,16 +194,16 @@ func TestInt(t *testing.T) {
 	var v prefs.Int
 	var w prefs.Int
 	err = dsk.Add("number", &v)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 	err = dsk.Add("numberB", &w)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	err = v.Set(10)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	// test string conversion to int
 	err = w.Set("99")
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	err = dsk.Save()
 	if err != nil {
@@ -215,10 +215,10 @@ func TestInt(t *testing.T) {
 	// while we have a prefs.Int instance set up we'll test some
 	// failure conditions
 	err = v.Set("---")
-	test.ExpectedFailure(t, err)
+	test.ExpectFailure(t, err)
 
 	err = v.Set(1.0)
-	test.ExpectedFailure(t, err)
+	test.ExpectFailure(t, err)
 }
 
 func TestGeneric(t *testing.T) {
@@ -247,7 +247,7 @@ func TestGeneric(t *testing.T) {
 	)
 
 	err = dsk.Add("generic", v)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	// change values
 	w = 1
@@ -272,8 +272,8 @@ func TestGeneric(t *testing.T) {
 	}
 
 	// check that the values have been restoed
-	test.Equate(t, w, 1)
-	test.Equate(t, h, 2)
+	test.ExpectEquality(t, w, 1)
+	test.ExpectEquality(t, h, 2)
 }
 
 // write bool and then a string from a different prefs.Disk instance. tests
@@ -290,10 +290,10 @@ func TestBoolAndString(t *testing.T) {
 
 	var v prefs.Bool
 	err = dsk.Add("test", &v)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	err = v.Set(true)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	err = dsk.Save()
 	if err != nil {
@@ -310,10 +310,10 @@ func TestBoolAndString(t *testing.T) {
 
 	var s prefs.String
 	err = dsk.Add("foo", &s)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	err = s.Set("bar")
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	err = dsk.Save()
 	if err != nil {
@@ -337,24 +337,24 @@ func TestMaxStringLength(t *testing.T) {
 
 	var s prefs.String
 	err = dsk.Add("test", &s)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 	err = s.Set("123456789")
-	test.ExpectedSuccess(t, err)
-	test.Equate(t, s.String(), "123456789")
+	test.ExpectSuccess(t, err)
+	test.ExpectEquality(t, s.String(), "123456789")
 
 	// setting maximum length will crop the existing string
 	s.SetMaxLen(5)
-	test.Equate(t, s.String(), "12345")
+	test.ExpectEquality(t, s.String(), "12345")
 
 	// unsetting a maximum length (using value zero) will not result in
 	// cropped string infomration reappearing
 	s.SetMaxLen(0)
-	test.Equate(t, s.String(), "12345")
+	test.ExpectEquality(t, s.String(), "12345")
 
 	// set string after setting a maximum length will result in the set string
 	// being cropped
 	s.SetMaxLen(3)
 	err = s.Set("abcdefghi")
-	test.ExpectedSuccess(t, err)
-	test.Equate(t, s.String(), "abc")
+	test.ExpectSuccess(t, err)
+	test.ExpectEquality(t, s.String(), "abc")
 }

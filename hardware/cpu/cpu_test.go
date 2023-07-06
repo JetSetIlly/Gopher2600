@@ -437,7 +437,7 @@ func testBranchingBackwards(t *testing.T, mc *cpu.CPU, mem *testMem) {
 
 	origin = 0x20
 	err := mc.LoadPC(0x20)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	// BPL backwards
 	_ = mem.putInstructions(origin, 0x10, 0xfd)
@@ -447,7 +447,7 @@ func testBranchingBackwards(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	// BVS backwards
 	origin = 0x20
 	err = mc.LoadPC(0x20)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 	mc.Status.Overflow = true
 	_ = mem.putInstructions(origin, 0x70, 0xfd)
 	step(t, mc) // BVS $FF
@@ -462,7 +462,7 @@ func testBranchingPageFaults(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	// BNE backwards - with PC wrap (causing a page fault)
 	origin = 0x20
 	err := mc.LoadPC(0x20)
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 	mc.Status.Zero = false
 	_ = mem.putInstructions(origin, 0xd0, 0x80)
 	step(t, mc) // BNE $F0

@@ -75,7 +75,7 @@ func TestNoModes(t *testing.T) {
 }
 
 func TestNoHelpAvailable(t *testing.T) {
-	tw := &test.CompareWriter{}
+	tw := &test.Writer{}
 
 	md := modalflag.Modes{Output: tw}
 	md.NewArgs([]string{"-help"})
@@ -91,7 +91,7 @@ func TestNoHelpAvailable(t *testing.T) {
 }
 
 func TestHelpFlags(t *testing.T) {
-	tw := &test.CompareWriter{}
+	tw := &test.Writer{}
 
 	md := modalflag.Modes{Output: tw}
 	md.NewArgs([]string{"-help"})
@@ -112,7 +112,7 @@ func TestHelpFlags(t *testing.T) {
 }
 
 func TestHelpModes(t *testing.T) {
-	tw := &test.CompareWriter{}
+	tw := &test.Writer{}
 
 	md := modalflag.Modes{Output: tw}
 	md.NewArgs([]string{"-help"})
@@ -133,7 +133,7 @@ func TestHelpModes(t *testing.T) {
 }
 
 func TestHelpFlagsAndModes(t *testing.T) {
-	tw := &test.CompareWriter{}
+	tw := &test.Writer{}
 
 	md := modalflag.Modes{Output: tw}
 	md.NewArgs([]string{"-help"})

@@ -28,7 +28,7 @@ func TestRegister(t *testing.T) {
 
 	// initialisation
 	r8 := registers.NewRegister(0, "test")
-	test.Equate(t, r8.IsZero(), true)
+	test.ExpectEquality(t, r8.IsZero(), true)
 	rtest.EquateRegisters(t, r8, 0)
 
 	// loading & addition
@@ -39,29 +39,29 @@ func TestRegister(t *testing.T) {
 
 	// addition boundary
 	r8.Load(255)
-	test.Equate(t, r8.IsNegative(), true)
+	test.ExpectEquality(t, r8.IsNegative(), true)
 	carry, overflow = r8.Add(1, false)
-	test.Equate(t, carry, true)
-	test.Equate(t, overflow, false)
-	test.Equate(t, r8.IsZero(), true)
+	test.ExpectEquality(t, carry, true)
+	test.ExpectEquality(t, overflow, false)
+	test.ExpectEquality(t, r8.IsZero(), true)
 	rtest.EquateRegisters(t, r8, 0)
 
 	// addition boundary with carry
 	r8.Load(254)
-	test.Equate(t, r8.IsNegative(), true)
+	test.ExpectEquality(t, r8.IsNegative(), true)
 	carry, overflow = r8.Add(1, true)
-	test.Equate(t, carry, true)
-	test.Equate(t, overflow, false)
-	test.Equate(t, r8.IsZero(), true)
+	test.ExpectEquality(t, carry, true)
+	test.ExpectEquality(t, overflow, false)
+	test.ExpectEquality(t, r8.IsZero(), true)
 	rtest.EquateRegisters(t, r8, 0)
 
 	// addition boundary with carry
 	r8.Load(255)
-	test.Equate(t, r8.IsNegative(), true)
+	test.ExpectEquality(t, r8.IsNegative(), true)
 	carry, overflow = r8.Add(1, true)
-	test.Equate(t, carry, true)
-	test.Equate(t, overflow, false)
-	test.Equate(t, r8.IsZero(), false)
+	test.ExpectEquality(t, carry, true)
+	test.ExpectEquality(t, overflow, false)
+	test.ExpectEquality(t, r8.IsZero(), false)
 	rtest.EquateRegisters(t, r8, 1)
 
 	// subtraction
@@ -100,19 +100,19 @@ func TestRegister(t *testing.T) {
 	// shifts
 	carry = r8.ASL()
 	rtest.EquateRegisters(t, r8, 0xFE)
-	test.Equate(t, carry, true)
+	test.ExpectEquality(t, carry, true)
 	carry = r8.LSR()
 	rtest.EquateRegisters(t, r8, 0x007F)
-	test.Equate(t, carry, false)
+	test.ExpectEquality(t, carry, false)
 	carry = r8.LSR()
-	test.Equate(t, carry, true)
+	test.ExpectEquality(t, carry, true)
 
 	// rotation
 	r8.Load(0xff)
 	carry = r8.ROL(false)
 	rtest.EquateRegisters(t, r8, 0xfe)
-	test.Equate(t, carry, true)
+	test.ExpectEquality(t, carry, true)
 	carry = r8.ROR(true)
 	rtest.EquateRegisters(t, r8, 0xff)
-	test.Equate(t, carry, false)
+	test.ExpectEquality(t, carry, false)
 }

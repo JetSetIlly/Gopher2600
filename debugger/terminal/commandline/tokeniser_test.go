@@ -27,37 +27,37 @@ func TestTokeniser_spaces(t *testing.T) {
 	var s string
 
 	toks = commandline.TokeniseInput("FOO")
-	test.Equate(t, toks.Len(), 1)
+	test.ExpectEquality(t, toks.Len(), 1)
 	s, _ = toks.Get()
-	test.Equate(t, s, "FOO")
+	test.ExpectEquality(t, s, "FOO")
 
 	toks = commandline.TokeniseInput("FOO ")
-	test.Equate(t, toks.Len(), 1)
+	test.ExpectEquality(t, toks.Len(), 1)
 	s, _ = toks.Get()
-	test.Equate(t, s, "FOO")
+	test.ExpectEquality(t, s, "FOO")
 
 	toks = commandline.TokeniseInput("FOO   BAR")
-	test.Equate(t, toks.Len(), 2)
+	test.ExpectEquality(t, toks.Len(), 2)
 	s, _ = toks.Get()
-	test.Equate(t, s, "FOO")
+	test.ExpectEquality(t, s, "FOO")
 	s, _ = toks.Get()
-	test.Equate(t, s, "BAR")
+	test.ExpectEquality(t, s, "BAR")
 
 	toks = commandline.TokeniseInput("    FOO   BAR  ")
-	test.Equate(t, toks.Len(), 2)
+	test.ExpectEquality(t, toks.Len(), 2)
 	s, _ = toks.Get()
-	test.Equate(t, s, "FOO")
+	test.ExpectEquality(t, s, "FOO")
 	s, _ = toks.Get()
-	test.Equate(t, s, "BAR")
+	test.ExpectEquality(t, s, "BAR")
 
 	toks = commandline.TokeniseInput("    FOO   BAR  BAZ")
-	test.Equate(t, toks.Len(), 3)
+	test.ExpectEquality(t, toks.Len(), 3)
 	s, _ = toks.Get()
-	test.Equate(t, s, "FOO")
+	test.ExpectEquality(t, s, "FOO")
 	s, _ = toks.Get()
-	test.Equate(t, s, "BAR")
+	test.ExpectEquality(t, s, "BAR")
 	s, _ = toks.Get()
-	test.Equate(t, s, "BAZ")
+	test.ExpectEquality(t, s, "BAZ")
 }
 
 func TestTokeniser_quotes(t *testing.T) {
@@ -66,40 +66,40 @@ func TestTokeniser_quotes(t *testing.T) {
 
 	// last argument is quoted
 	toks = commandline.TokeniseInput("FOO \"BAR  BAZ\"  ")
-	test.Equate(t, toks.Len(), 2)
+	test.ExpectEquality(t, toks.Len(), 2)
 	s, _ = toks.Get()
-	test.Equate(t, s, "FOO")
+	test.ExpectEquality(t, s, "FOO")
 	s, _ = toks.Get()
-	test.Equate(t, s, "BAR  BAZ")
+	test.ExpectEquality(t, s, "BAR  BAZ")
 
 	// middle argument is quoted
 	toks = commandline.TokeniseInput("FOO \"BAR  BAZ\" QUX")
-	test.Equate(t, toks.Len(), 3)
+	test.ExpectEquality(t, toks.Len(), 3)
 	s, _ = toks.Get()
-	test.Equate(t, s, "FOO")
+	test.ExpectEquality(t, s, "FOO")
 	s, _ = toks.Get()
-	test.Equate(t, s, "BAR  BAZ")
+	test.ExpectEquality(t, s, "BAR  BAZ")
 	s, _ = toks.Get()
-	test.Equate(t, s, "QUX")
+	test.ExpectEquality(t, s, "QUX")
 
 	// first argument is quoted
 	toks = commandline.TokeniseInput("\"FOO BAR\" BAZ   QUX")
-	test.Equate(t, toks.Len(), 3)
+	test.ExpectEquality(t, toks.Len(), 3)
 	s, _ = toks.Get()
-	test.Equate(t, s, "FOO BAR")
+	test.ExpectEquality(t, s, "FOO BAR")
 	s, _ = toks.Get()
-	test.Equate(t, s, "BAZ")
+	test.ExpectEquality(t, s, "BAZ")
 	s, _ = toks.Get()
-	test.Equate(t, s, "QUX")
+	test.ExpectEquality(t, s, "QUX")
 
 	// the only argument is quoted and with leadig and trailing space
 	toks = commandline.TokeniseInput("  \"  FOO BAR    \" ")
-	test.Equate(t, toks.Len(), 1)
+	test.ExpectEquality(t, toks.Len(), 1)
 	s, _ = toks.Get()
-	test.Equate(t, s, "  FOO BAR    ")
+	test.ExpectEquality(t, s, "  FOO BAR    ")
 }
 
 func TestTokeniser_singleCharArgs(t *testing.T) {
 	toks := commandline.TokeniseInput("FOO & BAR")
-	test.Equate(t, toks.Len(), 3)
+	test.ExpectEquality(t, toks.Len(), 3)
 }

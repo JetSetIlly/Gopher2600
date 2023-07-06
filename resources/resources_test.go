@@ -24,22 +24,22 @@ import (
 
 func TestJoinPath(t *testing.T) {
 	pth, err := resources.JoinPath("foo/bar", "baz")
-	test.Equate(t, err, nil)
-	test.Equate(t, pth, ".gopher2600/foo/bar/baz")
+	test.ExpectEquality(t, err, nil)
+	test.ExpectEquality(t, pth, ".gopher2600/foo/bar/baz")
 
 	pth, err = resources.JoinPath("foo", "bar", "baz")
-	test.Equate(t, err, nil)
-	test.Equate(t, pth, ".gopher2600/foo/bar/baz")
+	test.ExpectEquality(t, err, nil)
+	test.ExpectEquality(t, pth, ".gopher2600/foo/bar/baz")
 
 	pth, err = resources.JoinPath("foo/bar", "")
-	test.Equate(t, err, nil)
-	test.Equate(t, pth, ".gopher2600/foo/bar")
+	test.ExpectEquality(t, err, nil)
+	test.ExpectEquality(t, pth, ".gopher2600/foo/bar")
 
 	pth, err = resources.JoinPath("", "baz")
-	test.Equate(t, err, nil)
-	test.Equate(t, pth, ".gopher2600/baz")
+	test.ExpectEquality(t, err, nil)
+	test.ExpectEquality(t, pth, ".gopher2600/baz")
 
 	pth, err = resources.JoinPath("", "")
-	test.Equate(t, err, nil)
-	test.Equate(t, pth, ".gopher2600")
+	test.ExpectEquality(t, err, nil)
+	test.ExpectEquality(t, pth, ".gopher2600")
 }

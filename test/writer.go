@@ -15,28 +15,28 @@
 
 package test
 
-// CompareWriter is an implementation of the io.CompareWriter interface. It should be used to
+// Writer is an implementation of the io.Writer interface. It should be used to
 // capture output and to compare with predefined strings.
-type CompareWriter struct {
+type Writer struct {
 	buffer []byte
 }
 
-func (tw *CompareWriter) Write(p []byte) (n int, err error) {
+func (tw *Writer) Write(p []byte) (n int, err error) {
 	tw.buffer = append(tw.buffer, p...)
 	return len(p), nil
 }
 
 // clear string empties the buffer.
-func (tw *CompareWriter) Clear() {
+func (tw *Writer) Clear() {
 	tw.buffer = tw.buffer[:0]
 }
 
 // Compare buffered output with predefined/example string.
-func (tw *CompareWriter) Compare(s string) bool {
+func (tw *Writer) Compare(s string) bool {
 	return s == string(tw.buffer)
 }
 
 // implements Stringer interface.
-func (tw *CompareWriter) String() string {
+func (tw *Writer) String() string {
 	return string(tw.buffer)
 }

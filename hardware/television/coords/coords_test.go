@@ -35,25 +35,25 @@ func TestEqual(t *testing.T) {
 	}
 
 	// clock fields are different (other fields equal)
-	test.ExpectedFailure(t, coords.Equal(A, B))
+	test.ExpectFailure(t, coords.Equal(A, B))
 
 	// all fields are equal
 	B.Clock = 0
-	test.ExpectedSuccess(t, coords.Equal(A, B))
+	test.ExpectSuccess(t, coords.Equal(A, B))
 
 	// scanline fields are different (other fields equal)
 	B.Scanline = 1
-	test.ExpectedFailure(t, coords.Equal(A, B))
+	test.ExpectFailure(t, coords.Equal(A, B))
 
 	// all fields are equal
 	A.Scanline = 1
-	test.ExpectedSuccess(t, coords.Equal(A, B))
+	test.ExpectSuccess(t, coords.Equal(A, B))
 
 	// frame fields are different
 	A.Frame = 1
-	test.ExpectedFailure(t, coords.Equal(A, B))
+	test.ExpectFailure(t, coords.Equal(A, B))
 
 	// frame fields are different but one is undefined
 	B.Frame = coords.FrameIsUndefined
-	test.ExpectedSuccess(t, coords.Equal(A, B))
+	test.ExpectSuccess(t, coords.Equal(A, B))
 }

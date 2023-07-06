@@ -60,7 +60,7 @@ func expectEquivalency(t *testing.T, cmds *commandline.Commands) {
 
 	template := strings.Split(cmds.String(), "\n")
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 }
@@ -73,14 +73,14 @@ func TestParser_optimised(t *testing.T) {
 	template = []string{"TEST [1 [2] [3] [4] [5]]"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquivalency(t, cmds)
 	}
 
 	template = []string{"TEST (egg|fog|(nug nog)|big) (tug)"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquivalency(t, cmds)
 	}
 }
@@ -93,7 +93,7 @@ func TestParser_nestedGroups(t *testing.T) {
 	template = []string{"TEST (foo|bar (a|b c|d) baz)"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 }
@@ -103,11 +103,11 @@ func TestParser_badGroupings(t *testing.T) {
 
 	// optional groups must be closed
 	_, err = commandline.ParseCommandTemplate([]string{"TEST (arg"})
-	test.ExpectedFailure(t, err)
+	test.ExpectFailure(t, err)
 
 	// required groups must be closed
 	_, err = commandline.ParseCommandTemplate([]string{"TEST (arg]"})
-	test.ExpectedFailure(t, err)
+	test.ExpectFailure(t, err)
 }
 
 func TestParser_goodGroupings(t *testing.T) {
@@ -118,7 +118,7 @@ func TestParser_goodGroupings(t *testing.T) {
 	template = []string{"TEST (1 [2] [3] [4] [5])"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 }
@@ -131,21 +131,21 @@ func TestParser_nestedGroupings(t *testing.T) {
 	template = []string{"TEST [(foo)|bar]"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 
 	template = []string{"TEST (foo|[bar])"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 
 	template = []string{"TEST (foo|[bar|(baz|qux)]|wibble)"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 }
@@ -158,7 +158,7 @@ func TestParser_rootGroupings(t *testing.T) {
 	template = []string{"TEST (arg)"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 }
@@ -170,22 +170,22 @@ func TestParser_placeholders(t *testing.T) {
 
 	// placeholder directives must be complete
 	_, err = commandline.ParseCommandTemplate([]string{"TEST foo %"})
-	test.ExpectedFailure(t, err)
+	test.ExpectFailure(t, err)
 
 	// placeholder directives must be recognised
 	_, err = commandline.ParseCommandTemplate([]string{"TEST foo %q"})
-	test.ExpectedFailure(t, err)
+	test.ExpectFailure(t, err)
 
 	// double %% is a valid placeholder directive
 	template = []string{"TEST foo %%"}
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 
 	// placeholder directives must be separated from surrounding text
 	_, err = commandline.ParseCommandTemplate([]string{"TEST foo%%"})
-	test.ExpectedFailure(t, err)
+	test.ExpectFailure(t, err)
 }
 
 func TestParser_doubleArgs(t *testing.T) {
@@ -196,21 +196,21 @@ func TestParser_doubleArgs(t *testing.T) {
 	template = []string{"TEST foo bar"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 
 	template = []string{"TEST (foo bar baz)"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 
 	template = []string{"TEST (egg|fog|nug nog|big) (tug)"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 }
@@ -223,42 +223,42 @@ func TestParser_repeatGroups(t *testing.T) {
 	template = []string{"TEST {foo}"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 
 	template = []string{"TEST {foo|bar}"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 
 	template = []string{"TEST {[foo|bar]}"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 
 	template = []string{"TEST {foo|bar|baz}"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 
 	template = []string{"TEST {foo %f}"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 
 	template = []string{"TEST {foo|bar %f}"}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 }
@@ -277,16 +277,16 @@ func TestParser_addHelp(t *testing.T) {
 	}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquality(t, template, cmds)
 	}
 
 	err = cmds.AddHelp("HELP", map[string]string{})
-	test.ExpectedSuccess(t, err)
+	test.ExpectSuccess(t, err)
 
 	// adding a second HELP command is not allowed
 	err = cmds.AddHelp("HELP", map[string]string{})
-	test.ExpectedFailure(t, err)
+	test.ExpectFailure(t, err)
 }
 
 func TestParser_placeholderLabels(t *testing.T) {
@@ -299,7 +299,7 @@ func TestParser_placeholderLabels(t *testing.T) {
 	}
 
 	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquivalency(t, cmds)
 		expectEquality(t, template, cmds)
 	}
@@ -319,7 +319,7 @@ func TestParser_optional(t *testing.T) {
 		t.Errorf("does not parse: %s", err)
 	}
 
-	if test.ExpectedSuccess(t, err) {
+	if test.ExpectSuccess(t, err) {
 		expectEquivalency(t, cmds)
 		expectEquality(t, template, cmds)
 	}

@@ -26,69 +26,69 @@ func TestDecodeULEB128(t *testing.T) {
 	// tests from page 162 of the "DWARF4 Standard"
 	v := []uint8{0x7f, 0x00}
 	r, n := leb128.DecodeULEB128(v)
-	test.Equate(t, n, 1)
-	test.Equate(t, r, uint64(127))
+	test.ExpectEquality(t, n, 1)
+	test.ExpectEquality(t, r, uint64(127))
 
 	v = []uint8{0x80, 0x01, 0x00}
 	r, n = leb128.DecodeULEB128(v)
-	test.Equate(t, n, 2)
-	test.Equate(t, r, uint64(128))
+	test.ExpectEquality(t, n, 2)
+	test.ExpectEquality(t, r, uint64(128))
 
 	v = []uint8{0x81, 0x01, 0x00}
 	r, n = leb128.DecodeULEB128(v)
-	test.Equate(t, n, 2)
-	test.Equate(t, r, uint64(129))
+	test.ExpectEquality(t, n, 2)
+	test.ExpectEquality(t, r, uint64(129))
 
 	v = []uint8{0x82, 0x01, 0x00}
 	r, n = leb128.DecodeULEB128(v)
-	test.Equate(t, n, 2)
-	test.Equate(t, r, uint64(130))
+	test.ExpectEquality(t, n, 2)
+	test.ExpectEquality(t, r, uint64(130))
 
 	v = []uint8{0xb9, 0x64, 0x00}
 	r, n = leb128.DecodeULEB128(v)
-	test.Equate(t, n, 2)
-	test.Equate(t, r, uint64(12857))
+	test.ExpectEquality(t, n, 2)
+	test.ExpectEquality(t, r, uint64(12857))
 }
 
 func TestDecodeSLEB128(t *testing.T) {
 	// tests from page 163 of the "DWARF4 Standard"
 	v := []uint8{0x02, 0x00}
 	r, n := leb128.DecodeSLEB128(v)
-	test.Equate(t, n, 1)
-	test.Equate(t, r, int64(2))
+	test.ExpectEquality(t, n, 1)
+	test.ExpectEquality(t, r, int64(2))
 
 	v = []uint8{0x7e, 0x00}
 	r, n = leb128.DecodeSLEB128(v)
-	test.Equate(t, n, 1)
-	test.Equate(t, r, int64(-2))
+	test.ExpectEquality(t, n, 1)
+	test.ExpectEquality(t, r, int64(-2))
 
 	v = []uint8{0xff, 0x00}
 	r, n = leb128.DecodeSLEB128(v)
-	test.Equate(t, n, 2)
-	test.Equate(t, r, int64(127))
+	test.ExpectEquality(t, n, 2)
+	test.ExpectEquality(t, r, int64(127))
 
 	v = []uint8{0x81, 0x7f}
 	r, n = leb128.DecodeSLEB128(v)
-	test.Equate(t, n, 2)
-	test.Equate(t, r, int64(-127))
+	test.ExpectEquality(t, n, 2)
+	test.ExpectEquality(t, r, int64(-127))
 
 	v = []uint8{0x80, 0x01}
 	r, n = leb128.DecodeSLEB128(v)
-	test.Equate(t, n, 2)
-	test.Equate(t, r, int64(128))
+	test.ExpectEquality(t, n, 2)
+	test.ExpectEquality(t, r, int64(128))
 
 	v = []uint8{0x80, 0x7f}
 	r, n = leb128.DecodeSLEB128(v)
-	test.Equate(t, n, 2)
-	test.Equate(t, r, int64(-128))
+	test.ExpectEquality(t, n, 2)
+	test.ExpectEquality(t, r, int64(-128))
 
 	v = []uint8{0x81, 0x01}
 	r, n = leb128.DecodeSLEB128(v)
-	test.Equate(t, n, 2)
-	test.Equate(t, r, int64(129))
+	test.ExpectEquality(t, n, 2)
+	test.ExpectEquality(t, r, int64(129))
 
 	v = []uint8{0xff, 0x7e}
 	r, n = leb128.DecodeSLEB128(v)
-	test.Equate(t, n, 2)
-	test.Equate(t, r, int64(-129))
+	test.ExpectEquality(t, n, 2)
+	test.ExpectEquality(t, r, int64(-129))
 }

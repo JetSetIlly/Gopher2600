@@ -24,47 +24,47 @@ import (
 
 func TestCommandLineStackValues(t *testing.T) {
 	// empty on start
-	test.Equate(t, prefs.PopCommandLineStack(), "")
+	test.ExpectEquality(t, prefs.PopCommandLineStack(), "")
 
 	// single value
 	prefs.PushCommandLineStack("foo::bar")
-	test.Equate(t, prefs.PopCommandLineStack(), "foo::bar")
+	test.ExpectEquality(t, prefs.PopCommandLineStack(), "foo::bar")
 
 	// single value but with additional space
 	prefs.PushCommandLineStack("   foo:: bar ")
-	test.Equate(t, prefs.PopCommandLineStack(), "foo::bar")
+	test.ExpectEquality(t, prefs.PopCommandLineStack(), "foo::bar")
 
 	// more than one key/value in the prefs string. remaining string will
 	// will be sorted
 	prefs.PushCommandLineStack("foo::bar; baz::qux")
-	test.Equate(t, prefs.PopCommandLineStack(), "baz::qux; foo::bar")
+	test.ExpectEquality(t, prefs.PopCommandLineStack(), "baz::qux; foo::bar")
 
 	// check invalid prefs string
 	prefs.PushCommandLineStack("foo_bar")
-	test.Equate(t, prefs.PopCommandLineStack(), "")
+	test.ExpectEquality(t, prefs.PopCommandLineStack(), "")
 
 	// check (partically) invalid prefs string
 	prefs.PushCommandLineStack("foo_bar;baz::qux")
-	test.Equate(t, prefs.PopCommandLineStack(), "baz::qux")
+	test.ExpectEquality(t, prefs.PopCommandLineStack(), "baz::qux")
 
 	// get prefs value that doesn't exist after pushing a parially invalid prefs string
 	prefs.PushCommandLineStack("foo::bar;baz_qux")
 	ok, _ := prefs.GetCommandLinePref("baz")
-	test.ExpectedFailure(t, ok)
-	test.Equate(t, prefs.PopCommandLineStack(), "foo::bar")
+	test.ExpectFailure(t, ok)
+	test.ExpectEquality(t, prefs.PopCommandLineStack(), "foo::bar")
 }
 
 func TestCommandLineStack(t *testing.T) {
 	// empty on start
-	test.Equate(t, prefs.PopCommandLineStack(), "")
+	test.ExpectEquality(t, prefs.PopCommandLineStack(), "")
 
 	// single value
 	prefs.PushCommandLineStack("foo::bar")
 
 	// add another command line group
 	prefs.PushCommandLineStack("baz::qux")
-	test.Equate(t, prefs.PopCommandLineStack(), "baz::qux")
+	test.ExpectEquality(t, prefs.PopCommandLineStack(), "baz::qux")
 
 	// first group still exists
-	test.Equate(t, prefs.PopCommandLineStack(), "foo::bar")
+	test.ExpectEquality(t, prefs.PopCommandLineStack(), "foo::bar")
 }

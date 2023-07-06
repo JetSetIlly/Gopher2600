@@ -39,6 +39,6 @@ func TestRandom(t *testing.T) {
 	b := random.NewRandom(&mockTV{})
 
 	for i := 1; i < 256; i++ {
-		test.Equate(t, a.Rewindable(i), b.Rewindable(i))
+		test.ExpectEquality(t, a.Rewindable(i), b.Rewindable(i))
 	}
 }

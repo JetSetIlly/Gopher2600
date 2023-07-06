@@ -26,7 +26,7 @@ import (
 func TestProgramCounter(t *testing.T) {
 	// initialisation
 	pc := registers.NewProgramCounter(0)
-	test.Equate(t, pc.Address(), 0)
+	test.ExpectEquality(t, pc.Address(), 0)
 
 	// loading & addition
 	pc.Load(127)
