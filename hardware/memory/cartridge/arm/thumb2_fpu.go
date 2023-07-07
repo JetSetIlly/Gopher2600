@@ -17,7 +17,7 @@
 
 package arm
 
-import "fmt"
+import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/fpu"
 
 func (arm *ARM) decodeThumb2FPU(opcode uint16) *DisasmEntry {
 	// "Chapter A6 The Floating-point Instruction Set Encoding" of "ARMv7-M"
@@ -59,6 +59,115 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 
 	if !T {
 		switch opc1 & 0b1011 {
+		case 0b0010:
+			if opc3&0b01 == 0b001 {
+				op := (opcode & 0x0040) == 0x0040
+
+				var typ fpu.VFPNegMul
+
+				// "A7.7.250 VNMLA, VNMLS, VNMUL" of "ARMv7-M"
+				switch arm.state.function32bitOpcodeHi & 0x0030 {
+				case 0x0010:
+					if op {
+						if arm.decodeOnly {
+							return &DisasmEntry{
+								Is32bit:  true,
+								Operator: "VNMLA",
+							}
+						}
+						typ = fpu.VFPNegMul_VNMLA
+					} else {
+						if arm.decodeOnly {
+							return &DisasmEntry{
+								Is32bit:  true,
+								Operator: "VNMLS",
+							}
+						}
+						typ = fpu.VFPNegMul_VNMLS
+					}
+				case 0x0020:
+					if op {
+						if arm.decodeOnly {
+							return &DisasmEntry{
+								Is32bit:  true,
+								Operator: "VNMUL",
+							}
+						}
+						typ = fpu.VFPNegMul_VNMNUL
+					} else {
+						panic("illegal instruction in VNMLA, VNMLS, VNMUL group")
+					}
+				}
+
+				D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
+				Vn := arm.state.function32bitOpcodeHi & 0x000f
+				Vd := (opcode & 0xf000) >> 12
+				sz := (opcode & 0x0100) == 0x0100
+				N := (opcode & 0x0080) >> 7
+				M := (opcode & 0x0020) >> 5
+				Vm := opcode & 0x000f
+
+				var d uint16
+				var n uint16
+				var m uint16
+
+				if sz {
+					d = (D << 4) | Vd
+					n = (N << 4) | Vn
+					m = (M << 4) | Vm
+					panic("double precision VNMLA, VNMLS, VNMUL")
+				} else {
+					d = (Vd << 1) | D
+					n = (Vn << 1) | N
+					m = (Vm << 1) | M
+
+					prod := arm.state.fpu.FPMul(uint64(arm.state.fpu.Registers[n]), uint64(arm.state.fpu.Registers[m]), 32, true)
+					switch typ {
+					case fpu.VFPNegMul_VNMLA:
+						arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPAdd(^uint64(arm.state.fpu.Registers[d]), ^prod, 32, true))
+					case fpu.VFPNegMul_VNMLS:
+						arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPAdd(^uint64(arm.state.fpu.Registers[d]), prod, 32, true))
+					case fpu.VFPNegMul_VNMNUL:
+						arm.state.fpu.Registers[d] = ^uint32(prod)
+					}
+				}
+
+			} else {
+				// "A7.7.248 VMUL" of "ARMv7-M"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "VMUL",
+					}
+				}
+
+				D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
+				Vn := arm.state.function32bitOpcodeHi & 0x000f
+				Vd := (opcode & 0xf000) >> 12
+				sz := (opcode & 0x0100) == 0x0100
+				N := (opcode & 0x0080) >> 7
+				M := (opcode & 0x0020) >> 5
+				Vm := opcode & 0x000f
+
+				var d uint16
+				var n uint16
+				var m uint16
+
+				if sz {
+					d = (D << 4) | Vd
+					n = (N << 4) | Vn
+					m = (M << 4) | Vm
+					panic("double precision VMUL")
+				} else {
+					d = (Vd << 1) | D
+					n = (Vn << 1) | N
+					m = (Vm << 1) | M
+					arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPMul(
+						uint64(arm.state.fpu.Registers[n]), uint64(arm.state.fpu.Registers[m]),
+						32, true))
+					return nil
+				}
+			}
 		case 0b0011:
 			D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
 			Vn := arm.state.function32bitOpcodeHi & 0x000f
@@ -227,7 +336,8 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 		}
 	}
 
-	panic(fmt.Sprintf("undecoded FPU instrucion (A6.4): %04x %04x", arm.state.function32bitOpcodeHi, opcode))
+	// panic(fmt.Sprintf("undecoded FPU instrucion (A6.4): %04x %04x", arm.state.function32bitOpcodeHi, opcode))
+	return nil
 }
 
 func (arm *ARM) decodeThumb2FPU32bitTransfer(opcode uint16) *DisasmEntry {

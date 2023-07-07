@@ -152,3 +152,53 @@ func (fpu *FPU) FPSub(op1 uint64, op2 uint64, N int, fpscrControlled bool) uint6
 
 	return result
 }
+
+func (fpu *FPU) FPMul(op1 uint64, op2 uint64, N int, fpscrControlled bool) uint64 {
+	// page A2-54 to A2-55 of "ARMv7-M"
+
+	if N != 32 && N != 64 {
+		panic("unsupported number of bits in FPDiv()")
+	}
+
+	var fpscr FPSCR
+	if fpscrControlled {
+		fpscr = fpu.Status
+	} else {
+		fpscr = fpu.StandardFPSCRValue()
+	}
+
+	typ1, sign1, value1 := fpu.FPUnpack(op1, N, fpscr)
+	typ2, sign2, value2 := fpu.FPUnpack(op2, N, fpscr)
+	done, result := fpu.FPProcessNaNs(typ1, typ2, N, op1, op2, fpscr)
+
+	if !done {
+		inf1 := typ1 == FPType_Infinity
+		inf2 := typ2 == FPType_Infinity
+		zero1 := typ1 == FPType_Zero
+		zero2 := typ2 == FPType_Zero
+
+		if (inf1 && zero2) || (zero1 && inf2) {
+			result = fpu.FPDefaultNaN(N)
+			fpu.FPProcessException(FPExc_InvalidOp, fpscr)
+		} else if inf1 || inf2 {
+			resultSign := sign1 != sign2
+			result = fpu.FPInfinity(resultSign, N)
+		} else if zero1 || zero2 {
+			resultSign := sign1 != sign2
+			result = fpu.FPZero(resultSign, N)
+		} else {
+			result = fpu.FPRound(value1*value2, N, fpscr)
+		}
+	}
+
+	return result
+}
+
+// The VNMLA, VNMLS, VNMUL group of FPU instructions use this to control operation
+type VFPNegMul int
+
+const (
+	VFPNegMul_VNMLA VFPNegMul = iota
+	VFPNegMul_VNMLS
+	VFPNegMul_VNMNUL
+)
