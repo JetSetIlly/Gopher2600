@@ -21,6 +21,65 @@ type FPSCR struct {
 	value uint32
 }
 
+func (fpscr *FPSCR) N() bool {
+	// bit 31
+	return fpscr.value&0x80000000 == 0x80000000
+}
+
+func (fpscr *FPSCR) SetN(set bool) {
+	// bit 31
+	fpscr.value &= 0x7fffffff
+	if set {
+		fpscr.value |= 0x80000000
+	}
+}
+
+func (fpscr *FPSCR) Z() bool {
+	// bit 30
+	return fpscr.value&0x40000000 == 0x40000000
+}
+
+func (fpscr *FPSCR) SetZ(set bool) {
+	// bit 30
+	fpscr.value &= 0xbfffffff
+	if set {
+		fpscr.value |= 0x40000000
+	}
+}
+
+func (fpscr *FPSCR) C() bool {
+	// bit 29
+	return fpscr.value&0x20000000 == 0x20000000
+}
+
+func (fpscr *FPSCR) SetC(set bool) {
+	// bit 29
+	fpscr.value &= 0xdfffffff
+	if set {
+		fpscr.value |= 0x20000000
+	}
+}
+
+func (fpscr *FPSCR) V() bool {
+	// bit 28
+	return fpscr.value&0x10000000 == 0x10000000
+}
+
+func (fpscr *FPSCR) SetV(set bool) {
+	// bit 28
+	fpscr.value &= 0xefffffff
+	if set {
+		fpscr.value |= 0x10000000
+	}
+}
+
+// SetNZCV sets all four basic status registers at once. The upper four bits of
+// the nzcv parameter are ignored
+func (fpscr *FPSCR) SetNZCV(nzcv uint8) {
+	fpscr.value &= 0x0fffffff
+	fpscr.value |= uint32(nzcv) << 28
+}
+
 func (fpscr *FPSCR) AHP() bool {
 	// bit 26
 	return fpscr.value&0x04000000 == 0x04000000

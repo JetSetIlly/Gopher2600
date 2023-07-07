@@ -177,6 +177,52 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 						}
 					}
 				}
+			} else if opc2&0b0100 == 0b0100 {
+				// "A7.7.226 VCMP, VCMPE" of "ARMv7-M"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "VCMP",
+					}
+				}
+
+				D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
+				Vd := (opcode & 0xf000) >> 12
+				sz := (opcode & 0x0100) == 0x0100
+				E := opcode&0x0080 == 0x0080
+				M := opcode&0x0020 == 0x0020
+				Vm := opcode & 0x000f
+
+				var d uint16
+				var N int
+				var cmpOp uint64
+
+				if sz {
+					d = (D << 4) | Vd
+					N = 64
+					if M {
+						// Encoding T1
+						panic("64bit VCMP")
+					} else {
+						// Encoding T2
+						cmpOp = arm.state.fpu.FPZero(false, 64)
+					}
+				} else {
+					d = (Vd << 1) | D
+					N = 32
+					if M {
+						// Encoding T1
+						cmpOp = uint64(arm.state.fpu.Registers[Vm])
+					} else {
+						// Encoding T2
+						cmpOp = arm.state.fpu.FPZero(false, 32)
+					}
+				}
+
+				// FPU status registers set by the FPCompare() function
+				arm.state.fpu.FPCompare(uint64(arm.state.fpu.Registers[d]), cmpOp, N, E, true)
+
+				return nil
 			}
 		}
 	}
