@@ -84,6 +84,23 @@ func ROR_C(imm32 uint32, shift uint32) (uint32, bool) {
 	return result, result&0x80000000 == 0x80000000
 }
 
+func RRX_C(imm32 uint32, carryIn bool) (uint32, bool) {
+	// Page A2-27 or "ARMv7-M"
+	//
+	// (bits(N), bit) RRX_C(bits(N) x, bit carry_in)
+	//      result = carry_in : x<N-1:1>;
+	//      carry_out = x<0>;
+	//      return (result, carry_out);
+
+	// this is specifically a 32 bit function so N is 32
+
+	result := imm32 >> 1
+	if carryIn {
+		result |= 0x80000000
+	}
+	return result, imm32&0x01 == 0x01
+}
+
 // returns result, carry, overflow
 func AddWithCarry(a uint32, b uint32, c uint32) (uint32, bool, bool) {
 	// the implementation code below is taken from the the isOverflow() and

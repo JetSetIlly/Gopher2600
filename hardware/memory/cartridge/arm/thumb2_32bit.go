@@ -341,9 +341,24 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) *Disa
 					}
 				case 0b11:
 					if imm5 == 0b00000 {
-						// 4.6.117 RRX Rotate Right
+						// 4.6.117 RRX Rotate Right with extend
 						// T1 encoding
-						panic("unimplemented RRX")
+						if arm.decodeOnly {
+							return &DisasmEntry{
+								Is32bit:  true,
+								Operator: "RRX",
+								Operand:  "immediate",
+							}
+						}
+
+						result, carry := RRX_C(arm.state.registers[Rm], arm.state.status.carry)
+						arm.state.registers[Rd] = result
+						if setFlags {
+							arm.state.status.isNegative(arm.state.registers[Rd])
+							arm.state.status.isZero(arm.state.registers[Rd])
+							arm.state.status.setCarry(carry)
+							// overflow unchanged
+						}
 					} else {
 						// 4.6.115 ROR (immediate)
 						// T1 encoding
