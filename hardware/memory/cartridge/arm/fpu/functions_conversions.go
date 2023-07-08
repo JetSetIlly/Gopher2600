@@ -15,26 +15,10 @@
 
 package fpu
 
-func (fpu *FPU) FixedToFP(operand uint64, fractionBits int, unsigned bool, nearest bool, N int, fpscrControlled bool) uint64 {
+import "math"
+
+func (fpu *FPU) FixedToFP(operand uint64, N int, fractionBits int, unsigned bool, nearest bool, fpscrControlled bool) uint64 {
 	// page A2-59 of "ARMv7-M"
-
-	// bits(N) FixedToFP(bits(M) operand, integer N, integer fraction_bits, boolean unsigned,
-	//		boolean round_to_nearest, boolean fpscr_controlled)
-	//
-	//		assert N IN {32,64};
-	//		fpscr_val = if fpscr_controlled then FPSCR else StandardFPSCRValue();
-	//		if round_to_nearest then fpscr_val<23:22> = ‘00’;
-	//		int_operand = if unsigned then UInt(operand) else SInt(operand);
-	//		real_operand = int_operand / 2^fraction_bits;
-	//		if real_operand == 0.0 then
-	//			result = FPZero(‘0’, N);
-	//		else
-	//			result = FPRound(real_operand, N, fpscr_val);
-	//		return result;
-
-	if N != 32 && N != 64 {
-		panic("unsupported number of bits in FixedToFP()")
-	}
 
 	var fpscr FPSCR
 	if fpscrControlled {
@@ -42,23 +26,98 @@ func (fpu *FPU) FixedToFP(operand uint64, fractionBits int, unsigned bool, neare
 	} else {
 		fpscr = fpu.StandardFPSCRValue()
 	}
-
 	if nearest {
 		fpscr.SetRMode(FPRoundNearest)
 	}
 
 	var realOperand float64
 
-	if unsigned {
-		intOperand := operand
-		realOperand = float64(intOperand) / float64(2^uint64(fractionBits))
-	} else {
-		intOperand := int64(operand)
-		realOperand = float64(intOperand) / float64(2^int64(fractionBits))
+	switch N {
+	case 32:
+		if unsigned {
+			realOperand = float64(uint32(operand) / uint32(math.Pow(2, float64(fractionBits))))
+		} else {
+			realOperand = float64(int32(operand) / int32(math.Pow(2, float64(fractionBits))))
+		}
+	case 64:
+		if unsigned {
+			realOperand = float64(uint64(operand) / uint64(math.Pow(2, float64(fractionBits))))
+		} else {
+			realOperand = float64(int64(operand) / int64(math.Pow(2, float64(fractionBits))))
+		}
+	default:
+		panic("unsupported number of bits in FixedToFP()")
 	}
 
 	if realOperand == 0.0 {
 		return fpu.FPZero(false, N)
 	}
 	return fpu.FPRound(realOperand, N, fpscr)
+}
+
+func (fpu *FPU) FPToFixed(operand uint64, N int, fractionBits int, unsigned bool, roundZero bool, fpscrControlled bool) uint64 {
+	// page A2-58 to A2-59 of "ARMv7-M"
+
+	// comments in quotation marks are taken from the psuedo code for FPToFixed()
+
+	var fpscr FPSCR
+	if fpscrControlled {
+		fpscr = fpu.Status
+	} else {
+		fpscr = fpu.StandardFPSCRValue()
+	}
+	if roundZero {
+		fpscr.SetRMode(FPRoundZero)
+	}
+
+	typ, _, val := fpu.FPUnpack(operand, N, fpscr)
+
+	// "For NaNs and infinities, FPUnpack() has produced a value that will round to the
+	// required result of the conversion. Also, the value produced for infinities will
+	// cause the conversion to overflow and signal an Invalid Operation floating-point
+	// exception as required. NaNs must also generate such a floating-point exception"
+	if typ == FPType_SNaN || typ == FPType_QNaN {
+		fpu.FPProcessException(FPExc_InvalidOp, fpscr)
+	}
+
+	// "Scale value by specified number of fraction bits, then start rounding to an integer
+	// and determine the rounding error"
+	val = val * math.Pow(2, float64(fractionBits))
+	intResult := int(val)
+	roundingError := val - float64(intResult)
+
+	// "Apply the specified rounding mode"
+	var roundUp bool
+
+	switch fpscr.RMode() {
+	case FPRoundNearest:
+		roundUp = (roundingError > 0.5) || (roundingError == 0.5 && intResult&0x01 == 0x01)
+	case FPRoundPlusInf:
+		roundUp = roundingError != 0.0
+	case FPRoundNegInf:
+		roundUp = false
+	case FPRoundZero:
+		roundUp = (roundingError != 0.0 && intResult < 0)
+	}
+
+	if roundUp {
+		intResult++
+	}
+
+	var result uint64
+	var overflow bool
+
+	if unsigned {
+		result, overflow = fpu.UnsignedSatQ(intResult, N, unsigned)
+	} else {
+		result, overflow = fpu.SignedSatQ(intResult, N, unsigned)
+	}
+
+	if overflow {
+		fpu.FPProcessException(FPExc_InvalidOp, fpscr)
+	} else if roundingError != 0.0 {
+		fpu.FPProcessException(FPExc_Inexact, fpscr)
+	}
+
+	return result
 }

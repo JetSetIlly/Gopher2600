@@ -273,15 +273,28 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 
 					toInteger := opc2&0b0001 == 0b0001
 					if toInteger {
-						panic("unimplemented VCVT (to integer)")
-					} else {
+						unsigned := opc2&0x01 != 0x01
+						roundZero := op
+						d := Vd<<1 | D
 						if sz {
+							// m := (M << 4) | Vm
+							panic("double precision VCVT (to integer)")
+						} else {
+							m := Vm<<1 | M
+							arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPToFixed(uint64(arm.state.fpu.Registers[m]),
+								32, 0, unsigned, roundZero, true))
+							return nil
+						}
+					} else {
+						unsigned := !op
+						m := Vm<<1 | M
+						if sz {
+							// d := (D << 4) | Vd
 							panic("double precision VCVT")
 						} else {
 							d := Vd<<1 | D
-							m := Vm<<1 | M
 							arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FixedToFP(uint64(arm.state.fpu.Registers[m]),
-								0, op, false, 32, true))
+								32, 0, unsigned, false, true))
 							return nil
 						}
 					}

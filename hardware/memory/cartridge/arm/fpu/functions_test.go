@@ -145,3 +145,47 @@ func TestRoundToUnpack(t *testing.T) {
 	test.ExpectEquality(t, typ, fpu.FPType_Nonzero)
 	test.ExpectEquality(t, c, v)
 }
+
+func TestFixedToFP(t *testing.T) {
+	var fp fpu.FPU
+	var c uint64
+
+	c = fp.FixedToFP(0, 32, 0, false, true, true)
+	test.ExpectEquality(t, c, fp.FPZero(false, 32))
+
+	var v uint64
+
+	v = 64
+	c = fp.FixedToFP(v, 32, 0, false, true, true)
+	test.ExpectEquality(t, c, uint64(math.Float32bits(float32(v))))
+
+	v = 1000
+	c = fp.FixedToFP(v, 32, 0, false, true, true)
+	test.ExpectEquality(t, c, uint64(math.Float32bits(float32(v))))
+
+	v = 1000000
+	c = fp.FixedToFP(v, 32, 0, false, true, true)
+	test.ExpectEquality(t, c, uint64(math.Float32bits(float32(v))))
+
+	// 64bit
+	v = 1000000
+	c = fp.FixedToFP(v, 64, 0, false, true, true)
+	test.ExpectEquality(t, c, math.Float64bits(float64(v)))
+}
+
+func TestFPToFixed(t *testing.T) {
+	var fp fpu.FPU
+	var v uint64
+	var c uint64
+
+	v = fp.FPZero(false, 32)
+	c = fp.FPToFixed(v, 32, 0, false, true, true)
+	test.ExpectEquality(t, c, 0)
+
+	var d uint64
+
+	v = 64
+	c = fp.FixedToFP(v, 32, 0, false, true, true)
+	d = fp.FPToFixed(c, 32, 0, false, true, true)
+	test.ExpectEquality(t, d, v)
+}
