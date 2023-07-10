@@ -75,28 +75,36 @@ func (l *logger) log(tag, detail string) {
 		last = l.entries[len(l.entries)-1]
 	}
 
-	e := Entry{
-		Tag:    tag,
-		Detail: detail,
-	}
-
-	if last.Tag == e.Tag && last.Detail == e.Detail {
-		l.entries[len(l.entries)-1].Repeated++
-		return
-	} else {
-		l.entries = append(l.entries, e)
-	}
-
-	if len(l.entries) > l.maxEntries {
-		l.recentStart -= l.maxEntries - len(l.entries)
-		if l.recentStart < 0 {
-			l.recentStart = 0
+	// split multi-line log entries and log each separetely
+	for _, d := range strings.Split(detail, "\n") {
+		d = strings.TrimSpace(d)
+		if len(d) == 0 {
+			continue
 		}
-	}
 
-	if l.echo != nil {
-		l.echo.Write([]byte(e.String()))
-		l.echo.Write([]byte("\n"))
+		e := Entry{
+			Tag:    tag,
+			Detail: d,
+		}
+
+		if last.Tag == e.Tag && last.Detail == e.Detail {
+			l.entries[len(l.entries)-1].Repeated++
+			return
+		} else {
+			l.entries = append(l.entries, e)
+		}
+
+		if len(l.entries) > l.maxEntries {
+			l.recentStart -= l.maxEntries - len(l.entries)
+			if l.recentStart < 0 {
+				l.recentStart = 0
+			}
+		}
+
+		if l.echo != nil {
+			l.echo.Write([]byte(e.String()))
+			l.echo.Write([]byte("\n"))
+		}
 	}
 }
 
