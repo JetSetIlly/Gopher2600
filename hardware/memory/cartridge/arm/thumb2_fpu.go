@@ -509,7 +509,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) *DisasmEntry {
 
 		addr := arm.state.registers[Rn]
 		if Rn == rPC {
-			addr = align(arm.state.registers[rPC], 4)
+			addr = alignTo32bits(arm.state.registers[rPC])
 		}
 		if add {
 			addr += imm32

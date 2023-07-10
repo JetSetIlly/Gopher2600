@@ -910,12 +910,9 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) *DisasmEntry {
 
 		switch arm.mmap.ARMArchitecture {
 		case architecture.ARMv7_M:
-			// register to use is expressed slightly differently
-			Rm := (opcode & 0x78) >> 3
-
 			if opcode&0x0080 == 0x0080 {
 				// "A7.7.19 BLX (register)" in "ARMv7-M"
-				target := arm.state.registers[Rm]
+				target := arm.state.registers[srcReg]
 				nextPC := arm.state.registers[rPC] - 2
 				arm.state.registers[rLR] = nextPC | 0x01
 				if target&0x01 == 0x00 {
@@ -927,7 +924,7 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) *DisasmEntry {
 				arm.state.registers[rPC] = (target + 2) & 0xfffffffe
 			} else {
 				// "A7.7.20 BX " in "ARMv7-M"
-				target := arm.state.registers[Rm]
+				target := arm.state.registers[srcReg]
 				if target&0x01 == 0x00 {
 					// cannot switch to ARM mode in the ARMv7-M architecture
 					arm.continueExecution = false
@@ -1040,11 +1037,11 @@ func (arm *ARM) decodeThumbPCrelativeLoad(opcode uint16) *DisasmEntry {
 
 	// "Bit 1 of the PC value is forced to zero for the purpose of this
 	// calculation, so the address is always word-aligned."
-	pc := arm.state.registers[rPC] & 0xfffffffc
+	pc := alignTo32bits(arm.state.registers[rPC])
 
 	// immediate value is not two's complement (surprisingly)
 	addr := pc + imm
-	arm.state.registers[destReg] = arm.read32bit(addr, true)
+	arm.state.registers[destReg] = arm.read32bit(addr, false)
 
 	// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	// - fillPipeline() will be called if necessary
@@ -1090,7 +1087,7 @@ func (arm *ARM) decodeThumbLoadStoreWithRegisterOffset(opcode uint16) *DisasmEnt
 			}
 		}
 
-		arm.state.registers[reg] = arm.read32bit(addr, true)
+		arm.state.registers[reg] = arm.read32bit(addr, false)
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -1123,7 +1120,7 @@ func (arm *ARM) decodeThumbLoadStoreWithRegisterOffset(opcode uint16) *DisasmEnt
 		}
 	}
 
-	arm.write32bit(addr, arm.state.registers[reg], true)
+	arm.write32bit(addr, arm.state.registers[reg], false)
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
@@ -1152,7 +1149,7 @@ func (arm *ARM) decodeThumbLoadStoreSignExtendedByteHalford(opcode uint16) *Disa
 			}
 
 			// load sign-extended halfword
-			arm.state.registers[reg] = uint32(arm.read16bit(addr, true))
+			arm.state.registers[reg] = uint32(arm.read16bit(addr, false))
 
 			// masking after cycle accumulation
 			if arm.state.registers[reg]&0x8000 == 0x8000 {
@@ -1197,7 +1194,7 @@ func (arm *ARM) decodeThumbLoadStoreSignExtendedByteHalford(opcode uint16) *Disa
 		}
 
 		// load halfword
-		arm.state.registers[reg] = uint32(arm.read16bit(addr, true))
+		arm.state.registers[reg] = uint32(arm.read16bit(addr, false))
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -1215,7 +1212,7 @@ func (arm *ARM) decodeThumbLoadStoreSignExtendedByteHalford(opcode uint16) *Disa
 	}
 
 	// store halfword
-	arm.write16bit(addr, uint16(arm.state.registers[reg]), true)
+	arm.write16bit(addr, uint16(arm.state.registers[reg]), false)
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
@@ -1268,7 +1265,7 @@ func (arm *ARM) decodeThumbLoadStoreWithImmOffset(opcode uint16) *DisasmEntry {
 			}
 		}
 
-		arm.state.registers[reg] = arm.read32bit(addr, true)
+		arm.state.registers[reg] = arm.read32bit(addr, false)
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -1302,7 +1299,7 @@ func (arm *ARM) decodeThumbLoadStoreWithImmOffset(opcode uint16) *DisasmEntry {
 		}
 	}
 
-	arm.write32bit(addr, arm.state.registers[reg], true)
+	arm.write32bit(addr, arm.state.registers[reg], false)
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
@@ -1332,7 +1329,7 @@ func (arm *ARM) decodeThumbLoadStoreHalfword(opcode uint16) *DisasmEntry {
 			}
 		}
 
-		arm.state.registers[reg] = uint32(arm.read16bit(addr, true))
+		arm.state.registers[reg] = uint32(arm.read16bit(addr, false))
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -1349,7 +1346,7 @@ func (arm *ARM) decodeThumbLoadStoreHalfword(opcode uint16) *DisasmEntry {
 		}
 	}
 
-	arm.write16bit(addr, uint16(arm.state.registers[reg]), true)
+	arm.write16bit(addr, uint16(arm.state.registers[reg]), false)
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
@@ -1378,7 +1375,7 @@ func (arm *ARM) decodeThumbSPRelativeLoadStore(opcode uint16) *DisasmEntry {
 			}
 		}
 
-		arm.state.registers[reg] = arm.read32bit(addr, true)
+		arm.state.registers[reg] = arm.read32bit(addr, false)
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -1395,7 +1392,7 @@ func (arm *ARM) decodeThumbSPRelativeLoadStore(opcode uint16) *DisasmEntry {
 		}
 	}
 
-	arm.write32bit(addr, arm.state.registers[reg], true)
+	arm.write32bit(addr, arm.state.registers[reg], false)
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
@@ -1435,10 +1432,11 @@ func (arm *ARM) decodeThumbLoadAddress(opcode uint16) *DisasmEntry {
 		}
 	}
 
-	arm.state.registers[destReg] = arm.state.registers[rPC] + uint32(offset)
-
-	// align program counter value
-	arm.state.registers[destReg] &= 0xfffffffc
+	// "Where the PC is used as the source register (SP = 0), bit 1 of the PC is always read
+	// as 0. The value of the PC will be 4 bytes greater than the address of the instruction
+	// before bit 1 is forced to 0"
+	pc := arm.state.registers[rPC]&0xfffffffd + uint32(offset)
+	arm.state.registers[destReg] = alignTo32bits(pc)
 
 	// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	// - fillPipeline() will be called if necessary

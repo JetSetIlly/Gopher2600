@@ -100,9 +100,6 @@ type Map struct {
 
 	// the divisor to apply to the main clock when ticking the timers
 	ClkDiv float32
-
-	// whether to the processor to trap (or log) a disallowed unaligned memory access
-	UnalignTrap bool
 }
 
 // NewMap is the preferred method of initialisation for the Map type.
@@ -141,7 +138,6 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.IllegalAccessValue = 0x00000000
 
 		mmap.ClkDiv = 1.0
-		mmap.UnalignTrap = true
 
 	case PlusCart:
 		mmap.ARMArchitecture = ARMv7_M
@@ -173,7 +169,6 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.IllegalAccessValue = 0xffffffff
 
 		mmap.ClkDiv = 0.5
-		mmap.UnalignTrap = false
 	}
 
 	logger.Logf("ARM Architecture", "using %s/%s", mmap.CartArchitecture, mmap.ARMArchitecture)

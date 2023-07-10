@@ -1251,7 +1251,7 @@ func (arm *ARM) decode32bitThumb2LoadStoreDoubleEtc(opcode uint16) *DisasmEntry 
 			if Rn == rPC || Rm == rPC {
 				idx -= 2
 			}
-			halfwords := arm.read16bit(idx, true)
+			halfwords := arm.read16bit(idx, false)
 			arm.state.registers[rPC] += uint32(halfwords) << 1
 		default:
 			panic(fmt.Sprintf("unhandled load and store double and exclusive and table branch (load and store exclusive byte etc.) (%04b)", op))
@@ -1825,7 +1825,7 @@ func (arm *ARM) decode32bitThumb2LoadStoreSingle(opcode uint16) *DisasmEntry {
 		imm12 := opcode & 0x0fff
 
 		// Rn is always the PC for this instruction class
-		addr := (arm.state.registers[rPC] - 2) & 0xfffffffc
+		addr := alignTo32bits(arm.state.registers[rPC] - 2)
 
 		// all addresses are pre-indexed and there is no write-back
 		if u {
@@ -2443,10 +2443,10 @@ func (arm *ARM) decode32bitThumb2LoadStoreSingle(opcode uint16) *DisasmEntry {
 						Operand:  "register shifted",
 					}
 				}
-				arm.state.registers[Rt] = arm.read32bit(addr, false)
 				if Rt == rPC {
-					arm.state.registers[rPC] += 2
-					arm.state.registers[rPC] &= 0xfffffffe
+					arm.state.registers[rPC] = (arm.read32bit(addr, true) + 2) & 0xfffffffe
+				} else {
+					arm.state.registers[Rt] = arm.read32bit(addr, false)
 				}
 			default:
 				panic(fmt.Sprintf("unhandled size (%02b) for 'Rn + shifted register' (load)", size))
@@ -2589,7 +2589,6 @@ func (arm *ARM) decode32bitThumb2LoadStoreMultiple(opcode uint16) *DisasmEntry {
 				if regList&0x8000 == 0x8000 {
 					arm.state.registers[rPC] = arm.read32bit(addr, true)
 				}
-
 			}
 		} else {
 			// "4.6.161 STMIA / STMEA" of "Thumb-2 Supplement"
