@@ -33,7 +33,7 @@ import (
 // it is sometimes convenient to dissassemble every instruction and to print it
 // to stdout for inspection. we most likely need this during the early stages of
 // debugging of a new cartridge type
-const useCartCoProcDisassemblerStdout = false
+const disassembleToStdout = false
 
 // register names.
 const (
@@ -222,13 +222,11 @@ type ARM struct {
 	// error seen during execution
 	executionError error
 
-	// is set to true when an access to memory using a read/write function used
-	// an unrecognised address. when this happens, the address is logged and
-	// the Thumb program aborted (ie returns early)
-	//
-	// note: it is only honoured if abortOnIllegalMem is true
-	memoryError       error
-	memoryErrorDetail error
+	// error accessing memory
+	memoryError error
+
+	// additional error information returned by developer package
+	memoryErrorDev error
 
 	// the speed at which the arm is running at and the required stretching for
 	// access to flash memory. speed is in MHz. Access latency of Flash memory is
@@ -326,7 +324,7 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 	}
 
 	// disassembly printed to stdout
-	if useCartCoProcDisassemblerStdout {
+	if disassembleToStdout {
 		arm.disasm = &mapper.CartCoProcDisassemblerStdout{}
 	}
 
@@ -607,7 +605,7 @@ func (arm *ARM) Run() (mapper.YieldReason, float32) {
 	arm.continueExecution = true
 	arm.executionError = nil
 	arm.memoryError = nil
-	arm.memoryErrorDetail = nil
+	arm.memoryErrorDev = nil
 
 	// reset disasm notes/flags
 	if arm.disasm != nil {
@@ -811,7 +809,7 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 			arm.state.stackFrame = candidateStackFrame
 		}
 
-		// send disasm information to disassembler
+		// disassemble if appropriate
 		if arm.disasm != nil {
 			if !arm.state.function32bitDecoding {
 				var cached bool
@@ -819,21 +817,10 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 
 				entry, cached = arm.disasmCache[arm.state.instructionPC]
 				if !cached {
-					switch arm.mmap.ARMArchitecture {
-					case architecture.ARM7TDMI:
-						var err error
-						entry, err = arm.disassemble(opcode)
-						if err != nil {
-							panic(err.Error())
-						}
-					case architecture.ARMv7_M:
-						var err error
-						entry, err = arm.disassembleThumb2(opcode)
-						if err != nil {
-							panic(err.Error())
-						}
-					default:
-						panic(fmt.Sprintf("unhandled ARM architecture: %s", arm.mmap.ARMArchitecture))
+					var err error
+					entry, err = arm.disassemble(opcode)
+					if err != nil {
+						panic(err.Error())
 					}
 				}
 
@@ -867,29 +854,12 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 				// update program cycles
 				arm.disasmSummary.add(arm.state.cycleOrder)
 
-				// additional output for disassembler of type CartCoProcDisassemblerStdout type
-				var isDisasmStdout bool
-				if _, isDisasmStdout = arm.disasm.(*mapper.CartCoProcDisassemblerStdout); isDisasmStdout {
-					fmt.Printf("%08x: ", entry.Addr)
-					if entry.Is32bit {
-						fmt.Printf("%04x %04x ", entry.OpcodeHi, entry.Opcode)
-					} else {
-						fmt.Printf("%04x       ", entry.Opcode)
-					}
-				}
-
 				// we always send the instruction to the disasm interface
 				arm.disasm.Step(entry)
 
-				// additional output for disassembler of type CartCoProcDisassemblerStdout type
-				if isDisasmStdout {
-					for i, r := range arm.state.registers {
-						fmt.Printf("\tR%02d: %08x\t", i, r)
-						if (i+1)%4 == 0 {
-							fmt.Println()
-						}
-					}
-					fmt.Println()
+				// print additional information output for stdout
+				if _, ok := arm.disasm.(*mapper.CartCoProcDisassemblerStdout); ok {
+					fmt.Println(arm.disasmVerbose(entry))
 				}
 			}
 		}
@@ -929,9 +899,9 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 
 		// check stack for stack collision
 		if err, detail := arm.stackCollision(stackPointerBeforeExecution); err != nil {
-			logger.Logf("ARM7", err.Error())
-			if arm.memoryErrorDetail != nil {
-				logger.Logf("ARM7", detail.Error())
+			logger.Logf("ARM7: stack collision", err.Error())
+			if detail != nil {
+				logger.Logf("ARM7: stack collision", "%s", detail.Error())
 			}
 
 			if arm.abortOnStackCollision && arm.breakpointsEnabled {
@@ -941,16 +911,24 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 
 		// handle memory access errors
 		if arm.memoryError != nil {
-			// not quiting so we log instead
-			logger.Logf("ARM7", arm.memoryError.Error())
-			if arm.memoryErrorDetail != nil {
-				logger.Logf("ARM7", arm.memoryErrorDetail.Error())
+			logger.Logf("ARM7: memory error", arm.memoryError.Error())
+			if arm.memoryErrorDev != nil {
+				logger.Logf("ARM7: memory error", arm.memoryErrorDev.Error())
+			}
+
+			if arm.prefs.ExtendedMemoryErrorLogging.Get().(bool) {
+				entry, err := arm.disassemble(opcode)
+				if err == nil {
+					logger.Logf("ARM7: memory error", "disassembly: %s", entry.String())
+				}
+
+				logger.Logf("ARM7: memory error", arm.disasmVerbose(entry))
 			}
 
 			// we need to reset the memory error instances so that we don't end
 			// up printing the same message over and over
 			arm.memoryError = nil
-			arm.memoryErrorDetail = nil
+			arm.memoryErrorDev = nil
 
 			if arm.abortOnIllegalMem && arm.breakpointsEnabled {
 				arm.state.interrupt = true
@@ -960,7 +938,7 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 
 		// handle execution errors
 		if arm.executionError != nil {
-			logger.Logf("ARM7", arm.executionError.Error())
+			logger.Logf("ARM7: execution error", arm.executionError.Error())
 
 			if arm.breakpointsEnabled {
 				arm.state.interrupt = true

@@ -19,9 +19,34 @@ import (
 	"encoding/binary"
 	"fmt"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 )
 
+// disassemble according to the current ARM architecture
 func (arm *ARM) disassemble(opcode uint16) (DisasmEntry, error) {
+	var entry DisasmEntry
+	var err error
+
+	switch arm.mmap.ARMArchitecture {
+	case architecture.ARM7TDMI:
+		entry, err = arm.disassembleARM7TDMI(opcode)
+		if err != nil {
+			return DisasmEntry{}, err
+		}
+	case architecture.ARMv7_M:
+		entry, err = arm.disassembleARM7vM(opcode)
+		if err != nil {
+			return DisasmEntry{}, err
+		}
+	default:
+		panic(fmt.Sprintf("unhandled ARM architecture: %s", arm.mmap.ARMArchitecture))
+	}
+
+	return entry, nil
+}
+
+func (arm *ARM) disassembleARM7TDMI(opcode uint16) (DisasmEntry, error) {
 	arm.decodeOnly = true
 	defer func() {
 		arm.decodeOnly = false
@@ -42,7 +67,7 @@ func (arm *ARM) disassemble(opcode uint16) (DisasmEntry, error) {
 	return *e, nil
 }
 
-func (arm *ARM) disassembleThumb2(opcode uint16) (DisasmEntry, error) {
+func (arm *ARM) disassembleARM7vM(opcode uint16) (DisasmEntry, error) {
 	arm.decodeOnly = true
 	defer func() {
 		arm.decodeOnly = false
@@ -163,7 +188,7 @@ func StaticDisassemble(config StaticDisassembleConfig) error {
 					e.Operand = fmt.Sprintf("%v", r)
 				}
 			}()
-			return arm.disassembleThumb2(opcode)
+			return arm.disassembleARM7vM(opcode)
 		}()
 
 		if err == nil {
@@ -183,4 +208,26 @@ func StaticDisassemble(config StaticDisassembleConfig) error {
 	}
 
 	return nil
+}
+
+// disasmVerbose provides more detail for the disasm entry
+func (arm *ARM) disasmVerbose(entry DisasmEntry) string {
+	var s strings.Builder
+
+	s.WriteString(fmt.Sprintf("instruction PC: %08x\n", entry.Addr))
+	if entry.Is32bit {
+		s.WriteString(fmt.Sprintf("opcode: %04x %04x \n", entry.OpcodeHi, entry.Opcode))
+	} else {
+		s.WriteString(fmt.Sprintf("opcode: %04x       \n", entry.Opcode))
+	}
+
+	// register information for verbose output
+	for i, r := range arm.state.registers {
+		s.WriteString(fmt.Sprintf("\tR%02d: %08x", i, r))
+		if (i+1)%4 == 0 {
+			s.WriteString(fmt.Sprintf("\n"))
+		}
+	}
+
+	return s.String()
 }

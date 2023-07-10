@@ -52,6 +52,9 @@ type ARMPreferences struct {
 	// abort Thumb program if stack pointer collides with memory occupied by
 	// program variables
 	AbortOnStackCollision prefs.Bool
+
+	// include disassembly and register details when logging memory errors
+	ExtendedMemoryErrorLogging prefs.Bool
 }
 
 func (p *ARMPreferences) String() string {
@@ -94,6 +97,10 @@ func newARMprefrences() (*ARMPreferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("hardware.arm7.extendedMemoryErrorLogging", &p.ExtendedMemoryErrorLogging)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Load(true)
 	if err != nil {
 		return nil, err
@@ -110,6 +117,7 @@ func (p *ARMPreferences) SetDefaults() {
 	p.Immediate.Set(false)
 	p.MAM.Set(-1)
 	p.AbortOnIllegalMem.Set(false)
+	p.ExtendedMemoryErrorLogging.Set(false)
 }
 
 // Load current arm preference from disk.

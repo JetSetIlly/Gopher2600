@@ -29,11 +29,9 @@ func (arm *ARM) illegalAccess(event string, addr uint32) {
 	}
 
 	detail := arm.dev.IllegalAccess(event, arm.state.instructionPC, addr)
-	if detail == "" {
-		return
+	if detail != "" {
+		arm.memoryErrorDev = fmt.Errorf("%s: %s", event, detail)
 	}
-
-	arm.memoryErrorDetail = fmt.Errorf("%s: %s", event, detail)
 }
 
 // nullAccess is a special condition of illegalAccess()
@@ -49,7 +47,7 @@ func (arm *ARM) nullAccess(event string, addr uint32) {
 		return
 	}
 
-	arm.memoryErrorDetail = fmt.Errorf("%s: %s", event, detail)
+	arm.memoryErrorDev = fmt.Errorf("%s: %s", event, detail)
 }
 
 // imperfect check of whether stack has collided with memtop
@@ -73,7 +71,7 @@ func (arm *ARM) stackCollision(stackPointerBeforeExecution uint32) (err error, d
 	// will no longer be checked for legality
 	arm.stackHasCollided = true
 
-	err = fmt.Errorf("stack: collision with program memory (%08x)", arm.state.registers[rSP])
+	err = fmt.Errorf("collision with program memory (%08x)", arm.state.registers[rSP])
 
 	if arm.dev != nil {
 		return
@@ -84,7 +82,7 @@ func (arm *ARM) stackCollision(stackPointerBeforeExecution uint32) (err error, d
 		return
 	}
 
-	detail = fmt.Errorf("stack: %s", detailStr)
+	detail = fmt.Errorf("%s", detailStr)
 
 	return err, detail
 }
