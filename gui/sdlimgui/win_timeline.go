@@ -213,7 +213,7 @@ func (win *winTimeline) drawToolbar() {
 		imgui.SameLineV(0, 15)
 		imguiColorLabelSimple(fmt.Sprintf("Comparing frame %d", win.img.lz.Rewind.Comparison.State.TV.GetCoords().Frame), win.img.cols.TimelineComparison)
 
-		if win.isHovered || win.scrubbing {
+		if win.isHovered || (win.scrubbing && win.hoverIdx < len(win.img.lz.Rewind.Timeline.TotalScanlines)) {
 			imgui.SameLineV(0, 15)
 			imguiColorLabelSimple(fmt.Sprintf("%d Scanlines", win.img.lz.Rewind.Timeline.TotalScanlines[win.hoverIdx]), win.img.cols.TimelineScanlines)
 
