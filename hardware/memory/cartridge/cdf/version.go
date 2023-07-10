@@ -102,7 +102,7 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 	case "ARMv7_M":
 		// old value used to indicate ARM7TDMI architecture. easiest to support
 		// it here in this manner
-		mmap = architecture.NewMap(architecture.Harmony)
+		mmap = architecture.NewMap(architecture.PlusCart)
 	}
 
 	ver := version{
@@ -116,12 +116,14 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 
 		// addresses (different for CDFJ+)
 		customOriginROM:    mmap.FlashOrigin | 0x00000800,
-		customMemtopROM:    mmap.Flash32kMemtop,
 		dataOriginRAM:      mmap.SRAMOrigin | 0x00000800,
 		dataMemtopRAM:      mmap.SRAMOrigin | 0x000017ff,
 		variablesOriginRAM: mmap.SRAMOrigin | 0x00001800,
 		variablesMemtopRAM: mmap.SRAMOrigin | 0x00001fff,
 	}
+
+	// ROM memtop is the extent of the data
+	ver.customMemtopROM = ver.customOriginROM + uint32(len(data))
 
 	// entry point into ARM program
 	ver.entrySP = mmap.SRAMOrigin | 0x00001fdc
@@ -164,9 +166,6 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 		ver.entryLR |= uint32(data[idx+3]) << 24
 		ver.entryLR &= 0xfffffffe
 		ver.entryPC = ver.entryLR
-
-		// custom oring unchange. memtop is changed
-		ver.customMemtopROM = mmap.Flash64kMemtop
 
 		// data origin unchanged. memtop is changed
 		ver.dataMemtopRAM = mmap.SRAMOrigin | 0x00007fff

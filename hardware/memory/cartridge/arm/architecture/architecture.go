@@ -26,8 +26,8 @@ type CartArchitecture string
 
 // List of valid CartArchitecture values.
 const (
-	Harmony  CartArchitecture = "LPC2000"
-	PlusCart CartArchitecture = "STM32F407VGT6"
+	Harmony  CartArchitecture = "Harmony"
+	PlusCart CartArchitecture = "PlusCart"
 )
 
 // ARMArchitecture defines the features of the ARM core.
@@ -55,11 +55,11 @@ type Map struct {
 	CartArchitecture CartArchitecture
 	ARMArchitecture  ARMArchitecture
 
-	FlashOrigin    uint32
-	Flash32kMemtop uint32
-	Flash64kMemtop uint32
-	FlashMaxMemtop uint32
-	SRAMOrigin     uint32
+	FlashOrigin uint32
+	FlashMemtop uint32
+
+	SRAMOrigin uint32
+	SRAMMemtop uint32
 
 	// the memory latency of the Flash memory block (in nanoseconds)
 	FlashLatency float64
@@ -118,10 +118,9 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.ARMArchitecture = ARM7TDMI
 
 		mmap.FlashOrigin = 0x00000000
-		mmap.Flash32kMemtop = 0x00007fff
-		mmap.Flash64kMemtop = 0x000fffff
-		mmap.FlashMaxMemtop = 0x0fffffff
+		mmap.FlashMemtop = 0x0fffffff
 		mmap.SRAMOrigin = 0x40000000
+		mmap.SRAMMemtop = 0x4fffffff
 
 		mmap.FlashLatency = 50.0
 
@@ -144,10 +143,9 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.ARMArchitecture = ARMv7_M
 
 		mmap.FlashOrigin = 0x20000000
-		mmap.Flash32kMemtop = 0x20007fff
-		mmap.Flash64kMemtop = 0x200fffff
-		mmap.FlashMaxMemtop = 0x2fffffff
+		mmap.FlashMemtop = 0x2fffffff
 		mmap.SRAMOrigin = 0x10000000
+		mmap.SRAMMemtop = 0x1fffffff
 
 		mmap.FlashLatency = 10.0
 
@@ -181,5 +179,5 @@ func NewMap(cart CartArchitecture) Map {
 
 // IsFlash returns true if address is in flash memory range.
 func (mmap *Map) IsFlash(addr uint32) bool {
-	return addr >= mmap.FlashOrigin && addr <= mmap.Flash64kMemtop
+	return addr >= mmap.FlashOrigin && addr <= mmap.FlashMemtop
 }

@@ -51,7 +51,7 @@ func newVersion(memModel string, data []uint8) (version, error) {
 		mmap = architecture.NewMap(architecture.Harmony)
 
 	case "LPC2000":
-		// older preference value. deprecated.
+		// older preference value. deprecated
 		fallthrough
 	case "ARM7TDMI":
 		// old value used to indicate ARM7TDMI architecture. easiest to support
@@ -59,12 +59,12 @@ func newVersion(memModel string, data []uint8) (version, error) {
 		mmap = architecture.NewMap(architecture.Harmony)
 
 	case "STM32F407VGT6":
-		// older preference value. deprecated.
+		// older preference value. deprecated
 		fallthrough
 	case "ARMv7_M":
 		// old value used to indicate ARM7TDMI architecture. easiest to support
 		// it here in this manner
-		mmap = architecture.NewMap(architecture.Harmony)
+		mmap = architecture.NewMap(architecture.PlusCart)
 	}
 
 	return version{
