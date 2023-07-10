@@ -20,10 +20,12 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Entry represents a single line/entry in the log.
 type Entry struct {
+	Time     time.Time
 	Tag      string
 	Detail   string
 	Repeated int
@@ -83,6 +85,7 @@ func (l *logger) log(tag, detail string) {
 		}
 
 		e := Entry{
+			Time:   time.Now(),
 			Tag:    tag,
 			Detail: d,
 		}

@@ -16,8 +16,9 @@
 package sdlimgui
 
 import (
+	"time"
+
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -25,10 +26,8 @@ const winLogID = "Log"
 
 type winLog struct {
 	debuggerWin
-
-	img *SdlImgui
-
-	scrollToBottom bool
+	img           *SdlImgui
+	lastEntryTime time.Time
 }
 
 func newWinLog(img *SdlImgui) (window, error) {
@@ -58,6 +57,7 @@ func (win *winLog) debuggerDraw() bool {
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		win.draw()
 	}
+	imgui.PopStyleColor()
 
 	win.debuggerGeom.update()
 	imgui.End()
@@ -66,8 +66,6 @@ func (win *winLog) debuggerDraw() bool {
 }
 
 func (win *winLog) draw() {
-	imgui.PopStyleColor()
-
 	logger.BorrowLog(func(log []logger.Entry) {
 		var clipper imgui.ListClipper
 		clipper.Begin(len(log))
@@ -77,9 +75,10 @@ func (win *winLog) draw() {
 			}
 		}
 
-		// very simple conditions to scroll to the bottom
-		if win.scrollToBottom || win.img.dbg.State() == govern.Running {
-			win.scrollToBottom = false
+		// scroll to bottom if last entry in log is new
+		lastEntry := log[len(log)-1]
+		if lastEntry.Time != win.lastEntryTime {
+			win.lastEntryTime = lastEntry.Time
 			imgui.SetScrollHereY(0.0)
 		}
 	})
