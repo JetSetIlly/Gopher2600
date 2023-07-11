@@ -321,6 +321,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	} else {
 		if c, ok := coproc.(mapper.CartCoProcNonRelocatable); ok {
 			executableOrigin = uint64(c.ExecutableOrigin())
+			logger.Logf("dwarf", "found non-relocatable origin: %08x", executableOrigin)
 		}
 
 		// create frame section from the raw ELF section
@@ -335,6 +336,10 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			logger.Logf("dwarf", err.Error())
 		}
 	}
+
+	// if file is not reloctable then we need to adjust all section origin
+	// addresses by the address of the first executable section we encounter
+	adjust := !relocatable
 
 	// disassemble every word in the ELF file using the cartridge coprocessor interface
 	//
@@ -354,8 +359,21 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			return nil, fmt.Errorf("dwarf: %w", err)
 		}
 
-		// disassemble section
+		// find adjustment value if necessary. for now we're assuming that all
+		// .text sections are consecutive and use the origin value of the first
+		// one we encounter as the adjustment value
+		if adjust {
+			executableOrigin -= sec.Addr
+			logger.Logf("dwarf", "adjusting non-relocatable origin by: %08x", sec.Addr)
+			logger.Logf("dwarf", "using non-relocatable origin: %08x", executableOrigin)
+			adjust = false
+		}
+
+		// origin is section address adjusted by both the executable origin and
+		// the adjustment amount previously recorded
 		origin := sec.Addr + executableOrigin
+
+		// disassemble section
 		_ = arm.StaticDisassemble(arm.StaticDisassembleConfig{
 			Data:      data,
 			Origin:    uint32(origin),
