@@ -282,6 +282,10 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// origin address of the ELF .text section
 	var executableOrigin uint64
 
+	// if the ELF data is not reloctable then the executableOrigin value may
+	// need to be adjusted
+	var adjust bool
+
 	// cartridge coprocessor
 	coproc := cart.GetCoProc()
 	if coproc == nil {
@@ -321,6 +325,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	} else {
 		if c, ok := coproc.(mapper.CartCoProcNonRelocatable); ok {
 			executableOrigin = uint64(c.ExecutableOrigin())
+			adjust = true
 			logger.Logf("dwarf", "found non-relocatable origin: %08x", executableOrigin)
 		}
 
@@ -336,10 +341,6 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			logger.Logf("dwarf", err.Error())
 		}
 	}
-
-	// if file is not reloctable then we need to adjust all section origin
-	// addresses by the address of the first executable section we encounter
-	adjust := !relocatable
 
 	// disassemble every word in the ELF file using the cartridge coprocessor interface
 	//
