@@ -43,11 +43,6 @@ type Elf struct {
 	// the hook that handles cartridge yields
 	yieldHook mapper.CartYieldHook
 
-	// parallelARM is true whenever the address bus is not a cartridge address (ie.
-	// a TIA or RIOT address). this means that the arm is running unhindered
-	// and will not have yielded for that colour clock
-	parallelARM bool
-
 	// armState is a copy of the ARM's state at the moment of the most recent
 	// Snapshot. it's used only suring a Plumb() operation
 	armState *arm.ARMState
@@ -258,15 +253,15 @@ func (cart *Elf) runARM() {
 	}
 
 	// call arm once and then check for yield conditions
-	yld, _ := cart.arm.Run()
+	cart.mem.yield, _ = cart.arm.Run()
 
 	// keep calling runArm() for as long as program does not need to sync with the VCS...
-	for yld != mapper.YieldSyncWithVCS {
+	for cart.mem.yield.Type != mapper.YieldSyncWithVCS {
 		// ... or if the yield hook says to return to the VCS immediately
-		if cart.yieldHook.CartYield(yld) {
+		if cart.yieldHook.CartYield(cart.mem.yield.Type) {
 			return
 		}
-		yld, _ = cart.arm.Run()
+		cart.mem.yield, _ = cart.arm.Run()
 	}
 }
 
@@ -305,7 +300,7 @@ func (cart *Elf) runStrongarm(addr uint16, data uint8) bool {
 func (cart *Elf) AccessPassive(addr uint16, data uint8) {
 	// if memory access is not a cartridge address (ie. a TIA or RIOT address)
 	// then the ARM is running in parallel (ie. no synchronisation)
-	cart.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)
+	cart.mem.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)
 
 	// if address is the reset address then trigger the reset procedure
 	if (addr&memorymap.CartridgeBits)|memorymap.OriginCart == (cpubus.Reset&memorymap.CartridgeBits)|memorymap.OriginCart {
@@ -405,12 +400,18 @@ func (cart *Elf) ELFSection(name string) ([]uint8, uint32, bool) {
 	return nil, 0, false
 }
 
-// CoProcState implements the mapper.CartCoProc interface.
-func (cart *Elf) CoProcState() mapper.CoProcState {
-	if cart.parallelARM {
-		return mapper.CoProcParallel
+// CoProcExecutionState implements the mapper.CartCoProc interface.
+func (cart *Elf) CoProcExecutionState() mapper.CoProcExecutionState {
+	if cart.mem.parallelARM {
+		return mapper.CoProcExecutionState{
+			Sync:  mapper.CoProcParallel,
+			Yield: cart.mem.yield,
+		}
 	}
-	return mapper.CoProcStrongARMFeed
+	return mapper.CoProcExecutionState{
+		Sync:  mapper.CoProcStrongARMFeed,
+		Yield: cart.mem.yield,
+	}
 }
 
 // CoProcRegister implements the mapper.CartCoProc interface.
@@ -454,4 +455,24 @@ func (cart *Elf) BreakpointsEnable(enable bool) {
 // SetYieldHook implements the mapper.CartCoProc interface.
 func (cart *Elf) SetYieldHook(hook mapper.CartYieldHook) {
 	cart.yieldHook = hook
+}
+
+// GetStatic implements the mapper.CartStaticBus interface.
+func (cart *Elf) GetStatic() mapper.CartStatic {
+	return cart.mem.Snapshot()
+}
+
+// StaticWrite implements the mapper.CartStaticBus interface.
+func (cart *Elf) PutStatic(segment string, idx int, data uint8) bool {
+	mem, ok := cart.mem.Reference(segment)
+	if !ok {
+		return false
+	}
+
+	if idx >= len(mem) {
+		return false
+	}
+	mem[idx] = data
+
+	return true
 }

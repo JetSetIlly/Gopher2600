@@ -533,12 +533,15 @@ func (cart *Cartridge) SetYieldHook(hook mapper.CartYieldHook) {
 	}
 }
 
-// CoProcState implements the mapper.CartCoProc interface.
-func (cart *Cartridge) CoProcState() mapper.CoProcState {
+// CoProcExecutionState implements the mapper.CartCoProc interface
+//
+// If cartridge does not have a coprocessor then an empty instance of
+// mapper.CoProcExecutionState is returned
+func (cart *Cartridge) CoProcExecutionState() mapper.CoProcExecutionState {
 	if cart.hasCoProc {
-		return cart.coproc.CoProcState()
+		return cart.coproc.CoProcExecutionState()
 	}
-	return mapper.CoProcIdle
+	return mapper.CoProcExecutionState{}
 }
 
 // BusStuff implements the mapper.CartBusStuff interface.

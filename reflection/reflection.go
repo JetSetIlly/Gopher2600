@@ -59,7 +59,7 @@ type ReflectedVideoStep struct {
 	VideoElement video.Element
 	WSYNC        bool
 	IsRAM        bool
-	CoProcState  mapper.CoProcState
+	CoProcSync   mapper.CoProcSynchronisation
 	IsHblank     bool
 	RSYNCalign   bool
 	RSYNCreset   bool

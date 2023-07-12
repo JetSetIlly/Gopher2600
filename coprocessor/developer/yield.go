@@ -22,7 +22,7 @@ import (
 // YieldState records the most recent yield.
 type YieldState struct {
 	InstructionPC  uint32
-	Reason         mapper.YieldReason
+	Reason         mapper.CoProcYieldType
 	LocalVariables []*SourceVariableLocal
 }
 
@@ -32,15 +32,15 @@ func (y *YieldState) Cmp(w *YieldState) bool {
 }
 
 // OnYield implements the mapper.CartCoProcDeveloper interface.
-func (dev *Developer) OnYield(instructionPC uint32, currentPC uint32, reason mapper.YieldReason) {
+func (dev *Developer) OnYield(instructionPC uint32, currentPC uint32, yield mapper.CoProcYield) {
 	// do nothing if yield reason is YieldSyncWithVCS
 	//
 	// yielding for this reason is likely to be followed by another yield
 	// very soon after so there is no point gathering this information
-	if reason == mapper.YieldSyncWithVCS {
+	if yield.Type == mapper.YieldSyncWithVCS {
 		dev.BorrowYieldState(func(yld *YieldState) {
 			yld.InstructionPC = instructionPC
-			yld.Reason = reason
+			yld.Reason = yield.Type
 			yld.LocalVariables = yld.LocalVariables[:0]
 		})
 
@@ -64,7 +64,7 @@ func (dev *Developer) OnYield(instructionPC uint32, currentPC uint32, reason map
 		}
 
 		// log a bug for any of these reasons
-		switch reason {
+		switch yield.Type {
 		case mapper.YieldMemoryAccessError:
 			fallthrough
 		case mapper.YieldExecutionError:
@@ -127,7 +127,7 @@ func (dev *Developer) OnYield(instructionPC uint32, currentPC uint32, reason map
 
 	dev.BorrowYieldState(func(yld *YieldState) {
 		yld.InstructionPC = instructionPC
-		yld.Reason = reason
+		yld.Reason = yield.Type
 
 		// clear list of local variables from previous yield
 		yld.LocalVariables = yld.LocalVariables[:0]

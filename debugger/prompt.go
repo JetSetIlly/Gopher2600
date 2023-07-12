@@ -21,59 +21,48 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 func (dbg *Debugger) buildPrompt() terminal.Prompt {
-	content := strings.Builder{}
+	s := strings.Builder{}
 
-	// to keep things simple for now, only the idle coprocessor state will
-	// result in a detailed 6507 prompt. the other states are better served
-	// (for now) by a descriptive prompt without any disassembly
-	//
-	// TODO: better prompts for non-idle coprocessor states
-	switch dbg.vcs.Mem.Cart.CoProcState() {
-	case mapper.CoProcNOPFeed:
-		content.WriteString(fmt.Sprintf("$%04x (NOP feed)", dbg.vcs.CPU.PC.Address()))
-	case mapper.CoProcStrongARMFeed:
-		content.WriteString(fmt.Sprintf("$%04x (StrongARM feed)", dbg.vcs.CPU.PC.Address()))
-	case mapper.CoProcParallel:
-		content.WriteString(fmt.Sprintf("$%04x (parallel)", dbg.vcs.CPU.PC.Address()))
-	case mapper.CoProcIdle:
-		var e *disassembly.Entry
+	var e *disassembly.Entry
 
-		// decide which address value to use
-		if dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.HasReset() {
-			e = dbg.Disasm.GetEntryByAddress(dbg.vcs.CPU.PC.Address())
-		} else {
-			// if we're in the middle of an instruction then use the addresss in
-			// lastResult. in these instances we want the prompt to report the
-			// instruction that the CPU is working on, not the next one to be
-			// stepped into.
-			e = dbg.liveDisasmEntry
-		}
+	// decide which address value to use
+	if dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.HasReset() {
+		e = dbg.Disasm.GetEntryByAddress(dbg.vcs.CPU.PC.Address())
+	} else {
+		// if we're in the middle of an instruction then use the addresss in
+		// lastResult. in these instances we want the prompt to report the
+		// instruction that the CPU is working on, not the next one to be
+		// stepped into.
+		e = dbg.liveDisasmEntry
+	}
 
-		// build prompt based on how confident we are of the contents of the
-		// disassembly entry. starting with the condition of no disassembly at all
-		if e == nil {
-			content.WriteString(fmt.Sprintf("$%04x", dbg.vcs.CPU.PC.Address()))
-		} else if e.Level == disassembly.EntryLevelUnmappable {
-			content.WriteString(e.Address)
-		} else {
-			// this is the ideal path. the address is in the disassembly and we've
-			// decoded it already
-			content.WriteString(fmt.Sprintf("%s %s", e.Address, e.Operator))
+	// build prompt based on how confident we are of the contents of the
+	// disassembly entry. starting with the condition of no disassembly at all
+	if e == nil {
+		s.WriteString(fmt.Sprintf("$%04x", dbg.vcs.CPU.PC.Address()))
+	} else if e.Level == disassembly.EntryLevelUnmappable {
+		s.WriteString(e.Address)
+	} else {
+		// this is the ideal path. the address is in the disassembly and we've
+		// decoded it already
+		s.WriteString(fmt.Sprintf("%s %s", e.Address, e.Operator))
 
-			if e.Operand.String() != "" {
-				content.WriteString(fmt.Sprintf(" %s", e.Operand))
-			}
+		if e.Operand.String() != "" {
+			s.WriteString(fmt.Sprintf(" %s", e.Operand))
 		}
 	}
 
 	p := terminal.Prompt{
-		Content:   content.String(),
+		Content:   s.String(),
 		Recording: dbg.scriptScribe.IsActive(),
-		CPURdy:    dbg.vcs.CPU.RdyFlg,
+	}
+
+	if coproc := dbg.vcs.Mem.Cart.GetCoProc(); coproc != nil {
+		state := coproc.CoProcExecutionState()
+		p.Yield = state.Yield
 	}
 
 	// LastResult final is false on CPU reset so we must check for that also

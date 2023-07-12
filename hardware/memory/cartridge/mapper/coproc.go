@@ -19,16 +19,35 @@ import (
 	"fmt"
 )
 
-// CoProcState is used to describe the state of the coprocessor. We can think
-// of these values as descriptions of the synchronisation state between the
-// coprocessor and the VCS.
-type CoProcState int
+// CoProcExecutionState details the current condition of the coprocessor's execution
+type CoProcExecutionState struct {
+	Sync  CoProcSynchronisation
+	Yield CoProcYield
+}
 
-// List of valid CoProcState values. A mapper will probably not employ all of
-// these states depending on the synchronisation strategy.
+// CoProcSynchronisation is used to describe the VCS synchronisation state of
+// the coprocessor
+type CoProcSynchronisation int
+
+func (s CoProcSynchronisation) String() string {
+	switch s {
+	case CoProcIdle:
+		return "idle"
+	case CoProcNOPFeed:
+		return "nop feed"
+	case CoProcStrongARMFeed:
+		return "strongarm feed"
+	case CoProcParallel:
+		return "parallel"
+	}
+	panic("unknown CoProcSynchronisation")
+}
+
+// List of valid CoProcSynchronisation values.
 //
-// In reality the state will alternate between Idle-and-NOPFeed and
-// StronARMFeed-and-Parallel.
+// A mapper will probably not employ all of these states depending on the
+// synchronisation strategy. In reality the state will alternate between
+// Idle-and-NOPFeed and StronARMFeed-and-Parallel.
 //
 // Other synchronisation strategies may need the addition of additional states
 // or a different mechanism altogether.
@@ -36,7 +55,7 @@ const (
 	// the idle state means that the coprocessor is not interacting with the
 	// VCS at that moment. the coprocessor might be running but it is waiting
 	// to be instructed by the VCS program
-	CoProcIdle CoProcState = iota
+	CoProcIdle CoProcSynchronisation = iota
 
 	// a NOP feed describes the state where a cartridge mapper is waiting for
 	// the coprocessor to finish processing. in the meantime, the cartridge is
@@ -56,21 +75,21 @@ const (
 // coprocessor has reached a breakpoint or some other yield point (eg.
 // undefined behaviour)
 type CartYieldHook interface {
-	// CartYield returns true if the YieldReason cannot be handled without
+	// CartYield returns true if the yield type cannot be handled without
 	// breaking into a debugging loop
 	//
-	// CartYield will return true if the cartridge mapper should cancel
+	// CartYield will also return true if the cartridge mapper should cancel
 	// coprocessing immediately
 	//
 	// all other yield reasons will return false
-	CartYield(YieldReason) bool
+	CartYield(CoProcYieldType) bool
 }
 
 // StubCartYieldHook is a stub implementation for the CartYieldHook interface.
 type StubCartYieldHook struct{}
 
 // CartYield is a stub implementation for the CartYieldHook interface.
-func (_ StubCartYieldHook) CartYield(_ YieldReason) bool {
+func (_ StubCartYieldHook) CartYield(_ CoProcYieldType) bool {
 	return true
 }
 
@@ -84,7 +103,7 @@ type CartCoProc interface {
 	SetDeveloper(CartCoProcDeveloper)
 
 	// the state of the coprocessor
-	CoProcState() CoProcState
+	CoProcExecutionState() CoProcExecutionState
 
 	// breakpoint control of coprocessor
 	BreakpointsEnable(bool)
@@ -168,42 +187,74 @@ type CartCoProcDeveloper interface {
 
 	// OnYield is called whenever the ARM yields to the VCS. It communicates the PC of the most
 	// recent instruction, the current PC (as it is now), and the reason for the yield
-	OnYield(instructionPC uint32, currentPC uint32, reason YieldReason)
+	OnYield(instructionPC uint32, currentPC uint32, reason CoProcYield)
 }
 
-// YieldReason specifies the reason for a yield
-type YieldReason string
+// CoProcYield describes a coprocessor yield state
+type CoProcYield struct {
+	Type   CoProcYieldType
+	Detail error
+}
 
-// List of YieldReason values
+// CoProcYieldType specifies the type of yield. This is a broad categorisation
+type CoProcYieldType int
+
+func (t CoProcYieldType) String() string {
+	switch t {
+	case YieldProgramEnded:
+		return "ended"
+	case YieldSyncWithVCS:
+		return "sync"
+	case YieldBreakpoint:
+		return "break"
+	case YieldUndefinedBehaviour:
+		return "undefined behaviour"
+	case YieldUnimplementedFeature:
+		return "unimplement feature"
+	case YieldMemoryAccessError:
+		return "memory error"
+	case YieldExecutionError:
+		return "execution error"
+	}
+	panic("unknown CoProcYieldType")
+}
+
+// Normal returns true if yield type is expected during normal operation of the
+// coprocessor
+func (t CoProcYieldType) Normal() bool {
+	return t == YieldProgramEnded || t == YieldSyncWithVCS
+}
+
+// List of CoProcYieldType values
 const (
 	// the coprocessor has yielded because the program has ended. in this instance the
 	// CoProcessor is not considered to be in a "yielded" state and can be modified
 	//
 	// Expected YieldReason for CDF and DPC+ type ROMs
-	YieldProgramEnded YieldReason = "Program Ended"
+	YieldProgramEnded CoProcYieldType = iota
 
 	// the coprocessor has reached a synchronisation point in the program. it
 	// must wait for the VCS before continuing
 	//
 	// Expected YieldReason for ACE and ELF type ROMs
-	YieldSyncWithVCS YieldReason = "Sync With VCS"
+	YieldSyncWithVCS
 
 	// a user supplied breakpoint has been encountered
-	YieldBreakpoint YieldReason = "Breakpoint"
+	YieldBreakpoint
 
 	// the program has triggered undefined behaviour in the coprocessor
-	YieldUndefinedBehaviour YieldReason = "Undefined Behaviour"
+	YieldUndefinedBehaviour
 
 	// the program has triggered an unimplemented feature in the coprocessor
-	YieldUnimplementedFeature YieldReason = "Unimplemented Feature"
+	YieldUnimplementedFeature
 
 	// the program has tried to access memory illegally. details will have been
 	// communicated by the IllegalAccess() function of the CartCoProcDeveloper
 	// interface
-	YieldMemoryAccessError YieldReason = "Memory Access Error"
+	YieldMemoryAccessError
 
 	// execution error indicates that something has gone very wrong
-	YieldExecutionError YieldReason = "Execution Error"
+	YieldExecutionError
 )
 
 // CartCoProcDisasmSummary represents a summary of a coprocessor execution.

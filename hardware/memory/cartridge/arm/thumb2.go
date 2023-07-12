@@ -149,7 +149,8 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) decodeFunction {
 			return func(_ uint16) *DisasmEntry {
 				arm.continueExecution = false
 				arm.state.interrupt = true
-				arm.state.yieldReason = mapper.YieldSyncWithVCS
+				arm.state.yield.Type = mapper.YieldSyncWithVCS
+				arm.state.yield.Detail = nil
 				return nil
 			}
 		} else if opcode&0xff00 == 0xba00 {

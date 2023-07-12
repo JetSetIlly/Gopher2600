@@ -100,7 +100,7 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 	h[0].Signal = sig
 	h[0].Collision = *ref.vcs.TIA.Video.Collisions
 	h[0].IsHblank = ref.vcs.TIA.Hblank
-	h[0].CoProcState = ref.vcs.Mem.Cart.CoProcState()
+	h[0].CoProcSync = ref.vcs.Mem.Cart.CoProcExecutionState().Sync
 
 	if ref.vcs.TIA.Hmove.Future.IsActive() {
 		h[0].Hmove.Delay = true

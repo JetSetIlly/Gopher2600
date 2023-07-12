@@ -36,11 +36,6 @@ type Ace struct {
 	// the hook that handles cartridge yields
 	yieldHook mapper.CartYieldHook
 
-	// parallelARM is true whenever the address bus is not a cartridge address (ie.
-	// a TIA or RIOT address). this means that the arm is running unhindered
-	// and will not have yielded for that colour clock
-	parallelARM bool
-
 	// armState is a copy of the ARM's state at the moment of the most recent
 	// Snapshot. it's used only suring a Plumb() operation
 	armState *arm.ARMState
@@ -154,15 +149,15 @@ func (cart *Ace) Patch(_ int, _ uint8) error {
 
 func (cart *Ace) runARM() {
 	// call arm once and then check for yield conditions
-	yld, _ := cart.arm.Run()
+	cart.mem.yield, _ = cart.arm.Run()
 
 	// keep calling runArm() for as long as program does not need to sync with the VCS...
-	for yld != mapper.YieldSyncWithVCS {
+	for cart.mem.yield.Type != mapper.YieldSyncWithVCS {
 		// ... or if the yield hook says to return to the VCS immedtiately
-		if cart.yieldHook.CartYield(yld) {
+		if cart.yieldHook.CartYield(cart.mem.yield.Type) {
 			return
 		}
-		yld, _ = cart.arm.Run()
+		cart.mem.yield, _ = cart.arm.Run()
 	}
 }
 
@@ -170,7 +165,7 @@ func (cart *Ace) runARM() {
 func (cart *Ace) AccessPassive(addr uint16, data uint8) {
 	// if memory access is not a cartridge address (ie. a TIA or RIOT address)
 	// then the ARM is running in parallel (ie. no synchronisation)
-	cart.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)
+	cart.mem.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)
 
 	// start profiling before the run sequence
 	if cart.dev != nil {
@@ -247,12 +242,18 @@ func (cart *Ace) ExecutableOrigin() uint32 {
 	return cart.mem.flashARMOrigin
 }
 
-// CoProcState implements the mapper.CartCoProc interface.
-func (cart *Ace) CoProcState() mapper.CoProcState {
-	if cart.parallelARM {
-		return mapper.CoProcParallel
+// CoProcExecutionState implements the mapper.CartCoProc interface.
+func (cart *Ace) CoProcExecutionState() mapper.CoProcExecutionState {
+	if cart.mem.parallelARM {
+		return mapper.CoProcExecutionState{
+			Sync:  mapper.CoProcParallel,
+			Yield: cart.mem.yield,
+		}
 	}
-	return mapper.CoProcStrongARMFeed
+	return mapper.CoProcExecutionState{
+		Sync:  mapper.CoProcStrongARMFeed,
+		Yield: cart.mem.yield,
+	}
 }
 
 // CoProcRegister implements the mapper.CartCoProc interface.

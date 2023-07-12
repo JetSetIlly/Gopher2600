@@ -599,7 +599,8 @@ func (dbg *Debugger) handleInterrupt(inputter terminal.Input) {
 	_, err = inputter.TermRead(confirm,
 		terminal.Prompt{
 			Content: "really quit (y/n) ",
-			Type:    terminal.PromptTypeConfirm},
+			Type:    terminal.PromptTypeConfirm,
+		},
 		dbg.events)
 
 	if err != nil {

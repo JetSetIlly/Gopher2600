@@ -184,6 +184,13 @@ func (win *winTerm) debuggerDraw() bool {
 			}
 		} else {
 			imgui.Text(win.prompt.Content)
+			if !win.prompt.Yield.Type.Normal() {
+				imgui.SameLine()
+				imgui.Text(win.prompt.Yield.Type.String())
+				if win.prompt.Yield.Detail != nil {
+					imguiTooltipSimple(win.prompt.Yield.Detail.Error(), true)
+				}
+			}
 		}
 
 		// chevron indicator

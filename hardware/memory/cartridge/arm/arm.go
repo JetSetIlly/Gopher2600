@@ -110,7 +110,7 @@ type ARMState struct {
 	interrupt bool
 
 	// the yield reason explains the reason for why the ARM execution ended
-	yieldReason mapper.YieldReason
+	yield mapper.CoProcYield
 
 	// for clarity both the interrupt and yieldReason fields should be set at
 	// the same time wher possible
@@ -590,7 +590,13 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 // previous execution ran to completion (ie. was uninterrupted).
 //
 // Returns the yield reason, the number of ARM cycles consumed.
-func (arm *ARM) Run() (mapper.YieldReason, float32) {
+func (arm *ARM) Run() (mapper.CoProcYield, float32) {
+	if arm.dev != nil {
+		defer func() {
+			arm.dev.OnYield(arm.state.instructionPC, arm.state.registers[rPC], arm.state.yield)
+		}()
+	}
+
 	if !arm.state.interrupt {
 		arm.resetRegisters()
 	}
@@ -598,7 +604,7 @@ func (arm *ARM) Run() (mapper.YieldReason, float32) {
 	// reset cycles count
 	arm.state.cyclesTotal = 0
 
-	// arm.staten.prefetchCycle reset in reset() function. we don't want to change
+	// arm.state.prefetchCycle reset in reset() function. we don't want to change
 	// the value if we're resuming from a yield
 
 	// reset continue flag and error conditions
@@ -618,12 +624,10 @@ func (arm *ARM) Run() (mapper.YieldReason, float32) {
 	if err != nil {
 		logger.Logf("ARM7", err.Error())
 
-		// returing early so we must call OnYield here
-		if arm.dev != nil {
-			arm.dev.OnYield(arm.state.instructionPC, arm.state.registers[rPC], arm.state.yieldReason)
-		}
+		arm.state.yield.Type = mapper.YieldMemoryAccessError
+		arm.state.yield.Detail = err
 
-		return mapper.YieldMemoryAccessError, 0
+		return arm.state.yield, 0
 	}
 
 	// fill pipeline cannot happen immediately after resetRegisters()
@@ -633,7 +637,8 @@ func (arm *ARM) Run() (mapper.YieldReason, float32) {
 
 	// default to an uninterrupted state and a sync with VCS yield reason
 	arm.state.interrupt = false
-	arm.state.yieldReason = mapper.YieldSyncWithVCS
+	arm.state.yield.Type = mapper.YieldSyncWithVCS
+	arm.state.yield.Detail = nil
 
 	return arm.run()
 }
@@ -680,7 +685,7 @@ func (arm *ARM) BreakpointsEnable(enable bool) {
 	arm.breakpointsEnabled = enable
 }
 
-func (arm *ARM) run() (mapper.YieldReason, float32) {
+func (arm *ARM) run() (mapper.CoProcYield, float32) {
 	select {
 	case <-arm.prefsPulse.C:
 		arm.updatePrefs()
@@ -905,7 +910,9 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 			}
 
 			if arm.abortOnStackCollision && arm.breakpointsEnabled {
-				return mapper.YieldMemoryAccessError, 0
+				arm.state.interrupt = true
+				arm.state.yield.Type = mapper.YieldMemoryAccessError
+				arm.state.yield.Detail = err
 			}
 		}
 
@@ -924,16 +931,16 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 
 				logger.Logf("ARM7: memory error", arm.disasmVerbose(entry))
 			}
+			if arm.abortOnIllegalMem && arm.breakpointsEnabled {
+				arm.state.interrupt = true
+				arm.state.yield.Type = mapper.YieldMemoryAccessError
+				arm.state.yield.Detail = arm.memoryError
+			}
 
 			// we need to reset the memory error instances so that we don't end
 			// up printing the same message over and over
 			arm.memoryError = nil
 			arm.memoryErrorDev = nil
-
-			if arm.abortOnIllegalMem && arm.breakpointsEnabled {
-				arm.state.interrupt = true
-				arm.state.yieldReason = mapper.YieldMemoryAccessError
-			}
 		}
 
 		// handle execution errors
@@ -942,7 +949,8 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 
 			if arm.breakpointsEnabled {
 				arm.state.interrupt = true
-				arm.state.yieldReason = mapper.YieldExecutionError
+				arm.state.yield.Type = mapper.YieldExecutionError
+				arm.state.yield.Detail = arm.executionError
 			}
 		}
 
@@ -952,7 +960,8 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 		if arm.dev != nil && arm.breakpointsEnabled && !arm.state.function32bitDecoding {
 			if arm.dev.CheckBreakpoint(arm.state.instructionPC) {
 				arm.state.interrupt = true
-				arm.state.yieldReason = mapper.YieldBreakpoint
+				arm.state.yield.Type = mapper.YieldBreakpoint
+				arm.state.yield.Detail = fmt.Errorf("%08x", arm.state.instructionPC)
 			}
 		}
 
@@ -965,12 +974,7 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 		}
 	}
 
-	// update yield information
-	if arm.dev != nil {
-		arm.dev.OnYield(arm.state.instructionPC, arm.state.registers[rPC], arm.state.yieldReason)
-	}
-
-	return arm.state.yieldReason, arm.state.cyclesTotal
+	return arm.state.yield, arm.state.cyclesTotal
 }
 
 func (arm *ARM) stepARM7TDMI(opcode uint16, memIdx int) {

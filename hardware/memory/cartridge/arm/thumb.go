@@ -16,6 +16,7 @@
 package arm
 
 import (
+	"errors"
 	"fmt"
 	"math/bits"
 
@@ -919,7 +920,8 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) *DisasmEntry {
 					// cannot switch to ARM mode in the ARMv7-M architecture
 					arm.continueExecution = false
 					arm.state.interrupt = true
-					arm.state.yieldReason = mapper.YieldUndefinedBehaviour
+					arm.state.yield.Type = mapper.YieldUndefinedBehaviour
+					arm.state.yield.Detail = errors.New("cannot switch to ARM mode in ARMv7-M architecture")
 				}
 				arm.state.registers[rPC] = (target + 2) & 0xfffffffe
 			} else {
@@ -929,7 +931,8 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) *DisasmEntry {
 					// cannot switch to ARM mode in the ARMv7-M architecture
 					arm.continueExecution = false
 					arm.state.interrupt = true
-					arm.state.yieldReason = mapper.YieldUndefinedBehaviour
+					arm.state.yield.Type = mapper.YieldUndefinedBehaviour
+					arm.state.yield.Detail = errors.New("cannot switch to ARM mode in ARMv7-M architecture")
 				}
 				arm.state.registers[rPC] = (target + 2) & 0xfffffffe
 			}
@@ -996,7 +999,8 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) *DisasmEntry {
 			if !res.InterruptServiced {
 				arm.continueExecution = false
 				arm.state.interrupt = false
-				arm.state.yieldReason = mapper.YieldProgramEnded
+				arm.state.yield.Type = mapper.YieldProgramEnded
+				arm.state.yield.Detail = nil
 				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 				//  - interrupted
 				return nil

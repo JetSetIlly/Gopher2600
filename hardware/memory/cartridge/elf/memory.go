@@ -123,6 +123,14 @@ type elfMemory struct {
 	// args is a special memory area that is used for the arguments passed to
 	// the main function on startup
 	args []byte
+
+	// parallelARM is true whenever the address bus is not a cartridge address (ie.
+	// a TIA or RIOT address). this means that the arm is running unhindered
+	// and will not have yielded for that colour clock
+	parallelARM bool
+
+	// most recent yield from the coprocessor
+	yield mapper.CoProcYield
 }
 
 func newElfMemory(ef *elf.File) (*elfMemory, error) {
@@ -673,24 +681,4 @@ func (m *elfMemory) Read32bit(addr uint32) (uint32, bool) {
 		uint32((*mem)[addr+1])<<8 |
 		uint32((*mem)[addr+2])<<16 |
 		uint32((*mem)[addr+3])<<24, true
-}
-
-// GetStatic implements the mapper.CartStaticBus interface.
-func (cart *Elf) GetStatic() mapper.CartStatic {
-	return cart.mem.Snapshot()
-}
-
-// StaticWrite implements the mapper.CartStaticBus interface.
-func (cart *Elf) PutStatic(segment string, idx int, data uint8) bool {
-	mem, ok := cart.mem.Reference(segment)
-	if !ok {
-		return false
-	}
-
-	if idx >= len(mem) {
-		return false
-	}
-	mem[idx] = data
-
-	return true
 }

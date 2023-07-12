@@ -623,7 +623,7 @@ func (scr *screen) reflectionColor(ref *reflection.ReflectedVideoStep) color.RGB
 			return reflectionColors[reflection.AudioPhase1]
 		}
 	case reflection.OverlayLabels[reflection.OverlayCoproc]:
-		switch ref.CoProcState {
+		switch ref.CoProcSync {
 		case mapper.CoProcIdle:
 			return reflectionColors[reflection.CoProcInactive]
 		case mapper.CoProcNOPFeed:

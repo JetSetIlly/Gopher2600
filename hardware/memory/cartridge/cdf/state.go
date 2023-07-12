@@ -15,7 +15,10 @@
 
 package cdf
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/callfn"
+import (
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/callfn"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+)
 
 type State struct {
 	// currently selected bank
@@ -42,6 +45,9 @@ type State struct {
 
 	// the callfn process is stateful
 	callfn callfn.CallFn
+
+	// most recent yield from the coprocessor
+	yield mapper.CoProcYield
 }
 
 // initialise should be called as soon as convenient.

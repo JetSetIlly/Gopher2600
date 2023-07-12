@@ -15,17 +15,21 @@
 
 package terminal
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+)
 
 // Prompt specifies the prompt text and the prompt style. For CPUStep
 // and VideoStep prompt types thre is some additional information that
 // can be used to decorate the prompt.
 type Prompt struct {
-	Content string
-	Type    PromptType
+	Type PromptType
 
-	// valid for PromptTypeCPUStep and PromptTypeVideoStep
-	CPURdy    bool
+	Content string
+	Yield   mapper.CoProcYield
+
 	Recording bool
 }
 
@@ -36,6 +40,7 @@ type PromptType int
 const (
 	PromptTypeCPUStep PromptType = iota
 	PromptTypeVideoStep
+	PromptTypeCartYield
 	PromptTypeConfirm
 )
 
@@ -54,17 +59,15 @@ func (p Prompt) String() string {
 	}
 	s.WriteString(" ")
 	s.WriteString(p.Content)
-
 	s.WriteString(" ]")
 
-	if !p.CPURdy {
-		s.WriteString(" !")
-	}
-
-	if p.Type == PromptTypeCPUStep {
+	switch p.Type {
+	case PromptTypeCPUStep:
 		s.WriteString(" >> ")
-	} else {
+	case PromptTypeVideoStep:
 		s.WriteString(" > ")
+	case PromptTypeCartYield:
+		s.WriteString(" . ")
 	}
 
 	return s.String()

@@ -507,15 +507,15 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 				cart.dev.StartProfiling()
 			}
 
-			yld := cart.runArm()
+			cart.state.yield = cart.runArm()
 
 			// keep calling runArm() for as long as program has not ended...
-			for yld != mapper.YieldProgramEnded {
+			for cart.state.yield.Type != mapper.YieldProgramEnded {
 				// ... or if the yield hook says to return to the VCS immediately
-				if cart.yieldHook.CartYield(yld) {
+				if cart.yieldHook.CartYield(cart.state.yield.Type) {
 					break // for loop
 				}
-				yld = cart.runArm()
+				cart.state.yield = cart.runArm()
 			}
 		}
 
@@ -917,12 +917,18 @@ func (cart *dpcPlus) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.AR
 	return arm.ARMinterruptReturn{}, nil
 }
 
-// CoProcState implements the mapper.CartCoProc interface.
-func (cart *dpcPlus) CoProcState() mapper.CoProcState {
+// CoProcExecutionState implements the mapper.CartCoProc interface.
+func (cart *dpcPlus) CoProcExecutionState() mapper.CoProcExecutionState {
 	if cart.state.callfn.IsActive() {
-		return mapper.CoProcNOPFeed
+		return mapper.CoProcExecutionState{
+			Sync:  mapper.CoProcNOPFeed,
+			Yield: cart.state.yield,
+		}
 	}
-	return mapper.CoProcIdle
+	return mapper.CoProcExecutionState{
+		Sync:  mapper.CoProcIdle,
+		Yield: cart.state.yield,
+	}
 }
 
 // CoProcRegister implements the mapper.CartCoProc interface.
@@ -968,7 +974,7 @@ func (cart *dpcPlus) SetYieldHook(hook mapper.CartYieldHook) {
 	cart.yieldHook = hook
 }
 
-func (cart *dpcPlus) runArm() mapper.YieldReason {
+func (cart *dpcPlus) runArm() mapper.CoProcYield {
 	yld, cycles := cart.arm.Run()
 	cart.state.callfn.Accumulate(cycles)
 	return yld

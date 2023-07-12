@@ -133,7 +133,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 					inputLen = 0
 					cursorPos = 0
 					ct.EasyTerm.TermPrint("\r")
-					ct.EasyTerm.TermPrint(ansi.CursorMove(len(prompt.Content)))
+					ct.EasyTerm.TermPrint(ansi.CursorMove(len(prompt.String())))
 				} else {
 					// there is no input so return UserInterrupt error
 					ct.EasyTerm.TermPrint("\r\n")

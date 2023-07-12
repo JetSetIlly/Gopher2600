@@ -379,15 +379,15 @@ func (cart *cdf) AccessVolatile(addr uint16, data uint8, poke bool) error {
 			}
 
 			// call runArm() once and then check for yield conditions
-			yld := cart.runArm()
+			cart.state.yield = cart.runArm()
 
 			// keep calling runArm() for as long as program has not ended...
-			for yld != mapper.YieldProgramEnded {
+			for cart.state.yield.Type != mapper.YieldProgramEnded {
 				// ... or if the yield hook says to return to the VCS immediately
-				if cart.yieldHook.CartYield(yld) {
+				if cart.yieldHook.CartYield(cart.state.yield.Type) {
 					break // for loop
 				}
-				yld = cart.runArm()
+				cart.state.yield = cart.runArm()
 			}
 		}
 
@@ -664,12 +664,18 @@ func (cart *cdf) HotLoad(data []byte) error {
 	return nil
 }
 
-// CoProcState implements the mapper.CartCoProc interface.
-func (cart *cdf) CoProcState() mapper.CoProcState {
+// CoProcExecutionState implements the mapper.CartCoProc interface.
+func (cart *cdf) CoProcExecutionState() mapper.CoProcExecutionState {
 	if cart.state.callfn.IsActive() {
-		return mapper.CoProcNOPFeed
+		return mapper.CoProcExecutionState{
+			Sync:  mapper.CoProcNOPFeed,
+			Yield: cart.state.yield,
+		}
 	}
-	return mapper.CoProcIdle
+	return mapper.CoProcExecutionState{
+		Sync:  mapper.CoProcIdle,
+		Yield: cart.state.yield,
+	}
 }
 
 // CoProcRegister implements the mapper.CartCoProc interface.
@@ -715,7 +721,7 @@ func (cart *cdf) SetYieldHook(hook mapper.CartYieldHook) {
 	cart.yieldHook = hook
 }
 
-func (cart *cdf) runArm() mapper.YieldReason {
+func (cart *cdf) runArm() mapper.CoProcYield {
 	yld, cycles := cart.arm.Run()
 
 	cart.state.callfn.Accumulate(cycles)

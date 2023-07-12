@@ -312,7 +312,7 @@ func (win *winCoProcPerformance) draw() {
 }
 
 func (win *winCoProcPerformance) drawFrameStats() {
-	accumulate := func(s mapper.CoProcState) int {
+	accumulate := func(s mapper.CoProcSynchronisation) int {
 		switch s {
 		case mapper.CoProcIdle:
 		case mapper.CoProcNOPFeed:
@@ -354,18 +354,18 @@ func (win *winCoProcPerformance) drawFrameStats() {
 
 		switch win.kernelFocus {
 		case developer.KernelAny:
-			clockCount += float32(accumulate(r.CoProcState))
+			clockCount += float32(accumulate(r.CoProcSync))
 		case developer.KernelScreen:
 			if sl >= win.img.screen.crit.frameInfo.VisibleTop && sl <= win.img.screen.crit.frameInfo.VisibleBottom {
-				clockCount += float32(accumulate(r.CoProcState))
+				clockCount += float32(accumulate(r.CoProcSync))
 			}
 		case developer.KernelVBLANK:
 			if sl < win.img.screen.crit.frameInfo.VisibleTop {
-				clockCount += float32(accumulate(r.CoProcState))
+				clockCount += float32(accumulate(r.CoProcSync))
 			}
 		case developer.KernelOverscan:
 			if sl > win.img.screen.crit.frameInfo.VisibleBottom {
-				clockCount += float32(accumulate(r.CoProcState))
+				clockCount += float32(accumulate(r.CoProcSync))
 			}
 		}
 	}

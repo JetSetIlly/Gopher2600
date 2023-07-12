@@ -82,6 +82,14 @@ type aceMemory struct {
 	flashARMMemtop uint32
 
 	arm interruptARM
+
+	// parallelARM is true whenever the address bus is not a cartridge address (ie.
+	// a TIA or RIOT address). this means that the arm is running unhindered
+	// and will not have yielded for that colour clock
+	parallelARM bool
+
+	// most recent yield from the coprocessor
+	yield mapper.CoProcYield
 }
 
 const (

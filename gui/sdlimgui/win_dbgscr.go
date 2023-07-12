@@ -734,7 +734,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 			}
 		case reflection.OverlayLabels[reflection.OverlayCoproc]:
 			imguiSeparator()
-			switch ref.CoProcState {
+			switch ref.CoProcSync {
 			case mapper.CoProcIdle:
 				imgui.Text(fmt.Sprintf("%s is idle", win.img.lz.Cart.CoProcID))
 			case mapper.CoProcNOPFeed:
