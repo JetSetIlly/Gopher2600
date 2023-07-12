@@ -875,6 +875,12 @@ func (dbg *Debugger) CartYield(reason mapper.YieldReason) bool {
 		return false
 	}
 
+	// if emulation is in the initialisation state then we return true to
+	// indicate that the yield is not safe and execution should halt immediately
+	if dbg.State() == govern.Initialising {
+		return true
+	}
+
 	dbg.halting.cartridgeYield = true
 	dbg.continueEmulation = dbg.halting.check()
 
