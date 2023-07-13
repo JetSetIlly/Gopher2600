@@ -147,7 +147,6 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) decodeFunction {
 		if opcode&0xff00 == 0xbe00 {
 			// software breakpoint
 			return func(_ uint16) *DisasmEntry {
-				arm.continueExecution = false
 				arm.state.yield.Type = mapper.YieldSyncWithVCS
 				arm.state.yield.Detail = nil
 				return nil

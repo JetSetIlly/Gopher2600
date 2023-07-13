@@ -206,9 +206,6 @@ type ARM struct {
 	// the start of every arm.Run()
 	abortOnStackCollision bool
 
-	// execution flags. set to false and/or error when Run() function should end
-	continueExecution bool
-
 	// error seen during execution
 	executionError error
 
@@ -600,8 +597,7 @@ func (arm *ARM) Run() (mapper.CoProcYield, float32) {
 	// arm.state.prefetchCycle reset in reset() function. we don't want to change
 	// the value if we're resuming from a yield
 
-	// reset continue flag and error conditions
-	arm.continueExecution = true
+	// reset error conditions
 	arm.executionError = nil
 	arm.memoryError = nil
 	arm.memoryErrorDev = nil
@@ -639,7 +635,6 @@ func (arm *ARM) Run() (mapper.CoProcYield, float32) {
 // instruction has been executed. The ARM will then yield with the reson
 // YieldSyncWithVCS.
 func (arm *ARM) Interrupt() {
-	arm.continueExecution = false
 	arm.state.yield.Type = mapper.YieldSyncWithVCS
 }
 
