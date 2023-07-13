@@ -215,6 +215,8 @@ func (t CoProcYieldType) String() string {
 		return "memory error"
 	case YieldExecutionError:
 		return "execution error"
+	case YieldRunning:
+		return "running"
 	}
 	panic("unknown CoProcYieldType")
 }
@@ -255,6 +257,9 @@ const (
 
 	// execution error indicates that something has gone very wrong
 	YieldExecutionError
+
+	// the coprocessor has not yet yielded and is still running
+	YieldRunning
 )
 
 // CartCoProcDisasmSummary represents a summary of a coprocessor execution.

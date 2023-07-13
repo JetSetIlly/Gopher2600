@@ -335,6 +335,9 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 	arm.state.timer = peripherals.NewTimer(arm.mmap)
 	arm.state.timer2 = peripherals.NewTimer2(arm.mmap)
 
+	// by definition the ARM starts in a program ended state
+	arm.state.yield.Type = mapper.YieldProgramEnded
+
 	// clklen for flash based on flash latency setting
 	latencyInMhz := (1 / (arm.mmap.FlashLatency / 1000000000)) / 1000000
 	arm.clklenFlash = float32(math.Ceil(float64(arm.Clk) / latencyInMhz))
@@ -626,7 +629,7 @@ func (arm *ARM) Run() (mapper.CoProcYield, float32) {
 	}
 
 	// reset yield
-	arm.state.yield.Type = mapper.YieldSyncWithVCS
+	arm.state.yield.Type = mapper.YieldRunning
 	arm.state.yield.Detail = nil
 
 	return arm.run()
@@ -717,7 +720,7 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 	var iterations int
 
 	// loop through instructions until we reach an exit condition
-	for arm.continueExecution {
+	for arm.state.yield.Type == mapper.YieldRunning {
 		// program counter to execute:
 		//
 		// from "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p1", page 1-2
