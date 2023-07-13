@@ -109,21 +109,17 @@ type ARMState struct {
 	// never reads outside this area. the value is assigned on reset()
 	programMemory *[]uint8
 
-	// length of program memory. in truth this is probably a constant but we
-	// don't really know that for sure
-	programMemoryLen int
+	// address limits for program memory
+	programMemoryOrigin uint32
+	programMemoryMemtop uint32
 
-	// the amount to adjust the memory address by so that it can be used to
-	// index the programMemory array
-	programMemoryOffset uint32
-
-	// functionMap records the function that implements the instruction group for each
+	// currentExecutionMap records the function that implements the instruction group for each
 	// opcode in program memory. must be reset every time programMemory is reassigned
 	//
 	// note that when executing from RAM (which isn't normal) it's possible for
-	// code to be modified (ie. self-modifying code). in that case functionMap
+	// code to be modified (ie. self-modifying code). in that case currentExecutionMap
 	// may be unreliable.
-	functionMap []decodeFunction
+	currentExecutionMap []decodeFunction
 
 	// cycle counting
 
@@ -236,7 +232,7 @@ type ARM struct {
 	// collection of functionMap instances. indexed by programMemoryOffset to
 	// retrieve a functionMap
 	//
-	// allocated in NewARM() and added to in findProgramMemory() if an entry
+	// allocated in NewARM() and added to in checkProgramMemory() if an entry
 	// does not exist
 	executionMap map[uint32][]decodeFunction
 
@@ -399,7 +395,7 @@ func (arm *ARM) Plumb(state *ARMState, mem SharedMemory, hook CartridgeHook) {
 	// always clear caches on a plumb event
 	arm.ClearCaches()
 
-	// we should call findProgramMemory() at this point bcause memory will have
+	// we should call checkProgramMemory() at this point bcause memory will have
 	// changed location along with the new ARM instance. however, error
 	// handling in the Plumb() function is unsufficient currently and we can
 	// safely defer the call to the Run() function, where it is called in any
@@ -437,6 +433,10 @@ func (arm *ARM) resetRegisters() {
 	arm.state.registers[rSP], arm.state.registers[rLR], arm.state.registers[rPC] = arm.mem.ResetVectors()
 	arm.state.stackFrame = arm.state.registers[rSP]
 
+	// set executingPC to be two behind the current value in the PC register
+	arm.state.executingPC = arm.state.registers[rPC] - 2
+
+	// reset prefectch cycle value
 	arm.state.prefetchCycle = S
 }
 
@@ -466,30 +466,6 @@ func (arm *ARM) updatePrefs() {
 	// how to handle illegal memory access
 	arm.abortOnIllegalMem = arm.prefs.AbortOnIllegalMem.Get().(bool)
 	arm.abortOnStackCollision = arm.prefs.AbortOnStackCollision.Get().(bool)
-}
-
-// find program memory using current program counter value.
-func (arm *ARM) findProgramMemory() error {
-	arm.state.programMemory, arm.state.programMemoryOffset = arm.mem.MapAddress(arm.state.registers[rPC], false)
-	if arm.state.programMemory == nil {
-		return fmt.Errorf("can't find program memory (PC %08x)", arm.state.registers[rPC])
-	}
-	if !arm.mem.IsExecutable(arm.state.registers[rPC]) {
-		return fmt.Errorf("program memory is not executable (PC %08x)", arm.state.registers[rPC])
-	}
-
-	arm.state.programMemoryOffset = arm.state.registers[rPC] - arm.state.programMemoryOffset
-
-	if m, ok := arm.executionMap[arm.state.programMemoryOffset]; ok {
-		arm.state.functionMap = m
-	} else {
-		arm.executionMap[arm.state.programMemoryOffset] = make([]decodeFunction, len(*arm.state.programMemory))
-		arm.state.functionMap = arm.executionMap[arm.state.programMemoryOffset]
-	}
-
-	arm.state.programMemoryLen = len(*arm.state.programMemory)
-
-	return nil
 }
 
 func (arm *ARM) String() string {
@@ -608,17 +584,6 @@ func (arm *ARM) Run() (mapper.CoProcYield, float32) {
 		arm.disasmUpdateNotes = false
 	}
 
-	// make sure we know where program memory is
-	err := arm.findProgramMemory()
-	if err != nil {
-		logger.Logf("ARM7", err.Error())
-
-		arm.state.yield.Type = mapper.YieldMemoryAccessError
-		arm.state.yield.Detail = err
-
-		return arm.state.yield, 0
-	}
-
 	// fill pipeline cannot happen immediately after resetRegisters()
 	if arm.state.yield.Type == mapper.YieldProgramEnded {
 		arm.state.registers[rPC] += 2
@@ -627,6 +592,12 @@ func (arm *ARM) Run() (mapper.CoProcYield, float32) {
 	// reset yield
 	arm.state.yield.Type = mapper.YieldRunning
 	arm.state.yield.Detail = nil
+
+	// make sure program memory is correct
+	arm.checkProgramMemory()
+	if arm.state.yield.Type != mapper.YieldRunning {
+		return arm.state.yield, 0
+	}
 
 	return arm.run()
 }
@@ -673,6 +644,44 @@ func (arm *ARM) BreakpointsEnable(enable bool) {
 	arm.breakpointsEnabled = enable
 }
 
+func (arm *ARM) checkProgramMemory() {
+	addr := arm.state.registers[rPC]
+
+	if arm.state.programMemory != nil &&
+		addr >= arm.state.programMemoryOrigin && addr <= arm.state.programMemoryMemtop {
+		return
+	}
+
+	var offset uint32
+	arm.state.programMemory, offset = arm.mem.MapAddress(addr, false)
+	if arm.state.programMemory == nil {
+		addr = arm.state.executingPC
+		arm.state.programMemory, offset = arm.mem.MapAddress(addr, false)
+		if arm.state.programMemory == nil {
+			arm.state.yield.Type = mapper.YieldMemoryAccessError
+			arm.state.yield.Detail = fmt.Errorf("can't find program memory (PC %08x)", addr)
+			return
+		}
+	}
+
+	if !arm.mem.IsExecutable(addr) {
+		arm.state.programMemory = nil
+		arm.state.yield.Type = mapper.YieldMemoryAccessError
+		arm.state.yield.Detail = fmt.Errorf("program memory is not executable (PC %08x)", addr)
+		return
+	}
+
+	arm.state.programMemoryOrigin = addr - offset
+	arm.state.programMemoryMemtop = arm.state.programMemoryOrigin + uint32(len(*arm.state.programMemory)) - 1
+
+	if m, ok := arm.executionMap[arm.state.programMemoryOrigin]; ok {
+		arm.state.currentExecutionMap = m
+	} else {
+		arm.executionMap[arm.state.programMemoryOrigin] = make([]decodeFunction, len(*arm.state.programMemory))
+		arm.state.currentExecutionMap = arm.executionMap[arm.state.programMemoryOrigin]
+	}
+}
+
 func (arm *ARM) run() (mapper.CoProcYield, float32) {
 	select {
 	case <-arm.prefsPulse.C:
@@ -701,8 +710,6 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 		}()
 	}
 
-	var err error
-
 	// use to detect branches and whether to fill the pipeline (unused if
 	// arm.immediateMode is true)
 	var expectedPC uint32
@@ -725,25 +732,11 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 		// value used in an executing instruction is always two instructions ahead of the address."
 		arm.state.executingPC = arm.state.registers[rPC] - 2
 
-		// check program counter
-		memIdx := int(arm.state.executingPC) - int(arm.state.programMemoryOffset)
-		if memIdx < 0 || memIdx >= arm.state.programMemoryLen-1 {
-			// program counter is out-of-range so find program memory again
-			// (using the PC value)
-			err = arm.findProgramMemory()
-			if err != nil {
-				// can't find memory so we say the ARM program has finished inadvertently
-				logger.Logf("ARM7", err.Error())
-				break // for loop
-			}
-
-			// if it's still out-of-range then give up with an error
-			memIdx = int(arm.state.executingPC) - int(arm.state.programMemoryOffset)
-			if memIdx < 0 || memIdx >= arm.state.programMemoryLen-1 {
-				logger.Logf("ARM7", "can't find executable memory for PC (%08x)", arm.state.executingPC)
-				break // for loop
-			}
+		arm.checkProgramMemory()
+		if arm.state.yield.Type != mapper.YieldRunning {
+			break // for loop
 		}
+		memIdx := int(arm.state.executingPC - arm.state.programMemoryOrigin)
 
 		// opcode for executed instruction
 		opcode := uint16((*arm.state.programMemory)[memIdx]) | (uint16((*arm.state.programMemory)[memIdx+1]) << 8)
@@ -954,10 +947,10 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 }
 
 func (arm *ARM) stepARM7TDMI(opcode uint16, memIdx int) {
-	f := arm.state.functionMap[memIdx]
+	f := arm.state.currentExecutionMap[memIdx]
 	if f == nil {
 		f = arm.decodeThumb(opcode)
-		arm.state.functionMap[memIdx] = f
+		arm.state.currentExecutionMap[memIdx] = f
 	}
 
 	// while the ARM7TDMI/Thumb instruction doesn't have 32bit instructions, in
@@ -985,10 +978,10 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 	if arm.state.function32bitDecoding {
 		arm.state.function32bitDecoding = false
 		arm.state.function32bitResolving = true
-		df = arm.state.functionMap[memIdx]
+		df = arm.state.currentExecutionMap[memIdx]
 		if df == nil {
 			df = arm.decode32bitThumb2(arm.state.function32bitOpcodeHi)
-			arm.state.functionMap[memIdx] = df
+			arm.state.currentExecutionMap[memIdx] = df
 		}
 	} else {
 		// the opcode is either a 16bit instruction or the first halfword for a
@@ -1002,10 +995,10 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 			arm.state.function32bitDecoding = true
 			arm.state.function32bitOpcodeHi = opcode
 		} else {
-			df = arm.state.functionMap[memIdx]
+			df = arm.state.currentExecutionMap[memIdx]
 			if df == nil {
 				df = arm.decodeThumb2(opcode)
-				arm.state.functionMap[memIdx] = df
+				arm.state.currentExecutionMap[memIdx] = df
 			}
 		}
 
