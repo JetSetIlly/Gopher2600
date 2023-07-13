@@ -102,18 +102,8 @@ type ARMState struct {
 	// the current stack frame of the execution
 	stackFrame uint32
 
-	// when the processor is interrupted it returns control to the VCS but with
-	// the understanding that it must resume from where it left off
-	//
-	// an uninterrupted CPU can be reset and otherwise safely altered in
-	// between calls to Run()
-	interrupt bool
-
 	// the yield reason explains the reason for why the ARM execution ended
 	yield mapper.CoProcYield
-
-	// for clarity both the interrupt and yieldReason fields should be set at
-	// the same time wher possible
 
 	// the area the PC covers. once assigned we'll assume that the program
 	// never reads outside this area. the value is assigned on reset()
@@ -561,7 +551,7 @@ func (arm *ARM) clock(cycles float32) {
 // SharedMemory interface. The function will return with an error if those
 // registers are attempted to be initialised.
 //
-// The emulated ARM will be left in an interrupted state.
+// The emulated ARM will be left with a yield state of YieldSyncWithVCS
 func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 	arm.resetRegisters()
 
@@ -577,11 +567,9 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 	// correct on the first call to Run()
 	arm.state.registers[rPC] += 2
 
-	// continue in an interrupted state. this prevents the ARM registers from
-	// being reset on the next call to Run()
-	arm.state.interrupt = true
-
-	// inentionally not setting yieldReason here
+	// making sure that yield is not of type YieldProgramEnded. that would cause
+	// the registers to be immediately reset on the next call to Run()
+	arm.state.yield.Type = mapper.YieldSyncWithVCS
 
 	return nil
 }
@@ -597,7 +585,9 @@ func (arm *ARM) Run() (mapper.CoProcYield, float32) {
 		}()
 	}
 
-	if !arm.state.interrupt {
+	// only reset registers if the previous yield was one that indicated the end
+	// of the program execution
+	if arm.state.yield.Type == mapper.YieldProgramEnded {
 		arm.resetRegisters()
 	}
 
@@ -631,12 +621,11 @@ func (arm *ARM) Run() (mapper.CoProcYield, float32) {
 	}
 
 	// fill pipeline cannot happen immediately after resetRegisters()
-	if !arm.state.interrupt {
+	if arm.state.yield.Type == mapper.YieldProgramEnded {
 		arm.state.registers[rPC] += 2
 	}
 
-	// default to an uninterrupted state and a sync with VCS yield reason
-	arm.state.interrupt = false
+	// reset yield
 	arm.state.yield.Type = mapper.YieldSyncWithVCS
 	arm.state.yield.Detail = nil
 
@@ -647,7 +636,8 @@ func (arm *ARM) Run() (mapper.CoProcYield, float32) {
 // instruction has been executed. The ARM will then yield with the reson
 // YieldSyncWithVCS.
 func (arm *ARM) Interrupt() {
-	arm.state.interrupt = true
+	arm.continueExecution = false
+	arm.state.yield.Type = mapper.YieldSyncWithVCS
 }
 
 // Registers returns a copy of the current values in the ARM registers
@@ -910,7 +900,6 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 			}
 
 			if arm.abortOnStackCollision && arm.breakpointsEnabled {
-				arm.state.interrupt = true
 				arm.state.yield.Type = mapper.YieldMemoryAccessError
 				arm.state.yield.Detail = err
 			}
@@ -932,7 +921,6 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 				logger.Logf("ARM7: memory error", arm.disasmVerbose(entry))
 			}
 			if arm.abortOnIllegalMem && arm.breakpointsEnabled {
-				arm.state.interrupt = true
 				arm.state.yield.Type = mapper.YieldMemoryAccessError
 				arm.state.yield.Detail = arm.memoryError
 			}
@@ -948,7 +936,6 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 			logger.Logf("ARM7: execution error", arm.executionError.Error())
 
 			if arm.breakpointsEnabled {
-				arm.state.interrupt = true
 				arm.state.yield.Type = mapper.YieldExecutionError
 				arm.state.yield.Detail = arm.executionError
 			}
@@ -959,18 +946,9 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 		// instruction
 		if arm.dev != nil && arm.breakpointsEnabled && !arm.state.function32bitDecoding {
 			if arm.dev.CheckBreakpoint(arm.state.instructionPC) {
-				arm.state.interrupt = true
 				arm.state.yield.Type = mapper.YieldBreakpoint
 				arm.state.yield.Detail = fmt.Errorf("%08x", arm.state.instructionPC)
 			}
-		}
-
-		// check that yielding is okay and discontinue execution
-		if arm.state.interrupt {
-			if arm.state.function32bitDecoding {
-				panic("attempted to yield during 32bit instruction decoding")
-			}
-			arm.continueExecution = false
 		}
 	}
 

@@ -919,7 +919,6 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) *DisasmEntry {
 				if target&0x01 == 0x00 {
 					// cannot switch to ARM mode in the ARMv7-M architecture
 					arm.continueExecution = false
-					arm.state.interrupt = true
 					arm.state.yield.Type = mapper.YieldUndefinedBehaviour
 					arm.state.yield.Detail = errors.New("cannot switch to ARM mode in ARMv7-M architecture")
 				}
@@ -930,7 +929,6 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) *DisasmEntry {
 				if target&0x01 == 0x00 {
 					// cannot switch to ARM mode in the ARMv7-M architecture
 					arm.continueExecution = false
-					arm.state.interrupt = true
 					arm.state.yield.Type = mapper.YieldUndefinedBehaviour
 					arm.state.yield.Detail = errors.New("cannot switch to ARM mode in ARMv7-M architecture")
 				}
@@ -998,7 +996,6 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) *DisasmEntry {
 			// can return to the VCS emulation.
 			if !res.InterruptServiced {
 				arm.continueExecution = false
-				arm.state.interrupt = false
 				arm.state.yield.Type = mapper.YieldProgramEnded
 				arm.state.yield.Detail = nil
 				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
