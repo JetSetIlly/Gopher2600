@@ -919,7 +919,7 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) *DisasmEntry {
 				if target&0x01 == 0x00 {
 					// cannot switch to ARM mode in the ARMv7-M architecture
 					arm.state.yield.Type = mapper.YieldUndefinedBehaviour
-					arm.state.yield.Detail = errors.New("cannot switch to ARM mode in ARMv7-M architecture")
+					arm.state.yield.Error = errors.New("cannot switch to ARM mode in ARMv7-M architecture")
 				}
 				arm.state.registers[rPC] = (target + 2) & 0xfffffffe
 			} else {
@@ -928,7 +928,7 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) *DisasmEntry {
 				if target&0x01 == 0x00 {
 					// cannot switch to ARM mode in the ARMv7-M architecture
 					arm.state.yield.Type = mapper.YieldUndefinedBehaviour
-					arm.state.yield.Detail = errors.New("cannot switch to ARM mode in ARMv7-M architecture")
+					arm.state.yield.Error = errors.New("cannot switch to ARM mode in ARMv7-M architecture")
 				}
 				arm.state.registers[rPC] = (target + 2) & 0xfffffffe
 			}
@@ -972,9 +972,8 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) *DisasmEntry {
 			// switch to ARM mode. emulate function call.
 			res, err := arm.hook.ARMinterrupt(arm.state.registers[rPC]-4, arm.state.registers[2], arm.state.registers[3])
 			if err != nil {
-				arm.executionError = err
-				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-				//  - interrupted
+				arm.state.yield.Type = mapper.YieldExecutionError
+				arm.state.yield.Error = err
 				return nil
 			}
 
@@ -994,7 +993,7 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) *DisasmEntry {
 			// can return to the VCS emulation.
 			if !res.InterruptServiced {
 				arm.state.yield.Type = mapper.YieldProgramEnded
-				arm.state.yield.Detail = nil
+				arm.state.yield.Error = nil
 				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 				//  - interrupted
 				return nil

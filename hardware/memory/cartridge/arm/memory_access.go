@@ -16,13 +16,16 @@
 package arm
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
 func (arm *ARM) illegalAccess(event string, addr uint32) {
-	arm.memoryError = fmt.Errorf("%s: unrecognised address %08x (PC: %08x)", event, addr, arm.state.instructionPC)
+	arm.state.yield.Type = mapper.YieldMemoryAccessError
+	arm.state.yield.Error = fmt.Errorf("%s: unrecognised address %08x (PC: %08x)", event, addr, arm.state.instructionPC)
 
 	if arm.dev == nil {
 		return
@@ -30,28 +33,35 @@ func (arm *ARM) illegalAccess(event string, addr uint32) {
 
 	detail := arm.dev.IllegalAccess(event, arm.state.instructionPC, addr)
 	if detail != "" {
-		arm.memoryErrorDev = fmt.Errorf("%s: %s", event, detail)
+		arm.state.yield.Detail = append(arm.state.yield.Detail, errors.New(detail))
 	}
 }
 
 // nullAccess is a special condition of illegalAccess()
 func (arm *ARM) nullAccess(event string, addr uint32) {
-	arm.memoryError = fmt.Errorf("%s: probable null pointer dereference of %08x (PC: %08x)", event, addr, arm.state.instructionPC)
+	arm.state.yield.Type = mapper.YieldMemoryAccessError
+	arm.state.yield.Error = fmt.Errorf("%s: probable null pointer dereference of %08x (PC: %08x)", event, addr, arm.state.instructionPC)
 
 	if arm.dev == nil {
 		return
 	}
 
 	detail := arm.dev.NullAccess(event, arm.state.instructionPC, addr)
-	if detail == "" {
-		return
+	if detail != "" {
+		arm.state.yield.Detail = append(arm.state.yield.Detail, errors.New(detail))
 	}
-
-	arm.memoryErrorDev = fmt.Errorf("%s: %s", event, detail)
 }
 
 // imperfect check of whether stack has collided with memtop
-func (arm *ARM) stackCollision(stackPointerBeforeExecution uint32) (err error, detail error) {
+func (arm *ARM) stackCollision(stackPointerBeforeExecution uint32) {
+	// do not check for stack collision if some other non-normal yield condition
+	// has occured. we don't want to supercede that information with stack
+	// collision information
+	if !arm.state.yield.Type.Normal() {
+		return
+	}
+
+	// do nothing if stack has already collided or if the stack pointer has not changed
 	if arm.stackHasCollided || stackPointerBeforeExecution == arm.state.registers[rSP] {
 		return
 	}
@@ -71,20 +81,18 @@ func (arm *ARM) stackCollision(stackPointerBeforeExecution uint32) (err error, d
 	// will no longer be checked for legality
 	arm.stackHasCollided = true
 
-	err = fmt.Errorf("collision with program memory (%08x)", arm.state.registers[rSP])
+	// set yield type
+	arm.state.yield.Type = mapper.YieldMemoryAccessError
+	arm.state.yield.Error = fmt.Errorf("stack collision with program memory (%08x)", arm.state.registers[rSP])
 
 	if arm.dev != nil {
 		return
 	}
 
-	detailStr := arm.dev.StackCollision(arm.state.executingPC, arm.state.registers[rSP])
-	if detailStr == "" {
-		return
+	detail := arm.dev.StackCollision(arm.state.executingPC, arm.state.registers[rSP])
+	if detail != "" {
+		arm.state.yield.Detail = append(arm.state.yield.Detail, errors.New(detail))
 	}
-
-	detail = fmt.Errorf("%s", detailStr)
-
-	return err, detail
 }
 
 func (arm *ARM) read8bit(addr uint32) uint8 {

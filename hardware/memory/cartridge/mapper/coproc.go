@@ -193,7 +193,8 @@ type CartCoProcDeveloper interface {
 // CoProcYield describes a coprocessor yield state
 type CoProcYield struct {
 	Type   CoProcYieldType
-	Detail error
+	Error  error
+	Detail []error
 }
 
 // CoProcYieldType specifies the type of yield. This is a broad categorisation
@@ -224,7 +225,7 @@ func (t CoProcYieldType) String() string {
 // Normal returns true if yield type is expected during normal operation of the
 // coprocessor
 func (t CoProcYieldType) Normal() bool {
-	return t == YieldProgramEnded || t == YieldSyncWithVCS
+	return t == YieldRunning || t == YieldProgramEnded || t == YieldSyncWithVCS
 }
 
 // List of CoProcYieldType values

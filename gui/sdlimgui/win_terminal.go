@@ -187,8 +187,8 @@ func (win *winTerm) debuggerDraw() bool {
 			if !win.prompt.Yield.Type.Normal() {
 				imgui.SameLine()
 				imgui.Text(win.prompt.Yield.Type.String())
-				if win.prompt.Yield.Detail != nil {
-					imguiTooltipSimple(win.prompt.Yield.Detail.Error(), true)
+				if win.prompt.Yield.Error != nil {
+					imguiTooltipSimple(win.prompt.Yield.Error.Error(), true)
 				}
 			}
 		}
