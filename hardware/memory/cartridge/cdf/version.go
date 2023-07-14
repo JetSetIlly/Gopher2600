@@ -86,11 +86,7 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 
 	switch memModel {
 	case "AUTO":
-		if data[0x863]&0x20 == 0x20 && data[0x867]&0x20 == 0x20 {
-			mmap = architecture.NewMap(architecture.PlusCart)
-		} else {
-			mmap = architecture.NewMap(architecture.Harmony)
-		}
+		mmap = architecture.NewMap(architecture.Harmony)
 
 	case "LPC2000":
 		// older preference value. deprecated.
