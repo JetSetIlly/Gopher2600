@@ -52,49 +52,6 @@ func (arm *ARM) nullAccess(event string, addr uint32) {
 	}
 }
 
-// imperfect check of whether stack has collided with memtop
-func (arm *ARM) stackCollision(stackPointerBeforeExecution uint32) {
-	// do not check for stack collision if some other non-normal yield condition
-	// has occured. we don't want to supercede that information with stack
-	// collision information
-	if !arm.state.yield.Type.Normal() {
-		return
-	}
-
-	// do nothing if stack has already collided or if the stack pointer has not changed
-	if arm.stackHasCollided || stackPointerBeforeExecution == arm.state.registers[rSP] {
-		return
-	}
-
-	// check if stackMemory point and memtop are in the same memory block
-	stackMemory, _ := arm.mem.MapAddress(arm.state.registers[rSP], true)
-	variableMemory, _ := arm.mem.MapAddress(arm.variableMemtop, true)
-
-	// check if the memory block and "variables" are in the same
-	// memory block and that the stack pointer is below the top of
-	// variable memory
-	if stackMemory != variableMemory || arm.state.registers[rSP] > arm.variableMemtop {
-		return
-	}
-
-	// set stackHasCollided flag. this means that memory accesses
-	// will no longer be checked for legality
-	arm.stackHasCollided = true
-
-	// set yield type
-	arm.state.yield.Type = mapper.YieldMemoryAccessError
-	arm.state.yield.Error = fmt.Errorf("stack collision with program memory (%08x)", arm.state.registers[rSP])
-
-	if arm.dev != nil {
-		return
-	}
-
-	detail := arm.dev.StackCollision(arm.state.executingPC, arm.state.registers[rSP])
-	if detail != "" {
-		arm.state.yield.Detail = append(arm.state.yield.Detail, errors.New(detail))
-	}
-}
-
 func (arm *ARM) read8bit(addr uint32) uint8 {
 	if addr < arm.mmap.NullAccessBoundary {
 		arm.nullAccess("Read 8bit", addr)
@@ -127,7 +84,7 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 			}
 		}
 
-		if !arm.stackHasCollided {
+		if !arm.state.stackHasCollided {
 			arm.illegalAccess("Read 8bit", addr)
 		}
 
@@ -135,9 +92,9 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 	}
 
 	// adjust address so that it can be used as an index
-	addr -= origin
+	idx := addr - origin
+	return (*mem)[idx]
 
-	return (*mem)[addr]
 }
 
 func (arm *ARM) write8bit(addr uint32, val uint8) {
@@ -172,7 +129,7 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 			}
 		}
 
-		if !arm.stackHasCollided {
+		if !arm.state.stackHasCollided {
 			arm.illegalAccess("Write 8bit", addr)
 		}
 
@@ -223,7 +180,7 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 			}
 		}
 
-		if !arm.stackHasCollided {
+		if !arm.state.stackHasCollided {
 			arm.illegalAccess("Read 16bit", addr)
 		}
 
@@ -281,7 +238,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 			}
 		}
 
-		if !arm.stackHasCollided {
+		if !arm.state.stackHasCollided {
 			arm.illegalAccess("Write 16bit", addr)
 		}
 
@@ -339,7 +296,7 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 			}
 		}
 
-		if !arm.stackHasCollided {
+		if !arm.state.stackHasCollided {
 			arm.illegalAccess("Read 32bit", addr)
 		}
 
@@ -397,7 +354,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 			}
 		}
 
-		if !arm.stackHasCollided {
+		if !arm.state.stackHasCollided {
 			arm.illegalAccess("Write 32bit", addr)
 		}
 

@@ -214,6 +214,8 @@ func (t CoProcYieldType) String() string {
 		return "unimplement feature"
 	case YieldMemoryAccessError:
 		return "memory error"
+	case YieldStackError:
+		return "stack error"
 	case YieldExecutionError:
 		return "execution error"
 	case YieldRunning:
@@ -255,6 +257,9 @@ const (
 	// communicated by the IllegalAccess() function of the CartCoProcDeveloper
 	// interface
 	YieldMemoryAccessError
+
+	// something has gone wrong with the stack
+	YieldStackError
 
 	// execution error indicates that something has gone very wrong
 	YieldExecutionError

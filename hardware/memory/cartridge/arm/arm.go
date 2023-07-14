@@ -122,6 +122,15 @@ type ARMState struct {
 	// may be unreliable.
 	currentExecutionMap []decodeFunction
 
+	// if developer information is available then the emulation's stack protection will try to
+	// defend against the stack colliding with the top of variable memory
+	protectVariableMemTop bool
+	variableMemtop        uint32
+
+	// once the stack has been found to have collided there are no more attempts
+	// to protect the stack
+	stackHasCollided bool
+
 	// cycle counting
 
 	// the last cycle to be triggered, used to decide whether to merge I-S cycles
@@ -246,15 +255,6 @@ type ARM struct {
 
 	// interface to an option development package
 	dev mapper.CartCoProcDeveloper
-
-	// top of variable memory for stack pointer collision testing
-	// * only valid if dev is not nil
-	variableMemtop uint32
-
-	// once the stack has been found to have collided with memory then all
-	// memory accesses are deemed suspect and illegal accesses are no longer
-	// logged
-	stackHasCollided bool
 
 	// whether cycle count or not. set from ARM.prefs at the start of every arm.Run()
 	//
@@ -516,6 +516,21 @@ func (arm *ARM) logYield() {
 	}
 }
 
+func (arm *ARM) extendedMemoryErrorLogging(opcode uint16) {
+	// add extended memory logging to yield detail
+	if arm.prefs.ExtendedMemoryErrorLogging.Get().(bool) {
+		entry, err := arm.disassemble(opcode)
+		if err == nil {
+			arm.state.yield.Detail = append(arm.state.yield.Detail,
+				errors.New(entry.String()),
+				errors.New(arm.disasmVerbose(entry)),
+			)
+		} else {
+			arm.state.yield.Detail = append(arm.state.yield.Detail, err)
+		}
+	}
+}
+
 // SetInitialRegisters is intended to be called after creation but before the
 // first call to Run().
 //
@@ -679,6 +694,8 @@ func (arm *ARM) checkProgramMemory() {
 		arm.executionMap[arm.state.programMemoryOrigin] = make([]decodeFunction, len(*arm.state.programMemory))
 		arm.state.currentExecutionMap = arm.executionMap[arm.state.programMemoryOrigin]
 	}
+
+	arm.stackProtectCheckProgramMemory()
 }
 
 func (arm *ARM) run() (mapper.CoProcYield, float32) {
@@ -688,11 +705,13 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 	default:
 	}
 
+	// get developer information. this probably hasn't changed since ARM
+	// creation but you never know
 	if arm.dev != nil {
-		// update variableMemtop - probably hasn't changed but you never know
-		arm.variableMemtop = arm.dev.HighAddress()
 		arm.profiler = arm.dev.Profiling()
+		arm.state.variableMemtop = arm.dev.HighAddress()
 	}
+	arm.state.protectVariableMemTop = arm.dev != nil
 
 	if arm.disasm != nil {
 		// start of program execution
@@ -708,14 +727,6 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 			arm.disasm.End(arm.disasmSummary)
 		}()
 	}
-
-	// use to detect branches and whether to fill the pipeline (unused if
-	// arm.immediateMode is true)
-	var expectedPC uint32
-
-	// used to detect changes in the stack frame
-	var expectedLR uint32
-	var candidateStackFrame uint32
 
 	// number of iterations. only used when in immediate mode
 	var iterations int
@@ -742,20 +753,16 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 			// bump PC counter for prefetch. actual prefetch is done after execution
 			arm.state.registers[rPC] += 2
 
-			// the expected PC at the end of the execution. if the PC register
-			// does not match fillPipeline() is called
-			if !arm.immediateMode {
-				expectedPC = arm.state.registers[rPC]
-			}
+			// expectedPC is used to decide whether to add cycles due to
+			// pipeline filling
+			expectedPC := arm.state.registers[rPC]
 
-			// the expected link register of the execution. if the SP register does
-			// not match this value then the stack frame is said to have changed
-			expectedLR = arm.state.registers[rLR]
-			candidateStackFrame = arm.state.registers[rSP]
+			// expectedLR is used to change the stack frame information
+			expectedLR := arm.state.registers[rLR]
 
-			// note stack pointer. we'll use this to check if stack pointer has
-			// collided with variables memory
-			// stackPointerBeforeExecution := arm.state.registers[rSP]
+			// expectedSP is used to decide whether to check the stack pointer
+			// for collision with other memory errors
+			expectedSP := arm.state.registers[rSP]
 
 			arm.stepFunction(opcode, memIdx)
 
@@ -790,7 +797,7 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 
 			// stack frame has changed if LR register has changed
 			if expectedLR != arm.state.registers[rLR] {
-				arm.state.stackFrame = candidateStackFrame
+				arm.state.stackFrame = expectedSP
 			}
 
 			// disassemble if appropriate
@@ -881,21 +888,37 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 				}
 			}
 
+			// check for stack errors
+			if arm.state.yield.Type == mapper.YieldStackError {
+				arm.extendedMemoryErrorLogging(opcode)
+				if !arm.abortOnStackCollision {
+					arm.logYield()
+					arm.state.yield.Type = mapper.YieldRunning
+					arm.state.yield.Error = nil
+					arm.state.yield.Detail = arm.state.yield.Detail[:0]
+				}
+			} else {
+				if !arm.state.yield.Type.Normal() {
+					if arm.state.registers[rSP] != expectedSP {
+						arm.stackProtectCheckSP()
+						if arm.state.yield.Type == mapper.YieldStackError {
+							arm.extendedMemoryErrorLogging(opcode)
+							if !arm.abortOnStackCollision {
+								arm.logYield()
+								arm.state.yield.Type = mapper.YieldRunning
+								arm.state.yield.Error = nil
+								arm.state.yield.Detail = arm.state.yield.Detail[:0]
+							}
+						}
+					}
+				}
+			}
+
 			// handle memory access yields. we don't these want these to bleed out
 			// of the ARM unless the abort preference is set
 			if arm.state.yield.Type == mapper.YieldMemoryAccessError {
 				// add extended memory logging to yield detail
-				if arm.prefs.ExtendedMemoryErrorLogging.Get().(bool) {
-					entry, err := arm.disassemble(opcode)
-					if err == nil {
-						arm.state.yield.Detail = append(arm.state.yield.Detail,
-							errors.New(entry.String()),
-							errors.New(arm.disasmVerbose(entry)),
-						)
-					} else {
-						arm.state.yield.Detail = append(arm.state.yield.Detail, err)
-					}
-				}
+				arm.extendedMemoryErrorLogging(opcode)
 
 				// if illegal memory accesses are to be ignored then we must log the
 				// yield information now before reset the yield type
