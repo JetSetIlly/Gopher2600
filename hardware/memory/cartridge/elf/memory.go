@@ -182,7 +182,8 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 				section.memtop += gap - 1
 			}
 
-			logger.Logf("ELF", "%s: %08x to %08x (%d)", section.name, section.origin, section.memtop, len(section.data))
+			logger.Logf("ELF", "%s: %08x to %08x (%d)",
+				section.name, section.origin, section.memtop, len(section.data))
 			if section.readOnly {
 				logger.Logf("ELF", "%s: is readonly", section.name)
 			}
@@ -448,6 +449,10 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 		}
 	}
 
+	// strongarm program has been created so we can output the address information
+	logger.Logf("ELF", "strongarm: %08x to %08x (%d)",
+		mem.strongArmOrigin, mem.strongArmMemtop, len(mem.strongArmProgram))
+
 	// find entry point and use it to set the resetPC value. the Entry field in
 	// the elf.File structure is no good for our purposes
 	for _, s := range symbols {
@@ -553,14 +558,14 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 		if !write && addr == mem.gpio.dataOrigin|ADDR_IDR {
 			mem.arm.Interrupt()
 		}
-		return &mem.gpio.data, addr - mem.gpio.dataOrigin
+		return &mem.gpio.data, mem.gpio.dataOrigin
 	}
 	if addr >= mem.gpio.lookupOrigin && addr <= mem.gpio.lookupMemtop {
-		return &mem.gpio.lookup, addr - mem.gpio.lookupOrigin
+		return &mem.gpio.lookup, mem.gpio.lookupOrigin
 	}
 
 	if addr >= mem.sramOrigin && addr <= mem.sramMemtop {
-		return &mem.sram, addr - mem.sramOrigin
+		return &mem.sram, mem.sramOrigin
 	}
 	if addr >= mem.strongArmOrigin && addr <= mem.strongArmMemtop {
 		if f, ok := mem.strongArmFunctions[addr+1]; ok {
@@ -569,11 +574,11 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 
 			mem.resumeARMimmediately = mem.strongArmResumeImmediately[addr+1]
 		}
-		return &mem.strongArmProgram, addr - mem.strongArmOrigin
+		return &mem.strongArmProgram, mem.strongArmOrigin
 	}
 
 	if addr >= argOrigin && addr <= argMemtop {
-		return &mem.args, addr - argOrigin
+		return &mem.args, argOrigin
 	}
 
 	// accessing ELF sections is very unlikely so do this last
@@ -586,13 +591,13 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 
 		if addr >= s.origin && addr <= s.memtop {
 			if write && s.readOnly {
-				return nil, addr
+				return nil, 0
 			}
-			return &s.data, addr - s.origin
+			return &s.data, s.origin
 		}
 	}
 
-	return nil, addr
+	return nil, 0
 }
 
 // ResetVectors implements the arm.SharedMemory interface.
@@ -654,7 +659,8 @@ func (mem *elfMemory) Reference(segment string) ([]uint8, bool) {
 
 // Read8bit implements the mapper.CartStatic interface
 func (m *elfMemory) Read8bit(addr uint32) (uint8, bool) {
-	mem, addr := m.MapAddress(addr, false)
+	mem, origin := m.MapAddress(addr, false)
+	addr -= origin
 	if mem == nil || addr >= uint32(len(*mem)) {
 		return 0, false
 	}
@@ -663,7 +669,8 @@ func (m *elfMemory) Read8bit(addr uint32) (uint8, bool) {
 
 // Read16bit implements the mapper.CartStatic interface
 func (m *elfMemory) Read16bit(addr uint32) (uint16, bool) {
-	mem, addr := m.MapAddress(addr, false)
+	mem, origin := m.MapAddress(addr, false)
+	addr -= origin
 	if mem == nil || len(*mem) < 2 || addr >= uint32(len(*mem)-1) {
 		return 0, false
 	}
@@ -673,7 +680,8 @@ func (m *elfMemory) Read16bit(addr uint32) (uint16, bool) {
 
 // Read32bit implements the mapper.CartStatic interface
 func (m *elfMemory) Read32bit(addr uint32) (uint32, bool) {
-	mem, addr := m.MapAddress(addr, false)
+	mem, origin := m.MapAddress(addr, false)
+	addr -= origin
 	if mem == nil || len(*mem) < 4 || addr >= uint32(len(*mem)-3) {
 		return 0, false
 	}

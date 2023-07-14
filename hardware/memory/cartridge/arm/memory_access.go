@@ -100,9 +100,7 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 		arm.nullAccess("Read 8bit", addr)
 	}
 
-	var mem *[]uint8
-
-	mem, addr = arm.mem.MapAddress(addr, false)
+	mem, origin := arm.mem.MapAddress(addr, false)
 	if mem == nil {
 		if arm.mmap.HasMAM {
 			if v, ok, comment := arm.state.mam.Read(addr); ok {
@@ -136,6 +134,9 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 		return uint8(arm.mmap.IllegalAccessValue)
 	}
 
+	// adjust address so that it can be used as an index
+	addr -= origin
+
 	return (*mem)[addr]
 }
 
@@ -144,9 +145,7 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 		arm.nullAccess("Write 8bit", addr)
 	}
 
-	var mem *[]uint8
-
-	mem, addr = arm.mem.MapAddress(addr, true)
+	mem, origin := arm.mem.MapAddress(addr, true)
 	if mem == nil {
 		if arm.mmap.HasMAM {
 			if ok, comment := arm.state.mam.Write(addr, uint32(val)); ok {
@@ -180,7 +179,9 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 		return
 	}
 
-	(*mem)[addr] = val
+	// adjust address so that it can be used as an index
+	idx := addr - origin
+	(*mem)[idx] = val
 }
 
 // requiresAlignment should be true only for certain instructions. alignment
@@ -195,9 +196,7 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 		logger.Logf("ARM7", "misaligned 16 bit read (%08x) (PC: %08x)", addr, arm.state.instructionPC)
 	}
 
-	var mem *[]uint8
-
-	mem, addr = arm.mem.MapAddress(addr, false)
+	mem, origin := arm.mem.MapAddress(addr, false)
 	if mem == nil {
 		if arm.mmap.HasMAM {
 			if v, ok, comment := arm.state.mam.Read(addr); ok {
@@ -231,13 +230,16 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 		return uint16(arm.mmap.IllegalAccessValue)
 	}
 
+	// adjust address so that it can be used as an index
+	idx := addr - origin
+
 	// ensure we're not accessing past the end of memory
-	if len(*mem) < 2 || addr >= uint32(len(*mem)-1) {
+	if len(*mem) < 2 || idx >= uint32(len(*mem)-1) {
 		arm.illegalAccess("Read 16bit", addr)
 		return uint16(arm.mmap.IllegalAccessValue)
 	}
 
-	return arm.byteOrder.Uint16((*mem)[addr:])
+	return arm.byteOrder.Uint16((*mem)[idx:])
 }
 
 // requiresAlignment should be true only for certain instructions. alignment
@@ -252,9 +254,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 		logger.Logf("ARM7", "misaligned 16 bit write (%08x) (PC: %08x)", addr, arm.state.instructionPC)
 	}
 
-	var mem *[]uint8
-
-	mem, addr = arm.mem.MapAddress(addr, true)
+	mem, origin := arm.mem.MapAddress(addr, true)
 	if mem == nil {
 		if arm.mmap.HasMAM {
 			if ok, comment := arm.state.mam.Write(addr, uint32(val)); ok {
@@ -288,13 +288,16 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 		return
 	}
 
+	// adjust address so that it can be used as an index
+	idx := addr - origin
+
 	// ensure we're not accessing past the end of memory
-	if len(*mem) < 2 || addr >= uint32(len(*mem)-1) {
+	if len(*mem) < 2 || idx >= uint32(len(*mem)-1) {
 		arm.illegalAccess("Write 16bit", addr)
 		return
 	}
 
-	arm.byteOrder.PutUint16((*mem)[addr:], val)
+	arm.byteOrder.PutUint16((*mem)[idx:], val)
 }
 
 // requiresAlignment should be true only for certain instructions. alignment
@@ -309,9 +312,7 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 		logger.Logf("ARM7", "misaligned 32 bit read (%08x) (PC: %08x)", addr, arm.state.instructionPC)
 	}
 
-	var mem *[]uint8
-
-	mem, addr = arm.mem.MapAddress(addr, false)
+	mem, origin := arm.mem.MapAddress(addr, false)
 	if mem == nil {
 		if arm.mmap.HasMAM {
 			if v, ok, comment := arm.state.mam.Read(addr); ok {
@@ -345,13 +346,16 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 		return arm.mmap.IllegalAccessValue
 	}
 
+	// adjust address so that it can be used as an index
+	idx := addr - origin
+
 	// ensure we're not accessing past the end of memory
-	if len(*mem) < 4 || addr >= uint32(len(*mem)-3) {
+	if len(*mem) < 4 || idx >= uint32(len(*mem)-3) {
 		arm.illegalAccess("Read 32bit", addr)
 		return arm.mmap.IllegalAccessValue
 	}
 
-	return arm.byteOrder.Uint32((*mem)[addr:])
+	return arm.byteOrder.Uint32((*mem)[idx:])
 }
 
 // requiresAlignment should be true only for certain instructions. alignment
@@ -366,9 +370,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 		logger.Logf("ARM7", "misaligned 32 bit write (%08x) (PC: %08x)", addr, arm.state.instructionPC)
 	}
 
-	var mem *[]uint8
-
-	mem, addr = arm.mem.MapAddress(addr, true)
+	mem, origin := arm.mem.MapAddress(addr, true)
 	if mem == nil {
 		if arm.mmap.HasMAM {
 			if ok, comment := arm.state.mam.Write(addr, uint32(val)); ok {
@@ -402,11 +404,14 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 		return
 	}
 
+	// adjust address so that it can be used as an index
+	idx := addr - origin
+
 	// ensure we're not accessing past the end of memory
-	if len(*mem) < 4 || addr >= uint32(len(*mem)-3) {
+	if len(*mem) < 4 || idx >= uint32(len(*mem)-3) {
 		arm.illegalAccess("Write 32bit", addr)
 		return
 	}
 
-	arm.byteOrder.PutUint32((*mem)[addr:], val)
+	arm.byteOrder.PutUint32((*mem)[idx:], val)
 }

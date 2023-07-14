@@ -122,7 +122,7 @@ func (cart *Ace) Reset() {
 // Access implements the mapper.CartMapper interface.
 func (cart *Ace) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	if cart.mem.isDataModeOut() {
-		return cart.mem.gpio[DATA_ODR_idx], mapper.CartDrivenPins, nil
+		return cart.mem.gpio[DATA_ODR-cart.mem.gpioOrigin], mapper.CartDrivenPins, nil
 	}
 	return 0, 0, nil
 }
@@ -176,14 +176,14 @@ func (cart *Ace) AccessPassive(addr uint16, data uint8) {
 	// set data first and continue once. this seems to be necessary to allow
 	// the PlusROM exit routine to work correctly
 	if !cart.mem.isDataModeOut() {
-		cart.mem.gpio[DATA_IDR_idx] = data
+		cart.mem.gpio[DATA_IDR-cart.mem.gpioOrigin] = data
 	}
 
 	cart.runARM()
 
 	// set address for ARM program
-	cart.mem.gpio[ADDR_IDR_idx] = uint8(addr)
-	cart.mem.gpio[ADDR_IDR_idx+1] = uint8(addr >> 8)
+	cart.mem.gpio[ADDR_IDR-cart.mem.gpioOrigin] = uint8(addr)
+	cart.mem.gpio[ADDR_IDR-cart.mem.gpioOrigin+1] = uint8(addr >> 8)
 
 	// continue and wait for the fourth YieldSyncWithVCS...
 	for i := 0; i < 4; i++ {
@@ -214,9 +214,9 @@ func (cart *Ace) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 // BusStuff implements the mapper.CartBusStuff interface.
 func (cart *Ace) BusStuff() (uint8, bool) {
 	if cart.mem.isDataModeOut() {
-		cart.mem.gpio[DATA_MODER_idx] = 0x00
-		cart.mem.gpio[DATA_MODER_idx+1] = 0x00
-		return cart.mem.gpio[DATA_ODR_idx], true
+		cart.mem.gpio[DATA_MODER-cart.mem.gpioOrigin] = 0x00
+		cart.mem.gpio[DATA_MODER-cart.mem.gpioOrigin+1] = 0x00
+		return cart.mem.gpio[DATA_ODR-cart.mem.gpioOrigin], true
 	}
 	return 0, false
 }

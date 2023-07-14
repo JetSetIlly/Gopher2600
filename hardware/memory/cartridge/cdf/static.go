@@ -111,49 +111,49 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 
 	// data (RAM)
 	if addr >= stc.version.dataOriginRAM && addr <= stc.version.dataMemtopRAM {
-		return &stc.dataRAM, addr - stc.version.dataOriginRAM
+		return &stc.dataRAM, stc.version.dataOriginRAM
 	}
 
 	// variables (RAM)
 	if stc.variablesRAM != nil {
 		if addr >= stc.version.variablesOriginRAM && addr <= stc.version.variablesMemtopRAM {
-			return &stc.variablesRAM, addr - stc.version.variablesOriginRAM
+			return &stc.variablesRAM, stc.version.variablesOriginRAM
 		}
 	}
 
 	// custom ARM code (ROM)
 	if addr >= stc.version.customOriginROM && addr <= stc.version.customMemtopROM {
 		if write {
-			return nil, addr
+			return nil, 0
 		}
-		return &stc.customROM, addr - stc.version.customOriginROM
+		return &stc.customROM, stc.version.customOriginROM
 	}
 
 	// driver ARM code (RAM)
 	if addr >= stc.version.driverOriginRAM && addr <= stc.version.driverMemtopRAM {
-		return &stc.driverRAM, addr - stc.version.driverOriginRAM
+		return &stc.driverRAM, stc.version.driverOriginRAM
 	}
 
 	// driver ARM code (ROM)
 	if addr >= stc.version.driverOriginROM && addr <= stc.version.driverMemtopROM {
 		if write {
-			return nil, addr
+			return nil, 0
 		}
-		return &stc.driverROM, addr - stc.version.driverOriginROM
+		return &stc.driverROM, stc.version.driverOriginROM
 	}
 
-	return nil, addr
+	return nil, 0
 }
 
 // Segments implements the mapper.CartStatic interface
 func (stc *Static) Segments() []mapper.CartStaticSegment {
 	segments := []mapper.CartStaticSegment{
-		mapper.CartStaticSegment{
+		{
 			Name:   "Driver",
 			Origin: stc.version.driverOriginRAM,
 			Memtop: stc.version.driverMemtopRAM,
 		},
-		mapper.CartStaticSegment{
+		{
 			Name:   "Data",
 			Origin: stc.version.dataOriginRAM,
 			Memtop: stc.version.dataMemtopRAM,
@@ -184,7 +184,8 @@ func (stc *Static) Reference(segment string) ([]uint8, bool) {
 
 // Read8bit implements the mapper.CartStatic interface
 func (stc *Static) Read8bit(addr uint32) (uint8, bool) {
-	mem, addr := stc.MapAddress(addr, false)
+	mem, origin := stc.MapAddress(addr, false)
+	addr -= origin
 	if mem == nil || addr >= uint32(len(*mem)) {
 		return 0, false
 	}
@@ -193,7 +194,8 @@ func (stc *Static) Read8bit(addr uint32) (uint8, bool) {
 
 // Read16bit implements the mapper.CartStatic interface
 func (stc *Static) Read16bit(addr uint32) (uint16, bool) {
-	mem, addr := stc.MapAddress(addr, false)
+	mem, origin := stc.MapAddress(addr, false)
+	addr -= origin
 	if mem == nil || addr >= uint32(len(*mem)-1) {
 		return 0, false
 	}
@@ -203,7 +205,8 @@ func (stc *Static) Read16bit(addr uint32) (uint16, bool) {
 
 // Read32bit implements the mapper.CartStatic interface
 func (stc *Static) Read32bit(addr uint32) (uint32, bool) {
-	mem, addr := stc.MapAddress(addr, false)
+	mem, origin := stc.MapAddress(addr, false)
+	addr -= origin
 	if mem == nil || addr >= uint32(len(*mem)-3) {
 		return 0, false
 	}

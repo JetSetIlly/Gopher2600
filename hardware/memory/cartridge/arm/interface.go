@@ -18,7 +18,7 @@ package arm
 // SharedMemory represents the memory passed between the parent
 // cartridge-mapper implementation and the ARM.
 type SharedMemory interface {
-	// Return memory block and array offset for the requested address. Memory
+	// Return memory block and origin address for the memory block. Memory
 	// blocks mays be different for read and write operations.
 	//
 	// Note that there is no indication of how the memory will be access. For

@@ -651,11 +651,11 @@ func (arm *ARM) checkProgramMemory() {
 		return
 	}
 
-	var offset uint32
-	arm.state.programMemory, offset = arm.mem.MapAddress(addr, false)
+	var origin uint32
+	arm.state.programMemory, origin = arm.mem.MapAddress(addr, false)
 	if arm.state.programMemory == nil {
 		addr = arm.state.executingPC
-		arm.state.programMemory, offset = arm.mem.MapAddress(addr, false)
+		arm.state.programMemory, origin = arm.mem.MapAddress(addr, false)
 		if arm.state.programMemory == nil {
 			arm.state.yield.Type = mapper.YieldMemoryAccessError
 			arm.state.yield.Error = fmt.Errorf("can't find program memory (PC %08x)", addr)
@@ -670,8 +670,8 @@ func (arm *ARM) checkProgramMemory() {
 		return
 	}
 
-	arm.state.programMemoryOrigin = addr - offset
-	arm.state.programMemoryMemtop = arm.state.programMemoryOrigin + uint32(len(*arm.state.programMemory)) - 1
+	arm.state.programMemoryOrigin = origin
+	arm.state.programMemoryMemtop = origin + uint32(len(*arm.state.programMemory)) - 1
 
 	if m, ok := arm.executionMap[arm.state.programMemoryOrigin]; ok {
 		arm.state.currentExecutionMap = m

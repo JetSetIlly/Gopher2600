@@ -54,7 +54,9 @@ type aceMemory struct {
 	resetLR uint32
 	resetPC uint32
 
-	gpio []byte
+	gpio       []byte
+	gpioOrigin uint32
+	gpioMemtop uint32
 
 	// SRAM is called CCM in STM32 architectures
 	sram       []byte
@@ -98,24 +100,21 @@ const (
 	DATA_IDR   = 0x40020810
 	DATA_ODR   = 0x40020814
 
-	DATA_MODER_idx = 0
-	ADDR_IDR_idx   = 4
-	DATA_IDR_idx   = 8
-	DATA_ODR_idx   = 12
-	GPIO_SIZE      = 16
+	GPIO_ORIGIN = 0x40020800
+	GPIO_MEMTOP = 0x40020cff
 )
 
 func (mem *aceMemory) isDataModeOut() bool {
-	return mem.gpio[DATA_MODER_idx] == 0x55 && mem.gpio[DATA_MODER_idx+1] == 0x55
+	return mem.gpio[DATA_MODER-mem.gpioOrigin] == 0x55 && mem.gpio[DATA_MODER-mem.gpioOrigin+1] == 0x55
 }
 
 func (mem *aceMemory) setDataMode(out bool) {
 	if out {
-		mem.gpio[DATA_MODER_idx] = 0x55
-		mem.gpio[DATA_MODER_idx+1] = 0x55
+		mem.gpio[DATA_MODER-mem.gpioOrigin] = 0x55
+		mem.gpio[DATA_MODER-mem.gpioOrigin+1] = 0x55
 	} else {
-		mem.gpio[DATA_MODER_idx] = 0x00
-		mem.gpio[DATA_MODER_idx+1] = 0x00
+		mem.gpio[DATA_MODER-mem.gpioOrigin] = 0x00
+		mem.gpio[DATA_MODER-mem.gpioOrigin+1] = 0x00
 	}
 }
 
@@ -287,10 +286,12 @@ func newAceMemory(data []byte) (*aceMemory, error) {
 	copy(mem.flash[44:48], []byte{0x00, 0x26, 0xe4, 0xac})
 
 	// GPIO pins
-	mem.gpio = make([]byte, GPIO_SIZE)
+	mem.gpio = make([]byte, GPIO_MEMTOP-GPIO_ORIGIN+1)
+	mem.gpioOrigin = GPIO_ORIGIN
+	mem.gpioMemtop = GPIO_MEMTOP
 
 	// default NOP instruction for opcode
-	mem.gpio[DATA_ODR_idx] = 0xea
+	mem.gpio[DATA_ODR-mem.gpioOrigin] = 0xea
 
 	return mem, nil
 }
@@ -319,29 +320,29 @@ func (mem *aceMemory) Plumb(arm interruptARM) {
 func (mem *aceMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	switch addr {
 	case DATA_MODER:
-		return &mem.gpio, DATA_MODER_idx
+		return &mem.gpio, mem.gpioOrigin
 	case ADDR_IDR:
 		if !write {
 			mem.arm.Interrupt()
 		}
-		return &mem.gpio, ADDR_IDR_idx
+		return &mem.gpio, mem.gpioOrigin
 	case DATA_IDR:
-		return &mem.gpio, DATA_IDR_idx
+		return &mem.gpio, mem.gpioOrigin
 	case DATA_ODR:
-		return &mem.gpio, DATA_ODR_idx
+		return &mem.gpio, mem.gpioOrigin
 	}
 
 	if addr >= mem.flashARMOrigin && addr <= mem.flashARMMemtop {
-		return &mem.flashARM, addr - mem.flashARMOrigin
+		return &mem.flashARM, mem.flashARMOrigin
 	}
 	if addr >= mem.flashVCSOrigin && addr <= mem.flashVCSMemtop {
-		return &mem.flashVCS, addr - mem.flashVCSOrigin
+		return &mem.flashVCS, mem.flashVCSOrigin
 	}
 	if addr >= mem.flashOrigin && addr <= mem.flashMemtop {
-		return &mem.flash, addr - mem.flashOrigin
+		return &mem.flash, mem.flashOrigin
 	}
 	if addr >= mem.sramOrigin && addr <= mem.sramMemtop {
-		return &mem.sram, addr - mem.sramOrigin
+		return &mem.sram, mem.sramOrigin
 	}
 
 	return nil, addr
@@ -404,7 +405,8 @@ func (a *aceMemory) Reference(segment string) ([]uint8, bool) {
 // the range given in one of the CartStaticSegment returned by the
 // Segments() function.
 func (a *aceMemory) Read8bit(addr uint32) (uint8, bool) {
-	mem, addr := a.MapAddress(addr, false)
+	mem, origin := a.MapAddress(addr, false)
+	addr -= origin
 	if mem == nil || addr >= uint32(len(*mem)) {
 		return 0, false
 	}
@@ -412,7 +414,8 @@ func (a *aceMemory) Read8bit(addr uint32) (uint8, bool) {
 }
 
 func (a *aceMemory) Read16bit(addr uint32) (uint16, bool) {
-	mem, addr := a.MapAddress(addr, false)
+	mem, origin := a.MapAddress(addr, false)
+	addr -= origin
 	if mem == nil || addr >= uint32(len(*mem)-1) {
 		return 0, false
 	}
@@ -421,7 +424,8 @@ func (a *aceMemory) Read16bit(addr uint32) (uint16, bool) {
 }
 
 func (a *aceMemory) Read32bit(addr uint32) (uint32, bool) {
-	mem, addr := a.MapAddress(addr, false)
+	mem, origin := a.MapAddress(addr, false)
+	addr -= origin
 	if mem == nil || addr >= uint32(len(*mem)-3) {
 		return 0, false
 	}

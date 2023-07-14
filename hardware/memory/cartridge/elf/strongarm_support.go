@@ -30,13 +30,15 @@ func randint(mem *elfMemory) {
 }
 
 func memset(mem *elfMemory) {
-	set, origin := mem.MapAddress(mem.strongarm.running.registers[0], true)
+	addr := mem.strongarm.running.registers[0]
+	set, origin := mem.MapAddress(addr, true)
+	idx := addr - origin
 
 	if set != nil {
 		v := mem.strongarm.running.registers[1]
 		l := mem.strongarm.running.registers[2]
 		for i := uint32(0); i < l; i++ {
-			(*set)[origin+i] = byte(v)
+			(*set)[idx+i] = byte(v)
 		}
 	}
 
@@ -44,13 +46,18 @@ func memset(mem *elfMemory) {
 }
 
 func memcpy(mem *elfMemory) {
-	to, toOrigin := mem.MapAddress(mem.strongarm.running.registers[0], true)
-	from, fromOrigin := mem.MapAddress(mem.strongarm.running.registers[1], false)
+	toAddr := mem.strongarm.running.registers[0]
+	to, toOrigin := mem.MapAddress(toAddr, true)
+	toIdx := toAddr - toOrigin
+
+	fromAddr := mem.strongarm.running.registers[1]
+	from, fromOrigin := mem.MapAddress(fromAddr, false)
+	fromIdx := fromAddr - fromOrigin
 
 	if to != nil && from != nil {
 		l := mem.strongarm.running.registers[2]
 		for i := uint32(0); i < l; i++ {
-			(*to)[toOrigin+i] = (*from)[fromOrigin+i]
+			(*to)[toIdx+i] = (*from)[fromIdx+i]
 		}
 	}
 
