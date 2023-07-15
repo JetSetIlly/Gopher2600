@@ -41,6 +41,13 @@ type elfSection struct {
 	origin   uint32
 	memtop   uint32
 
+	// trailing bytes are placed after each section in memory to ensure
+	// alignment and also to ensure that executable memory can be indexed by the
+	// ARM emulation without worrying about reading past the end of the array.
+	// this can happen when trying to execute the last instruction in the
+	// program
+	trailingBytes uint32
+
 	readOnly   bool
 	executable bool
 }
@@ -175,18 +182,21 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 		if section.inMemory {
 			section.origin = origin
 			section.memtop = section.origin + uint32(len(section.data))
-			origin = (section.memtop + 4) & 0xfffffffc
 
-			// extend memtop so that it is continuous with the following section
-			gap := origin - section.memtop
-			if gap > 0 {
-				extend := make([]byte, gap)
+			// prepare origin of next section and use that to  extend memtop so
+			// that it is continuous with the following section
+			origin = (section.memtop + 4) & 0xfffffffc
+			section.trailingBytes = origin - section.memtop
+			if section.trailingBytes > 0 {
+				extend := make([]byte, section.trailingBytes)
 				section.data = append(section.data, extend...)
-				section.memtop += gap - 1
+				section.memtop += section.trailingBytes - 1
+			} else if section.executable {
+				panic("executable section created with no trailing bytes")
 			}
 
-			logger.Logf("ELF", "%s: %08x to %08x (%d)",
-				section.name, section.origin, section.memtop, len(section.data))
+			logger.Logf("ELF", "%s: %08x to %08x (%d) [%d trailing bytes]",
+				section.name, section.origin, section.memtop, len(section.data), section.trailingBytes)
 			if section.readOnly {
 				logger.Logf("ELF", "%s: is readonly", section.name)
 			}

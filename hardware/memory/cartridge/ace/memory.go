@@ -203,6 +203,13 @@ func newAceMemory(data []byte) (*aceMemory, error) {
 	mem.flashARM = append(mem.flashARM, nullFunction...)
 	mem.flashARMMemtop += uint32(len(nullFunction))
 
+	// add a two byte buffer at the end of ARM memory. this is so that the ARM
+	// can execute the last instruction in the program (which will hopefully be
+	// a branching instruction) without the program counter running past the end
+	// of the array
+	mem.flashARM = append(mem.flashARM, 0x00, 0x00)
+	mem.flashARMMemtop += 2
+
 	// choose size for the remainder of the flash memory and place at the flash
 	// origin value for architecture
 	const flashOverhead = 64000
