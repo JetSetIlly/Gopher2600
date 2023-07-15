@@ -114,13 +114,13 @@ type ARMState struct {
 	programMemoryOrigin uint32
 	programMemoryMemtop uint32
 
-	// currentExecutionMap records the function that implements the instruction group for each
+	// currentExecutionCache records the function that implements the instruction group for each
 	// opcode in program memory. must be reset every time programMemory is reassigned
 	//
 	// note that when executing from RAM (which isn't normal) it's possible for
-	// code to be modified (ie. self-modifying code). in that case currentExecutionMap
+	// code to be modified (ie. self-modifying code). in that case currentExecutionCache
 	// may be unreliable.
-	currentExecutionMap []decodeFunction
+	currentExecutionCache []decodeFunction
 
 	// if developer information is available then the emulation's stack protection will try to
 	// defend against the stack colliding with the top of variable memory
@@ -235,7 +235,7 @@ type ARM struct {
 	//
 	// allocated in NewARM() and added to in checkProgramMemory() if an entry
 	// does not exist
-	executionMap map[uint32][]decodeFunction
+	executionCache map[uint32][]decodeFunction
 
 	// only decode an instruction do not execute
 	decodeOnly bool
@@ -283,13 +283,13 @@ type ARM struct {
 // NewARM is the preferred method of initialisation for the ARM type.
 func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook) *ARM {
 	arm := &ARM{
-		prefs:        prefs,
-		mmap:         mmap,
-		mem:          mem,
-		hook:         hook,
-		byteOrder:    binary.LittleEndian,
-		executionMap: make(map[uint32][]decodeFunction),
-		disasmCache:  make(map[uint32]DisasmEntry),
+		prefs:          prefs,
+		mmap:           mmap,
+		mem:            mem,
+		hook:           hook,
+		byteOrder:      binary.LittleEndian,
+		executionCache: make(map[uint32][]decodeFunction),
+		disasmCache:    make(map[uint32]DisasmEntry),
 
 		// updated on every updatePrefs(). these are reasonable defaults
 		Clk:         70.0,
@@ -374,30 +374,28 @@ func (arm *ARM) Snapshot() *ARMState {
 // Useful when used in conjunction with the rewind system.
 //
 // The ARMState argument can be nil as a special case. If it is nil then the
-// existing state does not change. For some cartridge mappers this is
-// acceptable and more convenient.
+// existing state does not change. For some cartridge mappers this is acceptable
+// and more convenient
 func (arm *ARM) Plumb(state *ARMState, mem SharedMemory, hook CartridgeHook) {
-	if state != nil {
-		arm.state = state
-	}
-
 	arm.mem = mem
 	arm.hook = hook
 
 	// always clear caches on a plumb event
 	arm.ClearCaches()
 
-	// we should call checkProgramMemory() at this point bcause memory will have
-	// changed location along with the new ARM instance. however, error
-	// handling in the Plumb() function is unsufficient currently and we can
-	// safely defer the call to the Run() function, where it is called in any
-	// case
+	if state != nil {
+		arm.state = state
+
+		// if we're plumbing in a new state then we *must* reevaluate the
+		// pointer the program memory
+		arm.checkProgramMemory(true)
+	}
 }
 
 // ClearCaches should be used very rarely. It empties the instruction and
 // disassembly caches.
 func (arm *ARM) ClearCaches() {
-	arm.executionMap = make(map[uint32][]decodeFunction)
+	arm.executionCache = make(map[uint32][]decodeFunction)
 	arm.disasmCache = make(map[uint32]DisasmEntry)
 }
 
@@ -608,7 +606,7 @@ func (arm *ARM) Run() (mapper.CoProcYield, float32) {
 	arm.state.yield.Detail = arm.state.yield.Detail[:0]
 
 	// make sure program memory is correct
-	arm.checkProgramMemory()
+	arm.checkProgramMemory(false)
 	if arm.state.yield.Type != mapper.YieldRunning {
 		return arm.state.yield, 0
 	}
@@ -658,12 +656,14 @@ func (arm *ARM) BreakpointsEnable(enable bool) {
 	arm.breakpointsEnabled = enable
 }
 
-func (arm *ARM) checkProgramMemory() {
+func (arm *ARM) checkProgramMemory(force bool) {
 	addr := arm.state.registers[rPC]
 
-	if arm.state.programMemory != nil &&
-		addr >= arm.state.programMemoryOrigin && addr <= arm.state.programMemoryMemtop {
-		return
+	if !force {
+		if arm.state.programMemory != nil &&
+			addr >= arm.state.programMemoryOrigin && addr <= arm.state.programMemoryMemtop {
+			return
+		}
 	}
 
 	var origin uint32
@@ -688,11 +688,11 @@ func (arm *ARM) checkProgramMemory() {
 	arm.state.programMemoryOrigin = origin
 	arm.state.programMemoryMemtop = origin + uint32(len(*arm.state.programMemory)) - 1
 
-	if m, ok := arm.executionMap[arm.state.programMemoryOrigin]; ok {
-		arm.state.currentExecutionMap = m
+	if m, ok := arm.executionCache[arm.state.programMemoryOrigin]; ok {
+		arm.state.currentExecutionCache = m
 	} else {
-		arm.executionMap[arm.state.programMemoryOrigin] = make([]decodeFunction, len(*arm.state.programMemory))
-		arm.state.currentExecutionMap = arm.executionMap[arm.state.programMemoryOrigin]
+		arm.executionCache[arm.state.programMemoryOrigin] = make([]decodeFunction, len(*arm.state.programMemory))
+		arm.state.currentExecutionCache = arm.executionCache[arm.state.programMemoryOrigin]
 	}
 
 	arm.stackProtectCheckProgramMemory()
@@ -743,7 +743,7 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 		arm.state.executingPC = arm.state.registers[rPC] - 2
 
 		// check program memory and continue if it's fine
-		arm.checkProgramMemory()
+		arm.checkProgramMemory(false)
 		if arm.state.yield.Type == mapper.YieldRunning {
 			memIdx := int(arm.state.executingPC - arm.state.programMemoryOrigin)
 
@@ -946,10 +946,10 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 }
 
 func (arm *ARM) stepARM7TDMI(opcode uint16, memIdx int) {
-	f := arm.state.currentExecutionMap[memIdx]
+	f := arm.state.currentExecutionCache[memIdx]
 	if f == nil {
 		f = arm.decodeThumb(opcode)
-		arm.state.currentExecutionMap[memIdx] = f
+		arm.state.currentExecutionCache[memIdx] = f
 	}
 
 	// while the ARM7TDMI/Thumb instruction doesn't have 32bit instructions, in
@@ -977,10 +977,10 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 	if arm.state.function32bitDecoding {
 		arm.state.function32bitDecoding = false
 		arm.state.function32bitResolving = true
-		df = arm.state.currentExecutionMap[memIdx]
+		df = arm.state.currentExecutionCache[memIdx]
 		if df == nil {
 			df = arm.decode32bitThumb2(arm.state.function32bitOpcodeHi)
-			arm.state.currentExecutionMap[memIdx] = df
+			arm.state.currentExecutionCache[memIdx] = df
 		}
 	} else {
 		// the opcode is either a 16bit instruction or the first halfword for a
@@ -994,10 +994,10 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 			arm.state.function32bitDecoding = true
 			arm.state.function32bitOpcodeHi = opcode
 		} else {
-			df = arm.state.currentExecutionMap[memIdx]
+			df = arm.state.currentExecutionCache[memIdx]
 			if df == nil {
 				df = arm.decodeThumb2(opcode)
-				arm.state.currentExecutionMap[memIdx] = df
+				arm.state.currentExecutionCache[memIdx] = df
 			}
 		}
 

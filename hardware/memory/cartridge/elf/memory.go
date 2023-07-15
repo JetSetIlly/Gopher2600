@@ -133,7 +133,7 @@ type elfMemory struct {
 	yield mapper.CoProcYield
 }
 
-func newElfMemory(ef *elf.File) (*elfMemory, error) {
+func newElfMemory() *elfMemory {
 	mem := &elfMemory{
 		gpio:           newGPIO(),
 		sectionsByName: make(map[string]int),
@@ -142,7 +142,10 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 
 	// always using PlusCart model for now
 	mem.model = architecture.NewMap(architecture.PlusCart)
+	return mem
+}
 
+func (mem *elfMemory) decode(ef *elf.File) error {
 	// load sections
 	origin := mem.model.FlashOrigin
 	for _, sec := range ef.Sections {
@@ -164,7 +167,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 		} else {
 			section.data, err = sec.Data()
 			if err != nil {
-				return nil, fmt.Errorf("ELF: %w", err)
+				return fmt.Errorf("ELF: %w", err)
 			}
 		}
 
@@ -219,7 +222,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 	// symbols used during relocation
 	symbols, err := ef.Symbols()
 	if err != nil {
-		return nil, fmt.Errorf("ELF: %w", err)
+		return fmt.Errorf("ELF: %w", err)
 	}
 
 	// relocate all sections
@@ -232,7 +235,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 		// section being relocated
 		var secBeingRelocated *elfSection
 		if idx, ok := mem.sectionsByName[rel.Name[4:]]; !ok {
-			return nil, fmt.Errorf("ELF: could not find section corresponding to %s", rel.Name)
+			return fmt.Errorf("ELF: could not find section corresponding to %s", rel.Name)
 		} else {
 			secBeingRelocated = mem.sections[idx]
 		}
@@ -253,7 +256,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 		// (for some reason)
 		relData, err := rel.Data()
 		if err != nil {
-			return nil, fmt.Errorf("ELF: %w", err)
+			return fmt.Errorf("ELF: %w", err)
 		}
 
 		// every relocation entry
@@ -403,12 +406,12 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 				// page 32 of "SWS ESPC 0003 A-08"
 
 				if sym.Section == elf.SHN_UNDEF {
-					return nil, fmt.Errorf("ELF: %s is undefined", sym.Name)
+					return fmt.Errorf("ELF: %s is undefined", sym.Name)
 				}
 
 				n := ef.Sections[sym.Section].Name
 				if idx, ok := mem.sectionsByName[n]; !ok {
-					return nil, fmt.Errorf("ELF: can not find section (%s)", n)
+					return fmt.Errorf("ELF: can not find section (%s)", n)
 				} else {
 					v = mem.sections[idx].origin
 				}
@@ -444,7 +447,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 				logger.Logf("ELF", "relocate %s (%08x) => %08x", n, secBeingRelocated.origin+offset, opcode)
 
 			default:
-				return nil, fmt.Errorf("ELF: unhandled ARM relocation type (%v)", relType)
+				return fmt.Errorf("ELF: unhandled ARM relocation type (%v)", relType)
 			}
 		}
 	}
@@ -480,7 +483,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 	mem.sramOrigin = mem.model.SRAMOrigin
 	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram))
 
-	return mem, nil
+	return nil
 }
 
 func (mem *elfMemory) relocateStrongArmTable(table strongarmTable) uint32 {

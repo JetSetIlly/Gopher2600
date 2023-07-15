@@ -136,13 +136,14 @@ func NewElf(env *environment.Environment, pathToROM string, inACE bool) (mapper.
 		yieldHook: mapper.StubCartYieldHook{},
 	}
 
-	cart.mem, err = newElfMemory(ef)
-	if err != nil {
-		return nil, err
-	}
-
+	cart.mem = newElfMemory()
 	cart.arm = arm.NewARM(cart.mem.model, cart.env.Prefs.ARM, cart.mem, cart)
 	cart.mem.Plumb(cart.arm)
+	err = cart.mem.decode(ef)
+	if err != nil {
+		return cart, nil
+	}
+
 	cart.arm.SetByteOrder(ef.ByteOrder)
 
 	cart.mem.busStuffingInit()
