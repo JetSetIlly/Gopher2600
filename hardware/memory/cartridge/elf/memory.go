@@ -77,17 +77,21 @@ type elfMemory struct {
 	// input/output pins
 	gpio *gpio
 
-	// the different sectionsByName of the loaded ELF binary
-	sections       []*elfSection
-	sectionNames   []string
-	sectionsByName map[string]int
-
 	// RAM memory for the ARM
 	sram       []byte
 	sramOrigin uint32
 	sramMemtop uint32
 
-	// strongARM support
+	// the different sectionsByName of the loaded ELF binary
+	//
+	// note that there is no single block of flash memory. instead, flash memory
+	// is built of individual data arrays in each elfSections
+	sections       []*elfSection
+	sectionNames   []string
+	sectionsByName map[string]int
+
+	// strongARM support. like the elf sections, the strongARM program is placed
+	// in flash memory
 	strongArmProgram   []byte
 	strongArmOrigin    uint32
 	strongArmMemtop    uint32
@@ -191,8 +195,6 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				extend := make([]byte, section.trailingBytes)
 				section.data = append(section.data, extend...)
 				section.memtop += section.trailingBytes - 1
-			} else if section.executable {
-				panic("executable section created with no trailing bytes")
 			}
 
 			logger.Logf("ELF", "%s: %08x to %08x (%d) [%d trailing bytes]",
@@ -219,14 +221,13 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 	// sort section names
 	sort.Strings(mem.sectionNames)
 
-	// strongArm functions are added during relocation
+	// strongarm functions are added during relocation
 	mem.strongArmFunctions = make(map[uint32]strongArmFunction)
 	mem.strongArmOrigin = origin
-	mem.strongArmMemtop = origin
+	mem.strongArmMemtop = mem.strongArmOrigin
 
 	// equivalent map to strongArmFunctions which records whether the function
-	// yields to the VCS or expects the ARM to resume immediately on function
-	// end
+	// yields to the VCS or expects the ARM to resume immediately
 	mem.strongArmResumeImmediately = make(map[uint32]bool)
 
 	// symbols used during relocation
@@ -271,7 +272,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 
 		// every relocation entry
 		for i := 0; i < len(relData); i += 8 {
-			var v uint32
+			var tgt uint32
 
 			// the relocation entry fields
 			offset := ef.ByteOrder.Uint32(relData[i:])
@@ -291,95 +292,95 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				switch sym.Name {
 				// GPIO pins
 				case "ADDR_IDR":
-					v = uint32(mem.gpio.lookupOrigin | ADDR_IDR)
+					tgt = uint32(mem.gpio.lookupOrigin | ADDR_IDR)
 				case "DATA_ODR":
-					v = uint32(mem.gpio.lookupOrigin | DATA_ODR)
+					tgt = uint32(mem.gpio.lookupOrigin | DATA_ODR)
 				case "DATA_MODER":
-					v = uint32(mem.gpio.lookupOrigin | DATA_MODER)
+					tgt = uint32(mem.gpio.lookupOrigin | DATA_MODER)
 				case "DATA_IDR":
-					v = uint32(mem.gpio.lookupOrigin | DATA_IDR)
+					tgt = uint32(mem.gpio.lookupOrigin | DATA_IDR)
 
 				// strongARM functions
 				case "vcsWrite3":
-					v = mem.relocateStrongArmFunction(vcsWrite3, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsWrite3, false)
 					mem.usesBusStuffing = true
 				case "vcsPlp4Ex":
-					v = mem.relocateStrongArmFunction(vcsPlp4Ex, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsPlp4Ex, false)
 					mem.usesBusStuffing = true
 				case "vcsPla4Ex":
-					v = mem.relocateStrongArmFunction(vcsPla4Ex, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsPla4Ex, false)
 					mem.usesBusStuffing = true
 				case "vcsJmp3":
-					v = mem.relocateStrongArmFunction(vcsJmp3, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsJmp3, false)
 				case "vcsLda2":
-					v = mem.relocateStrongArmFunction(vcsLda2, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsLda2, false)
 				case "vcsSta3":
-					v = mem.relocateStrongArmFunction(vcsSta3, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsSta3, false)
 				case "SnoopDataBus":
-					v = mem.relocateStrongArmFunction(snoopDataBus, false)
+					tgt, err = mem.relocateStrongArmFunction(snoopDataBus, false)
 				case "vcsRead4":
-					v = mem.relocateStrongArmFunction(vcsRead4, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsRead4, false)
 				case "vcsStartOverblank":
-					v = mem.relocateStrongArmFunction(vcsStartOverblank, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsStartOverblank, false)
 				case "vcsEndOverblank":
-					v = mem.relocateStrongArmFunction(vcsEndOverblank, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsEndOverblank, false)
 				case "vcsLdaForBusStuff2":
-					v = mem.relocateStrongArmFunction(vcsLdaForBusStuff2, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsLdaForBusStuff2, false)
 				case "vcsLdxForBusStuff2":
-					v = mem.relocateStrongArmFunction(vcsLdxForBusStuff2, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsLdxForBusStuff2, false)
 				case "vcsLdyForBusStuff2":
-					v = mem.relocateStrongArmFunction(vcsLdyForBusStuff2, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsLdyForBusStuff2, false)
 				case "vcsWrite5":
-					v = mem.relocateStrongArmFunction(vcsWrite5, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsWrite5, false)
 				case "vcsLdx2":
-					v = mem.relocateStrongArmFunction(vcsLdx2, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsLdx2, false)
 				case "vcsLdy2":
-					v = mem.relocateStrongArmFunction(vcsLdy2, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsLdy2, false)
 				case "vcsSta4":
-					v = mem.relocateStrongArmFunction(vcsSta4, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsSta4, false)
 				case "vcsStx3":
-					v = mem.relocateStrongArmFunction(vcsStx3, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsStx3, false)
 				case "vcsStx4":
-					v = mem.relocateStrongArmFunction(vcsStx4, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsStx4, false)
 				case "vcsSty3":
-					v = mem.relocateStrongArmFunction(vcsSty3, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsSty3, false)
 				case "vcsSty4":
-					v = mem.relocateStrongArmFunction(vcsSty4, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsSty4, false)
 				case "vcsSax3":
-					v = mem.relocateStrongArmFunction(vcsSax3, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsSax3, false)
 				case "vcsTxs2":
-					v = mem.relocateStrongArmFunction(vcsTxs2, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsTxs2, false)
 				case "vcsJsr6":
-					v = mem.relocateStrongArmFunction(vcsJsr6, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsJsr6, false)
 				case "vcsNop2":
-					v = mem.relocateStrongArmFunction(vcsNop2, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsNop2, false)
 				case "vcsNop2n":
-					v = mem.relocateStrongArmFunction(vcsNop2n, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsNop2n, false)
 				case "vcsPhp3":
-					v = mem.relocateStrongArmFunction(vcsPhp3, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsPhp3, false)
 				case "vcsPlp4":
-					v = mem.relocateStrongArmFunction(vcsPlp4, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsPlp4, false)
 				case "vcsPla4":
-					v = mem.relocateStrongArmFunction(vcsPla4, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsPla4, false)
 				case "vcsCopyOverblankToRiotRam":
-					v = mem.relocateStrongArmFunction(vcsCopyOverblankToRiotRam, false)
+					tgt, err = mem.relocateStrongArmFunction(vcsCopyOverblankToRiotRam, false)
 
 				// C library functions that are often not linked but required
 				case "randint":
-					v = mem.relocateStrongArmFunction(randint, true)
+					tgt, err = mem.relocateStrongArmFunction(randint, true)
 				case "memset":
-					v = mem.relocateStrongArmFunction(memset, true)
+					tgt, err = mem.relocateStrongArmFunction(memset, true)
 				case "memcpy":
-					v = mem.relocateStrongArmFunction(memcpy, true)
+					tgt, err = mem.relocateStrongArmFunction(memcpy, true)
 				case "__aeabi_idiv":
 					// sometimes linked when building for ARMv6-M target
-					v = mem.relocateStrongArmFunction(__aeabi_idiv, true)
+					tgt, err = mem.relocateStrongArmFunction(__aeabi_idiv, true)
 
 				// strongARM tables
 				case "ReverseByte":
-					v = mem.relocateStrongArmTable(reverseByteTable)
+					tgt = mem.relocateStrongArmTable(reverseByteTable)
 				case "ColorLookup":
-					v = mem.relocateStrongArmTable(ntscColorTable)
+					tgt = mem.relocateStrongArmTable(ntscColorTable)
 
 				default:
 					if sym.Section != elf.SHN_UNDEF {
@@ -387,25 +388,33 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 						if idx, ok := mem.sectionsByName[n]; !ok {
 							logger.Logf("ELF", "can not find section (%s) while relocating %s", n, sym.Name)
 						} else {
-							v = mem.sections[idx].origin
-							v += uint32(sym.Value)
+							tgt = mem.sections[idx].origin
+							tgt += uint32(sym.Value)
 						}
 					}
 				}
 
+				if err != nil {
+					return err
+				}
+
 				// add placeholder value to relocation address
 				addend := ef.ByteOrder.Uint32(secBeingRelocated.data[offset:])
-				v += addend
+				tgt += addend
 
 				// check address is recognised
-				if mappedData, _ := mem.MapAddress(v, false); mappedData == nil {
+				if mappedData, _ := mem.mapAddress(tgt, false); mappedData == nil {
 					continue
 				}
 
 				// commit write
-				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], v)
+				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], tgt)
 
-				logger.Logf("ELF", "relocate %s (%08x) => %08x", sym.Name, secBeingRelocated.origin+offset, v)
+				// log relocation address. note that in the case of strongarm
+				// functions, because of how BLX works, the target address
+				// printed below is not the address the execution will start at
+				logger.Logf("ELF", "relocate %s (%08x) => %08x",
+					sym.Name, secBeingRelocated.origin+offset, tgt)
 
 			case elf.R_ARM_THM_PC22:
 				// this value is labelled R_ARM_THM_CALL in objdump output
@@ -423,17 +432,17 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				if idx, ok := mem.sectionsByName[n]; !ok {
 					return fmt.Errorf("ELF: can not find section (%s)", n)
 				} else {
-					v = mem.sections[idx].origin
+					tgt = mem.sections[idx].origin
 				}
-				v += uint32(sym.Value)
-				v &= 0xfffffffe
-				v -= (secBeingRelocated.origin + offset + 4)
+				tgt += uint32(sym.Value)
+				tgt &= 0xfffffffe
+				tgt -= (secBeingRelocated.origin + offset + 4)
 
-				imm11 := (v >> 1) & 0x7ff
-				imm10 := (v >> 12) & 0x3ff
-				t1 := (v >> 22) & 0x01
-				t2 := (v >> 23) & 0x01
-				s := (v >> 24) & 0x01
+				imm11 := (tgt >> 1) & 0x7ff
+				imm10 := (tgt >> 12) & 0x3ff
+				t1 := (tgt >> 22) & 0x01
+				t2 := (tgt >> 23) & 0x01
+				s := (tgt >> 24) & 0x01
 				j1 := uint32(0)
 				j2 := uint32(0)
 				if t1 == 0x01 {
@@ -462,7 +471,10 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 		}
 	}
 
-	// strongarm program has been created so we can output the address information
+	// strongarm program has been created so we adjust the memtop value
+	mem.strongArmMemtop -= 1
+
+	// strongarm address information
 	logger.Logf("ELF", "strongarm: %08x to %08x (%d)",
 		mem.strongArmOrigin, mem.strongArmMemtop, len(mem.strongArmProgram))
 
@@ -509,9 +521,17 @@ func (mem *elfMemory) relocateStrongArmTable(table strongarmTable) uint32 {
 	return addr
 }
 
-func (mem *elfMemory) relocateStrongArmFunction(f strongArmFunction, support bool) uint32 {
+func (mem *elfMemory) relocateStrongArmFunction(f strongArmFunction, support bool) (uint32, error) {
+	// strongarm functions must be on a 16bit boundary. I don't believe this
+	// should ever happen with ELF but if it does we can add a padding byte to
+	// correct. but for now, return an error so that we're forced to notice it
+	// if it every arises
+	if mem.strongArmOrigin&0x01 == 0x01 {
+		return 0, fmt.Errorf("ELF: misalignment of executable code. strongarm will be unreachable")
+	}
+
 	// address of new function in memory
-	addr := mem.strongArmMemtop + 3
+	addr := mem.strongArmMemtop
 
 	// function ID of this strongArm function (for this ROM)
 	mem.strongArmFunctions[addr] = f
@@ -526,7 +546,15 @@ func (mem *elfMemory) relocateStrongArmFunction(f strongArmFunction, support boo
 	// immediately
 	mem.strongArmResumeImmediately[addr] = support
 
-	return addr - 2
+	// although the code location of a strongarm function must be on a 16bit
+	// boundary, the code is reached by interwork branching. we're using the
+	// Thumb-2 instruction set so this means that the zero bit of the address
+	// must be set to one
+	//
+	// interwork branching uses the BLX instruction. BLX ignores bit zero of the
+	// address. this means that the correct (aligned) address will be used when
+	// setting the program counter
+	return addr | 0b01, nil
 }
 
 // Snapshot implements the mapper.CartMapper interface.
@@ -567,6 +595,33 @@ func (mem *elfMemory) Plumb(arm interruptARM) {
 
 // MapAddress implements the arm.SharedMemory interface.
 func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
+	if addr >= mem.strongArmOrigin && addr <= mem.strongArmMemtop {
+		// strongarm functions are indexed by the address of the first
+		// instruction in the function
+		//
+		// however, MapAddress() is called with an address equal to the
+		// execution address plus one. the plus one is intended to make sure
+		// that the memory area is big enough when decoding 16bit instructions.
+		// (ie. if the ARM has jumped to the last address in a memory area then
+		// MapAddress() will return nil)
+		//
+		// with that in mind we must lookup the address minus one to determine
+		// if the call address is a strongarm function. if it is not then that
+		// means the ARM program has jumped to the wrong address
+		if f, ok := mem.strongArmFunctions[addr-1]; ok {
+			mem.setStrongArmFunction(f)
+			mem.arm.Interrupt()
+			mem.resumeARMimmediately = mem.strongArmResumeImmediately[addr-1]
+		} else {
+			logger.Logf("ELF", "strongarm function lookup failed: %8x", addr-1)
+		}
+		return &mem.strongArmProgram, mem.strongArmOrigin
+	}
+
+	return mem.mapAddress(addr, write)
+}
+
+func (mem *elfMemory) mapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	if addr >= mem.gpio.dataOrigin && addr <= mem.gpio.dataMemtop {
 		if !write && addr == mem.gpio.dataOrigin|ADDR_IDR {
 			mem.arm.Interrupt()
@@ -580,13 +635,8 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	if addr >= mem.sramOrigin && addr <= mem.sramMemtop {
 		return &mem.sram, mem.sramOrigin
 	}
-	if addr >= mem.strongArmOrigin && addr <= mem.strongArmMemtop {
-		if f, ok := mem.strongArmFunctions[addr+1]; ok {
-			mem.setStrongArmFunction(f)
-			mem.arm.Interrupt()
 
-			mem.resumeARMimmediately = mem.strongArmResumeImmediately[addr+1]
-		}
+	if addr >= mem.strongArmOrigin && addr <= mem.strongArmMemtop {
 		return &mem.strongArmProgram, mem.strongArmOrigin
 	}
 
@@ -672,7 +722,7 @@ func (mem *elfMemory) Reference(segment string) ([]uint8, bool) {
 
 // Read8bit implements the mapper.CartStatic interface
 func (m *elfMemory) Read8bit(addr uint32) (uint8, bool) {
-	mem, origin := m.MapAddress(addr, false)
+	mem, origin := m.mapAddress(addr, false)
 	addr -= origin
 	if mem == nil || addr >= uint32(len(*mem)) {
 		return 0, false
@@ -682,7 +732,7 @@ func (m *elfMemory) Read8bit(addr uint32) (uint8, bool) {
 
 // Read16bit implements the mapper.CartStatic interface
 func (m *elfMemory) Read16bit(addr uint32) (uint16, bool) {
-	mem, origin := m.MapAddress(addr, false)
+	mem, origin := m.mapAddress(addr, false)
 	addr -= origin
 	if mem == nil || len(*mem) < 2 || addr >= uint32(len(*mem)-1) {
 		return 0, false
@@ -693,7 +743,7 @@ func (m *elfMemory) Read16bit(addr uint32) (uint16, bool) {
 
 // Read32bit implements the mapper.CartStatic interface
 func (m *elfMemory) Read32bit(addr uint32) (uint32, bool) {
-	mem, origin := m.MapAddress(addr, false)
+	mem, origin := m.mapAddress(addr, false)
 	addr -= origin
 	if mem == nil || len(*mem) < 4 || addr >= uint32(len(*mem)-3) {
 		return 0, false

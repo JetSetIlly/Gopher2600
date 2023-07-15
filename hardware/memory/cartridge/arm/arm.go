@@ -657,7 +657,17 @@ func (arm *ARM) BreakpointsEnable(enable bool) {
 }
 
 func (arm *ARM) checkProgramMemory(force bool) {
-	addr := arm.state.registers[rPC]
+	// the address to use for program memory lookup
+	//
+	// the plus one to the executingPC value is intended to make sure that we're
+	// not jumping to the very last byte of a memory block, if we did then 16bit
+	// instruction lookup would fail
+	//
+	// important: some implementations of the SharedMemory interface will be
+	// sensitive to the address value used with MapAddress(). therefore, how the
+	// addr value is determined should never change - it may work with some
+	// mappers but will fail with others
+	addr := arm.state.executingPC + 1
 
 	if !force {
 		if arm.state.programMemory != nil &&
@@ -669,13 +679,9 @@ func (arm *ARM) checkProgramMemory(force bool) {
 	var origin uint32
 	arm.state.programMemory, origin = arm.mem.MapAddress(addr, false)
 	if arm.state.programMemory == nil {
-		addr = arm.state.executingPC
-		arm.state.programMemory, origin = arm.mem.MapAddress(addr, false)
-		if arm.state.programMemory == nil {
-			arm.state.yield.Type = mapper.YieldMemoryAccessError
-			arm.state.yield.Error = fmt.Errorf("can't find program memory (PC %08x)", addr)
-			return
-		}
+		arm.state.yield.Type = mapper.YieldMemoryAccessError
+		arm.state.yield.Error = fmt.Errorf("can't find program memory (PC %08x)", addr)
+		return
 	}
 
 	if !arm.mem.IsExecutable(addr) {
