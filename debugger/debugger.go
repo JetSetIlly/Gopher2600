@@ -858,27 +858,27 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 }
 
 // CartYield implements the mapper.CartYieldHook interface.
-func (dbg *Debugger) CartYield(yield mapper.CoProcYieldType) bool {
+func (dbg *Debugger) CartYield(yield mapper.CoProcYieldType) mapper.YieldHookResponse {
 	// if the emulator wants to quit we need to return true to instruct the
 	// cartridge to return to the main loop immediately
 	if !dbg.running {
-		return true
+		return mapper.YieldHookEnd
 	}
 
 	switch yield {
 	case mapper.YieldProgramEnded:
 		// expected reason for CDF and DPC+ cartridges
-		return false
+		return mapper.YieldHookContinue
 
 	case mapper.YieldSyncWithVCS:
 		// expected reason for ACE and ELF cartridges
-		return false
+		return mapper.YieldHookContinue
 	}
 
 	// if emulation is in the initialisation state then we return true to
 	// indicate that the yield is not safe and execution should halt immediately
 	if dbg.State() == govern.Initialising {
-		return true
+		return mapper.YieldHookEnd
 	}
 
 	dbg.halting.cartridgeYield = true
@@ -893,7 +893,7 @@ func (dbg *Debugger) CartYield(yield mapper.CoProcYieldType) bool {
 		dbg.inputLoop(dbg.term, true)
 	}
 
-	return false
+	return mapper.YieldHookEnd
 }
 
 func (dbg *Debugger) run() error {

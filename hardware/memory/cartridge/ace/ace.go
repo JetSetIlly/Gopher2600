@@ -102,6 +102,7 @@ func (cart *Ace) PlumbFromDifferentEmulation(env *environment.Environment) {
 	cart.mem.Plumb(cart.arm)
 	cart.arm.Plumb(cart.armState, cart.mem, cart)
 	cart.armState = nil
+	cart.yieldHook = mapper.StubCartYieldHook{}
 }
 
 // Plumb implements the mapper.CartMapper interface.
@@ -147,18 +148,20 @@ func (cart *Ace) Patch(_ int, _ uint8) error {
 	return fmt.Errorf("ACE: patching unsupported")
 }
 
-func (cart *Ace) runARM() {
+func (cart *Ace) runARM() bool {
 	// call arm once and then check for yield conditions
 	cart.mem.yield, _ = cart.arm.Run()
 
-	// keep calling runArm() for as long as program does not need to sync with the VCS...
+	// keep calling runArm() for as long as program does not need to sync with the VCS
 	for cart.mem.yield.Type != mapper.YieldSyncWithVCS {
-		// ... or if the yield hook says to return to the VCS immedtiately
-		if cart.yieldHook.CartYield(cart.mem.yield.Type) {
-			return
+		switch cart.yieldHook.CartYield(cart.mem.yield.Type) {
+		case mapper.YieldHookEnd:
+			return false
+		case mapper.YieldHookContinue:
+			cart.mem.yield, _ = cart.arm.Run()
 		}
-		cart.mem.yield, _ = cart.arm.Run()
 	}
+	return true
 }
 
 // AccessPassive implements the mapper.CartMapper interface.

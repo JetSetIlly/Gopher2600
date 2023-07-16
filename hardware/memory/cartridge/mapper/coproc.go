@@ -71,26 +71,32 @@ const (
 	CoProcParallel
 )
 
+// YieldHookResponse is returned by the CartYieldHook implementation to instruct
+// the mapper in how to proceed
+type YieldHookResponse int
+
+// List of valid YieldHookCommands
+const (
+	YieldHookContinue YieldHookResponse = iota
+	YieldHookEnd
+)
+
 // CartYieldHook allows a cartridge to halt execution if the cartridge
 // coprocessor has reached a breakpoint or some other yield point (eg.
 // undefined behaviour)
 type CartYieldHook interface {
-	// CartYield returns true if the yield type cannot be handled without
-	// breaking into a debugging loop
-	//
-	// CartYield will also return true if the cartridge mapper should cancel
-	// coprocessing immediately
-	//
-	// all other yield reasons will return false
-	CartYield(CoProcYieldType) bool
+	CartYield(CoProcYieldType) YieldHookResponse
 }
 
 // StubCartYieldHook is a stub implementation for the CartYieldHook interface.
 type StubCartYieldHook struct{}
 
 // CartYield is a stub implementation for the CartYieldHook interface.
-func (_ StubCartYieldHook) CartYield(_ CoProcYieldType) bool {
-	return true
+func (_ StubCartYieldHook) CartYield(yld CoProcYieldType) YieldHookResponse {
+	if yld.Normal() {
+		return YieldHookContinue
+	}
+	return YieldHookEnd
 }
 
 // CartCoProc is implemented by cartridge mappers that have a coprocessor that

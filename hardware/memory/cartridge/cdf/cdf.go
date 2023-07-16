@@ -162,6 +162,7 @@ func (cart *cdf) Plumb(env *environment.Environment) {
 func (cart *cdf) PlumbFromDifferentEmulation(env *environment.Environment) {
 	cart.env = env
 	cart.arm = arm.NewARM(cart.version.mmap, cart.env.Prefs.ARM, cart.state.static, cart)
+	cart.yieldHook = &mapper.StubCartYieldHook{}
 }
 
 // Reset implements the mapper.CartMapper interface.
@@ -381,13 +382,15 @@ func (cart *cdf) AccessVolatile(addr uint16, data uint8, poke bool) error {
 			// call runArm() once and then check for yield conditions
 			cart.state.yield = cart.runArm()
 
-			// keep calling runArm() for as long as program has not ended...
+			// keep calling runArm() for as long as program has not ended
 			for cart.state.yield.Type != mapper.YieldProgramEnded {
-				// ... or if the yield hook says to return to the VCS immediately
-				if cart.yieldHook.CartYield(cart.state.yield.Type) {
-					break // for loop
+				fmt.Printf("3 %p\n", cart.yieldHook)
+				switch cart.yieldHook.CartYield(cart.state.yield.Type) {
+				case mapper.YieldHookEnd:
+					break
+				case mapper.YieldHookContinue:
+					cart.state.yield = cart.runArm()
 				}
-				cart.state.yield = cart.runArm()
 			}
 		}
 

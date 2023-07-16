@@ -175,16 +175,24 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, numFrames int) {
 			thmb.isEmulating.Store(false)
 		}()
 
-		err := setup.AttachCartridge(thmb.vcs, cartload, true)
+		// not resetting with attach cartridge becasue
+		err := setup.AttachCartridge(thmb.vcs, cartload, false)
 		if err != nil {
 			logger.Logf("thumbnailer", err.Error())
 			return
 		}
 
+		// add yield hook
+		thmb.vcs.Mem.Cart.SetYieldHook(thmb)
+
+		// reset after setting the yield hook
+		thmb.vcs.Reset()
+
 		// if we get to this point then we can be reasonably sure that the
 		// cartridgeloader is emulatable
 		thmb.isEmulating.Store(true)
 
+		// run until target frame has been generated
 		tgtFrame := thmb.vcs.TV.GetCoords().Frame + numFrames
 
 		err = thmb.vcs.Run(func() (govern.State, error) {
@@ -204,6 +212,22 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, numFrames int) {
 			return
 		}
 	}()
+}
+
+// CartYield implements the mapper.CartYieldHook interface.
+func (thmb *Anim) CartYield(yield mapper.CoProcYieldType) mapper.YieldHookResponse {
+	if yield.Normal() {
+		return mapper.YieldHookContinue
+	}
+
+	// an unexpected yield type so end the thumbnail emulation
+	select {
+	case thmb.emulationQuit <- true:
+	default:
+	}
+
+	// indicate that the mapper should return immediately
+	return mapper.YieldHookEnd
 }
 
 // Resize implements the television.PixelRenderer interface

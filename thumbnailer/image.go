@@ -24,6 +24,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -99,7 +100,7 @@ func (thmb *Image) String() string {
 }
 
 func (thmb *Image) wait() {
-	// drain existing emulationQuit channel
+	// drain emulationQuit channel
 	select {
 	case <-thmb.emulationQuit:
 	default:
@@ -135,6 +136,9 @@ func (thmb *Image) Create(state *rewind.State) {
 	// emulator still remaining
 	thmb.vcs.DetatchEmulationExtras()
 
+	// add yield hook
+	thmb.vcs.Mem.Cart.SetYieldHook(thmb)
+
 	// run until target frame has been generated
 	tgtFrame := thmb.vcs.TV.GetCoords().Frame + 1
 
@@ -155,6 +159,22 @@ func (thmb *Image) Create(state *rewind.State) {
 		logger.Logf("thumbnailer", err.Error())
 		return
 	}
+}
+
+// CartYield implements the mapper.CartYieldHook interface.
+func (thmb *Image) CartYield(yield mapper.CoProcYieldType) mapper.YieldHookResponse {
+	if yield.Normal() {
+		return mapper.YieldHookContinue
+	}
+
+	// an unexpected yield type so end the thumbnail emulation
+	select {
+	case thmb.emulationQuit <- true:
+	default:
+	}
+
+	// indicate that the mapper should return immediately
+	return mapper.YieldHookEnd
 }
 
 // Resize implements the television.PixelRenderer interface

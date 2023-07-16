@@ -190,6 +190,7 @@ func (cart *Elf) PlumbFromDifferentEmulation(env *environment.Environment) {
 	cart.mem.Plumb(cart.arm)
 	cart.arm.Plumb(cart.armState, cart.mem, cart)
 	cart.armState = nil
+	cart.yieldHook = &mapper.StubCartYieldHook{}
 }
 
 // Plumb implements the mapper.CartMapper interface.
@@ -247,7 +248,7 @@ func (cart *Elf) Patch(_ int, _ uint8) error {
 	return fmt.Errorf("ELF: patching unsupported")
 }
 
-func (cart *Elf) runARM() {
+func (cart *Elf) runARM() bool {
 	if cart.dev != nil {
 		cart.dev.StartProfiling()
 		defer cart.dev.ProcessProfiling()
@@ -259,11 +260,15 @@ func (cart *Elf) runARM() {
 	// keep calling runArm() for as long as program does not need to sync with the VCS...
 	for cart.mem.yield.Type != mapper.YieldSyncWithVCS {
 		// ... or if the yield hook says to return to the VCS immediately
-		if cart.yieldHook.CartYield(cart.mem.yield.Type) {
-			return
+		switch cart.yieldHook.CartYield(cart.mem.yield.Type) {
+		case mapper.YieldHookEnd:
+			return false
+		case mapper.YieldHookContinue:
+			cart.mem.yield, _ = cart.arm.Run()
 		}
 		cart.mem.yield, _ = cart.arm.Run()
 	}
+	return true
 }
 
 // try to run strongarm function. returns success.
