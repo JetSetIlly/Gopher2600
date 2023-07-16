@@ -86,7 +86,7 @@ func (lmtr *limiter) init(tv *Television) {
 	lmtr.measured.Store(float32(0))
 	lmtr.pulse = time.NewTicker(time.Millisecond * 10)
 	lmtr.measureTime = time.Now()
-	lmtr.measuringPulse = time.NewTicker(time.Millisecond * 900)
+	lmtr.measuringPulse = time.NewTicker(time.Millisecond * 10)
 }
 
 func (lmtr *limiter) setRefreshRate(refreshRate float32) {
@@ -129,11 +129,11 @@ func (lmtr *limiter) setRate(fps float32) {
 
 // checkFrame should be called every frame.
 func (lmtr *limiter) checkFrame() {
+	lmtr.measureCt++
+
 	if lmtr.nudge > 0 {
 		lmtr.nudge--
 	} else {
-		lmtr.measureCt++
-
 		if lmtr.active {
 			lmtr.pulseCt++
 			if lmtr.pulseCt >= lmtr.pulseCtLimit {
