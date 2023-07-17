@@ -121,6 +121,11 @@ func (mc *CPU) String() string {
 		mc.SP.Label(), mc.SP, mc.Status.Label(), mc.Status)
 }
 
+// SetRDY sets the CPU RDY flag. equivalent to pin 3 of the 6507
+func (mc *CPU) SetRDY(rdy bool) {
+	mc.RdyFlg = rdy
+}
+
 // Reset reinitialises all registers. Does not load PC with RESET vector. Use
 // cpu.LoadPCIndirect(cpubus.Reset) when appropriate.
 func (mc *CPU) Reset() {

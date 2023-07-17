@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/environment"
-	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -33,6 +32,11 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 	"github.com/jetsetilly/gopher2600/logger"
 )
+
+// CPU defines the CPU functions required by the TIA type.
+type CPU interface {
+	SetRDY(bool)
+}
 
 // TV defines the television functions required by the TIA type.
 type TV interface {
@@ -52,6 +56,7 @@ type RIOTports interface {
 type TIA struct {
 	env *environment.Environment
 
+	cpu CPU
 	tv  TV
 	mem chipbus.Memory
 
@@ -77,9 +82,6 @@ type TIA struct {
 	// on depending on the HMOVE latch. it is also used to control when sprite
 	// counters are ticked.
 	Hblank bool
-
-	// wsync records whether the cpu is to halt until hsync resets to 000000
-	rdyFlag *bool
 
 	// Hmove information
 	Hmove hmove.Hmove
@@ -137,14 +139,14 @@ func (tia *TIA) String() string {
 }
 
 // NewTIA creates a TIA, to be used in a VCS emulation.
-func NewTIA(env *environment.Environment, tv TV, mem chipbus.Memory, riot RIOTports, cpu *cpu.CPU) (*TIA, error) {
+func NewTIA(env *environment.Environment, tv TV, mem chipbus.Memory, riot RIOTports, cpu CPU) (*TIA, error) {
 	tia := &TIA{
-		env:     env,
-		tv:      tv,
-		mem:     mem,
-		riot:    riot,
-		Hblank:  true,
-		rdyFlag: &cpu.RdyFlg,
+		env:    env,
+		cpu:    cpu,
+		tv:     tv,
+		mem:    mem,
+		riot:   riot,
+		Hblank: true,
 	}
 
 	tia.Audio = audio.NewAudio(env)
@@ -167,12 +169,12 @@ func (tia *TIA) Snapshot() *TIA {
 }
 
 // Plumb the a new ChipBus into the TIA.
-func (tia *TIA) Plumb(env *environment.Environment, tv TV, mem chipbus.Memory, riot RIOTports, cpu *cpu.CPU) {
+func (tia *TIA) Plumb(env *environment.Environment, tv TV, mem chipbus.Memory, riot RIOTports, cpu CPU) {
 	tia.env = env
+	tia.cpu = cpu
 	tia.tv = tv
 	tia.mem = mem
 	tia.riot = riot
-	tia.rdyFlag = &cpu.RdyFlg
 	tia.Video.Plumb(tia.env, tia.mem, tia.tv, &tia.PClk, &tia.hsync, &tia.Hblank, &tia.Hmove)
 	tia.Audio.Plumb(tia.env)
 }
@@ -204,7 +206,7 @@ func (tia *TIA) Update(data chipbus.ChangedRegister) bool {
 		// CPU has indicated that it wants to wait for the beginning of the
 		// next scanline. value is reset to false when TIA reaches end of
 		// scanline
-		*tia.rdyFlag = false
+		tia.cpu.SetRDY(false)
 		return false
 
 	case cpubus.RSYNC:
@@ -304,7 +306,7 @@ func (tia *TIA) newScanline() {
 	// "...WSYNC latch is automatically reset to zero by the
 	// leading edge of the next horizontal blank timing signal,
 	// releasing the RDY line"
-	*tia.rdyFlag = true
+	tia.cpu.SetRDY(true)
 
 	// start HBLANK. start of new scanline for the TIA. turn hblank
 	// on
