@@ -199,16 +199,28 @@ func newAceMemory(data []byte) (*aceMemory, error) {
 	}
 
 	// placing nullFunction at end of ARM program
-	nullFunctionAddress := mem.flashARMMemtop + 2
+	nullFunctionAddress := mem.flashARMMemtop + 1
+
+	// the code location of the null function must be on a 16bit boundary
+	if nullFunctionAddress&0x01 == 0x01 {
+		logger.Logf("ACE", "correcting alignment at end of ARM program")
+		mem.flashARM = append(mem.flashARM, 0x00)
+		mem.flashARMMemtop++
+		nullFunctionAddress++
+	}
+
 	mem.flashARM = append(mem.flashARM, nullFunction...)
 	mem.flashARMMemtop += uint32(len(nullFunction))
 
-	// add a two byte buffer at the end of ARM memory. this is so that the ARM
-	// can execute the last instruction in the program (which will hopefully be
-	// a branching instruction) without the program counter running past the end
-	// of the array
-	mem.flashARM = append(mem.flashARM, 0x00, 0x00)
-	mem.flashARMMemtop += 2
+	// although the code location of the null function is on a 16bit boundary
+	// (see above), the code is reached by interwork branching. we're using the
+	// Thumb-2 instruction set so this means that the zero bit of the address
+	// must be set to one
+	//
+	// interwork branching uses the BLX instruction. BLX ignores bit zero of the
+	// address. this means that the correct (aligned) address will be used when
+	// setting the program counter
+	nullFunctionAddress |= 0x01
 
 	// choose size for the remainder of the flash memory and place at the flash
 	// origin value for architecture
