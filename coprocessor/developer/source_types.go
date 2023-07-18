@@ -131,11 +131,6 @@ type SourceLine struct {
 	// whether this line is to be found inlined elsewhere in the program
 	Inlined bool
 
-	// whether this line can have a breakpoint on it as recommended by the DWARF data. BreakAddress
-	// is meaningless if breakable is false
-	breakable    bool
-	breakAddress []uint64
-
 	// plain string of line
 	PlainContent string
 

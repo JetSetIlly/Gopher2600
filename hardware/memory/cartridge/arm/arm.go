@@ -100,6 +100,13 @@ type ARMState struct {
 	executingPC   uint32
 	instructionPC uint32
 
+	// was the most recent instruction a result of a branch or another
+	// instruction that has altered the program counter in some way
+	//
+	// this flag affects the number of cycles consumed by an instruction and
+	// also how we treat breakpoints
+	branchedExecution bool
+
 	// the current stack frame of the execution
 	stackFrame uint32
 
@@ -420,11 +427,15 @@ func (arm *ARM) resetRegisters() {
 		arm.state.registers[i] = 0x00000000
 	}
 
+	preResetPC := arm.state.registers[rPC]
 	arm.state.registers[rSP], arm.state.registers[rLR], arm.state.registers[rPC] = arm.mem.ResetVectors()
 	arm.state.stackFrame = arm.state.registers[rSP]
 
 	// set executingPC to be two behind the current value in the PC register
 	arm.state.executingPC = arm.state.registers[rPC] - 2
+
+	// if the PC value has changed then the reset procedure is treated like a branch
+	arm.state.branchedExecution = preResetPC != arm.state.registers[rPC]
 
 	// reset prefectch cycle value
 	arm.state.prefetchCycle = S
@@ -573,7 +584,9 @@ func (arm *ARM) Run() (mapper.CoProcYield, float32) {
 	if arm.dev != nil {
 		defer func() {
 			arm.logYield()
-			arm.dev.OnYield(arm.state.instructionPC, arm.state.registers[rPC], arm.state.yield)
+			if arm.state.yield.Type != mapper.YieldBreakpoint {
+				arm.dev.OnYield(arm.state.registers[rPC], arm.state.yield)
+			}
 		}()
 	}
 
@@ -748,207 +761,227 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 		// value used in an executing instruction is always two instructions ahead of the address."
 		arm.state.executingPC = arm.state.registers[rPC] - 2
 
-		// check program memory and continue if it's fine
-		arm.checkProgramMemory(false)
+		arm.checkBreakpoints()
 		if arm.state.yield.Type == mapper.YieldRunning {
-			memIdx := int(arm.state.executingPC - arm.state.programMemoryOrigin)
 
-			// opcode for executed instruction
-			opcode := uint16((*arm.state.programMemory)[memIdx]) | (uint16((*arm.state.programMemory)[memIdx+1]) << 8)
+			// check program memory and continue if it's fine
+			arm.checkProgramMemory(false)
+			if arm.state.yield.Type == mapper.YieldRunning {
+				memIdx := int(arm.state.executingPC - arm.state.programMemoryOrigin)
 
-			// bump PC counter for prefetch. actual prefetch is done after execution
-			arm.state.registers[rPC] += 2
+				// opcode for executed instruction
+				opcode := uint16((*arm.state.programMemory)[memIdx]) | (uint16((*arm.state.programMemory)[memIdx+1]) << 8)
 
-			// expectedPC is used to decide whether to add cycles due to
-			// pipeline filling
-			expectedPC := arm.state.registers[rPC]
+				// bump PC counter for prefetch. actual prefetch is done after execution
+				arm.state.registers[rPC] += 2
 
-			// expectedLR is used to change the stack frame information
-			expectedLR := arm.state.registers[rLR]
+				// expectedPC is used to decide whether to add cycles due to pipeline filling
+				expectedPC := arm.state.registers[rPC]
 
-			// expectedSP is used to decide whether to check the stack pointer
-			// for collision with other memory errors
-			expectedSP := arm.state.registers[rSP]
+				// expectedLR is used to change the stack frame information
+				expectedLR := arm.state.registers[rLR]
 
-			arm.stepFunction(opcode, memIdx)
+				// expectedSP is used to decide whether to check the stack pointer
+				// for collision with other memory errors
+				expectedSP := arm.state.registers[rSP]
 
-			if !arm.immediateMode {
-				// add additional cycles required to fill pipeline before next iteration
-				if expectedPC != arm.state.registers[rPC] {
-					arm.fillPipeline()
-				}
+				arm.stepFunction(opcode, memIdx)
 
-				// prefetch cycle for next instruction is associated with and counts
-				// towards the total of the current instruction. most prefetch cycles
-				// are S cycles but store instructions require an N cycle
-				if arm.state.prefetchCycle == N {
-					arm.Ncycle(prefetch, arm.state.registers[rPC])
+				// if program counter is not what we expect then that means we have hit a branch
+				arm.state.branchedExecution = expectedPC != arm.state.registers[rPC]
+
+				// if arm.state.branchedExecution && arm.state.function32bitDecoding {
+				// 	panic("ARM7: impossible condition")
+				// }
+
+				if !arm.immediateMode {
+					// add additional cycles required to fill pipeline before next iteration
+					if arm.state.branchedExecution {
+						arm.fillPipeline()
+					}
+
+					// prefetch cycle for next instruction is associated with and counts
+					// towards the total of the current instruction. most prefetch cycles
+					// are S cycles but store instructions require an N cycle
+					if arm.state.prefetchCycle == N {
+						arm.Ncycle(prefetch, arm.state.registers[rPC])
+					} else {
+						arm.Scycle(prefetch, arm.state.registers[rPC])
+					}
+
+					// default to an S cycle for prefetch unless an instruction explicitly
+					// says otherwise
+					arm.state.prefetchCycle = S
+
+					// increases total number of program cycles by the stretched cycles for this instruction
+					arm.state.cyclesTotal += arm.state.stretchedCycles
+
+					// update clock
+					arm.clock(arm.state.stretchedCycles)
 				} else {
-					arm.Scycle(prefetch, arm.state.registers[rPC])
+					// update clock with nominal number of cycles
+					arm.clock(1.1)
 				}
 
-				// default to an S cycle for prefetch unless an instruction explicitly
-				// says otherwise
-				arm.state.prefetchCycle = S
+				// stack frame has changed if LR register has changed
+				if expectedLR != arm.state.registers[rLR] {
+					arm.state.stackFrame = expectedSP
+				}
 
-				// increases total number of program cycles by the stretched cycles for this instruction
-				arm.state.cyclesTotal += arm.state.stretchedCycles
+				// disassemble if appropriate
+				if arm.disasm != nil {
+					if !arm.state.function32bitDecoding {
+						var cached bool
+						var entry DisasmEntry
 
-				// update clock
-				arm.clock(arm.state.stretchedCycles)
-			} else {
-				// update clock with nominal number of cycles
-				arm.clock(1.1)
-			}
+						entry, cached = arm.disasmCache[arm.state.instructionPC]
+						if !cached {
+							var err error
+							entry, err = arm.disassemble(opcode)
+							if err != nil {
+								panic(err.Error())
+							}
+						}
 
-			// stack frame has changed if LR register has changed
-			if expectedLR != arm.state.registers[rLR] {
-				arm.state.stackFrame = expectedSP
-			}
+						// copy of the registers
+						entry.Registers = arm.state.registers
 
-			// disassemble if appropriate
-			if arm.disasm != nil {
-				if !arm.state.function32bitDecoding {
-					var cached bool
-					var entry DisasmEntry
+						// basic notes about the last execution of the entry
+						entry.ExecutionNotes = arm.disasmExecutionNotes
 
-					entry, cached = arm.disasmCache[arm.state.instructionPC]
-					if !cached {
-						var err error
-						entry, err = arm.disassemble(opcode)
-						if err != nil {
-							panic(err.Error())
+						// basic cycle information. this relies on cycleOrder not being
+						// reset during 32bit instruction decoding
+						entry.Cycles = arm.state.cycleOrder.len()
+						entry.CyclesSequence = arm.state.cycleOrder.String()
+
+						// cycle details
+						entry.MAMCR = int(arm.state.mam.mamcr)
+						entry.BranchTrail = arm.state.branchTrail
+						entry.MergedIS = arm.state.mergedIS
+
+						// note immediate mode
+						entry.ImmediateMode = arm.disasmSummary.ImmediateMode
+
+						// update cache if necessary
+						if !cached || arm.disasmUpdateNotes {
+							arm.disasmCache[arm.state.instructionPC] = entry
+						}
+
+						arm.disasmExecutionNotes = ""
+						arm.disasmUpdateNotes = false
+
+						// update program cycles
+						arm.disasmSummary.add(arm.state.cycleOrder)
+
+						// we always send the instruction to the disasm interface
+						arm.disasm.Step(entry)
+
+						// print additional information output for stdout
+						if _, ok := arm.disasm.(*mapper.CartCoProcDisassemblerStdout); ok {
+							fmt.Println(arm.disasmVerbose(entry))
 						}
 					}
+				}
 
-					// copy of the registers
-					entry.Registers = arm.state.registers
+				// accumulate cycle counts for profiling
+				if arm.profiler != nil {
+					arm.profiler.Entries = append(arm.profiler.Entries, mapper.CartCoProcProfileEntry{
+						Addr:   arm.state.instructionPC,
+						Cycles: arm.state.stretchedCycles,
+					})
+				}
 
-					// basic notes about the last execution of the entry
-					entry.ExecutionNotes = arm.disasmExecutionNotes
+				// reset cycle information
+				if !arm.immediateMode {
+					arm.state.branchTrail = BranchTrailNotUsed
+					arm.state.mergedIS = false
+					arm.state.stretchedCycles = 0
 
-					// basic cycle information. this relies on cycleOrder not being
-					// reset during 32bit instruction decoding
-					entry.Cycles = arm.state.cycleOrder.len()
-					entry.CyclesSequence = arm.state.cycleOrder.String()
-
-					// cycle details
-					entry.MAMCR = int(arm.state.mam.mamcr)
-					entry.BranchTrail = arm.state.branchTrail
-					entry.MergedIS = arm.state.mergedIS
-
-					// note immediate mode
-					entry.ImmediateMode = arm.disasmSummary.ImmediateMode
-
-					// update cache if necessary
-					if !cached || arm.disasmUpdateNotes {
-						arm.disasmCache[arm.state.instructionPC] = entry
+					// reset cycle order if we're not currently decoding a 32bit
+					// instruction
+					if !arm.state.function32bitDecoding {
+						arm.state.cycleOrder.reset()
 					}
 
-					arm.disasmExecutionNotes = ""
-					arm.disasmUpdateNotes = false
-
-					// update program cycles
-					arm.disasmSummary.add(arm.state.cycleOrder)
-
-					// we always send the instruction to the disasm interface
-					arm.disasm.Step(entry)
-
-					// print additional information output for stdout
-					if _, ok := arm.disasm.(*mapper.CartCoProcDisassemblerStdout); ok {
-						fmt.Println(arm.disasmVerbose(entry))
+					// limit the number of cycles used by the ARM program
+					if arm.state.cyclesTotal >= cycleLimit {
+						logger.Logf("ARM7", "reached cycle limit of %d", cycleLimit)
+						panic("cycle limit")
+					}
+				} else {
+					iterations++
+					if iterations > instructionsLimit {
+						logger.Logf("ARM7", "reached instructions limit of %d", instructionsLimit)
+						panic("instruction limit")
 					}
 				}
-			}
 
-			// accumulate cycle counts for profiling
-			if arm.profiler != nil {
-				arm.profiler.Entries = append(arm.profiler.Entries, mapper.CartCoProcProfileEntry{
-					Addr:   arm.state.instructionPC,
-					Cycles: arm.state.stretchedCycles,
-				})
-			}
-
-			// reset cycle information
-			if !arm.immediateMode {
-				arm.state.branchTrail = BranchTrailNotUsed
-				arm.state.mergedIS = false
-				arm.state.stretchedCycles = 0
-
-				// reset cycle order if we're not currently decoding a 32bit
-				// instruction
-				if !arm.state.function32bitDecoding {
-					arm.state.cycleOrder.reset()
-				}
-
-				// limit the number of cycles used by the ARM program
-				if arm.state.cyclesTotal >= cycleLimit {
-					logger.Logf("ARM7", "reached cycle limit of %d", cycleLimit)
-					panic("cycle limit")
-				}
-			} else {
-				iterations++
-				if iterations > instructionsLimit {
-					logger.Logf("ARM7", "reached instructions limit of %d", instructionsLimit)
-					panic("instruction limit")
-				}
-			}
-
-			// check for stack errors
-			if arm.state.yield.Type == mapper.YieldStackError {
-				arm.extendedMemoryErrorLogging(opcode)
-				if !arm.abortOnStackCollision {
-					arm.logYield()
-					arm.state.yield.Type = mapper.YieldRunning
-					arm.state.yield.Error = nil
-					arm.state.yield.Detail = arm.state.yield.Detail[:0]
-				}
-			} else {
-				if !arm.state.yield.Type.Normal() {
-					if arm.state.registers[rSP] != expectedSP {
-						arm.stackProtectCheckSP()
-						if arm.state.yield.Type == mapper.YieldStackError {
-							arm.extendedMemoryErrorLogging(opcode)
-							if !arm.abortOnStackCollision {
-								arm.logYield()
-								arm.state.yield.Type = mapper.YieldRunning
-								arm.state.yield.Error = nil
-								arm.state.yield.Detail = arm.state.yield.Detail[:0]
+				// check for stack errors
+				if arm.state.yield.Type == mapper.YieldStackError {
+					arm.extendedMemoryErrorLogging(opcode)
+					if !arm.abortOnStackCollision {
+						arm.logYield()
+						arm.state.yield.Type = mapper.YieldRunning
+						arm.state.yield.Error = nil
+						arm.state.yield.Detail = arm.state.yield.Detail[:0]
+					}
+				} else {
+					if !arm.state.yield.Type.Normal() {
+						if arm.state.registers[rSP] != expectedSP {
+							arm.stackProtectCheckSP()
+							if arm.state.yield.Type == mapper.YieldStackError {
+								arm.extendedMemoryErrorLogging(opcode)
+								if !arm.abortOnStackCollision {
+									arm.logYield()
+									arm.state.yield.Type = mapper.YieldRunning
+									arm.state.yield.Error = nil
+									arm.state.yield.Detail = arm.state.yield.Detail[:0]
+								}
 							}
 						}
 					}
 				}
-			}
 
-			// handle memory access yields. we don't these want these to bleed out
-			// of the ARM unless the abort preference is set
-			if arm.state.yield.Type == mapper.YieldMemoryAccessError {
-				// add extended memory logging to yield detail
-				arm.extendedMemoryErrorLogging(opcode)
+				// handle memory access yields. we don't these want these to bleed out
+				// of the ARM unless the abort preference is set
+				if arm.state.yield.Type == mapper.YieldMemoryAccessError {
+					// add extended memory logging to yield detail
+					arm.extendedMemoryErrorLogging(opcode)
 
-				// if illegal memory accesses are to be ignored then we must log the
-				// yield information now before reset the yield type
-				if !arm.abortOnIllegalMem {
-					arm.logYield()
-					arm.state.yield.Type = mapper.YieldRunning
-					arm.state.yield.Error = nil
-					arm.state.yield.Detail = arm.state.yield.Detail[:0]
+					// if illegal memory accesses are to be ignored then we must log the
+					// yield information now before reset the yield type
+					if !arm.abortOnIllegalMem {
+						arm.logYield()
+						arm.state.yield.Type = mapper.YieldRunning
+						arm.state.yield.Error = nil
+						arm.state.yield.Detail = arm.state.yield.Detail[:0]
+					}
 				}
-			}
-
-			// check breakpoints unless they are disabled. we also don't want to
-			// match an instructionPC if we're in the middle of decoding a 32bit
-			// instruction
-			if arm.dev != nil && arm.breakpointsEnabled && !arm.state.function32bitDecoding {
-				if arm.dev.CheckBreakpoint(arm.state.instructionPC) {
-					arm.state.yield.Type = mapper.YieldBreakpoint
-					arm.state.yield.Error = fmt.Errorf("%08x", arm.state.instructionPC)
-				}
-			}
-		}
+			} // check program memory
+		} // check breakpoint
 	}
 
 	return arm.state.yield, arm.state.cyclesTotal
+}
+
+func (arm *ARM) checkBreakpoints() {
+	// check breakpoints unless they are disabled. we also don't want to match
+	// if we're in the middle of decoding a 32bit instruction
+	if arm.dev != nil && arm.breakpointsEnabled && !arm.state.function32bitDecoding {
+		var addr uint32
+
+		if arm.state.branchedExecution {
+			addr = arm.state.registers[rPC] - 2
+		} else {
+			addr = arm.state.executingPC
+		}
+
+		if arm.dev.CheckBreakpoint(addr) {
+			arm.state.yield.Type = mapper.YieldBreakpoint
+			arm.state.yield.Error = fmt.Errorf("%08x", addr)
+			arm.dev.OnYield(addr, arm.state.yield)
+		}
+	}
 }
 
 func (arm *ARM) stepARM7TDMI(opcode uint16, memIdx int) {

@@ -193,7 +193,7 @@ type CartCoProcDeveloper interface {
 
 	// OnYield is called whenever the ARM yields to the VCS. It communicates the PC of the most
 	// recent instruction, the current PC (as it is now), and the reason for the yield
-	OnYield(instructionPC uint32, currentPC uint32, reason CoProcYield)
+	OnYield(currentPC uint32, reason CoProcYield)
 }
 
 // CoProcYield describes a coprocessor yield state

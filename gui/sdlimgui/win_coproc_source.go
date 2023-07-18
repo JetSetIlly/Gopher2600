@@ -168,7 +168,7 @@ func (win *winCoProcSource) draw() {
 		}
 
 		// find yield line
-		win.yieldLine = src.FindSourceLine(win.yieldState.InstructionPC)
+		win.yieldLine = src.FindSourceLine(win.yieldState.PC)
 
 		// focus on yield line (or main function if we don't have a yield line)
 		// but only if emulation is paused
@@ -545,7 +545,7 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 
 					// show appropriate icon in the gutter
 					imgui.TableNextColumn()
-					if src.CheckBreakpoint(ln) {
+					if src.HasBreakpoint(ln) {
 						// the presence of a breakpoint is the most important information
 						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
 						imgui.Text(string(fonts.Breakpoint))

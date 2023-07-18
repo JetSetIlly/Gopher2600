@@ -21,25 +21,25 @@ import (
 
 // YieldState records the most recent yield.
 type YieldState struct {
-	InstructionPC  uint32
+	PC             uint32
 	Reason         mapper.CoProcYieldType
 	LocalVariables []*SourceVariableLocal
 }
 
 // Cmp returns true if two YieldStates are equal.
 func (y *YieldState) Cmp(w *YieldState) bool {
-	return y.InstructionPC == w.InstructionPC && y.Reason == w.Reason
+	return y.PC == w.PC && y.Reason == w.Reason
 }
 
 // OnYield implements the mapper.CartCoProcDeveloper interface.
-func (dev *Developer) OnYield(instructionPC uint32, currentPC uint32, yield mapper.CoProcYield) {
+func (dev *Developer) OnYield(currentPC uint32, yield mapper.CoProcYield) {
 	// do nothing if yield reason is YieldSyncWithVCS
 	//
 	// yielding for this reason is likely to be followed by another yield
 	// very soon after so there is no point gathering this information
 	if yield.Type == mapper.YieldSyncWithVCS {
 		dev.BorrowYieldState(func(yld *YieldState) {
-			yld.InstructionPC = instructionPC
+			yld.PC = currentPC
 			yld.Reason = yield.Type
 			yld.LocalVariables = yld.LocalVariables[:0]
 		})
@@ -58,7 +58,7 @@ func (dev *Developer) OnYield(instructionPC uint32, currentPC uint32, yield mapp
 			return
 		}
 
-		ln = src.FindSourceLine(instructionPC)
+		ln = src.FindSourceLine(currentPC)
 		if ln == nil {
 			return
 		}
@@ -104,9 +104,6 @@ func (dev *Developer) OnYield(instructionPC uint32, currentPC uint32, yield mapp
 			// function as the break line. this can happen for inlined
 			// functions when function ranges overlap
 			if local.DeclLine.Function == ln.Function {
-				// we must use currentPC to test whether a local variable is in
-				// range because, although we're reporting that the instructionPC is
-				// the breakpoint, the machine is in the state defined by currentPC
 				if local.Range.InRange(uint64(currentPC)) {
 					if local.Range.Size() < chosenSize {
 						chosenLocal = local
@@ -126,7 +123,7 @@ func (dev *Developer) OnYield(instructionPC uint32, currentPC uint32, yield mapp
 	})
 
 	dev.BorrowYieldState(func(yld *YieldState) {
-		yld.InstructionPC = instructionPC
+		yld.PC = currentPC
 		yld.Reason = yield.Type
 
 		// clear list of local variables from previous yield

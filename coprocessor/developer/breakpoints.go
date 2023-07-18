@@ -16,48 +16,39 @@
 package developer
 
 // addBreakpoint adds an address to the list of addresses that will be checked
-// each PC iteration.
+// each PC iteration
 func (src *Source) addBreakpoint(addr uint32) {
 	src.Breakpoints[addr] = true
 }
 
-// removeBreakpoint removes an address from the list of breakpoint addresses.
+// removeBreakpoint removes an address from the list of breakpoint addresses
 func (src *Source) removeBreakpoint(addr uint32) {
 	delete(src.Breakpoints, addr)
 }
 
-const breakAnywhere = true
-
+// CanBreakpoint returns true if the specified line can have a breakpoint
+// applied to it
 func (src *Source) CanBreakpoint(ln *SourceLine) bool {
-	if breakAnywhere {
-		return len(ln.Instruction) > 0
-	}
-	return ln.breakable
+	return len(ln.Instruction) > 0
 }
 
 // ToggleBreakpoint adds or removes a breakpoint depending on whether the
-// breakpoint already exists.
+// breakpoint already exists
 func (src *Source) ToggleBreakpoint(ln *SourceLine) {
-	if breakAnywhere || ln.breakable {
-		for i := range ln.breakAddress {
-			addr := uint32(ln.breakAddress[i])
-			if src.Breakpoints[addr] {
-				src.removeBreakpoint(addr)
-			} else {
-				src.addBreakpoint(addr)
-			}
+	for _, i := range ln.Instruction {
+		if src.Breakpoints[i.Addr] {
+			src.removeBreakpoint(i.Addr)
+		} else {
+			src.addBreakpoint(i.Addr)
 		}
 	}
 }
 
-// CheckBreakpoint returns true if there is a breakpoint on the specified line.
-func (src *Source) CheckBreakpoint(ln *SourceLine) bool {
-	if breakAnywhere || ln.breakable {
-		for i := range ln.breakAddress {
-			addr := uint32(ln.breakAddress[i])
-			if src.Breakpoints[addr] {
-				return true
-			}
+// HasBreakpoint returns true if there is a breakpoint on the specified line
+func (src *Source) HasBreakpoint(ln *SourceLine) bool {
+	for _, i := range ln.Instruction {
+		if src.Breakpoints[i.Addr] {
+			return true
 		}
 	}
 	return false

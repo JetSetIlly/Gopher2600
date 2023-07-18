@@ -1922,6 +1922,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		switch list {
 		case "BREAKS":
 			dbg.halting.breakpoints.list()
+			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+				if src == nil {
+					return
+				}
+				for bp := range src.Breakpoints {
+					dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("%08x\n", bp))
+				}
+			})
 		case "TRAPS":
 			dbg.halting.traps.list()
 		case "WATCHES":
