@@ -17,7 +17,9 @@
 
 package arm
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/fpu"
+import (
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/fpu"
+)
 
 func (arm *ARM) decodeThumb2FPU(opcode uint16) *DisasmEntry {
 	// "Chapter A6 The Floating-point Instruction Set Encoding" of "ARMv7-M"
@@ -357,7 +359,7 @@ func (arm *ARM) decodeThumb2FPU32bitTransfer(opcode uint16) *DisasmEntry {
 	// "A6.6 32-bit transfer between ARM core and extension registers" of "ARMv7-M"
 
 	T := arm.state.function32bitOpcodeHi&0x1000 == 0x1000
-	L := arm.state.function32bitOpcodeHi&0x0010 == 0x0100
+	L := arm.state.function32bitOpcodeHi&0x0010 == 0x0010
 	C := opcode&0x0100 == 0x0100
 
 	if T {
@@ -368,33 +370,66 @@ func (arm *ARM) decodeThumb2FPU32bitTransfer(opcode uint16) *DisasmEntry {
 
 	if L {
 		if A == 0b111 {
-			panic("unimplemented VMRS")
+			// "A7.7.246 VMRS" of "ARMv7-M"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "VMRS",
+				}
+			}
+			Rt := (opcode & 0xf000) >> 12
+			if Rt == 15 {
+				arm.state.status.negative = arm.state.fpu.Status.N()
+				arm.state.status.zero = arm.state.fpu.Status.Z()
+				arm.state.status.carry = arm.state.fpu.Status.C()
+				arm.state.status.overflow = arm.state.fpu.Status.V()
+			} else {
+				arm.state.registers[Rt] = arm.state.fpu.Status.Value()
+			}
 		} else {
 			if C {
+				// "A7.7.242 VMOV (scalar to Arm core register)" of "ARMv7-M"
 				panic("VMOV (L && C)")
 			} else {
-				panic("VMOV (L && !C)")
+				// "A7.7.243 VMOV (between Arm core register and single-precision register)" of "ARMv7-M"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "VMOV",
+						Operand:  "to ARM core from SP",
+					}
+				}
+				Vn := arm.state.function32bitOpcodeHi & 0x000f
+				Rt := (opcode & 0xf000) >> 12
+				n := (opcode & 0x0080) >> 7
+				Rfpu := (Vn << 1) | n
+
+				arm.state.registers[Rt] = arm.state.fpu.Registers[Rfpu]
 			}
 		}
 	} else {
 		if A == 0b111 {
+			// "A7.7.247 VMSR" of "ARMv7-M"
 			panic("unimplemented VMSR")
 		} else {
 			if C {
+				// "A7.7.242 VMOV (scalar to Arm core register)" of "ARMv7-M
 				panic("VMOV (!L && V)")
 			} else {
 				// "A7.7.243 VMOV (between Arm core register and single-precision register)" of "ARMv7-M"
-				toArmRegister := arm.state.function32bitOpcodeHi&0x0010 == 0x0010
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "VMOV",
+						Operand:  "from SP to ARM core",
+					}
+				}
 				Vn := arm.state.function32bitOpcodeHi & 0x000f
-				Rarm := (opcode & 0xf000) >> 12
+				Rt := (opcode & 0xf000) >> 12
 				n := (opcode & 0x0080) >> 7
 				Rfpu := (Vn << 1) | n
 
-				if toArmRegister {
-					arm.state.registers[Rarm] = arm.state.fpu.Registers[Rfpu]
-				} else {
-					arm.state.fpu.Registers[Rfpu] = arm.state.registers[Rarm]
-				}
+				arm.state.fpu.Registers[Rfpu] = arm.state.registers[Rt]
 			}
 		}
 	}

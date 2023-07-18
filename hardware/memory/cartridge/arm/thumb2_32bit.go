@@ -1082,8 +1082,6 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) *Disa
 			panic(fmt.Sprintf("unhandled data processing instructions, non immediate (32bit multiplies) (%03b/%04b)", op, op2))
 		}
 	} else if arm.state.function32bitOpcodeHi&0xff80 == 0xfb80 {
-		// "64-bit multiply, multiply-accumulate, and divide instructions"
-		// page 3-25 of "Thumb-2 Supplement"
 		op := (arm.state.function32bitOpcodeHi & 0x0070) >> 4
 		op2 := (opcode & 0x00f0) >> 4
 
@@ -1139,6 +1137,22 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) *Disa
 			} else {
 				arm.state.registers[Rd] = uint32(int32(arm.state.registers[Rn]) / int32(arm.state.registers[Rm]))
 			}
+		} else if op == 0b110 && op2 == 0b0000 {
+			// "4.6.206 UMLAL" of "Thumb-2 Supplement"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "UMLAL",
+				}
+			}
+
+			RdLo := (opcode & 0xf000) >> 12
+			RdHi := Rd
+
+			result := uint64(arm.state.registers[Rn]) * uint64(arm.state.registers[Rm])
+			result += uint64(arm.state.registers[RdHi] + arm.state.registers[RdLo])
+			arm.state.registers[RdHi] = uint32(result >> 32)
+			arm.state.registers[RdLo] = uint32(result)
 		} else {
 			panic(fmt.Sprintf("unhandled data processing instructions, non immediate (64bit multiplies) (%03b/%04b)", op, op2))
 		}

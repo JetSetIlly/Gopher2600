@@ -21,6 +21,10 @@ type FPSCR struct {
 	value uint32
 }
 
+func (fpscr *FPSCR) Value() uint32 {
+	return fpscr.value
+}
+
 func (fpscr *FPSCR) N() bool {
 	// bit 31
 	return fpscr.value&0x80000000 == 0x80000000
