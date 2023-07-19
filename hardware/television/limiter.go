@@ -86,7 +86,7 @@ func (lmtr *limiter) init(tv *Television) {
 	lmtr.measured.Store(float32(0))
 	lmtr.pulse = time.NewTicker(time.Millisecond * 10)
 	lmtr.measureTime = time.Now()
-	lmtr.measuringPulse = time.NewTicker(time.Millisecond * 10)
+	lmtr.measuringPulse = time.NewTicker(time.Millisecond * 1000)
 }
 
 func (lmtr *limiter) setRefreshRate(refreshRate float32) {
