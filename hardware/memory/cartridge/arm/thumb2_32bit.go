@@ -1153,6 +1153,21 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) *Disa
 			result += uint64(arm.state.registers[RdHi] + arm.state.registers[RdLo])
 			arm.state.registers[RdHi] = uint32(result >> 32)
 			arm.state.registers[RdLo] = uint32(result)
+		} else if op == 0b000 && op2 == 0b0000 {
+			// "4.6.150 SMULL" of "Thumb-2 Supplement"
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "SMULL",
+				}
+			}
+
+			RdLo := (opcode & 0xf000) >> 12
+			RdHi := Rd
+
+			result := int64(arm.state.registers[Rn]) * int64(arm.state.registers[Rm])
+			arm.state.registers[RdHi] = uint32(result >> 32)
+			arm.state.registers[RdLo] = uint32(result)
 		} else {
 			panic(fmt.Sprintf("unhandled data processing instructions, non immediate (64bit multiplies) (%03b/%04b)", op, op2))
 		}
