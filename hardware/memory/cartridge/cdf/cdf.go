@@ -384,7 +384,6 @@ func (cart *cdf) AccessVolatile(addr uint16, data uint8, poke bool) error {
 
 			// keep calling runArm() for as long as program has not ended
 			for cart.state.yield.Type != mapper.YieldProgramEnded {
-				fmt.Printf("3 %p\n", cart.yieldHook)
 				switch cart.yieldHook.CartYield(cart.state.yield.Type) {
 				case mapper.YieldHookEnd:
 					break
