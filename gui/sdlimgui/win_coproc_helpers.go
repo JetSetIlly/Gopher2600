@@ -21,10 +21,13 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
-func (img *SdlImgui) drawDisasmForCoProc(disasm []*developer.SourceInstruction, ln *developer.SourceLine, multiline bool) {
-	imgui.BeginTable("##disasmTable", 3)
+func (img *SdlImgui) drawDisasmForCoProc(disasm []*developer.SourceInstruction, ln *developer.SourceLine,
+	multiline bool, showYield bool, yldAddress uint32) {
+
+	imgui.BeginTable("##disasmTable", 4)
 
 	const maxDisasmLines = 10
 	numLines := 0
@@ -41,7 +44,24 @@ func (img *SdlImgui) drawDisasmForCoProc(disasm []*developer.SourceInstruction, 
 			imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceDisasmAddrFade)
 		}
 		imgui.Text(fmt.Sprintf("%08x", d.Addr))
+
 		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		if showYield {
+
+			// simple way of making sure the yield column doesn't change width
+			// is to always print the icon but to use an the window backtround
+			// colour if the icon is to be invisible
+			if d.Addr == yldAddress {
+				imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceYield)
+			} else {
+				imgui.PushStyleColor(imgui.StyleColorText, img.cols.WindowBg)
+			}
+
+			imgui.Text(string(fonts.Breakpoint))
+			imgui.PopStyleColor()
+		}
 
 		imgui.TableNextColumn()
 		if d.Line.LineNumber == ln.LineNumber {

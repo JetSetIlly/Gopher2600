@@ -120,8 +120,8 @@ func (win *winCoProcIllegalAccess) draw() {
 			lg := ill.Log[i]
 
 			imgui.TableNextColumn()
-			imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
-			imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+			imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
+			imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
 			imgui.SelectableV(lg.Event, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 			imgui.PopStyleColorV(2)
 
@@ -161,7 +161,7 @@ func (win *winCoProcIllegalAccess) draw() {
 							imgui.Spacing()
 							imgui.Separator()
 							imgui.Spacing()
-							win.img.drawDisasmForCoProc(lg.SrcLine.Instruction, lg.SrcLine, false)
+							win.img.drawDisasmForCoProc(lg.SrcLine.Instruction, lg.SrcLine, false, false, 0)
 						}
 					} else {
 						imgui.Spacing()

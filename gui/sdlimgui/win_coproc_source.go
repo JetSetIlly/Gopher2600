@@ -445,23 +445,23 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 
 					// highlight selected line(s)
 					if win.selection.inRange(ln.LineNumber) {
-						imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceSelected)
+						imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceSelectedLine)
 					}
 
 					// highlight yield line
 					if win.yieldLine != nil && win.yieldLine.File != nil {
 						if win.yieldLine.LineNumber == ln.LineNumber && win.yieldLine.File == win.selectedFile {
 							if win.yieldLine.Bug {
-								imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceYieldBug)
+								imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceYieldBugLine)
 							} else {
-								imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceYield)
+								imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceYieldLine)
 							}
 						}
 					}
 
 					imgui.TableNextColumn()
-					imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
-					imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+					imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
+					imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
 					imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 					imgui.PopStyleColorV(2)
 
@@ -529,7 +529,7 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 									disasm = win.selectionRange.Instructions
 								}
 
-								win.img.drawDisasmForCoProc(disasm, ln, multiline)
+								win.img.drawDisasmForCoProc(disasm, ln, multiline, true, win.yieldState.PC)
 
 								if ln.Function.IsInlined() {
 									imgui.Spacing()

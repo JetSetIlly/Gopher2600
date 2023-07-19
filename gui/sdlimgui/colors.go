@@ -93,10 +93,10 @@ type imguiColors struct {
 	DisasmBreakAddress imgui.Vec4
 
 	// coprocessor source (and related) windows
-	CoProcSourceSelected         imgui.Vec4
-	CoProcSourceYield            imgui.Vec4
-	CoProcSourceYieldBug         imgui.Vec4
-	CoProcSourceHover            imgui.Vec4
+	CoProcSourceSelectedLine     imgui.Vec4
+	CoProcSourceYieldLine        imgui.Vec4
+	CoProcSourceYieldBugLine     imgui.Vec4
+	CoProcSourceHoverLine        imgui.Vec4
 	CoProcSourceFilename         imgui.Vec4
 	CoProcSourceLineNumber       imgui.Vec4
 	CoProcSourceLoad             imgui.Vec4
@@ -104,7 +104,6 @@ type imguiColors struct {
 	CoProcSourceMaxLoad          imgui.Vec4
 	CoProcSourceNoLoad           imgui.Vec4
 	CoProcSourceBug              imgui.Vec4
-	CoProcSourceChip             imgui.Vec4
 	CoProcSourceDisasmOpcode     imgui.Vec4
 	CoProcSourceDisasmOpcodeFade imgui.Vec4
 	CoProcSourceDisasmAddr       imgui.Vec4
@@ -113,6 +112,7 @@ type imguiColors struct {
 	CoProcSourceDisasmFade       imgui.Vec4
 	CoProcSourceComment          imgui.Vec4
 	CoProcSourceStringLiteral    imgui.Vec4
+	CoProcSourceYield            imgui.Vec4
 	CoProcIllegalAccessAddress   imgui.Vec4
 	CoProcIllegalAccessFrequency imgui.Vec4
 	CoProcIllegalAccessNotes     imgui.Vec4
@@ -296,10 +296,10 @@ func newColors() *imguiColors {
 		DisasmBreakAddress: imgui.Vec4{0.9, 0.4, 0.4, 1.0},
 
 		// coprocessor source (and related) windows
-		CoProcSourceSelected:         imgui.Vec4{1.0, 1.0, 1.0, 0.1},
-		CoProcSourceYield:            imgui.Vec4{0.5, 1.0, 0.5, 0.1},
-		CoProcSourceYieldBug:         imgui.Vec4{1.0, 0.5, 0.5, 0.1},
-		CoProcSourceHover:            imgui.Vec4{0.5, 0.5, 0.5, 0.1},
+		CoProcSourceSelectedLine:     imgui.Vec4{1.0, 1.0, 1.0, 0.1},
+		CoProcSourceYieldLine:        imgui.Vec4{0.5, 1.0, 0.5, 0.1},
+		CoProcSourceYieldBugLine:     imgui.Vec4{1.0, 0.5, 0.5, 0.1},
+		CoProcSourceHoverLine:        imgui.Vec4{0.5, 0.5, 0.5, 0.1},
 		CoProcSourceFilename:         imgui.Vec4{0.7, 0.7, 0.8, 1.0},
 		CoProcSourceLineNumber:       imgui.Vec4{0.5, 0.5, 0.8, 1.0},
 		CoProcSourceLoad:             imgui.Vec4{0.8, 0.5, 0.5, 1.0},
@@ -307,7 +307,6 @@ func newColors() *imguiColors {
 		CoProcSourceMaxLoad:          imgui.Vec4{0.8, 0.5, 0.7, 1.0},
 		CoProcSourceNoLoad:           imgui.Vec4{0.5, 0.5, 0.5, 1.0},
 		CoProcSourceBug:              imgui.Vec4{0.5, 0.5, 0.8, 1.0},
-		CoProcSourceChip:             imgui.Vec4{0.5, 0.5, 0.5, 1.0},
 		CoProcSourceDisasmOpcode:     imgui.Vec4{0.5, 0.5, 0.6, 1.0},
 		CoProcSourceDisasmOpcodeFade: imgui.Vec4{0.3, 0.3, 0.3, 1.0},
 		CoProcSourceDisasmAddr:       imgui.Vec4{0.8, 0.8, 0.8, 1.0},
@@ -316,6 +315,7 @@ func newColors() *imguiColors {
 		CoProcSourceDisasmFade:       imgui.Vec4{0.6, 0.6, 0.6, 1.0},
 		CoProcSourceComment:          imgui.Vec4{0.4, 0.4, 0.6, 1.0},
 		CoProcSourceStringLiteral:    imgui.Vec4{0.4, 0.6, 0.6, 1.0},
+		CoProcSourceYield:            imgui.Vec4{0.5, 0.8, 0.5, 1.0},
 		CoProcIllegalAccessAddress:   imgui.Vec4{0.8, 0.4, 0.4, 1.0},
 		CoProcIllegalAccessFrequency: imgui.Vec4{0.7, 0.7, 0.7, 1.0},
 		CoProcIllegalAccessNotes:     imgui.Vec4{0.7, 0.7, 0.7, 1.0},

@@ -492,8 +492,8 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		imgui.TableNextRow()
 
 		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
-		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
+		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceFilename)
 		if isStub {
 			imgui.SelectableV("-", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
@@ -710,8 +710,8 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		imgui.TableNextColumn()
 
 		// selectable across entire width of table
-		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
-		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
+		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
 		imgui.SelectableV(ln.Function.Name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 		imgui.PopStyleColorV(2)
 
@@ -938,8 +938,8 @@ thean to the program as a whole.`)
 		imgui.TableNextColumn()
 
 		// selectable across entire width of table
-		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
-		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
+		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
 		imgui.SelectableV(fmt.Sprintf("%d", ln.LineNumber), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 		imgui.PopStyleColorV(3)
@@ -1104,7 +1104,7 @@ func (win *winCoProcPerformance) tooltip(load developer.Load,
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()
-			win.img.drawDisasmForCoProc(ln.Instruction, ln, false)
+			win.img.drawDisasmForCoProc(ln.Instruction, ln, false, false, 0)
 		}
 
 	}, true)
