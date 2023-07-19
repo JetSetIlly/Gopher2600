@@ -97,7 +97,9 @@ func (tv *coProcPerformanceTV) NewFrame(_ television.FrameInfo) error {
 	// this code is running in the emulator goroutine and NOT the GUI goroutine
 	if tv.schedule.Load().(bool) {
 		tv.schedule.Store(false)
-		tv.img.dbg.CoProcDev.ResetStatistics()
+		tv.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+			src.ResetStatistics()
+		})
 	}
 	return nil
 }

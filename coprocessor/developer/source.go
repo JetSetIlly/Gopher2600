@@ -44,7 +44,7 @@ type compileUnit struct {
 // the current cartridge coprocessor instance. the instance can change after a
 // rewind event
 type coprocShim struct {
-	cart CartCoProcDeveloper
+	cart Cartridge
 }
 
 // CoProcRegister implements the loclistCoproc and frameCoproc interfaces
@@ -171,7 +171,7 @@ type Source struct {
 	prevBreakpointCheck *SourceLine
 
 	// call stack of running program
-	CallStack CallStack
+	callStack callStack
 }
 
 // NewSource is the preferred method of initialisation for the Source type.
@@ -181,7 +181,7 @@ type Source struct {
 //
 // Once the ELF and DWARF file has been identified then Source will always be
 // non-nil but with the understanding that the fields may be empty.
-func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Source, error) {
+func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) {
 	src := &Source{
 		coprocShim: coprocShim{
 			cart: cart,
@@ -208,8 +208,8 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		},
 		ExecutionProfileChanged: true,
 		Breakpoints:             make(map[uint32]bool),
-		CallStack: CallStack{
-			Callers: make(map[string][]*SourceLine),
+		callStack: callStack{
+			callers: make(map[string][]*SourceLine),
 		},
 		path: simplifyPath(filepath.Dir(romFile)),
 	}

@@ -25,9 +25,22 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+// TV is the interface from the developer type to the television implementation.
+type TV interface {
+	GetFrameInfo() television.FrameInfo
+	GetCoords() coords.TelevisionCoords
+}
+
+// Cartridge defines the interface to the cartridge required by the
+// developer pacakge
+type Cartridge interface {
+	GetCoProc() mapper.CartCoProc
+	PushFunction(func())
+}
+
 // Developer implements the CartCoProcDeveloper interface.
 type Developer struct {
-	cart CartCoProcDeveloper
+	cart Cartridge
 	tv   TV
 
 	// only respond on the CartCoProcDeveloper interface when enabled
@@ -59,19 +72,6 @@ type Developer struct {
 	frameInfo television.FrameInfo
 }
 
-// TV is the interface from the developer type to the television implementation.
-type TV interface {
-	GetFrameInfo() television.FrameInfo
-	GetCoords() coords.TelevisionCoords
-}
-
-// CartCoProcDeveloper defines the interface to the cartridge required by the
-// developer pacakge
-type CartCoProcDeveloper interface {
-	GetCoProc() mapper.CartCoProc
-	PushFunction(func())
-}
-
 // NewDeveloper is the preferred method of initialisation for the Developer type.
 func NewDeveloper(tv TV) Developer {
 	return Developer{
@@ -79,7 +79,7 @@ func NewDeveloper(tv TV) Developer {
 	}
 }
 
-func (dev *Developer) AttachCartridge(cart CartCoProcDeveloper, romFile string, elfFile string) {
+func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile string) {
 	dev.cart = nil
 
 	dev.sourceLock.Lock()
@@ -134,7 +134,7 @@ func (dev *Developer) DisableExpensive(disable bool) {
 	dev.disabledExpensive = disable
 }
 
-// HighAddress implements the CartCoProcDeveloper interface.
+// HighAddress implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) HighAddress() uint32 {
 	if dev.source == nil {
 		return 0
@@ -196,14 +196,4 @@ func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 	dev.frameInfo = frameInfo
 
 	return nil
-}
-
-// ResetStatistics resets all performance statistics. This differs from the
-// function in the Source type in that it acquires and releases the source
-// critical section.
-func (dev *Developer) ResetStatistics() {
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
-
-	dev.source.ResetStatistics()
 }

@@ -56,7 +56,7 @@ type styleWriter struct {
 	style terminal.Style
 }
 
-func (dbg *Debugger) printStyle(sty terminal.Style) *styleWriter { // nolint: unparam
+func (dbg *Debugger) writerInStyle(sty terminal.Style) *styleWriter { // nolint: unparam
 	return &styleWriter{
 		dbg:   dbg,
 		style: sty,

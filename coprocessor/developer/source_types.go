@@ -155,12 +155,12 @@ type SourceLine struct {
 
 func (ln *SourceLine) String() string {
 	if ln.IsStub() {
-		return fmt.Sprintf("(stub)")
+		return ln.PlainContent
 	}
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s:%d", ln.File.ShortFilename, ln.LineNumber))
 	if !ln.Function.IsStub() {
-		s.WriteString(fmt.Sprintf(" in function %s", ln.Function.Name))
+		s.WriteString(fmt.Sprintf(" [%s]", ln.Function.Name))
 	}
 	return s.String()
 }

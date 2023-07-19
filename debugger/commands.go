@@ -673,16 +673,16 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					// already caught by command line ValidateTokens()
 
 				case "LABELS":
-					dbg.dbgmem.Sym.ListLabels(dbg.printStyle(terminal.StyleFeedback))
+					dbg.dbgmem.Sym.ListLabels(dbg.writerInStyle(terminal.StyleFeedback))
 
 				case "READ":
-					dbg.dbgmem.Sym.ListReadSymbols(dbg.printStyle(terminal.StyleFeedback))
+					dbg.dbgmem.Sym.ListReadSymbols(dbg.writerInStyle(terminal.StyleFeedback))
 
 				case "WRITE":
-					dbg.dbgmem.Sym.ListWriteSymbols(dbg.printStyle(terminal.StyleFeedback))
+					dbg.dbgmem.Sym.ListWriteSymbols(dbg.writerInStyle(terminal.StyleFeedback))
 				}
 			} else {
-				dbg.dbgmem.Sym.ListSymbols(dbg.printStyle(terminal.StyleFeedback))
+				dbg.dbgmem.Sym.ListSymbols(dbg.writerInStyle(terminal.StyleFeedback))
 			}
 
 		default:
@@ -1646,6 +1646,16 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				dbg.printLine(terminal.StyleFeedback, l.String())
 			})
 
+		case "CALLSTACK":
+			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+				if src == nil {
+					dbg.printLine(terminal.StyleError, "no source files found")
+					return
+				}
+				w := dbg.writerInStyle(terminal.StyleFeedback)
+				src.CallStack(w)
+			})
+
 		case "CALLERS":
 			arg, ok := tokens.Get()
 			if !ok {
@@ -1653,37 +1663,15 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				return nil
 			}
 			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
-				callers, ok := src.CallStack.Callers[arg]
-				if !ok {
-					dbg.printLine(terminal.StyleError, fmt.Sprintf("no function named %s has even been called", arg))
+				if src == nil {
+					dbg.printLine(terminal.StyleError, "no source files found")
 					return
 				}
-
-				const maxDepth = 15
-
-				var f func(functions []*developer.SourceLine, depth int)
-				f = func(functions []*developer.SourceLine, depth int) {
-					indent := strings.Builder{}
-					for i := 0; i < depth; i++ {
-						indent.WriteString("  ")
-					}
-
-					if depth > maxDepth {
-						dbg.printLine(terminal.StyleError, fmt.Sprintf("%stoo deep", indent.String()))
-						return
-					}
-
-					for _, n := range functions {
-						s := fmt.Sprintf("%s (%s:%d)", n.Function.Name, n.File.ShortFilename, n.LineNumber)
-						dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("%s%s", indent.String(), s))
-						if l, ok := src.CallStack.Callers[n.Function.Name]; ok {
-							f(l, depth+1)
-						}
-					}
+				w := dbg.writerInStyle(terminal.StyleFeedback)
+				if err := src.Callers(arg, w); err != nil {
+					dbg.printLine(terminal.StyleError, err.Error())
+					return
 				}
-
-				dbg.printLine(terminal.StyleFeedback, arg)
-				f(callers, 1)
 			})
 		}
 

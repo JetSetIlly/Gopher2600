@@ -17,38 +17,9 @@ package developer
 
 import (
 	"sort"
-	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
-
-// CallStack maintains information about function calls and the order in which
-// they happen.
-type CallStack struct {
-	// call stack of running program
-	functions []*SourceFunction
-
-	// list of callers for all executed functions
-	Callers map[string]([]*SourceLine)
-
-	// prevLine is helpful when creating the Callers list
-	prevLine *SourceLine
-}
-
-func (cs *CallStack) String() string {
-	l := len(cs.functions)
-	if l == 0 {
-		return ""
-	}
-
-	var b strings.Builder
-	b.WriteString(cs.functions[0].Name)
-	for i := 1; i < l; i++ {
-		b.WriteString(" -> ")
-		b.WriteString(cs.functions[i].Name)
-	}
-	return b.String()
-}
 
 // Profiling implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) Profiling() *mapper.CartCoProcProfiler {
@@ -64,19 +35,24 @@ func (dev *Developer) StartProfiling() {
 		return
 	}
 
+	dev.yieldStateLock.Lock()
+	defer dev.yieldStateLock.Unlock()
+
+	if dev.yieldState.Reason != mapper.YieldProgramEnded {
+		return
+	}
+
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
-	dev.source.CallStack.functions = dev.source.CallStack.functions[:0]
+	dev.source.callStack.stack = dev.source.callStack.stack[:0]
 
 	// first entry in the callstack is always the entry function
-	dev.source.CallStack.functions = append(dev.source.CallStack.functions, dev.source.Functions[DriverFunctionName])
+	dev.source.callStack.stack = append(dev.source.callStack.stack, dev.source.driverSourceLine)
 }
 
 // ProcessProfiling implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) ProcessProfiling() {
-	// not checking for whether dev.source == nil because we always want to
-	// empty the profiler.Entries slice
 	if dev.disabledExpensive {
 		return
 	}
@@ -91,8 +67,8 @@ func (dev *Developer) ProcessProfiling() {
 		defer dev.sourceLock.Unlock()
 
 		for _, p := range dev.profiler.Entries {
-			l := len(dev.source.CallStack.functions)
-			lastFn := dev.source.CallStack.functions[l-1]
+			l := len(dev.source.callStack.stack)
+			lastLn := dev.source.callStack.stack[l-1]
 
 			// line of executed instruction. every instruction should have an
 			// associated line/function. if it does not then we assume it is in
@@ -104,22 +80,22 @@ func (dev *Developer) ProcessProfiling() {
 			}
 
 			// if function has changed
-			if ln.Function != lastFn {
+			if ln != lastLn {
 				popped := false
 
 				// try to pop
 				var i int
 				for i = 1; i <= l; i++ {
-					if ln.Function == dev.source.CallStack.functions[l-i] {
-						chop := dev.source.CallStack.functions[l-i+1:]
-						dev.source.CallStack.functions = dev.source.CallStack.functions[:l-i+1]
+					if ln.Function == dev.source.callStack.stack[l-i].Function {
+						chop := dev.source.callStack.stack[l-i+1:]
+						dev.source.callStack.stack = dev.source.callStack.stack[:l-i+1]
 						popped = true
 
 						// flag functions which look like they are part of an
 						// optimised call stack
 						if len(chop) > 1 {
-							for _, f := range chop {
-								f.OptimisedCallStack = true
+							for _, ln := range chop {
+								ln.Function.OptimisedCallStack = true
 							}
 						}
 
@@ -129,7 +105,7 @@ func (dev *Developer) ProcessProfiling() {
 
 				// push function on to callstack if we haven't popped
 				if !popped {
-					dev.source.CallStack.functions = append(dev.source.CallStack.functions, ln.Function)
+					dev.source.callStack.stack = append(dev.source.callStack.stack, ln)
 
 					// there is always at least one entry in the functions callstack so we can confidently
 					// subtract two from the length after the append above
@@ -137,18 +113,18 @@ func (dev *Developer) ProcessProfiling() {
 
 					// create/update callers list for function
 					var n int
-					l, ok := dev.source.CallStack.Callers[ln.Function.Name]
+					l, ok := dev.source.callStack.callers[ln.Function.Name]
 					if ok {
 						n = sort.Search(len(l), func(i int) bool {
 							return ln == l[i]
 						})
 					}
-					if !ok || (n > len(l) && l[n] != dev.source.CallStack.prevLine) {
-						l = append(l, dev.source.CallStack.prevLine)
+					if !ok || (n > len(l) && l[n] != dev.source.callStack.prevLine) {
+						l = append(l, dev.source.callStack.prevLine)
 						sort.Slice(l, func(i, j int) bool {
 							return l[i].Function.Name < l[j].Function.Name
 						})
-						dev.source.CallStack.Callers[ln.Function.Name] = l
+						dev.source.callStack.callers[ln.Function.Name] = l
 					}
 				}
 
@@ -158,12 +134,12 @@ func (dev *Developer) ProcessProfiling() {
 			dev.source.executionProfile(ln, p.Cycles, k)
 
 			// accumulate ancestor functions too
-			for _, fn := range dev.source.CallStack.functions {
-				dev.source.executionProfileCumulative(fn, p.Cycles, k)
+			for _, ln := range dev.source.callStack.stack {
+				dev.source.executionProfileCumulative(ln.Function, p.Cycles, k)
 			}
 
 			// record line for future comparison
-			dev.source.CallStack.prevLine = ln
+			dev.source.callStack.prevLine = ln
 		}
 	}
 
