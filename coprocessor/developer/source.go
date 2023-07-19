@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -69,6 +70,9 @@ func (shim coprocShim) CoProcRead32bit(addr uint32) (uint32, bool) {
 //
 // It is possible for the arrays/map fields to be empty
 type Source struct {
+	// simplified path to use
+	path string
+
 	// shim to the cartridge coprocessor
 	coprocShim coprocShim
 
@@ -207,22 +211,10 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		CallStack: CallStack{
 			Callers: make(map[string][]*SourceLine),
 		},
+		path: simplifyPath(filepath.Dir(romFile)),
 	}
 
 	var err error
-
-	// the path component of the romFile
-	pathToROM := filepath.Dir(romFile)
-
-	// readSourceFile() will shorten the filepath of a source file using the
-	// pathToROM string. however, symbolic links can confuse this so we expand
-	// all symbolic links in readSourceFile() and need to do the same with the
-	// pathToROM value
-	var pathToROM_nosymlinks string
-	pathToROM_nosymlinks, err = filepath.EvalSymlinks(pathToROM)
-	if err != nil {
-		pathToROM_nosymlinks = pathToROM
-	}
 
 	// open ELF file
 	var ef *elf.File
@@ -439,17 +431,14 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			// loop through files in the compilation unit. entry 0 is always nil
 			for _, f := range r.Files()[1:] {
 				if _, ok := src.Files[f.Name]; !ok {
-					sf, err := readSourceFile(f.Name, pathToROM_nosymlinks, &src.AllLines)
+					sf, err := readSourceFile(f.Name, src.path, &src.AllLines)
 					if err != nil {
 						logger.Logf("dwarf", "%v", err)
 					} else {
 						src.Files[sf.Filename] = sf
 						src.Filenames = append(src.Filenames, sf.Filename)
-
-						if strings.HasPrefix(sf.Filename, pathToROM) {
-							src.FilesByShortname[sf.ShortFilename] = sf
-							src.ShortFilenames = append(src.ShortFilenames, sf.ShortFilename)
-						}
+						src.FilesByShortname[sf.ShortFilename] = sf
+						src.ShortFilenames = append(src.ShortFilenames, sf.ShortFilename)
 					}
 				}
 			}
@@ -471,27 +460,6 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 				return nil, fmt.Errorf("dwarf: bad data: no compile unit tag")
 			}
 			src.compileUnits[len(src.compileUnits)-1].children[e.Offset] = e
-		}
-	}
-
-	// if no list of "short" filenames has been created then we default using
-	// regular filenames
-	if len(src.ShortFilenames) == 0 {
-		// if there are no regular filenames either then there's nothing
-		// meaningful we can do
-		if len(src.Filenames) == 0 {
-			return nil, fmt.Errorf("dwarf: no source files loaded")
-		}
-
-		// copy filenames to the shortfilename field
-		src.ShortFilenames = append(src.ShortFilenames, src.Filenames...)
-		for k, v := range src.Files {
-			src.FilesByShortname[k] = v
-		}
-
-		// we also need to change the filename references in the files themselves
-		for _, f := range src.Files {
-			f.ShortFilename = f.Filename
 		}
 	}
 
@@ -882,7 +850,7 @@ func (src *Source) newFrame() {
 	}
 }
 
-func readSourceFile(filename string, pathToROM_nosymlinks string, all *AllSourceLines) (*SourceFile, error) {
+func readSourceFile(filename string, path string, all *AllSourceLines) (*SourceFile, error) {
 	var err error
 
 	fl := SourceFile{
@@ -919,20 +887,10 @@ func readSourceFile(filename string, pathToROM_nosymlinks string, all *AllSource
 		}
 	}
 
-	// evaluate symbolic links for the source filename. pathToROM_nosymlinks has
-	// already been processed so the comparison later should work in all
-	// instance
-	var filename_nosymlinks string
-	filename_nosymlinks, err = filepath.EvalSymlinks(filename)
-	if err != nil {
-		filename_nosymlinks = filename
-	}
-
-	if strings.HasPrefix(filename_nosymlinks, pathToROM_nosymlinks) {
-		fl.ShortFilename = filename_nosymlinks[len(pathToROM_nosymlinks)+1:]
-	} else {
-		fl.ShortFilename = filename_nosymlinks
-	}
+	// evaluate symbolic links for the source filename. path has already been
+	// processed so the comparison later should work in all instance
+	filename = simplifyPath(filename)
+	fl.ShortFilename = longestPath(filename, path)
 
 	return &fl, nil
 }
@@ -1059,4 +1017,29 @@ func (dev *Developer) BorrowSource(f func(*Source)) {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 	f(dev.source)
+}
+
+func simplifyPath(path string) string {
+	nosymlinks, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return path
+	}
+	return nosymlinks
+}
+
+func longestPath(a, b string) string {
+	c := strings.Split(a, string(os.PathSeparator))
+	d := strings.Split(b, string(os.PathSeparator))
+
+	m := len(d)
+	if len(c) < m {
+		return a
+	}
+
+	var i int
+	for i < m && c[i] == d[i] {
+		i++
+	}
+
+	return filepath.Join(c[i:]...)
 }
