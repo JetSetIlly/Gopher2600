@@ -369,27 +369,21 @@ func (cart *cdf) AccessVolatile(addr uint16, data uint8, poke bool) error {
 			// generate interrupt to update AUDV0 while running ARM code
 			fallthrough
 		case 0xff:
-			if cart.dev != nil {
-				// StartProfiling() only at the start of the CALLFN.
-				// ProcessProfiling() won't happen until all cycles have been
-				// accounted for
-				//
-				// * maybe this should be different in the case of a breakpoint
-				// being triggered but I'm not sure yet
-				cart.dev.StartProfiling()
+			runArm := func() {
+				if cart.dev != nil {
+					cart.dev.StartProfiling()
+					defer cart.dev.ProcessProfiling()
+				}
+				cart.state.yield = cart.runArm()
 			}
 
-			// call runArm() once and then check for yield conditions
-			cart.state.yield = cart.runArm()
-
 			// keep calling runArm() for as long as program has not ended
+			runArm()
 			for cart.state.yield.Type != mapper.YieldProgramEnded {
-				switch cart.yieldHook.CartYield(cart.state.yield.Type) {
-				case mapper.YieldHookEnd:
+				if cart.yieldHook.CartYield(cart.state.yield.Type) == mapper.YieldHookEnd {
 					break
-				case mapper.YieldHookContinue:
-					cart.state.yield = cart.runArm()
 				}
+				runArm()
 			}
 		}
 

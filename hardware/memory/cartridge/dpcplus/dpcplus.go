@@ -504,20 +504,21 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		case 254:
 			fallthrough
 		case 255:
-			if cart.dev != nil {
-				cart.dev.StartProfiling()
+			runArm := func() {
+				if cart.dev != nil {
+					cart.dev.StartProfiling()
+					defer cart.dev.ProcessProfiling()
+				}
+				cart.state.yield = cart.runArm()
 			}
 
-			cart.state.yield = cart.runArm()
-
 			// keep calling runArm() for as long as program has not ended
+			runArm()
 			for cart.state.yield.Type != mapper.YieldProgramEnded {
-				switch cart.yieldHook.CartYield(cart.state.yield.Type) {
-				case mapper.YieldHookEnd:
+				if cart.yieldHook.CartYield(cart.state.yield.Type) == mapper.YieldHookEnd {
 					break
-				case mapper.YieldHookContinue:
-					cart.state.yield = cart.runArm()
 				}
+				runArm()
 			}
 		}
 
