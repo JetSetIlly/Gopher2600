@@ -1076,7 +1076,35 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) *Disa
 
 				arm.state.registers[Rd] = uint32(int32(operand1) * int32(operand2))
 			} else {
-				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (32bit multiplies) (%03b/%04b) Ra=%04b", op, op2, Ra))
+				// "4.6.137 SMLABB, SMLABT, SMLATB, SMLATT" of "Thumb-2 Supplement"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "SMLA",
+						Operand:  "group of instructions",
+					}
+				}
+
+				nHigh := opcode&0x0020 == 0x0020
+				mHigh := opcode&0x0010 == 0x0010
+
+				var operand1 uint16
+				if nHigh {
+					operand1 = uint16(arm.state.registers[Rn] >> 16)
+				} else {
+					operand1 = uint16(arm.state.registers[Rn])
+				}
+
+				var operand2 uint16
+				if mHigh {
+					operand2 = uint16(arm.state.registers[Rm] >> 16)
+				} else {
+					operand2 = uint16(arm.state.registers[Rm])
+				}
+
+				result := int64(operand1)*int64(operand2) + int64(arm.state.registers[Ra])
+				arm.state.registers[Rd] = uint32(result)
+				arm.state.status.saturation = result != result&0xffff
 			}
 		} else {
 			panic(fmt.Sprintf("unhandled data processing instructions, non immediate (32bit multiplies) (%03b/%04b)", op, op2))

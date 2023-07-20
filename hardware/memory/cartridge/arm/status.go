@@ -24,10 +24,11 @@ import (
 // currently.
 type Status struct {
 	// CPSR (current program status register) bits
-	negative bool
-	zero     bool
-	overflow bool
-	carry    bool
+	negative   bool
+	zero       bool
+	carry      bool
+	overflow   bool
+	saturation bool
 
 	// mask and firstcond bits of most recent IT instruction. rather than
 	// maintaining a single itState value, the condition and mask are split
@@ -53,15 +54,20 @@ func (sr Status) String() string {
 	} else {
 		s.WriteRune('z')
 	}
+	if sr.carry {
+		s.WriteRune('C')
+	} else {
+		s.WriteRune('c')
+	}
 	if sr.overflow {
 		s.WriteRune('V')
 	} else {
 		s.WriteRune('v')
 	}
-	if sr.carry {
-		s.WriteRune('C')
+	if sr.saturation {
+		s.WriteRune('Q')
 	} else {
-		s.WriteRune('c')
+		s.WriteRune('q')
 	}
 
 	s.WriteString(fmt.Sprintf("   itMask: %04b", sr.itMask))
