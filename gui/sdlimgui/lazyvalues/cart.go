@@ -221,6 +221,11 @@ func (lz *LazyCart) update() {
 		lz.TapeState, _ = lz.tapeState.Load().(container).v.(mapper.CartTapeState)
 	}
 
+	// additional test to makes sure the cartridge has a tape that we can use.
+	// without this test the GUI will show a tape menu entry and a tape window
+	// that will crash because there is no data to draw
+	lz.HasTapeBus = lz.HasTapeBus && len(lz.TapeState.Data) > 0
+
 	_, lz.IsPlusROM = lz.plusROM.Load().(container).v.(*plusrom.PlusROM)
 	if lz.IsPlusROM {
 		lz.PlusROMAddrInfo, _ = lz.plusROMAddrInfo.Load().(plusrom.AddrInfo)
