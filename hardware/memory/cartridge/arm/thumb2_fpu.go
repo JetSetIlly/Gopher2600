@@ -34,8 +34,8 @@ func (arm *ARM) decodeThumb2FPU(opcode uint16) *DisasmEntry {
 			return arm.decodeThumb2FPU32bitTransfer(opcode)
 		}
 	case 0x0c00:
-		switch opcode & 0x00d0 {
-		case 0x00d0:
+		switch arm.state.function32bitOpcodeHi & 0x01e0 {
+		case 0x0040:
 			// "A6.7 64-bit transfers between Arm core and extension registers" of "ARMv7-M"
 			return arm.decodeThumb2FPUTransfers(opcode)
 		default:
