@@ -841,7 +841,7 @@ func (tv *Television) NudgeFPSCap(frames int) {
 	if frames < 0 {
 		frames = 0
 	}
-	tv.lmtr.nudge = frames
+	tv.lmtr.nudge.Store(int32(frames))
 }
 
 // SetFPSCap whether the emulation should wait for FPS limiter. Returns the

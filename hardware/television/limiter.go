@@ -74,7 +74,7 @@ type limiter struct {
 	matchRefreshRateDelay int
 
 	// nudge the limiter so that it doesn't wait for the specified number of frames
-	nudge int
+	nudge atomic.Int32
 }
 
 func (lmtr *limiter) init(tv *Television) {
@@ -131,8 +131,9 @@ func (lmtr *limiter) setRate(fps float32) {
 func (lmtr *limiter) checkFrame() {
 	lmtr.measureCt++
 
-	if lmtr.nudge > 0 {
-		lmtr.nudge--
+	nudge := lmtr.nudge.Load()
+	if nudge > 0 {
+		lmtr.nudge.Store(nudge - 1)
 	} else {
 		if lmtr.active {
 			lmtr.pulseCt++
