@@ -13,46 +13,48 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package dwarf
+package callstack
 
 import (
 	"errors"
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 )
 
 // callStack maintains information about function calls and the order in which
 // they happen.
-type callStack struct {
+type CallStack struct {
 	// call stack of running program
-	Stack []*SourceLine
+	Stack []*dwarf.SourceLine
 
 	// list of callers for all executed functions
-	Callers map[string]([]*SourceLine)
+	Callers map[string]([]*dwarf.SourceLine)
 
 	// prevLine is helpful when creating the Callers list
-	PrevLine *SourceLine
+	PrevLine *dwarf.SourceLine
 }
 
 // WriteCallstack writes out the current callstack
-func (src *Source) WriteCallStack(w io.Writer) {
-	for i := 1; i < len(src.CallStack.Stack); i++ {
-		w.Write([]byte(src.CallStack.Stack[i].String()))
+func (cs *CallStack) WriteCallStack(w io.Writer) {
+	for i := 1; i < len(cs.Stack); i++ {
+		w.Write([]byte(cs.Stack[i].String()))
 	}
 }
 
 // WriteCallers writes a list of functions that have called the specified function
-func (src *Source) WriteCallers(function string, w io.Writer) error {
-	callers, ok := src.CallStack.Callers[function]
+func (cs *CallStack) WriteCallers(function string, w io.Writer) error {
+	callers, ok := cs.Callers[function]
 	if !ok {
 		return errors.New(fmt.Sprintf("no function named %s has ever been called", function))
 	}
 
 	const maxDepth = 15
 
-	var f func(callLines []*SourceLine, depth int) error
-	f = func(callLines []*SourceLine, depth int) error {
+	var f func(callLines []*dwarf.SourceLine, depth int) error
+	f = func(callLines []*dwarf.SourceLine, depth int) error {
 		indent := strings.Builder{}
 		for i := 0; i < depth; i++ {
 			indent.WriteString("  ")
@@ -69,7 +71,7 @@ func (src *Source) WriteCallers(function string, w io.Writer) error {
 
 			s := fmt.Sprintf("%s (%s:%d)", ln.Function.Name, ln.File.ShortFilename, ln.LineNumber)
 			w.Write([]byte(fmt.Sprintf("%s%s", indent.String(), s)))
-			if l, ok := src.CallStack.Callers[ln.Function.Name]; ok {
+			if l, ok := cs.Callers[ln.Function.Name]; ok {
 				err := f(l, depth+1)
 				if err != nil {
 					return err

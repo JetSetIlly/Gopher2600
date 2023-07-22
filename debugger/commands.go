@@ -25,6 +25,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/callstack"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
@@ -1648,13 +1649,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			})
 
 		case "CALLSTACK":
-			dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
-				if src == nil {
-					dbg.printLine(terminal.StyleError, "no source files found")
-					return
-				}
+			dbg.CoProcDev.BorrowCallStack(func(callstack callstack.CallStack) {
 				w := dbg.writerInStyle(terminal.StyleFeedback)
-				src.WriteCallStack(w)
+				callstack.WriteCallStack(w)
 			})
 
 		case "CALLERS":
@@ -1663,13 +1660,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				dbg.printLine(terminal.StyleError, "function name is required")
 				return nil
 			}
-			dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
-				if src == nil {
-					dbg.printLine(terminal.StyleError, "no source files found")
-					return
-				}
+			dbg.CoProcDev.BorrowCallStack(func(callstack callstack.CallStack) {
 				w := dbg.writerInStyle(terminal.StyleFeedback)
-				if err := src.WriteCallers(arg, w); err != nil {
+				if err := callstack.WriteCallers(arg, w); err != nil {
 					dbg.printLine(terminal.StyleError, err.Error())
 					return
 				}

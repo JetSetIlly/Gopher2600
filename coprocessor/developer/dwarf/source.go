@@ -172,9 +172,6 @@ type Source struct {
 
 	// list of breakpoints on ARM program
 	Breakpoints map[uint32]bool
-
-	// call stack of running program
-	CallStack callStack
 }
 
 // NewSource is the preferred method of initialisation for the Source type.
@@ -211,10 +208,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		},
 		ExecutionProfileChanged: true,
 		Breakpoints:             make(map[uint32]bool),
-		CallStack: callStack{
-			Callers: make(map[string][]*SourceLine),
-		},
-		path: simplifyPath(filepath.Dir(romFile)),
+		path:                    simplifyPath(filepath.Dir(romFile)),
 	}
 
 	var err error

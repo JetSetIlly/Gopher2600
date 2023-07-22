@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/callstack"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -62,6 +63,9 @@ type Developer struct {
 	yieldState     YieldState
 	yieldStateLock sync.Mutex
 
+	callstack     callstack.CallStack
+	callstackLock sync.Mutex
+
 	// slow down rate of NewFrame()
 	framesSinceLastUpdate int
 
@@ -79,6 +83,9 @@ type Developer struct {
 func NewDeveloper(tv TV) Developer {
 	return Developer{
 		tv: tv,
+		callstack: callstack.CallStack{
+			Callers: make(map[string][]*dwarf.SourceLine),
+		},
 	}
 }
 
@@ -210,4 +217,15 @@ func (dev *Developer) BorrowSource(f func(*dwarf.Source)) {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 	f(dev.source)
+}
+
+// BorrowCallStack will lock the callstack information for the durction of the
+// supplied function, which will be executed with the callstack structure as
+// an argument.
+//
+// May return nil.
+func (dev *Developer) BorrowCallStack(f func(callstack.CallStack)) {
+	dev.callstackLock.Lock()
+	defer dev.callstackLock.Unlock()
+	f(dev.callstack)
 }
