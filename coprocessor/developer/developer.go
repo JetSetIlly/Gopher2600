@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/breakpoints"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/callstack"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -61,7 +62,7 @@ type Developer struct {
 	illegalAccessLock sync.Mutex
 
 	// the current yield information
-	yieldState     YieldState
+	yieldState     yield.State
 	yieldStateLock sync.Mutex
 
 	callstack     callstack.CallStack
@@ -110,7 +111,7 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 	dev.illegalAccessLock.Unlock()
 
 	dev.yieldStateLock.Lock()
-	dev.yieldState = YieldState{}
+	dev.yieldState = yield.State{}
 	dev.yieldStateLock.Unlock()
 
 	dev.framesSinceLastUpdate = 0
@@ -218,35 +219,25 @@ func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 	return nil
 }
 
-// BorrowSource will lock the source code structure for the durction of the
-// supplied function, which will be executed with the source code structure as
-// an argument.
-//
-// May return nil.
-func (dev *Developer) BorrowSource(f func(*dwarf.Source)) {
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
-	f(dev.source)
-}
+// OnYield implements the mapper.CartCoProcDeveloper interface.
+func (dev *Developer) OnYield(addr uint32, yield mapper.CoProcYield) {
+	dev.yieldStateLock.Lock()
+	defer dev.yieldStateLock.Unlock()
 
-// BorrowCallStack will lock the callstack structure for the durction of the
-// supplied function, which will be executed with the callstack structure as
-// an argument.
-//
-// May return nil.
-func (dev *Developer) BorrowCallStack(f func(callstack.CallStack)) {
-	dev.callstackLock.Lock()
-	defer dev.callstackLock.Unlock()
-	f(dev.callstack)
-}
+	dev.yieldState.Addr = addr
+	dev.yieldState.Reason = yield.Type
+	dev.yieldState.LocalVariables = dev.yieldState.LocalVariables[:0]
 
-// BorrowBreakpoints will lock the breakpoints structure for the durction of the
-// supplied function, which will be executed with the breakpoints structure as
-// an argument.
-//
-// May return nil.
-func (dev *Developer) BorrowBreakpoints(f func(breakpoints.Breakpoints)) {
-	dev.breakpointsLock.Lock()
-	defer dev.breakpointsLock.Unlock()
-	f(dev.breakpoints)
+	if yield.Type == mapper.YieldSyncWithVCS {
+		return
+	}
+
+	dev.BorrowSource(func(src *dwarf.Source) {
+		if src == nil {
+			return
+		}
+
+		locals := src.OnYield(addr, yield)
+		dev.yieldState.LocalVariables = append(dev.yieldState.LocalVariables, locals...)
+	})
 }

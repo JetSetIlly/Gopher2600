@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/breakpoints"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -57,7 +58,7 @@ type winCoProcSource struct {
 
 	// yield state is checked on every draw whether window is open or not. the
 	// window will open if the yield state is new
-	yieldState developer.YieldState
+	yieldState yield.State
 	yieldLine  *dwarf.SourceLine
 
 	// focus source view on current yield line
@@ -115,9 +116,9 @@ func (win *winCoProcSource) debuggerDraw() bool {
 	}
 
 	// check yield state and open the window if necessary
-	win.img.dbg.CoProcDev.BorrowYieldState(func(yld *developer.YieldState) {
-		if !yld.Cmp(&win.yieldState) {
-			win.yieldState = *yld
+	win.img.dbg.CoProcDev.BorrowYieldState(func(yld yield.State) {
+		if !yld.Cmp(win.yieldState) {
+			win.yieldState = yld
 
 			// open window and focus on yield line if the yield is a breakpoint
 			if yld.Reason != mapper.YieldSyncWithVCS && yld.Reason != mapper.YieldProgramEnded {
@@ -170,7 +171,7 @@ func (win *winCoProcSource) draw() {
 		}
 
 		// find yield line
-		win.yieldLine = src.FindSourceLine(win.yieldState.PC)
+		win.yieldLine = src.FindSourceLine(win.yieldState.Addr)
 
 		// focus on yield line (or main function if we don't have a yield line)
 		// but only if emulation is paused
@@ -533,7 +534,7 @@ func (win *winCoProcSource) drawSource(src *dwarf.Source, bp breakpoints.Breakpo
 									disasm = win.selectionRange.Instructions
 								}
 
-								win.img.drawDisasmForCoProc(disasm, ln, multiline, true, win.yieldState.PC)
+								win.img.drawDisasmForCoProc(disasm, ln, multiline, true, win.yieldState.Addr)
 
 								if ln.Function.IsInlined() {
 									imgui.Spacing()

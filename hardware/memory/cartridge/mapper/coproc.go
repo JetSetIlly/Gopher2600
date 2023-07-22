@@ -236,6 +236,12 @@ func (t CoProcYieldType) Normal() bool {
 	return t == YieldRunning || t == YieldProgramEnded || t == YieldSyncWithVCS
 }
 
+// Bug returns true if the yield type indicates a likely bug
+func (t CoProcYieldType) Bug() bool {
+	return t == YieldUndefinedBehaviour || t == YieldUnimplementedFeature ||
+		t == YieldExecutionError || t == YieldMemoryAccessError || t == YieldStackError
+}
+
 // List of CoProcYieldType values
 const (
 	// the coprocessor has yielded because the program has ended. in this instance the

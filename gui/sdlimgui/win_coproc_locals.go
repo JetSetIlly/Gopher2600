@@ -20,8 +20,8 @@ import (
 	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/coprocessor/developer"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
@@ -111,7 +111,7 @@ func (win *winCoProcLocals) draw() {
 	imgui.TableSetupScrollFreeze(0, 1)
 	imgui.TableHeadersRow()
 
-	win.img.dbg.CoProcDev.BorrowYieldState(func(yld *developer.YieldState) {
+	win.img.dbg.CoProcDev.BorrowYieldState(func(yld yield.State) {
 		for i, varb := range yld.LocalVariables {
 			win.drawVariableLocal(varb, fmt.Sprint(i))
 		}

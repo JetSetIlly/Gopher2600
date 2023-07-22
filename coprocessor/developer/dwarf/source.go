@@ -996,6 +996,67 @@ func (src *Source) UpdateGlobalVariables() {
 	}
 }
 
+func (src *Source) OnYield(addr uint32, yield mapper.CoProcYield) []*SourceVariableLocal {
+	var locals []*SourceVariableLocal
+
+	ln := src.FindSourceLine(addr)
+	if ln == nil {
+		return locals
+	}
+
+	if yield.Type.Bug() {
+		ln.Bug = true
+	}
+
+	var chosenLocal *SourceVariableLocal
+
+	// choose function that covers the smallest (most specific) range in which startAddr
+	// appears
+	chosenSize := ^uint64(0)
+
+	// function to add chosen local variable to the yield
+	commitChosen := func() {
+		locals = append(locals, chosenLocal)
+		chosenLocal = nil
+		chosenSize = ^uint64(0)
+	}
+
+	// there's an assumption here that SortedLocals is sorted by variable name
+	for _, local := range src.SortedLocals.Locals {
+		// append chosen local variable
+		if chosenLocal != nil && chosenLocal.Name != local.Name {
+			commitChosen()
+		}
+
+		// ignore variables that are not declared to be in the same
+		// function as the break line. this can happen for inlined
+		// functions when function ranges overlap
+		if local.DeclLine.Function == ln.Function {
+			if local.Range.InRange(uint64(addr)) {
+				if local.Range.Size() < chosenSize {
+					chosenLocal = local
+					chosenSize = local.Range.Size()
+				}
+			}
+		}
+	}
+
+	// append chosen local variable
+	if chosenLocal != nil {
+		commitChosen()
+	}
+
+	// update global variables
+	src.UpdateGlobalVariables()
+
+	// update local variables
+	for _, local := range locals {
+		local.Update()
+	}
+
+	return locals
+}
+
 // FramebaseCurrent returns the current framebase value
 func (src *Source) FramebaseCurrent() (uint64, error) {
 	return src.debugFrame.framebase()

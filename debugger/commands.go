@@ -28,6 +28,7 @@ import (
 	coproc_breakpoints "github.com/jetsetilly/gopher2600/coprocessor/developer/breakpoints"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/callstack"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/script"
@@ -1569,7 +1570,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				}
 			})
 
-			dbg.CoProcDev.BorrowYieldState(func(yld *developer.YieldState) {
+			dbg.CoProcDev.BorrowYieldState(func(yld yield.State) {
 				for _, l := range yld.LocalVariables {
 					l.Update()
 					dbg.printLine(terminal.StyleFeedback, l.String())
