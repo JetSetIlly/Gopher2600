@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
@@ -39,7 +39,7 @@ type winCoProcGlobals struct {
 
 	selectedFileFuzzy     fuzzyFilter
 	selectedShortFileName string
-	selectedFile          *developer.SourceFile
+	selectedFile          *dwarf.SourceFile
 	updateSelectedFile    bool
 
 	optionsHeight  float32
@@ -91,7 +91,7 @@ func (win *winCoProcGlobals) debuggerDraw() bool {
 	return true
 }
 
-func (win *winCoProcGlobals) drawFileSelection(src *developer.Source) {
+func (win *winCoProcGlobals) drawFileSelection(src *dwarf.Source) {
 	if imgui.Button(string(fonts.Disk)) {
 		mp := imgui.MousePos()
 		mp.X += imgui.FontSize()
@@ -134,7 +134,7 @@ func (win *winCoProcGlobals) draw() {
 		return
 	}
 
-	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+	win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 		if src == nil {
 			imgui.Text("No source files available")
 			return
@@ -245,7 +245,7 @@ func (win *winCoProcGlobals) draw() {
 	})
 }
 
-func drawVariableTooltipShort(varb *developer.SourceVariable, cols *imguiColors) {
+func drawVariableTooltipShort(varb *dwarf.SourceVariable, cols *imguiColors) {
 	imgui.Text(varb.DeclLine.File.ShortFilename)
 	imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcSourceLineNumber)
 	imgui.Text(fmt.Sprintf("Line: %d", varb.DeclLine.LineNumber))
@@ -261,7 +261,7 @@ func drawVariableTooltipShort(varb *developer.SourceVariable, cols *imguiColors)
 	}
 }
 
-func drawVariableTooltip(varb *developer.SourceVariable, value uint32, cols *imguiColors) {
+func drawVariableTooltip(varb *dwarf.SourceVariable, value uint32, cols *imguiColors) {
 	if a, ok := varb.Address(); ok {
 		imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcVariablesAddress)
 		imgui.Text(fmt.Sprintf("%08x", a))
@@ -359,7 +359,7 @@ func drawVariableTooltip(varb *developer.SourceVariable, value uint32, cols *img
 	}
 }
 
-func (win *winCoProcGlobals) drawVariable(src *developer.Source, varb *developer.SourceVariable,
+func (win *winCoProcGlobals) drawVariable(src *dwarf.Source, varb *dwarf.SourceVariable,
 	indentLevel int, unnamed bool, nodeID string) {
 
 	const IndentDepth = 2
@@ -461,7 +461,7 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source, varb *developer
 // globals_<cart name>_<timestamp>.csv
 //
 // all entries in the current view are saved, including closed nodes.
-func (win *winCoProcGlobals) saveToCSV(src *developer.Source) {
+func (win *winCoProcGlobals) saveToCSV(src *dwarf.Source) {
 	// open unique file
 	fn := unique.Filename("globals", win.img.lz.Cart.Shortname)
 	fn = fmt.Sprintf("%s.csv", fn)
@@ -478,7 +478,7 @@ func (win *winCoProcGlobals) saveToCSV(src *developer.Source) {
 	}()
 
 	// write variable to file
-	writeVarb := func(varb *developer.SourceVariable) {
+	writeVarb := func(varb *dwarf.SourceVariable) {
 		f.WriteString(fmt.Sprintf("%s,", varb.Name))
 		f.WriteString(fmt.Sprintf("%s,", varb.Type.Name))
 		if a, ok := varb.Address(); ok {
@@ -493,8 +493,8 @@ func (win *winCoProcGlobals) saveToCSV(src *developer.Source) {
 
 	// the builEntry function is recursive and will is very similar in
 	// structure to the drawVariable() function above
-	var buildEntry func(*developer.SourceVariable, string)
-	buildEntry = func(varb *developer.SourceVariable, parent string) {
+	var buildEntry func(*dwarf.SourceVariable, string)
+	buildEntry = func(varb *dwarf.SourceVariable, parent string) {
 		f.WriteString(fmt.Sprintf("%s,", parent))
 
 		// how we write the line differs depending on whether the variable has

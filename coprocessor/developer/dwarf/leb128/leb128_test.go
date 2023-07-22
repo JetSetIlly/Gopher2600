@@ -18,7 +18,7 @@ package leb128_test
 import (
 	"testing"
 
-	"github.com/jetsetilly/gopher2600/coprocessor/developer/leb128"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf/leb128"
 	"github.com/jetsetilly/gopher2600/test"
 )
 

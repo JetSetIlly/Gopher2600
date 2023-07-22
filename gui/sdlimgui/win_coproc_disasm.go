@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/coprocessor/disassembly"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
@@ -203,7 +203,7 @@ func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries, lastExecu
 
 	var clipper imgui.ListClipper
 
-	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+	win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 		if lastExecution {
 			imgui.Text("State of execution has recently changed. Last execution details currently unavailable.")
 			clipper.Begin(len(dsm.LastExecution))
@@ -234,8 +234,8 @@ func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries, lastExecu
 	})
 }
 
-func (win *winCoProcDisasm) drawEntry(src *developer.Source, e arm.DisasmEntry) {
-	var ln *developer.SourceLine
+func (win *winCoProcDisasm) drawEntry(src *dwarf.Source, e arm.DisasmEntry) {
+	var ln *dwarf.SourceLine
 	if src != nil {
 		ln = src.FindSourceLine(e.Addr)
 	}
@@ -313,7 +313,7 @@ func (win *winCoProcDisasm) drawEntry(src *developer.Source, e arm.DisasmEntry) 
 	}
 }
 
-func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry, ln *developer.SourceLine) {
+func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry, ln *dwarf.SourceLine) {
 	win.img.imguiTooltip(func() {
 		imgui.Text("Address:")
 		imgui.SameLine()

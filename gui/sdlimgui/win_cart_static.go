@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
@@ -136,7 +136,7 @@ func (win *winCartStatic) draw() {
 						imgui.PopStyleColorV(popColor)
 						popColor = 0
 
-						win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+						win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 							if src == nil {
 								return
 							}

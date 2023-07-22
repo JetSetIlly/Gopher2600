@@ -22,6 +22,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -51,12 +52,12 @@ type winCoProcSource struct {
 
 	// selectedFile will change whenever updateSelectedFile is true
 	updateSelectedFile bool
-	selectedFile       *developer.SourceFile
+	selectedFile       *dwarf.SourceFile
 
 	// yield state is checked on every draw whether window is open or not. the
 	// window will open if the yield state is new
 	yieldState developer.YieldState
-	yieldLine  *developer.SourceLine
+	yieldLine  *dwarf.SourceLine
 
 	// focus source view on current yield line
 	focusYieldLine bool
@@ -156,7 +157,7 @@ func (win *winCoProcSource) debuggerDraw() bool {
 
 func (win *winCoProcSource) draw() {
 	// safely iterate over source code
-	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+	win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 		if src == nil {
 			imgui.Text("No source files available")
 			return
@@ -244,7 +245,7 @@ func (win *winCoProcSource) draw() {
 	})
 }
 
-func (win *winCoProcSource) drawFileSelection(src *developer.Source) {
+func (win *winCoProcSource) drawFileSelection(src *dwarf.Source) {
 	if imgui.Button(string(fonts.Disk)) {
 		mp := imgui.MousePos()
 		mp.X += imgui.FontSize()
@@ -281,7 +282,7 @@ func (win *winCoProcSource) drawFileSelection(src *developer.Source) {
 	}
 }
 
-func (win *winCoProcSource) drawLineSearch(src *developer.Source) {
+func (win *winCoProcSource) drawLineSearch(src *dwarf.Source) {
 	if imgui.Button(string(fonts.MagnifyingGlass)) {
 		mp := imgui.MousePos()
 		mp.X += imgui.FontSize()
@@ -308,7 +309,7 @@ func (win *winCoProcSource) drawLineSearch(src *developer.Source) {
 	}
 }
 
-func (win *winCoProcSource) gotoSourceLine(ln *developer.SourceLine) {
+func (win *winCoProcSource) gotoSourceLine(ln *dwarf.SourceLine) {
 	if ln == nil {
 		return
 	}
@@ -320,7 +321,7 @@ func (win *winCoProcSource) gotoSourceLine(ln *developer.SourceLine) {
 	win.updateSelectedFile = true
 }
 
-func (win *winCoProcSource) saveToCSV(src *developer.Source) {
+func (win *winCoProcSource) saveToCSV(src *dwarf.Source) {
 	// open unique file
 	fn := unique.Filename("source", win.img.lz.Cart.Shortname)
 	fn = fmt.Sprintf("%s.csv", fn)
@@ -364,7 +365,7 @@ func (win *winCoProcSource) saveToCSV(src *developer.Source) {
 	}
 }
 
-func (win *winCoProcSource) drawSource(src *developer.Source) {
+func (win *winCoProcSource) drawSource(src *dwarf.Source) {
 	// new child that contains the main scrollable table
 	imgui.BeginChildV("##coprocSourceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 	defer imgui.EndChild()

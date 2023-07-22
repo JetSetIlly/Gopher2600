@@ -20,7 +20,8 @@ import (
 	"sync/atomic"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -37,7 +38,7 @@ type winCoProcPerformance struct {
 	img *SdlImgui
 
 	// which kernel to focus on
-	kernelFocus         developer.KernelVCS
+	kernelFocus         profiling.KernelVCS
 	kernelFocusComboDim imgui.Vec2
 
 	// whether to present performance figures as raw counts or as percentages
@@ -97,7 +98,7 @@ func (tv *coProcPerformanceTV) NewFrame(_ television.FrameInfo) error {
 	// this code is running in the emulator goroutine and NOT the GUI goroutine
 	if tv.schedule.Load().(bool) {
 		tv.schedule.Store(false)
-		tv.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+		tv.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 			src.ResetStatistics()
 		})
 	}
@@ -107,7 +108,7 @@ func (tv *coProcPerformanceTV) NewFrame(_ television.FrameInfo) error {
 func newWinCoProcPerformance(img *SdlImgui) (window, error) {
 	win := &winCoProcPerformance{
 		img:               img,
-		kernelFocus:       developer.KernelAny,
+		kernelFocus:       profiling.KernelAny,
 		percentileFigures: true,
 	}
 
@@ -117,7 +118,7 @@ func newWinCoProcPerformance(img *SdlImgui) (window, error) {
 }
 
 func (win *winCoProcPerformance) init() {
-	win.kernelFocusComboDim = imguiGetFrameDim("", developer.AvailableInKernelOptions...)
+	win.kernelFocusComboDim = imguiGetFrameDim("", profiling.AvailableInKernelOptions...)
 }
 
 func (win *winCoProcPerformance) id() string {
@@ -150,7 +151,7 @@ func (win *winCoProcPerformance) debuggerDraw() bool {
 
 func (win *winCoProcPerformance) draw() {
 	// safely iterate over top execution information
-	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+	win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 		if src == nil {
 			imgui.Text("No source files available")
 			return
@@ -228,20 +229,20 @@ func (win *winCoProcPerformance) draw() {
 			imguiLabel("Kernel Focus")
 			imgui.PushItemWidth(win.kernelFocusComboDim.X + imgui.FrameHeight())
 			if imgui.BeginCombo("##kernelFocus", win.kernelFocus.String()) {
-				if imgui.Selectable(developer.KernelAny.String()) {
-					win.kernelFocus = developer.KernelAny
+				if imgui.Selectable(profiling.KernelAny.String()) {
+					win.kernelFocus = profiling.KernelAny
 					win.windowSortSpecDirty = true
 				}
-				if imgui.Selectable(developer.KernelVBLANK.String()) {
-					win.kernelFocus = developer.KernelVBLANK
+				if imgui.Selectable(profiling.KernelVBLANK.String()) {
+					win.kernelFocus = profiling.KernelVBLANK
 					win.windowSortSpecDirty = true
 				}
-				if imgui.Selectable(developer.KernelScreen.String()) {
-					win.kernelFocus = developer.KernelScreen
+				if imgui.Selectable(profiling.KernelScreen.String()) {
+					win.kernelFocus = profiling.KernelScreen
 					win.windowSortSpecDirty = true
 				}
-				if imgui.Selectable(developer.KernelOverscan.String()) {
-					win.kernelFocus = developer.KernelOverscan
+				if imgui.Selectable(profiling.KernelOverscan.String()) {
+					win.kernelFocus = profiling.KernelOverscan
 					win.windowSortSpecDirty = true
 				}
 				imgui.EndCombo()
@@ -334,16 +335,16 @@ func (win *winCoProcPerformance) drawFrameStats() {
 	var kernelClocks float32
 
 	switch win.kernelFocus {
-	case developer.KernelAny:
+	case profiling.KernelAny:
 		kernelClocks = float32(win.img.screen.crit.frameInfo.TotalClocks())
 		kernel = "TV Frame"
-	case developer.KernelScreen:
+	case profiling.KernelScreen:
 		kernelClocks = float32(win.img.screen.crit.frameInfo.ScreenClocks())
 		kernel = "Screen"
-	case developer.KernelVBLANK:
+	case profiling.KernelVBLANK:
 		kernelClocks = float32(win.img.screen.crit.frameInfo.VBLANKClocks())
 		kernel = "VBLANK"
-	case developer.KernelOverscan:
+	case profiling.KernelOverscan:
 		kernelClocks = float32(win.img.screen.crit.frameInfo.OverscanClocks())
 		kernel = "Overscan"
 	}
@@ -355,17 +356,17 @@ func (win *winCoProcPerformance) drawFrameStats() {
 		sl := i / specification.ClksScanline
 
 		switch win.kernelFocus {
-		case developer.KernelAny:
+		case profiling.KernelAny:
 			clockCount += float32(accumulate(r.CoProcSync))
-		case developer.KernelScreen:
+		case profiling.KernelScreen:
 			if sl >= win.img.screen.crit.frameInfo.VisibleTop && sl <= win.img.screen.crit.frameInfo.VisibleBottom {
 				clockCount += float32(accumulate(r.CoProcSync))
 			}
-		case developer.KernelVBLANK:
+		case profiling.KernelVBLANK:
 			if sl < win.img.screen.crit.frameInfo.VisibleTop {
 				clockCount += float32(accumulate(r.CoProcSync))
 			}
-		case developer.KernelOverscan:
+		case profiling.KernelOverscan:
 			if sl > win.img.screen.crit.frameInfo.VisibleBottom {
 				clockCount += float32(accumulate(r.CoProcSync))
 			}
@@ -378,14 +379,14 @@ func (win *winCoProcPerformance) drawFrameStats() {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 		imgui.Text(fmt.Sprintf("%.02f%%", clockCount/kernelClocks*100))
 		imgui.PopStyleColor()
-	} else if win.kernelFocus == developer.KernelAny {
+	} else if win.kernelFocus == profiling.KernelAny {
 		imgui.Text(fmt.Sprintf("No %s activity in the most recent frame", win.img.lz.Cart.CoProcID))
 	} else {
 		imgui.Text(fmt.Sprintf("No %s activity in the %s kernel", win.img.lz.Cart.CoProcID, kernel))
 	}
 }
 
-func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
+func (win *winCoProcPerformance) drawFunctions(src *dwarf.Source) {
 	imgui.Spacing()
 
 	if src == nil || len(src.SortedFunctions.Functions) == 0 {
@@ -393,17 +394,17 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		return
 	}
 
-	if win.kernelFocus&developer.KernelVBLANK == developer.KernelVBLANK {
+	if win.kernelFocus&profiling.KernelVBLANK == profiling.KernelVBLANK {
 		if !src.Stats.VBLANK.HasExecuted() {
 			imgui.Text("No functions have been executed during VBLANK yet")
 			return
 		}
-	} else if win.kernelFocus&developer.KernelScreen == developer.KernelScreen {
+	} else if win.kernelFocus&profiling.KernelScreen == profiling.KernelScreen {
 		if !src.Stats.Screen.HasExecuted() {
 			imgui.Text("No functions have been executed during the visible screen yet")
 			return
 		}
-	} else if win.kernelFocus&developer.KernelOverscan == developer.KernelOverscan {
+	} else if win.kernelFocus&profiling.KernelOverscan == profiling.KernelOverscan {
 		if !src.Stats.Overscan.HasExecuted() {
 			imgui.Text("No functions have been executed during Overscan yet")
 			return
@@ -473,19 +474,19 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		isStub := fn.IsStub()
 
 		// select which stats to focus on
-		var statsGroup developer.StatsGroup
+		var statsGroup profiling.StatsGroup
 		if win.cumulative {
 			statsGroup = fn.CumulativeStats
 		} else {
 			statsGroup = fn.FlatStats
 		}
 
-		var stats developer.Stats
-		if win.kernelFocus&developer.KernelVBLANK == developer.KernelVBLANK {
+		var stats profiling.Stats
+		if win.kernelFocus&profiling.KernelVBLANK == profiling.KernelVBLANK {
 			stats = statsGroup.VBLANK
-		} else if win.kernelFocus&developer.KernelScreen == developer.KernelScreen {
+		} else if win.kernelFocus&profiling.KernelScreen == profiling.KernelScreen {
 			stats = statsGroup.Screen
-		} else if win.kernelFocus&developer.KernelOverscan == developer.KernelOverscan {
+		} else if win.kernelFocus&profiling.KernelOverscan == profiling.KernelOverscan {
 			stats = statsGroup.Overscan
 		} else {
 			stats = statsGroup.Overall
@@ -592,18 +593,18 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		if fn.Kernel == developer.KernelUnstable {
+		if fn.Kernel == profiling.KernelUnstable {
 			imgui.Text("R")
 		} else {
-			if fn.Kernel&developer.KernelVBLANK == developer.KernelVBLANK {
+			if fn.Kernel&profiling.KernelVBLANK == profiling.KernelVBLANK {
 				imgui.Text("V")
 				imgui.SameLineV(0, 1)
 			}
-			if fn.Kernel&developer.KernelScreen == developer.KernelScreen {
+			if fn.Kernel&profiling.KernelScreen == profiling.KernelScreen {
 				imgui.Text("S")
 				imgui.SameLineV(0, 1)
 			}
-			if fn.Kernel&developer.KernelOverscan == developer.KernelOverscan {
+			if fn.Kernel&profiling.KernelOverscan == profiling.KernelOverscan {
 				imgui.Text("O")
 				imgui.SameLineV(0, 1)
 			}
@@ -613,7 +614,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	imgui.EndTable()
 }
 
-func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
+func (win *winCoProcPerformance) drawSourceLines(src *dwarf.Source) {
 	imgui.Spacing()
 
 	if src == nil || len(src.SortedLines.Lines) == 0 {
@@ -621,17 +622,17 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		return
 	}
 
-	if win.kernelFocus&developer.KernelVBLANK == developer.KernelVBLANK {
+	if win.kernelFocus&profiling.KernelVBLANK == profiling.KernelVBLANK {
 		if !src.Stats.VBLANK.HasExecuted() {
 			imgui.Text("No lines have been executed during VBLANK yet")
 			return
 		}
-	} else if win.kernelFocus&developer.KernelScreen == developer.KernelScreen {
+	} else if win.kernelFocus&profiling.KernelScreen == profiling.KernelScreen {
 		if !src.Stats.Screen.HasExecuted() {
 			imgui.Text("No lines have been executed during the visible screen yet")
 			return
 		}
-	} else if win.kernelFocus&developer.KernelOverscan == developer.KernelOverscan {
+	} else if win.kernelFocus&profiling.KernelOverscan == profiling.KernelOverscan {
 		if !src.Stats.Overscan.HasExecuted() {
 			imgui.Text("No lines have been executed during Overscan yet")
 			return
@@ -696,12 +697,12 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		isStub := ln.IsStub()
 
 		// select which stats to focus on
-		var stats developer.Stats
-		if win.kernelFocus&developer.KernelVBLANK == developer.KernelVBLANK {
+		var stats profiling.Stats
+		if win.kernelFocus&profiling.KernelVBLANK == profiling.KernelVBLANK {
 			stats = ln.Stats.VBLANK
-		} else if win.kernelFocus&developer.KernelScreen == developer.KernelScreen {
+		} else if win.kernelFocus&profiling.KernelScreen == profiling.KernelScreen {
 			stats = ln.Stats.Screen
-		} else if win.kernelFocus&developer.KernelOverscan == developer.KernelOverscan {
+		} else if win.kernelFocus&profiling.KernelOverscan == profiling.KernelOverscan {
 			stats = ln.Stats.Overscan
 		} else {
 			stats = ln.Stats.Overall
@@ -782,18 +783,18 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		if ln.Kernel == developer.KernelUnstable {
+		if ln.Kernel == profiling.KernelUnstable {
 			imgui.Text("R")
 		} else {
-			if ln.Kernel&developer.KernelVBLANK == developer.KernelVBLANK {
+			if ln.Kernel&profiling.KernelVBLANK == profiling.KernelVBLANK {
 				imgui.Text("V")
 				imgui.SameLineV(0, 1)
 			}
-			if ln.Kernel&developer.KernelScreen == developer.KernelScreen {
+			if ln.Kernel&profiling.KernelScreen == profiling.KernelScreen {
 				imgui.Text("S")
 				imgui.SameLineV(0, 1)
 			}
-			if ln.Kernel&developer.KernelOverscan == developer.KernelOverscan {
+			if ln.Kernel&profiling.KernelOverscan == profiling.KernelOverscan {
 				imgui.Text("O")
 				imgui.SameLineV(0, 1)
 			}
@@ -803,7 +804,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	imgui.EndTable()
 }
 
-func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, functionFilter *developer.FunctionFilter) {
+func (win *winCoProcPerformance) drawFunctionFilter(src *dwarf.Source, functionFilter *dwarf.FunctionFilter) {
 	imgui.Spacing()
 
 	if len(functionFilter.Lines.Lines) == 0 {
@@ -814,17 +815,17 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 	// validity check is done on function filter stats - drawFunctions() and
 	// drawSourceLines() equivalents of this block perform the validity check
 	// on the source level statistics
-	if win.kernelFocus&developer.KernelVBLANK == developer.KernelVBLANK {
+	if win.kernelFocus&profiling.KernelVBLANK == profiling.KernelVBLANK {
 		if !functionFilter.Function.FlatStats.VBLANK.HasExecuted() {
 			imgui.Text("This function has not been executed during VBLANK yet")
 			return
 		}
-	} else if win.kernelFocus&developer.KernelScreen == developer.KernelScreen {
+	} else if win.kernelFocus&profiling.KernelScreen == profiling.KernelScreen {
 		if !functionFilter.Function.FlatStats.Screen.HasExecuted() {
 			imgui.Text("This function has not been executed during the visible screen yet")
 			return
 		}
-	} else if win.kernelFocus&developer.KernelOverscan == developer.KernelOverscan {
+	} else if win.kernelFocus&profiling.KernelOverscan == profiling.KernelOverscan {
 		if !functionFilter.Function.FlatStats.Overscan.HasExecuted() {
 			imgui.Text("This function has not been executed during Overscan yet")
 			return
@@ -839,11 +840,11 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 	// function summary in relation to the program
 	imgui.AlignTextToFramePadding()
 	switch win.kernelFocus {
-	case developer.KernelVBLANK:
+	case profiling.KernelVBLANK:
 		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the VBLANK last frame", functionFilter.Function.FlatStats.VBLANK.OverSource.Frame))
-	case developer.KernelScreen:
+	case profiling.KernelScreen:
 		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Visible Screen last frame", functionFilter.Function.FlatStats.Screen.OverSource.Frame))
-	case developer.KernelOverscan:
+	case profiling.KernelOverscan:
 		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Overscan last frame", functionFilter.Function.FlatStats.Overscan.OverSource.Frame))
 	default:
 		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time last frame", functionFilter.Function.FlatStats.Overall.OverSource.Frame))
@@ -924,12 +925,12 @@ thean to the program as a whole.`)
 		}
 
 		// select which stats to focus on
-		var stats developer.Stats
-		if win.kernelFocus&developer.KernelVBLANK == developer.KernelVBLANK {
+		var stats profiling.Stats
+		if win.kernelFocus&profiling.KernelVBLANK == profiling.KernelVBLANK {
 			stats = ln.Stats.VBLANK
-		} else if win.kernelFocus&developer.KernelScreen == developer.KernelScreen {
+		} else if win.kernelFocus&profiling.KernelScreen == profiling.KernelScreen {
 			stats = ln.Stats.Screen
-		} else if win.kernelFocus&developer.KernelOverscan == developer.KernelOverscan {
+		} else if win.kernelFocus&profiling.KernelOverscan == profiling.KernelOverscan {
 			stats = ln.Stats.Overscan
 		} else {
 			stats = ln.Stats.Overall
@@ -1038,18 +1039,18 @@ thean to the program as a whole.`)
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		if ln.Kernel == developer.KernelUnstable {
+		if ln.Kernel == profiling.KernelUnstable {
 			imgui.Text("R")
 		} else {
-			if ln.Kernel&developer.KernelVBLANK == developer.KernelVBLANK {
+			if ln.Kernel&profiling.KernelVBLANK == profiling.KernelVBLANK {
 				imgui.Text("V")
 				imgui.SameLineV(0, 1)
 			}
-			if ln.Kernel&developer.KernelScreen == developer.KernelScreen {
+			if ln.Kernel&profiling.KernelScreen == profiling.KernelScreen {
 				imgui.Text("S")
 				imgui.SameLineV(0, 1)
 			}
-			if ln.Kernel&developer.KernelOverscan == developer.KernelOverscan {
+			if ln.Kernel&profiling.KernelOverscan == profiling.KernelOverscan {
 				imgui.Text("O")
 				imgui.SameLineV(0, 1)
 			}
@@ -1065,13 +1066,13 @@ thean to the program as a whole.`)
 // the function is a stub function
 //
 // showDisasm should be false if the context doesn't require disassembly detail
-func (win *winCoProcPerformance) tooltip(load developer.Load,
-	fn *developer.SourceFunction, ln *developer.SourceLine,
+func (win *winCoProcPerformance) tooltip(load profiling.Load,
+	fn *dwarf.SourceFunction, ln *dwarf.SourceLine,
 	showDisasm bool) {
 
 	win.img.imguiTooltip(func() {
 		if fn.IsStub() {
-			if fn.Name == developer.DriverFunctionName {
+			if fn.Name == dwarf.DriverFunctionName {
 				imgui.Text("Instructions that are executed")
 				imgui.Text("outside of the ROM and in the driver")
 			} else {
@@ -1081,22 +1082,22 @@ func (win *winCoProcPerformance) tooltip(load developer.Load,
 			win.img.drawFilenameAndLineNumber(ln.File.Filename, ln.LineNumber, -1)
 		}
 
-		if fn.Kernel != developer.KernelAny {
+		if fn.Kernel != profiling.KernelAny {
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()
 
 			imgui.Text(fmt.Sprintf("%c Executed in: ", fonts.CoProcKernel))
-			if fn.Kernel == developer.KernelUnstable {
+			if fn.Kernel == profiling.KernelUnstable {
 				imgui.Text("   ROM Setup only")
 			} else {
-				if fn.Kernel&developer.KernelVBLANK == developer.KernelVBLANK {
+				if fn.Kernel&profiling.KernelVBLANK == profiling.KernelVBLANK {
 					imgui.Text("   VBLANK")
 				}
-				if fn.Kernel&developer.KernelScreen == developer.KernelScreen {
+				if fn.Kernel&profiling.KernelScreen == profiling.KernelScreen {
 					imgui.Text("   Visible Screen")
 				}
-				if fn.Kernel&developer.KernelOverscan == developer.KernelOverscan {
+				if fn.Kernel&profiling.KernelOverscan == profiling.KernelOverscan {
 					imgui.Text("   Overscan")
 				}
 			}
@@ -1113,7 +1114,7 @@ func (win *winCoProcPerformance) tooltip(load developer.Load,
 }
 
 // helpfunction to sort profiling data according to current spec
-func (win *winCoProcPerformance) sort(src *developer.Source, f func(imgui.TableSortSpecs)) {
+func (win *winCoProcPerformance) sort(src *dwarf.Source, f func(imgui.TableSortSpecs)) {
 	sort := imgui.TableGetSortSpecs()
 	if src.ExecutionProfileChanged || sort.SpecsDirty() || win.windowSortSpecDirty {
 		//  always set which kernel to sort by

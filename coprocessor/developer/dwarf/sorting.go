@@ -13,11 +13,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package developer
+package dwarf
 
 import (
 	"sort"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
 )
 
 type sortMethods int
@@ -38,7 +40,7 @@ type SortedLines struct {
 	Lines      []*SourceLine
 	method     sortMethods
 	descending bool
-	kernel     KernelVCS
+	kernel     profiling.KernelVCS
 
 	// sort by raw cycle counts, rather than percentages
 	rawCycleCounts bool
@@ -48,7 +50,7 @@ func (e SortedLines) Sort() {
 	sort.Stable(e)
 }
 
-func (e *SortedLines) SetKernel(kernel KernelVCS) {
+func (e *SortedLines) SetKernel(kernel profiling.KernelVCS) {
 	e.kernel = kernel
 }
 
@@ -123,17 +125,17 @@ func (e SortedLines) Len() int {
 }
 
 func (e SortedLines) Less(i int, j int) bool {
-	var iStats Stats
-	var jStats Stats
+	var iStats profiling.Stats
+	var jStats profiling.Stats
 
 	switch e.kernel {
-	case KernelVBLANK:
+	case profiling.KernelVBLANK:
 		iStats = e.Lines[i].Stats.VBLANK
 		jStats = e.Lines[j].Stats.VBLANK
-	case KernelScreen:
+	case profiling.KernelScreen:
 		iStats = e.Lines[i].Stats.Screen
 		jStats = e.Lines[j].Stats.Screen
-	case KernelOverscan:
+	case profiling.KernelOverscan:
 		iStats = e.Lines[i].Stats.Overscan
 		jStats = e.Lines[j].Stats.Overscan
 	default:
@@ -238,7 +240,7 @@ type SortedFunctions struct {
 	Functions  []*SourceFunction
 	method     sortMethods
 	descending bool
-	kernel     KernelVCS
+	kernel     profiling.KernelVCS
 	cumulative bool
 
 	functionComparison bool
@@ -251,7 +253,7 @@ func (e SortedFunctions) Sort() {
 	sort.Stable(e)
 }
 
-func (e *SortedFunctions) SetKernel(kernel KernelVCS) {
+func (e *SortedFunctions) SetKernel(kernel profiling.KernelVCS) {
 	e.kernel = kernel
 }
 
@@ -298,11 +300,11 @@ func (e SortedFunctions) Len() int {
 }
 
 func (e SortedFunctions) Less(i int, j int) bool {
-	var iStats Stats
-	var jStats Stats
+	var iStats profiling.Stats
+	var jStats profiling.Stats
 
 	switch e.kernel {
-	case KernelVBLANK:
+	case profiling.KernelVBLANK:
 		if e.cumulative {
 			iStats = e.Functions[i].CumulativeStats.VBLANK
 			jStats = e.Functions[j].CumulativeStats.VBLANK
@@ -310,7 +312,7 @@ func (e SortedFunctions) Less(i int, j int) bool {
 			iStats = e.Functions[i].FlatStats.VBLANK
 			jStats = e.Functions[j].FlatStats.VBLANK
 		}
-	case KernelScreen:
+	case profiling.KernelScreen:
 		if e.cumulative {
 			iStats = e.Functions[i].CumulativeStats.Screen
 			jStats = e.Functions[j].CumulativeStats.Screen
@@ -318,7 +320,7 @@ func (e SortedFunctions) Less(i int, j int) bool {
 			iStats = e.Functions[i].FlatStats.Screen
 			jStats = e.Functions[j].FlatStats.Screen
 		}
-	case KernelOverscan:
+	case profiling.KernelOverscan:
 		if e.cumulative {
 			iStats = e.Functions[i].CumulativeStats.Overscan
 			jStats = e.Functions[j].CumulativeStats.Overscan

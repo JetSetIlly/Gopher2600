@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package developer
+package dwarf
 
 import (
 	"debug/dwarf"
@@ -27,10 +27,16 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
+
+// Cartridge defines the interface to the cartridge required by the source package
+type Cartridge interface {
+	GetCoProc() mapper.CartCoProc
+}
 
 // compile units are made up of many children. for convenience/speed we keep
 // track of the children as an index rather than a tree.
@@ -117,7 +123,7 @@ type Source struct {
 	// loaded ROM and are very likely instructions handled by the "driver". the
 	// actual driver function is in the Functions map as normal, under the name
 	// given in "const driverFunction"
-	driverSourceLine *SourceLine
+	DriverSourceLine *SourceLine
 
 	// sorted list of every function in all compile unit
 	SortedFunctions SortedFunctions
@@ -152,7 +158,7 @@ type Source struct {
 	FunctionFilters []*FunctionFilter
 
 	// statistics for the entire program
-	Stats StatsGroup
+	Stats profiling.StatsGroup
 
 	// flag to indicate whether the execution profile has changed since it was cleared
 	//
@@ -167,11 +173,8 @@ type Source struct {
 	// list of breakpoints on ARM program
 	Breakpoints map[uint32]bool
 
-	// keeps track of the previous breakpoint check. see checkBreakPointByAddr()
-	prevBreakpointCheck *SourceLine
-
 	// call stack of running program
-	callStack callStack
+	CallStack callStack
 }
 
 // NewSource is the preferred method of initialisation for the Source type.
@@ -208,8 +211,8 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		},
 		ExecutionProfileChanged: true,
 		Breakpoints:             make(map[uint32]bool),
-		callStack: callStack{
-			callers: make(map[string][]*SourceLine),
+		CallStack: callStack{
+			Callers: make(map[string][]*SourceLine),
 		},
 		path: simplifyPath(filepath.Dir(romFile)),
 	}
@@ -706,7 +709,7 @@ func findEntryFunction(src *Source) {
 	}
 
 	// if no function can be found for some reason then a stub entry is created
-	src.MainFunction = createStubLine(nil).Function
+	src.MainFunction = CreateStubLine(nil).Function
 }
 
 // determine highest address occupied by the program
@@ -776,7 +779,7 @@ func addFunctionStubs(src *Source, ef *elf.File) error {
 				Name: fn.name,
 			}
 			stubFn.Range = append(stubFn.Range, fn.rng)
-			stubFn.DeclLine = createStubLine(stubFn)
+			stubFn.DeclLine = CreateStubLine(stubFn)
 
 			// add stub function to list of functions but not if the function
 			// covers an area that has already been seen
@@ -786,7 +789,7 @@ func addFunctionStubs(src *Source, ef *elf.File) error {
 			// already know about from the DWARF data
 			for a := fn.rng.Start; a <= fn.rng.End; a++ {
 				if _, ok := src.LinesByAddress[a]; !ok {
-					src.LinesByAddress[a] = createStubLine(stubFn)
+					src.LinesByAddress[a] = CreateStubLine(stubFn)
 				} else {
 					addFunction = false
 					break
@@ -808,33 +811,33 @@ func addFunctionStubs(src *Source, ef *elf.File) error {
 	}
 	src.Functions[DriverFunctionName] = driverFn
 	src.FunctionNames = append(src.FunctionNames, DriverFunctionName)
-	src.driverSourceLine = createStubLine(driverFn)
+	src.DriverSourceLine = CreateStubLine(driverFn)
 
 	return nil
 }
 
-func (src *Source) newFrame() {
+func (src *Source) NewFrame() {
 	// calling newFrame() on stats in a specific order. first the program, then
 	// the functions and then the source lines.
 
-	src.Stats.Overall.newFrame(nil, nil)
-	src.Stats.VBLANK.newFrame(nil, nil)
-	src.Stats.Screen.newFrame(nil, nil)
-	src.Stats.Overscan.newFrame(nil, nil)
-	src.Stats.ROMSetup.newFrame(nil, nil)
+	src.Stats.Overall.NewFrame(nil, nil)
+	src.Stats.VBLANK.NewFrame(nil, nil)
+	src.Stats.Screen.NewFrame(nil, nil)
+	src.Stats.Overscan.NewFrame(nil, nil)
+	src.Stats.ROMSetup.NewFrame(nil, nil)
 
 	for _, fn := range src.Functions {
-		fn.FlatStats.Overall.newFrame(&src.Stats.Overall, nil)
-		fn.FlatStats.VBLANK.newFrame(&src.Stats.VBLANK, nil)
-		fn.FlatStats.Screen.newFrame(&src.Stats.Screen, nil)
-		fn.FlatStats.Overscan.newFrame(&src.Stats.Overscan, nil)
-		fn.FlatStats.ROMSetup.newFrame(&src.Stats.ROMSetup, nil)
+		fn.FlatStats.Overall.NewFrame(&src.Stats.Overall, nil)
+		fn.FlatStats.VBLANK.NewFrame(&src.Stats.VBLANK, nil)
+		fn.FlatStats.Screen.NewFrame(&src.Stats.Screen, nil)
+		fn.FlatStats.Overscan.NewFrame(&src.Stats.Overscan, nil)
+		fn.FlatStats.ROMSetup.NewFrame(&src.Stats.ROMSetup, nil)
 
-		fn.CumulativeStats.Overall.newFrame(&src.Stats.Overall, nil)
-		fn.CumulativeStats.VBLANK.newFrame(&src.Stats.VBLANK, nil)
-		fn.CumulativeStats.Screen.newFrame(&src.Stats.Screen, nil)
-		fn.CumulativeStats.Overscan.newFrame(&src.Stats.Overscan, nil)
-		fn.CumulativeStats.ROMSetup.newFrame(&src.Stats.ROMSetup, nil)
+		fn.CumulativeStats.Overall.NewFrame(&src.Stats.Overall, nil)
+		fn.CumulativeStats.VBLANK.NewFrame(&src.Stats.VBLANK, nil)
+		fn.CumulativeStats.Screen.NewFrame(&src.Stats.Screen, nil)
+		fn.CumulativeStats.Overscan.NewFrame(&src.Stats.Overscan, nil)
+		fn.CumulativeStats.ROMSetup.NewFrame(&src.Stats.ROMSetup, nil)
 	}
 
 	// traverse the SortedLines list and update the FrameCyles values
@@ -842,11 +845,11 @@ func (src *Source) newFrame() {
 	// we prefer this over traversing the Lines list because we may hit a
 	// SourceLine more than once. SortedLines contains unique entries.
 	for _, ln := range src.SortedLines.Lines {
-		ln.Stats.Overall.newFrame(&src.Stats.Overall, &ln.Function.FlatStats.Overall)
-		ln.Stats.VBLANK.newFrame(&src.Stats.VBLANK, &ln.Function.FlatStats.VBLANK)
-		ln.Stats.Screen.newFrame(&src.Stats.Screen, &ln.Function.FlatStats.Screen)
-		ln.Stats.Overscan.newFrame(&src.Stats.Overscan, &ln.Function.FlatStats.Overscan)
-		ln.Stats.ROMSetup.newFrame(&src.Stats.ROMSetup, &ln.Function.FlatStats.ROMSetup)
+		ln.Stats.Overall.NewFrame(&src.Stats.Overall, &ln.Function.FlatStats.Overall)
+		ln.Stats.VBLANK.NewFrame(&src.Stats.VBLANK, &ln.Function.FlatStats.VBLANK)
+		ln.Stats.Screen.NewFrame(&src.Stats.Screen, &ln.Function.FlatStats.Screen)
+		ln.Stats.Overscan.NewFrame(&src.Stats.Overscan, &ln.Function.FlatStats.Overscan)
+		ln.Stats.ROMSetup.NewFrame(&src.Stats.ROMSetup, &ln.Function.FlatStats.ROMSetup)
 	}
 }
 
@@ -954,32 +957,32 @@ func findELF(romFile string) (*elf.File, bool) {
 // ResetStatistics resets all performance statistics.
 func (src *Source) ResetStatistics() {
 	for i := range src.Functions {
-		src.Functions[i].Kernel = KernelAny
-		src.Functions[i].FlatStats.Overall.reset()
-		src.Functions[i].FlatStats.VBLANK.reset()
-		src.Functions[i].FlatStats.Screen.reset()
-		src.Functions[i].FlatStats.Overscan.reset()
-		src.Functions[i].CumulativeStats.ROMSetup.reset()
-		src.Functions[i].CumulativeStats.Overall.reset()
-		src.Functions[i].CumulativeStats.VBLANK.reset()
-		src.Functions[i].CumulativeStats.Screen.reset()
-		src.Functions[i].CumulativeStats.Overscan.reset()
-		src.Functions[i].CumulativeStats.ROMSetup.reset()
+		src.Functions[i].Kernel = profiling.KernelAny
+		src.Functions[i].FlatStats.Overall.Reset()
+		src.Functions[i].FlatStats.VBLANK.Reset()
+		src.Functions[i].FlatStats.Screen.Reset()
+		src.Functions[i].FlatStats.Overscan.Reset()
+		src.Functions[i].CumulativeStats.ROMSetup.Reset()
+		src.Functions[i].CumulativeStats.Overall.Reset()
+		src.Functions[i].CumulativeStats.VBLANK.Reset()
+		src.Functions[i].CumulativeStats.Screen.Reset()
+		src.Functions[i].CumulativeStats.Overscan.Reset()
+		src.Functions[i].CumulativeStats.ROMSetup.Reset()
 		src.Functions[i].OptimisedCallStack = false
 	}
 	for i := range src.LinesByAddress {
-		src.LinesByAddress[i].Kernel = KernelAny
-		src.LinesByAddress[i].Stats.Overall.reset()
-		src.LinesByAddress[i].Stats.VBLANK.reset()
-		src.LinesByAddress[i].Stats.Screen.reset()
-		src.LinesByAddress[i].Stats.Overscan.reset()
-		src.LinesByAddress[i].Stats.ROMSetup.reset()
+		src.LinesByAddress[i].Kernel = profiling.KernelAny
+		src.LinesByAddress[i].Stats.Overall.Reset()
+		src.LinesByAddress[i].Stats.VBLANK.Reset()
+		src.LinesByAddress[i].Stats.Screen.Reset()
+		src.LinesByAddress[i].Stats.Overscan.Reset()
+		src.LinesByAddress[i].Stats.ROMSetup.Reset()
 	}
-	src.Stats.Overall.reset()
-	src.Stats.VBLANK.reset()
-	src.Stats.Screen.reset()
-	src.Stats.Overscan.reset()
-	src.Stats.ROMSetup.reset()
+	src.Stats.Overall.Reset()
+	src.Stats.VBLANK.Reset()
+	src.Stats.Screen.Reset()
+	src.Stats.Overscan.Reset()
+	src.Stats.ROMSetup.Reset()
 }
 
 // FindSourceLine returns line entry for the address. Returns nil if the
@@ -1008,17 +1011,6 @@ func (src *Source) FramebaseCurrent() (uint64, error) {
 	return src.debugFrame.framebase()
 }
 
-// BorrowSource will lock the source code structure for the durction of the
-// supplied function, which will be executed with the source code structure as
-// an argument.
-//
-// May return nil.
-func (dev *Developer) BorrowSource(f func(*Source)) {
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
-	f(dev.source)
-}
-
 func simplifyPath(path string) string {
 	nosymlinks, err := filepath.EvalSymlinks(path)
 	if err != nil {
@@ -1042,4 +1034,58 @@ func longestPath(a, b string) string {
 	}
 
 	return filepath.Join(c[i:]...)
+}
+
+func (src *Source) ExecutionProfile(ln *SourceLine, ct float32, kernel profiling.KernelVCS) {
+	// indicate that execution profile has changed
+	src.ExecutionProfileChanged = true
+
+	fn := ln.Function
+
+	ln.Stats.Overall.Count += ct
+	fn.FlatStats.Overall.Count += ct
+	src.Stats.Overall.Count += ct
+
+	ln.Kernel |= kernel
+	fn.Kernel |= kernel
+	if fn.DeclLine != nil {
+		fn.DeclLine.Kernel |= kernel
+	}
+
+	switch kernel {
+	case profiling.KernelVBLANK:
+		ln.Stats.VBLANK.Count += ct
+		fn.FlatStats.VBLANK.Count += ct
+		src.Stats.VBLANK.Count += ct
+	case profiling.KernelScreen:
+		ln.Stats.Screen.Count += ct
+		fn.FlatStats.Screen.Count += ct
+		src.Stats.Screen.Count += ct
+	case profiling.KernelOverscan:
+		ln.Stats.Overscan.Count += ct
+		fn.FlatStats.Overscan.Count += ct
+		src.Stats.Overscan.Count += ct
+	case profiling.KernelUnstable:
+		ln.Stats.ROMSetup.Count += ct
+		fn.FlatStats.ROMSetup.Count += ct
+		src.Stats.ROMSetup.Count += ct
+	}
+}
+
+func (src *Source) ExecutionProfileCumulative(fn *SourceFunction, ct float32, kernel profiling.KernelVCS) {
+	// indicate that execution profile has changed
+	src.ExecutionProfileChanged = true
+
+	fn.CumulativeStats.Overall.Count += ct
+
+	switch kernel {
+	case profiling.KernelVBLANK:
+		fn.CumulativeStats.VBLANK.Count += ct
+	case profiling.KernelScreen:
+		fn.CumulativeStats.Screen.Count += ct
+	case profiling.KernelOverscan:
+		fn.CumulativeStats.Overscan.Count += ct
+	case profiling.KernelUnstable:
+		fn.CumulativeStats.ROMSetup.Count += ct
+	}
 }

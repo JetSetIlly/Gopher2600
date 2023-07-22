@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 )
 
 const winCoProcFunctionsID = "Coprocessor Functions"
@@ -73,7 +73,7 @@ func (win *winCoProcFunctions) debuggerDraw() bool {
 }
 
 func (win *winCoProcFunctions) draw() {
-	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+	win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 		if src == nil {
 			imgui.Text("No source files available")
 			return

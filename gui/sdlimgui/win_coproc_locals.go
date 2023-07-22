@@ -21,6 +21,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
@@ -80,7 +81,7 @@ func (win *winCoProcLocals) draw() {
 	var noSource bool
 
 	// borrow source only so that we can check if whether to draw the window fully
-	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+	win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 		noSource = src == nil || len(src.Filenames) == 0 || len(src.SortedLocals.Locals) == 0
 	})
 
@@ -126,11 +127,11 @@ func (win *winCoProcLocals) draw() {
 	})
 }
 
-func (win *winCoProcLocals) drawVariableLocal(local *developer.SourceVariableLocal, nodeID string) {
+func (win *winCoProcLocals) drawVariableLocal(local *dwarf.SourceVariableLocal, nodeID string) {
 	win.drawVariable(local.SourceVariable, 0, nodeID)
 }
 
-func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentLevel int, nodeID string) {
+func (win *winCoProcLocals) drawVariable(varb *dwarf.SourceVariable, indentLevel int, nodeID string) {
 	// update variable
 	win.img.dbg.PushFunction(varb.Update)
 

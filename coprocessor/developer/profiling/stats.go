@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package developer
+package profiling
 
 // Load records the frame (or current) load as well as the average and
 // maximum load.
@@ -76,7 +76,7 @@ type Stats struct {
 	OverFunction Load
 
 	// cycle count this frame
-	count float32
+	Count float32
 
 	// cycle count over all frames
 	allFrameCount float32
@@ -99,19 +99,19 @@ func (stats *Stats) HasExecuted() bool {
 	return stats.allFrameCount > 0
 }
 
-// update statistics, using source and function to update the Load values as
+// NewFrame update statistics, using source and function to update the Load values as
 // appropriate.
-func (stats *Stats) newFrame(src *Stats, function *Stats) {
+func (stats *Stats) NewFrame(src *Stats, function *Stats) {
 	stats.numFrames++
 	if stats.numFrames > 1 {
-		if stats.count > 0 {
-			stats.allFrameCount += stats.count
+		if stats.Count > 0 {
+			stats.allFrameCount += stats.Count
 			stats.avgCount = stats.allFrameCount / (stats.numFrames - 1)
 		}
 	}
 
-	stats.frameCount = stats.count
-	stats.count = 0
+	stats.frameCount = stats.Count
+	stats.Count = 0
 
 	if function != nil {
 		frameLoad := stats.frameCount / function.frameCount * 100
@@ -162,13 +162,47 @@ func (stats *Stats) newFrame(src *Stats, function *Stats) {
 	}
 }
 
-func (stats *Stats) reset() {
+// Reset the statisics
+func (stats *Stats) Reset() {
 	stats.OverSource.reset()
 	stats.OverFunction.reset()
 	stats.allFrameCount = 0.0
 	stats.numFrames = 0.0
 	stats.avgCount = 0.0
 	stats.frameCount = 0.0
-	stats.count = 0.0
+	stats.Count = 0.0
 	stats.numFrames = 0
 }
+
+// KernelVCS indicates the 2600 kernel that is associated with a source function
+// or source line.
+type KernelVCS int
+
+// List of KernelVCS values.
+const (
+	KernelAny      KernelVCS = 0x00
+	KernelScreen   KernelVCS = 0x01
+	KernelVBLANK   KernelVCS = 0x02
+	KernelOverscan KernelVCS = 0x04
+
+	// code that is run while the television is in an unstable state
+	KernelUnstable KernelVCS = 0x08
+)
+
+func (k KernelVCS) String() string {
+	switch k {
+	case KernelScreen:
+		return "Screen"
+	case KernelVBLANK:
+		return "VBLANK"
+	case KernelOverscan:
+		return "Overscan"
+	case KernelUnstable:
+		return "ROM Setup"
+	}
+
+	return "Any"
+}
+
+// List of KernelVCS values as strings
+var AvailableInKernelOptions = []string{"Any", "VBLANK", "Screen", "Overscan", "ROM Setup"}

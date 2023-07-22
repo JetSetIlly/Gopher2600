@@ -18,6 +18,7 @@ package developer
 import (
 	"sort"
 
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
@@ -45,10 +46,10 @@ func (dev *Developer) StartProfiling() {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
-	dev.source.callStack.stack = dev.source.callStack.stack[:0]
+	dev.source.CallStack.Stack = dev.source.CallStack.Stack[:0]
 
 	// first entry in the callstack is always the entry function
-	dev.source.callStack.stack = append(dev.source.callStack.stack, dev.source.driverSourceLine)
+	dev.source.CallStack.Stack = append(dev.source.CallStack.Stack, dev.source.DriverSourceLine)
 }
 
 // ProcessProfiling implements the mapper.CartCoProcDeveloper interface.
@@ -58,7 +59,7 @@ func (dev *Developer) ProcessProfiling() {
 	}
 
 	// accumulate function will be called with the correct KernelVCS
-	accumulate := func(k KernelVCS) {
+	accumulate := func(k profiling.KernelVCS) {
 		if dev.source == nil {
 			return
 		}
@@ -67,15 +68,15 @@ func (dev *Developer) ProcessProfiling() {
 		defer dev.sourceLock.Unlock()
 
 		for _, p := range dev.profiler.Entries {
-			l := len(dev.source.callStack.stack)
-			lastLn := dev.source.callStack.stack[l-1]
+			l := len(dev.source.CallStack.Stack)
+			lastLn := dev.source.CallStack.Stack[l-1]
 
 			// line of executed instruction. every instruction should have an
 			// associated line/function. if it does not then we assume it is in
 			// the entry function
 			ln, ok := dev.source.LinesByAddress[uint64(p.Addr)]
 			if !ok {
-				ln = dev.source.driverSourceLine
+				ln = dev.source.DriverSourceLine
 				dev.source.LinesByAddress[uint64(p.Addr)] = ln
 			}
 
@@ -86,9 +87,9 @@ func (dev *Developer) ProcessProfiling() {
 				// try to pop
 				var i int
 				for i = 1; i <= l; i++ {
-					if ln.Function == dev.source.callStack.stack[l-i].Function {
-						chop := dev.source.callStack.stack[l-i+1:]
-						dev.source.callStack.stack = dev.source.callStack.stack[:l-i+1]
+					if ln.Function == dev.source.CallStack.Stack[l-i].Function {
+						chop := dev.source.CallStack.Stack[l-i+1:]
+						dev.source.CallStack.Stack = dev.source.CallStack.Stack[:l-i+1]
 						popped = true
 
 						// flag functions which look like they are part of an
@@ -105,7 +106,7 @@ func (dev *Developer) ProcessProfiling() {
 
 				// push function on to callstack if we haven't popped
 				if !popped {
-					dev.source.callStack.stack = append(dev.source.callStack.stack, ln)
+					dev.source.CallStack.Stack = append(dev.source.CallStack.Stack, ln)
 
 					// there is always at least one entry in the functions callstack so we can confidently
 					// subtract two from the length after the append above
@@ -113,33 +114,33 @@ func (dev *Developer) ProcessProfiling() {
 
 					// create/update callers list for function
 					var n int
-					l, ok := dev.source.callStack.callers[ln.Function.Name]
+					l, ok := dev.source.CallStack.Callers[ln.Function.Name]
 					if ok {
 						n = sort.Search(len(l), func(i int) bool {
 							return ln == l[i]
 						})
 					}
-					if !ok || (n > len(l) && l[n] != dev.source.callStack.prevLine) {
-						l = append(l, dev.source.callStack.prevLine)
+					if !ok || (n > len(l) && l[n] != dev.source.CallStack.PrevLine) {
+						l = append(l, dev.source.CallStack.PrevLine)
 						sort.Slice(l, func(i, j int) bool {
 							return l[i].Function.Name < l[j].Function.Name
 						})
-						dev.source.callStack.callers[ln.Function.Name] = l
+						dev.source.CallStack.Callers[ln.Function.Name] = l
 					}
 				}
 
 			}
 
 			// accumulate counts for line (and the line's function)
-			dev.source.executionProfile(ln, p.Cycles, k)
+			dev.source.ExecutionProfile(ln, p.Cycles, k)
 
 			// accumulate ancestor functions too
-			for _, ln := range dev.source.callStack.stack {
-				dev.source.executionProfileCumulative(ln.Function, p.Cycles, k)
+			for _, ln := range dev.source.CallStack.Stack {
+				dev.source.ExecutionProfileCumulative(ln.Function, p.Cycles, k)
 			}
 
 			// record line for future comparison
-			dev.source.callStack.prevLine = ln
+			dev.source.CallStack.PrevLine = ln
 		}
 	}
 
@@ -148,103 +149,16 @@ func (dev *Developer) ProcessProfiling() {
 		c := dev.tv.GetCoords()
 
 		if c.Scanline <= dev.frameInfo.VisibleTop-1 {
-			accumulate(KernelVBLANK)
+			accumulate(profiling.KernelVBLANK)
 		} else if c.Scanline <= dev.frameInfo.VisibleBottom {
-			accumulate(KernelScreen)
+			accumulate(profiling.KernelScreen)
 		} else {
-			accumulate(KernelOverscan)
+			accumulate(profiling.KernelOverscan)
 		}
 	} else {
-		accumulate(KernelUnstable)
+		accumulate(profiling.KernelUnstable)
 	}
 
 	// empty slice
 	dev.profiler.Entries = dev.profiler.Entries[:0]
-}
-
-// KernelVCS indicates the 2600 kernel that is associated with a source function
-// or source line.
-type KernelVCS int
-
-// List of KernelVCS values.
-const (
-	KernelAny      KernelVCS = 0x00
-	KernelScreen   KernelVCS = 0x01
-	KernelVBLANK   KernelVCS = 0x02
-	KernelOverscan KernelVCS = 0x04
-
-	// code that is run while the television is in an unstable state
-	KernelUnstable KernelVCS = 0x08
-)
-
-func (k KernelVCS) String() string {
-	switch k {
-	case KernelScreen:
-		return "Screen"
-	case KernelVBLANK:
-		return "VBLANK"
-	case KernelOverscan:
-		return "Overscan"
-	case KernelUnstable:
-		return "ROM Setup"
-	}
-
-	return "Any"
-}
-
-// List of KernelVCS values as strings
-var AvailableInKernelOptions = []string{"Any", "VBLANK", "Screen", "Overscan", "ROM Setup"}
-
-func (src *Source) executionProfile(ln *SourceLine, ct float32, kernel KernelVCS) {
-	// indicate that execution profile has changed
-	src.ExecutionProfileChanged = true
-
-	fn := ln.Function
-
-	ln.Stats.Overall.count += ct
-	fn.FlatStats.Overall.count += ct
-	src.Stats.Overall.count += ct
-
-	ln.Kernel |= kernel
-	fn.Kernel |= kernel
-	if fn.DeclLine != nil {
-		fn.DeclLine.Kernel |= kernel
-	}
-
-	switch kernel {
-	case KernelVBLANK:
-		ln.Stats.VBLANK.count += ct
-		fn.FlatStats.VBLANK.count += ct
-		src.Stats.VBLANK.count += ct
-	case KernelScreen:
-		ln.Stats.Screen.count += ct
-		fn.FlatStats.Screen.count += ct
-		src.Stats.Screen.count += ct
-	case KernelOverscan:
-		ln.Stats.Overscan.count += ct
-		fn.FlatStats.Overscan.count += ct
-		src.Stats.Overscan.count += ct
-	case KernelUnstable:
-		ln.Stats.ROMSetup.count += ct
-		fn.FlatStats.ROMSetup.count += ct
-		src.Stats.ROMSetup.count += ct
-	}
-}
-
-func (src *Source) executionProfileCumulative(fn *SourceFunction, ct float32, kernel KernelVCS) {
-	// indicate that execution profile has changed
-	src.ExecutionProfileChanged = true
-
-	fn.CumulativeStats.Overall.count += ct
-
-	switch kernel {
-	case KernelVBLANK:
-		fn.CumulativeStats.VBLANK.count += ct
-	case KernelScreen:
-		fn.CumulativeStats.Screen.count += ct
-	case KernelOverscan:
-		fn.CumulativeStats.Overscan.count += ct
-	case KernelUnstable:
-		fn.CumulativeStats.ROMSetup.count += ct
-	}
 }

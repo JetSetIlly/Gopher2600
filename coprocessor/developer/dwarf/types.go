@@ -13,12 +13,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package developer
+package dwarf
 
 import (
 	"fmt"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
@@ -147,10 +148,10 @@ type SourceLine struct {
 	Bug bool
 
 	// statistics for the line
-	Stats StatsGroup
+	Stats profiling.StatsGroup
 
 	// which 2600 kernel has this line executed in
-	Kernel KernelVCS
+	Kernel profiling.KernelVCS
 }
 
 func (ln *SourceLine) String() string {
@@ -221,11 +222,11 @@ type SourceFunction struct {
 	DeclLine *SourceLine
 
 	// stats for the function
-	FlatStats       StatsGroup
-	CumulativeStats StatsGroup
+	FlatStats       profiling.StatsGroup
+	CumulativeStats profiling.StatsGroup
 
 	// which 2600 kernel has this function executed in
-	Kernel KernelVCS
+	Kernel profiling.KernelVCS
 
 	// whether the call stack involving this function is likely inaccurate
 	OptimisedCallStack bool
@@ -380,14 +381,14 @@ func (typ *SourceType) Mask() uint32 {
 // types codify stub detection.
 const stubIndicator = "not in source"
 
-// createStubLine returns an instance of SourceLine with the specified
+// CreateStubLine returns an instance of SourceLine with the specified
 // SourceFunction assigned to it.
 //
 // If stubFn is nil then a dummy function will be created.
 //
 // A stub SourceFile will be created for assignment to the SourceLine.File
 // field.
-func createStubLine(stubFn *SourceFunction) *SourceLine {
+func CreateStubLine(stubFn *SourceFunction) *SourceLine {
 	if stubFn == nil {
 		stubFn = &SourceFunction{
 			Name: stubIndicator,

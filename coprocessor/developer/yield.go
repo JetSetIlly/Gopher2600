@@ -16,6 +16,7 @@
 package developer
 
 import (
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
@@ -23,7 +24,7 @@ import (
 type YieldState struct {
 	PC             uint32
 	Reason         mapper.CoProcYieldType
-	LocalVariables []*SourceVariableLocal
+	LocalVariables []*dwarf.SourceVariableLocal
 }
 
 // Cmp returns true if two YieldStates are equal.
@@ -47,12 +48,12 @@ func (dev *Developer) OnYield(currentPC uint32, yield mapper.CoProcYield) {
 		return
 	}
 
-	var ln *SourceLine
-	var locals []*SourceVariableLocal
+	var ln *dwarf.SourceLine
+	var locals []*dwarf.SourceVariableLocal
 
 	// using BorrowSource (this is better than just acquiring the lock because we want to make sure
 	// the lock is released if there is an error and the code panics)
-	dev.BorrowSource(func(src *Source) {
+	dev.BorrowSource(func(src *dwarf.Source) {
 		// make sure that src is valid
 		if src == nil {
 			return
@@ -80,7 +81,7 @@ func (dev *Developer) OnYield(currentPC uint32, yield mapper.CoProcYield) {
 		}
 
 		// the chosen local variable
-		var chosenLocal *SourceVariableLocal
+		var chosenLocal *dwarf.SourceVariableLocal
 
 		// choose function that covers the smallest (most specific) range in which startAddr
 		// appears

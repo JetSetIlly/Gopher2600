@@ -20,11 +20,11 @@ import (
 	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
-func (img *SdlImgui) drawDisasmForCoProc(disasm []*developer.SourceInstruction, ln *developer.SourceLine,
+func (img *SdlImgui) drawDisasmForCoProc(disasm []*dwarf.SourceInstruction, ln *dwarf.SourceLine,
 	multiline bool, showYield bool, yldAddress uint32) {
 
 	imgui.BeginTable("##disasmTable", 4)
@@ -95,7 +95,7 @@ func (img *SdlImgui) drawDisasmForCoProc(disasm []*developer.SourceInstruction, 
 }
 
 // display source line with syntax highlighting.
-func (img *SdlImgui) drawSourceLine(ln *developer.SourceLine, tight bool) {
+func (img *SdlImgui) drawSourceLine(ln *dwarf.SourceLine, tight bool) {
 	for _, fr := range ln.Fragments {
 		s := fr.Content
 		if tight {
@@ -103,13 +103,13 @@ func (img *SdlImgui) drawSourceLine(ln *developer.SourceLine, tight bool) {
 		}
 
 		switch fr.Type {
-		case developer.FragmentCode:
+		case dwarf.FragmentCode:
 			imgui.Text(s)
-		case developer.FragmentComment:
+		case dwarf.FragmentComment:
 			imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceComment)
 			imgui.Text(s)
 			imgui.PopStyleColor()
-		case developer.FragmentStringLiteral:
+		case dwarf.FragmentStringLiteral:
 			imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceStringLiteral)
 			imgui.Text(s)
 			imgui.PopStyleColor()

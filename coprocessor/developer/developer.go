@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -31,8 +32,7 @@ type TV interface {
 	GetCoords() coords.TelevisionCoords
 }
 
-// Cartridge defines the interface to the cartridge required by the
-// developer pacakge
+// Cartridge defines the interface to the cartridge required by the developer package
 type Cartridge interface {
 	GetCoProc() mapper.CartCoProc
 	PushFunction(func())
@@ -51,7 +51,7 @@ type Developer struct {
 	// performance reasons (not need to acquire the lock if source is nil).
 	// however, this does mean we should be careful if reassigning the source
 	// field (but that doesn't happen)
-	source     *Source
+	source     *dwarf.Source
 	sourceLock sync.Mutex
 
 	// illegal accesses already encountered. duplicate accesses will not be logged.
@@ -70,6 +70,9 @@ type Developer struct {
 
 	// frame info from the last NewFrame()
 	frameInfo television.FrameInfo
+
+	// keeps track of the previous breakpoint check. see checkBreakPointByAddr()
+	prevBreakpointCheck *dwarf.SourceLine
 }
 
 // NewDeveloper is the preferred method of initialisation for the Developer type.
@@ -114,7 +117,7 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 	t := time.Now()
 
 	dev.sourceLock.Lock()
-	dev.source, err = NewSource(romFile, cart, elfFile)
+	dev.source, err = dwarf.NewSource(romFile, cart, elfFile)
 	dev.sourceLock.Unlock()
 
 	if err != nil {
@@ -160,10 +163,10 @@ func (dev *Developer) CheckBreakpoint(addr uint32) bool {
 	defer dev.sourceLock.Unlock()
 
 	ln := dev.source.LinesByAddress[uint64(addr)]
-	if ln == dev.source.prevBreakpointCheck {
+	if ln == dev.prevBreakpointCheck {
 		return false
 	}
-	dev.source.prevBreakpointCheck = ln
+	dev.prevBreakpointCheck = ln
 	return dev.source.Breakpoints[addr]
 }
 
@@ -192,8 +195,19 @@ func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
-	dev.source.newFrame()
+	dev.source.NewFrame()
 	dev.frameInfo = frameInfo
 
 	return nil
+}
+
+// BorrowSource will lock the source code structure for the durction of the
+// supplied function, which will be executed with the source code structure as
+// an argument.
+//
+// May return nil.
+func (dev *Developer) BorrowSource(f func(*dwarf.Source)) {
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+	f(dev.source)
 }

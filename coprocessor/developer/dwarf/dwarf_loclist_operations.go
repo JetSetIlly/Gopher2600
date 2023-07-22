@@ -13,12 +13,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package developer
+package dwarf
 
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/coprocessor/developer/leb128"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf/leb128"
 )
 
 // decode loclist DWARF operation but adjust decoding addresses with an origin value.

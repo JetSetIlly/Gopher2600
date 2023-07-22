@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package developer
+package dwarf
 
 import (
 	"debug/elf"
@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/coprocessor/developer/leb128"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf/leb128"
 )
 
 type frameSectionFDE struct {

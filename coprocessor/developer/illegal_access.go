@@ -15,7 +15,11 @@
 
 package developer
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
+)
 
 // IllegalAccessEntry is a single entry in the illegal access log.
 type IllegalAccessEntry struct {
@@ -27,7 +31,7 @@ type IllegalAccessEntry struct {
 	Count int
 
 	// the source line of the PC address. field can be nil
-	SrcLine *SourceLine
+	SrcLine *dwarf.SourceLine
 
 	// whether access address was reported as being a "null access". when this
 	// is true the illegal access is very likely because of a null pointer
@@ -109,13 +113,13 @@ func (dev *Developer) logAccess(event string, pc uint32, addr uint32, isNullAcce
 			// but for there to be no actual source files. in these instances
 			// we need to create the a stub entry for the line as we go along
 			if e.SrcLine == nil {
-				e.SrcLine = createStubLine(nil)
+				e.SrcLine = dwarf.CreateStubLine(nil)
 			}
 
 			// inidcate that the source line has been responsble for an illegal access
 			e.SrcLine.Bug = true
 		} else {
-			e.SrcLine = createStubLine(nil)
+			e.SrcLine = dwarf.CreateStubLine(nil)
 		}
 
 		// if we do not have source code available then the entry will have a

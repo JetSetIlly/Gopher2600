@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package developer
+package dwarf
 
 import (
 	"errors"
@@ -26,25 +26,25 @@ import (
 // they happen.
 type callStack struct {
 	// call stack of running program
-	stack []*SourceLine
+	Stack []*SourceLine
 
 	// list of callers for all executed functions
-	callers map[string]([]*SourceLine)
+	Callers map[string]([]*SourceLine)
 
 	// prevLine is helpful when creating the Callers list
-	prevLine *SourceLine
+	PrevLine *SourceLine
 }
 
-// Callstack writes out the current callstack
-func (src *Source) CallStack(w io.Writer) {
-	for i := 1; i < len(src.callStack.stack); i++ {
-		w.Write([]byte(src.callStack.stack[i].String()))
+// WriteCallstack writes out the current callstack
+func (src *Source) WriteCallStack(w io.Writer) {
+	for i := 1; i < len(src.CallStack.Stack); i++ {
+		w.Write([]byte(src.CallStack.Stack[i].String()))
 	}
 }
 
-// Callers writes a list of functions that have called the specified function
-func (src *Source) Callers(function string, w io.Writer) error {
-	callers, ok := src.callStack.callers[function]
+// WriteCallers writes a list of functions that have called the specified function
+func (src *Source) WriteCallers(function string, w io.Writer) error {
+	callers, ok := src.CallStack.Callers[function]
 	if !ok {
 		return errors.New(fmt.Sprintf("no function named %s has ever been called", function))
 	}
@@ -69,7 +69,7 @@ func (src *Source) Callers(function string, w io.Writer) error {
 
 			s := fmt.Sprintf("%s (%s:%d)", ln.Function.Name, ln.File.ShortFilename, ln.LineNumber)
 			w.Write([]byte(fmt.Sprintf("%s%s", indent.String(), s)))
-			if l, ok := src.callStack.callers[ln.Function.Name]; ok {
+			if l, ok := src.CallStack.Callers[ln.Function.Name]; ok {
 				err := f(l, depth+1)
 				if err != nil {
 					return err

@@ -17,11 +17,13 @@ package developer
 
 import (
 	"sort"
+
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 )
 
 // InstructionRange is used to dynamically create a list of SourceInstruction entries.
 type InstructionRange struct {
-	Instructions []*SourceInstruction
+	Instructions []*dwarf.SourceInstruction
 }
 
 // Len implements the sort.Sort interface.
@@ -45,7 +47,7 @@ func (rng *InstructionRange) Clear() {
 }
 
 // Add the instructions for a SourceLine to the range.
-func (rng *InstructionRange) Add(line *SourceLine) {
+func (rng *InstructionRange) Add(line *dwarf.SourceLine) {
 	for _, d := range line.Instruction {
 		rng.Instructions = append(rng.Instructions, d)
 	}

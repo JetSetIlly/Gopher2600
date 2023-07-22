@@ -25,6 +25,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/script"
@@ -622,9 +623,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				return nil
 			}
 
-			var ln *developer.SourceLine
+			var ln *dwarf.SourceLine
 
-			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+			dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 				if src == nil {
 					dbg.printLine(terminal.StyleError, "no source files found")
 					return
@@ -1392,7 +1393,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				top = int(n)
 			}
 
-			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+			dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 				if src == nil {
 					dbg.printLine(terminal.StyleError, "no source files found")
 					return
@@ -1422,7 +1423,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				})
 
 			case "SOURCEFILES":
-				dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+				dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 					if src == nil {
 						dbg.printLine(terminal.StyleError, "no source files found")
 						return
@@ -1432,7 +1433,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					}
 				})
 			case "FUNCTIONS":
-				dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+				dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 					if src == nil {
 						dbg.printLine(terminal.StyleError, "no source files found")
 						return
@@ -1526,7 +1527,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 		switch option {
 		case "FUNCTIONS":
-			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+			dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 				if src == nil {
 					dbg.printLine(terminal.StyleError, "no source available")
 					return
@@ -1538,7 +1539,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				}
 			})
 		case "GLOBALS":
-			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+			dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 				if src == nil {
 					dbg.printLine(terminal.StyleError, "no source available")
 					return
@@ -1560,7 +1561,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				option, ok = tokens.Get()
 			}
 
-			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+			dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 				if src == nil {
 					dbg.printLine(terminal.StyleError, "no source available")
 				}
@@ -1581,7 +1582,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				}
 			})
 		case "FRAMEBASE":
-			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+			dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 				if src == nil {
 					dbg.printLine(terminal.StyleError, "no source available")
 				}
@@ -1617,7 +1618,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			}
 			ln := int(n)
 
-			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+			dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 				if src == nil {
 					dbg.printLine(terminal.StyleError, "no source available")
 				}
@@ -1647,13 +1648,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			})
 
 		case "CALLSTACK":
-			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+			dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 				if src == nil {
 					dbg.printLine(terminal.StyleError, "no source files found")
 					return
 				}
 				w := dbg.writerInStyle(terminal.StyleFeedback)
-				src.CallStack(w)
+				src.WriteCallStack(w)
 			})
 
 		case "CALLERS":
@@ -1662,13 +1663,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				dbg.printLine(terminal.StyleError, "function name is required")
 				return nil
 			}
-			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+			dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 				if src == nil {
 					dbg.printLine(terminal.StyleError, "no source files found")
 					return
 				}
 				w := dbg.writerInStyle(terminal.StyleFeedback)
-				if err := src.Callers(arg, w); err != nil {
+				if err := src.WriteCallers(arg, w); err != nil {
 					dbg.printLine(terminal.StyleError, err.Error())
 					return
 				}
@@ -1910,7 +1911,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		switch list {
 		case "BREAKS":
 			dbg.halting.breakpoints.list()
-			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+			dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 				if src == nil {
 					return
 				}

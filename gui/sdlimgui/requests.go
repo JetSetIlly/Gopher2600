@@ -20,7 +20,7 @@ import (
 	"image"
 
 	"github.com/jetsetilly/gopher2600/bots"
-	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -140,7 +140,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	case gui.ReqCoProcSourceLine:
 		err = argLen(request.args, 1)
 		if err == nil {
-			ln := request.args[0].(*developer.SourceLine)
+			ln := request.args[0].(*dwarf.SourceLine)
 			srcWin := img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
 			srcWin.gotoSourceLine(ln)
 		}
