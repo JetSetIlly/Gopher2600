@@ -17,6 +17,8 @@ package mapper
 
 import (
 	"fmt"
+
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
 )
 
 // CoProcExecutionState details the current condition of the coprocessor's execution
@@ -156,22 +158,12 @@ type CartCoProcProfiler struct {
 	Entries []CartCoProcProfileEntry
 }
 
-// the following interfaces are implemented by the coprocessor itself, rather
-// than any cartridge that uses the coprocessor.
-
 // CartCoProcDeveloper is implemented by a coprocessor to provide functions
 // available to developers when the source code is available.
 type CartCoProcDeveloper interface {
-	// addr accessed illegally by instruction at pc address. should return the
-	// empty string if no meaningful information could be found
-	IllegalAccess(event string, pc uint32, addr uint32) string
-
-	// address is the same as the null pointer, indicating the address access
-	// is likely to be a null pointer dereference
-	NullAccess(event string, pc uint32, addr uint32) string
-
-	// stack has collided with variable memtop
-	StackCollision(pc uint32, sp uint32) string
+	// a memory fault has occured
+	MemoryFault(event string, explanation faults.Category,
+		instructionAddr uint32, accessAddr uint32) string
 
 	// returns the highest address used by the program. the coprocessor uses
 	// this value to detect stack collisions

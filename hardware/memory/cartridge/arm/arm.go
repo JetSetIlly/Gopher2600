@@ -213,11 +213,7 @@ type ARM struct {
 
 	// whether to foce an error on illegal memory access. set from ARM.prefs at
 	// the start of every arm.Run()
-	abortOnIllegalMem bool
-
-	// whether to foce an error on illegal memory access. set from ARM.prefs at
-	// the start of every arm.Run()
-	abortOnStackCollision bool
+	abortOnMemoryFault bool
 
 	// the speed at which the arm is running at and the required stretching for
 	// access to flash memory. speed is in MHz. Access latency of Flash memory is
@@ -464,9 +460,8 @@ func (arm *ARM) updatePrefs() {
 		arm.disasmSummary.ImmediateMode = false
 	}
 
-	// how to handle illegal memory access
-	arm.abortOnIllegalMem = arm.prefs.AbortOnIllegalMem.Get().(bool)
-	arm.abortOnStackCollision = arm.prefs.AbortOnStackCollision.Get().(bool)
+	// memory fault handling
+	arm.abortOnMemoryFault = arm.prefs.AbortOnMemoryFault.Get().(bool)
 }
 
 func (arm *ARM) String() string {
@@ -527,7 +522,7 @@ func (arm *ARM) logYield() {
 
 func (arm *ARM) extendedMemoryErrorLogging(opcode uint16) {
 	// add extended memory logging to yield detail
-	if arm.prefs.ExtendedMemoryErrorLogging.Get().(bool) {
+	if arm.prefs.ExtendedMemoryFaultLogging.Get().(bool) {
 		entry, err := arm.disassemble(opcode)
 		if err == nil {
 			arm.state.yield.Detail = append(arm.state.yield.Detail,
@@ -919,7 +914,7 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 				// check for stack errors
 				if arm.state.yield.Type == mapper.YieldStackError {
 					arm.extendedMemoryErrorLogging(opcode)
-					if !arm.abortOnStackCollision {
+					if !arm.abortOnMemoryFault {
 						arm.logYield()
 						arm.state.yield.Type = mapper.YieldRunning
 						arm.state.yield.Error = nil
@@ -931,7 +926,7 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 							arm.stackProtectCheckSP()
 							if arm.state.yield.Type == mapper.YieldStackError {
 								arm.extendedMemoryErrorLogging(opcode)
-								if !arm.abortOnStackCollision {
+								if !arm.abortOnMemoryFault {
 									arm.logYield()
 									arm.state.yield.Type = mapper.YieldRunning
 									arm.state.yield.Error = nil
@@ -950,7 +945,7 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 
 					// if illegal memory accesses are to be ignored then we must log the
 					// yield information now before reset the yield type
-					if !arm.abortOnIllegalMem {
+					if !arm.abortOnMemoryFault {
 						arm.logYield()
 						arm.state.yield.Type = mapper.YieldRunning
 						arm.state.yield.Error = nil

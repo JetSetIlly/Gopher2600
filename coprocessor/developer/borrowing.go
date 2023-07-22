@@ -19,6 +19,7 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/breakpoints"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/callstack"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
 )
 
@@ -62,4 +63,13 @@ func (dev *Developer) BorrowYieldState(f func(yield.State)) {
 	dev.yieldStateLock.Lock()
 	defer dev.yieldStateLock.Unlock()
 	f(dev.yieldState)
+}
+
+// BorrowFaults will lock the illegal access log for the duration of the
+// supplied fucntion, which will be executed with the illegal access log as an
+// argument.
+func (dev *Developer) BorrowFaults(f func(faults.Faults)) {
+	dev.faultsLock.Lock()
+	defer dev.faultsLock.Unlock()
+	f(dev.faults)
 }

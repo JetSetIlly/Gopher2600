@@ -1140,3 +1140,13 @@ func (src *Source) ExecutionProfileCumulative(fn *SourceFunction, ct float32, ke
 		fn.CumulativeStats.ROMSetup.Count += ct
 	}
 }
+
+// SourceLineByAddr returns the source line for a intruciton address. If there
+// is no corresponding source line then a stub is returned.
+func (src *Source) SourceLineByAddr(addr uint32) *SourceLine {
+	ln := src.LinesByAddress[uint64(addr)]
+	if ln == nil {
+		ln = CreateStubLine(nil)
+	}
+	return ln
+}

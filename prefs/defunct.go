@@ -54,6 +54,9 @@ var defunct = []string{
 	"hardware.arm7.flashLatency",
 	"sdlimgui.display.fastSync",
 	"sdlimgui.glswapinterval",
+	"hardware.arm7.abortOnIllegalMem",
+	"hardware.arm7.abortOnStackCollision",
+	"hardware.arm7.extendedMemoryErrorLogging",
 
 	"plusrom.id", // replaced with plusrom.id_v2.1.1
 }

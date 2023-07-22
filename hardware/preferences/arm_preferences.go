@@ -44,17 +44,11 @@ type ARMPreferences struct {
 	// other value "forces" the MAM setting on Thumb program execution.
 	MAM prefs.Int
 
-	// abort Thumb program is it tries to access memory that does not exist.
-	// for example: reading from Flash memory above the 32k memtop (for 32k
-	// ROMs)
-	AbortOnIllegalMem prefs.Bool
+	// abort execution on memory fault (eg. accessing memory that doesn't exist)
+	AbortOnMemoryFault prefs.Bool
 
-	// abort Thumb program if stack pointer collides with memory occupied by
-	// program variables
-	AbortOnStackCollision prefs.Bool
-
-	// include disassembly and register details when logging memory errors
-	ExtendedMemoryErrorLogging prefs.Bool
+	// include disassembly and register details when logging memory faults
+	ExtendedMemoryFaultLogging prefs.Bool
 }
 
 func (p *ARMPreferences) String() string {
@@ -89,15 +83,11 @@ func newARMprefrences() (*ARMPreferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("hardware.arm7.abortOnIllegalMem", &p.AbortOnIllegalMem)
+	err = p.dsk.Add("hardware.arm7.abortOnMemoryFault", &p.AbortOnMemoryFault)
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("hardware.arm7.abortOnStackCollision", &p.AbortOnStackCollision)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("hardware.arm7.extendedMemoryErrorLogging", &p.ExtendedMemoryErrorLogging)
+	err = p.dsk.Add("hardware.arm7.extendedMemoryFaultLogging", &p.ExtendedMemoryFaultLogging)
 	if err != nil {
 		return nil, err
 	}
@@ -116,8 +106,8 @@ func (p *ARMPreferences) SetDefaults() {
 	p.Clock.Set(70.0)
 	p.Immediate.Set(false)
 	p.MAM.Set(-1)
-	p.AbortOnIllegalMem.Set(false)
-	p.ExtendedMemoryErrorLogging.Set(false)
+	p.AbortOnMemoryFault.Set(false)
+	p.ExtendedMemoryFaultLogging.Set(false)
 }
 
 // Load current arm preference from disk.

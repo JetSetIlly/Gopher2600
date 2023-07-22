@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/breakpoints"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/callstack"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -57,11 +58,9 @@ type Developer struct {
 	source     *dwarf.Source
 	sourceLock sync.Mutex
 
-	// illegal accesses already encountered. duplicate accesses will not be logged.
-	illegalAccess     IllegalAccess
-	illegalAccessLock sync.Mutex
+	faults     faults.Faults
+	faultsLock sync.Mutex
 
-	// the current yield information
 	yieldState     yield.State
 	yieldStateLock sync.Mutex
 
@@ -71,11 +70,11 @@ type Developer struct {
 	breakpoints     breakpoints.Breakpoints
 	breakpointsLock sync.Mutex
 
-	// slow down rate of NewFrame()
-	framesSinceLastUpdate int
-
 	// profiler instance. measures cycles counts for executed address
 	profiler mapper.CartCoProcProfiler
+
+	// slow down rate of NewFrame()
+	framesSinceLastUpdate int
 
 	// frame info from the last NewFrame()
 	frameInfo television.FrameInfo
@@ -88,10 +87,6 @@ type Developer struct {
 func NewDeveloper(tv TV) Developer {
 	return Developer{
 		tv: tv,
-		callstack: callstack.CallStack{
-			Callers: make(map[string][]*dwarf.SourceLine),
-		},
-		breakpoints: breakpoints.NewBreakpoints(),
 	}
 }
 
@@ -104,15 +99,21 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 
 	dev.disabledExpensive = false
 
-	dev.illegalAccessLock.Lock()
-	dev.illegalAccess = IllegalAccess{
-		entries: make(map[string]*IllegalAccessEntry),
-	}
-	dev.illegalAccessLock.Unlock()
+	dev.faultsLock.Lock()
+	dev.faults = faults.NewFaults()
+	dev.faultsLock.Unlock()
 
 	dev.yieldStateLock.Lock()
 	dev.yieldState = yield.State{}
 	dev.yieldStateLock.Unlock()
+
+	dev.callstackLock.Lock()
+	dev.callstack = callstack.NewCallStack()
+	dev.callstackLock.Unlock()
+
+	dev.breakpointsLock.Lock()
+	dev.breakpoints = breakpoints.NewBreakpoints()
+	dev.breakpointsLock.Unlock()
 
 	dev.framesSinceLastUpdate = 0
 
@@ -240,4 +241,14 @@ func (dev *Developer) OnYield(addr uint32, yield mapper.CoProcYield) {
 		locals := src.OnYield(addr, yield)
 		dev.yieldState.LocalVariables = append(dev.yieldState.LocalVariables, locals...)
 	})
+}
+
+// MemoryFault implements the mapper.CartCoProcDeveloper interface.
+func (dev *Developer) MemoryFault(event string, explanation faults.Category,
+	instructionAddr uint32, accessAddr uint32) string {
+
+	dev.faultsLock.Lock()
+	defer dev.faultsLock.Unlock()
+
+	return dev.faults.NewEntry(faults.IllegalAddress, event, instructionAddr, accessAddr).String()
 }

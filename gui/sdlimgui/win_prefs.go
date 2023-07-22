@@ -631,30 +631,16 @@ The MAM should almost never be disabled completely.`)
 
 	imgui.Spacing()
 
-	if imgui.CollapsingHeader("Abort Conditions") {
-		imgui.Spacing()
+	abortOnMemoryFault := win.img.vcs.Env.Prefs.ARM.AbortOnMemoryFault.Get().(bool)
+	if imgui.Checkbox("Abort on Memory Fault", &abortOnMemoryFault) {
+		win.img.vcs.Env.Prefs.ARM.AbortOnMemoryFault.Set(abortOnMemoryFault)
+	}
+	win.img.imguiTooltipSimple(`Abort execution on a memory fault. For example when accessing
+a memory address that does not exist.
 
-		abortOnIllegalMem := win.img.vcs.Env.Prefs.ARM.AbortOnIllegalMem.Get().(bool)
-		if imgui.Checkbox("Illegal Memory Access", &abortOnIllegalMem) {
-			win.img.vcs.Env.Prefs.ARM.AbortOnIllegalMem.Set(abortOnIllegalMem)
-		}
-		win.img.imguiTooltipSimple(`Abort thumb program on access to illegal memory. Note that the program
-will always abort if the access is a PC fetch, even if this option is not set.
+Note that the program will always abort if the access is a PC fetch, even if this option is not set.
 
 Illegal accesses will be logged even if program does not abort.`)
-
-		abortOnStackCollision := win.img.vcs.Env.Prefs.ARM.AbortOnStackCollision.Get().(bool)
-		if imgui.Checkbox("Stack Collision", &abortOnStackCollision) {
-			win.img.vcs.Env.Prefs.ARM.AbortOnStackCollision.Set(abortOnStackCollision)
-		}
-		win.img.imguiTooltipSimple(`Abort thumb program if stack pointer overlaps the highest address
-occupied by a variable in the program.
-
-Only available when DWARF data is available for the program.
-
-Stack collisions will be logged even if program does not abort.`)
-	}
-
 }
 
 func (win *winPrefs) drawPlusROMTab() {

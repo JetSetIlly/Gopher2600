@@ -24,10 +24,10 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/coprocessor/developer"
 	coproc_breakpoints "github.com/jetsetilly/gopher2600/coprocessor/developer/breakpoints"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/callstack"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
@@ -1412,17 +1412,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			arg, _ := tokens.Get()
 			switch arg {
 
-			case "ILLEGAL":
-				dbg.CoProcDev.BorrowIllegalAccess(func(log *developer.IllegalAccess) {
-					for _, e := range log.Log {
-						if e.SrcLine != nil {
-							dbg.printLine(terminal.StyleFeedback, e.SrcLine.String())
-							dbg.printLine(terminal.StyleFeedback, e.SrcLine.PlainContent)
-						} else {
-							dbg.printLine(terminal.StyleFeedback,
-								fmt.Sprintf("%s at address %08x (PC: %08x)", e.Event, e.AccessAddr, e.PC))
-						}
-					}
+			case "FAULTS":
+				dbg.CoProcDev.BorrowFaults(func(flt faults.Faults) {
+					w := dbg.writerInStyle(terminal.StyleFeedback)
+					flt.WriteLog(w)
 				})
 
 			case "SOURCEFILES":

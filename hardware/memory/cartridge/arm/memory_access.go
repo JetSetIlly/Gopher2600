@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -35,7 +36,7 @@ func (arm *ARM) illegalAccess(event string, addr uint32) {
 		return
 	}
 
-	detail := arm.dev.IllegalAccess(event, arm.state.instructionPC, addr)
+	detail := arm.dev.MemoryFault(event, faults.IllegalAddress, arm.state.instructionPC, addr)
 	if detail != "" {
 		arm.state.yield.Detail = append(arm.state.yield.Detail, errors.New(detail))
 	}
@@ -50,7 +51,7 @@ func (arm *ARM) nullAccess(event string, addr uint32) {
 		return
 	}
 
-	detail := arm.dev.NullAccess(event, arm.state.instructionPC, addr)
+	detail := arm.dev.MemoryFault(event, faults.NullDereference, arm.state.instructionPC, addr)
 	if detail != "" {
 		arm.state.yield.Detail = append(arm.state.yield.Detail, errors.New(detail))
 	}

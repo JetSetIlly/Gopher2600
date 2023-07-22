@@ -113,9 +113,9 @@ type imguiColors struct {
 	CoProcSourceComment          imgui.Vec4
 	CoProcSourceStringLiteral    imgui.Vec4
 	CoProcSourceYield            imgui.Vec4
-	CoProcIllegalAccessAddress   imgui.Vec4
-	CoProcIllegalAccessFrequency imgui.Vec4
-	CoProcIllegalAccessNotes     imgui.Vec4
+	CoProcFaultsAddress          imgui.Vec4
+	CoProcFaultsFrequency        imgui.Vec4
+	CoProcFaultsNotes            imgui.Vec4
 	CoProcVariablesType          imgui.Vec4
 	CoProcVariablesTypeSize      imgui.Vec4
 	CoProcVariablesAddress       imgui.Vec4
@@ -316,9 +316,9 @@ func newColors() *imguiColors {
 		CoProcSourceComment:          imgui.Vec4{0.4, 0.4, 0.6, 1.0},
 		CoProcSourceStringLiteral:    imgui.Vec4{0.4, 0.6, 0.6, 1.0},
 		CoProcSourceYield:            imgui.Vec4{0.5, 0.8, 0.5, 1.0},
-		CoProcIllegalAccessAddress:   imgui.Vec4{0.8, 0.4, 0.4, 1.0},
-		CoProcIllegalAccessFrequency: imgui.Vec4{0.7, 0.7, 0.7, 1.0},
-		CoProcIllegalAccessNotes:     imgui.Vec4{0.7, 0.7, 0.7, 1.0},
+		CoProcFaultsAddress:          imgui.Vec4{0.8, 0.4, 0.4, 1.0},
+		CoProcFaultsFrequency:        imgui.Vec4{0.7, 0.7, 0.7, 1.0},
+		CoProcFaultsNotes:            imgui.Vec4{0.7, 0.7, 0.7, 1.0},
 		CoProcVariablesType:          imgui.Vec4{0.8, 0.6, 0.8, 1.0},
 		CoProcVariablesTypeSize:      imgui.Vec4{0.8, 0.6, 0.6, 1.0},
 		CoProcVariablesAddress:       imgui.Vec4{0.8, 0.4, 0.4, 1.0},

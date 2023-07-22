@@ -37,15 +37,22 @@ type CallStack struct {
 	PrevLine *dwarf.SourceLine
 }
 
+// NewCallStack is the preferred method of initialisation for the CallStack type
+func NewCallStack() CallStack {
+	return CallStack{
+		Callers: make(map[string][]*dwarf.SourceLine),
+	}
+}
+
 // WriteCallstack writes out the current callstack
-func (cs *CallStack) WriteCallStack(w io.Writer) {
+func (cs CallStack) WriteCallStack(w io.Writer) {
 	for i := 1; i < len(cs.Stack); i++ {
 		w.Write([]byte(cs.Stack[i].String()))
 	}
 }
 
 // WriteCallers writes a list of functions that have called the specified function
-func (cs *CallStack) WriteCallers(function string, w io.Writer) error {
+func (cs CallStack) WriteCallers(function string, w io.Writer) error {
 	callers, ok := cs.Callers[function]
 	if !ok {
 		return errors.New(fmt.Sprintf("no function named %s has ever been called", function))
