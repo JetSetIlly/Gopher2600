@@ -79,9 +79,10 @@ func (arm *ARM) stackProtectCheckProgramMemory() {
 	if stackMemory == arm.state.programMemory {
 		arm.state.yield.Type = mapper.YieldStackError
 		arm.state.yield.Error = fmt.Errorf("SP is pointing to program memory")
+		arm.state.stackHasCollided = true
+	} else {
+		return
 	}
-
-	arm.state.stackHasCollided = true
 
 	// add developer details if possible
 	if arm.dev != nil {

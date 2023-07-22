@@ -865,6 +865,13 @@ func (dbg *Debugger) CartYield(yield mapper.CoProcYieldType) mapper.YieldHookRes
 		return mapper.YieldHookEnd
 	}
 
+	// resolve deferred yield
+	if dbg.halting.deferredCartridgeYield {
+		dbg.halting.deferredCartridgeYield = false
+		dbg.halting.cartridgeYield = true
+		return mapper.YieldHookEnd
+	}
+
 	switch yield {
 	case mapper.YieldProgramEnded:
 		// expected reason for CDF and DPC+ cartridges
@@ -875,10 +882,17 @@ func (dbg *Debugger) CartYield(yield mapper.CoProcYieldType) mapper.YieldHookRes
 		return mapper.YieldHookContinue
 	}
 
-	// if emulation is in the initialisation state then we return true to
-	// indicate that the yield is not safe and execution should halt immediately
+	// if emulation is in itialisation state then we cause coprocessor execution
+	// to end unless it's a memory or access erorr
+	//
+	// this is an area that's likely to change. it's of particular interest to
+	// ACE and ELF ROMs in which the coprocessor is run very early in order to
+	// retrive the 6507 reset address
+	//
+	// a deferred YeildHookEnd might be a better option
 	if dbg.State() == govern.Initialising {
-		return mapper.YieldHookEnd
+		dbg.halting.deferredCartridgeYield = true
+		return mapper.YieldHookContinue
 	}
 
 	dbg.halting.cartridgeYield = true

@@ -24,6 +24,10 @@ import (
 )
 
 func (arm *ARM) illegalAccess(event string, addr uint32) {
+	if arm.state.stackHasCollided {
+		return
+	}
+
 	arm.state.yield.Type = mapper.YieldMemoryAccessError
 	arm.state.yield.Error = fmt.Errorf("%s: unrecognised address %08x (PC: %08x)", event, addr, arm.state.instructionPC)
 
@@ -84,10 +88,7 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 			}
 		}
 
-		if !arm.state.stackHasCollided {
-			arm.illegalAccess("Read 8bit", addr)
-		}
-
+		arm.illegalAccess("Read 8bit", addr)
 		return uint8(arm.mmap.IllegalAccessValue)
 	}
 
@@ -129,10 +130,7 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 			}
 		}
 
-		if !arm.state.stackHasCollided {
-			arm.illegalAccess("Write 8bit", addr)
-		}
-
+		arm.illegalAccess("Write 8bit", addr)
 		return
 	}
 
@@ -180,10 +178,7 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 			}
 		}
 
-		if !arm.state.stackHasCollided {
-			arm.illegalAccess("Read 16bit", addr)
-		}
-
+		arm.illegalAccess("Read 16bit", addr)
 		return uint16(arm.mmap.IllegalAccessValue)
 	}
 
@@ -238,10 +233,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 			}
 		}
 
-		if !arm.state.stackHasCollided {
-			arm.illegalAccess("Write 16bit", addr)
-		}
-
+		arm.illegalAccess("Write 16bit", addr)
 		return
 	}
 
@@ -296,10 +288,7 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 			}
 		}
 
-		if !arm.state.stackHasCollided {
-			arm.illegalAccess("Read 32bit", addr)
-		}
-
+		arm.illegalAccess("Read 32bit", addr)
 		return arm.mmap.IllegalAccessValue
 	}
 
@@ -354,10 +343,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 			}
 		}
 
-		if !arm.state.stackHasCollided {
-			arm.illegalAccess("Write 32bit", addr)
-		}
-
+		arm.illegalAccess("Write 32bit", addr)
 		return
 	}
 

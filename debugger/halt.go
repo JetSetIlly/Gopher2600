@@ -35,6 +35,10 @@ type haltCoordination struct {
 	// the cartridge has issued a yield signal that we should stop the debugger for
 	cartridgeYield bool
 
+	// the emulation must yield to the cartridge but it must be delayed until it
+	// is in a better state
+	deferredCartridgeYield bool
+
 	// halt conditions
 	breakpoints *breakpoints
 	traps       *traps
