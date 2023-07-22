@@ -25,6 +25,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	coproc_breakpoints "github.com/jetsetilly/gopher2600/coprocessor/developer/breakpoints"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/callstack"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
@@ -1904,13 +1905,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		switch list {
 		case "BREAKS":
 			dbg.halting.breakpoints.list()
-			dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
-				if src == nil {
-					return
-				}
-				for bp := range src.Breakpoints {
-					dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("%08x\n", bp))
-				}
+			dbg.CoProcDev.BorrowBreakpoints(func(bp coproc_breakpoints.Breakpoints) {
+				w := dbg.writerInStyle(terminal.StyleFeedback)
+				bp.Write(w)
 			})
 		case "TRAPS":
 			dbg.halting.traps.list()

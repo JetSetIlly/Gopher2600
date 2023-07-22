@@ -22,6 +22,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/breakpoints"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
@@ -207,7 +208,9 @@ func (win *winCoProcSource) draw() {
 
 		// source code view
 		imgui.BeginGroup()
-		win.drawSource(src)
+		win.img.dbg.CoProcDev.BorrowBreakpoints(func(bp breakpoints.Breakpoints) {
+			win.drawSource(src, bp)
+		})
 		imgui.EndGroup()
 
 		// we don't need updateSelectedFile after the call to drawSource() so
@@ -365,7 +368,7 @@ func (win *winCoProcSource) saveToCSV(src *dwarf.Source) {
 	}
 }
 
-func (win *winCoProcSource) drawSource(src *dwarf.Source) {
+func (win *winCoProcSource) drawSource(src *dwarf.Source, bp breakpoints.Breakpoints) {
 	// new child that contains the main scrollable table
 	imgui.BeginChildV("##coprocSourceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 	defer imgui.EndChild()
@@ -468,7 +471,7 @@ func (win *winCoProcSource) drawSource(src *dwarf.Source) {
 
 					// allow breakpoint toggle for lines with executable entries
 					if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
-						src.ToggleBreakpoint(ln)
+						bp.ToggleBreakpoint(ln)
 					}
 
 					// is the sourceline an executable line
@@ -546,12 +549,12 @@ func (win *winCoProcSource) drawSource(src *dwarf.Source) {
 
 					// show appropriate icon in the gutter
 					imgui.TableNextColumn()
-					if src.HasBreakpoint(ln) {
+					if bp.HasBreakpoint(ln) {
 						// the presence of a breakpoint is the most important information
 						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
 						imgui.Text(string(fonts.Breakpoint))
 						imgui.PopStyleColor()
-					} else if hoverExecutableLine && src.CanBreakpoint(ln) {
+					} else if hoverExecutableLine && bp.CanBreakpoint(ln) {
 						// prioritise showing the breakpoint indicator over the bug symbol
 						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress.Times(0.6))
 						imgui.Text(string(fonts.Breakpoint))

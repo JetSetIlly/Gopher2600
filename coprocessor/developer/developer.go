@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/breakpoints"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/callstack"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -66,6 +67,9 @@ type Developer struct {
 	callstack     callstack.CallStack
 	callstackLock sync.Mutex
 
+	breakpoints     breakpoints.Breakpoints
+	breakpointsLock sync.Mutex
+
 	// slow down rate of NewFrame()
 	framesSinceLastUpdate int
 
@@ -86,6 +90,7 @@ func NewDeveloper(tv TV) Developer {
 		callstack: callstack.CallStack{
 			Callers: make(map[string][]*dwarf.SourceLine),
 		},
+		breakpoints: breakpoints.NewBreakpoints(),
 	}
 }
 
@@ -173,8 +178,13 @@ func (dev *Developer) CheckBreakpoint(addr uint32) bool {
 	if ln == dev.prevBreakpointCheck {
 		return false
 	}
+
 	dev.prevBreakpointCheck = ln
-	return dev.source.Breakpoints[addr]
+
+	dev.breakpointsLock.Lock()
+	defer dev.breakpointsLock.Unlock()
+
+	return dev.breakpoints.Check(addr)
 }
 
 // HasSource returns true if source information has been found.
@@ -219,7 +229,7 @@ func (dev *Developer) BorrowSource(f func(*dwarf.Source)) {
 	f(dev.source)
 }
 
-// BorrowCallStack will lock the callstack information for the durction of the
+// BorrowCallStack will lock the callstack structure for the durction of the
 // supplied function, which will be executed with the callstack structure as
 // an argument.
 //
@@ -228,4 +238,15 @@ func (dev *Developer) BorrowCallStack(f func(callstack.CallStack)) {
 	dev.callstackLock.Lock()
 	defer dev.callstackLock.Unlock()
 	f(dev.callstack)
+}
+
+// BorrowBreakpoints will lock the breakpoints structure for the durction of the
+// supplied function, which will be executed with the breakpoints structure as
+// an argument.
+//
+// May return nil.
+func (dev *Developer) BorrowBreakpoints(f func(breakpoints.Breakpoints)) {
+	dev.breakpointsLock.Lock()
+	defer dev.breakpointsLock.Unlock()
+	f(dev.breakpoints)
 }

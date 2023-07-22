@@ -169,9 +169,6 @@ type Source struct {
 	// probably not scalable but sufficient for our needs of a single GUI
 	// running and using the statistics for only one reason
 	ExecutionProfileChanged bool
-
-	// list of breakpoints on ARM program
-	Breakpoints map[uint32]bool
 }
 
 // NewSource is the preferred method of initialisation for the Source type.
@@ -207,7 +204,6 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 			Lines: make([]*SourceLine, 0, 100),
 		},
 		ExecutionProfileChanged: true,
-		Breakpoints:             make(map[uint32]bool),
 		path:                    simplifyPath(filepath.Dir(romFile)),
 	}
 
