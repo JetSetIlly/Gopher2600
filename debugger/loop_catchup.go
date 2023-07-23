@@ -57,12 +57,6 @@ func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords) error {
 		// cathupEnd() function
 		dbg.vcs.RIOT.Ports.DisablePeripherals(true)
 
-		// coprocessor developer features are disabled when entering the rewind
-		// state and will be enabled when entering other states. however we do
-		// what the features enabled during the catch-up state so we enable
-		// them early here
-		dbg.CoProcDev.DisableExpensive(false)
-
 		// we are *not* uninhibiting coprocessor disassembly. the performance
 		// loss is still too great to do so
 

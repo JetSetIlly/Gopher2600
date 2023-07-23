@@ -55,9 +55,6 @@ type Developer struct {
 
 	cart Cartridge
 
-	// only respond on the CartCoProcDeveloper interface when enabled
-	disabledExpensive bool
-
 	// information about the source code to the program. can be nil.
 	// note that source is checked for nil outside the sourceLock. this is
 	// performance reasons (not need to acquire the lock if source is nil).
@@ -102,8 +99,6 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 	dev.sourceLock.Lock()
 	dev.source = nil
 	dev.sourceLock.Unlock()
-
-	dev.disabledExpensive = false
 
 	dev.faultsLock.Lock()
 	dev.faults = faults.NewFaults()
@@ -158,12 +153,6 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 	dev.cart.GetCoProc().SetDeveloper(dev)
 }
 
-// DisableExpensive prevents the computationaly expensive developer functions
-// from running.
-func (dev *Developer) DisableExpensive(disable bool) {
-	dev.disabledExpensive = disable
-}
-
 // HighAddress implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) HighAddress() uint32 {
 	if dev.source == nil {
@@ -178,10 +167,6 @@ func (dev *Developer) HighAddress() uint32 {
 
 // CheckBreakpoint implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) CheckBreakpoint(addr uint32) bool {
-	if dev.disabledExpensive {
-		return false
-	}
-
 	if dev.source == nil {
 		return false
 	}

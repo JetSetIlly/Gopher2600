@@ -32,10 +32,6 @@ func (dev *Developer) Profiling() *mapper.CartCoProcProfiler {
 
 // StartProfiling implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) StartProfiling() {
-	if dev.disabledExpensive {
-		return
-	}
-
 	if dev.source == nil {
 		return
 	}
@@ -61,10 +57,6 @@ func (dev *Developer) StartProfiling() {
 
 // ProcessProfiling implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) ProcessProfiling() {
-	if dev.disabledExpensive {
-		return
-	}
-
 	if dev.source == nil {
 		return
 	}

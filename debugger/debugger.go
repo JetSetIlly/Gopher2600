@@ -503,26 +503,11 @@ func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 		dbg.endRecording()
 		dbg.endComparison()
 
-		// it is thought that bots are okay to enter the rewinding state. this
-		// might not be true in all future cases.
-
-		// coprocessor statistics can be misleading if they're collated during
-		// the rewind state. note that they are enabled when entering another
-		// state and also at the beginning of catch-up
-		dbg.CoProcDev.DisableExpensive(true)
-
 		// coprocessor disassembly is an inherently slow operation particuarly
 		// for StrongARM type ROMs
 		dbg.CoProcDisasm.Inhibit(true)
 	} else {
 		dbg.vcs.Mem.Cart.BreakpointsEnable(true)
-
-		// enable coprocessor statistics and other developer features when not
-		// in the rewind state
-		//
-		// note that in the event that a catch-up loop is run, the dev features
-		// will already have been enabled
-		dbg.CoProcDev.DisableExpensive(false)
 
 		// uninhibit coprocessor disassembly
 		dbg.CoProcDisasm.Inhibit(false)
