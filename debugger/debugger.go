@@ -379,7 +379,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 
 	// create new coprocessor developer/disassembly instances
 	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV)
-	dbg.CoProcDev = coprocDev.NewDeveloper(dbg.vcs.TV)
+	dbg.CoProcDev = coprocDev.NewDeveloper(dbg, dbg.vcs.TV)
 	dbg.vcs.TV.AddFrameTrigger(&dbg.CoProcDev)
 
 	// create a minimal lastResult for initialisation

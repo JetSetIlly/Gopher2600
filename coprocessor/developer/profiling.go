@@ -32,7 +32,11 @@ func (dev *Developer) Profiling() *mapper.CartCoProcProfiler {
 
 // StartProfiling implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) StartProfiling() {
-	if dev.disabledExpensive || dev.source == nil {
+	if dev.disabledExpensive {
+		return
+	}
+
+	if dev.source == nil {
 		return
 	}
 
@@ -61,12 +65,12 @@ func (dev *Developer) ProcessProfiling() {
 		return
 	}
 
-	// accumulate function will be called with the correct KernelVCS
-	accumulate := func(k profiling.KernelVCS) {
-		if dev.source == nil {
-			return
-		}
+	if dev.source == nil {
+		return
+	}
 
+	// accumulate function will be called with the correct KernelVCS
+	accumulate := func(focus profiling.Focus) {
 		dev.sourceLock.Lock()
 		defer dev.sourceLock.Unlock()
 
@@ -114,8 +118,8 @@ func (dev *Developer) ProcessProfiling() {
 				if !popped {
 					dev.callstack.Stack = append(dev.callstack.Stack, ln)
 
-					// there is always at least one entry in the functions callstack so we can confidently
-					// subtract two from the length after the append above
+					// there is always at least one entry in the functions callstack so we can
+					// confidently subtract two from the length after the append above
 					// prev := dev.callstack.functions[len(dev.callstack.functions)-2]
 
 					// create/update callers list for function
@@ -138,33 +142,33 @@ func (dev *Developer) ProcessProfiling() {
 			}
 
 			// accumulate counts for line (and the line's function)
-			dev.source.ExecutionProfile(ln, p.Cycles, k)
+			dev.source.ExecutionProfile(ln, p.Cycles, focus)
 
 			// accumulate ancestor functions too
 			for _, ln := range dev.callstack.Stack {
-				dev.source.ExecutionProfileCumulative(ln.Function, p.Cycles, k)
+				dev.source.ExecutionProfileCumulative(ln.Function, p.Cycles, focus)
 			}
 
 			// record line for future comparison
 			dev.callstack.PrevLine = ln
 		}
+
+		// empty slice
+		dev.profiler.Entries = dev.profiler.Entries[:0]
 	}
 
-	// checking to see if kernel has changed
-	if dev.frameInfo.Stable {
-		c := dev.tv.GetCoords()
-
-		if c.Scanline <= dev.frameInfo.VisibleTop-1 {
-			accumulate(profiling.KernelVBLANK)
-		} else if c.Scanline <= dev.frameInfo.VisibleBottom {
-			accumulate(profiling.KernelScreen)
+	// accumulation depends on state
+	c := dev.tv.GetCoords()
+	f := dev.tv.GetFrameInfo()
+	if f.Stable {
+		if c.Scanline <= f.VisibleTop-1 {
+			accumulate(profiling.FocusVBLANK)
+		} else if c.Scanline <= f.VisibleBottom {
+			accumulate(profiling.FocusScreen)
 		} else {
-			accumulate(profiling.KernelOverscan)
+			accumulate(profiling.FocusOverscan)
 		}
 	} else {
-		accumulate(profiling.KernelUnstable)
+		accumulate(profiling.FocusAll)
 	}
-
-	// empty slice
-	dev.profiler.Entries = dev.profiler.Entries[:0]
 }

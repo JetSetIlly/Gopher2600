@@ -151,7 +151,7 @@ type SourceLine struct {
 	Stats profiling.StatsGroup
 
 	// which 2600 kernel has this line executed in
-	Kernel profiling.KernelVCS
+	Kernel profiling.Focus
 }
 
 func (ln *SourceLine) String() string {
@@ -226,7 +226,7 @@ type SourceFunction struct {
 	CumulativeStats profiling.StatsGroup
 
 	// which 2600 kernel has this function executed in
-	Kernel profiling.KernelVCS
+	Kernel profiling.Focus
 
 	// whether the call stack involving this function is likely inaccurate
 	OptimisedCallStack bool

@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -42,10 +43,17 @@ type Cartridge interface {
 	PushFunction(func())
 }
 
+// Emulation defines an interface to the emulation for retreiving the emulation state
+type Emulation interface {
+	State() govern.State
+}
+
 // Developer implements the CartCoProcDeveloper interface.
 type Developer struct {
+	emulation Emulation
+	tv        TV
+
 	cart Cartridge
-	tv   TV
 
 	// only respond on the CartCoProcDeveloper interface when enabled
 	disabledExpensive bool
@@ -76,17 +84,15 @@ type Developer struct {
 	// slow down rate of NewFrame()
 	framesSinceLastUpdate int
 
-	// frame info from the last NewFrame()
-	frameInfo television.FrameInfo
-
 	// keeps track of the previous breakpoint check. see checkBreakPointByAddr()
 	prevBreakpointCheck *dwarf.SourceLine
 }
 
 // NewDeveloper is the preferred method of initialisation for the Developer type.
-func NewDeveloper(tv TV) Developer {
+func NewDeveloper(state Emulation, tv TV) Developer {
 	return Developer{
-		tv: tv,
+		emulation: state,
+		tv:        tv,
 	}
 }
 
@@ -125,6 +131,13 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 		return
 	}
 	dev.cart = cart
+
+	switch dev.emulation.State() {
+	case govern.EmulatorStart:
+	case govern.Initialising:
+	default:
+		panic("unexpected emulation on cartridge insertion")
+	}
 
 	var err error
 
@@ -213,9 +226,7 @@ func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
-
 	dev.source.NewFrame()
-	dev.frameInfo = frameInfo
 
 	return nil
 }

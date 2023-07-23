@@ -29,17 +29,17 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
-const winCoProcPerformanceID = "Coprocessor Performance"
-const winCoProcPerformanceMenu = "Performance"
+const winCoProcProfilingID = "Coprocessor Profiling"
+const winCoProcProfilingMenu = "Profiling"
 
-type winCoProcPerformance struct {
+type winCoProcProfiling struct {
 	debuggerWin
 
 	img *SdlImgui
 
-	// which kernel to focus on
-	kernelFocus         profiling.KernelVCS
-	kernelFocusComboDim imgui.Vec2
+	// which category of execution to focus on
+	focus         profiling.Focus
+	focusComboDim imgui.Vec2
 
 	// whether to present performance figures as raw counts or as percentages
 	percentileFigures bool
@@ -48,7 +48,7 @@ type winCoProcPerformance struct {
 	cumulative bool
 
 	// whether the sort criteria as specified in the window has changed (ie.
-	// kernelFocus of percentileFigures widgets has been altered)
+	// focus has changed)
 	windowSortSpecDirty bool
 
 	// the currently selected tab. used to dirty the sort flag when a new tab
@@ -70,17 +70,16 @@ type winCoProcPerformance struct {
 	functionTabSelect string
 
 	// FrameTrigger interface used to synchronise reset event with the TV
-	tv coProcPerformanceTV
+	tv coProcProfilingTV
 }
 
-// coProcePerformanceTV is used to synchronise the "Reset Statistics" button
-// with the television.
-type coProcPerformanceTV struct {
+// coProceProfilingTV is used to synchronise the "Reset Statistics" button with the television.
+type coProcProfilingTV struct {
 	img      *SdlImgui
 	schedule atomic.Value
 }
 
-func (tv *coProcPerformanceTV) initialise(img *SdlImgui) {
+func (tv *coProcProfilingTV) initialise(img *SdlImgui) {
 	// initialise TV Frame Trigger
 	tv.img = img
 	tv.schedule.Store(false)
@@ -89,12 +88,12 @@ func (tv *coProcPerformanceTV) initialise(img *SdlImgui) {
 	})
 }
 
-func (tv *coProcPerformanceTV) scheduleReset(set bool) {
+func (tv *coProcProfilingTV) scheduleReset(set bool) {
 	tv.schedule.Store(set)
 }
 
 // NewFrame implements the television.FrameTrigger interface.
-func (tv *coProcPerformanceTV) NewFrame(_ television.FrameInfo) error {
+func (tv *coProcProfilingTV) NewFrame(_ television.FrameInfo) error {
 	// this code is running in the emulator goroutine and NOT the GUI goroutine
 	if tv.schedule.Load().(bool) {
 		tv.schedule.Store(false)
@@ -105,10 +104,10 @@ func (tv *coProcPerformanceTV) NewFrame(_ television.FrameInfo) error {
 	return nil
 }
 
-func newWinCoProcPerformance(img *SdlImgui) (window, error) {
-	win := &winCoProcPerformance{
+func newWinCoProcProfiling(img *SdlImgui) (window, error) {
+	win := &winCoProcProfiling{
 		img:               img,
-		kernelFocus:       profiling.KernelAny,
+		focus:             profiling.FocusAll,
 		percentileFigures: true,
 	}
 
@@ -117,15 +116,15 @@ func newWinCoProcPerformance(img *SdlImgui) (window, error) {
 	return win, nil
 }
 
-func (win *winCoProcPerformance) init() {
-	win.kernelFocusComboDim = imguiGetFrameDim("", profiling.AvailableInKernelOptions...)
+func (win *winCoProcProfiling) init() {
+	win.focusComboDim = imguiGetFrameDim("", profiling.FocusOptions...)
 }
 
-func (win *winCoProcPerformance) id() string {
-	return winCoProcPerformanceID
+func (win *winCoProcProfiling) id() string {
+	return winCoProcProfilingID
 }
 
-func (win *winCoProcPerformance) debuggerDraw() bool {
+func (win *winCoProcProfiling) debuggerDraw() bool {
 	if !win.debuggerOpen {
 		return false
 	}
@@ -138,7 +137,7 @@ func (win *winCoProcPerformance) debuggerDraw() bool {
 	imgui.SetNextWindowSizeV(imgui.Vec2{641, 517}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{800, 1000})
 
-	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcPerformanceID)
+	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcProfilingID)
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		win.draw()
 	}
@@ -149,7 +148,7 @@ func (win *winCoProcPerformance) debuggerDraw() bool {
 	return true
 }
 
-func (win *winCoProcPerformance) draw() {
+func (win *winCoProcProfiling) draw() {
 	// safely iterate over top execution information
 	win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 		if src == nil {
@@ -171,8 +170,8 @@ func (win *winCoProcPerformance) draw() {
 			}()
 		}
 
-		imgui.BeginChildV("##coprocPerformanceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
-		imgui.BeginTabBarV("##coprocPerformanceFunctions", imgui.TabBarFlagsAutoSelectNewTabs)
+		imgui.BeginChildV("##coprocProfilingMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
+		imgui.BeginTabBarV("##coprocProfilingFunctions", imgui.TabBarFlagsAutoSelectNewTabs)
 
 		functionTab := "Functions"
 		if imgui.BeginTabItemV(functionTab, nil, imgui.TabItemFlagsNone) {
@@ -226,23 +225,23 @@ func (win *winCoProcPerformance) draw() {
 			imgui.Separator()
 			imgui.Spacing()
 
-			imguiLabel("Kernel Focus")
-			imgui.PushItemWidth(win.kernelFocusComboDim.X + imgui.FrameHeight())
-			if imgui.BeginCombo("##kernelFocus", win.kernelFocus.String()) {
-				if imgui.Selectable(profiling.KernelAny.String()) {
-					win.kernelFocus = profiling.KernelAny
+			imguiLabel("Focus")
+			imgui.PushItemWidth(win.focusComboDim.X + imgui.FrameHeight())
+			if imgui.BeginCombo("##focus", win.focus.String()) {
+				if imgui.Selectable(profiling.FocusAll.String()) {
+					win.focus = profiling.FocusAll
 					win.windowSortSpecDirty = true
 				}
-				if imgui.Selectable(profiling.KernelVBLANK.String()) {
-					win.kernelFocus = profiling.KernelVBLANK
+				if imgui.Selectable(profiling.FocusVBLANK.String()) {
+					win.focus = profiling.FocusVBLANK
 					win.windowSortSpecDirty = true
 				}
-				if imgui.Selectable(profiling.KernelScreen.String()) {
-					win.kernelFocus = profiling.KernelScreen
+				if imgui.Selectable(profiling.FocusScreen.String()) {
+					win.focus = profiling.FocusScreen
 					win.windowSortSpecDirty = true
 				}
-				if imgui.Selectable(profiling.KernelOverscan.String()) {
-					win.kernelFocus = profiling.KernelOverscan
+				if imgui.Selectable(profiling.FocusOverscan.String()) {
+					win.focus = profiling.FocusOverscan
 					win.windowSortSpecDirty = true
 				}
 				imgui.EndCombo()
@@ -314,7 +313,7 @@ func (win *winCoProcPerformance) draw() {
 	})
 }
 
-func (win *winCoProcPerformance) drawFrameStats() {
+func (win *winCoProcProfiling) drawFrameStats() {
 	accumulate := func(s mapper.CoProcSynchronisation) int {
 		switch s {
 		case mapper.CoProcIdle:
@@ -330,23 +329,23 @@ func (win *winCoProcPerformance) drawFrameStats() {
 	win.img.screen.crit.section.Lock()
 	defer win.img.screen.crit.section.Unlock()
 
-	// decide which kernel we're using
-	var kernel string
-	var kernelClocks float32
+	// decide what to focus on
+	var focus string
+	var focusClocks float32
 
-	switch win.kernelFocus {
-	case profiling.KernelAny:
-		kernelClocks = float32(win.img.screen.crit.frameInfo.TotalClocks())
-		kernel = "TV Frame"
-	case profiling.KernelScreen:
-		kernelClocks = float32(win.img.screen.crit.frameInfo.ScreenClocks())
-		kernel = "Screen"
-	case profiling.KernelVBLANK:
-		kernelClocks = float32(win.img.screen.crit.frameInfo.VBLANKClocks())
-		kernel = "VBLANK"
-	case profiling.KernelOverscan:
-		kernelClocks = float32(win.img.screen.crit.frameInfo.OverscanClocks())
-		kernel = "Overscan"
+	switch win.focus {
+	case profiling.FocusAll:
+		focusClocks = float32(win.img.screen.crit.frameInfo.TotalClocks())
+		focus = "TV Frame"
+	case profiling.FocusScreen:
+		focusClocks = float32(win.img.screen.crit.frameInfo.ScreenClocks())
+		focus = "Screen"
+	case profiling.FocusVBLANK:
+		focusClocks = float32(win.img.screen.crit.frameInfo.VBLANKClocks())
+		focus = "VBLANK"
+	case profiling.FocusOverscan:
+		focusClocks = float32(win.img.screen.crit.frameInfo.OverscanClocks())
+		focus = "Overscan"
 	}
 
 	// frame statistics are taken from reflection information
@@ -355,18 +354,18 @@ func (win *winCoProcPerformance) drawFrameStats() {
 	for i, r := range win.img.screen.crit.reflection {
 		sl := i / specification.ClksScanline
 
-		switch win.kernelFocus {
-		case profiling.KernelAny:
+		switch win.focus {
+		case profiling.FocusAll:
 			clockCount += float32(accumulate(r.CoProcSync))
-		case profiling.KernelScreen:
+		case profiling.FocusScreen:
 			if sl >= win.img.screen.crit.frameInfo.VisibleTop && sl <= win.img.screen.crit.frameInfo.VisibleBottom {
 				clockCount += float32(accumulate(r.CoProcSync))
 			}
-		case profiling.KernelVBLANK:
+		case profiling.FocusVBLANK:
 			if sl < win.img.screen.crit.frameInfo.VisibleTop {
 				clockCount += float32(accumulate(r.CoProcSync))
 			}
-		case profiling.KernelOverscan:
+		case profiling.FocusOverscan:
 			if sl > win.img.screen.crit.frameInfo.VisibleBottom {
 				clockCount += float32(accumulate(r.CoProcSync))
 			}
@@ -374,19 +373,19 @@ func (win *winCoProcPerformance) drawFrameStats() {
 	}
 
 	if clockCount > 0 {
-		imgui.Text(fmt.Sprintf("%s activity in most recent %s:", win.img.lz.Cart.CoProcID, kernel))
+		imgui.Text(fmt.Sprintf("%s activity in most recent %s:", win.img.lz.Cart.CoProcID, focus))
 		imgui.SameLine()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		imgui.Text(fmt.Sprintf("%.02f%%", clockCount/kernelClocks*100))
+		imgui.Text(fmt.Sprintf("%.02f%%", clockCount/focusClocks*100))
 		imgui.PopStyleColor()
-	} else if win.kernelFocus == profiling.KernelAny {
+	} else if win.focus == profiling.FocusAll {
 		imgui.Text(fmt.Sprintf("No %s activity in the most recent frame", win.img.lz.Cart.CoProcID))
 	} else {
-		imgui.Text(fmt.Sprintf("No %s activity in the %s kernel", win.img.lz.Cart.CoProcID, kernel))
+		imgui.Text(fmt.Sprintf("No %s activity during %s", win.img.lz.Cart.CoProcID, focus))
 	}
 }
 
-func (win *winCoProcPerformance) drawFunctions(src *dwarf.Source) {
+func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 	imgui.Spacing()
 
 	if src == nil || len(src.SortedFunctions.Functions) == 0 {
@@ -394,17 +393,17 @@ func (win *winCoProcPerformance) drawFunctions(src *dwarf.Source) {
 		return
 	}
 
-	if win.kernelFocus&profiling.KernelVBLANK == profiling.KernelVBLANK {
+	if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
 		if !src.Stats.VBLANK.HasExecuted() {
 			imgui.Text("No functions have been executed during VBLANK yet")
 			return
 		}
-	} else if win.kernelFocus&profiling.KernelScreen == profiling.KernelScreen {
+	} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
 		if !src.Stats.Screen.HasExecuted() {
 			imgui.Text("No functions have been executed during the visible screen yet")
 			return
 		}
-	} else if win.kernelFocus&profiling.KernelOverscan == profiling.KernelOverscan {
+	} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
 		if !src.Stats.Overscan.HasExecuted() {
 			imgui.Text("No functions have been executed during Overscan yet")
 			return
@@ -425,7 +424,7 @@ func (win *winCoProcPerformance) drawFunctions(src *dwarf.Source) {
 	flgs |= imgui.TableFlagsResizable
 	flgs |= imgui.TableFlagsHideable
 
-	imgui.BeginTableV("##coprocPerformanceTableFunctions", numColumns, flgs, imgui.Vec2{}, 0.0)
+	imgui.BeginTableV("##coprocProfilingTableFunctions", numColumns, flgs, imgui.Vec2{}, 0.0)
 
 	// first column is a dummy column so that Selectable (span all columns) works correctly
 	width := imgui.ContentRegionAvail().X
@@ -459,7 +458,7 @@ func (win *winCoProcPerformance) drawFunctions(src *dwarf.Source) {
 	})
 
 	for _, fn := range src.SortedFunctions.Functions {
-		if fn.Kernel&win.kernelFocus != win.kernelFocus {
+		if fn.Kernel&win.focus != win.focus {
 			continue
 		}
 
@@ -482,11 +481,11 @@ func (win *winCoProcPerformance) drawFunctions(src *dwarf.Source) {
 		}
 
 		var stats profiling.Stats
-		if win.kernelFocus&profiling.KernelVBLANK == profiling.KernelVBLANK {
+		if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
 			stats = statsGroup.VBLANK
-		} else if win.kernelFocus&profiling.KernelScreen == profiling.KernelScreen {
+		} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
 			stats = statsGroup.Screen
-		} else if win.kernelFocus&profiling.KernelOverscan == profiling.KernelOverscan {
+		} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
 			stats = statsGroup.Overscan
 		} else {
 			stats = statsGroup.Overall
@@ -509,7 +508,7 @@ func (win *winCoProcPerformance) drawFunctions(src *dwarf.Source) {
 		optimisedWarning := win.cumulative && fn.OptimisedCallStack
 
 		// tooltip
-		win.tooltip(fn.FlatStats.Overall.OverSource, fn, fn.DeclLine, false)
+		win.tooltip(fn.FlatStats.Overall.OverProgram, fn, fn.DeclLine, false)
 
 		if optimisedWarning {
 			win.img.imguiTooltip(func() {
@@ -555,11 +554,11 @@ func (win *winCoProcPerformance) drawFunctions(src *dwarf.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if stats.OverSource.FrameValid {
+		if stats.OverProgram.FrameValid {
 			if win.percentileFigures {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Frame))
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Frame))
 			} else {
-				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.FrameCount))
+				imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.FrameCount))
 			}
 		} else {
 			imgui.Text("-")
@@ -568,11 +567,11 @@ func (win *winCoProcPerformance) drawFunctions(src *dwarf.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if stats.OverSource.AverageValid {
+		if stats.OverProgram.AverageValid {
 			if win.percentileFigures {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Average))
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Average))
 			} else {
-				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.AverageCount))
+				imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.AverageCount))
 			}
 		} else {
 			imgui.Text("-")
@@ -581,11 +580,11 @@ func (win *winCoProcPerformance) drawFunctions(src *dwarf.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if stats.OverSource.MaxValid {
+		if stats.OverProgram.MaxValid {
 			if win.percentileFigures {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Max))
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Max))
 			} else {
-				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.MaxCount))
+				imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.MaxCount))
 			}
 		} else {
 			imgui.Text("-")
@@ -593,28 +592,24 @@ func (win *winCoProcPerformance) drawFunctions(src *dwarf.Source) {
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		if fn.Kernel == profiling.KernelUnstable {
-			imgui.Text("R")
-		} else {
-			if fn.Kernel&profiling.KernelVBLANK == profiling.KernelVBLANK {
-				imgui.Text("V")
-				imgui.SameLineV(0, 1)
-			}
-			if fn.Kernel&profiling.KernelScreen == profiling.KernelScreen {
-				imgui.Text("S")
-				imgui.SameLineV(0, 1)
-			}
-			if fn.Kernel&profiling.KernelOverscan == profiling.KernelOverscan {
-				imgui.Text("O")
-				imgui.SameLineV(0, 1)
-			}
+		if fn.Kernel&profiling.FocusVBLANK == profiling.FocusVBLANK {
+			imgui.Text("V")
+			imgui.SameLineV(0, 1)
+		}
+		if fn.Kernel&profiling.FocusScreen == profiling.FocusScreen {
+			imgui.Text("S")
+			imgui.SameLineV(0, 1)
+		}
+		if fn.Kernel&profiling.FocusOverscan == profiling.FocusOverscan {
+			imgui.Text("O")
+			imgui.SameLineV(0, 1)
 		}
 	}
 
 	imgui.EndTable()
 }
 
-func (win *winCoProcPerformance) drawSourceLines(src *dwarf.Source) {
+func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 	imgui.Spacing()
 
 	if src == nil || len(src.SortedLines.Lines) == 0 {
@@ -622,17 +617,17 @@ func (win *winCoProcPerformance) drawSourceLines(src *dwarf.Source) {
 		return
 	}
 
-	if win.kernelFocus&profiling.KernelVBLANK == profiling.KernelVBLANK {
+	if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
 		if !src.Stats.VBLANK.HasExecuted() {
 			imgui.Text("No lines have been executed during VBLANK yet")
 			return
 		}
-	} else if win.kernelFocus&profiling.KernelScreen == profiling.KernelScreen {
+	} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
 		if !src.Stats.Screen.HasExecuted() {
 			imgui.Text("No lines have been executed during the visible screen yet")
 			return
 		}
-	} else if win.kernelFocus&profiling.KernelOverscan == profiling.KernelOverscan {
+	} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
 		if !src.Stats.Overscan.HasExecuted() {
 			imgui.Text("No lines have been executed during Overscan yet")
 			return
@@ -652,7 +647,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *dwarf.Source) {
 	flgs |= imgui.TableFlagsResizable
 	flgs |= imgui.TableFlagsHideable
 
-	imgui.BeginTableV("##coprocPerformanceTableSourceLines", numColumns, flgs, imgui.Vec2{}, 0.0)
+	imgui.BeginTableV("##coprocProfilingTableSourceLines", numColumns, flgs, imgui.Vec2{}, 0.0)
 
 	// first column is a dummy column so that Selectable (span all columns) works correctly
 	width := imgui.ContentRegionAvail().X
@@ -684,7 +679,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *dwarf.Source) {
 	})
 
 	for _, ln := range src.SortedLines.Lines {
-		if ln.Kernel&win.kernelFocus != win.kernelFocus {
+		if ln.Kernel&win.focus != win.focus {
 			continue
 		}
 
@@ -698,11 +693,11 @@ func (win *winCoProcPerformance) drawSourceLines(src *dwarf.Source) {
 
 		// select which stats to focus on
 		var stats profiling.Stats
-		if win.kernelFocus&profiling.KernelVBLANK == profiling.KernelVBLANK {
+		if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
 			stats = ln.Stats.VBLANK
-		} else if win.kernelFocus&profiling.KernelScreen == profiling.KernelScreen {
+		} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
 			stats = ln.Stats.Screen
-		} else if win.kernelFocus&profiling.KernelOverscan == profiling.KernelOverscan {
+		} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
 			stats = ln.Stats.Overscan
 		} else {
 			stats = ln.Stats.Overall
@@ -722,7 +717,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *dwarf.Source) {
 		if isStub {
 			win.img.imguiTooltipSimple(fmt.Sprintf("This entry represent all lines of code in %s", ln.Function.Name))
 		} else {
-			win.tooltip(ln.Stats.Overall.OverSource, ln.Function, ln, true)
+			win.tooltip(ln.Stats.Overall.OverProgram, ln.Function, ln, true)
 		}
 
 		// open source window on click
@@ -745,11 +740,11 @@ func (win *winCoProcPerformance) drawSourceLines(src *dwarf.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if stats.OverSource.FrameValid {
+		if stats.OverProgram.FrameValid {
 			if win.percentileFigures {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Frame))
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Frame))
 			} else {
-				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.FrameCount))
+				imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.FrameCount))
 			}
 		} else {
 			imgui.Text("-")
@@ -758,11 +753,11 @@ func (win *winCoProcPerformance) drawSourceLines(src *dwarf.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if stats.OverSource.AverageValid {
+		if stats.OverProgram.AverageValid {
 			if win.percentileFigures {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Average))
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Average))
 			} else {
-				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.AverageCount))
+				imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.AverageCount))
 			}
 		} else {
 			imgui.Text("-")
@@ -771,11 +766,11 @@ func (win *winCoProcPerformance) drawSourceLines(src *dwarf.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if stats.OverSource.MaxValid {
+		if stats.OverProgram.MaxValid {
 			if win.percentileFigures {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Max))
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Max))
 			} else {
-				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.MaxCount))
+				imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.MaxCount))
 			}
 		} else {
 			imgui.Text("-")
@@ -783,28 +778,24 @@ func (win *winCoProcPerformance) drawSourceLines(src *dwarf.Source) {
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		if ln.Kernel == profiling.KernelUnstable {
-			imgui.Text("R")
-		} else {
-			if ln.Kernel&profiling.KernelVBLANK == profiling.KernelVBLANK {
-				imgui.Text("V")
-				imgui.SameLineV(0, 1)
-			}
-			if ln.Kernel&profiling.KernelScreen == profiling.KernelScreen {
-				imgui.Text("S")
-				imgui.SameLineV(0, 1)
-			}
-			if ln.Kernel&profiling.KernelOverscan == profiling.KernelOverscan {
-				imgui.Text("O")
-				imgui.SameLineV(0, 1)
-			}
+		if ln.Kernel&profiling.FocusVBLANK == profiling.FocusVBLANK {
+			imgui.Text("V")
+			imgui.SameLineV(0, 1)
+		}
+		if ln.Kernel&profiling.FocusScreen == profiling.FocusScreen {
+			imgui.Text("S")
+			imgui.SameLineV(0, 1)
+		}
+		if ln.Kernel&profiling.FocusOverscan == profiling.FocusOverscan {
+			imgui.Text("O")
+			imgui.SameLineV(0, 1)
 		}
 	}
 
 	imgui.EndTable()
 }
 
-func (win *winCoProcPerformance) drawFunctionFilter(src *dwarf.Source, functionFilter *dwarf.FunctionFilter) {
+func (win *winCoProcProfiling) drawFunctionFilter(src *dwarf.Source, functionFilter *dwarf.FunctionFilter) {
 	imgui.Spacing()
 
 	if len(functionFilter.Lines.Lines) == 0 {
@@ -815,17 +806,17 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *dwarf.Source, functionF
 	// validity check is done on function filter stats - drawFunctions() and
 	// drawSourceLines() equivalents of this block perform the validity check
 	// on the source level statistics
-	if win.kernelFocus&profiling.KernelVBLANK == profiling.KernelVBLANK {
+	if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
 		if !functionFilter.Function.FlatStats.VBLANK.HasExecuted() {
 			imgui.Text("This function has not been executed during VBLANK yet")
 			return
 		}
-	} else if win.kernelFocus&profiling.KernelScreen == profiling.KernelScreen {
+	} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
 		if !functionFilter.Function.FlatStats.Screen.HasExecuted() {
 			imgui.Text("This function has not been executed during the visible screen yet")
 			return
 		}
-	} else if win.kernelFocus&profiling.KernelOverscan == profiling.KernelOverscan {
+	} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
 		if !functionFilter.Function.FlatStats.Overscan.HasExecuted() {
 			imgui.Text("This function has not been executed during Overscan yet")
 			return
@@ -839,15 +830,15 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *dwarf.Source, functionF
 
 	// function summary in relation to the program
 	imgui.AlignTextToFramePadding()
-	switch win.kernelFocus {
-	case profiling.KernelVBLANK:
-		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the VBLANK last frame", functionFilter.Function.FlatStats.VBLANK.OverSource.Frame))
-	case profiling.KernelScreen:
-		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Visible Screen last frame", functionFilter.Function.FlatStats.Screen.OverSource.Frame))
-	case profiling.KernelOverscan:
-		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Overscan last frame", functionFilter.Function.FlatStats.Overscan.OverSource.Frame))
+	switch win.focus {
+	case profiling.FocusVBLANK:
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the VBLANK last frame", functionFilter.Function.FlatStats.VBLANK.OverProgram.Frame))
+	case profiling.FocusScreen:
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Visible Screen last frame", functionFilter.Function.FlatStats.Screen.OverProgram.Frame))
+	case profiling.FocusOverscan:
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Overscan last frame", functionFilter.Function.FlatStats.Overscan.OverProgram.Frame))
 	default:
-		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time last frame", functionFilter.Function.FlatStats.Overall.OverSource.Frame))
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time last frame", functionFilter.Function.FlatStats.Overall.OverProgram.Frame))
 	}
 
 	imgui.SameLineV(0, 15)
@@ -870,7 +861,7 @@ thean to the program as a whole.`)
 	flgs |= imgui.TableFlagsResizable
 	flgs |= imgui.TableFlagsHideable
 
-	imgui.BeginTableV("##coprocPerformanceTableFunctionFilter", numColumns, flgs, imgui.Vec2{}, 0.0)
+	imgui.BeginTableV("##coprocProfilingTableFunctionFilter", numColumns, flgs, imgui.Vec2{}, 0.0)
 
 	// first column is a dummy column so that Selectable (span all columns) works correctly
 	width := imgui.ContentRegionAvail().X
@@ -912,7 +903,7 @@ thean to the program as a whole.`)
 	})
 
 	for _, ln := range functionFilter.Lines.Lines {
-		if ln.Kernel&win.kernelFocus != win.kernelFocus {
+		if ln.Kernel&win.focus != win.focus {
 			continue
 		}
 
@@ -926,11 +917,11 @@ thean to the program as a whole.`)
 
 		// select which stats to focus on
 		var stats profiling.Stats
-		if win.kernelFocus&profiling.KernelVBLANK == profiling.KernelVBLANK {
+		if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
 			stats = ln.Stats.VBLANK
-		} else if win.kernelFocus&profiling.KernelScreen == profiling.KernelScreen {
+		} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
 			stats = ln.Stats.Screen
-		} else if win.kernelFocus&profiling.KernelOverscan == profiling.KernelOverscan {
+		} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
 			stats = ln.Stats.Overscan
 		} else {
 			stats = ln.Stats.Overall
@@ -951,7 +942,7 @@ thean to the program as a whole.`)
 		if win.functionTabScale {
 			win.tooltip(ln.Stats.Overall.OverFunction, ln.Function, ln, true)
 		} else {
-			win.tooltip(ln.Stats.Overall.OverSource, ln.Function, ln, true)
+			win.tooltip(ln.Stats.Overall.OverProgram, ln.Function, ln, true)
 		}
 
 		// open source window on click
@@ -976,11 +967,11 @@ thean to the program as a whole.`)
 				imgui.Text("-")
 			}
 		} else {
-			if stats.OverSource.FrameValid {
+			if stats.OverProgram.FrameValid {
 				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Frame))
+					imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Frame))
 				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.FrameCount))
+					imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.FrameCount))
 				}
 			} else {
 				imgui.Text("-")
@@ -1001,11 +992,11 @@ thean to the program as a whole.`)
 				imgui.Text("-")
 			}
 		} else {
-			if stats.OverSource.AverageValid {
+			if stats.OverProgram.AverageValid {
 				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Average))
+					imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Average))
 				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.AverageCount))
+					imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.AverageCount))
 				}
 			} else {
 				imgui.Text("-")
@@ -1026,11 +1017,11 @@ thean to the program as a whole.`)
 				imgui.Text("-")
 			}
 		} else {
-			if stats.OverSource.MaxValid {
+			if stats.OverProgram.MaxValid {
 				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Max))
+					imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Max))
 				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.MaxCount))
+					imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.MaxCount))
 				}
 			} else {
 				imgui.Text("-")
@@ -1039,21 +1030,17 @@ thean to the program as a whole.`)
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		if ln.Kernel == profiling.KernelUnstable {
-			imgui.Text("R")
-		} else {
-			if ln.Kernel&profiling.KernelVBLANK == profiling.KernelVBLANK {
-				imgui.Text("V")
-				imgui.SameLineV(0, 1)
-			}
-			if ln.Kernel&profiling.KernelScreen == profiling.KernelScreen {
-				imgui.Text("S")
-				imgui.SameLineV(0, 1)
-			}
-			if ln.Kernel&profiling.KernelOverscan == profiling.KernelOverscan {
-				imgui.Text("O")
-				imgui.SameLineV(0, 1)
-			}
+		if ln.Kernel&profiling.FocusVBLANK == profiling.FocusVBLANK {
+			imgui.Text("V")
+			imgui.SameLineV(0, 1)
+		}
+		if ln.Kernel&profiling.FocusScreen == profiling.FocusScreen {
+			imgui.Text("S")
+			imgui.SameLineV(0, 1)
+		}
+		if ln.Kernel&profiling.FocusOverscan == profiling.FocusOverscan {
+			imgui.Text("O")
+			imgui.SameLineV(0, 1)
 		}
 	}
 
@@ -1066,7 +1053,7 @@ thean to the program as a whole.`)
 // the function is a stub function
 //
 // showDisasm should be false if the context doesn't require disassembly detail
-func (win *winCoProcPerformance) tooltip(load profiling.Load,
+func (win *winCoProcProfiling) tooltip(load profiling.Load,
 	fn *dwarf.SourceFunction, ln *dwarf.SourceLine,
 	showDisasm bool) {
 
@@ -1082,24 +1069,20 @@ func (win *winCoProcPerformance) tooltip(load profiling.Load,
 			win.img.drawFilenameAndLineNumber(ln.File.Filename, ln.LineNumber, -1)
 		}
 
-		if fn.Kernel != profiling.KernelAny {
+		if fn.Kernel != profiling.FocusAll {
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()
 
 			imgui.Text(fmt.Sprintf("%c Executed in: ", fonts.CoProcKernel))
-			if fn.Kernel == profiling.KernelUnstable {
-				imgui.Text("   ROM Setup only")
-			} else {
-				if fn.Kernel&profiling.KernelVBLANK == profiling.KernelVBLANK {
-					imgui.Text("   VBLANK")
-				}
-				if fn.Kernel&profiling.KernelScreen == profiling.KernelScreen {
-					imgui.Text("   Visible Screen")
-				}
-				if fn.Kernel&profiling.KernelOverscan == profiling.KernelOverscan {
-					imgui.Text("   Overscan")
-				}
+			if fn.Kernel&profiling.FocusVBLANK == profiling.FocusVBLANK {
+				imgui.Text("   VBLANK")
+			}
+			if fn.Kernel&profiling.FocusScreen == profiling.FocusScreen {
+				imgui.Text("   Visible Screen")
+			}
+			if fn.Kernel&profiling.FocusOverscan == profiling.FocusOverscan {
+				imgui.Text("   Overscan")
 			}
 		}
 
@@ -1114,15 +1097,14 @@ func (win *winCoProcPerformance) tooltip(load profiling.Load,
 }
 
 // helpfunction to sort profiling data according to current spec
-func (win *winCoProcPerformance) sort(src *dwarf.Source, f func(imgui.TableSortSpecs)) {
+func (win *winCoProcProfiling) sort(src *dwarf.Source, f func(imgui.TableSortSpecs)) {
 	sort := imgui.TableGetSortSpecs()
 	if src.ExecutionProfileChanged || sort.SpecsDirty() || win.windowSortSpecDirty {
-		//  always set which kernel to sort by
 		win.windowSortSpecDirty = false
-		src.SortedFunctions.SetKernel(win.kernelFocus)
+		src.SortedFunctions.SetFocus(win.focus)
 		src.SortedFunctions.UseRawCyclesCounts(!win.percentileFigures)
 		src.SortedFunctions.SetCumulative(win.cumulative)
-		src.SortedLines.SetKernel(win.kernelFocus)
+		src.SortedLines.SetKernel(win.focus)
 		src.SortedLines.UseRawCyclesCounts(!win.percentileFigures)
 		f(sort)
 		sort.ClearSpecsDirty()

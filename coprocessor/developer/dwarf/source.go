@@ -806,43 +806,6 @@ func addFunctionStubs(src *Source, ef *elf.File) error {
 	return nil
 }
 
-func (src *Source) NewFrame() {
-	// calling newFrame() on stats in a specific order. first the program, then
-	// the functions and then the source lines.
-
-	src.Stats.Overall.NewFrame(nil, nil)
-	src.Stats.VBLANK.NewFrame(nil, nil)
-	src.Stats.Screen.NewFrame(nil, nil)
-	src.Stats.Overscan.NewFrame(nil, nil)
-	src.Stats.ROMSetup.NewFrame(nil, nil)
-
-	for _, fn := range src.Functions {
-		fn.FlatStats.Overall.NewFrame(&src.Stats.Overall, nil)
-		fn.FlatStats.VBLANK.NewFrame(&src.Stats.VBLANK, nil)
-		fn.FlatStats.Screen.NewFrame(&src.Stats.Screen, nil)
-		fn.FlatStats.Overscan.NewFrame(&src.Stats.Overscan, nil)
-		fn.FlatStats.ROMSetup.NewFrame(&src.Stats.ROMSetup, nil)
-
-		fn.CumulativeStats.Overall.NewFrame(&src.Stats.Overall, nil)
-		fn.CumulativeStats.VBLANK.NewFrame(&src.Stats.VBLANK, nil)
-		fn.CumulativeStats.Screen.NewFrame(&src.Stats.Screen, nil)
-		fn.CumulativeStats.Overscan.NewFrame(&src.Stats.Overscan, nil)
-		fn.CumulativeStats.ROMSetup.NewFrame(&src.Stats.ROMSetup, nil)
-	}
-
-	// traverse the SortedLines list and update the FrameCyles values
-	//
-	// we prefer this over traversing the Lines list because we may hit a
-	// SourceLine more than once. SortedLines contains unique entries.
-	for _, ln := range src.SortedLines.Lines {
-		ln.Stats.Overall.NewFrame(&src.Stats.Overall, &ln.Function.FlatStats.Overall)
-		ln.Stats.VBLANK.NewFrame(&src.Stats.VBLANK, &ln.Function.FlatStats.VBLANK)
-		ln.Stats.Screen.NewFrame(&src.Stats.Screen, &ln.Function.FlatStats.Screen)
-		ln.Stats.Overscan.NewFrame(&src.Stats.Overscan, &ln.Function.FlatStats.Overscan)
-		ln.Stats.ROMSetup.NewFrame(&src.Stats.ROMSetup, &ln.Function.FlatStats.ROMSetup)
-	}
-}
-
 func readSourceFile(filename string, path string, all *AllSourceLines) (*SourceFile, error) {
 	var err error
 
@@ -942,37 +905,6 @@ func findELF(romFile string) (*elf.File, bool) {
 	}
 
 	return nil, false
-}
-
-// ResetStatistics resets all performance statistics.
-func (src *Source) ResetStatistics() {
-	for i := range src.Functions {
-		src.Functions[i].Kernel = profiling.KernelAny
-		src.Functions[i].FlatStats.Overall.Reset()
-		src.Functions[i].FlatStats.VBLANK.Reset()
-		src.Functions[i].FlatStats.Screen.Reset()
-		src.Functions[i].FlatStats.Overscan.Reset()
-		src.Functions[i].CumulativeStats.ROMSetup.Reset()
-		src.Functions[i].CumulativeStats.Overall.Reset()
-		src.Functions[i].CumulativeStats.VBLANK.Reset()
-		src.Functions[i].CumulativeStats.Screen.Reset()
-		src.Functions[i].CumulativeStats.Overscan.Reset()
-		src.Functions[i].CumulativeStats.ROMSetup.Reset()
-		src.Functions[i].OptimisedCallStack = false
-	}
-	for i := range src.LinesByAddress {
-		src.LinesByAddress[i].Kernel = profiling.KernelAny
-		src.LinesByAddress[i].Stats.Overall.Reset()
-		src.LinesByAddress[i].Stats.VBLANK.Reset()
-		src.LinesByAddress[i].Stats.Screen.Reset()
-		src.LinesByAddress[i].Stats.Overscan.Reset()
-		src.LinesByAddress[i].Stats.ROMSetup.Reset()
-	}
-	src.Stats.Overall.Reset()
-	src.Stats.VBLANK.Reset()
-	src.Stats.Screen.Reset()
-	src.Stats.Overscan.Reset()
-	src.Stats.ROMSetup.Reset()
 }
 
 // FindSourceLine returns line entry for the address. Returns nil if the
@@ -1085,60 +1017,6 @@ func longestPath(a, b string) string {
 	}
 
 	return filepath.Join(c[i:]...)
-}
-
-func (src *Source) ExecutionProfile(ln *SourceLine, ct float32, kernel profiling.KernelVCS) {
-	// indicate that execution profile has changed
-	src.ExecutionProfileChanged = true
-
-	fn := ln.Function
-
-	ln.Stats.Overall.Count += ct
-	fn.FlatStats.Overall.Count += ct
-	src.Stats.Overall.Count += ct
-
-	ln.Kernel |= kernel
-	fn.Kernel |= kernel
-	if fn.DeclLine != nil {
-		fn.DeclLine.Kernel |= kernel
-	}
-
-	switch kernel {
-	case profiling.KernelVBLANK:
-		ln.Stats.VBLANK.Count += ct
-		fn.FlatStats.VBLANK.Count += ct
-		src.Stats.VBLANK.Count += ct
-	case profiling.KernelScreen:
-		ln.Stats.Screen.Count += ct
-		fn.FlatStats.Screen.Count += ct
-		src.Stats.Screen.Count += ct
-	case profiling.KernelOverscan:
-		ln.Stats.Overscan.Count += ct
-		fn.FlatStats.Overscan.Count += ct
-		src.Stats.Overscan.Count += ct
-	case profiling.KernelUnstable:
-		ln.Stats.ROMSetup.Count += ct
-		fn.FlatStats.ROMSetup.Count += ct
-		src.Stats.ROMSetup.Count += ct
-	}
-}
-
-func (src *Source) ExecutionProfileCumulative(fn *SourceFunction, ct float32, kernel profiling.KernelVCS) {
-	// indicate that execution profile has changed
-	src.ExecutionProfileChanged = true
-
-	fn.CumulativeStats.Overall.Count += ct
-
-	switch kernel {
-	case profiling.KernelVBLANK:
-		fn.CumulativeStats.VBLANK.Count += ct
-	case profiling.KernelScreen:
-		fn.CumulativeStats.Screen.Count += ct
-	case profiling.KernelOverscan:
-		fn.CumulativeStats.Overscan.Count += ct
-	case profiling.KernelUnstable:
-		fn.CumulativeStats.ROMSetup.Count += ct
-	}
 }
 
 // SourceLineByAddr returns the source line for a intruciton address. If there

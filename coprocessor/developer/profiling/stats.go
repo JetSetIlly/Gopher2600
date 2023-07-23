@@ -55,24 +55,23 @@ type StatsGroup struct {
 	VBLANK   Stats
 	Screen   Stats
 	Overscan Stats
-	ROMSetup Stats
 }
 
 // Stats records the cycle count over time and can be used to the frame
 // (or current) load as well as average and maximum load.
 //
-// The actual percentage values are accessed through the OverSource and
+// The actual percentage values are accessed through the OverProgram and
 // OverFunction fields. These fields provide the necessary scale by which
 // the load is measured.
 //
-// The validity of the OverSource and OverFunction fields depends on context.
+// The validity of the OverProgram and OverFunction fields depends on context.
 // For instance, for the SourceFunction type, the corresponding OverFunction
 // field is invalid. For the Source type meanwhile, neither field is valid.
 //
-// For the SourceLine type however, both OverSource and OverFunction can be
+// For the SourceLine type however, both OverProgram and OverFunction can be
 // used to provide a different scaling to the load values.
 type Stats struct {
-	OverSource   Load
+	OverProgram  Load
 	OverFunction Load
 
 	// cycle count this frame
@@ -101,7 +100,7 @@ func (stats *Stats) HasExecuted() bool {
 
 // NewFrame update statistics, using source and function to update the Load values as
 // appropriate.
-func (stats *Stats) NewFrame(src *Stats, function *Stats) {
+func (stats *Stats) NewFrame(prog *Stats, function *Stats) {
 	stats.numFrames++
 	if stats.numFrames > 1 {
 		if stats.Count > 0 {
@@ -137,34 +136,34 @@ func (stats *Stats) NewFrame(src *Stats, function *Stats) {
 		stats.OverFunction.MaxValid = stats.OverFunction.MaxValid || stats.OverFunction.FrameValid
 	}
 
-	if src != nil {
-		frameLoad := stats.frameCount / src.frameCount * 100
+	if prog != nil {
+		frameLoad := stats.frameCount / prog.frameCount * 100
 
-		stats.OverSource.FrameCount = stats.frameCount
-		stats.OverSource.Frame = frameLoad
+		stats.OverProgram.FrameCount = stats.frameCount
+		stats.OverProgram.Frame = frameLoad
 
-		stats.OverSource.AverageCount = stats.avgCount
-		stats.OverSource.Average = stats.avgCount / src.avgCount * 100
+		stats.OverProgram.AverageCount = stats.avgCount
+		stats.OverProgram.Average = stats.avgCount / prog.avgCount * 100
 
-		stats.OverSource.FrameValid = stats.frameCount > 0 && src.frameCount > 0
+		stats.OverProgram.FrameValid = stats.frameCount > 0 && prog.frameCount > 0
 
-		if stats.OverSource.FrameValid {
-			if stats.frameCount >= stats.OverSource.MaxCount {
-				stats.OverSource.MaxCount = stats.frameCount
+		if stats.OverProgram.FrameValid {
+			if stats.frameCount >= stats.OverProgram.MaxCount {
+				stats.OverProgram.MaxCount = stats.frameCount
 			}
-			if frameLoad >= stats.OverSource.Max {
-				stats.OverSource.Max = frameLoad
+			if frameLoad >= stats.OverProgram.Max {
+				stats.OverProgram.Max = frameLoad
 			}
 		}
 
-		stats.OverSource.AverageValid = stats.avgCount > 0 && src.avgCount > 0
-		stats.OverSource.MaxValid = stats.OverSource.MaxValid || stats.OverSource.FrameValid
+		stats.OverProgram.AverageValid = stats.avgCount > 0 && prog.avgCount > 0
+		stats.OverProgram.MaxValid = stats.OverProgram.MaxValid || stats.OverProgram.FrameValid
 	}
 }
 
 // Reset the statisics
 func (stats *Stats) Reset() {
-	stats.OverSource.reset()
+	stats.OverProgram.reset()
 	stats.OverFunction.reset()
 	stats.allFrameCount = 0.0
 	stats.numFrames = 0.0
@@ -173,36 +172,3 @@ func (stats *Stats) Reset() {
 	stats.Count = 0.0
 	stats.numFrames = 0
 }
-
-// KernelVCS indicates the 2600 kernel that is associated with a source function
-// or source line.
-type KernelVCS int
-
-// List of KernelVCS values.
-const (
-	KernelAny      KernelVCS = 0x00
-	KernelScreen   KernelVCS = 0x01
-	KernelVBLANK   KernelVCS = 0x02
-	KernelOverscan KernelVCS = 0x04
-
-	// code that is run while the television is in an unstable state
-	KernelUnstable KernelVCS = 0x08
-)
-
-func (k KernelVCS) String() string {
-	switch k {
-	case KernelScreen:
-		return "Screen"
-	case KernelVBLANK:
-		return "VBLANK"
-	case KernelOverscan:
-		return "Overscan"
-	case KernelUnstable:
-		return "ROM Setup"
-	}
-
-	return "Any"
-}
-
-// List of KernelVCS values as strings
-var AvailableInKernelOptions = []string{"Any", "VBLANK", "Screen", "Overscan", "ROM Setup"}

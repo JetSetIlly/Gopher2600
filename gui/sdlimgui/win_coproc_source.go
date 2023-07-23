@@ -349,12 +349,12 @@ func (win *winCoProcSource) saveToCSV(src *dwarf.Source) {
 
 	for _, ln := range win.selectedFile.Content.Lines {
 		s := strings.Builder{}
-		if ln.Stats.Overall.OverSource.FrameValid {
-			s.WriteString(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Frame))
-		} else if ln.Stats.Overall.OverSource.AverageValid {
-			s.WriteString(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Average))
-		} else if ln.Stats.Overall.OverSource.MaxValid {
-			s.WriteString(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Max))
+		if ln.Stats.Overall.OverProgram.FrameValid {
+			s.WriteString(fmt.Sprintf("%.02f", ln.Stats.Overall.OverProgram.Frame))
+		} else if ln.Stats.Overall.OverProgram.AverageValid {
+			s.WriteString(fmt.Sprintf("%.02f", ln.Stats.Overall.OverProgram.Average))
+		} else if ln.Stats.Overall.OverProgram.MaxValid {
+			s.WriteString(fmt.Sprintf("%.02f", ln.Stats.Overall.OverProgram.Max))
 		} else {
 			s.WriteString(" -")
 		}
@@ -569,20 +569,20 @@ func (win *winCoProcSource) drawSource(src *dwarf.Source, bp breakpoints.Breakpo
 					// execution state
 					imgui.TableNextColumn()
 					if ln.Stats.Overall.HasExecuted() {
-						if ln.Stats.Overall.OverSource.FrameValid {
+						if ln.Stats.Overall.OverProgram.FrameValid {
 							drawExecutionIndicator(win.img.cols.coProcSourceLoad)
 							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-							imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Frame))
+							imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverProgram.Frame))
 							imgui.PopStyleColor()
-						} else if ln.Stats.Overall.OverSource.AverageValid {
+						} else if ln.Stats.Overall.OverProgram.AverageValid {
 							drawExecutionIndicator(win.img.cols.coProcSourceAvgLoad)
 							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-							imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Average))
+							imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverProgram.Average))
 							imgui.PopStyleColor()
-						} else if ln.Stats.Overall.OverSource.MaxValid {
+						} else if ln.Stats.Overall.OverProgram.MaxValid {
 							drawExecutionIndicator(win.img.cols.coProcSourceMaxLoad)
 							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-							imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Max))
+							imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverProgram.Max))
 							imgui.PopStyleColor()
 						} else {
 							drawExecutionIndicator(win.img.cols.coProcSourceNoLoad)

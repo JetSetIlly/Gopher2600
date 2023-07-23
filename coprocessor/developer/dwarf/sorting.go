@@ -40,7 +40,7 @@ type SortedLines struct {
 	Lines      []*SourceLine
 	method     sortMethods
 	descending bool
-	kernel     profiling.KernelVCS
+	kernel     profiling.Focus
 
 	// sort by raw cycle counts, rather than percentages
 	rawCycleCounts bool
@@ -50,7 +50,7 @@ func (e SortedLines) Sort() {
 	sort.Stable(e)
 }
 
-func (e *SortedLines) SetKernel(kernel profiling.KernelVCS) {
+func (e *SortedLines) SetKernel(kernel profiling.Focus) {
 	e.kernel = kernel
 }
 
@@ -129,13 +129,13 @@ func (e SortedLines) Less(i int, j int) bool {
 	var jStats profiling.Stats
 
 	switch e.kernel {
-	case profiling.KernelVBLANK:
+	case profiling.FocusVBLANK:
 		iStats = e.Lines[i].Stats.VBLANK
 		jStats = e.Lines[j].Stats.VBLANK
-	case profiling.KernelScreen:
+	case profiling.FocusScreen:
 		iStats = e.Lines[i].Stats.Screen
 		jStats = e.Lines[j].Stats.Screen
-	case profiling.KernelOverscan:
+	case profiling.FocusOverscan:
 		iStats = e.Lines[i].Stats.Overscan
 		jStats = e.Lines[j].Stats.Overscan
 	default:
@@ -164,19 +164,19 @@ func (e SortedLines) Less(i int, j int) bool {
 			switch e.method {
 			case sortFrameCyclesOverSource:
 				if e.descending {
-					return iStats.OverSource.FrameCount > jStats.OverSource.FrameCount
+					return iStats.OverProgram.FrameCount > jStats.OverProgram.FrameCount
 				}
-				return iStats.OverSource.FrameCount < jStats.OverSource.FrameCount
+				return iStats.OverProgram.FrameCount < jStats.OverProgram.FrameCount
 			case sortAverageCyclesOverSource:
 				if e.descending {
-					return iStats.OverSource.AverageCount > jStats.OverSource.AverageCount
+					return iStats.OverProgram.AverageCount > jStats.OverProgram.AverageCount
 				}
-				return iStats.OverSource.AverageCount < jStats.OverSource.AverageCount
+				return iStats.OverProgram.AverageCount < jStats.OverProgram.AverageCount
 			case sortMaxCyclesOverSource:
 				if e.descending {
-					return iStats.OverSource.MaxCount > jStats.OverSource.MaxCount
+					return iStats.OverProgram.MaxCount > jStats.OverProgram.MaxCount
 				}
-				return iStats.OverSource.MaxCount < jStats.OverSource.MaxCount
+				return iStats.OverProgram.MaxCount < jStats.OverProgram.MaxCount
 			case sortFrameCyclesOverFunction:
 				if e.descending {
 					return iStats.OverFunction.FrameCount > jStats.OverFunction.FrameCount
@@ -197,19 +197,19 @@ func (e SortedLines) Less(i int, j int) bool {
 			switch e.method {
 			case sortFrameCyclesOverSource:
 				if e.descending {
-					return iStats.OverSource.Frame > jStats.OverSource.Frame
+					return iStats.OverProgram.Frame > jStats.OverProgram.Frame
 				}
-				return iStats.OverSource.Frame < jStats.OverSource.Frame
+				return iStats.OverProgram.Frame < jStats.OverProgram.Frame
 			case sortAverageCyclesOverSource:
 				if e.descending {
-					return iStats.OverSource.Average > jStats.OverSource.Average
+					return iStats.OverProgram.Average > jStats.OverProgram.Average
 				}
-				return iStats.OverSource.Average < jStats.OverSource.Average
+				return iStats.OverProgram.Average < jStats.OverProgram.Average
 			case sortMaxCyclesOverSource:
 				if e.descending {
-					return iStats.OverSource.Max > jStats.OverSource.Max
+					return iStats.OverProgram.Max > jStats.OverProgram.Max
 				}
-				return iStats.OverSource.Max < jStats.OverSource.Max
+				return iStats.OverProgram.Max < jStats.OverProgram.Max
 			case sortFrameCyclesOverFunction:
 				if e.descending {
 					return iStats.OverFunction.Frame > jStats.OverFunction.Frame
@@ -240,7 +240,7 @@ type SortedFunctions struct {
 	Functions  []*SourceFunction
 	method     sortMethods
 	descending bool
-	kernel     profiling.KernelVCS
+	focus      profiling.Focus
 	cumulative bool
 
 	functionComparison bool
@@ -253,8 +253,8 @@ func (e SortedFunctions) Sort() {
 	sort.Stable(e)
 }
 
-func (e *SortedFunctions) SetKernel(kernel profiling.KernelVCS) {
-	e.kernel = kernel
+func (e *SortedFunctions) SetFocus(focus profiling.Focus) {
+	e.focus = focus
 }
 
 func (e *SortedFunctions) SetCumulative(set bool) {
@@ -303,8 +303,8 @@ func (e SortedFunctions) Less(i int, j int) bool {
 	var iStats profiling.Stats
 	var jStats profiling.Stats
 
-	switch e.kernel {
-	case profiling.KernelVBLANK:
+	switch e.focus {
+	case profiling.FocusVBLANK:
 		if e.cumulative {
 			iStats = e.Functions[i].CumulativeStats.VBLANK
 			jStats = e.Functions[j].CumulativeStats.VBLANK
@@ -312,7 +312,7 @@ func (e SortedFunctions) Less(i int, j int) bool {
 			iStats = e.Functions[i].FlatStats.VBLANK
 			jStats = e.Functions[j].FlatStats.VBLANK
 		}
-	case profiling.KernelScreen:
+	case profiling.FocusScreen:
 		if e.cumulative {
 			iStats = e.Functions[i].CumulativeStats.Screen
 			jStats = e.Functions[j].CumulativeStats.Screen
@@ -320,7 +320,7 @@ func (e SortedFunctions) Less(i int, j int) bool {
 			iStats = e.Functions[i].FlatStats.Screen
 			jStats = e.Functions[j].FlatStats.Screen
 		}
-	case profiling.KernelOverscan:
+	case profiling.FocusOverscan:
 		if e.cumulative {
 			iStats = e.Functions[i].CumulativeStats.Overscan
 			jStats = e.Functions[j].CumulativeStats.Overscan
@@ -359,37 +359,37 @@ func (e SortedFunctions) Less(i int, j int) bool {
 			switch e.method {
 			case sortFrameCyclesOverSource:
 				if e.descending {
-					return iStats.OverSource.FrameCount > jStats.OverSource.FrameCount
+					return iStats.OverProgram.FrameCount > jStats.OverProgram.FrameCount
 				}
-				return iStats.OverSource.FrameCount < jStats.OverSource.FrameCount
+				return iStats.OverProgram.FrameCount < jStats.OverProgram.FrameCount
 			case sortAverageCyclesOverSource:
 				if e.descending {
-					return iStats.OverSource.AverageCount > jStats.OverSource.AverageCount
+					return iStats.OverProgram.AverageCount > jStats.OverProgram.AverageCount
 				}
-				return iStats.OverSource.AverageCount < jStats.OverSource.AverageCount
+				return iStats.OverProgram.AverageCount < jStats.OverProgram.AverageCount
 			case sortMaxCyclesOverSource:
 				if e.descending {
-					return iStats.OverSource.MaxCount > jStats.OverSource.MaxCount
+					return iStats.OverProgram.MaxCount > jStats.OverProgram.MaxCount
 				}
-				return iStats.OverSource.MaxCount < jStats.OverSource.MaxCount
+				return iStats.OverProgram.MaxCount < jStats.OverProgram.MaxCount
 			}
 		} else {
 			switch e.method {
 			case sortFrameCyclesOverSource:
 				if e.descending {
-					return iStats.OverSource.Frame > jStats.OverSource.Frame
+					return iStats.OverProgram.Frame > jStats.OverProgram.Frame
 				}
-				return iStats.OverSource.Frame < jStats.OverSource.Frame
+				return iStats.OverProgram.Frame < jStats.OverProgram.Frame
 			case sortAverageCyclesOverSource:
 				if e.descending {
-					return iStats.OverSource.Average > jStats.OverSource.Average
+					return iStats.OverProgram.Average > jStats.OverProgram.Average
 				}
-				return iStats.OverSource.Average < jStats.OverSource.Average
+				return iStats.OverProgram.Average < jStats.OverProgram.Average
 			case sortMaxCyclesOverSource:
 				if e.descending {
-					return iStats.OverSource.Max > jStats.OverSource.Max
+					return iStats.OverProgram.Max > jStats.OverProgram.Max
 				}
-				return iStats.OverSource.Max < jStats.OverSource.Max
+				return iStats.OverProgram.Max < jStats.OverProgram.Max
 			}
 		}
 	}

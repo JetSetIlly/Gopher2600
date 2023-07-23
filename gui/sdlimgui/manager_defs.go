@@ -73,7 +73,7 @@ var windowDefs = [...]windowDef{
 	// coprocessor windows
 	{create: newWinCoProcDisasm, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcDisasmMenu}},
 	{create: newWinCoProcFaults, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcFaultsMenu}},
-	{create: newWinCoProcPerformance, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcPerformanceMenu}},
+	{create: newWinCoProcProfiling, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcProfilingMenu}},
 	{create: newWinCoProcFunctions, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcFunctionsMenu}},
 	{create: newWinCoProcGlobals, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcGlobalsMenu}},
 	{create: newWinCoProcLocals, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcLocalsMenu}},
