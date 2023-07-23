@@ -643,32 +643,49 @@ func addVariableChildren(src *Source) {
 
 // assign source lines to a function
 func allocateFunctionsToSourceLines(src *Source) {
-	// this is a simple, maybe naive way of assigning lines to a function. the
-	// alternative is to look up the function by seaching the ranges in all the
-	// identified functions. however, this does not work well when functions
-	// have been inlined. maybe I'm just misunderstanding something in how
-	// ranges work
-	//
-	// it depends on functions being built with the DeclLine pointing to itself
-
-	// NOTE: this might not make sense for languages other than C. the
-	// assumption here is that global variables appear before any other
-	// function and that all lines after that are inside a function. for blank
-	// lines between functions this doesn't matter but any other variable
-	// declarations (outside of a function) will be wrongly allocated
-
-	stub := &SourceFunction{
-		Name: stubIndicator,
-	}
-
+	// for each line in a file compare the address of the first instruction for
+	// the line to each range in every function. the function with the smallest
+	// range is the function the line belongs to
 	for _, sf := range src.Files {
-		fn := stub
 		for _, ln := range sf.Content.Lines {
-			if ln.Function.Name == stubIndicator {
-				ln.Function = fn
-			} else {
-				fn = ln.Function
+			if len(ln.Instruction) > 0 {
+				var candidateFunction *SourceFunction
+				var rangeSize uint64
+				rangeSize = ^uint64(0)
+
+				addr := uint64(ln.Instruction[0].Addr)
+				for _, fn := range src.Functions {
+					for _, r := range fn.Range {
+						if addr >= r.Start && addr <= r.End {
+							if r.End-r.Start < rangeSize {
+								rangeSize = r.End - r.Start
+								candidateFunction = fn
+								break // range loop
+							}
+						}
+					}
+				}
+
+				// we may sometimes reach the end of a loop without having found a corresponding function
+				if candidateFunction != nil {
+					ln.Function = candidateFunction
+				}
 			}
+		}
+
+		// assign functions to lines that don't have instructions. this method
+		// isn't great because we can't detect the end of a function, meaning
+		// that a global variable declared between functions will be wrongly
+		// allocated
+		//
+		// however, this shortcoming can be corrected in the buildVariables()
+		// function when a global variable is encountered
+		currentFunction := &SourceFunction{Name: stubIndicator}
+		for _, ln := range sf.Content.Lines {
+			if ln.Function.IsStub() {
+				ln.Function = currentFunction
+			}
+			currentFunction = ln.Function
 		}
 	}
 }
