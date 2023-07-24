@@ -1046,7 +1046,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 	// if the opcode indicates that this is a 32bit thumb instruction
 	// then we need to resolve that regardless of any IT block
 	if arm.state.status.itMask != 0b0000 && !arm.state.function32bitDecoding {
-		r := arm.state.status.condition(arm.state.status.itCond)
+		r, _ := arm.state.status.condition(arm.state.status.itCond)
 
 		if r {
 			if df != nil {

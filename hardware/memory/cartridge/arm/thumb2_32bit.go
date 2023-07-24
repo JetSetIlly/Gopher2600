@@ -1223,6 +1223,9 @@ func (arm *ARM) decode32bitThumb2LoadStoreDoubleEtc(opcode uint16) *DisasmEntry 
 	if p || w {
 		// "Load and Store Double"
 		addr := arm.state.registers[Rn]
+		if Rn == rPC {
+			addr = alignTo32bits(addr)
+		}
 
 		if p {
 			// pre-index addressing
@@ -1236,11 +1239,20 @@ func (arm *ARM) decode32bitThumb2LoadStoreDoubleEtc(opcode uint16) *DisasmEntry 
 		if l {
 			// "4.6.50 LDRD (immediate)" of "Thumb-2 Supplement"
 			if arm.decodeOnly {
-				return &DisasmEntry{
+				e := &DisasmEntry{
 					Is32bit:  true,
 					Operator: "LDRD",
-					Operand:  "immediate",
 				}
+				e.Operand = fmt.Sprintf("R%d, R%d, [R%d,", Rt, Rt2, Rn)
+				if u {
+					e.Operand = fmt.Sprintf("%s +%d]", e.Operand, imm32)
+				} else {
+					e.Operand = fmt.Sprintf("%s -%d]", e.Operand, imm32)
+				}
+				if p && w {
+					e.Operand = fmt.Sprintf("%s!", e.Operand)
+				}
+				return e
 			}
 
 			arm.state.registers[Rt] = arm.read32bit(addr, true)
@@ -2823,11 +2835,9 @@ func (arm *ARM) decode32bitThumb2BranchesORMiscControl(opcode uint16) *DisasmEnt
 		panic("move to status from register")
 	} else if arm.state.function32bitOpcodeHi&0xf800 == 0xf000 {
 		return arm.decode32bitThumb2Branches(opcode)
-	} else {
-		panic(fmt.Sprintf("unimplemented branches, miscellaneous control instructions"))
 	}
 
-	return nil
+	panic(fmt.Sprintf("unimplemented branches, miscellaneous control instructions"))
 }
 
 func (arm *ARM) decode32bitThumb2Branches(opcode uint16) *DisasmEntry {
@@ -2841,30 +2851,32 @@ func (arm *ARM) decode32bitThumb2Branches(opcode uint16) *DisasmEntry {
 		// "4.6.12 B" of "Thumb-2 Supplement"
 		// T3 encoding
 		// Conditional Branch
+
+		cond := (arm.state.function32bitOpcodeHi & 0x03c0) >> 6
+		passed, mnemonic := arm.state.status.condition(uint8(cond))
+
 		if arm.decodeOnly {
 			return &DisasmEntry{
 				Is32bit:  true,
-				Operator: "B",
-				Operand:  "conditional",
+				Operator: mnemonic,
 			}
 		}
 
-		// make sure we're working with 32bit immediate numbers so that we don't
-		// drop bits when shifting
-		s := uint32((arm.state.function32bitOpcodeHi & 0x0400) >> 10)
-		cond := (arm.state.function32bitOpcodeHi & 0x03c0) >> 6
-		imm6 := uint32(arm.state.function32bitOpcodeHi & 0x003f)
-		j1 := uint32((opcode & 0x2000) >> 13)
-		j2 := uint32((opcode & 0x0800) >> 11)
-		imm11 := uint32(opcode & 0x07ff)
+		if passed {
+			// make sure we're working with 32bit immediate numbers so that we don't
+			// drop bits when shifting
+			s := uint32((arm.state.function32bitOpcodeHi & 0x0400) >> 10)
+			imm6 := uint32(arm.state.function32bitOpcodeHi & 0x003f)
+			j1 := uint32((opcode & 0x2000) >> 13)
+			j2 := uint32((opcode & 0x0800) >> 11)
+			imm11 := uint32(opcode & 0x07ff)
 
-		imm32 := (s << 20) | (j2 << 19) | (j1 << 18) | (imm6 << 12) | (imm11 << 1)
+			imm32 := (s << 20) | (j2 << 19) | (j1 << 18) | (imm6 << 12) | (imm11 << 1)
 
-		if s == 0x01 {
-			imm32 |= 0xfff00000
-		}
+			if s == 0x01 {
+				imm32 |= 0xfff00000
+			}
 
-		if arm.state.status.condition(uint8(cond)) {
 			arm.state.registers[rPC] += imm32
 		}
 

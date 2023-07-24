@@ -113,71 +113,73 @@ func (sr *Status) setOverflow(a bool) {
 }
 
 // conditional execution information from "A7.3 Conditional execution" in "ARMv7-M"
-func (sr *Status) condition(cond uint8) bool {
-	b := false
+func (sr *Status) condition(cond uint8) (bool, string) {
+	var mnemonic string
+	var b bool
 
 	switch cond {
 	case 0b0000:
 		// equal
-		// BEQ
+		mnemonic = "BEQ"
 		b = sr.zero
 	case 0b0001:
 		// not equal
-		// BNE
+		mnemonic = "BNE"
 		b = !sr.zero
 	case 0b0010:
 		// carry set
-		// BCS
+		mnemonic = "BCS"
 		b = sr.carry
 	case 0b0011:
 		// carry clear
-		// BCC
+		mnemonic = "BCC"
 		b = !sr.carry
 	case 0b0100:
 		// minus
-		// BMI
+		mnemonic = "BMI"
 		b = sr.negative
 	case 0b0101:
 		// plus
-		// BPL
+		mnemonic = "BPL"
 		b = !sr.negative
 	case 0b0110:
 		// overflow
-		// BVS
+		mnemonic = "BVS"
 		b = sr.overflow
 	case 0b0111:
 		// no overflow
-		// BVC
+		mnemonic = "BVC"
 		b = !sr.overflow
 	case 0b1000:
 		// unsigned higer C==1 and Z==0
-		// BHI
+		mnemonic = "BHI"
 		b = sr.carry && !sr.zero
 	case 0b1001:
 		// unsigned lower C==0 and Z==1
-		// BLS
+		mnemonic = "BLS"
 		b = !sr.carry || sr.zero
 	case 0b1010:
 		// signed greater than N==V
-		// BGE
+		mnemonic = "BGE"
 		b = sr.negative == sr.overflow
 	case 0b1011:
 		// signed less than N!=V
-		// BLT
+		mnemonic = "BLT"
 		b = sr.negative != sr.overflow
 	case 0b1100:
 		// signed greater than Z==0 and N==V
-		// BGT
+		mnemonic = "BGT"
 		b = !sr.zero && sr.negative == sr.overflow
 	case 0b1101:
 		// signed less than or qual Z==1 or N!=V
-		// BLE
+		mnemonic = "BLE"
 		b = sr.zero || sr.negative != sr.overflow
 	case 0b1110:
+		mnemonic = "B"
 		b = true
 	case 0b1111:
 		panic("unpredictable condition")
 	}
 
-	return b
+	return b, mnemonic
 }

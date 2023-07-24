@@ -1772,49 +1772,19 @@ func (arm *ARM) decodeThumbMultipleLoadStore(opcode uint16) *DisasmEntry {
 func (arm *ARM) decodeThumbConditionalBranch(opcode uint16) *DisasmEntry {
 	// format 16 - Conditional branch
 	cond := uint8((opcode & 0x0f00) >> 8)
-	offset := uint32(opcode & 0x00ff)
+
+	var passed bool
+	var mnemonic string
+	passed, mnemonic = arm.state.status.condition(cond)
 
 	if arm.decodeOnly {
-		var entry DisasmEntry
-		switch cond {
-		case 0b0000:
-			entry.Operator = "BEQ"
-		case 0b0001:
-			entry.Operator = "BNE"
-		case 0b0010:
-			entry.Operator = "BCS"
-		case 0b0011:
-			entry.Operator = "BCC"
-		case 0b0100:
-			entry.Operator = "BMI"
-		case 0b0101:
-			entry.Operator = "BPL"
-		case 0b0110:
-			entry.Operator = "BVS"
-		case 0b0111:
-			entry.Operator = "BVC"
-		case 0b1000:
-			entry.Operator = "BHI"
-		case 0b1001:
-			entry.Operator = "BLS"
-		case 0b1010:
-			entry.Operator = "BGE"
-		case 0b1011:
-			entry.Operator = "BLT"
-		case 0b1100:
-			entry.Operator = "BGT"
-		case 0b1101:
-			entry.Operator = "BLE"
-		case 0b1110:
-			entry.Operator = "undefined branch"
-		case 0b1111:
+		return &DisasmEntry{
+			Operator: mnemonic,
 		}
-		return &entry
 	}
 
-	b := arm.state.status.condition(cond)
-
 	// offset is a nine-bit two's complement value
+	offset := uint32(opcode & 0x00ff)
 	offset <<= 1
 	offset++
 
@@ -1831,14 +1801,14 @@ func (arm *ARM) decodeThumbConditionalBranch(opcode uint16) *DisasmEntry {
 	}
 
 	// do branch
-	if b {
+	if passed {
 		// "7.3 Branch ..." in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
 		arm.state.registers[rPC] = newPC
 	}
 
 	if arm.decodeOnly {
-		if b {
+		if passed {
 			arm.disasmExecutionNotes = "branched"
 		} else {
 			arm.disasmExecutionNotes = "next"
