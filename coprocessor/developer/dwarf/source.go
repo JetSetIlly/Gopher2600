@@ -76,11 +76,10 @@ func (shim coprocShim) CoProcRead32bit(addr uint32) (uint32, bool) {
 //
 // It is possible for the arrays/map fields to be empty
 type Source struct {
+	cart Cartridge
+
 	// simplified path to use
 	path string
-
-	// shim to the cartridge coprocessor
-	coprocShim coprocShim
 
 	// ELF sections that help DWARF locate local variables in memory
 	debugLoc   *loclistSection
@@ -180,9 +179,7 @@ type Source struct {
 // non-nil but with the understanding that the fields may be empty.
 func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) {
 	src := &Source{
-		coprocShim: coprocShim{
-			cart: cart,
-		},
+		cart:             cart,
 		Instructions:     make(map[uint64]*SourceInstruction),
 		Files:            make(map[string]*SourceFile),
 		Filenames:        make([]string, 0, 10),
@@ -297,13 +294,13 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		// address descriptions (which will definitely be present)
 
 		data, _, _ := c.ELFSection(".debug_frame")
-		src.debugFrame, err = newFrameSection(data, ef.ByteOrder, src.coprocShim)
+		src.debugFrame, err = newFrameSection(data, ef.ByteOrder, coprocShim{cart: src.cart})
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}
 
 		data, _, _ = c.ELFSection(".debug_loc")
-		src.debugLoc, err = newLoclistSection(data, ef.ByteOrder, src.coprocShim)
+		src.debugLoc, err = newLoclistSection(data, ef.ByteOrder, coprocShim{cart: src.cart})
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}
@@ -315,13 +312,13 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		}
 
 		// create frame section from the raw ELF section
-		src.debugFrame, err = newFrameSectionFromFile(ef, src.coprocShim)
+		src.debugFrame, err = newFrameSectionFromFile(ef, coprocShim{cart: src.cart})
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}
 
 		// create loclist section from the raw ELF section
-		src.debugLoc, err = newLoclistSectionFromFile(ef, src.coprocShim)
+		src.debugLoc, err = newLoclistSectionFromFile(ef, coprocShim{cart: src.cart})
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}
@@ -678,6 +675,13 @@ func allocateFunctionsToSourceLines(src *Source) {
 
 // find entry function to the program
 func findEntryFunction(src *Source) {
+	// TODO: this is a bit of ARM specific knowledge that should be removed
+	addr, _ := src.cart.GetCoProc().CoProcRegister(15)
+	if ln, ok := src.LinesByAddress[uint64(addr)]; ok {
+		src.MainFunction = ln.Function
+		return
+	}
+
 	// use function called "main" if it's present. we could add to this list
 	// other likely names but this would depend on convention, which doesn't
 	// exist yet (eg. elf_main)
