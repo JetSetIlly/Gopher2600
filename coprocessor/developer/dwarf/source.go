@@ -433,13 +433,13 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 				}
 			}
 
-			// check optimisation directive
 			fld = e.AttrField(dwarf.AttrProducer)
 			if fld != nil {
 				producer := fld.Val.(string)
+
 				if strings.HasPrefix(producer, "GNU") {
-					idx := strings.Index(producer, " -O")
-					if idx > -1 {
+					// check optimisation directive
+					if strings.Contains(producer, " -O") {
 						src.Optimised = true
 					}
 				}
