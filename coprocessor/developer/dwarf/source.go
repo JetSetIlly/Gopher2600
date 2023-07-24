@@ -266,7 +266,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 
 	// if the ELF data is not reloctable then the executableOrigin value may
 	// need to be adjusted
-	var adjust bool
+	var relocate bool
 
 	// cartridge coprocessor
 	coproc := cart.GetCoProc()
@@ -306,8 +306,8 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		}
 	} else {
 		if c, ok := coproc.(mapper.CartCoProcNonRelocatable); ok {
+			relocate = true
 			executableOrigin = uint64(c.ExecutableOrigin())
-			adjust = true
 			logger.Logf("dwarf", "found non-relocatable origin: %08x", executableOrigin)
 		}
 
@@ -345,11 +345,11 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		// find adjustment value if necessary. for now we're assuming that all
 		// .text sections are consecutive and use the origin value of the first
 		// one we encounter as the adjustment value
-		if adjust {
+		if relocate {
 			executableOrigin -= sec.Addr
 			logger.Logf("dwarf", "adjusting non-relocatable origin by: %08x", sec.Addr)
 			logger.Logf("dwarf", "using non-relocatable origin: %08x", executableOrigin)
-			adjust = false
+			relocate = false
 		}
 
 		// origin is section address adjusted by both the executable origin and
@@ -511,8 +511,8 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	}
 
 	// build variables
-	if c, ok := coproc.(mapper.CartCoProcRelocatable); ok {
-		err = bld.buildVariables(src, ef, c, executableOrigin)
+	if relocatable, ok := coproc.(mapper.CartCoProcRelocatable); ok {
+		err = bld.buildVariables(src, ef, relocatable, executableOrigin)
 	} else {
 		err = bld.buildVariables(src, ef, nil, executableOrigin)
 	}

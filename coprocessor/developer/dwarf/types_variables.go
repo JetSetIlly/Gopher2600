@@ -16,11 +16,10 @@
 package dwarf
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync/atomic"
-
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // SourceVariableLocal represents a single local variable identified by the
@@ -181,21 +180,19 @@ func (varb *SourceVariable) resolve() loclistResult {
 
 	if varb.loclist == nil {
 		varb.ErrorOnResolve = fmt.Errorf("there is no location to resolve")
-		logger.Logf("dwarf", "%s: unresolvable: %v", varb.Name, varb.ErrorOnResolve)
 		return loclistResult{}
 	}
 
 	r, err := varb.loclist.resolve()
 	if err != nil {
 		varb.ErrorOnResolve = err
-		logger.Logf("dwarf", "%s: unresolvable: %v", varb.Name, err)
 		return loclistResult{}
 	}
 
 	if r.hasAddress {
 		v, ok := varb.loclist.coproc.CoProcRead32bit(uint32(r.address))
 		if !ok {
-			logger.Logf("dwarf", "error resolving address %08x", r.address)
+			varb.ErrorOnResolve = errors.New(fmt.Sprintf("error resolving address %08x", r.address))
 			return loclistResult{}
 		}
 		r.value = v

@@ -18,6 +18,7 @@ package dwarf
 import (
 	"debug/dwarf"
 	"debug/elf"
+	"errors"
 	"fmt"
 	"io"
 
@@ -260,27 +261,27 @@ func (bld *build) buildTypes(src *Source) error {
 					switch fld.Class {
 					case dwarf.ClassConstant:
 						if bld.debug_loc == nil {
-							logger.Logf("dwarf", "no .debug_loc data for %s", memb.Name)
-						} else {
-							memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
-							memb.loclist.addOperator(loclistOperator{
-								resolve: func(loc *loclist) (loclistStack, error) {
-									return loclistStack{
-										class: stackClassSingleAddress,
-										value: uint32(fld.Val.(int64)),
-									}, nil
-								},
-								operator: "member offset",
-							})
+							return errors.New(fmt.Sprintf("no .debug_loc data for %s", memb.Name))
 						}
+
+						memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
+						memb.loclist.addOperator(loclistOperator{
+							resolve: func(loc *loclist) (loclistStack, error) {
+								return loclistStack{
+									class: stackClassSingleAddress,
+									value: uint32(fld.Val.(int64)),
+								}, nil
+							},
+							operator: "member offset",
+						})
 					case dwarf.ClassExprLoc:
 						if bld.debug_loc == nil {
-							logger.Logf("dwarf", "no .debug_loc data for %s", memb.Name)
-						} else {
-							memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
-							r, _ := bld.debug_loc.decodeLoclistOperation(fld.Val.([]uint8))
-							memb.loclist.addOperator(r)
+							return errors.New(fmt.Sprintf("no .debug_loc data for %s", memb.Name))
 						}
+
+						memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
+						r, _ := bld.debug_loc.decodeLoclistOperation(fld.Val.([]uint8))
+						memb.loclist.addOperator(r)
 					default:
 						continue
 					}
@@ -488,20 +489,23 @@ func (bld *build) resolveVariableDeclaration(v *dwarf.Entry, src *Source) (*Sour
 
 // buildVariables populates variables map in the *Source tree. local variables
 // will need to be relocated for relocatable ELF files
-func (bld *build) buildVariables(src *Source, ef *elf.File, coproc mapper.CartCoProcRelocatable, executableOrigin uint64) error {
+func (bld *build) buildVariables(src *Source, ef *elf.File,
+	relocatable mapper.CartCoProcRelocatable, executableOrigin uint64) error {
+
 	// keep track of the lexical range as we walk through the DWARF data in
 	// order. if we need to add a variable to the list of locals and the DWARF
 	// entry has a location attribute of class ExprLoc, then we use the most
 	// recent lexical range as the resolvable range
 	var lexStart [][]uint64
 	var lexEnd [][]uint64
-	var lexIdx int
-	var lexSibling dwarf.Offset
+	var lexSibling []dwarf.Offset
+	var lexStackTop int
 
 	// default to zero for start/end addresses. this means we can access the
 	// arrays without any special conditions
 	lexStart = append(lexStart, []uint64{0})
 	lexEnd = append(lexEnd, []uint64{0})
+	lexSibling = append(lexSibling, 0)
 
 	// location lists use a base address of the current compilation unit when
 	// constructing address ranges
@@ -511,12 +515,12 @@ func (bld *build) buildVariables(src *Source, ef *elf.File, coproc mapper.CartCo
 	// the entries that are of interest to us
 	for _, e := range bld.order {
 		// reset lexical block stack
-		if e.Offset == lexSibling {
-			if lexIdx > 0 {
-				lexIdx--
-			} else {
+		if e.Offset == lexSibling[lexStackTop] {
+			lexStackTop--
+			if lexStackTop < 0 {
 				// this should never happen unless the DWARF file is corrupt in some way
 				logger.Logf("dwarf", "trying to end a lexical block without one being opened")
+				lexStackTop = 0
 			}
 		}
 
@@ -530,14 +534,20 @@ func (bld *build) buildVariables(src *Source, ef *elf.File, coproc mapper.CartCo
 			//
 			// when we encounter a compile unit tag therefore, we reset the
 			// lexical block stack
-			lexIdx = 0
-			lexSibling = 0
+			lexStackTop = 0
 
 			var low, high uint64
+
+			// basic compilation address is the executable origin. this will be
+			// changed depending on the presence of AttrLowpc
+			compilationUnitAddress = executableOrigin
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
 				low = executableOrigin + uint64(fld.Val.(uint64))
+
+				// use low address for the compilation unit address
+				compilationUnitAddress = low
 
 				fld = e.AttrField(dwarf.AttrHighpc)
 				if fld == nil {
@@ -559,17 +569,10 @@ func (bld *build) buildVariables(src *Source, ef *elf.File, coproc mapper.CartCo
 				// page 34 of "DWARF4 Standard"
 				high--
 
-				lexIdx++
-				lexStart = append(lexStart[:lexIdx], []uint64{low})
-				lexEnd = append(lexEnd[:lexIdx], []uint64{high})
-
-				// we can think of the compilationUnitAddress as a special form
-				// of the lexical block and is used for location lists. we're
-				// not interested in the high address in that context
-				compilationUnitAddress = low
-
-			} else {
-				compilationUnitAddress = executableOrigin
+				lexStackTop++
+				lexStart = append(lexStart[:lexStackTop], []uint64{low})
+				lexEnd = append(lexEnd[:lexStackTop], []uint64{high})
+				lexSibling = append(lexSibling[:lexStackTop], dwarf.Offset(0))
 			}
 
 			continue // for loop
@@ -605,9 +608,9 @@ func (bld *build) buildVariables(src *Source, ef *elf.File, coproc mapper.CartCo
 				// page 34 of "DWARF4 Standard"
 				high--
 
-				lexIdx++
-				lexStart = append(lexStart[:lexIdx], []uint64{low})
-				lexEnd = append(lexEnd[:lexIdx], []uint64{high})
+				lexStackTop++
+				lexStart = append(lexStart[:lexStackTop], []uint64{low})
+				lexEnd = append(lexEnd[:lexStackTop], []uint64{high})
 			} else {
 				fld = e.AttrField(dwarf.AttrRanges)
 				if fld == nil {
@@ -657,16 +660,18 @@ func (bld *build) buildVariables(src *Source, ef *elf.File, coproc mapper.CartCo
 					start = append(start, low)
 					end = append(end, high)
 				}
-				lexIdx++
-				lexStart = append(lexStart[:lexIdx], start)
-				lexEnd = append(lexEnd[:lexIdx], end)
+				lexStackTop++
+				lexStart = append(lexStart[:lexStackTop], start)
+				lexEnd = append(lexEnd[:lexStackTop], end)
 			}
 
 			// if there is no sibling for the lexical block then that indicates
 			// that the block will end with the compilation unit
 			fld = e.AttrField(dwarf.AttrSibling)
 			if fld != nil {
-				lexSibling = fld.Val.(dwarf.Offset)
+				lexSibling = append(lexSibling[:lexStackTop], fld.Val.(dwarf.Offset))
+			} else {
+				lexSibling = append(lexSibling[:lexStackTop], 0)
 			}
 
 			continue // for loop
@@ -734,30 +739,34 @@ func (bld *build) buildVariables(src *Source, ef *elf.File, coproc mapper.CartCo
 			switch locfld.Class {
 			case dwarf.ClassLocListPtr:
 				if bld.debug_loc == nil {
-					logger.Logf("dwarf", "no .debug_loc data for %s", varb.Name)
-				} else {
-					var err error
-					err = bld.debug_loc.newLoclist(varb, locfld.Val.(int64), compilationUnitAddress,
-						func(start, end uint64, loc *loclist) {
-							cp := *varb
-							cp.loclist = loc
-							local := &SourceVariableLocal{
-								SourceVariable: &cp,
-								Range: SourceRange{
-									Start: start,
-									End:   end,
-								},
-							}
+					return errors.New(fmt.Sprintf("no .debug_loc data for %s", varb.Name))
+				}
 
-							src.locals = append(src.locals, local)
-							src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
-						})
-					if err != nil {
-						logger.Logf("dwarf", "%s: %v", varb.Name, err)
-					}
+				var err error
+				err = bld.debug_loc.newLoclist(varb, locfld.Val.(int64), compilationUnitAddress,
+					func(start, end uint64, loc *loclist) {
+						cp := *varb
+						cp.loclist = loc
+						local := &SourceVariableLocal{
+							SourceVariable: &cp,
+							Range: SourceRange{
+								Start: start,
+								End:   end,
+							},
+						}
+
+						src.locals = append(src.locals, local)
+						src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
+					})
+				if err != nil {
+					logger.Logf("dwarf", "%s: %v", varb.Name, err)
 				}
 
 			case dwarf.ClassExprLoc:
+				if bld.debug_loc == nil {
+					return errors.New(fmt.Sprintf("no .debug_loc data for %s", varb.Name))
+				}
+
 				// Single location description "They are sufficient for describing the location of any object
 				// as long as its lifetime is either static or the same as the lexical block that owns it,
 				// and it does not move during its lifetime"
@@ -767,10 +776,9 @@ func (bld *build) buildVariables(src *Source, ef *elf.File, coproc mapper.CartCo
 				// dependent on which section the symbol appears in
 				var globalOrigin uint64
 
-				// this is a slow solution and should be replaced with a
-				// preprocessed symbol-to-section map
-				if coproc == nil {
-					globalOrigin = executableOrigin
+				// this is a slow solution and should be replaced with a preprocessed symbol-to-section map
+				if relocatable == nil {
+					globalOrigin = compilationUnitAddress
 				} else {
 					syms, err := ef.Symbols()
 					if err != nil {
@@ -779,7 +787,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File, coproc mapper.CartCo
 					for _, s := range syms {
 						if s.Name == varb.Name {
 							section := ef.Sections[s.Section]
-							if _, o, ok := coproc.ELFSection(section.Name); !ok {
+							if _, o, ok := relocatable.ELFSection(section.Name); !ok {
 								continue // for loop
 							} else {
 								globalOrigin = uint64(o)
@@ -788,39 +796,35 @@ func (bld *build) buildVariables(src *Source, ef *elf.File, coproc mapper.CartCo
 					}
 				}
 
-				if bld.debug_loc == nil {
-					logger.Logf("dwarf", "no .debug_loc data for %s", varb.Name)
-				} else {
-					if r, o := bld.debug_loc.decodeLoclistOperationWithOrigin(locfld.Val.([]uint8), globalOrigin); o > 0 {
-						varb.loclist = bld.debug_loc.newLoclistJustContext(varb)
-						varb.loclist.addOperator(r)
+				if r, o := bld.debug_loc.decodeLoclistOperationWithOrigin(locfld.Val.([]uint8), globalOrigin); o > 0 {
+					varb.loclist = bld.debug_loc.newLoclistJustContext(varb)
+					varb.loclist.addOperator(r)
 
-						// add variable to list of global variables if there is no
-						// parent function otherwise we treat the variable as a
-						// local variable
-						if varb.DeclLine.Function.Name == stubIndicator {
-							// list of global variables for all compile units
-							src.globals[varb.Name] = varb
-							src.GlobalsByAddress[varb.resolve().address] = varb
-							src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, varb)
+					// add variable to list of global variables if there is no
+					// parent function otherwise we treat the variable as a
+					// local variable
+					if varb.DeclLine.Function.IsStub() {
+						// list of global variables for all compile units
+						src.globals[varb.Name] = varb
+						src.GlobalsByAddress[varb.resolve().address] = varb
+						src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, varb)
 
-							// note that the file has at least one global variables
-							varb.DeclLine.File.HasGlobals = true
+						// note that the file has at least one global variables
+						varb.DeclLine.File.HasGlobals = true
 
-						} else {
-							for i := range lexStart[lexIdx] {
-								cp := *varb
-								local := &SourceVariableLocal{
-									SourceVariable: &cp,
-									Range: SourceRange{
-										Start: lexStart[lexIdx][i],
-										End:   lexEnd[lexIdx][i],
-									},
-								}
-
-								src.locals = append(src.locals, local)
-								src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
+					} else {
+						for i := range lexStart[lexStackTop] {
+							cp := *varb
+							local := &SourceVariableLocal{
+								SourceVariable: &cp,
+								Range: SourceRange{
+									Start: lexStart[lexStackTop][i],
+									End:   lexEnd[lexStackTop][i],
+								},
 							}
+
+							src.locals = append(src.locals, local)
+							src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
 						}
 					}
 				}
@@ -842,11 +846,13 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 				if bld.debug_loc == nil {
 					return nil, fmt.Errorf("no .debug_loc data for %s", e.Tag)
 				}
+
 				var err error
 				framebase, err = bld.debug_loc.newLoclistFromSingleOperator(src.debugFrame, fld.Val.([]uint8))
 				if err != nil {
 					return nil, err
 				}
+
 			case dwarf.ClassLocListPtr:
 				err := bld.debug_loc.newLoclist(src.debugFrame, fld.Val.(int64), executableOrigin,
 					func(_, _ uint64, loc *loclist) {

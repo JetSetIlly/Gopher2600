@@ -254,6 +254,10 @@ func (fn *SourceFunction) IsInlined() bool {
 
 // framebase implements the loclistFramebase interface
 func (fn *SourceFunction) framebase() (uint64, error) {
+	if fn.IsStub() {
+		return 0, fmt.Errorf("no framebase for function")
+	}
+
 	if fn.framebaseLoclist == nil {
 		return 0, fmt.Errorf("no framebase loclist for %s", fn.Name)
 	}
@@ -379,7 +383,7 @@ func (typ *SourceType) Mask() uint32 {
 //
 // The IsStub() functions for the SourceFile, SourceFunction and SourceLine
 // types codify stub detection.
-const stubIndicator = "not in source"
+const stubIndicator = "<stub>"
 
 // CreateStubLine returns an instance of SourceLine with the specified
 // SourceFunction assigned to it.
