@@ -119,9 +119,14 @@ type CartCoProc interface {
 	// set interface for cartridge yields
 	SetYieldHook(CartYieldHook)
 
-	// the contents of register n. returns false if specified register is out
-	// of range
+	// the contents of a register. the implementation should support extended
+	// register values defined by DWARF for the coprocessor
+	//
+	// if the register is unrecognised or unsupported the function will return
+	// false
 	CoProcRegister(n int) (uint32, bool)
+
+	// as above but setting the named register
 	CoProcRegisterSet(n int, value uint32) bool
 
 	// returns the current stack frame

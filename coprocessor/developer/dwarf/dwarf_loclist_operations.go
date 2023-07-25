@@ -818,7 +818,9 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 	case 0x90:
 		// DW_OP_regx
 		// (register location description)
-		reg, n := leb128.DecodeSLEB128(expr[1:])
+		// "The DW_OP_regx operation has a single unsigned LEB128 literal operand that encodes the
+		// name of a register"
+		reg, n := leb128.DecodeULEB128(expr[1:])
 		return loclistOperator{
 			resolve: func(loc *loclist) (loclistStack, error) {
 				value, ok := sec.coproc.CoProcRegister(int(reg))

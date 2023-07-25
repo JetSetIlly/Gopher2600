@@ -629,12 +629,28 @@ func (arm *ARM) Interrupt() {
 	arm.state.yield.Type = mapper.YieldSyncWithVCS
 }
 
-// Registers returns a copy of the current values in the ARM registers
-func (arm *ARM) Registers() [NumRegisters]uint32 {
+// Registers returns a copy of the current values in the general ARM registers.
+// For other registers see the Register() function
+func (arm *ARM) GeneralRegisters() [NumRegisters]uint32 {
 	return arm.state.registers
 }
 
-// SetRegister sets an ARM register to the specified value
+// Register returns the value in an extended ARM register
+func (arm *ARM) Register(extendedReg int) (uint32, bool) {
+	// general registers
+	if extendedReg <= 15 {
+		return arm.state.registers[extendedReg], true
+	}
+
+	// extended register values for ARM defined in:
+	// https://github.com/ARM-software/abi-aa/releases/download/2023Q1/aadwarf32.pdf
+
+	// TODO: implement extended registers
+
+	return 0, false
+}
+
+// SetRegister sets an extended ARM register to the specified value
 func (arm *ARM) SetRegister(reg int, value uint32) bool {
 	if reg >= NumRegisters {
 		return false

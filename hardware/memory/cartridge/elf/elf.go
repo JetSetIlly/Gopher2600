@@ -422,10 +422,7 @@ func (cart *Elf) CoProcExecutionState() mapper.CoProcExecutionState {
 
 // CoProcRegister implements the mapper.CartCoProc interface.
 func (cart *Elf) CoProcRegister(n int) (uint32, bool) {
-	if n > 15 {
-		return 0, false
-	}
-	return cart.arm.Registers()[n], true
+	return cart.arm.Register(n)
 }
 
 // CoProcRegister implements the mapper.CartCoProc interface.

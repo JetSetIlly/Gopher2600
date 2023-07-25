@@ -29,7 +29,7 @@ import (
 
 type interruptARM interface {
 	Interrupt()
-	Registers() [arm.NumRegisters]uint32
+	GeneralRegisters() [arm.NumRegisters]uint32
 	SetRegisters([arm.NumRegisters]uint32)
 }
 

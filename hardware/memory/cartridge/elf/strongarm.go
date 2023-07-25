@@ -702,7 +702,7 @@ func (mem *elfMemory) busStuffingInit() {
 func (mem *elfMemory) setStrongArmFunction(f strongArmFunction, args ...uint32) {
 	mem.strongarm.running.function = f
 	mem.strongarm.running.state = 0
-	mem.strongarm.running.registers = mem.arm.Registers()
+	mem.strongarm.running.registers = mem.arm.GeneralRegisters()
 
 	for i, arg := range args {
 		mem.strongarm.running.registers[i] = arg
