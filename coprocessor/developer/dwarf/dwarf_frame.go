@@ -20,6 +20,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf/leb128"
@@ -33,7 +34,7 @@ type frameSectionFDE struct {
 }
 
 func (f *frameSectionFDE) String() string {
-	return fmt.Sprintf("range: %08x to %08x [% 02x]", f.startAddress, f.endAddress, f.instructions)
+	return fmt.Sprintf("range: %08x to %08x", f.startAddress, f.endAddress)
 }
 
 type frameSectionCIE struct {
@@ -69,6 +70,8 @@ type frameSection struct {
 	coproc frameCoproc
 	cie    map[uint32]*frameSectionCIE
 	fde    []*frameSectionFDE
+
+	derivation io.Writer
 }
 
 func newFrameSectionFromFile(ef *elf.File, coproc frameCoproc) (*frameSection, error) {
@@ -195,11 +198,6 @@ func newFrameSection(data []uint8, byteOrder binary.ByteOrder, coproc frameCopro
 // sentinal error returned by framebase()
 var noFDE = errors.New("no FDE")
 
-// framebaseContext implements the loclistFramebase interface
-func (fr *frameSection) framebaseContext() string {
-	return "framesection"
-}
-
 // coproc implements the loclistFramebase interface
 func (fr *frameSection) framebase() (uint64, error) {
 	// TODO: replace magic number with a PC mnemonic. the mnemonic can then
@@ -230,24 +228,46 @@ func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
 		return 0, fmt.Errorf("no parent CIE for FDE at address %08x", addr)
 	}
 
+	if fr.derivation != nil {
+		fr.derivation.Write([]byte(fmt.Sprintf("looking for address %08x\n", addr)))
+	}
+
 	ptr := 0
 	for ptr < len(fde.cie.instructions) {
-		l, err := decodeFrameInstruction(fde.cie, fde.cie.instructions[ptr:], &tab)
+		r, err := decodeFrameInstruction(fde.cie, fde.cie.instructions[ptr:], &tab)
 		if err != nil {
+			if errors.Is(err, frameInstructionNotImplemented) {
+				return 0, fmt.Errorf("%s %v", r.opcode, err)
+			}
 			return 0, err
 		}
-		ptr += l
+		ptr += r.length
+
+		if fr.derivation != nil {
+			fr.derivation.Write([]byte(fmt.Sprintf("CIE %v\n", r)))
+		}
 	}
 
 	tab.newRow()
 
+	if fr.derivation != nil {
+		fr.derivation.Write([]byte(fmt.Sprintf("trying FDE Block: %v\n", fde)))
+	}
+
 	ptr = 0
 	for ptr < len(fde.instructions) {
-		l, err := decodeFrameInstruction(fde.cie, fde.instructions[ptr:], &tab)
+		r, err := decodeFrameInstruction(fde.cie, fde.instructions[ptr:], &tab)
 		if err != nil {
+			if errors.Is(err, frameInstructionNotImplemented) {
+				return 0, fmt.Errorf("%s %v", r.opcode, err)
+			}
 			return 0, err
 		}
-		ptr += l
+		ptr += r.length
+
+		if fr.derivation != nil {
+			fr.derivation.Write([]byte(fmt.Sprintf("FDE %v [%08x]\n", r, tab.rows[0].location)))
+		}
 
 		// we've found the row of the call frame table we need
 		if tab.rows[0].location >= addr {

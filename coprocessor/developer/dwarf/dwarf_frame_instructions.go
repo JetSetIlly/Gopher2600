@@ -16,6 +16,7 @@
 package dwarf
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf/leb128"
@@ -44,8 +45,19 @@ func (tab frameTable) String() string {
 	return fmt.Sprintf("loc: %08x; reg: %d; offset: %08x", tab.rows[0].location, tab.rows[0].cfaRegister, tab.rows[0].cfaOffset)
 }
 
+type frameInstruction struct {
+	length int
+	opcode string
+}
+
+func (ins frameInstruction) String() string {
+	return fmt.Sprintf("%s [%d]", ins.opcode, ins.length)
+}
+
+var frameInstructionNotImplemented = errors.New("not implemented")
+
 // returns number of bytes used in instructions array
-func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *frameTable) (int, error) {
+func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *frameTable) (frameInstruction, error) {
 	// opcode descriptions taken from "6.4.2 Call Frame Instructions" of
 	// the "DWARF-4 Standard". Page numbers specified in the comment for
 	// each opcode
@@ -64,7 +76,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			// (padding instruction)
 			// "The DW_CFA_nop instruction has no operands and no required actions. It is
 			// used as padding to make a CIE or FDE an appropriate size", page 136
-			return 1, nil
+			return frameInstruction{length: 1, opcode: "DW_CFA_nop"}, nil
 
 		case 0x01:
 			// DW_CFA_set_loc
@@ -77,7 +89,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			tab.newRow()
 			address := uint32(instructions[1]) | uint32(instructions[2])<<8 | uint32(instructions[3])<<16 | uint32(instructions[4])<<24
 			tab.rows[0].location = address
-			return 5, nil
+			return frameInstruction{length: 5, opcode: "DW_CFA_set_loc"}, nil
 
 		case 0x02:
 			// DW_CFA_advance_loc1
@@ -87,7 +99,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			// and size of the delta operand", page 132
 			tab.newRow()
 			tab.rows[0].location += uint32(instructions[1])
-			return 2, nil
+			return frameInstruction{length: 2, opcode: "DW_CFA_advance_loc1"}, nil
 
 		case 0x03:
 			// DW_CFA_advance_loc2
@@ -98,7 +110,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			tab.newRow()
 			offset := uint32(instructions[1]) | uint32(instructions[2])<<8
 			tab.rows[0].location += offset
-			return 3, nil
+			return frameInstruction{length: 3, opcode: "DW_CFA_advance_loc2"}, nil
 
 		case 0x04:
 			// DW_CFA_advance_loc4
@@ -109,7 +121,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			tab.newRow()
 			offset := uint32(instructions[1]) | uint32(instructions[2])<<8 | uint32(instructions[3])<<16 | uint32(instructions[4])<<24
 			tab.rows[0].location += offset
-			return 5, nil
+			return frameInstruction{length: 5, opcode: "DW_CFA_advance_loc4"}, nil
 
 		case 0x05:
 			// DW_CFA_offset_extended
@@ -124,7 +136,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			n += l
 			_, l = leb128.DecodeULEB128(instructions[n:])
 			n += l
-			return n, nil
+			return frameInstruction{length: n, opcode: "DW_CFA_offset_extended"}, frameInstructionNotImplemented
 
 		case 0x06:
 			// DW_CFA_restore_extended
@@ -137,7 +149,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			n := 1
 			_, l := leb128.DecodeULEB128(instructions[n:])
 			n += l
-			return n, nil
+			return frameInstruction{length: n, opcode: "DW_CFA_restore_extended"}, frameInstructionNotImplemented
 
 		case 0x07:
 			// DW_CFA_undefined
@@ -150,7 +162,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			n := 1
 			_, l := leb128.DecodeULEB128(instructions[n:])
 			n += l
-			return n, nil
+			return frameInstruction{length: n, opcode: "DW_CFA_undefined"}, frameInstructionNotImplemented
 
 		case 0x08:
 			// DW_CFA_same_value
@@ -163,7 +175,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			n := 1
 			_, l := leb128.DecodeULEB128(instructions[n:])
 			n += l
-			return n, nil
+			return frameInstruction{length: n, opcode: "DW_CFA_same_value"}, frameInstructionNotImplemented
 
 		case 0x09:
 			// DW_CFA_register
@@ -178,7 +190,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			n += l
 			_, l = leb128.DecodeULEB128(instructions[n:])
 			n += l
-			return n, nil
+			return frameInstruction{length: n, opcode: "DW_CFA_register"}, frameInstructionNotImplemented
 
 		case 0x0a:
 			// DW_CFA_remember_state
@@ -187,7 +199,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			// the set of rules for every register onto an implicit stack", page 136
 
 			// unimplemented
-			return 1, nil
+			return frameInstruction{length: 1, opcode: "DW_CFA_remember_state"}, frameInstructionNotImplemented
 
 		case 0x0b:
 			// DW_CFA_restore_state
@@ -196,7 +208,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			// set of rules off the implicit stack and place them in the current row", page 136
 
 			// unimplemented
-			return 1, nil
+			return frameInstruction{length: 1, opcode: "DW_CFA_restore_state"}, frameInstructionNotImplemented
 
 		case 0x0c:
 			// DW_CFA_def_cfa
@@ -211,7 +223,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			n += l
 			tab.rows[0].cfaRegister = int(reg)
 			tab.rows[0].cfaOffset = uint32(offset)
-			return n, nil
+			return frameInstruction{length: n, opcode: "DW_CFA_def_cfa"}, nil
 
 		case 0x0d:
 			// DW_CFA_def_cfa_register
@@ -224,7 +236,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			reg, l := leb128.DecodeULEB128(instructions[n:])
 			n += l
 			tab.rows[0].cfaRegister = int(reg)
-			return n, nil
+			return frameInstruction{length: n, opcode: "DW_CFA_def_cfa_register"}, nil
 
 		case 0x0e:
 			// DW_CFA_def_cfa_offset
@@ -237,7 +249,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			offset, l := leb128.DecodeULEB128(instructions[n:])
 			n += l
 			tab.rows[0].cfaOffset = uint32(offset)
-			return n, nil
+			return frameInstruction{length: n, opcode: "DW_CFA_def_cfa_offset"}, nil
 
 		case 0x0f:
 			// DW_CFA_def_cfa_expression
@@ -246,7 +258,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			// DW_FORM_exprloc value representing a DWARF expression. The required action is
 			// to establish that expression as the means by which the current CFA is computed",
 			// page 133
-			return 0, fmt.Errorf("DW_CFA_def_cfa_expression not implemented")
+			return frameInstruction{length: 0, opcode: "DW_CFA_def_cfa_expression"}, frameInstructionNotImplemented
 
 		case 0x10:
 			// DW_CFA_expression
@@ -257,7 +269,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			// number to be an expression(E) rule where E is the DWARF expression. That is, the DWARF
 			// expression computes the address. The value of the CFA is pushed on the DWARF evaluation
 			// stack prior to execution of the DWARF expression", page 135
-			return 0, fmt.Errorf("DW_CFA_expression not implemented")
+			return frameInstruction{length: 0, opcode: "DW_CFA_expression"}, frameInstructionNotImplemented
 
 		case 0x11:
 			// DW_CFA_offset_extended_sf
@@ -273,7 +285,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			n += l
 			_, l = leb128.DecodeSLEB128(instructions[n:])
 			n += l
-			return n, nil
+			return frameInstruction{length: n, opcode: "DW_CFA_offset_extended_sf"}, frameInstructionNotImplemented
 
 		case 0x12:
 			// DW_CFA_def_cfa_sf
@@ -289,7 +301,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			n += l
 			_, l = leb128.DecodeSLEB128(instructions[n:])
 			n += l
-			return n, nil
+			return frameInstruction{length: n, opcode: "DW_CFA_def_cfa_sf"}, frameInstructionNotImplemented
 
 		case 0x13:
 			// DW_CFA_def_cfa_offset_sf
@@ -304,7 +316,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			n := 1
 			_, l := leb128.DecodeSLEB128(instructions[n:])
 			n += l
-			return n, nil
+			return frameInstruction{length: n, opcode: "DW_CFA_def_cfa_offset_sf"}, frameInstructionNotImplemented
 
 		case 0x14:
 			// DW_CFA_val_offset
@@ -320,7 +332,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			n += l
 			_, l = leb128.DecodeULEB128(instructions[n:])
 			n += l
-			return n, nil
+			return frameInstruction{length: n, opcode: "DW_CFA_val_offset"}, frameInstructionNotImplemented
 
 		case 0x15:
 			// DW_CFA_val_offset_sf
@@ -336,7 +348,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			n += l
 			_, l = leb128.DecodeSLEB128(instructions[n:])
 			n += l
-			return n, nil
+			return frameInstruction{length: n, opcode: "DW_CFA_val_offset_sf"}, frameInstructionNotImplemented
 
 		case 0x16:
 			// DW_CFA_val_expression
@@ -347,15 +359,15 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 			// number to be a val_expression(E) rule where E is the DWARF expression. That is, the
 			// DWARF expression computes the value of the given register. The value of the CFA is
 			// pushed on the DWARF evaluation stack prior to execution of the DWARF expression"
-			return 0, fmt.Errorf("DW_CFA_val_expression not implemented")
+			return frameInstruction{length: 0, opcode: "DW_CFA_val_expression"}, fmt.Errorf("DW_CFA_val_expression not implemented")
 
 		case 0x1c:
 			// DW_CFA_lo_user
-			return 1, nil
+			return frameInstruction{length: 1, opcode: "DW_CFA_lo_user"}, frameInstructionNotImplemented
 
 		case 0x3f:
 			// DW_CFA_hi_user
-			return 1, nil
+			return frameInstruction{length: 1, opcode: "DW_CFA_hi_user"}, frameInstructionNotImplemented
 		}
 
 	case 0x01:
@@ -367,7 +379,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 		// delta * code_alignment_factor. All other values in the new row are initially identical
 		// to the current row", page 132
 		tab.rows[0].location += uint32(extendedOpcode) * uint32(cie.codeAlignment)
-		return 1, nil
+		return frameInstruction{length: 1, opcode: "DW_CFA_advance_loc"}, nil
 
 	case 0x02:
 		// DW_CFA_offset
@@ -381,7 +393,7 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 		n := 1
 		_, l := leb128.DecodeULEB128(instructions[n:])
 		n += l
-		return n, nil
+		return frameInstruction{length: n, opcode: "DW_CFA_offset"}, frameInstructionNotImplemented
 
 	case 0x03:
 		// DW_CFA_restore
@@ -391,8 +403,8 @@ func decodeFrameInstruction(cie *frameSectionCIE, instructions []byte, tab *fram
 		// register to the rule assigned it by the initial_instructions in the CIE"
 
 		// unimplemented
-		return 1, nil
+		return frameInstruction{length: 1, opcode: "DW_CFA_restore"}, frameInstructionNotImplemented
 	}
 
-	return 0, fmt.Errorf("unknown call frame instruction: %02x", opcode)
+	return frameInstruction{}, fmt.Errorf("unknown call frame instruction: %02x", opcode)
 }

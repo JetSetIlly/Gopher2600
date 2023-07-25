@@ -257,7 +257,12 @@ func drawVariableTooltipShort(varb *dwarf.SourceVariable, cols *imguiColors) {
 		imgui.Spacing()
 		imgui.Text(string(fonts.CoProcBug))
 		imgui.SameLine()
-		imgui.Text(varb.ErrorOnResolve.Error())
+		imgui.Text("Error on Resolve")
+		for _, l := range strings.Split(varb.ErrorOnResolve.Error(), ":") {
+			imgui.Text("·")
+			imgui.SameLine()
+			imgui.Text(strings.TrimSpace(l))
+		}
 	}
 }
 

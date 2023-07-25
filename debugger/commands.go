@@ -18,6 +18,7 @@ package debugger
 import (
 	"encoding/hex"
 	"fmt"
+	"io"
 	"runtime"
 	"sort"
 	"strconv"
@@ -1583,7 +1584,19 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					dbg.printLine(terminal.StyleError, "no source available")
 				}
 
-				fb, err := src.FramebaseCurrent()
+				var derivation bool
+				option, ok := tokens.Get()
+				for ok {
+					derivation = derivation || option == "DERIVATION"
+					option, ok = tokens.Get()
+				}
+
+				var w io.Writer
+				if derivation {
+					w = dbg.writerInStyle(terminal.StyleFeedback)
+				}
+
+				fb, err := src.FramebaseCurrent(w)
 				if err != nil {
 					dbg.printLine(terminal.StyleError, err.Error())
 				} else {

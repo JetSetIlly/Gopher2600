@@ -64,7 +64,6 @@ func newLoclistSection(data []uint8, byteOrder binary.ByteOrder, coproc loclistC
 // loclistFramebase provides context to the location list. implemented by
 // SourceVariable, SourceFunction and the frame section.
 type loclistFramebase interface {
-	framebaseContext() string
 	framebase() (uint64, error)
 }
 

@@ -1011,7 +1011,12 @@ func (src *Source) OnYield(addr uint32, yield mapper.CoProcYield) []*SourceVaria
 }
 
 // FramebaseCurrent returns the current framebase value
-func (src *Source) FramebaseCurrent() (uint64, error) {
+func (src *Source) FramebaseCurrent(derivation io.Writer) (uint64, error) {
+	old := src.debugFrame.derivation
+	src.debugFrame.derivation = derivation
+	defer func() {
+		src.debugFrame.derivation = old
+	}()
 	return src.debugFrame.framebase()
 }
 
