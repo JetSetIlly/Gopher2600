@@ -882,7 +882,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				case 4:
 					v &= 0xffffffff
 				default:
-					return loclistStack{}, fmt.Errorf("unknown piece size: %d", size)
+					return loclistStack{}, fmt.Errorf("unknown piece size %d", size)
 				}
 
 				p := loclistPiece{

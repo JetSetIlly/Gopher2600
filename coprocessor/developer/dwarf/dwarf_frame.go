@@ -71,6 +71,9 @@ type frameSection struct {
 	cie    map[uint32]*frameSectionCIE
 	fde    []*frameSectionFDE
 
+	// reading data should be done with the byteOrder functions
+	byteOrder binary.ByteOrder
+
 	// the derivation for the framebase is written to the io.Writer
 	derivation io.Writer
 }
@@ -89,8 +92,9 @@ func newFrameSectionFromFile(ef *elf.File, coproc frameCoproc) (*frameSection, e
 
 func newFrameSection(data []uint8, byteOrder binary.ByteOrder, coproc frameCoproc) (*frameSection, error) {
 	frm := &frameSection{
-		coproc: coproc,
-		cie:    make(map[uint32]*frameSectionCIE),
+		coproc:    coproc,
+		cie:       make(map[uint32]*frameSectionCIE),
+		byteOrder: byteOrder,
 	}
 
 	// index into the data
@@ -175,12 +179,12 @@ func newFrameSection(data []uint8, byteOrder binary.ByteOrder, coproc frameCopro
 			// start address (named "initial location" in the DWARF-4
 			// specification) is the lower instruction address for which this
 			// FDE applies
-			fde.startAddress = uint32(b[n]) | uint32(b[n+1])<<8 | uint32(b[n+2])<<16 | uint32(b[n+3])<<24
+			fde.startAddress = byteOrder.Uint32(b[n:])
 			n += 4
 
 			// end address (named "address range" in the DWARF-4 specification)
 			// is the highest instruction address for which this FDE applies
-			fde.endAddress = uint32(b[n]) | uint32(b[n+1])<<8 | uint32(b[n+2])<<16 | uint32(b[n+3])<<24
+			fde.endAddress = byteOrder.Uint32(b[n:])
 			fde.endAddress += fde.startAddress
 			n += 4
 
@@ -214,11 +218,12 @@ func (fr *frameSection) framebase() (uint64, error) {
 
 func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
 	var tab frameTable
+	tab.remember()
 
 	var fde *frameSectionFDE
 	for _, f := range fr.fde {
 		if addr >= f.startAddress && addr <= f.endAddress {
-			tab.rows[0].location = f.startAddress
+			tab.location = f.startAddress
 			fde = f
 		}
 	}
@@ -235,7 +240,7 @@ func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
 
 	ptr := 0
 	for ptr < len(fde.cie.instructions) {
-		r, err := decodeFrameInstruction(fde.cie, fde.cie.instructions[ptr:], &tab)
+		r, err := decodeFrameInstruction(fr.coproc, fr.byteOrder, fde.cie, fde.cie.instructions[ptr:], &tab)
 		if err != nil {
 			if errors.Is(err, frameInstructionNotImplemented) {
 				return 0, fmt.Errorf("%s %v", r.opcode, err)
@@ -249,15 +254,13 @@ func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
 		}
 	}
 
-	tab.newRow()
-
 	if fr.derivation != nil {
 		fr.derivation.Write([]byte(fmt.Sprintf("trying FDE Block: %v\n", fde)))
 	}
 
 	ptr = 0
 	for ptr < len(fde.instructions) {
-		r, err := decodeFrameInstruction(fde.cie, fde.instructions[ptr:], &tab)
+		r, err := decodeFrameInstruction(fr.coproc, fr.byteOrder, fde.cie, fde.instructions[ptr:], &tab)
 		if err != nil {
 			if errors.Is(err, frameInstructionNotImplemented) {
 				return 0, fmt.Errorf("%s %v", r.opcode, err)
@@ -267,11 +270,11 @@ func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
 		ptr += r.length
 
 		if fr.derivation != nil {
-			fr.derivation.Write([]byte(fmt.Sprintf("FDE %v [%08x]\n", r, tab.rows[0].location)))
+			fr.derivation.Write([]byte(fmt.Sprintf("FDE %v [%08x]\n", r, tab.location)))
 		}
 
 		// we've found the row of the call frame table we need
-		if tab.rows[0].location >= addr {
+		if tab.location >= addr {
 			break
 		}
 	}
@@ -280,7 +283,7 @@ func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
 	if !ok {
 		return 0, fmt.Errorf("error retreiving framebase from register %d", tab.rows[0].cfaRegister)
 	}
-	framebase += tab.rows[0].cfaOffset
+	framebase = uint32(int64(framebase) + tab.rows[0].registers[tab.rows[0].cfaRegister].value)
 
 	return uint64(framebase), nil
 }
