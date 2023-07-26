@@ -71,6 +71,7 @@ type frameSection struct {
 	cie    map[uint32]*frameSectionCIE
 	fde    []*frameSectionFDE
 
+	// the derivation for the framebase is written to the io.Writer
 	derivation io.Writer
 }
 

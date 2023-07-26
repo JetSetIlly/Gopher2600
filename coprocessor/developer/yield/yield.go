@@ -20,14 +20,21 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
-// State records the most recent yield.
+// State records the most recent yield
 type State struct {
 	Addr           uint32
 	Reason         mapper.CoProcYieldType
 	LocalVariables []*dwarf.SourceVariableLocal
 }
 
-// Cmp returns true if two YieldStates are equal.
-func (y State) Cmp(w State) bool {
-	return y.Addr == w.Addr && y.Reason == w.Reason
+// Cmp returns true if two YieldStates are equal
+func (yld State) Cmp(w State) bool {
+	return yld.Addr == w.Addr && yld.Reason == w.Reason
+}
+
+// UpdateLocalVariables using the current state of the emulated coprocessor
+func (yld State) UpdateLocalVariables() {
+	for _, varb := range yld.LocalVariables {
+		varb.Update()
+	}
 }

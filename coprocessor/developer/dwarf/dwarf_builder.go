@@ -339,7 +339,7 @@ func (bld *build) buildTypes(src *Source) error {
 				num := fld.Val.(int64) + 1
 
 				src.types[baseTypeOffset] = &SourceType{
-					Name:         fmt.Sprintf("[%d] %s", num, arrayBaseType.Name),
+					Name:         fmt.Sprintf("%s", arrayBaseType.Name),
 					Size:         arrayBaseType.Size * int(num),
 					ElementType:  arrayBaseType,
 					ElementCount: int(num),

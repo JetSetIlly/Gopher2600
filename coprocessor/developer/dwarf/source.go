@@ -937,15 +937,8 @@ func (src *Source) FindSourceLine(addr uint32) *SourceLine {
 // UpdateGlobalVariables using the current state of the emulated coprocessor.
 // Local variables are updated when coprocessor yields (see OnYield() function)
 func (src *Source) UpdateGlobalVariables() {
-	var touch func(varb *SourceVariable)
-	touch = func(varb *SourceVariable) {
-		varb.Update()
-		for i := 0; i < varb.NumChildren(); i++ {
-			touch(varb.Child(i))
-		}
-	}
 	for _, varb := range src.SortedGlobals.Variables {
-		touch(varb)
+		varb.Update()
 	}
 }
 

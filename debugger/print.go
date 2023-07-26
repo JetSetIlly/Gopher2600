@@ -52,18 +52,21 @@ func (dbg *Debugger) printLine(sty terminal.Style, s string, a ...interface{}) {
 // io.Writer is required and you want to direct the output to the terminal.
 // allows the application of a single style.
 type styleWriter struct {
-	dbg   *Debugger
-	style terminal.Style
+	dbg    *Debugger
+	style  terminal.Style
+	prefix string
 }
 
-func (dbg *Debugger) writerInStyle(sty terminal.Style) *styleWriter { // nolint: unparam
+func (dbg *Debugger) writerInStyle(sty terminal.Style, prefix ...string) *styleWriter { // nolint: unparam
+	p := strings.Join(prefix, " ")
 	return &styleWriter{
-		dbg:   dbg,
-		style: sty,
+		dbg:    dbg,
+		style:  sty,
+		prefix: p,
 	}
 }
 
 func (wrt styleWriter) Write(p []byte) (n int, err error) {
-	wrt.dbg.printLine(wrt.style, string(p))
+	wrt.dbg.printLine(wrt.style, "%s%s", wrt.prefix, string(p))
 	return len(p), nil
 }

@@ -251,14 +251,14 @@ func drawVariableTooltipShort(varb *dwarf.SourceVariable, cols *imguiColors) {
 	imgui.Text(fmt.Sprintf("Line: %d", varb.DeclLine.LineNumber))
 	imgui.PopStyleColor()
 
-	if varb.ErrorOnResolve != nil {
+	if varb.Error != nil {
 		imgui.Spacing()
 		imgui.Separator()
 		imgui.Spacing()
 		imgui.Text(string(fonts.CoProcBug))
 		imgui.SameLine()
 		imgui.Text("Error on Resolve")
-		for _, l := range strings.Split(varb.ErrorOnResolve.Error(), ":") {
+		for _, l := range strings.Split(varb.Error.Error(), ":") {
 			imgui.Text("·")
 			imgui.SameLine()
 			imgui.Text(strings.TrimSpace(l))
@@ -354,13 +354,13 @@ func drawVariableTooltip(varb *dwarf.SourceVariable, value uint32, cols *imguiCo
 	imgui.Text(fmt.Sprintf("Line: %d", varb.DeclLine.LineNumber))
 	imgui.PopStyleColor()
 
-	if varb.ErrorOnResolve != nil {
+	if varb.Error != nil {
 		imgui.Spacing()
 		imgui.Separator()
 		imgui.Spacing()
 		imgui.Text(string(fonts.CoProcBug))
 		imgui.SameLine()
-		imgui.Text(varb.ErrorOnResolve.Error())
+		imgui.Text(varb.Error.Error())
 	}
 }
 
@@ -413,7 +413,7 @@ func (win *winCoProcGlobals) drawVariable(src *dwarf.Source, varb *dwarf.SourceV
 		// value column shows tree open/close icon unless there was an error
 		// during variable resolution
 		imgui.TableNextColumn()
-		if varb.ErrorOnResolve != nil {
+		if varb.Error != nil {
 			imgui.Text(string(fonts.CoProcBug))
 		} else {
 			if win.openNodes[nodeID] {
@@ -430,7 +430,7 @@ func (win *winCoProcGlobals) drawVariable(src *dwarf.Source, varb *dwarf.SourceV
 		}
 	} else {
 		win.img.imguiTooltip(func() {
-			if varb.ErrorOnResolve != nil {
+			if varb.Error != nil {
 				drawVariableTooltipShort(varb, win.img.cols)
 			} else {
 				drawVariableTooltip(varb, varb.Value(), win.img.cols)
@@ -452,7 +452,7 @@ func (win *winCoProcGlobals) drawVariable(src *dwarf.Source, varb *dwarf.SourceV
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		if varb.ErrorOnResolve != nil {
+		if varb.Error != nil {
 			imgui.Text(string(fonts.CoProcBug))
 		} else {
 			imgui.Text(fmt.Sprintf(varb.Type.Hex(), varb.Value()))

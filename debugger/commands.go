@@ -1550,11 +1550,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		case "LOCALS":
 			var derivation bool
 			var ranges bool
+			var err bool
 
 			option, ok := tokens.Get()
 			for ok {
 				derivation = derivation || option == "DERIVATION"
 				ranges = ranges || option == "RANGES"
+				err = err || option == "ERROR"
 				option, ok = tokens.Get()
 			}
 
@@ -1565,16 +1567,20 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			})
 
 			dbg.CoProcDev.BorrowYieldState(func(yld yield.State) {
+				var w io.Writer
+				if derivation {
+					w = dbg.writerInStyle(terminal.StyleFeedbackSecondary, "\t")
+				}
 				for _, l := range yld.LocalVariables {
-					l.Update()
 					dbg.printLine(terminal.StyleFeedback, l.String())
-					if ranges {
-						dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("  %s", l.Range))
-					}
-					if derivation {
-						for _, d := range l.Derivation() {
-							dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("    %s\n", d.String()))
+					e := l.WriteDerivation(w)
+					if err && e != nil {
+						for _, s := range strings.Split(e.Error(), ":") {
+							dbg.printLine(terminal.StyleError, fmt.Sprintf("\t%s", s))
 						}
+					}
+					if ranges {
+						dbg.printLine(terminal.StyleFeedbackSecondary, fmt.Sprintf("\t%s", l.Range.String()))
 					}
 				}
 			})

@@ -19,6 +19,7 @@ import (
 	"debug/elf"
 	"encoding/binary"
 	"fmt"
+	"io"
 
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -93,11 +94,6 @@ type loclistOperator struct {
 	resolve  func(*loclist) (loclistStack, error)
 }
 
-type loclistDerivation struct {
-	operator string
-	value    uint32
-}
-
 type loclistResult struct {
 	address    uint64
 	hasAddress bool
@@ -107,22 +103,20 @@ type loclistResult struct {
 	pieces []loclistPiece
 }
 
-func (l *loclistDerivation) String() string {
-	return fmt.Sprintf("%s %08x", l.operator, l.value)
-}
-
 type loclist struct {
 	coproc loclistCoproc
 	ctx    loclistFramebase
 
 	list []loclistOperator
 
-	derivation []loclistDerivation
-	stack      []loclistStack
-	pieces     []loclistPiece
+	stack  []loclistStack
+	pieces []loclistPiece
 
 	singleLoc  bool
 	loclistPtr int64
+
+	// the derivation for the loclist is written to the io.Writer
+	derivation io.Writer
 }
 
 func (sec *loclistSection) newLoclistJustContext(ctx loclistFramebase) *loclist {
@@ -272,7 +266,6 @@ func (loc *loclist) resolve() (loclistResult, error) {
 	}
 
 	// clear lists
-	loc.derivation = loc.derivation[:0]
 	loc.stack = loc.stack[:0]
 	loc.pieces = loc.pieces[:0]
 
@@ -312,12 +305,9 @@ func (loc *loclist) resolve() (loclistResult, error) {
 			// all functionality of a piece operation is contained in the actual loclistOperator implementation
 		}
 
-		// always add result value to derivation list
-		d := loclistDerivation{
-			operator: loc.list[i].operator,
-			value:    s.value,
+		if loc.derivation != nil {
+			loc.derivation.Write([]byte(fmt.Sprintf("%s %08x", loc.list[i].operator, s.value)))
 		}
-		loc.derivation = append(loc.derivation, d)
 	}
 
 	// return assembled pieces

@@ -331,6 +331,9 @@ func (l terminalOutput) draw(wrap bool) {
 	case terminal.StyleFeedback:
 		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleFeedback)
 
+	case terminal.StyleFeedbackSecondary:
+		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleFeedbackSecondary)
+
 	case terminal.StyleCPUStep:
 		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleCPUStep)
 

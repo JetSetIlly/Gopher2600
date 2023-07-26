@@ -183,16 +183,17 @@ type imguiColors struct {
 	SaveKeyBitPointer imgui.Vec4
 
 	// terminal
-	TermBackground      imgui.Vec4
-	TermInput           imgui.Vec4
-	TermStyleEcho       imgui.Vec4
-	TermStyleHelp       imgui.Vec4
-	TermStyleFeedback   imgui.Vec4
-	TermStyleCPUStep    imgui.Vec4
-	TermStyleVideoStep  imgui.Vec4
-	TermStyleInstrument imgui.Vec4
-	TermStyleError      imgui.Vec4
-	TermStyleLog        imgui.Vec4
+	TermBackground             imgui.Vec4
+	TermInput                  imgui.Vec4
+	TermStyleEcho              imgui.Vec4
+	TermStyleHelp              imgui.Vec4
+	TermStyleFeedback          imgui.Vec4
+	TermStyleFeedbackSecondary imgui.Vec4
+	TermStyleCPUStep           imgui.Vec4
+	TermStyleVideoStep         imgui.Vec4
+	TermStyleInstrument        imgui.Vec4
+	TermStyleError             imgui.Vec4
+	TermStyleLog               imgui.Vec4
 
 	// helpers
 	ToolTipBG imgui.Vec4
@@ -380,16 +381,17 @@ func newColors() *imguiColors {
 		SaveKeyBitPointer: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 
 		// terminal
-		TermBackground:      imgui.Vec4{0.1, 0.1, 0.2, 0.9},
-		TermInput:           imgui.Vec4{0.1, 0.1, 0.25, 0.9},
-		TermStyleEcho:       imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		TermStyleHelp:       imgui.Vec4{1.0, 1.0, 1.0, 1.0},
-		TermStyleFeedback:   imgui.Vec4{1.0, 1.0, 1.0, 1.0},
-		TermStyleCPUStep:    imgui.Vec4{0.9, 0.9, 0.5, 1.0},
-		TermStyleVideoStep:  imgui.Vec4{0.7, 0.7, 0.3, 1.0},
-		TermStyleInstrument: imgui.Vec4{0.1, 0.95, 0.9, 1.0},
-		TermStyleError:      imgui.Vec4{0.8, 0.3, 0.3, 1.0},
-		TermStyleLog:        imgui.Vec4{0.8, 0.7, 0.3, 1.0},
+		TermBackground:             imgui.Vec4{0.1, 0.1, 0.2, 0.9},
+		TermInput:                  imgui.Vec4{0.1, 0.1, 0.25, 0.9},
+		TermStyleEcho:              imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		TermStyleHelp:              imgui.Vec4{1.0, 1.0, 1.0, 1.0},
+		TermStyleFeedback:          imgui.Vec4{1.0, 1.0, 1.0, 1.0},
+		TermStyleFeedbackSecondary: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		TermStyleCPUStep:           imgui.Vec4{0.9, 0.9, 0.5, 1.0},
+		TermStyleVideoStep:         imgui.Vec4{0.7, 0.7, 0.3, 1.0},
+		TermStyleInstrument:        imgui.Vec4{0.1, 0.95, 0.9, 1.0},
+		TermStyleError:             imgui.Vec4{0.8, 0.3, 0.3, 1.0},
+		TermStyleLog:               imgui.Vec4{0.8, 0.7, 0.3, 1.0},
 
 		// helpers
 		ToolTipBG: imgui.Vec4{0.2, 0.1, 0.2, 0.8},

@@ -18,6 +18,7 @@ package dwarf
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"sync/atomic"
 )
@@ -56,10 +57,9 @@ type SourceVariable struct {
 	// variable can never be located
 	loclist *loclist
 
-	// if ErrorOnResolve is not nil then an error was enountered during a
-	// resolve() sequence. the error will be logged when the field is first set
-	// to true
-	ErrorOnResolve error
+	// if Error is not nil then an error was enountered during a resolve()
+	// sequence. the error will be logged when the field is first set to true
+	Error error
 
 	// most recent resolved value retrieved from emulation
 	cachedLocation atomic.Value // loclistResult
@@ -71,21 +71,13 @@ type SourceVariable struct {
 
 func (varb *SourceVariable) String() string {
 	var s strings.Builder
-	if !varb.loclist.singleLoc {
-		s.WriteString(fmt.Sprintf("[%04x] ", varb.loclist.loclistPtr))
-	}
-	s.WriteString(fmt.Sprintf("%s = ", varb.decl()))
-	if varb.ErrorOnResolve != nil {
-		s.WriteString(varb.ErrorOnResolve.Error())
+	s.WriteString(fmt.Sprintf("%s %s = ", varb.Type.Name, varb.Name))
+	if varb.Error != nil {
+		s.WriteString("error")
 	} else {
 		s.WriteString(fmt.Sprintf(varb.Type.Hex(), varb.Value()))
 	}
 	return s.String()
-}
-
-// decl returns the type-name and name pair
-func (varb *SourceVariable) decl() string {
-	return fmt.Sprintf("%s %s", varb.Type.Name, varb.Name)
 }
 
 // Address returns the location in memory of the variable referred to by
@@ -136,14 +128,6 @@ func (varb *SourceVariable) piece(idx int) (loclistPiece, bool) {
 	return r.pieces[idx], true
 }
 
-// Derivation returns the sequence of results that led to the most recent value.
-func (varb *SourceVariable) Derivation() []loclistDerivation {
-	if varb.loclist == nil {
-		return []loclistDerivation{}
-	}
-	return varb.loclist.derivation
-}
-
 // NumChildren returns the number of children for this variable
 func (varb *SourceVariable) NumChildren() int {
 	return len(varb.children)
@@ -172,27 +156,38 @@ func (varb *SourceVariable) Update() {
 	}
 }
 
+// WriteDerivation outputs the derivation of a varibale to the io.Writer. If the
+// derivation encounters an error the error is returned
+//
+// Note that the basic information about the variable is not output by this
+// function. The String() function provides that information
+func (varb *SourceVariable) WriteDerivation(w io.Writer) error {
+	old := varb.loclist.derivation
+	varb.loclist.derivation = w
+	defer func() {
+		varb.loclist.derivation = old
+	}()
+	varb.resolve()
+	return varb.Error
+}
+
 // resolve address/value
 func (varb *SourceVariable) resolve() loclistResult {
-	if varb.ErrorOnResolve != nil {
-		return loclistResult{}
-	}
-
 	if varb.loclist == nil {
-		varb.ErrorOnResolve = fmt.Errorf("there is no location to resolve")
+		varb.Error = fmt.Errorf("there is no location to resolve")
 		return loclistResult{}
 	}
 
 	r, err := varb.loclist.resolve()
 	if err != nil {
-		varb.ErrorOnResolve = err
+		varb.Error = err
 		return loclistResult{}
 	}
 
 	if r.hasAddress {
 		v, ok := varb.loclist.coproc.CoProcRead32bit(uint32(r.address))
 		if !ok {
-			varb.ErrorOnResolve = errors.New(fmt.Sprintf("error resolving address %08x", r.address))
+			varb.Error = errors.New(fmt.Sprintf("error resolving address %08x", r.address))
 			return loclistResult{}
 		}
 		r.value = v

@@ -298,8 +298,7 @@ type SourceType struct {
 	// size of values of this type (in bytes)
 	Size int
 
-	// empty if type is not a composite type. see SourceVariable.IsComposite()
-	// function
+	// empty if type is not a composite type. see SourceVariable.IsComposite() function
 	Members []*SourceVariable
 
 	// number of elements in the type. if count is more than zero then this
@@ -311,7 +310,22 @@ type SourceType struct {
 }
 
 func (typ *SourceType) String() string {
-	return typ.Name
+	s := strings.Builder{}
+	s.WriteString(typ.Name)
+	s.WriteString(fmt.Sprintf(" %dbytes", typ.Size))
+	if typ.Constant {
+		s.WriteString(" is constant")
+	}
+	if typ.IsComposite() {
+		s.WriteString(" is composite")
+	}
+	if typ.IsArray() {
+		s.WriteString(" is array")
+	}
+	if typ.IsPointer() {
+		s.WriteString(" is pointer")
+	}
+	return s.String()
 }
 
 // IsComposite returns true if SourceType is a composite type.

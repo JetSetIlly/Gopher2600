@@ -167,7 +167,7 @@ func (win *winCoProcLocals) drawVariable(varb *dwarf.SourceVariable, indentLevel
 		// value column shows tree open/close icon unless there was an error
 		// during variable resolution
 		imgui.TableNextColumn()
-		if varb.ErrorOnResolve != nil {
+		if varb.Error != nil {
 			imgui.Text(string(fonts.CoProcBug))
 		} else {
 			if win.openNodes[nodeID] {
@@ -185,7 +185,7 @@ func (win *winCoProcLocals) drawVariable(varb *dwarf.SourceVariable, indentLevel
 
 	} else {
 		win.img.imguiTooltip(func() {
-			if varb.ErrorOnResolve != nil {
+			if varb.Error != nil {
 				drawVariableTooltipShort(varb, win.img.cols)
 			} else {
 				drawVariableTooltip(varb, varb.Value(), win.img.cols)
@@ -198,7 +198,7 @@ func (win *winCoProcLocals) drawVariable(varb *dwarf.SourceVariable, indentLevel
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		if varb.ErrorOnResolve != nil {
+		if varb.Error != nil {
 			imgui.Text(string(fonts.CoProcBug))
 		} else {
 			imgui.Text(fmt.Sprintf(varb.Type.Hex(), varb.Value()))

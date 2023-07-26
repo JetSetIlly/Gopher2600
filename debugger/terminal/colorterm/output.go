@@ -43,6 +43,9 @@ func (ct *ColorTerminal) TermPrintLine(style terminal.Style, s string) {
 	case terminal.StyleFeedback:
 		ct.EasyTerm.TermPrint(ansi.DimPens["white"])
 
+	case terminal.StyleFeedbackSecondary:
+		ct.EasyTerm.TermPrint(ansi.DimPens["gray"])
+
 	case terminal.StyleCPUStep:
 		ct.EasyTerm.TermPrint(ansi.Pens["yellow"])
 
