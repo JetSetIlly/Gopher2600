@@ -59,6 +59,8 @@ type preferences struct {
 	plusromNotifications      prefs.Bool
 	superchargerNotifications prefs.Bool
 	audioMuteNotification     prefs.Bool
+	coprocDevNotification     prefs.Bool
+	notificationVisibility    prefs.Float
 
 	// fonts
 	guiFont             prefs.Float
@@ -95,6 +97,9 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	p.plusromNotifications.Set(true)
 	p.superchargerNotifications.Set(true)
 	p.audioMuteNotification.Set(true)
+	p.coprocDevNotification.Set(true)
+	p.coprocDevNotification.Set(true)
+	p.notificationVisibility.Set(0.75)
 	p.guiFont.Set(13.0)
 	p.codeFont.Set(15.0)
 	p.codeFontLineSpacing.Set(2.0)
@@ -155,6 +160,14 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("sdlimgui.playmode.audioMuteNotification", &p.audioMuteNotification)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.playmode.coprocDevNotification", &p.coprocDevNotification)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.playmode.notifcationVisibility", &p.notificationVisibility)
 	if err != nil {
 		return nil, err
 	}

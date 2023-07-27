@@ -24,6 +24,7 @@ type Notify string
 
 // List of defined notifications.
 const (
+	// emulation events
 	NotifyInitialising  Notify = "NotifyInitialising"
 	NotifyPause         Notify = "NotifyPause"
 	NotifyRun           Notify = "NotifyRun"
@@ -61,6 +62,10 @@ const (
 
 	// PlusROM new installation
 	NotifyPlusROMNewInstallation Notify = "NotifyPlusROMNewInstallation"
+
+	// coprocessor development information has been loaded
+	NotifyCoprocDevStarted Notify = "NotifyCoprocDevStarted"
+	NotifyCoprocDevEnded   Notify = "NotifyCoprocDevEnded"
 )
 
 // NotificationHook is used for direct communication between a the hardware and

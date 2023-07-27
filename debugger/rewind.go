@@ -41,7 +41,7 @@ func (dbg *Debugger) RewindByAmount(amount int) bool {
 
 		if amount < 0 && coords.Frame-1 <= tl.AvailableStart {
 			dbg.setStateQuiet(govern.Paused, true)
-			err := dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRewindAtStart)
+			err := dbg.gui.SetFeature(gui.ReqEmulationNotify, notifications.NotifyRewindAtStart)
 			if err != nil {
 				logger.Log("debugger", err.Error())
 			}
@@ -50,7 +50,7 @@ func (dbg *Debugger) RewindByAmount(amount int) bool {
 
 		if amount > 0 && coords.Frame+1 >= tl.AvailableEnd {
 			dbg.setStateQuiet(govern.Paused, true)
-			err := dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRewindAtEnd)
+			err := dbg.gui.SetFeature(gui.ReqEmulationNotify, notifications.NotifyRewindAtEnd)
 			if err != nil {
 				logger.Log("debugger", err.Error())
 			}
@@ -63,9 +63,9 @@ func (dbg *Debugger) RewindByAmount(amount int) bool {
 
 		var err error
 		if amount < 0 {
-			err = dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRewindBack)
+			err = dbg.gui.SetFeature(gui.ReqEmulationNotify, notifications.NotifyRewindBack)
 		} else {
-			err = dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRewindFoward)
+			err = dbg.gui.SetFeature(gui.ReqEmulationNotify, notifications.NotifyRewindFoward)
 		}
 		if err != nil {
 			logger.Log("debugger", err.Error())

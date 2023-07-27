@@ -527,18 +527,18 @@ func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 	if !quiet && dbg.Mode() == govern.ModePlay {
 		switch state {
 		case govern.Initialising:
-			err := dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyInitialising)
+			err := dbg.gui.SetFeature(gui.ReqEmulationNotify, notifications.NotifyInitialising)
 			if err != nil {
 				logger.Log("debugger", err.Error())
 			}
 		case govern.Paused:
-			err := dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyPause)
+			err := dbg.gui.SetFeature(gui.ReqEmulationNotify, notifications.NotifyPause)
 			if err != nil {
 				logger.Log("debugger", err.Error())
 			}
 		case govern.Running:
 			if prevState > govern.Initialising {
-				err := dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRun)
+				err := dbg.gui.SetFeature(gui.ReqEmulationNotify, notifications.NotifyRun)
 				if err != nil {
 					logger.Log("debugger", err.Error())
 				}
@@ -1083,12 +1083,12 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 					return err
 				}
 			case notifications.NotifySuperchargerSoundloadStarted:
-				err := dbg.gui.SetFeature(gui.ReqCartridgeNotice, notifications.NotifySuperchargerSoundloadStarted)
+				err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifySuperchargerSoundloadStarted)
 				if err != nil {
 					return err
 				}
 			case notifications.NotifySuperchargerSoundloadEnded:
-				err := dbg.gui.SetFeature(gui.ReqCartridgeNotice, notifications.NotifySuperchargerSoundloadEnded)
+				err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifySuperchargerSoundloadEnded)
 				if err != nil {
 					return err
 				}
@@ -1103,7 +1103,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 
 				return dbg.vcs.TV.Reset(true)
 			case notifications.NotifySuperchargerSoundloadRewind:
-				err := dbg.gui.SetFeature(gui.ReqCartridgeNotice, notifications.NotifySuperchargerSoundloadRewind)
+				err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifySuperchargerSoundloadRewind)
 				if err != nil {
 					return err
 				}
@@ -1114,13 +1114,13 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 			switch event {
 			case notifications.NotifyPlusROMInserted:
 				if dbg.vcs.Env.Prefs.PlusROM.NewInstallation {
-					err := dbg.gui.SetFeature(gui.ReqCartridgeNotice, notifications.NotifyPlusROMNewInstallation)
+					err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifyPlusROMNewInstallation)
 					if err != nil {
 						return fmt.Errorf(err.Error())
 					}
 				}
 			case notifications.NotifyPlusROMNetwork:
-				err := dbg.gui.SetFeature(gui.ReqCartridgeNotice, notifications.NotifyPlusROMNetwork)
+				err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifyPlusROMNetwork)
 				if err != nil {
 					return err
 				}
@@ -1164,6 +1164,16 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 
 	dbg.CoProcDisasm.AttachCartridge(dbg.coprocShim)
 	dbg.CoProcDev.AttachCartridge(dbg.coprocShim, cartload.Filename, *dbg.opts.ELF)
+
+	// notify GUI of coprocessor state
+	if dbg.CoProcDev.HasSource() {
+		err = dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifyCoprocDevStarted)
+	} else {
+		err = dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifyCoprocDevEnded)
+	}
+	if err != nil {
+		logger.Logf("debugger", err.Error())
+	}
 
 	// attach current debugger as the yield hook for cartridge
 	dbg.vcs.Mem.Cart.SetYieldHook(dbg)
@@ -1303,7 +1313,7 @@ func (dbg *Debugger) hotload() (e error) {
 		if dbg.runUntilHalt && e == nil {
 			dbg.setState(govern.Running)
 		} else {
-			err := dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyPause)
+			err := dbg.gui.SetFeature(gui.ReqEmulationNotify, notifications.NotifyPause)
 			if err != nil {
 				logger.Log("debugger", err.Error())
 			}
@@ -1384,7 +1394,7 @@ func (dbg *Debugger) Plugged(port plugging.PortID, peripheral plugging.Periphera
 	if dbg.vcs.Mem.Cart.IsEjected() {
 		return
 	}
-	err := dbg.gui.SetFeature(gui.ReqPeripheralChange, port, peripheral)
+	err := dbg.gui.SetFeature(gui.ReqPeripheralNotify, port, peripheral)
 	if err != nil {
 		logger.Log("debugger", err.Error())
 	}

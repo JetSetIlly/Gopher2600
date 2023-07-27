@@ -90,6 +90,7 @@ const (
 	TimelineJitter         = '\uf0de'
 	TimelineComparison     = '\uf02e'
 	TimelineComparisonLock = '\uf023'
+	Developer              = '\uf0c3'
 )
 
 // The first and last unicode points used in the application. We use this to

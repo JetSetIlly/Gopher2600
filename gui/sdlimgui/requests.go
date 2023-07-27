@@ -70,7 +70,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			img.plt.setFullScreen(request.args[0].(bool))
 		}
 
-	case gui.ReqPeripheralChange:
+	case gui.ReqPeripheralNotify:
 		err = argLen(request.args, 2)
 		if err == nil {
 			port := request.args[0].(plugging.PortID)
@@ -82,7 +82,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			}
 		}
 
-	case gui.ReqEmulationNotice:
+	case gui.ReqEmulationNotify:
 		if img.isPlaymode() {
 			err = argLen(request.args, 1)
 			if err == nil {
@@ -90,7 +90,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			}
 		}
 
-	case gui.ReqCartridgeNotice:
+	case gui.ReqCartridgeNotify:
 		err = argLen(request.args, 1)
 		if err == nil {
 			notice := request.args[0].(notifications.Notify)
@@ -99,9 +99,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			case notifications.NotifyPlusROMNewInstallation:
 				img.plusROMFirstInstallation = true
 			default:
-				if img.isPlaymode() {
-					img.playScr.cartridgeNotice.set(notice)
-				}
+				img.playScr.cartridgeNotice.set(notice)
 			}
 		}
 

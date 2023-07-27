@@ -19,8 +19,6 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/debugger"
-	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/notifications"
@@ -41,62 +39,52 @@ type peripheralNotification struct {
 	rightAlign bool
 }
 
-func (pn *peripheralNotification) set(peripheral plugging.PeripheralID) {
-	pn.frames = notificationDurationPeripheral
-
+func (ntfy *peripheralNotification) set(peripheral plugging.PeripheralID) {
+	ntfy.frames = notificationDurationPeripheral
 	switch peripheral {
 	case plugging.PeriphStick:
-		pn.icon = fmt.Sprintf("%c", fonts.Stick)
+		ntfy.icon = fmt.Sprintf("%c", fonts.Stick)
 	case plugging.PeriphPaddles:
-		pn.icon = fmt.Sprintf("%c", fonts.Paddle)
+		ntfy.icon = fmt.Sprintf("%c", fonts.Paddle)
 	case plugging.PeriphKeypad:
-		pn.icon = fmt.Sprintf("%c", fonts.Keypad)
+		ntfy.icon = fmt.Sprintf("%c", fonts.Keypad)
 	case plugging.PeriphSavekey:
-		pn.icon = fmt.Sprintf("%c", fonts.Savekey)
+		ntfy.icon = fmt.Sprintf("%c", fonts.Savekey)
 	case plugging.PeriphGamepad:
-		pn.icon = fmt.Sprintf("%c", fonts.Gamepad)
+		ntfy.icon = fmt.Sprintf("%c", fonts.Gamepad)
 	case plugging.PeriphAtariVox:
-		pn.icon = fmt.Sprintf("%c", fonts.AtariVox)
+		ntfy.icon = fmt.Sprintf("%c", fonts.AtariVox)
 	default:
-		pn.icon = ""
+		ntfy.icon = ""
 		return
 	}
-}
-
-func (pn *peripheralNotification) tick() {
-	pn.frames--
 }
 
 // pos should be the coordinate of the *extreme* bottom left or bottom right of
 // the playscr window. the values will be adjusted according to whether we're
 // display an icon or text.
-func (pn *peripheralNotification) draw(win *playScr) {
-	if pn.frames <= 0 {
+func (ntfy *peripheralNotification) draw(win *playScr) {
+	if ntfy.frames <= 0 {
 		return
 	}
-
-	pn.tick()
+	ntfy.frames--
 
 	if !win.img.prefs.controllerNotifcations.Get().(bool) {
 		return
 	}
-
-	// we'll be using the icon font for display in this window
-	imgui.PushFont(win.img.glsl.fonts.gopher2600Icons)
-	defer imgui.PopFont()
 
 	// position window so that it is fully visible at the bottom of the screen.
 	// taking special care of the right aligned window
 	var id string
 	var pos imgui.Vec2
 	dimen := win.img.plt.displaySize()
-	if pn.rightAlign {
+	if ntfy.rightAlign {
 		pos = imgui.Vec2{dimen[0], dimen[1]}
-		id = "##controlleralertright"
+		id = "##rightPeriphNotification"
 		pos.X -= win.img.glsl.fonts.gopher2600IconsSize * 1.35
 	} else {
 		pos = imgui.Vec2{0, dimen[1]}
-		id = "##controlleralertleft"
+		id = "##leftPeriphNotification"
 		pos.X += win.img.glsl.fonts.gopher2600IconsSize * 0.20
 	}
 	pos.Y -= win.img.glsl.fonts.gopher2600IconsSize * 1.35
@@ -104,81 +92,83 @@ func (pn *peripheralNotification) draw(win *playScr) {
 	imgui.SetNextWindowPos(pos)
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
+	defer imgui.PopStyleColorV(2)
+
+	imgui.PushFont(win.img.glsl.fonts.gopher2600Icons)
+	defer imgui.PopFont()
+
+	a := float32(win.img.prefs.notificationVisibility.Get().(float64))
+	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{a, a, a, a})
+	defer imgui.PopStyleColor()
 
 	periphOpen := true
 	imgui.BeginV(id, &periphOpen, imgui.WindowFlagsAlwaysAutoResize|
 		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
 		imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings)
 
-	imgui.Text(pn.icon)
+	imgui.Text(ntfy.icon)
 
-	imgui.PopStyleColorV(2)
 	imgui.End()
 }
 
 // emulationEventNotification is used to draw an indicator on the screen for
 // events defined in the emulation package.
 type emulationEventNotification struct {
-	emulation    *debugger.Debugger
-	open         bool
-	currentEvent notifications.Notify
-	frames       int
+	open   bool
+	frames int
 
-	// audio mute is handled differently to other events. we want the icon for
-	// mute to always be shown unless another icon event has been received
-	// since. when the previous event expires we want to reassign EventMute to
-	// currentEvent
-	mute bool
+	event notifications.Notify
+	mute  bool
 }
 
-func (ee *emulationEventNotification) set(event notifications.Notify) {
-	ee.currentEvent = event
-	ee.open = true
-	ee.frames = notificationDurationEvent
+func (ntfy *emulationEventNotification) set(event notifications.Notify) {
 	switch event {
 	case notifications.NotifyRun:
-		ee.frames = notificationDurationEventRun
+		ntfy.event = event
+		ntfy.frames = notificationDurationEventRun
+		ntfy.open = true
+	case notifications.NotifyPause:
+		ntfy.event = event
+		ntfy.frames = 0
+		ntfy.open = true
 	case notifications.NotifyScreenshot:
-		ee.frames = notificationDurationScreenshot
+		ntfy.event = event
+		ntfy.frames = notificationDurationScreenshot
+		ntfy.open = true
 	case notifications.NotifyMute:
-		ee.mute = true
+		ntfy.event = event
+		ntfy.frames = 0
+		ntfy.open = true
+		ntfy.mute = true
 	case notifications.NotifyUnmute:
-		ee.mute = false
+		ntfy.event = event
+		ntfy.frames = 0
+		ntfy.open = true
+		ntfy.mute = false
 	}
 }
 
-func (ee *emulationEventNotification) tick() {
-	if !ee.open || ee.frames <= 0 {
+func (ntfy *emulationEventNotification) tick() {
+	if ntfy.frames <= 0 {
 		return
 	}
+	ntfy.frames--
 
-	ee.frames--
-
-	if ee.frames == 0 {
-		// if emulation is paused then force the current event to EventPause
-		if ee.emulation.State() == govern.Paused {
-			ee.currentEvent = notifications.NotifyPause
-		}
-
-		// special handling of open when current event is EventPause or if mute
-		// is enabled
-		if ee.currentEvent != notifications.NotifyPause {
-			if ee.mute {
-				ee.open = true
-				ee.currentEvent = notifications.NotifyMute
-			} else {
-				ee.open = false
-			}
+	if ntfy.frames == 0 {
+		if ntfy.mute {
+			ntfy.event = notifications.NotifyMute
+			ntfy.open = true
+		} else {
+			ntfy.open = false
 		}
 	}
 }
 
-func (ee *emulationEventNotification) draw(win *playScr, hosted bool) {
-	if !ee.open {
+func (ntfy *emulationEventNotification) draw(win *playScr, hosted bool) {
+	ntfy.tick()
+	if !ntfy.open {
 		return
 	}
-
-	ee.tick()
 
 	if !hosted {
 		imgui.SetNextWindowPos(imgui.Vec2{X: 10, Y: 10})
@@ -186,7 +176,11 @@ func (ee *emulationEventNotification) draw(win *playScr, hosted bool) {
 		imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
 		defer imgui.PopStyleColorV(2)
 
-		imgui.BeginV("##cartridgeevent", &ee.open, imgui.WindowFlagsAlwaysAutoResize|
+		a := float32(win.img.prefs.notificationVisibility.Get().(float64))
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{a, a, a, a})
+		defer imgui.PopStyleColor()
+
+		imgui.BeginV("##emulationNotification", &ntfy.open, imgui.WindowFlagsAlwaysAutoResize|
 			imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
 			imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings|
 			imgui.WindowFlagsNoBringToFrontOnFocus)
@@ -196,7 +190,7 @@ func (ee *emulationEventNotification) draw(win *playScr, hosted bool) {
 		defer imgui.PopFont()
 	}
 
-	switch ee.currentEvent {
+	switch ntfy.event {
 	case notifications.NotifyInitialising:
 		imgui.Text("")
 	case notifications.NotifyPause:
@@ -213,8 +207,8 @@ func (ee *emulationEventNotification) draw(win *playScr, hosted bool) {
 		imgui.Text(string(fonts.EmulationRewindAtEnd))
 	case notifications.NotifyScreenshot:
 		imgui.Text(string(fonts.Camera))
-	case notifications.NotifyMute:
-		if hosted || win.img.prefs.audioMuteNotification.Get().(bool) {
+	default:
+		if ntfy.mute && win.img.prefs.audioMuteNotification.Get().(bool) {
 			imgui.Text(string(fonts.AudioMute))
 		}
 	}
@@ -224,77 +218,108 @@ func (ee *emulationEventNotification) draw(win *playScr, hosted bool) {
 // events defined in the mapper package.
 type cartridgeEventNotification struct {
 	open   bool
-	notice notifications.Notify
 	frames int
+
+	event     notifications.Notify
+	coprocDev bool
 }
 
-func (ce *cartridgeEventNotification) set(event notifications.Notify) {
-	ce.notice = event
-	switch ce.notice {
+func (ntfy *cartridgeEventNotification) set(event notifications.Notify) {
+	switch event {
 	case notifications.NotifySuperchargerSoundloadStarted:
-		ce.open = true
+		ntfy.event = event
+		ntfy.frames = 0
+		ntfy.open = true
 	case notifications.NotifySuperchargerSoundloadEnded:
-		ce.frames = notificationDurationCartridge
+		ntfy.event = event
+		ntfy.frames = notificationDurationCartridge
+		ntfy.open = true
 	case notifications.NotifySuperchargerSoundloadRewind:
-		ce.frames = notificationDurationCartridge
+		ntfy.event = event
+		ntfy.frames = notificationDurationCartridge
+		ntfy.open = true
 	case notifications.NotifyPlusROMNetwork:
-		ce.open = true
-		ce.frames = notificationDurationCartridge
+		ntfy.event = event
+		ntfy.frames = notificationDurationCartridge
+		ntfy.open = true
+	case notifications.NotifyCoprocDevStarted:
+		ntfy.coprocDev = true
+		ntfy.frames = 0
+		ntfy.open = true
+	case notifications.NotifyCoprocDevEnded:
+		ntfy.coprocDev = false
+		ntfy.frames = 0
+		ntfy.open = false
 	}
 }
 
-func (ce *cartridgeEventNotification) tick() {
-	if !ce.open || ce.frames <= 0 {
+func (ntfy *cartridgeEventNotification) tick() {
+	if ntfy.frames <= 0 {
 		return
 	}
+	ntfy.frames--
 
-	ce.frames--
-
-	if ce.frames == 0 {
-		switch ce.notice {
-		case notifications.NotifySuperchargerSoundloadEnded:
-			ce.open = false
-		case notifications.NotifySuperchargerSoundloadRewind:
-			ce.notice = notifications.NotifySuperchargerSoundloadStarted
-		case notifications.NotifyPlusROMNetwork:
-			ce.open = false
+	if ntfy.frames == 0 {
+		// always remain open if coprocessor development is active
+		if ntfy.coprocDev {
+			ntfy.open = true
+		} else {
+			switch ntfy.event {
+			case notifications.NotifySuperchargerSoundloadRewind:
+				ntfy.event = notifications.NotifySuperchargerSoundloadStarted
+			default:
+				ntfy.open = false
+			}
 		}
 	}
 }
 
-func (ce *cartridgeEventNotification) draw(win *playScr) {
-	if !ce.open {
+func (ntfy *cartridgeEventNotification) draw(win *playScr) {
+	ntfy.tick()
+	if !ntfy.open {
 		return
 	}
-
-	ce.tick()
 
 	// notifications are made up of an icon and a sub-icon. icons must be from
 	// the gopher2600Icons font and the sub-icon from the largeFontAwesome font
 	icon := ""
-	subIcon := ""
+	secondaryIcon := ""
+
+	useGopherFont := false
 
 	plusrom := false
 	supercharger := false
+	coprocDev := false
 
-	switch win.cartridgeNotice.notice {
+	switch win.cartridgeNotice.event {
 	case notifications.NotifySuperchargerSoundloadStarted:
 		supercharger = true
+		useGopherFont = true
 		icon = fmt.Sprintf("%c", fonts.Tape)
-		subIcon = fmt.Sprintf("%c", fonts.TapePlay)
+		secondaryIcon = fmt.Sprintf("%c", fonts.TapePlay)
 	case notifications.NotifySuperchargerSoundloadEnded:
 		supercharger = true
+		useGopherFont = true
 		icon = fmt.Sprintf("%c", fonts.Tape)
-		subIcon = fmt.Sprintf("%c", fonts.TapeStop)
+		secondaryIcon = fmt.Sprintf("%c", fonts.TapeStop)
 	case notifications.NotifySuperchargerSoundloadRewind:
 		supercharger = true
+		useGopherFont = true
 		icon = fmt.Sprintf("%c", fonts.Tape)
-		subIcon = fmt.Sprintf("%c", fonts.TapeRewind)
+		secondaryIcon = fmt.Sprintf("%c", fonts.TapeRewind)
 	case notifications.NotifyPlusROMNetwork:
 		plusrom = true
+		useGopherFont = true
+		secondaryIcon = ""
 		icon = fmt.Sprintf("%c", fonts.Wifi)
 	default:
-		return
+		if ntfy.coprocDev {
+			coprocDev = true
+			useGopherFont = false
+			icon = fmt.Sprintf("%c", fonts.Developer)
+		} else {
+			return
+		}
 	}
 
 	// check preferences and return if the notification is not to be displayed
@@ -304,42 +329,59 @@ func (ce *cartridgeEventNotification) draw(win *playScr) {
 	if supercharger && !win.img.prefs.superchargerNotifications.Get().(bool) {
 		return
 	}
+	if coprocDev && !win.img.prefs.coprocDevNotification.Get().(bool) {
+		return
+	}
 
 	dimen := win.img.plt.displaySize()
 	pos := imgui.Vec2{dimen[0], 0}
 
-	// position window so that it is right justified and shows entirity of window (calculated with
-	// the knowledge that we're using two glyphs of fixed size)
 	width := win.img.glsl.fonts.gopher2600IconsSize * 1.5
-	if subIcon != "" {
+	if secondaryIcon != "" {
 		width += win.img.glsl.fonts.largeFontAwesomeSize * 1.5
 	}
-	pos.X -= width
+
+	// position is based on which font we're using
+	if useGopherFont {
+		imgui.PushFont(win.img.glsl.fonts.gopher2600Icons)
+		pos.X -= win.img.glsl.fonts.gopher2600IconsSize * 1.2
+		if secondaryIcon != "" {
+			pos.X -= win.img.glsl.fonts.largeFontAwesomeSize * 2.0
+		}
+	} else {
+		imgui.PushFont(win.img.glsl.fonts.veryLargeFontAwesome)
+		pos.X -= win.img.glsl.fonts.veryLargeFontAwesomeSize
+		pos.X -= 20
+		pos.Y += 10
+	}
+	defer imgui.PopFont()
 
 	imgui.SetNextWindowPos(pos)
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
+	defer imgui.PopStyleColorV(2)
 
-	imgui.BeginV("##cartridgeevent", &ce.open, imgui.WindowFlagsAlwaysAutoResize|
+	a := float32(win.img.prefs.notificationVisibility.Get().(float64))
+	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{a, a, a, a})
+	defer imgui.PopStyleColor()
+
+	imgui.BeginV("##cartridgeNotification", &ntfy.open, imgui.WindowFlagsAlwaysAutoResize|
 		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
 
-	imgui.PushFont(win.img.glsl.fonts.gopher2600Icons)
 	imgui.Text(icon)
-	imgui.PopFont()
 
 	imgui.SameLine()
 
-	if subIcon != "" {
+	if secondaryIcon != "" {
 		// position sub-icon so that it is centered vertically with the main icon
 		dim := imgui.CursorScreenPos()
 		dim.Y += (win.img.glsl.fonts.gopher2600IconsSize - win.img.glsl.fonts.largeFontAwesomeSize) * 0.5
 		imgui.SetCursorScreenPos(dim)
 
 		imgui.PushFont(win.img.glsl.fonts.largeFontAwesome)
-		imgui.Text(subIcon)
+		imgui.Text(secondaryIcon)
 		imgui.PopFont()
 	}
 
-	imgui.PopStyleColorV(2)
 	imgui.End()
 }

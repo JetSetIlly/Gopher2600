@@ -80,9 +80,6 @@ func newPlayScr(img *SdlImgui) *playScr {
 		peripheralRight: peripheralNotification{
 			rightAlign: true,
 		},
-		emulationNotice: emulationEventNotification{
-			emulation: img.dbg,
-		},
 	}
 
 	// set texture, creation of textures will be done after every call to resize()

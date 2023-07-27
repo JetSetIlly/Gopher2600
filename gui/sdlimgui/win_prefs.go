@@ -202,27 +202,37 @@ a television image that is sympathetic to the display kernel
 of the ROM.`)
 
 	imgui.Spacing()
-	imgui.Text("Notifications")
-	imgui.Spacing()
+	if imgui.CollapsingHeader("Notifications") {
 
-	controllerNotifications := win.img.prefs.controllerNotifcations.Get().(bool)
-	if imgui.Checkbox("Controller Change", &controllerNotifications) {
-		win.img.prefs.controllerNotifcations.Set(controllerNotifications)
-	}
+		controllerNotifications := win.img.prefs.controllerNotifcations.Get().(bool)
+		if imgui.Checkbox("Controller Change", &controllerNotifications) {
+			win.img.prefs.controllerNotifcations.Set(controllerNotifications)
+		}
 
-	plusromNotifications := win.img.prefs.plusromNotifications.Get().(bool)
-	if imgui.Checkbox("PlusROM Network Activity", &plusromNotifications) {
-		win.img.prefs.plusromNotifications.Set(plusromNotifications)
-	}
+		plusromNotifications := win.img.prefs.plusromNotifications.Get().(bool)
+		if imgui.Checkbox("PlusROM Network Activity", &plusromNotifications) {
+			win.img.prefs.plusromNotifications.Set(plusromNotifications)
+		}
 
-	superchargerNotifications := win.img.prefs.superchargerNotifications.Get().(bool)
-	if imgui.Checkbox("Supercharger Tape Motion", &superchargerNotifications) {
-		win.img.prefs.superchargerNotifications.Set(superchargerNotifications)
-	}
+		superchargerNotifications := win.img.prefs.superchargerNotifications.Get().(bool)
+		if imgui.Checkbox("Supercharger Tape Motion", &superchargerNotifications) {
+			win.img.prefs.superchargerNotifications.Set(superchargerNotifications)
+		}
 
-	audioMuteNotification := win.img.prefs.audioMuteNotification.Get().(bool)
-	if imgui.Checkbox("Audio Mute Indicator", &audioMuteNotification) {
-		win.img.prefs.audioMuteNotification.Set(audioMuteNotification)
+		audioMuteNotification := win.img.prefs.audioMuteNotification.Get().(bool)
+		if imgui.Checkbox("Audio Mute Indicator", &audioMuteNotification) {
+			win.img.prefs.audioMuteNotification.Set(audioMuteNotification)
+		}
+
+		coprocDevNotification := win.img.prefs.coprocDevNotification.Get().(bool)
+		if imgui.Checkbox("Coprocessor Development", &coprocDevNotification) {
+			win.img.prefs.coprocDevNotification.Set(coprocDevNotification)
+		}
+
+		visibility := float32(win.img.prefs.notificationVisibility.Get().(float64)) * 100
+		if imgui.SliderFloatV("Visibility", &visibility, 0.0, 100.0, "%.0f%%", imgui.SliderFlagsNone) {
+			win.img.prefs.notificationVisibility.Set(visibility / 100)
+		}
 	}
 
 	imgui.Spacing()
