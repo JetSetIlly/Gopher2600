@@ -148,9 +148,9 @@ type CartCoProcRelocatable interface {
 	ELFSection(string) ([]uint8, uint32, bool)
 }
 
-// CartCoProcNonRelocatable is implemented by cartridge mappers that are loaded
+// CartCoProcRelocate is implemented by cartridge mappers that are loaded
 // into a specific coprocessor memory address.
-type CartCoProcNonRelocatable interface {
+type CartCoProcRelocate interface {
 	ExecutableOrigin() uint32
 }
 

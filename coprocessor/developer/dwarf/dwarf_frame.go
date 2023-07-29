@@ -78,7 +78,15 @@ type frameSection struct {
 	derivation io.Writer
 }
 
-func newFrameSectionFromFile(ef *elf.File, coproc frameCoproc) (*frameSection, error) {
+// controls whether frame section should be relocated towards the actual executable origin
+type frameSectionRelocate struct {
+	relocate bool
+	origin   uint32
+}
+
+func newFrameSectionFromFile(ef *elf.File, coproc frameCoproc,
+	rel frameSectionRelocate) (*frameSection, error) {
+
 	sec := ef.Section(".debug_frame")
 	if sec == nil {
 		return nil, nil
@@ -87,10 +95,12 @@ func newFrameSectionFromFile(ef *elf.File, coproc frameCoproc) (*frameSection, e
 	if err != nil {
 		return nil, err
 	}
-	return newFrameSection(data, ef.ByteOrder, coproc)
+	return newFrameSection(data, ef.ByteOrder, coproc, rel)
 }
 
-func newFrameSection(data []uint8, byteOrder binary.ByteOrder, coproc frameCoproc) (*frameSection, error) {
+func newFrameSection(data []uint8, byteOrder binary.ByteOrder,
+	coproc frameCoproc, rel frameSectionRelocate) (*frameSection, error) {
+
 	frm := &frameSection{
 		coproc:    coproc,
 		cie:       make(map[uint32]*frameSectionCIE),
@@ -181,6 +191,11 @@ func newFrameSection(data []uint8, byteOrder binary.ByteOrder, coproc frameCopro
 			// FDE applies
 			fde.startAddress = byteOrder.Uint32(b[n:])
 			n += 4
+
+			// adjust start address to bring it into range of the executable
+			if rel.relocate {
+				fde.startAddress += uint32(int(rel.origin) - int(fde.startAddress))
+			}
 
 			// end address (named "address range" in the DWARF-4 specification)
 			// is the highest instruction address for which this FDE applies

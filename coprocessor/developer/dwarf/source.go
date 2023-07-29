@@ -310,7 +310,8 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		// address descriptions (which will definitely be present)
 
 		data, _, _ := c.ELFSection(".debug_frame")
-		src.debugFrame, err = newFrameSection(data, ef.ByteOrder, coprocShim{cart: src.cart})
+		rel := frameSectionRelocate{}
+		src.debugFrame, err = newFrameSection(data, ef.ByteOrder, coprocShim{cart: src.cart}, rel)
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}
@@ -321,14 +322,18 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 			logger.Logf("dwarf", err.Error())
 		}
 	} else {
-		if c, ok := coproc.(mapper.CartCoProcNonRelocatable); ok {
+		if c, ok := coproc.(mapper.CartCoProcRelocate); ok {
 			relocate = true
 			executableOrigin = uint64(c.ExecutableOrigin())
 			logger.Logf("dwarf", "found non-relocatable origin: %08x", executableOrigin)
 		}
 
 		// create frame section from the raw ELF section
-		src.debugFrame, err = newFrameSectionFromFile(ef, coprocShim{cart: src.cart})
+		rel := frameSectionRelocate{
+			relocate: relocate,
+			origin:   uint32(executableOrigin),
+		}
+		src.debugFrame, err = newFrameSectionFromFile(ef, coprocShim{cart: src.cart}, rel)
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}

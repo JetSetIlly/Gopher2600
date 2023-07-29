@@ -240,7 +240,7 @@ func (cart *Ace) SetDeveloper(dev mapper.CartCoProcDeveloper) {
 	cart.arm.SetDeveloper(dev)
 }
 
-// ExecutableOrigin implements the mapper.CartCoProcNonRelocatable interface.
+// ExecutableOrigin implements the mapper.CartCoProcRelocatable interface.
 func (cart *Ace) ExecutableOrigin() uint32 {
 	return cart.mem.flashARMOrigin
 }
