@@ -19,6 +19,7 @@ import (
 	"debug/dwarf"
 	"debug/elf"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -32,6 +33,10 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
+
+// Sentinal error to indicate that the DWARF data isn't supported by the
+// package. It might be valid DWARF but we don't want to deal with it
+var UnsupportedDWARF = errors.New("unsupported DWARF")
 
 // Cartridge defines the interface to the cartridge required by the source package
 type Cartridge interface {
@@ -222,6 +227,17 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		}
 	}
 	defer ef.Close()
+
+	// check existance of DWARF data and the DWARF version before proceeding
+	debug_info := ef.Section(".debug_info")
+	b, err := debug_info.Data()
+	if err != nil {
+		return nil, fmt.Errorf("dwarf: %v", err)
+	}
+	version := ef.ByteOrder.Uint16(b[4:])
+	if version != 4 {
+		return nil, fmt.Errorf("%v: only version 4 of DWARF is supported", UnsupportedDWARF)
+	}
 
 	// whether ELF file is relocatable or not
 	relocatable := ef.Type&elf.ET_REL == elf.ET_REL
