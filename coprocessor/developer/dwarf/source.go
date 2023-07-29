@@ -236,7 +236,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	}
 	version := ef.ByteOrder.Uint16(b[4:])
 	if version != 4 {
-		return nil, fmt.Errorf("%v: only version 4 of DWARF is supported", UnsupportedDWARF)
+		return nil, fmt.Errorf("%w: version %d of DWARF is not supported", UnsupportedDWARF, version)
 	}
 
 	// whether ELF file is relocatable or not

@@ -21,18 +21,17 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-func (img *SdlImgui) drawPlusROMFirstInstallation() {
-	if !img.plusROMFirstInstallation {
-		return
-	}
-
+func (img *SdlImgui) modalDrawPlusROMFirstInstallation() {
 	nick := img.vcs.Env.Prefs.PlusROM.Nick.String()
 	id := img.vcs.Env.Prefs.PlusROM.ID.String()
 
-	img.hasModal = true
+	const popupTitle = "PlusROM First Installation"
 
-	imgui.OpenPopup("PlusROM First Installation")
-	if imgui.BeginPopupModalV("PlusROM First Installation", nil, imgui.WindowFlagsNone) {
+	imgui.OpenPopup(popupTitle)
+	flgs := imgui.WindowFlagsAlwaysAutoResize
+	flgs |= imgui.WindowFlagsNoMove
+	flgs |= imgui.WindowFlagsNoSavedSettings
+	if imgui.BeginPopupModalV(popupTitle, nil, flgs) {
 		imgui.Text("This looks like your first time using a PlusROM cartridge. Before")
 		imgui.Text("proceeding it is a good idea for you to set your 'nick'. This will be")
 		imgui.Text("used to identify you when contacting the PlusROM server.")
@@ -75,11 +74,8 @@ func (img *SdlImgui) drawPlusROMFirstInstallation() {
 					logger.Logf("sdlimgui", "could not save preferences: %v", err)
 				}
 
-				// first installation has finished
-				img.plusROMFirstInstallation = false
-
 				imgui.CloseCurrentPopup()
-				img.hasModal = false
+				img.modal = modalNone
 			}
 		} else {
 			imgui.AlignTextToFramePadding()

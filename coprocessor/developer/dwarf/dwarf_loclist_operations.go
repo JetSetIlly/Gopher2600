@@ -26,7 +26,7 @@ import (
 // only then when the expression appears outside of a location list
 //
 // returns empty loclistOperator and zero if expression cannot be handled
-func (sec *loclistSection) decodeLoclistOperationWithOrigin(expr []uint8, origin uint64) (loclistOperator, int) {
+func (sec *loclistSection) decodeLoclistOperationWithOrigin(expr []uint8, origin uint64) (loclistOperator, int, error) {
 	switch expr[0] {
 	case 0x03:
 		// DW_OP_addr
@@ -43,7 +43,7 @@ func (sec *loclistSection) decodeLoclistOperationWithOrigin(expr []uint8, origin
 				}, nil
 			},
 			operator: "DW_OP_addr",
-		}, 5
+		}, 5, nil
 	}
 
 	// other operators do not need the special handling
@@ -63,7 +63,7 @@ func (sec *loclistSection) decodeLoclistOperationWithOrigin(expr []uint8, origin
 // the expr slice
 //
 // returns empty loclistOperator and zero if expression cannot be handled
-func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator, int) {
+func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator, int, error) {
 	// expression location operators reference
 	//
 	// "DWARF Debugging Information Format Version 4", page 17 to 24
@@ -85,7 +85,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_addr",
-		}, 5
+		}, 5, nil
 
 	case 0x06:
 		// DW_OP_deref
@@ -106,7 +106,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_deref",
-		}, 1
+		}, 1, nil
 
 	case 0x08:
 		// DW_OP_const1u
@@ -122,7 +122,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_const1u",
-		}, 2
+		}, 2, nil
 
 	case 0x09:
 		// DW_OP_const1s
@@ -141,7 +141,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_const1s",
-		}, 2
+		}, 2, nil
 
 	case 0x0a:
 		// DW_OP_const2u
@@ -155,7 +155,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_const2u",
-		}, 3
+		}, 3, nil
 
 	case 0x0b:
 		// DW_OP_const2s
@@ -172,7 +172,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_const2s",
-		}, 3
+		}, 3, nil
 
 	case 0x0c:
 		// DW_OP_const4u
@@ -186,7 +186,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_const4u",
-		}, 5
+		}, 5, nil
 
 	case 0x0d:
 		// DW_OP_const4s
@@ -200,7 +200,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_const4s",
-		}, 5
+		}, 5, nil
 
 	case 0x10:
 		// DW_OP_constu
@@ -216,7 +216,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_constu",
-		}, n + 1
+		}, n + 1, nil
 
 	case 0x11:
 		// DW_OP_consts
@@ -232,7 +232,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_consts",
-		}, n + 1
+		}, n + 1, nil
 
 	case 0x12:
 		// DW_OP_dup
@@ -241,7 +241,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 		return loclistOperator{
 			resolve: func(loc *loclist) (loclistStack, error) {
 				return loc.peek(), nil
-			}}, 1
+			}}, 1, nil
 
 	case 0x13:
 		fallthrough
@@ -252,7 +252,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 	case 0x16:
 		fallthrough
 	case 0x17:
-		return loclistOperator{}, 0
+		return loclistOperator{}, 0, nil
 
 	case 0x18:
 		// DW_OP_xderef
@@ -264,7 +264,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// implementation-defined address calculation and pushed as the new stack top. The size of
 		// the data retrieved from the dereferenced address is the size of an address on the target
 		// machine"
-		return loclistOperator{}, 0
+		return loclistOperator{}, 0, nil
 
 	case 0x19:
 		// DW_OP_abs
@@ -282,7 +282,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_abs",
-		}, 1
+		}, 1, nil
 
 	case 0x1a:
 		// DW_OP_and
@@ -299,7 +299,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_and",
-		}, 1
+		}, 1, nil
 
 	case 0x1b:
 		// DW_OP_div
@@ -317,7 +317,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_div",
-		}, 1
+		}, 1, nil
 
 	case 0x1c:
 		// DW_OP_minus
@@ -335,7 +335,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_minus",
-		}, 1
+		}, 1, nil
 
 	case 0x1d:
 		// DW_OP_mod
@@ -353,7 +353,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_mod",
-		}, 1
+		}, 1, nil
 
 	case 0x1e:
 		// DW_OP_mul
@@ -371,7 +371,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_mul",
-		}, 1
+		}, 1, nil
 
 	case 0x1f:
 		// DW_OP_neg
@@ -388,7 +388,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_neg",
-		}, 1
+		}, 1, nil
 
 	case 0x20:
 		// DW_OP_not
@@ -404,7 +404,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_not",
-		}, 1
+		}, 1, nil
 
 	case 0x21:
 		// DW_OP_or
@@ -422,7 +422,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_or",
-		}, 1
+		}, 1, nil
 
 	case 0x22:
 		// DW_OP_plus
@@ -439,7 +439,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_plus",
-		}, 1
+		}, 1, nil
 
 	case 0x23:
 		// DW_OP_plus_uconst
@@ -456,7 +456,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_plus_uconst",
-		}, n + 1
+		}, n + 1, nil
 
 	case 0x24:
 		// DW_OP_shl
@@ -474,7 +474,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_shl",
-		}, 1
+		}, 1, nil
 
 	case 0x25:
 		// DW_OP_shr
@@ -493,7 +493,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_shr",
-		}, 1
+		}, 1, nil
 
 	case 0x26:
 		// DW_OP_shra
@@ -517,7 +517,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_shra",
-		}, 1
+		}, 1, nil
 
 	case 0x27:
 		// DW_OP_xor
@@ -535,40 +535,40 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_xor",
-		}, 1
+		}, 1, nil
 
 	case 0x28:
 		// DW_OP_bra
 		// (control flow operations)
-		return loclistOperator{}, 0
+		return loclistOperator{}, 0, nil
 	case 0x29:
 		// DW_OP_eq
 		// (control flow operations)
-		return loclistOperator{}, 0
+		return loclistOperator{}, 0, nil
 	case 0x2a:
 		// DW_OP_ge
 		// (control flow operations)
-		return loclistOperator{}, 0
+		return loclistOperator{}, 0, nil
 	case 0x2b:
 		// DW_OP_gt
 		// (control flow operations)
-		return loclistOperator{}, 0
+		return loclistOperator{}, 0, nil
 	case 0x2c:
 		// DW_OP_le
 		// (control flow operations)
-		return loclistOperator{}, 0
+		return loclistOperator{}, 0, nil
 	case 0x2d:
 		// DW_OP_lt
 		// (control flow operations)
-		return loclistOperator{}, 0
+		return loclistOperator{}, 0, nil
 	case 0x2e:
 		// DW_OP_ne
 		// (control flow operations)
-		return loclistOperator{}, 0
+		return loclistOperator{}, 0, nil
 	case 0x2f:
 		// DW_OP_skip
 		// (control flow operations)
-		return loclistOperator{}, 0
+		return loclistOperator{}, 0, nil
 
 	case 0x30:
 		fallthrough
@@ -646,7 +646,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: fmt.Sprintf("DW_OP_lit%d", lit),
-		}, 1
+		}, 1, nil
 
 	case 0x50:
 		fallthrough
@@ -728,7 +728,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: fmt.Sprintf("DW_OP_reg%d", reg),
-		}, 1
+		}, 1, nil
 
 	case 0x70:
 		fallthrough
@@ -813,7 +813,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: fmt.Sprintf("DW_OP_breg%d", reg),
-		}, n + 1
+		}, n + 1, nil
 
 	case 0x90:
 		// DW_OP_regx
@@ -833,7 +833,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_regx",
-		}, n + 1
+		}, n + 1, nil
 
 	case 0x91:
 		// DW_OP_fbreg
@@ -858,7 +858,15 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_fbreg",
-		}, n + 1
+		}, n + 1, nil
+
+	case 0x92:
+		// DW_OP_bregx
+		// (register based addressing)
+		// "DW_OP_bregx
+		// "The DW_OP_bregx operation has two operands: a register which is specified by an unsigned
+		// LEB128 number, followed by a signed LEB128 offset"
+		return loclistOperator{}, 0, nil
 
 	case 0x93:
 		// DW_OP_piece
@@ -908,7 +916,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_piece",
-		}, n + 1
+		}, n + 1, nil
 
 	case 0x94:
 		// DW_OP_deref_size
@@ -940,12 +948,12 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_deref_size",
-		}, 2
+		}, 2, nil
 
 	case 0x95:
 		// DW_OP_xdref_size
 		// (stack operations)
-		return loclistOperator{}, 0
+		return loclistOperator{}, 0, nil
 
 	case 0x96:
 		// DW_OP_nop
@@ -959,7 +967,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_nop",
-		}, 1
+		}, 1, nil
 
 	case 0x9c:
 		// DW_OP_call_frame_cfa
@@ -978,11 +986,12 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				}, nil
 			},
 			operator: "DW_OP_call_frame_cfa",
-		}, 1
+		}, 1, nil
 
 	case 0x9e:
 		// DW_OP_implicit_value
 		// (implicit location descriptions)
+		return loclistOperator{}, 0, nil
 
 	case 0x9f:
 		// DW_OP_stack_value
@@ -1002,8 +1011,8 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				return res, nil
 			},
 			operator: "DW_OP_stack_value",
-		}, 1
+		}, 1, nil
 	}
 
-	return loclistOperator{}, 0
+	return loclistOperator{}, 0, fmt.Errorf("%w: unsupported expression operator %02x", UnsupportedDWARF, expr[0])
 }

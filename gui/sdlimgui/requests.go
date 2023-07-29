@@ -97,7 +97,9 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 
 			switch notice {
 			case notifications.NotifyPlusROMNewInstallation:
-				img.plusROMFirstInstallation = true
+				img.modal = modalPlusROMFirstInstallation
+			case notifications.NotifyUnsupportedDWARF:
+				img.modal = modalUnsupportedDWARF
 			default:
 				img.playScr.cartridgeNotice.set(notice)
 			}

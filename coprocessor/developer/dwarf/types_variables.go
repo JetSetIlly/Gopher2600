@@ -162,6 +162,9 @@ func (varb *SourceVariable) Update() {
 // Note that the basic information about the variable is not output by this
 // function. The String() function provides that information
 func (varb *SourceVariable) WriteDerivation(w io.Writer) error {
+	if varb.loclist == nil {
+		return nil
+	}
 	old := varb.loclist.derivation
 	varb.loclist.derivation = w
 	defer func() {

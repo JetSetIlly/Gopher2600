@@ -16,6 +16,7 @@
 package developer
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -93,7 +94,7 @@ func NewDeveloper(state Emulation, tv TV) Developer {
 	}
 }
 
-func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile string) {
+func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile string) error {
 	dev.cart = nil
 
 	dev.sourceLock.Lock()
@@ -123,9 +124,13 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 	}
 
 	if cart == nil || cart.GetCoProc() == nil {
-		return
+		return nil
 	}
 	dev.cart = cart
+
+	// we always set the developer for the cartridge even if we have no source.
+	// some developer functions don't require source code to be useful
+	dev.cart.GetCoProc().SetDeveloper(dev)
 
 	switch dev.emulation.State() {
 	case govern.EmulatorStart:
@@ -143,14 +148,13 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 	dev.sourceLock.Unlock()
 
 	if err != nil {
-		logger.Logf("developer", err.Error())
+		return fmt.Errorf("developer: %w", err)
 	} else {
 		logger.Logf("developer", "DWARF loaded in %s", time.Since(t))
 	}
 
-	// we always set the developer for the cartridge even if we have no source.
-	// some developer functions don't require source code to be useful
-	dev.cart.GetCoProc().SetDeveloper(dev)
+	return nil
+
 }
 
 // HighAddress implements the mapper.CartCoProcDeveloper interface.

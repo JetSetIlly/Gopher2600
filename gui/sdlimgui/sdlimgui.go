@@ -117,11 +117,8 @@ type SdlImgui struct {
 	prefs    *preferences
 	crtPrefs *crt.Preferences
 
-	// hasModal should be true for the duration of when a modal popup is on the screen
-	hasModal bool
-
-	// a request for the PlusROM first installation procedure has been received
-	plusROMFirstInstallation bool
+	// modal window
+	modal modal
 
 	// functions that should only be run after gui rendering
 	postRenderFunctions chan func()
@@ -298,12 +295,10 @@ func (img *SdlImgui) GetReflectionRenderer() reflection.Renderer {
 
 // quit application sends a request to the emulation.
 func (img *SdlImgui) quit() {
-	if !img.hasModal {
-		select {
-		case img.userinput <- userinput.EventQuit{}:
-		default:
-			logger.Log("sdlimgui", "dropped quit event")
-		}
+	select {
+	case img.userinput <- userinput.EventQuit{}:
+	default:
+		logger.Log("sdlimgui", "dropped quit event")
 	}
 }
 
@@ -333,7 +328,7 @@ func (img *SdlImgui) draw() {
 	}
 
 	img.wm.draw()
-	img.drawPlusROMFirstInstallation()
+	img.modalDraw()
 }
 
 // is the gui in playmode or not. thread safe. called from emulation thread

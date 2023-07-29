@@ -280,7 +280,14 @@ func (bld *build) buildTypes(src *Source) error {
 						}
 
 						memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
-						r, _ := bld.debug_loc.decodeLoclistOperation(fld.Val.([]uint8))
+						expr := fld.Val.([]uint8)
+						r, n, err := bld.debug_loc.decodeLoclistOperation(expr)
+						if err != nil {
+							return err
+						}
+						if n == 0 {
+							return fmt.Errorf("unhandled expression operator %02x", expr[0])
+						}
 						memb.loclist.addOperator(r)
 					default:
 						continue
@@ -759,6 +766,9 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 						src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
 					})
 				if err != nil {
+					if errors.Is(err, UnsupportedDWARF) {
+						return err
+					}
 					logger.Logf("dwarf", "%s: %v", varb.Name, err)
 				}
 
@@ -796,7 +806,15 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 					}
 				}
 
-				if r, o := bld.debug_loc.decodeLoclistOperationWithOrigin(locfld.Val.([]uint8), globalOrigin); o > 0 {
+				expr := locfld.Val.([]uint8)
+				r, n, err := bld.debug_loc.decodeLoclistOperationWithOrigin(expr, globalOrigin)
+				if err != nil {
+					return err
+				}
+				if n == 0 {
+					logger.Logf("dwarf", "unhandled expression operator %02x", expr[0])
+				}
+				if n > 0 {
 					varb.loclist = bld.debug_loc.newLoclistJustContext(varb)
 					varb.loclist.addOperator(r)
 

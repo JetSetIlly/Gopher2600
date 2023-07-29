@@ -63,6 +63,9 @@ const (
 	// PlusROM new installation
 	NotifyPlusROMNewInstallation Notify = "NotifyPlusROMNewInstallation"
 
+	// unsupported DWARF data
+	NotifyUnsupportedDWARF Notify = "NotifyUnsupportedDWARF"
+
 	// coprocessor development information has been loaded
 	NotifyCoprocDevStarted Notify = "NotifyCoprocDevStarted"
 	NotifyCoprocDevEnded   Notify = "NotifyCoprocDevEnded"

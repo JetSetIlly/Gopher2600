@@ -44,7 +44,6 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 	img.tooltipForce = shift
 
 	if ev.Type == sdl.KEYUP {
-
 		// special handling if window searching is enabled
 		if img.wm.searchActive {
 			switch ev.Keysym.Scancode {
@@ -80,113 +79,117 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 					img.quit()
 				}
 
-			case sdl.SCANCODE_F7:
-				img.playScr.toggleFPS()
-
 			default:
 				handled = false
 			}
 		}
 
-		switch ev.Keysym.Scancode {
-		case sdl.SCANCODE_TAB:
-			if !img.isPlaymode() && imgui.IsAnyItemActive() {
-				// in debugger mode do not handle if an imgui widget is active
-				// (see the sdl.KEYDOWN branch below for opposite condition and
-				// explanation)
-				handled = false
-			} else {
+		if !img.modalActive() {
+			switch ev.Keysym.Scancode {
+			case sdl.SCANCODE_TAB:
+				if !img.isPlaymode() && imgui.IsAnyItemActive() {
+					// in debugger mode do not handle if an imgui widget is active
+					// (see the sdl.KEYDOWN branch below for opposite condition and
+					// explanation)
+					handled = false
+				} else {
+					if ctrl {
+						img.dbg.ReloadCartridge()
+					} else {
+						// only open ROM selector if window has been focused for a
+						// while. see windowFocusedTime declaration for an explanation
+						if time.Since(img.windowFocusedTime) > 500*time.Millisecond {
+							img.wm.toggleOpen(winSelectROMID)
+						}
+					}
+				}
+
+			case sdl.SCANCODE_GRAVE:
+				if img.isPlaymode() {
+					img.dbg.PushSetMode(govern.ModeDebugger)
+				} else {
+					img.dbg.PushSetMode(govern.ModePlay)
+				}
+
+			case sdl.SCANCODE_F7:
+				if img.isPlaymode() {
+					img.playScr.toggleFPS()
+				}
+
+			case sdl.SCANCODE_F8:
+				w := img.wm.playmodeWindows[winBotID]
+				w.playmodeSetOpen(!w.playmodeIsOpen())
+
+			case sdl.SCANCODE_F9:
+				img.wm.toggleOpen(winTrackerID)
+
+			case sdl.SCANCODE_F10:
+				img.wm.toggleOpen(winPrefsID)
+
+			case sdl.SCANCODE_F11:
+				img.prefs.fullScreen.Set(!img.prefs.fullScreen.Get().(bool))
+
+			case sdl.SCANCODE_F12:
+				if ctrl && !shift {
+					img.glsl.shaders[playscrShaderID].(*playscrShader).screenshot.startProcess(modeComposite, "")
+				} else if shift && !ctrl {
+					img.glsl.shaders[playscrShaderID].(*playscrShader).screenshot.startProcess(modeMotion, "")
+				} else {
+					img.glsl.shaders[playscrShaderID].(*playscrShader).screenshot.startProcess(modeSingle, "")
+				}
+
+				img.playScr.emulationNotice.set(notifications.NotifyScreenshot)
+
+			case sdl.SCANCODE_F14:
+				fallthrough
+			case sdl.SCANCODE_SCROLLLOCK:
+				img.setCapture(!img.isCaptured())
+
+			case sdl.SCANCODE_F15:
+				fallthrough
+			case sdl.SCANCODE_PAUSE:
+				if img.isPlaymode() {
+					if img.dbg.State() == govern.Paused {
+						img.dbg.PushSetPause(false)
+					} else {
+						img.dbg.PushSetPause(true)
+					}
+				} else {
+					if img.dbg.State() == govern.Paused {
+						img.term.pushCommand("RUN")
+					} else {
+						img.setCapturedRunning(false)
+					}
+				}
+
+			case sdl.SCANCODE_A:
+				if ctrl {
+					img.wm.arrangeBySize = 1
+				} else {
+					handled = false
+				}
+
+			case sdl.SCANCODE_R:
 				if ctrl {
 					img.dbg.ReloadCartridge()
 				} else {
-					// only open ROM selector if window has been focused for a
-					// while. see windowFocusedTime declaration for an explanation
-					if time.Since(img.windowFocusedTime) > 500*time.Millisecond {
-						img.wm.toggleOpen(winSelectROMID)
-					}
+					handled = false
 				}
-			}
 
-		case sdl.SCANCODE_GRAVE:
-			if img.isPlaymode() {
-				img.dbg.PushSetMode(govern.ModeDebugger)
-			} else {
-				img.dbg.PushSetMode(govern.ModePlay)
-			}
-
-		case sdl.SCANCODE_F8:
-			w := img.wm.playmodeWindows[winBotID]
-			w.playmodeSetOpen(!w.playmodeIsOpen())
-
-		case sdl.SCANCODE_F9:
-			img.wm.toggleOpen(winTrackerID)
-
-		case sdl.SCANCODE_F10:
-			img.wm.toggleOpen(winPrefsID)
-
-		case sdl.SCANCODE_F11:
-			img.prefs.fullScreen.Set(!img.prefs.fullScreen.Get().(bool))
-
-		case sdl.SCANCODE_F12:
-			if ctrl && !shift {
-				img.glsl.shaders[playscrShaderID].(*playscrShader).screenshot.startProcess(modeComposite, "")
-			} else if shift && !ctrl {
-				img.glsl.shaders[playscrShaderID].(*playscrShader).screenshot.startProcess(modeMotion, "")
-			} else {
-				img.glsl.shaders[playscrShaderID].(*playscrShader).screenshot.startProcess(modeSingle, "")
-			}
-
-			img.playScr.emulationNotice.set(notifications.NotifyScreenshot)
-
-		case sdl.SCANCODE_F14:
-			fallthrough
-		case sdl.SCANCODE_SCROLLLOCK:
-			img.setCapture(!img.isCaptured())
-
-		case sdl.SCANCODE_F15:
-			fallthrough
-		case sdl.SCANCODE_PAUSE:
-			if img.isPlaymode() {
-				if img.dbg.State() == govern.Paused {
-					img.dbg.PushSetPause(false)
+			case sdl.SCANCODE_M:
+				if ctrl {
+					img.toggleAudioMute()
 				} else {
-					img.dbg.PushSetPause(true)
+					handled = false
 				}
-			} else {
-				if img.dbg.State() == govern.Paused {
-					img.term.pushCommand("RUN")
-				} else {
-					img.setCapturedRunning(false)
-				}
-			}
 
-		case sdl.SCANCODE_A:
-			if ctrl {
-				img.wm.arrangeBySize = 1
-			} else {
+			default:
 				handled = false
 			}
 
-		case sdl.SCANCODE_R:
-			if ctrl {
-				img.dbg.ReloadCartridge()
-			} else {
-				handled = false
+			if handled {
+				return
 			}
-
-		case sdl.SCANCODE_M:
-			if ctrl {
-				img.toggleAudioMute()
-			} else {
-				handled = false
-			}
-
-		default:
-			handled = false
-		}
-
-		if handled {
-			return
 		}
 	} else if ev.Type == sdl.KEYDOWN {
 		// for debugger mode we test for the ESC key press on the down event
@@ -200,7 +203,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 		// to be deselected and for the special handling to require a
 		// completely separate key press
 
-		if !img.isPlaymode() {
+		if !img.isPlaymode() && !img.modalActive() {
 			switch ev.Keysym.Scancode {
 			case sdl.SCANCODE_TAB:
 				// in debugger mode do not handle if an imgui widget is not

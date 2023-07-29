@@ -28,6 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/comparison"
 	coprocDev "github.com/jetsetilly/gopher2600/coprocessor/developer"
+	coprocDWARF "github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	coprocDisasm "github.com/jetsetilly/gopher2600/coprocessor/disassembly"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
@@ -1163,7 +1164,16 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	}
 
 	dbg.CoProcDisasm.AttachCartridge(dbg.coprocShim)
-	dbg.CoProcDev.AttachCartridge(dbg.coprocShim, cartload.Filename, *dbg.opts.ELF)
+	err = dbg.CoProcDev.AttachCartridge(dbg.coprocShim, cartload.Filename, *dbg.opts.ELF)
+	if err != nil {
+		logger.Logf("debugger", err.Error())
+		if errors.Is(err, coprocDWARF.UnsupportedDWARF) {
+			err = dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifyUnsupportedDWARF)
+			if err != nil {
+				logger.Logf("debugger", err.Error())
+			}
+		}
+	}
 
 	// notify GUI of coprocessor state
 	if dbg.CoProcDev.HasSource() {

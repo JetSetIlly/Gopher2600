@@ -501,5 +501,5 @@ func decodeFrameInstruction(coproc frameCoproc, byteOrder binary.ByteOrder, cie 
 		}, nil
 	}
 
-	return frameInstruction{}, fmt.Errorf("unknown call frame instruction: %02x", opcode)
+	return frameInstruction{}, fmt.Errorf("%w: unknown call frame instruction %02x", UnsupportedDWARF, opcode)
 }

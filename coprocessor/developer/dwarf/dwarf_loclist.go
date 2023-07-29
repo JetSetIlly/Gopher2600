@@ -133,9 +133,12 @@ func (sec *loclistSection) newLoclistFromSingleOperator(ctx loclistFramebase, ex
 		ctx:       ctx,
 		singleLoc: true,
 	}
-	op, n := sec.decodeLoclistOperation(expr)
+	op, n, err := sec.decodeLoclistOperation(expr)
+	if err != nil {
+		return nil, err
+	}
 	if n == 0 {
-		return nil, fmt.Errorf("unknown expression operator %02x", expr[0])
+		return nil, fmt.Errorf("unhandled expression operator %02x", expr[0])
 	}
 	loc.list = append(loc.list, op)
 	return loc, nil
@@ -213,9 +216,12 @@ func (sec *loclistSection) newLoclist(ctx loclistFramebase, ptr int64,
 
 			// loop through stack operations
 			for length > 0 {
-				r, n := sec.decodeLoclistOperation(sec.data[ptr:])
+				r, n, err := sec.decodeLoclistOperation(sec.data[ptr:])
+				if err != nil {
+					return err
+				}
 				if n == 0 {
-					return fmt.Errorf("unknown expression operator %02x", sec.data[ptr])
+					return fmt.Errorf("unhandled expression operator %02x", sec.data[ptr])
 				}
 
 				// add resolver to variable

@@ -103,7 +103,7 @@ func (img *SdlImgui) Service() {
 				// case *sdl.WindowEvent handled by event filter (see comment in serviceWindowEvent()
 
 				case *sdl.TextInputEvent:
-					if img.hasModal || !img.isCaptured() {
+					if !img.modalActive() || !img.isCaptured() {
 						imgui.CurrentIO().AddInputCharacters(string(ev.Text[:]))
 					}
 

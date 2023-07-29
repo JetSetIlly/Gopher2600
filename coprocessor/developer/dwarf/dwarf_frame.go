@@ -258,7 +258,7 @@ func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
 		r, err := decodeFrameInstruction(fr.coproc, fr.byteOrder, fde.cie, fde.cie.instructions[ptr:], &tab)
 		if err != nil {
 			if errors.Is(err, frameInstructionNotImplemented) {
-				return 0, fmt.Errorf("%s %v", r.opcode, err)
+				return 0, fmt.Errorf("%s %w", r.opcode, err)
 			}
 			return 0, err
 		}
@@ -278,7 +278,7 @@ func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
 		r, err := decodeFrameInstruction(fr.coproc, fr.byteOrder, fde.cie, fde.instructions[ptr:], &tab)
 		if err != nil {
 			if errors.Is(err, frameInstructionNotImplemented) {
-				return 0, fmt.Errorf("%s %v", r.opcode, err)
+				return 0, fmt.Errorf("%s %w", r.opcode, err)
 			}
 			return 0, err
 		}
