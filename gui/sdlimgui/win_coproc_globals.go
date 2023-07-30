@@ -341,8 +341,19 @@ func drawVariableTooltip(varb *dwarf.SourceVariable, value uint32, cols *imguiCo
 
 			imgui.PopStyleColor()
 		}
-
 		imgui.EndTable()
+
+		if varb.Type.Conversion != nil {
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+			imgui.Text("Converted Value: ")
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcVariablesNotes)
+			imgui.Text(fmt.Sprintf(varb.Type.Conversion(varb.Value())))
+			imgui.PopStyleColor()
+		}
+
 	}
 
 	imgui.Spacing()

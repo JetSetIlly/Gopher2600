@@ -307,6 +307,9 @@ type SourceType struct {
 
 	// the base type of all the elements in the type
 	ElementType *SourceType
+
+	// whether to allow type level conversion of the type
+	Conversion func(v uint32) (string, any)
 }
 
 func (typ *SourceType) String() string {

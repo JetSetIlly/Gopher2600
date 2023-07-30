@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -34,6 +36,9 @@ type build struct {
 	// ELF sections that help DWARF locate local variables in memory
 	debug_loc   *loclistSection
 	debug_frame *frameSection
+
+	// types used in the source
+	types map[dwarf.Offset]*SourceType
 
 	// the order in which we encountered the subprograms and inlined
 	// subroutines is important
@@ -55,6 +60,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *loclistSection, debug_frame *frameSec
 		dwrf:         dwrf,
 		debug_loc:    debug_loc,
 		debug_frame:  debug_frame,
+		types:        make(map[dwarf.Offset]*SourceType),
 		entries:      make(map[dwarf.Offset]*dwarf.Entry),
 		compileUnits: make(map[dwarf.Offset]*dwarf.Entry),
 	}
@@ -118,7 +124,7 @@ func (bld *build) buildTypes(src *Source) error {
 				}
 				typ.Name = fld.Val.(string)
 
-				src.types[e.Offset] = typ
+				bld.types[e.Offset] = typ
 			}
 		}
 
@@ -143,7 +149,7 @@ func (bld *build) buildTypes(src *Source) error {
 			}
 			typ.Size = int(fld.Val.(int64))
 
-			src.types[e.Offset] = &typ
+			bld.types[e.Offset] = &typ
 		}
 	}
 
@@ -177,7 +183,7 @@ func (bld *build) buildTypes(src *Source) error {
 				}
 				typ.Size = int(fld.Val.(int64))
 
-				src.types[e.Offset] = &typ
+				bld.types[e.Offset] = &typ
 			}
 		}
 
@@ -211,7 +217,7 @@ func (bld *build) buildTypes(src *Source) error {
 				}
 				typ.Size = int(fld.Val.(int64))
 
-				src.types[e.Offset] = &typ
+				bld.types[e.Offset] = &typ
 
 				// the name we store in the type is annotated with the composite category
 				switch e.Tag {
@@ -232,7 +238,7 @@ func (bld *build) buildTypes(src *Source) error {
 			case dwarf.TagUnionType:
 				fallthrough
 			case dwarf.TagStructType:
-				composite = src.types[e.Offset]
+				composite = bld.types[e.Offset]
 
 			case dwarf.TagMember:
 				if composite == nil {
@@ -307,8 +313,8 @@ func (bld *build) buildTypes(src *Source) error {
 			case dwarf.TagUnionType:
 				fallthrough
 			case dwarf.TagStructType:
-				if src.types[e.Offset] != nil && len(src.types[e.Offset].Members) == 0 {
-					delete(src.types, e.Offset)
+				if bld.types[e.Offset] != nil && len(bld.types[e.Offset].Members) == 0 {
+					delete(bld.types, e.Offset)
 				}
 			}
 		}
@@ -345,7 +351,7 @@ func (bld *build) buildTypes(src *Source) error {
 				}
 				num := fld.Val.(int64) + 1
 
-				src.types[baseTypeOffset] = &SourceType{
+				bld.types[baseTypeOffset] = &SourceType{
 					Name:         fmt.Sprintf("%s", arrayBaseType.Name),
 					Size:         arrayBaseType.Size * int(num),
 					ElementType:  arrayBaseType,
@@ -376,10 +382,12 @@ func (bld *build) buildTypes(src *Source) error {
 				}
 
 				typ := *baseType
-				typ.Constant = true
-				typ.Name = fmt.Sprintf("const %s", baseType.Name)
+				if !typ.Constant {
+					typ.Constant = true
+					typ.Name = fmt.Sprintf("const %s", baseType.Name)
+				}
 
-				src.types[e.Offset] = &typ
+				bld.types[e.Offset] = &typ
 			}
 		}
 
@@ -388,6 +396,30 @@ func (bld *build) buildTypes(src *Source) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// customise known types
+	var conversion func(typ *SourceType)
+	conversion = func(typ *SourceType) {
+		if strings.Contains(typ.Name, "float") {
+			if typ.Conversion == nil {
+				typ.Conversion = func(v uint32) (string, any) {
+					return "%f", math.Float32frombits(v)
+				}
+			}
+		}
+		for _, m := range typ.Members {
+			conversion(m.Type)
+		}
+		if typ.ElementType != nil {
+			conversion(typ.ElementType)
+		}
+		if typ.PointerType != nil {
+			conversion(typ.PointerType)
+		}
+	}
+	for _, typ := range bld.types {
+		conversion(typ)
 	}
 
 	return nil
@@ -399,7 +431,7 @@ func (bld *build) resolveType(v *dwarf.Entry, src *Source) (*SourceType, error) 
 		return nil, nil
 	}
 
-	typ, ok := src.types[fld.Val.(dwarf.Offset)]
+	typ, ok := bld.types[fld.Val.(dwarf.Offset)]
 	if !ok {
 		return nil, nil
 	}

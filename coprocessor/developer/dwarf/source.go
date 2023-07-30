@@ -132,9 +132,6 @@ type Source struct {
 	// sorted list of every function in all compile unit
 	SortedFunctions SortedFunctions
 
-	// types used in the source
-	types map[dwarf.Offset]*SourceType
-
 	// all global variables in all compile units
 	globals          map[string]*SourceVariable
 	GlobalsByAddress map[uint64]*SourceVariable
@@ -192,7 +189,6 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		ShortFilenames:   make([]string, 0, 10),
 		Functions:        make(map[string]*SourceFunction),
 		FunctionNames:    make([]string, 0, 10),
-		types:            make(map[dwarf.Offset]*SourceType),
 		globals:          make(map[string]*SourceVariable),
 		GlobalsByAddress: make(map[uint64]*SourceVariable),
 		SortedGlobals: SortedVariables{

@@ -71,11 +71,23 @@ type SourceVariable struct {
 
 func (varb *SourceVariable) String() string {
 	var s strings.Builder
-	s.WriteString(fmt.Sprintf("%s %s = ", varb.Type.Name, varb.Name))
+	s.WriteString(fmt.Sprintf("%s %s", varb.Type.Name, varb.Name))
 	if varb.Error != nil {
-		s.WriteString("error")
-	} else {
+		s.WriteString(" has error")
+	} else if varb.Type.IsArray() {
+		s.WriteString(" is array")
+	} else if varb.Type.IsComposite() {
+		s.WriteString(" is composite")
+	} else if varb.Type.IsPointer() {
+		s.WriteString(" = ")
 		s.WriteString(fmt.Sprintf(varb.Type.Hex(), varb.Value()))
+	} else {
+		s.WriteString(" = ")
+		if varb.Type.Conversion != nil {
+			s.WriteString(fmt.Sprintf(varb.Type.Conversion(varb.Value())))
+		} else {
+			s.WriteString(fmt.Sprintf(varb.Type.Hex(), varb.Value()))
+		}
 	}
 	return s.String()
 }
