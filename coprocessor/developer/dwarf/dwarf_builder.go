@@ -37,6 +37,9 @@ type build struct {
 	debug_loc   *loclistSection
 	debug_frame *frameSection
 
+	globals map[string]*SourceVariable
+	locals  []*SourceVariableLocal
+
 	// types used in the source
 	types map[dwarf.Offset]*SourceType
 
@@ -60,6 +63,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *loclistSection, debug_frame *frameSec
 		dwrf:         dwrf,
 		debug_loc:    debug_loc,
 		debug_frame:  debug_frame,
+		globals:      make(map[string]*SourceVariable),
 		types:        make(map[dwarf.Offset]*SourceType),
 		entries:      make(map[dwarf.Offset]*dwarf.Entry),
 		compileUnits: make(map[dwarf.Offset]*dwarf.Entry),
@@ -772,9 +776,47 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 		// adding children to the variable instance is done once all basic variables
 		// have been added
 
+		// add variable to list of globals if aprropriate. returns true if the
+		// variable has been added and false if it is not a global
+		addGlobal := func(varb *SourceVariable) bool {
+			if !varb.DeclLine.Function.IsStub() {
+				return false
+			}
+			g, ok := bld.globals[varb.Name]
+
+			if !ok || (!g.IsLocatable() && varb.IsLocatable()) {
+				bld.globals[varb.Name] = varb
+			}
+
+			// note that the file has at least one global variable
+			varb.DeclLine.File.HasGlobals = true
+
+			return true
+		}
+
+		// add variable to current lexcial range
+		addLexicalLocal := func(varb *SourceVariable) {
+			for i := range lexStart[lexStackTop] {
+				cp := *varb
+				local := &SourceVariableLocal{
+					SourceVariable: &cp,
+					Range: SourceRange{
+						Start: lexStart[lexStackTop][i],
+						End:   lexEnd[lexStackTop][i],
+					},
+				}
+
+				bld.locals = append(bld.locals, local)
+			}
+		}
+
 		// variable actually exists in memory if it has a location attribute
 		locfld := v.AttrField(dwarf.AttrLocation)
-		if locfld != nil {
+		if locfld == nil {
+			if !addGlobal(varb) {
+				addLexicalLocal(varb)
+			}
+		} else {
 			switch locfld.Class {
 			case dwarf.ClassLocListPtr:
 				if bld.debug_loc == nil {
@@ -793,15 +835,21 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 								End:   end,
 							},
 						}
-
-						src.locals = append(src.locals, local)
-						src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
+						bld.locals = append(bld.locals, local)
 					})
 				if err != nil {
 					if errors.Is(err, UnsupportedDWARF) {
 						return err
 					}
 					logger.Logf("dwarf", "%s: %v", varb.Name, err)
+				}
+
+				// I don't believe variables with the class of location
+				// attribute can ever be a global variable but I don't know that
+				// for sure. either way, attempting to add to the global list
+				// does no harm
+				if !addGlobal(varb) {
+					addLexicalLocal(varb)
 				}
 
 			case dwarf.ClassExprLoc:
@@ -846,37 +894,15 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 				if n == 0 {
 					logger.Logf("dwarf", "unhandled expression operator %02x", expr[0])
 				}
-				if n > 0 {
-					varb.loclist = bld.debug_loc.newLoclistJustContext(varb)
-					varb.loclist.addOperator(r)
 
-					// add variable to list of global variables if there is no
-					// parent function otherwise we treat the variable as a
-					// local variable
-					if varb.DeclLine.Function.IsStub() {
-						// list of global variables for all compile units
-						src.globals[varb.Name] = varb
-						src.GlobalsByAddress[varb.resolve().address] = varb
-						src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, varb)
+				varb.loclist = bld.debug_loc.newLoclistJustContext(varb)
+				varb.loclist.addOperator(r)
 
-						// note that the file has at least one global variables
-						varb.DeclLine.File.HasGlobals = true
-
-					} else {
-						for i := range lexStart[lexStackTop] {
-							cp := *varb
-							local := &SourceVariableLocal{
-								SourceVariable: &cp,
-								Range: SourceRange{
-									Start: lexStart[lexStackTop][i],
-									End:   lexEnd[lexStackTop][i],
-								},
-							}
-
-							src.locals = append(src.locals, local)
-							src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
-						}
-					}
+				// we don't have a range for this variable it is either a global
+				// or a variable that we can assume is visible for the lexical
+				// range
+				if !addGlobal(varb) {
+					addLexicalLocal(varb)
 				}
 			}
 		}

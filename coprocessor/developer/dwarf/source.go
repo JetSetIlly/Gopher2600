@@ -133,12 +133,10 @@ type Source struct {
 	SortedFunctions SortedFunctions
 
 	// all global variables in all compile units
-	globals          map[string]*SourceVariable
 	GlobalsByAddress map[uint64]*SourceVariable
 	SortedGlobals    SortedVariables
 
 	// all local variables in all compile units
-	locals       []*SourceVariableLocal
 	SortedLocals SortedVariablesLocal
 
 	// the highest address of any variable (not just global variables, any
@@ -189,7 +187,6 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		ShortFilenames:   make([]string, 0, 10),
 		Functions:        make(map[string]*SourceFunction),
 		FunctionNames:    make([]string, 0, 10),
-		globals:          make(map[string]*SourceVariable),
 		GlobalsByAddress: make(map[uint64]*SourceVariable),
 		SortedGlobals: SortedVariables{
 			Variables: make([]*SourceVariable, 0, 100),
@@ -537,9 +534,6 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		return nil, fmt.Errorf("dwarf: %w", err)
 	}
 
-	// add children to global and local variables
-	addVariableChildren(src)
-
 	// sort list of filenames and functions
 	sort.Strings(src.Filenames)
 	sort.Strings(src.ShortFilenames)
@@ -552,10 +546,21 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	sort.Strings(src.FunctionNames)
 
 	// sorted variables
+	for _, g := range bld.globals {
+		src.GlobalsByAddress[g.resolve().address] = g
+		src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, g)
+	}
+
+	for _, l := range bld.locals {
+		src.SortedLocals.Locals = append(src.SortedLocals.Locals, l)
+	}
 	sort.Sort(src.SortedGlobals)
 	sort.Sort(src.SortedLocals)
 
-	// update all variables
+	// add children to global and local variables
+	addVariableChildren(src)
+
+	// update global variables
 	src.UpdateGlobalVariables()
 
 	// determine highest address occupied by the program
@@ -566,8 +571,8 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 
 	// log summary
 	logger.Logf("dwarf", "identified %d functions in %d compile units", len(src.Functions), len(src.compileUnits))
-	logger.Logf("dwarf", "%d global variables", len(src.globals))
-	logger.Logf("dwarf", "%d local variable (loclists)", len(src.locals))
+	logger.Logf("dwarf", "%d global variables", len(src.SortedGlobals.Variables))
+	logger.Logf("dwarf", "%d local variable (loclists)", len(src.SortedLocals.Locals))
 	logger.Logf("dwarf", "high address (%08x)", src.HighAddress)
 
 	return src, nil
@@ -649,11 +654,11 @@ func allocateInstructionsToSourceLines(src *Source, dwrf *dwarf.Data, executable
 
 // add children to global and local variables
 func addVariableChildren(src *Source) {
-	for _, g := range src.globals {
+	for _, g := range src.SortedGlobals.Variables {
 		g.addVariableChildren(src.debugLoc)
 	}
 
-	for _, l := range src.locals {
+	for _, l := range src.SortedLocals.Locals {
 		l.addVariableChildren(src.debugLoc)
 	}
 }
@@ -744,8 +749,8 @@ func findEntryFunction(src *Source) {
 func findHighAddress(src *Source) {
 	src.HighAddress = 0
 
-	for _, varb := range src.globals {
-		a := varb.resolve().address + uint64(varb.Type.Size)
+	for _, g := range src.SortedGlobals.Variables {
+		a := g.resolve().address + uint64(g.Type.Size)
 		if a > src.HighAddress {
 			src.HighAddress = a
 		}
@@ -973,12 +978,11 @@ func (src *Source) OnYield(addr uint32, yield mapper.CoProcYield) []*SourceVaria
 			commitChosen()
 		}
 
-		// ignore variables that are not declared to be in the same
-		// function as the break line. this can happen for inlined
-		// functions when function ranges overlap
+		// ignore variables that are not declared to be in the same function as the break
+		// line. this can happen for inlined functions when function ranges overlap
 		if local.DeclLine.Function == ln.Function {
 			if local.Range.InRange(uint64(addr)) {
-				if local.Range.Size() < chosenSize {
+				if local.Range.Size() < chosenSize || (local.IsLocatable() && !chosenLocal.IsLocatable()) {
 					chosenLocal = local
 					chosenSize = local.Range.Size()
 				}

@@ -120,6 +120,7 @@ type imguiColors struct {
 	CoProcVariablesTypeSize      imgui.Vec4
 	CoProcVariablesAddress       imgui.Vec4
 	CoProcVariablesNotes         imgui.Vec4
+	CoProcVariablesNotVisible    imgui.Vec4
 
 	// coprocessor last execution
 	CoProcMAM0               imgui.Vec4
@@ -324,6 +325,7 @@ func newColors() *imguiColors {
 		CoProcVariablesTypeSize:      imgui.Vec4{0.8, 0.6, 0.6, 1.0},
 		CoProcVariablesAddress:       imgui.Vec4{0.8, 0.4, 0.4, 1.0},
 		CoProcVariablesNotes:         imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		CoProcVariablesNotVisible:    imgui.Vec4{0.4, 0.4, 0.4, 1.0},
 
 		// coprocessor disassembly
 		CoProcMAM0:               imgui.Vec4{0.6, 0.3, 0.3, 1.0},

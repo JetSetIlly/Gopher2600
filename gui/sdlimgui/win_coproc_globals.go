@@ -42,8 +42,9 @@ type winCoProcGlobals struct {
 	selectedFile          *dwarf.SourceFile
 	updateSelectedFile    bool
 
-	optionsHeight  float32
-	showAllGlobals bool
+	optionsHeight     float32
+	showAllGlobals    bool
+	showLocatableOnly bool
 
 	openNodes map[string]bool
 }
@@ -234,6 +235,11 @@ func (win *winCoProcGlobals) draw() {
 			imgui.Separator()
 			imgui.Spacing()
 			imgui.Checkbox("List all globals (in all files)", &win.showAllGlobals)
+
+			imgui.SameLineV(0, 15)
+			imgui.Checkbox("Don't show unlocatable variables", &win.showLocatableOnly)
+			win.img.imguiTooltipSimple(`A unlocatable variable is a variable has been
+removed by the compiler's optimisation process`)
 		})
 
 		if imgui.BeginPopup(globalsPopupID) {
@@ -387,13 +393,28 @@ func (win *winCoProcGlobals) drawVariable(src *dwarf.Source, varb *dwarf.SourceV
 		name = fmt.Sprintf("%s%s", strings.Repeat(" ", IndentDepth*indentLevel), varb.Name)
 	}
 
-	imgui.TableNextRow()
+	if !varb.IsLocatable() {
+		if win.showLocatableOnly {
+			return
+		}
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotVisible)
+		defer imgui.PopStyleColor()
+	}
 
+	imgui.TableNextRow()
 	imgui.TableNextColumn()
 	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
 	imgui.SelectableV(name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 	imgui.PopStyleColorV(2)
+
+	if !varb.IsLocatable() {
+		imgui.TableNextColumn()
+		imgui.Text(varb.Type.Name)
+		imgui.TableNextColumn()
+		imgui.Text("not locatable")
+		return
+	}
 
 	if varb.NumChildren() > 0 {
 		// we could show a tooltip for variables with children but this needs

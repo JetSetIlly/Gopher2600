@@ -70,6 +70,10 @@ type SourceVariable struct {
 }
 
 func (varb *SourceVariable) String() string {
+	if !varb.IsLocatable() {
+		return fmt.Sprintf("%s %s is not locatable", varb.Type.Name, varb.Name)
+	}
+
 	var s strings.Builder
 	s.WriteString(fmt.Sprintf("%s %s", varb.Type.Name, varb.Name))
 	if varb.Error != nil {
@@ -138,6 +142,11 @@ func (varb *SourceVariable) piece(idx int) (loclistPiece, bool) {
 		return loclistPiece{}, false
 	}
 	return r.pieces[idx], true
+}
+
+// IsLocatable returns true if the variable is visible in memory for the lexical scope
+func (varb *SourceVariable) IsLocatable() bool {
+	return varb.loclist != nil
 }
 
 // NumChildren returns the number of children for this variable

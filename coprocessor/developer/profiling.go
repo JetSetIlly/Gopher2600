@@ -36,15 +36,15 @@ func (dev *Developer) StartProfiling() {
 		return
 	}
 
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+
 	dev.yieldStateLock.Lock()
 	defer dev.yieldStateLock.Unlock()
 
 	if dev.yieldState.Reason != mapper.YieldProgramEnded {
 		return
 	}
-
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
 
 	dev.callstackLock.Lock()
 	defer dev.callstackLock.Unlock()

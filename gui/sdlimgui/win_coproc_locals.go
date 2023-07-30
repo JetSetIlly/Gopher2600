@@ -32,8 +32,8 @@ type winCoProcLocals struct {
 	debuggerWin
 	img *SdlImgui
 
-	optionsHeight   float32
-	showVisibleOnly bool
+	optionsHeight     float32
+	showLocatableOnly bool
 
 	openNodes map[string]bool
 }
@@ -123,7 +123,9 @@ func (win *winCoProcLocals) draw() {
 		imgui.Spacing()
 		imgui.Separator()
 		imgui.Spacing()
-		imgui.Checkbox("Only show visible variables", &win.showVisibleOnly)
+		imgui.Checkbox("Don't show unlocatable variables", &win.showLocatableOnly)
+		win.img.imguiTooltipSimple(`A unlocatable variable is a variable has been
+removed by the compiler's optimisation process`)
 	})
 }
 
@@ -139,6 +141,13 @@ func (win *winCoProcLocals) drawVariable(varb *dwarf.SourceVariable, indentLevel
 
 	// name of variable as presented. added bug icon as appropriate
 	name := fmt.Sprintf("%s%s", strings.Repeat(" ", IndentDepth*indentLevel), varb.Name)
+	if !varb.IsLocatable() {
+		if win.showLocatableOnly {
+			return
+		}
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotVisible)
+		defer imgui.PopStyleColor()
+	}
 
 	imgui.TableNextRow()
 	imgui.TableNextColumn()
@@ -146,6 +155,14 @@ func (win *winCoProcLocals) drawVariable(varb *dwarf.SourceVariable, indentLevel
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
 	imgui.SelectableV(name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 	imgui.PopStyleColorV(2)
+
+	if !varb.IsLocatable() {
+		imgui.TableNextColumn()
+		imgui.Text(varb.Type.Name)
+		imgui.TableNextColumn()
+		imgui.Text("not locatable")
+		return
+	}
 
 	if varb.NumChildren() > 0 {
 		// we could show a tooltip for variables with children but this needs
