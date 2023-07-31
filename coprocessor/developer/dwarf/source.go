@@ -900,46 +900,28 @@ func findELF(romFile string) (*elf.File, bool) {
 	// with the path component of the ROM file only
 	pathToROM := filepath.Dir(romFile)
 
-	const (
-		elfFile            = "armcode.elf"
-		elfFile_older      = "custom2.elf"
-		elfFile_jetsetilly = "main.elf"
-	)
-
-	// current working directory
-	ef, err = elf.Open(elfFile)
-	if err == nil {
-		return ef, false
+	filenames := []string{
+		"armcode.elf",
+		"custom2.elf",
+		"main.elf",
+		"ACE_debugging.elf",
 	}
 
-	// same directory as binary
-	ef, err = elf.Open(filepath.Join(pathToROM, elfFile))
-	if err == nil {
-		return ef, false
+	subpaths := []string{
+		"",
+		"main",
+		filepath.Join("main", "bin"),
+		filepath.Join("custom", "bin"),
+		"arm",
 	}
 
-	// main sub-directory
-	ef, err = elf.Open(filepath.Join(pathToROM, "main", elfFile))
-	if err == nil {
-		return ef, false
-	}
-
-	// main/bin sub-directory
-	ef, err = elf.Open(filepath.Join(pathToROM, "main", "bin", elfFile))
-	if err == nil {
-		return ef, false
-	}
-
-	// custom/bin sub-directory. some older DPC+ sources uses this layout
-	ef, err = elf.Open(filepath.Join(pathToROM, "custom", "bin", elfFile_older))
-	if err == nil {
-		return ef, false
-	}
-
-	// jetsetilly source tree
-	ef, err = elf.Open(filepath.Join(pathToROM, "arm", elfFile_jetsetilly))
-	if err == nil {
-		return ef, false
+	for _, p := range subpaths {
+		for _, f := range filenames {
+			ef, err = elf.Open(filepath.Join(pathToROM, p, f))
+			if err == nil {
+				return ef, false
+			}
+		}
 	}
 
 	return nil, false
