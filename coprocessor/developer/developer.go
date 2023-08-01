@@ -238,8 +238,19 @@ func (dev *Developer) OnYield(addr uint32, yield mapper.CoProcYield) {
 			return
 		}
 
-		locals := src.OnYield(addr, yield)
+		ln := src.FindSourceLine(dev.yieldState.Addr)
+		if ln == nil {
+			return
+		}
+
+		locals := src.GetLocalVariables(ln, addr)
 		dev.yieldState.LocalVariables = append(dev.yieldState.LocalVariables, locals...)
+
+		if yield.Type.Bug() {
+			ln.Bug = true
+		}
+
+		src.UpdateGlobalVariables()
 	})
 }
 
@@ -251,4 +262,33 @@ func (dev *Developer) MemoryFault(event string, explanation faults.Category,
 	defer dev.faultsLock.Unlock()
 
 	return dev.faults.NewEntry(faults.IllegalAddress, event, instructionAddr, accessAddr).String()
+}
+
+// SetEmulationState is called by the emulation whenever state changes
+func (dev *Developer) SetEmulationState(state govern.State) {
+	dev.BorrowSource(func(src *dwarf.Source) {
+		dev.yieldStateLock.Lock()
+		defer dev.yieldStateLock.Unlock()
+
+		switch state {
+		case govern.Paused:
+			if src == nil {
+				return
+			}
+
+			ln := src.FindSourceLine(dev.yieldState.Addr)
+			if ln == nil {
+				return
+			}
+
+			locals := src.GetLocalVariables(ln, dev.yieldState.Addr)
+
+			dev.yieldState.LocalVariables = dev.yieldState.LocalVariables[:0]
+			dev.yieldState.LocalVariables = append(dev.yieldState.LocalVariables, locals...)
+
+			src.UpdateGlobalVariables()
+		default:
+			dev.yieldState.LocalVariables = dev.yieldState.LocalVariables[:0]
+		}
+	})
 }

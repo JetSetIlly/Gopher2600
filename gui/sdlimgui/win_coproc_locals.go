@@ -83,49 +83,54 @@ func (win *winCoProcLocals) draw() {
 	// borrow source only so that we can check if whether to draw the window fully
 	win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 		noSource = src == nil || len(src.Filenames) == 0 || len(src.SortedLocals.Locals) == 0
-	})
 
-	// exit draw early leaving a message to indicate that there are no local
-	// variables available to display
-	if noSource {
-		imgui.Text("No local variables in the source")
-		return
-	}
-
-	const numColumns = 3
-
-	flgs := imgui.TableFlagsScrollY
-	flgs |= imgui.TableFlagsSizingStretchProp
-	flgs |= imgui.TableFlagsResizable
-	flgs |= imgui.TableFlagsHideable
-
-	imgui.BeginTableV("##localsTable", numColumns, flgs, imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, 0.0)
-
-	// setup columns. the labelling column 2 depends on whether the coprocessor
-	// development instance has source available to it
-	width := imgui.ContentRegionAvail().X
-	imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsNoSort, width*0.40, 1)
-	imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNoSort, width*0.30, 2)
-	imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNoSort, width*0.30, 3)
-
-	imgui.TableSetupScrollFreeze(0, 1)
-	imgui.TableHeadersRow()
-
-	win.img.dbg.CoProcDev.BorrowYieldState(func(yld yield.State) {
-		for i, varb := range yld.LocalVariables {
-			win.drawVariableLocal(varb, fmt.Sprint(i))
+		// exit draw early leaving a message to indicate that there are no local
+		// variables available to display
+		if noSource {
+			imgui.Text("No local variables in the source")
+			return
 		}
-	})
 
-	imgui.EndTable()
+		win.img.dbg.CoProcDev.BorrowYieldState(func(yld yield.State) {
+			if len(yld.LocalVariables) == 0 {
+				imgui.Text("No local variables currently visible")
+				return
+			}
 
-	win.optionsHeight = imguiMeasureHeight(func() {
-		imgui.Spacing()
-		imgui.Separator()
-		imgui.Spacing()
-		imgui.Checkbox("Don't show unlocatable variables", &win.showLocatableOnly)
-		win.img.imguiTooltipSimple(`A unlocatable variable is a variable has been
+			const numColumns = 3
+
+			flgs := imgui.TableFlagsScrollY
+			flgs |= imgui.TableFlagsSizingStretchProp
+			flgs |= imgui.TableFlagsResizable
+			flgs |= imgui.TableFlagsHideable
+
+			imgui.BeginTableV("##localsTable", numColumns, flgs, imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, 0.0)
+
+			// setup columns. the labelling column 2 depends on whether the coprocessor
+			// development instance has source available to it
+			width := imgui.ContentRegionAvail().X
+			imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsNoSort, width*0.40, 1)
+			imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNoSort, width*0.30, 2)
+			imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNoSort, width*0.30, 3)
+
+			imgui.TableSetupScrollFreeze(0, 1)
+			imgui.TableHeadersRow()
+
+			for i, varb := range yld.LocalVariables {
+				win.drawVariableLocal(varb, fmt.Sprint(i))
+			}
+
+			imgui.EndTable()
+
+			win.optionsHeight = imguiMeasureHeight(func() {
+				imgui.Spacing()
+				imgui.Separator()
+				imgui.Spacing()
+				imgui.Checkbox("Don't show unlocatable variables", &win.showLocatableOnly)
+				win.img.imguiTooltipSimple(`A unlocatable variable is a variable has been
 removed by the compiler's optimisation process`)
+			})
+		})
 	})
 }
 
@@ -135,7 +140,11 @@ func (win *winCoProcLocals) drawVariableLocal(local *dwarf.SourceVariableLocal, 
 
 func (win *winCoProcLocals) drawVariable(varb *dwarf.SourceVariable, indentLevel int, nodeID string) {
 	// update variable
-	win.img.dbg.PushFunction(varb.Update)
+	win.img.dbg.PushFunction(func() {
+		win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
+			varb.Update()
+		})
+	})
 
 	const IndentDepth = 2
 

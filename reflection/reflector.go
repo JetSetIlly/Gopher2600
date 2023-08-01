@@ -56,7 +56,7 @@ func (ref *Reflector) Clear() {
 	ref.history = make([]ReflectedVideoStep, specification.AbsoluteMaxClks)
 }
 
-// SetEmulationState is called by emulation whenever state changes. How we
+// SetEmulationState is called by the emulation whenever state changes. How we
 // handle reflections depends on the current state.
 func (ref *Reflector) SetEmulationState(state govern.State) {
 	prev := ref.emulationState

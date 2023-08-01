@@ -521,6 +521,7 @@ func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 	if dbg.ref != nil {
 		dbg.ref.SetEmulationState(state)
 	}
+	dbg.CoProcDev.SetEmulationState(state)
 
 	prevState := dbg.State()
 	dbg.state.Store(state)

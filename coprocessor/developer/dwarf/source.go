@@ -974,18 +974,9 @@ func (src *Source) UpdateGlobalVariables() {
 	}
 }
 
-func (src *Source) OnYield(addr uint32, yield mapper.CoProcYield) []*SourceVariableLocal {
+// GetLocalVariables retuns the list of local variables for the supplied address
+func (src *Source) GetLocalVariables(ln *SourceLine, addr uint32) []*SourceVariableLocal {
 	var locals []*SourceVariableLocal
-
-	ln := src.FindSourceLine(addr)
-	if ln == nil {
-		return locals
-	}
-
-	if yield.Type.Bug() {
-		ln.Bug = true
-	}
-
 	var chosenLocal *SourceVariableLocal
 
 	// choose function that covers the smallest (most specific) range in which startAddr
@@ -1022,9 +1013,6 @@ func (src *Source) OnYield(addr uint32, yield mapper.CoProcYield) []*SourceVaria
 	if chosenLocal != nil {
 		commitChosen()
 	}
-
-	// update global variables
-	src.UpdateGlobalVariables()
 
 	// update local variables
 	for _, local := range locals {
