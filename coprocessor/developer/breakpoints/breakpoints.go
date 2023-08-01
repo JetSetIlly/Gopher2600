@@ -59,17 +59,25 @@ func (bp *Breakpoints) removeBreakpoint(addr uint32) {
 // ToggleBreakpoint adds or removes a breakpoint depending on whether the
 // breakpoint already exists
 func (bp *Breakpoints) ToggleBreakpoint(ln *dwarf.SourceLine) {
-	for _, i := range ln.Instruction {
-		if bp.breakpoints[i.Addr] {
-			bp.removeBreakpoint(i.Addr)
+	// rather than toggle individual break addresses, we're toggling the line
+	//
+	// this means that if there is any address in the line with a breakpoint,
+	// all the addresses in the line are removed. otherwise all the break
+	// addresses are added
+	has := bp.HasBreakpoint(ln)
+
+	for _, addr := range ln.BreakAddresses {
+		if has {
+			bp.removeBreakpoint(addr)
 		} else {
-			bp.addBreakpoint(i.Addr)
+			bp.addBreakpoint(addr)
 		}
 	}
 }
 
 // HasBreakpoint returns true if there is a breakpoint on the specified line
 func (bp *Breakpoints) HasBreakpoint(ln *dwarf.SourceLine) bool {
+	// look for any address in the line and not just the break addresses
 	for _, i := range ln.Instruction {
 		if bp.breakpoints[i.Addr] {
 			return true
@@ -80,5 +88,5 @@ func (bp *Breakpoints) HasBreakpoint(ln *dwarf.SourceLine) bool {
 
 // CanBreakpoint returns true if the specified line can have a breakpoint applied to it
 func (bp *Breakpoints) CanBreakpoint(ln *dwarf.SourceLine) bool {
-	return len(ln.Instruction) > 0
+	return len(ln.BreakAddresses) > 0
 }

@@ -144,6 +144,9 @@ type SourceLine struct {
 	// note that only instructions for non-inlined ranges will be collated
 	Instruction []*SourceInstruction
 
+	// what are the addresses to use for breakpoints
+	BreakAddresses []uint32
+
 	// whether this source line has been responsible for a likely bug (eg. illegal access of memory)
 	Bug bool
 

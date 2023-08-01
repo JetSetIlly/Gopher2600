@@ -488,13 +488,13 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	}
 
 	// read source lines
-	err = allocateInstructionsToSourceLines(src, dwrf, executableOrigin)
+	err = allocateSourceLines(src, dwrf, executableOrigin)
 	if err != nil {
 		return nil, fmt.Errorf("dwarf: %w", err)
 	}
 
 	// assign functions to every source line
-	allocateFunctionsToSourceLines(src)
+	assignFunctionToSourceLines(src)
 
 	// assemble sorted functions list
 	for _, fn := range src.Functions {
@@ -578,8 +578,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	return src, nil
 }
 
-func allocateInstructionsToSourceLines(src *Source, dwrf *dwarf.Data, executableOrigin uint64) error {
-	// find reference for every meaningful source line and link to instruction
+func allocateSourceLines(src *Source, dwrf *dwarf.Data, executableOrigin uint64) error {
 	for _, e := range src.compileUnits {
 		// the source line we're working on
 		var ln *SourceLine
@@ -598,21 +597,19 @@ func allocateInstructionsToSourceLines(src *Source, dwrf *dwarf.Data, executable
 			err := r.Next(&le)
 			if err != nil {
 				if err == io.EOF {
-					break // for loop
+					break // line entry for loop. will continue with compile unit loop
 				}
-				logger.Logf("dwarf", "%v", err)
-				ln = nil
+				return err
 			}
 
-			// make sure we have loaded the file previously
+			// check that source file has been loaded
 			if src.Files[le.File.Name] == nil {
 				logger.Logf("dwarf", "file not available for linereader: %s", le.File.Name)
-				continue
+				break // line entry for loop. will continue with compile unit loop
 			}
-
-			// make sure the number of lines in the file is sufficient for the line entry
 			if le.Line-1 > src.Files[le.File.Name].Content.Len() {
-				return fmt.Errorf("current source is unrelated to ELF/DWARF data (number of lines)")
+				logger.Logf("dwarf", "current source is unrelated to ELF/DWARF data (number of lines)")
+				break // line entry for loop. will continue with compile unit loop
 			}
 
 			// adjust address by executable origin
@@ -638,14 +635,45 @@ func allocateInstructionsToSourceLines(src *Source, dwrf *dwarf.Data, executable
 						// already (which will always apply even if there is no
 						// instruction for the address)
 						addr += uint64(ins.size) - 1
+
 					}
 				}
 			}
 
-			// note line entry. once we know the end address we can assign a
-			// function to it etc.
+			// prepare for next iteration
 			ln = src.Files[le.File.Name].Content.Lines[le.Line-1]
 			startAddr = endAddr
+		}
+	}
+
+	for _, e := range src.compileUnits {
+		// read every line in the compile unit
+		r, err := dwrf.LineReader(e.unit)
+		if err != nil {
+			return err
+		}
+
+		var le dwarf.LineEntry
+		for {
+			err := r.Next(&le)
+			if err != nil {
+				if err == io.EOF {
+					break // line entry for loop. will continue with compile unit loop
+				}
+				return err
+			}
+
+			// no need to check whether source file has been loaded because
+			// we've already checked that on the previous LineReader run
+
+			// add breakpoint address to the correct line
+			if le.IsStmt {
+				addr := le.Address + executableOrigin
+				ln := src.LinesByAddress[addr]
+				if ln != nil {
+					ln.BreakAddresses = append(ln.BreakAddresses, uint32(addr))
+				}
+			}
 		}
 	}
 
@@ -664,7 +692,7 @@ func addVariableChildren(src *Source) {
 }
 
 // assign source lines to a function
-func allocateFunctionsToSourceLines(src *Source) {
+func assignFunctionToSourceLines(src *Source) {
 	// for each line in a file compare the address of the first instruction for
 	// the line to each range in every function. the function with the smallest
 	// range is the function the line belongs to
