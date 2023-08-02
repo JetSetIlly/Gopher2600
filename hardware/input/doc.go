@@ -49,9 +49,4 @@
 // Lastly, pushed events, as refered to in point 4, are events that have
 // arrived from a different goroutine. For an example of pushed events see the
 // various bot implementations in the bots package.
-//
-// Note that for performance reasons, pushed events will not be serviced unless
-// AllowPushedEvents(true) has been called. Also, pushed events will only be
-// serviced at the beginning of every frame. (This might change depending on
-// need in the future).
 package input

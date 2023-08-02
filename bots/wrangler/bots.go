@@ -56,7 +56,6 @@ func (b *Bots) ActivateBot(cartHash string) (*bots.Feedback, error) {
 			return nil, fmt.Errorf("bots: %w", err)
 		}
 		logger.Logf("bots", "%s started", b.running.BotID())
-		b.input.AllowPushedEvents(true)
 
 	case "5bdd8af54020fa43065750bd4239a497695d403b":
 		// NTSC version of SpaceJockey
@@ -65,10 +64,8 @@ func (b *Bots) ActivateBot(cartHash string) (*bots.Feedback, error) {
 			return nil, fmt.Errorf("bots: %w", err)
 		}
 		logger.Logf("bots", "%s started", b.running.BotID())
-		b.input.AllowPushedEvents(true)
 
 	default:
-		b.input.AllowPushedEvents(false)
 		return nil, nil
 	}
 
@@ -81,6 +78,5 @@ func (b *Bots) Quit() {
 		b.running.Quit()
 		logger.Logf("bots", "%s finished", b.running.BotID())
 		b.running = nil
-		b.input.AllowPushedEvents(false)
 	}
 }

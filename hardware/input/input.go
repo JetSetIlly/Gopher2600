@@ -40,8 +40,7 @@ type Input struct {
 	recorder []EventRecorder
 
 	// events pushed onto the input queue
-	pushed      chan ports.InputEvent
-	pushedBrake int
+	pushed chan ports.InputEvent
 
 	// the following fields all relate to driven input, for either the driver
 	// or for the passenger (the driven)
@@ -61,12 +60,15 @@ func NewInput(tv TV, p *ports.Ports) *Input {
 		pushed: make(chan ports.InputEvent, 64),
 	}
 	inp.setHandleFunc()
+	inp.tv.AddFrameTrigger(inp)
 	return inp
 }
 
 // Plumb a new ports instances into the Input.
-func (inp *Input) Plumb(ports *ports.Ports) {
+func (inp *Input) Plumb(tv TV, ports *ports.Ports) {
+	inp.tv = tv
 	inp.ports = ports
+	inp.tv.AddFrameTrigger(inp)
 }
 
 // PeripheralID forwards a request of the PeripheralID of the PortID to VCS Ports.

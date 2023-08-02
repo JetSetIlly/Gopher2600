@@ -39,7 +39,6 @@ type TV interface {
 // Input defines the Input functions required by a bot.
 type Input interface {
 	PushEvent(ports.InputEvent) error
-	AllowPushedEvents(bool)
 }
 
 // Diagnostic instances are sent over the Feedback Diagnostic channel.

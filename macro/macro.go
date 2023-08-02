@@ -38,7 +38,6 @@ type Emulation interface {
 
 type Input interface {
 	PushEvent(ports.InputEvent) error
-	AllowPushedEvents(bool)
 }
 
 type TV interface {
@@ -111,8 +110,7 @@ func NewMacro(filename string, emulation Emulation, input Input, tv TV, gui GUI)
 	// we no longer need the header
 	mcr.instructions = mcr.instructions[headerNumLines:]
 
-	// allow pushed events to the VCS input system
-	mcr.input.AllowPushedEvents(true)
+	// attach TV to macro
 	mcr.tv.AddFrameTrigger(mcr)
 
 	return mcr, nil

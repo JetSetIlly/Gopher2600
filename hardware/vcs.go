@@ -148,7 +148,7 @@ func (vcs *VCS) Plumb(fromDifferentEmulation bool) {
 	// in a latched state
 	vcs.RIOT.Ports.ResetPeripherals()
 
-	vcs.Input.Plumb(vcs.RIOT.Ports)
+	vcs.Input.Plumb(vcs.TV, vcs.RIOT.Ports)
 }
 
 // AttachCartridge to this VCS. While this function can be called directly it
