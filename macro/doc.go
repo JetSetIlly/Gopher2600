@@ -16,6 +16,8 @@
 // Package macro implements an input system that processes instructions from a
 // macro script.
 //
+// The first line of the macro must be the string "gopher2600macro".
+//
 // The macro language is very simple and does not implement any flow control
 // except basic loops.
 //

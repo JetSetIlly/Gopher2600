@@ -1015,9 +1015,6 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	dbg.endPlayback()
 	dbg.endRecording()
 	dbg.endComparison()
-	if dbg.macro != nil {
-		dbg.macro.Quit()
-	}
 	dbg.bots.Quit()
 
 	// attching a cartridge implies the initialise state
@@ -1423,6 +1420,10 @@ func (dbg *Debugger) reloadCartridge() error {
 	err = dbg.vcs.TV.SetSpec(spec)
 	if err != nil {
 		return fmt.Errorf("debugger: %w", err)
+	}
+
+	if dbg.macro != nil {
+		dbg.macro.Reset()
 	}
 
 	return nil

@@ -63,13 +63,12 @@ type Macro struct {
 	frameNum chan int
 }
 
+const headerID = "gopher2600macro"
+
 const (
 	headerLineID = iota
-	headerLineVersion
 	headerNumLines
 )
-
-const headerID = "gopher2600macro"
 
 // NewMacro is the preferred method of initialisation for the Macro type
 func NewMacro(filename string, emulation Emulation, input Input, tv TV, gui GUI) (*Macro, error) {
@@ -83,32 +82,10 @@ func NewMacro(filename string, emulation Emulation, input Input, tv TV, gui GUI)
 		frameNum:  make(chan int),
 	}
 
-	f, err := os.Open(filename)
+	err := mcr.readFile()
 	if err != nil {
 		return nil, fmt.Errorf("macro: %w", err)
 	}
-	buffer, err := io.ReadAll(f)
-	if err != nil {
-		return nil, fmt.Errorf("macro: %w", err)
-	}
-	err = f.Close()
-	if err != nil {
-		return nil, fmt.Errorf("macro: %w", err)
-	}
-
-	// convert file contents to an array of lines
-	mcr.instructions = strings.Split(string(buffer), "\n")
-	if len(mcr.instructions) < headerNumLines {
-		return nil, fmt.Errorf("macro: %s: not a macro file", filename)
-	}
-	if mcr.instructions[0] != headerID {
-		return nil, fmt.Errorf("macro: %s: not a macro file", filename)
-	}
-
-	// ignore version string for now
-
-	// we no longer need the header
-	mcr.instructions = mcr.instructions[headerNumLines:]
 
 	// attach TV to macro
 	mcr.tv.AddFrameTrigger(mcr)
@@ -116,18 +93,87 @@ func NewMacro(filename string, emulation Emulation, input Input, tv TV, gui GUI)
 	return mcr, nil
 }
 
-// Run a macro to completion
-func (mcr *Macro) Run() {
-	log := func(ln int, msg string) {
-		logger.Logf("macro", "%s: %d: %s", mcr.filename, ln+headerNumLines, msg)
+func (mcr *Macro) readFile() error {
+	f, err := os.Open(mcr.filename)
+	if err != nil {
+		return err
+	}
+	buffer, err := io.ReadAll(f)
+	if err != nil {
+		return err
+	}
+	err = f.Close()
+	if err != nil {
+		return err
 	}
 
-	// wait function is used by the WAIT macro instruction but is also used by
-	// the controller instructions (LEFT, FIRE, etc.) to indicate a short wait
-	// of two frames before moving onto the next instruction in the macro
-	// script. this ensures that the controller input has the chance to take
-	// effect in the emulation
-	wait := func(w int) bool {
+	// convert file contents to an array of lines
+	mcr.instructions = strings.Split(string(buffer), "\n")
+	if len(mcr.instructions) < headerNumLines {
+		return fmt.Errorf("macro: %s: not a macro file", mcr.filename)
+	}
+	if mcr.instructions[0] != headerID {
+		return fmt.Errorf("macro: %s: not a macro file", mcr.filename)
+	}
+
+	// ignore version string for now
+
+	// we no longer need the header
+	mcr.instructions = mcr.instructions[headerNumLines:]
+
+	return nil
+}
+
+func convertAddress(s string) (uint16, error) {
+	// convert hex indicator to one that ParseUint can deal with
+	if s[0] == '$' {
+		s = fmt.Sprintf("0x%s", s[1:])
+	}
+
+	// convert address
+	a, err := strconv.ParseUint(s, 0, 16)
+	return uint16(a), err
+}
+
+func convertValue(s string) (uint8, error) {
+	// convert hex indicator to one that ParseUint can deal with
+	if s[0] == '$' {
+		s = fmt.Sprintf("0x%s", s[1:])
+	}
+
+	// convert address
+	a, err := strconv.ParseUint(s, 0, 8)
+	return uint8(a), err
+}
+
+type loop struct {
+	line int
+
+	// loop counters count upwards because it is more natural when
+	// referencing the counter value to think of the counter as counting
+	// upwards
+	count    int
+	countEnd int
+
+	// if loop counter has been named then we need to know it so that we can
+	// update the entry in the variables table
+	countName string
+}
+
+// Run a macro to completion
+func (mcr *Macro) Run() {
+	go mcr.run()
+}
+
+func (mcr *Macro) run() {
+	logger.Logf("macro", "running %s", mcr.filename)
+
+	// quit instructs the main script loop to end
+	var quit bool
+
+	// wait for the specificed number of frames and run the onEnd() function
+	// (can be nil)
+	wait := func(w int, onEnd func()) {
 		target := w + <-mcr.frameNum
 
 		var done bool
@@ -135,298 +181,343 @@ func (mcr *Macro) Run() {
 			select {
 			case fn := <-mcr.frameNum:
 				if fn >= target {
+					if onEnd != nil {
+						onEnd()
+					}
 					done = true
 				}
 			case <-mcr.quit:
-				return true
+				done = true
+				quit = true
 			}
 		}
-		return false
 	}
 
-	convertAddress := func(s string) (uint16, error) {
-		// convert hex indicator to one that ParseUint can deal with
-		if s[0] == '$' {
-			s = fmt.Sprintf("0x%s", s[1:])
+	var loops []loop
+	variables := make(map[string]any)
+
+	lookupVariable := func(n string) (int, bool, error) {
+		// convert value
+		if n[0] != '%' {
+			return 0, false, nil
 		}
 
-		// convert address
-		a, err := strconv.ParseUint(s, 0, 16)
-		return uint16(a), err
+		n = n[1:]
+		v, ok := variables[n]
+		if !ok {
+			return 0, true, fmt.Errorf("cannot use variable '%s' in POKE because it does not exist", n)
+		}
+		return v.(int), true, nil
 	}
 
-	convertValue := func(s string) (uint8, error) {
-		// convert hex indicator to one that ParseUint can deal with
-		if s[0] == '$' {
-			s = fmt.Sprintf("0x%s", s[1:])
+	for ln := 0; ln < len(mcr.instructions) && !quit; ln++ {
+		logf := func(msg string, args ...any) {
+			logger.Logf("macro", "%s: %d: %s", mcr.filename, ln+headerNumLines, fmt.Sprintf(msg, args...))
 		}
 
-		// convert address
-		a, err := strconv.ParseUint(s, 0, 8)
-		return uint8(a), err
-	}
-
-	type loop struct {
-		line int
-
-		// loop counters count upwards because it is more natural when
-		// referencing the counter value to think of the counter as counting
-		// upwards
-		count    int
-		countEnd int
-
-		// if loop counter has been named then we need to know it so that we can
-		// update the entry in the variables table
-		countName string
-	}
-
-	go func() {
-		var loops []loop
-		variables := make(map[string]any)
-
-		lookupVariable := func(n string) (int, bool, error) {
-			// convert value
-			if n[0] != '%' {
-				return 0, false, nil
+		// convert argument to number
+		number := func(s string) int {
+			n, err := strconv.Atoi(s)
+			if err != nil {
+				logf(err.Error())
+				quit = true
 			}
-
-			n = n[1:]
-			v, ok := variables[n]
-			if !ok {
-				return 0, true, fmt.Errorf("cannot use variable '%s' in POKE because it does not exist", n)
-			}
-			return v.(int), true, nil
+			return n
 		}
 
-		for ln := 0; ln < len(mcr.instructions); ln++ {
-			s := mcr.instructions[ln]
+		select {
+		case <-mcr.quit:
+			break // for loop
+		default:
+		}
 
-			toks := strings.Fields(s)
-			if len(toks) == 0 {
-				continue // for loop
-			}
+		// ignore commented lines
+		if strings.HasPrefix(strings.TrimSpace(mcr.instructions[ln]), "--") {
+			continue
+		}
 
-			switch toks[0] {
-			default:
-				log(ln, fmt.Sprintf("unrecognised command: %s", toks[0]))
+		// split input line into a command and its arguments
+		toks := strings.Fields(mcr.instructions[ln])
+		if len(toks) == 0 {
+			continue // for loop
+		}
+		cmd := toks[0]
+		args := toks[1:]
+
+		switch cmd {
+		default:
+			logf("unrecognised command: %s", cmd)
+			return
+
+		case "DO":
+			ct := len(args)
+			switch ct {
+			case 0:
+				logf("not enough arguments for %s", cmd)
 				return
-
-			case "--":
-				// ignore comment lines
-
-			case "DO":
-				tl := len(toks)
-				switch tl {
-				case 1:
-					log(ln, "too few arguments for DO")
-					return
-				case 3:
-					fallthrough
-				case 2:
-					ct, err := strconv.Atoi(toks[1])
-					if err != nil {
-						log(ln, err.Error())
-						return
-					}
-					lp := loop{
-						line:     ln,
-						countEnd: ct,
-					}
-					if tl == 3 {
-						lp.countName = toks[2]
-						variables[lp.countName] = lp.count
-					}
-					loops = append(loops, lp)
-				default:
-					log(ln, "too many arguments for DO")
-					return
-				}
-
-			case "LOOP":
-				if len(toks) > 1 {
-					log(ln, "too many arguments for LOOP")
-					return
-				}
-
-				// check for a quit signal but don't wait for it
-				select {
-				case <-mcr.quit:
-					return
-				default:
-				}
-
-				idx := len(loops) - 1
-				if idx == -1 {
-					log(ln, "LOOP without a DO")
-					return
-				}
-
-				lp := &loops[idx]
-				lp.count++
-
-				if lp.count < lp.countEnd {
-					// loop is ongoing so return to start of loop
-					ln = lp.line
-
-					// update named variable
-					if lp.countName != "" {
-						variables[lp.countName] = lp.count
-					}
-				} else {
-					// loop has ended. remove from loop stack and delete variable name
-					loops = loops[:idx]
-					delete(variables, lp.countName)
-				}
-
-			case "WAIT":
-				// default to 60 frames
-				w := 60
-
-				switch len(toks) {
-				case 2:
-					var err error
-					w, err = strconv.Atoi(toks[1])
-					if err != nil {
-						log(ln, err.Error())
-						return
-					}
-					fallthrough
-
-				case 1:
-					if wait(w) {
-						return
-					}
-
-				default:
-					log(ln, "too many arguments for WAIT")
-					return
-				}
-
-			case "SCREENSHOT":
-				var s strings.Builder
-				for _, c := range toks[1:] {
-					v, ok, err := lookupVariable(c)
-					if err != nil {
-						log(ln, err.Error())
-						return
-					}
-					if ok {
-						s.WriteString(fmt.Sprintf("%d", v))
-					} else {
-						s.WriteString(c)
-					}
-					s.WriteRune(' ')
-				}
-
-				// the filename suffix is all the "words" in string builder
-				// joined with an underscore
-				filenameSuffix := strings.Join(strings.Fields(s.String()), "_")
-
-				mcr.gui.SetFeature(gui.ReqScreenshot, filenameSuffix)
-				wait(10)
-
-			case "QUIT":
-				if len(toks) > 1 {
-					log(ln, "too many arguments for QUIT")
-					return
-				}
-				mcr.emulation.UserInput() <- userinput.EventQuit{}
-
-			case "FIRE":
-				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Fire, D: true})
-				wait(2)
-			case "NOFIRE":
-				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Fire, D: false})
-				wait(2)
-			case "LEFT":
-				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Left, D: ports.DataStickTrue})
-				wait(2)
-			case "RIGHT":
-				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Right, D: ports.DataStickTrue})
-				wait(2)
-			case "UP":
-				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Up, D: ports.DataStickTrue})
-				wait(2)
-			case "DOWN":
-				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Down, D: ports.DataStickTrue})
-				wait(2)
-			case "LEFTUP":
-				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.LeftUp, D: ports.DataStickTrue})
-				wait(2)
-			case "LEFTDOWN":
-				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.LeftDown, D: ports.DataStickTrue})
-				wait(2)
-			case "RIGHTUP":
-				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.RightUp, D: ports.DataStickTrue})
-				wait(2)
-			case "RIGHTDOWN":
-				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.RightDown, D: ports.DataStickTrue})
-				wait(2)
-			case "CENTER":
+			case 2:
 				fallthrough
-			case "CENTRE":
-				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Centre})
-				wait(2)
-			case "SELECT":
-				held := false
-				if len(toks) == 1 {
-					held = true
+			case 1:
+				lp := loop{
+					line:     ln,
+					countEnd: number(args[0]),
 				}
-				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSelect, D: held})
-				wait(2)
-			case "RESET":
-				held := false
-				if len(toks) == 1 {
-					held = true
+				if ct == 2 {
+					lp.countName = args[1]
+					variables[lp.countName] = lp.count
 				}
-				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelReset, D: held})
-				wait(2)
-			case "POKE":
-				if len(toks) != 3 {
-					log(ln, "not enough arguments for POKE")
-					return
-				}
+				loops = append(loops, lp)
+			default:
+				logf("too many arguments for DO")
+				return
+			}
 
-				// convert address
-				addr, err := convertAddress(toks[1])
+		case "LOOP":
+			if len(args) > 0 {
+				logf("too many arguments for %s", cmd)
+				return
+			}
+
+			// check for a quit signal but don't wait for it
+			select {
+			case <-mcr.quit:
+				return
+			default:
+			}
+
+			idx := len(loops) - 1
+			if idx == -1 {
+				logf("LOOP without a DO")
+				return
+			}
+
+			lp := &loops[idx]
+			lp.count++
+
+			if lp.count < lp.countEnd {
+				// loop is ongoing so return to start of loop
+				ln = lp.line
+
+				// update named variable
+				if lp.countName != "" {
+					variables[lp.countName] = lp.count
+				}
+			} else {
+				// loop has ended. remove from loop stack and delete variable name
+				loops = loops[:idx]
+				delete(variables, lp.countName)
+			}
+
+		case "WAIT":
+			// default to 60 frames
+			w := 60
+
+			switch len(args) {
+			case 1:
+				w = number(args[0])
+				fallthrough
+			case 0:
+				wait(w, nil)
+
+			default:
+				logf("too many arguments for %s", cmd)
+				return
+			}
+
+		case "SCREENSHOT":
+			var s strings.Builder
+			for _, c := range args {
+				v, ok, err := lookupVariable(c)
 				if err != nil {
-					log(ln, fmt.Sprintf("unrecognised address for POKE: %s", toks[1]))
-					return
-				}
-
-				var val uint8
-
-				v, ok, err := lookupVariable(toks[2])
-				if err != nil {
-					log(ln, err.Error())
+					logf(err.Error())
 					return
 				}
 				if ok {
-					val = uint8(v)
+					s.WriteString(fmt.Sprintf("%d", v))
 				} else {
-					v, err := convertValue(toks[2])
-					if err != nil {
-						log(ln, fmt.Sprintf("cannot use value for POKE: %s", toks[2]))
-						return
-					}
-					val = uint8(v)
+					s.WriteString(c)
 				}
-
-				// poke address with value
-				mem := mcr.emulation.VCS().Mem
-				mem.Poke(addr, val)
+				s.WriteRune(' ')
 			}
+
+			// the filename suffix is all the "words" in string builder
+			// joined with an underscore
+			filenameSuffix := strings.Join(strings.Fields(s.String()), "_")
+
+			mcr.gui.SetFeature(gui.ReqScreenshot, filenameSuffix)
+			wait(10, nil)
+
+		case "QUIT":
+			if len(args) > 0 {
+				logf("too many arguments for %s", cmd)
+				return
+			}
+			mcr.emulation.UserInput() <- userinput.EventQuit{}
+
+		case "FIRE":
+			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Fire, D: true})
+			switch len(args) {
+			case 1:
+				wait(number(args[0]), func() {
+					mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Fire, D: false})
+				})
+			case 0:
+				wait(2, nil)
+			default:
+				logf("too many arguments for %s", cmd)
+			}
+		case "NOFIRE":
+			if len(args) > 0 {
+				logf("too many arguments for %s", cmd)
+				return
+			}
+			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Fire, D: false})
+			wait(2, nil)
+
+		case "LEFT":
+			if len(args) > 0 {
+				logf("too many arguments for %s", cmd)
+				return
+			}
+			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Left, D: ports.DataStickTrue})
+			wait(2, nil)
+		case "RIGHT":
+			if len(args) > 0 {
+				logf("too many arguments for %s", cmd)
+				return
+			}
+			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Right, D: ports.DataStickTrue})
+			wait(2, nil)
+		case "UP":
+			if len(args) > 0 {
+				logf("too many arguments for %s", cmd)
+				return
+			}
+			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Up, D: ports.DataStickTrue})
+			wait(2, nil)
+		case "DOWN":
+			if len(args) > 0 {
+				logf("too many arguments for %s", cmd)
+				return
+			}
+			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Down, D: ports.DataStickTrue})
+			wait(2, nil)
+		case "LEFTUP":
+			if len(args) > 0 {
+				logf("too many arguments for %s", cmd)
+				return
+			}
+			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.LeftUp, D: ports.DataStickTrue})
+			wait(2, nil)
+		case "LEFTDOWN":
+			if len(args) > 0 {
+				logf("too many arguments for %s", cmd)
+				return
+			}
+			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.LeftDown, D: ports.DataStickTrue})
+			wait(2, nil)
+		case "RIGHTUP":
+			if len(args) > 0 {
+				logf("too many arguments for %s", cmd)
+				return
+			}
+			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.RightUp, D: ports.DataStickTrue})
+			wait(2, nil)
+		case "RIGHTDOWN":
+			if len(args) > 0 {
+				logf("too many arguments for %s", cmd)
+				return
+			}
+			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.RightDown, D: ports.DataStickTrue})
+			wait(2, nil)
+
+		case "CENTER":
+			fallthrough
+		case "CENTRE":
+			if len(args) > 0 {
+				logf("too many arguments for %s", cmd)
+				return
+			}
+			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Centre})
+			wait(2, nil)
+
+		case "SELECT":
+			if len(args) > 0 {
+				logf("too many arguments for %s", cmd)
+				return
+			}
+			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSelect, D: true})
+			wait(2, func() {
+				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSelect, D: false})
+			})
+
+		case "RESET":
+			if len(args) > 0 {
+				logf("too many arguments for %s", cmd)
+				return
+			}
+			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelReset, D: true})
+			wait(2, func() {
+				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelReset, D: false})
+			})
+
+		case "POKE":
+			if len(args) != 2 {
+				logf("not enough arguments for POKE")
+				return
+			}
+
+			// convert address
+			addr, err := convertAddress(args[0])
+			if err != nil {
+				logf("unrecognised address for POKE: %s", args[0])
+				return
+			}
+
+			var val uint8
+
+			v, ok, err := lookupVariable(args[1])
+			if err != nil {
+				logf(err.Error())
+				return
+			}
+			if ok {
+				val = uint8(v)
+			} else {
+				v, err := convertValue(args[1])
+				if err != nil {
+					logf("cannot use value for POKE: %s", args[1])
+					return
+				}
+				val = uint8(v)
+			}
+
+			// poke address with value
+			mem := mcr.emulation.VCS().Mem
+			mem.Poke(addr, val)
 		}
-	}()
+	}
+
+	logger.Logf("macro", "finished %s", mcr.filename)
 }
 
 // Quit forces a running macro (ie. one that has been triggered) to end. Does
 // nothing is macro is not currently running
 func (mcr *Macro) Quit() {
 	select {
+	case <-mcr.frameNum:
+	default:
+	}
+	select {
 	case mcr.quit <- true:
 	default:
 	}
+}
+
+// Reset restarts the macro
+func (mcr *Macro) Reset() {
+	mcr.Quit()
+	mcr.Run()
 }
 
 // NewFrame implements the television.FrameTrigger interface
