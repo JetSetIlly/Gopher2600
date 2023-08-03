@@ -49,7 +49,7 @@ func NewAce(env *environment.Environment, data []byte) (mapper.CartMapper, error
 	}
 
 	var err error
-	cart.mem, err = newAceMemory(data)
+	cart.mem, err = newAceMemory(data, cart.env.Prefs.ARM)
 	if err != nil {
 		return nil, err
 	}

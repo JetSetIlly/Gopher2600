@@ -20,6 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -118,7 +119,7 @@ func (mem *aceMemory) setDataMode(out bool) {
 	}
 }
 
-func newAceMemory(data []byte) (*aceMemory, error) {
+func newAceMemory(data []byte, armPrefs *preferences.ARMPreferences) (*aceMemory, error) {
 	mem := &aceMemory{}
 
 	// read header
@@ -274,14 +275,25 @@ func newAceMemory(data []byte) (*aceMemory, error) {
 	mem.flash[15] = uint8(nullFunctionAddress >> 24)
 
 	// system clock argument
-	// copy(mem.flash[16:20], []byte{0x00, 0x60, 0xfe, 0xcd})
-	copy(mem.flash[16:20], []byte{0x80, 0x1d, 0x2c, 0x04})
+	clk := int(armPrefs.Clock.Get().(float64) * 1000000)
+	mem.flash[16] = uint8(clk)
+	mem.flash[17] = uint8(clk >> 8)
+	mem.flash[18] = uint8(clk >> 16)
+	mem.flash[19] = uint8(clk >> 24)
 
 	// ACE version number
-	copy(mem.flash[20:24], []byte{0x00, 0x00, 0x00, 0x02})
+	aceVersion := 2
+	mem.flash[20] = uint8(aceVersion)
+	mem.flash[21] = uint8(aceVersion >> 8)
+	mem.flash[22] = uint8(aceVersion >> 16)
+	mem.flash[23] = uint8(aceVersion >> 24)
 
 	// pluscart revision number
-	copy(mem.flash[24:28], []byte{0x00, 0x00, 0x00, 0x03})
+	plusCartRevision := 3
+	mem.flash[24] = uint8(plusCartRevision)
+	mem.flash[25] = uint8(plusCartRevision >> 8)
+	mem.flash[26] = uint8(plusCartRevision >> 16)
+	mem.flash[27] = uint8(plusCartRevision >> 24)
 
 	// GPIO addresses
 	mem.flash[28] = uint8(ADDR_IDR & 0xff)
