@@ -38,7 +38,8 @@ func (dev *Developer) BorrowSource(f func(*dwarf.Source)) {
 // supplied function, which will be executed with the callstack structure as
 // an argument.
 //
-// May return nil.
+// In some situations BorrowCallStack may need to be wrapped in a BorrowSource
+// call in order to prevent a race condition
 func (dev *Developer) BorrowCallStack(f func(callstack.CallStack)) {
 	dev.callstackLock.Lock()
 	defer dev.callstackLock.Unlock()
@@ -48,8 +49,6 @@ func (dev *Developer) BorrowCallStack(f func(callstack.CallStack)) {
 // BorrowBreakpoints will lock the breakpoints structure for the durction of the
 // supplied function, which will be executed with the breakpoints structure as
 // an argument.
-//
-// May return nil.
 func (dev *Developer) BorrowBreakpoints(f func(breakpoints.Breakpoints)) {
 	dev.breakpointsLock.Lock()
 	defer dev.breakpointsLock.Unlock()
@@ -59,6 +58,9 @@ func (dev *Developer) BorrowBreakpoints(f func(breakpoints.Breakpoints)) {
 // BorrowYieldState will lock the illegal access log for the duration of the
 // supplied fucntion, which will be executed with the illegal access log as an
 // argument.
+//
+// In some situations BorrowYieldState may need to be wrapped in a BorrowSource
+// call in order to prevent a race condition
 func (dev *Developer) BorrowYieldState(f func(yield.State)) {
 	dev.yieldStateLock.Lock()
 	defer dev.yieldStateLock.Unlock()
