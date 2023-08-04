@@ -630,7 +630,7 @@ The MAM should almost never be disabled completely.`)
 	imgui.Spacing()
 
 	clk := float32(win.img.vcs.Env.Prefs.ARM.Clock.Get().(float64))
-	if imgui.SliderFloatV("Clock Speed", &clk, 50, 80, "%.0f Mhz", imgui.SliderFlagsNone) {
+	if imgui.SliderFloatV("Clock Speed", &clk, 50, 300, "%.0f Mhz", imgui.SliderFlagsNone) {
 		win.img.vcs.Env.Prefs.ARM.Clock.Set(float64(clk))
 	}
 
