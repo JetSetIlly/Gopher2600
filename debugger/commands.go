@@ -1509,6 +1509,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 		case "ID":
 			fallthrough
+		case "STEP":
+			dbg.CoProcDev.BreakNextInstruction()
+			dbg.runUntilHalt = true
+			dbg.continueEmulation = true
 		default:
 			dbg.printLine(terminal.StyleFeedback, coproc.CoProcID())
 		}

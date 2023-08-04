@@ -73,8 +73,10 @@ type Developer struct {
 	callstack     callstack.CallStack
 	callstackLock sync.Mutex
 
-	breakpoints     breakpoints.Breakpoints
-	breakpointsLock sync.Mutex
+	breakpoints          breakpoints.Breakpoints
+	breakpointsLock      sync.Mutex
+	breakNextInstruction bool
+	breakAddress         uint32
 
 	// profiler instance. measures cycles counts for executed address
 	profiler mapper.CartCoProcProfiler
@@ -175,6 +177,12 @@ func (dev *Developer) CheckBreakpoint(addr uint32) bool {
 		return false
 	}
 
+	if dev.breakNextInstruction && dev.breakAddress != addr {
+		dev.breakNextInstruction = false
+		dev.breakAddress = addr
+		return true
+	}
+
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
@@ -188,7 +196,11 @@ func (dev *Developer) CheckBreakpoint(addr uint32) bool {
 	dev.breakpointsLock.Lock()
 	defer dev.breakpointsLock.Unlock()
 
-	return dev.breakpoints.Check(addr)
+	if dev.breakpoints.Check(addr) {
+		dev.breakAddress = addr
+		return true
+	}
+	return false
 }
 
 // HasSource returns true if source information has been found.
@@ -291,4 +303,9 @@ func (dev *Developer) SetEmulationState(state govern.State) {
 			dev.yieldState.LocalVariables = dev.yieldState.LocalVariables[:0]
 		}
 	})
+}
+
+// BreakOnNextStep forces the coprocess to break after next instruction execution
+func (dev *Developer) BreakNextInstruction() {
+	dev.breakNextInstruction = true
 }
