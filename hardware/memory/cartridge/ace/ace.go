@@ -150,7 +150,9 @@ func (cart *Ace) Patch(_ int, _ uint8) error {
 
 func (cart *Ace) runARM() bool {
 	// call arm once and then check for yield conditions
-	cart.mem.yield, _ = cart.arm.Run()
+	var cycles float32
+	cart.mem.yield, cycles = cart.arm.Run()
+	cart.mem.cycles += cycles
 
 	// keep calling runArm() for as long as program does not need to sync with the VCS
 	for cart.mem.yield.Type != mapper.YieldSyncWithVCS {
@@ -158,7 +160,8 @@ func (cart *Ace) runARM() bool {
 		case mapper.YieldHookEnd:
 			return false
 		case mapper.YieldHookContinue:
-			cart.mem.yield, _ = cart.arm.Run()
+			cart.mem.yield, cycles = cart.arm.Run()
+			cart.mem.cycles += cycles
 		}
 	}
 	return true
@@ -196,7 +199,11 @@ func (cart *Ace) AccessPassive(addr uint16, data uint8) {
 
 // Step implements the mapper.CartMapper interface.
 func (cart *Ace) Step(clock float32) {
-	cart.arm.Step(clock)
+	if cart.mem.cycles > 0 {
+		cart.mem.cycles -= float32(cart.env.Prefs.ARM.Clock.Get().(float64)) / clock
+	} else {
+		cart.arm.Step(clock)
+	}
 }
 
 // IterateBank implements the mapper.CartMapper interface.

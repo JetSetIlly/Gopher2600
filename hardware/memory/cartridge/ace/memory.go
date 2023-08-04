@@ -93,6 +93,9 @@ type aceMemory struct {
 
 	// most recent yield from the coprocessor
 	yield mapper.CoProcYield
+
+	// count of cycles accumulated
+	cycles float32
 }
 
 const (
