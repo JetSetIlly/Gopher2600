@@ -99,12 +99,13 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 					} else {
 						panic("illegal instruction in VNMLA, VNMLS, VNMUL group")
 					}
+				default:
+					panic("illegal instruction in VNMLA, VNMLS, VNMUL group")
 				}
 
 				D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
 				Vn := arm.state.function32bitOpcodeHi & 0x000f
 				Vd := (opcode & 0xf000) >> 12
-				sz := (opcode & 0x0100) == 0x0100
 				N := (opcode & 0x0080) >> 7
 				M := (opcode & 0x0020) >> 5
 				Vm := opcode & 0x000f
@@ -146,7 +147,6 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 				D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
 				Vn := arm.state.function32bitOpcodeHi & 0x000f
 				Vd := (opcode & 0xf000) >> 12
-				sz := (opcode & 0x0100) == 0x0100
 				N := (opcode & 0x0080) >> 7
 				M := (opcode & 0x0020) >> 5
 				Vm := opcode & 0x000f
@@ -174,7 +174,6 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 			D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
 			Vn := arm.state.function32bitOpcodeHi & 0x000f
 			Vd := (opcode & 0xf000) >> 12
-			sz := (opcode & 0x0100) == 0x0100
 			N := (opcode & 0x0080) >> 7
 			M := (opcode & 0x0020) >> 5
 			Vm := opcode & 0x000f
@@ -236,7 +235,6 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 			D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
 			Vn := arm.state.function32bitOpcodeHi & 0x000f
 			Vd := (opcode & 0xf000) >> 12
-			sz := (opcode & 0x0100) == 0x0100
 			N := (opcode & 0x0080) >> 7
 			M := (opcode & 0x0020) >> 5
 			Vm := opcode & 0x000f
@@ -273,9 +271,9 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 					M := (opcode & 0x0020) >> 5
 					Vm := opcode & 0x000f
 
-					toInteger := opc2&0b0001 == 0b0001
+					toInteger := opc2&0b100 == 0b100
 					if toInteger {
-						unsigned := opc2&0x01 != 0x01
+						unsigned := opc2&0x001 != 0x001
 						roundZero := op
 						d := Vd<<1 | D
 						if sz {
@@ -312,7 +310,6 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 
 				D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
 				Vd := (opcode & 0xf000) >> 12
-				sz := (opcode & 0x0100) == 0x0100
 				E := opcode&0x0080 == 0x0080
 				M := opcode&0x0020 == 0x0020
 				Vm := opcode & 0x000f
