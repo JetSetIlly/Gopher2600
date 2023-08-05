@@ -1470,14 +1470,32 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			coproc := dbg.vcs.Mem.Cart.GetCoProc()
 
 			// list registers in order until we get a not-ok reply
-			reg := 0
-			for {
-				if n, ok := coproc.CoProcRegister(reg); !ok {
-					break
-				} else {
-					dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("R%d: %08x\n", reg, n))
+			regs := func(start int, id rune) {
+				reg := start
+				s := strings.Builder{}
+				for {
+					if n, ok := coproc.CoProcRegister(reg); !ok {
+						break
+					} else {
+						s.WriteString(fmt.Sprintf("%c%02d: %08x\t", id, reg-start, n))
+					}
+					reg++
+					if (reg-start)%3 == 0 {
+						dbg.printLine(terminal.StyleFeedback, s.String())
+						s.Reset()
+					}
 				}
-				reg++
+				if s.Len() > 0 {
+					dbg.printLine(terminal.StyleFeedback, s.String())
+				}
+			}
+
+			// core registers
+			regs(0, 'R')
+
+			// fpu registers
+			if arg, ok := tokens.Get(); ok && arg == "FPU" {
+				regs(64, 'S')
 			}
 
 		case "SET":

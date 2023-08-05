@@ -642,6 +642,11 @@ func (arm *ARM) Register(extendedReg int) (uint32, bool) {
 		return arm.state.registers[extendedReg], true
 	}
 
+	// FPU registers
+	if extendedReg >= 64 && extendedReg <= 95 {
+		return arm.state.fpu.Registers[extendedReg-64], true
+	}
+
 	// extended register values for ARM defined in:
 	// https://github.com/ARM-software/abi-aa/releases/download/2023Q1/aadwarf32.pdf
 
