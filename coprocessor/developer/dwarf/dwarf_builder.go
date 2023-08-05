@@ -275,11 +275,12 @@ func (bld *build) buildTypes(src *Source) error {
 						}
 
 						memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
+						address := fld.Val.(int64)
 						memb.loclist.addOperator(loclistOperator{
 							resolve: func(loc *loclist) (loclistStack, error) {
 								return loclistStack{
-									class: stackClassSingleAddress,
-									value: uint32(fld.Val.(int64)),
+									class: stackClassIsValue,
+									value: uint32(address),
 								}, nil
 							},
 							operator: "member offset",

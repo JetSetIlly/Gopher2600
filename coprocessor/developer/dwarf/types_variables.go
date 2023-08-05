@@ -256,7 +256,6 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistSection) {
 	}
 
 	if varb.Type.IsComposite() {
-		var offset uint64
 		for i, m := range varb.Type.Members {
 			memb := &SourceVariable{
 				Name:     m.Name,
@@ -266,7 +265,7 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistSection) {
 			memb.loclist = debug_loc.newLoclistJustContext(varb)
 
 			if varb.loclist != nil {
-				o := offset
+				offset := m.resolve().value
 				idx := i
 				memb.loclist.addOperator(loclistOperator{
 					resolve: func(_ *loclist) (loclistStack, error) {
@@ -276,7 +275,7 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistSection) {
 							if !ok {
 								return loclistStack{}, fmt.Errorf("no base address for composite variable")
 							}
-							address += o
+							address += uint64(offset)
 							return loclistStack{
 								class: stackClassSingleAddress,
 								value: uint32(address),
@@ -306,8 +305,6 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistSection) {
 
 			varb.children = append(varb.children, memb)
 			memb.addVariableChildren(debug_loc)
-
-			offset += uint64(m.Type.Size)
 		}
 	}
 
