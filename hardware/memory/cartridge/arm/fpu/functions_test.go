@@ -24,25 +24,25 @@ import (
 )
 
 func TestSpecificValues(t *testing.T) {
-	var fpu fpu.FPU
+	var fp fpu.FPU
 	var v32 uint32
 
-	v32 = uint32(fpu.FPZero(false, 32))
+	v32 = uint32(fp.FPZero(false, 32))
 	test.ExpectEquality(t, v32, 0b00000000000000000000000000000000)
-	v32 = uint32(fpu.FPZero(true, 32))
+	v32 = uint32(fp.FPZero(true, 32))
 	test.ExpectEquality(t, v32, 0b10000000000000000000000000000000)
 
-	v32 = uint32(fpu.FPInfinity(false, 32))
+	v32 = uint32(fp.FPInfinity(false, 32))
 	test.ExpectEquality(t, v32, 0b01111111100000000000000000000000)
-	v32 = uint32(fpu.FPInfinity(true, 32))
+	v32 = uint32(fp.FPInfinity(true, 32))
 	test.ExpectEquality(t, v32, 0b11111111100000000000000000000000)
 
-	v32 = uint32(fpu.FPMaxNormal(false, 32))
+	v32 = uint32(fp.FPMaxNormal(false, 32))
 	test.ExpectEquality(t, v32, 0b01111111011111111111111111111111)
-	v32 = uint32(fpu.FPMaxNormal(true, 32))
+	v32 = uint32(fp.FPMaxNormal(true, 32))
 	test.ExpectEquality(t, v32, 0b11111111011111111111111111111111)
 
-	v32 = uint32(fpu.FPDefaultNaN(32))
+	v32 = uint32(fp.FPDefaultNaN(32))
 	test.ExpectEquality(t, v32, 0b01111111110000000000000000000000)
 }
 
@@ -188,4 +188,61 @@ func TestFPToFixed(t *testing.T) {
 	c = fp.FixedToFP(v, 32, 0, false, true, true)
 	d = fp.FPToFixed(c, 32, 0, false, true, true)
 	test.ExpectEquality(t, d, v)
+}
+
+func TestNegative(t *testing.T) {
+	var fp fpu.FPU
+
+	fpscr := fp.StandardFPSCRValue()
+	fpscr.SetRMode(fpu.FPRoundNearest)
+
+	var v float64
+	var c uint64
+	var d uint32
+
+	v = -100
+	c = fp.FPRound(v, 32, fpscr)
+	d = math.Float32bits(float32(v))
+	test.ExpectEquality(t, uint32(c), d)
+
+	v = -100.1011
+	c = fp.FPRound(v, 32, fpscr)
+	d = math.Float32bits(float32(v))
+	test.ExpectEquality(t, uint32(c), d)
+}
+
+func TestArithmetic(t *testing.T) {
+	var fp fpu.FPU
+
+	fpscr := fp.StandardFPSCRValue()
+	fpscr.SetRMode(fpu.FPRoundNearest)
+
+	var v, w float64
+	var c, d uint64
+	v = 123.12
+	c = fp.FPRound(v, 64, fpscr)
+	w = 456.842
+	d = fp.FPRound(w, 64, fpscr)
+
+	var r, s uint64
+
+	// addition
+	r = fp.FPAdd(c, d, 64, false)
+	s = math.Float64bits(v + w)
+	test.ExpectEquality(t, r, s)
+
+	// subtraction
+	r = fp.FPSub(c, d, 64, false)
+	s = math.Float64bits(v - w)
+	test.ExpectEquality(t, r, s)
+
+	// multiplication
+	r = fp.FPMul(c, d, 64, false)
+	s = math.Float64bits(v * w)
+	test.ExpectEquality(t, r, s)
+
+	// divition
+	r = fp.FPDiv(c, d, 64, false)
+	s = math.Float64bits(v / w)
+	test.ExpectEquality(t, r, s)
 }
