@@ -534,7 +534,7 @@ func (win *winCoProcSource) drawSource(src *dwarf.Source, bp breakpoints.Breakpo
 									disasm = win.selectionRange.Instructions
 								}
 
-								win.img.drawDisasmForCoProc(disasm, ln, multiline, true, win.yieldState.Addr)
+								win.img.drawDisasmForCoProc(disasm, ln, multiline, true, win.yieldState.Addr, shortDisasmWindow)
 
 								if ln.Function.IsInlined() {
 									imgui.Spacing()

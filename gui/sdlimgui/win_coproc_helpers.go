@@ -24,17 +24,60 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
+const (
+	shortDisasmWindow   = 10
+	LongDisasmWindow    = 20
+	showAllDisasmWindow = -1
+)
+
 func (img *SdlImgui) drawDisasmForCoProc(disasm []*dwarf.SourceInstruction, ln *dwarf.SourceLine,
-	multiline bool, showYield bool, yldAddress uint32) {
+	multiline bool, showYield bool, yldAddress uint32, windowSize int) {
 
 	imgui.BeginTable("##disasmTable", 4)
-
-	const maxDisasmLines = 10
-	numLines := 0
+	defer imgui.EndTable()
 
 	// draw disassembly, colouring the text according to whether the disassembly entry
 	// is associated with the current line (ie. the one the mouse is over)
-	for _, d := range disasm {
+	yldLine := 0
+	for i := 0; i < len(disasm); i++ {
+		d := disasm[i]
+		if d.Addr == yldAddress {
+			yldLine = i
+			break
+		}
+	}
+
+	// find window limits
+	var start, end int
+
+	if windowSize < 0 {
+		start = 0
+		end = len(disasm)
+	} else {
+		// maximum the number of lines to show in the 'window'
+		start = yldLine - (windowSize / 2)
+		if start < 0 {
+			start = 0
+		}
+		end = start + windowSize
+		if end > len(disasm) {
+			end = len(disasm)
+		}
+	}
+
+	// add prelude elipses if the 'window' is not placed at the beginning of the list
+	if start > 0 {
+		imgui.TableNextRow()
+		imgui.TableNextColumn()
+		imgui.TableNextColumn()
+		imgui.TableNextColumn()
+		imgui.TableNextColumn()
+		imgui.Text("...")
+	}
+
+	for i := start; i < end; i++ {
+		d := disasm[i]
+
 		imgui.TableNextRow()
 
 		imgui.TableNextColumn()
@@ -49,7 +92,6 @@ func (img *SdlImgui) drawDisasmForCoProc(disasm []*dwarf.SourceInstruction, ln *
 
 		imgui.TableNextColumn()
 		if showYield {
-
 			// simple way of making sure the yield column doesn't change width
 			// is to always print the icon but to use an the window backtround
 			// colour if the icon is to be invisible
@@ -80,18 +122,12 @@ func (img *SdlImgui) drawDisasmForCoProc(disasm []*dwarf.SourceInstruction, ln *
 		}
 		imgui.Text(d.Disasm.String())
 		imgui.PopStyleColor()
-
-		// limit number of lines unless multiline is true
-		numLines++
-		if numLines >= maxDisasmLines && !multiline {
-			if len(disasm) > maxDisasmLines {
-				imgui.Text("...")
-				break // for loop
-			}
-		}
 	}
 
-	imgui.EndTable()
+	// add epilogue elipses if the 'window' does not reach the end of the list
+	if end < len(disasm) {
+		imgui.Text("...")
+	}
 }
 
 // display source line with syntax highlighting.

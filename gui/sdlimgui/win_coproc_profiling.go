@@ -1090,7 +1090,7 @@ func (win *winCoProcProfiling) tooltip(load profiling.Load,
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()
-			win.img.drawDisasmForCoProc(ln.Instruction, ln, false, false, 0)
+			win.img.drawDisasmForCoProc(ln.Instruction, ln, false, false, 0, shortDisasmWindow)
 		}
 
 	}, true)
