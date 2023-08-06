@@ -151,7 +151,7 @@ func (win *winCoProcLocals) drawVariable(varb *dwarf.SourceVariable, indentLevel
 
 	// name of variable as presented. added bug icon as appropriate
 	name := fmt.Sprintf("%s%s", strings.Repeat(" ", IndentDepth*indentLevel), varb.Name)
-	if !varb.IsLocatable() {
+	if !varb.IsValid() {
 		if win.showLocatableOnly {
 			return
 		}
@@ -166,7 +166,7 @@ func (win *winCoProcLocals) drawVariable(varb *dwarf.SourceVariable, indentLevel
 	imgui.SelectableV(name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 	imgui.PopStyleColorV(2)
 
-	if !varb.IsLocatable() {
+	if !varb.IsValid() {
 		imgui.TableNextColumn()
 		imgui.Text(varb.Type.Name)
 		imgui.TableNextColumn()

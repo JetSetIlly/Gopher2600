@@ -785,7 +785,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 			}
 			g, ok := bld.globals[varb.Name]
 
-			if !ok || (!g.IsLocatable() && varb.IsLocatable()) {
+			if !ok || (!g.IsValid() && varb.IsValid()) {
 				bld.globals[varb.Name] = varb
 			}
 
@@ -811,100 +811,108 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 			}
 		}
 
-		// variable actually exists in memory if it has a location attribute
-		locfld := v.AttrField(dwarf.AttrLocation)
-		if locfld == nil {
+		// variable actually exists if it has a location or constant value attribute
+
+		constfld := v.AttrField(dwarf.AttrConstValue)
+		if constfld != nil {
+			varb.hasConstantValue = true
+			varb.constantValue = uint32(constfld.Val.(int64))
 			if !addGlobal(varb) {
 				addLexicalLocal(varb)
 			}
 		} else {
-			switch locfld.Class {
-			case dwarf.ClassLocListPtr:
-				if bld.debug_loc == nil {
-					return errors.New(fmt.Sprintf("no .debug_loc data for %s", varb.Name))
-				}
-
-				var err error
-				err = bld.debug_loc.newLoclist(varb, locfld.Val.(int64), compilationUnitAddress,
-					func(start, end uint64, loc *loclist) {
-						cp := *varb
-						cp.loclist = loc
-						local := &SourceVariableLocal{
-							SourceVariable: &cp,
-							Range: SourceRange{
-								Start: start,
-								End:   end,
-							},
-						}
-						bld.locals = append(bld.locals, local)
-					})
-				if err != nil {
-					if errors.Is(err, UnsupportedDWARF) {
-						return err
+			locfld := v.AttrField(dwarf.AttrLocation)
+			if locfld != nil {
+				switch locfld.Class {
+				case dwarf.ClassLocListPtr:
+					if bld.debug_loc == nil {
+						return errors.New(fmt.Sprintf("no .debug_loc data for %s", varb.Name))
 					}
-					logger.Logf("dwarf", "%s: %v", varb.Name, err)
-				}
 
-				// I don't believe variables with the class of location
-				// attribute can ever be a global variable but I don't know that
-				// for sure. either way, attempting to add to the global list
-				// does no harm
-				if !addGlobal(varb) {
-					addLexicalLocal(varb)
-				}
-
-			case dwarf.ClassExprLoc:
-				if bld.debug_loc == nil {
-					return errors.New(fmt.Sprintf("no .debug_loc data for %s", varb.Name))
-				}
-
-				// Single location description "They are sufficient for describing the location of any object
-				// as long as its lifetime is either static or the same as the lexical block that owns it,
-				// and it does not move during its lifetime"
-				// page 26 of "DWARF4 Standard"
-
-				// the origin address from which the loclist address is set is
-				// dependent on which section the symbol appears in
-				var globalOrigin uint64
-
-				// this is a slow solution and should be replaced with a preprocessed symbol-to-section map
-				if relocatable == nil {
-					globalOrigin = compilationUnitAddress
-				} else {
-					syms, err := ef.Symbols()
+					var err error
+					err = bld.debug_loc.newLoclist(varb, locfld.Val.(int64), compilationUnitAddress,
+						func(start, end uint64, loc *loclist) {
+							cp := *varb
+							cp.loclist = loc
+							local := &SourceVariableLocal{
+								SourceVariable: &cp,
+								Range: SourceRange{
+									Start: start,
+									End:   end,
+								},
+							}
+							bld.locals = append(bld.locals, local)
+						})
 					if err != nil {
-						return err
+						if errors.Is(err, UnsupportedDWARF) {
+							return err
+						}
+						logger.Logf("dwarf", "%s: %v", varb.Name, err)
 					}
-					for _, s := range syms {
-						if s.Name == varb.Name {
-							section := ef.Sections[s.Section]
-							if _, o, ok := relocatable.ELFSection(section.Name); !ok {
-								continue // for loop
-							} else {
-								globalOrigin = uint64(o)
+
+					// I don't believe variables with the class of location
+					// attribute can ever be a global variable but I don't know that
+					// for sure. either way, attempting to add to the global list
+					// does no harm
+					if !addGlobal(varb) {
+						addLexicalLocal(varb)
+					}
+
+				case dwarf.ClassExprLoc:
+					if bld.debug_loc == nil {
+						return errors.New(fmt.Sprintf("no .debug_loc data for %s", varb.Name))
+					}
+
+					// Single location description "They are sufficient for describing the location of any object
+					// as long as its lifetime is either static or the same as the lexical block that owns it,
+					// and it does not move during its lifetime"
+					// page 26 of "DWARF4 Standard"
+
+					// the origin address from which the loclist address is set is
+					// dependent on which section the symbol appears in
+					var globalOrigin uint64
+
+					// this is a slow solution and should be replaced with a preprocessed symbol-to-section map
+					if relocatable == nil {
+						globalOrigin = compilationUnitAddress
+					} else {
+						syms, err := ef.Symbols()
+						if err != nil {
+							return err
+						}
+						for _, s := range syms {
+							if s.Name == varb.Name {
+								section := ef.Sections[s.Section]
+								if _, o, ok := relocatable.ELFSection(section.Name); !ok {
+									continue // for loop
+								} else {
+									globalOrigin = uint64(o)
+								}
 							}
 						}
 					}
-				}
 
-				expr := locfld.Val.([]uint8)
-				r, n, err := bld.debug_loc.decodeLoclistOperationWithOrigin(expr, globalOrigin)
-				if err != nil {
-					return err
-				}
-				if n == 0 {
-					logger.Logf("dwarf", "unhandled expression operator %02x", expr[0])
-				}
+					expr := locfld.Val.([]uint8)
+					r, n, err := bld.debug_loc.decodeLoclistOperationWithOrigin(expr, globalOrigin)
+					if err != nil {
+						return err
+					}
+					if n == 0 {
+						logger.Logf("dwarf", "unhandled expression operator %02x", expr[0])
+					}
 
-				varb.loclist = bld.debug_loc.newLoclistJustContext(varb)
-				varb.loclist.addOperator(r)
+					varb.loclist = bld.debug_loc.newLoclistJustContext(varb)
+					varb.loclist.addOperator(r)
 
-				// we don't have a range for this variable it is either a global
-				// or a variable that we can assume is visible for the lexical
-				// range
-				if !addGlobal(varb) {
-					addLexicalLocal(varb)
+					// we don't have a range for this variable it is either a global
+					// or a variable that we can assume is visible for the lexical
+					// range
+					if !addGlobal(varb) {
+						addLexicalLocal(varb)
+					}
 				}
+			} else if !addGlobal(varb) {
+				addLexicalLocal(varb)
 			}
 		}
 	}

@@ -1001,7 +1001,7 @@ func (src *Source) GetLocalVariables(ln *SourceLine, addr uint32) []*SourceVaria
 		// line. this can happen for inlined functions when function ranges overlap
 		if local.DeclLine.Function == ln.Function {
 			if local.Range.InRange(uint64(addr)) {
-				if local.Range.Size() < chosenSize || (local.IsLocatable() && !chosenLocal.IsLocatable()) {
+				if local.Range.Size() < chosenSize || (local.IsValid() && !chosenLocal.IsValid()) {
 					chosenLocal = local
 					chosenSize = local.Range.Size()
 				}

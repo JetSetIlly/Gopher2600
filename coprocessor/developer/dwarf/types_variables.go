@@ -53,6 +53,9 @@ type SourceVariable struct {
 	// first source line for each instance of the function
 	DeclLine *SourceLine
 
+	hasConstantValue bool
+	constantValue    uint32
+
 	// location list resolves a Location. may be nil which indicates that the
 	// variable can never be located
 	loclist *loclist
@@ -70,7 +73,7 @@ type SourceVariable struct {
 }
 
 func (varb *SourceVariable) String() string {
-	if !varb.IsLocatable() {
+	if !varb.IsValid() {
 		return fmt.Sprintf("%s %s is not locatable", varb.Type.Name, varb.Name)
 	}
 
@@ -109,6 +112,10 @@ func (varb *SourceVariable) Address() (uint64, bool) {
 
 // Value returns the current value of a SourceVariable
 func (varb *SourceVariable) Value() uint32 {
+	if varb.hasConstantValue {
+		return varb.constantValue
+	}
+
 	var r loclistResult
 	var ok bool
 	if r, ok = varb.cachedLocation.Load().(loclistResult); !ok {
@@ -144,9 +151,9 @@ func (varb *SourceVariable) piece(idx int) (loclistPiece, bool) {
 	return r.pieces[idx], true
 }
 
-// IsLocatable returns true if the variable is visible in memory for the lexical scope
-func (varb *SourceVariable) IsLocatable() bool {
-	return varb.loclist != nil
+// IsValid returns true if the variable has a valid or resolvable value
+func (varb *SourceVariable) IsValid() bool {
+	return varb.loclist != nil || varb.hasConstantValue
 }
 
 // NumChildren returns the number of children for this variable
@@ -183,6 +190,10 @@ func (varb *SourceVariable) Update() {
 // Note that the basic information about the variable is not output by this
 // function. The String() function provides that information
 func (varb *SourceVariable) WriteDerivation(w io.Writer) error {
+	if varb.hasConstantValue {
+		w.Write([]byte(fmt.Sprintf("constant value %08x", varb.constantValue)))
+	}
+
 	if varb.loclist == nil {
 		return nil
 	}
@@ -197,6 +208,12 @@ func (varb *SourceVariable) WriteDerivation(w io.Writer) error {
 
 // resolve address/value
 func (varb *SourceVariable) resolve() loclistResult {
+	if varb.hasConstantValue {
+		return loclistResult{
+			value: varb.constantValue,
+		}
+	}
+
 	if varb.loclist == nil {
 		varb.Error = fmt.Errorf("there is no location to resolve")
 		return loclistResult{}
@@ -316,17 +333,15 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistSection) {
 		}
 		deref.loclist = debug_loc.newLoclistJustContext(varb)
 
-		if varb.loclist != nil {
-			deref.loclist.addOperator(loclistOperator{
-				resolve: func(_ *loclist) (loclistStack, error) {
-					return loclistStack{
-						class: stackClassSingleAddress,
-						value: varb.Value(),
-					}, nil
-				},
-				operator: "pointer dereference",
-			})
-		}
+		deref.loclist.addOperator(loclistOperator{
+			resolve: func(_ *loclist) (loclistStack, error) {
+				return loclistStack{
+					class: stackClassSingleAddress,
+					value: varb.Value(),
+				}, nil
+			},
+			operator: "pointer dereference",
+		})
 
 		varb.children = append(varb.children, deref)
 		deref.addVariableChildren(debug_loc)
