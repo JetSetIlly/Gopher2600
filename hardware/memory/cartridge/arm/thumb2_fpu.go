@@ -171,7 +171,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 					return &DisasmEntry{
 						Is32bit:  true,
 						Operator: "VMUL",
-						Operand:  fmt.Sprintf("%c%d, %c%d, %x%d", regPrefix, d, regPrefix, n, regPrefix, m),
+						Operand:  fmt.Sprintf("%c%d, %c%d, %c%d", regPrefix, d, regPrefix, n, regPrefix, m),
 					}
 				}
 
@@ -215,7 +215,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 					return &DisasmEntry{
 						Is32bit:  true,
 						Operator: "VADD",
-						Operand:  fmt.Sprintf("%c%d, %c%d, %x%d", regPrefix, d, regPrefix, n, regPrefix, m),
+						Operand:  fmt.Sprintf("%c%d, %c%d, %c%d", regPrefix, d, regPrefix, n, regPrefix, m),
 					}
 				}
 				arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPAdd(
@@ -228,7 +228,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 					return &DisasmEntry{
 						Is32bit:  true,
 						Operator: "VSUB",
-						Operand:  fmt.Sprintf("%c%d, %c%d, %x%d", regPrefix, d, regPrefix, n, regPrefix, m),
+						Operand:  fmt.Sprintf("%c%d, %c%d, %c%d", regPrefix, d, regPrefix, n, regPrefix, m),
 					}
 				}
 				arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPSub(
@@ -269,7 +269,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 				return &DisasmEntry{
 					Is32bit:  true,
 					Operator: "VDIV",
-					Operand:  fmt.Sprintf("%c%d, %c%d, %x%d", regPrefix, d, regPrefix, n, regPrefix, m),
+					Operand:  fmt.Sprintf("%c%d, %c%d, %c%d", regPrefix, d, regPrefix, n, regPrefix, m),
 				}
 			}
 

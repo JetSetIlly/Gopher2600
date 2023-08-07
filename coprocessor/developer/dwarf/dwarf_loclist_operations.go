@@ -1000,12 +1000,13 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 
 				// set isAddress flag
 				switch a.class {
+				case stackClassNOP:
 				case stackClassPush:
 					p.isAddress = true
 				case stackClassIsValue:
 					p.isAddress = false
 				default:
-					return loclistStack{}, fmt.Errorf("unhandled stack entry")
+					return loclistStack{}, fmt.Errorf("unhandled stack entry: %v", a.class)
 				}
 
 				// add to list of pieces
