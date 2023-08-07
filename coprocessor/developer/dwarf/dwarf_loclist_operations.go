@@ -544,27 +544,111 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 	case 0x29:
 		// DW_OP_eq
 		// (control flow operations)
-		return loclistOperator{}, 0, nil
+		return loclistOperator{
+			resolve: func(loc *loclist) (loclistStack, error) {
+				a, _ := loc.pop()
+				b, _ := loc.pop()
+				var value uint32
+				if int32(b.value) == int32(a.value) {
+					value = 1
+				}
+				return loclistStack{
+					class: stackClassPush,
+					value: value,
+				}, nil
+			},
+			operator: "DW_OP_eq",
+		}, 1, nil
 	case 0x2a:
 		// DW_OP_ge
 		// (control flow operations)
-		return loclistOperator{}, 0, nil
+		return loclistOperator{
+			resolve: func(loc *loclist) (loclistStack, error) {
+				a, _ := loc.pop()
+				b, _ := loc.pop()
+				var value uint32
+				if int32(b.value) >= int32(a.value) {
+					value = 1
+				}
+				return loclistStack{
+					class: stackClassPush,
+					value: value,
+				}, nil
+			},
+			operator: "DW_OP_ge",
+		}, 1, nil
 	case 0x2b:
 		// DW_OP_gt
 		// (control flow operations)
-		return loclistOperator{}, 0, nil
+		return loclistOperator{
+			resolve: func(loc *loclist) (loclistStack, error) {
+				a, _ := loc.pop()
+				b, _ := loc.pop()
+				var value uint32
+				if int32(b.value) > int32(a.value) {
+					value = 1
+				}
+				return loclistStack{
+					class: stackClassPush,
+					value: value,
+				}, nil
+			},
+			operator: "DW_OP_gt",
+		}, 1, nil
 	case 0x2c:
 		// DW_OP_le
 		// (control flow operations)
-		return loclistOperator{}, 0, nil
+		return loclistOperator{
+			resolve: func(loc *loclist) (loclistStack, error) {
+				a, _ := loc.pop()
+				b, _ := loc.pop()
+				var value uint32
+				if int32(b.value) <= int32(a.value) {
+					value = 1
+				}
+				return loclistStack{
+					class: stackClassPush,
+					value: value,
+				}, nil
+			},
+			operator: "DW_OP_le",
+		}, 1, nil
 	case 0x2d:
 		// DW_OP_lt
 		// (control flow operations)
-		return loclistOperator{}, 0, nil
+		return loclistOperator{
+			resolve: func(loc *loclist) (loclistStack, error) {
+				a, _ := loc.pop()
+				b, _ := loc.pop()
+				var value uint32
+				if int32(b.value) < int32(a.value) {
+					value = 1
+				}
+				return loclistStack{
+					class: stackClassPush,
+					value: value,
+				}, nil
+			},
+			operator: "DW_OP_lt",
+		}, 1, nil
 	case 0x2e:
 		// DW_OP_ne
 		// (control flow operations)
-		return loclistOperator{}, 0, nil
+		return loclistOperator{
+			resolve: func(loc *loclist) (loclistStack, error) {
+				a, _ := loc.pop()
+				b, _ := loc.pop()
+				var value uint32
+				if int32(b.value) != int32(a.value) {
+					value = 1
+				}
+				return loclistStack{
+					class: stackClassPush,
+					value: value,
+				}, nil
+			},
+			operator: "DW_OP_ne",
+		}, 1, nil
 	case 0x2f:
 		// DW_OP_skip
 		// (control flow operations)
@@ -866,7 +950,23 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// "DW_OP_bregx
 		// "The DW_OP_bregx operation has two operands: a register which is specified by an unsigned
 		// LEB128 number, followed by a signed LEB128 offset"
-		return loclistOperator{}, 0, nil
+		reg, n := leb128.DecodeULEB128(expr[1:])
+		offset, m := leb128.DecodeSLEB128(expr[1:])
+		return loclistOperator{
+			resolve: func(loc *loclist) (loclistStack, error) {
+				regVal, ok := sec.coproc.CoProcRegister(int(reg))
+				if !ok {
+					return loclistStack{}, fmt.Errorf("unknown register: %d", reg)
+				}
+				address := uint32(int64(regVal) + offset)
+
+				return loclistStack{
+					class: stackClassPush,
+					value: address,
+				}, nil
+			},
+			operator: "DW_OP_bregx",
+		}, m + n + 1, nil
 
 	case 0x93:
 		// DW_OP_piece
@@ -991,7 +1091,31 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 	case 0x9e:
 		// DW_OP_implicit_value
 		// (implicit location descriptions)
-		return loclistOperator{}, 0, nil
+		// "The DW_OP_implicit_value operation specifies an immediate value using two operands: an
+		// unsigned LEB128 length, followed by a block representing the value in the memory
+		// representation of the target machine. The length operand gives the length in bytes of the
+		// block"
+		length, n := leb128.DecodeULEB128(expr[1:])
+		var val uint32
+		switch length {
+		case 1:
+			val = uint32(expr[1+n])
+		case 2:
+			val = uint32(sec.byteOrder.Uint16(expr[1+n:]))
+		case 4:
+			val = sec.byteOrder.Uint32(expr[1+n:])
+		default:
+			return loclistOperator{}, 0, fmt.Errorf("unsupported length value for DW_OP_implicit_value")
+		}
+		return loclistOperator{
+			resolve: func(loc *loclist) (loclistStack, error) {
+				return loclistStack{
+					class: stackClassIsValue,
+					value: val,
+				}, nil
+			},
+			operator: "DW_OP_implicit_value",
+		}, int(length) + n + 1, nil
 
 	case 0x9f:
 		// DW_OP_stack_value
