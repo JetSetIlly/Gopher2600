@@ -89,3 +89,33 @@ func (fpu *FPU) FPProcessNaNs(typ1 FPType, typ2 FPType, N int, op1 uint64, op2 u
 
 	return done, result
 }
+
+func (fpu *FPU) FPProcessNaNs3(typ1 FPType, typ2 FPType, typ3 FPType, N int,
+	op1 uint64, op2 uint64, op3 uint64, fpscr FPSCR) (bool, uint64) {
+	// page A2-50 of "ARMv7-M"
+
+	var done bool
+	var result uint64
+
+	if typ1 == FPType_SNaN {
+		done = true
+		result = fpu.FPProcessNaN(typ1, N, op1, fpscr)
+	} else if typ2 == FPType_SNaN {
+		done = true
+		result = fpu.FPProcessNaN(typ2, N, op2, fpscr)
+	} else if typ3 == FPType_SNaN {
+		done = true
+		result = fpu.FPProcessNaN(typ3, N, op3, fpscr)
+	} else if typ1 == FPType_QNaN {
+		done = true
+		result = fpu.FPProcessNaN(typ1, N, op1, fpscr)
+	} else if typ2 == FPType_QNaN {
+		done = true
+		result = fpu.FPProcessNaN(typ2, N, op2, fpscr)
+	} else if typ3 == FPType_QNaN {
+		done = true
+		result = fpu.FPProcessNaN(typ3, N, op3, fpscr)
+	}
+
+	return done, result
+}

@@ -140,6 +140,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 						arm.state.fpu.Registers[d] = uint32(negProd)
 					}
 				}
+				return nil
 
 			} else {
 				// "A7.7.248 VMUL" of "ARMv7-M"
@@ -397,11 +398,64 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 
 				return nil
 			}
+
+		case 0b1010:
+			// "A7.7.233 VFMA, VFMS" of "ARMv7-M"
+			op := opcode&0x0080 == 0x0080
+
+			if op {
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "VFMS",
+					}
+				}
+			} else {
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "VFMA",
+					}
+				}
+			}
+
+			D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
+			Vn := arm.state.function32bitOpcodeHi & 0x000f
+			Vd := (opcode & 0xf000) >> 12
+			N := (opcode & 0x0080) >> 7
+			M := (opcode & 0x0020) >> 5
+			Vm := opcode & 0x000f
+
+			var d uint16
+			var n uint16
+			var m uint16
+			var bits int
+
+			if sz {
+				d = (D << 4) | Vd
+				n = (N << 4) | Vn
+				m = (M << 4) | Vm
+				panic("double precision VFMA/VFMS")
+			} else {
+				d = (Vd << 1) | D
+				n = (Vn << 1) | N
+				m = (Vm << 1) | M
+				bits = 32
+			}
+
+			v := uint64(arm.state.fpu.Registers[n])
+			if op {
+				v = arm.state.fpu.FPNeg(v, bits)
+			}
+			arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPMulAdd(
+				uint64(arm.state.fpu.Registers[d]),
+				v, uint64(arm.state.fpu.Registers[m]), bits, true))
+
+			return nil
 		}
 	}
 
-	// panic(fmt.Sprintf("undecoded FPU instrucion (A6.4): %04x %04x", arm.state.function32bitOpcodeHi, opcode))
-	return nil
+	panic(fmt.Sprintf("undecoded FPU instrucion (A6.4): %04x %04x", arm.state.function32bitOpcodeHi, opcode))
 }
 
 func (arm *ARM) decodeThumb2FPU32bitTransfer(opcode uint16) *DisasmEntry {

@@ -245,6 +245,16 @@ func TestArithmetic(t *testing.T) {
 	r = fp.FPDiv(c, d, 64, false)
 	s = math.Float64bits(v / w)
 	test.ExpectEquality(t, r, s)
+
+	var q uint64
+
+	// mutliplication and add
+	r = fp.FPRound(2, 32, fpscr)
+	s = fp.FPRound(3, 32, fpscr)
+	q = fp.FPRound(1, 32, fpscr)
+	q = fp.FPMulAdd(q, r, s, 32, false)
+	_, _, f := fp.FPUnpack(q, 32, fpscr)
+	test.ExpectEquality(t, f, (2*3)+1)
 }
 
 func TestNegation(t *testing.T) {
