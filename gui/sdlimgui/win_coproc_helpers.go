@@ -50,7 +50,7 @@ func (img *SdlImgui) drawDisasmForCoProc(disasm []*dwarf.SourceInstruction, ln *
 	// find window limits
 	var start, end int
 
-	if windowSize < 0 {
+	if windowSize < 0 || multiline {
 		start = 0
 		end = len(disasm)
 	} else {
