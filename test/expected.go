@@ -17,11 +17,20 @@ package test
 
 import "testing"
 
-// ExpectEquality_ is used to test equality between one value and another
+// ExpectEquality is used to test equality between one value and another
 func ExpectEquality[T comparable](t *testing.T, value T, expectedValue T) {
 	t.Helper()
 	if value != expectedValue {
 		t.Errorf("equality test of type %T failed: %v does not equal %v)", value, value, expectedValue)
+	}
+}
+
+// ExpectInequality is used to test inequality between one value and another. In
+// other words, the test does not want to succeed if the values are equal
+func ExpectInequality[T comparable](t *testing.T, value T, expectedValue T) {
+	t.Helper()
+	if value == expectedValue {
+		t.Errorf("inequality test of type %T failed: %v does equal %v)", value, value, expectedValue)
 	}
 }
 

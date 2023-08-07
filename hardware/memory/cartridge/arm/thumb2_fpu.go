@@ -129,11 +129,15 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 					prod := arm.state.fpu.FPMul(uint64(arm.state.fpu.Registers[n]), uint64(arm.state.fpu.Registers[m]), 32, true)
 					switch typ {
 					case fpu.VFPNegMul_VNMLA:
-						arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPAdd(^uint64(arm.state.fpu.Registers[d]), ^prod, 32, true))
+						negProd := arm.state.fpu.FPNeg(prod, 32)
+						negReg := arm.state.fpu.FPNeg(uint64(arm.state.fpu.Registers[d]), 32)
+						arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPAdd(negReg, negProd, 32, true))
 					case fpu.VFPNegMul_VNMLS:
-						arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPAdd(^uint64(arm.state.fpu.Registers[d]), prod, 32, true))
+						negReg := arm.state.fpu.FPNeg(uint64(arm.state.fpu.Registers[d]), 32)
+						arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPAdd(negReg, prod, 32, true))
 					case fpu.VFPNegMul_VNMNUL:
-						arm.state.fpu.Registers[d] = ^uint32(prod)
+						negProd := arm.state.fpu.FPNeg(prod, 32)
+						arm.state.fpu.Registers[d] = uint32(negProd)
 					}
 				}
 
@@ -157,8 +161,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 					d = (D << 4) | Vd
 					n = (N << 4) | Vn
 					m = (M << 4) | Vm
-					bits = 64
-					regPrefix = 'D'
+					panic("double precision VMUL")
 				} else {
 					d = (Vd << 1) | D
 					n = (Vn << 1) | N
@@ -199,7 +202,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 				n = (N << 4) | Vn
 				m = (M << 4) | Vm
 				bits = 64
-				regPrefix = 'D'
+				panic("double precision VADD/VSUB")
 			} else {
 				d = (Vd << 1) | D
 				n = (Vn << 1) | N
@@ -255,8 +258,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 				d = (D << 4) | Vd
 				n = (N << 4) | Vn
 				m = (M << 4) | Vm
-				regPrefix = 'D'
-				bits = 64
+				panic("double precision VDIV")
 			} else {
 				d = (Vd << 1) | D
 				n = (Vn << 1) | N
@@ -373,7 +375,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 					N = 64
 					if M {
 						// Encoding T1
-						panic("64bit VCMP")
+						panic("double precision VCMP")
 					} else {
 						// Encoding T2
 						cmpOp = arm.state.fpu.FPZero(false, 64)

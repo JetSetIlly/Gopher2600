@@ -241,8 +241,58 @@ func TestArithmetic(t *testing.T) {
 	s = math.Float64bits(v * w)
 	test.ExpectEquality(t, r, s)
 
-	// divition
+	// division
 	r = fp.FPDiv(c, d, 64, false)
 	s = math.Float64bits(v / w)
 	test.ExpectEquality(t, r, s)
+}
+
+func TestNegation(t *testing.T) {
+	var fp fpu.FPU
+
+	var v float64
+	var c uint32
+	var d uint32
+
+	v = 100.223
+	c = math.Float32bits(float32(v))
+	d = math.Float32bits(float32(-v))
+
+	// the two values should be unequal at this point
+	test.ExpectInequality(t, c, d)
+
+	// negate one of the values. the two value will now be equal
+	d = uint32(fp.FPNeg(uint64(d), 32))
+	test.ExpectEquality(t, c, d)
+
+	// negate again to make the values unequal
+	d = uint32(fp.FPNeg(uint64(d), 32))
+	test.ExpectInequality(t, c, d)
+
+	// and again to make them equal again
+	d = uint32(fp.FPNeg(uint64(d), 32))
+	test.ExpectEquality(t, c, d)
+}
+
+func TestAbsolute(t *testing.T) {
+	var fp fpu.FPU
+
+	var v float64
+	var c uint32
+	var d uint32
+
+	v = 100.223
+	c = math.Float32bits(float32(v))
+	d = math.Float32bits(float32(-v))
+
+	// the two values should be unequal at this point
+	test.ExpectInequality(t, c, d)
+
+	// force the negative value to be positive
+	d = uint32(fp.FPAbs(uint64(d), 32))
+	test.ExpectEquality(t, c, d)
+
+	// forcing a positive value has no effect
+	d = uint32(fp.FPAbs(uint64(d), 32))
+	test.ExpectEquality(t, c, d)
 }
