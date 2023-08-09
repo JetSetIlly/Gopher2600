@@ -40,7 +40,7 @@ type TV interface {
 
 // Cartridge defines the interface to the cartridge required by the developer package
 type Cartridge interface {
-	GetCoProc() coprocessor.CartCoProc
+	GetCoProcBus() coprocessor.CartCoProcBus
 	PushFunction(func())
 }
 
@@ -125,14 +125,14 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 		Entries: make([]coprocessor.CartCoProcProfileEntry, 0, 1000),
 	}
 
-	if cart == nil || cart.GetCoProc() == nil {
+	if cart == nil || cart.GetCoProcBus() == nil {
 		return nil
 	}
 	dev.cart = cart
 
 	// we always set the developer for the cartridge even if we have no source.
 	// some developer functions don't require source code to be useful
-	dev.cart.GetCoProc().SetDeveloper(dev)
+	dev.cart.GetCoProcBus().GetCoProc().SetDeveloper(dev)
 
 	switch dev.emulation.State() {
 	case govern.EmulatorStart:
@@ -278,6 +278,15 @@ func (dev *Developer) MemoryFault(event string, explanation faults.Category,
 
 // SetEmulationState is called by the emulation whenever state changes
 func (dev *Developer) SetEmulationState(state govern.State) {
+	if dev.cart != nil {
+		switch state {
+		case govern.Rewinding:
+			dev.cart.GetCoProcBus().GetCoProc().BreakpointsEnable(false)
+		default:
+			dev.cart.GetCoProcBus().GetCoProc().BreakpointsEnable(true)
+		}
+	}
+
 	dev.BorrowSource(func(src *dwarf.Source) {
 		dev.yieldStateLock.Lock()
 		defer dev.yieldStateLock.Unlock()

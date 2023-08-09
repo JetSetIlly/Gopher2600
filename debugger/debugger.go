@@ -500,7 +500,6 @@ func (dbg *Debugger) setState(state govern.State) {
 // should not be issued to the gui.
 func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 	if state == govern.Rewinding {
-		dbg.vcs.Mem.Cart.BreakpointsEnable(false)
 		dbg.endPlayback()
 		dbg.endRecording()
 		dbg.endComparison()
@@ -509,8 +508,6 @@ func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 		// for StrongARM type ROMs
 		dbg.CoProcDisasm.Inhibit(true)
 	} else {
-		dbg.vcs.Mem.Cart.BreakpointsEnable(true)
-
 		// uninhibit coprocessor disassembly
 		dbg.CoProcDisasm.Inhibit(false)
 	}

@@ -23,6 +23,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf/leb128"
 )
 
@@ -59,15 +60,10 @@ func (c *frameSectionCIE) String() string {
 	return s.String()
 }
 
-// the coprocessor interface required by the frame section
-type frameCoproc interface {
-	CoProcRegister(n int) (uint32, bool)
-}
-
 // information about the structure of call frame information can be found in
 // the "DWARF-4 Specification" in section 6.4
 type frameSection struct {
-	coproc frameCoproc
+	coproc coprocessor.CartCoProc
 	cie    map[uint32]*frameSectionCIE
 	fde    []*frameSectionFDE
 
@@ -84,7 +80,7 @@ type frameSectionRelocate struct {
 	origin   uint32
 }
 
-func newFrameSectionFromFile(ef *elf.File, coproc frameCoproc,
+func newFrameSectionFromFile(ef *elf.File, coproc coprocessor.CartCoProc,
 	rel frameSectionRelocate) (*frameSection, error) {
 
 	sec := ef.Section(".debug_frame")
@@ -99,7 +95,7 @@ func newFrameSectionFromFile(ef *elf.File, coproc frameCoproc,
 }
 
 func newFrameSection(data []uint8, byteOrder binary.ByteOrder,
-	coproc frameCoproc, rel frameSectionRelocate) (*frameSection, error) {
+	coproc coprocessor.CartCoProc, rel frameSectionRelocate) (*frameSection, error) {
 
 	frm := &frameSection{
 		coproc:    coproc,
@@ -223,7 +219,7 @@ func (fr *frameSection) framebase() (uint64, error) {
 	// TODO: replace magic number with a PC mnemonic. the mnemonic can then
 	// refer to appropriate register for the coprocessor. the value of 15 is
 	// fine for the ARM coprocessor
-	addr, ok := fr.coproc.CoProcRegister(15)
+	addr, ok := fr.coproc.Register(15)
 	if !ok {
 		return 0, fmt.Errorf("cannot retrieve value from PC of coprocessor")
 	}
@@ -294,7 +290,7 @@ func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
 		}
 	}
 
-	framebase, ok := fr.coproc.CoProcRegister(tab.rows[0].cfaRegister)
+	framebase, ok := fr.coproc.Register(tab.rows[0].cfaRegister)
 	if !ok {
 		return 0, fmt.Errorf("error retreiving framebase from register %d", tab.rows[0].cfaRegister)
 	}

@@ -226,7 +226,7 @@ func (varb *SourceVariable) resolve() loclistResult {
 	}
 
 	if r.hasAddress {
-		v, ok := varb.loclist.coproc.CoProcPeek(uint32(r.address))
+		v, ok := varb.loclist.coproc.Peek(uint32(r.address))
 		if !ok {
 			varb.Error = errors.New(fmt.Sprintf("error resolving address %08x", r.address))
 			return loclistResult{}

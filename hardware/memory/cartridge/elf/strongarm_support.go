@@ -25,7 +25,9 @@ import (
 
 func randint(mem *elfMemory) {
 	mem.strongarm.running.registers[0] = rand.Uint32()
-	mem.arm.SetRegisters(mem.strongarm.running.registers)
+	for i := range mem.strongarm.running.registers {
+		_ = mem.arm.RegisterSet(i, mem.strongarm.running.registers[i])
+	}
 	mem.endStrongArmFunction()
 }
 
@@ -73,6 +75,8 @@ func __aeabi_idiv(mem *elfMemory) {
 		mem.strongarm.running.registers[0] = uint32(int32(mem.strongarm.running.registers[0]) / int32(mem.strongarm.running.registers[1]))
 	}
 
-	mem.arm.SetRegisters(mem.strongarm.running.registers)
+	for i := range mem.strongarm.running.registers {
+		_ = mem.arm.RegisterSet(i, mem.strongarm.running.registers[i])
+	}
 	mem.endStrongArmFunction()
 }

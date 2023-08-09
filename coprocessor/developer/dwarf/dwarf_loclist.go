@@ -21,22 +21,17 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// the coprocessor interface required by the loclist operators
-type loclistCoproc interface {
-	CoProcRegister(n int) (uint32, bool)
-	CoProcPeek(addr uint32) (uint32, bool)
-}
-
 type loclistSection struct {
-	coproc    loclistCoproc
+	coproc    coprocessor.CartCoProc
 	byteOrder binary.ByteOrder
 	data      []uint8
 }
 
-func newLoclistSectionFromFile(ef *elf.File, coproc loclistCoproc) (*loclistSection, error) {
+func newLoclistSectionFromFile(ef *elf.File, coproc coprocessor.CartCoProc) (*loclistSection, error) {
 	sec := ef.Section(".debug_loc")
 	if sec == nil {
 		return nil, fmt.Errorf("no .debug_loc section")
@@ -48,7 +43,7 @@ func newLoclistSectionFromFile(ef *elf.File, coproc loclistCoproc) (*loclistSect
 	return newLoclistSection(data, ef.ByteOrder, coproc)
 }
 
-func newLoclistSection(data []uint8, byteOrder binary.ByteOrder, coproc loclistCoproc) (*loclistSection, error) {
+func newLoclistSection(data []uint8, byteOrder binary.ByteOrder, coproc coprocessor.CartCoProc) (*loclistSection, error) {
 	sec := &loclistSection{
 		data:      data,
 		coproc:    coproc,
@@ -104,7 +99,7 @@ type loclistResult struct {
 }
 
 type loclist struct {
-	coproc loclistCoproc
+	coproc coprocessor.CartCoProc
 	ctx    loclistFramebase
 
 	list []loclistOperator
@@ -301,7 +296,7 @@ func (loc *loclist) resolve() (loclistResult, error) {
 			}
 
 			var ok bool
-			r.value, ok = loc.coproc.CoProcPeek(s.value)
+			r.value, ok = loc.coproc.Peek(s.value)
 			if !ok {
 				return loclistResult{}, fmt.Errorf("%s: error resolving address %08x", loc.list[i].operator, s.value)
 			}

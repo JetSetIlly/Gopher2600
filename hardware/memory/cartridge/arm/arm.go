@@ -36,7 +36,7 @@ import (
 // debugging of a new cartridge type
 const disassembleToStdout = false
 
-// register names.
+// core register names
 const (
 	rSB = 9 + iota // static base
 	rSL            // stack limit
@@ -45,7 +45,7 @@ const (
 	rSP
 	rLR
 	rPC
-	NumRegisters
+	NumCoreRegisters
 )
 
 // the maximum number of cycles allowed in a single ARM program execution.
@@ -79,7 +79,7 @@ type decodeFunction func(opcode uint16) *DisasmEntry
 
 type ARMState struct {
 	// ARM registers
-	registers [NumRegisters]uint32
+	registers [NumCoreRegisters]uint32
 	status    Status
 
 	mam    mam
@@ -343,12 +343,9 @@ func (arm *ARM) SetByteOrder(o binary.ByteOrder) {
 	arm.byteOrder = o
 }
 
-// CoProcID implements the coprocessor.CartCoProc interface.
-//
-// CoProcID is the ID returned by the ARM type. This const value can be used
-// for comparison purposes to check if a coprocessor.CartCoProc instance is of
-// the ARM type.
-func (arm *ARM) CoProcID() string {
+// ProcessorID implements the coprocessor.CartCoProc interface. Names the type
+// of ARM being emulated
+func (arm *ARM) ProcessorID() string {
 	return string(arm.mmap.ARMArchitecture)
 }
 
@@ -571,6 +568,20 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 	return nil
 }
 
+// StartProfiling starts a profiling session
+func (arm *ARM) StartProfiling() {
+	if arm.dev != nil {
+		arm.dev.StartProfiling()
+	}
+}
+
+// ProcessProfiling ends a profiling session
+func (arm *ARM) ProcessProfiling() {
+	if arm.dev != nil {
+		arm.dev.ProcessProfiling()
+	}
+}
+
 // Run will execute an ARM program from the current PC address, unless the
 // previous execution ran to completion (ie. was uninterrupted).
 //
@@ -629,13 +640,8 @@ func (arm *ARM) Interrupt() {
 	arm.state.yield.Type = coprocessor.YieldSyncWithVCS
 }
 
-// Registers returns a copy of the current values in the general ARM registers.
-// For other registers see the Register() function
-func (arm *ARM) GeneralRegisters() [NumRegisters]uint32 {
-	return arm.state.registers
-}
-
-// Register returns the value in an extended ARM register
+// Register implements the coprocess.CartCoProc interface. Returns the value in
+// the register. Returns false if the requested register is not recognised
 func (arm *ARM) Register(extendedReg int) (uint32, bool) {
 	// general registers
 	if extendedReg <= 15 {
@@ -655,16 +661,18 @@ func (arm *ARM) Register(extendedReg int) (uint32, bool) {
 	return 0, false
 }
 
-// SetRegister sets an extended ARM register to the specified value
-func (arm *ARM) SetRegister(reg int, value uint32) bool {
-	if reg >= NumRegisters {
+// RegisterSet implements the coprocess.CartCoProc interface. Set the register
+// to the specified value. Returns false if the requested register is not
+// recognised
+func (arm *ARM) RegisterSet(reg int, value uint32) bool {
+	if reg >= NumCoreRegisters {
 		return false
 	}
 	arm.state.registers[reg] = value
 	return true
 }
 
-// StackFrame returns the current stack reference for the execution.
+// StackFrame implements the coprocess.CartCoProc interface
 func (arm *ARM) StackFrame() uint32 {
 	return arm.state.stackFrame
 }
@@ -674,13 +682,8 @@ func (arm *ARM) Status() Status {
 	return arm.state.status
 }
 
-// SetRegisters sets the live register values to those supplied
-func (arm *ARM) SetRegisters(registers [NumRegisters]uint32) {
-	arm.state.registers = registers
-}
-
-// BreakpointsEnable turns of breakpoint checking for the duration that
-// disable is true.
+// BreakpointsEnable implements the coprocessor.CartCoProc interface. Enables
+// breakpoint checking for the duration that disable is true.
 func (arm *ARM) BreakpointsEnable(enable bool) {
 	arm.breakpointsEnabled = enable
 }

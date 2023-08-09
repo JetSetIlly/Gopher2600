@@ -30,10 +30,10 @@ type TV interface {
 	AdjCoords(adj television.Adj, amount int) coords.TelevisionCoords
 }
 
-// CartCoProcDisassembly defines the interface to the cartridge required by the
+// Cartridge defines the interface to the cartridge required by the
 // coprocessor disassembly pacakge
-type CartCoProcDisassembly interface {
-	GetCoProc() coprocessor.CartCoProc
+type Cartridge interface {
+	GetCoProcBus() coprocessor.CartCoProcBus
 }
 
 // Disassembly is used to handle the disassembly of instructions from an
@@ -42,7 +42,7 @@ type Disassembly struct {
 	crit sync.Mutex
 
 	tv   TV
-	cart CartCoProcDisassembly
+	cart Cartridge
 
 	disasm DisasmEntries
 }
@@ -69,7 +69,7 @@ func NewDisassembly(tv TV) Disassembly {
 	}
 }
 
-func (dsm *Disassembly) AttachCartridge(cart CartCoProcDisassembly) {
+func (dsm *Disassembly) AttachCartridge(cart Cartridge) {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
@@ -81,7 +81,7 @@ func (dsm *Disassembly) AttachCartridge(cart CartCoProcDisassembly) {
 		Keys:          make([]string, 0, 1024),
 	}
 
-	if cart != nil && cart.GetCoProc() != nil {
+	if cart != nil && cart.GetCoProcBus() != nil {
 		dsm.cart = cart
 	}
 }
@@ -98,11 +98,11 @@ func (dsm *Disassembly) Inhibit(inhibit bool) {
 	}
 
 	if inhibit {
-		dsm.cart.GetCoProc().SetDisassembler(nil)
+		dsm.cart.GetCoProcBus().GetCoProc().SetDisassembler(nil)
 		dsm.disasm.LastExecution = dsm.disasm.LastExecution[:0]
 	} else {
 		if dsm.disasm.Enabled {
-			dsm.cart.GetCoProc().SetDisassembler(dsm)
+			dsm.cart.GetCoProcBus().GetCoProc().SetDisassembler(dsm)
 		}
 	}
 }
@@ -128,9 +128,9 @@ func (dsm *Disassembly) Enable(enable bool) {
 	dsm.disasm.Enabled = enable
 
 	if dsm.disasm.Enabled {
-		dsm.cart.GetCoProc().SetDisassembler(dsm)
+		dsm.cart.GetCoProcBus().GetCoProc().SetDisassembler(dsm)
 	} else {
-		dsm.cart.GetCoProc().SetDisassembler(nil)
+		dsm.cart.GetCoProcBus().GetCoProc().SetDisassembler(nil)
 		dsm.disasm.LastExecution = dsm.disasm.LastExecution[:0]
 	}
 }

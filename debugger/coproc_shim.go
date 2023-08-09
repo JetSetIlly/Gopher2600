@@ -17,7 +17,7 @@ package debugger
 
 import "github.com/jetsetilly/gopher2600/coprocessor"
 
-// the coproc shim is a convenient way of retreiving corprocessor interfaces
+// the coproc shim is a convenient way of retreiving coprocessor interfaces
 // without exposing too much of the emulation
 //
 // more importantly the shim can be passed to another package and not have to
@@ -26,14 +26,10 @@ type coprocShim struct {
 	dbg *Debugger
 }
 
-// GetCoProc implements the CartCoProcDeveloper interface in the coprocessor
-// developer package
-func (shim coprocShim) GetCoProc() coprocessor.CartCoProc {
-	return shim.dbg.vcs.Mem.Cart.GetCoProc()
+func (shim coprocShim) GetCoProcBus() coprocessor.CartCoProcBus {
+	return shim.dbg.vcs.Mem.Cart.GetCoProcBus()
 }
 
-// PushFunction implements the CartCoProcDeveloper interface in the coprocessor
-// developer package
 func (shim coprocShim) PushFunction(f func()) {
 	shim.dbg.PushFunction(f)
 }

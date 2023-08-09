@@ -160,11 +160,11 @@ func (lz *LazyCart) push() {
 		lz.plusROM.Store(container{v: nil})
 	}
 
-	cp := lz.val.vcs.Mem.Cart.GetCoProc()
-	if cp != nil {
-		lz.coProcBus.Store(container{v: cp})
-		lz.coprocID.Store(cp.CoProcID())
-		pc, _ := cp.CoProcRegister(15)
+	bus := lz.val.vcs.Mem.Cart.GetCoProcBus()
+	if bus != nil {
+		lz.coProcBus.Store(container{v: bus})
+		lz.coprocID.Store(bus.GetCoProc().ProcessorID())
+		pc, _ := bus.GetCoProc().Register(15)
 		lz.coprocPC.Store(pc)
 	} else {
 		lz.coProcBus.Store(container{v: nil})
@@ -233,7 +233,7 @@ func (lz *LazyCart) update() {
 		lz.PlusROMSendState, _ = lz.plusROMSendState.Load().(plusrom.SendState)
 	}
 
-	_, lz.HasCoProcBus = lz.coProcBus.Load().(container).v.(coprocessor.CartCoProc)
+	_, lz.HasCoProcBus = lz.coProcBus.Load().(container).v.(coprocessor.CartCoProcBus)
 	if lz.HasCoProcBus {
 		lz.CoProcID, _ = lz.coprocID.Load().(string)
 		lz.CoProcPC, _ = lz.coprocPC.Load().(uint32)
@@ -241,17 +241,17 @@ func (lz *LazyCart) update() {
 }
 
 func (lz *LazyCart) fastPush() {
-	cp := lz.val.vcs.Mem.Cart.GetCoProc()
-	if cp != nil {
-		lz.coProcBus.Store(container{v: cp})
-		lz.coprocID.Store(cp.CoProcID())
+	bus := lz.val.vcs.Mem.Cart.GetCoProcBus()
+	if bus != nil {
+		lz.coProcBus.Store(container{v: bus})
+		lz.coprocID.Store(bus.GetCoProc().ProcessorID())
 	} else {
 		lz.coProcBus.Store(container{v: nil})
 	}
 }
 
 func (lz *LazyCart) fastUpdate() {
-	_, lz.HasCoProcBus = lz.coProcBus.Load().(container).v.(coprocessor.CartCoProc)
+	_, lz.HasCoProcBus = lz.coProcBus.Load().(container).v.(coprocessor.CartCoProcBus)
 	if lz.HasCoProcBus {
 		lz.CoProcID, _ = lz.coprocID.Load().(string)
 	}

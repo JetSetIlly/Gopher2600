@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf/leb128"
 )
 
@@ -66,7 +67,7 @@ func (ins frameInstruction) String() string {
 var frameInstructionNotImplemented = errors.New("not implemented")
 
 // returns number of bytes used in instructions array
-func decodeFrameInstruction(coproc frameCoproc, byteOrder binary.ByteOrder, cie *frameSectionCIE,
+func decodeFrameInstruction(coproc coprocessor.CartCoProc, byteOrder binary.ByteOrder, cie *frameSectionCIE,
 	instructions []byte, tab *frameTable) (frameInstruction, error) {
 
 	// opcode descriptions taken from "6.4.2 Call Frame Instructions" of

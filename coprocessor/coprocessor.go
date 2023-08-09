@@ -101,10 +101,11 @@ func (_ StubCartYieldHook) CartYield(yld CoProcYieldType) YieldHookResponse {
 	return YieldHookEnd
 }
 
-// CartCoProc is implemented by cartridge mappers that have a coprocessor that
-// functions independently from the VCS.
+// CartCoProc is implemented by processors that are used in VCS cartridges.
+// Principally this means ARM type processors but other processor types may be
+// possible.
 type CartCoProc interface {
-	CoProcID() string
+	ProcessorID() string
 
 	// set disassembler and developer hooks
 	SetDisassembler(CartCoProcDisassembler)
@@ -113,32 +114,38 @@ type CartCoProc interface {
 	// breakpoint control of coprocessor
 	BreakpointsEnable(bool)
 
-	// set interface for cartridge yields
-	SetYieldHook(CartYieldHook)
-
-	// the state of the coprocessor
-	CoProcExecutionState() CoProcExecutionState
-
 	// the contents of a register. the implementation should support extended
 	// register values defined by DWARF for the coprocessor
 	//
 	// if the register is unrecognised or unsupported the function will return
 	// false
-	CoProcRegister(n int) (uint32, bool)
+	Register(n int) (uint32, bool)
 
 	// as above but setting the named register
-	CoProcRegisterSet(n int, value uint32) bool
+	RegisterSet(n int, value uint32) bool
 
 	// returns the current stack frame
-	CoProcStackFrame() uint32
+	StackFrame() uint32
 
-	// read coprocessor memory address for 32bit value. return false if address
-	// is out of range
-	CoProcPeek(addr uint32) (uint32, bool)
+	// read coprocessor memory address for 32bit value. return false if address is out of range
+	Peek(addr uint32) (uint32, bool)
 }
 
-// CartCoProcRelocatable is implemented by cartridge mappers that are
-// relocatable in coprocessor memory.
+// CartCoProcBus is implemented by cartridge mappers that have a coprocessor
+type CartCoProcBus interface {
+	// return the actual coprocessor interface. if the cartridge implements the
+	// CartCoProcBus then it should always return a non-nil CartCoProc instance
+	GetCoProc() CartCoProc
+
+	// set interface for cartridge yields
+	SetYieldHook(CartYieldHook)
+
+	// the state of the coprocessor
+	CoProcExecutionState() CoProcExecutionState
+}
+
+// CartCoProcRelocatable is implemented by cartridge mappers where coprocessor
+// programs can be located anywhere in the coprcessor's memory
 type CartCoProcRelocatable interface {
 	// returns the offset of the named ELF section and whether the named
 	// section exists. not all cartridges that implement this interface will be
@@ -146,17 +153,21 @@ type CartCoProcRelocatable interface {
 	ELFSection(string) ([]uint8, uint32, bool)
 }
 
-// CartCoProcRelocate is implemented by cartridge mappers that are loaded
-// into a specific coprocessor memory address.
+// CartCoProcRelocate is implemented by cartridge mappers where coprocessor
+// programs are located at a specific address
 type CartCoProcRelocate interface {
 	ExecutableOrigin() uint32
 }
 
+// CartCoProcProfileEntry indicates the number of coprocessor cycles used by the
+// instruction at the specified adress
 type CartCoProcProfileEntry struct {
 	Addr   uint32
 	Cycles float32
 }
 
+// CartCoProcProfiler is shared by CartCoProcDeveloper and used by a coprocessor
+// to record profiling information
 type CartCoProcProfiler struct {
 	Entries []CartCoProcProfileEntry
 }
@@ -165,8 +176,7 @@ type CartCoProcProfiler struct {
 // available to developers when the source code is available.
 type CartCoProcDeveloper interface {
 	// a memory fault has occured
-	MemoryFault(event string, explanation faults.Category,
-		instructionAddr uint32, accessAddr uint32) string
+	MemoryFault(event string, explanation faults.Category, instructionAddr uint32, accessAddr uint32) string
 
 	// returns the highest address used by the program. the coprocessor uses
 	// this value to detect stack collisions

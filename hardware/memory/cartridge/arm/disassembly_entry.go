@@ -62,7 +62,7 @@ type DisasmEntry struct {
 	ExecutionNotes string
 
 	// snapshot of CPU registers at the result of the instruction
-	Registers [NumRegisters]uint32
+	Registers [NumCoreRegisters]uint32
 
 	// basic cycle information
 	Cycles         int

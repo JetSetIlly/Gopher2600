@@ -359,3 +359,13 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 
 	arm.byteOrder.PutUint32((*mem)[idx:], val)
 }
+
+// Peek implements the coprocessor.CoProc interface
+func (arm *ARM) Peek(addr uint32) (uint32, bool) {
+	mem, origin := arm.mem.MapAddress(addr, false)
+	addr -= origin
+	if mem == nil || addr >= uint32(len(*mem)-3) {
+		return 0, false
+	}
+	return arm.byteOrder.Uint32((*mem)[addr:]), true
+}

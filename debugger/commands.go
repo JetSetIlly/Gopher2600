@@ -1375,8 +1375,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 	case cmdCoProc:
-		coproc := dbg.vcs.Mem.Cart.GetCoProc()
-		if coproc == nil {
+		bus := dbg.vcs.Mem.Cart.GetCoProcBus()
+		if bus == nil {
 			dbg.printLine(terminal.StyleError, "cartridge does not have a coprocessor")
 			return nil
 		}
@@ -1467,14 +1467,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			}
 
 		case "REGS":
-			coproc := dbg.vcs.Mem.Cart.GetCoProc()
-
 			// list registers in order until we get a not-ok reply
 			regs := func(start int, id rune) {
 				reg := start
 				s := strings.Builder{}
 				for {
-					if n, ok := coproc.CoProcRegister(reg); !ok {
+					if n, ok := bus.GetCoProc().Register(reg); !ok {
 						break
 					} else {
 						s.WriteString(fmt.Sprintf("%c%02d: %08x\t", id, reg-start, n))
@@ -1519,7 +1517,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				}
 				value = uint32(n)
 			}
-			if dbg.vcs.Mem.Cart.GetCoProc().CoProcRegisterSet(reg, value) {
+			if bus.GetCoProc().RegisterSet(reg, value) {
 				dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("setting coproc register %d to %08x\n", reg, value))
 			} else {
 				dbg.printLine(terminal.StyleError, fmt.Sprintf("cannot set coproc register %d to %08x\n", reg, value))
@@ -1532,11 +1530,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			dbg.runUntilHalt = true
 			dbg.continueEmulation = true
 		default:
-			dbg.printLine(terminal.StyleFeedback, coproc.CoProcID())
+			dbg.printLine(terminal.StyleFeedback, bus.GetCoProc().ProcessorID())
 		}
 
 	case cmdDWARF:
-		coproc := dbg.vcs.Mem.Cart.GetCoProc()
+		coproc := dbg.vcs.Mem.Cart.GetCoProcBus()
 		if coproc == nil {
 			dbg.printLine(terminal.StyleError, "cartridge does not have a coprocessor")
 			return nil

@@ -40,7 +40,7 @@ var UnsupportedDWARF = errors.New("unsupported DWARF")
 
 // Cartridge defines the interface to the cartridge required by the source package
 type Cartridge interface {
-	GetCoProc() coprocessor.CartCoProc
+	GetCoProcBus() coprocessor.CartCoProcBus
 }
 
 // compile units are made up of many children. for convenience/speed we keep
@@ -49,31 +49,6 @@ type compileUnit struct {
 	unit     *dwarf.Entry
 	children map[dwarf.Offset]*dwarf.Entry
 	address  uint64
-}
-
-// coproc shim makes sure that loclist and framebase resolution is always using
-// the current cartridge coprocessor instance. the instance can change after a
-// rewind event
-type coprocShim struct {
-	cart Cartridge
-}
-
-// CoProcRegister implements the loclistCoproc and frameCoproc interfaces
-func (shim coprocShim) CoProcRegister(n int) (uint32, bool) {
-	coproc := shim.cart.GetCoProc()
-	if coproc == nil {
-		return 0, false
-	}
-	return coproc.CoProcRegister(n)
-}
-
-// CoProcPeek implements the loclistCoproc interface
-func (shim coprocShim) CoProcPeek(addr uint32) (uint32, bool) {
-	coproc := shim.cart.GetCoProc()
-	if coproc == nil {
-		return 0, false
-	}
-	return coproc.CoProcPeek(addr)
 }
 
 // Source is created from available DWARF data that has been found in relation
@@ -278,15 +253,15 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	var relocate bool
 
 	// cartridge coprocessor
-	coproc := cart.GetCoProc()
-	if coproc == nil {
+	bus := cart.GetCoProcBus()
+	if bus == nil {
 		return nil, fmt.Errorf("dwarf: cartridge has no coprocessor to work with")
 	}
 
 	// acquire origin addresses and debugging sections according to whether the
 	// cartridge is relocatable or not
 	if relocatable {
-		c, ok := coproc.(coprocessor.CartCoProcRelocatable)
+		c, ok := bus.(coprocessor.CartCoProcRelocatable)
 		if !ok {
 			return nil, fmt.Errorf("dwarf: ELF file is reloctable but the cartridge mapper does not support that")
 		}
@@ -304,18 +279,18 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 
 		data, _, _ := c.ELFSection(".debug_frame")
 		rel := frameSectionRelocate{}
-		src.debugFrame, err = newFrameSection(data, ef.ByteOrder, coprocShim{cart: src.cart}, rel)
+		src.debugFrame, err = newFrameSection(data, ef.ByteOrder, src.cart.GetCoProcBus().GetCoProc(), rel)
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}
 
 		data, _, _ = c.ELFSection(".debug_loc")
-		src.debugLoc, err = newLoclistSection(data, ef.ByteOrder, coprocShim{cart: src.cart})
+		src.debugLoc, err = newLoclistSection(data, ef.ByteOrder, src.cart.GetCoProcBus().GetCoProc())
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}
 	} else {
-		if c, ok := coproc.(coprocessor.CartCoProcRelocate); ok {
+		if c, ok := bus.(coprocessor.CartCoProcRelocate); ok {
 			relocate = true
 			executableOrigin = uint64(c.ExecutableOrigin())
 			logger.Logf("dwarf", "found non-relocatable origin: %08x", executableOrigin)
@@ -326,13 +301,13 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 			relocate: relocate,
 			origin:   uint32(executableOrigin),
 		}
-		src.debugFrame, err = newFrameSectionFromFile(ef, coprocShim{cart: src.cart}, rel)
+		src.debugFrame, err = newFrameSectionFromFile(ef, src.cart.GetCoProcBus().GetCoProc(), rel)
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}
 
 		// create loclist section from the raw ELF section
-		src.debugLoc, err = newLoclistSectionFromFile(ef, coprocShim{cart: src.cart})
+		src.debugLoc, err = newLoclistSectionFromFile(ef, src.cart.GetCoProcBus().GetCoProc())
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}
@@ -525,7 +500,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	}
 
 	// build variables
-	if relocatable, ok := coproc.(coprocessor.CartCoProcRelocatable); ok {
+	if relocatable, ok := bus.(coprocessor.CartCoProcRelocatable); ok {
 		err = bld.buildVariables(src, ef, relocatable, executableOrigin)
 	} else {
 		err = bld.buildVariables(src, ef, nil, executableOrigin)
@@ -743,7 +718,7 @@ func assignFunctionToSourceLines(src *Source) {
 // find entry function to the program
 func findEntryFunction(src *Source) {
 	// TODO: this is a bit of ARM specific knowledge that should be removed
-	addr, _ := src.cart.GetCoProc().CoProcRegister(15)
+	addr, _ := src.cart.GetCoProcBus().GetCoProc().Register(15)
 	if ln, ok := src.LinesByAddress[uint64(addr)]; ok {
 		src.MainFunction = ln.Function
 		return

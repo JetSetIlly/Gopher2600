@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -30,8 +29,8 @@ import (
 
 type interruptARM interface {
 	Interrupt()
-	GeneralRegisters() [arm.NumRegisters]uint32
-	SetRegisters([arm.NumRegisters]uint32)
+	Register(int) (uint32, bool)
+	RegisterSet(int, uint32) bool
 }
 
 type elfSection struct {

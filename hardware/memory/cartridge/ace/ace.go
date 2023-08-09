@@ -29,7 +29,6 @@ import (
 // Ace implements the mapper.CartMapper interface.
 type Ace struct {
 	env *environment.Environment
-	dev coprocessor.CartCoProcDeveloper
 
 	arm *arm.ARM
 	mem *aceMemory
@@ -175,10 +174,8 @@ func (cart *Ace) AccessPassive(addr uint16, data uint8) {
 	cart.mem.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)
 
 	// start profiling before the run sequence
-	if cart.dev != nil {
-		cart.dev.StartProfiling()
-		defer cart.dev.ProcessProfiling()
-	}
+	cart.arm.StartProfiling()
+	defer cart.arm.ProcessProfiling()
 
 	// set data first and continue once. this seems to be necessary to allow
 	// the PlusROM exit routine to work correctly
@@ -232,28 +229,12 @@ func (cart *Ace) BusStuff() (uint8, bool) {
 	return 0, false
 }
 
-// CoProcID implements the coprocessor.CartCoProc interface.
-func (cart *Ace) CoProcID() string {
-	return cart.arm.CoProcID()
-}
-
-// SetDisassembler implements the coprocessor.CartCoProc interface.
-func (cart *Ace) SetDisassembler(disasm coprocessor.CartCoProcDisassembler) {
-	cart.arm.SetDisassembler(disasm)
-}
-
-// SetDeveloper implements the coprocessor.CartCoProc interface.
-func (cart *Ace) SetDeveloper(dev coprocessor.CartCoProcDeveloper) {
-	cart.dev = dev
-	cart.arm.SetDeveloper(dev)
-}
-
 // ExecutableOrigin implements the coprocessor.CartCoProcRelocatable interface.
 func (cart *Ace) ExecutableOrigin() uint32 {
 	return cart.mem.flashARMOrigin
 }
 
-// CoProcExecutionState implements the coprocessor.CartCoProc interface.
+// CoProcExecutionState implements the coprocessor.CartCoProcBus interface.
 func (cart *Ace) CoProcExecutionState() coprocessor.CoProcExecutionState {
 	if cart.mem.parallelARM {
 		return coprocessor.CoProcExecutionState{
@@ -267,32 +248,12 @@ func (cart *Ace) CoProcExecutionState() coprocessor.CoProcExecutionState {
 	}
 }
 
-// CoProcRegister implements the coprocessor.CartCoProc interface.
-func (cart *Ace) CoProcRegister(n int) (uint32, bool) {
-	return cart.arm.Register(n)
+// CoProcRegister implements the coprocessor.CartCoProcBus interface.
+func (cart *Ace) GetCoProc() coprocessor.CartCoProc {
+	return cart.arm
 }
 
-// CoProcRegister implements the coprocessor.CartCoProc interface.
-func (cart *Ace) CoProcRegisterSet(n int, value uint32) bool {
-	return cart.arm.SetRegister(n, value)
-}
-
-// CoProcStackFrame implements the coprocessor.CartCoProc interface.
-func (cart *Ace) CoProcStackFrame() uint32 {
-	return cart.arm.StackFrame()
-}
-
-// CoProcPeek implements the coprocessor.CartCoProc interface.
-func (cart *Ace) CoProcPeek(addr uint32) (uint32, bool) {
-	return cart.mem.Read32bit(addr)
-}
-
-// BreakpointsEnable implements the coprocessor.CartCoProc interface.
-func (cart *Ace) BreakpointsEnable(enable bool) {
-	cart.arm.BreakpointsEnable(enable)
-}
-
-// SetYieldHook implements the coprocessor.CartCoProc interface.
+// SetYieldHook implements the coprocessor.CartCoProcBus interface.
 func (cart *Ace) SetYieldHook(hook coprocessor.CartYieldHook) {
 	cart.yieldHook = hook
 }

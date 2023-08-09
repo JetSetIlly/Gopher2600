@@ -52,10 +52,10 @@ type Cartridge struct {
 	// the CartBusStuff and CartCoProc interface are accessed a lot if
 	// available. rather than performing type assertions too frequently we do
 	// it in the Attach() function and the Plumb() function
-	hasBusStuff bool
-	busStuff    mapper.CartBusStuff
-	hasCoProc   bool
-	coproc      coprocessor.CartCoProc
+	hasBusStuff  bool
+	busStuff     mapper.CartBusStuff
+	hasCoProcBus bool
+	coprocBus    coprocessor.CartCoProcBus
 }
 
 // sentinal error returned if operation is on the ejected cartridge type.
@@ -86,7 +86,7 @@ func (cart *Cartridge) Snapshot() *Cartridge {
 func (cart *Cartridge) Plumb(env *environment.Environment, fromDifferentEmulation bool) {
 	cart.env = env
 	cart.busStuff, cart.hasBusStuff = cart.mapper.(mapper.CartBusStuff)
-	cart.coproc, cart.hasCoProc = cart.mapper.(coprocessor.CartCoProc)
+	cart.coprocBus, cart.hasCoProcBus = cart.mapper.(coprocessor.CartCoProcBus)
 
 	if fromDifferentEmulation {
 		if m, ok := cart.mapper.(mapper.PlumbFromDifferentEmulation); ok {
@@ -208,7 +208,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 		// get busstuff and coproc interfaces
 		cart.busStuff, cart.hasBusStuff = cart.mapper.(mapper.CartBusStuff)
-		cart.coproc, cart.hasCoProc = cart.mapper.(coprocessor.CartCoProc)
+		cart.coprocBus, cart.hasCoProcBus = cart.mapper.(coprocessor.CartCoProcBus)
 
 		if _, ok := cart.mapper.(*ejected); !ok {
 			logger.Logf("cartridge", "inserted %s", cart.mapper.ID())
@@ -484,11 +484,20 @@ func (cart *Cartridge) GetCartHotspotsBus() mapper.CartHotspotsBus {
 	return nil
 }
 
+// GetCoProcBus returns interface to the coprocessor interface or nil if no
+// coprocessor is available on the cartridge.
+func (cart *Cartridge) GetCoProcBus() coprocessor.CartCoProcBus {
+	if cart.hasCoProcBus {
+		return cart.coprocBus
+	}
+	return nil
+}
+
 // GetCoProc returns interface to the coprocessor interface or nil if no
 // coprocessor is available on the cartridge.
 func (cart *Cartridge) GetCoProc() coprocessor.CartCoProc {
-	if cart.hasCoProc {
-		return cart.coproc
+	if cart.hasCoProcBus {
+		return cart.coprocBus.GetCoProc()
 	}
 	return nil
 }
@@ -520,27 +529,20 @@ func (cart *Cartridge) ROMDump() (string, error) {
 	return "", fmt.Errorf("cartridge: %s does not support ROM dumping", cart.mapper.ID())
 }
 
-// BreakpointsEnable implements the coprocessor.CartCoProc interface.
-func (cart *Cartridge) BreakpointsEnable(enable bool) {
-	if cart.hasCoProc {
-		cart.coproc.BreakpointsEnable(enable)
-	}
-}
-
-// SetYieldHook implements the coprocessor.CartCoProc interface.
+// SetYieldHook implements the coprocessor.CartCoProcBus interface.
 func (cart *Cartridge) SetYieldHook(hook coprocessor.CartYieldHook) {
-	if cart.hasCoProc {
-		cart.coproc.SetYieldHook(hook)
+	if cart.hasCoProcBus {
+		cart.coprocBus.SetYieldHook(hook)
 	}
 }
 
-// CoProcExecutionState implements the coprocessor.CartCoProc interface
+// CoProcExecutionState implements the coprocessor.CartCoProcBus interface
 //
 // If cartridge does not have a coprocessor then an empty instance of
 // mapper.CoProcExecutionState is returned
 func (cart *Cartridge) CoProcExecutionState() coprocessor.CoProcExecutionState {
-	if cart.hasCoProc {
-		return cart.coproc.CoProcExecutionState()
+	if cart.hasCoProcBus {
+		return cart.coprocBus.CoProcExecutionState()
 	}
 	return coprocessor.CoProcExecutionState{}
 }

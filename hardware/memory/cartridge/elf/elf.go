@@ -33,7 +33,6 @@ import (
 // Elf implements the mapper.CartMapper interface.
 type Elf struct {
 	env *environment.Environment
-	dev coprocessor.CartCoProcDeveloper
 
 	version   string
 	pathToROM string
@@ -250,10 +249,8 @@ func (cart *Elf) Patch(_ int, _ uint8) error {
 }
 
 func (cart *Elf) runARM() bool {
-	if cart.dev != nil {
-		cart.dev.StartProfiling()
-		defer cart.dev.ProcessProfiling()
-	}
+	cart.arm.StartProfiling()
+	defer cart.arm.ProcessProfiling()
 
 	// call arm once and then check for yield conditions
 	cart.mem.yield, _ = cart.arm.Run()
@@ -382,23 +379,7 @@ func (cart *Elf) BusStuff() (uint8, bool) {
 	return cart.mem.busStuffData, cart.mem.busStuff
 }
 
-// CoProcID implements the coprocessor.CartCoProc interface.
-func (cart *Elf) CoProcID() string {
-	return cart.arm.CoProcID()
-}
-
-// SetDisassembler implements the coprocessor.CartCoProc interface.
-func (cart *Elf) SetDisassembler(disasm coprocessor.CartCoProcDisassembler) {
-	cart.arm.SetDisassembler(disasm)
-}
-
-// SetDeveloper implements the coprocessor.CartCoProc interface.
-func (cart *Elf) SetDeveloper(dev coprocessor.CartCoProcDeveloper) {
-	cart.dev = dev
-	cart.arm.SetDeveloper(dev)
-}
-
-// ELFSection implements the coprocessor.CartCoProcELF interface.
+// ELFSection implements the coprocessor.CartCoProcRelocatable interface.
 func (cart *Elf) ELFSection(name string) ([]uint8, uint32, bool) {
 	if idx, ok := cart.mem.sectionsByName[name]; ok {
 		s := cart.mem.sections[idx]
@@ -407,7 +388,7 @@ func (cart *Elf) ELFSection(name string) ([]uint8, uint32, bool) {
 	return nil, 0, false
 }
 
-// CoProcExecutionState implements the coprocessor.CartCoProc interface.
+// CoProcExecutionState implements the coprocessor.CartCoProcBus interface.
 func (cart *Elf) CoProcExecutionState() coprocessor.CoProcExecutionState {
 	if cart.mem.parallelARM {
 		return coprocessor.CoProcExecutionState{
@@ -421,32 +402,12 @@ func (cart *Elf) CoProcExecutionState() coprocessor.CoProcExecutionState {
 	}
 }
 
-// CoProcRegister implements the coprocessor.CartCoProc interface.
-func (cart *Elf) CoProcRegister(n int) (uint32, bool) {
-	return cart.arm.Register(n)
+// CoProcRegister implements the coprocessor.CartCoProcBus interface.
+func (cart *Elf) GetCoProc() coprocessor.CartCoProc {
+	return cart.arm
 }
 
-// CoProcRegister implements the coprocessor.CartCoProc interface.
-func (cart *Elf) CoProcRegisterSet(n int, value uint32) bool {
-	return cart.arm.SetRegister(n, value)
-}
-
-// CoProcStackFrame implements the coprocessor.CartCoProc interface.
-func (cart *Elf) CoProcStackFrame() uint32 {
-	return cart.arm.StackFrame()
-}
-
-// CoProcPeek implements the coprocessor.CartCoProc interface.
-func (cart *Elf) CoProcPeek(addr uint32) (uint32, bool) {
-	return cart.mem.Read32bit(addr)
-}
-
-// BreakpointsEnable implements the coprocessor.CartCoProc interface.
-func (cart *Elf) BreakpointsEnable(enable bool) {
-	cart.arm.BreakpointsEnable(enable)
-}
-
-// SetYieldHook implements the coprocessor.CartCoProc interface.
+// SetYieldHook implements the coprocessor.CartCoProcBus interface.
 func (cart *Elf) SetYieldHook(hook coprocessor.CartYieldHook) {
 	cart.yieldHook = hook
 }

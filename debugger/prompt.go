@@ -60,7 +60,7 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 		Recording: dbg.scriptScribe.IsActive(),
 	}
 
-	if coproc := dbg.vcs.Mem.Cart.GetCoProc(); coproc != nil {
+	if coproc := dbg.vcs.Mem.Cart.GetCoProcBus(); coproc != nil {
 		state := coproc.CoProcExecutionState()
 		p.Yield = state.Yield
 	}
