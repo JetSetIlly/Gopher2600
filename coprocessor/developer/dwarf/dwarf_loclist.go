@@ -27,7 +27,7 @@ import (
 // the coprocessor interface required by the loclist operators
 type loclistCoproc interface {
 	CoProcRegister(n int) (uint32, bool)
-	CoProcRead32bit(addr uint32) (uint32, bool)
+	CoProcPeek(addr uint32) (uint32, bool)
 }
 
 type loclistSection struct {
@@ -301,7 +301,7 @@ func (loc *loclist) resolve() (loclistResult, error) {
 			}
 
 			var ok bool
-			r.value, ok = loc.coproc.CoProcRead32bit(s.value)
+			r.value, ok = loc.coproc.CoProcPeek(s.value)
 			if !ok {
 				return loclistResult{}, fmt.Errorf("%s: error resolving address %08x", loc.list[i].operator, s.value)
 			}

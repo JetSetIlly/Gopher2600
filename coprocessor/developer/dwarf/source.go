@@ -67,13 +67,13 @@ func (shim coprocShim) CoProcRegister(n int) (uint32, bool) {
 	return coproc.CoProcRegister(n)
 }
 
-// CoProcRegister implements the loclistCoproc interface
-func (shim coprocShim) CoProcRead32bit(addr uint32) (uint32, bool) {
+// CoProcPeek implements the loclistCoproc interface
+func (shim coprocShim) CoProcPeek(addr uint32) (uint32, bool) {
 	coproc := shim.cart.GetCoProc()
 	if coproc == nil {
 		return 0, false
 	}
-	return coproc.CoProcRead32bit(addr)
+	return coproc.CoProcPeek(addr)
 }
 
 // Source is created from available DWARF data that has been found in relation

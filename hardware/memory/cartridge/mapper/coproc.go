@@ -110,14 +110,14 @@ type CartCoProc interface {
 	SetDisassembler(CartCoProcDisassembler)
 	SetDeveloper(CartCoProcDeveloper)
 
-	// the state of the coprocessor
-	CoProcExecutionState() CoProcExecutionState
-
 	// breakpoint control of coprocessor
 	BreakpointsEnable(bool)
 
 	// set interface for cartridge yields
 	SetYieldHook(CartYieldHook)
+
+	// the state of the coprocessor
+	CoProcExecutionState() CoProcExecutionState
 
 	// the contents of a register. the implementation should support extended
 	// register values defined by DWARF for the coprocessor
@@ -132,11 +132,9 @@ type CartCoProc interface {
 	// returns the current stack frame
 	CoProcStackFrame() uint32
 
-	// read coprocessor memory address for 8/16/32 bit values. return false if
-	// address is out of range
-	CoProcRead8bit(addr uint32) (uint8, bool)
-	CoProcRead16bit(addr uint32) (uint16, bool)
-	CoProcRead32bit(addr uint32) (uint32, bool)
+	// read coprocessor memory address for 32bit value. return false if address
+	// is out of range
+	CoProcPeek(addr uint32) (uint32, bool)
 }
 
 // CartCoProcRelocatable is implemented by cartridge mappers that are

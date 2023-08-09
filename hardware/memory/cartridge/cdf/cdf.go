@@ -689,18 +689,8 @@ func (cart *cdf) CoProcStackFrame() uint32 {
 	return cart.arm.StackFrame()
 }
 
-// CoProcRead8bit implements the mapper.CartCoProc interface.
-func (cart *cdf) CoProcRead8bit(addr uint32) (uint8, bool) {
-	return cart.state.static.Read8bit(addr)
-}
-
-// CoProcRead16bit implements the mapper.CartCoProc interface.
-func (cart *cdf) CoProcRead16bit(addr uint32) (uint16, bool) {
-	return cart.state.static.Read16bit(addr)
-}
-
-// CoProcRead32bit implements the mapper.CartCoProc interface.
-func (cart *cdf) CoProcRead32bit(addr uint32) (uint32, bool) {
+// CoProcPeek implements the mapper.CartCoProc interface.
+func (cart *cdf) CoProcPeek(addr uint32) (uint32, bool) {
 	return cart.state.static.Read32bit(addr)
 }
 

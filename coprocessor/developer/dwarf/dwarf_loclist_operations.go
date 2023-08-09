@@ -96,7 +96,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 		return loclistOperator{
 			resolve: func(loc *loclist) (loclistStack, error) {
 				a, _ := loc.pop()
-				value, ok := sec.coproc.CoProcRead32bit(a.value)
+				value, ok := sec.coproc.CoProcPeek(a.value)
 				if !ok {
 					return loclistStack{}, fmt.Errorf("unknown address: %08x", a.value)
 				}
@@ -1035,7 +1035,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				a, _ := loc.pop()
 				address := uint64(a.value)
 
-				value, ok := sec.coproc.CoProcRead32bit(uint32(address))
+				value, ok := sec.coproc.CoProcPeek(uint32(address))
 				if !ok {
 					return loclistStack{}, fmt.Errorf("unknown address: %08x", address)
 				}
