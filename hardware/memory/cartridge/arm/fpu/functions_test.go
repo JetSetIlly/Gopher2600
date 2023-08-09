@@ -306,3 +306,13 @@ func TestAbsolute(t *testing.T) {
 	d = uint32(fp.FPAbs(uint64(d), 32))
 	test.ExpectEquality(t, c, d)
 }
+
+func TestImmediate(t *testing.T) {
+	var fp fpu.FPU
+
+	// test taken from an real world example of a VMOV (immediate) instruction.
+	// the GCC objdump indiates that a value of 0x50 should expand to 0.25
+	a := fp.VFPExpandImm(0x50, 32)
+	b := math.Float32frombits(uint32(a))
+	test.ExpectEquality(t, b, 0.25)
+}

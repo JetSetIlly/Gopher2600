@@ -282,6 +282,30 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 			return nil
 
 		case 0b1011:
+			if opc3&0b01 == 0b00 {
+				// "A7.7.239 VMOV (immediate)" of "ARMv7-M"
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "VMOV (immediate)",
+					}
+				}
+
+				D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
+				imm4H := arm.state.function32bitOpcodeHi & 0x000f
+				Vd := (opcode & 0xf000) >> 12
+				imm4L := opcode & 0x000f
+
+				if sz {
+					panic("double precision VMOV (immediate)")
+				} else {
+					d := (Vd << 1) | D
+					arm.state.fpu.Registers[d] = uint32(arm.state.fpu.VFPExpandImm(uint8((imm4H<<4)|imm4L), 32))
+				}
+
+				return nil
+			}
+
 			if opc2&0b1000 == 0b1000 {
 				if opc3&0b01 == 0b01 {
 					// "A7.7.228 VCVT, VCVTR (between floating-point and integer)" of "ARMv7-M"
