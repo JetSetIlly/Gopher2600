@@ -418,7 +418,30 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 					return nil
 				} else {
 					// "A7.7.224 VABS" of "ARMv7-M"
-					panic("unimplemented VABS")
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "VABS",
+						}
+					}
+
+					D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
+					Vd := (opcode & 0xf000) >> 12
+					M := (opcode & 0x0020) >> 5
+					Vm := opcode & 0x000f
+
+					if sz {
+						// d := (D << 4) | Vd
+						// m := (M << 4) | Vm
+						panic("double precision VABS")
+					} else {
+						d := (Vd << 1) | D
+						m := (Vm << 1) | M
+						v := arm.state.fpu.Registers[m]
+						arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPAbs(uint64(v), 32))
+					}
+
+					return nil
 				}
 			}
 
