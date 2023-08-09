@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	coproc_breakpoints "github.com/jetsetilly/gopher2600/coprocessor/developer/breakpoints"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/callstack"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
@@ -1467,18 +1468,25 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			}
 
 		case "REGS":
+			coproc := bus.GetCoProc()
+
 			// list registers in order until we get a not-ok reply
-			regs := func(start int, id rune) {
-				reg := start
+			regs := func(group coprocessor.ExtendedRegisterGroup) {
 				s := strings.Builder{}
-				for {
-					if n, ok := bus.GetCoProc().Register(reg); !ok {
-						break
-					} else {
-						s.WriteString(fmt.Sprintf("%c%02d: %08x\t", id, reg-start, n))
+				for r := group.Start; r <= group.End; r++ {
+					v, f, ok := coproc.RegisterFormatted(r)
+					if !ok {
+						dbg.printLine(terminal.StyleError,
+							fmt.Sprintf("coprocessor doesn't have the %d register in the %s group", r, group.Name))
+						return
 					}
-					reg++
-					if (reg-start)%3 == 0 {
+					if group.Formatted {
+						s.WriteString(fmt.Sprintf("%s: %s [%08x]\t", group.Label(r), f, v))
+					} else {
+						s.WriteString(fmt.Sprintf("%s: %08x\t", group.Label(r), v))
+					}
+
+					if (r-group.Start+1)%3 == 0 {
 						dbg.printLine(terminal.StyleFeedback, s.String())
 						s.Reset()
 					}
@@ -1488,12 +1496,20 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				}
 			}
 
-			// core registers
-			regs(0, 'R')
-
-			// fpu registers
-			if arg, ok := tokens.Get(); ok && arg == "FPU" {
-				regs(64, 'S')
+			// use named group if supplied or default to core group
+			spec := coproc.RegisterSpec()
+			if arg, ok := tokens.Get(); ok {
+				if group, ok := spec[arg]; ok {
+					regs(group)
+				} else {
+					dbg.printLine(terminal.StyleError, fmt.Sprintf("coprocessor doesn't have a %s register group", arg))
+				}
+			} else {
+				if group, ok := spec[coprocessor.ExtendedRegisterCoreGroup]; ok {
+					regs(group)
+				} else {
+					dbg.printLine(terminal.StyleError, "coprocessor doesn't seem to have any registers")
+				}
 			}
 
 		case "SET":

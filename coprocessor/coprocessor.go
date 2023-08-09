@@ -101,6 +101,36 @@ func (_ StubCartYieldHook) CartYield(yld CoProcYieldType) YieldHookResponse {
 	return YieldHookEnd
 }
 
+// ExtendedRegisterGroup specifies the numeric range for a coprocessor register group
+type ExtendedRegisterGroup struct {
+	// name of the group
+	Name string
+
+	// the prefix letter  to use when labelling the register. See the Label()
+	// function which will also adjust the register number appropriately
+	Prefix string
+
+	// the numeric range of the registers in this group
+	Start int
+	End   int
+
+	// whether the registers int he group will return meaningful data from the
+	// RegisterFormatted() function
+	Formatted bool
+}
+
+// Label creates a string for the numbered register
+func (group ExtendedRegisterGroup) Label(register int) string {
+	return fmt.Sprintf("%s%02d", group.Prefix, register-group.Start)
+}
+
+// ExtendedRegisterSpec is the specification returned by CartCoProc.RegisterSpec() function
+type ExtendedRegisterSpec map[string]ExtendedRegisterGroup
+
+// The basic set of registers present in a coprocessor. Every implementation
+// should specify this group at a minimum
+const ExtendedRegisterCoreGroup = "core"
+
 // CartCoProc is implemented by processors that are used in VCS cartridges.
 // Principally this means ARM type processors but other processor types may be
 // possible.
@@ -114,15 +144,30 @@ type CartCoProc interface {
 	// breakpoint control of coprocessor
 	BreakpointsEnable(bool)
 
+	// RegisterSpec returns the specification for the registers visible in the
+	// coprocessor. Implementations should ensure that these conform to the
+	// DWARF extended register specification for the processor type (if
+	// avaiable)
+	//
+	// Additional registers not required by the DWARF specification may be
+	// supported as required
+	//
+	// Implementations should include the ExtendedRegisterCoreGroup at a minimum
+	RegisterSpec() ExtendedRegisterSpec
+
 	// the contents of a register. the implementation should support extended
 	// register values defined by DWARF for the coprocessor
 	//
 	// if the register is unrecognised or unsupported the function will return
 	// false
-	Register(n int) (uint32, bool)
+	Register(register int) (uint32, bool)
 
-	// as above but setting the named register
-	RegisterSet(n int, value uint32) bool
+	// the contents of the register and a formatted string appropriate for the
+	// register type
+	RegisterFormatted(register int) (uint32, string, bool)
+
+	// as above but setting the value of the register
+	RegisterSet(register int, value uint32) bool
 
 	// returns the current stack frame
 	StackFrame() uint32

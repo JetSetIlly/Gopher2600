@@ -358,7 +358,15 @@ basis and only for the duration of the session (the ROM must be changed for it t
 The NICK and ID can be changed for the session but also be saved to disk and be used across
 all PlusROM cartridges.`,
 
-	cmdCoProc: `Returns information about any coprocessor in the inserted cartridge.`,
+	cmdCoProc: `Returns information about any coprocessor in the inserted cartridge.
+
+The REGS argument will display the registers of the coprocessor. By default it will show the
+"core" registers. Other register groups can be specified. For example, some ARM coprocessors
+will have a "FPU" group.
+
+The SET argument will set a register value. The 'register' number must be the 'extended register'
+number rather than the display number.
+	`,
 
 	cmdDWARF: `Debugging information for cartridge types that support DWARF debugging.
 

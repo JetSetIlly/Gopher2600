@@ -80,7 +80,9 @@ type decodeFunction func(opcode uint16) *DisasmEntry
 type ARMState struct {
 	// ARM registers
 	registers [NumCoreRegisters]uint32
-	status    Status
+
+	// see note about status register in the documentation of the type
+	status status
 
 	mam    mam
 	rng    peripherals.RNG
@@ -670,46 +672,9 @@ func (arm *ARM) Interrupt() {
 	arm.state.yield.Type = coprocessor.YieldSyncWithVCS
 }
 
-// Register implements the coprocess.CartCoProc interface. Returns the value in
-// the register. Returns false if the requested register is not recognised
-func (arm *ARM) Register(extendedReg int) (uint32, bool) {
-	// general registers
-	if extendedReg <= 15 {
-		return arm.state.registers[extendedReg], true
-	}
-
-	// FPU registers
-	if extendedReg >= 64 && extendedReg <= 95 {
-		return arm.state.fpu.Registers[extendedReg-64], true
-	}
-
-	// extended register values for ARM defined in:
-	// https://github.com/ARM-software/abi-aa/releases/download/2023Q1/aadwarf32.pdf
-
-	// TODO: implement extended registers
-
-	return 0, false
-}
-
-// RegisterSet implements the coprocess.CartCoProc interface. Set the register
-// to the specified value. Returns false if the requested register is not
-// recognised
-func (arm *ARM) RegisterSet(reg int, value uint32) bool {
-	if reg >= NumCoreRegisters {
-		return false
-	}
-	arm.state.registers[reg] = value
-	return true
-}
-
 // StackFrame implements the coprocess.CartCoProc interface
 func (arm *ARM) StackFrame() uint32 {
 	return arm.state.stackFrame
-}
-
-// Status returns a copy of the current status register.
-func (arm *ARM) Status() Status {
-	return arm.state.status
 }
 
 // BreakpointsEnable implements the coprocessor.CartCoProc interface. Enables

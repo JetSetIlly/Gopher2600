@@ -16,14 +16,18 @@
 package arm
 
 import (
-	"fmt"
 	"strings"
 )
 
-// the arm has a 32 bit Status register but we only need the CSPR bits
-// currently.
-type Status struct {
-	// CPSR (current program status register) bits
+// the status register is an incomplete implementation or CPSR/APSR register
+//
+// the structure also contains the IT state fields (itCond and itMask) which are
+// technically part of the EPSR register in 32bit architectures
+//
+// this makeshift type will suffice for now but should be replaced with a more
+// flexible and more accurate system in the future
+type status struct {
+	// basic CPSR bits. present in the APSR too
 	negative   bool
 	zero       bool
 	carry      bool
@@ -42,8 +46,10 @@ type Status struct {
 	itMask uint8
 }
 
-func (sr Status) String() string {
+func (sr status) String() string {
 	s := strings.Builder{}
+	s.WriteString("Status: ")
+
 	if sr.negative {
 		s.WriteRune('N')
 	} else {
@@ -70,27 +76,25 @@ func (sr Status) String() string {
 		s.WriteRune('q')
 	}
 
-	s.WriteString(fmt.Sprintf("   itMask: %04b", sr.itMask))
-
 	return s.String()
 }
 
-func (sr *Status) reset() {
+func (sr *status) reset() {
 	sr.negative = false
 	sr.zero = false
 	sr.overflow = false
 	sr.carry = false
 }
 
-func (sr *Status) isNegative(a uint32) {
+func (sr *status) isNegative(a uint32) {
 	sr.negative = a&0x80000000 == 0x80000000
 }
 
-func (sr *Status) isZero(a uint32) {
+func (sr *status) isZero(a uint32) {
 	sr.zero = a == 0x00
 }
 
-func (sr *Status) isOverflow(a, b, c uint32) {
+func (sr *status) isOverflow(a, b, c uint32) {
 	d := (a & 0x7fffffff) + (b & 0x7fffffff) + c
 	d >>= 31
 	e := (d & 0x01) + ((a >> 31) & 0x01) + ((b >> 31) & 0x01)
@@ -98,22 +102,22 @@ func (sr *Status) isOverflow(a, b, c uint32) {
 	sr.overflow = (d^e)&0x01 == 0x01
 }
 
-func (sr *Status) isCarry(a, b, c uint32) {
+func (sr *status) isCarry(a, b, c uint32) {
 	d := (a & 0x7fffffff) + (b & 0x7fffffff) + c
 	d = (d >> 31) + (a >> 31) + (b >> 31)
 	sr.carry = d&0x02 == 0x02
 }
 
-func (sr *Status) setCarry(a bool) {
+func (sr *status) setCarry(a bool) {
 	sr.carry = a
 }
 
-func (sr *Status) setOverflow(a bool) {
+func (sr *status) setOverflow(a bool) {
 	sr.overflow = a
 }
 
 // conditional execution information from "A7.3 Conditional execution" in "ARMv7-M"
-func (sr *Status) condition(cond uint8) (bool, string) {
+func (sr *status) condition(cond uint8) (bool, string) {
 	var mnemonic string
 	var b bool
 

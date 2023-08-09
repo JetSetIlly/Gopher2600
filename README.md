@@ -206,11 +206,15 @@ be found at:
 https://www.st.com/resource/en/reference_manual/dm00031020-stm32f405-415-stm32f407-417-stm32f427-437-and-stm32f429-439-advanced-arm-based-32-bit-mcus-stmicroelectronics.pdf
 
 In relation to ARM development, information about the DWARF format is being
-taken from the DWARF2 and DWARF4 standards
+taken from the DWARF2 and DWARF4 standards:
 
 https://dwarfstd.org/doc/dwarf-2.0.0.pdf
 
 https://dwarfstd.org/doc/DWARF4.pdf
+
+ARM specific DWARF information taken from:
+
+https://github.com/ARM-software/abi-aa/releases/download/2023Q1/aadwarf32.pdf
 
 ## Other Software / Libraries
 
