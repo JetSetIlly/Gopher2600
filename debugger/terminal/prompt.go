@@ -18,7 +18,7 @@ package terminal
 import (
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/coprocessor"
 )
 
 // Prompt specifies the prompt text and the prompt style. For CPUStep
@@ -28,7 +28,7 @@ type Prompt struct {
 	Type PromptType
 
 	Content string
-	Yield   mapper.CoProcYield
+	Yield   coprocessor.CoProcYield
 
 	Recording bool
 }

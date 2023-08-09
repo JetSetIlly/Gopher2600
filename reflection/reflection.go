@@ -16,6 +16,7 @@
 package reflection
 
 import (
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -59,7 +60,7 @@ type ReflectedVideoStep struct {
 	VideoElement video.Element
 	WSYNC        bool
 	IsRAM        bool
-	CoProcSync   mapper.CoProcSynchronisation
+	CoProcSync   coprocessor.CoProcSynchronisation
 	IsHblank     bool
 	RSYNCalign   bool
 	RSYNCreset   bool

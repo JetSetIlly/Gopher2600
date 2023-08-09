@@ -28,9 +28,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -40,7 +40,7 @@ var UnsupportedDWARF = errors.New("unsupported DWARF")
 
 // Cartridge defines the interface to the cartridge required by the source package
 type Cartridge interface {
-	GetCoProc() mapper.CartCoProc
+	GetCoProc() coprocessor.CartCoProc
 }
 
 // compile units are made up of many children. for convenience/speed we keep
@@ -286,7 +286,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	// acquire origin addresses and debugging sections according to whether the
 	// cartridge is relocatable or not
 	if relocatable {
-		c, ok := coproc.(mapper.CartCoProcRelocatable)
+		c, ok := coproc.(coprocessor.CartCoProcRelocatable)
 		if !ok {
 			return nil, fmt.Errorf("dwarf: ELF file is reloctable but the cartridge mapper does not support that")
 		}
@@ -315,7 +315,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 			logger.Logf("dwarf", err.Error())
 		}
 	} else {
-		if c, ok := coproc.(mapper.CartCoProcRelocate); ok {
+		if c, ok := coproc.(coprocessor.CartCoProcRelocate); ok {
 			relocate = true
 			executableOrigin = uint64(c.ExecutableOrigin())
 			logger.Logf("dwarf", "found non-relocatable origin: %08x", executableOrigin)
@@ -525,7 +525,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	}
 
 	// build variables
-	if relocatable, ok := coproc.(mapper.CartCoProcRelocatable); ok {
+	if relocatable, ok := coproc.(coprocessor.CartCoProcRelocatable); ok {
 		err = bld.buildVariables(src, ef, relocatable, executableOrigin)
 	} else {
 		err = bld.buildVariables(src, ef, nil, executableOrigin)

@@ -27,6 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/bots/wrangler"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/comparison"
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	coprocDev "github.com/jetsetilly/gopher2600/coprocessor/developer"
 	coprocDWARF "github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	coprocDisasm "github.com/jetsetilly/gopher2600/coprocessor/disassembly"
@@ -844,29 +845,29 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 	return nil
 }
 
-// CartYield implements the mapper.CartYieldHook interface.
-func (dbg *Debugger) CartYield(yield mapper.CoProcYieldType) mapper.YieldHookResponse {
+// CartYield implements the coprocessor.CartYieldHook interface.
+func (dbg *Debugger) CartYield(yield coprocessor.CoProcYieldType) coprocessor.YieldHookResponse {
 	// if the emulator wants to quit we need to return true to instruct the
 	// cartridge to return to the main loop immediately
 	if !dbg.running {
-		return mapper.YieldHookEnd
+		return coprocessor.YieldHookEnd
 	}
 
 	// resolve deferred yield
 	if dbg.halting.deferredCartridgeYield {
 		dbg.halting.deferredCartridgeYield = false
 		dbg.halting.cartridgeYield = true
-		return mapper.YieldHookEnd
+		return coprocessor.YieldHookEnd
 	}
 
 	switch yield {
-	case mapper.YieldProgramEnded:
+	case coprocessor.YieldProgramEnded:
 		// expected reason for CDF and DPC+ cartridges
-		return mapper.YieldHookContinue
+		return coprocessor.YieldHookContinue
 
-	case mapper.YieldSyncWithVCS:
+	case coprocessor.YieldSyncWithVCS:
 		// expected reason for ACE and ELF cartridges
-		return mapper.YieldHookContinue
+		return coprocessor.YieldHookContinue
 	}
 
 	// if emulation is in itialisation state then we cause coprocessor execution
@@ -879,7 +880,7 @@ func (dbg *Debugger) CartYield(yield mapper.CoProcYieldType) mapper.YieldHookRes
 	// a deferred YeildHookEnd might be a better option
 	if dbg.State() == govern.Initialising {
 		dbg.halting.deferredCartridgeYield = true
-		return mapper.YieldHookContinue
+		return coprocessor.YieldHookContinue
 	}
 
 	dbg.halting.cartridgeYield = true
@@ -894,7 +895,7 @@ func (dbg *Debugger) CartYield(yield mapper.CoProcYieldType) mapper.YieldHookRes
 		dbg.inputLoop(dbg.term, true)
 	}
 
-	return mapper.YieldHookEnd
+	return coprocessor.YieldHookEnd
 }
 
 func (dbg *Debugger) run() error {

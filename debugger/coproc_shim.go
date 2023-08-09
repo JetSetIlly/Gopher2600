@@ -15,7 +15,7 @@
 
 package debugger
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+import "github.com/jetsetilly/gopher2600/coprocessor"
 
 // the coproc shim is a convenient way of retreiving corprocessor interfaces
 // without exposing too much of the emulation
@@ -28,7 +28,7 @@ type coprocShim struct {
 
 // GetCoProc implements the CartCoProcDeveloper interface in the coprocessor
 // developer package
-func (shim coprocShim) GetCoProc() mapper.CartCoProc {
+func (shim coprocShim) GetCoProc() coprocessor.CartCoProc {
 	return shim.dbg.vcs.Mem.Cart.GetCoProc()
 }
 

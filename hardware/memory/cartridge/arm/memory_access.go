@@ -19,8 +19,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -29,7 +29,7 @@ func (arm *ARM) illegalAccess(event string, addr uint32) {
 		return
 	}
 
-	arm.state.yield.Type = mapper.YieldMemoryAccessError
+	arm.state.yield.Type = coprocessor.YieldMemoryAccessError
 	arm.state.yield.Error = fmt.Errorf("%s: unrecognised address %08x (PC: %08x)", event, addr, arm.state.instructionPC)
 
 	if arm.dev == nil {
@@ -44,7 +44,7 @@ func (arm *ARM) illegalAccess(event string, addr uint32) {
 
 // nullAccess is a special condition of illegalAccess()
 func (arm *ARM) nullAccess(event string, addr uint32) {
-	arm.state.yield.Type = mapper.YieldMemoryAccessError
+	arm.state.yield.Type = coprocessor.YieldMemoryAccessError
 	arm.state.yield.Error = fmt.Errorf("%s: probable null pointer dereference of %08x (PC: %08x)", event, addr, arm.state.instructionPC)
 
 	if arm.dev == nil {

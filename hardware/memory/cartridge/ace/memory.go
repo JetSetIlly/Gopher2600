@@ -18,6 +18,7 @@ package ace
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
@@ -92,7 +93,7 @@ type aceMemory struct {
 	parallelARM bool
 
 	// most recent yield from the coprocessor
-	yield mapper.CoProcYield
+	yield coprocessor.CoProcYield
 
 	// count of cycles accumulated
 	cycles float32

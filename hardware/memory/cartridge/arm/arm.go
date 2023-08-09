@@ -23,10 +23,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/fpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/peripherals"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -111,7 +111,7 @@ type ARMState struct {
 	stackFrame uint32
 
 	// the yield reason explains the reason for why the ARM execution ended
-	yield mapper.CoProcYield
+	yield coprocessor.CoProcYield
 
 	// the area the PC covers. once assigned we'll assume that the program
 	// never reads outside this area. the value is assigned on reset()
@@ -244,7 +244,7 @@ type ARM struct {
 	decodeOnly bool
 
 	// interface to an optional disassembler
-	disasm mapper.CartCoProcDisassembler
+	disasm coprocessor.CartCoProcDisassembler
 
 	// cache of disassembled entries
 	disasmCache map[uint32]DisasmEntry
@@ -257,7 +257,7 @@ type ARM struct {
 	disasmSummary DisasmSummary
 
 	// interface to an option development package
-	dev mapper.CartCoProcDeveloper
+	dev coprocessor.CartCoProcDeveloper
 
 	// whether cycle count or not. set from ARM.prefs at the start of every arm.Run()
 	//
@@ -277,7 +277,7 @@ type ARM struct {
 	Ncycle func(bus busAccess, addr uint32)
 
 	// profiler for executed instructions. measures cycles counts
-	profiler *mapper.CartCoProcProfiler
+	profiler *coprocessor.CartCoProcProfiler
 
 	// enable breakpoint checking
 	breakpointsEnabled bool
@@ -303,7 +303,7 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 
 	// disassembly printed to stdout
 	if disassembleToStdout {
-		arm.disasm = &mapper.CartCoProcDisassemblerStdout{}
+		arm.disasm = &coprocessor.CartCoProcDisassemblerStdout{}
 	}
 
 	// slow prefs update by 100ms
@@ -324,7 +324,7 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 	arm.state.timer2 = peripherals.NewTimer2(arm.mmap)
 
 	// by definition the ARM starts in a program ended state
-	arm.state.yield.Type = mapper.YieldProgramEnded
+	arm.state.yield.Type = coprocessor.YieldProgramEnded
 
 	// clklen for flash based on flash latency setting
 	latencyInMhz := (1 / (arm.mmap.FlashLatency / 1000000000)) / 1000000
@@ -343,10 +343,10 @@ func (arm *ARM) SetByteOrder(o binary.ByteOrder) {
 	arm.byteOrder = o
 }
 
-// CoProcID implements the mapper.CartCoProc interface.
+// CoProcID implements the coprocessor.CartCoProc interface.
 //
 // CoProcID is the ID returned by the ARM type. This const value can be used
-// for comparison purposes to check if a mapper.CartCoProc instance is of
+// for comparison purposes to check if a coprocessor.CartCoProc instance is of
 // the ARM type.
 func (arm *ARM) CoProcID() string {
 	return string(arm.mmap.ARMArchitecture)
@@ -358,13 +358,13 @@ func (arm *ARM) ImmediateMode() bool {
 	return arm.immediateMode
 }
 
-// SetDisassembler implements the mapper.CartCoProc interface.
-func (arm *ARM) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
+// SetDisassembler implements the coprocessor.CartCoProc interface.
+func (arm *ARM) SetDisassembler(disasm coprocessor.CartCoProcDisassembler) {
 	arm.disasm = disasm
 }
 
-// SetDeveloper implements the mapper.CartCoProc interface.
-func (arm *ARM) SetDeveloper(dev mapper.CartCoProcDeveloper) {
+// SetDeveloper implements the coprocessor.CartCoProc interface.
+func (arm *ARM) SetDeveloper(dev coprocessor.CartCoProcDeveloper) {
 	arm.dev = dev
 }
 
@@ -566,7 +566,7 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 
 	// making sure that yield is not of type YieldProgramEnded. that would cause
 	// the registers to be immediately reset on the next call to Run()
-	arm.state.yield.Type = mapper.YieldSyncWithVCS
+	arm.state.yield.Type = coprocessor.YieldSyncWithVCS
 
 	return nil
 }
@@ -575,11 +575,11 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 // previous execution ran to completion (ie. was uninterrupted).
 //
 // Returns the yield reason, the number of ARM cycles consumed.
-func (arm *ARM) Run() (mapper.CoProcYield, float32) {
+func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 	if arm.dev != nil {
 		defer func() {
 			arm.logYield()
-			if arm.state.yield.Type != mapper.YieldBreakpoint {
+			if arm.state.yield.Type != coprocessor.YieldBreakpoint {
 				arm.dev.OnYield(arm.state.registers[rPC], arm.state.yield)
 			}
 		}()
@@ -587,7 +587,7 @@ func (arm *ARM) Run() (mapper.CoProcYield, float32) {
 
 	// only reset registers if the previous yield was one that indicated the end
 	// of the program execution
-	if arm.state.yield.Type == mapper.YieldProgramEnded {
+	if arm.state.yield.Type == coprocessor.YieldProgramEnded {
 		arm.resetRegisters()
 	}
 
@@ -604,18 +604,18 @@ func (arm *ARM) Run() (mapper.CoProcYield, float32) {
 	}
 
 	// fill pipeline cannot happen immediately after resetRegisters()
-	if arm.state.yield.Type == mapper.YieldProgramEnded {
+	if arm.state.yield.Type == coprocessor.YieldProgramEnded {
 		arm.state.registers[rPC] += 2
 	}
 
 	// reset yield
-	arm.state.yield.Type = mapper.YieldRunning
+	arm.state.yield.Type = coprocessor.YieldRunning
 	arm.state.yield.Error = nil
 	arm.state.yield.Detail = arm.state.yield.Detail[:0]
 
 	// make sure program memory is correct
 	arm.checkProgramMemory(false)
-	if arm.state.yield.Type != mapper.YieldRunning {
+	if arm.state.yield.Type != coprocessor.YieldRunning {
 		return arm.state.yield, 0
 	}
 
@@ -626,7 +626,7 @@ func (arm *ARM) Run() (mapper.CoProcYield, float32) {
 // instruction has been executed. The ARM will then yield with the reson
 // YieldSyncWithVCS.
 func (arm *ARM) Interrupt() {
-	arm.state.yield.Type = mapper.YieldSyncWithVCS
+	arm.state.yield.Type = coprocessor.YieldSyncWithVCS
 }
 
 // Registers returns a copy of the current values in the general ARM registers.
@@ -708,14 +708,14 @@ func (arm *ARM) checkProgramMemory(force bool) {
 	var origin uint32
 	arm.state.programMemory, origin = arm.mem.MapAddress(addr, false)
 	if arm.state.programMemory == nil {
-		arm.state.yield.Type = mapper.YieldMemoryAccessError
+		arm.state.yield.Type = coprocessor.YieldMemoryAccessError
 		arm.state.yield.Error = fmt.Errorf("can't find program memory (PC %08x)", addr)
 		return
 	}
 
 	if !arm.mem.IsExecutable(addr) {
 		arm.state.programMemory = nil
-		arm.state.yield.Type = mapper.YieldMemoryAccessError
+		arm.state.yield.Type = coprocessor.YieldMemoryAccessError
 		arm.state.yield.Error = fmt.Errorf("program memory is not executable (PC %08x)", addr)
 		return
 	}
@@ -733,7 +733,7 @@ func (arm *ARM) checkProgramMemory(force bool) {
 	arm.stackProtectCheckProgramMemory()
 }
 
-func (arm *ARM) run() (mapper.CoProcYield, float32) {
+func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 	select {
 	case <-arm.prefsPulse.C:
 		arm.updatePrefs()
@@ -767,7 +767,7 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 	var iterations int
 
 	// loop through instructions until we reach an exit condition
-	for arm.state.yield.Type == mapper.YieldRunning {
+	for arm.state.yield.Type == coprocessor.YieldRunning {
 		// program counter to execute:
 		//
 		// from "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p1", page 1-2
@@ -778,11 +778,11 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 		arm.state.executingPC = arm.state.registers[rPC] - 2
 
 		arm.checkBreakpoints()
-		if arm.state.yield.Type == mapper.YieldRunning {
+		if arm.state.yield.Type == coprocessor.YieldRunning {
 
 			// check program memory and continue if it's fine
 			arm.checkProgramMemory(false)
-			if arm.state.yield.Type == mapper.YieldRunning {
+			if arm.state.yield.Type == coprocessor.YieldRunning {
 				memIdx := int(arm.state.executingPC - arm.state.programMemoryOrigin)
 
 				// opcode for executed instruction
@@ -893,7 +893,7 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 						arm.disasm.Step(entry)
 
 						// print additional information output for stdout
-						if _, ok := arm.disasm.(*mapper.CartCoProcDisassemblerStdout); ok {
+						if _, ok := arm.disasm.(*coprocessor.CartCoProcDisassemblerStdout); ok {
 							fmt.Println(arm.disasmVerbose(entry))
 						}
 					}
@@ -901,7 +901,7 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 
 				// accumulate cycle counts for profiling
 				if arm.profiler != nil {
-					arm.profiler.Entries = append(arm.profiler.Entries, mapper.CartCoProcProfileEntry{
+					arm.profiler.Entries = append(arm.profiler.Entries, coprocessor.CartCoProcProfileEntry{
 						Addr:   arm.state.instructionPC,
 						Cycles: arm.state.stretchedCycles,
 					})
@@ -933,11 +933,11 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 				}
 
 				// check for stack errors
-				if arm.state.yield.Type == mapper.YieldStackError {
+				if arm.state.yield.Type == coprocessor.YieldStackError {
 					arm.extendedMemoryErrorLogging(opcode)
 					if !arm.abortOnMemoryFault {
 						arm.logYield()
-						arm.state.yield.Type = mapper.YieldRunning
+						arm.state.yield.Type = coprocessor.YieldRunning
 						arm.state.yield.Error = nil
 						arm.state.yield.Detail = arm.state.yield.Detail[:0]
 					}
@@ -945,11 +945,11 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 					if !arm.state.yield.Type.Normal() {
 						if arm.state.registers[rSP] != expectedSP {
 							arm.stackProtectCheckSP()
-							if arm.state.yield.Type == mapper.YieldStackError {
+							if arm.state.yield.Type == coprocessor.YieldStackError {
 								arm.extendedMemoryErrorLogging(opcode)
 								if !arm.abortOnMemoryFault {
 									arm.logYield()
-									arm.state.yield.Type = mapper.YieldRunning
+									arm.state.yield.Type = coprocessor.YieldRunning
 									arm.state.yield.Error = nil
 									arm.state.yield.Detail = arm.state.yield.Detail[:0]
 								}
@@ -960,7 +960,7 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 
 				// handle memory access yields. we don't these want these to bleed out
 				// of the ARM unless the abort preference is set
-				if arm.state.yield.Type == mapper.YieldMemoryAccessError {
+				if arm.state.yield.Type == coprocessor.YieldMemoryAccessError {
 					// add extended memory logging to yield detail
 					arm.extendedMemoryErrorLogging(opcode)
 
@@ -968,7 +968,7 @@ func (arm *ARM) run() (mapper.CoProcYield, float32) {
 					// yield information now before reset the yield type
 					if !arm.abortOnMemoryFault {
 						arm.logYield()
-						arm.state.yield.Type = mapper.YieldRunning
+						arm.state.yield.Type = coprocessor.YieldRunning
 						arm.state.yield.Error = nil
 						arm.state.yield.Detail = arm.state.yield.Detail[:0]
 					}
@@ -993,7 +993,7 @@ func (arm *ARM) checkBreakpoints() {
 		}
 
 		if arm.dev.CheckBreakpoint(addr) {
-			arm.state.yield.Type = mapper.YieldBreakpoint
+			arm.state.yield.Type = coprocessor.YieldBreakpoint
 			arm.state.yield.Error = fmt.Errorf("%08x", addr)
 			arm.dev.OnYield(addr, arm.state.yield)
 		}

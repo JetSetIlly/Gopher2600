@@ -22,9 +22,9 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -161,10 +161,10 @@ func (thmb *Image) Create(state *rewind.State) {
 	}
 }
 
-// CartYield implements the mapper.CartYieldHook interface.
-func (thmb *Image) CartYield(yield mapper.CoProcYieldType) mapper.YieldHookResponse {
+// CartYield implements the coprocessor.CartYieldHook interface.
+func (thmb *Image) CartYield(yield coprocessor.CoProcYieldType) coprocessor.YieldHookResponse {
 	if yield.Normal() {
-		return mapper.YieldHookContinue
+		return coprocessor.YieldHookContinue
 	}
 
 	// an unexpected yield type so end the thumbnail emulation
@@ -174,7 +174,7 @@ func (thmb *Image) CartYield(yield mapper.CoProcYieldType) mapper.YieldHookRespo
 	}
 
 	// indicate that the mapper should return immediately
-	return mapper.YieldHookEnd
+	return coprocessor.YieldHookEnd
 }
 
 // Resize implements the television.PixelRenderer interface

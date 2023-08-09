@@ -16,8 +16,8 @@
 package cdf
 
 import (
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/callfn"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 type State struct {
@@ -47,7 +47,7 @@ type State struct {
 	callfn callfn.CallFn
 
 	// most recent yield from the coprocessor
-	yield mapper.CoProcYield
+	yield coprocessor.CoProcYield
 }
 
 // initialise should be called as soon as convenient.

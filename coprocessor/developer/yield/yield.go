@@ -16,14 +16,14 @@
 package yield
 
 import (
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 // State records the most recent yield
 type State struct {
 	Addr           uint32
-	Reason         mapper.CoProcYieldType
+	Reason         coprocessor.CoProcYieldType
 	LocalVariables []*dwarf.SourceVariableLocal
 }
 

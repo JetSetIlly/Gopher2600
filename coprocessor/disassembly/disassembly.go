@@ -19,7 +19,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
@@ -33,7 +33,7 @@ type TV interface {
 // CartCoProcDisassembly defines the interface to the cartridge required by the
 // coprocessor disassembly pacakge
 type CartCoProcDisassembly interface {
-	GetCoProc() mapper.CartCoProc
+	GetCoProc() coprocessor.CartCoProc
 }
 
 // Disassembly is used to handle the disassembly of instructions from an
@@ -52,11 +52,11 @@ type Disassembly struct {
 type DisasmEntries struct {
 	Enabled bool
 
-	Entries map[string]mapper.CartCoProcDisasmEntry
+	Entries map[string]coprocessor.CartCoProcDisasmEntry
 	Keys    []string // sorted keys into the disasm map
 
-	LastExecution        []mapper.CartCoProcDisasmEntry
-	LastExecutionSummary mapper.CartCoProcDisasmSummary
+	LastExecution        []coprocessor.CartCoProcDisasmEntry
+	LastExecutionSummary coprocessor.CartCoProcDisasmSummary
 
 	LastStart coords.TelevisionCoords
 }
@@ -76,8 +76,8 @@ func (dsm *Disassembly) AttachCartridge(cart CartCoProcDisassembly) {
 	dsm.cart = nil
 
 	dsm.disasm = DisasmEntries{
-		LastExecution: make([]mapper.CartCoProcDisasmEntry, 0, 1024),
-		Entries:       make(map[string]mapper.CartCoProcDisasmEntry),
+		LastExecution: make([]coprocessor.CartCoProcDisasmEntry, 0, 1024),
+		Entries:       make(map[string]coprocessor.CartCoProcDisasmEntry),
 		Keys:          make([]string, 0, 1024),
 	}
 
@@ -152,7 +152,7 @@ func (dsm *Disassembly) Start() {
 }
 
 // Step implements the CartCoProcDisassembler interface.
-func (dsm *Disassembly) Step(entry mapper.CartCoProcDisasmEntry) {
+func (dsm *Disassembly) Step(entry coprocessor.CartCoProcDisasmEntry) {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
@@ -166,7 +166,7 @@ func (dsm *Disassembly) Step(entry mapper.CartCoProcDisasmEntry) {
 }
 
 // End implements the CartCoProcDisassembler interface.
-func (dsm *Disassembly) End(summary mapper.CartCoProcDisasmSummary) {
+func (dsm *Disassembly) End(summary coprocessor.CartCoProcDisasmSummary) {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 

@@ -32,7 +32,7 @@ package arm
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -147,7 +147,7 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) decodeFunction {
 		if opcode&0xff00 == 0xbe00 {
 			// software breakpoint
 			return func(_ uint16) *DisasmEntry {
-				arm.state.yield.Type = mapper.YieldSyncWithVCS
+				arm.state.yield.Type = coprocessor.YieldSyncWithVCS
 				arm.state.yield.Error = nil
 				return nil
 			}

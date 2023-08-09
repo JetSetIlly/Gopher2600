@@ -143,7 +143,7 @@ type StaticDisassembleConfig struct {
 // StaticDisassemble is used to statically disassemble a block of memory. It is
 // assumed that there is a valid instruction at the start of the block
 //
-// For disassemblies of executed code see the mapper.CartCoProcDisassembler interface
+// For disassemblies of executed code see the coprocessor.CartCoProcDisassembler interface
 func StaticDisassemble(config StaticDisassembleConfig) error {
 	arm := &ARM{
 		state: &ARMState{

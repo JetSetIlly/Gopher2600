@@ -20,13 +20,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/breakpoints"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/callstack"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -40,7 +40,7 @@ type TV interface {
 
 // Cartridge defines the interface to the cartridge required by the developer package
 type Cartridge interface {
-	GetCoProc() mapper.CartCoProc
+	GetCoProc() coprocessor.CartCoProc
 	PushFunction(func())
 }
 
@@ -79,7 +79,7 @@ type Developer struct {
 	breakAddress         uint32
 
 	// profiler instance. measures cycles counts for executed address
-	profiler mapper.CartCoProcProfiler
+	profiler coprocessor.CartCoProcProfiler
 
 	// slow down rate of NewFrame()
 	framesSinceLastUpdate int
@@ -121,8 +121,8 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 
 	dev.framesSinceLastUpdate = 0
 
-	dev.profiler = mapper.CartCoProcProfiler{
-		Entries: make([]mapper.CartCoProcProfileEntry, 0, 1000),
+	dev.profiler = coprocessor.CartCoProcProfiler{
+		Entries: make([]coprocessor.CartCoProcProfileEntry, 0, 1000),
 	}
 
 	if cart == nil || cart.GetCoProc() == nil {
@@ -159,7 +159,7 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 
 }
 
-// HighAddress implements the mapper.CartCoProcDeveloper interface.
+// HighAddress implements the coprocessor.CartCoProcDeveloper interface.
 func (dev *Developer) HighAddress() uint32 {
 	if dev.source == nil {
 		return 0
@@ -171,7 +171,7 @@ func (dev *Developer) HighAddress() uint32 {
 	return uint32(dev.source.HighAddress)
 }
 
-// CheckBreakpoint implements the mapper.CartCoProcDeveloper interface.
+// CheckBreakpoint implements the coprocessor.CartCoProcDeveloper interface.
 func (dev *Developer) CheckBreakpoint(addr uint32) bool {
 	if dev.source == nil {
 		return false
@@ -232,8 +232,8 @@ func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 	return nil
 }
 
-// OnYield implements the mapper.CartCoProcDeveloper interface.
-func (dev *Developer) OnYield(addr uint32, yield mapper.CoProcYield) {
+// OnYield implements the coprocessor.CartCoProcDeveloper interface.
+func (dev *Developer) OnYield(addr uint32, yield coprocessor.CoProcYield) {
 	dev.yieldStateLock.Lock()
 	defer dev.yieldStateLock.Unlock()
 
@@ -241,7 +241,7 @@ func (dev *Developer) OnYield(addr uint32, yield mapper.CoProcYield) {
 	dev.yieldState.Reason = yield.Type
 	dev.yieldState.LocalVariables = dev.yieldState.LocalVariables[:0]
 
-	if yield.Type == mapper.YieldSyncWithVCS {
+	if yield.Type == coprocessor.YieldSyncWithVCS {
 		return
 	}
 
@@ -266,7 +266,7 @@ func (dev *Developer) OnYield(addr uint32, yield mapper.CoProcYield) {
 	})
 }
 
-// MemoryFault implements the mapper.CartCoProcDeveloper interface.
+// MemoryFault implements the coprocessor.CartCoProcDeveloper interface.
 func (dev *Developer) MemoryFault(event string, explanation faults.Category,
 	instructionAddr uint32, accessAddr uint32) string {
 

@@ -20,8 +20,8 @@ import (
 	"image/color"
 	"sync"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -624,13 +624,13 @@ func (scr *screen) reflectionColor(ref *reflection.ReflectedVideoStep) color.RGB
 		}
 	case reflection.OverlayLabels[reflection.OverlayCoproc]:
 		switch ref.CoProcSync {
-		case mapper.CoProcIdle:
+		case coprocessor.CoProcIdle:
 			return reflectionColors[reflection.CoProcInactive]
-		case mapper.CoProcNOPFeed:
+		case coprocessor.CoProcNOPFeed:
 			return reflectionColors[reflection.CoProcActive]
-		case mapper.CoProcStrongARMFeed:
+		case coprocessor.CoProcStrongARMFeed:
 			return reflectionColors[reflection.CoProcInactive]
-		case mapper.CoProcParallel:
+		case coprocessor.CoProcParallel:
 			return reflectionColors[reflection.CoProcActive]
 		}
 	}

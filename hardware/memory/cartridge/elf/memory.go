@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -141,7 +142,7 @@ type elfMemory struct {
 	parallelARM bool
 
 	// most recent yield from the coprocessor
-	yield mapper.CoProcYield
+	yield coprocessor.CoProcYield
 }
 
 func newElfMemory() *elfMemory {

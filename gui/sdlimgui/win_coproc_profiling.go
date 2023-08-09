@@ -20,11 +20,11 @@ import (
 	"sync/atomic"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -314,13 +314,13 @@ func (win *winCoProcProfiling) draw() {
 }
 
 func (win *winCoProcProfiling) drawFrameStats() {
-	accumulate := func(s mapper.CoProcSynchronisation) int {
+	accumulate := func(s coprocessor.CoProcSynchronisation) int {
 		switch s {
-		case mapper.CoProcIdle:
-		case mapper.CoProcNOPFeed:
+		case coprocessor.CoProcIdle:
+		case coprocessor.CoProcNOPFeed:
 			return 1
-		case mapper.CoProcStrongARMFeed:
-		case mapper.CoProcParallel:
+		case coprocessor.CoProcStrongARMFeed:
+		case coprocessor.CoProcParallel:
 			return 1
 		}
 		return 0

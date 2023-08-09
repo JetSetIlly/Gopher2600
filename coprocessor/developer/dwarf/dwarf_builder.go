@@ -24,7 +24,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -534,7 +534,7 @@ func (bld *build) resolveVariableDeclaration(v *dwarf.Entry, src *Source) (*Sour
 // buildVariables populates variables map in the *Source tree. local variables
 // will need to be relocated for relocatable ELF files
 func (bld *build) buildVariables(src *Source, ef *elf.File,
-	relocatable mapper.CartCoProcRelocatable, executableOrigin uint64) error {
+	relocatable coprocessor.CartCoProcRelocatable, executableOrigin uint64) error {
 
 	// keep track of the lexical range as we walk through the DWARF data in
 	// order. if we need to add a variable to the list of locals and the DWARF

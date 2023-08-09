@@ -19,8 +19,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 func (arm *ARM) stackProtectCheckSP() {
@@ -33,11 +33,11 @@ func (arm *ARM) stackProtectCheckSP() {
 	stackMemory, stackOrigin := arm.mem.MapAddress(arm.state.registers[rSP], true)
 
 	if stackMemory == nil {
-		arm.state.yield.Type = mapper.YieldStackError
+		arm.state.yield.Type = coprocessor.YieldStackError
 		arm.state.yield.Error = fmt.Errorf("SP is not pointing to a valid address")
 
 	} else if stackMemory == arm.state.programMemory {
-		arm.state.yield.Type = mapper.YieldStackError
+		arm.state.yield.Type = coprocessor.YieldStackError
 		arm.state.yield.Error = fmt.Errorf("SP is pointing to program memory")
 
 	} else if arm.state.protectVariableMemTop {
@@ -53,7 +53,7 @@ func (arm *ARM) stackProtectCheckSP() {
 		}
 
 		// set yield type
-		arm.state.yield.Type = mapper.YieldStackError
+		arm.state.yield.Type = coprocessor.YieldStackError
 		arm.state.yield.Error = fmt.Errorf("stack collision (SP %08x) with variables (top %08x) ",
 			arm.state.registers[rSP], arm.state.variableMemtop)
 	} else {
@@ -79,7 +79,7 @@ func (arm *ARM) stackProtectCheckProgramMemory() {
 
 	stackMemory, _ := arm.mem.MapAddress(arm.state.registers[rSP], true)
 	if stackMemory == arm.state.programMemory {
-		arm.state.yield.Type = mapper.YieldStackError
+		arm.state.yield.Type = coprocessor.YieldStackError
 		arm.state.yield.Error = fmt.Errorf("SP is pointing to program memory")
 		arm.state.stackHasCollided = true
 	} else {

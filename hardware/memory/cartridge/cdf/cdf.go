@@ -18,6 +18,7 @@ package cdf
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -27,14 +28,14 @@ import (
 // cdf implements the mapper.CartMapper interface.
 type cdf struct {
 	env       *environment.Environment
-	dev       mapper.CartCoProcDeveloper
+	dev       coprocessor.CartCoProcDeveloper
 	mappingID string
 
 	// additional CPU - used by some ROMs
 	arm *arm.ARM
 
 	// the hook that handles cartridge yields
-	yieldHook mapper.CartYieldHook
+	yieldHook coprocessor.CartYieldHook
 
 	// cdf comes in several different versions
 	version version
@@ -76,7 +77,7 @@ func NewCDF(env *environment.Environment, version string, data []byte) (mapper.C
 		mappingID: "CDF",
 		bankSize:  4096,
 		state:     newCDFstate(),
-		yieldHook: mapper.StubCartYieldHook{},
+		yieldHook: coprocessor.StubCartYieldHook{},
 	}
 
 	var err error
@@ -124,18 +125,18 @@ func (cart *cdf) MappedBanks() string {
 	return fmt.Sprintf("Bank: %d", cart.state.bank)
 }
 
-// CoProcID implements the mapper.CartCoProc interface.
+// CoProcID implements the coprocessor.CartCoProc interface.
 func (cart *cdf) CoProcID() string {
 	return cart.arm.CoProcID()
 }
 
-// SetDisassembler implements the mapper.CartCoProc interface.
-func (cart *cdf) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
+// SetDisassembler implements the coprocessor.CartCoProc interface.
+func (cart *cdf) SetDisassembler(disasm coprocessor.CartCoProcDisassembler) {
 	cart.arm.SetDisassembler(disasm)
 }
 
-// SetDeveloper implements the mapper.CartCoProc interface.
-func (cart *cdf) SetDeveloper(dev mapper.CartCoProcDeveloper) {
+// SetDeveloper implements the coprocessor.CartCoProc interface.
+func (cart *cdf) SetDeveloper(dev coprocessor.CartCoProcDeveloper) {
 	cart.dev = dev
 	cart.arm.SetDeveloper(dev)
 }
@@ -162,7 +163,7 @@ func (cart *cdf) Plumb(env *environment.Environment) {
 func (cart *cdf) PlumbFromDifferentEmulation(env *environment.Environment) {
 	cart.env = env
 	cart.arm = arm.NewARM(cart.version.mmap, cart.env.Prefs.ARM, cart.state.static, cart)
-	cart.yieldHook = &mapper.StubCartYieldHook{}
+	cart.yieldHook = &coprocessor.StubCartYieldHook{}
 }
 
 // Reset implements the mapper.CartMapper interface.
@@ -379,8 +380,8 @@ func (cart *cdf) AccessVolatile(addr uint16, data uint8, poke bool) error {
 
 			// keep calling runArm() for as long as program has not ended
 			runArm()
-			for cart.state.yield.Type != mapper.YieldProgramEnded {
-				if cart.yieldHook.CartYield(cart.state.yield.Type) == mapper.YieldHookEnd {
+			for cart.state.yield.Type != coprocessor.YieldProgramEnded {
+				if cart.yieldHook.CartYield(cart.state.yield.Type) == coprocessor.YieldHookEnd {
 					break
 				}
 				runArm()
@@ -660,51 +661,51 @@ func (cart *cdf) HotLoad(data []byte) error {
 	return nil
 }
 
-// CoProcExecutionState implements the mapper.CartCoProc interface.
-func (cart *cdf) CoProcExecutionState() mapper.CoProcExecutionState {
+// CoProcExecutionState implements the coprocessor.CartCoProc interface.
+func (cart *cdf) CoProcExecutionState() coprocessor.CoProcExecutionState {
 	if cart.state.callfn.IsActive() {
-		return mapper.CoProcExecutionState{
-			Sync:  mapper.CoProcNOPFeed,
+		return coprocessor.CoProcExecutionState{
+			Sync:  coprocessor.CoProcNOPFeed,
 			Yield: cart.state.yield,
 		}
 	}
-	return mapper.CoProcExecutionState{
-		Sync:  mapper.CoProcIdle,
+	return coprocessor.CoProcExecutionState{
+		Sync:  coprocessor.CoProcIdle,
 		Yield: cart.state.yield,
 	}
 }
 
-// CoProcRegister implements the mapper.CartCoProc interface.
+// CoProcRegister implements the coprocessor.CartCoProc interface.
 func (cart *cdf) CoProcRegister(n int) (uint32, bool) {
 	return cart.arm.Register(n)
 }
 
-// CoProcRegister implements the mapper.CartCoProc interface.
+// CoProcRegister implements the coprocessor.CartCoProc interface.
 func (cart *cdf) CoProcRegisterSet(n int, value uint32) bool {
 	return cart.arm.SetRegister(n, value)
 }
 
-// CoProcStackFrame implements the mapper.CartCoProc interface.
+// CoProcStackFrame implements the coprocessor.CartCoProc interface.
 func (cart *cdf) CoProcStackFrame() uint32 {
 	return cart.arm.StackFrame()
 }
 
-// CoProcPeek implements the mapper.CartCoProc interface.
+// CoProcPeek implements the coprocessor.CartCoProc interface.
 func (cart *cdf) CoProcPeek(addr uint32) (uint32, bool) {
 	return cart.state.static.Read32bit(addr)
 }
 
-// BreakpointsEnable implements the mapper.CartCoProc interface.
+// BreakpointsEnable implements the coprocessor.CartCoProc interface.
 func (cart *cdf) BreakpointsEnable(enable bool) {
 	cart.arm.BreakpointsEnable(enable)
 }
 
-// SetYieldHook implements the mapper.CartCoProc interface.
-func (cart *cdf) SetYieldHook(hook mapper.CartYieldHook) {
+// SetYieldHook implements the coprocessor.CartCoProc interface.
+func (cart *cdf) SetYieldHook(hook coprocessor.CartYieldHook) {
 	cart.yieldHook = hook
 }
 
-func (cart *cdf) runArm() mapper.CoProcYield {
+func (cart *cdf) runArm() coprocessor.CoProcYield {
 	yld, cycles := cart.arm.Run()
 
 	cart.state.callfn.Accumulate(cycles)

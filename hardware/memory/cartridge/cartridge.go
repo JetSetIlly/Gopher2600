@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/ace"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/cdf"
@@ -54,7 +55,7 @@ type Cartridge struct {
 	hasBusStuff bool
 	busStuff    mapper.CartBusStuff
 	hasCoProc   bool
-	coproc      mapper.CartCoProc
+	coproc      coprocessor.CartCoProc
 }
 
 // sentinal error returned if operation is on the ejected cartridge type.
@@ -85,7 +86,7 @@ func (cart *Cartridge) Snapshot() *Cartridge {
 func (cart *Cartridge) Plumb(env *environment.Environment, fromDifferentEmulation bool) {
 	cart.env = env
 	cart.busStuff, cart.hasBusStuff = cart.mapper.(mapper.CartBusStuff)
-	cart.coproc, cart.hasCoProc = cart.mapper.(mapper.CartCoProc)
+	cart.coproc, cart.hasCoProc = cart.mapper.(coprocessor.CartCoProc)
 
 	if fromDifferentEmulation {
 		if m, ok := cart.mapper.(mapper.PlumbFromDifferentEmulation); ok {
@@ -207,7 +208,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 		// get busstuff and coproc interfaces
 		cart.busStuff, cart.hasBusStuff = cart.mapper.(mapper.CartBusStuff)
-		cart.coproc, cart.hasCoProc = cart.mapper.(mapper.CartCoProc)
+		cart.coproc, cart.hasCoProc = cart.mapper.(coprocessor.CartCoProc)
 
 		if _, ok := cart.mapper.(*ejected); !ok {
 			logger.Logf("cartridge", "inserted %s", cart.mapper.ID())
@@ -485,7 +486,7 @@ func (cart *Cartridge) GetCartHotspotsBus() mapper.CartHotspotsBus {
 
 // GetCoProc returns interface to the coprocessor interface or nil if no
 // coprocessor is available on the cartridge.
-func (cart *Cartridge) GetCoProc() mapper.CartCoProc {
+func (cart *Cartridge) GetCoProc() coprocessor.CartCoProc {
 	if cart.hasCoProc {
 		return cart.coproc
 	}
@@ -519,29 +520,29 @@ func (cart *Cartridge) ROMDump() (string, error) {
 	return "", fmt.Errorf("cartridge: %s does not support ROM dumping", cart.mapper.ID())
 }
 
-// BreakpointsEnable implements the mapper.CartCoProc interface.
+// BreakpointsEnable implements the coprocessor.CartCoProc interface.
 func (cart *Cartridge) BreakpointsEnable(enable bool) {
 	if cart.hasCoProc {
 		cart.coproc.BreakpointsEnable(enable)
 	}
 }
 
-// SetYieldHook implements the mapper.CartCoProc interface.
-func (cart *Cartridge) SetYieldHook(hook mapper.CartYieldHook) {
+// SetYieldHook implements the coprocessor.CartCoProc interface.
+func (cart *Cartridge) SetYieldHook(hook coprocessor.CartYieldHook) {
 	if cart.hasCoProc {
 		cart.coproc.SetYieldHook(hook)
 	}
 }
 
-// CoProcExecutionState implements the mapper.CartCoProc interface
+// CoProcExecutionState implements the coprocessor.CartCoProc interface
 //
 // If cartridge does not have a coprocessor then an empty instance of
 // mapper.CoProcExecutionState is returned
-func (cart *Cartridge) CoProcExecutionState() mapper.CoProcExecutionState {
+func (cart *Cartridge) CoProcExecutionState() coprocessor.CoProcExecutionState {
 	if cart.hasCoProc {
 		return cart.coproc.CoProcExecutionState()
 	}
-	return mapper.CoProcExecutionState{}
+	return coprocessor.CoProcExecutionState{}
 }
 
 // BusStuff implements the mapper.CartBusStuff interface.

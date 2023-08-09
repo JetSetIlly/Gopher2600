@@ -18,19 +18,19 @@ package developer
 import (
 	"sort"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
-// Profiling implements the mapper.CartCoProcDeveloper interface.
-func (dev *Developer) Profiling() *mapper.CartCoProcProfiler {
+// Profiling implements the coprocessor.CartCoProcDeveloper interface.
+func (dev *Developer) Profiling() *coprocessor.CartCoProcProfiler {
 	if dev.source == nil {
 		return nil
 	}
 	return &dev.profiler
 }
 
-// StartProfiling implements the mapper.CartCoProcDeveloper interface.
+// StartProfiling implements the coprocessor.CartCoProcDeveloper interface.
 func (dev *Developer) StartProfiling() {
 	if dev.source == nil {
 		return
@@ -42,7 +42,7 @@ func (dev *Developer) StartProfiling() {
 	dev.yieldStateLock.Lock()
 	defer dev.yieldStateLock.Unlock()
 
-	if dev.yieldState.Reason != mapper.YieldProgramEnded {
+	if dev.yieldState.Reason != coprocessor.YieldProgramEnded {
 		return
 	}
 
@@ -55,7 +55,7 @@ func (dev *Developer) StartProfiling() {
 	dev.callstack.Stack = append(dev.callstack.Stack, dev.source.DriverSourceLine)
 }
 
-// ProcessProfiling implements the mapper.CartCoProcDeveloper interface.
+// ProcessProfiling implements the coprocessor.CartCoProcDeveloper interface.
 func (dev *Developer) ProcessProfiling() {
 	if dev.source == nil {
 		return

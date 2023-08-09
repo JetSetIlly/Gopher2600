@@ -22,10 +22,10 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -735,13 +735,13 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		case reflection.OverlayLabels[reflection.OverlayCoproc]:
 			imguiSeparator()
 			switch ref.CoProcSync {
-			case mapper.CoProcIdle:
+			case coprocessor.CoProcIdle:
 				imgui.Text(fmt.Sprintf("%s is idle", win.img.lz.Cart.CoProcID))
-			case mapper.CoProcNOPFeed:
+			case coprocessor.CoProcNOPFeed:
 				imgui.Text(fmt.Sprintf("%s is feeding NOPs", win.img.lz.Cart.CoProcID))
-			case mapper.CoProcStrongARMFeed:
+			case coprocessor.CoProcStrongARMFeed:
 				imgui.Text(fmt.Sprintf("%s feeding 6507", win.img.lz.Cart.CoProcID))
-			case mapper.CoProcParallel:
+			case coprocessor.CoProcParallel:
 				imgui.Text(fmt.Sprintf("%s and 6507 running in parallel", win.img.lz.Cart.CoProcID))
 			}
 		}

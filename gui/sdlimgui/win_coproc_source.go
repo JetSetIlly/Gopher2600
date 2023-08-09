@@ -21,13 +21,13 @@ import (
 	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/breakpoints"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
 )
@@ -121,7 +121,7 @@ func (win *winCoProcSource) debuggerDraw() bool {
 			win.yieldState = yld
 
 			// open window and focus on yield line if the yield is a breakpoint
-			if yld.Reason != mapper.YieldSyncWithVCS && yld.Reason != mapper.YieldProgramEnded {
+			if yld.Reason != coprocessor.YieldSyncWithVCS && yld.Reason != coprocessor.YieldProgramEnded {
 				win.debuggerOpen = true
 				win.focusYieldLine = true
 			}

@@ -18,6 +18,7 @@ package lazyvalues
 import (
 	"sync/atomic"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 )
@@ -45,7 +46,7 @@ type LazyCart struct {
 	tapeBus   atomic.Value // mapper.CartTapeBus (in continer)
 	tapeState atomic.Value // mapper.CartTapeState (in container)
 
-	coProcBus atomic.Value // mapper.CartCoProc (in container)
+	coProcBus atomic.Value // coprocessor.CartCoProc (in container)
 	coprocID  atomic.Value // string
 	coprocPC  atomic.Value // uint32
 
@@ -232,7 +233,7 @@ func (lz *LazyCart) update() {
 		lz.PlusROMSendState, _ = lz.plusROMSendState.Load().(plusrom.SendState)
 	}
 
-	_, lz.HasCoProcBus = lz.coProcBus.Load().(container).v.(mapper.CartCoProc)
+	_, lz.HasCoProcBus = lz.coProcBus.Load().(container).v.(coprocessor.CartCoProc)
 	if lz.HasCoProcBus {
 		lz.CoProcID, _ = lz.coprocID.Load().(string)
 		lz.CoProcPC, _ = lz.coprocPC.Load().(uint32)
@@ -250,7 +251,7 @@ func (lz *LazyCart) fastPush() {
 }
 
 func (lz *LazyCart) fastUpdate() {
-	_, lz.HasCoProcBus = lz.coProcBus.Load().(container).v.(mapper.CartCoProc)
+	_, lz.HasCoProcBus = lz.coProcBus.Load().(container).v.(coprocessor.CartCoProc)
 	if lz.HasCoProcBus {
 		lz.CoProcID, _ = lz.coprocID.Load().(string)
 	}

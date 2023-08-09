@@ -16,8 +16,8 @@
 package dpcplus
 
 import (
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/callfn"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/random"
 )
 
@@ -45,7 +45,7 @@ type State struct {
 	callfn callfn.CallFn
 
 	// most recent yield from the coprocessor
-	yield mapper.CoProcYield
+	yield coprocessor.CoProcYield
 }
 
 func newDPCPlusState() *State {

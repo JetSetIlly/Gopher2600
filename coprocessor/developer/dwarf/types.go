@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 // SourceFileContent lists the lines in a source file
@@ -70,7 +70,7 @@ type SourceInstruction struct {
 
 	// the disassembly entry from the cartridge dissassembly. we don't deal with
 	// the details of this type in the coprocessor.developer package
-	Disasm mapper.CartCoProcDisasmEntry
+	Disasm coprocessor.CartCoProcDisasmEntry
 
 	// the line of source code this diassembly entry is associated with
 	Line *SourceLine
