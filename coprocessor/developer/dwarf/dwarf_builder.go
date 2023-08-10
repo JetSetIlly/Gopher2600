@@ -580,43 +580,21 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 			// lexical block stack
 			lexStackTop = 0
 
-			var low, high uint64
-
 			// basic compilation address is the executable origin. this will be
 			// changed depending on the presence of AttrLowpc
 			compilationUnitAddress = executableOrigin
 
+			// note that although a DW_AT_ranges attribute may exist, we're only
+			// interested in the low pc:
+			//
+			// "A DW_AT_low_pc attribute may also be specified in combination
+			// with DW_AT_ranges to specify the default base address for use in
+			// location lists (see Section 2.6.2) and range lists (see Section
+			// 2.17.3)."
+
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				low = executableOrigin + uint64(fld.Val.(uint64))
-
-				// use low address for the compilation unit address
-				compilationUnitAddress = low
-
-				fld = e.AttrField(dwarf.AttrHighpc)
-				if fld == nil {
-					continue // for loop
-				}
-
-				switch fld.Class {
-				case dwarf.ClassConstant:
-					// dwarf-4
-					high = low + uint64(fld.Val.(int64))
-				case dwarf.ClassAddress:
-					// dwarf-2
-					high = uint64(fld.Val.(uint64))
-				default:
-				}
-
-				// "high address is the first location past the last instruction
-				// associated with the entity"
-				// page 34 of "DWARF4 Standard"
-				high--
-
-				lexStackTop++
-				lexStart = append(lexStart[:lexStackTop], []uint64{low})
-				lexEnd = append(lexEnd[:lexStackTop], []uint64{high})
-				lexSibling = append(lexSibling[:lexStackTop], dwarf.Offset(0))
+				compilationUnitAddress += uint64(fld.Val.(uint64))
 			}
 
 			continue // for loop
@@ -661,49 +639,19 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 					continue // for loop
 				}
 
-				rngs, err := bld.dwrf.Ranges(e)
+				var start []uint64
+				var end []uint64
+
+				commitRange := func(low uint64, high uint64) {
+					start = append(start, low)
+					end = append(end, high)
+				}
+
+				err := bld.processRanges(e, compilationUnitAddress, commitRange)
 				if err != nil {
 					return err
 				}
 
-				var start []uint64
-				var end []uint64
-
-				// "The applicable base address of a range list entry is determined by the closest
-				// preceding base address selection entry (see below) in the same range list. If
-				// there is no such selection entry, then the applicable base address defaults to
-				// the base address of the compilation unit"
-				// page 39 of "DWARF4 Standard"
-				baseAddress := compilationUnitAddress
-
-				for _, r := range rngs {
-					// "A base address selection entry consists of:
-					// 1. The value of the largest representable address offset (for example, 0xffffffff when the size of
-					// an address is 32 bits).
-					// 2. An address, which defines the appropriate base address for use in interpreting the beginning
-					// and ending address offsets of subsequent entries of the location list."
-					// page 39 of "DWARF4 Standard"
-					if r[0] == 0xffffffff {
-						baseAddress = executableOrigin + r[1]
-						continue
-					}
-
-					// ignore range entries which are empty
-					if r[0] == r[1] {
-						continue
-					}
-
-					low := baseAddress + r[0]
-					high := baseAddress + r[1]
-
-					// "[high address] marks the first address past the end of the address range.The ending address
-					// must be greater than or equal to the beginning address"
-					// page 39 of "DWARF4 Standard"
-					high--
-
-					start = append(start, low)
-					end = append(end, high)
-				}
 				lexStackTop++
 				lexStart = append(lexStart[:lexStackTop], start)
 				lexEnd = append(lexEnd[:lexStackTop], end)
@@ -1048,11 +996,18 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 	for _, e := range bld.order {
 		switch e.Tag {
 		case dwarf.TagCompileUnit:
+			compilationUnitAddress := executableOrigin
+
+			// note that although a DW_AT_ranges attribute may exist, we're only
+			// interested in the low pc:
+			//
+			// "A DW_AT_low_pc attribute may also be specified in combination
+			// with DW_AT_ranges to specify the default base address for use in
+			// location lists (see Section 2.6.2) and range lists (see Section
+			// 2.17.3)."
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				compilationUnitAddress = executableOrigin + uint64(fld.Val.(uint64))
-			} else {
-				compilationUnitAddress = executableOrigin
+				compilationUnitAddress += uint64(fld.Val.(uint64))
 			}
 		case dwarf.TagSubprogram:
 			// check address against low/high fields
@@ -1222,52 +1177,69 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 					continue // for loop
 				}
 
-				rngs, err := bld.dwrf.Ranges(e)
+				commitRange := func(low uint64, high uint64) {
+					err := commitInlinedSubroutine(low, high)
+					if err != nil {
+						logger.Logf("dwarf", err.Error())
+					}
+				}
+
+				err := bld.processRanges(e, compilationUnitAddress, commitRange)
 				if err != nil {
 					return err
 				}
 
-				// "The applicable base address of a range list entry is determined by the closest
-				// preceding base address selection entry (see below) in the same range list. If
-				// there is no such selection entry, then the applicable base address defaults to
-				// the base address of the compilation unit"
-				// page 39 of "DWARF4 Standard"
-				baseAddress := compilationUnitAddress
-
-				for _, r := range rngs {
-					// "A base address selection entry consists of:
-					// 1. The value of the largest representable address offset (for example, 0xffffffff when the size of
-					// an address is 32 bits).
-					// 2. An address, which defines the appropriate base address for use in interpreting the beginning
-					// and ending address offsets of subsequent entries of the location list."
-					// page 39 of "DWARF4 Standard"
-					if r[0] == 0xffffffff {
-						baseAddress = executableOrigin + r[1]
-						continue
-					}
-
-					// ignore range entries which are empty
-					if r[0] == r[1] {
-						continue
-					}
-
-					low = baseAddress + r[0]
-					high = baseAddress + r[1]
-
-					// "[high address] marks the first address past the end of the address range.The ending address
-					// must be greater than or equal to the beginning address"
-					// page 39 of "DWARF4 Standard"
-					high--
-
-					err := commitInlinedSubroutine(low, high)
-					if err != nil {
-						logger.Logf("dwarf", err.Error())
-						continue // ranges loop
-					}
-				}
 			}
 		}
 	}
 
+	return nil
+}
+
+// process ranges by calling the supplied commit function for every range entry.
+// the compilationUnitAddress will be the base address of each entry
+func (bld *build) processRanges(e *dwarf.Entry, compilationUnitAddress uint64, commit func(uint64, uint64)) error {
+	rngs, err := bld.dwrf.Ranges(e)
+	if err != nil {
+		return err
+	}
+
+	// "The applicable base address of a range list entry is determined by the closest
+	// preceding base address selection entry (see below) in the same range list. If
+	// there is no such selection entry, then the applicable base address defaults to
+	// the base address of the compilation unit"
+	// page 39 of "DWARF4 Standard"
+	baseAddress := compilationUnitAddress
+
+	for _, r := range rngs {
+		// "A base address selection entry consists of:
+		// 1. The value of the largest representable address offset (for example, 0xffffffff when the size of
+		// an address is 32 bits).
+		// 2. An address, which defines the appropriate base address for use in interpreting the beginning
+		// and ending address offsets of subsequent entries of the location list."
+		// page 39 of "DWARF4 Standard"
+		if r[0] == 0xffffffff {
+			// not sure if the adjustment is required or if it should be
+			// executable origin address rather than the compilation unit
+			// address
+			baseAddress = compilationUnitAddress + r[1]
+			continue
+		}
+
+		// ignore range entries which are empty
+		if r[0] == r[1] {
+			continue
+		}
+
+		low := baseAddress + r[0]
+		high := baseAddress + r[1]
+
+		// "[high address] marks the first address past the end of the address range.The ending address
+		// must be greater than or equal to the beginning address"
+		// page 39 of "DWARF4 Standard"
+		high--
+
+		commit(low, high)
+	}
 	return nil
 }

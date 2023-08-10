@@ -589,8 +589,9 @@ func (arm *ARM) ProcessProfiling() {
 func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 	if arm.dev != nil {
 		defer func() {
-			arm.logYield()
+			// breakpoints handle OnYield slightly differently
 			if arm.state.yield.Type != coprocessor.YieldBreakpoint {
+				arm.logYield()
 				arm.dev.OnYield(arm.state.registers[rPC], arm.state.yield)
 			}
 		}()
@@ -998,6 +999,11 @@ func (arm *ARM) checkBreakpoints() {
 		if arm.dev.CheckBreakpoint(addr) {
 			arm.state.yield.Type = coprocessor.YieldBreakpoint
 			arm.state.yield.Error = fmt.Errorf("%08x", addr)
+
+			// we call OnYield here with the address you used to check for the
+			// breakpoint not sure if this is correct or whether we should
+			// simply call OnYield() in the normal way (at the end of the Run()
+			// function)
 			arm.dev.OnYield(addr, arm.state.yield)
 		}
 	}
@@ -1031,7 +1037,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 	// decode function to execute
 	var df decodeFunction
 
-	// process a 32 bit or 16 bit instruction as appropriate
+	// process a 32bit or 16bit instruction as appropriate
 	if arm.state.function32bitDecoding {
 		arm.state.function32bitDecoding = false
 		arm.state.function32bitResolving = true

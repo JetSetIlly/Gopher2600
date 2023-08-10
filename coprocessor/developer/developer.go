@@ -262,6 +262,11 @@ func (dev *Developer) OnYield(addr uint32, yield coprocessor.CoProcYield) {
 			ln.Bug = true
 		}
 
+		// update local variables
+		for _, local := range locals {
+			local.Update()
+		}
+
 		src.UpdateGlobalVariables()
 	})
 }

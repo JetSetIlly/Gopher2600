@@ -949,7 +949,8 @@ func (src *Source) UpdateGlobalVariables() {
 	}
 }
 
-// GetLocalVariables retuns the list of local variables for the supplied address
+// GetLocalVariables retuns the list of local variables for the supplied
+// address. Local variables will not be updated.
 func (src *Source) GetLocalVariables(ln *SourceLine, addr uint32) []*SourceVariableLocal {
 	var locals []*SourceVariableLocal
 	var chosenLocal *SourceVariableLocal
@@ -967,7 +968,10 @@ func (src *Source) GetLocalVariables(ln *SourceLine, addr uint32) []*SourceVaria
 
 	// there's an assumption here that SortedLocals is sorted by variable name
 	for _, local := range src.SortedLocals.Locals {
-		// append chosen local variable
+		// append chosen local variable. comparing variable name (rather than
+		// declartion line) even though there may be multiple variables in
+		// differnt places with the same name. this is because we don't want to
+		// see multiple entries of a variable name
 		if chosenLocal != nil && chosenLocal.Name != local.Name {
 			commitChosen()
 		}
@@ -987,11 +991,6 @@ func (src *Source) GetLocalVariables(ln *SourceLine, addr uint32) []*SourceVaria
 	// append chosen local variable
 	if chosenLocal != nil {
 		commitChosen()
-	}
-
-	// update local variables
-	for _, local := range locals {
-		local.Update()
 	}
 
 	return locals
