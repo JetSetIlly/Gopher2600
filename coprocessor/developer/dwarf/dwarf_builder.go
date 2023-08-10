@@ -816,7 +816,18 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 		constfld := v.AttrField(dwarf.AttrConstValue)
 		if constfld != nil {
 			varb.hasConstantValue = true
-			varb.constantValue = uint32(constfld.Val.(int64))
+
+			switch constfld.Val.(type) {
+			case int64:
+				varb.constantValue = uint32(constfld.Val.(int64))
+			case []uint8:
+				// eg. a float value
+				varb.constantValue = bld.debug_loc.byteOrder.Uint32(constfld.Val.([]uint8))
+			default:
+				logger.Logf("dwarf", "unhandled DW_AT_const_value type %T", constfld.Val)
+				continue // for loop
+			}
+
 			if !addGlobal(varb) {
 				addLexicalLocal(varb)
 			}
