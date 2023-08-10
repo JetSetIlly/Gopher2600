@@ -18,6 +18,7 @@
 package arm
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/fpu"
@@ -765,8 +766,14 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) *DisasmEntry {
 
 		if opcode&0x0100 == 0x0100 {
 			// 64bit floats (T1 encoding)
-			// d := (D << 4) | Vd
-			panic("double precision VSTR")
+			d := (D << 4) | Vd
+			if arm.byteOrder == binary.LittleEndian {
+				arm.write32bit(addr, arm.state.fpu.Registers[d], true)
+				arm.write32bit(addr+4, arm.state.fpu.Registers[d+1], true)
+			} else {
+				arm.write32bit(addr, arm.state.fpu.Registers[d+1], true)
+				arm.write32bit(addr+4, arm.state.fpu.Registers[d], true)
+			}
 		} else {
 			// 32bit floats (T1 encoding)
 			d := (Vd << 1) | D
@@ -797,12 +804,23 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) *DisasmEntry {
 		if opcode&0x0100 == 0x0100 {
 			// 64bit floats (T1 encoding)
 			d := (D << 4) | Vd
+
+			if imm8 == 0 || imm8 > 16 || imm8+d > 32 {
+				panic("too many registers for VPUSH")
+			}
+
 			for i := uint16(0); i < imm8; i += 2 {
-				// TODO: better endian-ness
-				arm.write32bit(addr, arm.state.fpu.Registers[d+i], true)
-				addr += 4
-				arm.write32bit(addr, arm.state.fpu.Registers[d+i+1], true)
-				addr += 4
+				if arm.byteOrder == binary.LittleEndian {
+					arm.write32bit(addr, arm.state.fpu.Registers[d], true)
+					addr += 4
+					arm.write32bit(addr, arm.state.fpu.Registers[d+1], true)
+					addr += 4
+				} else {
+					arm.write32bit(addr, arm.state.fpu.Registers[d+1], true)
+					addr += 4
+					arm.write32bit(addr, arm.state.fpu.Registers[d], true)
+					addr += 4
+				}
 			}
 		} else {
 			// 32bit floats (T2 encoding)
@@ -847,7 +865,17 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) *DisasmEntry {
 		}
 
 		if opcode&0x0100 == 0x0100 {
-			panic("double precision VLDR")
+			// 64bit floats (T1 encoding)
+			d := (D << 4) | Vd
+			word1 := arm.read32bit(addr, true)
+			word2 := arm.read32bit(addr+4, true)
+			if arm.byteOrder == binary.LittleEndian {
+				arm.state.fpu.Registers[d] = word1
+				arm.state.fpu.Registers[d+1] = word2
+			} else {
+				arm.state.fpu.Registers[d+1] = word1
+				arm.state.fpu.Registers[d] = word2
+			}
 		} else {
 			// 32bit floats (T2 encoding)
 			d := (Vd << 1) | D
