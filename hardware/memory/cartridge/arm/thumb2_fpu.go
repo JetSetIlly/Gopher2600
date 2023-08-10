@@ -374,14 +374,14 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) *DisasmEntry {
 				if sz {
 					// d := (D << 4) | Vd
 					// m := (M << 4) | Vm
-					panic("defined double precision VCMP, VCMPE")
+					panic("double precision VCMP, VCMPE")
 				} else {
 					d = (Vd << 1) | D
 					m = (Vm << 1) | M
 					N = 32
 				}
 
-				if M == 0b01 {
+				if arm.state.function32bitOpcodeHi&0b01 == 0b00 {
 					// Encoding T1 (with m register)
 					arm.state.fpu.FPCompare(uint64(arm.state.fpu.Registers[d]), uint64(arm.state.fpu.Registers[m]), N, E, true)
 				} else {
