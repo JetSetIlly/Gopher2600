@@ -28,7 +28,7 @@ func (fpu *FPU) FPNeg(value uint64, N int) uint64 {
 func (fpu *FPU) FPAbs(value uint64, N int) uint64 {
 	switch N {
 	case 32:
-		return value & 0x000000007fffffff
+		return value & 0x7fffffff
 	case 64:
 		return value & 0x7fffffffffffffff
 	}

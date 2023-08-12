@@ -108,9 +108,9 @@ func (fpu *FPU) FPToFixed(operand uint64, N int, fractionBits int, unsigned bool
 	var overflow bool
 
 	if unsigned {
-		result, overflow = fpu.UnsignedSatQ(intResult, N, unsigned)
+		result, overflow = fpu.UnsignedSatQ(intResult, N)
 	} else {
-		result, overflow = fpu.SignedSatQ(intResult, N, unsigned)
+		result, overflow = fpu.SignedSatQ(intResult, N)
 	}
 
 	if overflow {

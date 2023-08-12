@@ -264,7 +264,8 @@ func (fpu *FPU) FPMulAdd(addend uint64, op1 uint64, op2 uint64, N int, fpscrCont
 
 			// Otherwise calculate numerical result and round it
 		} else {
-			resultValue := valueA + (value1 * value2)
+			resultValue := value1 * value2
+			resultValue += valueA
 			if resultValue == 0.0 {
 				resultSign := fpscr.RMode() == FPRoundNegInf
 				result = fpu.FPZero(resultSign, N)

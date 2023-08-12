@@ -188,6 +188,27 @@ func TestFPToFixed(t *testing.T) {
 	c = fp.FixedToFP(v, 32, 0, false, true, true)
 	d = fp.FPToFixed(c, 32, 0, false, true, true)
 	test.ExpectEquality(t, d, v)
+
+	// add a small fraction and see how FPToFixed() converts back to an integer
+	var delta float64
+
+	delta = 0.25
+	c = fp.FixedToFP(v, 32, 0, false, true, true)
+	c = fp.FPAdd(c, fp.FPRound(delta, 32, fp.Status), 32, true)
+	d = fp.FPToFixed(c, 32, 0, false, true, true)
+	test.ExpectEquality(t, d, v)
+
+	delta = 0.99
+	c = fp.FixedToFP(v, 32, 0, false, true, true)
+	c = fp.FPAdd(c, fp.FPRound(delta, 32, fp.Status), 32, true)
+	d = fp.FPToFixed(c, 32, 0, false, true, true)
+	test.ExpectEquality(t, d, v)
+
+	delta = 1.01
+	c = fp.FixedToFP(v, 32, 0, false, true, true)
+	c = fp.FPAdd(c, fp.FPRound(delta, 32, fp.Status), 32, true)
+	d = fp.FPToFixed(c, 32, 0, false, true, true)
+	test.ExpectInequality(t, d, v)
 }
 
 func TestNegative(t *testing.T) {
@@ -249,12 +270,12 @@ func TestArithmetic(t *testing.T) {
 	var q uint64
 
 	// mutliplication and add
-	r = fp.FPRound(2, 32, fpscr)
-	s = fp.FPRound(3, 32, fpscr)
-	q = fp.FPRound(1, 32, fpscr)
+	r = fp.FPRound(2.5, 32, fpscr)
+	s = fp.FPRound(-3.1, 32, fpscr)
+	q = fp.FPRound(100, 32, fpscr)
 	q = fp.FPMulAdd(q, r, s, 32, false)
 	_, _, f := fp.FPUnpack(q, 32, fpscr)
-	test.ExpectEquality(t, f, (2*3)+1)
+	test.ExpectEquality(t, f, (2.5*-3.1)+100)
 }
 
 func TestNegation(t *testing.T) {
@@ -298,21 +319,73 @@ func TestAbsolute(t *testing.T) {
 	// the two values should be unequal at this point
 	test.ExpectInequality(t, c, d)
 
+	var r uint32
+
 	// force the negative value to be positive
-	d = uint32(fp.FPAbs(uint64(d), 32))
-	test.ExpectEquality(t, c, d)
+	r = uint32(fp.FPAbs(uint64(d), 32))
+	test.ExpectEquality(t, r, c)
 
 	// forcing a positive value has no effect
-	d = uint32(fp.FPAbs(uint64(d), 32))
-	test.ExpectEquality(t, c, d)
+	r = uint32(fp.FPAbs(uint64(c), 32))
+	test.ExpectEquality(t, r, c)
 }
 
 func TestImmediate(t *testing.T) {
 	var fp fpu.FPU
 
-	// test taken from an real world example of a VMOV (immediate) instruction.
+	// tests taken from an real world example of a VMOV (immediate) instruction.
 	// the GCC objdump indiates that a value of 0x50 should expand to 0.25
 	a := fp.VFPExpandImm(0x50, 32)
 	b := math.Float32frombits(uint32(a))
 	test.ExpectEquality(t, b, 0.25)
+
+	a = fp.VFPExpandImm(0x70, 32)
+	b = math.Float32frombits(uint32(a))
+	test.ExpectEquality(t, b, 1.00)
+}
+
+func TestSaturation(t *testing.T) {
+	var fp fpu.FPU
+
+	var r uint64
+
+	// unsigned saturation
+
+	r, _ = fp.UnsignedSatQ(0, 32)
+	test.ExpectEquality(t, r, 0)
+
+	r, _ = fp.UnsignedSatQ(-1000, 32)
+	test.ExpectEquality(t, r, 0)
+
+	r, _ = fp.UnsignedSatQ(1000, 32)
+	test.ExpectEquality(t, r, 1000)
+
+	r, _ = fp.UnsignedSatQ(-4294967295, 32)
+	test.ExpectEquality(t, r, 0)
+
+	r, _ = fp.UnsignedSatQ(-4294967295-1000, 32)
+	test.ExpectEquality(t, r, 0)
+
+	r, _ = fp.UnsignedSatQ(4294967295, 32)
+	test.ExpectEquality(t, r, 4294967295)
+
+	r, _ = fp.UnsignedSatQ(4294967295+1000, 32)
+	test.ExpectEquality(t, r, 4294967295)
+
+	// signed saturation
+	//
+	r, _ = fp.SignedSatQ(0, 32)
+	test.ExpectEquality(t, r, 0)
+
+	r, _ = fp.SignedSatQ(-1000, 32)
+	test.ExpectEquality(t, r, 0xfffffc18)
+
+	r, _ = fp.SignedSatQ(4294967295, 32)
+	test.ExpectEquality(t, r, 2147483647)
+
+	r, _ = fp.SignedSatQ(4294967295+1000, 32)
+	test.ExpectEquality(t, r, 2147483647)
+
+	r, _ = fp.SignedSatQ(-4294967295, 32)
+	test.ExpectEquality(t, r, 0x80000000)
 }
