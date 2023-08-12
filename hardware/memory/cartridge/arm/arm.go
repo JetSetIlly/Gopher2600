@@ -620,7 +620,36 @@ func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 		arm.state.registers[rPC] += 2
 	}
 
-	// reset yield
+	// reset disassembly as approprite for the previous yield type
+	if arm.disasm != nil {
+		// start of program execution
+		arm.disasmSummary.I = 0
+		arm.disasmSummary.N = 0
+		arm.disasmSummary.S = 0
+		if arm.state.yield.Type.Normal() {
+			arm.disasm.Start()
+		}
+
+		defer func() {
+			// wrapping disasmEnd because we don't want to capture disasmSummary
+			// too early (because the deferred func() is invoked as part of the
+			// declaration any arguments to the function will be captured at
+			// that point. wrapping the call to disasm.End() prevents
+			// disasmSummary being captured)
+			arm.disasm.End(arm.disasmSummary)
+		}()
+	}
+
+	// get developer information. this probably hasn't changed since ARM
+	// creation but you never know
+	if arm.dev != nil {
+		arm.profiler = arm.dev.Profiling()
+		arm.state.variableMemtop = arm.dev.HighAddress()
+	}
+	arm.state.protectVariableMemTop = arm.dev != nil
+
+	// reset yield. we do this as late as possible because we want to use
+	// information about the previous yield during the above preparations
 	arm.state.yield.Type = coprocessor.YieldRunning
 	arm.state.yield.Error = nil
 	arm.state.yield.Detail = arm.state.yield.Detail[:0]
@@ -742,29 +771,6 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 	case <-arm.prefsPulse.C:
 		arm.updatePrefs()
 	default:
-	}
-
-	// get developer information. this probably hasn't changed since ARM
-	// creation but you never know
-	if arm.dev != nil {
-		arm.profiler = arm.dev.Profiling()
-		arm.state.variableMemtop = arm.dev.HighAddress()
-	}
-	arm.state.protectVariableMemTop = arm.dev != nil
-
-	if arm.disasm != nil {
-		// start of program execution
-		arm.disasmSummary.I = 0
-		arm.disasmSummary.N = 0
-		arm.disasmSummary.S = 0
-		arm.disasm.Start()
-
-		// we must wrap the call to disasm.End in a function because defer
-		// needs to be invoked. this has the unintended side-effect of using
-		// the state of arm.disasSummary as it exists now
-		defer func() {
-			arm.disasm.End(arm.disasmSummary)
-		}()
 	}
 
 	// number of iterations. only used when in immediate mode
