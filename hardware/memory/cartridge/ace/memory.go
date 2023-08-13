@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
@@ -181,7 +182,7 @@ func newAceMemory(data []byte, armPrefs *preferences.ARMPreferences) (*aceMemory
 	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram)) - 1
 
 	// the placement of data in flash memory revolves around the ARM entry point
-	mem.resetPC = (mem.model.FlashOrigin + mem.header.entry) & 0xfffffffe
+	mem.resetPC = arm.AlignTo16bits(mem.model.FlashOrigin + mem.header.entry)
 	mem.resetLR = mem.resetPC
 	mem.resetSP = mem.sramMemtop - 3
 

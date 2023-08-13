@@ -719,7 +719,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) *DisasmEntry {
 		Vd := (opcode & 0xf000) >> 12
 
 		imm8 := opcode & 0x00ff
-		imm32 := uint32(imm8 << 2)
+		imm32 := uint32(imm8) << 2
 
 		addr := arm.state.registers[Rn]
 		if !U {
@@ -768,7 +768,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) *DisasmEntry {
 		D := (arm.state.function32bitOpcodeHi & 0x0040) >> 6
 		Vd := (opcode & 0xf000) >> 12
 		imm8 := opcode & 0x00ff
-		imm32 := uint32(imm8 << 2)
+		imm32 := uint32(imm8) << 2
 
 		addr := arm.state.registers[Rn]
 		if U {
@@ -808,7 +808,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) *DisasmEntry {
 		D := (arm.state.function32bitOpcodeHi & 0x0040) >> 6
 		Vd := (opcode & 0xf000) >> 12
 		imm8 := opcode & 0x00ff
-		imm32 := uint32(imm8 << 2)
+		imm32 := uint32(imm8) << 2
 
 		// extent of stack
 		addr := arm.state.registers[rSP] - imm32
@@ -854,32 +854,58 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) *DisasmEntry {
 
 	if maskedOp == 0b10001 || maskedOp == 0b11001 {
 		// "A7.7.236 VLDR" of "ARMv7-M"
-		if arm.decodeOnly {
-			return &DisasmEntry{
-				Is32bit:  true,
-				Operator: "VLDR",
-			}
-		}
-
 		U := arm.state.function32bitOpcodeHi&0x0080 == 0x0080
 		D := (arm.state.function32bitOpcodeHi & 0x0040) >> 6
 		Vd := (opcode & 0xf000) >> 12
 		imm8 := opcode & 0x00ff
-		imm32 := uint32(imm8 << 2)
+		imm32 := uint32(imm8) << 2
+		sz := opcode&0x0100 == 0x0100
+
+		var d uint16
+		var regPrefix rune
+
+		if sz {
+			// 64bit floats (T1 encoding)
+			d = (D << 4) | Vd
+			regPrefix = 'D'
+		} else {
+			// 32bit floats (T2 encoding)
+			d = (Vd << 1) | D
+			regPrefix = 'S'
+		}
 
 		addr := arm.state.registers[Rn]
 		if Rn == rPC {
-			addr = alignTo32bits(arm.state.registers[rPC])
+			addr = AlignTo32bits(addr - 2)
 		}
+
 		if U {
 			addr += imm32
 		} else {
 			addr -= imm32
 		}
 
-		if opcode&0x0100 == 0x0100 {
+		if arm.decodeOnly {
+			operand := fmt.Sprintf("%c%d, [", regPrefix, d)
+			if Rn == rPC {
+				operand = fmt.Sprintf("%sPC", operand)
+			} else {
+				operand = fmt.Sprintf("%sR%d", operand, Rn)
+			}
+			if U {
+				operand = fmt.Sprintf("%s, +%d] ", operand, imm32)
+			} else {
+				operand = fmt.Sprintf("%s, -%d] ", operand, imm32)
+			}
+			return &DisasmEntry{
+				Is32bit:  true,
+				Operator: "VLDR",
+				Operand:  operand,
+			}
+		}
+
+		if sz {
 			// 64bit floats (T1 encoding)
-			d := (D << 4) | Vd
 			word1 := arm.read32bit(addr, true)
 			word2 := arm.read32bit(addr+4, true)
 			if arm.byteOrder == binary.LittleEndian {
@@ -891,7 +917,6 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) *DisasmEntry {
 			}
 		} else {
 			// 32bit floats (T2 encoding)
-			d := (Vd << 1) | D
 			arm.state.fpu.Registers[d] = arm.read32bit(addr, true)
 		}
 
@@ -914,7 +939,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) *DisasmEntry {
 		Vd := (opcode & 0xf000) >> 12
 
 		imm8 := opcode & 0x00ff
-		imm32 := uint32(imm8 << 2)
+		imm32 := uint32(imm8) << 2
 
 		addr := arm.state.registers[Rn]
 		if !U {

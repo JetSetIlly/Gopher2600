@@ -1034,7 +1034,7 @@ func (arm *ARM) decodeThumbPCrelativeLoad(opcode uint16) *DisasmEntry {
 
 	// "Bit 1 of the PC value is forced to zero for the purpose of this
 	// calculation, so the address is always word-aligned."
-	pc := alignTo32bits(arm.state.registers[rPC])
+	pc := AlignTo32bits(arm.state.registers[rPC])
 
 	// immediate value is not two's complement (surprisingly)
 	addr := pc + imm
@@ -1433,7 +1433,7 @@ func (arm *ARM) decodeThumbLoadAddress(opcode uint16) *DisasmEntry {
 	// as 0. The value of the PC will be 4 bytes greater than the address of the instruction
 	// before bit 1 is forced to 0"
 	pc := arm.state.registers[rPC]&0xfffffffd + uint32(offset)
-	arm.state.registers[destReg] = alignTo32bits(pc)
+	arm.state.registers[destReg] = AlignTo32bits(pc)
 
 	// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	// - fillPipeline() will be called if necessary

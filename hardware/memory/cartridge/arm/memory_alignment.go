@@ -15,22 +15,32 @@
 
 package arm
 
+// align address to 32bits. some instructions will align the PC to the 64bit boundary
+func AlignTo64bits(v uint32) uint32 {
+	return v & 0xfffffff8
+}
+
+// checks whether address is aligned to 64bits
+func IsAlignedTo64bits(v uint32) bool {
+	return v&0xfffffff8 == v
+}
+
 // align address to 32bits. some instructions will align the PC to the 32bit boundary
-func alignTo32bits(v uint32) uint32 {
+func AlignTo32bits(v uint32) uint32 {
 	return v & 0xfffffffc
 }
 
 // checks whether address is aligned to 32bits
-func isAlignedTo32bits(v uint32) bool {
+func IsAlignedTo32bits(v uint32) bool {
 	return v&0xfffffffc == v
 }
 
 // align address to 16bits
-func alignTo16bits(v uint32) uint32 {
+func AlignTo16bits(v uint32) uint32 {
 	return v & 0xfffffffe
 }
 
 // checks whether address is aligned to 16bits
-func isAlignedTo16bits(v uint32) bool {
+func IsAlignedTo16bits(v uint32) bool {
 	return v&0xfffffffe == v
 }

@@ -1224,7 +1224,7 @@ func (arm *ARM) decode32bitThumb2LoadStoreDoubleEtc(opcode uint16) *DisasmEntry 
 		// "Load and Store Double"
 		addr := arm.state.registers[Rn]
 		if Rn == rPC {
-			addr = alignTo32bits(addr)
+			addr = AlignTo32bits(addr)
 		}
 
 		if p {
@@ -1894,7 +1894,7 @@ func (arm *ARM) decode32bitThumb2LoadStoreSingle(opcode uint16) *DisasmEntry {
 		imm12 := opcode & 0x0fff
 
 		// Rn is always the PC for this instruction class
-		addr := alignTo32bits(arm.state.registers[rPC] - 2)
+		addr := AlignTo32bits(arm.state.registers[rPC] - 2)
 
 		// all addresses are pre-indexed and there is no write-back
 		if u {
