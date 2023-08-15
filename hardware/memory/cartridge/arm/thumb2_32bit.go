@@ -619,7 +619,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) *Disa
 					c = 1
 				}
 
-				result, carry, overflow := AddWithCarry(arm.state.registers[Rn], ^shifted, c)
+				result, carry, overflow := AddWithCarry(arm.state.registers[Rn], shifted, c)
 				arm.state.registers[Rd] = result
 				if setFlags {
 					arm.state.status.isNegative(result)
@@ -629,6 +629,37 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) *Disa
 				}
 			default:
 				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b) ADC", op, typ))
+			}
+
+		case 0b1011:
+			// "4.6.124 SBC (register) Subtract with Carry" of "Thumb-2 Supplement"
+			// T2 encoding
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "SBC",
+				}
+			}
+
+			var c uint32
+			if arm.state.status.carry {
+				c = 1
+			}
+
+			switch typ {
+			case 0b00:
+				// with logical left shift
+				shifted := arm.state.registers[Rm] << imm5
+				result, carry, overflow := AddWithCarry(arm.state.registers[Rn], ^shifted, c)
+				arm.state.registers[Rd] = result
+				if setFlags {
+					arm.state.status.isNegative(result)
+					arm.state.status.isZero(result)
+					arm.state.status.setCarry(carry)
+					arm.state.status.setOverflow(overflow)
+				}
+			default:
+				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b) SBC", op, typ))
 			}
 
 		case 0b1101:
@@ -747,8 +778,8 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) *Disa
 
 			case 0b01:
 				// with logical right shift
-				shifted := arm.state.registers[Rm] << imm5
-				result, carry, overflow := AddWithCarry(arm.state.registers[Rn], shifted, 1)
+				shifted := arm.state.registers[Rm] >> imm5
+				result, carry, overflow := AddWithCarry(^arm.state.registers[Rn], shifted, 1)
 				arm.state.registers[Rd] = result
 				if setFlags {
 					arm.state.status.isNegative(arm.state.registers[Rd])
