@@ -198,6 +198,9 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 
 	// check existance of DWARF data and the DWARF version before proceeding
 	debug_info := ef.Section(".debug_info")
+	if debug_info == nil {
+		return nil, fmt.Errorf("dwarf: ELF file does not have .debug_info section")
+	}
 	b, err := debug_info.Data()
 	if err != nil {
 		return nil, fmt.Errorf("dwarf: %v", err)
