@@ -221,6 +221,7 @@ func (scr *screen) SetFPSCap(limit bool) {
 
 	scr.crit.fpsCapped = limit
 	scr.setSyncPolicy(scr.crit.frameInfo.RefreshRate)
+	scr.updateFrameQueue()
 }
 
 // setSyncPolicy decides on the monitor/tv syncing policy, based on the
@@ -233,12 +234,9 @@ func (scr *screen) setSyncPolicy(tvRefreshRate float32) {
 
 	scr.crit.monitorSyncHigher = scr.crit.fpsCapped && high >= tvRefreshRate
 	scr.crit.monitorSyncSimilar = scr.crit.fpsCapped && high >= tvRefreshRate && low <= tvRefreshRate
-
-	scr.updateFrameQueue()
 }
 
-// updateFrameQueue() is called whenever a frameQueue preference is changed and
-// when setSyncPolicy() deems it necessary
+// updateFrameQueue() is called whenever a frameQueue preference
 //
 // must be called from inside a critical section
 func (scr *screen) updateFrameQueue() {
@@ -275,8 +273,8 @@ func (scr *screen) updateFrameQueue() {
 	// set plotIdx to beginning of queue
 	scr.crit.plotIdx = 0
 
-	// renderIdx is placed according to status of the monitor refresh value in
-	// relation to the refresh rate of the emulated TV
+	// initial renderIdx is placed according to status of the monitor refresh
+	// value in relation to the refresh rate of the emulated TV
 	if scr.crit.monitorSyncHigher {
 		scr.crit.renderIdx = scr.crit.frameQueueLen / 2
 	} else {
@@ -296,6 +294,7 @@ func (scr *screen) Reset() {
 
 	scr.setSyncPolicy(scr.crit.frameInfo.RefreshRate)
 	scr.clearPixels()
+	scr.updateFrameQueue()
 }
 
 // clear pixel information including reflection data. important to do on
