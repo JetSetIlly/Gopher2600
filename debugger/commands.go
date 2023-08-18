@@ -1360,17 +1360,17 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				return err
 			}
 		case "HOST":
-			ai := plusrom.CopyAddrInfo()
+			ai := plusrom.GetAddrInfo()
 			host, _ := tokens.Get()
 			plusrom.SetAddrInfo(host, ai.Path)
 		case "PATH":
-			ai := plusrom.CopyAddrInfo()
+			ai := plusrom.GetAddrInfo()
 			path, _ := tokens.Get()
 			plusrom.SetAddrInfo(ai.Host, path)
 		default:
 			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("Nick: %s", dbg.vcs.Env.Prefs.PlusROM.Nick.String()))
 			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("ID: %s", dbg.vcs.Env.Prefs.PlusROM.ID.String()))
-			ai := plusrom.CopyAddrInfo()
+			ai := plusrom.GetAddrInfo()
 			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("Host: %s", ai.Host))
 			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("Path: %s", ai.Path))
 		}

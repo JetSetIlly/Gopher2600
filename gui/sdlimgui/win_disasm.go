@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -124,7 +125,8 @@ func (win *winDisasm) draw() {
 	}
 
 	// the currBank that is currently selected
-	currBank := win.img.lz.Cart.CurrBank
+	addr := win.img.cache.VCS.CPU.PC.Address()
+	currBank := win.img.cache.VCS.Mem.Cart.GetBank(addr)
 
 	// focus on address if the state has changed to the paused state and
 	// followCPU is set; or the PC has changed (this is because the state
@@ -133,15 +135,15 @@ func (win *winDisasm) draw() {
 	// using the lazy govern.State value rather than the live state - the
 	// live state can cause synchronisation problems meaning focus is lost
 	if win.followCPU {
-		if (win.img.lz.Debugger.State == govern.Paused && win.lastSeenState != govern.Paused) ||
-			win.img.lz.CPU.PC.Address() != win.lastSeenPC {
+		if (win.img.cache.Debugger.State == govern.Paused && win.lastSeenState != govern.Paused) ||
+			win.img.cache.VCS.CPU.PC.Address() != win.lastSeenPC {
 
 			win.focusOnAddr = true
 			win.selectedBank = currBank.Number
 		}
 	}
-	win.lastSeenPC = win.img.lz.CPU.PC.Address()
-	win.lastSeenState = win.img.lz.Debugger.State
+	win.lastSeenPC = win.img.cache.VCS.CPU.PC.Address()
+	win.lastSeenState = win.img.cache.Debugger.State
 
 	// the value of focusAddr depends on the state of the CPU. if the Final
 	// state of the CPU's last execution result is true then we can be sure the
@@ -156,21 +158,19 @@ func (win *winDisasm) draw() {
 	} else {
 		// focus address depends on if we're in the middle of an CPU
 		// instruction or not. special condition for freshly reset CPUs
-		if win.img.lz.Debugger.LiveDisasmEntry.Result.Final || win.img.lz.CPU.HasReset {
-			focusAddr = win.img.lz.CPU.PC.Address() & memorymap.CartridgeBits
+		if win.img.cache.Debugger.LiveDisasmEntry.Result.Final || win.img.cache.VCS.CPU.HasReset() {
+			focusAddr = win.img.cache.VCS.CPU.PC.Address() & memorymap.CartridgeBits
 		} else {
-			focusAddr = win.img.lz.Debugger.LiveDisasmEntry.Result.Address & memorymap.CartridgeBits
+			focusAddr = win.img.cache.Debugger.LiveDisasmEntry.Result.Address & memorymap.CartridgeBits
 		}
 	}
 
-	win.drawControlBar()
-	win.drawBank(focusAddr)
-	win.drawOptions()
+	win.drawControlBar(currBank)
+	win.drawBank(currBank, focusAddr)
+	win.drawOptions(currBank)
 }
 
-func (win *winDisasm) drawControlBar() {
-	currBank := win.img.lz.Cart.CurrBank
-
+func (win *winDisasm) drawControlBar(currBank mapper.BankInfo) {
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
 	numColumns := 2
@@ -203,10 +203,10 @@ func (win *winDisasm) drawControlBar() {
 						imgui.Text("Focus on PC address")
 						imgui.SameLine()
 						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
-						imgui.Text(fmt.Sprintf("$%04x", win.img.lz.CPU.PC.Address()))
+						imgui.Text(fmt.Sprintf("$%04x", win.img.cache.VCS.CPU.PC.Address()))
 						imgui.PopStyleColor()
 
-						if win.img.lz.Cart.NumBanks > 1 {
+						if win.img.cache.VCS.Mem.Cart.NumBanks() > 1 {
 							imgui.SameLine()
 							imgui.Text("bank")
 							imgui.SameLine()
@@ -234,7 +234,7 @@ func (win *winDisasm) drawControlBar() {
 
 	imgui.PushItemWidth(imgui.ContentRegionAvail().X)
 	if imgui.BeginComboV("##filter", comboPreview, imgui.ComboFlagsHeightLargest) {
-		for n := 0; n < win.img.lz.Cart.NumBanks; n++ {
+		for n := 0; n < win.img.cache.VCS.Mem.Cart.NumBanks(); n++ {
 			if imgui.Selectable(fmt.Sprintf("View bank %d", n)) {
 				win.filter = filterBank
 				win.selectedBank = n
@@ -276,9 +276,7 @@ func (win *winDisasm) drawControlBar() {
 	imgui.Spacing()
 }
 
-func (win *winDisasm) drawOptions() {
-	currBank := win.img.lz.Cart.CurrBank
-
+func (win *winDisasm) drawOptions(currBank mapper.BankInfo) {
 	// draw options and status line. start height measurement
 	win.optionsHeight = imguiMeasureHeight(func() {
 		imgui.Spacing()
@@ -333,9 +331,7 @@ func (win *winDisasm) startTable() {
 }
 
 // drawBank specified by bank argument.
-func (win *winDisasm) drawBank(focusAddr uint16) {
-	currBank := win.img.lz.Cart.CurrBank
-
+func (win *winDisasm) drawBank(currBank mapper.BankInfo, focusAddr uint16) {
 	// part of the onBank condition was to test whether cart currBank.NonCart
 	// was false but I now don't believe this is required
 	onBank := win.selectedBank == currBank.Number
@@ -397,7 +393,7 @@ func (win *winDisasm) drawBank(focusAddr uint16) {
 				win.startTable()
 				headerRequired = false
 			}
-			win.drawEntry(e, focusAddr, onBank, iterateBank)
+			win.drawEntry(currBank, e, focusAddr, onBank, iterateBank)
 		}
 
 		// alter iterate functions according to selected filter
@@ -422,7 +418,7 @@ func (win *winDisasm) drawBank(focusAddr uint16) {
 					return
 				}
 				win.drawLabel(e, iterateBank)
-				win.drawEntry(e, focusAddr, onBank, iterateBank)
+				win.drawEntry(currBank, e, focusAddr, onBank, iterateBank)
 				if currBank.ExecutingCoprocessor && onBank && e.Result.Address&memorymap.CartridgeBits == focusAddr {
 					win.drawEntryCoProcessorExecution()
 				}
@@ -615,7 +611,7 @@ func (win *winDisasm) drawEntryCoProcessorExecution() {
 	imgui.Text(fmt.Sprintf("    %c 6507 will resume here", fonts.CoProcExecution))
 }
 
-func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank bool, bank int) {
+func (win *winDisasm) drawEntry(currBank mapper.BankInfo, e *disassembly.Entry, focusAddr uint16, onBank bool, bank int) {
 	imgui.TableNextRow()
 
 	// highligh current PC entry
@@ -628,8 +624,8 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 
 	// does this entry/address have a PC break applied to it
 	var hasPCbreak bool
-	if win.img.lz.Debugger.Breakpoints != nil {
-		hasPCbreak, _ = win.img.lz.Debugger.Breakpoints.HasPCBreak(e.Result.Address, bank)
+	if win.img.cache.Debugger.Breakpoints != nil {
+		hasPCbreak, _ = win.img.cache.Debugger.Breakpoints.HasPCBreak(e.Result.Address, bank)
 	}
 
 	// first column is a selectable that spans all lines and the breakpoint indicator
@@ -746,10 +742,10 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	// 4) the entry to be displayed is the same as the one in the CPU bank
 	//		and address
 	cyclingIcon := false
-	if !win.img.lz.CPU.LastResult.Final && !win.img.lz.CPU.HasReset && !win.img.lz.Cart.CurrBank.ExecutingCoprocessor {
-		exeAddress := win.img.lz.CPU.LastResult.Address & memorymap.CartridgeBits
+	if !win.img.cache.VCS.CPU.LastResult.Final && !win.img.cache.VCS.CPU.HasReset() && !currBank.ExecutingCoprocessor {
+		exeAddress := win.img.cache.VCS.CPU.LastResult.Address & memorymap.CartridgeBits
 		entryAddress := e.Result.Address & memorymap.CartridgeBits
-		if exeAddress == entryAddress && win.img.lz.Cart.CurrBank.Number == bank {
+		if exeAddress == entryAddress && currBank.Number == bank {
 			imgui.Text(string(fonts.CyclingInstruction))
 			cyclingIcon = true
 		}

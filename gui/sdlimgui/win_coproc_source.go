@@ -111,7 +111,13 @@ func (win *winCoProcSource) id() string {
 const sourcePopupID = "sourcePopupID"
 
 func (win *winCoProcSource) debuggerDraw() bool {
-	if !win.img.lz.Cart.HasCoProcBus {
+	if !win.debuggerOpen {
+		return false
+	}
+
+	// do not open window if there is no coprocessor available
+	coproc := win.img.cache.VCS.Mem.Cart.GetCoProc()
+	if coproc == nil {
 		return false
 	}
 
@@ -143,7 +149,7 @@ func (win *winCoProcSource) debuggerDraw() bool {
 	flgs |= imgui.WindowFlagsNoScrollWithMouse
 	win.uncollapseNext = false
 
-	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcSourceID)
+	title := fmt.Sprintf("%s %s", coproc.ProcessorID(), winCoProcSourceID)
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, flgs) {
 		win.isCollapsed = false
 		win.draw()
@@ -327,7 +333,7 @@ func (win *winCoProcSource) gotoSourceLine(ln *dwarf.SourceLine) {
 
 func (win *winCoProcSource) saveToCSV(src *dwarf.Source) {
 	// open unique file
-	fn := unique.Filename("source", win.img.lz.Cart.Shortname)
+	fn := unique.Filename("source", win.img.cache.VCS.Mem.Cart.ShortName)
 	fn = fmt.Sprintf("%s.csv", fn)
 	f, err := os.Create(fn)
 	if err != nil {

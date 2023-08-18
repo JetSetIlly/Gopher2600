@@ -31,31 +31,40 @@ type EEPROM struct {
 	// the next address an i2c read/write operation will access
 	Address uint16
 
-	// amend data only through put() and Poke()
-	data []uint8
+	// amend Data only through put() and Poke()
+	Data []uint8
 
 	// the data as it is on disk. data is mutable and we need a way of
 	// comparing what's on disk with what's in memory.
-	diskData []uint8
+	DiskData []uint8
 }
 
 // NewEeprom is the preferred metho of initialisation for the EEPROM type. This
 // function will initialise the memory and Read() any existing data from disk.
 func newEeprom() *EEPROM {
 	ee := &EEPROM{
-		data:     make([]uint8, eepromSize),
-		diskData: make([]uint8, eepromSize),
+		Data:     make([]uint8, eepromSize),
+		DiskData: make([]uint8, eepromSize),
 	}
 
 	// initialise data with 0xff
-	for i := range ee.data {
-		ee.data[i] = 0xff
+	for i := range ee.Data {
+		ee.Data[i] = 0xff
 	}
 
 	// load of disk
 	ee.Read()
 
 	return ee
+}
+
+func (ee *EEPROM) snapshot() *EEPROM {
+	cp := *ee
+	cp.Data = make([]uint8, len(ee.Data))
+	cp.DiskData = make([]uint8, len(ee.DiskData))
+	copy(cp.Data, ee.Data)
+	copy(cp.DiskData, ee.DiskData)
+	return &cp
 }
 
 // Read EEPROM data from disk.
@@ -80,18 +89,18 @@ func (ee *EEPROM) Read() {
 		logger.Logf("savekey", "could not load eeprom file (%s)", err)
 		return
 	}
-	if fs.Size() != int64(len(ee.data)) {
+	if fs.Size() != int64(len(ee.Data)) {
 		logger.Logf("savekey", "eeprom file is of incorrect length. %d should be 65536 ", fs.Size())
 	}
 
-	_, err = f.Read(ee.data)
+	_, err = f.Read(ee.Data)
 	if err != nil {
 		logger.Logf("savekey", "could not load eeprom file (%s)", err)
 		return
 	}
 
 	// copy of data read from disk
-	copy(ee.diskData, ee.data)
+	copy(ee.DiskData, ee.Data)
 
 	logger.Logf("savekey", "eeprom file loaded from %s", fn)
 }
@@ -116,13 +125,13 @@ func (ee *EEPROM) Write() {
 		}
 	}()
 
-	n, err := f.Write(ee.data)
+	n, err := f.Write(ee.Data)
 	if err != nil {
 		logger.Logf("savekey", "could not write eeprom file (%s)", err)
 		return
 	}
 
-	if n != len(ee.data) {
+	if n != len(ee.Data) {
 		logger.Logf("savekey", "eeprom file has not been truncated during write. %d should be 65536", n)
 		return
 	}
@@ -130,22 +139,22 @@ func (ee *EEPROM) Write() {
 	logger.Logf("savekey", "eeprom file saved to %s", fn)
 
 	// copy of data that's just bee written to disk
-	copy(ee.diskData, ee.data)
+	copy(ee.DiskData, ee.Data)
 }
 
 // Poke a value into EEPROM.
 func (ee *EEPROM) Poke(address uint16, data uint8) {
-	ee.data[address] = data
+	ee.Data[address] = data
 }
 
 func (ee *EEPROM) put(v uint8) {
-	ee.data[ee.Address] = v
+	ee.Data[ee.Address] = v
 	ee.nextAddress()
 }
 
 func (ee *EEPROM) get() uint8 {
 	defer ee.nextAddress()
-	return ee.data[ee.Address]
+	return ee.Data[ee.Address]
 }
 
 // nextAddress makes sure the address if kept on the same page, by looping back
@@ -156,13 +165,4 @@ func (ee *EEPROM) nextAddress() {
 	} else {
 		ee.Address++
 	}
-}
-
-// Copy EEPROM data to a new array.
-func (ee *EEPROM) Copy() ([]uint8, []uint8) {
-	d := make([]uint8, len(ee.data))
-	dd := make([]uint8, len(ee.diskData))
-	copy(d, ee.data)
-	copy(dd, ee.diskData)
-	return d, dd
 }

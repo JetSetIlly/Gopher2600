@@ -60,10 +60,10 @@ func (win *winRAM) debuggerDraw() bool {
 
 func (win *winRAM) draw() {
 	var diff []uint8
-	if win.img.lz.Rewind.Comparison.State != nil {
-		diff = win.img.lz.Rewind.Comparison.State.Mem.RAM.RAM
+	if win.img.cache.Rewind.Comparison.State != nil {
+		diff = win.img.cache.Rewind.Comparison.State.Mem.RAM.RAM
 	} else {
-		diff = win.img.lz.RAM.RAM
+		diff = win.img.cache.VCS.Mem.RAM.RAM
 	}
 
 	// pos is retreived in before() and used in after()
@@ -76,14 +76,14 @@ func (win *winRAM) draw() {
 		pos = imgui.CursorScreenPos()
 
 		a := diff[idx]
-		b := win.img.lz.RAM.RAM[idx]
+		b := win.img.cache.VCS.Mem.RAM.RAM[idx]
 		if a != b {
 			imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.ValueDiff)
 			popColor++
 		}
 
 		// idx is based on original values of type uint16 so the type conversion is safe
-		if uint16(win.img.lz.CPU.SP.Value())-memorymap.OriginRAM < uint16(idx) {
+		if uint16(win.img.cache.VCS.CPU.SP.Value())-memorymap.OriginRAM < uint16(idx) {
 			imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.ValueStack)
 			popColor++
 		}
@@ -128,7 +128,7 @@ func (win *winRAM) draw() {
 		}
 
 		a := diff[idx]
-		b := win.img.lz.RAM.RAM[idx]
+		b := win.img.cache.VCS.Mem.RAM.RAM[idx]
 		if a != b {
 			win.img.imguiTooltip(func() {
 				imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
@@ -137,15 +137,15 @@ func (win *winRAM) draw() {
 
 		// not using Address() function because the stackpointer is hardwired to
 		// page one addresses. the value in the register is what we need
-		sp := uint16(win.img.lz.CPU.SP.Value())
+		sp := uint16(win.img.cache.VCS.CPU.SP.Value())
 
 		// idx is based on original values of type uint16 so the type conversion is safe
 		if sp-memorymap.OriginRAM < uint16(idx) {
 			win.img.imguiTooltip(func() {
 				imguiColorLabelSimple("in stack", win.img.cols.ValueStack)
-				if win.img.lz.CPU.RTSPredictionValid {
+				if v, ok := win.img.cache.VCS.CPU.PredictRTS(); ok {
 					imgui.Spacing()
-					imgui.Text(fmt.Sprintf("PC address in event of RTS: %04x", win.img.lz.CPU.RTSPrediction))
+					imgui.Text(fmt.Sprintf("PC address in event of RTS: %04x", v))
 				}
 			}, true)
 		}
@@ -157,5 +157,5 @@ func (win *winRAM) draw() {
 		})
 	}
 
-	drawByteGrid("ramByteGrid", win.img.lz.RAM.RAM, uint32(memorymap.OriginRAM), before, after, commit)
+	drawByteGrid("ramByteGrid", win.img.cache.VCS.Mem.RAM.RAM, uint32(memorymap.OriginRAM), before, after, commit)
 }

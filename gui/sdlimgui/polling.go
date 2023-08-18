@@ -127,7 +127,7 @@ func (pol *polling) wait() sdl.Event {
 	} else {
 		if pol.img.dbg.State() == govern.Running || pol.img.wm.debuggerWindows[winSelectROMID].debuggerIsOpen() {
 			timeout = debugSleepPeriodRunning
-		} else if pol.alerted || pol.keepAwake || pol.img.lz.Debugger.HasChanged {
+		} else if pol.alerted || pol.keepAwake || pol.img.cache.Debugger.HasChanged {
 			timeout = debugSleepPeriod
 		} else {
 			timeout = idleSleepPeriod

@@ -24,6 +24,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/cdf"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -116,17 +117,10 @@ func (win *winCDFStreams) id() string {
 	return winCDFStreamsID
 }
 
-func (win *winCDFStreams) updateStreams() {
-	// do not open window if there is no valid cartridge debug bus available
-	r, ok := win.img.lz.Cart.Registers.(cdf.Registers)
-	if !win.img.lz.Cart.HasRegistersBus || !ok {
-		return
-	}
-
-	mem := win.img.lz.Cart.Static
-
+func (win *winCDFStreams) updateStreams(regs cdf.Registers, static mapper.CartStatic) {
 	// keep track of scanlines
-	scanlines := win.img.lz.TV.FrameInfo.VisibleBottom - win.img.lz.TV.FrameInfo.VisibleTop
+	frameInfo := win.img.cache.TV.GetFrameInfo()
+	scanlines := frameInfo.VisibleBottom - frameInfo.VisibleTop
 	if !win.trackScreen {
 		scanlines = int(win.scanlines)
 	} else {
@@ -140,18 +134,18 @@ func (win *winCDFStreams) updateStreams() {
 	_, _, _, pal := win.img.imguiTVPalette()
 
 	// draw pixels
-	for i := range r.Datastream {
+	for i := range regs.Datastream {
 		for y := 0; y < win.pixelsSize.Y; y++ {
 			// pixel data
-			v := r.Datastream[i].Peek(y, mem)
+			v := regs.Datastream[i].Peek(y, static)
 
 			// colour source
 			col := fg
 			if win.colouriser.active && win.colouriser.tgt == i {
-				s := r.Datastream[win.colouriser.src].Peek(y, mem)
+				s := regs.Datastream[win.colouriser.src].Peek(y, static)
 				col = pal[s]
 			} else if win.colourSource[i] > -1 {
-				s := r.Datastream[win.colourSource[i]].Peek(y, mem)
+				s := regs.Datastream[win.colourSource[i]].Peek(y, static)
 				col = pal[s]
 			}
 
@@ -188,22 +182,28 @@ func (win *winCDFStreams) debuggerDraw() bool {
 		return false
 	}
 
-	if !win.img.lz.Cart.HasStaticBus {
+	// do not open window if there is no valid cartridge debug bus available
+	bus := win.img.cache.VCS.Mem.Cart.GetRegistersBus()
+	if bus == nil {
+		return false
+	}
+	regs, ok := bus.GetRegisters().(cdf.Registers)
+	if !ok {
 		return false
 	}
 
-	// do not open window if there is no valid cartridge debug bus available
-	_, ok := win.img.lz.Cart.Registers.(cdf.Registers)
-	if !win.img.lz.Cart.HasRegistersBus || !ok {
+	staticBus := win.img.cache.VCS.Mem.Cart.GetStaticBus()
+	if staticBus == nil {
 		return false
 	}
+	static := staticBus.GetStatic()
 
 	imgui.SetNextWindowPosV(imgui.Vec2{100, 100}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{920, 554}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{920, 554})
 
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsHorizontalScrollbar) {
-		win.draw()
+		win.draw(regs, static)
 	}
 
 	win.debuggerGeom.update()
@@ -212,12 +212,9 @@ func (win *winCDFStreams) debuggerDraw() bool {
 	return true
 }
 
-func (win *winCDFStreams) draw() {
-	r := win.img.lz.Cart.Registers.(cdf.Registers)
-	mem := win.img.lz.Cart.Static
-
+func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
 	if imgui.BeginChildV("##stream", imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, false, imgui.WindowFlagsNone) {
-		win.updateStreams()
+		win.updateStreams(regs, static)
 
 		// disable preview color. it will be turned on if drag and drop is being used this frame.
 		win.colouriser.active = false
@@ -252,13 +249,13 @@ func (win *winCDFStreams) draw() {
 				// quickly repeat previous drag and drop with a double click
 				if imgui.IsMouseDoubleClicked(0) {
 					win.colourSource[i] = win.colouriser.previousSrc
-					win.updateStreams()
+					win.updateStreams(regs, static)
 				}
 
 				// clear assignment of color datastream
 				if imgui.IsMouseClicked(1) {
 					win.colourSource[i] = -1
-					win.updateStreams()
+					win.updateStreams(regs, static)
 				}
 			}
 
@@ -292,7 +289,7 @@ func (win *winCDFStreams) draw() {
 					// is required
 					win.colouriser.active = true
 					win.colouriser.tgt = i
-					win.updateStreams()
+					win.updateStreams(regs, static)
 				}
 
 				// drag and drop has ended on a legitimate target
@@ -300,7 +297,7 @@ func (win *winCDFStreams) draw() {
 				if payload != nil {
 					win.colourSource[i] = int(payload[0])
 					win.colouriser.previousSrc = win.colouriser.src
-					win.updateStreams()
+					win.updateStreams(regs, static)
 				}
 				imgui.EndDragDropTarget()
 			}
@@ -322,13 +319,13 @@ func (win *winCDFStreams) draw() {
 				imgui.Text("Pointer:")
 				imgui.SameLine()
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
-				imgui.Text(fmt.Sprintf("%08x", r.Datastream[i].AfterCALLFN))
+				imgui.Text(fmt.Sprintf("%08x", regs.Datastream[i].AfterCALLFN))
 				imgui.PopStyleColor()
 
 				imgui.Text("Increment:")
 				imgui.SameLine()
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
-				imgui.Text(fmt.Sprintf("%08x", r.Datastream[i].Increment))
+				imgui.Text(fmt.Sprintf("%08x", regs.Datastream[i].Increment))
 				imgui.PopStyleColor()
 
 				// mouse position is used to decide which values in the stream
@@ -359,17 +356,17 @@ func (win *winCDFStreams) draw() {
 					imgui.BeginGroup()
 					imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 0.5)
 					for yy := yTop; yy < y; yy++ {
-						v := r.Datastream[i].Peek(yy, mem)
+						v := regs.Datastream[i].Peek(yy, static)
 						imgui.Text(fmt.Sprintf("%03d %c %02x", yy, fonts.CaretRight, v))
 					}
 					imgui.PopStyleVar()
 
-					v := r.Datastream[i].Peek(y, mem)
+					v := regs.Datastream[i].Peek(y, static)
 					imgui.Text(fmt.Sprintf("%03d %c %02x", y, fonts.CaretRight, v))
 
 					imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 0.5)
 					for yy := y + 1; yy <= yBot; yy++ {
-						v := r.Datastream[i].Peek(yy, mem)
+						v := regs.Datastream[i].Peek(yy, static)
 						imgui.Text(fmt.Sprintf("%03d %c %02x", yy, fonts.CaretRight, v))
 					}
 					imgui.PopStyleVar()

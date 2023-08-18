@@ -22,6 +22,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 )
 
 // the window menus grouped by type. the types are:.
@@ -119,7 +120,9 @@ func (wm *manager) drawMenu() {
 	}
 
 	// cartridge menu. include test to see if menu should appear at all.
-	if wm.img.lz.Cart.HasRAMbus || wm.img.lz.Cart.HasRegistersBus || wm.img.lz.Cart.HasStaticBus || wm.img.lz.Cart.HasTapeBus {
+	if wm.img.cache.VCS.Mem.Cart.GetRAMbus() != nil || wm.img.cache.VCS.Mem.Cart.GetRegistersBus() != nil ||
+		wm.img.cache.VCS.Mem.Cart.GetStaticBus() != nil || wm.img.cache.VCS.Mem.Cart.GetTapeBus() != nil {
+
 		if imgui.BeginMenu("Cartridge") {
 			for _, m := range wm.menu[menuCart] {
 				wm.drawMenuEntry(m)
@@ -129,8 +132,8 @@ func (wm *manager) drawMenu() {
 	}
 
 	// coprocessor menu. include test to see if menu should appear at all.
-	if wm.img.lz.Cart.HasCoProcBus {
-		if imgui.BeginMenu(wm.img.lz.Cart.CoProcID) {
+	if coproc := wm.img.cache.VCS.Mem.Cart.GetCoProc(); coproc != nil {
+		if imgui.BeginMenu(coproc.ProcessorID()) {
 			for _, m := range wm.menu[menuCoProc] {
 				wm.drawMenuEntry(m)
 			}
@@ -139,7 +142,7 @@ func (wm *manager) drawMenu() {
 	}
 
 	// plusrom specific menus
-	if wm.img.lz.Cart.IsPlusROM {
+	if _, ok := wm.img.cache.VCS.Mem.Cart.GetContainer().(*plusrom.PlusROM); ok {
 		if imgui.BeginMenu("PlusROM") {
 			for _, m := range wm.menu[menuPlusROM] {
 				wm.drawMenuEntry(m)
@@ -149,7 +152,7 @@ func (wm *manager) drawMenu() {
 	}
 
 	// add savekey specific menu
-	if wm.img.lz.SaveKey.SaveKeyActive {
+	if wm.img.cache.VCS.GetSaveKey() != nil {
 		if imgui.BeginMenu("SaveKey") {
 			for _, m := range wm.menu[menuSaveKey] {
 				wm.drawMenuEntry(m)
@@ -168,24 +171,27 @@ func (wm *manager) drawMenu() {
 	// cartridge info in menubar
 	wdth := imgui.WindowWidth()
 	wdth -= rightJustText(wdth, string(fonts.Disk), false)
-	wdth -= rightJustText(wdth, wm.img.lz.Cart.Shortname, true)
-	wdth -= rightJustText(wdth, wm.img.lz.Cart.ID, true)
-	wdth -= rightJustText(wdth, wm.img.lz.Cart.Mapping, true)
+	wdth -= rightJustText(wdth, wm.img.cache.VCS.Mem.Cart.ShortName, true)
+	wdth -= rightJustText(wdth, wm.img.cache.VCS.Mem.Cart.ID(), true)
+	wdth -= rightJustText(wdth, wm.img.cache.VCS.Mem.Cart.MappedBanks(), true)
 
-	if math.IsInf(float64(wm.img.lz.TV.Hz), 0) || wm.img.lz.TV.Hz > wm.img.lz.TV.FrameInfo.Spec.RefreshRate*2 {
+	frameInfo := wm.img.cache.TV.GetFrameInfo()
+	if math.IsInf(float64(frameInfo.RefreshRate), 0) || frameInfo.RefreshRate > frameInfo.Spec.RefreshRate*2 {
 		wdth -= rightJustText(wdth, "- Hz", true)
 		wm.img.imguiTooltip(func() { imgui.Text("TV refresh rate is indeterminate") }, true)
 	} else {
-		wdth -= rightJustText(wdth, fmt.Sprintf("%.2fHz", wm.img.lz.TV.Hz), true)
+		wdth -= rightJustText(wdth, fmt.Sprintf("%.2fHz", frameInfo.RefreshRate), true)
 	}
 
 	if wm.img.dbg.State() == govern.Running {
-		if wm.img.lz.TV.ReqFPS < 1.0 {
+		actual, _ := wm.img.tv.GetActualFPS()
+		req := wm.img.tv.GetReqFPS()
+		if req < 1.0 {
 			wdth -= rightJustText(wdth, "< 1 fps", true)
-		} else if math.IsInf(float64(wm.img.lz.TV.ActualFPS), 0) {
+		} else if math.IsInf(float64(actual), 0) {
 			wdth -= rightJustText(wdth, "- fps", true)
 		} else {
-			wdth -= rightJustText(wdth, fmt.Sprintf("%.1f fps", wm.img.lz.TV.ActualFPS), true)
+			wdth -= rightJustText(wdth, fmt.Sprintf("%.1f fps", actual), true)
 		}
 	}
 
@@ -229,19 +235,19 @@ func (wm *manager) drawMenuEntry(m menuEntry) {
 	// restriction bus
 	switch m.restrictBus {
 	case menuRestrictRAM:
-		if !wm.img.lz.Cart.HasRAMbus {
+		if wm.img.cache.VCS.Mem.Cart.GetRAMbus() == nil {
 			return
 		}
 	case menuRestrictRegister:
-		if !wm.img.lz.Cart.HasRegistersBus {
+		if wm.img.cache.VCS.Mem.Cart.GetRegistersBus() == nil {
 			return
 		}
 	case menuRestrictStatic:
-		if !wm.img.lz.Cart.HasStaticBus {
+		if wm.img.cache.VCS.Mem.Cart.GetStaticBus() == nil {
 			return
 		}
 	case menuRestrictTape:
-		if !wm.img.lz.Cart.HasTapeBus {
+		if wm.img.cache.VCS.Mem.Cart.GetTapeBus() == nil {
 			return
 		}
 	default:
@@ -252,7 +258,7 @@ func (wm *manager) drawMenuEntry(m menuEntry) {
 	restrict := len(m.restrictMapper) > 0
 	if restrict {
 		for _, r := range m.restrictMapper {
-			if r == wm.img.lz.Cart.ID {
+			if r == wm.img.cache.VCS.Mem.Cart.ID() {
 				restrict = false
 				break // for loop
 			}

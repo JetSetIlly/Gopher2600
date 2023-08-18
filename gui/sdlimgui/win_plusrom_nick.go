@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom/plusnet"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -50,7 +51,9 @@ func (win *winPlusROMNick) debuggerDraw() bool {
 		return false
 	}
 
-	if !win.img.lz.Cart.IsPlusROM {
+	// do not open window if this is not a plusrom cartridge
+	_, ok := win.img.cache.VCS.Mem.Cart.GetContainer().(*plusrom.PlusROM)
+	if !ok {
 		return false
 	}
 

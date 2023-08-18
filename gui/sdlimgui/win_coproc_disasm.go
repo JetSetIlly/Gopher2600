@@ -60,7 +60,9 @@ func (win *winCoProcDisasm) debuggerDraw() bool {
 		return false
 	}
 
-	if !win.img.lz.Cart.HasCoProcBus {
+	// do not open window if there is no coprocessor available
+	coproc := win.img.cache.VCS.Mem.Cart.GetCoProc()
+	if coproc == nil {
 		return false
 	}
 
@@ -68,10 +70,10 @@ func (win *winCoProcDisasm) debuggerDraw() bool {
 	imgui.SetNextWindowSizeV(imgui.Vec2{551, 526}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{800, 1000})
 
-	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcDisasmID)
+	title := fmt.Sprintf("%s %s", coproc.ProcessorID(), winCoProcDisasmID)
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		// only support specific ARM architectures
-		arch := architecture.ARMArchitecture(win.img.lz.Cart.CoProcID)
+		arch := architecture.ARMArchitecture(coproc.ProcessorID())
 		if arch == architecture.ARM7TDMI || arch == architecture.ARMv7_M {
 			win.draw()
 		} else {

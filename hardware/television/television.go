@@ -99,6 +99,17 @@ func (s *State) Snapshot() *State {
 	return &n
 }
 
+// GetLastSignal returns a copy of the most SignalAttributes sent to the TV
+// (via the Signal() function).
+func (s *State) GetLastSignal() signal.SignalAttributes {
+	return s.lastSignal
+}
+
+// GetFrameInfo returns the television's current frame information.
+func (s *State) GetFrameInfo() FrameInfo {
+	return s.frameInfo
+}
+
 // GetCoords returns an instance of coords.TelevisionCoords.
 func (s *State) GetCoords() coords.TelevisionCoords {
 	return coords.TelevisionCoords{

@@ -129,8 +129,8 @@ func (win *win6507Pinout) draw() {
 		pinTextAdj := (pinSize - imgui.TextLineHeight()) / 2
 
 		// address/data values (for convenience)
-		addressBus := win.img.lz.Bus.AddressBus
-		dataBus := win.img.lz.Bus.DataBus
+		addressBus := win.img.cache.VCS.Mem.AddressBus
+		dataBus := win.img.cache.VCS.Mem.DataBus
 
 		// left pins
 		pinX := chipPos.X - pinSize
@@ -140,7 +140,7 @@ func (win *win6507Pinout) draw() {
 			switch i {
 			case 0:
 				// RES
-				if !win.img.lz.CPU.HasReset {
+				if !win.img.cache.VCS.CPU.HasReset() {
 					col = win.pinOn
 				}
 				label = "RES"
@@ -150,7 +150,7 @@ func (win *win6507Pinout) draw() {
 				label = "Vss"
 			case 2:
 				// RDY
-				if win.img.lz.CPU.RdyFlg {
+				if win.img.cache.VCS.CPU.RdyFlg {
 					col = win.rdyPinOn
 				} else {
 					col = win.rdyPinOff
@@ -186,7 +186,7 @@ func (win *win6507Pinout) draw() {
 			label := ""
 			switch i {
 			case 0:
-				switch win.img.lz.Phaseclock.LastPClk {
+				switch win.img.cache.VCS.TIA.PClk {
 				case phaseclock.RisingPhi2:
 					col = win.pinOn
 				case phaseclock.FallingPhi2:
@@ -194,7 +194,7 @@ func (win *win6507Pinout) draw() {
 				}
 				label = "φ2"
 			case 1:
-				switch win.img.lz.Phaseclock.LastPClk {
+				switch win.img.cache.VCS.TIA.PClk {
 				case phaseclock.RisingPhi1:
 					col = win.pinOn
 				case phaseclock.FallingPhi1:
@@ -203,7 +203,7 @@ func (win *win6507Pinout) draw() {
 				label = "φ1"
 			case 2:
 				// R/W
-				if win.img.lz.Bus.LastCPUWrite {
+				if win.img.cache.VCS.Mem.LastCPUWrite {
 					col = win.pinOn
 				}
 				label = "R/W"
@@ -263,14 +263,14 @@ func (win *win6507Pinout) draw() {
 
 				imgui.TableNextColumn()
 				imgui.PushStyleColor(imgui.StyleColorText, win.addressBus)
-				imgui.Text(fmt.Sprintf("%013b", win.img.lz.Bus.AddressBus&0x1fff))
+				imgui.Text(fmt.Sprintf("%013b", win.img.cache.VCS.Mem.AddressBus&0x1fff))
 				imgui.PopStyleColor()
 
 				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("%#04x", win.img.lz.Bus.AddressBus&0x1fff))
+				imgui.Text(fmt.Sprintf("%#04x", win.img.cache.VCS.Mem.AddressBus&0x1fff))
 
 				imgui.TableNextColumn()
-				_, area := memorymap.MapAddress(win.img.lz.Bus.AddressBus, !win.img.lz.Bus.LastCPUWrite)
+				_, area := memorymap.MapAddress(win.img.cache.VCS.Mem.AddressBus, !win.img.cache.VCS.Mem.LastCPUWrite)
 				imgui.Text(area.String())
 
 				imgui.TableNextRow()
@@ -278,17 +278,17 @@ func (win *win6507Pinout) draw() {
 				imguiColorLabelSimple("Data", win.dataBus)
 
 				imgui.TableNextColumn()
-				if win.img.lz.Bus.DataBusDriven != 0xff {
+				if win.img.cache.VCS.Mem.DataBusDriven != 0xff {
 					p := imgui.CursorScreenPos()
 					s1 := strings.Builder{}
 					s2 := strings.Builder{}
 					for i := 7; i >= 0; i-- {
-						if (win.img.lz.Bus.DataBusDriven>>i)&0x01 == 0x01 {
-							s1.WriteString(fmt.Sprintf("%d", (win.img.lz.Bus.DataBus>>i)&0x01))
+						if (win.img.cache.VCS.Mem.DataBusDriven>>i)&0x01 == 0x01 {
+							s1.WriteString(fmt.Sprintf("%d", (win.img.cache.VCS.Mem.DataBus>>i)&0x01))
 							s2.WriteRune(' ')
 						} else {
 							s1.WriteRune(' ')
-							s2.WriteString(fmt.Sprintf("%d", (win.img.lz.Bus.DataBus>>i)&0x01))
+							s2.WriteString(fmt.Sprintf("%d", (win.img.cache.VCS.Mem.DataBus>>i)&0x01))
 						}
 					}
 					imgui.PushStyleColor(imgui.StyleColorText, win.dataBus)
@@ -299,15 +299,15 @@ func (win *win6507Pinout) draw() {
 					imgui.PopStyleColorV(2)
 				} else {
 					imgui.PushStyleColor(imgui.StyleColorText, win.dataBus)
-					imgui.Text(fmt.Sprintf("%08b", win.img.lz.Bus.DataBus))
+					imgui.Text(fmt.Sprintf("%08b", win.img.cache.VCS.Mem.DataBus))
 					imgui.PopStyleColor()
 				}
 
 				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("%#02x", win.img.lz.Bus.DataBus))
+				imgui.Text(fmt.Sprintf("%#02x", win.img.cache.VCS.Mem.DataBus))
 
 				imgui.TableNextColumn()
-				if win.img.lz.Bus.LastCPUWrite {
+				if win.img.cache.VCS.Mem.LastCPUWrite {
 					imgui.Text("Writing")
 				} else {
 					imgui.Text("Reading")

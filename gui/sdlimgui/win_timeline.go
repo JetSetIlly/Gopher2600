@@ -164,12 +164,12 @@ func (win *winTimeline) debuggerDraw() bool {
 
 				var label string
 				var command string
-				if win.img.lz.Rewind.Comparison.Locked {
+				if win.img.cache.Rewind.Comparison.Locked {
 					label = "Unlock Comparison Frame"
 					command = "COMPARISON UNLOCK"
 				} else {
 					label = fmt.Sprintf("Lock Comparison Frame (at frame %d)",
-						win.img.lz.Rewind.Comparison.State.TV.GetCoords().Frame)
+						win.img.cache.Rewind.Comparison.State.TV.GetCoords().Frame)
 					command = "COMPARISON LOCK"
 				}
 				if imgui.Selectable(label) {
@@ -205,31 +205,31 @@ func (win *winTimeline) debuggerDraw() bool {
 }
 
 func (win *winTimeline) drawToolbar() {
-	timeline := win.img.lz.Rewind.Timeline
+	timeline := win.img.cache.Rewind.Timeline
 	if timeline.AvailableStart == timeline.AvailableEnd && timeline.AvailableStart == 0 {
 		imgui.Text("No rewind history")
 	} else {
 		imgui.Text(fmt.Sprintf("Rewind between %d and %d", timeline.AvailableStart, timeline.AvailableEnd))
 		imgui.SameLineV(0, 15)
-		imguiColorLabelSimple(fmt.Sprintf("Comparing frame %d", win.img.lz.Rewind.Comparison.State.TV.GetCoords().Frame), win.img.cols.TimelineComparison)
+		imguiColorLabelSimple(fmt.Sprintf("Comparing frame %d", win.img.cache.Rewind.Comparison.State.TV.GetCoords().Frame), win.img.cols.TimelineComparison)
 
-		if win.isHovered || (win.scrubbing && win.hoverIdx < len(win.img.lz.Rewind.Timeline.TotalScanlines)) {
+		if win.isHovered || (win.scrubbing && win.hoverIdx < len(win.img.cache.Rewind.Timeline.TotalScanlines)) {
 			imgui.SameLineV(0, 15)
-			imguiColorLabelSimple(fmt.Sprintf("%d Scanlines", win.img.lz.Rewind.Timeline.TotalScanlines[win.hoverIdx]), win.img.cols.TimelineScanlines)
+			imguiColorLabelSimple(fmt.Sprintf("%d Scanlines", win.img.cache.Rewind.Timeline.TotalScanlines[win.hoverIdx]), win.img.cols.TimelineScanlines)
 
 			imgui.SameLineV(0, 15)
-			imguiColorLabelSimple(fmt.Sprintf("%.02f%% WSYNC", win.img.lz.Rewind.Timeline.Ratios[win.hoverIdx].WSYNC*100), win.img.cols.TimelineWSYNC)
+			imguiColorLabelSimple(fmt.Sprintf("%.02f%% WSYNC", win.img.cache.Rewind.Timeline.Ratios[win.hoverIdx].WSYNC*100), win.img.cols.TimelineWSYNC)
 
-			if win.img.lz.Cart.HasCoProcBus {
+			if win.img.cache.VCS.Mem.Cart.GetCoProcBus() != nil {
 				imgui.SameLineV(0, 15)
-				imguiColorLabelSimple(fmt.Sprintf("%.02f%% Coproc", win.img.lz.Rewind.Timeline.Ratios[win.hoverIdx].CoProc*100), win.img.cols.TimelineCoProc)
+				imguiColorLabelSimple(fmt.Sprintf("%.02f%% Coproc", win.img.cache.Rewind.Timeline.Ratios[win.hoverIdx].CoProc*100), win.img.cols.TimelineCoProc)
 			}
 		}
 	}
 }
 
 func (win *winTimeline) drawTrace() {
-	timeline := win.img.lz.Rewind.Timeline
+	timeline := win.img.cache.Rewind.Timeline
 	dl := imgui.WindowDrawList()
 
 	// size of trace area elements. the size of the graph depends on the size of
@@ -424,7 +424,7 @@ func (win *winTimeline) drawTrace() {
 		// COPROCESSOR TRACE
 
 		// plot coprocessor from the top
-		if win.img.lz.Cart.HasCoProcBus {
+		if win.img.cache.VCS.Mem.Cart.GetCoProcBus() != nil {
 			plotY = yPos
 			plotY += float32(timeline.Counts[i].CoProc) * graphHeight / specification.AbsoluteMaxClks
 
@@ -474,8 +474,8 @@ func (win *winTimeline) drawTrace() {
 	}
 
 	// comparison frame indicator
-	if win.img.lz.Rewind.Comparison.State != nil && len(timeline.FrameNum) > 0 {
-		fr := win.img.lz.Rewind.Comparison.State.TV.GetCoords().Frame - rewindOffset
+	if win.img.cache.Rewind.Comparison.State != nil && len(timeline.FrameNum) > 0 {
+		fr := win.img.cache.Rewind.Comparison.State.TV.GetCoords().Frame - rewindOffset
 
 		if fr < 0 {
 			// indicate that the comparison frame is not visible
@@ -483,7 +483,7 @@ func (win *winTimeline) drawTrace() {
 			dl.AddText(pos, win.img.cols.timelineComparison, string(fonts.TimelineOffScreen))
 		} else {
 			pos := imgui.Vec2{X: rootPos.X + float32(fr*plotWidth) - iconRadius, Y: yPos}
-			if win.img.lz.Rewind.Comparison.Locked {
+			if win.img.cache.Rewind.Comparison.Locked {
 				dl.AddText(pos, win.img.cols.timelineComparison, string(fonts.TimelineComparisonLock))
 			} else {
 				dl.AddText(pos, win.img.cols.timelineComparison, string(fonts.TimelineComparison))
@@ -492,7 +492,7 @@ func (win *winTimeline) drawTrace() {
 	}
 
 	// current frame indicator
-	currentFrame := win.img.lz.TV.Coords.Frame - rewindOffset
+	currentFrame := win.img.cache.TV.GetCoords().Frame - rewindOffset
 	if currentFrame < 0 {
 		// indicate that the current frame indicator is not visible
 		pos := imgui.Vec2{X: rootPos.X - iconRadius, Y: yPos}
@@ -524,8 +524,8 @@ func (win *winTimeline) drawTrace() {
 
 	// rewind support
 	rewindX := win.hoverX - rootPos.X
-	rewindStartFrame := win.img.lz.Rewind.Timeline.AvailableStart
-	rewindEndFrame := win.img.lz.Rewind.Timeline.AvailableEnd
+	rewindStartFrame := win.img.cache.Rewind.Timeline.AvailableStart
+	rewindEndFrame := win.img.cache.Rewind.Timeline.AvailableEnd
 
 	// index and frame number for hover position
 	win.hoverIdx = int(rewindX/plotWidth) + traceOffset
@@ -536,18 +536,20 @@ func (win *winTimeline) drawTrace() {
 		imgui.OpenPopup(timelinePopupID)
 
 	} else if win.scrubbing {
+		coords := win.img.cache.TV.GetCoords()
+
 		// making sure we only call PushRewind() when we need to. also,
 		// allowing mouse to travel beyond the rewind boundaries (and without
 		// calling PushRewind() too often)
 		if win.hoverFrame >= rewindEndFrame {
-			if win.img.lz.TV.Coords.Frame < rewindEndFrame {
+			if coords.Frame < rewindEndFrame {
 				win.img.dbg.RewindToFrame(win.hoverFrame, true)
 			}
 		} else if win.hoverFrame <= rewindStartFrame {
-			if win.img.lz.TV.Coords.Frame > rewindStartFrame {
+			if coords.Frame > rewindStartFrame {
 				win.img.dbg.RewindToFrame(win.hoverFrame, false)
 			}
-		} else if win.hoverFrame != win.img.lz.TV.Coords.Frame {
+		} else if win.hoverFrame != coords.Frame {
 			win.img.dbg.RewindToFrame(win.hoverFrame, win.hoverFrame == rewindEndFrame)
 		}
 	}
@@ -555,7 +557,7 @@ func (win *winTimeline) drawTrace() {
 
 func (win *winTimeline) saveToCSV() {
 	// open unique file
-	fn := unique.Filename("timeline", win.img.lz.Cart.Shortname)
+	fn := unique.Filename("timeline", win.img.cache.VCS.Mem.Cart.ShortName)
 	fn = fmt.Sprintf("%s.csv", fn)
 	f, err := os.Create(fn)
 	if err != nil {
@@ -578,7 +580,7 @@ func (win *winTimeline) saveToCSV() {
 	f.WriteString("Panel")
 	f.WriteString("\n")
 
-	timeline := win.img.lz.Rewind.Timeline
+	timeline := win.img.cache.Rewind.Timeline
 	for i, n := range timeline.FrameNum {
 		f.WriteString(fmt.Sprintf("%d,", n))
 		f.WriteString(fmt.Sprintf("%d,", timeline.TotalScanlines[i]))

@@ -31,6 +31,9 @@ type winSaveKeyI2C struct {
 	debuggerWin
 
 	img *SdlImgui
+
+	// savekey instance
+	savekey *savekey.SaveKey
 }
 
 func newWinSaveKeyI2C(img *SdlImgui) (window, error) {
@@ -53,7 +56,9 @@ func (win *winSaveKeyI2C) debuggerDraw() bool {
 		return false
 	}
 
-	if !win.img.lz.SaveKey.SaveKeyActive {
+	// do not draw if savekey is not active
+	win.savekey = win.img.cache.VCS.GetSaveKey()
+	if win.savekey == nil {
 		return false
 	}
 
@@ -93,7 +98,7 @@ func (win *winSaveKeyI2C) drawOscilloscope() {
 
 	pos := imgui.CursorPos()
 	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.SaveKeyOscSCL)
-	imgui.PlotLinesV("", win.img.lz.SaveKey.SCL, 0, "", i2c.TraceLo, i2c.TraceHi,
+	imgui.PlotLinesV("", win.savekey.SCL.Activity, 0, "", i2c.TraceLo, i2c.TraceHi,
 		imgui.Vec2{X: w, Y: imgui.FrameHeight() * 2})
 
 	// reset cursor pos with a slight offset
@@ -105,7 +110,7 @@ func (win *winSaveKeyI2C) drawOscilloscope() {
 
 	// plot lines
 	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.SaveKeyOscSDA)
-	imgui.PlotLinesV("", win.img.lz.SaveKey.SDA, 0, "", i2c.TraceLo, i2c.TraceHi,
+	imgui.PlotLinesV("", win.savekey.SDA.Activity, 0, "", i2c.TraceLo, i2c.TraceHi,
 		imgui.Vec2{X: w, Y: imgui.FrameHeight() * 2})
 
 	imgui.PopStyleColorV(4)
@@ -119,7 +124,7 @@ func (win *winSaveKeyI2C) drawOscilloscope() {
 
 func (win *winSaveKeyI2C) drawStatus() {
 	imgui.AlignTextToFramePadding()
-	switch win.img.lz.SaveKey.State {
+	switch win.savekey.State {
 	case savekey.SaveKeyStopped:
 		imgui.Text("Stopped")
 	case savekey.SaveKeyStarting:
@@ -129,7 +134,7 @@ func (win *winSaveKeyI2C) drawStatus() {
 	case savekey.SaveKeyAddressLo:
 		imgui.Text("Getting address")
 	case savekey.SaveKeyData:
-		switch win.img.lz.SaveKey.Dir {
+		switch win.savekey.Dir {
 		case savekey.Reading:
 			imgui.Text("Reading")
 		case savekey.Writing:
@@ -141,7 +146,7 @@ func (win *winSaveKeyI2C) drawStatus() {
 }
 
 func (win *winSaveKeyI2C) drawACK() {
-	v := win.img.lz.SaveKey.Ack
+	v := win.savekey.Ack
 	imgui.AlignTextToFramePadding()
 	imgui.Text("ACK")
 	imgui.SameLine()
@@ -155,11 +160,11 @@ func (win *winSaveKeyI2C) drawACK() {
 }
 
 func (win *winSaveKeyI2C) drawBits() {
-	bits := win.img.lz.SaveKey.Bits
-	bitCt := win.img.lz.SaveKey.BitsCt
+	bits := win.savekey.Bits
+	bitCt := win.savekey.BitsCt
 
 	var label string
-	switch win.img.lz.SaveKey.Dir {
+	switch win.savekey.Dir {
 	case savekey.Reading:
 		label = "Reading"
 	case savekey.Writing:
@@ -205,7 +210,7 @@ func (win *winSaveKeyI2C) drawBits() {
 }
 
 func (win *winSaveKeyI2C) drawAddress() {
-	addr := win.img.lz.SaveKey.Address
+	addr := win.savekey.EEPROM.Address
 
 	label := "Address"
 	s := fmt.Sprintf("%04x", addr)

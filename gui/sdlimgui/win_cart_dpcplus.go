@@ -50,15 +50,19 @@ func (win *winDPCplusRegisters) debuggerDraw() bool {
 		return false
 	}
 
-	// do not open window if there is no valid cartridge debug bus available
-	_, ok := win.img.lz.Cart.Registers.(dpcplus.Registers)
-	if !win.img.lz.Cart.HasRegistersBus || !ok {
+	// do not open window if there is no cartridge registers bus available
+	bus := win.img.cache.VCS.Mem.Cart.GetRegistersBus()
+	if bus == nil {
+		return false
+	}
+	regs, ok := bus.GetRegisters().(dpcplus.Registers)
+	if !ok {
 		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{256, 192}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
-		win.draw()
+		win.draw(regs)
 	}
 
 	win.debuggerGeom.update()
@@ -67,11 +71,9 @@ func (win *winDPCplusRegisters) debuggerDraw() bool {
 	return true
 }
 
-func (win *winDPCplusRegisters) draw() {
-	r := win.img.lz.Cart.Registers.(dpcplus.Registers)
-
+func (win *winDPCplusRegisters) draw(regs dpcplus.Registers) {
 	// random number generator value
-	rng := fmt.Sprintf("%08x", r.RNG.Value)
+	rng := fmt.Sprintf("%08x", regs.RNG.Value)
 	imguiLabel("Random Number Generator")
 	if imguiHexInput("##rng", 8, &rng) {
 		win.img.dbg.PushFunction(func() {
@@ -82,7 +84,7 @@ func (win *winDPCplusRegisters) draw() {
 
 	imgui.SameLineV(0, 20)
 	imguiLabel("Fast Fetch")
-	ff := r.FastFetch
+	ff := regs.FastFetch
 	if imgui.Checkbox("##fastfetch", &ff) {
 		win.img.dbg.PushFunction(func() {
 			b := win.img.vcs.Mem.Cart.GetRegistersBus()
@@ -98,13 +100,13 @@ func (win *winDPCplusRegisters) draw() {
 	// loop over data fetchers
 	imgui.Text("Data Fetchers")
 	imgui.Spacing()
-	for i := 0; i < len(r.Fetcher); i++ {
+	for i := 0; i < len(regs.Fetcher); i++ {
 		f := i
 
 		imguiLabel(fmt.Sprintf("%d.", f))
 
 		label := fmt.Sprintf("##d%dlow", i)
-		low := fmt.Sprintf("%02x", r.Fetcher[i].Low)
+		low := fmt.Sprintf("%02x", regs.Fetcher[i].Low)
 		imguiLabel("Low")
 		if imguiHexInput(label, 2, &low) {
 			win.img.dbg.PushFunction(func() {
@@ -115,7 +117,7 @@ func (win *winDPCplusRegisters) draw() {
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##d%dhi", i)
-		hi := fmt.Sprintf("%02x", r.Fetcher[i].Hi)
+		hi := fmt.Sprintf("%02x", regs.Fetcher[i].Hi)
 		imguiLabel("Hi")
 		if imguiHexInput(label, 2, &hi) {
 			win.img.dbg.PushFunction(func() {
@@ -126,7 +128,7 @@ func (win *winDPCplusRegisters) draw() {
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##d%dtop", i)
-		top := fmt.Sprintf("%02x", r.Fetcher[i].Top)
+		top := fmt.Sprintf("%02x", regs.Fetcher[i].Top)
 		imguiLabel("Top")
 		if imguiHexInput(label, 2, &top) {
 			win.img.dbg.PushFunction(func() {
@@ -137,7 +139,7 @@ func (win *winDPCplusRegisters) draw() {
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##d%dbottom", i)
-		bottom := fmt.Sprintf("%02x", r.Fetcher[i].Bottom)
+		bottom := fmt.Sprintf("%02x", regs.Fetcher[i].Bottom)
 		imguiLabel("Bottom")
 		if imguiHexInput(label, 2, &bottom) {
 			win.img.dbg.PushFunction(func() {
@@ -155,13 +157,13 @@ func (win *winDPCplusRegisters) draw() {
 	// loop over fractional fetchers
 	imgui.Text("Fractional Fetchers")
 	imgui.Spacing()
-	for i := 0; i < len(r.FracFetcher); i++ {
+	for i := 0; i < len(regs.FracFetcher); i++ {
 		f := i
 
 		imguiLabel(fmt.Sprintf("%d.", f))
 
 		label := fmt.Sprintf("##f%dlow", i)
-		low := fmt.Sprintf("%02x", r.FracFetcher[i].Low)
+		low := fmt.Sprintf("%02x", regs.FracFetcher[i].Low)
 		imguiLabel("Low")
 		if imguiHexInput(label, 2, &low) {
 			win.img.dbg.PushFunction(func() {
@@ -172,7 +174,7 @@ func (win *winDPCplusRegisters) draw() {
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##f%dhi", i)
-		hi := fmt.Sprintf("%02x", r.FracFetcher[i].Hi)
+		hi := fmt.Sprintf("%02x", regs.FracFetcher[i].Hi)
 		imguiLabel("Hi")
 		if imguiHexInput(label, 2, &hi) {
 			win.img.dbg.PushFunction(func() {
@@ -183,7 +185,7 @@ func (win *winDPCplusRegisters) draw() {
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##f%dincrement", i)
-		increment := fmt.Sprintf("%02x", r.FracFetcher[i].Increment)
+		increment := fmt.Sprintf("%02x", regs.FracFetcher[i].Increment)
 		imguiLabel("Increment")
 		if imguiHexInput(label, 2, &increment) {
 			win.img.dbg.PushFunction(func() {
@@ -194,7 +196,7 @@ func (win *winDPCplusRegisters) draw() {
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##f%dcount", i)
-		count := fmt.Sprintf("%02x", r.FracFetcher[i].Count)
+		count := fmt.Sprintf("%02x", regs.FracFetcher[i].Count)
 		imguiLabel("Count")
 		if imguiHexInput(label, 2, &count) {
 			win.img.dbg.PushFunction(func() {
@@ -213,13 +215,13 @@ func (win *winDPCplusRegisters) draw() {
 	// loop over music fetchers
 	imgui.Text("Music Fetchers")
 	imgui.Spacing()
-	for i := 0; i < len(r.MusicFetcher); i++ {
+	for i := 0; i < len(regs.MusicFetcher); i++ {
 		f := i
 
 		imguiLabel(fmt.Sprintf("%d.", f))
 
 		label := fmt.Sprintf("##m%dwaveform", i)
-		waveform := fmt.Sprintf("%08x", r.MusicFetcher[i].Waveform)
+		waveform := fmt.Sprintf("%08x", regs.MusicFetcher[i].Waveform)
 		imguiLabel("Waveform")
 		if imguiHexInput(label, 8, &waveform) {
 			win.img.dbg.PushFunction(func() {
@@ -230,7 +232,7 @@ func (win *winDPCplusRegisters) draw() {
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##m%dfeq", i)
-		freq := fmt.Sprintf("%08x", r.MusicFetcher[i].Freq)
+		freq := fmt.Sprintf("%08x", regs.MusicFetcher[i].Freq)
 		imguiLabel("Freq")
 		if imguiHexInput(label, 8, &freq) {
 			win.img.dbg.PushFunction(func() {
@@ -241,7 +243,7 @@ func (win *winDPCplusRegisters) draw() {
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##m%dcount", i)
-		count := fmt.Sprintf("%08x", r.MusicFetcher[i].Count)
+		count := fmt.Sprintf("%08x", regs.MusicFetcher[i].Count)
 		imguiLabel("Count")
 		if imguiHexInput(label, 8, &count) {
 			win.img.dbg.PushFunction(func() {

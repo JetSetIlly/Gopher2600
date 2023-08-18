@@ -47,7 +47,7 @@ func (win *winDbgScr) paintDragAndDrop() {
 					copy(ff.startingReflection, win.scr.crit.reflection)
 
 					target := floodFillTarget{}
-					target.coord = win.img.lz.TV.Coords
+					target.coord = win.img.cache.TV.GetCoords()
 					target.coord.Clock = mouse.tv.Clock
 					target.coord.Scanline = mouse.tv.Scanline
 					target.offset = mouse.offset
@@ -97,7 +97,7 @@ func (ff *floodFill) build(target floodFillTarget) {
 	down := target
 	down.offset += specification.ClksScanline
 	down.coord.Scanline++
-	if down.coord.Scanline <= ff.win.img.lz.TV.FrameInfo.TotalScanlines {
+	if down.coord.Scanline <= ff.win.img.cache.TV.GetFrameInfo().TotalScanlines {
 		ff.build(down)
 	}
 

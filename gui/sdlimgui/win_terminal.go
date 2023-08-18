@@ -176,9 +176,9 @@ func (win *winTerm) debuggerDraw() bool {
 		// instruction the PC is *currently* on. in other words, the
 		// disassembly for the inesturction to be executed *next*
 		if win.img.dbg.State() == govern.Running {
-			res := win.img.lz.Debugger.LiveDisasmEntry
+			res := win.img.cache.Debugger.LiveDisasmEntry
 			imgui.Text(res.String())
-			if !win.img.lz.Debugger.LiveDisasmEntry.Result.Final {
+			if !win.img.cache.Debugger.LiveDisasmEntry.Result.Final {
 				imgui.SameLine()
 				imgui.Text(res.Cycles())
 			}

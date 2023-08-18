@@ -57,7 +57,7 @@ func (win *winPeripherals) debuggerDraw() bool {
 
 	// don't show the window if either of the controllers are unplugged
 	// !!TODO: show something meaningful for unplugged controllers
-	if win.img.lz.Peripherals.LeftPlayer == nil || win.img.lz.Peripherals.RightPlayer == nil {
+	if win.img.cache.VCS.RIOT.Ports.LeftPlayer == nil || win.img.cache.VCS.RIOT.Ports.RightPlayer == nil {
 		return false
 	}
 
@@ -77,7 +77,7 @@ func (win *winPeripherals) draw() {
 	imgui.Spacing()
 	imgui.Text("Left")
 	imgui.Spacing()
-	win.drawPeripheral(win.img.lz.Peripherals.LeftPlayer, peripherals.AvailableLeftPlayer)
+	win.drawPeripheral(win.img.cache.VCS.RIOT.Ports.LeftPlayer, peripherals.AvailableLeftPlayer)
 	imgui.EndGroup()
 
 	imgui.SameLine()
@@ -85,7 +85,7 @@ func (win *winPeripherals) draw() {
 	imgui.BeginGroup()
 	imgui.Text("Right")
 	imgui.Spacing()
-	win.drawPeripheral(win.img.lz.Peripherals.RightPlayer, peripherals.AvailableRightPlayer)
+	win.drawPeripheral(win.img.cache.VCS.RIOT.Ports.RightPlayer, peripherals.AvailableRightPlayer)
 	imgui.EndGroup()
 }
 

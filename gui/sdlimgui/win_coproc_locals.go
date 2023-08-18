@@ -58,7 +58,9 @@ func (win *winCoProcLocals) debuggerDraw() bool {
 		return false
 	}
 
-	if !win.img.lz.Cart.HasCoProcBus {
+	// do not open window if there is no coprocessor available
+	coproc := win.img.cache.VCS.Mem.Cart.GetCoProc()
+	if coproc == nil {
 		return false
 	}
 
@@ -66,7 +68,7 @@ func (win *winCoProcLocals) debuggerDraw() bool {
 	imgui.SetNextWindowSizeV(imgui.Vec2{520, 390}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{400, 300}, imgui.Vec2{700, 1000})
 
-	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcLocalsID)
+	title := fmt.Sprintf("%s %s", coproc.ProcessorID(), winCoProcLocalsID)
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		win.draw()
 	}

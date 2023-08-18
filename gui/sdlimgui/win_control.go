@@ -145,7 +145,7 @@ func (win *winControl) drawStep() {
 		imgui.TableNextColumn()
 
 		icon := fonts.BackInstruction
-		if win.img.lz.Debugger.Quantum == debugger.QuantumClock {
+		if win.img.cache.Debugger.Quantum == debugger.QuantumClock {
 			icon = fonts.BackClock
 		}
 
@@ -160,8 +160,8 @@ func (win *winControl) drawStep() {
 
 		imgui.TableNextColumn()
 
-		if imguiToggleButton("##quantumToggle", win.img.lz.Debugger.Quantum == debugger.QuantumClock, win.img.cols.TitleBgActive) {
-			if win.img.lz.Debugger.Quantum == debugger.QuantumClock {
+		if imguiToggleButton("##quantumToggle", win.img.cache.Debugger.Quantum == debugger.QuantumClock, win.img.cols.TitleBgActive) {
+			if win.img.cache.Debugger.Quantum == debugger.QuantumClock {
 				win.img.term.pushCommand("QUANTUM INSTRUCTION")
 			} else {
 				win.img.term.pushCommand("QUANTUM CLOCK")
@@ -170,7 +170,7 @@ func (win *winControl) drawStep() {
 
 		imgui.SameLine()
 		imgui.AlignTextToFramePadding()
-		if win.img.lz.Debugger.Quantum == debugger.QuantumClock {
+		if win.img.cache.Debugger.Quantum == debugger.QuantumClock {
 			imgui.Text("Colour Clock")
 		} else {
 			imgui.Text("CPU Instruction")
@@ -213,6 +213,10 @@ func (win *winControl) drawStep() {
 }
 
 func (win *winControl) drawFPS() {
+	req := win.img.tv.GetReqFPS()
+	actual, _ := win.img.tv.GetActualFPS()
+	frameInfo := win.img.cache.TV.GetFrameInfo()
+
 	imgui.Text("Performance")
 	imgui.Spacing()
 
@@ -221,9 +225,8 @@ func (win *winControl) drawFPS() {
 	defer imgui.PopItemWidth()
 
 	// fps slider
-	fps := win.img.lz.TV.ReqFPS
-	if imgui.SliderFloatV("##fps", &fps, 1, 100, "%.0f fps", imgui.SliderFlagsNone) {
-		win.img.dbg.PushFunction(func() { win.img.vcs.TV.SetFPS(fps) })
+	if imgui.SliderFloatV("##fps", &req, 1, 100, "%.0f fps", imgui.SliderFlagsNone) {
+		win.img.dbg.PushFunction(func() { win.img.vcs.TV.SetFPS(req) })
 	}
 
 	// reset to specification rate on right mouse click
@@ -233,19 +236,19 @@ func (win *winControl) drawFPS() {
 
 	imgui.Spacing()
 	if win.img.dbg.State() == govern.Running {
-		if win.img.lz.TV.ActualFPS <= win.img.lz.TV.ReqFPS*0.95 {
+		if actual <= req*0.95 {
 			imgui.Text("running below requested FPS")
-		} else if win.img.lz.TV.ActualFPS > win.img.lz.TV.ReqFPS*1.05 {
+		} else if actual > req*1.05 {
 			imgui.Text("running above requested FPS")
 		} else {
 			imgui.Text("running at requested FPS")
 		}
-	} else if win.img.lz.TV.ReqFPS < win.img.lz.TV.FrameInfo.Spec.RefreshRate*0.95 {
-		imgui.Text(fmt.Sprintf("below ideal frequency of %.0fHz", win.img.lz.TV.FrameInfo.Spec.RefreshRate))
-	} else if win.img.lz.TV.ReqFPS > win.img.lz.TV.FrameInfo.Spec.RefreshRate*1.05 {
-		imgui.Text(fmt.Sprintf("above ideal frequency of %.0fHz", win.img.lz.TV.FrameInfo.Spec.RefreshRate))
+	} else if req < frameInfo.Spec.RefreshRate*0.95 {
+		imgui.Text(fmt.Sprintf("below ideal frequency of %.0fHz", frameInfo.Spec.RefreshRate))
+	} else if req > frameInfo.Spec.RefreshRate*1.05 {
+		imgui.Text(fmt.Sprintf("above ideal frequency of %.0fHz", frameInfo.Spec.RefreshRate))
 	} else {
-		imgui.Text(fmt.Sprintf("ideal frequency %.0fHz", win.img.lz.TV.FrameInfo.Spec.RefreshRate))
+		imgui.Text(fmt.Sprintf("ideal frequency %.0fHz", frameInfo.Spec.RefreshRate))
 	}
 }
 

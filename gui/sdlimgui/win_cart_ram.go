@@ -20,6 +20,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -56,17 +57,20 @@ func (win *winCartRAM) debuggerDraw() bool {
 		return false
 	}
 
-	if !win.img.lz.Cart.HasRAMbus {
+	// do not open window if there is no valid cartridge debug bus available
+	bus := win.img.cache.VCS.Mem.Cart.GetRAMbus()
+	if bus == nil {
 		return false
 	}
+	ram := bus.GetRAM()
 
 	imgui.SetNextWindowPosV(imgui.Vec2{533, 430}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{478, 271}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{478, 271}, imgui.Vec2{529, 1000})
 
-	title := fmt.Sprintf("%s %s", win.img.lz.Cart.ID, win.id())
+	title := fmt.Sprintf("%s %s", win.img.cache.VCS.Mem.Cart.ID(), win.id())
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
-		win.draw()
+		win.draw(ram)
 	}
 
 	win.debuggerGeom.update()
@@ -75,14 +79,14 @@ func (win *winCartRAM) debuggerDraw() bool {
 	return true
 }
 
-func (win *winCartRAM) draw() {
+func (win *winCartRAM) draw(ram []mapper.CartRAM) {
 	// get comparison data. assuming that there is such a thing and that it's
 	// safe to get StaticData from.
-	comp := win.img.lz.Rewind.Comparison.State.Mem.Cart.GetRAMbus().GetRAM()
+	comp := win.img.cache.Rewind.Comparison.State.Mem.Cart.GetRAMbus().GetRAM()
 
 	imgui.BeginTabBarV("", imgui.TabBarFlagsFittingPolicyScroll)
-	for bank := range win.img.lz.Cart.RAM {
-		current := win.img.lz.Cart.RAM[bank]
+	for bank := range ram {
+		current := ram[bank]
 		diff := comp[bank]
 		if imgui.BeginTabItem(current.Label) {
 			imgui.BeginChildV("cartram", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)

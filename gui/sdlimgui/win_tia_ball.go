@@ -29,42 +29,42 @@ func (win *winTIA) drawBall() {
 	imgui.BeginChildV("##ball", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.footerHeight}, false, 0)
 	defer imgui.EndChild()
 
-	lz := win.img.lz.Ball
-	bs := win.img.lz.Ball.Bs
-	pf := win.img.lz.Playfield.Pf
+	ball := win.img.cache.VCS.TIA.Video.Ball
+	realBall := win.img.vcs.TIA.Video.Ball
+	realPlayfield := win.img.vcs.TIA.Video.Playfield
 
 	imgui.Spacing()
 
 	imgui.BeginGroup()
 	imguiLabel("Colour")
-	col := lz.Color
+	col := ball.Color
 	if win.img.imguiSwatch(col, 0.75) {
 		win.popupPalette.request(&col, func() {
-			win.img.dbg.PushFunction(func() { bs.Color = col })
-
-			// update playfield color too
-			win.img.dbg.PushFunction(func() { pf.ForegroundColor = col })
+			win.img.dbg.PushFunction(func() {
+				realBall.Color = col
+				realPlayfield.ForegroundColor = col
+			})
 		})
 	}
 
 	imguiLabel("Enabled")
-	enb := lz.Enabled
+	enb := ball.Enabled
 	if imgui.Checkbox("##enabled", &enb) {
-		win.img.dbg.PushFunction(func() { bs.Enabled = enb })
+		win.img.dbg.PushFunction(func() { realBall.Enabled = enb })
 	}
 
 	imgui.SameLine()
 	imguiLabel("Vert Del.")
-	enbv := lz.VerticalDelay
+	enbv := ball.VerticalDelay
 	if imgui.Checkbox("##vdelay", &enbv) {
-		win.img.dbg.PushFunction(func() { bs.VerticalDelay = enbv })
+		win.img.dbg.PushFunction(func() { realBall.VerticalDelay = enbv })
 	}
 
 	imgui.SameLine()
 	imguiLabel("Enabled Del.")
-	enbd := lz.EnabledDelay
+	enbd := ball.EnabledDelay
 	if imgui.Checkbox("##enableddelay", &enbd) {
-		win.img.dbg.PushFunction(func() { bs.EnabledDelay = enbd })
+		win.img.dbg.PushFunction(func() { realBall.EnabledDelay = enbd })
 	}
 	imgui.EndGroup()
 
@@ -75,18 +75,18 @@ func (win *winTIA) drawBall() {
 	imgui.BeginGroup()
 	imguiLabel("HMOVE")
 	imgui.SameLine()
-	hmove := fmt.Sprintf("%01x", lz.Hmove)
+	hmove := fmt.Sprintf("%01x", ball.Hmove)
 	if imguiHexInput("##hmove", 1, &hmove) {
 		if v, err := strconv.ParseUint(hmove, 16, 8); err == nil {
-			win.img.dbg.PushFunction(func() { bs.Hmove = uint8(v) })
+			win.img.dbg.PushFunction(func() { realBall.Hmove = uint8(v) })
 		}
 	}
 
 	imgui.SameLine()
 	imgui.PushItemWidth(win.hmoveSliderWidth)
-	hmoveSlider := int32(lz.Hmove) - 8
+	hmoveSlider := int32(ball.Hmove) - 8
 	if imgui.SliderIntV("##hmoveslider", &hmoveSlider, -8, 7, "%d", imgui.SliderFlagsNone) {
-		win.img.dbg.PushFunction(func() { bs.Hmove = uint8(hmoveSlider + 8) })
+		win.img.dbg.PushFunction(func() { realBall.Hmove = uint8(hmoveSlider + 8) })
 	}
 	imgui.PopItemWidth()
 	imgui.EndGroup()
@@ -97,12 +97,12 @@ func (win *winTIA) drawBall() {
 	// ctrlpf, size selector and drawing info
 	imgui.BeginGroup()
 	imgui.PushItemWidth(win.ballSizeComboDim.X)
-	if imgui.BeginComboV("##ballsize", video.BallSizes[lz.Size], imgui.ComboFlagsNoArrowButton) {
+	if imgui.BeginComboV("##ballsize", video.BallSizes[ball.Size], imgui.ComboFlagsNoArrowButton) {
 		for k := range video.BallSizes {
 			if imgui.Selectable(video.BallSizes[k]) {
 				v := uint8(k) // being careful about scope
 				win.img.dbg.PushFunction(func() {
-					bs.Size = v
+					realBall.Size = v
 					win.img.vcs.TIA.Video.UpdateCTRLPF()
 				})
 			}
@@ -115,25 +115,23 @@ func (win *winTIA) drawBall() {
 	imgui.SameLine()
 	imguiLabel("CTRLPF")
 	imgui.SameLine()
-	ctrlpf := fmt.Sprintf("%02x", lz.Ctrlpf)
+	ctrlpf := fmt.Sprintf("%02x", ball.Ctrlpf)
 	if imguiHexInput("##ctrlpf", 2, &ctrlpf) {
 		if v, err := strconv.ParseUint(ctrlpf, 16, 8); err == nil {
 			win.img.dbg.PushFunction(func() {
-				bs.SetCTRLPF(uint8(v))
-
-				// update playfield CTRLPF too
-				pf.SetCTRLPF(uint8(v))
+				realBall.SetCTRLPF(uint8(v))
+				realPlayfield.SetCTRLPF(uint8(v))
 			})
 		}
 	}
 
 	s := strings.Builder{}
-	if lz.EncActive {
+	if ball.Enclockifier.Active {
 		s.WriteString("drawing ")
-		if lz.EncSecondHalf {
+		if ball.Enclockifier.SecondHalf {
 			s.WriteString("(2nd half)")
 		}
-		s.WriteString(fmt.Sprintf(" [%d]", lz.EncTicks))
+		s.WriteString(fmt.Sprintf(" [%d]", ball.Enclockifier.Ticks))
 	}
 	imgui.SameLine()
 	imgui.Text(s.String())
@@ -144,8 +142,8 @@ func (win *winTIA) drawBall() {
 
 	// horizontal positioning
 	imgui.BeginGroup()
-	imgui.Text(fmt.Sprintf("Last reset at clock %03d. Draws at clock %03d", lz.ResetPixel, lz.HmovedPixel))
-	if lz.MoreHmove {
+	imgui.Text(fmt.Sprintf("Last reset at clock %03d. Draws at clock %03d", ball.ResetPixel, ball.HmovedPixel))
+	if ball.MoreHMOVE {
 		imgui.SameLine()
 		imgui.Text("[currently moving]")
 	}

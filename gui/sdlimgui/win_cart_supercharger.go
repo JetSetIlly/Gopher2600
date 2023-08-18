@@ -52,15 +52,19 @@ func (win *winSuperchargerRegisters) debuggerDraw() bool {
 		return false
 	}
 
-	// do not open window if there is no valid cartridge debug bus available
-	_, ok := win.img.lz.Cart.Registers.(supercharger.Registers)
-	if !win.img.lz.Cart.HasRegistersBus || !ok {
+	// do not open window if there is no cartridge registers bus available
+	bus := win.img.cache.VCS.Mem.Cart.GetRegistersBus()
+	if bus == nil {
+		return false
+	}
+	regs, ok := bus.GetRegisters().(supercharger.Registers)
+	if !ok {
 		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{203, 134}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
-		win.draw()
+		win.draw(regs)
 	}
 
 	win.debuggerGeom.update()
@@ -69,10 +73,8 @@ func (win *winSuperchargerRegisters) debuggerDraw() bool {
 	return true
 }
 
-func (win *winSuperchargerRegisters) draw() {
-	r := win.img.lz.Cart.Registers.(supercharger.Registers)
-
-	val := fmt.Sprintf("%02x", r.Value)
+func (win *winSuperchargerRegisters) draw(regs supercharger.Registers) {
+	val := fmt.Sprintf("%02x", regs.Value)
 	imguiLabel("Value")
 	if imguiHexInput("##value", 2, &val) {
 		win.img.dbg.PushFunction(func() {
@@ -83,8 +85,8 @@ func (win *winSuperchargerRegisters) draw() {
 
 	imgui.SameLine()
 
-	if r.LastWriteAddress != 0x0000 {
-		imgui.Text(fmt.Sprintf("last write %#02x to %#04x", r.LastWriteValue, r.LastWriteAddress))
+	if regs.LastWriteAddress != 0x0000 {
+		imgui.Text(fmt.Sprintf("last write %#02x to %#04x", regs.LastWriteValue, regs.LastWriteAddress))
 	} else {
 		imgui.Text("no writes yet")
 	}
@@ -92,7 +94,7 @@ func (win *winSuperchargerRegisters) draw() {
 	imgui.Spacing()
 
 	imgui.PushItemWidth(250.0)
-	delay := int32(r.Delay)
+	delay := int32(regs.Delay)
 	if imgui.SliderInt("Delay##delay", &delay, 1, 6) {
 		win.img.dbg.PushFunction(func() {
 			b := win.img.vcs.Mem.Cart.GetRegistersBus()
@@ -103,7 +105,7 @@ func (win *winSuperchargerRegisters) draw() {
 
 	imguiSeparator()
 
-	rw := r.RAMwrite
+	rw := regs.RAMwrite
 	imguiLabel("RAM Write")
 	if imgui.Checkbox("##ramwrite", &rw) {
 		win.img.dbg.PushFunction(func() {
@@ -114,7 +116,7 @@ func (win *winSuperchargerRegisters) draw() {
 
 	imgui.SameLine()
 
-	rp := r.ROMpower
+	rp := regs.ROMpower
 	imguiLabel("ROM Power")
 	if imgui.Checkbox("##rompower", &rp) {
 		win.img.dbg.PushFunction(func() {
@@ -128,7 +130,7 @@ func (win *winSuperchargerRegisters) draw() {
 
 	imguiSeparator()
 
-	banking := r.BankingMode
+	banking := regs.BankingMode
 
 	setBanking := func(v int) {
 		win.img.dbg.PushFunction(func() {

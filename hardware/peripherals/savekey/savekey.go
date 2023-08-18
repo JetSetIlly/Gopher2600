@@ -117,6 +117,9 @@ func (sk *SaveKey) Unplug() {
 // Snapshot implements the Peripheral interface.
 func (sk *SaveKey) Snapshot() ports.Peripheral {
 	n := *sk
+	n.EEPROM = sk.EEPROM.snapshot()
+	n.SDA = *sk.SDA.Snapshot()
+	n.SCL = *sk.SDA.Snapshot()
 	return &n
 }
 

@@ -37,7 +37,7 @@ type Ace struct {
 	yieldHook coprocessor.CartYieldHook
 
 	// armState is a copy of the ARM's state at the moment of the most recent
-	// Snapshot. it's used only suring a Plumb() operation
+	// Snapshot. it's used only during a Plumb() operation
 	armState *arm.ARMState
 }
 

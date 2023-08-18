@@ -56,7 +56,9 @@ func (win *winCoProcFaults) debuggerDraw() bool {
 		return false
 	}
 
-	if !win.img.lz.Cart.HasCoProcBus {
+	// do not open window if there is no coprocessor available
+	coproc := win.img.cache.VCS.Mem.Cart.GetCoProc()
+	if coproc == nil {
 		return false
 	}
 
@@ -64,7 +66,7 @@ func (win *winCoProcFaults) debuggerDraw() bool {
 	imgui.SetNextWindowSizeV(imgui.Vec2{520, 390}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{400, 300}, imgui.Vec2{551, 1000})
 
-	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcFaultsID)
+	title := fmt.Sprintf("%s %s", coproc.ProcessorID(), winCoProcFaultsID)
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		win.img.dbg.CoProcDev.BorrowFaults(func(flt faults.Faults) {
 			win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {

@@ -43,14 +43,6 @@ func (img *SdlImgui) Service() {
 		img.resetFonts--
 	}
 
-	// refresh lazy values
-	switch img.mode.Load().(govern.Mode) {
-	case govern.ModeDebugger:
-		img.lz.Refresh()
-	case govern.ModePlay:
-		img.lz.FastRefresh()
-	}
-
 	// poll for sdl event or timeout
 	img.polling.pumpedEvents[0] = img.polling.wait()
 
@@ -394,6 +386,13 @@ func (img *SdlImgui) Service() {
 }
 
 func (img *SdlImgui) renderFrame() {
+	img.dbg.PushFunction(func() {
+		img.cache.Update(img.vcs, img.dbg.Rewind, img.dbg)
+	})
+	if !img.cache.Resolve() {
+		return
+	}
+
 	// start of a new frame
 	img.plt.newFrame()
 	imgui.NewFrame()

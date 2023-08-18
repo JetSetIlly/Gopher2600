@@ -25,7 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/gui/crt"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
-	"github.com/jetsetilly/gopher2600/gui/sdlimgui/lazyvalues"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/caching"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -71,9 +71,8 @@ type SdlImgui struct {
 	vcs       *hardware.VCS
 	userinput chan userinput.Event
 
-	// lazy value system allows safe access to the debugger/emulation from the
-	// GUI thread
-	lz *lazyvalues.LazyValues
+	// chache should be used
+	cache caching.Cache
 
 	// terminal interface to the debugger. this is distinct from the
 	// winTerminal type.
@@ -134,6 +133,7 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 		vcs:                 dbg.VCS(),
 		userinput:           dbg.UserInput(),
 		postRenderFunctions: make(chan func(), 100),
+		cache:               caching.NewCache(),
 	}
 
 	// create imgui context
@@ -169,7 +169,6 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 
-	img.lz = lazyvalues.NewLazyValues(img.dbg)
 	img.screen = newScreen(img)
 	img.term = newTerm()
 

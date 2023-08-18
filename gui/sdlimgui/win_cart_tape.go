@@ -20,6 +20,7 @@ import (
 	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 const winCartTapeID = "Cassette Tape"
@@ -50,14 +51,20 @@ func (win *winCartTape) debuggerDraw() bool {
 		return false
 	}
 
-	if !win.img.lz.Cart.HasTapeBus {
+	// do not open window if there is no cartridge tape bus available
+	bus := win.img.cache.VCS.Mem.Cart.GetTapeBus()
+	if bus == nil {
+		return false
+	}
+	ok, tape := bus.GetTapeState()
+	if !ok {
 		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{539, 168}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
-		win.draw()
+		win.draw(tape)
 	}
 
 	win.debuggerGeom.update()
@@ -66,10 +73,10 @@ func (win *winCartTape) debuggerDraw() bool {
 	return true
 }
 
-func (win *winCartTape) draw() {
+func (win *winCartTape) draw(tape mapper.CartTapeState) {
 	// counter information
 	imguiLabel("Counter")
-	counter := fmt.Sprintf("%8d", win.img.lz.Cart.TapeState.Counter)
+	counter := fmt.Sprintf("%8d", tape.Counter)
 	if imguiDecimalInput("##counter", 8, &counter) {
 		win.img.dbg.PushFunction(func() {
 			c, err := strconv.ParseInt(counter, 10, 64)
@@ -81,14 +88,14 @@ func (win *winCartTape) draw() {
 	imgui.SameLine()
 	imgui.Text("/")
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("%8d", win.img.lz.Cart.TapeState.MaxCounter))
+	imgui.Text(fmt.Sprintf("%8d", tape.MaxCounter))
 
 	// time information
-	imgui.Text(fmt.Sprintf("%.02fs", win.img.lz.Cart.TapeState.Time))
+	imgui.Text(fmt.Sprintf("%.02fs", tape.Time))
 	imgui.SameLine()
 	imgui.Text("/")
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("%.02fs", win.img.lz.Cart.TapeState.MaxTime))
+	imgui.Text(fmt.Sprintf("%.02fs", tape.MaxTime))
 
 	// oscilloscope
 	imgui.Spacing()
@@ -96,14 +103,14 @@ func (win *winCartTape) draw() {
 	w -= (imgui.CurrentStyle().FramePadding().X * 2) + (imgui.CurrentStyle().ItemInnerSpacing().X * 2)
 	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.AudioOscBg)
 	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.AudioOscLine)
-	imgui.PlotLinesV("", win.img.lz.Cart.TapeState.Data, 0, "", -1.0, 1.0,
+	imgui.PlotLinesV("", tape.Data, 0, "", -1.0, 1.0,
 		imgui.Vec2{X: w, Y: imgui.FrameHeight() * 2})
 	imgui.PopStyleColorV(2)
 	imgui.Spacing()
 
 	// tape slider
-	c := int32(win.img.lz.Cart.TapeState.Counter)
-	if imgui.SliderIntV("##counterslider", &c, 0, int32(win.img.lz.Cart.TapeState.MaxCounter), "", imgui.SliderFlagsNone) {
+	c := int32(tape.Counter)
+	if imgui.SliderIntV("##counterslider", &c, 0, int32(tape.MaxCounter), "", imgui.SliderFlagsNone) {
 		win.img.dbg.PushFunction(func() {
 			win.img.vcs.Mem.Cart.GetTapeBus().SetTapeCounter(int(c))
 		})

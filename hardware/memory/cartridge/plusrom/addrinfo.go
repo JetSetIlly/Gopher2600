@@ -31,8 +31,8 @@ func (ai *AddrInfo) String() string {
 	return fmt.Sprintf("http://%s/%s", ai.Host, ai.Path)
 }
 
-// CopyAddrInfo returns a new instance of AddrInfo.
-func (cart *PlusROM) CopyAddrInfo() AddrInfo {
+// GetAddrInfo returns a new instance of AddrInfo.
+func (cart *PlusROM) GetAddrInfo() AddrInfo {
 	return AddrInfo{
 		Host: cart.net.ai.Host,
 		Path: cart.net.ai.Path,

@@ -21,6 +21,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -571,7 +572,7 @@ currently enabled.`)
 func (win *winPrefs) drawARMTab() {
 	imgui.Spacing()
 
-	if !win.img.lz.Cart.HasCoProcBus {
+	if win.img.cache.VCS.Mem.Cart.GetCoProcBus() != nil {
 		imgui.Text("Current ROM does not have an ARM coprocessor")
 		imguiSeparator()
 	}
@@ -656,7 +657,7 @@ Illegal accesses will be logged even if program does not abort.`)
 func (win *winPrefs) drawPlusROMTab() {
 	imgui.Spacing()
 
-	if !win.img.lz.Cart.IsPlusROM {
+	if _, ok := win.img.cache.VCS.Mem.Cart.GetContainer().(*plusrom.PlusROM); !ok {
 		imgui.Text("Current ROM is not a PlusROM")
 		imguiSeparator()
 	}

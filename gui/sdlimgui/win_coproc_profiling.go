@@ -129,7 +129,9 @@ func (win *winCoProcProfiling) debuggerDraw() bool {
 		return false
 	}
 
-	if !win.img.lz.Cart.HasCoProcBus {
+	// do not open window if there is no coprocessor available
+	coproc := win.img.cache.VCS.Mem.Cart.GetCoProc()
+	if coproc == nil {
 		return false
 	}
 
@@ -137,9 +139,9 @@ func (win *winCoProcProfiling) debuggerDraw() bool {
 	imgui.SetNextWindowSizeV(imgui.Vec2{641, 517}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{800, 1000})
 
-	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcProfilingID)
+	title := fmt.Sprintf("%s %s", coproc.ProcessorID(), winCoProcProfilingID)
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
-		win.draw()
+		win.draw(coproc)
 	}
 
 	win.debuggerGeom.update()
@@ -148,7 +150,7 @@ func (win *winCoProcProfiling) debuggerDraw() bool {
 	return true
 }
 
-func (win *winCoProcProfiling) draw() {
+func (win *winCoProcProfiling) draw(coproc coprocessor.CartCoProc) {
 	// safely iterate over top execution information
 	win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 		if src == nil {
@@ -308,12 +310,12 @@ func (win *winCoProcProfiling) draw() {
 				imgui.SameLineV(0, 15)
 			}
 
-			win.drawFrameStats()
+			win.drawFrameStats(coproc)
 		})
 	})
 }
 
-func (win *winCoProcProfiling) drawFrameStats() {
+func (win *winCoProcProfiling) drawFrameStats(coproc coprocessor.CartCoProc) {
 	accumulate := func(s coprocessor.CoProcSynchronisation) int {
 		switch s {
 		case coprocessor.CoProcIdle:
@@ -373,15 +375,15 @@ func (win *winCoProcProfiling) drawFrameStats() {
 	}
 
 	if clockCount > 0 {
-		imgui.Text(fmt.Sprintf("%s activity in most recent %s:", win.img.lz.Cart.CoProcID, focus))
+		imgui.Text(fmt.Sprintf("%s activity in most recent %s:", coproc.ProcessorID(), focus))
 		imgui.SameLine()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 		imgui.Text(fmt.Sprintf("%.02f%%", clockCount/focusClocks*100))
 		imgui.PopStyleColor()
 	} else if win.focus == profiling.FocusAll {
-		imgui.Text(fmt.Sprintf("No %s activity in the most recent frame", win.img.lz.Cart.CoProcID))
+		imgui.Text(fmt.Sprintf("No %s activity in the most recent frame", coproc.ProcessorID()))
 	} else {
-		imgui.Text(fmt.Sprintf("No %s activity during %s", win.img.lz.Cart.CoProcID, focus))
+		imgui.Text(fmt.Sprintf("No %s activity during %s", coproc.ProcessorID(), focus))
 	}
 }
 

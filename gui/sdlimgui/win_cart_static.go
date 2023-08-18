@@ -21,6 +21,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 const winCartStaticID = "Static Areas"
@@ -49,17 +50,20 @@ func (win *winCartStatic) debuggerDraw() bool {
 		return false
 	}
 
-	if !win.img.lz.Cart.HasStaticBus {
+	// do not open window if there is no cartridge static bus available
+	bus := win.img.cache.VCS.Mem.Cart.GetStaticBus()
+	if bus == nil {
 		return false
 	}
+	static := bus.GetStatic()
 
 	imgui.SetNextWindowPosV(imgui.Vec2{117, 248}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{468, 552}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{468, 271}, imgui.Vec2{529, 1000})
 
-	title := fmt.Sprintf("%s %s", win.img.lz.Cart.ID, winCartStaticID)
+	title := fmt.Sprintf("%s %s", win.img.cache.VCS.Mem.Cart.ID(), winCartStaticID)
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
-		win.draw()
+		win.draw(static)
 	}
 
 	win.debuggerGeom.update()
@@ -68,10 +72,10 @@ func (win *winCartStatic) debuggerDraw() bool {
 	return true
 }
 
-func (win *winCartStatic) draw() {
+func (win *winCartStatic) draw(static mapper.CartStatic) {
 	// get comparison data. assuming that there is such a thing and that it's
 	// safe to get StaticData from.
-	compStatic := win.img.lz.Rewind.Comparison.State.Mem.Cart.GetStaticBus().GetStatic()
+	compStatic := win.img.cache.Rewind.Comparison.State.Mem.Cart.GetStaticBus().GetStatic()
 
 	// make a note of cell padding value. this changes for the duration of
 	// drawByteGrid() but we want the default value for when we call
@@ -80,7 +84,7 @@ func (win *winCartStatic) draw() {
 	cellPadding := imgui.CurrentStyle().CellPadding()
 
 	imgui.BeginTabBar("")
-	for _, seg := range win.img.lz.Cart.Static.Segments() {
+	for _, seg := range static.Segments() {
 		// skip any segments that are empty for whatever reason
 		if seg.Origin == seg.Memtop {
 			continue
@@ -105,7 +109,7 @@ func (win *winCartStatic) draw() {
 
 			imgui.BeginChildV("cartstatic", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
 
-			currStatic := win.img.lz.Cart.Static
+			currStatic := static
 			currData, ok := currStatic.Reference(seg.Name)
 
 			if ok {

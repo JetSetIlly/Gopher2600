@@ -52,13 +52,15 @@ func (win *winPlusROMNetwork) debuggerDraw() bool {
 		return false
 	}
 
-	if !win.img.lz.Cart.IsPlusROM {
+	// do not open window if this is not a plusrom cartridge
+	plus, ok := win.img.cache.VCS.Mem.Cart.GetContainer().(*plusrom.PlusROM)
+	if !ok {
 		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{659, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
-		win.draw()
+		win.draw(plus)
 	}
 
 	win.debuggerGeom.update()
@@ -67,10 +69,11 @@ func (win *winPlusROMNetwork) debuggerDraw() bool {
 	return true
 }
 
-func (win *winPlusROMNetwork) draw() {
-	host := win.img.lz.Cart.PlusROMAddrInfo.Host
-	path := win.img.lz.Cart.PlusROMAddrInfo.Path
-	send := win.img.lz.Cart.PlusROMSendState
+func (win *winPlusROMNetwork) draw(plus *plusrom.PlusROM) {
+	addrinfo := plus.GetAddrInfo()
+	host := addrinfo.Host
+	path := addrinfo.Path
+	send := plus.GetSendState()
 
 	imgui.AlignTextToFramePadding()
 	imgui.Text("Hostname")

@@ -35,7 +35,7 @@ const activityLength = 64
 //	 }
 type Trace struct {
 	// a recent history of the i2c trace. wraps around at activityLength
-	activity []float32
+	Activity []float32
 
 	// ptr is the next activity index to be written to
 	ptr int
@@ -58,12 +58,19 @@ const (
 
 func NewTrace() Trace {
 	tr := Trace{
-		activity: make([]float32, activityLength),
+		Activity: make([]float32, activityLength),
 	}
-	for i := range tr.activity {
-		tr.activity[i] = TraceHi
+	for i := range tr.Activity {
+		tr.Activity[i] = TraceHi
 	}
 	return tr
+}
+
+func (tr *Trace) Snapshot() *Trace {
+	cp := *tr
+	cp.Activity = make([]float32, len(tr.Activity))
+	copy(cp.Activity, tr.Activity)
+	return &cp
 }
 
 func (tr *Trace) Changed() bool {
@@ -90,22 +97,12 @@ func (tr *Trace) Tick(v bool) {
 	tr.from = tr.to
 	tr.to = v
 	if v {
-		tr.activity[tr.ptr] = TraceHi
+		tr.Activity[tr.ptr] = TraceHi
 	} else {
-		tr.activity[tr.ptr] = TraceLo
+		tr.Activity[tr.ptr] = TraceLo
 	}
 	tr.ptr++
-	if tr.ptr >= len(tr.activity) {
+	if tr.ptr >= len(tr.Activity) {
 		tr.ptr = 0
 	}
-}
-
-// Copy makes a copy of the activity trace.
-func (tr *Trace) Copy() []float32 {
-	c := make([]float32, len(tr.activity))
-
-	copy(c, tr.activity[tr.ptr:])
-	copy(c[len(tr.activity)-tr.ptr:], tr.activity[:tr.ptr])
-
-	return c
 }

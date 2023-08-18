@@ -64,7 +64,12 @@ func (win *winTimer) debuggerDraw() bool {
 }
 
 func (win *winTimer) draw() {
-	if imgui.BeginComboV("##divider", win.img.lz.Timer.Divider.String(), imgui.ComboFlagsNone) {
+	Divider := win.img.cache.VCS.RIOT.Timer.PeekField("divider").(timer.Divider)
+	INTIM := win.img.cache.VCS.RIOT.Timer.PeekField("intim").(uint8)
+	TicksRemaining := win.img.cache.VCS.RIOT.Timer.PeekField("ticksRemaining").(int)
+	TIMINT := win.img.cache.VCS.RIOT.Timer.PeekField("timint").(uint8)
+
+	if imgui.BeginComboV("##divider", Divider.String(), imgui.ComboFlagsNone) {
 		for _, s := range dividerList {
 			if imgui.Selectable(s) {
 				var div timer.Divider
@@ -89,7 +94,7 @@ func (win *winTimer) draw() {
 		imgui.EndCombo()
 	}
 
-	intim := fmt.Sprintf("%02x", win.img.lz.Timer.INTIM)
+	intim := fmt.Sprintf("%02x", INTIM)
 	imguiLabel("INTIM")
 	if imguiHexInput("##intim", 2, &intim) {
 		if v, err := strconv.ParseUint(intim, 16, 8); err == nil {
@@ -98,7 +103,7 @@ func (win *winTimer) draw() {
 	}
 
 	imgui.SameLine()
-	remaining := fmt.Sprintf("%04x", win.img.lz.Timer.TicksRemaining)
+	remaining := fmt.Sprintf("%04x", TicksRemaining)
 	imguiLabel("Ticks")
 	if imguiHexInput("##remaining", 4, &remaining) {
 		if v, err := strconv.ParseUint(remaining, 16, 16); err == nil {
@@ -107,7 +112,7 @@ func (win *winTimer) draw() {
 	}
 
 	imguiLabel("TIMINT")
-	drawRegister("##TIMINT", win.img.lz.Timer.TIMINT, timer.MaskTIMINT, win.img.cols.timerBit,
+	drawRegister("##TIMINT", TIMINT, timer.MaskTIMINT, win.img.cols.timerBit,
 		func(v uint8) {
 			win.img.dbg.PushFunction(func() {
 				win.img.vcs.RIOT.Timer.PokeField("timint", v)

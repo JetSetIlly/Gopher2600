@@ -353,7 +353,7 @@ func (win *winSelectROM) draw() {
 			var s string
 
 			// load or reload button
-			if win.selectedFile == win.img.lz.Cart.Filename {
+			if win.selectedFile == win.img.cache.VCS.Mem.Cart.Filename {
 				s = fmt.Sprintf("Reload %s", filepath.Base(win.selectedFile))
 			} else {
 				s = fmt.Sprintf("Load %s", filepath.Base(win.selectedFile))

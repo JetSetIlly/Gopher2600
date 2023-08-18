@@ -73,7 +73,9 @@ func (win *winCoProcGlobals) debuggerDraw() bool {
 		return false
 	}
 
-	if !win.img.lz.Cart.HasCoProcBus {
+	// do not open window if there is no coprocessor available
+	coproc := win.img.cache.VCS.Mem.Cart.GetCoProc()
+	if coproc == nil {
 		return false
 	}
 
@@ -81,7 +83,7 @@ func (win *winCoProcGlobals) debuggerDraw() bool {
 	imgui.SetNextWindowSizeV(imgui.Vec2{520, 390}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{400, 300}, imgui.Vec2{700, 1000})
 
-	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcGlobalsID)
+	title := fmt.Sprintf("%s %s", coproc.ProcessorID(), winCoProcGlobalsID)
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		win.draw()
 	}
@@ -129,12 +131,6 @@ func (win *winCoProcGlobals) drawFileSelection(src *dwarf.Source) {
 }
 
 func (win *winCoProcGlobals) draw() {
-
-	if win.img.lz.Cart.Static == nil {
-		imgui.Text("No cartridge static memory available")
-		return
-	}
-
 	win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 		if src == nil {
 			imgui.Text("No source files available")
@@ -500,7 +496,7 @@ func (win *winCoProcGlobals) drawVariable(src *dwarf.Source, varb *dwarf.SourceV
 // all entries in the current view are saved, including closed nodes.
 func (win *winCoProcGlobals) saveToCSV(src *dwarf.Source) {
 	// open unique file
-	fn := unique.Filename("globals", win.img.lz.Cart.Shortname)
+	fn := unique.Filename("globals", win.img.cache.VCS.Mem.Cart.ShortName)
 	fn = fmt.Sprintf("%s.csv", fn)
 	f, err := os.Create(fn)
 	if err != nil {

@@ -19,18 +19,19 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/jetsetilly/gopher2600/hardware/tia/video"
-
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 )
 
 func (win *winTIA) drawPlayfield() {
 	imgui.BeginChildV("##playfield", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.footerHeight}, false, 0)
 	defer imgui.EndChild()
 
-	lz := win.img.lz.Playfield
-	pf := win.img.lz.Playfield.Pf
-	bs := win.img.lz.Ball.Bs
+	playfield := win.img.cache.VCS.TIA.Video.Playfield
+	player0 := win.img.cache.VCS.TIA.Video.Player0
+	player1 := win.img.cache.VCS.TIA.Video.Player1
+	realPlayfield := win.img.vcs.TIA.Video.Playfield
+	realBall := win.img.vcs.TIA.Video.Ball
 
 	imgui.Spacing()
 
@@ -39,23 +40,23 @@ func (win *winTIA) drawPlayfield() {
 	imgui.BeginGroup()
 
 	imguiLabel("Foreground")
-	fgCol := lz.ForegroundColor
+	fgCol := playfield.ForegroundColor
 	if win.img.imguiSwatch(fgCol, 0.75) {
 		win.popupPalette.request(&fgCol, func() {
 			win.img.dbg.PushFunction(func() {
-				pf.ForegroundColor = fgCol
-				bs.Color = fgCol
+				realPlayfield.ForegroundColor = fgCol
+				realBall.Color = fgCol
 			})
 		})
 	}
 
 	// background color indicator. when clicked popup palette is requested
 	imguiLabel("Background")
-	bgCol := lz.BackgroundColor
+	bgCol := playfield.BackgroundColor
 	if win.img.imguiSwatch(bgCol, 0.75) {
 		win.popupPalette.request(&bgCol, func() {
 			win.img.dbg.PushFunction(func() {
-				pf.BackgroundColor = bgCol
+				realPlayfield.BackgroundColor = bgCol
 			})
 		})
 	}
@@ -67,39 +68,39 @@ func (win *winTIA) drawPlayfield() {
 	// playfield control bits
 	imgui.BeginGroup()
 	imguiLabel("Reflected")
-	ref := lz.Reflected
+	ref := playfield.Reflected
 	if imgui.Checkbox("##reflected", &ref) {
 		win.img.dbg.PushFunction(func() {
-			pf.Reflected = ref
+			realPlayfield.Reflected = ref
 		})
 	}
 	imgui.SameLine()
 	imguiLabel("Scoremode")
-	sm := lz.Scoremode
+	sm := playfield.Scoremode
 	if imgui.Checkbox("##scoremode", &sm) {
 		win.img.dbg.PushFunction(func() {
-			pf.Scoremode = sm
+			realPlayfield.Scoremode = sm
 		})
 	}
 	imgui.SameLine()
 	imguiLabel("Priority")
-	pri := lz.Priority
+	pri := playfield.Priority
 	if imgui.Checkbox("##priority", &pri) {
 		win.img.dbg.PushFunction(func() {
-			pf.Priority = pri
+			realPlayfield.Priority = pri
 		})
 	}
 
 	imgui.SameLine()
 	imguiLabel("CTRLPF")
 	imgui.SameLine()
-	ctrlpf := fmt.Sprintf("%02x", lz.Ctrlpf)
+	ctrlpf := fmt.Sprintf("%02x", playfield.Ctrlpf)
 	if imguiHexInput("##ctrlpf", 2, &ctrlpf) {
 		if v, err := strconv.ParseUint(ctrlpf, 16, 8); err == nil {
 			win.img.dbg.PushFunction(func() {
 				// update ball copy of CTRLPF too in addition to the playfield copy
-				pf.SetCTRLPF(uint8(v))
-				bs.SetCTRLPF(uint8(v))
+				realPlayfield.SetCTRLPF(uint8(v))
+				realBall.SetCTRLPF(uint8(v))
 			})
 		}
 	}
@@ -116,19 +117,19 @@ func (win *winTIA) drawPlayfield() {
 	imguiLabel("PF0")
 	imgui.SameLine()
 	seq := newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
-	pf0d := lz.PF0
+	pf0d := playfield.PF0
 	for i := 0; i < 4; i++ {
 		var col uint8
 		if (pf0d<<i)&0x80 == 0x80 {
-			col = lz.ForegroundColor
+			col = playfield.ForegroundColor
 		} else {
-			col = lz.BackgroundColor
+			col = playfield.BackgroundColor
 			seq.nextItemDepressed = true
 		}
 		if seq.rectFill(palette[col]) {
 			pf0d ^= 0x80 >> i
 			win.img.dbg.PushFunction(func() {
-				pf.SetPF0(pf0d)
+				realPlayfield.SetPF0(pf0d)
 			})
 		}
 		seq.sameLine()
@@ -139,19 +140,19 @@ func (win *winTIA) drawPlayfield() {
 	imguiLabel("PF1")
 	imgui.SameLine()
 	seq.start()
-	pf1d := lz.PF1
+	pf1d := playfield.PF1
 	for i := 0; i < 8; i++ {
 		var col uint8
 		if (pf1d<<i)&0x80 == 0x80 {
-			col = lz.ForegroundColor
+			col = playfield.ForegroundColor
 		} else {
-			col = lz.BackgroundColor
+			col = playfield.BackgroundColor
 			seq.nextItemDepressed = true
 		}
 		if seq.rectFill(palette[col]) {
 			pf1d ^= 0x80 >> i
 			win.img.dbg.PushFunction(func() {
-				pf.SetPF1(pf1d)
+				realPlayfield.SetPF1(pf1d)
 			})
 		}
 		seq.sameLine()
@@ -162,19 +163,19 @@ func (win *winTIA) drawPlayfield() {
 	imguiLabel("PF2")
 	imgui.SameLine()
 	seq.start()
-	pf2d := lz.PF2
+	pf2d := playfield.PF2
 	for i := 0; i < 8; i++ {
 		var col uint8
 		if (pf2d<<i)&0x80 == 0x80 {
-			col = lz.ForegroundColor
+			col = playfield.ForegroundColor
 		} else {
-			col = lz.BackgroundColor
+			col = playfield.BackgroundColor
 			seq.nextItemDepressed = true
 		}
 		if seq.rectFill(palette[col]) {
 			pf2d ^= 0x80 >> i
 			win.img.dbg.PushFunction(func() {
-				pf.SetPF2(pf2d)
+				realPlayfield.SetPF2(pf2d)
 			})
 		}
 		seq.sameLine()
@@ -191,32 +192,32 @@ func (win *winTIA) drawPlayfield() {
 	seq = newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight() * 0.5, Y: imgui.FrameHeight()}, false)
 
 	// first half of the playfield
-	for _, v := range lz.LeftData {
+	for _, v := range *playfield.LeftData {
 		var col uint8
 		if v {
-			if lz.Scoremode {
-				col = win.img.lz.Player0.Color
+			if playfield.Scoremode {
+				col = player0.Color
 			} else {
-				col = lz.ForegroundColor
+				col = playfield.ForegroundColor
 			}
 		} else {
-			col = lz.BackgroundColor
+			col = playfield.BackgroundColor
 		}
 		seq.rectFill(palette[col])
 		seq.sameLine()
 	}
 
 	// second half of the playfield
-	for _, v := range lz.RightData {
+	for _, v := range *playfield.RightData {
 		var col uint8
 		if v {
-			if lz.Scoremode {
-				col = win.img.lz.Player1.Color
+			if playfield.Scoremode {
+				col = player1.Color
 			} else {
-				col = lz.ForegroundColor
+				col = playfield.ForegroundColor
 			}
 		} else {
-			col = lz.BackgroundColor
+			col = playfield.BackgroundColor
 		}
 		seq.rectFill(palette[col])
 		seq.sameLine()
@@ -224,10 +225,10 @@ func (win *winTIA) drawPlayfield() {
 	seq.end()
 
 	// playfield index pointer
-	if lz.Region != video.RegionOffScreen {
-		idx := lz.Idx
-		if lz.Region == video.RegionRight {
-			idx += len(lz.LeftData)
+	if playfield.Region != video.RegionOffScreen {
+		idx := playfield.Idx
+		if playfield.Region == video.RegionRight {
+			idx += len(*playfield.LeftData)
 		}
 
 		p1 := imgui.Vec2{
@@ -240,7 +241,7 @@ func (win *winTIA) drawPlayfield() {
 	}
 	imgui.EndGroup()
 
-	if lz.Scoremode {
+	if playfield.Scoremode {
 		imgui.Spacing()
 		imgui.Spacing()
 		imgui.Text("(the scoremode flag affects the color of the playfield)")

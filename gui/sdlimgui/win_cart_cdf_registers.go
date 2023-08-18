@@ -50,15 +50,19 @@ func (win *winCDFRegisters) debuggerDraw() bool {
 		return false
 	}
 
-	// do not open window if there is no valid cartridge debug bus available
-	_, ok := win.img.lz.Cart.Registers.(cdf.Registers)
-	if !win.img.lz.Cart.HasRegistersBus || !ok {
+	// do not open window if there is no cartridge registers bus available
+	bus := win.img.cache.VCS.Mem.Cart.GetRegistersBus()
+	if bus == nil {
+		return false
+	}
+	regs, ok := bus.GetRegisters().(cdf.Registers)
+	if !ok {
 		return false
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{610, 303}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
-		win.draw()
+		win.draw(regs)
 	}
 
 	win.debuggerGeom.update()
@@ -67,23 +71,21 @@ func (win *winCDFRegisters) debuggerDraw() bool {
 	return true
 }
 
-func (win *winCDFRegisters) draw() {
-	r := win.img.lz.Cart.Registers.(cdf.Registers)
-
+func (win *winCDFRegisters) draw(regs cdf.Registers) {
 	imgui.Text("Datastream")
 	imgui.Spacing()
 
 	imgui.BeginGroup()
 	imgui.Text("Pointers")
 	imgui.Spacing()
-	for i := 0; i < len(r.Datastream); i++ {
+	for i := 0; i < len(regs.Datastream); i++ {
 		if i%2 != 0 {
 			imgui.SameLine()
 		}
 		f := i
 		imguiLabel(fmt.Sprintf("%2d.", f))
 		label := fmt.Sprintf("##%dpointer", i)
-		data := fmt.Sprintf("%08x", r.Datastream[i].Pointer)
+		data := fmt.Sprintf("%08x", regs.Datastream[i].Pointer)
 		if imguiHexInput(label, 8, &data) {
 			win.img.dbg.PushFunction(func() {
 				b := win.img.vcs.Mem.Cart.GetRegistersBus()
@@ -98,14 +100,14 @@ func (win *winCDFRegisters) draw() {
 	imgui.BeginGroup()
 	imgui.Text("Increments")
 	imgui.Spacing()
-	for i := 0; i < len(r.Datastream); i++ {
+	for i := 0; i < len(regs.Datastream); i++ {
 		if i%2 != 0 {
 			imgui.SameLine()
 		}
 		f := i
 		imguiLabel(fmt.Sprintf("%2d.", f))
 		label := fmt.Sprintf("##m%dincrement", i)
-		inc := fmt.Sprintf("%08x", r.Datastream[i].Increment)
+		inc := fmt.Sprintf("%08x", regs.Datastream[i].Increment)
 		if imguiHexInput(label, 8, &inc) {
 			win.img.dbg.PushFunction(func() {
 				b := win.img.vcs.Mem.Cart.GetRegistersBus()
@@ -118,7 +120,7 @@ func (win *winCDFRegisters) draw() {
 	imguiSeparator()
 
 	imguiLabel("Fast Fetch")
-	ff := r.FastFetch
+	ff := regs.FastFetch
 	if imgui.Checkbox("##fastfetch", &ff) {
 		win.img.dbg.PushFunction(func() {
 			b := win.img.vcs.Mem.Cart.GetRegistersBus()
@@ -129,7 +131,7 @@ func (win *winCDFRegisters) draw() {
 	imgui.SameLineV(0, 20)
 
 	imguiLabel("Sample Mode")
-	sm := r.SampleMode
+	sm := regs.SampleMode
 	if imgui.Checkbox("##samplemode", &sm) {
 		win.img.dbg.PushFunction(func() {
 			b := win.img.vcs.Mem.Cart.GetRegistersBus()
@@ -142,13 +144,13 @@ func (win *winCDFRegisters) draw() {
 	// loop over music fetchers
 	imgui.Text("Music Fetchers")
 	imgui.Spacing()
-	for i := 0; i < len(r.MusicFetcher); i++ {
+	for i := 0; i < len(regs.MusicFetcher); i++ {
 		f := i
 
 		imguiLabel(fmt.Sprintf("%d.", f))
 
 		label := fmt.Sprintf("##m%dwaveform", i)
-		waveform := fmt.Sprintf("%08x", r.MusicFetcher[i].Waveform)
+		waveform := fmt.Sprintf("%08x", regs.MusicFetcher[i].Waveform)
 		imguiLabel("Waveform")
 		if imguiHexInput(label, 8, &waveform) {
 			win.img.dbg.PushFunction(func() {
@@ -159,7 +161,7 @@ func (win *winCDFRegisters) draw() {
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##m%dfreq", i)
-		freq := fmt.Sprintf("%08x", r.MusicFetcher[i].Freq)
+		freq := fmt.Sprintf("%08x", regs.MusicFetcher[i].Freq)
 		imguiLabel("Freq")
 		if imguiHexInput(label, 8, &freq) {
 			win.img.dbg.PushFunction(func() {
@@ -170,7 +172,7 @@ func (win *winCDFRegisters) draw() {
 
 		imgui.SameLine()
 		label = fmt.Sprintf("##m%dcount", i)
-		count := fmt.Sprintf("%08x", r.MusicFetcher[i].Count)
+		count := fmt.Sprintf("%08x", regs.MusicFetcher[i].Count)
 		imguiLabel("Count")
 		if imguiHexInput(label, 8, &count) {
 			win.img.dbg.PushFunction(func() {

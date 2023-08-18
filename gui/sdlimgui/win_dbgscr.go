@@ -26,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -301,7 +302,7 @@ func (win *winDbgScr) draw() {
 				if win.img.dbg.State() == govern.Paused {
 					if imgui.IsMouseDown(0) {
 						coords := coords.TelevisionCoords{
-							Frame:    win.img.lz.TV.Coords.Frame,
+							Frame:    win.img.cache.TV.GetCoords().Frame,
 							Scanline: win.mouse.tv.Scanline,
 							Clock:    win.mouse.tv.Clock,
 						}
@@ -392,13 +393,10 @@ func (win *winDbgScr) draw() {
 
 func (win *winDbgScr) drawSpecCombo() {
 	imgui.PushItemWidth(win.specComboDim.X + imgui.FrameHeight())
-	if imgui.BeginComboV("##spec", win.img.lz.TV.FrameInfo.Spec.ID, imgui.ComboFlagsNone) {
+	if imgui.BeginComboV("##spec", win.img.cache.TV.GetFrameInfo().Spec.ID, imgui.ComboFlagsNone) {
 		for _, s := range specification.SpecList {
 			if imgui.Selectable(s) {
 				win.img.term.pushCommand(fmt.Sprintf("TV SPEC %s", s))
-
-				// the CDF streams window uses the TV colours for the display
-				win.img.wm.debuggerWindows[winCDFStreamsID].(*winCDFStreams).updateStreams()
 			}
 		}
 		imgui.EndCombo()
@@ -423,7 +421,7 @@ func (win *winDbgScr) drawCoordsLine() {
 
 		// show geometry tooltip if this isn't frame zero
 		frameInfo := win.img.screen.crit.frameInfo
-		if frameInfo.FrameNum != 0 || win.img.lz.TV.Coords.Frame != 0 {
+		if frameInfo.FrameNum != 0 || win.img.cache.TV.GetCoords().Frame != 0 {
 			win.img.imguiTooltip(func() {
 				frameInfo := win.img.screen.crit.frameInfo
 				flgs := imgui.TableFlagsSizingFixedFit
@@ -466,17 +464,19 @@ func (win *winDbgScr) drawCoordsLine() {
 			}, true)
 		}
 
-		imgui.TableNextColumn()
-		imgui.Text(fmt.Sprintf("Frame: %d", win.img.lz.TV.Coords.Frame))
+		coords := win.img.cache.TV.GetCoords()
 
 		imgui.TableNextColumn()
-		imgui.Text(fmt.Sprintf("Scanline: %d", win.img.lz.TV.Coords.Scanline))
+		imgui.Text(fmt.Sprintf("Frame: %d", coords.Frame))
 
 		imgui.TableNextColumn()
-		imgui.Text(fmt.Sprintf("Clock: %d", win.img.lz.TV.Coords.Clock))
+		imgui.Text(fmt.Sprintf("Scanline: %d", coords.Scanline))
 
 		imgui.TableNextColumn()
-		signal := fmt.Sprintf("%s", win.img.lz.TV.LastSignal.String())
+		imgui.Text(fmt.Sprintf("Clock: %d", coords.Clock))
+
+		imgui.TableNextColumn()
+		signal := fmt.Sprintf("%s", win.img.cache.TV.GetLastSignal().String())
 		if !win.scr.crit.frameInfo.VSync {
 			signal = fmt.Sprintf("%sUNSYNCED", signal)
 		}
@@ -487,13 +487,14 @@ func (win *winDbgScr) drawCoordsLine() {
 }
 
 func (win *winDbgScr) drawOverlayCombo() {
+	coproc := win.img.cache.VCS.Mem.Cart.GetCoProc()
 	imgui.PushItemWidth(win.overlayComboDim.X + imgui.FrameHeight())
 
 	// change coprocessor text to CoProcID if a coprocessor is present
 	v := win.img.screen.crit.overlay
 	if v == reflection.OverlayLabels[reflection.OverlayCoproc] {
-		if win.img.lz.Cart.HasCoProcBus {
-			v = win.img.lz.Cart.CoProcID
+		if coproc != nil {
+			v = coproc.ProcessorID()
 		} else {
 			// it's possible for the coprocessor overlay to be selected and
 			// then a different ROM loaded that has no coprocessor. in this
@@ -511,10 +512,10 @@ func (win *winDbgScr) drawOverlayCombo() {
 					win.img.screen.crit.overlay = s
 					win.img.screen.plotOverlay()
 				}
-			} else if win.img.lz.Cart.HasCoProcBus {
+			} else if coproc != nil {
 				// if ROM has a coprocessor change the option label to the
 				// appropriate coprocessor ID
-				if imgui.Selectable(win.img.lz.Cart.CoProcID) {
+				if imgui.Selectable(coproc.ProcessorID()) {
 					// we still store the "Coprocessor" string and not the ID
 					// string. this way we don't need any fancy conditions
 					// elsewhere
@@ -564,8 +565,13 @@ func (win *winDbgScr) drawOverlayComboTooltip() {
 		}, true)
 	case reflection.OverlayLabels[reflection.OverlayCoproc]:
 		win.img.imguiTooltip(func() {
-			key := fmt.Sprintf("parallel %s", win.img.lz.Cart.CoProcID)
-			imguiColorLabelSimple(key, win.img.cols.reflectionColors[reflection.CoProcActive])
+			coproc := win.img.cache.VCS.Mem.Cart.GetCoProc()
+			if coproc == nil {
+				imgui.Text("no coprocessor")
+			} else {
+				key := fmt.Sprintf("parallel %s", coproc.ProcessorID())
+				imguiColorLabelSimple(key, win.img.cols.reflectionColors[reflection.CoProcActive])
+			}
 		}, true)
 	}
 }
@@ -633,7 +639,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 
 		// instruction information
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
-		if win.img.lz.Cart.NumBanks > 1 {
+		if win.img.cache.VCS.Mem.Cart.NumBanks() > 1 {
 			imgui.Text(fmt.Sprintf("%s [bank %s]", e.Address, ref.Bank))
 		} else {
 			imgui.Text(e.Address)
@@ -677,22 +683,33 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		case reflection.OverlayLabels[reflection.OverlayCollision]:
 			imguiSeparator()
 
+			// TODO: these bits are the current bits and not the bits under the cursor
+
+			cxm0p, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXM0P])
+			cxm1p, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXM1P])
+			cxp0fb, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXP0FB])
+			cxp1fb, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXP1FB])
+			cxm0fb, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXM0FB])
+			cxm1fb, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXM1FB])
+			cxblpf, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXBLPF])
+			cxppmm, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXPPMM])
+
 			imguiLabel("CXM0P ")
-			drawRegister("##CXM0P", win.img.lz.Collisions.CXM0P, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
+			drawRegister("##CXM0P", cxm0p, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 			imguiLabel("CXM1P ")
-			drawRegister("##CXM1P", win.img.lz.Collisions.CXM1P, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
+			drawRegister("##CXM1P", cxm1p, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 			imguiLabel("CXP0FB")
-			drawRegister("##CXP0FB", win.img.lz.Collisions.CXP0FB, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
+			drawRegister("##CXP0FB", cxp0fb, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 			imguiLabel("CXP1FB")
-			drawRegister("##CXP1FB", win.img.lz.Collisions.CXP1FB, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
+			drawRegister("##CXP1FB", cxp1fb, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 			imguiLabel("CXM0FB")
-			drawRegister("##CXM0FB", win.img.lz.Collisions.CXM0FB, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
+			drawRegister("##CXM0FB", cxm0fb, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 			imguiLabel("CXM1FB")
-			drawRegister("##CXM1FB", win.img.lz.Collisions.CXM1FB, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
+			drawRegister("##CXM1FB", cxm1fb, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 			imguiLabel("CXBLPF")
-			drawRegister("##CXBLPF", win.img.lz.Collisions.CXBLPF, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
+			drawRegister("##CXBLPF", cxblpf, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 			imguiLabel("CXPPMM")
-			drawRegister("##CXPPMM", win.img.lz.Collisions.CXPPMM, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
+			drawRegister("##CXPPMM", cxppmm, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 
 			imguiSeparator()
 
@@ -733,16 +750,22 @@ func (win *winDbgScr) drawReflectionTooltip() {
 				imgui.Text("Audio unchanged")
 			}
 		case reflection.OverlayLabels[reflection.OverlayCoproc]:
-			imguiSeparator()
-			switch ref.CoProcSync {
-			case coprocessor.CoProcIdle:
-				imgui.Text(fmt.Sprintf("%s is idle", win.img.lz.Cart.CoProcID))
-			case coprocessor.CoProcNOPFeed:
-				imgui.Text(fmt.Sprintf("%s is feeding NOPs", win.img.lz.Cart.CoProcID))
-			case coprocessor.CoProcStrongARMFeed:
-				imgui.Text(fmt.Sprintf("%s feeding 6507", win.img.lz.Cart.CoProcID))
-			case coprocessor.CoProcParallel:
-				imgui.Text(fmt.Sprintf("%s and 6507 running in parallel", win.img.lz.Cart.CoProcID))
+			coproc := win.img.cache.VCS.Mem.Cart.GetCoProc()
+			if coproc == nil {
+				imgui.Text("no coprocessor")
+			} else {
+				id := coproc.ProcessorID()
+				imguiSeparator()
+				switch ref.CoProcSync {
+				case coprocessor.CoProcIdle:
+					imgui.Text(fmt.Sprintf("%s is idle", id))
+				case coprocessor.CoProcNOPFeed:
+					imgui.Text(fmt.Sprintf("%s is feeding NOPs", id))
+				case coprocessor.CoProcStrongARMFeed:
+					imgui.Text(fmt.Sprintf("%s feeding 6507", id))
+				case coprocessor.CoProcParallel:
+					imgui.Text(fmt.Sprintf("%s and 6507 running in parallel", id))
+				}
 			}
 		}
 	}, false)

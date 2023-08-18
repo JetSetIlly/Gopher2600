@@ -61,14 +61,22 @@ func (win *winCollisions) debuggerDraw() bool {
 }
 
 func (win *winCollisions) draw() {
-	if imgui.BeginTableV("##collisions", 2, imgui.TableFlagsNone, imgui.Vec2{}, 0.0) {
+	cxm0p, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXM0P])
+	cxm1p, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXM1P])
+	cxp0fb, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXP0FB])
+	cxp1fb, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXP1FB])
+	cxm0fb, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXM0FB])
+	cxm1fb, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXM1FB])
+	cxblpf, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXBLPF])
+	cxppmm, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXPPMM])
 
+	if imgui.BeginTableV("##collisions", 2, imgui.TableFlagsNone, imgui.Vec2{}, 0.0) {
 		imgui.TableNextRow()
 		imgui.TableNextColumn()
 		imgui.AlignTextToFramePadding()
 		imgui.Text("CXM0P ")
 		imgui.TableNextColumn()
-		drawRegister("##CXM0P", win.img.lz.Collisions.CXM0P, vcs.TIADrivenPins, win.img.cols.collisionBit,
+		drawRegister("##CXM0P", cxm0p, vcs.TIADrivenPins, win.img.cols.collisionBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
 					win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXM0P], v)
@@ -80,7 +88,7 @@ func (win *winCollisions) draw() {
 		imgui.AlignTextToFramePadding()
 		imgui.Text("CXM1P ")
 		imgui.TableNextColumn()
-		drawRegister("##CXM1P", win.img.lz.Collisions.CXM1P, vcs.TIADrivenPins, win.img.cols.collisionBit,
+		drawRegister("##CXM1P", cxm1p, vcs.TIADrivenPins, win.img.cols.collisionBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
 					win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXM1P], v)
@@ -92,7 +100,7 @@ func (win *winCollisions) draw() {
 		imgui.AlignTextToFramePadding()
 		imgui.Text("CXP0FB")
 		imgui.TableNextColumn()
-		drawRegister("##CXP0FB", win.img.lz.Collisions.CXP0FB, vcs.TIADrivenPins, win.img.cols.collisionBit,
+		drawRegister("##CXP0FB", cxp0fb, vcs.TIADrivenPins, win.img.cols.collisionBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
 					win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXP0FB], v)
@@ -104,7 +112,7 @@ func (win *winCollisions) draw() {
 		imgui.AlignTextToFramePadding()
 		imgui.Text("CXP1FB")
 		imgui.TableNextColumn()
-		drawRegister("##CXP1FB", win.img.lz.Collisions.CXP1FB, vcs.TIADrivenPins, win.img.cols.collisionBit,
+		drawRegister("##CXP1FB", cxp1fb, vcs.TIADrivenPins, win.img.cols.collisionBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
 					win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXP1FB], v)
@@ -116,7 +124,7 @@ func (win *winCollisions) draw() {
 		imgui.AlignTextToFramePadding()
 		imgui.Text("CXM0FB")
 		imgui.TableNextColumn()
-		drawRegister("##CXM0FB", win.img.lz.Collisions.CXM0FB, vcs.TIADrivenPins, win.img.cols.collisionBit,
+		drawRegister("##CXM0FB", cxm0fb, vcs.TIADrivenPins, win.img.cols.collisionBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
 					win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXM0FB], v)
@@ -128,7 +136,7 @@ func (win *winCollisions) draw() {
 		imgui.AlignTextToFramePadding()
 		imgui.Text("CXM1FB")
 		imgui.TableNextColumn()
-		drawRegister("##CXM1FB", win.img.lz.Collisions.CXM1FB, vcs.TIADrivenPins, win.img.cols.collisionBit,
+		drawRegister("##CXM1FB", cxm1fb, vcs.TIADrivenPins, win.img.cols.collisionBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
 					win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXM1FB], v)
@@ -140,7 +148,7 @@ func (win *winCollisions) draw() {
 		imgui.AlignTextToFramePadding()
 		imgui.Text("CXBLPF")
 		imgui.TableNextColumn()
-		drawRegister("##CXBLPF", win.img.lz.Collisions.CXBLPF, vcs.TIADrivenPins, win.img.cols.collisionBit,
+		drawRegister("##CXBLPF", cxblpf, vcs.TIADrivenPins, win.img.cols.collisionBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
 					win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXBLPF], v)
@@ -152,7 +160,7 @@ func (win *winCollisions) draw() {
 		imgui.AlignTextToFramePadding()
 		imgui.Text("CXPPMM")
 		imgui.TableNextColumn()
-		drawRegister("##CXPPMM", win.img.lz.Collisions.CXPPMM, vcs.TIADrivenPins, win.img.cols.collisionBit,
+		drawRegister("##CXPPMM", cxppmm, vcs.TIADrivenPins, win.img.cols.collisionBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
 					win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXPPMM], v)

@@ -90,29 +90,29 @@ func (win *winCPU) draw() {
 
 		imgui.TableNextRow()
 		imgui.TableNextColumn()
-		win.drawRegister(win.img.lz.CPU.PC)
+		win.drawRegister(win.img.cache.VCS.CPU.PC)
 		imgui.TableNextColumn()
-		win.drawRegister(win.img.lz.CPU.A)
+		win.drawRegister(win.img.cache.VCS.CPU.A)
 
 		imgui.TableNextRow()
 		imgui.TableNextColumn()
-		win.drawRegister(win.img.lz.CPU.SP)
+		win.drawRegister(win.img.cache.VCS.CPU.SP)
 		imgui.TableNextColumn()
-		win.drawRegister(win.img.lz.CPU.X)
+		win.drawRegister(win.img.cache.VCS.CPU.X)
 
 		imgui.TableNextRow()
 
 		imgui.TableNextColumn()
 		imgui.PushStyleVarFloat(imgui.StyleVarFrameRounding, readOnlyButtonRounding)
-		if win.img.lz.CPU.Killed {
+		if win.img.cache.VCS.CPU.Killed {
 			_ = imguiColourButton(win.img.cols.CPUKIL, fmt.Sprintf("%c Killed", fonts.CPUKilled), fillWidth)
 		} else {
-			_ = imguiBooleanButton(win.img.cols.CPURDY, win.img.cols.CPUNotRDY, win.img.lz.CPU.RdyFlg, "RDY Flag", fillWidth)
+			_ = imguiBooleanButton(win.img.cols.CPURDY, win.img.cols.CPUNotRDY, win.img.cache.VCS.CPU.RdyFlg, "RDY Flag", fillWidth)
 		}
 		imgui.PopStyleVar()
 
 		imgui.TableNextColumn()
-		win.drawRegister(win.img.lz.CPU.Y)
+		win.drawRegister(win.img.cache.VCS.CPU.Y)
 
 		imgui.EndTable()
 	}
@@ -142,7 +142,7 @@ func (win *winCPU) draw() {
 		imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
 		imgui.Text("c")
 
-		sr := win.img.lz.CPU.StatusReg
+		sr := win.img.cache.VCS.CPU.Status
 		col := win.img.cols.TitleBgActive
 
 		imgui.TableNextRow()
@@ -180,7 +180,7 @@ func (win *winCPU) draw() {
 
 	imgui.Spacing()
 
-	res := win.img.lz.Debugger.LiveDisasmEntry
+	res := win.img.cache.Debugger.LiveDisasmEntry
 	if res.Address != "" {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
 		imgui.Text(res.Address)

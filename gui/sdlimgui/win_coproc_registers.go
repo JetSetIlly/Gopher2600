@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/coprocessor"
 )
 
 const winCoProcRegistersID = "Registers"
@@ -54,7 +53,9 @@ func (win *winCoProcRegisters) debuggerDraw() bool {
 		return false
 	}
 
-	if !win.img.lz.Cart.HasCoProcBus {
+	// do not open window if there is no coprocessor available
+	coproc := win.img.cache.VCS.Mem.Cart.GetCoProc()
+	if coproc == nil {
 		return false
 	}
 
@@ -62,7 +63,7 @@ func (win *winCoProcRegisters) debuggerDraw() bool {
 	imgui.SetNextWindowSizeV(imgui.Vec2{520, 390}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{400, 300}, imgui.Vec2{551, 1000})
 
-	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcRegistersID)
+	title := fmt.Sprintf("%s %s", coproc.ProcessorID(), winCoProcRegistersID)
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		win.draw()
 	}
@@ -74,28 +75,28 @@ func (win *winCoProcRegisters) debuggerDraw() bool {
 }
 
 func (win *winCoProcRegisters) draw() {
-	coproc := win.img.vcs.Mem.Cart.GetCoProc()
-	spec := coproc.RegisterSpec()
+	// coproc := win.img.cq.vcs.Mem.Cart.GetCoProc()
+	// spec := coproc.RegisterSpec()
 
-	for _, regs := range spec {
-		drawRegGroup := func() {
-			for r := regs.Start; r <= regs.End; r++ {
-				if v, f, ok := coproc.RegisterFormatted(r); ok {
-					_ = v
-					imgui.InputText(regs.Label(r), &f)
-				}
-			}
-		}
+	// for _, regs := range spec {
+	// 	drawRegGroup := func() {
+	// 		for r := regs.Start; r <= regs.End; r++ {
+	// 			if v, f, ok := coproc.RegisterFormatted(r); ok {
+	// 				_ = v
+	// 				imgui.InputText(regs.Label(r), &f)
+	// 			}
+	// 		}
+	// 	}
 
-		if regs.Name == coprocessor.ExtendedRegisterCoreGroup {
-			drawRegGroup()
-		} else {
-			if imgui.CollapsingHeader(regs.Name) {
-				drawRegGroup()
-			}
-		}
+	// 	if regs.Name == coprocessor.ExtendedRegisterCoreGroup {
+	// 		drawRegGroup()
+	// 	} else {
+	// 		if imgui.CollapsingHeader(regs.Name) {
+	// 			drawRegGroup()
+	// 		}
+	// 	}
 
-	}
+	// }
 
-	_ = spec
+	// _ = spec
 }

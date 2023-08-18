@@ -31,6 +31,9 @@ type winSaveKeyEEPROM struct {
 
 	// height of status line at bottom of window. valid after first frame
 	statusHeight float32
+
+	// savekey instance
+	savekey *savekey.SaveKey
 }
 
 func newWinSaveKeyEEPROM(img *SdlImgui) (window, error) {
@@ -50,7 +53,9 @@ func (win *winSaveKeyEEPROM) debuggerDraw() bool {
 		return false
 	}
 
-	if !win.img.lz.SaveKey.SaveKeyActive {
+	// do not draw if savekey is not active
+	win.savekey = win.img.cache.VCS.GetSaveKey()
+	if win.savekey == nil {
 		return false
 	}
 
@@ -71,7 +76,7 @@ func (win *winSaveKeyEEPROM) debuggerDraw() bool {
 func (win *winSaveKeyEEPROM) draw() {
 	imgui.BeginChildV("eepromData", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)
 
-	win.img.drawByteGridSimple("eepromByteGrid", win.img.lz.SaveKey.EEPROMdata, win.img.lz.SaveKey.EEPROMdiskData, win.img.cols.ValueDiff, 0x00, func(idx int, data uint8) {
+	win.img.drawByteGridSimple("eepromByteGrid", win.savekey.EEPROM.Data, win.savekey.EEPROM.DiskData, win.img.cols.ValueDiff, 0x00, func(idx int, data uint8) {
 		win.img.dbg.PushFunction(func() {
 			var sk *savekey.SaveKey
 
