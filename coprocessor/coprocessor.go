@@ -17,6 +17,7 @@ package coprocessor
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
 )
@@ -125,11 +126,23 @@ func (group ExtendedRegisterGroup) Label(register int) string {
 }
 
 // ExtendedRegisterSpec is the specification returned by CartCoProc.RegisterSpec() function
-type ExtendedRegisterSpec map[string]ExtendedRegisterGroup
+type ExtendedRegisterSpec []ExtendedRegisterGroup
+
+// Group returns the ExtendedRegisterGroup from the specifciation if it exists.
+// For the purposes of this function, group names are not case-sensitive
+func (spec ExtendedRegisterSpec) Group(name string) (ExtendedRegisterGroup, bool) {
+	name = strings.ToUpper(name)
+	for _, grp := range spec {
+		if strings.ToUpper(grp.Name) == name {
+			return grp, true
+		}
+	}
+	return ExtendedRegisterGroup{}, false
+}
 
 // The basic set of registers present in a coprocessor. Every implementation
 // should specify this group at a minimum
-const ExtendedRegisterCoreGroup = "core"
+const ExtendedRegisterCoreGroup = "Core"
 
 // CartCoProc is implemented by processors that are used in VCS cartridges.
 // Principally this means ARM type processors but other processor types may be

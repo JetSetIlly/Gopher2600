@@ -1499,13 +1499,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			// use named group if supplied or default to core group
 			spec := coproc.RegisterSpec()
 			if arg, ok := tokens.Get(); ok {
-				if group, ok := spec[arg]; ok {
+				if group, ok := spec.Group(arg); ok {
 					regs(group)
 				} else {
 					dbg.printLine(terminal.StyleError, fmt.Sprintf("coprocessor doesn't have a %s register group", arg))
 				}
 			} else {
-				if group, ok := spec[coprocessor.ExtendedRegisterCoreGroup]; ok {
+				if group, ok := spec.Group(coprocessor.ExtendedRegisterCoreGroup); ok {
 					regs(group)
 				} else {
 					dbg.printLine(terminal.StyleError, "coprocessor doesn't seem to have any registers")

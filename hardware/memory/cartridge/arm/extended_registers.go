@@ -33,7 +33,7 @@ import (
 // https://github.com/ARM-software/abi-aa/releases/download/2023Q1/aadwarf32.pdf
 
 var arm7tdmiRegisterSpec = coprocessor.ExtendedRegisterSpec{
-	coprocessor.ExtendedRegisterCoreGroup: {
+	{
 		Name:   coprocessor.ExtendedRegisterCoreGroup,
 		Prefix: "R",
 		Start:  0,
@@ -42,14 +42,14 @@ var arm7tdmiRegisterSpec = coprocessor.ExtendedRegisterSpec{
 }
 
 var armv7mRegisterSpec = coprocessor.ExtendedRegisterSpec{
-	coprocessor.ExtendedRegisterCoreGroup: {
+	{
 		Name:   coprocessor.ExtendedRegisterCoreGroup,
 		Prefix: "R",
 		Start:  0,
 		End:    15,
 	},
-	"fpu": {
-		Name:      "fpu",
+	{
+		Name:      "FPU",
 		Prefix:    "S",
 		Start:     64,
 		End:       95,
@@ -69,12 +69,16 @@ func (arm *ARM) RegisterSpec() coprocessor.ExtendedRegisterSpec {
 }
 
 func (arm *ARM) register(register int, formatted bool) (uint32, string, bool) {
-	for k, spec := range arm.RegisterSpec() {
+	for _, spec := range arm.RegisterSpec() {
 		if register >= spec.Start && register <= spec.End {
-			switch k {
+			switch spec.Name {
 			case coprocessor.ExtendedRegisterCoreGroup:
-				return arm.state.registers[register], "", true
-			case "fpu":
+				var s string
+				if formatted {
+					s = fmt.Sprintf("%08x", arm.state.registers[register])
+				}
+				return arm.state.registers[register], s, true
+			case "FPU":
 				var s string
 				if formatted {
 					s = fmt.Sprintf("%f", math.Float32frombits(arm.state.fpu.Registers[register-64]))
@@ -104,13 +108,13 @@ func (arm *ARM) RegisterFormatted(register int) (uint32, string, bool) {
 // to the specified value. Returns false if the requested register is not
 // recognised
 func (arm *ARM) RegisterSet(register int, value uint32) bool {
-	for k, spec := range arm.RegisterSpec() {
+	for _, spec := range arm.RegisterSpec() {
 		if register >= spec.Start && register <= spec.End {
-			switch k {
+			switch spec.Name {
 			case coprocessor.ExtendedRegisterCoreGroup:
 				arm.state.registers[register] = value
 				return true
-			case "fpu":
+			case "FPU":
 				arm.state.fpu.Registers[register-spec.Start] = value
 				return true
 			}
