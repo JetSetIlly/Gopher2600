@@ -121,7 +121,7 @@ func (win *winPlusROMNetwork) draw(plus *plusrom.PlusROM) {
 
 		commit := func(idx int, value uint8) {
 			win.img.dbg.PushFunction(func() {
-				win.img.vcs.Mem.Cart.GetContainer().(*plusrom.PlusROM).SetSendBuffer(idx, value)
+				win.img.dbg.VCS().Mem.Cart.GetContainer().(*plusrom.PlusROM).SetSendBuffer(idx, value)
 			})
 		}
 

@@ -17,7 +17,6 @@ package caching
 
 import (
 	"github.com/jetsetilly/gopher2600/debugger"
-	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware"
@@ -67,22 +66,19 @@ type cachedRewind struct {
 }
 
 // cachedDebugger contains the cached components of the debugger
-type cacheDebugger struct {
-	Quantum         debugger.Quantum
+type cachedDebugger struct {
 	LiveDisasmEntry disassembly.Entry
-	Breakpoints     debugger.LazyBreakpointsQuery
-	HasChanged      bool
-	State           govern.State
+	Breakpoints     debugger.CheckBreakpoints
 }
 
 // cache is embedded in the Cache type and also used as the type carried by the
 // queue channel
 type cache struct {
-	TV       *television.State
-	VCS      cachedVCS
-	env      *environment.Environment
-	Rewind   cachedRewind
-	Debugger cacheDebugger
+	TV     *television.State
+	VCS    cachedVCS
+	env    *environment.Environment
+	Rewind cachedRewind
+	Dbg    cachedDebugger
 }
 
 // Cache contains the copied/snapshotting compenents of the emulated system
@@ -118,12 +114,9 @@ func (c *Cache) Update(vcs *hardware.VCS, rewind *rewind.Rewind, dbg *debugger.D
 			Timeline:   rewind.GetTimeline(),
 			Comparison: rewind.GetComparisonState(),
 		},
-		Debugger: cacheDebugger{
-			Quantum:         dbg.LazyGetQuantum(),
-			LiveDisasmEntry: dbg.LazyGetLiveDisasmEntry(),
-			Breakpoints:     dbg.LazyQueryBreakpoints(),
-			HasChanged:      dbg.LazyHasChanged(),
-			State:           dbg.State(),
+		Dbg: cachedDebugger{
+			LiveDisasmEntry: dbg.GetLiveDisasmEntry(),
+			Breakpoints:     dbg.GetBreakpoints(),
 		},
 	}:
 	default:

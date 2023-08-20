@@ -30,8 +30,8 @@ func (win *winTIA) drawPlayfield() {
 	playfield := win.img.cache.VCS.TIA.Video.Playfield
 	player0 := win.img.cache.VCS.TIA.Video.Player0
 	player1 := win.img.cache.VCS.TIA.Video.Player1
-	realPlayfield := win.img.vcs.TIA.Video.Playfield
-	realBall := win.img.vcs.TIA.Video.Ball
+	realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
+	realBall := win.img.dbg.VCS().TIA.Video.Ball
 
 	imgui.Spacing()
 

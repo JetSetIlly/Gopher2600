@@ -67,6 +67,9 @@ func (img *SdlImgui) Service() {
 	// them in select block and log the dropped event in the default case
 	if img.polling.pumpedEvents[0] != nil {
 
+		// user input from debugger
+		input := img.dbg.UserInput()
+
 		// events are pumped once per frame
 		sdl.PumpEvents()
 
@@ -165,7 +168,7 @@ func (img *SdlImgui) Service() {
 
 					if img.isCaptured() {
 						select {
-						case img.userinput <- userinput.EventMouseButton{
+						case input <- userinput.EventMouseButton{
 							Button: button,
 							Down:   ev.Type == sdl.MOUSEBUTTONDOWN}:
 						default:
@@ -205,7 +208,7 @@ func (img *SdlImgui) Service() {
 
 					if img.mode.Load().(govern.Mode) != govern.ModePlay || !img.wm.playmodeWindows[winSelectROMID].playmodeIsOpen() {
 						select {
-						case img.userinput <- userinput.EventMouseWheel{Delta: deltaY}:
+						case input <- userinput.EventMouseWheel{Delta: deltaY}:
 						default:
 							logger.Log("sdlimgui", "dropped mouse wheel event")
 						}
@@ -234,7 +237,7 @@ func (img *SdlImgui) Service() {
 
 					if button != userinput.GamepadButtonNone {
 						select {
-						case img.userinput <- userinput.EventGamepadButton{
+						case input <- userinput.EventGamepadButton{
 							ID:     plugging.PortLeft,
 							Button: button,
 							Down:   ev.State == 1,
@@ -271,7 +274,7 @@ func (img *SdlImgui) Service() {
 
 					if dir != userinput.DPadNone {
 						select {
-						case img.userinput <- userinput.EventGamepadDPad{
+						case input <- userinput.EventGamepadDPad{
 							ID:        plugging.PortLeft,
 							Direction: dir,
 						}:
@@ -284,7 +287,7 @@ func (img *SdlImgui) Service() {
 					if img.plt.joysticks[ev.Which].isStelladaptor {
 						joy := sdl.JoystickFromInstanceID(ev.Which)
 						select {
-						case img.userinput <- userinput.EventStelladaptor{
+						case input <- userinput.EventStelladaptor{
 							ID:    plugging.PortLeft,
 							Horiz: joy.Axis(0),
 							Vert:  joy.Axis(1),
@@ -306,7 +309,7 @@ func (img *SdlImgui) Service() {
 							fallthrough
 						case 1:
 							select {
-							case img.userinput <- userinput.EventGamepadThumbstick{
+							case input <- userinput.EventGamepadThumbstick{
 								ID:         plugging.PortLeft,
 								Thumbstick: userinput.GamepadThumbstickLeft,
 								Horiz:      pad.Axis(0),
@@ -319,7 +322,7 @@ func (img *SdlImgui) Service() {
 							fallthrough
 						case 4:
 							select {
-							case img.userinput <- userinput.EventGamepadThumbstick{
+							case input <- userinput.EventGamepadThumbstick{
 								ID:         plugging.PortLeft,
 								Thumbstick: userinput.GamepadThumbstickRight,
 								Horiz:      pad.Axis(3),
@@ -341,7 +344,7 @@ func (img *SdlImgui) Service() {
 
 						if trigger != userinput.GamepadTriggerNone {
 							select {
-							case img.userinput <- userinput.EventGamepadTrigger{
+							case input <- userinput.EventGamepadTrigger{
 								ID:      plugging.PortLeft,
 								Trigger: trigger,
 								Amount:  ev.Value,
@@ -368,7 +371,7 @@ func (img *SdlImgui) Service() {
 
 			// forward new position to emulation
 			select {
-			case img.userinput <- userinput.EventMouseMotion{
+			case input <- userinput.EventMouseMotion{
 				X: x,
 				Y: y,
 			}:
@@ -387,7 +390,7 @@ func (img *SdlImgui) Service() {
 
 func (img *SdlImgui) renderFrame() {
 	img.dbg.PushFunction(func() {
-		img.cache.Update(img.vcs, img.dbg.Rewind, img.dbg)
+		img.cache.Update(img.dbg.VCS(), img.dbg.Rewind, img.dbg)
 	})
 	if !img.cache.Resolve() {
 		return

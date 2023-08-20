@@ -723,7 +723,7 @@ func (scr *screen) copyPixelsPlaymode() {
 
 			// nudge fps cap to try to bring the plot and render indexes back into equilibrium
 			if scr.crit.monitorSyncSimilar && scr.crit.frameInfo.Stable && scr.crit.frameQueueLen > 2 {
-				scr.img.vcs.TV.NudgeFPSCap(scr.crit.frameQueueLen)
+				scr.img.dbg.VCS().TV.NudgeFPSCap(scr.crit.frameQueueLen)
 				scr.nudgeIconCt = nudgeIconCt
 			}
 

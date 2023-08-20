@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package debugger
+package govern
 
 // Quantum specifies the step granularity of the emulator.
 type Quantum int

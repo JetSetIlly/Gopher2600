@@ -36,12 +36,12 @@ func (win *winTIA) drawMissile(num int) {
 	switch num {
 	case 0:
 		missile = win.img.cache.VCS.TIA.Video.Missile0
-		realMissile = win.img.vcs.TIA.Video.Missile0
-		realPlayer = win.img.vcs.TIA.Video.Player0
+		realMissile = win.img.dbg.VCS().TIA.Video.Missile0
+		realPlayer = win.img.dbg.VCS().TIA.Video.Player0
 	case 1:
 		missile = win.img.cache.VCS.TIA.Video.Missile1
-		realMissile = win.img.vcs.TIA.Video.Missile1
-		realPlayer = win.img.vcs.TIA.Video.Player1
+		realMissile = win.img.dbg.VCS().TIA.Video.Missile1
+		realPlayer = win.img.dbg.VCS().TIA.Video.Player1
 	default:
 		panic(fmt.Sprintf("impossible missile number %d", num))
 	}
@@ -109,7 +109,7 @@ func (win *winTIA) drawMissile(num int) {
 				v := uint8(k) // being careful about scope
 				win.img.dbg.PushFunction(func() {
 					realMissile.Copies = v
-					win.img.vcs.TIA.Video.UpdateNUSIZ(num, true)
+					win.img.dbg.VCS().TIA.Video.UpdateNUSIZ(num, true)
 				})
 			}
 		}
@@ -126,7 +126,7 @@ func (win *winTIA) drawMissile(num int) {
 				v := uint8(k) // being careful about scope
 				win.img.dbg.PushFunction(func() {
 					realMissile.Size = v
-					win.img.vcs.TIA.Video.UpdateNUSIZ(num, true)
+					win.img.dbg.VCS().TIA.Video.UpdateNUSIZ(num, true)
 				})
 			}
 		}

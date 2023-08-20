@@ -135,7 +135,7 @@ func (win *winDisasm) draw() {
 	// using the lazy govern.State value rather than the live state - the
 	// live state can cause synchronisation problems meaning focus is lost
 	if win.followCPU {
-		if (win.img.cache.Debugger.State == govern.Paused && win.lastSeenState != govern.Paused) ||
+		if (win.img.dbg.State() == govern.Paused && win.lastSeenState != govern.Paused) ||
 			win.img.cache.VCS.CPU.PC.Address() != win.lastSeenPC {
 
 			win.focusOnAddr = true
@@ -143,7 +143,7 @@ func (win *winDisasm) draw() {
 		}
 	}
 	win.lastSeenPC = win.img.cache.VCS.CPU.PC.Address()
-	win.lastSeenState = win.img.cache.Debugger.State
+	win.lastSeenState = win.img.dbg.State()
 
 	// the value of focusAddr depends on the state of the CPU. if the Final
 	// state of the CPU's last execution result is true then we can be sure the
@@ -158,10 +158,10 @@ func (win *winDisasm) draw() {
 	} else {
 		// focus address depends on if we're in the middle of an CPU
 		// instruction or not. special condition for freshly reset CPUs
-		if win.img.cache.Debugger.LiveDisasmEntry.Result.Final || win.img.cache.VCS.CPU.HasReset() {
+		if win.img.cache.Dbg.LiveDisasmEntry.Result.Final || win.img.cache.VCS.CPU.HasReset() {
 			focusAddr = win.img.cache.VCS.CPU.PC.Address() & memorymap.CartridgeBits
 		} else {
-			focusAddr = win.img.cache.Debugger.LiveDisasmEntry.Result.Address & memorymap.CartridgeBits
+			focusAddr = win.img.cache.Dbg.LiveDisasmEntry.Result.Address & memorymap.CartridgeBits
 		}
 	}
 
@@ -624,8 +624,8 @@ func (win *winDisasm) drawEntry(currBank mapper.BankInfo, e *disassembly.Entry, 
 
 	// does this entry/address have a PC break applied to it
 	var hasPCbreak bool
-	if win.img.cache.Debugger.Breakpoints != nil {
-		hasPCbreak, _ = win.img.cache.Debugger.Breakpoints.HasPCBreak(e.Result.Address, bank)
+	if win.img.cache.Dbg.Breakpoints != nil {
+		hasPCbreak, _ = win.img.cache.Dbg.Breakpoints.HasPCBreak(e.Result.Address, bank)
 	}
 
 	// first column is a selectable that spans all lines and the breakpoint indicator

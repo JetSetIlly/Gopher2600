@@ -77,7 +77,7 @@ func (win *winDPCregisters) draw(regs cartridge.DPCregisters) {
 	imguiLabel("Random Number Generator")
 	if imguiHexInput("##rng", 2, &rng) {
 		win.img.dbg.PushFunction(func() {
-			b := win.img.vcs.Mem.Cart.GetRegistersBus()
+			b := win.img.dbg.VCS().Mem.Cart.GetRegistersBus()
 			b.PutRegister("rng", rng)
 		})
 	}
@@ -97,7 +97,7 @@ func (win *winDPCregisters) draw(regs cartridge.DPCregisters) {
 		imguiLabel("Low")
 		if imguiHexInput(label, 2, &low) {
 			win.img.dbg.PushFunction(func() {
-				b := win.img.vcs.Mem.Cart.GetRegistersBus()
+				b := win.img.dbg.VCS().Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("datafetcher::%d::low", f), low)
 			})
 		}
@@ -108,7 +108,7 @@ func (win *winDPCregisters) draw(regs cartridge.DPCregisters) {
 		imguiLabel("Hi")
 		if imguiHexInput(label, 2, &hi) {
 			win.img.dbg.PushFunction(func() {
-				b := win.img.vcs.Mem.Cart.GetRegistersBus()
+				b := win.img.dbg.VCS().Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("datafetcher::%d::hi", f), hi)
 			})
 		}
@@ -119,7 +119,7 @@ func (win *winDPCregisters) draw(regs cartridge.DPCregisters) {
 		imguiLabel("Top")
 		if imguiHexInput(label, 2, &top) {
 			win.img.dbg.PushFunction(func() {
-				b := win.img.vcs.Mem.Cart.GetRegistersBus()
+				b := win.img.dbg.VCS().Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("datafetcher::%d::top", f), top)
 			})
 		}
@@ -130,7 +130,7 @@ func (win *winDPCregisters) draw(regs cartridge.DPCregisters) {
 		imguiLabel("Bottom")
 		if imguiHexInput(label, 2, &bottom) {
 			win.img.dbg.PushFunction(func() {
-				b := win.img.vcs.Mem.Cart.GetRegistersBus()
+				b := win.img.dbg.VCS().Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("datafetcher::%d::bottom", f), bottom)
 			})
 		}
@@ -141,7 +141,7 @@ func (win *winDPCregisters) draw(regs cartridge.DPCregisters) {
 			mm := regs.Fetcher[i].MusicMode
 			if imgui.Checkbox(fmt.Sprintf("##%dmusicmode", i), &mm) {
 				win.img.dbg.PushFunction(func() {
-					b := win.img.vcs.Mem.Cart.GetRegistersBus()
+					b := win.img.dbg.VCS().Mem.Cart.GetRegistersBus()
 					b.PutRegister(fmt.Sprintf("datafetcher::%d::musicmode", f), fmt.Sprintf("%v", mm))
 				})
 			}

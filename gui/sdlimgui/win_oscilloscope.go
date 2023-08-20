@@ -59,7 +59,7 @@ func newWinOscilloscope(img *SdlImgui) (window, error) {
 	}
 	win.reset()
 
-	img.tv.AddAudioMixer(win)
+	img.dbg.VCS().TV.AddAudioMixer(win)
 
 	return win, nil
 }

@@ -13,23 +13,26 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package debugger
+package govern
 
-import "github.com/jetsetilly/gopher2600/coprocessor"
+// Mode inidicates the broad condition of the emulation. Currently defined to be
+// debugger and play.
+type Mode int
 
-// the coproc shim is a convenient way of retreiving coprocessor interfaces
-// without exposing too much of the emulation
-//
-// more importantly the shim can be passed to another package and not have to
-// worry about updating the reference to the cartridge after a rewind event
-type coprocShim struct {
-	dbg *Debugger
+func (m Mode) String() string {
+	switch m {
+	case ModeDebugger:
+		return "Debugger"
+	case ModePlay:
+		return "Playmode"
+	}
+
+	return ""
 }
 
-func (shim coprocShim) GetCoProcBus() coprocessor.CartCoProcBus {
-	return shim.dbg.vcs.Mem.Cart.GetCoProcBus()
-}
-
-func (shim coprocShim) PushFunction(f func()) {
-	shim.dbg.PushFunction(f)
-}
+// List of defined modes.
+const (
+	ModeNone Mode = iota
+	ModeDebugger
+	ModePlay
+)

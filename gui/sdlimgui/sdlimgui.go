@@ -26,8 +26,6 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/crt"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/caching"
-	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/prefs"
@@ -66,10 +64,7 @@ type SdlImgui struct {
 	mode atomic.Value // govern.Mode
 
 	// references to parent emulation
-	dbg       *debugger.Debugger
-	tv        *television.Television
-	vcs       *hardware.VCS
-	userinput chan userinput.Event
+	dbg *debugger.Debugger
 
 	// chache should be used
 	cache caching.Cache
@@ -129,9 +124,6 @@ type SdlImgui struct {
 func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	img := &SdlImgui{
 		dbg:                 dbg,
-		tv:                  dbg.TV(),
-		vcs:                 dbg.VCS(),
-		userinput:           dbg.UserInput(),
 		postRenderFunctions: make(chan func(), 100),
 		cache:               caching.NewCache(),
 	}
@@ -194,7 +186,7 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 
 	// connect pixel renderer/referesher to television and texture renderer to
 	// pixel renderer
-	img.tv.AddPixelRenderer(img.screen)
+	img.dbg.VCS().TV.AddPixelRenderer(img.screen)
 
 	// texture renderers are added depending on playmode
 
@@ -204,7 +196,7 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
-	img.tv.AddRealtimeAudioMixer(img.audio)
+	img.dbg.VCS().TV.AddRealtimeAudioMixer(img.audio)
 
 	// initialise crt preferences
 	img.crtPrefs, err = crt.NewPreferences()
@@ -295,7 +287,7 @@ func (img *SdlImgui) GetReflectionRenderer() reflection.Renderer {
 // quit application sends a request to the emulation.
 func (img *SdlImgui) quit() {
 	select {
-	case img.userinput <- userinput.EventQuit{}:
+	case img.dbg.UserInput() <- userinput.EventQuit{}:
 	default:
 		logger.Log("sdlimgui", "dropped quit event")
 	}
@@ -407,10 +399,10 @@ func (img *SdlImgui) applyAudioMutePreference() {
 		} else {
 			img.playScr.emulationNotice.set(notifications.NotifyUnmute)
 		}
-		img.vcs.RIOT.Ports.MutePeripherals(mute)
+		img.dbg.VCS().RIOT.Ports.MutePeripherals(mute)
 	} else {
 		mute = img.prefs.audioMuteDebugger.Get().(bool)
-		img.vcs.RIOT.Ports.MutePeripherals(mute)
+		img.dbg.VCS().RIOT.Ports.MutePeripherals(mute)
 	}
 
 	img.audio.Mute(mute)

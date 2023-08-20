@@ -180,7 +180,7 @@ func (win *winCPU) draw() {
 
 	imgui.Spacing()
 
-	res := win.img.cache.Debugger.LiveDisasmEntry
+	res := win.img.cache.Dbg.LiveDisasmEntry
 	if res.Address != "" {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
 		imgui.Text(res.Address)

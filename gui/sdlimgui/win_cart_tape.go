@@ -81,7 +81,7 @@ func (win *winCartTape) draw(tape mapper.CartTapeState) {
 		win.img.dbg.PushFunction(func() {
 			c, err := strconv.ParseInt(counter, 10, 64)
 			if err == nil {
-				win.img.vcs.Mem.Cart.GetTapeBus().SetTapeCounter(int(c))
+				win.img.dbg.VCS().Mem.Cart.GetTapeBus().SetTapeCounter(int(c))
 			}
 		})
 	}
@@ -112,7 +112,7 @@ func (win *winCartTape) draw(tape mapper.CartTapeState) {
 	c := int32(tape.Counter)
 	if imgui.SliderIntV("##counterslider", &c, 0, int32(tape.MaxCounter), "", imgui.SliderFlagsNone) {
 		win.img.dbg.PushFunction(func() {
-			win.img.vcs.Mem.Cart.GetTapeBus().SetTapeCounter(int(c))
+			win.img.dbg.VCS().Mem.Cart.GetTapeBus().SetTapeCounter(int(c))
 		})
 	}
 
@@ -120,7 +120,7 @@ func (win *winCartTape) draw(tape mapper.CartTapeState) {
 	imgui.SameLine()
 	if imgui.Button("Rewind") {
 		win.img.dbg.PushFunction(func() {
-			win.img.vcs.Mem.Cart.GetTapeBus().Rewind()
+			win.img.dbg.VCS().Mem.Cart.GetTapeBus().Rewind()
 		})
 	}
 }

@@ -20,7 +20,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 
@@ -63,7 +62,7 @@ func (win *winControl) repeatButtonV(id string, f func(), fill imgui.Vec2) {
 	if imgui.IsItemActive() {
 		if id != win.repeatID {
 			win.img.dbg.PushFunction(func() {
-				v := win.img.vcs.TV.SetFPSCap(false)
+				v := win.img.dbg.VCS().TV.SetFPSCap(false)
 				win.repeatFPSCap.Store(v)
 			})
 			win.repeatID = id
@@ -80,7 +79,7 @@ func (win *winControl) repeatButtonV(id string, f func(), fill imgui.Vec2) {
 		win.repeatID = ""
 		win.img.dbg.PushFunction(func() {
 			v := win.repeatFPSCap.Load().(bool)
-			win.img.vcs.TV.SetFPSCap(v)
+			win.img.dbg.VCS().TV.SetFPSCap(v)
 		})
 	}
 }
@@ -145,7 +144,7 @@ func (win *winControl) drawStep() {
 		imgui.TableNextColumn()
 
 		icon := fonts.BackInstruction
-		if win.img.cache.Debugger.Quantum == debugger.QuantumClock {
+		if win.img.dbg.Quantum() == govern.QuantumClock {
 			icon = fonts.BackClock
 		}
 
@@ -160,8 +159,8 @@ func (win *winControl) drawStep() {
 
 		imgui.TableNextColumn()
 
-		if imguiToggleButton("##quantumToggle", win.img.cache.Debugger.Quantum == debugger.QuantumClock, win.img.cols.TitleBgActive) {
-			if win.img.cache.Debugger.Quantum == debugger.QuantumClock {
+		if imguiToggleButton("##quantumToggle", win.img.dbg.Quantum() == govern.QuantumClock, win.img.cols.TitleBgActive) {
+			if win.img.dbg.Quantum() == govern.QuantumClock {
 				win.img.term.pushCommand("QUANTUM INSTRUCTION")
 			} else {
 				win.img.term.pushCommand("QUANTUM CLOCK")
@@ -170,7 +169,7 @@ func (win *winControl) drawStep() {
 
 		imgui.SameLine()
 		imgui.AlignTextToFramePadding()
-		if win.img.cache.Debugger.Quantum == debugger.QuantumClock {
+		if win.img.dbg.Quantum() == govern.QuantumClock {
 			imgui.Text("Colour Clock")
 		} else {
 			imgui.Text("CPU Instruction")
@@ -213,8 +212,8 @@ func (win *winControl) drawStep() {
 }
 
 func (win *winControl) drawFPS() {
-	req := win.img.tv.GetReqFPS()
-	actual, _ := win.img.tv.GetActualFPS()
+	req := win.img.dbg.VCS().TV.GetReqFPS()
+	actual, _ := win.img.dbg.VCS().TV.GetActualFPS()
 	frameInfo := win.img.cache.TV.GetFrameInfo()
 
 	imgui.Text("Performance")
@@ -226,12 +225,12 @@ func (win *winControl) drawFPS() {
 
 	// fps slider
 	if imgui.SliderFloatV("##fps", &req, 1, 100, "%.0f fps", imgui.SliderFlagsNone) {
-		win.img.dbg.PushFunction(func() { win.img.vcs.TV.SetFPS(req) })
+		win.img.dbg.PushFunction(func() { win.img.dbg.VCS().TV.SetFPS(req) })
 	}
 
 	// reset to specification rate on right mouse click
 	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDown(1) {
-		win.img.dbg.PushFunction(func() { win.img.vcs.TV.SetFPS(-1) })
+		win.img.dbg.PushFunction(func() { win.img.dbg.VCS().TV.SetFPS(-1) })
 	}
 
 	imgui.Spacing()

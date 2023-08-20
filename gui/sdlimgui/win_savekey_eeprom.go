@@ -80,10 +80,10 @@ func (win *winSaveKeyEEPROM) draw() {
 		win.img.dbg.PushFunction(func() {
 			var sk *savekey.SaveKey
 
-			if av, ok := win.img.vcs.RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+			if av, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
 				sk = av.SaveKey.(*savekey.SaveKey)
 			} else {
-				sk = win.img.vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey)
+				sk = win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey)
 			}
 
 			if sk != nil {
@@ -103,10 +103,10 @@ func (win *winSaveKeyEEPROM) draw() {
 			win.img.dbg.PushFunction(func() {
 				var sk *savekey.SaveKey
 
-				if av, ok := win.img.vcs.RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+				if av, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
 					sk = av.SaveKey.(*savekey.SaveKey)
 				} else {
-					sk = win.img.vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey)
+					sk = win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey)
 				}
 
 				if sk != nil {

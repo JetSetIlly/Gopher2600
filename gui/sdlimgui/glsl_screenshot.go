@@ -127,12 +127,12 @@ func (sh *screenshotSequencer) startProcess(mode screenshotMode, filenameSuffix 
 	// prepare file path for when the image needs to be saved
 	if len(filenameSuffix) == 0 {
 		if sh.img.crtPrefs.Enabled.Get().(bool) {
-			sh.savePath = unique.Filename(fmt.Sprintf("crt_%s", mode), sh.img.vcs.Mem.Cart.ShortName)
+			sh.savePath = unique.Filename(fmt.Sprintf("crt_%s", mode), sh.img.cache.VCS.Mem.Cart.ShortName)
 		} else {
-			sh.savePath = unique.Filename(fmt.Sprintf("pix_%s", mode), sh.img.vcs.Mem.Cart.ShortName)
+			sh.savePath = unique.Filename(fmt.Sprintf("pix_%s", mode), sh.img.cache.VCS.Mem.Cart.ShortName)
 		}
 	} else {
-		sh.savePath = fmt.Sprintf("%s_%s", sh.img.vcs.Mem.Cart.ShortName, filenameSuffix)
+		sh.savePath = fmt.Sprintf("%s_%s", sh.img.cache.VCS.Mem.Cart.ShortName, filenameSuffix)
 	}
 	sh.savePath = fmt.Sprintf("%s.jpg", sh.savePath)
 }

@@ -218,7 +218,7 @@ func (win *winCartStatic) draw(static mapper.CartStatic) {
 
 					commit := func(idx int, data uint8) {
 						win.img.dbg.PushFunction(func() {
-							win.img.vcs.Mem.Cart.GetStaticBus().PutStatic(segname, idx, data)
+							win.img.dbg.VCS().Mem.Cart.GetStaticBus().PutStatic(segname, idx, data)
 						})
 					}
 

@@ -127,7 +127,10 @@ func (pol *polling) wait() sdl.Event {
 	} else {
 		if pol.img.dbg.State() == govern.Running || pol.img.wm.debuggerWindows[winSelectROMID].debuggerIsOpen() {
 			timeout = debugSleepPeriodRunning
-		} else if pol.alerted || pol.keepAwake || pol.img.cache.Debugger.HasChanged {
+		} else if pol.alerted || pol.keepAwake {
+			// this branch used to depend on a debugger flag "hasChanged". this
+			// no longer seems necessary, maybe because the govern.Running state
+			// is so well defined
 			timeout = debugSleepPeriod
 		} else {
 			timeout = idleSleepPeriod

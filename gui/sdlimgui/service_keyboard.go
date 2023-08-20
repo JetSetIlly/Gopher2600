@@ -245,7 +245,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			fallthrough
 		case sdl.KEYUP:
 			select {
-			case img.userinput <- userinput.EventKeyboard{
+			case img.dbg.UserInput() <- userinput.EventKeyboard{
 				Key:  sdl.GetScancodeName(ev.Keysym.Scancode),
 				Down: ev.Type == sdl.KEYDOWN,
 				Mod:  mod,

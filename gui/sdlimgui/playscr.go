@@ -131,7 +131,7 @@ func (win *playScr) drawFPS() bool {
 	// update fps
 	select {
 	case <-win.fpsPulse.C:
-		fps, hz := win.img.tv.GetActualFPS()
+		fps, hz := win.img.dbg.VCS().TV.GetActualFPS()
 		win.fps = fmt.Sprintf("%03.2f fps", fps)
 		win.hz = fmt.Sprintf("%03.2fhz", hz)
 	default:
@@ -159,7 +159,7 @@ func (win *playScr) drawFPS() bool {
 	imguiSeparator()
 
 	if coproc := win.img.cache.VCS.Mem.Cart.GetCoProc(); coproc != nil {
-		clk := float32(win.img.vcs.Env.Prefs.ARM.Clock.Get().(float64))
+		clk := float32(win.img.dbg.VCS().Env.Prefs.ARM.Clock.Get().(float64))
 		imgui.Text(fmt.Sprintf("%s Clock: %.0f Mhz", coproc.ProcessorID(), clk))
 		imguiSeparator()
 	}

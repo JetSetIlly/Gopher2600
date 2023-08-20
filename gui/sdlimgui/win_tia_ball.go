@@ -30,8 +30,8 @@ func (win *winTIA) drawBall() {
 	defer imgui.EndChild()
 
 	ball := win.img.cache.VCS.TIA.Video.Ball
-	realBall := win.img.vcs.TIA.Video.Ball
-	realPlayfield := win.img.vcs.TIA.Video.Playfield
+	realBall := win.img.dbg.VCS().TIA.Video.Ball
+	realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
 
 	imgui.Spacing()
 
@@ -103,7 +103,7 @@ func (win *winTIA) drawBall() {
 				v := uint8(k) // being careful about scope
 				win.img.dbg.PushFunction(func() {
 					realBall.Size = v
-					win.img.vcs.TIA.Video.UpdateCTRLPF()
+					win.img.dbg.VCS().TIA.Video.UpdateCTRLPF()
 				})
 			}
 		}

@@ -165,7 +165,7 @@ func (win *winCartRAM) draw(ram []mapper.CartRAM) {
 			commitBank := bank
 			commit := func(idx int, data uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.vcs.Mem.Cart.GetRAMbus().PutRAM(commitBank, idx, data)
+					win.img.dbg.VCS().Mem.Cart.GetRAMbus().PutRAM(commitBank, idx, data)
 				})
 			}
 

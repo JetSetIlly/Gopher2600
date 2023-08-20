@@ -79,7 +79,7 @@ func (win *winPorts) draw() {
 		drawRegister("##SWCHA_W", swcha_w, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.vcs.RIOT.Ports.PokeField("swcha_w", v)
+					win.img.dbg.VCS().RIOT.Ports.PokeField("swcha_w", v)
 				})
 			})
 
@@ -94,7 +94,7 @@ func (win *winPorts) draw() {
 		drawRegister("##SWCHB_W", swchb_w, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.vcs.RIOT.Ports.PokeField("swchb_w", v)
+					win.img.dbg.VCS().RIOT.Ports.PokeField("swchb_w", v)
 				})
 			})
 
@@ -109,7 +109,7 @@ func (win *winPorts) draw() {
 		drawRegister("##SWACNT", swacnt, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.vcs.RIOT.Ports.PokeField("swacnt", v)
+					win.img.dbg.VCS().RIOT.Ports.PokeField("swacnt", v)
 				})
 			})
 
@@ -122,7 +122,7 @@ func (win *winPorts) draw() {
 		drawRegister("##SWBCNT", swbcnt, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.vcs.RIOT.Ports.PokeField("swbcnt", v)
+					win.img.dbg.VCS().RIOT.Ports.PokeField("swbcnt", v)
 				})
 			})
 
@@ -142,7 +142,7 @@ func (win *winPorts) draw() {
 		drawRegister("##SWCHA_R", swcha, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.vcs.RIOT.Ports.PokeField("swcha", v)
+					win.img.dbg.VCS().RIOT.Ports.PokeField("swcha", v)
 				})
 			})
 
@@ -160,7 +160,7 @@ func (win *winPorts) draw() {
 		drawRegister("##SWCHB_R", swchb, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.vcs.RIOT.Ports.PokeField("swchb", v)
+					win.img.dbg.VCS().RIOT.Ports.PokeField("swchb", v)
 				})
 			})
 
@@ -181,7 +181,7 @@ func (win *winPorts) draw() {
 		drawRegister("##INPT0", inpt0, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT0], v)
+					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.INPT0], v)
 					if err != nil {
 						panic(err)
 					}
@@ -197,7 +197,7 @@ func (win *winPorts) draw() {
 		drawRegister("##INPT1", inpt1, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT1], v)
+					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.INPT1], v)
 					if err != nil {
 						panic(err)
 					}
@@ -215,7 +215,7 @@ func (win *winPorts) draw() {
 		drawRegister("##INPT2", inpt2, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT2], v)
+					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.INPT2], v)
 					if err != nil {
 						panic(err)
 					}
@@ -231,7 +231,7 @@ func (win *winPorts) draw() {
 		drawRegister("##INPT3", inpt3, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT3], v)
+					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.INPT3], v)
 					if err != nil {
 						panic(err)
 					}
@@ -249,7 +249,7 @@ func (win *winPorts) draw() {
 		drawRegister("##INPT4", inpt4, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT4], v)
+					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.INPT4], v)
 					if err != nil {
 						panic(err)
 					}
@@ -265,7 +265,7 @@ func (win *winPorts) draw() {
 		drawRegister("##INPT5", inpt5, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT5], v)
+					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.INPT5], v)
 					if err != nil {
 						panic(err)
 					}

@@ -77,7 +77,7 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 			ended = true
 			dbg.catchupEnd()
 
-			if dbg.catchupQuantum == QuantumInstruction {
+			if dbg.catchupQuantum == govern.QuantumInstruction {
 				return nil
 			}
 
@@ -157,9 +157,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 			}
 		}
 
-		// raise hasChanged flag every iteration
-		dbg.hasChanged = true
-
 		// checkTerm is used to decide whether to perform a full call to TermRead() and to potentially
 		// halt the inputLoop - which we don't want to do unless there is something to process
 		//
@@ -220,7 +217,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 		// c) the debugger has been changed to INSTRUCTION quantum mode
 		//
 		// if we don't do this then debugging output will be wrong and confusing.
-		if nonInstructionQuantum && dbg.continueEmulation && dbg.stepQuantum == QuantumInstruction {
+		if nonInstructionQuantum && dbg.continueEmulation && dbg.Quantum() == govern.QuantumInstruction {
 			return nil
 		}
 
@@ -325,10 +322,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 				return nil
 			}
 
-			// hasChanged flag may have been false for a long time after the
-			// termRead() pause. set to true immediately.
-			dbg.hasChanged = true
-
 			if dbg.unwindLoopRestart != nil {
 				return nil
 			}
@@ -397,7 +390,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 				}
 
 				// skip over WSYNC (CPU RDY flag is false) only if we're in instruction quantum
-				if dbg.stepQuantum == QuantumInstruction {
+				if dbg.Quantum() == govern.QuantumInstruction {
 					for !dbg.vcs.CPU.RdyFlg {
 						err = dbg.step(inputter, false)
 						if err != nil {
@@ -435,7 +428,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 
 		// process commandOnStep for clock quantum (equivalent for instruction
 		// quantum is the main body of Debugger.step() below)
-		if dbg.stepQuantum == QuantumClock && dbg.commandOnStep != nil {
+		if dbg.Quantum() == govern.QuantumClock && dbg.commandOnStep != nil {
 			// we don't do this if we're in catchup mode
 			if !catchup {
 				err := dbg.processTokensList(dbg.commandOnStep)
@@ -449,7 +442,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 		// returns below
 		dbg.continueEmulation = dbg.halting.check()
 
-		if dbg.stepQuantum == QuantumClock || !dbg.continueEmulation {
+		if dbg.Quantum() == govern.QuantumClock || !dbg.continueEmulation {
 			// start another inputLoop() with the clockCycle boolean set to true
 			return dbg.inputLoop(inputter, true)
 		}
@@ -509,7 +502,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 
 		// process commandOnStep for instruction quantum (equivalent for clock
 		// quantum is the vcs.Step() callback above)
-		if dbg.stepQuantum == QuantumInstruction && dbg.vcs.CPU.RdyFlg {
+		if dbg.Quantum() == govern.QuantumInstruction && dbg.vcs.CPU.RdyFlg {
 			if dbg.commandOnStep != nil {
 				err := dbg.processTokensList(dbg.commandOnStep)
 				if err != nil {

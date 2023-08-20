@@ -79,7 +79,7 @@ func (win *winCollisions) draw() {
 		drawRegister("##CXM0P", cxm0p, vcs.TIADrivenPins, win.img.cols.collisionBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXM0P], v)
+					win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.CXM0P], v)
 				})
 			})
 
@@ -91,7 +91,7 @@ func (win *winCollisions) draw() {
 		drawRegister("##CXM1P", cxm1p, vcs.TIADrivenPins, win.img.cols.collisionBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXM1P], v)
+					win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.CXM1P], v)
 				})
 			})
 
@@ -103,7 +103,7 @@ func (win *winCollisions) draw() {
 		drawRegister("##CXP0FB", cxp0fb, vcs.TIADrivenPins, win.img.cols.collisionBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXP0FB], v)
+					win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.CXP0FB], v)
 				})
 			})
 
@@ -115,7 +115,7 @@ func (win *winCollisions) draw() {
 		drawRegister("##CXP1FB", cxp1fb, vcs.TIADrivenPins, win.img.cols.collisionBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXP1FB], v)
+					win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.CXP1FB], v)
 				})
 			})
 
@@ -127,7 +127,7 @@ func (win *winCollisions) draw() {
 		drawRegister("##CXM0FB", cxm0fb, vcs.TIADrivenPins, win.img.cols.collisionBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXM0FB], v)
+					win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.CXM0FB], v)
 				})
 			})
 
@@ -139,7 +139,7 @@ func (win *winCollisions) draw() {
 		drawRegister("##CXM1FB", cxm1fb, vcs.TIADrivenPins, win.img.cols.collisionBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXM1FB], v)
+					win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.CXM1FB], v)
 				})
 			})
 
@@ -151,7 +151,7 @@ func (win *winCollisions) draw() {
 		drawRegister("##CXBLPF", cxblpf, vcs.TIADrivenPins, win.img.cols.collisionBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXBLPF], v)
+					win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.CXBLPF], v)
 				})
 			})
 
@@ -163,7 +163,7 @@ func (win *winCollisions) draw() {
 		drawRegister("##CXPPMM", cxppmm, vcs.TIADrivenPins, win.img.cols.collisionBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXPPMM], v)
+					win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.CXPPMM], v)
 				})
 			})
 
@@ -174,7 +174,7 @@ func (win *winCollisions) draw() {
 
 	if imgui.Button("Clear Collisions") {
 		win.img.dbg.PushFunction(func() {
-			win.img.vcs.TIA.Video.Collisions.Clear()
+			win.img.dbg.VCS().TIA.Video.Collisions.Clear()
 		})
 	}
 }

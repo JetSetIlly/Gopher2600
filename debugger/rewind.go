@@ -32,9 +32,6 @@ import (
 // numbers indicate backwards
 func (dbg *Debugger) RewindByAmount(amount int) bool {
 	switch dbg.Mode() {
-	default:
-		panic(fmt.Sprintf("Rewind: unsupported mode (%v)", dbg.Mode()))
-
 	case govern.ModePlay:
 		coords := dbg.vcs.TV.GetCoords()
 		tl := dbg.Rewind.GetTimeline()
@@ -74,15 +71,12 @@ func (dbg *Debugger) RewindByAmount(amount int) bool {
 		return true
 	}
 
-	return false
+	panic(fmt.Sprintf("Rewind: unsupported mode (%v)", dbg.Mode()))
 }
 
 // RewindToFrame measure from the current frame.
 func (dbg *Debugger) RewindToFrame(fn int, last bool) bool {
 	switch dbg.Mode() {
-	default:
-		panic(fmt.Sprintf("RewindToFrame: unsupported mode (%v)", dbg.Mode()))
-
 	case govern.ModeDebugger:
 		if dbg.State() == govern.Rewinding {
 			return false
@@ -91,7 +85,7 @@ func (dbg *Debugger) RewindToFrame(fn int, last bool) bool {
 		// the function to push to the debugger/emulation routine
 		doRewind := func() error {
 			// upate catchupQuantum before starting rewind process
-			dbg.catchupQuantum = dbg.stepQuantum
+			dbg.catchupQuantum = dbg.Quantum()
 
 			if last {
 				err := dbg.Rewind.GotoLast()
@@ -120,15 +114,12 @@ func (dbg *Debugger) RewindToFrame(fn int, last bool) bool {
 		return true
 	}
 
-	return false
+	panic(fmt.Sprintf("RewindToFrame: unsupported mode (%v)", dbg.Mode()))
 }
 
 // GotoCoords rewinds the emulation to the specified coordinates.
 func (dbg *Debugger) GotoCoords(coords coords.TelevisionCoords) bool {
 	switch dbg.Mode() {
-	default:
-		panic(fmt.Sprintf("GotoCoords: unsupported mode (%v)", dbg.Mode()))
-
 	case govern.ModeDebugger:
 		if dbg.State() == govern.Rewinding {
 			return false
@@ -137,7 +128,7 @@ func (dbg *Debugger) GotoCoords(coords coords.TelevisionCoords) bool {
 		// the function to push to the debugger/emulation routine
 		doRewind := func() error {
 			// upate catchupQuantum before starting rewind process
-			dbg.catchupQuantum = QuantumClock
+			dbg.catchupQuantum = govern.QuantumClock
 
 			err := dbg.Rewind.GotoCoords(coords)
 			if err != nil {
@@ -159,15 +150,12 @@ func (dbg *Debugger) GotoCoords(coords coords.TelevisionCoords) bool {
 		return true
 	}
 
-	return false
+	panic(fmt.Sprintf("GotoCoords: unsupported mode (%v)", dbg.Mode()))
 }
 
 // RerunLastNFrames measured from the current frame.
 func (dbg *Debugger) RerunLastNFrames(frames int) bool {
 	switch dbg.Mode() {
-	default:
-		panic(fmt.Sprintf("RerunLastNFrames: unsupported mode (%v)", dbg.Mode()))
-
 	case govern.ModeDebugger:
 		if dbg.State() == govern.Rewinding {
 			return false
@@ -203,7 +191,7 @@ func (dbg *Debugger) RerunLastNFrames(frames int) bool {
 		// are currently in
 		dbg.PushFunctionImmediate(func() {
 			// upate catchupQuantum before starting rewind process
-			dbg.catchupQuantum = QuantumClock
+			dbg.catchupQuantum = govern.QuantumClock
 
 			// set state to govern.Rewinding as soon as possible (but
 			// remembering that we must do it in the debugger goroutine)
@@ -214,5 +202,5 @@ func (dbg *Debugger) RerunLastNFrames(frames int) bool {
 		return true
 	}
 
-	return false
+	panic(fmt.Sprintf("RerunLastNFrames: unsupported mode (%v)", dbg.Mode()))
 }

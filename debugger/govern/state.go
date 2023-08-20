@@ -15,28 +15,6 @@
 
 package govern
 
-// Mode inidicates the broad condition of the emulation. Currently defined to be
-// debugger and play.
-type Mode int
-
-func (m Mode) String() string {
-	switch m {
-	case ModeDebugger:
-		return "Debugger"
-	case ModePlay:
-		return "Playmode"
-	}
-
-	return ""
-}
-
-// List of defined modes.
-const (
-	ModeNone Mode = iota
-	ModeDebugger
-	ModePlay
-)
-
 // State indicates the emulation's state.
 type State int
 

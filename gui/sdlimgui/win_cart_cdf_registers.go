@@ -88,7 +88,7 @@ func (win *winCDFRegisters) draw(regs cdf.Registers) {
 		data := fmt.Sprintf("%08x", regs.Datastream[i].Pointer)
 		if imguiHexInput(label, 8, &data) {
 			win.img.dbg.PushFunction(func() {
-				b := win.img.vcs.Mem.Cart.GetRegistersBus()
+				b := win.img.dbg.VCS().Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("datastream::%d::pointer", f), data)
 			})
 		}
@@ -110,7 +110,7 @@ func (win *winCDFRegisters) draw(regs cdf.Registers) {
 		inc := fmt.Sprintf("%08x", regs.Datastream[i].Increment)
 		if imguiHexInput(label, 8, &inc) {
 			win.img.dbg.PushFunction(func() {
-				b := win.img.vcs.Mem.Cart.GetRegistersBus()
+				b := win.img.dbg.VCS().Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("datastream::%d::increment", f), inc)
 			})
 		}
@@ -123,7 +123,7 @@ func (win *winCDFRegisters) draw(regs cdf.Registers) {
 	ff := regs.FastFetch
 	if imgui.Checkbox("##fastfetch", &ff) {
 		win.img.dbg.PushFunction(func() {
-			b := win.img.vcs.Mem.Cart.GetRegistersBus()
+			b := win.img.dbg.VCS().Mem.Cart.GetRegistersBus()
 			b.PutRegister("fastfetch", fmt.Sprintf("%v", ff))
 		})
 	}
@@ -134,7 +134,7 @@ func (win *winCDFRegisters) draw(regs cdf.Registers) {
 	sm := regs.SampleMode
 	if imgui.Checkbox("##samplemode", &sm) {
 		win.img.dbg.PushFunction(func() {
-			b := win.img.vcs.Mem.Cart.GetRegistersBus()
+			b := win.img.dbg.VCS().Mem.Cart.GetRegistersBus()
 			b.PutRegister("samplemode", fmt.Sprintf("%v", sm))
 		})
 	}
@@ -154,7 +154,7 @@ func (win *winCDFRegisters) draw(regs cdf.Registers) {
 		imguiLabel("Waveform")
 		if imguiHexInput(label, 8, &waveform) {
 			win.img.dbg.PushFunction(func() {
-				b := win.img.vcs.Mem.Cart.GetRegistersBus()
+				b := win.img.dbg.VCS().Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("music::%d::waveform", f), waveform)
 			})
 		}
@@ -165,7 +165,7 @@ func (win *winCDFRegisters) draw(regs cdf.Registers) {
 		imguiLabel("Freq")
 		if imguiHexInput(label, 8, &freq) {
 			win.img.dbg.PushFunction(func() {
-				b := win.img.vcs.Mem.Cart.GetRegistersBus()
+				b := win.img.dbg.VCS().Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("music::%d::freq", f), freq)
 			})
 		}
@@ -176,7 +176,7 @@ func (win *winCDFRegisters) draw(regs cdf.Registers) {
 		imguiLabel("Count")
 		if imguiHexInput(label, 8, &count) {
 			win.img.dbg.PushFunction(func() {
-				b := win.img.vcs.Mem.Cart.GetRegistersBus()
+				b := win.img.dbg.VCS().Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("music::%d::count", f), count)
 			})
 		}

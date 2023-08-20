@@ -506,3 +506,18 @@ func (bp *breakpoints) togglePCBreak(e *disassembly.Entry) {
 
 	bp.breaks = append(bp.breaks, nb)
 }
+
+// CheckBreakpoints is a minimal interface to Breakpoints
+type CheckBreakpoints interface {
+	HasPCBreak(addr uint16, bank int) (bool, int)
+}
+
+// GetBreakpoints returns an instance of CheckBreakpoints. This is good for
+// allowing other goroutines access to a read-only copy of the list of
+// breakpoints.
+func (dbg *Debugger) GetBreakpoints() CheckBreakpoints {
+	bp := *dbg.halting.breakpoints
+	bp.breaks = make([]breaker, len(dbg.halting.breakpoints.breaks))
+	copy(bp.breaks, dbg.halting.breakpoints.breaks)
+	return bp
+}

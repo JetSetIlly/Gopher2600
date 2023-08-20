@@ -28,9 +28,9 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/comparison"
 	"github.com/jetsetilly/gopher2600/coprocessor"
-	coprocDev "github.com/jetsetilly/gopher2600/coprocessor/developer"
-	coprocDWARF "github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
-	coprocDisasm "github.com/jetsetilly/gopher2600/coprocessor/disassembly"
+	coproc_dev "github.com/jetsetilly/gopher2600/coprocessor/developer"
+	coproc_dwarf "github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
+	coproc_disasm "github.com/jetsetilly/gopher2600/coprocessor/disassembly"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/script"
@@ -127,11 +127,8 @@ type Debugger struct {
 	//
 	// * allocated when entering debugger mode
 	Disasm       *disassembly.Disassembly
-	CoProcDisasm coprocDisasm.Disassembly
-	CoProcDev    coprocDev.Developer
-
-	// coprocessor shim can be static for the duration of the debugger
-	coprocShim coprocShim
+	CoProcDisasm coproc_disasm.Disassembly
+	CoProcDev    coproc_dev.Developer
 
 	// the live disassembly entry. updated every CPU step or on halt (which may
 	// be mid instruction)
@@ -191,8 +188,8 @@ type Debugger struct {
 	commandOnTrace       []*commandline.Tokens
 	commandOnTraceStored []*commandline.Tokens
 
-	// stepQuantum to use when stepping/running
-	stepQuantum Quantum
+	// Quantum to use when stepping/running
+	quantum atomic.Value // govern.Quantum
 
 	// catchupQuantum differs from the quantum field in that it only applies in
 	// the catchupLoop (part of the rewind system). it is set just before the
@@ -203,7 +200,7 @@ type Debugger struct {
 	//
 	// for PushGoto() the quantum is set to QuantumVideo, while for
 	// PushRewind() it is set to the current stepQuantum
-	catchupQuantum Quantum
+	catchupQuantum govern.Quantum
 
 	// record user input to a script file
 	scriptScribe script.Scribe
@@ -232,10 +229,6 @@ type Debugger struct {
 
 	// audio tracker stores audio state over time
 	Tracker *tracker.Tracker
-
-	// whether the state of the emulation has changed since the last time it
-	// was checked - use HasChanged() function
-	hasChanged bool
 
 	// \/\/\/ debugger inputLoop \/\/\/
 
@@ -325,21 +318,16 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 		// copy of the arguments
 		opts: opts,
 
-		// by definition the state of debugger has changed during startup
-		hasChanged: true,
-
 		// the ticker to indicate whether we should check for events in the inputLoop
 		eventCheckPulse: time.NewTicker(50 * time.Millisecond),
 	}
-
-	// set up coprocessor developer shim
-	dbg.coprocShim.dbg = dbg
 
 	// emulator is starting in the "none" mode (the advangatge of this is that
 	// we get to set the underlying type of the atomic.Value early before
 	// anyone has a change to call State() or Mode() from another thread)
 	dbg.state.Store(govern.EmulatorStart)
 	dbg.mode.Store(govern.ModeNone)
+	dbg.quantum.Store(govern.QuantumInstruction)
 
 	var err error
 
@@ -380,8 +368,8 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	}
 
 	// create new coprocessor developer/disassembly instances
-	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV)
-	dbg.CoProcDev = coprocDev.NewDeveloper(dbg, dbg.vcs.TV)
+	dbg.CoProcDisasm = coproc_disasm.NewDisassembly(dbg.vcs.TV)
+	dbg.CoProcDev = coproc_dev.NewDeveloper(dbg, dbg.vcs.TV)
 	dbg.vcs.TV.AddFrameTrigger(&dbg.CoProcDev)
 
 	// create a minimal lastResult for initialisation
@@ -479,6 +467,16 @@ func (dbg *Debugger) Debugger() *Debugger {
 // UserInput implements the emulation.Emulation interface.
 func (dbg *Debugger) UserInput() chan userinput.Event {
 	return dbg.events.UserInput
+}
+
+// Mode implements the emulation.Emulation interface.
+func (dbg *Debugger) Quantum() govern.Quantum {
+	return dbg.quantum.Load().(govern.Quantum)
+}
+
+// set the quantum state
+func (dbg *Debugger) setQuantum(quantum govern.Quantum) {
+	dbg.quantum.Store(quantum)
 }
 
 // State implements the emulation.Emulation interface.
@@ -1159,11 +1157,11 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 		logger.Logf("debugger", err.Error())
 	}
 
-	dbg.CoProcDisasm.AttachCartridge(dbg.coprocShim)
-	err = dbg.CoProcDev.AttachCartridge(dbg.coprocShim, cartload.Filename, *dbg.opts.ELF)
+	dbg.CoProcDisasm.AttachCartridge(dbg)
+	err = dbg.CoProcDev.AttachCartridge(dbg, cartload.Filename, *dbg.opts.ELF)
 	if err != nil {
 		logger.Logf("debugger", err.Error())
-		if errors.Is(err, coprocDWARF.UnsupportedDWARF) {
+		if errors.Is(err, coproc_dwarf.UnsupportedDWARF) {
 			err = dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifyUnsupportedDWARF)
 			if err != nil {
 				logger.Logf("debugger", err.Error())
@@ -1352,8 +1350,8 @@ func (dbg *Debugger) hotload() (e error) {
 		return err
 	}
 
-	dbg.CoProcDisasm.AttachCartridge(dbg.coprocShim)
-	dbg.CoProcDev.AttachCartridge(dbg.coprocShim, cartload.Filename, *dbg.opts.ELF)
+	dbg.CoProcDisasm.AttachCartridge(dbg)
+	dbg.CoProcDev.AttachCartridge(dbg, cartload.Filename, *dbg.opts.ELF)
 
 	return nil
 }
@@ -1472,4 +1470,19 @@ func (dbg *Debugger) InsertCartridge(filename string) {
 			return dbg.insertCartridge(filename)
 		})
 	})
+}
+
+// GetLiveDisasmEntry returns the formatted disasembly entry of the last CPU
+// execution and the bank information
+func (dbg *Debugger) GetLiveDisasmEntry() disassembly.Entry {
+	if dbg.liveDisasmEntry == nil {
+		return disassembly.Entry{}
+	}
+
+	return *dbg.liveDisasmEntry
+}
+
+// GetCoProcBus returns the interface to a cartridge's coprocessor
+func (dbg *Debugger) GetCoProcBus() coprocessor.CartCoProcBus {
+	return dbg.vcs.Mem.Cart.GetCoProcBus()
 }

@@ -247,16 +247,16 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			switch mode {
 			case "":
 				// continue with current quantum state
-				if dbg.stepQuantum == QuantumInstruction {
+				if dbg.Quantum() == govern.QuantumInstruction {
 					instruction = true
 				} else {
 					adj = television.AdjClock
 				}
 			case "INSTRUCTION":
-				dbg.stepQuantum = QuantumInstruction
+				dbg.setQuantum(govern.QuantumInstruction)
 				instruction = true
 			case "CLOCK":
-				dbg.stepQuantum = QuantumClock
+				dbg.setQuantum(govern.QuantumClock)
 				adj = television.AdjClock
 			case "SCANLINE":
 				adj = television.AdjScanline
@@ -277,7 +277,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			dbg.setState(govern.Rewinding)
 			dbg.unwindLoop(func() error {
 				// update catchupQuantum before starting rewind process
-				dbg.catchupQuantum = dbg.stepQuantum
+				dbg.catchupQuantum = dbg.Quantum()
 
 				return dbg.Rewind.GotoCoords(coords)
 			})
@@ -292,7 +292,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 			// if quantum is instruction and CPU is not RDY then STEP is best
 			// implemented as TRAP RDY
-			if dbg.stepQuantum == QuantumInstruction && !dbg.vcs.CPU.RdyFlg {
+			if dbg.Quantum() == govern.QuantumInstruction && !dbg.vcs.CPU.RdyFlg {
 				_ = dbg.halting.volatileTraps.parseCommand(commandline.TokeniseInput("RDY"))
 				dbg.runUntilHalt = true
 
@@ -302,9 +302,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				dbg.stepOutOfVideoStepInputLoop = true
 			}
 		case "INSTRUCTION":
-			dbg.stepQuantum = QuantumInstruction
+			dbg.setQuantum(govern.QuantumInstruction)
 		case "CLOCK":
-			dbg.stepQuantum = QuantumClock
+			dbg.setQuantum(govern.QuantumClock)
 		default:
 			// do not change quantum
 			tokens.Unget()
@@ -324,11 +324,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		mode = strings.ToUpper(mode)
 		switch mode {
 		case "INSTRUCTION":
-			dbg.stepQuantum = QuantumInstruction
+			dbg.setQuantum(govern.QuantumInstruction)
 		case "CLOCK":
-			dbg.stepQuantum = QuantumClock
+			dbg.setQuantum(govern.QuantumClock)
 		default:
-			dbg.printLine(terminal.StyleFeedback, "set to %s", dbg.stepQuantum)
+			dbg.printLine(terminal.StyleFeedback, "set to %s", dbg.Quantum)
 		}
 
 	case cmdScript:
