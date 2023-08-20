@@ -17,8 +17,10 @@ package sdlimgui
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/coprocessor"
 )
 
 const winCoProcRegistersID = "Registers"
@@ -60,11 +62,9 @@ func (win *winCoProcRegisters) debuggerDraw() bool {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{942, 97}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{520, 390}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{400, 300}, imgui.Vec2{551, 1000})
 
 	title := fmt.Sprintf("%s %s", coproc.ProcessorID(), winCoProcRegistersID)
-	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
+	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
 		win.draw()
 	}
 
@@ -75,28 +75,49 @@ func (win *winCoProcRegisters) debuggerDraw() bool {
 }
 
 func (win *winCoProcRegisters) draw() {
-	// coproc := win.img.cq.vcs.Mem.Cart.GetCoProc()
-	// spec := coproc.RegisterSpec()
+	coproc := win.img.cache.VCS.Mem.Cart.GetCoProc()
+	spec := coproc.RegisterSpec()
 
-	// for _, regs := range spec {
-	// 	drawRegGroup := func() {
-	// 		for r := regs.Start; r <= regs.End; r++ {
-	// 			if v, f, ok := coproc.RegisterFormatted(r); ok {
-	// 				_ = v
-	// 				imgui.InputText(regs.Label(r), &f)
-	// 			}
-	// 		}
-	// 	}
+	for _, regs := range spec {
+		drawRegGroup := func() {
+			imgui.BeginTable(fmt.Sprintf("##coprocRegistersTable%s", regs.Name), 2)
+			defer imgui.EndTable()
 
-	// 	if regs.Name == coprocessor.ExtendedRegisterCoreGroup {
-	// 		drawRegGroup()
-	// 	} else {
-	// 		if imgui.CollapsingHeader(regs.Name) {
-	// 			drawRegGroup()
-	// 		}
-	// 	}
+			for r := regs.Start; r <= regs.End; r++ {
+				if (r-regs.Start)%2 == 0 {
+					imgui.TableNextRow()
+				}
+				imgui.TableNextColumn()
 
-	// }
+				if v, f, ok := coproc.RegisterFormatted(r); ok {
+					s := fmt.Sprintf("%08x", v)
+					label := regs.Label(r)
+					imguiLabel(label)
+					if imguiHexInput(fmt.Sprintf("##%s", label), 8, &s) {
+						reg := r
+						n, err := strconv.ParseUint(s, 16, 32)
+						if err == nil {
+							win.img.dbg.PushFunction(func() {
+								coproc := win.img.dbg.VCS().Mem.Cart.GetCoProc()
+								coproc.RegisterSet(reg, uint32(n))
+							})
+						}
+					}
+					if regs.Formatted {
+						win.img.imguiTooltipSimple(f)
+					}
+				}
+			}
+		}
 
-	// _ = spec
+		if regs.Name == coprocessor.ExtendedRegisterCoreGroup {
+			drawRegGroup()
+		} else {
+			if imgui.CollapsingHeader(regs.Name) {
+				drawRegGroup()
+			}
+		}
+	}
+
+	_ = spec
 }

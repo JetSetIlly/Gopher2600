@@ -34,26 +34,46 @@ import (
 
 var arm7tdmiRegisterSpec = coprocessor.ExtendedRegisterSpec{
 	{
-		Name:   coprocessor.ExtendedRegisterCoreGroup,
-		Prefix: "R",
-		Start:  0,
-		End:    15,
+		Name:  coprocessor.ExtendedRegisterCoreGroup,
+		Start: 0,
+		End:   15,
+		Label: func(r int) string {
+			return fmt.Sprintf("R%02d", r)
+		},
 	},
 }
 
 var armv7mRegisterSpec = coprocessor.ExtendedRegisterSpec{
 	{
-		Name:   coprocessor.ExtendedRegisterCoreGroup,
-		Prefix: "R",
-		Start:  0,
-		End:    15,
+		Name:  coprocessor.ExtendedRegisterCoreGroup,
+		Start: 0,
+		End:   15,
+		Label: func(r int) string {
+			return fmt.Sprintf("R%02d", r)
+		},
 	},
 	{
-		Name:      "FPU",
-		Prefix:    "S",
-		Start:     64,
-		End:       95,
+		Name:  "FPU",
+		Start: 64,
+		End:   95,
+		Label: func(r int) string {
+			return fmt.Sprintf("S%02d", r-64)
+		},
 		Formatted: true,
+	},
+	{
+		Name:  "TIM2",
+		Start: 10000,
+		End:   10001,
+		Label: func(r int) string {
+			switch r {
+			case 10000:
+				return "CR1"
+			case 10001:
+				return "CNT"
+			}
+			return "unknown TIM2 register"
+		},
 	},
 }
 
@@ -81,9 +101,27 @@ func (arm *ARM) register(register int, formatted bool) (uint32, string, bool) {
 			case "FPU":
 				var s string
 				if formatted {
-					s = fmt.Sprintf("%f", math.Float32frombits(arm.state.fpu.Registers[register-64]))
+					s = fmt.Sprintf("%f", math.Float32frombits(arm.state.fpu.Registers[register-spec.Start]))
 				}
 				return arm.state.fpu.Registers[register-spec.Start], s, true
+			case "TIM2":
+				var v uint32
+
+				switch register {
+				case 10000:
+					v, _, _ = arm.state.timer2.Read(arm.mmap.TIM2CR1)
+				case 10001:
+					v, _, _ = arm.state.timer2.Read(arm.mmap.TIM2CNT)
+				default:
+					return 0, "", false
+				}
+
+				var s string
+				if formatted {
+					s = fmt.Sprintf("%08x", v)
+				}
+
+				return v, s, true
 			}
 		}
 	}
@@ -117,8 +155,19 @@ func (arm *ARM) RegisterSet(register int, value uint32) bool {
 			case "FPU":
 				arm.state.fpu.Registers[register-spec.Start] = value
 				return true
+			case "TIM2":
+				switch register {
+				case 10000:
+					arm.state.timer2.Write(arm.mmap.TIM2CR1, value)
+				case 10001:
+					arm.state.timer2.Write(arm.mmap.TIM2CNT, value)
+				default:
+					return false
+				}
+				return true
 			}
 		}
 	}
+	fmt.Println(1)
 	return false
 }

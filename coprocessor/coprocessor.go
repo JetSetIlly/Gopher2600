@@ -107,22 +107,20 @@ type ExtendedRegisterGroup struct {
 	// name of the group
 	Name string
 
-	// the prefix letter  to use when labelling the register. See the Label()
-	// function which will also adjust the register number appropriately
-	Prefix string
-
 	// the numeric range of the registers in this group
 	Start int
 	End   int
 
-	// whether the registers int he group will return meaningful data from the
+	// whether the register range is private to the implementation. a private
+	// range means that is not meaningul in relation to DWARF
+	Private bool
+
+	// whether the registers in the group will return meaningful data from the
 	// RegisterFormatted() function
 	Formatted bool
-}
 
-// Label creates a string for the numbered register
-func (group ExtendedRegisterGroup) Label(register int) string {
-	return fmt.Sprintf("%s%02d", group.Prefix, register-group.Start)
+	// the label to use for the register
+	Label func(register int) string
 }
 
 // ExtendedRegisterSpec is the specification returned by CartCoProc.RegisterSpec() function
