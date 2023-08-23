@@ -179,11 +179,11 @@ func (cart *Ace) AccessPassive(addr uint16, data uint8) {
 
 	// set data first and continue once. this seems to be necessary to allow
 	// the PlusROM exit routine to work correctly
-	if !cart.mem.isDataModeOut() {
-		cart.mem.gpio[DATA_IDR-cart.mem.gpioOrigin] = data
-	}
-
+	cart.mem.gpio[DATA_IDR-cart.mem.gpioOrigin] = data
 	cart.runARM()
+	if cart.mem.isDataModeOut() {
+		return
+	}
 
 	// set address for ARM program
 	cart.mem.gpio[ADDR_IDR-cart.mem.gpioOrigin] = uint8(addr)
@@ -192,6 +192,9 @@ func (cart *Ace) AccessPassive(addr uint16, data uint8) {
 	// continue and wait for the fourth YieldSyncWithVCS...
 	for i := 0; i < 4; i++ {
 		cart.runARM()
+		if cart.mem.isDataModeOut() {
+			break // for loop
+		}
 	}
 }
 
