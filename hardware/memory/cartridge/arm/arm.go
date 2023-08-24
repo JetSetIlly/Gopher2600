@@ -761,7 +761,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 				memIdx := int(arm.state.executingPC - arm.state.programMemoryOrigin)
 
 				// opcode for executed instruction
-				opcode := uint16((*arm.state.programMemory)[memIdx]) | (uint16((*arm.state.programMemory)[memIdx+1]) << 8)
+				opcode := arm.byteOrder.Uint16((*arm.state.programMemory)[memIdx:])
 
 				// bump PC counter for prefetch. actual prefetch is done after execution
 				arm.state.registers[rPC] += 2
