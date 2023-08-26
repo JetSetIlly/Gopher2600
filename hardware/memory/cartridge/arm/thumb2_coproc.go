@@ -28,7 +28,7 @@ import "fmt"
 // memory in a different byte order from ARM instructions. See Instruction
 // alignment and byte ordering on page 2-13 for details.
 
-func (arm *ARM) decodeThumb2Coproc(opcode uint16) *DisasmEntry {
+func (arm *ARM) decodeThumb2Coproc(opcode uint16) decodeFunction {
 	// "A5.3.18 Coprocessor instructions" of "ARMv7-M" lists the instructions
 	// that are common to all coprocessor types. we're ignoring those for the
 	// moment

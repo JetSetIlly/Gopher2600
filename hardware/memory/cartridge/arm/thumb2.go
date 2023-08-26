@@ -57,7 +57,7 @@ func (arm *ARM) decodeThumb2(opcode uint16) decodeFunction {
 
 	if opcode&0xf800 == 0xe800 || opcode&0xf000 == 0xf000 {
 		// 32 bit instructions
-		return arm.decode32bitThumb2(opcode)
+		panic(fmt.Sprintf("32-bit thumb-2 Hi opcode (%04x) should have been handled before this", opcode))
 	} else {
 		if opcode&0xf000 == 0xe000 {
 			// ** format 18 Unconditional branch

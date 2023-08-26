@@ -1019,7 +1019,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 		arm.state.function32bitResolving = true
 		df = arm.state.currentExecutionCache[memIdx]
 		if df == nil {
-			df = arm.decode32bitThumb2(arm.state.function32bitOpcodeHi)
+			df = arm.decode32bitThumb2(arm.state.function32bitOpcodeHi, opcode)
 			arm.state.currentExecutionCache[memIdx] = df
 		}
 	} else {
@@ -1040,7 +1040,6 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 				arm.state.currentExecutionCache[memIdx] = df
 			}
 		}
-
 	}
 
 	// new 32bit functions always execute
