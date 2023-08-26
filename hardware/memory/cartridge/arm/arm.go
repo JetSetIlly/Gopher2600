@@ -591,6 +591,11 @@ func (arm *ARM) ProcessProfiling() {
 func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 	if arm.dev != nil {
 		defer func() {
+			// make sure TIM2 is up to date
+			if arm.mmap.HasTIM2 {
+				arm.state.timer2.ResolveDeferredCycles()
+			}
+
 			// breakpoints handle OnYield slightly differently
 			if arm.state.yield.Type != coprocessor.YieldBreakpoint {
 				arm.logYield()

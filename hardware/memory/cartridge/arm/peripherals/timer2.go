@@ -54,6 +54,8 @@ type Timer2 struct {
 	// will still be ticking towards the prescalarShadow value
 	prescalarShadow  uint32
 	prescalerCounter uint32
+
+	deferredCycles uint32
 }
 
 func NewTimer2(mmap architecture.Map) Timer2 {
@@ -116,7 +118,22 @@ func (t *Timer2) setControlRegister(val uint32) string {
 	return comment
 }
 
+// Step ticks TIM2 by the specified number of cycles. In reality the cycles are
+// deferred until ResolveDeferredCycles().
 func (t *Timer2) Step(cycles uint32) {
+	t.deferredCycles += cycles
+}
+
+// ResolveDeferredCycles makes sure that the TIM2 registers are updated. Under
+// normal operation the resolve function is called automatically when the
+// TIM2CNT value is required. But it should also be called when the emulation
+// ends (either naturally or as a result of a breakpoint etc.) so that debugging
+// information is accurate.
+func (t *Timer2) ResolveDeferredCycles() {
+	cycles := t.deferredCycles
+	t.deferredCycles = 0.0
+
+	// nothing to do if TIM2 is not enabled
 	if !t.enable {
 		return
 	}
@@ -215,6 +232,7 @@ func (t *Timer2) Write(addr uint32, val uint32) (bool, string) {
 	case t.mmap.TIM2CNT:
 		// TIMx Counter
 		t.counter = val
+		t.deferredCycles = 0
 	case t.mmap.TIM2PSC:
 		// TIMx Prescalar
 		t.prescaler = val & 0x0000ffff
@@ -242,6 +260,7 @@ func (t *Timer2) Read(addr uint32) (uint32, bool, string) {
 		val = t.control
 	case t.mmap.TIM2CNT:
 		// TIMx Counter
+		t.ResolveDeferredCycles()
 		val = t.counter
 	default:
 		return 0, false, ""
