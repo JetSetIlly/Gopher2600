@@ -145,10 +145,16 @@ func NewElf(env *environment.Environment, pathToROM string, inACE bool) (mapper.
 	}
 
 	cart.arm.SetByteOrder(ef.ByteOrder)
-
 	cart.mem.busStuffingInit()
 
-	// defer reset until the VCS tries to read the cpubus.Reset address
+	// defer VCS reset until the VCS tries to read the cpubus.Reset address
+
+	// run arm initialisation functions if present. next call to arm.Run() will
+	// cause the main function to execute
+	err = cart.mem.runInitialisation(cart.arm)
+	if err != nil {
+		return nil, fmt.Errorf("ELF: %w", err)
+	}
 
 	return cart, nil
 }

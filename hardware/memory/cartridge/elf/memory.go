@@ -17,11 +17,13 @@ package elf
 
 import (
 	"debug/elf"
+	"encoding/binary"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -34,12 +36,13 @@ type interruptARM interface {
 }
 
 type elfSection struct {
-	name string
-	data []byte
+	name  string
+	flags elf.SectionFlag
+	typ   elf.SectionType
 
-	inMemory bool
-	origin   uint32
-	memtop   uint32
+	data   []byte
+	origin uint32
+	memtop uint32
 
 	// trailing bytes are placed after each section in memory to ensure
 	// alignment and also to ensure that executable memory can be indexed by the
@@ -47,9 +50,21 @@ type elfSection struct {
 	// this can happen when trying to execute the last instruction in the
 	// program
 	trailingBytes uint32
+}
 
-	readOnly   bool
-	executable bool
+func (sec elfSection) readOnly() bool {
+	return sec.flags&elf.SHF_WRITE != elf.SHF_WRITE
+}
+
+func (sec elfSection) executable() bool {
+	return sec.flags&elf.SHF_EXECINSTR == elf.SHF_EXECINSTR
+}
+
+func (sec elfSection) inMemory() bool {
+	return (sec.typ == elf.SHT_INIT_ARRAY ||
+		sec.typ == elf.SHT_NOBITS ||
+		sec.typ == elf.SHT_PROGBITS) &&
+		!strings.Contains(sec.name, ".debug")
 }
 
 func (s *elfSection) String() string {
@@ -74,6 +89,9 @@ type elfMemory struct {
 	resetLR uint32
 	resetPC uint32
 
+	// the order in which data is held in the elf file and in memory
+	byteOrder binary.ByteOrder
+
 	// input/output pins
 	gpio *gpio
 
@@ -89,6 +107,8 @@ type elfMemory struct {
 	sections       []*elfSection
 	sectionNames   []string
 	sectionsByName map[string]int
+
+	symbols []elf.Symbol
 
 	// strongARM support. like the elf sections, the strongARM program is placed
 	// in flash memory
@@ -157,17 +177,16 @@ func newElfMemory() *elfMemory {
 }
 
 func (mem *elfMemory) decode(ef *elf.File) error {
+	// note byte order
+	mem.byteOrder = ef.ByteOrder
+
 	// load sections
 	origin := mem.model.FlashOrigin
 	for _, sec := range ef.Sections {
 		section := &elfSection{
-			name:       sec.Name,
-			readOnly:   sec.Flags&elf.SHF_WRITE != elf.SHF_WRITE,
-			executable: sec.Flags&elf.SHF_EXECINSTR == elf.SHF_EXECINSTR,
-			inMemory: (sec.Type == elf.SHT_INIT_ARRAY ||
-				sec.Type == elf.SHT_NOBITS ||
-				sec.Type == elf.SHT_PROGBITS) &&
-				!strings.Contains(sec.Name, ".debug"),
+			name:  sec.Name,
+			flags: sec.Flags,
+			typ:   sec.Type,
 		}
 
 		var err error
@@ -183,7 +202,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 		}
 
 		// we know about and record data for all sections but we don't load all of them into the corprocessor's memory
-		if section.inMemory {
+		if section.inMemory() {
 			section.origin = origin
 			section.memtop = section.origin + uint32(len(section.data))
 
@@ -199,10 +218,10 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 
 			logger.Logf("ELF", "%s: %08x to %08x (%d) [%d trailing bytes]",
 				section.name, section.origin, section.memtop, len(section.data), section.trailingBytes)
-			if section.readOnly {
+			if section.readOnly() {
 				logger.Logf("ELF", "%s: is readonly", section.name)
 			}
-			if section.executable {
+			if section.executable() {
 				logger.Logf("ELF", "%s: is executable", section.name)
 			}
 		}
@@ -230,8 +249,10 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 	// yields to the VCS or expects the ARM to resume immediately
 	mem.strongArmResumeImmediately = make(map[uint32]bool)
 
+	var err error
+
 	// symbols used during relocation
-	symbols, err := ef.Symbols()
+	mem.symbols, err = ef.Symbols()
 	if err != nil {
 		return fmt.Errorf("ELF: %w", err)
 	}
@@ -280,7 +301,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 
 			// symbol is encoded in the info value
 			symbolIdx := info >> 8
-			sym := symbols[symbolIdx-1]
+			sym := mem.symbols[symbolIdx-1]
 
 			// reltype is encoded in the info value
 			relType := info & 0xff
@@ -478,21 +499,19 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 	logger.Logf("ELF", "strongarm: %08x to %08x (%d)",
 		mem.strongArmOrigin, mem.strongArmMemtop, len(mem.strongArmProgram))
 
-	// find entry point and use it to set the resetPC value. the Entry field in
-	// the elf.File structure is no good for our purposes
-	for _, s := range symbols {
-		if s.Name == "main" || s.Name == "elf_main" {
-			idx := mem.sectionsByName[".text"]
-			mem.resetPC = mem.sections[idx].origin + uint32(s.Value)
-			break // for loop
-		}
-	}
+	// SRAM creation
+	mem.sram = make([]byte, 0x10000) // 64k SRAM
+	mem.sramOrigin = mem.model.SRAMOrigin
+	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram))
 
-	// make sure resetPC value is aligned correctly
-	mem.resetPC &= 0xfffffffe
+	// runInitialisation() must be run once ARM has been created
 
-	// intialise stack pointer and link register. these values have no
-	// reasoning behind them but they work in most cases
+	return nil
+}
+
+// run any intialisation functions. leave resetPC value pointing to main function
+func (mem *elfMemory) runInitialisation(arm *arm.ARM) error {
+	// intialise stack pointer and link register
 	//
 	// the link register should really link to a program that will indicate the
 	// program has ended. if we were emulating the real Uno/PlusCart firmware,
@@ -500,10 +519,35 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 	mem.resetSP = mem.model.SRAMOrigin | 0x0000ffdc
 	mem.resetLR = mem.model.FlashOrigin
 
-	// SRAM creation
-	mem.sram = make([]byte, mem.resetSP-mem.model.SRAMOrigin)
-	mem.sramOrigin = mem.model.SRAMOrigin
-	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram))
+	for _, typ := range []elf.SectionType{elf.SHT_PREINIT_ARRAY, elf.SHT_INIT_ARRAY} {
+		for _, sec := range mem.sections {
+			if sec.typ == typ {
+				ptr := 0
+				for {
+					mem.resetPC = mem.byteOrder.Uint32(sec.data[ptr:])
+					ptr += 4
+					if mem.resetPC == 0x00000000 {
+						break // for loop
+					}
+					mem.resetPC &= 0xfffffffe
+
+					logger.Logf("ELF", "running %s at %08x", sec.name, mem.resetPC)
+					_, _ = arm.Run()
+				}
+			}
+		}
+	}
+
+	// find entry point and use it to set the resetPC value. the Entry field in
+	// the elf.File structure is no good for our purposes
+	for _, s := range mem.symbols {
+		if s.Name == "main" || s.Name == "elf_main" {
+			idx := mem.sectionsByName[".text"]
+			mem.resetPC = mem.sections[idx].origin + uint32(s.Value)
+			mem.resetPC &= 0xfffffffe
+			break // for loop
+		}
+	}
 
 	return nil
 }
@@ -596,6 +640,12 @@ func (mem *elfMemory) Plumb(arm interruptARM) {
 // MapAddress implements the arm.SharedMemory interface.
 func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	if addr >= mem.strongArmOrigin && addr <= mem.strongArmMemtop {
+
+		// strong arm memory is not writeable
+		if write {
+			return nil, 0
+		}
+
 		// strongarm functions are indexed by the address of the first
 		// instruction in the function
 		//
@@ -613,7 +663,9 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 			mem.arm.Interrupt()
 			mem.resumeARMimmediately = mem.strongArmResumeImmediately[addr-1]
 		} else {
-			logger.Logf("ELF", "strongarm function lookup failed: %8x", addr-1)
+			// if the strongarm function can't be found then the program is
+			// simply wanting to read data in the strongARM memory space (for
+			// whatever reason)
 		}
 		return &mem.strongArmProgram, mem.strongArmOrigin
 	}
@@ -653,7 +705,7 @@ func (mem *elfMemory) mapAddress(addr uint32, write bool) (*[]byte, uint32) {
 		}
 
 		if addr >= s.origin && addr <= s.memtop {
-			if write && s.readOnly {
+			if write && s.readOnly() {
 				return nil, 0
 			}
 			return &s.data, s.origin
@@ -687,7 +739,7 @@ func (mem *elfMemory) Segments() []mapper.CartStaticSegment {
 	for _, n := range mem.sectionNames {
 		idx := mem.sectionsByName[n]
 		s := mem.sections[idx]
-		if s.inMemory {
+		if s.inMemory() {
 			segments = append(segments, mapper.CartStaticSegment{
 				Name:   s.name,
 				Origin: s.origin,

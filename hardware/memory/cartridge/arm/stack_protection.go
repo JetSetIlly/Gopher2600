@@ -34,11 +34,11 @@ func (arm *ARM) stackProtectCheckSP() {
 
 	if stackMemory == nil {
 		arm.state.yield.Type = coprocessor.YieldStackError
-		arm.state.yield.Error = fmt.Errorf("SP is not pointing to a valid address")
+		arm.state.yield.Error = fmt.Errorf("SP is not pointing to a valid address (%08x)", arm.state.registers[rSP])
 
 	} else if stackMemory == arm.state.programMemory {
 		arm.state.yield.Type = coprocessor.YieldStackError
-		arm.state.yield.Error = fmt.Errorf("SP is pointing to program memory")
+		arm.state.yield.Error = fmt.Errorf("SP is pointing to program memory (%08x)", arm.state.registers[rSP])
 
 	} else if arm.state.protectVariableMemTop {
 		// return is stack and variable memory blocks are different
