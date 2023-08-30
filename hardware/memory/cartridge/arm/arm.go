@@ -75,7 +75,7 @@ type stepFunction func(opcode uint16, memIdx int)
 // the return value for decodeFunction can be an instance of DisasmEntry or nil.
 // in the case of (1) it is always nil but in the case of (2) nil indicates an
 // error
-type decodeFunction func(opcode uint16) *DisasmEntry
+type decodeFunction func() *DisasmEntry
 
 type ARMState struct {
 	// ARM registers
@@ -986,10 +986,10 @@ func (arm *ARM) checkBreakpoints() {
 }
 
 func (arm *ARM) stepARM7TDMI(opcode uint16, memIdx int) {
-	f := arm.state.currentExecutionCache[memIdx]
-	if f == nil {
-		f = arm.decodeThumb(opcode)
-		arm.state.currentExecutionCache[memIdx] = f
+	df := arm.state.currentExecutionCache[memIdx]
+	if df == nil {
+		df = arm.decodeThumb(opcode)
+		arm.state.currentExecutionCache[memIdx] = df
 	}
 
 	// while the ARM7TDMI/Thumb instruction doesn't have 32bit instructions, in
@@ -1006,7 +1006,7 @@ func (arm *ARM) stepARM7TDMI(opcode uint16, memIdx int) {
 		}
 	}
 
-	f(opcode)
+	df()
 }
 
 func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
@@ -1050,7 +1050,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 
 		if r {
 			if df != nil {
-				df(opcode)
+				df()
 			}
 		} else {
 			// "A7.3.2: Conditional execution of undefined instructions
@@ -1069,6 +1069,6 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 		// shift IT mask
 		arm.state.status.itMask = (arm.state.status.itMask << 1) & 0b1111
 	} else if df != nil {
-		df(opcode)
+		df()
 	}
 }

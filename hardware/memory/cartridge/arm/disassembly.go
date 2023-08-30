@@ -57,7 +57,7 @@ func (arm *ARM) disassembleARM7TDMI(opcode uint16) (DisasmEntry, error) {
 		return DisasmEntry{}, fmt.Errorf("error decoding thumb instruction during disassembly")
 	}
 
-	e := df(opcode)
+	e := df()
 	if e == nil {
 		return DisasmEntry{}, fmt.Errorf("error executing thumb instruction during disassembly")
 	}
@@ -82,7 +82,7 @@ func (arm *ARM) disassembleARM7vM(opcode uint16) (DisasmEntry, error) {
 				arm.state.function32bitOpcodeHi, opcode)
 		}
 
-		e = df(opcode)
+		e = df()
 		if e == nil {
 			e = &DisasmEntry{
 				Operand: "32bit instruction",
@@ -95,7 +95,7 @@ func (arm *ARM) disassembleARM7vM(opcode uint16) (DisasmEntry, error) {
 		if df == nil {
 			return DisasmEntry{}, fmt.Errorf("error decoding 16bit thumb2 instruction during disassembly: %04x", opcode)
 		}
-		e = df(opcode)
+		e = df()
 		if e == nil {
 			return DisasmEntry{}, fmt.Errorf("error executing 16bit thumb2 instruction during disassembly: %04x", opcode)
 		}

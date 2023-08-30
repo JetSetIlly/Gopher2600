@@ -89,7 +89,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 					m = (Vm << 1) | M
 				}
 
-				return func(_ uint16) *DisasmEntry {
+				return func() *DisasmEntry {
 					var typ fpu.VFPNegMul
 
 					switch arm.state.function32bitOpcodeHi & 0x0030 {
@@ -175,7 +175,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 					regPrefix = 'S'
 				}
 
-				return func(_ uint16) *DisasmEntry {
+				return func() *DisasmEntry {
 					if arm.decodeOnly {
 						return &DisasmEntry{
 							Is32bit:  true,
@@ -226,7 +226,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 			switch opc3 & 0b01 {
 			case 0b00:
 				// "A7.7.225 VADD" of "ARMv7-M"
-				return func(_ uint16) *DisasmEntry {
+				return func() *DisasmEntry {
 					if arm.decodeOnly {
 						return &DisasmEntry{
 							Is32bit:  true,
@@ -247,7 +247,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 
 			case 0b01:
 				// "A7.7.260 VSUB" of "ARMv7-M"
-				return func(_ uint16) *DisasmEntry {
+				return func() *DisasmEntry {
 					if arm.decodeOnly {
 						return &DisasmEntry{
 							Is32bit:  true,
@@ -296,7 +296,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 				regPrefix = 'S'
 			}
 
-			return func(_ uint16) *DisasmEntry {
+			return func() *DisasmEntry {
 				if arm.decodeOnly {
 					return &DisasmEntry{
 						Is32bit:  true,
@@ -331,7 +331,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 					d = (Vd << 1) | D
 				}
 
-				return func(_ uint16) *DisasmEntry {
+				return func() *DisasmEntry {
 					if arm.decodeOnly {
 						return &DisasmEntry{
 							Is32bit:  true,
@@ -373,7 +373,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 							m = Vm<<1 | M
 						}
 
-						return func(_ uint16) *DisasmEntry {
+						return func() *DisasmEntry {
 							if arm.decodeOnly {
 								e := &DisasmEntry{
 									Is32bit:  true,
@@ -408,7 +408,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 							d = Vd<<1 | D
 						}
 
-						return func(_ uint16) *DisasmEntry {
+						return func() *DisasmEntry {
 							if arm.decodeOnly {
 								e := &DisasmEntry{
 									Is32bit:  true,
@@ -455,7 +455,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 					N = 32
 				}
 
-				return func(_ uint16) *DisasmEntry {
+				return func() *DisasmEntry {
 					if arm.decodeOnly {
 						return &DisasmEntry{
 							Is32bit:  true,
@@ -495,7 +495,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 						m = (Vm << 1) | M
 					}
 
-					return func(_ uint16) *DisasmEntry {
+					return func() *DisasmEntry {
 						if arm.decodeOnly {
 							return &DisasmEntry{
 								Is32bit:  true,
@@ -528,7 +528,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 						m = (Vm << 1) | M
 					}
 
-					return func(_ uint16) *DisasmEntry {
+					return func() *DisasmEntry {
 						if arm.decodeOnly {
 							return &DisasmEntry{
 								Is32bit:  true,
@@ -578,7 +578,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 				regPrefix = 'S'
 			}
 
-			return func(_ uint16) *DisasmEntry {
+			return func() *DisasmEntry {
 				if arm.decodeOnly {
 					operand := fmt.Sprintf("%c%d, %c%d, %c%d", regPrefix, d, regPrefix, n, regPrefix, m)
 					if op {
@@ -642,7 +642,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 				regPrefix = 'S'
 			}
 
-			return func(_ uint16) *DisasmEntry {
+			return func() *DisasmEntry {
 				if arm.decodeOnly {
 					operand := fmt.Sprintf("%c%d, %c%d, %c%d", regPrefix, d, regPrefix, n, regPrefix, m)
 					if op {
@@ -706,7 +706,7 @@ func (arm *ARM) decodeThumb2FPU32bitTransfer(opcode uint16) decodeFunction {
 		} else {
 			if A == 0b111 {
 				// "A7.7.246 VMRS" of "ARMv7-M"
-				return func(_ uint16) *DisasmEntry {
+				return func() *DisasmEntry {
 					if arm.decodeOnly {
 						return &DisasmEntry{
 							Is32bit:  true,
@@ -726,7 +726,7 @@ func (arm *ARM) decodeThumb2FPU32bitTransfer(opcode uint16) decodeFunction {
 				}
 			} else if A == 0b000 {
 				// "A7.7.243 VMOV (between Arm core register and single-precision register)" of "ARMv7-M"
-				return func(_ uint16) *DisasmEntry {
+				return func() *DisasmEntry {
 					if arm.decodeOnly {
 						return &DisasmEntry{
 							Is32bit:  true,
@@ -767,7 +767,7 @@ func (arm *ARM) decodeThumb2FPU32bitTransfer(opcode uint16) decodeFunction {
 				N := (opcode & 0x0080) >> 7
 				Rn := (Vn << 1) | N
 
-				return func(_ uint16) *DisasmEntry {
+				return func() *DisasmEntry {
 					if arm.decodeOnly {
 						return &DisasmEntry{
 							Is32bit:  true,
@@ -814,7 +814,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 			d = (Vd << 1) | D
 		}
 
-		return func(_ uint16) *DisasmEntry {
+		return func() *DisasmEntry {
 			if arm.decodeOnly {
 				return &DisasmEntry{
 					Is32bit:  true,
@@ -870,7 +870,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 			d = (Vd << 1) | D
 		}
 
-		return func(_ uint16) *DisasmEntry {
+		return func() *DisasmEntry {
 			addr := arm.state.registers[Rn]
 			if U {
 				addr += imm32
@@ -918,7 +918,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 			d = (Vd << 1) | D
 		}
 
-		return func(_ uint16) *DisasmEntry {
+		return func() *DisasmEntry {
 			if arm.decodeOnly {
 				return &DisasmEntry{
 					Is32bit:  true,
@@ -984,7 +984,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 			regPrefix = 'S'
 		}
 
-		return func(_ uint16) *DisasmEntry {
+		return func() *DisasmEntry {
 			addr := arm.state.registers[Rn]
 			if Rn == rPC {
 				addr = AlignTo32bits(addr - 2)
@@ -1055,7 +1055,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 			d = (Vd << 1) | D
 		}
 
-		return func(_ uint16) *DisasmEntry {
+		return func() *DisasmEntry {
 			if arm.decodeOnly {
 				return &DisasmEntry{
 					Is32bit:  true,

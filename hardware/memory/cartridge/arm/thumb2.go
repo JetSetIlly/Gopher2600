@@ -61,21 +61,21 @@ func (arm *ARM) decodeThumb2(opcode uint16) decodeFunction {
 	} else {
 		if opcode&0xf000 == 0xe000 {
 			// ** format 18 Unconditional branch
-			return arm.decodeThumbUnconditionalBranch
+			return arm.decodeThumbUnconditionalBranch(opcode)
 		} else if opcode&0xff00 == 0xdf00 {
 			// ** format 17 Software interrupt"
 			// service (system) call
-			return arm.decodeThumbSoftwareInterrupt
+			return arm.decodeThumbSoftwareInterrupt(opcode)
 		} else if opcode&0xff00 == 0xde00 {
 			// undefined instruction
 			panic(fmt.Sprintf("undefined 16-bit thumb-2 instruction (%04x)", opcode))
 		} else if opcode&0xf000 == 0xd000 {
 			// ** format 16 Conditional branch
-			return arm.decodeThumbConditionalBranch
+			return arm.decodeThumbConditionalBranch(opcode)
 		} else if opcode&0xf000 == 0xc000 {
 			// ** format 15 Multiple load/store
 			// load/store multiple
-			return arm.decodeThumbMultipleLoadStore
+			return arm.decodeThumbMultipleLoadStore(opcode)
 		} else if opcode&0xf000 == 0xb000 {
 			// ** format 13/14 Add offset to stack pointer AND Push/pop registers
 			// miscellaneous
@@ -83,48 +83,48 @@ func (arm *ARM) decodeThumb2(opcode uint16) decodeFunction {
 		} else if opcode&0xf000 == 0xa000 {
 			// ** format 12 Load address
 			// add to SP or PC
-			return arm.decodeThumbLoadAddress
+			return arm.decodeThumbLoadAddress(opcode)
 		} else if opcode&0xf000 == 0x9000 {
 			// ** format 11 SP-relative load/store
 			// load from or store to stack
-			return arm.decodeThumbSPRelativeLoadStore
+			return arm.decodeThumbSPRelativeLoadStore(opcode)
 		} else if opcode&0xf000 == 0x8000 {
 			// ** format 10 Load/store halfword
 			// load/store halfword with immediate offset
-			return arm.decodeThumbLoadStoreHalfword
+			return arm.decodeThumbLoadStoreHalfword(opcode)
 		} else if opcode&0xe000 == 0x6000 {
 			// ** format 9 Load/store with immediate offset
-			return arm.decodeThumbLoadStoreWithImmOffset
+			return arm.decodeThumbLoadStoreWithImmOffset(opcode)
 		} else if opcode&0xf200 == 0x5200 {
 			// ** format 8 Load/store sign-extended byte/halfword
 			// load/store with register offset
-			return arm.decodeThumbLoadStoreSignExtendedByteHalford
+			return arm.decodeThumbLoadStoreSignExtendedByteHalford(opcode)
 		} else if opcode&0xf200 == 0x5000 {
 			// ** format 7 Load/store with register offset
-			return arm.decodeThumbLoadStoreWithRegisterOffset
+			return arm.decodeThumbLoadStoreWithRegisterOffset(opcode)
 		} else if opcode&0xf800 == 0x4800 {
 			// ** format 6 PC-relative load
 			// load from literal pool
-			return arm.decodeThumbPCrelativeLoad
+			return arm.decodeThumbPCrelativeLoad(opcode)
 		} else if opcode&0xfc00 == 0x4400 {
 			// ** format 5 Hi register operations/branch exchange
 			// special data processing AND branch/exchange instruction set
-			return arm.decodeThumbHiRegisterOps
+			return arm.decodeThumbHiRegisterOps(opcode)
 		} else if opcode&0xfc00 == 0x4000 {
 			// ** format 4 ALU operations
 			// data processing register
-			return arm.decodeThumbALUoperations
+			return arm.decodeThumbALUoperations(opcode)
 		} else if opcode&0xe000 == 0x2000 {
 			// ** format 3 Move/compare/add/subtract immediate
-			return arm.decodeThumbMovCmpAddSubImm
+			return arm.decodeThumbMovCmpAddSubImm(opcode)
 		} else if opcode&0xf800 == 0x1800 {
 			// ** format 2 Add/subtract
 			// add/subtract register AND add/substract immediate
-			return arm.decodeThumbAddSubtract
+			return arm.decodeThumbAddSubtract(opcode)
 		} else if opcode&0xe000 == 0x0000 {
 			// ** format 1 Move shifted register
 			// shift by immediate, move register
-			return arm.decodeThumbMoveShiftedRegister
+			return arm.decodeThumbMoveShiftedRegister(opcode)
 		}
 	}
 
@@ -146,7 +146,7 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) decodeFunction {
 	} else {
 		if opcode&0xff00 == 0xbe00 {
 			// software breakpoint
-			return func(_ uint16) *DisasmEntry {
+			return func() *DisasmEntry {
 				arm.state.yield.Type = coprocessor.YieldSyncWithVCS
 				arm.state.yield.Error = nil
 				return nil
@@ -164,7 +164,7 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) decodeFunction {
 		} else if opcode&0xf600 == 0xb400 {
 			// ** format 14 Push/pop registers
 			// push/pop register list
-			return arm.decodeThumbPushPopRegisters
+			return arm.decodeThumbPushPopRegisters(opcode)
 		} else if opcode&0xf500 == 0xb100 {
 			// compare and branch on (non-)zero
 			return arm.decodeThumb2CompareAndBranchOnNonZero(opcode)
@@ -174,7 +174,7 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) decodeFunction {
 		} else if opcode&0xff00 == 0xb000 {
 			// ** format 13 Add offset to stack pointer
 			// adjust stack pointer
-			return arm.decodeThumbAddOffsetToSP
+			return arm.decodeThumbAddOffsetToSP(opcode)
 		}
 	}
 
@@ -188,7 +188,7 @@ func (arm *ARM) decodeThumb2ReverseBytes(opcode uint16) decodeFunction {
 
 	switch opc {
 	case 0b00:
-		return func(_ uint16) *DisasmEntry {
+		return func() *DisasmEntry {
 			// "4.6.111 REV" of "Thumb-2 Supplement"
 			if arm.decodeOnly {
 				return &DisasmEntry{
@@ -202,7 +202,7 @@ func (arm *ARM) decodeThumb2ReverseBytes(opcode uint16) decodeFunction {
 			return nil
 		}
 	case 0b01:
-		return func(_ uint16) *DisasmEntry {
+		return func() *DisasmEntry {
 			// "4.6.112 REV16" of "Thumb-2 Supplement"
 			if arm.decodeOnly {
 				return &DisasmEntry{
@@ -221,7 +221,7 @@ func (arm *ARM) decodeThumb2ReverseBytes(opcode uint16) decodeFunction {
 }
 
 func (arm *ARM) decodeThumb2ChangeProcessorState(opcode uint16) decodeFunction {
-	return func(_ uint16) *DisasmEntry {
+	return func() *DisasmEntry {
 		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "CPSID",
@@ -237,7 +237,7 @@ func (arm *ARM) decodeThumb2MemoryHints(opcode uint16) decodeFunction {
 
 	switch hint {
 	case 0b000:
-		return func(_ uint16) *DisasmEntry {
+		return func() *DisasmEntry {
 			if arm.decodeOnly {
 				return &DisasmEntry{
 					Operator: "NOP",
@@ -262,7 +262,7 @@ func (arm *ARM) decodeThumb2IfThen(opcode uint16) decodeFunction {
 	itMask := uint8(opcode & 0x000f)
 	itCond := uint8((opcode & 0x00f0) >> 4)
 
-	return func(_ uint16) *DisasmEntry {
+	return func() *DisasmEntry {
 		// "4.6.39 IT" of "Thumb-2 Supplement"
 
 		if arm.decodeOnly {
@@ -307,7 +307,7 @@ func (arm *ARM) decodeThumb2CompareAndBranchOnNonZero(opcode uint16) decodeFunct
 	i := (opcode & 0x0200) >> 9
 	imm5 := (opcode & 0x00f8) >> 3
 
-	return func(_ uint16) *DisasmEntry {
+	return func() *DisasmEntry {
 		if nonZero {
 			if arm.decodeOnly {
 				return &DisasmEntry{
@@ -338,7 +338,7 @@ func (arm *ARM) decodeThumb2SignZeroExtend(opcode uint16) decodeFunction {
 
 	switch op {
 	case 0b00:
-		return func(_ uint16) *DisasmEntry {
+		return func() *DisasmEntry {
 			// "4.6.187 SXTH" in "Thumb-2 Supplement"
 			if arm.decodeOnly {
 				return &DisasmEntry{
@@ -353,7 +353,7 @@ func (arm *ARM) decodeThumb2SignZeroExtend(opcode uint16) decodeFunction {
 			return nil
 		}
 	case 0b01:
-		return func(_ uint16) *DisasmEntry {
+		return func() *DisasmEntry {
 			// "4.6.185 SXTB" in "Thumb-2 Supplement"
 			if arm.decodeOnly {
 				return &DisasmEntry{
@@ -369,7 +369,7 @@ func (arm *ARM) decodeThumb2SignZeroExtend(opcode uint16) decodeFunction {
 		}
 	case 0b10:
 		// unsigned extend halfword
-		return func(_ uint16) *DisasmEntry {
+		return func() *DisasmEntry {
 			// "4.6.226 UXTH" in "Thumb-2 Supplement"
 			// T1 Encoding
 			if arm.decodeOnly {
@@ -382,7 +382,7 @@ func (arm *ARM) decodeThumb2SignZeroExtend(opcode uint16) decodeFunction {
 			return nil
 		}
 	case 0b11:
-		return func(_ uint16) *DisasmEntry {
+		return func() *DisasmEntry {
 			// unsigned extend byte UXTB
 			// "4.6.224 UXTB" in "Thumb-2 Supplement"
 			// T1 Encoding
