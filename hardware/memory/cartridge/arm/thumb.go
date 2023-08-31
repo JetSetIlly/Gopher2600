@@ -1533,12 +1533,12 @@ func (arm *ARM) decodeThumbPushPopRegisters(opcode uint16) decodeFunction {
 				if pclr {
 					return &DisasmEntry{
 						Operator: "POP",
-						Operand:  fmt.Sprintf("{%s}", reglistToMnemonic(regList, "PC")),
+						Operand:  fmt.Sprintf("{%s}", reglistToMnemonic('R', regList, "PC")),
 					}
 				}
 				return &DisasmEntry{
 					Operator: "POP",
-					Operand:  fmt.Sprintf("{%s}", reglistToMnemonic(regList, "")),
+					Operand:  fmt.Sprintf("{%s}", reglistToMnemonic('R', regList, "")),
 				}
 			}
 
@@ -1619,12 +1619,12 @@ func (arm *ARM) decodeThumbPushPopRegisters(opcode uint16) decodeFunction {
 			if pclr {
 				return &DisasmEntry{
 					Operator: "PUSH",
-					Operand:  fmt.Sprintf("{%s}", reglistToMnemonic(regList, "LR")),
+					Operand:  fmt.Sprintf("{%s}", reglistToMnemonic('R', regList, "LR")),
 				}
 			}
 			return &DisasmEntry{
 				Operator: "PUSH",
-				Operand:  fmt.Sprintf("{%s}", reglistToMnemonic(regList, "")),
+				Operand:  fmt.Sprintf("{%s}", reglistToMnemonic('R', regList, "")),
 			}
 		}
 
@@ -1715,12 +1715,12 @@ func (arm *ARM) decodeThumbMultipleLoadStore(opcode uint16) decodeFunction {
 			if load {
 				return &DisasmEntry{
 					Operator: "LDMIA",
-					Operand:  fmt.Sprintf("R%d!, {%s}", baseReg, reglistToMnemonic(regList, "")),
+					Operand:  fmt.Sprintf("R%d!, {%s}", baseReg, reglistToMnemonic('R', regList, "")),
 				}
 			}
 			return &DisasmEntry{
 				Operator: "STMIA",
-				Operand:  fmt.Sprintf("R%d!, {%s}", baseReg, reglistToMnemonic(regList, "")),
+				Operand:  fmt.Sprintf("R%d!, {%s}", baseReg, reglistToMnemonic('R', regList, "")),
 			}
 		}
 
@@ -1822,6 +1822,7 @@ func (arm *ARM) decodeThumbConditionalBranch(opcode uint16) decodeFunction {
 		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: mnemonic,
+				Operand:  fmt.Sprintf("%d", int32(offset)),
 			}
 		}
 
@@ -1877,7 +1878,7 @@ func (arm *ARM) decodeThumbUnconditionalBranch(opcode uint16) decodeFunction {
 		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "BAL",
-				Operand:  fmt.Sprintf("$%04x ", offset),
+				Operand:  fmt.Sprintf("%d ", offset),
 			}
 		}
 
@@ -1912,7 +1913,7 @@ func (arm *ARM) decodeThumbLongBranchWithLink(opcode uint16) decodeFunction {
 			if low {
 				return &DisasmEntry{
 					Operator: "BL",
-					Operand:  fmt.Sprintf("$%08x", offset),
+					Operand:  fmt.Sprintf("%d", offset),
 				}
 			}
 			return &DisasmEntry{

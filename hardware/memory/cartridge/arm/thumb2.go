@@ -31,6 +31,7 @@ package arm
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -57,7 +58,7 @@ func (arm *ARM) decodeThumb2(opcode uint16) decodeFunction {
 
 	if opcode&0xf800 == 0xe800 || opcode&0xf000 == 0xf000 {
 		// 32 bit instructions
-		panic(fmt.Sprintf("32-bit thumb-2 Hi opcode (%04x) should have been handled before this", opcode))
+		panic(fmt.Sprintf("32-bit thumb-2 hi opcode (%04x) should have been handled before this", opcode))
 	} else {
 		if opcode&0xf000 == 0xe000 {
 			// ** format 18 Unconditional branch
@@ -183,7 +184,7 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) decodeFunction {
 
 func (arm *ARM) decodeThumb2ReverseBytes(opcode uint16) decodeFunction {
 	opc := (opcode & 0x00c0) >> 6
-	Rn := (opcode & 0x0038) >> 3
+	Rm := (opcode & 0x0038) >> 3
 	Rd := opcode & 0x0007
 
 	switch opc {
@@ -193,10 +194,11 @@ func (arm *ARM) decodeThumb2ReverseBytes(opcode uint16) decodeFunction {
 			if arm.decodeOnly {
 				return &DisasmEntry{
 					Operator: "REV",
+					Operand:  fmt.Sprintf("R%d, R%d", Rd, Rm),
 				}
 			}
 
-			v := arm.state.registers[Rn]
+			v := arm.state.registers[Rm]
 			r := ((v & 0x000000ff) << 24) | ((v & 0x0000ff00) << 8) | ((v & 0x00ff0000) >> 8) | ((v & 0xff000000) >> 24)
 			arm.state.registers[Rd] = r
 			return nil
@@ -207,10 +209,11 @@ func (arm *ARM) decodeThumb2ReverseBytes(opcode uint16) decodeFunction {
 			if arm.decodeOnly {
 				return &DisasmEntry{
 					Operator: "REV16",
+					Operand:  fmt.Sprintf("R%d, R%d", Rd, Rm),
 				}
 			}
 
-			v := arm.state.registers[Rn]
+			v := arm.state.registers[Rm]
 			r := ((v & 0x00ff0000) << 8) | ((v & 0xff000000) >> 8) | ((v & 0x000000ff) << 8) | ((v & 0x0000ff00) >> 8)
 			arm.state.registers[Rd] = r
 			return nil
@@ -238,6 +241,7 @@ func (arm *ARM) decodeThumb2MemoryHints(opcode uint16) decodeFunction {
 	switch hint {
 	case 0b000:
 		return func() *DisasmEntry {
+			// "4.6.88 NOP" of "Thumb-2 Supplement"
 			if arm.decodeOnly {
 				return &DisasmEntry{
 					Operator: "NOP",
@@ -259,15 +263,23 @@ func (arm *ARM) decodeThumb2MemoryHints(opcode uint16) decodeFunction {
 }
 
 func (arm *ARM) decodeThumb2IfThen(opcode uint16) decodeFunction {
-	itMask := uint8(opcode & 0x000f)
-	itCond := uint8((opcode & 0x00f0) >> 4)
+	mask := uint8(opcode & 0x000f)
+	cond := uint8((opcode & 0x00f0) >> 4)
 
 	return func() *DisasmEntry {
 		// "4.6.39 IT" of "Thumb-2 Supplement"
 
 		if arm.decodeOnly {
+			_, mnemonic := arm.state.status.condition(cond)
+			if len(mnemonic) > 0 {
+				mnemonic = mnemonic[1:]
+			}
+			if len(mnemonic) == 0 {
+				mnemonic = "AL"
+			}
 			return &DisasmEntry{
 				Operator: "IT",
+				Operand:  strings.ToLower(mnemonic),
 			}
 		}
 
@@ -275,8 +287,8 @@ func (arm *ARM) decodeThumb2IfThen(opcode uint16) decodeFunction {
 			panic("unpredictable IT instruction - already in an IT block")
 		}
 
-		arm.state.status.itMask = itMask
-		arm.state.status.itCond = itCond
+		arm.state.status.itMask = mask
+		arm.state.status.itCond = cond
 
 		// switch table similar to the one in thumbConditionalBranch()
 		switch arm.state.status.itCond {
@@ -306,24 +318,34 @@ func (arm *ARM) decodeThumb2CompareAndBranchOnNonZero(opcode uint16) decodeFunct
 	Rn := opcode & 0x0007
 	i := (opcode & 0x0200) >> 9
 	imm5 := (opcode & 0x00f8) >> 3
+	imm32 := (imm5 << 1) | (i << 6)
 
-	return func() *DisasmEntry {
-		if nonZero {
+	if nonZero {
+		return func() *DisasmEntry {
 			if arm.decodeOnly {
 				return &DisasmEntry{
 					Operator: "CBNZ",
+					Operand:  fmt.Sprintf("R%d, %d", Rn, imm32),
 				}
 			}
-		} else {
-			if arm.decodeOnly {
-				return &DisasmEntry{
-					Operator: "CBZ",
-				}
+
+			if arm.state.registers[Rn] != 0 {
+				arm.state.registers[rPC] += uint32(imm32) + 2
+			}
+
+			return nil
+		}
+	}
+
+	return func() *DisasmEntry {
+		if arm.decodeOnly {
+			return &DisasmEntry{
+				Operator: "CBZ",
+				Operand:  fmt.Sprintf("R%d, %d", Rn, imm32),
 			}
 		}
 
-		if nonZero && arm.state.registers[Rn] != 0 || !nonZero && arm.state.registers[Rn] == 0 {
-			imm32 := (imm5 << 1) | (i << 6)
+		if arm.state.registers[Rn] == 0 {
 			arm.state.registers[rPC] += uint32(imm32) + 2
 		}
 
@@ -343,6 +365,7 @@ func (arm *ARM) decodeThumb2SignZeroExtend(opcode uint16) decodeFunction {
 			if arm.decodeOnly {
 				return &DisasmEntry{
 					Operator: "SXTH",
+					Operand:  fmt.Sprintf("R%d, R%d", Rd, Rm),
 				}
 			}
 
@@ -358,6 +381,7 @@ func (arm *ARM) decodeThumb2SignZeroExtend(opcode uint16) decodeFunction {
 			if arm.decodeOnly {
 				return &DisasmEntry{
 					Operator: "SXTB",
+					Operand:  fmt.Sprintf("R%d, R%d", Rd, Rm),
 				}
 			}
 
@@ -375,6 +399,7 @@ func (arm *ARM) decodeThumb2SignZeroExtend(opcode uint16) decodeFunction {
 			if arm.decodeOnly {
 				return &DisasmEntry{
 					Operator: "UXTH",
+					Operand:  fmt.Sprintf("R%d, R%d", Rd, Rm),
 				}
 			}
 
@@ -389,6 +414,7 @@ func (arm *ARM) decodeThumb2SignZeroExtend(opcode uint16) decodeFunction {
 			if arm.decodeOnly {
 				return &DisasmEntry{
 					Operator: "UXTB",
+					Operand:  fmt.Sprintf("R%d, R%d", Rd, Rm),
 				}
 			}
 

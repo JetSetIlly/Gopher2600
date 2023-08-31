@@ -76,7 +76,7 @@ func (arm *ARM) disassembleARM7vM(opcode uint16) (DisasmEntry, error) {
 	var e *DisasmEntry
 
 	if is32BitThumb2(arm.state.function32bitOpcodeHi) {
-		df := arm.decodeThumb2(arm.state.function32bitOpcodeHi)
+		df := arm.decode32bitThumb2(arm.state.function32bitOpcodeHi, opcode)
 		if df == nil {
 			return DisasmEntry{}, fmt.Errorf("error decoding 32bit thumb-2 instruction during disassembly: %04x %04x",
 				arm.state.function32bitOpcodeHi, opcode)
@@ -104,32 +104,6 @@ func (arm *ARM) disassembleARM7vM(opcode uint16) (DisasmEntry, error) {
 	fillDisasmEntry(arm, e, opcode)
 
 	return *e, nil
-}
-
-// converts reglist to a string of register names separated by commas
-func reglistToMnemonic(regList uint8, suffix string) string {
-	s := strings.Builder{}
-	comma := false
-	for i := 0; i <= 7; i++ {
-		if regList&0x01 == 0x01 {
-			if comma {
-				s.WriteString(",")
-			}
-			s.WriteString(fmt.Sprintf("R%d", i))
-			comma = true
-		}
-		regList >>= 1
-	}
-
-	// push suffix if one has been specified and adding a comma as required
-	if suffix != "" {
-		if s.Len() > 0 {
-			s.WriteString(",")
-		}
-		s.WriteString(suffix)
-	}
-
-	return s.String()
 }
 
 // StaticDisassembleConfig is used to set the parameters for a static disassembly
@@ -230,4 +204,52 @@ func (arm *ARM) disasmVerbose(entry DisasmEntry) string {
 	}
 
 	return s.String()
+}
+
+// converts shift type value to a suitable mnemonic string
+func shiftTypeToMnemonic(typ uint16) string {
+	switch typ {
+	case 0b00:
+		return "LSL"
+	case 0b01:
+		return "LSR"
+	case 0b10:
+		return "ASR"
+	}
+	panic("impossible shift type")
+}
+
+// converts reglist to a string of register names separated by commas. does not
+// add the surrounding braces
+func reglistToMnemonic(regPrefix rune, regList uint8, suffix string) string {
+	s := strings.Builder{}
+	comma := false
+	for i := 0; i <= 7; i++ {
+		if regList&0x01 == 0x01 {
+			if comma {
+				s.WriteString(",")
+			}
+			s.WriteString(fmt.Sprintf("%c%d", regPrefix, i))
+			comma = true
+		}
+		regList >>= 1
+	}
+
+	// push suffix if one has been specified and adding a comma as required
+	if suffix != "" {
+		if s.Len() > 0 {
+			s.WriteString(",")
+		}
+		s.WriteString(suffix)
+	}
+
+	return s.String()
+}
+
+// adds the S suffix for a instructions that have an optional 'set flags' stage
+func setFlagsMnemonic(setFlags bool) string {
+	if setFlags {
+		return "S"
+	}
+	return ""
 }
