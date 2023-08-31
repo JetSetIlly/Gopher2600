@@ -1811,52 +1811,41 @@ func (arm *ARM) decodeThumbConditionalBranch(opcode uint16) decodeFunction {
 	cond := uint8((opcode & 0x0f00) >> 8)
 	offset := uint32(opcode & 0x00ff)
 
-	return func() *DisasmEntry {
-		// we'll be adjusting the offset value so we need to make a copy of it
-		offset := offset
+	// offset is a nine-bit two's complement value
+	offset <<= 1
 
-		var passed bool
-		var mnemonic string
-		passed, mnemonic = arm.state.status.condition(cond)
+	// sign extend
+	if offset&0x100 == 0x100 {
+		offset |= 0xffffff00
+	}
+	offset += 2
+
+	return func() *DisasmEntry {
+		passed, mnemonic := arm.state.status.condition(cond)
 
 		if arm.decodeOnly {
-			return &DisasmEntry{
+			e := &DisasmEntry{
 				Operator: mnemonic,
 				Operand:  fmt.Sprintf("%d", int32(offset)),
 			}
-		}
 
-		// offset is a nine-bit two's complement value
-		offset <<= 1
-		offset++
-
-		var newPC uint32
-
-		// get new PC value
-		if offset&0x100 == 0x100 {
-			// two's complement before subtraction
-			offset ^= 0x1ff
-			offset++
-			newPC = arm.state.registers[rPC] - offset + 1
-		} else {
-			newPC = arm.state.registers[rPC] + offset + 1
-		}
-
-		// do branch
-		if passed {
-			// "7.3 Branch ..." in "ARM7TDMI-S Technical Reference Manual r4p3"
-			// - fillPipeline() will be called if necessary
-			arm.state.registers[rPC] = newPC
-		}
-
-		if arm.decodeOnly {
 			if passed {
 				arm.disasmExecutionNotes = "branched"
 			} else {
 				arm.disasmExecutionNotes = "next"
 			}
 			arm.disasmUpdateNotes = true
+
+			return e
 		}
+
+		// adjust PC if condition has been met
+		if passed {
+			arm.state.registers[rPC] += offset
+		}
+
+		// "7.3 Branch ..." in "ARM7TDMI-S Technical Reference Manual r4p3"
+		// - fillPipeline() will be called if necessary
 
 		return nil
 	}
@@ -1869,7 +1858,16 @@ func (arm *ARM) decodeThumbSoftwareInterrupt(opcode uint16) decodeFunction {
 
 func (arm *ARM) decodeThumbUnconditionalBranch(opcode uint16) decodeFunction {
 	// format 18 - Unconditional branch
-	offset := uint32(opcode&0x07ff) << 1
+	offset := uint32(opcode & 0x07ff)
+
+	// offset is a nine-bit two's complement value
+	offset <<= 1
+
+	// sign extend
+	if offset&0x800 == 0x0800 {
+		offset |= 0xfffff800
+	}
+	offset += 2
 
 	return func() *DisasmEntry {
 		// we'll be adjusting the offset value so we need to make a copy of it
@@ -1878,18 +1876,11 @@ func (arm *ARM) decodeThumbUnconditionalBranch(opcode uint16) decodeFunction {
 		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "BAL",
-				Operand:  fmt.Sprintf("%d ", offset),
+				Operand:  fmt.Sprintf("%d", int32(offset)),
 			}
 		}
 
-		if offset&0x800 == 0x0800 {
-			// two's complement before subtraction
-			offset ^= 0xfff
-			offset++
-			arm.state.registers[rPC] -= offset - 2
-		} else {
-			arm.state.registers[rPC] += offset + 2
-		}
+		arm.state.registers[rPC] += offset
 
 		// "7.3 Branch ..." in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -1903,56 +1894,38 @@ func (arm *ARM) decodeThumbLongBranchWithLink(opcode uint16) decodeFunction {
 	low := opcode&0x800 == 0x0800
 	offset := uint32(opcode & 0x07ff)
 
-	// there is no direct ARM equivalent for this instruction.
+	if low {
+		offset <<= 1
 
-	return func() *DisasmEntry {
-		// we'll be adjusting the offset value so we need to make a copy of it
-		offset := offset
+		return func() *DisasmEntry {
+			tgt := arm.state.registers[rLR] + offset
 
-		if arm.decodeOnly {
-			if low {
+			if arm.decodeOnly {
 				return &DisasmEntry{
 					Operator: "BL",
-					Operand:  fmt.Sprintf("%d", offset),
+					Operand:  fmt.Sprintf("%08x", tgt),
 				}
 			}
-			return &DisasmEntry{
-				Operator: "",
-				Operand:  "-",
-			}
-		}
-
-		if low {
-			// second instruction
-
-			offset <<= 1
 			pc := arm.state.registers[rPC]
-			arm.state.registers[rPC] = arm.state.registers[rLR] + offset
+			arm.state.registers[rPC] = tgt
 			arm.state.registers[rLR] = pc - 1
-
-			// "7.4 Thumb Branch With Link" in "ARM7TDMI-S Technical Reference Manual r4p3"
-			// -- no additional cycles for second instruction in BL
-			// -- change of PC is captured by expectedPC check in Run() function loop
-
 			return nil
 		}
+	}
 
-		// first instruction
+	offset <<= 12
 
-		offset <<= 12
+	// sign extend
+	if offset&0x400000 == 0x400000 {
+		offset |= 0xffc00000
+	}
+	offset += 2
 
-		if offset&0x400000 == 0x400000 {
-			// two's complement before subtraction
-			offset ^= 0x7fffff
-			offset++
-			arm.state.registers[rLR] = arm.state.registers[rPC] - offset + 2
-		} else {
-			arm.state.registers[rLR] = arm.state.registers[rPC] + offset + 2
+	return func() *DisasmEntry {
+		if arm.decodeOnly {
+			return nil
 		}
-
-		// "7.4 Thumb Branch With Link" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		// -- no additional cycles for first instruction in BL
-
+		arm.state.registers[rLR] = arm.state.registers[rPC] + offset
 		return nil
 	}
 }

@@ -1003,6 +1003,7 @@ func (arm *ARM) stepARM7TDMI(opcode uint16, memIdx int) {
 		arm.state.function32bitResolving = false
 		if is32BitThumb2(opcode) {
 			arm.state.function32bitDecoding = true
+			arm.state.function32bitOpcodeHi = opcode
 		}
 	}
 
