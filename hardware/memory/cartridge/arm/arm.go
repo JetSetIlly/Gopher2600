@@ -177,11 +177,11 @@ type ARMState struct {
 	// these two flags work as a pair:
 	// . is the current instruction a 32bit instruction
 	// . was the most recent instruction decoded a 32bit instruction
-	function32bitDecoding  bool
-	function32bitResolving bool
+	instruction32bitDecoding  bool
+	instruction32bitResolving bool
 
 	// the first 16bits of the most recent 32bit instruction
-	function32bitOpcodeHi uint16
+	instruction32bitOpcodeHi uint16
 }
 
 // Snapshort makes a copy of the ARMState.
@@ -248,13 +248,6 @@ type ARM struct {
 	// interface to an optional disassembler
 	disasm coprocessor.CartCoProcDisassembler
 
-	// cache of disassembled entries
-	disasmCache map[uint32]DisasmEntry
-
-	// the next disasmEntry to send to attached disassembler
-	disasmExecutionNotes string
-	disasmUpdateNotes    bool
-
 	// the summary of the most recent disassembly
 	disasmSummary DisasmSummary
 
@@ -294,7 +287,6 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 		hook:           hook,
 		byteOrder:      binary.LittleEndian,
 		executionCache: make(map[uint32][]decodeFunction),
-		disasmCache:    make(map[uint32]DisasmEntry),
 
 		// updated on every updatePrefs(). these are reasonable defaults
 		Clk:         70.0,
@@ -398,7 +390,6 @@ func (arm *ARM) Plumb(state *ARMState, mem SharedMemory, hook CartridgeHook) {
 // disassembly caches.
 func (arm *ARM) ClearCaches() {
 	arm.executionCache = make(map[uint32][]decodeFunction)
-	arm.disasmCache = make(map[uint32]DisasmEntry)
 }
 
 // resetPeripherals in the ARM package.
@@ -451,12 +442,10 @@ func (arm *ARM) updatePrefs() {
 		arm.Icycle = arm.iCycleStub
 		arm.Scycle = arm.sCycleStub
 		arm.Ncycle = arm.nCycleStub
-		arm.disasmSummary.ImmediateMode = true
 	} else {
 		arm.Icycle = arm.iCycle
 		arm.Scycle = arm.sCycle
 		arm.Ncycle = arm.nCycle
-		arm.disasmSummary.ImmediateMode = false
 	}
 
 	// memory fault handling
@@ -519,17 +508,18 @@ func (arm *ARM) logYield() {
 	}
 }
 
-func (arm *ARM) extendedMemoryErrorLogging(opcode uint16) {
+func (arm *ARM) extendedMemoryErrorLogging(memIdx int) {
 	// add extended memory logging to yield detail
 	if arm.prefs.ExtendedMemoryFaultLogging.Get().(bool) {
-		entry, err := arm.disassemble(opcode)
-		if err == nil {
+		df := arm.state.currentExecutionCache[memIdx]
+		if df == nil {
+			arm.state.yield.Detail = append(arm.state.yield.Detail, fmt.Errorf("no instruction cached for this memory address"))
+		} else {
+			entry := *df()
 			arm.state.yield.Detail = append(arm.state.yield.Detail,
 				errors.New(entry.String()),
 				errors.New(arm.disasmVerbose(entry)),
 			)
-		} else {
-			arm.state.yield.Detail = append(arm.state.yield.Detail, err)
 		}
 	}
 }
@@ -615,12 +605,6 @@ func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 
 	// arm.state.prefetchCycle reset in reset() function. we don't want to change
 	// the value if we're resuming from a yield
-
-	// reset disasm notes/flags
-	if arm.disasm != nil {
-		arm.disasmExecutionNotes = ""
-		arm.disasmUpdateNotes = false
-	}
 
 	// fill pipeline cannot happen immediately after resetRegisters()
 	if arm.state.yield.Type == coprocessor.YieldProgramEnded {
@@ -781,6 +765,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 				// for collision with other memory errors
 				expectedSP := arm.state.registers[rSP]
 
+				// execute instruction
 				arm.stepFunction(opcode, memIdx)
 
 				// if program counter is not what we expect then that means we have hit a branch
@@ -826,55 +811,27 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 
 				// disassemble if appropriate
 				if arm.disasm != nil {
-					if !arm.state.function32bitDecoding {
-						var cached bool
-						var entry DisasmEntry
+					if !arm.state.instruction32bitDecoding {
+						df := arm.state.currentExecutionCache[memIdx]
+						if df != nil {
+							arm.decodeOnly = true
+							e := df()
+							arm.decodeOnly = false
+							if e != nil {
+								arm.completeDisasmEntry(e, opcode, true)
 
-						entry, cached = arm.disasmCache[arm.state.instructionPC]
-						if !cached {
-							var err error
-							entry, err = arm.disassemble(opcode)
-							if err != nil {
-								panic(err.Error())
+								// update disasm summary
+								arm.disasmSummary.ImmediateMode = arm.immediateMode
+								arm.disasmSummary.add(arm.state.cycleOrder)
+
+								// executed the Step() function of the attached disassembler
+								arm.disasm.Step(*e)
+
+								// print additional information output for stdout
+								if _, ok := arm.disasm.(*coprocessor.CartCoProcDisassemblerStdout); ok {
+									fmt.Println(arm.disasmVerbose(*e))
+								}
 							}
-						}
-
-						// copy of the registers
-						entry.Registers = arm.state.registers
-
-						// basic notes about the last execution of the entry
-						entry.ExecutionNotes = arm.disasmExecutionNotes
-
-						// basic cycle information. this relies on cycleOrder not being
-						// reset during 32bit instruction decoding
-						entry.Cycles = arm.state.cycleOrder.len()
-						entry.CyclesSequence = arm.state.cycleOrder.String()
-
-						// cycle details
-						entry.MAMCR = int(arm.state.mam.mamcr)
-						entry.BranchTrail = arm.state.branchTrail
-						entry.MergedIS = arm.state.mergedIS
-
-						// note immediate mode
-						entry.ImmediateMode = arm.disasmSummary.ImmediateMode
-
-						// update cache if necessary
-						if !cached || arm.disasmUpdateNotes {
-							arm.disasmCache[arm.state.instructionPC] = entry
-						}
-
-						arm.disasmExecutionNotes = ""
-						arm.disasmUpdateNotes = false
-
-						// update program cycles
-						arm.disasmSummary.add(arm.state.cycleOrder)
-
-						// we always send the instruction to the disasm interface
-						arm.disasm.Step(entry)
-
-						// print additional information output for stdout
-						if _, ok := arm.disasm.(*coprocessor.CartCoProcDisassemblerStdout); ok {
-							fmt.Println(arm.disasmVerbose(entry))
 						}
 					}
 				}
@@ -895,7 +852,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 
 					// reset cycle order if we're not currently decoding a 32bit
 					// instruction
-					if !arm.state.function32bitDecoding {
+					if !arm.state.instruction32bitDecoding {
 						arm.state.cycleOrder.reset()
 					}
 
@@ -914,7 +871,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 
 				// check for stack errors
 				if arm.state.yield.Type == coprocessor.YieldStackError {
-					arm.extendedMemoryErrorLogging(opcode)
+					arm.extendedMemoryErrorLogging(memIdx)
 					if !arm.abortOnMemoryFault {
 						arm.logYield()
 						arm.state.yield.Type = coprocessor.YieldRunning
@@ -926,7 +883,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 						if arm.state.registers[rSP] != expectedSP {
 							arm.stackProtectCheckSP()
 							if arm.state.yield.Type == coprocessor.YieldStackError {
-								arm.extendedMemoryErrorLogging(opcode)
+								arm.extendedMemoryErrorLogging(memIdx)
 								if !arm.abortOnMemoryFault {
 									arm.logYield()
 									arm.state.yield.Type = coprocessor.YieldRunning
@@ -942,7 +899,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 				// of the ARM unless the abort preference is set
 				if arm.state.yield.Type == coprocessor.YieldMemoryAccessError {
 					// add extended memory logging to yield detail
-					arm.extendedMemoryErrorLogging(opcode)
+					arm.extendedMemoryErrorLogging(memIdx)
 
 					// if illegal memory accesses are to be ignored then we must log the
 					// yield information now before reset the yield type
@@ -963,7 +920,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 func (arm *ARM) checkBreakpoints() {
 	// check breakpoints unless they are disabled. we also don't want to match
 	// if we're in the middle of decoding a 32bit instruction
-	if arm.dev != nil && arm.breakpointsEnabled && !arm.state.function32bitDecoding {
+	if arm.dev != nil && arm.breakpointsEnabled && !arm.state.instruction32bitDecoding {
 		var addr uint32
 
 		if arm.state.branchedExecution {
@@ -995,15 +952,15 @@ func (arm *ARM) stepARM7TDMI(opcode uint16, memIdx int) {
 	// while the ARM7TDMI/Thumb instruction doesn't have 32bit instructions, in
 	// practice the BL instruction can/should be treated like a 32bit instruction
 	// for disassembly purposes
-	if arm.state.function32bitDecoding {
-		arm.state.function32bitResolving = true
-		arm.state.function32bitDecoding = false
+	if arm.state.instruction32bitDecoding {
+		arm.state.instruction32bitResolving = true
+		arm.state.instruction32bitDecoding = false
 	} else {
 		arm.state.instructionPC = arm.state.executingPC
-		arm.state.function32bitResolving = false
+		arm.state.instruction32bitResolving = false
 		if is32BitThumb2(opcode) {
-			arm.state.function32bitDecoding = true
-			arm.state.function32bitOpcodeHi = opcode
+			arm.state.instruction32bitDecoding = true
+			arm.state.instruction32bitOpcodeHi = opcode
 		}
 	}
 
@@ -1015,25 +972,25 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 	var df decodeFunction
 
 	// process a 32bit or 16bit instruction as appropriate
-	if arm.state.function32bitDecoding {
-		arm.state.function32bitDecoding = false
-		arm.state.function32bitResolving = true
+	if arm.state.instruction32bitDecoding {
+		arm.state.instruction32bitDecoding = false
+		arm.state.instruction32bitResolving = true
 		df = arm.state.currentExecutionCache[memIdx]
 		if df == nil {
-			df = arm.decode32bitThumb2(arm.state.function32bitOpcodeHi, opcode)
+			df = arm.decode32bitThumb2(arm.state.instruction32bitOpcodeHi, opcode)
 			arm.state.currentExecutionCache[memIdx] = df
 		}
 	} else {
 		// the opcode is either a 16bit instruction or the first halfword for a
 		// 32bit instruction. either way we're not resolving a 32bit
 		// instruction, by defintion
-		arm.state.function32bitResolving = false
-		arm.state.function32bitOpcodeHi = 0x0
+		arm.state.instruction32bitResolving = false
+		arm.state.instruction32bitOpcodeHi = 0x0
 
 		arm.state.instructionPC = arm.state.executingPC
 		if is32BitThumb2(opcode) {
-			arm.state.function32bitDecoding = true
-			arm.state.function32bitOpcodeHi = opcode
+			arm.state.instruction32bitDecoding = true
+			arm.state.instruction32bitOpcodeHi = opcode
 		} else {
 			df = arm.state.currentExecutionCache[memIdx]
 			if df == nil {
@@ -1046,7 +1003,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 	// new 32bit functions always execute
 	// if the opcode indicates that this is a 32bit thumb instruction
 	// then we need to resolve that regardless of any IT block
-	if arm.state.status.itMask != 0b0000 && !arm.state.function32bitDecoding {
+	if arm.state.status.itMask != 0b0000 && !arm.state.instruction32bitDecoding {
 		r, _ := arm.state.status.condition(arm.state.status.itCond)
 
 		if r {

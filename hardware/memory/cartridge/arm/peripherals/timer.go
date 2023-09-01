@@ -16,8 +16,6 @@
 package peripherals
 
 import (
-	"fmt"
-
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 )
 
@@ -47,41 +45,31 @@ func (t *Timer) Step(cycles uint32) {
 	t.counter += cycles
 }
 
-func (t *Timer) Write(addr uint32, val uint32) (bool, string) {
-	var comment string
-
+func (t *Timer) Write(addr uint32, val uint32) bool {
 	switch addr {
 	case t.mmap.TIMERcontrol:
-		t.control = val
 		t.enabled = t.control&0x01 == 0x01
-		if t.enabled {
-			comment = "timer on"
-		} else {
-			comment = "timer off"
-		}
+		t.control = val
 	case t.mmap.TIMERvalue:
 		t.counter = val
-		comment = fmt.Sprintf("timer = %d", val)
 	default:
-		return false, comment
+		return false
 	}
 
-	return true, comment
+	return true
 }
 
-func (t *Timer) Read(addr uint32) (uint32, bool, string) {
+func (t *Timer) Read(addr uint32) (uint32, bool) {
 	var val uint32
-	var comment string
 
 	switch addr {
 	case t.mmap.TIMERcontrol:
 		val = t.control
 	case t.mmap.TIMERvalue:
 		val = t.counter
-		comment = fmt.Sprintf("timer read = %d", val)
 	default:
-		return 0, false, comment
+		return 0, false
 	}
 
-	return val, true, comment
+	return val, true
 }

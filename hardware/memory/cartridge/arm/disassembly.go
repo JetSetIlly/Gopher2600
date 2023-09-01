@@ -19,92 +19,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"strings"
-
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 )
-
-// disassemble according to the current ARM architecture
-func (arm *ARM) disassemble(opcode uint16) (DisasmEntry, error) {
-	var entry DisasmEntry
-	var err error
-
-	switch arm.mmap.ARMArchitecture {
-	case architecture.ARM7TDMI:
-		entry, err = arm.disassembleARM7TDMI(opcode)
-		if err != nil {
-			return DisasmEntry{}, err
-		}
-	case architecture.ARMv7_M:
-		entry, err = arm.disassembleARM7vM(opcode)
-		if err != nil {
-			return DisasmEntry{}, err
-		}
-	default:
-		panic(fmt.Sprintf("unhandled ARM architecture: %s", arm.mmap.ARMArchitecture))
-	}
-
-	return entry, nil
-}
-
-func (arm *ARM) disassembleARM7TDMI(opcode uint16) (DisasmEntry, error) {
-	arm.decodeOnly = true
-	defer func() {
-		arm.decodeOnly = false
-	}()
-
-	df := arm.decodeThumb(opcode)
-	if df == nil {
-		return DisasmEntry{}, fmt.Errorf("error decoding thumb instruction during disassembly")
-	}
-
-	e := df()
-	if e == nil {
-		return DisasmEntry{}, fmt.Errorf("error executing thumb instruction during disassembly")
-	}
-
-	fillDisasmEntry(arm, e, opcode)
-
-	return *e, nil
-}
-
-func (arm *ARM) disassembleARM7vM(opcode uint16) (DisasmEntry, error) {
-	arm.decodeOnly = true
-	defer func() {
-		arm.decodeOnly = false
-	}()
-
-	var e *DisasmEntry
-
-	if is32BitThumb2(arm.state.function32bitOpcodeHi) {
-		df := arm.decode32bitThumb2(arm.state.function32bitOpcodeHi, opcode)
-		if df == nil {
-			return DisasmEntry{}, fmt.Errorf("error decoding 32bit thumb-2 instruction during disassembly: %04x %04x",
-				arm.state.function32bitOpcodeHi, opcode)
-		}
-
-		e = df()
-		if e == nil {
-			e = &DisasmEntry{
-				Operand: "32bit instruction",
-				Is32bit: true,
-			}
-		}
-
-	} else {
-		df := arm.decodeThumb2(opcode)
-		if df == nil {
-			return DisasmEntry{}, fmt.Errorf("error decoding 16bit thumb2 instruction during disassembly: %04x", opcode)
-		}
-		e = df()
-		if e == nil {
-			return DisasmEntry{}, fmt.Errorf("error executing 16bit thumb2 instruction during disassembly: %04x", opcode)
-		}
-	}
-
-	fillDisasmEntry(arm, e, opcode)
-
-	return *e, nil
-}
 
 // StaticDisassembleConfig is used to set the parameters for a static disassembly
 type StaticDisassembleConfig struct {
@@ -138,47 +53,52 @@ func StaticDisassemble(config StaticDisassembleConfig) error {
 	//
 	// it is necessary therefore, to catch panics and to recover()
 
+	// see comment about panic recovery above
+	decode := func(opcode uint16) *DisasmEntry {
+		defer func() {
+			recover()
+		}()
+
+		var df decodeFunction
+
+		if arm.state.instruction32bitDecoding {
+			arm.state.instruction32bitDecoding = false
+			df = arm.decode32bitThumb2(arm.state.instruction32bitOpcodeHi, opcode)
+			if df == nil {
+				return nil
+			}
+		} else {
+			df = arm.decodeThumb2(opcode)
+			if df == nil {
+				return nil
+			}
+		}
+		return df()
+	}
+
 	for ptr := 0; ptr < len(config.Data); {
 		opcode := config.ByteOrder.Uint16(config.Data[ptr:])
 
-		if !arm.state.function32bitDecoding && is32BitThumb2(opcode) {
-			arm.state.function32bitOpcodeHi = opcode
-			arm.state.function32bitDecoding = true
+		if !arm.state.instruction32bitDecoding && is32BitThumb2(opcode) {
+			arm.state.instruction32bitDecoding = true
+			arm.state.instruction32bitOpcodeHi = opcode
+			arm.state.instructionPC += 2
 			ptr += 2
 			continue // for loop
 		}
 
-		// see comment about panic recovery above
-		e, err := func() (e DisasmEntry, err error) {
-			defer func() {
-				if r := recover(); r != nil {
-					// there has been an error but we still want to create a DisasmEntry
-					// that can be used in a disassembly output
-					var e DisasmEntry
-					fillDisasmEntry(arm, &e, opcode)
-
-					// the Operator and Operand fields are used for error information
-					e.Operator = DisasmEntryErrorOperator
-					e.Operand = fmt.Sprintf("%v", r)
-				}
-			}()
-			return arm.disassembleARM7vM(opcode)
-		}()
-
-		if err == nil {
-			config.Callback(e)
-		}
-
-		if arm.state.function32bitDecoding {
-			arm.state.instructionPC += 4
-		} else {
+		e := decode(opcode)
+		if e == nil {
 			arm.state.instructionPC += 2
+			ptr += 2
+			continue // for loop
 		}
-		ptr += 2
 
-		// reset 32bit fields
-		arm.state.function32bitOpcodeHi = 0
-		arm.state.function32bitDecoding = false
+		arm.completeDisasmEntry(e, opcode, false)
+		config.Callback(*e)
+
+		arm.state.instructionPC += 2
+		ptr += 2
 	}
 
 	return nil

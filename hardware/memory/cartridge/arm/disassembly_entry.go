@@ -58,9 +58,6 @@ type DisasmEntry struct {
 	// the values of the remaining fields are not defined unless the
 	// instruction has been executed
 
-	// basic notes about the last execution of the entry
-	ExecutionNotes string
-
 	// snapshot of CPU registers at the result of the instruction
 	Registers [NumCoreRegisters]uint32
 
@@ -90,8 +87,7 @@ func (e DisasmEntry) CSV() string {
 	if e.MergedIS {
 		mergedIS = "merged IS"
 	}
-
-	return fmt.Sprintf("%s;%s;%s;%d;%s;%s;%s", e.Address, e.Operator, e.Operand, e.Cycles, e.ExecutionNotes, mergedIS, e.CyclesSequence)
+	return fmt.Sprintf("%s;%s;%s;%d;%s;%s", e.Address, e.Operator, e.Operand, e.Cycles, mergedIS, e.CyclesSequence)
 }
 
 // String implements the CartCoProcDisasmEntry interface. Returns a very simple
@@ -111,19 +107,23 @@ func (e DisasmEntry) Size() int {
 	return 2
 }
 
-// fillDisasmEntry sets the DisasmEntry fields using information from the emulated ARM
-//
-// the Is32bit field will remain true if it has previously been set to true
-func fillDisasmEntry(arm *ARM, e *DisasmEntry, opcode uint16) {
+// completeDisasmEntry completes the common disassembly entry using information from the emulated ARM
+func (arm *ARM) completeDisasmEntry(e *DisasmEntry, opcode uint16, includeLiveInformation bool) {
 	e.Addr = arm.state.instructionPC
 	e.Opcode = opcode
-	e.OpcodeHi = arm.state.function32bitOpcodeHi
+	if e.Is32bit {
+		e.OpcodeHi = arm.state.instruction32bitOpcodeHi
+	}
+
 	e.Address = fmt.Sprintf("%08x", arm.state.instructionPC)
 	e.Operator = strings.ToLower(e.Operator)
 
-	// deciding whether the instruction is 32bit or not needs to cover three
-	// 1) when the flag has already been set explicitely
-	// 2) when the instruction is only being decoded (static disassembly)
-	// 3) when the instruction has actually been executed, or resolved (live disassembly)
-	e.Is32bit = e.Is32bit || arm.state.function32bitDecoding || arm.state.function32bitResolving
+	if includeLiveInformation {
+		e.Registers = arm.state.registers
+		e.CyclesSequence = arm.state.cycleOrder.String()
+		e.MAMCR = int(arm.state.mam.mamcr)
+		e.BranchTrail = arm.state.branchTrail
+		e.MergedIS = arm.state.mergedIS
+		e.ImmediateMode = arm.immediateMode
+	}
 }

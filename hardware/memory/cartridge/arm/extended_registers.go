@@ -109,9 +109,9 @@ func (arm *ARM) register(register int, formatted bool) (uint32, string, bool) {
 
 				switch register {
 				case 10000:
-					v, _, _ = arm.state.timer2.Read(arm.mmap.TIM2CR1)
+					v, _ = arm.state.timer2.Read(arm.mmap.TIM2CR1)
 				case 10001:
-					v, _, _ = arm.state.timer2.Read(arm.mmap.TIM2CNT)
+					v, _ = arm.state.timer2.Read(arm.mmap.TIM2CNT)
 				default:
 					return 0, "", false
 				}

@@ -58,7 +58,7 @@ func (r *RNG) Reset() {
 	r.control = 0x0
 }
 
-func (r *RNG) Write(addr uint32, val uint32) (bool, string) {
+func (r *RNG) Write(addr uint32, val uint32) bool {
 	switch addr {
 	case r.mmap.RNGCR:
 		// control register
@@ -72,13 +72,13 @@ func (r *RNG) Write(addr uint32, val uint32) (bool, string) {
 		// data register
 		logger.Logf("ARM7", "ignoring write to RNG data register (value of %08x)", val)
 	default:
-		return false, ""
+		return false
 	}
 
-	return true, ""
+	return true
 }
 
-func (r *RNG) Read(addr uint32) (uint32, bool, string) {
+func (r *RNG) Read(addr uint32) (uint32, bool) {
 	var val uint32
 
 	switch addr {
@@ -94,8 +94,8 @@ func (r *RNG) Read(addr uint32) (uint32, bool, string) {
 		// data register
 		val = rand.Uint32()
 	default:
-		return 0, false, ""
+		return 0, false
 	}
 
-	return val, true, ""
+	return val, true
 }

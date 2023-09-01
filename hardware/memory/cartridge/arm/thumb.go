@@ -949,10 +949,6 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) decodeFunction {
 					arm.state.registers[rPC] = (target + 2) & 0xfffffffe
 				}
 
-				if arm.decodeOnly {
-					arm.disasmUpdateNotes = true
-				}
-
 				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 				// - fillPipeline() will be called if necessary
 				return nil
@@ -975,11 +971,6 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) decodeFunction {
 				if thumbMode {
 					arm.state.registers[rPC] = newPC
 
-					if arm.decodeOnly {
-						arm.disasmExecutionNotes = "branch exchange to thumb code"
-						arm.disasmUpdateNotes = true
-					}
-
 					// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 					// - fillPipeline() will be called if necessary
 					return nil
@@ -991,15 +982,6 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) decodeFunction {
 					arm.state.yield.Type = coprocessor.YieldExecutionError
 					arm.state.yield.Error = err
 					return nil
-				}
-
-				if arm.decodeOnly {
-					if res.InterruptEvent != "" {
-						arm.disasmExecutionNotes = fmt.Sprintf("ARM function (%08x) %s", arm.state.registers[rPC]-4, res.InterruptEvent)
-					} else {
-						arm.disasmExecutionNotes = fmt.Sprintf("ARM function (%08x)", arm.state.registers[rPC]-4)
-					}
-					arm.disasmUpdateNotes = true
 				}
 
 				// if ARMinterrupt returns false this indicates that the
@@ -1824,19 +1806,10 @@ func (arm *ARM) decodeThumbConditionalBranch(opcode uint16) decodeFunction {
 		passed, mnemonic := arm.state.status.condition(cond)
 
 		if arm.decodeOnly {
-			e := &DisasmEntry{
+			return &DisasmEntry{
 				Operator: mnemonic,
 				Operand:  fmt.Sprintf("%d", int32(offset)),
 			}
-
-			if passed {
-				arm.disasmExecutionNotes = "branched"
-			} else {
-				arm.disasmExecutionNotes = "next"
-			}
-			arm.disasmUpdateNotes = true
-
-			return e
 		}
 
 		// adjust PC if condition has been met

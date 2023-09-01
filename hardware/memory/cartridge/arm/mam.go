@@ -72,7 +72,7 @@ func (m *mam) updatePrefs() {
 	}
 }
 
-func (m *mam) Write(addr uint32, val uint32) (bool, string) {
+func (m *mam) Write(addr uint32, val uint32) bool {
 	switch addr {
 	case m.mmap.MAMCR:
 		if m.pref == preferences.MAMDriver {
@@ -83,17 +83,17 @@ func (m *mam) Write(addr uint32, val uint32) (bool, string) {
 			if m.mamcr == 0 {
 				m.mamtim = val
 			} else {
-				logger.Logf("ARM7", "trying to set MAMTIM while MAMCR is active")
+				logger.Logf("ARM7", "trying to write to MAMTIM while MAMCR is active")
 			}
 		}
 	default:
-		return false, ""
+		return false
 	}
 
-	return true, ""
+	return true
 }
 
-func (m *mam) Read(addr uint32) (uint32, bool, string) {
+func (m *mam) Read(addr uint32) (uint32, bool) {
 	var val uint32
 
 	switch addr {
@@ -102,10 +102,10 @@ func (m *mam) Read(addr uint32) (uint32, bool, string) {
 	case m.mmap.MAMTIM:
 		val = m.mamtim
 	default:
-		return 0, false, ""
+		return 0, false
 	}
 
-	return val, true, ""
+	return val, true
 }
 
 func (m *mam) setMAMCR(val architecture.MAMCR) {

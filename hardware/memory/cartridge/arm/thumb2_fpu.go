@@ -26,7 +26,7 @@ import (
 
 func (arm *ARM) decodeThumb2FPU(opcode uint16) decodeFunction {
 	// "Chapter A6 The Floating-point Instruction Set Encoding" of "ARMv7-M"
-	switch arm.state.function32bitOpcodeHi & 0x0e00 {
+	switch arm.state.instruction32bitOpcodeHi & 0x0e00 {
 	case 0x0e00:
 		switch opcode & 0x0010 {
 		case 0x0000:
@@ -37,7 +37,7 @@ func (arm *ARM) decodeThumb2FPU(opcode uint16) decodeFunction {
 			return arm.decodeThumb2FPU32bitTransfer(opcode)
 		}
 	case 0x0c00:
-		switch arm.state.function32bitOpcodeHi & 0x01e0 {
+		switch arm.state.instruction32bitOpcodeHi & 0x01e0 {
 		case 0x0040:
 			// "A6.7 64-bit transfers between Arm core and extension registers" of "ARMv7-M"
 			return arm.decodeThumb2FPUTransfers(opcode)
@@ -53,9 +53,9 @@ func (arm *ARM) decodeThumb2FPU(opcode uint16) decodeFunction {
 func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 	// "A6.4 Floating-point data-processing instructions" of "ARMv7-M"
 
-	T := arm.state.function32bitOpcodeHi&0x1000 == 0x1000
-	opc1 := (arm.state.function32bitOpcodeHi & 0x00f0) >> 4
-	opc2 := arm.state.function32bitOpcodeHi & 0x000f
+	T := arm.state.instruction32bitOpcodeHi&0x1000 == 0x1000
+	opc1 := (arm.state.instruction32bitOpcodeHi & 0x00f0) >> 4
+	opc2 := arm.state.instruction32bitOpcodeHi & 0x000f
 	sz := opcode&0x0100 == 0x0100
 	opc3 := (opcode & 0x00c0) >> 6
 	opc4 := opcode & 0x000f
@@ -69,8 +69,8 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 				// "A7.7.250 VNMLA, VNMLS, VNMUL" of "ARMv7-M"
 				op := opcode&0x0040 == 0x0040
 
-				D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
-				Vn := arm.state.function32bitOpcodeHi & 0x000f
+				D := (arm.state.instruction32bitOpcodeHi & 0x40) >> 6
+				Vn := arm.state.instruction32bitOpcodeHi & 0x000f
 				Vd := (opcode & 0xf000) >> 12
 				N := (opcode & 0x0080) >> 7
 				M := (opcode & 0x0020) >> 5
@@ -98,7 +98,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 
 				return func() *DisasmEntry {
 					var typ fpu.VFPNegMul
-					switch arm.state.function32bitOpcodeHi & 0x0030 {
+					switch arm.state.instruction32bitOpcodeHi & 0x0030 {
 					case 0x0010:
 						if op {
 							if arm.decodeOnly {
@@ -158,8 +158,8 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 
 			} else {
 				// "A7.7.248 VMUL" of "ARMv7-M"
-				D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
-				Vn := arm.state.function32bitOpcodeHi & 0x000f
+				D := (arm.state.instruction32bitOpcodeHi & 0x40) >> 6
+				Vn := arm.state.instruction32bitOpcodeHi & 0x000f
 				Vd := (opcode & 0xf000) >> 12
 				N := (opcode & 0x0080) >> 7
 				M := (opcode & 0x0020) >> 5
@@ -206,8 +206,8 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 				}
 			}
 		case 0b0011:
-			D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
-			Vn := arm.state.function32bitOpcodeHi & 0x000f
+			D := (arm.state.instruction32bitOpcodeHi & 0x40) >> 6
+			Vn := arm.state.instruction32bitOpcodeHi & 0x000f
 			Vd := (opcode & 0xf000) >> 12
 			N := (opcode & 0x0080) >> 7
 			M := (opcode & 0x0020) >> 5
@@ -279,8 +279,8 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 
 		case 0b1000:
 			// "A7.7.232 VDIV" of "ARMv7-M"
-			D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
-			Vn := arm.state.function32bitOpcodeHi & 0x000f
+			D := (arm.state.instruction32bitOpcodeHi & 0x40) >> 6
+			Vn := arm.state.instruction32bitOpcodeHi & 0x000f
 			Vd := (opcode & 0xf000) >> 12
 			N := (opcode & 0x0080) >> 7
 			M := (opcode & 0x0020) >> 5
@@ -329,8 +329,8 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 		case 0b1011:
 			if opc3&0b01 == 0b00 {
 				// "A7.7.239 VMOV (immediate)" of "ARMv7-M"
-				D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
-				imm4H := arm.state.function32bitOpcodeHi & 0x000f
+				D := (arm.state.instruction32bitOpcodeHi & 0x40) >> 6
+				imm4H := arm.state.instruction32bitOpcodeHi & 0x000f
 				Vd := (opcode & 0xf000) >> 12
 				imm4L := opcode & 0x000f
 
@@ -374,7 +374,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 					// "A7.7.228 VCVT, VCVTR (between floating-point and integer)" of "ARMv7-M"
 					toInteger := opc2&0b100 == 0b100
 
-					D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
+					D := (arm.state.instruction32bitOpcodeHi & 0x40) >> 6
 					Vd := (opcode & 0xf000) >> 12
 					op := opcode&0x0080 == 0x0080
 					M := (opcode & 0x0020) >> 5
@@ -469,7 +469,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 				}
 			} else if opc2&0b0100 == 0b0100 {
 				// "A7.7.226 VCMP, VCMPE" of "ARMv7-M"
-				D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
+				D := (arm.state.instruction32bitOpcodeHi & 0x40) >> 6
 				Vd := (opcode & 0xf000) >> 12
 				E := opcode&0x0080 == 0x0080
 				M := (opcode & 0x0020) >> 5
@@ -504,7 +504,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 					if sz {
 						panic("double precision VCMP, VCMPE")
 					} else {
-						if arm.state.function32bitOpcodeHi&0b01 == 0b00 {
+						if arm.state.instruction32bitOpcodeHi&0b01 == 0b00 {
 							// Encoding T1 (with m register)
 							arm.state.fpu.FPCompare(uint64(arm.state.fpu.Registers[d]), uint64(arm.state.fpu.Registers[m]), bits, E, true)
 						} else {
@@ -518,7 +518,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 			} else if opc2&0b0100 == 0b0000 {
 				if opc3&0b11 == 0b01 {
 					// "A7.7.240 VMOV (register)" of "ARMv7-M"
-					D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
+					D := (arm.state.instruction32bitOpcodeHi & 0x40) >> 6
 					Vd := (opcode & 0xf000) >> 12
 					M := (opcode & 0x0020) >> 5
 					Vm := opcode & 0x000f
@@ -556,7 +556,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 					}
 				} else {
 					// "A7.7.224 VABS" of "ARMv7-M"
-					D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
+					D := (arm.state.instruction32bitOpcodeHi & 0x40) >> 6
 					Vd := (opcode & 0xf000) >> 12
 					M := (opcode & 0x0020) >> 5
 					Vm := opcode & 0x000f
@@ -601,8 +601,8 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 
 		case 0b1001:
 			// "A7.7.234 VFNMA, VFNMS" of "ARMv7-M"
-			D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
-			Vn := arm.state.function32bitOpcodeHi & 0x000f
+			D := (arm.state.instruction32bitOpcodeHi & 0x40) >> 6
+			Vn := arm.state.instruction32bitOpcodeHi & 0x000f
 			Vd := (opcode & 0xf000) >> 12
 			N := (opcode & 0x0080) >> 7
 			op := opcode&0x0040 == 0x0040
@@ -665,8 +665,8 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 
 		case 0b1010:
 			// "A7.7.233 VFMA, VFMS" of "ARMv7-M"
-			D := (arm.state.function32bitOpcodeHi & 0x40) >> 6
-			Vn := arm.state.function32bitOpcodeHi & 0x000f
+			D := (arm.state.instruction32bitOpcodeHi & 0x40) >> 6
+			Vn := arm.state.instruction32bitOpcodeHi & 0x000f
 			Vd := (opcode & 0xf000) >> 12
 			N := (opcode & 0x0080) >> 7
 			op := opcode&0x0040 == 0x0040
@@ -729,21 +729,21 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 		}
 	}
 
-	panic(fmt.Sprintf("undecoded FPU instrucion (A6.4): %04x %04x", arm.state.function32bitOpcodeHi, opcode))
+	panic(fmt.Sprintf("undecoded FPU instrucion (A6.4): %04x %04x", arm.state.instruction32bitOpcodeHi, opcode))
 }
 
 func (arm *ARM) decodeThumb2FPU32bitTransfer(opcode uint16) decodeFunction {
 	// "A6.6 32-bit transfer between ARM core and extension registers" of "ARMv7-M"
 
-	T := arm.state.function32bitOpcodeHi&0x1000 == 0x1000
-	L := arm.state.function32bitOpcodeHi&0x0010 == 0x0010
+	T := arm.state.instruction32bitOpcodeHi&0x1000 == 0x1000
+	L := arm.state.instruction32bitOpcodeHi&0x0010 == 0x0010
 	C := opcode&0x0100 == 0x0100
 
 	if T {
 		panic("undefined 32bit FPU transfer")
 	}
 
-	A := (arm.state.function32bitOpcodeHi & 0x00e0) >> 5
+	A := (arm.state.instruction32bitOpcodeHi & 0x00e0) >> 5
 	B := (opcode & 0x0060) >> 5
 
 	if A == 0b000 {
@@ -751,8 +751,8 @@ func (arm *ARM) decodeThumb2FPU32bitTransfer(opcode uint16) decodeFunction {
 			panic("undefined 32bit FPU transfer")
 		}
 
-		op := arm.state.function32bitOpcodeHi&0x0010 == 0x0010
-		Vn := arm.state.function32bitOpcodeHi & 0x000f
+		op := arm.state.instruction32bitOpcodeHi&0x0010 == 0x0010
+		Vn := arm.state.instruction32bitOpcodeHi & 0x000f
 		Rt := (opcode & 0xf000) >> 12
 		N := (opcode & 0x0080) >> 7
 		Rn := (Vn << 1) | N
@@ -830,8 +830,8 @@ func (arm *ARM) decodeThumb2FPU32bitTransfer(opcode uint16) decodeFunction {
 
 	if B == 0b00 {
 		// "A7.7.243 VMOV (between Arm core register and single-precision register)" of "ARMv7-M"
-		op := arm.state.function32bitOpcodeHi&0x0010 == 0x0010
-		Vn := arm.state.function32bitOpcodeHi & 0x000f
+		op := arm.state.instruction32bitOpcodeHi&0x0010 == 0x0010
+		Vn := arm.state.instruction32bitOpcodeHi & 0x000f
 		Rt := (opcode & 0xf000) >> 12
 		N := (opcode & 0x0080) >> 7
 		Rn := (Vn << 1) | N
@@ -868,17 +868,17 @@ func (arm *ARM) decodeThumb2FPU32bitTransfer(opcode uint16) decodeFunction {
 func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 	// "A6.5 Extension register load or store instructions" of "ARMv7-M"
 
-	op := (arm.state.function32bitOpcodeHi & 0x01f0) >> 4
-	Rn := arm.state.function32bitOpcodeHi & 0x000f
+	op := (arm.state.instruction32bitOpcodeHi & 0x01f0) >> 4
+	Rn := arm.state.instruction32bitOpcodeHi & 0x000f
 
 	maskedOp := op & 0b11011
 
 	if maskedOp == 0b01000 || maskedOp == 0b01010 || (maskedOp == 0b10010 && Rn != 0b1101) {
 		// "A7.7.258 VSTM" of "ARMv7-M"
 		// P := arm.state.function32bitOpcodeHi&0x0100 == 0x0100
-		U := arm.state.function32bitOpcodeHi&0x0080 == 0x0080
-		D := (arm.state.function32bitOpcodeHi & 0x0040) >> 6
-		W := arm.state.function32bitOpcodeHi&0x0020 == 0x0020
+		U := arm.state.instruction32bitOpcodeHi&0x0080 == 0x0080
+		D := (arm.state.instruction32bitOpcodeHi & 0x0040) >> 6
+		W := arm.state.instruction32bitOpcodeHi&0x0020 == 0x0020
 		Vd := (opcode & 0xf000) >> 12
 		sz := opcode&0x0100 == 0x0100
 		imm8 := opcode & 0x00ff
@@ -938,8 +938,8 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 
 	if maskedOp == 0b10000 || maskedOp == 0b11000 {
 		// "A7.7.259 VSTR" of "ARMv7-M"
-		U := arm.state.function32bitOpcodeHi&0x0080 == 0x0080
-		D := (arm.state.function32bitOpcodeHi & 0x0040) >> 6
+		U := arm.state.instruction32bitOpcodeHi&0x0080 == 0x0080
+		D := (arm.state.instruction32bitOpcodeHi & 0x0040) >> 6
 		Vd := (opcode & 0xf000) >> 12
 		sz := opcode&0x0100 == 0x0100
 		imm8 := opcode & 0x00ff
@@ -998,7 +998,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 
 	if maskedOp == 0b10010 && Rn == 0b1101 {
 		// "A7.7.252 VPUSH" of "ARMv7-M"
-		D := (arm.state.function32bitOpcodeHi & 0x0040) >> 6
+		D := (arm.state.instruction32bitOpcodeHi & 0x0040) >> 6
 		Vd := (opcode & 0xf000) >> 12
 		sz := opcode&0x0100 == 0x0100
 		imm8 := opcode & 0x00ff
@@ -1065,8 +1065,8 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 
 	if maskedOp == 0b10001 || maskedOp == 0b11001 {
 		// "A7.7.236 VLDR" of "ARMv7-M"
-		U := arm.state.function32bitOpcodeHi&0x0080 == 0x0080
-		D := (arm.state.function32bitOpcodeHi & 0x0040) >> 6
+		U := arm.state.instruction32bitOpcodeHi&0x0080 == 0x0080
+		D := (arm.state.instruction32bitOpcodeHi & 0x0040) >> 6
 		Vd := (opcode & 0xf000) >> 12
 		sz := opcode&0x0100 == 0x0100
 		imm8 := opcode & 0x00ff
@@ -1141,9 +1141,9 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 		// "A7.7.235 VLDM" of "ARMv7-M"
 
 		// P := arm.state.function32bitOpcodeHi&0x0100 == 0x0100
-		U := arm.state.function32bitOpcodeHi&0x0080 == 0x0080
-		D := (arm.state.function32bitOpcodeHi & 0x0040) >> 6
-		W := arm.state.function32bitOpcodeHi&0x0020 == 0x0020
+		U := arm.state.instruction32bitOpcodeHi&0x0080 == 0x0080
+		D := (arm.state.instruction32bitOpcodeHi & 0x0040) >> 6
+		W := arm.state.instruction32bitOpcodeHi&0x0020 == 0x0020
 		Vd := (opcode & 0xf000) >> 12
 		sz := opcode&0x0100 == 0x0100
 		imm8 := opcode & 0x00ff

@@ -65,29 +65,19 @@ func NewTimer2(mmap architecture.Map) Timer2 {
 }
 
 func (t *Timer2) Reset() {
-	_ = t.setControlRegister(0x00000000)
+	t.setControlRegister(0x00000000)
 	t.prescaler = 0x0
 	t.autoreload = 0xffffffff
 	t.counter = 0.0
 }
 
-func (t *Timer2) setControlRegister(val uint32) string {
-	var comment string
-
+func (t *Timer2) setControlRegister(val uint32) {
 	// control value
 	t.control = val
 
 	// "Note that the actual counter enable signal CNT_EN is set 1 clock cycle
 	// after CEN." page 591 of STM32
-	enabled := t.enable
 	t.enable = val&0x0001 == 0x0001
-	if t.enable != enabled {
-		if t.enable {
-			comment = "TIM2 enabled"
-		} else {
-			comment = "TIM2 disabled"
-		}
-	}
 
 	t.updateEventDisabled = val&0x0002 == 0x0002
 	t.updateRequestSource = val&0x0004 == 0x0004
@@ -114,8 +104,6 @@ func (t *Timer2) setControlRegister(val uint32) string {
 	if val&0xfc00 != 0x0000 {
 		panic("ARM TIM2_CR1: reserved bits are not zero")
 	}
-
-	return comment
 }
 
 // Step ticks TIM2 by the specified number of cycles. In reality the cycles are
@@ -205,13 +193,12 @@ func (t *Timer2) updateEvent() {
 
 // "18.4.21 TIMx register map" of "RM0090 reference"
 
-func (t *Timer2) Write(addr uint32, val uint32) (bool, string) {
-	var comment string
+func (t *Timer2) Write(addr uint32, val uint32) bool {
 
 	switch addr {
 	case t.mmap.TIM2CR1:
 		// TIMx Control
-		comment = t.setControlRegister(val)
+		t.setControlRegister(val)
 	case t.mmap.TIM2EGR:
 		// TIMx Event Generation
 		v := val
@@ -220,7 +207,6 @@ func (t *Timer2) Write(addr uint32, val uint32) (bool, string) {
 		if v&0x0001 == 0x0001 {
 			if !t.updateRequestSource {
 				t.updateEvent()
-				comment = "TIM2 EGR update event"
 			}
 		}
 		if v&0x005e != 0x0000 {
@@ -245,13 +231,13 @@ func (t *Timer2) Write(addr uint32, val uint32) (bool, string) {
 			t.autoreloadShadow = t.autoreload
 		}
 	default:
-		return false, ""
+		return false
 	}
 
-	return true, comment
+	return true
 }
 
-func (t *Timer2) Read(addr uint32) (uint32, bool, string) {
+func (t *Timer2) Read(addr uint32) (uint32, bool) {
 	var val uint32
 
 	switch addr {
@@ -263,8 +249,8 @@ func (t *Timer2) Read(addr uint32) (uint32, bool, string) {
 		t.ResolveDeferredCycles()
 		val = t.counter
 	default:
-		return 0, false, ""
+		return 0, false
 	}
 
-	return val, true, ""
+	return val, true
 }

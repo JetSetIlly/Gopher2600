@@ -64,15 +64,15 @@ func (arm *ARM) decode32bitThumb2(opcodeHi uint16, opcode uint16) decodeFunction
 func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decodeFunction {
 	// "3.3.2 Data processing instructions, non-immediate" of "Thumb-2 Supplement"
 
-	Rn := arm.state.function32bitOpcodeHi & 0x000f
+	Rn := arm.state.instruction32bitOpcodeHi & 0x000f
 	Rm := opcode & 0x000f
 	Rd := (opcode & 0x0f00) >> 8
 
-	if arm.state.function32bitOpcodeHi&0xfe00 == 0xea00 {
+	if arm.state.instruction32bitOpcodeHi&0xfe00 == 0xea00 {
 		// "Data processing instructions with constant shift"
 		// page 3-18 of "Thumb-2 Supplement"
-		op := (arm.state.function32bitOpcodeHi & 0x01e0) >> 5
-		setFlags := arm.state.function32bitOpcodeHi&0x0010 == 0x0010
+		op := (arm.state.instruction32bitOpcodeHi & 0x01e0) >> 5
+		setFlags := arm.state.instruction32bitOpcodeHi&0x0010 == 0x0010
 		// sbz := (opcode & 0x8000) >> 15
 		imm3 := (opcode & 0x7000) >> 12
 		imm2 := (opcode & 0x00c0) >> 6
@@ -892,13 +892,13 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 		default:
 			panic(fmt.Sprintf("unimplemented data processing instructions, non immediate (data processing, constant shift) (%04b)", op))
 		}
-	} else if arm.state.function32bitOpcodeHi&0xff80 == 0xfa00 {
+	} else if arm.state.instruction32bitOpcodeHi&0xff80 == 0xfa00 {
 		if opcode&0x0080 == 0x0000 {
 			// "Register-controlled shift instructions"
 			// page 3-19 of "Thumb-2 Supplement"
 
-			op := (arm.state.function32bitOpcodeHi & 0x0060) >> 5
-			setFlags := (arm.state.function32bitOpcodeHi & 0x0010) == 0x0010
+			op := (arm.state.instruction32bitOpcodeHi & 0x0060) >> 5
+			setFlags := (arm.state.instruction32bitOpcodeHi & 0x0010) == 0x0010
 
 			switch op {
 			case 0b00:
@@ -1003,7 +1003,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 		} else {
 			// "Signed and unsigned extend instructions with optional addition"
 			// page 3-20 of "Thumb-2 Supplement"
-			op := (arm.state.function32bitOpcodeHi & 0x0070) >> 4
+			op := (arm.state.instruction32bitOpcodeHi & 0x0070) >> 4
 			rot := (opcode & 0x0030) >> 4
 
 			// rot is actually always used with a right shift of 3
@@ -1165,7 +1165,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 				panic(fmt.Sprintf("unimplemented data processing instructions, non immediate (sign or zero extension with opt addition) (%03b)", op))
 			}
 		}
-	} else if arm.state.function32bitOpcodeHi&0xff80 == 0xfa80 {
+	} else if arm.state.instruction32bitOpcodeHi&0xff80 == 0xfa80 {
 		if opcode&0x0080 == 0x0000 {
 			// "SIMD add and subtract"
 			// page 3-21 of "Thumb-2 Supplement"
@@ -1173,7 +1173,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 		} else {
 			// "Other three-register data processing instructions"
 			// page 3-23 of "Thumb-2 Supplement"
-			op := (arm.state.function32bitOpcodeHi & 0x70) >> 4
+			op := (arm.state.instruction32bitOpcodeHi & 0x70) >> 4
 			op2 := (opcode & 0x0070) >> 4
 			if op == 0b011 && op2 == 0b000 {
 				// "4.6.26 CLZ" of "Thumb-2 Supplement"
@@ -1196,10 +1196,10 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 				panic("unimplemented 'three-register data processing instruction'")
 			}
 		}
-	} else if arm.state.function32bitOpcodeHi&0xff80 == 0xfb00 {
+	} else if arm.state.instruction32bitOpcodeHi&0xff80 == 0xfb00 {
 		// "32-bit multiplies and sum of absolute differences, with or without accumulate"
 		// page 3-24 of "Thumb-2 Supplement"
-		op := (arm.state.function32bitOpcodeHi & 0x0070) >> 4
+		op := (arm.state.instruction32bitOpcodeHi & 0x0070) >> 4
 		Ra := (opcode & 0xf000) >> 12
 		op2 := (opcode & 0x00f0) >> 4
 
@@ -1343,8 +1343,8 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 		} else {
 			panic(fmt.Sprintf("unimplemented data processing instructions, non immediate (32bit multiplies) (%03b) (%04b)", op, op2))
 		}
-	} else if arm.state.function32bitOpcodeHi&0xff80 == 0xfb80 {
-		op := (arm.state.function32bitOpcodeHi & 0x0070) >> 4
+	} else if arm.state.instruction32bitOpcodeHi&0xff80 == 0xfb80 {
+		op := (arm.state.instruction32bitOpcodeHi & 0x0070) >> 4
 		op2 := (opcode & 0x00f0) >> 4
 
 		if op == 0b010 && op2 == 0b0000 {
@@ -1466,12 +1466,12 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 func (arm *ARM) decode32bitThumb2LoadStoreDoubleEtc(opcode uint16) decodeFunction {
 	// "3.3.4 Load/store double and exclusive, and table branch" of "Thumb-2 Supplement"
 
-	p := (arm.state.function32bitOpcodeHi & 0x0100) == 0x0100
-	u := (arm.state.function32bitOpcodeHi & 0x0080) == 0x0080
-	w := (arm.state.function32bitOpcodeHi & 0x0020) == 0x0020
-	l := (arm.state.function32bitOpcodeHi & 0x0010) == 0x0010
+	p := (arm.state.instruction32bitOpcodeHi & 0x0100) == 0x0100
+	u := (arm.state.instruction32bitOpcodeHi & 0x0080) == 0x0080
+	w := (arm.state.instruction32bitOpcodeHi & 0x0020) == 0x0020
+	l := (arm.state.instruction32bitOpcodeHi & 0x0010) == 0x0010
 
-	Rn := arm.state.function32bitOpcodeHi & 0x000f
+	Rn := arm.state.instruction32bitOpcodeHi & 0x000f
 	Rt := (opcode & 0xf000) >> 12
 	Rt2 := (opcode & 0x0f00) >> 8
 	imm8 := opcode & 0x00ff
@@ -1547,7 +1547,7 @@ func (arm *ARM) decode32bitThumb2LoadStoreDoubleEtc(opcode uint16) decodeFunctio
 			return nil
 		}
 
-	} else if arm.state.function32bitOpcodeHi&0x0080 == 0x0080 {
+	} else if arm.state.instruction32bitOpcodeHi&0x0080 == 0x0080 {
 		// "Load and Store Exclusive Byte Halfword, Doubleword, and Table Branch"
 
 		op := (opcode & 0x00f0) >> 4
@@ -1612,17 +1612,17 @@ func (arm *ARM) decode32bitThumb2BranchesORDataProcessing(opcode uint16) decodeF
 func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 	// "3.3.1 Data processing instructions: immediate, including bitfield and saturate" of "Thumb-2 Supplement"
 
-	if arm.state.function32bitOpcodeHi&0xfa00 == 0xf000 {
+	if arm.state.instruction32bitOpcodeHi&0xfa00 == 0xf000 {
 		// "Data processing instructions with modified 12-bit immediate"
 		// page 3-14 of "Thumb-2 Supplement" (part of section 3.3.1)
 
-		op := (arm.state.function32bitOpcodeHi & 0x01e0) >> 5
-		setFlags := (arm.state.function32bitOpcodeHi & 0x0010) == 0x0010
+		op := (arm.state.instruction32bitOpcodeHi & 0x01e0) >> 5
+		setFlags := (arm.state.instruction32bitOpcodeHi & 0x0010) == 0x0010
 
-		Rn := arm.state.function32bitOpcodeHi & 0x000f
+		Rn := arm.state.instruction32bitOpcodeHi & 0x000f
 		Rd := (opcode & 0x0f00) >> 8
 
-		i := (arm.state.function32bitOpcodeHi & 0x0400) >> 10
+		i := (arm.state.instruction32bitOpcodeHi & 0x0400) >> 10
 		imm3 := (opcode & 0x7000) >> 12
 		imm8 := opcode & 0x00ff
 		imm12 := (i << 11) | (imm3 << 8) | imm8
@@ -1870,7 +1870,7 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 					return nil
 				}
 			} else {
-				if arm.state.function32bitOpcodeHi&0x100 == 0x100 {
+				if arm.state.instruction32bitOpcodeHi&0x100 == 0x100 {
 					// "4.6.3 ADD (immediate)" of "Thumb-2 Supplement"
 					// T3 encoding
 					return func() *DisasmEntry {
@@ -2048,17 +2048,17 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 		default:
 			panic(fmt.Sprintf("unimplemented 'data processing instructions with modified 12bit immediate' (%04b)", op))
 		}
-	} else if arm.state.function32bitOpcodeHi&0xfb40 == 0xf200 {
+	} else if arm.state.instruction32bitOpcodeHi&0xfb40 == 0xf200 {
 		// "Data processing instructions with plain 12-bit immediate"
 		// page 3-15 of "Thumb-2 Supplement" (part of section 3.3.1)
 
-		op := (arm.state.function32bitOpcodeHi & 0x0080) >> 7
-		op2 := (arm.state.function32bitOpcodeHi & 0x0030) >> 4
+		op := (arm.state.instruction32bitOpcodeHi & 0x0080) >> 7
+		op2 := (arm.state.instruction32bitOpcodeHi & 0x0030) >> 4
 
-		Rn := arm.state.function32bitOpcodeHi & 0x000f
+		Rn := arm.state.instruction32bitOpcodeHi & 0x000f
 		Rd := (opcode & 0x0f00) >> 8
 
-		i := (arm.state.function32bitOpcodeHi & 0x0400) >> 10
+		i := (arm.state.instruction32bitOpcodeHi & 0x0400) >> 10
 		imm3 := (opcode & 0x7000) >> 12
 		imm8 := opcode & 0x00ff
 		imm12 := (i << 11) | (imm3 << 8) | imm8
@@ -2112,15 +2112,15 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 			}
 		}
 
-	} else if arm.state.function32bitOpcodeHi&0xfb40 == 0xf240 {
+	} else if arm.state.instruction32bitOpcodeHi&0xfb40 == 0xf240 {
 		// "Data processing instructions with plain 16-bit immediate"
 		// page 3-15 of "Thumb-2 Supplement" (part of section 3.3.1)
 
-		op := (arm.state.function32bitOpcodeHi & 0x0080) >> 7
-		op2 := (arm.state.function32bitOpcodeHi & 0x0030) >> 4
+		op := (arm.state.instruction32bitOpcodeHi & 0x0080) >> 7
+		op2 := (arm.state.instruction32bitOpcodeHi & 0x0030) >> 4
 
-		i := (arm.state.function32bitOpcodeHi & 0x0400) >> 10
-		imm4 := arm.state.function32bitOpcodeHi & 0x000f
+		i := (arm.state.instruction32bitOpcodeHi & 0x0400) >> 10
+		imm4 := arm.state.instruction32bitOpcodeHi & 0x000f
 		imm3 := (opcode & 0x7000) >> 12
 		Rd := (opcode & 0x0f00) >> 8
 		imm8 := opcode & 0x00ff
@@ -2148,12 +2148,12 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 			panic(fmt.Sprintf("unimplemented 'data processing instructions with plain 16bit immediate (%01b) (%02b)'", op, op2))
 		}
 
-	} else if arm.state.function32bitOpcodeHi&0xfb10 == 0xf300 {
+	} else if arm.state.instruction32bitOpcodeHi&0xfb10 == 0xf300 {
 		// "Data processing instructions, bitfield and saturate"
 		// page 3-16 of "Thumb-2 Supplement" (part of section 3.3.1)
 
-		op := (arm.state.function32bitOpcodeHi & 0x00e0) >> 5
-		Rn := arm.state.function32bitOpcodeHi & 0x000f
+		op := (arm.state.instruction32bitOpcodeHi & 0x00e0) >> 5
+		Rn := arm.state.instruction32bitOpcodeHi & 0x000f
 		imm3 := (opcode & 0x7000) >> 12
 		Rd := (opcode & 0x0f00) >> 8
 		imm2 := (opcode & 0x00c0) >> 6
@@ -2219,7 +2219,7 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 
 		case 0b110:
 			// "4.6.197 UBFX" of "Thumb-2 Supplement"
-			Rn := arm.state.function32bitOpcodeHi & 0x000f
+			Rn := arm.state.instruction32bitOpcodeHi & 0x000f
 			imm3 := (opcode & 0x7000) >> 12
 			Rd := (opcode & 0x0f00) >> 8
 			imm2 := (opcode & 0x00c0) >> 6
@@ -2258,10 +2258,10 @@ func (arm *ARM) decode32bitThumb2LoadStoreSingle(opcode uint16) decodeFunction {
 
 	// Addressing mode discussed in "A4.6.5 Addressing modes" of "ARMv7-M"
 
-	size := (arm.state.function32bitOpcodeHi & 0x0060) >> 5
-	s := arm.state.function32bitOpcodeHi&0x0100 == 0x0100
-	l := arm.state.function32bitOpcodeHi&0x0010 == 0x0010
-	Rn := arm.state.function32bitOpcodeHi & 0x000f
+	size := (arm.state.instruction32bitOpcodeHi & 0x0060) >> 5
+	s := arm.state.instruction32bitOpcodeHi&0x0100 == 0x0100
+	l := arm.state.instruction32bitOpcodeHi&0x0010 == 0x0010
+	Rn := arm.state.instruction32bitOpcodeHi & 0x000f
 	Rt := (opcode & 0xf000) >> 12
 
 	// memmory hints are unimplemented. they occur for load instructions
@@ -2273,11 +2273,11 @@ func (arm *ARM) decode32bitThumb2LoadStoreSingle(opcode uint16) decodeFunction {
 		panic("unimplemented memory hint")
 	}
 
-	if arm.state.function32bitOpcodeHi&0xfe1f == 0xf81f {
+	if arm.state.instruction32bitOpcodeHi&0xfe1f == 0xf81f {
 		// PC +/ imm12 (format 1 in the table)
 		// further depends on size. l is always true
 
-		u := arm.state.function32bitOpcodeHi&0x0080 == 0x0080
+		u := arm.state.instruction32bitOpcodeHi&0x0080 == 0x0080
 		imm12 := opcode & 0x0fff
 
 		// all addresses are pre-indexed relative to the PC register and there is no write-back
@@ -2392,7 +2392,7 @@ func (arm *ARM) decode32bitThumb2LoadStoreSingle(opcode uint16) decodeFunction {
 		default:
 			panic(fmt.Sprintf("unimplemented size (%02b) for 'PC +/- imm12'", size))
 		}
-	} else if arm.state.function32bitOpcodeHi&0xfe80 == 0xf880 {
+	} else if arm.state.instruction32bitOpcodeHi&0xfe80 == 0xf880 {
 		// Rn + imm12 (format 2 in the table)
 		//
 		// immediate offset
@@ -3212,10 +3212,10 @@ func (arm *ARM) decode32bitThumb2LoadStoreMultiple(opcode uint16) decodeFunction
 	//		and
 	// "A5.3.5 Load Multiple and Store Multiple" of "ARMv7-M"
 
-	op := (arm.state.function32bitOpcodeHi & 0x0180) >> 7
-	l := (arm.state.function32bitOpcodeHi & 0x0010) == 0x0010
-	w := (arm.state.function32bitOpcodeHi & 0x0020) == 0x0020
-	Rn := arm.state.function32bitOpcodeHi & 0x000f
+	op := (arm.state.instruction32bitOpcodeHi & 0x0180) >> 7
+	l := (arm.state.instruction32bitOpcodeHi & 0x0010) == 0x0010
+	w := (arm.state.instruction32bitOpcodeHi & 0x0020) == 0x0020
+	Rn := arm.state.instruction32bitOpcodeHi & 0x000f
 
 	WRn := Rn
 	if w {
@@ -3498,24 +3498,24 @@ func (arm *ARM) decode32bitThumb2LoadStoreMultiple(opcode uint16) decodeFunction
 func (arm *ARM) decode32bitThumb2BranchesORMiscControl(opcode uint16) decodeFunction {
 	// "3.3.6 Branches, miscellaneous control instructions" of "Thumb-2 Supplement"
 
-	if arm.state.function32bitOpcodeHi&0xffe0 == 0xf3e0 {
+	if arm.state.instruction32bitOpcodeHi&0xffe0 == 0xf3e0 {
 		panic("move to register from status")
-	} else if arm.state.function32bitOpcodeHi&0xfff0 == 0xf3d0 {
+	} else if arm.state.instruction32bitOpcodeHi&0xfff0 == 0xf3d0 {
 		panic("exception return")
-	} else if arm.state.function32bitOpcodeHi&0xfff0 == 0xf3c0 {
+	} else if arm.state.instruction32bitOpcodeHi&0xfff0 == 0xf3c0 {
 		panic("branch, change to java")
-	} else if arm.state.function32bitOpcodeHi&0xfff0 == 0xf3b0 {
+	} else if arm.state.instruction32bitOpcodeHi&0xfff0 == 0xf3b0 {
 		panic("special control operations")
-	} else if arm.state.function32bitOpcodeHi&0xfff0 == 0xf3a0 {
+	} else if arm.state.instruction32bitOpcodeHi&0xfff0 == 0xf3a0 {
 		imodM := (opcode & 0x0700) >> 8
 		if imodM == 0b000 {
 			panic("NOP, hints")
 		} else {
 			panic("change processor state")
 		}
-	} else if arm.state.function32bitOpcodeHi&0xffe0 == 0xf380 {
+	} else if arm.state.instruction32bitOpcodeHi&0xffe0 == 0xf380 {
 		panic("move to status from register")
-	} else if arm.state.function32bitOpcodeHi&0xf800 == 0xf000 {
+	} else if arm.state.instruction32bitOpcodeHi&0xf800 == 0xf000 {
 		return arm.decode32bitThumb2Branches(opcode)
 	}
 
@@ -3536,8 +3536,8 @@ func (arm *ARM) decode32bitThumb2Branches(opcode uint16) decodeFunction {
 
 		// make sure we're working with 32bit immediate numbers so that we don't
 		// drop bits when shifting
-		s := uint32((arm.state.function32bitOpcodeHi & 0x0400) >> 10)
-		imm6 := uint32(arm.state.function32bitOpcodeHi & 0x003f)
+		s := uint32((arm.state.instruction32bitOpcodeHi & 0x0400) >> 10)
+		imm6 := uint32(arm.state.instruction32bitOpcodeHi & 0x003f)
 		j1 := uint32((opcode & 0x2000) >> 13)
 		j2 := uint32((opcode & 0x0800) >> 11)
 		imm11 := uint32(opcode & 0x07ff)
@@ -3549,7 +3549,7 @@ func (arm *ARM) decode32bitThumb2Branches(opcode uint16) decodeFunction {
 		}
 
 		// condition that must be met before the branch can take place
-		cond := (arm.state.function32bitOpcodeHi & 0x03c0) >> 6
+		cond := (arm.state.instruction32bitOpcodeHi & 0x03c0) >> 6
 
 		// the branch offset as a signed integer
 		operand := fmt.Sprintf("%d", int32(imm32))
@@ -3583,7 +3583,7 @@ func (arm *ARM) decode32bitThumb2Branches(opcode uint16) decodeFunction {
 
 		// make sure we're working with 32bit immediate numbers so that we don't
 		// drop bits when shifting
-		s := uint32((arm.state.function32bitOpcodeHi & 0x400) >> 10)
+		s := uint32((arm.state.instruction32bitOpcodeHi & 0x400) >> 10)
 		j1 := uint32((opcode & 0x2000) >> 13)
 		j2 := uint32((opcode & 0x800) >> 11)
 		i1 := (^(j1 ^ s)) & 0x01
@@ -3595,7 +3595,7 @@ func (arm *ARM) decode32bitThumb2Branches(opcode uint16) decodeFunction {
 		if blx {
 			operator = "BLX"
 
-			imm10H := uint32(arm.state.function32bitOpcodeHi & 0x3ff)
+			imm10H := uint32(arm.state.instruction32bitOpcodeHi & 0x3ff)
 			imm10L := uint32(opcode & 0x7ff)
 
 			// immediate 32bit value is sign extended
@@ -3608,7 +3608,7 @@ func (arm *ARM) decode32bitThumb2Branches(opcode uint16) decodeFunction {
 		} else {
 			operator = "BL"
 
-			imm10 := uint32(arm.state.function32bitOpcodeHi & 0x3ff)
+			imm10 := uint32(arm.state.instruction32bitOpcodeHi & 0x3ff)
 			imm11 := uint32(opcode & 0x7ff)
 
 			// immediate 32bit value is sign extended
@@ -3646,12 +3646,12 @@ func (arm *ARM) decode32bitThumb2Branches(opcode uint16) decodeFunction {
 
 		// make sure we're working with 32bit immediate numbers so that we don't
 		// drop bits when shifting
-		s := uint32((arm.state.function32bitOpcodeHi & 0x400) >> 10)
+		s := uint32((arm.state.instruction32bitOpcodeHi & 0x400) >> 10)
 		j1 := uint32((opcode & 0x2000) >> 13)
 		j2 := uint32((opcode & 0x800) >> 11)
 		i1 := (^(j1 ^ s)) & 0x01
 		i2 := (^(j2 ^ s)) & 0x01
-		imm10 := uint32(arm.state.function32bitOpcodeHi & 0x3ff)
+		imm10 := uint32(arm.state.instruction32bitOpcodeHi & 0x3ff)
 		imm11 := uint32(opcode & 0x7ff)
 
 		// immediate 32bit value is sign extended

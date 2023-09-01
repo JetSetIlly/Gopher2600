@@ -379,11 +379,6 @@ func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry, ln *dwarf.Source
 			imguiColorLabelSimple("Branch Trail Flushed", win.img.cols.CoProcBranchTrailFlushed)
 		}
 
-		if e.ExecutionNotes != "" {
-			imgui.SameLineV(0, 20)
-			imgui.Text(fmt.Sprintf("%c %s", fonts.ExecutionNotes, e.ExecutionNotes))
-		}
-
 		if ln != nil {
 			imgui.Spacing()
 			imgui.Separator()
