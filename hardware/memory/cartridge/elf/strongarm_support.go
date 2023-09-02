@@ -19,16 +19,11 @@ import (
 	"math/rand"
 )
 
-// these functions work like you might expect the standard C implementations of
-// these function to work except that they all end with a call to
-// endStrongArmFunction()
+// these functions should be executed with runStrongArmFunction() and not
+// setStrongArmFunction()
 
 func randint(mem *elfMemory) {
-	mem.strongarm.running.registers[0] = rand.Uint32()
-	for i := range mem.strongarm.running.registers {
-		_ = mem.arm.RegisterSet(i, mem.strongarm.running.registers[i])
-	}
-	mem.endStrongArmFunction()
+	_ = mem.arm.RegisterSet(0, rand.Uint32())
 }
 
 func memset(mem *elfMemory) {
@@ -43,8 +38,6 @@ func memset(mem *elfMemory) {
 			(*set)[idx+i] = byte(v)
 		}
 	}
-
-	mem.endStrongArmFunction()
 }
 
 func memcpy(mem *elfMemory) {
@@ -62,21 +55,14 @@ func memcpy(mem *elfMemory) {
 			(*to)[toIdx+i] = (*from)[fromIdx+i]
 		}
 	}
-
-	mem.endStrongArmFunction()
 }
 
 // incomplete implementation. it should perform divide by zero checking but
 // for now just return immediately
 func __aeabi_idiv(mem *elfMemory) {
 	if mem.strongarm.running.registers[1] == 0 {
-		mem.strongarm.running.registers[0] = 0
+		_ = mem.arm.RegisterSet(0, 0)
 	} else {
-		mem.strongarm.running.registers[0] = uint32(int32(mem.strongarm.running.registers[0]) / int32(mem.strongarm.running.registers[1]))
+		_ = mem.arm.RegisterSet(0, uint32(int32(mem.strongarm.running.registers[0])/int32(mem.strongarm.running.registers[1])))
 	}
-
-	for i := range mem.strongarm.running.registers {
-		_ = mem.arm.RegisterSet(i, mem.strongarm.running.registers[i])
-	}
-	mem.endStrongArmFunction()
 }

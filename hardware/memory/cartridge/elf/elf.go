@@ -317,23 +317,6 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) {
 		panic("ELF ROMs do not handle non strongarm reading of the GPIO")
 	}
 	cart.mem.strongarm.running.function(cart.mem)
-
-	// if the strongarm function has instructed the ARM emulation to resume
-	// immediately then that means the strongarm function has no interaction
-	// with the rest of the VCS (eg. the memset() function)
-	//
-	// for these function we run the ARM and following strongarm function until
-	// we encounter a strongarm function that does need to wait for the VCS
-	for cart.mem.resumeARMimmediately {
-		cart.mem.resumeARMimmediately = false
-		cart.runARM()
-
-		// check that strongarm is set and panic if not (see WARNING comment above)
-		if cart.mem.strongarm.running.function == nil {
-			panic("ELF ROMs do not handle non strongarm reading of the GPIO")
-		}
-		cart.mem.strongarm.running.function(cart.mem)
-	}
 }
 
 // Step implements the mapper.CartMapper interface.

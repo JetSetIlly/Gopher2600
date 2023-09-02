@@ -115,19 +115,7 @@ type elfMemory struct {
 	strongArmProgram   []byte
 	strongArmOrigin    uint32
 	strongArmMemtop    uint32
-	strongArmFunctions map[uint32]strongArmFunction
-
-	// whether the ARM should resume immediately after a yield, without
-	// returning control to the VCS
-	//
-	// the map correlates the ARM address of the function (same as the
-	// strongArmFunctions map) to whether or not the above is true.
-	strongArmResumeImmediately map[uint32]bool
-
-	// whether the current strong arm function expects the ARM to resume
-	// immediately after execution. valid only for use in the
-	// elf.runStrongarm() function
-	resumeARMimmediately bool
+	strongArmFunctions map[uint32]strongArmFunctionSpec
 
 	// will be set to true if the vcsWrite3(), vcsPlp4Ex(), or vcsPla4Ex() function is used
 	usesBusStuffing bool
@@ -241,13 +229,9 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 	sort.Strings(mem.sectionNames)
 
 	// strongarm functions are added during relocation
-	mem.strongArmFunctions = make(map[uint32]strongArmFunction)
+	mem.strongArmFunctions = make(map[uint32]strongArmFunctionSpec)
 	mem.strongArmOrigin = origin
 	mem.strongArmMemtop = mem.strongArmOrigin
-
-	// equivalent map to strongArmFunctions which records whether the function
-	// yields to the VCS or expects the ARM to resume immediately
-	mem.strongArmResumeImmediately = make(map[uint32]bool)
 
 	var err error
 
@@ -578,17 +562,16 @@ func (mem *elfMemory) relocateStrongArmFunction(f strongArmFunction, support boo
 	addr := mem.strongArmMemtop
 
 	// function ID of this strongArm function (for this ROM)
-	mem.strongArmFunctions[addr] = f
+	mem.strongArmFunctions[addr] = strongArmFunctionSpec{
+		function: f,
+		support:  support,
+	}
 
 	// add null function to end of strongArmProgram array
 	mem.strongArmProgram = append(mem.strongArmProgram, strongArmStub...)
 
 	// update memtop of strongArm program
 	mem.strongArmMemtop += uint32(len(strongArmStub))
-
-	// note whether this function expects the ARM emulation to resume
-	// immediately
-	mem.strongArmResumeImmediately[addr] = support
 
 	// although the code location of a strongarm function must be on a 16bit
 	// boundary, the code is reached by interwork branching. we're using the
@@ -618,7 +601,7 @@ func (mem *elfMemory) Snapshot() *elfMemory {
 	m.strongArmProgram = make([]byte, len(mem.strongArmProgram))
 	copy(m.strongArmProgram, mem.strongArmProgram)
 
-	m.strongArmFunctions = make(map[uint32]strongArmFunction)
+	m.strongArmFunctions = make(map[uint32]strongArmFunctionSpec)
 	for k := range mem.strongArmFunctions {
 		m.strongArmFunctions[k] = mem.strongArmFunctions[k]
 	}
@@ -659,9 +642,12 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 		// if the call address is a strongarm function. if it is not then that
 		// means the ARM program has jumped to the wrong address
 		if f, ok := mem.strongArmFunctions[addr-1]; ok {
-			mem.setStrongArmFunction(f)
-			mem.arm.Interrupt()
-			mem.resumeARMimmediately = mem.strongArmResumeImmediately[addr-1]
+			if f.support {
+				mem.runStrongArmFunction(f.function)
+			} else {
+				mem.setStrongArmFunction(f.function)
+				mem.arm.Interrupt()
+			}
 		} else {
 			// if the strongarm function can't be found then the program is
 			// simply wanting to read data in the strongARM memory space (for

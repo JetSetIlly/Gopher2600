@@ -25,6 +25,14 @@ import (
 // this makes the Plumb() function far simpler.
 type strongArmFunction func(*elfMemory)
 
+// the strongarm function specification lists the implementation function and
+// any meta-information for a single strongarm function
+type strongArmFunctionSpec struct {
+	function strongArmFunction
+	support  bool
+}
+
+// strongarm function state records the progress of a single strongarm function
 type strongArmFunctionState struct {
 	function  strongArmFunction
 	state     int
@@ -726,6 +734,21 @@ func (mem *elfMemory) setStrongArmFunction(f strongArmFunction, args ...uint32) 
 	for i, arg := range args {
 		mem.strongarm.running.registers[i] = arg
 	}
+}
+
+// runStrongArmFunction initialises the next function to run and immediatly
+// executes it
+//
+// it differs to setStrongArmFunction in that the function does not cause the
+// ARM to yield to the VCS
+func (mem *elfMemory) runStrongArmFunction(f strongArmFunction, args ...uint32) {
+	for i := range mem.strongarm.running.registers {
+		mem.strongarm.running.registers[i], _ = mem.arm.Register(i)
+	}
+	for i, arg := range args {
+		mem.strongarm.running.registers[i] = arg
+	}
+	f(mem)
 }
 
 // a strongArmFunction should always end with a call to endFunction() no matter
