@@ -270,40 +270,8 @@ func (cart *Elf) runARM() bool {
 		case coprocessor.YieldHookContinue:
 			cart.mem.yield, _ = cart.arm.Run()
 		}
-		cart.mem.yield, _ = cart.arm.Run()
 	}
 	return true
-}
-
-// try to run strongarm function. returns success.
-func (cart *Elf) runStrongarm(addr uint16, data uint8) bool {
-	if cart.mem.strongarm.running.function != nil {
-		cart.mem.gpio.data[DATA_IDR] = data
-		cart.mem.gpio.data[ADDR_IDR] = uint8(addr)
-		cart.mem.gpio.data[ADDR_IDR+1] = uint8(addr >> 8)
-		cart.mem.strongarm.running.function(cart.mem)
-
-		if cart.mem.strongarm.running.function == nil {
-			cart.runARM()
-			if cart.mem.strongarm.running.function != nil {
-				cart.mem.strongarm.running.function(cart.mem)
-			}
-		}
-
-		// if the most recently run strongarm function has instructed the ARM
-		// emulation to resume immediately then we loop until we encounter one
-		// which wants to yield to the VCS
-		for cart.mem.resumeARMimmediately {
-			cart.mem.resumeARMimmediately = false
-			cart.runARM()
-			if cart.mem.strongarm.running.function != nil {
-				cart.mem.strongarm.running.function(cart.mem)
-			}
-		}
-
-		return true
-	}
-	return false
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
@@ -314,51 +282,58 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) {
 
 	// if address is the reset address then trigger the reset procedure
 	if (addr&memorymap.CartridgeBits)|memorymap.OriginCart == (cpubus.Reset&memorymap.CartridgeBits)|memorymap.OriginCart {
+		// after this call to cart reset, the cartridge will be wanting to run
+		// the vcsEmulationInit() strongarm function
 		cart.reset()
 	}
 
-	if cart.runStrongarm(addr, data) {
-		return
-	}
+	// WARNING - the following does not currently handle the situation where a
+	// ROM is reading the ADDR_IDR entry in the GPIO buffer. if a ROM does do
+	// that then the strongarm.running.function will not be set and the emulator
+	// will crash with an intentional panic
 
-	// set data first and continue once. this seems to be necessary to allow
-	// the PlusROM exit rountine to work correctly
+	// set GPIO data and address information
 	cart.mem.gpio.data[DATA_IDR] = data
-
-	cart.runARM()
-	if cart.runStrongarm(addr, data) {
-		return
-	}
-
-	// set address and continue
 	cart.mem.gpio.data[ADDR_IDR] = uint8(addr)
 	cart.mem.gpio.data[ADDR_IDR+1] = uint8(addr >> 8)
 
-	cart.runARM()
-	if cart.runStrongarm(addr, data) {
+	// check that strongarm is set and panic if not (see WARNING comment above)
+	if cart.mem.strongarm.running.function == nil {
+		panic("ELF ROMs do not handle non strongarm reading of the GPIO")
+	}
+	cart.mem.strongarm.running.function(cart.mem)
+
+	// strongarm function is still in progress. we don't yet want to return
+	// to non-strongarm execution
+	if cart.mem.strongarm.running.function != nil {
 		return
 	}
 
+	// run ARM and strongarm function again
 	cart.runARM()
-	if cart.runStrongarm(addr, data) {
-		return
+
+	// check that strongarm is set and panic if not (see WARNING comment above)
+	if cart.mem.strongarm.running.function == nil {
+		panic("ELF ROMs do not handle non strongarm reading of the GPIO")
 	}
+	cart.mem.strongarm.running.function(cart.mem)
 
-	cart.runARM()
-	if cart.runStrongarm(addr, data) {
-		return
+	// if the strongarm function has instructed the ARM emulation to resume
+	// immediately then that means the strongarm function has no interaction
+	// with the rest of the VCS (eg. the memset() function)
+	//
+	// for these function we run the ARM and following strongarm function until
+	// we encounter a strongarm function that does need to wait for the VCS
+	for cart.mem.resumeARMimmediately {
+		cart.mem.resumeARMimmediately = false
+		cart.runARM()
+
+		// check that strongarm is set and panic if not (see WARNING comment above)
+		if cart.mem.strongarm.running.function == nil {
+			panic("ELF ROMs do not handle non strongarm reading of the GPIO")
+		}
+		cart.mem.strongarm.running.function(cart.mem)
 	}
-
-	cart.runARM()
-	if cart.runStrongarm(addr, data) {
-		return
-	}
-
-	cart.runARM()
-
-	// we must understand that the above synchronisation is almost certainly
-	// "wrong" in the general sense. it works for the examples seen so far but
-	// that means nothing
 }
 
 // Step implements the mapper.CartMapper interface.

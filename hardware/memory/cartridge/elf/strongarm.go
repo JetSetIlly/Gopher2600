@@ -43,7 +43,6 @@ type strongArmFunctionState struct {
 // strongarm functions, in those instances strongArmState will be unused
 type strongArmState struct {
 	running strongArmFunctionState
-	pushed  strongArmFunctionState
 
 	// the expected next 6507 address to be working with
 	nextRomAddress uint16
@@ -467,7 +466,12 @@ func vcsSax3(mem *elfMemory) {
 
 // void vcsTxs2()
 func vcsTxs2(mem *elfMemory) {
-	if mem.injectRomByte(0x9a) {
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x9a) {
+			mem.strongarm.running.state++
+		}
+	case 1:
 		mem.endStrongArmFunction()
 	}
 }
@@ -500,8 +504,10 @@ func vcsNop2(mem *elfMemory) {
 	switch mem.strongarm.running.state {
 	case 0:
 		if mem.injectRomByte(0xea) {
-			mem.endStrongArmFunction()
+			mem.strongarm.running.state++
 		}
+	case 1:
+		mem.endStrongArmFunction()
 	}
 }
 
@@ -511,8 +517,10 @@ func vcsNop2n(mem *elfMemory) {
 	case 0:
 		if mem.injectRomByte(0xea) {
 			mem.strongarm.nextRomAddress += uint16(mem.strongarm.running.registers[0]) - 1
-			mem.endStrongArmFunction()
+			mem.strongarm.running.state++
 		}
+	case 1:
+		mem.endStrongArmFunction()
 	}
 }
 
@@ -599,37 +607,44 @@ func vcsPla4Ex(mem *elfMemory) {
 
 // void vcsCopyOverblankToRiotRam()
 func vcsCopyOverblankToRiotRam(mem *elfMemory) {
+	const subCounterError = -1
+
 	switch mem.strongarm.running.state {
 	case 0:
 		if mem.strongarm.running.counter >= len(overblank) {
-			mem.endStrongArmFunction()
-			return
+			mem.strongarm.running.state++
+			mem.strongarm.running.subCounter = subCounterError
+		} else {
+			mem.strongarm.running.state++
+			mem.strongarm.running.subCounter = 0
 		}
-		mem.strongarm.running.state++
-		mem.strongarm.running.subCounter = 0
 		fallthrough
 	case 1:
-		switch mem.strongarm.running.subCounter {
-		case 0:
-			if mem.injectRomByte(0xa9) {
-				mem.strongarm.running.subCounter++
-			}
-		case 1:
-			if mem.injectRomByte(overblank[mem.strongarm.running.counter]) {
-				mem.strongarm.running.subCounter++
-			}
-		case 2:
-			if mem.injectRomByte(0x85) {
-				mem.strongarm.running.subCounter++
-			}
-		case 3:
-			if mem.injectRomByte(uint8(0x80 + mem.strongarm.running.counter)) {
-				mem.strongarm.running.subCounter++
-			}
-		case 4:
-			if mem.yieldDataBus(uint16(0x80 + mem.strongarm.running.counter)) {
-				mem.strongarm.running.counter++
-				mem.strongarm.running.state = 0
+		if mem.strongarm.running.subCounter == subCounterError {
+			mem.endStrongArmFunction()
+		} else {
+			switch mem.strongarm.running.subCounter {
+			case 0:
+				if mem.injectRomByte(0xa9) {
+					mem.strongarm.running.subCounter++
+				}
+			case 1:
+				if mem.injectRomByte(overblank[mem.strongarm.running.counter]) {
+					mem.strongarm.running.subCounter++
+				}
+			case 2:
+				if mem.injectRomByte(0x85) {
+					mem.strongarm.running.subCounter++
+				}
+			case 3:
+				if mem.injectRomByte(uint8(0x80 + mem.strongarm.running.counter)) {
+					mem.strongarm.running.subCounter++
+				}
+			case 4:
+				if mem.yieldDataBus(uint16(0x80 + mem.strongarm.running.counter)) {
+					mem.strongarm.running.counter++
+					mem.strongarm.running.state = 0
+				}
 			}
 		}
 	}
@@ -716,25 +731,5 @@ func (mem *elfMemory) setStrongArmFunction(f strongArmFunction, args ...uint32) 
 // a strongArmFunction should always end with a call to endFunction() no matter
 // how many execution states it has.
 func (mem *elfMemory) endStrongArmFunction() {
-	mem.strongarm.running = mem.strongarm.pushed
-	mem.strongarm.pushed.function = nil
-}
-
-// pushStrongArmFunction is like setStrongArmFunction except that it saves, or
-// pushes, the current state of the running function. the pushed function will
-// resume on the next call to endStrongArmFunction
-//
-// calling setStrongArmFunction when a previous function has been pushed is
-// okay. it just means that the pushed function will resume after the most
-// recent function ends
-//
-// calling pushStrongArmFunction when there is already a pushed function will
-// cause the application to panic
-func (mem *elfMemory) pushStrongArmFunction(f strongArmFunction, args ...uint32) {
-	if mem.strongarm.pushed.function != nil {
-		panic("pushing an already pushed function")
-	}
-
-	mem.strongarm.pushed = mem.strongarm.running
-	mem.setStrongArmFunction(f, args...)
+	mem.strongarm.running.function = nil
 }
