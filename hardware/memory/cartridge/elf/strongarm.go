@@ -198,10 +198,8 @@ func snoopDataBus(mem *elfMemory) {
 	switch mem.strongarm.running.state {
 	case 0:
 		if addrIn == mem.strongarm.nextRomAddress {
-			mem.strongarm.running.registers[0] = uint32(mem.gpio.data[DATA_IDR])
-			for i := range mem.strongarm.running.registers {
-				_ = mem.arm.RegisterSet(i, mem.strongarm.running.registers[i])
-			}
+			// setting return value
+			mem.arm.RegisterSet(0, uint32(mem.gpio.data[DATA_IDR]))
 			mem.endStrongArmFunction()
 		}
 	}
@@ -727,10 +725,7 @@ func (mem *elfMemory) busStuffingInit() {
 func (mem *elfMemory) setStrongArmFunction(f strongArmFunction, args ...uint32) {
 	mem.strongarm.running.function = f
 	mem.strongarm.running.state = 0
-	for i := range mem.strongarm.running.registers {
-		mem.strongarm.running.registers[i], _ = mem.arm.Register(i)
-	}
-
+	mem.strongarm.running.registers = mem.arm.CoreRegisters()
 	for i, arg := range args {
 		mem.strongarm.running.registers[i] = arg
 	}
@@ -742,9 +737,7 @@ func (mem *elfMemory) setStrongArmFunction(f strongArmFunction, args ...uint32) 
 // it differs to setStrongArmFunction in that the function does not cause the
 // ARM to yield to the VCS
 func (mem *elfMemory) runStrongArmFunction(f strongArmFunction, args ...uint32) {
-	for i := range mem.strongarm.running.registers {
-		mem.strongarm.running.registers[i], _ = mem.arm.Register(i)
-	}
+	mem.strongarm.running.registers = mem.arm.CoreRegisters()
 	for i, arg := range args {
 		mem.strongarm.running.registers[i] = arg
 	}

@@ -129,6 +129,11 @@ func (arm *ARM) register(register int, formatted bool) (uint32, string, bool) {
 	return 0, "", false
 }
 
+// CoreRegisters returns all 16 core registers as an array
+func (arm *ARM) CoreRegisters() [NumCoreRegisters]uint32 {
+	return arm.state.registers
+}
+
 // Register implements the coprocess.CartCoProc interface. Returns the value in
 // the register. Returns false if the requested register is not recognised
 func (arm *ARM) Register(register int) (uint32, bool) {

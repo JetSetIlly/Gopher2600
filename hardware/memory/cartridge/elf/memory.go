@@ -31,7 +31,7 @@ import (
 
 type interruptARM interface {
 	Interrupt()
-	Register(int) (uint32, bool)
+	CoreRegisters() [arm.NumCoreRegisters]uint32
 	RegisterSet(int, uint32) bool
 }
 
