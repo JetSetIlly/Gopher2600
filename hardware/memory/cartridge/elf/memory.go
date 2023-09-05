@@ -307,79 +307,181 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 
 				// strongARM functions
 				case "vcsWrite3":
-					tgt, err = mem.relocateStrongArmFunction(vcsWrite3, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsWrite3,
+						support:  false,
+					})
 					mem.usesBusStuffing = true
 				case "vcsPlp4Ex":
-					tgt, err = mem.relocateStrongArmFunction(vcsPlp4Ex, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsPlp4Ex,
+						support:  false,
+					})
 					mem.usesBusStuffing = true
 				case "vcsPla4Ex":
-					tgt, err = mem.relocateStrongArmFunction(vcsPla4Ex, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsPla4Ex,
+						support:  false,
+					})
 					mem.usesBusStuffing = true
 				case "vcsJmp3":
-					tgt, err = mem.relocateStrongArmFunction(vcsJmp3, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsJmp3,
+						support:  false,
+					})
 				case "vcsLda2":
-					tgt, err = mem.relocateStrongArmFunction(vcsLda2, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsLda2,
+						support:  false,
+					})
 				case "vcsSta3":
-					tgt, err = mem.relocateStrongArmFunction(vcsSta3, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsSta3,
+						support:  false,
+					})
 				case "SnoopDataBus":
-					tgt, err = mem.relocateStrongArmFunction(snoopDataBus, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: snoopDataBus,
+						support:  false,
+					})
 				case "vcsRead4":
-					tgt, err = mem.relocateStrongArmFunction(vcsRead4, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsRead4,
+						support:  false,
+					})
 				case "vcsStartOverblank":
-					tgt, err = mem.relocateStrongArmFunction(vcsStartOverblank, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsStartOverblank,
+						support:  false,
+					})
 				case "vcsEndOverblank":
-					tgt, err = mem.relocateStrongArmFunction(vcsEndOverblank, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsEndOverblank,
+						support:  false,
+					})
 				case "vcsLdaForBusStuff2":
-					tgt, err = mem.relocateStrongArmFunction(vcsLdaForBusStuff2, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsLdaForBusStuff2,
+						support:  false,
+					})
 				case "vcsLdxForBusStuff2":
-					tgt, err = mem.relocateStrongArmFunction(vcsLdxForBusStuff2, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsLdxForBusStuff2,
+						support:  false,
+					})
 				case "vcsLdyForBusStuff2":
-					tgt, err = mem.relocateStrongArmFunction(vcsLdyForBusStuff2, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsLdyForBusStuff2,
+						support:  false,
+					})
 				case "vcsWrite5":
-					tgt, err = mem.relocateStrongArmFunction(vcsWrite5, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsWrite5,
+						support:  false,
+					})
 				case "vcsLdx2":
-					tgt, err = mem.relocateStrongArmFunction(vcsLdx2, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsLdx2,
+						support:  false,
+					})
 				case "vcsLdy2":
-					tgt, err = mem.relocateStrongArmFunction(vcsLdy2, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsLdy2,
+						support:  false,
+					})
 				case "vcsSta4":
-					tgt, err = mem.relocateStrongArmFunction(vcsSta4, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsSta4,
+						support:  false,
+					})
 				case "vcsStx3":
-					tgt, err = mem.relocateStrongArmFunction(vcsStx3, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsStx3,
+						support:  false,
+					})
 				case "vcsStx4":
-					tgt, err = mem.relocateStrongArmFunction(vcsStx4, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsStx4,
+						support:  false,
+					})
 				case "vcsSty3":
-					tgt, err = mem.relocateStrongArmFunction(vcsSty3, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsSty3,
+						support:  false,
+					})
 				case "vcsSty4":
-					tgt, err = mem.relocateStrongArmFunction(vcsSty4, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsSty4,
+						support:  false,
+					})
 				case "vcsSax3":
-					tgt, err = mem.relocateStrongArmFunction(vcsSax3, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsSax3,
+						support:  false,
+					})
 				case "vcsTxs2":
-					tgt, err = mem.relocateStrongArmFunction(vcsTxs2, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsTxs2,
+						support:  false,
+					})
 				case "vcsJsr6":
-					tgt, err = mem.relocateStrongArmFunction(vcsJsr6, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsJsr6,
+						support:  false,
+					})
 				case "vcsNop2":
-					tgt, err = mem.relocateStrongArmFunction(vcsNop2, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsNop2,
+						support:  false,
+					})
 				case "vcsNop2n":
-					tgt, err = mem.relocateStrongArmFunction(vcsNop2n, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsNop2n,
+						support:  false,
+					})
 				case "vcsPhp3":
-					tgt, err = mem.relocateStrongArmFunction(vcsPhp3, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsPhp3,
+						support:  false,
+					})
 				case "vcsPlp4":
-					tgt, err = mem.relocateStrongArmFunction(vcsPlp4, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsPlp4,
+						support:  false,
+					})
 				case "vcsPla4":
-					tgt, err = mem.relocateStrongArmFunction(vcsPla4, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsPla4,
+						support:  false,
+					})
 				case "vcsCopyOverblankToRiotRam":
-					tgt, err = mem.relocateStrongArmFunction(vcsCopyOverblankToRiotRam, false)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: vcsCopyOverblankToRiotRam,
+						support:  false,
+					})
 
 				// C library functions that are often not linked but required
 				case "randint":
-					tgt, err = mem.relocateStrongArmFunction(randint, true)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: randint,
+						support:  true,
+					})
 				case "memset":
-					tgt, err = mem.relocateStrongArmFunction(memset, true)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: memset,
+						support:  true,
+					})
 				case "memcpy":
-					tgt, err = mem.relocateStrongArmFunction(memcpy, true)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: memcpy,
+						support:  true,
+					})
 				case "__aeabi_idiv":
 					// sometimes linked when building for ARMv6-M target
-					tgt, err = mem.relocateStrongArmFunction(__aeabi_idiv, true)
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						function: __aeabi_idiv,
+						support:  true,
+					})
 
 				// strongARM tables
 				case "ReverseByte":
@@ -549,7 +651,7 @@ func (mem *elfMemory) relocateStrongArmTable(table strongarmTable) uint32 {
 	return addr
 }
 
-func (mem *elfMemory) relocateStrongArmFunction(f strongArmFunction, support bool) (uint32, error) {
+func (mem *elfMemory) relocateStrongArmFunction(spec strongArmFunctionSpec) (uint32, error) {
 	// strongarm functions must be on a 16bit boundary. I don't believe this
 	// should ever happen with ELF but if it does we can add a padding byte to
 	// correct. but for now, return an error so that we're forced to notice it
@@ -561,11 +663,8 @@ func (mem *elfMemory) relocateStrongArmFunction(f strongArmFunction, support boo
 	// address of new function in memory
 	addr := mem.strongArmMemtop
 
-	// function ID of this strongArm function (for this ROM)
-	mem.strongArmFunctions[addr] = strongArmFunctionSpec{
-		function: f,
-		support:  support,
-	}
+	// specification for this strongarm function
+	mem.strongArmFunctions[addr] = spec
 
 	// add null function to end of strongArmProgram array
 	mem.strongArmProgram = append(mem.strongArmProgram, strongArmStub...)
