@@ -75,6 +75,15 @@ func (mem *elfMemory) setNextRomAddress(addr uint16) {
 }
 
 func (mem *elfMemory) injectRomByte(v uint8) bool {
+	if mem.streaming {
+		mem.stream = append(mem.stream, streamEntry{
+			addr: mem.strongarm.nextRomAddress,
+			data: v,
+		})
+		mem.strongarm.nextRomAddress++
+		return true
+	}
+
 	addrIn := uint16(mem.gpio.data[ADDR_IDR])
 	addrIn |= uint16(mem.gpio.data[ADDR_IDR+1]) << 8
 	addrIn &= memorymap.Memtop
@@ -90,6 +99,10 @@ func (mem *elfMemory) injectRomByte(v uint8) bool {
 }
 
 func (mem *elfMemory) yieldDataBus(addr uint16) bool {
+	if mem.streaming {
+		return true
+	}
+
 	addrIn := uint16(mem.gpio.data[ADDR_IDR])
 	addrIn |= uint16(mem.gpio.data[ADDR_IDR+1]) << 8
 	addrIn &= memorymap.Memtop
@@ -102,6 +115,10 @@ func (mem *elfMemory) yieldDataBus(addr uint16) bool {
 }
 
 func (mem *elfMemory) yieldDataBusToStack() bool {
+	if mem.streaming {
+		return true
+	}
+
 	addrIn := uint16(mem.gpio.data[ADDR_IDR])
 	addrIn |= uint16(mem.gpio.data[ADDR_IDR+1]) << 8
 	addrIn &= memorymap.Memtop
@@ -191,6 +208,11 @@ func vcsSta3(mem *elfMemory) {
 
 // uint8_t snoopDataBus(uint16_t address)
 func snoopDataBus(mem *elfMemory) {
+	if mem.streaming {
+		mem.endStrongArmFunction()
+		return
+	}
+
 	addrIn := uint16(mem.gpio.data[ADDR_IDR])
 	addrIn |= uint16(mem.gpio.data[ADDR_IDR+1]) << 8
 	addrIn &= memorymap.Memtop
