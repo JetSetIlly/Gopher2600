@@ -152,14 +152,7 @@ type elfMemory struct {
 	yield coprocessor.CoProcYield
 
 	// byte stream support
-	streaming bool
-	stream    []streamEntry
-	drain     bool
-}
-
-type streamEntry struct {
-	addr uint16
-	data uint8
+	stream stream
 }
 
 func newElfMemory() *elfMemory {
@@ -754,13 +747,12 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 			if f.support {
 				mem.runStrongArmFunction(f.function)
 			} else {
-				if mem.streaming {
+				if mem.stream.active {
 					mem.setStrongArmFunction(f.function)
 					for mem.strongarm.running.function != nil {
 						mem.strongarm.running.function(mem)
 					}
-					if len(mem.stream) >= 1000 {
-						mem.drain = true
+					if mem.stream.drain {
 						mem.arm.Interrupt()
 					}
 				} else {

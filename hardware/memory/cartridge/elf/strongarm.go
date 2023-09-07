@@ -75,8 +75,8 @@ func (mem *elfMemory) setNextRomAddress(addr uint16) {
 }
 
 func (mem *elfMemory) injectRomByte(v uint8) bool {
-	if mem.streaming {
-		mem.stream = append(mem.stream, streamEntry{
+	if mem.stream.active {
+		mem.stream.push(streamEntry{
 			addr: mem.strongarm.nextRomAddress,
 			data: v,
 		})
@@ -99,7 +99,7 @@ func (mem *elfMemory) injectRomByte(v uint8) bool {
 }
 
 func (mem *elfMemory) yieldDataBus(addr uint16) bool {
-	if mem.streaming {
+	if mem.stream.active {
 		return true
 	}
 
@@ -115,7 +115,7 @@ func (mem *elfMemory) yieldDataBus(addr uint16) bool {
 }
 
 func (mem *elfMemory) yieldDataBusToStack() bool {
-	if mem.streaming {
+	if mem.stream.active {
 		return true
 	}
 
@@ -208,7 +208,7 @@ func vcsSta3(mem *elfMemory) {
 
 // uint8_t snoopDataBus(uint16_t address)
 func snoopDataBus(mem *elfMemory) {
-	if mem.streaming {
+	if mem.stream.active {
 		mem.endStrongArmFunction()
 		return
 	}

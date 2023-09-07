@@ -219,19 +219,20 @@ func (cart *Elf) Reset() {
 func (cart *Elf) reset() {
 	// stream bytes rather than injecting them into the VCS as they arrive. we
 	// can't currently accomodate this if the ROM requires bus stuffing of data
-	cart.mem.streaming = !cart.mem.busStuff
+	cart.mem.stream.active = !cart.mem.busStuff
 
 	// initialise ROM for the VCS
-	if cart.mem.streaming {
-		cart.mem.stream = append(cart.mem.stream, streamEntry{
+	if cart.mem.stream.active {
+		cart.mem.stream.push(streamEntry{
 			addr: 0x1ffc,
 			data: 0x00,
 		})
-		cart.mem.stream = append(cart.mem.stream, streamEntry{
+		cart.mem.stream.push(streamEntry{
 			addr: 0x1ffd,
 			data: 0x10,
 		})
-		cart.mem.drain = true
+		cart.mem.strongarm.nextRomAddress = 0x1000
+		cart.mem.stream.startDrain()
 	} else {
 		cart.mem.setStrongArmFunction(vcsEmulationInit)
 	}
@@ -247,17 +248,13 @@ func (cart *Elf) reset() {
 
 // Access implements the mapper.CartMapper interface.
 func (cart *Elf) Access(addr uint16, _ bool) (uint8, uint8, error) {
-	if cart.mem.streaming {
-		if addr == cart.mem.stream[0].addr&memorymap.CartridgeBits {
-			if !cart.mem.drain {
-				cart.runARM()
-			}
-			cart.mem.gpio.data[DATA_ODR] = cart.mem.stream[0].data
-			cart.mem.stream = cart.mem.stream[1:]
-
-			if len(cart.mem.stream) < 10 {
-				cart.mem.drain = false
-			}
+	if cart.mem.stream.active {
+		if !cart.mem.stream.drain {
+			cart.runARM()
+		}
+		if addr == cart.mem.stream.peekAddr()&memorymap.CartridgeBits {
+			e := cart.mem.stream.pull()
+			cart.mem.gpio.data[DATA_ODR] = e.data
 		}
 	}
 	cart.mem.busStuffDelay = true
@@ -285,7 +282,7 @@ func (cart *Elf) Patch(_ int, _ uint8) error {
 }
 
 func (cart *Elf) runARM() bool {
-	if cart.mem.drain {
+	if cart.mem.stream.drain {
 		return true
 	}
 
@@ -332,7 +329,7 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) {
 	cart.mem.gpio.data[ADDR_IDR+1] = uint8(addr >> 8)
 
 	// check that strongarm is set and panic if not (see WARNING comment above)
-	if !cart.mem.streaming {
+	if !cart.mem.stream.active {
 		if cart.mem.strongarm.running.function == nil {
 			panic("ELF ROMs do not handle non strongarm reading of the GPIO")
 		}
@@ -349,7 +346,7 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) {
 	cart.runARM()
 
 	// check that strongarm is set and panic if not (see WARNING comment above)
-	if !cart.mem.streaming {
+	if !cart.mem.stream.active {
 		if cart.mem.strongarm.running.function == nil {
 			panic("ELF ROMs do not handle non strongarm reading of the GPIO")
 		}
