@@ -7,8 +7,9 @@ gcflags = '-c 3 -B -wb=false'
 # profilingRom = roms/Pitfall.bin
 # profilingRom = test_roms/ELF/raycaster/raycaster.bin
 # profilingRom = /home/steve/Desktop/2600_dev/davie/Boulder-Dash-CDFJ-NG/CDFJBoulderDash.bin
-profilingRom = /home/steve/Desktop/2600_dev/marcoj/RPG/build/RPG_4K_60HZ.ace
+# profilingRom = /home/steve/Desktop/2600_dev/marcoj/RPG/build/RPG_4K_60HZ.ace
 # profilingRom = test_roms/ACE/4k/cartridge/cartridge.ace
+profilingRom = /home/steve/Desktop/2600_dev/zackattack/waterbed-bouncers-2600/source/bouncers.bin
 
 .PHONY: all clean tidy generate check_glsl glsl_validate check_pandoc readme_spell test race race_debug profile profile_cpu profile_cpu_play profile_cpu_debug profile_mem_play profile_mem_debug profile_trace build_assertions build release windows_manifest cross_windows cross_windows_development cross_winconsole_development cross_windows_dynamic
 
@@ -65,40 +66,41 @@ race_debug: generate test
 profile:
 	@echo use make targets profile_cpu, profile_mem, etc.
 
+# for profiling we don't want to use any elf file so all instances are called with -elf=none
 profile_cpu: generate test
 	@$(goBinary) build -gcflags $(gcflags)
 	@echo "performance mode running for 20s"
-	@./gopher2600 performance --profile=cpu --duration=20s $(profilingRom)
+	@./gopher2600 performance --profile=cpu --duration=20s -elf=none $(profilingRom)
 	@$(goBinary) tool pprof -http : ./gopher2600 performance_cpu.profile
 
 profile_cpu_play: generate test
 	@$(goBinary) build -gcflags $(gcflags)
 	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
-	@./gopher2600 play --profile=cpu -elf none $(profilingRom)
+	@./gopher2600 play --profile=cpu -elf=none $(profilingRom)
 	@$(goBinary) tool pprof -http : ./gopher2600 play_cpu.profile
 
 profile_cpu_debug : generate test
 	@$(goBinary) build -gcflags $(gcflags)
 	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
-	@./gopher2600 debug --profile=cpu $(profilingRom)
+	@./gopher2600 debug --profile=cpu -elf=none $(profilingRom)
 	@$(goBinary) tool pprof -http : ./gopher2600 debugger_cpu.profile
 
 profile_mem_play : generate test
 	@$(goBinary) build -gcflags $(gcflags)
 	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
-	@./gopher2600 play --profile=mem $(profilingRom)
+	@./gopher2600 play --profile=mem -elf=none $(profilingRom)
 	@$(goBinary) tool pprof -http : ./gopher2600 play_mem.profile
 
 profile_mem_debug : generate test
 	@$(goBinary) build -gcflags $(gcflags)
 	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
-	@./gopher2600 debug --profile=mem $(profilingRom)
+	@./gopher2600 debug --profile=mem -elf=none $(profilingRom)
 	@$(goBinary) tool pprof -http : ./gopher2600 debugger_mem.profile
 
 profile_trace: generate test
 	@$(goBinary) build -gcflags $(gcflags)
 	@echo "performance mode running for 20s"
-	@./gopher2600 performance --profile=trace --duration=20s $(profilingRom)
+	@./gopher2600 performance --profile=trace --duration=20s -elf=none $(profilingRom)
 	@$(goBinary) tool trace -http : performance_trace.profile
 
 build_assertions: generate test
