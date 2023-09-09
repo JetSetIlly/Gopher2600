@@ -26,9 +26,20 @@ func (s streamEntry) String() string {
 	return fmt.Sprintf("%04x=%02x", s.addr, s.data)
 }
 
+// the pushBoundary prevents out-of-bounds errors in the event of a strongarm
+// instruction pushing more bytes than are available. a sufficiently high
+// boundary value means that next function to execute will complete without
+// exceeding the bounds of the array
+//
+// the high value is to accomodate the relatively high byte count of the
+// vcsCopyOverblankToRiotRam() function, which consumes about 200 bytes. a
+// typical function will require no more than half-a-dozen bytes but the copy
+// function represents a significant block of 6507 code
+const pushBoundary = 200
+
 type stream struct {
 	active bool
-	stream [1000]streamEntry
+	stream [1000 + pushBoundary]streamEntry
 	ptr    int
 
 	drain    bool
@@ -52,12 +63,7 @@ func (s *stream) push(e streamEntry) {
 	if s.drain {
 		s.drainTop = s.ptr
 	} else {
-		// the pushBoundary prevents out-of-bounds errors in the event of an
-		// instruction pushing more bytes than are available. a sufficiently
-		// high boundary value means that the drain will start before the next
-		// strongarm function is reached but allowing the current function to
-		// complete
-		const pushBoundary = 10
+		// see comment about the pushBoundary comment above
 		if s.ptr >= len(s.stream)-pushBoundary {
 			s.startDrain()
 		}
