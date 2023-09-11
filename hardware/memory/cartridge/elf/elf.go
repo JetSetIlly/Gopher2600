@@ -250,7 +250,7 @@ func (cart *Elf) reset() {
 func (cart *Elf) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	if cart.mem.stream.active {
 		if !cart.mem.stream.drain {
-			cart.runARM()
+			cart.runARM(addr)
 		}
 		if addr == cart.mem.stream.peekAddr()&memorymap.CartridgeBits {
 			e := cart.mem.stream.pull()
@@ -281,9 +281,18 @@ func (cart *Elf) Patch(_ int, _ uint8) error {
 	return fmt.Errorf("ELF: patching unsupported")
 }
 
-func (cart *Elf) runARM() bool {
+func (cart *Elf) runARM(addr uint16) bool {
+	// do nothing with the ARM if the byte stream is draining
 	if cart.mem.stream.drain {
 		return true
+	}
+
+	// run preempted snoopDataBus() function if required
+	if cart.mem.stream.preemptedSnoopDataBus != nil {
+		if addr != cart.mem.strongarm.nextRomAddress {
+			return true
+		}
+		cart.mem.stream.preemptedSnoopDataBus(cart.mem)
 	}
 
 	cart.arm.StartProfiling()
@@ -328,8 +337,8 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) {
 	cart.mem.gpio.data[ADDR_IDR] = uint8(addr)
 	cart.mem.gpio.data[ADDR_IDR+1] = uint8(addr >> 8)
 
-	// check that strongarm is set and panic if not (see WARNING comment above)
 	if !cart.mem.stream.active {
+		// check that strongarm function is set and panic if not (see WARNING comment above)
 		if cart.mem.strongarm.running.function == nil {
 			panic("ELF ROMs do not handle non strongarm reading of the GPIO")
 		}
@@ -343,7 +352,7 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) {
 	}
 
 	// run ARM and strongarm function again
-	cart.runARM()
+	cart.runARM(addr)
 
 	// check that strongarm is set and panic if not (see WARNING comment above)
 	if !cart.mem.stream.active {

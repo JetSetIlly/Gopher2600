@@ -208,8 +208,18 @@ func vcsSta3(mem *elfMemory) {
 
 // uint8_t snoopDataBus(uint16_t address)
 func snoopDataBus(mem *elfMemory) {
+	// when byte streaming is active we need to be careful in how we handle
+	// the preemption of the function
 	if mem.stream.active {
+		if mem.stream.preemptedSnoopDataBus == nil {
+			mem.stream.startDrain()
+			mem.endStrongArmFunction()
+			mem.stream.preemptedSnoopDataBus = snoopDataBus
+			return
+		}
+		mem.arm.RegisterSet(0, uint32(mem.gpio.data[DATA_IDR]))
 		mem.endStrongArmFunction()
+		mem.stream.preemptedSnoopDataBus = nil
 		return
 	}
 

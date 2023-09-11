@@ -45,6 +45,11 @@ type stream struct {
 	drain    bool
 	drainPtr int
 	drainTop int
+
+	// if the snoopDataBus() function is triggered then we need to preempt the
+	// function call and return control to the VCS so that the value can be put
+	// on the data bus in time for returning to the main ARM program
+	preemptedSnoopDataBus strongArmFunction
 }
 
 func (s *stream) startDrain() {
