@@ -281,17 +281,19 @@ func (cart *Elf) Patch(_ int, _ uint8) error {
 }
 
 func (cart *Elf) runARM(addr uint16) bool {
-	// do nothing with the ARM if the byte stream is draining
-	if cart.mem.stream.drain {
-		return true
-	}
-
-	// run preempted snoopDataBus() function if required
-	if cart.mem.stream.preemptedSnoopDataBus != nil {
-		if addr != cart.mem.strongarm.nextRomAddress {
+	if cart.mem.stream.active {
+		// do nothing with the ARM if the byte stream is draining
+		if cart.mem.stream.drain {
 			return true
 		}
-		cart.mem.stream.preemptedSnoopDataBus(cart.mem)
+
+		// run preempted snoopDataBus() function if required
+		if cart.mem.stream.preemptedSnoopDataBus != nil {
+			if addr != cart.mem.strongarm.nextRomAddress {
+				return true
+			}
+			cart.mem.stream.preemptedSnoopDataBus(cart.mem)
+		}
 	}
 
 	cart.arm.StartProfiling()
@@ -326,40 +328,51 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) {
 		cart.reset()
 	}
 
-	// WARNING - the following does not currently handle the situation where a
-	// ROM is reading the ADDR_IDR entry in the GPIO buffer. if a ROM does do
-	// that then the strongarm.running.function will not be set and the emulator
-	// will crash with an intentional panic
-
 	// set GPIO data and address information
 	cart.mem.gpio.data[DATA_IDR] = data
 	cart.mem.gpio.data[ADDR_IDR] = uint8(addr)
 	cart.mem.gpio.data[ADDR_IDR+1] = uint8(addr >> 8)
 
+	// handle ARM synchronisation for non-byte-streaming mode. the sequence of
+	// calls to runARM() and whatever strongarm function might be active was
+	// arrived through experimentation. a more efficient way of doing this
+	// hasn't been discovered yet
 	if !cart.mem.stream.active {
-		// check that strongarm function is set and panic if not (see WARNING comment above)
-		if cart.mem.strongarm.running.function == nil {
-			panic("ELF ROMs do not handle non strongarm reading of the GPIO")
+		runStrongarm := func() bool {
+			if cart.mem.strongarm.running.function == nil {
+				return false
+			}
+			cart.mem.strongarm.running.function(cart.mem)
+			if cart.mem.strongarm.running.function == nil {
+				cart.runARM(addr)
+				if cart.mem.strongarm.running.function != nil {
+					cart.mem.strongarm.running.function(cart.mem)
+				}
+			}
+			return true
 		}
-		cart.mem.strongarm.running.function(cart.mem)
 
-		// strongarm function is still in progress. we don't yet want to return
-		// to non-strongarm execution
-		if cart.mem.strongarm.running.function != nil {
+		if runStrongarm() {
 			return
 		}
+
+		cart.runARM(addr)
+		if runStrongarm() {
+			return
+		}
+
+		cart.runARM(addr)
+		if runStrongarm() {
+			return
+		}
+
+		cart.runARM(addr)
+
+		return
 	}
 
 	// run ARM and strongarm function again
 	cart.runARM(addr)
-
-	// check that strongarm is set and panic if not (see WARNING comment above)
-	if !cart.mem.stream.active {
-		if cart.mem.strongarm.running.function == nil {
-			panic("ELF ROMs do not handle non strongarm reading of the GPIO")
-		}
-		cart.mem.strongarm.running.function(cart.mem)
-	}
 }
 
 // Step implements the mapper.CartMapper interface.
