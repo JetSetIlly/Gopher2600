@@ -704,7 +704,14 @@ func (mem *elfMemory) mapAddress(addr uint32, write bool) (*[]byte, uint32) {
 			continue
 		}
 
-		if addr >= s.origin && addr <= s.memtop {
+		// special condition for executable sections to handle instances when
+		// the address being mapped is at the very beginning of the memory block
+		var adjust uint32
+		if s.executable() {
+			adjust = 1
+		}
+
+		if addr >= s.origin-adjust && addr <= s.memtop {
 			if write && s.readOnly() {
 				return nil, 0
 			}
