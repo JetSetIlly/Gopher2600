@@ -217,9 +217,8 @@ func (cart *Elf) Reset() {
 // reset is distinct from Reset(). this reset function is implied by the
 // reading of the cpubus.Reset address.
 func (cart *Elf) reset() {
-	// stream bytes rather than injecting them into the VCS as they arrive. we
-	// can't currently accomodate this if the ROM requires bus stuffing of data
-	cart.mem.stream.active = !cart.mem.busStuff
+	// stream bytes rather than injecting them into the VCS as they arrive
+	cart.mem.stream.active = true
 
 	// initialise ROM for the VCS
 	if cart.mem.stream.active {
@@ -252,7 +251,7 @@ func (cart *Elf) Access(addr uint16, _ bool) (uint8, uint8, error) {
 		if !cart.mem.stream.drain {
 			cart.runARM(addr)
 		}
-		if addr == cart.mem.stream.peekAddr()&memorymap.CartridgeBits {
+		if addr == cart.mem.stream.peek().addr&memorymap.CartridgeBits {
 			e := cart.mem.stream.pull()
 			cart.mem.gpio.data[DATA_ODR] = e.data
 		}
@@ -382,9 +381,22 @@ func (cart *Elf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 func (cart *Elf) BusStuff() (uint8, bool) {
 	if cart.mem.busStuffDelay {
 		cart.mem.busStuffDelay = false
-		return cart.mem.busStuffData, false
+		return 0, false
 	}
-	return cart.mem.busStuffData, cart.mem.busStuff
+
+	if cart.mem.stream.active {
+		if cart.mem.stream.peek().busstuff {
+			e := cart.mem.stream.pull()
+			return e.data, true
+		}
+		return 0, false
+	}
+
+	if cart.mem.busStuff {
+		cart.mem.busStuff = false
+		return cart.mem.busStuffData, true
+	}
+	return 0, false
 }
 
 // ELFSection implements the coprocessor.CartCoProcRelocatable interface.

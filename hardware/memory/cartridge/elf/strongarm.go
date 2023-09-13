@@ -74,11 +74,11 @@ func (mem *elfMemory) setNextRomAddress(addr uint16) {
 	mem.strongarm.nextRomAddress = addr & memorymap.Memtop
 }
 
-func (mem *elfMemory) injectRomByte(v uint8) bool {
+func (mem *elfMemory) injectRomByte(data uint8) bool {
 	if mem.stream.active {
 		mem.stream.push(streamEntry{
 			addr: mem.strongarm.nextRomAddress,
-			data: v,
+			data: data,
 		})
 		mem.strongarm.nextRomAddress++
 		return true
@@ -92,10 +92,23 @@ func (mem *elfMemory) injectRomByte(v uint8) bool {
 		return false
 	}
 
-	mem.gpio.data[DATA_ODR] = v
+	mem.gpio.data[DATA_ODR] = data
 	mem.strongarm.nextRomAddress++
 
 	return true
+}
+
+// injectBusStuff adds bus stuff data into the stream
+func (mem *elfMemory) injectBusStuff(data uint8) {
+	if mem.stream.active {
+		mem.stream.push(streamEntry{
+			data:     data,
+			busstuff: true,
+		})
+		return
+	}
+	mem.busStuff = true
+	mem.busStuffData = data
 }
 
 func (mem *elfMemory) yieldDataBus(addr uint16) bool {
@@ -140,14 +153,12 @@ func vcsWrite3(mem *elfMemory) {
 			mem.strongarm.running.state++
 		}
 	case 1:
-		mem.busStuff = true
-		mem.busStuffData = data
 		if mem.injectRomByte(zp) {
 			mem.strongarm.running.state++
 		}
+		mem.injectBusStuff(data)
 	case 2:
 		if mem.yieldDataBus(uint16(zp)) {
-			mem.busStuff = false
 			mem.endStrongArmFunction()
 		}
 	}
@@ -571,7 +582,6 @@ func vcsPhp3(mem *elfMemory) {
 		}
 	case 1:
 		if mem.yieldDataBusToStack() {
-			mem.busStuff = false
 			mem.endStrongArmFunction()
 		}
 	}
@@ -586,7 +596,6 @@ func vcsPlp4(mem *elfMemory) {
 		}
 	case 1:
 		if mem.yieldDataBusToStack() {
-			mem.busStuff = false
 			mem.endStrongArmFunction()
 		}
 	}
@@ -601,7 +610,6 @@ func vcsPla4(mem *elfMemory) {
 		}
 	case 1:
 		if mem.yieldDataBusToStack() {
-			mem.busStuff = false
 			mem.endStrongArmFunction()
 		}
 	}
@@ -612,14 +620,12 @@ func vcsPlp4Ex(mem *elfMemory) {
 	data := uint8(mem.strongarm.running.registers[0])
 	switch mem.strongarm.running.state {
 	case 0:
-		mem.busStuff = true
-		mem.busStuffData = data & 0x3f
 		if mem.injectRomByte(0x28) {
 			mem.strongarm.running.state++
 		}
+		mem.injectBusStuff(data & 0x3f)
 	case 1:
 		if mem.yieldDataBusToStack() {
-			mem.busStuff = false
 			mem.endStrongArmFunction()
 		}
 	}
@@ -630,14 +636,12 @@ func vcsPla4Ex(mem *elfMemory) {
 	data := uint8(mem.strongarm.running.registers[0])
 	switch mem.strongarm.running.state {
 	case 0:
-		mem.busStuff = true
-		mem.busStuffData = data & 0x3f
 		if mem.injectRomByte(0x68) {
 			mem.strongarm.running.state++
 		}
+		mem.injectBusStuff(data & 0x3f)
 	case 1:
 		if mem.yieldDataBusToStack() {
-			mem.busStuff = false
 			mem.endStrongArmFunction()
 		}
 	}

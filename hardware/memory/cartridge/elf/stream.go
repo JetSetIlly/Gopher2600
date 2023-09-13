@@ -18,12 +18,13 @@ package elf
 import "fmt"
 
 type streamEntry struct {
-	addr uint16
-	data uint8
+	addr     uint16
+	data     uint8
+	busstuff bool
 }
 
 func (s streamEntry) String() string {
-	return fmt.Sprintf("%04x=%02x", s.addr, s.data)
+	return fmt.Sprintf("%04x=%02x (stuff=%v)", s.addr, s.data, s.busstuff)
 }
 
 // the pushBoundary prevents out-of-bounds errors in the event of a strongarm
@@ -85,6 +86,6 @@ func (s *stream) pull() streamEntry {
 	return e
 }
 
-func (s *stream) peekAddr() uint16 {
-	return s.stream[s.drainPtr].addr
+func (s *stream) peek() streamEntry {
+	return s.stream[s.drainPtr]
 }
