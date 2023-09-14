@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -84,6 +85,8 @@ func (s *elfSection) Snapshot() *elfSection {
 }
 
 type elfMemory struct {
+	env *environment.Environment
+
 	model   architecture.Map
 	resetSP uint32
 	resetLR uint32
@@ -155,8 +158,9 @@ type elfMemory struct {
 	stream stream
 }
 
-func newElfMemory() *elfMemory {
+func newElfMemory(env *environment.Environment) *elfMemory {
 	mem := &elfMemory{
+		env:            env,
 		gpio:           newGPIO(),
 		sectionsByName: make(map[string]int),
 		args:           make([]byte, argMemtop-argOrigin),
@@ -489,8 +493,18 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				// strongARM tables
 				case "ReverseByte":
 					tgt = mem.relocateStrongArmTable(reverseByteTable)
+
 				case "ColorLookup":
-					tgt = mem.relocateStrongArmTable(ntscColorTable)
+					switch mem.env.TV.GetSpecID() {
+					case "PAL":
+						fallthrough
+					case "PAL60":
+						tgt = mem.relocateStrongArmTable(palColorTable)
+					case "NTSC":
+						fallthrough
+					default:
+						tgt = mem.relocateStrongArmTable(ntscColorTable)
+					}
 
 				default:
 					if sym.Section != elf.SHN_UNDEF {

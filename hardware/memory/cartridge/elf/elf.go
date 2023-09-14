@@ -136,7 +136,7 @@ func NewElf(env *environment.Environment, pathToROM string, inACE bool) (mapper.
 		yieldHook: coprocessor.StubCartYieldHook{},
 	}
 
-	cart.mem = newElfMemory()
+	cart.mem = newElfMemory(env)
 	cart.arm = arm.NewARM(cart.mem.model, cart.env.Prefs.ARM, cart.mem, cart)
 	cart.mem.Plumb(cart.arm)
 	err = cart.mem.decode(ef)

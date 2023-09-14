@@ -901,6 +901,11 @@ func (tv *Television) GetReqSpecID() string {
 	return tv.reqSpecID
 }
 
+// GetSpecID returns the current specification.
+func (tv *Television) GetSpecID() string {
+	return tv.state.frameInfo.Spec.ID
+}
+
 // GetFrameInfo returns the television's current frame information.
 func (tv *Television) GetFrameInfo() FrameInfo {
 	return tv.state.frameInfo

@@ -17,16 +17,27 @@ package environment
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/random"
 )
 
 // Label is used to name the environment
 type Label string
 
+// Television interface exposing a minimum amount of the real television
+// implementation
+type Television interface {
+	GetSpecID() string
+}
+
 // Environment is used to provide context for an emulation. Particularly useful
 // when using multiple emulations
 type Environment struct {
+	// label distinguishes between different types of emulation (thumbnailer, etc.)
 	Label Label
+
+	// the television attached to the console
+	TV Television
 
 	// any randomisation required by the emulation should be retreived through
 	// this structure
@@ -41,8 +52,9 @@ type Environment struct {
 // The two arguments must be supplied. In the case of the prefs field it can by
 // nil and a new Preferences instance will be created. Providing a non-nil value
 // allows the preferences of more than one VCS emulation to be synchronised.
-func NewEnvironment(tv random.TV, prefs *preferences.Preferences) (*Environment, error) {
+func NewEnvironment(tv *television.Television, prefs *preferences.Preferences) (*Environment, error) {
 	env := &Environment{
+		TV:     tv,
 		Random: random.NewRandom(tv),
 	}
 
