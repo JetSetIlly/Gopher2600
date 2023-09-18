@@ -291,7 +291,7 @@ func emulate(emulationMode govern.Mode, md *modalflag.Modes, sync *mainSync) err
 
 	// arguments common to both play and debugging modes
 	opts.Log = md.AddBool("log", false, "echo debugging log to stdout")
-	opts.Spec = md.AddString("tv", "AUTO", "television specification: AUTO, NTSC, PAL, PAL60")
+	opts.Spec = md.AddString("tv", "AUTO", "television specification: AUTO, NTSC, PAL, PAL60, SECAM")
 	opts.FpsCap = md.AddBool("fpscap", true, "cap FPS to emulated match TV")
 	opts.Multiload = md.AddInt("multiload", -1, "force multiload byte (supercharger only; 0 to 255)")
 	opts.Mapping = md.AddString("mapping", "AUTO", "force use of cartridge mapping")
@@ -516,7 +516,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
-	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60")
+	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60, SECAM")
 	uncapped := md.AddBool("uncapped", true, "run perfomance with no FPS cap")
 	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
 	profile := md.AddString("profile", "NONE", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
@@ -694,7 +694,7 @@ func regressAdd(md *modalflag.Modes) error {
 	mode := md.AddString("mode", "", "type of regression entry")
 	notes := md.AddString("notes", "", "additional annotation for the database")
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping [non-playback]")
-	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60 [non-playback]")
+	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60, SECAM [non-playback]")
 	numframes := md.AddInt("frames", 10, "number of frames to run [non-playback]")
 	state := md.AddString("state", "", "record emulator state at every CPU step [non-playback]")
 	log := md.AddBool("log", false, "echo debugging log to stdout")

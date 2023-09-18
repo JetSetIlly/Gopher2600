@@ -231,10 +231,12 @@ type imguiColors struct {
 	reflectionColors []imgui.Vec4
 
 	// packed TV palettes
-	packedPaletteNTSC packedPalette
-	packedPalettePAL  packedPalette
-	paletteNTSC       []imgui.Vec4
-	palettePAL        []imgui.Vec4
+	packedPaletteNTSC  packedPalette
+	packedPalettePAL   packedPalette
+	packedPaletteSECAM packedPalette
+	paletteNTSC        []imgui.Vec4
+	palettePAL         []imgui.Vec4
+	paletteSECAM       []imgui.Vec4
 }
 
 func newColors() *imguiColors {
@@ -477,6 +479,17 @@ func newColors() *imguiColors {
 		cols.palettePAL = append(cols.palettePAL, v)
 	}
 
+	cols.paletteSECAM = make([]imgui.Vec4, 0, len(specification.PaletteSECAM))
+	for _, c := range specification.PaletteSECAM {
+		v := imgui.Vec4{
+			float32(c.R) / 255,
+			float32(c.G) / 255,
+			float32(c.B) / 255,
+			1.0,
+		}
+		cols.paletteSECAM = append(cols.paletteSECAM, v)
+	}
+
 	// ...then to the packedPalette
 	cols.packedPaletteNTSC = make(packedPalette, 0, len(cols.paletteNTSC))
 	for _, c := range cols.paletteNTSC {
@@ -486,6 +499,11 @@ func newColors() *imguiColors {
 	cols.packedPalettePAL = make(packedPalette, 0, len(cols.packedPalettePAL))
 	for _, c := range cols.palettePAL {
 		cols.packedPalettePAL = append(cols.packedPalettePAL, imgui.PackedColorFromVec4(c))
+	}
+
+	cols.packedPaletteSECAM = make(packedPalette, 0, len(cols.packedPaletteSECAM))
+	for _, c := range cols.paletteSECAM {
+		cols.packedPaletteSECAM = append(cols.packedPaletteSECAM, imgui.PackedColorFromVec4(c))
 	}
 
 	return &cols

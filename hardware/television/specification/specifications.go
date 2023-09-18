@@ -25,7 +25,7 @@ import (
 )
 
 // SpecList is the list of specifications that the television may adopt.
-var SpecList = []string{"NTSC", "PAL", "PAL60"}
+var SpecList = []string{"NTSC", "PAL", "PAL60", "SECAM"}
 
 // SearchSpec looks for a valid sub-string in s, that indicates a required TV
 // specification. The returned value is a canonical specication label as listed
@@ -37,7 +37,7 @@ func SearchSpec(s string) string {
 	// that when searching in a filename, for example, that we search in this
 	// order. for example, we don't want to match on "PAL" if the sub-string is
 	// actuall "PAL60".
-	var list = []string{"pal-60", "pal60", "ntsc", "pal"}
+	var list = []string{"pal-60", "pal60", "ntsc", "pal", "secam"}
 
 	// look for any settings embedded in the filename
 	s = strings.ToLower(s)
@@ -52,6 +52,8 @@ func SearchSpec(s string) string {
 				return "NTSC"
 			case "pal":
 				return "PAL"
+			case "secam":
+				return "SECAM"
 			}
 		}
 	}
@@ -146,7 +148,7 @@ func (spec *Spec) GetColor(col signal.ColorSignal) color.RGBA {
 // counts, and proceeds to draw the next line below."
 //
 // Clock counts are the same for both TV specifications. Vertical information should
-// be accessed via SpecNTSC or SpecPAL.
+// be accessed via SpecNTSC or SpecPAL
 const (
 	ClksHBlank   = 68
 	ClksVisible  = 160
@@ -154,39 +156,42 @@ const (
 )
 
 // The absolute number of scanlines allowed by the TV regardless of
-// specification.
+// specification
 //
 // This is one more than the number of scanlines allowed by the PAL
 // specification. This is so that a ROM that uses the absolute maximum number
 // of scanlines for PAL can accomodate the VSYNC signal, which may just tip
-// over into the extra line.
+// over into the extra line
 //
-// An example of such a ROM is the demo Chiphead.
+// # An example of such a ROM is the demo Chiphead
 //
 // The raises the quesion why we're choosing to render the VSYNC signal. For
 // debugging purposes it is useful to see where the TV thinks it is but it can
-// perhaps be done better.
+// perhaps be done better
 //
 // !!TODO: think about how we're sending VSYNC to the pixel renderer
 const AbsoluteMaxScanlines = 313
 
 // The absolute number of color clock allowed by the TV regardless of
-// specification.
+// specification
 const AbsoluteMaxClks = AbsoluteMaxScanlines * ClksScanline
 
 // The number of scanlines at which to flip between the NTSC and PAL
 // specifications. If the number of scanlines generated is greater than this
-// value then the PAL specification should be assumed.
+// value then the PAL specification should be assumed
 const PALTrigger = 302
 
-// SpecNTSC is the specification for NTSC television types.
+// SpecNTSC is the specification for NTSC television type
 var SpecNTSC Spec
 
-// SpecPAL is the specification for PAL television types.
+// SpecPAL is the specification for PAL television type
 var SpecPAL Spec
 
-// SpecPAL60 is the specification for PAL60 television types.
+// SpecPAL60 is the specification for PAL60 television type
 var SpecPAL60 Spec
+
+// SpecSECAM is the specification for SECAM television type
+var SpecSECAM Spec
 
 func init() {
 	SpecNTSC = Spec{
@@ -234,6 +239,21 @@ func init() {
 	SpecPAL60.AtariSafeVisibleTop = SpecPAL60.ScanlinesVBlank + SpecPAL60.ScanlinesVSync
 	SpecPAL60.AtariSafeVisibleBottom = SpecPAL60.ScanlinesTotal - SpecPAL60.ScanlinesOverscan
 
+	SpecSECAM = Spec{
+		ID:                "SECAM",
+		Colors:            PaletteSECAM,
+		ScanlinesVSync:    3,
+		ScanlinesVBlank:   45,
+		ScanlinesVisible:  228,
+		ScanlinesOverscan: 36,
+		ScanlinesTotal:    312,
+		RefreshRate:       50.0,
+		AspectBias:        1.09,
+	}
+
+	SpecSECAM.AtariSafeVisibleTop = SpecSECAM.ScanlinesVBlank + SpecSECAM.ScanlinesVSync
+	SpecSECAM.AtariSafeVisibleBottom = SpecSECAM.ScanlinesTotal - SpecSECAM.ScanlinesOverscan
+
 	// Extended values:
 	// - Spike's Peak likes a bottom scanline of 250 (NTSC). this is the largest requirement I've seen.
 	SpecNTSC.NewSafeVisibleTop = 23
@@ -242,4 +262,6 @@ func init() {
 	SpecPAL.NewSafeVisibleBottom = 299
 	SpecPAL60.NewSafeVisibleTop = 20
 	SpecPAL60.NewSafeVisibleBottom = 249
+	SpecSECAM.NewSafeVisibleTop = 30
+	SpecSECAM.NewSafeVisibleBottom = 299
 }

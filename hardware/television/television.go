@@ -793,6 +793,9 @@ func (tv *Television) SetSpec(spec string) error {
 	case "PAL60":
 		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL60)
 		tv.state.auto = false
+	case "SECAM":
+		tv.state.frameInfo = NewFrameInfo(specification.SpecSECAM)
+		tv.state.auto = false
 	case "":
 		// the empty string is treated like AUTO
 		fallthrough
