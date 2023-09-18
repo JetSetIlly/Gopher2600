@@ -125,6 +125,10 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	case sdl.GL_CONTEXT_PROFILE_ES:
 		profile_s = " ES"
 	}
+
+	var version sdl.Version
+	sdl.VERSION(&version)
+	logger.Logf("sdl", "version %d.%d.%d", version.Major, version.Minor, version.Patch)
 	logger.Logf("sdl", "using GL version %d.%d%s", major, minor, profile_s)
 
 	plt := &platform{
