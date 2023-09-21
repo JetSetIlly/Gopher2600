@@ -32,9 +32,6 @@ type CallStack struct {
 
 	// list of callers for all executed functions
 	Callers map[string]([]*dwarf.SourceLine)
-
-	// prevLine is helpful when creating the Callers list
-	PrevLine *dwarf.SourceLine
 }
 
 // NewCallStack is the preferred method of initialisation for the CallStack type
@@ -60,24 +57,19 @@ func (cs CallStack) WriteCallers(function string, w io.Writer) error {
 
 	const maxDepth = 15
 
-	var f func(callLines []*dwarf.SourceLine, depth int) error
-	f = func(callLines []*dwarf.SourceLine, depth int) error {
+	var f func(lines []*dwarf.SourceLine, depth int) error
+	f = func(lines []*dwarf.SourceLine, depth int) error {
 		indent := strings.Builder{}
 		for i := 0; i < depth; i++ {
-			indent.WriteString("  ")
+			indent.WriteString(" ")
 		}
 
 		if depth > maxDepth {
 			return errors.New(fmt.Sprintf("%stoo deep", indent.String()))
 		}
 
-		for _, ln := range callLines {
-			if ln.IsStub() {
-				return nil
-			}
-
-			s := fmt.Sprintf("%s (%s:%d)", ln.Function.Name, ln.File.ShortFilename, ln.LineNumber)
-			w.Write([]byte(fmt.Sprintf("%s%s", indent.String(), s)))
+		for _, ln := range lines {
+			w.Write([]byte(fmt.Sprintf("%s%s", indent.String(), ln.Function.Name)))
 			if l, ok := cs.Callers[ln.Function.Name]; ok {
 				err := f(l, depth+1)
 				if err != nil {

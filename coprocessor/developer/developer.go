@@ -86,6 +86,9 @@ type Developer struct {
 
 	// keeps track of the previous breakpoint check. see checkBreakPointByAddr()
 	prevBreakpointCheck *dwarf.SourceLine
+
+	// keeps track of the previous line in profiling scan. see processProfiling()
+	prevProfileLine *dwarf.SourceLine
 }
 
 // NewDeveloper is the preferred method of initialisation for the Developer type.

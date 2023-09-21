@@ -159,7 +159,7 @@ type SourceLine struct {
 
 func (ln *SourceLine) String() string {
 	if ln.IsStub() {
-		return ln.PlainContent
+		return ""
 	}
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s:%d", ln.File.ShortFilename, ln.LineNumber))

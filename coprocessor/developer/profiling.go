@@ -70,29 +70,29 @@ func (dev *Developer) ProcessProfiling() {
 		defer dev.callstackLock.Unlock()
 
 		for _, p := range dev.profiler.Entries {
-			l := len(dev.callstack.Stack)
-			lastLn := dev.callstack.Stack[l-1]
-
 			// line of executed instruction. every instruction should have an
 			// associated line/function. if it does not then we assume it is in
-			// the entry function
+			// the driver function
 			ln, ok := dev.source.LinesByAddress[uint64(p.Addr)]
 			if !ok {
 				ln = dev.source.DriverSourceLine
 				dev.source.LinesByAddress[uint64(p.Addr)] = ln
 			}
 
-			// if function has changed
-			if ln != lastLn {
-				popped := false
+			// callstack
+			l := len(dev.callstack.Stack)
+			prevCallStack := dev.callstack.Stack[l-1]
 
-				// try to pop
+			// change callstack if function has changed
+			if ln.Function != prevCallStack.Function {
+				var popped bool
+
+				// try to pop entry from callstack
 				var i int
-				for i = 1; i <= l; i++ {
+				for i = 1; i <= l && !popped; i++ {
 					if ln.Function == dev.callstack.Stack[l-i].Function {
 						chop := dev.callstack.Stack[l-i+1:]
 						dev.callstack.Stack = dev.callstack.Stack[:l-i+1]
-						popped = true
 
 						// flag functions which look like they are part of an
 						// optimised call stack
@@ -102,17 +102,14 @@ func (dev *Developer) ProcessProfiling() {
 							}
 						}
 
-						break // for loop
+						// setting popped will cause the loop to end early
+						popped = true
 					}
 				}
 
 				// push function on to callstack if we haven't popped
 				if !popped {
 					dev.callstack.Stack = append(dev.callstack.Stack, ln)
-
-					// there is always at least one entry in the functions callstack so we can
-					// confidently subtract two from the length after the append above
-					// prev := dev.callstack.functions[len(dev.callstack.functions)-2]
 
 					// create/update callers list for function
 					var n int
@@ -122,15 +119,15 @@ func (dev *Developer) ProcessProfiling() {
 							return ln == l[i]
 						})
 					}
-					if !ok || (n > len(l) && l[n] != dev.callstack.PrevLine) {
-						l = append(l, dev.callstack.PrevLine)
+
+					if !ok || (n > len(l) && l[n] != dev.prevProfileLine) {
+						l = append(l, dev.prevProfileLine)
 						sort.Slice(l, func(i, j int) bool {
 							return l[i].Function.Name < l[j].Function.Name
 						})
 						dev.callstack.Callers[ln.Function.Name] = l
 					}
 				}
-
 			}
 
 			// accumulate counts for line (and the line's function)
@@ -142,7 +139,7 @@ func (dev *Developer) ProcessProfiling() {
 			}
 
 			// record line for future comparison
-			dev.callstack.PrevLine = ln
+			dev.prevProfileLine = ln
 		}
 
 		// empty slice
