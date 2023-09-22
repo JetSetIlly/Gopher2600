@@ -1802,13 +1802,16 @@ func (arm *ARM) decodeThumbConditionalBranch(opcode uint16) decodeFunction {
 	}
 	offset += 2
 
+	// branch target as a string
+	operand := arm.branchTargetOffsetFromPC(int64(offset))
+
 	return func() *DisasmEntry {
 		passed, mnemonic := arm.state.status.condition(cond)
 
 		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: mnemonic,
-				Operand:  fmt.Sprintf("%d", int32(offset)),
+				Operand:  operand,
 			}
 		}
 
@@ -1842,6 +1845,9 @@ func (arm *ARM) decodeThumbUnconditionalBranch(opcode uint16) decodeFunction {
 	}
 	offset += 2
 
+	// branch target as a string
+	operand := arm.branchTargetOffsetFromPC(int64(offset))
+
 	return func() *DisasmEntry {
 		// we'll be adjusting the offset value so we need to make a copy of it
 		offset := offset
@@ -1849,7 +1855,7 @@ func (arm *ARM) decodeThumbUnconditionalBranch(opcode uint16) decodeFunction {
 		if arm.decodeOnly {
 			return &DisasmEntry{
 				Operator: "BAL",
-				Operand:  fmt.Sprintf("%d", int32(offset)),
+				Operand:  operand,
 			}
 		}
 
@@ -1876,7 +1882,7 @@ func (arm *ARM) decodeThumbLongBranchWithLink(opcode uint16) decodeFunction {
 			if arm.decodeOnly {
 				return &DisasmEntry{
 					Operator: "BL",
-					Operand:  fmt.Sprintf("%08x", tgt),
+					Operand:  arm.branchTarget(tgt),
 				}
 			}
 			pc := arm.state.registers[rPC]

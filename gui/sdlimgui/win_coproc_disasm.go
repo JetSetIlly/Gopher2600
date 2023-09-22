@@ -317,6 +317,12 @@ func (win *winCoProcDisasm) drawEntry(src *dwarf.Source, e arm.DisasmEntry) {
 
 func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry, ln *dwarf.SourceLine) {
 	win.img.imguiTooltip(func() {
+		imgui.Text("Function:")
+		imgui.SameLine()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmLocation)
+		imgui.Text(ln.Function.Name)
+		imgui.PopStyleColor()
+
 		imgui.Text("Address:")
 		imgui.SameLine()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)

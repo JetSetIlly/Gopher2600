@@ -3551,8 +3551,8 @@ func (arm *ARM) decode32bitThumb2Branches(opcode uint16) decodeFunction {
 		// condition that must be met before the branch can take place
 		cond := (arm.state.instruction32bitOpcodeHi & 0x03c0) >> 6
 
-		// the branch offset as a signed integer
-		operand := fmt.Sprintf("%d", int32(imm32))
+		// branch target as a string
+		operand := arm.branchTargetOffsetFromPC(int64(imm32))
 
 		return func() *DisasmEntry {
 			passed, mnemonic := arm.state.status.condition(uint8(cond))
@@ -3620,8 +3620,8 @@ func (arm *ARM) decode32bitThumb2Branches(opcode uint16) decodeFunction {
 			}
 		}
 
-		// the branch offset as a signed integer
-		operand := fmt.Sprintf("%d", int32(imm32))
+		// branch target as a string
+		operand := arm.branchTargetOffsetFromPC(int64(imm32))
 
 		return func() *DisasmEntry {
 			if arm.decodeOnly {
@@ -3662,8 +3662,8 @@ func (arm *ARM) decode32bitThumb2Branches(opcode uint16) decodeFunction {
 			imm32 |= 0xff000000
 		}
 
-		// the branch offset as a signed integer
-		operand := fmt.Sprintf("%d", int32(imm32))
+		// branch target as a string
+		operand := arm.branchTargetOffsetFromPC(int64(imm32))
 
 		return func() *DisasmEntry {
 			if arm.decodeOnly {

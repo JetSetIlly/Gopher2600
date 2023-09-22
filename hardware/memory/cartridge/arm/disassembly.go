@@ -173,3 +173,14 @@ func setFlagsMnemonic(setFlags bool) string {
 	}
 	return ""
 }
+
+// return branch target as a string. target is specified as an offset, the
+// function will apply the offset to the correct PC value
+func (arm *ARM) branchTargetOffsetFromPC(offset int64) string {
+	return arm.branchTarget(uint32(int64(arm.state.registers[rPC]-2) + offset))
+}
+
+// return branch target address as a string
+func (arm *ARM) branchTarget(addr uint32) string {
+	return fmt.Sprintf("%08x", addr)
+}
