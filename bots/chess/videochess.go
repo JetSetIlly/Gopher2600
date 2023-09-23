@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"time"
 
 	"golang.org/x/image/draw"
 
@@ -41,11 +42,23 @@ const (
 
 var startingImage = [sha1.Size]byte{206, 150, 33, 111, 96, 82, 105, 37, 18, 218, 111, 99, 43, 70, 231, 84, 152, 24, 218, 150}
 
-var cursorSampleDataEvenColumns = [...]uint8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0}
+var cursorImage = [...][sha1.Size]byte{
+	{83, 220, 207, 9, 64, 158, 200, 51, 169, 237, 1, 196, 0, 207, 32, 77, 219, 49, 35, 217},        // d4
+	{255, 122, 114, 141, 91, 68, 233, 75, 220, 69, 73, 26, 168, 108, 231, 177, 255, 176, 111, 189}, // c4
+	{201, 133, 210, 171, 75, 83, 176, 152, 72, 255, 249, 14, 51, 126, 184, 76, 175, 103, 219, 212}, // d5
+	{240, 230, 144, 234, 5, 94, 222, 71, 209, 76, 140, 97, 1, 222, 83, 77, 171, 68, 240, 123},      // c5
+}
 
-var cursorSampleDataOddColumns = [...]uint8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-
-var boardIndicator = [...]uint8{28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 164, 184, 252, 255, 164, 184, 252, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 164, 184, 252, 255, 164, 184, 252, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 164, 184, 252, 255, 164, 184, 252, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 164, 184, 252, 255, 164, 184, 252, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 164, 184, 252, 255, 164, 184, 252, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255}
+var levelIndicator = [...][sha1.Size]byte{
+	{99, 52, 243, 80, 35, 157, 46, 32, 23, 100, 35, 174, 34, 63, 2, 28, 203, 126, 39, 141},      // level 1
+	{98, 49, 142, 237, 198, 6, 223, 99, 47, 61, 44, 208, 237, 9, 148, 145, 20, 23, 160, 192},    // level 2
+	{170, 135, 34, 218, 84, 20, 54, 57, 16, 204, 66, 40, 206, 187, 7, 222, 249, 241, 172, 255},  // level 3
+	{226, 47, 71, 132, 32, 2, 218, 84, 11, 25, 99, 146, 244, 173, 49, 255, 236, 232, 106, 56},   // level 4
+	{189, 91, 225, 111, 23, 183, 93, 14, 13, 209, 74, 47, 128, 112, 182, 117, 25, 134, 3, 55},   // level 5
+	{255, 145, 27, 1, 59, 53, 77, 197, 209, 189, 82, 90, 199, 159, 105, 186, 15, 20, 50, 89},    // level 6
+	{23, 33, 105, 26, 4, 182, 183, 51, 48, 154, 103, 213, 148, 20, 220, 218, 122, 25, 197, 50},  // level 7
+	{216, 88, 112, 235, 56, 55, 121, 175, 73, 16, 98, 50, 230, 208, 22, 83, 124, 237, 193, 212}, // level 8
+}
 
 type observer struct {
 	frameInfo     television.FrameInfo
@@ -182,6 +195,9 @@ type videoChessBot struct {
 	moveTo   image.Rectangle
 
 	feedback bots.Feedback
+
+	// the detected video chess level
+	level int
 }
 
 // composites a simple debugging image and forward it onto the feeback.Images channel.
@@ -214,19 +230,33 @@ func (bot *videoChessBot) getRect(col int, row int) image.Rectangle {
 	return image.Rect(minX, minY, maxX, maxY)
 }
 
-// checks that board is present - board disappears during "thinking" so it's
-// important we only continue once the board reappears
+// checks for board by looking for level indicator - board disappears during
+// "thinking" so it's important that we can detect the presence of the board,
+// indicating that it's our turn
 //
-// returns true if board is visible
+// returns true if level indicator is visible
 func (bot *videoChessBot) lookForBoard() bool {
 	clip := bot.getRect(2, -1)
 	draw.Draw(bot.inspectionSquare, bot.inspectionSquare.Bounds(), bot.currentPosition.SubImage(clip), clip.Min, draw.Src)
-	for i := range boardIndicator {
-		if boardIndicator[i] != bot.inspectionSquare.Pix[i] {
-			return false
+
+	return levelIndicator[bot.level] == sha1.Sum(bot.inspectionSquare.Pix)
+}
+
+// get level indicator for future calls to lookForBoard
+func (bot *videoChessBot) getLevel() bool {
+	clip := bot.getRect(2, -1)
+	draw.Draw(bot.inspectionSquare, bot.inspectionSquare.Bounds(), bot.currentPosition.SubImage(clip), clip.Min, draw.Src)
+
+	hash := sha1.Sum(bot.inspectionSquare.Pix)
+
+	for b := range levelIndicator {
+		if levelIndicator[b] == hash {
+			bot.level = b
+			return true
 		}
 	}
-	return true
+
+	return false
 }
 
 // compares currentPosition with prevPosition for a change. returns fromCol,
@@ -332,23 +362,15 @@ func (bot *videoChessBot) isCursor(searchImage *image.RGBA, col int, row int) bo
 	clip := bot.getRect(col, row)
 
 	draw.Draw(bot.inspectionSquare, bot.inspectionSquare.Bounds(), searchImage.SubImage(clip), clip.Min, draw.Src)
+	hash := sha1.Sum(bot.inspectionSquare.Pix)
 
-	m := 0
-	if col%2 == 0 {
-		for i := range bot.inspectionSquare.Pix {
-			if cursorSampleDataEvenColumns[i] > 0 && bot.inspectionSquare.Pix[i] == cursorSampleDataEvenColumns[i] {
-				m++
-			}
-		}
-	} else {
-		for i := range bot.inspectionSquare.Pix {
-			if cursorSampleDataOddColumns[i] > 0 && bot.inspectionSquare.Pix[i] == cursorSampleDataOddColumns[i] {
-				m++
-			}
+	for _, c := range cursorImage {
+		if c == hash {
+			return true
 		}
 	}
 
-	return m == 76
+	return false
 }
 
 func (bot *videoChessBot) isEmptySquare(searchImage *image.RGBA, col int, row int) bool {
@@ -560,8 +582,10 @@ func NewVideoChess(vcs bots.Input, tv bots.TV, specID string) (bots.Bot, error) 
 	go func() {
 		defer func() {
 			ucii.Quit <- true
+			<-bot.quit
 		}()
 
+		// look for board
 		started := false
 		for !started {
 			select {
@@ -576,6 +600,48 @@ func NewVideoChess(vcs bots.Input, tv bots.TV, specID string) (bots.Bot, error) 
 		bot.feedback.Diagnostic <- bots.Diagnostic{
 			Group:      "VideoChess",
 			Diagnostic: "video chess recognised",
+		}
+
+		bot.commitDebuggingRender()
+
+		// wait for a short period to give time for user to set play level
+		bot.feedback.Diagnostic <- bots.Diagnostic{
+			Group:      "VideoChess",
+			Diagnostic: "waiting 5 seconds before beginning",
+		}
+
+		dur, _ := time.ParseDuration("5s")
+		select {
+		case <-time.After(dur):
+		case <-bot.quit:
+			return
+		}
+
+		// consume two frames before checking video chess level. the first one
+		// will have been waiting for a while and will be stale
+		select {
+		case bot.currentPosition = <-bot.obs.analysis:
+		case <-bot.quit:
+			return
+		}
+		select {
+		case bot.currentPosition = <-bot.obs.analysis:
+		case <-bot.quit:
+			return
+		}
+
+		// get video chess level
+		if bot.getLevel() {
+			bot.feedback.Diagnostic <- bots.Diagnostic{
+				Group:      "VideoChess",
+				Diagnostic: fmt.Sprintf("playing at level %d", bot.level+1),
+			}
+		} else {
+			bot.feedback.Diagnostic <- bots.Diagnostic{
+				Group:      "VideoChess",
+				Diagnostic: "unrecognised level",
+			}
+			return
 		}
 
 		// bot is playing white so ask for first move by submitting an empty move
