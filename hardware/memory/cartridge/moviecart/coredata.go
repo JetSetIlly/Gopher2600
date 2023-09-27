@@ -75,6 +75,10 @@ const (
 	addrTransportDirection = 0x880
 	addrTransportButtons   = 0x894
 
+	addrSetVSyncSize = 0xaa3
+	addrTitleGap1    = 0xb2c
+	addrTitleGap2    = 0xb40
+
 	// fillAddrBlankLines().
 	addrAudioBank = 0xb80
 )
