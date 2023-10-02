@@ -195,6 +195,9 @@ type state struct {
 	// whether the cartridge loader has indicated that it wants to shorten the
 	// title card duration
 	shortTitleCard bool
+
+	// the stream has failed because bad data has been encountered
+	streamFail bool
 }
 
 // what part of the OSD is currently being display.
@@ -361,6 +364,22 @@ func (cart *Moviecart) CopyBanks() []mapper.BankContent {
 }
 
 func (cart *Moviecart) processAddress(addr uint16) {
+	// it's possible for a moviecart stream to produce bad data. rather than
+	// having bounds checks in the writeAudioData(), etc. we allow the program
+	// to panic in this exceptional situation and recover from it with a log
+	// entry
+	//
+	// once an error is encountered no more data is processed
+	if cart.state.streamFail {
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			cart.state.streamFail = true
+			logger.Logf("MVC", "serious data error in moviecart stream")
+		}
+	}()
+
 	if addr >= 0x1ffa {
 		cart.state.initialise()
 	}
@@ -866,7 +885,7 @@ func (cart *Moviecart) nextField() {
 	}
 
 	// version number
-	switch cart.state.streamBuffer[cart.state.streamIndex][4] {
+	switch cart.state.streamBuffer[cart.state.streamIndex][4] & 0x80 {
 	case 0x80:
 		cart.state.format[cart.state.streamIndex].vsync = byte(cart.state.streamBuffer[cart.state.streamIndex][9])
 		cart.state.format[cart.state.streamIndex].vblank = byte(cart.state.streamBuffer[cart.state.streamIndex][10])
