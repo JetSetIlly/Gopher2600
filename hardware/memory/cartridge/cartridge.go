@@ -444,6 +444,9 @@ func (cart *Cartridge) GetStaticBus() mapper.CartStaticBus {
 // GetRAMbus returns interface to ram busor  nil if catridge contains no RAM.
 func (cart *Cartridge) GetRAMbus() mapper.CartRAMbus {
 	if bus, ok := cart.mapper.(mapper.CartRAMbus); ok {
+		if bus.GetRAM() == nil {
+			return nil
+		}
 		return bus
 	}
 	return nil
