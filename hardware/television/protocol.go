@@ -17,6 +17,7 @@ package television
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 // PixelRenderer implementations displays, or otherwise works with, visual
@@ -96,9 +97,17 @@ type PixelRenderer interface {
 	EndRendering() error
 }
 
+// PixelRendererRotation is an extension to the PixelRenderer interface. Pixel
+// renderes that implement this interface can show the television image in a
+// rotated aspect. Not all pixel renderers need to worry about rotation.
+type PixelRendererRotation interface {
+	SetRotation(specification.Rotation)
+}
+
 // PixelRendererFPSCap is an extension to the PixelRenderer interface. Pixel
 // renderers that implement this interface will be notified when the
-// television's frame capping policy is changed
+// television's frame capping policy is changed. Not all pixel renderers need to
+// worry about frame rate.
 type PixelRendererFPSCap interface {
 	SetFPSCap(limit bool)
 }

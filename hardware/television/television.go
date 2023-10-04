@@ -927,3 +927,13 @@ func (tv *Television) GetLastSignal() signal.SignalAttributes {
 func (tv *Television) GetCoords() coords.TelevisionCoords {
 	return tv.state.GetCoords()
 }
+
+// SetRotation instructs the television to a different orientation. In truth,
+// the television just forwards the request to the pixel renderers.
+func (tv *Television) SetRotation(rotation specification.Rotation) {
+	for _, r := range tv.renderers {
+		if s, ok := r.(PixelRendererRotation); ok {
+			s.SetRotation(rotation)
+		}
+	}
+}

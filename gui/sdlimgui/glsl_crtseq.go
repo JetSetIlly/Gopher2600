@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"github.com/jetsetilly/gopher2600/gui/crt"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/framebuffer"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 type crtSeqPrefs struct {
@@ -163,7 +164,8 @@ func (sh *crtSequencer) flushPhosphor() {
 //
 // integerScaling instructs the scaling shader not to perform any smoothing
 func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool,
-	numScanlines int, numClocks int, image textureSpec, prefs crtSeqPrefs) uint32 {
+	numScanlines int, numClocks int, rotation specification.Rotation,
+	image textureSpec, prefs crtSeqPrefs) uint32 {
 
 	// we'll be chaining many shaders together so use internal projection
 	env.useInternalProj = true
@@ -239,12 +241,12 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool,
 			// leaves pixels from a previous shader in the texture.
 			sh.seq.Clear(crtSeqMore)
 			env.srcTextureID = sh.seq.Process(crtSeqMore, func() {
-				sh.effectsShaderFlipped.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, prefs)
+				sh.effectsShaderFlipped.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, rotation, prefs)
 				env.draw()
 			})
 		} else {
 			env.useInternalProj = false
-			sh.effectsShader.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, prefs)
+			sh.effectsShader.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, rotation, prefs)
 		}
 	} else {
 		if moreProcessing {

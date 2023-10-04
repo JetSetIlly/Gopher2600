@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/shaders"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 type crtSeqEffectsShader struct {
@@ -47,6 +48,7 @@ type crtSeqEffectsShader struct {
 	noiseLevel           int32
 	fringingAmount       int32
 	time                 int32
+	rotation             int32
 }
 
 func newCrtSeqEffectsShader(yflip bool) shaderProgram {
@@ -79,13 +81,16 @@ func newCrtSeqEffectsShader(yflip bool) shaderProgram {
 	sh.noiseLevel = gl.GetUniformLocation(sh.handle, gl.Str("NoiseLevel"+"\x00"))
 	sh.fringingAmount = gl.GetUniformLocation(sh.handle, gl.Str("FringingAmount"+"\x00"))
 	sh.time = gl.GetUniformLocation(sh.handle, gl.Str("Time"+"\x00"))
+	sh.rotation = gl.GetUniformLocation(sh.handle, gl.Str("Rotation"+"\x00"))
 
 	return sh
 }
 
 // most shader attributes can be discerened automatically but number of
 // scanlines, clocks and whether to add noise to the image is context sensitive.
-func (sh *crtSeqEffectsShader) setAttributesArgs(env shaderEnvironment, numScanlines int, numClocks int, prefs crtSeqPrefs) {
+func (sh *crtSeqEffectsShader) setAttributesArgs(env shaderEnvironment,
+	numScanlines int, numClocks int, rotation specification.Rotation, prefs crtSeqPrefs) {
+
 	sh.shader.setAttributes(env)
 
 	gl.Uniform2f(sh.screenDim, float32(env.width), float32(env.height))
@@ -110,4 +115,5 @@ func (sh *crtSeqEffectsShader) setAttributesArgs(env shaderEnvironment, numScanl
 	gl.Uniform1f(sh.noiseLevel, float32(prefs.NoiseLevel))
 	gl.Uniform1f(sh.fringingAmount, float32(prefs.FringingAmount))
 	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
+	gl.Uniform1i(sh.rotation, int32(rotation))
 }

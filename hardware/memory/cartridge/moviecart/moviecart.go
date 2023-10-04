@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -198,6 +199,9 @@ type state struct {
 
 	// the stream has failed because bad data has been encountered
 	streamFail bool
+
+	// the most recent rotation instruction. can only ever changes for version 2 streams
+	rotation byte
 }
 
 // what part of the OSD is currently being display.
@@ -284,6 +288,10 @@ func NewMoviecart(env *environment.Environment, loader cartridgeloader.Loader) (
 
 	// field starts off in the end position
 	cart.state.streamIndex = 1
+
+	// read next field straight away. this has the advantage of triggering the
+	// first screen rotation in time for the attract screen
+	cart.nextField()
 
 	return cart, nil
 }
@@ -887,6 +895,21 @@ func (cart *Moviecart) nextField() {
 	// version number
 	switch cart.state.streamBuffer[cart.state.streamIndex][4] & 0x80 {
 	case 0x80:
+		rotation := cart.state.streamBuffer[cart.state.streamIndex][4] & 0b11
+		if rotation != cart.state.rotation {
+			switch rotation {
+			case 0b00:
+				cart.env.TV.SetRotation(specification.NormalRotation)
+			case 0b01:
+				cart.env.TV.SetRotation(specification.RightRotation)
+			case 0b10:
+				cart.env.TV.SetRotation(specification.FlippedRotation)
+			case 0b11:
+				cart.env.TV.SetRotation(specification.LeftRotation)
+			}
+			cart.state.rotation = rotation
+		}
+
 		cart.state.format[cart.state.streamIndex].vsync = byte(cart.state.streamBuffer[cart.state.streamIndex][9])
 		cart.state.format[cart.state.streamIndex].vblank = byte(cart.state.streamBuffer[cart.state.streamIndex][10])
 		cart.state.format[cart.state.streamIndex].overscan = byte(cart.state.streamBuffer[cart.state.streamIndex][11])

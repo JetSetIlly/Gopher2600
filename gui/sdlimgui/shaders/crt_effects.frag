@@ -36,6 +36,8 @@ uniform float NoiseLevel;
 uniform float FringingAmount;
 uniform float Time;
 
+// rotation values are the values in hardware/television/specification/rotation.go
+uniform int Rotation;
 
 // Gold Noise taken from: https://www.shadertoy.com/view/ltB3zD
 // Coprighted to dcerisano@standard3d.com not sure of the licence
@@ -108,12 +110,31 @@ void main() {
 		uv = mix(curve(uv), uv, m);
 	}
 
-	// bevel (if in use) should bend the same as the screen
+	// shineUV are the coordinates we use when applying the shine effect. we
+	// don't want this to be rotated
+	vec2 shineUV = uv;
+
+	// apply rotation
+	float textureRatio = ScreenDim.x / ScreenDim.y;
+	float rads = 1.5708 * Rotation;
+	uv -= 0.5;
+	/* if (mod(Rotation, 2) == 1) { */
+	/* 	uv.x /= 0.5; */
+	/* } */
+    uv = vec2(
+        cos(rads) * uv.x + sin(rads) * uv.y,
+        cos(rads) * uv.y - sin(rads) * uv.x
+    );
+	uv += 0.5;
+
+	// bevel (if in use) should be curved and rotated the same as the screen texture
 	vec2 uv_bevel = uv;
 
-	// reduce size of main display if bevel is active
+	// reduce size of main texture and shine if bevel is active. note that we don't reduce
+	// the size of the bevel but we do rotate it later
 	if (Bevel == 1) {
 		uv = (uv - 0.5) * 1.1 + 0.5;
+		shineUV = (shineUV - 0.5) * 1.1 + 0.5;
 	}
 
 	// after this point every UV reference is to the curved UV
@@ -211,8 +232,8 @@ void main() {
 
 	// shine affect
 	if (Shine == 1) {
-		vec2 uv_shine = (uv - 0.5) * 1.2 + 0.5;
-		float shine = (1.0-uv_shine.s)*(1.0-uv_shine.t);
+		vec2 shineUV = (shineUV - 0.5) * 1.2 + 0.5;
+		float shine = (1.0-shineUV.s)*(1.0-shineUV.t);
 		Crt_Color = mix(Crt_Color, vec4(1.0), shine*0.05);
 	}
 

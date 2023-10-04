@@ -180,7 +180,7 @@ func (sh *screenshotSequencer) crtProcess(env shaderEnvironment, scalingImage te
 	}
 
 	textureID := sh.crt.process(env, true,
-		sh.img.playScr.visibleScanlines, specification.ClksVisible,
+		sh.img.playScr.visibleScanlines, specification.ClksVisible, sh.img.screen.rotation.Load().(specification.Rotation),
 		sh.img.playScr, prefs)
 
 	// reduce exposure count and return if there is still more to do
@@ -352,7 +352,7 @@ func (sh *screenshotSequencer) compositeFinalise(env shaderEnvironment, composit
 
 	// pass composite image through CRT shaders
 	textureID := sh.crt.process(env, true,
-		sh.img.playScr.visibleScanlines, specification.ClksVisible,
+		sh.img.playScr.visibleScanlines, specification.ClksVisible, sh.img.screen.rotation.Load().(specification.Rotation),
 		sh, newCrtSeqPrefs(sh.img.crtPrefs))
 	gl.BindTexture(gl.TEXTURE_2D, textureID)
 

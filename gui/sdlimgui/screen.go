@@ -19,6 +19,7 @@ import (
 	"image"
 	"image/color"
 	"sync"
+	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
@@ -44,6 +45,10 @@ type screen struct {
 	img *SdlImgui
 
 	crit screenCrit
+
+	// atmoic access of rotation value. it's more convenient to be able to
+	// access this atomically, rather than via the screenCrit type
+	rotation atomic.Value // specification.Rotation
 
 	// list of renderers to call from render. renderers are added with
 	// addTextureRenderer()
@@ -183,6 +188,7 @@ func newScreen(img *SdlImgui) *screen {
 		emuWaitAck: make(chan bool),
 	}
 
+	scr.rotation.Store(specification.NormalRotation)
 	scr.crit.section.Lock()
 
 	scr.crit.overlay = reflection.OverlayLabels[reflection.OverlayNone]
@@ -214,7 +220,19 @@ func newScreen(img *SdlImgui) *screen {
 	return scr
 }
 
-// SetFPSCap implements the television.FPSCap interface
+// SetFPSCap implements the television.PixelRendererRotation interface
+func (scr *screen) SetRotation(rotation specification.Rotation) {
+	scr.rotation.Store(rotation)
+
+	scr.crit.section.Lock()
+	defer scr.crit.section.Unlock()
+
+	// the only other component that needs to be aware of the rotation is the
+	// play screen
+	scr.img.playScr.resize()
+}
+
+// SetFPSCap implements the television.PixelRendererFPSCap interface
 func (scr *screen) SetFPSCap(limit bool) {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()

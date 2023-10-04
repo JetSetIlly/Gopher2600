@@ -22,6 +22,7 @@ import (
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 // note that values from the lazy package will not be updated in the service
@@ -248,12 +249,20 @@ func (win *playScr) render() {
 
 // must be called from with a critical section.
 func (win *playScr) setScaling() {
+	rot := win.scr.rotation.Load().(specification.Rotation)
+
 	sz := win.img.plt.displaySize()
-	screenRegion := imgui.Vec2{sz[0], sz[1]}
+	screenRegion := imgui.Vec2{X: sz[0], Y: sz[1]}
 
 	w := float32(win.scr.crit.cropPixels.Bounds().Size().X)
 	h := float32(win.scr.crit.cropPixels.Bounds().Size().Y)
-	adjW := w * pixelWidth * win.scr.crit.frameInfo.Spec.AspectBias
+
+	adj := win.scr.crit.frameInfo.Spec.AspectBias
+	if rot == specification.NormalRotation || rot == specification.FlippedRotation {
+		adj *= pixelWidth
+	}
+
+	adjW := w * adj
 
 	var scaling float32
 
@@ -285,7 +294,7 @@ func (win *playScr) setScaling() {
 	win.imagePosMax = screenRegion.Minus(win.imagePosMin)
 
 	win.yscaling = scaling
-	win.xscaling = scaling * pixelWidth * win.scr.crit.frameInfo.Spec.AspectBias
+	win.xscaling = scaling * adj
 	win.scaledWidth = w * win.xscaling
 	win.scaledHeight = h * win.yscaling
 

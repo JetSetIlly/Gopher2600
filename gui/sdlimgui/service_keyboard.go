@@ -23,6 +23,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/userinput"
@@ -35,6 +36,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 	}
 
 	ctrl := ev.Keysym.Mod&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL || ev.Keysym.Mod&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL
+	alt := ev.Keysym.Mod&sdl.KMOD_LALT == sdl.KMOD_LALT || ev.Keysym.Mod&sdl.KMOD_RALT == sdl.KMOD_RALT
 	shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
 
 	// enable window searching based on keyboard modifiers
@@ -77,6 +79,23 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 					img.wm.playmodeWindows[winSelectROMID].playmodeSetOpen(false)
 				} else {
 					img.quit()
+				}
+
+			case sdl.SCANCODE_LEFT:
+				if alt {
+					img.screen.SetRotation(specification.LeftRotation)
+				}
+			case sdl.SCANCODE_RIGHT:
+				if alt {
+					img.screen.SetRotation(specification.RightRotation)
+				}
+			case sdl.SCANCODE_UP:
+				if alt {
+					img.screen.SetRotation(specification.NormalRotation)
+				}
+			case sdl.SCANCODE_DOWN:
+				if alt {
+					img.screen.SetRotation(specification.FlippedRotation)
 				}
 
 			default:
