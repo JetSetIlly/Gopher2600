@@ -29,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/moviecart"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/shim"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -188,6 +189,21 @@ func (cart *Cartridge) IsEjected() bool {
 // "Cart Information" document [sizes.txt]. Other sources of information noted
 // as appropriate.
 func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
+	// normalise the value of the requested mapping
+	mapping := strings.ToUpper(cartload.Mapping)
+
+	// special handling for the shim mapping
+	if mapping == "SHIM" {
+		var err error
+		cart.Filename = cartload.Filename
+		cart.ShortName = cartload.ShortName()
+		cart.mapper, err = shim.NewShim()
+		if err != nil {
+			return fmt.Errorf("cartridge: %w", err)
+		}
+		return nil
+	}
+
 	err := cartload.Load()
 	if err != nil {
 		return err
@@ -216,7 +232,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	}()
 
 	// fingerprint cartridgeloader.Loader
-	if cartload.Mapping == "" || cartload.Mapping == "AUTO" {
+	if mapping == "" || mapping == "AUTO" {
 		err := cart.fingerprint(cartload)
 		if err != nil {
 			return fmt.Errorf("cartridge: %w", err)
@@ -260,7 +276,6 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 	forceSuperchip := false
 
-	mapping := strings.ToUpper(cartload.Mapping)
 	switch mapping {
 	case "2K":
 		cart.mapper, err = newAtari2k(cart.env, *cartload.Data)
@@ -341,9 +356,10 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		fallthrough
 	case "CDFJ+":
 		cart.mapper, err = cdf.NewCDF(cart.env, mapping, *cartload.Data)
-
 	case "MVC":
 		cart.mapper, err = moviecart.NewMoviecart(cart.env, cartload)
+	case "SHIM":
+		// shim cartridges have been handled as a special case already
 	}
 
 	if err != nil {

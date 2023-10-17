@@ -15,4 +15,8 @@ require (
 	golang.org/x/sys v0.8.0
 )
 
-require github.com/go-audio/riff v1.0.0 // indirect
+require (
+	github.com/creack/goselect v0.1.2 // indirect
+	github.com/go-audio/riff v1.0.0 // indirect
+	go.bug.st/serial v1.6.1 // indirect
+)

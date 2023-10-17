@@ -116,6 +116,20 @@ type Loader struct {
 // Filenames can contain whitespace, including leading and trailing whitespace,
 // but cannot consists only of whitespace.
 func NewLoader(filename string, mapping string) (Loader, error) {
+	// default to AUTO mapping
+	mapping = strings.TrimSpace(strings.ToUpper(mapping))
+	if mapping == "" {
+		mapping = "AUTO"
+	}
+
+	// fake filename for shim mapping
+	if mapping == "SHIM" {
+		// this is the device we'll be using on the development system. this
+		// should be replaced in some way before using on other systems where
+		// the filename is most likely meaningless
+		filename = "/dev/ttyUSB0"
+	}
+
 	// check filename but don't change it. we don't want to allow the empty
 	// string or a string only consisting of whitespace, but we do want to
 	// allow filenames with leading/trailing spaces
@@ -128,11 +142,6 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 	filename, err = fs.Abs(filename)
 	if err != nil {
 		return Loader{}, fmt.Errorf("catridgeloader: %w", err)
-	}
-
-	mapping = strings.TrimSpace(strings.ToUpper(mapping))
-	if mapping == "" {
-		mapping = "AUTO"
 	}
 
 	cl := Loader{
