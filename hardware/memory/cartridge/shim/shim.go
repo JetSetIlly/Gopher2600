@@ -25,28 +25,33 @@ import (
 	"go.bug.st/serial"
 )
 
+type updateRequest struct {
+	addr       uint16
+	data       uint8
+	updateData bool
+}
+
 // Shim implements the mapper.CartMapper interface
 type Shim struct {
-	port serial.Port
-	buf  []byte
+	upd  chan updateRequest
+	ret  chan uint8
+	quit chan bool
 }
 
 func NewShim() (*Shim, error) {
-	var cart Shim
-	var err error
-
-	mode := &serial.Mode{
-		BaudRate: 57600,
-		DataBits: 8,
-		Parity:   serial.NoParity,
-		StopBits: serial.OneStopBit,
+	cart := Shim{
+		upd:  make(chan updateRequest, 32),
+		ret:  make(chan uint8, 1),
+		quit: make(chan bool, 1),
 	}
 
-	cart.port, err = serial.Open("/dev/ttyUSB0", mode)
+	setupError := make(chan error)
+	go cart.updateShim(setupError)
+
+	err := <-setupError
 	if err != nil {
 		return nil, fmt.Errorf("shim: %w", err)
 	}
-	cart.buf = make([]byte, 1)
 
 	return &cart, nil
 }
@@ -76,22 +81,18 @@ func (cart *Shim) Reset() {
 
 // Access implements the mapper.CartMapper interface
 func (cart *Shim) Access(addr uint16, peek bool) (uint8, uint8, error) {
-	addr |= 0x1000
-	b, err := cart.updateShim(addr, 0, false)
-	if err != nil {
-		return 0, 0, fmt.Errorf("shim: access: %w", err)
+	cart.upd <- updateRequest{
+		addr: addr | 0x1000,
 	}
-
-	// return undriven pins
-	return b, mapper.CartDrivenPins, nil
+	return <-cart.ret, mapper.CartDrivenPins, nil
 }
 
 // AccessVolatile implements the mapper.CartMapper interface
 func (cart *Shim) AccessVolatile(addr uint16, data uint8, poke bool) error {
-	addr |= 0x1000
-	_, err := cart.updateShim(addr, data, true)
-	if err != nil {
-		return fmt.Errorf("shim: access volatile: %w", err)
+	cart.upd <- updateRequest{
+		addr:       addr | 0x1000,
+		data:       data,
+		updateData: true,
 	}
 	return nil
 }
@@ -108,9 +109,10 @@ func (cart *Shim) GetBank(_ uint16) mapper.BankInfo {
 
 // AccessPassive implements the mapper.CartMapper interface
 func (cart *Shim) AccessPassive(addr uint16, data uint8) {
-	_, err := cart.updateShim(addr, data, false)
-	if err != nil {
-		logger.Logf("cartridge", "shim: access passive: %s", err)
+	cart.upd <- updateRequest{
+		addr:       addr,
+		data:       data,
+		updateData: true,
 	}
 }
 
@@ -128,79 +130,82 @@ func (cart *Shim) CopyBanks() []mapper.BankContent {
 	return nil
 }
 
-func (cart *Shim) readByte() (uint8, error) {
-	n, err := cart.port.Read(cart.buf)
-	if err != nil {
-		return 0, err
-	}
-	if n == 0 {
-		return 0, errors.New("data unavailable")
-	}
-	return cart.buf[0], nil
-}
-
-func (cart *Shim) writeByte(b uint8) error {
-	n, err := cart.port.Write([]byte{b})
+func (cart *Shim) readBytes(port serial.Port, buf []byte) error {
+	n, err := port.Read(buf)
 	if err != nil {
 		return err
 	}
-	if n != 1 {
+	if n == 0 {
+		return errors.New("data unavailable")
+	}
+	return nil
+}
+
+func (cart *Shim) writeBytes(port serial.Port, buf []uint8) error {
+	n, err := port.Write(buf)
+	if err != nil {
+		return err
+	}
+	if n != len(buf) {
 		return errors.New("unexpected number of bytes written to serial device")
 	}
 	return nil
 }
 
-func (cart *Shim) updateShim(addr uint16, data uint8, updateData bool) (uint8, error) {
-	err := cart.writeByte(byte(addr >> 8))
-	if err != nil {
-		return 0, err
+func (cart *Shim) updateShim(setupError chan error) {
+	mode := &serial.Mode{
+		BaudRate: 115200,
+		DataBits: 8,
+		Parity:   serial.NoParity,
+		StopBits: serial.OneStopBit,
 	}
 
-	err = cart.writeByte(byte(addr))
-	if err != nil {
-		return 0, err
-	}
+	port, err := serial.Open("/dev/ttyUSB0", mode)
+	setupError <- err
 
-	if updateData {
-		err = cart.writeByte(byte(0xff))
-		if err != nil {
-			return 0, err
+	buf := make([]byte, 4)
+	for {
+		select {
+		case <-cart.quit:
+			return
+
+		case req := <-cart.upd:
+			var err error
+			if req.updateData {
+				buf[0] = byte(req.addr >> 8)
+				buf[1] = byte(req.addr)
+				buf[2] = 0xff
+				buf[3] = req.data
+				err = cart.writeBytes(port, buf[:4])
+			} else {
+				buf[0] = byte(req.addr >> 8)
+				buf[1] = byte(req.addr)
+				buf[2] = 0x00
+				err = cart.writeBytes(port, buf[:3])
+			}
+			if err != nil {
+				logger.Logf("shim", err.Error())
+			}
+
+			err = cart.readBytes(port, buf[:3])
+			if err != nil {
+				logger.Logf("shim", err.Error())
+			}
+
+			var checkAddr uint16
+			checkAddr = (uint16(buf[0]) << 8) | uint16(buf[1])
+
+			if checkAddr != req.addr {
+				logger.Logf("shim", "unexpected address returned by cartridge shim: wanted %04x, got %04x", req.addr, checkAddr)
+			}
+
+			if !req.updateData {
+				select {
+				case <-cart.quit:
+					return
+				case cart.ret <- buf[2]:
+				}
+			}
 		}
-
-		err = cart.writeByte(byte(data))
-		if err != nil {
-			return 0, err
-		}
-	} else {
-		err = cart.writeByte(byte(0x00))
-		if err != nil {
-			return 0, err
-		}
 	}
-
-	b, err := cart.readByte()
-	if err != nil {
-		return 0, err
-	}
-
-	var checkAddr uint16
-	checkAddr = uint16(b) << 8
-
-	b, err = cart.readByte()
-	if err != nil {
-		return 0, err
-	}
-
-	checkAddr |= uint16(b)
-
-	if checkAddr != addr {
-		return 0, fmt.Errorf("shim has returned data for an unexpected address: (wanted %04x, got %04x)\n", addr, checkAddr)
-	}
-
-	b, err = cart.readByte()
-	if err != nil {
-		return 0, err
-	}
-
-	return b, nil
 }
