@@ -25,6 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -201,18 +202,15 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 // - the instruction being disassembled was retrieved from a non-Cartridge address
 // - the instruction is from an unknown bank
 //
-// It should not be called if execution.Result is not finalised. This will only
-// lead to confusing disassemblies.
-//
 // ExecutedEntry will update the disassembly corresponding to the result. If
 // there is no existing entry, a new entry is added and a messsage is logged
 // saying that there has been a "late decoding" - this suggests a flaw in the
 // decoding process.
+//
+// checkNextAddr should be false if the result does no represent a completed
+// instruction. in other words, if the instruction has only partially completed
 func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Result, checkNextAddr bool, nextAddr uint16) *Entry {
-	// format if this is not the final cycle of the instruction
-	if !result.Final {
-		return dsm.FormatResult(bank, result, EntryLevelExecuted)
-	}
+	e := dsm.FormatResult(bank, result, EntryLevelExecuted)
 
 	// if co-processor is executing then whatever has been executed by the 6507
 	// will not relate to the permanent disassembly. format the result and
@@ -222,14 +220,14 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	// co-processor/mapper being used we can just return a predefined NOP
 	// disassembly)
 	if bank.ExecutingCoprocessor {
-		return dsm.FormatResult(bank, result, EntryLevelExecuted)
+		return e
 	}
 
 	// if executed entry is in non-cartridge space then we just format the
 	// result and return it. there's nothing else we can really do - there's no
 	// point caching it anywhere
 	if bank.NonCart {
-		return dsm.FormatResult(bank, result, EntryLevelExecuted)
+		return e
 	}
 
 	// similarly, if bank number is outside the banks we've already decoded
@@ -239,7 +237,7 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	// check. there's no comment to say why this condition was added so leave
 	// it for now
 	if bank.Number >= len(dsm.disasmEntries.Entries) {
-		return dsm.FormatResult(bank, result, EntryLevelExecuted)
+		return e
 	}
 
 	// updating an entry can happen at the same time as iteration which is
@@ -248,38 +246,14 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
-	// get disassembly entry at address
+	// add/update entry to disassembly
 	idx := result.Address & memorymap.CartridgeBits
-	e := dsm.disasmEntries.Entries[bank.Number][idx]
-
-	// opcode is reliable update disasm entry in the normal way
-	if e == nil {
-		// we're not decoded this bank/address before
-		//
-		// ideally this wouldn't ever happen but the decode procedure might
-		// have missed it because:
-		//
-		// (a) there's a bug/flaw in the decode procedure
-		// (b) the program has taken an unpredictable path
-		// (c) the cartridge data wasn't available at the time of disassembly
-		//		- which can happen with ACE roms and other modern cartridge types
-		e = dsm.FormatResult(bank, result, EntryLevelExecuted)
-		dsm.disasmEntries.Entries[bank.Number][idx] = e
-	} else {
-		// check for opcode reliability. if it's different then return the actual
-		// result and not the one in the entries list.
-		//
-		// this can happen when a ROM with a coprocessor has *just* finished and
-		// therefore bank.ExecutingCoProcessor is false.
-		//
-		// we just accept these are return the formatted result of the actual
-		// instruction. we don't update the disassembly
-		if e.Result.Defn.OpCode != result.Defn.OpCode {
-			return dsm.FormatResult(bank, result, EntryLevelExecuted)
-		}
-
-		// we have seen this entry before. update entry to reflect results
+	o := dsm.disasmEntries.Entries[bank.Number][idx]
+	if o != nil && o.Result.Final {
 		e.updateExecutionEntry(result)
+		return e
+	} else {
+		dsm.disasmEntries.Entries[bank.Number][idx] = e
 	}
 
 	// bless next entry in case it was missed by the original decoding. there's
@@ -287,8 +261,13 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	// current bank, so we have to call the GetBank() function.
 	if checkNextAddr {
 		bank = dsm.vcs.Mem.Cart.GetBank(nextAddr)
-		ne := dsm.disasmEntries.Entries[bank.Number][nextAddr&memorymap.CartridgeBits]
-		if ne != nil && ne.Level < EntryLevelBlessed {
+		idx := nextAddr & memorymap.CartridgeBits
+		ne := dsm.disasmEntries.Entries[bank.Number][idx]
+		if ne == nil {
+			dsm.disasmEntries.Entries[bank.Number][idx] = dsm.FormatResult(bank, execution.Result{
+				Address: nextAddr,
+			}, EntryLevelBlessed)
+		} else if ne.Level < EntryLevelBlessed {
 			ne.Level = EntryLevelBlessed
 		}
 	}
@@ -302,13 +281,6 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 // If EntryLevel is EntryLevelExecuted then the disassembly will be updated but
 // only if result.Final is true.
 func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Result, level EntryLevel) *Entry {
-	// protect against empty definitions. we shouldn't hit this condition from
-	// the disassembly package itself, but it is possible to get it from ad-hoc
-	// formatting from GUI interfaces (see CPU window in sdlimgui)
-	if result.Defn == nil {
-		return &Entry{dsm: dsm}
-	}
-
 	e := &Entry{
 		dsm:    dsm,
 		Result: result,
@@ -328,6 +300,15 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 
 	// address of instruction
 	e.Address = fmt.Sprintf("$%04x", result.Address)
+
+	// protect against empty definitions. we shouldn't hit this condition from
+	// the disassembly package itself, but it is possible to get it from ad-hoc
+	// formatting from GUI interfaces (see CPU window in sdlimgui)
+	if result.Defn == nil {
+		e.Result.Defn = &instructions.Definition{}
+		e.Operator = "???"
+		return e
+	}
 
 	// operator of instruction
 	e.Operator = result.Defn.Operator.String()

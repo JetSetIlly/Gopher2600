@@ -58,7 +58,7 @@ const (
 	CoProcBug              = '\uf188'
 	ExecutionNotes         = '\uf02b'
 	CPUBug                 = '\uf188'
-	CyclingInstruction     = '\uf54b'
+	CyclingInstruction     = '\uf206'
 	NonCartExecution       = '\uf54c'
 	CoProcExecution        = '\uf135'
 	DisasmGotoCurrent      = '\uf530'

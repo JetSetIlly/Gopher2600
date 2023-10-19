@@ -733,6 +733,7 @@ func (win *winDisasm) drawEntry(currBank mapper.BankInfo, e *disassembly.Entry, 
 	if win.usingColor {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
 	}
+	imgui.Text(e.Result.Defn.Cycles.Formatted)
 
 	// test to see if cycling instructions icon should be displayed
 	//
@@ -741,19 +742,13 @@ func (win *winDisasm) drawEntry(currBank mapper.BankInfo, e *disassembly.Entry, 
 	// 3) the coprocessor is not being executed
 	// 4) the entry to be displayed is the same as the one in the CPU bank
 	//		and address
-	cyclingIcon := false
 	if !win.img.cache.VCS.CPU.LastResult.Final && !win.img.cache.VCS.CPU.HasReset() && !currBank.ExecutingCoprocessor {
 		exeAddress := win.img.cache.VCS.CPU.LastResult.Address & memorymap.CartridgeBits
 		entryAddress := e.Result.Address & memorymap.CartridgeBits
 		if exeAddress == entryAddress && currBank.Number == bank {
+			imgui.SameLineV(0, 3)
 			imgui.Text(string(fonts.CyclingInstruction))
-			cyclingIcon = true
 		}
-	}
-
-	// display cycles count if cycyling instruction has not been displayed
-	if !cyclingIcon {
-		imgui.Text(e.Result.Defn.Cycles.Formatted)
 	}
 
 	// notes column
