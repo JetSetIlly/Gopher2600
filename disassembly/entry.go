@@ -40,10 +40,10 @@ type EntryLevel int
 // Blessed instructions are deemed to be more accurate because they have been
 // reached according to the flow of the instructions from the start address.
 //
-// For normal debugging operations there is no need to use EntryLevelUnused
-// outside of the disassembly package. It used for the unusual case where a
-// bank is not able to be referenced from the Entry address. See M-Network for
-// an example of this, where Bank 7 cannot be mapped to the lower segment.
+// For normal debugging operations there is no need to use EntryLevelUnmappable
+// outside of the disassembly package. It used for the unusual case where a bank
+// is not able to be referenced from the Entry address. See M-Network for an
+// example of this, where Bank 7 cannot be mapped to the lower segment.
 const (
 	EntryLevelUnmappable EntryLevel = iota
 	EntryLevelDecoded
@@ -246,6 +246,10 @@ type Operand struct {
 // String returns the operand as a symbol (if a symbol is available) if
 // a symbol is not available then the the bool return value will be false.
 func (op Operand) String() string {
+	if op.result.Defn == nil {
+		return op.nonSymbolic
+	}
+
 	if op.dsm == nil || !op.dsm.Prefs.Symbols.Get().(bool) {
 		return op.nonSymbolic
 	}

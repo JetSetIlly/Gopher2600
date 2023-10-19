@@ -91,7 +91,7 @@ func (win *winDisasm) init() {
 	win.widthAddr = imgui.CalcTextSize("$FFFF ", true, 0).X
 	win.widthOperator = imgui.CalcTextSize("AND ", true, 0).X
 	win.widthCycles = imgui.CalcTextSize("2/3 ", true, 0).X
-	win.widthNotes = imgui.CalcTextSize(string(fonts.CPUBug), true, 0).X
+	win.widthNotes = imgui.CalcTextSize(fmt.Sprintf("%c ", fonts.CPUBug), true, 0).X
 	win.widthSum = win.widthBreak + win.widthAddr + win.widthOperator + win.widthCycles + win.widthNotes
 	win.widthGoto = imgui.CalcTextSize(string(fonts.DisasmGotoCurrent), true, 0).X
 }
@@ -707,10 +707,18 @@ func (win *winDisasm) drawEntry(currBank mapper.BankInfo, e *disassembly.Entry, 
 		}, true)
 	}
 
+	// use the "no color" color if usingColour is false. without this, the
+	// assembly is just a wall of white text, which is too harsh IMO
+	if !win.usingColor {
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNoColour)
+		defer imgui.PopStyleColor()
+	}
+
 	// address column
 	imgui.TableNextColumn()
 	if win.usingColor {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
+		defer imgui.PopStyleColor()
 	}
 	imgui.Text(e.Address)
 
@@ -718,6 +726,7 @@ func (win *winDisasm) drawEntry(currBank mapper.BankInfo, e *disassembly.Entry, 
 	imgui.TableNextColumn()
 	if win.usingColor {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
+		defer imgui.PopStyleColor()
 	}
 	imgui.Text(e.Operator)
 
@@ -725,6 +734,7 @@ func (win *winDisasm) drawEntry(currBank mapper.BankInfo, e *disassembly.Entry, 
 	imgui.TableNextColumn()
 	if win.usingColor {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
+		defer imgui.PopStyleColor()
 	}
 	imgui.Text(e.Operand.String())
 
@@ -732,44 +742,35 @@ func (win *winDisasm) drawEntry(currBank mapper.BankInfo, e *disassembly.Entry, 
 	imgui.TableNextColumn()
 	if win.usingColor {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
+		defer imgui.PopStyleColor()
 	}
+	imgui.Text(e.Result.Defn.Cycles.Formatted)
 
-	// test to see if cycling instructions icon should be displayed
+	// notes column
+	imgui.TableNextColumn()
+
+	// test to see if cycling instructions icon should be displayed in the notes column
 	//
 	// 1) not the final result in the CPU
 	// 2) the CPU has not been reset
 	// 3) the coprocessor is not being executed
 	// 4) the entry to be displayed is the same as the one in the CPU bank
 	//		and address
-	cyclingIcon := false
 	if !win.img.cache.VCS.CPU.LastResult.Final && !win.img.cache.VCS.CPU.HasReset() && !currBank.ExecutingCoprocessor {
 		exeAddress := win.img.cache.VCS.CPU.LastResult.Address & memorymap.CartridgeBits
 		entryAddress := e.Result.Address & memorymap.CartridgeBits
 		if exeAddress == entryAddress && currBank.Number == bank {
 			imgui.Text(string(fonts.CyclingInstruction))
-			cyclingIcon = true
 		}
-	}
-
-	// display cycles count if cycyling instruction has not been displayed
-	if !cyclingIcon {
-		imgui.Text(e.Result.Defn.Cycles.Formatted)
-	}
-
-	// notes column
-	imgui.TableNextColumn()
-	if e.Level == disassembly.EntryLevelExecuted {
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
+	} else if e.Level == disassembly.EntryLevelExecuted {
+		if win.usingColor {
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
+			defer imgui.PopStyleColor()
+		}
 		if e.Result.CPUBug != "" {
 			imgui.Text(string(fonts.CPUBug))
 		} else if e.Result.PageFault {
 			imgui.Text(string(fonts.PageFault))
 		}
-		imgui.PopStyleColor()
-	}
-
-	// undo color if necessary
-	if win.usingColor {
-		imgui.PopStyleColorV(4)
 	}
 }

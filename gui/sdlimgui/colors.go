@@ -86,6 +86,7 @@ type imguiColors struct {
 	DisasmOperand  imgui.Vec4
 	DisasmCycles   imgui.Vec4
 	DisasmNotes    imgui.Vec4
+	DisasmNoColour imgui.Vec4
 
 	// disassembly other
 	DisasmStep         imgui.Vec4
@@ -293,6 +294,7 @@ func newColors() *imguiColors {
 		DisasmOperand:  imgui.Vec4{0.8, 0.8, 0.3, 1.0},
 		DisasmCycles:   imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 		DisasmNotes:    imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		DisasmNoColour: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 
 		// disassembly other
 		DisasmStep:         imgui.Vec4{1.0, 1.0, 1.0, 0.1},
