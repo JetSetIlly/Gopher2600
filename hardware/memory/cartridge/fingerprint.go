@@ -343,6 +343,10 @@ func fingerprint256k(data []byte) func(*environment.Environment, []byte) (mapper
 func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 	var err error
 
+	// moviecart fingerprinting is done in cartridge loader. this is to avoid
+	// loading the entire file into memory, which we definitely don't want to do
+	// with moviecart files due to the large size
+
 	if ok := fingerprintElf(*cartload.Data, false); ok {
 		cart.mapper, err = elf.NewElf(cart.env, cart.Filename, false)
 		return err
