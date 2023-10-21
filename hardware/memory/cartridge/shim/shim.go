@@ -172,15 +172,15 @@ func (cart *Shim) updateShim(setupError chan error) {
 		case req := <-cart.upd:
 			var err error
 			if req.updateData {
-				buf[0] = byte(req.addr >> 8)
-				buf[1] = byte(req.addr)
-				buf[2] = 0xff
-				buf[3] = req.data
+				buf[0] = 0xff
+				buf[1] = req.data
+				buf[2] = byte(req.addr >> 8)
+				buf[3] = byte(req.addr)
 				err = cart.writeBytes(port, buf[:4])
 			} else {
-				buf[0] = byte(req.addr >> 8)
-				buf[1] = byte(req.addr)
-				buf[2] = 0x00
+				buf[0] = 0x00
+				buf[1] = byte(req.addr >> 8)
+				buf[2] = byte(req.addr)
 				err = cart.writeBytes(port, buf[:3])
 			}
 			if err != nil {
