@@ -16,6 +16,7 @@
 package cartridgeloader
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"fmt"
 	"io"
@@ -245,6 +246,18 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 		}
 	}
 
+	// if mapping value is still AUTO, make a special check for moviecart data.
+	// we want to do this now so we can initialise the stream
+	if cl.Mapping == "AUTO" {
+		ok, err := fingerprintMovieCart(filename)
+		if err != nil {
+			return Loader{}, fmt.Errorf("catridgeloader: %w", err)
+		}
+		if ok {
+			cl.Mapping = "MVC"
+		}
+	}
+
 	// create stream pointer only for streaming sources. these file formats are
 	// likely to be very large by comparison to regular cartridge files.
 	if cl.Mapping == "MVC" || (cl.Mapping == "AR" && cl.IsSoundData) {
@@ -254,6 +267,21 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 	cl.Spec = specification.SearchSpec(filename)
 
 	return cl, nil
+}
+
+// special handling for MVC files without the MVC file extension
+func fingerprintMovieCart(filename string) (bool, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return false, fmt.Errorf("cartridgeloader: %w", err)
+	}
+	b := make([]byte, 4)
+	f.Read(b)
+	f.Close()
+	if bytes.Compare(b, []byte{'M', 'V', 'C', 0x00}) == 0 {
+		return true, nil
+	}
+	return false, nil
 }
 
 // NewLoaderFromEmbed initialises a loader with an array of bytes. Suitable for
