@@ -89,10 +89,10 @@ type controlMode int
 
 // list of control modes.
 const (
-	modeVolume     controlMode = 0
-	modeBrightness controlMode = 1
-	modeTime       controlMode = 2
-	modeMax        controlMode = 2
+	modeVolume controlMode = iota
+	modeBrightness
+	modeTime
+	modeMax
 )
 
 // a frame consists of two interlaced fields.
@@ -170,6 +170,9 @@ type state struct {
 
 	// force of color or B&W
 	forceBW bool
+
+	// mask bottom edge of the screen when the OSD is visible
+	blankPartialLines bool
 
 	// transport
 	directionLast transportDirection
@@ -430,16 +433,15 @@ func (cart *Moviecart) updateDirection() {
 	if direction.isUp() && !cart.state.directionLast.isUp() {
 		cart.state.osdDuration = osdDuration
 		if cart.state.controlMode == 0 {
-			cart.state.controlMode = modeMax
+			cart.state.controlMode = modeMax - 1
 		} else {
 			cart.state.controlMode--
 		}
 	} else if direction.isDown() && !cart.state.directionLast.isDown() {
 		cart.state.osdDuration = osdDuration
+		cart.state.controlMode++
 		if cart.state.controlMode == modeMax {
 			cart.state.controlMode = 0
-		} else {
-			cart.state.controlMode++
 		}
 	}
 
@@ -572,6 +574,9 @@ func (cart *Moviecart) updateTransport() {
 }
 
 func (cart *Moviecart) runStateMachine() {
+	// reset blankPartialLines flag
+	cart.state.blankPartialLines = false
+
 	switch cart.state.state {
 	case stateMachineRight:
 		if !cart.state.a7 {
@@ -615,6 +620,14 @@ func (cart *Moviecart) runStateMachine() {
 		}
 
 		if cart.state.lines >= 1 {
+			if cart.state.osdDuration > 0 {
+				switch cart.state.controlMode {
+				case modeTime:
+					cart.state.blankPartialLines = cart.state.lines == 12 && cart.state.oddField
+				default:
+					cart.state.blankPartialLines = cart.state.lines == 22 && cart.state.oddField
+				}
+			}
 			cart.fillAddrLeftLine(true)
 			cart.state.lines--
 			cart.state.state = stateMachineRight
@@ -747,10 +760,8 @@ func (cart *Moviecart) writeGraph(addr uint16) {
 	// check if we need to draw OSD using stats graphics data
 	switch cart.state.osdDisplay {
 	case osdTime:
-		if cart.state.osdIdx < cart.state.streamColor {
-			b = cart.state.streamBuffer[cart.state.streamIndex][cart.state.osdIdx]
-			cart.state.osdIdx++
-		}
+		b = cart.state.streamBuffer[cart.state.streamIndex][cart.state.osdIdx]
+		cart.state.osdIdx++
 	case osdLevels:
 		if cart.state.osdIdx < levelBarsLen {
 			if cart.state.oddField {
@@ -788,6 +799,11 @@ func (cart *Moviecart) writeGraph(addr uint16) {
 		cart.state.streamGraph++
 	}
 
+	// emit black when blankPartialLines flag is true
+	if cart.state.blankPartialLines {
+		b = 0x00
+	}
+
 	cart.write8bit(addr, b)
 }
 
@@ -814,6 +830,11 @@ func (cart *Moviecart) writeColor(addr uint16) {
 		b &= 0x0f
 	}
 
+	// emit black when blankPartialLines flag is true
+	if cart.state.blankPartialLines {
+		b = 0x00
+	}
+
 	cart.write8bit(addr, b)
 }
 
@@ -835,6 +856,11 @@ func (cart *Moviecart) writeBackground(addr uint16, readCol bool) {
 	// best effort conversion of color to B&W
 	if cart.state.forceBW {
 		b &= 0x0f
+	}
+
+	// emit black when blankPartialLines flag is true
+	if cart.state.blankPartialLines {
+		b = 0x00
 	}
 
 	cart.write8bit(addr, b)
@@ -966,11 +992,12 @@ func (cart *Moviecart) nextField() {
 	// how it is done in the reference implementation by Rob Bairos, which
 	// calls blankPartialLines() during the stateMachineLeft phase
 	if cart.state.oddField {
+		// mask bottom line
 		for i := 0; i < 5; i++ {
 			cart.state.streamBuffer[1][cart.state.streamBackground-i-1] = 0
 		}
-		cart.state.streamBuffer[1][cart.state.streamTimecode-1] = 0
 	} else {
+		// mask top line
 		for i := 0; i < 5; i++ {
 			cart.state.streamBuffer[0][cart.state.streamColor+i] = 0
 		}
