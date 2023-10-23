@@ -182,7 +182,7 @@ func (cart *m3e) Patch(offset int, data uint8) error {
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
-func (cart *m3e) AccessPassive(addr uint16, data uint8) {
+func (cart *m3e) AccessPassive(addr uint16, data uint8) error {
 	// mapper 3e is a derivative of tigervision and so uses the same
 	// AccessPassive() mechanism. see the tigervision commentary for details
 
@@ -196,6 +196,8 @@ func (cart *m3e) AccessPassive(addr uint16, data uint8) {
 		cart.state.segment[0] = int(ramBank)
 		cart.state.segmentIsRAM[0] = true
 	}
+
+	return nil
 }
 
 // Step implements the mapper.CartMapper interface.

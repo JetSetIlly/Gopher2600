@@ -349,8 +349,9 @@ func (cart *Moviecart) GetBank(addr uint16) mapper.BankInfo {
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
-func (cart *Moviecart) AccessPassive(addr uint16, data uint8) {
+func (cart *Moviecart) AccessPassive(addr uint16, data uint8) error {
 	cart.processAddress(addr)
+	return nil
 }
 
 // Step implements the mapper.CartMapper interface.

@@ -78,7 +78,8 @@ func (cart *ejected) Patch(_ int, _ uint8) error {
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
-func (cart *ejected) AccessPassive(_ uint16, _ uint8) {
+func (cart *ejected) AccessPassive(_ uint16, _ uint8) error {
+	return nil
 }
 
 // Step implements the mapper.CartMapper interface.

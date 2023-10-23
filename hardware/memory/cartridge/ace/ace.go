@@ -168,7 +168,7 @@ func (cart *Ace) runARM() bool {
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
-func (cart *Ace) AccessPassive(addr uint16, data uint8) {
+func (cart *Ace) AccessPassive(addr uint16, data uint8) error {
 	// if memory access is not a cartridge address (ie. a TIA or RIOT address)
 	// then the ARM is running in parallel (ie. no synchronisation)
 	cart.mem.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)
@@ -182,7 +182,7 @@ func (cart *Ace) AccessPassive(addr uint16, data uint8) {
 	cart.mem.gpio[DATA_IDR-cart.mem.gpioOrigin] = data
 	cart.runARM()
 	if cart.mem.isDataModeOut() {
-		return
+		return nil
 	}
 
 	// set address for ARM program
@@ -196,6 +196,8 @@ func (cart *Ace) AccessPassive(addr uint16, data uint8) {
 			break // for loop
 		}
 	}
+
+	return nil
 }
 
 // Step implements the mapper.CartMapper interface.

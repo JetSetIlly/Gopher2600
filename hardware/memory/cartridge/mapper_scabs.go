@@ -109,7 +109,7 @@ func (cart *scabs) Patch(_ int, _ uint8) error {
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
-func (cart *scabs) AccessPassive(addr uint16, data uint8) {
+func (cart *scabs) AccessPassive(addr uint16, data uint8) error {
 	// "[...] it will be noted that JSR instruction is always followed by an
 	// address 01FE on the address bus. Once cycle thereafter the most
 	// significant 8bits of the new memory location appears on the data bus.
@@ -135,6 +135,8 @@ func (cart *scabs) AccessPassive(addr uint16, data uint8) {
 			cart.state.bankSwitch = 2
 		}
 	}
+
+	return nil
 }
 
 // Step implements the mapper.CartMapper interface.

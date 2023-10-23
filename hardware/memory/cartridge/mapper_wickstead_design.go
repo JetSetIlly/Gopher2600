@@ -256,13 +256,15 @@ func (cart *wicksteadDesign) segmentPattern(pattern int) [4]int {
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
-func (cart *wicksteadDesign) AccessPassive(addr uint16, data uint8) {
+func (cart *wicksteadDesign) AccessPassive(addr uint16, data uint8) error {
 	// switch bank pattern
 	if addr&0xfff0 == 0x0030 {
 		pattern := int(addr & 0x0007)
 		cart.state.pending = cart.segmentPattern(pattern)
 		cart.state.pendingCt = 4
 	}
+
+	return nil
 }
 
 // Step implements the mapper.CartMapper interface.

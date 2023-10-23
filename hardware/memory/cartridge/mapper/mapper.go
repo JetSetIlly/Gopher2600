@@ -76,7 +76,7 @@ type CartMapper interface {
 	//
 	// see the commentary for the AccessPassive() function in the Cartridge type
 	// for an explanation for why this is needed
-	AccessPassive(addr uint16, data uint8)
+	AccessPassive(addr uint16, data uint8) error
 
 	// some cartridge mappings have independent clocks that tick and change
 	// internal cartridge state. the step() function is called every cpu cycle

@@ -245,8 +245,8 @@ func (cart *PlusROM) Patch(offset int, data uint8) error {
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
-func (cart *PlusROM) AccessPassive(addr uint16, data uint8) {
-	cart.state.child.AccessPassive(addr, data)
+func (cart *PlusROM) AccessPassive(addr uint16, data uint8) error {
+	return cart.state.child.AccessPassive(addr, data)
 }
 
 // Step implements the mapper.CartMapper interface.

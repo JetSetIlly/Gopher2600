@@ -321,7 +321,8 @@ func (cart *mnetwork) Patch(offset int, data uint8) error {
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
-func (cart *mnetwork) AccessPassive(_ uint16, _ uint8) {
+func (cart *mnetwork) AccessPassive(_ uint16, _ uint8) error {
+	return nil
 }
 
 // Step implements the mapper.CartMapper interface.

@@ -161,7 +161,7 @@ func (cart *tigervision) Patch(offset int, data uint8) error {
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
-func (cart *tigervision) AccessPassive(addr uint16, data uint8) {
+func (cart *tigervision) AccessPassive(addr uint16, data uint8) error {
 	// tigervision is seemingly unique in that it bank switches when an address
 	// outside of cartridge space is written to. for this to work, we need the
 	// listen() function.
@@ -200,6 +200,8 @@ func (cart *tigervision) AccessPassive(addr uint16, data uint8) {
 	// this bank switching method can cause problems when the CPU wants to
 	// write to TIA space for real and not cause a bankswitch. for this reason,
 	// tigervision cartridges use mirror addresses to write to the TIA.
+
+	return nil
 }
 
 // Step implements the mapper.CartMapper interface.
