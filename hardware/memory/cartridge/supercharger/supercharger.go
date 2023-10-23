@@ -289,8 +289,9 @@ func (cart *Supercharger) Patch(_ int, _ uint8) error {
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
-func (cart *Supercharger) AccessPassive(addr uint16, _ uint8) {
+func (cart *Supercharger) AccessPassive(addr uint16, _ uint8) error {
 	cart.state.registers.transitionCount(addr)
+	return nil
 }
 
 // Step implements the mapper.CartMapper interface.

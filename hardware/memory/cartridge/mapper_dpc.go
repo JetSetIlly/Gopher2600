@@ -314,7 +314,8 @@ func (cart *dpc) Patch(offset int, data uint8) error {
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
-func (cart *dpc) AccessPassive(_ uint16, _ uint8) {
+func (cart *dpc) AccessPassive(_ uint16, _ uint8) error {
+	return nil
 }
 
 // Step implements the mapper.CartMapper interface.

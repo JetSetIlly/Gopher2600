@@ -108,12 +108,13 @@ func (cart *Shim) GetBank(_ uint16) mapper.BankInfo {
 }
 
 // AccessPassive implements the mapper.CartMapper interface
-func (cart *Shim) AccessPassive(addr uint16, data uint8) {
+func (cart *Shim) AccessPassive(addr uint16, data uint8) error {
 	cart.upd <- updateRequest{
 		addr:       addr,
 		data:       data,
 		updateData: true,
 	}
+	return nil
 }
 
 // Step implements the mapper.CartMapper interface

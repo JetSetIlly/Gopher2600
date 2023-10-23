@@ -253,7 +253,10 @@ func (mem *Memory) Write(address uint16, data uint8) error {
 	// service changes to address bus
 	if addressBus != mem.AddressBus {
 		mem.AddressBus = addressBus
-		mem.Cart.AccessPassive(mem.AddressBus, mem.DataBus)
+		err := mem.Cart.AccessPassive(mem.AddressBus, mem.DataBus)
+		if err != nil {
+			return err
+		}
 	}
 
 	// update debugging information

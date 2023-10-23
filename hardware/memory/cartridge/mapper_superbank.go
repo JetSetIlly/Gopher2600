@@ -134,10 +134,10 @@ func (cart *superbank) Patch(offset int, data uint8) error {
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
-func (cart *superbank) AccessPassive(addr uint16, data uint8) {
+func (cart *superbank) AccessPassive(addr uint16, data uint8) error {
 	// return with no side effect if address is not a TIA mirror
 	if addr&0x1800 != 0x0800 {
-		return
+		return nil
 	}
 
 	// switch banks if address is in range of the number of banks
@@ -147,6 +147,8 @@ func (cart *superbank) AccessPassive(addr uint16, data uint8) {
 	if bank < len(cart.banks) {
 		cart.state.bank = bank
 	}
+
+	return nil
 }
 
 // Step implements the mapper.CartMapper interface.

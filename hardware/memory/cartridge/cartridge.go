@@ -407,8 +407,8 @@ func (cart *Cartridge) GetBank(addr uint16) mapper.BankInfo {
 //
 // Similarly, the CBS (FA) mapper will switch banks on cartridge addresses 1ff8
 // to 1ffa (and mirrors) but only if the data bus has the low bit set to one.
-func (cart *Cartridge) AccessPassive(addr uint16, data uint8) {
-	cart.mapper.AccessPassive(addr, data)
+func (cart *Cartridge) AccessPassive(addr uint16, data uint8) error {
+	return cart.mapper.AccessPassive(addr, data)
 }
 
 // Step should be called every CPU cycle. The attached cartridge may or may not
