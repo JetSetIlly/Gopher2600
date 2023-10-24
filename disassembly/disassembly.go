@@ -251,7 +251,6 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	o := dsm.disasmEntries.Entries[bank.Number][idx]
 	if o != nil && o.Result.Final {
 		e.updateExecutionEntry(result)
-		return e
 	} else {
 		dsm.disasmEntries.Entries[bank.Number][idx] = e
 	}
