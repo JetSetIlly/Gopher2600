@@ -89,8 +89,7 @@ vec4 interferenceNoise(vec2 uv)
 // taken directly from https://github.com/mattiasgustavsson/crtview/
 vec2 curve(in vec2 uv)
 {
-	uv = (uv - 0.5) * 2.1;
-	uv *= 1.1;	
+	uv = (uv - 0.5) * 2.31;
 	uv.x *= 1.0 + pow((abs(uv.y) / 5.0), 2.0);
 	uv.y *= 1.0 + pow((abs(uv.x) / 4.0), 2.0);
 	uv  = (uv / 2.0) + 0.5;
@@ -98,52 +97,56 @@ vec2 curve(in vec2 uv)
 	return uv;
 }
 
-const float brightnessCorrection = 0.7;
 
 void main() {
-	vec4 Crt_Color;
+	// working on uv rather than Frag_UV for convenience and in case we need
+	// Frag_UV unaltered later on for some reason
 	vec2 uv = Frag_UV;
 
+	// decrease size of image if bevel is active
+	if (Bevel == 1) {
+		uv = (uv - 0.5) * 1.02 + 0.5;
+	}
+
+	// apply curve. uv coordinates will be curved from here on out
 	if (Curve == 1) {
-		// curve UV coordinates. 
 		float m = (CurveAmount * 0.4) + 0.6; // bring into sensible range
 		uv = mix(curve(uv), uv, m);
 	}
 
-	// shineUV are the coordinates we use when applying the shine effect. we
-	// don't want this to be rotated
+	// capture the uv coordinates before rotation. we use this for the shine
+	// effect, which we don'e want rotated
 	vec2 shineUV = uv;
 
 	// apply rotation
 	float textureRatio = ScreenDim.x / ScreenDim.y;
 	float rads = 1.5708 * Rotation;
 	uv -= 0.5;
-	/* if (mod(Rotation, 2) == 1) { */
-	/* 	uv.x /= 0.5; */
-	/* } */
     uv = vec2(
         cos(rads) * uv.x + sin(rads) * uv.y,
         cos(rads) * uv.y - sin(rads) * uv.x
     );
 	uv += 0.5;
 
-	// bevel (if in use) should be curved and rotated the same as the screen texture
+	// capture the uv cordinates before reducing the size of the image. we use
+	// this for the bevel effect which we don't want to be slightly larger than
+	// the main image
 	vec2 uv_bevel = uv;
 
-	// reduce size of main texture and shine if bevel is active. note that we don't reduce
-	// the size of the bevel but we do rotate it later
+	// reduce size of image (and the shine coordinates) shine if bevel is active
 	if (Bevel == 1) {
-		uv = (uv - 0.5) * 1.1 + 0.5;
-		shineUV = (shineUV - 0.5) * 1.1 + 0.5;
+		uv = (uv - 0.5) * 1.01 + 0.5;
+		shineUV = (shineUV - 0.5) * 1.01 + 0.5;
 	}
 
-	// after this point every UV reference is to the curved UV
-
-	// basic color
-	Crt_Color = Frag_Color * texture(Texture, uv.st);
+	// apply basic color
+	vec4 Crt_Color = Frag_Color * texture(Texture, uv.st);
 
 	// using y axis to determine scaling.
 	float scaling = float(ScreenDim.y) / float(NumScanlines);
+
+	// applying scanlines and/or shadowmask to the image causes it to dim
+	const float brightnessCorrection = 0.7;
 
 	// scanlines - only draw if scaling is large enough
 	if (Scanlines == 1) {
@@ -189,13 +192,14 @@ void main() {
 		}
 
 		// flicker
-		/* float level = 0.004; */
-		/* Crt_Color *= (1.0-level*(sin(50.0*Time+uv.y*2.0)*0.5+0.5)); */
+		float level = 0.025;
+		Crt_Color *= (1.0-level*(sin(50.0*Time+uv.y*2.0)*0.5+0.5));
 	}
 
 	// fringing (chromatic aberration)
-	vec2 ab = vec2(0.0);
 	if (Fringing == 1) {
+		vec2 ab = vec2(0.0);
+
 		if (Curve == 1) {
 			ab.x = abs(uv.x-0.5);
 			ab.y = abs(uv.y-0.5);
@@ -214,21 +218,24 @@ void main() {
 			ab.y = abs(uv.y-0.5);
 			ab *= FringingAmount * 0.015;
 		}
-	}
 
-	// adjust sign depending on which quadrant the pixel is in
-	if (uv.x <= 0.5) {
-		ab.x *= -1;
-	}
-	if (uv.y <= 0.5) {
-		ab.y *= -1;
-	}
+		// adjust sign depending on which quadrant the pixel is in
+		if (uv.x <= 0.5) {
+			ab.x *= -1;
+		}
+		if (uv.y <= 0.5) {
+			ab.y *= -1;
+		}
 
-	// perform the aberration
-	Crt_Color.r += texture(Texture, vec2(uv.x+(1.0*ab.x), uv.y+(1.0*ab.y))).r;
-	Crt_Color.g += texture(Texture, vec2(uv.x+(1.4*ab.x), uv.y+(1.4*ab.y))).g;
-	Crt_Color.b += texture(Texture, vec2(uv.x+(1.8*ab.x), uv.y+(1.8*ab.y))).b;
-	Crt_Color.rgb *= 0.50;
+		// perform the aberration
+		Crt_Color.r += texture(Texture, vec2(uv.x+(1.0*ab.x), uv.y+(1.0*ab.y))).r;
+		Crt_Color.g += texture(Texture, vec2(uv.x+(1.4*ab.x), uv.y+(1.4*ab.y))).g;
+		Crt_Color.b += texture(Texture, vec2(uv.x+(1.8*ab.x), uv.y+(1.8*ab.y))).b;
+		Crt_Color.rgb *= 0.50;
+	} else {
+		// adjust brightness if fringing hasn't been applied
+		Crt_Color.rgb *= 1.50;
+	}
 
 	// shine affect
 	if (Shine == 1) {
@@ -256,15 +263,12 @@ void main() {
 
 	// bevel
 	if (Bevel == 1) {
-		float bevelAmount = 0.0167;
-		if (RoundedCorners == 1) {
-			bevelAmount = RoundedCornersAmount / 1.2;
-		}
-		vec2 bl = smoothstep(vec2(-bevelAmount), vec2(bevelAmount), uv_bevel.st);
-		vec2 tr = smoothstep(vec2(-bevelAmount), vec2(bevelAmount), 1.0-uv_bevel.st);
+		float margin = 0.01;
+		vec2 bl = smoothstep(vec2(-margin), vec2(margin), uv_bevel.st);
+		vec2 tr = smoothstep(vec2(-margin), vec2(margin), 1.0-uv_bevel.st);
 		float pct = bl.x * bl.y * tr.x * tr.y;
 		if (pct < 0.9) {
-			Crt_Color = vec4(0.5, 0.5, 0.5, 1.0) * (1.0-pct);
+			Crt_Color = vec4(0.1, 0.1, 0.11, 1.0) * (1.0-pct);
 		}
 	}
 
