@@ -33,6 +33,7 @@ type Preferences struct {
 	Scanlines      prefs.Bool
 	Interference   prefs.Bool
 	Noise          prefs.Bool
+	Flicker        prefs.Bool
 	Fringing       prefs.Bool
 	Ghosting       prefs.Bool
 	Phosphor       prefs.Bool
@@ -45,6 +46,7 @@ type Preferences struct {
 	ScanlinesFine        prefs.Float
 	InterferenceLevel    prefs.Float
 	NoiseLevel           prefs.Float
+	FlickerLevel         prefs.Float
 	FringingAmount       prefs.Float
 	GhostingAmount       prefs.Float
 	PhosphorLatency      prefs.Float
@@ -75,6 +77,7 @@ const (
 	scanlines            = true
 	interference         = true
 	noise                = true
+	flicker              = false
 	fringing             = true
 	ghosting             = true
 	phosphor             = true
@@ -86,6 +89,7 @@ const (
 	scanlinesFine        = 1.80
 	interferenceLevel    = 0.15
 	noiseLevel           = 0.19
+	flickerLevel         = 0.025
 	fringingAmount       = 0.15
 	ghostingAmount       = 2.9
 	phosphorLatency      = 0.5
@@ -150,6 +154,10 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("crt.flicker", &p.Flicker)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("crt.fringing", &p.Fringing)
 	if err != nil {
 		return nil, err
@@ -191,6 +199,10 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("crt.noiseLevel", &p.NoiseLevel)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.flickerLevel", &p.FlickerLevel)
 	if err != nil {
 		return nil, err
 	}
@@ -258,6 +270,7 @@ func (p *Preferences) SetDefaults() {
 	p.Scanlines.Set(scanlines)
 	p.Interference.Set(interference)
 	p.Noise.Set(noise)
+	p.Flicker.Set(flicker)
 	p.Fringing.Set(fringing)
 	p.Ghosting.Set(ghosting)
 	p.Phosphor.Set(phosphor)
@@ -269,6 +282,7 @@ func (p *Preferences) SetDefaults() {
 	p.ScanlinesFine.Set(scanlinesFine)
 	p.InterferenceLevel.Set(interferenceLevel)
 	p.NoiseLevel.Set(noiseLevel)
+	p.FlickerLevel.Set(flickerLevel)
 	p.FringingAmount.Set(fringingAmount)
 	p.GhostingAmount.Set(ghostingAmount)
 	p.PhosphorLatency.Set(phosphorLatency)

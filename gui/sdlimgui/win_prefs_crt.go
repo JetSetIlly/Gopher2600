@@ -64,6 +64,8 @@ func (win *winPrefs) drawCRT() {
 		imgui.Spacing()
 		win.drawNoise()
 		imgui.Spacing()
+		win.drawFlicker()
+		imgui.Spacing()
 		win.drawFringing()
 		imgui.Spacing()
 		win.drawGhosting()
@@ -248,6 +250,31 @@ func (win *winPrefs) drawNoise() {
 
 	if imgui.SliderFloatV("##noiselevel", &f, 0.0, 1.0, label, 1.0) {
 		win.img.crtPrefs.NoiseLevel.Set(f)
+	}
+}
+
+func (win *winPrefs) drawFlicker() {
+	b := win.img.crtPrefs.Flicker.Get().(bool)
+	if imgui.Checkbox("Flicker##flicker", &b) {
+		win.img.crtPrefs.Flicker.Set(b)
+	}
+
+	f := float32(win.img.crtPrefs.FlickerLevel.Get().(float64))
+
+	var label string
+
+	if f >= 0.06 {
+		label = "very high"
+	} else if f >= 0.04 {
+		label = "high"
+	} else if f >= 0.03 {
+		label = "low"
+	} else {
+		label = "very low"
+	}
+
+	if imgui.SliderFloatV("##flickerlevel", &f, 0.01, 0.06, label, 1.0) {
+		win.img.crtPrefs.FlickerLevel.Set(f)
 	}
 }
 

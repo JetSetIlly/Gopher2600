@@ -37,6 +37,7 @@ type crtSeqEffectsShader struct {
 	scanlines            int32
 	interference         int32
 	noise                int32
+	flicker              int32
 	fringing             int32
 	curveAmount          int32
 	roundedCornersAmount int32
@@ -46,6 +47,7 @@ type crtSeqEffectsShader struct {
 	scanlinesFine        int32
 	interferenceLevel    int32
 	noiseLevel           int32
+	flickerLevel         int32
 	fringingAmount       int32
 	time                 int32
 	rotation             int32
@@ -70,6 +72,7 @@ func newCrtSeqEffectsShader(yflip bool) shaderProgram {
 	sh.scanlines = gl.GetUniformLocation(sh.handle, gl.Str("Scanlines"+"\x00"))
 	sh.interference = gl.GetUniformLocation(sh.handle, gl.Str("Interference"+"\x00"))
 	sh.noise = gl.GetUniformLocation(sh.handle, gl.Str("Noise"+"\x00"))
+	sh.flicker = gl.GetUniformLocation(sh.handle, gl.Str("Flicker"+"\x00"))
 	sh.fringing = gl.GetUniformLocation(sh.handle, gl.Str("Fringing"+"\x00"))
 	sh.curveAmount = gl.GetUniformLocation(sh.handle, gl.Str("CurveAmount"+"\x00"))
 	sh.roundedCornersAmount = gl.GetUniformLocation(sh.handle, gl.Str("RoundedCornersAmount"+"\x00"))
@@ -79,6 +82,7 @@ func newCrtSeqEffectsShader(yflip bool) shaderProgram {
 	sh.scanlinesFine = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesFine"+"\x00"))
 	sh.interferenceLevel = gl.GetUniformLocation(sh.handle, gl.Str("InterferenceLevel"+"\x00"))
 	sh.noiseLevel = gl.GetUniformLocation(sh.handle, gl.Str("NoiseLevel"+"\x00"))
+	sh.flickerLevel = gl.GetUniformLocation(sh.handle, gl.Str("FlickerLevel"+"\x00"))
 	sh.fringingAmount = gl.GetUniformLocation(sh.handle, gl.Str("FringingAmount"+"\x00"))
 	sh.time = gl.GetUniformLocation(sh.handle, gl.Str("Time"+"\x00"))
 	sh.rotation = gl.GetUniformLocation(sh.handle, gl.Str("Rotation"+"\x00"))
@@ -104,6 +108,7 @@ func (sh *crtSeqEffectsShader) setAttributesArgs(env shaderEnvironment,
 	gl.Uniform1i(sh.scanlines, boolToInt32(prefs.Scanlines))
 	gl.Uniform1i(sh.interference, boolToInt32(prefs.Interference))
 	gl.Uniform1i(sh.noise, boolToInt32(prefs.Noise))
+	gl.Uniform1i(sh.flicker, boolToInt32(prefs.Flicker))
 	gl.Uniform1i(sh.fringing, boolToInt32(prefs.Fringing))
 	gl.Uniform1f(sh.curveAmount, float32(prefs.CurveAmount))
 	gl.Uniform1f(sh.roundedCornersAmount, float32(prefs.RoundedCornersAmount))
@@ -113,6 +118,7 @@ func (sh *crtSeqEffectsShader) setAttributesArgs(env shaderEnvironment,
 	gl.Uniform1f(sh.scanlinesFine, float32(prefs.ScanlinesFine))
 	gl.Uniform1f(sh.interferenceLevel, float32(prefs.InterferenceLevel))
 	gl.Uniform1f(sh.noiseLevel, float32(prefs.NoiseLevel))
+	gl.Uniform1f(sh.flickerLevel, float32(prefs.FlickerLevel))
 	gl.Uniform1f(sh.fringingAmount, float32(prefs.FringingAmount))
 	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
 	gl.Uniform1i(sh.rotation, int32(rotation))

@@ -33,6 +33,7 @@ type crtSeqPrefs struct {
 	Scanlines      bool
 	Interference   bool
 	Noise          bool
+	Flicker        bool
 	Fringing       bool
 	Ghosting       bool
 	Phosphor       bool
@@ -45,6 +46,7 @@ type crtSeqPrefs struct {
 	ScanlinesFine        float64
 	InterferenceLevel    float64
 	NoiseLevel           float64
+	FlickerLevel         float64
 	FringingAmount       float64
 	GhostingAmount       float64
 	PhosphorLatency      float64
@@ -65,6 +67,7 @@ func newCrtSeqPrefs(prefs *crt.Preferences) crtSeqPrefs {
 		Scanlines:            prefs.Scanlines.Get().(bool),
 		Interference:         prefs.Interference.Get().(bool),
 		Noise:                prefs.Noise.Get().(bool),
+		Flicker:              prefs.Flicker.Get().(bool),
 		Fringing:             prefs.Fringing.Get().(bool),
 		Ghosting:             prefs.Ghosting.Get().(bool),
 		Phosphor:             prefs.Phosphor.Get().(bool),
@@ -76,6 +79,7 @@ func newCrtSeqPrefs(prefs *crt.Preferences) crtSeqPrefs {
 		ScanlinesFine:        prefs.ScanlinesFine.Get().(float64),
 		InterferenceLevel:    prefs.InterferenceLevel.Get().(float64),
 		NoiseLevel:           prefs.NoiseLevel.Get().(float64),
+		FlickerLevel:         prefs.FlickerLevel.Get().(float64),
 		FringingAmount:       prefs.FringingAmount.Get().(float64),
 		GhostingAmount:       prefs.GhostingAmount.Get().(float64),
 		PhosphorLatency:      prefs.PhosphorLatency.Get().(float64),

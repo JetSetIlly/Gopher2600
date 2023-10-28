@@ -24,6 +24,7 @@ uniform int ShadowMask;
 uniform int Scanlines;
 uniform int Interference;
 uniform int Noise;
+uniform int Flicker;
 uniform int Fringing;
 uniform float CurveAmount;
 uniform float RoundedCornersAmount;
@@ -33,6 +34,7 @@ uniform float ScanlinesIntensity;
 uniform float ScanlinesFine;
 uniform float InterferenceLevel;
 uniform float NoiseLevel;
+uniform float FlickerLevel;
 uniform float FringingAmount;
 uniform float Time;
 
@@ -191,9 +193,11 @@ void main() {
 			Crt_Color.b *= max(1.0-NoiseLevel, n);
 		}
 
-		// flicker
-		float level = 0.025;
-		Crt_Color *= (1.0-level*(sin(50.0*Time+uv.y*2.0)*0.5+0.5));
+	}
+
+	// flicker
+	if (Flicker == 1) {
+		Crt_Color *= (1.0-FlickerLevel*(sin(50.0*Time+uv.y*2.0)*0.5+0.5));
 	}
 
 	// fringing (chromatic aberration)
