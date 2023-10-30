@@ -27,6 +27,9 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+// alternativeControls providates an alternate and IMO a more natural control scheme
+const alternativeControls = false
+
 // default preference values.
 const (
 	titleCycles = 1000000
@@ -248,8 +251,14 @@ func (s *state) initialise() {
 	s.brightness = levelDefault
 	s.fieldAdv = 1
 	s.a10Count = 0
-	s.controlMode = modeMax
 	s.justReset = true
+
+	// starting control mode depends on alternativeControls preference
+	if alternativeControls {
+		s.controlMode = modeTime
+	} else {
+		s.controlMode = modeVolume
+	}
 }
 
 type Moviecart struct {
@@ -431,19 +440,27 @@ func (cart *Moviecart) updateDirection() {
 		return
 	}
 
+	// change control mode with the up/down direction of the stick
+	//
+	// if alternativeControls are active then the change only occurs when the
+	// OSD is display
 	if direction.isUp() && !cart.state.directionLast.isUp() {
-		cart.state.osdDuration = osdDuration
-		if cart.state.controlMode == 0 {
-			cart.state.controlMode = modeMax - 1
-		} else {
-			cart.state.controlMode--
+		if cart.state.osdDuration > 0 || !alternativeControls {
+			if cart.state.controlMode == 0 {
+				cart.state.controlMode = modeMax - 1
+			} else {
+				cart.state.controlMode--
+			}
 		}
+		cart.state.osdDuration = osdDuration
 	} else if direction.isDown() && !cart.state.directionLast.isDown() {
-		cart.state.osdDuration = osdDuration
-		cart.state.controlMode++
-		if cart.state.controlMode == modeMax {
-			cart.state.controlMode = 0
+		if cart.state.osdDuration > 0 || !alternativeControls {
+			cart.state.controlMode++
+			if cart.state.controlMode == modeMax {
+				cart.state.controlMode = 0
+			}
 		}
+		cart.state.osdDuration = osdDuration
 	}
 
 	if direction.isLeft() || direction.isRight() {
@@ -455,10 +472,14 @@ func (cart *Moviecart) updateDirection() {
 			case modeTime:
 				cart.state.osdDuration = osdDuration
 				if cart.state.paused {
-					if direction.isLeft() {
-						cart.state.pauseStep = -1
-					} else if direction.isRight() {
-						cart.state.pauseStep = 1
+					// allow pause to step repeatedly if alternative control
+					// method is activated
+					if alternativeControls {
+						if direction.isLeft() {
+							cart.state.pauseStep = -1
+						} else if direction.isRight() {
+							cart.state.pauseStep = 1
+						}
 					}
 				} else {
 					if direction.isLeft() {
@@ -491,19 +512,25 @@ func (cart *Moviecart) updateDirection() {
 				}
 			}
 		} else if cart.state.paused {
-			if direction.isLeft() {
-				if !cart.state.directionLast.isLeft() {
-					cart.state.osdDuration = osdDuration
-					cart.state.pauseStep = -1
-				} else {
-					cart.state.pauseStep = 0
-				}
-			} else if direction.isRight() {
-				if !cart.state.directionLast.isRight() {
-					cart.state.osdDuration = osdDuration
-					cart.state.pauseStep = 1
-				} else {
-					cart.state.pauseStep = 0
+			// if the left/right direction is not being held and if movie is
+			// paused then move one frame foreward/back only if the control mode
+			// is in time mode
+			switch cart.state.controlMode {
+			case modeTime:
+				if direction.isLeft() {
+					if !cart.state.directionLast.isLeft() {
+						cart.state.osdDuration = osdDuration
+						cart.state.pauseStep = -1
+					} else {
+						cart.state.pauseStep = 0
+					}
+				} else if direction.isRight() {
+					if !cart.state.directionLast.isRight() {
+						cart.state.osdDuration = osdDuration
+						cart.state.pauseStep = 1
+					} else {
+						cart.state.pauseStep = 0
+					}
 				}
 			}
 		}
@@ -568,8 +595,19 @@ func (cart *Moviecart) updateTransport() {
 		}
 
 		// bounds check for stream chunk
-		if cart.state.streamChunk < 0 {
-			cart.state.streamChunk = 0
+		//
+		// the use of -1 here seems strange but clamping negative values to zero
+		// produces artefacts when a movie is rewound to the very beginning of
+		// the stream. the artefacts are: a jitter of the timestamp for a couple
+		// of frames and visual artefacts at the bottom of the movie image
+		//
+		// it would be good to better understand why this happens
+		if cart.state.streamChunk < -1 {
+			cart.state.streamChunk = -1
+		}
+
+		if cart.state.controlMode == modeMax {
+			cart.state.controlMode = modeTime
 		}
 	}
 }
@@ -747,7 +785,7 @@ func (cart *Moviecart) writeAudio(addr uint16) {
 
 func (cart *Moviecart) writeAudioData(addr uint16, data uint8) {
 	// output silence if playback is paused or we have reached the end of the stream
-	if cart.state.paused || cart.state.endOfStream || cart.state.streamChunk == 0 {
+	if cart.state.paused || cart.state.endOfStream || cart.state.streamChunk <= 0 {
 		cart.write8bit(addr, 0)
 	} else {
 		b := volumeLevels[cart.state.volume][data]
