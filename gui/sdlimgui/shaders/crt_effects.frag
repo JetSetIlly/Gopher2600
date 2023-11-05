@@ -28,6 +28,7 @@ uniform int Flicker;
 uniform int Fringing;
 uniform float CurveAmount;
 uniform float RoundedCornersAmount;
+uniform float BevelSize;
 uniform float MaskIntensity;
 uniform float MaskFine;
 uniform float ScanlinesIntensity;
@@ -137,8 +138,9 @@ void main() {
 
 	// reduce size of image (and the shine coordinates) shine if bevel is active
 	if (Bevel == 1) {
-		uv = (uv - 0.5) * 1.01 + 0.5;
-		shineUV = (shineUV - 0.5) * 1.01 + 0.5;
+		float margin = 1.0 + BevelSize;
+		uv = (uv - 0.5) * margin + 0.5;
+		shineUV = (shineUV - 0.5) * margin + 0.5;
 	}
 
 	// apply basic color
@@ -267,11 +269,10 @@ void main() {
 
 	// bevel
 	if (Bevel == 1) {
-		float margin = 0.01;
-		vec2 bl = smoothstep(vec2(-margin), vec2(margin), uv_bevel.st);
-		vec2 tr = smoothstep(vec2(-margin), vec2(margin), 1.0-uv_bevel.st);
+		vec2 bl = smoothstep(vec2(-BevelSize), vec2(BevelSize), uv_bevel.st);
+		vec2 tr = smoothstep(vec2(-BevelSize), vec2(BevelSize), 1.0-uv_bevel.st);
 		float pct = bl.x * bl.y * tr.x * tr.y;
-		if (pct < 0.9) {
+		if (pct < 0.75) {
 			Crt_Color = vec4(0.1, 0.1, 0.11, 1.0) * (1.0-pct);
 		}
 	}

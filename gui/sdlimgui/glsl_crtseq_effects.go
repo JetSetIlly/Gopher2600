@@ -41,6 +41,7 @@ type crtSeqEffectsShader struct {
 	fringing             int32
 	curveAmount          int32
 	roundedCornersAmount int32
+	bevelSize            int32
 	maskIntensity        int32
 	maskFine             int32
 	scanlinesIntensity   int32
@@ -76,6 +77,7 @@ func newCrtSeqEffectsShader(yflip bool) shaderProgram {
 	sh.fringing = gl.GetUniformLocation(sh.handle, gl.Str("Fringing"+"\x00"))
 	sh.curveAmount = gl.GetUniformLocation(sh.handle, gl.Str("CurveAmount"+"\x00"))
 	sh.roundedCornersAmount = gl.GetUniformLocation(sh.handle, gl.Str("RoundedCornersAmount"+"\x00"))
+	sh.bevelSize = gl.GetUniformLocation(sh.handle, gl.Str("BevelSize"+"\x00"))
 	sh.maskIntensity = gl.GetUniformLocation(sh.handle, gl.Str("MaskIntensity"+"\x00"))
 	sh.maskFine = gl.GetUniformLocation(sh.handle, gl.Str("MaskFine"+"\x00"))
 	sh.scanlinesIntensity = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesIntensity"+"\x00"))
@@ -112,6 +114,7 @@ func (sh *crtSeqEffectsShader) setAttributesArgs(env shaderEnvironment,
 	gl.Uniform1i(sh.fringing, boolToInt32(prefs.Fringing))
 	gl.Uniform1f(sh.curveAmount, float32(prefs.CurveAmount))
 	gl.Uniform1f(sh.roundedCornersAmount, float32(prefs.RoundedCornersAmount))
+	gl.Uniform1f(sh.bevelSize, float32(prefs.BevelSize))
 	gl.Uniform1f(sh.maskIntensity, float32(prefs.MaskIntensity))
 	gl.Uniform1f(sh.maskFine, float32(prefs.MaskFine))
 	gl.Uniform1f(sh.scanlinesIntensity, float32(prefs.ScanlinesIntensity))

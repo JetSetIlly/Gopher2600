@@ -40,6 +40,7 @@ type crtSeqPrefs struct {
 
 	CurveAmount          float64
 	RoundedCornersAmount float64
+	BevelSize            float64
 	MaskIntensity        float64
 	MaskFine             float64
 	ScanlinesIntensity   float64
@@ -73,6 +74,7 @@ func newCrtSeqPrefs(prefs *crt.Preferences) crtSeqPrefs {
 		Phosphor:             prefs.Phosphor.Get().(bool),
 		CurveAmount:          prefs.CurveAmount.Get().(float64),
 		RoundedCornersAmount: prefs.RoundedCornersAmount.Get().(float64),
+		BevelSize:            prefs.BevelSize.Get().(float64),
 		MaskIntensity:        prefs.MaskIntensity.Get().(float64),
 		MaskFine:             prefs.MaskFine.Get().(float64),
 		ScanlinesIntensity:   prefs.ScanlinesIntensity.Get().(float64),

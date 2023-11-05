@@ -78,7 +78,11 @@ func (win *winPrefs) drawCRT() {
 		imgui.Spacing()
 		win.drawBlackLevel()
 		imgui.Spacing()
-		win.drawRoundedCornersBevelAndShine()
+		win.drawRoundedCorners()
+		imgui.Spacing()
+		win.drawBevel()
+		imgui.Spacing()
+		win.drawShine()
 		imgui.PopItemWidth()
 
 		imgui.EndTable()
@@ -411,7 +415,7 @@ func (win *winPrefs) drawBlackLevel() {
 	}
 }
 
-func (win *winPrefs) drawRoundedCornersBevelAndShine() {
+func (win *winPrefs) drawRoundedCorners() {
 	b := win.img.crtPrefs.RoundedCorners.Get().(bool)
 	if imgui.Checkbox("Rounded Corners##roundedcorners", &b) {
 		win.img.crtPrefs.RoundedCorners.Set(b)
@@ -434,14 +438,35 @@ func (win *winPrefs) drawRoundedCornersBevelAndShine() {
 	if imgui.SliderFloatV("##roundedcornersamount", &f, 0.02, 0.09, label, 1.0) {
 		win.img.crtPrefs.RoundedCornersAmount.Set(f)
 	}
+}
 
-	b = win.img.crtPrefs.Bevel.Get().(bool)
+func (win *winPrefs) drawBevel() {
+	b := win.img.crtPrefs.Bevel.Get().(bool)
 	if imgui.Checkbox("Bevel##bevel", &b) {
 		win.img.crtPrefs.Bevel.Set(b)
 	}
-	imgui.SameLine()
 
-	b = win.img.crtPrefs.Shine.Get().(bool)
+	f := float32(win.img.crtPrefs.BevelSize.Get().(float64))
+
+	var label string
+
+	if f >= 0.02 {
+		label = "very deep"
+	} else if f >= 0.015 {
+		label = "deep"
+	} else if f >= 0.01 {
+		label = "shallow"
+	} else {
+		label = "very shallow"
+	}
+
+	if imgui.SliderFloatV("##bevelSize", &f, 0.005, 0.025, label, 1.0) {
+		win.img.crtPrefs.BevelSize.Set(f)
+	}
+}
+
+func (win *winPrefs) drawShine() {
+	b := win.img.crtPrefs.Shine.Get().(bool)
 	if imgui.Checkbox("Shine##shine", &b) {
 		win.img.crtPrefs.Shine.Set(b)
 	}

@@ -40,6 +40,7 @@ type Preferences struct {
 
 	CurveAmount          prefs.Float
 	RoundedCornersAmount prefs.Float
+	BevelSize            prefs.Float
 	MaskIntensity        prefs.Float
 	MaskFine             prefs.Float
 	ScanlinesIntensity   prefs.Float
@@ -83,6 +84,7 @@ const (
 	phosphor             = true
 	curveAmount          = 0.5
 	roundedCornersAmount = 0.059
+	bevelSize            = 0.01
 	maskIntensity        = 0.07
 	maskFine             = 2.9
 	scanlinesIntensity   = 0.08
@@ -175,6 +177,10 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("crt.roundedCornersAmount", &p.RoundedCornersAmount)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.bevelSize", &p.BevelSize)
 	if err != nil {
 		return nil, err
 	}
@@ -276,6 +282,7 @@ func (p *Preferences) SetDefaults() {
 	p.Phosphor.Set(phosphor)
 	p.CurveAmount.Set(curveAmount)
 	p.RoundedCornersAmount.Set(roundedCornersAmount)
+	p.BevelSize.Set(bevelSize)
 	p.MaskIntensity.Set(maskIntensity)
 	p.MaskFine.Set(maskFine)
 	p.ScanlinesIntensity.Set(scanlinesIntensity)
