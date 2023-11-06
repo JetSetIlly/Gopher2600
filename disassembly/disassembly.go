@@ -258,7 +258,7 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	// bless next entry in case it was missed by the original decoding. there's
 	// no guarantee that the bank for the next address will be the same as the
 	// current bank, so we have to call the GetBank() function.
-	if checkNextAddr {
+	if checkNextAddr && result.Final {
 		bank = dsm.vcs.Mem.Cart.GetBank(nextAddr)
 		idx := nextAddr & memorymap.CartridgeBits
 		ne := dsm.disasmEntries.Entries[bank.Number][idx]
