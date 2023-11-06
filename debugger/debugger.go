@@ -131,7 +131,8 @@ type Debugger struct {
 	CoProcDev    coproc_dev.Developer
 
 	// the live disassembly entry. updated every CPU step or on halt (which may
-	// be mid instruction)
+	// be mid instruction). it is also updated by the LAST command when the
+	// debugger is in the CLOCK quantum
 	//
 	// we use this so that we can display the instruction as it exists in the
 	// CPU at any given time, which means we can see the partially decoded
@@ -145,8 +146,9 @@ type Debugger struct {
 	// function in the disassembly package
 	liveDisasmEntry *disassembly.Entry
 
-	// the live bank information. updated every CPU step or on halt (which may
-	// be mid instruction)
+	// the live disassembly entry. updated every CPU step or on halt (which may
+	// be mid instruction). it is also updated by the LAST command when the
+	// debugger is in the CLOCK quantum
 	liveBankInfo mapper.BankInfo
 
 	// the television coords of the last CPU instruction

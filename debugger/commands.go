@@ -923,6 +923,15 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		return nil
 
 	case cmdLast:
+		// if debugger is running in clock quantum then the live disasm
+		// information will not have been updated. for the purposes of the last
+		// instruction however, we definitely do want that information to be
+		// current
+		if dbg.running && dbg.quantum.Load() == govern.QuantumClock {
+			dbg.liveBankInfo = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+			dbg.liveDisasmEntry = dbg.Disasm.ExecutedEntry(dbg.liveBankInfo, dbg.vcs.CPU.LastResult, true, dbg.vcs.CPU.PC.Value())
+		}
+
 		if dbg.liveDisasmEntry == nil || dbg.liveDisasmEntry.Result.Defn == nil {
 			dbg.printLine(terminal.StyleFeedback, "no instruction decoded yet")
 			return nil
