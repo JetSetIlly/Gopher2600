@@ -153,7 +153,7 @@ func (win *winRAM) draw() {
 
 	commit := func(idx int, data uint8) {
 		win.img.dbg.PushFunction(func() {
-			win.img.dbg.VCS().Mem.Write(memorymap.OriginRAM+uint16(idx), data)
+			win.img.dbg.VCS().Mem.Poke(memorymap.OriginRAM+uint16(idx), data)
 		})
 	}
 
