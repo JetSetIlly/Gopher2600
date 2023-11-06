@@ -295,8 +295,8 @@ type read8BitPCeffect int
 const (
 	brk read8BitPCeffect = iota
 	newOpcode
-	loNibble
-	hiNibble
+	loByte
+	hiByte
 )
 
 // read8BitPC reads 8 bits from the memory location pointed to by PC
@@ -343,10 +343,10 @@ func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 			return fmt.Errorf("cpu: unimplemented instruction (%#02x) at (%#04x)", v, mc.PC.Address()-1)
 		}
 
-	case loNibble:
+	case loByte:
 		mc.LastResult.InstructionData = uint16(v)
 
-	case hiNibble:
+	case hiByte:
 		mc.LastResult.InstructionData = (uint16(v) << 8) | mc.LastResult.InstructionData
 	}
 
@@ -614,7 +614,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// therefore, we don't set the address and we read the value through the PC
 
 		// +1 cycle
-		err = mc.read8BitPC(loNibble)
+		err = mc.read8BitPC(loByte)
 		if err != nil {
 			return err
 		}
@@ -628,7 +628,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// in the branch() function
 
 		// +1 cycle
-		err = mc.read8BitPC(loNibble)
+		err = mc.read8BitPC(loByte)
 		if err != nil {
 			return err
 		}
@@ -652,7 +652,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		//
 		// while we must trest the value as an address (ie. as uint16) we
 		// actually only read an 8 bit value so we store the value as uint8
-		err = mc.read8BitPC(loNibble)
+		err = mc.read8BitPC(loByte)
 		if err != nil {
 			return err
 		}
@@ -722,7 +722,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case instructions.IndexedIndirect: // x indexing
 		// +1 cycle
-		err = mc.read8BitPC(loNibble)
+		err = mc.read8BitPC(loByte)
 		if err != nil {
 			return err
 		}
@@ -755,7 +755,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case instructions.IndirectIndexed: // y indexing
 		// +1 cycle
-		err = mc.read8BitPC(loNibble)
+		err = mc.read8BitPC(loByte)
 		if err != nil {
 			return err
 		}
@@ -849,7 +849,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case instructions.ZeroPageIndexedX:
 		// +1 cycles
-		err = mc.read8BitPC(loNibble)
+		err = mc.read8BitPC(loByte)
 		if err != nil {
 			return err
 		}
@@ -875,7 +875,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// used exclusively for LDX ZeroPage,y
 
 		// +1 cycles
-		err = mc.read8BitPC(loNibble)
+		err = mc.read8BitPC(loByte)
 		if err != nil {
 			return err
 		}
@@ -1321,7 +1321,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case instructions.Jsr:
 		// +1 cycle
-		err = mc.read8BitPC(loNibble)
+		err = mc.read8BitPC(loByte)
 		if err != nil {
 			return err
 		}
@@ -1329,14 +1329,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// the current value of the PC is now correct, even though we've only read
 		// one byte of the address so far. remember, RTS increments the PC when
 		// read from the stack, meaning that the PC will be correct at that point
-
-		// with that in mind, we're not sure what this extra cycle is for
-		// +1 cycle
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
 
 		// push MSB of PC onto stack, and decrement SP
 		// +1 cycle
@@ -1364,8 +1356,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 
-		// perform jump
-		err = mc.read8BitPC(hiNibble)
+		// +1 cycle
+		err = mc.read8BitPC(hiByte)
 		if err != nil {
 			return err
 		}
@@ -1378,6 +1370,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		address = mc.LastResult.InstructionData
 		if !mc.NoFlowControl {
 			mc.PC.Load(address)
+		}
+
+		// +1 cycle for the loading of the PC. we do this even if NoFlowControl is true
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
+		if err != nil {
+			return err
 		}
 
 	case instructions.Rts:
