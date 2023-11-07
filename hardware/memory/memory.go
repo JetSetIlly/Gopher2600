@@ -163,13 +163,15 @@ func (mem *Memory) Read(address uint16) (uint8, error) {
 	ma, ar := memorymap.MapAddress(addressBus, true)
 	area := mem.GetArea(ar)
 
-	// the cartridge can respond to an address transition
+	// update address bus if it has changed
 	if mem.AddressBus != addressBus {
-		// update address bus
 		mem.AddressBus = addressBus
 
-		// note that we're using the previous data bus value not the new data bus
-		// value
+		// if the address bus has changed then we indicate that to the cartridge
+		//
+		// note that at this point mem.DataBus has not yet been updated as a
+		// result of the read access, so we are effectively calling the function
+		// with the "old" data bus
 		mem.Cart.AccessPassive(mem.AddressBus, mem.DataBus)
 	}
 

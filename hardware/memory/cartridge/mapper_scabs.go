@@ -111,13 +111,39 @@ func (cart *scabs) Patch(_ int, _ uint8) error {
 // AccessPassive implements the mapper.CartMapper interface.
 func (cart *scabs) AccessPassive(addr uint16, data uint8) error {
 	// "[...] it will be noted that JSR instruction is always followed by an
-	// address 01FE on the address bus. Once cycle thereafter the most
+	// address 01FE on the address bus. One cycle thereafter the most
 	// significant 8bits of the new memory location appears on the data bus.
 	// Thus by monitoring the address bus for 01FE and then latching the most
 	// significant bit on the data bus cycle thereafter, memory bank selection
 	// can be implemented"
 	//
 	// Article 30 of European Patent 84300730.3
+
+	// the patent is very clear that the bank switch is performed one CPU cycle
+	// after 0x01fe appears on the data bus. it may seem odd therefore that we
+	// wait for two calls to AccessPassive() before completing the operation.
+	// however, the bankSwitch counter should not be thought of as a count of
+	// CPU cycles (but only as the number of calls to the function). the
+	// difference is caused by the ordering of the calls to AccessPassive()
+	//
+	// for "read" memory accesses the AccessPassive() is called in the moment
+	// between the address bus being set but the data bus not yet being set as a
+	// result of the access. from the point of view of the CPU we could think of
+	// these values as the "current" address bus and the "old" data bus
+	//
+	// the consequence of calling AccessPassive() in this ways means that we
+	// don't receive the critical data information until two calls after 0x01fe
+	// is seen on the address bus. this equates to one CPU cycle but the actual
+	// bank switch does not occur until the beginning of the cycle after the
+	// data bus is first set
+
+	// it is tempting to think that we can perform the bank switch as a result
+	// of the Access() itself. in other words, the Access() function calls a
+	// bankSwitch() function. however, this does not work because the bank can
+	// be switched without the data bus being set as a result of reading the
+	// cartridge. for example, the RTS function will read the data from RAM but
+	// still cause the cartridge to switch. this means that the bank switch can
+	// only occur as a consequence of AccessPassive()
 
 	switch cart.state.bankSwitch {
 	case 2:
