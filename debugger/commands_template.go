@@ -77,6 +77,7 @@ const (
 	// meta.
 	cmdLog      = "LOG"
 	cmdMemUsage = "MEMUSAGE"
+	cmdVersion  = "VERSION"
 )
 
 const cmdHelp = "HELP"
@@ -143,6 +144,7 @@ var commandTemplate = []string{
 	// emulation
 	cmdLog + " (LAST|RECENT|CLEAR)",
 	cmdMemUsage,
+	cmdVersion + " (REVISION)",
 }
 
 // list of commands that should not be executed when recording/playing scripts.

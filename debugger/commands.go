@@ -51,6 +51,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/patch"
+	"github.com/jetsetilly/gopher2600/version"
 )
 
 var debuggerCommands *commandline.Commands
@@ -2050,6 +2051,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 	case cmdLog:
 		option, ok := tokens.Get()
 		if ok {
+			option = strings.ToUpper(option)
 			switch option {
 			case "LAST":
 				s := &strings.Builder{}
@@ -2084,6 +2086,18 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		s.WriteString(fmt.Sprintf("  NumGC = %v", m.NumGC))
 
 		dbg.printLine(terminal.StyleLog, s.String())
+
+	case cmdVersion:
+		dbg.printLine(terminal.StyleLog, version.Version)
+
+		option, ok := tokens.Get()
+		if ok {
+			option = strings.ToUpper(option)
+			switch option {
+			case "REVISION":
+				dbg.printLine(terminal.StyleLog, version.Revision)
+			}
+		}
 	}
 
 	return nil

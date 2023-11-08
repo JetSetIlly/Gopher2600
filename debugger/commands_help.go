@@ -521,4 +521,7 @@ The ONTRACE command can be used to supplement the TRACE output with contextual i
 Note that while "ONSTEP LOG LAST" is a valid construct it may not print what you expect - it will always print the last
 log entry after every step, even if the last log entry is not new. "ONSTEP LOG LAST; LOG CLEAR" is maybe more intuitive
 but with the maybe unwanted side effect of clearing the log.`,
+
+	cmdMemUsage: "Print memory usage information",
+	cmdVersion:  "Print version information for the emulator",
 }

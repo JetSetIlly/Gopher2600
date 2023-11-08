@@ -42,6 +42,7 @@ import (
 	"github.com/jetsetilly/gopher2600/recorder"
 	"github.com/jetsetilly/gopher2600/regression"
 	"github.com/jetsetilly/gopher2600/resources"
+	"github.com/jetsetilly/gopher2600/version"
 )
 
 // communication between the main goroutine and the launch goroutine.
@@ -220,7 +221,7 @@ func launch(sync *mainSync) {
 	md := &modalflag.Modes{Output: os.Stdout}
 	md.NewArgs(os.Args[1:])
 	md.NewMode()
-	md.AddSubModes("RUN", "PLAY", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS")
+	md.AddSubModes("RUN", "PLAY", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS", "VERSION")
 
 	p, err := md.Parse()
 	switch p {
@@ -252,6 +253,9 @@ func launch(sync *mainSync) {
 
 	case "REGRESS":
 		err = regress(md, sync)
+
+	case "VERSION":
+		err = showVersion(md)
 	}
 
 	if err != nil {
@@ -798,6 +802,25 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 		}
 	default:
 		return fmt.Errorf("regression tests can only be added one at a time")
+	}
+
+	return nil
+}
+
+func showVersion(md *modalflag.Modes) error {
+	md.NewMode()
+	revision := md.AddBool("revision", false,
+		"display revision information from version control system (if available)")
+
+	p, err := md.Parse()
+	if err != nil || p != modalflag.ParseContinue {
+		return err
+	}
+
+	fmt.Println(version.Version)
+
+	if *revision {
+		fmt.Println(version.Revision)
 	}
 
 	return nil

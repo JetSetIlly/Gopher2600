@@ -23,6 +23,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/version"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -126,9 +127,9 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		profile_s = " ES"
 	}
 
-	var version sdl.Version
-	sdl.VERSION(&version)
-	logger.Logf("sdl", "version %d.%d.%d", version.Major, version.Minor, version.Patch)
+	var sdlVersion sdl.Version
+	sdl.VERSION(&sdlVersion)
+	logger.Logf("sdl", "version %d.%d.%d", sdlVersion.Major, sdlVersion.Minor, sdlVersion.Patch)
 	logger.Logf("sdl", "using GL version %d.%d%s", major, minor, profile_s)
 
 	plt := &platform{
@@ -145,7 +146,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	// map sdl key codes to imgui codes
 	plt.setKeyMapping()
 
-	plt.window, err = sdl.CreateWindow(windowTitle,
+	plt.window, err = sdl.CreateWindow(fmt.Sprintf("%s (%s)", windowTitle, version.Version),
 		sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
 		int32(float32(plt.mode.W)*0.80), int32(float32(plt.mode.H)*0.80),
 		sdl.WINDOW_OPENGL|sdl.WINDOW_ALLOW_HIGHDPI|sdl.WINDOW_RESIZABLE|sdl.WINDOW_HIDDEN|sdl.WINDOW_FOREIGN)
