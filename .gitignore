@@ -1,4 +1,5 @@
 *.swp
+*/.DS_Store
 Session.vim
 vendor/*
 tags
@@ -6,9 +7,8 @@ test_roms/*
 roms
 .gopher2600/*
 gopher2600
-gopher2600.exe
-gopher2600_statsview
-gopher2600_statsview.exe
+gopher2600_*
+gopher2600_*.exe
 *.dot
 *.ps
 *.pdf
