@@ -22,9 +22,11 @@ clean:
 	@find ./ -type f | grep "\.orig" | xargs -r rm
 
 tidy:
+# goimports is not part of the standard Go distribution so we won't won't
+# require this in any of the other targets
 	goimports -w .
 
-generate: tidy
+generate:
 	@$(goBinary) generate ./...
 
 check_glsl:
