@@ -1336,7 +1336,24 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
+		if err != nil {
+			return err
+		}
+
+		// adjust stack pointer
 		mc.SP.Add(0xff, false)
+
+		// address of the hibyte being pushed to the stack is on the bus for an
+		// additional cycle
+		//
+		// it's not entirely clear what's happening here. it might be to
+		// accomodate the SP adjustment but there is no dead cycle later on when
+		// the SP is adjusted again; and nor is there one in RTS when the return
+		// address is read from the stack
+		//
+		// +1 cycle
 		mc.LastResult.Cycles++
 		err = mc.cycleCallback()
 		if err != nil {
@@ -1349,12 +1366,14 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		mc.SP.Add(0xff, false)
 		mc.LastResult.Cycles++
 		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
+
+		// adjust stack pointer
+		mc.SP.Add(0xff, false)
 
 		// +1 cycle
 		err = mc.read8BitPC(hiByte)
@@ -1372,23 +1391,15 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.PC.Load(address)
 		}
 
-		// +1 cycle for the loading of the PC. we do this even if NoFlowControl is true
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
-
 	case instructions.Rts:
+		// dummy read of address at current SP before the pointer
+		// is advanced for the real 16bit read
+		//
 		// +1 cycle
-		if !mc.NoFlowControl {
-			mc.SP.Add(1, false)
-		}
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
+		_, err = mc.read8Bit(mc.SP.Address(), true)
+
+		// adjust stack pointer
+		mc.SP.Add(1, false)
 
 		// +2 cycles
 		var rtsAddress uint16
@@ -1397,20 +1408,15 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 
+		mc.SP.Add(1, false)
 		if !mc.NoFlowControl {
-			mc.SP.Add(1, false)
-
 			// load and correct PC
 			mc.PC.Load(rtsAddress)
 			mc.PC.Add(1)
 		}
 
 		// +1 cycle
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
+		_, err = mc.read8Bit(mc.PC.Address(), false)
 
 	case instructions.Brk:
 		// push PC onto register (same effect as JSR)
