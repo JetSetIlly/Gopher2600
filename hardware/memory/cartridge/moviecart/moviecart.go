@@ -27,8 +27,11 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// alternativeControls providates an alternate and IMO a more natural control scheme
-const alternativeControls = false
+const (
+	improvementControls              = false
+	improveNeatStartImageAfterRewind = false
+	improveMuteAudioAtStart          = false
+)
 
 // default preference values.
 const (
@@ -153,8 +156,12 @@ type state struct {
 	// total number of address cycles the movie has been playing for
 	totalCycles int
 
-	// how many lines remaining for the current TIA frame
+	// how many lines remaining for the current TIA frame. ranges from
+	// linesThisFrame to zero
 	lines int
+
+	// the number of lines int the TIA frame
+	linesThisFrame int
 
 	// state machine
 	state stateMachineCondition
@@ -254,7 +261,7 @@ func (s *state) initialise() {
 	s.justReset = true
 
 	// starting control mode depends on alternativeControls preference
-	if alternativeControls {
+	if improvementControls {
 		s.controlMode = modeTime
 	} else {
 		s.controlMode = modeVolume
@@ -445,7 +452,7 @@ func (cart *Moviecart) updateDirection() {
 	// if alternativeControls are active then the change only occurs when the
 	// OSD is display
 	if direction.isUp() && !cart.state.directionLast.isUp() {
-		if cart.state.osdDuration > 0 || !alternativeControls {
+		if cart.state.osdDuration > 0 || !improvementControls {
 			if cart.state.controlMode == 0 {
 				cart.state.controlMode = modeMax - 1
 			} else {
@@ -454,7 +461,7 @@ func (cart *Moviecart) updateDirection() {
 		}
 		cart.state.osdDuration = osdDuration
 	} else if direction.isDown() && !cart.state.directionLast.isDown() {
-		if cart.state.osdDuration > 0 || !alternativeControls {
+		if cart.state.osdDuration > 0 || !improvementControls {
 			cart.state.controlMode++
 			if cart.state.controlMode == modeMax {
 				cart.state.controlMode = 0
@@ -474,7 +481,7 @@ func (cart *Moviecart) updateDirection() {
 				if cart.state.paused {
 					// allow pause to step repeatedly if alternative control
 					// method is activated
-					if alternativeControls {
+					if improvementControls {
 						if direction.isLeft() {
 							cart.state.pauseStep = -1
 						} else if direction.isRight() {
@@ -580,7 +587,7 @@ func (cart *Moviecart) updateTransport() {
 	// we're done with a10 count now so reset it
 	cart.state.a10Count = 0
 
-	// move movie stream if playback is not paused.
+	// rewind/fast-forward movie stream unless playback is paused
 	//
 	// frame-by-frame stepping when playback is paused is handled in the
 	// nextField() function
@@ -595,15 +602,14 @@ func (cart *Moviecart) updateTransport() {
 		}
 
 		// bounds check for stream chunk
-		//
-		// the use of -1 here seems strange but clamping negative values to zero
-		// produces artefacts when a movie is rewound to the very beginning of
-		// the stream. the artefacts are: a jitter of the timestamp for a couple
-		// of frames and visual artefacts at the bottom of the movie image
-		//
-		// it would be good to better understand why this happens
-		if cart.state.streamChunk < -1 {
-			cart.state.streamChunk = -1
+		if improveNeatStartImageAfterRewind {
+			if cart.state.streamChunk < 0 {
+				cart.state.streamChunk = cart.state.streamIndex
+			}
+		} else {
+			if cart.state.streamChunk < -1 {
+				cart.state.streamChunk = -1
+			}
 		}
 
 		if cart.state.controlMode == modeMax {
@@ -613,8 +619,15 @@ func (cart *Moviecart) updateTransport() {
 }
 
 func (cart *Moviecart) runStateMachine() {
-	// reset blankPartialLines flag
-	cart.state.blankPartialLines = false
+	// set blankPartialLines flag
+	switch cart.state.lines {
+	case 0:
+		cart.state.blankPartialLines = cart.state.oddField
+	case int(cart.state.format[cart.state.streamIndex].visible - 1):
+		cart.state.blankPartialLines = !cart.state.oddField
+	default:
+		cart.state.blankPartialLines = false
+	}
 
 	switch cart.state.state {
 	case stateMachineRight:
@@ -784,8 +797,23 @@ func (cart *Moviecart) writeAudio(addr uint16) {
 }
 
 func (cart *Moviecart) writeAudioData(addr uint16, data uint8) {
+	// special handling of improveMuteAudioAtStart
+	if improveMuteAudioAtStart && cart.state.fieldAdv < 0 {
+		if improveNeatStartImageAfterRewind {
+			if cart.state.streamChunk <= 1 {
+				cart.write8bit(addr, 0)
+				return
+			}
+		} else {
+			if cart.state.streamChunk < 0 {
+				cart.write8bit(addr, 0)
+				return
+			}
+		}
+	}
+
 	// output silence if playback is paused or we have reached the end of the stream
-	if cart.state.paused || cart.state.endOfStream || cart.state.streamChunk <= 0 {
+	if cart.state.paused || cart.state.endOfStream {
 		cart.write8bit(addr, 0)
 	} else {
 		b := volumeLevels[cart.state.volume][data]
@@ -1025,22 +1053,6 @@ func (cart *Moviecart) nextField() {
 		cart.state.fieldNumber |= int(cart.state.streamBuffer[cart.state.streamIndex][offsetFieldNumber+1]) << 8
 		cart.state.fieldNumber |= int(cart.state.streamBuffer[cart.state.streamIndex][offsetFieldNumber+2])
 		cart.state.oddField = cart.state.fieldNumber&0x01 == 0x01
-	}
-
-	// masking of partial lines at top and bottom of field. this is different to
-	// how it is done in the reference implementation by Rob Bairos, which
-	// calls blankPartialLines() during the stateMachineLeft phase
-	if cart.state.oddField {
-		// mask bottom line
-		for i := 0; i < 5; i++ {
-			cart.state.streamBuffer[1][cart.state.streamBackground-i-1] = 0
-		}
-	} else {
-		// mask top line
-		for i := 0; i < 5; i++ {
-			cart.state.streamBuffer[0][cart.state.streamColor+i] = 0
-		}
-		cart.state.streamBuffer[0][cart.state.streamBackground] = 0
 	}
 
 	if cart.state.oddField {
