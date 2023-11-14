@@ -112,9 +112,9 @@ func (r *Registers) reset(rand *random.Random) {
 
 	for i := range r.MusicFetcher {
 		if rand != nil {
-			r.MusicFetcher[i].Waveform = uint32(rand.NoRewind(0xffffffff))
-			r.MusicFetcher[i].Freq = uint32(rand.NoRewind(0xffffffff))
-			r.MusicFetcher[i].Count = uint32(rand.NoRewind(0xffffffff))
+			r.MusicFetcher[i].Waveform = uint32(rand.NoRewind(0x7fffffff))
+			r.MusicFetcher[i].Freq = uint32(rand.NoRewind(0x7fffffff))
+			r.MusicFetcher[i].Count = uint32(rand.NoRewind(0x7fffffff))
 		} else {
 			r.MusicFetcher[i].Waveform = 0
 			r.MusicFetcher[i].Freq = 0
@@ -123,7 +123,7 @@ func (r *Registers) reset(rand *random.Random) {
 	}
 
 	if rand != nil {
-		r.RNG.Value = uint32(rand.NoRewind(0xffffffff))
+		r.RNG.Value = uint32(rand.NoRewind(0x7fffffff))
 	} else {
 		r.RNG.Value = 0
 	}
