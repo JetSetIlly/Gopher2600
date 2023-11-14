@@ -21,16 +21,19 @@ type Quantum int
 // List of valid QuantumModes.
 const (
 	QuantumInstruction Quantum = iota
+	QuantumCycle
 	QuantumClock
 )
 
-func (mode Quantum) String() string {
-	switch mode {
+func (q Quantum) String() string {
+	switch q {
 	case QuantumInstruction:
 		return "Instruction"
+	case QuantumCycle:
+		return "Cycle"
 	case QuantumClock:
 		return "Clock"
 	default:
-		return "unrecognised quantum mode"
+		return "unrecognised quantum"
 	}
 }

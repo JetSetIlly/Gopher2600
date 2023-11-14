@@ -45,7 +45,7 @@ func (dbg *Debugger) unwindLoop(onRestart func() error) {
 func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 	var ended bool
 
-	callback := func() error {
+	callback := func(_ bool) error {
 		if dbg.unwindLoopRestart != nil {
 			return nil
 		}
@@ -77,7 +77,9 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 			ended = true
 			dbg.catchupEnd()
 
-			if dbg.catchupQuantum == govern.QuantumInstruction {
+			// small optimisation if the catchup context is rewind to frame. we
+			// never want to call the input loop in this case
+			if dbg.catchupContext == catchupRewindToFrame {
 				return nil
 			}
 
@@ -411,7 +413,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 }
 
 func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
-	callback := func() error {
+	callback := func(isCycle bool) error {
 		var err error
 
 		// check for unwind loop
@@ -426,14 +428,18 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 		}
 		dbg.counter.Step(1, dbg.liveBankInfo)
 
-		// process commandOnStep for clock quantum (equivalent for instruction
-		// quantum is the main body of Debugger.step() below)
-		if dbg.Quantum() == govern.QuantumClock && dbg.commandOnStep != nil {
-			// we don't do this if we're in catchup mode
-			if !catchup {
-				err := dbg.processTokensList(dbg.commandOnStep)
-				if err != nil {
-					dbg.printLine(terminal.StyleError, "%s", err)
+		q := dbg.Quantum()
+
+		// process commandOnStep for non-instruction quantums (equivalent for
+		// instruction quantum is the main body of Debugger.step() below)
+		if dbg.commandOnStep != nil {
+			// we don't do this if we're in catchup mode or the "final" result from the CPU
+			if !catchup && !dbg.vcs.CPU.LastResult.Final {
+				if q == govern.QuantumClock || (q == govern.QuantumCycle && isCycle) {
+					err := dbg.processTokensList(dbg.commandOnStep)
+					if err != nil {
+						dbg.printLine(terminal.StyleError, "%s", err)
+					}
 				}
 			}
 		}
@@ -442,7 +448,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 		// returns below
 		dbg.continueEmulation = dbg.halting.check()
 
-		if dbg.Quantum() == govern.QuantumClock || !dbg.continueEmulation {
+		if q == govern.QuantumClock || (q == govern.QuantumCycle && isCycle) || !dbg.continueEmulation {
 			// start another inputLoop() with the clockCycle boolean set to true
 			return dbg.inputLoop(inputter, true)
 		}
@@ -502,11 +508,14 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 
 		// process commandOnStep for instruction quantum (equivalent for clock
 		// quantum is the vcs.Step() callback above)
-		if dbg.Quantum() == govern.QuantumInstruction && dbg.vcs.CPU.RdyFlg {
-			if dbg.commandOnStep != nil {
-				err := dbg.processTokensList(dbg.commandOnStep)
-				if err != nil {
-					dbg.printLine(terminal.StyleError, "%s", err)
+		if dbg.vcs.CPU.RdyFlg {
+			q := dbg.Quantum()
+			if q == govern.QuantumInstruction || (q != govern.QuantumInstruction && dbg.vcs.CPU.LastResult.Final) {
+				if dbg.commandOnStep != nil {
+					err := dbg.processTokensList(dbg.commandOnStep)
+					if err != nil {
+						dbg.printLine(terminal.StyleError, "%s", err)
+					}
 				}
 			}
 		}

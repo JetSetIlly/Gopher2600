@@ -51,7 +51,7 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 				case GrepOperator:
 					s = e.Operator
 				case GrepOperand:
-					s = e.Operand.String()
+					s = e.Operand.Resolve()
 				case GrepAll:
 					s = e.String()
 				}

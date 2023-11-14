@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -77,7 +78,6 @@ type Entry struct {
 	// the entries below are not defined if Level == EntryLevelUnused
 
 	// string representations of information in execution.Result
-	//
 	// entry.GetField() will apply white spacing padding suitable for columnation
 	Label    Label
 	Bytecode string
@@ -88,14 +88,15 @@ type Entry struct {
 
 // some fields in the disassembly entry are updated on every execution.
 func (e *Entry) updateExecutionEntry(result execution.Result) {
+	// update result instance
 	e.Result = result
 
-	// update address in label. we probably don't need to do this but it might
-	// be useful to know what the *actual* address of the instruction. ie.
+	// update result instance in Label. we probably don't need to do this but it
+	// might be useful to know what the *actual* address of the instruction. ie.
 	// which mirror is used by the program at that point in the execution.
-	e.Label.address = e.Result.Address
+	e.Label.result = e.Result
 
-	// update result instance in Operand fields
+	// update result instance in Operand
 	e.Operand.result = e.Result
 
 	// indicate that entry has been executed
@@ -215,17 +216,17 @@ func absoluteBranchDestination(addr uint16, operand uint16) uint16 {
 // returns any address label for the entry. Use GetField() function for
 // a white-space padded label.
 type Label struct {
-	dsm     *Disassembly
-	address uint16
-	bank    int
+	dsm    *Disassembly
+	result execution.Result
+	bank   mapper.BankInfo
 }
 
-// String returns the address label as a symbol (if a symbol is available)
+// Resolve returns the address label as a symbol (if a symbol is available)
 // if a symbol is not available then the the bool return value will be false.
-func (lb Label) String() string {
-	if lb.dsm.Prefs.Symbols.Get().(bool) {
-		ma, _ := memorymap.MapAddress(lb.address, true)
-		if e, ok := lb.dsm.Sym.GetLabel(lb.bank, ma); ok {
+func (l Label) Resolve() string {
+	if l.dsm.Prefs.Symbols.Get().(bool) {
+		ma, _ := memorymap.MapAddress(l.result.Address, true)
+		if e, ok := l.dsm.Sym.GetLabel(l.bank.Number, ma); ok {
 			return e.Symbol
 		}
 	}
@@ -237,67 +238,71 @@ func (lb Label) String() string {
 // returns the operand (with symbols if appropriate). Use GetField function for
 // white-space padded operand string.
 type Operand struct {
-	nonSymbolic string
-	dsm         *Disassembly
-	result      execution.Result
-	bank        int
+	dsm    *Disassembly
+	result execution.Result
+	bank   mapper.BankInfo
+
+	// partial is the operand that will be used as the result from Resolve()
+	// when the execution result is not complete (ie. when not enough bytes have
+	// been read)
+	partial string
 }
 
-// String returns the operand as a symbol (if a symbol is available) if
-// a symbol is not available then the the bool return value will be false.
-func (op Operand) String() string {
+// Resolve returns the operand as a symbol (if a symbol is available) if a symbol
+// is not available then the returned value will be be numeric possibly with
+// placeholders for unknown bytes
+func (op Operand) Resolve() string {
 	if op.result.Defn == nil {
-		return op.nonSymbolic
+		return op.partial
 	}
 
 	if op.dsm == nil || !op.dsm.Prefs.Symbols.Get().(bool) {
-		return op.nonSymbolic
+		return op.partial
 	}
 
-	s := op.nonSymbolic
+	if op.result.ByteCount != op.result.Defn.Bytes {
+		return op.partial
+	}
+
+	res := op.partial
 
 	// use symbol for the operand if available/appropriate. we should only do
-	// this if operand has been decoded
-	if op.result.Defn.AddressingMode == instructions.Immediate {
-		// TODO: immediate symbols
-
-	} else if op.result.ByteCount > 1 {
-		// instruction data is only valid if bytecount is 2 or more
-
-		operand := op.result.InstructionData
+	// this if at least part of an operand has been decoded
+	if op.result.Defn.Bytes > 1 {
+		data := op.result.InstructionData
 
 		switch op.result.Defn.Effect {
 		case instructions.Flow:
 			if op.result.Defn.IsBranch() {
-				operand = absoluteBranchDestination(op.result.Address, operand)
+				data = absoluteBranchDestination(op.result.Address, data)
 
 				// look up mock program counter value in symbol table
-				if e, ok := op.dsm.Sym.GetLabel(op.bank, operand); ok {
-					s = e.Symbol
+				if e, ok := op.dsm.Sym.GetLabel(op.bank.Number, data); ok {
+					res = e.Symbol
 				}
-			} else if e, ok := op.dsm.Sym.GetLabel(op.bank, operand); ok {
-				s = addrModeDecoration(e.Symbol, op.result.Defn.AddressingMode)
+			} else if e, ok := op.dsm.Sym.GetLabel(op.bank.Number, data); ok {
+				res = addrModeDecoration(e.Symbol, op.result.Defn.AddressingMode)
 			}
 
 		case instructions.Subroutine:
-			if e, ok := op.dsm.Sym.GetLabel(op.bank, operand); ok {
-				s = e.Symbol
+			if e, ok := op.dsm.Sym.GetLabel(op.bank.Number, data); ok {
+				res = e.Symbol
 			}
 
 		case instructions.Read:
-			if e, ok := op.dsm.Sym.GetSymbol(operand, true); ok {
-				s = addrModeDecoration(e.Symbol, op.result.Defn.AddressingMode)
+			if e, ok := op.dsm.Sym.GetSymbol(data, true); ok {
+				res = addrModeDecoration(e.Symbol, op.result.Defn.AddressingMode)
 			}
 
 		case instructions.Write:
 			fallthrough
 
 		case instructions.RMW:
-			if e, ok := op.dsm.Sym.GetSymbol(operand, false); ok {
-				s = addrModeDecoration(e.Symbol, op.result.Defn.AddressingMode)
+			if e, ok := op.dsm.Sym.GetSymbol(data, false); ok {
+				res = addrModeDecoration(e.Symbol, op.result.Defn.AddressingMode)
 			}
 		}
 	}
 
-	return s
+	return res
 }

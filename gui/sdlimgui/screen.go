@@ -609,9 +609,9 @@ func (scr *screen) reflectionColor(ref *reflection.ReflectedVideoStep) color.RGB
 			return reflectionColors[reflection.WSYNC]
 		}
 	case reflection.OverlayLabels[reflection.OverlayCollision]:
-		if ref.Collision.LastVideoCycle.IsCXCLR() {
+		if ref.Collision.LastColorClock.IsCXCLR() {
 			return reflectionColors[reflection.CXCLR]
-		} else if !ref.Collision.LastVideoCycle.IsNothing() {
+		} else if !ref.Collision.LastColorClock.IsNothing() {
 			return reflectionColors[reflection.Collision]
 		}
 	case reflection.OverlayLabels[reflection.OverlayHMOVE]:

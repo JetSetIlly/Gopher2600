@@ -63,11 +63,8 @@ type TIA struct {
 	// the VBLANK register also affects the RIOT sub-system
 	riot RIOTports
 
-	// number of video cycles since the last WSYNC. also cycles back to 0 on
-	// RSYNC and when polycounter reaches count 56
-	//
-	// cpu cycles can be attained by dividing videoCycles by 3
-	videoCycles int
+	// number of color clocks since the last CPU cycle boundary
+	ClocksSinceCycle int
 
 	// the last signal sent to the television. many signal attributes are
 	// sustained over many cycles; we use this to store that information
@@ -131,9 +128,8 @@ func (tia *TIA) Label() string {
 
 func (tia *TIA) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s %s %03d %04.01f",
+	s.WriteString(fmt.Sprintf("%s %s",
 		tia.hsync, tia.PClk,
-		tia.videoCycles, float64(tia.videoCycles)/3.0,
 	))
 	return s.String()
 }
@@ -312,9 +308,6 @@ func (tia *TIA) newScanline() {
 	// on
 	tia.Hblank = true
 
-	// reset debugging information
-	tia.videoCycles = 0
-
 	// rather than include the reset signal in the delay, we will
 	// manually reset hsync counter when it reaches a count of 57
 }
@@ -382,19 +375,18 @@ func (tia *TIA) resolveDelayedEvents() {
 // TIA memory has changed then the changes will propogate at the correct time.
 // If the state of TIA memory has not changed then execution will be diverted
 // to QuickStep().
-func (tia *TIA) Step(reg chipbus.ChangedRegister) {
+func (tia *TIA) Step(reg chipbus.ChangedRegister, ct int) {
+	tia.ClocksSinceCycle = ct
+
 	// make alterations to video state and playfield
 	update := tia.Update(reg)
 
 	// if update has happened we can jump to QuickStep() for the remainder of
 	// the Step() process
 	if !update {
-		tia.QuickStep()
+		tia.QuickStep(ct)
 		return
 	}
-
-	// update debugging information
-	tia.videoCycles++
 
 	// tick phase clock
 	tia.PClk++
@@ -636,9 +628,8 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister) {
 
 // QuickStep ticks the TIA forward one colour clock without checking to see if
 // the state of TIA memory has changed.
-func (tia *TIA) QuickStep() {
-	// update debugging information
-	tia.videoCycles++
+func (tia *TIA) QuickStep(ct int) {
+	tia.ClocksSinceCycle = ct
 
 	// tick phase clock
 	tia.PClk++

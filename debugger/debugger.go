@@ -193,17 +193,6 @@ type Debugger struct {
 	// Quantum to use when stepping/running
 	quantum atomic.Value // govern.Quantum
 
-	// catchupQuantum differs from the quantum field in that it only applies in
-	// the catchupLoop (part of the rewind system). it is set just before the
-	// rewind process is started.
-	//
-	// the value it is set to depends on the context. For the STEP BACK command
-	// it is set to the current stepQuantum
-	//
-	// for PushGoto() the quantum is set to QuantumVideo, while for
-	// PushRewind() it is set to the current stepQuantum
-	catchupQuantum govern.Quantum
-
 	// record user input to a script file
 	scriptScribe script.Scribe
 
@@ -282,6 +271,9 @@ type Debugger struct {
 	// the correct place
 	catchupContinue func() bool
 	catchupEnd      func()
+
+	// the context in which the catchup loop is running
+	catchupContext catchupContext
 
 	// the debugger catchup loop will end on a video cycle if necessary. this
 	// is what we want in most situations but occasionally it is useful to stop

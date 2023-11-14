@@ -25,9 +25,9 @@ import (
 type Collisions struct {
 	mem chipbus.Memory
 
-	// LastVideoCycle records the combination of collision bits for the most recent
+	// LastColorClock records the combination of collision bits for the most recent
 	// video cycle. Facilitates production of string information.
-	LastVideoCycle CollisionEvent
+	LastColorClock CollisionEvent
 }
 
 // CollisionEvent is an emulator specific value that records the collision
@@ -172,41 +172,41 @@ func (col *Collisions) Clear() {
 	col.mem.ChipWrite(chipbus.CXM1FB, 0x00)
 	col.mem.ChipWrite(chipbus.CXBLPF, 0x00)
 	col.mem.ChipWrite(chipbus.CXPPMM, 0x00)
-	col.LastVideoCycle = cxclr
+	col.LastColorClock = cxclr
 }
 
 // optimised tick of collision registers. memory is only written to when necessary.
 //
 // if this function is not called during a video cycle (which is possible for
-// reasons of optimisation) then the LastVideoCycle value must be reset
+// reasons of optimisation) then the LastCoorClock value must be reset
 // instead.
 func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
-	col.LastVideoCycle.reset()
+	col.LastColorClock.reset()
 
 	if m0 {
 		if p1 {
 			v := col.mem.ChipRefer(chipbus.CXM0P)
 			v |= 0x80
-			col.LastVideoCycle |= m0p1
+			col.LastColorClock |= m0p1
 			col.mem.ChipWrite(chipbus.CXM0P, v)
 		}
 		if p0 {
 			v := col.mem.ChipRefer(chipbus.CXM0P)
 			v |= 0x40
-			col.LastVideoCycle |= m0p0
+			col.LastColorClock |= m0p0
 			col.mem.ChipWrite(chipbus.CXM0P, v)
 		}
 
 		if pf {
 			v := col.mem.ChipRefer(chipbus.CXM0FB)
 			v |= 0x80
-			col.LastVideoCycle |= m0pf
+			col.LastColorClock |= m0pf
 			col.mem.ChipWrite(chipbus.CXM0FB, v)
 		}
 		if bl {
 			v := col.mem.ChipRefer(chipbus.CXM0FB)
 			v |= 0x40
-			col.LastVideoCycle |= m0bl
+			col.LastColorClock |= m0bl
 			col.mem.ChipWrite(chipbus.CXM0FB, v)
 		}
 	}
@@ -215,26 +215,26 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 		if p0 {
 			v := col.mem.ChipRefer(chipbus.CXM1P)
 			v |= 0x80
-			col.LastVideoCycle |= m1p0
+			col.LastColorClock |= m1p0
 			col.mem.ChipWrite(chipbus.CXM1P, v)
 		}
 		if p1 {
 			v := col.mem.ChipRefer(chipbus.CXM1P)
 			v |= 0x40
-			col.LastVideoCycle |= m1p1
+			col.LastColorClock |= m1p1
 			col.mem.ChipWrite(chipbus.CXM1P, v)
 		}
 
 		if pf {
 			v := col.mem.ChipRefer(chipbus.CXM1FB)
 			v |= 0x80
-			col.LastVideoCycle |= m1pf
+			col.LastColorClock |= m1pf
 			col.mem.ChipWrite(chipbus.CXM1FB, v)
 		}
 		if bl {
 			v := col.mem.ChipRefer(chipbus.CXM1FB)
 			v |= 0x40
-			col.LastVideoCycle |= m1bl
+			col.LastColorClock |= m1bl
 			col.mem.ChipWrite(chipbus.CXM1FB, v)
 		}
 	}
@@ -243,13 +243,13 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 		if pf {
 			v := col.mem.ChipRefer(chipbus.CXP0FB)
 			v |= 0x80
-			col.LastVideoCycle |= p0pf
+			col.LastColorClock |= p0pf
 			col.mem.ChipWrite(chipbus.CXP0FB, v)
 		}
 		if bl {
 			v := col.mem.ChipRefer(chipbus.CXP0FB)
 			v |= 0x40
-			col.LastVideoCycle |= p0bl
+			col.LastColorClock |= p0bl
 			col.mem.ChipWrite(chipbus.CXP0FB, v)
 		}
 	}
@@ -258,13 +258,13 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 		if pf {
 			v := col.mem.ChipRefer(chipbus.CXP1FB)
 			v |= 0x80
-			col.LastVideoCycle |= p1pf
+			col.LastColorClock |= p1pf
 			col.mem.ChipWrite(chipbus.CXP1FB, v)
 		}
 		if bl {
 			v := col.mem.ChipRefer(chipbus.CXP1FB)
 			v |= 0x40
-			col.LastVideoCycle |= p1bl
+			col.LastColorClock |= p1bl
 			col.mem.ChipWrite(chipbus.CXP1FB, v)
 		}
 	}
@@ -272,7 +272,7 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 	if bl && pf {
 		v := col.mem.ChipRefer(chipbus.CXBLPF)
 		v |= 0x80
-		col.LastVideoCycle |= blpf
+		col.LastColorClock |= blpf
 		col.mem.ChipWrite(chipbus.CXBLPF, v)
 	}
 	// no bit 6 for CXBLPF
@@ -280,14 +280,14 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 	if p0 && p1 {
 		v := col.mem.ChipRefer(chipbus.CXPPMM)
 		v |= 0x80
-		col.LastVideoCycle |= p0p1
+		col.LastColorClock |= p0p1
 		col.mem.ChipWrite(chipbus.CXPPMM, v)
 	}
 
 	if m0 && m1 {
 		v := col.mem.ChipRefer(chipbus.CXPPMM)
 		v |= 0x40
-		col.LastVideoCycle |= m0m1
+		col.LastColorClock |= m0m1
 		col.mem.ChipWrite(chipbus.CXPPMM, v)
 	}
 }

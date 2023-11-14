@@ -64,7 +64,7 @@ type DisasmEntries struct {
 // Also returns a reference to the disassembly's symbol table. This reference
 // will never change over the course of the lifetime of the Disassembly type
 // itself. ie. the returned reference is safe to use after calls to
-// FromMemory() or FromCartrige().
+// FromMemory() or FromCartridge().
 func NewDisassembly(vcs *hardware.VCS) (*Disassembly, *symbols.Symbols, error) {
 	dsm := &Disassembly{vcs: vcs}
 
@@ -251,9 +251,8 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	o := dsm.disasmEntries.Entries[bank.Number][idx]
 	if o != nil && o.Result.Final {
 		e.updateExecutionEntry(result)
-	} else {
-		dsm.disasmEntries.Entries[bank.Number][idx] = e
 	}
+	dsm.disasmEntries.Entries[bank.Number][idx] = e
 
 	// bless next entry in case it was missed by the original decoding. there's
 	// no guarantee that the bank for the next address will be the same as the
@@ -286,14 +285,14 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 		Level:  level,
 		Bank:   bank.Number,
 		Label: Label{
-			dsm:     dsm,
-			address: result.Address,
-			bank:    bank.Number,
+			dsm:    dsm,
+			result: result,
+			bank:   bank,
 		},
 		Operand: Operand{
 			dsm:    dsm,
 			result: result,
-			bank:   bank.Number,
+			bank:   bank,
 		},
 	}
 
@@ -325,14 +324,14 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 		switch result.ByteCount {
 		case 3:
 			operand := result.InstructionData
-			e.Operand.nonSymbolic = fmt.Sprintf("$%04x", operand)
+			e.Operand.partial = fmt.Sprintf("$%04x", operand)
 			e.Bytecode = fmt.Sprintf("%02x %02x %02x", result.Defn.OpCode, operand&0x00ff, operand&0xff00>>8)
 		case 2:
 			operand := result.InstructionData
-			e.Operand.nonSymbolic = fmt.Sprintf("$??%02x", result.InstructionData)
+			e.Operand.partial = fmt.Sprintf("$??%02x", result.InstructionData)
 			e.Bytecode = fmt.Sprintf("%02x %02x ?? ", result.Defn.OpCode, operand&0x00ff)
 		case 1:
-			e.Operand.nonSymbolic = "$????"
+			e.Operand.partial = "$????"
 			e.Bytecode = fmt.Sprintf("%02x ?? ??", result.Defn.OpCode)
 		case 0:
 			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
@@ -343,10 +342,10 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 		switch result.ByteCount {
 		case 2:
 			operand := result.InstructionData
-			e.Operand.nonSymbolic = fmt.Sprintf("$%02x", operand)
+			e.Operand.partial = fmt.Sprintf("$%02x", operand)
 			e.Bytecode = fmt.Sprintf("%02x %02x", result.Defn.OpCode, operand&0x00ff)
 		case 1:
-			e.Operand.nonSymbolic = "$??"
+			e.Operand.partial = "$??"
 			e.Bytecode = fmt.Sprintf("%02x ??", result.Defn.OpCode)
 		case 0:
 			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
@@ -372,11 +371,7 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 	// decorate operand with addressing mode indicators. this decorates the
 	// non-symbolic operand. we also call the decorate function from the
 	// Operand() function when a symbol has been found
-	if e.Result.Defn.IsBranch() {
-		e.Operand.nonSymbolic = fmt.Sprintf("$%04x", absoluteBranchDestination(e.Result.Address, e.Result.InstructionData))
-	} else {
-		e.Operand.nonSymbolic = addrModeDecoration(e.Operand.nonSymbolic, e.Result.Defn.AddressingMode)
-	}
+	e.Operand.partial = addrModeDecoration(e.Operand.partial, e.Result.Defn.AddressingMode)
 
 	return e
 }

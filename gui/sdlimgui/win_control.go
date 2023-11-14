@@ -142,13 +142,7 @@ func (win *winControl) drawStep() {
 
 		// step button
 		imgui.TableNextColumn()
-
-		icon := fonts.BackInstruction
-		if win.img.dbg.Quantum() == govern.QuantumClock {
-			icon = fonts.BackClock
-		}
-
-		win.repeatButton(fmt.Sprintf("%c ##Step", icon), func() {
+		win.repeatButton(fmt.Sprintf("%c ##Step", fonts.BackArrowDouble), func() {
 			win.img.term.pushCommand("STEP BACK")
 		})
 
@@ -159,21 +153,20 @@ func (win *winControl) drawStep() {
 
 		imgui.TableNextColumn()
 
-		if imguiToggleButton("##quantumToggle", win.img.dbg.Quantum() == govern.QuantumClock, win.img.cols.TitleBgActive) {
-			if win.img.dbg.Quantum() == govern.QuantumClock {
+		if imgui.BeginComboV("##quantum", "", imgui.ComboFlagsNoPreview) {
+			if imgui.Selectable(govern.QuantumInstruction.String()) {
 				win.img.term.pushCommand("QUANTUM INSTRUCTION")
-			} else {
+			}
+			if imgui.Selectable(govern.QuantumCycle.String()) {
+				win.img.term.pushCommand("QUANTUM CYCLE")
+			}
+			if imgui.Selectable(govern.QuantumClock.String()) {
 				win.img.term.pushCommand("QUANTUM CLOCK")
 			}
+			imgui.EndCombo()
 		}
-
-		imgui.SameLine()
-		imgui.AlignTextToFramePadding()
-		if win.img.dbg.Quantum() == govern.QuantumClock {
-			imgui.Text("Colour Clock")
-		} else {
-			imgui.Text("CPU Instruction")
-		}
+		imgui.SameLineV(0, 5)
+		imgui.Text(win.img.dbg.Quantum().String())
 
 		imgui.EndTable()
 	}
@@ -188,7 +181,7 @@ func (win *winControl) drawStep() {
 		imgui.TableNextRow()
 		imgui.TableNextColumn()
 
-		win.repeatButton(fmt.Sprintf("%c ##Frame", fonts.BackFrame), func() {
+		win.repeatButton(fmt.Sprintf("%c ##Frame", fonts.UpArrowDouble), func() {
 			win.img.term.pushCommand("STEP BACK FRAME")
 		})
 		imgui.SameLineV(0.0, 0.0)
@@ -198,7 +191,7 @@ func (win *winControl) drawStep() {
 
 		imgui.TableNextColumn()
 
-		win.repeatButton(fmt.Sprintf("%c ##Scanline", fonts.BackScanline), func() {
+		win.repeatButton(fmt.Sprintf("%c ##Scanline", fonts.UpArrow), func() {
 			win.img.term.pushCommand("STEP BACK SCANLINE")
 		})
 		imgui.SameLineV(0.0, 0.0)
@@ -208,7 +201,6 @@ func (win *winControl) drawStep() {
 
 		imgui.EndTable()
 	}
-
 }
 
 func (win *winControl) drawFPS() {

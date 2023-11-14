@@ -242,20 +242,25 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		mode = strings.ToUpper(mode)
 
 		if back {
-			var instruction bool
+			// step backwards
+
 			var adj television.Adj
 
 			switch mode {
 			case "":
-				// continue with current quantum state
-				if dbg.Quantum() == govern.QuantumInstruction {
-					instruction = true
-				} else {
+				// use current quantum state
+				switch dbg.Quantum() {
+				case govern.QuantumCycle:
+					adj = television.AdjCycle
+				case govern.QuantumClock:
 					adj = television.AdjClock
 				}
+
 			case "INSTRUCTION":
 				dbg.setQuantum(govern.QuantumInstruction)
-				instruction = true
+			case "CYCLE":
+				dbg.setQuantum(govern.QuantumCycle)
+				adj = television.AdjCycle
 			case "CLOCK":
 				dbg.setQuantum(govern.QuantumClock)
 				adj = television.AdjClock
@@ -269,7 +274,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 			var coords coords.TelevisionCoords
 
-			if instruction {
+			if dbg.Quantum() == govern.QuantumInstruction {
 				coords = dbg.cpuBoundaryLastInstruction
 			} else {
 				coords = dbg.vcs.TV.AdjCoords(adj, adjAmount)
@@ -277,48 +282,56 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 			dbg.setState(govern.Rewinding)
 			dbg.unwindLoop(func() error {
-				// update catchupQuantum before starting rewind process
-				dbg.catchupQuantum = dbg.Quantum()
-
+				dbg.catchupContext = catchupStepBack
 				return dbg.Rewind.GotoCoords(coords)
 			})
 
-			return nil
-		}
+		} else {
+			// step forwards
 
-		// step forward
-		switch mode {
-		case "":
-			// continue with current quantum state
+			switch mode {
+			case "":
+				// continue with current quantum state
 
-			// if quantum is instruction and CPU is not RDY then STEP is best
-			// implemented as TRAP RDY
-			if dbg.Quantum() == govern.QuantumInstruction && !dbg.vcs.CPU.RdyFlg {
-				_ = dbg.halting.volatileTraps.parseCommand(commandline.TokeniseInput("RDY"))
+				// if quantum is not the QuantumClock and CPU is not RDY then STEP
+				// is best implemented as TRAP RDY. this means that the emulation
+				// will stop on the next instruction boundary and will also skip
+				// over instructions that trigger WSYNC
+				//
+				// this behaviour is more intuitive to the user because it means
+				// they don't have to step over every cycle during the WSYNC state
+				if dbg.Quantum() != govern.QuantumClock && !dbg.vcs.CPU.RdyFlg {
+					// create volatile RDY trap
+					_ = dbg.halting.volatileTraps.parseCommand(commandline.TokeniseInput("RDY"))
+					dbg.runUntilHalt = true
+
+					// when the RDY flag changes the input loop will think it's
+					// inside a video step. we need to force the loop to return
+					// to the non-video step loop
+					dbg.stepOutOfVideoStepInputLoop = true
+				}
+			case "INSTRUCTION":
+				dbg.setQuantum(govern.QuantumInstruction)
+			case "CYCLE":
+				dbg.setQuantum(govern.QuantumCycle)
+			case "CLOCK":
+				dbg.setQuantum(govern.QuantumClock)
+			default:
+				// token not recognised so forward rest of tokens to the volatile
+				// traps parser
+				tokens.Unget()
+				_ = dbg.halting.volatileTraps.parseCommand(tokens)
+
+				// trap may take many cycles to trigger
 				dbg.runUntilHalt = true
-
-				// when the RDY flag changes the input loop will think it's
-				// inside a video step. we need to force the loop to return
-				// to the non-video step loop
-				dbg.stepOutOfVideoStepInputLoop = true
 			}
-		case "INSTRUCTION":
-			dbg.setQuantum(govern.QuantumInstruction)
-		case "CLOCK":
-			dbg.setQuantum(govern.QuantumClock)
-		default:
-			// do not change quantum
-			tokens.Unget()
 
-			// ignoring error
-			_ = dbg.halting.volatileTraps.parseCommand(tokens)
-
-			// trap may take many cycles to trigger
-			dbg.runUntilHalt = true
+			// continue emulation. note that we don't set runUntilHalt except in the
+			// specific cases above in the above switch. this is because we do no
+			// always set a volatile trap. without a trap the emulation will just
+			// run until it receives a HALT instruction.
+			dbg.continueEmulation = true
 		}
-
-		// always continue
-		dbg.continueEmulation = true
 
 	case cmdQuantum:
 		mode, _ := tokens.Get()
@@ -326,10 +339,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		switch mode {
 		case "INSTRUCTION":
 			dbg.setQuantum(govern.QuantumInstruction)
+		case "CYCLE":
+			dbg.setQuantum(govern.QuantumCycle)
 		case "CLOCK":
 			dbg.setQuantum(govern.QuantumClock)
 		default:
-			dbg.printLine(terminal.StyleFeedback, "set to %s", dbg.Quantum)
+			dbg.printLine(terminal.StyleFeedback, "set to %s", strings.ToUpper(dbg.Quantum().String()))
 		}
 
 	case cmdScript:
@@ -924,11 +939,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		return nil
 
 	case cmdLast:
-		// if debugger is running in clock quantum then the live disasm
+		// if debugger is running in a non-instruction quantum then the live disasm
 		// information will not have been updated. for the purposes of the last
 		// instruction however, we definitely do want that information to be
 		// current
-		if dbg.running && dbg.quantum.Load() == govern.QuantumClock {
+		if dbg.running && dbg.quantum.Load() != govern.QuantumInstruction {
 			dbg.liveBankInfo = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
 			dbg.liveDisasmEntry = dbg.Disasm.ExecutedEntry(dbg.liveBankInfo, dbg.vcs.CPU.LastResult, true, dbg.vcs.CPU.PC.Value())
 		}
@@ -978,9 +993,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 		// change terminal output style depending on condition of last CPU result
 		if dbg.liveDisasmEntry.Result.Final {
-			dbg.printLine(terminal.StyleCPUStep, s.String())
+			dbg.printLine(terminal.StyleInstructionStep, s.String())
 		} else {
-			dbg.printLine(terminal.StyleVideoStep, s.String())
+			dbg.printLine(terminal.StyleSubStep, s.String())
 		}
 
 	case cmdMemMap:

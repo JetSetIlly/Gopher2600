@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 
@@ -194,15 +195,32 @@ func (win *winCPU) draw() {
 
 		imgui.SameLine()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
-		imgui.Text(res.Operand.String())
+		imgui.Text(res.Operand.Resolve())
 
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
 		imgui.Text(fmt.Sprintf("%s cycles", res.Cycles()))
-		if res.Result.PageFault {
-			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
-			imgui.Text("(page-fault)")
-			imgui.PopStyleColor()
+
+		if win.img.dbg.Quantum() == govern.QuantumClock {
+			if !win.img.cache.Dbg.LiveDisasmEntry.Result.Final {
+				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
+
+				switch win.img.cache.VCS.TIA.ClocksSinceCycle {
+				case 1:
+					imgui.Text(fmt.Sprintf("%c", fonts.Paw))
+				case 2:
+					imgui.Text(fmt.Sprintf("%c", fonts.Paw))
+					imgui.SameLineV(0, 4)
+					imgui.Text(fmt.Sprintf("%c", fonts.Paw))
+				case 3:
+					imgui.Text(fmt.Sprintf("%c", fonts.Paw))
+					imgui.SameLineV(0, 4)
+					imgui.Text(fmt.Sprintf("%c", fonts.Paw))
+					imgui.SameLineV(0, 4)
+					imgui.Text(fmt.Sprintf("%c", fonts.Paw))
+				}
+				imgui.PopStyleColor()
+			}
 		}
 
 		imgui.PopStyleColorV(5)

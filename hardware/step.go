@@ -15,21 +15,20 @@
 
 package hardware
 
-func nullVideoCycleCallback() error {
+func nullCallback(_ bool) error {
 	return nil
 }
 
-// Step the emulator state one CPU instruction. With a bit of work the optional
-// videoCycleCallback argument can be used for video-cycle stepping.
-func (vcs *VCS) Step(videoCycleCallback func() error) error {
-	if videoCycleCallback == nil {
-		videoCycleCallback = nullVideoCycleCallback
+// Step the emulator state one CPU instruction
+func (vcs *VCS) Step(colorClockCallback func(isCycle bool) error) error {
+	if colorClockCallback == nil {
+		colorClockCallback = nullCallback
 	}
 
-	// the videoCycle function defines the order of operation for the rest of
+	// the cycle function defines the order of operation for the rest of
 	// the VCS for every CPU cycle. the function block represents the ϕ0 cycle
 	//
-	// the cpu calls the videoCycle function after every CPU cycle. this is a
+	// the cpu calls the cycle function after every CPU cycle. this is a
 	// bit backwards compared to the operation of a real VCS but I believe the
 	// effect is the same:
 	//
@@ -41,11 +40,11 @@ func (vcs *VCS) Step(videoCycleCallback func() error) error {
 	//
 	// in this emulation meanwhile, the CPU-TIA is reversed. each call to
 	// Step() drives the CPU. After each CPU cycle the CPU emulation yields to
-	// the videoCycle() function defined below.
+	// the cycle() function defined below.
 	//
 	// the reason for this inside-out arrangement is simply a consequence of
 	// the how the CPU emulation is put together. it is easier for the large
-	// CPU ExecuteInstruction() function to call out to the videoCycle()
+	// CPU ExecuteInstruction() function to call out to the cycle()
 	// function. if we were to do it the other way around then keeping track of
 	// the interim CPU state becomes trickier.
 	//
@@ -56,41 +55,44 @@ func (vcs *VCS) Step(videoCycleCallback func() error) error {
 	//
 	// I don't believe any visual or audible artefacts of the VCS (undocumented
 	// or not) rely on the details of the CPU-TIA relationship.
-	videoCycle := func() error {
+	//
+	// at the end of the cycle() function the cycleCallback() function is called
+	cycle := func() error {
 		if err := vcs.Input.Handle(); err != nil {
 			return err
 		}
 
-		vcs.TIA.QuickStep()
-		if err := videoCycleCallback(); err != nil {
+		vcs.TIA.QuickStep(1)
+		if err := colorClockCallback(false); err != nil {
 			return err
 		}
 
-		vcs.TIA.QuickStep()
-		if err := videoCycleCallback(); err != nil {
+		vcs.TIA.QuickStep(2)
+		if err := colorClockCallback(false); err != nil {
 			return err
 		}
 
 		if reg, ok := vcs.Mem.TIA.ChipHasChanged(); ok {
-			vcs.TIA.Step(reg)
+			vcs.TIA.Step(reg, 3)
 		} else {
-			vcs.TIA.QuickStep()
+			vcs.TIA.QuickStep(3)
 		}
 		if reg, ok := vcs.Mem.RIOT.ChipHasChanged(); ok {
 			vcs.RIOT.Step(reg)
 		} else {
 			vcs.RIOT.QuickStep()
 		}
-		if err := videoCycleCallback(); err != nil {
-			return err
-		}
 
 		vcs.Mem.Cart.Step(vcs.Clock)
+
+		if err := colorClockCallback(true); err != nil {
+			return err
+		}
 
 		return nil
 	}
 
-	err := vcs.CPU.ExecuteInstruction(videoCycle)
+	err := vcs.CPU.ExecuteInstruction(cycle)
 	if err != nil {
 		return err
 	}

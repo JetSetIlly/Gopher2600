@@ -50,8 +50,8 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 		// decoded it already
 		s.WriteString(fmt.Sprintf("%s %s", e.Address, e.Operator))
 
-		if e.Operand.String() != "" {
-			s.WriteString(fmt.Sprintf(" %s", e.Operand))
+		if e.Operand.Resolve() != "" {
+			s.WriteString(fmt.Sprintf(" %s", e.Operand.Resolve()))
 		}
 	}
 

@@ -74,7 +74,7 @@ func (e *Entry) GetField(field Field) string {
 
 	switch field {
 	case FldLabel:
-		s = e.Label.String()
+		s = e.Label.Resolve()
 		if s == "" {
 			w = 0
 		} else {
@@ -95,7 +95,7 @@ func (e *Entry) GetField(field Field) string {
 		s = e.Operator
 
 	case FldOperand:
-		s = e.Operand.String()
+		s = e.Operand.Resolve()
 		w = e.dsm.Sym.SymbolWidth() + widthOperandDecoration
 
 	case FldCycles:

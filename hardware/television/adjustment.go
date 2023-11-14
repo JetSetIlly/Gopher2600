@@ -26,7 +26,7 @@ func (tv *Television) AdjCoords(adj Adj, amount int) coords.TelevisionCoords {
 	coords := tv.GetCoords()
 
 	switch adj {
-	case AdjCPUCycle:
+	case AdjCycle:
 		// adjusting by CPU cycle is the same as adjusting by video cycle
 		// accept to say that a CPU cycle is the equivalent of 3 video cycles
 		amount *= 3
@@ -80,6 +80,6 @@ type Adj int
 const (
 	AdjFrame Adj = iota
 	AdjScanline
-	AdjCPUCycle
+	AdjCycle
 	AdjClock
 )

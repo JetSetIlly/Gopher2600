@@ -123,7 +123,7 @@ func (dsm *Disassembly) setCartMirror() {
 				// mask off bits that indicate the cartridge/segment origin and reset
 				// them with the chosen origin
 				a := e.Result.Address&memorymap.CartridgeBits | dsm.Prefs.mirrorOrigin
-				e.Operand.nonSymbolic = fmt.Sprintf("$%04x", absoluteBranchDestination(a, e.Result.InstructionData))
+				e.Operand.partial = fmt.Sprintf("$%04x", absoluteBranchDestination(a, e.Result.InstructionData))
 			}
 		}
 	}

@@ -18,6 +18,31 @@ package govern
 // State indicates the emulation's state.
 type State int
 
+// List of possible emulation states.
+//
+// EmulatorStart is the default state and should never be entered once the
+// emulator has begun.
+//
+// Initialising can be used when reinitialising the emulator. for example, when
+// a new cartridge is being inserted.
+//
+// Values are ordered so that order comparisons are meaningful. For example,
+// Running is "greater than" Stepping, Paused, etc.
+//
+// Note that there is a sub-state of the rewinding state that we can potentially
+// think of as the "catch-up" state. This occurs in the brief transition period
+// between Rewinding and the Running or Pausing state. For simplicity, the
+// catch-up loop is part of the Rewinding state
+const (
+	EmulatorStart State = iota
+	Initialising
+	Paused
+	Stepping
+	Rewinding
+	Running
+	Ending
+)
+
 func (s State) String() string {
 	switch s {
 	case EmulatorStart:
@@ -38,31 +63,3 @@ func (s State) String() string {
 
 	return ""
 }
-
-// List of possible emulation states.
-//
-// EmulatorStart is the default state and should never be entered once the
-// emulator has begun.
-//
-// Initialising can be used when reinitialising the emulator. for example, when
-// a new cartridge is being inserted.
-//
-// Values are ordered so that order comparisons are meaningful. For example,
-// Running is "greater than" Stepping, Paused, etc.
-//
-// * There is a sub-state of the rewinding state that we can think of as the
-// "catch-up" state. This occurs in the brief transition period between
-// Rewinding and the Running or Pausing state.
-//
-// Currently, we handle this state in the CartUpLoop() function of the debugger
-// package. There is a good argument to be made for having the catch-up state
-// as a distinct State listed below.
-const (
-	EmulatorStart State = iota
-	Initialising
-	Paused
-	Stepping
-	Rewinding
-	Running
-	Ending
-)

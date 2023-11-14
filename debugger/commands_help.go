@@ -37,16 +37,24 @@ the STEP to end on the programme after the corresponding RTS. Note that if there
 will run forever and you will need to stop the execution with the HALT command (or through the debugging GUI
 or with a CTRL-C on some terminals)`,
 
-	cmdQuantum: `Change or view stepping quantum. The stepping quantum defines the frequency
-at which the emulation is checked and reported upon by the debugger.
+	cmdQuantum: `Change or view the stepping quantum. The stepping quantum defines the
+frequency at which the emulation is checked and reported upon by the emulation when
+in debugging mode.
 
 There are two quantum modes. The INSTRUCTION quantum mode causes the debugger
 to step one CPU instruction at a time, regardless of how many cycles the
 instruction takes. 
 
-The VIDEO quantum mode meanwhile, causes the debugger to step one color clock
-(or one video cycle) at a time. Compared to the INSTRUCTION quantum mode, the
-VIDEO quantum will cause the emulation to run slower.`,
+The CYCLE quatum steps one CPU cycle. This can be useful to understand how the
+memory buses react at each step of an instruction.
+
+The CLOCK quantum causes the debugger to step one color clock at a time. There
+are three color clocks per CYCLE. This quantum is useful to understand how
+and precisely when the registers in the TIA change.
+
+The three quantums have been listed above in order of descending efficiency.
+In other words INSTRUCTION produces the fastest emulation and CLOCK produces
+the slowest emulation.`,
 
 	cmdScript: `Run commands from specified file or record commands to a file. The RECORD
 argument indicates that a new script is to be recorded. Recording will not

@@ -25,7 +25,7 @@ import (
 //
 // See StringColumnated() for a fancier option.
 func (e *Entry) String() string {
-	operand := e.Operand.String()
+	operand := e.Operand.Resolve()
 	return fmt.Sprintf("%s %s %s", e.Address, e.Operator, operand)
 }
 
@@ -52,7 +52,7 @@ func (e *Entry) StringColumnated(attr ColumnAttr) string {
 	}
 
 	if attr.Label {
-		if e.Label.String() != "" {
+		if e.Label.Resolve() != "" {
 			b.Write([]byte(e.GetField(FldLabel)))
 			b.Write([]byte("\n"))
 		}

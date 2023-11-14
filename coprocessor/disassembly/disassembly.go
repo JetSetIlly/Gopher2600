@@ -145,7 +145,7 @@ func (dsm *Disassembly) Start() {
 		// have been called on the last CPU cycle of the instruction that triggers
 		// the coprocessor reset. the TV will not have moved onto the beginning of
 		// the next instruction yet so we must figure it out here
-		dsm.disasm.LastStart = dsm.tv.AdjCoords(television.AdjCPUCycle, 1)
+		dsm.disasm.LastStart = dsm.tv.AdjCoords(television.AdjCycle, 1)
 	}
 
 	dsm.disasm.LastExecution = dsm.disasm.LastExecution[:0]

@@ -20,11 +20,28 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
 
+// catchupContext is used to inform the loop of the context in which a
+// post-rewind catchup is running in
+type catchupContext int
+
+// list of valid catchupContext values
+const (
+	catchupGotoCoords catchupContext = iota
+	catchupRewindToFrame
+	catrupRerunLastNFrames
+	catchupStepBack
+)
+
 // CatchUpLoop implements the rewind.Runner interface.
 //
 // It is called from the rewind package and sets the functions that are
 // required for catchupLoop().
 func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords) error {
+	// emulation state assertion
+	if dbg.State() != govern.Rewinding {
+		panic("catchup loop must only be run in the rewinding state")
+	}
+
 	switch dbg.Mode() {
 	case govern.ModePlay:
 		fpscap := dbg.vcs.TV.SetFPSCap(false)
@@ -43,8 +60,6 @@ func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords) error {
 	case govern.ModeDebugger:
 		// turn off TV's fps frame limiter
 		fpsCap := dbg.vcs.TV.SetFPSCap(false)
-
-		// we've already set emulation state to govern.Rewinding
 
 		dbg.catchupContinue = func() bool {
 			newCoords := dbg.vcs.TV.GetCoords()

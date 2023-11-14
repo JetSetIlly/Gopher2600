@@ -46,10 +46,10 @@ func (ct *ColorTerminal) TermPrintLine(style terminal.Style, s string) {
 	case terminal.StyleFeedbackSecondary:
 		ct.EasyTerm.TermPrint(ansi.DimPens["gray"])
 
-	case terminal.StyleCPUStep:
+	case terminal.StyleInstructionStep:
 		ct.EasyTerm.TermPrint(ansi.Pens["yellow"])
 
-	case terminal.StyleVideoStep:
+	case terminal.StyleSubStep:
 		ct.EasyTerm.TermPrint(ansi.DimPens["yellow"])
 
 	case terminal.StyleInstrument:

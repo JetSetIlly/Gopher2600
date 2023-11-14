@@ -36,11 +36,11 @@ const (
 	// secondary information from a command
 	StyleFeedbackSecondary
 
-	// disassembly output at CPU cycle boundaries
-	StyleCPUStep
+	// disassembly output for CPU instruction boundaries
+	StyleInstructionStep
 
-	// disassembly output at video cycle boundaries
-	StyleVideoStep
+	// disassembly output for non-CPU instruction boundaries
+	StyleSubStep
 
 	// information about the machine
 	StyleInstrument

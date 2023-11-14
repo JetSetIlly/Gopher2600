@@ -89,7 +89,7 @@ var commandTemplate = []string{
 	cmdRun,
 	cmdStep + " (BACK|OVER) (INSTRUCTION|CLOCK|SCANLINE|FRAME)",
 	cmdHalt,
-	cmdQuantum + " (INSTRUCTION|CLOCK)",
+	cmdQuantum + " (INSTRUCTION|CYCLE|CLOCK)",
 	cmdScript + " [RECORD %<new file>F|END|%<file>F]",
 	cmdRewind + " [%<frame>N|LAST|SUMMARY]",
 	cmdComparison + " [%<frame>N|LOCK|UNLOCK]",

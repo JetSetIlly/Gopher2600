@@ -308,7 +308,7 @@ func (vd *Video) Pixel() {
 			vd.Missile0.pixelCollision, vd.Missile1.pixelCollision,
 			vd.Ball.pixelCollision, vd.Playfield.colorLatch)
 	} else {
-		vd.Collisions.LastVideoCycle.reset()
+		vd.Collisions.LastColorClock.reset()
 	}
 
 	// prioritisation of pixels:

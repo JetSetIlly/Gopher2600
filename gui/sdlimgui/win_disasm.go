@@ -454,7 +454,7 @@ func (win *winDisasm) drawBank(currBank mapper.BankInfo, focusAddr uint16) {
 		for {
 			if iterateFilter(e) {
 				ct++
-				if e.Label.String() != "" {
+				if e.Label.Resolve() != "" {
 					ct++
 				}
 
@@ -497,7 +497,7 @@ func (win *winDisasm) drawBank(currBank mapper.BankInfo, focusAddr uint16) {
 
 					// skip entries counting label as appropriate
 					skip--
-					if e.Label.String() != "" {
+					if e.Label.Resolve() != "" {
 						skip--
 					}
 
@@ -572,9 +572,7 @@ func (win *winDisasm) drawBank(currBank mapper.BankInfo, focusAddr uint16) {
 }
 
 func (win *winDisasm) drawLabel(e *disassembly.Entry, bank int) {
-	// no label to draw
-	label := e.Label.String()
-	if len(label) == 0 {
+	if len(e.Label.Resolve()) == 0 {
 		return
 	}
 
@@ -589,7 +587,7 @@ func (win *winDisasm) drawLabel(e *disassembly.Entry, bank int) {
 	imgui.SelectableV("", false, imgui.SelectableFlagsNone, imgui.Vec2{0, 0})
 	imgui.SameLine()
 
-	imgui.Text(e.Label.String())
+	imgui.Text(e.Label.Resolve())
 }
 
 func (win *winDisasm) drawCoProcTooltip() {
@@ -618,7 +616,7 @@ func (win *winDisasm) drawEntry(currBank mapper.BankInfo, e *disassembly.Entry, 
 	if onBank && (e.Result.Address&memorymap.CartridgeBits == focusAddr) {
 		imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.DisasmStep)
 
-		// focussed entry has been drawn so unset focus flag
+		// focused entry has been drawn so unset focus flag
 		win.focusOnAddr = false
 	}
 
@@ -674,13 +672,13 @@ func (win *winDisasm) drawEntry(currBank mapper.BankInfo, e *disassembly.Entry, 
 			imgui.PopStyleColor()
 			imgui.SameLine()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
-			imgui.Text(e.Operand.String())
+			imgui.Text(e.Operand.Resolve())
 			imgui.PopStyleColor()
 
 			// treat an instruction that is "cycling" differently
 			if !e.Result.Final {
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
-				imgui.Text(fmt.Sprintf("%c cycling instruction (%s)", fonts.CyclingInstruction, e.Cycles()))
+				imgui.Text(fmt.Sprintf("%c cycling instruction (%s)", fonts.Paw, e.Cycles()))
 				imgui.PopStyleColor()
 			} else {
 				imgui.Text("Cycles:")
@@ -736,7 +734,7 @@ func (win *winDisasm) drawEntry(currBank mapper.BankInfo, e *disassembly.Entry, 
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
 		defer imgui.PopStyleColor()
 	}
-	imgui.Text(e.Operand.String())
+	imgui.Text(e.Operand.Resolve())
 
 	// cycles column
 	imgui.TableNextColumn()
@@ -760,7 +758,7 @@ func (win *winDisasm) drawEntry(currBank mapper.BankInfo, e *disassembly.Entry, 
 		exeAddress := win.img.cache.VCS.CPU.LastResult.Address & memorymap.CartridgeBits
 		entryAddress := e.Result.Address & memorymap.CartridgeBits
 		if exeAddress == entryAddress && currBank.Number == bank {
-			imgui.Text(string(fonts.CyclingInstruction))
+			imgui.Text(string(fonts.Paw))
 		}
 	} else if e.Level == disassembly.EntryLevelExecuted {
 		if win.usingColor {

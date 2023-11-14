@@ -618,10 +618,10 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		imgui.Text(e.Operator)
 		imgui.PopStyleColor()
 
-		if e.Operand.String() != "" {
+		if e.Operand.Resolve() != "" {
 			imgui.SameLine()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
-			imgui.Text(e.Operand.String())
+			imgui.Text(e.Operand.Resolve())
 			imgui.PopStyleColor()
 		}
 
@@ -681,7 +681,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 
 			imguiSeparator()
 
-			s := ref.Collision.LastVideoCycle.String()
+			s := ref.Collision.LastColorClock.String()
 			if s != "" {
 				imgui.Text(s)
 			} else {
@@ -711,7 +711,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 					imguiColorLabelSimple("Audio phase 1", win.img.cols.reflectionColors[reflection.AudioPhase1])
 				}
 				if ref.AudioChanged {
-					reg := strings.Split(e.Operand.String(), ",")[0]
+					reg := strings.Split(e.Operand.Resolve(), ",")[0]
 					imguiColorLabelSimple(fmt.Sprintf("%s updated", reg), win.img.cols.reflectionColors[reflection.AudioChanged])
 				}
 			} else {

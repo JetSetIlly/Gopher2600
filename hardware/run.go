@@ -22,8 +22,8 @@ import (
 )
 
 // While the continueCheck() function only runs at the end of a CPU instruction
-// (unlike the corresponding function in VCS.Step() which runs every video
-// cycle), it can still be expensive to do a full continue check every time.
+// (unlike the corresponding function in VCS.Step() which runs every color clock),
+// it can still be expensive to do a full continue check every time.
 //
 // It depends on context whether it is used or not but the PerformanceBrake is
 // a standard value that can be used to filter out expensive code paths within
@@ -45,20 +45,20 @@ func (vcs *VCS) Run(continueCheck func() (govern.State, error)) error {
 		continueCheck = func() (govern.State, error) { return govern.Running, nil }
 	}
 
-	// see the equivalient videoCycle() in the VCS.Step() function for an
+	// see the equivalient colorClock() in the VCS.Step() function for an
 	// explanation for what's going on here:
-	videoCycle := func() error {
+	colorClock := func() error {
 		if err := vcs.Input.Handle(); err != nil {
 			return err
 		}
 
-		vcs.TIA.QuickStep()
-		vcs.TIA.QuickStep()
+		vcs.TIA.QuickStep(1)
+		vcs.TIA.QuickStep(2)
 
 		if reg, ok := vcs.Mem.TIA.ChipHasChanged(); ok {
-			vcs.TIA.Step(reg)
+			vcs.TIA.Step(reg, 3)
 		} else {
-			vcs.TIA.QuickStep()
+			vcs.TIA.QuickStep(3)
 		}
 
 		if reg, ok := vcs.Mem.RIOT.ChipHasChanged(); ok {
@@ -79,7 +79,7 @@ func (vcs *VCS) Run(continueCheck func() (govern.State, error)) error {
 	for state != govern.Ending && state != govern.Initialising {
 		switch state {
 		case govern.Running:
-			err := vcs.CPU.ExecuteInstruction(videoCycle)
+			err := vcs.CPU.ExecuteInstruction(colorClock)
 			if err != nil {
 				return err
 			}
