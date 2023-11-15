@@ -53,6 +53,8 @@ func (win *winPrefs) drawCRT() {
 		imgui.PushItemWidth(-1)
 		win.drawCurve()
 		imgui.Spacing()
+		win.drawRoundedCorners()
+		imgui.Spacing()
 		win.drawMask()
 		imgui.Spacing()
 		win.drawScanlines()
@@ -61,8 +63,6 @@ func (win *winPrefs) drawCRT() {
 		imgui.TableNextColumn()
 		imgui.PushItemWidth(-1)
 		win.drawInterference()
-		imgui.Spacing()
-		win.drawNoise()
 		imgui.Spacing()
 		win.drawFlicker()
 		imgui.Spacing()
@@ -77,8 +77,6 @@ func (win *winPrefs) drawCRT() {
 		win.drawSharpness()
 		imgui.Spacing()
 		win.drawBlackLevel()
-		imgui.Spacing()
-		win.drawRoundedCorners()
 		imgui.Spacing()
 		win.drawBevel()
 		imgui.Spacing()
@@ -229,31 +227,6 @@ func (win *winPrefs) drawInterference() {
 
 	if imgui.SliderFloatV("##interferencelevel", &f, 0.1, 0.2, label, 1.0) {
 		win.img.crtPrefs.InterferenceLevel.Set(f)
-	}
-}
-
-func (win *winPrefs) drawNoise() {
-	b := win.img.crtPrefs.Noise.Get().(bool)
-	if imgui.Checkbox("Noise##noise", &b) {
-		win.img.crtPrefs.Noise.Set(b)
-	}
-
-	f := float32(win.img.crtPrefs.NoiseLevel.Get().(float64))
-
-	var label string
-
-	if f >= 0.75 {
-		label = "very high"
-	} else if f >= 0.50 {
-		label = "high"
-	} else if f >= 0.25 {
-		label = "low"
-	} else {
-		label = "very low"
-	}
-
-	if imgui.SliderFloatV("##noiselevel", &f, 0.0, 1.0, label, 1.0) {
-		win.img.crtPrefs.NoiseLevel.Set(f)
 	}
 }
 

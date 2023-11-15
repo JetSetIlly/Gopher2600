@@ -23,7 +23,6 @@ uniform int Shine;
 uniform int ShadowMask;
 uniform int Scanlines;
 uniform int Interference;
-uniform int Noise;
 uniform int Flicker;
 uniform int Fringing;
 uniform float CurveAmount;
@@ -34,7 +33,6 @@ uniform float MaskFine;
 uniform float ScanlinesIntensity;
 uniform float ScanlinesFine;
 uniform float InterferenceLevel;
-uniform float NoiseLevel;
 uniform float FlickerLevel;
 uniform float FringingAmount;
 uniform float Time;
@@ -42,17 +40,10 @@ uniform float Time;
 // rotation values are the values in hardware/television/specification/rotation.go
 uniform int Rotation;
 
-// Gold Noise taken from: https://www.shadertoy.com/view/ltB3zD
-// Coprighted to dcerisano@standard3d.com not sure of the licence
+// the screenshot boolean indicates that the shader is working to create a still
+// image. this affects the intensity of some effects
+uniform int Screenshot;
 
-// Gold Noise ©2015 dcerisano@standard3d.com
-// - based on the Golden Ratio
-// - uniform normalized distribution
-// - fastest static noise generator function (also runs at low precision)
-float PHI = 1.61803398874989484820459;  // Φ = Golden Ratio   
-float gold_noise(in vec2 xy){
-	return fract(tan(distance(xy*PHI, xy)*Time)*xy.x);
-}
 
 // From: Hash without Sine by Dave Hoskins
 // https://www.shadertoy.com/view/4djSRW
@@ -65,7 +56,7 @@ vec4 hash41(float p)
 
 // From: ZX Spectrum SCREEN$ by Paul Malin
 // https://www.shadertoy.com/view/ss3Xzj
-vec4 interferenceSmoothNoise1D(float x)
+vec4 interferenceSmoothAmount(float x)
 {
     float f0 = floor(x);
     float fr = fract(x);
@@ -79,13 +70,13 @@ vec4 interferenceSmoothNoise1D(float x)
 
 // From: ZX Spectrum SCREEN$ by Paul Malin
 // https://www.shadertoy.com/view/ss3Xzj
-vec4 interferenceNoise(vec2 uv)
+vec4 interferenceAmount(vec2 uv)
 {
     float scanLine = floor(uv.y * ScreenDim.y); 
     float scanPos = scanLine + uv.x;
 	float timeSeed = fract( Time * 123.78 );
     
-    return interferenceSmoothNoise1D( scanPos * 234.5 + timeSeed * 12345.6 );
+    return interferenceSmoothAmount( scanPos * 234.5 + timeSeed * 12345.6 );
 }
 
 
@@ -153,53 +144,30 @@ void main() {
 	const float brightnessCorrection = 0.7;
 
 	// scanlines - only draw if scaling is large enough
-	if (Scanlines == 1) {
-		if (scaling > 1) {
-			float scans = clamp(brightnessCorrection+ScanlinesIntensity*sin(uv.y*ScreenDim.y*ScanlinesFine), 0.0, 1.0);
-			Crt_Color.rgb *= vec3(scans);
-		} else {
-			Crt_Color.rgb *= brightnessCorrection;
-		}
+	if (Scanlines == 1 && scaling > 1) {
+		float scans = clamp(brightnessCorrection+ScanlinesIntensity*sin(uv.y*ScreenDim.y*ScanlinesFine), 0.0, 1.0);
+		Crt_Color.rgb *= vec3(scans);
 	} else {
 		Crt_Color.rgb *= brightnessCorrection;
 	}
 
 	// shadow mask - only draw if scaling is large enough
-	if (ShadowMask == 1) {
-		if (scaling > 1) {
-			float mask = clamp(brightnessCorrection+MaskIntensity*sin(uv.x*ScreenDim.y*MaskFine), 0.0, 1.0);
-			Crt_Color.rgb *= vec3(mask);
-		} else {
-			Crt_Color.rgb *= brightnessCorrection;
-		}
+	if (ShadowMask == 1 && scaling > 1) {
+		float mask = clamp(brightnessCorrection+MaskIntensity*sin(uv.x*ScreenDim.y*MaskFine), 0.0, 1.0);
+		Crt_Color.rgb *= vec3(mask);
 	} else {
 		Crt_Color.rgb *= brightnessCorrection;
 	}
 
-	// RF Interference
+	// Interference. This effect is split into two halves. The second half happens later
 	if (Interference == 1) {
-		// interferencw
-		vec4 noise = interferenceNoise(uv);
+		vec4 noise = interferenceAmount(uv);
 		uv.x += noise.w * InterferenceLevel / 150;
-	}
-
-	// noise 
-	if (Noise == 1) {
-		float n;
-		n = gold_noise(gl_FragCoord.xy);
-		if (n < 0.33) {
-			Crt_Color.r *= max(1.0-NoiseLevel, n);
-		} else if (n < 0.66) {
-			Crt_Color.g *= max(1.0-NoiseLevel, n);
-		} else {
-			Crt_Color.b *= max(1.0-NoiseLevel, n);
-		}
-
 	}
 
 	// flicker
 	if (Flicker == 1) {
-		Crt_Color *= (1.0-FlickerLevel*(sin(50.0*Time+uv.y*2.0)*0.5+0.5));
+		Crt_Color *= (1.0-FlickerLevel*(sin(50.0*Time)*0.5+0.5));
 	}
 
 	// fringing (chromatic aberration)
@@ -243,11 +211,23 @@ void main() {
 		Crt_Color.rgb *= 1.50;
 	}
 
+	// apply perlin noise as required
+	float perlin = fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);
+	if (Interference == 1 && Screenshot == 0) {
+		perlin *= InterferenceLevel*0.20;
+	} else {
+		perlin *= 0.005;
+
+		// compensate for the lower value perlin noise with a small brightness increase
+		Crt_Color.rgb *= 1.02;
+	}
+	Crt_Color.rgb += vec3(perlin);
+
 	// shine affect
 	if (Shine == 1) {
-		vec2 shineUV = (shineUV - 0.5) * 1.2 + 0.5;
-		float shine = (1.0-shineUV.s)*(1.0-shineUV.t);
-		Crt_Color = mix(Crt_Color, vec4(1.0), shine*0.05);
+		vec2 shineUV = 1.0 - shineUV;
+		float shine = shineUV.s * shineUV.t;
+		Crt_Color.rgb = mix(Crt_Color.rgb, vec3(1.0), shine*0.05);
 	}
 
 	// vignette effect

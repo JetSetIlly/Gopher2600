@@ -32,7 +32,6 @@ type Preferences struct {
 	Mask           prefs.Bool
 	Scanlines      prefs.Bool
 	Interference   prefs.Bool
-	Noise          prefs.Bool
 	Flicker        prefs.Bool
 	Fringing       prefs.Bool
 	Ghosting       prefs.Bool
@@ -46,7 +45,6 @@ type Preferences struct {
 	ScanlinesIntensity   prefs.Float
 	ScanlinesFine        prefs.Float
 	InterferenceLevel    prefs.Float
-	NoiseLevel           prefs.Float
 	FlickerLevel         prefs.Float
 	FringingAmount       prefs.Float
 	GhostingAmount       prefs.Float
@@ -97,7 +95,7 @@ const (
 	phosphorLatency      = 0.5
 	phosphorBloom        = 1.0
 	sharpness            = 0.55
-	blackLevel           = 0.06
+	blackLevel           = 0.045
 	pixelPerfectFade     = 0.4
 	syncSpeed            = 2
 	syncPowerOn          = true
@@ -152,10 +150,6 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.noise", &p.Noise)
-	if err != nil {
-		return nil, err
-	}
 	err = p.dsk.Add("crt.flicker", &p.Flicker)
 	if err != nil {
 		return nil, err
@@ -201,10 +195,6 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("crt.interferenceLevel", &p.InterferenceLevel)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.noiseLevel", &p.NoiseLevel)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +265,6 @@ func (p *Preferences) SetDefaults() {
 	p.Mask.Set(mask)
 	p.Scanlines.Set(scanlines)
 	p.Interference.Set(interference)
-	p.Noise.Set(noise)
 	p.Flicker.Set(flicker)
 	p.Fringing.Set(fringing)
 	p.Ghosting.Set(ghosting)
@@ -288,7 +277,6 @@ func (p *Preferences) SetDefaults() {
 	p.ScanlinesIntensity.Set(scanlinesIntensity)
 	p.ScanlinesFine.Set(scanlinesFine)
 	p.InterferenceLevel.Set(interferenceLevel)
-	p.NoiseLevel.Set(noiseLevel)
 	p.FlickerLevel.Set(flickerLevel)
 	p.FringingAmount.Set(fringingAmount)
 	p.GhostingAmount.Set(ghostingAmount)

@@ -57,8 +57,9 @@ var defunct = []string{
 	"hardware.arm7.abortOnIllegalMem",
 	"hardware.arm7.abortOnStackCollision",
 	"hardware.arm7.extendedMemoryErrorLogging",
-
 	"plusrom.id", // replaced with plusrom.id_v2.1.1
+	"crt.noise",
+	"crt.noiseLevel",
 }
 
 // returns true if string is in list of defunct values.

@@ -34,7 +34,6 @@ type crtSeqPrefs struct {
 	Mask           bool
 	Scanlines      bool
 	Interference   bool
-	Noise          bool
 	Flicker        bool
 	Fringing       bool
 	Ghosting       bool
@@ -48,7 +47,6 @@ type crtSeqPrefs struct {
 	ScanlinesIntensity   float64
 	ScanlinesFine        float64
 	InterferenceLevel    float64
-	NoiseLevel           float64
 	FlickerLevel         float64
 	FringingAmount       float64
 	GhostingAmount       float64
@@ -69,7 +67,6 @@ func newCrtSeqPrefs(prefs *crt.Preferences) crtSeqPrefs {
 		Mask:                 prefs.Mask.Get().(bool),
 		Scanlines:            prefs.Scanlines.Get().(bool),
 		Interference:         prefs.Interference.Get().(bool),
-		Noise:                prefs.Noise.Get().(bool),
 		Flicker:              prefs.Flicker.Get().(bool),
 		Fringing:             prefs.Fringing.Get().(bool),
 		Ghosting:             prefs.Ghosting.Get().(bool),
@@ -82,7 +79,6 @@ func newCrtSeqPrefs(prefs *crt.Preferences) crtSeqPrefs {
 		ScanlinesIntensity:   prefs.ScanlinesIntensity.Get().(float64),
 		ScanlinesFine:        prefs.ScanlinesFine.Get().(float64),
 		InterferenceLevel:    prefs.InterferenceLevel.Get().(float64),
-		NoiseLevel:           prefs.NoiseLevel.Get().(float64),
 		FlickerLevel:         prefs.FlickerLevel.Get().(float64),
 		FringingAmount:       prefs.FringingAmount.Get().(float64),
 		GhostingAmount:       prefs.GhostingAmount.Get().(float64),
@@ -171,9 +167,7 @@ func (sh *crtSequencer) flushPhosphor() {
 // occurs but crt effects are not applied.
 //
 // integerScaling instructs the scaling shader not to perform any smoothing
-func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool,
-	numScanlines int, numClocks int, rotation specification.Rotation,
-	image textureSpec, prefs crtSeqPrefs) uint32 {
+func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numScanlines int, numClocks int, image textureSpec, prefs crtSeqPrefs, rotation specification.Rotation, screenshot bool) uint32 {
 
 	// we'll be chaining many shaders together so use internal projection
 	env.useInternalProj = true
@@ -249,12 +243,12 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool,
 			// leaves pixels from a previous shader in the texture.
 			sh.seq.Clear(crtSeqMore)
 			env.srcTextureID = sh.seq.Process(crtSeqMore, func() {
-				sh.effectsShaderFlipped.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, rotation, prefs)
+				sh.effectsShaderFlipped.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, prefs, rotation, screenshot)
 				env.draw()
 			})
 		} else {
 			env.useInternalProj = false
-			sh.effectsShader.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, rotation, prefs)
+			sh.effectsShader.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, prefs, rotation, screenshot)
 		}
 	} else {
 		if moreProcessing {
