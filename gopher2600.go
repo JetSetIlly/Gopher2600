@@ -213,14 +213,24 @@ func main() {
 func launch(sync *mainSync, args []string) {
 	logger.Log("runtime", fmt.Sprintf("number of cores being used: %d", runtime.NumCPU()))
 
+	// use flag set to provide the --help flag
+	flgs := flag.NewFlagSet("Gopher2600", flag.ContinueOnError)
+	err := flgs.Parse(args)
+	if err != nil {
+		if err == flag.ErrHelp {
+			fmt.Println("Execution Modes: RUN, DEBUG, DISASM, PERFORMANCE, REGRESS, VERSION")
+		}
+		sync.state <- stateRequest{req: reqQuit}
+		return
+	}
+	args = flgs.Args()
+
 	// get mode from command line
 	var mode string
 
 	if len(args) > 0 {
 		mode = strings.ToUpper(args[0])
 	}
-
-	var err error
 
 	switch mode {
 	default:
@@ -582,11 +592,20 @@ func perform(mode string, sync *mainSync, args []string) error {
 func regress(mode string, args []string) error {
 	var subMode string
 
+	// use flag set to provide the --help flag
+	flgs := flag.NewFlagSet(mode, flag.ContinueOnError)
+	err := flgs.Parse(args)
+	if err != nil {
+		if err == flag.ErrHelp {
+			fmt.Println("Sub modes: RUN, LIST, DELETE, ADD, REDUX, CLEANUP")
+		}
+		return nil
+	}
+	args = flgs.Args()
+
 	if len(args) > 0 {
 		subMode = strings.ToUpper(args[0])
 	}
-
-	var err error
 
 	switch subMode {
 	default:
