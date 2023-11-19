@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -38,7 +37,7 @@ type winTimeline struct {
 	// thumbnailer will be using emulation states created in the main emulation
 	// goroutine so we must thumbnail those states in the same goroutine.
 	thmb        *thumbnailer.Image
-	thmbTexture uint32
+	thmbTexture texture
 
 	// whether the thumbnail is being shown on the left of the timeline rather
 	// than the right
@@ -89,12 +88,7 @@ func newWinTimeline(img *SdlImgui) (window, error) {
 		return nil, fmt.Errorf("debugger: %w", err)
 	}
 
-	gl.GenTextures(1, &win.thmbTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.thmbTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
+	win.thmbTexture = img.rnd.addTexture(textureColor, true, true)
 
 	return win, nil
 }
@@ -111,16 +105,10 @@ const timelinePopupID = "timelinePopupID"
 func (win *winTimeline) debuggerDraw() bool {
 	// receive new thumbnail data and copy to texture
 	select {
-	case img := <-win.thmb.Render:
-		if img != nil {
-			gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(img.Stride)/4)
-			defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-
-			gl.BindTexture(gl.TEXTURE_2D, win.thmbTexture)
-			gl.TexImage2D(gl.TEXTURE_2D, 0,
-				gl.RGBA, int32(img.Bounds().Size().X), int32(img.Bounds().Size().Y), 0,
-				gl.RGBA, gl.UNSIGNED_BYTE,
-				gl.Ptr(img.Pix))
+	case image := <-win.thmb.Render:
+		if image != nil {
+			win.thmbTexture.markForCreation()
+			win.thmbTexture.render(image)
 		}
 	default:
 	}
@@ -244,7 +232,7 @@ func (win *winTimeline) drawTrace() {
 	)
 
 	// the amount to allow for the icons when centering etc.
-	iconRadius := win.img.glsl.fonts.defaultFontSize / 2
+	iconRadius := win.img.fonts.defaultFontSize / 2
 
 	// the width that can be seen in the window at any one time. reduce by the
 	// iconRadius*2 value to allow for the TV icon (current frame icon) when it
@@ -308,7 +296,7 @@ func (win *winTimeline) drawTrace() {
 
 	// draw frame guides
 	const guideFrameCount = 20
-	imgui.PushFont(win.img.glsl.fonts.diagram)
+	imgui.PushFont(win.img.fonts.diagram)
 
 	var guideStart int
 	if len(timeline.FrameNum) > 0 {
@@ -325,7 +313,7 @@ func (win *winTimeline) drawTrace() {
 
 			// label frame guides with frame numbers
 			bot.X += 5
-			bot.Y -= win.img.glsl.fonts.diagramSize / 2
+			bot.Y -= win.img.fonts.diagramSize / 2
 			dl.AddText(bot, win.img.cols.timelineGuidesLabel, fmt.Sprintf("%d", fn))
 		}
 		guideX += plotWidth
@@ -358,7 +346,7 @@ func (win *winTimeline) drawTrace() {
 			}
 			imgui.SetCursorScreenPos(pos)
 
-			imgui.ImageV(imgui.TextureID(win.thmbTexture), sz,
+			imgui.ImageV(imgui.TextureID(win.thmbTexture.getID()), sz,
 				imgui.Vec2{}, imgui.Vec2{1, 1},
 				win.img.cols.TimelineThumbnailTint, imgui.Vec4{})
 

@@ -385,7 +385,7 @@ func (win *winCoProcSource) drawSource(src *dwarf.Source, bp breakpoints.Breakpo
 		return
 	}
 
-	imgui.PushFont(win.img.glsl.fonts.code)
+	imgui.PushFont(win.img.fonts.code)
 	lineSpacing := float32(win.img.prefs.codeFontLineSpacing.Get().(int))
 
 	// push cell padding and item spacing style such that we can have
@@ -550,7 +550,7 @@ func (win *winCoProcSource) drawSource(src *dwarf.Source, bp breakpoints.Breakpo
 								}
 							}, false)
 
-							imgui.PushFont(win.img.glsl.fonts.code)
+							imgui.PushFont(win.img.fonts.code)
 						}
 					}
 

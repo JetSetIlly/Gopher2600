@@ -18,7 +18,6 @@ package sdlimgui
 import (
 	"image"
 
-	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -30,8 +29,8 @@ type winComparison struct {
 
 	img *SdlImgui
 
-	cmpTexture  uint32
-	diffTexture uint32
+	cmpTexture  texture
+	diffTexture texture
 
 	// render channels are given to use by the main emulation through a GUI request
 	render     chan *image.RGBA
@@ -43,15 +42,8 @@ func newWinComparison(img *SdlImgui) (window, error) {
 		img: img,
 	}
 
-	gl.GenTextures(1, &win.cmpTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.cmpTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-
-	gl.GenTextures(1, &win.diffTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.diffTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	win.cmpTexture = img.rnd.addTexture(textureColor, false, false)
+	win.diffTexture = img.rnd.addTexture(textureColor, false, false)
 
 	return win, nil
 }
@@ -65,52 +57,25 @@ func (win winComparison) id() string {
 
 func (win *winComparison) playmodeSetOpen(open bool) {
 	win.playmodeWin.playmodeSetOpen(open)
-
-	if win.playmodeOpen {
-		// clear texture
-		gl.BindTexture(gl.TEXTURE_2D, win.cmpTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, 1, 1, 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr([]uint8{0}))
-
-		gl.BindTexture(gl.TEXTURE_2D, win.diffTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, 1, 1, 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr([]uint8{0}))
-	}
 }
 
 func (win *winComparison) playmodeDraw() bool {
 	// receive new thumbnail data and copy to texture
 	select {
-	case img := <-win.render:
-		if img != nil {
-			gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(img.Stride)/4)
-			defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-
-			gl.BindTexture(gl.TEXTURE_2D, win.cmpTexture)
-			gl.TexImage2D(gl.TEXTURE_2D, 0,
-				gl.RGBA, int32(img.Bounds().Size().X), int32(img.Bounds().Size().Y), 0,
-				gl.RGBA, gl.UNSIGNED_BYTE,
-				gl.Ptr(img.Pix))
+	case image := <-win.render:
+		if image != nil {
+			win.cmpTexture.markForCreation()
+			win.cmpTexture.render(image)
 		}
 	default:
 	}
 
 	// receive new thumbnail data and copy to texture
 	select {
-	case img := <-win.diffRender:
-		if img != nil {
-			gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(img.Stride)/4)
-			defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-
-			gl.BindTexture(gl.TEXTURE_2D, win.diffTexture)
-			gl.TexImage2D(gl.TEXTURE_2D, 0,
-				gl.RGBA, int32(img.Bounds().Size().X), int32(img.Bounds().Size().Y), 0,
-				gl.RGBA, gl.UNSIGNED_BYTE,
-				gl.Ptr(img.Pix))
+	case image := <-win.diffRender:
+		if image != nil {
+			win.diffTexture.markForCreation()
+			win.diffTexture.render(image)
 		}
 	default:
 	}
@@ -132,6 +97,6 @@ func (win *winComparison) playmodeDraw() bool {
 }
 
 func (win *winComparison) draw() {
-	imgui.Image(imgui.TextureID(win.cmpTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
-	imgui.Image(imgui.TextureID(win.diffTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
+	imgui.Image(imgui.TextureID(win.cmpTexture.getID()), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
+	imgui.Image(imgui.TextureID(win.diffTexture.getID()), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
 }

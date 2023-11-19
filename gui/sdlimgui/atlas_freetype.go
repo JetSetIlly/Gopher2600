@@ -24,11 +24,11 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
-func (fnts *glslFonts) isFreeType() bool {
+func (fnts *fontAtlas) isFreeType() bool {
 	return true
 }
 
-func (fnts *glslFonts) setDefaultFont(prefs *preferences) error {
+func (fnts *fontAtlas) setDefaultFont(prefs *preferences) error {
 	defaultFontSize := float32(prefs.guiFont.Get().(float64))
 	if fnts.defaultFont != 0 && defaultFontSize == fnts.defaultFontSize {
 		return nil
@@ -59,7 +59,7 @@ func (fnts *glslFonts) setDefaultFont(prefs *preferences) error {
 	return nil
 }
 
-func (fnts *glslFonts) sourceCodeFont(prefs *preferences) error {
+func (fnts *fontAtlas) sourceCodeFont(prefs *preferences) error {
 	codeSize := float32(prefs.codeFont.Get().(float64))
 	if fnts.code != 0 && codeSize == fnts.codeSize {
 		return nil

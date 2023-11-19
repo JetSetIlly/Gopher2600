@@ -13,6 +13,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
+//go:build !gl21
+
 package sdlimgui
 
 import (
@@ -198,7 +200,7 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 		//
 		// both alternative solutions seem baroque for a single use case. maybe
 		// something for the future.
-		env.srcTextureID = sh.img.wm.dbgScr.displayTexture
+		env.srcTextureID = sh.img.wm.dbgScr.displayTexture.getID()
 
 		prefs := newCrtSeqPrefs(sh.img.crtPrefs)
 		prefs.Enabled = true

@@ -23,7 +23,6 @@ import (
 	"image/draw"
 	"strings"
 
-	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/bots"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -44,8 +43,8 @@ type winBot struct {
 	screenScalingY float32
 
 	obsImage     *image.RGBA
-	obsTexture   uint32
-	mouseTexture uint32
+	obsTexture   texture
+	mouseTexture texture
 
 	selectionStart imgui.Vec2
 	selectionEnd   imgui.Vec2
@@ -72,15 +71,8 @@ func newWinBot(img *SdlImgui) (window, error) {
 		screenScalingY: botImageScaling,
 	}
 
-	gl.GenTextures(1, &win.obsTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.obsTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-
-	gl.GenTextures(1, &win.mouseTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.mouseTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	win.obsTexture = img.rnd.addTexture(textureColor, false, false)
+	win.mouseTexture = img.rnd.addTexture(textureColor, false, false)
 
 	return win, nil
 }
@@ -95,19 +87,8 @@ func (win winBot) id() string {
 // start bot session will effectively end a bot session if feedback channels are nil
 func (win *winBot) startBotSession(feedback *bots.Feedback) {
 	win.feedback = feedback
-
-	gl.BindTexture(gl.TEXTURE_2D, win.obsTexture)
-	gl.TexImage2D(gl.TEXTURE_2D, 0,
-		gl.RGBA, 1, 1, 0,
-		gl.RGBA, gl.UNSIGNED_BYTE,
-		gl.Ptr([]uint8{0}))
-
-	gl.BindTexture(gl.TEXTURE_2D, win.mouseTexture)
-	gl.TexImage2D(gl.TEXTURE_2D, 0,
-		gl.RGBA, 1, 1, 0,
-		gl.RGBA, gl.UNSIGNED_BYTE,
-		gl.Ptr([]uint8{0}))
-
+	win.obsTexture.clear()
+	win.mouseTexture.clear()
 	win.diagnostics = win.diagnostics[:]
 }
 
@@ -121,14 +102,8 @@ func (win *winBot) playmodeDraw() bool {
 	select {
 	case win.obsImage = <-win.feedback.Images:
 		if win.obsImage != nil {
-			gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(win.obsImage.Stride)/4)
-			defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-
-			gl.BindTexture(gl.TEXTURE_2D, win.obsTexture)
-			gl.TexImage2D(gl.TEXTURE_2D, 0,
-				gl.RGBA, int32(win.obsImage.Bounds().Size().X), int32(win.obsImage.Bounds().Size().Y), 0,
-				gl.RGBA, gl.UNSIGNED_BYTE,
-				gl.Ptr(win.obsImage.Pix))
+			win.obsTexture.markForCreation()
+			win.obsTexture.render(win.obsImage)
 		}
 	default:
 	}
@@ -171,7 +146,7 @@ func (win *winBot) draw() {
 	imgui.SetCursorPos(imgui.CursorPos().Plus(padding))
 
 	win.screenOrigin = imgui.CursorScreenPos()
-	imgui.Image(imgui.TextureID(win.obsTexture), imgui.Vec2{botImageWidth, botImageHeight})
+	imgui.Image(imgui.TextureID(win.obsTexture.getID()), imgui.Vec2{botImageWidth, botImageHeight})
 	imgui.SetCursorScreenPos(win.screenOrigin)
 	win.drawMouseLayer()
 
@@ -200,7 +175,7 @@ func (win *winBot) drawMouseLayer() {
 	imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
-	imgui.ImageButton(imgui.TextureID(win.mouseTexture), imgui.Vec2{botImageWidth, botImageHeight})
+	imgui.ImageButton(imgui.TextureID(win.mouseTexture.getID()), imgui.Vec2{botImageWidth, botImageHeight})
 	imgui.PopStyleColorV(3)
 
 	if imgui.IsWindowFocused() && imgui.IsItemHovered() {
@@ -221,11 +196,8 @@ func (win *winBot) drawMouseLayer() {
 				col := color.RGBA{200, 50, 50, 100}
 				draw.Draw(mouseImage, win.selection, &image.Uniform{col}, image.Point{}, draw.Over)
 
-				gl.BindTexture(gl.TEXTURE_2D, win.mouseTexture)
-				gl.TexImage2D(gl.TEXTURE_2D, 0,
-					gl.RGBA, int32(mouseImage.Bounds().Size().X), int32(mouseImage.Bounds().Size().Y), 0,
-					gl.RGBA, gl.UNSIGNED_BYTE,
-					gl.Ptr(mouseImage.Pix))
+				win.mouseTexture.markForCreation()
+				win.mouseTexture.render(mouseImage)
 			}
 		} else if win.selectActive {
 			win.selectActive = false

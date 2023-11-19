@@ -99,11 +99,13 @@ func (win *winPrefs) draw() {
 		imgui.EndTabItem()
 	}
 
-	if imgui.BeginTabItem("CRT") {
-		win.drawCRT()
-		imgui.EndTabItem()
-		setDef = win.img.crtPrefs
-		setDefLabel = "CRT"
+	if win.img.rnd.supportsCRT() {
+		if imgui.BeginTabItem("CRT") {
+			win.drawCRT()
+			imgui.EndTabItem()
+			setDef = win.img.crtPrefs
+			setDefLabel = "CRT"
+		}
 	}
 
 	if imgui.BeginTabItem("Playmode") {
@@ -335,7 +337,7 @@ func (win *winPrefs) drawDebuggerTab() {
 	}
 
 	// font preferences for when compiled with freetype font rendering
-	if win.img.glsl.fonts.isFreeType() {
+	if win.img.fonts.isFreeType() {
 		imgui.Spacing()
 
 		if imgui.CollapsingHeader("Font Sizes") {
@@ -760,7 +762,7 @@ func (win *winPrefs) drawDiskButtons() {
 			}
 		})
 
-		if win.img.glsl.fonts.isFreeType() {
+		if win.img.fonts.isFreeType() {
 			win.img.resetFonts = resetFontFrames
 		}
 	}

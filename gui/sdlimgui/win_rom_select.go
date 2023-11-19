@@ -21,7 +21,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -52,7 +51,7 @@ type winSelectROM struct {
 	controlHeight float32
 
 	thmb        *thumbnailer.Anim
-	thmbTexture uint32
+	thmbTexture texture
 }
 
 func newSelectROM(img *SdlImgui) (window, error) {
@@ -76,12 +75,7 @@ func newSelectROM(img *SdlImgui) (window, error) {
 		return nil, fmt.Errorf("debugger: %w", err)
 	}
 
-	gl.GenTextures(1, &win.thmbTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.thmbTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
+	win.thmbTexture = img.rnd.addTexture(textureColor, true, true)
 
 	return win, nil
 }
@@ -115,13 +109,6 @@ func (win *winSelectROM) setOpen(open bool) {
 			logger.Logf("sdlimgui", "error setting path (%s)", p)
 		}
 		win.setSelectedFile(f)
-
-		// clear texture
-		gl.BindTexture(gl.TEXTURE_2D, win.thmbTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, 1, 1, 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr([]uint8{0}))
 
 		return
 	}
@@ -199,16 +186,10 @@ func (win *winSelectROM) debuggerDraw() bool {
 func (win *winSelectROM) render() {
 	// receive new thumbnail data and copy to texture
 	select {
-	case img := <-win.thmb.Render:
-		if img != nil {
-			gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(img.Stride)/4)
-			defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-
-			gl.BindTexture(gl.TEXTURE_2D, win.thmbTexture)
-			gl.TexImage2D(gl.TEXTURE_2D, 0,
-				gl.RGBA, int32(img.Bounds().Size().X), int32(img.Bounds().Size().Y), 0,
-				gl.RGBA, gl.UNSIGNED_BYTE,
-				gl.Ptr(img.Pix))
+	case image := <-win.thmb.Render:
+		if image != nil {
+			win.thmbTexture.markForCreation()
+			win.thmbTexture.render(image)
 		}
 	default:
 	}
@@ -322,7 +303,7 @@ func (win *winSelectROM) draw() {
 		imgui.EndChild()
 
 		imgui.TableNextColumn()
-		imgui.Image(imgui.TextureID(win.thmbTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
+		imgui.Image(imgui.TextureID(win.thmbTexture.getID()), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
 
 		imguiSeparator()
 		if win.thmb.IsEmulating() {

@@ -67,7 +67,7 @@ func (win *winPaint) draw() {
 	if imgui.BeginTable("drawToolbox", 2) {
 		imgui.TableNextRow()
 		imgui.TableNextColumn()
-		imgui.PushFont(win.img.glsl.fonts.largeFontAwesome)
+		imgui.PushFont(win.img.fonts.largeFontAwesome)
 		imgui.PushStyleVarFloat(imgui.StyleVarFrameBorderSize, 1.0)
 		imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{5.0, 10.0})
 

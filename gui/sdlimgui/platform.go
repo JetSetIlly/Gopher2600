@@ -88,21 +88,33 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		return nil, fmt.Errorf("sdl: %w", err)
 	}
 
-	err = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3)
-	if err != nil {
-		return nil, fmt.Errorf("sdl: %w", err)
-	}
-	err = sdl.GLSetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 2)
-	if err != nil {
-		return nil, fmt.Errorf("sdl: %w", err)
-	}
-	err = sdl.GLSetAttribute(sdl.GL_CONTEXT_FLAGS, sdl.GL_CONTEXT_FORWARD_COMPATIBLE_FLAG)
-	if err != nil {
-		return nil, fmt.Errorf("sdl: %w", err)
-	}
-	err = sdl.GLSetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, sdl.GL_CONTEXT_PROFILE_CORE)
-	if err != nil {
-		return nil, fmt.Errorf("sdl: %w", err)
+	switch img.rnd.requires() {
+	case requiresOpenGL32:
+		err = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3)
+		if err != nil {
+			return nil, fmt.Errorf("sdl: %w", err)
+		}
+		err = sdl.GLSetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 2)
+		if err != nil {
+			return nil, fmt.Errorf("sdl: %w", err)
+		}
+		err = sdl.GLSetAttribute(sdl.GL_CONTEXT_FLAGS, sdl.GL_CONTEXT_FORWARD_COMPATIBLE_FLAG)
+		if err != nil {
+			return nil, fmt.Errorf("sdl: %w", err)
+		}
+		err = sdl.GLSetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, sdl.GL_CONTEXT_PROFILE_CORE)
+		if err != nil {
+			return nil, fmt.Errorf("sdl: %w", err)
+		}
+	case requiresOpenGL21:
+		err = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 2)
+		if err != nil {
+			return nil, fmt.Errorf("sdl: %w", err)
+		}
+		err = sdl.GLSetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 1)
+		if err != nil {
+			return nil, fmt.Errorf("sdl: %w", err)
+		}
 	}
 
 	major, err := sdl.GLGetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION)

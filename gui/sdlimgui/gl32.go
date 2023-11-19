@@ -13,63 +13,73 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
+//go:build !gl21
+
 package sdlimgui
 
 import (
 	"fmt"
+	"image"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 )
 
-const (
-	guiShaderID int = iota
-	colorShaderID
-	sharpenShaderID
-	dbgscrShaderID
-	overlayShaderID
-	playscrShaderID
-	numShaders
-)
+type gl32Texture struct {
+	id     uint32
+	typ    textureType
+	create bool
+}
 
-type glsl struct {
-	img   *SdlImgui
-	fonts *glslFonts
+type gl32 struct {
+	img *SdlImgui
 
-	shaders [numShaders]shaderProgram
+	shaders []shaderProgram
 
 	vboHandle      uint32
 	elementsHandle uint32
+
+	textures map[uint32]gl32Texture
 }
 
-func newGlsl(img *SdlImgui) (*glsl, error) {
+func newRenderer(img *SdlImgui) renderer {
+	return &gl32{
+		img:      img,
+		textures: make(map[uint32]gl32Texture),
+	}
+}
+
+func (rnd *gl32) requires() requirement {
+	return requiresOpenGL32
+}
+
+func (rnd *gl32) supportsCRT() bool {
+	return true
+}
+
+func (rnd *gl32) start() error {
 	err := gl.Init()
 	if err != nil {
-		return nil, fmt.Errorf("glsl: %w", err)
+		return fmt.Errorf("glsl: %w", err)
 	}
 
-	rnd := &glsl{img: img}
-
-	rnd.setupShaders()
+	// setup shaders
+	rnd.shaders = append(rnd.shaders, newGUIShader())
+	rnd.shaders = append(rnd.shaders, newColorShader(false))
+	rnd.shaders = append(rnd.shaders, newSharpenShader(false))
+	rnd.shaders = append(rnd.shaders, newDbgScrShader(rnd.img))
+	rnd.shaders = append(rnd.shaders, newDbgScrOverlayShader(rnd.img))
+	rnd.shaders = append(rnd.shaders, newPlayscrShader(rnd.img))
 
 	// dererring font setup until later
 
 	gl.GenBuffers(1, &rnd.vboHandle)
 	gl.GenBuffers(1, &rnd.elementsHandle)
 
-	return rnd, nil
+	return nil
 }
 
-func (rnd *glsl) setupShaders() {
-	rnd.shaders[guiShaderID] = newGUIShader()
-	rnd.shaders[colorShaderID] = newColorShader(false)
-	rnd.shaders[sharpenShaderID] = newSharpenShader(false)
-	rnd.shaders[dbgscrShaderID] = newDbgScrShader(rnd.img)
-	rnd.shaders[overlayShaderID] = newDbgScrOverlayShader(rnd.img)
-	rnd.shaders[playscrShaderID] = newPlayscrShader(rnd.img)
-}
-
-func (rnd *glsl) destroy() {
+func (rnd *gl32) destroy() {
 	if rnd.vboHandle != 0 {
 		gl.DeleteBuffers(1, &rnd.vboHandle)
 	}
@@ -80,23 +90,28 @@ func (rnd *glsl) destroy() {
 	}
 	rnd.elementsHandle = 0
 
-	rnd.fonts.destroy()
-
 	for i := range rnd.shaders {
 		if rnd.shaders[i] != nil {
 			rnd.shaders[i].destroy()
 		}
 	}
+
+	for _, tex := range rnd.textures {
+		gl.DeleteTextures(1, &tex.id)
+	}
+
+	clear(rnd.textures)
+	clear(rnd.shaders)
 }
 
 // preRender clears the framebuffer.
-func (rnd *glsl) preRender() {
+func (rnd *gl32) preRender() {
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 }
 
 // render translates the ImGui draw data to OpenGL3 commands.
-func (rnd *glsl) render() {
+func (rnd *gl32) render() {
 	displaySize := rnd.img.plt.displaySize()
 	framebufferSize := rnd.img.plt.framebufferSize()
 	drawData := imgui.RenderedDrawData()
@@ -171,38 +186,10 @@ func (rnd *glsl) render() {
 				// select shader program to use
 				var shader shaderProgram
 
-				switch env.srcTextureID {
-				case rnd.img.wm.dbgScr.displayTexture:
-					shader = rnd.shaders[dbgscrShaderID]
-				case rnd.img.wm.dbgScr.elementsTexture:
-					shader = rnd.shaders[dbgscrShaderID]
-				case rnd.img.wm.dbgScr.overlayTexture:
-					shader = rnd.shaders[overlayShaderID]
-				case rnd.img.wm.dbgScr.magnifyTooltip.texture:
-					shader = rnd.shaders[sharpenShaderID]
-				case rnd.img.wm.dbgScr.magnifyWindow.texture:
-					shader = rnd.shaders[sharpenShaderID]
-
-				case rnd.img.playScr.displayTexture:
-					shader = rnd.shaders[playscrShaderID]
-				case rnd.img.wm.windows[winSelectROMID].(*winSelectROM).thmbTexture:
-					shader = rnd.shaders[colorShaderID]
-				case rnd.img.wm.windows[winTimelineID].(*winTimeline).thmbTexture:
-					shader = rnd.shaders[colorShaderID]
-				case rnd.img.wm.windows[winComparisonID].(*winComparison).cmpTexture:
-					shader = rnd.shaders[colorShaderID]
-				case rnd.img.wm.windows[winComparisonID].(*winComparison).diffTexture:
-					shader = rnd.shaders[colorShaderID]
-				case rnd.img.wm.windows[winBotID].(*winBot).obsTexture:
-					shader = rnd.shaders[colorShaderID]
-				case rnd.img.wm.windows[winBotID].(*winBot).mouseTexture:
-					shader = rnd.shaders[colorShaderID]
-				default:
-					if rnd.img.wm.windows[winCDFStreamsID].(*winCDFStreams).isStreamTexture(env.srcTextureID) {
-						shader = rnd.shaders[colorShaderID]
-					} else {
-						shader = rnd.shaders[guiShaderID]
-					}
+				if tex, ok := rnd.textures[env.srcTextureID]; ok {
+					shader = rnd.shaders[tex.typ]
+				} else {
+					shader = rnd.shaders[textureGUI]
 				}
 
 				env.draw = func() {
@@ -228,6 +215,10 @@ func (rnd *glsl) render() {
 		}
 	}
 	gl.DeleteVertexArrays(1, &vaoHandle)
+}
+
+func (rnd *gl32) screenshot(mode screenshotMode, filenameSuffix string) {
+	rnd.shaders[texturePlayscr].(*playscrShader).screenshot.startProcess(modeSingle, filenameSuffix)
 }
 
 // glState stores GL state with the intention of restoration after a short period.
@@ -314,4 +305,78 @@ func (st *glState) restoreGLState() {
 	gl.PolygonMode(gl.FRONT_AND_BACK, uint32(st.lastPolygonMode[0]))
 	gl.Viewport(st.lastViewport[0], st.lastViewport[1], st.lastViewport[2], st.lastViewport[3])
 	gl.Scissor(st.lastScissorBox[0], st.lastScissorBox[1], st.lastScissorBox[2], st.lastScissorBox[3])
+}
+
+func (rnd *gl32) addTexture(typ textureType, linear bool, clamp bool) texture {
+	tex := gl32Texture{
+		create: true,
+		typ:    typ,
+	}
+
+	gl.GenTextures(1, &tex.id)
+	gl.BindTexture(gl.TEXTURE_2D, tex.id)
+	if linear {
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	} else {
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	}
+	if clamp {
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
+	}
+
+	rnd.textures[tex.id] = tex
+
+	return &tex
+}
+
+func (rnd *gl32) addFontTexture(fnts imgui.FontAtlas) texture {
+	tex := rnd.addTexture(textureGUI, true, false)
+	image := fnts.TextureDataAlpha8()
+
+	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
+	gl.BindTexture(gl.TEXTURE_2D, tex.getID())
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RED, int32(image.Width), int32(image.Height), 0, gl.RED, gl.UNSIGNED_BYTE, image.Pixels)
+
+	return tex
+}
+
+func (tex *gl32Texture) getID() uint32 {
+	return tex.id
+}
+
+func (tex *gl32Texture) markForCreation() {
+	tex.create = true
+}
+
+func (tex *gl32Texture) clear() {
+	gl.BindTexture(gl.TEXTURE_2D, tex.id)
+	gl.TexImage2D(gl.TEXTURE_2D, 0,
+		gl.RGBA, 1, 1, 0,
+		gl.RGBA, gl.UNSIGNED_BYTE,
+		gl.Ptr([]uint8{0}))
+}
+
+func (tex *gl32Texture) render(pixels *image.RGBA) {
+	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
+	defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
+
+	if tex.create {
+		tex.create = false
+
+		gl.BindTexture(gl.TEXTURE_2D, tex.id)
+		gl.TexImage2D(gl.TEXTURE_2D, 0,
+			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(pixels.Pix))
+
+	} else {
+		gl.BindTexture(gl.TEXTURE_2D, tex.id)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
+			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(pixels.Pix))
+	}
 }

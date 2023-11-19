@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -35,11 +34,8 @@ type playScr struct {
 	// reference to screen data
 	scr *screen
 
-	// (re)create textures on next render()
-	createTextures bool
-
 	// textures. displayTexture is the presentation texture
-	displayTexture uint32
+	displayTexture texture
 
 	// the tv screen has captured mouse input
 	isCaptured bool
@@ -84,15 +80,8 @@ func newPlayScr(img *SdlImgui) *playScr {
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
-	//
-	// clamp to edge is important for LINEAR filtering. not noticeable for
-	// NEAREST filtering
-	gl.GenTextures(1, &win.displayTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.displayTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
+	// clamp is important for LINEAR filtering. not noticeable for NEAREST filtering
+	win.displayTexture = img.rnd.addTexture(texturePlayscr, true, true)
 
 	// set scale and padding on startup. scale and padding will be recalculated
 	// on window resize and textureRenderer.resize()
@@ -108,7 +97,7 @@ func (win *playScr) draw() {
 	defer win.img.screen.crit.section.Unlock()
 
 	dl := imgui.BackgroundDrawList()
-	dl.AddImage(imgui.TextureID(win.displayTexture), win.imagePosMin, win.imagePosMax)
+	dl.AddImage(imgui.TextureID(win.displayTexture.getID()), win.imagePosMin, win.imagePosMax)
 
 	win.peripheralLeft.draw(win)
 	win.peripheralRight.draw(win)
@@ -202,7 +191,7 @@ func (win *playScr) drawFPS() bool {
 
 // resize() implements the textureRenderer interface.
 func (win *playScr) resize() {
-	win.createTextures = true
+	win.displayTexture.markForCreation()
 	win.setScaling()
 }
 
@@ -214,35 +203,7 @@ func (win *playScr) render() {
 	win.scr.crit.section.Lock()
 	defer win.scr.crit.section.Unlock()
 
-	pixels := win.scr.crit.cropPixels
-
-	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
-	defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-
-	if win.createTextures {
-		win.createTextures = false
-
-		// (re)create textures
-
-		// screen texture
-		gl.BindTexture(gl.TEXTURE_2D, win.displayTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(pixels.Pix))
-
-	} else {
-		// previous versions had a check for whether the screen is stable. this
-		// is wrong, we should always update the texture even when the screen
-		// is "unstable"
-
-		// screen texture
-		gl.BindTexture(gl.TEXTURE_2D, win.displayTexture)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(pixels.Pix))
-	}
+	win.displayTexture.render(win.scr.crit.cropPixels)
 
 	// unlike dbgscr, there is no need to call setScaling() every render()
 }
@@ -304,5 +265,5 @@ func (win *playScr) setScaling() {
 
 // textureSpec implements the scalingImage specification
 func (win *playScr) textureSpec() (uint32, float32, float32) {
-	return win.displayTexture, win.scaledWidth, win.scaledHeight
+	return win.displayTexture.getID(), win.scaledWidth, win.scaledHeight
 }

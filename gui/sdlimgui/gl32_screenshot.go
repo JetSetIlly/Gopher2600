@@ -13,6 +13,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
+//go:build !gl21
+
 package sdlimgui
 
 import (
@@ -27,14 +29,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
-)
-
-type screenshotMode string
-
-const (
-	modeSingle    screenshotMode = "single"
-	modeMotion    screenshotMode = "motion"
-	modeComposite screenshotMode = "composite"
 )
 
 type screenshotFinalise func(shaderEnvironment)

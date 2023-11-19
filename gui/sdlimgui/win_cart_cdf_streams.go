@@ -20,7 +20,6 @@ import (
 	"image"
 	"image/color"
 
-	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/cdf"
@@ -46,8 +45,10 @@ type winCDFStreams struct {
 	img *SdlImgui
 
 	streamPixels   [cdf.NumDatastreams]*image.RGBA
-	streamTextures [cdf.NumDatastreams]uint32
+	streamTextures [cdf.NumDatastreams]texture
 	pixelsSize     image.Point
+
+	detailTexture texture
 
 	colouriser   datastreamDragAndDrop
 	colourSource [cdf.NumDatastreams]int
@@ -56,8 +57,6 @@ type winCDFStreams struct {
 	scanlines   int32
 
 	scaling float32
-
-	detailTexture uint32
 
 	optionsHeight float32
 }
@@ -70,25 +69,14 @@ func newWinCDFStreams(img *SdlImgui) (window, error) {
 		scaling:     1.49,
 	}
 
-	win.clearColourStreaming()
+	win.clearColours()
 
 	for i := range win.streamTextures {
-		gl.GenTextures(1, &win.streamTextures[i])
-		gl.BindTexture(gl.TEXTURE_2D, win.streamTextures[i])
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-	}
-
-	for i := range win.streamTextures {
+		win.streamTextures[i] = img.rnd.addTexture(textureColor, false, false)
 		win.streamPixels[i] = image.NewRGBA(image.Rect(0, 0, 8, specification.AbsoluteMaxScanlines))
-		imageSize := win.streamPixels[i].Bounds().Size()
-
-		gl.BindTexture(gl.TEXTURE_2D, win.streamTextures[i])
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(imageSize.X), int32(imageSize.Y), 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(win.streamPixels[i].Pix))
 	}
+
+	win.detailTexture = img.rnd.addTexture(textureColor, false, false)
 
 	win.pixelsSize = win.streamPixels[0].Bounds().Size()
 	for y := 0; y < win.pixelsSize.Y; y++ {
@@ -99,13 +87,7 @@ func newWinCDFStreams(img *SdlImgui) (window, error) {
 		}
 	}
 
-	win.refreshTextures()
-
-	// tooltip detail
-	gl.GenTextures(1, &win.detailTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.detailTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	win.render()
 
 	return win, nil
 }
@@ -164,16 +146,13 @@ func (win *winCDFStreams) updateStreams(regs cdf.Registers, static mapper.CartSt
 		}
 	}
 
-	win.refreshTextures()
+	win.render()
 }
 
-func (win *winCDFStreams) refreshTextures() {
+func (win *winCDFStreams) render() {
 	for i := range win.streamTextures {
-		gl.BindTexture(gl.TEXTURE_2D, win.streamTextures[i])
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(win.pixelsSize.X), int32(win.pixelsSize.Y),
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(win.streamPixels[i].Pix))
+		win.streamTextures[i].markForCreation()
+		win.streamTextures[i].render(win.streamPixels[i])
 	}
 }
 
@@ -240,7 +219,7 @@ func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
 
 			// Have to use ImageButton() rather than Image() because we want to use
 			// drag and drop
-			imgui.ImageButton(imgui.TextureID(win.streamTextures[i]), imgui.Vec2{
+			imgui.ImageButton(imgui.TextureID(win.streamTextures[i].getID()), imgui.Vec2{
 				X: float32(win.pixelsSize.X) * (win.scaling + 1),
 				Y: float32(win.pixelsSize.Y) * win.scaling,
 			})
@@ -267,7 +246,7 @@ func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
 			imgui.PushStyleColor(imgui.StyleColorPopupBg, win.img.cols.Transparent)
 			if imgui.BeginDragDropSource(imgui.DragDropFlagsNone) {
 				imgui.SetDragDropPayload(dragDropName, []byte{byte(i)}, imgui.ConditionAlways)
-				imgui.PushFont(win.img.glsl.fonts.largeFontAwesome)
+				imgui.PushFont(win.img.fonts.largeFontAwesome)
 				imgui.Text(string(fonts.PaintBrush))
 				imgui.PopFont()
 				imgui.EndDragDropSource()
@@ -388,16 +367,13 @@ func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
 					detailPixels := win.streamPixels[i].SubImage(detailCrop).(*image.RGBA)
 					sz := detailPixels.Bounds().Size()
 
-					gl.BindTexture(gl.TEXTURE_2D, win.detailTexture)
-					gl.TexImage2D(gl.TEXTURE_2D, 0,
-						gl.RGBA, int32(sz.X), int32(sz.Y), 0,
-						gl.RGBA, gl.UNSIGNED_BYTE,
-						gl.Ptr(detailPixels.Pix))
+					win.detailTexture.markForCreation()
+					win.detailTexture.render(detailPixels)
 
 					// height of image matches the height of the "list of
 					// values" above
 					h := imgui.FontSize() + (imgui.CurrentStyle().FramePadding().Y)
-					imgui.Image(imgui.TextureID(win.detailTexture), imgui.Vec2{
+					imgui.Image(imgui.TextureID(win.detailTexture.getID()), imgui.Vec2{
 						X: float32(sz.X) * h * 1.25,
 						Y: float32(sz.Y) * h,
 					})
@@ -455,7 +431,7 @@ func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
 			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
 		}
 		if imgui.Button("Clear Colours") {
-			win.clearColourStreaming()
+			win.clearColours()
 		}
 		if !enableClearColours {
 			imgui.PopStyleVar()
@@ -464,25 +440,7 @@ func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
 	})
 }
 
-func (win *winCDFStreams) isStreamTexture(id uint32) bool {
-	if !win.debuggerOpen {
-		return false
-	}
-
-	if id == win.detailTexture {
-		return true
-	}
-
-	for _, i := range win.streamTextures {
-		if id == i {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (win *winCDFStreams) clearColourStreaming() {
+func (win *winCDFStreams) clearColours() {
 	for i := range win.colourSource {
 		win.colourSource[i] = -1
 	}

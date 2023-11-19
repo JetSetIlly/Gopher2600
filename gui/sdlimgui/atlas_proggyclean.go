@@ -21,11 +21,11 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 )
 
-func (fnts *glslFonts) isFreeType() bool {
+func (fnts *fontAtlas) isFreeType() bool {
 	return false
 }
 
-func (fnts *glslFonts) setDefaultFont(prefs *preferences) error {
+func (fnts *fontAtlas) setDefaultFont(prefs *preferences) error {
 	// default font has already been set up
 	if fnts.defaultFont != 0 {
 		return nil
@@ -38,7 +38,7 @@ func (fnts *glslFonts) setDefaultFont(prefs *preferences) error {
 	return nil
 }
 
-func (fnts *glslFonts) sourceCodeFont(prefs *preferences) error {
+func (fnts *fontAtlas) sourceCodeFont(prefs *preferences) error {
 	fnts.code = fnts.defaultFont
 	fnts.codeSize = fnts.defaultFontSize
 	return nil

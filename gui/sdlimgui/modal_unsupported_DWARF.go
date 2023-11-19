@@ -32,7 +32,7 @@ func (img *SdlImgui) modalDrawUnsupportedDWARF() {
 		imgui.TableNextRow()
 
 		imgui.TableNextColumn()
-		imgui.PushFont(img.glsl.fonts.veryLargeFontAwesome)
+		imgui.PushFont(img.fonts.veryLargeFontAwesome)
 		imgui.Text(string(fonts.Developer))
 		imgui.PopFont()
 		imgui.SameLine()
@@ -45,7 +45,7 @@ func (img *SdlImgui) modalDrawUnsupportedDWARF() {
 		imgui.Text("If you're using the GNU compiler to preare the ROM, the debugging")
 		imgui.Text("options should be:")
 		imgui.Text("")
-		imgui.PushFont(img.glsl.fonts.code)
+		imgui.PushFont(img.fonts.code)
 		imgui.Text("    -g3 -gdwarf-4 -strict-dwarf")
 		imgui.PopFont()
 		imgui.Text("")
@@ -58,7 +58,7 @@ func (img *SdlImgui) modalDrawUnsupportedDWARF() {
 		imgui.Separator()
 		imgui.Spacing()
 		sz := imgui.ContentRegionAvail()
-		sz.Y = img.glsl.fonts.defaultFontSize
+		sz.Y = img.fonts.defaultFontSize
 		sz.Y += imgui.CurrentStyle().CellPadding().Y * 2
 		sz.Y += imgui.CurrentStyle().FramePadding().Y * 2
 		if imgui.ButtonV("Continue without DWARF data", sz) {

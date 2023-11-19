@@ -49,8 +49,9 @@ const disabledAlpha = 0.3
 // SdlImgui is an sdl based visualiser using imgui.
 type SdlImgui struct {
 	// the mechanical requirements for the gui
-	plt  *platform
-	glsl *glsl
+	plt   *platform
+	rnd   renderer
+	fonts fontAtlas
 
 	// resetFonts value will be reduced to 0 each GUI frame. at value 1 the
 	// fonts will be reset.
@@ -60,13 +61,13 @@ type SdlImgui struct {
 	// allow sufficient time to close the font size selector combo box
 	resetFonts int
 
-	// the current mode of the underlying
+	// the current mode of the emulation
 	mode atomic.Value // govern.Mode
 
 	// references to parent emulation
 	dbg *debugger.Debugger
 
-	// chache should be used
+	// cached values from the emulation
 	cache caching.Cache
 
 	// terminal interface to the debugger. this is distinct from the
@@ -144,6 +145,10 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	// define colors
 	img.cols = newColors()
 
+	// new renderer
+	img.rnd = newRenderer(img)
+
+	// create platform
 	img.plt, err = newPlatform(img)
 	if err != nil {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
@@ -156,7 +161,8 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 
-	img.glsl, err = newGlsl(img)
+	// start renderer after platform and preferences
+	err = img.rnd.start()
 	if err != nil {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
@@ -263,9 +269,7 @@ func (img *SdlImgui) Destroy() {
 		logger.Log("sdlimgui", err.Error())
 	}
 
-	// destroying glsl after platform or we'll get a panic when window is
-	// opened in full screen
-	img.glsl.destroy()
+	img.rnd.destroy()
 
 	ctx, err := imgui.CurrentContext()
 	if err != nil {
@@ -311,7 +315,7 @@ func (img *SdlImgui) draw() {
 		return
 	}
 
-	imgui.PushFont(img.glsl.fonts.defaultFont)
+	imgui.PushFont(img.fonts.defaultFont)
 	defer imgui.PopFont()
 
 	if mode == govern.ModePlay {

@@ -30,7 +30,7 @@ type dbgScrMagnifyTooltip struct {
 	showInTooltip bool
 
 	// textures
-	texture uint32
+	texture texture
 
 	// area of magnification for tooltip
 	clip image.Rectangle
@@ -56,7 +56,7 @@ func (mag *dbgScrMagnifyTooltip) draw(mouse dbgScrMouse) {
 		mouse.scaled.x+mag.zoom,
 		mouse.scaled.y+mag.zoom*pixelWidth)
 
-	imgui.Image(imgui.TextureID(mag.texture), imgui.Vec2{200, 200})
+	imgui.Image(imgui.TextureID(mag.texture.getID()), imgui.Vec2{200, 200})
 }
 
 type dbgScrMagnifyWindow struct {
@@ -64,7 +64,7 @@ type dbgScrMagnifyWindow struct {
 	open bool
 
 	// textures
-	texture uint32
+	texture texture
 
 	// area of magnification for window this is used to clip the larger screen texture
 	clip image.Rectangle
@@ -135,7 +135,7 @@ func (mag *dbgScrMagnifyWindow) draw(cols *imguiColors) {
 		imgui.PushStyleColor(imgui.StyleColorButtonActive, cols.Transparent)
 		imgui.PushStyleColor(imgui.StyleColorButtonHovered, cols.Transparent)
 		imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
-		imgui.ImageButton(imgui.TextureID(mag.texture), sz)
+		imgui.ImageButton(imgui.TextureID(mag.texture.getID()), sz)
 
 		if imgui.IsItemHovered() || mag.isDragging {
 			// adjust zoom with mouse wheel

@@ -148,9 +148,9 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	case gui.ReqScreenshot:
 		switch len(request.args) {
 		case 0:
-			img.glsl.shaders[playscrShaderID].(*playscrShader).screenshot.startProcess(modeSingle, "")
+			img.rnd.screenshot(modeSingle, "")
 		case 1:
-			img.glsl.shaders[playscrShaderID].(*playscrShader).screenshot.startProcess(modeSingle, request.args[0].(string))
+			img.rnd.screenshot(modeSingle, request.args[0].(string))
 		default:
 			err = fmt.Errorf("wrong number of arguments (%d instead of 1 or zero)", len(request.args))
 		}

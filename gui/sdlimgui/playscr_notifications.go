@@ -81,20 +81,20 @@ func (ntfy *peripheralNotification) draw(win *playScr) {
 	if ntfy.rightAlign {
 		pos = imgui.Vec2{dimen[0], dimen[1]}
 		id = "##rightPeriphNotification"
-		pos.X -= win.img.glsl.fonts.gopher2600IconsSize * 1.35
+		pos.X -= win.img.fonts.gopher2600IconsSize * 1.35
 	} else {
 		pos = imgui.Vec2{0, dimen[1]}
 		id = "##leftPeriphNotification"
-		pos.X += win.img.glsl.fonts.gopher2600IconsSize * 0.20
+		pos.X += win.img.fonts.gopher2600IconsSize * 0.20
 	}
-	pos.Y -= win.img.glsl.fonts.gopher2600IconsSize * 1.35
+	pos.Y -= win.img.fonts.gopher2600IconsSize * 1.35
 
 	imgui.SetNextWindowPos(pos)
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
 	defer imgui.PopStyleColorV(2)
 
-	imgui.PushFont(win.img.glsl.fonts.gopher2600Icons)
+	imgui.PushFont(win.img.fonts.gopher2600Icons)
 	defer imgui.PopFont()
 
 	a := float32(win.img.prefs.notificationVisibility.Get().(float64))
@@ -186,7 +186,7 @@ func (ntfy *emulationEventNotification) draw(win *playScr, hosted bool) {
 			imgui.WindowFlagsNoBringToFrontOnFocus)
 		defer imgui.End()
 
-		imgui.PushFont(win.img.glsl.fonts.veryLargeFontAwesome)
+		imgui.PushFont(win.img.fonts.veryLargeFontAwesome)
 		defer imgui.PopFont()
 	}
 
@@ -336,21 +336,21 @@ func (ntfy *cartridgeEventNotification) draw(win *playScr) {
 	dimen := win.img.plt.displaySize()
 	pos := imgui.Vec2{dimen[0], 0}
 
-	width := win.img.glsl.fonts.gopher2600IconsSize * 1.5
+	width := win.img.fonts.gopher2600IconsSize * 1.5
 	if secondaryIcon != "" {
-		width += win.img.glsl.fonts.largeFontAwesomeSize * 1.5
+		width += win.img.fonts.largeFontAwesomeSize * 1.5
 	}
 
 	// position is based on which font we're using
 	if useGopherFont {
-		imgui.PushFont(win.img.glsl.fonts.gopher2600Icons)
-		pos.X -= win.img.glsl.fonts.gopher2600IconsSize * 1.2
+		imgui.PushFont(win.img.fonts.gopher2600Icons)
+		pos.X -= win.img.fonts.gopher2600IconsSize * 1.2
 		if secondaryIcon != "" {
-			pos.X -= win.img.glsl.fonts.largeFontAwesomeSize * 2.0
+			pos.X -= win.img.fonts.largeFontAwesomeSize * 2.0
 		}
 	} else {
-		imgui.PushFont(win.img.glsl.fonts.veryLargeFontAwesome)
-		pos.X -= win.img.glsl.fonts.veryLargeFontAwesomeSize
+		imgui.PushFont(win.img.fonts.veryLargeFontAwesome)
+		pos.X -= win.img.fonts.veryLargeFontAwesomeSize
 		pos.X -= 20
 		pos.Y += 10
 	}
@@ -375,10 +375,10 @@ func (ntfy *cartridgeEventNotification) draw(win *playScr) {
 	if secondaryIcon != "" {
 		// position sub-icon so that it is centered vertically with the main icon
 		dim := imgui.CursorScreenPos()
-		dim.Y += (win.img.glsl.fonts.gopher2600IconsSize - win.img.glsl.fonts.largeFontAwesomeSize) * 0.5
+		dim.Y += (win.img.fonts.gopher2600IconsSize - win.img.fonts.largeFontAwesomeSize) * 0.5
 		imgui.SetCursorScreenPos(dim)
 
-		imgui.PushFont(win.img.glsl.fonts.largeFontAwesome)
+		imgui.PushFont(win.img.fonts.largeFontAwesome)
 		imgui.Text(secondaryIcon)
 		imgui.PopFont()
 	}

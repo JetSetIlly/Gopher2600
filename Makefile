@@ -7,6 +7,16 @@ ldflags = -s -w
 ldflags_version = $(ldflags) -X 'github.com/jetsetilly/gopher2600/version.number=$(version)'
 profilingRom = /home/steve/Desktop/2600_dev/zackattack/waterbed-bouncers-2600/source/bouncers.bin
 
+# the renderer to use for the GUI
+#
+# the supported renderers are OpenGL 3.2 and OpenGL 2.1
+#
+# to target OpenGL 2.1 set the renderer variable to gl21
+# any other value will target OpenGL 3.2
+ifndef renderer
+	renderer = gl32
+endif
+
 
 ### support targets
 .PHONY: all clean tidy generate check_git check_glsl glsl_validate check_pandoc readme_spell
@@ -123,7 +133,7 @@ fontrendering=imguifreetype
 endif
 
 build: fontrendering generate 
-	$(goBinary) build -pgo=auto -gcflags "$(gcflags)" -trimpath -ldflags "$(ldflags_version)" -tags="$(fontrendering)"
+	$(goBinary) build -pgo=auto -gcflags "$(gcflags)" -trimpath -ldflags "$(ldflags_version)" -tags="$(fontrendering) $(renderer)"
 
 ### release building
 
@@ -135,7 +145,7 @@ ifndef version
 endif
 
 release: version_check fontrendering generate 
-	$(goBinary) build -pgo=auto -gcflags "$(gcflags)" -trimpath -ldflags "$(ldflags_version)" -tags="$(fontrendering) release"
+	$(goBinary) build -pgo=auto -gcflags "$(gcflags)" -trimpath -ldflags "$(ldflags_version)" -tags="$(fontrendering) $(renderer) release"
 	mv gopher2600 gopher2600_$(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
 
 

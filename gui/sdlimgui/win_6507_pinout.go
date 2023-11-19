@@ -115,7 +115,7 @@ func (win *win6507Pinout) draw() {
 
 	if imgui.BeginChildV("pinout", avail, false, imgui.WindowFlagsNone) {
 		dl := imgui.WindowDrawList()
-		imgui.PushFont(win.img.glsl.fonts.diagram)
+		imgui.PushFont(win.img.fonts.diagram)
 
 		const lineThick = 2.0
 

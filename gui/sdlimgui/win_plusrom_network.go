@@ -94,7 +94,7 @@ func (win *winPlusROMNetwork) draw(plus *plusrom.PlusROM) {
 	imgui.PopItemWidth()
 
 	if send.Cycles > 0 {
-		imgui.PushFont(win.img.glsl.fonts.gopher2600Icons)
+		imgui.PushFont(win.img.fonts.gopher2600Icons)
 		imgui.Text(fmt.Sprintf("%c", fonts.Wifi))
 		imgui.PopFont()
 	}

@@ -20,7 +20,6 @@ import (
 	"image"
 	"strings"
 
-	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
@@ -44,16 +43,10 @@ type winDbgScr struct {
 	// reference to screen data
 	scr *screen
 
-	// (re)create textures on next render(). magnify texture creation requires more care
-	createTextures bool
-
 	// textures
-	displayTexture  uint32
-	elementsTexture uint32
-	overlayTexture  uint32
-
-	// the pixels we use to clear normalTexture with
-	emptyScaledPixels []uint8
+	displayTexture  texture
+	elementsTexture texture
+	overlayTexture  texture
 
 	// how to present the screen in the window
 	elements bool
@@ -115,38 +108,11 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	win.debuggerGeom.noFousTracking = true
 
 	// set texture, creation of textures will be done after every call to resize()
-	gl.GenTextures(1, &win.displayTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.displayTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
-
-	gl.GenTextures(1, &win.overlayTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.overlayTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-
-	gl.GenTextures(1, &win.elementsTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
-
-	gl.GenTextures(1, &win.magnifyTooltip.texture)
-	gl.BindTexture(gl.TEXTURE_2D, win.magnifyTooltip.texture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
-
-	gl.GenTextures(1, &win.magnifyWindow.texture)
-	gl.BindTexture(gl.TEXTURE_2D, win.magnifyWindow.texture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
+	win.displayTexture = img.rnd.addTexture(textureDbgScr, true, true)
+	win.overlayTexture = img.rnd.addTexture(textureOverlay, false, false)
+	win.elementsTexture = img.rnd.addTexture(textureDbgScr, true, true)
+	win.magnifyTooltip.texture = img.rnd.addTexture(textureSharpen, false, false)
+	win.magnifyWindow.texture = img.rnd.addTexture(textureSharpen, false, false)
 
 	// call setScaling() now so that render() has something to work with - even
 	// though setScaling() is called every draw if the window is open it will
@@ -236,9 +202,9 @@ func (win *winDbgScr) draw() {
 
 	imgui.PushStyleColor(imgui.StyleColorDragDropTarget, win.img.cols.Transparent)
 	if !win.crtPreview && win.elements {
-		imgui.ImageButton(imgui.TextureID(win.elementsTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+		imgui.ImageButton(imgui.TextureID(win.elementsTexture.getID()), imgui.Vec2{win.scaledWidth, win.scaledHeight})
 	} else {
-		imgui.ImageButton(imgui.TextureID(win.displayTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+		imgui.ImageButton(imgui.TextureID(win.displayTexture.getID()), imgui.Vec2{win.scaledWidth, win.scaledHeight})
 	}
 	win.paintDragAndDrop()
 	imgui.PopStyleColor()
@@ -248,7 +214,7 @@ func (win *winDbgScr) draw() {
 	if !win.crtPreview {
 		// overlay texture on top of screen texture
 		imgui.SetCursorScreenPos(win.screenOrigin)
-		imgui.ImageButton(imgui.TextureID(win.overlayTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+		imgui.ImageButton(imgui.TextureID(win.overlayTexture.getID()), imgui.Vec2{win.scaledWidth, win.scaledHeight})
 
 		// popup menu on right mouse button
 		//
@@ -359,9 +325,11 @@ func (win *winDbgScr) draw() {
 		imgui.Text(fmt.Sprintf("%.1fx", win.yscaling))
 
 		// crt preview affects which debugging toggles are visible
-		imgui.SameLineV(0, 15)
-		if imgui.Checkbox("CRT Preview", &win.crtPreview) {
-			win.createTextures = true
+		if win.img.rnd.supportsCRT() {
+			imgui.SameLineV(0, 15)
+			if imgui.Checkbox("CRT Preview", &win.crtPreview) {
+				win.resize()
+			}
 		}
 
 		// debugging toggles
@@ -375,7 +343,7 @@ func (win *winDbgScr) draw() {
 
 			imgui.SameLineV(0, 15)
 			if imgui.Checkbox("Cropping", &win.cropped) {
-				win.createTextures = true
+				win.resize()
 			}
 
 			imgui.SameLineV(0, 15)
@@ -773,7 +741,9 @@ func (win *winDbgScr) drawReflectionTooltip() {
 
 // resize() implements the textureRenderer interface.
 func (win *winDbgScr) resize() {
-	win.createTextures = true
+	win.displayTexture.markForCreation()
+	win.elementsTexture.markForCreation()
+	win.overlayTexture.markForCreation()
 
 	// scaling is set every render() rather than on resize(), like it is done
 	// in the playscr. this is because scaling needs to consider the size of
@@ -785,64 +755,14 @@ func (win *winDbgScr) resize() {
 // render is called by service loop (via screen.render()). must be inside
 // screen critical section.
 func (win *winDbgScr) render() {
-	var pixels *image.RGBA
-	var elements *image.RGBA
-	var overlay *image.RGBA
-
 	if win.cropped || win.crtPreview {
-		pixels = win.scr.crit.cropPixels
-		elements = win.scr.crit.cropElementPixels
-		overlay = win.scr.crit.cropOverlayPixels
+		win.displayTexture.render(win.scr.crit.cropPixels)
+		win.elementsTexture.render(win.scr.crit.cropElementPixels)
+		win.overlayTexture.render(win.scr.crit.cropOverlayPixels)
 	} else {
-		pixels = win.scr.crit.presentationPixels
-		elements = win.scr.crit.elementPixels
-		overlay = win.scr.crit.overlayPixels
-	}
-
-	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
-	defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-
-	if win.createTextures {
-		// empty pixels for screen texture
-		win.emptyScaledPixels = make([]uint8, int(win.scaledWidth)*int(win.scaledHeight)*4)
-
-		gl.BindTexture(gl.TEXTURE_2D, win.displayTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(pixels.Pix))
-
-		gl.BindTexture(gl.TEXTURE_2D, win.overlayTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(overlay.Bounds().Size().X), int32(overlay.Bounds().Size().Y), 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(overlay.Pix))
-
-		gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(elements.Bounds().Size().X), int32(elements.Bounds().Size().Y), 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(elements.Pix))
-
-		win.createTextures = false
-	} else {
-		gl.BindTexture(gl.TEXTURE_2D, win.displayTexture)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(pixels.Pix))
-
-		gl.BindTexture(gl.TEXTURE_2D, win.overlayTexture)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(overlay.Bounds().Size().X), int32(overlay.Bounds().Size().Y),
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(overlay.Pix))
-
-		gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(elements.Bounds().Size().X), int32(elements.Bounds().Size().Y),
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(elements.Pix))
+		win.displayTexture.render(win.scr.crit.presentationPixels)
+		win.elementsTexture.render(win.scr.crit.elementPixels)
+		win.overlayTexture.render(win.scr.crit.overlayPixels)
 	}
 
 	if win.magnifyTooltip.clip.Size().X > 0 {
@@ -874,11 +794,8 @@ func (win *winDbgScr) render() {
 			pixels = src.SubImage(win.magnifyTooltip.clip).(*image.RGBA)
 		}
 
-		gl.BindTexture(gl.TEXTURE_2D, win.magnifyTooltip.texture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(pixels.Pix))
+		win.magnifyTooltip.texture.markForCreation()
+		win.magnifyTooltip.texture.render(pixels)
 	}
 
 	if win.magnifyWindow.clip.Size().X > 0 {
@@ -914,13 +831,8 @@ func (win *winDbgScr) render() {
 			pixels = src.SubImage(win.magnifyWindow.clip).(*image.RGBA)
 		}
 
-		if !pixels.Bounds().Empty() {
-			gl.BindTexture(gl.TEXTURE_2D, win.magnifyWindow.texture)
-			gl.TexImage2D(gl.TEXTURE_2D, 0,
-				gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
-				gl.RGBA, gl.UNSIGNED_BYTE,
-				gl.Ptr(pixels.Pix))
-		}
+		win.magnifyWindow.texture.markForCreation()
+		win.magnifyWindow.texture.render(pixels)
 	}
 }
 
@@ -973,7 +885,7 @@ func (win *winDbgScr) setScaling() {
 // textureSpec implements the scalingImage specification
 func (win *winDbgScr) textureSpec() (uint32, float32, float32) {
 	if !win.crtPreview && win.elements {
-		return win.elementsTexture, win.scaledWidth, win.scaledHeight
+		return win.elementsTexture.getID(), win.scaledWidth, win.scaledHeight
 	}
-	return win.displayTexture, win.scaledWidth, win.scaledHeight
+	return win.displayTexture.getID(), win.scaledWidth, win.scaledHeight
 }

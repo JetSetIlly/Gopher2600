@@ -31,10 +31,12 @@ import (
 
 // Service implements GuiCreator interface.
 func (img *SdlImgui) Service() {
+	var err error
+
 	// handle font reset procedure
 	if img.resetFonts >= 1 {
 		if img.resetFonts == 1 {
-			err := img.glsl.setupFonts()
+			err = img.fonts.initialise(img.rnd, img.prefs)
 			if err != nil {
 				panic(err)
 			}
@@ -405,9 +407,9 @@ func (img *SdlImgui) renderFrame() {
 
 	// rendering
 	imgui.Render() // This call only creates the draw data list. Actual rendering to framebuffer is done below.
-	img.glsl.preRender()
+	img.rnd.preRender()
 	img.screen.render()
-	img.glsl.render()
+	img.rnd.render()
 	img.plt.postRender()
 
 	// process any functions that should only be done after rendering

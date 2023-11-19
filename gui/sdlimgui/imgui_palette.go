@@ -139,7 +139,7 @@ func (pal *palette) draw(selection int) (int, bool) {
 			imgui.PushStyleColor(imgui.StyleColorPopupBg, pal.img.cols.Transparent)
 			if imgui.BeginDragDropSource(imgui.DragDropFlagsNone) {
 				imgui.SetDragDropPayload(paletteDragDropName, []byte{byte(i)}, imgui.ConditionAlways)
-				imgui.PushFont(pal.img.glsl.fonts.largeFontAwesome)
+				imgui.PushFont(pal.img.fonts.largeFontAwesome)
 				imgui.Text(string(fonts.PaintRoller))
 				imgui.PopFont()
 				imgui.EndDragDropSource()

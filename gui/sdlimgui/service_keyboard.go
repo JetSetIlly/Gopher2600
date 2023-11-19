@@ -150,11 +150,11 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 
 			case sdl.SCANCODE_F12:
 				if ctrl && !shift {
-					img.glsl.shaders[playscrShaderID].(*playscrShader).screenshot.startProcess(modeComposite, "")
+					img.rnd.screenshot(modeComposite, "")
 				} else if shift && !ctrl {
-					img.glsl.shaders[playscrShaderID].(*playscrShader).screenshot.startProcess(modeMotion, "")
+					img.rnd.screenshot(modeMotion, "")
 				} else {
-					img.glsl.shaders[playscrShaderID].(*playscrShader).screenshot.startProcess(modeSingle, "")
+					img.rnd.screenshot(modeSingle, "")
 				}
 
 				img.playScr.emulationNotice.set(notifications.NotifyScreenshot)
