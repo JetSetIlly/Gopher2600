@@ -24,59 +24,27 @@ package debugger
 // library, which is where this requirement originates.
 type CommandLineOptions struct {
 	// common to debugger and play modes
-	Log       *bool
-	Spec      *string
-	FpsCap    *bool
-	Multiload *int
-	Mapping   *string
-	Left      *string
-	Right     *string
-	Profile   *string
-	ELF       *string
+	Log       bool
+	Spec      string
+	FpsCap    bool
+	Multiload int
+	Mapping   string
+	Left      string
+	Right     string
+	Profile   string
+	ELF       string
 
 	// playmode only
-	ComparisonROM    *string
-	ComparisonPrefs  *string
-	Record           *bool
-	PlaybackCheckROM *bool
-	PatchFile        *string
-	Wav              *bool
-	NoEject          *bool
-	Macro            *string
+	ComparisonROM    string
+	ComparisonPrefs  string
+	Record           bool
+	PlaybackCheckROM bool
+	PatchFile        string
+	Wav              bool
+	NoEject          bool
+	Macro            string
 
 	// debugger only
-	InitScript *string
-	TermType   *string
-}
-
-// NewCommandLineOptions creates a minimum instance of CommandLineOptions such
-// that it is safe to dereference the fields in all situations.
-//
-// The values of these fields are shared by type and will be the default values
-// for that type. ie. a bool is false, an int is zero, etc. Care should be
-// taken therefore to replace the instance with the result from the modalflag
-// (or flag) package.
-func NewCommandLineOptions() CommandLineOptions {
-	var b bool
-	var s string
-	var i int
-	return CommandLineOptions{
-		Log:             &b,
-		Spec:            &s,
-		FpsCap:          &b,
-		Multiload:       &i,
-		Mapping:         &s,
-		Left:            &s,
-		Right:           &s,
-		Profile:         &s,
-		ELF:             &s,
-		ComparisonROM:   &s,
-		ComparisonPrefs: &s,
-		Record:          &b,
-		PatchFile:       &s,
-		Wav:             &b,
-		InitScript:      &s,
-		TermType:        &s,
-		NoEject:         &b,
-	}
+	InitScript string
+	TermType   string
 }

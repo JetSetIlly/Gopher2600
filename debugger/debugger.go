@@ -341,7 +341,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 
 	// creat a new television. this will be used during the initialisation of
 	// the VCS and not referred to directly again
-	tv, err := television.NewTelevision(*opts.Spec)
+	tv, err := television.NewTelevision(opts.Spec)
 	if err != nil {
 		return nil, fmt.Errorf("debugger: %w", err)
 	}
@@ -440,7 +440,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	dbg.vcs.RIOT.Ports.AttachPlugMonitor(dbg)
 
 	// set fps cap
-	dbg.vcs.TV.SetFPSCap(*opts.FpsCap)
+	dbg.vcs.TV.SetFPSCap(opts.FpsCap)
 
 	// initialise terminal
 	err = dbg.term.Initialise()
@@ -677,7 +677,7 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 	if filename == "" {
 		cartload = cartridgeloader.Loader{}
 	} else {
-		cartload, err = cartridgeloader.NewLoader(filename, *dbg.opts.Mapping)
+		cartload, err = cartridgeloader.NewLoader(filename, dbg.opts.Mapping)
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
 		}
@@ -688,7 +688,7 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 		return fmt.Errorf("debugger: %w", err)
 	}
 
-	err = dbg.insertPeripheralsOnStartup(*dbg.opts.Left, *dbg.opts.Right)
+	err = dbg.insertPeripheralsOnStartup(dbg.opts.Left, dbg.opts.Right)
 	if err != nil {
 		return fmt.Errorf("debugger: %w", err)
 	}
@@ -699,8 +699,8 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 	}
 
 	// intialisation script because we're in debugger mode
-	if *dbg.opts.InitScript != "" {
-		scr, err := script.RescribeScript(*dbg.opts.InitScript)
+	if dbg.opts.InitScript != "" {
+		scr, err := script.RescribeScript(dbg.opts.InitScript)
 		if err == nil {
 			dbg.term.Silence(true)
 			err = dbg.inputLoop(scr, false)
@@ -751,7 +751,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 	if filename == "" {
 		cartload = cartridgeloader.Loader{}
 	} else {
-		cartload, err = cartridgeloader.NewLoader(filename, *dbg.opts.Mapping)
+		cartload, err = cartridgeloader.NewLoader(filename, dbg.opts.Mapping)
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
 		}
@@ -768,22 +768,22 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 			return fmt.Errorf("debugger: %w", err)
 		}
 
-		err = dbg.insertPeripheralsOnStartup(*dbg.opts.Left, *dbg.opts.Right)
+		err = dbg.insertPeripheralsOnStartup(dbg.opts.Left, dbg.opts.Right)
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
 		}
 
 		// apply patch if requested. note that this will be in addition to any
 		// patches applied during setup.AttachCartridge
-		if *dbg.opts.PatchFile != "" {
-			_, err := patch.CartridgeMemory(dbg.vcs.Mem.Cart, *dbg.opts.PatchFile)
+		if dbg.opts.PatchFile != "" {
+			_, err := patch.CartridgeMemory(dbg.vcs.Mem.Cart, dbg.opts.PatchFile)
 			if err != nil {
 				return fmt.Errorf("debugger: %w", err)
 			}
 		}
 
 		// record wav file
-		if *dbg.opts.Wav {
+		if dbg.opts.Wav {
 			fn := unique.Filename("audio", cartload.ShortName())
 			ww, err := wavwriter.NewWavWriter(fn)
 			if err != nil {
@@ -793,25 +793,25 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 		}
 
 		// record gameplay
-		if *dbg.opts.Record {
+		if dbg.opts.Record {
 			dbg.startRecording(cartload.ShortName())
 		}
 	} else {
-		if *dbg.opts.Record {
+		if dbg.opts.Record {
 			return fmt.Errorf("debugger: cannot make a new recording using a playback file")
 		}
 
 		dbg.startPlayback(filename)
 	}
 
-	if *dbg.opts.Macro != "" {
-		dbg.macro, err = macro.NewMacro(*dbg.opts.Macro, dbg, dbg.vcs.Input, dbg.vcs.TV, dbg.gui)
+	if dbg.opts.Macro != "" {
+		dbg.macro, err = macro.NewMacro(dbg.opts.Macro, dbg, dbg.vcs.Input, dbg.vcs.TV, dbg.gui)
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
 		}
 	}
 
-	err = dbg.startComparison(*dbg.opts.ComparisonROM, *dbg.opts.ComparisonPrefs)
+	err = dbg.startComparison(dbg.opts.ComparisonROM, dbg.opts.ComparisonPrefs)
 	if err != nil {
 		return fmt.Errorf("debugger: %w", err)
 	}
@@ -1046,9 +1046,9 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 		if _, ok := cart.(*supercharger.Supercharger); ok {
 			switch event {
 			case notifications.NotifySuperchargerLoadStarted:
-				if *dbg.opts.Multiload >= 0 {
-					logger.Logf("debugger", "forcing supercharger multiload (%#02x)", uint8(*dbg.opts.Multiload))
-					dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(*dbg.opts.Multiload))
+				if dbg.opts.Multiload >= 0 {
+					logger.Logf("debugger", "forcing supercharger multiload (%#02x)", uint8(dbg.opts.Multiload))
+					dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(dbg.opts.Multiload))
 				}
 
 			case notifications.NotifySuperchargerFastloadEnded:
@@ -1141,7 +1141,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	}
 
 	// check for cartridge ejection. if the NoEject option is set then return error
-	if *dbg.opts.NoEject && dbg.vcs.Mem.Cart.IsEjected() {
+	if dbg.opts.NoEject && dbg.vcs.Mem.Cart.IsEjected() {
 		// if there is an error left over from the AttachCartridge() call
 		// above, return that rather than "cartridge ejected"
 		if err != nil {
@@ -1160,7 +1160,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	}
 
 	dbg.CoProcDisasm.AttachCartridge(dbg)
-	err = dbg.CoProcDev.AttachCartridge(dbg, cartload.Filename, *dbg.opts.ELF)
+	err = dbg.CoProcDev.AttachCartridge(dbg, cartload.Filename, dbg.opts.ELF)
 	if err != nil {
 		logger.Logf("debugger", err.Error())
 		if errors.Is(err, coproc_dwarf.UnsupportedDWARF) {
@@ -1235,7 +1235,7 @@ func (dbg *Debugger) endRecording() {
 }
 
 func (dbg *Debugger) startPlayback(filename string) error {
-	plb, err := recorder.NewPlayback(filename, *dbg.opts.PlaybackCheckROM)
+	plb, err := recorder.NewPlayback(filename, dbg.opts.PlaybackCheckROM)
 	if err != nil {
 		return err
 	}
@@ -1353,7 +1353,7 @@ func (dbg *Debugger) hotload() (e error) {
 	}
 
 	dbg.CoProcDisasm.AttachCartridge(dbg)
-	dbg.CoProcDev.AttachCartridge(dbg, cartload.Filename, *dbg.opts.ELF)
+	dbg.CoProcDev.AttachCartridge(dbg, cartload.Filename, dbg.opts.ELF)
 
 	return nil
 }

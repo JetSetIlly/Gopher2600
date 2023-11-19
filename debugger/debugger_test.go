@@ -147,7 +147,9 @@ func TestDebugger_withNonExistantInitScript(t *testing.T) {
 		return &mockGUI{}, trm, nil
 	}
 
-	dbg, err := debugger.NewDebugger(debugger.NewCommandLineOptions(), create)
+	var opts debugger.CommandLineOptions
+
+	dbg, err := debugger.NewDebugger(opts, create)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -170,7 +172,9 @@ func TestDebugger(t *testing.T) {
 		return &mockGUI{}, trm, nil
 	}
 
-	dbg, err := debugger.NewDebugger(debugger.NewCommandLineOptions(), create)
+	var opts debugger.CommandLineOptions
+
+	dbg, err := debugger.NewDebugger(opts, create)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

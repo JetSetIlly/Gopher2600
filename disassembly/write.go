@@ -43,7 +43,7 @@ func (dsm *Disassembly) Write(output io.Writer, attr ColumnAttr) error {
 // WriteBank writes the disassembly of the selected bank to io.Writer.
 func (dsm *Disassembly) WriteBank(output io.Writer, attr ColumnAttr, bank int) error {
 	if bank >= len(dsm.disasmEntries.Entries) {
-		return nil
+		return fmt.Errorf("no bank %d in cartridge", bank)
 	}
 
 	ct := 0

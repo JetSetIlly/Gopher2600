@@ -17,9 +17,9 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"os/signal"
 	"runtime"
@@ -37,7 +37,6 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/modalflag"
 	"github.com/jetsetilly/gopher2600/performance"
 	"github.com/jetsetilly/gopher2600/recorder"
 	"github.com/jetsetilly/gopher2600/regression"
@@ -118,7 +117,7 @@ func main() {
 
 	// launch program as a go routine. further communication is through
 	// the mainSync instance
-	go launch(sync)
+	go launch(sync, os.Args[1:])
 
 	// if there is no GUI then we should sleep so that the select channel loop
 	// doesn't go beserk
@@ -211,57 +210,42 @@ func main() {
 
 // launch is called from main() as a goroutine. uses mainSync instance to
 // indicate gui creation and to quit.
-func launch(sync *mainSync) {
+func launch(sync *mainSync, args []string) {
 	logger.Log("runtime", fmt.Sprintf("number of cores being used: %d", runtime.NumCPU()))
 
-	// we generate random numbers in some places. seed the generator with the
-	// current time
-	rand.Seed(int64(time.Now().Nanosecond()))
+	// get mode from command line
+	var mode string
 
-	md := &modalflag.Modes{Output: os.Stdout}
-	md.NewArgs(os.Args[1:])
-	md.NewMode()
-	md.AddSubModes("RUN", "PLAY", "DEBUG", "DISASM", "PERFORMANCE", "REGRESS", "VERSION")
-
-	p, err := md.Parse()
-	switch p {
-	case modalflag.ParseHelp:
-		sync.state <- stateRequest{req: reqQuit}
-		return
-
-	case modalflag.ParseError:
-		fmt.Printf("* error: %v\n", err)
-		sync.state <- stateRequest{req: reqQuit, args: 10}
-		return
+	if len(args) > 0 {
+		mode = strings.ToUpper(args[0])
 	}
 
-	switch md.Mode() {
+	var err error
+
+	switch mode {
+	default:
+		mode = "RUN"
+		err = emulate(mode, sync, args)
 	case "RUN":
 		fallthrough
-
 	case "PLAY":
-		err = emulate(govern.ModePlay, md, sync)
-
+		fallthrough
 	case "DEBUG":
-		err = emulate(govern.ModeDebugger, md, sync)
-
+		err = emulate(mode, sync, args[1:])
 	case "DISASM":
-		err = disasm(md)
-
+		err = disasm(mode, args[1:])
 	case "PERFORMANCE":
-		err = perform(md, sync)
-
+		err = perform(mode, sync, args[1:])
 	case "REGRESS":
-		err = regress(md, sync)
-
+		err = regress(mode, args[1:])
 	case "VERSION":
-		err = showVersion(md)
+		err = showVersion(mode, args[1:])
 	}
 
 	if err != nil {
 		// swallow power off error messages. send quit signal with return value of 20 instead
 		if !errors.Is(err, ports.PowerOff) {
-			fmt.Printf("* error in %s mode: %s\n", md.String(), err)
+			fmt.Printf("* error in %s mode: %s\n", mode, err)
 			sync.state <- stateRequest{req: reqQuit, args: 20}
 			return
 		}
@@ -274,74 +258,80 @@ const defaultInitScript = "debuggerInit"
 
 // emulate is the main emulation launch function, shared by play and debug
 // modes. the other modes initialise and run the emulation differently.
-func emulate(emulationMode govern.Mode, md *modalflag.Modes, sync *mainSync) error {
-	// start new commandline mode. to this we'll add the command line arguments
-	// that are specific to the emulation mode (it's unfortunate that mode is
-	// used to describe two separate concepts but they really have nothing to
-	// do with one another).
-	md.NewMode()
-
-	// prepare the path to the initialisation script used by the debugger. we
-	// can name the file in the defaultInitScript const declaration but the
-	// construction of the path is platform sensitive so we must do it here
-	defInitScript, err := resources.JoinPath(defaultInitScript)
-	if err != nil {
-		return err
+func emulate(mode string, sync *mainSync, args []string) error {
+	var emulationMode govern.Mode
+	switch mode {
+	case "PLAY":
+		emulationMode = govern.ModePlay
+	case "RUN":
+		emulationMode = govern.ModePlay
+	case "DEBUG":
+		emulationMode = govern.ModeDebugger
+	default:
+		panic(fmt.Errorf("unknown emulation mode: %s", mode))
 	}
 
-	// new CommandLineOptions instance. this type collates the individual
-	// options that can be set by the command line
-	opts := debugger.NewCommandLineOptions()
+	// opts collates the individual options that can be set by the command line
+	var opts debugger.CommandLineOptions
 
 	// arguments common to both play and debugging modes
-	opts.Log = md.AddBool("log", false, "echo debugging log to stdout")
-	opts.Spec = md.AddString("tv", "AUTO", "television specification: AUTO, NTSC, PAL, PAL60, SECAM")
-	opts.FpsCap = md.AddBool("fpscap", true, "cap FPS to emulated match TV")
-	opts.Multiload = md.AddInt("multiload", -1, "force multiload byte (supercharger only; 0 to 255)")
-	opts.Mapping = md.AddString("mapping", "AUTO", "force use of cartridge mapping")
-	opts.Left = md.AddString("left", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD")
-	opts.Right = md.AddString("right", "AUTO", "right player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD, SAVEKEY, ATARIVOX")
-	opts.Profile = md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
-	opts.ELF = md.AddString("elf", "", "path to corresponding ELF file for binary. only valid for some coprocessor supporting ROMs.")
+	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
+	flgs.BoolVar(&opts.Log, "log", false, "echo debugging log to stdout")
+	flgs.StringVar(&opts.Spec, "tv", "AUTO", "televsion specifcation: AUTO, NTSC, PAL, PAL60, SECAM")
+	flgs.BoolVar(&opts.FpsCap, "fpscap", true, "cap FPS to emulation TV")
+	flgs.IntVar(&opts.Multiload, "multiload", -1, "force multiload byte (supercharger only; 0 to 255")
+	flgs.StringVar(&opts.Mapping, "mapping", "AUTO", "force cartridge mapper selection")
+	flgs.StringVar(&opts.Left, "left", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD")
+	flgs.StringVar(&opts.Right, "right", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD")
+	flgs.StringVar(&opts.Profile, "profile", "none", "run performance check with profiling: CPU, MEM, TRACE, ALL (comma sep)")
+	flgs.StringVar(&opts.ELF, "elf", "", "path to ELF file. only valid for some coproc supporting ROMs")
 
 	// playmode specific arguments
 	if emulationMode == govern.ModePlay {
-		opts.ComparisonROM = md.AddString("comparisonROM", "", "ROM to run in parallel for comparison")
-		opts.ComparisonPrefs = md.AddString("comparisonPrefs", "", "preferences for comparison emulation")
-		opts.Record = md.AddBool("record", false, "record user input to a file")
-		opts.PlaybackCheckROM = md.AddBool("playbackCheckROM", true, "whether to check ROM hash on playback")
-		opts.PatchFile = md.AddString("patch", "", "patch to apply to main emulation (not playback files)")
-		opts.Wav = md.AddBool("wav", false, "record audio to wav file")
-		opts.NoEject = md.AddBool("noeject", false, "a cartridge must be attached at all times. emulator will quit if not")
-		opts.Macro = md.AddString("macro", "", "macro file to be run on trigger")
+		flgs.StringVar(&opts.ComparisonROM, "comparisonROM", "", "ROM to run in parallel for comparison")
+		flgs.StringVar(&opts.ComparisonPrefs, "comparisonPrefs", "", "preferences for comparison emulation")
+		flgs.BoolVar(&opts.Record, "record", false, "record user input to playback file")
+		flgs.BoolVar(&opts.PlaybackCheckROM, "playbackCheckROM", true, "check ROM hashes on playback")
+		flgs.StringVar(&opts.PatchFile, "patch", "", "path to apply to emulation (not playback files")
+		flgs.BoolVar(&opts.Wav, "wav", false, "record audio to wav file")
+		flgs.BoolVar(&opts.NoEject, "noeject", false, "emulator will not quit is noeject is true")
+		flgs.StringVar(&opts.Macro, "macro", "", "macro file to be run on trigger")
 	}
 
 	// debugger specific arguments
 	if emulationMode == govern.ModeDebugger {
-		opts.InitScript = md.AddString("initscript", defInitScript, "script to run on debugger start")
-		opts.TermType = md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
+		// prepare the path to the initialisation script used by the debugger. we
+		// can name the file in the defaultInitScript const declaration but the
+		// construction of the path is platform sensitive so we must do it here
+		defInitScript, err := resources.JoinPath(defaultInitScript)
+		if err != nil {
+			return err
+		}
+
+		flgs.StringVar(&opts.InitScript, "initscript", defInitScript, "script to run on debugger start")
+		flgs.StringVar(&opts.TermType, "term", "IMGUI", "terminal type: IMGUI, COLOR, PLAIN")
 	} else {
 		// non debugger emulation is always of type IMGUI
-		tt := "IMGUI"
-		opts.TermType = &tt
+		opts.TermType = "IMGUI"
 	}
 
-	// parse arguments
-	p, err := md.Parse()
-	if err != nil || p != modalflag.ParseContinue {
+	// parse args and get copy of remaining arguments
+	err := flgs.Parse(args)
+	if err != nil {
 		return err
 	}
+	args = flgs.Args()
 
 	// check remaining arguments. if there are any outstanding arguments to
 	// process then the user has made a mistake
-	if len(md.RemainingArgs()) > 1 {
-		return fmt.Errorf("too many arguments for %s mode", md)
+	if len(args) > 1 {
+		return fmt.Errorf("too many arguments")
 	}
 
 	// turn logging on by setting the echo function. events are still logged
 	// and available via the debugger but will not be "echoed" to the terminal,
 	// unless this option is on
-	if *opts.Log {
+	if opts.Log {
 		logger.SetEcho(os.Stdout, true)
 	} else {
 		logger.SetEcho(nil, false)
@@ -362,7 +352,7 @@ func emulate(emulationMode govern.Mode, md *modalflag.Modes, sync *mainSync) err
 		var scr gui.GUI
 
 		// create GUI as appropriate
-		if *opts.TermType == "IMGUI" {
+		if opts.TermType == "IMGUI" {
 			sync.state <- stateRequest{req: reqCreateGUI,
 				args: guiCreate(func() (guiControl, error) {
 					return sdlimgui.NewSdlImgui(e)
@@ -390,10 +380,11 @@ func emulate(emulationMode govern.Mode, md *modalflag.Modes, sync *mainSync) err
 		// if the GUI does not supply a terminal then use a color or plain terminal
 		// as a fallback
 		if term == nil {
-			switch strings.ToUpper(*opts.TermType) {
+			switch strings.ToUpper(opts.TermType) {
 			default:
-				fmt.Printf("! unknown terminal type (%s) defaulting to plain\n", *opts.TermType)
-				fallthrough
+				logger.Logf("terminal", "unknown terminal: %s", opts.TermType)
+				logger.Logf("terminal", "defaulting to plain")
+				term = &plainterm.PlainTerminal{}
 			case "PLAIN":
 				term = &plainterm.PlainTerminal{}
 			case "COLOR":
@@ -410,15 +401,20 @@ func emulate(emulationMode govern.Mode, md *modalflag.Modes, sync *mainSync) err
 	// set up a launch function. this function is called either directly or via
 	// a call to performance.RunProfiler()
 	dbgLaunch := func() error {
+		var romFile string
+		if len(args) != 0 {
+			romFile = args[0]
+		}
+
 		switch emulationMode {
 		case govern.ModeDebugger:
-			err := dbg.StartInDebugMode(md.GetArg(0))
+			err := dbg.StartInDebugMode(romFile)
 			if err != nil {
 				return err
 			}
 
 		case govern.ModePlay:
-			err := dbg.StartInPlayMode(md.GetArg(0))
+			err := dbg.StartInPlayMode(romFile)
 			if err != nil {
 				return err
 			}
@@ -429,7 +425,7 @@ func emulate(emulationMode govern.Mode, md *modalflag.Modes, sync *mainSync) err
 
 	// check for profiling option and either run the launch function (prepared
 	// above) via the performance.RunProfiler() function or directly
-	prf, err := performance.ParseProfileString(*opts.Profile)
+	prf, err := performance.ParseProfileString(opts.Profile)
 	if err != nil {
 		return err
 	}
@@ -461,29 +457,34 @@ func emulate(emulationMode govern.Mode, md *modalflag.Modes, sync *mainSync) err
 	return nil
 }
 
-func disasm(md *modalflag.Modes) error {
-	md.NewMode()
+func disasm(mode string, args []string) error {
+	var mapping string
+	var bytecode bool
+	var bank int
 
-	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
-	bytecode := md.AddBool("bytecode", false, "include bytecode in disassembly")
-	bank := md.AddInt("bank", -1, "show disassembly for a specific bank")
+	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
+	flgs.StringVar(&mapping, "mapping", "AUTO", "force cartridge mapper selection")
+	flgs.BoolVar(&bytecode, "bytecode", false, "including bytecode in disassembly")
+	flgs.IntVar(&bank, "bank", -1, "show disassembly for a specific bank")
 
-	p, err := md.Parse()
-	if err != nil || p != modalflag.ParseContinue {
+	// parse args and get copy of remaining arguments
+	err := flgs.Parse(args)
+	if err != nil {
 		return err
 	}
+	args = flgs.Args()
 
-	switch len(md.RemainingArgs()) {
+	switch len(args) {
 	case 0:
-		return fmt.Errorf("2600 cartridge required for %s mode", md)
+		return fmt.Errorf("2600 cartridge required")
 	case 1:
 		attr := disassembly.ColumnAttr{
-			ByteCode: *bytecode,
+			ByteCode: bytecode,
 			Label:    true,
 			Cycles:   true,
 		}
 
-		cartload, err := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+		cartload, err := cartridgeloader.NewLoader(args[0], mapping)
 		if err != nil {
 			return err
 		}
@@ -494,68 +495,76 @@ func disasm(md *modalflag.Modes) error {
 			// print what disassembly output we do have
 			if dsm != nil {
 				// ignore any further errors
-				_ = dsm.Write(md.Output, attr)
+				_ = dsm.Write(os.Stdout, attr)
 			}
 			return err
 		}
 
 		// output entire disassembly or just a specific bank
-		if *bank < 0 {
-			err = dsm.Write(md.Output, attr)
+		if bank < 0 {
+			err = dsm.Write(os.Stdout, attr)
 		} else {
-			err = dsm.WriteBank(md.Output, attr, *bank)
+			err = dsm.WriteBank(os.Stdout, attr, bank)
 		}
 
 		if err != nil {
 			return err
 		}
 	default:
-		return fmt.Errorf("too many arguments for %s mode", md)
+		return fmt.Errorf("too many arguments")
 	}
 
 	return nil
 }
 
-func perform(md *modalflag.Modes, sync *mainSync) error {
-	md.NewMode()
+func perform(mode string, sync *mainSync, args []string) error {
+	var mapping string
+	var spec string
+	var uncapped bool
+	var duration string
+	var profile string
+	var log bool
 
-	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
-	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60, SECAM")
-	uncapped := md.AddBool("uncapped", true, "run perfomance with no FPS cap")
-	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
-	profile := md.AddString("profile", "NONE", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
-	log := md.AddBool("log", false, "echo debugging log to stdout")
+	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
+	flgs.StringVar(&mapping, "mapping", "AUTO", "form cartridge mapper selection")
+	flgs.StringVar(&spec, "spec", "AUTO", "television specification: NTSC, PAL, PAL60, SECAM")
+	flgs.BoolVar(&uncapped, "uncapped", true, "run performance no FPS cap")
+	flgs.StringVar(&duration, "duration", "5s", "run duation (with an additional 2s overhead)")
+	flgs.StringVar(&profile, "profile", "none", "run performance check with profiling: CPU, MEM, TRACE, ALL (comma sep)")
+	flgs.BoolVar(&log, "log", false, "echo debugging log to stdout")
 
-	p, err := md.Parse()
-	if err != nil || p != modalflag.ParseContinue {
+	// parse args and get copy of remaining arguments
+	err := flgs.Parse(args)
+	if err != nil {
 		return err
 	}
+	args = flgs.Args()
 
 	// set debugging log echo
-	if *log {
+	if log {
 		logger.SetEcho(os.Stdout, true)
 	} else {
 		logger.SetEcho(nil, false)
 	}
 
-	switch len(md.RemainingArgs()) {
+	switch len(args) {
 	case 0:
-		return fmt.Errorf("2600 cartridge required for %s mode", md)
+		return fmt.Errorf("2600 cartridge required")
 	case 1:
-		cartload, err := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+		cartload, err := cartridgeloader.NewLoader(args[0], mapping)
 		if err != nil {
 			return err
 		}
 		defer cartload.Close()
 
 		// check for profiling options
-		p, err := performance.ParseProfileString(*profile)
+		p, err := performance.ParseProfileString(profile)
 		if err != nil {
 			return err
 		}
 
 		// run performance check
-		err = performance.Check(md.Output, p, cartload, *spec, *uncapped, *duration)
+		err = performance.Check(os.Stdout, p, cartload, spec, uncapped, duration)
 		if err != nil {
 			return err
 		}
@@ -564,147 +573,145 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		// changes to the performance window impacting the play mode
 
 	default:
-		return fmt.Errorf("too many arguments for %s mode", md)
+		return fmt.Errorf("too many arguments")
 	}
 
 	return nil
 }
 
-func regress(md *modalflag.Modes, sync *mainSync) error {
-	md.NewMode()
-	md.AddSubModes("RUN", "LIST", "DELETE", "ADD", "REDUX", "CLEANUP")
+func regress(mode string, args []string) error {
+	var subMode string
 
-	p, err := md.Parse()
-	if err != nil || p != modalflag.ParseContinue {
+	if len(args) > 0 {
+		subMode = strings.ToUpper(args[0])
+	}
+
+	var err error
+
+	switch subMode {
+	default:
+		err = regressRun(fmt.Sprintf("%s %s", mode, "RUN"), args)
+	case "RUN":
+		err = regressRun(fmt.Sprintf("%s %s", mode, subMode), args[1:])
+	case "LIST":
+		err = regressList(fmt.Sprintf("%s %s", mode, subMode), args[1:])
+	case "DELETE":
+		err = regressDelete(fmt.Sprintf("%s %s", mode, subMode), args[1:])
+	case "ADD":
+		err = regressAdd(fmt.Sprintf("%s %s", mode, subMode), args[1:])
+	case "REDUX":
+		err = regressRedux(fmt.Sprintf("%s %s", mode, subMode), args[1:])
+	case "CLEANUP":
+		err = regressCleanup(fmt.Sprintf("%s %s", mode, subMode), args[1:])
+	}
+
+	if err != nil {
 		return err
 	}
 
-	switch md.Mode() {
-	case "RUN":
-		md.NewMode()
+	return nil
+}
 
-		// no additional arguments
-		verbose := md.AddBool("verbose", false, "output more detail (eg. error messages)")
+func regressRun(mode string, args []string) error {
+	var verbose bool
 
-		p, err := md.Parse()
-		if err != nil || p != modalflag.ParseContinue {
-			return err
-		}
+	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
+	flgs.BoolVar(&verbose, "v", false, "output more detail")
 
-		err = regression.RegressRun(md.Output, *verbose, md.RemainingArgs())
-		if err != nil {
-			return err
-		}
+	// parse args and get copy of remaining arguments
+	err := flgs.Parse(args)
+	if err != nil {
+		return err
+	}
+	args = flgs.Args()
 
-	case "LIST":
-		md.NewMode()
-
-		// no additional arguments
-
-		p, err := md.Parse()
-		if err != nil || p != modalflag.ParseContinue {
-			return err
-		}
-
-		switch len(md.RemainingArgs()) {
-		case 0:
-			err := regression.RegressList(md.Output)
-			if err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("no additional arguments required for %s mode", md)
-		}
-
-	case "DELETE":
-		md.NewMode()
-
-		answerYes := md.AddBool("yes", false, "answer yes to confirmation")
-
-		p, err := md.Parse()
-		if err != nil || p != modalflag.ParseContinue {
-			return err
-		}
-
-		switch len(md.RemainingArgs()) {
-		case 0:
-			return fmt.Errorf("database key required for %s mode", md)
-		case 1:
-
-			// use stdin for confirmation unless "yes" flag has been sent
-			var confirmation io.Reader
-			if *answerYes {
-				confirmation = &yesReader{}
-			} else {
-				confirmation = os.Stdin
-			}
-
-			err := regression.RegressDelete(md.Output, confirmation, md.GetArg(0))
-			if err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("only one entry can be deleted at at time")
-		}
-
-	case "ADD":
-		return regressAdd(md)
-
-	case "REDUX":
-		md.NewMode()
-
-		answerYes := md.AddBool("yes", false, "always answer yes to confirmation")
-
-		p, err := md.Parse()
-		if err != nil || p != modalflag.ParseContinue {
-			return err
-		}
-
-		var confirmation io.Reader
-		if *answerYes {
-			confirmation = &yesReader{}
-		} else {
-			confirmation = os.Stdin
-		}
-
-		return regression.RegressRedux(md.Output, confirmation)
-
-	case "CLEANUP":
-		md.NewMode()
-
-		answerYes := md.AddBool("yes", false, "always answer yes to confirmation")
-
-		p, err := md.Parse()
-		if err != nil || p != modalflag.ParseContinue {
-			return err
-		}
-
-		var confirmation io.Reader
-		if *answerYes {
-			confirmation = &yesReader{}
-		} else {
-			confirmation = os.Stdin
-		}
-
-		return regression.RegressCleanup(md.Output, confirmation)
+	err = regression.RegressRun(os.Stdout, verbose, args)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func regressAdd(md *modalflag.Modes) error {
-	md.NewMode()
+func regressList(mode string, args []string) error {
+	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
 
-	mode := md.AddString("mode", "", "type of regression entry")
-	notes := md.AddString("notes", "", "additional annotation for the database")
-	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping [non-playback]")
-	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60, SECAM [non-playback]")
-	numframes := md.AddInt("frames", 10, "number of frames to run [non-playback]")
-	state := md.AddString("state", "", "record emulator state at every CPU step [non-playback]")
-	log := md.AddBool("log", false, "echo debugging log to stdout")
+	// parse args and get copy of remaining arguments
+	err := flgs.Parse(args)
+	if err != nil {
+		return err
+	}
+	args = flgs.Args()
 
-	md.AdditionalHelp(
-		`The regression test to be added can be the path to a cartridge file or a previously
+	err = regression.RegressList(os.Stdout)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func regressDelete(mode string, args []string) error {
+	var yes bool
+
+	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
+	flgs.BoolVar(&yes, "yes", false, "answer yes to confirmation request")
+
+	// parse args and get copy of remaining arguments
+	err := flgs.Parse(args)
+	if err != nil {
+		return err
+	}
+	args = flgs.Args()
+
+	switch len(args) {
+	case 0:
+		return fmt.Errorf("database key required")
+	case 1:
+
+		// use stdin for confirmation unless "yes" flag has been sent
+		var confirmation io.Reader
+		if yes {
+			confirmation = &yesReader{}
+		} else {
+			confirmation = os.Stdin
+		}
+
+		err := regression.RegressDelete(os.Stdout, confirmation, args[0])
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("only one entry can be deleted at at time")
+	}
+
+	return nil
+}
+
+func regressAdd(mode string, args []string) error {
+	var regressMode string
+	var notes string
+	var mapping string
+	var spec string
+	var numFrames int
+	var state string
+	var log bool
+
+	flgs := flag.NewFlagSet(mode, flag.ContinueOnError)
+	flgs.StringVar(&regressMode, "mode", "", "type of regression entry")
+	flgs.StringVar(&notes, "notes", "", "additional annotation for the entry")
+	flgs.StringVar(&mapping, "mapping", "AUTO", "form cartridge mapper selection")
+	flgs.StringVar(&spec, "spec", "AUTO", "television specification: NTSC, PAL, PAL60, SECAM")
+	flgs.IntVar(&numFrames, "frames", 10, "number of frames to run (ignored if mode is 'playback'")
+	flgs.StringVar(&state, "state", "", "record emulator state at every CPU step (ignored if mode is 'playback'")
+	flgs.BoolVar(&log, "log", false, "echo debugging log to stdout")
+
+	// parse args and get copy of remaining arguments
+	err := flgs.Parse(args)
+	if err != nil {
+		if err == flag.ErrHelp {
+			fmt.Println()
+			fmt.Println(`The regression test to be added can be the path to a cartridge file or a previously
 recorded playback file. For playback files, the flags marked [non-playback] do not make
 sense and will be ignored.
 
@@ -716,84 +723,78 @@ with the default VIDEO mode.
 
 The -log flag intructs the program to echo the log to the console. Do not confuse this
 with the LOG mode. Note that asking for log output will suppress regression progress meters.`)
-
-	p, err := md.Parse()
-	if err != nil || p != modalflag.ParseContinue {
+			return nil
+		}
 		return err
 	}
+	args = flgs.Args()
 
 	// set debugging log echo
-	if *log {
+	if log {
 		logger.SetEcho(os.Stdout, true)
-		md.Output = &nopWriter{}
 	} else {
 		logger.SetEcho(nil, false)
 	}
 
-	switch len(md.RemainingArgs()) {
+	switch len(args) {
 	case 0:
-		return fmt.Errorf("2600 cartridge or playback file required for %s mode", md)
+		return fmt.Errorf("2600 cartridge or playback file required")
 	case 1:
-		var reg regression.Regressor
+		var regressor regression.Regressor
 
-		if *mode == "" {
-			if err := recorder.IsPlaybackFile(md.GetArg(0)); err == nil {
-				*mode = "PLAYBACK"
+		if regressMode == "" {
+			if err := recorder.IsPlaybackFile(args[0]); err == nil {
+				regressMode = "PLAYBACK"
 			} else if !errors.Is(err, recorder.NotAPlaybackFile) {
 				return err
 			} else {
-				*mode = "VIDEO"
+				regressMode = "VIDEO"
 			}
 		}
 
-		switch strings.ToUpper(*mode) {
+		switch strings.ToUpper(regressMode) {
 		case "VIDEO":
-			cartload, err := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+			cartload, err := cartridgeloader.NewLoader(args[0], mapping)
 			if err != nil {
 				return err
 			}
 			defer cartload.Close()
 
-			statetype, err := regression.NewStateType(*state)
+			statetype, err := regression.NewStateType(state)
 			if err != nil {
 				return err
 			}
 
-			reg = &regression.VideoRegression{
+			regressor = &regression.VideoRegression{
 				CartLoad:  cartload,
-				TVtype:    strings.ToUpper(*spec),
-				NumFrames: *numframes,
+				TVtype:    strings.ToUpper(spec),
+				NumFrames: numFrames,
 				State:     statetype,
-				Notes:     *notes,
+				Notes:     notes,
 			}
 		case "PLAYBACK":
 			// check and warn if unneeded arguments have been specified
-			md.Visit(func(flg string) {
-				if flg == "frames" {
-					fmt.Printf("! ignored %s flag when adding playback entry\n", flg)
-				}
-			})
 
-			reg = &regression.PlaybackRegression{
-				Script: md.GetArg(0),
-				Notes:  *notes,
+			regressor = &regression.PlaybackRegression{
+				Script: args[0],
+				Notes:  notes,
 			}
 		case "LOG":
-			cartload, err := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+			cartload, err := cartridgeloader.NewLoader(args[0], mapping)
 			if err != nil {
 				return err
 			}
 			defer cartload.Close()
 
-			reg = &regression.LogRegression{
+			regressor = &regression.LogRegression{
 				CartLoad:  cartload,
-				TVtype:    strings.ToUpper(*spec),
-				NumFrames: *numframes,
-				Notes:     *notes,
+				TVtype:    strings.ToUpper(spec),
+				NumFrames: numFrames,
+				Notes:     notes,
 			}
 		}
 
-		err := regression.RegressAdd(md.Output, reg)
+		err := regression.RegressAdd(os.Stdout, regressor)
 		if err != nil {
 			// using carriage return (without newline) at beginning of error
 			// message because we want to overwrite the last output from
@@ -807,19 +808,61 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 	return nil
 }
 
-func showVersion(md *modalflag.Modes) error {
-	md.NewMode()
-	revision := md.AddBool("revision", false,
-		"display revision information from version control system (if available)")
+func regressRedux(mode string, args []string) error {
+	var yes bool
 
-	p, err := md.Parse()
-	if err != nil || p != modalflag.ParseContinue {
+	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
+	flgs.BoolVar(&yes, "yes", false, "answer yes to confirmation request")
+
+	// parse args and get copy of remaining arguments
+	err := flgs.Parse(args)
+	if err != nil {
 		return err
 	}
+	args = flgs.Args()
+
+	var confirmation io.Reader
+	if yes {
+		confirmation = &yesReader{}
+	} else {
+		confirmation = os.Stdin
+	}
+
+	return regression.RegressRedux(os.Stdout, confirmation)
+}
+
+func regressCleanup(mode string, args []string) error {
+	var yes bool
+
+	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
+	flgs.BoolVar(&yes, "yes", false, "answer yes to confirmation request")
+
+	// parse args and get copy of remaining arguments
+	err := flgs.Parse(args)
+	if err != nil {
+		return err
+	}
+	args = flgs.Args()
+
+	var confirmation io.Reader
+	if yes {
+		confirmation = &yesReader{}
+	} else {
+		confirmation = os.Stdin
+	}
+
+	return regression.RegressCleanup(os.Stdout, confirmation)
+}
+
+func showVersion(mode string, args []string) error {
+	var revision bool
+
+	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
+	flgs.BoolVar(&revision, "v", false, "display revision information (if available")
+	flgs.Parse(args)
 
 	fmt.Println(version.Version)
-
-	if *revision {
+	if revision {
 		fmt.Println(version.Revision)
 	}
 
