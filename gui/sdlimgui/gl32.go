@@ -217,8 +217,8 @@ func (rnd *gl32) render() {
 	gl.DeleteVertexArrays(1, &vaoHandle)
 }
 
-func (rnd *gl32) screenshot(mode screenshotMode, filenameSuffix string) {
-	rnd.shaders[texturePlayscr].(*playscrShader).screenshot.startProcess(modeSingle, filenameSuffix)
+func (rnd *gl32) screenshot(mode screenshotMode, finish chan screenshotResult) {
+	rnd.shaders[texturePlayscr].(*playscrShader).screenshot.start(mode, finish)
 }
 
 // glState stores GL state with the intention of restoration after a short period.

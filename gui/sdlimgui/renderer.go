@@ -35,7 +35,7 @@ type renderer interface {
 	destroy()
 	preRender()
 	render()
-	screenshot(mode screenshotMode, filenameSuffix string)
+	screenshot(mode screenshotMode, finish chan screenshotResult)
 	addTexture(typ textureType, linear bool, clamp bool) texture
 	addFontTexture(fnt imgui.FontAtlas) texture
 }
@@ -65,3 +65,14 @@ const (
 	modeMotion    screenshotMode = "motion"
 	modeComposite screenshotMode = "composite"
 )
+
+type screenshotResult struct {
+	// a description of the screenshot as provided by the renderer
+	description string
+
+	// the final image
+	image *image.RGBA
+
+	// any errors that were encountered in the screenshotting preperation
+	err error
+}

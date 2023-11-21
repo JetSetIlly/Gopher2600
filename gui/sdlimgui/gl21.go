@@ -176,7 +176,10 @@ func (rnd *gl21) render() {
 	gl.Scissor(lastScissorBox[0], lastScissorBox[1], lastScissorBox[2], lastScissorBox[3])
 }
 
-func (rnd *gl21) screenshot(mode screenshotMode, filenameSuffix string) {
+func (rnd *gl21) screenshot(mode screenshotMode, finish chan screenshotResult) {
+	finish <- screenshotResult{
+		err: fmt.Errorf("gl21: renderer does not support screenshotting"),
+	}
 }
 
 func (rnd *gl21) addTexture(_ textureType, linear bool, clamp bool) texture {
