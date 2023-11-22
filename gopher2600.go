@@ -211,19 +211,29 @@ func main() {
 // launch is called from main() as a goroutine. uses mainSync instance to
 // indicate gui creation and to quit.
 func launch(sync *mainSync, args []string) {
+
 	logger.Log("runtime", fmt.Sprintf("number of cores being used: %d", runtime.NumCPU()))
 
-	// use flag set to provide the --help flag
+	// use flag set to provide the --help flag for top level command line.
+	// that's all we want it to do
 	flgs := flag.NewFlagSet("Gopher2600", flag.ContinueOnError)
+
+	// output is set to nil to prevent the flag package boilerplate
+	flgs.SetOutput(&nilWriter{})
+
+	// parse arguments. if the help flag has been used then print out the
+	// execution modes summary and return
 	err := flgs.Parse(args)
 	if err != nil {
 		if err == flag.ErrHelp {
 			fmt.Println("Execution Modes: RUN, DEBUG, DISASM, PERFORMANCE, REGRESS, VERSION")
+			sync.state <- stateRequest{req: reqQuit, args: 20}
+			return
 		}
-		sync.state <- stateRequest{req: reqQuit}
-		return
+	} else {
+		// get remaining arguments for passing to execution mode functions
+		args = flgs.Args()
 	}
-	args = flgs.Args()
 
 	// get mode from command line
 	var mode string
@@ -232,6 +242,7 @@ func launch(sync *mainSync, args []string) {
 		mode = strings.ToUpper(args[0])
 	}
 
+	// switch on execution modes
 	switch mode {
 	default:
 		mode = "RUN"
@@ -261,7 +272,7 @@ func launch(sync *mainSync, args []string) {
 		}
 	}
 
-	sync.state <- stateRequest{req: reqQuit}
+	sync.state <- stateRequest{req: reqQuit, args: 0}
 }
 
 const defaultInitScript = "debuggerInit"
@@ -888,10 +899,10 @@ func showVersion(mode string, args []string) error {
 	return nil
 }
 
-// nopWriter is an empty writer.
-type nopWriter struct{}
+// nilWriter is an empty writer.
+type nilWriter struct{}
 
-func (*nopWriter) Write(p []byte) (n int, err error) {
+func (*nilWriter) Write(p []byte) (n int, err error) {
 	return 0, nil
 }
 

@@ -77,7 +77,7 @@ func initDBSession(db *database.Session) error {
 // RegressList displays all entries in the database.
 func RegressList(output io.Writer) error {
 	if output == nil {
-		return fmt.Errorf("regression: list: io.Writer should not be nil (use a nopWriter)")
+		return fmt.Errorf("regression: list: io.Writer should not be nil")
 	}
 
 	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
@@ -104,7 +104,7 @@ func RegressList(output io.Writer) error {
 // RegressAdd adds a new regression handler to the database.
 func RegressAdd(output io.Writer, reg Regressor) error {
 	if output == nil {
-		return fmt.Errorf("regression: add: io.Writer should not be nil (use a nopWriter)")
+		return fmt.Errorf("regression: add: io.Writer should not be nil")
 	}
 
 	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
@@ -133,7 +133,7 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 // RegressRedux removes and adds an entry using the same parameters.
 func RegressRedux(output io.Writer, confirmation io.Reader) error {
 	if output == nil {
-		return fmt.Errorf("regression: redux: io.Writer should not be nil (use a nopWriter)")
+		return fmt.Errorf("regression: redux: io.Writer should not be nil")
 	}
 
 	if confirmation == nil {
@@ -213,7 +213,7 @@ func redux(db *database.Session, output io.Writer, key int, reg Regressor) error
 // file.
 func RegressCleanup(output io.Writer, confirmation io.Reader) error {
 	if output == nil {
-		return fmt.Errorf("regression: list: io.Writer should not be nil (use a nopWriter)")
+		return fmt.Errorf("regression: list: io.Writer should not be nil")
 	}
 
 	if confirmation == nil {
@@ -329,7 +329,7 @@ func RegressCleanup(output io.Writer, confirmation io.Reader) error {
 // RegressDelete removes a cartridge from the regression db.
 func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 	if output == nil {
-		return fmt.Errorf("regression: delete: io.Writer should not be nil (use a nopWriter)")
+		return fmt.Errorf("regression: delete: io.Writer should not be nil")
 	}
 
 	if confirmation == nil {
@@ -374,7 +374,7 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 // entry should be tested.
 func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
 	if output == nil {
-		return fmt.Errorf("regression: run: io.Writer should not be nil (use a nopWriter)")
+		return fmt.Errorf("regression: run: io.Writer should not be nil")
 	}
 
 	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
