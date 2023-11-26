@@ -83,12 +83,6 @@ type CartMapper interface {
 	// at the rate specified.
 	Step(clock float32)
 
-	// patch differs from write/poke in that it alters the data as though it
-	// was being read from disk. that is, the offset is measured from the start
-	// of the file. the cartmapper must translate the offset and update the
-	// correct data structure as appropriate.
-	Patch(offset int, data uint8) error
-
 	// return copies of all banks in the cartridge. the disassembly process
 	// uses this to access cartridge data freely and without affecting the
 	// state of the cartridge.
@@ -350,4 +344,14 @@ type CartROMDump interface {
 // the pins on the data bus during a write.
 type CartBusStuff interface {
 	BusStuff() (uint8, bool)
+}
+
+// CartPatchable is implemented by cartridge mappers than can have their binary
+// patched as part of the load process
+type CartPatchable interface {
+	// patch is different to poke in that it alters the data as though it was
+	// being read from disk. that is, the offset is measured from the start of
+	// the file. the cartmapper must translate the offset and update the correct
+	// data structure as appropriate.
+	Patch(offset int, data uint8) error
 }

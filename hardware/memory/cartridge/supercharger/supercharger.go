@@ -283,11 +283,6 @@ func (cart *Supercharger) GetBank(addr uint16) mapper.BankInfo {
 	panic("unknown banking method")
 }
 
-// Patch implements the mapper.CartMapper interface.
-func (cart *Supercharger) Patch(_ int, _ uint8) error {
-	return fmt.Errorf("supercharger: not patchable")
-}
-
 // AccessPassive implements the mapper.CartMapper interface.
 func (cart *Supercharger) AccessPassive(addr uint16, _ uint8) error {
 	cart.state.registers.transitionCount(addr)

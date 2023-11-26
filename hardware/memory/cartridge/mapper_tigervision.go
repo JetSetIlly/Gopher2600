@@ -148,7 +148,7 @@ func (cart *tigervision) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.state.segment[1], IsRAM: false, IsSegmented: true, Segment: 1}
 }
 
-// Patch implements the mapper.CartMapper interface.
+// Patch implements the mapper.CartPatchable interface.
 func (cart *tigervision) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return fmt.Errorf("3F: patch offset too high (%d)", offset)

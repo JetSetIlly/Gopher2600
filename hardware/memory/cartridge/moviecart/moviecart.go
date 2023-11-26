@@ -374,11 +374,6 @@ func (cart *Moviecart) AccessPassive(addr uint16, data uint8) error {
 func (cart *Moviecart) Step(clock float32) {
 }
 
-// Patch implements the mapper.CartMapper interface.
-func (cart *Moviecart) Patch(offset int, data uint8) error {
-	return nil
-}
-
 // CopyBanks implements the mapper.CartMapper interface.
 func (cart *Moviecart) CopyBanks() []mapper.BankContent {
 	// note that as it is, this will be a copy of the core program without any

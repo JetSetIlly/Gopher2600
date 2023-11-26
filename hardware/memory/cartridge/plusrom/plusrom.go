@@ -239,11 +239,6 @@ func (cart *PlusROM) GetBank(addr uint16) mapper.BankInfo {
 	return cart.state.child.GetBank(addr)
 }
 
-// Patch implements the mapper.CartMapper interface.
-func (cart *PlusROM) Patch(offset int, data uint8) error {
-	return cart.state.child.Patch(offset, data)
-}
-
 // AccessPassive implements the mapper.CartMapper interface.
 func (cart *PlusROM) AccessPassive(addr uint16, data uint8) error {
 	return cart.state.child.AccessPassive(addr, data)
@@ -262,63 +257,71 @@ func (cart *PlusROM) CopyBanks() []mapper.BankContent {
 
 // GetGetRegisters implements the mapper.CartRegistersBus interface.
 func (cart *PlusROM) GetRegisters() mapper.CartRegisters {
-	if rb, ok := cart.state.child.(mapper.CartRegistersBus); ok {
-		return rb.GetRegisters()
+	if cart, ok := cart.state.child.(mapper.CartRegistersBus); ok {
+		return cart.GetRegisters()
 	}
 	return nil
 }
 
 // PutRegister implements the mapper.CartRegistersBus interface.
 func (cart *PlusROM) PutRegister(register string, data string) {
-	if rb, ok := cart.state.child.(mapper.CartRegistersBus); ok {
-		rb.PutRegister(register, data)
+	if cart, ok := cart.state.child.(mapper.CartRegistersBus); ok {
+		cart.PutRegister(register, data)
 	}
 }
 
 // GetRAM implements the mapper.CartRAMbus interface.
 func (cart *PlusROM) GetRAM() []mapper.CartRAM {
-	if rb, ok := cart.state.child.(mapper.CartRAMbus); ok {
-		return rb.GetRAM()
+	if cart, ok := cart.state.child.(mapper.CartRAMbus); ok {
+		return cart.GetRAM()
 	}
 	return nil
 }
 
 // PutRAM implements the mapper.CartRAMbus interface.
 func (cart *PlusROM) PutRAM(bank int, idx int, data uint8) {
-	if rb, ok := cart.state.child.(mapper.CartRAMbus); ok {
-		rb.PutRAM(bank, idx, data)
+	if cart, ok := cart.state.child.(mapper.CartRAMbus); ok {
+		cart.PutRAM(bank, idx, data)
 	}
 }
 
 // GetStatic implements the mapper.CartStaticBus interface.
 func (cart *PlusROM) GetStatic() mapper.CartStatic {
-	if sb, ok := cart.state.child.(mapper.CartStaticBus); ok {
-		return sb.GetStatic()
+	if cart, ok := cart.state.child.(mapper.CartStaticBus); ok {
+		return cart.GetStatic()
 	}
 	return nil
 }
 
 // PutStatic implements the mapper.CartStaticBus interface.
 func (cart *PlusROM) PutStatic(segment string, idx int, data uint8) bool {
-	if sb, ok := cart.state.child.(mapper.CartStaticBus); ok {
-		return sb.PutStatic(segment, idx, data)
+	if cart, ok := cart.state.child.(mapper.CartStaticBus); ok {
+		return cart.PutStatic(segment, idx, data)
 	}
 	return true
 }
 
 // Rewind implements the mapper.CartTapeBus interface.
 func (cart *PlusROM) Rewind() {
-	if sb, ok := cart.state.child.(mapper.CartTapeBus); ok {
-		sb.Rewind()
+	if cart, ok := cart.state.child.(mapper.CartTapeBus); ok {
+		cart.Rewind()
 	}
 }
 
 // GetTapeState implements the mapper.CartTapeBus interface.
 func (cart *PlusROM) GetTapeState() (bool, mapper.CartTapeState) {
-	if sb, ok := cart.state.child.(mapper.CartTapeBus); ok {
-		return sb.GetTapeState()
+	if cart, ok := cart.state.child.(mapper.CartTapeBus); ok {
+		return cart.GetTapeState()
 	}
 	return false, mapper.CartTapeState{}
+}
+
+// Patch implements the mapper.CartPatchable interface.
+func (cart *PlusROM) Patch(offset int, data uint8) error {
+	if cart, ok := cart.state.child.(mapper.CartPatchable); ok {
+		return cart.Patch(offset, data)
+	}
+	return nil
 }
 
 // RewindBoundary implements the mapper.CartRewindBoundary interface.

@@ -35,7 +35,7 @@ const neoSeparator = ":"
 // CartridgeMemory applies the contents of a patch file to cartridge memory.
 // Currently, patch file must be in the patches sub-directory of the
 // resource path (see paths package).
-func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
+func CartridgeMemory(cart *cartridge.Cartridge, patchFile string) (bool, error) {
 	var err error
 
 	p, err := resources.JoinPath(patchPath, patchFile)
@@ -71,7 +71,7 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 	// if first character is a hyphen then we'll assume this is a "neo" style
 	// patch file
 	if buffer[0] == neoComment {
-		err = neoStyle(mem, buffer)
+		err = neoStyle(cart, buffer)
 		if err != nil {
 			return false, fmt.Errorf("patch: %w", err)
 		}
@@ -79,7 +79,7 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 	}
 
 	// otherwise assume it is a "cmp" style patch file
-	err = cmpStyle(mem, buffer)
+	err = cmpStyle(cart, buffer)
 	if err != nil {
 		return false, fmt.Errorf("patch: %w", err)
 	}
@@ -87,7 +87,7 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 }
 
 // cmp -l <old_file> <new_file>.
-func cmpStyle(mem *cartridge.Cartridge, buffer []byte) error {
+func cmpStyle(cart *cartridge.Cartridge, buffer []byte) error {
 	// walk through lines
 	lines := strings.Split(string(buffer), "\n")
 	for i, s := range lines {
@@ -125,13 +125,13 @@ func cmpStyle(mem *cartridge.Cartridge, buffer []byte) error {
 		}
 
 		// check that the patch is correct
-		o, _ := mem.Peek(uint16(offset))
+		o, _ := cart.Peek(uint16(offset))
 		if o != uint8(old) {
 			return fmt.Errorf("cmp: line %d: byte at offset %04x does not match expected byte (%02x instead of %02x)", i, offset, o, old)
 		}
 
 		// patch memory
-		err = mem.Patch(int(offset), uint8(patch))
+		err = cart.Patch(int(offset), uint8(patch))
 		if err != nil {
 			return fmt.Errorf("cmp: %w", err)
 		}
@@ -139,7 +139,7 @@ func cmpStyle(mem *cartridge.Cartridge, buffer []byte) error {
 	return nil
 }
 
-func neoStyle(mem *cartridge.Cartridge, buffer []byte) error {
+func neoStyle(cart *cartridge.Cartridge, buffer []byte) error {
 	// walk through lines
 	lines := strings.Split(string(buffer), "\n")
 	for i, s := range lines {
@@ -188,7 +188,7 @@ func neoStyle(mem *cartridge.Cartridge, buffer []byte) error {
 			}
 
 			// patch memory
-			err = mem.Patch(int(offset), uint8(v))
+			err = cart.Patch(int(offset), uint8(v))
 			if err != nil {
 				return fmt.Errorf("neo: line %d: %w", i, err)
 			}

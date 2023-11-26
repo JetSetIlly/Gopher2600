@@ -424,11 +424,6 @@ func (cart *cdf) GetBank(addr uint16) mapper.BankInfo {
 	}
 }
 
-// Patch implements the mapper.CartMapper interface.
-func (cart *cdf) Patch(offset int, data uint8) error {
-	return fmt.Errorf("CDF: patching unsupported")
-}
-
 // AccessPassive implements the mapper.CartMapper interface.
 func (cart *cdf) AccessPassive(addr uint16, data uint8) error {
 	return nil

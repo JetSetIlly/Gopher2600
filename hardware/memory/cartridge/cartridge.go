@@ -149,12 +149,6 @@ func (cart *Cartridge) Poke(addr uint16, data uint8) error {
 	return cart.mapper.AccessVolatile(addr&memorymap.CartridgeBits, data, true)
 }
 
-// Patch writes to cartridge memory. Offset is measured from the start of
-// cartridge memory. It differs from Poke in that respect.
-func (cart *Cartridge) Patch(offset int, data uint8) error {
-	return cart.mapper.Patch(offset, data)
-}
-
 // Read is an implementation of memory.CPUBus.
 func (cart *Cartridge) Read(addr uint16) (uint8, uint8, error) {
 	return cart.mapper.Access(addr&memorymap.CartridgeBits, false)
@@ -552,10 +546,18 @@ func (cart *Cartridge) CoProcExecutionState() coprocessor.CoProcExecutionState {
 	return coprocessor.CoProcExecutionState{}
 }
 
-// BusStuff implements the mapper.CartBusStuff interface.
+// BusStuff implements the mapper.CartBusStuff interface
 func (cart *Cartridge) BusStuff() (uint8, bool) {
 	if cart.hasBusStuff {
 		return cart.busStuff.BusStuff()
 	}
 	return 0, false
+}
+
+// Patch implements the mapper.CartPatchable interface
+func (cart *Cartridge) Patch(offset int, data uint8) error {
+	if cart, ok := cart.mapper.(mapper.CartPatchable); ok {
+		return cart.Patch(offset, data)
+	}
+	return fmt.Errorf("cartridge is not patchable")
 }

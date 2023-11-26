@@ -121,11 +121,6 @@ func (cart *ua) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.bank}
 }
 
-// Patch implements the mapper.CartMapper interface
-func (cart *ua) Patch(offset int, data uint8) error {
-	return fmt.Errorf("UA: patching unsupported")
-}
-
 // AccessPassive implements the mapper.CartMapper interface
 func (cart *ua) AccessPassive(addr uint16, data uint8) error {
 	switch addr & 0x1260 {
@@ -159,4 +154,16 @@ func (cart *ua) CopyBanks() []mapper.BankContent {
 		}
 	}
 	return c
+}
+
+// Patch implements the mapper.CartPatchable interface
+func (cart *ua) Patch(offset int, data uint8) error {
+	if offset >= cart.bankSize*len(cart.banks) {
+		return fmt.Errorf("UA: patch offset too high (%d)", offset)
+	}
+
+	bank := offset / cart.bankSize
+	offset %= cart.bankSize
+	cart.banks[bank][offset] = data
+	return nil
 }

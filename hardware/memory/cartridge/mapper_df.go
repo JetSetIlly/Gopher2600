@@ -219,7 +219,7 @@ func (cart *df) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.state.bank, IsRAM: addr <= 0x00ff}
 }
 
-// Patch implements the mapper.CartMapper interface.
+// Patch implements the mapper.CartPatchable interface
 func (cart *df) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return fmt.Errorf("DF: patch offset too high (%d)", offset)

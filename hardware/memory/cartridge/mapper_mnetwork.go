@@ -308,7 +308,7 @@ func (cart *mnetwork) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.NumBanks() - 1, IsRAM: false, IsSegmented: true, Segment: 1}
 }
 
-// Patch implements the mapper.CartMapper interface.
+// Patch implements the mapper.CartPatchable interface.
 func (cart *mnetwork) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return fmt.Errorf("E7: patch offset too high (%d)", offset)

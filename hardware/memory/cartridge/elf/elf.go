@@ -275,11 +275,6 @@ func (cart *Elf) GetBank(_ uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: 0, IsRAM: false}
 }
 
-// Patch implements the mapper.CartMapper interface.
-func (cart *Elf) Patch(_ int, _ uint8) error {
-	return fmt.Errorf("ELF: patching unsupported")
-}
-
 func (cart *Elf) runARM(addr uint16) bool {
 	if cart.mem.stream.active {
 		// do nothing with the ARM if the byte stream is draining

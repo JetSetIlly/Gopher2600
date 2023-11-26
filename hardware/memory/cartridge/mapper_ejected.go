@@ -72,11 +72,6 @@ func (cart *ejected) GetBank(_ uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: 0, IsRAM: false}
 }
 
-// Patch implements the mapper.CartMapper interface.
-func (cart *ejected) Patch(_ int, _ uint8) error {
-	return Ejected
-}
-
 // AccessPassive implements the mapper.CartMapper interface.
 func (cart *ejected) AccessPassive(_ uint16, _ uint8) error {
 	return nil

@@ -143,11 +143,6 @@ func (cart *Ace) GetBank(_ uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: 0, IsRAM: false}
 }
 
-// Patch implements the mapper.CartMapper interface.
-func (cart *Ace) Patch(_ int, _ uint8) error {
-	return fmt.Errorf("ACE: patching unsupported")
-}
-
 func (cart *Ace) runARM() bool {
 	// call arm once and then check for yield conditions
 	var cycles float32

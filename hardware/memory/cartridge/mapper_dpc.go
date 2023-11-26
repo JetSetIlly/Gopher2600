@@ -296,7 +296,7 @@ func (cart *dpc) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.state.bank, IsRAM: false}
 }
 
-// Patch implements the mapper.CartMapper interface.
+// Patch implements the mapper.CartPatchable interface
 func (cart *dpc) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks)+len(cart.static.data) {
 		return fmt.Errorf("DPC: patch offset too high (%d)", offset)

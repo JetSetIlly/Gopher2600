@@ -211,7 +211,7 @@ func (cart *m3ePlus) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.state.segment[seg], IsSegmented: true, Segment: seg}
 }
 
-// Patch implements the mapper.CartMapper interface.
+// Patch implements the mapper.CartPatchable interface
 func (cart *m3ePlus) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return fmt.Errorf("3E+: patch offset too high (%d)", offset)

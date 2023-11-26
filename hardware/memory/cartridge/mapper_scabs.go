@@ -103,11 +103,6 @@ func (cart *scabs) GetBank(_ uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.state.bank, IsRAM: false}
 }
 
-// Patch implements the mapper.CartMapper interface.
-func (cart *scabs) Patch(_ int, _ uint8) error {
-	return nil
-}
-
 // AccessPassive implements the mapper.CartMapper interface.
 func (cart *scabs) AccessPassive(addr uint16, data uint8) error {
 	// "[...] it will be noted that JSR instruction is always followed by an
@@ -179,6 +174,18 @@ func (cart *scabs) CopyBanks() []mapper.BankContent {
 		}
 	}
 	return c
+}
+
+// Patch implements the mapper.CartPatchable interface
+func (cart *scabs) Patch(offset int, data uint8) error {
+	if offset >= cart.bankSize*len(cart.banks) {
+		return fmt.Errorf("FE: patch offset too high (%d)", offset)
+	}
+
+	bank := offset / cart.bankSize
+	offset %= cart.bankSize
+	cart.banks[bank][offset] = data
+	return nil
 }
 
 type scabsState struct {

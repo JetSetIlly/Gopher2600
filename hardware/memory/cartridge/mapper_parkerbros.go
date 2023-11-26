@@ -233,7 +233,7 @@ func (cart *parkerBros) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.state.segment[seg], IsRAM: false, IsSegmented: true, Segment: seg}
 }
 
-// Patch implements the mapper.CartMapper interface.
+// Patch implements the mapper.CartPatchable interface.
 func (cart *parkerBros) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
 		return fmt.Errorf("E0: patch offset too high (%d)", offset)

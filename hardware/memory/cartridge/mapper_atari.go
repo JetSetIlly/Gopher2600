@@ -113,19 +113,19 @@ func hasEmptyArea(d []uint8) bool {
 func (cart *atari) ROMDump(filename string) error {
 	f, err := os.Create(filename)
 	if err != nil {
-		return fmt.Errorf("atari: %w", err)
+		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			logger.Logf("atari", err.Error())
+			logger.Logf("%s", cart.mappingID, err.Error())
 		}
 	}()
 
 	for _, b := range cart.banks {
 		_, err := f.Write(b)
 		if err != nil {
-			return fmt.Errorf("atari: %w", err)
+			return fmt.Errorf("%s: %w", cart.mappingID, err)
 		}
 	}
 
@@ -212,10 +212,10 @@ func (cart *atari) accessVolatile(addr uint16, data uint8, poke bool) error {
 	return nil
 }
 
-// Patch implements the mapper.CartMapper interface.
+// Patch implements the mapper.CartPatchable interface
 func (cart *atari) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
-		return fmt.Errorf("atari: patch offset too high (%d)", offset)
+		return fmt.Errorf("%s: patch offset too high (%d)", cart.mappingID, offset)
 	}
 
 	bank := offset / cart.bankSize

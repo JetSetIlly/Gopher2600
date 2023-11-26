@@ -147,7 +147,7 @@ func (cart *commavid) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: 0, IsRAM: addr <= 0x07ff}
 }
 
-// Patch implements the mapper.CartMapper interface.
+// Patch implements the mapper.CartPatchable interface
 func (cart *commavid) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize {
 		return fmt.Errorf("CV: patch offset too high (%d)", offset)
