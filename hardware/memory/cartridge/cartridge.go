@@ -299,6 +299,8 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newMnetwork(cart.env, *cartload.Data)
 	case "3F":
 		cart.mapper, err = newTigervision(cart.env, *cartload.Data)
+	case "UA":
+		cart.mapper, err = newUA(cart.env, *cartload.Data)
 	case "AR":
 		cart.mapper, err = supercharger.NewSupercharger(cart.env, cartload)
 	case "DF":

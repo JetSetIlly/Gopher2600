@@ -83,7 +83,7 @@ func (cart *ef) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		}
 	}
 
-	return cart.accessDriven(addr, data, poke)
+	return cart.accessVolatile(addr, data, poke)
 }
 
 // bankswitch on hotspot access.

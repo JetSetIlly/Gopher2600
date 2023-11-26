@@ -162,13 +162,6 @@ func (cart *tigervision) Patch(offset int, data uint8) error {
 
 // AccessPassive implements the mapper.CartMapper interface.
 func (cart *tigervision) AccessPassive(addr uint16, data uint8) error {
-	// tigervision is seemingly unique in that it bank switches when an address
-	// outside of cartridge space is written to. for this to work, we need the
-	// listen() function.
-	//
-	// update: tigervision is not unique. the 3e+ mapper also uses this
-	// mechanism. and superbank
-
 	// although address 3F is used primarily, in actual fact writing anywhere
 	// in TIA space is okay. from  the description from Kevin Horton's document
 	// (quoted above) whenever an address in TIA space is written to, the lower

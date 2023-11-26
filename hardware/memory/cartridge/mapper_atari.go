@@ -195,8 +195,8 @@ func (cart *atari) access(addr uint16) (uint8, uint8, bool) {
 	return 0, mapper.CartDrivenPins, false
 }
 
-// accessDriven implements the mapper.CartMapper interface.
-func (cart *atari) accessDriven(addr uint16, data uint8, poke bool) error {
+// accessVolatile implements the mapper.CartMapper interface.
+func (cart *atari) accessVolatile(addr uint16, data uint8, poke bool) error {
 	if cart.state.ram != nil {
 		if addr <= 0x7f {
 			cart.state.ram[addr] = data
@@ -335,7 +335,7 @@ func (cart *atari4k) Access(addr uint16, peek bool) (uint8, uint8, error) {
 
 // AccessVolatile implements the mapper.CartMapper interface.
 func (cart *atari4k) AccessVolatile(addr uint16, data uint8, poke bool) error {
-	return cart.atari.accessDriven(addr, data, poke)
+	return cart.atari.accessVolatile(addr, data, poke)
 }
 
 // atari2k is the half-size cartridge of 2048 bytes:
@@ -411,7 +411,7 @@ func (cart *atari2k) CopyBanks() []mapper.BankContent {
 
 // AccessVolatile implements the mapper.CartMapper interface.
 func (cart *atari2k) AccessVolatile(addr uint16, data uint8, poke bool) error {
-	return cart.atari.accessDriven(addr, data, poke)
+	return cart.atari.accessVolatile(addr, data, poke)
 }
 
 // atari8k (F8):
@@ -482,7 +482,7 @@ func (cart *atari8k) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		}
 	}
 
-	return cart.atari.accessDriven(addr, data, poke)
+	return cart.atari.accessVolatile(addr, data, poke)
 }
 
 // bankswitch on hotspot access.
@@ -580,7 +580,7 @@ func (cart *atari16k) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		}
 	}
 
-	return cart.atari.accessDriven(addr, data, poke)
+	return cart.atari.accessVolatile(addr, data, poke)
 }
 
 // bankswitch on hotspot access.
@@ -684,7 +684,7 @@ func (cart *atari32k) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		}
 	}
 
-	return cart.atari.accessDriven(addr, data, poke)
+	return cart.atari.accessVolatile(addr, data, poke)
 }
 
 // bankswitch on hotspot access.

@@ -214,6 +214,24 @@ func fingerprintSCABS(b []byte) bool {
 	return false
 }
 
+func fingerprintUA(b []byte) bool {
+	// ua fingerprint taken from Stella
+	fingerprint := [][]byte{
+		{0x8D, 0x40, 0x02}, // STA $240 (Funky Fish, Pleiades)
+		{0xAD, 0x40, 0x02}, // LDA $240 (???)
+		{0xBD, 0x1F, 0x02}, // LDA $21F,X (Gingerbread Man)
+		{0x2C, 0xC0, 0x02}, // BIT $2C0 (Time Pilot)
+		{0x8D, 0xC0, 0x02}, // STA $2C0 (Fathom, Vanguard)
+		{0xAD, 0xC0, 0x02}, // LDA $2C0 (Mickey)
+	}
+	for _, f := range fingerprint {
+		if bytes.Contains(b, f) {
+			return true
+		}
+	}
+	return false
+}
+
 func fingerprintDPCplus(b []byte) bool {
 	if len(b) < 0x23 {
 		return false
@@ -299,6 +317,10 @@ func fingerprint8k(data []byte) func(*environment.Environment, []byte) (mapper.C
 
 	if fingerprintSCABS(data) {
 		return newSCABS
+	}
+
+	if fingerprintUA(data) {
+		return newUA
 	}
 
 	return newAtari8k

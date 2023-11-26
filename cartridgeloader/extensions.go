@@ -18,8 +18,9 @@ package cartridgeloader
 // FileExtensions is the list of file extensions that are recognised by the
 // cartridgeloader package.
 var FileExtensions = [...]string{
-	".BIN", ".ROM", ".A26", ".2K", ".4K", ".F8", ".F6",
-	".F4", ".2K+", ".2KSC", ".4K+", ".4KSC", ".F8+", ".F8SC", ".F6+", ".F6SC", ".F4+", ".F4SC",
-	".FA", ".FE", ".E0", ".E7", ".3F", ".AR", ".DF", "3E", "3E+", "SB",
-	".DPC", ".DP+", "CDF", ".WAV", ".MP3", ".MVC",
+	".BIN", ".ROM", ".A26", ".2K", ".4K", ".F8", ".F6", ".F4", ".2K+", ".2KSC",
+	".4K+", ".4KSC", ".F8+", ".F8SC", ".F6+", ".F6SC", ".F4+", ".F4SC", ".CV",
+	".FA", ".FE", ".E0", ".E7", ".3F", ".UA", ".AR", ".DF", ".3E", ".E3P",
+	".E3+", ".3E+", ".EF", ".EFSC", ".SB", ".WD", ".ACE", ".CDF0", ".CDF1", ".CDFJ",
+	".CDFJ+", ".DP+", ".DPC", ".CDF", ".WAV", ".MP3", ".MVC",
 }

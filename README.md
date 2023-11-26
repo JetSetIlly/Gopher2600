@@ -95,7 +95,7 @@ In addition, Stella was used as reference in the following areas:
 * During the development of the CDF cartridge formats. These recent formats don't
 seem to be documented anywhere accept in the Stella source.
 
-* Cartridge fingerprints for ParkerBros, Wickstead Design and SCABS.
+* Cartridge fingerprints for ParkerBros, Wickstead Design, SCABS and UA.
 
 * As a reference for the audio implementation (the 6502.ts project was also
   referenced for this reason).
