@@ -200,27 +200,28 @@ func (win *winCPU) draw() {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
 		imgui.Text(fmt.Sprintf("%s cycles", res.Cycles()))
 
-		if win.img.dbg.Quantum() == govern.QuantumClock {
-			if !win.img.cache.Dbg.LiveDisasmEntry.Result.Final {
-				imgui.SameLine()
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
+		if !win.img.cache.Dbg.LiveDisasmEntry.Result.Final {
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
 
-				switch win.img.cache.VCS.TIA.ClocksSinceCycle {
-				case 1:
-					imgui.Text(fmt.Sprintf("%c", fonts.Paw))
-				case 2:
-					imgui.Text(fmt.Sprintf("%c", fonts.Paw))
-					imgui.SameLineV(0, 4)
-					imgui.Text(fmt.Sprintf("%c", fonts.Paw))
-				case 3:
+			switch win.img.cache.VCS.TIA.ClocksSinceCycle {
+			case 1:
+				imgui.Text(fmt.Sprintf("%c", fonts.Paw))
+			case 2:
+				imgui.Text(fmt.Sprintf("%c", fonts.Paw))
+				imgui.SameLineV(0, 4)
+				imgui.Text(fmt.Sprintf("%c", fonts.Paw))
+			case 3:
+				// only show paws for value 3 if we're in QuantumClock mode
+				if win.img.dbg.Quantum() == govern.QuantumClock {
 					imgui.Text(fmt.Sprintf("%c", fonts.Paw))
 					imgui.SameLineV(0, 4)
 					imgui.Text(fmt.Sprintf("%c", fonts.Paw))
 					imgui.SameLineV(0, 4)
 					imgui.Text(fmt.Sprintf("%c", fonts.Paw))
 				}
-				imgui.PopStyleColor()
 			}
+			imgui.PopStyleColor()
 		}
 
 		imgui.PopStyleColorV(5)

@@ -45,7 +45,7 @@ func (dbg *Debugger) unwindLoop(onRestart func() error) {
 func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 	var ended bool
 
-	callback := func(_ bool) error {
+	callback := func(isCycle bool) error {
 		if dbg.unwindLoopRestart != nil {
 			return nil
 		}
@@ -70,8 +70,18 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 				}
 
 				// ...otherwise catchup has ended but we've not reached a CPU
-				// instruction boundary then continue with nonInstructionQuantum loop
-				return dbg.inputLoop(inputter, true)
+				// instruction boundary then continue with nonInstructionQuantum loop.
+				// for QuantumCycle we need to pay attention to the isCycle flag
+				switch dbg.Quantum() {
+				case govern.QuantumInstruction:
+					return dbg.inputLoop(inputter, true)
+				case govern.QuantumCycle:
+					if isCycle {
+						return dbg.inputLoop(inputter, true)
+					}
+				case govern.QuantumClock:
+					return dbg.inputLoop(inputter, true)
+				}
 			}
 		} else if dbg.catchupContinue != nil && !dbg.catchupContinue() {
 			ended = true
