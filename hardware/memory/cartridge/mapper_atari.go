@@ -152,25 +152,26 @@ func (cart *atari) Reset() {
 		}
 	}
 
-	// known start-bank sensitive ROMs:
-	//	(F8) Hack'Em Hangly Pacman which requires a start bank of 1
-	//	(F8) CongoBongo which requires a start bank of 1
-	//	(F6) Stay Frosty which cannot start in the last bank
-	//	(F4) Strat-O-Gems which cannot start in bank 1
-	switch cart.mappingID {
-	case "2k": // (1 bank)
-		cart.state.bank = 0
-	case "4k": // (1 bank)
-		cart.state.bank = 0
-	case "F8": // 8k (2 banks)
-		cart.state.bank = 1
-	case "F6": // 16k (4 banks)
-		cart.state.bank = 1
-	case "F4": // 32k (8 banks)
-		cart.state.bank = 0
-	default:
-		cart.state.bank = 0
-	}
+	// earlier revisions of this function handled the possibility of a different
+	// required starting bank for specific cartridges. however I now believe that the
+	// correct answer in all cases should be bank 0
+	//
+	// in truth cartridges should be able to start in any bank and those don't
+	// will have issues on the real hardware. those that require a specific
+	// starting bank (eg. bank 3) will definitely have issues on real hardware
+	// and is so outlandish we'll simply consider it to be wrong
+	//
+	// an example of a cartridge that definitely do need to start in bank 0 and
+	// never any other is Berzerk (Voice Enhanced), an F6 type cartridge
+	//
+	// a counter-example of a cartridge that must start in a non-zero bank is an
+	// early version of the pacman variation, Hack'em Hanglyman, which is an F8
+	// type cartridge and must start in bank 1
+	//
+	// this last example is probably the cartridge that sent me down the wrong
+	// path. despite being a favourite of mine, the ROM was never a commercial
+	// release or even what might be called a "final" ROM
+	cart.state.bank = 0
 }
 
 // GetBank implements the mapper.CartMapper interface.
