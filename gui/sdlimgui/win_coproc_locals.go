@@ -108,7 +108,9 @@ func (win *winCoProcLocals) draw() {
 		flgs |= imgui.TableFlagsResizable
 		flgs |= imgui.TableFlagsHideable
 
-		imgui.BeginTableV("##localsTable", numColumns, flgs, imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, 0.0)
+		if !imgui.BeginTableV("##localsTable", numColumns, flgs, imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, 0.0) {
+			return
+		}
 
 		// setup columns. the labelling column 2 depends on whether the coprocessor
 		// development instance has source available to it

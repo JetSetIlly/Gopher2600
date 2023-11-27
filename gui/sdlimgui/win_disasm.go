@@ -311,12 +311,12 @@ func (win *winDisasm) drawOptions(currBank mapper.BankInfo) {
 	})
 }
 
-func (win *winDisasm) startTable() {
+func (win *winDisasm) startTable() bool {
 	numColumns := 6
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
 	if !imgui.BeginTableV("bank", numColumns, flgs, imgui.Vec2{}, 0) {
-		return
+		return false
 	}
 
 	operandWidth := imgui.ContentRegionAvail().X - imgui.CurrentStyle().ItemSpacing().X*float32(numColumns)
@@ -328,6 +328,8 @@ func (win *winDisasm) startTable() {
 	imgui.TableSetupColumnV("##operand", imgui.TableColumnFlagsNone, operandWidth, 3)
 	imgui.TableSetupColumnV("##cycles", imgui.TableColumnFlagsNone, win.widthCycles, 4)
 	imgui.TableSetupColumnV("##notes", imgui.TableColumnFlagsNone, win.widthNotes, 5)
+
+	return true
 }
 
 // drawBank specified by bank argument.
@@ -386,14 +388,17 @@ func (win *winDisasm) drawBank(currBank mapper.BankInfo, focusAddr uint16) {
 		}
 
 		// iterateDraw presents the entry according to the current rules
-		iterateDraw := func(e *disassembly.Entry) {
+		iterateDraw := func(e *disassembly.Entry) bool {
 			if headerRequired {
 				imgui.EndTable()
 				imgui.Text(fmt.Sprintf("Bank %d", iterateBank))
-				win.startTable()
+				if !win.startTable() {
+					return false
+				}
 				headerRequired = false
 			}
 			win.drawEntry(currBank, e, focusAddr, onBank, iterateBank)
+			return true
 		}
 
 		// alter iterate functions according to selected filter
@@ -413,15 +418,18 @@ func (win *winDisasm) drawBank(currBank mapper.BankInfo, focusAddr uint16) {
 				iterateIdx++
 				return iterateIdx < len(dsmEntries.Entries[iterateBank])
 			}
-			iterateDraw = func(e *disassembly.Entry) {
+			iterateDraw = func(e *disassembly.Entry) bool {
 				if e == nil {
-					return
+					return true
 				}
 				win.drawLabel(e, iterateBank)
 				win.drawEntry(currBank, e, focusAddr, onBank, iterateBank)
 				if currBank.ExecutingCoprocessor && onBank && e.Result.Address&memorymap.CartridgeBits == focusAddr {
-					win.drawEntryCoProcessorExecution()
+					if !win.drawEntryCoProcessorExecution() {
+						return false
+					}
 				}
+				return true
 			}
 		case filterCPUBug:
 			iterateFilter = func(e *disassembly.Entry) bool {
@@ -476,7 +484,9 @@ func (win *winDisasm) drawBank(currBank mapper.BankInfo, focusAddr uint16) {
 			return
 		}
 
-		win.startTable()
+		if !win.startTable() {
+			return
+		}
 
 		// wrap list clipper in anonymous function call. convenient to just
 		// return from the function from inside a nested loop
@@ -571,42 +581,41 @@ func (win *winDisasm) drawBank(currBank mapper.BankInfo, focusAddr uint16) {
 	imgui.EndChild()
 }
 
-func (win *winDisasm) drawLabel(e *disassembly.Entry, bank int) {
+func (win *winDisasm) drawLabel(e *disassembly.Entry, bank int) bool {
 	if len(e.Label.Resolve()) == 0 {
-		return
+		return true
 	}
 
 	// end existing disasm table before drawing label. (re)start table before
 	// the end of the function
 	imgui.EndTable()
-	defer win.startTable()
 
 	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
-	defer imgui.PopStyleColorV(2)
 	imgui.SelectableV("", false, imgui.SelectableFlagsNone, imgui.Vec2{0, 0})
 	imgui.SameLine()
-
 	imgui.Text(e.Label.Resolve())
+	imgui.PopStyleColorV(2)
+
+	return win.startTable()
 }
 
 func (win *winDisasm) drawCoProcTooltip() {
 	win.img.imguiTooltipSimple("Coprocessor is executing")
 }
 
-func (win *winDisasm) drawEntryCoProcessorExecution() {
+func (win *winDisasm) drawEntryCoProcessorExecution() bool {
 	imgui.EndTable()
-	defer win.startTable()
 
 	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
-	defer imgui.PopStyleColorV(2)
 	imgui.SelectableV("", false, imgui.SelectableFlagsNone, imgui.Vec2{0, 0})
-
 	win.drawCoProcTooltip()
-
 	imgui.SameLine()
 	imgui.Text(fmt.Sprintf("    %c 6507 will resume here", fonts.CoProcExecution))
+	imgui.PopStyleColorV(2)
+
+	return win.startTable()
 }
 
 func (win *winDisasm) drawEntry(currBank mapper.BankInfo, e *disassembly.Entry, focusAddr uint16, onBank bool, bank int) {

@@ -135,8 +135,8 @@ func (win *winTerm) debuggerDraw() bool {
 			imgui.SetScrollHereY(0.0)
 		}
 
-		imgui.EndChild()
 	}
+	imgui.EndChild()
 
 	// context menu for scrollback area
 	if imgui.BeginPopupContextItem() {

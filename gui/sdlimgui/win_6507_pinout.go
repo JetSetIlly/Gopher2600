@@ -243,8 +243,8 @@ func (win *win6507Pinout) draw() {
 			win.bodyOutline, 0, imgui.DrawCornerFlagsAll, lineThick)
 
 		imgui.PopFont()
-		imgui.EndChild()
 	}
+	imgui.EndChild()
 
 	// bus information
 	win.busInfoHeight = imguiMeasureHeight(func() {

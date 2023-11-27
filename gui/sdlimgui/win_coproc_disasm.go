@@ -120,8 +120,8 @@ func (win *winCoProcDisasm) draw() {
 				imgui.Text("Coprocessor disassembly is disabled")
 			}
 
-			imgui.EndChild()
 		}
+		imgui.EndChild()
 
 		// draw options and status line. start height measurement
 		win.optionsHeight = imguiMeasureHeight(func() {

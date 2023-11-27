@@ -393,9 +393,8 @@ func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
 			imgui.EndGroup()
 			imgui.SameLine()
 		}
-
-		imgui.EndChild()
 	}
+	imgui.EndChild()
 
 	win.optionsHeight = imguiMeasureHeight(func() {
 		imgui.Spacing()

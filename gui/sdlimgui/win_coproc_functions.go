@@ -92,7 +92,9 @@ func (win *winCoProcFunctions) draw() {
 		flgs |= imgui.TableFlagsSizingStretchProp
 		flgs |= imgui.TableFlagsResizable
 		flgs |= imgui.TableFlagsHideable
-		imgui.BeginTableV("##coprocFunctionsTable", numColumns, flgs, imgui.Vec2{}, 0.0)
+		if !imgui.BeginTableV("##coprocFunctionsTable", numColumns, flgs, imgui.Vec2{}, 0.0) {
+			return
+		}
 
 		width := imgui.ContentRegionAvail().X
 		imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsPreferSortDescending|imgui.TableColumnFlagsNoHide, width*0.5, 0)
