@@ -93,6 +93,12 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 				return nil
 			}
 
+			// if quantum if QuantumInstruction and we're not at the end of the
+			// instruction then we never want to call the input loop
+			if dbg.Quantum() == govern.QuantumInstruction && !dbg.vcs.CPU.LastResult.Final {
+				return nil
+			}
+
 			return dbg.inputLoop(inputter, true)
 		}
 
