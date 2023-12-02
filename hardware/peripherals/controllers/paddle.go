@@ -28,15 +28,6 @@ import (
 )
 
 const (
-	// paddleChargeRate governs the rate at which the controller capacitor fills.
-	// the tick value is increased by the sensitivity value every cycle; once
-	// it reaches or exceeds the resistance value, the charge value is
-	// increased. the charge value is the value written to the INPTx register.
-	//
-	// the following value is found by 1/N where N is the number of ticks
-	// required for the charge value to increase by 1. eg 1/150==0.0067.
-	paddleChargeRate = 0.0067
-
 	// sets the fire button for both paddles to nofire. WriteSWCHx() will shift
 	// the bits into the correct position for the right port
 	paddleNoFire = 0xf0
@@ -51,8 +42,8 @@ type paddle struct {
 
 	// values indicating paddle state
 	charge     uint8
-	resistance float32
-	ticks      float32
+	resistance int
+	ticks      int
 
 	// the state of the fire button
 	fire bool
@@ -121,7 +112,7 @@ func (pdl *Paddles) Plumb(bus ports.PeripheralBus) {
 func (pdl *Paddles) String() string {
 	var s strings.Builder
 	for i := range pdl.paddles {
-		s.WriteString(fmt.Sprintf("paddle: button=%v charge=%v resistance=%.02f\n", pdl.paddles[i].fire, pdl.paddles[i].charge, pdl.paddles[i].resistance))
+		s.WriteString(fmt.Sprintf("paddle: button=%v charge=%d resistance=%d\n", pdl.paddles[i].fire, pdl.paddles[i].charge, pdl.paddles[i].resistance))
 	}
 	return s.String()
 }
@@ -185,16 +176,21 @@ func (pdl *Paddles) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 		pdl.setFire()
 
 	case ports.PaddleSet:
+		// clamp resistance values between 10 and 160
+		clamp := func(v float32) int {
+			return int((1.0-v)*150) + 10
+		}
+
 		switch d := data.(type) {
 		case ports.EventDataPaddle:
 			for i := range pdl.paddles {
-				pdl.paddles[i].resistance = 1.0 - d[i]
+				pdl.paddles[i].resistance = clamp(d[i])
 			}
 		case ports.EventDataPlayback:
 			var vals ports.EventDataPaddle
 			vals.FromString(string(d))
 			for i := range pdl.paddles {
-				pdl.paddles[i].resistance = 1.0 - vals[i]
+				pdl.paddles[i].resistance = clamp(vals[i])
 			}
 		default:
 			return false, fmt.Errorf("paddle: %v: unexpected event data", event)
@@ -215,7 +211,7 @@ func (pdl *Paddles) Update(data chipbus.ChangedRegister) bool {
 		if data.Value&0x80 == 0x80 {
 			for i := range pdl.paddles {
 				pdl.paddles[i].charge = 0x00
-				pdl.paddles[i].ticks = 0.0
+				pdl.paddles[i].ticks = 0
 				pdl.bus.WriteINPTx(pdl.paddles[i].inptx, 0x00)
 			}
 		}
@@ -230,15 +226,14 @@ func (pdl *Paddles) Update(data chipbus.ChangedRegister) bool {
 // Step implements the ports.Peripheral interface.
 func (pdl *Paddles) Step() {
 	for i := range pdl.paddles {
-		if pdl.paddles[i].charge < 255 {
-			pdl.paddles[i].ticks += paddleChargeRate
+		if pdl.paddles[i].charge < 0xff {
+			pdl.paddles[i].ticks++
 			if pdl.paddles[i].ticks >= pdl.paddles[i].resistance {
-				pdl.paddles[i].ticks = 0.0
+				pdl.paddles[i].ticks = 0
 				pdl.paddles[i].charge++
 				pdl.bus.WriteINPTx(pdl.paddles[i].inptx, pdl.paddles[i].charge)
 			}
 		}
-
 	}
 
 	pdl.setFire()
@@ -248,8 +243,8 @@ func (pdl *Paddles) Step() {
 func (pdl *Paddles) Reset() {
 	for i := range pdl.paddles {
 		pdl.paddles[i].charge = 0
-		pdl.paddles[i].ticks = 0.0
-		pdl.paddles[i].resistance = 0.0
+		pdl.paddles[i].ticks = 0
+		pdl.paddles[i].resistance = 0xff
 	}
 }
 

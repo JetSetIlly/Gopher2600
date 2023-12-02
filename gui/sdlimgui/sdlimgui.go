@@ -432,13 +432,14 @@ func (img *SdlImgui) setCapture(set bool) {
 		img.wm.dbgScr.isCaptured = set
 	}
 
-	err := sdl.CaptureMouse(set)
-	if err != nil {
-		logger.Log("sdlimgui", err.Error())
-	}
+	// err := sdl.CaptureMouse(set)
+	// if err != nil {
+	// 	logger.Log("sdlimgui", err.Error())
+	// }
+	// img.plt.window.SetGrab(set)
+	// img.cursorVisibility(set)
 
-	img.plt.window.SetGrab(set)
-	img.cursorVisibility(set)
+	sdl.SetRelativeMouseMode(set)
 }
 
 // "captured running" is when the emulation is running inside the debugger and
