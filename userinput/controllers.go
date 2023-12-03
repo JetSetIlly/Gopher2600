@@ -20,19 +20,12 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
-// small deadzone for the triggers
-const TriggerDeadzone = 10
-
 // quite a large deadzone for the thumbstick
 const ThumbstickDeadzone = 10000
 
 // Controllers keeps track of hardware userinput options.
 type Controllers struct {
 	inputHandler HandleInput
-
-	// trigger handling requires some bookkeeping
-	trigger       GamepadTrigger
-	triggerPaddle float32
 }
 
 // Controllers is the preferred method of initialisation for the Controllers type.
@@ -54,7 +47,10 @@ func (c *Controllers) handleEvents(id plugging.PortID, ev ports.Event, d ports.E
 }
 
 func (c *Controllers) mouseMotion(ev EventMouseMotion) (bool, error) {
-	return c.handleEvents(plugging.PortLeft, ports.PaddleSet, ports.EventDataPaddle{ev.X})
+	return c.handleEvents(plugging.PortLeft, ports.PaddleSet, ports.EventDataPaddle{
+		A:        ev.X,
+		Relative: true,
+	})
 }
 
 func (c *Controllers) mouseButton(ev EventMouseButton) (bool, error) {
@@ -370,56 +366,6 @@ func (c *Controllers) gamepadThumbstick(ev EventGamepadThumbstick) (bool, error)
 	return false, err
 }
 
-func (c *Controllers) gamepadTriggers(ev EventGamepadTrigger) (bool, error) {
-	if c.trigger != GamepadTriggerNone && c.trigger != ev.Trigger {
-		return false, nil
-	}
-
-	const min = 0.0
-	const max = 65535.0
-	const mid = 32768.0
-
-	n := float32(ev.Amount)
-	n += mid
-
-	switch ev.Trigger {
-	case GamepadTriggerLeft:
-
-		// check deadzone
-		if n >= -TriggerDeadzone && n <= TriggerDeadzone {
-			c.trigger = GamepadTriggerNone
-			n = min
-		} else {
-			c.trigger = GamepadTriggerLeft
-			n = max - n
-			n /= max
-		}
-
-		// left trigger can only move the paddle left
-		if n > c.triggerPaddle {
-			return false, nil
-		}
-	case GamepadTriggerRight:
-		// check deadzone
-		if n >= -TriggerDeadzone && n <= TriggerDeadzone {
-			c.trigger = GamepadTriggerNone
-			n = min
-		} else {
-			c.trigger = GamepadTriggerRight
-			n /= max
-		}
-
-		// right trigger can only move the paddle right
-		if n < c.triggerPaddle {
-			return false, nil
-		}
-	default:
-	}
-
-	c.triggerPaddle = n
-	return c.handleEvents(ev.ID, ports.PaddleSet, ports.EventDataPaddle{c.triggerPaddle})
-}
-
 func (c *Controllers) stelladaptor(ev EventStelladaptor) (bool, error) {
 	switch c.inputHandler.PeripheralID(ev.ID) {
 	case plugging.PeriphStick:
@@ -460,8 +406,8 @@ func (c *Controllers) stelladaptor(ev EventStelladaptor) (bool, error) {
 
 	case plugging.PeriphPaddles:
 		return c.handleEvents(ev.ID, ports.PaddleSet, ports.EventDataPaddle{
-			float32(int32(ev.Horiz)+32768) / 65535,
-			float32(int32(ev.Vert)+32768) / 65535,
+			A: ev.Horiz,
+			B: ev.Vert,
 		})
 	}
 
@@ -488,7 +434,7 @@ func (c *Controllers) HandleUserInput(ev Event) (bool, error) {
 	case EventGamepadThumbstick:
 		return c.gamepadThumbstick(ev)
 	case EventGamepadTrigger:
-		return c.gamepadTriggers(ev)
+		// not using trigger
 	case EventStelladaptor:
 		return c.stelladaptor(ev)
 	default:

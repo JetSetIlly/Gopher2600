@@ -94,28 +94,53 @@ type EventDataStick string
 // Event data for paddle types. first entry is for primary paddle for the part
 // (ie. INP0 or INP2) and the second entry is for the secondary paddle (ie.
 // INP1 or INP3)
-type EventDataPaddle [2]float32
+//
+// The values are relative (to the current position) if the Relative field is
+// set to true
+//
+// For non-relative values (ie. absolute values) the value should be scaled to
+// be in the range of -32768 and +32767
+type EventDataPaddle struct {
+	A        int16
+	B        int16
+	Relative bool
+}
 
 // String implements the string.Stringer interface and is intended to be used
 // when writing to a playback file
 func (ev EventDataPaddle) String() string {
-	return fmt.Sprintf("%f;%f", ev[0], ev[1])
+	return fmt.Sprintf("%d;%d;%v", ev.A, ev.B, ev.Relative)
 }
 
 // FromString is the inverse of the String() function
 func (ev *EventDataPaddle) FromString(s string) error {
-	// splitting up to two strings. if there's only string in the split then
-	// that's okay and it only means that the EventDataPaddle was written by an
-	// early version of the emulator
-	sp := strings.SplitN(s, ";", 2)
+	sp := strings.Split(s, ";")
 
-	for i := range sp {
-		f, err := strconv.ParseFloat(sp[i], 32)
-		if err != nil {
-			return err
-		}
-		ev[i] = float32(f)
+	if len(sp) != 3 {
+		return fmt.Errorf("wrong number of values in paddle string")
 	}
+
+	f, err := strconv.ParseInt(sp[0], 10, 32)
+	if err != nil {
+		return fmt.Errorf("illegal value in paddle string")
+	}
+	ev.A = int16(f)
+
+	f, err = strconv.ParseInt(sp[1], 10, 32)
+	if err != nil {
+		return fmt.Errorf("illegal value in paddle string")
+	}
+	ev.B = int16(f)
+
+	switch sp[2] {
+	case "true":
+		ev.Relative = true
+	case "false":
+		ev.Relative = false
+	default:
+		return fmt.Errorf("illegal value in paddle string")
+	}
+
 	return nil
 }
 

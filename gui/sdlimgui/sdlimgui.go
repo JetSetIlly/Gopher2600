@@ -99,9 +99,6 @@ type SdlImgui struct {
 	// service loop is important to the GUI's responsiveness.
 	polling *polling
 
-	// mouse coords at last frame. used by service loop to keep track of mouse motion
-	mouseX, mouseY int32
-
 	// the time the window was focused. we use this to prevent the TAB key from
 	// opening the ROM requester if the window was focused with the alt-TAB key
 	// combo used by Windows and many Linux desktops
@@ -432,14 +429,7 @@ func (img *SdlImgui) setCapture(set bool) {
 		img.wm.dbgScr.isCaptured = set
 	}
 
-	// err := sdl.CaptureMouse(set)
-	// if err != nil {
-	// 	logger.Log("sdlimgui", err.Error())
-	// }
-	// img.plt.window.SetGrab(set)
-	// img.cursorVisibility(set)
-
-	sdl.SetRelativeMouseMode(set)
+	img.plt.setCapture(set)
 }
 
 // "captured running" is when the emulation is running inside the debugger and

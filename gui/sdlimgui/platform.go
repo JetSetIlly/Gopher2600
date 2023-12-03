@@ -328,3 +328,8 @@ func (plt *platform) setFullScreen(fullScreen bool) {
 	// to make the changes to the full screen state
 	<-time.After(100 * time.Millisecond)
 }
+
+// set the capture state for the mouse
+func (plt *platform) setCapture(set bool) {
+	sdl.SetRelativeMouseMode(set)
+}

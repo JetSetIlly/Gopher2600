@@ -31,6 +31,10 @@ const (
 	// sets the fire button for both paddles to nofire. WriteSWCHx() will shift
 	// the bits into the correct position for the right port
 	paddleNoFire = 0xf0
+
+	// min/max resistance values of paddle
+	paddleMinResistance = 0x14
+	paddleMaxResistance = 0xc8
 )
 
 type paddle struct {
@@ -177,21 +181,36 @@ func (pdl *Paddles) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 
 	case ports.PaddleSet:
 		// clamp resistance values between 10 and 160
-		clamp := func(v float32) int {
-			return int((1.0-v)*150) + 10
+		clamp := func(v int) int {
+			if v < paddleMinResistance {
+				return paddleMinResistance
+			}
+			if v > paddleMaxResistance {
+				return paddleMaxResistance
+			}
+			return v
+		}
+
+		// handle the incoming data
+		handle := func(d ports.EventDataPaddle) {
+			if d.Relative {
+				pdl.paddles[0].resistance -= int(d.A)
+				pdl.paddles[1].resistance -= int(d.B)
+			} else {
+				pdl.paddles[0].resistance = (int(d.A) + 32768) / 255
+				pdl.paddles[1].resistance = (int(d.B) + 32768) / 255
+			}
+			pdl.paddles[0].resistance = clamp(pdl.paddles[0].resistance)
+			pdl.paddles[1].resistance = clamp(pdl.paddles[1].resistance)
 		}
 
 		switch d := data.(type) {
 		case ports.EventDataPaddle:
-			for i := range pdl.paddles {
-				pdl.paddles[i].resistance = clamp(d[i])
-			}
+			handle(d)
 		case ports.EventDataPlayback:
-			var vals ports.EventDataPaddle
-			vals.FromString(string(d))
-			for i := range pdl.paddles {
-				pdl.paddles[i].resistance = clamp(vals[i])
-			}
+			var v ports.EventDataPaddle
+			v.FromString(string(d))
+			handle(v)
 		default:
 			return false, fmt.Errorf("paddle: %v: unexpected event data", event)
 		}
@@ -244,7 +263,7 @@ func (pdl *Paddles) Reset() {
 	for i := range pdl.paddles {
 		pdl.paddles[i].charge = 0
 		pdl.paddles[i].ticks = 0
-		pdl.paddles[i].resistance = 0xff
+		pdl.paddles[i].resistance = paddleMaxResistance
 	}
 }
 
