@@ -481,5 +481,7 @@ func (img *SdlImgui) cursorVisibility(hidden bool) {
 func (img *SdlImgui) smartCursorVisibility(hidden bool) {
 	if img.isPlaymode() && !img.isCaptured() {
 		img.cursorVisibility(hidden)
+	} else {
+		img.cursorVisibility(false)
 	}
 }
