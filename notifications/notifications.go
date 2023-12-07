@@ -63,6 +63,9 @@ const (
 	// PlusROM new installation
 	NotifyPlusROMNewInstallation Notify = "NotifyPlusROMNewInstallation"
 
+	// Moviecart started
+	NotifyMovieCartStarted Notify = "NotifyMoveCartStarted"
+
 	// unsupported DWARF data
 	NotifyUnsupportedDWARF Notify = "NotifyUnsupportedDWARF"
 

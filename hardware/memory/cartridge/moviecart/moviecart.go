@@ -25,6 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/notifications"
 )
 
 const (
@@ -269,7 +270,9 @@ func (s *state) initialise() {
 }
 
 type Moviecart struct {
-	env    *environment.Environment
+	env              *environment.Environment
+	notificationHook notifications.NotificationHook
+
 	specID string
 
 	mappingID string
@@ -282,9 +285,10 @@ type Moviecart struct {
 
 func NewMoviecart(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
 	cart := &Moviecart{
-		env:       env,
-		loader:    loader.StreamedData,
-		mappingID: "MVC",
+		env:              env,
+		notificationHook: loader.NotificationHook,
+		loader:           loader.StreamedData,
+		mappingID:        "MVC",
 	}
 
 	cart.state = newState()
@@ -424,6 +428,15 @@ func (cart *Moviecart) processAddress(addr uint16) {
 	if cart.state.totalCycles == titleCycles {
 		// stop title screen
 		cart.write8bit(addrTitleLoop, 0x18)
+
+		// call notificationHook function if one is available
+		if cart.notificationHook != nil {
+			err := cart.notificationHook(cart, notifications.NotifyMovieCartStarted)
+			if err != nil {
+				logger.Logf("moviecart", err.Error())
+			}
+		}
+
 	} else if cart.state.totalCycles > titleCycles {
 		cart.runStateMachine()
 	}

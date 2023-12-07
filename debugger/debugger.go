@@ -42,6 +42,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/moviecart"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -1115,6 +1116,13 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 				}
 			default:
 				logger.Logf("debugger", "unhandled hook event for plusrom (%v)", event)
+			}
+		} else if _, ok := cart.(*moviecart.Moviecart); ok {
+			switch event {
+			case notifications.NotifyMovieCartStarted:
+				return dbg.vcs.TV.Reset(true)
+			default:
+				logger.Logf("debugger", "unhandled hook event for moviecart (%v)", event)
 			}
 		}
 		return nil
