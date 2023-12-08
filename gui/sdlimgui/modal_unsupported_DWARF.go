@@ -46,7 +46,7 @@ func (img *SdlImgui) modalDrawUnsupportedDWARF() {
 		imgui.Text("options should be:")
 		imgui.Text("")
 		imgui.PushFont(img.fonts.code)
-		imgui.Text("    -g3 -gdwarf-4 -strict-dwarf")
+		imgui.Text("    -g3 -gdwarf-4 -gstrict-dwarf")
 		imgui.PopFont()
 		imgui.Text("")
 		imgui.Text("For other compilers it's important that the emitted DWARF data")
