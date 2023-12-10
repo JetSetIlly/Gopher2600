@@ -386,7 +386,9 @@ The optional DERIVATION switch to the LOCAL argument prints out the location lis
 variable. Normal Atari 2600 developers do not need to worry about location lists.`,
 
 	// user input
-	cmdPeripheral: `Change the current peripheral for the specified player port.`,
+	cmdPeripheral: `Change the current peripheral for the specified player port. Can also be used
+to swap the ports so that the left player in the emulator controls what would be the right player
+on the real console.`,
 
 	cmdPanel: "Inspect and set front panel settings. Switches can be set or toggled.",
 

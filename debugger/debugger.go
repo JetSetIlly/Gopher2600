@@ -681,7 +681,7 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 		return fmt.Errorf("debugger: %w", err)
 	}
 
-	err = dbg.insertPeripheralsOnStartup(dbg.opts.Left, dbg.opts.Right)
+	err = dbg.setPeripheralsOnStartup()
 	if err != nil {
 		return fmt.Errorf("debugger: %w", err)
 	}
@@ -718,18 +718,26 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 	return nil
 }
 
-func (dbg *Debugger) insertPeripheralsOnStartup(left string, right string) error {
+func (dbg *Debugger) setPeripheralsOnStartup() error {
 	dbg.term.Silence(true)
 	defer dbg.term.Silence(false)
 
-	err := dbg.parseCommand(fmt.Sprintf("PERIPHERAL LEFT %s", left), false, false)
+	err := dbg.parseCommand(fmt.Sprintf("PERIPHERAL LEFT %s", dbg.opts.Left), false, false)
 	if err != nil {
 		return err
 	}
-	err = dbg.parseCommand(fmt.Sprintf("PERIPHERAL RIGHT %s", right), false, false)
+	err = dbg.parseCommand(fmt.Sprintf("PERIPHERAL RIGHT %s", dbg.opts.Right), false, false)
 	if err != nil {
 		return err
 	}
+
+	if dbg.opts.Swap {
+		err = dbg.parseCommand(fmt.Sprintf("PERIPHERAL SWAP"), false, false)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -761,7 +769,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 			return fmt.Errorf("debugger: %w", err)
 		}
 
-		err = dbg.insertPeripheralsOnStartup(dbg.opts.Left, dbg.opts.Right)
+		err = dbg.setPeripheralsOnStartup()
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
 		}

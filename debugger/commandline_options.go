@@ -31,6 +31,7 @@ type CommandLineOptions struct {
 	Mapping   string
 	Left      string
 	Right     string
+	Swap      bool
 	Profile   string
 	ELF       string
 

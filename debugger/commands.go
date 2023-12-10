@@ -1743,11 +1743,19 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		player, _ := tokens.Get()
 
 		var id plugging.PortID
+
 		switch strings.ToUpper(player) {
 		case "LEFT":
 			id = plugging.PortLeft
 		case "RIGHT":
 			id = plugging.PortRight
+		case "SWAP":
+			if dbg.controllers.Swap() {
+				dbg.printLine(terminal.StyleFeedback, "player peripherals are in the swapped state")
+			} else {
+				dbg.printLine(terminal.StyleFeedback, "player peripherals are in the normal state")
+			}
+			return nil
 		}
 
 		var err error

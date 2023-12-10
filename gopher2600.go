@@ -304,6 +304,7 @@ func emulate(mode string, sync *mainSync, args []string) error {
 	flgs.StringVar(&opts.Mapping, "mapping", "AUTO", "force cartridge mapper selection")
 	flgs.StringVar(&opts.Left, "left", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD")
 	flgs.StringVar(&opts.Right, "right", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD")
+	flgs.BoolVar(&opts.Swap, "swap", false, "swap player ports")
 	flgs.StringVar(&opts.Profile, "profile", "none", "run performance check with profiling: CPU, MEM, TRACE, ALL (comma sep)")
 	flgs.StringVar(&opts.ELF, "elf", "", "path to ELF file. only valid for some coproc supporting ROMs")
 
