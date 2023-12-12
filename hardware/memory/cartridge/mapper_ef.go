@@ -95,6 +95,11 @@ func (cart *ef) bankswitch(addr uint16) bool {
 	return false
 }
 
+// Reset implements the mapper.CartMapper interface.
+func (cart *ef) Reset() {
+	cart.reset(cart.NumBanks())
+}
+
 // NumBanks implements the mapper.CartMapper interface.
 func (cart *ef) NumBanks() int {
 	return 16

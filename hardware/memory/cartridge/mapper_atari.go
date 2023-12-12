@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -142,8 +143,9 @@ func (cart *atari) ID() string {
 	return cart.mappingID
 }
 
-// Reset implements the mapper.CartMapper interface.
-func (cart *atari) Reset() {
+// reset is called by the Reset() function implemented in all child types of the
+// the atari type
+func (cart *atari) reset(numBanks int) {
 	for i := range cart.state.ram {
 		if cart.env.Prefs.RandomState.Get().(bool) {
 			cart.state.ram[i] = uint8(cart.env.Random.NoRewind(0xff))
@@ -151,27 +153,57 @@ func (cart *atari) Reset() {
 			cart.state.ram[i] = 0
 		}
 	}
+	if cart.env.Prefs.RandomState.Get().(bool) {
+		cart.state.bank = cart.env.Random.NoRewind(numBanks)
+	} else {
+		// earlier revisions of this function handled the possibility of a different
+		// required starting bank for specific cartridges. however I now believe that the
+		// correct answer in all cases should be bank 0
+		//
+		// in truth cartridges should be able to start in any bank and those don't
+		// will have issues on the real hardware. those that require a specific
+		// starting bank (eg. bank 3) will definitely have issues on real hardware
+		// and is so outlandish we'll simply consider it to be wrong
+		//
+		// an example of a cartridge that definitely do need to start in bank 0 and
+		// never any other is Berzerk (Voice Enhanced), an F6 type cartridge
+		//
+		// a counter-example of a cartridge that must start in a non-zero bank is an
+		// early version of the pacman variation, Hack'em Hanglyman, which is an F8
+		// type cartridge and must start in bank 1
+		//
+		// this last example is probably the cartridge that sent me down the wrong
+		// path. despite being a favourite of mine, the ROM was never a commercial
+		// release or even what might be called a "final" ROM
+		cart.state.bank = 0
 
-	// earlier revisions of this function handled the possibility of a different
-	// required starting bank for specific cartridges. however I now believe that the
-	// correct answer in all cases should be bank 0
-	//
-	// in truth cartridges should be able to start in any bank and those don't
-	// will have issues on the real hardware. those that require a specific
-	// starting bank (eg. bank 3) will definitely have issues on real hardware
-	// and is so outlandish we'll simply consider it to be wrong
-	//
-	// an example of a cartridge that definitely do need to start in bank 0 and
-	// never any other is Berzerk (Voice Enhanced), an F6 type cartridge
-	//
-	// a counter-example of a cartridge that must start in a non-zero bank is an
-	// early version of the pacman variation, Hack'em Hanglyman, which is an F8
-	// type cartridge and must start in bank 1
-	//
-	// this last example is probably the cartridge that sent me down the wrong
-	// path. despite being a favourite of mine, the ROM was never a commercial
-	// release or even what might be called a "final" ROM
-	cart.state.bank = 0
+		// however, I think we can do better. if we read the reset vector and
+		// test whether the address pointed to is in cartridge space then we can
+		// make a better guess at the correct starting bank
+		if numBanks > 1 {
+			for b := 0; b < numBanks; b++ {
+				reset := cpubus.Reset & memorymap.CartridgeBits
+				addr := uint16(cart.banks[b][reset]) | (uint16(cart.banks[b][reset+1]) << 8)
+				if memorymap.IsArea(addr, memorymap.Cartridge) {
+					// we also discount addresses that would not make sense even though they
+					// are in cartridge space. for example anything after address 0xfffa
+					// are the NMI, Reset and BRK vectors
+					//
+					// we could think about how the program might run into the end
+					// of cartridge memory unless there is an intermediate jump
+					// instruction but honestly that would be too complex and
+					// unlikely to improve things
+					//
+					// (masking with CartridgeBits as normal to make sure we can
+					// handle any cartridge mirror)
+					if addr&memorymap.CartridgeBits < cpubus.NMI&memorymap.CartridgeBits {
+						cart.state.bank = b
+						break // for loop
+					}
+				}
+			}
+		}
+	}
 }
 
 // GetBank implements the mapper.CartMapper interface.
@@ -321,6 +353,11 @@ func (cart *atari4k) Plumb(env *environment.Environment) {
 	cart.env = env
 }
 
+// Reset implements the mapper.CartMapper interface.
+func (cart *atari4k) Reset() {
+	cart.reset(cart.NumBanks())
+}
+
 // NumBanks implements the mapper.CartMapper interface.
 func (cart *atari4k) NumBanks() int {
 	return 1
@@ -385,6 +422,11 @@ func (cart *atari2k) Snapshot() mapper.CartMapper {
 // Plumb implements the mapper.CartMapper interface.
 func (cart *atari2k) Plumb(env *environment.Environment) {
 	cart.env = env
+}
+
+// Reset implements the mapper.CartMapper interface.
+func (cart *atari2k) Reset() {
+	cart.reset(cart.NumBanks())
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -455,6 +497,11 @@ func (cart *atari8k) Snapshot() mapper.CartMapper {
 // Plumb implements the mapper.CartMapper interface.
 func (cart *atari8k) Plumb(env *environment.Environment) {
 	cart.env = env
+}
+
+// Reset implements the mapper.CartMapper interface.
+func (cart *atari8k) Reset() {
+	cart.reset(cart.NumBanks())
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -553,6 +600,11 @@ func (cart *atari16k) Snapshot() mapper.CartMapper {
 // Plumb implements the mapper.CartMapper interface.
 func (cart *atari16k) Plumb(env *environment.Environment) {
 	cart.env = env
+}
+
+// Reset implements the mapper.CartMapper interface.
+func (cart *atari16k) Reset() {
+	cart.reset(cart.NumBanks())
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -657,6 +709,11 @@ func (cart *atari32k) Snapshot() mapper.CartMapper {
 // Plumb implements the mapper.CartMapper interface.
 func (cart *atari32k) Plumb(env *environment.Environment) {
 	cart.env = env
+}
+
+// Reset implements the mapper.CartMapper interface.
+func (cart *atari32k) Reset() {
+	cart.reset(cart.NumBanks())
 }
 
 // NumBanks implements the mapper.CartMapper interface.
