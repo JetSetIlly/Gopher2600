@@ -189,62 +189,61 @@ func (win *winCoProcGlobals) draw() {
 		flgs |= imgui.TableFlagsResizable
 
 		if imgui.BeginTableV("##globalsTable", numColumns, flgs, imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, 0.0) {
-			return
-		}
 
-		// setup columns. the labelling column 2 depends on whether the coprocessor
-		// development instance has source available to it
-		width := imgui.ContentRegionAvail().X
-		imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsPreferSortDescending|imgui.TableColumnFlagsDefaultSort, width*0.40, 0)
-		imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNoSort, width*0.20, 1)
-		imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsPreferSortDescending, width*0.15, 2)
-		imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNoSort, width*0.20, 3)
+			// setup columns. the labelling column 2 depends on whether the coprocessor
+			// development instance has source available to it
+			width := imgui.ContentRegionAvail().X
+			imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsPreferSortDescending|imgui.TableColumnFlagsDefaultSort, width*0.40, 0)
+			imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNoSort, width*0.20, 1)
+			imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsPreferSortDescending, width*0.15, 2)
+			imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNoSort, width*0.20, 3)
 
-		imgui.TableSetupScrollFreeze(0, 1)
-		imgui.TableHeadersRow()
+			imgui.TableSetupScrollFreeze(0, 1)
+			imgui.TableHeadersRow()
 
-		for i, varb := range src.SortedGlobals.Variables {
-			if win.showAllGlobals || varb.DeclLine.File.Filename == win.selectedFile.Filename {
-				win.drawVariable(src, varb, 0, false, fmt.Sprint(i))
-			}
-		}
-
-		sort := imgui.TableGetSortSpecs()
-		if sort.SpecsDirty() {
-			for _, s := range sort.Specs() {
-				switch s.ColumnUserID {
-				case 0:
-					src.SortedGlobals.SortByName(s.SortDirection == imgui.SortDirectionAscending)
-				case 2:
-					src.SortedGlobals.SortByAddress(s.SortDirection == imgui.SortDirectionAscending)
+			for i, varb := range src.SortedGlobals.Variables {
+				if win.showAllGlobals || varb.DeclLine.File.Filename == win.selectedFile.Filename {
+					win.drawVariable(src, varb, 0, false, fmt.Sprint(i))
 				}
 			}
-			sort.ClearSpecsDirty()
-		}
 
-		imgui.EndTable()
-
-		if imgui.IsMouseDown(1) && imgui.IsItemHovered() {
-			imgui.OpenPopup(globalsPopupID)
-		}
-
-		win.optionsHeight = imguiMeasureHeight(func() {
-			imgui.Spacing()
-			imgui.Separator()
-			imgui.Spacing()
-			imgui.Checkbox("List all globals (in all files)", &win.showAllGlobals)
-
-			imgui.SameLineV(0, 15)
-			imgui.Checkbox("Don't show unlocatable variables", &win.showLocatableOnly)
-			win.img.imguiTooltipSimple(`A unlocatable variable is a variable has been
-removed by the compiler's optimisation process`)
-		})
-
-		if imgui.BeginPopup(globalsPopupID) {
-			if imgui.Selectable(fmt.Sprintf("%c Save Globals to CSV", fonts.Disk)) {
-				win.saveToCSV(src)
+			sort := imgui.TableGetSortSpecs()
+			if sort.SpecsDirty() {
+				for _, s := range sort.Specs() {
+					switch s.ColumnUserID {
+					case 0:
+						src.SortedGlobals.SortByName(s.SortDirection == imgui.SortDirectionAscending)
+					case 2:
+						src.SortedGlobals.SortByAddress(s.SortDirection == imgui.SortDirectionAscending)
+					}
+				}
+				sort.ClearSpecsDirty()
 			}
-			imgui.EndPopup()
+
+			imgui.EndTable()
+
+			if imgui.IsMouseDown(1) && imgui.IsItemHovered() {
+				imgui.OpenPopup(globalsPopupID)
+			}
+
+			win.optionsHeight = imguiMeasureHeight(func() {
+				imgui.Spacing()
+				imgui.Separator()
+				imgui.Spacing()
+				imgui.Checkbox("List all globals (in all files)", &win.showAllGlobals)
+
+				imgui.SameLineV(0, 15)
+				imgui.Checkbox("Don't show unlocatable variables", &win.showLocatableOnly)
+				win.img.imguiTooltipSimple(`A unlocatable variable is a variable has been
+removed by the compiler's optimisation process`)
+			})
+
+			if imgui.BeginPopup(globalsPopupID) {
+				if imgui.Selectable(fmt.Sprintf("%c Save Globals to CSV", fonts.Disk)) {
+					win.saveToCSV(src)
+				}
+				imgui.EndPopup()
+			}
 		}
 	})
 }
