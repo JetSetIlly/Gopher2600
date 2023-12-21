@@ -27,9 +27,7 @@ import (
 const (
 	notificationDurationPeripheral = 90
 	notificationDurationCartridge  = 60
-	notificationDurationEventRun   = 60
-	notificationDurationScreenshot = 60
-	notificationDurationEvent      = 10
+	notificationDurationEmulation  = 60
 )
 
 // peripheralNotification is used to draw an indicator on the screen for controller change events.
@@ -123,17 +121,13 @@ type emulationEventNotification struct {
 
 func (ntfy *emulationEventNotification) set(event notifications.Notify) {
 	switch event {
-	case notifications.NotifyRun:
+	default:
 		ntfy.event = event
-		ntfy.frames = notificationDurationEventRun
+		ntfy.frames = notificationDurationEmulation
 		ntfy.open = true
 	case notifications.NotifyPause:
 		ntfy.event = event
 		ntfy.frames = 0
-		ntfy.open = true
-	case notifications.NotifyScreenshot:
-		ntfy.event = event
-		ntfy.frames = notificationDurationScreenshot
 		ntfy.open = true
 	case notifications.NotifyMute:
 		ntfy.event = event
