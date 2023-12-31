@@ -17,7 +17,6 @@ package hardware
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
@@ -250,13 +249,16 @@ func (vcs *VCS) Reset() error {
 	return nil
 }
 
+// clock speeds taken from
+// http://www.taswegian.com/WoodgrainWizard/tiki-index.php?page=Clock-Speeds
 const (
-	ntscClock = 1.193182
-	palClock  = 1.182298
+	ntscClock  = 1.193182
+	palClock   = 1.182298
+	secamClock = 1.187500
 )
 
 // SetClockSpeed is an implemtation of the television.VCSReturnChannel interface.
-func (vcs *VCS) SetClockSpeed(tvSpec string) error {
+func (vcs *VCS) SetClockSpeed(tvSpec string) {
 	switch tvSpec {
 	case "NTSC":
 		if vcs.Clock != ntscClock {
@@ -265,11 +267,22 @@ func (vcs *VCS) SetClockSpeed(tvSpec string) error {
 		}
 	case "PAL":
 		if vcs.Clock != palClock {
-			logger.Log("vcs", "switching to PAL clock")
 			vcs.Clock = palClock
+			logger.Log("vcs", "switching to PAL clock")
 		}
+	case "PAL60":
+		if vcs.Clock != palClock {
+			vcs.Clock = palClock
+			logger.Log("vcs", "switching to PAL clock (for PAL60)")
+		}
+	case "SECAM":
+		if vcs.Clock != secamClock {
+			vcs.Clock = secamClock
+			logger.Log("vcs", "switching to SECAM clock")
+		}
+	default:
+		logger.Logf("vcs", "cannot set clock for unknown TV specification (%s)", tvSpec)
 	}
-	return fmt.Errorf("vcs: cannot set clock speed for unknown tv specification (%s)", tvSpec)
 }
 
 // DetatchEmulationExtras removes all possible monitors, recorders, etc. from

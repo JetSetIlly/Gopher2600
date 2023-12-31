@@ -277,7 +277,7 @@ func (tv *Television) PlumbState(vcs VCSReturnChannel, s *State) {
 	// make sure vcs knows about current spec
 	tv.vcs = vcs
 	if tv.vcs != nil {
-		_ = tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec.ID)
+		tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec.ID)
 	}
 
 	// reset signal history
