@@ -28,16 +28,9 @@ type Timer struct {
 }
 
 func NewTimer(mmap architecture.Map) Timer {
-	t := Timer{
+	return Timer{
 		mmap: mmap,
 	}
-
-	// timer enabled by default. I'm not sure if this an ARM default or it's
-	// enabled because the Harmony leaves it in the enabled state. Either way,
-	// ARM games that use the timer may expect it to be enabled
-	t.Write(t.mmap.TIMERcontrol, 0x00000001)
-
-	return t
 }
 
 func (t *Timer) Reset() {
@@ -55,7 +48,7 @@ func (t *Timer) Step(cycles uint32) {
 func (t *Timer) Write(addr uint32, val uint32) bool {
 	switch addr {
 	case t.mmap.TIMERcontrol:
-		t.enabled = t.control&0x01 == 0x01
+		t.enabled = val&0x01 == 0x01
 		t.control = val
 	case t.mmap.TIMERvalue:
 		t.counter = val
