@@ -249,38 +249,38 @@ of the ROM.`)
 	if imgui.CollapsingHeader("Frame Queue") {
 		imgui.Spacing()
 
-		func() {
-			win.img.screen.crit.section.Lock()
-			defer win.img.screen.crit.section.Unlock()
+		// the values we show in the preferences window are the current values
+		// as known by the screen type. we do no show the values in the
+		// underlying preference type directly
+		win.img.screen.crit.section.Lock()
+		fpsCapped := win.img.screen.crit.fpsCapped
+		frameQueueAuto := win.img.screen.crit.frameQueueAuto
+		frameQueueLen := int32(win.img.screen.crit.frameQueueLen)
+		win.img.screen.crit.section.Unlock()
 
-			if !win.img.screen.crit.fpsCapped {
-				imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-				imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-				defer imgui.PopItemFlag()
-				defer imgui.PopStyleVar()
-			}
+		if !fpsCapped {
+			imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+			defer imgui.PopItemFlag()
+			defer imgui.PopStyleVar()
+		}
 
-			frameQueueAuto := win.img.prefs.frameQueueAuto.Get().(bool)
-			if imgui.Checkbox("Automatic Frame Queue Length", &frameQueueAuto) {
-				win.img.prefs.frameQueueAuto.Set(frameQueueAuto)
-				win.img.screen.updateFrameQueue()
-			}
+		if imgui.Checkbox("Automatic Frame Queue Length", &frameQueueAuto) {
+			win.img.prefs.frameQueueAuto.Set(frameQueueAuto)
+		}
 
-			imgui.Spacing()
+		imgui.Spacing()
 
-			if frameQueueAuto {
-				imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-				imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-				defer imgui.PopItemFlag()
-				defer imgui.PopStyleVar()
-			}
+		if frameQueueAuto {
+			imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+			defer imgui.PopItemFlag()
+			defer imgui.PopStyleVar()
+		}
 
-			frameQueue := int32(win.img.screen.crit.frameQueueLen)
-			if imgui.SliderInt("Frame Queue Length", &frameQueue, 1, maxFrameQueue) {
-				win.img.prefs.frameQueue.Set(frameQueue)
-				win.img.screen.updateFrameQueue()
-			}
-		}()
+		if imgui.SliderInt("Frame Queue Length", &frameQueueLen, 1, maxFrameQueue) {
+			win.img.prefs.frameQueue.Set(frameQueueLen)
+		}
 	}
 }
 

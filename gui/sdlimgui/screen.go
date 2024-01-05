@@ -118,8 +118,12 @@ type screenCrit struct {
 	// - a three to five frame queue seems good. ten frames can feel very laggy
 	frameQueue [maxFrameQueue]*image.RGBA
 
-	// local copies of frame queue preferences. the underlying preference should
-	// be updated if these values change
+	// local copies of frame queue value. updated by setFrameQueue() which
+	// is called when the underlying preference is changed
+	localFrameQueueLen  int
+	localFrameQueueAuto bool
+
+	// the actual frame queue value depends on whether FPS is capped or not
 	frameQueueLen  int
 	frameQueueAuto bool
 
@@ -254,6 +258,18 @@ func (scr *screen) setSyncPolicy(tvRefreshRate float32) {
 	scr.crit.monitorSyncSimilar = scr.crit.fpsCapped && high >= tvRefreshRate && low <= tvRefreshRate
 }
 
+// setFrameQueue is called when frame queue preferences are changed. the screen
+// type keeps its own copies of these values
+//
+// must NOT be called from inside a critical section
+func (scr *screen) setFrameQueue(auto bool, length int) {
+	scr.crit.section.Lock()
+	defer scr.crit.section.Unlock()
+	scr.crit.localFrameQueueAuto = auto
+	scr.crit.localFrameQueueLen = length
+	scr.updateFrameQueue()
+}
+
 // updateFrameQueue() is called whenever a frameQueue preference
 //
 // must be called from inside a critical section
@@ -264,8 +280,8 @@ func (scr *screen) updateFrameQueue() {
 
 	// make local copies of frame queue preferences if fpsCapped is enabled
 	if scr.crit.fpsCapped {
-		scr.crit.frameQueueAuto = scr.img.prefs.frameQueueAuto.Get().(bool)
-		scr.crit.frameQueueLen = scr.img.prefs.frameQueue.Get().(int)
+		scr.crit.frameQueueAuto = scr.crit.localFrameQueueAuto
+		scr.crit.frameQueueLen = scr.crit.localFrameQueueLen
 	} else {
 		scr.crit.frameQueueAuto = false
 		scr.crit.frameQueueLen = 1
@@ -753,7 +769,6 @@ func (scr *screen) copyPixelsPlaymode() {
 
 					// increase frame queue and set the underlying preference value
 					scr.crit.frameQueueLen++
-					scr.img.prefs.frameQueue.Set(scr.crit.frameQueueLen)
 				}
 			}
 		} else {

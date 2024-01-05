@@ -196,13 +196,22 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	p.frameQueue.SetHookPost(func(v prefs.Value) error {
+		p.img.screen.setFrameQueue(p.frameQueueAuto.Get().(bool), v.(int))
+		return nil
+	})
 	err = p.dsk.Add("sdlimgui.display.frameQueueAuto", &p.frameQueueAuto)
 	if err != nil {
 		return nil, err
 	}
 	p.frameQueueAuto.SetHookPost(func(v prefs.Value) error {
+		// set frameQueue value if auto is true. there is no need to call
+		// screen.setFrameQueue() in that instance becase the post hook for the
+		// frameQueue value does that
 		if v.(bool) {
-			p.frameQueue.Set(1)
+			p.img.screen.setFrameQueue(true, 1)
+		} else {
+			p.img.screen.setFrameQueue(false, p.frameQueue.Get().(int))
 		}
 		return nil
 	})
@@ -257,12 +266,6 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 	err = p.saveOnExitDsk.Add("sdlimgui.playmode.audioMute", &p.audioMutePlaymode)
-	if err != nil {
-		return nil, err
-	}
-
-	// load all preferences off disk
-	err = p.dsk.Load(true)
 	if err != nil {
 		return nil, err
 	}
