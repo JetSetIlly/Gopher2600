@@ -73,8 +73,25 @@ func (c *Controllers) handleEvents(id plugging.PortID, ev ports.Event, d ports.E
 }
 
 func (c *Controllers) mouseMotion(ev EventMouseMotion) (bool, error) {
+	// mix y-axis with x-axis. in this scenario the absolute value of the y-axis
+	// is given the same sign as the x-axis
+	motion := ev.X
+
+	// absolute value of y
+	y := ev.Y
+	if y < 0 {
+		y *= -1
+	}
+
+	// add/subtract y-value to x-axis (according to sign of x-axis)
+	if ev.X < 0 {
+		motion -= y
+	} else if ev.X > 0 {
+		motion += y
+	}
+
 	return c.handleEvents(c.handleSwap(plugging.PortLeft), ports.PaddleSet, ports.EventDataPaddle{
-		A:        ev.X,
+		A:        motion,
 		Relative: true,
 	})
 }
