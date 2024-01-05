@@ -185,7 +185,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 		// waiting only when we reach this point in the loop. it will not delay
 		// the loop if the tick has not happened yet
 		select {
-		case <-dbg.eventCheckPulse.C:
+		case <-dbg.readEventsPulse.C:
 			err = dbg.readEventsHandler()
 			if err != nil {
 				if errors.Is(err, terminal.UserInterrupt) {

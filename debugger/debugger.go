@@ -122,7 +122,7 @@ type Debugger struct {
 	events *terminal.ReadEvents
 
 	// how often the events field should be checked
-	eventCheckPulse *time.Ticker
+	readEventsPulse *time.Ticker
 
 	// cartridge disassembly
 	//
@@ -313,8 +313,15 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 		// copy of the arguments
 		opts: opts,
 
-		// the ticker to indicate whether we should check for events in the inputLoop
-		eventCheckPulse: time.NewTicker(50 * time.Millisecond),
+		// the ticker to indicate whether we should check for events in the
+		// inputLoop. this used to be set to 50ms but that is way too long and
+		// introduces a three frame lag to input devices. put another way, it
+		// results in the emulation missing crucial input information. this is
+		// particularly noticeable with paddle input because the paddle
+		// resistance value (see paddle.go file in the peripherals/controllers
+		// package) is only updated every three frames, causing the paddle to be
+		// effectively running three times slower than the screen
+		readEventsPulse: time.NewTicker(1 * time.Millisecond),
 	}
 
 	// emulator is starting in the "none" mode (the advangatge of this is that

@@ -120,7 +120,7 @@ func (dbg *Debugger) playLoop() error {
 		// received. this reduces CPU usage when paused
 		if dbg.state.Load().(govern.State) == govern.Paused {
 			select {
-			case <-dbg.eventCheckPulse.C:
+			case <-dbg.readEventsPulse.C:
 				err := dbg.readEventsHandler()
 				if err != nil {
 					return govern.Ending, err
@@ -128,7 +128,7 @@ func (dbg *Debugger) playLoop() error {
 			}
 		} else {
 			select {
-			case <-dbg.eventCheckPulse.C:
+			case <-dbg.readEventsPulse.C:
 				err := dbg.readEventsHandler()
 				if err != nil {
 					return govern.Ending, err
