@@ -58,6 +58,8 @@ func (img *SdlImgui) Service() {
 	// we only want to send one mouse event to the emulation per frame. anything
 	// more is wasteful and expensive
 	var mouseMotion bool
+	var mouseMotionX float64
+	var mouseMotionY float64
 
 	// some events we want to service even if an event channel has not been
 	// set. very few "modes" will not set a channel but we should be mindful of
@@ -109,23 +111,9 @@ func (img *SdlImgui) Service() {
 				case *sdl.MouseMotionEvent:
 					img.smartCursorVisibility(false)
 					if img.isCaptured() {
-						if !mouseMotion {
-							select {
-							case input <- userinput.EventMouseMotion{
-								X: int16(ev.XRel),
-								Y: int16(ev.YRel),
-							}:
-							default:
-								logger.Log("sdlimgui", "dropped mouse motion event")
-							}
-
-							// we only pay attention to the first mouse motion
-							// event. we've experimented with (a) taking an average
-							// of all mouse events values and (b) using the highest
-							// value; but they didn't make any noticeable difference
-							// and only complicated the code
-							mouseMotion = true
-						}
+						mouseMotion = true
+						mouseMotionX += (float64(ev.XRel) - mouseMotionX) * 1.0
+						mouseMotionY += (float64(ev.YRel) - mouseMotionY) * 1.0
 					}
 
 				case *sdl.MouseButtonEvent:
@@ -373,6 +361,15 @@ func (img *SdlImgui) Service() {
 			}
 		} // end of for peeping
 
+		if mouseMotion {
+			select {
+			case input <- userinput.EventMouseMotion{
+				X: int16(mouseMotionX), Y: int16(mouseMotionY),
+			}:
+			default:
+				logger.Log("sdlimgui", "dropped mouse motion event")
+			}
+		}
 	}
 
 	img.renderFrame()
