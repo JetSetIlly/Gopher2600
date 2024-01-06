@@ -29,9 +29,12 @@ import (
 )
 
 const (
-	improvementControls              = false
-	improveNeatStartImageAfterRewind = false
-	improveMuteAudioAtStart          = false
+	improveControls = false
+
+	// both of these options are now effectively enabled in recent changes made
+	// to the firmware and stella by lodef
+	improveNeatStartImageAfterRewind = true
+	improveMuteAudioAtStart          = true
 )
 
 // default preference values.
@@ -262,7 +265,7 @@ func (s *state) initialise() {
 	s.justReset = true
 
 	// starting control mode depends on alternativeControls preference
-	if improvementControls {
+	if improveControls {
 		s.controlMode = modeTime
 	} else {
 		s.controlMode = modeVolume
@@ -460,7 +463,7 @@ func (cart *Moviecart) updateDirection() {
 	// if alternativeControls are active then the change only occurs when the
 	// OSD is display
 	if direction.isUp() && !cart.state.directionLast.isUp() {
-		if cart.state.osdDuration > 0 || !improvementControls {
+		if cart.state.osdDuration > 0 || !improveControls {
 			if cart.state.controlMode == 0 {
 				cart.state.controlMode = modeMax - 1
 			} else {
@@ -469,7 +472,7 @@ func (cart *Moviecart) updateDirection() {
 		}
 		cart.state.osdDuration = osdDuration
 	} else if direction.isDown() && !cart.state.directionLast.isDown() {
-		if cart.state.osdDuration > 0 || !improvementControls {
+		if cart.state.osdDuration > 0 || !improveControls {
 			cart.state.controlMode++
 			if cart.state.controlMode == modeMax {
 				cart.state.controlMode = 0
@@ -489,7 +492,7 @@ func (cart *Moviecart) updateDirection() {
 				if cart.state.paused {
 					// allow pause to step repeatedly if alternative control
 					// method is activated
-					if improvementControls {
+					if improveControls {
 						if direction.isLeft() {
 							cart.state.pauseStep = -1
 						} else if direction.isRight() {
