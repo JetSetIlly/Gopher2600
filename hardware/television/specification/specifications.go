@@ -19,6 +19,7 @@ package specification
 
 import (
 	"image/color"
+	"path/filepath"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -38,6 +39,14 @@ func SearchSpec(s string) string {
 	// order. for example, we don't want to match on "PAL" if the sub-string is
 	// actually "PAL60".
 	var list = []string{"pal-60", "pal60", "pal-m", "palm", "ntsc", "pal", "secam"}
+
+	// we don't want to include the path in the search because this may cause
+	// false positives. for example, in ROM Hunter's archive there are
+	// directories called "PAL VERSIONS OF NTSC ORIGINALS" and "NTSC VERSIONS OF
+	// PAL ORIGINALS"
+	//
+	// http://www.atarimania.com/rom_collection_archive_atari_2600_roms.html
+	s = filepath.Base(s)
 
 	// look for any settings embedded in the filename
 	s = strings.ToLower(s)
