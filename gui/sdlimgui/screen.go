@@ -82,8 +82,8 @@ type screenCrit struct {
 	// critical sectioning
 	section sync.Mutex
 
-	// the most recent frameInfo information from the television. updated via
-	// Resize() and NewFrame()
+	// the most recent frameInfo information from the television. information
+	// received via the NewFrame() function
 	frameInfo television.FrameInfo
 
 	// screen will resize on next GUI iteration if resize is true. if resizeHold

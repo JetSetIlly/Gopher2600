@@ -848,7 +848,7 @@ func (win *winDbgScr) setScaling() {
 		w = float32(win.scr.crit.presentationPixels.Bounds().Size().X)
 		h = float32(win.scr.crit.presentationPixels.Bounds().Size().Y)
 	}
-	adjW := w * pixelWidth * win.scr.crit.frameInfo.Spec.AspectBias
+	adjW := w * pixelWidth * float32(specification.AspectBias)
 
 	var scaling float32
 
@@ -874,7 +874,7 @@ func (win *winDbgScr) setScaling() {
 	}
 
 	win.yscaling = scaling
-	win.xscaling = scaling * pixelWidth * win.scr.crit.frameInfo.Spec.AspectBias
+	win.xscaling = scaling * pixelWidth * float32(specification.AspectBias)
 	win.scaledWidth = w * win.xscaling
 	win.scaledHeight = h * win.yscaling
 

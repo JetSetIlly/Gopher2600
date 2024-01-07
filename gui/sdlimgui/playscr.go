@@ -218,7 +218,7 @@ func (win *playScr) setScaling() {
 	w := float32(win.scr.crit.cropPixels.Bounds().Size().X)
 	h := float32(win.scr.crit.cropPixels.Bounds().Size().Y)
 
-	adj := win.scr.crit.frameInfo.Spec.AspectBias
+	adj := float32(specification.AspectBias)
 	if rot == specification.NormalRotation || rot == specification.FlippedRotation {
 		adj *= pixelWidth
 	}

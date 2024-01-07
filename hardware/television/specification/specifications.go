@@ -122,14 +122,6 @@ type Spec struct {
 	// defined safe values.
 	NewSafeVisibleTop    int
 	NewSafeVisibleBottom int
-
-	// AspectBias transforms the scaling factor for the X axis. in other words,
-	// for width of every pixel is height of every pixel multiplied by the
-	// aspect bias
-
-	// AaspectBias transforms the scaling factor for the X axis.
-	// values taken from Stella emulator. useful for A/B testing
-	AspectBias float32
 }
 
 // GetColor translates a signals to the color type.
@@ -185,6 +177,16 @@ const AbsoluteMaxClks = AbsoluteMaxScanlines * ClksScanline
 // value then the PAL specification should be assumed
 const PALTrigger = 302
 
+// AspectBias transforms the scaling factor for the X axis. in other words,
+// for width of every pixel is height of every pixel multiplied by the
+// aspect bias
+//
+// Earlier versions of the emulator set this according to the specification that
+// was in use. However, I now believe this is wrong and a nominal value of 0.91
+// is good for all specifications. For comparison, the historical value for PAL
+// output was set to 1.09
+const AspectBias = 0.91
+
 // SpecNTSC is the specification for NTSC television type
 var SpecNTSC Spec
 
@@ -207,7 +209,6 @@ func init() {
 		ScanlinesOverscan: 30,
 		ScanlinesTotal:    262,
 		RefreshRate:       60.0,
-		AspectBias:        0.91,
 	}
 
 	SpecNTSC.AtariSafeVisibleTop = SpecNTSC.ScanlinesVBlank + SpecNTSC.ScanlinesVSync
@@ -222,7 +223,6 @@ func init() {
 		ScanlinesOverscan: 36,
 		ScanlinesTotal:    312,
 		RefreshRate:       50.0,
-		AspectBias:        1.09,
 	}
 
 	SpecPAL.AtariSafeVisibleTop = SpecPAL.ScanlinesVBlank + SpecPAL.ScanlinesVSync
@@ -237,7 +237,6 @@ func init() {
 		ScanlinesOverscan: 30,
 		ScanlinesTotal:    262,
 		RefreshRate:       60.0,
-		AspectBias:        0.91,
 	}
 
 	SpecPALM.AtariSafeVisibleTop = SpecPALM.ScanlinesVBlank + SpecPALM.ScanlinesVSync
@@ -252,7 +251,6 @@ func init() {
 		ScanlinesOverscan: 36,
 		ScanlinesTotal:    312,
 		RefreshRate:       50.0,
-		AspectBias:        1.09,
 	}
 
 	SpecSECAM.AtariSafeVisibleTop = SpecSECAM.ScanlinesVBlank + SpecSECAM.ScanlinesVSync
