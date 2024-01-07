@@ -24,52 +24,38 @@ import (
 //
 // ROMs used to test resizing:
 //
-//   - good base cases
-//
+// * good base cases
 //   - Pitfall
-//
 //   - Hero
 //
-//   - needs an additional (or two) scanlines to accommodate full screen
-//
+// * needs an additional (or two) scanlines to accommodate full screen
 //   - Ladybug
-//
 //   - Man Goes Down
 //
-//   - frame that needs to be resized after startup period
-//
+// * frame that needs to be resized after startup period
 //   - Hack Em Hanglyman (pre-release)
 //
-//   - the occasional unsynced frame
-//
+// * the occasional unsynced frame
 //   - Hack Em Hanglyman (pre-release)
 //
-//   - lots of unsynced frames (during computer "thinking" period)
-//
+// * lots of unsynced frames (during computer "thinking" period)
 //   - Andrew Davies' Chess
 //
-//   - does not set VBLANK for pixels that are clearly not meant to be seen
-//     these ROMs rely on the SafeTop and SafeBottom values being correct
-//
+// * does not set VBLANK for pixels that are clearly not meant to be seen
+// these ROMs rely on the SafeTop and SafeBottom values being correct
 //   - Communist Mutants From Space
-//
 //   - Tapper
-//
 //   - Spike's Peak
 //
-//   - ROMs that do not set VBLANK *at all*. in these cases the commit()
-//     function uses the black top/bottom values rather than vblank top/bottom
-//     values.
-//
+// * ROMs that do not set VBLANK *at all*. in these cases the commit()
+// function uses the black top/bottom values rather than vblank top/bottom
+// values.
 //   - Hack Em Hanglyman (release and pre-release)
-//
 //   - Legacy of the Beast
 //
-//   - ROMs that *do* set VBLANK but might be caught by the black top/bottom
-//     rule if frameHasVBlank was incorrectly set
-//
+// *ROMs that *do* set VBLANK but might be caught by the black top/bottom
+// rule if frameHasVBlank was incorrectly set
 //   - aTaRSI (demo)
-//
 //   - Supercharger "rewind tape" screen
 type resizer struct {
 	// candidate top/bottom values for an actual resize.
@@ -138,18 +124,14 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 	if tv.state.clock > specification.ClksHBlank && sig&signal.VBlank != signal.VBlank {
 		// update current top/bottom values
 		//
-		// comparing against current top/bottom scanline, rather than ideal
-		// top/bottom scanline of the specification. this means that a screen will
-		// never "shrink" until the specification is changed either manually or
-		// automatically.
-		//
-		// limit the top/bottom scanlines to a safe area. the atari safe area
-		// is too conservative but equally we don't ever want the entire screen
-		// to be visible. the new safetop and safebottom values are defined in
-		// our TV specifications.
-		if tv.state.scanline < sr.vblankTop && tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop {
+		// when using this method the screen can expand at the top and bottom of
+		// the screen upto the "safe" values but only the bottom line can shrink
+		if tv.state.scanline < sr.vblankTop &&
+			tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop {
 			sr.vblankTop = tv.state.scanline
-		} else if tv.state.scanline > sr.vblankBottom && tv.state.scanline <= tv.state.frameInfo.Spec.NewSafeVisibleBottom {
+		} else if tv.state.scanline != sr.vblankBottom &&
+			tv.state.scanline <= tv.state.frameInfo.Spec.NewSafeVisibleBottom &&
+			tv.state.scanline >= sr.vblankTop*2 {
 			sr.vblankBottom = tv.state.scanline
 		}
 	}
