@@ -112,8 +112,12 @@ func (img *SdlImgui) Service() {
 					img.smartCursorVisibility(false)
 					if img.isCaptured() {
 						mouseMotion = true
-						mouseMotionX += (float64(ev.XRel) - mouseMotionX) * 1.0
-						mouseMotionY += (float64(ev.YRel) - mouseMotionY) * 1.0
+
+						// use the most recent value sent by the mouse. accumulating the
+						// relative values over the course of the frame is not suitable
+						// for paddle operation
+						mouseMotionX = float64(ev.XRel)
+						mouseMotionY = float64(ev.YRel)
 					}
 
 				case *sdl.MouseButtonEvent:
