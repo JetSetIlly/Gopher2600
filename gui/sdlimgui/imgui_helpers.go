@@ -511,8 +511,8 @@ func (img *SdlImgui) imguiTVPalette() (string, packedPalette, []imgui.Vec4, []co
 		return "NTSC", img.cols.packedPaletteNTSC, img.cols.paletteNTSC, specification.PaletteNTSC
 	case "PAL":
 		return "PAL", img.cols.packedPalettePAL, img.cols.palettePAL, specification.PalettePAL
-	case "PAL60":
-		return "PAL60", img.cols.packedPalettePAL, img.cols.palettePAL, specification.PalettePAL
+	case "PALM":
+		return "PALM", img.cols.packedPalettePAL, img.cols.palettePAL, specification.PalettePAL
 	case "SECAM":
 		return "SECAM", img.cols.packedPaletteSECAM, img.cols.paletteSECAM, specification.PaletteSECAM
 	}

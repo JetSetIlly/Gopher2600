@@ -298,7 +298,7 @@ func emulate(mode string, sync *mainSync, args []string) error {
 	// arguments common to both play and debugging modes
 	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
 	flgs.BoolVar(&opts.Log, "log", false, "echo debugging log to stdout")
-	flgs.StringVar(&opts.Spec, "tv", "AUTO", "televsion specifcation: AUTO, NTSC, PAL, PAL60, SECAM")
+	flgs.StringVar(&opts.Spec, "tv", "AUTO", "televsion specifcation: AUTO, NTSC, PAL, PAL60, PALM, SECAM")
 	flgs.BoolVar(&opts.FpsCap, "fpscap", true, "cap FPS to emulation TV")
 	flgs.IntVar(&opts.Multiload, "multiload", -1, "force multiload byte (supercharger only; 0 to 255")
 	flgs.StringVar(&opts.Mapping, "mapping", "AUTO", "force cartridge mapper selection")
@@ -549,7 +549,7 @@ func perform(mode string, sync *mainSync, args []string) error {
 
 	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
 	flgs.StringVar(&mapping, "mapping", "AUTO", "form cartridge mapper selection")
-	flgs.StringVar(&spec, "spec", "AUTO", "television specification: NTSC, PAL, PAL60, SECAM")
+	flgs.StringVar(&spec, "spec", "AUTO", "television specification: NTSC, PAL, PAL60, PALM, SECAM")
 	flgs.BoolVar(&uncapped, "uncapped", true, "run performance no FPS cap")
 	flgs.StringVar(&duration, "duration", "5s", "run duation (with an additional 2s overhead)")
 	flgs.StringVar(&profile, "profile", "none", "run performance check with profiling: CPU, MEM, TRACE, ALL (comma sep)")
@@ -732,7 +732,7 @@ func regressAdd(mode string, args []string) error {
 	flgs.StringVar(&regressMode, "mode", "", "type of regression entry")
 	flgs.StringVar(&notes, "notes", "", "additional annotation for the entry")
 	flgs.StringVar(&mapping, "mapping", "AUTO", "form cartridge mapper selection")
-	flgs.StringVar(&spec, "spec", "AUTO", "television specification: NTSC, PAL, PAL60, SECAM")
+	flgs.StringVar(&spec, "spec", "AUTO", "television specification: NTSC, PAL, PAL60, PALM, SECAM")
 	flgs.IntVar(&numFrames, "frames", 10, "number of frames to run (ignored if mode is 'playback'")
 	flgs.StringVar(&state, "state", "", "record emulator state at every CPU step (ignored if mode is 'playback'")
 	flgs.BoolVar(&log, "log", false, "echo debugging log to stdout")

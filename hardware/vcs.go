@@ -254,6 +254,7 @@ func (vcs *VCS) Reset() error {
 const (
 	ntscClock  = 1.193182
 	palClock   = 1.182298
+	palMClock  = 1.191870
 	secamClock = 1.187500
 )
 
@@ -270,10 +271,10 @@ func (vcs *VCS) SetClockSpeed(tvSpec string) {
 			vcs.Clock = palClock
 			logger.Log("vcs", "switching to PAL clock")
 		}
-	case "PAL60":
-		if vcs.Clock != palClock {
-			vcs.Clock = palClock
-			logger.Log("vcs", "switching to PAL clock (for PAL60)")
+	case "PAL-M":
+		if vcs.Clock != palMClock {
+			vcs.Clock = palMClock
+			logger.Log("vcs", "switching to PAL-M clock")
 		}
 	case "SECAM":
 		if vcs.Clock != secamClock {

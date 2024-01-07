@@ -630,7 +630,7 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	// framenumber and vsynced after any possible SetSpec()
 	if tv.state.stableFrames > leadingFrames && tv.state.stableFrames < stabilityThreshold {
 		switch tv.state.frameInfo.Spec.ID {
-		case specification.SpecPAL60.ID:
+		case specification.SpecPALM.ID:
 			fallthrough
 		case specification.SpecNTSC.ID:
 			if tv.state.auto && tv.state.scanline > specification.PALTrigger {
@@ -790,8 +790,8 @@ func (tv *Television) SetSpec(spec string) error {
 	case "PAL":
 		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL)
 		tv.state.auto = false
-	case "PAL60":
-		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL60)
+	case "PAL-M":
+		tv.state.frameInfo = NewFrameInfo(specification.SpecPALM)
 		tv.state.auto = false
 	case "SECAM":
 		tv.state.frameInfo = NewFrameInfo(specification.SpecSECAM)

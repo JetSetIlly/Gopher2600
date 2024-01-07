@@ -25,7 +25,7 @@ import (
 )
 
 // SpecList is the list of specifications that the television may adopt.
-var SpecList = []string{"NTSC", "PAL", "PAL60", "SECAM"}
+var SpecList = []string{"NTSC", "PAL", "PAL-M", "SECAM"}
 
 // SearchSpec looks for a valid sub-string in s, that indicates a required TV
 // specification. The returned value is a canonical specication label as listed
@@ -36,8 +36,8 @@ func SearchSpec(s string) string {
 	// list is the SpecList but suitable for searching. it's important
 	// that when searching in a filename, for example, that we search in this
 	// order. for example, we don't want to match on "PAL" if the sub-string is
-	// actuall "PAL60".
-	var list = []string{"pal-60", "pal60", "ntsc", "pal", "secam"}
+	// actually "PAL60".
+	var list = []string{"pal-60", "pal60", "pal-m", "palm", "ntsc", "pal", "secam"}
 
 	// look for any settings embedded in the filename
 	s = strings.ToLower(s)
@@ -45,9 +45,13 @@ func SearchSpec(s string) string {
 		if strings.Contains(s, spec) {
 			switch spec {
 			case "pal-60":
-				return "PAL60"
+				return "PAL"
 			case "pal60":
-				return "PAL60"
+				return "PAL"
+			case "pal-m":
+				return "PAL-M"
+			case "palm":
+				return "PAL-M"
 			case "ntsc":
 				return "NTSC"
 			case "pal":
@@ -187,8 +191,8 @@ var SpecNTSC Spec
 // SpecPAL is the specification for PAL television type
 var SpecPAL Spec
 
-// SpecPAL60 is the specification for PAL60 television type
-var SpecPAL60 Spec
+// SpecPALM is the specification for PALM television type
+var SpecPALM Spec
 
 // SpecSECAM is the specification for SECAM television type
 var SpecSECAM Spec
@@ -224,8 +228,8 @@ func init() {
 	SpecPAL.AtariSafeVisibleTop = SpecPAL.ScanlinesVBlank + SpecPAL.ScanlinesVSync
 	SpecPAL.AtariSafeVisibleBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesOverscan
 
-	SpecPAL60 = Spec{
-		ID:                "PAL60",
+	SpecPALM = Spec{
+		ID:                "PAL-M",
 		Colors:            PalettePAL,
 		ScanlinesVSync:    3,
 		ScanlinesVBlank:   37,
@@ -236,8 +240,8 @@ func init() {
 		AspectBias:        0.91,
 	}
 
-	SpecPAL60.AtariSafeVisibleTop = SpecPAL60.ScanlinesVBlank + SpecPAL60.ScanlinesVSync
-	SpecPAL60.AtariSafeVisibleBottom = SpecPAL60.ScanlinesTotal - SpecPAL60.ScanlinesOverscan
+	SpecPALM.AtariSafeVisibleTop = SpecPALM.ScanlinesVBlank + SpecPALM.ScanlinesVSync
+	SpecPALM.AtariSafeVisibleBottom = SpecPALM.ScanlinesTotal - SpecPALM.ScanlinesOverscan
 
 	SpecSECAM = Spec{
 		ID:                "SECAM",
@@ -260,8 +264,8 @@ func init() {
 	SpecNTSC.NewSafeVisibleBottom = 250
 	SpecPAL.NewSafeVisibleTop = 30
 	SpecPAL.NewSafeVisibleBottom = 299
-	SpecPAL60.NewSafeVisibleTop = 20
-	SpecPAL60.NewSafeVisibleBottom = 249
+	SpecPALM.NewSafeVisibleTop = 20
+	SpecPALM.NewSafeVisibleBottom = 249
 	SpecSECAM.NewSafeVisibleTop = 30
 	SpecSECAM.NewSafeVisibleBottom = 299
 }
