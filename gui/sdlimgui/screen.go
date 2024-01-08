@@ -402,10 +402,10 @@ func (scr *screen) resize() {
 
 	scr.crit.resize = false
 
-	// create a cropped image from the main
+	// create cropped image(s)
 	crop := image.Rect(
-		specification.ClksHBlank, scr.crit.frameInfo.VisibleTop,
-		specification.ClksHBlank+specification.ClksVisible, scr.crit.frameInfo.VisibleBottom,
+		specification.ClksHBlank, scr.crit.frameInfo.VisibleTop+1,
+		specification.ClksHBlank+specification.ClksVisible, scr.crit.frameInfo.VisibleBottom+1,
 	)
 	scr.crit.cropPixels = scr.crit.presentationPixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropElementPixels = scr.crit.elementPixels.SubImage(crop).(*image.RGBA)

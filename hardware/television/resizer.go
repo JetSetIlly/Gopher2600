@@ -158,18 +158,6 @@ const framesUntilResize = 2
 
 // commit resizing possibility found through examine() function.
 func (sr *resizer) commit(tv *Television) error {
-	// only commit on even frames. the only reason we do this is to catch
-	// flicker kernels where pixels are different every frame. this is a bit of
-	// a pathological situation but it does happen so we should handle it
-	//
-	// an example of this is the CDFJ QBert demo ROM
-	//
-	// note that this means the framesUntilResize value is effectively double
-	// that value stated
-	if tv.state.frameNum%2 == 0 {
-		return nil
-	}
-
 	// make sure candidate top and bottom value are equal to stable top/bottom
 	// at beginning of a frame
 	defer func() {
@@ -232,17 +220,6 @@ func (sr *resizer) commit(tv *Television) error {
 
 	// sanity check before we do anything drastic
 	if tv.state.frameInfo.VisibleTop < tv.state.frameInfo.VisibleBottom {
-		// add one to the bottom value before committing. Ladybug and Hack'Em
-		// Pacman are good examples of ROMs that are "wrong" if we don't do
-		// this
-		sr.pendingBottom++
-
-		// add another one. Man Down is an example of ROM which is "wrong"
-		// without an additional (two) scanlines after the VBLANK
-		sr.pendingBottom++
-
-		// !!TODO: more elegant way of handling the additional scanline problem
-
 		// clamp bottom scanline to safe bottom
 		if sr.pendingBottom > tv.state.frameInfo.Spec.NewSafeVisibleBottom {
 			sr.pendingBottom = tv.state.frameInfo.Spec.NewSafeVisibleBottom
