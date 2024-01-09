@@ -38,6 +38,7 @@ type winTimeline struct {
 	// goroutine so we must thumbnail those states in the same goroutine.
 	thmb        *thumbnailer.Image
 	thmbTexture texture
+	thmbValid   bool
 
 	// whether the thumbnail is being shown on the left of the timeline rather
 	// than the right
@@ -58,7 +59,8 @@ type winTimeline struct {
 	hoverIdx   int
 	hoverFrame int
 
-	// mouse is being used to scrub the timeline area
+	// mouse is being used to scrub the timeline area. see isScrubbingValid()
+	// for a function that is a more likely to provide a useful value
 	scrubbing bool
 
 	// the following two fields are used to help understand what to do when the
@@ -93,6 +95,10 @@ func newWinTimeline(img *SdlImgui) (window, error) {
 	return win, nil
 }
 
+func (win *winTimeline) isScrubbingValid() bool {
+	return win.scrubbing && win.hoverIdx >= 0 && win.hoverIdx < len(win.img.cache.Rewind.Timeline.FrameNum)
+}
+
 func (win *winTimeline) init() {
 }
 
@@ -109,6 +115,7 @@ func (win *winTimeline) debuggerDraw() bool {
 		if image != nil {
 			win.thmbTexture.markForCreation()
 			win.thmbTexture.render(image)
+			win.thmbValid = true
 		}
 	default:
 	}
@@ -171,7 +178,7 @@ func (win *winTimeline) debuggerDraw() bool {
 	win.debuggerGeom.update()
 	imgui.End()
 
-	if (win.isHovered || win.scrubbing) && win.img.prefs.showTimelineThumbnail.Get().(bool) {
+	if (win.isHovered || win.isScrubbingValid()) && win.img.prefs.showTimelineThumbnail.Get().(bool) {
 		if win.thmbFrame != win.hoverFrame {
 			select {
 			case win.thmbRunning <- true:
@@ -181,6 +188,7 @@ func (win *winTimeline) debuggerDraw() bool {
 					// thumbnailer must be run in the same goroutine as the main emulation
 					win.thmb.Create(win.img.dbg.Rewind.GetState(hoverFrame))
 					<-win.thmbRunning
+					win.thmbValid = false
 				})
 			default:
 				// if a thumbnail is currently being generated then we need to
@@ -201,7 +209,7 @@ func (win *winTimeline) drawToolbar() {
 		imgui.SameLineV(0, 15)
 		imguiColorLabelSimple(fmt.Sprintf("Comparing frame %d", win.img.cache.Rewind.Comparison.State.TV.GetCoords().Frame), win.img.cols.TimelineComparison)
 
-		if win.isHovered || (win.scrubbing && win.hoverIdx < len(win.img.cache.Rewind.Timeline.TotalScanlines)) {
+		if win.isHovered || win.isScrubbingValid() {
 			imgui.SameLineV(0, 15)
 			imguiColorLabelSimple(fmt.Sprintf("%d Scanlines", win.img.cache.Rewind.Timeline.TotalScanlines[win.hoverIdx]), win.img.cols.TimelineScanlines)
 
@@ -321,12 +329,12 @@ func (win *winTimeline) drawTrace() {
 	imgui.PopFont()
 
 	// show hover/scrubbing cursor
-	if win.isHovered || win.scrubbing {
+	if win.isHovered || win.isScrubbingValid() {
 		dl.AddRectFilled(imgui.Vec2{X: win.hoverX - cursorWidth/2, Y: rootPos.Y},
 			imgui.Vec2{X: win.hoverX + cursorWidth/2, Y: rootPos.Y + traceSize.Y},
 			win.img.cols.timelineHoverCursor)
 
-		if win.img.prefs.showTimelineThumbnail.Get().(bool) {
+		if win.thmbValid && win.img.prefs.showTimelineThumbnail.Get().(bool) {
 			sz := imgui.Vec2{X: specification.ClksVisible * 3, Y: specification.AbsoluteMaxScanlines}.Times(traceSize.Y / specification.AbsoluteMaxScanlines)
 
 			// show thumbnail on either the left or right of the timeline window
@@ -499,7 +507,7 @@ func (win *winTimeline) drawTrace() {
 		return
 	}
 
-	// detect mouse scrubbing
+	// detect mouse is in scrubbing areas
 	win.scrubbing = (win.scrubbing && imgui.IsMouseDown(0)) ||
 		(imgui.IsItemHovered() && imgui.IsMouseClicked(0))
 
@@ -523,7 +531,7 @@ func (win *winTimeline) drawTrace() {
 	if imgui.IsMouseDown(1) && imgui.IsItemHovered() {
 		imgui.OpenPopup(timelinePopupID)
 
-	} else if win.scrubbing {
+	} else if win.isScrubbingValid() {
 		coords := win.img.cache.TV.GetCoords()
 
 		// making sure we only call PushRewind() when we need to. also,
