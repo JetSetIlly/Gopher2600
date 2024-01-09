@@ -244,40 +244,35 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		if back {
 			// step backwards
 
-			var adj television.Adj
+			var coords coords.TelevisionCoords
 
 			switch mode {
 			case "":
 				// use current quantum state
 				switch dbg.Quantum() {
+				case govern.QuantumInstruction:
+					coords = dbg.cpuBoundaryLastInstruction
 				case govern.QuantumCycle:
-					adj = television.AdjCycle
+					coords = dbg.vcs.TV.AdjCoords(television.AdjCycle, adjAmount)
 				case govern.QuantumClock:
-					adj = television.AdjClock
+					coords = dbg.vcs.TV.AdjCoords(television.AdjClock, adjAmount)
 				}
 
 			case "INSTRUCTION":
 				dbg.setQuantum(govern.QuantumInstruction)
+				coords = dbg.cpuBoundaryLastInstruction
 			case "CYCLE":
 				dbg.setQuantum(govern.QuantumCycle)
-				adj = television.AdjCycle
+				coords = dbg.vcs.TV.AdjCoords(television.AdjCycle, adjAmount)
 			case "CLOCK":
 				dbg.setQuantum(govern.QuantumClock)
-				adj = television.AdjClock
+				coords = dbg.vcs.TV.AdjCoords(television.AdjClock, adjAmount)
 			case "SCANLINE":
-				adj = television.AdjScanline
+				coords = dbg.vcs.TV.AdjCoords(television.AdjScanline, adjAmount)
 			case "FRAME":
-				adj = television.AdjFrame
+				coords = dbg.vcs.TV.AdjCoords(television.AdjFrame, adjAmount)
 			default:
 				return fmt.Errorf("unknown STEP BACK mode (%s)", mode)
-			}
-
-			var coords coords.TelevisionCoords
-
-			if dbg.Quantum() == govern.QuantumInstruction {
-				coords = dbg.cpuBoundaryLastInstruction
-			} else {
-				coords = dbg.vcs.TV.AdjCoords(adj, adjAmount)
 			}
 
 			dbg.setState(govern.Rewinding)
