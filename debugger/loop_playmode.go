@@ -84,6 +84,12 @@ func (dbg *Debugger) playLoop() error {
 		// we must keep lastBank updated during the play loop
 		dbg.liveBankInfo = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
 
+		// record state. we do this before any of the conditions below that may
+		// result in an early return from the function
+		if dbg.state.Load().(govern.State) == govern.Running {
+			dbg.Rewind.RecordState()
+		}
+
 		// run continueCheck() function is called every CPU instruction. for
 		// some halt conditions this is too infrequent
 		//
@@ -129,10 +135,6 @@ func (dbg *Debugger) playLoop() error {
 				}
 			default:
 			}
-		}
-
-		if dbg.state.Load().(govern.State) == govern.Running {
-			dbg.Rewind.RecordState()
 		}
 
 		// resolve rewinding

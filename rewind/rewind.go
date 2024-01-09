@@ -160,8 +160,8 @@ type Rewind struct {
 	// a new frame has been triggered. resolve as soon as possible.
 	newFrame bool
 
-	// a rewind boundary has been detected. call reset() on next frame.
-	boundaryNextFrame bool
+	// a reset boundary has been detected
+	resetBoundaryNextFrame bool
 }
 
 // NewRewind is the preferred method of initialisation for the Rewind type.
@@ -222,7 +222,7 @@ func (r *Rewind) reset(level snapshotLevel) {
 	r.comparison = nil
 
 	r.newFrame = false
-	r.boundaryNextFrame = false
+	r.resetBoundaryNextFrame = false
 
 	// reset start and next
 	r.start = 0
@@ -356,25 +356,32 @@ func (r *Rewind) snapshot(level snapshotLevel) *State {
 // RecordState should be called after every CPU instruction. A new state will
 // be recorded if the current rewind policy agrees.
 func (r *Rewind) RecordState() {
+	// sanity check to make sure the main loop is behaving correctly
 	if !r.vcs.CPU.LastResult.Final && !r.vcs.CPU.HasReset() {
-		logger.Logf("rewind", "RecordFrameState() attempted mid CPU instruction")
+		logger.Logf("rewind", "RecordState() attempted mid CPU instruction")
 		return
 	}
 
-	r.boundaryNextFrame = r.boundaryNextFrame || r.vcs.Mem.Cart.RewindBoundary()
+	// check whether a rewind boundary has been reached
+	r.resetBoundaryNextFrame = r.resetBoundaryNextFrame || r.vcs.Mem.Cart.RewindBoundary()
 
+	// do not record state if NewFrame() has not been called recently
 	if !r.newFrame {
 		return
 	}
 	r.newFrame = false
 
-	if r.boundaryNextFrame {
-		r.boundaryNextFrame = false
+	// a reset boundary has been detected. rewind history is reset before added
+	// the current state
+	if r.resetBoundaryNextFrame {
+		r.resetBoundaryNextFrame = false
 		r.reset(levelBoundary)
 		logger.Logf("rewind", "boundary added at frame %d", r.vcs.TV.GetCoords().Frame)
 		return
 	}
 
+	// add an "execution" rewind state if the frame is not coincident with the
+	// rewind frequency
 	fn := r.vcs.TV.GetCoords().Frame
 	if fn%r.Prefs.Freq.Get().(int) != 0 {
 		r.append(r.snapshot(levelExecution))
