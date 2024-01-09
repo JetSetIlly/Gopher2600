@@ -247,7 +247,11 @@ func (wm *manager) drawMenuEntry(m menuEntry) {
 			return
 		}
 	case menuRestrictTape:
-		if wm.img.cache.VCS.Mem.Cart.GetTapeBus() == nil {
+		// additional test required for tape bus because of shortcomings in how
+		// supercharger tapes/binary ROMs are implemented
+		if bus := wm.img.cache.VCS.Mem.Cart.GetTapeBus(); bus == nil {
+			return
+		} else if ok, _ := bus.GetTapeState(); !ok {
 			return
 		}
 	default:

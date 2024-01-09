@@ -253,7 +253,7 @@ type CartTapeBus interface {
 	SetTapeCounter(c int)
 
 	// GetTapeState retrieves a copy of the current state of the tape. returns
-	// true is state is valid
+	// false if state is not valid.
 	GetTapeState() (bool, CartTapeState)
 }
 
