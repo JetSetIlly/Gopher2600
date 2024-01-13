@@ -239,7 +239,7 @@ func init() {
 
 	SpecPALM = Spec{
 		ID:                "PAL-M",
-		Colors:            PalettePAL,
+		Colors:            PaletteNTSC,
 		ScanlinesVSync:    3,
 		ScanlinesVBlank:   37,
 		ScanlinesVisible:  192,
