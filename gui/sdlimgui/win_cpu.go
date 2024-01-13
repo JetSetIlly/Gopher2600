@@ -72,7 +72,7 @@ func (win *winCPU) debuggerDraw() bool {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{X: 836, Y: 315}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
-	imgui.SetNextWindowSize(imgui.Vec2{X: imguiTextWidth(20), Y: -1})
+	imgui.SetNextWindowSize(imgui.Vec2{X: imguiTextWidth(25), Y: -1})
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		win.draw()
 	}
@@ -89,30 +89,31 @@ func (win *winCPU) draw() {
 	if imgui.BeginTable("cpuLayout", 2) {
 		imgui.TableSetupColumnV("registers0", imgui.TableColumnFlagsWidthFixed, imguiDivideWinWidth(2), 0)
 		imgui.TableSetupColumnV("registers1", imgui.TableColumnFlagsWidthFixed, imguiDivideWinWidth(2), 1)
-		imgui.TableNextRow()
 
+		imgui.TableNextRow()
 		imgui.TableNextColumn()
 		win.drawRegister(win.img.cache.VCS.CPU.PC)
-		imgui.TableNextColumn()
-		win.drawRegister(win.img.cache.VCS.CPU.A)
-
-		imgui.TableNextRow()
-		imgui.TableNextColumn()
-		win.drawRegister(win.img.cache.VCS.CPU.SP)
-		imgui.TableNextColumn()
-		win.drawRegister(win.img.cache.VCS.CPU.X)
-
-		imgui.TableNextRow()
-
 		imgui.TableNextColumn()
 		imgui.PushStyleVarFloat(imgui.StyleVarFrameRounding, readOnlyButtonRounding)
 		if win.img.cache.VCS.CPU.Killed {
 			_ = imguiColourButton(win.img.cols.CPUKIL, fmt.Sprintf("%c Killed", fonts.CPUKilled), fillWidth)
 		} else {
-			_ = imguiBooleanButton(win.img.cols.CPURDY, win.img.cols.CPUNotRDY, win.img.cache.VCS.CPU.RdyFlg, "RDY Flag", fillWidth)
+			_ = imguiBooleanButton(win.img.cols.CPURDY, win.img.cols.CPUNotRDY, win.img.cache.VCS.CPU.RdyFlg, "RDY", fillWidth)
 		}
 		imgui.PopStyleVar()
 
+		imgui.TableNextRow()
+		imgui.TableNextRow()
+		imgui.TableNextColumn()
+
+		win.drawRegister(win.img.cache.VCS.CPU.A)
+		imgui.TableNextColumn()
+		win.drawRegister(win.img.cache.VCS.CPU.SP)
+
+		imgui.TableNextRow()
+		imgui.TableNextColumn()
+
+		win.drawRegister(win.img.cache.VCS.CPU.X)
 		imgui.TableNextColumn()
 		win.drawRegister(win.img.cache.VCS.CPU.Y)
 
@@ -120,118 +121,123 @@ func (win *winCPU) draw() {
 	}
 
 	imgui.Spacing()
-	if imgui.BeginTable("statusRegister", statusRegisterNumColumns) {
-		imgui.TableNextRow()
-		imgui.TableNextColumn()
-		imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
-		imgui.Text("s")
-		imgui.TableNextColumn()
-		imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
-		imgui.Text("o")
-		imgui.TableNextColumn()
-		imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
-		imgui.Text("b")
-		imgui.TableNextColumn()
-		imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
-		imgui.Text("d")
-		imgui.TableNextColumn()
-		imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
-		imgui.Text("i")
-		imgui.TableNextColumn()
-		imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
-		imgui.Text("z")
-		imgui.TableNextColumn()
-		imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
-		imgui.Text("c")
+	if imgui.CollapsingHeaderV("Status Register", imgui.TreeNodeFlagsDefaultOpen) {
+		if imgui.BeginTable("statusRegister", statusRegisterNumColumns) {
+			imgui.TableNextRow()
+			imgui.TableNextColumn()
+			imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
+			imgui.Text("S")
+			imgui.TableNextColumn()
+			imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
+			imgui.Text("O")
+			imgui.TableNextColumn()
+			imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
+			imgui.Text("B")
+			imgui.TableNextColumn()
+			imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
+			imgui.Text("D")
+			imgui.TableNextColumn()
+			imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
+			imgui.Text("I")
+			imgui.TableNextColumn()
+			imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
+			imgui.Text("Z")
+			imgui.TableNextColumn()
+			imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
+			imgui.Text("C")
 
-		sr := win.img.cache.VCS.CPU.Status
-		col := win.img.cols.TitleBgActive
+			sr := win.img.cache.VCS.CPU.Status
+			fg := win.img.cols.Text
+			bg := win.img.cols.TitleBgActive
 
-		imgui.TableNextRow()
-		imgui.TableNextColumn()
-		if imguiToggleButtonVertical("s", sr.Sign, col) {
-			win.img.term.pushCommand("CPU STATUS TOGGLE S")
-		}
-		imgui.TableNextColumn()
-		if imguiToggleButtonVertical("o", sr.Overflow, col) {
-			win.img.term.pushCommand("CPU STATUS TOGGLE O")
-		}
-		imgui.TableNextColumn()
-		if imguiToggleButtonVertical("b", sr.Break, col) {
-			win.img.term.pushCommand("CPU STATUS TOGGLE B")
-		}
-		imgui.TableNextColumn()
-		if imguiToggleButtonVertical("d", sr.DecimalMode, col) {
-			win.img.term.pushCommand("CPU STATUS TOGGLE D")
-		}
-		imgui.TableNextColumn()
-		if imguiToggleButtonVertical("i", sr.InterruptDisable, col) {
-			win.img.term.pushCommand("CPU STATUS TOGGLE I")
-		}
-		imgui.TableNextColumn()
-		if imguiToggleButtonVertical("z", sr.Zero, col) {
-			win.img.term.pushCommand("CPU STATUS TOGGLE Z")
-		}
-		imgui.TableNextColumn()
-		if imguiToggleButtonVertical("c", sr.Carry, col) {
-			win.img.term.pushCommand("CPU STATUS TOGGLE C")
-		}
+			imgui.TableNextRow()
+			imgui.TableNextColumn()
+			if imguiToggleButtonVertical("s", sr.Sign, fg, bg) {
+				win.img.term.pushCommand("CPU STATUS TOGGLE S")
+			}
+			imgui.TableNextColumn()
+			if imguiToggleButtonVertical("o", sr.Overflow, fg, bg) {
+				win.img.term.pushCommand("CPU STATUS TOGGLE O")
+			}
+			imgui.TableNextColumn()
+			if imguiToggleButtonVertical("b", sr.Break, fg, bg) {
+				win.img.term.pushCommand("CPU STATUS TOGGLE B")
+			}
+			imgui.TableNextColumn()
+			if imguiToggleButtonVertical("d", sr.DecimalMode, fg, bg) {
+				win.img.term.pushCommand("CPU STATUS TOGGLE D")
+			}
+			imgui.TableNextColumn()
+			if imguiToggleButtonVertical("i", sr.InterruptDisable, fg, bg) {
+				win.img.term.pushCommand("CPU STATUS TOGGLE I")
+			}
+			imgui.TableNextColumn()
+			if imguiToggleButtonVertical("z", sr.Zero, fg, bg) {
+				win.img.term.pushCommand("CPU STATUS TOGGLE Z")
+			}
+			imgui.TableNextColumn()
+			if imguiToggleButtonVertical("c", sr.Carry, fg, bg) {
+				win.img.term.pushCommand("CPU STATUS TOGGLE C")
+			}
 
-		imgui.EndTable()
+			imgui.EndTable()
+		}
 	}
 
 	imgui.Spacing()
 
-	res := win.img.cache.Dbg.LiveDisasmEntry
-	if res.Address != "" {
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
-		imgui.Text(res.Address)
+	if imgui.CollapsingHeaderV("Last Cycle", imgui.TreeNodeFlagsDefaultOpen) {
+		res := win.img.cache.Dbg.LiveDisasmEntry
+		if res.Address != "" {
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
+			imgui.Text(res.Address)
 
-		imgui.SameLine()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBank)
-		imgui.Text(fmt.Sprintf("[bank %d]", res.Bank))
-
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
-		imgui.Text(res.Operator)
-
-		imgui.SameLine()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
-		imgui.Text(res.Operand.Resolve())
-
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
-		imgui.Text(fmt.Sprintf("%s cycles", res.Cycles()))
-
-		if !win.img.cache.Dbg.LiveDisasmEntry.Result.Final {
 			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBank)
+			imgui.Text(fmt.Sprintf("[bank %d]", res.Bank))
 
-			switch win.img.cache.VCS.TIA.ClocksSinceCycle {
-			case 1:
-				imgui.Text(fmt.Sprintf("%c", fonts.Paw))
-			case 2:
-				imgui.Text(fmt.Sprintf("%c", fonts.Paw))
-				imgui.SameLineV(0, 4)
-				imgui.Text(fmt.Sprintf("%c", fonts.Paw))
-			case 3:
-				// only show paws for value 3 if we're in QuantumClock mode
-				if win.img.dbg.Quantum() == govern.QuantumClock {
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
+			imgui.Text(res.Operator)
+
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
+			imgui.Text(res.Operand.Resolve())
+
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
+			imgui.Text(fmt.Sprintf("%s cycles", res.Cycles()))
+
+			if !win.img.cache.Dbg.LiveDisasmEntry.Result.Final {
+				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
+
+				switch win.img.cache.VCS.TIA.ClocksSinceCycle {
+				case 1:
+					imgui.Text(fmt.Sprintf("%c", fonts.Paw))
+				case 2:
 					imgui.Text(fmt.Sprintf("%c", fonts.Paw))
 					imgui.SameLineV(0, 4)
 					imgui.Text(fmt.Sprintf("%c", fonts.Paw))
-					imgui.SameLineV(0, 4)
-					imgui.Text(fmt.Sprintf("%c", fonts.Paw))
+				case 3:
+					// only show paws for value 3 if we're in QuantumClock mode
+					if win.img.dbg.Quantum() == govern.QuantumClock {
+						imgui.Text(fmt.Sprintf("%c", fonts.Paw))
+						imgui.SameLineV(0, 4)
+						imgui.Text(fmt.Sprintf("%c", fonts.Paw))
+						imgui.SameLineV(0, 4)
+						imgui.Text(fmt.Sprintf("%c", fonts.Paw))
+					}
 				}
+				imgui.PopStyleColor()
 			}
+
+			imgui.PopStyleColorV(5)
+		} else {
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
+			imgui.Text("no execution yet")
+			imgui.Text("")
+			imgui.Text("")
 			imgui.PopStyleColor()
 		}
-
-		imgui.PopStyleColorV(5)
-	} else {
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
-		imgui.Text("")
-		imgui.Text("no execution yet")
-		imgui.Text("")
-		imgui.PopStyleColor()
 	}
 }
 

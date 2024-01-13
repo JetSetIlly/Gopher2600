@@ -81,81 +81,17 @@ func imguiTextWidth(length int) float32 {
 	return imguiGetFrameDim(strings.Repeat("X", length)).X
 }
 
-// return coordinates for right alignment of a string to previous imgui widget.
-// func imguiRightAlign(s string) imgui.Vec2 {
-// 	// this dearimgui dance gets the X position of the end of the last widget.
-// 	// leaving us with c, a Vec2 with the correct Y position
-// 	c := imgui.CursorPos()
-// 	imgui.SameLine()
-// 	x := imgui.CursorPosX()
-// 	imgui.SetCursorPos(c)
-// 	c = imgui.CursorPos()
-
-// 	// the X coordinate can be set by subtracting the width of the text from
-// 	// the stored x value
-// 	c.X = x - imguiTextWidth(len(s)) + imgui.CurrentStyle().FramePadding().X
-
-// 	return c
-// }
-
-// adds min/max indicators to imgui.SliderInt. returns true if slider has changed.
-// func imguiSliderInt(label string, f *int32, s int32, e int32) bool {
-// 	v := imgui.SliderInt(label, f, s, e)
-
-// 	// alignment information for frame number indicators below
-// 	min := fmt.Sprintf("%d", s)
-// 	max := fmt.Sprintf("%d", e)
-// 	align := imguiRightAlign(max)
-
-// 	// rewind frame information
-// 	imgui.Text(min)
-// 	imgui.SameLine()
-// 	imgui.SetCursorPos(align)
-// 	imgui.Text(max)
-
-// 	return v
-// }
-
-// draw toggle button at current cursor position. returns true if toggle has been clicked.
-func imguiToggleButton(id string, v bool, col imgui.Vec4) bool {
-	height := imgui.FrameHeight() * 0.75
-	width := height * 1.55
-	radius := height * 0.50
-	t := float32(0.0)
-	if v {
-		t = 1.0
-	}
-
-	bg := imgui.PackedColorFromVec4(col)
-	p := imgui.CursorScreenPos().Plus(imgui.Vec2{X: 0, Y: (imgui.FrameHeight() / 2) - (height / 2)})
-	dl := imgui.WindowDrawList()
-
-	r := false
-
-	imgui.InvisibleButtonV(id, imgui.Vec2{width, height}, imgui.ButtonFlagsMouseButtonLeft)
-	if imgui.IsItemClicked() {
-		r = true
-	}
-
-	dl.AddRectFilledV(p, imgui.Vec2{p.X + width, p.Y + height}, bg, radius, imgui.DrawCornerFlagsAll)
-	dl.AddCircleFilled(imgui.Vec2{p.X + radius + t*(width-radius*2.0), p.Y + radius},
-		radius-1.5, imgui.PackedColorFromVec4(imgui.Vec4{1.0, 1.0, 1.0, 1.0}))
-
-	return r
-}
-
 // draw vertical toggle button at current cursor position. returns true if toggle has been clicked.
-//
-// NOTE: this function has been hacked to work with the status register toggles
-// in win_cpu. any changes to this function will have to bear that in mind.
-func imguiToggleButtonVertical(id string, v bool, col imgui.Vec4) bool {
-	bg := imgui.PackedColorFromVec4(col)
+func imguiToggleButtonVertical(id string, v bool, fg imgui.Vec4, bg imgui.Vec4) bool {
+	bgCol := imgui.PackedColorFromVec4(bg)
+	fgCol := imgui.PackedColorFromVec4(fg)
 	p := imgui.CursorScreenPos().Minus(imgui.Vec2{X: 0, Y: 1})
 	dl := imgui.WindowDrawList()
 
 	width := imgui.CalcTextSize(" X", false, 0.0).X
 	height := width * 1.55
-	radius := width * 0.50
+	halfWidth := width * 0.50
+	radius := width * 0.3
 	t := float32(0.0)
 	if v {
 		t = 1.0
@@ -168,9 +104,9 @@ func imguiToggleButtonVertical(id string, v bool, col imgui.Vec4) bool {
 		r = true
 	}
 
-	dl.AddRectFilledV(p, imgui.Vec2{p.X + width, p.Y + height}, bg, radius, imgui.DrawCornerFlagsAll)
-	dl.AddCircleFilled(imgui.Vec2{p.X + radius, p.Y + radius + t*(width*0.5)},
-		radius-1.5, imgui.PackedColorFromVec4(imgui.Vec4{1.0, 1.0, 1.0, 1.0}))
+	dl.AddRectFilledV(p, imgui.Vec2{p.X + width, p.Y + height}, bgCol, halfWidth, imgui.DrawCornerFlagsAll)
+	dl.AddCircleFilled(imgui.Vec2{p.X + halfWidth, p.Y + halfWidth + t*(width*0.5)},
+		radius, fgCol)
 
 	return r
 }
@@ -240,23 +176,6 @@ func imguiMeasureHeight(region func()) float32 {
 	region()
 	return imgui.CursorPos().Minus(p).Y
 }
-
-// imguiMeasureWidth returns the width of the region drawn in the region()
-// function.
-//
-// it's a bit tricky getting the width with dear imgui. it involves noting the
-// current position, calling SameLine(), performing the width measurement and
-// returning to the stored position.
-//
-// this seems to work but it caused odd results when used to measure the width
-// of a table.
-// func imguiMeasureWidth(region func()) float32 {
-// 	p := imgui.CursorPos()
-// 	region()
-// 	defer imgui.SetCursorPos(imgui.CursorPos())
-// 	imgui.SameLine()
-// 	return imgui.CursorPos().Minus(p).X
-// }
 
 // pads imgui.Separator with additional spacing.
 func imguiSeparator() {

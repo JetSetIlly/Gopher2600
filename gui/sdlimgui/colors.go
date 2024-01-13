@@ -38,6 +38,7 @@ type imguiColors struct {
 	TitleBg       imgui.Vec4
 	TitleBgActive imgui.Vec4
 	Border        imgui.Vec4
+	Text          imgui.Vec4
 
 	// additional general colors
 	True        imgui.Vec4
@@ -248,6 +249,7 @@ func newColors() *imguiColors {
 		TitleBg:       imgui.Vec4{0.075, 0.08, 0.09, 1.0},
 		TitleBgActive: imgui.Vec4{0.16, 0.29, 0.48, 1.0},
 		Border:        imgui.Vec4{0.14, 0.14, 0.29, 1.0},
+		Text:          imgui.Vec4{1.00, 1.00, 1.00, 1.0},
 
 		// additional general colors
 		True:        imgui.Vec4{0.3, 0.6, 0.3, 1.0},
@@ -414,6 +416,7 @@ func newColors() *imguiColors {
 	style.SetColor(imgui.StyleColorTitleBg, cols.TitleBg)
 	style.SetColor(imgui.StyleColorTitleBgActive, cols.TitleBgActive)
 	style.SetColor(imgui.StyleColorBorder, cols.Border)
+	style.SetColor(imgui.StyleColorText, cols.Text)
 
 	// reflection colors in imgui.Vec4 and imgui.PackedColor formats
 	cols.reflectionColors = make([]imgui.Vec4, len(reflectionColors))
