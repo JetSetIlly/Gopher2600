@@ -43,6 +43,10 @@ type fontAtlas struct {
 	diagram     imgui.Font
 	diagramSize float32
 
+	// terminal
+	terminal     imgui.Font
+	terminalSize float32
+
 	// source code
 	code     imgui.Font
 	codeSize float32
@@ -147,6 +151,12 @@ func (atlas *fontAtlas) initialise(renderer renderer, prefs *preferences) error 
 		if atlas.diagram == 0 {
 			return fmt.Errorf("font: error loading hack font from memory")
 		}
+	}
+
+	// load terminal font
+	err = atlas.terminalFont(prefs)
+	if err != nil {
+		return fmt.Errorf("font: %w", err)
 	}
 
 	// load source code font

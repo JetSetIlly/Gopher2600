@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
@@ -136,6 +137,11 @@ func (win *winPrefs) draw() {
 
 	if imgui.BeginTabItem("PlusROM") {
 		win.drawPlusROMTab()
+		imgui.EndTabItem()
+	}
+
+	if imgui.BeginTabItem("UI") {
+		win.drawUITab()
 		imgui.EndTabItem()
 	}
 
@@ -336,74 +342,6 @@ func (win *winPrefs) drawDebuggerTab() {
 		}
 	}
 
-	// font preferences for when compiled with freetype font rendering
-	if win.img.fonts.isFreeType() {
-		imgui.Spacing()
-
-		if imgui.CollapsingHeader("Font Sizes") {
-			imgui.Spacing()
-
-			guiSize := win.img.prefs.guiFont.Get().(float64)
-			if imgui.BeginCombo("GUI", fmt.Sprintf("%.01f", guiSize)) {
-				if imgui.Selectable("12.0") {
-					win.img.prefs.guiFont.Set(12.0)
-					win.img.resetFonts = resetFontFrames
-				}
-				if imgui.Selectable("13.0") {
-					win.img.prefs.guiFont.Set(13.0)
-					win.img.resetFonts = resetFontFrames
-				}
-				if imgui.Selectable("14.0") {
-					win.img.prefs.guiFont.Set(14.0)
-					win.img.resetFonts = resetFontFrames
-				}
-				if imgui.Selectable("15.0") {
-					win.img.prefs.guiFont.Set(15.0)
-					win.img.resetFonts = resetFontFrames
-				}
-				if imgui.Selectable("16.0") {
-					win.img.prefs.guiFont.Set(16.0)
-					win.img.resetFonts = resetFontFrames
-				}
-				imgui.EndCombo()
-			}
-
-			imgui.Spacing()
-
-			codeSize := win.img.prefs.codeFont.Get().(float64)
-			if imgui.BeginCombo("Code", fmt.Sprintf("%.01f", codeSize)) {
-				if imgui.Selectable("13.0") {
-					win.img.prefs.codeFont.Set(13.0)
-					win.img.resetFonts = resetFontFrames
-				}
-				if imgui.Selectable("14.0") {
-					win.img.prefs.codeFont.Set(14.0)
-					win.img.resetFonts = resetFontFrames
-				}
-				if imgui.Selectable("15.0") {
-					win.img.prefs.codeFont.Set(15.0)
-					win.img.resetFonts = resetFontFrames
-				}
-				if imgui.Selectable("16.0") {
-					win.img.prefs.codeFont.Set(16.0)
-					win.img.resetFonts = resetFontFrames
-				}
-				if imgui.Selectable("17.0") {
-					win.img.prefs.codeFont.Set(17.0)
-					win.img.resetFonts = resetFontFrames
-				}
-				imgui.EndCombo()
-			}
-
-			imgui.Spacing()
-
-			lineSpacing := int32(win.img.prefs.codeFontLineSpacing.Get().(int))
-			if imgui.SliderInt("Line Spacing (code)", &lineSpacing, 0, 5) {
-				win.img.prefs.codeFontLineSpacing.Set(lineSpacing)
-			}
-		}
-	}
-
 	imgui.Spacing()
 	if imgui.CollapsingHeader("OpenGL Settings") {
 		imgui.Spacing()
@@ -443,7 +381,6 @@ func (win *winPrefs) drawRewindTab() {
 func (win *winPrefs) drawVCS() {
 	imgui.Spacing()
 
-	imgui.Spacing()
 	if imgui.CollapsingHeaderV("Randomisation", imgui.TreeNodeFlagsDefaultOpen) {
 		randState := win.img.dbg.VCS().Env.Prefs.RandomState.Get().(bool)
 		if imgui.Checkbox("Random State (on startup)", &randState) {
@@ -667,6 +604,106 @@ func (win *winPrefs) drawPlusROMTab() {
 	drawPlusROMNick(win.img)
 }
 
+func (win *winPrefs) drawUITab() {
+	imgui.Spacing()
+
+	if !win.img.fonts.isFreeType() {
+		imgui.Text("No options for UI in this version of Gopher2600")
+		return
+	}
+
+	if imgui.CollapsingHeaderV("Font Sizing and Spacing", imgui.TreeNodeFlagsDefaultOpen) {
+		imgui.Spacing()
+
+		var resetFonts bool
+
+		const (
+			minFontSize = 10.0
+			maxFontSize = 30.0
+		)
+
+		// flags to be used in float slider
+		sliderFlags := imgui.SliderFlagsAlwaysClamp | imgui.SliderFlagsNoInput
+
+		// gui font
+		guiSize := float32(win.img.prefs.guiFont.Get().(float64))
+		if imgui.SliderFloatV("##guiFontSizeSlider", &guiSize, minFontSize, maxFontSize, "%0.1fpt", sliderFlags) {
+			win.img.prefs.guiFont.Set(guiSize)
+		}
+		if imgui.IsItemDeactivatedAfterEdit() {
+			resetFonts = true
+		}
+		imgui.SameLineV(0, 5)
+
+		guiSizeS := fmt.Sprintf("%0.1f", guiSize)
+		if imguiFloatingPointInput("GUI Font Size##guiFontSize", 5, &guiSizeS) {
+			if sz, err := strconv.ParseFloat(guiSizeS, 32); err == nil {
+				if sz >= minFontSize && sz <= maxFontSize {
+					win.img.prefs.guiFont.Set(sz)
+					resetFonts = true
+				}
+			}
+		}
+
+		imgui.Spacing()
+
+		// terminal font
+		terminalSize := float32(win.img.prefs.terminalFont.Get().(float64))
+		if imgui.SliderFloatV("##terminalFontSizeSlider", &terminalSize, minFontSize, maxFontSize, "%0.1fpt", sliderFlags) {
+			win.img.prefs.terminalFont.Set(terminalSize)
+		}
+		if imgui.IsItemDeactivatedAfterEdit() {
+			resetFonts = true
+		}
+		imgui.SameLineV(0, 5)
+
+		terminalSizeS := fmt.Sprintf("%0.1f", terminalSize)
+		if imguiFloatingPointInput("Terminal Font Size##terminalFontSize", 5, &terminalSizeS) {
+			if sz, err := strconv.ParseFloat(terminalSizeS, 32); err == nil {
+				if sz >= minFontSize && sz <= maxFontSize {
+					win.img.prefs.terminalFont.Set(sz)
+					resetFonts = true
+				}
+			}
+		}
+
+		imgui.Spacing()
+
+		// code font
+		codeSize := float32(win.img.prefs.codeFont.Get().(float64))
+		if imgui.SliderFloatV("##codeFontSizeSlider", &codeSize, minFontSize, maxFontSize, "%0.1fpt", sliderFlags) {
+			win.img.prefs.codeFont.Set(codeSize)
+		}
+		if imgui.IsItemDeactivatedAfterEdit() {
+			resetFonts = true
+		}
+		imgui.SameLineV(0, 5)
+
+		codeSizeS := fmt.Sprintf("%0.1f", codeSize)
+		if imguiFloatingPointInput("Code Font Size##codeFontSize", 5, &codeSizeS) {
+			if sz, err := strconv.ParseFloat(codeSizeS, 32); err == nil {
+				if sz >= minFontSize && sz <= maxFontSize {
+					win.img.prefs.codeFont.Set(sz)
+					resetFonts = true
+				}
+			}
+		}
+
+		imgui.Spacing()
+
+		// code line spacing
+		lineSpacing := int32(win.img.prefs.codeFontLineSpacing.Get().(int))
+		if imgui.SliderInt("Line spacing in ARM Code window", &lineSpacing, 0, 5) {
+			win.img.prefs.codeFontLineSpacing.Set(lineSpacing)
+		}
+
+		// reset fonts if prefs have changed
+		if resetFonts {
+			win.img.resetFonts = resetFontFrames
+		}
+	}
+}
+
 func (win *winPrefs) drawDiskButtons() {
 	if imgui.Button("Save All") {
 		err := win.img.prefs.save()
@@ -762,8 +799,6 @@ func (win *winPrefs) drawDiskButtons() {
 			}
 		})
 
-		if win.img.fonts.isFreeType() {
-			win.img.resetFonts = resetFontFrames
-		}
+		win.img.resetFonts = resetFontFrames
 	}
 }

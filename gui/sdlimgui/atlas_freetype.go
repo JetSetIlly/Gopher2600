@@ -84,3 +84,29 @@ func (fnts *fontAtlas) sourceCodeFont(prefs *preferences) error {
 
 	return nil
 }
+
+func (fnts *fontAtlas) terminalFont(prefs *preferences) error {
+	terminalSize := float32(prefs.terminalFont.Get().(float64))
+	if fnts.terminal != 0 && terminalSize == fnts.terminalSize {
+		return nil
+	}
+
+	atlas := imgui.CurrentIO().Fonts()
+
+	cfg := imgui.NewFontConfig()
+	defer cfg.Delete()
+	cfg.SetPixelSnapH(true)
+
+	var builder imgui.GlyphRangesBuilder
+	builder.Add(fonts.JetBrainsMonoMin, fonts.JetBrainsMonoMax)
+
+	fnts.terminalSize = terminalSize
+	fnts.terminal = atlas.AddFontFromMemoryTTFV(fonts.JetBrainsMono, fnts.terminalSize, cfg, builder.Build().GlyphRanges)
+	if fnts.terminal == 0 {
+		return fmt.Errorf("font: error loading JetBrainsMono font from memory")
+	}
+
+	fnts.mergeFontAwesome(fnts.terminalSize, 0.0)
+
+	return nil
+}

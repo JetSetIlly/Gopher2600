@@ -112,9 +112,22 @@ func (win *winTerm) debuggerDraw() bool {
 
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.TermBackground)
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{2, 2})
-	imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone)
-	imgui.PopStyleVar()
-	imgui.PopStyleColor()
+	defer imgui.PopStyleVar()
+	defer imgui.PopStyleColor()
+
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
+		win.draw()
+	}
+	imgui.End()
+
+	win.debuggerGeom.update()
+
+	return true
+}
+
+func (win *winTerm) draw() {
+	imgui.PushFont(win.img.fonts.terminal)
+	defer imgui.PopFont()
 
 	height := imguiRemainingWinHeight() - win.inputLineHeight
 	if imgui.BeginChildV("scrollback", imgui.Vec2{X: 0, Y: height}, false, 0) {
@@ -237,11 +250,6 @@ func (win *winTerm) debuggerDraw() bool {
 
 		imgui.PopItemWidth()
 	})
-
-	win.debuggerGeom.update()
-	imgui.End()
-
-	return true
 }
 
 func (win *winTerm) saveOutput() {

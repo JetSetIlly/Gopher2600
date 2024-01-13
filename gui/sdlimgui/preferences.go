@@ -64,6 +64,7 @@ type preferences struct {
 
 	// fonts
 	guiFont             prefs.Float
+	terminalFont        prefs.Float
 	codeFont            prefs.Float
 	codeFontLineSpacing prefs.Int
 
@@ -101,6 +102,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	p.coprocDevNotification.Set(true)
 	p.notificationVisibility.Set(0.75)
 	p.guiFont.Set(13.0)
+	p.terminalFont.Set(13.0)
 	p.codeFont.Set(15.0)
 	p.codeFontLineSpacing.Set(2.0)
 	p.frameQueueAuto.Set(false)
@@ -176,6 +178,10 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 
 	// fonts (only used when compiled with imguifreetype build tag)
 	err = p.dsk.Add("sdlimgui.fonts.gui", &p.guiFont)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.fonts.terminal", &p.terminalFont)
 	if err != nil {
 		return nil, err
 	}

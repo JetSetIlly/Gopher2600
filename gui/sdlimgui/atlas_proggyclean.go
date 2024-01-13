@@ -43,3 +43,9 @@ func (fnts *fontAtlas) sourceCodeFont(prefs *preferences) error {
 	fnts.codeSize = fnts.defaultFontSize
 	return nil
 }
+
+func (fnts *fontAtlas) terminalFont(prefs *preferences) error {
+	fnts.terminal = fnts.defaultFont
+	fnts.terminalSize = fnts.defaultFontSize
+	return nil
+}

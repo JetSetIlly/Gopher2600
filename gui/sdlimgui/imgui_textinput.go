@@ -31,6 +31,11 @@ func imguiDecimalInput(label string, length int, content *string) bool {
 	return imguiInputLenLimited(label, length, content, "0123456789", true)
 }
 
+// length limited input of numeric characters for floatingPoint
+func imguiFloatingPointInput(label string, length int, content *string) bool {
+	return imguiInputLenLimited(label, length, content, "0123456789.", true)
+}
+
 // length limited input of text characters.
 func imguiTextInput(label string, length int, content *string, selectAll bool) bool {
 	return imguiInputLenLimited(label, length, content, "", selectAll)
