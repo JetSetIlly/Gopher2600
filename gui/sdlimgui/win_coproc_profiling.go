@@ -135,9 +135,9 @@ func (win *winCoProcProfiling) debuggerDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{858, 319}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{641, 517}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{800, 1000})
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 858, Y: 319}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 641, Y: 517}, imgui.ConditionFirstUseEver)
+	win.img.setReasonableWindowConstraints()
 
 	title := fmt.Sprintf("%s %s", coproc.ProcessorID(), winCoProcProfilingID)
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {

@@ -68,7 +68,7 @@ func (win *winCoProcDisasm) debuggerDraw() bool {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{465, 285}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{551, 526}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{800, 1000})
+	win.img.setReasonableWindowConstraints()
 
 	title := fmt.Sprintf("%s %s", coproc.ProcessorID(), winCoProcDisasmID)
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {

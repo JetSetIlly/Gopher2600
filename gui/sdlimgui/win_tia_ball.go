@@ -26,9 +26,6 @@ import (
 )
 
 func (win *winTIA) drawBall() {
-	imgui.BeginChildV("##ball", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.footerHeight}, false, 0)
-	defer imgui.EndChild()
-
 	ball := win.img.cache.VCS.TIA.Video.Ball
 	realBall := win.img.dbg.VCS().TIA.Video.Ball
 	realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield

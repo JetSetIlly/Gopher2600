@@ -128,7 +128,7 @@ func (win *winBot) playmodeDraw() bool {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{75, 75}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{500, 525}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{500, 500}, imgui.Vec2{750, 800})
+	win.img.setReasonableWindowConstraints()
 
 	if imgui.BeginV(win.playmodeID(win.id()), &win.playmodeOpen, imgui.WindowFlagsNone) {
 		win.draw()

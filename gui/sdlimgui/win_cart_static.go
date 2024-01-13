@@ -59,10 +59,10 @@ func (win *winCartStatic) debuggerDraw() bool {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{117, 248}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{468, 552}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{468, 271}, imgui.Vec2{529, 1000})
+	win.img.setReasonableWindowConstraints()
 
 	title := fmt.Sprintf("%s %s", win.img.cache.VCS.Mem.Cart.ID(), winCartStaticID)
-	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
+	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsHorizontalScrollbar) {
 		win.draw(static)
 	}
 

@@ -71,8 +71,8 @@ func (win *winCPU) debuggerDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{836, 315}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{win.statusWidth, -1}, imgui.ConditionNone)
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 836, Y: 315}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSize(imgui.Vec2{X: imguiTextWidth(20), Y: -1})
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		win.draw()
 	}
@@ -87,9 +87,10 @@ func (win *winCPU) draw() {
 	fillWidth := imgui.Vec2{X: -1, Y: imgui.FrameHeight()}
 
 	if imgui.BeginTable("cpuLayout", 2) {
-		imgui.TableSetupColumnV("registers", imgui.TableColumnFlagsWidthFixed, 75, 1)
-
+		imgui.TableSetupColumnV("registers0", imgui.TableColumnFlagsWidthFixed, imguiDivideWinWidth(2), 0)
+		imgui.TableSetupColumnV("registers1", imgui.TableColumnFlagsWidthFixed, imguiDivideWinWidth(2), 1)
 		imgui.TableNextRow()
+
 		imgui.TableNextColumn()
 		win.drawRegister(win.img.cache.VCS.CPU.PC)
 		imgui.TableNextColumn()

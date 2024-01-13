@@ -75,8 +75,8 @@ func (win *winTIA) debuggerDraw() bool {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{X: 31, Y: 470}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{X: 535, Y: 260}, imgui.ConditionAlways)
-	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNoResize) {
+	// imgui.SetNextWindowSizeV(imgui.Vec2{X: 535, Y: 260}, imgui.ConditionAlways)
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
 		win.draw()
 	}
 
@@ -116,6 +116,7 @@ func (win *winTIA) draw() {
 	imgui.EndTabBar()
 
 	win.footerHeight = imguiMeasureHeight(func() {
+		imgui.Spacing()
 		imgui.Spacing()
 		imgui.Separator()
 		imgui.Spacing()

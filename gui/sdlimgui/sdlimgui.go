@@ -485,3 +485,9 @@ func (img *SdlImgui) smartCursorVisibility(hidden bool) {
 		img.cursorVisibility(false)
 	}
 }
+
+func (img *SdlImgui) setReasonableWindowConstraints() {
+	x := img.plt.displaySize()[0] * 0.95
+	y := img.plt.displaySize()[1] * 0.95
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{300, 300}, imgui.Vec2{X: x, Y: y})
+}

@@ -56,8 +56,6 @@ type winCDFStreams struct {
 	trackScreen bool
 	scanlines   int32
 
-	scaling float32
-
 	optionsHeight float32
 }
 
@@ -66,7 +64,6 @@ func newWinCDFStreams(img *SdlImgui) (window, error) {
 		img:         img,
 		scanlines:   specification.AbsoluteMaxScanlines,
 		trackScreen: true,
-		scaling:     1.49,
 	}
 
 	win.clearColours()
@@ -179,7 +176,7 @@ func (win *winCDFStreams) debuggerDraw() bool {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{100, 100}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{920, 554}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{920, 554})
+	win.img.setReasonableWindowConstraints()
 
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsHorizontalScrollbar) {
 		win.draw(regs, static)
@@ -192,6 +189,8 @@ func (win *winCDFStreams) debuggerDraw() bool {
 }
 
 func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
+	scaling := float32(win.img.prefs.guiFont.Get().(float64)) / 10
+
 	if imgui.BeginChildV("##stream", imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, false, imgui.WindowFlagsNone) {
 		win.updateStreams(regs, static)
 
@@ -210,7 +209,7 @@ func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
 
 			// using button for labelling
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DataStreamNumLabel)
-			imgui.ButtonV(fmt.Sprintf("%02d", i), imgui.Vec2{X: float32(win.pixelsSize.X) * (win.scaling + 1)})
+			imgui.ButtonV(fmt.Sprintf("%02d", i), imgui.Vec2{X: float32(win.pixelsSize.X) * (scaling + 1)})
 			imgui.PopStyleColor()
 
 			// position of ImageButton() we'll use this to measure the position of
@@ -220,8 +219,8 @@ func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
 			// Have to use ImageButton() rather than Image() because we want to use
 			// drag and drop
 			imgui.ImageButton(imgui.TextureID(win.streamTextures[i].getID()), imgui.Vec2{
-				X: float32(win.pixelsSize.X) * (win.scaling + 1),
-				Y: float32(win.pixelsSize.Y) * win.scaling,
+				X: float32(win.pixelsSize.X) * (scaling + 1),
+				Y: float32(win.pixelsSize.Y) * scaling,
 			})
 
 			if imgui.IsItemHovered() {
@@ -314,7 +313,7 @@ func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
 
 				const numOfAdditionalPeeks = 3
 
-				y := int(p.Y / win.scaling)
+				y := int(p.Y / scaling)
 				yTop := y - numOfAdditionalPeeks
 				if yTop < 0 {
 					yTop = 0

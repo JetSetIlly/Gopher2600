@@ -26,9 +26,6 @@ import (
 )
 
 func (win *winTIA) drawPlayer(num int) {
-	imgui.BeginChildV(fmt.Sprintf("##player%d", num), imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.footerHeight}, false, 0)
-	defer imgui.EndChild()
-
 	// get drawlist for window. we use this to draw index pointer and position indicator
 	dl := imgui.WindowDrawList()
 

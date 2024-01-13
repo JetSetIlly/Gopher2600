@@ -92,7 +92,7 @@ func (win *win6507Pinout) debuggerDraw() bool {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{756, 117}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{326, 338}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{326, 338}, imgui.Vec2{529, 593})
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{326, 338}, imgui.Vec2{650, 650})
 
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		win.draw()
@@ -253,9 +253,9 @@ func (win *win6507Pinout) draw() {
 				// weight the column widths
 				width := imgui.ContentRegionAvail().X
 				imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, width*0.23, 0)
-				imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, width*0.30, 1)
+				imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, width*0.32, 1)
 				imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, width*0.15, 2)
-				imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, width*0.32, 3)
+				imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, width*0.30, 3)
 
 				imgui.TableNextRow()
 				imgui.TableNextColumn()

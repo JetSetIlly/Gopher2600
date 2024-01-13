@@ -24,9 +24,6 @@ import (
 )
 
 func (win *winTIA) drawPlayfield() {
-	imgui.BeginChildV("##playfield", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.footerHeight}, false, 0)
-	defer imgui.EndChild()
-
 	playfield := win.img.cache.VCS.TIA.Video.Playfield
 	player0 := win.img.cache.VCS.TIA.Video.Player0
 	player1 := win.img.cache.VCS.TIA.Video.Player1

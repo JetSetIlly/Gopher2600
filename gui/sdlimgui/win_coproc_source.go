@@ -140,7 +140,7 @@ func (win *winCoProcSource) debuggerDraw() bool {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{81, 297}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{641, 517}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{2000, 1000})
+	win.img.setReasonableWindowConstraints()
 
 	flgs := imgui.WindowFlagsNone
 	if win.uncollapseNext && win.isCollapsed {

@@ -89,9 +89,9 @@ func (win *winControl) debuggerDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{699, 45}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-
-	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 699, Y: 45}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSize(imgui.Vec2{X: imguiTextWidth(36), Y: -1})
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		win.draw()
 	}
 
@@ -110,24 +110,22 @@ func (win *winControl) draw() {
 	win.drawStep()
 
 	// fps
-	imgui.Separator()
-	imgui.Spacing()
+	imguiSeparator()
 	win.drawFPS()
 
 	// mouse capture button
 	imguiSeparator()
-	imgui.Spacing()
 	win.drawMouseCapture()
 }
 
 func (win *winControl) drawRunButton() {
-	runDim := imgui.Vec2{X: imguiRemainingWinWidth(), Y: imgui.FrameHeight()}
+	dim := imgui.Vec2{X: imguiRemainingWinWidth(), Y: imgui.FrameHeight()}
 	if win.img.dbg.State() == govern.Running {
-		if imguiColourButton(win.img.cols.False, fmt.Sprintf("%c Halt", fonts.Halt), runDim) {
+		if imguiColourButton(win.img.cols.False, fmt.Sprintf("%c Halt", fonts.Halt), dim) {
 			win.img.term.pushCommand("HALT")
 		}
 	} else {
-		if imguiColourButton(win.img.cols.True, fmt.Sprintf("%c Run", fonts.Run), runDim) {
+		if imguiColourButton(win.img.cols.True, fmt.Sprintf("%c Run", fonts.Run), dim) {
 			win.img.term.pushCommand("RUN")
 		}
 	}
@@ -137,10 +135,12 @@ func (win *winControl) drawStep() {
 	fillWidth := imgui.Vec2{X: -1, Y: imgui.FrameHeight()}
 
 	if imgui.BeginTable("step", 2) {
-		imgui.TableSetupColumnV("step", imgui.TableColumnFlagsWidthFixed, 75, 1)
+		imgui.TableSetupColumnV("stepframescanline0", imgui.TableColumnFlagsWidthFixed, imguiDivideWinWidth(2), 0)
+		imgui.TableSetupColumnV("stepframescanline1", imgui.TableColumnFlagsWidthFixed, imguiDivideWinWidth(2), 1)
 		imgui.TableNextRow()
 
 		// step button
+		imgui.BeginGroup()
 		imgui.TableNextColumn()
 		win.repeatButton(fmt.Sprintf("%c ##Step", fonts.BackArrowDouble), func() {
 			win.img.term.pushCommand("STEP BACK")
@@ -150,10 +150,12 @@ func (win *winControl) drawStep() {
 		win.repeatButtonV("Step", func() {
 			win.img.term.pushCommand("STEP")
 		}, fillWidth)
+		imgui.EndGroup()
 
 		imgui.TableNextColumn()
 
-		if imgui.BeginComboV("##quantum", "", imgui.ComboFlagsNoPreview) {
+		imgui.PushItemWidth(-1)
+		if imgui.BeginComboV("##quantum", win.img.dbg.Quantum().String(), imgui.ComboFlagsNone) {
 			if imgui.Selectable(govern.QuantumInstruction.String()) {
 				win.img.term.pushCommand("QUANTUM INSTRUCTION")
 			}
@@ -165,8 +167,7 @@ func (win *winControl) drawStep() {
 			}
 			imgui.EndCombo()
 		}
-		imgui.SameLineV(0, 5)
-		imgui.Text(win.img.dbg.Quantum().String())
+		imgui.PopItemWidth()
 
 		imgui.EndTable()
 	}
@@ -176,11 +177,12 @@ func (win *winControl) drawStep() {
 	}, fillWidth)
 
 	if imgui.BeginTable("stepframescanline", 2) {
-		imgui.TableSetupColumnV("registers", imgui.TableColumnFlagsWidthFixed, imguiDivideWinWidth(2), 1)
-		imgui.TableSetupColumnV("registers", imgui.TableColumnFlagsWidthFixed, imguiDivideWinWidth(2), 2)
+		imgui.TableSetupColumnV("stepframescanline0", imgui.TableColumnFlagsWidthFixed, imguiDivideWinWidth(2), 0)
+		imgui.TableSetupColumnV("stepframescanline1", imgui.TableColumnFlagsWidthFixed, imguiDivideWinWidth(2), 1)
 		imgui.TableNextRow()
 		imgui.TableNextColumn()
 
+		imgui.BeginGroup()
 		win.repeatButton(fmt.Sprintf("%c ##Frame", fonts.UpArrowDouble), func() {
 			win.img.term.pushCommand("STEP BACK FRAME")
 		})
@@ -188,9 +190,11 @@ func (win *winControl) drawStep() {
 		win.repeatButtonV("Frame", func() {
 			win.img.term.pushCommand("STEP FRAME")
 		}, fillWidth)
+		imgui.EndGroup()
 
 		imgui.TableNextColumn()
 
+		imgui.BeginGroup()
 		win.repeatButton(fmt.Sprintf("%c ##Scanline", fonts.UpArrow), func() {
 			win.img.term.pushCommand("STEP BACK SCANLINE")
 		})
@@ -198,6 +202,7 @@ func (win *winControl) drawStep() {
 		win.repeatButtonV("Scanline", func() {
 			win.img.term.pushCommand("STEP SCANLINE")
 		}, fillWidth)
+		imgui.EndGroup()
 
 		imgui.EndTable()
 	}
@@ -244,6 +249,7 @@ func (win *winControl) drawFPS() {
 }
 
 func (win *winControl) drawMouseCapture() {
+	imgui.BeginGroup()
 	imgui.AlignTextToFramePadding()
 	imgui.Text(string(fonts.Mouse))
 	imgui.SameLine()
@@ -263,4 +269,5 @@ func (win *winControl) drawMouseCapture() {
 			win.img.setCapturedRunning(true)
 		}
 	}
+	imgui.EndGroup()
 }

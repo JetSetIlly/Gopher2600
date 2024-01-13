@@ -26,9 +26,6 @@ import (
 )
 
 func (win *winTIA) drawMissile(num int) {
-	imgui.BeginChildV(fmt.Sprintf("##num%d", num), imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.footerHeight}, false, 0)
-	defer imgui.EndChild()
-
 	var missile *video.MissileSprite
 	var realMissile *video.MissileSprite
 	var realPlayer *video.PlayerSprite

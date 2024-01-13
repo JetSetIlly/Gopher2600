@@ -74,7 +74,7 @@ func (win *winTracker) playmodeDraw() bool {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{494, 274}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{658, 469}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{-1, 200}, imgui.Vec2{-1, 1000})
+	win.img.setReasonableWindowConstraints()
 
 	if imgui.BeginV(win.playmodeID(win.id()), &win.playmodeOpen, imgui.WindowFlagsNone) {
 		win.draw()
@@ -95,7 +95,7 @@ func (win *winTracker) debuggerDraw() bool {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{494, 274}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{658, 469}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{-1, 200}, imgui.Vec2{-1, 1000})
+	win.img.setReasonableWindowConstraints()
 
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		win.draw()
