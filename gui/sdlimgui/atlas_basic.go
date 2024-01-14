@@ -1,4 +1,4 @@
-//go:build imguifreetype
+//go:build !imguifreetype
 
 // This file is part of Gopher2600.
 //
@@ -15,16 +15,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package fonts
+package sdlimgui
 
-import _ "embed"
+import "github.com/inkyblackness/imgui-go/v4"
 
-//go:embed "JetBrainsMono-Regular.ttf"
-var JetBrainsMono []byte
+func usingFreetypeRendering() bool {
+	return false
+}
 
-// The first and last unicode points used in the application. We use this to
-// make sure we're using as small a font texture as possible.
-const (
-	JetBrainsMonoMin = '\u0003'
-	JetBrainsMonoMax = '\u00ff'
-)
+func setFontBuilderFlags(atlas imgui.FontAtlas) {
+}

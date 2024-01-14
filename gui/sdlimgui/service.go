@@ -36,7 +36,7 @@ func (img *SdlImgui) Service() {
 	// handle font reset procedure
 	if img.resetFonts >= 1 {
 		if img.resetFonts == 1 {
-			err = img.fonts.initialise(img.rnd, img.prefs)
+			err = img.fonts.initialise(img.plt, img.rnd, img.prefs)
 			if err != nil {
 				panic(err)
 			}

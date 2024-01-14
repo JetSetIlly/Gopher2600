@@ -17,96 +17,12 @@
 
 package sdlimgui
 
-import (
-	"fmt"
+import "github.com/inkyblackness/imgui-go/v4"
 
-	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/gui/fonts"
-)
-
-func (fnts *fontAtlas) isFreeType() bool {
+func usingFreetypeRendering() bool {
 	return true
 }
 
-func (fnts *fontAtlas) setDefaultFont(prefs *preferences) error {
-	defaultFontSize := float32(prefs.guiFont.Get().(float64))
-	if fnts.defaultFont != 0 && defaultFontSize == fnts.defaultFontSize {
-		return nil
-	}
-
-	atlas := imgui.CurrentIO().Fonts()
+func setFontBuilderFlags(atlas imgui.FontAtlas) {
 	atlas.SetFontBuilderFlags(imgui.FreeTypeBuilderFlagsForceAutoHint)
-
-	// load gui font (default)
-	cfg := imgui.NewFontConfig()
-	defer cfg.Delete()
-	cfg.SetPixelSnapH(true)
-	if int(defaultFontSize)%2 == 0.0 {
-		cfg.SetGlyphOffsetY(1.0)
-	}
-
-	var builder imgui.GlyphRangesBuilder
-	builder.Add(fonts.JetBrainsMonoMin, fonts.JetBrainsMonoMax)
-
-	fnts.defaultFontSize = float32(defaultFontSize)
-	fnts.defaultFont = atlas.AddFontFromMemoryTTFV(fonts.JetBrainsMono, fnts.defaultFontSize, cfg, builder.Build().GlyphRanges)
-	if fnts.defaultFont == 0 {
-		return fmt.Errorf("font: error loading JetBrainsMono font from memory")
-	}
-
-	fnts.mergeFontAwesome(fnts.defaultFontSize, 1.0)
-
-	return nil
-}
-
-func (fnts *fontAtlas) sourceCodeFont(prefs *preferences) error {
-	codeSize := float32(prefs.codeFont.Get().(float64))
-	if fnts.code != 0 && codeSize == fnts.codeSize {
-		return nil
-	}
-
-	atlas := imgui.CurrentIO().Fonts()
-
-	cfg := imgui.NewFontConfig()
-	defer cfg.Delete()
-	cfg.SetPixelSnapH(true)
-
-	var builder imgui.GlyphRangesBuilder
-	builder.Add(fonts.JetBrainsMonoMin, fonts.JetBrainsMonoMax)
-
-	fnts.codeSize = codeSize
-	fnts.code = atlas.AddFontFromMemoryTTFV(fonts.JetBrainsMono, fnts.codeSize, cfg, builder.Build().GlyphRanges)
-	if fnts.code == 0 {
-		return fmt.Errorf("font: error loading JetBrainsMono font from memory")
-	}
-
-	fnts.mergeFontAwesome(fnts.codeSize, 0.0)
-
-	return nil
-}
-
-func (fnts *fontAtlas) terminalFont(prefs *preferences) error {
-	terminalSize := float32(prefs.terminalFont.Get().(float64))
-	if fnts.terminal != 0 && terminalSize == fnts.terminalSize {
-		return nil
-	}
-
-	atlas := imgui.CurrentIO().Fonts()
-
-	cfg := imgui.NewFontConfig()
-	defer cfg.Delete()
-	cfg.SetPixelSnapH(true)
-
-	var builder imgui.GlyphRangesBuilder
-	builder.Add(fonts.JetBrainsMonoMin, fonts.JetBrainsMonoMax)
-
-	fnts.terminalSize = terminalSize
-	fnts.terminal = atlas.AddFontFromMemoryTTFV(fonts.JetBrainsMono, fnts.terminalSize, cfg, builder.Build().GlyphRanges)
-	if fnts.terminal == 0 {
-		return fmt.Errorf("font: error loading JetBrainsMono font from memory")
-	}
-
-	fnts.mergeFontAwesome(fnts.terminalSize, 0.0)
-
-	return nil
 }

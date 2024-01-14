@@ -261,6 +261,16 @@ func (plt *platform) displaySize() [2]float32 {
 	return [2]float32{float32(w), float32(h)}
 }
 
+// displayDPI returns the dots/inch for the display the window is in
+func (plt *platform) displayDPI() (float32, error) {
+	ww, _ := plt.window.GetSize()
+	dw, _ := plt.window.GLGetDrawableSize()
+	dpiScale := float32(ww) / float32(dw)
+
+	_, dpi, _, err := sdl.GetDisplayDPI(0)
+	return dpi * dpiScale, err
+}
+
 // framebufferSize returns the dimension of the framebuffer.
 func (plt *platform) framebufferSize() [2]float32 {
 	w, h := plt.window.GLGetDrawableSize()

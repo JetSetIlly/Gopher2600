@@ -607,39 +607,34 @@ func (win *winPrefs) drawPlusROMTab() {
 func (win *winPrefs) drawUITab() {
 	imgui.Spacing()
 
-	if !win.img.fonts.isFreeType() {
-		imgui.Text("No options for UI in this version of Gopher2600")
-		return
-	}
-
 	if imgui.CollapsingHeaderV("Font Sizing and Spacing", imgui.TreeNodeFlagsDefaultOpen) {
 		imgui.Spacing()
 
 		var resetFonts bool
 
 		const (
-			minFontSize = 10.0
-			maxFontSize = 30.0
+			minFontSize = 8
+			maxFontSize = 30
 		)
 
 		// flags to be used in float slider
 		sliderFlags := imgui.SliderFlagsAlwaysClamp | imgui.SliderFlagsNoInput
 
 		// gui font
-		guiSize := float32(win.img.prefs.guiFont.Get().(float64))
-		if imgui.SliderFloatV("##guiFontSizeSlider", &guiSize, minFontSize, maxFontSize, "%0.1fpt", sliderFlags) {
-			win.img.prefs.guiFont.Set(guiSize)
+		guiSize := int32(win.img.prefs.guiFontSize.Get().(int))
+		if imgui.SliderIntV("##guiFontSizeSlider", &guiSize, minFontSize, maxFontSize, "%dpt", sliderFlags) {
+			win.img.prefs.guiFontSize.Set(guiSize)
 		}
 		if imgui.IsItemDeactivatedAfterEdit() {
 			resetFonts = true
 		}
 		imgui.SameLineV(0, 5)
 
-		guiSizeS := fmt.Sprintf("%0.1f", guiSize)
-		if imguiFloatingPointInput("GUI Font Size##guiFontSize", 5, &guiSizeS) {
-			if sz, err := strconv.ParseFloat(guiSizeS, 32); err == nil {
+		guiSizeS := fmt.Sprintf("%d", guiSize)
+		if imguiDecimalInput("GUI Font Size##guiFontSize", 3, &guiSizeS) {
+			if sz, err := strconv.ParseInt(guiSizeS, 10, 32); err == nil {
 				if sz >= minFontSize && sz <= maxFontSize {
-					win.img.prefs.guiFont.Set(sz)
+					win.img.prefs.guiFontSize.Set(sz)
 					resetFonts = true
 				}
 			}
@@ -648,20 +643,20 @@ func (win *winPrefs) drawUITab() {
 		imgui.Spacing()
 
 		// terminal font
-		terminalSize := float32(win.img.prefs.terminalFont.Get().(float64))
-		if imgui.SliderFloatV("##terminalFontSizeSlider", &terminalSize, minFontSize, maxFontSize, "%0.1fpt", sliderFlags) {
-			win.img.prefs.terminalFont.Set(terminalSize)
+		terminalSize := int32(win.img.prefs.terminalFontSize.Get().(int))
+		if imgui.SliderIntV("##terminalFontSizeSlider", &terminalSize, minFontSize, maxFontSize, "%dpt", sliderFlags) {
+			win.img.prefs.terminalFontSize.Set(terminalSize)
 		}
 		if imgui.IsItemDeactivatedAfterEdit() {
 			resetFonts = true
 		}
 		imgui.SameLineV(0, 5)
 
-		terminalSizeS := fmt.Sprintf("%0.1f", terminalSize)
-		if imguiFloatingPointInput("Terminal Font Size##terminalFontSize", 5, &terminalSizeS) {
-			if sz, err := strconv.ParseFloat(terminalSizeS, 32); err == nil {
+		terminalSizeS := fmt.Sprintf("%d", terminalSize)
+		if imguiDecimalInput("Terminal Font Size##terminalFontSize", 3, &terminalSizeS) {
+			if sz, err := strconv.ParseInt(terminalSizeS, 10, 32); err == nil {
 				if sz >= minFontSize && sz <= maxFontSize {
-					win.img.prefs.terminalFont.Set(sz)
+					win.img.prefs.terminalFontSize.Set(sz)
 					resetFonts = true
 				}
 			}
@@ -670,20 +665,20 @@ func (win *winPrefs) drawUITab() {
 		imgui.Spacing()
 
 		// code font
-		codeSize := float32(win.img.prefs.codeFont.Get().(float64))
-		if imgui.SliderFloatV("##codeFontSizeSlider", &codeSize, minFontSize, maxFontSize, "%0.1fpt", sliderFlags) {
-			win.img.prefs.codeFont.Set(codeSize)
+		codeSize := int32(win.img.prefs.codeFontSize.Get().(int))
+		if imgui.SliderIntV("##codeFontSizeSlider", &codeSize, minFontSize, maxFontSize, "%dpt", sliderFlags) {
+			win.img.prefs.codeFontSize.Set(codeSize)
 		}
 		if imgui.IsItemDeactivatedAfterEdit() {
 			resetFonts = true
 		}
 		imgui.SameLineV(0, 5)
 
-		codeSizeS := fmt.Sprintf("%0.1f", codeSize)
-		if imguiFloatingPointInput("Code Font Size##codeFontSize", 5, &codeSizeS) {
-			if sz, err := strconv.ParseFloat(codeSizeS, 32); err == nil {
+		codeSizeS := fmt.Sprintf("%d", codeSize)
+		if imguiDecimalInput("Code Font Size##codeFontSize", 3, &codeSizeS) {
+			if sz, err := strconv.ParseInt(codeSizeS, 10, 32); err == nil {
 				if sz >= minFontSize && sz <= maxFontSize {
-					win.img.prefs.codeFont.Set(sz)
+					win.img.prefs.codeFontSize.Set(sz)
 					resetFonts = true
 				}
 			}

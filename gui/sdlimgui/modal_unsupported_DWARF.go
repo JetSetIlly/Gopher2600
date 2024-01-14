@@ -58,7 +58,7 @@ func (img *SdlImgui) modalDrawUnsupportedDWARF() {
 		imgui.Separator()
 		imgui.Spacing()
 		sz := imgui.ContentRegionAvail()
-		sz.Y = img.fonts.defaultFontSize
+		sz.Y = img.fonts.guiSize
 		sz.Y += imgui.CurrentStyle().CellPadding().Y * 2
 		sz.Y += imgui.CurrentStyle().FramePadding().Y * 2
 		if imgui.ButtonV("Continue without DWARF data", sz) {

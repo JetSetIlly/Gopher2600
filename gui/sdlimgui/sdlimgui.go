@@ -312,7 +312,7 @@ func (img *SdlImgui) draw() {
 		return
 	}
 
-	imgui.PushFont(img.fonts.defaultFont)
+	imgui.PushFont(img.fonts.gui)
 	defer imgui.PopFont()
 
 	if mode == govern.ModePlay {

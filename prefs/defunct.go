@@ -60,6 +60,9 @@ var defunct = []string{
 	"plusrom.id", // replaced with plusrom.id_v2.1.1
 	"crt.noise",
 	"crt.noiseLevel",
+	"sdlimgui.fonts.gui",
+	"sdlimgui.fonts.terminal",
+	"sdlimgui.fonts.code",
 }
 
 // returns true if string is in list of defunct values.

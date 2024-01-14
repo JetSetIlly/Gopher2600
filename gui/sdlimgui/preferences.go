@@ -63,9 +63,9 @@ type preferences struct {
 	notificationVisibility    prefs.Float
 
 	// fonts
-	guiFont             prefs.Float
-	terminalFont        prefs.Float
-	codeFont            prefs.Float
+	guiFontSize         prefs.Int
+	terminalFontSize    prefs.Int
+	codeFontSize        prefs.Int
 	codeFontLineSpacing prefs.Int
 
 	// display
@@ -101,9 +101,9 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	p.coprocDevNotification.Set(true)
 	p.coprocDevNotification.Set(true)
 	p.notificationVisibility.Set(0.75)
-	p.guiFont.Set(13.0)
-	p.terminalFont.Set(13.0)
-	p.codeFont.Set(15.0)
+	p.guiFontSize.Set(13)
+	p.terminalFontSize.Set(12)
+	p.codeFontSize.Set(15)
 	p.codeFontLineSpacing.Set(2.0)
 	p.frameQueueAuto.Set(false)
 	p.frameQueue.Set(5)
@@ -177,15 +177,15 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	// playmode audio mute options later
 
 	// fonts (only used when compiled with imguifreetype build tag)
-	err = p.dsk.Add("sdlimgui.fonts.gui", &p.guiFont)
+	err = p.dsk.Add("sdlimgui.fonts.size.gui", &p.guiFontSize)
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("sdlimgui.fonts.terminal", &p.terminalFont)
+	err = p.dsk.Add("sdlimgui.fonts.size.terminal", &p.terminalFontSize)
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("sdlimgui.fonts.code", &p.codeFont)
+	err = p.dsk.Add("sdlimgui.fonts.size.code", &p.codeFontSize)
 	if err != nil {
 		return nil, err
 	}

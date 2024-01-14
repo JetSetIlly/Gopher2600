@@ -131,3 +131,13 @@ const (
 	HackMin = '\u0003'
 	HackMax = '\u1ef9'
 )
+
+//go:embed "JetBrainsMono-Regular.ttf"
+var JetBrainsMono []byte
+
+// The first and last unicode points used in the application. We use this to
+// make sure we're using as small a font texture as possible.
+const (
+	JetBrainsMonoMin = '\u0003'
+	JetBrainsMonoMax = '\u00ff'
+)

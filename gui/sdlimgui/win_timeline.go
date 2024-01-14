@@ -240,7 +240,7 @@ func (win *winTimeline) drawTrace() {
 	)
 
 	// the amount to allow for the icons when centering etc.
-	iconRadius := win.img.fonts.defaultFontSize / 2
+	iconRadius := win.img.fonts.guiSize / 2
 
 	// the width that can be seen in the window at any one time. reduce by the
 	// iconRadius*2 value to allow for the TV icon (current frame icon) when it
