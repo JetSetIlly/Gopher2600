@@ -29,3 +29,4 @@ armcode.map
 *.jpg
 *.bin
 *.macro
+go.work

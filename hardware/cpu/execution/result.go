@@ -35,6 +35,11 @@ import (
 // Defn of nil means the opcode hasn't even been decoded.
 type Result struct {
 	// a reference to the instruction definition
+	//
+	// * this field can be nil and should be checked before referencing. note
+	// that we could make this a non-pointer field but we would still need to
+	// check if the definition is valid which would require a flag in the
+	// Definition type. a pointer check is just as good
 	Defn *instructions.Definition
 
 	// the number of bytes read during instruction decode. if this value is

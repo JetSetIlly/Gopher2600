@@ -248,7 +248,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 					trg = &target{
 						label: "Instruction Effect",
 						value: func() targetValue {
-							if !dbg.vcs.CPU.LastResult.Final {
+							if !dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.LastResult.Defn == nil {
 								return -1
 							}
 							return int(dbg.vcs.CPU.LastResult.Defn.Effect)

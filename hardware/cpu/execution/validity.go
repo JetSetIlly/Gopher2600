@@ -20,6 +20,10 @@ import "fmt"
 // IsValid checks whether the instance of Result contains information
 // consistent with the instruction definition.
 func (r Result) IsValid() error {
+	if r.Defn == nil {
+		return fmt.Errorf("cpu: execution result has no instruction definition")
+	}
+
 	if !r.Final {
 		return fmt.Errorf("cpu: execution not finalised (bad opcode?)")
 	}

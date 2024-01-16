@@ -107,11 +107,12 @@ func (e *Entry) updateExecutionEntry(result execution.Result) {
 // the number of cycles in the definition. for executed branch instructions this
 // will always be the case.
 func (e *Entry) Cycles() string {
+	// the Defn field may be unassigned
+	if e.Result.Defn == nil {
+		return "?"
+	}
+
 	if e.Level < EntryLevelExecuted {
-		// the Defn field may be unassigned
-		if e.Result.Defn == nil {
-			return "-"
-		}
 		return e.Result.Defn.Cycles.Formatted
 	}
 
@@ -137,7 +138,7 @@ func (e *Entry) Notes() string {
 
 	s := strings.Builder{}
 
-	if e.Result.Defn.IsBranch() {
+	if e.Result.Defn != nil && e.Result.Defn.IsBranch() {
 		if e.Result.BranchSuccess {
 			s.WriteString("branch succeeded ")
 		} else {

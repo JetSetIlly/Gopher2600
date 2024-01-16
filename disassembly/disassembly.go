@@ -25,7 +25,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
-	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -299,11 +298,8 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 	// address of instruction
 	e.Address = fmt.Sprintf("$%04x", result.Address)
 
-	// protect against empty definitions. we shouldn't hit this condition from
-	// the disassembly package itself, but it is possible to get it from ad-hoc
-	// formatting from GUI interfaces (see CPU window in sdlimgui)
+	// if definition is nil then set the operator field to ??? and return with no further formatting
 	if result.Defn == nil {
-		e.Result.Defn = &instructions.Definition{}
 		e.Operator = "???"
 		return e
 	}

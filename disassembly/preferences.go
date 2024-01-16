@@ -119,7 +119,7 @@ func (dsm *Disassembly) setCartMirror() {
 
 			// branch instructions need special handling because for readability we
 			// translate the offset to an absolute address, which has changed.
-			if e.Result.Defn.IsBranch() {
+			if e.Result.Defn != nil && e.Result.Defn.IsBranch() {
 				// mask off bits that indicate the cartridge/segment origin and reset
 				// them with the chosen origin
 				a := e.Result.Address&memorymap.CartridgeBits | dsm.Prefs.mirrorOrigin

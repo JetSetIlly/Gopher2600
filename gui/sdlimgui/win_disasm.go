@@ -751,7 +751,9 @@ func (win *winDisasm) drawEntry(currBank mapper.BankInfo, e *disassembly.Entry, 
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
 		defer imgui.PopStyleColor()
 	}
-	imgui.Text(e.Result.Defn.Cycles.Formatted)
+	if e.Result.Defn != nil {
+		imgui.Text(e.Result.Defn.Cycles.Formatted)
+	}
 
 	// notes column
 	imgui.TableNextColumn()

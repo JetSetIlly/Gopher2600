@@ -147,6 +147,10 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 			return poking, nil
 		}
 
+		if searchState.CPU.LastResult.Defn == nil {
+			return deepPoking{}, fmt.Errorf("unexpected CPU result with a nil definition")
+		}
+
 		// writes to a register can happen from another register, and immediate
 		// value, or an address in memory (most probably from the cartridge or
 		// VCS RAM)
