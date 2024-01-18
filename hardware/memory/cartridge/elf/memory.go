@@ -507,14 +507,16 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 					}
 
 				default:
-					if sym.Section != elf.SHN_UNDEF {
-						n := ef.Sections[sym.Section].Name
-						if idx, ok := mem.sectionsByName[n]; !ok {
-							logger.Logf("ELF", "can not find section (%s) while relocating %s", n, sym.Name)
-						} else {
-							tgt = mem.sections[idx].origin
-							tgt += uint32(sym.Value)
-						}
+					if sym.Section == elf.SHN_UNDEF {
+						return fmt.Errorf("%s is undefined", sym.Name)
+					}
+
+					n := ef.Sections[sym.Section].Name
+					if idx, ok := mem.sectionsByName[n]; !ok {
+						return fmt.Errorf("can not find section (%s) while relocating %s", n, sym.Name)
+					} else {
+						tgt = mem.sections[idx].origin
+						tgt += uint32(sym.Value)
 					}
 				}
 

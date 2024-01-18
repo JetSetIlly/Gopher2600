@@ -141,7 +141,7 @@ func NewElf(env *environment.Environment, pathToROM string, inACE bool) (mapper.
 	cart.mem.Plumb(cart.arm)
 	err = cart.mem.decode(ef)
 	if err != nil {
-		return cart, nil
+		return nil, fmt.Errorf("ELF: %w", err)
 	}
 
 	cart.arm.SetByteOrder(ef.ByteOrder)
