@@ -815,7 +815,7 @@ func (tv *Television) SetSpec(spec string) error {
 	}
 
 	if tv.vcs != nil {
-		tv.vcs.SetClockSpeed(spec)
+		tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec.ID)
 	}
 
 	return nil
