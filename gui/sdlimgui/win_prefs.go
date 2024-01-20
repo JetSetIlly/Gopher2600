@@ -511,7 +511,7 @@ currently enabled.`)
 func (win *winPrefs) drawARMTab() {
 	imgui.Spacing()
 
-	if win.img.cache.VCS.Mem.Cart.GetCoProcBus() != nil {
+	if win.img.cache.VCS.Mem.Cart.GetCoProcBus() == nil {
 		imgui.Text("Current ROM does not have an ARM coprocessor")
 		imguiSeparator()
 	}
