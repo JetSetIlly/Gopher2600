@@ -22,6 +22,7 @@ import (
 	"os/signal"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/jetsetilly/gopher2600/bots/wrangler"
@@ -398,7 +399,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	}
 
 	// connect Interrupt signal to dbg.events.intChan
-	signal.Notify(dbg.events.IntEvents, os.Interrupt)
+	signal.Notify(dbg.events.IntEvents, os.Interrupt, syscall.SIGHUP)
 
 	// allocate memory for user input
 	dbg.input = make([]byte, 255)
@@ -1422,6 +1423,7 @@ func (dbg *Debugger) Plugged(port plugging.PortID, peripheral plugging.Periphera
 }
 
 func (dbg *Debugger) reloadCartridge() error {
+	dbg.setState(govern.Initialising)
 	spec := dbg.vcs.TV.GetFrameInfo().Spec.ID
 
 	err := dbg.insertCartridge("")
@@ -1448,7 +1450,6 @@ func (dbg *Debugger) reloadCartridge() error {
 // reloadCartridge() for that
 func (dbg *Debugger) ReloadCartridge() {
 	dbg.PushFunctionImmediate(func() {
-		dbg.setState(govern.Initialising)
 		dbg.unwindLoop(dbg.reloadCartridge)
 	})
 }

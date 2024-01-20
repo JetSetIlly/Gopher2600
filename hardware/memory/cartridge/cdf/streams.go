@@ -42,7 +42,7 @@ type datastream struct {
 // Peek returns the value at the Nth increment of the base pointer. Useful for
 // predicting or peeking at what the Nth value of a stream will be.
 func (ds datastream) Peek(y int, mem mapper.CartStatic) uint8 {
-	m := mem.(*Static).dataRAM
+	m := mem.(*Static).dataRAM.data
 
 	p := ds.AfterCALLFN
 	p += (ds.Increment << ds.incrementShift) * uint32(y)
@@ -56,18 +56,18 @@ func (ds datastream) Peek(y int, mem mapper.CartStatic) uint8 {
 
 func (cart *cdf) readDatastreamPointer(reg int) uint32 {
 	idx := cart.version.fetcherBase + (uint32(reg) * 4)
-	return uint32(cart.state.static.driverRAM[idx]) |
-		uint32(cart.state.static.driverRAM[idx+1])<<8 |
-		uint32(cart.state.static.driverRAM[idx+2])<<16 |
-		uint32(cart.state.static.driverRAM[idx+3])<<24
+	return uint32(cart.state.static.driverRAM.data[idx]) |
+		uint32(cart.state.static.driverRAM.data[idx+1])<<8 |
+		uint32(cart.state.static.driverRAM.data[idx+2])<<16 |
+		uint32(cart.state.static.driverRAM.data[idx+3])<<24
 }
 
 func (cart *cdf) readDatastreamIncrement(inc int) uint32 {
 	idx := cart.version.incrementBase + (uint32(inc) * 4)
-	return uint32(cart.state.static.driverRAM[idx]) |
-		uint32(cart.state.static.driverRAM[idx+1])<<8 |
-		uint32(cart.state.static.driverRAM[idx+2])<<16 |
-		uint32(cart.state.static.driverRAM[idx+3])<<24
+	return uint32(cart.state.static.driverRAM.data[idx]) |
+		uint32(cart.state.static.driverRAM.data[idx+1])<<8 |
+		uint32(cart.state.static.driverRAM.data[idx+2])<<16 |
+		uint32(cart.state.static.driverRAM.data[idx+3])<<24
 }
 
 func (cart *cdf) updateDatastreamPointer(reg int, data uint32) {
@@ -76,10 +76,10 @@ func (cart *cdf) updateDatastreamPointer(reg int, data uint32) {
 	}
 
 	idx := cart.version.fetcherBase + (uint32(reg) * 4)
-	cart.state.static.driverRAM[idx] = uint8(data)
-	cart.state.static.driverRAM[idx+1] = uint8(data >> 8)
-	cart.state.static.driverRAM[idx+2] = uint8(data >> 16)
-	cart.state.static.driverRAM[idx+3] = uint8(data >> 24)
+	cart.state.static.driverRAM.data[idx] = uint8(data)
+	cart.state.static.driverRAM.data[idx+1] = uint8(data >> 8)
+	cart.state.static.driverRAM.data[idx+2] = uint8(data >> 16)
+	cart.state.static.driverRAM.data[idx+3] = uint8(data >> 24)
 }
 
 // updateDatastreamIncrement is not used by the CDF mapper itself except as a
@@ -90,20 +90,20 @@ func (cart *cdf) updateDatastreamIncrement(reg int, data uint32) {
 	}
 
 	idx := cart.version.incrementBase + (uint32(reg) * 4)
-	cart.state.static.driverRAM[idx] = uint8(data)
-	cart.state.static.driverRAM[idx+1] = uint8(data >> 8)
-	cart.state.static.driverRAM[idx+2] = uint8(data >> 16)
-	cart.state.static.driverRAM[idx+3] = uint8(data >> 24)
+	cart.state.static.driverRAM.data[idx] = uint8(data)
+	cart.state.static.driverRAM.data[idx+1] = uint8(data >> 8)
+	cart.state.static.driverRAM.data[idx+2] = uint8(data >> 16)
+	cart.state.static.driverRAM.data[idx+3] = uint8(data >> 24)
 }
 
 func (cart *cdf) readMusicFetcher(mus int) uint32 {
 	// CDFJ+ differences ??
 
 	addr := cart.version.musicBase + (uint32(mus) * 4)
-	return uint32(cart.state.static.driverRAM[addr]) |
-		uint32(cart.state.static.driverRAM[addr+1])<<8 |
-		uint32(cart.state.static.driverRAM[addr+2])<<16 |
-		uint32(cart.state.static.driverRAM[addr+3])<<24
+	return uint32(cart.state.static.driverRAM.data[addr]) |
+		uint32(cart.state.static.driverRAM.data[addr+1])<<8 |
+		uint32(cart.state.static.driverRAM.data[addr+2])<<16 |
+		uint32(cart.state.static.driverRAM.data[addr+3])<<24
 }
 
 func (cart *cdf) streamData(reg int) uint8 {
@@ -111,10 +111,10 @@ func (cart *cdf) streamData(reg int) uint8 {
 	inc := cart.readDatastreamIncrement(reg)
 
 	idx := int(addr >> cart.version.fetcherShift)
-	if idx >= len(cart.state.static.dataRAM) {
+	if idx >= len(cart.state.static.dataRAM.data) {
 		return 0
 	}
-	value := cart.state.static.dataRAM[idx]
+	value := cart.state.static.dataRAM.data[idx]
 
 	addr += inc << cart.version.incrementShift
 	cart.updateDatastreamPointer(reg, addr)

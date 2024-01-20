@@ -196,8 +196,8 @@ type CartRegisters interface {
 // however be changed by any coprocessor on the cartridge.
 //
 // (Historically, the StaticBus and related types were added to support the DPC
-// mapper type, where the memory indeed never can change. When the later
-// cartridge mappers, DPC+ and CDF, were added the name stuck).
+// mapper type, where the memory indeed never can change. When later cartridge
+// types (DPC+ and CDF)  were added, the name stuck).
 type CartStaticBus interface {
 	// GetStatic returns a copy of the cartridge's static areas
 	GetStatic() CartStatic
@@ -212,8 +212,8 @@ type CartStaticBus interface {
 	//
 	// Returns false if segment is unknown or idx is out of range.
 	//
-	// PutStatic() will be working on the original data so PutStatic should be run
-	// in the same goroutine as the main emulation.
+	// PutStatic() will be working on the original data so PutStatic() should be
+	// run in the same goroutine as the main emulation.
 	PutStatic(segment string, idx int, data uint8) bool
 }
 

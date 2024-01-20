@@ -100,7 +100,10 @@ func NewCDF(env *environment.Environment, version string, data []byte) (mapper.C
 	}
 
 	// initialise static memory
-	cart.state.static = cart.newCDFstatic(env, data, cart.version)
+	cart.state.static, err = cart.newCDFstatic(env, cart.version, data)
+	if err != nil {
+		return nil, fmt.Errorf("CDF: %w", err)
+	}
 
 	// datastream registers need to reference the incrementShift and
 	// fetcherShift values in the version type. we make a copy of these values
@@ -207,10 +210,10 @@ func (cart *cdf) Access(addr uint16, peek bool) (uint8, uint8, error) {
 			// get current address for the data stream
 			jmp := cart.readDatastreamPointer(reg)
 			idx := int(jmp >> cart.version.fetcherShift)
-			if idx >= len(cart.state.static.dataRAM) {
+			if idx >= len(cart.state.static.dataRAM.data) {
 				return 0, mapper.CartDrivenPins, nil
 			}
-			data = cart.state.static.dataRAM[idx]
+			data = cart.state.static.dataRAM.data[idx]
 			jmp += 1 << cart.version.fetcherShift
 			cart.updateDatastreamPointer(reg, jmp)
 
@@ -311,10 +314,10 @@ func (cart *cdf) AccessVolatile(addr uint16, data uint8, poke bool) error {
 
 		// write data to ARM RAM
 		idx := int(v >> cart.version.fetcherShift)
-		if idx >= len(cart.state.static.dataRAM) {
+		if idx >= len(cart.state.static.dataRAM.data) {
 			return nil
 		}
-		cart.state.static.dataRAM[idx] = data
+		cart.state.static.dataRAM.data[idx] = data
 
 		// advance address value
 		v += 1 << cart.version.fetcherShift
@@ -615,27 +618,6 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 
 	r.InterruptServiced = true
 	return r, nil
-}
-
-// HotLoad implements the mapper.CartHotLoader interface.
-func (cart *cdf) HotLoad(data []byte) error {
-	if len(data) == 0 {
-		return fmt.Errorf("CDF: empty data")
-	}
-
-	for k := 0; k < cart.NumBanks(); k++ {
-		cart.banks[k] = make([]uint8, cart.bankSize)
-		offset := k * cart.bankSize
-		offset += driverSize + customSize
-		cart.banks[k] = data[offset : offset+cart.bankSize]
-	}
-
-	cart.state.static.HotLoad(data)
-
-	cart.arm.Plumb(nil, cart.state.static, cart)
-	cart.arm.ClearCaches()
-
-	return nil
 }
 
 // CoProcExecutionState implements the coprocessor.CartCoProcBus interface.

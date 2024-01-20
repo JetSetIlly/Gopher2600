@@ -53,19 +53,22 @@ type version struct {
 	// bytes are in the DSPTR depends on the size of the CDF ROM.
 	fetcherMask uint32
 
-	// addresses (driver is always in the same location)
-	driverOriginROM uint32
-	driverMemtopROM uint32
-	driverOriginRAM uint32
-	driverMemtopRAM uint32
+	// segment origins
+	driverROMOrigin    uint32
+	customROMOrigin    uint32
+	driverRAMOrigin    uint32
+	dataRAMOrigin      uint32
+	variablesRAMOrigin uint32
 
-	// addresses (different for CDFJ+)
-	customOriginROM    uint32
-	customMemtopROM    uint32
-	dataOriginRAM      uint32
-	dataMemtopRAM      uint32
-	variablesOriginRAM uint32
-	variablesMemtopRAM uint32
+	// the memtop values in the version struct are the absolute maximum size
+	// supported by the format. the actual memtop may be different depending on
+	// the cartridge. the real memtop for a segment should not exceed these
+	// maximum values
+	driverROMMemtop    uint32
+	customROMMemtop    uint32
+	driverRAMMemtop    uint32
+	dataRAMMemtop      uint32
+	variablesRAMMemtop uint32
 
 	// entry point into ARM program
 	entrySP uint32
@@ -108,43 +111,38 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 	ver := version{
 		mmap: mmap,
 
-		// addresses (driver is always in the same location)
-		driverOriginROM: mmap.FlashOrigin,
-		driverMemtopROM: mmap.FlashOrigin | 0x000007ff, // 2k
-		driverOriginRAM: mmap.SRAMOrigin,
-		driverMemtopRAM: mmap.SRAMOrigin | 0x000007ff, // 2k
+		driverROMOrigin: mmap.FlashOrigin,
+		driverROMMemtop: mmap.FlashOrigin | 0x000007ff, // 2k
+		customROMOrigin: mmap.FlashOrigin | 0x00000800,
+		customROMMemtop: mmap.FlashMemtop,
+		driverRAMOrigin: mmap.SRAMOrigin,
+		driverRAMMemtop: mmap.SRAMOrigin | 0x000007ff, // 2k
+		dataRAMOrigin:   mmap.SRAMOrigin | 0x00000800,
 
-		// addresses (different for CDFJ+)
-		customOriginROM:    mmap.FlashOrigin | 0x00000800,
-		dataOriginRAM:      mmap.SRAMOrigin | 0x00000800,
-		dataMemtopRAM:      mmap.SRAMOrigin | 0x000017ff,
-		variablesOriginRAM: mmap.SRAMOrigin | 0x00001800,
-		variablesMemtopRAM: mmap.SRAMOrigin | 0x00001fff,
+		// data RAM memtop is different for CDFJ+
+		dataRAMMemtop: mmap.SRAMOrigin | 0x000017ff,
+
+		// there is no variables segment in CDFJ+ so these value are reset in
+		// that instance
+		variablesRAMOrigin: mmap.SRAMOrigin | 0x00001800,
+		variablesRAMMemtop: mmap.SRAMOrigin | 0x00001fff,
 	}
 
-	// ROM memtop is the extent of the data
-	ver.customMemtopROM = ver.customOriginROM + uint32(len(data))
-
-	// entry point into ARM program
+	// entry point into ARM program (different for CDFJ+)
 	ver.entrySP = mmap.SRAMOrigin | 0x00001fdc
-	ver.entryLR = ver.customOriginROM
+	ver.entryLR = ver.customROMOrigin
 	ver.entryPC = ver.entryLR + 8
 
 	// different version of the CDF mapper have different addresses
 	switch v {
-	case "CDF0":
-		ver.submapping = "CDF0"
-		ver.fetcherBase = 0x06e0
-		ver.incrementBase = 0x0768
-		ver.musicBase = 0x07f0
-		ver.fastJMPmask = 0xff
-		ver.amplitudeRegister = 34
-		ver.fetcherShift = 20
-		ver.incrementShift = 12
-		ver.musicFetcherShift = 20
-		ver.fetcherMask = 0xf0000000
-
 	case "CDFJ+":
+		// data RAM memtop is different for CDFJ+
+		ver.dataRAMMemtop = mmap.SRAMOrigin | 0x00007fff
+
+		// variables segment concept not used in CDFJ+
+		ver.variablesRAMOrigin = 0x0
+		ver.variablesRAMMemtop = 0x0
+
 		ver.submapping = "CDFJ+"
 		ver.fetcherBase = 0x0098
 		ver.incrementBase = 0x0124
@@ -159,6 +157,7 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 		// CDFJ+ sets the MAMCR to full in the driver
 		ver.mmap.PreferredMAMCR = architecture.MAMfull
 
+		// entry point different for CDFJ+
 		idx := 0x17f8
 		ver.entryLR = uint32(data[idx])
 		ver.entryLR |= uint32(data[idx+1]) << 8
@@ -167,13 +166,7 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 		ver.entryLR &= 0xfffffffe
 		ver.entryPC = ver.entryLR
 
-		// data origin unchanged. memtop is changed
-		ver.dataMemtopRAM = mmap.SRAMOrigin | 0x00007fff
-
-		// variables concept not used in CDFJ+
-		ver.variablesOriginRAM = 0x0
-		ver.variablesMemtopRAM = 0x0
-
+		// stack top differnt for CDFJ+
 		idx = 0x17f4
 		ver.entrySP = uint32(data[idx])
 		ver.entrySP |= uint32(data[idx+1]) << 8
@@ -202,6 +195,18 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 		ver.musicBase = 0x01b0
 		ver.fastJMPmask = 0xfe
 		ver.amplitudeRegister = 35
+		ver.fetcherShift = 20
+		ver.incrementShift = 12
+		ver.musicFetcherShift = 20
+		ver.fetcherMask = 0xf0000000
+
+	case "CDF0":
+		ver.submapping = "CDF0"
+		ver.fetcherBase = 0x06e0
+		ver.incrementBase = 0x0768
+		ver.musicBase = 0x07f0
+		ver.fastJMPmask = 0xff
+		ver.amplitudeRegister = 34
 		ver.fetcherShift = 20
 		ver.incrementShift = 12
 		ver.musicFetcherShift = 20

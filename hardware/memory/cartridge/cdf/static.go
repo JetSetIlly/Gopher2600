@@ -16,68 +16,108 @@
 package cdf
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
+
+type segment struct {
+	name   string
+	data   []byte
+	origin uint32
+	memtop uint32
+}
+
+func (seg segment) snapshot() segment {
+	n := seg
+	n.data = make([]byte, len(seg.data))
+	copy(n.data, seg.data)
+	return n
+}
 
 // Static implements the mapper.CartStatic interface.
 type Static struct {
 	version version
 
 	// slices of cartData that should not be modified during execution
-	driverROM []byte
-	customROM []byte
+	driverROM segment
+	customROM segment
 
 	// slices of cartData that will be modified during execution
-	driverRAM []byte
-	dataRAM   []byte
+	driverRAM segment
+	dataRAM   segment
 
 	// variablesRAM might be absent in the case of CDFJ+
-	variablesRAM []byte
+	variablesRAM segment
 }
 
-func (cart *cdf) newCDFstatic(env *environment.Environment, cartData []byte, r version) *Static {
-	stc := Static{version: r}
-
-	// ARM driver
-	stc.driverROM = cartData[:driverSize]
-
-	// custom ARM program begins immediately after the ARM driver
-	stc.customROM = cartData[stc.version.customOriginROM-stc.version.mmap.FlashOrigin:]
-
-	// driver RAM is the same as driver ROM initially
-	stc.driverRAM = make([]byte, driverSize)
-	copy(stc.driverRAM, stc.driverROM)
-
-	// there is nothing in cartData to copy into the other RAM areas
-	stc.dataRAM = make([]byte, stc.version.dataMemtopRAM-stc.version.dataOriginRAM+1)
-
-	// variables ram is not used in CDFJ+
-	if stc.version.variablesOriginRAM != stc.version.variablesMemtopRAM {
-		stc.variablesRAM = make([]byte, stc.version.variablesMemtopRAM-stc.version.variablesOriginRAM+1)
+func (cart *cdf) newCDFstatic(env *environment.Environment, version version, cartData []byte) (*Static, error) {
+	stc := Static{
+		version: version,
 	}
 
+	// ARM driver
+	stc.driverROM.name = "Driver ROM"
+	stc.driverROM.data = cartData[:driverSize]
+	stc.driverROM.origin = stc.version.driverROMOrigin
+	stc.driverROM.memtop = stc.version.driverROMOrigin + uint32(len(stc.driverROM.data)) - 1
+	if stc.driverROM.memtop > stc.version.driverROMMemtop {
+		return nil, fmt.Errorf("driver ROM is too large")
+	}
+
+	// custom ARM program begins immediately after the ARM driver
+	stc.customROM.name = "Custom ROM"
+	stc.customROM.data = cartData[stc.version.customROMOrigin-stc.version.mmap.FlashOrigin:]
+	stc.customROM.origin = stc.version.customROMOrigin
+	stc.customROM.memtop = stc.version.customROMOrigin + uint32(len(stc.customROM.data)) - 1
+	if stc.customROM.memtop > stc.version.customROMMemtop {
+		return nil, fmt.Errorf("custom ROM is too large")
+	}
+
+	// RAM areas. because these areas are the ones that we are likely to show
+	// most often in UI, the RAM suffix has been omitted
+
+	stc.driverRAM.name = "Driver"
+	stc.driverRAM.data = make([]byte, len(stc.driverROM.data))
+	stc.driverRAM.origin = stc.version.driverRAMOrigin
+	stc.driverRAM.memtop = stc.version.driverRAMOrigin + uint32(len(stc.driverRAM.data)) - 1
+	if stc.driverRAM.memtop > stc.version.driverRAMMemtop {
+		return nil, fmt.Errorf("driver RAM is too large")
+	}
+	copy(stc.driverRAM.data, stc.driverROM.data)
+
+	stc.dataRAM.name = "Data"
+	stc.dataRAM.data = make([]byte, stc.version.dataRAMMemtop-stc.version.dataRAMOrigin+1)
+	stc.dataRAM.origin = stc.version.dataRAMOrigin
+	stc.dataRAM.memtop = stc.version.dataRAMMemtop
+
+	// variables ram is not used in CDFJ+
+	if stc.version.variablesRAMMemtop > stc.version.variablesRAMOrigin {
+		stc.variablesRAM.name = "Variables"
+		stc.variablesRAM.data = make([]byte, stc.version.variablesRAMMemtop-stc.version.variablesRAMOrigin+1)
+		stc.variablesRAM.origin = stc.version.variablesRAMOrigin
+		stc.variablesRAM.memtop = stc.version.variablesRAMMemtop
+	}
+
+	// randomise initial state if preference is set
 	if env.Prefs.RandomState.Get().(bool) {
-		for i := range stc.dataRAM {
-			stc.dataRAM[i] = uint8(env.Random.NoRewind(0xff))
+		for i := range stc.dataRAM.data {
+			stc.dataRAM.data[i] = uint8(env.Random.NoRewind(0xff))
 		}
 
-		if stc.variablesRAM != nil {
-			for i := range stc.variablesRAM {
-				stc.variablesRAM[i] = uint8(env.Random.NoRewind(0xff))
+		if stc.hasVariableSegment() {
+			for i := range stc.variablesRAM.data {
+				stc.variablesRAM.data[i] = uint8(env.Random.NoRewind(0xff))
 			}
 		}
 	}
 
-	return &stc
+	return &stc, nil
 }
 
-func (stc *Static) HotLoad(cartData []byte) {
-	// ARM driver
-	stc.driverROM = cartData[:driverSize]
-
-	// custom ARM program
-	stc.customROM = cartData[stc.version.customOriginROM-stc.version.mmap.FlashOrigin:]
+func (stc *Static) hasVariableSegment() bool {
+	return stc.variablesRAM.name != ""
 }
 
 // ResetVectors implements the arm7tdmi.SharedMemory interface.
@@ -92,16 +132,9 @@ func (mem *Static) IsExecutable(addr uint32) bool {
 
 func (stc *Static) Snapshot() *Static {
 	n := *stc
-	n.driverRAM = make([]byte, len(stc.driverRAM))
-	n.dataRAM = make([]byte, len(stc.dataRAM))
-	copy(n.driverRAM, stc.driverRAM)
-	copy(n.dataRAM, stc.dataRAM)
-
-	if stc.variablesRAM != nil {
-		n.variablesRAM = make([]byte, len(stc.variablesRAM))
-		copy(n.variablesRAM, stc.variablesRAM)
-	}
-
+	n.driverRAM = stc.driverRAM.snapshot()
+	n.dataRAM = stc.dataRAM.snapshot()
+	n.variablesRAM = stc.variablesRAM.snapshot()
 	return &n
 }
 
@@ -110,36 +143,36 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// tests arranged in order of most likely to be used
 
 	// data (RAM)
-	if addr >= stc.version.dataOriginRAM && addr <= stc.version.dataMemtopRAM {
-		return &stc.dataRAM, stc.version.dataOriginRAM
+	if addr >= stc.dataRAM.origin && addr <= stc.dataRAM.memtop {
+		return &stc.dataRAM.data, stc.dataRAM.origin
 	}
 
 	// variables (RAM)
-	if stc.variablesRAM != nil {
-		if addr >= stc.version.variablesOriginRAM && addr <= stc.version.variablesMemtopRAM {
-			return &stc.variablesRAM, stc.version.variablesOriginRAM
+	if stc.hasVariableSegment() {
+		if addr >= stc.variablesRAM.origin && addr <= stc.variablesRAM.memtop {
+			return &stc.variablesRAM.data, stc.variablesRAM.origin
 		}
 	}
 
 	// custom ARM code (ROM)
-	if addr >= stc.version.customOriginROM && addr <= stc.version.customMemtopROM {
+	if addr >= stc.customROM.origin && addr <= stc.customROM.memtop {
 		if write {
 			return nil, 0
 		}
-		return &stc.customROM, stc.version.customOriginROM
+		return &stc.customROM.data, stc.customROM.origin
 	}
 
 	// driver ARM code (RAM)
-	if addr >= stc.version.driverOriginRAM && addr <= stc.version.driverMemtopRAM {
-		return &stc.driverRAM, stc.version.driverOriginRAM
+	if addr >= stc.driverRAM.origin && addr <= stc.driverRAM.memtop {
+		return &stc.driverRAM.data, stc.driverRAM.origin
 	}
 
 	// driver ARM code (ROM)
-	if addr >= stc.version.driverOriginROM && addr <= stc.version.driverMemtopROM {
+	if addr >= stc.driverROM.origin && addr <= stc.driverROM.memtop {
 		if write {
 			return nil, 0
 		}
-		return &stc.driverROM, stc.version.driverOriginROM
+		return &stc.driverROM.data, stc.driverROM.origin
 	}
 
 	return nil, 0
@@ -149,21 +182,21 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 func (stc *Static) Segments() []mapper.CartStaticSegment {
 	segments := []mapper.CartStaticSegment{
 		{
-			Name:   "Driver",
-			Origin: stc.version.driverOriginRAM,
-			Memtop: stc.version.driverMemtopRAM,
+			Name:   stc.driverRAM.name,
+			Origin: stc.driverRAM.origin,
+			Memtop: stc.driverRAM.memtop,
 		},
 		{
-			Name:   "Data",
-			Origin: stc.version.dataOriginRAM,
-			Memtop: stc.version.dataMemtopRAM,
+			Name:   stc.dataRAM.name,
+			Origin: stc.dataRAM.origin,
+			Memtop: stc.dataRAM.memtop,
 		},
 	}
-	if stc.variablesRAM != nil {
+	if stc.hasVariableSegment() {
 		segments = append(segments, mapper.CartStaticSegment{
-			Name:   "Variables",
-			Origin: stc.version.variablesOriginRAM,
-			Memtop: stc.version.variablesMemtopRAM,
+			Name:   stc.variablesRAM.name,
+			Origin: stc.variablesRAM.origin,
+			Memtop: stc.variablesRAM.memtop,
 		})
 	}
 	return segments
@@ -172,12 +205,12 @@ func (stc *Static) Segments() []mapper.CartStaticSegment {
 // Reference implements the mapper.CartStatic interface
 func (stc *Static) Reference(segment string) ([]uint8, bool) {
 	switch segment {
-	case "Driver":
-		return stc.driverRAM, true
-	case "Data":
-		return stc.dataRAM, true
-	case "Variables":
-		return stc.variablesRAM, stc.variablesRAM != nil
+	case stc.driverRAM.name:
+		return stc.driverRAM.data, true
+	case stc.dataRAM.name:
+		return stc.dataRAM.data, true
+	case stc.variablesRAM.name:
+		return stc.variablesRAM.data, stc.hasVariableSegment()
 	}
 	return []uint8{}, false
 }
@@ -224,24 +257,24 @@ func (cart *cdf) GetStatic() mapper.CartStatic {
 // StaticWrite implements the mapper.CartStaticBus interface.
 func (cart *cdf) PutStatic(segment string, idx int, data uint8) bool {
 	switch segment {
-	case "Driver":
-		if idx >= len(cart.state.static.driverRAM) {
+	case cart.state.static.driverRAM.name:
+		if idx >= len(cart.state.static.driverRAM.data) {
 			return false
 		}
-		cart.state.static.driverRAM[idx] = data
+		cart.state.static.driverRAM.data[idx] = data
 
-	case "Data":
-		if idx >= len(cart.state.static.dataRAM) {
+	case cart.state.static.dataRAM.name:
+		if idx >= len(cart.state.static.dataRAM.data) {
 			return false
 		}
-		cart.state.static.dataRAM[idx] = data
+		cart.state.static.dataRAM.data[idx] = data
 
-	case "Variables":
-		if cart.state.static.variablesRAM != nil {
-			if idx >= len(cart.state.static.variablesRAM) {
+	case cart.state.static.variablesRAM.name:
+		if cart.state.static.hasVariableSegment() {
+			if idx >= len(cart.state.static.variablesRAM.data) {
 				return false
 			}
-			cart.state.static.variablesRAM[idx] = data
+			cart.state.static.variablesRAM.data[idx] = data
 		}
 
 	default:

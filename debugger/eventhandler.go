@@ -16,6 +16,8 @@
 package debugger
 
 import (
+	"syscall"
+
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 )
 
@@ -30,8 +32,13 @@ import (
 func (dbg *Debugger) readEventsHandler() error {
 	for {
 		select {
-		case <-dbg.events.IntEvents:
-			return terminal.UserInterrupt
+		case sig := <-dbg.events.IntEvents:
+			switch sig {
+			case syscall.SIGHUP:
+				dbg.reloadCartridge()
+			default:
+				return terminal.UserInterrupt
+			}
 
 		case ev := <-dbg.events.UserInput:
 			err := dbg.events.UserInputHandler(ev)
