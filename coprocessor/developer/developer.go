@@ -159,7 +159,6 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 	}
 
 	return nil
-
 }
 
 // HighAddress implements the coprocessor.CartCoProcDeveloper interface.
@@ -275,13 +274,11 @@ func (dev *Developer) OnYield(addr uint32, yield coprocessor.CoProcYield) {
 }
 
 // MemoryFault implements the coprocessor.CartCoProcDeveloper interface.
-func (dev *Developer) MemoryFault(event string, explanation faults.Category,
-	instructionAddr uint32, accessAddr uint32) string {
-
+func (dev *Developer) MemoryFault(event string, fault faults.Category, instructionAddr uint32, accessAddr uint32) {
 	dev.faultsLock.Lock()
 	defer dev.faultsLock.Unlock()
 
-	return dev.faults.NewEntry(faults.IllegalAddress, event, instructionAddr, accessAddr).String()
+	dev.faults.NewEntry(fault, event, instructionAddr, accessAddr)
 }
 
 // SetEmulationState is called by the emulation whenever state changes

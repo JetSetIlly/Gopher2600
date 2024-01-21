@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/fpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/peripherals"
@@ -498,12 +499,18 @@ func (arm *ARM) clock(cycles float32) {
 	}
 }
 
+func (arm *ARM) resetYield() {
+	arm.state.yield.Type = coprocessor.YieldRunning
+	arm.state.yield.Error = nil
+	arm.state.yield.Extended = arm.state.yield.Extended[:0]
+}
+
 func (arm *ARM) logYield() {
 	if arm.state.yield.Type.Normal() {
 		return
 	}
 	logger.Logf(fmt.Sprintf("ARM7: %s", arm.state.yield.Type.String()), arm.state.yield.Error.Error())
-	for _, d := range arm.state.yield.Detail {
+	for _, d := range arm.state.yield.Extended {
 		logger.Logf(fmt.Sprintf("ARM7: %s", arm.state.yield.Type.String()), d.Error())
 	}
 }
@@ -513,10 +520,10 @@ func (arm *ARM) extendedMemoryErrorLogging(memIdx int) {
 	if arm.prefs.ExtendedMemoryFaultLogging.Get().(bool) {
 		df := arm.state.currentExecutionCache[memIdx]
 		if df == nil {
-			arm.state.yield.Detail = append(arm.state.yield.Detail, fmt.Errorf("no instruction cached for this memory address"))
+			arm.state.yield.Extended = append(arm.state.yield.Extended, fmt.Errorf("no instruction cached for this memory address"))
 		} else {
 			entry := *df()
-			arm.state.yield.Detail = append(arm.state.yield.Detail,
+			arm.state.yield.Extended = append(arm.state.yield.Extended,
 				errors.New(entry.String()),
 				errors.New(arm.disasmVerbose(entry)),
 			)
@@ -641,9 +648,7 @@ func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 
 	// reset yield. we do this as late as possible because we want to use
 	// information about the previous yield during the above preparations
-	arm.state.yield.Type = coprocessor.YieldRunning
-	arm.state.yield.Error = nil
-	arm.state.yield.Detail = arm.state.yield.Detail[:0]
+	arm.resetYield()
 
 	// make sure program memory is correct
 	arm.checkProgramMemory(false)
@@ -659,6 +664,11 @@ func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 // YieldSyncWithVCS.
 func (arm *ARM) Interrupt() {
 	arm.state.yield.Type = coprocessor.YieldSyncWithVCS
+}
+
+// MemoryFault causes a memory fault to be triggered
+func (arm *ARM) MemoryFault(event string, fault faults.Category) {
+	arm.memoryFault(event, faults.UndefinedSymbol, arm.state.instructionPC)
 }
 
 // StackFrame implements the coprocess.CartCoProc interface
@@ -874,9 +884,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 					arm.extendedMemoryErrorLogging(memIdx)
 					if !arm.abortOnMemoryFault {
 						arm.logYield()
-						arm.state.yield.Type = coprocessor.YieldRunning
-						arm.state.yield.Error = nil
-						arm.state.yield.Detail = arm.state.yield.Detail[:0]
+						arm.resetYield()
 					}
 				} else {
 					if !arm.state.yield.Type.Normal() {
@@ -886,9 +894,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 								arm.extendedMemoryErrorLogging(memIdx)
 								if !arm.abortOnMemoryFault {
 									arm.logYield()
-									arm.state.yield.Type = coprocessor.YieldRunning
-									arm.state.yield.Error = nil
-									arm.state.yield.Detail = arm.state.yield.Detail[:0]
+									arm.resetYield()
 								}
 							}
 						}
@@ -905,9 +911,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 					// yield information now before reset the yield type
 					if !arm.abortOnMemoryFault {
 						arm.logYield()
-						arm.state.yield.Type = coprocessor.YieldRunning
-						arm.state.yield.Error = nil
-						arm.state.yield.Detail = arm.state.yield.Detail[:0]
+						arm.resetYield()
 					}
 				}
 			} // check program memory

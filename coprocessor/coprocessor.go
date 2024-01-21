@@ -232,7 +232,7 @@ type CartCoProcProfiler struct {
 // available to developers when the source code is available.
 type CartCoProcDeveloper interface {
 	// a memory fault has occured
-	MemoryFault(event string, explanation faults.Category, instructionAddr uint32, accessAddr uint32) string
+	MemoryFault(event string, explanation faults.Category, instructionAddr uint32, accessAddr uint32)
 
 	// returns the highest address used by the program. the coprocessor uses
 	// this value to detect stack collisions
@@ -260,9 +260,9 @@ type CartCoProcDeveloper interface {
 
 // CoProcYield describes a coprocessor yield state
 type CoProcYield struct {
-	Type   CoProcYieldType
-	Error  error
-	Detail []error
+	Type     CoProcYieldType
+	Error    error
+	Extended []error
 }
 
 // CoProcYieldType specifies the type of yield. This is a broad categorisation

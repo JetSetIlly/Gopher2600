@@ -16,7 +16,6 @@
 package arm
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
@@ -24,37 +23,27 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+func (arm *ARM) memoryFault(event string, fault faults.Category, addr uint32) {
+	arm.state.yield.Type = coprocessor.YieldMemoryAccessError
+	arm.state.yield.Error = fmt.Errorf("%s: %s: %08x (PC: %08x)", fault, event, addr, arm.state.instructionPC)
+
+	if arm.dev == nil {
+		return
+	}
+
+	arm.dev.MemoryFault(event, fault, arm.state.instructionPC, addr)
+}
+
 func (arm *ARM) illegalAccess(event string, addr uint32) {
 	if arm.state.stackHasCollided {
 		return
 	}
-
-	arm.state.yield.Type = coprocessor.YieldMemoryAccessError
-	arm.state.yield.Error = fmt.Errorf("%s: unrecognised address %08x (PC: %08x)", event, addr, arm.state.instructionPC)
-
-	if arm.dev == nil {
-		return
-	}
-
-	detail := arm.dev.MemoryFault(event, faults.IllegalAddress, arm.state.instructionPC, addr)
-	if detail != "" {
-		arm.state.yield.Detail = append(arm.state.yield.Detail, errors.New(detail))
-	}
+	arm.memoryFault(event, faults.IllegalAddress, addr)
 }
 
 // nullAccess is a special condition of illegalAccess()
 func (arm *ARM) nullAccess(event string, addr uint32) {
-	arm.state.yield.Type = coprocessor.YieldMemoryAccessError
-	arm.state.yield.Error = fmt.Errorf("%s: probable null pointer dereference of %08x (PC: %08x)", event, addr, arm.state.instructionPC)
-
-	if arm.dev == nil {
-		return
-	}
-
-	detail := arm.dev.MemoryFault(event, faults.NullDereference, arm.state.instructionPC, addr)
-	if detail != "" {
-		arm.state.yield.Detail = append(arm.state.yield.Detail, errors.New(detail))
-	}
+	arm.memoryFault(event, faults.NullDereference, addr)
 }
 
 func (arm *ARM) read8bit(addr uint32) uint8 {

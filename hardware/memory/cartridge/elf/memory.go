@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
@@ -32,6 +33,7 @@ import (
 
 type interruptARM interface {
 	Interrupt()
+	MemoryFault(event string, fault faults.Category)
 	CoreRegisters() [arm.NumCoreRegisters]uint32
 	RegisterSet(int, uint32) bool
 }
@@ -483,12 +485,6 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 						function: memcpy,
 						support:  true,
 					})
-				case "__aeabi_idiv":
-					// sometimes linked when building for ARMv6-M target
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						function: __aeabi_idiv,
-						support:  true,
-					})
 
 				// strongARM tables
 				case "ReverseByte":
@@ -508,15 +504,21 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 
 				default:
 					if sym.Section == elf.SHN_UNDEF {
-						return fmt.Errorf("%s is undefined", sym.Name)
-					}
-
-					n := ef.Sections[sym.Section].Name
-					if idx, ok := mem.sectionsByName[n]; !ok {
-						return fmt.Errorf("can not find section (%s) while relocating %s", n, sym.Name)
+						logger.Logf("ELF", "using stub for %s (will cause memory fault when called)", sym.Name)
+						tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+							function: func(mem *elfMemory) {
+								mem.arm.MemoryFault(sym.Name, faults.UndefinedSymbol)
+							},
+							support: true,
+						})
 					} else {
-						tgt = mem.sections[idx].origin
-						tgt += uint32(sym.Value)
+						n := ef.Sections[sym.Section].Name
+						if idx, ok := mem.sectionsByName[n]; !ok {
+							return fmt.Errorf("can not find section (%s) while relocating %s", n, sym.Name)
+						} else {
+							tgt = mem.sections[idx].origin
+							tgt += uint32(sym.Value)
+						}
 					}
 				}
 

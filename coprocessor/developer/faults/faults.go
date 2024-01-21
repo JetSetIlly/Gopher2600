@@ -25,9 +25,10 @@ type Category string
 
 // List of valid Category values
 const (
-	NullDereference Category = "Null Dereference"
-	StackCollision  Category = "Stack Collision"
-	IllegalAddress  Category = "Illegal Address"
+	NullDereference Category = "null dereference"
+	StackCollision  Category = "stack collision"
+	IllegalAddress  Category = "illegal address"
+	UndefinedSymbol Category = "undefined symbol"
 )
 
 // Entry is a single entry in the fault log
@@ -46,7 +47,7 @@ type Entry struct {
 }
 
 func (e Entry) String() string {
-	return fmt.Sprintf("%s at address %08x (PC: %08x)", e.Event, e.AccessAddr, e.InstructionAddr)
+	return fmt.Sprintf("%s: %s: %08x (PC: %08x)", e.Category, e.Event, e.AccessAddr, e.InstructionAddr)
 }
 
 // Faults records memory accesses by the coprocesser that are "illegal".
@@ -80,9 +81,7 @@ func (flt Faults) WriteLog(w io.Writer) {
 }
 
 // NewEntry adds a new entry to the list of faults
-func (flt *Faults) NewEntry(category Category, event string,
-	instructionAddr uint32, accessAddr uint32) *Entry {
-
+func (flt *Faults) NewEntry(category Category, event string, instructionAddr uint32, accessAddr uint32) {
 	key := fmt.Sprintf("%08x%08x", instructionAddr, accessAddr)
 
 	e, found := flt.entries[key]
@@ -108,6 +107,4 @@ func (flt *Faults) NewEntry(category Category, event string,
 	if category == StackCollision {
 		flt.HasStackCollision = true
 	}
-
-	return e
 }

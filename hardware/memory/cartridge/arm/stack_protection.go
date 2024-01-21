@@ -16,7 +16,6 @@
 package arm
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
@@ -64,11 +63,7 @@ func (arm *ARM) stackProtectCheckSP() {
 
 	// add developer details if possible
 	if arm.dev != nil {
-		detail := arm.dev.MemoryFault(arm.state.yield.Error.Error(), faults.StackCollision,
-			arm.state.executingPC, arm.state.registers[rSP])
-		if detail != "" {
-			arm.state.yield.Detail = append(arm.state.yield.Detail, errors.New(detail))
-		}
+		arm.dev.MemoryFault(arm.state.yield.Error.Error(), faults.StackCollision, arm.state.executingPC, arm.state.registers[rSP])
 	}
 }
 
@@ -88,10 +83,6 @@ func (arm *ARM) stackProtectCheckProgramMemory() {
 
 	// add developer details if possible
 	if arm.dev != nil {
-		detail := arm.dev.MemoryFault(arm.state.yield.Error.Error(), faults.StackCollision,
-			arm.state.executingPC, arm.state.registers[rSP])
-		if detail != "" {
-			arm.state.yield.Detail = append(arm.state.yield.Detail, errors.New(detail))
-		}
+		arm.dev.MemoryFault(arm.state.yield.Error.Error(), faults.StackCollision, arm.state.executingPC, arm.state.registers[rSP])
 	}
 }

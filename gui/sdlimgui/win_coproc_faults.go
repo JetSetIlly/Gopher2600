@@ -93,10 +93,10 @@ func (win *winCoProcFaults) draw(flt faults.Faults, src *dwarf.Source) {
 	// note HasStackCollision for later comparison
 	hasStackCollision = flt.HasStackCollision
 
-	const numColumns = 3
+	const numColumns = 4
 
 	flgs := imgui.TableFlagsScrollY
-	flgs |= imgui.TableFlagsSizingStretchProp
+	flgs |= imgui.TableFlagsSizingStretchSame
 	flgs |= imgui.TableFlagsResizable
 
 	imgui.BeginTableV("##coprocFaultsTable", numColumns, flgs, imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, 0.0)
@@ -104,12 +104,13 @@ func (win *winCoProcFaults) draw(flt faults.Faults, src *dwarf.Source) {
 	// setup columns. the labelling column 2 depends on whether the coprocessor
 	// development instance has source available to it
 	width := imgui.ContentRegionAvail().X
-	imgui.TableSetupColumnV("Event", imgui.TableColumnFlagsNone, width*0.30, 0)
-	imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.20, 1)
+	imgui.TableSetupColumnV("Category", imgui.TableColumnFlagsNone, width*0.25, 0)
+	imgui.TableSetupColumnV("Event", imgui.TableColumnFlagsNone, width*0.25, 1)
+	imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.15, 2)
 	if src == nil {
-		imgui.TableSetupColumnV("Instruction Address", imgui.TableColumnFlagsNone, width*0.45, 2)
+		imgui.TableSetupColumnV("Instruction Address", imgui.TableColumnFlagsNone, width*0.35, 3)
 	} else {
-		imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.45, 2)
+		imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.35, 3)
 	}
 
 	imgui.Spacing()
@@ -128,7 +129,7 @@ func (win *winCoProcFaults) draw(flt faults.Faults, src *dwarf.Source) {
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
 		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
-		imgui.SelectableV(e.Event, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+		imgui.SelectableV(string(e.Category), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 		imgui.PopStyleColorV(2)
 
 		// source on tooltip
@@ -185,6 +186,9 @@ func (win *winCoProcFaults) draw(flt faults.Faults, src *dwarf.Source) {
 				srcWin.gotoSourceLine(ln)
 			}
 		}
+
+		imgui.TableNextColumn()
+		imgui.Text(e.Event)
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcFaultsAddress)
