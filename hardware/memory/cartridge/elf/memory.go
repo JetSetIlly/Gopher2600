@@ -505,6 +505,8 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 
 				default:
 					if sym.Section == elf.SHN_UNDEF {
+						// for R_ARM_ABS32 type symbols we create a stub function and use it to
+						// generate a memory fault when it's accessed
 						logger.Logf("ELF", "using stub for %s (will cause memory fault when called)", sym.Name)
 						tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
 							function: func(mem *elfMemory) {
@@ -542,8 +544,11 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				// log relocation address. note that in the case of strongarm
 				// functions, because of how BLX works, the target address
 				// printed below is not the address the execution will start at
-				logger.Logf("ELF", "relocate %s (%08x) => %08x",
-					sym.Name, secBeingRelocated.origin+offset, tgt)
+				name := sym.Name
+				if name == "" {
+					name = "anonymous"
+				}
+				logger.Logf("ELF", "relocate %s (%08x) => %08x", name, secBeingRelocated.origin+offset, tgt)
 
 			case elf.R_ARM_THM_PC22:
 				// this value is labelled R_ARM_THM_CALL in objdump output
@@ -554,6 +559,10 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				// page 32 of "SWS ESPC 0003 A-08"
 
 				if sym.Section == elf.SHN_UNDEF {
+					// return with an error for undefined symbols of this type.
+					// compare to R_ARM_ABS32 where we use a stub function and
+					// allow the emulation to continue (until a memory fault is
+					// forced by the stub function)
 					return fmt.Errorf("ELF: %s is undefined", sym.Name)
 				}
 
@@ -592,7 +601,12 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				// commit write
 				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], opcode)
 
-				logger.Logf("ELF", "relocate %s (%08x) => %08x", n, secBeingRelocated.origin+offset, opcode)
+				// log relocated opcode
+				name := sym.Name
+				if name == "" {
+					name = "anonymous"
+				}
+				logger.Logf("ELF", "relocate %s (%08x) => opcode %08x", name, secBeingRelocated.origin+offset, opcode)
 
 			default:
 				return fmt.Errorf("ELF: unhandled ARM relocation type (%v)", relType)

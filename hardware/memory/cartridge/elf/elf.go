@@ -72,7 +72,6 @@ func (r *elfReaderAt) ReadAt(p []byte, start int64) (n int, err error) {
 	}
 
 	return n, nil
-
 }
 
 // NewElf is the preferred method of initialisation for the Elf type.
