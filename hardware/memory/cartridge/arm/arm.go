@@ -17,7 +17,6 @@ package arm
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -243,7 +242,8 @@ type ARM struct {
 	// does not exist
 	executionCache map[uint32][]decodeFunction
 
-	// only decode an instruction do not execute
+	// only decode an instruction do not execute. consider using the
+	// decodeInstruction() function instead of changing the field directly
 	decodeOnly bool
 
 	// interface to an optional disassembler
@@ -502,33 +502,47 @@ func (arm *ARM) clock(cycles float32) {
 func (arm *ARM) resetYield() {
 	arm.state.yield.Type = coprocessor.YieldRunning
 	arm.state.yield.Error = nil
-	arm.state.yield.Extended = arm.state.yield.Extended[:0]
 }
 
 func (arm *ARM) logYield() {
 	if arm.state.yield.Type.Normal() {
 		return
 	}
-	logger.Logf(fmt.Sprintf("ARM7: %s", arm.state.yield.Type.String()), arm.state.yield.Error.Error())
-	for _, d := range arm.state.yield.Extended {
-		logger.Logf(fmt.Sprintf("ARM7: %s", arm.state.yield.Type.String()), d.Error())
+	logger.Logf("ARM7", "%s: %s", arm.state.yield.Type.String(), arm.state.yield.Error)
+
+	// extended memory logging
+
+	if arm.prefs.ExtendedMemoryFaultLogging.Get().(bool) == false {
+		return
+	}
+
+	if arm.state.programMemory == nil {
+		return
+	}
+
+	memIdx := int(arm.state.executingPC - arm.state.programMemoryOrigin)
+	if memIdx < 0 || memIdx >= len(*arm.state.programMemory) {
+		return
+	}
+
+	df := arm.state.currentExecutionCache[memIdx]
+	if df == nil {
+		return
+	}
+
+	entry := arm.decodeInstruction(df)
+	if entry != nil {
+		logger.Logf("ARM7", "%s", entry.String())
+		logger.Logf("ARM7", "%s", arm.disasmVerbose(*entry))
 	}
 }
 
-func (arm *ARM) extendedMemoryErrorLogging(memIdx int) {
-	// add extended memory logging to yield detail
-	if arm.prefs.ExtendedMemoryFaultLogging.Get().(bool) {
-		df := arm.state.currentExecutionCache[memIdx]
-		if df == nil {
-			arm.state.yield.Extended = append(arm.state.yield.Extended, fmt.Errorf("no instruction cached for this memory address"))
-		} else {
-			entry := *df()
-			arm.state.yield.Extended = append(arm.state.yield.Extended,
-				errors.New(entry.String()),
-				errors.New(arm.disasmVerbose(entry)),
-			)
-		}
-	}
+func (arm *ARM) decodeInstruction(f decodeFunction) *DisasmEntry {
+	arm.decodeOnly = true
+	defer func() {
+		arm.decodeOnly = false
+	}()
+	return f()
 }
 
 // SetInitialRegisters is intended to be called after creation but before the
@@ -824,9 +838,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 					if !arm.state.instruction32bitDecoding {
 						df := arm.state.currentExecutionCache[memIdx]
 						if df != nil {
-							arm.decodeOnly = true
-							e := df()
-							arm.decodeOnly = false
+							e := arm.decodeInstruction(df)
 							if e != nil {
 								arm.completeDisasmEntry(e, opcode, true)
 
@@ -881,7 +893,6 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 
 				// check for stack errors
 				if arm.state.yield.Type == coprocessor.YieldStackError {
-					arm.extendedMemoryErrorLogging(memIdx)
 					if !arm.abortOnMemoryFault {
 						arm.logYield()
 						arm.resetYield()
@@ -891,7 +902,6 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 						if arm.state.registers[rSP] != expectedSP {
 							arm.stackProtectCheckSP()
 							if arm.state.yield.Type == coprocessor.YieldStackError {
-								arm.extendedMemoryErrorLogging(memIdx)
 								if !arm.abortOnMemoryFault {
 									arm.logYield()
 									arm.resetYield()
@@ -904,9 +914,6 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 				// handle memory access yields. we don't these want these to bleed out
 				// of the ARM unless the abort preference is set
 				if arm.state.yield.Type == coprocessor.YieldMemoryAccessError {
-					// add extended memory logging to yield detail
-					arm.extendedMemoryErrorLogging(memIdx)
-
 					// if illegal memory accesses are to be ignored then we must log the
 					// yield information now before reset the yield type
 					if !arm.abortOnMemoryFault {

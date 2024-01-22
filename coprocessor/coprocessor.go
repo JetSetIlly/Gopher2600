@@ -260,9 +260,8 @@ type CartCoProcDeveloper interface {
 
 // CoProcYield describes a coprocessor yield state
 type CoProcYield struct {
-	Type     CoProcYieldType
-	Error    error
-	Extended []error
+	Type  CoProcYieldType
+	Error error
 }
 
 // CoProcYieldType specifies the type of yield. This is a broad categorisation
