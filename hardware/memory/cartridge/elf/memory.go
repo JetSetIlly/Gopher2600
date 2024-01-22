@@ -188,7 +188,8 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 
 		var err error
 
-		// starting with go1.20 reading from a no bit section is
+		// starting with go1.20 reading from a NOBITS section does not return section data.
+		// we must now do that ourselves
 		if sec.SectionHeader.Type == elf.SHT_NOBITS {
 			section.data = make([]uint8, sec.FileSize)
 		} else {
@@ -610,6 +611,13 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 	mem.sram = make([]byte, 0x10000) // 64k SRAM
 	mem.sramOrigin = mem.model.SRAMOrigin
 	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram))
+
+	// randomise sram data
+	if mem.env.Prefs.RandomState.Get().(bool) {
+		for i := range mem.sram {
+			mem.sram[i] = uint8(mem.env.Random.NoRewind(0xff))
+		}
+	}
 
 	// runInitialisation() must be run once ARM has been created
 
