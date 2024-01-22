@@ -125,8 +125,8 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.FlashLatency = 50.0
 
 		mmap.HasMAM = true
-		mmap.MAMCR = 0x001fc000
-		mmap.MAMTIM = 0x001fc004
+		mmap.MAMCR = 0xe01fc000
+		mmap.MAMTIM = 0xe01fc004
 		mmap.PreferredMAMCR = MAMpartial
 
 		mmap.HasTIMER = true
