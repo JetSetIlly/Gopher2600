@@ -391,15 +391,33 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	// fast and the channel queue should be pretty lengthy to prevent dropped
 	// events (see PushFunction()).
 	dbg.events = &terminal.ReadEvents{
-		UserInput:                make(chan userinput.Event, 10),
-		UserInputHandler:         dbg.userInputHandler,
-		IntEvents:                make(chan os.Signal, 1),
-		PushedFunctions:          make(chan func(), 4096),
-		PushedFunctionsImmediate: make(chan func(), 4096),
+		UserInput:        make(chan userinput.Event, 10),
+		UserInputHandler: dbg.userInputHandler,
+		Signal:           make(chan os.Signal, 1),
+		SignalHandler: func(sig os.Signal) error {
+			switch sig {
+			case syscall.SIGHUP:
+				return terminal.UserReload
+			case syscall.SIGINT:
+				return terminal.UserInterrupt
+			case syscall.SIGQUIT:
+				return terminal.UserQuit
+			case syscall.SIGKILL:
+				// we're unlikely to receive the kill signal, it normally being
+				// intercepted by the terminal, but in case we do we treat it
+				// like the QUIT signal
+				return terminal.UserQuit
+			default:
+			}
+			return nil
+		},
+		PushedFunction:          make(chan func(), 4096),
+		PushedFunctionImmediate: make(chan func(), 4096),
 	}
 
-	// connect Interrupt signal to dbg.events.intChan
-	signal.Notify(dbg.events.IntEvents, os.Interrupt, syscall.SIGHUP)
+	// connect signals to dbg.events.Signal channel. we include the Kill signal
+	// but the chances are it'll never be seen
+	signal.Notify(dbg.events.Signal, os.Interrupt, os.Kill, syscall.SIGHUP, syscall.SIGQUIT)
 
 	// allocate memory for user input
 	dbg.input = make([]byte, 255)
@@ -715,9 +733,10 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 	}
 
 	defer dbg.end()
+
 	err = dbg.run()
 	if err != nil {
-		if errors.Is(err, terminal.UserQuit) {
+		if errors.Is(err, terminal.UserSignal) {
 			return nil
 		}
 		return fmt.Errorf("debugger: %w", err)
@@ -842,7 +861,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 
 	err = dbg.run()
 	if err != nil {
-		if errors.Is(err, terminal.UserQuit) {
+		if errors.Is(err, terminal.UserSignal) {
 			return nil
 		}
 		return fmt.Errorf("debugger: %w", err)
@@ -876,8 +895,8 @@ func (dbg *Debugger) CartYield(yield coprocessor.CoProcYieldType) coprocessor.Yi
 		return coprocessor.YieldHookContinue
 	}
 
-	// if emulation is in itialisation state then we cause coprocessor execution
-	// to end unless it's a memory or access erorr
+	// if emulation is in the intialisation state then we cause coprocessor
+	// execution to end unless it's a memory or access erorr
 	//
 	// this is an area that's likely to change. it's of particular interest to
 	// ACE and ELF ROMs in which the coprocessor is run very early in order to
@@ -921,12 +940,15 @@ func (dbg *Debugger) run() error {
 			err := dbg.playLoop()
 			if err != nil {
 				// if we ever encounter a cartridge ejected error in playmode
-				// then simply open up the ROM selector
+				// then simply open up the ROM selector and continue with the
+				// running loop
 				if errors.Is(err, cartridge.Ejected) {
 					err = dbg.forceROMSelector()
 					if err != nil {
 						return fmt.Errorf("debugger: %w", err)
 					}
+				} else if errors.Is(err, terminal.UserReload) {
+					dbg.reloadCartridge()
 				} else {
 					return fmt.Errorf("debugger: %w", err)
 				}
@@ -946,7 +968,13 @@ func (dbg *Debugger) run() error {
 
 			err := dbg.inputLoop(dbg.term, false)
 			if err != nil {
-				return fmt.Errorf("debugger: %w", err)
+				// there is no special handling for the cartridge ejected error,
+				// unlike in play mode
+				if errors.Is(err, terminal.UserReload) {
+					dbg.reloadCartridge()
+				} else {
+					return fmt.Errorf("debugger: %w", err)
+				}
 			}
 
 		default:
@@ -1445,13 +1473,8 @@ func (dbg *Debugger) reloadCartridge() error {
 }
 
 // ReloadCartridge inserts the current cartridge and states the emulation over.
-//
-// It should not be run directly from the emulation/debugger goroutine, use
-// reloadCartridge() for that
 func (dbg *Debugger) ReloadCartridge() {
-	dbg.PushFunctionImmediate(func() {
-		dbg.unwindLoop(dbg.reloadCartridge)
-	})
+	dbg.events.Signal <- syscall.SIGHUP
 }
 
 func (dbg *Debugger) insertCartridge(filename string) error {

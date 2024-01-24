@@ -17,6 +17,7 @@ package terminal
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/jetsetilly/gopher2600/userinput"
@@ -53,30 +54,31 @@ type Input interface {
 }
 
 // sentinal errors controlling program exit
-var UserInterrupt = errors.New("user interrupt")
-var UserAbort = errors.New("user abort")
-
-// UserQuit indicates an intentional quit and should probably be caught and silenced
-var UserQuit = errors.New("user quit")
+var (
+	UserSignal    = errors.New("user signal")
+	UserQuit      = fmt.Errorf("%w: quit", UserSignal)
+	UserInterrupt = fmt.Errorf("%w: interrupt", UserSignal)
+	UserReload    = fmt.Errorf("%w: reload", UserSignal)
+)
 
 // ReadEvents *must* be monitored during a TermRead().
 type ReadEvents struct {
-	// user input events. these are the inputs into the emulation (ie.
-	// joystick, paddle, etc.)
+	// user input events. these are the inputs into the emulation
+	// (ie. joystick, paddle, etc.)
 	UserInput        chan userinput.Event
 	UserInputHandler func(userinput.Event) error
 
-	// interrupt signals from the operating system
-	IntEvents chan os.Signal
+	// signals from the operating system
+	Signal        chan os.Signal
+	SignalHandler func(os.Signal) error
 
-	// PushedFunctions allows functions to be pushed into the debugger goroutine
-	//
-	// errors are not returned by PushedFunctions so errors should be logged
-	PushedFunctions chan func()
+	// PushedFunction allows functions to be pushed into the debugger goroutine.
+	// errors are not returned by PushedFunction so errors should be logged
+	PushedFunction chan func()
 
-	// PushedFunctionsImmediate is the same as PushedFunctions but handlers
+	// PushedFunctionImmediate is the same as PushedFunctions but handlers
 	// must return control to the inputloop after the function has run
-	PushedFunctionsImmediate chan func()
+	PushedFunctionImmediate chan func()
 }
 
 // Output defines the operations required by an interface that allows output.

@@ -95,8 +95,8 @@ func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, events *t
 	// other events do not need to be checked - they will be serviced by the
 	// debugger inputer loop elsewhere
 	select {
-	case <-events.IntEvents:
-		return 0, terminal.UserInterrupt
+	case sig := <-events.Signal:
+		return 0, events.SignalHandler(sig)
 	default:
 	}
 

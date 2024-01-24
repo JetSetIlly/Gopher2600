@@ -99,8 +99,8 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 
 		// wait for an event and respond
 		select {
-		case <-events.IntEvents:
-			return 0, terminal.UserInterrupt
+		case sig := <-events.Signal:
+			return 0, events.SignalHandler(sig)
 
 		case ev := <-events.UserInput:
 			ct.EasyTerm.TermPrint(ansi.CursorStore)
@@ -110,10 +110,10 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 				return inputLen + 1, err
 			}
 
-		case ev := <-events.PushedFunctions:
+		case ev := <-events.PushedFunction:
 			ev()
 
-		case ev := <-events.PushedFunctionsImmediate:
+		case ev := <-events.PushedFunctionImmediate:
 			ev()
 			return 0, nil
 

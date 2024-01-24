@@ -121,13 +121,13 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 			copy(buffer, inp+"\n")
 			return len(inp) + 1, nil
 
-		case <-events.IntEvents:
-			return 0, terminal.UserInterrupt
+		case sig := <-events.Signal:
+			return 0, events.SignalHandler(sig)
 
-		case ev := <-events.PushedFunctions:
+		case ev := <-events.PushedFunction:
 			ev()
 
-		case ev := <-events.PushedFunctionsImmediate:
+		case ev := <-events.PushedFunctionImmediate:
 			ev()
 			return 0, nil
 

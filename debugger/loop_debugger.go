@@ -190,11 +190,10 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 			if err != nil {
 				if errors.Is(err, terminal.UserInterrupt) {
 					dbg.handleInterrupt(inputter)
+				} else if errors.Is(err, terminal.UserSignal) {
+					return err
 				} else {
-					// don't print UserQuit error to terminal
-					if !errors.Is(err, terminal.UserQuit) {
-						dbg.printLine(terminal.StyleError, "%s", err)
-					}
+					dbg.printLine(terminal.StyleError, "%s", err)
 				}
 			}
 
@@ -566,9 +565,8 @@ func (dbg *Debugger) termRead(inputter terminal.Input) error {
 		// user interrupts are used to quit or halt an operation
 		dbg.handleInterrupt(inputter)
 
-	} else if errors.Is(err, terminal.UserAbort) || errors.Is(err, io.EOF) {
-		// like user interrupts, abort are used to quit the application but
-		// more forcibly
+	} else if errors.Is(err, io.EOF) {
+		// an EOF error causes the emulation to exit immediately
 		dbg.running = false
 		dbg.continueEmulation = false
 		return nil
@@ -581,8 +579,8 @@ func (dbg *Debugger) termRead(inputter terminal.Input) error {
 	return nil
 }
 
-// interrupt errors that are sent back to the debugger need some special care
-// depending on the current state and what sort of terminal is being used.
+// interrupt signals need some special care depending on the current state and
+// what sort of terminal is being used.
 func (dbg *Debugger) handleInterrupt(inputter terminal.Input) {
 	// end script scribe (if one is running)
 	err := dbg.scriptScribe.EndSession()

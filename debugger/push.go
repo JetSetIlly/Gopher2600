@@ -25,7 +25,7 @@ import (
 // inserted into the emulation loop correctly.
 func (dbg *Debugger) PushFunction(f func()) {
 	select {
-	case dbg.events.PushedFunctions <- f:
+	case dbg.events.PushedFunction <- f:
 	default:
 		logger.Log("debugger", "dropped raw event push")
 	}
@@ -35,7 +35,7 @@ func (dbg *Debugger) PushFunction(f func()) {
 // return to the input loop for immediate action.
 func (dbg *Debugger) PushFunctionImmediate(f func()) {
 	select {
-	case dbg.events.PushedFunctionsImmediate <- f:
+	case dbg.events.PushedFunctionImmediate <- f:
 	default:
 		logger.Log("debugger", "dropped raw event push (to return channel)")
 	}

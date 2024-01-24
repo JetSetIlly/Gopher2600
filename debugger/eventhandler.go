@@ -15,12 +15,6 @@
 
 package debugger
 
-import (
-	"syscall"
-
-	"github.com/jetsetilly/gopher2600/debugger/terminal"
-)
-
 // readEventsHandler is called by inputLoop to make sure the program is
 // handling pushed events and/or user input.
 //
@@ -32,13 +26,8 @@ import (
 func (dbg *Debugger) readEventsHandler() error {
 	for {
 		select {
-		case sig := <-dbg.events.IntEvents:
-			switch sig {
-			case syscall.SIGHUP:
-				dbg.reloadCartridge()
-			default:
-				return terminal.UserInterrupt
-			}
+		case sig := <-dbg.events.Signal:
+			return dbg.events.SignalHandler(sig)
 
 		case ev := <-dbg.events.UserInput:
 			err := dbg.events.UserInputHandler(ev)
@@ -46,10 +35,10 @@ func (dbg *Debugger) readEventsHandler() error {
 				return err
 			}
 
-		case ev := <-dbg.events.PushedFunctions:
+		case ev := <-dbg.events.PushedFunction:
 			ev()
 
-		case ev := <-dbg.events.PushedFunctionsImmediate:
+		case ev := <-dbg.events.PushedFunctionImmediate:
 			ev()
 			return nil
 

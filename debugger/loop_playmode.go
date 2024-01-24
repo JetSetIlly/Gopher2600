@@ -34,25 +34,23 @@ func (dbg *Debugger) forceROMSelector() error {
 }
 
 func (dbg *Debugger) playLoop() error {
-	if dbg.forcedROMselection != nil {
-		done := false
-		for !done {
-			select {
-			case <-dbg.events.IntEvents:
-				return terminal.UserInterrupt
-			case ev := <-dbg.events.PushedFunctions:
-				ev()
-			case ev := <-dbg.events.PushedFunctionsImmediate:
-				ev()
-				return nil
-			case ev := <-dbg.events.UserInput:
-				if _, ok := ev.(userinput.EventQuit); ok {
-					return terminal.UserQuit
-				}
-			case <-dbg.forcedROMselection:
-				dbg.forcedROMselection = nil
-				done = true
+	// if forcedROMSelection is active (is not nil) then the event loop is
+	// simplified for the duration (until it is set to nil)
+	for dbg.forcedROMselection != nil {
+		select {
+		case sig := <-dbg.events.Signal:
+			return dbg.events.SignalHandler(sig)
+		case ev := <-dbg.events.PushedFunction:
+			ev()
+		case ev := <-dbg.events.PushedFunctionImmediate:
+			ev()
+			return nil
+		case ev := <-dbg.events.UserInput:
+			if _, ok := ev.(userinput.EventQuit); ok {
+				return terminal.UserQuit
 			}
+		case <-dbg.forcedROMselection:
+			dbg.forcedROMselection = nil
 		}
 	}
 

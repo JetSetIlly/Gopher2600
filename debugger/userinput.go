@@ -37,14 +37,14 @@ func (dbg *Debugger) userInputHandler_catchUpLoop() {
 }
 
 func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
-	// quite event
+	// quit event
 	switch ev.(type) {
 	case userinput.EventQuit:
 		dbg.running = false
 		return terminal.UserQuit
 	}
 
-	// mode specific special input (not passed to the VCS as controller input)
+	// special handling of some user input (not passed to the VCS as controller input)
 	switch dbg.Mode() {
 	case govern.ModePlay:
 		switch ev := ev.(type) {
