@@ -27,8 +27,6 @@ func (win *winTIA) drawPlayfield() {
 	playfield := win.img.cache.VCS.TIA.Video.Playfield
 	player0 := win.img.cache.VCS.TIA.Video.Player0
 	player1 := win.img.cache.VCS.TIA.Video.Player1
-	realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
-	realBall := win.img.dbg.VCS().TIA.Video.Ball
 
 	imgui.Spacing()
 
@@ -41,7 +39,9 @@ func (win *winTIA) drawPlayfield() {
 	if win.img.imguiSwatch(fgCol, 0.75) {
 		win.popupPalette.request(&fgCol, func() {
 			win.img.dbg.PushFunction(func() {
+				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
 				realPlayfield.ForegroundColor = fgCol
+				realBall := win.img.dbg.VCS().TIA.Video.Ball
 				realBall.Color = fgCol
 			})
 		})
@@ -53,6 +53,7 @@ func (win *winTIA) drawPlayfield() {
 	if win.img.imguiSwatch(bgCol, 0.75) {
 		win.popupPalette.request(&bgCol, func() {
 			win.img.dbg.PushFunction(func() {
+				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
 				realPlayfield.BackgroundColor = bgCol
 			})
 		})
@@ -68,6 +69,7 @@ func (win *winTIA) drawPlayfield() {
 	ref := playfield.Reflected
 	if imgui.Checkbox("##reflected", &ref) {
 		win.img.dbg.PushFunction(func() {
+			realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
 			realPlayfield.Reflected = ref
 		})
 	}
@@ -76,6 +78,7 @@ func (win *winTIA) drawPlayfield() {
 	sm := playfield.Scoremode
 	if imgui.Checkbox("##scoremode", &sm) {
 		win.img.dbg.PushFunction(func() {
+			realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
 			realPlayfield.Scoremode = sm
 		})
 	}
@@ -84,6 +87,7 @@ func (win *winTIA) drawPlayfield() {
 	pri := playfield.Priority
 	if imgui.Checkbox("##priority", &pri) {
 		win.img.dbg.PushFunction(func() {
+			realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
 			realPlayfield.Priority = pri
 		})
 	}
@@ -96,7 +100,9 @@ func (win *winTIA) drawPlayfield() {
 		if v, err := strconv.ParseUint(ctrlpf, 16, 8); err == nil {
 			win.img.dbg.PushFunction(func() {
 				// update ball copy of CTRLPF too in addition to the playfield copy
+				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
 				realPlayfield.SetCTRLPF(uint8(v))
+				realBall := win.img.dbg.VCS().TIA.Video.Ball
 				realBall.SetCTRLPF(uint8(v))
 			})
 		}
@@ -126,6 +132,7 @@ func (win *winTIA) drawPlayfield() {
 		if seq.rectFill(palette[col]) {
 			pf0d ^= 0x80 >> i
 			win.img.dbg.PushFunction(func() {
+				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
 				realPlayfield.SetPF0(pf0d)
 			})
 		}
@@ -149,6 +156,7 @@ func (win *winTIA) drawPlayfield() {
 		if seq.rectFill(palette[col]) {
 			pf1d ^= 0x80 >> i
 			win.img.dbg.PushFunction(func() {
+				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
 				realPlayfield.SetPF1(pf1d)
 			})
 		}
@@ -172,6 +180,7 @@ func (win *winTIA) drawPlayfield() {
 		if seq.rectFill(palette[col]) {
 			pf2d ^= 0x80 >> i
 			win.img.dbg.PushFunction(func() {
+				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
 				realPlayfield.SetPF2(pf2d)
 			})
 		}

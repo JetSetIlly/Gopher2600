@@ -27,8 +27,6 @@ import (
 
 func (win *winTIA) drawBall() {
 	ball := win.img.cache.VCS.TIA.Video.Ball
-	realBall := win.img.dbg.VCS().TIA.Video.Ball
-	realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
 
 	imgui.Spacing()
 
@@ -38,7 +36,9 @@ func (win *winTIA) drawBall() {
 	if win.img.imguiSwatch(col, 0.75) {
 		win.popupPalette.request(&col, func() {
 			win.img.dbg.PushFunction(func() {
+				realBall := win.img.dbg.VCS().TIA.Video.Ball
 				realBall.Color = col
+				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
 				realPlayfield.ForegroundColor = col
 			})
 		})
@@ -47,21 +47,30 @@ func (win *winTIA) drawBall() {
 	imguiLabel("Enabled")
 	enb := ball.Enabled
 	if imgui.Checkbox("##enabled", &enb) {
-		win.img.dbg.PushFunction(func() { realBall.Enabled = enb })
+		win.img.dbg.PushFunction(func() {
+			realBall := win.img.dbg.VCS().TIA.Video.Ball
+			realBall.Enabled = enb
+		})
 	}
 
 	imgui.SameLine()
 	imguiLabel("Vert Del.")
 	enbv := ball.VerticalDelay
 	if imgui.Checkbox("##vdelay", &enbv) {
-		win.img.dbg.PushFunction(func() { realBall.VerticalDelay = enbv })
+		win.img.dbg.PushFunction(func() {
+			realBall := win.img.dbg.VCS().TIA.Video.Ball
+			realBall.VerticalDelay = enbv
+		})
 	}
 
 	imgui.SameLine()
 	imguiLabel("Enabled Del.")
 	enbd := ball.EnabledDelay
 	if imgui.Checkbox("##enableddelay", &enbd) {
-		win.img.dbg.PushFunction(func() { realBall.EnabledDelay = enbd })
+		win.img.dbg.PushFunction(func() {
+			realBall := win.img.dbg.VCS().TIA.Video.Ball
+			realBall.EnabledDelay = enbd
+		})
 	}
 	imgui.EndGroup()
 
@@ -75,7 +84,10 @@ func (win *winTIA) drawBall() {
 	hmove := fmt.Sprintf("%01x", ball.Hmove)
 	if imguiHexInput("##hmove", 1, &hmove) {
 		if v, err := strconv.ParseUint(hmove, 16, 8); err == nil {
-			win.img.dbg.PushFunction(func() { realBall.Hmove = uint8(v) })
+			win.img.dbg.PushFunction(func() {
+				realBall := win.img.dbg.VCS().TIA.Video.Ball
+				realBall.Hmove = uint8(v)
+			})
 		}
 	}
 
@@ -83,7 +95,10 @@ func (win *winTIA) drawBall() {
 	imgui.PushItemWidth(win.hmoveSliderWidth)
 	hmoveSlider := int32(ball.Hmove) - 8
 	if imgui.SliderIntV("##hmoveslider", &hmoveSlider, -8, 7, "%d", imgui.SliderFlagsNone) {
-		win.img.dbg.PushFunction(func() { realBall.Hmove = uint8(hmoveSlider + 8) })
+		win.img.dbg.PushFunction(func() {
+			realBall := win.img.dbg.VCS().TIA.Video.Ball
+			realBall.Hmove = uint8(hmoveSlider + 8)
+		})
 	}
 	imgui.PopItemWidth()
 	imgui.EndGroup()
@@ -99,6 +114,7 @@ func (win *winTIA) drawBall() {
 			if imgui.Selectable(video.BallSizes[k]) {
 				v := uint8(k) // being careful about scope
 				win.img.dbg.PushFunction(func() {
+					realBall := win.img.dbg.VCS().TIA.Video.Ball
 					realBall.Size = v
 					win.img.dbg.VCS().TIA.Video.UpdateCTRLPF()
 				})
@@ -116,7 +132,9 @@ func (win *winTIA) drawBall() {
 	if imguiHexInput("##ctrlpf", 2, &ctrlpf) {
 		if v, err := strconv.ParseUint(ctrlpf, 16, 8); err == nil {
 			win.img.dbg.PushFunction(func() {
+				realBall := win.img.dbg.VCS().TIA.Video.Ball
 				realBall.SetCTRLPF(uint8(v))
+				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
 				realPlayfield.SetCTRLPF(uint8(v))
 			})
 		}
