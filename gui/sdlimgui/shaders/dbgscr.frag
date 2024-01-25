@@ -15,7 +15,10 @@ void main()
 		// visible screen guides
 		float visibleTop = pixelY * VisibleTop;
 		visibleBottom = pixelY * VisibleBottom;
-		if (isNearEqual(Frag_UV.y, visibleTop, pixelY) || isNearEqual(Frag_UV.y, visibleBottom, pixelY)) {
+
+		// visibleBottom is adjusted by texelY for the test because we want the
+		// guide to show on the outer edge of the visible boundary
+		if (isNearEqual(Frag_UV.y, visibleTop, pixelY) || isNearEqual(Frag_UV.y, visibleBottom+texelY, pixelY)) {
 			if (mod(floor(gl_FragCoord.x), 4) < 2.0) {
 				Out_Color.r = 1.0;
 				Out_Color.g = 1.0;

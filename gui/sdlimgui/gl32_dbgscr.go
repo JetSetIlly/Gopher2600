@@ -94,8 +94,8 @@ func (attr *dbgScrHelper) set(img *SdlImgui) {
 
 	// screen geometry
 	gl.Uniform1f(attr.hblank, (specification.ClksHBlank)*xscaling)
-	gl.Uniform1f(attr.visibleTop, float32(img.screen.crit.frameInfo.VisibleTop+1)*yscaling)
-	gl.Uniform1f(attr.visibleBottom, float32(img.screen.crit.frameInfo.VisibleBottom+1)*yscaling)
+	gl.Uniform1f(attr.visibleTop, float32(img.screen.crit.frameInfo.VisibleTop)*yscaling)
+	gl.Uniform1f(attr.visibleBottom, float32(img.screen.crit.frameInfo.VisibleBottom)*yscaling)
 	gl.Uniform1f(attr.lastNewFrameAtScanline, float32(img.screen.crit.frameInfo.TotalScanlines)*yscaling)
 
 	// window magnification

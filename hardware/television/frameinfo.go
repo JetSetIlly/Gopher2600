@@ -17,6 +17,7 @@ package television
 
 import (
 	"fmt"
+	"image"
 
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -29,11 +30,16 @@ type FrameInfo struct {
 	FrameNum int
 
 	// the top and bottom scanlines that are to be present visually to the
-	// player. this is generally related to the state of VBLANK but the
-	// relationship is not as simple as it might seem
+	// player. this is generally related to the state of VBLANK but in the case
+	// of screens when the VBLANK is never set, the visible area is determined by
+	// the extent of non-black output
 	//
 	// consumers of FrameInfo should use these values rather than deriving that
 	// information from VBLANK
+	//
+	// see the Crop() function for the preferred way of using these values to
+	// create the a rectangle of the visible screen area. in particular, note
+	// how the VisibleBottom value is treated in that context
 	VisibleTop    int
 	VisibleBottom int
 
@@ -88,6 +94,28 @@ func NewFrameInfo(spec specification.Spec) FrameInfo {
 
 func (info FrameInfo) String() string {
 	return fmt.Sprintf("top: %d, bottom: %d, total: %d", info.VisibleTop, info.VisibleBottom, info.TotalScanlines)
+}
+
+// Crop returns an image.Rectangle for the cropped region of the screen. Using
+// this is preferrable than using the VisibleTop/Bottom fields to construct the rectangle
+//
+// If the VisibleTop/Bottom fields are used in preference to this function for
+// whatever reason, bear in mind that the VisibleBottom field should be adjusted
+// by +1 in order to include the all visible scanlines in the rectangle
+//
+// To prove the need for this, consider what would happen if the screen was one
+// scanline tall. In that case both the top and bottom values would be the same:
+//
+//	r := image.Rect(0, 10, 100, 10)
+//
+// The height of this rectangle will be zero, as shown by the Size() function
+//
+//	isZero := r.Size().Y == 0
+func (info FrameInfo) Crop() image.Rectangle {
+	return image.Rect(
+		specification.ClksHBlank, info.VisibleTop,
+		specification.ClksHBlank+specification.ClksVisible, info.VisibleBottom+1,
+	)
 }
 
 func (info *FrameInfo) reset() {

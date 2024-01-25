@@ -28,10 +28,6 @@ import (
 //   - Pitfall
 //   - Hero
 //
-// * needs an additional (or two) scanlines to accommodate full screen
-//   - Ladybug
-//   - Man Goes Down
-//
 // * frame that needs to be resized after startup period
 //   - Hack Em Hanglyman (pre-release)
 //
@@ -57,6 +53,10 @@ import (
 // rule if frameHasVBlank was incorrectly set
 //   - aTaRSI (demo)
 //   - Supercharger "rewind tape" screen
+//
+// * bottom of screen needs careful consideration
+//   - Ladybug
+//   - Man Goes Down
 type resizer struct {
 	// candidate top/bottom values for an actual resize.
 	//
@@ -117,15 +117,18 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 		return
 	}
 
+	// some ROMs never set VBLANK but we still want to do our best and frame the
+	// screen nicely. this flag controls whether we use vblank top/bottom values
+	// or "black" top/bottom values
 	sr.frameHasVBlank = sr.frameHasVBlank || sig&signal.VBlank == signal.VBlank
 
-	// if VBLANK is off at any point after than HBLANK period then note the
-	// change in current top/bottom if appropriate
-	if tv.state.clock > specification.ClksHBlank && sig&signal.VBlank != signal.VBlank {
-		// update current top/bottom values
-		//
-		// when using this method the screen can expand at the top and bottom of
-		// the screen upto the "safe" values but only the bottom line can shrink
+	// if VBLANK is off then update the top/bottom values note
+	//
+	// note that the bottom value can increase *and* decrease, while the top
+	// value can only decrease (meaning the screen gets bigger at the top).
+	// this is important for PAL screens that run at considerably higher
+	// refresh rates than 50Hz (ie PAL60 screens)
+	if sig&signal.VBlank != signal.VBlank {
 		if tv.state.scanline < sr.vblankTop &&
 			tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop {
 			sr.vblankTop = tv.state.scanline
@@ -225,7 +228,7 @@ func (sr *resizer) commit(tv *Television) error {
 			sr.pendingBottom = tv.state.frameInfo.Spec.NewSafeVisibleBottom
 		}
 
-		// update statble top/bottom values
+		// update visible top/bottom values
 		tv.state.frameInfo.VisibleTop = sr.pendingTop
 		tv.state.frameInfo.VisibleBottom = sr.pendingBottom
 	}

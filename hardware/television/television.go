@@ -535,7 +535,6 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 	if sig&signal.HSync == signal.HSync && tv.state.lastSignal&signal.HSync != signal.HSync {
 		if tv.state.clock < 13 || tv.state.clock > 22 {
 			tv.state.clock = 16
-
 		}
 	}
 

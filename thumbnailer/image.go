@@ -180,13 +180,8 @@ func (thmb *Image) CartYield(yield coprocessor.CoProcYieldType) coprocessor.Yiel
 // Resize implements the television.PixelRenderer interface
 func (thmb *Image) Resize(frameInfo television.FrameInfo) error {
 	thmb.frameInfo = frameInfo
-	crop := image.Rect(
-		specification.ClksHBlank, frameInfo.VisibleTop,
-		specification.ClksHBlank+specification.ClksVisible, frameInfo.VisibleBottom,
-	)
-
+	crop := thmb.frameInfo.Crop()
 	thmb.cropImg = thmb.img.SubImage(crop).(*image.RGBA)
-
 	return nil
 }
 
