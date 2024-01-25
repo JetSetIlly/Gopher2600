@@ -277,7 +277,7 @@ func (tv *Television) PlumbState(vcs VCSReturnChannel, s *State) {
 	// make sure vcs knows about current spec
 	tv.vcs = vcs
 	if tv.vcs != nil {
-		tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec.ID)
+		tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec)
 	}
 
 	// reset signal history
@@ -291,7 +291,7 @@ func (tv *Television) AttachVCS(vcs VCSReturnChannel) {
 
 	// notify the newly attached console of the current TV spec
 	if tv.vcs != nil {
-		tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec.ID)
+		tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec)
 	}
 }
 
@@ -787,6 +787,11 @@ func (tv *Television) SetSpec(spec string) error {
 	case "NTSC":
 		tv.state.frameInfo = NewFrameInfo(specification.SpecNTSC)
 		tv.state.auto = false
+	case "PAL60":
+		// we treat PAL60 as just another name for PAL. whether it is 60HZ or
+		// not depends on the generated frame
+		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL)
+		tv.state.auto = false
 	case "PAL":
 		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL)
 		tv.state.auto = false
@@ -815,7 +820,7 @@ func (tv *Television) SetSpec(spec string) error {
 	}
 
 	if tv.vcs != nil {
-		tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec.ID)
+		tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec)
 	}
 
 	return nil

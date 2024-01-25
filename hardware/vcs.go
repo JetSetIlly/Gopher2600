@@ -32,6 +32,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/panel"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -259,30 +260,30 @@ const (
 )
 
 // SetClockSpeed is an implemtation of the television.VCSReturnChannel interface.
-func (vcs *VCS) SetClockSpeed(tvSpec string) {
-	switch tvSpec {
-	case "NTSC":
+func (vcs *VCS) SetClockSpeed(spec specification.Spec) {
+	switch spec.ID {
+	case specification.SpecNTSC.ID:
 		if vcs.Clock != ntscClock {
 			vcs.Clock = ntscClock
 			logger.Log("vcs", "switching to NTSC clock")
 		}
-	case "PAL":
+	case specification.SpecPAL.ID:
 		if vcs.Clock != palClock {
 			vcs.Clock = palClock
 			logger.Log("vcs", "switching to PAL clock")
 		}
-	case "PAL-M":
+	case specification.SpecPALM.ID:
 		if vcs.Clock != palMClock {
 			vcs.Clock = palMClock
 			logger.Log("vcs", "switching to PAL-M clock")
 		}
-	case "SECAM":
+	case specification.SpecSECAM.ID:
 		if vcs.Clock != secamClock {
 			vcs.Clock = secamClock
 			logger.Log("vcs", "switching to SECAM clock")
 		}
 	default:
-		logger.Logf("vcs", "cannot set clock for unknown TV specification (%s)", tvSpec)
+		logger.Logf("vcs", "cannot set clock for unknown TV specification (%s)", spec.ID)
 	}
 }
 

@@ -175,5 +175,5 @@ type RealtimeAudioMixer interface {
 // console. Named because I think of it as being similar to the Audio Return
 // Channel (ARC) present in modern TVs
 type VCSReturnChannel interface {
-	SetClockSpeed(tvSpec string)
+	SetClockSpeed(specification.Spec)
 }
