@@ -139,14 +139,32 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 		}
 	}
 
+	// early return if frameHasVBLANK is true
+	if sr.frameHasVBlank {
+		return
+	}
+
+	// black-pixel resizing requires a stable frame
+	if !tv.state.frameInfo.Stable {
+		return
+	}
+
 	// some ROMs never set VBLANK. for these cases we also record the extent of
 	// non-black pixels. these values are using in the commit() function in the
 	// event that frameHasVBlank is false.
-	if tv.state.clock > specification.ClksHBlank && sig&signal.VBlank != signal.VBlank && sig&signal.Color != 0 {
-		if tv.state.scanline < sr.blackTop && tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop {
-			sr.blackTop = tv.state.scanline
-		} else if tv.state.scanline > sr.blackBottom && tv.state.scanline <= tv.state.frameInfo.Spec.NewSafeVisibleBottom {
-			sr.blackBottom = tv.state.scanline
+	if tv.state.clock > specification.ClksHBlank && sig&signal.VBlank != signal.VBlank {
+		px := signal.ColorSignal((sig & signal.Color) >> signal.ColorShift)
+		col := tv.state.frameInfo.Spec.GetColor(px)
+		if col.R != 0x00 || col.G != 0x00 || col.B != 0x00 {
+			if tv.state.frameInfo.Stable {
+				if tv.state.scanline < sr.blackTop &&
+					tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop {
+					sr.blackTop = tv.state.scanline
+				} else if tv.state.scanline > sr.blackBottom &&
+					tv.state.scanline <= tv.state.frameInfo.Spec.NewSafeVisibleBottom {
+					sr.blackBottom = tv.state.scanline
+				}
+			}
 		}
 	}
 }
