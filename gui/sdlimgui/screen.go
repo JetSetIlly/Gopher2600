@@ -33,6 +33,12 @@ import (
 // "pixels" of two pixels across.
 const pixelWidth = 2
 
+// values affecting the severity of the screen roll
+const (
+	screenrollAmount  = 0.12
+	screenrollRecover = 0.85
+)
+
 // textureRenderers can share the underlying pixels of the screen type instance. both of these functions
 // should be called inside the screen critical section.
 type textureRenderer interface {
@@ -102,13 +108,12 @@ type screenCrit struct {
 	// whether monitor refresh rate is similar to the emulated TV's refresh rate
 	monitorSyncSimilar bool
 
-	// the scanline currenty used to emulate a screenroll effect. if the value
-	// is zero then no screenroll is currently taking place
-	// * playmode only
-	screenrollScanline int
+	// the number of frames until recovery from a desyncronisation
+	vsyncRecover int
 
-	// the number of consecutive vsyncs seen
-	vsyncCount int
+	// the degree of screen roll as a fraction of 1.0
+	// * playmode only
+	screenrollOffset float32
 
 	// the presentationPixels array is used in the presentation texture of the play and debug screen.
 	presentationPixels *image.RGBA
@@ -424,33 +429,28 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	if scr.img.isPlaymode() {
-		// check screen rolling if crtprefs are enabled
-		if scr.img.crtPrefs.Enabled.Get().(bool) {
-			syncSpeed := scr.img.crtPrefs.SyncSpeed.Get().(int)
+	// set VSYNC recover value if number of vsync scanlines is insufficient. we
+	// only do this is TV is stable
+	if frameInfo.Stable && frameInfo.VSyncScanlines < scr.img.crtPrefs.VSyncSensitivity.Get().(int) {
+		scr.crit.vsyncRecover = scr.img.crtPrefs.VSyncRecovery.Get().(int)
+	} else if scr.crit.vsyncRecover >= 0 {
+		scr.crit.vsyncRecover--
+	}
 
-			if !frameInfo.VSync || frameInfo.VSyncScanlines < scr.img.crtPrefs.SyncSensitivity.Get().(int) {
-				scr.crit.vsyncCount = 0
-			} else if scr.crit.vsyncCount <= syncSpeed {
-				scr.crit.vsyncCount++
-			}
-
-			// while we are waiting for VSYNC to settle down apply the screen roll
-			if scr.crit.vsyncCount < syncSpeed {
-				// without the stable check, the screen can roll during startup
-				// of many ROMs. Pitfall for example will do this.
-				syncPowerOn := scr.img.crtPrefs.SyncPowerOn.Get().(bool)
-				if syncPowerOn || (!syncPowerOn && scr.crit.frameInfo.Stable) {
-					scr.crit.screenrollScanline += 50
-					if scr.crit.screenrollScanline > specification.AbsoluteMaxScanlines {
-						scr.crit.screenrollScanline -= specification.AbsoluteMaxScanlines
-					}
-				}
-			} else if scr.crit.screenrollScanline > 0 {
-				// recover from screen roll
-				scr.crit.screenrollScanline *= 80
-				scr.crit.screenrollScanline /= 100
-			}
+	// decide on amount of screen roll. the screenroll effect iself is a GLSL shader
+	if scr.crit.vsyncRecover > 0 {
+		scr.crit.screenrollOffset += screenrollAmount
+		if scr.crit.screenrollOffset > 1.0 {
+			scr.crit.screenrollOffset -= 1.0
+		}
+	} else if scr.crit.screenrollOffset > 0.0 {
+		// snap offset to zero if it's approaching zero. otherwise reduce the
+		// amount by a fraction. this makes sure that we actually set the value
+		// to zero rather than creating ever smaller fractions
+		if scr.crit.screenrollOffset <= 0.05 {
+			scr.crit.screenrollOffset = 0
+		} else {
+			scr.crit.screenrollOffset *= screenrollRecover
 		}
 	}
 
@@ -520,17 +520,14 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	}
 
 	var col color.RGBA
-
-	// offset the pixel writes by the amount of screenroll
-	offset := scr.crit.screenrollScanline * 4 * specification.ClksScanline
+	var offset int
 
 	for i := range sig {
 		// end of pixel queue reached but there are still signals to process.
-		//
-		// this can happen when screen is rolling and the initial offset value
-		// was greater than zero
+		// this shouldn't ever happen but it used to when we implemented
+		// screenroll in this function
 		if offset >= scr.crit.pixelsCount {
-			offset = 0
+			return nil
 		}
 
 		// handle VBLANK by setting pixels to black
@@ -585,17 +582,14 @@ func (scr *screen) Reflect(ref []reflection.ReflectedVideoStep) error {
 
 func (scr *screen) plotOverlay() {
 	var col color.RGBA
-
-	// offset the pixel writes by the amount of screenroll
-	offset := scr.crit.screenrollScanline * 4 * specification.ClksScanline
+	var offset int
 
 	for i := range scr.crit.reflection {
 		// end of pixel queue reached but there are still signals to process.
-		//
-		// this can happen when screen is rolling and the initial offset value
-		// was greater than zero
+		// this shouldn't ever happen but it used to when we implemented
+		// screenroll in this function
 		if offset >= len(scr.crit.overlayPixels.Pix) {
-			offset = 0
+			return
 		}
 
 		// overlay pixels must set alpha channel

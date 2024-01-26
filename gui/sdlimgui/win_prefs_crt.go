@@ -92,11 +92,7 @@ func (win *winPrefs) drawCRT() {
 
 	if imgui.CollapsingHeader("VSYNC") {
 		imgui.Spacing()
-		win.drawSyncSpeed()
-		imgui.SameLineV(0, 15)
-		win.drawSyncSensitivity()
-		imgui.Spacing()
-		win.drawSyncPowerOn()
+		win.drawVSYNC()
 	}
 }
 
@@ -486,58 +482,36 @@ available when 'Pixel Perfect' mode is disabled.`)
 	return b
 }
 
-func (win *winPrefs) drawSyncSpeed() {
-	imgui.AlignTextToFramePadding()
-	imgui.Text("Speed")
-	imgui.SameLine()
-
-	t := int32(win.img.crtPrefs.SyncSpeed.Get().(int))
+func (win *winPrefs) drawVSYNC() {
+	imguiLabel("Recovery")
+	recovery := int32(win.img.crtPrefs.VSyncRecovery.Get().(int))
 	var label string
-	if t == 0 {
+	if recovery == 0 {
 		label = "sync immediately"
 	} else {
-		label = fmt.Sprintf("%d frames", t)
+		label = fmt.Sprintf("%d frames", recovery)
 	}
 
-	if imgui.SliderIntV("##syncSpeed", &t, 0, 10, label, 1.0) {
-		win.img.crtPrefs.SyncSpeed.Set(t)
+	if imgui.SliderIntV("##vsyncRecovery", &recovery, 0, 20, label, 1.0) {
+		win.img.crtPrefs.VSyncRecovery.Set(recovery)
 	}
-	win.img.imguiTooltipSimple(`The number of consecutive frames with
-a valid VSYNC signal for the screen to be
-considered stable.
+	win.img.imguiTooltipSimple(`The number of frames required for
+the TV to recover after desynchronisation`)
 
-When the screen is not stable, the screen
-will visibly 'roll'.`)
-}
+	imgui.SameLineV(0, 15)
 
-func (win *winPrefs) drawSyncSensitivity() {
-	imgui.AlignTextToFramePadding()
-	imgui.Text("Sensitivity")
-	imgui.SameLine()
-
-	t := int32(win.img.crtPrefs.SyncSensitivity.Get().(int))
-	var label string
-	if t == 1 {
-		label = fmt.Sprintf("%d scanline", t)
+	imguiLabel("Sensitivity")
+	sensitivity := int32(win.img.crtPrefs.VSyncSensitivity.Get().(int))
+	if sensitivity == 1 {
+		label = fmt.Sprintf("%d scanline", sensitivity)
 	} else {
-		label = fmt.Sprintf("%d scanlines", t)
+		label = fmt.Sprintf("%d scanlines", sensitivity)
 	}
 
-	if imgui.SliderIntV("##syncSensitivity", &t, 0, 4, label, 1.0) {
-		win.img.crtPrefs.SyncSensitivity.Set(t)
+	if imgui.SliderIntV("##vsyncSensitivity", &sensitivity, 0, 4, label, 1.0) {
+		win.img.crtPrefs.VSyncSensitivity.Set(sensitivity)
 	}
 
-	win.img.imguiTooltipSimple(`The number of complete scanlines of VSYNC
-for the VSYNC signal to be considered valid.
-
-Atari recommended a value 3 to ensure maximum
-compatibility.`)
-}
-
-func (win *winPrefs) drawSyncPowerOn() {
-	b := win.img.crtPrefs.SyncPowerOn.Get().(bool)
-	if imgui.Checkbox("Syncronise On Power##poweron", &b) {
-		win.img.crtPrefs.SyncPowerOn.Set(b)
-	}
-	win.img.imguiTooltipSimple(`Whether the emulated TV visibly synchronises when powered on.`)
+	win.img.imguiTooltipSimple(`The number of scanlines that VSYNC
+must be active for the frame to valid`)
 }

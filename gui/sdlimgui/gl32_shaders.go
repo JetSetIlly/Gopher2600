@@ -209,6 +209,23 @@ func (sh *blackCorrectionShader) setAttributesArgs(env shaderEnvironment, blackL
 	gl.Uniform1f(sh.blackLevel, blackLevel)
 }
 
+type screenrollShader struct {
+	shader
+	amount int32
+}
+
+func newScreenrollShader() shaderProgram {
+	sh := &screenrollShader{}
+	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTScreenroll))
+	sh.amount = gl.GetUniformLocation(sh.handle, gl.Str("Amount"+"\x00"))
+	return sh
+}
+
+func (sh *screenrollShader) setAttributesArgs(env shaderEnvironment, amount float32) {
+	sh.shader.setAttributes(env)
+	gl.Uniform1f(sh.amount, amount)
+}
+
 type phosphorShader struct {
 	shader
 

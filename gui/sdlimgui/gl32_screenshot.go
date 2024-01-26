@@ -177,7 +177,7 @@ func (sh *gl32Screenshot) crtProcess(env shaderEnvironment, scalingImage texture
 		}
 	}
 
-	textureID := sh.crt.process(env, true, sh.img.playScr.visibleScanlines, specification.ClksVisible, sh.img.playScr, prefs, sh.img.screen.rotation.Load().(specification.Rotation), true)
+	textureID := sh.crt.process(env, true, sh.img.playScr.visibleScanlines, specification.ClksVisible, 0, sh.img.playScr, prefs, sh.img.screen.rotation.Load().(specification.Rotation), true)
 
 	// reduce exposure count and return if there is still more to do
 	sh.frames--
@@ -335,7 +335,7 @@ func (sh *gl32Screenshot) compositeFinalise(env shaderEnvironment, composite *im
 	env.srcTextureID = sh.compositeBuffer.Texture(0)
 
 	// pass composite image through CRT shaders
-	textureID := sh.crt.process(env, true, sh.img.playScr.visibleScanlines, specification.ClksVisible, sh, newCrtSeqPrefs(sh.img.crtPrefs), sh.img.screen.rotation.Load().(specification.Rotation), true)
+	textureID := sh.crt.process(env, true, sh.img.playScr.visibleScanlines, specification.ClksVisible, 0, sh, newCrtSeqPrefs(sh.img.crtPrefs), sh.img.screen.rotation.Load().(specification.Rotation), true)
 
 	gl.BindTexture(gl.TEXTURE_2D, textureID)
 

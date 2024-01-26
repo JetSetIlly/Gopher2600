@@ -95,6 +95,7 @@ type crtSequencer struct {
 	sharpenShader         shaderProgram
 	phosphorShader        shaderProgram
 	blackCorrectionShader shaderProgram
+	screenrollShader      shaderProgram
 	blurShader            shaderProgram
 	ghostingShader        shaderProgram
 	effectsShader         shaderProgram
@@ -110,6 +111,7 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 		sharpenShader:         newSharpenShader(true),
 		phosphorShader:        newPhosphorShader(),
 		blackCorrectionShader: newBlackCorrectionShader(),
+		screenrollShader:      newScreenrollShader(),
 		blurShader:            newBlurShader(),
 		ghostingShader:        newGhostingShader(),
 		effectsShader:         newCrtSeqEffectsShader(false),
@@ -125,6 +127,7 @@ func (sh *crtSequencer) destroy() {
 	sh.sharpenShader.destroy()
 	sh.phosphorShader.destroy()
 	sh.blackCorrectionShader.destroy()
+	sh.screenrollShader.destroy()
 	sh.blurShader.destroy()
 	sh.ghostingShader.destroy()
 	sh.effectsShader.destroy()
@@ -167,7 +170,9 @@ func (sh *crtSequencer) flushPhosphor() {
 // occurs but crt effects are not applied.
 //
 // integerScaling instructs the scaling shader not to perform any smoothing
-func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numScanlines int, numClocks int, image textureSpec, prefs crtSeqPrefs, rotation specification.Rotation, screenshot bool) uint32 {
+func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numScanlines int, numClocks int,
+	screenroll float32, image textureSpec, prefs crtSeqPrefs, rotation specification.Rotation,
+	screenshot bool) uint32 {
 
 	// we'll be chaining many shaders together so use internal projection
 	env.useInternalProj = true
@@ -225,6 +230,12 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 	}
 
 	if prefs.Enabled {
+		// apply screenroll
+		env.srcTextureID = sh.seq.Process(crtSeqWorking, func() {
+			sh.screenrollShader.(*screenrollShader).setAttributesArgs(env, screenroll)
+			env.draw()
+		})
+
 		// video-black correction
 		env.srcTextureID = sh.seq.Process(crtSeqWorking, func() {
 			sh.blackCorrectionShader.(*blackCorrectionShader).setAttributesArgs(env, float32(prefs.BlackLevel))
@@ -243,12 +254,14 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 			// leaves pixels from a previous shader in the texture.
 			sh.seq.Clear(crtSeqMore)
 			env.srcTextureID = sh.seq.Process(crtSeqMore, func() {
-				sh.effectsShaderFlipped.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, prefs, rotation, screenshot)
+				sh.effectsShaderFlipped.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, screenroll,
+					prefs, rotation, screenshot)
 				env.draw()
 			})
 		} else {
 			env.useInternalProj = false
-			sh.effectsShader.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, prefs, rotation, screenshot)
+			sh.effectsShader.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, screenroll,
+				prefs, rotation, screenshot)
 		}
 	} else {
 		if moreProcessing {

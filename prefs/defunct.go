@@ -63,6 +63,9 @@ var defunct = []string{
 	"sdlimgui.fonts.gui",
 	"sdlimgui.fonts.terminal",
 	"sdlimgui.fonts.code",
+	"crt.syncPowerOn",
+	"crt.syncSpeed",
+	"crt.syncSensitivity",
 }
 
 // returns true if string is in list of defunct values.

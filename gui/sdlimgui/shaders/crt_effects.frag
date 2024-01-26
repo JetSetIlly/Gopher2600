@@ -125,7 +125,7 @@ void main() {
 	// capture the uv cordinates before reducing the size of the image. we use
 	// this for the bevel effect which we don't want to be slightly larger than
 	// the main image
-	vec2 uv_bevel = uv;
+	vec2 bevelUV = uv;
 
 	// reduce size of image (and the shine coordinates) shine if bevel is active
 	if (Bevel == 1) {
@@ -249,8 +249,8 @@ void main() {
 
 	// bevel
 	if (Bevel == 1) {
-		vec2 bl = smoothstep(vec2(-BevelSize), vec2(BevelSize), uv_bevel.st);
-		vec2 tr = smoothstep(vec2(-BevelSize), vec2(BevelSize), 1.0-uv_bevel.st);
+		vec2 bl = smoothstep(vec2(-BevelSize), vec2(BevelSize), bevelUV.st);
+		vec2 tr = smoothstep(vec2(-BevelSize), vec2(BevelSize), 1.0-bevelUV.st);
 		float pct = bl.x * bl.y * tr.x * tr.y;
 		if (pct < 0.75) {
 			Crt_Color = vec4(0.1, 0.1, 0.11, 1.0) * (1.0-pct);

@@ -55,3 +55,6 @@ var CRTPhosphorFragShader []byte
 
 //go:embed "crt_blackcorrection.frag"
 var CRTBlackCorrection []byte
+
+//go:embed "crt_screenroll.frag"
+var CRTScreenroll []byte

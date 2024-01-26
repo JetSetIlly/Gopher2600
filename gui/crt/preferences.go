@@ -55,9 +55,8 @@ type Preferences struct {
 
 	PixelPerfectFade prefs.Float
 
-	SyncPowerOn     prefs.Bool
-	SyncSpeed       prefs.Int
-	SyncSensitivity prefs.Int
+	VSyncRecovery    prefs.Int
+	VSyncSensitivity prefs.Int
 
 	IntegerScaling prefs.Bool
 }
@@ -97,9 +96,8 @@ const (
 	sharpness            = 0.55
 	blackLevel           = 0.045
 	pixelPerfectFade     = 0.4
-	syncSpeed            = 2
-	syncPowerOn          = true
-	syncSensitivity      = 2
+	vsyncRecovery        = 10
+	vsyncSensitivity     = 2
 	integerScaling       = false
 )
 
@@ -230,15 +228,11 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.syncPowerOn", &p.SyncPowerOn)
+	err = p.dsk.Add("crt.vsync.recovery", &p.VSyncRecovery)
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.syncSpeed", &p.SyncSpeed)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.syncSensitivity", &p.SyncSensitivity)
+	err = p.dsk.Add("crt.vsync.sensitivity", &p.VSyncSensitivity)
 	if err != nil {
 		return nil, err
 	}
@@ -285,9 +279,8 @@ func (p *Preferences) SetDefaults() {
 	p.Sharpness.Set(sharpness)
 	p.BlackLevel.Set(blackLevel)
 	p.PixelPerfectFade.Set(pixelPerfectFade)
-	p.SyncPowerOn.Set(syncPowerOn)
-	p.SyncSpeed.Set(syncSpeed)
-	p.SyncSensitivity.Set(syncSensitivity)
+	p.VSyncRecovery.Set(vsyncRecovery)
+	p.VSyncSensitivity.Set(vsyncSensitivity)
 	p.IntegerScaling.Set(integerScaling)
 }
 
