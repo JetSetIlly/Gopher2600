@@ -123,19 +123,28 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 	sr.frameHasVBlank = sr.frameHasVBlank || sig&signal.VBlank == signal.VBlank
 
 	// if VBLANK is off then update the top/bottom values note
-	//
-	// note that the bottom value can increase *and* decrease, while the top
-	// value can only decrease (meaning the screen gets bigger at the top).
-	// this is important for PAL screens that run at considerably higher
-	// refresh rates than 50Hz (ie PAL60 screens)
 	if sig&signal.VBlank != signal.VBlank {
-		if tv.state.scanline < sr.vblankTop &&
-			tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop {
-			sr.vblankTop = tv.state.scanline
-		} else if tv.state.scanline != sr.vblankBottom &&
-			tv.state.scanline <= tv.state.frameInfo.Spec.NewSafeVisibleBottom &&
-			tv.state.scanline >= sr.vblankTop*2 {
-			sr.vblankBottom = tv.state.scanline
+		if tv.state.frameInfo.Stable {
+			if tv.state.scanline < sr.vblankTop &&
+				tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop {
+				sr.vblankTop = tv.state.scanline
+			} else if tv.state.scanline > sr.vblankBottom &&
+				tv.state.scanline <= tv.state.frameInfo.Spec.NewSafeVisibleBottom {
+				sr.vblankBottom = tv.state.scanline
+			}
+		} else {
+			// if television is not yet stable then the size can shrink as well
+			// as grow. this is important for PAL60 ROMs which start off as PAL
+			// sized but will shrink to NTSC size
+			if tv.state.scanline != sr.vblankTop &&
+				tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop &&
+				tv.state.scanline <= tv.state.frameInfo.Spec.NewSafeVisibleTop+50 {
+				sr.vblankTop = tv.state.scanline
+			} else if tv.state.scanline != sr.vblankBottom &&
+				tv.state.scanline <= tv.state.frameInfo.Spec.NewSafeVisibleBottom &&
+				tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleBottom-75 {
+				sr.vblankBottom = tv.state.scanline
+			}
 		}
 	}
 
@@ -241,7 +250,10 @@ func (sr *resizer) commit(tv *Television) error {
 
 	// sanity check before we do anything drastic
 	if tv.state.frameInfo.VisibleTop < tv.state.frameInfo.VisibleBottom {
-		// clamp bottom scanline to safe bottom
+		// clamp top/bottom scanline to safe values
+		if sr.pendingTop < tv.state.frameInfo.Spec.NewSafeVisibleTop {
+			sr.pendingTop = tv.state.frameInfo.Spec.NewSafeVisibleTop
+		}
 		if sr.pendingBottom > tv.state.frameInfo.Spec.NewSafeVisibleBottom {
 			sr.pendingBottom = tv.state.frameInfo.Spec.NewSafeVisibleBottom
 		}

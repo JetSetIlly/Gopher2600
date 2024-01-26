@@ -270,7 +270,7 @@ func (scr *screen) setFrameQueue(auto bool, length int) {
 	scr.updateFrameQueue()
 }
 
-// updateFrameQueue() is called whenever a frameQueue preference
+// updateFrameQueue() after a reset of a frame queue value is changed
 //
 // must be called from inside a critical section
 func (scr *screen) updateFrameQueue() {
@@ -408,12 +408,8 @@ func (scr *screen) resize() {
 	scr.crit.cropElementPixels = scr.crit.elementPixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropOverlayPixels = scr.crit.overlayPixels.SubImage(crop).(*image.RGBA)
 
-	// clear pixels if we're in playmode. clearing pixels in debug mode can
-	// cause an ugly black screen flash and when rewinding over a resized frame
-	if scr.img.dbg.Mode() == govern.ModePlay {
-		scr.clearPixels()
-		scr.updateFrameQueue()
-	}
+	// we used to clear pixels and call updateFrameQueue() but I no longer
+	// believe it's necessary
 
 	// resize texture renderers
 	for _, r := range scr.renderers {
@@ -467,10 +463,16 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 	//
 	// note that we're only signalling that a resize should take place. it will
 	// be reset to false in the resize() function
-	scr.crit.resize = scr.crit.resize ||
-		scr.crit.frameInfo.Spec.ID != frameInfo.Spec.ID ||
-		scr.crit.frameInfo.VisibleTop != frameInfo.VisibleTop ||
-		scr.crit.frameInfo.VisibleBottom != frameInfo.VisibleBottom
+	//
+	// we also limit the resize to when the television is stable in order to
+	// prevent ugly screen updates while the resizer is finding the correct
+	// size. in the case of PAL60 ROMs in particular, the screen can resize
+	// dramatically
+	scr.crit.resize = scr.crit.frameInfo.Stable &&
+		(scr.crit.resize ||
+			scr.crit.frameInfo.Spec.ID != frameInfo.Spec.ID ||
+			scr.crit.frameInfo.VisibleTop != frameInfo.VisibleTop ||
+			scr.crit.frameInfo.VisibleBottom != frameInfo.VisibleBottom)
 
 	// record frame info
 	scr.crit.frameInfo = frameInfo
