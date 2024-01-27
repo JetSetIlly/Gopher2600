@@ -127,23 +127,31 @@ func (sh *gl32Screenshot) start(mode screenshotMode, finish chan screenshotResul
 }
 
 func (sh *gl32Screenshot) process(env shaderEnvironment, scalingImage textureSpec) {
+	// if there is no finish channel then there is nothing to do
+	if sh.finish == nil {
+		return
+	}
+
+	// once frames counter has reached zero, we need to start listening for
+	// screen finalise functions
 	if sh.frames <= 0 {
 		select {
 		case f := <-sh.finalise:
+			// call finalise function and return over finish channel
 			sh.finish <- screenshotResult{
 				description: sh.description,
 				image:       f(env),
 			}
+
+			// indicate that screenshot is completed by forgetting about the
+			// finish channel
 			sh.finish = nil
 		default:
 		}
-
-		// make sure workingCt is zero if the working channel is empty
-		sh.frames = 0
-
 		return
 	}
 
+	// screenshotting is still ongoing
 	switch sh.mode {
 	case modeComposite:
 		sh.compositeProcess(env, scalingImage)
@@ -198,15 +206,9 @@ func (sh *gl32Screenshot) crtProcess(env shaderEnvironment, scalingImage texture
 }
 
 func (sh *gl32Screenshot) compositeProcess(env shaderEnvironment, scalingImage textureSpec) {
-	// set up frame buffer. if dimensions have changed refuse to continue with
-	// screenshot processing
-	if sh.compositeBuffer.Setup(env.width, env.height) {
-		sh.finish <- screenshotResult{
-			err: fmt.Errorf("save failed: emulation window has changed dimensions"),
-		}
-		sh.finish = nil
-		return
-	}
+	// set up composite frame buffer. we don't care if the dimensions have
+	// changed (Setup() function returns true)
+	_ = sh.compositeBuffer.Setup(env.width, env.height)
 
 	// sharpen image from play screen
 	env.srcTextureID = sh.compositeBuffer.Process(0, func() {
