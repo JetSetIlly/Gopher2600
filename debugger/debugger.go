@@ -54,6 +54,7 @@ import (
 	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/patch"
 	"github.com/jetsetilly/gopher2600/prefs"
+	"github.com/jetsetilly/gopher2600/preview"
 	"github.com/jetsetilly/gopher2600/recorder"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/reflection/counter"
@@ -99,6 +100,10 @@ type Debugger struct {
 	// the last loader to be used. we keep a reference to it so we can make
 	// sure Close() is called on end
 	loader *cartridgeloader.Loader
+
+	// preview emulation is used to gather information about a ROM before
+	// running it fully
+	preview *preview.Emulation
 
 	// gameplay recorder/playback
 	recorder *recorder.Recorder
@@ -358,6 +363,12 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 
 	// create bot coordinator
 	dbg.bots = wrangler.NewBots(dbg.vcs.Input, dbg.vcs.TV)
+
+	// create preview emulation
+	dbg.preview, err = preview.NewEmulation(dbg.vcs.Env.Prefs)
+	if err != nil {
+		return nil, fmt.Errorf("debugger: %w", err)
+	}
 
 	// set up debugging interface to memory
 	dbg.dbgmem = &dbgmem.DbgMem{
@@ -1230,6 +1241,15 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 
 	// make sure everything is reset after disassembly (including breakpoints, etc.)
 	dbg.reset(newCartridge)
+
+	// run preview emulation
+	err = dbg.preview.Run(cartload.Filename)
+	if err != nil {
+		if !errors.Is(err, cartridgeloader.NoFilename) {
+			return err
+		}
+	}
+	dbg.vcs.TV.SetVisible(dbg.preview.GetFrameInfo())
 
 	// activate bot if possible
 	feedback, err := dbg.bots.ActivateBot(dbg.vcs.Mem.Cart.Hash)

@@ -468,7 +468,7 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 	// prevent ugly screen updates while the resizer is finding the correct
 	// size. in the case of PAL60 ROMs in particular, the screen can resize
 	// dramatically
-	scr.crit.resize = scr.crit.frameInfo.Stable && (scr.crit.resize || scr.crit.frameInfo.IsDifferent(frameInfo))
+	scr.crit.resize = scr.crit.resize || scr.crit.frameInfo.IsDifferent(frameInfo)
 
 	// record frame info
 	scr.crit.frameInfo = frameInfo

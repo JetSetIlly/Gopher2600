@@ -18,6 +18,7 @@ package cartridgeloader
 import (
 	"bytes"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -99,6 +100,9 @@ type Loader struct {
 	NotificationHook notifications.NotificationHook
 }
 
+// sentinal error for when it is attempted to create a loader with no filename
+var NoFilename = errors.New("no filename")
+
 // NewLoader is the preferred method of initialisation for the Loader type.
 //
 // The mapping argument will be used to set the Mapping field, unless the
@@ -121,7 +125,7 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 	// string or a string only consisting of whitespace, but we do want to
 	// allow filenames with leading/trailing spaces
 	if strings.TrimSpace(filename) == "" {
-		return Loader{}, fmt.Errorf("catridgeloader: no filename")
+		return Loader{}, fmt.Errorf("catridgeloader: %w", NoFilename)
 	}
 
 	// absolute path of filename

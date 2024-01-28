@@ -90,6 +90,10 @@ type resizer struct {
 	// number of frames until a resize is committed to the PixelRenderers this
 	// gives time for the screen to settle down.
 	pendingCt int
+
+	// noShrinkage prevents the resizer from ever reducing the size of the
+	// visible area
+	noShrinkage bool
 }
 
 // set resizer's top/bottom values to equal tv top/bottom values.
@@ -98,6 +102,7 @@ func (sr *resizer) initialise(tv *Television) {
 	sr.vblankBottom = tv.state.frameInfo.VisibleBottom
 	sr.pendingTop = tv.state.frameInfo.VisibleTop
 	sr.pendingBottom = tv.state.frameInfo.VisibleBottom
+	sr.noShrinkage = false
 }
 
 // examine signal for resizing possiblity. this is an expensive operation to do
@@ -124,7 +129,7 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 
 	// if VBLANK is off then update the top/bottom values note
 	if sig&signal.VBlank != signal.VBlank {
-		if tv.state.frameInfo.Stable {
+		if tv.state.frameInfo.Stable || sr.noShrinkage {
 			if tv.state.scanline < sr.vblankTop &&
 				tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop {
 				sr.vblankTop = tv.state.scanline
@@ -264,4 +269,15 @@ func (sr *resizer) commit(tv *Television) error {
 	}
 
 	return nil
+}
+
+// set visible forces the resizer to the values of the supplied frame info
+func (sr *resizer) setVisible(info FrameInfo) {
+	sr.noShrinkage = true
+	sr.vblankTop = info.VisibleTop
+	sr.vblankBottom = info.VisibleBottom
+	sr.blackTop = info.VisibleTop
+	sr.blackBottom = info.VisibleBottom
+	sr.pendingTop = info.VisibleTop
+	sr.pendingBottom = info.VisibleBottom
 }
