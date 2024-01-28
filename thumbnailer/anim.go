@@ -16,6 +16,7 @@
 package thumbnailer
 
 import (
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -34,13 +35,15 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/notifications"
+	"github.com/jetsetilly/gopher2600/preview"
 	"github.com/jetsetilly/gopher2600/setup"
 )
 
 // Anim type handles the emulation necessary for thumbnail image
 // generation.
 type Anim struct {
-	vcs *hardware.VCS
+	vcs     *hardware.VCS
+	preview *preview.Emulation
 
 	frameInfo television.FrameInfo
 
@@ -85,6 +88,12 @@ func NewAnim(prefs *preferences.Preferences) (*Anim, error) {
 	thmb.vcs.Env.Label = thumbnailerEnv
 	thmb.img = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 	thmb.Reset()
+
+	// create preview emulation
+	thmb.preview, err = preview.NewEmulation(thmb.vcs.Env.Prefs)
+	if err != nil {
+		return nil, fmt.Errorf("thumbnailer: %w", err)
+	}
 
 	return thmb, nil
 }
@@ -185,6 +194,12 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, numFrames int) {
 		// reset after setting the yield hook
 		thmb.vcs.Reset()
 
+		// run preview emulation
+		err = thmb.preview.Run(cartload.Filename)
+		if err == nil || errors.Is(err, cartridgeloader.NoFilename) {
+			thmb.vcs.TV.SetVisible(thmb.preview.GetFrameInfo())
+		}
+
 		// if we get to this point then we can be reasonably sure that the
 		// cartridgeloader is emulatable
 		thmb.isEmulating.Store(true)
@@ -227,8 +242,8 @@ func (thmb *Anim) CartYield(yield coprocessor.CoProcYieldType) coprocessor.Yield
 	return coprocessor.YieldHookEnd
 }
 
-func (thmb *Anim) resize(frameInfo television.FrameInfo, force bool) {
-	if thmb.frameInfo.IsDifferent(frameInfo) && (force || frameInfo.Stable) {
+func (thmb *Anim) resize(frameInfo television.FrameInfo) {
+	if thmb.frameInfo.IsDifferent(frameInfo) {
 		thmb.cropImg = thmb.img.SubImage(frameInfo.Crop()).(*image.RGBA)
 	}
 	thmb.frameInfo = frameInfo
@@ -236,7 +251,7 @@ func (thmb *Anim) resize(frameInfo television.FrameInfo, force bool) {
 
 // NewFrame implements the television.PixelRenderer interface
 func (thmb *Anim) NewFrame(frameInfo television.FrameInfo) error {
-	thmb.resize(frameInfo, false)
+	thmb.resize(frameInfo)
 
 	img := *thmb.cropImg
 	img.Pix = make([]uint8, len(thmb.cropImg.Pix))
@@ -284,7 +299,7 @@ func (thmb *Anim) SetPixels(sig []signal.SignalAttributes, last int) error {
 // Reset implements the television.PixelRenderer interface
 func (thmb *Anim) Reset() {
 	// start with a NTSC television as default
-	thmb.resize(television.NewFrameInfo(specification.SpecNTSC), true)
+	thmb.resize(television.NewFrameInfo(specification.SpecNTSC))
 
 	// clear pixels. setting the alpha channel so we don't have to later (the
 	// alpha channel never changes)
