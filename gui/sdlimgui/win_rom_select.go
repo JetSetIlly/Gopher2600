@@ -17,9 +17,12 @@ package sdlimgui
 
 import (
 	"fmt"
+	"image"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"golang.org/x/image/draw"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
@@ -52,6 +55,9 @@ type winSelectROM struct {
 
 	thmb        *thumbnailer.Anim
 	thmbTexture texture
+
+	thmbImage      *image.RGBA
+	thmbDimensions image.Point
 }
 
 func newSelectROM(img *SdlImgui) (window, error) {
@@ -76,6 +82,8 @@ func newSelectROM(img *SdlImgui) (window, error) {
 	}
 
 	win.thmbTexture = img.rnd.addTexture(textureColor, true, true)
+	win.thmbImage = image.NewRGBA(image.Rect(0, 0, specification.ClksVisible, specification.AbsoluteMaxScanlines))
+	win.thmbDimensions = win.thmbImage.Bounds().Size()
 
 	return win, nil
 }
@@ -136,7 +144,7 @@ func (win *winSelectROM) playmodeDraw() bool {
 	}
 
 	posFlgs := imgui.ConditionAppearing
-	winFlgs := imgui.WindowFlagsAlwaysAutoResize | imgui.WindowFlagsNoSavedSettings
+	winFlgs := imgui.WindowFlagsNoSavedSettings | imgui.WindowFlagsAlwaysAutoResize
 
 	imgui.SetNextWindowPosV(imgui.Vec2{75, 75}, posFlgs, imgui.Vec2{0, 0})
 
@@ -186,10 +194,25 @@ func (win *winSelectROM) debuggerDraw() bool {
 func (win *winSelectROM) render() {
 	// receive new thumbnail data and copy to texture
 	select {
-	case image := <-win.thmb.Render:
-		if image != nil {
-			win.thmbTexture.markForCreation()
-			win.thmbTexture.render(image)
+	case newImage := <-win.thmb.Render:
+		if newImage != nil {
+			// clear image
+			for i := 0; i < len(win.thmbImage.Pix); i += 4 {
+				s := win.thmbImage.Pix[i : i+4 : i+4]
+				s[0] = 10
+				s[1] = 10
+				s[2] = 10
+				s[3] = 255
+			}
+
+			// copy new image so that it is centred in the thumbnail image
+			sz := newImage.Bounds().Size()
+			y := ((win.thmbDimensions.Y - sz.Y) / 2)
+			draw.Copy(win.thmbImage, image.Point{X: 0, Y: y},
+				newImage, newImage.Bounds(), draw.Over, nil)
+
+			// render image
+			win.thmbTexture.render(win.thmbImage)
 		}
 	default:
 	}
@@ -214,6 +237,9 @@ func (win *winSelectROM) draw() {
 	imgui.Text(win.currPath)
 
 	if imgui.BeginTable("romSelector", 2) {
+		imgui.TableSetupColumnV("filelist", imgui.TableColumnFlagsWidthStretch, -1, 0)
+		imgui.TableSetupColumnV("thumbnail", imgui.TableColumnFlagsWidthStretch, -1, 1)
+
 		imgui.TableNextRow()
 		imgui.TableNextColumn()
 
@@ -303,23 +329,25 @@ func (win *winSelectROM) draw() {
 		imgui.EndChild()
 
 		imgui.TableNextColumn()
-		imgui.Image(imgui.TextureID(win.thmbTexture.getID()), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
-
-		imguiSeparator()
-		if win.thmb.IsEmulating() {
-			imgui.Text(win.thmb.String())
-		} else {
-			imgui.Text("")
-		}
+		imgui.Image(imgui.TextureID(win.thmbTexture.getID()),
+			imgui.Vec2{float32(win.thmbDimensions.X) * 2, float32(win.thmbDimensions.Y)})
 
 		imgui.EndTable()
 	}
 
 	// control buttons. start controlHeight measurement
 	win.controlHeight = imguiMeasureHeight(func() {
+		if win.thmb.IsEmulating() {
+			imgui.Text(win.thmb.String())
+		} else {
+			imgui.Text("")
+		}
+
+		imguiSeparator()
+
 		imgui.Checkbox("Show all files", &win.showAllFiles)
 		imgui.SameLine()
-		imgui.Checkbox("Show hidden entries", &win.showHidden)
+		imgui.Checkbox("Show hidden files", &win.showHidden)
 
 		imgui.Spacing()
 

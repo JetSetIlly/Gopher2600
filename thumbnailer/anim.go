@@ -83,11 +83,7 @@ func NewAnim(prefs *preferences.Preferences) (*Anim, error) {
 		return nil, fmt.Errorf("thumbnailer: %w", err)
 	}
 	thmb.vcs.Env.Label = thumbnailerEnv
-
 	thmb.img = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
-
-	// start with a NTSC television as default
-	thmb.Resize(television.NewFrameInfo(specification.SpecNTSC))
 	thmb.Reset()
 
 	return thmb, nil
@@ -231,21 +227,16 @@ func (thmb *Anim) CartYield(yield coprocessor.CoProcYieldType) coprocessor.Yield
 	return coprocessor.YieldHookEnd
 }
 
-// Resize implements the television.PixelRenderer interface
-func (thmb *Anim) Resize(frameInfo television.FrameInfo) error {
+func (thmb *Anim) resize(frameInfo television.FrameInfo, force bool) {
+	if thmb.frameInfo.IsDifferent(frameInfo) && (force || frameInfo.Stable) {
+		thmb.cropImg = thmb.img.SubImage(frameInfo.Crop()).(*image.RGBA)
+	}
 	thmb.frameInfo = frameInfo
-	crop := thmb.frameInfo.Crop()
-	thmb.cropImg = thmb.img.SubImage(crop).(*image.RGBA)
-	return nil
 }
 
 // NewFrame implements the television.PixelRenderer interface
 func (thmb *Anim) NewFrame(frameInfo television.FrameInfo) error {
-	if !frameInfo.Stable {
-		return nil
-	}
-
-	thmb.frameInfo = frameInfo
+	thmb.resize(frameInfo, false)
 
 	img := *thmb.cropImg
 	img.Pix = make([]uint8, len(thmb.cropImg.Pix))
@@ -286,11 +277,15 @@ func (thmb *Anim) SetPixels(sig []signal.SignalAttributes, last int) error {
 
 		offset += 4
 	}
+
 	return nil
 }
 
 // Reset implements the television.PixelRenderer interface
 func (thmb *Anim) Reset() {
+	// start with a NTSC television as default
+	thmb.resize(television.NewFrameInfo(specification.SpecNTSC), true)
+
 	// clear pixels. setting the alpha channel so we don't have to later (the
 	// alpha channel never changes)
 	for y := 0; y < thmb.img.Bounds().Size().Y; y++ {

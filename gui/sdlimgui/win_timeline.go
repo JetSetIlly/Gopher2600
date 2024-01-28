@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"image"
 	"os"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -25,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
 	"github.com/jetsetilly/gopher2600/thumbnailer"
+	"golang.org/x/image/draw"
 )
 
 const winTimelineID = "Timeline"
@@ -38,7 +40,10 @@ type winTimeline struct {
 	// goroutine so we must thumbnail those states in the same goroutine.
 	thmb        *thumbnailer.Image
 	thmbTexture texture
-	thmbValid   bool
+
+	// the backing image for the texture
+	thmbImage      *image.RGBA
+	thmbDimensions image.Point
 
 	// whether the thumbnail is being shown on the left of the timeline rather
 	// than the right
@@ -91,6 +96,8 @@ func newWinTimeline(img *SdlImgui) (window, error) {
 	}
 
 	win.thmbTexture = img.rnd.addTexture(textureColor, true, true)
+	win.thmbImage = image.NewRGBA(image.Rect(0, 0, specification.ClksVisible, specification.AbsoluteMaxScanlines))
+	win.thmbDimensions = win.thmbImage.Bounds().Size()
 
 	return win, nil
 }
@@ -111,11 +118,23 @@ const timelinePopupID = "timelinePopupID"
 func (win *winTimeline) debuggerDraw() bool {
 	// receive new thumbnail data and copy to texture
 	select {
-	case image := <-win.thmb.Render:
-		if image != nil {
-			win.thmbTexture.markForCreation()
-			win.thmbTexture.render(image)
-			win.thmbValid = true
+	case newImage := <-win.thmb.Render:
+		if newImage != nil {
+			// clear image
+			for i := 0; i < len(win.thmbImage.Pix); i += 4 {
+				s := win.thmbImage.Pix[i : i+4 : i+4]
+				s[0] = 10
+				s[1] = 10
+				s[2] = 10
+				s[3] = 255
+			}
+
+			// copy new image so that it is centred in the thumbnail image
+			sz := newImage.Bounds().Size()
+			y := ((win.thmbDimensions.Y - sz.Y) / 2)
+			draw.Copy(win.thmbImage, image.Point{X: 0, Y: y},
+				newImage, newImage.Bounds(), draw.Over, nil)
+			win.thmbTexture.render(win.thmbImage)
 		}
 	default:
 	}
@@ -188,7 +207,6 @@ func (win *winTimeline) debuggerDraw() bool {
 					// thumbnailer must be run in the same goroutine as the main emulation
 					win.thmb.Create(win.img.dbg.Rewind.GetState(hoverFrame))
 					<-win.thmbRunning
-					win.thmbValid = false
 				})
 			default:
 				// if a thumbnail is currently being generated then we need to
@@ -334,8 +352,9 @@ func (win *winTimeline) drawTrace() {
 			imgui.Vec2{X: win.hoverX + cursorWidth/2, Y: rootPos.Y + traceSize.Y},
 			win.img.cols.timelineHoverCursor)
 
-		if win.thmbValid && win.img.prefs.showTimelineThumbnail.Get().(bool) {
-			sz := imgui.Vec2{X: specification.ClksVisible * 3, Y: specification.AbsoluteMaxScanlines}.Times(traceSize.Y / specification.AbsoluteMaxScanlines)
+		if win.img.prefs.showTimelineThumbnail.Get().(bool) {
+			sz := imgui.Vec2{float32(win.thmbDimensions.X) * 2, float32(win.thmbDimensions.Y)}
+			sz = sz.Times(traceSize.Y / specification.AbsoluteMaxScanlines)
 
 			// show thumbnail on either the left or right of the timeline window
 			var pos imgui.Vec2

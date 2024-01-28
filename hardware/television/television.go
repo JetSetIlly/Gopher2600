@@ -29,11 +29,12 @@ import (
 // the number of synced frames where we can expect things to be in flux.
 const leadingFrames = 1
 
-// the number of synced frames required before the tv is considered to be
-// "stable". once the tv is stable then specification switching cannot happen.
+// the number of synced frames required before the TV is considered to be
+// stable. once the tv is stable then specification switching cannot happen.
 //
-// resizing can still happen however. so this value is important if we don't
-// want to see the screen jump on ROM startup
+// resizing also works a little differently before the TV is stable. the size of
+// the screen can shrink as well as grow. once the stability threshold is
+// reached, the screen can only grow
 const stabilityThreshold = 6
 
 // State encapsulates the television values that can change from moment to

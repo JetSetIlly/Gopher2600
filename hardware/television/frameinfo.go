@@ -118,6 +118,14 @@ func (info FrameInfo) Crop() image.Rectangle {
 	)
 }
 
+// IsDifferent returns true if any of the pertinent display information is
+// different between the two copies of FrameInfo
+func (info FrameInfo) IsDifferent(cmp FrameInfo) bool {
+	return info.Spec.ID != cmp.Spec.ID ||
+		info.VisibleTop != cmp.VisibleTop ||
+		info.VisibleBottom != cmp.VisibleBottom
+}
+
 func (info *FrameInfo) reset() {
 	info.VisibleTop = info.Spec.AtariSafeVisibleTop
 	info.VisibleBottom = info.Spec.AtariSafeVisibleBottom
