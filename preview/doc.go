@@ -15,4 +15,8 @@
 
 // Package preview is used to emulate a ROM for a short period of time in order
 // to gather information that would takes time to acquire.
+//
+// For example, it is used to determine the initial framing for the television
+// on startup. Without a preview emulation the default framing will most often
+// be wrong, resulting in a visible change in the image.
 package preview

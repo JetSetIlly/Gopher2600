@@ -110,6 +110,12 @@ func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (g
 
 	state := govern.Running
 	for frameNum != targetFrame && state != govern.Ending {
+		// check if CPU has been killed. emulation will run forever if we don't
+		// check for this
+		if vcs.CPU.Killed {
+			return nil
+		}
+
 		err := vcs.Step(nil)
 		if err != nil {
 			return err

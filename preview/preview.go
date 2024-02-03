@@ -28,7 +28,7 @@ type Emulation struct {
 	vcs *hardware.VCS
 }
 
-// NewPreview is the preferred method of initialisation for the Preview type
+// NewEmulation is the preferred method of initialisation for the Emulation type
 func NewEmulation(prefs *preferences.Preferences) (*Emulation, error) {
 	em := &Emulation{}
 
