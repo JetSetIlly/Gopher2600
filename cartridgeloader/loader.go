@@ -17,6 +17,7 @@ package cartridgeloader
 
 import (
 	"bytes"
+	"crypto/md5"
 	"crypto/sha1"
 	"errors"
 	"fmt"
@@ -64,6 +65,9 @@ type Loader struct {
 	// the value of Hash will be checked on a call to Loader.Load(). if the
 	// string is empty then that check passes.
 	Hash string
+
+	// HashMD5 is an alternative to hash for use with the properties package
+	HashMD5 string
 
 	// does the Data field consist of sound (PCM) data
 	IsSoundData bool
@@ -320,6 +324,7 @@ func NewLoaderFromEmbed(name string, data []byte, mapping string) (Loader, error
 		Data:             &data,
 		embedded:         true,
 		Hash:             fmt.Sprintf("%x", sha1.Sum(data)),
+		HashMD5:          fmt.Sprintf("%x", md5.Sum(data)),
 		NotificationHook: func(cart mapper.CartMapper, notice notifications.Notify, args ...interface{}) error {
 			return nil
 		},
@@ -449,6 +454,13 @@ func (cl *Loader) Load() error {
 		return fmt.Errorf("cartridgeloader: unexpected hash value")
 	}
 	cl.Hash = hash
+
+	// generate md5 hash and check for consistency
+	hashmd5 := fmt.Sprintf("%x", md5.Sum(*cl.Data))
+	if cl.HashMD5 != "" && cl.HashMD5 != hashmd5 {
+		return fmt.Errorf("cartridgeloader: unexpected hash value")
+	}
+	cl.HashMD5 = hashmd5
 
 	return nil
 }

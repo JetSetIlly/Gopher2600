@@ -55,6 +55,7 @@ import (
 	"github.com/jetsetilly/gopher2600/patch"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/preview"
+	"github.com/jetsetilly/gopher2600/properties"
 	"github.com/jetsetilly/gopher2600/recorder"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/reflection/counter"
@@ -119,6 +120,9 @@ type Debugger struct {
 	gui         gui.GUI
 	term        terminal.Terminal
 	controllers *userinput.Controllers
+
+	// stella.pro file support
+	pro properties.Properties
 
 	// bots coordinator
 	bots *wrangler.Bots
@@ -363,6 +367,12 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 
 	// create bot coordinator
 	dbg.bots = wrangler.NewBots(dbg.vcs.Input, dbg.vcs.TV)
+
+	// stella.pro support
+	dbg.pro, err = properties.Load()
+	if err != nil {
+		logger.Logf("debugger", err.Error())
+	}
 
 	// create preview emulation
 	dbg.preview, err = preview.NewEmulation(dbg.vcs.Env.Prefs)

@@ -55,6 +55,9 @@ type Anim struct {
 	emulationCompleted chan bool
 
 	Render chan *image.RGBA
+
+	snapshot    chan bool
+	snapshotVCS chan *hardware.VCS
 }
 
 // NewAnim is the preferred method of initialisation for the Anim type
@@ -63,6 +66,8 @@ func NewAnim(prefs *preferences.Preferences) (*Anim, error) {
 		emulationQuit:      make(chan bool, 1),
 		emulationCompleted: make(chan bool, 1),
 		Render:             make(chan *image.RGBA, 60),
+		snapshot:           make(chan bool, 1),
+		snapshotVCS:        make(chan *hardware.VCS, 1),
 	}
 
 	// emulation has completed, by definition, on startup
@@ -211,6 +216,7 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, numFrames int) {
 			select {
 			case <-thmb.emulationQuit:
 				return govern.Ending, nil
+			case <-thmb.snapshot:
 			default:
 			}
 
@@ -322,4 +328,10 @@ func (thmb *Anim) Reset() {
 // EndRendering implements the television.PixelRenderer interface
 func (thmb *Anim) EndRendering() error {
 	return nil
+}
+
+// Snapshot safely returns a copy of the emulation
+func (thmb *Anim) Snapshot() *hardware.VCS {
+	thmb.snapshot <- true
+	return <-thmb.snapshotVCS
 }

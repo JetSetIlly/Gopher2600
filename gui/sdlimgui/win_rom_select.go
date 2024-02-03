@@ -28,6 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/properties"
 	"github.com/jetsetilly/gopher2600/thumbnailer"
 )
 
@@ -43,7 +44,12 @@ type winSelectROM struct {
 	entries  []os.DirEntry
 	err      error
 
-	selectedFile string
+	selectedFile     string
+	selectedFileBase string
+	loader           cartridgeloader.Loader
+	properties       properties.Entry
+	propertiesOpen   bool
+
 	showAllFiles bool
 	showHidden   bool
 
@@ -58,15 +64,20 @@ type winSelectROM struct {
 
 	thmbImage      *image.RGBA
 	thmbDimensions image.Point
+
+	// the return channel from the emulation goroutine for the property lookup
+	// for the selected cartridge
+	propertyResult chan properties.Entry
 }
 
 func newSelectROM(img *SdlImgui) (window, error) {
 	win := &winSelectROM{
-		img:          img,
-		showAllFiles: false,
-		showHidden:   false,
-		scrollToTop:  true,
-		centreOnFile: true,
+		img:            img,
+		showAllFiles:   false,
+		showHidden:     false,
+		scrollToTop:    true,
+		centreOnFile:   true,
+		propertyResult: make(chan properties.Entry, 1),
 	}
 	win.debuggerGeom.noFousTracking = true
 
@@ -219,6 +230,12 @@ func (win *winSelectROM) render() {
 }
 
 func (win *winSelectROM) draw() {
+	// check for new property information
+	select {
+	case win.properties = <-win.propertyResult:
+	default:
+	}
+
 	// reset centreOnFile at end of draw
 	defer func() {
 		win.centreOnFile = false
@@ -310,7 +327,7 @@ func (win *winSelectROM) draw() {
 			}
 
 			if fi.Mode().IsRegular() {
-				selected := f.Name() == filepath.Base(win.selectedFile)
+				selected := f.Name() == win.selectedFileBase
 
 				if selected && win.centreOnFile {
 					imgui.SetScrollHereY(0.0)
@@ -337,19 +354,75 @@ func (win *winSelectROM) draw() {
 
 	// control buttons. start controlHeight measurement
 	win.controlHeight = imguiMeasureHeight(func() {
-		if win.thmb.IsEmulating() {
-			imgui.Text(win.thmb.String())
-		} else {
-			imgui.Text("")
-		}
+		func() {
+			if !win.thmb.IsEmulating() {
+				imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+				imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+				defer imgui.PopItemFlag()
+				defer imgui.PopStyleVar()
+			}
+
+			imgui.SetNextItemOpen(win.propertiesOpen, imgui.ConditionAlways)
+			if !imgui.CollapsingHeaderV(win.selectedFileBase, imgui.TreeNodeFlagsNone) {
+				win.propertiesOpen = false
+			} else {
+				win.propertiesOpen = true
+				if win.properties.IsValid() {
+					if imgui.BeginTable("#properties", 2) {
+						imgui.TableSetupColumnV("#category", imgui.TableColumnFlagsWidthFixed, -1, 0)
+						imgui.TableSetupColumnV("#detail", imgui.TableColumnFlagsWidthFixed, -1, 1)
+
+						imgui.TableNextRow()
+						imgui.TableNextColumn()
+						imgui.Text("Name")
+						imgui.TableNextColumn()
+						imgui.Text(win.properties.Name)
+
+						if win.properties.Manufacturer != "" {
+							imgui.TableNextRow()
+							imgui.TableNextColumn()
+							imgui.Text("Manufacturer")
+							imgui.TableNextColumn()
+							imgui.Text(win.properties.Manufacturer)
+						}
+						if win.properties.Rarity != "" {
+							imgui.TableNextRow()
+							imgui.TableNextColumn()
+							imgui.Text("Rarity")
+							imgui.TableNextColumn()
+							imgui.Text(win.properties.Rarity)
+						}
+						if win.properties.Model != "" {
+							imgui.TableNextRow()
+							imgui.TableNextColumn()
+							imgui.Text("Model")
+							imgui.TableNextColumn()
+							imgui.Text(win.properties.Model)
+						}
+
+						if win.properties.Note != "" {
+							imgui.TableNextRow()
+							imgui.TableNextColumn()
+							imgui.Text("Note")
+							imgui.TableNextColumn()
+							imgui.Text(win.properties.Note)
+						}
+
+						imgui.EndTable()
+					}
+				} else {
+					imgui.Text("No information")
+				}
+			}
+		}()
 
 		imguiSeparator()
 
-		imgui.Checkbox("Show all files", &win.showAllFiles)
-		imgui.SameLine()
-		imgui.Checkbox("Show hidden files", &win.showHidden)
+		// imgui.Checkbox("Show all files", &win.showAllFiles)
+		// imgui.SameLine()
+		// imgui.Checkbox("Show hidden files", &win.showHidden)
 
-		imgui.Spacing()
+		// imgui.Spacing()
 
 		if imgui.Button("Cancel") {
 			// close rom selected in both the debugger and playmode
@@ -363,9 +436,9 @@ func (win *winSelectROM) draw() {
 
 			// load or reload button
 			if win.selectedFile == win.img.cache.VCS.Mem.Cart.Filename {
-				s = fmt.Sprintf("Reload %s", filepath.Base(win.selectedFile))
+				s = fmt.Sprintf("Reload %s", win.selectedFileBase)
 			} else {
-				s = fmt.Sprintf("Load %s", filepath.Base(win.selectedFile))
+				s = fmt.Sprintf("Load %s", win.selectedFileBase)
 			}
 
 			// only show load cartridge button if the file is being
@@ -419,15 +492,28 @@ func (win *winSelectROM) setSelectedFile(filename string) {
 	// update selected file. return immediately if the filename is empty
 	win.selectedFile = filename
 	if filename == "" {
+		win.selectedFileBase = ""
 		return
 	}
 
+	// base filename for presentation purposes
+	win.selectedFileBase = filepath.Base(filename)
+
+	var err error
+
 	// create cartridge loader and start thumbnail emulation
-	cartload, err := cartridgeloader.NewLoader(filename, "AUTO")
+	win.loader, err = cartridgeloader.NewLoader(filename, "AUTO")
 	if err != nil {
 		logger.Logf("ROM Select", err.Error())
 		return
 	}
 
-	win.thmb.Create(cartload, thumbnailer.UndefinedNumFrames)
+	// push function to emulation goroutine. result will be checked for in
+	// draw() function
+	if err := win.loader.Load(); err == nil {
+		win.img.dbg.PushPropertyLookup(win.loader.HashMD5, win.propertyResult)
+	}
+
+	// create thumbnail animation
+	win.thmb.Create(win.loader, thumbnailer.UndefinedNumFrames)
 }
