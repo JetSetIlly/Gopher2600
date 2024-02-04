@@ -21,13 +21,9 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/hardware/cpu"
-	"github.com/jetsetilly/gopher2600/hardware/memory"
-	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
-	"github.com/jetsetilly/gopher2600/hardware/tia"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -55,21 +51,14 @@ type Runner interface {
 // reference.
 type State struct {
 	level snapshotLevel
-
-	CPU  *cpu.CPU
-	Mem  *memory.Memory
-	RIOT *riot.RIOT
-	TIA  *tia.TIA
-	TV   *television.State
+	VCS   *hardware.State
+	TV    *television.State
 }
 
 func (s *State) snapshot() *State {
 	return &State{
 		level: s.level,
-		CPU:   s.CPU.Snapshot(),
-		Mem:   s.Mem.Snapshot(),
-		RIOT:  s.RIOT.Snapshot(),
-		TIA:   s.TIA.Snapshot(),
+		VCS:   s.VCS.Snapshot(),
 		TV:    s.TV.Snapshot(),
 	}
 }
@@ -340,10 +329,7 @@ func (r *Rewind) lastEntryIdx() int {
 func snapshot(vcs *hardware.VCS, level snapshotLevel) *State {
 	return &State{
 		level: level,
-		CPU:   vcs.CPU.Snapshot(),
-		Mem:   vcs.Mem.Snapshot(),
-		RIOT:  vcs.RIOT.Snapshot(),
-		TIA:   vcs.TIA.Snapshot(),
+		VCS:   vcs.Snapshot(),
 		TV:    vcs.TV.Snapshot(),
 	}
 }
@@ -443,18 +429,10 @@ func (r *Rewind) append(s *State) {
 func Plumb(vcs *hardware.VCS, state *State, fromDifferentEmulation bool) {
 	// tv plumbing works a bit different to other areas because we're only
 	// recording the state of the TV not the entire TV itself.
-	vcs.TV.PlumbState(vcs, state.TV.Snapshot())
-
-	// take another snapshot of the state before plumbing. we don't want the
-	// machine to change what we have stored in our state array (we learned
-	// that lesson the hard way :-)
-	vcs.CPU = state.CPU.Snapshot()
-	vcs.Mem = state.Mem.Snapshot()
-	vcs.RIOT = state.RIOT.Snapshot()
-	vcs.TIA = state.TIA.Snapshot()
+	vcs.TV.Plumb(vcs, state.TV)
 
 	// finish off plumbing process
-	vcs.Plumb(fromDifferentEmulation)
+	vcs.Plumb(state.VCS, fromDifferentEmulation)
 }
 
 // run from the supplied state until the cooridinates are reached.

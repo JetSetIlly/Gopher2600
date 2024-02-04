@@ -267,13 +267,13 @@ func (tv *Television) Snapshot() *State {
 	return tv.state.Snapshot()
 }
 
-// PlumbState attaches an existing television state.
-func (tv *Television) PlumbState(vcs VCSReturnChannel, s *State) {
-	if s == nil {
+// Plumb attaches an existing television state.
+func (tv *Television) Plumb(vcs VCSReturnChannel, state *State) {
+	if state == nil {
 		panic("television: cannot plumb in a nil state")
 	}
 
-	tv.state = s
+	tv.state = state.Snapshot()
 
 	// make sure vcs knows about current spec
 	tv.vcs = vcs

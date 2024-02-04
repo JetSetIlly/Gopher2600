@@ -47,13 +47,14 @@ type VCS struct {
 	// the television is not "part" of the VCS console but it's part of the VCS system
 	TV *television.Television
 
-	// references to the different components of the VCS. do not take copies of
-	// these pointer values because the rewind feature will change them.
+	// references to the different sub-systems of the VCS. these syb-systems can be
+	// copied with the Snapshot() function creating an instance of the State type
 	CPU  *cpu.CPU
 	Mem  *memory.Memory
 	RIOT *riot.RIOT
 	TIA  *tia.TIA
 
+	// the input sub-system. this is not part of the Snapshot() process
 	Input *input.Input
 
 	// The Clock defines the basic speed at which the the machine is runningt. This governs
@@ -131,24 +132,6 @@ func NewVCS(tv *television.Television, prefs *preferences.Preferences) (*VCS, er
 func (vcs *VCS) End() {
 	vcs.TV.End()
 	vcs.RIOT.Ports.End()
-}
-
-// Plumb the various VCS sub-systems together after a rewind.
-//
-// The fromDifferentEmulation indicates that the State has been created by a
-// different VCS emulation than the one being plumbed into.
-func (vcs *VCS) Plumb(fromDifferentEmulation bool) {
-	vcs.CPU.Plumb(vcs.Env, vcs.Mem)
-	vcs.Mem.Plumb(vcs.Env, fromDifferentEmulation)
-	vcs.RIOT.Plumb(vcs.Env, vcs.Mem.RIOT, vcs.Mem.TIA)
-	vcs.TIA.Plumb(vcs.Env, vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
-
-	// reset peripherals after new state has been plumbed. without this,
-	// controllers can feel odd if the newly plumbed state has left RIOT memory
-	// in a latched state
-	vcs.RIOT.Ports.ResetPeripherals()
-
-	vcs.Input.Plumb(vcs.TV, vcs.RIOT.Ports)
 }
 
 // AttachCartridge to this VCS. While this function can be called directly it
