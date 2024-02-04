@@ -68,8 +68,3 @@ func (em *Emulation) RunN(filename string, N int) error {
 func (em *Emulation) Run(filename string) error {
 	return em.RunN(filename, 30)
 }
-
-// GetFrameInfo from the emulated television
-func (em *Emulation) GetFrameInfo() television.FrameInfo {
-	return em.vcs.TV.GetFrameInfo()
-}

@@ -44,17 +44,17 @@ type winSelectROM struct {
 	entries  []os.DirEntry
 	err      error
 
-	selectedFile     string
-	selectedFileBase string
-	loader           cartridgeloader.Loader
-	properties       properties.Entry
-	propertiesOpen   bool
+	selectedFile           string
+	selectedFileBase       string
+	selectedFileProperties properties.Entry
 
 	showAllFiles bool
 	showHidden   bool
 
 	scrollToTop  bool
 	centreOnFile bool
+
+	informationOpen bool
 
 	// height of options line at bottom of window. valid after first frame
 	controlHeight float32
@@ -232,7 +232,7 @@ func (win *winSelectROM) render() {
 func (win *winSelectROM) draw() {
 	// check for new property information
 	select {
-	case win.properties = <-win.propertyResult:
+	case win.selectedFileProperties = <-win.propertyResult:
 	default:
 	}
 
@@ -362,56 +362,87 @@ func (win *winSelectROM) draw() {
 				defer imgui.PopStyleVar()
 			}
 
-			imgui.SetNextItemOpen(win.propertiesOpen, imgui.ConditionAlways)
+			imgui.SetNextItemOpen(win.informationOpen, imgui.ConditionAlways)
 			if !imgui.CollapsingHeaderV(win.selectedFileBase, imgui.TreeNodeFlagsNone) {
-				win.propertiesOpen = false
+				win.informationOpen = false
 			} else {
-				win.propertiesOpen = true
-				if win.properties.IsValid() {
-					if imgui.BeginTable("#properties", 2) {
-						imgui.TableSetupColumnV("#category", imgui.TableColumnFlagsWidthFixed, -1, 0)
-						imgui.TableSetupColumnV("#detail", imgui.TableColumnFlagsWidthFixed, -1, 1)
+				win.informationOpen = true
+				if imgui.BeginTable("#properties", 2) {
+					imgui.TableSetupColumnV("#category", imgui.TableColumnFlagsWidthFixed, -1, 0)
+					imgui.TableSetupColumnV("#detail", imgui.TableColumnFlagsWidthFixed, -1, 1)
 
+					imgui.TableNextRow()
+					imgui.TableNextColumn()
+					imgui.Text("Name")
+					imgui.TableNextColumn()
+					if win.selectedFileProperties.IsValid() {
+						imgui.Text(win.selectedFileProperties.Name)
+					} else {
+						imgui.Text(win.selectedFileBase)
+					}
+
+					// results of preview emulation from the thumbnailer
+					selectedFilePreview := win.thmb.PreviewResults()
+
+					imgui.TableNextRow()
+					imgui.TableNextColumn()
+					imgui.Text("Mapper")
+					imgui.TableNextColumn()
+					if selectedFilePreview != nil {
+						imgui.Text(selectedFilePreview.VCS.Mem.Cart.ID())
+					}
+
+					imgui.TableNextRow()
+					imgui.TableNextColumn()
+					imgui.Text("Television")
+					imgui.TableNextColumn()
+					if selectedFilePreview != nil {
+						imgui.Text(selectedFilePreview.FrameInfo.Spec.ID)
+					}
+
+					imgui.TableNextRow()
+					imgui.TableNextColumn()
+					imgui.Text("Players")
+					imgui.TableNextColumn()
+					if selectedFilePreview != nil {
+						imgui.Text(string(selectedFilePreview.VCS.RIOT.Ports.LeftPlayer.ID()))
+						imgui.SameLineV(0, 15)
+						imgui.Text("&")
+						imgui.SameLineV(0, 15)
+						imgui.Text(string(selectedFilePreview.VCS.RIOT.Ports.RightPlayer.ID()))
+					}
+
+					if win.selectedFileProperties.Manufacturer != "" {
 						imgui.TableNextRow()
 						imgui.TableNextColumn()
-						imgui.Text("Name")
+						imgui.Text("Manufacturer")
 						imgui.TableNextColumn()
-						imgui.Text(win.properties.Name)
-
-						if win.properties.Manufacturer != "" {
-							imgui.TableNextRow()
-							imgui.TableNextColumn()
-							imgui.Text("Manufacturer")
-							imgui.TableNextColumn()
-							imgui.Text(win.properties.Manufacturer)
-						}
-						if win.properties.Rarity != "" {
-							imgui.TableNextRow()
-							imgui.TableNextColumn()
-							imgui.Text("Rarity")
-							imgui.TableNextColumn()
-							imgui.Text(win.properties.Rarity)
-						}
-						if win.properties.Model != "" {
-							imgui.TableNextRow()
-							imgui.TableNextColumn()
-							imgui.Text("Model")
-							imgui.TableNextColumn()
-							imgui.Text(win.properties.Model)
-						}
-
-						if win.properties.Note != "" {
-							imgui.TableNextRow()
-							imgui.TableNextColumn()
-							imgui.Text("Note")
-							imgui.TableNextColumn()
-							imgui.Text(win.properties.Note)
-						}
-
-						imgui.EndTable()
+						imgui.Text(win.selectedFileProperties.Manufacturer)
 					}
-				} else {
-					imgui.Text("No information")
+					if win.selectedFileProperties.Rarity != "" {
+						imgui.TableNextRow()
+						imgui.TableNextColumn()
+						imgui.Text("Rarity")
+						imgui.TableNextColumn()
+						imgui.Text(win.selectedFileProperties.Rarity)
+					}
+					if win.selectedFileProperties.Model != "" {
+						imgui.TableNextRow()
+						imgui.TableNextColumn()
+						imgui.Text("Model")
+						imgui.TableNextColumn()
+						imgui.Text(win.selectedFileProperties.Model)
+					}
+
+					if win.selectedFileProperties.Note != "" {
+						imgui.TableNextRow()
+						imgui.TableNextColumn()
+						imgui.Text("Note")
+						imgui.TableNextColumn()
+						imgui.Text(win.selectedFileProperties.Note)
+					}
+
+					imgui.EndTable()
 				}
 			}
 		}()
@@ -431,7 +462,6 @@ func (win *winSelectROM) draw() {
 		}
 
 		if win.selectedFile != "" {
-
 			var s string
 
 			// load or reload button
@@ -499,10 +529,8 @@ func (win *winSelectROM) setSelectedFile(filename string) {
 	// base filename for presentation purposes
 	win.selectedFileBase = filepath.Base(filename)
 
-	var err error
-
 	// create cartridge loader and start thumbnail emulation
-	win.loader, err = cartridgeloader.NewLoader(filename, "AUTO")
+	loader, err := cartridgeloader.NewLoader(filename, "AUTO")
 	if err != nil {
 		logger.Logf("ROM Select", err.Error())
 		return
@@ -510,10 +538,10 @@ func (win *winSelectROM) setSelectedFile(filename string) {
 
 	// push function to emulation goroutine. result will be checked for in
 	// draw() function
-	if err := win.loader.Load(); err == nil {
-		win.img.dbg.PushPropertyLookup(win.loader.HashMD5, win.propertyResult)
+	if err := loader.Load(); err == nil {
+		win.img.dbg.PushPropertyLookup(loader.HashMD5, win.propertyResult)
 	}
 
 	// create thumbnail animation
-	win.thmb.Create(win.loader, thumbnailer.UndefinedNumFrames)
+	win.thmb.Create(loader, thumbnailer.UndefinedNumFrames)
 }
