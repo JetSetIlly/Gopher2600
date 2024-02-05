@@ -28,6 +28,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/properties"
@@ -436,6 +437,7 @@ func (win *winSelectROM) draw() {
 
 						imgui.TableNextRow()
 						imgui.TableNextColumn()
+						imgui.AlignTextToFramePadding()
 						imgui.Text("Mapper")
 						imgui.TableNextColumn()
 						if selectedFilePreview != nil {
@@ -444,27 +446,51 @@ func (win *winSelectROM) draw() {
 
 						imgui.TableNextRow()
 						imgui.TableNextColumn()
+						imgui.AlignTextToFramePadding()
 						imgui.Text("Television")
 						imgui.TableNextColumn()
 						if selectedFilePreview != nil {
-							imgui.Text(selectedFilePreview.FrameInfo.Spec.ID)
+							imgui.SetNextItemWidth(80)
+							if imgui.BeginCombo("##tvspec", selectedFilePreview.FrameInfo.Spec.ID) {
+								for _, s := range specification.SpecList {
+									if imgui.Selectable(s) {
+									}
+								}
+								imgui.EndCombo()
+							}
 						}
 
 						imgui.TableNextRow()
 						imgui.TableNextColumn()
+						imgui.AlignTextToFramePadding()
 						imgui.Text("Players")
 						imgui.TableNextColumn()
 						if selectedFilePreview != nil {
-							imgui.Text(string(selectedFilePreview.VCS.RIOT.Ports.LeftPlayer.ID()))
+							imgui.SetNextItemWidth(100)
+							if imgui.BeginCombo("##leftplayer", string(selectedFilePreview.VCS.RIOT.Ports.LeftPlayer.ID())) {
+								for _, s := range peripherals.AvailableLeftPlayer {
+									if imgui.Selectable(s) {
+									}
+								}
+								imgui.EndCombo()
+							}
 							imgui.SameLineV(0, 15)
 							imgui.Text("&")
 							imgui.SameLineV(0, 15)
-							imgui.Text(string(selectedFilePreview.VCS.RIOT.Ports.RightPlayer.ID()))
+							imgui.SetNextItemWidth(100)
+							if imgui.BeginCombo("##rightplayer", string(selectedFilePreview.VCS.RIOT.Ports.RightPlayer.ID())) {
+								for _, s := range peripherals.AvailableRightPlayer {
+									if imgui.Selectable(s) {
+									}
+								}
+								imgui.EndCombo()
+							}
 						}
 
 						if win.selectedFileProperties.Manufacturer != "" {
 							imgui.TableNextRow()
 							imgui.TableNextColumn()
+							imgui.AlignTextToFramePadding()
 							imgui.Text("Manufacturer")
 							imgui.TableNextColumn()
 							imgui.Text(win.selectedFileProperties.Manufacturer)
@@ -472,6 +498,7 @@ func (win *winSelectROM) draw() {
 						if win.selectedFileProperties.Rarity != "" {
 							imgui.TableNextRow()
 							imgui.TableNextColumn()
+							imgui.AlignTextToFramePadding()
 							imgui.Text("Rarity")
 							imgui.TableNextColumn()
 							imgui.Text(win.selectedFileProperties.Rarity)
@@ -479,6 +506,7 @@ func (win *winSelectROM) draw() {
 						if win.selectedFileProperties.Model != "" {
 							imgui.TableNextRow()
 							imgui.TableNextColumn()
+							imgui.AlignTextToFramePadding()
 							imgui.Text("Model")
 							imgui.TableNextColumn()
 							imgui.Text(win.selectedFileProperties.Model)
@@ -487,6 +515,7 @@ func (win *winSelectROM) draw() {
 						if win.selectedFileProperties.Note != "" {
 							imgui.TableNextRow()
 							imgui.TableNextColumn()
+							imgui.AlignTextToFramePadding()
 							imgui.Text("Note")
 							imgui.TableNextColumn()
 							imgui.Text(win.selectedFileProperties.Note)
