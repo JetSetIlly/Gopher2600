@@ -16,8 +16,10 @@
 package sdlimgui
 
 import (
+	"bytes"
 	"fmt"
 	"image"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,7 +31,9 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/properties"
+	"github.com/jetsetilly/gopher2600/resources"
 	"github.com/jetsetilly/gopher2600/thumbnailer"
+	"github.com/sahilm/fuzzy"
 )
 
 const winSelectROMID = "Select ROM"
@@ -68,7 +72,17 @@ type winSelectROM struct {
 	// the return channel from the emulation goroutine for the property lookup
 	// for the selected cartridge
 	propertyResult chan properties.Entry
+
+	// map of normalised ROM titles to box art images
+	boxart           []string
+	boxartTexture    texture
+	boxartDimensions image.Point
+	boxartUse        bool
 }
+
+// boxart from libretro project
+// github.com/libretro-thumbnails/Atari_-_2600/tree/4ea759821724d6c7bcf2f46020d79fc4270ed2f6/Named_Boxarts
+const namedBoxarts = "Named_Boxarts"
 
 func newSelectROM(img *SdlImgui) (window, error) {
 	win := &winSelectROM{
@@ -89,12 +103,30 @@ func newSelectROM(img *SdlImgui) (window, error) {
 	// be high if there is no reason
 	win.thmb, err = thumbnailer.NewAnim(win.img.dbg.VCS().Env.Prefs)
 	if err != nil {
-		return nil, fmt.Errorf("debugger: %w", err)
+		return nil, err
 	}
 
 	win.thmbTexture = img.rnd.addTexture(textureColor, true, true)
 	win.thmbImage = image.NewRGBA(image.Rect(0, 0, specification.ClksVisible, specification.AbsoluteMaxScanlines))
 	win.thmbDimensions = win.thmbImage.Bounds().Size()
+
+	// load and normalise box art names
+	boxartPath, err := resources.JoinPath(namedBoxarts)
+	if err != nil {
+		logger.Logf("sdlimgui", err.Error())
+	} else {
+		boxartFiles, err := os.ReadDir(boxartPath)
+		if err != nil {
+			logger.Logf("sdlimgui", err.Error())
+		} else {
+			for _, n := range boxartFiles {
+				win.boxart = append(win.boxart, n.Name())
+			}
+		}
+	}
+
+	// prepare boxart texture
+	win.boxartTexture = img.rnd.addTexture(textureColor, false, false)
 
 	return win, nil
 }
@@ -233,6 +265,10 @@ func (win *winSelectROM) draw() {
 	// check for new property information
 	select {
 	case win.selectedFileProperties = <-win.propertyResult:
+		err := win.findBoxart()
+		if err != nil {
+			logger.Logf("sdlimgui", err.Error())
+		}
 	default:
 	}
 
@@ -255,7 +291,7 @@ func (win *winSelectROM) draw() {
 
 	if imgui.BeginTable("romSelector", 2) {
 		imgui.TableSetupColumnV("filelist", imgui.TableColumnFlagsWidthStretch, -1, 0)
-		imgui.TableSetupColumnV("thumbnail", imgui.TableColumnFlagsWidthStretch, -1, 1)
+		imgui.TableSetupColumnV("emulation", imgui.TableColumnFlagsWidthStretch, -1, 1)
 
 		imgui.TableNextRow()
 		imgui.TableNextColumn()
@@ -367,79 +403,123 @@ func (win *winSelectROM) draw() {
 				win.informationOpen = false
 			} else {
 				win.informationOpen = true
-				if imgui.BeginTable("#properties", 2) {
-					imgui.TableSetupColumnV("#category", imgui.TableColumnFlagsWidthFixed, -1, 0)
-					imgui.TableSetupColumnV("#detail", imgui.TableColumnFlagsWidthFixed, -1, 1)
+				if imgui.BeginTable("#properties", 3) {
+					imgui.TableSetupColumnV("#information", imgui.TableColumnFlagsWidthStretch, -1, 0)
+					imgui.TableSetupColumnV("#spacingA", imgui.TableColumnFlagsWidthFixed, -1, 1)
+					imgui.TableSetupColumnV("#boxart", imgui.TableColumnFlagsWidthFixed, -1, 2)
 
+					// property table. we measure the height of this table to
+					// help centering the box art image in the next column
 					imgui.TableNextRow()
 					imgui.TableNextColumn()
-					imgui.Text("Name")
-					imgui.TableNextColumn()
-					if win.selectedFileProperties.IsValid() {
-						imgui.Text(win.selectedFileProperties.Name)
-					} else {
-						imgui.Text(win.selectedFileBase)
-					}
+					propertyTableTop := imgui.CursorPosY()
+					if imgui.BeginTable("#properties", 2) {
+						imgui.TableSetupColumnV("#category", imgui.TableColumnFlagsWidthFixed, -1, 0)
+						imgui.TableSetupColumnV("#detail", imgui.TableColumnFlagsWidthFixed, -1, 1)
 
-					// results of preview emulation from the thumbnailer
-					selectedFilePreview := win.thmb.PreviewResults()
+						// wrap text
+						imgui.PushTextWrapPosV(imgui.CursorPosX() + imgui.ContentRegionAvail().X)
+						defer imgui.PopTextWrapPos()
 
-					imgui.TableNextRow()
-					imgui.TableNextColumn()
-					imgui.Text("Mapper")
-					imgui.TableNextColumn()
-					if selectedFilePreview != nil {
-						imgui.Text(selectedFilePreview.VCS.Mem.Cart.ID())
-					}
-
-					imgui.TableNextRow()
-					imgui.TableNextColumn()
-					imgui.Text("Television")
-					imgui.TableNextColumn()
-					if selectedFilePreview != nil {
-						imgui.Text(selectedFilePreview.FrameInfo.Spec.ID)
-					}
-
-					imgui.TableNextRow()
-					imgui.TableNextColumn()
-					imgui.Text("Players")
-					imgui.TableNextColumn()
-					if selectedFilePreview != nil {
-						imgui.Text(string(selectedFilePreview.VCS.RIOT.Ports.LeftPlayer.ID()))
-						imgui.SameLineV(0, 15)
-						imgui.Text("&")
-						imgui.SameLineV(0, 15)
-						imgui.Text(string(selectedFilePreview.VCS.RIOT.Ports.RightPlayer.ID()))
-					}
-
-					if win.selectedFileProperties.Manufacturer != "" {
 						imgui.TableNextRow()
 						imgui.TableNextColumn()
-						imgui.Text("Manufacturer")
+						imgui.Text("Name")
 						imgui.TableNextColumn()
-						imgui.Text(win.selectedFileProperties.Manufacturer)
-					}
-					if win.selectedFileProperties.Rarity != "" {
-						imgui.TableNextRow()
-						imgui.TableNextColumn()
-						imgui.Text("Rarity")
-						imgui.TableNextColumn()
-						imgui.Text(win.selectedFileProperties.Rarity)
-					}
-					if win.selectedFileProperties.Model != "" {
-						imgui.TableNextRow()
-						imgui.TableNextColumn()
-						imgui.Text("Model")
-						imgui.TableNextColumn()
-						imgui.Text(win.selectedFileProperties.Model)
-					}
+						if win.selectedFileProperties.IsValid() {
+							imgui.Text(win.selectedFileProperties.Name)
+						} else {
+							imgui.Text(win.selectedFileBase)
+						}
 
-					if win.selectedFileProperties.Note != "" {
+						// results of preview emulation from the thumbnailer
+						selectedFilePreview := win.thmb.PreviewResults()
+
 						imgui.TableNextRow()
 						imgui.TableNextColumn()
-						imgui.Text("Note")
+						imgui.Text("Mapper")
 						imgui.TableNextColumn()
-						imgui.Text(win.selectedFileProperties.Note)
+						if selectedFilePreview != nil {
+							imgui.Text(selectedFilePreview.VCS.Mem.Cart.ID())
+						}
+
+						imgui.TableNextRow()
+						imgui.TableNextColumn()
+						imgui.Text("Television")
+						imgui.TableNextColumn()
+						if selectedFilePreview != nil {
+							imgui.Text(selectedFilePreview.FrameInfo.Spec.ID)
+						}
+
+						imgui.TableNextRow()
+						imgui.TableNextColumn()
+						imgui.Text("Players")
+						imgui.TableNextColumn()
+						if selectedFilePreview != nil {
+							imgui.Text(string(selectedFilePreview.VCS.RIOT.Ports.LeftPlayer.ID()))
+							imgui.SameLineV(0, 15)
+							imgui.Text("&")
+							imgui.SameLineV(0, 15)
+							imgui.Text(string(selectedFilePreview.VCS.RIOT.Ports.RightPlayer.ID()))
+						}
+
+						if win.selectedFileProperties.Manufacturer != "" {
+							imgui.TableNextRow()
+							imgui.TableNextColumn()
+							imgui.Text("Manufacturer")
+							imgui.TableNextColumn()
+							imgui.Text(win.selectedFileProperties.Manufacturer)
+						}
+						if win.selectedFileProperties.Rarity != "" {
+							imgui.TableNextRow()
+							imgui.TableNextColumn()
+							imgui.Text("Rarity")
+							imgui.TableNextColumn()
+							imgui.Text(win.selectedFileProperties.Rarity)
+						}
+						if win.selectedFileProperties.Model != "" {
+							imgui.TableNextRow()
+							imgui.TableNextColumn()
+							imgui.Text("Model")
+							imgui.TableNextColumn()
+							imgui.Text(win.selectedFileProperties.Model)
+						}
+
+						if win.selectedFileProperties.Note != "" {
+							imgui.TableNextRow()
+							imgui.TableNextColumn()
+							imgui.Text("Note")
+							imgui.TableNextColumn()
+							imgui.Text(win.selectedFileProperties.Note)
+						}
+
+						imgui.EndTable()
+					}
+					propertyTableBottom := imgui.CursorPosY()
+					propertyTableHeight := propertyTableBottom - propertyTableTop
+
+					// spacing
+					imgui.TableNextColumn()
+
+					if win.boxartUse {
+						imgui.TableNextColumn()
+						sz := imgui.Vec2{float32(win.boxartDimensions.X), float32(win.boxartDimensions.Y)}
+
+						// if thumbnail height is less than height of
+						// property table then we position the image so that
+						// it's centered in relation to the property table
+						p := imgui.CursorPos()
+						if sz.Y < propertyTableHeight {
+							p.Y += (propertyTableHeight - sz.Y) / 2
+							imgui.SetCursorPos(p)
+						} else {
+							// if height of thumbnail is greater than or
+							// equal to height of property table then we add
+							// a imgui.Spacing(). this may expand the height
+							// of the property table but that's okay
+							imgui.Spacing()
+						}
+
+						imgui.Image(imgui.TextureID(win.boxartTexture.getID()), sz)
 					}
 
 					imgui.EndTable()
@@ -544,4 +624,58 @@ func (win *winSelectROM) setSelectedFile(filename string) {
 
 	// create thumbnail animation
 	win.thmb.Create(loader, thumbnailer.UndefinedNumFrames)
+
+	// defer boxart lookup to when we receive the property
+}
+
+func (win *winSelectROM) findBoxart() error {
+	// reset boxartUse flag until we are certain we've loaded a suitable image
+	win.boxartUse = false
+
+	// fuzzy find a candidate image
+	n, _, _ := strings.Cut(win.selectedFileProperties.Name, "(")
+	n = strings.TrimSpace(n)
+	m := fuzzy.Find(n, win.boxart)
+	if len(m) == 0 {
+		return nil
+	}
+
+	// load image
+	p, err := resources.JoinPath(namedBoxarts, m[0].Str)
+	if err != nil {
+		return fmt.Errorf("boxart: %w", err)
+	}
+
+	d, err := os.ReadFile(p)
+	if err != nil {
+		return fmt.Errorf("boxart: %w", err)
+	}
+
+	// conversion function
+	render := func(src image.Image) {
+		if _, ok := src.(*image.RGBA); ok {
+			return
+		}
+		b := src.Bounds()
+		dst := image.NewRGBA(image.Rect(0, 0, b.Dx()/4, b.Dy()/4))
+		draw.BiLinear.Scale(dst, dst.Bounds(), src, b, draw.Src, nil)
+		win.boxartDimensions = dst.Bounds().Max
+		win.boxartTexture.render(dst)
+		win.boxartUse = true
+	}
+
+	// convert image and render into texture
+	ext := filepath.Ext(p)
+	switch ext {
+	case ".png":
+		img, err := png.Decode(bytes.NewReader(d))
+		if err != nil {
+			return fmt.Errorf("boxart: %w", err)
+		}
+		render(img)
+	default:
+		return fmt.Errorf("boxart: unsupported file extension: *%s", ext)
+	}
+
+	return nil
 }
