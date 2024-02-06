@@ -53,6 +53,9 @@ type winSelectROM struct {
 	selectedFileBase       string
 	selectedFileProperties properties.Entry
 
+	// selectedName is the name of the ROM in a normalised form
+	selectedName string
+
 	showAllFiles bool
 	showHidden   bool
 
@@ -266,6 +269,17 @@ func (win *winSelectROM) draw() {
 	// check for new property information
 	select {
 	case win.selectedFileProperties = <-win.propertyResult:
+		win.selectedName = win.selectedFileProperties.Name
+		if win.selectedName == "" {
+			win.selectedName = win.selectedFileBase
+			win.selectedName = strings.TrimSuffix(win.selectedName, filepath.Ext(win.selectedName))
+		}
+
+		// normalise ROM name for presentation
+		win.selectedName, _, _ = strings.Cut(win.selectedName, "(")
+		win.selectedName = strings.TrimSpace(win.selectedName)
+
+		// find box art as best we can
 		err := win.findBoxart()
 		if err != nil {
 			logger.Logf("sdlimgui", err.Error())
@@ -400,7 +414,7 @@ func (win *winSelectROM) draw() {
 			}
 
 			imgui.SetNextItemOpen(win.informationOpen, imgui.ConditionAlways)
-			if !imgui.CollapsingHeaderV(win.selectedFileBase, imgui.TreeNodeFlagsNone) {
+			if !imgui.CollapsingHeaderV(win.selectedName, imgui.TreeNodeFlagsNone) {
 				win.informationOpen = false
 			} else {
 				win.informationOpen = true
@@ -429,7 +443,7 @@ func (win *winSelectROM) draw() {
 						if win.selectedFileProperties.IsValid() {
 							imgui.Text(win.selectedFileProperties.Name)
 						} else {
-							imgui.Text(win.selectedFileBase)
+							imgui.Text(win.selectedName)
 						}
 
 						// results of preview emulation from the thumbnailer
@@ -575,9 +589,9 @@ func (win *winSelectROM) draw() {
 
 			// load or reload button
 			if win.selectedFile == win.img.cache.VCS.Mem.Cart.Filename {
-				s = fmt.Sprintf("Reload %s", win.selectedFileBase)
+				s = fmt.Sprintf("Reload %s", win.selectedName)
 			} else {
-				s = fmt.Sprintf("Load %s", win.selectedFileBase)
+				s = fmt.Sprintf("Load %s", win.selectedName)
 			}
 
 			// only show load cartridge button if the file is being
@@ -632,11 +646,13 @@ func (win *winSelectROM) setSelectedFile(filename string) {
 	win.selectedFile = filename
 	if filename == "" {
 		win.selectedFileBase = ""
+		win.selectedName = ""
 		return
 	}
 
 	// base filename for presentation purposes
 	win.selectedFileBase = filepath.Base(filename)
+	win.selectedName = ""
 
 	// create cartridge loader and start thumbnail emulation
 	loader, err := cartridgeloader.NewLoader(filename, "AUTO")
