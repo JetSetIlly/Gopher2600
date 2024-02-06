@@ -29,6 +29,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -56,6 +58,13 @@ type Anim struct {
 	emulationCompleted chan bool
 
 	Render chan *image.RGBA
+
+	// monitorCount is part of the adhoc monitor system. see SetPixels()
+	// function for details
+	monitorActive     bool
+	monitorCount      int
+	monitorInput      func()
+	monitorInputDelay int
 }
 
 // NewAnim is the preferred method of initialisation for the Anim type
@@ -158,11 +167,15 @@ func (thmb *Anim) wait() {
 //
 // Returns when the preview has completed (so PreviewResults() is safe to call
 // once the function has returned)
-func (thmb *Anim) Create(cartload cartridgeloader.Loader, numFrames int) {
+func (thmb *Anim) Create(cartload cartridgeloader.Loader, numFrames int, monitor bool) {
 	thmb.wait()
 
-	// make sure previewResults are nil
+	// reset fields
 	thmb.previewResults = nil
+	thmb.monitorActive = monitor
+	thmb.monitorCount = 0
+	thmb.monitorInput = nil
+	thmb.monitorInputDelay = 0
 
 	// loading hook support required for supercharger
 	cartload.NotificationHook = func(cart mapper.CartMapper, event notifications.Notify, args ...interface{}) error {
@@ -264,6 +277,14 @@ func (thmb *Anim) resize(frameInfo television.FrameInfo) {
 
 // NewFrame implements the television.PixelRenderer interface
 func (thmb *Anim) NewFrame(frameInfo television.FrameInfo) error {
+	// act on monitor input
+	if thmb.monitorActive && thmb.monitorInputDelay > 0 {
+		thmb.monitorInputDelay--
+		if thmb.monitorInputDelay == 0 {
+			thmb.monitorInput()
+		}
+	}
+
 	thmb.resize(frameInfo)
 
 	img := *thmb.cropImg
@@ -286,11 +307,21 @@ func (thmb *Anim) NewScanline(scanline int) error {
 // SetPixels implements the television.PixelRenderer interface
 func (thmb *Anim) SetPixels(sig []signal.SignalAttributes, last int) error {
 	var col color.RGBA
-	var offset int
 
+	// this adhoc "monitor" system looks for changes in pixels and uses that
+	// information to insert input into the emulation
+	var monitorChanges bool
+	var monitorPixels int
+	var monitorBoringPixels int
+	var monitorPrev color.RGBA
+
+	var offset int
 	for i := range sig {
+		// note vblank signal for later
+		vblank := sig[i]&signal.VBlank == signal.VBlank
+
 		// handle VBLANK by setting pixels to black
-		if sig[i]&signal.VBlank == signal.VBlank {
+		if vblank {
 			col = color.RGBA{R: 0, G: 0, B: 0}
 		} else {
 			px := signal.ColorSignal((sig[i] & signal.Color) >> signal.ColorShift)
@@ -299,11 +330,65 @@ func (thmb *Anim) SetPixels(sig []signal.SignalAttributes, last int) error {
 
 		// small cap improves performance, see https://golang.org/issue/27857
 		s := thmb.img.Pix[offset : offset+3 : offset+3]
+		offset += 4
+
+		// monitor pixels
+		if thmb.monitorActive && !vblank && i%specification.ClksScanline > specification.ClksHBlank {
+			monitorPixels++
+			if s[0] != col.R || s[1] != col.G || s[2] != col.B {
+				monitorChanges = true
+			}
+			if col == monitorPrev {
+				monitorBoringPixels++
+			}
+		}
+		monitorPrev = col
+
+		// set new color
 		s[0] = col.R
 		s[1] = col.G
 		s[2] = col.B
+	}
 
-		offset += 4
+	const (
+		monitorBoringThreshold = 0.98
+		monitorCountThreshold  = 60
+	)
+
+	// act on monitor information
+	if thmb.monitorActive && !monitorChanges &&
+		float32(monitorBoringPixels)/float32(monitorPixels) > monitorBoringThreshold {
+
+		// increase monitor count and once threshold has been reached insert the input
+		thmb.monitorCount++
+		if thmb.monitorCount >= monitorCountThreshold {
+			thmb.monitorCount = 0
+
+			//  monitorInput works best as a chain. the input function is run
+			//  after delay number of frames. the function issues the input and
+			//  sets the delay and function to indicate the next input
+			thmb.monitorInputDelay = 1
+			thmb.monitorInput = func() {
+				thmb.vcs.RIOT.Ports.HandleInputEvent(
+					ports.InputEvent{Port: plugging.PortPanel,
+						Ev: ports.PanelReset,
+						D:  true})
+
+				// add the next link in the input chain
+				thmb.monitorInputDelay = 1
+				thmb.monitorInput = func() {
+					thmb.vcs.RIOT.Ports.HandleInputEvent(
+						ports.InputEvent{Port: plugging.PortPanel,
+							Ev: ports.PanelReset,
+							D:  false})
+
+					// disable monitor at end of input chain
+					thmb.monitorActive = false
+				}
+			}
+		}
+	} else {
+		thmb.monitorCount = 0
 	}
 
 	return nil
