@@ -17,6 +17,7 @@ package controllers
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -197,8 +198,8 @@ func (pdl *Paddles) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 				pdl.paddles[0].resistance -= int(d.A)
 				pdl.paddles[1].resistance -= int(d.B)
 			} else {
-				pdl.paddles[0].resistance = (int(d.A) + 32768) / 255
-				pdl.paddles[1].resistance = (int(d.B) + 32768) / 255
+				pdl.paddles[0].resistance = (int(d.A) + math.MaxInt16) / 256
+				pdl.paddles[1].resistance = (int(d.B) + math.MaxInt16) / 256
 			}
 			pdl.paddles[0].resistance = clamp(pdl.paddles[0].resistance)
 			pdl.paddles[1].resistance = clamp(pdl.paddles[1].resistance)

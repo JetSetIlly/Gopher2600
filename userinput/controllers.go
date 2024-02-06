@@ -444,8 +444,8 @@ func (c *Controllers) stelladaptor(ev EventStelladaptor) (bool, error) {
 
 	case plugging.PeriphPaddles:
 		return c.handleEvents(c.handleSwap(ev.ID), ports.PaddleSet, ports.EventDataPaddle{
-			A: ev.Horiz,
-			B: ev.Vert,
+			A: -ev.Horiz - 1,
+			B: -ev.Vert - 1,
 		})
 	}
 
