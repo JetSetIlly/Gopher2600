@@ -368,5 +368,5 @@ func (sk *SaveKey) HandleEvent(_ ports.Event, _ ports.EventData) (bool, error) {
 
 // IsActive implements the ports.Peripheral interface.
 func (sk *SaveKey) IsActive() bool {
-	return false
+	return sk.State != SaveKeyStopped
 }

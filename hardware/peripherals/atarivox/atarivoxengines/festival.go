@@ -33,12 +33,21 @@ const (
 	pitch
 )
 
+type phonemes struct {
+	strings.Builder
+}
+
+func (p *phonemes) WriteString(s string) (int, error) {
+	logger.Logf("festival", "phoneme: %s", s)
+	return p.Builder.WriteString(s)
+}
+
 type festival struct {
 	stdin  io.WriteCloser
 	stdout io.ReadCloser
 
 	stream   []uint8
-	phonemes strings.Builder
+	phonemes phonemes
 
 	quit chan bool
 	say  chan string
@@ -54,9 +63,9 @@ type festival struct {
 // which we'll communicate with via a stdin pipe.
 func NewFestival(executablePath string) (AtariVoxEngine, error) {
 	fest := &festival{
-		quit: make(chan bool),
-		say:  make(chan string),
-		cmd:  make(chan string),
+		quit: make(chan bool, 1),
+		say:  make(chan string, 1),
+		cmd:  make(chan string, 1),
 	}
 
 	cmd := exec.Command(executablePath)
@@ -79,6 +88,7 @@ func NewFestival(executablePath string) (AtariVoxEngine, error) {
 	}
 
 	go func() {
+
 		for {
 			select {
 			case <-fest.quit:
@@ -90,7 +100,7 @@ func NewFestival(executablePath string) (AtariVoxEngine, error) {
 				return
 
 			case text := <-fest.say:
-				logger.Logf("festival", text)
+				logger.Logf("festival", "say: %s", text)
 				sayphones := fmt.Sprintf("(SayPhones '(%s))", text)
 				fest.stdin.Write([]byte(sayphones))
 
@@ -134,14 +144,12 @@ func (fest *festival) SpeakJet(b uint8) {
 		fest.nextSpeakJetByte = none
 		return
 	case speed:
-		fest.Flush()
 		fest.speed = b
 		logger.Logf("festival", "speed: %d", fest.speed)
 		fest.cmd <- fmt.Sprintf("(set! FP_duration %d)", fest.speed)
 		fest.nextSpeakJetByte = none
 		return
 	case pitch:
-		fest.Flush()
 		fest.pitch = b
 		logger.Logf("festival", "pitch: %d", fest.pitch)
 		fest.cmd <- fmt.Sprintf("(set! FP_F0 %d)", fest.pitch)
@@ -167,16 +175,22 @@ func (fest *festival) SpeakJet(b uint8) {
 	case 0: // pause 0ms
 		return
 	case 1: // pause 100ms
+		logger.Logf("festival", "pause: 100ms: not implemented")
 		return
 	case 2: // pause 200ms
+		logger.Logf("festival", "pause: 200ms: not implemented")
 		return
 	case 3: // pause 700ms
+		logger.Logf("festival", "pause: 700ms: not implemented")
 		return
 	case 4: // pause 30ms
+		logger.Logf("festival", "pause: 30ms: not implemented")
 		return
 	case 5: // pause 60ms
+		logger.Logf("festival", "pause: 60ms: not implemented")
 		return
 	case 6: // pause 90ms
+		logger.Logf("festival", "pause: 90ms: not implemented")
 		return
 
 	case 7: // Fast
@@ -196,9 +210,11 @@ func (fest *festival) SpeakJet(b uint8) {
 		fest.nextSpeakJetByte = unsupported
 		return
 	case 21: // speed
+		fest.Flush()
 		fest.nextSpeakJetByte = speed
 		return
 	case 22: // pitch
+		fest.Flush()
 		fest.nextSpeakJetByte = pitch
 		return
 	case 23: // bend
@@ -367,7 +383,7 @@ func (fest *festival) SpeakJet(b uint8) {
 	case 192:
 		fest.phonemes.WriteString("t ")
 	case 193:
-		fest.phonemes.WriteString("s ") // partc, costs, robots ??
+		fest.phonemes.WriteString("s ") // parts, costs, robots ??
 	case 194:
 		fest.phonemes.WriteString("k ")
 	case 195:
@@ -390,8 +406,6 @@ func (fest *festival) Flush() {
 	if fest.phonemes.Len() == 0 {
 		return
 	}
-
-	// logger.Logf("festival", "%v", fest.stream)
 
 	fest.say <- fest.phonemes.String()
 	fest.phonemes.Reset()

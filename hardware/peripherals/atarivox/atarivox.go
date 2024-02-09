@@ -204,7 +204,7 @@ const (
 
 const (
 	baudCount  = 62
-	flushCount = 30000
+	flushCount = 5000
 )
 
 // memory has been updated. peripherals are notified.
@@ -252,6 +252,10 @@ func (vox *AtariVox) resetBits() {
 // Step is called every CPU clock.
 func (vox *AtariVox) Step() {
 	vox.SaveKey.Step()
+
+	if vox.SaveKey.IsActive() {
+		return
+	}
 
 	// limit how often we update the atarivox - the successful 6507 program
 	// will be written such that it fits in with this limitation
@@ -317,5 +321,5 @@ func (vox *AtariVox) HandleEvent(_ ports.Event, _ ports.EventData) (bool, error)
 
 // whether the peripheral is currently "active"
 func (vox *AtariVox) IsActive() bool {
-	return false
+	return vox.State != AtariVoxStopped
 }
