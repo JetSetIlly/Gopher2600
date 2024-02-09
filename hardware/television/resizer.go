@@ -258,9 +258,13 @@ func (sr *resizer) commit(tv *Television) error {
 		// clamp top/bottom scanline to safe values
 		if sr.pendingTop < tv.state.frameInfo.Spec.NewSafeVisibleTop {
 			sr.pendingTop = tv.state.frameInfo.Spec.NewSafeVisibleTop
+		} else if sr.pendingTop > tv.state.frameInfo.Spec.AtariSafeVisibleTop {
+			sr.pendingTop = tv.state.frameInfo.Spec.AtariSafeVisibleTop
 		}
 		if sr.pendingBottom > tv.state.frameInfo.Spec.NewSafeVisibleBottom {
 			sr.pendingBottom = tv.state.frameInfo.Spec.NewSafeVisibleBottom
+		} else if sr.pendingBottom < tv.state.frameInfo.Spec.AtariSafeVisibleBottom {
+			sr.pendingBottom = tv.state.frameInfo.Spec.AtariSafeVisibleBottom
 		}
 
 		// update visible top/bottom values
