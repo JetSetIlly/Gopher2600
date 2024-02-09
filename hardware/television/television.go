@@ -77,6 +77,7 @@ type State struct {
 	vsyncStartOnClock int
 	vsyncScanlines    int
 	vsyncClocks       int
+	vsyncAdjust       bool
 
 	// frame resizer
 	resizer resizer
@@ -500,6 +501,13 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 			tv.state.vsyncActive = true
 			tv.state.vsyncScanlines = 0
 			tv.state.vsyncStartOnClock = tv.state.clock
+
+			// set adjust if scanline is zero and the current frame was started
+			// with a natural flyback (ie. VSYNC is false)
+			//
+			// this affect whether newFrame(true) or adjustFrame() is called
+			// when the VSYNC signal has ended
+			tv.state.vsyncAdjust = tv.state.scanline == 0 && !tv.state.frameInfo.VSync
 		} else {
 			// VSYNC has ended but we don't want to trigger a new frame unless
 			// the VSYNC signal has been present for a minimum number of
@@ -514,9 +522,15 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 			// so maybe there's a subtle interaction with RSYNC here that's
 			// worth exploring
 			if tv.state.vsyncClocks > 10 {
-				err := tv.newFrame(true)
-				if err != nil {
-					logger.Log("TV", err.Error())
+				// if vsyncAdjust is true then we only want to adjust the
+				// scanline and not start a new frame
+				if tv.state.vsyncAdjust {
+					tv.adjustFrame()
+				} else {
+					err := tv.newFrame(true)
+					if err != nil {
+						logger.Log("TV", err.Error())
+					}
 				}
 			}
 			tv.state.vsyncActive = false
@@ -609,8 +623,34 @@ func (tv *Television) newScanline() error {
 	return nil
 }
 
+// adjustFrame() is called under very specific circumstances: when a new frame
+// has been started with a natural flyback but then VSYNC is raised at the start
+// of the new frame.
+//
+// in those circumstances we don't want to start a new frame because that will
+// cause the pixelRenderer to produce black frames. instead we simply adjust the
+// scanline so that it "appears" that the frame has just started
+//
+// this definitely isn't ideal and will affect how such screens will appear when
+// stepping through a debugger but it's not a major issue and fixes the common
+// problem where PAL roms start the VSYNC signal very late
+//
+// increasing the AbsoluteMaxScanlines value is not a good solution because who
+// is to say that the condition won't happen in those circumstances - although I
+// accept that it will solve many of the specific problem caused by PAL ROMs
+// setting VSYNC late
+func (tv *Television) adjustFrame() {
+	tv.state.scanline = 0
+	tv.state.vsyncAdjust = false
+}
+
 // the fromVsync arguments is true if a valid VSYNC signal has been detected. a
-// value of false means the frame flyback is unsynced.
+// value of false means the frame flyback is unsynced
+//
+// note that there are very special conditions caused by a newFrame being called
+// with an argument of false and then for VSYNC to be raised (within a
+// scanline). in that instance we don't want to call newFrame() again. instead
+// we call adjustFrame()
 func (tv *Television) newFrame(fromVsync bool) error {
 	// increase or reset stable frame count as required
 	if tv.state.stableFrames <= stabilityThreshold {
@@ -646,7 +686,7 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	// update frame number
 	tv.state.frameInfo.FrameNum = tv.state.frameNum
 
-	// note whether newFrame() was the result of a valid VSYNC or a "natural" flyback
+	// note whether newFrame() was the result of a valid VSYNC or a natural flyback
 	tv.state.frameInfo.VSync = fromVsync
 	tv.state.frameInfo.VSyncScanlines = tv.state.vsyncScanlines
 
