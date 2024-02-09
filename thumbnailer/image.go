@@ -24,6 +24,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -78,7 +79,7 @@ func NewImage(prefs *preferences.Preferences) (*Image, error) {
 	if err != nil {
 		return nil, fmt.Errorf("thumbnailer: %w", err)
 	}
-	thmb.vcs.Env.Label = thumbnailerEnv
+	thmb.vcs.Env.Label = environment.Label("thumbnail")
 	thmb.img = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 	thmb.Reset()
 

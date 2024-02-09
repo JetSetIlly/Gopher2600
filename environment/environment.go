@@ -86,7 +86,7 @@ func (env *Environment) Normalise() {
 }
 
 // MainEmulation is the label used for the main emulation
-const MainEmulation = Label("")
+const MainEmulation = Label("main")
 
 // IsEmulation checks the emulation label and returns true if it matches
 func (env *Environment) IsEmulation(label Label) bool {

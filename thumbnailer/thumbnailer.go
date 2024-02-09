@@ -15,11 +15,7 @@
 
 package thumbnailer
 
-import "github.com/jetsetilly/gopher2600/environment"
-
 // UndefinedNumFrames indicates the that the thumbnailing emulation should run
 // until it is explicitely stopped with the EndCreation() function (or
 // implicitely with a second call to Create())
 const UndefinedNumFrames = -1
-
-const thumbnailerEnv = environment.Label("thumbnailer")

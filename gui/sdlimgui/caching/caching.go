@@ -106,7 +106,7 @@ func (c *Cache) Update(vcs *hardware.VCS, rewind *rewind.Rewind, dbg *debugger.D
 			TIA:  vcs.TIA.Snapshot(),
 		},
 		env: &environment.Environment{
-			Label: "gui",
+			Label: "cache",
 			Prefs: vcs.Env.Prefs,
 			// no television required for gui purposes
 		},

@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -44,6 +45,7 @@ func NewEmulation(prefs *preferences.Preferences) (*Emulation, error) {
 	if err != nil {
 		return nil, fmt.Errorf("preview: %w", err)
 	}
+	em.vcs.Env.Label = environment.Label("preview")
 
 	return em, nil
 }

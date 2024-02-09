@@ -25,6 +25,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
@@ -96,7 +97,7 @@ func NewAnim(prefs *preferences.Preferences) (*Anim, error) {
 	if err != nil {
 		return nil, fmt.Errorf("thumbnailer: %w", err)
 	}
-	thmb.vcs.Env.Label = thumbnailerEnv
+	thmb.vcs.Env.Label = environment.Label("thumbnail_anim")
 	thmb.img = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 	thmb.Reset()
 

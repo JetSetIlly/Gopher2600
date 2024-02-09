@@ -38,6 +38,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
@@ -361,6 +362,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	if err != nil {
 		return nil, fmt.Errorf("debugger: %w", err)
 	}
+	dbg.vcs.Env.Label = environment.MainEmulation
 
 	// create userinput/controllers handler
 	dbg.controllers = userinput.NewControllers(dbg.vcs.Input)
