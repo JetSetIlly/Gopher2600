@@ -413,8 +413,10 @@ func (scr *screen) resize() {
 	scr.crit.cropElementPixels = scr.crit.elementPixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropOverlayPixels = scr.crit.overlayPixels.SubImage(crop).(*image.RGBA)
 
-	// we used to clear pixels and call updateFrameQueue() but I no longer
-	// believe it's necessary
+	// update frame queue
+	if scr.img.dbg.Mode() == govern.ModePlay {
+		scr.updateFrameQueue()
+	}
 
 	// resize texture renderers
 	for _, r := range scr.renderers {
