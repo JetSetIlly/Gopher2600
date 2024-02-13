@@ -51,6 +51,10 @@ type dpcPlus struct {
 
 	// rewindable state
 	state *State
+
+	// armState is a copy of the ARM's state at the moment of the most recent
+	// Snapshot. it's used only suring a Plumb() operation
+	armState *arm.ARMState
 }
 
 // the sizes of these areas in a DPC+ cartridge are fixed. the custom arm code
@@ -126,6 +130,16 @@ func (cart *dpcPlus) ID() string {
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Snapshot() mapper.CartMapper {
 	n := *cart
+
+	// taking a snapshot of ARM state via the ARM itself can cause havoc if
+	// this instance of the cart is not current (because the ARM pointer itself
+	// may be stale or pointing to another emulation)
+	if cart.armState == nil {
+		n.armState = cart.arm.Snapshot()
+	} else {
+		n.armState = cart.armState.Snapshot()
+	}
+
 	n.state = cart.state.Snapshot()
 	return &n
 }
@@ -133,13 +147,22 @@ func (cart *dpcPlus) Snapshot() mapper.CartMapper {
 // Plumb implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Plumb(env *environment.Environment) {
 	cart.env = env
-	cart.arm.Plumb(nil, cart.state.static, cart)
+	if cart.armState == nil {
+		panic("cannot plumb this ELF instance because the ARM state is nil")
+	}
+	cart.arm.Plumb(cart.armState, cart.state.static, cart)
+	cart.armState = nil
 }
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *dpcPlus) PlumbFromDifferentEmulation(env *environment.Environment) {
 	cart.env = env
+	if cart.armState == nil {
+		panic("cannot plumb this ELF instance because the ARM state is nil")
+	}
 	cart.arm = arm.NewARM(cart.version.mmap, cart.env.Prefs.ARM, cart.state.static, cart)
+	cart.arm.Plumb(cart.armState, cart.state.static, cart)
+	cart.armState = nil
 	cart.yieldHook = &coprocessor.StubCartYieldHook{}
 }
 

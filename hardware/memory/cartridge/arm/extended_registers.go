@@ -173,6 +173,5 @@ func (arm *ARM) RegisterSet(register int, value uint32) bool {
 			}
 		}
 	}
-	fmt.Println(1)
 	return false
 }
