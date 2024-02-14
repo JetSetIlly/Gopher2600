@@ -178,6 +178,11 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, numFrames int, monitor
 	thmb.monitorInput = nil
 	thmb.monitorInputDelay = 0
 
+	// reset function is usually called from the television. we call it here
+	// because it's useful for clearing the image and to put the now empty
+	// image in the render queue at the start of the animation
+	thmb.Reset()
+
 	// loading hook support required for supercharger
 	cartload.NotificationHook = func(cart mapper.CartMapper, event notifications.Notify, args ...interface{}) error {
 		if _, ok := cart.(*supercharger.Supercharger); ok {

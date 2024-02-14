@@ -167,9 +167,6 @@ func (win *winSelectROM) setOpen(open bool) {
 
 		return
 	}
-
-	// end thumbnail emulation
-	win.thmb.EndCreation()
 }
 
 func (win *winSelectROM) playmodeSetOpen(open bool) {
@@ -184,11 +181,12 @@ func (win *winSelectROM) playmodeSetOpen(open bool) {
 }
 
 func (win *winSelectROM) playmodeDraw() bool {
-	win.render()
-
 	if !win.playmodeOpen {
+		win.thmb.EndCreation()
 		return false
 	}
+
+	win.render()
 
 	posFlgs := imgui.ConditionAppearing
 	winFlgs := imgui.WindowFlagsNoSavedSettings | imgui.WindowFlagsAlwaysAutoResize
@@ -217,11 +215,12 @@ func (win *winSelectROM) debuggerSetOpen(open bool) {
 }
 
 func (win *winSelectROM) debuggerDraw() bool {
-	win.render()
-
 	if !win.debuggerOpen {
+		win.thmb.EndCreation()
 		return false
 	}
+
+	win.render()
 
 	posFlgs := imgui.ConditionFirstUseEver
 	winFlgs := imgui.WindowFlagsAlwaysAutoResize
@@ -620,9 +619,6 @@ func (win *winSelectROM) insertCartridge() {
 	// close rom selected in both the debugger and playmode
 	win.debuggerSetOpen(false)
 	win.playmodeSetOpen(false)
-
-	// tell thumbnailer to stop emulating
-	win.thmb.EndCreation()
 }
 
 func (win *winSelectROM) setPath(path string) error {
