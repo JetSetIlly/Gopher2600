@@ -262,12 +262,12 @@ func (arm *ARM) decodeThumbAddSubtract(opcode uint16) decodeFunction {
 			if arm.decodeOnly {
 				if immediate {
 					return &DisasmEntry{
-						Operator: "SUB",
+						Operator: "ADD",
 						Operand:  fmt.Sprintf("R%d, R%d, #$%02x ", destReg, srcReg, imm),
 					}
 				}
 				return &DisasmEntry{
-					Operator: "SUB",
+					Operator: "ADD",
 					Operand:  fmt.Sprintf("R%d, R%d, R%d ", destReg, srcReg, imm),
 				}
 			}
