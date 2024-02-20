@@ -45,6 +45,7 @@ type winCoProcGlobals struct {
 	optionsHeight     float32
 	showAllGlobals    bool
 	showLocatableOnly bool
+	filter            filter
 
 	openNodes map[string]bool
 }
@@ -54,6 +55,7 @@ func newWinCoProcGlobals(img *SdlImgui) (window, error) {
 		img:            img,
 		firstOpen:      true,
 		showAllGlobals: true,
+		filter:         newFilter(img, filterFlagsNoSpaces),
 		openNodes:      make(map[string]bool),
 	}
 	return win, nil
@@ -202,8 +204,10 @@ func (win *winCoProcGlobals) draw() {
 			imgui.TableHeadersRow()
 
 			for i, varb := range src.SortedGlobals.Variables {
-				if win.showAllGlobals || varb.DeclLine.File.Filename == win.selectedFile.Filename {
-					win.drawVariable(src, varb, 0, false, fmt.Sprint(i))
+				if !win.filter.isFiltered(varb.Name) {
+					if win.showAllGlobals || varb.DeclLine.File.Filename == win.selectedFile.Filename {
+						win.drawVariable(src, varb, 0, false, fmt.Sprint(i))
+					}
 				}
 			}
 
@@ -230,12 +234,14 @@ func (win *winCoProcGlobals) draw() {
 				imgui.Spacing()
 				imgui.Separator()
 				imgui.Spacing()
-				imgui.Checkbox("List all globals (in all files)", &win.showAllGlobals)
+				imgui.Checkbox("List all globals (all files)", &win.showAllGlobals)
 
 				imgui.SameLineV(0, 15)
-				imgui.Checkbox("Don't show unlocatable variables", &win.showLocatableOnly)
+				imgui.Checkbox("Hide unlocatable variables", &win.showLocatableOnly)
 				win.img.imguiTooltipSimple(`A unlocatable variable is a variable has been
 removed by the compiler's optimisation process`)
+
+				win.filter.draw("##globalsFilter")
 			})
 
 			if imgui.BeginPopup(globalsPopupID) {

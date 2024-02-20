@@ -46,6 +46,17 @@ const resetFontFrames = 2
 // the amount to fade a widget by when disabled
 const disabledAlpha = 0.3
 
+// the phantom input system allows windows to obey key presses without any
+// specific widget being active
+type phantomInput int
+
+// list of valid phantomInput values
+const (
+	phantomInputNone phantomInput = iota
+	phantomInputRune
+	phantomInputBackSpace
+)
+
 // SdlImgui is an sdl based visualiser using imgui.
 type SdlImgui struct {
 	// the mechanical requirements for the gui
@@ -98,6 +109,11 @@ type SdlImgui struct {
 	// how the feature requests, pushed functions etc. are handled by the
 	// service loop is important to the GUI's responsiveness.
 	polling *polling
+
+	// the phantom input system allows windows to obey key presses without any
+	// specific widget being active
+	phantomInput     phantomInput
+	phantomInputRune rune
 
 	// the time the window was focused. we use this to prevent the TAB key from
 	// opening the ROM requester if the window was focused with the alt-TAB key

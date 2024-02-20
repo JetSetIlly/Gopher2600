@@ -31,6 +31,14 @@ import (
 )
 
 func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
+	// notify phantom input system of a backspace. placed before the
+	// no-repeat-key-presses test below
+	if ev.Keysym.Scancode == sdl.SCANCODE_BACKSPACE && ev.Type == sdl.KEYDOWN {
+		img.phantomInput = phantomInputBackSpace
+	}
+
+	// most keyboard events want to ignore repeat events. any that don't should
+	// be handled before this condition
 	if ev.Repeat == 1 {
 		return
 	}

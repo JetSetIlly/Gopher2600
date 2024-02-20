@@ -45,6 +45,9 @@ func (img *SdlImgui) Service() {
 		img.resetFonts--
 	}
 
+	// phantom input system must be reset before anything else is processed
+	img.phantomInput = phantomInputNone
+
 	// poll for sdl event or timeout
 	img.polling.pumpedEvents[0] = img.polling.wait()
 
@@ -102,6 +105,12 @@ func (img *SdlImgui) Service() {
 				case *sdl.TextInputEvent:
 					if !img.modalActive() || !img.isCaptured() {
 						imgui.CurrentIO().AddInputCharacters(string(ev.Text[:]))
+
+						// text input events are perfect for indicating the
+						// addition of a phantom rune. backspaces are handled in
+						// the serviceKeyboard() function
+						img.phantomInput = phantomInputRune
+						img.phantomInputRune = rune(ev.Text[0])
 					}
 
 				case *sdl.KeyboardEvent:

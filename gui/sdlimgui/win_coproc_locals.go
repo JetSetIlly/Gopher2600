@@ -34,6 +34,7 @@ type winCoProcLocals struct {
 
 	optionsHeight     float32
 	showLocatableOnly bool
+	filter            filter
 
 	openNodes map[string]bool
 }
@@ -41,6 +42,7 @@ type winCoProcLocals struct {
 func newWinCoProcLocals(img *SdlImgui) (window, error) {
 	win := &winCoProcLocals{
 		img:       img,
+		filter:    newFilter(img, filterFlagsNoSpaces),
 		openNodes: make(map[string]bool),
 	}
 	return win, nil
@@ -123,7 +125,9 @@ func (win *winCoProcLocals) draw() {
 		imgui.TableHeadersRow()
 
 		for i, varb := range localVariables {
-			win.drawVariableLocal(varb, fmt.Sprint(i))
+			if !win.filter.isFiltered(varb.Name) {
+				win.drawVariableLocal(varb, fmt.Sprint(i))
+			}
 		}
 
 		imgui.EndTable()
@@ -132,9 +136,11 @@ func (win *winCoProcLocals) draw() {
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()
-			imgui.Checkbox("Don't show unlocatable variables", &win.showLocatableOnly)
+			imgui.Checkbox("Hide unlocatable variables", &win.showLocatableOnly)
 			win.img.imguiTooltipSimple(`A unlocatable variable is a variable has been
 removed by the compiler's optimisation process`)
+
+			win.filter.draw("##localsFilter")
 		})
 	})
 }
