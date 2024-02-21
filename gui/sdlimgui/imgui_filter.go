@@ -54,31 +54,24 @@ func newFilter(img *SdlImgui, flags filterFlags) filter {
 
 // draw the imgui control
 func (f *filter) draw(id string) {
-	// check for phantom input event. called twice: once for containing window
-	// and once for the filter popup window
-	checkPhantomInput := func() {
-		// obey phantom input directive if window is focused
-		if imgui.IsWindowFocused() {
-			switch f.img.phantomInput {
-			case phantomInputBackSpace:
-				if len(f.text) > 0 {
-					f.text = f.text[:len(f.text)-1]
-				}
-			case phantomInputRune:
-				if unicode.IsPrint(f.img.phantomInputRune) {
-					f.text = fmt.Sprintf("%s%c", f.text, f.img.phantomInputRune)
-				}
-			}
-		}
-	}
-
 	// correct id string if necessary
 	if !strings.HasPrefix(id, "##") {
 		id = fmt.Sprintf("##%s", id)
 	}
 
-	// check phantom input for containing window
-	checkPhantomInput()
+	// obey phantom input directive if window or any child windows are focused
+	if imgui.IsWindowFocusedV(imgui.FocusedFlagsRootAndChildWindows) {
+		switch f.img.phantomInput {
+		case phantomInputBackSpace:
+			if len(f.text) > 0 {
+				f.text = f.text[:len(f.text)-1]
+			}
+		case phantomInputRune:
+			if unicode.IsPrint(f.img.phantomInputRune) {
+				f.text = fmt.Sprintf("%s%c", f.text, f.img.phantomInputRune)
+			}
+		}
+	}
 
 	imgui.SameLineV(0, 15)
 	if imgui.Button(strings.TrimSpace(fmt.Sprintf("%c %s", fonts.Filter, f.text))) {
@@ -87,10 +80,12 @@ func (f *filter) draw(id string) {
 		imgui.OpenPopup(id)
 	}
 
-	if imgui.BeginPopupV(id, imgui.WindowFlagsNoMove) {
-		// check phantom input for popup filter window
-		checkPhantomInput()
+	// clear filter if right mouse button is click over filter button
+	if imgui.IsItemHovered() && imgui.IsMouseClicked(1) {
+		f.text = ""
+	}
 
+	if imgui.BeginPopupV(id, imgui.WindowFlagsNoMove) {
 		func() {
 			if len(f.text) == 0 {
 				imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
