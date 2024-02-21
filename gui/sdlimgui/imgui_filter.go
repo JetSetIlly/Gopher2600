@@ -116,8 +116,18 @@ func (f *filter) draw(id string) {
 		imgui.Separator()
 		imgui.Spacing()
 
-		imgui.Checkbox("Case Sensitive", &f.caseSensitive)
 		imgui.Checkbox("Fuzzy Match", &f.fuzzy)
+
+		func() {
+			// if fuzzy matching is enabled that case sensitivity is irrelevant
+			if f.fuzzy {
+				imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+				imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+				defer imgui.PopStyleVar()
+				defer imgui.PopItemFlag()
+			}
+			imgui.Checkbox("Case Sensitive", &f.caseSensitive)
+		}()
 
 		imgui.EndPopup()
 	}
