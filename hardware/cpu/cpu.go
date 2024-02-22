@@ -509,9 +509,10 @@ var ResetMidInstruction = errors.New("cpu: appears to have been reset mid-instru
 // The cycleCallback arugment should *never* be nil. Use the NilCycleCallback()
 // function in this package if you want a nil effect.
 func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
-	// do nothing is CPU is in KIL state
+	// the CPU does nothing if it is in the KIL state. however, the other
+	// parts of the VCS continue
 	if mc.Killed {
-		return nil
+		return cycleCallback()
 	}
 
 	// a previous call to ExecuteInstruction() has not yet completed. it is
