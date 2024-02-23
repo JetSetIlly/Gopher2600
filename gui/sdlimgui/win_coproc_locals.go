@@ -42,7 +42,7 @@ type winCoProcLocals struct {
 func newWinCoProcLocals(img *SdlImgui) (window, error) {
 	win := &winCoProcLocals{
 		img:       img,
-		filter:    newFilter(img, filterFlagsNoSpaces),
+		filter:    newFilter(img, filterFlagsVariableNamesC),
 		openNodes: make(map[string]bool),
 	}
 	return win, nil

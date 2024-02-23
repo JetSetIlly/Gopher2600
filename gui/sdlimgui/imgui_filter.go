@@ -22,7 +22,6 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
-	"github.com/sahilm/fuzzy"
 )
 
 // filterFlags is used to control how the filter control is drawn
@@ -32,6 +31,14 @@ type filterFlags int
 const (
 	filterFlagsNone     filterFlags = 0
 	filterFlagsNoSpaces filterFlags = 1 << iota
+	filterFlagsNoPunctuation
+	filterFlagsOnlyASCII
+	filterFlagsNoEdit
+)
+
+// common filter flags combinations
+const (
+	filterFlagsVariableNamesC = filterFlagsOnlyASCII | filterFlagsNoSpaces | filterFlagsNoPunctuation
 )
 
 // filter provides a basic UI control for managing filter text
@@ -41,15 +48,22 @@ type filter struct {
 
 	text          string
 	caseSensitive bool
-	fuzzy         bool
+	prefixOnly    bool
 }
 
 func newFilter(img *SdlImgui, flags filterFlags) filter {
 	return filter{
 		img:   img,
 		flags: flags,
-		fuzzy: true,
 	}
+}
+
+func (f *filter) applyRules(r rune) bool {
+	return unicode.IsPrint(r) &&
+		(f.flags&filterFlagsOnlyASCII != filterFlagsOnlyASCII || r < unicode.MaxASCII) &&
+		(f.flags&filterFlagsNoPunctuation != filterFlagsNoPunctuation ||
+			unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.IsSpace(r)) &&
+		(f.flags&filterFlagsNoSpaces != filterFlagsNoSpaces || !unicode.IsSpace(r))
 }
 
 // draw the imgui control
@@ -67,7 +81,8 @@ func (f *filter) draw(id string) {
 				f.text = f.text[:len(f.text)-1]
 			}
 		case phantomInputRune:
-			if unicode.IsPrint(f.img.phantomInputRune) {
+			// make sure phaontom input rune is printable and that it obeys the filter rules
+			if f.applyRules(f.img.phantomInputRune) {
 				f.text = fmt.Sprintf("%s%c", f.text, f.img.phantomInputRune)
 			}
 		}
@@ -86,43 +101,47 @@ func (f *filter) draw(id string) {
 	}
 
 	if imgui.BeginPopupV(id, imgui.WindowFlagsNoMove) {
-		func() {
-			if len(f.text) == 0 {
-				imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-				imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-				defer imgui.PopStyleVar()
-				defer imgui.PopItemFlag()
-			}
+		if f.flags&filterFlagsNoEdit == filterFlagsNoEdit {
+			// function wrapped for the convenience of the defer statement
+			func() {
+				if len(f.text) == 0 {
+					imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+					imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+					defer imgui.PopStyleVar()
+					defer imgui.PopItemFlag()
+				}
+				imgui.AlignTextToFramePadding()
+				filterText := "no filter"
+				if len(f.text) > 0 {
+					filterText = f.text
+				}
+				imgui.Text(fmt.Sprintf("%s%s", filterText, strings.Repeat(" ", 15-len(filterText))))
+			}()
+		} else {
+			imgui.PushItemWidth(10 * imgui.FontSize())
 
-			imgui.AlignTextToFramePadding()
-			filterText := "no filter"
-			if len(f.text) > 0 {
-				filterText = f.text
+			cb := func(ev imgui.InputTextCallbackData) int32 {
+				if f.applyRules(ev.EventChar()) {
+					return 0
+				}
+				return 1
 			}
-			imgui.Text(fmt.Sprintf("%s%s", filterText, strings.Repeat(" ", 15-len(filterText))))
+			imgui.InputTextV("", &f.text, imgui.InputTextFlagsCallbackCharFilter, cb)
 
-			imgui.SameLine()
-			if imgui.Button(string(fonts.Trash)) {
-				f.text = ""
-			}
-		}()
+			imgui.PopItemWidth()
+		}
+
+		imgui.SameLine()
+		if imgui.Button(string(fonts.Trash)) {
+			f.text = ""
+		}
 
 		imgui.Spacing()
 		imgui.Separator()
 		imgui.Spacing()
 
-		imgui.Checkbox("Fuzzy Match", &f.fuzzy)
-
-		func() {
-			// if fuzzy matching is enabled that case sensitivity is irrelevant
-			if f.fuzzy {
-				imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-				imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-				defer imgui.PopStyleVar()
-				defer imgui.PopItemFlag()
-			}
-			imgui.Checkbox("Case Sensitive", &f.caseSensitive)
-		}()
+		imgui.Checkbox("Case Sensitive", &f.caseSensitive)
+		imgui.Checkbox("Prefix Only", &f.prefixOnly)
 
 		imgui.EndPopup()
 	}
@@ -130,12 +149,16 @@ func (f *filter) draw(id string) {
 
 // isFiltered returns true if the provided string matches the filter text
 func (f *filter) isFiltered(s string) bool {
-	if f.fuzzy {
-		return len(f.text) > 0 && fuzzy.Find(f.text, []string{s}).Len() == 0
+	var test func(string, string) bool
+
+	if f.prefixOnly {
+		test = strings.HasPrefix
+	} else {
+		test = strings.Contains
 	}
 
 	if f.caseSensitive {
-		return !strings.HasPrefix(s, f.text)
+		return !test(s, f.text)
 	}
-	return !strings.HasPrefix(strings.ToLower(s), strings.ToLower(f.text))
+	return !test(strings.ToLower(s), strings.ToLower(f.text))
 }

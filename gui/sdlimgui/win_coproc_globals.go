@@ -55,7 +55,7 @@ func newWinCoProcGlobals(img *SdlImgui) (window, error) {
 		img:            img,
 		firstOpen:      true,
 		showAllGlobals: true,
-		filter:         newFilter(img, filterFlagsNoSpaces),
+		filter:         newFilter(img, filterFlagsVariableNamesC),
 		openNodes:      make(map[string]bool),
 	}
 	return win, nil
