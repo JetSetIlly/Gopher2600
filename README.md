@@ -6,9 +6,6 @@ Gopher2600 is an emulator for the Atari 2600 written in Go.
 
 Accuracy is very high and and there are no known problems with the emulation of the 6507, TIA or RIOT chips.
 
-Emulation of the ARM chip is currently limited to the Thumb subset of instructions but it does include accurate cycle counting and performance monitoring.
-<br clear="right">
-
 The key features of the emulator:
 
 * [Support for many of the known cartridge formats](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supported-Cartridge-Mappers)
@@ -19,7 +16,7 @@ The key features of the emulator:
 * [AtariVox and SaveKey](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/AtariVox-and-SaveKey) support
     * Speech support via `Festival`
 * CRT TV Effects
-* Three [screenshot](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Creating-Screenshots) methods
+* Flexible [screenshot](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Creating-Screenshots) features
 * Accurate audio reproduction (and optional stereo output)
 * Support for common [TIA revisions](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/TIA-Revisions)
 * Implementation of [Movie Cart](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Movie-Cart)
@@ -27,14 +24,18 @@ The key features of the emulator:
 * Tracker/Piano Keys visualisation
 * [Gameplay recording and playback](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Recording-Gamplay)
 * Support for (and auto-detection of) the stick, paddle, keypad and also Sega Genesis style [controllers](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Hand-Controllers-and-Front-Panel)
+* ROM selector with live emulation preview and optional support for
+  [boxart and the standard stella.pro file](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Box-Art-and-stella.pro-file)
 
 The graphical [debugger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Debugger):
 
-* CPU Clock and Color Clock level interaction
+* CPU and Color Clock level interaction
 * Breakpoints, traps, watches on various CPU, TIA and RIOT targets
-* Script recording and playback
-* ARM peformance profiling 
 * Terminal interface (headless operation optional)
+* Advanced ARM monitoring
+	* Performance profiling
+	* Source code inspection and breakpoints
+	* DWARF support (global & local variable inspection)
 
 Logo is based on [Gopherize.me](https://github.com/matryer/gopherize.me) which itself is based on the work of [Ashley McNamara](https://github.com/ashleymcnamara/gophers) and is [licensed under the Creative Commons](https://github.com/ashleymcnamara/gophers/blob/master/LICENSE).
 
