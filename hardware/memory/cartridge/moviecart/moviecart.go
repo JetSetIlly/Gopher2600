@@ -50,6 +50,7 @@ const fieldSize = 4096
 // levels for both volume and brightness.
 const (
 	levelDefault = 6
+	levelMax     = 11
 )
 
 // colours from the color stream are ajdusted accordin the brightness level.
@@ -58,7 +59,7 @@ var brightLevels = [...]uint8{0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 // volume can take 11 levels. data from the audio stream can be one of 16
 // levels, the actual value written to the VCS is looked up from the correct
 // volume array.
-var volumeLevels = [11][16]uint8{
+var volumeLevels = [levelMax][16]uint8{
 	/* 0.0000 */
 	{8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8},
 	/* 0.1667 */
@@ -513,7 +514,7 @@ func (cart *Moviecart) updateDirection() {
 						cart.state.volume--
 					}
 				} else if direction.isRight() {
-					if cart.state.volume < len(volumeLevels)-1 {
+					if cart.state.volume < levelMax-1 {
 						cart.state.volume++
 					}
 				}
@@ -524,7 +525,7 @@ func (cart *Moviecart) updateDirection() {
 						cart.state.brightness--
 					}
 				} else if direction.isRight() {
-					if cart.state.brightness < len(brightLevels) {
+					if cart.state.brightness < levelMax-1 {
 						cart.state.brightness++
 					}
 				}
@@ -736,8 +737,7 @@ func (cart *Moviecart) fillAddrRightLine() {
 	cart.writeColor(addrSetGCol8 + 1) // col 7/9
 	cart.writeColor(addrSetGCol9 + 1) // col 9/9
 
-	cart.writeBackground(addrSetBkColR+1, true)
-	// cart.writeBackgroundStream(addrSetPfColR+1, false)
+	cart.writeBackground(addrSetBkColR + 1)
 }
 
 func (cart *Moviecart) fillAddrLeftLine(again bool) {
@@ -755,8 +755,7 @@ func (cart *Moviecart) fillAddrLeftLine(again bool) {
 	cart.writeColor(addrSetGCol3 + 1) // col 6/9
 	cart.writeColor(addrSetGCol4 + 1) // col 8/9
 
-	// cart.writeBackgroundStream(addrSetBkColL+1, false)
-	cart.writeBackground(addrSetPfColL+1, true)
+	cart.writeBackground(addrSetPfColL + 1)
 
 	if again {
 		cart.writeJMPaddr(addrPickContinue+1, addrRightLine)
@@ -892,9 +891,6 @@ func (cart *Moviecart) writeColor(addr uint16) {
 	// adjust brightness
 	brightIdx := int(b & 0x0f)
 	brightIdx += cart.state.brightness
-	if brightIdx >= len(brightLevels) {
-		brightIdx = len(brightLevels) - 1
-	}
 	b = b&0xf0 | brightLevels[brightIdx]
 
 	// forcing a particular color means we've been drawing pixels from a timecode
@@ -916,11 +912,29 @@ func (cart *Moviecart) writeColor(addr uint16) {
 	cart.write8bit(addr, b)
 }
 
-func (cart *Moviecart) writeBackground(addr uint16, readCol bool) {
+func (cart *Moviecart) writeBackground(addr uint16) {
 	var b byte
-	if readCol && cart.state.osdDisplay == osdNone {
+
+	// emit black when OSD is enabled
+	if cart.state.osdDisplay != osdNone {
+		b = 0x00
+		cart.write8bit(addr, b)
+		return
+	}
+
+	// stream next background byte
+	if cart.state.osdDisplay == osdNone {
 		b = cart.state.streamBuffer[cart.state.streamIndex][cart.state.streamBackground]
 		cart.state.streamBackground++
+	}
+
+	// emit black when blankPartialLines flag is true. note that we've streamed
+	// the background byte in this case and that we're discarding the streamed
+	// value
+	if cart.state.blankPartialLines {
+		b = 0x00
+		cart.write8bit(addr, b)
+		return
 	}
 
 	// adjust brightness
@@ -934,11 +948,6 @@ func (cart *Moviecart) writeBackground(addr uint16, readCol bool) {
 	// best effort conversion of color to B&W
 	if cart.state.forceBW {
 		b &= 0x0f
-	}
-
-	// emit black when blankPartialLines flag is true
-	if cart.state.blankPartialLines {
-		b = 0x00
 	}
 
 	cart.write8bit(addr, b)
