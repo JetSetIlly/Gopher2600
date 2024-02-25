@@ -205,8 +205,8 @@ type state struct {
 	// the OSD is to be displayed for the remaining duration
 	osdDuration int
 
-	// what part of the osdDisplay is being shown at the current line of the field
-	osdDisplay osdDisplay
+	// what part of the osdControl is being shown at the current line of the field
+	osdControl osdControl
 
 	// index into the static osd data
 	osdIdx int
@@ -222,11 +222,11 @@ type state struct {
 	rotation byte
 }
 
-// what part of the OSD is currently being display.
-type osdDisplay int
+// which control is currently being displayed on screen
+type osdControl int
 
 const (
-	osdNone osdDisplay = iota
+	osdNone osdControl = iota
 	osdLabel
 	osdLevels
 	osdTime
@@ -484,7 +484,7 @@ func (cart *Moviecart) updateDirection() {
 
 	if direction.isLeft() || direction.isRight() {
 		cart.state.controlRepeat++
-		if cart.state.controlRepeat > 16 {
+		if cart.state.controlRepeat > 10 {
 			cart.state.controlRepeat = 0
 
 			switch cart.state.controlMode {
@@ -652,19 +652,19 @@ func (cart *Moviecart) runStateMachine() {
 			case modeTime:
 				if cart.state.lines == 11 {
 					cart.state.osdDuration--
-					cart.state.osdDisplay = osdTime
+					cart.state.osdControl = osdTime
 					cart.state.osdIdx = cart.state.streamTimecode
 				}
 
 			default:
 				if cart.state.lines == 21 {
 					cart.state.osdDuration--
-					cart.state.osdDisplay = osdLabel
+					cart.state.osdControl = osdLabel
 					cart.state.osdIdx = 0
 				}
 
 				if cart.state.lines == 7 {
-					cart.state.osdDisplay = osdLevels
+					cart.state.osdControl = osdLevels
 					switch cart.state.controlMode {
 					case modeBrightness:
 						cart.state.osdIdx = cart.state.brightness * 40
@@ -718,7 +718,7 @@ func (cart *Moviecart) runStateMachine() {
 		cart.nextField()
 		cart.state.lines = int(cart.state.format[cart.state.streamIndex].visible - 1)
 		cart.state.state = stateMachineRight
-		cart.state.osdDisplay = osdNone
+		cart.state.osdControl = osdNone
 	}
 }
 
@@ -835,7 +835,7 @@ func (cart *Moviecart) writeGraph(addr uint16) {
 	var b byte
 
 	// check if we need to draw OSD using stats graphics data
-	switch cart.state.osdDisplay {
+	switch cart.state.osdControl {
 	case osdTime:
 		b = cart.state.streamBuffer[cart.state.streamIndex][cart.state.osdIdx]
 		cart.state.osdIdx++
@@ -895,7 +895,7 @@ func (cart *Moviecart) writeColor(addr uint16) {
 
 	// forcing a particular color means we've been drawing pixels from a timecode
 	// or OSD label or level meter.
-	if cart.state.osdDisplay != osdNone {
+	if cart.state.osdControl != osdNone {
 		b = osdColor
 	}
 
@@ -916,14 +916,14 @@ func (cart *Moviecart) writeBackground(addr uint16) {
 	var b byte
 
 	// emit black when OSD is enabled
-	if cart.state.osdDisplay != osdNone {
+	if cart.state.osdControl != osdNone {
 		b = 0x00
 		cart.write8bit(addr, b)
 		return
 	}
 
 	// stream next background byte
-	if cart.state.osdDisplay == osdNone {
+	if cart.state.osdControl == osdNone {
 		b = cart.state.streamBuffer[cart.state.streamIndex][cart.state.streamBackground]
 		cart.state.streamBackground++
 	}
