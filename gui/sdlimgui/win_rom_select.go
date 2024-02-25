@@ -459,6 +459,8 @@ func (win *winSelectROM) draw() {
 
 						imgui.TableNextRow()
 						imgui.TableNextColumn()
+						imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+						imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
 						imgui.AlignTextToFramePadding()
 						imgui.Text("Television")
 						imgui.TableNextColumn()
@@ -472,9 +474,13 @@ func (win *winSelectROM) draw() {
 								imgui.EndCombo()
 							}
 						}
+						imgui.PopStyleVar()
+						imgui.PopItemFlag()
 
 						imgui.TableNextRow()
 						imgui.TableNextColumn()
+						imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+						imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
 						imgui.AlignTextToFramePadding()
 						imgui.Text("Players")
 						imgui.TableNextColumn()
@@ -499,6 +505,8 @@ func (win *winSelectROM) draw() {
 								imgui.EndCombo()
 							}
 						}
+						imgui.PopStyleVar()
+						imgui.PopItemFlag()
 
 						if win.selectedFileProperties.Manufacturer != "" {
 							imgui.TableNextRow()
