@@ -513,7 +513,7 @@ func (cart *Moviecart) updateDirection() {
 						cart.state.volume--
 					}
 				} else if direction.isRight() {
-					if cart.state.volume < len(volumeLevels) {
+					if cart.state.volume < len(volumeLevels)-1 {
 						cart.state.volume++
 					}
 				}
