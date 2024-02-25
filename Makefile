@@ -1,5 +1,5 @@
 
-version = v0.29.0 pre-release
+version = v0.29.0
 
 goBinary = go
 gcflags = -c 3 -B -wb=false
@@ -129,7 +129,8 @@ profile_trace: generate test
 # (it might be better to use the go env variable GOOS AND GOARCH for this)
 fontrendering:
 ifneq ($(shell $(goBinary) version | grep -q "darwin/arm64"; echo $$?), 0)
-fontrendering=imguifreetype
+# as of v0.29.0 freetype font rendering is disabled for all targets
+#fontrendering=imguifreetype
 endif
 
 build: fontrendering generate 
