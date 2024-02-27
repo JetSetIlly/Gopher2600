@@ -1,6 +1,6 @@
-<img align="right" src="https://github.com/JetSetIlly/Gopher2600-Dev-Docs/blob/master/gopher2600_logo/logo4.png" width="250" alt="gopher2600 logo"/>
-
 # Gopher2600
+
+<img align="right" src="https://github.com/JetSetIlly/Gopher2600-Dev-Docs/blob/master/gopher2600_logo/logo4.png" width="250" alt="gopher2600 logo"/>
 
 Gopher2600 is an emulator for the Atari 2600 written in Go.
 
