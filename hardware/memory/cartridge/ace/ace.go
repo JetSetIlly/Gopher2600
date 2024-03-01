@@ -185,7 +185,7 @@ func (cart *Ace) AccessPassive(addr uint16, data uint8) error {
 	cart.mem.gpio[ADDR_IDR-cart.mem.gpioOrigin+1] = uint8(addr >> 8)
 
 	// continue and wait for the fourth YieldSyncWithVCS...
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 5; i++ {
 		cart.runARM()
 		if cart.mem.isDataModeOut() {
 			break // for loop
