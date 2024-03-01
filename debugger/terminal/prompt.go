@@ -16,20 +16,24 @@
 package terminal
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
 )
 
-// Prompt specifies the prompt text and the prompt style. For CPUStep
-// and VideoStep prompt types thre is some additional information that
-// can be used to decorate the prompt.
+// Prompt specifies the prompt text and the prompt style
 type Prompt struct {
 	Type PromptType
 
+	// the content
 	Content string
-	Yield   coprocessor.CoProcYield
 
+	// the current CoProcYield information. used to add additional information
+	// to Content string
+	CoProcYield coprocessor.CoProcYield
+
+	// whether the terminal is recording input
 	Recording bool
 }
 
@@ -53,12 +57,17 @@ func (p Prompt) String() string {
 	}
 
 	s := strings.Builder{}
-	s.WriteString("[")
+	s.WriteString("[ ")
 	if p.Recording {
-		s.WriteString("(rec)")
+		s.WriteString("(rec) ")
 	}
-	s.WriteString(" ")
-	s.WriteString(p.Content)
+
+	s.WriteString(strings.TrimSpace(p.Content))
+
+	if !p.CoProcYield.Type.Normal() {
+		s.WriteString(fmt.Sprintf(" (%s)", p.CoProcYield.Type.String()))
+	}
+
 	s.WriteString(" ]")
 
 	switch p.Type {

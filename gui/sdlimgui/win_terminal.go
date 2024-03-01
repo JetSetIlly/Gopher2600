@@ -197,11 +197,19 @@ func (win *winTerm) draw() {
 			}
 		} else {
 			imgui.Text(win.prompt.Content)
-			if !win.prompt.Yield.Type.Normal() {
+
+			// additional yield information
+			if !win.prompt.CoProcYield.Type.Normal() {
 				imgui.SameLine()
-				imgui.Text(win.prompt.Yield.Type.String())
-				if win.prompt.Yield.Error != nil {
-					imguiTooltipSimple(win.prompt.Yield.Error.Error(), true)
+				imgui.Text(fmt.Sprintf("(%s)", win.prompt.CoProcYield.Type.String()))
+				if win.prompt.CoProcYield.Error != nil {
+					imguiTooltip(func() {
+						imgui.Text("Coprocessor Yield")
+						imgui.Spacing()
+						imgui.Separator()
+						imgui.Spacing()
+						imgui.Text(fmt.Sprintf("%s: %s", win.prompt.CoProcYield.Type.String(), win.prompt.CoProcYield.Error.Error()))
+					}, true, true)
 				}
 			}
 		}

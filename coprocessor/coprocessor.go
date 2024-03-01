@@ -274,7 +274,7 @@ func (t CoProcYieldType) String() string {
 	case YieldSyncWithVCS:
 		return "sync"
 	case YieldBreakpoint:
-		return "break"
+		return "breakpoint"
 	case YieldUndefinedBehaviour:
 		return "undefined behaviour"
 	case YieldUnimplementedFeature:

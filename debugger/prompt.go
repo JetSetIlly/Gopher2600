@@ -62,7 +62,7 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 
 	if coproc := dbg.vcs.Mem.Cart.GetCoProcBus(); coproc != nil {
 		state := coproc.CoProcExecutionState()
-		p.Yield = state.Yield
+		p.CoProcYield = state.Yield
 	}
 
 	// LastResult final is false on CPU reset so we must check for that also
