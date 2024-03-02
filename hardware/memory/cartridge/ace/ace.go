@@ -57,10 +57,10 @@ func NewAce(env *environment.Environment, data []byte) (mapper.CartMapper, error
 	cart.arm = arm.NewARM(cart.mem.model, cart.env.Prefs.ARM, cart.mem, cart)
 	cart.mem.Plumb(cart.arm)
 
-	logger.Logf("ACE", "ccm: %08x to %08x", cart.mem.sramOrigin, cart.mem.sramMemtop)
-	logger.Logf("ACE", "flash: %08x to %08x", cart.mem.flashOrigin, cart.mem.flashMemtop)
-	logger.Logf("ACE", "vcs program: %08x to %08x", cart.mem.flashVCSOrigin, cart.mem.flashVCSMemtop)
-	logger.Logf("ACE", "arm program: %08x to %08x", cart.mem.flashARMOrigin, cart.mem.flashARMMemtop)
+	logger.Logf("ACE", "ccm: %08x to %08x", cart.mem.ccmOrigin, cart.mem.ccmMemtop)
+	logger.Logf("ACE", "flash: %08x to %08x", cart.mem.downloadOrigin, cart.mem.downloadMemtop)
+	logger.Logf("ACE", "buffer: %08x to %08x", cart.mem.bufferOrigin, cart.mem.bufferMemtop)
+	logger.Logf("ACE", "gpio: %08x to %08x", cart.mem.gpioOrigin, cart.mem.gpioMemtop)
 
 	return cart, nil
 }
@@ -208,7 +208,7 @@ func (cart *Ace) Step(clock float32) {
 func (cart *Ace) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, 1)
 	c[0] = mapper.BankContent{Number: 0,
-		Data:    cart.mem.flashVCS,
+		Data:    cart.mem.buffer,
 		Origins: []uint16{memorymap.OriginCart},
 	}
 	return c
@@ -231,7 +231,7 @@ func (cart *Ace) BusStuff() (uint8, bool) {
 
 // ExecutableOrigin implements the coprocessor.CartCoProcRelocatable interface.
 func (cart *Ace) ExecutableOrigin() uint32 {
-	return cart.mem.flashARMOrigin
+	return cart.mem.resetPC
 }
 
 // CoProcExecutionState implements the coprocessor.CartCoProcBus interface.

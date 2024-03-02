@@ -16,6 +16,7 @@
 package ace
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
@@ -61,31 +62,22 @@ type aceMemory struct {
 	gpioOrigin uint32
 	gpioMemtop uint32
 
-	// SRAM is called CCM in STM32 architectures
-	sram       []byte
-	sramOrigin uint32
-	sramMemtop uint32
+	// SRAM is called CCM in the Uno/PlusROM architecture
+	ccm       []byte
+	ccmOrigin uint32
+	ccmMemtop uint32
 
-	// flash memory is divided into three segments
-	//
-	// (1) the first chunk is flash memory used during the execution of the
-	// program. (2) the VCS segment contains the data intended for execution on
-	// and directly used by the 6507. (3) the ARM segment meanwhile contains
-	// data for use by the ARM
-	//
-	// the VCS and ARM segments must be consecutive
-	flash       []byte
-	flashOrigin uint32
-	flashMemtop uint32
+	// download memory is divided into three segments
+	download       []byte
+	downloadOrigin uint32
+	downloadMemtop uint32
 
-	flashVCS       []byte
-	flashVCSOrigin uint32
-	flashVCSMemtop uint32
+	// the buffer and ARM segments must be consecutive
+	buffer       []byte
+	bufferOrigin uint32
+	bufferMemtop uint32
 
-	flashARM       []byte
-	flashARMOrigin uint32
-	flashARMMemtop uint32
-
+	// minimal interface to the ARM
 	arm interruptARM
 
 	// parallelARM is true whenever the address bus is not a cartridge address (ie.
@@ -125,7 +117,14 @@ func (mem *aceMemory) setDataMode(out bool) {
 }
 
 func newAceMemory(data []byte, armPrefs *preferences.ARMPreferences) (*aceMemory, error) {
-	mem := &aceMemory{}
+	mem := &aceMemory{
+		model: architecture.NewMap(architecture.PlusCart),
+	}
+
+	// CCM creation
+	mem.ccm = make([]byte, 0x0000fa00) // 64k
+	mem.ccmOrigin = mem.model.SRAMOrigin
+	mem.ccmMemtop = mem.ccmOrigin + uint32(len(mem.ccm)) - 1
 
 	// read header
 	mem.header.version = string(data[:aceHeaderDriverName])
@@ -158,43 +157,31 @@ func newAceMemory(data []byte, armPrefs *preferences.ARMPreferences) (*aceMemory
 		(uint32(data[aceHeaderEntryPoint+3]) << 24)
 	logger.Logf("ACE", "header: entrypoint: %08x", mem.header.entry)
 
-	var entryAdjust uint32
-
+	// placement in memory upon download is different depending on version
+	mem.download = data[:]
 	switch mem.header.version {
 	case "ACE-PC00":
-		entryAdjust = 0x08020200
-		mem.model = architecture.NewMap(architecture.PlusCart)
+		mem.downloadOrigin = 0x08020200
 	case "ACE-UF00":
-		entryAdjust = 0x08020200
-		mem.header.entry += entryAdjust
-		logger.Logf("ACE", "header: entrypoint adjusted to: %08x", mem.header.entry)
-		mem.model = architecture.NewMap(architecture.PlusCart)
+		mem.downloadOrigin = 0x08020000
 	case "ACE-2600":
 		fallthrough
 	default:
 		return nil, fmt.Errorf("ACE: version: %s not supported", mem.header.version)
 	}
+	mem.downloadMemtop = mem.downloadOrigin + uint32(len(mem.download))
 
-	// SRAM creation
-	sramSize := 0x0000fa00 // 64k
-	mem.sram = make([]byte, sramSize)
-	mem.sramOrigin = mem.model.SRAMOrigin
-	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram)) - 1
-
-	// the placement of data in flash memory revolves around the ARM entry point
-	mem.resetPC = arm.AlignTo16bits(mem.model.FlashOrigin + mem.header.entry)
+	// the placement of data in memory revolves around the ARM entry point
+	mem.resetPC = arm.AlignTo16bits(mem.downloadOrigin + mem.header.entry)
 	mem.resetLR = mem.resetPC
-	mem.resetSP = mem.sramMemtop - 3
+	mem.resetSP = mem.ccmMemtop - 3
 
-	// copy vcs program
-	mem.flashVCS = data[:mem.header.entry-entryAdjust-1]
-	mem.flashVCSOrigin = mem.resetPC - uint32(len(mem.flashVCS))
-	mem.flashVCSMemtop = mem.flashVCSOrigin + uint32(len(mem.flashVCS)-1)
+	// note the real entry point
+	logger.Logf("ACE", "actual entrypoint: %08x", mem.resetPC)
 
-	// copy arm program
-	mem.flashARM = data[mem.header.entry-entryAdjust-1:]
-	mem.flashARMOrigin = mem.resetPC
-	mem.flashARMMemtop = mem.flashARMOrigin + uint32(len(mem.flashARM)-1)
+	mem.bufferOrigin = mem.model.FlashOrigin
+	mem.bufferMemtop = mem.bufferOrigin + 0x1ffff
+	mem.buffer = make([]byte, mem.bufferMemtop-mem.bufferOrigin+1)
 
 	// define the Thumb-2 bytecode for a function whose only purpose is to jump
 	// back to where it came from bytecode is for instruction "BX LR" with a
@@ -205,18 +192,18 @@ func newAceMemory(data []byte, armPrefs *preferences.ARMPreferences) (*aceMemory
 	}
 
 	// placing nullFunction at end of ARM program
-	nullFunctionAddress := mem.flashARMMemtop + 1
+	nullFunctionAddress := mem.downloadMemtop + 1
 
-	// the code location of the null function must be on a 16bit boundary
-	if nullFunctionAddress&0x01 == 0x01 {
+	// the code location of the null function must not be on a 16bit boundary
+	if arm.IsAlignedTo16bits(nullFunctionAddress) {
 		logger.Logf("ACE", "correcting alignment at end of ARM program")
-		mem.flashARM = append(mem.flashARM, 0x00)
-		mem.flashARMMemtop++
+		mem.download = append(mem.download, 0x00)
+		mem.downloadMemtop++
 		nullFunctionAddress++
 	}
 
-	mem.flashARM = append(mem.flashARM, nullFunction...)
-	mem.flashARMMemtop += uint32(len(nullFunction))
+	mem.download = append(mem.download, nullFunction...)
+	mem.downloadMemtop += uint32(len(nullFunction))
 
 	// although the code location of the null function is on a 16bit boundary
 	// (see above), the code is reached by interwork branching. we're using the
@@ -228,98 +215,63 @@ func newAceMemory(data []byte, armPrefs *preferences.ARMPreferences) (*aceMemory
 	// setting the program counter
 	nullFunctionAddress |= 0x01
 
+	logger.Logf("ACE", "null function place at %08x", nullFunctionAddress)
+
 	// choose size for the remainder of the flash memory and place at the flash
 	// origin value for architecture
-	const flashOverhead = 64000
-	var flashSize uint32
+	const bufferOverhead = 64000
+	var buffserSize uint32
 
-	if len(data) < 128000-flashOverhead {
-		flashSize = 128000
-	} else if len(data) < 256000-flashOverhead {
-		flashSize = 256000
-	} else if len(data) < 512000-flashOverhead {
-		flashSize = 512000
+	if len(data) < 128000-bufferOverhead {
+		buffserSize = 128000
+	} else if len(data) < 256000-bufferOverhead {
+		buffserSize = 256000
+	} else if len(data) < 512000-bufferOverhead {
+		buffserSize = 512000
 	} else {
-		flashSize = flashOverhead
+		buffserSize = bufferOverhead
 	}
 
-	mem.flash = make([]byte, flashSize)
-	mem.flashOrigin = mem.model.FlashOrigin
-	mem.flashMemtop = mem.flashOrigin + uint32(len(mem.flash)-1)
+	mem.buffer = make([]byte, buffserSize)
+	mem.bufferOrigin = mem.model.FlashOrigin
+	mem.bufferMemtop = mem.bufferOrigin + uint32(len(mem.buffer)-1)
 
 	// set virtual argument. detailed information in the PlusCart firmware
 	// source:
 	//
 	// atari-2600-pluscart-master/source/STM32firmware/PlusCart/Src/cartridge_emulation_ACE.c
 
-	// cart_rom argument
-	mem.flash[0] = uint8(mem.flashVCSOrigin)
-	mem.flash[1] = uint8(mem.flashVCSOrigin >> 8)
-	mem.flash[2] = uint8(mem.flashVCSOrigin >> 16)
-	mem.flash[3] = uint8(mem.flashVCSOrigin >> 24)
+	// ROM file argument
+	binary.LittleEndian.PutUint32(mem.buffer, mem.downloadOrigin)
 
 	// CCM memory argument
-	mem.flash[4] = uint8(mem.model.SRAMOrigin)
-	mem.flash[5] = uint8(mem.model.SRAMOrigin >> 8)
-	mem.flash[6] = uint8(mem.model.SRAMOrigin >> 16)
-	mem.flash[7] = uint8(mem.model.SRAMOrigin >> 24)
+	binary.LittleEndian.PutUint32(mem.buffer[4:], mem.ccmOrigin)
 
 	// addresses of func_reboot_into_cartridge() and emulate_firmware_cartridge()
 	// for our purposes, the function needs only to jump back to the link address
-
-	// reboot_into_cartridge argument
-	mem.flash[8] = uint8(nullFunctionAddress)
-	mem.flash[9] = uint8(nullFunctionAddress >> 8)
-	mem.flash[10] = uint8(nullFunctionAddress >> 16)
-	mem.flash[11] = uint8(nullFunctionAddress >> 24)
-
-	// emulate_firmware_cartridge argument
-	mem.flash[12] = uint8(nullFunctionAddress)
-	mem.flash[13] = uint8(nullFunctionAddress >> 8)
-	mem.flash[14] = uint8(nullFunctionAddress >> 16)
-	mem.flash[15] = uint8(nullFunctionAddress >> 24)
+	binary.LittleEndian.PutUint32(mem.buffer[8:], nullFunctionAddress)
+	binary.LittleEndian.PutUint32(mem.buffer[12:], nullFunctionAddress)
 
 	// system clock argument
 	clk := int(armPrefs.Clock.Get().(float64) * 1000000)
-	mem.flash[16] = uint8(clk)
-	mem.flash[17] = uint8(clk >> 8)
-	mem.flash[18] = uint8(clk >> 16)
-	mem.flash[19] = uint8(clk >> 24)
+	binary.LittleEndian.PutUint32(mem.buffer[16:], uint32(clk))
 
 	// ACE version number
 	aceVersion := 2
-	mem.flash[20] = uint8(aceVersion)
-	mem.flash[21] = uint8(aceVersion >> 8)
-	mem.flash[22] = uint8(aceVersion >> 16)
-	mem.flash[23] = uint8(aceVersion >> 24)
+	binary.LittleEndian.PutUint32(mem.buffer[20:], uint32(aceVersion))
 
 	// pluscart revision number
 	plusCartRevision := 3
-	mem.flash[24] = uint8(plusCartRevision)
-	mem.flash[25] = uint8(plusCartRevision >> 8)
-	mem.flash[26] = uint8(plusCartRevision >> 16)
-	mem.flash[27] = uint8(plusCartRevision >> 24)
+	binary.LittleEndian.PutUint32(mem.buffer[24:], uint32(plusCartRevision))
 
 	// GPIO addresses
-	mem.flash[28] = uint8(ADDR_IDR & 0xff)
-	mem.flash[29] = uint8((ADDR_IDR >> 8) & 0xff)
-	mem.flash[30] = uint8((ADDR_IDR >> 16) & 0xff)
-	mem.flash[31] = uint8((ADDR_IDR >> 24) & 0xff)
-	mem.flash[32] = uint8((DATA_IDR) & 0xff)
-	mem.flash[33] = uint8((DATA_IDR >> 8) & 0xff)
-	mem.flash[34] = uint8((DATA_IDR >> 16) & 0xff)
-	mem.flash[35] = uint8((DATA_IDR >> 24) & 0xff)
-	mem.flash[36] = uint8((DATA_ODR) & 0xff)
-	mem.flash[37] = uint8((DATA_ODR >> 8) & 0xff)
-	mem.flash[38] = uint8((DATA_ODR >> 16) & 0xff)
-	mem.flash[39] = uint8((DATA_ODR >> 24) & 0xff)
-	mem.flash[40] = uint8((DATA_MODER) & 0xff)
-	mem.flash[41] = uint8((DATA_MODER >> 8) & 0xff)
-	mem.flash[42] = uint8((DATA_MODER >> 16) & 0xff)
-	mem.flash[43] = uint8((DATA_MODER >> 24) & 0xff)
+	binary.LittleEndian.PutUint32(mem.buffer[28:], ADDR_IDR)
+	binary.LittleEndian.PutUint32(mem.buffer[32:], DATA_IDR)
+	binary.LittleEndian.PutUint32(mem.buffer[36:], DATA_ODR)
+	binary.LittleEndian.PutUint32(mem.buffer[40:], DATA_MODER)
 
 	// end of argument indicator
-	copy(mem.flash[44:48], []byte{0x00, 0x26, 0xe4, 0xac})
+	copy(mem.buffer[44:48], []byte{0x00, 0x26, 0xe4, 0xac})
 
 	// GPIO pins
 	mem.gpio = make([]byte, GPIO_MEMTOP-GPIO_ORIGIN+1)
@@ -336,14 +288,12 @@ func (mem *aceMemory) Snapshot() *aceMemory {
 	m := *mem
 	m.gpio = make([]byte, len(mem.gpio))
 	copy(m.gpio, mem.gpio)
-	m.sram = make([]byte, len(mem.sram))
-	copy(m.sram, mem.sram)
-	m.flash = make([]byte, len(mem.flash))
-	copy(m.flash, mem.flash)
-	m.flashVCS = make([]byte, len(mem.flashVCS))
-	copy(m.flashVCS, mem.flashVCS)
-	m.flashARM = make([]byte, len(mem.flashARM))
-	copy(m.flashARM, mem.flashARM)
+	m.ccm = make([]byte, len(mem.ccm))
+	copy(m.ccm, mem.ccm)
+	m.download = make([]byte, len(mem.download))
+	copy(m.download, mem.download)
+	m.buffer = make([]byte, len(mem.buffer))
+	copy(m.buffer, mem.buffer)
 	return &m
 }
 
@@ -368,17 +318,14 @@ func (mem *aceMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 		return &mem.gpio, mem.gpioOrigin
 	}
 
-	if addr >= mem.flashARMOrigin && addr <= mem.flashARMMemtop {
-		return &mem.flashARM, mem.flashARMOrigin
+	if addr >= mem.bufferOrigin && addr <= mem.bufferMemtop {
+		return &mem.buffer, mem.bufferOrigin
 	}
-	if addr >= mem.flashVCSOrigin && addr <= mem.flashVCSMemtop {
-		return &mem.flashVCS, mem.flashVCSOrigin
+	if addr >= mem.downloadOrigin && addr <= mem.downloadMemtop {
+		return &mem.download, mem.downloadOrigin
 	}
-	if addr >= mem.flashOrigin && addr <= mem.flashMemtop {
-		return &mem.flash, mem.flashOrigin
-	}
-	if addr >= mem.sramOrigin && addr <= mem.sramMemtop {
-		return &mem.sram, mem.sramOrigin
+	if addr >= mem.ccmOrigin && addr <= mem.ccmMemtop {
+		return &mem.ccm, mem.ccmOrigin
 	}
 
 	return nil, addr
@@ -398,24 +345,19 @@ func (mem *aceMemory) IsExecutable(addr uint32) bool {
 func (a *aceMemory) Segments() []mapper.CartStaticSegment {
 	return []mapper.CartStaticSegment{
 		{
-			Name:   "Flash",
-			Origin: a.flashOrigin,
-			Memtop: a.flashMemtop,
+			Name:   "Download",
+			Origin: a.downloadOrigin,
+			Memtop: a.downloadMemtop,
 		},
 		{
-			Name:   "VCS",
-			Origin: a.flashVCSOrigin,
-			Memtop: a.flashVCSMemtop,
-		},
-		{
-			Name:   "ARM",
-			Origin: a.flashARMOrigin,
-			Memtop: a.flashARMMemtop,
+			Name:   "Buffer",
+			Origin: a.bufferOrigin,
+			Memtop: a.bufferMemtop,
 		},
 		{
 			Name:   "CCM",
-			Origin: a.sramOrigin,
-			Memtop: a.sramMemtop,
+			Origin: a.ccmOrigin,
+			Memtop: a.ccmMemtop,
 		},
 	}
 }
@@ -425,14 +367,12 @@ func (a *aceMemory) Segments() []mapper.CartStaticSegment {
 // returned by the Segments() function
 func (a *aceMemory) Reference(segment string) ([]uint8, bool) {
 	switch segment {
-	case "Flash":
-		return a.flash, true
-	case "VCS":
-		return a.flashVCS, true
-	case "ARM":
-		return a.flashARM, true
+	case "Download":
+		return a.download, true
+	case "Buffer":
+		return a.buffer, true
 	case "CCM":
-		return a.sram, true
+		return a.ccm, true
 	}
 	return []uint8{}, false
 }
