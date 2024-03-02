@@ -133,7 +133,7 @@ func shiftTypeToMnemonic(typ uint16) string {
 		return "LSL"
 	case 0b01:
 		return "LSR"
-	case 0b10:
+	case 0b11:
 		return "ASR"
 	}
 	panic("impossible shift type")
