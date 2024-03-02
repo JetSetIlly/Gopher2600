@@ -773,6 +773,13 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 			if arm.state.yield.Type == coprocessor.YieldRunning {
 				memIdx := int(arm.state.executingPC - arm.state.programMemoryOrigin)
 
+				// check that we're not crashing into the end of the program memory
+				if memIdx >= len(*arm.state.programMemory)-1 {
+					arm.state.yield.Type = coprocessor.YieldExecutionError
+					arm.state.yield.Error = fmt.Errorf("execution reached end of program memory")
+					break // for loop
+				}
+
 				// opcode for executed instruction
 				opcode := arm.byteOrder.Uint16((*arm.state.programMemory)[memIdx:])
 
