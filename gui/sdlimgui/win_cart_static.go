@@ -113,37 +113,36 @@ func (win *winCartStatic) draw(static mapper.CartStatic) {
 			currData, ok := currStatic.Reference(seg.Name)
 
 			if ok {
-				compData, ok := compStatic.Reference(seg.Name)
-				if ok {
-					// take copy of seg.Name because we'll be accessing it in a PushFunction() below
-					segname := seg.Name
-
-					// pos is retreived in before() and used in after()
-					var pos imgui.Vec2
-
-					// number of colors to pop in afer()
-					popColor := 0
-
-					before := func(idx int) {
-						pos = imgui.CursorScreenPos()
-
-						// difference colour
-						a := currData[idx]
-						b := compData[idx]
-						if a != b {
-							imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.ValueDiff)
-							popColor++
-						}
+				win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
+					if src == nil {
+						return
 					}
+					compData, ok := compStatic.Reference(seg.Name)
+					if ok {
+						// take copy of seg.Name because we'll be accessing it in a PushFunction() below
+						segname := seg.Name
 
-					after := func(idx int) {
-						imgui.PopStyleColorV(popColor)
-						popColor = 0
+						// pos is retreived in before() and used in after()
+						var pos imgui.Vec2
 
-						win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
-							if src == nil {
-								return
+						// number of colors to pop in afer()
+						popColor := 0
+
+						before := func(idx int) {
+							pos = imgui.CursorScreenPos()
+
+							// difference colour
+							a := currData[idx]
+							b := compData[idx]
+							if a != b {
+								imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.ValueDiff)
+								popColor++
 							}
+						}
+
+						after := func(idx int) {
+							imgui.PopStyleColorV(popColor)
+							popColor = 0
 
 							// idx is based on original values of type uint16 so the type conversion is safe
 							addr := seg.Origin + uint32(idx)
@@ -213,17 +212,17 @@ func (win *winCartStatic) draw(static mapper.CartStatic) {
 									}, true)
 								}
 							}
-						})
-					}
+						}
 
-					commit := func(idx int, data uint8) {
-						win.img.dbg.PushFunction(func() {
-							win.img.dbg.VCS().Mem.Cart.GetStaticBus().PutStatic(segname, idx, data)
-						})
-					}
+						commit := func(idx int, data uint8) {
+							win.img.dbg.PushFunction(func() {
+								win.img.dbg.VCS().Mem.Cart.GetStaticBus().PutStatic(segname, idx, data)
+							})
+						}
 
-					drawByteGrid(fmt.Sprintf("##cartStatic##%s", segname), currData, seg.Origin, before, after, commit)
-				}
+						drawByteGrid(fmt.Sprintf("##cartStatic##%s", segname), currData, seg.Origin, before, after, commit)
+					}
+				})
 			}
 
 			imgui.EndChild()
