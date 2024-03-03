@@ -1559,12 +1559,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				dbg.printLine(terminal.StyleError, fmt.Sprintf("cannot set coproc register %d to %08x\n", reg, value))
 			}
 
-		case "ID":
-			fallthrough
 		case "STEP":
 			dbg.CoProcDev.BreakNextInstruction()
 			dbg.runUntilHalt = true
 			dbg.continueEmulation = true
+
+		case "ID":
+			fallthrough
 		default:
 			dbg.printLine(terminal.StyleFeedback, bus.GetCoProc().ProcessorID())
 		}
