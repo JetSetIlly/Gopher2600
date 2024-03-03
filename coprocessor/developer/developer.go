@@ -96,6 +96,9 @@ func NewDeveloper(state Emulation, tv TV) Developer {
 	return Developer{
 		emulation: state,
 		tv:        tv,
+		yieldState: yield.State{
+			StrobeTicker: time.NewTicker(100 * time.Microsecond),
+		},
 	}
 }
 
@@ -109,10 +112,6 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 	dev.faultsLock.Lock()
 	dev.faults = faults.NewFaults()
 	dev.faultsLock.Unlock()
-
-	dev.yieldStateLock.Lock()
-	dev.yieldState = yield.State{}
-	dev.yieldStateLock.Unlock()
 
 	dev.callstackLock.Lock()
 	dev.callstack = callstack.NewCallStack()
@@ -234,6 +233,15 @@ func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 	return nil
 }
 
+// EnableStrobe sets the yield strobe to the specified enable state and the
+// specified address
+func (dev *Developer) EnableStrobe(enable bool, addr uint32) {
+	dev.yieldStateLock.Lock()
+	defer dev.yieldStateLock.Unlock()
+	dev.yieldState.Strobe = enable
+	dev.yieldState.StrobeAddr = addr
+}
+
 // OnYield implements the coprocessor.CartCoProcDeveloper interface.
 func (dev *Developer) OnYield(addr uint32, yield coprocessor.CoProcYield) {
 	dev.yieldStateLock.Lock()
@@ -243,8 +251,25 @@ func (dev *Developer) OnYield(addr uint32, yield coprocessor.CoProcYield) {
 	dev.yieldState.Reason = yield.Type
 	dev.yieldState.LocalVariables = dev.yieldState.LocalVariables[:0]
 
+	// buildLocalsList() depends on the type of yield and whether a strobe is active
+	buildLocalsList := func(locals []*dwarf.SourceVariableLocal) {
+		dev.yieldState.LocalVariables = append(dev.yieldState.LocalVariables, locals...)
+	}
+
 	if yield.Type == coprocessor.YieldSyncWithVCS {
-		return
+		if !dev.yieldState.Strobe || addr != dev.yieldState.StrobeAddr {
+			return
+		}
+
+		select {
+		case <-dev.yieldState.StrobeTicker.C:
+			buildLocalsList = func(locals []*dwarf.SourceVariableLocal) {
+				dev.yieldState.StrobedLocalVariables = dev.yieldState.StrobedLocalVariables[:0]
+				dev.yieldState.StrobedLocalVariables = append(dev.yieldState.StrobedLocalVariables, locals...)
+			}
+		default:
+			return
+		}
 	}
 
 	dev.BorrowSource(func(src *dwarf.Source) {
@@ -258,7 +283,7 @@ func (dev *Developer) OnYield(addr uint32, yield coprocessor.CoProcYield) {
 		}
 
 		locals := src.GetLocalVariables(ln, addr)
-		dev.yieldState.LocalVariables = append(dev.yieldState.LocalVariables, locals...)
+		buildLocalsList(locals)
 
 		if yield.Type.Bug() {
 			ln.Bug = true

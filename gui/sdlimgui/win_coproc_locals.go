@@ -82,26 +82,64 @@ func (win *winCoProcLocals) debuggerDraw() bool {
 }
 
 func (win *winCoProcLocals) draw() {
-	var localVariables []*dwarf.SourceVariableLocal
+	// take copy of yield state before borrowing the source
+	var yieldState yield.State
 	win.img.dbg.CoProcDev.BorrowYieldState(func(yld yield.State) {
-		localVariables = yld.LocalVariables
+		yieldState = yld
 	})
 
 	// borrow source only so that we can check if whether to draw the window fully
 	win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
-		noSource := src == nil || len(src.Filenames) == 0 || len(src.SortedLocals.Locals) == 0
+		if src == nil || len(src.Filenames) == 0 {
+			imgui.AlignTextToFramePadding()
+			imgui.Text("No source files available")
+			return
+		}
+
+		// the local variables list we use depends on whether the emulation is
+		// running and whether a strobe is active. we use the LocalVariableView()
+		// function for this
+		viewedAddr, viewedLocals := yieldState.LocalVariableView(win.img.dbg.State())
 
 		// exit draw early leaving a message to indicate that there are no local
 		// variables available to display
-		if noSource {
-			imgui.Text("No local variables in the source")
-			return
-		}
-
-		if len(localVariables) == 0 {
+		if len(viewedLocals) == 0 {
+			imgui.AlignTextToFramePadding()
 			imgui.Text("No local variables currently visible")
 			return
 		}
+
+		// strobe information at the top of the window
+		ln := src.SourceLineByAddr(viewedAddr)
+		imgui.AlignTextToFramePadding()
+		imgui.Text(fmt.Sprintf("%s line %d", ln.File.ShortFilename, ln.LineNumber))
+		if imgui.IsItemClicked() && imgui.IsMouseDoubleClicked(0) {
+			srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
+			srcWin.gotoSourceLine(ln)
+		}
+		imgui.SameLineV(0, 15)
+		if yieldState.Strobe {
+			if imgui.Button("Remove Strobe") {
+				win.img.dbg.CoProcDev.EnableStrobe(false, viewedAddr)
+			}
+
+			// the addr and the line from that address are for the current yield
+			// point. for the tooltip however, we want to use the strobe addr
+			//
+			// if strobe line is different to yield line then show the tooltip
+			sln := src.SourceLineByAddr(yieldState.StrobeAddr)
+			if sln != ln {
+				imguiTooltipSimple(fmt.Sprintf("Strobe is currently set to:\n%s line %d", sln.File.ShortFilename, sln.LineNumber), true)
+			}
+		} else {
+			if imgui.Button("Set Strobe") {
+				win.img.dbg.CoProcDev.EnableStrobe(true, viewedAddr)
+			}
+		}
+
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
 
 		const numColumns = 3
 
@@ -124,7 +162,7 @@ func (win *winCoProcLocals) draw() {
 		imgui.TableSetupScrollFreeze(0, 1)
 		imgui.TableHeadersRow()
 
-		for i, varb := range localVariables {
+		for i, varb := range viewedLocals {
 			if !win.filter.isFiltered(varb.Name) {
 				win.drawVariableLocal(varb, fmt.Sprint(i))
 			}
@@ -139,7 +177,6 @@ func (win *winCoProcLocals) draw() {
 			imgui.Checkbox("Hide unlocatable variables", &win.showLocatableOnly)
 			win.img.imguiTooltipSimple(`A unlocatable variable is a variable has been
 removed by the compiler's optimisation process`)
-
 			win.filter.draw("##localsFilter")
 		})
 	})

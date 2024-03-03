@@ -134,17 +134,14 @@ func (win *winCoProcGlobals) drawFileSelection(src *dwarf.Source) {
 
 func (win *winCoProcGlobals) draw() {
 	win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
-		if src == nil {
-			imgui.Text("No source files available")
-			return
-		}
-
-		if len(src.Filenames) == 0 {
+		if src == nil || len(src.Filenames) == 0 {
+			imgui.AlignTextToFramePadding()
 			imgui.Text("No source files available")
 			return
 		}
 
 		if src.SortedGlobals.Len() == 0 {
+			imgui.AlignTextToFramePadding()
 			imgui.Text("No global variable in the source")
 			return
 		}

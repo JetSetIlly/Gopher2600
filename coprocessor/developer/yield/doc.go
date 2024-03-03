@@ -13,5 +13,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package yield records the current yeilded state of a coprocessor.
+// Package yield records the current yielded state of a coprocessor. In
+// particualar, it records the list of local variables visible at the current
+// yield point
+//
+// It also handles the strobed viewed of the coprocessor and builds the strobed
+// local variables list. Strobing allows the developer to see local variables
+// when the emulation is running (see govern pacakge).
 package yield
