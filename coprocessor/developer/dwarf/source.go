@@ -1034,7 +1034,7 @@ func longestPath(a, b string) string {
 	return filepath.Join(c[i:]...)
 }
 
-// SourceLineByAddr returns the source line for a intruciton address. If there
+// SourceLineByAddr returns the source line for an instruction address. If there
 // is no corresponding source line then a stub is returned.
 func (src *Source) SourceLineByAddr(addr uint32) *SourceLine {
 	ln := src.LinesByAddress[uint64(addr)]
