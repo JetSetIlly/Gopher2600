@@ -19,6 +19,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"os"
 	"runtime"
 	"sort"
 	"strconv"
@@ -51,6 +52,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/patch"
+	"github.com/jetsetilly/gopher2600/resources/unique"
 	"github.com/jetsetilly/gopher2600/version"
 )
 
@@ -1467,24 +1469,44 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		case "MEM":
 			bus := dbg.vcs.Mem.Cart.GetStaticBus()
 			if bus == nil {
-				dbg.printLine(terminal.StyleError, "cartridge does not have static memory")
+				dbg.printLine(terminal.StyleError, "cartridge does not have any coprocessor memory")
 				return nil
 			}
 
 			static := bus.GetStatic()
 			if static == nil {
-				dbg.printLine(terminal.StyleError, "cartridge does not have static memory")
+				dbg.printLine(terminal.StyleError, "cartridge does not have any coprocessor memory")
 				return nil
 			}
 
-			high := dbg.CoProcDev.HighAddress()
-
-			for _, seg := range static.Segments() {
-				s := fmt.Sprintf("%s: %08x to %08x", seg.Name, seg.Origin, seg.Memtop)
-				if high >= seg.Origin && high <= seg.Memtop {
-					s = fmt.Sprintf("%s (high: %08x)", s, high)
+			arg, _ := tokens.Get()
+			switch arg {
+			case "DUMP":
+				dump := func(name string) {
+					if data, ok := static.Reference(name); ok {
+						fn := unique.Filename(fmt.Sprintf("dump_%s", name), dbg.loader.ShortName())
+						fn = fmt.Sprintf("%s.bin", fn)
+						err := os.WriteFile(fn, data, 0644)
+						if err != nil {
+							dbg.printLine(terminal.StyleError, fmt.Sprintf("error writing %s", fn))
+						} else {
+							dbg.printLine(terminal.StyleFeedback, fn)
+						}
+					}
 				}
-				dbg.printLine(terminal.StyleFeedback, s)
+
+				if arg, ok := tokens.Get(); ok {
+					dump(arg)
+				} else {
+					for _, seg := range static.Segments() {
+						dump(seg.Name)
+					}
+				}
+			default:
+				for _, seg := range static.Segments() {
+					s := fmt.Sprintf("%s: %08x to %08x", seg.Name, seg.Origin, seg.Memtop)
+					dbg.printLine(terminal.StyleFeedback, s)
+				}
 			}
 
 		case "REGS":

@@ -25,11 +25,15 @@ import (
 )
 
 const winCartStaticID = "Static Areas"
+const winCartStaticPopupID = "winCartStaticPopupID"
 
 type winCartStatic struct {
 	debuggerWin
 
 	img *SdlImgui
+
+	// the name of the selected static memory area
+	selectedArea string
 }
 
 func newWinCartStatic(img *SdlImgui) (window, error) {
@@ -64,6 +68,25 @@ func (win *winCartStatic) debuggerDraw() bool {
 	title := fmt.Sprintf("%s %s", win.img.cache.VCS.Mem.Cart.ID(), winCartStaticID)
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsHorizontalScrollbar) {
 		win.draw(static)
+
+		// popup menu on right mouse button
+		if imgui.IsItemHovered() && imgui.IsMouseDown(1) {
+			imgui.OpenPopup(winCartStaticPopupID)
+		}
+
+		if imgui.BeginPopup(winCartStaticPopupID) {
+			imgui.Text("Dump to file")
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+			if imgui.Selectable(fmt.Sprintf("Current area '%s'", win.selectedArea)) {
+				win.img.term.pushCommand(fmt.Sprintf("COPROC MEM DUMP %s", win.selectedArea))
+			}
+			if imgui.Selectable("All areas") {
+				win.img.term.pushCommand("COPROC MEM DUMP")
+			}
+			imgui.EndPopup()
+		}
 	}
 
 	win.debuggerGeom.update()
@@ -73,6 +96,9 @@ func (win *winCartStatic) debuggerDraw() bool {
 }
 
 func (win *winCartStatic) draw(static mapper.CartStatic) {
+	imgui.BeginGroup()
+	defer imgui.EndGroup()
+
 	// get comparison data. assuming that there is such a thing and that it's
 	// safe to get StaticData from.
 	compStatic := win.img.cache.Rewind.Comparison.State.VCS.Mem.Cart.GetStaticBus().GetStatic()
@@ -91,6 +117,8 @@ func (win *winCartStatic) draw(static mapper.CartStatic) {
 		}
 
 		if imgui.BeginTabItemV(seg.Name, nil, 0) {
+			win.selectedArea = seg.Name
+
 			imgui.Spacing()
 			imgui.Text("Origin:")
 			imgui.SameLine()
