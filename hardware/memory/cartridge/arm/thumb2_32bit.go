@@ -587,15 +587,19 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 					m := uint32(0x01) << (imm5 - 1)
 					carry = arm.state.registers[Rm]&m == m
 					result = arm.state.registers[Rn] ^ (arm.state.registers[Rm] >> imm5)
-				case 0b11:
+				case 0b10:
 					// with arithmetic right shift
 					signExtend := (arm.state.registers[Rm] & 0x80000000) >> 31
 					result = arm.state.registers[Rn] ^ (arm.state.registers[Rm] >> imm5)
 					if signExtend == 0x01 {
 						result |= ^uint32(0) << (32 - imm5)
 					}
-				default:
-					panic("impossible shift for EOR instruction")
+				case 0b11:
+					if imm5 == 0b00000 {
+						result, carry = RRX_C(arm.state.registers[Rm], arm.state.status.carry)
+					} else {
+						result, carry = ROR_C(arm.state.registers[Rm], uint32(imm5))
+					}
 				}
 
 				// perform EOR or do nothing if this is just a TST
