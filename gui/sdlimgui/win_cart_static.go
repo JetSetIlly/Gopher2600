@@ -142,9 +142,10 @@ func (win *winCartStatic) draw(static mapper.CartStatic) {
 
 			if ok {
 				win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
-					if src == nil {
-						return
-					}
+					// the borrowed source instance is used in the after()
+					// function to help decorate the memory cells in the table.
+					// a check for nil is done then
+
 					compData, ok := compStatic.Reference(seg.Name)
 					if ok {
 						// take copy of seg.Name because we'll be accessing it in a PushFunction() below
@@ -171,6 +172,12 @@ func (win *winCartStatic) draw(static mapper.CartStatic) {
 						after := func(idx int) {
 							imgui.PopStyleColorV(popColor)
 							popColor = 0
+
+							// if no source is available then there is nothing
+							// more to do in the after() function
+							if src == nil {
+								return
+							}
 
 							// idx is based on original values of type uint16 so the type conversion is safe
 							addr := seg.Origin + uint32(idx)
