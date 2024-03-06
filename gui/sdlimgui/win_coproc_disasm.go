@@ -35,10 +35,11 @@ type winCoProcDisasm struct {
 
 	img *SdlImgui
 
-	summaryHeight float32
-
 	optionsHeight        float32
 	optionsLastExecution bool
+
+	// scroll window if last item is visible
+	lastItemVisible bool
 }
 
 func newWinCoProcDisasm(img *SdlImgui) (window, error) {
@@ -232,7 +233,15 @@ func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries, lastExecu
 					win.drawEntry(src, e.(arm.DisasmEntry))
 				}
 			}
+
 		}
+
+		// scroll window with the last item, if the last item was visible on the
+		// last frame
+		if win.lastItemVisible {
+			imgui.SetScrollY(imgui.ScrollMaxY())
+		}
+		win.lastItemVisible = clipper.DisplayEnd >= len(dsm.Entries)
 	})
 }
 
