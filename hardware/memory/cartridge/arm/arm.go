@@ -115,6 +115,12 @@ type ARMState struct {
 	// the yield reason explains the reason for why the ARM execution ended
 	yield coprocessor.CoProcYield
 
+	// the expectedReturnAddress is the address that the program will return to
+	// at the end of the program's execution. if the PC is ever set to this
+	// value (as a result of a BX or BLX instruction) then the ARM will yield
+	// with the YieldProgramEnded type
+	expectedReturnAddress uint32
+
 	// the area the PC covers. once assigned we'll assume that the program
 	// never reads outside this area. the value is assigned on reset()
 	programMemory *[]uint8
@@ -417,6 +423,7 @@ func (arm *ARM) resetRegisters() {
 	preResetPC := arm.state.registers[rPC]
 	arm.state.registers[rSP], arm.state.registers[rLR], arm.state.registers[rPC] = arm.mem.ResetVectors()
 	arm.state.stackFrame = arm.state.registers[rSP]
+	arm.state.expectedReturnAddress = (arm.state.registers[rLR] + 2) & 0xfffffffe
 
 	// set executingPC to be two behind the current value in the PC register
 	arm.state.executingPC = arm.state.registers[rPC] - 2
@@ -508,7 +515,11 @@ func (arm *ARM) logYield() {
 	if arm.state.yield.Type.Normal() {
 		return
 	}
-	logger.Logf("ARM7", "%s: %s", arm.state.yield.Type.String(), arm.state.yield.Error)
+	if arm.state.yield.Error != nil {
+		logger.Logf("ARM7", "%s: %s", arm.state.yield.Type.String(), arm.state.yield.Error.Error())
+	} else {
+		logger.Logf("ARM7", "%s: no specific error", arm.state.yield.Type.String())
+	}
 
 	// extended memory logging
 

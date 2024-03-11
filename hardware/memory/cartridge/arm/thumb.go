@@ -16,7 +16,6 @@
 package arm
 
 import (
-	"errors"
 	"fmt"
 	"math/bits"
 
@@ -929,90 +928,81 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) decodeFunction {
 			case architecture.ARMv7_M:
 				if opcode&0x0080 == 0x0080 {
 					// "A7.7.19 BLX (register)" in "ARMv7-M"
-					target := arm.state.registers[srcReg]
 					nextPC := arm.state.registers[rPC] - 2
 					arm.state.registers[rLR] = nextPC | 0x01
-					if target&0x01 == 0x00 {
-						// cannot switch to ARM mode in the ARMv7-M architecture
-						arm.state.yield.Type = coprocessor.YieldUndefinedBehaviour
-						arm.state.yield.Error = errors.New("cannot switch to ARM mode in ARMv7-M architecture")
-					}
-					arm.state.registers[rPC] = (target + 2) & 0xfffffffe
-				} else {
-					// "A7.7.20 BX " in "ARMv7-M"
-					target := arm.state.registers[srcReg]
-					if target&0x01 == 0x00 {
-						// cannot switch to ARM mode in the ARMv7-M architecture
-						arm.state.yield.Type = coprocessor.YieldUndefinedBehaviour
-						arm.state.yield.Error = errors.New("cannot switch to ARM mode in ARMv7-M architecture")
-					}
-					arm.state.registers[rPC] = (target + 2) & 0xfffffffe
 				}
+				arm.state.registers[rPC] = (arm.state.registers[srcReg] + 2) & 0xfffffffe
 
-				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-				// - fillPipeline() will be called if necessary
-				return nil
 			case architecture.ARM7TDMI:
-				thumbMode := arm.state.registers[srcReg]&0x01 == 0x01
-
-				var newPC uint32
-
 				// "ARM7TDMI Data Sheet" page 5-15:
 				//
 				// "If R15 is used as an operand, the value will be the address of the instruction + 4 with
 				// bit 0 cleared. Executing a BX PC in THUMB state from a non-word aligned address
 				// will result in unpredictable execution."
 				if srcReg == rPC {
-					newPC = arm.state.registers[rPC] + 2
+					arm.state.registers[rPC] = arm.state.registers[rPC] + 2
 				} else {
-					newPC = (arm.state.registers[srcReg] & 0x7ffffffe) + 2
+					arm.state.registers[rPC] = (arm.state.registers[srcReg] + 2) & 0xfffffffe
 				}
+			}
 
-				if thumbMode {
-					arm.state.registers[rPC] = newPC
-
-					// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-					// - fillPipeline() will be called if necessary
-					return nil
-				}
-
-				// switch to ARM mode. emulate function call.
-				res, err := arm.hook.ARMinterrupt(arm.state.registers[rPC]-4, arm.state.registers[2], arm.state.registers[3])
-				if err != nil {
-					arm.state.yield.Type = coprocessor.YieldExecutionError
-					arm.state.yield.Error = err
-					return nil
-				}
-
-				// if ARMinterrupt returns false this indicates that the
-				// function at the quoted program counter is not recognised and
-				// has nothing to do with the cartridge mapping. at this point
-				// we can assume that the main() function call is done and we
-				// can return to the VCS emulation.
-				if !res.InterruptServiced {
-					arm.state.yield.Type = coprocessor.YieldProgramEnded
-					arm.state.yield.Error = nil
-					// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-					//  - interrupted
-					return nil
-				}
-
-				// ARM function updates the ARM registers
-				if res.SaveResult {
-					arm.state.registers[res.SaveRegister] = res.SaveValue
-				}
-
-				// the end of the emulated function will have an operation that
-				// switches back to thumb mode, and copies the link register to the
-				// program counter. we need to emulate that too.
-				arm.state.registers[rPC] = arm.state.registers[rLR] + 2
-
-				// add cycles used by the ARM program
-				arm.armInterruptCycles(res)
-
+			// if the low bit of the src register is set then the target is
+			// using the thumb instruction set and we can return immediately
+			if arm.state.registers[srcReg]&0x01 == 0x01 {
 				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 				// - fillPipeline() will be called if necessary
+				return nil
 			}
+
+			// if the PC is now the same as the expected return address then the
+			// ARM program has ended and we can yield with the YieldProgramEnded
+			// type
+			if arm.state.registers[rPC] == arm.state.expectedReturnAddress {
+				arm.state.yield.Type = coprocessor.YieldProgramEnded
+				arm.state.yield.Error = nil
+				return nil
+			}
+
+			// NOTE: the remainder of the instruction handles ARM interrupts.
+			// note that this hasn't been tested with ARMv7_M processor types.
+			// this type of processor does not have 32bit instructions so may
+			// work a bit differerntly
+
+			// check if we have an emulated implementation for the code starting
+			// at this address
+			res, err := arm.hook.ARMinterrupt(arm.state.registers[rPC]-4, arm.state.registers[2], arm.state.registers[3])
+			if err != nil {
+				arm.state.yield.Type = coprocessor.YieldExecutionError
+				arm.state.yield.Error = err
+				return nil
+			}
+
+			// if ARMinterrupt returns false this indicates that the
+			// function at the quoted program counter is not recognised and
+			// has nothing to do with the cartridge mapping. at this point
+			// we can assume that the main() function call is done and we
+			// can return to the VCS emulation.
+			if !res.InterruptServiced {
+				arm.state.yield.Type = coprocessor.YieldExecutionError
+				arm.state.yield.Error = fmt.Errorf("ARMinterrupt() not serviced for address %08x", arm.state.registers[rPC]-4)
+				return nil
+			}
+
+			// ARM function updates the ARM registers
+			if res.SaveResult {
+				arm.state.registers[res.SaveRegister] = res.SaveValue
+			}
+
+			// the end of the emulated function will have an operation that
+			// switches back to thumb mode, and copies the link register to the
+			// program counter. we need to emulate that too.
+			arm.state.registers[rPC] = arm.state.registers[rLR] + 2
+
+			// add cycles used by the ARM program
+			arm.armInterruptCycles(res)
+
+			// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+			// - fillPipeline() will be called if necessary
 		}
 
 		return nil
