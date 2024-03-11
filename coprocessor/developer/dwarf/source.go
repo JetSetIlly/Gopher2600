@@ -561,14 +561,20 @@ func allocateSourceLines(src *Source, dwrf *dwarf.Data, executableOrigin uint64)
 		// the source line we're working on
 		var ln *SourceLine
 
-		// start of address range
-		startAddr := executableOrigin
-
 		// read every line in the compile unit
 		r, err := dwrf.LineReader(e.unit)
 		if err != nil {
 			return err
 		}
+
+		// the start address of a sequence is reset every time the EndSequence
+		// flag in a dwarf.LineEntry is set to true
+		var resetStartAddr bool
+		var startAddr uint64
+
+		// it is implied that the need to reset the start address on the first
+		// loop iteration
+		resetStartAddr = true
 
 		var le dwarf.LineEntry
 		for {
@@ -588,6 +594,11 @@ func allocateSourceLines(src *Source, dwrf *dwarf.Data, executableOrigin uint64)
 			if le.Line-1 > src.Files[le.File.Name].Content.Len() {
 				logger.Logf("dwarf", "current source is unrelated to ELF/DWARF data (number of lines)")
 				break // line entry for loop. will continue with compile unit loop
+			}
+
+			// reset start address value if necessary
+			if resetStartAddr {
+				startAddr = le.Address
 			}
 
 			// adjust address by executable origin
@@ -621,6 +632,10 @@ func allocateSourceLines(src *Source, dwrf *dwarf.Data, executableOrigin uint64)
 			// prepare for next iteration
 			ln = src.Files[le.File.Name].Content.Lines[le.Line-1]
 			startAddr = endAddr
+
+			// if this is the end of a sequence then the start address must be
+			// reset for the next line item
+			resetStartAddr = le.EndSequence
 		}
 	}
 
