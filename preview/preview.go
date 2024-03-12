@@ -17,8 +17,10 @@ package preview
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
@@ -57,8 +59,18 @@ func (em *Emulation) RunN(filename string, N int) error {
 		return fmt.Errorf("preview: %w", err)
 	}
 
+	// we don't want the preview emulation to run for too long
+	timeout := time.After(1 * time.Second)
+
 	em.vcs.AttachCartridge(loader, true)
-	err = em.vcs.RunForFrameCount(N, nil)
+	err = em.vcs.RunForFrameCount(N, func(_ int) (govern.State, error) {
+		select {
+		case <-timeout:
+			return govern.Ending, nil
+		default:
+		}
+		return govern.Running, nil
+	})
 	if err != nil {
 		return fmt.Errorf("preview: %w", err)
 	}
