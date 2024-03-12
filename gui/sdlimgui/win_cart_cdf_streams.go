@@ -189,7 +189,7 @@ func (win *winCDFStreams) debuggerDraw() bool {
 }
 
 func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
-	scaling := float32(win.img.prefs.guiFontSize.Get().(float64)) / 10
+	scaling := float32(win.img.prefs.guiFontSize.Get().(int)) / 10
 
 	if imgui.BeginChildV("##stream", imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, false, imgui.WindowFlagsNone) {
 		win.updateStreams(regs, static)
