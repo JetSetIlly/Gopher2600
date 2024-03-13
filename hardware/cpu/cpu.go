@@ -1326,6 +1326,11 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
+		if err != nil {
+			return err
+		}
 
 		// the current value of the PC is now correct, even though we've only read
 		// one byte of the address so far. remember, RTS increments the PC when
@@ -1337,24 +1342,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
-
-		// adjust stack pointer
 		mc.SP.Add(0xff, false)
-
-		// address of the hibyte being pushed to the stack is on the bus for an
-		// additional cycle
-		//
-		// it's not entirely clear what's happening here. it might be to
-		// accomodate the SP adjustment but there is no dead cycle later on when
-		// the SP is adjusted again; and nor is there one in RTS when the return
-		// address is read from the stack
-		//
-		// +1 cycle
 		mc.LastResult.Cycles++
 		err = mc.cycleCallback()
 		if err != nil {
@@ -1367,14 +1355,12 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
+		mc.SP.Add(0xff, false)
 		mc.LastResult.Cycles++
 		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
-
-		// adjust stack pointer
-		mc.SP.Add(0xff, false)
 
 		// +1 cycle
 		err = mc.read8BitPC(hiByte)
