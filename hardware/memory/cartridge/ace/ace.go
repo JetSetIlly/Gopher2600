@@ -175,22 +175,17 @@ func (cart *Ace) AccessPassive(addr uint16, data uint8) error {
 	// set data first and continue once. this seems to be necessary to allow
 	// the PlusROM exit routine to work correctly
 	cart.mem.gpio[DATA_IDR-cart.mem.gpioOrigin] = data
-	cart.runARM()
-	if cart.mem.isDataModeOut() {
-		return nil
-	}
+	_ = cart.runARM()
 
 	// set address for ARM program
 	cart.mem.gpio[ADDR_IDR-cart.mem.gpioOrigin] = uint8(addr)
 	cart.mem.gpio[ADDR_IDR-cart.mem.gpioOrigin+1] = uint8(addr >> 8)
 
-	// continue and wait for the fourth YieldSyncWithVCS...
-	for i := 0; i < 5; i++ {
+	// continue and wait for the sixth YieldSyncWithVCS...
+	for cart.mem.armInterruptCt < 6 {
 		cart.runARM()
-		if cart.mem.isDataModeOut() {
-			break // for loop
-		}
 	}
+	cart.mem.armInterruptCt = 0
 
 	return nil
 }

@@ -78,7 +78,8 @@ type aceMemory struct {
 	bufferMemtop uint32
 
 	// minimal interface to the ARM
-	arm interruptARM
+	arm            interruptARM
+	armInterruptCt int
 
 	// parallelARM is true whenever the address bus is not a cartridge address (ie.
 	// a TIA or RIOT address). this means that the arm is running unhindered
@@ -306,6 +307,7 @@ func (mem *aceMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 		return &mem.gpio, mem.gpioOrigin
 	case ADDR_IDR:
 		if !write {
+			mem.armInterruptCt++
 			mem.arm.Interrupt()
 		}
 		return &mem.gpio, mem.gpioOrigin
