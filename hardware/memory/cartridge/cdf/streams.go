@@ -15,7 +15,11 @@
 
 package cdf
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+import (
+	"encoding/binary"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+)
 
 type musicDataFetcher struct {
 	Waveform uint8
@@ -56,18 +60,12 @@ func (ds datastream) Peek(y int, mem mapper.CartStatic) uint8 {
 
 func (cart *cdf) readDatastreamPointer(reg int) uint32 {
 	idx := cart.version.fetcherBase + (uint32(reg) * 4)
-	return uint32(cart.state.static.driverRAM.data[idx]) |
-		uint32(cart.state.static.driverRAM.data[idx+1])<<8 |
-		uint32(cart.state.static.driverRAM.data[idx+2])<<16 |
-		uint32(cart.state.static.driverRAM.data[idx+3])<<24
+	return binary.LittleEndian.Uint32(cart.state.static.driverRAM.data[idx:])
 }
 
 func (cart *cdf) readDatastreamIncrement(inc int) uint32 {
 	idx := cart.version.incrementBase + (uint32(inc) * 4)
-	return uint32(cart.state.static.driverRAM.data[idx]) |
-		uint32(cart.state.static.driverRAM.data[idx+1])<<8 |
-		uint32(cart.state.static.driverRAM.data[idx+2])<<16 |
-		uint32(cart.state.static.driverRAM.data[idx+3])<<24
+	return binary.LittleEndian.Uint32(cart.state.static.driverRAM.data[idx:])
 }
 
 func (cart *cdf) updateDatastreamPointer(reg int, data uint32) {
@@ -76,10 +74,7 @@ func (cart *cdf) updateDatastreamPointer(reg int, data uint32) {
 	}
 
 	idx := cart.version.fetcherBase + (uint32(reg) * 4)
-	cart.state.static.driverRAM.data[idx] = uint8(data)
-	cart.state.static.driverRAM.data[idx+1] = uint8(data >> 8)
-	cart.state.static.driverRAM.data[idx+2] = uint8(data >> 16)
-	cart.state.static.driverRAM.data[idx+3] = uint8(data >> 24)
+	binary.LittleEndian.PutUint32(cart.state.static.driverRAM.data[idx:], data)
 }
 
 // updateDatastreamIncrement is not used by the CDF mapper itself except as a
@@ -90,20 +85,14 @@ func (cart *cdf) updateDatastreamIncrement(reg int, data uint32) {
 	}
 
 	idx := cart.version.incrementBase + (uint32(reg) * 4)
-	cart.state.static.driverRAM.data[idx] = uint8(data)
-	cart.state.static.driverRAM.data[idx+1] = uint8(data >> 8)
-	cart.state.static.driverRAM.data[idx+2] = uint8(data >> 16)
-	cart.state.static.driverRAM.data[idx+3] = uint8(data >> 24)
+	binary.LittleEndian.PutUint32(cart.state.static.driverRAM.data[idx:], data)
 }
 
 func (cart *cdf) readMusicFetcher(mus int) uint32 {
 	// CDFJ+ differences ??
 
 	addr := cart.version.musicBase + (uint32(mus) * 4)
-	return uint32(cart.state.static.driverRAM.data[addr]) |
-		uint32(cart.state.static.driverRAM.data[addr+1])<<8 |
-		uint32(cart.state.static.driverRAM.data[addr+2])<<16 |
-		uint32(cart.state.static.driverRAM.data[addr+3])<<24
+	return binary.LittleEndian.Uint32(cart.state.static.driverRAM.data[addr:])
 }
 
 func (cart *cdf) streamData(reg int) uint8 {

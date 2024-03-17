@@ -206,7 +206,7 @@ func (cart *cdf) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	data := cart.banks[cart.state.bank][addr]
 
 	if cart.state.registers.FastFetch && cart.state.fastJMP > 0 {
-		// maybe surprisingly, a fastJMP bay bave be triggered erroneousy.
+		// maybe surprisingly, a fastJMP may bave be triggered erroneousy.
 		//
 		// how so? well, for example, a branch operator will cause a phantom read
 		// before landing on the correct address. if the phantom read happens
