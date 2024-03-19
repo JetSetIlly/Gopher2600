@@ -102,14 +102,10 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 	h[0].IsHblank = ref.vcs.TIA.Hblank
 	h[0].CoProcSync = ref.vcs.Mem.Cart.CoProcExecutionState().Sync
 
-	if ref.vcs.TIA.Hmove.Future.IsActive() {
-		h[0].Hmove.Delay = true
-		h[0].Hmove.DelayCt = ref.vcs.TIA.Hmove.Future.Remaining()
-	}
-	if ref.vcs.TIA.Hmove.Latch {
-		h[0].Hmove.Latch = true
-		h[0].Hmove.RippleCt = ref.vcs.TIA.Hmove.Ripple
-	}
+	h[0].Hmove.Delay = ref.vcs.TIA.Hmove.Future.IsActive()
+	h[0].Hmove.DelayCt = ref.vcs.TIA.Hmove.Future.Remaining()
+	h[0].Hmove.Latch = ref.vcs.TIA.Hmove.Latch
+	h[0].Hmove.RippleCt = ref.vcs.TIA.Hmove.Ripple
 
 	h[0].RSYNCalign, h[0].RSYNCreset = ref.vcs.TIA.RSYNCstate()
 	h[0].AudioPhase0, h[0].AudioPhase1, h[0].AudioChanged = ref.vcs.TIA.Audio.HasTicked()
