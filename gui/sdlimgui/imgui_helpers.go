@@ -533,3 +533,17 @@ func drawMuteIcon(img *SdlImgui) {
 		img.prefs.audioMuteDebugger.Set(!audioMute)
 	}
 }
+
+// draw a group of imgui widgets by calling the supplied function. if the
+// disabled flag is enabled then the widgets will be disabled and ghosted
+func drawDisabled(disabled bool, f func()) {
+	if !disabled {
+		f()
+		return
+	}
+	imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+	imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+	f()
+	imgui.PopItemFlag()
+	imgui.PopStyleVar()
+}

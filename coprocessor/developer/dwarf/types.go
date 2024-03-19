@@ -228,6 +228,10 @@ type SourceFunction struct {
 	FlatStats       profiling.StatsGroup
 	CumulativeStats profiling.StatsGroup
 
+	// number of times function was called in the most recent frame (array index
+	// zero). the two immediately preceeding frames are array index one and two
+	NumCallsInFrame [3]int
+
 	// which 2600 kernel has this function executed in
 	Kernel profiling.Focus
 

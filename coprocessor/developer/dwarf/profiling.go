@@ -15,11 +15,17 @@
 
 package dwarf
 
-import "github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
+import (
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
+)
 
-func (src *Source) NewFrame() {
+func (src *Source) NewFrame(state govern.State) {
 	// calling newFrame() on stats in a specific order. first the program, then
 	// the functions and then the source lines.
+
+	// TODO: the NumCallsInFrame stats already take into account the emulation
+	// state (supplied as a parameter) but the other stats probably should too
 
 	src.Stats.Overall.NewFrame(nil, nil)
 	src.Stats.VBLANK.NewFrame(nil, nil)
@@ -36,6 +42,14 @@ func (src *Source) NewFrame() {
 		fn.CumulativeStats.VBLANK.NewFrame(&src.Stats.VBLANK, nil)
 		fn.CumulativeStats.Screen.NewFrame(&src.Stats.Screen, nil)
 		fn.CumulativeStats.Overscan.NewFrame(&src.Stats.Overscan, nil)
+
+		// do not alter NumCallsInFrame statistics if we're in the rewinding state
+		if state != govern.Rewinding {
+			for i := len(fn.NumCallsInFrame) - 1; i > 0; i-- {
+				fn.NumCallsInFrame[i] = fn.NumCallsInFrame[i-1]
+			}
+		}
+		fn.NumCallsInFrame[0] = 0
 	}
 
 	// traverse the SortedLines list and update the FrameCyles values
@@ -119,6 +133,9 @@ func (src *Source) ResetStatistics() {
 		src.Functions[i].CumulativeStats.Screen.Reset()
 		src.Functions[i].CumulativeStats.Overscan.Reset()
 		src.Functions[i].OptimisedCallStack = false
+		for j := range src.Functions[i].NumCallsInFrame {
+			src.Functions[i].NumCallsInFrame[j] = 0
+		}
 	}
 	for i := range src.LinesByAddress {
 		src.LinesByAddress[i].Kernel = profiling.FocusAll

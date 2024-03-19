@@ -47,6 +47,9 @@ type winCoProcProfiling struct {
 	// for the function tab, show cumulative values rather than flat values
 	cumulative bool
 
+	// show the number of times the function has been called in the current frame
+	numberOfCalls bool
+
 	// whether the sort criteria as specified in the window has changed (ie.
 	// focus has changed)
 	windowSortSpecDirty bool
@@ -284,17 +287,26 @@ func (win *winCoProcProfiling) draw(coproc coprocessor.CartCoProc) {
 
 			imgui.Checkbox("Hide Unexecuted Items", &win.hideUnusedEntries)
 
-			imgui.SameLineV(0, 15)
-			if imgui.Checkbox("Percentile Figures", &win.percentileFigures) {
-				win.windowSortSpecDirty = true
-			}
-
 			if win.tabSelected == functionTab {
 				imgui.SameLineV(0, 15)
-				if imgui.Checkbox("Cumulative Figures", &win.cumulative) {
+				if imgui.Checkbox("Number of Calls", &win.numberOfCalls) {
 					win.windowSortSpecDirty = true
 				}
 			}
+
+			drawDisabled(win.numberOfCalls, func() {
+				imgui.SameLineV(0, 15)
+				if imgui.Checkbox("Percentile Figures", &win.percentileFigures) {
+					win.windowSortSpecDirty = true
+				}
+
+				if win.tabSelected == functionTab {
+					imgui.SameLineV(0, 15)
+					if imgui.Checkbox("Cumulative Figures", &win.cumulative) {
+						win.windowSortSpecDirty = true
+					}
+				}
+			})
 
 			imgui.Spacing()
 			imgui.Separator()
@@ -426,16 +438,52 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 	flgs |= imgui.TableFlagsResizable
 	flgs |= imgui.TableFlagsHideable
 
-	imgui.BeginTableV("##coprocProfilingTableFunctions", numColumns, flgs, imgui.Vec2{}, 0.0)
+	// the layout of the table changes significantly if the numberOfCalls option
+	// is set. it is good to indicate that this is a different table in this
+	// case because it means the sort column and column sizing will change along
+	// with the option
+	var title string
+	if win.numberOfCalls {
+		title = "##coprocProfilingTableFunctionsNumCalls"
+	} else {
+		title = "##coprocProfilingTableFunctions"
+	}
+
+	imgui.BeginTableV(title, numColumns, flgs, imgui.Vec2{}, 0.0)
 
 	// first column is a dummy column so that Selectable (span all columns) works correctly
 	width := imgui.ContentRegionAvail().X
 	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsPreferSortDescending, width*0.275, 0)
 	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNoSort, width*0.05, 1)
 	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsPreferSortDescending, width*0.320, 2)
-	imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 3)
-	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
-	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 5)
+	if win.numberOfCalls {
+		coords := win.img.cache.TV.GetCoords()
+
+		var title [3]string
+
+		switch coords.Frame {
+		case 0:
+			title[0] = fmt.Sprintf("Frame %d##current", coords.Frame)
+			title[1] = "Frame -##previous"
+			title[2] = "Frame -##prior"
+		case 1:
+			title[0] = fmt.Sprintf("Frame %d##current", coords.Frame)
+			title[1] = fmt.Sprintf("Frame %d##previous", coords.Frame-1)
+			title[2] = "Frame -##prior"
+		default:
+			title[0] = fmt.Sprintf("Frame %d##current", coords.Frame)
+			title[1] = fmt.Sprintf("Frame %d##previous", coords.Frame-1)
+			title[2] = fmt.Sprintf("Frame %d##prior", coords.Frame-2)
+		}
+
+		imgui.TableSetupColumnV(title[0], imgui.TableColumnFlagsNoSortAscending, width*0.1, 3)
+		imgui.TableSetupColumnV(title[1], imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 4)
+		imgui.TableSetupColumnV(title[2], imgui.TableColumnFlagsNoSortAscending, width*0.1, 5)
+	} else {
+		imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 3)
+		imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
+		imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 5)
+	}
 	imgui.TableSetupColumnV(string(fonts.CoProcKernel), imgui.TableColumnFlagsNoSort, width*0.05, 6)
 
 	imgui.TableSetupScrollFreeze(0, 1)
@@ -449,11 +497,23 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 			case 2:
 				src.SortedFunctions.SortByFunction(s.SortDirection == imgui.SortDirectionAscending)
 			case 3:
-				src.SortedFunctions.SortByFrameCycles(true)
+				if win.numberOfCalls {
+					src.SortedFunctions.SortByNumCalls(true, 0)
+				} else {
+					src.SortedFunctions.SortByFrameCycles(true)
+				}
 			case 4:
-				src.SortedFunctions.SortByAverageCycles(true)
+				if win.numberOfCalls {
+					src.SortedFunctions.SortByNumCalls(true, 1)
+				} else {
+					src.SortedFunctions.SortByAverageCycles(true)
+				}
 			case 5:
-				src.SortedFunctions.SortByMaxCycles(true)
+				if win.numberOfCalls {
+					src.SortedFunctions.SortByNumCalls(true, 2)
+				} else {
+					src.SortedFunctions.SortByMaxCycles(true)
+				}
 			}
 		}
 		sort.ClearSpecsDirty()
@@ -554,44 +614,72 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 			imgui.Text(fn.Name)
 		}
 
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if stats.OverProgram.FrameValid {
-			if win.percentileFigures {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Frame))
+		if win.numberOfCalls {
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceCurrent)
+			imgui.TableNextColumn()
+			if fn.NumCallsInFrame[0] > 0 {
+				imgui.Text(fmt.Sprintf("%d", fn.NumCallsInFrame[0]))
 			} else {
-				imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.FrameCount))
+				imgui.Text("-")
 			}
-		} else {
-			imgui.Text("-")
-		}
-		imgui.PopStyleColor()
+			imgui.PopStyleColor()
 
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if stats.OverProgram.AverageValid {
-			if win.percentileFigures {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Average))
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourcePrior)
+			imgui.TableNextColumn()
+			if fn.NumCallsInFrame[1] > 0 {
+				imgui.Text(fmt.Sprintf("%d", fn.NumCallsInFrame[1]))
 			} else {
-				imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.AverageCount))
+				imgui.Text("-")
 			}
-		} else {
-			imgui.Text("-")
-		}
-		imgui.PopStyleColor()
 
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if stats.OverProgram.MaxValid {
-			if win.percentileFigures {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Max))
+			imgui.TableNextColumn()
+			if fn.NumCallsInFrame[2] > 0 {
+				imgui.Text(fmt.Sprintf("%d", fn.NumCallsInFrame[2]))
 			} else {
-				imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.MaxCount))
+				imgui.Text("-")
 			}
+			imgui.PopStyleColor()
 		} else {
-			imgui.Text("-")
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
+			if stats.OverProgram.FrameValid {
+				if win.percentileFigures {
+					imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Frame))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.FrameCount))
+				}
+			} else {
+				imgui.Text("-")
+			}
+			imgui.PopStyleColor()
+
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
+			if stats.OverProgram.AverageValid {
+				if win.percentileFigures {
+					imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Average))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.AverageCount))
+				}
+			} else {
+				imgui.Text("-")
+			}
+			imgui.PopStyleColor()
+
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
+			if stats.OverProgram.MaxValid {
+				if win.percentileFigures {
+					imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Max))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.MaxCount))
+				}
+			} else {
+				imgui.Text("-")
+			}
+			imgui.PopStyleColor()
+
 		}
-		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
 		if fn.Kernel&profiling.FocusVBLANK == profiling.FocusVBLANK {

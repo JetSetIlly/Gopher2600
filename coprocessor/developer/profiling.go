@@ -79,53 +79,59 @@ func (dev *Developer) ProcessProfiling() {
 				dev.source.LinesByAddress[uint64(p.Addr)] = ln
 			}
 
-			// callstack
-			l := len(dev.callstack.Stack)
-			prevCallStack := dev.callstack.Stack[l-1]
+			// update callstack for line only if the function for the line is
+			// not a stub function and not the main function
+			if !ln.Function.IsStub() && ln.Function != dev.source.MainFunction {
+				l := len(dev.callstack.Stack) - 1
+				prevCallStack := dev.callstack.Stack[l]
 
-			// change callstack if function has changed
-			if ln.Function != prevCallStack.Function {
-				var popped bool
+				// change callstack if function has changed
+				if ln.Function != prevCallStack.Function {
+					var popped bool
 
-				// try to pop entry from callstack
-				var i int
-				for i = 1; i <= l && !popped; i++ {
-					if ln.Function == dev.callstack.Stack[l-i].Function {
-						chop := dev.callstack.Stack[l-i+1:]
-						dev.callstack.Stack = dev.callstack.Stack[:l-i+1]
+					// try to pop entry from callstack
+					for i := 1; i < l && !popped; i++ {
+						if ln.Function == dev.callstack.Stack[l-i].Function {
+							chop := dev.callstack.Stack[l-i+1:]
+							dev.callstack.Stack = dev.callstack.Stack[:l-i+1]
 
-						// flag functions which look like they are part of an
-						// optimised call stack
-						if len(chop) > 1 {
-							for _, ln := range chop {
-								ln.Function.OptimisedCallStack = true
+							// flag functions which look like they are part of an
+							// optimised call stack
+							if len(chop) > 1 {
+								for _, ln := range chop {
+									ln.Function.OptimisedCallStack = true
+								}
 							}
+
+							// setting popped will cause the loop to end early
+							popped = true
+						}
+					}
+
+					// push function on to callstack if we haven't popped
+					if !popped {
+						dev.callstack.Stack = append(dev.callstack.Stack, ln)
+
+						// create/update callers list for function
+						var n int
+						l, ok := dev.callstack.Callers[ln.Function.Name]
+						if ok {
+							n = sort.Search(len(l), func(i int) bool {
+								return ln == l[i]
+							})
 						}
 
-						// setting popped will cause the loop to end early
-						popped = true
-					}
-				}
+						if !ok || (n > len(l) && l[n] != dev.prevProfileLine) {
+							l = append(l, dev.prevProfileLine)
+							sort.Slice(l, func(i, j int) bool {
+								return l[i].Function.Name < l[j].Function.Name
+							})
+							dev.callstack.Callers[ln.Function.Name] = l
+						}
 
-				// push function on to callstack if we haven't popped
-				if !popped {
-					dev.callstack.Stack = append(dev.callstack.Stack, ln)
-
-					// create/update callers list for function
-					var n int
-					l, ok := dev.callstack.Callers[ln.Function.Name]
-					if ok {
-						n = sort.Search(len(l), func(i int) bool {
-							return ln == l[i]
-						})
-					}
-
-					if !ok || (n > len(l) && l[n] != dev.prevProfileLine) {
-						l = append(l, dev.prevProfileLine)
-						sort.Slice(l, func(i, j int) bool {
-							return l[i].Function.Name < l[j].Function.Name
-						})
-						dev.callstack.Callers[ln.Function.Name] = l
+						// increase count of how many times this function has
+						// been called this frame
+						ln.Function.NumCallsInFrame[0]++
 					}
 				}
 			}

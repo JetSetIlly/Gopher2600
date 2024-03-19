@@ -34,6 +34,7 @@ const (
 	sortFrameCyclesOverFunction
 	sortAverageCyclesOverFunction
 	sortMaxCyclesOverFunction
+	sortNumCalls
 )
 
 type SortedLines struct {
@@ -247,6 +248,9 @@ type SortedFunctions struct {
 
 	// sort by raw cycle counts, rather than percentages
 	rawCycleCounts bool
+
+	// parameter field can be used to pass additional information to a sort method
+	parameter any
 }
 
 func (e SortedFunctions) Sort() {
@@ -292,6 +296,13 @@ func (e *SortedFunctions) SortByAverageCycles(descending bool) {
 func (e *SortedFunctions) SortByMaxCycles(descending bool) {
 	e.descending = descending
 	e.method = sortMaxCyclesOverSource
+	sort.Stable(e)
+}
+
+func (e *SortedFunctions) SortByNumCalls(descending bool, col int) {
+	e.descending = descending
+	e.method = sortNumCalls
+	e.parameter = col
 	sort.Stable(e)
 }
 
@@ -354,6 +365,11 @@ func (e SortedFunctions) Less(i int, j int) bool {
 			return strings.ToUpper(e.Functions[i].Name) > strings.ToUpper(e.Functions[j].Name)
 		}
 		return strings.ToUpper(e.Functions[i].Name) < strings.ToUpper(e.Functions[j].Name)
+	case sortNumCalls:
+		if e.descending {
+			return e.Functions[i].NumCallsInFrame[e.parameter.(int)] > e.Functions[j].NumCallsInFrame[e.parameter.(int)]
+		}
+		return e.Functions[i].NumCallsInFrame[e.parameter.(int)] < e.Functions[j].NumCallsInFrame[e.parameter.(int)]
 	default:
 		if e.rawCycleCounts {
 			switch e.method {
