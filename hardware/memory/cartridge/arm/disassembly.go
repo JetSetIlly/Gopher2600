@@ -63,6 +63,7 @@ func StaticDisassemble(config StaticDisassembleConfig) error {
 
 		if arm.state.instruction32bitDecoding {
 			arm.state.instruction32bitDecoding = false
+			arm.state.instruction32bitResolving = true
 			df = arm.decode32bitThumb2(arm.state.instruction32bitOpcodeHi, opcode)
 			if df == nil {
 				return nil
@@ -82,22 +83,27 @@ func StaticDisassemble(config StaticDisassembleConfig) error {
 		if !arm.state.instruction32bitDecoding && is32BitThumb2(opcode) {
 			arm.state.instruction32bitDecoding = true
 			arm.state.instruction32bitOpcodeHi = opcode
-			arm.state.instructionPC += 2
+
+			// we do no advance instructionPC even though we're shortcircuiting
+			// the for loop. the value of instructionPC will be advanced by 4
+			// once the full 32bit decoding has completed
+
 			ptr += 2
 			continue // for loop
 		}
 
 		e := decode(opcode)
-		if e == nil {
-			arm.state.instructionPC += 2
-			ptr += 2
-			continue // for loop
+		if e != nil {
+			arm.completeDisasmEntry(e, opcode, false)
+			config.Callback(*e)
 		}
 
-		arm.completeDisasmEntry(e, opcode, false)
-		config.Callback(*e)
-
-		arm.state.instructionPC += 2
+		if arm.state.instruction32bitResolving {
+			arm.state.instruction32bitResolving = false
+			arm.state.instructionPC += 4
+		} else {
+			arm.state.instructionPC += 2
+		}
 		ptr += 2
 	}
 
