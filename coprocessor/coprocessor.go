@@ -209,9 +209,9 @@ type CartCoProcRelocatable interface {
 	ELFSection(string) ([]uint8, uint32, bool)
 }
 
-// CartCoProcRelocate is implemented by cartridge mappers where coprocessor
+// CartCoProcOrigin is implemented by cartridge mappers where coprocessor
 // programs are located at a specific address
-type CartCoProcRelocate interface {
+type CartCoProcOrigin interface {
 	ExecutableOrigin() uint32
 }
 

@@ -210,8 +210,8 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		return nil, fmt.Errorf("%w: version %d of DWARF is not supported", UnsupportedDWARF, version)
 	}
 
-	// whether ELF file is relocatable or not
-	relocatable := ef.Type&elf.ET_REL == elf.ET_REL
+	// whether ELF file is isRelocatable or not
+	isRelocatable := ef.Type&elf.ET_REL == elf.ET_REL
 
 	// sanity checks on ELF data only if we've loaded the file ourselves and
 	// it's not from the cartridge.
@@ -231,7 +231,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		// we do not permit relocatable ELF files unless it's been supplied by
 		// the cartridge. it's not clear what a relocatable ELF file would mean
 		// in this context so we just disallow it
-		if relocatable {
+		if isRelocatable {
 			return nil, fmt.Errorf("dwarf: elf file is relocatable. not permitted for non-ELF cartridges")
 		}
 	}
@@ -248,12 +248,17 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		return nil, fmt.Errorf("dwarf: no DWARF data in ELF file")
 	}
 
-	// origin address of the ELF .text section
-	var executableOrigin uint64
-
-	// if the ELF data is not reloctable then the executableOrigin value may
-	// need to be adjusted
-	var relocate bool
+	// addressAdjustment is the value that is added to the addresses in the
+	// DWARF data to adjust them to the correct value for the emulation
+	//
+	// in the case of the relocatable binaries, such as those provided by the
+	// "ELF" cartridge mapper, the value is taken from the ".text" section. this
+	// relies on the cartridge mapper supporting the CartCoProcRelocatable
+	// interface
+	//
+	// in the case of non-relocatable binaries the value comes from the
+	// cartridge mapper if it supports the CartCoProcOrigin interface
+	var addressAdjustment uint64
 
 	// cartridge coprocessor
 	bus := cart.GetCoProcBus()
@@ -263,13 +268,13 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 
 	// acquire origin addresses and debugging sections according to whether the
 	// cartridge is relocatable or not
-	if relocatable {
+	if isRelocatable {
 		c, ok := bus.(coprocessor.CartCoProcRelocatable)
 		if !ok {
 			return nil, fmt.Errorf("dwarf: ELF file is reloctable but the cartridge mapper does not support that")
 		}
 		if _, o, ok := c.ELFSection(".text"); ok {
-			executableOrigin = uint64(o)
+			addressAdjustment = uint64(o)
 		} else {
 			return nil, fmt.Errorf("dwarf: no .text section in ELF file")
 		}
@@ -281,8 +286,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		// address descriptions (which will definitely be present)
 
 		data, _, _ := c.ELFSection(".debug_frame")
-		rel := frameSectionRelocate{}
-		src.debugFrame, err = newFrameSection(data, ef.ByteOrder, src.cart.GetCoProcBus().GetCoProc(), rel)
+		src.debugFrame, err = newFrameSection(data, ef.ByteOrder, src.cart.GetCoProcBus().GetCoProc(), nil)
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}
@@ -293,18 +297,16 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 			logger.Logf("dwarf", err.Error())
 		}
 	} else {
-		if c, ok := bus.(coprocessor.CartCoProcRelocate); ok {
-			relocate = true
-			executableOrigin = uint64(c.ExecutableOrigin())
-			logger.Logf("dwarf", "found non-relocatable origin: %08x", executableOrigin)
+		c, adjust := bus.(coprocessor.CartCoProcOrigin)
+		if adjust {
+			addressAdjustment = uint64(c.ExecutableOrigin())
 		}
 
 		// create frame section from the raw ELF section
 		rel := frameSectionRelocate{
-			relocate: relocate,
-			origin:   uint32(executableOrigin),
+			origin: uint32(addressAdjustment),
 		}
-		src.debugFrame, err = newFrameSectionFromFile(ef, src.cart.GetCoProcBus().GetCoProc(), rel)
+		src.debugFrame, err = newFrameSectionFromFile(ef, src.cart.GetCoProcBus().GetCoProc(), &rel)
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}
@@ -314,6 +316,25 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}
+
+		if adjust {
+			// the addressAdjustment needs further adjustment based on the
+			// executable section with the lowest address
+			for _, sec := range ef.Sections {
+				if sec.Flags&elf.SHF_EXECINSTR == elf.SHF_EXECINSTR {
+					addressAdjustment = addressAdjustment - sec.Addr
+					break // for loop
+				}
+			}
+		}
+	}
+
+	// log address adjustment value. how the value was arrived at is slightly
+	// different depending on whether the ELF file relocatable or not
+	if addressAdjustment == 0 {
+		logger.Logf("dwarf", "address adjustment not required")
+	} else {
+		logger.Logf("dwarf", "using address adjustment: %#x", int(addressAdjustment))
 	}
 
 	// disassemble every word in the ELF file using the cartridge coprocessor interface
@@ -324,7 +345,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	// does not have the EXECINSTR flag
 	for _, sec := range ef.Sections {
 		if sec.Flags&elf.SHF_EXECINSTR != elf.SHF_EXECINSTR {
-			continue
+			continue // for loop
 		}
 
 		// section data
@@ -334,19 +355,9 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 			return nil, fmt.Errorf("dwarf: %w", err)
 		}
 
-		// find adjustment value if necessary. for now we're assuming that all
-		// .text sections are consecutive and use the origin value of the first
-		// one we encounter as the adjustment value
-		if relocate {
-			executableOrigin -= sec.Addr
-			logger.Logf("dwarf", "adjusting non-relocatable origin by: %08x", sec.Addr)
-			logger.Logf("dwarf", "using non-relocatable origin: %08x", executableOrigin)
-			relocate = false
-		}
-
 		// origin is section address adjusted by both the executable origin and
 		// the adjustment amount previously recorded
-		origin := sec.Addr + executableOrigin
+		origin := sec.Addr + addressAdjustment
 
 		// disassemble section
 		_ = arm.StaticDisassemble(arm.StaticDisassembleConfig{
@@ -394,12 +405,12 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 			unit := &compileUnit{
 				unit:     e,
 				children: make(map[dwarf.Offset]*dwarf.Entry),
-				address:  executableOrigin,
+				address:  addressAdjustment,
 			}
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				unit.address = executableOrigin + uint64(fld.Val.(uint64))
+				unit.address = addressAdjustment + uint64(fld.Val.(uint64))
 			}
 
 			// assuming DWARF never has duplicate compile unit entries
@@ -451,7 +462,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	}
 
 	// build functions from DWARF data
-	err = bld.buildFunctions(src, executableOrigin)
+	err = bld.buildFunctions(src, addressAdjustment)
 	if err != nil {
 		return nil, fmt.Errorf("dwarf: %w", err)
 	}
@@ -466,7 +477,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	}
 
 	// read source lines
-	err = allocateSourceLines(src, dwrf, executableOrigin)
+	err = allocateSourceLines(src, dwrf, addressAdjustment)
 	if err != nil {
 		return nil, fmt.Errorf("dwarf: %w", err)
 	}
@@ -504,9 +515,9 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 
 	// build variables
 	if relocatable, ok := bus.(coprocessor.CartCoProcRelocatable); ok {
-		err = bld.buildVariables(src, ef, relocatable, executableOrigin)
+		err = bld.buildVariables(src, ef, relocatable, addressAdjustment)
 	} else {
-		err = bld.buildVariables(src, ef, nil, executableOrigin)
+		err = bld.buildVariables(src, ef, nil, addressAdjustment)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("dwarf: %w", err)
@@ -556,7 +567,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	return src, nil
 }
 
-func allocateSourceLines(src *Source, dwrf *dwarf.Data, executableOrigin uint64) error {
+func allocateSourceLines(src *Source, dwrf *dwarf.Data, addressAdjustment uint64) error {
 	for _, e := range src.compileUnits {
 		// the source line we're working on
 		var ln *SourceLine
@@ -598,11 +609,18 @@ func allocateSourceLines(src *Source, dwrf *dwarf.Data, executableOrigin uint64)
 
 			// reset start address value if necessary
 			if resetStartAddr {
-				startAddr = le.Address
+				startAddr = le.Address + addressAdjustment
+				resetStartAddr = le.EndSequence
+				continue
 			}
 
 			// adjust address by executable origin
-			endAddr := le.Address + executableOrigin
+			endAddr := le.Address + addressAdjustment
+
+			// sanity check start/end address
+			if startAddr > endAddr {
+				return fmt.Errorf("dwarf: allocate source line: start address (%08x) is after end address (%08x)", startAddr, endAddr)
+			}
 
 			// add breakpoint and instruction information to the source line
 			if ln != nil && endAddr-startAddr > 0 {
@@ -624,7 +642,6 @@ func allocateSourceLines(src *Source, dwrf *dwarf.Data, executableOrigin uint64)
 						// already (which will always apply even if there is no
 						// instruction for the address)
 						addr += uint64(ins.size) - 1
-
 					}
 				}
 			}
@@ -661,7 +678,7 @@ func allocateSourceLines(src *Source, dwrf *dwarf.Data, executableOrigin uint64)
 
 			// add breakpoint address to the correct line
 			if le.IsStmt {
-				addr := le.Address + executableOrigin
+				addr := le.Address + addressAdjustment
 				ln := src.LinesByAddress[addr]
 				if ln != nil {
 					ln.BreakAddresses = append(ln.BreakAddresses, uint32(addr))

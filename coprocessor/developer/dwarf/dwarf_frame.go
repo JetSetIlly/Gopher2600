@@ -76,12 +76,11 @@ type frameSection struct {
 
 // controls whether frame section should be relocated towards the actual executable origin
 type frameSectionRelocate struct {
-	relocate bool
-	origin   uint32
+	origin uint32
 }
 
 func newFrameSectionFromFile(ef *elf.File, coproc coprocessor.CartCoProc,
-	rel frameSectionRelocate) (*frameSection, error) {
+	rel *frameSectionRelocate) (*frameSection, error) {
 
 	sec := ef.Section(".debug_frame")
 	if sec == nil {
@@ -95,7 +94,7 @@ func newFrameSectionFromFile(ef *elf.File, coproc coprocessor.CartCoProc,
 }
 
 func newFrameSection(data []uint8, byteOrder binary.ByteOrder,
-	coproc coprocessor.CartCoProc, rel frameSectionRelocate) (*frameSection, error) {
+	coproc coprocessor.CartCoProc, rel *frameSectionRelocate) (*frameSection, error) {
 
 	frm := &frameSection{
 		coproc:    coproc,
@@ -189,7 +188,7 @@ func newFrameSection(data []uint8, byteOrder binary.ByteOrder,
 			n += 4
 
 			// adjust start address to bring it into range of the executable
-			if rel.relocate {
+			if rel != nil {
 				fde.startAddress += uint32(int(rel.origin) - int(fde.startAddress))
 			}
 

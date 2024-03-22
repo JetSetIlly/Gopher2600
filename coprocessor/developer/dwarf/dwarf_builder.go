@@ -534,7 +534,7 @@ func (bld *build) resolveVariableDeclaration(v *dwarf.Entry, src *Source) (*Sour
 // buildVariables populates variables map in the *Source tree. local variables
 // will need to be relocated for relocatable ELF files
 func (bld *build) buildVariables(src *Source, ef *elf.File,
-	relocatable coprocessor.CartCoProcRelocatable, executableOrigin uint64) error {
+	relocatable coprocessor.CartCoProcRelocatable, addressAdjustment uint64) error {
 
 	// keep track of the lexical range as we walk through the DWARF data in
 	// order. if we need to add a variable to the list of locals and the DWARF
@@ -580,9 +580,9 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 			// lexical block stack
 			lexStackTop = 0
 
-			// basic compilation address is the executable origin. this will be
-			// changed depending on the presence of AttrLowpc
-			compilationUnitAddress = executableOrigin
+			// basic compilation address is the address adjustment value. this
+			// will be changed depending on the presence of AttrLowpc
+			compilationUnitAddress = addressAdjustment
 
 			// note that although a DW_AT_ranges attribute may exist, we're only
 			// interested in the low pc:
@@ -608,7 +608,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				low = executableOrigin + uint64(fld.Val.(uint64))
+				low = addressAdjustment + uint64(fld.Val.(uint64))
 
 				fld = e.AttrField(dwarf.AttrHighpc)
 				if fld == nil {
@@ -879,7 +879,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 	return nil
 }
 
-func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
+func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 	resolveFramebase := func(e *dwarf.Entry) (*loclist, error) {
 		var framebase *loclist
 
@@ -898,7 +898,7 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 				}
 
 			case dwarf.ClassLocListPtr:
-				err := bld.debug_loc.newLoclist(src.debugFrame, fld.Val.(int64), executableOrigin,
+				err := bld.debug_loc.newLoclist(src.debugFrame, fld.Val.(int64), addressAdjustment,
 					func(_, _ uint64, loc *loclist) {
 						framebase = loc
 					})
@@ -996,7 +996,7 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 	for _, e := range bld.order {
 		switch e.Tag {
 		case dwarf.TagCompileUnit:
-			compilationUnitAddress := executableOrigin
+			compilationUnitAddress := addressAdjustment
 
 			// note that although a DW_AT_ranges attribute may exist, we're only
 			// interested in the low pc:
@@ -1021,7 +1021,7 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 				// either concrete Subprograms or concrete InlinedSubroutines
 				continue // for loop
 			}
-			low = executableOrigin + uint64(fld.Val.(uint64))
+			low = addressAdjustment + uint64(fld.Val.(uint64))
 
 			fld = e.AttrField(dwarf.AttrHighpc)
 			if fld == nil {
@@ -1141,7 +1141,7 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				low = executableOrigin + uint64(fld.Val.(uint64))
+				low = addressAdjustment + uint64(fld.Val.(uint64))
 
 				// high PC
 				fld = e.AttrField(dwarf.AttrHighpc)
