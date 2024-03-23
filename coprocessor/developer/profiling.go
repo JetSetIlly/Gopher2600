@@ -61,6 +61,11 @@ func (dev *Developer) ProcessProfiling() {
 		return
 	}
 
+	// empty slice at end of function under all circumstances
+	defer func() {
+		dev.profiler.Entries = dev.profiler.Entries[:0]
+	}()
+
 	// accumulate function will be called with the correct KernelVCS
 	accumulate := func(focus profiling.Focus) {
 		dev.sourceLock.Lock()
@@ -131,10 +136,13 @@ func (dev *Developer) ProcessProfiling() {
 
 						// increase count of how many times this function has
 						// been called this frame
-						ln.Function.NumCallsInFrame[0]++
+						ln.Function.NumCalls.Call(focus)
 					}
 				}
 			}
+
+			// check that this function looks like it has been called at least once
+			ln.Function.NumCalls.Check(focus)
 
 			// accumulate counts for line (and the line's function)
 			dev.source.ExecutionProfile(ln, p.Cycles, focus)
@@ -147,9 +155,6 @@ func (dev *Developer) ProcessProfiling() {
 			// record line for future comparison
 			dev.prevProfileLine = ln
 		}
-
-		// empty slice
-		dev.profiler.Entries = dev.profiler.Entries[:0]
 	}
 
 	// accumulation depends on state

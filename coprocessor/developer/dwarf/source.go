@@ -132,7 +132,7 @@ type Source struct {
 	FunctionFilters []*FunctionFilter
 
 	// statistics for the entire program
-	Stats profiling.StatsGroup
+	Stats profiling.CycleStats
 
 	// flag to indicate whether the execution profile has changed since it was cleared
 	//

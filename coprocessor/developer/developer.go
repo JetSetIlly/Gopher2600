@@ -228,7 +228,7 @@ func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
-	dev.source.NewFrame(dev.emulation.State())
+	dev.source.NewFrame(dev.emulation.State() == govern.Rewinding)
 
 	return nil
 }

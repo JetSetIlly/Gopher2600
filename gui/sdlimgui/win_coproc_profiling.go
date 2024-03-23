@@ -287,26 +287,27 @@ func (win *winCoProcProfiling) draw(coproc coprocessor.CartCoProc) {
 
 			imgui.Checkbox("Hide Unexecuted Items", &win.hideUnusedEntries)
 
-			if win.tabSelected == functionTab {
-				imgui.SameLineV(0, 15)
-				if imgui.Checkbox("Number of Calls", &win.numberOfCalls) {
-					win.windowSortSpecDirty = true
-				}
-			}
-
-			drawDisabled(win.numberOfCalls, func() {
+			drawDisabled(win.numberOfCalls && win.tabSelected == functionTab, func() {
 				imgui.SameLineV(0, 15)
 				if imgui.Checkbox("Percentile Figures", &win.percentileFigures) {
 					win.windowSortSpecDirty = true
 				}
 
-				if win.tabSelected == functionTab {
+			})
+
+			if win.tabSelected == functionTab {
+				drawDisabled(win.numberOfCalls, func() {
 					imgui.SameLineV(0, 15)
 					if imgui.Checkbox("Cumulative Figures", &win.cumulative) {
 						win.windowSortSpecDirty = true
 					}
+				})
+
+				imgui.SameLineV(0, 15)
+				if imgui.Checkbox("Number of Calls", &win.numberOfCalls) {
+					win.windowSortSpecDirty = true
 				}
-			})
+			}
 
 			imgui.Spacing()
 			imgui.Separator()
@@ -442,12 +443,7 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 	// is set. it is good to indicate that this is a different table in this
 	// case because it means the sort column and column sizing will change along
 	// with the option
-	var title string
-	if win.numberOfCalls {
-		title = "##coprocProfilingTableFunctionsNumCalls"
-	} else {
-		title = "##coprocProfilingTableFunctions"
-	}
+	title := "##coprocProfilingTableFunctions"
 
 	imgui.BeginTableV(title, numColumns, flgs, imgui.Vec2{}, 0.0)
 
@@ -456,34 +452,9 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsPreferSortDescending, width*0.275, 0)
 	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNoSort, width*0.05, 1)
 	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsPreferSortDescending, width*0.320, 2)
-	if win.numberOfCalls {
-		coords := win.img.cache.TV.GetCoords()
-
-		var title [3]string
-
-		switch coords.Frame {
-		case 0:
-			title[0] = fmt.Sprintf("Frame %d##current", coords.Frame)
-			title[1] = "Frame -##previous"
-			title[2] = "Frame -##prior"
-		case 1:
-			title[0] = fmt.Sprintf("Frame %d##current", coords.Frame)
-			title[1] = fmt.Sprintf("Frame %d##previous", coords.Frame-1)
-			title[2] = "Frame -##prior"
-		default:
-			title[0] = fmt.Sprintf("Frame %d##current", coords.Frame)
-			title[1] = fmt.Sprintf("Frame %d##previous", coords.Frame-1)
-			title[2] = fmt.Sprintf("Frame %d##prior", coords.Frame-2)
-		}
-
-		imgui.TableSetupColumnV(title[0], imgui.TableColumnFlagsNoSortAscending, width*0.1, 3)
-		imgui.TableSetupColumnV(title[1], imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 4)
-		imgui.TableSetupColumnV(title[2], imgui.TableColumnFlagsNoSortAscending, width*0.1, 5)
-	} else {
-		imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 3)
-		imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
-		imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 5)
-	}
+	imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 3)
+	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
+	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 5)
 	imgui.TableSetupColumnV(string(fonts.CoProcKernel), imgui.TableColumnFlagsNoSort, width*0.05, 6)
 
 	imgui.TableSetupScrollFreeze(0, 1)
@@ -498,19 +469,19 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 				src.SortedFunctions.SortByFunction(s.SortDirection == imgui.SortDirectionAscending)
 			case 3:
 				if win.numberOfCalls {
-					src.SortedFunctions.SortByNumCalls(true, 0)
+					src.SortedFunctions.SortByFrameCalls(true)
 				} else {
 					src.SortedFunctions.SortByFrameCycles(true)
 				}
 			case 4:
 				if win.numberOfCalls {
-					src.SortedFunctions.SortByNumCalls(true, 1)
+					src.SortedFunctions.SortByAverageCalls(true)
 				} else {
 					src.SortedFunctions.SortByAverageCycles(true)
 				}
 			case 5:
 				if win.numberOfCalls {
-					src.SortedFunctions.SortByNumCalls(true, 2)
+					src.SortedFunctions.SortByMaxCalls(true)
 				} else {
 					src.SortedFunctions.SortByMaxCycles(true)
 				}
@@ -526,7 +497,7 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 
 		// using flat stats even if cumulative option is set - it amounts to
 		// the same thing in this case
-		if win.hideUnusedEntries && !fn.FlatStats.Overall.HasExecuted() {
+		if win.hideUnusedEntries && !fn.FlatCycles.Overall.HasExecuted() {
 			continue
 		}
 
@@ -535,22 +506,27 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 		isStub := fn.IsStub()
 
 		// select which stats to focus on
-		var statsGroup profiling.StatsGroup
+		var cyclesGroup profiling.CycleStats
 		if win.cumulative {
-			statsGroup = fn.CumulativeStats
+			cyclesGroup = fn.CumulativeCycles
 		} else {
-			statsGroup = fn.FlatStats
+			cyclesGroup = fn.FlatCycles
 		}
 
-		var stats profiling.Stats
+		var cycles profiling.Cycles
+		var calls profiling.Calls
 		if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
-			stats = statsGroup.VBLANK
+			cycles = cyclesGroup.VBLANK
+			calls = fn.NumCalls.VBLANK
 		} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
-			stats = statsGroup.Screen
+			cycles = cyclesGroup.Screen
+			calls = fn.NumCalls.Screen
 		} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
-			stats = statsGroup.Overscan
+			cycles = cyclesGroup.Overscan
+			calls = fn.NumCalls.Overscan
 		} else {
-			stats = statsGroup.Overall
+			cycles = cyclesGroup.Overall
+			calls = fn.NumCalls.Overall
 		}
 
 		imgui.TableNextRow()
@@ -570,7 +546,7 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 		optimisedWarning := win.cumulative && fn.OptimisedCallStack
 
 		// tooltip
-		win.tooltip(fn.FlatStats.Overall.OverProgram, fn, fn.DeclLine, false)
+		win.tooltip(fn.FlatCycles.Overall.CyclesProgram, fn, fn.DeclLine, false)
 
 		if optimisedWarning {
 			win.img.imguiTooltip(func() {
@@ -614,72 +590,56 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 			imgui.Text(fn.Name)
 		}
 
-		if win.numberOfCalls {
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceCurrent)
-			imgui.TableNextColumn()
-			if fn.NumCallsInFrame[0] > 0 {
-				imgui.Text(fmt.Sprintf("%d", fn.NumCallsInFrame[0]))
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
+		if cycles.CyclesProgram.FrameValid {
+			if win.numberOfCalls {
+				imgui.Text(fmt.Sprintf("%.0f", calls.FrameCount))
 			} else {
-				imgui.Text("-")
+				if win.percentileFigures {
+					imgui.Text(fmt.Sprintf("%.02f", cycles.CyclesProgram.FrameLoad))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", cycles.CyclesProgram.FrameCount))
+				}
 			}
-			imgui.PopStyleColor()
-
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourcePrior)
-			imgui.TableNextColumn()
-			if fn.NumCallsInFrame[1] > 0 {
-				imgui.Text(fmt.Sprintf("%d", fn.NumCallsInFrame[1]))
-			} else {
-				imgui.Text("-")
-			}
-
-			imgui.TableNextColumn()
-			if fn.NumCallsInFrame[2] > 0 {
-				imgui.Text(fmt.Sprintf("%d", fn.NumCallsInFrame[2]))
-			} else {
-				imgui.Text("-")
-			}
-			imgui.PopStyleColor()
 		} else {
-			imgui.TableNextColumn()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-			if stats.OverProgram.FrameValid {
-				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Frame))
-				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.FrameCount))
-				}
-			} else {
-				imgui.Text("-")
-			}
-			imgui.PopStyleColor()
-
-			imgui.TableNextColumn()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-			if stats.OverProgram.AverageValid {
-				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Average))
-				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.AverageCount))
-				}
-			} else {
-				imgui.Text("-")
-			}
-			imgui.PopStyleColor()
-
-			imgui.TableNextColumn()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-			if stats.OverProgram.MaxValid {
-				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Max))
-				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.MaxCount))
-				}
-			} else {
-				imgui.Text("-")
-			}
-			imgui.PopStyleColor()
-
+			imgui.Text("-")
 		}
+		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
+		if cycles.CyclesProgram.AverageValid {
+			if win.numberOfCalls {
+				imgui.Text(fmt.Sprintf("%0.02f", calls.AverageCount))
+			} else {
+				if win.percentileFigures {
+					imgui.Text(fmt.Sprintf("%.02f", cycles.CyclesProgram.AverageLoad))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", cycles.CyclesProgram.AverageCount))
+				}
+			}
+		} else {
+			imgui.Text("-")
+		}
+		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
+		if cycles.CyclesProgram.MaxValid {
+			if win.numberOfCalls {
+				imgui.Text(fmt.Sprintf("%.0f", calls.MaxCount))
+			} else {
+				if win.percentileFigures {
+					imgui.Text(fmt.Sprintf("%.02f", cycles.CyclesProgram.MaxLoad))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", cycles.CyclesProgram.MaxCount))
+				}
+			}
+		} else {
+			imgui.Text("-")
+		}
+		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
 		if fn.Kernel&profiling.FocusVBLANK == profiling.FocusVBLANK {
@@ -782,7 +742,7 @@ func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 		isStub := ln.IsStub()
 
 		// select which stats to focus on
-		var stats profiling.Stats
+		var stats profiling.Cycles
 		if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
 			stats = ln.Stats.VBLANK
 		} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
@@ -807,7 +767,7 @@ func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 		if isStub {
 			win.img.imguiTooltipSimple(fmt.Sprintf("This entry represent all lines of code in %s", ln.Function.Name))
 		} else {
-			win.tooltip(ln.Stats.Overall.OverProgram, ln.Function, ln, true)
+			win.tooltip(ln.Stats.Overall.CyclesProgram, ln.Function, ln, true)
 		}
 
 		// open source window on click
@@ -830,11 +790,11 @@ func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if stats.OverProgram.FrameValid {
+		if stats.CyclesProgram.FrameValid {
 			if win.percentileFigures {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Frame))
+				imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.FrameLoad))
 			} else {
-				imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.FrameCount))
+				imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.FrameCount))
 			}
 		} else {
 			imgui.Text("-")
@@ -843,11 +803,11 @@ func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if stats.OverProgram.AverageValid {
+		if stats.CyclesProgram.AverageValid {
 			if win.percentileFigures {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Average))
+				imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.AverageLoad))
 			} else {
-				imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.AverageCount))
+				imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.AverageCount))
 			}
 		} else {
 			imgui.Text("-")
@@ -856,11 +816,11 @@ func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if stats.OverProgram.MaxValid {
+		if stats.CyclesProgram.MaxValid {
 			if win.percentileFigures {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Max))
+				imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.MaxLoad))
 			} else {
-				imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.MaxCount))
+				imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.MaxCount))
 			}
 		} else {
 			imgui.Text("-")
@@ -897,17 +857,17 @@ func (win *winCoProcProfiling) drawFunctionFilter(src *dwarf.Source, functionFil
 	// drawSourceLines() equivalents of this block perform the validity check
 	// on the source level statistics
 	if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
-		if !functionFilter.Function.FlatStats.VBLANK.HasExecuted() {
+		if !functionFilter.Function.FlatCycles.VBLANK.HasExecuted() {
 			imgui.Text("This function has not been executed during VBLANK yet")
 			return
 		}
 	} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
-		if !functionFilter.Function.FlatStats.Screen.HasExecuted() {
+		if !functionFilter.Function.FlatCycles.Screen.HasExecuted() {
 			imgui.Text("This function has not been executed during the visible screen yet")
 			return
 		}
 	} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
-		if !functionFilter.Function.FlatStats.Overscan.HasExecuted() {
+		if !functionFilter.Function.FlatCycles.Overscan.HasExecuted() {
 			imgui.Text("This function has not been executed during Overscan yet")
 			return
 		}
@@ -922,13 +882,13 @@ func (win *winCoProcProfiling) drawFunctionFilter(src *dwarf.Source, functionFil
 	imgui.AlignTextToFramePadding()
 	switch win.focus {
 	case profiling.FocusVBLANK:
-		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the VBLANK last frame", functionFilter.Function.FlatStats.VBLANK.OverProgram.Frame))
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the VBLANK last frame", functionFilter.Function.FlatCycles.VBLANK.CyclesProgram.FrameLoad))
 	case profiling.FocusScreen:
-		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Visible Screen last frame", functionFilter.Function.FlatStats.Screen.OverProgram.Frame))
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Visible Screen last frame", functionFilter.Function.FlatCycles.Screen.CyclesProgram.FrameLoad))
 	case profiling.FocusOverscan:
-		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Overscan last frame", functionFilter.Function.FlatStats.Overscan.OverProgram.Frame))
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Overscan last frame", functionFilter.Function.FlatCycles.Overscan.CyclesProgram.FrameLoad))
 	default:
-		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time last frame", functionFilter.Function.FlatStats.Overall.OverProgram.Frame))
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time last frame", functionFilter.Function.FlatCycles.Overall.CyclesProgram.FrameLoad))
 	}
 
 	imgui.SameLineV(0, 15)
@@ -1006,7 +966,7 @@ thean to the program as a whole.`)
 		}
 
 		// select which stats to focus on
-		var stats profiling.Stats
+		var stats profiling.Cycles
 		if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
 			stats = ln.Stats.VBLANK
 		} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
@@ -1030,9 +990,9 @@ thean to the program as a whole.`)
 
 		// source on tooltip
 		if win.functionTabScale {
-			win.tooltip(ln.Stats.Overall.OverFunction, ln.Function, ln, true)
+			win.tooltip(ln.Stats.Overall.CyclesFunction, ln.Function, ln, true)
 		} else {
-			win.tooltip(ln.Stats.Overall.OverProgram, ln.Function, ln, true)
+			win.tooltip(ln.Stats.Overall.CyclesProgram, ln.Function, ln, true)
 		}
 
 		// open source window on click
@@ -1047,21 +1007,21 @@ thean to the program as a whole.`)
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 		if win.functionTabScale {
-			if stats.OverFunction.FrameValid {
+			if stats.CyclesFunction.FrameValid {
 				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.OverFunction.Frame))
+					imgui.Text(fmt.Sprintf("%.02f", stats.CyclesFunction.FrameLoad))
 				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.OverFunction.FrameCount))
+					imgui.Text(fmt.Sprintf("%.0f", stats.CyclesFunction.FrameCount))
 				}
 			} else {
 				imgui.Text("-")
 			}
 		} else {
-			if stats.OverProgram.FrameValid {
+			if stats.CyclesProgram.FrameValid {
 				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Frame))
+					imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.FrameLoad))
 				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.FrameCount))
+					imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.FrameCount))
 				}
 			} else {
 				imgui.Text("-")
@@ -1072,21 +1032,21 @@ thean to the program as a whole.`)
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
 		if win.functionTabScale {
-			if stats.OverFunction.AverageValid {
+			if stats.CyclesFunction.AverageValid {
 				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.OverFunction.Average))
+					imgui.Text(fmt.Sprintf("%.02f", stats.CyclesFunction.AverageLoad))
 				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.OverFunction.AverageCount))
+					imgui.Text(fmt.Sprintf("%.0f", stats.CyclesFunction.AverageCount))
 				}
 			} else {
 				imgui.Text("-")
 			}
 		} else {
-			if stats.OverProgram.AverageValid {
+			if stats.CyclesProgram.AverageValid {
 				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Average))
+					imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.AverageLoad))
 				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.AverageCount))
+					imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.AverageCount))
 				}
 			} else {
 				imgui.Text("-")
@@ -1097,21 +1057,21 @@ thean to the program as a whole.`)
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
 		if win.functionTabScale {
-			if stats.OverFunction.MaxValid {
+			if stats.CyclesFunction.MaxValid {
 				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.OverFunction.Max))
+					imgui.Text(fmt.Sprintf("%.02f", stats.CyclesFunction.MaxLoad))
 				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.OverFunction.MaxCount))
+					imgui.Text(fmt.Sprintf("%.0f", stats.CyclesFunction.MaxCount))
 				}
 			} else {
 				imgui.Text("-")
 			}
 		} else {
-			if stats.OverProgram.MaxValid {
+			if stats.CyclesProgram.MaxValid {
 				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.OverProgram.Max))
+					imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.MaxLoad))
 				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.OverProgram.MaxCount))
+					imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.MaxCount))
 				}
 			} else {
 				imgui.Text("-")
@@ -1143,7 +1103,7 @@ thean to the program as a whole.`)
 // the function is a stub function
 //
 // showDisasm should be false if the context doesn't require disassembly detail
-func (win *winCoProcProfiling) tooltip(load profiling.Load,
+func (win *winCoProcProfiling) tooltip(load profiling.CycleLoad,
 	fn *dwarf.SourceFunction, ln *dwarf.SourceLine,
 	showDisasm bool) {
 

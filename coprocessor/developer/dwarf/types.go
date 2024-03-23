@@ -151,7 +151,7 @@ type SourceLine struct {
 	Bug bool
 
 	// statistics for the line
-	Stats profiling.StatsGroup
+	Stats profiling.CycleStats
 
 	// which 2600 kernel has this line executed in
 	Kernel profiling.Focus
@@ -225,12 +225,9 @@ type SourceFunction struct {
 	DeclLine *SourceLine
 
 	// stats for the function
-	FlatStats       profiling.StatsGroup
-	CumulativeStats profiling.StatsGroup
-
-	// number of times function was called in the most recent frame (array index
-	// zero). the two immediately preceeding frames are array index one and two
-	NumCallsInFrame [3]int
+	FlatCycles       profiling.CycleStats
+	CumulativeCycles profiling.CycleStats
+	NumCalls         profiling.CallStats
 
 	// which 2600 kernel has this function executed in
 	Kernel profiling.Focus

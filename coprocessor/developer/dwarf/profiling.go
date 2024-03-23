@@ -17,39 +17,29 @@ package dwarf
 
 import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
-	"github.com/jetsetilly/gopher2600/debugger/govern"
 )
 
-func (src *Source) NewFrame(state govern.State) {
+func (src *Source) NewFrame(rewinding bool) {
 	// calling newFrame() on stats in a specific order. first the program, then
 	// the functions and then the source lines.
 
-	// TODO: the NumCallsInFrame stats already take into account the emulation
-	// state (supplied as a parameter) but the other stats probably should too
-
-	src.Stats.Overall.NewFrame(nil, nil)
-	src.Stats.VBLANK.NewFrame(nil, nil)
-	src.Stats.Screen.NewFrame(nil, nil)
-	src.Stats.Overscan.NewFrame(nil, nil)
+	src.Stats.Overall.NewFrame(nil, nil, rewinding)
+	src.Stats.VBLANK.NewFrame(nil, nil, rewinding)
+	src.Stats.Screen.NewFrame(nil, nil, rewinding)
+	src.Stats.Overscan.NewFrame(nil, nil, rewinding)
 
 	for _, fn := range src.Functions {
-		fn.FlatStats.Overall.NewFrame(&src.Stats.Overall, nil)
-		fn.FlatStats.VBLANK.NewFrame(&src.Stats.VBLANK, nil)
-		fn.FlatStats.Screen.NewFrame(&src.Stats.Screen, nil)
-		fn.FlatStats.Overscan.NewFrame(&src.Stats.Overscan, nil)
+		fn.FlatCycles.Overall.NewFrame(&src.Stats.Overall, nil, rewinding)
+		fn.FlatCycles.VBLANK.NewFrame(&src.Stats.VBLANK, nil, rewinding)
+		fn.FlatCycles.Screen.NewFrame(&src.Stats.Screen, nil, rewinding)
+		fn.FlatCycles.Overscan.NewFrame(&src.Stats.Overscan, nil, rewinding)
 
-		fn.CumulativeStats.Overall.NewFrame(&src.Stats.Overall, nil)
-		fn.CumulativeStats.VBLANK.NewFrame(&src.Stats.VBLANK, nil)
-		fn.CumulativeStats.Screen.NewFrame(&src.Stats.Screen, nil)
-		fn.CumulativeStats.Overscan.NewFrame(&src.Stats.Overscan, nil)
+		fn.CumulativeCycles.Overall.NewFrame(&src.Stats.Overall, nil, rewinding)
+		fn.CumulativeCycles.VBLANK.NewFrame(&src.Stats.VBLANK, nil, rewinding)
+		fn.CumulativeCycles.Screen.NewFrame(&src.Stats.Screen, nil, rewinding)
+		fn.CumulativeCycles.Overscan.NewFrame(&src.Stats.Overscan, nil, rewinding)
 
-		// do not alter NumCallsInFrame statistics if we're in the rewinding state
-		if state != govern.Rewinding {
-			for i := len(fn.NumCallsInFrame) - 1; i > 0; i-- {
-				fn.NumCallsInFrame[i] = fn.NumCallsInFrame[i-1]
-			}
-		}
-		fn.NumCallsInFrame[0] = 0
+		fn.NumCalls.NewFrame(rewinding)
 	}
 
 	// traverse the SortedLines list and update the FrameCyles values
@@ -57,10 +47,10 @@ func (src *Source) NewFrame(state govern.State) {
 	// we prefer this over traversing the Lines list because we may hit a
 	// SourceLine more than once. SortedLines contains unique entries.
 	for _, ln := range src.SortedLines.Lines {
-		ln.Stats.Overall.NewFrame(&src.Stats.Overall, &ln.Function.FlatStats.Overall)
-		ln.Stats.VBLANK.NewFrame(&src.Stats.VBLANK, &ln.Function.FlatStats.VBLANK)
-		ln.Stats.Screen.NewFrame(&src.Stats.Screen, &ln.Function.FlatStats.Screen)
-		ln.Stats.Overscan.NewFrame(&src.Stats.Overscan, &ln.Function.FlatStats.Overscan)
+		ln.Stats.Overall.NewFrame(&src.Stats.Overall, &ln.Function.FlatCycles.Overall, rewinding)
+		ln.Stats.VBLANK.NewFrame(&src.Stats.VBLANK, &ln.Function.FlatCycles.VBLANK, rewinding)
+		ln.Stats.Screen.NewFrame(&src.Stats.Screen, &ln.Function.FlatCycles.Screen, rewinding)
+		ln.Stats.Overscan.NewFrame(&src.Stats.Overscan, &ln.Function.FlatCycles.Overscan, rewinding)
 	}
 }
 
@@ -70,9 +60,9 @@ func (src *Source) ExecutionProfile(ln *SourceLine, ct float32, focus profiling.
 
 	fn := ln.Function
 
-	ln.Stats.Overall.Count += ct
-	fn.FlatStats.Overall.Count += ct
-	src.Stats.Overall.Count += ct
+	ln.Stats.Overall.CycleCount += ct
+	fn.FlatCycles.Overall.CycleCount += ct
+	src.Stats.Overall.CycleCount += ct
 
 	ln.Kernel |= focus
 	fn.Kernel |= focus
@@ -84,17 +74,17 @@ func (src *Source) ExecutionProfile(ln *SourceLine, ct float32, focus profiling.
 	case profiling.FocusAll:
 		// deliberately ignore
 	case profiling.FocusVBLANK:
-		ln.Stats.VBLANK.Count += ct
-		fn.FlatStats.VBLANK.Count += ct
-		src.Stats.VBLANK.Count += ct
+		ln.Stats.VBLANK.CycleCount += ct
+		fn.FlatCycles.VBLANK.CycleCount += ct
+		src.Stats.VBLANK.CycleCount += ct
 	case profiling.FocusScreen:
-		ln.Stats.Screen.Count += ct
-		fn.FlatStats.Screen.Count += ct
-		src.Stats.Screen.Count += ct
+		ln.Stats.Screen.CycleCount += ct
+		fn.FlatCycles.Screen.CycleCount += ct
+		src.Stats.Screen.CycleCount += ct
 	case profiling.FocusOverscan:
-		ln.Stats.Overscan.Count += ct
-		fn.FlatStats.Overscan.Count += ct
-		src.Stats.Overscan.Count += ct
+		ln.Stats.Overscan.CycleCount += ct
+		fn.FlatCycles.Overscan.CycleCount += ct
+		src.Stats.Overscan.CycleCount += ct
 	default:
 		panic("unknown focus type")
 	}
@@ -104,17 +94,17 @@ func (src *Source) ExecutionProfileCumulative(fn *SourceFunction, ct float32, fo
 	// indicate that execution profile has changed
 	src.ExecutionProfileChanged = true
 
-	fn.CumulativeStats.Overall.Count += ct
+	fn.CumulativeCycles.Overall.CycleCount += ct
 
 	switch focus {
 	case profiling.FocusAll:
 		// deliberately ignore
 	case profiling.FocusVBLANK:
-		fn.CumulativeStats.VBLANK.Count += ct
+		fn.CumulativeCycles.VBLANK.CycleCount += ct
 	case profiling.FocusScreen:
-		fn.CumulativeStats.Screen.Count += ct
+		fn.CumulativeCycles.Screen.CycleCount += ct
 	case profiling.FocusOverscan:
-		fn.CumulativeStats.Overscan.Count += ct
+		fn.CumulativeCycles.Overscan.CycleCount += ct
 	default:
 		panic("unknown focus type")
 	}
@@ -124,18 +114,16 @@ func (src *Source) ExecutionProfileCumulative(fn *SourceFunction, ct float32, fo
 func (src *Source) ResetStatistics() {
 	for i := range src.Functions {
 		src.Functions[i].Kernel = profiling.FocusAll
-		src.Functions[i].FlatStats.Overall.Reset()
-		src.Functions[i].FlatStats.VBLANK.Reset()
-		src.Functions[i].FlatStats.Screen.Reset()
-		src.Functions[i].FlatStats.Overscan.Reset()
-		src.Functions[i].CumulativeStats.Overall.Reset()
-		src.Functions[i].CumulativeStats.VBLANK.Reset()
-		src.Functions[i].CumulativeStats.Screen.Reset()
-		src.Functions[i].CumulativeStats.Overscan.Reset()
+		src.Functions[i].FlatCycles.Overall.Reset()
+		src.Functions[i].FlatCycles.VBLANK.Reset()
+		src.Functions[i].FlatCycles.Screen.Reset()
+		src.Functions[i].FlatCycles.Overscan.Reset()
+		src.Functions[i].CumulativeCycles.Overall.Reset()
+		src.Functions[i].CumulativeCycles.VBLANK.Reset()
+		src.Functions[i].CumulativeCycles.Screen.Reset()
+		src.Functions[i].CumulativeCycles.Overscan.Reset()
+		src.Functions[i].NumCalls.Reset()
 		src.Functions[i].OptimisedCallStack = false
-		for j := range src.Functions[i].NumCallsInFrame {
-			src.Functions[i].NumCallsInFrame[j] = 0
-		}
 	}
 	for i := range src.LinesByAddress {
 		src.LinesByAddress[i].Kernel = profiling.FocusAll
