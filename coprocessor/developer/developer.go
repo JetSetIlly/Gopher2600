@@ -29,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -36,6 +37,7 @@ import (
 type TV interface {
 	GetFrameInfo() television.FrameInfo
 	GetCoords() coords.TelevisionCoords
+	GetLastSignal() signal.SignalAttributes
 }
 
 // Cartridge defines the interface to the cartridge required by the developer package

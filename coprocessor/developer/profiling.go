@@ -20,6 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 // Profiling implements the coprocessor.CartCoProcDeveloper interface.
@@ -157,13 +158,31 @@ func (dev *Developer) ProcessProfiling() {
 		}
 	}
 
-	// accumulation depends on state
-	c := dev.tv.GetCoords()
-	f := dev.tv.GetFrameInfo()
-	if f.Stable {
-		if c.Scanline <= f.VisibleTop-1 {
+	// decide which profiling focus to use, based on the information we get from
+	// the television interface
+	//
+	// note that our VBLANK signal check won't have any false positives if the
+	// VBLANK is set during the visible part of the screen
+
+	coords := dev.tv.GetCoords()
+	frameInfo := dev.tv.GetFrameInfo()
+
+	if frameInfo.Stable {
+		if coords.Scanline == frameInfo.VisibleTop {
+			if dev.tv.GetLastSignal()&signal.VBlank == signal.VBlank {
+				accumulate(profiling.FocusVBLANK)
+			} else {
+				accumulate(profiling.FocusScreen)
+			}
+		} else if coords.Scanline == frameInfo.VisibleBottom {
+			if dev.tv.GetLastSignal()&signal.VBlank == signal.VBlank {
+				accumulate(profiling.FocusOverscan)
+			} else {
+				accumulate(profiling.FocusScreen)
+			}
+		} else if coords.Scanline < frameInfo.VisibleTop-1 {
 			accumulate(profiling.FocusVBLANK)
-		} else if c.Scanline <= f.VisibleBottom {
+		} else if coords.Scanline < frameInfo.VisibleBottom {
 			accumulate(profiling.FocusScreen)
 		} else {
 			accumulate(profiling.FocusOverscan)
