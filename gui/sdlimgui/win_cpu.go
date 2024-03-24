@@ -152,31 +152,31 @@ func (win *winCPU) draw() {
 
 			imgui.TableNextRow()
 			imgui.TableNextColumn()
-			if imguiToggleButtonVertical("s", sr.Sign, fg, bg) {
+			if imguiToggleButton("s", &sr.Sign, fg, bg, true, 0.75) {
 				win.img.term.pushCommand("CPU STATUS TOGGLE S")
 			}
 			imgui.TableNextColumn()
-			if imguiToggleButtonVertical("o", sr.Overflow, fg, bg) {
+			if imguiToggleButton("o", &sr.Overflow, fg, bg, true, 0.75) {
 				win.img.term.pushCommand("CPU STATUS TOGGLE O")
 			}
 			imgui.TableNextColumn()
-			if imguiToggleButtonVertical("b", sr.Break, fg, bg) {
+			if imguiToggleButton("b", &sr.Break, fg, bg, true, 0.75) {
 				win.img.term.pushCommand("CPU STATUS TOGGLE B")
 			}
 			imgui.TableNextColumn()
-			if imguiToggleButtonVertical("d", sr.DecimalMode, fg, bg) {
+			if imguiToggleButton("d", &sr.DecimalMode, fg, bg, true, 0.75) {
 				win.img.term.pushCommand("CPU STATUS TOGGLE D")
 			}
 			imgui.TableNextColumn()
-			if imguiToggleButtonVertical("i", sr.InterruptDisable, fg, bg) {
+			if imguiToggleButton("i", &sr.InterruptDisable, fg, bg, true, 0.75) {
 				win.img.term.pushCommand("CPU STATUS TOGGLE I")
 			}
 			imgui.TableNextColumn()
-			if imguiToggleButtonVertical("z", sr.Zero, fg, bg) {
+			if imguiToggleButton("z", &sr.Zero, fg, bg, true, 0.75) {
 				win.img.term.pushCommand("CPU STATUS TOGGLE Z")
 			}
 			imgui.TableNextColumn()
-			if imguiToggleButtonVertical("c", sr.Carry, fg, bg) {
+			if imguiToggleButton("c", &sr.Carry, fg, bg, true, 0.75) {
 				win.img.term.pushCommand("CPU STATUS TOGGLE C")
 			}
 

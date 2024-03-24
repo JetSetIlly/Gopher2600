@@ -82,33 +82,62 @@ func imguiTextWidth(length int) float32 {
 }
 
 // draw vertical toggle button at current cursor position. returns true if toggle has been clicked.
-func imguiToggleButtonVertical(id string, v bool, fg imgui.Vec4, bg imgui.Vec4) bool {
+func imguiToggleButton(id string, v *bool, fg imgui.Vec4, bg imgui.Vec4, vertical bool, scaling float32) bool {
 	bgCol := imgui.PackedColorFromVec4(bg)
 	fgCol := imgui.PackedColorFromVec4(fg)
-	p := imgui.CursorScreenPos().Minus(imgui.Vec2{X: 0, Y: 1})
+	p := imgui.CursorScreenPos()
 	dl := imgui.WindowDrawList()
 
-	width := imgui.CalcTextSize(" X", false, 0.0).X
-	height := width * 1.55
-	halfWidth := width * 0.50
-	radius := width * 0.3
+	if vertical {
+		width := imgui.FrameHeight() * scaling
+		height := width * 1.55
+		radius := width * 0.3
+		positioning := width * 0.50
+		t := float32(0.0)
+		if *v {
+			t = 1.0
+		}
+
+		r := false
+
+		imgui.InvisibleButtonV(id, imgui.Vec2{width, height}, imgui.ButtonFlagsMouseButtonLeft)
+		if imgui.IsItemClicked() {
+			*v = !(*v)
+			r = true
+		}
+
+		dl.AddRectFilledV(p, imgui.Vec2{p.X + width, p.Y + height}, bgCol, positioning, imgui.DrawCornerFlagsAll)
+		dl.AddCircleFilled(imgui.Vec2{p.X + positioning, p.Y + positioning + t*(width*0.5)},
+			radius, fgCol)
+
+		return r
+	}
+
+	// horizontal
+
+	height := imgui.FrameHeight() * scaling
+	width := height * 1.55
+	radius := height * 0.3
+	positioning := height * 0.50
 	t := float32(0.0)
-	if v {
+	if *v {
 		t = 1.0
 	}
 
-	r := false
-
+	var clicked bool
 	imgui.InvisibleButtonV(id, imgui.Vec2{width, height}, imgui.ButtonFlagsMouseButtonLeft)
 	if imgui.IsItemClicked() {
-		r = true
+		*v = !(*v)
+		clicked = true
 	}
 
-	dl.AddRectFilledV(p, imgui.Vec2{p.X + width, p.Y + height}, bgCol, halfWidth, imgui.DrawCornerFlagsAll)
-	dl.AddCircleFilled(imgui.Vec2{p.X + halfWidth, p.Y + halfWidth + t*(width*0.5)},
+	p = p.Plus(imgui.Vec2{X: 0, Y: imgui.FrameHeight() * ((1.0 - scaling) * 0.5)})
+
+	dl.AddRectFilledV(p, imgui.Vec2{p.X + width, p.Y + height}, bgCol, positioning, imgui.DrawCornerFlagsAll)
+	dl.AddCircleFilled(imgui.Vec2{p.X + positioning + t*(height*0.5), p.Y + positioning},
 		radius, fgCol)
 
-	return r
+	return clicked
 }
 
 // when displaying imguiColorButton() or imguiBooleanButton() where the result
