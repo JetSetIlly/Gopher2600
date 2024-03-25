@@ -527,11 +527,13 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	sort.Strings(src.Filenames)
 	sort.Strings(src.ShortFilenames)
 
-	// sort sorted lines
-	src.SortedLines.SortByLineAndFunction(false)
+	// sort lines by function and number. sort is stable so we can do this in
+	// two passes
+	src.SortedLines.Sort(SortLinesFunction, false, false, false, profiling.FocusAll)
+	src.SortedLines.Sort(SortLinesNumber, false, false, false, profiling.FocusAll)
 
 	// sorted functions
-	src.SortedFunctions.SortByFunction(false)
+	src.SortedFunctions.Sort(SortFunctionsName, false, false, false, profiling.FocusAll)
 	sort.Strings(src.FunctionNames)
 
 	// sorted variables
@@ -541,7 +543,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	}
 
 	for _, l := range bld.locals {
-		src.SortedLocals.Locals = append(src.SortedLocals.Locals, l)
+		src.SortedLocals.Variables = append(src.SortedLocals.Variables, l)
 	}
 	sort.Sort(src.SortedGlobals)
 	sort.Sort(src.SortedLocals)
@@ -561,7 +563,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	// log summary
 	logger.Logf("dwarf", "identified %d functions in %d compile units", len(src.Functions), len(src.compileUnits))
 	logger.Logf("dwarf", "%d global variables", len(src.SortedGlobals.Variables))
-	logger.Logf("dwarf", "%d local variable (loclists)", len(src.SortedLocals.Locals))
+	logger.Logf("dwarf", "%d local variable (loclists)", len(src.SortedLocals.Variables))
 	logger.Logf("dwarf", "high address (%08x)", src.HighAddress)
 
 	return src, nil
@@ -696,7 +698,7 @@ func addVariableChildren(src *Source) {
 		g.addVariableChildren(src.debugLoc)
 	}
 
-	for _, l := range src.SortedLocals.Locals {
+	for _, l := range src.SortedLocals.Variables {
 		l.addVariableChildren(src.debugLoc)
 	}
 }
@@ -1002,7 +1004,7 @@ func (src *Source) GetLocalVariables(ln *SourceLine, addr uint32) []*SourceVaria
 	}
 
 	// there's an assumption here that SortedLocals is sorted by variable name
-	for _, local := range src.SortedLocals.Locals {
+	for _, local := range src.SortedLocals.Variables {
 		// append chosen local variable. comparing variable name (rather than
 		// declartion line) even though there may be multiple variables in
 		// differnt places with the same name. this is because we don't want to

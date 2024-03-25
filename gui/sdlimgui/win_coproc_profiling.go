@@ -464,26 +464,34 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
 			case 0:
-				src.SortedFunctions.SortByFile(s.SortDirection == imgui.SortDirectionAscending)
+				src.SortedFunctions.Sort(dwarf.SortFunctionsFile, win.cumulative,
+					false, s.SortDirection == imgui.SortDirectionAscending, win.focus)
 			case 2:
-				src.SortedFunctions.SortByFunction(s.SortDirection == imgui.SortDirectionAscending)
+				src.SortedFunctions.Sort(dwarf.SortFunctionsName, win.cumulative,
+					false, s.SortDirection == imgui.SortDirectionAscending, win.focus)
 			case 3:
 				if win.numberOfCalls {
-					src.SortedFunctions.SortByFrameCalls(true)
+					src.SortedFunctions.Sort(dwarf.SortFunctionsFrameCalls, win.cumulative,
+						false, s.SortDirection != imgui.SortDirectionAscending, win.focus)
 				} else {
-					src.SortedFunctions.SortByFrameCycles(true)
+					src.SortedFunctions.Sort(dwarf.SortFunctionsFrameCycles, win.cumulative,
+						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
 				}
 			case 4:
 				if win.numberOfCalls {
-					src.SortedFunctions.SortByAverageCalls(true)
+					src.SortedFunctions.Sort(dwarf.SortFunctionsAverageCalls, win.cumulative,
+						false, s.SortDirection != imgui.SortDirectionAscending, win.focus)
 				} else {
-					src.SortedFunctions.SortByAverageCycles(true)
+					src.SortedFunctions.Sort(dwarf.SortFunctionsAverageCycles, win.cumulative,
+						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
 				}
 			case 5:
 				if win.numberOfCalls {
-					src.SortedFunctions.SortByMaxCalls(true)
+					src.SortedFunctions.Sort(dwarf.SortFunctionsMaxCalls, win.cumulative,
+						false, s.SortDirection != imgui.SortDirectionAscending, win.focus)
 				} else {
-					src.SortedFunctions.SortByMaxCycles(true)
+					src.SortedFunctions.Sort(dwarf.SortFunctionsMaxCycles, win.cumulative,
+						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
 				}
 			}
 		}
@@ -716,13 +724,17 @@ func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
 			case 0:
-				src.SortedLines.SortByFunction(s.SortDirection == imgui.SortDirectionAscending)
+				src.SortedLines.Sort(dwarf.SortLinesFunction, true,
+					false, s.SortDirection == imgui.SortDirectionAscending, win.focus)
 			case 3:
-				src.SortedLines.SortByFrameLoadOverSource(true)
+				src.SortedLines.Sort(dwarf.SortLinesFrameCycles, true,
+					win.percentileFigures, true, win.focus)
 			case 4:
-				src.SortedLines.SortByAverageLoadOverSource(true)
+				src.SortedLines.Sort(dwarf.SortLinesAverageCycles, true,
+					win.percentileFigures, true, win.focus)
 			case 5:
-				src.SortedLines.SortByMaxLoadOverSource(true)
+				src.SortedLines.Sort(dwarf.SortLinesMaxCycles, true,
+					win.percentileFigures, true, win.focus)
 			}
 		}
 		sort.ClearSpecsDirty()
@@ -929,25 +941,17 @@ thean to the program as a whole.`)
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
 			case 0:
-				functionFilter.Lines.SortByLineNumber(s.SortDirection == imgui.SortDirectionAscending)
+				functionFilter.Lines.Sort(dwarf.SortLinesNumber, !win.functionTabScale,
+					win.percentileFigures, s.SortDirection == imgui.SortDirectionAscending, win.focus)
 			case 2:
-				if win.functionTabScale {
-					functionFilter.Lines.SortByFrameLoadOverFunction(true)
-				} else {
-					functionFilter.Lines.SortByFrameLoadOverSource(true)
-				}
+				functionFilter.Lines.Sort(dwarf.SortLinesFrameCycles, !win.functionTabScale, win.percentileFigures,
+					true, win.focus)
 			case 3:
-				if win.functionTabScale {
-					functionFilter.Lines.SortByAverageLoadOverFunction(true)
-				} else {
-					functionFilter.Lines.SortByAverageLoadOverSource(true)
-				}
+				functionFilter.Lines.Sort(dwarf.SortLinesAverageCycles, !win.functionTabScale,
+					win.percentileFigures, true, win.focus)
 			case 4:
-				if win.functionTabScale {
-					functionFilter.Lines.SortByMaxLoadOverFunction(true)
-				} else {
-					functionFilter.Lines.SortByMaxLoadOverSource(true)
-				}
+				functionFilter.Lines.Sort(dwarf.SortLinesMaxCycles, !win.functionTabScale,
+					win.percentileFigures, true, win.focus)
 			}
 		}
 	})
@@ -1151,11 +1155,6 @@ func (win *winCoProcProfiling) sort(src *dwarf.Source, f func(imgui.TableSortSpe
 	sort := imgui.TableGetSortSpecs()
 	if src.ExecutionProfileChanged || sort.SpecsDirty() || win.windowSortSpecDirty {
 		win.windowSortSpecDirty = false
-		src.SortedFunctions.SetFocus(win.focus)
-		src.SortedFunctions.UseRawCyclesCounts(!win.percentileFigures)
-		src.SortedFunctions.SetCumulative(win.cumulative)
-		src.SortedLines.SetKernel(win.focus)
-		src.SortedLines.UseRawCyclesCounts(!win.percentileFigures)
 		f(sort)
 		sort.ClearSpecsDirty()
 	}

@@ -213,9 +213,9 @@ func (win *winCoProcGlobals) draw() {
 				for _, s := range sort.Specs() {
 					switch s.ColumnUserID {
 					case 0:
-						src.SortedGlobals.SortByName(s.SortDirection == imgui.SortDirectionAscending)
+						src.SortedGlobals.Sort(dwarf.SortVariablesName, s.SortDirection == imgui.SortDirectionAscending)
 					case 2:
-						src.SortedGlobals.SortByAddress(s.SortDirection == imgui.SortDirectionAscending)
+						src.SortedGlobals.Sort(dwarf.SortVariablesAddress, s.SortDirection == imgui.SortDirectionAscending)
 					}
 				}
 				sort.ClearSpecsDirty()
