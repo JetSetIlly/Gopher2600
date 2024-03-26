@@ -131,8 +131,8 @@ type Source struct {
 	// sorted lines filtered by function name
 	FunctionFilters []*FunctionFilter
 
-	// statistics for the entire program
-	Stats profiling.CycleStats
+	// cycle counts for the entire program
+	Cycles profiling.Cycles
 
 	// flag to indicate whether the execution profile has changed since it was cleared
 	//
@@ -142,7 +142,7 @@ type Source struct {
 	//
 	// probably not scalable but sufficient for our needs of a single GUI
 	// running and using the statistics for only one reason
-	ExecutionProfileChanged bool
+	StatsDirty bool
 }
 
 // NewSource is the preferred method of initialisation for the Source type.
@@ -155,6 +155,7 @@ type Source struct {
 func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) {
 	src := &Source{
 		cart:             cart,
+		path:             simplifyPath(filepath.Dir(romFile)),
 		Instructions:     make(map[uint64]*SourceInstruction),
 		Files:            make(map[string]*SourceFile),
 		Filenames:        make([]string, 0, 10),
@@ -173,8 +174,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		SortedLines: SortedLines{
 			Lines: make([]*SourceLine, 0, 100),
 		},
-		ExecutionProfileChanged: true,
-		path:                    simplifyPath(filepath.Dir(romFile)),
+		StatsDirty: true,
 	}
 
 	var err error

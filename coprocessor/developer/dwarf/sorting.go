@@ -67,8 +67,8 @@ func (e SortedLines) Len() int {
 }
 
 func (e SortedLines) Less(i int, j int) bool {
-	var af profiling.Cycles
-	var bf profiling.Cycles
+	var af profiling.CyclesScope
+	var bf profiling.CyclesScope
 
 	switch e.focus {
 	case profiling.FocusVBLANK:
@@ -85,8 +85,8 @@ func (e SortedLines) Less(i int, j int) bool {
 		bf = e.Lines[j].Stats.Overall
 	}
 
-	var al profiling.CycleLoad
-	var bl profiling.CycleLoad
+	var al profiling.CycleFigures
+	var bl profiling.CycleFigures
 
 	if e.overProgram {
 		al = af.CyclesProgram
@@ -141,6 +141,9 @@ const (
 	SortFunctionsFrameCalls
 	SortFunctionsAverageCalls
 	SortFunctionsMaxCalls
+	SortFunctionsFrameCyclesPerCall
+	SortFunctionsAverageCyclesPerCall
+	SortFunctionsMaxCyclesPerCall
 )
 
 // SortedFunctions holds the list of SourceFunction sorted by the specfied method
@@ -176,8 +179,8 @@ func (e SortedFunctions) Len() int {
 
 // Less implements the sort.Interface
 func (e SortedFunctions) Less(i int, j int) bool {
-	var as profiling.CycleStats
-	var bs profiling.CycleStats
+	var as profiling.Cycles
+	var bs profiling.Cycles
 
 	if e.cumulative {
 		as = e.Functions[i].CumulativeCycles
@@ -187,10 +190,12 @@ func (e SortedFunctions) Less(i int, j int) bool {
 		bs = e.Functions[j].FlatCycles
 	}
 
-	var af profiling.Cycles
-	var bf profiling.Cycles
-	var afc profiling.Calls
-	var bfc profiling.Calls
+	var af profiling.CyclesScope
+	var bf profiling.CyclesScope
+	var afc profiling.CallsScope
+	var bfc profiling.CallsScope
+	var afp profiling.CyclesPerCallScope
+	var bfp profiling.CyclesPerCallScope
 
 	switch e.focus {
 	case profiling.FocusVBLANK:
@@ -198,21 +203,29 @@ func (e SortedFunctions) Less(i int, j int) bool {
 		bf = bs.VBLANK
 		afc = e.Functions[i].NumCalls.VBLANK
 		bfc = e.Functions[j].NumCalls.VBLANK
+		afp = e.Functions[i].CyclesPerCall.VBLANK
+		bfp = e.Functions[j].CyclesPerCall.VBLANK
 	case profiling.FocusScreen:
 		af = as.Screen
 		bf = bs.Screen
 		afc = e.Functions[i].NumCalls.Screen
 		bfc = e.Functions[j].NumCalls.Screen
+		afp = e.Functions[i].CyclesPerCall.Screen
+		bfp = e.Functions[j].CyclesPerCall.Screen
 	case profiling.FocusOverscan:
 		af = as.Overscan
 		bf = bs.Overscan
 		afc = e.Functions[i].NumCalls.Overscan
 		bfc = e.Functions[j].NumCalls.Overscan
+		afp = e.Functions[i].CyclesPerCall.Overscan
+		bfp = e.Functions[j].CyclesPerCall.Overscan
 	default:
 		af = as.Overall
 		bf = bs.Overall
 		afc = e.Functions[i].NumCalls.Overall
 		bfc = e.Functions[j].NumCalls.Overall
+		afp = e.Functions[i].CyclesPerCall.Overall
+		bfp = e.Functions[j].CyclesPerCall.Overall
 	}
 
 	switch e.method {
@@ -245,6 +258,12 @@ func (e SortedFunctions) Less(i int, j int) bool {
 		return afc.AverageCount <= bfc.AverageCount != e.descending
 	case SortFunctionsMaxCalls:
 		return afc.MaxCount <= bfc.MaxCount != e.descending
+	case SortFunctionsFrameCyclesPerCall:
+		return afp.FrameCount <= bfp.FrameCount != e.descending
+	case SortFunctionsAverageCyclesPerCall:
+		return afp.AverageCount <= bfp.AverageCount != e.descending
+	case SortFunctionsMaxCyclesPerCall:
+		return afp.MaxCount <= bfp.MaxCount != e.descending
 	}
 
 	return false

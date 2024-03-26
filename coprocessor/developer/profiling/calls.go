@@ -15,36 +15,33 @@
 
 package profiling
 
-// CycleStats collates the Stats instance for all kernel views of the program.
-type CallStats struct {
-	// cycle statistics for the entire program
-	Overall Calls
-
-	// kernel specific cycle statistics for the program. accumulated only once TV is stable
-	VBLANK   Calls
-	Screen   Calls
-	Overscan Calls
+type Calls struct {
+	Overall  CallsScope
+	VBLANK   CallsScope
+	Screen   CallsScope
+	Overscan CallsScope
 }
 
-func (cl *CallStats) Reset() {
+func (cl *Calls) Reset() {
 	cl.Overall.reset()
 	cl.VBLANK.reset()
 	cl.Screen.reset()
 	cl.Overscan.reset()
 }
 
-func (cl *CallStats) Call(focus Focus) {
-	cl.Overall.call()
-
+func (cl *Calls) Call(focus Focus) {
 	switch focus {
 	case FocusAll:
-		// deliberately ignore
+		cl.Overall.call()
 	case FocusVBLANK:
 		cl.VBLANK.call()
+		cl.Overall.call()
 	case FocusScreen:
 		cl.Screen.call()
+		cl.Overall.call()
 	case FocusOverscan:
 		cl.Overscan.call()
+		cl.Overall.call()
 	}
 }
 
@@ -54,17 +51,18 @@ func (cl *CallStats) Call(focus Focus) {
 //
 // It's a bit of a hack and this problem should probably be solved in a
 // different way
-func (cl *CallStats) Check(focus Focus) {
-	cl.Overall.check()
-
+func (cl *Calls) Check(focus Focus) {
 	switch focus {
 	case FocusAll:
-		// deliberately ignore
+		cl.Overall.check()
 	case FocusVBLANK:
+		cl.Overall.check()
 		cl.VBLANK.check()
 	case FocusScreen:
+		cl.Overall.check()
 		cl.Screen.check()
 	case FocusOverscan:
+		cl.Overall.check()
 		cl.Overscan.check()
 	}
 }
@@ -72,33 +70,38 @@ func (cl *CallStats) Check(focus Focus) {
 // NewFrame commits accumulated statistics for the frame. The rewinding flag
 // indicates that the emulation is in the rewinding state and that some
 // statistics should not be updated
-func (cl *CallStats) NewFrame(rewinding bool) {
+func (cl *Calls) NewFrame(rewinding bool) {
 	cl.Overall.newFrame(rewinding)
 	cl.VBLANK.newFrame(rewinding)
 	cl.Screen.newFrame(rewinding)
 	cl.Overscan.newFrame(rewinding)
 }
 
-// Calls records the number of times the entity being measured has been "hit".
+// CallsScope records the number of times the entity being measured has been "hit".
 // For a function this equates to the number of times it has been called.
 //
 // For a source line, it means the number of times the source line has been
 // reached by the program counter. However, it much compiled code, this can be a
 // misleading statistics due to how instructions are interleaved
 //
-// Like the Cycles type, the Calls type records figures for the most recent and
+// Like the Cycles type, the CallsScope type records figures for the most recent and
 // for the average and maximum cases
-type Calls struct {
+type CallsScope struct {
 	FrameCount   float32
 	AverageCount float32
 	MaxCount     float32
 
-	calls      float32
+	// call count this frame
+	calls float32
+
+	// call count over all frames
 	totalCalls float32
-	numFrames  float32
+
+	// number of frames seen
+	numFrames float32
 }
 
-func (cl *Calls) reset() {
+func (cl *CallsScope) reset() {
 	cl.FrameCount = 0.0
 	cl.AverageCount = 0.0
 	cl.MaxCount = 0.0
@@ -107,7 +110,7 @@ func (cl *Calls) reset() {
 	cl.numFrames = 0.0
 }
 
-func (cl *Calls) newFrame(rewinding bool) {
+func (cl *CallsScope) newFrame(rewinding bool) {
 	if !rewinding {
 		cl.totalCalls += cl.calls
 		cl.numFrames++
@@ -124,12 +127,12 @@ func (cl *Calls) newFrame(rewinding bool) {
 	cl.calls = 0.0
 }
 
-func (cl *Calls) call() {
+func (cl *CallsScope) call() {
 	cl.calls++
 }
 
 // see documentation for Check() in the CallStats type
-func (cl *Calls) check() {
+func (cl *CallsScope) check() {
 	if cl.calls == 0.0 {
 		cl.calls = 1.0
 	}

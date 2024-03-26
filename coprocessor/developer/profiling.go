@@ -138,15 +138,18 @@ func (dev *Developer) ProcessProfiling() {
 						// increase count of how many times this function has
 						// been called this frame
 						ln.Function.NumCalls.Call(focus)
+						ln.Function.CyclesPerCall.Call(focus)
 					}
 				}
 			}
 
 			// check that this function looks like it has been called at least once
 			ln.Function.NumCalls.Check(focus)
+			ln.Function.CyclesPerCall.Check(focus)
 
 			// accumulate counts for line (and the line's function)
 			dev.source.ExecutionProfile(ln, p.Cycles, focus)
+			ln.Function.CyclesPerCall.Cycle(p.Cycles, focus)
 
 			// accumulate ancestor functions too
 			for _, ln := range dev.callstack.Stack {

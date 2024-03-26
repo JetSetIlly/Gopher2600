@@ -48,7 +48,7 @@ type winCoProcProfiling struct {
 	cumulative bool
 
 	// show the number of times the function has been called in the current frame
-	numberOfCalls bool
+	cyclesPerCall bool
 
 	// whether the sort criteria as specified in the window has changed (ie.
 	// focus has changed)
@@ -169,9 +169,9 @@ func (win *winCoProcProfiling) draw(coproc coprocessor.CartCoProc) {
 		// ExecutionProfileChanged is used to decide whether to sort
 		// statistics. make sure we set it to false by the end of the draw()
 		// function
-		if src.ExecutionProfileChanged {
+		if src.StatsDirty {
 			defer func() {
-				src.ExecutionProfileChanged = false
+				src.StatsDirty = false
 			}()
 		}
 
@@ -287,7 +287,7 @@ func (win *winCoProcProfiling) draw(coproc coprocessor.CartCoProc) {
 
 			imgui.Checkbox("Hide Unexecuted Items", &win.hideUnusedEntries)
 
-			drawDisabled(win.numberOfCalls && win.tabSelected == functionTab, func() {
+			drawDisabled(win.cyclesPerCall && win.tabSelected == functionTab, func() {
 				imgui.SameLineV(0, 15)
 				if imgui.Checkbox("Percentile Figures", &win.percentileFigures) {
 					win.windowSortSpecDirty = true
@@ -296,7 +296,7 @@ func (win *winCoProcProfiling) draw(coproc coprocessor.CartCoProc) {
 			})
 
 			if win.tabSelected == functionTab {
-				drawDisabled(win.numberOfCalls, func() {
+				drawDisabled(win.cyclesPerCall, func() {
 					imgui.SameLineV(0, 15)
 					if imgui.Checkbox("Cumulative Figures", &win.cumulative) {
 						win.windowSortSpecDirty = true
@@ -304,7 +304,7 @@ func (win *winCoProcProfiling) draw(coproc coprocessor.CartCoProc) {
 				})
 
 				imgui.SameLineV(0, 15)
-				if imgui.Checkbox("Number of Calls", &win.numberOfCalls) {
+				if imgui.Checkbox("Cycles/Call", &win.cyclesPerCall) {
 					win.windowSortSpecDirty = true
 				}
 			}
@@ -409,22 +409,22 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 	}
 
 	if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
-		if !src.Stats.VBLANK.HasExecuted() {
+		if !src.Cycles.VBLANK.HasExecuted() {
 			imgui.Text("No functions have been executed during VBLANK yet")
 			return
 		}
 	} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
-		if !src.Stats.Screen.HasExecuted() {
+		if !src.Cycles.Screen.HasExecuted() {
 			imgui.Text("No functions have been executed during the visible screen yet")
 			return
 		}
 	} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
-		if !src.Stats.Overscan.HasExecuted() {
+		if !src.Cycles.Overscan.HasExecuted() {
 			imgui.Text("No functions have been executed during Overscan yet")
 			return
 		}
 	} else {
-		if win.hideUnusedEntries && !src.Stats.Overall.HasExecuted() {
+		if win.hideUnusedEntries && !src.Cycles.Overall.HasExecuted() {
 			imgui.Text("No functions have been executed yet")
 			return
 		}
@@ -464,30 +464,30 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
 			case 0:
-				src.SortedFunctions.Sort(dwarf.SortFunctionsFile, win.cumulative,
+				src.SortedFunctions.Sort(dwarf.SortFunctionsFile, false,
 					false, s.SortDirection == imgui.SortDirectionAscending, win.focus)
 			case 2:
 				src.SortedFunctions.Sort(dwarf.SortFunctionsName, win.cumulative,
 					false, s.SortDirection == imgui.SortDirectionAscending, win.focus)
 			case 3:
-				if win.numberOfCalls {
-					src.SortedFunctions.Sort(dwarf.SortFunctionsFrameCalls, win.cumulative,
+				if win.cyclesPerCall {
+					src.SortedFunctions.Sort(dwarf.SortFunctionsFrameCyclesPerCall, false,
 						false, s.SortDirection != imgui.SortDirectionAscending, win.focus)
 				} else {
 					src.SortedFunctions.Sort(dwarf.SortFunctionsFrameCycles, win.cumulative,
 						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
 				}
 			case 4:
-				if win.numberOfCalls {
-					src.SortedFunctions.Sort(dwarf.SortFunctionsAverageCalls, win.cumulative,
+				if win.cyclesPerCall {
+					src.SortedFunctions.Sort(dwarf.SortFunctionsAverageCyclesPerCall, false,
 						false, s.SortDirection != imgui.SortDirectionAscending, win.focus)
 				} else {
 					src.SortedFunctions.Sort(dwarf.SortFunctionsAverageCycles, win.cumulative,
 						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
 				}
 			case 5:
-				if win.numberOfCalls {
-					src.SortedFunctions.Sort(dwarf.SortFunctionsMaxCalls, win.cumulative,
+				if win.cyclesPerCall {
+					src.SortedFunctions.Sort(dwarf.SortFunctionsMaxCyclesPerCall, false,
 						false, s.SortDirection != imgui.SortDirectionAscending, win.focus)
 				} else {
 					src.SortedFunctions.Sort(dwarf.SortFunctionsMaxCycles, win.cumulative,
@@ -514,27 +514,32 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 		isStub := fn.IsStub()
 
 		// select which stats to focus on
-		var cyclesGroup profiling.CycleStats
+		var cyclesGroup profiling.Cycles
 		if win.cumulative {
 			cyclesGroup = fn.CumulativeCycles
 		} else {
 			cyclesGroup = fn.FlatCycles
 		}
 
-		var cycles profiling.Cycles
-		var calls profiling.Calls
+		var cycles profiling.CyclesScope
+		var calls profiling.CallsScope
+		var cyclesPerCall profiling.CyclesPerCallScope
 		if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
 			cycles = cyclesGroup.VBLANK
 			calls = fn.NumCalls.VBLANK
+			cyclesPerCall = fn.CyclesPerCall.VBLANK
 		} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
 			cycles = cyclesGroup.Screen
 			calls = fn.NumCalls.Screen
+			cyclesPerCall = fn.CyclesPerCall.Screen
 		} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
 			cycles = cyclesGroup.Overscan
 			calls = fn.NumCalls.Overscan
+			cyclesPerCall = fn.CyclesPerCall.Overscan
 		} else {
 			cycles = cyclesGroup.Overall
 			calls = fn.NumCalls.Overall
+			cyclesPerCall = fn.CyclesPerCall.Overall
 		}
 
 		imgui.TableNextRow()
@@ -598,54 +603,68 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 			imgui.Text(fn.Name)
 		}
 
+		_ = calls
+
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if cycles.CyclesProgram.FrameValid {
-			if win.numberOfCalls {
-				imgui.Text(fmt.Sprintf("%.0f", calls.FrameCount))
+		if win.cyclesPerCall {
+			if cyclesPerCall.FrameValid {
+				imgui.Text(fmt.Sprintf("%.0f", cyclesPerCall.FrameCount))
 			} else {
+				imgui.Text("-")
+			}
+		} else {
+			if cycles.CyclesProgram.FrameValid {
 				if win.percentileFigures {
 					imgui.Text(fmt.Sprintf("%.02f", cycles.CyclesProgram.FrameLoad))
 				} else {
 					imgui.Text(fmt.Sprintf("%.0f", cycles.CyclesProgram.FrameCount))
 				}
+			} else {
+				imgui.Text("-")
 			}
-		} else {
-			imgui.Text("-")
 		}
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if cycles.CyclesProgram.AverageValid {
-			if win.numberOfCalls {
-				imgui.Text(fmt.Sprintf("%0.02f", calls.AverageCount))
+		if win.cyclesPerCall {
+			if cyclesPerCall.AverageValid {
+				imgui.Text(fmt.Sprintf("%0.0f", cyclesPerCall.AverageCount))
 			} else {
+				imgui.Text("-")
+			}
+		} else {
+			if cycles.CyclesProgram.AverageValid {
 				if win.percentileFigures {
 					imgui.Text(fmt.Sprintf("%.02f", cycles.CyclesProgram.AverageLoad))
 				} else {
 					imgui.Text(fmt.Sprintf("%.0f", cycles.CyclesProgram.AverageCount))
 				}
+			} else {
+				imgui.Text("-")
 			}
-		} else {
-			imgui.Text("-")
 		}
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if cycles.CyclesProgram.MaxValid {
-			if win.numberOfCalls {
-				imgui.Text(fmt.Sprintf("%.0f", calls.MaxCount))
+		if win.cyclesPerCall {
+			if cyclesPerCall.MaxValid {
+				imgui.Text(fmt.Sprintf("%.0f", cyclesPerCall.MaxCount))
 			} else {
+				imgui.Text("-")
+			}
+		} else {
+			if cycles.CyclesProgram.MaxValid {
 				if win.percentileFigures {
 					imgui.Text(fmt.Sprintf("%.02f", cycles.CyclesProgram.MaxLoad))
 				} else {
 					imgui.Text(fmt.Sprintf("%.0f", cycles.CyclesProgram.MaxCount))
 				}
+			} else {
+				imgui.Text("-")
 			}
-		} else {
-			imgui.Text("-")
 		}
 		imgui.PopStyleColor()
 
@@ -676,22 +695,22 @@ func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 	}
 
 	if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
-		if !src.Stats.VBLANK.HasExecuted() {
+		if !src.Cycles.VBLANK.HasExecuted() {
 			imgui.Text("No lines have been executed during VBLANK yet")
 			return
 		}
 	} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
-		if !src.Stats.Screen.HasExecuted() {
+		if !src.Cycles.Screen.HasExecuted() {
 			imgui.Text("No lines have been executed during the visible screen yet")
 			return
 		}
 	} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
-		if !src.Stats.Overscan.HasExecuted() {
+		if !src.Cycles.Overscan.HasExecuted() {
 			imgui.Text("No lines have been executed during Overscan yet")
 			return
 		}
 	} else {
-		if win.hideUnusedEntries && !src.Stats.Overall.HasExecuted() {
+		if win.hideUnusedEntries && !src.Cycles.Overall.HasExecuted() {
 			imgui.Text("No lines have been executed yet")
 			return
 		}
@@ -754,7 +773,7 @@ func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 		isStub := ln.IsStub()
 
 		// select which stats to focus on
-		var stats profiling.Cycles
+		var stats profiling.CyclesScope
 		if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
 			stats = ln.Stats.VBLANK
 		} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
@@ -884,7 +903,7 @@ func (win *winCoProcProfiling) drawFunctionFilter(src *dwarf.Source, functionFil
 			return
 		}
 	} else {
-		if win.hideUnusedEntries && !src.Stats.Overall.HasExecuted() {
+		if win.hideUnusedEntries && !src.Cycles.Overall.HasExecuted() {
 			imgui.Text("Ths function has not been executed yet")
 			return
 		}
@@ -970,7 +989,7 @@ thean to the program as a whole.`)
 		}
 
 		// select which stats to focus on
-		var stats profiling.Cycles
+		var stats profiling.CyclesScope
 		if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
 			stats = ln.Stats.VBLANK
 		} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
@@ -1101,13 +1120,13 @@ thean to the program as a whole.`)
 	imgui.EndTable()
 }
 
-// single tooltip for all the differnt contexts in the performance window
+// single tooltip for all the different contexts in the performance window
 //
-// the load and fn arguments should never be nil. the ln argument can be nil if
-// the function is a stub function
+// the fn argument should never be nil. the ln argument can be nil if the
+// function is a stub function
 //
 // showDisasm should be false if the context doesn't require disassembly detail
-func (win *winCoProcProfiling) tooltip(load profiling.CycleLoad,
+func (win *winCoProcProfiling) tooltip(scope profiling.CycleFigures,
 	fn *dwarf.SourceFunction, ln *dwarf.SourceLine,
 	showDisasm bool) {
 
@@ -1153,7 +1172,7 @@ func (win *winCoProcProfiling) tooltip(load profiling.CycleLoad,
 // helpfunction to sort profiling data according to current spec
 func (win *winCoProcProfiling) sort(src *dwarf.Source, f func(imgui.TableSortSpecs)) {
 	sort := imgui.TableGetSortSpecs()
-	if src.ExecutionProfileChanged || sort.SpecsDirty() || win.windowSortSpecDirty {
+	if src.StatsDirty || sort.SpecsDirty() || win.windowSortSpecDirty {
 		win.windowSortSpecDirty = false
 		f(sort)
 		sort.ClearSpecsDirty()

@@ -151,7 +151,7 @@ type SourceLine struct {
 	Bug bool
 
 	// statistics for the line
-	Stats profiling.CycleStats
+	Stats profiling.Cycles
 
 	// which 2600 kernel has this line executed in
 	Kernel profiling.Focus
@@ -225,9 +225,10 @@ type SourceFunction struct {
 	DeclLine *SourceLine
 
 	// stats for the function
-	FlatCycles       profiling.CycleStats
-	CumulativeCycles profiling.CycleStats
-	NumCalls         profiling.CallStats
+	FlatCycles       profiling.Cycles
+	CumulativeCycles profiling.Cycles
+	NumCalls         profiling.Calls
+	CyclesPerCall    profiling.CyclesPerCall
 
 	// which 2600 kernel has this function executed in
 	Kernel profiling.Focus
