@@ -147,14 +147,28 @@ func (dev *Developer) ProcessProfiling() {
 			ln.Function.NumCalls.Check(focus)
 			ln.Function.CyclesPerCall.Check(focus)
 
-			// accumulate counts for line (and the line's function)
-			dev.source.ExecutionProfile(ln, p.Cycles, focus)
+			// increce cycle counts for line, the line's function and the source view
+			ln.Cycles.Cycle(p.Cycles, focus)
+			ln.Function.Cycles.Cycle(p.Cycles, focus)
+			dev.source.Cycles.Cycle(p.Cycles, focus)
+
+			// increase cycles/call for the line's function
 			ln.Function.CyclesPerCall.Cycle(p.Cycles, focus)
 
-			// accumulate ancestor functions too
+			// accumulate cumulative cycle counts for entire call stack
 			for _, ln := range dev.callstack.Stack {
-				dev.source.ExecutionProfileCumulative(ln.Function, p.Cycles, focus)
+				ln.Function.CumulativeCycles.Cycle(p.Cycles, focus)
 			}
+
+			// record focus information
+			ln.Kernel |= focus
+			ln.Function.Kernel |= focus
+			if ln.Function.DeclLine != nil {
+				ln.Function.DeclLine.Kernel |= focus
+			}
+
+			// indicate that execution profile has changed
+			dev.source.ProfilingDirty = true
 
 			// record line for future comparison
 			dev.prevProfileLine = ln

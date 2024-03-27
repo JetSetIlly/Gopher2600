@@ -15,6 +15,9 @@
 
 package profiling
 
+// CyclesPerCall measures the number of cycles consumed by a function divided by
+// the number of times its been called, in each VCS scope. It only makes sense
+// for this type to be used in the context of functions
 type CyclesPerCall struct {
 	Overall  CyclesPerCallScope
 	VBLANK   CyclesPerCallScope
@@ -22,6 +25,7 @@ type CyclesPerCall struct {
 	Overscan CyclesPerCallScope
 }
 
+// Reset the counts to zero
 func (cl *CyclesPerCall) Reset() {
 	cl.Overall.reset()
 	cl.VBLANK.reset()
@@ -29,6 +33,7 @@ func (cl *CyclesPerCall) Reset() {
 	cl.Overscan.reset()
 }
 
+// Call registers a new instance of the function being called
 func (cl *CyclesPerCall) Call(focus Focus) {
 	switch focus {
 	case FocusAll:
@@ -45,6 +50,9 @@ func (cl *CyclesPerCall) Call(focus Focus) {
 	}
 }
 
+// Check is like call except that it only makes sure that the call figure is at
+// least one. It's useful to make sure a function has been called at least
+// once if it is part of the call stack
 func (cl *CyclesPerCall) Check(focus Focus) {
 	switch focus {
 	case FocusAll:
@@ -61,6 +69,7 @@ func (cl *CyclesPerCall) Check(focus Focus) {
 	}
 }
 
+// Cycle advances the number of cycles for the VCS scope
 func (cl *CyclesPerCall) Cycle(n float32, focus Focus) {
 	switch focus {
 	case FocusAll:
@@ -77,6 +86,9 @@ func (cl *CyclesPerCall) Cycle(n float32, focus Focus) {
 	}
 }
 
+// NewFrame commits accumulated cycles and calls for the frame. The rewinding
+// flag indicates that the emulation is in the rewinding state and that some
+// data should not be updated
 func (cl *CyclesPerCall) NewFrame(rewinding bool) {
 	cl.Overall.newFrame(rewinding)
 	cl.VBLANK.newFrame(rewinding)

@@ -15,6 +15,9 @@
 
 package profiling
 
+// Calls measures the number of times a function has been called in each VCS
+// scope. It only makes sense for this type to be used in the context of
+// functions
 type Calls struct {
 	Overall  CallsScope
 	VBLANK   CallsScope
@@ -22,6 +25,7 @@ type Calls struct {
 	Overscan CallsScope
 }
 
+// Reset the call counts to zero
 func (cl *Calls) Reset() {
 	cl.Overall.reset()
 	cl.VBLANK.reset()
@@ -29,6 +33,7 @@ func (cl *Calls) Reset() {
 	cl.Overscan.reset()
 }
 
+// Call registers a new instance of the function being called
 func (cl *Calls) Call(focus Focus) {
 	switch focus {
 	case FocusAll:
@@ -46,11 +51,8 @@ func (cl *Calls) Call(focus Focus) {
 }
 
 // Check is like call except that it only makes sure that the call figure is at
-// least one. It's useful to make sure a function has been registered at least
+// least one. It's useful to make sure a function has been called at least
 // once if it is part of the call stack
-//
-// It's a bit of a hack and this problem should probably be solved in a
-// different way
 func (cl *Calls) Check(focus Focus) {
 	switch focus {
 	case FocusAll:
@@ -67,9 +69,9 @@ func (cl *Calls) Check(focus Focus) {
 	}
 }
 
-// NewFrame commits accumulated statistics for the frame. The rewinding flag
+// NewFrame commits accumulated data for the frame. The rewinding flag
 // indicates that the emulation is in the rewinding state and that some
-// statistics should not be updated
+// data should not be updated
 func (cl *Calls) NewFrame(rewinding bool) {
 	cl.Overall.newFrame(rewinding)
 	cl.VBLANK.newFrame(rewinding)
@@ -79,10 +81,6 @@ func (cl *Calls) NewFrame(rewinding bool) {
 
 // CallsScope records the number of times the entity being measured has been "hit".
 // For a function this equates to the number of times it has been called.
-//
-// For a source line, it means the number of times the source line has been
-// reached by the program counter. However, it much compiled code, this can be a
-// misleading statistics due to how instructions are interleaved
 //
 // Like the Cycles type, the CallsScope type records figures for the most recent and
 // for the average and maximum cases
@@ -131,7 +129,6 @@ func (cl *CallsScope) call() {
 	cl.calls++
 }
 
-// see documentation for Check() in the CallStats type
 func (cl *CallsScope) check() {
 	if cl.calls == 0.0 {
 		cl.calls = 1.0

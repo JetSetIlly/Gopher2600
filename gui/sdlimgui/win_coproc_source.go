@@ -355,12 +355,12 @@ func (win *winCoProcSource) saveToCSV(src *dwarf.Source) {
 
 	for _, ln := range win.selectedFile.Content.Lines {
 		s := strings.Builder{}
-		if ln.Stats.Overall.CyclesProgram.FrameValid {
-			s.WriteString(fmt.Sprintf("%.02f", ln.Stats.Overall.CyclesProgram.FrameLoad))
-		} else if ln.Stats.Overall.CyclesProgram.AverageValid {
-			s.WriteString(fmt.Sprintf("%.02f", ln.Stats.Overall.CyclesProgram.AverageLoad))
-		} else if ln.Stats.Overall.CyclesProgram.MaxValid {
-			s.WriteString(fmt.Sprintf("%.02f", ln.Stats.Overall.CyclesProgram.MaxLoad))
+		if ln.Cycles.Overall.CyclesProgram.FrameValid {
+			s.WriteString(fmt.Sprintf("%.02f", ln.Cycles.Overall.CyclesProgram.FrameLoad))
+		} else if ln.Cycles.Overall.CyclesProgram.AverageValid {
+			s.WriteString(fmt.Sprintf("%.02f", ln.Cycles.Overall.CyclesProgram.AverageLoad))
+		} else if ln.Cycles.Overall.CyclesProgram.MaxValid {
+			s.WriteString(fmt.Sprintf("%.02f", ln.Cycles.Overall.CyclesProgram.MaxLoad))
 		} else {
 			s.WriteString(" -")
 		}
@@ -574,21 +574,21 @@ func (win *winCoProcSource) drawSource(src *dwarf.Source, bp breakpoints.Breakpo
 
 					// execution state
 					imgui.TableNextColumn()
-					if ln.Stats.Overall.HasExecuted() {
-						if ln.Stats.Overall.CyclesProgram.FrameValid {
+					if ln.Cycles.Overall.HasExecuted() {
+						if ln.Cycles.Overall.CyclesProgram.FrameValid {
 							drawExecutionIndicator(win.img.cols.coProcSourceLoad)
 							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-							imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.CyclesProgram.FrameLoad))
+							imgui.Text(fmt.Sprintf("%.02f", ln.Cycles.Overall.CyclesProgram.FrameLoad))
 							imgui.PopStyleColor()
-						} else if ln.Stats.Overall.CyclesProgram.AverageValid {
+						} else if ln.Cycles.Overall.CyclesProgram.AverageValid {
 							drawExecutionIndicator(win.img.cols.coProcSourceAvgLoad)
 							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-							imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.CyclesProgram.AverageLoad))
+							imgui.Text(fmt.Sprintf("%.02f", ln.Cycles.Overall.CyclesProgram.AverageLoad))
 							imgui.PopStyleColor()
-						} else if ln.Stats.Overall.CyclesProgram.MaxValid {
+						} else if ln.Cycles.Overall.CyclesProgram.MaxValid {
 							drawExecutionIndicator(win.img.cols.coProcSourceMaxLoad)
 							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-							imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.CyclesProgram.MaxLoad))
+							imgui.Text(fmt.Sprintf("%.02f", ln.Cycles.Overall.CyclesProgram.MaxLoad))
 							imgui.PopStyleColor()
 						} else {
 							drawExecutionIndicator(win.img.cols.coProcSourceNoLoad)

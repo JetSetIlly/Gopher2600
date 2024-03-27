@@ -13,12 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package profiling provides statistics typs for helping to  record the amount
-// of load a source function, line, etc. has over a period of one frame. It also
-// keeps track of the average load and maximum load over an extended period of
-// time.
-//
-// In addition, package profiling defines a Focus type and values. Useful in
-// helping to understand when a function or line of code (for example) has
-// executed.
+// Package profiling defines the types that are used to profile the performance
+// of the coporocessor program. Principally, cycles consumed by a function, a
+// line of source code or the program as a whole.
 package profiling

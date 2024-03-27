@@ -72,17 +72,17 @@ func (e SortedLines) Less(i int, j int) bool {
 
 	switch e.focus {
 	case profiling.FocusVBLANK:
-		af = e.Lines[i].Stats.VBLANK
-		bf = e.Lines[j].Stats.VBLANK
+		af = e.Lines[i].Cycles.VBLANK
+		bf = e.Lines[j].Cycles.VBLANK
 	case profiling.FocusScreen:
-		af = e.Lines[i].Stats.Screen
-		bf = e.Lines[j].Stats.Screen
+		af = e.Lines[i].Cycles.Screen
+		bf = e.Lines[j].Cycles.Screen
 	case profiling.FocusOverscan:
-		af = e.Lines[i].Stats.Overscan
-		bf = e.Lines[j].Stats.Overscan
+		af = e.Lines[i].Cycles.Overscan
+		bf = e.Lines[j].Cycles.Overscan
 	default:
-		af = e.Lines[i].Stats.Overall
-		bf = e.Lines[j].Stats.Overall
+		af = e.Lines[i].Cycles.Overall
+		bf = e.Lines[j].Cycles.Overall
 	}
 
 	var al profiling.CycleFigures
@@ -186,8 +186,8 @@ func (e SortedFunctions) Less(i int, j int) bool {
 		as = e.Functions[i].CumulativeCycles
 		bs = e.Functions[j].CumulativeCycles
 	} else {
-		as = e.Functions[i].FlatCycles
-		bs = e.Functions[j].FlatCycles
+		as = e.Functions[i].Cycles
+		bs = e.Functions[j].Cycles
 	}
 
 	var af profiling.CyclesScope

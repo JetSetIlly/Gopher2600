@@ -19,14 +19,15 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
 )
 
+// NewFrame commits the accumulated profiling for the frame. The rewinding flag
+// indicates that the emulation is in the rewinding state and that some data
+// should not be updated
 func (src *Source) NewFrame(rewinding bool) {
-	// calling newFrame() on stats in a specific order. first the program, then
-	// the functions and then the source lines.
-
+	// calling newFrame() profiling data in a specific order
 	src.Cycles.NewFrame(nil, nil, rewinding)
 
 	for _, fn := range src.Functions {
-		fn.FlatCycles.NewFrame(&src.Cycles, nil, rewinding)
+		fn.Cycles.NewFrame(&src.Cycles, nil, rewinding)
 		fn.CumulativeCycles.NewFrame(&src.Cycles, nil, rewinding)
 		fn.NumCalls.NewFrame(rewinding)
 		fn.CyclesPerCall.NewFrame(rewinding)
@@ -37,71 +38,15 @@ func (src *Source) NewFrame(rewinding bool) {
 	// we prefer this over traversing the Lines list because we may hit a
 	// SourceLine more than once. SortedLines contains unique entries.
 	for _, ln := range src.SortedLines.Lines {
-		ln.Stats.NewFrame(&src.Cycles, &ln.Function.FlatCycles, rewinding)
+		ln.Cycles.NewFrame(&src.Cycles, &ln.Function.Cycles, rewinding)
 	}
 }
 
-func (src *Source) ExecutionProfile(ln *SourceLine, ct float32, focus profiling.Focus) {
-	// indicate that execution profile has changed
-	src.StatsDirty = true
-
-	fn := ln.Function
-
-	ln.Stats.Overall.Cycle(ct)
-	fn.FlatCycles.Overall.Cycle(ct)
-	src.Cycles.Overall.Cycle(ct)
-
-	ln.Kernel |= focus
-	fn.Kernel |= focus
-	if fn.DeclLine != nil {
-		fn.DeclLine.Kernel |= focus
-	}
-
-	switch focus {
-	case profiling.FocusAll:
-		// deliberately ignore
-	case profiling.FocusVBLANK:
-		ln.Stats.VBLANK.Cycle(ct)
-		fn.FlatCycles.VBLANK.Cycle(ct)
-		src.Cycles.VBLANK.Cycle(ct)
-	case profiling.FocusScreen:
-		ln.Stats.Screen.Cycle(ct)
-		fn.FlatCycles.Screen.Cycle(ct)
-		src.Cycles.Screen.Cycle(ct)
-	case profiling.FocusOverscan:
-		ln.Stats.Overscan.Cycle(ct)
-		fn.FlatCycles.Overscan.Cycle(ct)
-		src.Cycles.Overscan.Cycle(ct)
-	default:
-		panic("unknown focus type")
-	}
-}
-
-func (src *Source) ExecutionProfileCumulative(fn *SourceFunction, ct float32, focus profiling.Focus) {
-	// indicate that execution profile has changed
-	src.StatsDirty = true
-
-	fn.CumulativeCycles.Overall.Cycle(ct)
-
-	switch focus {
-	case profiling.FocusAll:
-		// deliberately ignore
-	case profiling.FocusVBLANK:
-		fn.CumulativeCycles.VBLANK.Cycle(ct)
-	case profiling.FocusScreen:
-		fn.CumulativeCycles.Screen.Cycle(ct)
-	case profiling.FocusOverscan:
-		fn.CumulativeCycles.Overscan.Cycle(ct)
-	default:
-		panic("unknown focus type")
-	}
-}
-
-// ResetStatistics resets all performance statistics.
-func (src *Source) ResetStatistics() {
+// ResetProfiling resets all profiling information
+func (src *Source) ResetProfiling() {
 	for i := range src.Functions {
 		src.Functions[i].Kernel = profiling.FocusAll
-		src.Functions[i].FlatCycles.Reset()
+		src.Functions[i].Cycles.Reset()
 		src.Functions[i].CumulativeCycles.Reset()
 		src.Functions[i].NumCalls.Reset()
 		src.Functions[i].CyclesPerCall.Reset()
@@ -109,7 +54,7 @@ func (src *Source) ResetStatistics() {
 	}
 	for i := range src.LinesByAddress {
 		src.LinesByAddress[i].Kernel = profiling.FocusAll
-		src.LinesByAddress[i].Stats.Reset()
+		src.LinesByAddress[i].Cycles.Reset()
 	}
 	src.Cycles.Reset()
 }

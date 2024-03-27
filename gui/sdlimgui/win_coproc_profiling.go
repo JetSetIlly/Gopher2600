@@ -101,7 +101,7 @@ func (tv *coProcProfilingTV) NewFrame(_ television.FrameInfo) error {
 	if tv.schedule.Load().(bool) {
 		tv.schedule.Store(false)
 		tv.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
-			src.ResetStatistics()
+			src.ResetProfiling()
 		})
 	}
 	return nil
@@ -169,9 +169,9 @@ func (win *winCoProcProfiling) draw(coproc coprocessor.CartCoProc) {
 		// ExecutionProfileChanged is used to decide whether to sort
 		// statistics. make sure we set it to false by the end of the draw()
 		// function
-		if src.StatsDirty {
+		if src.ProfilingDirty {
 			defer func() {
-				src.StatsDirty = false
+				src.ProfilingDirty = false
 			}()
 		}
 
@@ -258,7 +258,7 @@ func (win *winCoProcProfiling) draw(coproc coprocessor.CartCoProc) {
 				if win.tv.schedule.Load().(bool) {
 					if imgui.Button(fmt.Sprintf("%c Reset Now", fonts.Trash)) {
 						win.tv.scheduleReset(false)
-						src.ResetStatistics()
+						src.ResetProfiling()
 					}
 
 					imgui.SameLineV(0, 15)
@@ -505,7 +505,7 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 
 		// using flat stats even if cumulative option is set - it amounts to
 		// the same thing in this case
-		if win.hideUnusedEntries && !fn.FlatCycles.Overall.HasExecuted() {
+		if win.hideUnusedEntries && !fn.Cycles.Overall.HasExecuted() {
 			continue
 		}
 
@@ -518,7 +518,7 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 		if win.cumulative {
 			cyclesGroup = fn.CumulativeCycles
 		} else {
-			cyclesGroup = fn.FlatCycles
+			cyclesGroup = fn.Cycles
 		}
 
 		var cycles profiling.CyclesScope
@@ -559,7 +559,7 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 		optimisedWarning := win.cumulative && fn.OptimisedCallStack
 
 		// tooltip
-		win.tooltip(fn.FlatCycles.Overall.CyclesProgram, fn, fn.DeclLine, false)
+		win.tooltip(fn.Cycles.Overall.CyclesProgram, fn, fn.DeclLine, false)
 
 		if optimisedWarning {
 			win.img.imguiTooltip(func() {
@@ -764,7 +764,7 @@ func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 			continue
 		}
 
-		if win.hideUnusedEntries && !ln.Stats.Overall.HasExecuted() {
+		if win.hideUnusedEntries && !ln.Cycles.Overall.HasExecuted() {
 			continue
 		}
 
@@ -775,13 +775,13 @@ func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 		// select which stats to focus on
 		var stats profiling.CyclesScope
 		if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
-			stats = ln.Stats.VBLANK
+			stats = ln.Cycles.VBLANK
 		} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
-			stats = ln.Stats.Screen
+			stats = ln.Cycles.Screen
 		} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
-			stats = ln.Stats.Overscan
+			stats = ln.Cycles.Overscan
 		} else {
-			stats = ln.Stats.Overall
+			stats = ln.Cycles.Overall
 		}
 
 		imgui.TableNextRow()
@@ -798,7 +798,7 @@ func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 		if isStub {
 			win.img.imguiTooltipSimple(fmt.Sprintf("This entry represent all lines of code in %s", ln.Function.Name))
 		} else {
-			win.tooltip(ln.Stats.Overall.CyclesProgram, ln.Function, ln, true)
+			win.tooltip(ln.Cycles.Overall.CyclesProgram, ln.Function, ln, true)
 		}
 
 		// open source window on click
@@ -888,17 +888,17 @@ func (win *winCoProcProfiling) drawFunctionFilter(src *dwarf.Source, functionFil
 	// drawSourceLines() equivalents of this block perform the validity check
 	// on the source level statistics
 	if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
-		if !functionFilter.Function.FlatCycles.VBLANK.HasExecuted() {
+		if !functionFilter.Function.Cycles.VBLANK.HasExecuted() {
 			imgui.Text("This function has not been executed during VBLANK yet")
 			return
 		}
 	} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
-		if !functionFilter.Function.FlatCycles.Screen.HasExecuted() {
+		if !functionFilter.Function.Cycles.Screen.HasExecuted() {
 			imgui.Text("This function has not been executed during the visible screen yet")
 			return
 		}
 	} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
-		if !functionFilter.Function.FlatCycles.Overscan.HasExecuted() {
+		if !functionFilter.Function.Cycles.Overscan.HasExecuted() {
 			imgui.Text("This function has not been executed during Overscan yet")
 			return
 		}
@@ -913,13 +913,13 @@ func (win *winCoProcProfiling) drawFunctionFilter(src *dwarf.Source, functionFil
 	imgui.AlignTextToFramePadding()
 	switch win.focus {
 	case profiling.FocusVBLANK:
-		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the VBLANK last frame", functionFilter.Function.FlatCycles.VBLANK.CyclesProgram.FrameLoad))
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the VBLANK last frame", functionFilter.Function.Cycles.VBLANK.CyclesProgram.FrameLoad))
 	case profiling.FocusScreen:
-		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Visible Screen last frame", functionFilter.Function.FlatCycles.Screen.CyclesProgram.FrameLoad))
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Visible Screen last frame", functionFilter.Function.Cycles.Screen.CyclesProgram.FrameLoad))
 	case profiling.FocusOverscan:
-		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Overscan last frame", functionFilter.Function.FlatCycles.Overscan.CyclesProgram.FrameLoad))
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Overscan last frame", functionFilter.Function.Cycles.Overscan.CyclesProgram.FrameLoad))
 	default:
-		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time last frame", functionFilter.Function.FlatCycles.Overall.CyclesProgram.FrameLoad))
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time last frame", functionFilter.Function.Cycles.Overall.CyclesProgram.FrameLoad))
 	}
 
 	imgui.SameLineV(0, 15)
@@ -980,7 +980,7 @@ thean to the program as a whole.`)
 			continue
 		}
 
-		if win.hideUnusedEntries && !ln.Stats.Overall.HasExecuted() {
+		if win.hideUnusedEntries && !ln.Cycles.Overall.HasExecuted() {
 			continue
 		}
 
@@ -991,13 +991,13 @@ thean to the program as a whole.`)
 		// select which stats to focus on
 		var stats profiling.CyclesScope
 		if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
-			stats = ln.Stats.VBLANK
+			stats = ln.Cycles.VBLANK
 		} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
-			stats = ln.Stats.Screen
+			stats = ln.Cycles.Screen
 		} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
-			stats = ln.Stats.Overscan
+			stats = ln.Cycles.Overscan
 		} else {
-			stats = ln.Stats.Overall
+			stats = ln.Cycles.Overall
 		}
 
 		imgui.TableNextRow()
@@ -1013,9 +1013,9 @@ thean to the program as a whole.`)
 
 		// source on tooltip
 		if win.functionTabScale {
-			win.tooltip(ln.Stats.Overall.CyclesFunction, ln.Function, ln, true)
+			win.tooltip(ln.Cycles.Overall.CyclesFunction, ln.Function, ln, true)
 		} else {
-			win.tooltip(ln.Stats.Overall.CyclesProgram, ln.Function, ln, true)
+			win.tooltip(ln.Cycles.Overall.CyclesProgram, ln.Function, ln, true)
 		}
 
 		// open source window on click
@@ -1172,7 +1172,7 @@ func (win *winCoProcProfiling) tooltip(scope profiling.CycleFigures,
 // helpfunction to sort profiling data according to current spec
 func (win *winCoProcProfiling) sort(src *dwarf.Source, f func(imgui.TableSortSpecs)) {
 	sort := imgui.TableGetSortSpecs()
-	if src.StatsDirty || sort.SpecsDirty() || win.windowSortSpecDirty {
+	if src.ProfilingDirty || sort.SpecsDirty() || win.windowSortSpecDirty {
 		win.windowSortSpecDirty = false
 		f(sort)
 		sort.ClearSpecsDirty()

@@ -150,8 +150,8 @@ type SourceLine struct {
 	// whether this source line has been responsible for a likely bug (eg. illegal access of memory)
 	Bug bool
 
-	// statistics for the line
-	Stats profiling.Cycles
+	// profiling for the line
+	Cycles profiling.Cycles
 
 	// which 2600 kernel has this line executed in
 	Kernel profiling.Focus
@@ -219,13 +219,11 @@ type SourceFunction struct {
 	framebaseLoclist *loclist
 
 	// first source line for each instance of the function. note that the first
-	// line of a function may not have any code directly associated with it -
-	// meaning that the Instruction and Stats fields of the DeclLine may be
-	// empty
+	// line of a function may not have any code directly associated with it
 	DeclLine *SourceLine
 
-	// stats for the function
-	FlatCycles       profiling.Cycles
+	// profiling for the function
+	Cycles           profiling.Cycles
 	CumulativeCycles profiling.Cycles
 	NumCalls         profiling.Calls
 	CyclesPerCall    profiling.CyclesPerCall

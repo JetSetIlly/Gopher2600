@@ -15,6 +15,7 @@
 
 package profiling
 
+// Cycles measures the number of cycles consumed in each VCS scope
 type Cycles struct {
 	Overall  CyclesScope
 	VBLANK   CyclesScope
@@ -22,6 +23,7 @@ type Cycles struct {
 	Overscan CyclesScope
 }
 
+// Reset the cycles counts to zero
 func (cy *Cycles) Reset() {
 	cy.Overall.reset()
 	cy.VBLANK.reset()
@@ -29,9 +31,26 @@ func (cy *Cycles) Reset() {
 	cy.Overscan.reset()
 }
 
-// NewFrame commits accumulated statistics for the frame. The rewinding flag
-// indicates that the emulation is in the rewinding state and that some
-// statistics should not be updated
+// Cycle advances the number of cycles for the VCS scope
+func (cy *Cycles) Cycle(n float32, focus Focus) {
+	switch focus {
+	case FocusAll:
+		cy.Overall.Cycle(n)
+	case FocusVBLANK:
+		cy.Overall.Cycle(n)
+		cy.VBLANK.Cycle(n)
+	case FocusScreen:
+		cy.Overall.Cycle(n)
+		cy.Screen.Cycle(n)
+	case FocusOverscan:
+		cy.Overall.Cycle(n)
+		cy.Overscan.Cycle(n)
+	}
+}
+
+// NewFrame commits accumulated cycles for the frame. The rewinding flag
+// indicates that the emulation is in the rewinding state and that some data
+// should not be updated
 //
 // The programCycles and functionCycles parameters reprenent the parents of the
 // entity being measured by Cycles instance.
@@ -93,10 +112,12 @@ type CyclesScope struct {
 	// number of frames seen
 	numFrames float32
 
-	// frame and average count form the basis of the frame, average and max
-	// counts (and percentages) in the Cycles type
-	frameCount float32
-	avgCount   float32
+	// frameCount and averageCount are used by CyclesFigures during calculation
+	//
+	// they are in fact the same values as the FrameCount fields in CyclesFunction
+	// and CyclesProgram but those figures won't always be updated
+	frameCount   float32
+	averageCount float32
 }
 
 // Cycle advances the number of cycles for the current frame
@@ -112,64 +133,18 @@ func (cy *CyclesScope) HasExecuted() bool {
 
 func (cy *CyclesScope) newFrame(programCycles *CyclesScope, functionCycles *CyclesScope, rewinding bool) {
 	if !rewinding {
+		cy.totalCycles += cy.cycles
 		cy.numFrames++
-		if cy.numFrames > 1 {
-			if cy.cycles > 0 {
-				cy.totalCycles += cy.cycles
-				cy.avgCount = cy.totalCycles / (cy.numFrames - 1)
-			}
+
+		cy.frameCount = cy.cycles
+		if cy.numFrames > 0 && cy.cycles > 0 {
+			cy.averageCount = cy.totalCycles / cy.numFrames
 		}
 	}
 
-	cy.frameCount = cy.cycles
-
-	if functionCycles != nil {
-		frameLoad := cy.frameCount / functionCycles.frameCount * 100
-
-		cy.CyclesFunction.FrameCount = cy.frameCount
-		cy.CyclesFunction.FrameLoad = frameLoad
-
-		cy.CyclesFunction.AverageCount = cy.avgCount
-		cy.CyclesFunction.AverageLoad = cy.avgCount / functionCycles.avgCount * 100
-
-		cy.CyclesFunction.FrameValid = cy.frameCount > 0 && functionCycles.frameCount > 0
-
-		if cy.CyclesFunction.FrameValid {
-			if cy.frameCount >= cy.CyclesFunction.MaxCount {
-				cy.CyclesFunction.MaxCount = cy.frameCount
-			}
-			if frameLoad >= cy.CyclesFunction.MaxLoad {
-				cy.CyclesFunction.MaxLoad = frameLoad
-			}
-		}
-
-		cy.CyclesFunction.AverageValid = cy.avgCount > 0 && functionCycles.avgCount > 0
-		cy.CyclesFunction.MaxValid = cy.CyclesFunction.MaxValid || cy.CyclesFunction.FrameValid
-	}
-
-	if programCycles != nil {
-		frameLoad := cy.frameCount / programCycles.frameCount * 100
-
-		cy.CyclesProgram.FrameCount = cy.frameCount
-		cy.CyclesProgram.FrameLoad = frameLoad
-
-		cy.CyclesProgram.AverageCount = cy.avgCount
-		cy.CyclesProgram.AverageLoad = cy.avgCount / programCycles.avgCount * 100
-
-		cy.CyclesProgram.FrameValid = cy.frameCount > 0 && programCycles.frameCount > 0
-
-		if cy.CyclesProgram.FrameValid {
-			if cy.frameCount >= cy.CyclesProgram.MaxCount {
-				cy.CyclesProgram.MaxCount = cy.frameCount
-			}
-			if frameLoad >= cy.CyclesProgram.MaxLoad {
-				cy.CyclesProgram.MaxLoad = frameLoad
-			}
-		}
-
-		cy.CyclesProgram.AverageValid = cy.avgCount > 0 && programCycles.avgCount > 0
-		cy.CyclesProgram.MaxValid = cy.CyclesProgram.MaxValid || cy.CyclesProgram.FrameValid
-	}
+	// accumulate figures for function and program scopes
+	cy.CyclesFunction.newFrame(functionCycles, cy.frameCount, cy.averageCount)
+	cy.CyclesProgram.newFrame(programCycles, cy.frameCount, cy.averageCount)
 
 	// reset for next frame
 	cy.cycles = 0.0
@@ -180,7 +155,7 @@ func (cy *CyclesScope) reset() {
 	cy.CyclesFunction.reset()
 	cy.totalCycles = 0.0
 	cy.numFrames = 0.0
-	cy.avgCount = 0.0
+	cy.averageCount = 0.0
 	cy.frameCount = 0.0
 	cy.cycles = 0.0
 	cy.numFrames = 0
@@ -216,4 +191,40 @@ func (cy *CycleFigures) reset() {
 	cy.FrameValid = false
 	cy.AverageValid = false
 	cy.MaxValid = false
+}
+
+func (cy *CycleFigures) newFrame(parent *CyclesScope, frameCount float32, averageCount float32) {
+	if parent == nil {
+		return
+	}
+
+	if frameCount > 0.0 && parent.frameCount > 0.0 {
+		cy.FrameCount = frameCount
+		cy.FrameLoad = cy.FrameCount / parent.frameCount * 100
+		cy.FrameValid = true
+	} else {
+		cy.FrameCount = 0.0
+		cy.FrameLoad = 0.0
+		cy.FrameValid = false
+	}
+
+	if averageCount > 0 && parent.averageCount > 0 {
+		cy.AverageCount = averageCount
+		cy.AverageLoad = cy.AverageCount / parent.averageCount * 100
+		cy.AverageValid = true
+	} else {
+		cy.AverageCount = 0.0
+		cy.AverageLoad = 0.0
+		cy.AverageValid = false
+	}
+
+	if cy.FrameValid {
+		if cy.FrameCount >= cy.MaxCount {
+			cy.MaxCount = cy.FrameCount
+		}
+		if cy.FrameLoad >= cy.MaxLoad {
+			cy.MaxLoad = cy.FrameLoad
+		}
+		cy.MaxValid = true
+	}
 }
