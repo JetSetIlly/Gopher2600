@@ -26,11 +26,18 @@ func (src *Source) NewFrame(rewinding bool) {
 	// calling newFrame() profiling data in a specific order
 	src.Cycles.NewFrame(nil, nil, rewinding)
 
+	var totalCyclesPerCall float32
+
 	for _, fn := range src.Functions {
 		fn.Cycles.NewFrame(&src.Cycles, nil, rewinding)
 		fn.CumulativeCycles.NewFrame(&src.Cycles, nil, rewinding)
 		fn.NumCalls.NewFrame(rewinding)
 		fn.CyclesPerCall.NewFrame(rewinding)
+		totalCyclesPerCall += fn.CyclesPerCall.Overall.FrameCount
+	}
+
+	for _, fn := range src.Functions {
+		fn.CyclesPerCall.PostNewFrame(totalCyclesPerCall, rewinding)
 	}
 
 	// traverse the SortedLines list and update the FrameCyles values

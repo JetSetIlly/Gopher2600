@@ -96,10 +96,27 @@ func (cl *CyclesPerCall) NewFrame(rewinding bool) {
 	cl.Overscan.newFrame(rewinding)
 }
 
+// PostNewFrame is called after NewFrame() has been called for all instances of
+// CyclesPerCall (ie. for all functions)
+//
+// This is because a total cycles/call value is needed to calculate the load
+// values. If there's a simpler mathematical method of doing this then I'd
+// prefer to do that
+func (cl *CyclesPerCall) PostNewFrame(allFunctions float32, rewinding bool) {
+	cl.Overall.postNewFrame(allFunctions, rewinding)
+	cl.VBLANK.postNewFrame(allFunctions, rewinding)
+	cl.Screen.postNewFrame(allFunctions, rewinding)
+	cl.Overscan.postNewFrame(allFunctions, rewinding)
+}
+
 type CyclesPerCallScope struct {
 	FrameCount   float32
 	AverageCount float32
 	MaxCount     float32
+
+	FrameLoad   float32
+	AverageLoad float32
+	MaxLoad     float32
 
 	// whether the corresponding values are valid
 	FrameValid   bool
@@ -116,6 +133,10 @@ type CyclesPerCallScope struct {
 	// cycle and call count over all frames
 	totalCycles float32
 	totalCalls  float32
+
+	// sum of cycle-per-call counts over all frames and for all functions
+	totalAverageCount float32
+	totalAllFunctions float32
 }
 
 func (cl *CyclesPerCallScope) call() {
@@ -136,6 +157,9 @@ func (cl *CyclesPerCallScope) reset() {
 	cl.FrameCount = 0.0
 	cl.AverageCount = 0.0
 	cl.MaxCount = 0.0
+	cl.FrameLoad = 0.0
+	cl.AverageLoad = 0.0
+	cl.MaxLoad = 0.0
 	cl.FrameValid = false
 	cl.AverageValid = false
 	cl.MaxValid = false
@@ -144,6 +168,7 @@ func (cl *CyclesPerCallScope) reset() {
 	cl.numFrames = 0.0
 	cl.totalCycles = 0.0
 	cl.totalCalls = 0.0
+	cl.totalAllFunctions = 0.0
 }
 
 func (cl *CyclesPerCallScope) newFrame(rewinding bool) {
@@ -177,4 +202,26 @@ func (cl *CyclesPerCallScope) newFrame(rewinding bool) {
 	// reset for next frame
 	cl.cycles = 0.0
 	cl.calls = 0.0
+}
+
+func (cl *CyclesPerCallScope) postNewFrame(allFunctions float32, rewinding bool) {
+	if !rewinding {
+		cl.totalAverageCount += cl.AverageCount
+		cl.totalAllFunctions += allFunctions
+	}
+
+	if cl.FrameValid {
+		cl.FrameLoad = cl.FrameCount / allFunctions * 100
+		cl.AverageLoad = cl.totalAverageCount / cl.totalAllFunctions * 100
+	} else {
+		cl.FrameLoad = 0.0
+	}
+
+	if !cl.AverageValid {
+		cl.AverageLoad = 0.0
+	}
+
+	if cl.FrameLoad > cl.MaxLoad {
+		cl.MaxLoad = cl.FrameLoad
+	}
 }

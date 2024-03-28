@@ -287,15 +287,12 @@ func (win *winCoProcProfiling) draw(coproc coprocessor.CartCoProc) {
 
 			imgui.Checkbox("Hide Unexecuted Items", &win.hideUnusedEntries)
 
-			drawDisabled(win.cyclesPerCall && win.tabSelected == functionTab, func() {
+			if win.tabSelected == functionTab {
 				imgui.SameLineV(0, 15)
 				if imgui.Checkbox("Percentile Figures", &win.percentileFigures) {
 					win.windowSortSpecDirty = true
 				}
 
-			})
-
-			if win.tabSelected == functionTab {
 				drawDisabled(win.cyclesPerCall, func() {
 					imgui.SameLineV(0, 15)
 					if imgui.Checkbox("Cumulative Figures", &win.cumulative) {
@@ -472,7 +469,7 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 			case 3:
 				if win.cyclesPerCall {
 					src.SortedFunctions.Sort(dwarf.SortFunctionsFrameCyclesPerCall, false,
-						false, s.SortDirection != imgui.SortDirectionAscending, win.focus)
+						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
 				} else {
 					src.SortedFunctions.Sort(dwarf.SortFunctionsFrameCycles, win.cumulative,
 						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
@@ -480,7 +477,7 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 			case 4:
 				if win.cyclesPerCall {
 					src.SortedFunctions.Sort(dwarf.SortFunctionsAverageCyclesPerCall, false,
-						false, s.SortDirection != imgui.SortDirectionAscending, win.focus)
+						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
 				} else {
 					src.SortedFunctions.Sort(dwarf.SortFunctionsAverageCycles, win.cumulative,
 						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
@@ -488,7 +485,7 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 			case 5:
 				if win.cyclesPerCall {
 					src.SortedFunctions.Sort(dwarf.SortFunctionsMaxCyclesPerCall, false,
-						false, s.SortDirection != imgui.SortDirectionAscending, win.focus)
+						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
 				} else {
 					src.SortedFunctions.Sort(dwarf.SortFunctionsMaxCycles, win.cumulative,
 						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
@@ -609,7 +606,11 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 		if win.cyclesPerCall {
 			if cyclesPerCall.FrameValid {
-				imgui.Text(fmt.Sprintf("%.0f", cyclesPerCall.FrameCount))
+				if win.percentileFigures {
+					imgui.Text(fmt.Sprintf("%.02f", cyclesPerCall.FrameLoad))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", cyclesPerCall.FrameCount))
+				}
 			} else {
 				imgui.Text("-")
 			}
@@ -630,7 +631,11 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
 		if win.cyclesPerCall {
 			if cyclesPerCall.AverageValid {
-				imgui.Text(fmt.Sprintf("%0.0f", cyclesPerCall.AverageCount))
+				if win.percentileFigures {
+					imgui.Text(fmt.Sprintf("%0.02f", cyclesPerCall.AverageLoad))
+				} else {
+					imgui.Text(fmt.Sprintf("%0.0f", cyclesPerCall.AverageCount))
+				}
 			} else {
 				imgui.Text("-")
 			}
@@ -651,7 +656,11 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
 		if win.cyclesPerCall {
 			if cyclesPerCall.MaxValid {
-				imgui.Text(fmt.Sprintf("%.0f", cyclesPerCall.MaxCount))
+				if win.percentileFigures {
+					imgui.Text(fmt.Sprintf("%.02f", cyclesPerCall.MaxLoad))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", cyclesPerCall.MaxCount))
+				}
 			} else {
 				imgui.Text("-")
 			}

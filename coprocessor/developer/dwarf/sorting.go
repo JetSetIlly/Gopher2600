@@ -237,6 +237,7 @@ func (e SortedFunctions) Less(i int, j int) bool {
 		return (e.Functions[i].DeclLine.File.Filename <= e.Functions[j].DeclLine.File.Filename) != e.descending
 	case SortFunctionsName:
 		return (strings.ToUpper(e.Functions[i].Name) <= strings.ToUpper(e.Functions[j].Name)) != e.descending
+
 	case SortFunctionsFrameCycles:
 		if e.load {
 			return af.CyclesProgram.FrameLoad <= bf.CyclesProgram.FrameLoad != e.descending
@@ -252,17 +253,28 @@ func (e SortedFunctions) Less(i int, j int) bool {
 			return af.CyclesProgram.MaxLoad <= bf.CyclesProgram.MaxLoad != e.descending
 		}
 		return af.CyclesProgram.MaxCount <= bf.CyclesProgram.MaxCount != e.descending
+
 	case SortFunctionsFrameCalls:
 		return afc.FrameCount <= bfc.FrameCount != e.descending
 	case SortFunctionsAverageCalls:
 		return afc.AverageCount <= bfc.AverageCount != e.descending
 	case SortFunctionsMaxCalls:
 		return afc.MaxCount <= bfc.MaxCount != e.descending
+
 	case SortFunctionsFrameCyclesPerCall:
+		if e.load {
+			return afp.FrameLoad <= bfp.FrameLoad != e.descending
+		}
 		return afp.FrameCount <= bfp.FrameCount != e.descending
 	case SortFunctionsAverageCyclesPerCall:
+		if e.load {
+			return afp.AverageLoad <= bfp.AverageLoad != e.descending
+		}
 		return afp.AverageCount <= bfp.AverageCount != e.descending
 	case SortFunctionsMaxCyclesPerCall:
+		if e.load {
+			return afp.MaxLoad <= bfp.MaxLoad != e.descending
+		}
 		return afp.MaxCount <= bfp.MaxCount != e.descending
 	}
 
