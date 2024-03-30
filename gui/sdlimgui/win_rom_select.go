@@ -47,7 +47,6 @@ type winSelectROM struct {
 
 	currPath string
 	entries  []os.DirEntry
-	err      error
 
 	selectedFile           string
 	selectedFileBase       string

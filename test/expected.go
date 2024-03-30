@@ -34,6 +34,14 @@ func ExpectInequality[T comparable](t *testing.T, value T, expectedValue T) {
 	}
 }
 
+// ExpectImplements tests whether an instance is an implementation of type T
+func ExpectImplements[T comparable](t *testing.T, instance any, implements T) {
+	t.Helper()
+	if _, ok := instance.(T); !ok {
+		t.Fatalf("implementation test of type %T failed: type %T does not implement %T", instance, instance, implements)
+	}
+}
+
 // ExpectFailure tests argument v for a failure condition suitable for it's
 // type. Types bool and error are treated thus:
 //

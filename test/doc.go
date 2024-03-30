@@ -18,10 +18,13 @@
 //
 // The ExpectEquality() is the most basic and probably the most useful function.
 // It compares like-typed variables for equality and returns true if they match.
+// ExpectInequality() is the inverse function.
 //
 // The ExpectFailure() and ExpectSuccess() functions test for failure and
 // success. These two functions work with bool or error and special handling for
 // nil.
+//
+// ExpectImplements() tests whether an instance implements the specified type.
 //
 // The Writer type meanwhile, implements the io.Writer interface and should be
 // used to capture output. The Writer.Compare() function can then be used to
