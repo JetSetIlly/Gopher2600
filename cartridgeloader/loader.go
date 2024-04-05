@@ -26,6 +26,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -157,102 +158,16 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 	data := make([]byte, 0)
 	cl.Data = &data
 
+	// decide what mapping to use if the requested mapping is AUTO
 	if mapping == "AUTO" {
-		ext := strings.ToUpper(filepath.Ext(filename))
-		switch ext {
-		case ".BIN":
-			fallthrough
-		case ".ROM":
-			fallthrough
-		case ".A26":
+		extension := strings.ToUpper(filepath.Ext(filename))
+		if slices.Contains(autoFileExtensions, extension) {
 			cl.Mapping = "AUTO"
-		case ".2K":
-			fallthrough
-		case ".4K":
-			fallthrough
-		case ".F8":
-			fallthrough
-		case ".F6":
-			fallthrough
-		case ".F4":
-			fallthrough
-		case ".2K+":
-			fallthrough
-		case ".2KSC":
-			fallthrough
-		case ".4K+":
-			fallthrough
-		case ".4KSC":
-			fallthrough
-		case ".F8+":
-			fallthrough
-		case ".F8SC":
-			fallthrough
-		case ".F6+":
-			fallthrough
-		case ".F6SC":
-			fallthrough
-		case ".F4+":
-			fallthrough
-		case ".F4SC":
-			fallthrough
-		case ".CV":
-			fallthrough
-		case ".FA":
-			fallthrough
-		case ".FE":
-			fallthrough
-		case ".E0":
-			fallthrough
-		case ".E7":
-			fallthrough
-		case ".3F":
-			fallthrough
-		case ".UA":
-			fallthrough
-		case ".AR":
-			fallthrough
-		case ".DF":
-			fallthrough
-		case ".3E":
-			fallthrough
-		case ".E3P":
-			fallthrough // synonym for 3E+
-		case ".E3+":
-			fallthrough // synonym for 3E+
-		case ".3E+":
-			fallthrough
-		case ".EF":
-			fallthrough
-		case ".EFSC":
-			fallthrough
-		case ".SB":
-			fallthrough
-		case ".WD":
-			fallthrough
-		case ".ACE":
-			fallthrough
-		case ".CDF0":
-			fallthrough
-		case ".CDF1":
-			fallthrough
-		case ".CDFJ":
-			fallthrough
-		case ".CDFJ+":
-			fallthrough
-		case ".DP+":
-			fallthrough
-		case ".DPC":
-			cl.Mapping = ext[1:]
-		case ".CDF":
-			cl.Mapping = "CDFJ"
-		case ".WAV":
-			fallthrough
-		case ".MP3":
+		} else if slices.Contains(explicitFileExtensions, extension) {
+			cl.Mapping = extension[1:]
+		} else if slices.Contains(audioFileExtensions, extension) {
 			cl.Mapping = "AR"
 			cl.IsSoundData = true
-		case ".MVC":
-			cl.Mapping = "MVC"
 		}
 	}
 
