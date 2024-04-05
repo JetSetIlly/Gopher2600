@@ -30,3 +30,4 @@ armcode.map
 *.bin
 *.macro
 go.work
+go.work.sum
