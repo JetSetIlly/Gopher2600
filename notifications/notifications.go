@@ -33,16 +33,12 @@ const (
 	NotifyMute          Notice = "NotifyMute"
 	NotifyUnmute        Notice = "NotifyUnmute"
 
-	// LoadStarted is raised for Supercharger mapper whenever a new tape read
-	// sequence if started.
-	NotifySuperchargerLoadStarted Notice = "NotifySuperchargerLoadStarted"
-
 	// If Supercharger is loading from a fastload binary then this event is
-	// raised when the loading has been completed.
-	NotifySuperchargerFastloadEnded Notice = "NotifySuperchargerFastloadEnded"
+	// raised when the ROM requests the next block be loaded from the "tape
+	NotifySuperchargerFastload Notice = "NotifySuperchargerFastload"
 
 	// If Supercharger is loading from a sound file (eg. mp3 file) then these
-	// events area raised when the loading has started/completed.
+	// events area raised when the loading has started and ended.
 	NotifySuperchargerSoundloadStarted Notice = "NotifySuperchargerSoundloadStarted"
 	NotifySuperchargerSoundloadEnded   Notice = "NotifySuperchargerSoundloadEnded"
 

@@ -141,7 +141,7 @@ func (cmp *Comparison) Quit() {
 // Notify implements the notifications.Notify interface
 func (cmp *Comparison) Notify(notice notifications.Notice) error {
 	switch notice {
-	case notifications.NotifySuperchargerFastloadEnded:
+	case notifications.NotifySuperchargerFastload:
 		// the supercharger ROM will eventually start execution from the PC
 		// address given in the supercharger file
 
@@ -155,7 +155,7 @@ func (cmp *Comparison) Notify(notice notifications.Notice) error {
 
 		// call function to complete tape loading procedure
 		fastload := cmp.VCS.Mem.Cart.GetSuperchargerFastLoad()
-		err := fastload.CommitFastload(cmp.VCS.CPU, cmp.VCS.Mem.RAM, cmp.VCS.RIOT.Timer)
+		err := fastload.Fastload(cmp.VCS.CPU, cmp.VCS.Mem.RAM, cmp.VCS.RIOT.Timer)
 		if err != nil {
 			return err
 		}

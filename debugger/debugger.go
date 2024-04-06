@@ -1055,13 +1055,8 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 // Notify implements the notifications.Notify interface
 func (dbg *Debugger) Notify(notice notifications.Notice) error {
 	switch notice {
-	case notifications.NotifySuperchargerLoadStarted:
-		if dbg.opts.Multiload >= 0 {
-			logger.Logf("debugger", "forcing supercharger multiload (%#02x)", uint8(dbg.opts.Multiload))
-			dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(dbg.opts.Multiload))
-		}
 
-	case notifications.NotifySuperchargerFastloadEnded:
+	case notifications.NotifySuperchargerFastload:
 		// the supercharger ROM will eventually start execution from the PC
 		// address given in the supercharger file
 
@@ -1077,12 +1072,17 @@ func (dbg *Debugger) Notify(notice notifications.Notice) error {
 		// need to change the final flag there too
 		dbg.liveDisasmEntry.Result.Final = true
 
+		// force multiload value for supercharger fastload
+		if dbg.opts.Multiload >= 0 {
+			dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(dbg.opts.Multiload))
+		}
+
 		// call commit function to complete tape loading procedure
 		fastload := dbg.vcs.Mem.Cart.GetSuperchargerFastLoad()
 		if fastload == nil {
 			return fmt.Errorf("NotifySuperchargerFastloadEnded sent from a non Supercharger fastload cartridge")
 		}
-		err := fastload.CommitFastload(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer)
+		err := fastload.Fastload(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer)
 		if err != nil {
 			return err
 		}
@@ -1093,6 +1093,11 @@ func (dbg *Debugger) Notify(notice notifications.Notice) error {
 			return err
 		}
 	case notifications.NotifySuperchargerSoundloadStarted:
+		// force multiload value for supercharger soundload
+		if dbg.opts.Multiload >= 0 {
+			dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(dbg.opts.Multiload))
+		}
+
 		err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifySuperchargerSoundloadStarted)
 		if err != nil {
 			return err

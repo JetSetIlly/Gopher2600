@@ -163,7 +163,7 @@ func (thmb *Anim) wait() {
 // Notify implements the notifications.Notify interface
 func (thmb *Anim) Notify(notice notifications.Notice) error {
 	switch notice {
-	case notifications.NotifySuperchargerFastloadEnded:
+	case notifications.NotifySuperchargerFastload:
 		// the supercharger ROM will eventually start execution from the PC
 		// address given in the supercharger file
 
@@ -177,7 +177,7 @@ func (thmb *Anim) Notify(notice notifications.Notice) error {
 
 		// call function to complete tape loading procedure
 		fastload := thmb.vcs.Mem.Cart.GetSuperchargerFastLoad()
-		err := fastload.CommitFastload(thmb.vcs.CPU, thmb.vcs.Mem.RAM, thmb.vcs.RIOT.Timer)
+		err := fastload.Fastload(thmb.vcs.CPU, thmb.vcs.Mem.RAM, thmb.vcs.RIOT.Timer)
 		if err != nil {
 			return err
 		}

@@ -142,7 +142,6 @@ func (tap *SoundLoad) snapshot() tape {
 	return &n
 }
 
-// load implements the Tape interface.
 func (tap *SoundLoad) load() (uint8, error) {
 	tap.stepLimiter = 0
 	if !tap.playing {
@@ -163,33 +162,39 @@ func (tap *SoundLoad) load() (uint8, error) {
 }
 
 // step implements the Tape interface.
-func (tap *SoundLoad) step() {
+func (tap *SoundLoad) step() error {
 	// auto-stop tape if load() has not been called "recently"
 	const stepLimit = 100000
 	if tap.stepLimiter < stepLimit {
 		tap.stepLimiter++
 		if tap.stepLimiter == stepLimit {
-			logger.Log(soundloadLogTag, "tape stopped")
 			tap.playing = false
 		}
 	}
 
 	if !tap.playing {
-		return
+		return fmt.Errorf("tape stopped")
 	}
 
 	if tap.regulatorCt <= tap.regulator {
 		tap.regulatorCt++
-		return
+		return nil
 	}
 	tap.regulatorCt = 0
 
 	// make sure we don't try to read past end of tape
 	if tap.idx >= len(tap.pcm.data)-1 {
 		tap.Rewind()
-		return
+		return nil
 	}
 	tap.idx++
+
+	return nil
+}
+
+// load implements the Tape interface.
+func (tap *SoundLoad) end() error {
+	return tap.cart.env.Notifications.Notify(notifications.NotifySuperchargerSoundloadEnded)
 }
 
 // Rewind implements the mapper.CartTapeBus interface.

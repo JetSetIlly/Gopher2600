@@ -26,7 +26,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
-	"github.com/jetsetilly/gopher2600/notifications"
 )
 
 // supercharger has 6k of RAM in total.
@@ -43,7 +42,8 @@ const MutliloadByteAddress = 0xfa
 type tape interface {
 	snapshot() tape
 	load() (uint8, error)
-	step()
+	step() error
+	end() error
 }
 
 // Supercharger represents a supercharger cartridge.
@@ -148,7 +148,6 @@ func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
 		// sustained until the BIOS is "touched" as described below
 		if !cart.state.isLoading {
 			cart.state.isLoading = true
-			cart.env.Notifications.Notify(notifications.NotifySuperchargerLoadStarted)
 		}
 
 		// call load() whenever address is touched, although do not allow
@@ -195,11 +194,7 @@ func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
 			if addr == 0x0a1a {
 				// end tape is loading state
 				cart.state.isLoading = false
-
-				err := cart.env.Notifications.Notify(notifications.NotifySuperchargerSoundloadEnded)
-				if err != nil {
-					return 0, 0, fmt.Errorf("supercharger: %w", err)
-				}
+				cart.state.tape.end()
 			}
 
 			return cart.bios[addr&0x07ff], mapper.CartDrivenPins, nil
@@ -291,7 +286,7 @@ func (cart *Supercharger) AccessPassive(addr uint16, _ uint8) error {
 
 // Step implements the mapper.CartMapper interface.
 func (cart *Supercharger) Step(_ float32) {
-	cart.state.tape.step()
+	_ = cart.state.tape.step()
 }
 
 // IterateBank implements the mapper.CartMapper interface.
@@ -419,10 +414,10 @@ func (cart *Supercharger) SetTapeCounter(c int) {
 	}
 }
 
-// CommitFastLoad implements the mapper.CartSuperChargerFastLoad interface.
-func (cart *Supercharger) CommitFastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
+// Fastload implements the mapper.CartSuperChargerFastLoad interface.
+func (cart *Supercharger) Fastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
 	if f, ok := cart.state.tape.(mapper.CartSuperChargerFastLoad); ok {
-		return f.CommitFastload(mc, ram, tmr)
+		return f.Fastload(mc, ram, tmr)
 	}
 	return nil
 }

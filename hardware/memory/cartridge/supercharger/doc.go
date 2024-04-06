@@ -25,4 +25,7 @@
 // When loading from a sound file, Supercharger events can be ignored if so
 // desired but for fastload files, the emulator needs to help the Supercharger
 // mapper. See the playmode package reference implementation for details.
+//
+// Mutliload tapes are supported from both sound file and fastload binaries. In
+// the case of sound files the audio must be in a single file.
 package supercharger
