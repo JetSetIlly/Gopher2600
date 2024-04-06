@@ -17,8 +17,8 @@ package environment
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
-	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/random"
 )
 
@@ -41,35 +41,41 @@ type Environment struct {
 	// the television attached to the console
 	TV Television
 
-	// any randomisation required by the emulation should be retreived through
-	// this structure
-	Random *random.Random
+	// interface to emulation. used for example, when cartridge has been
+	// successfully loaded. not all cartridge formats require this
+	Notifications notifications.Notify
 
 	// the emulation preferences
 	Prefs *preferences.Preferences
+
+	// any randomisation required by the emulation should be retreived through
+	// this structure
+	Random *random.Random
 }
 
 // NewEnvironment is the preferred method of initialisation for the Environment type.
 //
-// The two arguments must be supplied. In the case of the prefs field it can by
-// nil and a new Preferences instance will be created. Providing a non-nil value
-// allows the preferences of more than one VCS emulation to be synchronised.
-func NewEnvironment(tv *television.Television, prefs *preferences.Preferences) (*Environment, error) {
+// The Notify and Preferences can be nil. If prefs is nil then a new instance of
+// the system wide preferences will be created.
+func NewEnvironment(tv Television, notify notifications.Notify, prefs *preferences.Preferences) (*Environment, error) {
 	env := &Environment{
-		TV:     tv,
-		Random: random.NewRandom(tv),
+		TV:            tv,
+		Notifications: notify,
+		Prefs:         prefs,
+		Random:        random.NewRandom(tv.(random.TV)),
 	}
 
-	var err error
+	if notify == nil {
+		env.Notifications = notificationStub{}
+	}
 
 	if prefs == nil {
-		prefs, err = preferences.NewPreferences()
+		var err error
+		env.Prefs, err = preferences.NewPreferences()
 		if err != nil {
 			return nil, err
 		}
 	}
-
-	env.Prefs = prefs
 
 	return env, nil
 }
@@ -91,4 +97,11 @@ const MainEmulation = Label("main")
 // IsEmulation checks the emulation label and returns true if it matches
 func (env *Environment) IsEmulation(label Label) bool {
 	return env.Label == label
+}
+
+// stub implementation of the notification interface
+type notificationStub struct{}
+
+func (_ notificationStub) Notify(_ notifications.Notice) error {
+	return nil
 }

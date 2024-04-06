@@ -221,7 +221,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		// format)
 		if cart.fingerprintPlusROM(cartload) {
 			// try creating a NewPlusROM instance
-			pr, err := plusrom.NewPlusROM(cart.env, cart.mapper, cartload.NotificationHook)
+			pr, err := plusrom.NewPlusROM(cart.env, cart.mapper)
 
 			if err != nil {
 				// check for known PlusROM errors
@@ -497,6 +497,13 @@ func (cart *Cartridge) GetCoProcBus() coprocessor.CartCoProcBus {
 func (cart *Cartridge) GetCoProc() coprocessor.CartCoProc {
 	if cart.hasCoProcBus {
 		return cart.coprocBus.GetCoProc()
+	}
+	return nil
+}
+
+func (cart *Cartridge) GetSuperchargerFastLoad() mapper.CartSuperChargerFastLoad {
+	if c, ok := cart.mapper.(mapper.CartSuperChargerFastLoad); ok {
+		return c
 	}
 	return nil
 }

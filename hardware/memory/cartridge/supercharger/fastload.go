@@ -50,6 +50,32 @@ type FastLoad struct {
 	// value of loadCt on last successful load. we use this to prevent endless
 	// rewinding and searching
 	lastLoadCt int
+
+	// fastload binaries have a header which controls how the binary is read
+	fastloadHeader fastloadHeader
+}
+
+type fastloadHeader struct {
+	// PC address to jump to once loading has finished
+	startAddress uint16
+
+	// RAM config to be set adter tape load
+	configByte uint8
+
+	// number of pages to load
+	numPages uint8
+
+	// not using checksum in any meaningful way
+	checksum uint8
+
+	// we'll use this to check if the correct multiload is being read
+	multiload uint8
+
+	// not using progress speed in any meaningul way
+	progressSpeed uint16
+
+	// data is loaded according to page table
+	pageTable []byte
 }
 
 // FastLoaded defines the callback function that is sent to the core emulation
@@ -99,126 +125,111 @@ func (tap *FastLoad) load() (uint8, error) {
 
 	// game header appears after main data
 	gameHeader := data[0x2000:0x2008]
+	tap.fastloadHeader.startAddress = (uint16(gameHeader[1]) << 8) | uint16(gameHeader[0])
+	tap.fastloadHeader.configByte = gameHeader[2]
+	tap.fastloadHeader.numPages = uint8(gameHeader[3])
+	tap.fastloadHeader.checksum = gameHeader[4]
+	tap.fastloadHeader.multiload = gameHeader[5]
+	tap.fastloadHeader.progressSpeed = (uint16(gameHeader[7]) << 8) | uint16(gameHeader[6])
+	tap.fastloadHeader.pageTable = data[0x2010:0x2028]
 
-	// PC address to jump to once loading has finished
-	startAddress := (uint16(gameHeader[1]) << 8) | uint16(gameHeader[0])
+	logger.Logf("supercharger: fastload", "header: start address: %#04x", tap.fastloadHeader.startAddress)
+	logger.Logf("supercharger: fastload", "header: config byte: %#08b", tap.fastloadHeader.configByte)
+	logger.Logf("supercharger: fastload", "header: num pages: %d", tap.fastloadHeader.numPages)
+	logger.Logf("supercharger: fastload", "header: checksum: %#02x", tap.fastloadHeader.checksum)
+	logger.Logf("supercharger: fastload", "header: multiload: %#02x", tap.fastloadHeader.multiload)
+	logger.Logf("supercharger: fastload", "header: progress speed: %#02x", tap.fastloadHeader.progressSpeed)
+	logger.Logf("supercharger: fastload", "page-table: %v", tap.fastloadHeader.pageTable)
 
-	// RAM config to be set adter tape load
-	configByte := gameHeader[2]
-
-	// number of pages to load
-	numPages := int(gameHeader[3])
-
-	// not using checksum in any meaningful way
-	checksum := gameHeader[4]
-
-	// we'll use this to check if the correct multiload is being read
-	multiload := gameHeader[5]
-
-	// not using progress speed in any meaningul way
-	progressSpeed := (uint16(gameHeader[7]) << 8) | uint16(gameHeader[6])
-
-	logger.Logf("supercharger: fastload", "header: start address: %#04x", startAddress)
-	logger.Logf("supercharger: fastload", "header: config byte: %#08b", configByte)
-	logger.Logf("supercharger: fastload", "header: num pages: %d", numPages)
-	logger.Logf("supercharger: fastload", "header: checksum: %#02x", checksum)
-	logger.Logf("supercharger: fastload", "header: multiload: %#02x", multiload)
-	logger.Logf("supercharger: fastload", "header: progress speed: %#02x", progressSpeed)
-
-	// data is loaded according to page table
-	pageTable := data[0x2010:0x2028]
-	logger.Logf("supercharger: fastload", "page-table: %v", pageTable)
-
-	// setup cartridge according to tape instructions. this requires
-	// cooperation from the core emulation so we use the cartridgeloader.NotificationHook mechanism.
-	tap.cart.notificationHook(tap.cart, notifications.NotifySuperchargerFastloadEnded, FastLoaded(func(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
-		// look up requested multiload address
-		m, err := ram.Peek(MutliloadByteAddress)
-		if err != nil {
-			return fmt.Errorf("fastload %w", err)
-		}
-
-		// this is not the mutliload we're looking for
-		if m != multiload {
-			logger.Logf("supercharger: fastload", "fastload header (%d) not matching multiload request (%d)", m, multiload)
-
-			// test for whether the tape has looped. if it has just load the
-			// first multiload
-			if tap.loadCt == tap.lastLoadCt {
-				logger.Logf("supercharger: fastload", "cannot find requested multiload (%d) loading mutliload 00", m)
-				tap.loadCt = 0
-				offset := tap.loadCt * fastLoadBlockSize
-				data = tap.data[offset : offset+fastLoadBlockSize]
-				tap.loadCt++
-			} else {
-				return nil
-			}
-		}
-
-		logger.Logf("supercharger: fastload", "loading multiload (%d)", multiload)
-
-		// copy data to RAM banks
-		for i := 0; i < numPages; i++ {
-			bank := pageTable[i] & 0x3
-			page := pageTable[i] >> 2
-			bankOffset := int(page) * 0x100
-			binOffset := i * 0x100
-
-			data := data[binOffset : binOffset+0x100]
-			copy(tap.cart.state.ram[bank][bankOffset:bankOffset+0x100], data)
-
-			// logger.Logf("supercharger: fastload", "copying %#04x:%#04x to bank %d page %d, offset %#04x", binOffset, binOffset+0x100, bank, page, bankOffset)
-		}
-
-		// initialise VCS RAM with zeros
-		for a := uint16(0x80); a <= 0xff; a++ {
-			_ = ram.Poke(a, 0x00)
-		}
-
-		// poke values into RAM. these values would be the by-product of the
-		// tape-loading process. because we are short-circuiting that process
-		// however, by injecting the binary data into supercharger RAM
-		// directly, the necessary code will not be run.
-
-		// RAM address 0x80 contains the initial configbyte
-		_ = ram.Poke(0x80, configByte)
-
-		// CMP $fff8
-		_ = ram.Poke(0xfa, 0xcd)
-		_ = ram.Poke(0xfb, 0xf8)
-		_ = ram.Poke(0xfc, 0xff)
-
-		// JMP <absolute address>
-		_ = ram.Poke(0xfd, 0x4c)
-		_ = ram.Poke(0xfe, uint8(startAddress))
-		_ = ram.Poke(0xff, uint8(startAddress>>8))
-
-		// reset timer. in references to real tape loading, the number of ticks
-		// is the value at the moment the PC reaches address 0x00fa
-		tmr.PokeField("divider", timer.TIM64T)
-		tmr.PokeField("ticksRemaining", 0x1e)
-		tmr.PokeField("intim", uint8(0x0a))
-
-		// jump to VCS RAM location 0x00fa. a short bootstrap program has been
-		// poked there already
-		err = mc.LoadPC(0x00fa)
-		if err != nil {
-			return fmt.Errorf("fastload: %w", err)
-		}
-
-		// set the value to be used in the first instruction of the bootstrap program
-		tap.cart.state.registers.Value = configByte
-		tap.cart.state.registers.Delay = 0
-
-		// note the multiload request
-		tap.lastLoadCt = tap.loadCt
-
-		return nil
-	}))
+	// setup cartridge according to tape instructions
+	tap.cart.env.Notifications.Notify(notifications.NotifySuperchargerFastloadEnded)
 
 	return 0, nil
 }
 
 // step implements the Tape interface.
 func (tap *FastLoad) step() {
+}
+
+// CommitFastLoad implements the mapper.CartSuperChargerFastLoad interface.
+func (tap *FastLoad) CommitFastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
+	// look up requested multiload address
+	m, err := ram.Peek(MutliloadByteAddress)
+	if err != nil {
+		return fmt.Errorf("fastload %w", err)
+	}
+
+	data := tap.data
+
+	// this is not the mutliload we're looking for
+	if m != uint8(tap.loadCt) {
+		logger.Logf("supercharger: fastload", "fastload header (%d) not matching multiload request (%d)", m, tap.fastloadHeader.multiload)
+
+		// test for whether the tape has looped. if it has just load the first multiload
+		if tap.loadCt == tap.lastLoadCt {
+			logger.Logf("supercharger: fastload", "cannot find requested multiload (%d) loading mutliload 00", m)
+			tap.loadCt = 0
+			offset := tap.loadCt * fastLoadBlockSize
+			data = data[offset : offset+fastLoadBlockSize]
+			tap.loadCt++
+		}
+	}
+
+	logger.Logf("supercharger: fastload", "loading multiload (%d)", tap.fastloadHeader.multiload)
+
+	// copy data to RAM banks
+	for i := 0; i < int(tap.fastloadHeader.numPages); i++ {
+		bank := tap.fastloadHeader.pageTable[i] & 0x3
+		page := tap.fastloadHeader.pageTable[i] >> 2
+		bankOffset := int(page) * 0x100
+		binOffset := i * 0x100
+		copy(tap.cart.state.ram[bank][bankOffset:bankOffset+0x100], data[binOffset:binOffset+0x100])
+
+		// logger.Logf("supercharger: fastload", "copying %#04x:%#04x to bank %d page %d, offset %#04x", binOffset, binOffset+0x100, bank, page, bankOffset)
+	}
+
+	// initialise VCS RAM with zeros
+	for a := uint16(0x80); a <= 0xff; a++ {
+		_ = ram.Poke(a, 0x00)
+	}
+
+	// poke values into RAM. these values would be the by-product of the
+	// tape-loading process. because we are short-circuiting that process
+	// however, by injecting the binary data into supercharger RAM
+	// directly, the necessary code will not be run.
+
+	// RAM address 0x80 contains the initial configbyte
+	_ = ram.Poke(0x80, tap.fastloadHeader.configByte)
+
+	// CMP $fff8
+	_ = ram.Poke(0xfa, 0xcd)
+	_ = ram.Poke(0xfb, 0xf8)
+	_ = ram.Poke(0xfc, 0xff)
+
+	// JMP <absolute address>
+	_ = ram.Poke(0xfd, 0x4c)
+	_ = ram.Poke(0xfe, uint8(tap.fastloadHeader.startAddress))
+	_ = ram.Poke(0xff, uint8(tap.fastloadHeader.startAddress>>8))
+
+	// reset timer. in references to real tape loading, the number of ticks
+	// is the value at the moment the PC reaches address 0x00fa
+	tmr.PokeField("divider", timer.TIM64T)
+	tmr.PokeField("ticksRemaining", 0x1e)
+	tmr.PokeField("intim", uint8(0x0a))
+
+	// jump to VCS RAM location 0x00fa. a short bootstrap program has been
+	// poked there already
+	err = mc.LoadPC(0x00fa)
+	if err != nil {
+		return fmt.Errorf("fastload: %w", err)
+	}
+
+	// set the value to be used in the first instruction of the bootstrap program
+	tap.cart.state.registers.Value = tap.fastloadHeader.configByte
+	tap.cart.state.registers.Delay = 0
+
+	// note the multiload request
+	tap.lastLoadCt = tap.loadCt
+
+	return nil
 }

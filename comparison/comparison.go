@@ -26,8 +26,6 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -81,7 +79,7 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 	tv.SetFPSCap(true)
 
 	// create a new VCS emulation
-	cmp.VCS, err = hardware.NewVCS(tv, driverVCS.Env.Prefs)
+	cmp.VCS, err = hardware.NewVCS(tv, cmp, driverVCS.Env.Prefs)
 	if err != nil {
 		return nil, fmt.Errorf("comparison: %w", err)
 	}
@@ -140,40 +138,39 @@ func (cmp *Comparison) Quit() {
 	cmp.emulationQuit <- true
 }
 
+// Notify implements the notifications.Notify interface
+func (cmp *Comparison) Notify(notice notifications.Notice) error {
+	switch notice {
+	case notifications.NotifySuperchargerFastloadEnded:
+		// the supercharger ROM will eventually start execution from the PC
+		// address given in the supercharger file
+
+		// CPU execution has been interrupted. update state of CPU
+		cmp.VCS.CPU.Interrupted = true
+
+		// the interrupted CPU means it never got a chance to
+		// finalise the result. we force that here by simply
+		// setting the Final flag to true.
+		cmp.VCS.CPU.LastResult.Final = true
+
+		// call function to complete tape loading procedure
+		fastload := cmp.VCS.Mem.Cart.GetSuperchargerFastLoad()
+		err := fastload.CommitFastload(cmp.VCS.CPU, cmp.VCS.Mem.RAM, cmp.VCS.RIOT.Timer)
+		if err != nil {
+			return err
+		}
+	case notifications.NotifySuperchargerSoundloadEnded:
+		return cmp.VCS.TV.Reset(true)
+	}
+
+	return nil
+}
+
 // CreateFromLoader will cause images to be generated from a running emulation
 // initialised with the specified cartridge loader.
 func (cmp *Comparison) CreateFromLoader(cartload cartridgeloader.Loader) error {
 	if cmp.IsEmulating() {
 		return fmt.Errorf("comparison: emulation already running")
-	}
-
-	// loading hook support required for supercharger
-	cartload.NotificationHook = func(cart mapper.CartMapper, event notifications.Notify, args ...interface{}) error {
-		if _, ok := cart.(*supercharger.Supercharger); ok {
-			switch event {
-			case notifications.NotifySuperchargerFastloadEnded:
-				// the supercharger ROM will eventually start execution from the PC
-				// address given in the supercharger file
-
-				// CPU execution has been interrupted. update state of CPU
-				cmp.VCS.CPU.Interrupted = true
-
-				// the interrupted CPU means it never got a chance to
-				// finalise the result. we force that here by simply
-				// setting the Final flag to true.
-				cmp.VCS.CPU.LastResult.Final = true
-
-				// call function to complete tape loading procedure
-				callback := args[0].(supercharger.FastLoaded)
-				err := callback(cmp.VCS.CPU, cmp.VCS.Mem.RAM, cmp.VCS.RIOT.Timer)
-				if err != nil {
-					return err
-				}
-			case notifications.NotifySuperchargerSoundloadEnded:
-				return cmp.VCS.TV.Reset(true)
-			}
-		}
-		return nil
 	}
 
 	go func() {

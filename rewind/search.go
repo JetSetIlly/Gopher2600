@@ -51,7 +51,7 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 	}
 	_ = searchTV.SetFPSCap(false)
 
-	searchVCS, err := hardware.NewVCS(searchTV, nil)
+	searchVCS, err := hardware.NewVCS(searchTV, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("rewind: search: %w", err)
 	}
@@ -115,7 +115,7 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg rune, value uint8, valueMas
 	}
 	_ = searchTV.SetFPSCap(false)
 
-	searchVCS, err := hardware.NewVCS(searchTV, nil)
+	searchVCS, err := hardware.NewVCS(searchTV, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("rewind: search: %w", err)
 	}

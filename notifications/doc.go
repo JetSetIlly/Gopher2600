@@ -13,34 +13,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package notifications defines the Notify type and the possible values of
-// that type. These values represent the different notifications that be sent
-// to the GUI.
+// Package notifications allow communication from a cartridge directly to the
+// emulation instance. This is useful, for example, by the Supercharger
+// emulation to indicate the start/stop of the Supercharger tape.
 //
-//	hardware  ---->  emulation  ---->  GUI
-//	(eg. cartridge)  (eg. debugger)
-//
-// Notifications flow in one direction only and can be generated and terminate
-// at any of the points in the chart above.
-//
-// For example, a pause PlusROM network activitiy notification will be
-// generated in the hardware, passed to the "emulation" package and forwarded
-// to the GUI.
-//
-// Another example, is the rewind notification. This will be generated in the
-// "emulation" package and sent to the GUI.
-//
-// Finally, a mute notification will be generated and consumed entirely inside
-// the GUI.
-//
-// In some instances, the emulation may choose not to forward the notification
-// to the GUI or to transform it into some other notification but these
-// instances should be rare.
-//
-// Loosely related to the Notify type is the gui.FeatureRequest. The GUI
-// FeatureRequest system is the mechanism by which notifications are forwarded
-// to the GUI.
-//
-// Communication between hardware and the emulation is meanwhile is handled by
-// the NotificationHook mechanism defined in this package.
+// Notifications are sometimes passed onto the GUI to inidicate to the user the
+// event that has happened (eg. tape stopped, etc.) For some notifications
+// however, it is appropriate for the emulation instance to deal with the
+// notification invisibly.
 package notifications

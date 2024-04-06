@@ -75,7 +75,7 @@ func NewImage(prefs *preferences.Preferences) (*Image, error) {
 	tv.SetFPSCap(false)
 
 	// create a new VCS emulation
-	thmb.vcs, err = hardware.NewVCS(tv, prefs)
+	thmb.vcs, err = hardware.NewVCS(tv, nil, prefs)
 	if err != nil {
 		return nil, fmt.Errorf("thumbnailer: %w", err)
 	}

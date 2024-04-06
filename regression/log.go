@@ -137,7 +137,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	tv.SetFPSCap(false)
 
 	// create VCS and attach cartridge
-	vcs, err := hardware.NewVCS(tv, nil)
+	vcs, err := hardware.NewVCS(tv, nil, nil)
 	if err != nil {
 		return false, "", fmt.Errorf("log: %w", err)
 	}

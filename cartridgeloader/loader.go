@@ -29,10 +29,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/resources/fs"
 )
 
@@ -95,14 +93,6 @@ type Loader struct {
 	// then the stream is not open. although use the IsStreamed() function for
 	// this information.
 	stream **os.File
-
-	// callback function from the cartridge to the VCS. used for example. when
-	// cartridge has been successfully inserted. not all cartridge formats
-	// support/require this
-	//
-	// if the cartridge mapper needs to communicate more information then the
-	// action string should be used
-	NotificationHook notifications.NotificationHook
 }
 
 // sentinal error for when it is attempted to create a loader with no filename
@@ -145,53 +135,50 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 		mapping = "AUTO"
 	}
 
-	cl := Loader{
+	ld := Loader{
 		Filename:         filename,
 		Mapping:          mapping,
 		RequestedMapping: mapping,
-		NotificationHook: func(cart mapper.CartMapper, notice notifications.Notify, args ...interface{}) error {
-			return nil
-		},
 	}
 
 	// create an empty slice for the Data field to refer to
 	data := make([]byte, 0)
-	cl.Data = &data
+	ld.Data = &data
 
 	// decide what mapping to use if the requested mapping is AUTO
 	if mapping == "AUTO" {
 		extension := strings.ToUpper(filepath.Ext(filename))
 		if slices.Contains(autoFileExtensions, extension) {
-			cl.Mapping = "AUTO"
+			ld.Mapping = "AUTO"
 		} else if slices.Contains(explicitFileExtensions, extension) {
-			cl.Mapping = extension[1:]
+			ld.Mapping = extension[1:]
 		} else if slices.Contains(audioFileExtensions, extension) {
-			cl.Mapping = "AR"
-			cl.IsSoundData = true
+			ld.Mapping = "AR"
+			ld.IsSoundData = true
 		}
 	}
 
 	// if mapping value is still AUTO, make a special check for moviecart data.
 	// we want to do this now so we can initialise the stream
-	if cl.Mapping == "AUTO" {
+	if ld.Mapping == "AUTO" {
 		ok, err := fingerprintMovieCart(filename)
 		if err != nil {
 			return Loader{}, fmt.Errorf("catridgeloader: %w", err)
 		}
 		if ok {
-			cl.Mapping = "MVC"
+			ld.Mapping = "MVC"
 		}
 	}
 
 	// create stream pointer only for streaming sources. these file formats are
 	// likely to be very large by comparison to regular cartridge files.
-	if cl.Mapping == "MVC" || (cl.Mapping == "AR" && cl.IsSoundData) {
-		cl.stream = new(*os.File)
+	if ld.Mapping == "MVC" || (ld.Mapping == "AR" && ld.IsSoundData) {
+		ld.stream = new(*os.File)
 	}
 
-	cl.Spec = specification.SearchSpec(filename)
+	ld.Spec = specification.SearchSpec(filename)
 
-	return cl, nil
+	return ld, nil
 }
 
 // special handling for MVC files without the MVC file extension
@@ -240,91 +227,88 @@ func NewLoaderFromEmbed(name string, data []byte, mapping string) (Loader, error
 		embedded:         true,
 		Hash:             fmt.Sprintf("%x", sha1.Sum(data)),
 		HashMD5:          fmt.Sprintf("%x", md5.Sum(data)),
-		NotificationHook: func(cart mapper.CartMapper, notice notifications.Notify, args ...interface{}) error {
-			return nil
-		},
 	}, nil
 }
 
 // Close should be called before disposing of a Loader instance.
-func (cl Loader) Close() error {
-	if cl.stream == nil || *cl.stream == nil {
+func (ld Loader) Close() error {
+	if ld.stream == nil || *ld.stream == nil {
 		return nil
 	}
 
-	err := (**cl.stream).Close()
-	*cl.stream = nil
+	err := (**ld.stream).Close()
+	*ld.stream = nil
 	if err != nil {
 		return fmt.Errorf("cartridgeloader: %w", err)
 	}
-	logger.Logf("cartridgeloader", "stream closed (%s)", cl.Filename)
+	logger.Logf("cartridgeloader", "stream closed (%s)", ld.Filename)
 
 	return nil
 }
 
 // ShortName returns a shortened version of the CartridgeLoader filename field.
 // In the case of embedded data, the filename field will be returned unaltered.
-func (cl Loader) ShortName() string {
-	if cl.embedded {
-		return cl.Filename
+func (ld Loader) ShortName() string {
+	if ld.embedded {
+		return ld.Filename
 	}
 
 	// return the empty string if filename is undefined
-	if len(strings.TrimSpace(cl.Filename)) == 0 {
+	if len(strings.TrimSpace(ld.Filename)) == 0 {
 		return ""
 	}
 
-	sn := filepath.Base(cl.Filename)
-	sn = strings.TrimSuffix(sn, filepath.Ext(cl.Filename))
+	sn := filepath.Base(ld.Filename)
+	sn = strings.TrimSuffix(sn, filepath.Ext(ld.Filename))
 	return sn
 }
 
 // IsStreaming returns two booleans. The first will be true if Loader was
 // created for what appears to be a streaming source, and the second will be
 // true if the stream has been open.
-func (cl Loader) IsStreaming() (bool, bool) {
-	return cl.stream != nil, cl.stream != nil && *cl.stream != nil
+func (ld Loader) IsStreaming() (bool, bool) {
+	return ld.stream != nil, ld.stream != nil && *ld.stream != nil
 }
 
 // IsEmbedded returns true if Loader was created from embedded data. If data
 // has a length of zero then this function will return false.
-func (cl Loader) IsEmbedded() bool {
-	return cl.embedded && len(*cl.Data) > 0
+func (ld Loader) IsEmbedded() bool {
+	return ld.embedded && len(*ld.Data) > 0
 }
 
 // Load the cartridge data and return as a byte array. Loader filenames with a
 // valid schema will use that method to load the data. Currently supported
 // schemes are HTTP and local files.
-func (cl *Loader) Load() error {
+func (ld *Loader) Load() error {
 	// data is already "loaded" when using embedded data
-	if cl.embedded {
+	if ld.embedded {
 		return nil
 	}
 
-	if cl.stream != nil {
-		err := cl.Close()
+	if ld.stream != nil {
+		err := ld.Close()
 		if err != nil {
 			return fmt.Errorf("cartridgeloader: %w", err)
 		}
 
-		cl.StreamedData, err = os.Open(cl.Filename)
+		ld.StreamedData, err = os.Open(ld.Filename)
 		if err != nil {
 			return fmt.Errorf("cartridgeloader: %w", err)
 		}
-		logger.Logf("cartridgeloader", "stream open (%s)", cl.Filename)
+		logger.Logf("cartridgeloader", "stream open (%s)", ld.Filename)
 
-		*cl.stream = cl.StreamedData
+		*ld.stream = ld.StreamedData
 
 		return nil
 	}
 
-	if cl.Data != nil && len(*cl.Data) > 0 {
+	if ld.Data != nil && len(*ld.Data) > 0 {
 		return nil
 	}
 
 	scheme := "file"
 
-	url, err := url.Parse(cl.Filename)
+	url, err := url.Parse(ld.Filename)
 	if err == nil {
 		scheme = url.Scheme
 	}
@@ -333,13 +317,13 @@ func (cl *Loader) Load() error {
 	case "http":
 		fallthrough
 	case "https":
-		resp, err := http.Get(cl.Filename)
+		resp, err := http.Get(ld.Filename)
 		if err != nil {
 			return fmt.Errorf("cartridgeloader: %w", err)
 		}
 		defer resp.Body.Close()
 
-		*cl.Data, err = io.ReadAll(resp.Body)
+		*ld.Data, err = io.ReadAll(resp.Body)
 		if err != nil {
 			return fmt.Errorf("cartridgeloader: %w", err)
 		}
@@ -351,31 +335,31 @@ func (cl *Loader) Load() error {
 		fallthrough
 
 	default:
-		f, err := os.Open(cl.Filename)
+		f, err := os.Open(ld.Filename)
 		if err != nil {
 			return fmt.Errorf("cartridgeloader: %w", err)
 		}
 		defer f.Close()
 
-		*cl.Data, err = io.ReadAll(f)
+		*ld.Data, err = io.ReadAll(f)
 		if err != nil {
 			return fmt.Errorf("cartridgeloader: %w", err)
 		}
 	}
 
 	// generate hash and check for consistency
-	hash := fmt.Sprintf("%x", sha1.Sum(*cl.Data))
-	if cl.Hash != "" && cl.Hash != hash {
+	hash := fmt.Sprintf("%x", sha1.Sum(*ld.Data))
+	if ld.Hash != "" && ld.Hash != hash {
 		return fmt.Errorf("cartridgeloader: unexpected hash value")
 	}
-	cl.Hash = hash
+	ld.Hash = hash
 
 	// generate md5 hash and check for consistency
-	hashmd5 := fmt.Sprintf("%x", md5.Sum(*cl.Data))
-	if cl.HashMD5 != "" && cl.HashMD5 != hashmd5 {
+	hashmd5 := fmt.Sprintf("%x", md5.Sum(*ld.Data))
+	if ld.HashMD5 != "" && ld.HashMD5 != hashmd5 {
 		return fmt.Errorf("cartridgeloader: unexpected hash value")
 	}
-	cl.HashMD5 = hashmd5
+	ld.HashMD5 = hashmd5
 
 	return nil
 }

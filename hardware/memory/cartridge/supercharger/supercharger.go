@@ -21,8 +21,11 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
+	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
+	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 	"github.com/jetsetilly/gopher2600/notifications"
 )
 
@@ -52,8 +55,6 @@ type Supercharger struct {
 	bankSize int
 	bios     []uint8
 
-	notificationHook notifications.NotificationHook
-
 	// rewindable state
 	state *state
 }
@@ -62,11 +63,10 @@ type Supercharger struct {
 // Supercharger type.
 func NewSupercharger(env *environment.Environment, cartload cartridgeloader.Loader) (mapper.CartMapper, error) {
 	cart := &Supercharger{
-		env:              env,
-		mappingID:        "AR",
-		bankSize:         2048,
-		state:            newState(),
-		notificationHook: cartload.NotificationHook,
+		env:       env,
+		mappingID: "AR",
+		bankSize:  2048,
+		state:     newState(),
 	}
 
 	var err error
@@ -148,7 +148,7 @@ func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
 		// sustained until the BIOS is "touched" as described below
 		if !cart.state.isLoading {
 			cart.state.isLoading = true
-			cart.notificationHook(cart, notifications.NotifySuperchargerLoadStarted)
+			cart.env.Notifications.Notify(notifications.NotifySuperchargerLoadStarted)
 		}
 
 		// call load() whenever address is touched, although do not allow
@@ -188,15 +188,15 @@ func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
 
 	if bios {
 		if cart.state.registers.ROMpower {
-			// trigger notificationHook() function whenever BIOS address $fa1a
-			// (specifically) is touched. note that this method means that the
-			// notificationHook() function will be called whatever the context the
-			// address is read and not just when the PC is at the address.
+			// send notification whenever BIOS address $fa1a (specifically) is
+			// touched. note that this method means that the notification will
+			// be sent whatever the context the address is read and not just
+			// when the PC is at the address.
 			if addr == 0x0a1a {
 				// end tape is loading state
 				cart.state.isLoading = false
 
-				err := cart.notificationHook(cart, notifications.NotifySuperchargerSoundloadEnded)
+				err := cart.env.Notifications.Notify(notifications.NotifySuperchargerSoundloadEnded)
 				if err != nil {
 					return 0, 0, fmt.Errorf("supercharger: %w", err)
 				}
@@ -417,6 +417,14 @@ func (cart *Supercharger) SetTapeCounter(c int) {
 	if tape, ok := cart.state.tape.(mapper.CartTapeBus); ok {
 		tape.SetTapeCounter(c)
 	}
+}
+
+// CommitFastLoad implements the mapper.CartSuperChargerFastLoad interface.
+func (cart *Supercharger) CommitFastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
+	if f, ok := cart.state.tape.(mapper.CartSuperChargerFastLoad); ok {
+		return f.CommitFastload(mc, ram, tmr)
+	}
+	return nil
 }
 
 // GetTapeState implements the mapper.CartTapeBus interface

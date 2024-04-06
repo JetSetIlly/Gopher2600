@@ -20,8 +20,7 @@
 // The package supports both loading from a sound file (supporting most WAV and
 // MP3 files) or from a "fastload" file.
 //
-// Tape loading "events" are handled through the cartridgeloader packages
-// NotificationHook mechanism. See the notification.Notify type.
+// Tape loading "events" are handled through the notifications.Notify interface.
 //
 // When loading from a sound file, Supercharger events can be ignored if so
 // desired but for fastload files, the emulator needs to help the Supercharger

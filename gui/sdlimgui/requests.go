@@ -86,14 +86,14 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		if img.isPlaymode() {
 			err = argLen(request.args, 1)
 			if err == nil {
-				img.playScr.emulationNotice.set(request.args[0].(notifications.Notify))
+				img.playScr.emulationNotice.set(request.args[0].(notifications.Notice))
 			}
 		}
 
 	case gui.ReqCartridgeNotify:
 		err = argLen(request.args, 1)
 		if err == nil {
-			notice := request.args[0].(notifications.Notify)
+			notice := request.args[0].(notifications.Notice)
 
 			switch notice {
 			case notifications.NotifyPlusROMNewInstallation:

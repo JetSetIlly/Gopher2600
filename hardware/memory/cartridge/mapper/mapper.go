@@ -15,7 +15,12 @@
 
 package mapper
 
-import "github.com/jetsetilly/gopher2600/environment"
+import (
+	"github.com/jetsetilly/gopher2600/environment"
+	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
+	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
+)
 
 // CartContainer is a special CartMapper type that wraps another CartMapper.
 // For example, the PlusROM type.
@@ -264,6 +269,12 @@ type CartTapeState struct {
 	Time       float64
 	MaxTime    float64
 	Data       []float32
+}
+
+// CartSuperChargerFastLoad defines the commit function required when loading
+// Supercharger 'Fastload' binaries
+type CartSuperChargerFastLoad interface {
+	CommitFastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error
 }
 
 // CartLabelsBus will be implemented for cartridge mappers that want to report any

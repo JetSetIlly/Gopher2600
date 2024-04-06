@@ -49,7 +49,7 @@ func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, s
 	tv.SetFPSCap(!uncapped)
 
 	// create vcs
-	vcs, err := hardware.NewVCS(tv, nil)
+	vcs, err := hardware.NewVCS(tv, nil, nil)
 	if err != nil {
 		return fmt.Errorf("performance: %w", err)
 	}

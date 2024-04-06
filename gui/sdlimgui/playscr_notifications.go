@@ -115,11 +115,11 @@ type emulationEventNotification struct {
 	open   bool
 	frames int
 
-	event notifications.Notify
+	event notifications.Notice
 	mute  bool
 }
 
-func (ntfy *emulationEventNotification) set(event notifications.Notify) {
+func (ntfy *emulationEventNotification) set(event notifications.Notice) {
 	switch event {
 	default:
 		ntfy.event = event
@@ -214,11 +214,11 @@ type cartridgeEventNotification struct {
 	open   bool
 	frames int
 
-	event     notifications.Notify
+	event     notifications.Notice
 	coprocDev bool
 }
 
-func (ntfy *cartridgeEventNotification) set(event notifications.Notify) {
+func (ntfy *cartridgeEventNotification) set(event notifications.Notice) {
 	switch event {
 	case notifications.NotifySuperchargerSoundloadStarted:
 		ntfy.event = event

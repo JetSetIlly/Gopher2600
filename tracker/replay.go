@@ -38,7 +38,7 @@ func (tr *Tracker) createReplayEmulation(mixer television.AudioMixer) error {
 	}
 	tv.AddAudioMixer(mixer)
 
-	tr.replayEmulation, err = hardware.NewVCS(tv, nil)
+	tr.replayEmulation, err = hardware.NewVCS(tv, nil, nil)
 	if err != nil {
 		return fmt.Errorf("tracker: create replay emulation: %w", err)
 	}

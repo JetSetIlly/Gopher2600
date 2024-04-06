@@ -44,8 +44,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/moviecart"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -358,7 +356,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	}
 
 	// create a new VCS instance
-	dbg.vcs, err = hardware.NewVCS(tv, nil)
+	dbg.vcs, err = hardware.NewVCS(tv, dbg, nil)
 	if err != nil {
 		return nil, fmt.Errorf("debugger: %w", err)
 	}
@@ -1054,6 +1052,93 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 	return nil
 }
 
+// Notify implements the notifications.Notify interface
+func (dbg *Debugger) Notify(notice notifications.Notice) error {
+	switch notice {
+	case notifications.NotifySuperchargerLoadStarted:
+		if dbg.opts.Multiload >= 0 {
+			logger.Logf("debugger", "forcing supercharger multiload (%#02x)", uint8(dbg.opts.Multiload))
+			dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(dbg.opts.Multiload))
+		}
+
+	case notifications.NotifySuperchargerFastloadEnded:
+		// the supercharger ROM will eventually start execution from the PC
+		// address given in the supercharger file
+
+		// CPU execution has been interrupted. update state of CPU
+		dbg.vcs.CPU.Interrupted = true
+
+		// the interrupted CPU means it never got a chance to
+		// finalise the result. we force that here by simply
+		// setting the Final flag to true.
+		dbg.vcs.CPU.LastResult.Final = true
+
+		// we've already obtained the disassembled lastResult so we
+		// need to change the final flag there too
+		dbg.liveDisasmEntry.Result.Final = true
+
+		// call commit function to complete tape loading procedure
+		fastload := dbg.vcs.Mem.Cart.GetSuperchargerFastLoad()
+		if fastload == nil {
+			return fmt.Errorf("NotifySuperchargerFastloadEnded sent from a non Supercharger fastload cartridge")
+		}
+		err := fastload.CommitFastload(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer)
+		if err != nil {
+			return err
+		}
+
+		// (re)disassemble memory on TapeLoaded error signal
+		err = dbg.Disasm.FromMemory()
+		if err != nil {
+			return err
+		}
+	case notifications.NotifySuperchargerSoundloadStarted:
+		err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifySuperchargerSoundloadStarted)
+		if err != nil {
+			return err
+		}
+	case notifications.NotifySuperchargerSoundloadEnded:
+		err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifySuperchargerSoundloadEnded)
+		if err != nil {
+			return err
+		}
+
+		// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
+		// during loading. not completely necessary I don't think, but it would be
+		// nice to have.
+		err = dbg.Disasm.FromMemory()
+		if err != nil {
+			return err
+		}
+
+		return dbg.vcs.TV.Reset(true)
+	case notifications.NotifySuperchargerSoundloadRewind:
+		err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifySuperchargerSoundloadRewind)
+		if err != nil {
+			return err
+		}
+	case notifications.NotifyPlusROMInserted:
+		if dbg.vcs.Env.Prefs.PlusROM.NewInstallation {
+			err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifyPlusROMNewInstallation)
+			if err != nil {
+				return fmt.Errorf(err.Error())
+			}
+		}
+	case notifications.NotifyPlusROMNetwork:
+		err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifyPlusROMNetwork)
+		if err != nil {
+			return err
+		}
+
+	case notifications.NotifyMovieCartStarted:
+		return dbg.vcs.TV.Reset(true)
+	default:
+		logger.Logf("debugger", "unhandled notification for plusrom (%v)", notice)
+	}
+
+	return nil
+}
+
 // attachCartridge makes sure that the cartridge loaded into vcs memory and the
 // available disassembly/symbols are in sync.
 //
@@ -1100,100 +1185,6 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 		}
 	}
 	dbg.loader = &cartload
-
-	// set NotificationHook for specific cartridge formats
-	cartload.NotificationHook = func(cart mapper.CartMapper, event notifications.Notify, args ...interface{}) error {
-		if _, ok := cart.(*supercharger.Supercharger); ok {
-			switch event {
-			case notifications.NotifySuperchargerLoadStarted:
-				if dbg.opts.Multiload >= 0 {
-					logger.Logf("debugger", "forcing supercharger multiload (%#02x)", uint8(dbg.opts.Multiload))
-					dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(dbg.opts.Multiload))
-				}
-
-			case notifications.NotifySuperchargerFastloadEnded:
-				// the supercharger ROM will eventually start execution from the PC
-				// address given in the supercharger file
-
-				// CPU execution has been interrupted. update state of CPU
-				dbg.vcs.CPU.Interrupted = true
-
-				// the interrupted CPU means it never got a chance to
-				// finalise the result. we force that here by simply
-				// setting the Final flag to true.
-				dbg.vcs.CPU.LastResult.Final = true
-
-				// we've already obtained the disassembled lastResult so we
-				// need to change the final flag there too
-				dbg.liveDisasmEntry.Result.Final = true
-
-				// call function to complete tape loading procedure
-				callback := args[0].(supercharger.FastLoaded)
-				err := callback(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer)
-				if err != nil {
-					return err
-				}
-
-				// (re)disassemble memory on TapeLoaded error signal
-				err = dbg.Disasm.FromMemory()
-				if err != nil {
-					return err
-				}
-			case notifications.NotifySuperchargerSoundloadStarted:
-				err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifySuperchargerSoundloadStarted)
-				if err != nil {
-					return err
-				}
-			case notifications.NotifySuperchargerSoundloadEnded:
-				err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifySuperchargerSoundloadEnded)
-				if err != nil {
-					return err
-				}
-
-				// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
-				// during loading. not completely necessary I don't think, but it would be
-				// nice to have.
-				err = dbg.Disasm.FromMemory()
-				if err != nil {
-					return err
-				}
-
-				return dbg.vcs.TV.Reset(true)
-			case notifications.NotifySuperchargerSoundloadRewind:
-				err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifySuperchargerSoundloadRewind)
-				if err != nil {
-					return err
-				}
-			default:
-				logger.Logf("debugger", "unhandled hook event for supercharger (%v)", event)
-			}
-		} else if _, ok := cart.(*plusrom.PlusROM); ok {
-			switch event {
-			case notifications.NotifyPlusROMInserted:
-				if dbg.vcs.Env.Prefs.PlusROM.NewInstallation {
-					err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifyPlusROMNewInstallation)
-					if err != nil {
-						return fmt.Errorf(err.Error())
-					}
-				}
-			case notifications.NotifyPlusROMNetwork:
-				err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifyPlusROMNetwork)
-				if err != nil {
-					return err
-				}
-			default:
-				logger.Logf("debugger", "unhandled hook event for plusrom (%v)", event)
-			}
-		} else if _, ok := cart.(*moviecart.Moviecart); ok {
-			switch event {
-			case notifications.NotifyMovieCartStarted:
-				return dbg.vcs.TV.Reset(true)
-			default:
-				logger.Logf("debugger", "unhandled hook event for moviecart (%v)", event)
-			}
-		}
-		return nil
-	}
 
 	// reset of vcs is implied with attach cartridge
 	err := setup.AttachCartridge(dbg.vcs, cartload, false)

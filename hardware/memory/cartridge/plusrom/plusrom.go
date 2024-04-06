@@ -35,8 +35,6 @@ var CannotAdoptROM = errors.New("cannot adopt ROM")
 type PlusROM struct {
 	env *environment.Environment
 
-	notificationHook notifications.NotificationHook
-
 	net   *network
 	state *state
 
@@ -61,9 +59,8 @@ func (s *state) Plumb(env *environment.Environment) {
 	s.child.Plumb(env)
 }
 
-func NewPlusROM(env *environment.Environment, child mapper.CartMapper, notificationHook notifications.NotificationHook) (mapper.CartMapper, error) {
+func NewPlusROM(env *environment.Environment, child mapper.CartMapper) (mapper.CartMapper, error) {
 	cart := &PlusROM{env: env}
-	cart.notificationHook = notificationHook
 	cart.state = &state{}
 	cart.state.child = child
 
@@ -142,12 +139,9 @@ func NewPlusROM(env *environment.Environment, child mapper.CartMapper, notificat
 	// log success
 	logger.Logf("plusrom", "will connect to %s", cart.net.ai.String())
 
-	// call notificationHook function if one is available
-	if cart.notificationHook != nil {
-		err := cart.notificationHook(cart, notifications.NotifyPlusROMInserted)
-		if err != nil {
-			return nil, fmt.Errorf("plusrom %w:", err)
-		}
+	err := cart.env.Notifications.Notify(notifications.NotifyPlusROMInserted)
+	if err != nil {
+		return nil, fmt.Errorf("plusrom %w:", err)
 	}
 
 	return cart, nil
@@ -219,7 +213,7 @@ func (cart *PlusROM) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		cart.rewindBoundary = true
 		cart.net.buffer(data)
 		cart.net.commit()
-		err := cart.notificationHook(cart, notifications.NotifyPlusROMNetwork)
+		err := cart.env.Notifications.Notify(notifications.NotifyPlusROMNetwork)
 		if err != nil {
 			return fmt.Errorf("plusrom %w:", err)
 		}

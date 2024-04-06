@@ -35,6 +35,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/notifications"
 )
 
 // The number of times the TIA updates every CPU cycle.
@@ -77,15 +78,11 @@ type VCS struct {
 // NewVCS creates a new VCS and everything associated with the hardware. It is
 // used for all aspects of emulation: debugging sessions, and regular play.
 //
-// The two arguments must be supplied. In the case of the prefs field it can by
-// nil and a new preferences instance will be created. Providing a non-nil value
-// allows the preferences of more than one VCS emulation to be synchronised.
-//
-// The Instance.Context field should be updated except in the case of the
-// "main" emulation.
-func NewVCS(tv *television.Television, prefs *preferences.Preferences) (*VCS, error) {
+// The Television argument should not be nil. The Notify and Preferences
+// argument may be nil if required.
+func NewVCS(tv *television.Television, notify notifications.Notify, prefs *preferences.Preferences) (*VCS, error) {
 	// set up environment
-	env, err := environment.NewEnvironment(tv, prefs)
+	env, err := environment.NewEnvironment(tv, notify, prefs)
 	if err != nil {
 		return nil, err
 	}

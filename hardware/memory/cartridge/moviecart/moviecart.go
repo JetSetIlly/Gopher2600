@@ -274,11 +274,9 @@ func (s *state) initialise() {
 }
 
 type Moviecart struct {
-	env              *environment.Environment
-	notificationHook notifications.NotificationHook
+	env *environment.Environment
 
-	specID string
-
+	specID    string
 	mappingID string
 
 	loader io.ReadSeekCloser
@@ -289,10 +287,9 @@ type Moviecart struct {
 
 func NewMoviecart(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
 	cart := &Moviecart{
-		env:              env,
-		notificationHook: loader.NotificationHook,
-		loader:           loader.StreamedData,
-		mappingID:        "MVC",
+		env:       env,
+		loader:    loader.StreamedData,
+		mappingID: "MVC",
 	}
 
 	cart.state = newState()
@@ -433,12 +430,9 @@ func (cart *Moviecart) processAddress(addr uint16) {
 		// stop title screen
 		cart.write8bit(addrTitleLoop, 0x18)
 
-		// call notificationHook function if one is available
-		if cart.notificationHook != nil {
-			err := cart.notificationHook(cart, notifications.NotifyMovieCartStarted)
-			if err != nil {
-				logger.Logf("moviecart", err.Error())
-			}
+		err := cart.env.Notifications.Notify(notifications.NotifyMovieCartStarted)
+		if err != nil {
+			logger.Logf("moviecart", err.Error())
 		}
 
 	} else if cart.state.totalCycles > titleCycles {
