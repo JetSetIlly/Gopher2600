@@ -79,7 +79,7 @@ func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords) error {
 			dbg.vcs.TV.SetFPSCap(fpsCap)
 			dbg.catchupContinue = nil
 			dbg.catchupEnd = nil
-			dbg.setState(govern.Paused)
+			dbg.setState(govern.Paused, govern.Normal)
 			dbg.runUntilHalt = false
 			dbg.continueEmulation = dbg.catchupEndAdj
 			dbg.catchupEndAdj = false

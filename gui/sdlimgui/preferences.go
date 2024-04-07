@@ -51,7 +51,7 @@ type preferences struct {
 
 	// playmode preferences
 	audioMutePlaymode prefs.Bool
-	fpsOverlay        prefs.Bool
+	fpsDetail         prefs.Bool
 	activePause       prefs.Bool
 
 	// playmode notifications
@@ -59,7 +59,6 @@ type preferences struct {
 	plusromNotifications      prefs.Bool
 	superchargerNotifications prefs.Bool
 	audioMuteNotification     prefs.Bool
-	coprocDevNotification     prefs.Bool
 	notificationVisibility    prefs.Float
 
 	// fonts
@@ -91,15 +90,13 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	p.showTooltips.Set(true)
 	p.showTimelineThumbnail.Set(false)
 	p.colorDisasm.Set(true)
-	p.fpsOverlay.Set(false)
+	p.fpsDetail.Set(false)
 	p.activePause.Set(false)
 	p.audioMutePlaymode.Set(false)
 	p.controllerNotifcations.Set(true)
 	p.plusromNotifications.Set(true)
 	p.superchargerNotifications.Set(true)
 	p.audioMuteNotification.Set(true)
-	p.coprocDevNotification.Set(true)
-	p.coprocDevNotification.Set(true)
 	p.notificationVisibility.Set(0.75)
 	p.guiFontSize.Set(13)
 	p.terminalFontSize.Set(12)
@@ -141,7 +138,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	// debugger audio mute options later
 
 	// playmode options
-	err = p.dsk.Add("sdlimgui.playmode.fpsOverlay", &p.fpsOverlay)
+	err = p.dsk.Add("sdlimgui.playmode.fpsDetail", &p.fpsDetail)
 	if err != nil {
 		return nil, err
 	}
@@ -162,10 +159,6 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("sdlimgui.playmode.audioMuteNotification", &p.audioMuteNotification)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("sdlimgui.playmode.coprocDevNotification", &p.coprocDevNotification)
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +256,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.playmode.fpsOverlay", &p.fpsOverlay)
+	err = p.saveOnExitDsk.Add("sdlimgui.playmode.fpsDetail", &p.fpsDetail)
 	if err != nil {
 		return nil, err
 	}

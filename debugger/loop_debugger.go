@@ -290,7 +290,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 			}
 
 			// set pause emulation state
-			dbg.setState(govern.Paused)
+			dbg.setState(govern.Paused, govern.Normal)
 
 			// take note of current machine state if the emulation was in a running
 			// state and is halting just now
@@ -358,10 +358,10 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 				// stepping.
 				if dbg.halting.volatileTraps.isEmpty() {
 					if inputter.IsInteractive() {
-						dbg.setState(govern.Running)
+						dbg.setState(govern.Running, govern.Normal)
 					}
 				} else {
-					dbg.setState(govern.Stepping)
+					dbg.setState(govern.Stepping, govern.Normal)
 				}
 
 				// update comparison point before execution continues
@@ -369,7 +369,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 					dbg.Rewind.UpdateComparison()
 				}
 			} else if inputter.IsInteractive() {
-				dbg.setState(govern.Stepping)
+				dbg.setState(govern.Stepping, govern.Normal)
 			}
 		}
 

@@ -85,7 +85,7 @@ func (vcs *VCS) Run(continueCheck func() (govern.State, error)) error {
 			}
 		case govern.Paused:
 		default:
-			return fmt.Errorf("vcs: unsupported emulation state (%d) in Run() function", state)
+			return fmt.Errorf("vcs: unsupported emulation state (%s) in Run() function", state)
 		}
 
 		state, err = continueCheck()

@@ -140,7 +140,8 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 
 			case sdl.SCANCODE_F7:
 				if img.isPlaymode() {
-					img.playScr.toggleFPS()
+					fps := img.prefs.fpsDetail.Get().(bool)
+					img.prefs.fpsDetail.Set(!fps)
 				}
 
 			case sdl.SCANCODE_F8:
@@ -164,8 +165,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				} else {
 					img.screenshot(modeSingle, "")
 				}
-
-				img.playScr.emulationNotice.set(notifications.NotifyScreenshot)
+				img.playScr.overlay.set(notifications.NotifyScreenshot)
 
 			case sdl.SCANCODE_F14:
 				fallthrough

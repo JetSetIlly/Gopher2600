@@ -26,13 +26,7 @@ type State int
 // Initialising can be used when reinitialising the emulator. for example, when
 // a new cartridge is being inserted.
 //
-// Values are ordered so that order comparisons are meaningful. For example,
-// Running is "greater than" Stepping, Paused, etc.
-//
-// Note that there is a sub-state of the rewinding state that we can potentially
-// think of as the "catch-up" state. This occurs in the brief transition period
-// between Rewinding and the Running or Pausing state. For simplicity, the
-// catch-up loop is part of the Rewinding state
+// Paused and Rewinding can have meaningful sub-states
 const (
 	EmulatorStart State = iota
 	Initialising
@@ -62,4 +56,59 @@ func (s State) String() string {
 	}
 
 	return ""
+}
+
+// SubState allows more detail for some states. NoSubState indicates that there
+// is not more information to impart about the state
+type SubState int
+
+// List of possible rewinding sub states
+const (
+	Normal SubState = iota
+	RewindingBackwards
+	RewindingForwards
+	PausedAtStart
+	PausedAtEnd
+)
+
+func (s SubState) String() string {
+	switch s {
+	case RewindingBackwards:
+		return "Backwards"
+	case RewindingForwards:
+		return "Forwards"
+	case PausedAtStart:
+		return "Paused at start"
+	case PausedAtEnd:
+		return "Paused at end"
+	}
+	return ""
+}
+
+// StateIntegrity checks whether the combination of state, sub-state makes
+// sense. The previous state is also required for a complete check.
+//
+// Rules:
+//
+//  1. NoSubState can coexist with any state
+//
+//  2. PausedAtStart and PausedAtEnd can only be paired with the Paused State
+//
+//  3. RewindingBackwards and RewindingForwards can only be paired with the
+//     Rewinding state
+func StateIntegrity(state State, subState SubState) bool {
+	if subState == Normal {
+		return true
+	}
+	switch state {
+	case Rewinding:
+		if subState == RewindingBackwards || subState == RewindingForwards {
+			return true
+		}
+	case Paused:
+		if subState == PausedAtEnd || subState == PausedAtStart {
+			return true
+		}
+	}
+	return false
 }

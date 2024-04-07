@@ -16,11 +16,9 @@
 package sdlimgui
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -52,32 +50,20 @@ type playScr struct {
 	// number of scanlines in current image. taken from screen but is crit section safe
 	visibleScanlines int
 
-	// fps overlay
-	fpsPulse *time.Ticker
-	fps      string
-	hz       string
-
-	// controller notifications
-	peripheralLeft  peripheralNotification
-	peripheralRight peripheralNotification
-
-	// emulation notifications
-	emulationNotice emulationEventNotification
-
-	// cartridge notifications
-	cartridgeNotice cartridgeEventNotification
+	// overlay for play screen
+	overlay playscrOverlay
 }
 
 func newPlayScr(img *SdlImgui) *playScr {
 	win := &playScr{
-		img:      img,
-		scr:      img.screen,
-		fpsPulse: time.NewTicker(time.Second),
-		fps:      "waiting",
-		peripheralRight: peripheralNotification{
-			rightAlign: true,
+		img: img,
+		scr: img.screen,
+		overlay: playscrOverlay{
+			fpsPulse: time.NewTicker(time.Second),
+			fps:      "waiting",
 		},
 	}
+	win.overlay.playscr = win
 
 	// set texture, creation of textures will be done after every call to resize()
 	// clamp is important for LINEAR filtering. not noticeable for NEAREST filtering
@@ -99,94 +85,7 @@ func (win *playScr) draw() {
 	dl := imgui.BackgroundDrawList()
 	dl.AddImage(imgui.TextureID(win.displayTexture.getID()), win.imagePosMin, win.imagePosMax)
 
-	win.peripheralLeft.draw(win)
-	win.peripheralRight.draw(win)
-	win.cartridgeNotice.draw(win)
-
-	if !win.drawFPS() {
-		win.emulationNotice.draw(win, false)
-	}
-}
-
-func (win *playScr) toggleFPS() {
-	fps := win.img.prefs.fpsOverlay.Get().(bool)
-	win.img.prefs.fpsOverlay.Set(!fps)
-}
-
-func (win *playScr) drawFPS() bool {
-	if !win.img.prefs.fpsOverlay.Get().(bool) {
-		return false
-	}
-
-	// update fps
-	select {
-	case <-win.fpsPulse.C:
-		fps, hz := win.img.dbg.VCS().TV.GetActualFPS()
-		win.fps = fmt.Sprintf("%03.2f fps", fps)
-		win.hz = fmt.Sprintf("%03.2fhz", hz)
-	default:
-	}
-
-	imgui.SetNextWindowPos(imgui.Vec2{0, 0})
-
-	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
-	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
-
-	fpsOpen := true
-	imgui.BeginV("##playscrfps", &fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
-		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
-		imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings|
-		imgui.WindowFlagsNoBringToFrontOnFocus)
-
-	imgui.Text(fmt.Sprintf("Emulation: %s", win.fps))
-	fr := imgui.CurrentIO().Framerate()
-	if fr == 0.0 {
-		imgui.Text("Rendering: waiting")
-	} else {
-		imgui.Text(fmt.Sprintf("Rendering: %03.2f fps", fr))
-	}
-
-	imguiSeparator()
-
-	if coproc := win.img.cache.VCS.Mem.Cart.GetCoProc(); coproc != nil {
-		clk := float32(win.img.dbg.VCS().Env.Prefs.ARM.Clock.Get().(float64))
-		imgui.Text(fmt.Sprintf("%s Clock: %.0f Mhz", coproc.ProcessorID(), clk))
-		imguiSeparator()
-	}
-
-	imgui.Text(fmt.Sprintf("%.1fx scaling", win.yscaling))
-	imgui.Text(fmt.Sprintf("%d total scanlines", win.scr.crit.frameInfo.TotalScanlines))
-
-	imguiSeparator()
-
-	imgui.Text(win.img.screen.crit.frameInfo.Spec.ID)
-	imgui.SameLine()
-	imgui.Text(win.hz)
-	if !win.scr.crit.frameInfo.VSync {
-		imgui.SameLine()
-		imgui.Text(string(fonts.NoVSYNC))
-	}
-
-	imguiSeparator()
-	imgui.Text(fmt.Sprintf("%d frame input lag", win.scr.crit.frameQueueLen))
-	if win.scr.nudgeIconCt > 0 {
-		imgui.SameLine()
-		imgui.Text(string(fonts.Nudge))
-	}
-
-	// if win.img.screen.crit.frameInfo.IsAtariSafe() {
-	// 	imguiSeparator()
-	// 	imgui.Text("atari safe")
-	// }
-
-	imgui.PopStyleColorV(2)
-
-	imgui.Spacing()
-	win.emulationNotice.draw(win, true)
-
-	imgui.End()
-
-	return true
+	win.overlay.draw()
 }
 
 // resize() implements the textureRenderer interface.

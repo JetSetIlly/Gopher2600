@@ -277,7 +277,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				return fmt.Errorf("unknown STEP BACK mode (%s)", mode)
 			}
 
-			dbg.setState(govern.Rewinding)
+			dbg.setState(govern.Rewinding, govern.RewindingBackwards)
 			dbg.unwindLoop(func() error {
 				dbg.catchupContext = catchupStepBack
 				return dbg.Rewind.GotoCoords(coords)
@@ -401,20 +401,27 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			dbg.runUntilHalt = false
 
 			if arg == "LAST" {
-				dbg.setState(govern.Rewinding)
+				dbg.setState(govern.Rewinding, govern.RewindingForwards)
 				dbg.unwindLoop(dbg.Rewind.GotoLast)
 			} else if arg == "SUMMARY" {
 				dbg.printLine(terminal.StyleInstrument, dbg.Rewind.Peephole())
 			} else {
 				frame, _ := strconv.Atoi(arg)
-				dbg.setState(govern.Rewinding)
-				dbg.unwindLoop(func() error {
-					err := dbg.Rewind.GotoFrame(frame)
-					if err != nil {
-						return err
+				coords := dbg.TV().GetCoords()
+				if frame != coords.Frame {
+					if frame < coords.Frame {
+						dbg.setState(govern.Rewinding, govern.RewindingBackwards)
+					} else {
+						dbg.setState(govern.Rewinding, govern.RewindingForwards)
 					}
-					return nil
-				})
+					dbg.unwindLoop(func() error {
+						err := dbg.Rewind.GotoFrame(frame)
+						if err != nil {
+							return err
+						}
+						return nil
+					})
+				}
 			}
 			return nil
 		}
@@ -437,21 +444,26 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 	case cmdGoto:
-		coords := dbg.vcs.TV.GetCoords()
+		fromCoords := dbg.vcs.TV.GetCoords()
+		toCoords := fromCoords
 
 		if s, ok := tokens.Get(); ok {
-			coords.Clock, _ = strconv.Atoi(s)
+			toCoords.Clock, _ = strconv.Atoi(s)
 			if s, ok := tokens.Get(); ok {
-				coords.Scanline, _ = strconv.Atoi(s)
+				toCoords.Scanline, _ = strconv.Atoi(s)
 				if s, ok := tokens.Get(); ok {
-					coords.Frame, _ = strconv.Atoi(s)
+					toCoords.Frame, _ = strconv.Atoi(s)
 				}
 			}
 		}
 
-		dbg.setState(govern.Rewinding)
+		if coords.GreaterThan(toCoords, fromCoords) {
+			dbg.setState(govern.Rewinding, govern.RewindingForwards)
+		} else {
+			dbg.setState(govern.Rewinding, govern.RewindingBackwards)
+		}
 		dbg.unwindLoop(func() error {
-			err := dbg.Rewind.GotoCoords(coords)
+			err := dbg.Rewind.GotoCoords(toCoords)
 			if err != nil {
 				return err
 			}

@@ -22,47 +22,27 @@ type Notice string
 
 // List of defined notifications.
 const (
-	NotifyInitialising  Notice = "NotifyInitialising"
-	NotifyPause         Notice = "NotifyPause"
-	NotifyRun           Notice = "NotifyRun"
-	NotifyRewindBack    Notice = "NotifyRewindBack"
-	NotifyRewindFoward  Notice = "NotifyRewindFoward"
-	NotifyRewindAtStart Notice = "NotifyRewindAtStart"
-	NotifyRewindAtEnd   Notice = "NotifyRewindAtEnd"
-	NotifyScreenshot    Notice = "NotifyScreenshot"
-	NotifyMute          Notice = "NotifyMute"
-	NotifyUnmute        Notice = "NotifyUnmute"
+	// a screen shot is taking place
+	NotifyScreenshot Notice = "NotifyScreenshot"
 
-	// If Supercharger is loading from a fastload binary then this event is
+	// notifications sent when supercharger is loading from a sound file (eg. mp3 file)
+	NotifySuperchargerSoundloadStarted Notice = "NotifySuperchargerSoundloadStarted"
+	NotifySuperchargerSoundloadEnded   Notice = "NotifySuperchargerSoundloadEnded"
+	NotifySuperchargerSoundloadRewind  Notice = "NotifySuperchargerSoundloadRewind"
+
+	// if Supercharger is loading from a fastload binary then this event is
 	// raised when the ROM requests the next block be loaded from the "tape
 	NotifySuperchargerFastload Notice = "NotifySuperchargerFastload"
 
-	// If Supercharger is loading from a sound file (eg. mp3 file) then these
-	// events area raised when the loading has started and ended.
-	NotifySuperchargerSoundloadStarted Notice = "NotifySuperchargerSoundloadStarted"
-	NotifySuperchargerSoundloadEnded   Notice = "NotifySuperchargerSoundloadEnded"
+	// notifications sent by plusrom
+	NotifyPlusROMNewInstall Notice = "NotifyPlusROMNewInstall"
+	NotifyPlusROMNetwork    Notice = "NotifyPlusROMNetwork"
 
-	// tape is rewinding.
-	NotifySuperchargerSoundloadRewind Notice = "NotifySuperchargerSoundloadRewind"
-
-	// PlusROM cartridge has been inserted.
-	NotifyPlusROMInserted Notice = "NotifyPlusROMInserted"
-
-	// PlusROM network activity.
-	NotifyPlusROMNetwork Notice = "NotifyPlusROMNetwork"
-
-	// PlusROM new installation
-	NotifyPlusROMNewInstallation Notice = "NotifyPlusROMNewInstallation"
-
-	// Moviecart started
+	// moviecart has started
 	NotifyMovieCartStarted Notice = "NotifyMoveCartStarted"
 
 	// unsupported DWARF data
 	NotifyUnsupportedDWARF Notice = "NotifyUnsupportedDWARF"
-
-	// coprocessor development information has been loaded
-	NotifyCoprocDevStarted Notice = "NotifyCoprocDevStarted"
-	NotifyCoprocDevEnded   Notice = "NotifyCoprocDevEnded"
 )
 
 // Notify is used for direct communication between a the hardware and the

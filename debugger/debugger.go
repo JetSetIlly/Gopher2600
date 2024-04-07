@@ -87,7 +87,8 @@ type Debugger struct {
 
 	// state is an atomic value because we need to be able to read it from the
 	// GUI thread (see State() function)
-	state atomic.Value // emulation.State
+	state    atomic.Value // emulation.State
+	subState atomic.Value // emulation.RewindingSubState
 
 	// preferences for the emulation
 	Prefs *Preferences
@@ -333,10 +334,10 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 		readEventsPulse: time.NewTicker(1 * time.Millisecond),
 	}
 
-	// emulator is starting in the "none" mode (the advangatge of this is that
-	// we get to set the underlying type of the atomic.Value early before
-	// anyone has a change to call State() or Mode() from another thread)
+	// set atomics to defaults values. if we don't do this we can cause panics
+	// due to the GUI asking for values before we've had a chance to set them
 	dbg.state.Store(govern.EmulatorStart)
+	dbg.subState.Store(govern.RewindingBackwards)
 	dbg.mode.Store(govern.ModeNone)
 	dbg.quantum.Store(govern.QuantumInstruction)
 
@@ -526,19 +527,26 @@ func (dbg *Debugger) State() govern.State {
 	return dbg.state.Load().(govern.State)
 }
 
+// SubState implements the emulation.Emulation interface.
+func (dbg *Debugger) SubState() govern.SubState {
+	return dbg.subState.Load().(govern.SubState)
+}
+
 // Mode implements the emulation.Emulation interface.
 func (dbg *Debugger) Mode() govern.Mode {
 	return dbg.mode.Load().(govern.Mode)
 }
 
 // set the emulation state
-func (dbg *Debugger) setState(state govern.State) {
-	dbg.setStateQuiet(state, false)
-}
+func (dbg *Debugger) setState(state govern.State, subState govern.SubState) {
+	// intentionally panic if state/sub-state combination is not allowed
+	if !govern.StateIntegrity(state, subState) {
+		panic(fmt.Sprintf("illegal sub-state (%s) for %s state (prev state: %s)",
+			subState, state,
+			dbg.state.Load().(govern.State),
+		))
+	}
 
-// same as setState but with quiet argument, to indicate that EmulationEvent
-// should not be issued to the gui.
-func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 	if state == govern.Rewinding {
 		dbg.endPlayback()
 		dbg.endRecording()
@@ -561,30 +569,8 @@ func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 	}
 	dbg.CoProcDev.SetEmulationState(state)
 
-	prevState := dbg.State()
 	dbg.state.Store(state)
-
-	if !quiet && dbg.Mode() == govern.ModePlay {
-		switch state {
-		case govern.Initialising:
-			err := dbg.gui.SetFeature(gui.ReqEmulationNotify, notifications.NotifyInitialising)
-			if err != nil {
-				logger.Log("debugger", err.Error())
-			}
-		case govern.Paused:
-			err := dbg.gui.SetFeature(gui.ReqEmulationNotify, notifications.NotifyPause)
-			if err != nil {
-				logger.Log("debugger", err.Error())
-			}
-		case govern.Running:
-			if prevState > govern.Initialising {
-				err := dbg.gui.SetFeature(gui.ReqEmulationNotify, notifications.NotifyRun)
-				if err != nil {
-					logger.Log("debugger", err.Error())
-				}
-			}
-		}
-	}
+	dbg.subState.Store(subState)
 }
 
 // set the emulation mode
@@ -649,14 +635,14 @@ func (dbg *Debugger) setMode(mode govern.Mode) error {
 				return fmt.Errorf("debugger: %w", err)
 			}
 		} else {
-			dbg.setState(govern.Running)
+			dbg.setState(govern.Running, govern.Normal)
 		}
 
 	case govern.ModeDebugger:
 		dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
 		dbg.vcs.TV.AddFrameTrigger(dbg.ref)
 		dbg.vcs.TV.AddFrameTrigger(dbg.counter)
-		dbg.setState(govern.Paused)
+		dbg.setState(govern.Paused, govern.Normal)
 
 		// debugger needs knowledge about previous frames (via the reflector)
 		// if we're moving from playmode. also we want to make sure we end on
@@ -1098,12 +1084,12 @@ func (dbg *Debugger) Notify(notice notifications.Notice) error {
 			dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(dbg.opts.Multiload))
 		}
 
-		err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifySuperchargerSoundloadStarted)
+		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundloadStarted)
 		if err != nil {
 			return err
 		}
 	case notifications.NotifySuperchargerSoundloadEnded:
-		err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifySuperchargerSoundloadEnded)
+		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundloadEnded)
 		if err != nil {
 			return err
 		}
@@ -1118,23 +1104,20 @@ func (dbg *Debugger) Notify(notice notifications.Notice) error {
 
 		return dbg.vcs.TV.Reset(true)
 	case notifications.NotifySuperchargerSoundloadRewind:
-		err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifySuperchargerSoundloadRewind)
+		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundloadRewind)
 		if err != nil {
 			return err
 		}
-	case notifications.NotifyPlusROMInserted:
-		if dbg.vcs.Env.Prefs.PlusROM.NewInstallation {
-			err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifyPlusROMNewInstallation)
-			if err != nil {
-				return fmt.Errorf(err.Error())
-			}
+	case notifications.NotifyPlusROMNewInstall:
+		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifyPlusROMNewInstall)
+		if err != nil {
+			return err
 		}
 	case notifications.NotifyPlusROMNetwork:
-		err := dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifyPlusROMNetwork)
+		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifyPlusROMNetwork)
 		if err != nil {
 			return err
 		}
-
 	case notifications.NotifyMovieCartStarted:
 		return dbg.vcs.TV.Reset(true)
 	default:
@@ -1166,19 +1149,19 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	dbg.bots.Quit()
 
 	// attching a cartridge implies the initialise state
-	dbg.setState(govern.Initialising)
+	dbg.setState(govern.Initialising, govern.Normal)
 
 	// set state after initialisation according to the emulation mode
 	defer func() {
 		switch dbg.Mode() {
 		case govern.ModeDebugger:
 			if dbg.runUntilHalt && e == nil {
-				dbg.setState(govern.Running)
+				dbg.setState(govern.Running, govern.Normal)
 			} else {
-				dbg.setState(govern.Paused)
+				dbg.setState(govern.Paused, govern.Normal)
 			}
 		case govern.ModePlay:
-			dbg.setState(govern.Running)
+			dbg.setState(govern.Running, govern.Normal)
 		}
 	}()
 
@@ -1227,21 +1210,11 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	if err != nil {
 		logger.Logf("debugger", err.Error())
 		if errors.Is(err, coproc_dwarf.UnsupportedDWARF) {
-			err = dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifyUnsupportedDWARF)
+			err = dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifyUnsupportedDWARF)
 			if err != nil {
 				logger.Logf("debugger", err.Error())
 			}
 		}
-	}
-
-	// notify GUI of coprocessor state
-	if dbg.CoProcDev.HasSource() {
-		err = dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifyCoprocDevStarted)
-	} else {
-		err = dbg.gui.SetFeature(gui.ReqCartridgeNotify, notifications.NotifyCoprocDevEnded)
-	}
-	if err != nil {
-		logger.Logf("debugger", err.Error())
 	}
 
 	// attach current debugger as the yield hook for cartridge
@@ -1386,15 +1359,12 @@ func (dbg *Debugger) endComparison() {
 
 func (dbg *Debugger) hotload() (e error) {
 	// tell GUI that we're in the initialistion phase
-	dbg.setState(govern.Initialising)
+	dbg.setState(govern.Initialising, govern.Normal)
 	defer func() {
 		if dbg.runUntilHalt && e == nil {
-			dbg.setState(govern.Running)
+			dbg.setState(govern.Running, govern.Normal)
 		} else {
-			err := dbg.gui.SetFeature(gui.ReqEmulationNotify, notifications.NotifyPause)
-			if err != nil {
-				logger.Log("debugger", err.Error())
-			}
+			dbg.setState(govern.Paused, govern.Normal)
 		}
 	}()
 
@@ -1472,14 +1442,14 @@ func (dbg *Debugger) Plugged(port plugging.PortID, peripheral plugging.Periphera
 	if dbg.vcs.Mem.Cart.IsEjected() {
 		return
 	}
-	err := dbg.gui.SetFeature(gui.ReqPeripheralNotify, port, peripheral)
+	err := dbg.gui.SetFeature(gui.ReqPeripheralPlugged, port, peripheral)
 	if err != nil {
 		logger.Log("debugger", err.Error())
 	}
 }
 
 func (dbg *Debugger) reloadCartridge() error {
-	dbg.setState(govern.Initialising)
+	dbg.setState(govern.Initialising, govern.Normal)
 	spec := dbg.vcs.TV.GetFrameInfo().Spec.ID
 
 	err := dbg.insertCartridge("")
@@ -1534,7 +1504,7 @@ func (dbg *Debugger) insertCartridge(filename string) error {
 // insertCartridge() for that
 func (dbg *Debugger) InsertCartridge(filename string) {
 	dbg.PushFunctionImmediate(func() {
-		dbg.setState(govern.Initialising)
+		dbg.setState(govern.Initialising, govern.Normal)
 		dbg.unwindLoop(func() error {
 			return dbg.insertCartridge(filename)
 		})

@@ -22,53 +22,37 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
-	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/notifications"
 )
 
 // RewindByAmount moves forwards or backwards by specified frames. Negative
 // numbers indicate backwards
-func (dbg *Debugger) RewindByAmount(amount int) bool {
+func (dbg *Debugger) RewindByAmount(amount int) {
 	switch dbg.Mode() {
 	case govern.ModePlay:
 		coords := dbg.vcs.TV.GetCoords()
 		tl := dbg.Rewind.GetTimeline()
 
-		if amount < 0 && coords.Frame-1 <= tl.AvailableStart {
-			dbg.setStateQuiet(govern.Paused, true)
-			err := dbg.gui.SetFeature(gui.ReqEmulationNotify, notifications.NotifyRewindAtStart)
-			if err != nil {
-				logger.Log("debugger", err.Error())
-			}
-			return false
-		}
-
-		if amount > 0 && coords.Frame+1 >= tl.AvailableEnd {
-			dbg.setStateQuiet(govern.Paused, true)
-			err := dbg.gui.SetFeature(gui.ReqEmulationNotify, notifications.NotifyRewindAtEnd)
-			if err != nil {
-				logger.Log("debugger", err.Error())
-			}
-			return false
-		}
-
-		dbg.setStateQuiet(govern.Rewinding, true)
-		dbg.Rewind.GotoFrame(coords.Frame + amount)
-		dbg.setStateQuiet(govern.Paused, true)
-
-		var err error
 		if amount < 0 {
-			err = dbg.gui.SetFeature(gui.ReqEmulationNotify, notifications.NotifyRewindBack)
-		} else {
-			err = dbg.gui.SetFeature(gui.ReqEmulationNotify, notifications.NotifyRewindFoward)
-		}
-		if err != nil {
-			logger.Log("debugger", err.Error())
+			if coords.Frame-1 < tl.AvailableStart {
+				dbg.setState(govern.Paused, govern.PausedAtStart)
+				return
+			}
+			dbg.setState(govern.Rewinding, govern.RewindingBackwards)
 		}
 
-		return true
+		if amount > 0 {
+			if coords.Frame+1 > tl.AvailableEnd {
+				dbg.setState(govern.Paused, govern.PausedAtEnd)
+				return
+			}
+			dbg.setState(govern.Rewinding, govern.RewindingForwards)
+		}
+
+		dbg.Rewind.GotoFrame(coords.Frame + amount)
+		dbg.setState(govern.Paused, govern.Normal)
+
+		return
 	}
 
 	panic(fmt.Sprintf("Rewind: unsupported mode (%v)", dbg.Mode()))
@@ -107,7 +91,11 @@ func (dbg *Debugger) RewindToFrame(fn int, last bool) bool {
 		dbg.PushFunctionImmediate(func() {
 			// set state to govern.Rewinding as soon as possible (but
 			// remembering that we must do it in the debugger goroutine)
-			dbg.setState(govern.Rewinding)
+			if fn > dbg.vcs.TV.GetCoords().Frame {
+				dbg.setState(govern.Rewinding, govern.RewindingForwards)
+			} else {
+				dbg.setState(govern.Rewinding, govern.RewindingBackwards)
+			}
 			dbg.unwindLoop(doRewind)
 		})
 
@@ -118,7 +106,7 @@ func (dbg *Debugger) RewindToFrame(fn int, last bool) bool {
 }
 
 // GotoCoords rewinds the emulation to the specified coordinates.
-func (dbg *Debugger) GotoCoords(coords coords.TelevisionCoords) bool {
+func (dbg *Debugger) GotoCoords(toCoords coords.TelevisionCoords) bool {
 	switch dbg.Mode() {
 	case govern.ModeDebugger:
 		if dbg.State() == govern.Rewinding {
@@ -130,7 +118,7 @@ func (dbg *Debugger) GotoCoords(coords coords.TelevisionCoords) bool {
 			// upate catchup context before starting rewind process
 			dbg.catchupContext = catchupGotoCoords
 
-			err := dbg.Rewind.GotoCoords(coords)
+			err := dbg.Rewind.GotoCoords(toCoords)
 			if err != nil {
 				return err
 			}
@@ -143,7 +131,13 @@ func (dbg *Debugger) GotoCoords(coords coords.TelevisionCoords) bool {
 		dbg.PushFunctionImmediate(func() {
 			// set state to govern.Rewinding as soon as possible (but
 			// remembering that we must do it in the debugger goroutine)
-			dbg.setState(govern.Rewinding)
+
+			fromCoords := dbg.vcs.TV.GetCoords()
+			if coords.GreaterThan(toCoords, fromCoords) {
+				dbg.setState(govern.Rewinding, govern.RewindingForwards)
+			} else {
+				dbg.setState(govern.Rewinding, govern.RewindingBackwards)
+			}
 			dbg.unwindLoop(doRewind)
 		})
 
@@ -168,7 +162,7 @@ func (dbg *Debugger) RerunLastNFrames(frames int) bool {
 		// if we're in between instruction boundaries therefore we need to push a
 		// GotoCoords() request. get the current coordinates now
 		correctCoords := !dbg.liveDisasmEntry.Result.Final
-		coords := dbg.vcs.TV.GetCoords()
+		toCoords := dbg.vcs.TV.GetCoords()
 
 		// the function to push to the debugger/emulation routine
 		doRewind := func() error {
@@ -178,7 +172,7 @@ func (dbg *Debugger) RerunLastNFrames(frames int) bool {
 			}
 
 			if correctCoords {
-				err = dbg.Rewind.GotoCoords(coords)
+				err = dbg.Rewind.GotoCoords(toCoords)
 				if err != nil {
 					return err
 				}
@@ -195,7 +189,7 @@ func (dbg *Debugger) RerunLastNFrames(frames int) bool {
 
 			// set state to govern.Rewinding as soon as possible (but
 			// remembering that we must do it in the debugger goroutine)
-			dbg.setState(govern.Rewinding)
+			dbg.setState(govern.Rewinding, govern.Normal)
 			dbg.unwindLoop(doRewind)
 		})
 

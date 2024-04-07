@@ -23,7 +23,6 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui"
-	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/notifications"
 )
 
@@ -70,38 +69,22 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			img.plt.setFullScreen(request.args[0].(bool))
 		}
 
-	case gui.ReqPeripheralNotify:
+	case gui.ReqPeripheralPlugged:
 		err = argLen(request.args, 2)
 		if err == nil {
-			port := request.args[0].(plugging.PortID)
-			switch port {
-			case plugging.PortLeft:
-				img.playScr.peripheralLeft.set(request.args[1].(plugging.PeripheralID))
-			case plugging.PortRight:
-				img.playScr.peripheralRight.set(request.args[1].(plugging.PeripheralID))
-			}
+			img.playScr.overlay.set(request.args[0], request.args[1])
 		}
 
-	case gui.ReqEmulationNotify:
-		if img.isPlaymode() {
-			err = argLen(request.args, 1)
-			if err == nil {
-				img.playScr.emulationNotice.set(request.args[0].(notifications.Notice))
-			}
-		}
-
-	case gui.ReqCartridgeNotify:
+	case gui.ReqNotification:
 		err = argLen(request.args, 1)
 		if err == nil {
-			notice := request.args[0].(notifications.Notice)
-
-			switch notice {
-			case notifications.NotifyPlusROMNewInstallation:
+			switch request.args[0].(notifications.Notice) {
+			case notifications.NotifyPlusROMNewInstall:
 				img.modal = modalPlusROMFirstInstallation
 			case notifications.NotifyUnsupportedDWARF:
 				img.modal = modalUnsupportedDWARF
 			default:
-				img.playScr.cartridgeNotice.set(notice)
+				img.playScr.overlay.set(request.args[0].(notifications.Notice))
 			}
 		}
 

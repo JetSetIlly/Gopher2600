@@ -55,9 +55,9 @@ func (dbg *Debugger) PushSetPause(paused bool) {
 	case govern.ModePlay:
 		dbg.PushFunction(func() {
 			if paused {
-				dbg.setState(govern.Paused)
+				dbg.setState(govern.Paused, govern.Normal)
 			} else {
-				dbg.setState(govern.Running)
+				dbg.setState(govern.Running, govern.Normal)
 			}
 		})
 	case govern.ModeDebugger:

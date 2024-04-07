@@ -66,6 +66,8 @@ var defunct = []string{
 	"crt.syncPowerOn",
 	"crt.syncSpeed",
 	"crt.syncSensitivity",
+	"sdlimgui.playmode.coprocDevNotification",
+	"sdlimgui.playmode.fpsOverlay",
 }
 
 // returns true if string is in list of defunct values.

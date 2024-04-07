@@ -27,7 +27,6 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/caching"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/resources"
@@ -311,7 +310,7 @@ func (img *SdlImgui) quit() {
 }
 
 // end program. this differs from quit in that this function is called when we
-// receive a ReqEnd, which *may* have been sent in reponse to a EventQuit.
+// receive a ReqEnd, which *may* have been sent in reponse to a userinput.EventQuit
 func (img *SdlImgui) end() {
 	img.prefs.saveWindowPreferences()
 }
@@ -411,11 +410,6 @@ func (img *SdlImgui) applyAudioMutePreference() {
 
 	if img.isPlaymode() {
 		mute = img.prefs.audioMutePlaymode.Get().(bool)
-		if mute {
-			img.playScr.emulationNotice.set(notifications.NotifyMute)
-		} else {
-			img.playScr.emulationNotice.set(notifications.NotifyUnmute)
-		}
 		img.dbg.VCS().RIOT.Ports.MutePeripherals(mute)
 	} else {
 		mute = img.prefs.audioMuteDebugger.Get().(bool)

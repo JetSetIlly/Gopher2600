@@ -211,10 +211,9 @@ a television image that is sympathetic to the display kernel
 of the ROM.`)
 
 	imgui.Spacing()
-	if imgui.CollapsingHeader("Notifications") {
-
+	if imgui.CollapsingHeader("Notification Icons") {
 		controllerNotifications := win.img.prefs.controllerNotifcations.Get().(bool)
-		if imgui.Checkbox("Controller Change", &controllerNotifications) {
+		if imgui.Checkbox("Controller Changes", &controllerNotifications) {
 			win.img.prefs.controllerNotifcations.Set(controllerNotifications)
 		}
 
@@ -231,11 +230,6 @@ of the ROM.`)
 		audioMuteNotification := win.img.prefs.audioMuteNotification.Get().(bool)
 		if imgui.Checkbox("Audio Mute Indicator", &audioMuteNotification) {
 			win.img.prefs.audioMuteNotification.Set(audioMuteNotification)
-		}
-
-		coprocDevNotification := win.img.prefs.coprocDevNotification.Get().(bool)
-		if imgui.Checkbox("Coprocessor Development", &coprocDevNotification) {
-			win.img.prefs.coprocDevNotification.Set(coprocDevNotification)
 		}
 
 		visibility := float32(win.img.prefs.notificationVisibility.Get().(float64)) * 100
