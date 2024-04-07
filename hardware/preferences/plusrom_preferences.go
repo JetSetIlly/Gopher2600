@@ -35,6 +35,9 @@ type PlusROMPreferences struct {
 
 	// is true if the default nick/id are being used
 	NewInstallation bool
+
+	// show HTTP transactions in the log
+	HTTPLogging prefs.Bool
 }
 
 func newPlusROMpreferences() (*PlusROMPreferences, error) {
@@ -57,6 +60,11 @@ func newPlusROMpreferences() (*PlusROMPreferences, error) {
 	}
 
 	err = p.dsk.Add("plusrom.id_v2.1.1", &p.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.dsk.Add("plusrom.httplogging", &p.HTTPLogging)
 	if err != nil {
 		return nil, err
 	}
@@ -124,6 +132,7 @@ func (p *PlusROMPreferences) generateID() string {
 func (p *PlusROMPreferences) SetDefaults() {
 	p.Nick.SetMaxLen(plusnet.MaxNickLength)
 	p.ID.SetMaxLen(plusnet.MaxIDLength)
+	p.HTTPLogging.Set(false)
 }
 
 // Load plusrom preferences from disk.

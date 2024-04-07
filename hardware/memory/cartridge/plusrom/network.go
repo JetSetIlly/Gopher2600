@@ -24,6 +24,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/version"
 )
 
 const (
@@ -78,10 +79,6 @@ func newNetwork(env *environment.Environment) *network {
 	}
 }
 
-// set to true to log HTTP repsonses/requests. this will do have to do until we
-// implement logging levels.
-const httpLogging = false
-
 // add a single byte to the send buffer, capping the length of the buffer at
 // the sendBufferCap value. if the "send" flag is true then the buffer is sent
 // over the network. the function will not wait for the network activity.
@@ -92,13 +89,13 @@ func (n *network) buffer(data uint8) {
 
 func (n *network) commit() {
 	n.send.SendLen = n.send.WritePtr
-	n.send.WritePtr--
 
 	// the figure of 1024 is not accurate but it is sufficient to emulate the
 	// observed behaviour in the hardware. a realistic figure will be based on
 	// the system clock of the VCS and the baudrate of the PlusCart (which is
 	// 115200)
 	n.send.Cycles = int(n.send.WritePtr) * 1024
+	n.send.WritePtr--
 }
 
 func (n *network) transmitWait() {
@@ -142,7 +139,8 @@ func (n *network) transmit() {
 		// The new "PlusROM-Info" header is discussed/explained in this AtariAge thread:
 		// https://atariage.com/forums/topic/324456-redesign-plusrom-request-http-header"
 		//
-		id := fmt.Sprintf("agent=Gopher2600; ver=0.17.0; id=%s; nick=%s",
+		id := fmt.Sprintf("agent=Gopher2600; ver=%s; id=%s; nick=%s",
+			version.Version,
 			// whether or not ID and Nick are valid has been handled in the preferences system
 			n.env.Prefs.PlusROM.ID.String(),
 			n.env.Prefs.PlusROM.Nick.String(),
@@ -162,6 +160,9 @@ func (n *network) transmit() {
 		// req.Header.Set("PlusStore-ID", id)
 		// logger.Logf("plusrom [net]", "PlusStore-ID: %s", id)
 		// -----------------------------------------------
+
+		// whether to log HTTP transactions taken from the global preferences
+		httpLogging := n.env.Prefs.PlusROM.HTTPLogging.Get().(bool)
 
 		// log of complete request
 		if httpLogging {
