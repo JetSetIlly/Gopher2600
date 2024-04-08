@@ -219,9 +219,9 @@ type ARM struct {
 	// prefsPulse ticker slows the rate at which updatePrefs() is called
 	prefsPulse *time.Ticker
 
-	// whether to foce an error on illegal memory access. set from ARM.prefs at
-	// the start of every arm.Run()
-	abortOnMemoryFault bool
+	// read from ARM.prefs every prefsPulse tick
+	abortOnMemoryFault      bool
+	misalignedAccessIsFault bool
 
 	// the speed at which the arm is running at and the required stretching for
 	// access to flash memory. speed is in MHz. Access latency of Flash memory is
@@ -456,8 +456,8 @@ func (arm *ARM) updatePrefs() {
 		arm.Ncycle = arm.nCycle
 	}
 
-	// memory fault handling
 	arm.abortOnMemoryFault = arm.prefs.AbortOnMemoryFault.Get().(bool)
+	arm.misalignedAccessIsFault = arm.prefs.MisalignedAccessIsFault.Get().(bool)
 }
 
 func (arm *ARM) String() string {

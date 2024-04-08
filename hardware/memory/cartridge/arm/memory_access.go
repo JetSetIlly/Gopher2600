@@ -47,7 +47,9 @@ func (arm *ARM) nullAccess(event string, addr uint32) {
 
 // misalignedAccess is a special condition of illegalAccess()
 func (arm *ARM) misalignedAccess(event string, addr uint32) {
-	arm.memoryFault(event, faults.MisalignedAccess, addr)
+	if arm.misalignedAccessIsFault {
+		arm.memoryFault(event, faults.MisalignedAccess, addr)
+	}
 }
 
 func (arm *ARM) read8bit(addr uint32) uint8 {

@@ -47,6 +47,11 @@ type ARMPreferences struct {
 	// abort execution on memory fault (eg. accessing memory that doesn't exist)
 	AbortOnMemoryFault prefs.Bool
 
+	// treat misaligned accesses as a memory fault. (ie. will be reported as a
+	// memory fault and will cause execution to abort if AbortOnMemoryFault is
+	// true)
+	MisalignedAccessIsFault prefs.Bool
+
 	// include disassembly and register details when logging memory faults
 	ExtendedMemoryFaultLogging prefs.Bool
 }
@@ -87,6 +92,10 @@ func newARMprefrences() (*ARMPreferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("hardware.arm7.MisalignedAccessIsFault", &p.MisalignedAccessIsFault)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("hardware.arm7.extendedMemoryFaultLogging", &p.ExtendedMemoryFaultLogging)
 	if err != nil {
 		return nil, err
@@ -107,6 +116,7 @@ func (p *ARMPreferences) SetDefaults() {
 	p.Immediate.Set(false)
 	p.MAM.Set(-1)
 	p.AbortOnMemoryFault.Set(false)
+	p.MisalignedAccessIsFault.Set(false)
 	p.ExtendedMemoryFaultLogging.Set(false)
 }
 

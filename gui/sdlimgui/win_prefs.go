@@ -591,6 +591,11 @@ a memory address that does not exist.
 Note that the program will always abort if the access is a PC fetch, even if this option is not set.
 
 Illegal accesses will be logged even if program does not abort.`)
+
+	misalignedAccessIsFault := win.img.dbg.VCS().Env.Prefs.ARM.MisalignedAccessIsFault.Get().(bool)
+	if imgui.Checkbox("Treat Misaligned Accesses as Memory Faults", &misalignedAccessIsFault) {
+		win.img.dbg.VCS().Env.Prefs.ARM.MisalignedAccessIsFault.Set(misalignedAccessIsFault)
+	}
 }
 
 func (win *winPrefs) drawPlusROMTab() {
