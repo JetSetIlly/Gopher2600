@@ -55,6 +55,9 @@ type Map struct {
 	CartArchitecture CartArchitecture
 	ARMArchitecture  ARMArchitecture
 
+	// some ARM architectures allow misaligned accesses for some instructions
+	MisalignedAccesses bool
+
 	FlashOrigin uint32
 	FlashMemtop uint32
 
@@ -116,6 +119,7 @@ func NewMap(cart CartArchitecture) Map {
 
 	case Harmony:
 		mmap.ARMArchitecture = ARM7TDMI
+		mmap.MisalignedAccesses = false
 
 		mmap.FlashOrigin = 0x00000000
 		mmap.FlashMemtop = 0x0fffffff
@@ -141,6 +145,7 @@ func NewMap(cart CartArchitecture) Map {
 
 	case PlusCart:
 		mmap.ARMArchitecture = ARMv7_M
+		mmap.MisalignedAccesses = true
 
 		mmap.FlashOrigin = 0x20000000
 		mmap.FlashMemtop = 0x2fffffff

@@ -1437,7 +1437,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			switch arg {
 
 			case "FAULTS":
-				dbg.CoProcDev.BorrowFaults(func(flt faults.Faults) {
+				dbg.CoProcDev.BorrowFaults(func(flt *faults.Faults) {
 					w := dbg.writerInStyle(terminal.StyleFeedback)
 					flt.WriteLog(w)
 				})

@@ -20,7 +20,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 func (arm *ARM) memoryFault(event string, fault faults.Category, addr uint32) {
@@ -44,6 +43,11 @@ func (arm *ARM) illegalAccess(event string, addr uint32) {
 // nullAccess is a special condition of illegalAccess()
 func (arm *ARM) nullAccess(event string, addr uint32) {
 	arm.memoryFault(event, faults.NullDereference, addr)
+}
+
+// misalignedAccess is a special condition of illegalAccess()
+func (arm *ARM) misalignedAccess(event string, addr uint32) {
+	arm.memoryFault(event, faults.MisalignedAccess, addr)
 }
 
 func (arm *ARM) read8bit(addr uint32) uint8 {
@@ -121,16 +125,27 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 	(*mem)[idx] = val
 }
 
-// requiresAlignment should be true only for certain instructions. alignment
-// behaviour given in "A63.2.1 Alignment behaviour" of "ARMv7-M"
+// for 16bit and 32bit access functions, there is a parameter called
+// requiresAlignment. this indicates that the instruction issuing the access
+// requires the access to be aligned.
+//
+// if the emulated architecture does not allow misaligned addresses then an
+// appropriate alignment check is always made
+//
+// for the ARMv7-M architecture, alignment behaviour is given in "A63.2.1
+// Alignment behaviour" of the specification
+
 func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 	if addr < arm.mmap.NullAccessBoundary {
 		arm.nullAccess("Read 16bit", addr)
 	}
 
 	// check 16 bit alignment
-	if requiresAlignment && addr&0x01 != 0x00 {
-		logger.Logf("ARM7", "misaligned 16 bit read (%08x) (PC: %08x)", addr, arm.state.instructionPC)
+	if (requiresAlignment || !arm.mmap.MisalignedAccesses) && !IsAlignedTo16bits(addr) {
+		arm.misalignedAccess("Read 16bit", addr)
+		if !arm.mmap.MisalignedAccesses {
+			addr = AlignTo16bits(addr)
+		}
 	}
 
 	mem, origin := arm.mem.MapAddress(addr, false)
@@ -172,16 +187,17 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 	return arm.byteOrder.Uint16((*mem)[idx:])
 }
 
-// requiresAlignment should be true only for certain instructions. alignment
-// behaviour given in "A63.2.1 Alignment behaviour" of "ARMv7-M"
 func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 	if addr < arm.mmap.NullAccessBoundary {
 		arm.nullAccess("Write 16bit", addr)
 	}
 
 	// check 16 bit alignment
-	if requiresAlignment && addr&0x01 != 0x00 {
-		logger.Logf("ARM7", "misaligned 16 bit write (%08x) (PC: %08x)", addr, arm.state.instructionPC)
+	if (requiresAlignment || !arm.mmap.MisalignedAccesses) && !IsAlignedTo16bits(addr) {
+		arm.misalignedAccess("Read 16bit", addr)
+		if !arm.mmap.MisalignedAccesses {
+			addr = AlignTo16bits(addr)
+		}
 	}
 
 	mem, origin := arm.mem.MapAddress(addr, true)
@@ -223,16 +239,17 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 	arm.byteOrder.PutUint16((*mem)[idx:], val)
 }
 
-// requiresAlignment should be true only for certain instructions. alignment
-// behaviour given in "A63.2.1 Alignment behaviour" of "ARMv7-M"
 func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 	if addr < arm.mmap.NullAccessBoundary {
 		arm.nullAccess("Read 32bit", addr)
 	}
 
 	// check 32 bit alignment
-	if requiresAlignment && addr&0x03 != 0x00 {
-		logger.Logf("ARM7", "misaligned 32 bit read (%08x) (PC: %08x)", addr, arm.state.instructionPC)
+	if (requiresAlignment || !arm.mmap.MisalignedAccesses) && !IsAlignedTo32bits(addr) {
+		arm.misalignedAccess("Read 32bit", addr)
+		if !arm.mmap.MisalignedAccesses {
+			addr = AlignTo32bits(addr)
+		}
 	}
 
 	mem, origin := arm.mem.MapAddress(addr, false)
@@ -274,16 +291,17 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 	return arm.byteOrder.Uint32((*mem)[idx:])
 }
 
-// requiresAlignment should be true only for certain instructions. alignment
-// behaviour given in "A63.2.1 Alignment behaviour" of "ARMv7-M"
 func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 	if addr < arm.mmap.NullAccessBoundary {
 		arm.nullAccess("Write 32bit", addr)
 	}
 
 	// check 32 bit alignment
-	if requiresAlignment && addr&0x03 != 0x00 {
-		logger.Logf("ARM7", "misaligned 32 bit write (%08x) (PC: %08x)", addr, arm.state.instructionPC)
+	if (requiresAlignment || !arm.mmap.MisalignedAccesses) && !IsAlignedTo32bits(addr) {
+		arm.misalignedAccess("Write 32bit", addr)
+		if !arm.mmap.MisalignedAccesses {
+			addr = AlignTo32bits(addr)
+		}
 	}
 
 	mem, origin := arm.mem.MapAddress(addr, true)

@@ -932,10 +932,12 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 				// handle memory access yields. we don't these want these to bleed out
 				// of the ARM unless the abort preference is set
 				if arm.state.yield.Type == coprocessor.YieldMemoryAccessError {
-					// if illegal memory accesses are to be ignored then we must log the
-					// yield information now before reset the yield type
+					// choosing not to log memory access errors. it can be far
+					// too noisy particular during the pre-execution disassembly
+					// stage. we could maybe improve this by indicating that we
+					// expect memory faults and then allowing logging during
+					// normal execution
 					if !arm.abortOnMemoryFault {
-						arm.logYield()
 						arm.resetYield()
 					}
 				}

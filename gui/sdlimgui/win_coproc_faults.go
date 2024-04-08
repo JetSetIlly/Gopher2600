@@ -68,7 +68,7 @@ func (win *winCoProcFaults) debuggerDraw() bool {
 
 	title := fmt.Sprintf("%s %s", coproc.ProcessorID(), winCoProcFaultsID)
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
-		win.img.dbg.CoProcDev.BorrowFaults(func(flt faults.Faults) {
+		win.img.dbg.CoProcDev.BorrowFaults(func(flt *faults.Faults) {
 			win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 				win.draw(flt, src)
 			})
@@ -81,7 +81,7 @@ func (win *winCoProcFaults) debuggerDraw() bool {
 	return true
 }
 
-func (win *winCoProcFaults) draw(flt faults.Faults, src *dwarf.Source) {
+func (win *winCoProcFaults) draw(flt *faults.Faults, src *dwarf.Source) {
 	// hasStackCollision to decide whether to issue warning in footer
 	hasStackCollision := false
 
@@ -113,7 +113,7 @@ func (win *winCoProcFaults) draw(flt faults.Faults, src *dwarf.Source) {
 		imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.35, 3)
 	}
 
-	imgui.Spacing()
+	imgui.TableSetupScrollFreeze(0, 1)
 	imgui.TableHeadersRow()
 
 	for i := 0; i < len(flt.Log); i++ {
@@ -216,10 +216,15 @@ func (win *winCoProcFaults) draw(flt faults.Faults, src *dwarf.Source) {
 
 		if src != nil {
 			imgui.Checkbox("Show Source in Tooltip", &win.showSrcInTooltip)
-			imgui.SameLineV(0, 20)
+		}
+
+		imgui.SameLineV(0, 20)
+		if imgui.Button("Clear") {
+			flt.Clear()
 		}
 
 		if hasStackCollision {
+			imgui.SameLineV(0, 20)
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
 			imgui.AlignTextToFramePadding()
 			imgui.Text(fmt.Sprintf(" %c", fonts.Warning))
@@ -231,9 +236,6 @@ func (win *winCoProcFaults) draw(flt faults.Faults, src *dwarf.Source) {
 				imgui.Text("Results of memory access is unreliable after a stack collision")
 				imgui.Text("and so memory faults are no longer being logged.")
 			}, true)
-		} else {
-			// empty call to imgui.Text to consume an earlier call to imgui.SameLineV()
-			imgui.Text("")
 		}
 	})
 }

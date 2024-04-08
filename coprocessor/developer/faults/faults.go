@@ -25,10 +25,11 @@ type Category string
 
 // List of valid Category values
 const (
-	NullDereference Category = "null dereference"
-	StackCollision  Category = "stack collision"
-	IllegalAddress  Category = "illegal address"
-	UndefinedSymbol Category = "undefined symbol"
+	NullDereference  Category = "null dereference"
+	MisalignedAccess Category = "misaligned access"
+	StackCollision   Category = "stack collision"
+	IllegalAddress   Category = "illegal address"
+	UndefinedSymbol  Category = "undefined symbol"
 )
 
 // Entry is a single entry in the fault log
@@ -71,6 +72,12 @@ func NewFaults() Faults {
 	return Faults{
 		entries: make(map[string]*Entry),
 	}
+}
+
+// Clear all entries from faults log. Does not clear the HasStackCollision flag
+func (flt *Faults) Clear() {
+	clear(flt.entries)
+	flt.Log = flt.Log[:0]
 }
 
 // WriteLog writes the list of faults in the order they were added
