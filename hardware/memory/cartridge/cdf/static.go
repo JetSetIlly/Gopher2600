@@ -182,6 +182,11 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 func (stc *Static) Segments() []mapper.CartStaticSegment {
 	segments := []mapper.CartStaticSegment{
 		{
+			Name:   stc.customROM.name,
+			Origin: stc.customROM.origin,
+			Memtop: stc.customROM.memtop,
+		},
+		{
 			Name:   stc.driverRAM.name,
 			Origin: stc.driverRAM.origin,
 			Memtop: stc.driverRAM.memtop,
@@ -205,6 +210,8 @@ func (stc *Static) Segments() []mapper.CartStaticSegment {
 // Reference implements the mapper.CartStatic interface
 func (stc *Static) Reference(segment string) ([]uint8, bool) {
 	switch segment {
+	case stc.customROM.name:
+		return stc.customROM.data, true
 	case stc.driverRAM.name:
 		return stc.driverRAM.data, true
 	case stc.dataRAM.name:
