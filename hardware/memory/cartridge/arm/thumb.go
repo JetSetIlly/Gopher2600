@@ -924,6 +924,17 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) decodeFunction {
 				}
 			}
 
+			// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+			// - fillPipeline() will be called if necessary
+
+			var thumbMode bool
+			var newPC uint32
+
+			// if the low bit of the src register is set then the target is
+			// using the thumb instruction set and we can return almost
+			// immediately
+			thumbMode = arm.state.registers[srcReg]&0x01 == 0x01
+
 			switch arm.mmap.ARMArchitecture {
 			case architecture.ARMv7_M:
 				if opcode&0x0080 == 0x0080 {
@@ -931,7 +942,7 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) decodeFunction {
 					nextPC := arm.state.registers[rPC] - 2
 					arm.state.registers[rLR] = nextPC | 0x01
 				}
-				arm.state.registers[rPC] = (arm.state.registers[srcReg] + 2) & 0xfffffffe
+				newPC = (arm.state.registers[srcReg] + 2) & 0xfffffffe
 
 			case architecture.ARM7TDMI:
 				// "ARM7TDMI Data Sheet" page 5-15:
@@ -940,26 +951,30 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) decodeFunction {
 				// bit 0 cleared. Executing a BX PC in THUMB state from a non-word aligned address
 				// will result in unpredictable execution."
 				if srcReg == rPC {
-					arm.state.registers[rPC] = arm.state.registers[rPC] + 2
+					newPC = arm.state.registers[rPC] + 2
 				} else {
-					arm.state.registers[rPC] = (arm.state.registers[srcReg] + 2) & 0xfffffffe
+					newPC = (arm.state.registers[srcReg] + 2) & 0xfffffffe
 				}
-			}
-
-			// if the low bit of the src register is set then the target is
-			// using the thumb instruction set and we can return immediately
-			if arm.state.registers[srcReg]&0x01 == 0x01 {
-				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-				// - fillPipeline() will be called if necessary
-				return nil
 			}
 
 			// if the PC is now the same as the expected return address then the
 			// ARM program has ended and we can yield with the YieldProgramEnded
 			// type
-			if arm.state.registers[rPC] == arm.state.expectedReturnAddress {
+			//
+			// this has to come before the thumbMode check because for ROMs
+			// compiled for the Harmony architecture (ARM7TDMI), the return
+			// address will be a non-thumb address
+			if newPC == arm.state.expectedReturnAddress {
 				arm.state.yield.Type = coprocessor.YieldProgramEnded
 				arm.state.yield.Error = nil
+				return nil
+			}
+
+			// if we're still in thumb mode the instruction has ended
+			if thumbMode {
+				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+				// - fillPipeline() will be called if necessary
+				arm.state.registers[rPC] = newPC
 				return nil
 			}
 
