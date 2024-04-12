@@ -18,7 +18,6 @@ package sdlimgui
 import (
 	"time"
 
-	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/userinput"
@@ -209,24 +208,38 @@ func (img *SdlImgui) Service() {
 					img.polling.alerted = true
 
 				case *sdl.MouseWheelEvent:
-					var deltaX, deltaY float32
-					if ev.X > 0 {
-						deltaX++
-					} else if ev.X < 0 {
-						deltaX--
-					}
-					if ev.Y > 0 {
-						deltaY++
-					} else if ev.Y < 0 {
-						deltaY--
-					}
-					imgui.CurrentIO().AddMouseWheelDelta(-deltaX/4, deltaY/4)
+					// only respond to mouse wheel events if the window has
+					// input focus. this is because without input focus
+					// getKeyMod() will always return userinput.KeyModNone. it
+					// is confusing if the mousewheel is working but no keyboard
+					// modifiers are affecting it
+					if img.plt.window.GetFlags()&sdl.WINDOW_INPUT_FOCUS == sdl.WINDOW_INPUT_FOCUS {
+						var deltaX, deltaY float32
+						if ev.X > 0 {
+							deltaX++
+						} else if ev.X < 0 {
+							deltaX--
+						}
+						if ev.Y > 0 {
+							deltaY++
+						} else if ev.Y < 0 {
+							deltaY--
+						}
 
-					if img.mode.Load().(govern.Mode) != govern.ModePlay || !img.wm.playmodeWindows[winSelectROMID].playmodeIsOpen() {
-						select {
-						case input <- userinput.EventMouseWheel{Delta: deltaY}:
-						default:
-							logger.Log("sdlimgui", "dropped mouse wheel event")
+						// forward mouse wheel event to emulation only for playmode
+						// or if the mouse is immediately over the TV image in the
+						// debugger TV screen window
+						if img.isPlaymode() || img.wm.dbgScr.mouseHover {
+							select {
+							case input <- userinput.EventMouseWheel{
+								Delta: deltaY,
+								Mod:   getKeyMod(),
+							}:
+							default:
+								logger.Log("sdlimgui", "dropped mouse wheel event")
+							}
+						} else {
+							imgui.CurrentIO().AddMouseWheelDelta(-deltaX/4, deltaY/4)
 						}
 					}
 

@@ -25,16 +25,20 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
 
-// RewindByAmount moves forwards or backwards by specified frames. Negative
-// numbers indicate backwards
+// RewindByAmount moves forwards or backwards by specified frames. Positive
+// numbers to "rewind" forwards and negative numbers to rewind backwards.
 func (dbg *Debugger) RewindByAmount(amount int) {
+	if dbg.state.Load().(govern.State) == govern.Rewinding {
+		return
+	}
+
 	switch dbg.Mode() {
 	case govern.ModePlay:
-		coords := dbg.vcs.TV.GetCoords()
+		fn := dbg.vcs.TV.GetCoords().Frame
 		tl := dbg.Rewind.GetTimeline()
 
 		if amount < 0 {
-			if coords.Frame-1 < tl.AvailableStart {
+			if fn-1 < tl.AvailableStart {
 				dbg.setState(govern.Paused, govern.PausedAtStart)
 				return
 			}
@@ -42,30 +46,61 @@ func (dbg *Debugger) RewindByAmount(amount int) {
 		}
 
 		if amount > 0 {
-			if coords.Frame+1 > tl.AvailableEnd {
+			if fn+1 > tl.AvailableEnd {
 				dbg.setState(govern.Paused, govern.PausedAtEnd)
 				return
 			}
 			dbg.setState(govern.Rewinding, govern.RewindingForwards)
 		}
 
-		dbg.Rewind.GotoFrame(coords.Frame + amount)
+		dbg.Rewind.GotoFrame(fn + amount)
 		dbg.setState(govern.Paused, govern.Normal)
 
-		return
-	}
+	case govern.ModeDebugger:
+		fn := dbg.vcs.TV.GetCoords().Frame
+		fn += amount
 
-	panic(fmt.Sprintf("Rewind: unsupported mode (%v)", dbg.Mode()))
+		// the function to push to the debugger/emulation routine
+		doRewind := func() error {
+			// upate catchup context before starting rewind process
+			dbg.catchupContext = catchupRewindToFrame
+
+			err := dbg.Rewind.GotoFrame(fn)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
+		// how we push the doRewind() function depends on what kind of inputloop we
+		// are currently in
+		dbg.PushFunctionImmediate(func() {
+			// set state to govern.Rewinding as soon as possible (but
+			// remembering that we must do it in the debugger goroutine)
+			//
+			// not that we're not worried about detecing PausedAtEnd and
+			// PausedAtStart conditions like we do in the ModePlay case
+			if amount > 0 {
+				dbg.setState(govern.Rewinding, govern.RewindingForwards)
+			} else {
+				dbg.setState(govern.Rewinding, govern.RewindingBackwards)
+			}
+			dbg.unwindLoop(doRewind)
+		})
+	}
 }
 
 // RewindToFrame measure from the current frame.
+//
+// This function should be run only from debugger mode.
 func (dbg *Debugger) RewindToFrame(fn int, last bool) bool {
+	if dbg.State() == govern.Rewinding {
+		return false
+	}
+
 	switch dbg.Mode() {
 	case govern.ModeDebugger:
-		if dbg.State() == govern.Rewinding {
-			return false
-		}
-
 		// the function to push to the debugger/emulation routine
 		doRewind := func() error {
 			// upate catchup context before starting rewind process
@@ -106,13 +141,15 @@ func (dbg *Debugger) RewindToFrame(fn int, last bool) bool {
 }
 
 // GotoCoords rewinds the emulation to the specified coordinates.
+//
+// This function should be run only from debugger mode.
 func (dbg *Debugger) GotoCoords(toCoords coords.TelevisionCoords) bool {
+	if dbg.State() == govern.Rewinding {
+		return false
+	}
+
 	switch dbg.Mode() {
 	case govern.ModeDebugger:
-		if dbg.State() == govern.Rewinding {
-			return false
-		}
-
 		// the function to push to the debugger/emulation routine
 		doRewind := func() error {
 			// upate catchup context before starting rewind process
@@ -148,13 +185,15 @@ func (dbg *Debugger) GotoCoords(toCoords coords.TelevisionCoords) bool {
 }
 
 // RerunLastNFrames measured from the current frame.
+//
+// This function should be run only from debugger mode.
 func (dbg *Debugger) RerunLastNFrames(frames int) bool {
+	if dbg.State() == govern.Rewinding {
+		return false
+	}
+
 	switch dbg.Mode() {
 	case govern.ModeDebugger:
-		if dbg.State() == govern.Rewinding {
-			return false
-		}
-
 		// the disadvantage of RerunLastNFrames() is that it will always land on a
 		// CPU instruction boundary (this is because we must unwind the existing
 		// input loop before calling the rewind function)
@@ -189,7 +228,7 @@ func (dbg *Debugger) RerunLastNFrames(frames int) bool {
 
 			// set state to govern.Rewinding as soon as possible (but
 			// remembering that we must do it in the debugger goroutine)
-			dbg.setState(govern.Rewinding, govern.Normal)
+			dbg.setState(govern.Rewinding, govern.RewindingForwards)
 			dbg.unwindLoop(doRewind)
 		})
 

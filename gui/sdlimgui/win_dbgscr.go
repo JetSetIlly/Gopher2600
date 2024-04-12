@@ -90,6 +90,9 @@ type winDbgScr struct {
 	// magnification fields
 	magnifyTooltip dbgScrMagnifyTooltip
 	magnifyWindow  dbgScrMagnifyWindow
+
+	// whether mouse is hovering over screen image
+	mouseHover bool
 }
 
 func newWinDbgScr(img *SdlImgui) (window, error) {
@@ -201,11 +204,15 @@ func (win *winDbgScr) draw() {
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
 
 	imgui.PushStyleColor(imgui.StyleColorDragDropTarget, win.img.cols.Transparent)
+
 	if !win.crtPreview && win.elements {
 		imgui.ImageButton(imgui.TextureID(win.elementsTexture.getID()), imgui.Vec2{win.scaledWidth, win.scaledHeight})
 	} else {
 		imgui.ImageButton(imgui.TextureID(win.displayTexture.getID()), imgui.Vec2{win.scaledWidth, win.scaledHeight})
 	}
+
+	win.mouseHover = imgui.IsItemHovered()
+
 	win.paintDragAndDrop()
 	imgui.PopStyleColor()
 

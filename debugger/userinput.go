@@ -46,12 +46,24 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 
 	// special handling of some user input (not passed to the VCS as controller input)
 	switch dbg.Mode() {
+	case govern.ModeDebugger:
+		switch ev := ev.(type) {
+		case userinput.EventMouseWheel:
+			var amount int
+			switch ev.Mod {
+			case userinput.KeyModShift:
+				amount = int(ev.Delta)
+			default:
+				amount = int(ev.Delta) * 5
+			}
+			dbg.RewindByAmount(dbg.rewindMouseWheelAccumulation + amount)
+			return nil
+		}
+
 	case govern.ModePlay:
 		switch ev := ev.(type) {
 		case userinput.EventMouseWheel:
-			amount := int(ev.Delta) + dbg.rewindMouseWheelAccumulation
-			dbg.rewindMouseWheelAccumulation = 0
-			dbg.RewindByAmount(amount)
+			dbg.RewindByAmount(int(ev.Delta))
 			return nil
 
 		case userinput.EventKeyboard:

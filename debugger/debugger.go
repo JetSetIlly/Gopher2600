@@ -214,20 +214,17 @@ type Debugger struct {
 	// moving or for how long the keyboard (or gamepad bumpers) have been
 	// depressed.
 	//
-	// when rewinding by mousewheel, events are likely to be sent during the
-	// rewind catchup loop so we accumulate the mousewheel delta and rewind
-	// when we return to the normal loop
-	//
-	// keyboard/bumper rewind is slightly different. for every machine cycle
-	// (in the normal playloop - not the catchup loop) that the keyboard is
-	// held down we increase (or decrease when going backwards) the
-	// accumulation value. we use this to determine how quickly the rewind
-	// should progress. the accumulation value is zeroed when the key/bumpers
-	// are released
-	//
-	// * playmode only
+	// for keyboard rewinding, the amount to rewind by increases for as long as
+	// the key-combo (gamepad bumper) is being held. the amount is reset when
+	// the key-combo/bumper is released
+	rewindKeyboardAccumulation int
+
+	// when rewinding by mouse wheel we just use the delta information from the
+	// input device. however, we might miss mousewheel events during the
+	// debugger catchup loop. the rewindMouseWheelAccumulation value allows us
+	// to accumulate the delta value until we have the opportunity to issue
+	// another rewind instruction
 	rewindMouseWheelAccumulation int
-	rewindKeyboardAccumulation   int
 
 	// audio tracker stores audio state over time
 	Tracker *tracker.Tracker

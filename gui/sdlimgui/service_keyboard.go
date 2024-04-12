@@ -254,19 +254,6 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 
 	// forward keypresses to userinput.Event channel
 	if img.isCaptured() || (img.isPlaymode() && !imgui.IsAnyItemActive()) {
-		mod := userinput.KeyModNone
-
-		if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
-			sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
-			mod = userinput.KeyModAlt
-		} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
-			sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
-			mod = userinput.KeyModShift
-		} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
-			sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
-			mod = userinput.KeyModCtrl
-		}
-
 		switch ev.Type {
 		case sdl.KEYDOWN:
 			fallthrough
@@ -275,7 +262,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			case img.dbg.UserInput() <- userinput.EventKeyboard{
 				Key:  sdl.GetScancodeName(ev.Keysym.Scancode),
 				Down: ev.Type == sdl.KEYDOWN,
-				Mod:  mod,
+				Mod:  getKeyMod(),
 			}:
 			default:
 				logger.Log("sdlimgui", "dropped keyboard event")
@@ -292,4 +279,18 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 		imgui.CurrentIO().KeyRelease(int(ev.Keysym.Scancode))
 		img.updateKeyModifier()
 	}
+}
+
+func getKeyMod() userinput.KeyMod {
+	if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
+		sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
+		return userinput.KeyModAlt
+	} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
+		sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
+		return userinput.KeyModShift
+	} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
+		sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
+		return userinput.KeyModCtrl
+	}
+	return userinput.KeyModNone
 }
