@@ -27,23 +27,27 @@ import (
 	"github.com/jetsetilly/gopher2600/notifications"
 )
 
-type overlayDuration int
+type overlayLatch int
 
 const (
-	overlayDurationPinned = -1
-	overlayDurationOff    = 0
-	overlayDurationBrief  = 30
-	overlayDurationShort  = 60
-	overlayDurationLong   = 90
+	overlayLatchPinned = -1
+	overlayLatchOff    = 0
+	overlayLatchBrief  = 30
+	overlayLatchShort  = 60
+	overlayLatchLong   = 90
 )
+
+func (ct *overlayLatch) forceExpire() {
+	*ct = overlayLatchOff
+}
 
 // reduces the duration value. returns false if count has expired. if the
 // duration has been "pinned" then value will return true
-func (ct *overlayDuration) tick() bool {
-	if *ct == overlayDurationOff {
+func (ct *overlayLatch) tick() bool {
+	if *ct == overlayLatchOff {
 		return false
 	}
-	if *ct == overlayDurationPinned {
+	if *ct == overlayLatchPinned {
 		return true
 	}
 	*ct = *ct - 1
@@ -51,8 +55,8 @@ func (ct *overlayDuration) tick() bool {
 }
 
 // returns true if duration is not off or pinned
-func (ct *overlayDuration) running() bool {
-	return *ct == overlayDurationPinned || *ct > overlayDurationOff
+func (ct *overlayLatch) expired() bool {
+	return *ct != overlayLatchPinned && *ct == overlayLatchOff
 }
 
 type playscrOverlay struct {
@@ -67,29 +71,29 @@ type playscrOverlay struct {
 	// top-left corner of the overlay includes emulation state. if the
 	// "fpsOverlay" is active then these will be drawn alongside the FPS
 	// information
-	state    govern.State
-	subState govern.SubState
-	stateDur overlayDuration
+	state      govern.State
+	subState   govern.SubState
+	stateLatch overlayLatch
 
 	// events are user-activated events and require immediate feedback
-	event    notifications.Notice
-	eventDur overlayDuration
+	event      notifications.Notice
+	eventLatch overlayLatch
 
 	// icons in the top-left corner of the overlay are drawn according to a
 	// priority. the iconQueue list the icons to be drawn in order
 	iconQueue []rune
 
 	// top-right corner of the overlay
-	cartridge    notifications.Notice
-	cartridgeDur overlayDuration
+	cartridge      notifications.Notice
+	cartridgeLatch overlayLatch
 
 	// bottom-left corner of the overlay
-	leftPort    plugging.PeripheralID
-	leftPortDur overlayDuration
+	leftPort      plugging.PeripheralID
+	leftPortLatch overlayLatch
 
 	// bottom-right corner of the overlay
-	rightPort    plugging.PeripheralID
-	rightPortDur overlayDuration
+	rightPort      plugging.PeripheralID
+	rightPortLatch overlayLatch
 
 	// visibility of icons is set from the preferences once per draw()
 	visibility float32
@@ -103,29 +107,29 @@ func (oly *playscrOverlay) set(v any, args ...any) {
 		switch n {
 		case plugging.PortLeft:
 			oly.leftPort = args[0].(plugging.PeripheralID)
-			oly.leftPortDur = overlayDurationShort
+			oly.leftPortLatch = overlayLatchShort
 		case plugging.PortRight:
 			oly.rightPort = args[0].(plugging.PeripheralID)
-			oly.rightPortDur = overlayDurationShort
+			oly.rightPortLatch = overlayLatchShort
 		}
 	case notifications.Notice:
 		switch n {
 		case notifications.NotifySuperchargerSoundloadStarted:
 			oly.cartridge = n
-			oly.cartridgeDur = overlayDurationPinned
+			oly.cartridgeLatch = overlayLatchPinned
 		case notifications.NotifySuperchargerSoundloadEnded:
 			oly.cartridge = n
-			oly.cartridgeDur = overlayDurationShort
+			oly.cartridgeLatch = overlayLatchShort
 		case notifications.NotifySuperchargerSoundloadRewind:
 			return
 
 		case notifications.NotifyPlusROMNetwork:
 			oly.cartridge = n
-			oly.cartridgeDur = overlayDurationShort
+			oly.cartridgeLatch = overlayLatchShort
 
 		case notifications.NotifyScreenshot:
 			oly.event = n
-			oly.eventDur = overlayDurationShort
+			oly.eventLatch = overlayLatchShort
 
 		default:
 			return
@@ -142,6 +146,10 @@ func (oly *playscrOverlay) draw() {
 	defer imgui.PopStyleVarV(1)
 
 	imgui.SetNextWindowPos(imgui.Vec2{0, 0})
+
+	sz := oly.playscr.img.plt.displaySize()
+	imgui.SetNextWindowSize(imgui.Vec2{sz[0], sz[1]})
+
 	imgui.BeginV("##playscrOverlay", nil, imgui.WindowFlagsAlwaysAutoResize|
 		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
 		imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings|
@@ -271,23 +279,34 @@ func (oly *playscrOverlay) drawTopLeft() {
 	}
 
 	// the real current state as set by the emulation is used to decide what
-	// state to use for the overlay icon. we need to be careful with this
-	// decision and to only update the state/substate when a suitable duration
-	// has passed
+	// state to use for the overlay icon
 	state := oly.playscr.img.dbg.State()
 	subState := oly.playscr.img.dbg.SubState()
+
 	switch state {
 	case govern.Paused:
-		if state != oly.state && !oly.stateDur.running() {
+		// handling the pause state is the trickiest to get right. we want to
+		// prioritise the pause icon in some cases but not in others
+		switch oly.state {
+		case govern.Rewinding:
+			// if the previous state was the rewinding state a pause icon will
+			// show if the pause sub-state is not normal or if the
+			// previous state latch has expired
+			if subState != govern.Normal || oly.stateLatch.expired() {
+				oly.state = state
+				oly.subState = subState
+				oly.stateLatch = overlayLatchPinned
+			}
+		default:
 			oly.state = state
 			oly.subState = subState
-			oly.stateDur = overlayDurationPinned
+			oly.stateLatch = overlayLatchPinned
 		}
 	case govern.Running:
 		if state != oly.state {
 			oly.state = state
 			oly.subState = subState
-			oly.stateDur = overlayDurationShort
+			oly.stateLatch = overlayLatchShort
 		}
 	case govern.Rewinding:
 		oly.state = state
@@ -301,12 +320,12 @@ func (oly *playscrOverlay) drawTopLeft() {
 		// rewinding state is interspersed very quickly with the paused state.
 		// that works great for internal emulation purposes but requires careful
 		// handling for UI purposes)
-		oly.stateDur = overlayDurationBrief
+		oly.stateLatch = overlayLatchBrief
 	}
 
-	// the state duration is ticked and the currently decided state shown unless
-	// the tick has expired (returns false)
-	if oly.stateDur.tick() {
+	// the state duration is ticked and the icon is shown unless the tick has
+	// expired (returns false)
+	if oly.stateLatch.tick() {
 		switch oly.state {
 		case govern.Paused:
 			switch oly.subState {
@@ -333,7 +352,7 @@ func (oly *playscrOverlay) drawTopLeft() {
 	// events have the highest priority. we can think of these as user activated
 	// events, such as the triggering of a screenshot. we therefore want to give
 	// the user confirmation feedback immediately over other icons
-	if oly.eventDur.tick() {
+	if oly.eventLatch.tick() {
 		switch oly.event {
 		case notifications.NotifyScreenshot:
 			oly.iconQueue = append(oly.iconQueue, fonts.Camera)
@@ -361,7 +380,7 @@ func (oly *playscrOverlay) drawTopLeft() {
 // information from the cartridge about what is happening. for example,
 // supercharger tape activity, or PlusROM network activity, etc.
 func (oly *playscrOverlay) drawTopRight() {
-	if !oly.cartridgeDur.tick() {
+	if !oly.cartridgeLatch.tick() {
 		return
 	}
 
@@ -392,8 +411,9 @@ func (oly *playscrOverlay) drawTopRight() {
 		return
 	}
 
-	pos := imgui.Vec2{oly.playscr.img.plt.displaySize()[0], 0}
+	pos := imgui.WindowContentRegionMax()
 	pos.X -= oly.playscr.img.fonts.gopher2600IconsSize + overlayPadding
+	pos.Y = 0
 	if secondaryIcon != "" {
 		pos.X -= oly.playscr.img.fonts.largeFontAwesomeSize * 2
 	}
@@ -421,7 +441,7 @@ func (oly *playscrOverlay) drawTopRight() {
 }
 
 func (oly *playscrOverlay) drawBottomLeft() {
-	if !oly.leftPortDur.tick() {
+	if !oly.leftPortLatch.tick() {
 		return
 	}
 
@@ -429,8 +449,8 @@ func (oly *playscrOverlay) drawBottomLeft() {
 		return
 	}
 
-	pos := imgui.Vec2{0, oly.playscr.img.plt.displaySize()[1]}
-	pos.X += overlayPadding
+	pos := imgui.WindowContentRegionMax()
+	pos.X = overlayPadding
 	pos.Y -= oly.playscr.img.fonts.gopher2600IconsSize + overlayPadding
 
 	imgui.SetCursorScreenPos(pos)
@@ -438,7 +458,7 @@ func (oly *playscrOverlay) drawBottomLeft() {
 }
 
 func (oly *playscrOverlay) drawBottomRight() {
-	if !oly.rightPortDur.tick() {
+	if !oly.rightPortLatch.tick() {
 		return
 	}
 
@@ -446,8 +466,7 @@ func (oly *playscrOverlay) drawBottomRight() {
 		return
 	}
 
-	d := oly.playscr.img.plt.displaySize()
-	pos := imgui.Vec2{d[0], d[1]}
+	pos := imgui.WindowContentRegionMax()
 	pos.X -= oly.playscr.img.fonts.gopher2600IconsSize + overlayPadding
 	pos.Y -= oly.playscr.img.fonts.gopher2600IconsSize + overlayPadding
 
