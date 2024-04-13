@@ -112,13 +112,13 @@ func (plb *Playback) readHeader(lines []string, checkROM bool) error {
 	var err error
 
 	// read header
-	plb.CartLoad, err = cartridgeloader.NewLoader(lines[lineCartName], "AUTO")
+	plb.CartLoad, err = cartridgeloader.NewLoaderFromFilename(lines[lineCartName], "AUTO")
 	if err != nil {
 		return fmt.Errorf("playback: %w", err)
 	}
 
 	if checkROM {
-		plb.CartLoad.Hash = lines[lineCartHash]
+		plb.CartLoad.HashSHA1 = lines[lineCartHash]
 	}
 
 	plb.TVSpec = lines[lineTVSpec]

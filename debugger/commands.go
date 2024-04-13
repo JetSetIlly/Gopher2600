@@ -473,7 +473,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 	case cmdInsert:
 		dbg.unwindLoop(func() error {
 			cart, _ := tokens.Get()
-			cl, err := cartridgeloader.NewLoader(cart, "AUTO")
+			cl, err := cartridgeloader.NewLoaderFromFilename(cart, "AUTO")
 			if err != nil {
 				return err
 			}
@@ -1496,7 +1496,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			case "DUMP":
 				dump := func(name string) {
 					if data, ok := static.Reference(name); ok {
-						fn := unique.Filename(fmt.Sprintf("dump_%s", name), dbg.loader.ShortName())
+						fn := unique.Filename(fmt.Sprintf("dump_%s", name), dbg.loader.Name)
 						fn = fmt.Sprintf("%s.bin", fn)
 						err := os.WriteFile(fn, data, 0644)
 						if err != nil {

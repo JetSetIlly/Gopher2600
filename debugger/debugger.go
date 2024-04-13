@@ -700,7 +700,7 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 	if filename == "" {
 		cartload = cartridgeloader.Loader{}
 	} else {
-		cartload, err = cartridgeloader.NewLoader(filename, dbg.opts.Mapping)
+		cartload, err = cartridgeloader.NewLoaderFromFilename(filename, dbg.opts.Mapping)
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
 		}
@@ -783,7 +783,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 	if filename == "" {
 		cartload = cartridgeloader.Loader{}
 	} else {
-		cartload, err = cartridgeloader.NewLoader(filename, dbg.opts.Mapping)
+		cartload, err = cartridgeloader.NewLoaderFromFilename(filename, dbg.opts.Mapping)
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
 		}
@@ -816,7 +816,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 
 		// record wav file
 		if dbg.opts.Wav {
-			fn := unique.Filename("audio", cartload.ShortName())
+			fn := unique.Filename("audio", cartload.Name)
 			ww, err := wavwriter.NewWavWriter(fn)
 			if err != nil {
 				return fmt.Errorf("debugger: %w", err)
@@ -826,7 +826,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 
 		// record gameplay
 		if dbg.opts.Record {
-			dbg.startRecording(cartload.ShortName())
+			dbg.startRecording(cartload.Name)
 		}
 	} else {
 		if dbg.opts.Record {
@@ -1325,7 +1325,7 @@ func (dbg *Debugger) startComparison(comparisonROM string, comparisonPrefs strin
 		return err
 	}
 
-	cartload, err := cartridgeloader.NewLoader(comparisonROM, "AUTO")
+	cartload, err := cartridgeloader.NewLoaderFromFilename(comparisonROM, "AUTO")
 	if err != nil {
 		return err
 	}
@@ -1373,7 +1373,7 @@ func (dbg *Debugger) hotload() (e error) {
 		}
 	}
 
-	cartload, err := cartridgeloader.NewLoader(dbg.vcs.Mem.Cart.Filename, dbg.vcs.Mem.Cart.ID())
+	cartload, err := cartridgeloader.NewLoaderFromFilename(dbg.vcs.Mem.Cart.Filename, dbg.vcs.Mem.Cart.ID())
 	if err != nil {
 		return err
 	}
@@ -1477,7 +1477,7 @@ func (dbg *Debugger) insertCartridge(filename string) error {
 		filename = dbg.loader.Filename
 	}
 
-	cartload, err := cartridgeloader.NewLoader(filename, "AUTO")
+	cartload, err := cartridgeloader.NewLoaderFromFilename(filename, "AUTO")
 	if err != nil {
 		return fmt.Errorf("debugger: %w", err)
 	}

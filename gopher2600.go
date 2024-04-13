@@ -506,7 +506,7 @@ func disasm(mode string, args []string) error {
 			Cycles:   true,
 		}
 
-		cartload, err := cartridgeloader.NewLoader(args[0], mapping)
+		cartload, err := cartridgeloader.NewLoaderFromFilename(args[0], mapping)
 		if err != nil {
 			return err
 		}
@@ -573,7 +573,7 @@ func perform(mode string, sync *mainSync, args []string) error {
 	case 0:
 		return fmt.Errorf("2600 cartridge required")
 	case 1:
-		cartload, err := cartridgeloader.NewLoader(args[0], mapping)
+		cartload, err := cartridgeloader.NewLoaderFromFilename(args[0], mapping)
 		if err != nil {
 			return err
 		}
@@ -785,7 +785,7 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 
 		switch strings.ToUpper(regressMode) {
 		case "VIDEO":
-			cartload, err := cartridgeloader.NewLoader(args[0], mapping)
+			cartload, err := cartridgeloader.NewLoaderFromFilename(args[0], mapping)
 			if err != nil {
 				return err
 			}
@@ -811,7 +811,7 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 				Notes:  notes,
 			}
 		case "LOG":
-			cartload, err := cartridgeloader.NewLoader(args[0], mapping)
+			cartload, err := cartridgeloader.NewLoaderFromFilename(args[0], mapping)
 			if err != nil {
 				return err
 			}

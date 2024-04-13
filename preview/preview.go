@@ -54,7 +54,7 @@ func NewEmulation(prefs *preferences.Preferences) (*Emulation, error) {
 
 // RunN runs the preview emulation for N frames
 func (em *Emulation) RunN(filename string, N int) error {
-	loader, err := cartridgeloader.NewLoader(filename, "")
+	loader, err := cartridgeloader.NewLoaderFromFilename(filename, "")
 	if err != nil {
 		return fmt.Errorf("preview: %w", err)
 	}

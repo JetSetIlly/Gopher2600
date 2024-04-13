@@ -182,14 +182,14 @@ func (cart *Cartridge) IsEjected() bool {
 // "Cart Information" document [sizes.txt]. Other sources of information noted
 // as appropriate.
 func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
-	err := cartload.Load()
+	err := cartload.Open()
 	if err != nil {
 		return err
 	}
 
 	cart.Filename = cartload.Filename
-	cart.ShortName = cartload.ShortName()
-	cart.Hash = cartload.Hash
+	cart.ShortName = cartload.Name
+	cart.Hash = cartload.HashSHA1
 	cart.mapper = newEjected()
 
 	// log result of Attach() on function return
@@ -401,12 +401,12 @@ func (cart *Cartridge) Step(clock float32) {
 // emulation.
 func (cart *Cartridge) HotLoad(cartload cartridgeloader.Loader) error {
 	if hl, ok := cart.mapper.(mapper.CartHotLoader); ok {
-		err := cartload.Load()
+		err := cartload.Open()
 		if err != nil {
 			return err
 		}
 
-		cart.Hash = cartload.Hash
+		cart.Hash = cartload.HashSHA1
 
 		err = hl.HotLoad(*cartload.Data)
 		if err != nil {

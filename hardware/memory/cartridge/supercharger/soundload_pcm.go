@@ -44,7 +44,7 @@ func getPCM(cl cartridgeloader.Loader) (pcmData, error) {
 
 	switch strings.ToLower(filepath.Ext(cl.Filename)) {
 	case ".wav":
-		dec := wav.NewDecoder(cl.StreamedData)
+		dec := wav.NewDecoder(cl)
 		if dec == nil {
 			return p, fmt.Errorf("wav: error decoding")
 		}
@@ -79,7 +79,7 @@ func getPCM(cl cartridgeloader.Loader) (pcmData, error) {
 		p.totalTime = dur.Seconds()
 
 	case ".mp3":
-		dec, err := mp3.NewDecoder(cl.StreamedData)
+		dec, err := mp3.NewDecoder(cl)
 		if err != nil {
 			return p, fmt.Errorf("mp3: %w", err)
 		}

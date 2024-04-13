@@ -76,7 +76,7 @@ func deserialiseVideoEntry(fields database.SerialisedEntry) (database.Entry, err
 	var err error
 
 	// string fields need no conversion
-	reg.CartLoad, err = cartridgeloader.NewLoader(fields[videoFieldCartName], fields[videoFieldCartMapping])
+	reg.CartLoad, err = cartridgeloader.NewLoaderFromFilename(fields[videoFieldCartName], fields[videoFieldCartMapping])
 	if err != nil {
 		return nil, fmt.Errorf("video: %w", err)
 	}
@@ -129,7 +129,7 @@ func (reg VideoRegression) EntryType() string {
 func (reg *VideoRegression) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
 			reg.CartLoad.Filename,
-			reg.CartLoad.RequestedMapping,
+			reg.CartLoad.Mapping,
 			reg.TVtype,
 			strconv.Itoa(reg.NumFrames),
 			reg.State.String(),
@@ -170,7 +170,7 @@ func (reg VideoRegression) String() string {
 		state = " [with state]"
 	}
 
-	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d%s", reg.EntryType(), reg.CartLoad.ShortName(), reg.TVtype, reg.NumFrames, state))
+	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d%s", reg.EntryType(), reg.CartLoad.Name, reg.TVtype, reg.NumFrames, state))
 	if reg.Notes != "" {
 		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
 	}
@@ -275,7 +275,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 
 		if reg.State != StateNone {
 			// create a unique filename
-			reg.stateFile, err = uniqueFilename("state", reg.CartLoad.ShortName())
+			reg.stateFile, err = uniqueFilename("state", reg.CartLoad.Name)
 			if err != nil {
 				return false, "", fmt.Errorf("video: %w", err)
 			}

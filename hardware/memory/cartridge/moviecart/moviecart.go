@@ -279,7 +279,7 @@ type Moviecart struct {
 	specID    string
 	mappingID string
 
-	loader io.ReadSeekCloser
+	loader io.ReadSeeker
 	banks  []byte
 
 	state *state
@@ -288,7 +288,7 @@ type Moviecart struct {
 func NewMoviecart(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
 	cart := &Moviecart{
 		env:       env,
-		loader:    loader.StreamedData,
+		loader:    loader,
 		mappingID: "MVC",
 	}
 

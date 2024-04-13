@@ -658,7 +658,7 @@ func (win *winSelectROM) setSelectedFile(filename string) {
 	win.selectedName = ""
 
 	// create cartridge loader and start thumbnail emulation
-	loader, err := cartridgeloader.NewLoader(filename, "AUTO")
+	loader, err := cartridgeloader.NewLoaderFromFilename(filename, "AUTO")
 	if err != nil {
 		logger.Logf("ROM Select", err.Error())
 		return
@@ -666,7 +666,7 @@ func (win *winSelectROM) setSelectedFile(filename string) {
 
 	// push function to emulation goroutine. result will be checked for in
 	// draw() function
-	if err := loader.Load(); err == nil {
+	if err := loader.Open(); err == nil {
 		win.img.dbg.PushPropertyLookup(loader.HashMD5, win.propertyResult)
 	}
 

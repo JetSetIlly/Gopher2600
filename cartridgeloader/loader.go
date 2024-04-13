@@ -34,25 +34,25 @@ import (
 	"github.com/jetsetilly/gopher2600/resources/fs"
 )
 
-// Loader is used to specify the cartridge to use when Attach()ing to
-// the VCS. it also permits the called to specify the mapping of the cartridge
-// (if necessary. fingerprinting is pretty good).
+// Loader abstracts all the ways data can be loaded into the emulation.
 type Loader struct {
-	// filename of cartridge to load. In the case of embedded data, this field
-	// will contain the name of the data provided to the the
+	io.ReadSeeker
+
+	// the name to use for the cartridge represented by Loader
+	Name string
+
+	// filename of cartridge being loaded. In the case of embedded data, this
+	// field will contain the name of the data provided to the the
 	// NewLoaderFromEmbed() function.
 	Filename string
 
 	// empty string or "AUTO" indicates automatic fingerprinting
 	Mapping string
 
-	// the Mapping value that was used to initialise the loader
-	RequestedMapping string
-
 	// any detected TV spec in the filename. will be the empty string if
 	// nothing is found. note that the empty string is treated like "AUTO" by
 	// television.SetSpec().
-	Spec string
+	TelevisionSpec string
 
 	// expected hash of the loaded cartridge. empty string indicates that the
 	// hash is unknown and need not be validated. after a load operation the
@@ -61,9 +61,9 @@ type Loader struct {
 	// in the case of sound data (IsSoundData is true) then the hash is of the
 	// original binary file not he decoded PCM data
 	//
-	// the value of Hash will be checked on a call to Loader.Load(). if the
+	// the value of HashSHA1 will be checked on a call to Loader.Load(). if the
 	// string is empty then that check passes.
-	Hash string
+	HashSHA1 string
 
 	// HashMD5 is an alternative to hash for use with the properties package
 	HashMD5 string
@@ -78,27 +78,25 @@ type Loader struct {
 	// loaded/changed by a Loader instance that has been passed by value.
 	Data *[]byte
 
-	// whether the data was assigned during NewLoaderFromEmbed()
-	embedded bool
+	data *bytes.Buffer
 
-	// for some file types streaming is necessary. nil until Load() is called
-	// and the cartridge format requires streaming.
-	StreamedData *os.File
-
-	// pointer to pointer of StreamedData. this is a tricky construct but it
-	// allows us to pass an instance of Loader by value but still be able to
-	// close an opened stream at an "earlier" point in the code.
-	//
 	// if stream is nil then the data will not be streamed. if *stream is nil
-	// then the stream is not open. although use the IsStreamed() function for
-	// this information.
+	// then the stream is not open
+	//
+	// (this is a tricky construct but it allows an instance of Loader to be
+	// passed by value but still be able to close an opened stream at an
+	// "earlier" point in the code)
 	stream **os.File
+
+	// whether the Loader was created with NewLoaderFromData()
+	embedded bool
 }
 
 // sentinal error for when it is attempted to create a loader with no filename
 var NoFilename = errors.New("no filename")
 
-// NewLoader is the preferred method of initialisation for the Loader type.
+// NewLoaderFromFilename is the preferred method of initialisation for the
+// Loader type when loading data from a filename.
 //
 // The mapping argument will be used to set the Mapping field, unless the
 // argument is either "AUTO" or the empty string. In which case the file
@@ -115,9 +113,9 @@ var NoFilename = errors.New("no filename")
 //
 // Filenames can contain whitespace, including leading and trailing whitespace,
 // but cannot consists only of whitespace.
-func NewLoader(filename string, mapping string) (Loader, error) {
+func NewLoaderFromFilename(filename string, mapping string) (Loader, error) {
 	// check filename but don't change it. we don't want to allow the empty
-	// string or a string only consisting of whitespace, but we do want to
+	// string or a string only consisting of whitespace, but we *do* want to
 	// allow filenames with leading/trailing spaces
 	if strings.TrimSpace(filename) == "" {
 		return Loader{}, fmt.Errorf("catridgeloader: %w", NoFilename)
@@ -136,9 +134,8 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 	}
 
 	ld := Loader{
-		Filename:         filename,
-		Mapping:          mapping,
-		RequestedMapping: mapping,
+		Filename: filename,
+		Mapping:  mapping,
 	}
 
 	// create an empty slice for the Data field to refer to
@@ -161,7 +158,7 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 	// if mapping value is still AUTO, make a special check for moviecart data.
 	// we want to do this now so we can initialise the stream
 	if ld.Mapping == "AUTO" {
-		ok, err := fingerprintMovieCart(filename)
+		ok, err := miniFingerprintMovieCart(filename)
 		if err != nil {
 			return Loader{}, fmt.Errorf("catridgeloader: %w", err)
 		}
@@ -176,35 +173,25 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 		ld.stream = new(*os.File)
 	}
 
-	ld.Spec = specification.SearchSpec(filename)
+	// check filename for information about the TV specifction
+	ld.TelevisionSpec = specification.SearchSpec(filename)
+
+	// decide on the name for this cartridge
+	ld.Name = decideOnName(ld)
 
 	return ld, nil
 }
 
-// special handling for MVC files without the MVC file extension
-func fingerprintMovieCart(filename string) (bool, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return false, fmt.Errorf("cartridgeloader: %w", err)
-	}
-	b := make([]byte, 4)
-	f.Read(b)
-	f.Close()
-	if bytes.Compare(b, []byte{'M', 'V', 'C', 0x00}) == 0 {
-		return true, nil
-	}
-	return false, nil
-}
-
-// NewLoaderFromEmbed initialises a loader with an array of bytes. Suitable for
-// loading embedded data (using go:embed for example) into the emulator.
+// NewLoaderFromData is the preferred method of initialisation for the Loader
+// type when loading data from a byte array. It's a great way of loading
+// embedded data (using go:embed) into the emulator.
 //
 // The mapping argument should indicate the format of the data or "AUTO" to
 // indicate that the emulator can perform a fingerprint.
 //
 // The name argument should not include a file extension because it won't be
 // used.
-func NewLoaderFromEmbed(name string, data []byte, mapping string) (Loader, error) {
+func NewLoaderFromData(name string, data []byte, mapping string) (Loader, error) {
 	if len(data) == 0 {
 		return Loader{}, fmt.Errorf("catridgeloader: emebedded data is empty")
 	}
@@ -219,18 +206,25 @@ func NewLoaderFromEmbed(name string, data []byte, mapping string) (Loader, error
 		mapping = "AUTO"
 	}
 
-	return Loader{
-		Filename:         name,
-		Mapping:          mapping,
-		RequestedMapping: mapping,
-		Data:             &data,
-		embedded:         true,
-		Hash:             fmt.Sprintf("%x", sha1.Sum(data)),
-		HashMD5:          fmt.Sprintf("%x", md5.Sum(data)),
-	}, nil
+	ld := Loader{
+		Filename: name,
+		Mapping:  mapping,
+		Data:     &data,
+		data:     bytes.NewBuffer(data),
+		embedded: true,
+		HashSHA1: fmt.Sprintf("%x", sha1.Sum(data)),
+		HashMD5:  fmt.Sprintf("%x", md5.Sum(data)),
+	}
+
+	// decide on the name for this cartridge
+	ld.Name = decideOnName(ld)
+
+	return ld, nil
 }
 
 // Close should be called before disposing of a Loader instance.
+//
+// Implements the io.Closer interface.
 func (ld Loader) Close() error {
 	if ld.stream == nil || *ld.stream == nil {
 		return nil
@@ -239,48 +233,39 @@ func (ld Loader) Close() error {
 	err := (**ld.stream).Close()
 	*ld.stream = nil
 	if err != nil {
-		return fmt.Errorf("cartridgeloader: %w", err)
+		return fmt.Errorf("loader: %w", err)
 	}
-	logger.Logf("cartridgeloader", "stream closed (%s)", ld.Filename)
+	logger.Logf("loader", "stream closed (%s)", ld.Filename)
 
 	return nil
 }
 
-// ShortName returns a shortened version of the CartridgeLoader filename field.
-// In the case of embedded data, the filename field will be returned unaltered.
-func (ld Loader) ShortName() string {
-	if ld.embedded {
-		return ld.Filename
+// Implements the io.Reader interface.
+func (ld Loader) Read(p []byte) (int, error) {
+	if ld.stream == nil {
+		return ld.data.Read(p)
 	}
 
-	// return the empty string if filename is undefined
-	if len(strings.TrimSpace(ld.Filename)) == 0 {
-		return ""
+	if *ld.stream == nil {
+		return 0, nil
 	}
 
-	sn := filepath.Base(ld.Filename)
-	sn = strings.TrimSuffix(sn, filepath.Ext(ld.Filename))
-	return sn
+	return (*ld.stream).Read(p)
 }
 
-// IsStreaming returns two booleans. The first will be true if Loader was
-// created for what appears to be a streaming source, and the second will be
-// true if the stream has been open.
-func (ld Loader) IsStreaming() (bool, bool) {
-	return ld.stream != nil, ld.stream != nil && *ld.stream != nil
+// Implements the io.Seeker interface.
+func (ld Loader) Seek(offset int64, whence int) (int64, error) {
+	if ld.stream == nil || *ld.stream == nil {
+		return 0, nil
+	}
+	return (*ld.stream).Seek(offset, whence)
 }
 
-// IsEmbedded returns true if Loader was created from embedded data. If data
-// has a length of zero then this function will return false.
-func (ld Loader) IsEmbedded() bool {
-	return ld.embedded && len(*ld.Data) > 0
-}
-
-// Load the cartridge data and return as a byte array. Loader filenames with a
-// valid schema will use that method to load the data. Currently supported
-// schemes are HTTP and local files.
-func (ld *Loader) Load() error {
-	// data is already "loaded" when using embedded data
+// Open the cartridge data. Loader filenames with a valid schema will use that
+// method to load the data. Currently supported schemes are HTTP and local
+// files.
+func (ld *Loader) Open() error {
+	// data is already "opened" when using embedded data
 	if ld.embedded {
 		return nil
 	}
@@ -288,16 +273,14 @@ func (ld *Loader) Load() error {
 	if ld.stream != nil {
 		err := ld.Close()
 		if err != nil {
-			return fmt.Errorf("cartridgeloader: %w", err)
+			return fmt.Errorf("loader: %w", err)
 		}
 
-		ld.StreamedData, err = os.Open(ld.Filename)
+		*ld.stream, err = os.Open(ld.Filename)
 		if err != nil {
-			return fmt.Errorf("cartridgeloader: %w", err)
+			return fmt.Errorf("loader: %w", err)
 		}
-		logger.Logf("cartridgeloader", "stream open (%s)", ld.Filename)
-
-		*ld.stream = ld.StreamedData
+		logger.Logf("loader", "stream open (%s)", ld.Filename)
 
 		return nil
 	}
@@ -319,13 +302,13 @@ func (ld *Loader) Load() error {
 	case "https":
 		resp, err := http.Get(ld.Filename)
 		if err != nil {
-			return fmt.Errorf("cartridgeloader: %w", err)
+			return fmt.Errorf("loader: %w", err)
 		}
 		defer resp.Body.Close()
 
 		*ld.Data, err = io.ReadAll(resp.Body)
 		if err != nil {
-			return fmt.Errorf("cartridgeloader: %w", err)
+			return fmt.Errorf("loader: %w", err)
 		}
 
 	case "file":
@@ -337,29 +320,30 @@ func (ld *Loader) Load() error {
 	default:
 		f, err := os.Open(ld.Filename)
 		if err != nil {
-			return fmt.Errorf("cartridgeloader: %w", err)
+			return fmt.Errorf("loader: %w", err)
 		}
 		defer f.Close()
 
 		*ld.Data, err = io.ReadAll(f)
 		if err != nil {
-			return fmt.Errorf("cartridgeloader: %w", err)
+			return fmt.Errorf("loader: %w", err)
 		}
 	}
 
-	// generate hash and check for consistency
-	hash := fmt.Sprintf("%x", sha1.Sum(*ld.Data))
-	if ld.Hash != "" && ld.Hash != hash {
-		return fmt.Errorf("cartridgeloader: unexpected hash value")
-	}
-	ld.Hash = hash
+	ld.data = bytes.NewBuffer(*ld.Data)
 
-	// generate md5 hash and check for consistency
-	hashmd5 := fmt.Sprintf("%x", md5.Sum(*ld.Data))
-	if ld.HashMD5 != "" && ld.HashMD5 != hashmd5 {
-		return fmt.Errorf("cartridgeloader: unexpected hash value")
+	// generate hashes and check for consistency
+	hash := fmt.Sprintf("%x", sha1.Sum(*ld.Data))
+	if ld.HashSHA1 != "" && ld.HashSHA1 != hash {
+		return fmt.Errorf("loader: unexpected SHA1 hash value")
 	}
-	ld.HashMD5 = hashmd5
+	ld.HashSHA1 = hash
+
+	hash = fmt.Sprintf("%x", md5.Sum(*ld.Data))
+	if ld.HashMD5 != "" && ld.HashMD5 != hash {
+		return fmt.Errorf("loader: unexpected MD5 hash value")
+	}
+	ld.HashMD5 = hash
 
 	return nil
 }
