@@ -182,10 +182,7 @@ func (cart *Cartridge) IsEjected() bool {
 // "Cart Information" document [sizes.txt]. Other sources of information noted
 // as appropriate.
 func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
-	err := cartload.Open()
-	if err != nil {
-		return err
-	}
+	var err error
 
 	cart.Filename = cartload.Filename
 	cart.ShortName = cartload.Name
@@ -257,50 +254,50 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	mapping := strings.ToUpper(cartload.Mapping)
 	switch mapping {
 	case "2K":
-		cart.mapper, err = newAtari2k(cart.env, *cartload.Data)
+		cart.mapper, err = newAtari2k(cart.env, cartload.Data)
 	case "4K":
-		cart.mapper, err = newAtari4k(cart.env, *cartload.Data)
+		cart.mapper, err = newAtari4k(cart.env, cartload.Data)
 	case "F8":
-		cart.mapper, err = newAtari8k(cart.env, *cartload.Data)
+		cart.mapper, err = newAtari8k(cart.env, cartload.Data)
 	case "F6":
-		cart.mapper, err = newAtari16k(cart.env, *cartload.Data)
+		cart.mapper, err = newAtari16k(cart.env, cartload.Data)
 	case "F4":
-		cart.mapper, err = newAtari32k(cart.env, *cartload.Data)
+		cart.mapper, err = newAtari32k(cart.env, cartload.Data)
 	case "2KSC":
-		cart.mapper, err = newAtari2k(cart.env, *cartload.Data)
+		cart.mapper, err = newAtari2k(cart.env, cartload.Data)
 		forceSuperchip = true
 	case "4KSC":
-		cart.mapper, err = newAtari4k(cart.env, *cartload.Data)
+		cart.mapper, err = newAtari4k(cart.env, cartload.Data)
 		forceSuperchip = true
 	case "F8SC":
-		cart.mapper, err = newAtari8k(cart.env, *cartload.Data)
+		cart.mapper, err = newAtari8k(cart.env, cartload.Data)
 		forceSuperchip = true
 	case "F6SC":
-		cart.mapper, err = newAtari16k(cart.env, *cartload.Data)
+		cart.mapper, err = newAtari16k(cart.env, cartload.Data)
 		forceSuperchip = true
 	case "F4SC":
-		cart.mapper, err = newAtari32k(cart.env, *cartload.Data)
+		cart.mapper, err = newAtari32k(cart.env, cartload.Data)
 		forceSuperchip = true
 	case "CV":
-		cart.mapper, err = newCommaVid(cart.env, *cartload.Data)
+		cart.mapper, err = newCommaVid(cart.env, cartload.Data)
 	case "FA":
-		cart.mapper, err = newCBS(cart.env, *cartload.Data)
+		cart.mapper, err = newCBS(cart.env, cartload.Data)
 	case "FE":
-		cart.mapper, err = newSCABS(cart.env, *cartload.Data)
+		cart.mapper, err = newSCABS(cart.env, cartload.Data)
 	case "E0":
-		cart.mapper, err = newParkerBros(cart.env, *cartload.Data)
+		cart.mapper, err = newParkerBros(cart.env, cartload.Data)
 	case "E7":
-		cart.mapper, err = newMnetwork(cart.env, *cartload.Data)
+		cart.mapper, err = newMnetwork(cart.env, cartload.Data)
 	case "3F":
-		cart.mapper, err = newTigervision(cart.env, *cartload.Data)
+		cart.mapper, err = newTigervision(cart.env, cartload.Data)
 	case "UA":
-		cart.mapper, err = newUA(cart.env, *cartload.Data)
+		cart.mapper, err = newUA(cart.env, cartload.Data)
 	case "AR":
 		cart.mapper, err = supercharger.NewSupercharger(cart.env, cartload)
 	case "DF":
-		cart.mapper, err = newDF(cart.env, *cartload.Data)
+		cart.mapper, err = newDF(cart.env, cartload.Data)
 	case "3E":
-		cart.mapper, err = new3e(cart.env, *cartload.Data)
+		cart.mapper, err = new3e(cart.env, cartload.Data)
 	case "E3P":
 		// synonym for 3E+
 		fallthrough
@@ -308,22 +305,22 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		// synonym for 3E+
 		fallthrough
 	case "3E+":
-		cart.mapper, err = new3ePlus(cart.env, *cartload.Data)
+		cart.mapper, err = new3ePlus(cart.env, cartload.Data)
 	case "EF":
-		cart.mapper, err = newEF(cart.env, *cartload.Data)
+		cart.mapper, err = newEF(cart.env, cartload.Data)
 	case "EFSC":
-		cart.mapper, err = newEF(cart.env, *cartload.Data)
+		cart.mapper, err = newEF(cart.env, cartload.Data)
 		forceSuperchip = true
 	case "SB":
-		cart.mapper, err = newSuperbank(cart.env, *cartload.Data)
+		cart.mapper, err = newSuperbank(cart.env, cartload.Data)
 	case "WD":
-		cart.mapper, err = newWicksteadDesign(cart.env, *cartload.Data)
+		cart.mapper, err = newWicksteadDesign(cart.env, cartload.Data)
 	case "ACE":
-		cart.mapper, err = ace.NewAce(cart.env, *cartload.Data)
+		cart.mapper, err = ace.NewAce(cart.env, cartload.Data)
 	case "DPC":
-		cart.mapper, err = newDPC(cart.env, *cartload.Data)
+		cart.mapper, err = newDPC(cart.env, cartload.Data)
 	case "DPC+":
-		cart.mapper, err = dpcplus.NewDPCplus(cart.env, *cartload.Data)
+		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload.Data)
 
 	case "CDF":
 		// CDF defaults to CDFJ
@@ -336,7 +333,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	case "CDFJ":
 		fallthrough
 	case "CDFJ+":
-		cart.mapper, err = cdf.NewCDF(cart.env, mapping, *cartload.Data)
+		cart.mapper, err = cdf.NewCDF(cart.env, mapping, cartload.Data)
 
 	case "MVC":
 		cart.mapper, err = moviecart.NewMoviecart(cart.env, cartload)
@@ -401,14 +398,9 @@ func (cart *Cartridge) Step(clock float32) {
 // emulation.
 func (cart *Cartridge) HotLoad(cartload cartridgeloader.Loader) error {
 	if hl, ok := cart.mapper.(mapper.CartHotLoader); ok {
-		err := cartload.Open()
-		if err != nil {
-			return err
-		}
-
 		cart.Hash = cartload.HashSHA1
 
-		err = hl.HotLoad(*cartload.Data)
+		err := hl.HotLoad(cartload.Data)
 		if err != nil {
 			return err
 		}

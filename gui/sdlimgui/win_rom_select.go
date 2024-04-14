@@ -666,9 +666,7 @@ func (win *winSelectROM) setSelectedFile(filename string) {
 
 	// push function to emulation goroutine. result will be checked for in
 	// draw() function
-	if err := loader.Open(); err == nil {
-		win.img.dbg.PushPropertyLookup(loader.HashMD5, win.propertyResult)
-	}
+	win.img.dbg.PushPropertyLookup(loader.HashMD5, win.propertyResult)
 
 	// create thumbnail animation
 	win.thmb.Create(loader, thumbnailer.UndefinedNumFrames, true)

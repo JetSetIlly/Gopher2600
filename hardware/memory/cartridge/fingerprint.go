@@ -277,7 +277,7 @@ func fingerprintCDF(b []byte) (bool, string) {
 }
 
 func fingerprintSuperchargerFastLoad(cartload cartridgeloader.Loader) bool {
-	return len(*cartload.Data) > 0 && len(*cartload.Data)%8448 == 0
+	return len(cartload.Data) > 0 && len(cartload.Data)%8448 == 0
 }
 
 func fingerprintTigervision(b []byte) bool {
@@ -369,32 +369,32 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 	// loading the entire file into memory, which we definitely don't want to do
 	// with moviecart files due to the large size
 
-	if ok := fingerprintElf(*cartload.Data, false); ok {
+	if ok := fingerprintElf(cartload.Data, false); ok {
 		cart.mapper, err = elf.NewElf(cart.env, cart.Filename, false)
 		return err
 	}
 
-	if ok, wrappedElf := fingerprintAce(*cartload.Data); ok {
+	if ok, wrappedElf := fingerprintAce(cartload.Data); ok {
 		if wrappedElf {
 			cart.mapper, err = elf.NewElf(cart.env, cart.Filename, true)
 			return err
 		}
-		cart.mapper, err = ace.NewAce(cart.env, *cartload.Data)
+		cart.mapper, err = ace.NewAce(cart.env, cartload.Data)
 		return err
 	}
 
-	if ok, version := fingerprintCDFJplus(*cartload.Data); ok {
-		cart.mapper, err = cdf.NewCDF(cart.env, version, *cartload.Data)
+	if ok, version := fingerprintCDFJplus(cartload.Data); ok {
+		cart.mapper, err = cdf.NewCDF(cart.env, version, cartload.Data)
 		return err
 	}
 
-	if ok, version := fingerprintCDF(*cartload.Data); ok {
-		cart.mapper, err = cdf.NewCDF(cart.env, version, *cartload.Data)
+	if ok, version := fingerprintCDF(cartload.Data); ok {
+		cart.mapper, err = cdf.NewCDF(cart.env, version, cartload.Data)
 		return err
 	}
 
-	if fingerprintDPCplus(*cartload.Data) {
-		cart.mapper, err = dpcplus.NewDPCplus(cart.env, *cartload.Data)
+	if fingerprintDPCplus(cartload.Data) {
+		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload.Data)
 		return err
 	}
 
@@ -403,20 +403,20 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 		return err
 	}
 
-	if fingerprint3ePlus(*cartload.Data) {
-		cart.mapper, err = new3ePlus(cart.env, *cartload.Data)
+	if fingerprint3ePlus(cartload.Data) {
+		cart.mapper, err = new3ePlus(cart.env, cartload.Data)
 		return err
 	}
 
-	if fingerprint3e(*cartload.Data) {
-		cart.mapper, err = new3e(cart.env, *cartload.Data)
+	if fingerprint3e(cartload.Data) {
+		cart.mapper, err = new3e(cart.env, cartload.Data)
 		return err
 	}
 
-	sz := len(*cartload.Data)
+	sz := len(cartload.Data)
 	switch sz {
 	case 4096:
-		cart.mapper, err = newAtari4k(cart.env, *cartload.Data)
+		cart.mapper, err = newAtari4k(cart.env, cartload.Data)
 		if err != nil {
 			return err
 		}
@@ -429,7 +429,7 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 		fallthrough
 
 	case 8192:
-		cart.mapper, err = fingerprint8k(*cartload.Data)(cart.env, *cartload.Data)
+		cart.mapper, err = fingerprint8k(cartload.Data)(cart.env, cartload.Data)
 		if err != nil {
 			return err
 		}
@@ -438,53 +438,53 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 		fallthrough
 
 	case 10495:
-		cart.mapper, err = newDPC(cart.env, *cartload.Data)
+		cart.mapper, err = newDPC(cart.env, cartload.Data)
 		if err != nil {
 			return err
 		}
 
 	case 12288:
-		cart.mapper, err = newCBS(cart.env, *cartload.Data)
+		cart.mapper, err = newCBS(cart.env, cartload.Data)
 		if err != nil {
 			return err
 		}
 
 	case 16384:
-		cart.mapper, err = fingerprint16k(*cartload.Data)(cart.env, *cartload.Data)
+		cart.mapper, err = fingerprint16k(cartload.Data)(cart.env, cartload.Data)
 		if err != nil {
 			return err
 		}
 
 	case 32768:
-		cart.mapper, err = fingerprint32k(*cartload.Data)(cart.env, *cartload.Data)
+		cart.mapper, err = fingerprint32k(cartload.Data)(cart.env, cartload.Data)
 		if err != nil {
 			return err
 		}
 
 	case 65536:
-		cart.mapper, err = fingerprint64k(*cartload.Data)(cart.env, *cartload.Data)
+		cart.mapper, err = fingerprint64k(cartload.Data)(cart.env, cartload.Data)
 		if err != nil {
 			return err
 		}
 
 	case 131072:
-		cart.mapper, err = fingerprint128k(*cartload.Data)(cart.env, *cartload.Data)
+		cart.mapper, err = fingerprint128k(cartload.Data)(cart.env, cartload.Data)
 		if err != nil {
 			return err
 		}
 
 	case 262144:
-		cart.mapper, err = fingerprint256k(*cartload.Data)(cart.env, *cartload.Data)
+		cart.mapper, err = fingerprint256k(cartload.Data)(cart.env, cartload.Data)
 		if err != nil {
 			return err
 		}
 
 	default:
 		if sz >= 4096 {
-			return fmt.Errorf("unrecognised size (%d bytes)", len(*cartload.Data))
+			return fmt.Errorf("unrecognised size (%d bytes)", len(cartload.Data))
 		}
 
-		cart.mapper, err = newAtari2k(cart.env, *cartload.Data)
+		cart.mapper, err = newAtari2k(cart.env, cartload.Data)
 		if err != nil {
 			return err
 		}
@@ -510,8 +510,8 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 // process occurs in that function. if that fails then we can say that the true
 // result from this function was a false positive.
 func (cart *Cartridge) fingerprintPlusROM(cartload cartridgeloader.Loader) bool {
-	for i := 0; i < len(*cartload.Data)-2; i++ {
-		if (*cartload.Data)[i] == 0x8d && (*cartload.Data)[i+1] == 0xf1 && ((*cartload.Data)[i+2]&0x10) == 0x10 {
+	for i := 0; i < len(cartload.Data)-2; i++ {
+		if (cartload.Data)[i] == 0x8d && (cartload.Data)[i+1] == 0xf1 && ((cartload.Data)[i+2]&0x10) == 0x10 {
 			return true
 		}
 	}

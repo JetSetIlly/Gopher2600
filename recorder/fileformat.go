@@ -117,8 +117,8 @@ func (plb *Playback) readHeader(lines []string, checkROM bool) error {
 		return fmt.Errorf("playback: %w", err)
 	}
 
-	if checkROM {
-		plb.CartLoad.HashSHA1 = lines[lineCartHash]
+	if checkROM && plb.CartLoad.HashSHA1 != lines[lineCartHash] {
+		return fmt.Errorf("playback: unexpected hash")
 	}
 
 	plb.TVSpec = lines[lineTVSpec]

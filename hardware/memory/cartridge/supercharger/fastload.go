@@ -83,21 +83,19 @@ type fastloadBlock struct {
 
 // newFastLoad is the preferred method of initialisation for the FastLoad type.
 func newFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error) {
-	if len(*loader.Data)%fastLoadBlockLen != 0 {
+	if len(loader.Data)%fastLoadBlockLen != 0 {
 		return nil, fmt.Errorf("fastload: wrong number of bytes in cartridge data")
 	}
-
-	data := *loader.Data
 
 	fl := &FastLoad{
 		cart: cart,
 	}
 
-	fl.blocks = make([]fastloadBlock, len(data)/fastLoadBlockLen)
+	fl.blocks = make([]fastloadBlock, len(loader.Data)/fastLoadBlockLen)
 
 	for i := range fl.blocks {
 		offset := i * fastLoadBlockLen
-		fl.blocks[i].data = data[offset : offset+fastLoadHeaderOffset]
+		fl.blocks[i].data = loader.Data[offset : offset+fastLoadHeaderOffset]
 
 		// game header appears after main data
 		gameHeader := fl.blocks[i].data[fastLoadHeaderOffset : fastLoadHeaderOffset+fastLoadHeaderLen]
