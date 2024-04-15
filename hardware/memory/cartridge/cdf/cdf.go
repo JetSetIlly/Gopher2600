@@ -17,7 +17,9 @@ package cdf
 
 import (
 	"fmt"
+	"io"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
@@ -74,7 +76,12 @@ const (
 )
 
 // NewCDF is the preferred method of initialisation for the CDF type.
-func NewCDF(env *environment.Environment, version string, data []byte) (mapper.CartMapper, error) {
+func NewCDF(env *environment.Environment, loader cartridgeloader.Loader, version string) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("CDF: %w", err)
+	}
+
 	cart := &cdf{
 		env:       env,
 		mappingID: "CDF",
@@ -83,7 +90,6 @@ func NewCDF(env *environment.Environment, version string, data []byte) (mapper.C
 		yieldHook: coprocessor.StubCartYieldHook{},
 	}
 
-	var err error
 	cart.version, err = newVersion(env.Prefs.ARM.Model.Get().(string), version, data)
 	if err != nil {
 		return nil, fmt.Errorf("CDF: %w", err)

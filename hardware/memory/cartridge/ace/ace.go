@@ -17,7 +17,9 @@ package ace
 
 import (
 	"fmt"
+	"io"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
@@ -42,13 +44,17 @@ type Ace struct {
 }
 
 // NewAce is the preferred method of initialisation for the Ace type.
-func NewAce(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
+func NewAce(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("ACE: %w", err)
+	}
+
 	cart := &Ace{
 		env:       env,
 		yieldHook: coprocessor.StubCartYieldHook{},
 	}
 
-	var err error
 	cart.mem, err = newAceMemory(data, cart.env.Prefs.ARM)
 	if err != nil {
 		return nil, err

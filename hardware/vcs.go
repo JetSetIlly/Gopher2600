@@ -178,7 +178,7 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader, reset bool) err
 // FingerprintPeripheral inserts the peripheral that is thought to be best
 // suited for the current inserted cartridge.
 func (vcs *VCS) FingerprintPeripheral(id plugging.PortID, cartload cartridgeloader.Loader) error {
-	return vcs.RIOT.Ports.Plug(id, peripherals.Fingerprint(id, cartload.Data))
+	return vcs.RIOT.Ports.Plug(id, peripherals.Fingerprint(id, cartload))
 }
 
 // Reset emulates the reset switch on the console panel.

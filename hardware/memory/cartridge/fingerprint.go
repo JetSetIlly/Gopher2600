@@ -18,94 +18,101 @@ package cartridge
 import (
 	"bytes"
 	"fmt"
+	"io"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/environment"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/ace"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/cdf"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/dpcplus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/elf"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 )
 
 // if anwhere parameter is true then the ELF magic number can appear anywhere
 // in the data (the b parameter). otherwise it must appear at the beginning of
 // the data
-func fingerprintElf(b []byte, anywhere bool) bool {
+func fingerprintElf(loader cartridgeloader.Loader, anywhere bool) bool {
 	if anywhere {
-		if bytes.Contains(b, []byte{0x7f, 'E', 'L', 'F'}) {
+		if loader.Contains([]byte{0x7f, 'E', 'L', 'F'}) {
 			return true
 		}
-	} else if bytes.HasPrefix(b, []byte{0x7f, 'E', 'L', 'F'}) {
-		return true
+	} else {
+		b := make([]byte, 4)
+		loader.Seek(0, io.SeekStart)
+		if n, err := loader.Read(b); n != len(b) || err != nil {
+			return false
+		}
+		if bytes.Equal(b, []byte{0x7f, 'E', 'L', 'F'}) {
+			return true
+		}
 	}
 
 	return false
 }
 
-func fingerprintAce(b []byte) (bool, bool) {
-	if len(b) < 144 {
-		return false, false
-	}
-
+func fingerprintAce(loader cartridgeloader.Loader) (bool, bool) {
 	// some ACE files embed an ELF file inside the ACE data. these files are
 	// identified by the presence of "elf-relocatable" in the data premable
-	wrappedELF := bytes.Contains(b[:144], []byte("elf-relocatable"))
+	wrappedELF := loader.ContainsLimit(144, []byte("elf-relocatable"))
 
 	// make double sure this is actually an elf file. otherwise it's just an
 	// ACE file with elf-relocatable in the data preamble
-	wrappedELF = wrappedELF && fingerprintElf(b, true)
+	wrappedELF = wrappedELF && fingerprintElf(loader, true)
 
-	if bytes.Contains(b[:144], []byte("ACE-2600")) {
+	if loader.ContainsLimit(144, []byte("ACE-2600")) {
 		return true, wrappedELF
 	}
 
-	if bytes.Contains(b[:144], []byte("ACE-PC00")) {
+	if loader.ContainsLimit(144, []byte("ACE-PC00")) {
 		return true, wrappedELF
 	}
 
-	if bytes.Contains(b[:144], []byte("ACE-UF00")) {
+	if loader.ContainsLimit(144, []byte("ACE-UF00")) {
 		return true, wrappedELF
 	}
 
 	return false, false
 }
 
-func fingerprint3e(b []byte) bool {
+func (cart *Cartridge) fingerprintPlusROM(loader cartridgeloader.Loader) bool {
+	// there is a second fingerprint that occurs in the NewPlusROM() function
+
+	b := make([]byte, 3)
+	loader.Seek(0, io.SeekStart)
+
+	for {
+		n, err := loader.Read(b)
+		if n < len(b) {
+			break
+		}
+		if b[0] == 0x8d && b[1] == 0xf1 && b[2]&0x10 == 0x10 {
+			return true
+		}
+		if err == io.EOF {
+			break
+		}
+		loader.Seek(int64(1-len(b)), io.SeekCurrent)
+	}
+
+	return false
+}
+
+func fingerprint3e(loader cartridgeloader.Loader) bool {
 	// 3E cart bankswitching is triggered by storing the bank number in address
 	// 3E using 'STA $3E', commonly followed by an  immediate mode LDA
 	//
 	// fingerprint method taken from:
 	//
 	// https://gitlab.com/firmaplus/atari-2600-pluscart/-/blob/master/source/STM32firmware/PlusCart/Src/cartridge_detection.c#L140
-
-	for i := 0; i < len(b)-3; i++ {
-		if b[i] == 0x85 && b[i+1] == 0x3e && b[i+2] == 0xa9 && b[i+3] == 0x00 {
-			return true
-		}
-	}
-
-	return false
+	return loader.Contains([]byte{0x85, 0x3e, 0xa9, 0x00})
 }
 
-func fingerprint3ePlus(b []byte) bool {
+func fingerprint3ePlus(loader cartridgeloader.Loader) bool {
 	// previous versions of this function worked similarly to the tigervision
 	// method but this is more accurate
 	//
 	// fingerprint method taken from:
 	//
 	// https://gitlab.com/firmaplus/atari-2600-pluscart/-/blob/master/source/STM32firmware/PlusCart/Src/cartridge_detection.c#L148
-	for i := 0; i < len(b)-3; i++ {
-		if b[i] == 'T' && b[i+1] == 'J' && b[i+2] == '3' && b[i+3] == 'E' {
-			return true
-		}
-	}
-
-	return false
+	return loader.Contains([]byte{'T', 'J', '3', 'E'})
 }
 
-func fingerprintMnetwork(b []byte) bool {
+func fingerprintMnetwork(loader cartridgeloader.Loader) bool {
 	// Bump 'n' Jump is the fussiest mnetwork cartridge I've found. Matching
 	// hotspots:
 	//
@@ -135,12 +142,19 @@ func fingerprintMnetwork(b []byte) bool {
 	//
 	// https://atariage.com/forums/topic/155657-elite-3d-graphics/?do=findComment&comment=2444328
 	//
-	// with such a low threshold, mnetwork should probably be the very last
-	// type to check for
+	// with such a low threshold, mnetwork should probably be the very last type to check for
 	threshold := 1
 
-	for i := 0; i < len(b)-3; i++ {
-		if b[i] == 0xad && (b[i+1] >= 0xe0 && b[i+1] <= 0xe7) {
+	b := make([]byte, 3)
+	loader.Seek(0, io.SeekStart)
+
+	for {
+		n, err := loader.Read(b)
+		if n < len(b) {
+			break
+		}
+
+		if b[0] == 0xad && b[1] >= 0xe0 && b[1] <= 0xe7 {
 			// bank switching can address any cartidge mirror so mask off
 			// insignificant bytes
 			//
@@ -154,19 +168,25 @@ func fingerprintMnetwork(b []byte) bool {
 			// when the threshold is 1
 			//
 			// change to only look for mirrors 0x1f and 0xff
-			if b[i+2] == 0x1f || b[i+2] == 0xff {
+			if b[2] == 0x1f || b[2] == 0xff {
 				threshold--
 				if threshold == 0 {
 					return true
 				}
 			}
 		}
+
+		if err == io.EOF {
+			break
+		}
+
+		loader.Seek(int64(1-len(b)), io.SeekCurrent)
 	}
 
 	return false
 }
 
-func fingerprintParkerBros(b []byte) bool {
+func fingerprintParkerBros(loader cartridgeloader.Loader) bool {
 	// parker bros fingerprint taken from Stella
 	fingerprint := [][]byte{
 		{0x8d, 0xe0, 0x1f}, // STA $1FE0
@@ -179,26 +199,28 @@ func fingerprintParkerBros(b []byte) bool {
 		{0xad, 0xf3, 0xbf}, // LDA $BFF3
 	}
 	for _, f := range fingerprint {
-		if bytes.Contains(b, f) {
+		if loader.Contains(f) {
 			return true
 		}
 	}
 	return false
 }
 
-func fingerprintDF(b []byte) bool {
-	if len(b) < 0xffb {
+func fingerprintDF(loader cartridgeloader.Loader) bool {
+	b := make([]byte, 4)
+	loader.Seek(0x0ff8, io.SeekStart)
+	if n, err := loader.Read(b); n != len(b) || err != nil {
 		return false
 	}
-	return b[0xff8] == 'D' && b[0xff9] == 'F' && b[0xffa] == 'S' && b[0xffb] == 'C'
+	return bytes.Equal(b, []byte{'D', 'F', 'S', 'C'})
 }
 
-func fingerprintWickstead(b []byte) bool {
+func fingerprintWickstead(loader cartridgeloader.Loader) bool {
 	// wickstead design fingerprint taken from Stella
-	return bytes.Contains(b, []byte{0xa5, 0x39, 0x4c})
+	return loader.Contains([]byte{0xa5, 0x39, 0x4c})
 }
 
-func fingerprintSCABS(b []byte) bool {
+func fingerprintSCABS(loader cartridgeloader.Loader) bool {
 	// SCABS fingerprint taken from Stella
 	fingerprint := [][]byte{
 		{0x20, 0x00, 0xd0, 0xc6, 0xc5}, // JSR $D000; DEC $C5
@@ -207,14 +229,14 @@ func fingerprintSCABS(b []byte) bool {
 		{0x20, 0x00, 0xf0, 0x84, 0xd6}, // JSR $F000; $84, $D6
 	}
 	for _, f := range fingerprint {
-		if bytes.Contains(b, f) {
+		if loader.Contains(f) {
 			return true
 		}
 	}
 	return false
 }
 
-func fingerprintUA(b []byte) bool {
+func fingerprintUA(loader cartridgeloader.Loader) bool {
 	// ua fingerprint taken from Stella
 	fingerprint := [][]byte{
 		{0x8D, 0x40, 0x02}, // STA $240 (Funky Fish, Pleiades)
@@ -225,201 +247,168 @@ func fingerprintUA(b []byte) bool {
 		{0xAD, 0xC0, 0x02}, // LDA $2C0 (Mickey)
 	}
 	for _, f := range fingerprint {
-		if bytes.Contains(b, f) {
+		if loader.Contains(f) {
 			return true
 		}
 	}
 	return false
 }
 
-func fingerprintDPCplus(b []byte) bool {
-	if len(b) < 0x23 {
+func fingerprintDPCplus(loader cartridgeloader.Loader) bool {
+	b := make([]byte, 4)
+	loader.Seek(0x0020, io.SeekStart)
+	if n, err := loader.Read(b); n != len(b) || err != nil {
 		return false
 	}
-	return b[0x20] == 0x1e && b[0x21] == 0xab && b[0x22] == 0xad && b[0x23] == 0x10
+	return bytes.Equal(b, []byte{0x1e, 0xab, 0xad, 0x10})
 }
 
-func fingerprintCDFJplus(b []byte) (bool, string) {
-	if len(b) < 2048 {
-		return false, ""
-	}
-	if bytes.Contains(b[:2048], []byte("PLUSCDFJ")) {
+func fingerprintCDF(loader cartridgeloader.Loader) (bool, string) {
+	if loader.ContainsLimit(2048, []byte("PLUSCDFJ")) {
 		return true, "CDFJ+"
 	}
+
+	if loader.ContainsLimit(2048, []byte("CDFJ")) {
+		return true, "CDFJ"
+	}
+
+	// old-school CDF version detection
+
+	b := make([]byte, 4)
+	loader.Seek(0, io.SeekStart)
+
+	for {
+		n, err := loader.Read(b)
+		if n < len(b) {
+			break
+		}
+
+		if bytes.Equal(b[:3], []byte("CDF")) {
+			return true, fmt.Sprintf("CDF%1d", b[3])
+		}
+
+		if err == io.EOF {
+			break
+		}
+
+		loader.Seek(int64(1-len(b)), io.SeekCurrent)
+	}
+
 	return false, ""
 }
 
-func fingerprintCDF(b []byte) (bool, string) {
-	count := 0
-	version := ""
-
-	for i := 0; i < len(b)-3; i++ {
-		if b[i] == 'C' && b[i+1] == 'D' && b[i+2] == 'F' {
-			var newVersion string
-			count++
-
-			// create version string. slightly different for CDFJ
-			if b[i+3] == 'J' {
-				newVersion = "CDFJ"
-			} else {
-				newVersion = fmt.Sprintf("CDF%1d", b[i+3])
-			}
-
-			// make sure the version number hasn't changed
-			if version != "" && version != newVersion {
-				return false, ""
-			}
-			version = newVersion
-		}
-	}
-
-	return count >= 3, version
-}
-
 func fingerprintSuperchargerFastLoad(cartload cartridgeloader.Loader) bool {
-	return len(cartload.Data) > 0 && len(cartload.Data)%8448 == 0
+	return cartload.Size() > 0 && cartload.Size()%8448 == 0
 }
 
-func fingerprintTigervision(b []byte) bool {
+func fingerprintTigervision(loader cartridgeloader.Loader) bool {
 	// tigervision cartridges change banks by writing to memory address 0x3f. we
 	// can hypothesise that these types of cartridges will have that instruction
 	// sequence "85 3f" many times in a ROM whereas other cartridge types will not
-
 	threshold := 5
-	for i := 0; i < len(b)-1; i++ {
-		if b[i] == 0x85 && b[i+1] == 0x3f {
-			threshold--
-		}
-		if threshold == 0 {
-			return true
-		}
-	}
-	return false
+	return loader.Count([]byte{0x85, 0x3f}) > threshold
 }
 
-func fingerprint8k(data []byte) func(*environment.Environment, []byte) (mapper.CartMapper, error) {
-	if fingerprintTigervision(data) {
-		return newTigervision
+func fingerprint8k(loader cartridgeloader.Loader) string {
+	if fingerprintTigervision(loader) {
+		return "3F"
 	}
 
-	if fingerprintParkerBros(data) {
-		return newParkerBros
+	if fingerprintParkerBros(loader) {
+		return "E0"
 	}
 
 	// mnetwork has the lowest threshold so place it at the end
-	if fingerprintMnetwork(data) {
-		return newMnetwork
+	if fingerprintMnetwork(loader) {
+		return "E7"
 	}
 
-	if fingerprintWickstead(data) {
-		return newWicksteadDesign
+	if fingerprintWickstead(loader) {
+		return "WD"
 	}
 
-	if fingerprintSCABS(data) {
-		return newSCABS
+	if fingerprintSCABS(loader) {
+		return "FE"
 	}
 
-	if fingerprintUA(data) {
-		return newUA
+	if fingerprintUA(loader) {
+		return "UA"
 	}
 
-	return newAtari8k
+	return "F8"
 }
 
-func fingerprint16k(data []byte) func(*environment.Environment, []byte) (mapper.CartMapper, error) {
-	if fingerprintTigervision(data) {
-		return newTigervision
+func fingerprint16k(loader cartridgeloader.Loader) string {
+	if fingerprintTigervision(loader) {
+		return "3F"
 	}
 
-	if fingerprintMnetwork(data) {
-		return newMnetwork
+	if fingerprintMnetwork(loader) {
+		return "E7"
 	}
 
-	return newAtari16k
+	return "F6"
 }
 
-func fingerprint32k(data []byte) func(*environment.Environment, []byte) (mapper.CartMapper, error) {
-	if fingerprintTigervision(data) {
-		return newTigervision
+func fingerprint32k(loader cartridgeloader.Loader) string {
+	if fingerprintTigervision(loader) {
+		return "3F"
 	}
-
-	return newAtari32k
+	return "F4"
 }
 
-func fingerprint64k(data []byte) func(*environment.Environment, []byte) (mapper.CartMapper, error) {
-	return newEF
+func fingerprint64k(loader cartridgeloader.Loader) string {
+	return "EF"
 }
 
-func fingerprint128k(data []byte) func(*environment.Environment, []byte) (mapper.CartMapper, error) {
-	if fingerprintDF(data) {
-		return newDF
+func fingerprint128k(loader cartridgeloader.Loader) string {
+	if fingerprintDF(loader) {
+		return "DF"
 	}
-
-	return newSuperbank
+	return "SB"
 }
 
-func fingerprint256k(data []byte) func(*environment.Environment, []byte) (mapper.CartMapper, error) {
-	return newSuperbank
+func fingerprint256k(loader cartridgeloader.Loader) string {
+	return "SB"
 }
 
-func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
-	var err error
-
+func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) (string, error) {
 	// moviecart fingerprinting is done in cartridge loader. this is to avoid
 	// loading the entire file into memory, which we definitely don't want to do
 	// with moviecart files due to the large size
 
-	if ok := fingerprintElf(cartload.Data, false); ok {
-		cart.mapper, err = elf.NewElf(cart.env, cart.Filename, false)
-		return err
+	if ok := fingerprintElf(cartload, false); ok {
+		return "ELF", nil
 	}
 
-	if ok, wrappedElf := fingerprintAce(cartload.Data); ok {
-		if wrappedElf {
-			cart.mapper, err = elf.NewElf(cart.env, cart.Filename, true)
-			return err
-		}
-		cart.mapper, err = ace.NewAce(cart.env, cartload.Data)
-		return err
+	if ok, wrappedElf := fingerprintAce(cartload); ok {
+		_ = wrappedElf
+		return "ACE", nil
 	}
 
-	if ok, version := fingerprintCDFJplus(cartload.Data); ok {
-		cart.mapper, err = cdf.NewCDF(cart.env, version, cartload.Data)
-		return err
+	if ok, version := fingerprintCDF(cartload); ok {
+		return version, nil
 	}
 
-	if ok, version := fingerprintCDF(cartload.Data); ok {
-		cart.mapper, err = cdf.NewCDF(cart.env, version, cartload.Data)
-		return err
-	}
-
-	if fingerprintDPCplus(cartload.Data) {
-		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload.Data)
-		return err
+	if fingerprintDPCplus(cartload) {
+		return "DPC+", nil
 	}
 
 	if fingerprintSuperchargerFastLoad(cartload) {
-		cart.mapper, err = supercharger.NewSupercharger(cart.env, cartload)
-		return err
+		return "AR", nil
 	}
 
-	if fingerprint3ePlus(cartload.Data) {
-		cart.mapper, err = new3ePlus(cart.env, cartload.Data)
-		return err
+	if fingerprint3ePlus(cartload) {
+		return "3E+", nil
 	}
 
-	if fingerprint3e(cartload.Data) {
-		cart.mapper, err = new3e(cart.env, cartload.Data)
-		return err
+	if fingerprint3e(cartload) {
+		return "3E", nil
 	}
 
-	sz := len(cartload.Data)
-	switch sz {
+	switch cartload.Size() {
 	case 4096:
-		cart.mapper, err = newAtari4k(cart.env, cartload.Data)
-		if err != nil {
-			return err
-		}
+		return "4K", nil
 
 	case 8195:
 		// a widely distributed bad ROM dump of the Pink Panther prototype is
@@ -429,91 +418,35 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 		fallthrough
 
 	case 8192:
-		cart.mapper, err = fingerprint8k(cartload.Data)(cart.env, cartload.Data)
-		if err != nil {
-			return err
-		}
+		return fingerprint8k(cartload), nil
 
 	case 10240:
 		fallthrough
 
 	case 10495:
-		cart.mapper, err = newDPC(cart.env, cartload.Data)
-		if err != nil {
-			return err
-		}
+		return "DPC", nil
 
 	case 12288:
-		cart.mapper, err = newCBS(cart.env, cartload.Data)
-		if err != nil {
-			return err
-		}
+		return "FA", nil
 
 	case 16384:
-		cart.mapper, err = fingerprint16k(cartload.Data)(cart.env, cartload.Data)
-		if err != nil {
-			return err
-		}
+		return fingerprint16k(cartload), nil
 
 	case 32768:
-		cart.mapper, err = fingerprint32k(cartload.Data)(cart.env, cartload.Data)
-		if err != nil {
-			return err
-		}
+		return fingerprint32k(cartload), nil
 
 	case 65536:
-		cart.mapper, err = fingerprint64k(cartload.Data)(cart.env, cartload.Data)
-		if err != nil {
-			return err
-		}
+		return fingerprint64k(cartload), nil
 
 	case 131072:
-		cart.mapper, err = fingerprint128k(cartload.Data)(cart.env, cartload.Data)
-		if err != nil {
-			return err
-		}
+		return fingerprint128k(cartload), nil
 
 	case 262144:
-		cart.mapper, err = fingerprint256k(cartload.Data)(cart.env, cartload.Data)
-		if err != nil {
-			return err
-		}
-
-	default:
-		if sz >= 4096 {
-			return fmt.Errorf("unrecognised size (%d bytes)", len(cartload.Data))
-		}
-
-		cart.mapper, err = newAtari2k(cart.env, cartload.Data)
-		if err != nil {
-			return err
-		}
-
+		return fingerprint256k(cartload), nil
 	}
 
-	// if cartridge mapper implements the optionalSuperChip interface then try
-	// to add the additional RAM
-	if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
-		superchip.AddSuperchip(false)
+	if cartload.Size() >= 4096 {
+		return "", fmt.Errorf("unrecognised size (%d bytes)", cartload.Size())
 	}
-
-	return nil
-}
-
-// fingerprinting a PlusROM cartridge is slightly different to the main
-// fingerprint() function above. the fingerprintPlusROM() function below is the
-// first step. it checks for the byte sequence 8d f1 x1, which is the
-// equivalent to STA $xff1, a necessary instruction in a PlusROM cartridge
-//
-// if this sequence is found then the function returns true, whereupon
-// plusrom.NewPlusROM() can be called. the seoncd part of the fingerprinting
-// process occurs in that function. if that fails then we can say that the true
-// result from this function was a false positive.
-func (cart *Cartridge) fingerprintPlusROM(cartload cartridgeloader.Loader) bool {
-	for i := 0; i < len(cartload.Data)-2; i++ {
-		if (cartload.Data)[i] == 0x8d && (cartload.Data)[i+1] == 0xf1 && ((cartload.Data)[i+2]&0x10) == 0x10 {
-			return true
-		}
-	}
-	return false
+	return "2K", nil
 }

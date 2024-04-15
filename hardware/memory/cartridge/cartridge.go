@@ -189,6 +189,12 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	cart.Hash = cartload.HashSHA1
 	cart.mapper = newEjected()
 
+	// reset loader stream before we go any further
+	err = cartload.Reset()
+	if err != nil {
+		return fmt.Errorf("cartridge: %w", err)
+	}
+
 	// log result of Attach() on function return
 	defer func() {
 		// we might have arrived here as a result of an error so we should
@@ -206,98 +212,71 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		}
 	}()
 
-	// fingerprint cartridgeloader.Loader
-	if cartload.Mapping == "" || cartload.Mapping == "AUTO" {
-		err := cart.fingerprint(cartload)
+	mapping := strings.ToUpper(cartload.Mapping)
+
+	// automatic fingerprinting of cartridge
+	if mapping == "" || mapping == "AUTO" {
+		mapping, err = cart.fingerprint(cartload)
 		if err != nil {
 			return fmt.Errorf("cartridge: %w", err)
 		}
 
-		// in addition to the regular fingerprint we also check to see if this
-		// is PlusROM cartridge (which can be combined with a regular cartridge
-		// format)
-		if cart.fingerprintPlusROM(cartload) {
-			// try creating a NewPlusROM instance
-			pr, err := plusrom.NewPlusROM(cart.env, cart.mapper)
-
-			if err != nil {
-				// check for known PlusROM errors
-				if errors.Is(err, plusrom.NotAPlusROM) {
-					logger.Log("cartridge", err.Error())
-					return nil
-				}
-				if errors.Is(err, plusrom.CannotAdoptROM) {
-					logger.Log("cartridge", err.Error())
-					return nil
-				}
-
-				// we do not recognise the error so return it
-				return fmt.Errorf("cartridge: %w", err)
-			}
-
-			// we've wrapped the main cartridge mapper inside the PlusROM
-			// mapper and we need to point the mapper field to the the new
-			// PlusROM instance
-			cart.mapper = pr
-
-			// log that this is PlusROM cartridge
-			logger.Logf("cartridge", "%s cartridge contained in PlusROM", cart.ID())
+		// reset loader stream after fingerprinting
+		err = cartload.Reset()
+		if err != nil {
+			return fmt.Errorf("cartridge: %w", err)
 		}
-
-		return nil
 	}
 
-	// a specific cartridge mapper was specified
-
+	// sometimes we force the presence of a superchip
 	forceSuperchip := false
 
-	mapping := strings.ToUpper(cartload.Mapping)
 	switch mapping {
 	case "2K":
-		cart.mapper, err = newAtari2k(cart.env, cartload.Data)
+		cart.mapper, err = newAtari2k(cart.env, cartload)
 	case "4K":
-		cart.mapper, err = newAtari4k(cart.env, cartload.Data)
+		cart.mapper, err = newAtari4k(cart.env, cartload)
 	case "F8":
-		cart.mapper, err = newAtari8k(cart.env, cartload.Data)
+		cart.mapper, err = newAtari8k(cart.env, cartload)
 	case "F6":
-		cart.mapper, err = newAtari16k(cart.env, cartload.Data)
+		cart.mapper, err = newAtari16k(cart.env, cartload)
 	case "F4":
-		cart.mapper, err = newAtari32k(cart.env, cartload.Data)
+		cart.mapper, err = newAtari32k(cart.env, cartload)
 	case "2KSC":
-		cart.mapper, err = newAtari2k(cart.env, cartload.Data)
+		cart.mapper, err = newAtari2k(cart.env, cartload)
 		forceSuperchip = true
 	case "4KSC":
-		cart.mapper, err = newAtari4k(cart.env, cartload.Data)
+		cart.mapper, err = newAtari4k(cart.env, cartload)
 		forceSuperchip = true
 	case "F8SC":
-		cart.mapper, err = newAtari8k(cart.env, cartload.Data)
+		cart.mapper, err = newAtari8k(cart.env, cartload)
 		forceSuperchip = true
 	case "F6SC":
-		cart.mapper, err = newAtari16k(cart.env, cartload.Data)
+		cart.mapper, err = newAtari16k(cart.env, cartload)
 		forceSuperchip = true
 	case "F4SC":
-		cart.mapper, err = newAtari32k(cart.env, cartload.Data)
+		cart.mapper, err = newAtari32k(cart.env, cartload)
 		forceSuperchip = true
 	case "CV":
-		cart.mapper, err = newCommaVid(cart.env, cartload.Data)
+		cart.mapper, err = newCommaVid(cart.env, cartload)
 	case "FA":
-		cart.mapper, err = newCBS(cart.env, cartload.Data)
+		cart.mapper, err = newCBS(cart.env, cartload)
 	case "FE":
-		cart.mapper, err = newSCABS(cart.env, cartload.Data)
+		cart.mapper, err = newSCABS(cart.env, cartload)
 	case "E0":
-		cart.mapper, err = newParkerBros(cart.env, cartload.Data)
+		cart.mapper, err = newParkerBros(cart.env, cartload)
 	case "E7":
-		cart.mapper, err = newMnetwork(cart.env, cartload.Data)
+		cart.mapper, err = newMnetwork(cart.env, cartload)
 	case "3F":
-		cart.mapper, err = newTigervision(cart.env, cartload.Data)
+		cart.mapper, err = newTigervision(cart.env, cartload)
 	case "UA":
-		cart.mapper, err = newUA(cart.env, cartload.Data)
+		cart.mapper, err = newUA(cart.env, cartload)
 	case "AR":
 		cart.mapper, err = supercharger.NewSupercharger(cart.env, cartload)
 	case "DF":
-		cart.mapper, err = newDF(cart.env, cartload.Data)
+		cart.mapper, err = newDF(cart.env, cartload)
 	case "3E":
-		cart.mapper, err = new3e(cart.env, cartload.Data)
+		cart.mapper, err = new3e(cart.env, cartload)
 	case "E3P":
 		// synonym for 3E+
 		fallthrough
@@ -305,50 +284,83 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		// synonym for 3E+
 		fallthrough
 	case "3E+":
-		cart.mapper, err = new3ePlus(cart.env, cartload.Data)
+		cart.mapper, err = new3ePlus(cart.env, cartload)
 	case "EF":
-		cart.mapper, err = newEF(cart.env, cartload.Data)
+		cart.mapper, err = newEF(cart.env, cartload)
 	case "EFSC":
-		cart.mapper, err = newEF(cart.env, cartload.Data)
+		cart.mapper, err = newEF(cart.env, cartload)
 		forceSuperchip = true
 	case "SB":
-		cart.mapper, err = newSuperbank(cart.env, cartload.Data)
+		cart.mapper, err = newSuperbank(cart.env, cartload)
 	case "WD":
-		cart.mapper, err = newWicksteadDesign(cart.env, cartload.Data)
+		cart.mapper, err = newWicksteadDesign(cart.env, cartload)
 	case "ACE":
-		cart.mapper, err = ace.NewAce(cart.env, cartload.Data)
+		cart.mapper, err = ace.NewAce(cart.env, cartload)
 	case "DPC":
-		cart.mapper, err = newDPC(cart.env, cartload.Data)
+		cart.mapper, err = newDPC(cart.env, cartload)
 	case "DPC+":
-		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload.Data)
+		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload)
 
 	case "CDF":
-		// CDF defaults to CDFJ
-		mapping = "CDFJ"
-		fallthrough
+		cart.mapper, err = cdf.NewCDF(cart.env, cartload, "CDFJ")
 	case "CDF0":
-		fallthrough
+		cart.mapper, err = cdf.NewCDF(cart.env, cartload, "CDF0")
 	case "CDF1":
-		fallthrough
+		cart.mapper, err = cdf.NewCDF(cart.env, cartload, "CDF1")
 	case "CDFJ":
-		fallthrough
+		cart.mapper, err = cdf.NewCDF(cart.env, cartload, "CDFJ")
 	case "CDFJ+":
-		cart.mapper, err = cdf.NewCDF(cart.env, mapping, cartload.Data)
+		cart.mapper, err = cdf.NewCDF(cart.env, cartload, "CDFJ+")
 
 	case "MVC":
 		cart.mapper, err = moviecart.NewMoviecart(cart.env, cartload)
 	}
-
 	if err != nil {
 		return fmt.Errorf("cartridge: %w", err)
 	}
 
+	// if the forceSuperchip flag has been raised or if cartridge mapper
+	// implements the optionalSuperChip interface then try to add the additional
+	// RAM
 	if forceSuperchip {
 		if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
 			superchip.AddSuperchip(true)
 		} else {
 			logger.Logf("cartridge", "cannot add superchip to %s mapper", cart.ID())
 		}
+	} else if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
+		superchip.AddSuperchip(false)
+	}
+
+	// if this is a moviecart cartridge then return now without checking for plusrom
+	if _, ok := cart.mapper.(*moviecart.Moviecart); ok {
+		return nil
+	}
+
+	// in addition to the regular fingerprint we also check to see if this
+	// is PlusROM cartridge (which can be combined with a regular cartridge
+	// format)
+	if cart.fingerprintPlusROM(cartload) {
+		plus, err := plusrom.NewPlusROM(cart.env, cart.mapper)
+
+		if err != nil {
+			if errors.Is(err, plusrom.NotAPlusROM) {
+				logger.Log("cartridge", err.Error())
+				return nil
+			}
+			if errors.Is(err, plusrom.CannotAdoptROM) {
+				logger.Log("cartridge", err.Error())
+				return nil
+			}
+			return fmt.Errorf("cartridge: %w", err)
+		}
+
+		logger.Logf("cartridge", "%s cartridge contained in PlusROM", cart.ID())
+
+		// we've wrapped the main cartridge mapper inside the PlusROM
+		// mapper and we need to point the mapper field to the the new
+		// PlusROM instance
+		cart.mapper = plus
 	}
 
 	return nil
@@ -400,7 +412,7 @@ func (cart *Cartridge) HotLoad(cartload cartridgeloader.Loader) error {
 	if hl, ok := cart.mapper.(mapper.CartHotLoader); ok {
 		cart.Hash = cartload.HashSHA1
 
-		err := hl.HotLoad(cartload.Data)
+		err := hl.HotLoad(cartload)
 		if err != nil {
 			return err
 		}

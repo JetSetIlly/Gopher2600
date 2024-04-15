@@ -17,7 +17,9 @@ package cartridge
 
 import (
 	"fmt"
+	"io"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -54,7 +56,12 @@ type cbs struct {
 	state *cbsState
 }
 
-func newCBS(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
+func newCBS(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("FA: %w", err)
+	}
+
 	cart := &cbs{
 		env:       env,
 		mappingID: "FA",

@@ -279,8 +279,8 @@ type Moviecart struct {
 	specID    string
 	mappingID string
 
-	loader io.ReadSeeker
-	banks  []byte
+	data  io.ReadSeeker
+	banks []byte
 
 	state *state
 }
@@ -288,7 +288,7 @@ type Moviecart struct {
 func NewMoviecart(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
 	cart := &Moviecart{
 		env:       env,
-		loader:    loader,
+		data:      loader,
 		mappingID: "MVC",
 	}
 
@@ -958,11 +958,11 @@ func (cart *Moviecart) nextField() {
 	// the usual playback condition
 	if !cart.state.paused && cart.state.streamChunk >= 0 {
 		dataOffset := cart.state.streamChunk * chunkSize
-		_, err := cart.loader.Seek(int64(dataOffset), io.SeekStart)
+		_, err := cart.data.Seek(int64(dataOffset), io.SeekStart)
 		if err != nil {
 			logger.Logf("MVC", "error reading field: %v", err)
 		}
-		n, err := cart.loader.Read(cart.state.streamBuffer[cart.state.streamIndex])
+		n, err := cart.data.Read(cart.state.streamBuffer[cart.state.streamIndex])
 		if err != nil {
 			logger.Logf("MVC", "error reading field: %v", err)
 		}
@@ -979,11 +979,11 @@ func (cart *Moviecart) nextField() {
 			}
 
 			dataOffset := cart.state.streamChunk * chunkSize
-			_, err := cart.loader.Seek(int64(dataOffset), io.SeekStart)
+			_, err := cart.data.Seek(int64(dataOffset), io.SeekStart)
 			if err != nil {
 				logger.Logf("MVC", "error reading field: %v", err)
 			}
-			_, err = cart.loader.Read(cart.state.streamBuffer[fld])
+			_, err = cart.data.Read(cart.state.streamBuffer[fld])
 			if err != nil {
 				logger.Logf("MVC", "error reading field: %v", err)
 			}

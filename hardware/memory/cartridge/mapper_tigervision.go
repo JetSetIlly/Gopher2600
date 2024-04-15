@@ -17,7 +17,9 @@ package cartridge
 
 import (
 	"fmt"
+	"io"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -58,7 +60,12 @@ type tigervision struct {
 
 // should work with any size cartridge that is a multiple of 2048:
 //   - tested with 8k (Miner2049 etc.) and 32k (Genesis_Egypt demo).
-func newTigervision(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
+func newTigervision(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("3F: %w", err)
+	}
+
 	cart := &tigervision{
 		env:       env,
 		mappingID: "3F",

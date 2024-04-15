@@ -223,7 +223,7 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, numFrames int, monitor
 
 		// run preview for just one frame. this is enough to give us basic
 		// information like the cartridge mapper and detected controllers
-		_ = thmb.preview.RunN(cartload.Filename, 1)
+		_ = thmb.preview.RunN(cartload, 1)
 
 		// indicate that the first part of the preview has completed and that
 		// the preview results should be updated
@@ -233,7 +233,7 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, numFrames int, monitor
 		}
 
 		// run preview some more in order to get excellent frame information
-		err = thmb.preview.Run(cartload.Filename)
+		err = thmb.preview.Run(cartload)
 		if err == nil || errors.Is(err, cartridgeloader.NoFilename) {
 			thmb.vcs.TV.SetVisible(thmb.preview.Results().FrameInfo)
 		}

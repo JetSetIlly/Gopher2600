@@ -18,6 +18,7 @@ package peripherals
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
@@ -37,38 +38,33 @@ import (
 // Free Software Foundation, version 2 or any later version.
 //
 // https://github.com/stella-emu/stella/blob/76914ded629db887ef612b1e5c9889220808191a/Copyright.txt
-func Fingerprint(port plugging.PortID, data []byte) ports.NewPeripheral {
-	// default to joystick if there is not data to fingerprint
-	if data == nil {
-		return controllers.NewStick
-	}
-
+func Fingerprint(port plugging.PortID, loader cartridgeloader.Loader) ports.NewPeripheral {
 	if port != plugging.PortRight && port != plugging.PortLeft {
 		panic(fmt.Sprintf("cannot fingerprint for port %v", port))
 	}
 
 	// atarivox and savekey are the most specific peripheral. because atarivox
 	// includes the functionality of savekey we need to check atarivox first
-	if fingerprintAtariVox(port, data) {
+	if fingerprintAtariVox(port, loader) {
 		return atarivox.NewAtariVox
 	}
 
-	if fingerprintSaveKey(port, data) {
+	if fingerprintSaveKey(port, loader) {
 		return savekey.NewSaveKey
 	}
 
 	// the other peripherals require a process of differentiation. the order is
 	// important.
-	if fingerprintStick(port, data) {
-		if fingerprintKeypad(port, data) {
+	if fingerprintStick(port, loader) {
+		if fingerprintKeypad(port, loader) {
 			return controllers.NewKeypad
 		}
 
-		if fingerprintGamepad(port, data) {
+		if fingerprintGamepad(port, loader) {
 			return controllers.NewGamepad
 		}
 	} else {
-		if fingerprintPaddle(port, data) {
+		if fingerprintPaddle(port, loader) {
 			return controllers.NewPaddlePair
 		}
 	}
@@ -77,27 +73,17 @@ func Fingerprint(port plugging.PortID, data []byte) ports.NewPeripheral {
 	return controllers.NewStick
 }
 
-func matchPattern(patterns [][]byte, data []byte) bool {
-	for i := 0; i < len(data); i++ {
-		for _, p := range patterns {
-			if len(p) > len(data)-i {
-				continue // patterns loop
-			}
-
-			match := true
-			for j := 0; j < len(p); j++ {
-				match = match && data[i+j] == p[j]
-			}
-			if match {
-				return true
-			}
+func matchPattern(patterns [][]byte, loader cartridgeloader.Loader) bool {
+	for _, p := range patterns {
+		if loader.Contains(p) {
+			return true
 		}
 	}
 
 	return false
 }
 
-func fingerprintSaveKey(port plugging.PortID, data []byte) bool {
+func fingerprintSaveKey(port plugging.PortID, loader cartridgeloader.Loader) bool {
 	if port != plugging.PortRight {
 		return false
 	}
@@ -130,10 +116,10 @@ func fingerprintSaveKey(port plugging.PortID, data []byte) bool {
 		},
 	}
 
-	return matchPattern(patterns, data)
+	return matchPattern(patterns, loader)
 }
 
-func fingerprintAtariVox(port plugging.PortID, data []byte) bool {
+func fingerprintAtariVox(port plugging.PortID, loader cartridgeloader.Loader) bool {
 	if port != plugging.PortRight {
 		return false
 	}
@@ -146,7 +132,7 @@ func fingerprintAtariVox(port plugging.PortID, data []byte) bool {
 		},
 	}
 
-	if matchPattern(patterns, data) {
+	if matchPattern(patterns, loader) {
 		patterns := [][]byte{
 			{ // from SPKOUT (speakjet.inc)
 				0x49, 0xff, // eor #$ff
@@ -154,13 +140,13 @@ func fingerprintAtariVox(port plugging.PortID, data []byte) bool {
 			},
 		}
 
-		return matchPattern(patterns, data)
+		return matchPattern(patterns, loader)
 	}
 
 	return false
 }
 
-func fingerprintStick(port plugging.PortID, data []byte) bool {
+func fingerprintStick(port plugging.PortID, loader cartridgeloader.Loader) bool {
 	var patterns [][]byte
 
 	switch port {
@@ -240,10 +226,10 @@ func fingerprintStick(port plugging.PortID, data []byte) bool {
 		}
 	}
 
-	return matchPattern(patterns, data)
+	return matchPattern(patterns, loader)
 }
 
-func fingerprintKeypad(port plugging.PortID, data []byte) bool {
+func fingerprintKeypad(port plugging.PortID, loader cartridgeloader.Loader) bool {
 	var patterns [][]byte
 
 	switch port {
@@ -261,7 +247,7 @@ func fingerprintKeypad(port plugging.PortID, data []byte) bool {
 		// keypad fingerprinting is slightly different to the other fingerprint
 		// functions in that any matched pattern from the list above is ANDed
 		// with a pattern with the list below
-		if matchPattern(patterns, data) {
+		if matchPattern(patterns, loader) {
 			patterns = [][]byte{
 				{0x24, 0x39, 0x10},             // bit INPT1|$30; bpl
 				{0x24, 0x39, 0x30},             // bit INPT1|$30; bmi
@@ -272,7 +258,7 @@ func fingerprintKeypad(port plugging.PortID, data []byte) bool {
 				{0xa6, 0x09, 0x30},             // ldx INPT1; bmi
 				{0xb5, 0x38, 0x29, 0x80, 0xd0}, // lda INPT0,x; and #80; bne
 			}
-			return matchPattern(patterns, data)
+			return matchPattern(patterns, loader)
 		}
 
 	case plugging.PortRight:
@@ -287,7 +273,7 @@ func fingerprintKeypad(port plugging.PortID, data []byte) bool {
 		}
 
 		// see comment above
-		if matchPattern(patterns, data) {
+		if matchPattern(patterns, loader) {
 			patterns = [][]byte{
 				{0x24, 0x3b, 0x30},             // bit INPT3|$30; bmi
 				{0xa5, 0x3b, 0x10},             // lda INPT3|$30; bpl
@@ -297,14 +283,14 @@ func fingerprintKeypad(port plugging.PortID, data []byte) bool {
 				{0xa6, 0x0b, 0x30},             // ldx INPT3; bmi
 				{0xb5, 0x38, 0x29, 0x80, 0xd0}, // lda INPT2,x; and #80; bne
 			}
-			return matchPattern(patterns, data)
+			return matchPattern(patterns, loader)
 		}
 	}
 
 	return false
 }
 
-func fingerprintGamepad(port plugging.PortID, data []byte) bool {
+func fingerprintGamepad(port plugging.PortID, loader cartridgeloader.Loader) bool {
 	var patterns [][]byte
 
 	switch port {
@@ -345,10 +331,10 @@ func fingerprintGamepad(port plugging.PortID, data []byte) bool {
 		}
 	}
 
-	return matchPattern(patterns, data)
+	return matchPattern(patterns, loader)
 }
 
-func fingerprintPaddle(port plugging.PortID, data []byte) bool {
+func fingerprintPaddle(port plugging.PortID, loader cartridgeloader.Loader) bool {
 	var patterns [][]byte
 
 	switch port {
@@ -405,5 +391,5 @@ func fingerprintPaddle(port plugging.PortID, data []byte) bool {
 		}
 	}
 
-	return matchPattern(patterns, data)
+	return matchPattern(patterns, loader)
 }

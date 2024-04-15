@@ -17,9 +17,11 @@ package cartridge
 
 import (
 	"fmt"
+	"io"
 	"math/bits"
 	"os"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
@@ -322,14 +324,22 @@ type atari4k struct {
 	atari
 }
 
-func newAtari4k(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
-	cart := &atari4k{}
-	cart.env = env
-	cart.bankSize = 4096
-	cart.mappingID = "4k"
-	cart.banks = make([][]uint8, 1)
-	cart.needsSuperchip = hasEmptyArea(data)
-	cart.state = newAtariState()
+func newAtari4k(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("4k: %w", err)
+	}
+
+	cart := &atari4k{
+		atari: atari{
+			env:            env,
+			bankSize:       4096,
+			mappingID:      "4k",
+			banks:          make([][]uint8, 1),
+			state:          newAtariState(),
+			needsSuperchip: hasEmptyArea(data),
+		},
+	}
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
 		return nil, fmt.Errorf("4k: wrong number of bytes in the cartridge data")
@@ -389,22 +399,28 @@ type atari2k struct {
 	mask uint16
 }
 
-func newAtari2k(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
-	sz := len(data)
-
-	// support any size less than 4096 bytes that is a power of two
-	if sz >= 4096 || bits.OnesCount(uint(sz)) != 1 {
-		return nil, fmt.Errorf("unsupported cartridge size")
+func newAtari2k(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("2k: %w", err)
 	}
 
-	cart := &atari2k{}
-	cart.env = env
-	cart.bankSize = sz
-	cart.mappingID = "2k"
-	cart.banks = make([][]uint8, 1)
-	cart.needsSuperchip = hasEmptyArea(data)
-	cart.state = newAtariState()
-	cart.mask = uint16(sz - 1)
+	// support any size less than 4096 bytes that is a power of two
+	if len(data) >= 4096 || bits.OnesCount(uint(len(data))) != 1 {
+		return nil, fmt.Errorf("atari: unsupported cartridge size")
+	}
+
+	cart := &atari2k{
+		atari: atari{
+			env:            env,
+			bankSize:       len(data),
+			mappingID:      "2k",
+			banks:          make([][]uint8, 1),
+			needsSuperchip: hasEmptyArea(data),
+			state:          newAtariState(),
+		},
+		mask: uint16(len(data) - 1),
+	}
 
 	cart.banks[0] = make([]uint8, cart.bankSize)
 	copy(cart.banks[0], data)
@@ -465,19 +481,27 @@ type atari8k struct {
 	atari
 }
 
-func newAtari8k(env *environment.Environment, data []uint8) (mapper.CartMapper, error) {
-	cart := &atari8k{}
-	cart.env = env
-	cart.bankSize = 4096
-	cart.mappingID = "F8"
-	cart.banks = make([][]uint8, cart.NumBanks())
-	cart.needsSuperchip = hasEmptyArea(data)
-	cart.state = newAtariState()
+func newAtari8k(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("F8: %w", err)
+	}
+
+	cart := &atari8k{
+		atari: atari{
+			env:            env,
+			bankSize:       4096,
+			mappingID:      "F8",
+			needsSuperchip: hasEmptyArea(data),
+			state:          newAtariState(),
+		},
+	}
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
 		return nil, fmt.Errorf("F8: wrong number of bytes in the cartridge data")
 	}
 
+	cart.banks = make([][]uint8, cart.NumBanks())
 	for k := 0; k < cart.NumBanks(); k++ {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
@@ -568,19 +592,27 @@ type atari16k struct {
 	atari
 }
 
-func newAtari16k(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
-	cart := &atari16k{}
-	cart.env = env
-	cart.bankSize = 4096
-	cart.mappingID = "F6"
-	cart.banks = make([][]uint8, cart.NumBanks())
-	cart.needsSuperchip = hasEmptyArea(data)
-	cart.state = newAtariState()
+func newAtari16k(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("F6: %w", err)
+	}
+
+	cart := &atari16k{
+		atari: atari{
+			env:            env,
+			bankSize:       4096,
+			mappingID:      "F6",
+			needsSuperchip: hasEmptyArea(data),
+			state:          newAtariState(),
+		},
+	}
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
 		return nil, fmt.Errorf("F6: wrong number of bytes in the cartridge data")
 	}
 
+	cart.banks = make([][]uint8, cart.NumBanks())
 	for k := 0; k < cart.NumBanks(); k++ {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
@@ -677,19 +709,27 @@ type atari32k struct {
 	atari
 }
 
-func newAtari32k(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
-	cart := &atari32k{}
-	cart.env = env
-	cart.bankSize = 4096
-	cart.mappingID = "F4"
-	cart.banks = make([][]uint8, cart.NumBanks())
-	cart.needsSuperchip = hasEmptyArea(data)
-	cart.state = newAtariState()
+func newAtari32k(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("F4: %w", err)
+	}
+
+	cart := &atari32k{
+		atari: atari{
+			env:            env,
+			bankSize:       4096,
+			mappingID:      "F4",
+			needsSuperchip: hasEmptyArea(data),
+			state:          newAtariState(),
+		},
+	}
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
 		return nil, fmt.Errorf("F4: wrong number of bytes in the cartridge data")
 	}
 
+	cart.banks = make([][]uint8, cart.NumBanks())
 	for k := 0; k < cart.NumBanks(); k++ {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize

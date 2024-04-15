@@ -18,7 +18,9 @@ package cartridge
 import (
 	"crypto/sha1"
 	"fmt"
+	"io"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -41,7 +43,12 @@ type ua struct {
 	swappedHotspots bool
 }
 
-func newUA(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
+func newUA(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("UA: %w", err)
+	}
+
 	cart := &ua{
 		env:             env,
 		mappingID:       "UA",

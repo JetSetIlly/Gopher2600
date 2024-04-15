@@ -17,9 +17,11 @@ package cartridge
 
 import (
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -45,8 +47,11 @@ type dpc struct {
 	state *dpcState
 }
 
-func newDPC(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
-	const staticSize = 2048
+func newDPC(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("DPC: %w", err)
+	}
 
 	cart := &dpc{
 		env:       env,
@@ -54,6 +59,8 @@ func newDPC(env *environment.Environment, data []byte) (mapper.CartMapper, error
 		bankSize:  4096,
 		state:     newDPCState(),
 	}
+
+	const staticSize = 2048
 
 	cart.banks = make([][]uint8, cart.NumBanks())
 

@@ -53,17 +53,12 @@ func NewEmulation(prefs *preferences.Preferences) (*Emulation, error) {
 }
 
 // RunN runs the preview emulation for N frames
-func (em *Emulation) RunN(filename string, N int) error {
-	loader, err := cartridgeloader.NewLoaderFromFilename(filename, "")
-	if err != nil {
-		return fmt.Errorf("preview: %w", err)
-	}
-
+func (em *Emulation) RunN(loader cartridgeloader.Loader, N int) error {
 	// we don't want the preview emulation to run for too long
 	timeout := time.After(1 * time.Second)
 
 	em.vcs.AttachCartridge(loader, true)
-	err = em.vcs.RunForFrameCount(N, func(_ int) (govern.State, error) {
+	err := em.vcs.RunForFrameCount(N, func(_ int) (govern.State, error) {
 		select {
 		case <-timeout:
 			return govern.Ending, nil
@@ -79,6 +74,6 @@ func (em *Emulation) RunN(filename string, N int) error {
 }
 
 // Run the preview emulation for 30 frames
-func (em *Emulation) Run(filename string) error {
-	return em.RunN(filename, 30)
+func (em *Emulation) Run(loader cartridgeloader.Loader) error {
+	return em.RunN(loader, 30)
 }

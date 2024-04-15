@@ -17,8 +17,10 @@ package cartridge
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -84,7 +86,12 @@ type mnetwork struct {
 	state *mnetworkState
 }
 
-func newMnetwork(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
+func newMnetwork(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("E7: %w", err)
+	}
+
 	cart := &mnetwork{
 		env:       env,
 		mappingID: "E7",

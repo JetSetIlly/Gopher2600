@@ -17,7 +17,9 @@ package cartridge
 
 import (
 	"fmt"
+	"io"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -50,7 +52,12 @@ type parkerBros struct {
 	state *parkerBrosState
 }
 
-func newParkerBros(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
+func newParkerBros(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("E0: %w", err)
+	}
+
 	cart := &parkerBros{
 		env:       env,
 		mappingID: "E0",

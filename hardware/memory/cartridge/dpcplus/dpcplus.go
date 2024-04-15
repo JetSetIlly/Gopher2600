@@ -17,7 +17,9 @@ package dpcplus
 
 import (
 	"fmt"
+	"io"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
@@ -66,7 +68,12 @@ const (
 )
 
 // NewDPCplus is the preferred method of initialisation for the dpcPlus type.
-func NewDPCplus(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
+func NewDPCplus(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("DPC+: %w", err)
+	}
+
 	cart := &dpcPlus{
 		env:       env,
 		mappingID: "DPC+",
@@ -74,8 +81,6 @@ func NewDPCplus(env *environment.Environment, data []byte) (mapper.CartMapper, e
 		state:     newDPCPlusState(),
 		yieldHook: coprocessor.StubCartYieldHook{},
 	}
-
-	var err error
 
 	// create addresses
 	cart.version, err = newVersion(env.Prefs.ARM.Model.Get().(string), data)

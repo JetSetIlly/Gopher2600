@@ -59,12 +59,8 @@ type Loader struct {
 	IsSoundData bool
 
 	// cartridge data
-	Data []byte
-
-	data *bytes.Buffer
-
-	// if stream is nil then the data is not streamed
-	stream *os.File
+	data       []byte
+	dataReader io.ReadSeeker
 
 	// data was supplied through NewLoaderFromData()
 	embedded bool
@@ -141,13 +137,7 @@ func NewLoaderFromFilename(filename string, mapping string) (Loader, error) {
 		}
 	}
 
-	// create stream pointer only for streaming sources. these file formats are
-	// likely to be very large by comparison to regular cartridge files.
-	if ld.Mapping == "MVC" || (ld.Mapping == "AR" && ld.IsSoundData) {
-		err = ld.openStream()
-	} else {
-		err = ld.open()
-	}
+	err = ld.open()
 	if err != nil {
 		return Loader{}, fmt.Errorf("loader: %w", err)
 	}
@@ -183,13 +173,13 @@ func NewLoaderFromData(name string, data []byte, mapping string) (Loader, error)
 	}
 
 	ld := Loader{
-		Filename: name,
-		Mapping:  mapping,
-		Data:     data,
-		data:     bytes.NewBuffer(data),
-		HashSHA1: fmt.Sprintf("%x", sha1.Sum(data)),
-		HashMD5:  fmt.Sprintf("%x", md5.Sum(data)),
-		embedded: true,
+		Filename:   name,
+		Mapping:    mapping,
+		data:       data,
+		dataReader: bytes.NewReader(data),
+		HashSHA1:   fmt.Sprintf("%x", sha1.Sum(data)),
+		HashMD5:    fmt.Sprintf("%x", md5.Sum(data)),
+		embedded:   true,
 	}
 
 	// decide on the name for this cartridge
@@ -198,18 +188,25 @@ func NewLoaderFromData(name string, data []byte, mapping string) (Loader, error)
 	return ld, nil
 }
 
-// Close should be called before disposing of a Loader instance.
-//
-// Implements the io.Closer interface.
-func (ld Loader) Close() error {
-	if ld.stream == nil {
-		return nil
-	}
+// Reset prepares the loader for fresh reading. Useful to call after data has
+// been Read() or if you need to make absolutely sure subsequent calls to Read()
+// start from the beginning of the data stream
+func (ld *Loader) Reset() error {
+	_, err := ld.Seek(0, io.SeekStart)
+	return err
+}
 
-	err := ld.stream.Close()
-	ld.stream = nil
-	if err != nil {
-		return fmt.Errorf("loader: %w", err)
+// Implements the io.Closer interface.
+//
+// Should be called before disposing of a Loader instance.
+func (ld *Loader) Close() error {
+	ld.data = nil
+
+	if closer, ok := ld.dataReader.(io.Closer); ok {
+		err := closer.Close()
+		if err != nil {
+			return fmt.Errorf("loader: %w", err)
+		}
 	}
 
 	return nil
@@ -217,42 +214,48 @@ func (ld Loader) Close() error {
 
 // Implements the io.Reader interface.
 func (ld Loader) Read(p []byte) (int, error) {
-	if ld.stream == nil {
-		return ld.data.Read(p)
+	if ld.dataReader != nil {
+		return ld.dataReader.Read(p)
 	}
-	return (*ld.stream).Read(p)
+	return 0, io.EOF
 }
 
 // Implements the io.Seeker interface.
 func (ld Loader) Seek(offset int64, whence int) (int64, error) {
-	if ld.stream == nil {
-		return 0, nil
+	if ld.dataReader != nil {
+		return ld.dataReader.Seek(offset, whence)
 	}
-	return (*ld.stream).Seek(offset, whence)
+	return 0, io.EOF
 }
 
-// open the cartridge data for streaming
-func (ld *Loader) openStream() error {
-	err := ld.Close()
-	if err != nil {
-		return fmt.Errorf("loader: %w", err)
-	}
+// Size returns the size of the cartridge data in bytes
+func (ld Loader) Size() int {
+	return len(ld.data)
+}
 
-	ld.stream, err = os.Open(ld.Filename)
-	if err != nil {
-		return fmt.Errorf("loader: %w", err)
-	}
+// Contains returns true if subslice appears anywhere in the data
+func (ld Loader) Contains(subslice []byte) bool {
+	return bytes.Contains(ld.data, subslice)
+}
 
-	return nil
+// ContainsLimit returns true if subslice appears in the data at an offset between
+// zero and limit
+func (ld Loader) ContainsLimit(limit int, subslice []byte) bool {
+	limit = min(limit, ld.Size())
+	return bytes.Contains(ld.data[:limit], subslice)
+}
+
+// Count returns the number of non-overlapping instances of subslice in the data
+func (ld Loader) Count(subslice []byte) int {
+	return bytes.Count(ld.data, subslice)
 }
 
 // open the cartridge data. filenames with a valid schema will use that method
 // to load the data. currently supported schemes are HTTP and local files.
 func (ld *Loader) open() error {
-	ld.Data = make([]byte, 0)
+	_ = ld.Close()
 
 	scheme := "file"
-
 	url, err := url.Parse(ld.Filename)
 	if err == nil {
 		scheme = url.Scheme
@@ -268,7 +271,7 @@ func (ld *Loader) open() error {
 		}
 		defer resp.Body.Close()
 
-		ld.Data, err = io.ReadAll(resp.Body)
+		ld.data, err = io.ReadAll(resp.Body)
 		if err != nil {
 			return fmt.Errorf("loader: %w", err)
 		}
@@ -276,27 +279,33 @@ func (ld *Loader) open() error {
 	case "file":
 		fallthrough
 
-	case "":
-		fallthrough
-
 	default:
 		f, err := os.Open(ld.Filename)
 		if err != nil {
 			return fmt.Errorf("loader: %w", err)
 		}
-		defer f.Close()
 
-		ld.Data, err = io.ReadAll(f)
+		fs, err := f.Stat()
 		if err != nil {
+			f.Close()
 			return fmt.Errorf("loader: %w", err)
+		}
+
+		if fs.Size() < 1048576 {
+			defer f.Close()
+			ld.data, err = io.ReadAll(f)
+			if err != nil {
+				return fmt.Errorf("loader: %w", err)
+			}
+			ld.dataReader = bytes.NewReader(ld.data)
+		} else {
+			ld.dataReader = f
 		}
 	}
 
-	ld.data = bytes.NewBuffer(ld.Data)
-
 	// generate hashes
-	ld.HashSHA1 = fmt.Sprintf("%x", sha1.Sum(ld.Data))
-	ld.HashMD5 = fmt.Sprintf("%x", md5.Sum(ld.Data))
+	ld.HashSHA1 = fmt.Sprintf("%x", sha1.Sum(ld.data))
+	ld.HashMD5 = fmt.Sprintf("%x", md5.Sum(ld.data))
 
 	return nil
 }

@@ -17,7 +17,9 @@ package cartridge
 
 import (
 	"fmt"
+	"io"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
@@ -28,19 +30,27 @@ type ef struct {
 }
 
 // newEF is the preferred method of initialisation for the ef type
-func newEF(env *environment.Environment, data []byte) (mapper.CartMapper, error) {
-	cart := &ef{}
-	cart.env = env
-	cart.bankSize = 4096
-	cart.mappingID = "EF"
-	cart.banks = make([][]uint8, cart.NumBanks())
-	cart.needsSuperchip = hasEmptyArea(data)
-	cart.state = newAtariState()
+func newEF(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("EF: %w", err)
+	}
+
+	cart := &ef{
+		atari: atari{
+			env:            env,
+			bankSize:       4096,
+			mappingID:      "EF",
+			needsSuperchip: hasEmptyArea(data),
+			state:          newAtariState(),
+		},
+	}
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
 		return nil, fmt.Errorf("EF: wrong number of bytes in the cartridge data")
 	}
 
+	cart.banks = make([][]uint8, cart.NumBanks())
 	for k := 0; k < cart.NumBanks(); k++ {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize

@@ -40,8 +40,8 @@ var audioFileExtensions = []string{
 	".WAV", ".MP3",
 }
 
-// FileExtensions is the list of file extensions that are recognised by the
-// cartridgeloader package.
+// FileExtensions is the list of file extensions that are recognised as
+// being indications of cartridge data
 var FileExtensions = []string{}
 
 func init() {

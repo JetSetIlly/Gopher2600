@@ -18,6 +18,7 @@ package debugger
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
@@ -937,6 +938,16 @@ func (dbg *Debugger) run() error {
 		}
 	}()
 
+	// make sure any cartridge loader has been finished with
+	defer func() {
+		if dbg.loader != nil {
+			err := dbg.loader.Close()
+			if err != nil {
+				logger.Logf("debugger", err.Error())
+			}
+		}
+	}()
+
 	// inputloop will continue until debugger is to be terminated
 	for dbg.running {
 		switch dbg.Mode() {
@@ -994,14 +1005,6 @@ func (dbg *Debugger) run() error {
 			dbg.unwindLoopRestart = nil
 		} else if dbg.State() == govern.Ending {
 			dbg.running = false
-		}
-	}
-
-	// make sure any cartridge loader has been finished with
-	if dbg.loader != nil {
-		err := dbg.loader.Close()
-		if err != nil {
-			return fmt.Errorf("debugger: %w", err)
 		}
 	}
 
@@ -1221,13 +1224,14 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	dbg.reset(newCartridge)
 
 	// run preview emulation
-	err = dbg.preview.Run(cartload.Filename)
+	err = dbg.preview.Run(cartload)
 	if err != nil {
 		if !errors.Is(err, cartridgeloader.NoFilename) {
 			return err
 		}
 	}
 	dbg.vcs.TV.SetVisible(dbg.preview.Results().FrameInfo)
+	cartload.Seek(0, io.SeekStart)
 
 	// activate bot if possible
 	feedback, err := dbg.bots.ActivateBot(dbg.vcs.Mem.Cart.Hash)

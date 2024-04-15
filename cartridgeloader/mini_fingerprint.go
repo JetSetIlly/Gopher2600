@@ -17,7 +17,6 @@ package cartridgeloader
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 )
 
@@ -31,7 +30,7 @@ import (
 func miniFingerprintMovieCart(filename string) (bool, error) {
 	f, err := os.Open(filename)
 	if err != nil {
-		return false, fmt.Errorf("cartridgeloader: %w", err)
+		return false, err
 	}
 	b := make([]byte, 4)
 	f.Read(b)

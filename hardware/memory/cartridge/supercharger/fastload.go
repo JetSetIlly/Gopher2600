@@ -17,6 +17,7 @@ package supercharger
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
@@ -83,7 +84,7 @@ type fastloadBlock struct {
 
 // newFastLoad is the preferred method of initialisation for the FastLoad type.
 func newFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error) {
-	if len(loader.Data)%fastLoadBlockLen != 0 {
+	if loader.Size()%fastLoadBlockLen != 0 {
 		return nil, fmt.Errorf("fastload: wrong number of bytes in cartridge data")
 	}
 
@@ -91,11 +92,15 @@ func newFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error
 		cart: cart,
 	}
 
-	fl.blocks = make([]fastloadBlock, len(loader.Data)/fastLoadBlockLen)
+	fl.blocks = make([]fastloadBlock, loader.Size()/fastLoadBlockLen)
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, err
+	}
 
 	for i := range fl.blocks {
 		offset := i * fastLoadBlockLen
-		fl.blocks[i].data = loader.Data[offset : offset+fastLoadHeaderOffset]
+		fl.blocks[i].data = data[offset : offset+fastLoadHeaderOffset]
 
 		// game header appears after main data
 		gameHeader := fl.blocks[i].data[fastLoadHeaderOffset : fastLoadHeaderOffset+fastLoadHeaderLen]
