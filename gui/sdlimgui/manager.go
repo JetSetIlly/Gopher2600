@@ -73,8 +73,8 @@ type manager struct {
 	// proxy value
 	screenPos imgui.Vec2
 
-	// is true if mouse is not over any of the playmode windows
-	playmodeHover bool
+	// is true if mouse over any of the playmode windows
+	playmodeWindowHover bool
 
 	// for convenience the dbgScr window gets it's own field
 	//
@@ -152,13 +152,13 @@ func (wm *manager) draw() {
 	case govern.ModePlay:
 		// reset playmodeHover flag by default. it's only ever true if a window is open (and that
 		// window is being hovered over)
-		wm.playmodeHover = false
+		wm.playmodeWindowHover = false
 
 		// playmode draws the screen and other windows that have been listed
 		// as being safe to draw in playmode
 		for _, w := range wm.playmodeWindows {
 			_ = w.playmodeDraw()
-			wm.playmodeHover = wm.playmodeHover || imgui.IsWindowHoveredV(imgui.HoveredFlagsAnyWindow)
+			wm.playmodeWindowHover = wm.playmodeWindowHover || w.playmodeGeometry().hovered
 		}
 	case govern.ModeDebugger:
 		// see commentary for screenPos in windowManager declaration

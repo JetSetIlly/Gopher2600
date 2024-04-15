@@ -32,15 +32,20 @@ type window interface {
 	id() string
 }
 
-// size and position of the window. is embedded in playmodeWin and debuggerWin
-// interfaces. for window type that implent interfaces then windowGeom
-// method calls will need to disambiguate which geometry to use
+// information about the window, including window geometry
+//
+// is embedded in playmodeWin and debuggerWin interfaces. for window type that
+// implent interfaces then windowGeom method calls will need to disambiguate
+// which geometry to use
 type windowGeom struct {
 	position imgui.Vec2
 	size     imgui.Vec2
 
 	// whether the window is focused
 	focused bool
+
+	// whether the window is hovered over with the mouse
+	hovered bool
 
 	// whether the window should be raised on the next draw
 	raise bool
@@ -54,6 +59,7 @@ func (g *windowGeom) update() {
 	g.position = imgui.WindowPos()
 	g.size = imgui.WindowSize()
 	g.focused = imgui.IsWindowFocused()
+	g.hovered = imgui.IsWindowHovered()
 }
 
 type playmodeWindow interface {
