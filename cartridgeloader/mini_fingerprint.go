@@ -32,9 +32,9 @@ func miniFingerprintMovieCart(filename string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer f.Close()
 	b := make([]byte, 4)
 	f.Read(b)
-	f.Close()
 	if bytes.Compare(b, []byte{'M', 'V', 'C', 0x00}) == 0 {
 		return true, nil
 	}

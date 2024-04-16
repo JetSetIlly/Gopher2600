@@ -345,6 +345,7 @@ func (cart *Moviecart) Plumb(env *environment.Environment) {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *Moviecart) Reset() {
+	cart.state.initialise()
 }
 
 // Access implements the mapper.CartMapper interface.

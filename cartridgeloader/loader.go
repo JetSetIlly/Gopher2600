@@ -24,11 +24,19 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/archivefs"
 )
+
+// the maximum amount of data to load into the peep slice
+const maxPeepLength = 1048576
+
+func peepData(data []byte) []byte {
+	return data[:min(len(data), maxPeepLength)]
+}
 
 // Loader abstracts all the ways data can be loaded into the emulation.
 type Loader struct {
@@ -51,16 +59,24 @@ type Loader struct {
 	// empty string or "AUTO" indicates automatic fingerprinting
 	Mapping string
 
-	// hashes of data. will be empty if data is being streamed
+	// hashes of data
 	HashSHA1 string
 	HashMD5  string
 
 	// does the Data field consist of sound (PCM) data
 	IsSoundData bool
 
-	// cartridge data
-	data       []byte
-	dataReader io.ReadSeeker
+	// data and size of
+	data io.ReadSeeker
+	size int
+
+	// peep is the data at the beginning of the cartridge data. it is used to
+	// help fingerprinting and for creating the SHA1 and MD5 hashes
+	//
+	// in reality, most cartridges are small enough to fit entirely inside the
+	// peep slice. currently it is only moviecart data and maybe supercharger
+	// sound files that will be larger than the maxPeepLength
+	peep []byte
 
 	// data was supplied through NewLoaderFromData()
 	embedded bool
@@ -129,17 +145,14 @@ func NewLoaderFromFilename(filename string, mapping string) (Loader, error) {
 	// we want to do this now so we can initialise the stream
 	if ld.Mapping == "AUTO" {
 		ok, err := miniFingerprintMovieCart(filename)
-		if err != nil {
-			return Loader{}, fmt.Errorf("loader: %w", err)
-		}
-		if ok {
+		if err == nil && ok {
 			ld.Mapping = "MVC"
 		}
 	}
 
 	err = ld.open()
 	if err != nil {
-		return Loader{}, fmt.Errorf("loader: %w", err)
+		return Loader{}, err
 	}
 
 	// decide on the name for this cartridge
@@ -173,19 +186,28 @@ func NewLoaderFromData(name string, data []byte, mapping string) (Loader, error)
 	}
 
 	ld := Loader{
-		Filename:   name,
-		Mapping:    mapping,
-		data:       data,
-		dataReader: bytes.NewReader(data),
-		HashSHA1:   fmt.Sprintf("%x", sha1.Sum(data)),
-		HashMD5:    fmt.Sprintf("%x", md5.Sum(data)),
-		embedded:   true,
+		Filename: name,
+		Mapping:  mapping,
+		peep:     peepData(data),
+		data:     bytes.NewReader(data),
+		HashSHA1: fmt.Sprintf("%x", sha1.Sum(data)),
+		HashMD5:  fmt.Sprintf("%x", md5.Sum(data)),
+		size:     len(data),
+		embedded: true,
 	}
 
 	// decide on the name for this cartridge
 	ld.Name = decideOnName(ld)
 
 	return ld, nil
+}
+
+func (ld *Loader) Reload() error {
+	err := ld.Close()
+	if err != nil {
+		return err
+	}
+	return ld.open()
 }
 
 // Reset prepares the loader for fresh reading. Useful to call after data has
@@ -200,54 +222,55 @@ func (ld *Loader) Reset() error {
 //
 // Should be called before disposing of a Loader instance.
 func (ld *Loader) Close() error {
-	ld.data = nil
-
-	if closer, ok := ld.dataReader.(io.Closer); ok {
+	if closer, ok := ld.data.(io.Closer); ok {
 		err := closer.Close()
 		if err != nil {
 			return fmt.Errorf("loader: %w", err)
 		}
 	}
+	ld.data = nil
+	ld.size = 0
+	ld.peep = nil
 
 	return nil
 }
 
 // Implements the io.Reader interface.
 func (ld Loader) Read(p []byte) (int, error) {
-	if ld.dataReader != nil {
-		return ld.dataReader.Read(p)
+	if ld.data != nil {
+		return ld.data.Read(p)
 	}
 	return 0, io.EOF
 }
 
 // Implements the io.Seeker interface.
 func (ld Loader) Seek(offset int64, whence int) (int64, error) {
-	if ld.dataReader != nil {
-		return ld.dataReader.Seek(offset, whence)
+	if ld.data != nil {
+		return ld.data.Seek(offset, whence)
 	}
 	return 0, io.EOF
 }
 
 // Size returns the size of the cartridge data in bytes
 func (ld Loader) Size() int {
-	return len(ld.data)
+	return ld.size
 }
 
 // Contains returns true if subslice appears anywhere in the data
 func (ld Loader) Contains(subslice []byte) bool {
-	return bytes.Contains(ld.data, subslice)
+	return bytes.Contains(ld.peep, subslice)
 }
 
 // ContainsLimit returns true if subslice appears in the data at an offset between
 // zero and limit
 func (ld Loader) ContainsLimit(limit int, subslice []byte) bool {
 	limit = min(limit, ld.Size())
-	return bytes.Contains(ld.data[:limit], subslice)
+	return bytes.Contains(ld.peep[:limit], subslice)
 }
 
 // Count returns the number of non-overlapping instances of subslice in the data
 func (ld Loader) Count(subslice []byte) int {
-	return bytes.Count(ld.data, subslice)
+	return bytes.Count(ld.peep, subslice)
 }
 
 // open the cartridge data. filenames with a valid schema will use that method
@@ -271,41 +294,40 @@ func (ld *Loader) open() error {
 		}
 		defer resp.Body.Close()
 
-		ld.data, err = io.ReadAll(resp.Body)
+		data, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return fmt.Errorf("loader: %w", err)
 		}
+
+		ld.data = bytes.NewReader(data)
+		ld.size = len(data)
+		ld.peep = peepData(data)
 
 	case "file":
 		fallthrough
 
 	default:
-		f, err := os.Open(ld.Filename)
+		r, sz, err := archivefs.Open(ld.Filename)
 		if err != nil {
 			return fmt.Errorf("loader: %w", err)
 		}
 
-		fs, err := f.Stat()
+		// peep at data
+		ld.peep, err = io.ReadAll(io.LimitReader(r, maxPeepLength))
 		if err != nil {
-			f.Close()
+			return fmt.Errorf("loader: %w", err)
+		}
+		if _, err := r.Seek(0, io.SeekStart); err != nil {
 			return fmt.Errorf("loader: %w", err)
 		}
 
-		if fs.Size() < 1048576 {
-			defer f.Close()
-			ld.data, err = io.ReadAll(f)
-			if err != nil {
-				return fmt.Errorf("loader: %w", err)
-			}
-			ld.dataReader = bytes.NewReader(ld.data)
-		} else {
-			ld.dataReader = f
-		}
+		ld.data = r
+		ld.size = sz
 	}
 
 	// generate hashes
-	ld.HashSHA1 = fmt.Sprintf("%x", sha1.Sum(ld.data))
-	ld.HashMD5 = fmt.Sprintf("%x", md5.Sum(ld.data))
+	ld.HashSHA1 = fmt.Sprintf("%x", sha1.Sum(ld.peep))
+	ld.HashMD5 = fmt.Sprintf("%x", md5.Sum(ld.peep))
 
 	return nil
 }

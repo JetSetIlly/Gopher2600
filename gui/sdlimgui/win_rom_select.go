@@ -27,7 +27,9 @@ import (
 	"golang.org/x/image/draw"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/archivefs"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -45,15 +47,14 @@ type winSelectROM struct {
 
 	img *SdlImgui
 
-	currPath string
-	entries  []os.DirEntry
-
-	selectedFile           string
-	selectedFileBase       string
-	selectedFileProperties properties.Entry
+	path        archivefs.Path
+	pathEntries []archivefs.Node
 
 	// selectedName is the name of the ROM in a normalised form
 	selectedName string
+
+	// properties of selected
+	selectedProperties properties.Entry
 
 	showAllFiles bool
 	showHidden   bool
@@ -142,29 +143,16 @@ func (win winSelectROM) id() string {
 }
 
 func (win *winSelectROM) setOpen(open bool) {
-	if open {
-		var err error
-		var p string
-
-		// open at the most recently selected ROM
-		f := win.img.dbg.Prefs.RecentROM.String()
-		if f == "" {
-			p, err = os.Getwd()
-			if err != nil {
-				logger.Logf("sdlimgui", err.Error())
-			}
-		} else {
-			p = filepath.Dir(f)
-		}
-
-		// set path and selected file
-		err = win.setPath(p)
-		if err != nil {
-			logger.Logf("sdlimgui", "error setting path (%s)", p)
-		}
-		win.setSelectedFile(f)
-
+	if !open {
+		win.path.Close()
 		return
+	}
+
+	// open at the most recently selected ROM
+	recent := win.img.dbg.Prefs.RecentROM.String()
+	err := win.setPath(recent)
+	if err != nil {
+		logger.Logf("sdlimgui", err.Error())
 	}
 }
 
@@ -266,10 +254,10 @@ func (win *winSelectROM) render() {
 func (win *winSelectROM) draw() {
 	// check for new property information
 	select {
-	case win.selectedFileProperties = <-win.propertyResult:
-		win.selectedName = win.selectedFileProperties.Name
+	case win.selectedProperties = <-win.propertyResult:
+		win.selectedName = win.selectedProperties.Name
 		if win.selectedName == "" {
-			win.selectedName = win.selectedFileBase
+			win.selectedName = win.path.Base()
 			win.selectedName = strings.TrimSuffix(win.selectedName, filepath.Ext(win.selectedName))
 		}
 
@@ -291,7 +279,7 @@ func (win *winSelectROM) draw() {
 	}()
 
 	if imgui.Button("Parent") {
-		d := filepath.Dir(win.currPath)
+		d := filepath.Dir(win.path.Dir())
 		err := win.setPath(d)
 		if err != nil {
 			logger.Logf("sdlimgui", "error setting path (%s)", d)
@@ -300,7 +288,7 @@ func (win *winSelectROM) draw() {
 	}
 
 	imgui.SameLine()
-	imgui.Text(win.currPath)
+	imgui.Text(archivefs.RemoveArchiveExt(win.path.Dir()))
 
 	if imgui.BeginTable("romSelector", 2) {
 		imgui.TableSetupColumnV("filelist", imgui.TableColumnFlagsWidthStretch, -1, 0)
@@ -319,25 +307,27 @@ func (win *winSelectROM) draw() {
 
 		// list directories
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.ROMSelectDir)
-		for _, f := range win.entries {
+		for _, e := range win.pathEntries {
 			// ignore dot files
-			if !win.showHidden && f.Name()[0] == '.' {
+			if !win.showHidden && e.Name[0] == '.' {
 				continue
 			}
 
-			fi, err := os.Stat(filepath.Join(win.currPath, f.Name()))
-			if err != nil {
-				continue
-			}
-
-			if fi.Mode().IsDir() {
+			if e.IsDir {
 				s := strings.Builder{}
-				s.WriteString(f.Name())
-				s.WriteString(" [dir]")
+				if e.IsArchive {
+					s.WriteString(string(fonts.Paperclip))
+					s.WriteString(" ")
+					s.WriteString(archivefs.TrimArchiveExt(e.Name))
+				} else {
+					s.WriteString(string(fonts.Directory))
+					s.WriteString(" ")
+					s.WriteString(e.Name)
+				}
 
 				if imgui.Selectable(s.String()) {
-					d := filepath.Join(win.currPath, f.Name())
-					err = win.setPath(d)
+					d := filepath.Join(win.path.Dir(), e.Name)
+					err := win.setPath(d)
 					if err != nil {
 						logger.Logf("sdlimgui", "error setting path (%s)", d)
 					}
@@ -349,19 +339,14 @@ func (win *winSelectROM) draw() {
 
 		// list files
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.ROMSelectFile)
-		for _, f := range win.entries {
+		for _, e := range win.pathEntries {
 			// ignore dot files
-			if !win.showHidden && f.Name()[0] == '.' {
-				continue
-			}
-
-			fi, err := os.Stat(filepath.Join(win.currPath, f.Name()))
-			if err != nil {
+			if !win.showHidden && e.Name[0] == '.' {
 				continue
 			}
 
 			// ignore invalid file extensions unless showAllFiles flags is set
-			ext := strings.ToUpper(filepath.Ext(fi.Name()))
+			ext := strings.ToUpper(filepath.Ext(e.Name))
 			if !win.showAllFiles {
 				hasExt := false
 				for _, e := range cartridgeloader.FileExtensions {
@@ -371,19 +356,27 @@ func (win *winSelectROM) draw() {
 					}
 				}
 				if !hasExt {
+					for _, e := range archivefs.ArchiveExtensions {
+						if e == ext {
+							hasExt = true
+							break
+						}
+					}
+				}
+				if !hasExt {
 					continue // to next file
 				}
 			}
 
-			if fi.Mode().IsRegular() {
-				selected := f.Name() == win.selectedFileBase
+			if !e.IsDir {
+				selected := e.Name == win.path.Base()
 
 				if selected && win.centreOnFile {
 					imgui.SetScrollHereY(0.0)
 				}
 
-				if imgui.SelectableV(f.Name(), selected, 0, imgui.Vec2{0, 0}) {
-					win.setSelectedFile(filepath.Join(win.currPath, f.Name()))
+				if imgui.SelectableV(e.Name, selected, 0, imgui.Vec2{0, 0}) {
+					win.setPath(filepath.Join(win.path.Dir(), e.Name))
 				}
 				if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
 					win.insertCartridge()
@@ -438,8 +431,8 @@ func (win *winSelectROM) draw() {
 						imgui.TableNextColumn()
 						imgui.Text("Name")
 						imgui.TableNextColumn()
-						if win.selectedFileProperties.IsValid() {
-							imgui.Text(win.selectedFileProperties.Name)
+						if win.selectedProperties.IsValid() {
+							imgui.Text(win.selectedProperties.Name)
 						} else {
 							imgui.Text(win.selectedName)
 						}
@@ -507,38 +500,38 @@ func (win *winSelectROM) draw() {
 						imgui.PopStyleVar()
 						imgui.PopItemFlag()
 
-						if win.selectedFileProperties.Manufacturer != "" {
+						if win.selectedProperties.Manufacturer != "" {
 							imgui.TableNextRow()
 							imgui.TableNextColumn()
 							imgui.AlignTextToFramePadding()
 							imgui.Text("Manufacturer")
 							imgui.TableNextColumn()
-							imgui.Text(win.selectedFileProperties.Manufacturer)
+							imgui.Text(win.selectedProperties.Manufacturer)
 						}
-						if win.selectedFileProperties.Rarity != "" {
+						if win.selectedProperties.Rarity != "" {
 							imgui.TableNextRow()
 							imgui.TableNextColumn()
 							imgui.AlignTextToFramePadding()
 							imgui.Text("Rarity")
 							imgui.TableNextColumn()
-							imgui.Text(win.selectedFileProperties.Rarity)
+							imgui.Text(win.selectedProperties.Rarity)
 						}
-						if win.selectedFileProperties.Model != "" {
+						if win.selectedProperties.Model != "" {
 							imgui.TableNextRow()
 							imgui.TableNextColumn()
 							imgui.AlignTextToFramePadding()
 							imgui.Text("Model")
 							imgui.TableNextColumn()
-							imgui.Text(win.selectedFileProperties.Model)
+							imgui.Text(win.selectedProperties.Model)
 						}
 
-						if win.selectedFileProperties.Note != "" {
+						if win.selectedProperties.Note != "" {
 							imgui.TableNextRow()
 							imgui.TableNextColumn()
 							imgui.AlignTextToFramePadding()
 							imgui.Text("Note")
 							imgui.TableNextColumn()
-							imgui.Text(win.selectedFileProperties.Note)
+							imgui.Text(win.selectedProperties.Note)
 						}
 
 						imgui.EndTable()
@@ -590,11 +583,11 @@ func (win *winSelectROM) draw() {
 			win.playmodeSetOpen(false)
 		}
 
-		if win.selectedFile != "" {
+		if win.selectedName != "" {
 			var s string
 
 			// load or reload button
-			if win.selectedFile == win.img.cache.VCS.Mem.Cart.Filename {
+			if win.path.String() == win.img.cache.VCS.Mem.Cart.Filename {
 				s = fmt.Sprintf("Reload %s", win.selectedName)
 			} else {
 				s = fmt.Sprintf("Load %s", win.selectedName)
@@ -621,7 +614,7 @@ func (win *winSelectROM) insertCartridge() {
 		return
 	}
 
-	win.img.dbg.InsertCartridge(win.selectedFile)
+	win.img.dbg.InsertCartridge(win.path.String())
 
 	// close rom selected in both the debugger and playmode
 	win.debuggerSetOpen(false)
@@ -630,32 +623,27 @@ func (win *winSelectROM) insertCartridge() {
 
 func (win *winSelectROM) setPath(path string) error {
 	var err error
-	win.currPath = filepath.Clean(path)
-	win.entries, err = os.ReadDir(win.currPath)
+	win.path.Set(path)
+	win.pathEntries, err = win.path.List()
 	if err != nil {
 		return err
 	}
-	win.setSelectedFile("")
+	if win.path.IsDir() {
+		win.setSelectedFile("")
+	} else {
+		win.setSelectedFile(win.path.String())
+	}
 	return nil
 }
 
 func (win *winSelectROM) setSelectedFile(filename string) {
-	// do nothing if this file has already been selected
-	if win.selectedFile == filename {
-		return
-	}
-
-	// update selected file. return immediately if the filename is empty
-	win.selectedFile = filename
-	if filename == "" {
-		win.selectedFileBase = ""
-		win.selectedName = ""
-		return
-	}
-
-	// base filename for presentation purposes
-	win.selectedFileBase = filepath.Base(filename)
+	// selected name will be
 	win.selectedName = ""
+
+	// return immediately if the filename is empty
+	if filename == "" {
+		return
+	}
 
 	// create cartridge loader and start thumbnail emulation
 	loader, err := cartridgeloader.NewLoaderFromFilename(filename, "AUTO")
@@ -679,7 +667,7 @@ func (win *winSelectROM) findBoxart() error {
 	win.boxartUse = false
 
 	// fuzzy find a candidate image
-	n, _, _ := strings.Cut(win.selectedFileProperties.Name, "(")
+	n, _, _ := strings.Cut(win.selectedProperties.Name, "(")
 	n = strings.TrimSpace(n)
 	m := fuzzy.Find(n, win.boxart)
 	if len(m) == 0 {

@@ -266,7 +266,7 @@ func newColors() *imguiColors {
 		PlayWindowBorder: imgui.Vec4{0.0, 0.0, 0.0, 1.0},
 
 		// ROM selector
-		ROMSelectDir:  imgui.Vec4{1.0, 0.5, 0.5, 1.0},
+		ROMSelectDir:  imgui.Vec4{0.5, 0.5, 1.0, 1.0},
 		ROMSelectFile: imgui.Vec4{1.0, 1.0, 1.0, 1.0},
 
 		// deferring CapturedScreenTitle & CapturedScreenBorder
@@ -381,7 +381,7 @@ func newColors() *imguiColors {
 		// tia
 		TIApointer: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 
-		// deffering collision window CollisionBit
+		// deferring collision window CollisionBit
 
 		// deferring chip registers window RegisterBit
 
@@ -438,6 +438,7 @@ func newColors() *imguiColors {
 	cols.SaveKeyBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 	cols.TimelineWSYNC = cols.reflectionColors[reflection.WSYNC]
 	cols.TimelineCoProc = cols.reflectionColors[reflection.CoProcActive]
+	cols.CollisionBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 
 	// colors that are used in context where an imgui.PackedColor is required
 	cols.windowBg = imgui.PackedColorFromVec4(cols.WindowBg)

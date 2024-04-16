@@ -963,7 +963,10 @@ func (dbg *Debugger) run() error {
 						return fmt.Errorf("debugger: %w", err)
 					}
 				} else if errors.Is(err, terminal.UserReload) {
-					dbg.reloadCartridge()
+					err = dbg.reloadCartridge()
+					if err != nil {
+						logger.Logf("debugger", err.Error())
+					}
 				} else {
 					return fmt.Errorf("debugger: %w", err)
 				}
@@ -1450,25 +1453,16 @@ func (dbg *Debugger) Plugged(port plugging.PortID, peripheral plugging.Periphera
 }
 
 func (dbg *Debugger) reloadCartridge() error {
-	dbg.setState(govern.Initialising, govern.Normal)
-	spec := dbg.vcs.TV.GetFrameInfo().Spec.ID
-
-	err := dbg.insertCartridge("")
-	if err != nil {
-		return fmt.Errorf("debugger: %w", err)
+	if dbg.loader == nil {
+		return nil
 	}
 
-	// set spec to what it was before the cartridge insertion
-	err = dbg.vcs.TV.SetSpec(spec)
-	if err != nil {
-		return fmt.Errorf("debugger: %w", err)
-	}
-
+	// reset macro to beginning
 	if dbg.macro != nil {
 		dbg.macro.Reset()
 	}
 
-	return nil
+	return dbg.insertCartridge(dbg.loader.Filename)
 }
 
 // ReloadCartridge inserts the current cartridge and states the emulation over.
