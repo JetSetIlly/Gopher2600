@@ -52,7 +52,8 @@ const (
 // emulation for N frames and the video recorded at that point. Regression
 // passes if subsequenct runs produce the same video value.
 type VideoRegression struct {
-	CartLoad     cartridgeloader.Loader
+	Cartridge    string
+	Mapping      string
 	TVtype       string
 	NumFrames    int
 	State        StateType
@@ -76,10 +77,8 @@ func deserialiseVideoEntry(fields database.SerialisedEntry) (database.Entry, err
 	var err error
 
 	// string fields need no conversion
-	reg.CartLoad, err = cartridgeloader.NewLoaderFromFilename(fields[videoFieldCartName], fields[videoFieldCartMapping])
-	if err != nil {
-		return nil, fmt.Errorf("video: %w", err)
-	}
+	reg.Cartridge = fields[videoFieldCartName]
+	reg.Mapping = fields[videoFieldCartMapping]
 	reg.TVtype = fields[videoFieldTVtype]
 	reg.digest = fields[videoFieldDigest]
 	reg.Notes = fields[videoFieldNotes]
@@ -128,8 +127,8 @@ func (reg VideoRegression) EntryType() string {
 // Serialise implements the database.Entry interface.
 func (reg *VideoRegression) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
-			reg.CartLoad.Filename,
-			reg.CartLoad.Mapping,
+			reg.Cartridge,
+			reg.Mapping,
 			reg.TVtype,
 			strconv.Itoa(reg.NumFrames),
 			reg.State.String(),
@@ -170,7 +169,9 @@ func (reg VideoRegression) String() string {
 		state = " [with state]"
 	}
 
-	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d%s", reg.EntryType(), reg.CartLoad.Name, reg.TVtype, reg.NumFrames, state))
+	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d%s", reg.EntryType(),
+		cartridgeloader.NameFromFilename(reg.Cartridge),
+		reg.TVtype, reg.NumFrames, state))
 	if reg.Notes != "" {
 		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
 	}
@@ -204,7 +205,13 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 	// default the hardware preferences
 	vcs.Env.Normalise()
 
-	err = setup.AttachCartridge(vcs, reg.CartLoad, true)
+	cartload, err := cartridgeloader.NewLoaderFromFilename(reg.Cartridge, reg.Mapping)
+	if err != nil {
+		return false, "", fmt.Errorf("log: %w", err)
+	}
+	defer cartload.Close()
+
+	err = setup.AttachCartridge(vcs, cartload, true)
 	if err != nil {
 		return false, "", fmt.Errorf("video: %w", err)
 	}
@@ -275,7 +282,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 
 		if reg.State != StateNone {
 			// create a unique filename
-			reg.stateFile, err = uniqueFilename("state", reg.CartLoad.Name)
+			reg.stateFile, err = uniqueFilename("state", reg.Cartridge)
 			if err != nil {
 				return false, "", fmt.Errorf("video: %w", err)
 			}

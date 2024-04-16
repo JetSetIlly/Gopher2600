@@ -1337,14 +1337,13 @@ func (dbg *Debugger) startComparison(comparisonROM string, comparisonPrefs strin
 		return err
 	}
 
-	// cartload is passed to comparision.CreateFromLoader(). closure will be
-	// handled from there
 	cartload, err := cartridgeloader.NewLoaderFromFilename(comparisonROM, "AUTO")
 	if err != nil {
 		return err
 	}
 
-	// comparision emulation handles closure of cartridgeloader
+	// cartload is passed to comparision.CreateFromLoader(). closure will be
+	// handled from there when comparision emulation ends
 	dbg.comparison.CreateFromLoader(cartload)
 
 	// check use of comparison prefs

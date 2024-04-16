@@ -111,7 +111,6 @@ func (plb *Playback) readHeader(lines []string, checkROM bool) error {
 
 	var err error
 
-	// read header
 	plb.CartLoad, err = cartridgeloader.NewLoaderFromFilename(lines[lineCartName], "AUTO")
 	if err != nil {
 		return fmt.Errorf("playback: %w", err)

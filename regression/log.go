@@ -48,7 +48,8 @@ const (
 // the run. Regression passes if the subsequent runs produce the same
 // log/digest.
 type LogRegression struct {
-	CartLoad  cartridgeloader.Loader
+	Cartridge string
+	Mapping   string
 	TVtype    string
 	NumFrames int
 	Notes     string
@@ -66,18 +67,14 @@ func deserialiseLogEntry(fields database.SerialisedEntry) (database.Entry, error
 		return nil, fmt.Errorf("log: too few fields")
 	}
 
-	var err error
-
-	// string fields need no conversion
-	reg.CartLoad, err = cartridgeloader.NewLoaderFromFilename(fields[videoFieldCartName], fields[videoFieldCartMapping])
-	if err != nil {
-		return nil, fmt.Errorf("log: %w", err)
-	}
+	reg.Cartridge = fields[videoFieldCartName]
+	reg.Mapping = fields[videoFieldCartMapping]
 	reg.TVtype = fields[logFieldTVtype]
 	reg.digest = fields[logFieldDigest]
 	reg.Notes = fields[logFieldNotes]
 
-	// convert number of frames field
+	var err error
+
 	reg.NumFrames, err = strconv.Atoi(fields[logFieldNumFrames])
 	if err != nil {
 		msg := fmt.Sprintf("invalid numFrames field [%s]", fields[logFieldNumFrames])
@@ -95,8 +92,8 @@ func (reg LogRegression) EntryType() string {
 // Serialise implements the database.Entry interface.
 func (reg *LogRegression) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
-			reg.CartLoad.Filename,
-			reg.CartLoad.Mapping,
+			reg.Cartridge,
+			reg.Mapping,
 			reg.TVtype,
 			strconv.Itoa(reg.NumFrames),
 			reg.digest,
@@ -114,7 +111,9 @@ func (reg LogRegression) CleanUp() error {
 func (reg LogRegression) String() string {
 	s := strings.Builder{}
 
-	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d", reg.EntryType(), reg.CartLoad.Name, reg.TVtype, reg.NumFrames))
+	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d", reg.EntryType(),
+		cartridgeloader.NameFromFilename(reg.Cartridge),
+		reg.TVtype, reg.NumFrames))
 	if reg.Notes != "" {
 		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
 	}
@@ -146,7 +145,13 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	// default the hardware preferences
 	vcs.Env.Normalise()
 
-	err = setup.AttachCartridge(vcs, reg.CartLoad, true)
+	cartload, err := cartridgeloader.NewLoaderFromFilename(reg.Cartridge, reg.Mapping)
+	if err != nil {
+		return false, "", fmt.Errorf("log: %w", err)
+	}
+	defer cartload.Close()
+
+	err = setup.AttachCartridge(vcs, cartload, true)
 	if err != nil {
 		return false, "", fmt.Errorf("log: %w", err)
 	}

@@ -785,19 +785,14 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 
 		switch strings.ToUpper(regressMode) {
 		case "VIDEO":
-			cartload, err := cartridgeloader.NewLoaderFromFilename(args[0], mapping)
-			if err != nil {
-				return err
-			}
-			defer cartload.Close()
-
 			statetype, err := regression.NewStateType(state)
 			if err != nil {
 				return err
 			}
 
 			regressor = &regression.VideoRegression{
-				CartLoad:  cartload,
+				Cartridge: args[0],
+				Mapping:   mapping,
 				TVtype:    strings.ToUpper(spec),
 				NumFrames: numFrames,
 				State:     statetype,
@@ -811,14 +806,9 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 				Notes:  notes,
 			}
 		case "LOG":
-			cartload, err := cartridgeloader.NewLoaderFromFilename(args[0], mapping)
-			if err != nil {
-				return err
-			}
-			defer cartload.Close()
-
 			regressor = &regression.LogRegression{
-				CartLoad:  cartload,
+				Cartridge: args[0],
+				Mapping:   mapping,
 				TVtype:    strings.ToUpper(spec),
 				NumFrames: numFrames,
 				Notes:     notes,

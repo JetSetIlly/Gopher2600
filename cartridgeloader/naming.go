@@ -32,8 +32,14 @@ func decideOnName(ld Loader) string {
 		return ""
 	}
 
-	name := filepath.Base(ld.Filename)
-	name = strings.TrimSuffix(name, filepath.Ext(ld.Filename))
+	return NameFromFilename(ld.Filename)
+}
 
+// NameFromFilename converts a filename to a shortened version suitable for
+// display. Useful in some contexts where creating a cartridge loader instance
+// is inconvenient.
+func NameFromFilename(filename string) string {
+	name := filepath.Base(filename)
+	name = strings.TrimSuffix(name, filepath.Ext(filename))
 	return name
 }
