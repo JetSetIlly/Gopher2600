@@ -396,186 +396,171 @@ func (win *winSelectROM) draw() {
 
 	// control buttons. start controlHeight measurement
 	win.controlHeight = imguiMeasureHeight(func() {
-		func() {
-			if !win.thmb.IsEmulating() {
-				imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-				imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-				defer imgui.PopItemFlag()
-				defer imgui.PopStyleVar()
-			}
+		imgui.SetNextItemOpen(win.informationOpen, imgui.ConditionAlways)
+		if !imgui.CollapsingHeaderV(win.selectedName, imgui.TreeNodeFlagsNone) {
+			win.informationOpen = false
+		} else {
+			win.informationOpen = true
+			if imgui.BeginTable("#properties", 3) {
+				imgui.TableSetupColumnV("#information", imgui.TableColumnFlagsWidthStretch, -1, 0)
+				imgui.TableSetupColumnV("#spacingA", imgui.TableColumnFlagsWidthFixed, -1, 1)
+				imgui.TableSetupColumnV("#boxart", imgui.TableColumnFlagsWidthFixed, -1, 2)
 
-			imgui.SetNextItemOpen(win.informationOpen, imgui.ConditionAlways)
-			if !imgui.CollapsingHeaderV(win.selectedName, imgui.TreeNodeFlagsNone) {
-				win.informationOpen = false
-			} else {
-				win.informationOpen = true
-				if imgui.BeginTable("#properties", 3) {
-					imgui.TableSetupColumnV("#information", imgui.TableColumnFlagsWidthStretch, -1, 0)
-					imgui.TableSetupColumnV("#spacingA", imgui.TableColumnFlagsWidthFixed, -1, 1)
-					imgui.TableSetupColumnV("#boxart", imgui.TableColumnFlagsWidthFixed, -1, 2)
+				// property table. we measure the height of this table to
+				// help centering the box art image in the next column
+				imgui.TableNextRow()
+				imgui.TableNextColumn()
+				propertyTableTop := imgui.CursorPosY()
+				if imgui.BeginTable("#properties", 2) {
+					imgui.TableSetupColumnV("#category", imgui.TableColumnFlagsWidthFixed, -1, 0)
+					imgui.TableSetupColumnV("#detail", imgui.TableColumnFlagsWidthFixed, -1, 1)
 
-					// property table. we measure the height of this table to
-					// help centering the box art image in the next column
+					// wrap text
+					imgui.PushTextWrapPosV(imgui.CursorPosX() + imgui.ContentRegionAvail().X)
+					defer imgui.PopTextWrapPos()
+
 					imgui.TableNextRow()
 					imgui.TableNextColumn()
-					propertyTableTop := imgui.CursorPosY()
-					if imgui.BeginTable("#properties", 2) {
-						imgui.TableSetupColumnV("#category", imgui.TableColumnFlagsWidthFixed, -1, 0)
-						imgui.TableSetupColumnV("#detail", imgui.TableColumnFlagsWidthFixed, -1, 1)
-
-						// wrap text
-						imgui.PushTextWrapPosV(imgui.CursorPosX() + imgui.ContentRegionAvail().X)
-						defer imgui.PopTextWrapPos()
-
-						imgui.TableNextRow()
-						imgui.TableNextColumn()
-						imgui.Text("Name")
-						imgui.TableNextColumn()
-						if win.selectedProperties.IsValid() {
-							imgui.Text(win.selectedProperties.Name)
-						} else {
-							imgui.Text(win.selectedName)
-						}
-
-						// results of preview emulation from the thumbnailer
-						selectedFilePreview := win.thmb.PreviewResults()
-
-						imgui.TableNextRow()
-						imgui.TableNextColumn()
-						imgui.AlignTextToFramePadding()
-						imgui.Text("Mapper")
-						imgui.TableNextColumn()
-						if selectedFilePreview != nil {
-							imgui.Text(selectedFilePreview.VCS.Mem.Cart.ID())
-						}
-
-						imgui.TableNextRow()
-						imgui.TableNextColumn()
-						imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-						imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-						imgui.AlignTextToFramePadding()
-						imgui.Text("Television")
-						imgui.TableNextColumn()
-						if selectedFilePreview != nil {
-							imgui.SetNextItemWidth(80)
-							if imgui.BeginCombo("##tvspec", selectedFilePreview.FrameInfo.Spec.ID) {
-								for _, s := range specification.SpecList {
-									if imgui.Selectable(s) {
-									}
-								}
-								imgui.EndCombo()
-							}
-						}
-						imgui.PopStyleVar()
-						imgui.PopItemFlag()
-
-						imgui.TableNextRow()
-						imgui.TableNextColumn()
-						imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-						imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-						imgui.AlignTextToFramePadding()
-						imgui.Text("Players")
-						imgui.TableNextColumn()
-						if selectedFilePreview != nil {
-							imgui.SetNextItemWidth(100)
-							if imgui.BeginCombo("##leftplayer", string(selectedFilePreview.VCS.RIOT.Ports.LeftPlayer.ID())) {
-								for _, s := range peripherals.AvailableLeftPlayer {
-									if imgui.Selectable(s) {
-									}
-								}
-								imgui.EndCombo()
-							}
-							imgui.SameLineV(0, 15)
-							imgui.Text("&")
-							imgui.SameLineV(0, 15)
-							imgui.SetNextItemWidth(100)
-							if imgui.BeginCombo("##rightplayer", string(selectedFilePreview.VCS.RIOT.Ports.RightPlayer.ID())) {
-								for _, s := range peripherals.AvailableRightPlayer {
-									if imgui.Selectable(s) {
-									}
-								}
-								imgui.EndCombo()
-							}
-						}
-						imgui.PopStyleVar()
-						imgui.PopItemFlag()
-
-						if win.selectedProperties.Manufacturer != "" {
-							imgui.TableNextRow()
-							imgui.TableNextColumn()
-							imgui.AlignTextToFramePadding()
-							imgui.Text("Manufacturer")
-							imgui.TableNextColumn()
-							imgui.Text(win.selectedProperties.Manufacturer)
-						}
-						if win.selectedProperties.Rarity != "" {
-							imgui.TableNextRow()
-							imgui.TableNextColumn()
-							imgui.AlignTextToFramePadding()
-							imgui.Text("Rarity")
-							imgui.TableNextColumn()
-							imgui.Text(win.selectedProperties.Rarity)
-						}
-						if win.selectedProperties.Model != "" {
-							imgui.TableNextRow()
-							imgui.TableNextColumn()
-							imgui.AlignTextToFramePadding()
-							imgui.Text("Model")
-							imgui.TableNextColumn()
-							imgui.Text(win.selectedProperties.Model)
-						}
-
-						if win.selectedProperties.Note != "" {
-							imgui.TableNextRow()
-							imgui.TableNextColumn()
-							imgui.AlignTextToFramePadding()
-							imgui.Text("Note")
-							imgui.TableNextColumn()
-							imgui.Text(win.selectedProperties.Note)
-						}
-
-						imgui.EndTable()
-					}
-					propertyTableBottom := imgui.CursorPosY()
-					propertyTableHeight := propertyTableBottom - propertyTableTop
-
-					// spacing
+					imgui.Text("Name")
 					imgui.TableNextColumn()
+					if win.selectedProperties.IsValid() {
+						imgui.Text(win.selectedProperties.Name)
+					} else {
+						imgui.Text(win.selectedName)
+					}
 
-					if win.boxartUse {
-						imgui.TableNextColumn()
-						sz := imgui.Vec2{float32(win.boxartDimensions.X), float32(win.boxartDimensions.Y)}
+					// results of preview emulation from the thumbnailer
+					selectedFilePreview := win.thmb.PreviewResults()
 
-						// if thumbnail height is less than height of
-						// property table then we position the image so that
-						// it's centered in relation to the property table
-						p := imgui.CursorPos()
-						if sz.Y < propertyTableHeight {
-							p.Y += (propertyTableHeight - sz.Y) / 2
-							imgui.SetCursorPos(p)
-						} else {
-							// if height of thumbnail is greater than or
-							// equal to height of property table then we add
-							// a imgui.Spacing(). this may expand the height
-							// of the property table but that's okay
-							imgui.Spacing()
+					imgui.TableNextRow()
+					imgui.TableNextColumn()
+					imgui.AlignTextToFramePadding()
+					imgui.Text("Mapper")
+					imgui.TableNextColumn()
+					if selectedFilePreview != nil {
+						imgui.Text(selectedFilePreview.VCS.Mem.Cart.ID())
+					}
+
+					imgui.TableNextRow()
+					imgui.TableNextColumn()
+					imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+					imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+					imgui.AlignTextToFramePadding()
+					imgui.Text("Television")
+					imgui.TableNextColumn()
+					if selectedFilePreview != nil {
+						imgui.SetNextItemWidth(80)
+						if imgui.BeginCombo("##tvspec", selectedFilePreview.FrameInfo.Spec.ID) {
+							for _, s := range specification.SpecList {
+								if imgui.Selectable(s) {
+								}
+							}
+							imgui.EndCombo()
 						}
+					}
+					imgui.PopStyleVar()
+					imgui.PopItemFlag()
 
-						imgui.Image(imgui.TextureID(win.boxartTexture.getID()), sz)
+					imgui.TableNextRow()
+					imgui.TableNextColumn()
+					imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+					imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+					imgui.AlignTextToFramePadding()
+					imgui.Text("Players")
+					imgui.TableNextColumn()
+					if selectedFilePreview != nil {
+						imgui.SetNextItemWidth(100)
+						if imgui.BeginCombo("##leftplayer", string(selectedFilePreview.VCS.RIOT.Ports.LeftPlayer.ID())) {
+							for _, s := range peripherals.AvailableLeftPlayer {
+								if imgui.Selectable(s) {
+								}
+							}
+							imgui.EndCombo()
+						}
+						imgui.SameLineV(0, 15)
+						imgui.Text("&")
+						imgui.SameLineV(0, 15)
+						imgui.SetNextItemWidth(100)
+						if imgui.BeginCombo("##rightplayer", string(selectedFilePreview.VCS.RIOT.Ports.RightPlayer.ID())) {
+							for _, s := range peripherals.AvailableRightPlayer {
+								if imgui.Selectable(s) {
+								}
+							}
+							imgui.EndCombo()
+						}
+					}
+					imgui.PopStyleVar()
+					imgui.PopItemFlag()
+
+					if win.selectedProperties.Manufacturer != "" {
+						imgui.TableNextRow()
+						imgui.TableNextColumn()
+						imgui.AlignTextToFramePadding()
+						imgui.Text("Manufacturer")
+						imgui.TableNextColumn()
+						imgui.Text(win.selectedProperties.Manufacturer)
+					}
+					if win.selectedProperties.Rarity != "" {
+						imgui.TableNextRow()
+						imgui.TableNextColumn()
+						imgui.AlignTextToFramePadding()
+						imgui.Text("Rarity")
+						imgui.TableNextColumn()
+						imgui.Text(win.selectedProperties.Rarity)
+					}
+					if win.selectedProperties.Model != "" {
+						imgui.TableNextRow()
+						imgui.TableNextColumn()
+						imgui.AlignTextToFramePadding()
+						imgui.Text("Model")
+						imgui.TableNextColumn()
+						imgui.Text(win.selectedProperties.Model)
+					}
+
+					if win.selectedProperties.Note != "" {
+						imgui.TableNextRow()
+						imgui.TableNextColumn()
+						imgui.AlignTextToFramePadding()
+						imgui.Text("Note")
+						imgui.TableNextColumn()
+						imgui.Text(win.selectedProperties.Note)
 					}
 
 					imgui.EndTable()
 				}
+				propertyTableBottom := imgui.CursorPosY()
+				propertyTableHeight := propertyTableBottom - propertyTableTop
+
+				// spacing
+				imgui.TableNextColumn()
+
+				if win.boxartUse {
+					imgui.TableNextColumn()
+					sz := imgui.Vec2{float32(win.boxartDimensions.X), float32(win.boxartDimensions.Y)}
+
+					// if thumbnail height is less than height of
+					// property table then we position the image so that
+					// it's centered in relation to the property table
+					p := imgui.CursorPos()
+					if sz.Y < propertyTableHeight {
+						p.Y += (propertyTableHeight - sz.Y) / 2
+						imgui.SetCursorPos(p)
+					} else {
+						// if height of thumbnail is greater than or
+						// equal to height of property table then we add
+						// a imgui.Spacing(). this may expand the height
+						// of the property table but that's okay
+						imgui.Spacing()
+					}
+
+					imgui.Image(imgui.TextureID(win.boxartTexture.getID()), sz)
+				}
+
+				imgui.EndTable()
 			}
-		}()
+		}
 
 		imguiSeparator()
-
-		// imgui.Checkbox("Show all files", &win.showAllFiles)
-		// imgui.SameLine()
-		// imgui.Checkbox("Show hidden files", &win.showHidden)
-
-		// imgui.Spacing()
 
 		if imgui.Button("Cancel") {
 			// close rom selected in both the debugger and playmode
@@ -646,7 +631,7 @@ func (win *winSelectROM) setSelectedFile(filename string) {
 	}
 
 	// create cartridge loader and start thumbnail emulation
-	loader, err := cartridgeloader.NewLoaderFromFilename(filename, "AUTO")
+	cartload, err := cartridgeloader.NewLoaderFromFilename(filename, "AUTO")
 	if err != nil {
 		logger.Logf("ROM Select", err.Error())
 		return
@@ -654,10 +639,10 @@ func (win *winSelectROM) setSelectedFile(filename string) {
 
 	// push function to emulation goroutine. result will be checked for in
 	// draw() function
-	win.img.dbg.PushPropertyLookup(loader.HashMD5, win.propertyResult)
+	win.img.dbg.PushPropertyLookup(cartload.HashMD5, win.propertyResult)
 
 	// create thumbnail animation
-	win.thmb.Create(loader, thumbnailer.UndefinedNumFrames, true)
+	win.thmb.Create(cartload, thumbnailer.UndefinedNumFrames, true)
 
 	// defer boxart lookup to when we receive the property
 }

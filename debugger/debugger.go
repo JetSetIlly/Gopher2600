@@ -99,9 +99,8 @@ type Debugger struct {
 	// components may change (during rewind for example)
 	vcs *hardware.VCS
 
-	// the last loader to be used. we keep a reference to it so we can make
-	// sure Close() is called on end
-	loader *cartridgeloader.Loader
+	// keep a reference to the current cartridgeloader to make sure Close() is called
+	cartload *cartridgeloader.Loader
 
 	// preview emulation is used to gather information about a ROM before
 	// running it fully
@@ -707,6 +706,8 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 		}
 	}
 
+	// cartload is should be passed to attachCartridge() almost immediately. the
+	// closure of cartload will then be handled for us
 	err = dbg.attachCartridge(cartload)
 	if err != nil {
 		return fmt.Errorf("debugger: %w", err)
@@ -778,24 +779,25 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 	// set running flag as early as possible
 	dbg.running = true
 
-	var err error
-	var cartload cartridgeloader.Loader
-
-	if filename == "" {
-		cartload = cartridgeloader.Loader{}
-	} else {
-		cartload, err = cartridgeloader.NewLoaderFromFilename(filename, dbg.opts.Mapping)
-		if err != nil {
-			return fmt.Errorf("debugger: %w", err)
-		}
-	}
-
-	err = recorder.IsPlaybackFile(filename)
+	err := recorder.IsPlaybackFile(filename)
 	if err != nil {
 		if !errors.Is(err, recorder.NotAPlaybackFile) {
 			return fmt.Errorf("debugger: %w", err)
 		}
 
+		var cartload cartridgeloader.Loader
+
+		if filename == "" {
+			cartload = cartridgeloader.Loader{}
+		} else {
+			cartload, err = cartridgeloader.NewLoaderFromFilename(filename, dbg.opts.Mapping)
+			if err != nil {
+				return fmt.Errorf("debugger: %w", err)
+			}
+		}
+
+		// cartload is should be passed to attachCartridge() almost immediately. the
+		// closure of cartload will then be handled for us
 		err = dbg.attachCartridge(cartload)
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
@@ -940,8 +942,8 @@ func (dbg *Debugger) run() error {
 
 	// make sure any cartridge loader has been finished with
 	defer func() {
-		if dbg.loader != nil {
-			err := dbg.loader.Close()
+		if dbg.cartload != nil {
+			err := dbg.cartload.Close()
 			if err != nil {
 				logger.Logf("debugger", err.Error())
 			}
@@ -1141,9 +1143,12 @@ func (dbg *Debugger) Notify(notice notifications.Notice) error {
 //
 // if the new cartridge loader has the same filename as the previous loader
 // then reset() is called with a newCartridge argument of false.
+//
+// VERY IMPORTANT that the supplied cartload is assigned to dbg.cartload before
+// returning from the function
 func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) {
 	// is this a new cartridge we're loading. value is used for dbg.reset()
-	newCartridge := dbg.loader == nil || cartload.Filename != dbg.loader.Filename
+	newCartridge := dbg.cartload == nil || cartload.Filename != dbg.cartload.Filename
 
 	// stop optional sub-systems that shouldn't survive a new cartridge insertion
 	dbg.endPlayback()
@@ -1169,13 +1174,13 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	}()
 
 	// close any existing loader before continuing
-	if dbg.loader != nil {
-		err := dbg.loader.Close()
+	if dbg.cartload != nil {
+		err := dbg.cartload.Close()
 		if err != nil {
-			return err
+			logger.Logf("debuger", err.Error())
 		}
 	}
-	dbg.loader = &cartload
+	dbg.cartload = &cartload
 
 	// reset of vcs is implied with attach cartridge
 	err := setup.AttachCartridge(dbg.vcs, cartload, false)
@@ -1332,11 +1337,14 @@ func (dbg *Debugger) startComparison(comparisonROM string, comparisonPrefs strin
 		return err
 	}
 
+	// cartload is passed to comparision.CreateFromLoader(). closure will be
+	// handled from there
 	cartload, err := cartridgeloader.NewLoaderFromFilename(comparisonROM, "AUTO")
 	if err != nil {
 		return err
 	}
 
+	// comparision emulation handles closure of cartridgeloader
 	dbg.comparison.CreateFromLoader(cartload)
 
 	// check use of comparison prefs
@@ -1359,49 +1367,6 @@ func (dbg *Debugger) endComparison() {
 	if err != nil {
 		logger.Logf("debugger", err.Error())
 	}
-}
-
-func (dbg *Debugger) hotload() (e error) {
-	// tell GUI that we're in the initialistion phase
-	dbg.setState(govern.Initialising, govern.Normal)
-	defer func() {
-		if dbg.runUntilHalt && e == nil {
-			dbg.setState(govern.Running, govern.Normal)
-		} else {
-			dbg.setState(govern.Paused, govern.Normal)
-		}
-	}()
-
-	// close any existing loader before continuing
-	if dbg.loader != nil {
-		err := dbg.loader.Close()
-		if err != nil {
-			return err
-		}
-	}
-
-	cartload, err := cartridgeloader.NewLoaderFromFilename(dbg.vcs.Mem.Cart.Filename, dbg.vcs.Mem.Cart.ID())
-	if err != nil {
-		return err
-	}
-
-	err = dbg.vcs.Mem.Cart.HotLoad(cartload)
-	if err != nil {
-		return err
-	}
-
-	dbg.loader = &cartload
-
-	// disassemble newly attached cartridge
-	err = dbg.Disasm.FromMemory()
-	if err != nil {
-		return err
-	}
-
-	dbg.CoProcDisasm.AttachCartridge(dbg)
-	dbg.CoProcDev.AttachCartridge(dbg, cartload.Filename, dbg.opts.ELF)
-
-	return nil
 }
 
 // parseInput splits the input into individual commands. each command is then
@@ -1453,7 +1418,7 @@ func (dbg *Debugger) Plugged(port plugging.PortID, peripheral plugging.Periphera
 }
 
 func (dbg *Debugger) reloadCartridge() error {
-	if dbg.loader == nil {
+	if dbg.cartload == nil {
 		return nil
 	}
 
@@ -1462,7 +1427,7 @@ func (dbg *Debugger) reloadCartridge() error {
 		dbg.macro.Reset()
 	}
 
-	return dbg.insertCartridge(dbg.loader.Filename)
+	return dbg.insertCartridge(dbg.cartload.Filename)
 }
 
 // ReloadCartridge inserts the current cartridge and states the emulation over.
@@ -1472,7 +1437,7 @@ func (dbg *Debugger) ReloadCartridge() {
 
 func (dbg *Debugger) insertCartridge(filename string) error {
 	if filename == "" {
-		filename = dbg.loader.Filename
+		filename = dbg.cartload.Filename
 	}
 
 	cartload, err := cartridgeloader.NewLoaderFromFilename(filename, "AUTO")
@@ -1480,6 +1445,8 @@ func (dbg *Debugger) insertCartridge(filename string) error {
 		return fmt.Errorf("debugger: %w", err)
 	}
 
+	// cartload is should be passed to attachCartridge() almost immediately. the
+	// closure of cartload will then be handled for us
 	err = dbg.attachCartridge(cartload)
 	if err != nil {
 		return fmt.Errorf("debugger: %w", err)

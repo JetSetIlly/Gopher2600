@@ -34,6 +34,8 @@ import (
 // the maximum amount of data to load into the peep slice
 const maxPeepLength = 1048576
 
+// makes sures that data is capped at peep length. use this function when
+// assigning to the Loader.peep field
 func peepData(data []byte) []byte {
 	return data[:min(len(data), maxPeepLength)]
 }
@@ -74,8 +76,8 @@ type Loader struct {
 	// help fingerprinting and for creating the SHA1 and MD5 hashes
 	//
 	// in reality, most cartridges are small enough to fit entirely inside the
-	// peep slice. currently it is only moviecart data and maybe supercharger
-	// sound files that will be larger than the maxPeepLength
+	// peep field. currently it is only moviecart data and supercharger sound
+	// files that are ever arger than maxPeepLength
 	peep []byte
 
 	// data was supplied through NewLoaderFromData()
@@ -256,19 +258,19 @@ func (ld Loader) Size() int {
 	return ld.size
 }
 
-// Contains returns true if subslice appears anywhere in the data
+// Contains returns true if subslice appears anywhere in the peep data
 func (ld Loader) Contains(subslice []byte) bool {
 	return bytes.Contains(ld.peep, subslice)
 }
 
-// ContainsLimit returns true if subslice appears in the data at an offset between
+// ContainsLimit returns true if subslice appears in the peep data at an offset between
 // zero and limit
 func (ld Loader) ContainsLimit(limit int, subslice []byte) bool {
 	limit = min(limit, ld.Size())
 	return bytes.Contains(ld.peep[:limit], subslice)
 }
 
-// Count returns the number of non-overlapping instances of subslice in the data
+// Count returns the number of non-overlapping instances of subslice in the peep data
 func (ld Loader) Count(subslice []byte) int {
 	return bytes.Count(ld.peep, subslice)
 }

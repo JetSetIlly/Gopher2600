@@ -16,7 +16,6 @@
 package mapper
 
 import (
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
@@ -339,12 +338,6 @@ type CartHotspotInfo struct {
 // appropriate to allow rewind history to survive past a certain point.
 type CartRewindBoundary interface {
 	RewindBoundary() bool
-}
-
-// CartHotLoader is implemented by cartridge mappers that can be hot-loaded.
-// ie. ROM data updated but keeping RAM memory intact.
-type CartHotLoader interface {
-	HotLoad(cartridgeloader.Loader) error
 }
 
 // CartROMDump is implemented by cartridge mappers that can save themselves to disk.

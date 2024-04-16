@@ -177,6 +177,7 @@ func (cmp *Comparison) CreateFromLoader(cartload cartridgeloader.Loader) error {
 		defer func() {
 			cmp.driver.quit <- nil
 			cmp.isEmulating.Store(false)
+			cartload.Close()
 		}()
 
 		// not using setup system to attach cartridge. maybe we should?

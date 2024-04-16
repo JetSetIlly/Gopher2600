@@ -25,7 +25,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	coproc_breakpoints "github.com/jetsetilly/gopher2600/coprocessor/developer/breakpoints"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/callstack"
@@ -472,21 +471,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 	case cmdInsert:
 		dbg.unwindLoop(func() error {
-			cart, _ := tokens.Get()
-			cl, err := cartridgeloader.NewLoaderFromFilename(cart, "AUTO")
+			filename, _ := tokens.Get()
+			err := dbg.insertCartridge(filename)
 			if err != nil {
 				return err
 			}
-			err = dbg.attachCartridge(cl)
-			if err != nil {
-				return err
-			}
-
-			// use cartridge's idea of the filename. the attach process may have
-			// caused a different cartridge to load than the one requested (most
-			// typically this will mean that the cartridge has been ejected)
-			dbg.printLine(terminal.StyleFeedback, "machine reset with new cartridge (%s)", dbg.vcs.Mem.Cart.Filename)
-
 			return nil
 		})
 
@@ -571,14 +560,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					}
 				} else {
 					dbg.printLine(terminal.StyleFeedback, "cartridge has no RAM")
-				}
-
-			case "HOTLOAD":
-				err := dbg.hotload()
-				if err != nil {
-					dbg.printLine(terminal.StyleFeedback, err.Error())
-				} else {
-					dbg.printLine(terminal.StyleFeedback, "hotload successful")
 				}
 
 			case "DUMP":
@@ -1496,7 +1477,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			case "DUMP":
 				dump := func(name string) {
 					if data, ok := static.Reference(name); ok {
-						fn := unique.Filename(fmt.Sprintf("dump_%s", name), dbg.loader.Name)
+						fn := unique.Filename(fmt.Sprintf("dump_%s", name), dbg.cartload.Name)
 						fn = fmt.Sprintf("%s.bin", fn)
 						err := os.WriteFile(fn, data, 0644)
 						if err != nil {
@@ -1799,7 +1780,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		if ok {
 			switch strings.ToUpper(controller) {
 			case "AUTO":
-				dbg.vcs.FingerprintPeripheral(id, *dbg.loader)
+				dbg.vcs.FingerprintPeripheral(id, *dbg.cartload)
 			case "STICK":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewStick)
 			case "PADDLE":
