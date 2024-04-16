@@ -434,7 +434,7 @@ func (img *SdlImgui) setCapture(set bool) {
 	} else {
 		if set {
 			img.wm.dbgScr.debuggerSetOpen(true)
-			img.wm.dbgScr.debuggerGeometry().raise = true
+			img.wm.dbgScr.debuggerGeometry().raiseOnNextDraw = true
 		}
 		img.wm.dbgScr.isCaptured = set
 	}
@@ -467,7 +467,7 @@ func (img *SdlImgui) setCapturedRunning(set bool) {
 		img.term.pushCommand("HALT")
 		if img.wm.refocusWindow != nil {
 			geom := img.wm.refocusWindow.debuggerGeometry()
-			geom.raise = true
+			geom.raiseOnNextDraw = true
 		}
 	}
 }

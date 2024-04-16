@@ -191,8 +191,7 @@ func (wm *manager) draw() {
 			// drawing every window with window focus set will cause an ugly
 			// colour flash in the title bars. push the inactive color to the
 			// active color
-			sty := imgui.CurrentStyle()
-			imgui.PushStyleColor(imgui.StyleColorTitleBgActive, sty.Color(imgui.StyleColorTitleBg))
+			imgui.PushStyleColor(imgui.StyleColorTitleBgActive, imgui.CurrentStyle().Color(imgui.StyleColorTitleBg))
 
 			// draw in order of size
 			for _, w := range l {
@@ -210,16 +209,16 @@ func (wm *manager) draw() {
 				geom := w.debuggerGeometry()
 
 				// raise window to front of display
-				if w.debuggerGeometry().raise {
+				if w.debuggerGeometry().raiseOnNextDraw {
 					imgui.SetNextWindowFocus()
-					geom.raise = false
+					geom.raiseOnNextDraw = false
 				}
 
 				// draw window
 				wm.drawn[w.id()] = w.debuggerDraw()
 
-				// set uncapture window
-				if geom.focused && !geom.noFousTracking {
+				// set window to refocus on
+				if geom.focused && !geom.noFocusTracking {
 					wm.refocusWindow = w
 				}
 
@@ -256,7 +255,7 @@ func (wm *manager) draw() {
 				// raise matched window on next draw
 				if match != nil {
 					geom := match.debuggerGeometry()
-					geom.raise = true
+					geom.raiseOnNextDraw = true
 
 					// update hotkeys information
 					wm.hotkeys[rune(wm.searchString[0])] = match

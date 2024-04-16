@@ -41,17 +41,18 @@ type windowGeom struct {
 	position imgui.Vec2
 	size     imgui.Vec2
 
-	// whether the window is focused
+	// information about the window after the most recent window draw
 	focused bool
-
-	// whether the window is hovered over with the mouse
 	hovered bool
 
-	// whether the window should be raised on the next draw
-	raise bool
+	// whether the window manager should give raise priority to this window on
+	// the next draw
+	raiseOnNextDraw bool
 
-	// whether this window is focused should not be tracked
-	noFousTracking bool
+	// whether the window manager should monitor this window to see if it is
+	// focused or not. the manager uses this information to help decide which
+	// window to give focus to when a mouse capture ends
+	noFocusTracking bool
 }
 
 // update should be called just before the imgui.End() is called

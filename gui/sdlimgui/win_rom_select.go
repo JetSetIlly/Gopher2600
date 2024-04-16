@@ -96,7 +96,7 @@ func newSelectROM(img *SdlImgui) (window, error) {
 		centreOnFile:   true,
 		propertyResult: make(chan properties.Entry, 1),
 	}
-	win.debuggerGeom.noFousTracking = true
+	win.debuggerGeom.noFocusTracking = true
 
 	var err error
 

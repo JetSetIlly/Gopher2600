@@ -42,7 +42,7 @@ func newWinControl(img *SdlImgui) (window, error) {
 	win := &winControl{
 		img: img,
 	}
-	win.debuggerGeom.noFousTracking = true
+	win.debuggerGeom.noFocusTracking = true
 	return win, nil
 }
 
