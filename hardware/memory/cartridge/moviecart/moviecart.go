@@ -16,6 +16,7 @@
 package moviecart
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -960,11 +961,13 @@ func (cart *Moviecart) nextField() {
 		dataOffset := cart.state.streamChunk * chunkSize
 		_, err := cart.data.Seek(int64(dataOffset), io.SeekStart)
 		if err != nil {
-			logger.Logf("MVC", "error reading field: %v", err)
+			logger.Logf("MVC", "error seeking field: %v", err)
 		}
 		n, err := cart.data.Read(cart.state.streamBuffer[cart.state.streamIndex])
 		if err != nil {
-			logger.Logf("MVC", "error reading field: %v", err)
+			if !errors.Is(err, io.EOF) {
+				logger.Logf("MVC", "error reading field: %v", err)
+			}
 		}
 		cart.state.endOfStream = n < fieldSize
 	}
