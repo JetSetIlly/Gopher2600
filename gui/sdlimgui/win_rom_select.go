@@ -441,6 +441,8 @@ func (win *winSelectROM) draw() {
 					imgui.TableNextColumn()
 					if selectedFilePreview != nil {
 						imgui.Text(selectedFilePreview.VCS.Mem.Cart.ID())
+					} else {
+						imgui.Text("-")
 					}
 
 					imgui.TableNextRow()
@@ -459,6 +461,8 @@ func (win *winSelectROM) draw() {
 							}
 							imgui.EndCombo()
 						}
+					} else {
+						imgui.Text("-")
 					}
 					imgui.PopStyleVar()
 					imgui.PopItemFlag()
@@ -490,6 +494,8 @@ func (win *winSelectROM) draw() {
 							}
 							imgui.EndCombo()
 						}
+					} else {
+						imgui.Text("-")
 					}
 					imgui.PopStyleVar()
 					imgui.PopItemFlag()
