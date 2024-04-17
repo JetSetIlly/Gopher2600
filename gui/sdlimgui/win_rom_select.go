@@ -56,8 +56,8 @@ type winSelectROM struct {
 	// properties of selected
 	selectedProperties properties.Entry
 
-	showAllFiles bool
-	showHidden   bool
+	showAll    bool
+	showHidden bool
 
 	scrollToTop  bool
 	centreOnFile bool
@@ -91,7 +91,7 @@ const namedBoxarts = "Named_Boxarts"
 func newSelectROM(img *SdlImgui) (window, error) {
 	win := &winSelectROM{
 		img:            img,
-		showAllFiles:   false,
+		showAll:        false,
 		showHidden:     false,
 		scrollToTop:    true,
 		centreOnFile:   true,
@@ -252,6 +252,8 @@ func (win *winSelectROM) render() {
 }
 
 func (win *winSelectROM) draw() {
+	imgui.BeginGroup()
+
 	// check for new property information
 	select {
 	case win.selectedProperties = <-win.propertyResult:
@@ -345,9 +347,9 @@ func (win *winSelectROM) draw() {
 				continue
 			}
 
-			// ignore invalid file extensions unless showAllFiles flags is set
+			// ignore invalid file extensions unless showAll flags is set
 			ext := strings.ToUpper(filepath.Ext(e.Name))
-			if !win.showAllFiles {
+			if !win.showAll {
 				hasExt := false
 				for _, e := range cartridgeloader.FileExtensions {
 					if e == ext {
@@ -588,12 +590,22 @@ func (win *winSelectROM) draw() {
 				}
 			}
 		}
-
-		imgui.Spacing()
-		imgui.Checkbox("Show All", &win.showAllFiles)
-		imgui.SameLine()
-		imgui.Checkbox("Show Hidden", &win.showHidden)
 	})
+
+	imgui.EndGroup()
+
+	const romSelectPopupID = "romSelectPopupID"
+	if imgui.IsItemHovered() && imgui.IsMouseDown(1) {
+		imgui.OpenPopup(romSelectPopupID)
+	}
+
+	if imgui.BeginPopup(romSelectPopupID) {
+		imgui.Text("Show Options")
+		imguiSeparator()
+		imgui.Checkbox("All Files", &win.showAll)
+		imgui.Checkbox("Hidden", &win.showHidden)
+		imgui.EndPopup()
+	}
 }
 
 func (win *winSelectROM) insertCartridge() {

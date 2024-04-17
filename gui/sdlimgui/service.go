@@ -174,7 +174,7 @@ func (img *SdlImgui) Service() {
 								}
 							} else if img.isPlaymode() {
 								// set mouse capture if mouse is not over a window
-								if !img.wm.playmodeWindowHover {
+								if !img.wm.playmodeCaptureInhibit {
 									img.setCapture(true)
 								}
 							}

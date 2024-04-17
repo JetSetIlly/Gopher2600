@@ -136,14 +136,12 @@ func (wm *manager) toggleOpen(winID string) bool {
 		}
 		w.playmodeSetOpen(!w.playmodeIsOpen())
 		return w.playmodeIsOpen()
-	} else {
-		w, ok := wm.debuggerWindows[winID]
-		if !ok {
-			return false
-		}
-		w.debuggerSetOpen(!w.debuggerIsOpen())
-		return w.debuggerIsOpen()
 	}
 
-	return false
+	w, ok := wm.debuggerWindows[winID]
+	if !ok {
+		return false
+	}
+	w.debuggerSetOpen(!w.debuggerIsOpen())
+	return w.debuggerIsOpen()
 }
