@@ -42,8 +42,8 @@ func decideOnName(ld Loader) string {
 func NameFromFilename(filename string) string {
 	name := filepath.Base(filename)
 	ext := filepath.Ext(filename)
-	if slices.Contains(FileExtensions, ext) {
-		name = strings.TrimSuffix(name, filepath.Ext(filename))
+	if slices.Contains(FileExtensions, strings.ToUpper(ext)) {
+		name = strings.TrimSuffix(name, ext)
 	}
 	return name
 }
