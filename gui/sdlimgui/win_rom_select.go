@@ -258,7 +258,7 @@ func (win *winSelectROM) draw() {
 		win.selectedName = win.selectedProperties.Name
 		if win.selectedName == "" {
 			win.selectedName = win.path.Base()
-			win.selectedName = strings.TrimSuffix(win.selectedName, filepath.Ext(win.selectedName))
+			win.selectedName = cartridgeloader.NameFromFilename(win.selectedName)
 		}
 
 		// normalise ROM name for presentation
@@ -588,6 +588,11 @@ func (win *winSelectROM) draw() {
 				}
 			}
 		}
+
+		imgui.Spacing()
+		imgui.Checkbox("Show All", &win.showAllFiles)
+		imgui.SameLine()
+		imgui.Checkbox("Show Hidden", &win.showHidden)
 	})
 }
 
@@ -622,9 +627,6 @@ func (win *winSelectROM) setPath(path string) error {
 }
 
 func (win *winSelectROM) setSelectedFile(filename string) {
-	// selected name will be
-	win.selectedName = ""
-
 	// return immediately if the filename is empty
 	if filename == "" {
 		return

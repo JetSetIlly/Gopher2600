@@ -17,6 +17,7 @@ package cartridgeloader
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -40,6 +41,9 @@ func decideOnName(ld Loader) string {
 // is inconvenient.
 func NameFromFilename(filename string) string {
 	name := filepath.Base(filename)
-	name = strings.TrimSuffix(name, filepath.Ext(filename))
+	ext := filepath.Ext(filename)
+	if slices.Contains(FileExtensions, ext) {
+		name = strings.TrimSuffix(name, filepath.Ext(filename))
+	}
 	return name
 }
