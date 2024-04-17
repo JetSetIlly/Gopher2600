@@ -53,11 +53,41 @@
 // A file extension of "BIN", "ROM", "A26" indicates that the data should be
 // fingerprinted as normal.
 //
+// # Preloaded data
+//
+// Cartridges with lots of data wil be streamed off disk as required. For
+// example, Moviecart or Supercharge audio tapes can be large and don't need to
+// exist in memory for a very long time.
+//
+// However, for practical reasons the first 1MB of data of any file will be
+// 'preloaded'. When reading cartridge data you don't need to worry about
+// whether data has been preloaded or not, except that it does affect both
+// hashing and fingerprinting.
+//
 // # Hashes
 //
-// Creating a cartridge loader with NewLoaderFromFilename() or
-// NewLoaderFromData() will also create a SHA1 and MD5 hash of the data. The
-// amount of data used to create the has is limited to 1MB. For most cartridges
-// this will mean the hash is taken using all the data but some cartridge are
-// likely to have much more data than that.
+// The creation of a cartridge loader includes the creation of both a SHA1 and
+// an MD5 hash. Hashes are useful for matching cartridges regardless of path
+// or filename
+//
+// The data used to create the hash is limited to the data that has been
+// preloaded (see above).
+//
+// # Fingerprinting
+//
+// Cartridge data can be checked for 'fingerprint' data that can be used to
+// decide on the 'mapping' the cartridge uses. The three cartridge loader
+// functions, Contains(), ContainsLimit() and Count() can be used to search the
+// preloaded data (see above) for specific bytes sequences.
+//
+// More complex fingerprinting can be done with the Read() function. However,
+// because the Read() function works with the complete cartridge and not just
+// the preloaded data, care should be taken not to read too much of the data for
+// reasons of computation time. The constant value FingerprintLimit is provided
+// as a useful value to which a Read() loop can be limited.
+//
+// Once fingerprinting has been completed it is very important to remember to
+// reset the Read() position with the Seek() command:
+//
+//	cartridgeloader.Seek(0, io.SeekStart)
 package cartridgeloader

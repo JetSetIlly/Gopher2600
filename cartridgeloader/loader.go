@@ -31,13 +31,20 @@ import (
 	"github.com/jetsetilly/gopher2600/archivefs"
 )
 
-// the maximum amount of data to load into the peep slice
-const maxPeepLength = 1048576
+// the maximum amount of data to preload
+const maxPreloadLength = 1048576
 
-// makes sures that data is capped at peep length. use this function when
-// assigning to the Loader.peep field
-func peepData(data []byte) []byte {
-	return data[:min(len(data), maxPeepLength)]
+// Fingerprinting beyond the first 64k or so of cartridge data can result in
+// very slow fingerprinting, particular if looking at a large file that is not a
+// cartridge file at all
+//
+// The 64k value is arbitary but in practice it's a sufficiently large value and
+// any data beyond that limit is unlikely to reveal anything of worth
+const FingerprintLimit = 65536
+
+// use this function when assigning to the Loader.preload field
+func preloadLimit(data []byte) []byte {
+	return data[:min(len(data), maxPreloadLength)]
 }
 
 // Loader abstracts all the ways data can be loaded into the emulation.
@@ -72,13 +79,15 @@ type Loader struct {
 	data io.ReadSeeker
 	size int
 
-	// peep is the data at the beginning of the cartridge data. it is used to
-	// help fingerprinting and for creating the SHA1 and MD5 hashes
+	// preload is the data at the beginning of the cartridge data that has been
+	// preloaded immediately on creation of the cartridge loader
 	//
 	// in reality, most cartridges are small enough to fit entirely inside the
-	// peep field. currently it is only moviecart data and supercharger sound
-	// files that are ever arger than maxPeepLength
-	peep []byte
+	// preload field. currently it is only moviecart data and supercharger sound
+	// files that are ever larger than that
+	//
+	// the preload data is used to create the hashes
+	preload []byte
 
 	// data was supplied through NewLoaderFromData()
 	embedded bool
@@ -190,7 +199,7 @@ func NewLoaderFromData(name string, data []byte, mapping string) (Loader, error)
 	ld := Loader{
 		Filename: name,
 		Mapping:  mapping,
-		peep:     peepData(data),
+		preload:  preloadLimit(data),
 		data:     bytes.NewReader(data),
 		HashSHA1: fmt.Sprintf("%x", sha1.Sum(data)),
 		HashMD5:  fmt.Sprintf("%x", md5.Sum(data)),
@@ -232,7 +241,7 @@ func (ld *Loader) Close() error {
 	}
 	ld.data = nil
 	ld.size = 0
-	ld.peep = nil
+	ld.preload = nil
 
 	return nil
 }
@@ -258,21 +267,22 @@ func (ld Loader) Size() int {
 	return ld.size
 }
 
-// Contains returns true if subslice appears anywhere in the peep data
+// Contains returns true if subslice appears anywhere in the preload data.
 func (ld Loader) Contains(subslice []byte) bool {
-	return bytes.Contains(ld.peep, subslice)
+	return bytes.Contains(ld.preload, subslice)
 }
 
-// ContainsLimit returns true if subslice appears in the peep data at an offset between
-// zero and limit
+// ContainsLimit returns true if subslice appears anywhere in the preload data and
+// within the byte limit value supplied as a fuction parameter.
 func (ld Loader) ContainsLimit(limit int, subslice []byte) bool {
 	limit = min(limit, ld.Size())
-	return bytes.Contains(ld.peep[:limit], subslice)
+	return bytes.Contains(ld.preload[:limit], subslice)
 }
 
-// Count returns the number of non-overlapping instances of subslice in the peep data
+// Count returns the number of non-overlapping instances of subslice in the
+// preload data.
 func (ld Loader) Count(subslice []byte) int {
-	return bytes.Count(ld.peep, subslice)
+	return bytes.Count(ld.preload, subslice)
 }
 
 // open the cartridge data. filenames with a valid schema will use that method
@@ -303,7 +313,7 @@ func (ld *Loader) open() error {
 
 		ld.data = bytes.NewReader(data)
 		ld.size = len(data)
-		ld.peep = peepData(data)
+		ld.preload = preloadLimit(data)
 
 	case "file":
 		fallthrough
@@ -314,8 +324,7 @@ func (ld *Loader) open() error {
 			return fmt.Errorf("loader: %w", err)
 		}
 
-		// peep at data
-		ld.peep, err = io.ReadAll(io.LimitReader(r, maxPeepLength))
+		ld.preload, err = io.ReadAll(io.LimitReader(r, maxPreloadLength))
 		if err != nil {
 			return fmt.Errorf("loader: %w", err)
 		}
@@ -328,8 +337,8 @@ func (ld *Loader) open() error {
 	}
 
 	// generate hashes
-	ld.HashSHA1 = fmt.Sprintf("%x", sha1.Sum(ld.peep))
-	ld.HashMD5 = fmt.Sprintf("%x", md5.Sum(ld.peep))
+	ld.HashSHA1 = fmt.Sprintf("%x", sha1.Sum(ld.preload))
+	ld.HashMD5 = fmt.Sprintf("%x", md5.Sum(ld.preload))
 
 	return nil
 }

@@ -75,9 +75,7 @@ func Fingerprint(port plugging.PortID, loader cartridgeloader.Loader) ports.NewP
 
 func matchPattern(patterns [][]byte, loader cartridgeloader.Loader) bool {
 	for _, p := range patterns {
-		// limit check to the first 64k of data. any data beyond that is likely
-		// to be non-program data and only likely to return false-positives
-		if loader.ContainsLimit(65536, p) {
+		if loader.ContainsLimit(cartridgeloader.FingerprintLimit, p) {
 			return true
 		}
 	}

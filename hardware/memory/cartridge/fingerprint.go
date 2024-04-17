@@ -75,7 +75,7 @@ func (cart *Cartridge) fingerprintPlusROM(loader cartridgeloader.Loader) bool {
 	b := make([]byte, 3)
 	loader.Seek(0, io.SeekStart)
 
-	for {
+	for i := 0; i < cartridgeloader.FingerprintLimit-len(b); i++ {
 		n, err := loader.Read(b)
 		if n < len(b) {
 			break
@@ -148,7 +148,7 @@ func fingerprintMnetwork(loader cartridgeloader.Loader) bool {
 	b := make([]byte, 3)
 	loader.Seek(0, io.SeekStart)
 
-	for {
+	for i := 0; i < cartridgeloader.FingerprintLimit-len(b); i++ {
 		n, err := loader.Read(b)
 		if n < len(b) {
 			break
@@ -277,7 +277,7 @@ func fingerprintCDF(loader cartridgeloader.Loader) (bool, string) {
 	b := make([]byte, 4)
 	loader.Seek(0, io.SeekStart)
 
-	for {
+	for i := 0; i < cartridgeloader.FingerprintLimit-len(b); i++ {
 		n, err := loader.Read(b)
 		if n < len(b) {
 			break
