@@ -681,7 +681,18 @@ func (win *winSelectROM) findBoxart() error {
 		dst := image.NewRGBA(image.Rect(0, 0, b.Dx()/4, b.Dy()/4))
 		draw.BiLinear.Scale(dst, dst.Bounds(), src, b, draw.Src, nil)
 		win.boxartDimensions = dst.Bounds().Max
+
+		// rendering the image without first marking the texture for
+		// (re)creation causes problems when transitioning from some images to
+		// another image
+		//
+		// unclear what the cause is but a good example of a problem image is
+		// the image of "Extra Terrestrials". Image file and MD5 hash:
+		//
+		//    99761614c5cfac9e72809dfaf87d886  Extra Terrestrials (USA).png
+		win.boxartTexture.markForCreation()
 		win.boxartTexture.render(dst)
+
 		win.boxartUse = true
 	}
 
