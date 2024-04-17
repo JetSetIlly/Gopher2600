@@ -90,6 +90,11 @@ func NewCDF(env *environment.Environment, loader cartridgeloader.Loader, version
 		yieldHook: coprocessor.StubCartYieldHook{},
 	}
 
+	// size check
+	if cart.NumBanks()*cart.bankSize > loader.Size() {
+		return nil, fmt.Errorf("CDF: not enough bytes in cartridge data")
+	}
+
 	cart.version, err = newVersion(env.Prefs.ARM.Model.Get().(string), version, data)
 	if err != nil {
 		return nil, fmt.Errorf("CDF: %w", err)
