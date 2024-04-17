@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/digest"
@@ -105,7 +106,7 @@ func (reg PlaybackRegression) String() string {
 func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg string) (_ bool, _ string, rerr error) {
 	output.Write([]byte(msg))
 
-	plb, err := recorder.NewPlayback(reg.Script, true)
+	plb, err := recorder.NewPlayback(reg.Script)
 	if err != nil {
 		return false, "", fmt.Errorf("playback: %w", err)
 	}
@@ -137,10 +138,22 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		return false, "", fmt.Errorf("playback: %w", err)
 	}
 
+	// new cartridge loader using the information found in the playback file
+	cartload, err := cartridgeloader.NewLoaderFromFilename(plb.Cartridge, "AUTO")
+	if err != nil {
+		return false, "", fmt.Errorf("playback: %w", err)
+	}
+	defer cartload.Close()
+
+	// check hash of cartridge before continuing
+	if cartload.HashSHA1 != plb.Hash {
+		return false, "", fmt.Errorf("playback: unexpected hash")
+	}
+
 	// not using setup.AttachCartridge. if the playback was recorded with setup
 	// changes the events will have been copied into the playback script and
 	// will be applied that way
-	err = vcs.AttachCartridge(plb.CartLoad, true)
+	err = vcs.AttachCartridge(cartload, true)
 	if err != nil {
 		return false, "", fmt.Errorf("playback: %w", err)
 	}
@@ -191,7 +204,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	// regressionScripts directory
 	if newRegression {
 		// create a unique filename
-		newScript, err := uniqueFilename("playback", plb.CartLoad.Name)
+		newScript, err := uniqueFilename("playback", cartload.Name)
 		if err != nil {
 			return false, "", fmt.Errorf("playback: %w", err)
 		}

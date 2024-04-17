@@ -23,7 +23,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/digest"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
@@ -44,8 +43,9 @@ type playbackEntry struct {
 type Playback struct {
 	transcript string
 
-	CartLoad cartridgeloader.Loader
-	TVSpec   string
+	Cartridge string
+	Hash      string
+	TVSpec    string
 
 	sequence []playbackEntry
 	seqCt    int
@@ -79,7 +79,7 @@ func (plb Playback) EndFrame() (bool, error) {
 // AttachToVCSInput() function) for it it to be useful.
 //
 // The integrityCheck flag should be true in most instances.
-func NewPlayback(transcript string, checkROM bool) (*Playback, error) {
+func NewPlayback(transcript string) (*Playback, error) {
 	var err error
 
 	plb := &Playback{
@@ -104,7 +104,7 @@ func NewPlayback(transcript string, checkROM bool) (*Playback, error) {
 	lines := strings.Split(string(buffer), "\n")
 
 	// read header and perform validation checks
-	err = plb.readHeader(lines, checkROM)
+	err = plb.readHeader(lines)
 	if err != nil {
 		return nil, err
 	}

@@ -22,8 +22,6 @@ import (
 	"io"
 	"os"
 	"strings"
-
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 )
 
 const (
@@ -104,22 +102,13 @@ func (rec *Recorder) writeHeader() error {
 	return nil
 }
 
-func (plb *Playback) readHeader(lines []string, checkROM bool) error {
+func (plb *Playback) readHeader(lines []string) error {
 	if lines[lineMagicString] != magicString {
 		return fmt.Errorf("playback: not a valid transcript (%s)", plb.transcript)
 	}
 
-	var err error
-
-	plb.CartLoad, err = cartridgeloader.NewLoaderFromFilename(lines[lineCartName], "AUTO")
-	if err != nil {
-		return fmt.Errorf("playback: %w", err)
-	}
-
-	if checkROM && plb.CartLoad.HashSHA1 != lines[lineCartHash] {
-		return fmt.Errorf("playback: unexpected hash")
-	}
-
+	plb.Cartridge = lines[lineCartName]
+	plb.Hash = lines[lineCartHash]
 	plb.TVSpec = lines[lineTVSpec]
 
 	return nil

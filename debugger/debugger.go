@@ -836,7 +836,10 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 			return fmt.Errorf("debugger: cannot make a new recording using a playback file")
 		}
 
-		dbg.startPlayback(filename)
+		err = dbg.startPlayback(filename)
+		if err != nil {
+			return fmt.Errorf("debugger: %w", err)
+		}
 	}
 
 	if dbg.opts.Macro != "" {
@@ -1289,12 +1292,26 @@ func (dbg *Debugger) endRecording() {
 }
 
 func (dbg *Debugger) startPlayback(filename string) error {
-	plb, err := recorder.NewPlayback(filename, dbg.opts.PlaybackCheckROM)
+	plb, err := recorder.NewPlayback(filename)
 	if err != nil {
 		return err
 	}
 
-	err = dbg.attachCartridge(plb.CartLoad)
+	// new cartridge loader using the information found in the playback file
+	cartload, err := cartridgeloader.NewLoaderFromFilename(plb.Cartridge, "AUTO")
+	if err != nil {
+		return fmt.Errorf("debugger: %w", err)
+	}
+	defer cartload.Close()
+
+	// check hash of cartridge before continuing
+	if dbg.opts.PlaybackCheckROM && cartload.HashSHA1 != plb.Hash {
+		return fmt.Errorf("playback: unexpected hash")
+	}
+
+	// cartload is should be passed to attachCartridge() almost immediately. the
+	// closure of cartload will then be handled for us
+	err = dbg.attachCartridge(cartload)
 	if err != nil {
 		return err
 	}
