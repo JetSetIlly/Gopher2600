@@ -1,5 +1,4 @@
 uniform sampler2D Texture;
-uniform sampler2D NewFrame;
 uniform float BlackLevel;
 in vec2 Frag_UV;
 in vec4 Frag_Color;

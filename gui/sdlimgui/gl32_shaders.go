@@ -192,6 +192,29 @@ func newColorShader(yflipped bool) shaderProgram {
 	return sh
 }
 
+type tvColorShader struct {
+	shader
+	brightness int32
+	contrast   int32
+	hue        int32
+}
+
+func newTVColorShader() shaderProgram {
+	sh := &tvColorShader{}
+	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.TVColorShader))
+	sh.brightness = gl.GetUniformLocation(sh.handle, gl.Str("Brightness"+"\x00"))
+	sh.contrast = gl.GetUniformLocation(sh.handle, gl.Str("Contrast"+"\x00"))
+	sh.hue = gl.GetUniformLocation(sh.handle, gl.Str("Hue"+"\x00"))
+	return sh
+}
+
+func (sh *tvColorShader) setAttributesArgs(env shaderEnvironment, prefs crtSeqPrefs) {
+	sh.shader.setAttributes(env)
+	gl.Uniform1f(sh.contrast, float32(prefs.Contrast))
+	gl.Uniform1f(sh.brightness, float32(prefs.Brightness))
+	gl.Uniform1f(sh.hue, float32(prefs.Hue))
+}
+
 type blackCorrectionShader struct {
 	shader
 	blackLevel int32

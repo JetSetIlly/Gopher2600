@@ -41,6 +41,9 @@ var DbgScrHelpersShader []byte
 //go:embed "sharpen.frag"
 var SharpenShader []byte
 
+//go:embed "tv_color.frag"
+var TVColorShader []byte
+
 //go:embed "crt_effects.frag"
 var CRTEffectsFragShader []byte
 

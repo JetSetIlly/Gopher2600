@@ -93,6 +93,9 @@ const (
 	Developer              = '\uf0c3'
 	Paperclip              = '\uf0c6'
 	Directory              = '\uf07c'
+	TVBrightness           = '\uf185'
+	TVContrast             = '\uf042'
+	TVHue                  = '\uf043'
 )
 
 // The first and last unicode points used in the application. We use this to

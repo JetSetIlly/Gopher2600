@@ -379,7 +379,7 @@ func (win *winPrefs) drawBlackLevel() {
 		label = "dark"
 	}
 
-	if imgui.SliderFloatV("##blacklevel", &f, 0.00, 0.10, label, 1.0) {
+	if imgui.SliderFloatV("##blacklevel", &f, 0.00, 0.20, label, 1.0) {
 		win.img.crtPrefs.BlackLevel.Set(f)
 	}
 }

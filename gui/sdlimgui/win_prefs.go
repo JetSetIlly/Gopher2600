@@ -100,6 +100,11 @@ func (win *winPrefs) draw() {
 		imgui.EndTabItem()
 	}
 
+	if imgui.BeginTabItem("TV") {
+		win.drawTV()
+		imgui.EndTabItem()
+	}
+
 	if win.img.rnd.supportsCRT() {
 		if imgui.BeginTabItem("CRT") {
 			win.drawCRT()

@@ -53,6 +53,11 @@ type Preferences struct {
 	Sharpness            prefs.Float
 	BlackLevel           prefs.Float
 
+	Brightness prefs.Float
+	Contrast   prefs.Float
+	Saturation prefs.Float
+	Hue        prefs.Float
+
 	PixelPerfectFade prefs.Float
 
 	VSyncRecovery    prefs.Int
@@ -95,10 +100,16 @@ const (
 	phosphorBloom        = 1.0
 	sharpness            = 0.55
 	blackLevel           = 0.045
-	pixelPerfectFade     = 0.4
-	vsyncRecovery        = 10
-	vsyncSensitivity     = 2
-	integerScaling       = false
+
+	brightness = 1.0
+	contrast   = 1.0
+	saturation = 1.0
+	hue        = 0.0
+
+	pixelPerfectFade = 0.4
+	vsyncRecovery    = 10
+	vsyncSensitivity = 2
+	integerScaling   = false
 )
 
 // NewPreferences is the preferred method of initialisation for the Preferences type.
@@ -224,6 +235,22 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("crt.brightness", &p.Brightness)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.contrast", &p.Contrast)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.saturation", &p.Saturation)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.hue", &p.Hue)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("crt.pixelPerfectFade", &p.PixelPerfectFade)
 	if err != nil {
 		return nil, err
@@ -278,6 +305,12 @@ func (p *Preferences) SetDefaults() {
 	p.PhosphorBloom.Set(phosphorBloom)
 	p.Sharpness.Set(sharpness)
 	p.BlackLevel.Set(blackLevel)
+
+	p.Brightness.Set(brightness)
+	p.Contrast.Set(contrast)
+	p.Saturation.Set(saturation)
+	p.Hue.Set(hue)
+
 	p.PixelPerfectFade.Set(pixelPerfectFade)
 	p.VSyncRecovery.Set(vsyncRecovery)
 	p.VSyncSensitivity.Set(vsyncSensitivity)

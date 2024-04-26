@@ -54,6 +54,11 @@ type crtSeqPrefs struct {
 	PhosphorBloom        float64
 	Sharpness            float64
 	BlackLevel           float64
+
+	Brightness float64
+	Contrast   float64
+	Saturation float64
+	Hue        float64
 }
 
 func newCrtSeqPrefs(prefs *crt.Preferences) crtSeqPrefs {
@@ -86,6 +91,11 @@ func newCrtSeqPrefs(prefs *crt.Preferences) crtSeqPrefs {
 		PhosphorBloom:        prefs.PhosphorBloom.Get().(float64),
 		Sharpness:            prefs.Sharpness.Get().(float64),
 		BlackLevel:           prefs.BlackLevel.Get().(float64),
+
+		Brightness: prefs.Brightness.Get().(float64),
+		Contrast:   prefs.Contrast.Get().(float64),
+		Saturation: prefs.Saturation.Get().(float64),
+		Hue:        prefs.Hue.Get().(float64),
 	}
 }
 
@@ -94,6 +104,7 @@ type crtSequencer struct {
 	seq                   *framebuffer.Sequence
 	sharpenShader         shaderProgram
 	phosphorShader        shaderProgram
+	tvColorShader         shaderProgram
 	blackCorrectionShader shaderProgram
 	screenrollShader      shaderProgram
 	blurShader            shaderProgram
@@ -110,6 +121,7 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 		seq:                   framebuffer.NewSequence(5),
 		sharpenShader:         newSharpenShader(true),
 		phosphorShader:        newPhosphorShader(),
+		tvColorShader:         newTVColorShader(),
 		blackCorrectionShader: newBlackCorrectionShader(),
 		screenrollShader:      newScreenrollShader(),
 		blurShader:            newBlurShader(),
@@ -126,6 +138,7 @@ func (sh *crtSequencer) destroy() {
 	sh.seq.Destroy()
 	sh.sharpenShader.destroy()
 	sh.phosphorShader.destroy()
+	sh.tvColorShader.destroy()
 	sh.blackCorrectionShader.destroy()
 	sh.screenrollShader.destroy()
 	sh.blurShader.destroy()
@@ -229,13 +242,18 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 		}
 	}
 
-	if prefs.Enabled {
-		// apply screenroll
-		env.srcTextureID = sh.seq.Process(crtSeqWorking, func() {
-			sh.screenrollShader.(*screenrollShader).setAttributesArgs(env, screenroll)
-			env.draw()
-		})
+	// screenroll and TV color shaders are applied to pixel-perfect shader too
+	env.srcTextureID = sh.seq.Process(crtSeqWorking, func() {
+		sh.screenrollShader.(*screenrollShader).setAttributesArgs(env, screenroll)
+		env.draw()
+	})
 
+	env.srcTextureID = sh.seq.Process(crtSeqWorking, func() {
+		sh.tvColorShader.(*tvColorShader).setAttributesArgs(env, prefs)
+		env.draw()
+	})
+
+	if prefs.Enabled {
 		// video-black correction
 		env.srcTextureID = sh.seq.Process(crtSeqWorking, func() {
 			sh.blackCorrectionShader.(*blackCorrectionShader).setAttributesArgs(env, float32(prefs.BlackLevel))
