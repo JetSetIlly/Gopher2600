@@ -189,7 +189,12 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 // the resize top/bottom value) at that point
 //
 // the counter will be reset if the screen size changes in the interim.
-const framesUntilResize = 2
+//
+// (27/04/24) increased to 3 to accomodate MovieCart when being rewound using
+// the emulator's rewind system - the Moviecart rewind is unaffected by this
+// value. it's unclear if there are any adverse affects to this increase but I
+// don't believe there will be
+const framesUntilResize = 3
 
 // commit resizing possibility found through examine() function.
 func (sr *resizer) commit(tv *Television) error {
