@@ -29,6 +29,8 @@ func (win *winPrefs) drawTV() {
 	imgui.Spacing()
 	win.drawContrast()
 	imgui.Spacing()
+	win.drawSaturation()
+	imgui.Spacing()
 	win.drawHue()
 }
 
@@ -57,6 +59,20 @@ func (win *winPrefs) drawContrast() {
 
 	if imgui.SliderFloatV("##contrast", &f, minv, maxv, label, imgui.SliderFlagsNone) {
 		win.img.crtPrefs.Contrast.Set(f)
+	}
+}
+
+func (win *winPrefs) drawSaturation() {
+	imgui.Text(fmt.Sprintf("%c Saturation", fonts.TVSaturation))
+
+	f := float32(win.img.crtPrefs.Saturation.Get().(float64))
+
+	minv := float32(0.1)
+	maxv := float32(1.90)
+	label := fmt.Sprintf("%.0f", 100*(f-minv)/(maxv-minv))
+
+	if imgui.SliderFloatV("##saturation", &f, minv, maxv, label, imgui.SliderFlagsNone) {
+		win.img.crtPrefs.Saturation.Set(f)
 	}
 }
 

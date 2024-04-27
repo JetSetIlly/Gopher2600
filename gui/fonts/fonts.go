@@ -95,6 +95,7 @@ const (
 	Directory              = '\uf07c'
 	TVBrightness           = '\uf185'
 	TVContrast             = '\uf042'
+	TVSaturation           = '\uf0e9'
 	TVHue                  = '\uf043'
 )
 

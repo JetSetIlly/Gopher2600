@@ -39,6 +39,13 @@ void main()
 	}
 	adjust *= contrast;
 
+	// saturation
+	adjust *= mat3(
+		vec3(1, 0, 0),
+		vec3(0, Saturation, 0),
+		vec3(0, 0, Saturation)
+	);
+
 	// hue
 	float hue = 2 * PI * Hue;
 	adjust *= mat3(

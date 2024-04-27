@@ -196,6 +196,7 @@ type tvColorShader struct {
 	shader
 	brightness int32
 	contrast   int32
+	saturation int32
 	hue        int32
 }
 
@@ -204,6 +205,7 @@ func newTVColorShader() shaderProgram {
 	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.TVColorShader))
 	sh.brightness = gl.GetUniformLocation(sh.handle, gl.Str("Brightness"+"\x00"))
 	sh.contrast = gl.GetUniformLocation(sh.handle, gl.Str("Contrast"+"\x00"))
+	sh.saturation = gl.GetUniformLocation(sh.handle, gl.Str("Saturation"+"\x00"))
 	sh.hue = gl.GetUniformLocation(sh.handle, gl.Str("Hue"+"\x00"))
 	return sh
 }
@@ -212,6 +214,7 @@ func (sh *tvColorShader) setAttributesArgs(env shaderEnvironment, prefs crtSeqPr
 	sh.shader.setAttributes(env)
 	gl.Uniform1f(sh.contrast, float32(prefs.Contrast))
 	gl.Uniform1f(sh.brightness, float32(prefs.Brightness))
+	gl.Uniform1f(sh.saturation, float32(prefs.Saturation))
 	gl.Uniform1f(sh.hue, float32(prefs.Hue))
 }
 
