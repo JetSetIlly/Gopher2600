@@ -248,6 +248,13 @@ func (s *state) Snapshot() *state {
 	return &n
 }
 
+// Plumb implements the mapper.CartMapper interface.
+func (s *state) Plumb() {
+	s.state = stateMachineNewField
+	s.paused = false
+	s.fieldAdv = 1
+}
+
 func (s *state) initialise() {
 	if s.shortTitleCard {
 		// shorten title card. we don't want to eliminate it entirely so say
@@ -257,6 +264,7 @@ func (s *state) initialise() {
 		s.totalCycles = 0
 	}
 	copy(s.sram, coreData)
+
 	s.state = stateMachineNewField
 	s.paused = false
 	s.streamChunk = 0
@@ -341,6 +349,7 @@ func (cart *Moviecart) Snapshot() mapper.CartMapper {
 // Plumb implements the mapper.CartMapper interface.
 func (cart *Moviecart) Plumb(env *environment.Environment) {
 	cart.env = env
+	cart.state.Plumb()
 }
 
 // Reset implements the mapper.CartMapper interface.
