@@ -219,6 +219,7 @@ func (afs *Path) List() ([]Node, error) {
 	return ent, nil
 }
 
+// Set archivefs path
 func (afs *Path) Set(path string) error {
 	afs.Close()
 
