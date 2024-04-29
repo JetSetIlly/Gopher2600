@@ -32,6 +32,11 @@ type window interface {
 	id() string
 }
 
+// windows that require special destruction implement the windowDestroy interface
+type windowDestroy interface {
+	destroy()
+}
+
 // information about the window, including window geometry
 //
 // is embedded in playmodeWin and debuggerWin interfaces. for window type that

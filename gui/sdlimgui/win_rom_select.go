@@ -137,22 +137,22 @@ func newSelectROM(img *SdlImgui) (window, error) {
 func (win *winSelectROM) init() {
 }
 
+func (win *winSelectROM) destroy() {
+	win.path.Destroy <- true
+}
+
 func (win winSelectROM) id() string {
 	return winSelectROMID
 }
 
 func (win *winSelectROM) setOpen(open bool) {
 	if !open {
-		win.path.Close()
+		win.path.Close <- true
 		return
 	}
 
 	// open at the most recently selected ROM
-	recent := win.img.dbg.Prefs.RecentROM.String()
-	err := win.path.Set(recent)
-	if err != nil {
-		logger.Logf("sdlimgui", err.Error())
-	}
+	win.path.Set <- win.img.dbg.Prefs.RecentROM.String()
 }
 
 func (win *winSelectROM) playmodeSetOpen(open bool) {
@@ -285,10 +285,7 @@ func (win *winSelectROM) draw() {
 	}()
 
 	if imgui.Button("Parent") {
-		err := win.path.Set(filepath.Dir(win.path.Results.Dir))
-		if err != nil {
-			logger.Logf("sdlimgui", err.Error())
-		}
+		win.path.Set <- filepath.Dir(win.path.Results.Dir)
 		win.scrollToTop = true
 	}
 
@@ -331,10 +328,7 @@ func (win *winSelectROM) draw() {
 				}
 
 				if imgui.Selectable(s.String()) {
-					err := win.path.Set(filepath.Join(win.path.Results.Dir, e.Name))
-					if err != nil {
-						logger.Logf("sdlimgui", err.Error())
-					}
+					win.path.Set <- filepath.Join(win.path.Results.Dir, e.Name)
 					win.scrollToTop = true
 				}
 			}
@@ -380,10 +374,7 @@ func (win *winSelectROM) draw() {
 				}
 
 				if imgui.SelectableV(e.Name, selected, 0, imgui.Vec2{0, 0}) {
-					err := win.path.Set(filepath.Join(win.path.Results.Dir, e.Name))
-					if err != nil {
-						logger.Logf("sdlimgui", err.Error())
-					}
+					win.path.Set <- filepath.Join(win.path.Results.Dir, e.Name)
 				}
 				if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
 					win.insertCartridge()

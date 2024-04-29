@@ -276,6 +276,8 @@ func (img *SdlImgui) Destroy() {
 		logger.Log("sdlimgui", err.Error())
 	}
 
+	img.wm.destroy()
+
 	err = img.plt.destroy()
 	if err != nil {
 		logger.Log("sdlimgui", err.Error())
