@@ -24,6 +24,7 @@ type FilenameSetter interface {
 type AsyncResults struct {
 	Entries  []Node
 	Selected string
+	IsDir    bool
 	Dir      string
 	Base     string
 }
@@ -31,7 +32,10 @@ type AsyncResults struct {
 // AsyncPath provides asynchronous access to an archivefs
 type AsyncPath struct {
 	setter FilenameSetter
-	afs    Path
+
+	Set     chan string
+	Close   chan bool
+	Destroy chan bool
 
 	results chan AsyncResults
 	err     chan error
@@ -42,40 +46,48 @@ type AsyncPath struct {
 
 // NewAsyncPath is the preferred method of initialisation for the AsyncPath type
 func NewAsyncPath(setter FilenameSetter) AsyncPath {
-	return AsyncPath{
+	pth := AsyncPath{
 		setter:  setter,
+		Set:     make(chan string, 1),
+		Close:   make(chan bool, 1),
+		Destroy: make(chan bool, 1),
 		results: make(chan AsyncResults, 1),
 		err:     make(chan error, 1),
 	}
-}
 
-// Close any open zip files and reset path
-func (pth *AsyncPath) Close() {
-	// not sure how safe this is if it is called when the Set() goroutine is running
-	pth.afs.Close()
-}
-
-// Set archivefs path. Process() must be called in order to retreive the results
-// of the Set()
-func (pth *AsyncPath) Set(path string) error {
 	go func() {
-		pth.afs.Set(path)
+		var afs Path
+		var done bool
 
-		entries, err := pth.afs.List()
-		if err != nil {
-			pth.err <- err
-			return
-		}
+		for !done {
+			select {
+			case <-pth.Destroy:
+				done = true
 
-		pth.results <- AsyncResults{
-			Entries:  entries,
-			Selected: pth.afs.String(),
-			Dir:      pth.afs.Dir(),
-			Base:     pth.afs.Base(),
+			case <-pth.Close:
+				afs.Close()
+
+			case path := <-pth.Set:
+				afs.Set(path)
+
+				entries, err := afs.List()
+				if err != nil {
+					pth.err <- err
+					return
+				}
+
+				pth.results <- AsyncResults{
+					Entries:  entries,
+					Selected: afs.String(),
+					IsDir:    afs.IsDir(),
+					Dir:      afs.Dir(),
+					Base:     afs.Base(),
+				}
+			}
 		}
 	}()
 
-	return nil
+	return pth
 }
 
 // Process asynchronous requests. Must be called in order to receive the results
@@ -89,7 +101,7 @@ func (pth *AsyncPath) Process() error {
 		pth.Results = results
 
 		if pth.setter != nil {
-			if pth.afs.IsDir() {
+			if pth.Results.IsDir {
 				pth.setter.SetSelectedFilename("")
 			} else {
 				pth.setter.SetSelectedFilename(pth.Results.Selected)

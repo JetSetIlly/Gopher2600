@@ -138,6 +138,14 @@ func newManager(img *SdlImgui) (*manager, error) {
 	return wm, nil
 }
 
+func (wm *manager) destroy() {
+	for _, w := range wm.windows {
+		if c, ok := w.(windowDestroy); ok {
+			c.destroy()
+		}
+	}
+}
+
 func (wm *manager) draw() {
 	// there's no good place to call the managedWindow.init() function except
 	// here when we know everything else has been initialised
