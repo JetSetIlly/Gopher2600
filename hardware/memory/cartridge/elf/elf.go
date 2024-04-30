@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
@@ -32,10 +33,9 @@ import (
 
 // Elf implements the mapper.CartMapper interface.
 type Elf struct {
-	env *environment.Environment
-
-	version   string
-	pathToROM string
+	env     *environment.Environment
+	loader  cartridgeloader.Loader
+	version string
 
 	arm *arm.ARM
 	mem *elfMemory
@@ -75,12 +75,12 @@ func (r *elfReaderAt) ReadAt(p []byte, start int64) (n int, err error) {
 }
 
 // NewElf is the preferred method of initialisation for the Elf type.
-func NewElf(env *environment.Environment, pathToROM string, inACE bool) (mapper.CartMapper, error) {
+func NewElf(env *environment.Environment, loader cartridgeloader.Loader, inACE bool) (mapper.CartMapper, error) {
 	r := &elfReaderAt{}
 
 	// open file in the normal way and read all data. close the file
 	// immediately once all data is rad
-	o, err := os.Open(pathToROM)
+	o, err := os.Open(loader.Filename)
 	if err != nil {
 		return nil, fmt.Errorf("ELF: %w", err)
 	}
@@ -131,12 +131,12 @@ func NewElf(env *environment.Environment, pathToROM string, inACE bool) (mapper.
 
 	cart := &Elf{
 		env:       env,
-		pathToROM: pathToROM,
+		loader:    loader,
 		yieldHook: coprocessor.StubCartYieldHook{},
 	}
 
-	cart.mem = newElfMemory(env)
-	cart.arm = arm.NewARM(cart.mem.model, cart.env.Prefs.ARM, cart.mem, cart)
+	cart.mem = newElfMemory(cart.env)
+	cart.arm = arm.NewARM(cart.env, cart.mem.model, cart.mem, cart)
 	cart.mem.Plumb(cart.arm)
 	err = cart.mem.decode(ef)
 	if err != nil {
@@ -191,7 +191,7 @@ func (cart *Elf) PlumbFromDifferentEmulation(env *environment.Environment) {
 	if cart.armState == nil {
 		panic("cannot plumb this ELF instance because the ARM state is nil")
 	}
-	cart.arm = arm.NewARM(cart.mem.model, cart.env.Prefs.ARM, cart.mem, cart)
+	cart.arm = arm.NewARM(cart.env, cart.mem.model, cart.mem, cart)
 	cart.arm.Plumb(cart.armState, cart.mem, cart)
 	cart.armState = nil
 	cart.mem.Plumb(cart.arm)

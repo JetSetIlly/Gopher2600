@@ -16,6 +16,7 @@
 package arm
 
 import (
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -24,8 +25,8 @@ import (
 // MAM implements the memory addressing module as found in the LPC20000. Not
 // fully implemented but good enough for most Harmony games
 type mam struct {
-	prefs *preferences.ARMPreferences
-	mmap  architecture.Map
+	env  *environment.Environment
+	mmap architecture.Map
 
 	// valid values for mamcr are 0, 1 or 2 are valid. we can think of these
 	// respectively, as "disable", "partial" and "full"
@@ -51,10 +52,10 @@ type mam struct {
 	prefectchAborted bool
 }
 
-func newMam(prefs *preferences.ARMPreferences, mmap architecture.Map) mam {
+func newMam(env *environment.Environment, mmap architecture.Map) mam {
 	return mam{
-		prefs: prefs,
-		mmap:  mmap,
+		env:  env,
+		mmap: mmap,
 	}
 }
 
@@ -62,7 +63,7 @@ func (m *mam) Reset() {
 }
 
 func (m *mam) updatePrefs() {
-	m.pref = m.prefs.MAM.Get().(int)
+	m.pref = m.env.Prefs.ARM.MAM.Get().(int)
 	if m.pref == preferences.MAMDriver {
 		m.mamcr = m.mmap.PreferredMAMCR
 		m.mamtim = 4.0
@@ -83,7 +84,7 @@ func (m *mam) Write(addr uint32, val uint32) bool {
 			if m.mamcr == 0 {
 				m.mamtim = val
 			} else {
-				logger.Logf(logger.Allow, "ARM7", "trying to write to MAMTIM while MAMCR is active")
+				logger.Logf(m.env, "ARM7", "trying to write to MAMTIM while MAMCR is active")
 			}
 		}
 	default:
@@ -111,6 +112,6 @@ func (m *mam) Read(addr uint32) (uint32, bool) {
 func (m *mam) setMAMCR(val architecture.MAMCR) {
 	m.mamcr = val
 	if m.mamcr > 2 {
-		logger.Logf(logger.Allow, "ARM7", "setting MAMCR to a value greater than 2 (%#08x)", m.mamcr)
+		logger.Logf(m.env, "ARM7", "setting MAMCR to a value greater than 2 (%#08x)", m.mamcr)
 	}
 }

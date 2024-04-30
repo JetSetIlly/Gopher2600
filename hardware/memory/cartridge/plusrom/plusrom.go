@@ -137,7 +137,7 @@ func NewPlusROM(env *environment.Environment, child mapper.CartMapper) (mapper.C
 	}
 
 	// log success
-	logger.Logf(logger.Allow, "plusrom", "will connect to %s", cart.net.ai.String())
+	logger.Logf(env, "plusrom", "will connect to %s", cart.net.ai.String())
 
 	if cart.env.Prefs.PlusROM.NewInstallation {
 		err := cart.env.Notifications.Notify(notifications.NotifyPlusROMNewInstall)

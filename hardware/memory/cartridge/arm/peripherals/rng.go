@@ -18,6 +18,7 @@ package peripherals
 import (
 	"math/rand"
 
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -33,6 +34,7 @@ import (
 // purposes it's probably okay. It basically returns a random 32bit number
 // whenever the data register is read
 type RNG struct {
+	env  *environment.Environment
 	mmap architecture.Map
 
 	// control register value
@@ -48,8 +50,9 @@ type RNG struct {
 	interruptEnabled bool
 }
 
-func NewRNG(mmap architecture.Map) RNG {
+func NewRNG(env *environment.Environment, mmap architecture.Map) RNG {
 	return RNG{
+		env:  env,
 		mmap: mmap,
 	}
 }
@@ -67,10 +70,10 @@ func (r *RNG) Write(addr uint32, val uint32) bool {
 		r.interruptEnabled = r.control&0b1000 == 0b1000
 	case r.mmap.RNGSR:
 		// status register
-		logger.Logf(logger.Allow, "ARM7", "ignoring write to RNG status register (value of %08x)", val)
+		logger.Logf(r.env, "ARM7", "ignoring write to RNG status register (value of %08x)", val)
 	case r.mmap.RNGDR:
 		// data register
-		logger.Logf(logger.Allow, "ARM7", "ignoring write to RNG data register (value of %08x)", val)
+		logger.Logf(r.env, "ARM7", "ignoring write to RNG data register (value of %08x)", val)
 	default:
 		return false
 	}

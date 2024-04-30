@@ -90,6 +90,7 @@ func newPlusROMpreferences() (*PlusROMPreferences, error) {
 	}
 
 	if !p.validateID() {
+		// using logger.Allow because we don't mind a non-main emulation creating this log entry.
 		logger.Log(logger.Allow, "plusrom preferences", "existing ID invalid. generating new ID and saving")
 
 		err = p.ID.Set(p.generateID())

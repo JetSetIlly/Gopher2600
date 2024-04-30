@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	rtest "github.com/jetsetilly/gopher2600/hardware/cpu/registers/test"
 	"github.com/jetsetilly/gopher2600/test"
@@ -620,7 +621,7 @@ func testKIL(t *testing.T, mc *cpu.CPU, mem *testMem) {
 
 func TestCPU(t *testing.T) {
 	mem := newTestMem()
-	mc := cpu.NewCPU(nil, mem)
+	mc := cpu.NewCPU(&environment.Environment{}, mem)
 
 	testStatusInstructions(t, mc, mem)
 	testRegsiterArithmetic(t, mc, mem)

@@ -415,7 +415,7 @@ func (cart *Moviecart) processAddress(addr uint16) {
 	defer func() {
 		if r := recover(); r != nil {
 			cart.state.streamFail = true
-			logger.Logf(logger.Allow, "MVC", "serious data error in moviecart stream")
+			logger.Logf(cart.env, "MVC", "serious data error in moviecart stream")
 		}
 	}()
 
@@ -443,7 +443,7 @@ func (cart *Moviecart) processAddress(addr uint16) {
 
 		err := cart.env.Notifications.Notify(notifications.NotifyMovieCartStarted)
 		if err != nil {
-			logger.Logf(logger.Allow, "moviecart", err.Error())
+			logger.Logf(cart.env, "moviecart", err.Error())
 		}
 
 	} else if cart.state.totalCycles > titleCycles {
@@ -971,12 +971,12 @@ func (cart *Moviecart) nextField() {
 		dataOffset := cart.state.streamChunk * chunkSize
 		_, err := cart.data.Seek(int64(dataOffset), io.SeekStart)
 		if err != nil {
-			logger.Logf(logger.Allow, "MVC", "error seeking field: %v", err)
+			logger.Logf(cart.env, "MVC", "error seeking field: %v", err)
 		}
 		n, err := cart.data.Read(cart.state.streamBuffer[cart.state.streamIndex])
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
-				logger.Logf(logger.Allow, "MVC", "error reading field: %v", err)
+				logger.Logf(cart.env, "MVC", "error reading field: %v", err)
 			}
 		}
 		cart.state.endOfStream = n < fieldSize
@@ -994,11 +994,11 @@ func (cart *Moviecart) nextField() {
 			dataOffset := cart.state.streamChunk * chunkSize
 			_, err := cart.data.Seek(int64(dataOffset), io.SeekStart)
 			if err != nil {
-				logger.Logf(logger.Allow, "MVC", "error reading field: %v", err)
+				logger.Logf(cart.env, "MVC", "error reading field: %v", err)
 			}
 			_, err = cart.data.Read(cart.state.streamBuffer[fld])
 			if err != nil {
-				logger.Logf(logger.Allow, "MVC", "error reading field: %v", err)
+				logger.Logf(cart.env, "MVC", "error reading field: %v", err)
 			}
 		}
 	}
@@ -1008,7 +1008,7 @@ func (cart *Moviecart) nextField() {
 		cart.state.streamBuffer[cart.state.streamIndex][1] != 'V' ||
 		cart.state.streamBuffer[cart.state.streamIndex][2] != 'C' ||
 		cart.state.streamBuffer[cart.state.streamIndex][3] != 0x00 {
-		logger.Logf(logger.Allow, "MVC", "unrecognised version string in chunk %d", cart.state.streamChunk)
+		logger.Logf(cart.env, "MVC", "unrecognised version string in chunk %d", cart.state.streamChunk)
 		return
 	}
 

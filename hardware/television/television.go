@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -124,6 +125,8 @@ func (s *State) GetCoords() coords.TelevisionCoords {
 // Television is a Television implementation of the Television interface. In all
 // honesty, it's most likely the only implementation required.
 type Television struct {
+	env *environment.Environment
+
 	// vcs will be nil unless AttachVCS() has been called
 	vcs VCSReturnChannel
 
@@ -288,7 +291,8 @@ func (tv *Television) Plumb(vcs VCSReturnChannel, state *State) {
 }
 
 // AttachVCS attaches an implementation of the VCSReturnChannel.
-func (tv *Television) AttachVCS(vcs VCSReturnChannel) {
+func (tv *Television) AttachVCS(env *environment.Environment, vcs VCSReturnChannel) {
+	tv.env = env
 	tv.vcs = vcs
 
 	// notify the newly attached console of the current TV spec
@@ -472,7 +476,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 			if !tv.state.vsyncActive {
 				err := tv.newFrame(false)
 				if err != nil {
-					logger.Log(logger.Allow, "TV", err.Error())
+					logger.Log(tv.env, "TV", err.Error())
 				}
 			} else {
 				tv.state.scanline = specification.AbsoluteMaxScanlines - 1
@@ -481,7 +485,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 			// if we're not at end of screen then indicate new scanline
 			err := tv.newScanline()
 			if err != nil {
-				logger.Log(logger.Allow, "TV", err.Error())
+				logger.Log(tv.env, "TV", err.Error())
 			}
 		}
 	}
@@ -529,7 +533,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 				} else {
 					err := tv.newFrame(true)
 					if err != nil {
-						logger.Log(logger.Allow, "TV", err.Error())
+						logger.Log(tv.env, "TV", err.Error())
 					}
 				}
 			}
@@ -585,7 +589,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 	if tv.currentSignalIdx >= len(tv.signals) {
 		err := tv.renderSignals()
 		if err != nil {
-			logger.Log(logger.Allow, "TV", err.Error())
+			logger.Log(tv.env, "TV", err.Error())
 		}
 	}
 }

@@ -115,11 +115,11 @@ func (n *network) transmit() {
 		n.sendLock.Lock()
 		defer n.sendLock.Unlock()
 
-		logger.Logf(logger.Allow, "plusrom [net]", "sending to %s", addr.String())
+		logger.Logf(n.env, "plusrom [net]", "sending to %s", addr.String())
 
 		req, err := http.NewRequest("POST", addr.String(), &send)
 		if err != nil {
-			logger.Log(logger.Allow, "plusrom [net]", err.Error())
+			logger.Log(n.env, "plusrom [net]", err.Error())
 			return
 		}
 
@@ -146,7 +146,7 @@ func (n *network) transmit() {
 			n.env.Prefs.PlusROM.Nick.String(),
 		)
 		req.Header.Set("PlusROM-Info", id)
-		logger.Logf(logger.Allow, "plusrom [net]", "PlusROM-Info: %s", id)
+		logger.Logf(n.env, "plusrom [net]", "PlusROM-Info: %s", id)
 
 		// -----------------------------------------------
 		// PlusCart firmware earlier han v2.1.1
@@ -158,7 +158,7 @@ func (n *network) transmit() {
 		//
 		// id := fmt.Sprintf("%s WE%s", n.env.Prefs.PlusROM.Nick.String(), n.env.Prefs.PlusROM.ID.String())
 		// req.Header.Set("PlusStore-ID", id)
-		// logger.Logf(logger.Allow, "plusrom [net]", "PlusStore-ID: %s", id)
+		// logger.Logf(env, "plusrom [net]", "PlusStore-ID: %s", id)
 		// -----------------------------------------------
 
 		// whether to log HTTP transactions taken from the global preferences
@@ -167,13 +167,13 @@ func (n *network) transmit() {
 		// log of complete request
 		if httpLogging {
 			s, _ := httputil.DumpRequest(req, true)
-			logger.Logf(logger.Allow, "plusrom [net]", "request: %q", s)
+			logger.Logf(n.env, "plusrom [net]", "request: %q", s)
 		}
 
 		// send response over network
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			logger.Log(logger.Allow, "plusrom [net]", err.Error())
+			logger.Log(n.env, "plusrom [net]", err.Error())
 			return
 		}
 		defer resp.Body.Close()
@@ -181,20 +181,20 @@ func (n *network) transmit() {
 		// log of complete response
 		if httpLogging {
 			s, _ := httputil.DumpResponse(resp, true)
-			logger.Logf(logger.Allow, "plusrom [net]", "response: %q", s)
+			logger.Logf(n.env, "plusrom [net]", "response: %q", s)
 		}
 
 		// pass response to main goroutine
 		var r bytes.Buffer
 		_, err = r.ReadFrom(resp.Body)
 		if err != nil {
-			logger.Logf(logger.Allow, "plusrom [net]", "response: %v", err)
+			logger.Logf(n.env, "plusrom [net]", "response: %v", err)
 		}
 		n.respChan <- r
 	}(sendBuffer, n.ai)
 
 	// log send buffer
-	logger.Log(logger.Allow, "plusrom [net] sent", fmt.Sprintf("% 02x", n.send.Buffer[:n.send.SendLen]))
+	logger.Log(n.env, "plusrom [net] sent", fmt.Sprintf("% 02x", n.send.Buffer[:n.send.SendLen]))
 
 	// a copy of the sendBuffer has been passed to the new goroutine so we
 	// can now clear the references buffer
@@ -206,16 +206,16 @@ func (n *network) transmit() {
 func (n *network) getResponse() {
 	select {
 	case r := <-n.respChan:
-		logger.Logf(logger.Allow, "plusrom [net]", "received %d bytes", r.Len())
+		logger.Logf(n.env, "plusrom [net]", "received %d bytes", r.Len())
 
 		l, err := r.ReadByte()
 		if err != nil {
-			logger.Log(logger.Allow, "plusrom", err.Error())
+			logger.Log(n.env, "plusrom", err.Error())
 			return
 		}
 
 		if int(l) != r.Len() {
-			logger.Log(logger.Allow, "plusrom [net]", "unexpected length received")
+			logger.Log(n.env, "plusrom [net]", "unexpected length received")
 		}
 
 		// from http://pluscart.firmaplus.de/pico/?PlusROM
@@ -228,12 +228,12 @@ func (n *network) getResponse() {
 		// header of the response.
 		_, err = n.recvBuffer.ReadFrom(&r)
 		if err != nil {
-			logger.Log(logger.Allow, "plusrom", err.Error())
+			logger.Log(n.env, "plusrom", err.Error())
 			return
 		}
 
 		if n.recvBuffer.Len() > recvBufferCap {
-			logger.Log(logger.Allow, "plusrom", "receive buffer is full")
+			logger.Log(n.env, "plusrom", "receive buffer is full")
 			n.recvBuffer.Truncate(recvBufferCap)
 		}
 
@@ -257,7 +257,7 @@ func (n *network) recv() uint8 {
 
 	b, err := n.recvBuffer.ReadByte()
 	if err != nil {
-		logger.Log(logger.Allow, "plusrom", err.Error())
+		logger.Log(n.env, "plusrom", err.Error())
 	}
 	return b
 }

@@ -121,7 +121,7 @@ func (cart *atari) ROMDump(filename string) error {
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			logger.Logf(logger.Allow, "%s", cart.mappingID, err.Error())
+			logger.Logf(cart.env, "%s", cart.mappingID, err.Error())
 		}
 	}()
 

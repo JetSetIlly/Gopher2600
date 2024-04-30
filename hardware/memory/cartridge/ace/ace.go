@@ -55,18 +55,18 @@ func NewAce(env *environment.Environment, loader cartridgeloader.Loader) (mapper
 		yieldHook: coprocessor.StubCartYieldHook{},
 	}
 
-	cart.mem, err = newAceMemory(data, cart.env.Prefs.ARM)
+	cart.mem, err = newAceMemory(env, data, cart.env.Prefs.ARM)
 	if err != nil {
 		return nil, err
 	}
 
-	cart.arm = arm.NewARM(cart.mem.model, cart.env.Prefs.ARM, cart.mem, cart)
+	cart.arm = arm.NewARM(cart.env, cart.mem.model, cart.mem, cart)
 	cart.mem.Plumb(cart.arm)
 
-	logger.Logf(logger.Allow, "ACE", "ccm: %08x to %08x", cart.mem.ccmOrigin, cart.mem.ccmMemtop)
-	logger.Logf(logger.Allow, "ACE", "flash: %08x to %08x", cart.mem.downloadOrigin, cart.mem.downloadMemtop)
-	logger.Logf(logger.Allow, "ACE", "buffer: %08x to %08x", cart.mem.bufferOrigin, cart.mem.bufferMemtop)
-	logger.Logf(logger.Allow, "ACE", "gpio: %08x to %08x", cart.mem.gpioOrigin, cart.mem.gpioMemtop)
+	logger.Logf(env, "ACE", "ccm: %08x to %08x", cart.mem.ccmOrigin, cart.mem.ccmMemtop)
+	logger.Logf(env, "ACE", "flash: %08x to %08x", cart.mem.downloadOrigin, cart.mem.downloadMemtop)
+	logger.Logf(env, "ACE", "buffer: %08x to %08x", cart.mem.bufferOrigin, cart.mem.bufferMemtop)
+	logger.Logf(env, "ACE", "gpio: %08x to %08x", cart.mem.gpioOrigin, cart.mem.gpioMemtop)
 
 	return cart, nil
 }
@@ -104,7 +104,7 @@ func (cart *Ace) PlumbFromDifferentEmulation(env *environment.Environment) {
 	if cart.armState == nil {
 		panic("cannot plumb this ACE instance because the ARM state is nil")
 	}
-	cart.arm = arm.NewARM(cart.mem.model, cart.env.Prefs.ARM, cart.mem, cart)
+	cart.arm = arm.NewARM(cart.env, cart.mem.model, cart.mem, cart)
 	cart.mem.Plumb(cart.arm)
 	cart.arm.Plumb(cart.armState, cart.mem, cart)
 	cart.armState = nil

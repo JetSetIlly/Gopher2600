@@ -99,6 +99,11 @@ func (env *Environment) IsEmulation(label Label) bool {
 	return env.Label == label
 }
 
+// AllowLogging returns true if environment is permitted to create new log entries
+func (env *Environment) AllowLogging() bool {
+	return env.IsEmulation(MainEmulation)
+}
+
 // stub implementation of the notification interface
 type notificationStub struct{}
 

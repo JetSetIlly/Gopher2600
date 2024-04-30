@@ -18,6 +18,7 @@ package savekey
 import (
 	"os"
 
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources"
 )
@@ -28,6 +29,8 @@ const eepromSize = 65536
 
 // EEPROM represents the non-volatile memory in the SaveKey peripheral.
 type EEPROM struct {
+	env *environment.Environment
+
 	// the next address an i2c read/write operation will access
 	Address uint16
 
@@ -41,8 +44,9 @@ type EEPROM struct {
 
 // NewEeprom is the preferred metho of initialisation for the EEPROM type. This
 // function will initialise the memory and Read() any existing data from disk.
-func newEeprom() *EEPROM {
+func newEeprom(env *environment.Environment) *EEPROM {
 	ee := &EEPROM{
+		env:      env,
 		Data:     make([]uint8, eepromSize),
 		DiskData: make([]uint8, eepromSize),
 	}
@@ -71,13 +75,13 @@ func (ee *EEPROM) snapshot() *EEPROM {
 func (ee *EEPROM) Read() {
 	fn, err := resources.JoinPath(saveKeyPath)
 	if err != nil {
-		logger.Logf(logger.Allow, "savekey", "could not load eeprom file (%s)", err)
+		logger.Logf(ee.env, "savekey", "could not load eeprom file (%s)", err)
 		return
 	}
 
 	f, err := os.Open(fn)
 	if err != nil {
-		logger.Logf(logger.Allow, "savekey", "could not load eeprom file (%s)", err)
+		logger.Logf(ee.env, "savekey", "could not load eeprom file (%s)", err)
 		return
 	}
 	defer f.Close()
@@ -86,57 +90,57 @@ func (ee *EEPROM) Read() {
 	// windows version (when running under wine) does not handle that
 	fs, err := os.Stat(fn)
 	if err != nil {
-		logger.Logf(logger.Allow, "savekey", "could not load eeprom file (%s)", err)
+		logger.Logf(ee.env, "savekey", "could not load eeprom file (%s)", err)
 		return
 	}
 	if fs.Size() != int64(len(ee.Data)) {
-		logger.Logf(logger.Allow, "savekey", "eeprom file is of incorrect length. %d should be 65536 ", fs.Size())
+		logger.Logf(ee.env, "savekey", "eeprom file is of incorrect length. %d should be 65536 ", fs.Size())
 	}
 
 	_, err = f.Read(ee.Data)
 	if err != nil {
-		logger.Logf(logger.Allow, "savekey", "could not load eeprom file (%s)", err)
+		logger.Logf(ee.env, "savekey", "could not load eeprom file (%s)", err)
 		return
 	}
 
 	// copy of data read from disk
 	copy(ee.DiskData, ee.Data)
 
-	logger.Logf(logger.Allow, "savekey", "eeprom file loaded from %s", fn)
+	logger.Logf(ee.env, "savekey", "eeprom file loaded from %s", fn)
 }
 
 // Write EEPROM data to disk.
 func (ee *EEPROM) Write() {
 	fn, err := resources.JoinPath(saveKeyPath)
 	if err != nil {
-		logger.Logf(logger.Allow, "savekey", "could not write eeprom file (%s)", err)
+		logger.Logf(ee.env, "savekey", "could not write eeprom file (%s)", err)
 		return
 	}
 
 	f, err := os.Create(fn)
 	if err != nil {
-		logger.Logf(logger.Allow, "savekey", "could not write eeprom file (%s)", err)
+		logger.Logf(ee.env, "savekey", "could not write eeprom file (%s)", err)
 		return
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			logger.Logf(logger.Allow, "savekey", "could not close eeprom file (%s)", err)
+			logger.Logf(ee.env, "savekey", "could not close eeprom file (%s)", err)
 		}
 	}()
 
 	n, err := f.Write(ee.Data)
 	if err != nil {
-		logger.Logf(logger.Allow, "savekey", "could not write eeprom file (%s)", err)
+		logger.Logf(ee.env, "savekey", "could not write eeprom file (%s)", err)
 		return
 	}
 
 	if n != len(ee.Data) {
-		logger.Logf(logger.Allow, "savekey", "eeprom file has not been truncated during write. %d should be 65536", n)
+		logger.Logf(ee.env, "savekey", "eeprom file has not been truncated during write. %d should be 65536", n)
 		return
 	}
 
-	logger.Logf(logger.Allow, "savekey", "eeprom file saved to %s", fn)
+	logger.Logf(ee.env, "savekey", "eeprom file saved to %s", fn)
 
 	// copy of data that's just bee written to disk
 	copy(ee.DiskData, ee.Data)

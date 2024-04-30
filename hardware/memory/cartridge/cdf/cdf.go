@@ -132,7 +132,7 @@ func NewCDF(env *environment.Environment, loader cartridgeloader.Loader, version
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm.NewARM(cart.version.mmap, cart.env.Prefs.ARM, cart.state.static, cart)
+	cart.arm = arm.NewARM(cart.env, cart.version.mmap, cart.state.static, cart)
 
 	return cart, nil
 }
@@ -180,7 +180,7 @@ func (cart *cdf) PlumbFromDifferentEmulation(env *environment.Environment) {
 	if cart.armState == nil {
 		panic("cannot plumb this ELF instance because the ARM state is nil")
 	}
-	cart.arm = arm.NewARM(cart.version.mmap, cart.env.Prefs.ARM, cart.state.static, cart)
+	cart.arm = arm.NewARM(cart.env, cart.version.mmap, cart.state.static, cart)
 	cart.arm.Plumb(cart.armState, cart.state.static, cart)
 	cart.armState = nil
 	cart.yieldHook = &coprocessor.StubCartYieldHook{}

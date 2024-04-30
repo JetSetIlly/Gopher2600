@@ -24,10 +24,10 @@ import (
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/fpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/peripherals"
-	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -198,10 +198,10 @@ func (s *ARMState) Snapshot() *ARMState {
 
 // ARM implements the ARM7TDMI-S LPC2103 processor.
 type ARM struct {
-	prefs *preferences.ARMPreferences
-	mmap  architecture.Map
-	mem   SharedMemory
-	hook  CartridgeHook
+	env  *environment.Environment
+	mmap architecture.Map
+	mem  SharedMemory
+	hook CartridgeHook
 
 	// the binary interface for reading data returned by SharedMemory interface.
 	// defaults to LittleEndian
@@ -286,9 +286,9 @@ type ARM struct {
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
-func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook) *ARM {
+func NewARM(env *environment.Environment, mmap architecture.Map, mem SharedMemory, hook CartridgeHook) *ARM {
 	arm := &ARM{
-		prefs:          prefs,
+		env:            env,
 		mmap:           mmap,
 		mem:            mem,
 		hook:           hook,
@@ -319,8 +319,8 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 		panic(fmt.Sprintf("unhandled ARM architecture: cannot set %s", arm.mmap.ARMArchitecture))
 	}
 
-	arm.state.mam = newMam(arm.prefs, arm.mmap)
-	arm.state.rng = peripherals.NewRNG(arm.mmap)
+	arm.state.mam = newMam(arm.env, arm.mmap)
+	arm.state.rng = peripherals.NewRNG(arm.env, arm.mmap)
 	arm.state.timer = peripherals.NewTimer(arm.mmap)
 	arm.state.timer2 = peripherals.NewTimer2(arm.mmap)
 
@@ -440,12 +440,12 @@ func (arm *ARM) resetRegisters() {
 // prefsPulse ticker
 func (arm *ARM) updatePrefs() {
 	// update clock value from preferences
-	arm.Clk = float32(arm.prefs.Clock.Get().(float64))
+	arm.Clk = float32(arm.env.Prefs.ARM.Clock.Get().(float64))
 
 	arm.state.mam.updatePrefs()
 
 	// set cycle counting functions
-	arm.immediateMode = arm.prefs.Immediate.Get().(bool)
+	arm.immediateMode = arm.env.Prefs.ARM.Immediate.Get().(bool)
 	if arm.immediateMode {
 		arm.Icycle = arm.iCycleStub
 		arm.Scycle = arm.sCycleStub
@@ -456,8 +456,8 @@ func (arm *ARM) updatePrefs() {
 		arm.Ncycle = arm.nCycle
 	}
 
-	arm.abortOnMemoryFault = arm.prefs.AbortOnMemoryFault.Get().(bool)
-	arm.misalignedAccessIsFault = arm.prefs.MisalignedAccessIsFault.Get().(bool)
+	arm.abortOnMemoryFault = arm.env.Prefs.ARM.AbortOnMemoryFault.Get().(bool)
+	arm.misalignedAccessIsFault = arm.env.Prefs.ARM.MisalignedAccessIsFault.Get().(bool)
 }
 
 func (arm *ARM) String() string {
@@ -516,14 +516,14 @@ func (arm *ARM) logYield() {
 		return
 	}
 	if arm.state.yield.Error != nil {
-		logger.Logf(logger.Allow, "ARM7", "%s: %s", arm.state.yield.Type.String(), arm.state.yield.Error.Error())
+		logger.Logf(arm.env, "ARM7", "%s: %s", arm.state.yield.Type.String(), arm.state.yield.Error.Error())
 	} else {
-		logger.Logf(logger.Allow, "ARM7", "%s: no specific error", arm.state.yield.Type.String())
+		logger.Logf(arm.env, "ARM7", "%s: no specific error", arm.state.yield.Type.String())
 	}
 
 	// extended memory logging
 
-	if arm.prefs.ExtendedMemoryFaultLogging.Get().(bool) == false {
+	if arm.env.Prefs.ARM.ExtendedMemoryFaultLogging.Get().(bool) == false {
 		return
 	}
 
@@ -543,8 +543,8 @@ func (arm *ARM) logYield() {
 
 	entry := arm.decodeInstruction(df)
 	if entry != nil {
-		logger.Logf(logger.Allow, "ARM7", "%s", entry.String())
-		logger.Logf(logger.Allow, "ARM7", "%s", arm.disasmVerbose(*entry))
+		logger.Logf(arm.env, "ARM7", "%s", entry.String())
+		logger.Logf(arm.env, "ARM7", "%s", arm.disasmVerbose(*entry))
 	}
 }
 
@@ -898,13 +898,13 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 
 					// limit the number of cycles used by the ARM program
 					if arm.state.cyclesTotal >= cycleLimit {
-						logger.Logf(logger.Allow, "ARM7", "reached cycle limit of %d", cycleLimit)
+						logger.Logf(arm.env, "ARM7", "reached cycle limit of %d", cycleLimit)
 						panic("cycle limit")
 					}
 				} else {
 					iterations++
 					if iterations > instructionsLimit {
-						logger.Logf(logger.Allow, "ARM7", "reached instructions limit of %d", instructionsLimit)
+						logger.Logf(arm.env, "ARM7", "reached instructions limit of %d", instructionsLimit)
 						panic("instruction limit")
 					}
 				}

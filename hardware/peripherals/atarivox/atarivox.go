@@ -106,7 +106,7 @@ func NewAtariVox(env *environment.Environment, port plugging.PortID, bus ports.P
 	}
 
 	vox.activateFestival()
-	logger.Logf(logger.Allow, "atarivox", "attached [%v]", vox.port)
+	logger.Logf(env, "atarivox", "attached [%v]", vox.port)
 
 	// attach savekey to same port
 	vox.SaveKey = savekey.NewSaveKey(env, port, bus)
@@ -127,9 +127,9 @@ func (vox *AtariVox) activateFestival() {
 	if vox.env.Prefs.AtariVox.FestivalEnabled.Get().(bool) {
 		var err error
 
-		vox.Engine, err = atarivoxengines.NewFestival(vox.env.Prefs.AtariVox.FestivalBinary.Get().(string))
+		vox.Engine, err = atarivoxengines.NewFestival(vox.env)
 		if err != nil {
-			logger.Logf(logger.Allow, "atarivox", err.Error())
+			logger.Logf(vox.env, "atarivox", err.Error())
 		}
 	}
 }
@@ -294,7 +294,7 @@ func (vox *AtariVox) Step() {
 		if vox.SpeakJetDATA.Lo() {
 			vox.State = AtariVoxData
 		} else {
-			logger.Log(logger.Allow, "atarivox", "unexpected start bit of 1. should be 0")
+			logger.Log(vox.env, "atarivox", "unexpected start bit of 1. should be 0")
 			vox.State = AtariVoxStopped
 		}
 	case AtariVoxData:
@@ -308,7 +308,7 @@ func (vox *AtariVox) Step() {
 				vox.Engine.SpeakJet(vox.Bits)
 			}
 		} else {
-			logger.Log(logger.Allow, "atarivox", "unexpected end bit of 0. should be 1")
+			logger.Log(vox.env, "atarivox", "unexpected end bit of 0. should be 1")
 			vox.State = AtariVoxStopped
 		}
 	}

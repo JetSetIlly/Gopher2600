@@ -73,10 +73,10 @@ func newCommaVid(env *environment.Environment, loader cartridgeloader.Loader) (m
 	if len(data) < 2048 {
 		// place undersized binaries at the end of memory
 		copy(cart.bankData[4096-len(data):], data)
-		logger.Logf(logger.Allow, "CV", "placing undersized commavid data at end of cartridge memory")
+		logger.Logf(env, "CV", "placing undersized commavid data at end of cartridge memory")
 	} else if len(data) == 2048 {
 		copy(cart.bankData[2048:], data[:2048])
-		logger.Logf(logger.Allow, "CV", "placing 2k commavid data at end of cartridge memory")
+		logger.Logf(env, "CV", "placing 2k commavid data at end of cartridge memory")
 	} else {
 		return nil, fmt.Errorf("CV: unhandled size for commavid cartridges (%d)", len(data))
 	}

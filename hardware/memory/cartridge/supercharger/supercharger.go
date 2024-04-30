@@ -72,16 +72,16 @@ func NewSupercharger(env *environment.Environment, cartload cartridgeloader.Load
 	var err error
 
 	// load bios and activate
-	cart.bios, err = loadBIOS(filepath.Dir(cartload.Filename))
+	cart.bios, err = loadBIOS(env, filepath.Dir(cartload.Filename))
 	if err != nil {
 		return nil, fmt.Errorf("supercharger: %w", err)
 	}
 
 	// set up tape
 	if cartload.IsSoundData {
-		cart.state.tape, err = newSoundLoad(cart, cartload)
+		cart.state.tape, err = newSoundLoad(env, cart, cartload)
 	} else {
-		cart.state.tape, err = newFastLoad(cart, cartload)
+		cart.state.tape, err = newFastLoad(env, cart, cartload)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("supercharger: %w", err)

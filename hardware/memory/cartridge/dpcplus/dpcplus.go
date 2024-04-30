@@ -117,7 +117,7 @@ func NewDPCplus(env *environment.Environment, loader cartridgeloader.Loader) (ma
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm.NewARM(cart.version.mmap, env.Prefs.ARM, cart.state.static, cart)
+	cart.arm = arm.NewARM(cart.env, cart.version.mmap, cart.state.static, cart)
 
 	return cart, nil
 }
@@ -165,7 +165,7 @@ func (cart *dpcPlus) PlumbFromDifferentEmulation(env *environment.Environment) {
 	if cart.armState == nil {
 		panic("cannot plumb this ELF instance because the ARM state is nil")
 	}
-	cart.arm = arm.NewARM(cart.version.mmap, cart.env.Prefs.ARM, cart.state.static, cart)
+	cart.arm = arm.NewARM(cart.env, cart.version.mmap, cart.state.static, cart)
 	cart.arm.Plumb(cart.armState, cart.state.static, cart)
 	cart.armState = nil
 	cart.yieldHook = &coprocessor.StubCartYieldHook{}
@@ -487,7 +487,7 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		case 1:
 			// copy rom to fetcher
 			if len(cart.state.parameters) != 4 {
-				logger.Logf(logger.Allow, "DPC+", "wrong number of parameters for function call [%02x]", data)
+				logger.Logf(cart.env, "DPC+", "wrong number of parameters for function call [%02x]", data)
 				break // switch data
 			}
 
@@ -504,7 +504,7 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		case 2:
 			// copy value to fetcher
 			if len(cart.state.parameters) != 4 {
-				logger.Logf(logger.Allow, "DPC+", "wrong number of parameters for function call [%02x]", data)
+				logger.Logf(cart.env, "DPC+", "wrong number of parameters for function call [%02x]", data)
 				break // switch data
 			}
 

@@ -208,7 +208,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.coprocBus, cart.hasCoProcBus = cart.mapper.(coprocessor.CartCoProcBus)
 
 		if _, ok := cart.mapper.(*ejected); !ok {
-			logger.Logf(logger.Allow, "cartridge", "inserted %s", cart.mapper.ID())
+			logger.Logf(cart.env, "cartridge", "inserted %s", cart.mapper.ID())
 		}
 	}()
 
@@ -326,7 +326,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
 			superchip.AddSuperchip(true)
 		} else {
-			logger.Logf(logger.Allow, "cartridge", "cannot add superchip to %s mapper", cart.ID())
+			logger.Logf(cart.env, "cartridge", "cannot add superchip to %s mapper", cart.ID())
 		}
 	} else if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
 		superchip.AddSuperchip(false)
@@ -345,17 +345,17 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 		if err != nil {
 			if errors.Is(err, plusrom.NotAPlusROM) {
-				logger.Log(logger.Allow, "cartridge", err.Error())
+				logger.Log(cart.env, "cartridge", err.Error())
 				return nil
 			}
 			if errors.Is(err, plusrom.CannotAdoptROM) {
-				logger.Log(logger.Allow, "cartridge", err.Error())
+				logger.Log(cart.env, "cartridge", err.Error())
 				return nil
 			}
 			return fmt.Errorf("cartridge: %w", err)
 		}
 
-		logger.Logf(logger.Allow, "cartridge", "%s cartridge contained in PlusROM", cart.ID())
+		logger.Logf(cart.env, "cartridge", "%s cartridge contained in PlusROM", cart.ID())
 
 		// we've wrapped the main cartridge mapper inside the PlusROM
 		// mapper and we need to point the mapper field to the the new

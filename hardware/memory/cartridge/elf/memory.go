@@ -214,13 +214,13 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				section.memtop += section.trailingBytes - 1
 			}
 
-			logger.Logf(logger.Allow, "ELF", "%s: %08x to %08x (%d) [%d trailing bytes]",
+			logger.Logf(mem.env, "ELF", "%s: %08x to %08x (%d) [%d trailing bytes]",
 				section.name, section.origin, section.memtop, len(section.data), section.trailingBytes)
 			if section.readOnly() {
-				logger.Logf(logger.Allow, "ELF", "%s: is readonly", section.name)
+				logger.Logf(mem.env, "ELF", "%s: is readonly", section.name)
 			}
 			if section.executable() {
-				logger.Logf(logger.Allow, "ELF", "%s: is executable", section.name)
+				logger.Logf(mem.env, "ELF", "%s: is executable", section.name)
 			}
 		}
 
@@ -271,10 +271,10 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 		// value will be out of range according to the MapAddress check (2) the
 		// offset value can go beyond the end of the .debug_macro data slice
 		if secBeingRelocated.name == ".debug_macro" {
-			logger.Logf(logger.Allow, "ELF", "not relocating %s", secBeingRelocated.name)
+			logger.Logf(mem.env, "ELF", "not relocating %s", secBeingRelocated.name)
 			continue
 		} else {
-			logger.Logf(logger.Allow, "ELF", "relocating %s", secBeingRelocated.name)
+			logger.Logf(mem.env, "ELF", "relocating %s", secBeingRelocated.name)
 		}
 
 		// relocation data. we walk over the data and extract the relocation
@@ -507,7 +507,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 					if sym.Section == elf.SHN_UNDEF {
 						// for R_ARM_ABS32 type symbols we create a stub function and use it to
 						// generate a memory fault when it's accessed
-						logger.Logf(logger.Allow, "ELF", "using stub for %s (will cause memory fault when called)", sym.Name)
+						logger.Logf(mem.env, "ELF", "using stub for %s (will cause memory fault when called)", sym.Name)
 						tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
 							function: func(mem *elfMemory) {
 								mem.arm.MemoryFault(sym.Name, faults.UndefinedSymbol)
@@ -548,7 +548,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				if name == "" {
 					name = "anonymous"
 				}
-				logger.Logf(logger.Allow, "ELF", "relocate %s (%08x) => %08x", name, secBeingRelocated.origin+offset, tgt)
+				logger.Logf(mem.env, "ELF", "relocate %s (%08x) => %08x", name, secBeingRelocated.origin+offset, tgt)
 
 			case elf.R_ARM_THM_PC22:
 				// this value is labelled R_ARM_THM_CALL in objdump output
@@ -606,7 +606,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				if name == "" {
 					name = "anonymous"
 				}
-				logger.Logf(logger.Allow, "ELF", "relocate %s (%08x) => opcode %08x", name, secBeingRelocated.origin+offset, opcode)
+				logger.Logf(mem.env, "ELF", "relocate %s (%08x) => opcode %08x", name, secBeingRelocated.origin+offset, opcode)
 
 			default:
 				return fmt.Errorf("ELF: unhandled ARM relocation type (%v)", relType)
@@ -618,7 +618,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 	mem.strongArmMemtop -= 1
 
 	// strongarm address information
-	logger.Logf(logger.Allow, "ELF", "strongarm: %08x to %08x (%d)",
+	logger.Logf(mem.env, "ELF", "strongarm: %08x to %08x (%d)",
 		mem.strongArmOrigin, mem.strongArmMemtop, len(mem.strongArmProgram))
 
 	// SRAM creation
@@ -660,7 +660,7 @@ func (mem *elfMemory) runInitialisation(arm *arm.ARM) error {
 					}
 					mem.resetPC &= 0xfffffffe
 
-					logger.Logf(logger.Allow, "ELF", "running %s at %08x", sec.name, mem.resetPC)
+					logger.Logf(mem.env, "ELF", "running %s at %08x", sec.name, mem.resetPC)
 					_, _ = arm.Run()
 				}
 			}
@@ -814,7 +814,7 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 func (mem *elfMemory) mapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	if addr >= mem.gpio.dataOrigin && addr <= mem.gpio.dataMemtop {
 		if mem.stream.active {
-			logger.Log(logger.Allow, "ELF", "disabling byte streaming")
+			logger.Log(mem.env, "ELF", "disabling byte streaming")
 			mem.stream.active = false
 		}
 		if !write && addr == mem.gpio.dataOrigin|ADDR_IDR {

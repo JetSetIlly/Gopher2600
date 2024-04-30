@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources"
 )
@@ -39,7 +40,7 @@ const biosLogTag = "supercharger: bios"
 //   - current working directory
 //   - the same directory as the tape/bin file
 //   - the emulator's resource path
-func loadBIOS(path string) ([]uint8, error) {
+func loadBIOS(env *environment.Environment, path string) ([]uint8, error) {
 	// current working directory
 	for _, b := range biosFile {
 		d, err := _loadBIOS(b)
@@ -52,7 +53,7 @@ func loadBIOS(path string) ([]uint8, error) {
 			return nil, fmt.Errorf("bios: file (%s) is not 2k", b)
 		}
 
-		logger.Logf(logger.Allow, biosLogTag, "using %s (from current working directory)", b)
+		logger.Logf(env, biosLogTag, "using %s (from current working directory)", b)
 		return d, nil
 	}
 
@@ -69,7 +70,7 @@ func loadBIOS(path string) ([]uint8, error) {
 			return nil, fmt.Errorf("bios: file (%s) is not 2k", p)
 		}
 
-		logger.Logf(logger.Allow, biosLogTag, "using %s (from the same path as the game ROM)", p)
+		logger.Logf(env, biosLogTag, "using %s (from the same path as the game ROM)", p)
 		return d, nil
 	}
 
@@ -90,7 +91,7 @@ func loadBIOS(path string) ([]uint8, error) {
 			return nil, fmt.Errorf("bios: file (%s) is not 2k", p)
 		}
 
-		logger.Logf(logger.Allow, biosLogTag, "using %s (from the resource path)", p)
+		logger.Logf(env, biosLogTag, "using %s (from the resource path)", p)
 		return d, nil
 	}
 

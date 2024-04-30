@@ -133,9 +133,10 @@ func (mc *CPU) Reset() {
 	mc.Interrupted = true
 	mc.Killed = false
 
-	// checking for env == nil because it's possible for NewCPU to be
-	// called with a nil environment (test package)
-	if mc.env != nil && mc.env.Prefs.RandomState.Get().(bool) {
+	// nil checks because it's possibel for NewCPU to be called with a nil
+	// environment (disassembly) or with nil Prefs instance in the environment
+	// (test package)
+	if mc.env != nil && mc.env.Prefs != nil && mc.env.Prefs.RandomState.Get().(bool) {
 		mc.PC.Load(uint16(mc.env.Random.NoRewind(0xffff)))
 		mc.A.Load(uint8(mc.env.Random.NoRewind(0xff)))
 		mc.X.Load(uint8(mc.env.Random.NoRewind(0xff)))
@@ -1711,7 +1712,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	case instructions.KIL:
 		if !mc.NoFlowControl {
 			mc.Killed = true
-			logger.Logf(logger.Allow, "CPU", "KIL instruction (%#04x)", mc.PC.Address())
+			logger.Logf(mc.env, "CPU", "KIL instruction (%#04x)", mc.PC.Address())
 		}
 
 	default:

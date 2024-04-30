@@ -21,6 +21,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -34,15 +35,18 @@ const (
 )
 
 type phonemes struct {
+	env *environment.Environment
 	strings.Builder
 }
 
 func (p *phonemes) WriteString(s string) (int, error) {
-	logger.Logf(logger.Allow, "festival", "phoneme: %s", s)
+	logger.Logf(p.env, "festival", "phoneme: %s", s)
 	return p.Builder.WriteString(s)
 }
 
 type festival struct {
+	env *environment.Environment
+
 	stdin  io.WriteCloser
 	stdout io.ReadCloser
 
@@ -61,13 +65,18 @@ type festival struct {
 
 // NewFestival creats a new festival instance and starts a new festival process
 // which we'll communicate with via a stdin pipe.
-func NewFestival(executablePath string) (AtariVoxEngine, error) {
+func NewFestival(env *environment.Environment) (AtariVoxEngine, error) {
 	fest := &festival{
+		env: env,
+		phonemes: phonemes{
+			env: env,
+		},
 		quit: make(chan bool, 1),
 		say:  make(chan string, 1),
 		cmd:  make(chan string, 1),
 	}
 
+	executablePath := env.Prefs.AtariVox.FestivalBinary.Get().(string)
 	cmd := exec.Command(executablePath)
 
 	var err error
@@ -88,19 +97,18 @@ func NewFestival(executablePath string) (AtariVoxEngine, error) {
 	}
 
 	go func() {
-
 		for {
 			select {
 			case <-fest.quit:
 				err = cmd.Process.Kill()
 				if err != nil {
-					logger.Logf(logger.Allow, "festival", err.Error())
+					logger.Logf(fest.env, "festival", err.Error())
 				}
 				_ = cmd.Wait()
 				return
 
 			case text := <-fest.say:
-				logger.Logf(logger.Allow, "festival", "say: %s", text)
+				logger.Logf(fest.env, "festival", "say: %s", text)
 				sayphones := fmt.Sprintf("(SayPhones '(%s))", text)
 				fest.stdin.Write([]byte(sayphones))
 
@@ -145,68 +153,68 @@ func (fest *festival) SpeakJet(b uint8) {
 		return
 	case speed:
 		fest.speed = b
-		logger.Logf(logger.Allow, "festival", "speed: %d", fest.speed)
+		logger.Logf(fest.env, "festival", "speed: %d", fest.speed)
 		fest.cmd <- fmt.Sprintf("(set! FP_duration %d)", fest.speed)
 		fest.nextSpeakJetByte = none
 		return
 	case pitch:
 		fest.pitch = b
-		logger.Logf(logger.Allow, "festival", "pitch: %d", fest.pitch)
+		logger.Logf(fest.env, "festival", "pitch: %d", fest.pitch)
 		fest.cmd <- fmt.Sprintf("(set! FP_F0 %d)", fest.pitch)
 		fest.nextSpeakJetByte = none
 		return
 	}
 
 	if b >= 215 && b <= 254 {
-		logger.Logf(logger.Allow, "festival", "sound effect: %d", b)
+		logger.Logf(fest.env, "festival", "sound effect: %d", b)
 		return
 	}
 
 	switch b {
 	default:
-		logger.Logf(logger.Allow, "festival", "unsupported byte (%d)", b)
+		logger.Logf(fest.env, "festival", "unsupported byte (%d)", b)
 		return
 
 	case 31: // Reset
-		logger.Logf(logger.Allow, "festival", "reset")
+		logger.Logf(fest.env, "festival", "reset")
 		fest.reset()
 		return
 
 	case 0: // pause 0ms
 		return
 	case 1: // pause 100ms
-		logger.Logf(logger.Allow, "festival", "pause: 100ms: not implemented")
+		logger.Logf(fest.env, "festival", "pause: 100ms: not implemented")
 		return
 	case 2: // pause 200ms
-		logger.Logf(logger.Allow, "festival", "pause: 200ms: not implemented")
+		logger.Logf(fest.env, "festival", "pause: 200ms: not implemented")
 		return
 	case 3: // pause 700ms
-		logger.Logf(logger.Allow, "festival", "pause: 700ms: not implemented")
+		logger.Logf(fest.env, "festival", "pause: 700ms: not implemented")
 		return
 	case 4: // pause 30ms
-		logger.Logf(logger.Allow, "festival", "pause: 30ms: not implemented")
+		logger.Logf(fest.env, "festival", "pause: 30ms: not implemented")
 		return
 	case 5: // pause 60ms
-		logger.Logf(logger.Allow, "festival", "pause: 60ms: not implemented")
+		logger.Logf(fest.env, "festival", "pause: 60ms: not implemented")
 		return
 	case 6: // pause 90ms
-		logger.Logf(logger.Allow, "festival", "pause: 90ms: not implemented")
+		logger.Logf(fest.env, "festival", "pause: 90ms: not implemented")
 		return
 
 	case 7: // Fast
-		logger.Logf(logger.Allow, "festival", "fast: not implemented")
+		logger.Logf(fest.env, "festival", "fast: not implemented")
 		return
 	case 8: // Slow
-		logger.Logf(logger.Allow, "festival", "slow: not implemented")
+		logger.Logf(fest.env, "festival", "slow: not implemented")
 		return
 	case 14: // Stress
-		logger.Logf(logger.Allow, "festival", "stress: not implemented")
+		logger.Logf(fest.env, "festival", "stress: not implemented")
 		return
 	case 15: // Relax
-		logger.Logf(logger.Allow, "festival", "relax: not implemented")
+		logger.Logf(fest.env, "festival", "relax: not implemented")
 		return
 	case 20: // volume
-		logger.Logf(logger.Allow, "festival", "volume: not implemented")
+		logger.Logf(fest.env, "festival", "volume: not implemented")
 		fest.nextSpeakJetByte = unsupported
 		return
 	case 21: // speed
@@ -218,30 +226,30 @@ func (fest *festival) SpeakJet(b uint8) {
 		fest.nextSpeakJetByte = pitch
 		return
 	case 23: // bend
-		logger.Logf(logger.Allow, "festival", "bend: not implemented")
+		logger.Logf(fest.env, "festival", "bend: not implemented")
 		return
 	case 24: // PortCtr
-		logger.Logf(logger.Allow, "festival", "port ctr: not implemented")
+		logger.Logf(fest.env, "festival", "port ctr: not implemented")
 		fest.nextSpeakJetByte = unsupported
 		return
 	case 25: // Port
-		logger.Logf(logger.Allow, "festival", "port: not implemented")
+		logger.Logf(fest.env, "festival", "port: not implemented")
 		fest.nextSpeakJetByte = unsupported
 		return
 	case 26: // Repeat
-		logger.Logf(logger.Allow, "festival", "repeat: not implemented")
+		logger.Logf(fest.env, "festival", "repeat: not implemented")
 		fest.nextSpeakJetByte = unsupported
 		return
 	case 28: // Call Phrase
-		logger.Logf(logger.Allow, "festival", "call phrase: not implemented")
+		logger.Logf(fest.env, "festival", "call phrase: not implemented")
 		fest.nextSpeakJetByte = unsupported
 		return
 	case 29: // Goto Phrase
-		logger.Logf(logger.Allow, "festival", "goto phrase: not implemented")
+		logger.Logf(fest.env, "festival", "goto phrase: not implemented")
 		fest.nextSpeakJetByte = unsupported
 		return
 	case 30: // Delay
-		logger.Logf(logger.Allow, "festival", "delay: not implemented")
+		logger.Logf(fest.env, "festival", "delay: not implemented")
 		fest.nextSpeakJetByte = unsupported
 		return
 

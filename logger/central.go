@@ -25,8 +25,14 @@ type Permission interface {
 	AllowLogging() bool
 }
 
+type allow struct{}
+
+func (_ allow) AllowLogging() bool {
+	return true
+}
+
 // Allow indicates that the logging request should be allowed
-var Allow Permission = nil
+var Allow Permission = allow{}
 
 // only allowing one central log for the entire application. there's no need to
 // allow more than one log.
