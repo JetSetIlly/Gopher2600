@@ -23,6 +23,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/setup"
@@ -49,7 +50,7 @@ func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, s
 	tv.SetFPSCap(!uncapped)
 
 	// create vcs
-	vcs, err := hardware.NewVCS(tv, nil, nil)
+	vcs, err := hardware.NewVCS(environment.MainEmulation, tv, nil, nil)
 	if err != nil {
 		return fmt.Errorf("performance: %w", err)
 	}

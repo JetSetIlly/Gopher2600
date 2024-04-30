@@ -66,6 +66,8 @@ type Anim struct {
 	monitorInputDelay int
 }
 
+var animLabel = environment.Label("thumbnail_anim")
+
 // NewAnim is the preferred method of initialisation for the Anim type
 func NewAnim(prefs *preferences.Preferences) (*Anim, error) {
 	thmb := &Anim{
@@ -91,11 +93,10 @@ func NewAnim(prefs *preferences.Preferences) (*Anim, error) {
 	tv.SetFPSCap(true)
 
 	// create a new VCS emulation
-	thmb.vcs, err = hardware.NewVCS(tv, thmb, prefs)
+	thmb.vcs, err = hardware.NewVCS(animLabel, tv, thmb, prefs)
 	if err != nil {
 		return nil, fmt.Errorf("thumbnailer: %w", err)
 	}
-	thmb.vcs.Env.Label = environment.Label("thumbnail_anim")
 	thmb.img = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 	thmb.Reset()
 

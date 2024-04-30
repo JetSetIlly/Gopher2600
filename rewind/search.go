@@ -18,11 +18,14 @@ package rewind
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
+
+const searchLabel = environment.Label("search")
 
 // SearchMemoryWrite runs an emulation between two states looking for the
 // instance when the address is written to with the value (valueMask is applied
@@ -51,7 +54,7 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 	}
 	_ = searchTV.SetFPSCap(false)
 
-	searchVCS, err := hardware.NewVCS(searchTV, nil, nil)
+	searchVCS, err := hardware.NewVCS(searchLabel, searchTV, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("rewind: search: %w", err)
 	}
@@ -115,7 +118,7 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg rune, value uint8, valueMas
 	}
 	_ = searchTV.SetFPSCap(false)
 
-	searchVCS, err := hardware.NewVCS(searchTV, nil, nil)
+	searchVCS, err := hardware.NewVCS(searchLabel, searchTV, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("rewind: search: %w", err)
 	}

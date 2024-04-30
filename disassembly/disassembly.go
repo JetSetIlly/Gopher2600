@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/disassembly/symbols"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
@@ -77,6 +78,8 @@ func NewDisassembly(vcs *hardware.VCS) (*Disassembly, *symbols.Symbols, error) {
 	return dsm, &dsm.Sym, nil
 }
 
+const disassemblyLabel = environment.Label("disassembly")
+
 // FromCartridge initialises a new partial emulation and returns a disassembly
 // from the supplied cartridge filename. Useful for one-shot disassemblies,
 // like the gopher2600 "disasm" mode.
@@ -88,7 +91,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 		return nil, fmt.Errorf("disassembly: %w", err)
 	}
 
-	vcs, err := hardware.NewVCS(tv, nil, nil)
+	vcs, err := hardware.NewVCS(disassemblyLabel, tv, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("disassembly: %w", err)
 	}

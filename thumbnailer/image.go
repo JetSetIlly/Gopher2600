@@ -51,6 +51,8 @@ type Image struct {
 	Render chan *image.RGBA
 }
 
+var imageLabel = environment.Label("image")
+
 // NewImage is the preferred method of initialisation for the Image type
 func NewImage(prefs *preferences.Preferences) (*Image, error) {
 	thmb := &Image{
@@ -75,11 +77,10 @@ func NewImage(prefs *preferences.Preferences) (*Image, error) {
 	tv.SetFPSCap(false)
 
 	// create a new VCS emulation
-	thmb.vcs, err = hardware.NewVCS(tv, nil, prefs)
+	thmb.vcs, err = hardware.NewVCS(imageLabel, tv, nil, prefs)
 	if err != nil {
 		return nil, fmt.Errorf("thumbnailer: %w", err)
 	}
-	thmb.vcs.Env.Label = environment.Label("thumbnail")
 	thmb.img = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 	thmb.Reset()
 

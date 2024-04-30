@@ -78,11 +78,14 @@ type VCS struct {
 // NewVCS creates a new VCS and everything associated with the hardware. It is
 // used for all aspects of emulation: debugging sessions, and regular play.
 //
+// The Label argument indicates which environment the emulation will be
+// happening in. This affects how log entries are handled, amonst other things
+//
 // The Television argument should not be nil. The Notify and Preferences
 // argument may be nil if required.
-func NewVCS(tv *television.Television, notify notifications.Notify, prefs *preferences.Preferences) (*VCS, error) {
+func NewVCS(label environment.Label, tv *television.Television, notify notifications.Notify, prefs *preferences.Preferences) (*VCS, error) {
 	// set up environment
-	env, err := environment.NewEnvironment(tv, notify, prefs)
+	env, err := environment.NewEnvironment(label, tv, notify, prefs)
 	if err != nil {
 		return nil, err
 	}

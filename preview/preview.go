@@ -31,6 +31,8 @@ type Emulation struct {
 	vcs *hardware.VCS
 }
 
+const previewLabel = environment.Label("preview")
+
 // NewEmulation is the preferred method of initialisation for the Emulation type
 func NewEmulation(prefs *preferences.Preferences) (*Emulation, error) {
 	em := &Emulation{}
@@ -43,11 +45,10 @@ func NewEmulation(prefs *preferences.Preferences) (*Emulation, error) {
 	tv.SetFPSCap(false)
 
 	// create a new VCS emulation
-	em.vcs, err = hardware.NewVCS(tv, nil, prefs)
+	em.vcs, err = hardware.NewVCS(previewLabel, tv, nil, prefs)
 	if err != nil {
 		return nil, fmt.Errorf("preview: %w", err)
 	}
-	em.vcs.Env.Label = environment.Label("preview")
 
 	return em, nil
 }

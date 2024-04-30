@@ -354,11 +354,10 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	}
 
 	// create a new VCS instance
-	dbg.vcs, err = hardware.NewVCS(tv, dbg, nil)
+	dbg.vcs, err = hardware.NewVCS(environment.MainEmulation, tv, dbg, nil)
 	if err != nil {
 		return nil, fmt.Errorf("debugger: %w", err)
 	}
-	dbg.vcs.Env.Label = environment.MainEmulation
 
 	// create userinput/controllers handler
 	dbg.controllers = userinput.NewControllers(dbg.vcs.Input)

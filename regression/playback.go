@@ -28,6 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/digest"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -123,7 +124,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		return false, "", fmt.Errorf("playback: %w", err)
 	}
 
-	vcs, err := hardware.NewVCS(tv, nil, nil)
+	vcs, err := hardware.NewVCS(environment.MainEmulation, tv, nil, nil)
 	if err != nil {
 		return false, "", fmt.Errorf("playback: %w", err)
 	}

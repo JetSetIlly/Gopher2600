@@ -26,6 +26,8 @@ import (
 	"github.com/jetsetilly/gopher2600/rewind"
 )
 
+const replayLabel = environment.Label("tracker_replay")
+
 // create replay emulation if it has not been created already
 func (tr *Tracker) createReplayEmulation(mixer television.AudioMixer) error {
 	if tr.replayEmulation != nil {
@@ -38,17 +40,14 @@ func (tr *Tracker) createReplayEmulation(mixer television.AudioMixer) error {
 	}
 	tv.AddAudioMixer(mixer)
 
-	tr.replayEmulation, err = hardware.NewVCS(tv, nil, nil)
+	tr.replayEmulation, err = hardware.NewVCS(replayLabel, tv, nil, nil)
 	if err != nil {
 		return fmt.Errorf("tracker: create replay emulation: %w", err)
 	}
-	tr.replayEmulation.Env.Label = replayEnv
 	tr.replayEmulation.TIA.Audio.SetTracker(tr)
 
 	return nil
 }
-
-const replayEnv = environment.Label("tracker_replay")
 
 // Replay audio from start to end indexes
 //

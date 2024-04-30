@@ -25,6 +25,9 @@ import (
 // Label is used to name the environment
 type Label string
 
+// MainEmulation is the label used for the main emulation
+const MainEmulation = Label("main")
+
 // Television interface exposing a minimum amount of the real television
 // implementation
 type Television interface {
@@ -57,8 +60,9 @@ type Environment struct {
 //
 // The Notify and Preferences can be nil. If prefs is nil then a new instance of
 // the system wide preferences will be created.
-func NewEnvironment(tv Television, notify notifications.Notify, prefs *preferences.Preferences) (*Environment, error) {
+func NewEnvironment(label Label, tv Television, notify notifications.Notify, prefs *preferences.Preferences) (*Environment, error) {
 	env := &Environment{
+		Label:         label,
 		TV:            tv,
 		Notifications: notify,
 		Prefs:         prefs,
@@ -90,9 +94,6 @@ func (env *Environment) Normalise() {
 	env.Prefs.ARM.SetDefaults()
 	env.Prefs.PlusROM.SetDefaults()
 }
-
-// MainEmulation is the label used for the main emulation
-const MainEmulation = Label("main")
 
 // IsEmulation checks the emulation label and returns true if it matches
 func (env *Environment) IsEmulation(label Label) bool {

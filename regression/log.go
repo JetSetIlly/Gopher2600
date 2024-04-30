@@ -26,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -136,7 +137,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	tv.SetFPSCap(false)
 
 	// create VCS and attach cartridge
-	vcs, err := hardware.NewVCS(tv, nil, nil)
+	vcs, err := hardware.NewVCS(environment.MainEmulation, tv, nil, nil)
 	if err != nil {
 		return false, "", fmt.Errorf("log: %w", err)
 	}

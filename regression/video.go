@@ -28,6 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/digest"
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/setup"
@@ -196,7 +197,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 	}
 
 	// create VCS and attach cartridge
-	vcs, err := hardware.NewVCS(tv, nil, nil)
+	vcs, err := hardware.NewVCS(environment.MainEmulation, tv, nil, nil)
 	if err != nil {
 		return false, "", fmt.Errorf("video: %w", err)
 	}
