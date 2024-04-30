@@ -957,6 +957,18 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) decodeFunction {
 				}
 			}
 
+			// if we're still in thumb mode the instruction has ended
+			//
+			// the position of this test is important, particularly for ELF
+			// binaries and how the BLX instruction at the end of strongarm
+			// functions have been constructed
+			if thumbMode {
+				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+				// - fillPipeline() will be called if necessary
+				arm.state.registers[rPC] = newPC
+				return nil
+			}
+
 			// if the PC is now the same as the expected return address then the
 			// ARM program has ended and we can yield with the YieldProgramEnded
 			// type
@@ -967,14 +979,6 @@ func (arm *ARM) decodeThumbHiRegisterOps(opcode uint16) decodeFunction {
 			if newPC == arm.state.expectedReturnAddress {
 				arm.state.yield.Type = coprocessor.YieldProgramEnded
 				arm.state.yield.Error = nil
-				return nil
-			}
-
-			// if we're still in thumb mode the instruction has ended
-			if thumbMode {
-				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-				// - fillPipeline() will be called if necessary
-				arm.state.registers[rPC] = newPC
 				return nil
 			}
 
