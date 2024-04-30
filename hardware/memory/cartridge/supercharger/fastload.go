@@ -112,13 +112,13 @@ func newFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error
 		fl.blocks[i].progressSpeed = (uint16(gameHeader[7]) << 8) | uint16(gameHeader[6])
 		fl.blocks[i].pageTable = gameHeader[0x10:0x28]
 
-		logger.Logf("supercharger: fastload", "block %d: start address: %#04x", i, fl.blocks[i].startAddress)
-		logger.Logf("supercharger: fastload", "block %d: config byte: %#08b", i, fl.blocks[i].configByte)
-		logger.Logf("supercharger: fastload", "block %d: num pages: %d", i, fl.blocks[i].numPages)
-		logger.Logf("supercharger: fastload", "block %d: checksum: %#02x", i, fl.blocks[i].checksum)
-		logger.Logf("supercharger: fastload", "block %d: multiload: %#02x", i, fl.blocks[i].multiload)
-		logger.Logf("supercharger: fastload", "block %d: progress speed: %#02x", i, fl.blocks[i].progressSpeed)
-		logger.Logf("supercharger: fastload", "block %d: page-table: %v", i, fl.blocks[i].pageTable)
+		logger.Logf(logger.Allow, "supercharger: fastload", "block %d: start address: %#04x", i, fl.blocks[i].startAddress)
+		logger.Logf(logger.Allow, "supercharger: fastload", "block %d: config byte: %#08b", i, fl.blocks[i].configByte)
+		logger.Logf(logger.Allow, "supercharger: fastload", "block %d: num pages: %d", i, fl.blocks[i].numPages)
+		logger.Logf(logger.Allow, "supercharger: fastload", "block %d: checksum: %#02x", i, fl.blocks[i].checksum)
+		logger.Logf(logger.Allow, "supercharger: fastload", "block %d: multiload: %#02x", i, fl.blocks[i].multiload)
+		logger.Logf(logger.Allow, "supercharger: fastload", "block %d: progress speed: %#02x", i, fl.blocks[i].progressSpeed)
+		logger.Logf(logger.Allow, "supercharger: fastload", "block %d: page-table: %v", i, fl.blocks[i].pageTable)
 
 	}
 
@@ -168,7 +168,7 @@ func (fl *FastLoad) Fastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error 
 			fl.blockIdx = 0
 		}
 		if fl.blockIdx == startBlockIdx {
-			logger.Logf("supercharger: fastload", "cannot find multiload %d", m)
+			logger.Logf(logger.Allow, "supercharger: fastload", "cannot find multiload %d", m)
 			fl.blockIdx = 0
 			break // for loop
 		}
@@ -176,7 +176,7 @@ func (fl *FastLoad) Fastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error 
 
 	// log loading of multiload for non-zero multiload values
 	if m != 0 {
-		logger.Logf("supercharger: fastload", "loading multiload %d", fl.blocks[fl.blockIdx].multiload)
+		logger.Logf(logger.Allow, "supercharger: fastload", "loading multiload %d", fl.blocks[fl.blockIdx].multiload)
 	}
 
 	// copy data to RAM banks

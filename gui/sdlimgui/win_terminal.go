@@ -274,7 +274,7 @@ func (win *winTerm) saveOutput() {
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			logger.Logf("sdlimgui", "error saving terminal contents: %v", err)
+			logger.Logf(logger.Allow, "sdlimgui", "error saving terminal contents: %v", err)
 		}
 	}()
 

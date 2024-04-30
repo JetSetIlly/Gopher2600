@@ -166,7 +166,7 @@ func (mcr *Macro) Run() {
 }
 
 func (mcr *Macro) run() {
-	logger.Logf("macro", "running %s", mcr.filename)
+	logger.Logf(logger.Allow, "macro", "running %s", mcr.filename)
 
 	// quit instructs the main script loop to end
 	var quit bool
@@ -212,7 +212,7 @@ func (mcr *Macro) run() {
 
 	for ln := 0; ln < len(mcr.instructions) && !quit; ln++ {
 		logf := func(msg string, args ...any) {
-			logger.Logf("macro", "%s: %d: %s", mcr.filename, ln+headerNumLines, fmt.Sprintf(msg, args...))
+			logger.Logf(logger.Allow, "macro", "%s: %d: %s", mcr.filename, ln+headerNumLines, fmt.Sprintf(msg, args...))
 		}
 
 		// convert argument to number
@@ -498,7 +498,7 @@ func (mcr *Macro) run() {
 		}
 	}
 
-	logger.Logf("macro", "finished %s", mcr.filename)
+	logger.Logf(logger.Allow, "macro", "finished %s", mcr.filename)
 }
 
 // Quit forces a running macro (ie. one that has been triggered) to end. Does

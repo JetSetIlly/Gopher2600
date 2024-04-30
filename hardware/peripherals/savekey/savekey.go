@@ -105,7 +105,7 @@ func NewSaveKey(env *environment.Environment, port plugging.PortID, bus ports.Pe
 	}
 
 	sk.bus.WriteSWCHx(sk.port, 0xf0)
-	logger.Logf("savekey", "attached [%v]", sk.port)
+	logger.Logf(logger.Allow, "savekey", "attached [%v]", sk.port)
 
 	return sk
 }
@@ -254,7 +254,7 @@ func (sk *SaveKey) Step() {
 
 	// check for stop signal before anything else
 	if sk.State != SaveKeyStopped && sk.SCL.Hi() && sk.SDA.Rising() {
-		logger.Log("savekey", "stopped message")
+		logger.Log(logger.Allow, "savekey", "stopped message")
 		sk.State = SaveKeyStopped
 		sk.EEPROM.Write()
 		return
@@ -281,7 +281,7 @@ func (sk *SaveKey) Step() {
 	switch sk.State {
 	case SaveKeyStopped:
 		if sk.SDA.Lo() {
-			logger.Log("savekey", "starting message")
+			logger.Log(logger.Allow, "savekey", "starting message")
 			sk.resetBits()
 			sk.State = SaveKeyStarting
 		}
@@ -290,18 +290,18 @@ func (sk *SaveKey) Step() {
 		if sk.recvBit(sk.SDA.Falling()) {
 			switch sk.Bits {
 			case readSig:
-				logger.Log("savekey", "reading message")
+				logger.Log(logger.Allow, "savekey", "reading message")
 				sk.resetBits()
 				sk.State = SaveKeyData
 				sk.Dir = Reading
 				sk.Ack = true
 			case writeSig:
-				logger.Log("savekey", "writing message")
+				logger.Log(logger.Allow, "savekey", "writing message")
 				sk.State = SaveKeyAddressHi
 				sk.Dir = Writing
 				sk.Ack = true
 			default:
-				logger.Log("savekey", "unrecognised message")
+				logger.Log(logger.Allow, "savekey", "unrecognised message")
 				sk.State = SaveKeyStopped
 			}
 		}
@@ -321,9 +321,9 @@ func (sk *SaveKey) Step() {
 
 			switch sk.Dir {
 			case Reading:
-				logger.Logf("savekey", "reading from address %#04x", sk.EEPROM.Address)
+				logger.Logf(logger.Allow, "savekey", "reading from address %#04x", sk.EEPROM.Address)
 			case Writing:
-				logger.Logf("savekey", "writing to address %#04x", sk.EEPROM.Address)
+				logger.Logf(logger.Allow, "savekey", "writing to address %#04x", sk.EEPROM.Address)
 			}
 		}
 
@@ -340,9 +340,9 @@ func (sk *SaveKey) Step() {
 
 			if end {
 				if unicode.IsPrint(rune(sk.Bits)) {
-					logger.Logf("savekey", "read byte %#02x [%c]", sk.Bits, sk.Bits)
+					logger.Logf(logger.Allow, "savekey", "read byte %#02x [%c]", sk.Bits, sk.Bits)
 				} else {
-					logger.Logf("savekey", "read byte %#02x", sk.Bits)
+					logger.Logf(logger.Allow, "savekey", "read byte %#02x", sk.Bits)
 				}
 				sk.Ack = true
 			}
@@ -350,9 +350,9 @@ func (sk *SaveKey) Step() {
 		case Writing:
 			if sk.recvBit(sk.SDA.Falling()) {
 				if unicode.IsPrint(rune(sk.Bits)) {
-					logger.Logf("savekey", "written byte %#02x [%c]", sk.Bits, sk.Bits)
+					logger.Logf(logger.Allow, "savekey", "written byte %#02x [%c]", sk.Bits, sk.Bits)
 				} else {
-					logger.Logf("savekey", "written byte %#02x", sk.Bits)
+					logger.Logf(logger.Allow, "savekey", "written byte %#02x", sk.Bits)
 				}
 				sk.EEPROM.put(sk.Bits)
 				sk.Ack = true

@@ -255,7 +255,7 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 		// break if address has looped around
 		if next > next&memorymap.CartridgeBits {
 			if hasCommitted {
-				logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discovered at bank %d: %s", bank, instruction.String())
+				logger.Logf(logger.Allow, "disassembly", "blessSequence has blessed an instruction in a false sequence. discovered at bank %d: %s", bank, instruction.String())
 			}
 			return false
 		}
@@ -265,7 +265,7 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 		for i := a + 1; i < next; i++ {
 			if instruction.Level == EntryLevelBlessed {
 				if hasCommitted {
-					logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discovered at bank %d: %s", bank, instruction.String())
+					logger.Logf(logger.Allow, "disassembly", "blessSequence has blessed an instruction in a false sequence. discovered at bank %d: %s", bank, instruction.String())
 				}
 				return false
 			}
@@ -274,7 +274,7 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 		// do not bless decoded instructions that look like fill characters
 		if instruction.Result.Defn.OpCode == 0xff && instruction.Result.InstructionData == 0xffff {
 			if hasCommitted {
-				logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discovered at bank %d: %s", bank, instruction.String())
+				logger.Logf(logger.Allow, "disassembly", "blessSequence has blessed an instruction in a false sequence. discovered at bank %d: %s", bank, instruction.String())
 			}
 			return false
 		}

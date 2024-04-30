@@ -245,25 +245,25 @@ func (vcs *VCS) SetClockSpeed(spec specification.Spec) {
 	case specification.SpecNTSC.ID:
 		if vcs.Clock != ntscClock {
 			vcs.Clock = ntscClock
-			logger.Log("vcs", "switching to NTSC clock")
+			logger.Log(logger.Allow, "vcs", "switching to NTSC clock")
 		}
 	case specification.SpecPAL.ID:
 		if vcs.Clock != palClock {
 			vcs.Clock = palClock
-			logger.Log("vcs", "switching to PAL clock")
+			logger.Log(logger.Allow, "vcs", "switching to PAL clock")
 		}
 	case specification.SpecPALM.ID:
 		if vcs.Clock != palMClock {
 			vcs.Clock = palMClock
-			logger.Log("vcs", "switching to PAL-M clock")
+			logger.Log(logger.Allow, "vcs", "switching to PAL-M clock")
 		}
 	case specification.SpecSECAM.ID:
 		if vcs.Clock != secamClock {
 			vcs.Clock = secamClock
-			logger.Log("vcs", "switching to SECAM clock")
+			logger.Log(logger.Allow, "vcs", "switching to SECAM clock")
 		}
 	default:
-		logger.Logf("vcs", "cannot set clock for unknown TV specification (%s)", spec.ID)
+		logger.Logf(logger.Allow, "vcs", "cannot set clock for unknown TV specification (%s)", spec.ID)
 	}
 }
 

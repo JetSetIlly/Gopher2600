@@ -326,7 +326,7 @@ func (loc *loclist) resolve() (loclistResult, error) {
 
 	// stack should only have one entry in it
 	if len(loc.stack) > 1 {
-		logger.Logf("dwarf", "loclist stack has more than one entry after resolve [%x]", loc.loclistPtr)
+		logger.Logf(logger.Allow, "dwarf", "loclist stack has more than one entry after resolve [%x]", loc.loclistPtr)
 	}
 
 	// top of stack is the result

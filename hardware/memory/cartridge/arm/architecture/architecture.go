@@ -113,7 +113,7 @@ func NewMap(cart CartArchitecture) Map {
 
 	switch mmap.CartArchitecture {
 	default:
-		logger.Logf("ARM Architecture", "unknown cartridge architecture (%s) defaulting to Harmony", cart)
+		logger.Logf(logger.Allow, "ARM Architecture", "unknown cartridge architecture (%s) defaulting to Harmony", cart)
 		mmap.CartArchitecture = Harmony
 		fallthrough
 
@@ -175,9 +175,9 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.ClkDiv = 0.5
 	}
 
-	logger.Logf("ARM Architecture", "using %s/%s", mmap.CartArchitecture, mmap.ARMArchitecture)
-	logger.Logf("ARM Architecture", "flash origin: %#08x", mmap.FlashOrigin)
-	logger.Logf("ARM Architecture", "sram origin: %#08x", mmap.SRAMOrigin)
+	logger.Logf(logger.Allow, "ARM Architecture", "using %s/%s", mmap.CartArchitecture, mmap.ARMArchitecture)
+	logger.Logf(logger.Allow, "ARM Architecture", "flash origin: %#08x", mmap.FlashOrigin)
+	logger.Logf(logger.Allow, "ARM Architecture", "sram origin: %#08x", mmap.SRAMOrigin)
 
 	return mmap
 }

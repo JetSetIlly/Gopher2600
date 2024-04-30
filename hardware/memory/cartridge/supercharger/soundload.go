@@ -105,13 +105,13 @@ func newSoundLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, erro
 
 	// the length of time of each sample in microseconds
 	timePerSample := 1000000.0 / tap.pcm.sampleRate
-	logger.Logf(soundloadLogTag, "time per sample: %.02fus", timePerSample)
+	logger.Logf(logger.Allow, soundloadLogTag, "time per sample: %.02fus", timePerSample)
 
 	// number of samples in a cycle for it to be interpreted as a zero or a one
 	// values taken from "Atari 2600 Mappers" document by Kevin Horton
-	logger.Log(soundloadLogTag, fmt.Sprintf("min/opt/max samples for zero-bit: %d/%d/%d",
+	logger.Log(logger.Allow, soundloadLogTag, fmt.Sprintf("min/opt/max samples for zero-bit: %d/%d/%d",
 		int(158.0/timePerSample), int(227.0/timePerSample), int(317.0/timePerSample)))
-	logger.Log(soundloadLogTag, fmt.Sprintf("min/opt/max samples for one-bit: %d/%d/%d",
+	logger.Log(logger.Allow, soundloadLogTag, fmt.Sprintf("min/opt/max samples for one-bit: %d/%d/%d",
 		int(317.0/timePerSample), int(340.0/timePerSample), int(2450.0/timePerSample)))
 
 	// calculate tape regulator speed. 1190000 is the frequency at which step() is called (1.19MHz)
@@ -120,7 +120,7 @@ func newSoundLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, erro
 	// different but it doesn't appear to have any effect on loading success so
 	// we won't complicate the code by allowing the regulator to change
 	tap.regulator = int(math.Round(1190000.0 / tap.pcm.sampleRate))
-	logger.Logf(soundloadLogTag, "tape regulator: %d", tap.regulator)
+	logger.Logf(logger.Allow, soundloadLogTag, "tape regulator: %d", tap.regulator)
 
 	// threshold value is the average value in the PCM data
 	var total float32
@@ -152,7 +152,7 @@ func (tap *SoundLoad) load() (uint8, error) {
 		tap.cart.env.Notifications.Notify(notifications.NotifySuperchargerSoundloadStarted)
 		tap.playing = true
 		tap.playDelay = 0
-		logger.Log(soundloadLogTag, "tape playing")
+		logger.Log(logger.Allow, soundloadLogTag, "tape playing")
 	}
 
 	if tap.pcm.data[tap.idx] > tap.threshold {
@@ -202,7 +202,7 @@ func (tap *SoundLoad) Rewind() {
 	// rewinding happens instantaneously
 	tap.cart.env.Notifications.Notify(notifications.NotifySuperchargerSoundloadRewind)
 	tap.idx = 0
-	logger.Log(soundloadLogTag, "tape rewound")
+	logger.Log(logger.Allow, soundloadLogTag, "tape rewound")
 	tap.stepLimiter = 0
 }
 

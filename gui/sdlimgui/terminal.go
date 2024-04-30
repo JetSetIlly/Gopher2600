@@ -93,7 +93,7 @@ func (trm *term) TermPrintLine(style terminal.Style, s string) {
 	if trm.sideChanLast.Load().(bool) {
 		trm.sideChanLast.Store(false)
 		if style == terminal.StyleError || style == terminal.StyleLog {
-			logger.Log("term", s)
+			logger.Log(logger.Allow, "term", s)
 		}
 		return
 	}
@@ -179,6 +179,6 @@ func (trm *term) pushCommand(input string) {
 		// in most instances a depth of one is sufficient but occasionally it
 		// is not (eg. the HALT/RUN commands sent by the rewind slider in
 		// win_control)
-		logger.Logf("term", "dropping from side channel (%s)", input)
+		logger.Logf(logger.Allow, "term", "dropping from side channel (%s)", input)
 	}
 }

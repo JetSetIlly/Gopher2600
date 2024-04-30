@@ -28,7 +28,7 @@ func (dbg *Debugger) PushFunction(f func()) {
 	select {
 	case dbg.events.PushedFunction <- f:
 	default:
-		logger.Log("debugger", "dropped raw event push")
+		logger.Log(logger.Allow, "debugger", "dropped raw event push")
 	}
 }
 
@@ -38,7 +38,7 @@ func (dbg *Debugger) PushFunctionImmediate(f func()) {
 	select {
 	case dbg.events.PushedFunctionImmediate <- f:
 	default:
-		logger.Log("debugger", "dropped raw event push (to return channel)")
+		logger.Log(logger.Allow, "debugger", "dropped raw event push (to return channel)")
 	}
 }
 
@@ -61,7 +61,7 @@ func (dbg *Debugger) PushSetPause(paused bool) {
 			}
 		})
 	case govern.ModeDebugger:
-		logger.Logf("debugger", "not reacting to SetPause() in debugger mode (use terminal input instead)")
+		logger.Logf(logger.Allow, "debugger", "not reacting to SetPause() in debugger mode (use terminal input instead)")
 	}
 }
 

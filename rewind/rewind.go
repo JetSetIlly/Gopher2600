@@ -344,7 +344,7 @@ func (r *Rewind) snapshot(level snapshotLevel) *State {
 func (r *Rewind) RecordState() {
 	// sanity check to make sure the main loop is behaving correctly
 	if !r.vcs.CPU.LastResult.Final && !r.vcs.CPU.HasReset() {
-		logger.Logf("rewind", "RecordState() attempted mid CPU instruction")
+		logger.Logf(logger.Allow, "rewind", "RecordState() attempted mid CPU instruction")
 		return
 	}
 
@@ -362,7 +362,7 @@ func (r *Rewind) RecordState() {
 	if r.resetBoundaryNextFrame {
 		r.resetBoundaryNextFrame = false
 		r.reset(levelBoundary)
-		logger.Logf("rewind", "boundary added at frame %d", r.vcs.TV.GetCoords().Frame)
+		logger.Logf(logger.Allow, "rewind", "boundary added at frame %d", r.vcs.TV.GetCoords().Frame)
 		return
 	}
 

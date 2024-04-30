@@ -337,13 +337,13 @@ func (win *winCoProcSource) saveToCSV(src *dwarf.Source) {
 	fn = fmt.Sprintf("%s.csv", fn)
 	f, err := os.Create(fn)
 	if err != nil {
-		logger.Logf("sdlimgui", "could not save source CSV: %v", err)
+		logger.Logf(logger.Allow, "sdlimgui", "could not save source CSV: %v", err)
 		return
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			logger.Logf("sdlimgui", "error saving source CSV: %v", err)
+			logger.Logf(logger.Allow, "sdlimgui", "error saving source CSV: %v", err)
 		}
 	}()
 

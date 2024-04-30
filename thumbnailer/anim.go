@@ -217,7 +217,7 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, numFrames int, monitor
 		// attach cartridge using the setup system
 		err := setup.AttachCartridge(thmb.vcs, cartload, true)
 		if err != nil {
-			logger.Logf("thumbnailer", err.Error())
+			logger.Logf(logger.Allow, "thumbnailer", err.Error())
 			return
 		}
 
@@ -264,7 +264,7 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, numFrames int, monitor
 			return govern.Running, nil
 		})
 		if err != nil {
-			logger.Logf("thumbnailer", err.Error())
+			logger.Logf(logger.Allow, "thumbnailer", err.Error())
 			return
 		}
 	}()

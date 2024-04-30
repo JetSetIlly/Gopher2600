@@ -19,6 +19,15 @@ import (
 	"io"
 )
 
+// Permission implementatins indicate whether the environment making a log
+// request is allowed to create new log entries
+type Permission interface {
+	AllowLogging() bool
+}
+
+// Allow indicates that the logging request should be allowed
+var Allow Permission = nil
+
 // only allowing one central log for the entire application. there's no need to
 // allow more than one log.
 var central *logger
@@ -30,14 +39,18 @@ func init() {
 	central = newLogger(maxCentral)
 }
 
-// Log adds an entry to the central logger.
-func Log(tag, detail string) {
-	central.log(tag, detail)
+// Log adds an entry to the central logger
+func Log(perm Permission, tag, detail string) {
+	if perm == Allow || perm.AllowLogging() {
+		central.log(tag, detail)
+	}
 }
 
-// Logf adds a formatted entry to the central logger.
-func Logf(tag, detail string, args ...interface{}) {
-	central.logf(tag, detail, args...)
+// Logf adds a formatted entry to the central logger
+func Logf(perm Permission, tag, detail string, args ...interface{}) {
+	if perm == Allow || perm.AllowLogging() {
+		central.logf(tag, detail, args...)
+	}
 }
 
 // Clear all entries from central logger.

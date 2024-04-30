@@ -230,7 +230,7 @@ func (arm *ARM) decodeThumb2ChangeProcessorState(opcode uint16) decodeFunction {
 				Operator: "CPSID",
 			}
 		}
-		logger.Logf("ARM7", "CPSID instruction does nothing")
+		logger.Logf(logger.Allow, "ARM7", "CPSID instruction does nothing")
 		return nil
 	}
 }

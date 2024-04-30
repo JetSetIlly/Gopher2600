@@ -86,7 +86,7 @@ func Load() (Properties, error) {
 
 			// prepare new entry if has is valid
 			if len(flds[1]) != 32 {
-				logger.Logf("properties", "invalid hash entry at line %d", line)
+				logger.Logf(logger.Allow, "properties", "invalid hash entry at line %d", line)
 				rejected++
 			} else {
 				entry = Entry{
@@ -115,9 +115,9 @@ func Load() (Properties, error) {
 		return Properties{}, fmt.Errorf("pro: %w", err)
 	}
 
-	logger.Logf("properties", "%d entries loaded", len(pro.entries))
+	logger.Logf(logger.Allow, "properties", "%d entries loaded", len(pro.entries))
 	if rejected > 0 {
-		logger.Logf("properties", "%d entries rejected", rejected)
+		logger.Logf(logger.Allow, "properties", "%d entries rejected", rejected)
 	}
 
 	return pro, nil

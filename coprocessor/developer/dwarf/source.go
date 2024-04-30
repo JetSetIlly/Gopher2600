@@ -288,13 +288,13 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		data, _, _ := c.ELFSection(".debug_frame")
 		src.debugFrame, err = newFrameSection(data, ef.ByteOrder, src.cart.GetCoProcBus().GetCoProc(), nil)
 		if err != nil {
-			logger.Logf("dwarf", err.Error())
+			logger.Logf(logger.Allow, "dwarf", err.Error())
 		}
 
 		data, _, _ = c.ELFSection(".debug_loc")
 		src.debugLoc, err = newLoclistSection(data, ef.ByteOrder, src.cart.GetCoProcBus().GetCoProc())
 		if err != nil {
-			logger.Logf("dwarf", err.Error())
+			logger.Logf(logger.Allow, "dwarf", err.Error())
 		}
 	} else {
 		c, adjust := bus.(coprocessor.CartCoProcOrigin)
@@ -308,13 +308,13 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		}
 		src.debugFrame, err = newFrameSectionFromFile(ef, src.cart.GetCoProcBus().GetCoProc(), &rel)
 		if err != nil {
-			logger.Logf("dwarf", err.Error())
+			logger.Logf(logger.Allow, "dwarf", err.Error())
 		}
 
 		// create loclist section from the raw ELF section
 		src.debugLoc, err = newLoclistSectionFromFile(ef, src.cart.GetCoProcBus().GetCoProc())
 		if err != nil {
-			logger.Logf("dwarf", err.Error())
+			logger.Logf(logger.Allow, "dwarf", err.Error())
 		}
 
 		if adjust {
@@ -332,9 +332,9 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	// log address adjustment value. how the value was arrived at is slightly
 	// different depending on whether the ELF file relocatable or not
 	if addressAdjustment == 0 {
-		logger.Logf("dwarf", "address adjustment not required")
+		logger.Logf(logger.Allow, "dwarf", "address adjustment not required")
 	} else {
-		logger.Logf("dwarf", "using address adjustment: %#x", int(addressAdjustment))
+		logger.Logf(logger.Allow, "dwarf", "using address adjustment: %#x", int(addressAdjustment))
 	}
 
 	// disassemble every word in the ELF file using the cartridge coprocessor interface
@@ -426,7 +426,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 				if _, ok := src.Files[f.Name]; !ok {
 					sf, err := readSourceFile(f.Name, src.path, &src.AllLines)
 					if err != nil {
-						logger.Logf("dwarf", "%v", err)
+						logger.Logf(logger.Allow, "dwarf", "%v", err)
 					} else {
 						src.Files[sf.Filename] = sf
 						src.Filenames = append(src.Filenames, sf.Filename)
@@ -458,7 +458,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 
 	// log optimisation message as appropriate
 	if src.Optimised {
-		logger.Logf("dwarf", "source compiled with optimisation")
+		logger.Logf(logger.Allow, "dwarf", "source compiled with optimisation")
 	}
 
 	// build functions from DWARF data
@@ -561,10 +561,10 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	findEntryFunction(src)
 
 	// log summary
-	logger.Logf("dwarf", "identified %d functions in %d compile units", len(src.Functions), len(src.compileUnits))
-	logger.Logf("dwarf", "%d global variables", len(src.SortedGlobals.Variables))
-	logger.Logf("dwarf", "%d local variable (loclists)", len(src.SortedLocals.Variables))
-	logger.Logf("dwarf", "high address (%08x)", src.HighAddress)
+	logger.Logf(logger.Allow, "dwarf", "identified %d functions in %d compile units", len(src.Functions), len(src.compileUnits))
+	logger.Logf(logger.Allow, "dwarf", "%d global variables", len(src.SortedGlobals.Variables))
+	logger.Logf(logger.Allow, "dwarf", "%d local variable (loclists)", len(src.SortedLocals.Variables))
+	logger.Logf(logger.Allow, "dwarf", "high address (%08x)", src.HighAddress)
 
 	return src, nil
 }
@@ -601,11 +601,11 @@ func allocateSourceLines(src *Source, dwrf *dwarf.Data, addressAdjustment uint64
 
 			// check that source file has been loaded
 			if src.Files[le.File.Name] == nil {
-				logger.Logf("dwarf", "file not available for linereader: %s", le.File.Name)
+				logger.Logf(logger.Allow, "dwarf", "file not available for linereader: %s", le.File.Name)
 				break // line entry for loop. will continue with compile unit loop
 			}
 			if le.Line-1 > src.Files[le.File.Name].Content.Len() {
-				logger.Logf("dwarf", "current source is unrelated to ELF/DWARF data (number of lines)")
+				logger.Logf(logger.Allow, "dwarf", "current source is unrelated to ELF/DWARF data (number of lines)")
 				break // line entry for loop. will continue with compile unit loop
 			}
 

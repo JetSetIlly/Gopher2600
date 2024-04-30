@@ -563,7 +563,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 			lexStackTop--
 			if lexStackTop < 0 {
 				// this should never happen unless the DWARF file is corrupt in some way
-				logger.Logf("dwarf", "trying to end a lexical block without one being opened")
+				logger.Logf(logger.Allow, "dwarf", "trying to end a lexical block without one being opened")
 				lexStackTop = 0
 			}
 		}
@@ -772,7 +772,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 				// eg. a float value
 				varb.constantValue = bld.debug_loc.byteOrder.Uint32(constfld.Val.([]uint8))
 			default:
-				logger.Logf("dwarf", "unhandled DW_AT_const_value type %T", constfld.Val)
+				logger.Logf(logger.Allow, "dwarf", "unhandled DW_AT_const_value type %T", constfld.Val)
 				continue // for loop
 			}
 
@@ -806,7 +806,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 						if errors.Is(err, UnsupportedDWARF) {
 							return err
 						}
-						logger.Logf("dwarf", "%s: %v", varb.Name, err)
+						logger.Logf(logger.Allow, "dwarf", "%s: %v", varb.Name, err)
 					}
 
 					// I don't believe variables with the class of location
@@ -857,7 +857,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 						return err
 					}
 					if n == 0 {
-						logger.Logf("dwarf", "unhandled expression operator %02x", expr[0])
+						logger.Logf(logger.Allow, "dwarf", "unhandled expression operator %02x", expr[0])
 					}
 
 					varb.loclist = bld.debug_loc.newLoclistJustContext(varb)
@@ -948,7 +948,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 		// attribute. for those functions we can resolve it later
 		framebase, err := resolveFramebase(e)
 		if err != nil {
-			logger.Logf("dwarf", "framebase for %s will be unreliable: %v", name, err)
+			logger.Logf(logger.Allow, "dwarf", "framebase for %s will be unreliable: %v", name, err)
 		}
 
 		// filename from file number
@@ -980,8 +980,8 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 
 		// assign function to declaration line
 		if !fn.DeclLine.Function.IsStub() && fn.DeclLine.Function.Name != fn.Name {
-			logger.Logf("dwarf", "contentious function ownership for source line (%s)", fn.DeclLine)
-			logger.Logf("dwarf", "%s and %s", fn.DeclLine.Function.Name, fn.Name)
+			logger.Logf(logger.Allow, "dwarf", "contentious function ownership for source line (%s)", fn.DeclLine)
+			logger.Logf(logger.Allow, "dwarf", "%s and %s", fn.DeclLine.Function.Name, fn.Name)
 		}
 		fn.DeclLine.Function = fn
 	}
@@ -1056,7 +1056,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 
 				fn, err := resolve(av)
 				if err != nil {
-					logger.Logf("dwarf", err.Error())
+					logger.Logf(logger.Allow, "dwarf", err.Error())
 					continue // build order loop
 				}
 
@@ -1072,10 +1072,10 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 				if fn.framebaseLoclist == nil {
 					fn.framebaseLoclist, err = resolveFramebase(e)
 					if err != nil {
-						logger.Logf("dwarf", "framebase for %s will be unreliable: %v", fn.Name, err)
+						logger.Logf(logger.Allow, "dwarf", "framebase for %s will be unreliable: %v", fn.Name, err)
 					}
 				} else {
-					logger.Logf("dwarf", "%s: concrete defintion for abstract function already has a framebase defintion!?", fn.Name)
+					logger.Logf(logger.Allow, "dwarf", "%s: concrete defintion for abstract function already has a framebase defintion!?", fn.Name)
 				}
 
 				// note framebase so that we can use it for inlined functions
@@ -1086,7 +1086,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 			} else {
 				fn, err := resolve(e)
 				if err != nil {
-					logger.Logf("dwarf", err.Error())
+					logger.Logf(logger.Allow, "dwarf", err.Error())
 					continue // build order loop
 				}
 
@@ -1167,7 +1167,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 
 				err := commitInlinedSubroutine(low, high)
 				if err != nil {
-					logger.Logf("dwarf", err.Error())
+					logger.Logf(logger.Allow, "dwarf", err.Error())
 					continue // build order loop
 				}
 
@@ -1180,7 +1180,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 				commitRange := func(low uint64, high uint64) {
 					err := commitInlinedSubroutine(low, high)
 					if err != nil {
-						logger.Logf("dwarf", err.Error())
+						logger.Logf(logger.Allow, "dwarf", err.Error())
 					}
 				}
 

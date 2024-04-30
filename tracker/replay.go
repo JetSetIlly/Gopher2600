@@ -64,7 +64,7 @@ func (tr *Tracker) Replay(start int, end int, mixer television.AudioMixer, onEnd
 
 	startState := tr.rewind.GetState(tr.crit.Entries[start].Coords.Frame)
 	if startState == nil {
-		logger.Logf("tracker", "replay: can't find rewind state for frame %d", tr.crit.Entries[start].Coords.Frame)
+		logger.Logf(logger.Allow, "tracker", "replay: can't find rewind state for frame %d", tr.crit.Entries[start].Coords.Frame)
 		return
 	}
 
@@ -84,7 +84,7 @@ func (tr *Tracker) Replay(start int, end int, mixer television.AudioMixer, onEnd
 			return govern.Running, nil
 		})
 		if err != nil {
-			logger.Logf("tracker", "replay: %s", err.Error())
+			logger.Logf(logger.Allow, "tracker", "replay: %s", err.Error())
 		}
 	}()
 }

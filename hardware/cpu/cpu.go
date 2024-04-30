@@ -1711,7 +1711,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	case instructions.KIL:
 		if !mc.NoFlowControl {
 			mc.Killed = true
-			logger.Logf("CPU", "KIL instruction (%#04x)", mc.PC.Address())
+			logger.Logf(logger.Allow, "CPU", "KIL instruction (%#04x)", mc.PC.Address())
 		}
 
 	default:

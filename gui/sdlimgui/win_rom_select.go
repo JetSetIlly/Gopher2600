@@ -116,11 +116,11 @@ func newSelectROM(img *SdlImgui) (window, error) {
 	// load and normalise box art names
 	boxartPath, err := resources.JoinPath(namedBoxarts)
 	if err != nil {
-		logger.Logf("sdlimgui", err.Error())
+		logger.Logf(logger.Allow, "sdlimgui", err.Error())
 	} else {
 		boxartFiles, err := os.ReadDir(boxartPath)
 		if err != nil {
-			logger.Logf("sdlimgui", err.Error())
+			logger.Logf(logger.Allow, "sdlimgui", err.Error())
 		} else {
 			for _, n := range boxartFiles {
 				win.boxart = append(win.boxart, n.Name())
@@ -253,7 +253,7 @@ func (win *winSelectROM) render() {
 func (win *winSelectROM) draw() {
 	err := win.path.Process()
 	if err != nil {
-		logger.Logf("sdlimgui", err.Error())
+		logger.Logf(logger.Allow, "sdlimgui", err.Error())
 	}
 
 	imgui.BeginGroup()
@@ -274,7 +274,7 @@ func (win *winSelectROM) draw() {
 		// find box art as best we can
 		err := win.findBoxart()
 		if err != nil {
-			logger.Logf("sdlimgui", err.Error())
+			logger.Logf(logger.Allow, "sdlimgui", err.Error())
 		}
 	default:
 	}
@@ -635,7 +635,7 @@ func (win *winSelectROM) SetSelectedFilename(filename string) {
 	// create cartridge loader and start thumbnail emulation
 	cartload, err := cartridgeloader.NewLoaderFromFilename(filename, "AUTO")
 	if err != nil {
-		logger.Logf("ROM Select", err.Error())
+		logger.Logf(logger.Allow, "ROM Select", err.Error())
 		return
 	}
 

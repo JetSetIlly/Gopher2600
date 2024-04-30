@@ -53,7 +53,7 @@ func (win *winDbgScr) paintDragAndDrop() {
 					target.offset = mouse.offset
 					ff.build(target)
 
-					logger.Logf("paint", "flood fill starting at %s", target.coord)
+					logger.Logf(logger.Allow, "paint", "flood fill starting at %s", target.coord)
 					ff.resolve(0)
 				}
 			}

@@ -576,13 +576,13 @@ func (win *winTimeline) saveToCSV() {
 	fn = fmt.Sprintf("%s.csv", fn)
 	f, err := os.Create(fn)
 	if err != nil {
-		logger.Logf("sdlimgui", "could not save timeline CSV: %v", err)
+		logger.Logf(logger.Allow, "sdlimgui", "could not save timeline CSV: %v", err)
 		return
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			logger.Logf("sdlimgui", "error saving timeline CSV: %v", err)
+			logger.Logf(logger.Allow, "sdlimgui", "error saving timeline CSV: %v", err)
 		}
 	}()
 

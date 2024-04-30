@@ -29,7 +29,7 @@ func TestLogger(t *testing.T) {
 	logger.Write(tw)
 	test.ExpectEquality(t, tw.Compare(""), true)
 
-	logger.Log("test", "this is a test")
+	logger.Log(logger.Allow, "test", "this is a test")
 	logger.Write(tw)
 	test.ExpectEquality(t, tw.Compare("test: this is a test\n"), true)
 
@@ -37,7 +37,7 @@ func TestLogger(t *testing.T) {
 	// to manage
 	tw.Clear()
 
-	logger.Log("test2", "this is another test")
+	logger.Log(logger.Allow, "test2", "this is another test")
 	logger.Write(tw)
 	test.ExpectEquality(t, tw.Compare("test: this is a test\ntest2: this is another test\n"), true)
 

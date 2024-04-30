@@ -52,7 +52,7 @@ func loadBIOS(path string) ([]uint8, error) {
 			return nil, fmt.Errorf("bios: file (%s) is not 2k", b)
 		}
 
-		logger.Logf(biosLogTag, "using %s (from current working directory)", b)
+		logger.Logf(logger.Allow, biosLogTag, "using %s (from current working directory)", b)
 		return d, nil
 	}
 
@@ -69,7 +69,7 @@ func loadBIOS(path string) ([]uint8, error) {
 			return nil, fmt.Errorf("bios: file (%s) is not 2k", p)
 		}
 
-		logger.Logf(biosLogTag, "using %s (from the same path as the game ROM)", p)
+		logger.Logf(logger.Allow, biosLogTag, "using %s (from the same path as the game ROM)", p)
 		return d, nil
 	}
 
@@ -90,7 +90,7 @@ func loadBIOS(path string) ([]uint8, error) {
 			return nil, fmt.Errorf("bios: file (%s) is not 2k", p)
 		}
 
-		logger.Logf(biosLogTag, "using %s (from the resource path)", p)
+		logger.Logf(logger.Allow, biosLogTag, "using %s (from the resource path)", p)
 		return d, nil
 	}
 

@@ -100,13 +100,13 @@ func NewAudio() (*Audio, error) {
 
 	aud.spec = actualSpec
 
-	logger.Logf("sdl: audio", "frequency: %d samples/sec", aud.spec.Freq)
-	logger.Logf("sdl: audio", "format: %d", aud.spec.Format)
-	logger.Logf("sdl: audio", "channels: %d", aud.spec.Channels)
-	logger.Logf("sdl: audio", "buffer size: %d samples", bufferLength)
-	logger.Logf("sdl: audio", "realtime demand: %d samples", realtimeDemand)
-	logger.Logf("sdl: audio", "max samples: %d samples", maxQueueLength)
-	logger.Logf("sdl: audio", "silence: %d", aud.spec.Silence)
+	logger.Logf(logger.Allow, "sdl: audio", "frequency: %d samples/sec", aud.spec.Freq)
+	logger.Logf(logger.Allow, "sdl: audio", "format: %d", aud.spec.Format)
+	logger.Logf(logger.Allow, "sdl: audio", "channels: %d", aud.spec.Channels)
+	logger.Logf(logger.Allow, "sdl: audio", "buffer size: %d samples", bufferLength)
+	logger.Logf(logger.Allow, "sdl: audio", "realtime demand: %d samples", realtimeDemand)
+	logger.Logf(logger.Allow, "sdl: audio", "max samples: %d samples", maxQueueLength)
+	logger.Logf(logger.Allow, "sdl: audio", "silence: %d", aud.spec.Silence)
 
 	sdl.PauseAudioDevice(aud.id, false)
 

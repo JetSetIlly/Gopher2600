@@ -63,10 +63,10 @@ func NewAce(env *environment.Environment, loader cartridgeloader.Loader) (mapper
 	cart.arm = arm.NewARM(cart.mem.model, cart.env.Prefs.ARM, cart.mem, cart)
 	cart.mem.Plumb(cart.arm)
 
-	logger.Logf("ACE", "ccm: %08x to %08x", cart.mem.ccmOrigin, cart.mem.ccmMemtop)
-	logger.Logf("ACE", "flash: %08x to %08x", cart.mem.downloadOrigin, cart.mem.downloadMemtop)
-	logger.Logf("ACE", "buffer: %08x to %08x", cart.mem.bufferOrigin, cart.mem.bufferMemtop)
-	logger.Logf("ACE", "gpio: %08x to %08x", cart.mem.gpioOrigin, cart.mem.gpioMemtop)
+	logger.Logf(logger.Allow, "ACE", "ccm: %08x to %08x", cart.mem.ccmOrigin, cart.mem.ccmMemtop)
+	logger.Logf(logger.Allow, "ACE", "flash: %08x to %08x", cart.mem.downloadOrigin, cart.mem.downloadMemtop)
+	logger.Logf(logger.Allow, "ACE", "buffer: %08x to %08x", cart.mem.bufferOrigin, cart.mem.bufferMemtop)
+	logger.Logf(logger.Allow, "ACE", "gpio: %08x to %08x", cart.mem.gpioOrigin, cart.mem.gpioMemtop)
 
 	return cart, nil
 }

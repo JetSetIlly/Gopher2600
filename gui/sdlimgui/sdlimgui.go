@@ -258,36 +258,36 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 func (img *SdlImgui) Destroy() {
 	err := img.prefs.saveOnExitDsk.Save()
 	if err != nil {
-		logger.Log("sdlimgui", err.Error())
+		logger.Log(logger.Allow, "sdlimgui", err.Error())
 	}
 
 	err = img.audio.EndMixing()
 	if err != nil {
-		logger.Log("sdlimgui", err.Error())
+		logger.Log(logger.Allow, "sdlimgui", err.Error())
 	}
 
 	err = img.wm.saveManagerState()
 	if err != nil {
-		logger.Log("sdlimgui", err.Error())
+		logger.Log(logger.Allow, "sdlimgui", err.Error())
 	}
 
 	err = img.wm.saveManagerHotkeys()
 	if err != nil {
-		logger.Log("sdlimgui", err.Error())
+		logger.Log(logger.Allow, "sdlimgui", err.Error())
 	}
 
 	img.wm.destroy()
 
 	err = img.plt.destroy()
 	if err != nil {
-		logger.Log("sdlimgui", err.Error())
+		logger.Log(logger.Allow, "sdlimgui", err.Error())
 	}
 
 	img.rnd.destroy()
 
 	ctx, err := imgui.CurrentContext()
 	if err != nil {
-		logger.Log("sdlimgui", err.Error())
+		logger.Log(logger.Allow, "sdlimgui", err.Error())
 	}
 	ctx.Destroy()
 }
@@ -307,7 +307,7 @@ func (img *SdlImgui) quit() {
 	select {
 	case img.dbg.UserInput() <- userinput.EventQuit{}:
 	default:
-		logger.Log("sdlimgui", "dropped quit event")
+		logger.Log(logger.Allow, "sdlimgui", "dropped quit event")
 	}
 }
 
@@ -479,12 +479,12 @@ func (img *SdlImgui) cursorVisibility(hidden bool) {
 	if hidden {
 		_, err := sdl.ShowCursor(sdl.DISABLE)
 		if err != nil {
-			logger.Log("sdlimgui", err.Error())
+			logger.Log(logger.Allow, "sdlimgui", err.Error())
 		}
 	} else {
 		_, err := sdl.ShowCursor(sdl.ENABLE)
 		if err != nil {
-			logger.Log("sdlimgui", err.Error())
+			logger.Log(logger.Allow, "sdlimgui", err.Error())
 		}
 	}
 }

@@ -211,7 +211,7 @@ func (arm *ARM) decodeThumbMoveShiftedRegister(opcode uint16) decodeFunction {
 		}
 
 		if destReg == rPC {
-			logger.Log("ARM7", "shift and store in PC is not possible in thumb mode")
+			logger.Log(logger.Allow, "ARM7", "shift and store in PC is not possible in thumb mode")
 		}
 
 		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
@@ -763,7 +763,7 @@ func (arm *ARM) decodeThumbALUoperations(opcode uint16) decodeFunction {
 
 		// page 7-11 in "ARM7TDMI-S Technical Reference Manual r4p3"
 		if shift > 0 && destReg == rPC {
-			logger.Log("ARM7", "shift and store in PC is not possible in thumb mode")
+			logger.Log(logger.Allow, "ARM7", "shift and store in PC is not possible in thumb mode")
 		}
 
 		if mul {

@@ -46,11 +46,11 @@ func (img *SdlImgui) modalDrawPlusROMFirstInstallation() {
 		if imguiTextInput("##nick", plusnet.MaxNickLength, &nick, true) {
 			err := img.dbg.VCS().Env.Prefs.PlusROM.Nick.Set(nick)
 			if err != nil {
-				logger.Logf("sdlimgui", "could not set plusrom nick: %v", err)
+				logger.Logf(logger.Allow, "sdlimgui", "could not set plusrom nick: %v", err)
 			}
 			err = img.dbg.VCS().Env.Prefs.PlusROM.Save()
 			if err != nil {
-				logger.Logf("sdlimgui", "could not save preferences: %v", err)
+				logger.Logf(logger.Allow, "sdlimgui", "could not save preferences: %v", err)
 			}
 		}
 
@@ -67,11 +67,11 @@ func (img *SdlImgui) modalDrawPlusROMFirstInstallation() {
 			if imgui.Button("I'm happy with my nick") {
 				err := img.dbg.VCS().Env.Prefs.PlusROM.Nick.Set(nick)
 				if err != nil {
-					logger.Logf("sdlimgui", "could not set preference value: %v", err)
+					logger.Logf(logger.Allow, "sdlimgui", "could not set preference value: %v", err)
 				}
 				err = img.dbg.VCS().Env.Prefs.PlusROM.Save()
 				if err != nil {
-					logger.Logf("sdlimgui", "could not save preferences: %v", err)
+					logger.Logf(logger.Allow, "sdlimgui", "could not save preferences: %v", err)
 				}
 
 				imgui.CloseCurrentPopup()

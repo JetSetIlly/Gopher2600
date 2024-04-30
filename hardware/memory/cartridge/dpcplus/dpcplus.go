@@ -487,7 +487,7 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		case 1:
 			// copy rom to fetcher
 			if len(cart.state.parameters) != 4 {
-				logger.Logf("DPC+", "wrong number of parameters for function call [%02x]", data)
+				logger.Logf(logger.Allow, "DPC+", "wrong number of parameters for function call [%02x]", data)
 				break // switch data
 			}
 
@@ -504,7 +504,7 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		case 2:
 			// copy value to fetcher
 			if len(cart.state.parameters) != 4 {
-				logger.Logf("DPC+", "wrong number of parameters for function call [%02x]", data)
+				logger.Logf(logger.Allow, "DPC+", "wrong number of parameters for function call [%02x]", data)
 				break // switch data
 			}
 

@@ -516,9 +516,9 @@ func (arm *ARM) logYield() {
 		return
 	}
 	if arm.state.yield.Error != nil {
-		logger.Logf("ARM7", "%s: %s", arm.state.yield.Type.String(), arm.state.yield.Error.Error())
+		logger.Logf(logger.Allow, "ARM7", "%s: %s", arm.state.yield.Type.String(), arm.state.yield.Error.Error())
 	} else {
-		logger.Logf("ARM7", "%s: no specific error", arm.state.yield.Type.String())
+		logger.Logf(logger.Allow, "ARM7", "%s: no specific error", arm.state.yield.Type.String())
 	}
 
 	// extended memory logging
@@ -543,8 +543,8 @@ func (arm *ARM) logYield() {
 
 	entry := arm.decodeInstruction(df)
 	if entry != nil {
-		logger.Logf("ARM7", "%s", entry.String())
-		logger.Logf("ARM7", "%s", arm.disasmVerbose(*entry))
+		logger.Logf(logger.Allow, "ARM7", "%s", entry.String())
+		logger.Logf(logger.Allow, "ARM7", "%s", arm.disasmVerbose(*entry))
 	}
 }
 
@@ -898,13 +898,13 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 
 					// limit the number of cycles used by the ARM program
 					if arm.state.cyclesTotal >= cycleLimit {
-						logger.Logf("ARM7", "reached cycle limit of %d", cycleLimit)
+						logger.Logf(logger.Allow, "ARM7", "reached cycle limit of %d", cycleLimit)
 						panic("cycle limit")
 					}
 				} else {
 					iterations++
 					if iterations > instructionsLimit {
-						logger.Logf("ARM7", "reached instructions limit of %d", instructionsLimit)
+						logger.Logf(logger.Allow, "ARM7", "reached instructions limit of %d", instructionsLimit)
 						panic("instruction limit")
 					}
 				}

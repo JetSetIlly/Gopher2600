@@ -71,13 +71,13 @@ func (ee *EEPROM) snapshot() *EEPROM {
 func (ee *EEPROM) Read() {
 	fn, err := resources.JoinPath(saveKeyPath)
 	if err != nil {
-		logger.Logf("savekey", "could not load eeprom file (%s)", err)
+		logger.Logf(logger.Allow, "savekey", "could not load eeprom file (%s)", err)
 		return
 	}
 
 	f, err := os.Open(fn)
 	if err != nil {
-		logger.Logf("savekey", "could not load eeprom file (%s)", err)
+		logger.Logf(logger.Allow, "savekey", "could not load eeprom file (%s)", err)
 		return
 	}
 	defer f.Close()
@@ -86,57 +86,57 @@ func (ee *EEPROM) Read() {
 	// windows version (when running under wine) does not handle that
 	fs, err := os.Stat(fn)
 	if err != nil {
-		logger.Logf("savekey", "could not load eeprom file (%s)", err)
+		logger.Logf(logger.Allow, "savekey", "could not load eeprom file (%s)", err)
 		return
 	}
 	if fs.Size() != int64(len(ee.Data)) {
-		logger.Logf("savekey", "eeprom file is of incorrect length. %d should be 65536 ", fs.Size())
+		logger.Logf(logger.Allow, "savekey", "eeprom file is of incorrect length. %d should be 65536 ", fs.Size())
 	}
 
 	_, err = f.Read(ee.Data)
 	if err != nil {
-		logger.Logf("savekey", "could not load eeprom file (%s)", err)
+		logger.Logf(logger.Allow, "savekey", "could not load eeprom file (%s)", err)
 		return
 	}
 
 	// copy of data read from disk
 	copy(ee.DiskData, ee.Data)
 
-	logger.Logf("savekey", "eeprom file loaded from %s", fn)
+	logger.Logf(logger.Allow, "savekey", "eeprom file loaded from %s", fn)
 }
 
 // Write EEPROM data to disk.
 func (ee *EEPROM) Write() {
 	fn, err := resources.JoinPath(saveKeyPath)
 	if err != nil {
-		logger.Logf("savekey", "could not write eeprom file (%s)", err)
+		logger.Logf(logger.Allow, "savekey", "could not write eeprom file (%s)", err)
 		return
 	}
 
 	f, err := os.Create(fn)
 	if err != nil {
-		logger.Logf("savekey", "could not write eeprom file (%s)", err)
+		logger.Logf(logger.Allow, "savekey", "could not write eeprom file (%s)", err)
 		return
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			logger.Logf("savekey", "could not close eeprom file (%s)", err)
+			logger.Logf(logger.Allow, "savekey", "could not close eeprom file (%s)", err)
 		}
 	}()
 
 	n, err := f.Write(ee.Data)
 	if err != nil {
-		logger.Logf("savekey", "could not write eeprom file (%s)", err)
+		logger.Logf(logger.Allow, "savekey", "could not write eeprom file (%s)", err)
 		return
 	}
 
 	if n != len(ee.Data) {
-		logger.Logf("savekey", "eeprom file has not been truncated during write. %d should be 65536", n)
+		logger.Logf(logger.Allow, "savekey", "eeprom file has not been truncated during write. %d should be 65536", n)
 		return
 	}
 
-	logger.Logf("savekey", "eeprom file saved to %s", fn)
+	logger.Logf(logger.Allow, "savekey", "eeprom file saved to %s", fn)
 
 	// copy of data that's just bee written to disk
 	copy(ee.DiskData, ee.Data)

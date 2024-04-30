@@ -15,10 +15,16 @@
 
 // Package logger is the central log repository for gopher2600. There is a
 // single log for the entire application and can be accessed through the
-// package level functions, principally Log().
+// package level functions.
 //
-// Log entries can be grouped together with the tag argument in the Log()
-// command.
+// New log entries are made with the package level Log() and Logf() functions.
+// Both these functions require an implementation of the Permission interface.
+// This interface tests whether the environment making the logging request is
+// allowed to make new log entries.
+//
+// The environment.Environment type satisfies the Permission interface. If it's
+// not convenient to provide an instance of that type then logging.Allow can be
+// used to provide blanket permission to the caller.
 //
 // The Colorizer type can be used with SetEcho() to output a simply coloured
 // log entries (using ANSI control codes).

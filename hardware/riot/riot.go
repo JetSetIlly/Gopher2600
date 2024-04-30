@@ -73,7 +73,7 @@ func (riot *RIOT) Step(reg chipbus.ChangedRegister) {
 	if update {
 		update = riot.Ports.Update(reg)
 		if update {
-			logger.Logf("riot", "memory altered to no affect (%04x=%02x)", reg.Address, reg.Value)
+			logger.Logf(logger.Allow, "riot", "memory altered to no affect (%04x=%02x)", reg.Address, reg.Value)
 		}
 	}
 

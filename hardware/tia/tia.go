@@ -601,7 +601,7 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister, ct int) {
 						if tia.env.Prefs.Revision.Live.LateCOLUPF.Load().(bool) {
 							update = tia.Video.UpdatePlayfieldColor(reg)
 							if update {
-								logger.Logf("tia", "memory altered to no affect (%04x=%02x)", reg.Address, reg.Value)
+								logger.Logf(logger.Allow, "tia", "memory altered to no affect (%04x=%02x)", reg.Address, reg.Value)
 							}
 						}
 					}

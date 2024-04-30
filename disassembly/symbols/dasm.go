@@ -72,7 +72,7 @@ func (sym *Symbols) fromDasm(cart *cartridge.Cartridge) error {
 
 	sf, err := os.Open(symFilename)
 	if err != nil {
-		logger.Logf("symbols", "dasm .sym file not available (%s)", cart.Filename)
+		logger.Logf(logger.Allow, "symbols", "dasm .sym file not available (%s)", cart.Filename)
 		return nil
 	}
 	defer sf.Close()

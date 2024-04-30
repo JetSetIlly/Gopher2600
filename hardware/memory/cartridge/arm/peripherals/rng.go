@@ -67,10 +67,10 @@ func (r *RNG) Write(addr uint32, val uint32) bool {
 		r.interruptEnabled = r.control&0b1000 == 0b1000
 	case r.mmap.RNGSR:
 		// status register
-		logger.Logf("ARM7", "ignoring write to RNG status register (value of %08x)", val)
+		logger.Logf(logger.Allow, "ARM7", "ignoring write to RNG status register (value of %08x)", val)
 	case r.mmap.RNGDR:
 		// data register
-		logger.Logf("ARM7", "ignoring write to RNG data register (value of %08x)", val)
+		logger.Logf(logger.Allow, "ARM7", "ignoring write to RNG data register (value of %08x)", val)
 	default:
 		return false
 	}

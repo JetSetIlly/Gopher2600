@@ -320,7 +320,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 				if nonInstructionQuantum {
 					return nil
 				} else {
-					logger.Log("debugger", "asked to 'step out of nonInstructionQuantum step input loop' inappropriately")
+					logger.Log(logger.Allow, "debugger", "asked to 'step out of nonInstructionQuantum step input loop' inappropriately")
 				}
 			}
 
@@ -585,7 +585,7 @@ func (dbg *Debugger) handleInterrupt(inputter terminal.Input) {
 	// end script scribe (if one is running)
 	err := dbg.scriptScribe.EndSession()
 	if err != nil {
-		logger.Logf("debugger", err.Error())
+		logger.Logf(logger.Allow, "debugger", err.Error())
 	}
 
 	// exit immediately if inputter is not a real terminal

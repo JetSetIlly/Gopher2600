@@ -265,7 +265,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				Mod:  getKeyMod(),
 			}:
 			default:
-				logger.Log("sdlimgui", "dropped keyboard event")
+				logger.Log(logger.Allow, "sdlimgui", "dropped keyboard event")
 			}
 		}
 	}

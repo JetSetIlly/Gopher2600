@@ -129,41 +129,41 @@ func newAceMemory(data []byte, armPrefs *preferences.ARMPreferences) (*aceMemory
 
 	// read header
 	mem.header.version = string(data[:aceHeaderDriverName])
-	logger.Logf("ACE", "header: version name: %s", mem.header.version)
+	logger.Logf(logger.Allow, "ACE", "header: version name: %s", mem.header.version)
 
 	mem.header.driverName = string(data[aceHeaderDriverName:aceHeaderDriverVersion])
-	logger.Logf("ACE", "header: driver name: %s", mem.header.driverName)
+	logger.Logf(logger.Allow, "ACE", "header: driver name: %s", mem.header.driverName)
 
 	mem.header.driverVersion = (uint32(data[aceHeaderDriverVersion])) |
 		(uint32(data[aceHeaderDriverVersion+1]) << 8) |
 		(uint32(data[aceHeaderDriverVersion+2]) << 16) |
 		(uint32(data[aceHeaderDriverVersion+3]) << 24)
-	logger.Logf("ACE", "header: driver version: %08x", mem.header.driverVersion)
+	logger.Logf(logger.Allow, "ACE", "header: driver version: %08x", mem.header.driverVersion)
 
 	mem.header.romSize = (uint32(data[aceHeaderROMSize])) |
 		(uint32(data[aceHeaderROMSize+1]) << 8) |
 		(uint32(data[aceHeaderROMSize+2]) << 16) |
 		(uint32(data[aceHeaderROMSize+3]) << 24)
-	logger.Logf("ACE", "header: romsize: %08x", mem.header.romSize)
+	logger.Logf(logger.Allow, "ACE", "header: romsize: %08x", mem.header.romSize)
 
 	mem.header.checksum = (uint32(data[aceHeaderROMChecksum])) |
 		(uint32(data[aceHeaderROMChecksum+1]) << 8) |
 		(uint32(data[aceHeaderROMChecksum+2]) << 16) |
 		(uint32(data[aceHeaderROMChecksum+3]) << 24)
-	logger.Logf("ACE", "header: checksum: %08x", mem.header.checksum)
+	logger.Logf(logger.Allow, "ACE", "header: checksum: %08x", mem.header.checksum)
 
 	mem.header.entry = (uint32(data[aceHeaderEntryPoint])) |
 		(uint32(data[aceHeaderEntryPoint+1]) << 8) |
 		(uint32(data[aceHeaderEntryPoint+2]) << 16) |
 		(uint32(data[aceHeaderEntryPoint+3]) << 24)
-	logger.Logf("ACE", "header: entrypoint: %08x", mem.header.entry)
+	logger.Logf(logger.Allow, "ACE", "header: entrypoint: %08x", mem.header.entry)
 
 	mem.download = data[:]
 	switch mem.header.version {
 	case "ACE-PC00":
 		mem.downloadOrigin = 0x08020000
 		mem.header.entry = 0x1028
-		logger.Logf("ACE", "header: entrypoint adjusted to: %08x", mem.header.entry)
+		logger.Logf(logger.Allow, "ACE", "header: entrypoint adjusted to: %08x", mem.header.entry)
 	case "ACE-UF00":
 		mem.downloadOrigin = 0x08020000
 	case "ACE-2600":
@@ -179,7 +179,7 @@ func newAceMemory(data []byte, armPrefs *preferences.ARMPreferences) (*aceMemory
 	mem.resetSP = mem.ccmMemtop - 3
 
 	// note the real entry point
-	logger.Logf("ACE", "actual entrypoint: %08x", mem.resetPC)
+	logger.Logf(logger.Allow, "ACE", "actual entrypoint: %08x", mem.resetPC)
 
 	// define the Thumb-2 bytecode for a function whose only purpose is to jump
 	// back to where it came from bytecode is for instruction "BX LR" with a
@@ -194,7 +194,7 @@ func newAceMemory(data []byte, armPrefs *preferences.ARMPreferences) (*aceMemory
 
 	// the code location of the null function must not be on a 16bit boundary
 	if arm.IsAlignedTo16bits(nullFunctionAddress) {
-		logger.Logf("ACE", "correcting alignment at end of ARM program")
+		logger.Logf(logger.Allow, "ACE", "correcting alignment at end of ARM program")
 		mem.download = append(mem.download, 0x00)
 		mem.downloadMemtop++
 		nullFunctionAddress++
@@ -213,7 +213,7 @@ func newAceMemory(data []byte, armPrefs *preferences.ARMPreferences) (*aceMemory
 	// setting the program counter
 	nullFunctionAddress |= 0x01
 
-	logger.Logf("ACE", "null function place at %08x", nullFunctionAddress)
+	logger.Logf(logger.Allow, "ACE", "null function place at %08x", nullFunctionAddress)
 
 	// choose size for the remainder of the flash memory and place at the flash
 	// origin value for architecture

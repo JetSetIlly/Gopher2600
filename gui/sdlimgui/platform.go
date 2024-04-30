@@ -141,8 +141,8 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 
 	var sdlVersion sdl.Version
 	sdl.VERSION(&sdlVersion)
-	logger.Logf("sdl", "version %d.%d.%d", sdlVersion.Major, sdlVersion.Minor, sdlVersion.Patch)
-	logger.Logf("sdl", "using GL version %d.%d%s", major, minor, profile_s)
+	logger.Logf(logger.Allow, "sdl", "version %d.%d.%d", sdlVersion.Major, sdlVersion.Minor, sdlVersion.Patch)
+	logger.Logf(logger.Allow, "sdl", "using GL version %d.%d%s", major, minor, profile_s)
 
 	plt := &platform{
 		img: img,
@@ -153,7 +153,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		sdl.Quit()
 		return nil, fmt.Errorf("sdl: %w", err)
 	}
-	logger.Logf("sdl", "refresh rate: %dHz", plt.mode.RefreshRate)
+	logger.Logf(logger.Allow, "sdl", "refresh rate: %dHz", plt.mode.RefreshRate)
 
 	// map sdl key codes to imgui codes
 	plt.setKeyMapping()
@@ -186,12 +186,12 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 			pad = sdl.GameControllerOpen(i)
 		}
 		if supportGamepads && pad.Attached() {
-			logger.Logf("sdl", "gamepad: %s", pad.Joystick().Name())
+			logger.Logf(logger.Allow, "sdl", "gamepad: %s", pad.Joystick().Name())
 			plt.joysticks = append(plt.joysticks, controller{closeController: pad})
 		} else {
 			joy := sdl.JoystickOpen(i)
 			if joy.Attached() {
-				logger.Logf("sdl", "joystick: %s", joy.Name())
+				logger.Logf(logger.Allow, "sdl", "joystick: %s", joy.Name())
 				plt.joysticks = append(plt.joysticks, controller{
 					closeController: joy,
 					isStelladaptor:  strings.Contains(strings.ToLower(joy.Name()), "stelladaptor"),
@@ -201,7 +201,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	}
 
 	if len(plt.joysticks) == 0 {
-		logger.Log("sdl", "no joysticks/gamepads found")
+		logger.Log(logger.Allow, "sdl", "no joysticks/gamepads found")
 	}
 
 	return plt, nil
@@ -233,7 +233,7 @@ func (plt *platform) setSwapInterval(i int) {
 
 	err := sdl.GLSetSwapInterval(i)
 	if err != nil {
-		logger.Logf("sdl", "GLSetSwapInterval(%d): %s", i, err.Error())
+		logger.Logf(logger.Allow, "sdl", "GLSetSwapInterval(%d): %s", i, err.Error())
 	}
 }
 

@@ -369,7 +369,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	// stella.pro support
 	dbg.pro, err = properties.Load()
 	if err != nil {
-		logger.Logf("debugger", err.Error())
+		logger.Logf(logger.Allow, "debugger", err.Error())
 	}
 
 	// create preview emulation
@@ -559,7 +559,7 @@ func (dbg *Debugger) setState(state govern.State, subState govern.SubState) {
 
 	err := dbg.vcs.TV.SetEmulationState(state)
 	if err != nil {
-		logger.Log("debugger", err.Error())
+		logger.Log(logger.Allow, "debugger", err.Error())
 	}
 	if dbg.ref != nil {
 		dbg.ref.SetEmulationState(state)
@@ -679,13 +679,13 @@ func (dbg *Debugger) end() {
 	// set ending state
 	err := dbg.gui.SetFeature(gui.ReqEnd)
 	if err != nil {
-		logger.Log("debugger", err.Error())
+		logger.Log(logger.Allow, "debugger", err.Error())
 	}
 
 	// save preferences
 	err = dbg.Prefs.Save()
 	if err != nil {
-		logger.Log("debugger", err.Error())
+		logger.Log(logger.Allow, "debugger", err.Error())
 	}
 }
 
@@ -939,7 +939,7 @@ func (dbg *Debugger) run() error {
 	defer func() {
 		err := dbg.scriptScribe.EndSession()
 		if err != nil {
-			logger.Logf("debugger", err.Error())
+			logger.Logf(logger.Allow, "debugger", err.Error())
 		}
 	}()
 
@@ -948,7 +948,7 @@ func (dbg *Debugger) run() error {
 		if dbg.cartload != nil {
 			err := dbg.cartload.Close()
 			if err != nil {
-				logger.Logf("debugger", err.Error())
+				logger.Logf(logger.Allow, "debugger", err.Error())
 			}
 		}
 	}()
@@ -970,7 +970,7 @@ func (dbg *Debugger) run() error {
 				} else if errors.Is(err, terminal.UserReload) {
 					err = dbg.reloadCartridge()
 					if err != nil {
-						logger.Logf("debugger", err.Error())
+						logger.Logf(logger.Allow, "debugger", err.Error())
 					}
 				} else {
 					return fmt.Errorf("debugger: %w", err)
@@ -1129,7 +1129,7 @@ func (dbg *Debugger) Notify(notice notifications.Notice) error {
 	case notifications.NotifyMovieCartStarted:
 		return dbg.vcs.TV.Reset(true)
 	default:
-		logger.Logf("debugger", "unhandled notification for plusrom (%v)", notice)
+		logger.Logf(logger.Allow, "debugger", "unhandled notification for plusrom (%v)", notice)
 	}
 
 	return nil
@@ -1180,7 +1180,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	if dbg.cartload != nil {
 		err := dbg.cartload.Close()
 		if err != nil {
-			logger.Logf("debuger", err.Error())
+			logger.Logf(logger.Allow, "debuger", err.Error())
 		}
 	}
 	dbg.cartload = &cartload
@@ -1188,7 +1188,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	// reset of vcs is implied with attach cartridge
 	err := setup.AttachCartridge(dbg.vcs, cartload, false)
 	if err != nil && !errors.Is(err, cartridge.Ejected) {
-		logger.Logf("debugger", err.Error())
+		logger.Logf(logger.Allow, "debugger", err.Error())
 		// an error has occurred so attach the ejected cartridge
 		//
 		// !TODO: a special error cartridge to make it more obvious what has happened
@@ -1213,17 +1213,17 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 
 	err = dbg.Disasm.FromMemory()
 	if err != nil {
-		logger.Logf("debugger", err.Error())
+		logger.Logf(logger.Allow, "debugger", err.Error())
 	}
 
 	dbg.CoProcDisasm.AttachCartridge(dbg)
 	err = dbg.CoProcDev.AttachCartridge(dbg, cartload.Filename, dbg.opts.ELF)
 	if err != nil {
-		logger.Logf("debugger", err.Error())
+		logger.Logf(logger.Allow, "debugger", err.Error())
 		if errors.Is(err, coproc_dwarf.UnsupportedDWARF) {
 			err = dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifyUnsupportedDWARF)
 			if err != nil {
-				logger.Logf("debugger", err.Error())
+				logger.Logf(logger.Allow, "debugger", err.Error())
 			}
 		}
 	}
@@ -1247,7 +1247,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	// activate bot if possible
 	feedback, err := dbg.bots.ActivateBot(dbg.vcs.Mem.Cart.Hash)
 	if err != nil {
-		logger.Logf("debugger", err.Error())
+		logger.Logf(logger.Allow, "debugger", err.Error())
 	}
 
 	// always ReqBotFeedback. if feedback is nil then the bot features will be disbaled
@@ -1287,7 +1287,7 @@ func (dbg *Debugger) endRecording() {
 
 	err := dbg.recorder.End()
 	if err != nil {
-		logger.Logf("debugger", err.Error())
+		logger.Logf(logger.Allow, "debugger", err.Error())
 	}
 }
 
@@ -1366,7 +1366,7 @@ func (dbg *Debugger) startComparison(comparisonROM string, comparisonPrefs strin
 	// check use of comparison prefs
 	comparisonPrefs = prefs.PopCommandLineStack()
 	if comparisonPrefs != "" {
-		logger.Logf("debugger", "%s unused for comparison emulation", comparisonPrefs)
+		logger.Logf(logger.Allow, "debugger", "%s unused for comparison emulation", comparisonPrefs)
 	}
 
 	return nil
@@ -1381,7 +1381,7 @@ func (dbg *Debugger) endComparison() {
 	dbg.comparison = nil
 	err := dbg.gui.SetFeature(gui.ReqComparison, nil, nil)
 	if err != nil {
-		logger.Logf("debugger", err.Error())
+		logger.Logf(logger.Allow, "debugger", err.Error())
 	}
 }
 
@@ -1429,7 +1429,7 @@ func (dbg *Debugger) Plugged(port plugging.PortID, peripheral plugging.Periphera
 	}
 	err := dbg.gui.SetFeature(gui.ReqPeripheralPlugged, port, peripheral)
 	if err != nil {
-		logger.Log("debugger", err.Error())
+		logger.Log(logger.Allow, "debugger", err.Error())
 	}
 }
 

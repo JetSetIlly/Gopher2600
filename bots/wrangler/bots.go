@@ -55,7 +55,7 @@ func (b *Bots) ActivateBot(cartHash string) (*bots.Feedback, error) {
 		if err != nil {
 			return nil, fmt.Errorf("bots: %w", err)
 		}
-		logger.Logf("bots", "%s started", b.running.BotID())
+		logger.Logf(logger.Allow, "bots", "%s started", b.running.BotID())
 
 	case "5bdd8af54020fa43065750bd4239a497695d403b":
 		// NTSC version of SpaceJockey
@@ -63,7 +63,7 @@ func (b *Bots) ActivateBot(cartHash string) (*bots.Feedback, error) {
 		if err != nil {
 			return nil, fmt.Errorf("bots: %w", err)
 		}
-		logger.Logf("bots", "%s started", b.running.BotID())
+		logger.Logf(logger.Allow, "bots", "%s started", b.running.BotID())
 
 	default:
 		return nil, nil
@@ -76,7 +76,7 @@ func (b *Bots) ActivateBot(cartHash string) (*bots.Feedback, error) {
 func (b *Bots) Quit() {
 	if b.running != nil {
 		b.running.Quit()
-		logger.Logf("bots", "%s finished", b.running.BotID())
+		logger.Logf(logger.Allow, "bots", "%s finished", b.running.BotID())
 		b.running = nil
 	}
 }

@@ -156,7 +156,7 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 	if err != nil {
 		return fmt.Errorf("developer: %w", err)
 	} else {
-		logger.Logf("developer", "DWARF loaded in %s", time.Since(t))
+		logger.Logf(logger.Allow, "developer", "DWARF loaded in %s", time.Since(t))
 	}
 
 	return nil

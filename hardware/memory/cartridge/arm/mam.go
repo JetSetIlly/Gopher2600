@@ -83,7 +83,7 @@ func (m *mam) Write(addr uint32, val uint32) bool {
 			if m.mamcr == 0 {
 				m.mamtim = val
 			} else {
-				logger.Logf("ARM7", "trying to write to MAMTIM while MAMCR is active")
+				logger.Logf(logger.Allow, "ARM7", "trying to write to MAMTIM while MAMCR is active")
 			}
 		}
 	default:
@@ -111,6 +111,6 @@ func (m *mam) Read(addr uint32) (uint32, bool) {
 func (m *mam) setMAMCR(val architecture.MAMCR) {
 	m.mamcr = val
 	if m.mamcr > 2 {
-		logger.Logf("ARM7", "setting MAMCR to a value greater than 2 (%#08x)", m.mamcr)
+		logger.Logf(logger.Allow, "ARM7", "setting MAMCR to a value greater than 2 (%#08x)", m.mamcr)
 	}
 }
