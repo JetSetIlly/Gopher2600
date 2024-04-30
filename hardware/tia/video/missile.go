@@ -180,39 +180,23 @@ func (ms *MissileSprite) String() string {
 		panic("illegal size value for missile")
 	}
 
-	notes := false
-
 	if ms.MoreHMOVE {
-		s.WriteString(" hmoving")
-		s.WriteString(fmt.Sprintf(" [%04b]", ms.Hmove))
-		notes = true
+		s.WriteString(fmt.Sprintf(" hmoving [%04b],", ms.Hmove))
 	}
 
 	if ms.Enclockifier.Active {
-		// add a comma if we've already noted something else
-		if notes {
-			s.WriteString(",")
-		}
-		s.WriteString(fmt.Sprintf(" drw %s", ms.Enclockifier.String()))
-		notes = true
+		s.WriteString(fmt.Sprintf(" drw %s,", ms.Enclockifier.String()))
 	}
 
 	if !ms.Enabled {
-		if notes {
-			s.WriteString(",")
-		}
-		s.WriteString(" disb")
-		notes = true
+		s.WriteString(" disb,")
 	}
 
 	if ms.ResetToPlayer {
-		if notes {
-			s.WriteString(",")
-		}
-		s.WriteString(" >pl<")
+		s.WriteString(" >pl<,")
 	}
 
-	return s.String()
+	return strings.TrimSuffix(s.String(), ",")
 }
 
 func (ms *MissileSprite) rsync(adjustment int) {

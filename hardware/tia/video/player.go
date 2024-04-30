@@ -188,56 +188,43 @@ func (ps *PlayerSprite) String() string {
 	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
 	s.WriteString(fmt.Sprintf(" %03d", ps.HmovedPixel))
 	if ps.MoreHMOVE {
-		s.WriteString("*] ")
+		s.WriteString("*]")
 	} else {
-		s.WriteString("] ")
+		s.WriteString("]")
 	}
 
 	// add a note to indicate that the nusiz value is about to update
 	if ps.ScanCounter.IsActive() && ps.SizeAndCopies != ps.ScanCounter.LatchedSizeAndCopies {
-		s.WriteString("*")
+		s.WriteString(" *")
 	}
 
 	// nusiz info
-	s.WriteString(" ")
 	if int(ps.SizeAndCopies) > len(playerSizesBrief) {
 		panic("illegal size value for player")
 	}
-	sz := playerSizesBrief[ps.SizeAndCopies]
-	if len(sz) > 0 {
-		s.WriteString(" ")
+	playerSize := playerSizesBrief[ps.SizeAndCopies]
+	if playerSize != "" {
+		s.WriteString(fmt.Sprintf(" %s", playerSize))
 	}
-	s.Write([]byte(sz))
-
-	// notes
-	notes := false
 
 	// hmove information
 	if ps.MoreHMOVE {
-		s.WriteString(" hmoving")
-		s.WriteString(fmt.Sprintf(" [%04b]", ps.Hmove))
-		notes = true
+		s.WriteString(fmt.Sprintf(" hmoving [%04b],", ps.Hmove))
 	}
 
 	// drawing or latching information
 	if ps.ScanCounter.IsActive() {
-		if notes {
-			s.WriteString(",")
-		}
 		s.WriteString(fmt.Sprintf(" drw (px %d", ps.ScanCounter.Pixel))
 
-		// add "sub-pixel" information
+		// add "sub-pixel" information. this happens when the player sprite is
+		// being stretched by NUSIZ
 		if ps.ScanCounter.count > 0 {
 			s.WriteString(fmt.Sprintf(".%d", ps.ScanCounter.count))
 		}
 
-		s.WriteString(")")
-		notes = true
+		s.WriteString("),")
 	} else if ps.ScanCounter.IsLatching() {
-		if notes {
-			s.WriteString(",")
-		}
-		s.WriteString(fmt.Sprintf(" latch (drw in %d)", ps.ScanCounter.latch))
+		s.WriteString(fmt.Sprintf(" latch (drw in %d),", ps.ScanCounter.latch))
 	}
 
 	// copy information if drawing or latching and nusiz is a multiple copy
@@ -247,31 +234,22 @@ func (ps *PlayerSprite) String() string {
 		switch ps.ScanCounter.Cpy {
 		case 0:
 		case 1:
-			s.WriteString(" 2nd")
+			s.WriteString(" 2nd,")
 		case 2:
-			s.WriteString(" 3rd")
+			s.WriteString(" 3rd,")
 		default:
 			panic("more than 2 copies of player!?")
 		}
 	}
 
-	// additional notes
 	if ps.VerticalDelay {
-		if notes {
-			s.WriteString(",")
-		}
-		s.WriteString(" vdel")
-		notes = true
+		s.WriteString(" vdel,")
 	}
-
 	if ps.Reflected {
-		if notes {
-			s.WriteString(",")
-		}
-		s.WriteString(" ref")
+		s.WriteString(" ref,")
 	}
 
-	return s.String()
+	return strings.TrimSuffix(s.String(), ",")
 }
 
 func (ps *PlayerSprite) rsync(adjustment int) {

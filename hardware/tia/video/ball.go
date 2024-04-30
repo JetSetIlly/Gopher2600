@@ -143,8 +143,6 @@ func (bs *BallSprite) String() string {
 		s.WriteString("]")
 	}
 
-	notes := false
-
 	if int(bs.Size) > len(ballSizesBrief) {
 		panic("illegal size value for ball")
 	}
@@ -153,37 +151,25 @@ func (bs *BallSprite) String() string {
 		s.WriteString(" ")
 	}
 	s.Write([]byte(sz))
+	s.WriteString(",")
 
 	if bs.MoreHMOVE {
-		s.WriteString(" hmoving")
-		s.WriteString(fmt.Sprintf(" [%04b]", bs.Hmove))
-		notes = true
+		s.WriteString(fmt.Sprintf(" hmoving [%04b],", bs.Hmove))
 	}
 
 	if bs.Enclockifier.Active {
-		// add a comma if we've already noted something else
-		if notes {
-			s.WriteString(",")
-		}
-		s.WriteString(fmt.Sprintf(" drw %s", bs.Enclockifier.String()))
-		notes = true
+		s.WriteString(fmt.Sprintf(" drw %s,", bs.Enclockifier.String()))
 	}
 
 	if !bs.Enabled {
-		if notes {
-			s.WriteString(",")
-		}
-		s.WriteString(" disb")
-		notes = true
+		s.WriteString(" disb,")
 	}
 
 	if bs.VerticalDelay {
-		if notes {
-			s.WriteString(",")
-		}
-		s.WriteString(" vdel")
+		s.WriteString(" vdel,")
 	}
-	return s.String()
+
+	return strings.TrimSuffix(s.String(), ",")
 }
 
 func (bs *BallSprite) rsync(adjustment int) {
