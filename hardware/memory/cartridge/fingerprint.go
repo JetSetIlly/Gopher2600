@@ -382,7 +382,9 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) (string, err
 	}
 
 	if ok, wrappedElf := fingerprintAce(cartload); ok {
-		_ = wrappedElf
+		if wrappedElf {
+			return "ACE_wrapped_ELF", nil
+		}
 		return "ACE", nil
 	}
 

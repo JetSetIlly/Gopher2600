@@ -26,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/ace"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/cdf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/dpcplus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/elf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/moviecart"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
@@ -294,8 +295,6 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newSuperbank(cart.env, cartload)
 	case "WD":
 		cart.mapper, err = newWicksteadDesign(cart.env, cartload)
-	case "ACE":
-		cart.mapper, err = ace.NewAce(cart.env, cartload)
 	case "DPC":
 		cart.mapper, err = newDPC(cart.env, cartload)
 	case "DPC+":
@@ -314,6 +313,15 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 	case "MVC":
 		cart.mapper, err = moviecart.NewMoviecart(cart.env, cartload)
+
+	case "ACE":
+		cart.mapper, err = ace.NewAce(cart.env, cartload)
+
+	case "ACE_wrapped_ELF":
+		cart.mapper, err = elf.NewElf(cart.env, cartload, true)
+
+	case "ELF":
+		cart.mapper, err = elf.NewElf(cart.env, cartload, false)
 	}
 	if err != nil {
 		return fmt.Errorf("cartridge: %w", err)

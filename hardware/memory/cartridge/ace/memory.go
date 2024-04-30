@@ -122,6 +122,7 @@ func (mem *aceMemory) setDataMode(out bool) {
 
 func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferences.ARMPreferences) (*aceMemory, error) {
 	mem := &aceMemory{
+		env:   env,
 		model: architecture.NewMap(architecture.PlusCart),
 	}
 
