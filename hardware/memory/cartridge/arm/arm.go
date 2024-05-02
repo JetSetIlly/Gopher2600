@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"math"
 	"strings"
-	"time"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
@@ -214,12 +213,7 @@ type ARM struct {
 	// state of the ARM. saveable and restorable
 	state *ARMState
 
-	// updating the preferences every time run() is executed can be slow
-	// (because the preferences need to be synchronised between tasks). the
-	// prefsPulse ticker slows the rate at which updatePrefs() is called
-	prefsPulse *time.Ticker
-
-	// read from ARM.prefs every prefsPulse tick
+	// updated on every call to run()
 	abortOnMemoryFault      bool
 	misalignedAccessIsFault bool
 
@@ -261,7 +255,8 @@ type ARM struct {
 	// interface to an option development package
 	dev coprocessor.CartCoProcDeveloper
 
-	// whether cycle count or not. set from ARM.prefs at the start of every arm.Run()
+	// immediateMode controls whether cycle count or not. value updated from
+	// updatePrefs()
 	//
 	// used to cut out code that is required only for cycle counting. See
 	// Icycle, Scycle and Ncycle fields which are called so frequently we
@@ -294,21 +289,13 @@ func NewARM(env *environment.Environment, mmap architecture.Map, mem SharedMemor
 		hook:           hook,
 		byteOrder:      binary.LittleEndian,
 		executionCache: make(map[uint32][]decodeFunction),
-
-		// updated on every updatePrefs(). these are reasonable defaults
-		Clk:         70.0,
-		clklenFlash: 4.0,
-
-		state: &ARMState{},
+		state:          &ARMState{},
 	}
 
 	// disassembly printed to stdout
 	if disassembleToStdout {
 		arm.disasm = &coprocessor.CartCoProcDisassemblerStdout{}
 	}
-
-	// slow prefs update by 100ms
-	arm.prefsPulse = time.NewTicker(time.Millisecond * 100)
 
 	switch arm.mmap.ARMArchitecture {
 	case architecture.ARM7TDMI:
@@ -436,8 +423,7 @@ func (arm *ARM) resetRegisters() {
 }
 
 // updatePrefs should be called periodically to ensure that the current
-// preference values are being used in the ARM emulation. see also the
-// prefsPulse ticker
+// preference values are being used in the ARM emulation
 func (arm *ARM) updatePrefs() {
 	// update clock value from preferences
 	arm.Clk = float32(arm.env.Prefs.ARM.Clock.Get().(float64))
@@ -756,11 +742,7 @@ func (arm *ARM) checkProgramMemory(force bool) {
 }
 
 func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
-	select {
-	case <-arm.prefsPulse.C:
-		arm.updatePrefs()
-	default:
-	}
+	arm.updatePrefs()
 
 	// number of iterations. only used when in immediate mode
 	var iterations int
