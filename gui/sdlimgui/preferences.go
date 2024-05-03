@@ -60,6 +60,7 @@ type preferences struct {
 	superchargerNotifications prefs.Bool
 	audioMuteNotification     prefs.Bool
 	notificationVisibility    prefs.Float
+	memoryUsageInOverlay      prefs.Bool
 
 	// fonts
 	guiFontSize         prefs.Int
@@ -98,6 +99,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	p.superchargerNotifications.Set(true)
 	p.audioMuteNotification.Set(true)
 	p.notificationVisibility.Set(0.75)
+	p.memoryUsageInOverlay.Set(false)
 	p.guiFontSize.Set(13)
 	p.terminalFontSize.Set(12)
 	p.codeFontSize.Set(15)
@@ -163,6 +165,10 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("sdlimgui.playmode.notifcationVisibility", &p.notificationVisibility)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.playmode.memoryUsageInOverlay", &p.memoryUsageInOverlay)
 	if err != nil {
 		return nil, err
 	}

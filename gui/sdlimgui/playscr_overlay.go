@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"runtime"
 	"time"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -67,6 +68,9 @@ type playscrOverlay struct {
 	fpsPulse *time.Ticker
 	fps      string
 	hz       string
+
+	// memory stats are updated along with the fpsPulse
+	memStats runtime.MemStats
 
 	// top-left corner of the overlay includes emulation state. if the
 	// "fpsOverlay" is active then these will be drawn alongside the FPS
@@ -195,6 +199,7 @@ func (oly *playscrOverlay) drawTopLeft() {
 			fps, hz := oly.playscr.img.dbg.VCS().TV.GetActualFPS()
 			oly.fps = fmt.Sprintf("%03.2f fps", fps)
 			oly.hz = fmt.Sprintf("%03.2fhz", hz)
+			runtime.ReadMemStats(&oly.memStats)
 		default:
 		}
 
@@ -232,6 +237,14 @@ func (oly *playscrOverlay) drawTopLeft() {
 		if oly.playscr.scr.nudgeIconCt > 0 {
 			imgui.SameLine()
 			imgui.Text(string(fonts.Nudge))
+		}
+
+		if oly.playscr.img.prefs.memoryUsageInOverlay.Get().(bool) {
+			imguiSeparator()
+			imgui.Text(fmt.Sprintf("Alloc = %v MB\n", oly.memStats.Alloc/1048576))
+			imgui.Text(fmt.Sprintf(" TotalAlloc = %v MB\n", oly.memStats.TotalAlloc/1048576))
+			imgui.Text(fmt.Sprintf(" Sys = %v MB\n", oly.memStats.Sys/1048576))
+			imgui.Text(fmt.Sprintf(" NumGC = %v", oly.memStats.NumGC))
 		}
 
 		// create space in the window for any icons that we might want to draw.
