@@ -106,7 +106,7 @@ func (cart *Ace) PlumbFromDifferentEmulation(env *environment.Environment) {
 	}
 	cart.arm = arm.NewARM(cart.env, cart.mem.model, cart.mem, cart)
 	cart.mem.Plumb(cart.arm)
-	cart.arm.Plumb(cart.armState, cart.mem, cart)
+	cart.arm.Plumb(cart.env, cart.armState, cart.mem, cart)
 	cart.armState = nil
 	cart.yieldHook = coprocessor.StubCartYieldHook{}
 }
@@ -118,7 +118,7 @@ func (cart *Ace) Plumb(env *environment.Environment) {
 		panic("cannot plumb this ELF instance because the ARM state is nil")
 	}
 	cart.mem.Plumb(cart.arm)
-	cart.arm.Plumb(cart.armState, cart.mem, cart)
+	cart.arm.Plumb(cart.env, cart.armState, cart.mem, cart)
 	cart.armState = nil
 }
 

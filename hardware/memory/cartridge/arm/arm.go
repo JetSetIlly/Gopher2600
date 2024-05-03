@@ -189,10 +189,16 @@ type ARMState struct {
 	instruction32bitOpcodeHi uint16
 }
 
-// Snapshort makes a copy of the ARMState.
+// Snapshot implements the mapper.CartMapper interface.
 func (s *ARMState) Snapshot() *ARMState {
 	n := *s
 	return &n
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (s *ARMState) Plumb(env *environment.Environment) {
+	s.mam.Plumb(env)
+	s.rng.Plumb(env)
 }
 
 // ARM implements the ARM7TDMI-S LPC2103 processor.
@@ -353,7 +359,7 @@ func (arm *ARM) SetDeveloper(dev coprocessor.CartCoProcDeveloper) {
 	arm.dev = dev
 }
 
-// Snapshort makes a copy of the ARM state.
+// Snapshot implements the mapper.CartMapper interface.
 func (arm *ARM) Snapshot() *ARMState {
 	return arm.state.Snapshot()
 }
@@ -364,25 +370,32 @@ func (arm *ARM) Snapshot() *ARMState {
 // The ARMState argument can be nil as a special case. If it is nil then the
 // existing state does not change. For some cartridge mappers this is acceptable
 // and more convenient
-func (arm *ARM) Plumb(state *ARMState, mem SharedMemory, hook CartridgeHook) {
+//
+// Plumb implements the mapper.CartMapper interface.
+func (arm *ARM) Plumb(env *environment.Environment, state *ARMState, mem SharedMemory, hook CartridgeHook) {
+	arm.env = env
 	arm.mem = mem
 	arm.hook = hook
 
-	// always clear caches on a plumb event
-	arm.ClearCaches()
-
 	if state != nil {
 		arm.state = state
+		arm.state.Plumb(env)
+	}
 
-		// if we're plumbing in a new state then we *must* reevaluate the
-		// pointer the program memory
+	// any more plumbing work is superfluous unless we're dealing with the main
+	// emulation environment
+	if !arm.env.IsEmulation(environment.MainEmulation) {
+		return
+	}
+
+	// if we're plumbing in a new state then we *must* reevaluate the
+	// pointer the program memory
+	if state != nil {
 		arm.checkProgramMemory(true)
 	}
-}
 
-// ClearCaches should be used very rarely. It empties the instruction and
-// disassembly caches.
-func (arm *ARM) ClearCaches() {
+	// execution cache must be cleared because the old cache will be pointing to
+	// functions in another instance of ARM
 	arm.executionCache = make(map[uint32][]decodeFunction)
 }
 

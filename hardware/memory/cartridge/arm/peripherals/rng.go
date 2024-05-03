@@ -57,6 +57,10 @@ func NewRNG(env *environment.Environment, mmap architecture.Map) RNG {
 	}
 }
 
+func (r *RNG) Plumb(env *environment.Environment) {
+	r.env = env
+}
+
 func (r *RNG) Reset() {
 	r.control = 0x0
 }

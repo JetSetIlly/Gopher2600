@@ -59,7 +59,8 @@ func newMam(env *environment.Environment, mmap architecture.Map) mam {
 	}
 }
 
-func (m *mam) Reset() {
+func (m *mam) Plumb(env *environment.Environment) {
+	m.env = env
 }
 
 func (m *mam) updatePrefs() {
