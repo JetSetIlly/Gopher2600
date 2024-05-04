@@ -1,0 +1,85 @@
+diff --git a/go.mod b/go.mod
+index ee7d106cb..ef953f3df 100644
+--- a/go.mod
++++ b/go.mod
+@@ -15,4 +15,8 @@ require (
+ 	golang.org/x/sys v0.8.0
+ )
+ 
+-require github.com/go-audio/riff v1.0.0 // indirect
++require (
++	github.com/arl/statsviz v0.6.0 // indirect
++	github.com/go-audio/riff v1.0.0 // indirect
++	github.com/gorilla/websocket v1.5.0 // indirect
++)
+diff --git a/go.sum b/go.sum
+index f7a11b810..128def96d 100644
+--- a/go.sum
++++ b/go.sum
+@@ -1,3 +1,5 @@
++github.com/arl/statsviz v0.6.0 h1:jbW1QJkEYQkufd//4NDYRSNBpwJNrdzPahF7ZmoGdyE=
++github.com/arl/statsviz v0.6.0/go.mod h1:0toboo+YGSUXDaS4g1D5TVS4dXs7S7YYT5J/qnW2h8s=
+ github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
+ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+ github.com/go-audio/audio v1.0.0 h1:zS9vebldgbQqktK4H0lUqWrG8P0NxCJVqcj7ZpNnwd4=
+@@ -8,6 +10,8 @@ github.com/go-audio/wav v1.1.0 h1:jQgLtbqBzY7G+BM8fXF7AHUk1uHUviWS4X39d5rsL2g=
+ github.com/go-audio/wav v1.1.0/go.mod h1:mpe9qfwbScEbkd8uybLuIpTgHyrISw/OTuvjUW2iGtE=
+ github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6 h1:zDw5v7qm4yH7N8C8uWd+8Ii9rROdgWxQuGoJ9WDXxfk=
+ github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6/go.mod h1:9YTyiznxEY1fVinfM7RvRcjRHbw2xLBJ3AAGIT0I4Nw=
++github.com/gorilla/websocket v1.5.0 h1:PPwGk2jz7EePpoHN/+ClbZu8SPxiqlu12wZP/3sWmnc=
++github.com/gorilla/websocket v1.5.0/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
+ github.com/hajimehoshi/go-mp3 v0.3.3 h1:cWnfRdpye2m9ElSoVqneYRcpt/l3ijttgjMeQh+r+FE=
+ github.com/hajimehoshi/go-mp3 v0.3.3/go.mod h1:qMJj/CSDxx6CGHiZeCgbiq2DSUkbK0UbtXShQcnfyMM=
+ github.com/hajimehoshi/go-mp3 v0.3.4 h1:NUP7pBYH8OguP4diaTZ9wJbUbk3tC0KlfzsEpWmYj68=
+diff --git a/gopher2600.go b/gopher2600.go
+index a3294cbc6..0f0795f68 100644
+--- a/gopher2600.go
++++ b/gopher2600.go
+@@ -20,12 +20,14 @@ import (
+ 	"flag"
+ 	"fmt"
+ 	"io"
++	"net/http"
+ 	"os"
+ 	"os/signal"
+ 	"runtime"
+ 	"strings"
+ 	"time"
+ 
++	"github.com/arl/statsviz"
+ 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+ 	"github.com/jetsetilly/gopher2600/debugger"
+ 	"github.com/jetsetilly/gopher2600/debugger/govern"
+@@ -337,6 +339,12 @@ func emulate(mode string, sync *mainSync, args []string) error {
+ 		opts.TermType = "IMGUI"
+ 	}
+ 
++	// statsviz option
++	const statsvizAddr = "localhost:2610"
++
++	var stats bool
++	flgs.BoolVar(&stats, "statsviz", false, fmt.Sprintf("run statsviz server on %s", statsvizAddr))
++
+ 	// parse args and get copy of remaining arguments
+ 	err := flgs.Parse(args)
+ 	if err != nil {
+@@ -366,6 +374,19 @@ func emulate(mode string, sync *mainSync, args []string) error {
+ 	// turning the emulation's interrupt handler off
+ 	sync.state <- stateRequest{req: reqNoIntSig}
+ 
++	// setup statsviz server if it has been activated
++	if stats {
++		mux := http.NewServeMux()
++		statsviz.Register(mux)
++		go func() {
++			logger.Logf(logger.Allow, "statsviz", "listening on %s/debug/statsviz", statsvizAddr)
++			err := http.ListenAndServe(statsvizAddr, mux)
++			if err != nil {
++				logger.Log(logger.Allow, "%s", err.Error())
++			}
++		}()
++	}
++
+ 	// prepare new debugger, supplying a debugger.CreateUserInterface function.
+ 	// this function will be called by NewDebugger() and in turn will send a
+ 	// GUI create message to the main goroutine

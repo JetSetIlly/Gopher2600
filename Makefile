@@ -19,7 +19,7 @@ endif
 
 
 ### support targets
-.PHONY: all clean tidy generate check_git check_glsl glsl_validate check_pandoc readme_spell
+.PHONY: all clean tidy generate check_git check_glsl glsl_validate check_pandoc readme_spell patch_file_integrity
 
 all:
 	@echo "use release target to build release binary"
@@ -57,6 +57,14 @@ readme_spell: check_pandoc
 	@pandoc README.md -t plain | aspell -a | sed '1d;$d' | cut -d ' ' -f 2 | awk 'length($0)>1' | sort | uniq
 # sed is used to chop off the first line of aspell output, which is a version banner
 
+patch_file_integrity: *.patch
+# check that patch files are still valid
+	@echo "patch file integrity"
+	@for file in $^; do \
+		echo "  $$file"; \
+		git apply --check $$file; \
+	done
+	@echo "patch files are fine"
 
 ### testing targets
 .PHONY: test race race_debug
