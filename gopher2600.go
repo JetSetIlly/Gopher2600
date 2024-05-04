@@ -733,8 +733,8 @@ func regressAdd(mode string, args []string) error {
 	flgs.StringVar(&notes, "notes", "", "additional annotation for the entry")
 	flgs.StringVar(&mapping, "mapping", "AUTO", "form cartridge mapper selection")
 	flgs.StringVar(&spec, "spec", "AUTO", "television specification: NTSC, PAL, PAL60, PALM, SECAM")
-	flgs.IntVar(&numFrames, "frames", 10, "number of frames to run (ignored if mode is 'playback'")
-	flgs.StringVar(&state, "state", "", "record emulator state at every CPU step (ignored if mode is 'playback'")
+	flgs.IntVar(&numFrames, "frames", 10, "number of frames to run [not playback files]")
+	flgs.StringVar(&state, "state", "", "record emulator state at every CPU step [not playback files]")
 	flgs.BoolVar(&log, "log", false, "echo debugging log to stdout")
 
 	// parse args and get copy of remaining arguments
@@ -743,8 +743,8 @@ func regressAdd(mode string, args []string) error {
 		if err == flag.ErrHelp {
 			fmt.Println()
 			fmt.Println(`The regression test to be added can be the path to a cartridge file or a previously
-recorded playback file. For playback files, the flags marked [non-playback] do not make
-sense and will be ignored.
+recorded playback file. For playback files, the flags marked [not playback files] do not
+make sense and will be ignored.
 
 Available modes are VIDEO, PLAYBACK and LOG. If not mode is explicitly given then
 VIDEO will be used for ROM files and PLAYBACK will be used for playback recordings.

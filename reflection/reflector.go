@@ -51,7 +51,9 @@ func (ref *Reflector) AddRenderer(renderer Renderer) {
 	ref.renderer = renderer
 }
 
-// Clear existing reflected information.
+// Clear existing reflected information. This doesn't need to be called that
+// often and only when a new cartridge is inserted to make sure there is no
+// stale data hanging around
 func (ref *Reflector) Clear() {
 	ref.history = make([]ReflectedVideoStep, specification.AbsoluteMaxClks)
 }
