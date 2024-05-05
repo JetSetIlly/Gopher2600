@@ -16,4 +16,7 @@
 // Package display specifies the preference values for the displaying of a TV
 // image by a GUI. The types in this package are intended to be agnostic of
 // which GUI system is being used.
+//
+// The package also houses the shaders subpackage. GLSL shaders should also be
+// GUI system agnostic.
 package display
