@@ -291,7 +291,7 @@ of the ROM.`)
 		}
 
 		if imgui.SliderInt("Frame Queue Length", &frameQueueLen, 1, maxFrameQueue) {
-			// win.img.prefs.frameQueue.Set(frameQueueLen)
+			win.img.prefs.frameQueueLen.Set(frameQueueLen)
 		}
 	}
 }
