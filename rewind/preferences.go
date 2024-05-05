@@ -90,12 +90,12 @@ func (p *Preferences) SetDefaults() {
 	p.Freq.Set(snapshotFreq)
 }
 
-// Load disassembly preferences and apply to the current disassembly.
+// Load rewind preferences from disk.
 func (p *Preferences) Load() error {
 	return p.dsk.Load(false)
 }
 
-// Save current disassembly preferences to disk.
+// Save current rewind preferences to disk.
 func (p *Preferences) Save() error {
 	return p.dsk.Save()
 }

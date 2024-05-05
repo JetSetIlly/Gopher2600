@@ -72,6 +72,8 @@ var defunct = []string{
 	"crt.contrast",
 	"crt.hue",
 	"crt.saturation",
+	"sdlimgui.display.frameQueue",
+	"sdlimgui.display.frameQueueAuto",
 }
 
 // returns true if string is in list of defunct values.

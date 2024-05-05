@@ -278,7 +278,7 @@ of the ROM.`)
 		}
 
 		if imgui.Checkbox("Automatic Frame Queue Length", &frameQueueAuto) {
-			win.img.prefs.frameQueueAuto.Set(frameQueueAuto)
+			win.img.prefs.frameQueueLenAuto.Set(frameQueueAuto)
 		}
 
 		imgui.Spacing()
@@ -291,7 +291,7 @@ of the ROM.`)
 		}
 
 		if imgui.SliderInt("Frame Queue Length", &frameQueueLen, 1, maxFrameQueue) {
-			win.img.prefs.frameQueue.Set(frameQueueLen)
+			// win.img.prefs.frameQueue.Set(frameQueueLen)
 		}
 	}
 }

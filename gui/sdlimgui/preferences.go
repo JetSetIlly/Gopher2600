@@ -69,9 +69,9 @@ type preferences struct {
 	codeFontLineSpacing prefs.Int
 
 	// display
-	frameQueueAuto prefs.Bool
-	frameQueue     prefs.Int
-	glSwapInterval prefs.Int
+	frameQueueLenAuto prefs.Bool
+	frameQueueLen     prefs.Int
+	glSwapInterval    prefs.Int
 
 	// window preferences are split over two prefs.Disk instances, to allow
 	// geometry to be saved at a different time to the fullscreen preference
@@ -84,29 +84,6 @@ type preferences struct {
 
 func newPreferences(img *SdlImgui) (*preferences, error) {
 	p := &preferences{img: img}
-
-	// defaults
-	p.terminalOnError.Set(true)
-	p.audioMuteDebugger.Set(true)
-	p.showTooltips.Set(true)
-	p.showTimelineThumbnail.Set(false)
-	p.colorDisasm.Set(true)
-	p.fpsDetail.Set(false)
-	p.activePause.Set(false)
-	p.audioMutePlaymode.Set(false)
-	p.controllerNotifcations.Set(true)
-	p.plusromNotifications.Set(true)
-	p.superchargerNotifications.Set(true)
-	p.audioMuteNotification.Set(true)
-	p.notificationVisibility.Set(0.75)
-	p.memoryUsageInOverlay.Set(false)
-	p.guiFontSize.Set(13)
-	p.terminalFontSize.Set(12)
-	p.codeFontSize.Set(15)
-	p.codeFontLineSpacing.Set(2.0)
-	p.frameQueueAuto.Set(false)
-	p.frameQueue.Set(5)
-	p.glSwapInterval.Set(1)
 
 	// setup preferences
 	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
@@ -195,28 +172,27 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 
 	// display options
 
-	// frameQueueAuto *must* be added after frameQueue so that the auto
-	// post-hook can override the frameQueue value on load as required
-	err = p.dsk.Add("sdlimgui.display.frameQueue", &p.frameQueue)
+	err = p.dsk.Add("sdlimgui.display.frameQueueLen", &p.frameQueueLen)
 	if err != nil {
 		return nil, err
 	}
-	p.frameQueue.SetHookPost(func(v prefs.Value) error {
-		p.img.screen.setFrameQueue(p.frameQueueAuto.Get().(bool), v.(int))
+	p.frameQueueLen.SetHookPost(func(v prefs.Value) error {
+		p.img.screen.setFrameQueue(p.frameQueueLenAuto.Get().(bool), v.(int))
 		return nil
 	})
-	err = p.dsk.Add("sdlimgui.display.frameQueueAuto", &p.frameQueueAuto)
+
+	err = p.dsk.Add("sdlimgui.display.frameQueueLenAuto", &p.frameQueueLenAuto)
 	if err != nil {
 		return nil, err
 	}
-	p.frameQueueAuto.SetHookPost(func(v prefs.Value) error {
+	p.frameQueueLenAuto.SetHookPost(func(v prefs.Value) error {
 		// set frameQueue value if auto is true. there is no need to call
 		// screen.setFrameQueue() in that instance becase the post hook for the
 		// frameQueue value does that
 		if v.(bool) {
 			p.img.screen.setFrameQueue(true, 1)
 		} else {
-			p.img.screen.setFrameQueue(false, p.frameQueue.Get().(int))
+			p.img.screen.setFrameQueue(false, p.frameQueueLen.Get().(int))
 		}
 		return nil
 	})
@@ -278,8 +254,39 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	return p, nil
 }
 
+func (p *preferences) setDefaults() {
+	p.terminalOnError.Set(true)
+	p.audioMuteDebugger.Set(true)
+	p.showTooltips.Set(true)
+	p.showTimelineThumbnail.Set(false)
+	p.colorDisasm.Set(true)
+	p.fpsDetail.Set(false)
+	p.activePause.Set(false)
+	p.audioMutePlaymode.Set(false)
+	p.controllerNotifcations.Set(true)
+	p.plusromNotifications.Set(true)
+	p.superchargerNotifications.Set(true)
+	p.audioMuteNotification.Set(true)
+	p.notificationVisibility.Set(0.75)
+	p.memoryUsageInOverlay.Set(false)
+	p.guiFontSize.Set(13)
+	p.terminalFontSize.Set(12)
+	p.codeFontSize.Set(15)
+	p.codeFontLineSpacing.Set(2.0)
+	p.frameQueueLenAuto.Set(false)
+	p.frameQueueLen.Set(3)
+	p.glSwapInterval.Set(1)
+}
+
 // load preferences from disk. does not load window preferences.
 func (p *preferences) load() error {
+	// calling set defaults before loading the values from disk. this makes sure
+	// that the value hooks have been called at least once
+	//
+	// this is important because if the value is not on disk (eg. on first use
+	// of the emulator) then the hook will not be triggered by the load process
+	p.setDefaults()
+
 	return p.dsk.Load(false)
 }
 
