@@ -223,8 +223,12 @@ func (afs *Path) List() ([]Node, error) {
 func (afs *Path) Set(path string) error {
 	afs.Close()
 
-	// clean path and split into parts
+	// clean path and and remove volume name. volume name is not something we
+	// typically have to worry about in unix type systems
 	path = filepath.Clean(path)
+	path = strings.TrimPrefix(path, filepath.VolumeName(path))
+
+	// split path into parts
 	lst := strings.Split(path, string(filepath.Separator))
 
 	// strings.Split will remove a leading filepath.Separator. we need to add
@@ -282,6 +286,14 @@ func (afs *Path) Set(path string) error {
 				return fmt.Errorf("archivefs: set: %v", err)
 			}
 		}
+	}
+
+	// we want the absolute path. this restores any volume name that may have
+	// been trimmed off at the start of the function
+	var err error
+	afs.current, err = filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("archivefs: set: %v", err)
 	}
 
 	// make sure path is clean

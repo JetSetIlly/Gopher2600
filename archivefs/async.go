@@ -68,12 +68,16 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 				afs.Close()
 
 			case path := <-pth.Set:
-				afs.Set(path)
+				err := afs.Set(path)
+				if err != nil {
+					pth.err <- err
+					continue // for loop
+				}
 
 				entries, err := afs.List()
 				if err != nil {
 					pth.err <- err
-					return
+					continue // for loop
 				}
 
 				pth.results <- AsyncResults{
