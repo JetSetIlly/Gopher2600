@@ -101,7 +101,7 @@ func (sh *gl32Screenshot) start(mode screenshotMode, finish chan screenshotResul
 	sh.mode = mode
 
 	// description of screenshot to be returned to caller over finish channel
-	if sh.img.crtPrefs.Enabled.Get().(bool) {
+	if sh.img.displayPrefs.CRT.Enabled.Get().(bool) {
 		sh.description = fmt.Sprintf("crt_%s", sh.mode)
 	} else {
 		sh.description = fmt.Sprintf("pix_%s", sh.mode)
@@ -161,7 +161,7 @@ func (sh *gl32Screenshot) process(env shaderEnvironment, scalingImage textureSpe
 }
 
 func (sh *gl32Screenshot) crtProcess(env shaderEnvironment, scalingImage textureSpec) {
-	prefs := newCrtSeqPrefs(sh.img.crtPrefs)
+	prefs := newCrtSeqPrefs(sh.img.displayPrefs)
 
 	if sh.mode == modeMotion {
 		switch sh.frames {
@@ -335,7 +335,7 @@ func (sh *gl32Screenshot) compositeFinalise(env shaderEnvironment, composite *im
 	env.srcTextureID = sh.compositeBuffer.Texture(0)
 
 	// pass composite image through CRT shaders
-	textureID := sh.crt.process(env, true, sh.img.playScr.visibleScanlines, specification.ClksVisible, 0, sh, newCrtSeqPrefs(sh.img.crtPrefs), sh.img.screen.rotation.Load().(specification.Rotation), true)
+	textureID := sh.crt.process(env, true, sh.img.playScr.visibleScanlines, specification.ClksVisible, 0, sh, newCrtSeqPrefs(sh.img.displayPrefs), sh.img.screen.rotation.Load().(specification.Rotation), true)
 
 	gl.BindTexture(gl.TEXTURE_2D, textureID)
 

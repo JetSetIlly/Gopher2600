@@ -100,16 +100,18 @@ func (win *winPrefs) draw() {
 		imgui.EndTabItem()
 	}
 
-	if imgui.BeginTabItem("TV") {
-		win.drawTV()
+	if imgui.BeginTabItem("Colour") {
+		win.drawColour()
 		imgui.EndTabItem()
+		setDef = win.img.displayPrefs.Colour
+		setDefLabel = "Colour"
 	}
 
 	if win.img.rnd.supportsCRT() {
 		if imgui.BeginTabItem("CRT") {
 			win.drawCRT()
 			imgui.EndTabItem()
-			setDef = win.img.crtPrefs
+			setDef = win.img.displayPrefs.CRT
 			setDefLabel = "CRT"
 		}
 	}
@@ -714,9 +716,13 @@ func (win *winPrefs) drawDiskButtons() {
 		if err != nil {
 			logger.Logf(logger.Allow, "sdlimgui", "could not save (imgui debugger) preferences: %v", err)
 		}
-		err = win.img.crtPrefs.Save()
+		err = win.img.displayPrefs.CRT.Save()
 		if err != nil {
-			logger.Logf(logger.Allow, "sdlimgui", "could not save (crt) preferences: %v", err)
+			logger.Logf(logger.Allow, "sdlimgui", "could not save (display/crt) preferences: %v", err)
+		}
+		err = win.img.displayPrefs.Colour.Save()
+		if err != nil {
+			logger.Logf(logger.Allow, "sdlimgui", "could not save (display/colour) preferences: %v", err)
 		}
 		err = win.img.audio.Prefs.Save()
 		if err != nil {
@@ -762,9 +768,13 @@ func (win *winPrefs) drawDiskButtons() {
 		if err != nil {
 			logger.Logf(logger.Allow, "sdlimgui", "could not restore (imgui debugger) preferences: %v", err)
 		}
-		err = win.img.crtPrefs.Load()
+		err = win.img.displayPrefs.CRT.Load()
 		if err != nil {
-			logger.Logf(logger.Allow, "sdlimgui", "could not restore (crt) preferences: %v", err)
+			logger.Logf(logger.Allow, "sdlimgui", "could not restore (display/crt) preferences: %v", err)
+		}
+		err = win.img.displayPrefs.Colour.Load()
+		if err != nil {
+			logger.Logf(logger.Allow, "sdlimgui", "could not restore (display/colour) preferences: %v", err)
 		}
 		err = win.img.audio.Prefs.Load()
 		if err != nil {

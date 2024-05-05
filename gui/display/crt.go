@@ -13,14 +13,14 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package crt
+package display
 
 import (
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
 )
 
-type Preferences struct {
+type CRT struct {
 	dsk *prefs.Disk
 
 	Enabled prefs.Bool
@@ -53,11 +53,6 @@ type Preferences struct {
 	Sharpness            prefs.Float
 	BlackLevel           prefs.Float
 
-	Brightness prefs.Float
-	Contrast   prefs.Float
-	Saturation prefs.Float
-	Hue        prefs.Float
-
 	PixelPerfectFade prefs.Float
 
 	VSyncRecovery    prefs.Int
@@ -66,7 +61,7 @@ type Preferences struct {
 	IntegerScaling prefs.Bool
 }
 
-func (p *Preferences) String() string {
+func (p *CRT) String() string {
 	return p.dsk.String()
 }
 
@@ -101,20 +96,14 @@ const (
 	sharpness            = 0.55
 	blackLevel           = 0.045
 
-	brightness = 1.0
-	contrast   = 1.0
-	saturation = 1.0
-	hue        = 0.0
-
 	pixelPerfectFade = 0.4
 	vsyncRecovery    = 10
 	vsyncSensitivity = 2
 	integerScaling   = false
 )
 
-// NewPreferences is the preferred method of initialisation for the Preferences type.
-func NewPreferences() (*Preferences, error) {
-	p := &Preferences{}
+func newCRT() (*CRT, error) {
+	p := &CRT{}
 	p.SetDefaults()
 
 	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
@@ -235,22 +224,6 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.brightness", &p.Brightness)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.contrast", &p.Contrast)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.saturation", &p.Saturation)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.hue", &p.Hue)
-	if err != nil {
-		return nil, err
-	}
 	err = p.dsk.Add("crt.pixelPerfectFade", &p.PixelPerfectFade)
 	if err != nil {
 		return nil, err
@@ -277,7 +250,7 @@ func NewPreferences() (*Preferences, error) {
 }
 
 // SetDefaults revers all CRT settings to default values.
-func (p *Preferences) SetDefaults() {
+func (p *CRT) SetDefaults() {
 	p.Enabled.Set(enabled)
 	p.Curve.Set(curve)
 	p.RoundedCorners.Set(roundedCorners)
@@ -306,23 +279,18 @@ func (p *Preferences) SetDefaults() {
 	p.Sharpness.Set(sharpness)
 	p.BlackLevel.Set(blackLevel)
 
-	p.Brightness.Set(brightness)
-	p.Contrast.Set(contrast)
-	p.Saturation.Set(saturation)
-	p.Hue.Set(hue)
-
 	p.PixelPerfectFade.Set(pixelPerfectFade)
 	p.VSyncRecovery.Set(vsyncRecovery)
 	p.VSyncSensitivity.Set(vsyncSensitivity)
 	p.IntegerScaling.Set(integerScaling)
 }
 
-// Load disassembly preferences and apply to the current disassembly.
-func (p *Preferences) Load() error {
+// Load CRT values from disk.
+func (p *CRT) Load() error {
 	return p.dsk.Load(false)
 }
 
-// Save current disassembly preferences to disk.
-func (p *Preferences) Save() error {
+// Save current CRT values to disk.
+func (p *CRT) Save() error {
 	return p.dsk.Save()
 }

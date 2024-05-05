@@ -70,5 +70,5 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 
 	sh.screenshot.process(env, sh.img.playScr)
 
-	sh.crt.process(env, false, sh.img.playScr.visibleScanlines, specification.ClksVisible, screenroll, sh.img.playScr, newCrtSeqPrefs(sh.img.crtPrefs), sh.img.screen.rotation.Load().(specification.Rotation), false)
+	sh.crt.process(env, false, sh.img.playScr.visibleScanlines, specification.ClksVisible, screenroll, sh.img.playScr, newCrtSeqPrefs(sh.img.displayPrefs), sh.img.screen.rotation.Load().(specification.Rotation), false)
 }

@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/gui/crt"
+	"github.com/jetsetilly/gopher2600/gui/display"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/caching"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -121,8 +121,8 @@ type SdlImgui struct {
 
 	// gui specific preferences. crt preferences are handled separately. all
 	// other preferences are handled by the emulation
-	prefs    *preferences
-	crtPrefs *crt.Preferences
+	prefs        *preferences
+	displayPrefs *display.Preferences
 
 	// modal window
 	modal modal
@@ -216,14 +216,14 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	}
 	img.dbg.VCS().TV.AddRealtimeAudioMixer(img.audio)
 
-	// initialise crt preferences
-	img.crtPrefs, err = crt.NewPreferences()
+	// initialise display preferences
+	img.displayPrefs, err = display.NewPreferences()
 	if err != nil {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 
 	// set scaling when IntegerScaling prefs value is changed
-	img.crtPrefs.IntegerScaling.SetHookPost(func(v prefs.Value) error {
+	img.displayPrefs.CRT.IntegerScaling.SetHookPost(func(v prefs.Value) error {
 		select {
 		case img.postRenderFunctions <- func() {
 			img.screen.crit.section.Lock()

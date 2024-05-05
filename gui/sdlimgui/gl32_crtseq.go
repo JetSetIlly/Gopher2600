@@ -18,7 +18,7 @@
 package sdlimgui
 
 import (
-	"github.com/jetsetilly/gopher2600/gui/crt"
+	"github.com/jetsetilly/gopher2600/gui/display"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/framebuffer"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -61,41 +61,41 @@ type crtSeqPrefs struct {
 	Hue        float64
 }
 
-func newCrtSeqPrefs(prefs *crt.Preferences) crtSeqPrefs {
+func newCrtSeqPrefs(prefs *display.Preferences) crtSeqPrefs {
 	return crtSeqPrefs{
-		Enabled:              prefs.Enabled.Get().(bool),
-		PixelPerfectFade:     prefs.PixelPerfectFade.Get().(float64),
-		Curve:                prefs.Curve.Get().(bool),
-		RoundedCorners:       prefs.RoundedCorners.Get().(bool),
-		Bevel:                prefs.Bevel.Get().(bool),
-		Shine:                prefs.Shine.Get().(bool),
-		Mask:                 prefs.Mask.Get().(bool),
-		Scanlines:            prefs.Scanlines.Get().(bool),
-		Interference:         prefs.Interference.Get().(bool),
-		Flicker:              prefs.Flicker.Get().(bool),
-		Fringing:             prefs.Fringing.Get().(bool),
-		Ghosting:             prefs.Ghosting.Get().(bool),
-		Phosphor:             prefs.Phosphor.Get().(bool),
-		CurveAmount:          prefs.CurveAmount.Get().(float64),
-		RoundedCornersAmount: prefs.RoundedCornersAmount.Get().(float64),
-		BevelSize:            prefs.BevelSize.Get().(float64),
-		MaskIntensity:        prefs.MaskIntensity.Get().(float64),
-		MaskFine:             prefs.MaskFine.Get().(float64),
-		ScanlinesIntensity:   prefs.ScanlinesIntensity.Get().(float64),
-		ScanlinesFine:        prefs.ScanlinesFine.Get().(float64),
-		InterferenceLevel:    prefs.InterferenceLevel.Get().(float64),
-		FlickerLevel:         prefs.FlickerLevel.Get().(float64),
-		FringingAmount:       prefs.FringingAmount.Get().(float64),
-		GhostingAmount:       prefs.GhostingAmount.Get().(float64),
-		PhosphorLatency:      prefs.PhosphorLatency.Get().(float64),
-		PhosphorBloom:        prefs.PhosphorBloom.Get().(float64),
-		Sharpness:            prefs.Sharpness.Get().(float64),
-		BlackLevel:           prefs.BlackLevel.Get().(float64),
+		Enabled:              prefs.CRT.Enabled.Get().(bool),
+		PixelPerfectFade:     prefs.CRT.PixelPerfectFade.Get().(float64),
+		Curve:                prefs.CRT.Curve.Get().(bool),
+		RoundedCorners:       prefs.CRT.RoundedCorners.Get().(bool),
+		Bevel:                prefs.CRT.Bevel.Get().(bool),
+		Shine:                prefs.CRT.Shine.Get().(bool),
+		Mask:                 prefs.CRT.Mask.Get().(bool),
+		Scanlines:            prefs.CRT.Scanlines.Get().(bool),
+		Interference:         prefs.CRT.Interference.Get().(bool),
+		Flicker:              prefs.CRT.Flicker.Get().(bool),
+		Fringing:             prefs.CRT.Fringing.Get().(bool),
+		Ghosting:             prefs.CRT.Ghosting.Get().(bool),
+		Phosphor:             prefs.CRT.Phosphor.Get().(bool),
+		CurveAmount:          prefs.CRT.CurveAmount.Get().(float64),
+		RoundedCornersAmount: prefs.CRT.RoundedCornersAmount.Get().(float64),
+		BevelSize:            prefs.CRT.BevelSize.Get().(float64),
+		MaskIntensity:        prefs.CRT.MaskIntensity.Get().(float64),
+		MaskFine:             prefs.CRT.MaskFine.Get().(float64),
+		ScanlinesIntensity:   prefs.CRT.ScanlinesIntensity.Get().(float64),
+		ScanlinesFine:        prefs.CRT.ScanlinesFine.Get().(float64),
+		InterferenceLevel:    prefs.CRT.InterferenceLevel.Get().(float64),
+		FlickerLevel:         prefs.CRT.FlickerLevel.Get().(float64),
+		FringingAmount:       prefs.CRT.FringingAmount.Get().(float64),
+		GhostingAmount:       prefs.CRT.GhostingAmount.Get().(float64),
+		PhosphorLatency:      prefs.CRT.PhosphorLatency.Get().(float64),
+		PhosphorBloom:        prefs.CRT.PhosphorBloom.Get().(float64),
+		Sharpness:            prefs.CRT.Sharpness.Get().(float64),
+		BlackLevel:           prefs.CRT.BlackLevel.Get().(float64),
 
-		Brightness: prefs.Brightness.Get().(float64),
-		Contrast:   prefs.Contrast.Get().(float64),
-		Saturation: prefs.Saturation.Get().(float64),
-		Hue:        prefs.Hue.Get().(float64),
+		Brightness: prefs.Colour.Brightness.Get().(float64),
+		Contrast:   prefs.Colour.Contrast.Get().(float64),
+		Saturation: prefs.Colour.Saturation.Get().(float64),
+		Hue:        prefs.Colour.Hue.Get().(float64),
 	}
 }
 

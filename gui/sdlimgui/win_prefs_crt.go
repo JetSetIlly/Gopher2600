@@ -42,7 +42,7 @@ func (win *winPrefs) drawCRT() {
 	imgui.Separator()
 	imgui.Spacing()
 
-	if imgui.BeginTableV("crtPrefs", 3, imgui.TableFlagsBordersInnerV, imgui.Vec2{}, 1.0) {
+	if imgui.BeginTableV("displayPrefs.CRT", 3, imgui.TableFlagsBordersInnerV, imgui.Vec2{}, 1.0) {
 		imgui.TableSetupColumnV("0", imgui.TableColumnFlagsWidthFixed, 200, 0)
 		imgui.TableSetupColumnV("1", imgui.TableColumnFlagsWidthFixed, 200, 1)
 		imgui.TableSetupColumnV("2", imgui.TableColumnFlagsWidthFixed, 200, 2)
@@ -97,12 +97,12 @@ func (win *winPrefs) drawCRT() {
 }
 
 func (win *winPrefs) drawCurve() {
-	b := win.img.crtPrefs.Curve.Get().(bool)
+	b := win.img.displayPrefs.CRT.Curve.Get().(bool)
 	if imgui.Checkbox("Curve##curve", &b) {
-		win.img.crtPrefs.Curve.Set(b)
+		win.img.displayPrefs.CRT.Curve.Set(b)
 	}
 
-	f := float32(win.img.crtPrefs.CurveAmount.Get().(float64))
+	f := float32(win.img.displayPrefs.CRT.CurveAmount.Get().(float64))
 
 	var label string
 
@@ -115,17 +115,17 @@ func (win *winPrefs) drawCurve() {
 	}
 
 	if imgui.SliderFloatV("##curveamount", &f, 1.0, 0.0, label, 1.0) {
-		win.img.crtPrefs.CurveAmount.Set(f)
+		win.img.displayPrefs.CRT.CurveAmount.Set(f)
 	}
 }
 
 func (win *winPrefs) drawMask() {
-	b := win.img.crtPrefs.Mask.Get().(bool)
+	b := win.img.displayPrefs.CRT.Mask.Get().(bool)
 	if imgui.Checkbox("Shadow Mask##mask", &b) {
-		win.img.crtPrefs.Mask.Set(b)
+		win.img.displayPrefs.CRT.Mask.Set(b)
 	}
 
-	f := float32(win.img.crtPrefs.MaskIntensity.Get().(float64))
+	f := float32(win.img.displayPrefs.CRT.MaskIntensity.Get().(float64))
 
 	var label string
 
@@ -140,10 +140,10 @@ func (win *winPrefs) drawMask() {
 	}
 
 	if imgui.SliderFloatV("##maskintensity", &f, 0.025, 0.125, label, 1.0) {
-		win.img.crtPrefs.MaskIntensity.Set(f)
+		win.img.displayPrefs.CRT.MaskIntensity.Set(f)
 	}
 
-	fine := float32(win.img.crtPrefs.MaskFine.Get().(float64))
+	fine := float32(win.img.displayPrefs.CRT.MaskFine.Get().(float64))
 
 	if fine >= 3.0 {
 		label = "very fine"
@@ -156,17 +156,17 @@ func (win *winPrefs) drawMask() {
 	}
 
 	if imgui.SliderFloatV("##maskfine", &fine, 1.5, 3.5, label, 1.0) {
-		win.img.crtPrefs.MaskFine.Set(fine)
+		win.img.displayPrefs.CRT.MaskFine.Set(fine)
 	}
 }
 
 func (win *winPrefs) drawScanlines() {
-	b := win.img.crtPrefs.Scanlines.Get().(bool)
+	b := win.img.displayPrefs.CRT.Scanlines.Get().(bool)
 	if imgui.Checkbox("Scanlines##scanlines", &b) {
-		win.img.crtPrefs.Scanlines.Set(b)
+		win.img.displayPrefs.CRT.Scanlines.Set(b)
 	}
 
-	f := float32(win.img.crtPrefs.ScanlinesIntensity.Get().(float64))
+	f := float32(win.img.displayPrefs.CRT.ScanlinesIntensity.Get().(float64))
 
 	var label string
 
@@ -181,10 +181,10 @@ func (win *winPrefs) drawScanlines() {
 	}
 
 	if imgui.SliderFloatV("##scanlinesintensity", &f, 0.025, 0.125, label, 1.0) {
-		win.img.crtPrefs.ScanlinesIntensity.Set(f)
+		win.img.displayPrefs.CRT.ScanlinesIntensity.Set(f)
 	}
 
-	fine := float32(win.img.crtPrefs.ScanlinesFine.Get().(float64))
+	fine := float32(win.img.displayPrefs.CRT.ScanlinesFine.Get().(float64))
 
 	if fine > 2.25 {
 		label = "very fine"
@@ -197,17 +197,17 @@ func (win *winPrefs) drawScanlines() {
 	}
 
 	if imgui.SliderFloatV("##scanlinesfine", &fine, 1.5, 2.5, label, 1.0) {
-		win.img.crtPrefs.ScanlinesFine.Set(fine)
+		win.img.displayPrefs.CRT.ScanlinesFine.Set(fine)
 	}
 }
 
 func (win *winPrefs) drawInterference() {
-	b := win.img.crtPrefs.Interference.Get().(bool)
+	b := win.img.displayPrefs.CRT.Interference.Get().(bool)
 	if imgui.Checkbox("Interference##interference", &b) {
-		win.img.crtPrefs.Interference.Set(b)
+		win.img.displayPrefs.CRT.Interference.Set(b)
 	}
 
-	f := float32(win.img.crtPrefs.InterferenceLevel.Get().(float64))
+	f := float32(win.img.displayPrefs.CRT.InterferenceLevel.Get().(float64))
 
 	var label string
 
@@ -222,17 +222,17 @@ func (win *winPrefs) drawInterference() {
 	}
 
 	if imgui.SliderFloatV("##interferencelevel", &f, 0.1, 0.2, label, 1.0) {
-		win.img.crtPrefs.InterferenceLevel.Set(f)
+		win.img.displayPrefs.CRT.InterferenceLevel.Set(f)
 	}
 }
 
 func (win *winPrefs) drawFlicker() {
-	b := win.img.crtPrefs.Flicker.Get().(bool)
+	b := win.img.displayPrefs.CRT.Flicker.Get().(bool)
 	if imgui.Checkbox("Flicker##flicker", &b) {
-		win.img.crtPrefs.Flicker.Set(b)
+		win.img.displayPrefs.CRT.Flicker.Set(b)
 	}
 
-	f := float32(win.img.crtPrefs.FlickerLevel.Get().(float64))
+	f := float32(win.img.displayPrefs.CRT.FlickerLevel.Get().(float64))
 
 	var label string
 
@@ -247,17 +247,17 @@ func (win *winPrefs) drawFlicker() {
 	}
 
 	if imgui.SliderFloatV("##flickerlevel", &f, 0.01, 0.06, label, 1.0) {
-		win.img.crtPrefs.FlickerLevel.Set(f)
+		win.img.displayPrefs.CRT.FlickerLevel.Set(f)
 	}
 }
 
 func (win *winPrefs) drawFringing() {
-	b := win.img.crtPrefs.Fringing.Get().(bool)
+	b := win.img.displayPrefs.CRT.Fringing.Get().(bool)
 	if imgui.Checkbox("Colour Fringing##fringing", &b) {
-		win.img.crtPrefs.Fringing.Set(b)
+		win.img.displayPrefs.CRT.Fringing.Set(b)
 	}
 
-	f := float32(win.img.crtPrefs.FringingAmount.Get().(float64))
+	f := float32(win.img.displayPrefs.CRT.FringingAmount.Get().(float64))
 
 	var label string
 
@@ -272,17 +272,17 @@ func (win *winPrefs) drawFringing() {
 	}
 
 	if imgui.SliderFloatV("##fringingamount", &f, 0.0, 0.6, label, 1.0) {
-		win.img.crtPrefs.FringingAmount.Set(f)
+		win.img.displayPrefs.CRT.FringingAmount.Set(f)
 	}
 }
 
 func (win *winPrefs) drawGhosting() {
-	b := win.img.crtPrefs.Ghosting.Get().(bool)
+	b := win.img.displayPrefs.CRT.Ghosting.Get().(bool)
 	if imgui.Checkbox("Ghosting##ghosting", &b) {
-		win.img.crtPrefs.Ghosting.Set(b)
+		win.img.displayPrefs.CRT.Ghosting.Set(b)
 	}
 
-	f := float32(win.img.crtPrefs.GhostingAmount.Get().(float64))
+	f := float32(win.img.displayPrefs.CRT.GhostingAmount.Get().(float64))
 
 	var label string
 
@@ -297,20 +297,20 @@ func (win *winPrefs) drawGhosting() {
 	}
 
 	if imgui.SliderFloatV("##ghostingamount", &f, 0.0, 4.5, label, 1.0) {
-		win.img.crtPrefs.GhostingAmount.Set(f)
+		win.img.displayPrefs.CRT.GhostingAmount.Set(f)
 	}
 }
 
 func (win *winPrefs) drawPhosphor() {
-	b := win.img.crtPrefs.Phosphor.Get().(bool)
+	b := win.img.displayPrefs.CRT.Phosphor.Get().(bool)
 	if imgui.Checkbox("Phosphor##phosphor", &b) {
-		win.img.crtPrefs.Phosphor.Set(b)
+		win.img.displayPrefs.CRT.Phosphor.Set(b)
 	}
 
 	var label string
 
 	// latency
-	f := float32(win.img.crtPrefs.PhosphorLatency.Get().(float64))
+	f := float32(win.img.displayPrefs.CRT.PhosphorLatency.Get().(float64))
 
 	if f > 0.7 {
 		label = "very slow"
@@ -323,11 +323,11 @@ func (win *winPrefs) drawPhosphor() {
 	}
 
 	if imgui.SliderFloatV("##phosphorlatency", &f, 0.9, 0.1, label, 1.0) {
-		win.img.crtPrefs.PhosphorLatency.Set(f)
+		win.img.displayPrefs.CRT.PhosphorLatency.Set(f)
 	}
 
 	// bloom
-	g := float32(win.img.crtPrefs.PhosphorBloom.Get().(float64))
+	g := float32(win.img.displayPrefs.CRT.PhosphorBloom.Get().(float64))
 
 	if g > 1.70 {
 		label = "very high bloom"
@@ -340,12 +340,12 @@ func (win *winPrefs) drawPhosphor() {
 	}
 
 	if imgui.SliderFloatV("##phosphorbloom", &g, 0.20, 2.20, label, 1.0) {
-		win.img.crtPrefs.PhosphorBloom.Set(g)
+		win.img.displayPrefs.CRT.PhosphorBloom.Set(g)
 	}
 }
 
 func (win *winPrefs) drawSharpness() {
-	f := float32(win.img.crtPrefs.Sharpness.Get().(float64))
+	f := float32(win.img.displayPrefs.CRT.Sharpness.Get().(float64))
 
 	var label string
 
@@ -360,14 +360,14 @@ func (win *winPrefs) drawSharpness() {
 	}
 
 	if imgui.SliderFloatV("##sharpness", &f, 0.1, 1.1, label, 1.0) {
-		win.img.crtPrefs.Sharpness.Set(f)
+		win.img.displayPrefs.CRT.Sharpness.Set(f)
 	}
 }
 
 func (win *winPrefs) drawBlackLevel() {
 	imgui.Text("Black Level")
 
-	f := float32(win.img.crtPrefs.BlackLevel.Get().(float64))
+	f := float32(win.img.displayPrefs.CRT.BlackLevel.Get().(float64))
 
 	var label string
 
@@ -380,17 +380,17 @@ func (win *winPrefs) drawBlackLevel() {
 	}
 
 	if imgui.SliderFloatV("##blacklevel", &f, 0.00, 0.20, label, 1.0) {
-		win.img.crtPrefs.BlackLevel.Set(f)
+		win.img.displayPrefs.CRT.BlackLevel.Set(f)
 	}
 }
 
 func (win *winPrefs) drawRoundedCorners() {
-	b := win.img.crtPrefs.RoundedCorners.Get().(bool)
+	b := win.img.displayPrefs.CRT.RoundedCorners.Get().(bool)
 	if imgui.Checkbox("Rounded Corners##roundedcorners", &b) {
-		win.img.crtPrefs.RoundedCorners.Set(b)
+		win.img.displayPrefs.CRT.RoundedCorners.Set(b)
 	}
 
-	f := float32(win.img.crtPrefs.RoundedCornersAmount.Get().(float64))
+	f := float32(win.img.displayPrefs.CRT.RoundedCornersAmount.Get().(float64))
 
 	var label string
 
@@ -405,17 +405,17 @@ func (win *winPrefs) drawRoundedCorners() {
 	}
 
 	if imgui.SliderFloatV("##roundedcornersamount", &f, 0.02, 0.09, label, 1.0) {
-		win.img.crtPrefs.RoundedCornersAmount.Set(f)
+		win.img.displayPrefs.CRT.RoundedCornersAmount.Set(f)
 	}
 }
 
 func (win *winPrefs) drawBevel() {
-	b := win.img.crtPrefs.Bevel.Get().(bool)
+	b := win.img.displayPrefs.CRT.Bevel.Get().(bool)
 	if imgui.Checkbox("Bevel##bevel", &b) {
-		win.img.crtPrefs.Bevel.Set(b)
+		win.img.displayPrefs.CRT.Bevel.Set(b)
 	}
 
-	f := float32(win.img.crtPrefs.BevelSize.Get().(float64))
+	f := float32(win.img.displayPrefs.CRT.BevelSize.Get().(float64))
 
 	var label string
 
@@ -430,24 +430,24 @@ func (win *winPrefs) drawBevel() {
 	}
 
 	if imgui.SliderFloatV("##bevelSize", &f, 0.005, 0.025, label, 1.0) {
-		win.img.crtPrefs.BevelSize.Set(f)
+		win.img.displayPrefs.CRT.BevelSize.Set(f)
 	}
 }
 
 func (win *winPrefs) drawShine() {
-	b := win.img.crtPrefs.Shine.Get().(bool)
+	b := win.img.displayPrefs.CRT.Shine.Get().(bool)
 	if imgui.Checkbox("Shine##shine", &b) {
-		win.img.crtPrefs.Shine.Set(b)
+		win.img.displayPrefs.CRT.Shine.Set(b)
 	}
 }
 
 func (win *winPrefs) drawPixelPerfect() bool {
-	b := !win.img.crtPrefs.Enabled.Get().(bool)
+	b := !win.img.displayPrefs.CRT.Enabled.Get().(bool)
 	if imgui.Checkbox("Pixel Perfect##pixelpefect", &b) {
-		win.img.crtPrefs.Enabled.Set(!b)
+		win.img.displayPrefs.CRT.Enabled.Set(!b)
 	}
 
-	if win.img.crtPrefs.Enabled.Get().(bool) {
+	if win.img.displayPrefs.CRT.Enabled.Get().(bool) {
 		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
 		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
 		defer imgui.PopStyleVar()
@@ -456,7 +456,7 @@ func (win *winPrefs) drawPixelPerfect() bool {
 
 	imgui.SameLineV(0, 25)
 
-	f := float32(win.img.crtPrefs.PixelPerfectFade.Get().(float64))
+	f := float32(win.img.displayPrefs.CRT.PixelPerfectFade.Get().(float64))
 
 	var label string
 	if f > 0.7 {
@@ -471,7 +471,7 @@ func (win *winPrefs) drawPixelPerfect() bool {
 
 	imgui.PushItemWidth(imguiRemainingWinWidth() * 0.75)
 	if imgui.SliderFloatV("##pixelperfectfade", &f, 0.0, 0.9, label, 1.0) {
-		win.img.crtPrefs.PixelPerfectFade.Set(f)
+		win.img.displayPrefs.CRT.PixelPerfectFade.Set(f)
 	}
 	imgui.PopItemWidth()
 
@@ -484,7 +484,7 @@ available when 'Pixel Perfect' mode is disabled.`)
 
 func (win *winPrefs) drawVSYNC() {
 	imguiLabel("Recovery")
-	recovery := int32(win.img.crtPrefs.VSyncRecovery.Get().(int))
+	recovery := int32(win.img.displayPrefs.CRT.VSyncRecovery.Get().(int))
 	var label string
 	if recovery == 0 {
 		label = "sync immediately"
@@ -493,7 +493,7 @@ func (win *winPrefs) drawVSYNC() {
 	}
 
 	if imgui.SliderIntV("##vsyncRecovery", &recovery, 0, 20, label, 1.0) {
-		win.img.crtPrefs.VSyncRecovery.Set(recovery)
+		win.img.displayPrefs.CRT.VSyncRecovery.Set(recovery)
 	}
 	win.img.imguiTooltipSimple(`The number of frames required for
 the TV to recover after desynchronisation`)
@@ -501,7 +501,7 @@ the TV to recover after desynchronisation`)
 	imgui.SameLineV(0, 15)
 
 	imguiLabel("Sensitivity")
-	sensitivity := int32(win.img.crtPrefs.VSyncSensitivity.Get().(int))
+	sensitivity := int32(win.img.displayPrefs.CRT.VSyncSensitivity.Get().(int))
 	if sensitivity == 1 {
 		label = fmt.Sprintf("%d scanline", sensitivity)
 	} else {
@@ -509,7 +509,7 @@ the TV to recover after desynchronisation`)
 	}
 
 	if imgui.SliderIntV("##vsyncSensitivity", &sensitivity, 0, 4, label, 1.0) {
-		win.img.crtPrefs.VSyncSensitivity.Set(sensitivity)
+		win.img.displayPrefs.CRT.VSyncSensitivity.Set(sensitivity)
 	}
 
 	win.img.imguiTooltipSimple(`The number of scanlines that VSYNC

@@ -22,8 +22,11 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
-func (win *winPrefs) drawTV() {
+func (win *winPrefs) drawColour() {
 	imgui.Spacing()
+
+	imgui.PushItemWidth(400)
+	defer imgui.PopItemWidth()
 
 	win.drawBrightness()
 	imgui.Spacing()
@@ -35,51 +38,63 @@ func (win *winPrefs) drawTV() {
 }
 
 func (win *winPrefs) drawBrightness() {
+	imgui.BeginGroup()
+	defer imgui.EndGroup()
+
 	imgui.Text(fmt.Sprintf("%c Brightness", fonts.TVBrightness))
 
-	f := float32(win.img.crtPrefs.Brightness.Get().(float64))
+	f := float32(win.img.displayPrefs.Colour.Brightness.Get().(float64))
 
 	minv := float32(0.1)
 	maxv := float32(1.90)
 	label := fmt.Sprintf("%.0f", 100*(f-minv)/(maxv-minv))
 
 	if imgui.SliderFloatV("##brightness", &f, minv, maxv, label, imgui.SliderFlagsNone) {
-		win.img.crtPrefs.Brightness.Set(f)
+		win.img.displayPrefs.Colour.Brightness.Set(f)
 	}
 }
 
 func (win *winPrefs) drawContrast() {
+	imgui.BeginGroup()
+	defer imgui.EndGroup()
+
 	imgui.Text(fmt.Sprintf("%c Contrast", fonts.TVContrast))
 
-	f := float32(win.img.crtPrefs.Contrast.Get().(float64))
+	f := float32(win.img.displayPrefs.Colour.Contrast.Get().(float64))
 
 	minv := float32(0.1)
 	maxv := float32(1.90)
 	label := fmt.Sprintf("%.0f", 100*(f-minv)/(maxv-minv))
 
 	if imgui.SliderFloatV("##contrast", &f, minv, maxv, label, imgui.SliderFlagsNone) {
-		win.img.crtPrefs.Contrast.Set(f)
+		win.img.displayPrefs.Colour.Contrast.Set(f)
 	}
 }
 
 func (win *winPrefs) drawSaturation() {
+	imgui.BeginGroup()
+	defer imgui.EndGroup()
+
 	imgui.Text(fmt.Sprintf("%c Saturation", fonts.TVSaturation))
 
-	f := float32(win.img.crtPrefs.Saturation.Get().(float64))
+	f := float32(win.img.displayPrefs.Colour.Saturation.Get().(float64))
 
 	minv := float32(0.1)
 	maxv := float32(1.90)
 	label := fmt.Sprintf("%.0f", 100*(f-minv)/(maxv-minv))
 
 	if imgui.SliderFloatV("##saturation", &f, minv, maxv, label, imgui.SliderFlagsNone) {
-		win.img.crtPrefs.Saturation.Set(f)
+		win.img.displayPrefs.Colour.Saturation.Set(f)
 	}
 }
 
 func (win *winPrefs) drawHue() {
+	imgui.BeginGroup()
+	defer imgui.EndGroup()
+
 	imgui.Text(fmt.Sprintf("%c Hue", fonts.TVHue))
 
-	f := float32(win.img.crtPrefs.Hue.Get().(float64))
+	f := float32(win.img.displayPrefs.Colour.Hue.Get().(float64))
 
 	minv := float32(-0.99)
 	maxv := float32(0.99)
@@ -88,6 +103,6 @@ func (win *winPrefs) drawHue() {
 	label := fmt.Sprintf("%.0f\u00b0", (f+minv+maxv)/(aminv+amaxv)*360)
 
 	if imgui.SliderFloatV("##hue", &f, minv, maxv, label, imgui.SliderFlagsNone) {
-		win.img.crtPrefs.Hue.Set(f)
+		win.img.displayPrefs.Colour.Hue.Set(f)
 	}
 }

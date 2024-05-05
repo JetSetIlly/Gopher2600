@@ -433,8 +433,8 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 
 	// set VSYNC recover value if number of vsync scanlines is insufficient. we
 	// only do this is TV is stable
-	if frameInfo.Stable && frameInfo.VSyncScanlines < scr.img.crtPrefs.VSyncSensitivity.Get().(int) {
-		scr.crit.vsyncRecover = scr.img.crtPrefs.VSyncRecovery.Get().(int)
+	if frameInfo.Stable && frameInfo.VSyncScanlines < scr.img.displayPrefs.CRT.VSyncSensitivity.Get().(int) {
+		scr.crit.vsyncRecover = scr.img.displayPrefs.CRT.VSyncRecovery.Get().(int)
 	} else if scr.crit.vsyncRecover >= 0 {
 		scr.crit.vsyncRecover--
 	}

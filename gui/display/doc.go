@@ -13,6 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package CRT contains non-gui-specific and non-VCS-specific information. The
-// CRT package is conceptually different to the television package.
-package crt
+// Package display specifies the preference values for the displaying of a TV
+// image by a GUI. The types in this package are intended to be agnostic of
+// which GUI system is being used.
+package display

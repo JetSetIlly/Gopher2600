@@ -143,7 +143,7 @@ func (win *playScr) setScaling() {
 	}
 
 	// limit scaling to whole integers
-	if win.img.crtPrefs == nil || win.img.crtPrefs.IntegerScaling.Get().(bool) {
+	if win.img.displayPrefs == nil || win.img.displayPrefs.CRT.IntegerScaling.Get().(bool) {
 		scaling = float32(int(scaling))
 	}
 
