@@ -143,7 +143,7 @@ var commandTemplate = []string{
 
 	// emulation
 	cmdLog + " (LAST|RECENT|CLEAR)",
-	cmdMemUsage,
+	cmdMemUsage + " (PROFILE)",
 	cmdVersion + " (REVISION)",
 }
 

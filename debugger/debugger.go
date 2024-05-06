@@ -21,6 +21,8 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"runtime"
+	"runtime/pprof"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -1489,7 +1491,7 @@ func (dbg *Debugger) InsertCartridge(filename string) {
 }
 
 // GetLiveDisasmEntry returns the formatted disasembly entry of the last CPU
-// execution and the bank information
+// execution and the bank informations.String())
 func (dbg *Debugger) GetLiveDisasmEntry() disassembly.Entry {
 	if dbg.liveDisasmEntry == nil {
 		return disassembly.Entry{}
@@ -1501,4 +1503,24 @@ func (dbg *Debugger) GetLiveDisasmEntry() disassembly.Entry {
 // GetCoProcBus returns the interface to a cartridge's coprocessor
 func (dbg *Debugger) GetCoProcBus() coprocessor.CartCoProcBus {
 	return dbg.vcs.Mem.Cart.GetCoProcBus()
+}
+
+// memoryProfile forces a garbage collection event and takes a runtime memory
+// profile and saves it to the working directory
+func (dbg *Debugger) memoryProfile() (string, error) {
+	fn := unique.Filename("", dbg.cartload.Name)
+	fn = fmt.Sprintf("%s_mem.profile", fn)
+
+	f, err := os.Create(fn)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	runtime.GC()
+	err = pprof.WriteHeapProfile(f)
+	if err != nil {
+		return "", err
+	}
+	return fn, nil
 }

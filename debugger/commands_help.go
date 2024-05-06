@@ -532,6 +532,8 @@ Note that while "ONSTEP LOG LAST" is a valid construct it may not print what you
 log entry after every step, even if the last log entry is not new. "ONSTEP LOG LAST; LOG CLEAR" is maybe more intuitive
 but with the maybe unwanted side effect of clearing the log.`,
 
-	cmdMemUsage: "Print memory usage information",
-	cmdVersion:  "Print version information for the emulator",
+	cmdMemUsage: `Print memory usage information. The PROFILE option will save a pprof file in
+the working directory.`,
+
+	cmdVersion: "Print version information for the emulator",
 }

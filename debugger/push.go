@@ -81,3 +81,16 @@ func (dbg *Debugger) PushPropertyLookup(hashMD5 string, result chan properties.E
 		result <- e
 	})
 }
+
+// PushMemoryProfile forces a garbage collection event and takes a runtime
+// memory profile and saves it to the working directory
+func (dbg *Debugger) PushMemoryProfile() {
+	dbg.PushFunctionImmediate(func() {
+		fn, err := dbg.memoryProfile()
+		if err != nil {
+			logger.Logf(logger.Allow, "memory profiling", err.Error())
+			return
+		}
+		logger.Logf(logger.Allow, "memory profiling", "saved to %s", fn)
+	})
+}

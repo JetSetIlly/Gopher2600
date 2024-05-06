@@ -2109,17 +2109,30 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 	case cmdMemUsage:
-		var m runtime.MemStats
-		runtime.ReadMemStats(&m)
+		option, ok := tokens.Get()
+		if ok {
+			option = strings.ToUpper(option)
+			switch option {
+			case "PROFILE":
+				fn, err := dbg.memoryProfile()
+				if err != nil {
+					return err
+				}
+				dbg.printLine(terminal.StyleLog, fmt.Sprintf("memory profile written to %s", fn))
+			}
+		} else {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
 
-		s := strings.Builder{}
+			s := strings.Builder{}
 
-		s.WriteString(fmt.Sprintf("Alloc = %v MB\n", m.Alloc/1048576))
-		s.WriteString(fmt.Sprintf("  TotalAlloc = %v MB\n", m.TotalAlloc/1048576))
-		s.WriteString(fmt.Sprintf("  Sys = %v MB\n", m.Sys/1048576))
-		s.WriteString(fmt.Sprintf("  NumGC = %v", m.NumGC))
+			s.WriteString(fmt.Sprintf("Alloc = %v MB\n", m.Alloc/1048576))
+			s.WriteString(fmt.Sprintf("  TotalAlloc = %v MB\n", m.TotalAlloc/1048576))
+			s.WriteString(fmt.Sprintf("  Sys = %v MB\n", m.Sys/1048576))
+			s.WriteString(fmt.Sprintf("  NumGC = %v", m.NumGC))
 
-		dbg.printLine(terminal.StyleLog, s.String())
+			dbg.printLine(terminal.StyleLog, s.String())
+		}
 
 	case cmdVersion:
 		dbg.printLine(terminal.StyleLog, version.Version)
