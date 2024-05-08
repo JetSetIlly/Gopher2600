@@ -1,19 +1,25 @@
 diff --git a/go.mod b/go.mod
-index ee7d106cb..ef953f3df 100644
+index 7575b599c..adfee04bf 100644
 --- a/go.mod
 +++ b/go.mod
-@@ -15,4 +15,8 @@ require (
- 	golang.org/x/sys v0.8.0
+@@ -3,6 +3,7 @@ module github.com/jetsetilly/gopher2600
+ go 1.22.0
+ 
+ require (
++	github.com/arl/statsviz v0.6.0
+ 	github.com/go-audio/audio v1.0.0
+ 	github.com/go-audio/wav v1.1.0
+ 	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6
+@@ -17,6 +18,7 @@ require (
+ 
+ require (
+ 	github.com/go-audio/riff v1.0.0 // indirect
++	github.com/gorilla/websocket v1.5.0 // indirect
+ 	github.com/kylelemons/godebug v1.1.0 // indirect
  )
  
--require github.com/go-audio/riff v1.0.0 // indirect
-+require (
-+	github.com/arl/statsviz v0.6.0 // indirect
-+	github.com/go-audio/riff v1.0.0 // indirect
-+	github.com/gorilla/websocket v1.5.0 // indirect
-+)
 diff --git a/go.sum b/go.sum
-index f7a11b810..128def96d 100644
+index d610ef91e..8e6f0975c 100644
 --- a/go.sum
 +++ b/go.sum
 @@ -1,3 +1,5 @@
@@ -28,9 +34,24 @@ index f7a11b810..128def96d 100644
  github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6/go.mod h1:9YTyiznxEY1fVinfM7RvRcjRHbw2xLBJ3AAGIT0I4Nw=
 +github.com/gorilla/websocket v1.5.0 h1:PPwGk2jz7EePpoHN/+ClbZu8SPxiqlu12wZP/3sWmnc=
 +github.com/gorilla/websocket v1.5.0/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
- github.com/hajimehoshi/go-mp3 v0.3.3 h1:cWnfRdpye2m9ElSoVqneYRcpt/l3ijttgjMeQh+r+FE=
- github.com/hajimehoshi/go-mp3 v0.3.3/go.mod h1:qMJj/CSDxx6CGHiZeCgbiq2DSUkbK0UbtXShQcnfyMM=
  github.com/hajimehoshi/go-mp3 v0.3.4 h1:NUP7pBYH8OguP4diaTZ9wJbUbk3tC0KlfzsEpWmYj68=
+ github.com/hajimehoshi/go-mp3 v0.3.4/go.mod h1:fRtZraRFcWb0pu7ok0LqyFhCUrPeMsGRSVop0eemFmo=
+ github.com/hajimehoshi/oto/v2 v2.3.1/go.mod h1:seWLbgHH7AyUMYKfKYT9pg7PhUu9/SisyJvNTT+ASQo=
+@@ -19,6 +23,8 @@ github.com/pkg/term v1.1.0 h1:xIAAdCMh3QIAy+5FrE8Ad8XoDhEU4ufwbaSozViP9kk=
+ github.com/pkg/term v1.1.0/go.mod h1:E25nymQcrSllhX42Ok8MRm1+hyBdHY0dCeiKZ9jpNGw=
+ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
+ github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
++github.com/rogpeppe/go-internal v1.11.0 h1:cWPaGQEPrBb5/AsnsZesgZZ9yb1OQ+GOISoDNXVBh4M=
++github.com/rogpeppe/go-internal v1.11.0/go.mod h1:ddIwULY96R17DhadqLgMfk9H9tvdUzkipdSkR5nkCZA=
+ github.com/sahilm/fuzzy v0.1.0 h1:FzWGaw2Opqyu+794ZQ9SYifWv2EIXpwP4q8dY1kDAwI=
+ github.com/sahilm/fuzzy v0.1.0/go.mod h1:VFvziUEIMCrT6A6tw2RFIXPXXmzXbOsSHF0DOI8ZK9Y=
+ github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
+@@ -32,3 +38,5 @@ golang.org/x/sys v0.0.0-20200909081042-eff7692f9009/go.mod h1:h1NjWce9XRLGQEsW7w
+ golang.org/x/sys v0.0.0-20220712014510-0a85c31ab51e/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+ golang.org/x/sys v0.8.0 h1:EBmGv8NaZBZTWvrbjNoL6HVt+IVy3QDQpJs7VRIw3tU=
+ golang.org/x/sys v0.8.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
++golang.org/x/tools v0.1.12 h1:VveCTK38A2rkS8ZqFY25HIDFscX5X9OoEhJd3quQmXU=
++golang.org/x/tools v0.1.12/go.mod h1:hNGJHUnrk76NpqgfD5Aqm5Crs+Hm0VOH/i9J2+nxYbc=
 diff --git a/gopher2600.go b/gopher2600.go
 index a3294cbc6..0f0795f68 100644
 --- a/gopher2600.go

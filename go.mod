@@ -15,4 +15,9 @@ require (
 	golang.org/x/sys v0.8.0
 )
 
-require github.com/go-audio/riff v1.0.0 // indirect
+require (
+	github.com/go-audio/riff v1.0.0 // indirect
+	github.com/kylelemons/godebug v1.1.0 // indirect
+)
+
+replace github.com/inkyblackness/imgui-go/v4 v4.7.0 => github.com/jetsetilly/imgui-go/v4 v4.7.1
