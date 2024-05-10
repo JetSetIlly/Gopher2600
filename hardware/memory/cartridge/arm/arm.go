@@ -199,6 +199,11 @@ func (s *ARMState) Snapshot() *ARMState {
 func (s *ARMState) Plumb(env *environment.Environment) {
 	s.mam.Plumb(env)
 	s.rng.Plumb(env)
+
+	// force reset of program memory
+	s.programMemory = nil
+	s.programMemoryOrigin = 0
+	s.programMemoryMemtop = 0
 }
 
 // ARM implements the ARM7TDMI-S LPC2103 processor.
