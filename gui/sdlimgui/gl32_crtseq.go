@@ -194,9 +194,13 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 	phosphorPasses := 1
 
 	// make sure our framebuffer is correct. if framebuffer has changed then
-	// alter the phosphor/fade options
+	// don't continue with processing
+	//
+	// this prevents weird artefacts appearing on the screen - the single frame
+	// of not drawing the screen is preferable to the artefacts, which can be
+	// confusing
 	if sh.seq.Setup(env.width, env.height) {
-		phosphorPasses = 3
+		return env.srcTextureID
 	}
 
 	// sharpen image
