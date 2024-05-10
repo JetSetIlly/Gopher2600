@@ -91,9 +91,10 @@ type resizer struct {
 	// gives time for the screen to settle down.
 	pendingCt int
 
-	// noShrinkage prevents the resizer from ever reducing the size of the
-	// visible area
-	noShrinkage bool
+	// if the resizer has a "preset frame info" then those values are used as
+	// initial values for the resizer
+	presetFrameInfo    FrameInfo
+	hasPresetFrameInfo bool
 }
 
 // set resizer's top/bottom values to equal tv top/bottom values.
@@ -102,7 +103,7 @@ func (sr *resizer) initialise(tv *Television) {
 	sr.vblankBottom = tv.state.frameInfo.VisibleBottom
 	sr.pendingTop = tv.state.frameInfo.VisibleTop
 	sr.pendingBottom = tv.state.frameInfo.VisibleBottom
-	sr.noShrinkage = false
+	sr.hasPresetFrameInfo = false
 }
 
 // examine signal for resizing possiblity. this is an expensive operation to do
@@ -129,7 +130,7 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 
 	// if VBLANK is off then update the top/bottom values note
 	if sig&signal.VBlank != signal.VBlank {
-		if tv.state.frameInfo.Stable || sr.noShrinkage {
+		if tv.state.frameInfo.Stable || sr.hasPresetFrameInfo {
 			if tv.state.scanline < sr.vblankTop &&
 				tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop {
 				sr.vblankTop = tv.state.scanline
@@ -260,33 +261,45 @@ func (sr *resizer) commit(tv *Television) error {
 
 	// sanity check before we do anything drastic
 	if tv.state.frameInfo.VisibleTop < tv.state.frameInfo.VisibleBottom {
-		// clamp top/bottom scanline to safe values
-		if sr.pendingTop < tv.state.frameInfo.Spec.NewSafeVisibleTop {
-			sr.pendingTop = tv.state.frameInfo.Spec.NewSafeVisibleTop
-		} else if sr.pendingTop > tv.state.frameInfo.Spec.AtariSafeVisibleTop {
-			sr.pendingTop = tv.state.frameInfo.Spec.AtariSafeVisibleTop
-		}
-		if sr.pendingBottom > tv.state.frameInfo.Spec.NewSafeVisibleBottom {
-			sr.pendingBottom = tv.state.frameInfo.Spec.NewSafeVisibleBottom
-		} else if sr.pendingBottom < tv.state.frameInfo.Spec.AtariSafeVisibleBottom {
-			sr.pendingBottom = tv.state.frameInfo.Spec.AtariSafeVisibleBottom
+
+		// clamp top value if it is being changed. clamping makes sure that the
+		// VisibleTop value is between the atari and new safe values
+		if tv.state.frameInfo.VisibleTop != sr.pendingTop {
+			if sr.pendingTop < tv.state.frameInfo.Spec.NewSafeVisibleTop {
+				sr.pendingTop = tv.state.frameInfo.Spec.NewSafeVisibleTop
+			} else if sr.pendingTop > tv.state.frameInfo.Spec.AtariSafeVisibleTop {
+				sr.pendingTop = tv.state.frameInfo.Spec.AtariSafeVisibleTop
+			}
+			tv.state.frameInfo.VisibleTop = sr.pendingTop
 		}
 
-		// update visible top/bottom values
-		tv.state.frameInfo.VisibleTop = sr.pendingTop
-		tv.state.frameInfo.VisibleBottom = sr.pendingBottom
+		// clamp bottom value if it is being changed. clamping makes sure that
+		// the VisibleBottom value is between the atari and new safe values
+		if tv.state.frameInfo.VisibleBottom != sr.pendingBottom {
+			if sr.pendingBottom > tv.state.frameInfo.Spec.NewSafeVisibleBottom {
+				sr.pendingBottom = tv.state.frameInfo.Spec.NewSafeVisibleBottom
+			} else if sr.pendingBottom < tv.state.frameInfo.Spec.AtariSafeVisibleBottom {
+				sr.pendingBottom = tv.state.frameInfo.Spec.AtariSafeVisibleBottom
+			}
+			tv.state.frameInfo.VisibleBottom = sr.pendingBottom
+		}
 	}
 
 	return nil
 }
 
-// set visible forces the resizer to the values of the supplied frame info
-func (sr *resizer) setVisible(info FrameInfo) {
-	sr.noShrinkage = true
+// force the resizer to the values of the supplied frame info
+func (sr *resizer) setPresetFrameInfo(tv *Television, info FrameInfo) {
+	sr.hasPresetFrameInfo = true
+	sr.presetFrameInfo = info
+
 	sr.vblankTop = info.VisibleTop
 	sr.vblankBottom = info.VisibleBottom
 	sr.blackTop = info.VisibleTop
 	sr.blackBottom = info.VisibleBottom
 	sr.pendingTop = info.VisibleTop
 	sr.pendingBottom = info.VisibleBottom
+
+	tv.state.frameInfo.VisibleTop = info.VisibleTop
+	tv.state.frameInfo.VisibleBottom = info.VisibleBottom
 }

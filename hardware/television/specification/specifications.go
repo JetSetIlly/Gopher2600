@@ -269,10 +269,10 @@ func init() {
 	// - Spike's Peak likes a bottom scanline of 250 (NTSC). this is the largest requirement I've seen.
 	SpecNTSC.NewSafeVisibleTop = 23
 	SpecNTSC.NewSafeVisibleBottom = 250
-	SpecPAL.NewSafeVisibleTop = SpecPAL.AtariSafeVisibleTop
-	SpecPAL.NewSafeVisibleBottom = SpecPAL.AtariSafeVisibleBottom
-	SpecPALM.NewSafeVisibleTop = SpecPALM.AtariSafeVisibleTop
-	SpecPALM.NewSafeVisibleBottom = SpecPALM.AtariSafeVisibleBottom
-	SpecSECAM.NewSafeVisibleTop = SpecSECAM.AtariSafeVisibleTop
-	SpecSECAM.NewSafeVisibleBottom = SpecSECAM.AtariSafeVisibleBottom
+	SpecPAL.NewSafeVisibleTop = 30
+	SpecPAL.NewSafeVisibleBottom = 299
+	SpecPALM.NewSafeVisibleTop = 20
+	SpecPALM.NewSafeVisibleBottom = 249
+	SpecSECAM.NewSafeVisibleTop = 30
+	SpecSECAM.NewSafeVisibleBottom = 299
 }

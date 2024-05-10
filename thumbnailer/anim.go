@@ -236,7 +236,7 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, numFrames int, monitor
 		// run preview some more in order to get excellent frame information
 		err = thmb.preview.Run(cartload)
 		if err == nil || errors.Is(err, cartridgeloader.NoFilename) {
-			thmb.vcs.TV.SetVisible(thmb.preview.Results().FrameInfo)
+			thmb.vcs.TV.SetPresetFrameInfo(thmb.preview.Results().FrameInfo)
 		}
 
 		// indicate that the second part of the preview has completed

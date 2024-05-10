@@ -987,11 +987,9 @@ func (tv *Television) SetRotation(rotation specification.Rotation) {
 	}
 }
 
-// SetVisible uses the supplied FrameInfo to set the visible boundaries for the
-// television. This is useful if the visible area of the ROM is known ahead of
-// time and can help prevent ugly resizing in a pixel renderer
-func (tv *Television) SetVisible(info FrameInfo) {
-	tv.state.resizer.setVisible(info)
-	tv.state.frameInfo.VisibleTop = info.VisibleTop
-	tv.state.frameInfo.VisibleBottom = info.VisibleBottom
+// SetPresetFrameInfo uses the supplied FrameInfo to set the visible boundaries
+// for the television. This is useful if the visible area of the ROM is known
+// ahead of time and can help prevent ugly resizing in a pixel renderer
+func (tv *Television) SetPresetFrameInfo(info FrameInfo) {
+	tv.state.resizer.setPresetFrameInfo(tv, info)
 }

@@ -1242,7 +1242,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 			return err
 		}
 	}
-	dbg.vcs.TV.SetVisible(dbg.preview.Results().FrameInfo)
+	dbg.vcs.TV.SetPresetFrameInfo(dbg.preview.Results().FrameInfo)
 	cartload.Seek(0, io.SeekStart)
 
 	// activate bot if possible
