@@ -193,14 +193,14 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 	// phosphor draw
 	phosphorPasses := 1
 
-	// make sure our framebuffer is correct. if framebuffer has changed then
-	// don't continue with processing
-	//
-	// this prevents weird artefacts appearing on the screen - the single frame
-	// of not drawing the screen is preferable to the artefacts, which can be
-	// confusing
+	// make sure our framebuffer is correct
 	if sh.seq.Setup(env.width, env.height) {
-		return env.srcTextureID
+		// if the change in framebuffer size is significant then graphical
+		// artefacts can sometimes be seen. a possible solution to this is to
+		// curtail the processing and return from the function here but this
+		// results in a blank frame being rendered, which is just an artefact of
+		// a different type
+		phosphorPasses = 3
 	}
 
 	// sharpen image
