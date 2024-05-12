@@ -20,9 +20,6 @@ import _ "embed"
 //go:embed "straight.vert"
 var StraightVertexShader []byte
 
-//go:embed "yflip.vert"
-var YFlipVertexShader []byte
-
 //go:embed "gui.frag"
 var GUIShader []byte
 

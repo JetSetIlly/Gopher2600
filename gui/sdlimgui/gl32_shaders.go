@@ -37,17 +37,14 @@ type shaderEnvironment struct {
 	// the function used to trigger the shader program
 	draw func()
 
-	// vertex projection
-	presentationProj [4][4]float32
+	// projection
+	projMtx [4][4]float32
 
-	// projection to use for texture-to-texture processing
-	internalProj [4][4]float32
-
-	// whether to use the internalProj matrix
-	useInternalProj bool
+	// whether to flip the Y coordinates of the texture when rendering
+	flipY bool
 
 	// the texture the shader will work with
-	srcTextureID uint32
+	textureID uint32
 
 	// width and height of texture. optional depending on the shader
 	width  int32
@@ -67,6 +64,7 @@ type shader struct {
 
 	// vertex
 	projMtx  int32 // uniform
+	flipY    int32 // uniform
 	position int32
 	uv       int32
 	color    int32
@@ -86,15 +84,12 @@ func (sh *shader) setAttributes(env shaderEnvironment) {
 	gl.UseProgram(sh.handle)
 
 	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindTexture(gl.TEXTURE_2D, env.srcTextureID)
+	gl.BindTexture(gl.TEXTURE_2D, env.textureID)
 	gl.Uniform1i(sh.texture, 0)
 
-	if env.useInternalProj {
-		gl.UniformMatrix4fv(sh.projMtx, 1, false, &env.internalProj[0][0])
-	} else {
-		gl.UniformMatrix4fv(sh.projMtx, 1, false, &env.presentationProj[0][0])
-	}
 	gl.BindSampler(0, 0) // Rely on combined texture/sampler state.
+	gl.UniformMatrix4fv(sh.projMtx, 1, false, &env.projMtx[0][0])
+	gl.Uniform1i(sh.flipY, boolToInt32(env.flipY))
 
 	gl.EnableVertexAttribArray(uint32(sh.uv))
 	gl.EnableVertexAttribArray(uint32(sh.position))
@@ -154,6 +149,7 @@ func (sh *shader) createProgram(vertProgram string, fragProgram ...string) {
 
 	// get references to shader attributes and uniforms variables
 	sh.projMtx = gl.GetUniformLocation(sh.handle, gl.Str("ProjMtx"+"\x00"))
+	sh.flipY = gl.GetUniformLocation(sh.handle, gl.Str("FlipY"+"\x00"))
 	sh.position = gl.GetAttribLocation(sh.handle, gl.Str("Position"+"\x00"))
 	sh.uv = gl.GetAttribLocation(sh.handle, gl.Str("UV"+"\x00"))
 	sh.color = gl.GetAttribLocation(sh.handle, gl.Str("Color"+"\x00"))
@@ -182,13 +178,9 @@ type colorShader struct {
 	shader
 }
 
-func newColorShader(yflipped bool) shaderProgram {
+func newColorShader() shaderProgram {
 	sh := &colorShader{}
-	if yflipped {
-		sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.ColorShader))
-	} else {
-		sh.createProgram(string(shaders.StraightVertexShader), string(shaders.ColorShader))
-	}
+	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.ColorShader))
 	return sh
 }
 
@@ -202,7 +194,7 @@ type tvColorShader struct {
 
 func newTVColorShader() shaderProgram {
 	sh := &tvColorShader{}
-	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.TVColorShader))
+	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.TVColorShader))
 	sh.brightness = gl.GetUniformLocation(sh.handle, gl.Str("Brightness"+"\x00"))
 	sh.contrast = gl.GetUniformLocation(sh.handle, gl.Str("Contrast"+"\x00"))
 	sh.saturation = gl.GetUniformLocation(sh.handle, gl.Str("Saturation"+"\x00"))
@@ -225,7 +217,7 @@ type blackCorrectionShader struct {
 
 func newBlackCorrectionShader() shaderProgram {
 	sh := &blackCorrectionShader{}
-	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTBlackCorrection))
+	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTBlackCorrection))
 	sh.blackLevel = gl.GetUniformLocation(sh.handle, gl.Str("BlackLevel"+"\x00"))
 	return sh
 }
@@ -242,7 +234,7 @@ type screenrollShader struct {
 
 func newScreenrollShader() shaderProgram {
 	sh := &screenrollShader{}
-	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTScreenroll))
+	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTScreenroll))
 	sh.amount = gl.GetUniformLocation(sh.handle, gl.Str("Amount"+"\x00"))
 	return sh
 }
@@ -261,7 +253,7 @@ type phosphorShader struct {
 
 func newPhosphorShader() shaderProgram {
 	sh := &phosphorShader{}
-	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTPhosphorFragShader))
+	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTPhosphorFragShader))
 	sh.newFrame = gl.GetUniformLocation(sh.handle, gl.Str("NewFrame"+"\x00"))
 	sh.latency = gl.GetUniformLocation(sh.handle, gl.Str("Latency"+"\x00"))
 	return sh
@@ -282,7 +274,7 @@ type blurShader struct {
 
 func newBlurShader() shaderProgram {
 	sh := &blurShader{}
-	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTBlurFragShader))
+	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTBlurFragShader))
 	sh.blur = gl.GetUniformLocation(sh.handle, gl.Str("Blur"+"\x00"))
 	return sh
 }
@@ -305,7 +297,7 @@ type ghostingShader struct {
 
 func newGhostingShader() shaderProgram {
 	sh := &ghostingShader{}
-	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTGhostingFragShader))
+	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTGhostingFragShader))
 	sh.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
 	sh.amount = gl.GetUniformLocation(sh.handle, gl.Str("Amount"+"\x00"))
 	return sh
@@ -323,13 +315,9 @@ type sharpenShader struct {
 	sharpness int32
 }
 
-func newSharpenShader(yflipped bool) shaderProgram {
+func newSharpenShader() shaderProgram {
 	sh := &sharpenShader{}
-	if yflipped {
-		sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.SharpenShader))
-	} else {
-		sh.createProgram(string(shaders.StraightVertexShader), string(shaders.SharpenShader))
-	}
+	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.SharpenShader))
 	sh.texture = gl.GetUniformLocation(sh.handle, gl.Str("Texture"+"\x00"))
 	sh.sharpness = gl.GetUniformLocation(sh.handle, gl.Str("Sharpness"+"\x00"))
 	return sh

@@ -9,5 +9,5 @@ void main()
 {
 	vec2 uv = Frag_UV;
 	uv.y = mod(uv.y - Amount, 1.0);
-	Out_Color = Frag_Color * texture(Texture, uv.st);
+	Out_Color = Frag_Color * texture(Texture, uv);
 }

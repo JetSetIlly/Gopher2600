@@ -8,7 +8,7 @@ uniform float LastY;
 uniform float Hblank;
 uniform float LastNewFrameAtScanline;
 
-// the top abd bottom scanlines to show. in the case of IsCropped then these
+// the top and bottom scanlines to show. in the case of IsCropped then these
 // values will be used to draw the screen guides
 uniform float VisibleTop;
 uniform float VisibleBottom;

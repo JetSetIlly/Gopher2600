@@ -160,12 +160,19 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 	env.width = int32(sh.img.wm.dbgScr.scaledWidth)
 	env.height = int32(sh.img.wm.dbgScr.scaledHeight)
 
-	ox := int32(sh.img.wm.dbgScr.screenOrigin.X)
-	oy := int32(sh.img.wm.dbgScr.screenOrigin.Y)
-	gl.Viewport(-ox, -oy, env.width+ox, env.height+oy)
-	gl.Scissor(-ox, -oy, env.width+ox, env.height+oy)
+	gl.Viewport(-int32(sh.img.wm.dbgScr.screenOrigin.X),
+		-int32(sh.img.wm.dbgScr.screenOrigin.Y),
+		env.width+int32(sh.img.wm.dbgScr.screenOrigin.X),
+		env.height+int32(sh.img.wm.dbgScr.screenOrigin.Y),
+	)
+	gl.Scissor(-int32(sh.img.wm.dbgScr.screenOrigin.X),
+		-int32(sh.img.wm.dbgScr.screenOrigin.Y),
+		env.width+int32(sh.img.wm.dbgScr.screenOrigin.X),
+		env.height+int32(sh.img.wm.dbgScr.screenOrigin.Y),
+	)
 
-	env.internalProj = [4][4]float32{
+	projection := env.projMtx
+	env.projMtx = [4][4]float32{
 		{2.0 / (sh.img.wm.dbgScr.scaledWidth + sh.img.wm.dbgScr.screenOrigin.X), 0.0, 0.0, 0.0},
 		{0.0, -2.0 / (sh.img.wm.dbgScr.scaledHeight + sh.img.wm.dbgScr.screenOrigin.Y), 0.0, 0.0},
 		{0.0, 0.0, -1.0, 0.0},
@@ -200,13 +207,15 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 		//
 		// both alternative solutions seem baroque for a single use case. maybe
 		// something for the future.
-		env.srcTextureID = sh.img.wm.dbgScr.displayTexture.getID()
+		env.textureID = sh.img.wm.dbgScr.displayTexture.getID()
 
 		prefs := newCrtSeqPrefs(sh.img.displayPrefs)
 		prefs.Enabled = true
 		prefs.Bevel = false
 
-		env.srcTextureID = sh.crt.process(env, true, sh.img.wm.dbgScr.numScanlines, 0, specification.ClksVisible, sh.img.wm.dbgScr, prefs, specification.NormalRotation, false)
+		env.textureID = sh.crt.process(env, true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible,
+			0, sh.img.wm.dbgScr, prefs, specification.NormalRotation, false)
+		env.projMtx = projection
 	} else {
 		// if crtPreview is disabled we still go through the crt process. we do
 		// this for two reasons.
@@ -222,7 +231,9 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 		prefs := newCrtSeqPrefs(sh.img.displayPrefs)
 		prefs.Enabled = false
 
-		env.srcTextureID = sh.crt.process(env, true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible, 0, sh.img.wm.dbgScr, prefs, specification.NormalRotation, false)
+		env.textureID = sh.crt.process(env, true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible,
+			0, sh.img.wm.dbgScr, prefs, specification.NormalRotation, false)
+		env.projMtx = projection
 	}
 
 	sh.shader.setAttributes(env)

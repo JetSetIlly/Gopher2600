@@ -65,8 +65,8 @@ func (rnd *gl32) start() error {
 
 	// setup shaders
 	rnd.shaders = append(rnd.shaders, newGUIShader())
-	rnd.shaders = append(rnd.shaders, newColorShader(false))
-	rnd.shaders = append(rnd.shaders, newSharpenShader(false))
+	rnd.shaders = append(rnd.shaders, newColorShader())
+	rnd.shaders = append(rnd.shaders, newSharpenShader())
 	rnd.shaders = append(rnd.shaders, newDbgScrShader(rnd.img))
 	rnd.shaders = append(rnd.shaders, newDbgScrOverlayShader(rnd.img))
 	rnd.shaders = append(rnd.shaders, newPlayscrShader(rnd.img))
@@ -144,7 +144,7 @@ func (rnd *gl32) render() {
 
 	// Our visible imgui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right).
 	// DisplayMin is typically (0,0) for single viewport apps.
-	env.presentationProj = [4][4]float32{
+	env.projMtx = [4][4]float32{
 		{2.0 / displayWidth, 0.0, 0.0, 0.0},
 		{0.0, 2.0 / -displayHeight, 0.0, 0.0},
 		{0.0, 0.0, -1.0, 0.0},
@@ -181,12 +181,12 @@ func (rnd *gl32) render() {
 				cmd.CallUserCallback(list)
 			} else {
 				// texture id
-				env.srcTextureID = uint32(cmd.TextureID())
+				env.textureID = uint32(cmd.TextureID())
 
 				// select shader program to use
 				var shader shaderProgram
 
-				if tex, ok := rnd.textures[env.srcTextureID]; ok {
+				if tex, ok := rnd.textures[env.textureID]; ok {
 					shader = rnd.shaders[tex.typ]
 				} else {
 					shader = rnd.shaders[textureGUI]

@@ -54,7 +54,6 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 
 	env.width = int32(sh.img.playScr.scaledWidth)
 	env.height = int32(sh.img.playScr.scaledHeight)
-	env.internalProj = env.presentationProj
 
 	// set scissor and viewport
 	gl.Viewport(int32(-sh.img.playScr.imagePosMin.X),

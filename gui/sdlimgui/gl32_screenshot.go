@@ -49,7 +49,7 @@ type gl32Screenshot struct {
 	compositeSharpen shaderProgram
 
 	// a framebuffer to be used during compositing
-	compositeBuffer *framebuffer.Sequence
+	compositeBuffer *framebuffer.Single
 
 	// list of exposures. used to create a composited image
 	compositeExposures []*image.RGBA
@@ -62,7 +62,7 @@ type gl32Screenshot struct {
 // returns texture ID and the width and height of the texture
 func (sh *gl32Screenshot) textureSpec() (uint32, float32, float32) {
 	width, height := sh.compositeBuffer.Dimensions()
-	return sh.compositeBuffer.Texture(0), float32(width), float32(height)
+	return sh.compositeBuffer.Texture(), float32(width), float32(height)
 }
 
 func newGl32Screenshot(img *SdlImgui) *gl32Screenshot {
@@ -70,8 +70,8 @@ func newGl32Screenshot(img *SdlImgui) *gl32Screenshot {
 		img:      img,
 		finalise: make(chan func(shaderEnvironment) *image.RGBA, 1),
 
-		compositeBuffer:  framebuffer.NewSequence(1),
-		compositeSharpen: newSharpenShader(true),
+		compositeBuffer:  framebuffer.NewSingle(false),
+		compositeSharpen: newSharpenShader(),
 		crt:              newCRTSequencer(img),
 	}
 	return sh
@@ -122,8 +122,8 @@ func (sh *gl32Screenshot) start(mode screenshotMode, finish chan screenshotResul
 		sh.frames = 6
 	}
 
-	sh.crt.flushPhosphor()
 	sh.compositeExposures = sh.compositeExposures[:0]
+	sh.crt.flushPhosphor()
 }
 
 func (sh *gl32Screenshot) process(env shaderEnvironment, scalingImage textureSpec) {
@@ -206,12 +206,15 @@ func (sh *gl32Screenshot) crtProcess(env shaderEnvironment, scalingImage texture
 }
 
 func (sh *gl32Screenshot) compositeProcess(env shaderEnvironment, scalingImage textureSpec) {
+	// textures must be flipped for the compositing process
+	env.flipY = true
+
 	// set up composite frame buffer. we don't care if the dimensions have
 	// changed (Setup() function returns true)
 	_ = sh.compositeBuffer.Setup(env.width, env.height)
 
 	// sharpen image from play screen
-	env.srcTextureID = sh.compositeBuffer.Process(0, func() {
+	env.textureID = sh.compositeBuffer.Process(func() {
 		sh.compositeSharpen.(*sharpenShader).setAttributesArgs(env, scalingImage, 1)
 		env.draw()
 	})
@@ -226,8 +229,8 @@ func (sh *gl32Screenshot) compositeProcess(env shaderEnvironment, scalingImage t
 		return
 	}
 
-	gl.BindTexture(gl.TEXTURE_2D, env.srcTextureID)
-	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, env.srcTextureID, 0)
+	gl.BindTexture(gl.TEXTURE_2D, env.textureID)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, env.textureID, 0)
 	gl.ReadPixels(0, 0, env.width, env.height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(newExposure.Pix))
 
 	// add to list of exposures
@@ -326,13 +329,13 @@ func (sh *gl32Screenshot) compositeAssemble() (*image.RGBA, error) {
 func (sh *gl32Screenshot) compositeFinalise(env shaderEnvironment, composite *image.RGBA) *image.RGBA {
 	// copy composite pixels to framebuffer texture
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(composite.Stride)/4)
-	gl.BindTexture(gl.TEXTURE_2D, sh.compositeBuffer.Texture(0))
+	gl.BindTexture(gl.TEXTURE_2D, sh.compositeBuffer.Texture())
 	gl.TexImage2D(gl.TEXTURE_2D, 0,
 		gl.RGBA, int32(composite.Bounds().Size().X), int32(composite.Bounds().Size().Y), 0,
 		gl.RGBA, gl.UNSIGNED_BYTE,
 		gl.Ptr(composite.Pix))
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-	env.srcTextureID = sh.compositeBuffer.Texture(0)
+	env.textureID = sh.compositeBuffer.Texture()
 
 	// pass composite image through CRT shaders
 	textureID := sh.crt.process(env, true, sh.img.playScr.visibleScanlines, specification.ClksVisible, 0, sh, newCrtSeqPrefs(sh.img.displayPrefs), sh.img.screen.rotation.Load().(specification.Rotation), true)

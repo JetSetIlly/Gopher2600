@@ -58,13 +58,9 @@ type crtSeqEffectsShader struct {
 	screenshot           int32
 }
 
-func newCrtSeqEffectsShader(yflip bool) shaderProgram {
+func newCrtSeqEffectsShader() shaderProgram {
 	sh := &crtSeqEffectsShader{}
-	if yflip {
-		sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTEffectsFragShader))
-	} else {
-		sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTEffectsFragShader))
-	}
+	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTEffectsFragShader))
 
 	sh.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
 	sh.numScanlines = gl.GetUniformLocation(sh.handle, gl.Str("NumScanlines"+"\x00"))

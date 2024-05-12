@@ -100,8 +100,11 @@ func newCrtSeqPrefs(prefs *display.Preferences) crtSeqPrefs {
 }
 
 type crtSequencer struct {
-	img                   *SdlImgui
-	seq                   *framebuffer.Sequence
+	img *SdlImgui
+
+	sequence *framebuffer.Flip
+	phosphor *framebuffer.Flip
+
 	sharpenShader         shaderProgram
 	phosphorShader        shaderProgram
 	tvColorShader         shaderProgram
@@ -111,31 +114,29 @@ type crtSequencer struct {
 	ghostingShader        shaderProgram
 	effectsShader         shaderProgram
 	colorShader           shaderProgram
-	effectsShaderFlipped  shaderProgram
-	colorShaderFlipped    shaderProgram
 }
 
 func newCRTSequencer(img *SdlImgui) *crtSequencer {
 	sh := &crtSequencer{
 		img:                   img,
-		seq:                   framebuffer.NewSequence(5),
-		sharpenShader:         newSharpenShader(true),
+		sequence:              framebuffer.NewFlip(true),
+		phosphor:              framebuffer.NewFlip(false),
+		sharpenShader:         newSharpenShader(),
 		phosphorShader:        newPhosphorShader(),
 		tvColorShader:         newTVColorShader(),
 		blackCorrectionShader: newBlackCorrectionShader(),
 		screenrollShader:      newScreenrollShader(),
 		blurShader:            newBlurShader(),
 		ghostingShader:        newGhostingShader(),
-		effectsShader:         newCrtSeqEffectsShader(false),
-		colorShader:           newColorShader(false),
-		effectsShaderFlipped:  newCrtSeqEffectsShader(true),
-		colorShaderFlipped:    newColorShader(true),
+		effectsShader:         newCrtSeqEffectsShader(),
+		colorShader:           newColorShader(),
 	}
 	return sh
 }
 
 func (sh *crtSequencer) destroy() {
-	sh.seq.Destroy()
+	sh.sequence.Destroy()
+	sh.phosphor.Destroy()
 	sh.sharpenShader.destroy()
 	sh.phosphorShader.destroy()
 	sh.tvColorShader.destroy()
@@ -145,56 +146,34 @@ func (sh *crtSequencer) destroy() {
 	sh.ghostingShader.destroy()
 	sh.effectsShader.destroy()
 	sh.colorShader.destroy()
-	sh.effectsShaderFlipped.destroy()
-	sh.colorShaderFlipped.destroy()
 }
 
-const (
-	// an accumulation of consecutive frames producing a crtSeqPhosphor effect
-	crtSeqPhosphor = iota
+const crtSeqPhosphor = 0
 
-	// storage for the initial processing step (ghosting filter)
-	crtSeqProcessedSrc
-
-	// the finalised texture after all processing. the only thing left to
-	// do is to (a) present it, or (b) copy it into idxModeProcessing so it
-	// can be processed further
-	crtSeqWorking
-
-	// the texture used for continued processing once the function has
-	// returned (ie. moreProcessing flag is true). this texture is not used
-	// in the crtShader for any other purpose and so can be clobbered with
-	// no consequence.
-	crtSeqMore
-)
-
-// flush phosphor pixels
 func (sh *crtSequencer) flushPhosphor() {
-	sh.seq.Clear(crtSeqPhosphor)
+	sh.phosphor.Clear()
 }
 
-// moreProcessing should be true if more shaders are to be applied to the
-// framebuffer before presentation
+// windowed says that the texture being processed is inside an imgui window and
+// not drawn directly onto the background. for example, the crt image in the
+// debugger TV Screen window should have a windowed value of true
 //
-// returns the last textureID drawn to as part of the process(). the texture
-// returned depends on the value of moreProcessing.
-//
-// if effectsEnabled is turned off then phosphor accumulation and scaling still
-// occurs but crt effects are not applied.
-//
-// integerScaling instructs the scaling shader not to perform any smoothing
-func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numScanlines int, numClocks int,
+// returns the textureID of the processed image
+func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlines int, numClocks int,
 	screenroll float32, image textureSpec, prefs crtSeqPrefs, rotation specification.Rotation,
 	screenshot bool) uint32 {
 
-	// we'll be chaining many shaders together so use internal projection
-	env.useInternalProj = true
+	// the flipY value depends on whether the texture is to be windowed
+	env.flipY = windowed
 
 	// phosphor draw
 	phosphorPasses := 1
 
-	// make sure our framebuffer is correct
-	if sh.seq.Setup(env.width, env.height) {
+	// make sure sequence framebuffer is correct
+	_ = sh.sequence.Setup(env.width, env.height)
+
+	// also make sure our phosphor framebuff is correct
+	if sh.phosphor.Setup(env.width, env.height) {
 		// if the change in framebuffer size is significant then graphical
 		// artefacts can sometimes be seen. a possible solution to this is to
 		// curtail the processing and return from the function here but this
@@ -204,7 +183,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 	}
 
 	// sharpen image
-	env.srcTextureID = sh.seq.Process(crtSeqProcessedSrc, func() {
+	env.textureID = sh.sequence.Process(func() {
 		// any sharpen value more than on causes ugly visual artefacts. a value
 		// of zero causes the default sharpen value (four) to be used
 		sh.sharpenShader.(*sharpenShader).setAttributesArgs(env, image, 1)
@@ -213,91 +192,84 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 
 	// apply ghosting filter to texture. this is useful for the zookeeper brick effect
 	if prefs.Enabled && prefs.Ghosting {
-		env.srcTextureID = sh.seq.Process(crtSeqProcessedSrc, func() {
+		env.textureID = sh.sequence.Process(func() {
 			sh.ghostingShader.(*ghostingShader).setAttributesArgs(env, float32(prefs.GhostingAmount))
 			env.draw()
 		})
 	}
-	src := env.srcTextureID
+
+	newFrameForPhosphor := env.textureID
 
 	for i := 0; i < phosphorPasses; i++ {
 		if prefs.Enabled {
 			if prefs.Phosphor {
 				// use blur shader to add bloom to previous phosphor
-				env.srcTextureID = sh.seq.Process(crtSeqPhosphor, func() {
-					env.srcTextureID = sh.seq.Texture(crtSeqPhosphor)
+				env.textureID = sh.phosphor.Texture()
+				env.textureID = sh.phosphor.Process(func() {
 					sh.blurShader.(*blurShader).setAttributesArgs(env, float32(prefs.PhosphorBloom))
 					env.draw()
 				})
 			}
 
 			// add new frame to phosphor buffer
-			env.srcTextureID = sh.seq.Process(crtSeqPhosphor, func() {
-				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(prefs.PhosphorLatency), src)
+			env.textureID = sh.phosphor.Process(func() {
+				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(prefs.PhosphorLatency), newFrameForPhosphor)
 				env.draw()
 			})
 		} else {
 			// add new frame to phosphor buffer (using phosphor buffer for pixel perfect fade)
-			env.srcTextureID = sh.seq.Process(crtSeqPhosphor, func() {
-				env.srcTextureID = sh.seq.Texture(crtSeqPhosphor)
-				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(prefs.PixelPerfectFade), src)
+			env.textureID = sh.phosphor.Process(func() {
+				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(prefs.PixelPerfectFade), newFrameForPhosphor)
 				env.draw()
 			})
 		}
 	}
 
 	// screenroll and TV color shaders are applied to pixel-perfect shader too
-	env.srcTextureID = sh.seq.Process(crtSeqWorking, func() {
+	env.textureID = sh.sequence.Process(func() {
 		sh.screenrollShader.(*screenrollShader).setAttributesArgs(env, screenroll)
 		env.draw()
 	})
 
-	env.srcTextureID = sh.seq.Process(crtSeqWorking, func() {
+	env.textureID = sh.sequence.Process(func() {
 		sh.tvColorShader.(*tvColorShader).setAttributesArgs(env, prefs)
 		env.draw()
 	})
 
 	if prefs.Enabled {
 		// video-black correction
-		env.srcTextureID = sh.seq.Process(crtSeqWorking, func() {
+		env.textureID = sh.sequence.Process(func() {
 			sh.blackCorrectionShader.(*blackCorrectionShader).setAttributesArgs(env, float32(prefs.BlackLevel))
 			env.draw()
 		})
 
-		// blur result of phosphor a little more
-		env.srcTextureID = sh.seq.Process(crtSeqWorking, func() {
+		// sharpness value
+		env.textureID = sh.sequence.Process(func() {
 			sh.blurShader.(*blurShader).setAttributesArgs(env, float32(prefs.Sharpness))
 			env.draw()
 		})
 
-		if moreProcessing {
-			// always clear the "more" texture because the shape of the texture
-			// (alpha pixels exposing the window background) may change. this
-			// leaves pixels from a previous shader in the texture.
-			sh.seq.Clear(crtSeqMore)
-			env.srcTextureID = sh.seq.Process(crtSeqMore, func() {
-				sh.effectsShaderFlipped.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, screenroll,
+		if windowed {
+			env.textureID = sh.sequence.Process(func() {
+				sh.effectsShader.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, screenroll,
 					prefs, rotation, screenshot)
 				env.draw()
 			})
 		} else {
-			env.useInternalProj = false
+			env.flipY = true
 			sh.effectsShader.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, screenroll,
 				prefs, rotation, screenshot)
 		}
 	} else {
-		if moreProcessing {
-			// see comment above
-			sh.seq.Clear(crtSeqMore)
-			env.srcTextureID = sh.seq.Process(crtSeqMore, func() {
-				sh.colorShaderFlipped.setAttributes(env)
+		if windowed {
+			env.textureID = sh.sequence.Process(func() {
+				sh.colorShader.setAttributes(env)
 				env.draw()
 			})
 		} else {
-			env.useInternalProj = false
 			sh.colorShader.setAttributes(env)
 		}
 	}
 
-	return env.srcTextureID
+	return env.textureID
 }
