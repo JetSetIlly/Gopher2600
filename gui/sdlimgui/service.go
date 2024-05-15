@@ -226,10 +226,13 @@ func (img *SdlImgui) Service() {
 							deltaY--
 						}
 
-						// forward mouse wheel event to emulation only for playmode
-						// or if the mouse is immediately over the TV image in the
-						// debugger TV screen window
-						if img.isPlaymode() || img.wm.dbgScr.mouseHover {
+						// forward mouse wheel event to emulation when in playmode
+						//
+						// * earlier versions of this code also forwarded when
+						// hovered over the TV Screen window in the debugging
+						// mode. the newer timeline window provides a better
+						// interface for rewind
+						if img.isPlaymode() && !img.wm.hoverAnyWindowPlaymode() {
 							select {
 							case input <- userinput.EventMouseWheel{
 								Delta: deltaY,

@@ -166,7 +166,7 @@ func (wm *manager) draw() {
 		// as being safe to draw in playmode
 		for _, w := range wm.playmodeWindows {
 			if w.playmodeDraw() {
-				wm.playmodeCaptureInhibit = wm.playmodeCaptureInhibit || w.playmodeGeometry().hovered
+				wm.playmodeCaptureInhibit = wm.playmodeCaptureInhibit || w.playmodeIsHovered()
 			}
 		}
 
@@ -278,4 +278,15 @@ func (wm *manager) draw() {
 			}
 		}
 	}
+}
+
+// return true if the mouse pointer is hovering over any playmode window.
+// returns false if the mouse is over the main playmode TV screen
+func (wm *manager) hoverAnyWindowPlaymode() bool {
+	for _, w := range wm.playmodeWindows {
+		if w.playmodeIsHovered() {
+			return true
+		}
+	}
+	return false
 }

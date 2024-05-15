@@ -64,16 +64,16 @@ type windowGeom struct {
 func (g *windowGeom) update() {
 	g.position = imgui.WindowPos()
 	g.size = imgui.WindowSize()
-	g.focused = imgui.IsWindowFocused()
-	g.hovered = imgui.IsWindowHovered()
+	g.focused = imgui.IsWindowFocusedV(imgui.FocusedFlagsChildWindows)
+	g.hovered = imgui.IsWindowHoveredV(imgui.HoveredFlagsChildWindows)
 }
 
 type playmodeWindow interface {
 	window
 	playmodeDraw() bool
 	playmodeIsOpen() bool
+	playmodeIsHovered() bool
 	playmodeSetOpen(bool)
-	playmodeGeometry() *windowGeom
 }
 
 // playmodeWin is a partial implementation of the playmodeWindow interface. it
@@ -92,19 +92,23 @@ func (w playmodeWin) playmodeIsOpen() bool {
 	return w.playmodeOpen
 }
 
-func (w *playmodeWin) playmodeSetOpen(open bool) {
-	w.playmodeOpen = open
+func (w playmodeWin) playmodeIsHovered() bool {
+	return w.playmodeGeom.hovered && w.playmodeOpen
 }
 
-func (w *playmodeWin) playmodeGeometry() *windowGeom {
-	return &w.playmodeGeom
+func (w *playmodeWin) playmodeSetOpen(open bool) {
+	w.playmodeOpen = open
 }
 
 type debuggerWindow interface {
 	window
 	debuggerDraw() bool
 	debuggerIsOpen() bool
+	debuggerIsHovered() bool
 	debuggerSetOpen(bool)
+
+	// using the window geometry should be used with care. for example the
+	// hovered field may be stale
 	debuggerGeometry() *windowGeom
 }
 
@@ -122,6 +126,10 @@ func (w debuggerWin) debuggerID(id string) string {
 
 func (w *debuggerWin) debuggerIsOpen() bool {
 	return w.debuggerOpen
+}
+
+func (w *debuggerWin) debuggerIsHovered() bool {
+	return w.debuggerGeom.hovered && w.debuggerOpen
 }
 
 func (w *debuggerWin) debuggerSetOpen(open bool) {
