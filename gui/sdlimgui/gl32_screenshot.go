@@ -109,16 +109,13 @@ func (sh *gl32Screenshot) start(mode screenshotMode, finish chan screenshotResul
 
 	switch sh.mode {
 	case modeSingle:
-		// single screenshot mode requires just one working frame
 		sh.frames = 1
-	case modeMotion:
-		// a generous working frame count is required for motion screenshots so that
-		// large phosphor values have time to accumulate
+	case modeFlicker:
+		// a large value for flicker means that static elements are captured
+		// nicely but also moving/flicking elements are captured with some
+		// phosphor
 		sh.frames = 20
 	case modeComposite:
-		// a working count of six is good because it is divisible by both two
-		// and three. this means that screens with flickering elements of both
-		// two and three will work well
 		sh.frames = 6
 	}
 
@@ -163,7 +160,7 @@ func (sh *gl32Screenshot) process(env shaderEnvironment, scalingImage textureSpe
 func (sh *gl32Screenshot) crtProcess(env shaderEnvironment, scalingImage textureSpec) {
 	prefs := newCrtSeqPrefs(sh.img.displayPrefs)
 
-	if sh.mode == modeMotion {
+	if sh.mode == modeFlicker {
 		switch sh.frames {
 		case 1:
 			prefs.PixelPerfectFade = 1.0

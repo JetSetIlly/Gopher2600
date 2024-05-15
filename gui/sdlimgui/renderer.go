@@ -62,7 +62,7 @@ type screenshotMode string
 
 const (
 	modeSingle    screenshotMode = "single"
-	modeMotion    screenshotMode = "motion"
+	modeFlicker   screenshotMode = "flicker"
 	modeComposite screenshotMode = "composite"
 )
 

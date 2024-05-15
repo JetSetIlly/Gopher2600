@@ -161,7 +161,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				if ctrl && !shift {
 					img.screenshot(modeComposite, "")
 				} else if shift && !ctrl {
-					img.screenshot(modeMotion, "")
+					img.screenshot(modeFlicker, "")
 				} else {
 					img.screenshot(modeSingle, "")
 				}
