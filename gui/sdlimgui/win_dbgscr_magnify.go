@@ -56,7 +56,10 @@ func (mag *dbgScrMagnifyTooltip) draw(mouse dbgScrMouse) {
 		mouse.scaled.x+mag.zoom,
 		mouse.scaled.y+mag.zoom*pixelWidth)
 
+	// the magnify texture should be opaque
+	imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 1.0)
 	imgui.Image(imgui.TextureID(mag.texture.getID()), imgui.Vec2{200, 200})
+	imgui.PopStyleVar()
 }
 
 type dbgScrMagnifyWindow struct {

@@ -45,10 +45,10 @@ type textureType int
 const (
 	textureGUI textureType = iota
 	textureColor
-	textureSharpen
-	textureDbgScr
-	textureOverlay
 	texturePlayscr
+	textureDbgScr
+	textureDbgScrOverlay
+	textureDbgScrMagnify
 )
 
 type texture interface {

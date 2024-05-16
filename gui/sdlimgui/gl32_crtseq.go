@@ -55,10 +55,7 @@ type crtSeqPrefs struct {
 	Sharpness            float64
 	BlackLevel           float64
 
-	Brightness float64
-	Contrast   float64
-	Saturation float64
-	Hue        float64
+	tvColor tvColorShaderPrefs
 }
 
 func newCrtSeqPrefs(prefs *display.Preferences) crtSeqPrefs {
@@ -92,10 +89,12 @@ func newCrtSeqPrefs(prefs *display.Preferences) crtSeqPrefs {
 		Sharpness:            prefs.CRT.Sharpness.Get().(float64),
 		BlackLevel:           prefs.CRT.BlackLevel.Get().(float64),
 
-		Brightness: prefs.Colour.Brightness.Get().(float64),
-		Contrast:   prefs.Colour.Contrast.Get().(float64),
-		Saturation: prefs.Colour.Saturation.Get().(float64),
-		Hue:        prefs.Colour.Hue.Get().(float64),
+		tvColor: tvColorShaderPrefs{
+			Brightness: prefs.Colour.Brightness.Get().(float64),
+			Contrast:   prefs.Colour.Contrast.Get().(float64),
+			Saturation: prefs.Colour.Saturation.Get().(float64),
+			Hue:        prefs.Colour.Hue.Get().(float64),
+		},
 	}
 }
 
@@ -232,7 +231,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 	})
 
 	env.textureID = sh.sequence.Process(func() {
-		sh.tvColorShader.(*tvColorShader).setAttributesArgs(env, prefs)
+		sh.tvColorShader.(*tvColorShader).setAttributesArgs(env, prefs.tvColor)
 		env.draw()
 	})
 

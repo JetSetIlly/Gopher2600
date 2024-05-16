@@ -66,10 +66,10 @@ func (rnd *gl32) start() error {
 	// setup shaders
 	rnd.shaders = append(rnd.shaders, newGUIShader())
 	rnd.shaders = append(rnd.shaders, newColorShader())
-	rnd.shaders = append(rnd.shaders, newSharpenShader())
+	rnd.shaders = append(rnd.shaders, newPlayscrShader(rnd.img))
 	rnd.shaders = append(rnd.shaders, newDbgScrShader(rnd.img))
 	rnd.shaders = append(rnd.shaders, newDbgScrOverlayShader(rnd.img))
-	rnd.shaders = append(rnd.shaders, newPlayscrShader(rnd.img))
+	rnd.shaders = append(rnd.shaders, newDbgScrMagnifyShader(rnd.img))
 
 	// dererring font setup until later
 

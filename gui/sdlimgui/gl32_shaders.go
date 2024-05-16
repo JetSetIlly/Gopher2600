@@ -202,7 +202,14 @@ func newTVColorShader() shaderProgram {
 	return sh
 }
 
-func (sh *tvColorShader) setAttributesArgs(env shaderEnvironment, prefs crtSeqPrefs) {
+type tvColorShaderPrefs struct {
+	Contrast   float64
+	Brightness float64
+	Saturation float64
+	Hue        float64
+}
+
+func (sh *tvColorShader) setAttributesArgs(env shaderEnvironment, prefs tvColorShaderPrefs) {
 	sh.shader.setAttributes(env)
 	gl.Uniform1f(sh.contrast, float32(prefs.Contrast))
 	gl.Uniform1f(sh.brightness, float32(prefs.Brightness))
