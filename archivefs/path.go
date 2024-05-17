@@ -23,12 +23,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 )
 
-// Node represents a single part of a full path
-type Node struct {
+// Entry represents a single part of a full path
+type Entry struct {
 	Name string
 
 	// a directory has the the field of IsDir set to true
@@ -39,7 +38,7 @@ type Node struct {
 	IsArchive bool
 }
 
-func (e Node) String() string {
+func (e Entry) String() string {
 	return e.Name
 }
 
@@ -131,12 +130,7 @@ func (afs *Path) Close() {
 	}
 }
 
-// List returns the child entries for the current path location. If the current
-// path is a file then the list will be the contents of the containing directory
-// of that file
-func (afs *Path) List() ([]Node, error) {
-	var ent []Node
-
+func (afs *Path) list(entries chan Entry, done chan error) {
 	if afs.zf != nil {
 		for _, f := range afs.zf.File {
 			// split file name into parts. the list is joined together again
@@ -154,14 +148,14 @@ func (afs *Path) List() ([]Node, error) {
 
 			fi := f.FileInfo()
 			if fi.IsDir() {
-				ent = append(ent, Node{
+				entries <- Entry{
 					Name:  fi.Name(),
 					IsDir: true,
-				})
+				}
 			} else {
-				ent = append(ent, Node{
+				entries <- Entry{
 					Name: fi.Name(),
-				})
+				}
 			}
 		}
 	} else {
@@ -172,7 +166,8 @@ func (afs *Path) List() ([]Node, error) {
 
 		dir, err := os.ReadDir(path)
 		if err != nil {
-			return []Node{}, fmt.Errorf("archivefs: entries: %w", err)
+			done <- fmt.Errorf("archivefs: entries: %w", err)
+			return
 		}
 
 		for _, d := range dir {
@@ -184,39 +179,68 @@ func (afs *Path) List() ([]Node, error) {
 			}
 
 			if fi.IsDir() {
-				ent = append(ent, Node{
+				entries <- Entry{
 					Name:  d.Name(),
 					IsDir: true,
-				})
+				}
 			} else {
 				p := filepath.Join(path, d.Name())
 				_, err := zip.OpenReader(p)
 				if err == nil {
-					ent = append(ent, Node{
+					entries <- Entry{
 						Name:      d.Name(),
 						IsDir:     true,
 						IsArchive: true,
-					})
+					}
 				} else {
-					ent = append(ent, Node{
+					entries <- Entry{
 						Name: d.Name(),
-					})
+					}
 				}
 			}
 		}
 	}
 
-	// sort so that directories are at the start of the list
-	sort.Slice(ent, func(i int, j int) bool {
-		return ent[i].IsDir
-	})
+	done <- nil
+	return
+}
 
-	// sort alphabetically (case insensitive)
-	sort.SliceStable(ent, func(i int, j int) bool {
-		return strings.ToLower(ent[i].Name) < strings.ToLower(ent[j].Name)
-	})
+// List returns the child entries for the current path location. If the current
+// path is a file then the list will be the contents of the containing directory
+// of that file. Returned entries are sorted.
+func (afs *Path) List() ([]Entry, error) {
+	var entries []Entry
 
-	return ent, nil
+	listEnt := make(chan Entry, 1)
+	listErr := make(chan error)
+	go afs.list(listEnt, listErr)
+
+	done := false
+	for !done {
+		select {
+		case e := <-listEnt:
+			entries = append(entries, e)
+		default:
+		}
+
+		// listEnt channel must be serviced before listErr channel because we
+		// always want to receive the last entry before the done signal is
+		// received (putting both channels in the same select block can
+		// sometimes fail testing because the channel select is random)
+
+		select {
+		case e := <-listErr:
+			if e != nil {
+				return nil, e
+			}
+			done = true
+		default:
+		}
+	}
+
+	Sort(entries)
+
+	return entries, nil
 }
 
 // Set archivefs path

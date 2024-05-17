@@ -28,7 +28,7 @@ import (
 func TestArchivefsPath(t *testing.T) {
 	var afs archivefs.Path
 	var path string
-	var entries []archivefs.Node
+	var entries []archivefs.Entry
 	var err error
 
 	// non-existant file

@@ -22,7 +22,7 @@ type FilenameSetter interface {
 
 // AsyncResults are copies of archivefs path information that are safe to access asynchronously
 type AsyncResults struct {
-	Entries  []Node
+	Entries  []Entry
 	Selected string
 	IsDir    bool
 	Dir      string
@@ -38,6 +38,7 @@ type AsyncPath struct {
 	Destroy chan bool
 
 	results chan AsyncResults
+	entry   chan Entry
 	err     chan error
 
 	// Results of most recent change of path settings
@@ -51,13 +52,20 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 		Set:     make(chan string, 1),
 		Close:   make(chan bool, 1),
 		Destroy: make(chan bool, 1),
-		results: make(chan AsyncResults, 1),
-		err:     make(chan error, 1),
+
+		// results must be an unbuffered channel to make sure that content from
+		// the Entry channel comes after a new response from the results channle
+		results: make(chan AsyncResults, 0),
+		entry:   make(chan Entry, 100),
+		err:     make(chan error, 0),
 	}
 
 	go func() {
 		var afs Path
 		var done bool
+
+		// keep track of the most recent directory that has been read
+		var currentDir string
 
 		for !done {
 			select {
@@ -74,19 +82,28 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 					continue // for loop
 				}
 
-				entries, err := afs.List()
-				if err != nil {
-					pth.err <- err
-					continue // for loop
-				}
-
-				pth.results <- AsyncResults{
-					Entries:  entries,
+				result := AsyncResults{
+					Entries:  nil,
 					Selected: afs.String(),
 					IsDir:    afs.IsDir(),
 					Dir:      afs.Dir(),
 					Base:     afs.Base(),
 				}
+
+				// directory hasn't changed so there's no need to
+				// call the list() function
+				if currentDir == result.Dir {
+					pth.results <- result
+					continue // for loop
+				}
+				currentDir = result.Dir
+
+				// this is a new directory being scanned. indicate that by
+				// setting the Entries field to an empty list rather than nil
+				result.Entries = []Entry{}
+				pth.results <- result
+
+				afs.list(pth.entry, pth.err)
 			}
 		}
 	}()
@@ -97,21 +114,39 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 // Process asynchronous requests. Must be called in order to receive the results
 // of a Set(). Suitable to be called as part of a render loop
 func (pth *AsyncPath) Process() error {
-	select {
-	case err := <-pth.err:
-		return err
+	done := false
+	for !done {
+		select {
+		case err := <-pth.err:
+			return err
 
-	case results := <-pth.results:
-		pth.Results = results
-
-		if pth.setter != nil {
-			if pth.Results.IsDir {
-				pth.setter.SetSelectedFilename("")
-			} else {
-				pth.setter.SetSelectedFilename(pth.Results.Selected)
+		case ent := <-pth.entry:
+			pth.Results.Entries = append(pth.Results.Entries, ent)
+			select {
+			case ent := <-pth.entry:
+				pth.Results.Entries = append(pth.Results.Entries, ent)
+			default:
+				done = true
 			}
+			Sort(pth.Results.Entries)
+
+		case results := <-pth.results:
+			entries := pth.Results.Entries
+			pth.Results = results
+			if pth.Results.Entries == nil {
+				pth.Results.Entries = entries
+			}
+
+			if pth.setter != nil {
+				if pth.Results.IsDir {
+					pth.setter.SetSelectedFilename("")
+				} else {
+					pth.setter.SetSelectedFilename(pth.Results.Selected)
+				}
+			}
+		default:
+			done = true
 		}
-	default:
 	}
 
 	return nil
