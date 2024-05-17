@@ -236,11 +236,20 @@ func (cart *Elf) reset() {
 	}
 
 	// set arguments for initial execution of ARM program
-	cart.mem.args[argAddrSystemType-argOrigin] = argSystemType_NTSC
-	cart.mem.args[argAddrClockHz-argOrigin] = 0xef
-	cart.mem.args[argAddrClockHz-argOrigin+1] = 0xbe
-	cart.mem.args[argAddrClockHz-argOrigin+2] = 0xad
-	cart.mem.args[argAddrClockHz-argOrigin+3] = 0xde
+	systemType := argSystemType_NTSC
+	switch cart.env.TV.GetSpecID() {
+	case "NTSC":
+		systemType = argSystemType_NTSC
+	case "PAL":
+		systemType = argSystemType_PAL
+	default:
+		systemType = argSystemType_NTSC
+	}
+
+	binary.LittleEndian.PutUint32(cart.mem.args[argAddrSystemType-argOrigin:], uint32(systemType))
+	binary.LittleEndian.PutUint32(cart.mem.args[argAddrClockHz-argOrigin:], uint32(cart.arm.Clk))
+	binary.LittleEndian.PutUint32(cart.mem.args[argAddrFlags-argOrigin:], uint32(0x00))
+
 	cart.arm.SetInitialRegisters(argOrigin)
 }
 
