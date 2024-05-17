@@ -33,13 +33,13 @@ func TestArchivefsPath(t *testing.T) {
 
 	// non-existant file
 	path = "foo"
-	err = afs.Set(path)
+	err = afs.Set(path, false)
 	test.ExpectFailure(t, err)
 	test.ExpectEquality(t, afs.String(), "")
 
 	// a real directory
 	path = "testdir"
-	err = afs.Set(path)
+	err = afs.Set(path, false)
 	test.ExpectSuccess(t, err)
 	test.ExpectEquality(t, afs.String(), path)
 	test.ExpectSuccess(t, afs.IsDir())
@@ -53,13 +53,13 @@ func TestArchivefsPath(t *testing.T) {
 
 	// non-existant file in directory
 	path = filepath.Join("testdir", "foo")
-	err = afs.Set(path)
+	err = afs.Set(path, false)
 	test.ExpectFailure(t, err)
 	test.ExpectEquality(t, afs.String(), "")
 
 	// a real file in directory
 	path = filepath.Join("testdir", "testfile")
-	err = afs.Set(path)
+	err = afs.Set(path, false)
 	test.ExpectSuccess(t, err)
 	test.ExpectEquality(t, afs.String(), path)
 	test.ExpectSuccess(t, !afs.IsDir())
@@ -74,7 +74,7 @@ func TestArchivefsPath(t *testing.T) {
 
 	// a real archive
 	path = filepath.Join("testdir", "testarchive.zip")
-	err = afs.Set(path)
+	err = afs.Set(path, false)
 	test.ExpectSuccess(t, err)
 	test.ExpectEquality(t, afs.String(), path)
 	test.ExpectSuccess(t, afs.IsDir())
@@ -88,7 +88,7 @@ func TestArchivefsPath(t *testing.T) {
 
 	// file in a real archive
 	path = filepath.Join("testdir", "testarchive.zip", "archivefile1")
-	err = afs.Set(path)
+	err = afs.Set(path, false)
 	test.ExpectSuccess(t, err)
 	test.ExpectEquality(t, afs.String(), path)
 	test.ExpectSuccess(t, !afs.IsDir())
@@ -96,7 +96,7 @@ func TestArchivefsPath(t *testing.T) {
 
 	// directory a real archive
 	path = filepath.Join("testdir", "testarchive.zip", "archivedir")
-	err = afs.Set(path)
+	err = afs.Set(path, false)
 	test.ExpectSuccess(t, err)
 	test.ExpectEquality(t, afs.String(), path)
 	test.ExpectSuccess(t, afs.IsDir())
@@ -110,7 +110,7 @@ func TestArchivefsPath(t *testing.T) {
 
 	// file in a real archive
 	path = filepath.Join("testdir", "testarchive.zip", "archivedir", "archivefile3")
-	err = afs.Set(path)
+	err = afs.Set(path, false)
 	test.ExpectSuccess(t, err)
 	test.ExpectEquality(t, afs.String(), path)
 	test.ExpectSuccess(t, !afs.IsDir())

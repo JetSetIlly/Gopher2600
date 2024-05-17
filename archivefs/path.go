@@ -243,8 +243,12 @@ func (afs *Path) List() ([]Entry, error) {
 	return entries, nil
 }
 
-// Set archivefs path
-func (afs *Path) Set(path string) error {
+// Set path to the requested path, handling archive files as appropriate.
+//
+// If fallback is true then the Set() function will try to open the most recent
+// valid sub-path. If setting the fallback is successful then no error will be
+// returned.
+func (afs *Path) Set(path string, fallback bool) error {
 	afs.Close()
 
 	// clean path and and remove volume name. volume name is not something we
@@ -261,22 +265,29 @@ func (afs *Path) Set(path string) error {
 		lst[0] = string(filepath.Separator)
 	}
 
-	// reuse path string
-	path = ""
+	var search string
+	var prevSearch string
 
 	for _, l := range lst {
-		path = filepath.Join(path, l)
+		prevSearch = search
+		search = filepath.Join(search, l)
 
 		if afs.zf != nil {
 			p := filepath.Join(afs.inZipPath, l)
 
 			zf, err := afs.zf.Open(p)
 			if err != nil {
+				if fallback {
+					return afs.Set(prevSearch, false)
+				}
 				return fmt.Errorf("archivefs: set: %v", err)
 			}
 
 			zfi, err := zf.Stat()
 			if err != nil {
+				if fallback {
+					return afs.Set(prevSearch, false)
+				}
 				return fmt.Errorf("archivefs: set: %v", err)
 			}
 
@@ -289,8 +300,11 @@ func (afs *Path) Set(path string) error {
 			}
 
 		} else {
-			fi, err := os.Stat(path)
+			fi, err := os.Stat(search)
 			if err != nil {
+				if fallback {
+					return afs.Set(prevSearch, false)
+				}
 				return fmt.Errorf("archivefs: set: %v", err)
 			}
 
@@ -299,7 +313,7 @@ func (afs *Path) Set(path string) error {
 				continue
 			}
 
-			afs.zf, err = zip.OpenReader(path)
+			afs.zf, err = zip.OpenReader(search)
 			if err == nil {
 				// the root of an archive file is considered to be a directory
 				afs.isDir = true
@@ -307,6 +321,9 @@ func (afs *Path) Set(path string) error {
 			}
 
 			if !errors.Is(err, zip.ErrFormat) {
+				if fallback {
+					return afs.Set(prevSearch, false)
+				}
 				return fmt.Errorf("archivefs: set: %v", err)
 			}
 		}
@@ -315,13 +332,13 @@ func (afs *Path) Set(path string) error {
 	// we want the absolute path. this restores any volume name that may have
 	// been trimmed off at the start of the function
 	var err error
-	afs.current, err = filepath.Abs(path)
+	afs.current, err = filepath.Abs(search)
 	if err != nil {
 		return fmt.Errorf("archivefs: set: %v", err)
 	}
 
 	// make sure path is clean
-	afs.current = filepath.Clean(path)
+	afs.current = filepath.Clean(search)
 
 	return nil
 }

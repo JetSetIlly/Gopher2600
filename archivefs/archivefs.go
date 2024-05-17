@@ -24,7 +24,7 @@ import "io"
 // errors.
 func Open(filename string) (io.ReadSeeker, int, error) {
 	var afs Path
-	err := afs.Set(filename)
+	err := afs.Set(filename, false)
 	if err != nil {
 		return nil, 0, err
 	}
