@@ -279,11 +279,6 @@ func (win *winSelectROM) draw() {
 	default:
 	}
 
-	// reset centreOnFile at end of draw
-	defer func() {
-		win.centreOnFile = false
-	}()
-
 	if imgui.Button("Parent") {
 		win.path.Set <- filepath.Dir(win.path.Results.Dir)
 		win.scrollToTop = true
@@ -371,6 +366,7 @@ func (win *winSelectROM) draw() {
 
 				if selected && win.centreOnFile {
 					imgui.SetScrollHereY(0.0)
+					win.centreOnFile = false
 				}
 
 				if imgui.SelectableV(e.Name, selected, 0, imgui.Vec2{0, 0}) {
