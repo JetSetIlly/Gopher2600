@@ -34,11 +34,11 @@ type Emulation struct {
 const previewLabel = environment.Label("preview")
 
 // NewEmulation is the preferred method of initialisation for the Emulation type
-func NewEmulation(prefs *preferences.Preferences) (*Emulation, error) {
+func NewEmulation(prefs *preferences.Preferences, spec string) (*Emulation, error) {
 	em := &Emulation{}
 
 	// the VCS and not referred to directly again
-	tv, err := television.NewTelevision("AUTO")
+	tv, err := television.NewTelevision(spec)
 	if err != nil {
 		return nil, fmt.Errorf("preview: %w", err)
 	}

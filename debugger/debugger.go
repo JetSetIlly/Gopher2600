@@ -374,7 +374,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	}
 
 	// create preview emulation
-	dbg.preview, err = preview.NewEmulation(dbg.vcs.Env.Prefs)
+	dbg.preview, err = preview.NewEmulation(dbg.vcs.Env.Prefs, opts.Spec)
 	if err != nil {
 		return nil, fmt.Errorf("debugger: %w", err)
 	}

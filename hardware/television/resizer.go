@@ -57,6 +57,11 @@ import (
 // * bottom of screen needs careful consideration
 //   - Ladybug
 //   - Man Goes Down
+//
+// finally, the following conditions are worth documenting as being important:
+//
+// * PAL ROMs without VSYNC cannot be sized or changed to the correct spec automatically
+//   - Nightstalker
 type resizer struct {
 	// candidate top/bottom values for an actual resize.
 	//
