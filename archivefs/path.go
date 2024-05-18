@@ -220,20 +220,30 @@ func (afs *Path) List() ([]Entry, error) {
 		select {
 		case e := <-listEnt:
 			entries = append(entries, e)
-		default:
-		}
 
-		// listEnt channel must be serviced before listErr channel because we
-		// always want to receive the last entry before the done signal is
-		// received (putting both channels in the same select block can
-		// sometimes fail testing because the channel select is random)
-
-		select {
 		case e := <-listErr:
 			if e != nil {
 				return nil, e
 			}
 			done = true
+
+			// drain the listEnt channel. this is necessary because even though
+			// the done signal is sent over the listErr channel *after* the last
+			// send over listEnt we might receive it (the done signal) *before*
+			// we receive the last entry
+			//
+			// the drain loop is likely unnecessary and we'll only ever need to
+			// drain/receive one entry, but using the full loop is clear and
+			// adds no performance cost
+			drained := false
+			for !drained {
+				select {
+				case e := <-listEnt:
+					entries = append(entries, e)
+				default:
+					drained = true
+				}
+			}
 		default:
 		}
 	}
