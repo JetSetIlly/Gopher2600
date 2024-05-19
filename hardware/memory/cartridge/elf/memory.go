@@ -495,7 +495,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 					switch mem.env.TV.GetSpecID() {
 					case "PAL":
 						fallthrough
-					case "PALM":
+					case "PAL-M":
 						tgt = mem.relocateStrongArmTable(palColorTable)
 					case "NTSC":
 						fallthrough

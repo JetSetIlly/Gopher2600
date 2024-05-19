@@ -115,7 +115,7 @@ var commandTemplate = []string{
 	cmdTIA + " (HMOVE)",
 	cmdRIOT + " (PORTS|TIMER)",
 	cmdAudio,
-	cmdTV + " (SPEC (NTSC|PAL|PAL60|PALM|SECAM|AUTO))",
+	cmdTV + " (SPEC (NTSC|PAL|PAL60|PAL-M|SECAM|AUTO))",
 	cmdPlayer + " (0|1)",
 	cmdMissile + " (0|1)",
 	cmdBall,
