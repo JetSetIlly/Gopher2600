@@ -29,6 +29,8 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/archivefs"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/gopher2600/properties"
 )
 
 // the maximum amount of data to preload
@@ -60,6 +62,12 @@ type Loader struct {
 	// empty string or "AUTO" indicates automatic fingerprinting
 	Mapping string
 
+	// property entry from property package
+	Property properties.Entry
+
+	// required specification for television
+	TVSpec string
+
 	// hashes of data
 	HashSHA1 string
 	HashMD5  string
@@ -85,6 +93,11 @@ type Loader struct {
 	embedded bool
 }
 
+// Properties is a minimal interface to the properties package
+type Properties interface {
+	Lookup(md5Hash string) properties.Entry
+}
+
 // sentinal error for when it is attempted to create a loader with no filename
 var NoFilename = errors.New("no filename")
 
@@ -106,7 +119,7 @@ var NoFilename = errors.New("no filename")
 //
 // Filenames can contain whitespace, including leading and trailing whitespace,
 // but cannot consist only of whitespace.
-func NewLoaderFromFilename(filename string, mapping string) (Loader, error) {
+func NewLoaderFromFilename(filename string, mapping string, props Properties) (Loader, error) {
 	// check filename but don't change it. we don't want to allow the empty
 	// string or a string only consisting of whitespace, but we *do* want to
 	// allow filenames with leading/trailing spaces
@@ -161,6 +174,19 @@ func NewLoaderFromFilename(filename string, mapping string) (Loader, error) {
 	// decide on the name for this cartridge
 	ld.Name = decideOnName(ld)
 
+	// get properties entry
+	if props != nil {
+		ld.Property = props.Lookup(ld.HashMD5)
+	}
+
+	// decide on TV specification
+	if ld.Property.IsValid() {
+		ld.TVSpec = specification.SearchSpec(ld.Property.Name)
+	}
+	if ld.TVSpec == "" {
+		ld.TVSpec = specification.SearchSpec(ld.Filename)
+	}
+
 	return ld, nil
 }
 
@@ -173,7 +199,7 @@ func NewLoaderFromFilename(filename string, mapping string) (Loader, error) {
 //
 // The name argument should not include a file extension because it won't be
 // used.
-func NewLoaderFromData(name string, data []byte, mapping string) (Loader, error) {
+func NewLoaderFromData(name string, data []byte, mapping string, properties Properties) (Loader, error) {
 	if len(data) == 0 {
 		return Loader{}, fmt.Errorf("loader: emebedded data is empty")
 	}

@@ -15,4 +15,6 @@
 
 // Package properties adds support for the Stella properties file, named
 // stella.pro. The file should be placed in the Gopher2600 configuration folder
+//
+// The Properties type is safe to access in goroutines
 package properties

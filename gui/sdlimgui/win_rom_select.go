@@ -71,10 +71,6 @@ type winSelectROM struct {
 	thmbImage      *image.RGBA
 	thmbDimensions image.Point
 
-	// the return channel from the emulation goroutine for the property lookup
-	// for the selected cartridge
-	propertyResult chan properties.Entry
-
 	// map of normalised ROM titles to box art images
 	boxart           []string
 	boxartTexture    texture
@@ -88,12 +84,11 @@ const namedBoxarts = "Named_Boxarts"
 
 func newSelectROM(img *SdlImgui) (window, error) {
 	win := &winSelectROM{
-		img:            img,
-		showAll:        false,
-		showHidden:     false,
-		scrollToTop:    true,
-		centreOnFile:   true,
-		propertyResult: make(chan properties.Entry, 1),
+		img:          img,
+		showAll:      false,
+		showHidden:   false,
+		scrollToTop:  true,
+		centreOnFile: true,
 	}
 	win.debuggerGeom.noFocusTracking = true
 	win.path = archivefs.NewAsyncPath(win)
@@ -257,27 +252,6 @@ func (win *winSelectROM) draw() {
 	}
 
 	imgui.BeginGroup()
-
-	// check for new property information
-	select {
-	case win.selectedProperties = <-win.propertyResult:
-		win.selectedName = win.selectedProperties.Name
-		if win.selectedName == "" {
-			win.selectedName = win.path.Results.Base
-			win.selectedName = cartridgeloader.NameFromFilename(win.selectedName)
-		}
-
-		// normalise ROM name for presentation
-		win.selectedName, _, _ = strings.Cut(win.selectedName, "(")
-		win.selectedName = strings.TrimSpace(win.selectedName)
-
-		// find box art as best we can
-		err := win.findBoxart()
-		if err != nil {
-			logger.Logf(logger.Allow, "sdlimgui", err.Error())
-		}
-	default:
-	}
 
 	if imgui.Button("Parent") {
 		win.path.Set <- filepath.Dir(win.path.Results.Dir)
@@ -629,15 +603,28 @@ func (win *winSelectROM) SetSelectedFilename(filename string) {
 	}
 
 	// create cartridge loader and start thumbnail emulation
-	cartload, err := cartridgeloader.NewLoaderFromFilename(filename, "AUTO")
+	cartload, err := cartridgeloader.NewLoaderFromFilename(filename, "AUTO", win.img.dbg.Properties)
 	if err != nil {
 		logger.Logf(logger.Allow, "ROM Select", err.Error())
 		return
 	}
 
-	// push function to emulation goroutine. result will be checked for in
-	// draw() function
-	win.img.dbg.PushPropertyLookup(cartload.HashMD5, win.propertyResult)
+	win.selectedProperties = cartload.Property
+	win.selectedName = win.selectedProperties.Name
+	if win.selectedName == "" {
+		win.selectedName = win.path.Results.Base
+		win.selectedName = cartridgeloader.NameFromFilename(win.selectedName)
+	}
+
+	// normalise ROM name for presentation
+	win.selectedName, _, _ = strings.Cut(win.selectedName, "(")
+	win.selectedName = strings.TrimSpace(win.selectedName)
+
+	// find box art as best we can
+	err = win.findBoxart()
+	if err != nil {
+		logger.Logf(logger.Allow, "sdlimgui", err.Error())
+	}
 
 	// create thumbnail animation
 	win.thmb.Create(cartload, thumbnailer.UndefinedNumFrames, true)

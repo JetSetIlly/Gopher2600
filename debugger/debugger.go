@@ -123,8 +123,8 @@ type Debugger struct {
 	term        terminal.Terminal
 	controllers *userinput.Controllers
 
-	// stella.pro file support
-	pro properties.Properties
+	// stella.Properties file support
+	Properties properties.Properties
 
 	// bots coordinator
 	bots *wrangler.Bots
@@ -368,7 +368,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	dbg.bots = wrangler.NewBots(dbg.vcs.Input, dbg.vcs.TV)
 
 	// stella.pro support
-	dbg.pro, err = properties.Load()
+	dbg.Properties, err = properties.Load()
 	if err != nil {
 		logger.Logf(logger.Allow, "debugger", err.Error())
 	}
@@ -701,7 +701,7 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 	if filename == "" {
 		cartload = cartridgeloader.Loader{}
 	} else {
-		cartload, err = cartridgeloader.NewLoaderFromFilename(filename, dbg.opts.Mapping)
+		cartload, err = cartridgeloader.NewLoaderFromFilename(filename, dbg.opts.Mapping, dbg.Properties)
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
 		}
@@ -791,7 +791,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 		if filename == "" {
 			cartload = cartridgeloader.Loader{}
 		} else {
-			cartload, err = cartridgeloader.NewLoaderFromFilename(filename, dbg.opts.Mapping)
+			cartload, err = cartridgeloader.NewLoaderFromFilename(filename, dbg.opts.Mapping, dbg.Properties)
 			if err != nil {
 				return fmt.Errorf("debugger: %w", err)
 			}
@@ -1299,7 +1299,7 @@ func (dbg *Debugger) startPlayback(filename string) error {
 	}
 
 	// new cartridge loader using the information found in the playback file
-	cartload, err := cartridgeloader.NewLoaderFromFilename(plb.Cartridge, "AUTO")
+	cartload, err := cartridgeloader.NewLoaderFromFilename(plb.Cartridge, "AUTO", dbg.Properties)
 	if err != nil {
 		return fmt.Errorf("debugger: %w", err)
 	}
@@ -1355,7 +1355,7 @@ func (dbg *Debugger) startComparison(comparisonROM string, comparisonPrefs strin
 		return err
 	}
 
-	cartload, err := cartridgeloader.NewLoaderFromFilename(comparisonROM, "AUTO")
+	cartload, err := cartridgeloader.NewLoaderFromFilename(comparisonROM, "AUTO", dbg.Properties)
 	if err != nil {
 		return err
 	}
@@ -1457,7 +1457,7 @@ func (dbg *Debugger) insertCartridge(filename string) error {
 		filename = dbg.cartload.Filename
 	}
 
-	cartload, err := cartridgeloader.NewLoaderFromFilename(filename, "AUTO")
+	cartload, err := cartridgeloader.NewLoaderFromFilename(filename, "AUTO", dbg.Properties)
 	if err != nil {
 		return fmt.Errorf("debugger: %w", err)
 	}

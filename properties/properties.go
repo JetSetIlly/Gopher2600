@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources"
@@ -41,6 +42,7 @@ func (e Entry) IsValid() bool {
 }
 
 type Properties struct {
+	crit      sync.Mutex
 	available bool
 	entries   map[string]Entry
 }
@@ -124,9 +126,13 @@ func Load() (Properties, error) {
 }
 
 // Find the property entry for the ROM with the supplied md5 hash
-func (pro Properties) Lookup(md5Hash string) (Entry, bool) {
+func (pro Properties) Lookup(md5Hash string) Entry {
+	pro.crit.TryLock()
+	defer pro.crit.Unlock()
+
 	if e, ok := pro.entries[md5Hash]; ok {
-		return e, true
+		return e
 	}
-	return Entry{}, false
+
+	return Entry{}
 }

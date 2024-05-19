@@ -206,7 +206,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 	// default the hardware preferences
 	vcs.Env.Normalise()
 
-	cartload, err := cartridgeloader.NewLoaderFromFilename(reg.Cartridge, reg.Mapping)
+	cartload, err := cartridgeloader.NewLoaderFromFilename(reg.Cartridge, reg.Mapping, nil)
 	if err != nil {
 		return false, "", fmt.Errorf("log: %w", err)
 	}

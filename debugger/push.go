@@ -19,7 +19,6 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/properties"
 )
 
 // PushFunction onto the event queue. Used to ensure that the events are
@@ -71,14 +70,6 @@ func (dbg *Debugger) PushTogglePCBreak(e *disassembly.Entry) {
 	f := e
 	dbg.PushFunction(func() {
 		dbg.halting.breakpoints.togglePCBreak(f)
-	})
-}
-
-// PushPropertyLookup looks up the supplied MD5 hash in the properties table
-func (dbg *Debugger) PushPropertyLookup(hashMD5 string, result chan properties.Entry) {
-	dbg.PushFunctionImmediate(func() {
-		e, _ := dbg.pro.Lookup(hashMD5)
-		result <- e
 	})
 }
 

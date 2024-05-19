@@ -506,7 +506,7 @@ func disasm(mode string, args []string) error {
 			Cycles:   true,
 		}
 
-		cartload, err := cartridgeloader.NewLoaderFromFilename(args[0], mapping)
+		cartload, err := cartridgeloader.NewLoaderFromFilename(args[0], mapping, nil)
 		if err != nil {
 			return err
 		}
@@ -573,7 +573,7 @@ func perform(mode string, sync *mainSync, args []string) error {
 	case 0:
 		return fmt.Errorf("2600 cartridge required")
 	case 1:
-		cartload, err := cartridgeloader.NewLoaderFromFilename(args[0], mapping)
+		cartload, err := cartridgeloader.NewLoaderFromFilename(args[0], mapping, nil)
 		if err != nil {
 			return err
 		}
