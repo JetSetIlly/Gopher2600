@@ -45,7 +45,7 @@ type Anim struct {
 	vcs            *hardware.VCS
 	preview        *preview.Emulation
 	previewResults *preview.Results
-	previewUpdate  chan bool
+	previewUpdate  chan *preview.Results
 
 	frameInfo television.FrameInfo
 
@@ -74,7 +74,7 @@ func NewAnim(prefs *preferences.Preferences) (*Anim, error) {
 		emulationQuit:      make(chan bool, 1),
 		emulationCompleted: make(chan bool, 1),
 		Render:             make(chan *image.RGBA, 60),
-		previewUpdate:      make(chan bool, 1),
+		previewUpdate:      make(chan *preview.Results, 1),
 	}
 
 	// emulation has completed, by definition, on startup
@@ -229,7 +229,7 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, numFrames int, monitor
 		// indicate that the first part of the preview has completed and that
 		// the preview results should be updated
 		select {
-		case thmb.previewUpdate <- true:
+		case thmb.previewUpdate <- thmb.preview.Results():
 		default:
 		}
 
@@ -241,7 +241,7 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, numFrames int, monitor
 
 		// indicate that the second part of the preview has completed
 		select {
-		case thmb.previewUpdate <- true:
+		case thmb.previewUpdate <- thmb.preview.Results():
 		default:
 		}
 
@@ -428,8 +428,7 @@ func (thmb *Anim) EndRendering() error {
 // PreviewResults returns the results of the preview emulation
 func (thmb *Anim) PreviewResults() *preview.Results {
 	select {
-	case <-thmb.previewUpdate:
-		thmb.previewResults = thmb.preview.Results()
+	case thmb.previewResults = <-thmb.previewUpdate:
 	default:
 	}
 	return thmb.previewResults
