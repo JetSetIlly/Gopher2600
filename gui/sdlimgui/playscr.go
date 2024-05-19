@@ -22,10 +22,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
-// note that values from the lazy package will not be updated in the service
-// loop when the emulator is in playmode. nothing in winPlayScr() therefore
-// should rely on any lazy value.
-
 type playScr struct {
 	img *SdlImgui
 

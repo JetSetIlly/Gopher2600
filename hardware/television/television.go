@@ -81,7 +81,7 @@ type State struct {
 	vsyncAdjust       bool
 
 	// frame resizer
-	resizer resizer
+	resizer Resizer
 
 	// the coords of the last CPU instruction
 	lastCPUInstruction coords.TelevisionCoords
@@ -258,6 +258,7 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	} else {
 		tv.SetSpec(tv.state.frameInfo.Spec.ID)
 	}
+	tv.state.resizer.reset(tv.state.frameInfo.Spec)
 
 	for _, m := range tv.mixers {
 		m.Reset()
@@ -439,7 +440,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 	// committed but this is rare (Hack'Em Hanglyman is a good example of such
 	// a ROM) and the performance benefits are significant
 	if !tv.state.frameInfo.Stable || tv.state.frameNum%16 <= framesUntilResize {
-		tv.state.resizer.examine(tv, sig)
+		tv.state.resizer.examine(tv.state, sig)
 	}
 
 	// a Signal() is by definition a new color clock. increase the horizontal count
@@ -695,7 +696,7 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	tv.state.frameInfo.VSyncScanlines = tv.state.vsyncScanlines
 
 	// commit any resizing that maybe pending
-	err := tv.state.resizer.commit(tv)
+	err := tv.state.resizer.commit(tv.state)
 	if err != nil {
 		return err
 	}
@@ -830,32 +831,37 @@ func (tv *Television) SetSpec(spec string) error {
 	switch strings.ToUpper(spec) {
 	case "NTSC":
 		tv.state.frameInfo = NewFrameInfo(specification.SpecNTSC)
+		tv.state.resizer.setSpec(specification.SpecNTSC)
 		tv.state.auto = false
 	case "PAL60":
 		// we treat PAL60 as just another name for PAL. whether it is 60HZ or
 		// not depends on the generated frame
 		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL)
+		tv.state.resizer.setSpec(specification.SpecPAL)
 		tv.state.auto = false
 	case "PAL":
 		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL)
+		tv.state.resizer.setSpec(specification.SpecPAL)
 		tv.state.auto = false
 	case "PAL-M":
 		tv.state.frameInfo = NewFrameInfo(specification.SpecPALM)
+		tv.state.resizer.setSpec(specification.SpecPALM)
 		tv.state.auto = false
 	case "SECAM":
 		tv.state.frameInfo = NewFrameInfo(specification.SpecSECAM)
+		tv.state.resizer.setSpec(specification.SpecSECAM)
 		tv.state.auto = false
 	case "":
 		// the empty string is treated like AUTO
 		fallthrough
 	case "AUTO":
 		tv.state.frameInfo = NewFrameInfo(specification.SpecNTSC)
+		tv.state.resizer.setSpec(specification.SpecNTSC)
 		tv.state.auto = true
 	default:
 		return fmt.Errorf("television: unsupported spec (%s)", spec)
 	}
 
-	tv.state.resizer.initialise(tv)
 	tv.lmtr.setRefreshRate(tv.state.frameInfo.Spec.RefreshRate)
 	tv.lmtr.setRate(tv.state.frameInfo.Spec.RefreshRate)
 
@@ -987,9 +993,22 @@ func (tv *Television) SetRotation(rotation specification.Rotation) {
 	}
 }
 
-// SetPresetFrameInfo uses the supplied FrameInfo to set the visible boundaries
-// for the television. This is useful if the visible area of the ROM is known
-// ahead of time and can help prevent ugly resizing in a pixel renderer
-func (tv *Television) SetPresetFrameInfo(info FrameInfo) {
-	tv.state.resizer.setPresetFrameInfo(tv, info)
+// GetResizer returns a copy of the television resizer in it's current state
+func (tv *Television) GetResizer() Resizer {
+	return tv.state.resizer
+}
+
+// SetResizer sets the state of the television resizer and sets the current
+// frame info accordingly. The validFrom value is the frame number at which the
+// resize information was taken from
+func (tv *Television) SetResizer(rz Resizer, validFrom int) {
+	tv.state.resizer = rz
+	tv.state.resizer.validFrom = validFrom
+	if tv.state.resizer.usingVBLANK {
+		tv.state.frameInfo.VisibleTop = tv.state.resizer.vblankTop
+		tv.state.frameInfo.VisibleBottom = tv.state.resizer.vblankBottom
+	} else {
+		tv.state.frameInfo.VisibleTop = tv.state.resizer.blackTop
+		tv.state.frameInfo.VisibleBottom = tv.state.resizer.blackBottom
+	}
 }

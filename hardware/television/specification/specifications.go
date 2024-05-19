@@ -173,7 +173,7 @@ const (
 //
 // # An example of such a ROM is the demo Chiphead
 //
-// The raises the quesion why we're choosing to render the VSYNC signal. For
+// The raises the question why we're choosing to render the VSYNC signal. For
 // debugging purposes it is useful to see where the TV thinks it is but it can
 // perhaps be done better
 //

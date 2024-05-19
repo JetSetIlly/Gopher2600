@@ -16,11 +16,13 @@
 package television
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
-// resizer handles the expansion of the visible area of the TV screen
+// Resizer handles the expansion of the visible area of the TV screen
 //
 // ROMs used to test resizing:
 //
@@ -50,7 +52,7 @@ import (
 //   - Legacy of the Beast
 //
 // *ROMs that *do* set VBLANK but might be caught by the black top/bottom
-// rule if frameHasVBlank was incorrectly set
+// rule if usingVBLANK was incorrectly set
 //   - aTaRSI (demo)
 //   - Supercharger "rewind tape" screen
 //
@@ -62,7 +64,7 @@ import (
 //
 // * PAL ROMs without VSYNC cannot be sized or changed to the correct spec automatically
 //   - Nightstalker
-type resizer struct {
+type Resizer struct {
 	// candidate top/bottom values for an actual resize.
 	//
 	// updated during the examine phase if the tv image goes beyond the current
@@ -79,7 +81,7 @@ type resizer struct {
 	// whether the frame has a vblank. if this value is negative the
 	// blackTop/blackBottom values are the candidate values used in the
 	// commit() function
-	frameHasVBlank bool
+	usingVBLANK bool
 
 	// the top/bottom values that will become the new stable top/bottom values
 	// once pendingCt has reached zero.
@@ -96,93 +98,116 @@ type resizer struct {
 	// gives time for the screen to settle down.
 	pendingCt int
 
-	// if the resizer has a "preset frame info" then those values are used as
-	// initial values for the resizer
-	presetFrameInfo    FrameInfo
-	hasPresetFrameInfo bool
+	// the frame number from which the resize information is valid. used to
+	// prevent needless resizing when the resizer information has already been
+	// gathered during a preview emulation
+	//
+	// will be zero except when the resizer has been received via the
+	// television's SetResizer() function
+	validFrom int
 }
 
-// set resizer's top/bottom values to equal tv top/bottom values.
-func (sr *resizer) initialise(tv *Television) {
-	sr.vblankTop = tv.state.frameInfo.VisibleTop
-	sr.vblankBottom = tv.state.frameInfo.VisibleBottom
-	sr.pendingTop = tv.state.frameInfo.VisibleTop
-	sr.pendingBottom = tv.state.frameInfo.VisibleBottom
-	sr.hasPresetFrameInfo = false
+func (rz *Resizer) String() string {
+	if rz.pendingCt > 0 {
+		return fmt.Sprintf("PENDING top: %d, bottom: %d", rz.pendingTop, rz.pendingBottom)
+	} else if rz.usingVBLANK {
+		return fmt.Sprintf("VBLANK top: %d, bottom: %d", rz.vblankTop, rz.vblankBottom)
+	} else {
+		return fmt.Sprintf("BLACK top: %d, bottom: %d", rz.blackTop, rz.blackBottom)
+	}
+}
+
+func (rz *Resizer) reset(spec specification.Spec) {
+	rz.setSpec(spec)
+	rz.validFrom = 0
+}
+
+// set resizer to nominal specification values
+func (rz *Resizer) setSpec(spec specification.Spec) {
+	rz.vblankTop = spec.AtariSafeVisibleTop
+	rz.vblankBottom = spec.AtariSafeVisibleBottom
+	rz.blackTop = spec.AtariSafeVisibleTop
+	rz.blackBottom = spec.AtariSafeVisibleBottom
+	rz.pendingTop = spec.AtariSafeVisibleTop
+	rz.pendingBottom = spec.AtariSafeVisibleBottom
 }
 
 // examine signal for resizing possiblity. this is an expensive operation to do
 // for every single signal/pixel. should probably be throttled in some way.
-func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
+func (rz *Resizer) examine(state *State, sig signal.SignalAttributes) {
+	// if current frame number is less that the validFrom field then do nothing
+	if state.frameInfo.FrameNum < rz.validFrom {
+		return
+	}
+
 	// do not try to resize during frame that isn't "vsynced".
 	//
 	// the best example of this is Andrew Davie's chess which simply does
 	// not care about frames during the computer's thinking time - we don't
 	// want to resize during these frames.
-	if !tv.state.frameInfo.VSync {
+	if !state.frameInfo.VSync {
 		// reset any pending changes on an unsynced frame
-		sr.pendingCt = 0
-		sr.pendingTop = sr.vblankTop
-		sr.pendingBottom = sr.vblankBottom
-		sr.frameHasVBlank = false
+		rz.pendingCt = 0
+		rz.pendingTop = rz.vblankTop
+		rz.pendingBottom = rz.vblankBottom
 		return
 	}
 
 	// some ROMs never set VBLANK but we still want to do our best and frame the
 	// screen nicely. this flag controls whether we use vblank top/bottom values
 	// or "black" top/bottom values
-	sr.frameHasVBlank = sr.frameHasVBlank || sig&signal.VBlank == signal.VBlank
+	rz.usingVBLANK = rz.usingVBLANK || sig&signal.VBlank == signal.VBlank
 
 	// if VBLANK is off then update the top/bottom values note
 	if sig&signal.VBlank != signal.VBlank {
-		if tv.state.frameInfo.Stable || sr.hasPresetFrameInfo {
-			if tv.state.scanline < sr.vblankTop &&
-				tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop {
-				sr.vblankTop = tv.state.scanline
-			} else if tv.state.scanline > sr.vblankBottom &&
-				tv.state.scanline <= tv.state.frameInfo.Spec.NewSafeVisibleBottom {
-				sr.vblankBottom = tv.state.scanline
+		if state.frameInfo.Stable {
+			if state.scanline < rz.vblankTop &&
+				state.scanline >= state.frameInfo.Spec.NewSafeVisibleTop {
+				rz.vblankTop = state.scanline
+			} else if state.scanline > rz.vblankBottom &&
+				state.scanline <= state.frameInfo.Spec.NewSafeVisibleBottom {
+				rz.vblankBottom = state.scanline
 			}
 		} else {
 			// if television is not yet stable then the size can shrink as well
 			// as grow. this is important for PAL60 ROMs which start off as PAL
 			// sized but will shrink to NTSC size
-			if tv.state.scanline != sr.vblankTop &&
-				tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop &&
-				tv.state.scanline <= tv.state.frameInfo.Spec.NewSafeVisibleTop+50 {
-				sr.vblankTop = tv.state.scanline
-			} else if tv.state.scanline != sr.vblankBottom &&
-				tv.state.scanline <= tv.state.frameInfo.Spec.NewSafeVisibleBottom &&
-				tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleBottom-75 {
-				sr.vblankBottom = tv.state.scanline
+			if state.scanline != rz.vblankTop &&
+				state.scanline >= state.frameInfo.Spec.NewSafeVisibleTop &&
+				state.scanline <= state.frameInfo.Spec.NewSafeVisibleTop+50 {
+				rz.vblankTop = state.scanline
+			} else if state.scanline != rz.vblankBottom &&
+				state.scanline <= state.frameInfo.Spec.NewSafeVisibleBottom &&
+				state.scanline >= state.frameInfo.Spec.NewSafeVisibleBottom-75 {
+				rz.vblankBottom = state.scanline
 			}
 		}
 	}
 
 	// early return if frameHasVBLANK is true
-	if sr.frameHasVBlank {
+	if rz.usingVBLANK {
 		return
 	}
 
 	// black-pixel resizing requires a stable frame
-	if !tv.state.frameInfo.Stable {
+	if !state.frameInfo.Stable {
 		return
 	}
 
 	// some ROMs never set VBLANK. for these cases we also record the extent of
 	// non-black pixels. these values are using in the commit() function in the
-	// event that frameHasVBlank is false.
-	if tv.state.clock > specification.ClksHBlank && sig&signal.VBlank != signal.VBlank {
+	// event that usingVBLANK is false.
+	if state.clock > specification.ClksHBlank && sig&signal.VBlank != signal.VBlank {
 		px := signal.ColorSignal((sig & signal.Color) >> signal.ColorShift)
-		col := tv.state.frameInfo.Spec.GetColor(px)
+		col := state.frameInfo.Spec.GetColor(px)
 		if col.R != 0x00 || col.G != 0x00 || col.B != 0x00 {
-			if tv.state.frameInfo.Stable {
-				if tv.state.scanline < sr.blackTop &&
-					tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop {
-					sr.blackTop = tv.state.scanline
-				} else if tv.state.scanline > sr.blackBottom &&
-					tv.state.scanline <= tv.state.frameInfo.Spec.NewSafeVisibleBottom {
-					sr.blackBottom = tv.state.scanline
+			if state.frameInfo.Stable {
+				if state.scanline < rz.blackTop &&
+					state.scanline >= state.frameInfo.Spec.NewSafeVisibleTop {
+					rz.blackTop = state.scanline
+				} else if state.scanline > rz.blackBottom &&
+					state.scanline <= state.frameInfo.Spec.NewSafeVisibleBottom {
+					rz.blackBottom = state.scanline
 				}
 			}
 		}
@@ -203,108 +228,97 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 const framesUntilResize = 3
 
 // commit resizing possibility found through examine() function.
-func (sr *resizer) commit(tv *Television) error {
+func (rz *Resizer) commit(state *State) error {
+	// if current frame number is less that the validFrom field then do nothing
+	if state.frameInfo.FrameNum < rz.validFrom {
+		return nil
+	}
+
 	// make sure candidate top and bottom value are equal to stable top/bottom
 	// at beginning of a frame
 	defer func() {
-		sr.vblankTop = tv.state.frameInfo.VisibleTop
-		sr.vblankBottom = tv.state.frameInfo.VisibleBottom
-		sr.blackTop = tv.state.frameInfo.VisibleTop
-		sr.blackBottom = tv.state.frameInfo.VisibleBottom
-		sr.frameHasVBlank = false
+		rz.vblankTop = state.frameInfo.VisibleTop
+		rz.vblankBottom = state.frameInfo.VisibleBottom
+		rz.blackTop = state.frameInfo.VisibleTop
+		rz.blackBottom = state.frameInfo.VisibleBottom
+		rz.usingVBLANK = false
 	}()
 
 	// if top/bottom values this frame are not the same as pending top/bottom
 	// values then update pending values and reset pending counter.
 	//
-	// the value frameHasVBlank is used to decide which candidate values to
+	// the value usingVBLANK is used to decide which candidate values to
 	// use: vblankTop/vblankBottom of blackTop/blackBottom
-	if sr.frameHasVBlank {
-		if sr.pendingTop != sr.vblankTop {
-			sr.pendingTop = sr.vblankTop
-			sr.pendingCt = framesUntilResize
+	if rz.usingVBLANK {
+		if rz.pendingTop != rz.vblankTop {
+			rz.pendingTop = rz.vblankTop
+			rz.pendingCt = framesUntilResize
 		}
-		if sr.pendingBottom != sr.vblankBottom {
-			sr.pendingBottom = sr.vblankBottom
-			sr.pendingCt = framesUntilResize
+		if rz.pendingBottom != rz.vblankBottom {
+			rz.pendingBottom = rz.vblankBottom
+			rz.pendingCt = framesUntilResize
 		}
 	} else {
-		if sr.pendingTop != sr.blackTop {
-			sr.pendingTop = sr.blackTop
-			sr.pendingCt = framesUntilResize
+		if rz.pendingTop != rz.blackTop {
+			rz.pendingTop = rz.blackTop
+			rz.pendingCt = framesUntilResize
 		}
-		if sr.pendingBottom != sr.blackBottom {
-			sr.pendingBottom = sr.blackBottom
-			sr.pendingCt = framesUntilResize
+		if rz.pendingBottom != rz.blackBottom {
+			rz.pendingBottom = rz.blackBottom
+			rz.pendingCt = framesUntilResize
 		}
 	}
 
 	// do nothing if counter is zero
-	if sr.pendingCt == 0 {
+	if rz.pendingCt == 0 {
 		return nil
 	}
 
 	// if pending top/bottom find themselves back at the stable top/bottom
 	// values then there is no need to do anything.
-	if sr.pendingTop == tv.state.frameInfo.VisibleTop && sr.pendingBottom == tv.state.frameInfo.VisibleBottom {
-		sr.pendingCt = 0
+	if rz.pendingTop == state.frameInfo.VisibleTop && rz.pendingBottom == state.frameInfo.VisibleBottom {
+		rz.pendingCt = 0
 		return nil
 	}
 
 	// reduce pending counter every frame that is active
-	sr.pendingCt--
+	rz.pendingCt--
 
 	// do nothing if counter is not yet zero
-	if sr.pendingCt > 0 {
+	if rz.pendingCt > 0 {
 		return nil
 	}
 
 	// return if there's nothing to do
-	if sr.pendingBottom == tv.state.frameInfo.VisibleBottom && sr.pendingBottom == tv.state.frameInfo.VisibleTop {
+	if rz.pendingBottom == state.frameInfo.VisibleBottom && rz.pendingBottom == state.frameInfo.VisibleTop {
 		return nil
 	}
 
 	// sanity check before we do anything drastic
-	if tv.state.frameInfo.VisibleTop < tv.state.frameInfo.VisibleBottom {
+	if state.frameInfo.VisibleTop < state.frameInfo.VisibleBottom {
 
 		// clamp top value if it is being changed. clamping makes sure that the
 		// VisibleTop value is between the atari and new safe values
-		if tv.state.frameInfo.VisibleTop != sr.pendingTop {
-			if sr.pendingTop < tv.state.frameInfo.Spec.NewSafeVisibleTop {
-				sr.pendingTop = tv.state.frameInfo.Spec.NewSafeVisibleTop
-			} else if sr.pendingTop > tv.state.frameInfo.Spec.AtariSafeVisibleTop {
-				sr.pendingTop = tv.state.frameInfo.Spec.AtariSafeVisibleTop
+		if state.frameInfo.VisibleTop != rz.pendingTop {
+			if rz.pendingTop < state.frameInfo.Spec.NewSafeVisibleTop {
+				rz.pendingTop = state.frameInfo.Spec.NewSafeVisibleTop
+			} else if rz.pendingTop > state.frameInfo.Spec.AtariSafeVisibleTop {
+				rz.pendingTop = state.frameInfo.Spec.AtariSafeVisibleTop
 			}
-			tv.state.frameInfo.VisibleTop = sr.pendingTop
+			state.frameInfo.VisibleTop = rz.pendingTop
 		}
 
 		// clamp bottom value if it is being changed. clamping makes sure that
 		// the VisibleBottom value is between the atari and new safe values
-		if tv.state.frameInfo.VisibleBottom != sr.pendingBottom {
-			if sr.pendingBottom > tv.state.frameInfo.Spec.NewSafeVisibleBottom {
-				sr.pendingBottom = tv.state.frameInfo.Spec.NewSafeVisibleBottom
-			} else if sr.pendingBottom < tv.state.frameInfo.Spec.AtariSafeVisibleBottom {
-				sr.pendingBottom = tv.state.frameInfo.Spec.AtariSafeVisibleBottom
+		if state.frameInfo.VisibleBottom != rz.pendingBottom {
+			if rz.pendingBottom > state.frameInfo.Spec.NewSafeVisibleBottom {
+				rz.pendingBottom = state.frameInfo.Spec.NewSafeVisibleBottom
+			} else if rz.pendingBottom < state.frameInfo.Spec.AtariSafeVisibleBottom {
+				rz.pendingBottom = state.frameInfo.Spec.AtariSafeVisibleBottom
 			}
-			tv.state.frameInfo.VisibleBottom = sr.pendingBottom
+			state.frameInfo.VisibleBottom = rz.pendingBottom
 		}
 	}
 
 	return nil
-}
-
-// force the resizer to the values of the supplied frame info
-func (sr *resizer) setPresetFrameInfo(tv *Television, info FrameInfo) {
-	sr.hasPresetFrameInfo = true
-	sr.presetFrameInfo = info
-
-	sr.vblankTop = info.VisibleTop
-	sr.vblankBottom = info.VisibleBottom
-	sr.blackTop = info.VisibleTop
-	sr.blackBottom = info.VisibleBottom
-	sr.pendingTop = info.VisibleTop
-	sr.pendingBottom = info.VisibleBottom
-
-	tv.state.frameInfo.VisibleTop = info.VisibleTop
-	tv.state.frameInfo.VisibleBottom = info.VisibleBottom
 }

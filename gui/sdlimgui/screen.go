@@ -229,7 +229,7 @@ func newScreen(img *SdlImgui) *screen {
 	return scr
 }
 
-// SetFPSCap implements the television.PixelRendererRotation interface
+// SetRotation implements the television.PixelRendererRotation interface
 func (scr *screen) SetRotation(rotation specification.Rotation) {
 	scr.rotation.Store(rotation)
 

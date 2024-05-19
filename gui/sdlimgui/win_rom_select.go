@@ -398,15 +398,15 @@ func (win *winSelectROM) draw() {
 					}
 
 					// results of preview emulation from the thumbnailer
-					selectedFilePreview := win.thmb.PreviewResults()
+					previewResults := win.thmb.PreviewResults()
 
 					imgui.TableNextRow()
 					imgui.TableNextColumn()
 					imgui.AlignTextToFramePadding()
 					imgui.Text("Mapper")
 					imgui.TableNextColumn()
-					if selectedFilePreview != nil {
-						imgui.Text(selectedFilePreview.VCS.Mem.Cart.ID())
+					if previewResults != nil {
+						imgui.Text(previewResults.VCS.Mem.Cart.ID())
 					} else {
 						imgui.Text("-")
 					}
@@ -418,9 +418,9 @@ func (win *winSelectROM) draw() {
 					imgui.AlignTextToFramePadding()
 					imgui.Text("Television")
 					imgui.TableNextColumn()
-					if selectedFilePreview != nil {
+					if previewResults != nil {
 						imgui.SetNextItemWidth(80)
-						if imgui.BeginCombo("##tvspec", selectedFilePreview.FrameInfo.Spec.ID) {
+						if imgui.BeginCombo("##tvspec", previewResults.SpecID) {
 							for _, s := range specification.SpecList {
 								if imgui.Selectable(s) {
 								}
@@ -440,9 +440,9 @@ func (win *winSelectROM) draw() {
 					imgui.AlignTextToFramePadding()
 					imgui.Text("Players")
 					imgui.TableNextColumn()
-					if selectedFilePreview != nil {
+					if previewResults != nil {
 						imgui.SetNextItemWidth(100)
-						if imgui.BeginCombo("##leftplayer", string(selectedFilePreview.VCS.RIOT.Ports.LeftPlayer.ID())) {
+						if imgui.BeginCombo("##leftplayer", string(previewResults.VCS.RIOT.Ports.LeftPlayer.ID())) {
 							for _, s := range peripherals.AvailableLeftPlayer {
 								if imgui.Selectable(s) {
 								}
@@ -453,7 +453,7 @@ func (win *winSelectROM) draw() {
 						imgui.Text("&")
 						imgui.SameLineV(0, 15)
 						imgui.SetNextItemWidth(100)
-						if imgui.BeginCombo("##rightplayer", string(selectedFilePreview.VCS.RIOT.Ports.RightPlayer.ID())) {
+						if imgui.BeginCombo("##rightplayer", string(previewResults.VCS.RIOT.Ports.RightPlayer.ID())) {
 							for _, s := range peripherals.AvailableRightPlayer {
 								if imgui.Selectable(s) {
 								}
