@@ -238,7 +238,11 @@ func (scr *screen) SetRotation(rotation specification.Rotation) {
 
 	// the only other component that needs to be aware of the rotation is the
 	// play screen
-	scr.img.playScr.resize()
+	for _, r := range scr.renderers {
+		if t, ok := r.(television.PixelRendererRotation); ok {
+			t.SetRotation(rotation)
+		}
+	}
 }
 
 // SetFPSCap implements the television.PixelRendererFPSCap interface
