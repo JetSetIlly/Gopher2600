@@ -715,7 +715,7 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	// be directly addressing in the television package
 	if tv.state.frameInfo.TotalScanlines != tv.state.scanline {
 		tv.state.frameInfo.TotalScanlines = tv.state.scanline
-		tv.state.frameInfo.RefreshRate = 15734.26 / float32(tv.state.scanline)
+		tv.state.frameInfo.RefreshRate = tv.state.frameInfo.Spec.HorizontalScanRate / float32(tv.state.scanline)
 		tv.lmtr.setRefreshRate(tv.state.frameInfo.RefreshRate)
 		tv.state.frameInfo.Jitter = true
 	} else {

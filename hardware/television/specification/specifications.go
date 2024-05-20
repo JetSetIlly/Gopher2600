@@ -79,6 +79,9 @@ type Spec struct {
 	ID     string
 	Colors []color.RGBA
 
+	// horizontal scan rate is used to calculate the refresh rate figure
+	HorizontalScanRate float32
+
 	// the nominal refresh rate for the specification. this refresh rate will
 	// be produced if the actual number of scanlines per frame is the same as
 	// OptimalTotal defined below.
@@ -210,58 +213,65 @@ var SpecSECAM Spec
 
 func init() {
 	SpecNTSC = Spec{
-		ID:                "NTSC",
-		Colors:            PaletteNTSC,
-		ScanlinesVSync:    3,
-		ScanlinesVBlank:   37,
-		ScanlinesVisible:  192,
-		ScanlinesOverscan: 30,
-		ScanlinesTotal:    262,
-		RefreshRate:       60.0,
+		ID:                 "NTSC",
+		HorizontalScanRate: 15734.26,
+		Colors:             PaletteNTSC,
+		ScanlinesVSync:     3,
+		ScanlinesVBlank:    37,
+		ScanlinesVisible:   192,
+		ScanlinesOverscan:  30,
+		ScanlinesTotal:     262,
+		RefreshRate:        60.0,
 	}
-
+	SpecNTSC.RefreshRate = SpecNTSC.HorizontalScanRate / float32(SpecNTSC.ScanlinesTotal)
 	SpecNTSC.AtariSafeVisibleTop = SpecNTSC.ScanlinesVBlank + SpecNTSC.ScanlinesVSync
 	SpecNTSC.AtariSafeVisibleBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.ScanlinesOverscan
 
 	SpecPAL = Spec{
-		ID:                "PAL",
-		Colors:            PalettePAL,
-		ScanlinesVSync:    3,
-		ScanlinesVBlank:   45,
-		ScanlinesVisible:  228,
-		ScanlinesOverscan: 36,
-		ScanlinesTotal:    312,
-		RefreshRate:       50.0,
+		ID:                 "PAL",
+		HorizontalScanRate: 15625.00,
+		Colors:             PalettePAL,
+		ScanlinesVSync:     3,
+		ScanlinesVBlank:    45,
+		ScanlinesVisible:   228,
+		ScanlinesOverscan:  36,
+		ScanlinesTotal:     312,
+		RefreshRate:        50.0,
 	}
 
+	SpecPAL.RefreshRate = SpecPAL.HorizontalScanRate / float32(SpecPAL.ScanlinesTotal)
 	SpecPAL.AtariSafeVisibleTop = SpecPAL.ScanlinesVBlank + SpecPAL.ScanlinesVSync
 	SpecPAL.AtariSafeVisibleBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesOverscan
 
 	SpecPALM = Spec{
-		ID:                "PAL-M",
-		Colors:            PaletteNTSC,
-		ScanlinesVSync:    3,
-		ScanlinesVBlank:   37,
-		ScanlinesVisible:  192,
-		ScanlinesOverscan: 30,
-		ScanlinesTotal:    262,
-		RefreshRate:       60.0,
+		ID:                 "PAL-M",
+		HorizontalScanRate: 15734.26,
+		Colors:             PaletteNTSC,
+		ScanlinesVSync:     3,
+		ScanlinesVBlank:    37,
+		ScanlinesVisible:   192,
+		ScanlinesOverscan:  30,
+		ScanlinesTotal:     262,
+		RefreshRate:        60.0,
 	}
 
+	SpecPALM.RefreshRate = SpecPALM.HorizontalScanRate / float32(SpecPALM.ScanlinesTotal)
 	SpecPALM.AtariSafeVisibleTop = SpecPALM.ScanlinesVBlank + SpecPALM.ScanlinesVSync
 	SpecPALM.AtariSafeVisibleBottom = SpecPALM.ScanlinesTotal - SpecPALM.ScanlinesOverscan
 
 	SpecSECAM = Spec{
-		ID:                "SECAM",
-		Colors:            PaletteSECAM,
-		ScanlinesVSync:    3,
-		ScanlinesVBlank:   45,
-		ScanlinesVisible:  228,
-		ScanlinesOverscan: 36,
-		ScanlinesTotal:    312,
-		RefreshRate:       50.0,
+		ID:                 "SECAM",
+		HorizontalScanRate: 15625.00,
+		Colors:             PaletteSECAM,
+		ScanlinesVSync:     3,
+		ScanlinesVBlank:    45,
+		ScanlinesVisible:   228,
+		ScanlinesOverscan:  36,
+		ScanlinesTotal:     312,
+		RefreshRate:        50.0,
 	}
 
+	SpecSECAM.RefreshRate = SpecSECAM.HorizontalScanRate / float32(SpecSECAM.ScanlinesTotal)
 	SpecSECAM.AtariSafeVisibleTop = SpecSECAM.ScanlinesVBlank + SpecSECAM.ScanlinesVSync
 	SpecSECAM.AtariSafeVisibleBottom = SpecSECAM.ScanlinesTotal - SpecSECAM.ScanlinesOverscan
 
