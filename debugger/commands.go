@@ -1279,18 +1279,18 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					if err != nil {
 						return err
 					}
+
+					if dbg.State() == govern.Paused {
+						dbg.RerunLastNFrames(10, func(s *rewind.State) {
+							s.TV.SetReqSpec(newspec)
+						})
+					}
 				}
 
 				spec := dbg.vcs.TV.GetFrameInfo().Spec
 				s := strings.Builder{}
 				s.WriteString(spec.ID)
 				dbg.printLine(terminal.StyleInstrument, s.String())
-
-				if dbg.State() == govern.Paused {
-					dbg.RerunLastNFrames(10, func(s *rewind.State) {
-						s.TV.SetReqSpec(newspec)
-					})
-				}
 
 			default:
 				// already caught by command line ValidateTokens()

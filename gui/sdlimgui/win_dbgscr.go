@@ -367,12 +367,37 @@ func (win *winDbgScr) draw() {
 }
 
 func (win *winDbgScr) drawSpecCombo() {
+	spec := win.img.cache.TV.GetFrameInfo().Spec.ID
+
+	// special handling for PAL60 selection. PAL60 isn't a real TV spec and will
+	// be treated as PAL by the television. however it is an option that can be
+	// selected and it would seem odd if the selection was reflected by the user
+	// interface
+	if spec == "PAL" && win.img.cache.TV.GetReqSpecID() == "PAL60" {
+		spec = "PAL60"
+	}
+
 	imgui.PushItemWidth(win.specComboDim.X + imgui.FrameHeight())
-	if imgui.BeginComboV("##spec", win.img.cache.TV.GetFrameInfo().Spec.ID, imgui.ComboFlagsNone) {
+	if imgui.BeginComboV("##spec", spec, imgui.ComboFlagsNone) {
 		for _, s := range specification.ReqSpecList {
-			if imgui.Selectable(s) {
+			if s != "AUTO" {
+				if imgui.Selectable(s) {
+					win.img.term.pushCommand(fmt.Sprintf("TV SPEC %s", s))
+				}
+			}
+		}
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
+		auto := win.img.cache.TV.GetReqSpecID() == "AUTO"
+		if imgui.Checkbox("Auto", &auto) {
+			if auto {
+				win.img.term.pushCommand("TV SPEC AUTO")
+			} else {
+				s := win.img.cache.TV.GetFrameInfo().Spec.ID
 				win.img.term.pushCommand(fmt.Sprintf("TV SPEC %s", s))
 			}
+			imgui.CloseCurrentPopup()
 		}
 		imgui.EndCombo()
 	}

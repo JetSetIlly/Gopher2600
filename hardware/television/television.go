@@ -101,6 +101,7 @@ func (s *State) setSpec(spec string) {
 	case "AUTO":
 		s.frameInfo = NewFrameInfo(specification.SpecNTSC)
 		s.resizer.setSpec(specification.SpecNTSC)
+		s.stableFrames = 0
 	case "NTSC":
 		s.frameInfo = NewFrameInfo(specification.SpecNTSC)
 		s.resizer.setSpec(specification.SpecNTSC)
@@ -129,6 +130,11 @@ func (s *State) SetReqSpec(spec string) {
 	}
 	s.reqSpecID = spec
 	s.setSpec(spec)
+}
+
+// GetReqSpecID returns the specification that was most recently requested
+func (s *State) GetReqSpecID() string {
+	return s.reqSpecID
 }
 
 // GetLastSignal returns a copy of the most SignalAttributes sent to the TV
@@ -850,11 +856,6 @@ func (tv *Television) SetSpec(spec string, forced bool) error {
 
 	if forced {
 		tv.creationSpecID = spec
-		if tv.creationSpecID == "AUTO" {
-			// resetting the stableFrames counter means that the auto spec code
-			// in the newFrame() function has a chance to run
-			tv.state.stableFrames = 0
-		}
 	} else if tv.creationSpecID != "AUTO" {
 		return nil
 	}
