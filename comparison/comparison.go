@@ -71,7 +71,7 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 
 	// create a new television. this will be used during the initialisation of
 	// the VCS and not referred to directly again
-	tv, err := television.NewTelevision("AUTO")
+	tv, err := television.NewTelevision(driverVCS.TV.GetCreationSpecID())
 	if err != nil {
 		return nil, fmt.Errorf("comparison: %w", err)
 	}

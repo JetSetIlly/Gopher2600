@@ -69,7 +69,7 @@ type Anim struct {
 var animLabel = environment.Label("thumbnail_anim")
 
 // NewAnim is the preferred method of initialisation for the Anim type
-func NewAnim(prefs *preferences.Preferences) (*Anim, error) {
+func NewAnim(prefs *preferences.Preferences, spec string) (*Anim, error) {
 	thmb := &Anim{
 		emulationQuit:      make(chan bool, 1),
 		emulationCompleted: make(chan bool, 1),
@@ -85,7 +85,7 @@ func NewAnim(prefs *preferences.Preferences) (*Anim, error) {
 
 	// create a new television. this will be used during the initialisation of
 	// the VCS and not referred to directly again
-	tv, err := television.NewTelevision("AUTO")
+	tv, err := television.NewTelevision(spec)
 	if err != nil {
 		return nil, fmt.Errorf("thumbnailer: %w", err)
 	}

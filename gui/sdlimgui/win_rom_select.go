@@ -99,7 +99,7 @@ func newSelectROM(img *SdlImgui) (window, error) {
 	// open then the thumbnailer is open. if we ever decide that the thumbnailer
 	// should be optional we should change this - we don't want the polling to
 	// be high if there is no reason
-	win.thmb, err = thumbnailer.NewAnim(win.img.dbg.VCS().Env.Prefs)
+	win.thmb, err = thumbnailer.NewAnim(win.img.dbg.VCS().Env.Prefs, win.img.dbg.VCS().TV.GetCreationSpecID())
 	if err != nil {
 		return nil, err
 	}

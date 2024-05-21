@@ -54,7 +54,7 @@ type Image struct {
 var imageLabel = environment.Label("image")
 
 // NewImage is the preferred method of initialisation for the Image type
-func NewImage(prefs *preferences.Preferences) (*Image, error) {
+func NewImage(prefs *preferences.Preferences, spec string) (*Image, error) {
 	thmb := &Image{
 		emulationQuit:      make(chan bool, 1),
 		emulationCompleted: make(chan bool, 1),
@@ -69,7 +69,7 @@ func NewImage(prefs *preferences.Preferences) (*Image, error) {
 
 	// create a new television. this will be used during the initialisation of
 	// the VCS and not referred to directly again
-	tv, err := television.NewTelevision("AUTO")
+	tv, err := television.NewTelevision(spec)
 	if err != nil {
 		return nil, fmt.Errorf("thumbnailer: %w", err)
 	}

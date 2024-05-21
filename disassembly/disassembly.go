@@ -86,7 +86,7 @@ const disassemblyLabel = environment.Label("disassembly")
 func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 	var err error
 
-	tv, err := television.NewTelevision("NTSC")
+	tv, err := television.NewTelevision("AUTO")
 	if err != nil {
 		return nil, fmt.Errorf("disassembly: %w", err)
 	}
