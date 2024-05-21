@@ -16,7 +16,6 @@
 package tracker
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 )
 
@@ -39,8 +38,8 @@ const (
 // Page"
 //
 // https://www.randomterrain.com/atari-2600-memories-music-and-sound.html
-func LookupMusicalNote(tv *television.Television, reg audio.Registers) MusicalNote {
-	switch tv.GetFrameInfo().Spec.ID {
+func LookupMusicalNote(tv Television, reg audio.Registers) MusicalNote {
+	switch tv.GetSpecID() {
 	case "NTSC":
 		switch reg.Control {
 		case 1: // Buzzy

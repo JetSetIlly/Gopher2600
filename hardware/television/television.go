@@ -199,7 +199,7 @@ type Television struct {
 // Television interface.
 func NewTelevision(spec string) (*Television, error) {
 	tv := &Television{
-		reqSpecID:   strings.ToUpper(spec),
+		reqSpecID:   spec,
 		state:       &State{},
 		signals:     make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
 		prevSignals: make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
@@ -668,22 +668,28 @@ func (tv *Television) newFrame(fromVsync bool) error {
 		}
 	}
 
-	// specification change between NTSC and PAL. PAL60 is treated the same as
+	// specification change between NTSC and PAL. PAL-M is treated the same as
 	// NTSC in this instance
 	//
 	// Note that SetSpec() resets the frameInfo completely so we must set the
 	// framenumber and vsynced after any possible SetSpec()
 	if tv.state.stableFrames > leadingFrames && tv.state.stableFrames < stabilityThreshold {
 		switch tv.state.frameInfo.Spec.ID {
-		case specification.SpecPALM.ID:
+		case specification.SpecPAL_M.ID:
 			fallthrough
 		case specification.SpecNTSC.ID:
 			if tv.state.auto && tv.state.scanline > specification.PALTrigger {
-				_ = tv.SetSpec("PAL")
+				err := tv.SetSpec("PAL")
+				if err != nil {
+					return err
+				}
 			}
 		case specification.SpecPAL.ID:
 			if tv.state.auto && tv.state.scanline <= specification.PALTrigger {
-				_ = tv.SetSpec("NTSC")
+				err := tv.SetSpec("NTSC")
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -824,14 +830,32 @@ func (tv *Television) SetSpecConditional(spec string) error {
 
 // SetSpec sets the television's specification. Will return an error if
 // specification is not recognised.
-//
-// Currently supported NTSC, PAL, PAL60 and AUTO. The empty string behaves like
-// "AUTO".
 func (tv *Television) SetSpec(spec string) error {
+	spec, ok := specification.NormaliseReqSpecID(spec)
+	if !ok {
+		return fmt.Errorf("television: unsupported spec (%s)", spec)
+	}
+
 	switch strings.ToUpper(spec) {
+	case "AUTO":
+		tv.state.frameInfo = NewFrameInfo(specification.SpecNTSC)
+		tv.state.resizer.setSpec(specification.SpecNTSC)
+		tv.state.auto = true
 	case "NTSC":
 		tv.state.frameInfo = NewFrameInfo(specification.SpecNTSC)
 		tv.state.resizer.setSpec(specification.SpecNTSC)
+		tv.state.auto = false
+	case "PAL":
+		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL)
+		tv.state.resizer.setSpec(specification.SpecPAL)
+		tv.state.auto = false
+	case "PAL-M":
+		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL_M)
+		tv.state.resizer.setSpec(specification.SpecPAL_M)
+		tv.state.auto = false
+	case "SECAM":
+		tv.state.frameInfo = NewFrameInfo(specification.SpecSECAM)
+		tv.state.resizer.setSpec(specification.SpecSECAM)
 		tv.state.auto = false
 	case "PAL60":
 		// we treat PAL60 as just another name for PAL. whether it is 60HZ or
@@ -839,27 +863,6 @@ func (tv *Television) SetSpec(spec string) error {
 		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL)
 		tv.state.resizer.setSpec(specification.SpecPAL)
 		tv.state.auto = false
-	case "PAL":
-		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL)
-		tv.state.resizer.setSpec(specification.SpecPAL)
-		tv.state.auto = false
-	case "PAL-M":
-		tv.state.frameInfo = NewFrameInfo(specification.SpecPALM)
-		tv.state.resizer.setSpec(specification.SpecPALM)
-		tv.state.auto = false
-	case "SECAM":
-		tv.state.frameInfo = NewFrameInfo(specification.SpecSECAM)
-		tv.state.resizer.setSpec(specification.SpecSECAM)
-		tv.state.auto = false
-	case "":
-		// the empty string is treated like AUTO
-		fallthrough
-	case "AUTO":
-		tv.state.frameInfo = NewFrameInfo(specification.SpecNTSC)
-		tv.state.resizer.setSpec(specification.SpecNTSC)
-		tv.state.auto = true
-	default:
-		return fmt.Errorf("television: unsupported spec (%s)", spec)
 	}
 
 	tv.lmtr.setRefreshRate(tv.state.frameInfo.Spec.RefreshRate)

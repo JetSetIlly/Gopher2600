@@ -472,7 +472,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	// playmode)
 
 	// add audio tracker
-	dbg.Tracker = tracker.NewTracker(dbg, dbg.Rewind)
+	dbg.Tracker = tracker.NewTracker(dbg, dbg.vcs.TV, dbg.Rewind)
 	dbg.vcs.TIA.Audio.SetTracker(dbg.Tracker)
 
 	// add plug monitor

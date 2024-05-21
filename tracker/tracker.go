@@ -20,7 +20,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/rewind"
@@ -30,9 +29,13 @@ type Rewind interface {
 	GetState(frame int) *rewind.State
 }
 
+type Television interface {
+	GetCoords() coords.TelevisionCoords
+	GetSpecID() string
+}
+
 type Emulation interface {
 	State() govern.State
-	TV() *television.Television
 }
 
 // VolumeChange indicates whether the volume of the channel is rising or falling or
@@ -99,6 +102,7 @@ type History struct {
 // audio registers over time
 type Tracker struct {
 	emulation Emulation
+	tv        Television
 	rewind    Rewind
 
 	// contentious fields are in the trackerCrit type
@@ -114,9 +118,10 @@ type Tracker struct {
 }
 
 // NewTracker is the preferred method of initialisation for the Tracker type
-func NewTracker(emulation Emulation, rewind Rewind) *Tracker {
+func NewTracker(emulation Emulation, tv Television, rewind Rewind) *Tracker {
 	return &Tracker{
 		emulation: emulation,
+		tv:        tv,
 		rewind:    rewind,
 		crit: History{
 			Entries: make([]Entry, 0, maxTrackerEntries),
@@ -144,14 +149,12 @@ func (tr *Tracker) AudioTick(env audio.TrackerEnvironment, channel int, reg audi
 	tr.crit.section.Lock()
 	defer tr.crit.section.Unlock()
 
-	tv := tr.emulation.TV()
-
 	e := Entry{
-		Coords:      tv.GetCoords(),
+		Coords:      tr.tv.GetCoords(),
 		Channel:     channel,
 		Registers:   reg,
 		Distortion:  LookupDistortion(reg),
-		MusicalNote: LookupMusicalNote(tv, reg),
+		MusicalNote: LookupMusicalNote(tr.tv, reg),
 	}
 
 	e.PianoKey = NoteToPianoKey(e.MusicalNote)

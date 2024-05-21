@@ -15,6 +15,13 @@
 
 package debugger
 
+import (
+	"fmt"
+	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+)
+
 // debugger keywords.
 const (
 	cmdReset = "RESET"
@@ -115,7 +122,7 @@ var commandTemplate = []string{
 	cmdTIA + " (HMOVE)",
 	cmdRIOT + " (PORTS|TIMER)",
 	cmdAudio,
-	cmdTV + " (SPEC (NTSC|PAL|PAL60|PAL-M|SECAM|AUTO))",
+	cmdTV + fmt.Sprintf(" (SPEC (%s))", strings.Join(specification.ReqSpecList, "|")),
 	cmdPlayer + " (0|1)",
 	cmdMissile + " (0|1)",
 	cmdBall,

@@ -20,6 +20,7 @@ package specification
 import (
 	"image/color"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -28,17 +29,39 @@ import (
 // SpecList is the list of specifications that the television may adopt.
 var SpecList = []string{"NTSC", "PAL", "PAL-M", "SECAM"}
 
+// ReqSpecList is the list of specifications that can be requested. This is
+// different to the actual spec list in that it includes "PAL60" and "AUTO" as
+// an option
+var ReqSpecList = slices.Concat([]string{"AUTO"}, SpecList, []string{"PAL60"})
+
+// NormaliseReqSpecID converts the ID string such that it is one of the values
+// in ReqSpecList. If the ID is not in ReqSpecList then false is returned.
+//
+// For completeness, the empty string is converted to "AUTO". "PALM" is
+// converted to "PAL-M"; and "PAL-60" converted to "PAL60".
+func NormaliseReqSpecID(id string) (string, bool) {
+	id = strings.ToUpper(id)
+	switch id {
+	case "":
+		id = "AUTO"
+	case "PALM":
+		id = "PAL-M"
+	case "PAL-60":
+		id = "PAL60"
+	}
+	return id, slices.Index(ReqSpecList, id) != -1
+}
+
 // SearchSpec looks for a valid sub-string in s, that indicates a required TV
 // specification. The returned value is a canonical specication label as listed
 // in SpecList.
 //
 // If no valid sub-string can be found the empty string is returned.
+//
+// This function is intended to be used for searching filenames or descriptions.
+// It probably shouldn't be used a general conversion tool.
 func SearchSpec(s string) string {
-	// list is the SpecList but suitable for searching. it's important
-	// that when searching in a filename, for example, that we search in this
-	// order. for example, we don't want to match on "PAL" if the sub-string is
-	// actually "PAL60".
-	var list = []string{"pal-60", "pal60", "pal-m", "palm", "ntsc", "pal", "secam"}
+	var id string
 
 	// we don't want to include the path in the search because this may cause
 	// false positives. for example, in ROM Hunter's archive there are
@@ -48,30 +71,32 @@ func SearchSpec(s string) string {
 	// http://www.atarimania.com/rom_collection_archive_atari_2600_roms.html
 	s = filepath.Base(s)
 
-	// look for any settings embedded in the filename
-	s = strings.ToLower(s)
-	for _, spec := range list {
+	// look for spec substring in the supplied string
+	s = strings.ToUpper(s)
+	for _, spec := range ReqSpecList {
 		if strings.Contains(s, spec) {
 			switch spec {
-			case "pal-60":
-				return "PAL"
-			case "pal60":
-				return "PAL"
-			case "pal-m":
-				return "PAL-M"
-			case "palm":
-				return "PAL-M"
-			case "ntsc":
-				return "NTSC"
-			case "pal":
-				return "PAL"
-			case "secam":
-				return "SECAM"
+			case "AUTO":
+				// ignore appearance of auto in the string
+			case "PAL-60":
+				id = "PAL"
+			case "PAL60":
+				id = "PAL"
+			case "PAL-M":
+				id = "PAL-M"
+			case "PALM":
+				id = "PAL-M"
+			case "NTSC":
+				id = "NTSC"
+			case "PAL":
+				id = "PAL"
+			case "SECAM":
+				id = "SECAM"
 			}
 		}
 	}
 
-	return ""
+	return id
 }
 
 // Spec is used to define the two television specifications.
@@ -205,8 +230,8 @@ var SpecNTSC Spec
 // SpecPAL is the specification for PAL television type
 var SpecPAL Spec
 
-// SpecPALM is the specification for PALM television type
-var SpecPALM Spec
+// SpecPAL_M is the specification for PALM television type
+var SpecPAL_M Spec
 
 // SpecSECAM is the specification for SECAM television type
 var SpecSECAM Spec
@@ -243,7 +268,7 @@ func init() {
 	SpecPAL.AtariSafeVisibleTop = SpecPAL.ScanlinesVBlank + SpecPAL.ScanlinesVSync
 	SpecPAL.AtariSafeVisibleBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesOverscan
 
-	SpecPALM = Spec{
+	SpecPAL_M = Spec{
 		ID:                 "PAL-M",
 		HorizontalScanRate: 15734.26,
 		Colors:             PaletteNTSC,
@@ -255,9 +280,9 @@ func init() {
 		RefreshRate:        60.0,
 	}
 
-	SpecPALM.RefreshRate = SpecPALM.HorizontalScanRate / float32(SpecPALM.ScanlinesTotal)
-	SpecPALM.AtariSafeVisibleTop = SpecPALM.ScanlinesVBlank + SpecPALM.ScanlinesVSync
-	SpecPALM.AtariSafeVisibleBottom = SpecPALM.ScanlinesTotal - SpecPALM.ScanlinesOverscan
+	SpecPAL_M.RefreshRate = SpecPAL_M.HorizontalScanRate / float32(SpecPAL_M.ScanlinesTotal)
+	SpecPAL_M.AtariSafeVisibleTop = SpecPAL_M.ScanlinesVBlank + SpecPAL_M.ScanlinesVSync
+	SpecPAL_M.AtariSafeVisibleBottom = SpecPAL_M.ScanlinesTotal - SpecPAL_M.ScanlinesOverscan
 
 	SpecSECAM = Spec{
 		ID:                 "SECAM",
@@ -281,8 +306,8 @@ func init() {
 	SpecNTSC.NewSafeVisibleBottom = 250
 	SpecPAL.NewSafeVisibleTop = 30
 	SpecPAL.NewSafeVisibleBottom = 299
-	SpecPALM.NewSafeVisibleTop = 20
-	SpecPALM.NewSafeVisibleBottom = 249
+	SpecPAL_M.NewSafeVisibleTop = 20
+	SpecPAL_M.NewSafeVisibleBottom = 249
 	SpecSECAM.NewSafeVisibleTop = 30
 	SpecSECAM.NewSafeVisibleBottom = 299
 }

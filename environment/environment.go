@@ -32,6 +32,7 @@ const MainEmulation = Label("main")
 // implementation
 type Television interface {
 	GetSpecID() string
+	GetReqSpecID() string
 	SetRotation(specification.Rotation)
 }
 

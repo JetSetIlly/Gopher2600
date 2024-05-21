@@ -1121,7 +1121,7 @@ func (cart *Moviecart) setConsoleTiming() {
 		lines = 242
 	case "PAL":
 		lines = 242
-	case "PAL-60":
+	case "PAL-M":
 		lines = 192
 	case "NTSC":
 		lines = 192

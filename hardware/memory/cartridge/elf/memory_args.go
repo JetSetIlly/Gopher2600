@@ -31,11 +31,17 @@ const (
 	argMemtop
 )
 
-// possible/supported values of system type argument
+// supported values for argAddrSystemType
 const (
 	argSystemType_NTSC = iota
 	argSystemType_PAL
+	argSystemType_PAL60
 )
 
-// Indicates elf is loaded by multicart and should allow exiting (return from main() function)
-const argFlags_MultiCart = 1
+// supported values for argAddrFlags
+const (
+	argFlags_NoExit = iota
+
+	// indicates that the ELF is loaded by a multicart that supports reentry
+	argFlags_ExitToMultiCart
+)

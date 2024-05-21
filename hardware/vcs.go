@@ -255,7 +255,7 @@ func (vcs *VCS) SetClockSpeed(spec specification.Spec) {
 			vcs.Clock = palClock
 			logger.Log(vcs.Env, "vcs", "switching to PAL clock")
 		}
-	case specification.SpecPALM.ID:
+	case specification.SpecPAL_M.ID:
 		if vcs.Clock != palMClock {
 			vcs.Clock = palMClock
 			logger.Log(vcs.Env, "vcs", "switching to PAL-M clock")

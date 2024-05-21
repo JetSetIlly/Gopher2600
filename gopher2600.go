@@ -36,6 +36,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/performance"
 	"github.com/jetsetilly/gopher2600/recorder"
@@ -298,7 +299,8 @@ func emulate(mode string, sync *mainSync, args []string) error {
 	// arguments common to both play and debugging modes
 	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
 	flgs.BoolVar(&opts.Log, "log", false, "echo debugging log to stdout")
-	flgs.StringVar(&opts.Spec, "tv", "AUTO", "televsion specifcation: AUTO, NTSC, PAL, PAL60, PAL-M, SECAM")
+	flgs.StringVar(&opts.Spec, "tv", "AUTO",
+		fmt.Sprintf("television specification: %s", strings.Join(specification.ReqSpecList, ", ")))
 	flgs.BoolVar(&opts.FpsCap, "fpscap", true, "cap FPS to emulation TV")
 	flgs.IntVar(&opts.Multiload, "multiload", -1, "force multiload byte (supercharger only; 0 to 255")
 	flgs.StringVar(&opts.Mapping, "mapping", "AUTO", "force cartridge mapper selection")
@@ -549,7 +551,8 @@ func perform(mode string, sync *mainSync, args []string) error {
 
 	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
 	flgs.StringVar(&mapping, "mapping", "AUTO", "form cartridge mapper selection")
-	flgs.StringVar(&spec, "spec", "AUTO", "television specification: NTSC, PAL, PAL60, PAL-M, SECAM")
+	flgs.StringVar(&spec, "tv", "AUTO",
+		fmt.Sprintf("television specification: %s", strings.Join(specification.ReqSpecList, ", ")))
 	flgs.BoolVar(&uncapped, "uncapped", true, "run performance no FPS cap")
 	flgs.StringVar(&duration, "duration", "5s", "run duation (with an additional 2s overhead)")
 	flgs.StringVar(&profile, "profile", "none", "run performance check with profiling: CPU, MEM, TRACE, ALL (comma sep)")
@@ -732,7 +735,8 @@ func regressAdd(mode string, args []string) error {
 	flgs.StringVar(&regressMode, "mode", "", "type of regression entry")
 	flgs.StringVar(&notes, "notes", "", "additional annotation for the entry")
 	flgs.StringVar(&mapping, "mapping", "AUTO", "form cartridge mapper selection")
-	flgs.StringVar(&spec, "spec", "AUTO", "television specification: NTSC, PAL, PAL60, PAL-M, SECAM")
+	flgs.StringVar(&spec, "tv", "AUTO",
+		fmt.Sprintf("television specification: %s", strings.Join(specification.ReqSpecList, ", ")))
 	flgs.IntVar(&numFrames, "frames", 10, "number of frames to run [not playback files]")
 	flgs.StringVar(&state, "state", "", "record emulator state at every CPU step [not playback files]")
 	flgs.BoolVar(&log, "log", false, "echo debugging log to stdout")
