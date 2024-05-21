@@ -369,7 +369,7 @@ func (win *winDbgScr) draw() {
 func (win *winDbgScr) drawSpecCombo() {
 	imgui.PushItemWidth(win.specComboDim.X + imgui.FrameHeight())
 	if imgui.BeginComboV("##spec", win.img.cache.TV.GetFrameInfo().Spec.ID, imgui.ComboFlagsNone) {
-		for _, s := range specification.SpecList {
+		for _, s := range specification.ReqSpecList {
 			if imgui.Selectable(s) {
 				win.img.term.pushCommand(fmt.Sprintf("TV SPEC %s", s))
 			}

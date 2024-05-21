@@ -32,10 +32,6 @@ const leadingFrames = 1
 
 // the number of synced frames required before the TV is considered to be
 // stable. once the tv is stable then specification switching cannot happen.
-//
-// resizing also works a little differently before the TV is stable. the size of
-// the screen can shrink as well as grow. once the stability threshold is
-// reached, the screen can only grow
 const stabilityThreshold = 6
 
 // State encapsulates the television values that can change from moment to
@@ -64,7 +60,8 @@ type State struct {
 	// true.
 	//
 	// once stableFrames reaches stabilityThreshold it is never reset except by
-	// an explicit call to Reset()
+	// an explicit call to Reset() or by SetSpec() with the forced flag and a
+	// requested spec of "AUTO"
 	stableFrames int
 
 	// record of signal attributes from the last call to Signal()
@@ -811,18 +808,25 @@ func (tv *Television) renderSignals() error {
 //
 // The forced argument overrides this rule.
 func (tv *Television) SetSpec(spec string, forced bool) error {
-	if !forced && tv.creationSpecID != "AUTO" {
-		return nil
-	}
-
 	spec, ok := specification.NormaliseReqSpecID(spec)
 	if !ok {
 		return fmt.Errorf("television: unsupported spec (%s)", spec)
 	}
 
-	tv.state.reqSpecID = spec
+	if forced {
+		tv.creationSpecID = spec
+		if tv.creationSpecID == "AUTO" {
+			// resetting the stableFrames counter means that the auto spec code
+			// in the newFrame() function has a chance to run
+			tv.state.stableFrames = 0
+		}
+	} else if tv.creationSpecID != "AUTO" {
+		return nil
+	}
 
+	tv.state.reqSpecID = spec
 	tv.setSpec(spec)
+
 	return nil
 }
 
