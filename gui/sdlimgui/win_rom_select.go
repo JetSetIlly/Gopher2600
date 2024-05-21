@@ -627,7 +627,7 @@ func (win *winSelectROM) SetSelectedFilename(filename string) {
 	}
 
 	// create thumbnail animation
-	win.thmb.Create(cartload, thumbnailer.UndefinedNumFrames, true)
+	win.thmb.Create(cartload, win.img.dbg.VCS().TV.GetCreationSpecID(), thumbnailer.UndefinedNumFrames)
 
 	// defer boxart lookup to when we receive the property
 }
