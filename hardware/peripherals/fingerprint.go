@@ -73,9 +73,17 @@ func Fingerprint(port plugging.PortID, loader cartridgeloader.Loader) ports.NewP
 	return controllers.NewStick
 }
 
+// fingerprinting beyond the first 64k or so of cartridge data can result in
+// very slow fingerprinting, particular if looking at a large file that is not a
+// cartridge file at all
+//
+// The 64k value is arbitary but in practice it's a sufficiently large value and
+// any data beyond that limit is unlikely to reveal anything of worth
+const fingerprintLimit = 65536
+
 func matchPattern(patterns [][]byte, loader cartridgeloader.Loader) bool {
 	for _, p := range patterns {
-		if loader.ContainsLimit(cartridgeloader.FingerprintLimit, p) {
+		if loader.ContainsLimit(fingerprintLimit, p) {
 			return true
 		}
 	}

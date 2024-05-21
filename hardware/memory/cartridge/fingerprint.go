@@ -23,6 +23,10 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 )
 
+// fingerprinting beyond the first 1k can easily result in a false positive. for
+// some cartridge types the limit is well defined.
+const fingerprintLimit = 1024
+
 // if anwhere parameter is true then the ELF magic number can appear anywhere
 // in the data (the b parameter). otherwise it must appear at the beginning of
 // the data
@@ -75,7 +79,7 @@ func (cart *Cartridge) fingerprintPlusROM(loader cartridgeloader.Loader) bool {
 	b := make([]byte, 3)
 	loader.Seek(0, io.SeekStart)
 
-	for i := 0; i < cartridgeloader.FingerprintLimit-len(b); i++ {
+	for i := 0; i < fingerprintLimit-len(b); i++ {
 		n, err := loader.Read(b)
 		if n < len(b) {
 			break
@@ -148,7 +152,7 @@ func fingerprintMnetwork(loader cartridgeloader.Loader) bool {
 	b := make([]byte, 3)
 	loader.Seek(0, io.SeekStart)
 
-	for i := 0; i < cartridgeloader.FingerprintLimit-len(b); i++ {
+	for i := 0; i < fingerprintLimit-len(b); i++ {
 		n, err := loader.Read(b)
 		if n < len(b) {
 			break
@@ -277,7 +281,7 @@ func fingerprintCDF(loader cartridgeloader.Loader) (bool, string) {
 	b := make([]byte, 4)
 	loader.Seek(0, io.SeekStart)
 
-	for i := 0; i < cartridgeloader.FingerprintLimit-len(b); i++ {
+	for i := 0; i < fingerprintLimit-len(b); i++ {
 		n, err := loader.Read(b)
 		if n < len(b) {
 			break

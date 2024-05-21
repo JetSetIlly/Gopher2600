@@ -34,14 +34,6 @@ import (
 // the maximum amount of data to preload
 const maxPreloadLength = 1048576
 
-// Fingerprinting beyond the first 64k or so of cartridge data can result in
-// very slow fingerprinting, particular if looking at a large file that is not a
-// cartridge file at all
-//
-// The 64k value is arbitary but in practice it's a sufficiently large value and
-// any data beyond that limit is unlikely to reveal anything of worth
-const FingerprintLimit = 65536
-
 // use this function when assigning to the Loader.preload field
 func preloadLimit(data []byte) []byte {
 	return data[:min(len(data), maxPreloadLength)]
