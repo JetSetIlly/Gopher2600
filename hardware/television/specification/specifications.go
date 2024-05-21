@@ -52,15 +52,13 @@ func NormaliseReqSpecID(id string) (string, bool) {
 	return id, slices.Index(ReqSpecList, id) != -1
 }
 
-// SearchSpec looks for a valid sub-string in s, that indicates a required TV
-// specification. The returned value is a canonical specication label as listed
-// in SpecList.
-//
-// If no valid sub-string can be found the empty string is returned.
+// SearchReqSpec looks for a valid sub-string in s, that indicates a required TV
+// specification. The returned value is one listed in ReqSpecList or the empty
+// string to indicate that nothing was found in the supplied string.
 //
 // This function is intended to be used for searching filenames or descriptions.
-// It probably shouldn't be used a general conversion tool.
-func SearchSpec(s string) string {
+// It probably shouldn't be used as a general conversion tool.
+func SearchReqSpec(s string) string {
 	var id string
 
 	// we don't want to include the path in the search because this may cause
@@ -79,9 +77,9 @@ func SearchSpec(s string) string {
 			case "AUTO":
 				// ignore appearance of auto in the string
 			case "PAL-60":
-				id = "PAL"
+				id = "PAL60"
 			case "PAL60":
-				id = "PAL"
+				id = "PAL60"
 			case "PAL-M":
 				id = "PAL-M"
 			case "PALM":

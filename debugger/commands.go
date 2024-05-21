@@ -1274,7 +1274,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				newspec, ok := tokens.Get()
 				if ok {
 					// unknown specifciations already handled by ValidateTokens()
-					err := dbg.vcs.TV.SetSpec(newspec)
+					err := dbg.vcs.TV.SetSpec(newspec, true)
 					if err != nil {
 						return err
 					}

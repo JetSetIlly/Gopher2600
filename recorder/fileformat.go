@@ -83,7 +83,7 @@ func (rec *Recorder) writeHeader() error {
 	lines[lineVersion] = version()
 	lines[lineCartName] = rec.vcs.Mem.Cart.Filename
 	lines[lineCartHash] = rec.vcs.Mem.Cart.Hash
-	lines[lineTVSpec] = fmt.Sprintf("%v\n", rec.vcs.TV.GetReqSpecID())
+	lines[lineTVSpec] = fmt.Sprintf("%v\n", rec.vcs.TV.GetCreationSpecID())
 
 	line := strings.Join(lines, "\n")
 

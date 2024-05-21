@@ -144,7 +144,7 @@ func (vcs *VCS) End() {
 // but some applications might need to prepare the emulation further before
 // that happens.
 func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader, reset bool) error {
-	err := vcs.TV.SetSpecConditional(cartload.TVSpec)
+	err := vcs.TV.SetSpec(cartload.ReqSpec, false)
 	if err != nil {
 		return err
 	}

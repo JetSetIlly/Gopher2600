@@ -45,12 +45,9 @@ type State struct {
 	// the FrameInfo for the current frame
 	frameInfo FrameInfo
 
-	// auto flag indicates that the tv type/specification should switch if it
-	// appears to be outside of the current spec.
-	//
-	// in practice this means that if auto is true then we start with the NTSC
-	// spec and move to PAL if the number of scanlines exceeds the NTSC maximum
-	auto bool
+	// the requested television specification from outside of the TV package.
+	// this should only be set with the SetSpec() function
+	reqSpecID string
 
 	// state of the television. these values correspond to the most recent
 	// signal received
@@ -127,14 +124,12 @@ func (s *State) GetCoords() coords.TelevisionCoords {
 type Television struct {
 	env *environment.Environment
 
+	// the ID with which the television was created. this overrides all spec
+	// changes unles the value is AUTO
+	creationSpecID string
+
 	// vcs will be nil unless AttachVCS() has been called
 	vcs VCSReturnChannel
-
-	// spec on creation ID is the string that was to ID the television
-	// type/spec on creation. because the actual spec can change, the ID field
-	// of the Spec type can not be used for things like regression
-	// test recreation etc.
-	reqSpecID string
 
 	// framerate limiter
 	lmtr limiter
@@ -198,9 +193,16 @@ type Television struct {
 // NewTelevision creates a new instance of the television type, satisfying the
 // Television interface.
 func NewTelevision(spec string) (*Television, error) {
+	spec, ok := specification.NormaliseReqSpecID(spec)
+	if !ok {
+		return nil, fmt.Errorf("television: unsupported spec (%s)", spec)
+	}
+
 	tv := &Television{
-		reqSpecID:   spec,
-		state:       &State{},
+		creationSpecID: spec,
+		state: &State{
+			reqSpecID: spec,
+		},
 		signals:     make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
 		prevSignals: make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
 	}
@@ -210,10 +212,7 @@ func NewTelevision(spec string) (*Television, error) {
 	tv.SetFPS(-1)
 
 	// set specification
-	err := tv.SetSpec(spec)
-	if err != nil {
-		return nil, err
-	}
+	tv.setSpec(spec)
 
 	// empty list of renderers
 	tv.renderers = make([]PixelRenderer, 0)
@@ -253,11 +252,7 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	tv.currentSignalIdx = 0
 	tv.firstSignalIdx = 0
 
-	if tv.state.auto {
-		tv.SetSpec("AUTO")
-	} else {
-		tv.SetSpec(tv.state.frameInfo.Spec.ID)
-	}
+	tv.resetSpec()
 	tv.state.resizer.reset(tv.state.frameInfo.Spec)
 
 	for _, m := range tv.mixers {
@@ -671,25 +666,19 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	// specification change between NTSC and PAL. PAL-M is treated the same as
 	// NTSC in this instance
 	//
-	// Note that SetSpec() resets the frameInfo completely so we must set the
-	// framenumber and vsynced after any possible SetSpec()
+	// Note that setSpec() resets the frameInfo completely so we must set the
+	// framenumber and vsynced after any possible setSpec()
 	if tv.state.stableFrames > leadingFrames && tv.state.stableFrames < stabilityThreshold {
 		switch tv.state.frameInfo.Spec.ID {
 		case specification.SpecPAL_M.ID:
 			fallthrough
 		case specification.SpecNTSC.ID:
-			if tv.state.auto && tv.state.scanline > specification.PALTrigger {
-				err := tv.SetSpec("PAL")
-				if err != nil {
-					return err
-				}
+			if tv.state.reqSpecID == "AUTO" && tv.state.scanline > specification.PALTrigger {
+				tv.setSpec("PAL")
 			}
 		case specification.SpecPAL.ID:
-			if tv.state.auto && tv.state.scanline <= specification.PALTrigger {
-				err := tv.SetSpec("NTSC")
-				if err != nil {
-					return err
-				}
+			if tv.state.reqSpecID == "AUTO" && tv.state.scanline <= specification.PALTrigger {
+				tv.setSpec("NTSC")
 			}
 		}
 	}
@@ -816,55 +805,55 @@ func (tv *Television) renderSignals() error {
 	return nil
 }
 
-// SetSpecConditional sets the television's specification if the original
-// specification (not the current spec, the original) is "AUTO".
+// SetSpec sets the television's specification if the creation ID is AUTO. This
+// means that the television specification on creation overrides all other
+// specifcation requests
 //
-// This is used when attaching a cartridge to the VCS and also when processing
-// setup entries (see setup package, particularly the TV type).
-func (tv *Television) SetSpecConditional(spec string) error {
-	if tv.GetReqSpecID() == "AUTO" {
-		return tv.SetSpec(spec)
+// The forced argument overrides this rule.
+func (tv *Television) SetSpec(spec string, forced bool) error {
+	if !forced && tv.creationSpecID != "AUTO" {
+		return nil
 	}
-	return nil
-}
 
-// SetSpec sets the television's specification. Will return an error if
-// specification is not recognised.
-func (tv *Television) SetSpec(spec string) error {
 	spec, ok := specification.NormaliseReqSpecID(spec)
 	if !ok {
 		return fmt.Errorf("television: unsupported spec (%s)", spec)
 	}
 
+	tv.state.reqSpecID = spec
+
+	tv.setSpec(spec)
+	return nil
+}
+
+func (tv *Television) setSpec(spec string) {
 	switch strings.ToUpper(spec) {
 	case "AUTO":
 		tv.state.frameInfo = NewFrameInfo(specification.SpecNTSC)
 		tv.state.resizer.setSpec(specification.SpecNTSC)
-		tv.state.auto = true
 	case "NTSC":
 		tv.state.frameInfo = NewFrameInfo(specification.SpecNTSC)
 		tv.state.resizer.setSpec(specification.SpecNTSC)
-		tv.state.auto = false
 	case "PAL":
 		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL)
 		tv.state.resizer.setSpec(specification.SpecPAL)
-		tv.state.auto = false
 	case "PAL-M":
 		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL_M)
 		tv.state.resizer.setSpec(specification.SpecPAL_M)
-		tv.state.auto = false
 	case "SECAM":
 		tv.state.frameInfo = NewFrameInfo(specification.SpecSECAM)
 		tv.state.resizer.setSpec(specification.SpecSECAM)
-		tv.state.auto = false
 	case "PAL60":
 		// we treat PAL60 as just another name for PAL. whether it is 60HZ or
 		// not depends on the generated frame
 		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL)
 		tv.state.resizer.setSpec(specification.SpecPAL)
-		tv.state.auto = false
 	}
 
+	tv.resetSpec()
+}
+
+func (tv *Television) resetSpec() {
 	tv.lmtr.setRefreshRate(tv.state.frameInfo.Spec.RefreshRate)
 	tv.lmtr.setRate(tv.state.frameInfo.Spec.RefreshRate)
 
@@ -875,8 +864,6 @@ func (tv *Television) SetSpec(spec string) error {
 	if tv.vcs != nil {
 		tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec)
 	}
-
-	return nil
 }
 
 // SetEmulationState is called by emulation whenever state changes. How we
@@ -957,9 +944,14 @@ func (tv *Television) GetActualFPS() (float32, float32) {
 	return tv.lmtr.measured.Load().(float32), tv.lmtr.refreshRate.Load().(float32)
 }
 
-// GetReqSpecID returns the specification that was requested on creation.
+// GetCreationSpecID returns the specification that was requested on creation.
+func (tv *Television) GetCreationSpecID() string {
+	return tv.creationSpecID
+}
+
+// GetReqSpecID returns the specification that was most recently requested.
 func (tv *Television) GetReqSpecID() string {
-	return tv.reqSpecID
+	return tv.state.reqSpecID
 }
 
 // GetSpecID returns the current specification.

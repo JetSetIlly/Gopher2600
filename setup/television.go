@@ -87,12 +87,8 @@ func (set television) apply(vcs *hardware.VCS) (string, error) {
 	// because the apply function is run after attaching the cartridge to the
 	// VCS, any setup entries will take precedence over any spec in the
 	// cartridge filename.
-	//
-	// the SetSpecConditional() function however, will only change spec if the
-	// original spec request is AUTO. In other words, a setup entry will not
-	// take precedence over an explicit startup option.
 
-	err := vcs.TV.SetSpecConditional(set.spec)
+	err := vcs.TV.SetSpec(set.spec, false)
 	if err != nil {
 		return "", err
 	}

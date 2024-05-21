@@ -65,8 +65,8 @@ type Loader struct {
 	// property entry from property package
 	Property properties.Entry
 
-	// required specification for television
-	TVSpec string
+	// requested specification for television
+	ReqSpec string
 
 	// hashes of data
 	HashSHA1 string
@@ -181,10 +181,10 @@ func NewLoaderFromFilename(filename string, mapping string, props Properties) (L
 
 	// decide on TV specification
 	if ld.Property.IsValid() {
-		ld.TVSpec = specification.SearchSpec(ld.Property.Name)
+		ld.ReqSpec = specification.SearchReqSpec(ld.Property.Name)
 	}
-	if ld.TVSpec == "" {
-		ld.TVSpec = specification.SearchSpec(ld.Filename)
+	if ld.ReqSpec == "" {
+		ld.ReqSpec = specification.SearchReqSpec(ld.Filename)
 	}
 
 	return ld, nil
