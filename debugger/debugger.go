@@ -653,7 +653,7 @@ func (dbg *Debugger) setMode(mode govern.Mode) error {
 		if prevMode == govern.ModePlay {
 			if !dbg.noRewindOnSwitchToDebugger {
 				dbg.catchupEndAdj = true
-				dbg.RerunLastNFrames(2)
+				dbg.RerunLastNFrames(2, nil)
 			}
 		}
 	default:

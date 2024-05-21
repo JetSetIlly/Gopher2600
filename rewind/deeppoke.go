@@ -31,7 +31,7 @@ func (r *Rewind) RunPoke(from *State, to *State, poke PokeHook) error {
 		}
 	}
 
-	err := r.setSplicePoint(fromIdx, to.TV.GetCoords())
+	err := r.setSplicePoint(fromIdx, to.TV.GetCoords(), nil)
 	if err != nil {
 		return fmt.Errorf("rewind: %w", err)
 	}

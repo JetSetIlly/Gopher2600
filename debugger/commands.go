@@ -52,6 +52,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/patch"
 	"github.com/jetsetilly/gopher2600/resources/unique"
+	"github.com/jetsetilly/gopher2600/rewind"
 	"github.com/jetsetilly/gopher2600/version"
 )
 
@@ -1284,6 +1285,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				s := strings.Builder{}
 				s.WriteString(spec.ID)
 				dbg.printLine(terminal.StyleInstrument, s.String())
+
+				if dbg.State() == govern.Paused {
+					dbg.RerunLastNFrames(10, func(s *rewind.State) {
+						s.TV.SetReqSpec(newspec)
+					})
+				}
+
 			default:
 				// already caught by command line ValidateTokens()
 			}

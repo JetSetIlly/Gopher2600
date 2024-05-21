@@ -23,6 +23,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
+	"github.com/jetsetilly/gopher2600/rewind"
 )
 
 // RewindByAmount moves forwards or backwards by specified frames. Positive
@@ -187,7 +188,7 @@ func (dbg *Debugger) GotoCoords(toCoords coords.TelevisionCoords) bool {
 // RerunLastNFrames measured from the current frame.
 //
 // This function should be run only from debugger mode.
-func (dbg *Debugger) RerunLastNFrames(frames int) bool {
+func (dbg *Debugger) RerunLastNFrames(frames int, onSplice rewind.SpliceHook) bool {
 	if dbg.State() == govern.Rewinding {
 		return false
 	}
@@ -205,7 +206,7 @@ func (dbg *Debugger) RerunLastNFrames(frames int) bool {
 
 		// the function to push to the debugger/emulation routine
 		doRewind := func() error {
-			err := dbg.Rewind.RerunLastNFrames(frames)
+			err := dbg.Rewind.RerunLastNFrames(frames, onSplice)
 			if err != nil {
 				return err
 			}

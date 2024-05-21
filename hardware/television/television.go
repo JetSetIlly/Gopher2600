@@ -17,7 +17,6 @@ package television
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/environment"
@@ -94,6 +93,42 @@ func (s *State) String() string {
 func (s *State) Snapshot() *State {
 	n := *s
 	return &n
+}
+
+// spec string MUST be normalised with specification.NormaliseReqSpecID()
+func (s *State) setSpec(spec string) {
+	switch spec {
+	case "AUTO":
+		s.frameInfo = NewFrameInfo(specification.SpecNTSC)
+		s.resizer.setSpec(specification.SpecNTSC)
+	case "NTSC":
+		s.frameInfo = NewFrameInfo(specification.SpecNTSC)
+		s.resizer.setSpec(specification.SpecNTSC)
+	case "PAL":
+		s.frameInfo = NewFrameInfo(specification.SpecPAL)
+		s.resizer.setSpec(specification.SpecPAL)
+	case "PAL-M":
+		s.frameInfo = NewFrameInfo(specification.SpecPAL_M)
+		s.resizer.setSpec(specification.SpecPAL_M)
+	case "SECAM":
+		s.frameInfo = NewFrameInfo(specification.SpecSECAM)
+		s.resizer.setSpec(specification.SpecSECAM)
+	case "PAL60":
+		// we treat PAL60 as just another name for PAL. whether it is 60HZ or
+		// not depends on the generated frame
+		s.frameInfo = NewFrameInfo(specification.SpecPAL)
+		s.resizer.setSpec(specification.SpecPAL)
+	}
+}
+
+// SetReqSpec sets the requested specification ID
+func (s *State) SetReqSpec(spec string) {
+	spec, ok := specification.NormaliseReqSpecID(spec)
+	if !ok {
+		return
+	}
+	s.reqSpecID = spec
+	s.setSpec(spec)
 }
 
 // GetLastSignal returns a copy of the most SignalAttributes sent to the TV
@@ -831,29 +866,7 @@ func (tv *Television) SetSpec(spec string, forced bool) error {
 }
 
 func (tv *Television) setSpec(spec string) {
-	switch strings.ToUpper(spec) {
-	case "AUTO":
-		tv.state.frameInfo = NewFrameInfo(specification.SpecNTSC)
-		tv.state.resizer.setSpec(specification.SpecNTSC)
-	case "NTSC":
-		tv.state.frameInfo = NewFrameInfo(specification.SpecNTSC)
-		tv.state.resizer.setSpec(specification.SpecNTSC)
-	case "PAL":
-		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL)
-		tv.state.resizer.setSpec(specification.SpecPAL)
-	case "PAL-M":
-		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL_M)
-		tv.state.resizer.setSpec(specification.SpecPAL_M)
-	case "SECAM":
-		tv.state.frameInfo = NewFrameInfo(specification.SpecSECAM)
-		tv.state.resizer.setSpec(specification.SpecSECAM)
-	case "PAL60":
-		// we treat PAL60 as just another name for PAL. whether it is 60HZ or
-		// not depends on the generated frame
-		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL)
-		tv.state.resizer.setSpec(specification.SpecPAL)
-	}
-
+	tv.state.setSpec(spec)
 	tv.resetSpec()
 }
 

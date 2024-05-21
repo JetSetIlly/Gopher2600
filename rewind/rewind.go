@@ -457,9 +457,13 @@ func (r *Rewind) runFromStateToCoords(fromState *State, toCoords coords.Televisi
 	return nil
 }
 
+// SpliceHook provides a way for users of the rewind package to alter a state
+// before resuming execution
+type SpliceHook func(*State)
+
 // setSplicePoint sets the splice point to the supplied index. the emulation
 // will be run to the supplied frame, scanline, clock point.
-func (r *Rewind) setSplicePoint(fromIdx int, toCoords coords.TelevisionCoords) error {
+func (r *Rewind) setSplicePoint(fromIdx int, toCoords coords.TelevisionCoords, onSplice SpliceHook) error {
 	// set new splice point
 	r.splice = fromIdx + 1
 	if r.splice >= len(r.entries) {
@@ -468,6 +472,12 @@ func (r *Rewind) setSplicePoint(fromIdx int, toCoords coords.TelevisionCoords) e
 
 	// plumb in selected entry
 	fromState := r.entries[fromIdx]
+
+	// call spice hook if one has been supplied
+	if onSplice != nil {
+		onSplice(fromState)
+	}
+
 	err := r.runFromStateToCoords(fromState, toCoords)
 	if err != nil {
 		return err
@@ -562,7 +572,7 @@ func (r *Rewind) findFrameIndexExact(frame int) findResults {
 
 // RerunLastNFrames runs the emulation from the a point N frames in the past to
 // the current state.
-func (r *Rewind) RerunLastNFrames(frames int) error {
+func (r *Rewind) RerunLastNFrames(frames int, onSplice SpliceHook) error {
 	to := r.GetCurrentState()
 	ff := to.TV.GetCoords().Frame
 	if ff < 0 {
@@ -570,7 +580,7 @@ func (r *Rewind) RerunLastNFrames(frames int) error {
 	}
 
 	idx := r.findFrameIndex(ff).nearestIdx
-	err := r.setSplicePoint(idx, to.TV.GetCoords())
+	err := r.setSplicePoint(idx, to.TV.GetCoords(), onSplice)
 	if err != nil {
 		return fmt.Errorf("rewind: %w", err)
 	}
@@ -589,7 +599,7 @@ func (r *Rewind) GotoCoords(toCoords coords.TelevisionCoords) error {
 	}
 
 	idx := res.nearestIdx
-	err := r.setSplicePoint(idx, toCoords)
+	err := r.setSplicePoint(idx, toCoords, nil)
 	if err != nil {
 		return err
 	}
