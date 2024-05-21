@@ -1287,10 +1287,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					}
 				}
 
-				spec := dbg.vcs.TV.GetFrameInfo().Spec
-				s := strings.Builder{}
-				s.WriteString(spec.ID)
-				dbg.printLine(terminal.StyleInstrument, s.String())
+				dbg.printLine(terminal.StyleInstrument,
+					fmt.Sprintf("actual=%s, requested=%s",
+						dbg.vcs.TV.GetFrameInfo().Spec.ID,
+						dbg.vcs.TV.GetReqSpecID(),
+					))
 
 			default:
 				// already caught by command line ValidateTokens()
