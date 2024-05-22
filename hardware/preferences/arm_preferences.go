@@ -36,6 +36,11 @@ type ARMPreferences struct {
 	// speed of processor
 	Clock prefs.Float // Mhz
 
+	// regulator of cycle counting for the ARM. this value is multiplied with
+	// the number of cycles used by each instruction. therefore a value of 1.0
+	// is a neutral regulator
+	CycleRegulator prefs.Float
+
 	// whether the ARM coprocessor (as found in Harmony cartridges) executes
 	// instantly
 	Immediate prefs.Bool
@@ -80,6 +85,10 @@ func newARMprefrences() (*ARMPreferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("hardware.arm7.cycleRegulator", &p.CycleRegulator)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("hardware.arm7.immediate", &p.Immediate)
 	if err != nil {
 		return nil, err
@@ -113,6 +122,7 @@ func (p *ARMPreferences) SetDefaults() {
 	// initialise random number generator
 	p.Model.Set("AUTO")
 	p.Clock.Set(70.0)
+	p.CycleRegulator.Set(1.0)
 	p.Immediate.Set(false)
 	p.MAM.Set(-1)
 	p.AbortOnMemoryFault.Set(false)

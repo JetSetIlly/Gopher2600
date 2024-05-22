@@ -574,17 +574,30 @@ prevented from changing the MAM state.
 The MAM should almost never be disabled completely.`)
 
 	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
 
 	clk := float32(win.img.dbg.VCS().Env.Prefs.ARM.Clock.Get().(float64))
 	if imgui.SliderFloatV("Clock Speed", &clk, 50, 300, "%.0f Mhz", imgui.SliderFlagsNone) {
 		win.img.dbg.VCS().Env.Prefs.ARM.Clock.Set(float64(clk))
 	}
 
+	imgui.Spacing()
+
+	reg := float32(win.img.dbg.VCS().Env.Prefs.ARM.CycleRegulator.Get().(float64))
+	if imgui.SliderFloatV("Cycle Regulator", &reg, 0.5, 2.0, "%.02f", imgui.SliderFlagsNone) {
+		win.img.dbg.VCS().Env.Prefs.ARM.CycleRegulator.Set(float64(reg))
+	}
+	imguiTooltipSimple(`The cycle regulator is a way of adjusting the amount of
+time each instruction in the ARM program takes`, true)
+
 	if immediate {
 		imgui.PopStyleVar()
 		imgui.PopItemFlag()
 	}
 
+	imgui.Spacing()
+	imgui.Separator()
 	imgui.Spacing()
 
 	abortOnMemoryFault := win.img.dbg.VCS().Env.Prefs.ARM.AbortOnMemoryFault.Get().(bool)
@@ -602,6 +615,7 @@ Illegal accesses will be logged even if program does not abort.`)
 	if imgui.Checkbox("Treat Misaligned Accesses as Memory Faults", &misalignedAccessIsFault) {
 		win.img.dbg.VCS().Env.Prefs.ARM.MisalignedAccessIsFault.Set(misalignedAccessIsFault)
 	}
+
 }
 
 func (win *winPrefs) drawPlusROMTab() {

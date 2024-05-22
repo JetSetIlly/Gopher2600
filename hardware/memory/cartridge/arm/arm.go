@@ -246,6 +246,10 @@ type ARM struct {
 	Clk         float32
 	clklenFlash float32
 
+	// value used to stretch (or shink) the number of cycles used by each
+	// instruction. a value of 1.0 is a neutral regulator
+	cycleRegulator float32
+
 	// collection of functionMap instances. indexed by programMemoryOffset to
 	// retrieve a functionMap
 	//
@@ -445,6 +449,9 @@ func (arm *ARM) resetRegisters() {
 func (arm *ARM) updatePrefs() {
 	// update clock value from preferences
 	arm.Clk = float32(arm.env.Prefs.ARM.Clock.Get().(float64))
+
+	// get clock regulator from preferences
+	arm.cycleRegulator = float32(arm.env.Prefs.ARM.CycleRegulator.Get().(float64))
 
 	arm.state.mam.updatePrefs()
 
@@ -835,6 +842,9 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 					// default to an S cycle for prefetch unless an instruction explicitly
 					// says otherwise
 					arm.state.prefetchCycle = S
+
+					// adjust number of cycles by cycle regulator
+					arm.state.stretchedCycles *= arm.cycleRegulator
 
 					// increases total number of program cycles by the stretched cycles for this instruction
 					arm.state.cyclesTotal += arm.state.stretchedCycles
