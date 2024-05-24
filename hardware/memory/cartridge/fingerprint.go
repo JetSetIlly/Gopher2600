@@ -23,10 +23,6 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 )
 
-// fingerprinting beyond the first 1k can easily result in a false positive. for
-// some cartridge types the limit is well defined.
-const fingerprintLimit = 1024
-
 // if anwhere parameter is true then the ELF magic number can appear anywhere
 // in the data (the b parameter). otherwise it must appear at the beginning of
 // the data
@@ -79,6 +75,9 @@ func (cart *Cartridge) fingerprintPlusROM(loader cartridgeloader.Loader) bool {
 	b := make([]byte, 3)
 	loader.Seek(0, io.SeekStart)
 
+	// fingerprinting beyond the first 1k can easily result in a false positive
+	const fingerprintLimit = 1024
+
 	for i := 0; i < fingerprintLimit-len(b); i++ {
 		n, err := loader.Read(b)
 		if n < len(b) {
@@ -117,6 +116,11 @@ func fingerprint3ePlus(loader cartridgeloader.Loader) bool {
 }
 
 func fingerprintMnetwork(loader cartridgeloader.Loader) bool {
+	// limit size of MNetwork cartridges to 16k
+	if loader.Size() > 16384 {
+		return false
+	}
+
 	// Bump 'n' Jump is the fussiest mnetwork cartridge I've found. Matching
 	// hotspots:
 	//
@@ -152,7 +156,7 @@ func fingerprintMnetwork(loader cartridgeloader.Loader) bool {
 	b := make([]byte, 3)
 	loader.Seek(0, io.SeekStart)
 
-	for i := 0; i < fingerprintLimit-len(b); i++ {
+	for i := 0; i < loader.Size()-len(b); i++ {
 		n, err := loader.Read(b)
 		if n < len(b) {
 			break
@@ -168,7 +172,7 @@ func fingerprintMnetwork(loader cartridgeloader.Loader) bool {
 			// the incorrect mask caused a false positive for Solaris when the
 			// threshold is 2.
 			//
-			// (20/06/21) this caused a falso positive for "Hack Em Hangly Pacman"
+			// (20/06/21) this caused a false positive for "Hack Em Hangly Pacman"
 			// when the threshold is 1
 			//
 			// change to only look for mirrors 0x1f and 0xff
@@ -280,6 +284,9 @@ func fingerprintCDF(loader cartridgeloader.Loader) (bool, string) {
 
 	b := make([]byte, 4)
 	loader.Seek(0, io.SeekStart)
+
+	// fingerprinting beyond the first 1k can easily result in a false positive
+	const fingerprintLimit = 1024
 
 	for i := 0; i < fingerprintLimit-len(b); i++ {
 		n, err := loader.Read(b)
