@@ -315,14 +315,7 @@ func (scr *screen) updateFrameQueue() {
 
 	// set plotIdx to beginning of queue
 	scr.crit.plotIdx = 0
-
-	// initial renderIdx is placed according to status of the monitor refresh
-	// value in relation to the refresh rate of the emulated TV
-	if scr.crit.monitorSyncHigher {
-		scr.crit.renderIdx = scr.crit.frameQueueLen / 2
-	} else {
-		scr.crit.renderIdx = scr.crit.plotIdx
-	}
+	scr.crit.renderIdx = scr.crit.frameQueueLen / 2
 }
 
 // Reset implements the television.PixelRenderer interface. Note that Reset
@@ -497,27 +490,25 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	scr.crit.section.Lock()
 
 	if scr.img.isPlaymode() {
-		if scr.crit.monitorSyncHigher {
-			switch scr.img.dbg.State() {
-			case govern.Rewinding:
-				fallthrough
-			case govern.Paused:
-				scr.crit.queueRecovery = scr.crit.frameQueueLen
-				scr.crit.renderIdx = scr.crit.plotIdx
-			case govern.Running:
-				if scr.crit.queueRecovery > 0 {
-					scr.crit.queueRecovery--
-				}
-
-				scr.crit.plotIdx++
-				if scr.crit.plotIdx >= scr.crit.frameQueueLen {
-					scr.crit.plotIdx = 0
-				}
-
-				// if plot index has crashed into the render index then set wait flag
-				// ** screen update not keeping up with emulation **
-				wait = scr.crit.plotIdx == scr.crit.renderIdx && scr.crit.frameQueueLen > 2
+		switch scr.img.dbg.State() {
+		case govern.Rewinding:
+			fallthrough
+		case govern.Paused:
+			scr.crit.queueRecovery = scr.crit.frameQueueLen
+			scr.crit.renderIdx = scr.crit.plotIdx
+		case govern.Running:
+			if scr.crit.queueRecovery > 0 {
+				scr.crit.queueRecovery--
 			}
+
+			scr.crit.plotIdx++
+			if scr.crit.plotIdx >= scr.crit.frameQueueLen {
+				scr.crit.plotIdx = 0
+			}
+
+			// if plot index has crashed into the render index then set wait flag
+			// ** screen update not keeping up with emulation **
+			wait = scr.crit.plotIdx == scr.crit.renderIdx && scr.crit.frameQueueLen > 2
 		}
 	}
 
@@ -558,7 +549,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 
 	// slow emulation until screen has caught up
 	// * wait should only be set to true in playmode
-	if wait {
+	if wait && scr.crit.monitorSyncHigher {
 		scr.emuWait <- true
 		<-scr.emuWaitAck
 	}
@@ -736,7 +727,7 @@ func (scr *screen) copyPixelsPlaymode() {
 
 	// the bufferUsed check is important for correct operation of the rewinding
 	// state. without it, the screen will jump after a rewind event
-	if scr.crit.queueRecovery == 0 && scr.crit.monitorSyncHigher {
+	if scr.crit.queueRecovery == 0 {
 		// advance render index
 		scr.crit.prevRenderIdx = scr.crit.renderIdx
 		scr.crit.renderIdx++
