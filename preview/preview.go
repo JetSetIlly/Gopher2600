@@ -43,6 +43,7 @@ func NewEmulation(prefs *preferences.Preferences) (*Emulation, error) {
 		return nil, fmt.Errorf("preview: %w", err)
 	}
 	tv.SetFPSCap(false)
+	tv.SetInstantVSYNC(true)
 
 	// create a new VCS emulation
 	em.vcs, err = hardware.NewVCS(previewLabel, tv, nil, prefs)
@@ -74,7 +75,9 @@ func (em *Emulation) RunN(loader cartridgeloader.Loader, N int) error {
 	return nil
 }
 
-// Run the preview emulation for 30 frames
+// Run the preview emulation for 60 frames
 func (em *Emulation) Run(loader cartridgeloader.Loader) error {
-	return em.RunN(loader, 30)
+	// the number of frames tried so far:
+	// 30 => too few for Spike's Peak
+	return em.RunN(loader, 60)
 }

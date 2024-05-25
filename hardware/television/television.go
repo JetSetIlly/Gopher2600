@@ -33,6 +33,34 @@ const leadingFrames = 1
 // stable. once the tv is stable then specification switching cannot happen.
 const stabilityThreshold = 6
 
+type vsync struct {
+	active          bool
+	activeClock     int
+	activeScanlines int
+
+	// the ideal scanline at which the "new frame" is triggered. this can be
+	// thought of as the number of scanline between valid VSYNC signals
+	scanline int
+
+	// the scanline at which a "new frame" is actually triggered. this will be
+	// different than the scanlines field during the synchronisation process causing
+	// the screen to visually roll
+	flybackScanline int
+
+	// whether the screen synchronises instantly. this value supercedes any user
+	// preferences and can be set by the Television.SetInstantVSYNC() function
+	instant bool
+
+	// a vary good example of a ROM that requires correct handling of
+	// natural flyback is Andrew Davies' Chess (3e+ test rom)
+	//
+	// (06/01/21) another example is the Artkaris NTSC version of Lili
+}
+
+func (v vsync) isSynced() bool {
+	return v.scanline == v.flybackScanline
+}
+
 // State encapsulates the television values that can change from moment to
 // moment. Used by the rewind system when recording the current television
 // state.
@@ -49,7 +77,7 @@ type State struct {
 	//
 	// not using TelevisionCoords type here.
 	//
-	// clock field counts from zero not -specification.ClksHblank
+	// clock field counts from zero not negative specification.ClksHblank
 	frameNum int
 	scanline int
 	clock    int
@@ -67,17 +95,10 @@ type State struct {
 	lastSignal signal.SignalAttributes
 
 	// vsync control
-	vsyncActive       bool
-	vsyncStartOnClock int
-	vsyncScanlines    int
-	vsyncClocks       int
-	vsyncAdjust       bool
+	vsync vsync
 
 	// frame resizer
 	resizer Resizer
-
-	// the coords of the last CPU instruction
-	lastCPUInstruction coords.TelevisionCoords
 }
 
 func (s *State) String() string {
@@ -278,10 +299,11 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	tv.state.clock = 0
 	tv.state.scanline = 0
 	tv.state.stableFrames = 0
-	tv.state.vsyncActive = false
-	tv.state.vsyncStartOnClock = 0
-	tv.state.vsyncScanlines = 0
-	tv.state.vsyncClocks = 0
+	tv.state.vsync.active = false
+	tv.state.vsync.activeClock = 0
+	tv.state.vsync.activeScanlines = 0
+	tv.state.vsync.flybackScanline = specification.AbsoluteMaxScanlines
+	tv.state.vsync.scanline = tv.state.frameInfo.Spec.AtariSafeVisibleBottom
 	tv.state.lastSignal = signal.NoSignal
 
 	for i := range tv.signals {
@@ -468,16 +490,51 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 	// throttle how often we do this because it's an expensive operation. the
 	// range check is required because the decision to commit a resize takes
 	// several frames (defined by framesUntilResize)
-	//
-	// if the frame is not stable then we always perfom the check. this is so
-	// we don't see a resizing frame too often because a resize is likely
-	// during startup - Spike's Peak is a good example of a resizing ROM
-	//
-	// the throttle does mean there can be a slight delay before a resize is
-	// committed but this is rare (Hack'Em Hanglyman is a good example of such
-	// a ROM) and the performance benefits are significant
-	if !tv.state.frameInfo.Stable || tv.state.frameNum%16 <= framesUntilResize {
-		tv.state.resizer.examine(tv.state, sig)
+	tv.state.resizer.examine(tv.state, sig)
+
+	// count VSYNC scanlines
+	if tv.state.vsync.active && tv.state.clock == tv.state.vsync.activeClock {
+		tv.state.vsync.activeScanlines++
+	}
+
+	// check for change of VSYNC signal
+	if sig&signal.VSync != tv.state.lastSignal&signal.VSync {
+		if sig&signal.VSync == signal.VSync {
+			// VSYNC has started
+			tv.state.vsync.active = true
+			tv.state.vsync.activeScanlines = 0
+			tv.state.vsync.activeClock = tv.state.clock
+		} else {
+			// the number of scanlines that the VSYNC has been held should be
+			// somewhere between two and three. anything over three is fine
+			// TODO: make this a user preference
+			if tv.state.vsync.activeScanlines >= 2 {
+				if tv.state.vsync.instant {
+					tv.state.vsync.flybackScanline = min(tv.state.vsync.scanline, specification.AbsoluteMaxScanlines)
+					tv.state.vsync.scanline = 0
+					tv.state.scanline = 0
+				} else {
+					// adjust flyback scanline until it matches the vsync scanline.
+					// also adjust the actual scanline if it's not zero
+					if tv.state.vsync.scanline < tv.state.vsync.flybackScanline {
+						adj := ((tv.state.vsync.flybackScanline - tv.state.vsync.scanline) * 80) / 100
+						tv.state.vsync.flybackScanline = tv.state.vsync.scanline + adj
+						tv.state.scanline = (tv.state.scanline * 80) / 100
+					}
+
+					// continue to adjust scanline until it is zero
+					if tv.state.vsync.scanline == tv.state.vsync.flybackScanline {
+						if tv.state.scanline > 0 {
+							tv.state.scanline = (tv.state.scanline * 80) / 100
+						}
+					}
+
+					// reset VSYNC scanline count
+					tv.state.vsync.scanline = 0
+				}
+			}
+			tv.state.vsync.active = false
+		}
 	}
 
 	// a Signal() is by definition a new color clock. increase the horizontal count
@@ -493,31 +550,12 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 
 		// bump scanline counter
 		tv.state.scanline++
+		tv.state.vsync.scanline++
 
-		// fly-back naturally if VBlank is off. a good example of a ROM
-		// that requires correct handling of this is Andrew Davies' Chess
-		// (3e+ test rom)
-		//
-		// (06/01/21) another example is the Artkaris NTSC version of Lili
-		if tv.state.scanline >= specification.AbsoluteMaxScanlines {
-			// (20/10/22) I'm no longer sure if this test for an active vsync
-			// is necessary. it might be better / more accurate if the test is
-			// removed and the screen allowed to flyback regardless of the
-			// VSYNC state
-			//
-			// however, without testing I'm no longer sure what the effect of
-			// that be. in particular how the results appear in the debugging
-			// screen and specically, how it affects the debugging screen's
-			// onion skinning
-			//
-			// I'll leave it in place for now until further testing can be done
-			if !tv.state.vsyncActive {
-				err := tv.newFrame(false)
-				if err != nil {
-					logger.Log(tv.env, "TV", err.Error())
-				}
-			} else {
-				tv.state.scanline = specification.AbsoluteMaxScanlines - 1
+		if tv.state.scanline >= tv.state.vsync.flybackScanline {
+			err := tv.newFrame()
+			if err != nil {
+				logger.Log(tv.env, "TV", err.Error())
 			}
 		} else {
 			// if we're not at end of screen then indicate new scanline
@@ -526,58 +564,6 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 				logger.Log(tv.env, "TV", err.Error())
 			}
 		}
-	}
-
-	// count VSYNC clocks and scanlines
-	if tv.state.vsyncActive {
-		if tv.state.clock == tv.state.vsyncStartOnClock {
-			tv.state.vsyncScanlines++
-		}
-		tv.state.vsyncClocks++
-	}
-
-	// check for change of VSYNC signal
-	if sig&signal.VSync != tv.state.lastSignal&signal.VSync {
-		if sig&signal.VSync == signal.VSync {
-			// VSYNC has started
-			tv.state.vsyncActive = true
-			tv.state.vsyncScanlines = 0
-			tv.state.vsyncStartOnClock = tv.state.clock
-
-			// set adjust if scanline is zero and the current frame was started
-			// with a natural flyback (ie. VSYNC is false)
-			//
-			// this affect whether newFrame(true) or adjustFrame() is called
-			// when the VSYNC signal has ended
-			tv.state.vsyncAdjust = tv.state.scanline == 0 && !tv.state.frameInfo.VSync
-		} else {
-			// VSYNC has ended but we don't want to trigger a new frame unless
-			// the VSYNC signal has been present for a minimum number of
-			// clocks
-			//
-			// there's no real empirical reason for the value used here except
-			// that it seems right in practice. it certainly doesn't seem to
-			// cause any harm.
-			//
-			// it's worth noting that without this minimum threshold the
-			// smoothscrolling demos (mentioned below) don't work as expected.
-			// so maybe there's a subtle interaction with RSYNC here that's
-			// worth exploring
-			if tv.state.vsyncClocks > 10 {
-				// if vsyncAdjust is true then we only want to adjust the
-				// scanline and not start a new frame
-				if tv.state.vsyncAdjust {
-					tv.adjustFrame()
-				} else {
-					err := tv.newFrame(true)
-					if err != nil {
-						logger.Log(tv.env, "TV", err.Error())
-					}
-				}
-			}
-			tv.state.vsyncActive = false
-		}
-		tv.state.vsyncClocks = 0
 	}
 
 	// we've "faked" the flyback signal above when clock reached
@@ -665,38 +651,10 @@ func (tv *Television) newScanline() error {
 	return nil
 }
 
-// adjustFrame() is called under very specific circumstances: when a new frame
-// has been started with a natural flyback but then VSYNC is raised at the start
-// of the new frame.
-//
-// in those circumstances we don't want to start a new frame because that will
-// cause the pixelRenderer to produce black frames. instead we simply adjust the
-// scanline so that it "appears" that the frame has just started
-//
-// this definitely isn't ideal and will affect how such screens will appear when
-// stepping through a debugger but it's not a major issue and fixes the common
-// problem where PAL roms start the VSYNC signal very late
-//
-// increasing the AbsoluteMaxScanlines value is not a good solution because who
-// is to say that the condition won't happen in those circumstances - although I
-// accept that it will solve many of the specific problem caused by PAL ROMs
-// setting VSYNC late
-func (tv *Television) adjustFrame() {
-	tv.state.scanline = 0
-	tv.state.vsyncAdjust = false
-}
-
-// the fromVsync arguments is true if a valid VSYNC signal has been detected. a
-// value of false means the frame flyback is unsynced
-//
-// note that there are very special conditions caused by a newFrame being called
-// with an argument of false and then for VSYNC to be raised (within a
-// scanline). in that instance we don't want to call newFrame() again. instead
-// we call adjustFrame()
-func (tv *Television) newFrame(fromVsync bool) error {
+func (tv *Television) newFrame() error {
 	// increase or reset stable frame count as required
 	if tv.state.stableFrames <= stabilityThreshold {
-		if fromVsync {
+		if tv.state.vsync.isSynced() {
 			tv.state.stableFrames++
 			tv.state.frameInfo.Stable = tv.state.stableFrames >= stabilityThreshold
 		} else {
@@ -729,8 +687,7 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	tv.state.frameInfo.FrameNum = tv.state.frameNum
 
 	// note whether newFrame() was the result of a valid VSYNC or a natural flyback
-	tv.state.frameInfo.VSync = fromVsync
-	tv.state.frameInfo.VSyncScanlines = tv.state.vsyncScanlines
+	tv.state.frameInfo.VSync = tv.state.vsync.isSynced()
 
 	// commit any resizing that maybe pending
 	err := tv.state.resizer.commit(tv.state)
@@ -1034,4 +991,17 @@ func (tv *Television) SetResizer(rz Resizer, validFrom int) {
 		tv.state.frameInfo.VisibleTop = tv.state.resizer.blackTop
 		tv.state.frameInfo.VisibleBottom = tv.state.resizer.blackBottom
 	}
+
+	// call new frame for all pixel renderers. this will force the new size
+	// information to be handled immediately but it won't result in a "phantom"
+	// frame because we won't change the FrameNum field in the FrameInfo
+	for _, r := range tv.renderers {
+		r.NewFrame(tv.state.frameInfo)
+	}
+}
+
+// Set VSYNC to instant regardless of user preferences. This is useful for
+// emulations that aren't intended for display, like the preview emulation
+func (tv *Television) SetInstantVSYNC(set bool) {
+	tv.state.vsync.instant = set
 }

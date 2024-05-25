@@ -33,12 +33,6 @@ import (
 // "pixels" of two pixels across.
 const pixelWidth = 2
 
-// values affecting the severity of the screen roll
-const (
-	screenrollAmount  = 0.12
-	screenrollRecover = 0.85
-)
-
 // textureRenderers can share the underlying pixels of the screen type instance. both of these functions
 // should be called inside the screen critical section.
 type textureRenderer interface {
@@ -108,13 +102,6 @@ type screenCrit struct {
 	// whether monitor refresh rate is similar to the emulated TV's refresh rate
 	monitorSyncSimilar bool
 
-	// the number of frames until recovery from a desyncronisation
-	vsyncRecover int
-
-	// the degree of screen roll as a fraction of 1.0
-	// * playmode only
-	screenrollOffset float32
-
 	// the presentationPixels array is used in the presentation texture of the play and debug screen.
 	presentationPixels *image.RGBA
 
@@ -137,10 +124,6 @@ type screenCrit struct {
 	// length of the frame queue is increased (up to a maximum value). see
 	// frameQueueInc* constant values
 	frameQueueIncCt int
-
-	// number of pixels (multiplied by the pixel depth) in each entry of the
-	// pixels queue. saves calling len() multiple times needlessly
-	pixelsCount int
 
 	// the number of frames after rewinding/pausing before resuming "normal"
 	// queue traversal
@@ -173,9 +156,10 @@ type screenCrit struct {
 	// the cropped view of the screen pixels. note that these instances are
 	// created through the SubImage() command and should not be written to
 	// directly
-	cropPixels        *image.RGBA
-	cropElementPixels *image.RGBA
-	cropOverlayPixels *image.RGBA
+	cropPixels           *image.RGBA
+	cropElementPixels    *image.RGBA
+	cropOverlayPixels    *image.RGBA
+	cropScreenrollPixels *image.RGBA
 
 	// the selected overlay
 	overlay string
@@ -214,9 +198,6 @@ func newScreen(img *SdlImgui) *screen {
 	for i := range scr.crit.frameQueue {
 		scr.crit.frameQueue[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 	}
-
-	// note number of pixels in each entry in the pixel queue
-	scr.crit.pixelsCount = len(scr.crit.frameQueue[0].Pix)
 
 	scr.crit.section.Unlock()
 
@@ -428,31 +409,6 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	// set VSYNC recover value if number of vsync scanlines is insufficient. we
-	// only do this is TV is stable
-	if frameInfo.Stable && frameInfo.VSyncScanlines < scr.img.displayPrefs.CRT.VSyncSensitivity.Get().(int) {
-		scr.crit.vsyncRecover = scr.img.displayPrefs.CRT.VSyncRecovery.Get().(int)
-	} else if scr.crit.vsyncRecover >= 0 {
-		scr.crit.vsyncRecover--
-	}
-
-	// decide on amount of screen roll. the screenroll effect iself is a GLSL shader
-	if scr.crit.vsyncRecover > 0 {
-		scr.crit.screenrollOffset += screenrollAmount
-		if scr.crit.screenrollOffset > 1.0 {
-			scr.crit.screenrollOffset -= 1.0
-		}
-	} else if scr.crit.screenrollOffset > 0.0 {
-		// snap offset to zero if it's approaching zero. otherwise reduce the
-		// amount by a fraction. this makes sure that we actually set the value
-		// to zero rather than creating ever smaller fractions
-		if scr.crit.screenrollOffset <= 0.05 {
-			scr.crit.screenrollOffset = 0
-		} else {
-			scr.crit.screenrollOffset *= screenrollRecover
-		}
-	}
-
 	// set sync policy if refresh rate has changed
 	if scr.crit.frameInfo.RefreshRate != frameInfo.RefreshRate {
 		scr.setSyncPolicy(frameInfo.RefreshRate)
@@ -517,9 +473,8 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 
 	for i := range sig {
 		// end of pixel queue reached but there are still signals to process.
-		// this shouldn't ever happen but it used to when we implemented
-		// screenroll in this function
-		if offset >= scr.crit.pixelsCount {
+		// return to beginning of. this shouldn't ever be an issue
+		if offset >= len(scr.crit.frameQueue[0].Pix) {
 			return nil
 		}
 
@@ -579,8 +534,7 @@ func (scr *screen) plotOverlay() {
 
 	for i := range scr.crit.reflection {
 		// end of pixel queue reached but there are still signals to process.
-		// this shouldn't ever happen but it used to when we implemented
-		// screenroll in this function
+		// return to beginning of. this shouldn't ever be an issue
 		if offset >= len(scr.crit.overlayPixels.Pix) {
 			return
 		}

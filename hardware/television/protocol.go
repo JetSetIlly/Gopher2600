@@ -40,7 +40,9 @@ type PixelRenderer interface {
 	// NewFrame is called at the start of a new frame
 	//
 	// Renderers should be prepared to resize the rendering display to either a
-	// smaller or larger frame size
+	// smaller or larger frame size. Renderers should also expect NewFrame to be
+	// called multiple times but not necesssarily with NewScanline() or
+	// SetPixels() being called
 	NewFrame(FrameInfo) error
 
 	// NewScanline is called at the start of a new scanline

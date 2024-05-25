@@ -47,11 +47,6 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 		return
 	}
 
-	// screenroll is inside the screen critical section
-	sh.img.screen.crit.section.Lock()
-	screenroll := sh.img.screen.crit.screenrollOffset
-	sh.img.screen.crit.section.Unlock()
-
 	env.width = int32(sh.img.playScr.scaledWidth)
 	env.height = int32(sh.img.playScr.scaledHeight)
 
@@ -69,5 +64,5 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 
 	sh.screenshot.process(env, sh.img.playScr)
 
-	sh.crt.process(env, false, sh.img.playScr.visibleScanlines, specification.ClksVisible, screenroll, sh.img.playScr, newCrtSeqPrefs(sh.img.displayPrefs), sh.img.screen.rotation.Load().(specification.Rotation), false)
+	sh.crt.process(env, false, sh.img.playScr.visibleScanlines, specification.ClksVisible, sh.img.playScr, newCrtSeqPrefs(sh.img.displayPrefs), sh.img.screen.rotation.Load().(specification.Rotation), false)
 }

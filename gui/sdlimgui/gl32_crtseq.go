@@ -99,7 +99,8 @@ func newCrtSeqPrefs(prefs *display.Preferences) crtSeqPrefs {
 }
 
 type crtSequencer struct {
-	img *SdlImgui
+	img     *SdlImgui
+	enabled bool
 
 	sequence *framebuffer.Flip
 	phosphor *framebuffer.Flip
@@ -108,7 +109,6 @@ type crtSequencer struct {
 	phosphorShader        shaderProgram
 	tvColorShader         shaderProgram
 	blackCorrectionShader shaderProgram
-	screenrollShader      shaderProgram
 	blurShader            shaderProgram
 	ghostingShader        shaderProgram
 	effectsShader         shaderProgram
@@ -124,7 +124,6 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 		phosphorShader:        newPhosphorShader(),
 		tvColorShader:         newTVColorShader(),
 		blackCorrectionShader: newBlackCorrectionShader(),
-		screenrollShader:      newScreenrollShader(),
 		blurShader:            newBlurShader(),
 		ghostingShader:        newGhostingShader(),
 		effectsShader:         newCrtSeqEffectsShader(),
@@ -140,7 +139,6 @@ func (sh *crtSequencer) destroy() {
 	sh.phosphorShader.destroy()
 	sh.tvColorShader.destroy()
 	sh.blackCorrectionShader.destroy()
-	sh.screenrollShader.destroy()
 	sh.blurShader.destroy()
 	sh.ghostingShader.destroy()
 	sh.effectsShader.destroy()
@@ -159,7 +157,7 @@ func (sh *crtSequencer) flushPhosphor() {
 //
 // returns the textureID of the processed image
 func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlines int, numClocks int,
-	screenroll float32, image textureSpec, prefs crtSeqPrefs, rotation specification.Rotation,
+	image textureSpec, prefs crtSeqPrefs, rotation specification.Rotation,
 	screenshot bool) uint32 {
 
 	// the flipY value depends on whether the texture is to be windowed
@@ -170,6 +168,14 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 
 	// make sure sequence framebuffer is correct
 	_ = sh.sequence.Setup(env.width, env.height)
+
+	// clear phosphor is enabled state has changed
+	if prefs.Enabled != sh.enabled {
+		sh.phosphor.Clear()
+	}
+
+	// note the enabled flag for comparison next frame
+	sh.enabled = prefs.Enabled
 
 	// also make sure our phosphor framebuff is correct
 	if sh.phosphor.Setup(env.width, env.height) {
@@ -224,12 +230,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 		}
 	}
 
-	// screenroll and TV color shaders are applied to pixel-perfect shader too
-	env.textureID = sh.sequence.Process(func() {
-		sh.screenrollShader.(*screenrollShader).setAttributesArgs(env, screenroll)
-		env.draw()
-	})
-
+	// TV color shader is applied to pixel-perfect shader too
 	env.textureID = sh.sequence.Process(func() {
 		sh.tvColorShader.(*tvColorShader).setAttributesArgs(env, prefs.tvColor)
 		env.draw()
@@ -250,13 +251,12 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 
 		if windowed {
 			env.textureID = sh.sequence.Process(func() {
-				sh.effectsShader.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, screenroll,
+				sh.effectsShader.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks,
 					prefs, rotation, screenshot)
 				env.draw()
 			})
 		} else {
-			env.flipY = true
-			sh.effectsShader.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks, screenroll,
+			sh.effectsShader.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks,
 				prefs, rotation, screenshot)
 		}
 	} else {
@@ -266,6 +266,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 				env.draw()
 			})
 		} else {
+			env.flipY = true
 			sh.colorShader.setAttributes(env)
 		}
 	}

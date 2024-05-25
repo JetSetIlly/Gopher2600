@@ -186,21 +186,12 @@ const (
 	ClksScanline = 228
 )
 
-// The absolute number of scanlines allowed by the TV regardless of
-// specification
+// The absolute number of scanlines allowed by the TV regardless of the current
+// specification. The value here is arbitrary but it represents the natural
+// resonance of the vertical oscilator
 //
-// This is one more than the number of scanlines allowed by the PAL
-// specification. This is so that a ROM that uses the absolute maximum number
-// of scanlines for PAL can accomodate the VSYNC signal, which may just tip
-// over into the extra line
-//
-// # An example of such a ROM is the demo Chiphead
-//
-// The raises the question why we're choosing to render the VSYNC signal. For
-// debugging purposes it is useful to see where the TV thinks it is but it can
-// perhaps be done better
-//
-// !!TODO: think about how we're sending VSYNC to the pixel renderer
+// For reference, this is equivalent to a frequency of approximately 50Hz (the
+// precise frequency depends on the exact TV specification)
 const AbsoluteMaxScanlines = 313
 
 // The absolute number of color clock allowed by the TV regardless of
