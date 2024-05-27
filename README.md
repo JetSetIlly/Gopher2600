@@ -135,6 +135,10 @@ Notes v1.0"
 Cartridge format information was found in Kevin Horton's "Cart Information
 v6.0" file (sometimes named bankswitch_sizes.txt)
 
+The WF8 format discussed here on AtariAge
+
+https://forums.atariage.com/topic/367157-smurf-rescue-alternative-rom-with-wf8-bankswitch-format/
+
 The "Stella Programmer's Guide" by Steve Wright is of course a key document,
 used frequently throughout development.
 

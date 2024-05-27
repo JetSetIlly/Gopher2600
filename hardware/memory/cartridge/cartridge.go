@@ -239,6 +239,8 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newAtari4k(cart.env, cartload)
 	case "F8":
 		cart.mapper, err = newAtari8k(cart.env, cartload)
+	case "WF8":
+		cart.mapper, err = newWF8(cart.env, cartload)
 	case "F6":
 		cart.mapper, err = newAtari16k(cart.env, cartload)
 	case "F4":

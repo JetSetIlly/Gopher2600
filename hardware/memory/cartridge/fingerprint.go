@@ -320,7 +320,21 @@ func fingerprintTigervision(loader cartridgeloader.Loader) bool {
 	return loader.Count([]byte{0x85, 0x3f}) > threshold
 }
 
+func fingerprintWF8(loader cartridgeloader.Loader) bool {
+	// only one cartridge is known to use this. for now we'll use the MD5 sum
+	// of the only known dump to match. the cartridge is an early version of
+	// Smurf Rescue which apart from the different bank switching method is
+	// exactly the same as the regular F8 version of the game
+	//
+	// https://forums.atariage.com/topic/367157-smurf-rescue-alternative-rom-with-wf8-bankswitch-format/
+	return loader.HashMD5 == "7b0ebb6bc1d700927f6efe34bac2ecd2"
+}
+
 func fingerprint8k(loader cartridgeloader.Loader) string {
+	if fingerprintWF8(loader) {
+		return "WF8"
+	}
+
 	if fingerprintTigervision(loader) {
 		return "3F"
 	}
