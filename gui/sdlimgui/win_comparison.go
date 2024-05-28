@@ -29,12 +29,14 @@ type winComparison struct {
 
 	img *SdlImgui
 
-	cmpTexture  texture
-	diffTexture texture
+	cmpTexture       texture
+	diffTexture      texture
+	audioIsDifferent bool
 
 	// render channels are given to use by the main emulation through a GUI request
 	render     chan *image.RGBA
 	diffRender chan *image.RGBA
+	audioDiff  chan bool
 }
 
 func newWinComparison(img *SdlImgui) (window, error) {
@@ -42,8 +44,8 @@ func newWinComparison(img *SdlImgui) (window, error) {
 		img: img,
 	}
 
-	win.cmpTexture = img.rnd.addTexture(textureColor, false, false)
-	win.diffTexture = img.rnd.addTexture(textureColor, false, false)
+	win.cmpTexture = img.rnd.addTexture(textureColor, true, true)
+	win.diffTexture = img.rnd.addTexture(textureColor, true, true)
 
 	return win, nil
 }
@@ -60,6 +62,11 @@ func (win *winComparison) playmodeSetOpen(open bool) {
 }
 
 func (win *winComparison) playmodeDraw() bool {
+	if win.render == nil || win.diffRender == nil || win.audioDiff == nil {
+		win.playmodeWin.playmodeSetOpen(false)
+		return false
+	}
+
 	// receive new thumbnail data and copy to texture
 	select {
 	case image := <-win.render:
@@ -77,6 +84,12 @@ func (win *winComparison) playmodeDraw() bool {
 			win.diffTexture.markForCreation()
 			win.diffTexture.render(image)
 		}
+	default:
+	}
+
+	// receive new thumbnail data and copy to texture
+	select {
+	case win.audioIsDifferent = <-win.audioDiff:
 	default:
 	}
 
@@ -99,4 +112,9 @@ func (win *winComparison) playmodeDraw() bool {
 func (win *winComparison) draw() {
 	imgui.Image(imgui.TextureID(win.cmpTexture.getID()), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
 	imgui.Image(imgui.TextureID(win.diffTexture.getID()), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
+	if win.audioIsDifferent {
+		imguiColorLabelSimple("Audio is different", win.img.cols.False)
+	} else {
+		imguiColorLabelSimple("Audio is the same", win.img.cols.True)
+	}
 }

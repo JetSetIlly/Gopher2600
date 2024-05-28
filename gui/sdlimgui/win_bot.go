@@ -93,8 +93,8 @@ func (win *winBot) startBotSession(feedback *bots.Feedback) {
 }
 
 func (win *winBot) playmodeDraw() bool {
-	// no bot feedback instance
 	if win.feedback == nil {
+		win.playmodeWin.playmodeSetOpen(false)
 		return false
 	}
 

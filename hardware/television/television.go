@@ -816,6 +816,8 @@ func (tv *Television) renderSignals() error {
 		}
 	}
 
+	// ... but we do mix audio even if the emulation is rewinding
+
 	// update realtime mixers
 	//
 	// an additional condition saying the realtimeMixer is used only once the
@@ -831,7 +833,7 @@ func (tv *Television) renderSignals() error {
 		}
 	}
 
-	// but we do mix audio even if the emulation is rewinding
+	// update regular mixers
 	for _, m := range tv.mixers {
 		err := m.SetAudio(tv.signals[tv.firstSignalIdx:tv.currentSignalIdx])
 		if err != nil {

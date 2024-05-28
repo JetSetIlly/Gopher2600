@@ -58,7 +58,7 @@ const (
 	ReqROMSelector FeatureReq = "ReqROMSelector" // nil
 
 	// request for a comparison window to be opened.
-	ReqComparison FeatureReq = "ReqComparison" // chan *image.RGBA, chan *image.RGBA
+	ReqComparison FeatureReq = "ReqComparison" // chan *image.RGBA, chan *image.RGBA, chan string
 
 	// request for bot features to be enabled. a nil argument will cause the
 	// bot features to be removed.

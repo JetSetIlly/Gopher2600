@@ -99,7 +99,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		}
 
 	case gui.ReqComparison:
-		err = argLen(request.args, 2)
+		err = argLen(request.args, 3)
 		if err == nil {
 			open := false
 			if request.args[0] != nil {
@@ -108,6 +108,10 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			}
 			if request.args[1] != nil {
 				img.wm.playmodeWindows[winComparisonID].(*winComparison).diffRender = request.args[1].(chan *image.RGBA)
+				open = true
+			}
+			if request.args[2] != nil {
+				img.wm.playmodeWindows[winComparisonID].(*winComparison).audioDiff = request.args[2].(chan bool)
 				open = true
 			}
 			img.wm.playmodeWindows[winComparisonID].(*winComparison).playmodeSetOpen(open)

@@ -1354,7 +1354,7 @@ func (dbg *Debugger) startComparison(comparisonROM string, comparisonPrefs strin
 	if err != nil {
 		return err
 	}
-	err = dbg.gui.SetFeature(gui.ReqComparison, dbg.comparison.Render, dbg.comparison.DiffRender)
+	err = dbg.gui.SetFeature(gui.ReqComparison, dbg.comparison.Render, dbg.comparison.DiffRender, dbg.comparison.AudioDiff)
 	if err != nil {
 		return err
 	}
@@ -1384,7 +1384,7 @@ func (dbg *Debugger) endComparison() {
 
 	dbg.comparison.Quit()
 	dbg.comparison = nil
-	err := dbg.gui.SetFeature(gui.ReqComparison, nil, nil)
+	err := dbg.gui.SetFeature(gui.ReqComparison, nil, nil, nil)
 	if err != nil {
 		logger.Logf(logger.Allow, "debugger", err.Error())
 	}

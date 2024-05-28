@@ -31,6 +31,7 @@ type driver struct {
 
 	img     [2]*image.RGBA
 	cropImg [2]*image.RGBA
+	audio   [2][]uint8
 	swapIdx bool
 
 	sync chan bool
@@ -127,7 +128,8 @@ func (drv *driver) SetPixels(sig []signal.SignalAttributes, last int) error {
 	return nil
 }
 
-// Reset implements the television.PixelRenderer interface.
+// Reset implements the television.PixelRenderer AND the
+// television.AudioMixer
 func (m *driver) Reset() {
 	// clear pixels. setting the alpha channel so we don't have to later (the
 	// alpha channel never changes)
@@ -142,5 +144,26 @@ func (m *driver) Reset() {
 
 // EndRendering implements the television.PixelRenderer interface.
 func (drv *driver) EndRendering() error {
+	return nil
+}
+
+// SetAudio implements the television.AudioMixer interface.
+func (drv *driver) SetAudio(sig []signal.SignalAttributes) error {
+	var idx int
+	if drv.swapIdx {
+		idx = 0
+	} else {
+		idx = 1
+	}
+	for _, s := range sig {
+		v0 := uint8((s & signal.AudioChannel0) >> signal.AudioChannel0Shift)
+		v1 := uint8((s & signal.AudioChannel1) >> signal.AudioChannel1Shift)
+		drv.audio[idx] = append(drv.audio[idx], v0, v1)
+	}
+	return nil
+}
+
+// EndMixing implements the television.AudioMixer interface.
+func (drv *driver) EndMixing() error {
 	return nil
 }

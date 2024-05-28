@@ -50,6 +50,9 @@ type Comparison struct {
 
 	Render     chan *image.RGBA
 	DiffRender chan *image.RGBA
+	AudioDiff  chan bool
+
+	audio []uint8
 
 	// pixel renderer implementation for the "driver" emulation. ie. the
 	// emulation we'll be comparing against
@@ -64,6 +67,7 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 		emulationQuit: make(chan bool, 1),
 		Render:        make(chan *image.RGBA, 1),
 		DiffRender:    make(chan *image.RGBA, 1),
+		AudioDiff:     make(chan bool, 1),
 	}
 
 	// set isEmulating atomic as a boolean
@@ -76,7 +80,8 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 		return nil, fmt.Errorf("comparison: %w", err)
 	}
 	tv.AddPixelRenderer(cmp)
-	tv.SetFPSCap(true)
+	tv.AddAudioMixer(cmp)
+	tv.SetFPSCap(false)
 
 	// create a new VCS emulation
 	cmp.VCS, err = hardware.NewVCS(comparisonLabel, tv, cmp, driverVCS.Env.Prefs)
@@ -94,6 +99,7 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 	// create driver
 	cmp.driver = newDriver(driverVCS.TV)
 	driverVCS.TV.AddPixelRenderer(&cmp.driver)
+	driverVCS.TV.AddAudioMixer(&cmp.driver)
 
 	// synchronise RIOT ports
 	sync := make(chan ports.TimedInputEvent, 32)
@@ -191,8 +197,11 @@ func (cmp *Comparison) CreateFromLoader(cartload cartridgeloader.Loader) error {
 		cmp.isEmulating.Store(true)
 
 		// we need the main emulation to be exactly one frame ahead of the
-		// comparison emulation. the best way of doing this is to not even
-		// start the comparison emulation immediately
+		// comparison emulation. the best way of doing this is to not start the
+		// comparison emulation immediately
+		//
+		// the reason for the one frame ahead rule is so we can feed the input
+		// from the driver emulation to the comparison emulation
 
 		select {
 		case <-cmp.driver.sync:
@@ -263,22 +272,16 @@ func (cmp *Comparison) NewFrame(frameInfo television.FrameInfo) error {
 		return nil
 	}
 
-	return cmp.diff()
-}
-
-// NewScanline implements the television.PixelRenderer interface.
-func (cmp *Comparison) NewScanline(scanline int) error {
-	return nil
-}
-
-func (cmp *Comparison) diff() error {
 	if !cmp.frameInfo.Stable || !cmp.driver.frameInfo.Stable {
 		return nil
 	}
 
-	if cmp.frameInfo.FrameNum > cmp.driver.frameInfo.FrameNum {
+	// comparison of frame numbers takes into account that the driver emulation
+	// is one ahead of the comparison emulation (for user-input purposes)
+	if cmp.frameInfo.FrameNum > cmp.driver.frameInfo.FrameNum-1 {
 		return fmt.Errorf("comparison: comparison emulation is running AHEAD of the driver emulation")
-	} else if cmp.frameInfo.FrameNum < cmp.driver.frameInfo.FrameNum-1 {
+	}
+	if cmp.frameInfo.FrameNum < cmp.driver.frameInfo.FrameNum-1 {
 		return fmt.Errorf("comparison: comparison emulation is running BEHIND of the driver emulation")
 	}
 
@@ -309,8 +312,42 @@ func (cmp *Comparison) diff() error {
 		c[3] = 0xff
 	}
 
+	// indicate visual differences
 	cmp.DiffRender <- cmp.cropDiffImg
 
+	// find differences in the two audio buffers
+	var audioIsDifferent bool
+
+	var drvAudioIdx int
+	if cmp.driver.swapIdx {
+		drvAudioIdx = 0
+	} else {
+		drvAudioIdx = 1
+	}
+
+	if len(cmp.audio) != len(cmp.driver.audio[drvAudioIdx]) {
+		audioIsDifferent = true
+	} else {
+		for i := range cmp.driver.audio[drvAudioIdx] {
+			if cmp.audio[i] != cmp.driver.audio[drvAudioIdx][i] {
+				audioIsDifferent = true
+				break
+			}
+		}
+	}
+
+	// indicate audio differences
+	cmp.AudioDiff <- audioIsDifferent
+
+	// clear audio buffers
+	cmp.audio = cmp.audio[:0]
+	cmp.driver.audio[drvAudioIdx] = cmp.driver.audio[drvAudioIdx][:0]
+
+	return nil
+}
+
+// NewScanline implements the television.PixelRenderer interface.
+func (cmp *Comparison) NewScanline(scanline int) error {
 	return nil
 }
 
@@ -367,5 +404,21 @@ func (cmp *Comparison) Reset() {
 
 // EndRendering implements the television.PixelRenderer interface.
 func (cmp *Comparison) EndRendering() error {
+
+	return nil
+}
+
+// SetAudio implements the television.AudioMixer interface.
+func (cmp *Comparison) SetAudio(sig []signal.SignalAttributes) error {
+	for _, s := range sig {
+		v0 := uint8((s & signal.AudioChannel0) >> signal.AudioChannel0Shift)
+		v1 := uint8((s & signal.AudioChannel1) >> signal.AudioChannel1Shift)
+		cmp.audio = append(cmp.audio, v0, v1)
+	}
+	return nil
+}
+
+// EndMixing implements the television.AudioMixer interface.
+func (cmp *Comparison) EndMixing() error {
 	return nil
 }

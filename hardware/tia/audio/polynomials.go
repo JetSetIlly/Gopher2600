@@ -42,6 +42,8 @@ var poly9bit [511]uint16
 
 func init() {
 	for i := 0; i < len(poly9bit); i++ {
+		// using random like this is okay even for comparison emulations because
+		// the results will be shared across all emulations
 		poly9bit[i] = uint16(rand.Int() & 0x01)
 	}
 }
