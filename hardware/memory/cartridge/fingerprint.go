@@ -327,7 +327,20 @@ func fingerprintWF8(loader cartridgeloader.Loader) bool {
 	// exactly the same as the regular F8 version of the game
 	//
 	// https://forums.atariage.com/topic/367157-smurf-rescue-alternative-rom-with-wf8-bankswitch-format/
-	return loader.HashMD5 == "7b0ebb6bc1d700927f6efe34bac2ecd2"
+	//
+	// [28th May 2024] second cartridge found. a variant of Zaxxon. we'll
+	// continue to use the full MD5 sum for matching either of the examples. if
+	// any more cartridges are found a more generalised fingerprint will be
+	// found
+	//
+	// https://forums.atariage.com/topic/367200-zaxxon-alternative-rom-with-wf8-bankswitch-format/
+
+	const (
+		smurf  = "7b0ebb6bc1d700927f6efe34bac2ecd2"
+		zaxxon = "494c0fb944d8d0d6b13c6b4b50ccbd11"
+	)
+
+	return loader.HashMD5 == smurf || loader.HashMD5 == zaxxon
 }
 
 func fingerprint8k(loader cartridgeloader.Loader) string {
