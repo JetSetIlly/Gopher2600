@@ -297,6 +297,10 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 		m.Reset()
 	}
 
+	if tv.realtimeMixer != nil {
+		tv.realtimeMixer.Reset()
+	}
+
 	return nil
 }
 
@@ -429,10 +433,10 @@ func (tv *Television) AddRealtimeAudioMixer(m RealtimeAudioMixer) {
 	tv.realtimeMixer = m
 }
 
-// RemoveRealtimeAudioMixer removes a RealtimeAudioMixer implementation from
+// RemoveRealtimeAudioMixer removes any RealtimeAudioMixer implementation from
 // the Television.
-func (tv *Television) RemoveRealtimeAudioMixer(m RealtimeAudioMixer) {
-	tv.realtimeMixer = m
+func (tv *Television) RemoveRealtimeAudioMixer() {
+	tv.realtimeMixer = nil
 }
 
 // some televisions may need to conclude and/or dispose of resources
