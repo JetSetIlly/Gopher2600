@@ -23,7 +23,7 @@
 // https://atariage.com/forums/topic/249865-tia-sounding-off-in-the-digital-domain/
 //
 // The exact implementation here is an optimisation of that work, as found by
-// Thomas Jzentsh (as mentioned in the link above)
+// Thomas Jentzsch (mentioned in the link above)
 //
 // Both 6502.ts and Stella source was used as reference. Both projects are
 // exactly equivalent.

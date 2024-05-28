@@ -146,7 +146,7 @@ func fingerprintMnetwork(loader cartridgeloader.Loader) bool {
 	//
 	// (19/06/21)
 	//
-	// Thomas Jentzch's Elite demo requires a threshold of one
+	// Thomas Jentzsch's Elite demo requires a threshold of one
 	//
 	// https://atariage.com/forums/topic/155657-elite-3d-graphics/?do=findComment&comment=2444328
 	//
