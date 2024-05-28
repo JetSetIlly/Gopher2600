@@ -67,6 +67,9 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 		// keep track of the most recent directory that has been read
 		var currentDir string
 
+		// cancel channel to communicate with any ongoing calls to Path.list()
+		cancel := make(chan bool)
+
 		for !done {
 			select {
 			case <-pth.Destroy:
@@ -76,6 +79,25 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 				afs.Close()
 
 			case path := <-pth.Set:
+				// there is a chance of a deadlock with a previous call the
+				// Path.list() so it is essential we cancel and synchronise
+				// properly:
+				// 1) send cancel to existing list process
+				// 2) drain any pending errors
+				// 3) drain cancel channel - in case the cancel signal we sent in (1) didn't go anywhere
+				select {
+				case cancel <- true:
+				default:
+				}
+				select {
+				case <-pth.err:
+				default:
+				}
+				select {
+				case <-cancel:
+				default:
+				}
+
 				err := afs.Set(path, true)
 				if err != nil {
 					pth.err <- err
@@ -103,7 +125,7 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 				result.Entries = []Entry{}
 				pth.results <- result
 
-				afs.list(pth.entry, pth.err)
+				afs.list(pth.entry, pth.err, cancel)
 			}
 		}
 	}()

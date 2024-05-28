@@ -130,9 +130,15 @@ func (afs *Path) Close() {
 	}
 }
 
-func (afs *Path) list(entries chan Entry, done chan error) {
+func (afs *Path) list(entries chan Entry, done chan error, cancel chan bool) {
 	if afs.zf != nil {
 		for _, f := range afs.zf.File {
+			select {
+			case <-cancel:
+				return
+			default:
+			}
+
 			// split file name into parts. the list is joined together again
 			// below to create the path to the file. this is better than
 			// filepath.Dir() because that will add path components that make it
@@ -171,6 +177,12 @@ func (afs *Path) list(entries chan Entry, done chan error) {
 		}
 
 		for _, d := range dir {
+			select {
+			case <-cancel:
+				return
+			default:
+			}
+
 			// using os.Stat() to get file information otherwise links to
 			// directories do not have the IsDir() property
 			fi, err := os.Stat(filepath.Join(path, d.Name()))
@@ -213,7 +225,7 @@ func (afs *Path) List() ([]Entry, error) {
 
 	listEnt := make(chan Entry, 1)
 	listErr := make(chan error)
-	go afs.list(listEnt, listErr)
+	go afs.list(listEnt, listErr, nil)
 
 	done := false
 	for !done {
