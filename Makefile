@@ -19,7 +19,7 @@ endif
 
 
 ### support targets
-.PHONY: all clean tidy generate check_git check_glsl glsl_validate check_pandoc readme_spell patch_file_integrity
+.PHONY: all clean tidy generate check_git check_glsl glsl_validate check_pandoc readme_spell patch_file_integrity vet
 
 all:
 	@echo "use release target to build release binary"
@@ -53,7 +53,12 @@ ifeq (, $(shell which pandoc))
 	$(error "pandoc not installed")
 endif
 
-readme_spell: check_pandoc
+check_awk:
+ifeq (, $(shell which awk))
+	$(error "awk not installed")
+endif
+
+readme_spell: check_pandoc check_awk
 	@pandoc README.md -t plain | aspell -a | sed '1d;$d' | cut -d ' ' -f 2 | awk 'length($0)>1' | sort | uniq
 # sed is used to chop off the first line of aspell output, which is a version banner
 
@@ -65,6 +70,18 @@ patch_file_integrity: *.patch
 		git apply --check $$file; \
 	done
 	@echo "patch files are fine"
+
+# using awk to ignore noisy errors:
+# 1) unkeyed imgui.Vec2 and imgui.Vec4 structs are plentiful and harmless
+# 2) lines starting with # simply indicate packages that have vet errors
+vet: check_awk
+	@go vet ./... 2>&1 | awk '\
+	BEGIN {ct = 0}\
+	/imgui.go\/v[0-9]*\.Vec[2,4] struct literal uses unkeyed fields/ {next}\
+	/^# / {next}\
+	{ct++; print $0}\
+	END { if (ct > 0) {exit 1} }\
+	'
 
 ### testing targets
 .PHONY: test race race_debug

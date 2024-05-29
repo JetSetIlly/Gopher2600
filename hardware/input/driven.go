@@ -43,7 +43,7 @@ func (inp *Input) handleDrivenEvents() error {
 			select {
 			case inp.drivenInputEvent = <-inp.fromDriver:
 				if inp.checkForDriven {
-					fmt.Errorf("input: driven input received before previous input was processed")
+					return fmt.Errorf("input: driven input received before previous input was processed")
 				}
 			default:
 				done = true
@@ -58,7 +58,7 @@ func (inp *Input) handleDrivenEvents() error {
 		select {
 		case inp.drivenInputEvent = <-inp.fromDriver:
 			if inp.checkForDriven {
-				fmt.Errorf("input: driven input received before previous input was processed")
+				return fmt.Errorf("input: driven input received before previous input was processed")
 			}
 			inp.checkForDriven = true
 		default:
