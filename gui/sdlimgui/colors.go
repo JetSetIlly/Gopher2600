@@ -158,6 +158,7 @@ type imguiColors struct {
 	TimelineHoverCursor   imgui.Vec4
 	TimelineMarkers       imgui.Vec4
 	TimelineScanlines     imgui.Vec4
+	TimelineHz            imgui.Vec4
 	TimelineWSYNC         imgui.Vec4
 	TimelineCoProc        imgui.Vec4
 	TimelineRewindRange   imgui.Vec4
@@ -218,6 +219,7 @@ type imguiColors struct {
 	timelineHoverCursor imgui.PackedColor
 	timelineMarkers     imgui.PackedColor
 	timelineScanlines   imgui.PackedColor
+	timelineHz          imgui.PackedColor
 	timelineWSYNC       imgui.PackedColor
 	timelineCoProc      imgui.PackedColor
 	timelineRewindRange imgui.PackedColor
@@ -436,6 +438,7 @@ func newColors() *imguiColors {
 	cols.PortsBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 	cols.TimerBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 	cols.SaveKeyBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
+	cols.TimelineHz = cols.reflectionColors[reflection.Hz]
 	cols.TimelineWSYNC = cols.reflectionColors[reflection.WSYNC]
 	cols.TimelineCoProc = cols.reflectionColors[reflection.CoProcActive]
 	cols.CollisionBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
@@ -451,6 +454,7 @@ func newColors() *imguiColors {
 	cols.timelineHoverCursor = imgui.PackedColorFromVec4(cols.TimelineHoverCursor)
 	cols.timelineMarkers = imgui.PackedColorFromVec4(cols.TimelineMarkers)
 	cols.timelineScanlines = imgui.PackedColorFromVec4(cols.TimelineScanlines)
+	cols.timelineHz = imgui.PackedColorFromVec4(cols.TimelineHz)
 	cols.timelineWSYNC = imgui.PackedColorFromVec4(cols.TimelineWSYNC)
 	cols.timelineCoProc = imgui.PackedColorFromVec4(cols.TimelineCoProc)
 	cols.timelineRewindRange = imgui.PackedColorFromVec4(cols.TimelineRewindRange)
@@ -521,6 +525,7 @@ func newColors() *imguiColors {
 
 // reflectionColors lists the colors to be used for the reflection overlay.
 var reflectionColors = []color.RGBA{
+	reflection.Hz:           {R: 50, G: 255, B: 255, A: 255},
 	reflection.WSYNC:        {R: 50, G: 50, B: 255, A: 255},
 	reflection.Collision:    {R: 255, G: 25, B: 25, A: 255},
 	reflection.CXCLR:        {R: 255, G: 25, B: 255, A: 255},

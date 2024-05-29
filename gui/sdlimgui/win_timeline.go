@@ -232,6 +232,9 @@ func (win *winTimeline) drawToolbar() {
 			imguiColorLabelSimple(fmt.Sprintf("%d Scanlines", win.img.cache.Rewind.Timeline.TotalScanlines[win.hoverIdx]), win.img.cols.TimelineScanlines)
 
 			imgui.SameLineV(0, 15)
+			imguiColorLabelSimple(fmt.Sprintf("%.02fHz", win.img.cache.Rewind.Timeline.Counts[win.hoverIdx].Hz), win.img.cols.TimelineHz)
+
+			imgui.SameLineV(0, 15)
 			imguiColorLabelSimple(fmt.Sprintf("%.02f%% WSYNC", win.img.cache.Rewind.Timeline.Ratios[win.hoverIdx].WSYNC*100), win.img.cols.TimelineWSYNC)
 
 			if win.img.cache.VCS.Mem.Cart.GetCoProcBus() != nil {
@@ -416,6 +419,26 @@ func (win *winTimeline) drawTrace() {
 			imgui.Vec2{X: plotX + plotWidth, Y: plotY + plotHeight},
 			win.img.cols.timelineScanlines)
 
+		// Hz TRACE
+		//
+		// plot Hz from a quarter from the bottom of the graph
+		plotY = yPos + (graphHeight * 0.75)
+		plotY -= float32(timeline.Counts[i].Hz) * (graphHeight * 0.75) / specification.AbsoluteMaxScanlines
+
+		// add jitter to trace to indicate changes in value through exaggeration
+		if i > 0 {
+			if timeline.Counts[i].Hz < timeline.Counts[i-1].Hz {
+				plotY++
+			} else if timeline.Counts[i].Hz > timeline.Counts[i-1].Hz {
+				plotY--
+			}
+		}
+
+		// plot a dotted line if count isn't valid and a solid line if it is
+		dl.AddRectFilled(imgui.Vec2{X: plotX, Y: plotY},
+			imgui.Vec2{X: plotX + plotWidth, Y: plotY + plotHeight},
+			win.img.cols.timelineHz)
+
 		// WSYNC TRACE
 
 		// plot WSYNC from the bottom
@@ -589,6 +612,7 @@ func (win *winTimeline) saveToCSV() {
 	f.WriteString("Frame Num,")
 	f.WriteString("Scanlines,")
 	f.WriteString("CoProc,")
+	f.WriteString("Hz,")
 	f.WriteString("WSYNC,")
 	f.WriteString("Left Player,")
 	f.WriteString("Right Player,")
@@ -600,6 +624,7 @@ func (win *winTimeline) saveToCSV() {
 		f.WriteString(fmt.Sprintf("%d,", n))
 		f.WriteString(fmt.Sprintf("%d,", timeline.TotalScanlines[i]))
 		f.WriteString(fmt.Sprintf("%d,", timeline.Counts[i].CoProc))
+		f.WriteString(fmt.Sprintf("%.02f,", timeline.Counts[i].Hz))
 		f.WriteString(fmt.Sprintf("%d,", timeline.Counts[i].WSYNC))
 		f.WriteString(fmt.Sprintf("%v,", timeline.LeftPlayerInput[i]))
 		f.WriteString(fmt.Sprintf("%v,", timeline.RightPlayerInput[i]))

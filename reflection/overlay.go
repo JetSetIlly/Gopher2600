@@ -25,7 +25,8 @@ type ReflectedInfo int
 
 // List of valid ReflectedInfo values.
 const (
-	WSYNC ReflectedInfo = iota
+	Hz ReflectedInfo = iota
+	WSYNC
 	Collision
 	CXCLR
 	HMOVEdelay

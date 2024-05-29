@@ -29,6 +29,7 @@ import (
 type TimelineCounts struct {
 	WSYNC  int
 	CoProc int
+	Hz     float32
 }
 
 // TimelineCounter implementations provide system information for the
