@@ -364,6 +364,9 @@ func (win *winSelectROM) draw() {
 
 	// control buttons. start controlHeight measurement
 	win.controlHeight = imguiMeasureHeight(func() {
+		// results of preview emulation from the thumbnailer
+		previewResults := win.thmb.UpdateResults()
+
 		imgui.SetNextItemOpen(win.informationOpen, imgui.ConditionAlways)
 		if !imgui.CollapsingHeaderV(win.selectedName, imgui.TreeNodeFlagsNone) {
 			win.informationOpen = false
@@ -396,9 +399,6 @@ func (win *winSelectROM) draw() {
 					} else {
 						imgui.Text(win.selectedName)
 					}
-
-					// results of preview emulation from the thumbnailer
-					previewResults := win.thmb.PreviewResults()
 
 					imgui.TableNextRow()
 					imgui.TableNextColumn()

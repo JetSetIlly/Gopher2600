@@ -218,6 +218,13 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, spec string, numFrames
 			thmb.isEmulating.Store(false)
 		}()
 
+		// clear previous preview
+		select {
+		case thmb.previewUpdate <- nil:
+		case <-thmb.emulationQuit:
+			return
+		}
+
 		// attach cartridge using the setup system
 		err := setup.AttachCartridge(thmb.vcs, cartload, true)
 		if err != nil {
@@ -227,13 +234,20 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, spec string, numFrames
 
 		// run preview for just one frame. this is enough to give us basic
 		// information like the cartridge mapper and detected controllers
-		_ = thmb.preview.RunN(cartload, 1)
+		err = thmb.preview.RunN(cartload, 1)
+		if err != nil {
+			return
+		}
 
-		// indicate that the first part of the preview has completed and that
-		// the preview results should be updated
+		// if we get to this point then we can be reasonably sure that the
+		// cartridgeloader is emulatable
+		thmb.isEmulating.Store(true)
+
+		// send updated preview results
 		select {
 		case thmb.previewUpdate <- thmb.preview.Results():
-		default:
+		case <-thmb.emulationQuit:
+			return
 		}
 
 		// run preview some more in order to get excellent frame information
@@ -241,16 +255,6 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, spec string, numFrames
 		if err == nil || errors.Is(err, cartridgeloader.NoFilename) {
 			thmb.vcs.TV.SetResizer(thmb.preview.Results().Resizer, thmb.preview.Results().FrameNum)
 		}
-
-		// indicate that the second part of the preview has completed
-		select {
-		case thmb.previewUpdate <- thmb.preview.Results():
-		default:
-		}
-
-		// if we get to this point then we can be reasonably sure that the
-		// cartridgeloader is emulatable
-		thmb.isEmulating.Store(true)
 
 		// run until target frame has been generated
 		tgtFrame := thmb.vcs.TV.GetCoords().Frame + numFrames
@@ -428,8 +432,8 @@ func (thmb *Anim) EndRendering() error {
 	return nil
 }
 
-// PreviewResults returns the results of the preview emulation
-func (thmb *Anim) PreviewResults() *preview.Results {
+// UpdateResults returns the more recent results of the preview emulation
+func (thmb *Anim) UpdateResults() *preview.Results {
 	select {
 	case thmb.previewResults = <-thmb.previewUpdate:
 	default:
