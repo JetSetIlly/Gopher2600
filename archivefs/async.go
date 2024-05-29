@@ -79,20 +79,25 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 				afs.Close()
 
 			case path := <-pth.Set:
-				// there is a chance of a deadlock with a previous call the
-				// Path.list() so it is essential we cancel and synchronise
-				// properly:
-				// 1) send cancel to existing list process
-				// 2) drain any pending errors
-				// 3) drain cancel channel - in case the cancel signal we sent in (1) didn't go anywhere
+				// 1) send cancel to existing list goroutine
 				select {
 				case cancel <- true:
 				default:
 				}
-				select {
-				case <-pth.err:
-				default:
+
+				// 2) drain entry and err channel
+				var listDrainDone bool
+				for !listDrainDone {
+					select {
+					case <-pth.entry:
+					case <-pth.err:
+					default:
+						listDrainDone = true
+					}
 				}
+
+				// 3) drain cancel channel - in case the cancel signal we sent
+				//    in (1) didn't go anywhere
 				select {
 				case <-cancel:
 				default:
@@ -125,7 +130,10 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 				result.Entries = []Entry{}
 				pth.results <- result
 
-				afs.list(pth.entry, pth.err, cancel)
+				// all communication happens over channels so launching another
+				// goroutine is fine. in fact, we have to do this in order for
+				// the Set channel to be serviced. if we don't service
+				go afs.list(pth.entry, pth.err, cancel)
 			}
 		}
 	}()
@@ -133,8 +141,7 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 	return pth
 }
 
-// Process asynchronous requests. Must be called in order to receive the results
-// of a Set(). Suitable to be called as part of a render loop
+// Process results from previous push to Set channel
 func (pth *AsyncPath) Process() error {
 	done := false
 	for !done {

@@ -130,11 +130,11 @@ func (afs *Path) Close() {
 	}
 }
 
-func (afs *Path) list(entries chan Entry, done chan error, cancel chan bool) {
+func (afs *Path) list(listEnt chan Entry, listErr chan error, listCancel chan bool) {
 	if afs.zf != nil {
 		for _, f := range afs.zf.File {
 			select {
-			case <-cancel:
+			case <-listCancel:
 				return
 			default:
 			}
@@ -154,12 +154,12 @@ func (afs *Path) list(entries chan Entry, done chan error, cancel chan bool) {
 
 			fi := f.FileInfo()
 			if fi.IsDir() {
-				entries <- Entry{
+				listEnt <- Entry{
 					Name:  fi.Name(),
 					IsDir: true,
 				}
 			} else {
-				entries <- Entry{
+				listEnt <- Entry{
 					Name: fi.Name(),
 				}
 			}
@@ -172,13 +172,13 @@ func (afs *Path) list(entries chan Entry, done chan error, cancel chan bool) {
 
 		dir, err := os.ReadDir(path)
 		if err != nil {
-			done <- fmt.Errorf("archivefs: entries: %w", err)
+			listErr <- fmt.Errorf("archivefs: entries: %w", err)
 			return
 		}
 
 		for _, d := range dir {
 			select {
-			case <-cancel:
+			case <-listCancel:
 				return
 			default:
 			}
@@ -191,7 +191,7 @@ func (afs *Path) list(entries chan Entry, done chan error, cancel chan bool) {
 			}
 
 			if fi.IsDir() {
-				entries <- Entry{
+				listEnt <- Entry{
 					Name:  d.Name(),
 					IsDir: true,
 				}
@@ -199,13 +199,13 @@ func (afs *Path) list(entries chan Entry, done chan error, cancel chan bool) {
 				p := filepath.Join(path, d.Name())
 				_, err := zip.OpenReader(p)
 				if err == nil {
-					entries <- Entry{
+					listEnt <- Entry{
 						Name:      d.Name(),
 						IsDir:     true,
 						IsArchive: true,
 					}
 				} else {
-					entries <- Entry{
+					listEnt <- Entry{
 						Name: d.Name(),
 					}
 				}
@@ -213,8 +213,7 @@ func (afs *Path) list(entries chan Entry, done chan error, cancel chan bool) {
 		}
 	}
 
-	done <- nil
-	return
+	listErr <- nil
 }
 
 // List returns the child entries for the current path location. If the current
