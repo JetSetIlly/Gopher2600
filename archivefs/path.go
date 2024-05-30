@@ -178,7 +178,7 @@ func (afs *Path) list(listEnt chan Entry, listErr chan error, listCancel chan bo
 
 		for _, d := range dir {
 			select {
-			case <-listCancel:
+			case _ = <-listCancel:
 				return
 			default:
 			}

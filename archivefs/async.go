@@ -15,6 +15,10 @@
 
 package archivefs
 
+import (
+	"sync"
+)
+
 // SetSelectedFilename is called after a successful Set()
 type FilenameSetter interface {
 	SetSelectedFilename(string)
@@ -68,7 +72,10 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 		var currentDir string
 
 		// cancel channel to communicate with any ongoing calls to Path.list()
-		cancel := make(chan bool)
+		cancel := make(chan bool, 1)
+
+		// lock actual setting process to prevent early draining of cancel channel
+		var isSetting sync.Mutex
 
 		for !done {
 			select {
@@ -79,61 +86,66 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 				afs.Close()
 
 			case path := <-pth.Set:
-				// 1) send cancel to existing list goroutine
+				// send cancel to existing list goroutine
 				select {
 				case cancel <- true:
 				default:
 				}
 
-				// 2) drain entry and err channel
-				var listDrainDone bool
-				for !listDrainDone {
+				go func() {
+					isSetting.Lock()
+					defer isSetting.Unlock()
+
+					// drain cancel channel in case we sent a useless cancel
+					// signal above
 					select {
-					case <-pth.entry:
-					case <-pth.err:
+					case <-cancel:
 					default:
-						listDrainDone = true
 					}
-				}
 
-				// 3) drain cancel channel - in case the cancel signal we sent
-				//    in (1) didn't go anywhere
-				select {
-				case <-cancel:
-				default:
-				}
+					// drain entry and err channels before starting a new list
+					var listDrainDone bool
+					for !listDrainDone {
+						select {
+						case <-pth.entry:
+						case <-pth.err:
+						default:
+							listDrainDone = true
+						}
+					}
 
-				err := afs.Set(path, true)
-				if err != nil {
-					pth.err <- err
-					continue // for loop
-				}
+					err := afs.Set(path, true)
+					if err != nil {
+						pth.err <- err
+						return
+					}
 
-				result := AsyncResults{
-					Entries:  nil,
-					Selected: afs.String(),
-					IsDir:    afs.IsDir(),
-					Dir:      afs.Dir(),
-					Base:     afs.Base(),
-				}
+					result := AsyncResults{
+						Entries:  nil,
+						Selected: afs.String(),
+						IsDir:    afs.IsDir(),
+						Dir:      afs.Dir(),
+						Base:     afs.Base(),
+					}
 
-				// directory hasn't changed so there's no need to
-				// call the list() function
-				if currentDir == result.Dir {
+					// directory hasn't changed so there's no need to
+					// call the list() function
+					if currentDir == result.Dir {
+						pth.results <- result
+						return
+					}
+					currentDir = result.Dir
+
+					// this is a new directory being scanned. indicate that by
+					// setting the Entries field to an empty list rather than nil
+					result.Entries = []Entry{}
 					pth.results <- result
-					continue // for loop
-				}
-				currentDir = result.Dir
 
-				// this is a new directory being scanned. indicate that by
-				// setting the Entries field to an empty list rather than nil
-				result.Entries = []Entry{}
-				pth.results <- result
-
-				// all communication happens over channels so launching another
-				// goroutine is fine. in fact, we have to do this in order for
-				// the Set channel to be serviced. if we don't service
-				go afs.list(pth.entry, pth.err, cancel)
+					// all communication happens over channels so launching another
+					// goroutine is fine. in fact, we have to do this in order for
+					// the Set channel to be serviced. if we don't service
+					afs.list(pth.entry, pth.err, cancel)
+				}()
 			}
 		}
 	}()
