@@ -23,6 +23,7 @@ import (
 type Timer struct {
 	mmap    architecture.Map
 	enabled bool
+	reset   bool
 	control uint32
 	counter uint32
 }
@@ -39,6 +40,9 @@ func (t *Timer) Reset() {
 
 // stepping of timer assumes an APB divider value of one.
 func (t *Timer) Step(cycles uint32) {
+	if t.reset {
+		t.counter = 0
+	}
 	if !t.enabled {
 		return
 	}
@@ -47,10 +51,12 @@ func (t *Timer) Step(cycles uint32) {
 
 func (t *Timer) Write(addr uint32, val uint32) bool {
 	switch addr {
-	case t.mmap.TIMERcontrol:
-		t.enabled = val&0x01 == 0x01
+	case t.mmap.T1TCR:
+		// from "5.2 Timer Control Register" in "UM10161", page 196
 		t.control = val
-	case t.mmap.TIMERvalue:
+		t.enabled = val&0x01 == 0x01
+		t.reset = val&0x02 == 0x02
+	case t.mmap.T1TC:
 		t.counter = val
 	default:
 		return false
@@ -63,9 +69,10 @@ func (t *Timer) Read(addr uint32) (uint32, bool) {
 	var val uint32
 
 	switch addr {
-	case t.mmap.TIMERcontrol:
+	case t.mmap.T1TCR:
+		// reserved bits could be randomised
 		val = t.control
-	case t.mmap.TIMERvalue:
+	case t.mmap.T1TC:
 		val = t.counter
 	default:
 		return 0, false

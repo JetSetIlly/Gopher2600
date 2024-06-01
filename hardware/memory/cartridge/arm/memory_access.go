@@ -69,7 +69,7 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 				return uint8(v)
 			}
 		}
-		if arm.mmap.HasTIMER {
+		if arm.mmap.HasT1 {
 			if v, ok := arm.state.timer.Read(addr); ok {
 				return uint8(v)
 			}
@@ -107,7 +107,7 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 				return
 			}
 		}
-		if arm.mmap.HasTIMER {
+		if arm.mmap.HasT1 {
 			if arm.state.timer.Write(addr, uint32(val)) {
 				return
 			}
@@ -162,7 +162,7 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 				return uint16(v)
 			}
 		}
-		if arm.mmap.HasTIMER {
+		if arm.mmap.HasT1 {
 			if v, ok := arm.state.timer.Read(addr); ok {
 				return uint16(v)
 			}
@@ -214,7 +214,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 				return
 			}
 		}
-		if arm.mmap.HasTIMER {
+		if arm.mmap.HasT1 {
 			if arm.state.timer.Write(addr, uint32(val)) {
 				return
 			}
@@ -266,7 +266,7 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 				return uint32(v)
 			}
 		}
-		if arm.mmap.HasTIMER {
+		if arm.mmap.HasT1 {
 			if v, ok := arm.state.timer.Read(addr); ok {
 				return uint32(v)
 			}
@@ -318,7 +318,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 				return
 			}
 		}
-		if arm.mmap.HasTIMER {
+		if arm.mmap.HasT1 {
 			if arm.state.timer.Write(addr, uint32(val)) {
 				return
 			}

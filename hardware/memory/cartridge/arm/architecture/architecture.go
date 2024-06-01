@@ -75,9 +75,9 @@ type Map struct {
 	// the cartridge implementation before creating the ARM emulation
 	PreferredMAMCR MAMCR
 
-	HasTIMER     bool
-	TIMERcontrol uint32
-	TIMERvalue   uint32
+	HasT1 bool
+	T1TCR uint32
+	T1TC  uint32
 
 	HasTIM2 bool
 	TIM2CR1 uint32
@@ -97,7 +97,7 @@ type Map struct {
 	// the value the is returned when an illegal memory address is read
 	IllegalAccessValue uint32
 
-	// the divisor to apply to the main clock when ticking the timers
+	// the divisor to apply to the main clock when ticking peripherals (eg. timers)
 	ClkDiv float32
 }
 
@@ -129,15 +129,29 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.MAMTIM = 0xe01fc004
 		mmap.PreferredMAMCR = MAMpartial
 
-		mmap.HasTIMER = true
-		mmap.TIMERcontrol = 0xe0008004
-		mmap.TIMERvalue = 0xe0008008
+		mmap.HasT1 = true
+		mmap.T1TCR = 0xe0008004
+		mmap.T1TC = 0xe0008008
 
 		// boundary value is arbitrary and was suggested by John Champeau (09/04/2022)
 		mmap.NullAccessBoundary = 0x00000751
 		mmap.IllegalAccessValue = 0x00000000
 
-		mmap.ClkDiv = 1.0
+		// from "12. APB Divider" in "UM10161", page 61
+		//
+		// "Because the APB bus must work properly at power up (and its timing
+		// cannot be altered if it does not work since the APB divider control
+		// registers reside on the APB bus), the default condition at reset is
+		// for the APB bus to run at one quarter speed"
+		//
+		// in the LPC2000 the ClkDiv value is defined by the APBDIV register.
+		// we're not emulating the APBDIV register and assume that the value
+		// is set to 0, meaning a PCLK of a quarter of the CCLK (the clock speed
+		// of the main processing unit)
+		//
+		// *** For now, we'll keep this value at clock division of 1 until we
+		// understand better what is happening
+		mmap.ClkDiv = 1
 
 	case PlusCart:
 		mmap.ARMArchitecture = ARMv7_M
@@ -168,7 +182,7 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.NullAccessBoundary = 0x00000751
 		mmap.IllegalAccessValue = 0xffffffff
 
-		mmap.ClkDiv = 0.5
+		mmap.ClkDiv = 2
 	}
 
 	// logger.Logf(env, "ARM Architecture", "using %s/%s", mmap.CartArchitecture, mmap.ARMArchitecture)

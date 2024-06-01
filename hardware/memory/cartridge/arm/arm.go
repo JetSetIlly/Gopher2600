@@ -172,10 +172,8 @@ type ARMState struct {
 	// - required for disasm only
 	mergedIS bool
 
-	// clocks
-
 	// the number of cycles left over from the previous clock tick
-	accumulatedClocks float32
+	accumulatedCycles float32
 
 	// 32bit instructions
 
@@ -413,7 +411,7 @@ func (arm *ARM) resetPeripherals() {
 	if arm.mmap.HasRNG {
 		arm.state.rng.Reset()
 	}
-	if arm.mmap.HasTIMER {
+	if arm.mmap.HasT1 {
 		arm.state.timer.Reset()
 	}
 	if arm.mmap.HasTIM2 {
@@ -498,18 +496,20 @@ func (arm *ARM) Step(vcsClock float32) {
 }
 
 func (arm *ARM) clock(cycles float32) {
-	// incoming clock for TIM2 is half the frequency of the processor
-	cycles *= arm.mmap.ClkDiv
+	// timer devices use the peripheral clock (PLCK) rather than the clock of
+	// the processor (CCLK) directly. the ClkDiv value scales the incoming
+	// number cycles
+	cycles /= arm.mmap.ClkDiv
 
 	// add accumulated cycles (ClkDiv has already been applied to this
 	// additional value)
-	cycles += arm.state.accumulatedClocks
+	cycles += arm.state.accumulatedCycles
 
 	// isolate integer and fractional part and save fraction for next clock()
 	c := uint32(cycles)
-	arm.state.accumulatedClocks = cycles - float32(c)
+	arm.state.accumulatedCycles = cycles - float32(c)
 
-	if arm.mmap.HasTIMER {
+	if arm.mmap.HasT1 {
 		arm.state.timer.Step(c)
 	}
 	if arm.mmap.HasTIM2 {
