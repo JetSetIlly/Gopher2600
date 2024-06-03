@@ -1247,8 +1247,8 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	cartload.Seek(0, io.SeekStart)
 
 	// copy resizer from preview to main emulation
-	dbg.vcs.TV.SetResizer(dbg.preview.Results().Resizer, dbg.preview.Results().FrameNum)
 	dbg.vcs.TV.SetSpec(dbg.preview.Results().SpecID, true)
+	dbg.vcs.TV.SetResizer(dbg.preview.Results().Resizer, dbg.preview.Results().FrameNum)
 
 	// activate bot if possible
 	feedback, err := dbg.bots.ActivateBot(dbg.vcs.Mem.Cart.Hash)

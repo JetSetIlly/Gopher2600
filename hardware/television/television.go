@@ -47,10 +47,6 @@ type vsync struct {
 	// the screen to visually roll
 	flybackScanline int
 
-	// whether the screen synchronises instantly. this value supercedes any user
-	// preferences and can be set by the Television.SetInstantVSYNC() function
-	instant bool
-
 	// a vary good example of a ROM that requires correct handling of
 	// natural flyback is Andrew Davies' Chess (3e+ test rom)
 	//
@@ -486,10 +482,6 @@ func (tv *Television) End() error {
 // Signal updates the current state of the television.
 func (tv *Television) Signal(sig signal.SignalAttributes) {
 	// examine signal for resizing possibility.
-	//
-	// throttle how often we do this because it's an expensive operation. the
-	// range check is required because the decision to commit a resize takes
-	// several frames (defined by framesUntilResize)
 	tv.state.resizer.examine(tv.state, sig)
 
 	// count VSYNC scanlines
@@ -509,29 +501,25 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 			// somewhere between two and three. anything over three is fine
 			// TODO: make this a user preference
 			if tv.state.vsync.activeScanlines >= 2 {
-				if tv.state.vsync.instant {
-					tv.state.vsync.flybackScanline = min(tv.state.vsync.scanline, specification.AbsoluteMaxScanlines)
-					tv.state.vsync.scanline = 0
-					tv.state.scanline = 0
+				// adjust flyback scanline until it matches the vsync scanline.
+				// also adjust the actual scanline if it's not zero
+				if tv.state.vsync.scanline < tv.state.vsync.flybackScanline {
+					adj := ((tv.state.vsync.flybackScanline - tv.state.vsync.scanline) * 80) / 100
+					tv.state.vsync.flybackScanline = tv.state.vsync.scanline + adj
+					tv.state.scanline = (tv.state.scanline * 80) / 100
 				} else {
-					// adjust flyback scanline until it matches the vsync scanline.
-					// also adjust the actual scanline if it's not zero
-					if tv.state.vsync.scanline < tv.state.vsync.flybackScanline {
-						adj := ((tv.state.vsync.flybackScanline - tv.state.vsync.scanline) * 80) / 100
-						tv.state.vsync.flybackScanline = tv.state.vsync.scanline + adj
+					tv.state.vsync.flybackScanline = min(tv.state.vsync.scanline, specification.AbsoluteMaxScanlines)
+				}
+
+				// continue to adjust scanline until it is zero
+				if tv.state.vsync.scanline == tv.state.vsync.flybackScanline {
+					if tv.state.scanline > 0 {
 						tv.state.scanline = (tv.state.scanline * 80) / 100
 					}
-
-					// continue to adjust scanline until it is zero
-					if tv.state.vsync.scanline == tv.state.vsync.flybackScanline {
-						if tv.state.scanline > 0 {
-							tv.state.scanline = (tv.state.scanline * 80) / 100
-						}
-					}
-
-					// reset VSYNC scanline count
-					tv.state.vsync.scanline = 0
 				}
+
+				// reset VSYNC scanline count
+				tv.state.vsync.scanline = 0
 			}
 			tv.state.vsync.active = false
 		}
@@ -687,7 +675,7 @@ func (tv *Television) newFrame() error {
 	tv.state.frameInfo.FrameNum = tv.state.frameNum
 
 	// note whether newFrame() was the result of a valid VSYNC or a natural flyback
-	tv.state.frameInfo.VSync = tv.state.vsync.isSynced()
+	tv.state.frameInfo.IsSynced = tv.state.vsync.isSynced()
 
 	// commit any resizing that maybe pending
 	err := tv.state.resizer.commit(tv.state)
@@ -979,8 +967,8 @@ func (tv *Television) GetResizer() Resizer {
 // resize information was taken from
 //
 // Note that the Resizer type does not include specification information. When
-// transferring state between television instances it is probably desirable to
-// call SetSpec() too
+// transferring state between television instances it is okay to call SetSpec()
+// but it should be done before SetResizer() is called
 func (tv *Television) SetResizer(rz Resizer, validFrom int) {
 	tv.state.resizer = rz
 	tv.state.resizer.validFrom = validFrom
@@ -998,10 +986,4 @@ func (tv *Television) SetResizer(rz Resizer, validFrom int) {
 	for _, r := range tv.renderers {
 		r.NewFrame(tv.state.frameInfo)
 	}
-}
-
-// Set VSYNC to instant regardless of user preferences. This is useful for
-// emulations that aren't intended for display, like the preview emulation
-func (tv *Television) SetInstantVSYNC(set bool) {
-	tv.state.vsync.instant = set
 }

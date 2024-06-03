@@ -145,7 +145,7 @@ func (rz *Resizer) examine(state *State, sig signal.SignalAttributes) {
 	// the best example of this is Andrew Davie's chess which simply does
 	// not care about frames during the computer's thinking time - we don't
 	// want to resize during these frames.
-	if !state.frameInfo.VSync {
+	if !state.frameInfo.IsSynced {
 		// reset any pending changes on an unsynced frame
 		rz.pendingCt = 0
 		rz.pendingTop = rz.vblankTop

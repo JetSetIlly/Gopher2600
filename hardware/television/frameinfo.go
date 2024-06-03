@@ -62,10 +62,8 @@ type FrameInfo struct {
 	// has the refresh rate changed since the previous frame
 	Jitter bool
 
-	// a VSync frame is one which was generated from a valid VSYNC sequence.
-	// although note that the TV may still be in the process of synchronising
-	// and that the screen may be "rolling"
-	VSync bool
+	// whether the TV is synchronised with the incoming TV signal
+	IsSynced bool
 
 	// Stable is true once the television frame has been consistent for N
 	// frames after reset. This is useful for pixel renderers that don't want
@@ -127,7 +125,7 @@ func (info *FrameInfo) reset() {
 	info.VisibleBottom = info.Spec.AtariSafeVisibleBottom
 	info.TotalScanlines = info.Spec.ScanlinesTotal
 	info.RefreshRate = info.Spec.RefreshRate
-	info.VSync = false
+	info.IsSynced = false
 	info.Stable = false
 }
 
