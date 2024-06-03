@@ -4,6 +4,8 @@ Session.vim
 vendor/*
 tags
 test_roms/*
+test_roms
+roms/*
 roms
 .gopher2600/*
 gopher2600
