@@ -327,10 +327,6 @@ func NewARM(env *environment.Environment, mmap architecture.Map, mem SharedMemor
 	// by definition the ARM starts in a program ended state
 	arm.state.yield.Type = coprocessor.YieldProgramEnded
 
-	// clklen for flash based on flash latency setting
-	latencyInMhz := (1 / (arm.mmap.FlashLatency / 1000000000)) / 1000000
-	arm.clklenFlash = float32(math.Ceil(float64(arm.Clk) / latencyInMhz))
-
 	arm.resetPeripherals()
 	arm.resetRegisters()
 	arm.updatePrefs()
@@ -447,6 +443,10 @@ func (arm *ARM) resetRegisters() {
 func (arm *ARM) updatePrefs() {
 	// update clock value from preferences
 	arm.Clk = float32(arm.env.Prefs.ARM.Clock.Get().(float64))
+
+	// clklen for flash based on flash latency setting
+	latencyInMhz := (1 / (arm.mmap.FlashLatency / 1000000000)) / 1000000
+	arm.clklenFlash = float32(math.Ceil(float64(arm.Clk) / latencyInMhz))
 
 	// get clock regulator from preferences
 	arm.cycleRegulator = float32(arm.env.Prefs.ARM.CycleRegulator.Get().(float64))
