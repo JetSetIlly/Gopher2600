@@ -782,6 +782,10 @@ func (win *winDbgScr) resize() {
 	// the dbgscr window which can change more often than resize() is called.
 }
 
+// updateRefreshRate() implements the textureRenderer interface.
+func (win *winDbgScr) updateRefreshRate() {
+}
+
 // render() implements the textureRenderer interface.
 //
 // render is called by service loop (via screen.render()). must be inside

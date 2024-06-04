@@ -309,8 +309,12 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	tv.currentSignalIdx = 0
 	tv.firstSignalIdx = 0
 
-	tv.resetSpec()
+	tv.setRefreshRate(tv.state.frameInfo.Spec.RefreshRate)
 	tv.state.resizer.reset(tv.state.frameInfo.Spec)
+
+	for _, r := range tv.renderers {
+		r.Reset()
+	}
 
 	for _, m := range tv.mixers {
 		m.Reset()
@@ -692,22 +696,15 @@ func (tv *Television) newFrame() error {
 	}
 
 	// record total scanlines and refresh rate if changed. note that this is
-	// independent of the resizer.commit() call above. total scanline / refresh
-	// rate can change without it being a resize
+	// independent of the resizer.commit() call above.
 	//
-	// this is important to do and failure to set the refresh reate correctly
-	// is most noticeable in the Supercharger tape loading process. During tape
-	// loading a steady sine wave is produced and no VSYNC is issued. This
-	// means that the refresh rate is reduced to 50.27Hz
-	//
-	// the disadvantage of disassociating screen size (by which we mean the
-	// period between VSYNCs) from the refresh rate is that debugging
-	// information may be misleading. but that's really not a problem we should
-	// be directly addressing in the television package
+	// this is important to do and failure to set the refresh rate correctly
+	// is most noticeable in the Supercharger tape loading process where the
+	// audio  will be affected
 	if tv.state.frameInfo.TotalScanlines != tv.state.scanline {
 		tv.state.frameInfo.TotalScanlines = tv.state.scanline
 		tv.state.frameInfo.RefreshRate = tv.state.frameInfo.Spec.HorizontalScanRate / float32(tv.state.scanline)
-		tv.lmtr.setRefreshRate(tv.state.frameInfo.RefreshRate)
+		tv.setRefreshRate(tv.state.frameInfo.RefreshRate)
 		tv.state.frameInfo.Jitter = true
 	} else {
 		tv.state.frameInfo.Jitter = false
@@ -827,16 +824,13 @@ func (tv *Television) SetSpec(spec string, forced bool) error {
 
 func (tv *Television) setSpec(spec string) {
 	tv.state.setSpec(spec)
-	tv.resetSpec()
+	tv.setRefreshRate(tv.state.frameInfo.Spec.RefreshRate)
 }
 
-func (tv *Television) resetSpec() {
-	tv.lmtr.setRefreshRate(tv.state.frameInfo.Spec.RefreshRate)
-	tv.lmtr.setRate(tv.state.frameInfo.Spec.RefreshRate)
-
-	for _, r := range tv.renderers {
-		r.Reset()
-	}
+// setRefreshRate of TV. calls frame limiter and pixel renderers as appropriate
+func (tv *Television) setRefreshRate(rate float32) {
+	tv.lmtr.setRefreshRate(rate)
+	tv.lmtr.setRate(rate)
 
 	if tv.vcs != nil {
 		tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec)

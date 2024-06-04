@@ -38,6 +38,7 @@ const pixelWidth = 2
 type textureRenderer interface {
 	render()
 	resize()
+	updateRefreshRate()
 }
 
 // screen implements television.PixelRenderer.
@@ -412,6 +413,9 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 	// set sync policy if refresh rate has changed
 	if scr.crit.frameInfo.RefreshRate != frameInfo.RefreshRate {
 		scr.setSyncPolicy(frameInfo.RefreshRate)
+		for _, r := range scr.renderers {
+			r.updateRefreshRate()
+		}
 	}
 
 	// check if screen needs to be resized

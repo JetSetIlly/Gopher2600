@@ -66,6 +66,7 @@ type playscrOverlay struct {
 	// fps information is updated on every pule of the time.Ticker. the fps and
 	// hz string is updated at that time and then displayed on every draw()
 	fpsPulse *time.Ticker
+	fpsForce chan bool
 	fps      string
 	hz       string
 
@@ -168,6 +169,12 @@ func (oly *playscrOverlay) draw() {
 	oly.drawBottomRight()
 }
 
+func (oly *playscrOverlay) updateRefreshRate() {
+	fps, hz := oly.playscr.img.dbg.VCS().TV.GetActualFPS()
+	oly.fps = fmt.Sprintf("%03.2f fps", fps)
+	oly.hz = fmt.Sprintf("%03.2fhz", hz)
+}
+
 // information in the top left corner of the overlay are about the emulation.
 // eg. whether audio is mute, or the emulation is paused, etc. it is also used
 // to display the FPS counter and other TV information
@@ -196,9 +203,7 @@ func (oly *playscrOverlay) drawTopLeft() {
 
 		select {
 		case <-oly.fpsPulse.C:
-			fps, hz := oly.playscr.img.dbg.VCS().TV.GetActualFPS()
-			oly.fps = fmt.Sprintf("%03.2f fps", fps)
-			oly.hz = fmt.Sprintf("%03.2fhz", hz)
+			oly.updateRefreshRate()
 			runtime.ReadMemStats(&oly.memStats)
 		default:
 		}

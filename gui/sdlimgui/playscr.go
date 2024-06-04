@@ -55,7 +55,7 @@ func newPlayScr(img *SdlImgui) *playScr {
 		img: img,
 		scr: img.screen,
 		overlay: playscrOverlay{
-			fpsPulse: time.NewTicker(time.Second),
+			fpsPulse: time.NewTicker(1 * time.Millisecond),
 			fps:      "waiting",
 		},
 	}
@@ -88,6 +88,11 @@ func (win *playScr) draw() {
 func (win *playScr) resize() {
 	win.displayTexture.markForCreation()
 	win.setScaling()
+}
+
+// updateRefreshRate() implements the textureRenderer interface.
+func (win *playScr) updateRefreshRate() {
+	win.overlay.updateRefreshRate()
 }
 
 // render() implements the textureRenderer interface.
