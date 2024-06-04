@@ -1,4 +1,5 @@
 // This file is part of Gopher2600.
+//
 // Gopher2600 is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -22,12 +23,19 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
-func (win *winPrefs) drawColour() {
-	imgui.Spacing()
-
+func (win *winPrefs) drawTelevision() {
 	imgui.PushItemWidth(400)
 	defer imgui.PopItemWidth()
 
+	imgui.Spacing()
+	win.drawColour()
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+	win.drawVSYNC()
+}
+
+func (win *winPrefs) drawColour() {
 	win.drawBrightness()
 	imgui.Spacing()
 	win.drawContrast()
@@ -104,5 +112,58 @@ func (win *winPrefs) drawHue() {
 
 	if imgui.SliderFloatV("##hue", &f, minv, maxv, label, imgui.SliderFlagsNone) {
 		win.img.displayPrefs.Colour.Hue.Set(f)
+	}
+}
+
+func (win *winPrefs) drawVSYNC() {
+	var label string
+
+	if imgui.CollapsingHeader("Synchronisation") {
+		imgui.Spacing()
+
+		imgui.Text("VSYNC Scanlines")
+		scanlines := int32(win.img.dbg.VCS().Env.Prefs.TV.VSYNCscanlines.Get().(int))
+
+		if scanlines == 1 {
+			label = fmt.Sprintf("%d scanline", scanlines)
+		} else {
+			label = fmt.Sprintf("%d scanlines", scanlines)
+		}
+
+		if imgui.SliderIntV("##vsyncScanlines", &scanlines, 0, 4, label, 1.0) {
+			win.img.dbg.VCS().Env.Prefs.TV.VSYNCscanlines.Set(scanlines)
+		}
+
+		win.img.imguiTooltipSimple(`The number of scanlines for which VSYNC must be enabled
+for it to be a valid VSYNC signal`)
+
+		imgui.Spacing()
+		imgui.Text("Speed of Recovery")
+		recovery := int32(win.img.dbg.VCS().Env.Prefs.TV.VSYNCrecovery.Get().(int))
+		recovery /= 10
+
+		if recovery > 8 {
+			label = fmt.Sprintf("very slow")
+		} else if recovery > 7 {
+			label = fmt.Sprintf("slow")
+		} else if recovery > 6 {
+			label = fmt.Sprintf("quick")
+		} else if recovery > 5 {
+			label = fmt.Sprintf("very quick")
+		} else {
+			label = fmt.Sprintf("immediate")
+		}
+
+		if imgui.SliderIntV("##vsyncRecover", &recovery, 5, 9, label, 1.0) {
+			if recovery == 5 {
+				recovery = 0
+			} else {
+				recovery *= 10
+			}
+			win.img.dbg.VCS().Env.Prefs.TV.VSYNCrecovery.Set(recovery)
+		}
+
+		win.img.imguiTooltipSimple(`The speed at which the TV synchronises after
+receiving a valid VSYNC signal`)
 	}
 }

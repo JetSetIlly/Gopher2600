@@ -33,6 +33,9 @@ type Preferences struct {
 	// unused pins randomly on a read/peek"
 	RandomPins prefs.Bool
 
+	// preferences used by the television
+	TV *TVPreferences
+
 	// preferences used by the ARM sub-system
 	ARM *ARMPreferences
 
@@ -43,6 +46,7 @@ type Preferences struct {
 	// revisions of the TIA chip
 	Revision *RevisionPreferences
 
+	// preferences for the AtariVox peripheral
 	AtariVox *AtariVoxPreferences
 }
 
@@ -72,6 +76,11 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Load(true)
+	if err != nil {
+		return nil, err
+	}
+
+	p.TV, err = newTVPreferences()
 	if err != nil {
 		return nil, err
 	}

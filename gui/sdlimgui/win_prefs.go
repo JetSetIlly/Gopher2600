@@ -82,15 +82,8 @@ func (win *winPrefs) debuggerDraw() bool {
 	return true
 }
 
-// the sub draw() functions may return a setDefaultPrefs instance. if an
-// instance is returned then SetDefaults() will be used to draw a "Set
-// Defaults" button
-type setDefaultPrefs interface {
-	SetDefaults()
-}
-
 func (win *winPrefs) draw() {
-	var setDef setDefaultPrefs
+	var setDef func()
 	var setDefLabel = ""
 
 	// tab-bar to switch between different "areas" of the TIA
@@ -100,18 +93,21 @@ func (win *winPrefs) draw() {
 		imgui.EndTabItem()
 	}
 
-	if imgui.BeginTabItem("Colour") {
-		win.drawColour()
+	if imgui.BeginTabItem("Television") {
+		win.drawTelevision()
 		imgui.EndTabItem()
-		setDef = win.img.displayPrefs.Colour
-		setDefLabel = "Colour"
+		setDef = func() {
+			win.img.dbg.VCS().Env.Prefs.TV.SetDefaults()
+			win.img.displayPrefs.Colour.SetDefaults()
+		}
+		setDefLabel = "Television"
 	}
 
 	if win.img.rnd.supportsCRT() {
 		if imgui.BeginTabItem("CRT") {
 			win.drawCRT()
 			imgui.EndTabItem()
-			setDef = win.img.displayPrefs.CRT
+			setDef = win.img.displayPrefs.CRT.SetDefaults
 			setDefLabel = "CRT"
 		}
 	}
@@ -131,14 +127,14 @@ func (win *winPrefs) draw() {
 	if imgui.BeginTabItem("Rewind") {
 		win.drawRewindTab()
 		imgui.EndTabItem()
-		setDef = win.img.dbg.Rewind.Prefs
+		setDef = win.img.dbg.Rewind.Prefs.SetDefaults
 		setDefLabel = "Rewind"
 	}
 
 	if imgui.BeginTabItem("ARM") {
 		win.drawARMTab()
 		imgui.EndTabItem()
-		setDef = win.img.dbg.VCS().Env.Prefs.ARM
+		setDef = win.img.dbg.VCS().Env.Prefs.ARM.SetDefaults
 		setDefLabel = "ARM"
 	}
 
@@ -163,7 +159,7 @@ func (win *winPrefs) draw() {
 		if imgui.Button(fmt.Sprintf("Set %s Defaults", setDefLabel)) {
 			// some preferences are sensitive to the goroutine SetDefaults() is
 			// called within
-			win.img.dbg.PushFunction(setDef.SetDefaults)
+			win.img.dbg.PushFunction(setDef)
 		}
 	}
 }
@@ -747,6 +743,10 @@ func (win *winPrefs) drawDiskButtons() {
 			if err != nil {
 				logger.Logf(logger.Allow, "sdlimgui", "could not save (vcs) preferences: %v", err)
 			}
+			err = win.img.dbg.VCS().Env.Prefs.TV.Save()
+			if err != nil {
+				logger.Logf(logger.Allow, "sdlimgui", "could not save (tv) preferences: %v", err)
+			}
 			err = win.img.dbg.VCS().Env.Prefs.ARM.Save()
 			if err != nil {
 				logger.Logf(logger.Allow, "sdlimgui", "could not save (arm) preferences: %v", err)
@@ -798,6 +798,10 @@ func (win *winPrefs) drawDiskButtons() {
 			err = win.img.dbg.VCS().Env.Prefs.Load()
 			if err != nil {
 				logger.Logf(logger.Allow, "sdlimgui", "could not restore (vcs) preferences: %v", err)
+			}
+			err = win.img.dbg.VCS().Env.Prefs.TV.Load()
+			if err != nil {
+				logger.Logf(logger.Allow, "sdlimgui", "could not restore (tv) preferences: %v", err)
 			}
 			err = win.img.dbg.VCS().Env.Prefs.ARM.Load()
 			if err != nil {

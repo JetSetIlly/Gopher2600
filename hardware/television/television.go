@@ -20,6 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/environment"
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -500,13 +501,17 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 			// the number of scanlines that the VSYNC has been held should be
 			// somewhere between two and three. anything over three is fine
 			// TODO: make this a user preference
-			if tv.state.vsync.activeScanlines >= 2 {
+			if tv.state.vsync.activeScanlines >= tv.env.Prefs.TV.VSYNCscanlines.Get().(int) {
+				recovery := max(preferences.VSYNCrecoveryMin,
+					min(preferences.VSYNCrecoveryMax,
+						tv.env.Prefs.TV.VSYNCrecovery.Get().(int)))
+
 				// adjust flyback scanline until it matches the vsync scanline.
 				// also adjust the actual scanline if it's not zero
 				if tv.state.vsync.scanline < tv.state.vsync.flybackScanline {
-					adj := ((tv.state.vsync.flybackScanline - tv.state.vsync.scanline) * 80) / 100
+					adj := ((tv.state.vsync.flybackScanline - tv.state.vsync.scanline) * recovery) / 100
 					tv.state.vsync.flybackScanline = tv.state.vsync.scanline + adj
-					tv.state.scanline = (tv.state.scanline * 80) / 100
+					tv.state.scanline = (tv.state.scanline * recovery) / 100
 				} else {
 					tv.state.vsync.flybackScanline = min(tv.state.vsync.scanline, specification.AbsoluteMaxScanlines)
 				}
@@ -514,12 +519,15 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 				// continue to adjust scanline until it is zero
 				if tv.state.vsync.scanline == tv.state.vsync.flybackScanline {
 					if tv.state.scanline > 0 {
-						tv.state.scanline = (tv.state.scanline * 80) / 100
+						tv.state.scanline = (tv.state.scanline * recovery) / 100
 					}
 				}
 
 				// reset VSYNC scanline count
 				tv.state.vsync.scanline = 0
+			} else {
+				// set flyback scanline to the maximum if we receive an invalid VSYNC signal
+				tv.state.vsync.flybackScanline = specification.AbsoluteMaxScanlines
 			}
 			tv.state.vsync.active = false
 		}

@@ -54,53 +54,11 @@ type CRT struct {
 	BlackLevel           prefs.Float
 
 	PixelPerfectFade prefs.Float
-
-	VSyncRecovery    prefs.Int
-	VSyncSensitivity prefs.Int
-
-	IntegerScaling prefs.Bool
 }
 
 func (p *CRT) String() string {
 	return p.dsk.String()
 }
-
-const (
-	enabled              = true
-	curve                = true
-	roundedCorners       = true
-	bevel                = false
-	shine                = true
-	mask                 = false
-	scanlines            = true
-	interference         = true
-	noise                = true
-	flicker              = false
-	fringing             = true
-	ghosting             = true
-	phosphor             = true
-	curveAmount          = 0.5
-	roundedCornersAmount = 0.059
-	bevelSize            = 0.01
-	maskIntensity        = 0.07
-	maskFine             = 2.9
-	scanlinesIntensity   = 0.08
-	scanlinesFine        = 1.80
-	interferenceLevel    = 0.15
-	noiseLevel           = 0.19
-	flickerLevel         = 0.025
-	fringingAmount       = 0.15
-	ghostingAmount       = 2.9
-	phosphorLatency      = 0.5
-	phosphorBloom        = 1.0
-	sharpness            = 0.55
-	blackLevel           = 0.045
-
-	pixelPerfectFade = 0.4
-	vsyncRecovery    = 10
-	vsyncSensitivity = 2
-	integerScaling   = false
-)
 
 func newCRT() (*CRT, error) {
 	p := &CRT{}
@@ -228,18 +186,6 @@ func newCRT() (*CRT, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.vsync.recovery", &p.VSyncRecovery)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.vsync.sensitivity", &p.VSyncSensitivity)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.integerScaling", &p.IntegerScaling)
-	if err != nil {
-		return nil, err
-	}
 
 	err = p.dsk.Load(true)
 	if err != nil {
@@ -251,38 +197,35 @@ func newCRT() (*CRT, error) {
 
 // SetDefaults revers all CRT settings to default values.
 func (p *CRT) SetDefaults() {
-	p.Enabled.Set(enabled)
-	p.Curve.Set(curve)
-	p.RoundedCorners.Set(roundedCorners)
-	p.Bevel.Set(bevel)
-	p.Shine.Set(shine)
-	p.Mask.Set(mask)
-	p.Scanlines.Set(scanlines)
-	p.Interference.Set(interference)
-	p.Flicker.Set(flicker)
-	p.Fringing.Set(fringing)
-	p.Ghosting.Set(ghosting)
-	p.Phosphor.Set(phosphor)
-	p.CurveAmount.Set(curveAmount)
-	p.RoundedCornersAmount.Set(roundedCornersAmount)
-	p.BevelSize.Set(bevelSize)
-	p.MaskIntensity.Set(maskIntensity)
-	p.MaskFine.Set(maskFine)
-	p.ScanlinesIntensity.Set(scanlinesIntensity)
-	p.ScanlinesFine.Set(scanlinesFine)
-	p.InterferenceLevel.Set(interferenceLevel)
-	p.FlickerLevel.Set(flickerLevel)
-	p.FringingAmount.Set(fringingAmount)
-	p.GhostingAmount.Set(ghostingAmount)
-	p.PhosphorLatency.Set(phosphorLatency)
-	p.PhosphorBloom.Set(phosphorBloom)
-	p.Sharpness.Set(sharpness)
-	p.BlackLevel.Set(blackLevel)
+	p.Enabled.Set(true)
+	p.Curve.Set(true)
+	p.RoundedCorners.Set(true)
+	p.Bevel.Set(false)
+	p.Shine.Set(true)
+	p.Mask.Set(false)
+	p.Scanlines.Set(true)
+	p.Interference.Set(true)
+	p.Flicker.Set(false)
+	p.Fringing.Set(true)
+	p.Ghosting.Set(true)
+	p.Phosphor.Set(true)
+	p.CurveAmount.Set(0.5)
+	p.RoundedCornersAmount.Set(0.059)
+	p.BevelSize.Set(0.01)
+	p.MaskIntensity.Set(0.07)
+	p.MaskFine.Set(2.9)
+	p.ScanlinesIntensity.Set(0.08)
+	p.ScanlinesFine.Set(1.80)
+	p.InterferenceLevel.Set(0.15)
+	p.FlickerLevel.Set(0.025)
+	p.FringingAmount.Set(0.15)
+	p.GhostingAmount.Set(2.9)
+	p.PhosphorLatency.Set(0.5)
+	p.PhosphorBloom.Set(1.0)
+	p.Sharpness.Set(0.55)
+	p.BlackLevel.Set(0.045)
 
-	p.PixelPerfectFade.Set(pixelPerfectFade)
-	p.VSyncRecovery.Set(vsyncRecovery)
-	p.VSyncSensitivity.Set(vsyncSensitivity)
-	p.IntegerScaling.Set(integerScaling)
+	p.PixelPerfectFade.Set(0.4)
 }
 
 // Load CRT values from disk.

@@ -138,11 +138,6 @@ func (win *playScr) setScaling() {
 		scaling = 1
 	}
 
-	// limit scaling to whole integers
-	if win.img.displayPrefs == nil || win.img.displayPrefs.CRT.IntegerScaling.Get().(bool) {
-		scaling = float32(int(scaling))
-	}
-
 	win.imagePosMin = imgui.Vec2{
 		X: float32(int((screenRegion.X - (adjW * scaling)) / 2)),
 		Y: float32(int((screenRegion.Y - (h * scaling)) / 2)),

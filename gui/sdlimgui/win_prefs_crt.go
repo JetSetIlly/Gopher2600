@@ -15,8 +15,6 @@
 package sdlimgui
 
 import (
-	"fmt"
-
 	"github.com/inkyblackness/imgui-go/v4"
 )
 
@@ -84,15 +82,6 @@ func (win *winPrefs) drawCRT() {
 		imgui.PopItemWidth()
 
 		imgui.EndTable()
-	}
-
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
-
-	if imgui.CollapsingHeader("VSYNC") {
-		imgui.Spacing()
-		win.drawVSYNC()
 	}
 }
 
@@ -480,38 +469,4 @@ black. It is similar to the phosphor option that is
 available when 'Pixel Perfect' mode is disabled.`)
 
 	return b
-}
-
-func (win *winPrefs) drawVSYNC() {
-	imguiLabel("Recovery")
-	recovery := int32(win.img.displayPrefs.CRT.VSyncRecovery.Get().(int))
-	var label string
-	if recovery == 0 {
-		label = "sync immediately"
-	} else {
-		label = fmt.Sprintf("%d frames", recovery)
-	}
-
-	if imgui.SliderIntV("##vsyncRecovery", &recovery, 0, 20, label, 1.0) {
-		win.img.displayPrefs.CRT.VSyncRecovery.Set(recovery)
-	}
-	win.img.imguiTooltipSimple(`The number of frames required for
-the TV to recover after desynchronisation`)
-
-	imgui.SameLineV(0, 15)
-
-	imguiLabel("Sensitivity")
-	sensitivity := int32(win.img.displayPrefs.CRT.VSyncSensitivity.Get().(int))
-	if sensitivity == 1 {
-		label = fmt.Sprintf("%d scanline", sensitivity)
-	} else {
-		label = fmt.Sprintf("%d scanlines", sensitivity)
-	}
-
-	if imgui.SliderIntV("##vsyncSensitivity", &sensitivity, 0, 4, label, 1.0) {
-		win.img.displayPrefs.CRT.VSyncSensitivity.Set(sensitivity)
-	}
-
-	win.img.imguiTooltipSimple(`The number of scanlines that VSYNC
-must be active for the frame to valid`)
 }

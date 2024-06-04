@@ -27,7 +27,6 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/caching"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/resources"
 	"github.com/jetsetilly/gopher2600/userinput"
@@ -221,19 +220,6 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
-
-	// set scaling when IntegerScaling prefs value is changed
-	img.displayPrefs.CRT.IntegerScaling.SetHookPost(func(v prefs.Value) error {
-		select {
-		case img.postRenderFunctions <- func() {
-			img.screen.crit.section.Lock()
-			img.playScr.setScaling()
-			img.screen.crit.section.Unlock()
-		}:
-		default:
-		}
-		return nil
-	})
 
 	// set event filter for SDL see comment for serviceWindowEvent()
 	sdl.AddEventWatchFunc(img.serviceWindowEvent, nil)
