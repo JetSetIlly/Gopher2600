@@ -1012,7 +1012,7 @@ func (tv *Television) SetRotation(rotation specification.Rotation) {
 	}
 }
 
-// GetResizer returns a copy of the television resizer in it's current state
+// GetResizer returns a copy of the television resizer in it's current state.
 func (tv *Television) GetResizer() Resizer {
 	return tv.state.resizer
 }
@@ -1020,6 +1020,10 @@ func (tv *Television) GetResizer() Resizer {
 // SetResizer sets the state of the television resizer and sets the current
 // frame info accordingly. The validFrom value is the frame number at which the
 // resize information was taken from
+//
+// Note that the Resizer type does not include specification information. When
+// transferring state between television instances it is probably desirable to
+// call SetSpec() too
 func (tv *Television) SetResizer(rz Resizer, validFrom int) {
 	tv.state.resizer = rz
 	tv.state.resizer.validFrom = validFrom

@@ -254,6 +254,7 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, spec string, numFrames
 		err = thmb.preview.Run(cartload)
 		if err == nil || errors.Is(err, cartridgeloader.NoFilename) {
 			thmb.vcs.TV.SetResizer(thmb.preview.Results().Resizer, thmb.preview.Results().FrameNum)
+			thmb.vcs.TV.SetSpec(thmb.preview.Results().SpecID, true)
 		}
 
 		// run until target frame has been generated
