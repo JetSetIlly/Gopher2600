@@ -121,7 +121,7 @@ func (win *winPrefs) drawVSYNC() {
 	if imgui.CollapsingHeader("Synchronisation") {
 		imgui.Spacing()
 
-		imgui.Text("VSYNC Scanlines")
+		imgui.Text("VSYNC Scanlines Required")
 		scanlines := int32(win.img.dbg.VCS().Env.Prefs.TV.VSYNCscanlines.Get().(int))
 
 		if scanlines == 1 {
@@ -165,5 +165,12 @@ for it to be a valid VSYNC signal`)
 
 		win.img.imguiTooltipSimple(`The speed at which the TV synchronises after
 receiving a valid VSYNC signal`)
+
+		imgui.Spacing()
+		immediateDesync := win.img.dbg.VCS().Env.Prefs.TV.VSYNCimmediateDesync.Get().(bool)
+		imgui.Checkbox("Immediate Desyncronisation", &immediateDesync)
+		win.img.dbg.VCS().Env.Prefs.TV.VSYNCimmediateDesync.Set(immediateDesync)
+		win.img.imguiTooltipSimple(`Desynchronise the screen immediately
+when a VSYNC signal is late`)
 	}
 }

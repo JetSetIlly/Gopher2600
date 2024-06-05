@@ -62,8 +62,10 @@ type FrameInfo struct {
 	// has the refresh rate changed since the previous frame
 	Jitter bool
 
-	// whether the TV is synchronised with the incoming TV signal
-	IsSynced bool
+	// whether the TV is synchronised with the incoming TV signal. index 0 is
+	// the value for the current frame and index is the value for the previous
+	// frame
+	IsSynced [2]bool
 
 	// Stable is true once the television frame has been consistent for N
 	// frames after reset. This is useful for pixel renderers that don't want
@@ -125,7 +127,9 @@ func (info *FrameInfo) reset() {
 	info.VisibleBottom = info.Spec.AtariSafeVisibleBottom
 	info.TotalScanlines = info.Spec.ScanlinesTotal
 	info.RefreshRate = info.Spec.RefreshRate
-	info.IsSynced = false
+	for i := range info.IsSynced {
+		info.IsSynced[i] = false
+	}
 	info.Stable = false
 }
 

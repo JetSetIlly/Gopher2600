@@ -35,6 +35,10 @@ type TVPreferences struct {
 	// the speed at which the screen recovers once a valid VSYNC signal is
 	// received. the higher the value the slower the recovery
 	VSYNCrecovery prefs.Int
+
+	// whether the television should desynchronise immediately when a VSYNC
+	// signal arrives late
+	VSYNCimmediateDesync prefs.Bool
 }
 
 func newTVPreferences() (*TVPreferences, error) {
@@ -61,6 +65,11 @@ func newTVPreferences() (*TVPreferences, error) {
 		return nil, err
 	}
 
+	err = p.dsk.Add("television.vsync.immediatedesync", &p.VSYNCimmediateDesync)
+	if err != nil {
+		return nil, err
+	}
+
 	err = p.dsk.Load(true)
 	if err != nil {
 		return p, err
@@ -73,6 +82,7 @@ func newTVPreferences() (*TVPreferences, error) {
 func (p *TVPreferences) SetDefaults() {
 	p.VSYNCscanlines.Set(2)
 	p.VSYNCrecovery.Set(80)
+	p.VSYNCimmediateDesync.Set(false)
 }
 
 // Load television preferences from disk.

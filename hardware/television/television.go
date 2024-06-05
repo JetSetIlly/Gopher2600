@@ -40,7 +40,8 @@ type vsync struct {
 	activeScanlines int
 
 	// the ideal scanline at which the "new frame" is triggered. this can be
-	// thought of as the number of scanline between valid VSYNC signals
+	// thought of as the number of scanline between valid VSYNC signals. as
+	// such, it is only reset on reception of a valid VSYNC signal
 	scanline int
 
 	// the scanline at which a "new frame" is actually triggered. this will be
@@ -300,7 +301,7 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	tv.state.vsync.activeClock = 0
 	tv.state.vsync.activeScanlines = 0
 	tv.state.vsync.flybackScanline = specification.AbsoluteMaxScanlines
-	tv.state.vsync.scanline = tv.state.frameInfo.Spec.AtariSafeVisibleBottom
+	tv.state.vsync.scanline = 0
 	tv.state.lastSignal = signal.NoSignal
 
 	for i := range tv.signals {
@@ -516,23 +517,31 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 					adj := ((tv.state.vsync.flybackScanline - tv.state.vsync.scanline) * recovery) / 100
 					tv.state.vsync.flybackScanline = tv.state.vsync.scanline + adj
 					tv.state.scanline = (tv.state.scanline * recovery) / 100
-				} else {
-					tv.state.vsync.flybackScanline = min(tv.state.vsync.scanline, specification.AbsoluteMaxScanlines)
-				}
-
-				// continue to adjust scanline until it is zero
-				if tv.state.vsync.scanline == tv.state.vsync.flybackScanline {
+				} else if tv.state.vsync.scanline > tv.state.vsync.flybackScanline {
+					// if the current frame was created from a synchronised position then simply
+					// move the flyback scanline to the new value. there is also a user preference
+					// that controls whether to allow this or not
+					if tv.state.frameInfo.IsSynced[0] && tv.state.frameInfo.IsSynced[1] && !tv.env.Prefs.TV.VSYNCimmediateDesync.Get().(bool) {
+						tv.state.vsync.flybackScanline = tv.state.vsync.scanline % specification.AbsoluteMaxScanlines
+					} else {
+						tv.state.vsync.flybackScanline = specification.AbsoluteMaxScanlines
+					}
+				} else if tv.state.vsync.scanline == tv.state.vsync.flybackScanline {
+					// continue to adjust scanline until it is zero
 					if tv.state.scanline > 0 {
 						tv.state.scanline = (tv.state.scanline * recovery) / 100
 					}
 				}
 
-				// reset VSYNC scanline count
+				// reset VSYNC scanline count only when we've received a valid VSYNC signal
 				tv.state.vsync.scanline = 0
+
 			} else {
 				// set flyback scanline to the maximum if we receive an invalid VSYNC signal
 				tv.state.vsync.flybackScanline = specification.AbsoluteMaxScanlines
 			}
+
+			// end of VSYNC
 			tv.state.vsync.active = false
 		}
 	}
@@ -687,7 +696,8 @@ func (tv *Television) newFrame() error {
 	tv.state.frameInfo.FrameNum = tv.state.frameNum
 
 	// note whether newFrame() was the result of a valid VSYNC or a natural flyback
-	tv.state.frameInfo.IsSynced = tv.state.vsync.isSynced()
+	tv.state.frameInfo.IsSynced[1] = tv.state.frameInfo.IsSynced[0]
+	tv.state.frameInfo.IsSynced[0] = tv.state.vsync.isSynced()
 
 	// commit any resizing that maybe pending
 	err := tv.state.resizer.commit(tv.state)
@@ -699,8 +709,7 @@ func (tv *Television) newFrame() error {
 	// independent of the resizer.commit() call above.
 	//
 	// this is important to do and failure to set the refresh rate correctly
-	// is most noticeable in the Supercharger tape loading process where the
-	// audio  will be affected
+	// is most noticeable in the Supercharger tape loading process
 	if tv.state.frameInfo.TotalScanlines != tv.state.scanline {
 		tv.state.frameInfo.TotalScanlines = tv.state.scanline
 		tv.state.frameInfo.RefreshRate = tv.state.frameInfo.Spec.HorizontalScanRate / float32(tv.state.scanline)
