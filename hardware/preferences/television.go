@@ -39,6 +39,9 @@ type TVPreferences struct {
 	// whether the television should desynchronise immediately when a VSYNC
 	// signal arrives late
 	VSYNCimmediateDesync prefs.Bool
+
+	// whether the televsion should be synced on start
+	VSYNCsyncedOnStart prefs.Bool
 }
 
 func newTVPreferences() (*TVPreferences, error) {
@@ -70,6 +73,11 @@ func newTVPreferences() (*TVPreferences, error) {
 		return nil, err
 	}
 
+	err = p.dsk.Add("television.vsync.syncedonstart", &p.VSYNCsyncedOnStart)
+	if err != nil {
+		return nil, err
+	}
+
 	err = p.dsk.Load(true)
 	if err != nil {
 		return p, err
@@ -83,6 +91,7 @@ func (p *TVPreferences) SetDefaults() {
 	p.VSYNCscanlines.Set(2)
 	p.VSYNCrecovery.Set(80)
 	p.VSYNCimmediateDesync.Set(false)
+	p.VSYNCsyncedOnStart.Set(true)
 }
 
 // Load television preferences from disk.

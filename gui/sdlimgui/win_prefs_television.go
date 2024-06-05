@@ -172,5 +172,11 @@ receiving a valid VSYNC signal`)
 		win.img.dbg.VCS().Env.Prefs.TV.VSYNCimmediateDesync.Set(immediateDesync)
 		win.img.imguiTooltipSimple(`Desynchronise the screen immediately
 when a VSYNC signal is late`)
+
+		imgui.Spacing()
+		syncedOnStart := win.img.dbg.VCS().Env.Prefs.TV.VSYNCsyncedOnStart.Get().(bool)
+		imgui.Checkbox("Synchronised on Start", &syncedOnStart)
+		win.img.dbg.VCS().Env.Prefs.TV.VSYNCsyncedOnStart.Set(syncedOnStart)
+		win.img.imguiTooltipSimple(`The television is synchronised on start`)
 	}
 }

@@ -21,17 +21,15 @@ import (
 )
 
 type Results struct {
-	VCS      *hardware.State
-	Resizer  television.Resizer
-	SpecID   string
-	FrameNum int
+	VCS     *hardware.State
+	Resizer television.Resizer
+	SpecID  string
 }
 
 func (em *Emulation) Results() *Results {
 	return &Results{
-		VCS:      em.vcs.Snapshot(),
-		Resizer:  em.vcs.TV.GetResizer(),
-		SpecID:   em.vcs.TV.GetSpecID(),
-		FrameNum: em.vcs.TV.GetCoords().Frame,
+		VCS:     em.vcs.Snapshot(),
+		Resizer: em.vcs.TV.GetResizer(),
+		SpecID:  em.vcs.TV.GetSpecID(),
 	}
 }

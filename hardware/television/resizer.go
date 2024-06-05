@@ -98,13 +98,13 @@ type Resizer struct {
 	// gives time for the screen to settle down.
 	pendingCt int
 
-	// the frame number from which the resize information is valid. used to
-	// prevent needless resizing when the resizer information has already been
-	// gathered during a preview emulation
+	// if resizer has been part of a preview emulation the preview fields
+	// indicate from which number the resize information is valid
 	//
-	// will be zero except when the resizer has been received via the
-	// television's SetResizer() function
-	validFrom int
+	// if the current frame number is prior to the previewFrameNum then resizing
+	// can be skipped
+	previewFrameNum int
+	previewStable   bool
 }
 
 func (rz *Resizer) String() string {
@@ -119,7 +119,7 @@ func (rz *Resizer) String() string {
 
 func (rz *Resizer) reset(spec specification.Spec) {
 	rz.setSpec(spec)
-	rz.validFrom = 0
+	rz.previewFrameNum = 0
 }
 
 // set resizer to nominal specification values
@@ -136,7 +136,7 @@ func (rz *Resizer) setSpec(spec specification.Spec) {
 // for every single signal/pixel. should probably be throttled in some way.
 func (rz *Resizer) examine(state *State, sig signal.SignalAttributes) {
 	// if current frame number is less that the validFrom field then do nothing
-	if state.frameInfo.FrameNum < rz.validFrom {
+	if state.frameInfo.FrameNum < rz.previewFrameNum {
 		return
 	}
 
@@ -145,7 +145,7 @@ func (rz *Resizer) examine(state *State, sig signal.SignalAttributes) {
 	// the best example of this is Andrew Davie's chess which simply does
 	// not care about frames during the computer's thinking time - we don't
 	// want to resize during these frames.
-	if !state.frameInfo.IsSynced[0] {
+	if !state.frameInfo.IsSynced {
 		// reset any pending changes on an unsynced frame
 		rz.pendingCt = 0
 		rz.pendingTop = rz.vblankTop
@@ -230,7 +230,7 @@ const framesUntilResize = 3
 // commit resizing possibility found through examine() function.
 func (rz *Resizer) commit(state *State) error {
 	// if current frame number is less that the validFrom field then do nothing
-	if state.frameInfo.FrameNum < rz.validFrom {
+	if state.frameInfo.FrameNum < rz.previewFrameNum {
 		return nil
 	}
 

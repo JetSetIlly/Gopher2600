@@ -232,7 +232,7 @@ func (oly *playscrOverlay) drawTopLeft() {
 
 		imgui.SameLine()
 		imgui.Text(oly.hz)
-		if !oly.playscr.scr.crit.frameInfo.IsSynced[0] {
+		if !oly.playscr.scr.crit.frameInfo.IsSynced {
 			imgui.SameLine()
 			imgui.Text(string(fonts.NoVSYNC))
 		}

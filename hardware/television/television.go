@@ -55,6 +55,14 @@ type vsync struct {
 	// (06/01/21) another example is the Artkaris NTSC version of Lili
 }
 
+func (v *vsync) reset() {
+	v.active = false
+	v.activeClock = 0
+	v.activeScanlines = 0
+	v.flybackScanline = specification.AbsoluteMaxScanlines
+	v.scanline = 0
+}
+
 func (v vsync) isSynced() bool {
 	return v.scanline == v.flybackScanline
 }
@@ -94,6 +102,9 @@ type State struct {
 
 	// vsync control
 	vsync vsync
+
+	// isSynced is a short history of vsync.isSynced() results
+	isSynced [2]bool
 
 	// frame resizer
 	resizer Resizer
@@ -297,11 +308,10 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	tv.state.clock = 0
 	tv.state.scanline = 0
 	tv.state.stableFrames = 0
-	tv.state.vsync.active = false
-	tv.state.vsync.activeClock = 0
-	tv.state.vsync.activeScanlines = 0
-	tv.state.vsync.flybackScanline = specification.AbsoluteMaxScanlines
-	tv.state.vsync.scanline = 0
+	tv.state.vsync.reset()
+	for i := range tv.state.isSynced {
+		tv.state.isSynced[i] = false
+	}
 	tv.state.lastSignal = signal.NoSignal
 
 	for i := range tv.signals {
@@ -518,10 +528,11 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 					tv.state.vsync.flybackScanline = tv.state.vsync.scanline + adj
 					tv.state.scanline = (tv.state.scanline * recovery) / 100
 				} else if tv.state.vsync.scanline > tv.state.vsync.flybackScanline {
-					// if the current frame was created from a synchronised position then simply
-					// move the flyback scanline to the new value. there is also a user preference
-					// that controls whether to allow this or not
-					if tv.state.frameInfo.IsSynced[0] && tv.state.frameInfo.IsSynced[1] && !tv.env.Prefs.TV.VSYNCimmediateDesync.Get().(bool) {
+					// if the current and previous frames were created from a synchronised position then
+					// move the flyback scanline to the new value
+					//
+					// there is also a user preference that controls whether to allow this or not
+					if tv.state.isSynced[0] && tv.state.isSynced[1] && !tv.env.Prefs.TV.VSYNCimmediateDesync.Get().(bool) {
 						tv.state.vsync.flybackScanline = tv.state.vsync.scanline % specification.AbsoluteMaxScanlines
 					} else {
 						tv.state.vsync.flybackScanline = specification.AbsoluteMaxScanlines
@@ -530,6 +541,12 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 					// continue to adjust scanline until it is zero
 					if tv.state.scanline > 0 {
 						tv.state.scanline = (tv.state.scanline * recovery) / 100
+					}
+				}
+
+				if tv.state.frameNum < tv.state.resizer.previewFrameNum && tv.state.resizer.previewStable {
+					if tv.env.Prefs.TV.VSYNCsyncedOnStart.Get().(bool) {
+						tv.state.scanline = 0
 					}
 				}
 
@@ -695,9 +712,10 @@ func (tv *Television) newFrame() error {
 	// update frame number
 	tv.state.frameInfo.FrameNum = tv.state.frameNum
 
-	// note whether newFrame() was the result of a valid VSYNC or a natural flyback
-	tv.state.frameInfo.IsSynced[1] = tv.state.frameInfo.IsSynced[0]
-	tv.state.frameInfo.IsSynced[0] = tv.state.vsync.isSynced()
+	// note whether frame is synchronised or not
+	tv.state.isSynced[1] = tv.state.isSynced[0]
+	tv.state.isSynced[0] = tv.state.vsync.isSynced()
+	tv.state.frameInfo.IsSynced = tv.state.isSynced[0]
 
 	// commit any resizing that maybe pending
 	err := tv.state.resizer.commit(tv.state)
@@ -970,19 +988,21 @@ func (tv *Television) SetRotation(rotation specification.Rotation) {
 
 // GetResizer returns a copy of the television resizer in it's current state.
 func (tv *Television) GetResizer() Resizer {
-	return tv.state.resizer
+	// make copy of resizer and set the validFrom fields
+	rz := tv.state.resizer
+	rz.previewFrameNum = tv.state.frameInfo.FrameNum
+	rz.previewStable = tv.state.frameInfo.Stable
+	return rz
 }
 
 // SetResizer sets the state of the television resizer and sets the current
-// frame info accordingly. The validFrom value is the frame number at which the
-// resize information was taken from
+// frame info accordingly.
 //
 // Note that the Resizer type does not include specification information. When
 // transferring state between television instances it is okay to call SetSpec()
 // but it should be done before SetResizer() is called
-func (tv *Television) SetResizer(rz Resizer, validFrom int) {
+func (tv *Television) SetResizer(rz Resizer) {
 	tv.state.resizer = rz
-	tv.state.resizer.validFrom = validFrom
 	if tv.state.resizer.usingVBLANK {
 		tv.state.frameInfo.VisibleTop = tv.state.resizer.vblankTop
 		tv.state.frameInfo.VisibleBottom = tv.state.resizer.vblankBottom
