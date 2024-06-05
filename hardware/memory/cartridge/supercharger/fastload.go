@@ -132,7 +132,8 @@ func newFastLoad(env *environment.Environment, cart *Supercharger, loader cartri
 func (fl *FastLoad) snapshot() tape {
 	// this function doesn't copy anything. data array in each snapshot will
 	// point to the same data array
-	return fl
+	n := *fl
+	return &n
 }
 
 // load implements the tape interface.
