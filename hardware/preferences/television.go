@@ -89,7 +89,7 @@ func newTVPreferences() (*TVPreferences, error) {
 // SetDefaults reverts all settings to default values.
 func (p *TVPreferences) SetDefaults() {
 	p.VSYNCscanlines.Set(2)
-	p.VSYNCrecovery.Set(80)
+	p.VSYNCrecovery.Set(75)
 	p.VSYNCimmediateDesync.Set(false)
 	p.VSYNCsyncedOnStart.Set(true)
 }

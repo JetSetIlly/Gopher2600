@@ -140,25 +140,37 @@ for it to be a valid VSYNC signal`)
 		imgui.Spacing()
 		imgui.Text("Speed of Recovery")
 		recovery := int32(win.img.dbg.VCS().Env.Prefs.TV.VSYNCrecovery.Get().(int))
-		recovery /= 10
 
-		if recovery > 8 {
+		const (
+			verySlow  = 90
+			slow      = 75
+			quick     = 60
+			veryQuick = 45
+		)
+
+		if recovery >= verySlow {
+			recovery = 3
 			label = fmt.Sprintf("very slow")
-		} else if recovery > 7 {
+		} else if recovery >= slow {
+			recovery = 2
 			label = fmt.Sprintf("slow")
-		} else if recovery > 6 {
+		} else if recovery >= quick {
+			recovery = 1
 			label = fmt.Sprintf("quick")
-		} else if recovery > 5 {
+		} else if recovery >= veryQuick {
+			recovery = 0
 			label = fmt.Sprintf("very quick")
-		} else {
-			label = fmt.Sprintf("immediate")
 		}
 
-		if imgui.SliderIntV("##vsyncRecover", &recovery, 5, 9, label, 1.0) {
-			if recovery == 5 {
-				recovery = 0
-			} else {
-				recovery *= 10
+		if imgui.SliderIntV("##vsyncRecover", &recovery, 0, 3, label, 1.0) {
+			if recovery >= 3 {
+				recovery = verySlow
+			} else if recovery == 2 {
+				recovery = slow
+			} else if recovery == 1 {
+				recovery = quick
+			} else if recovery == 0 {
+				recovery = veryQuick
 			}
 			win.img.dbg.VCS().Env.Prefs.TV.VSYNCrecovery.Set(recovery)
 		}
