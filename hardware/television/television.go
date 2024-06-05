@@ -552,10 +552,6 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 
 				// reset VSYNC scanline count only when we've received a valid VSYNC signal
 				tv.state.vsync.scanline = 0
-
-			} else {
-				// set flyback scanline to the maximum if we receive an invalid VSYNC signal
-				tv.state.vsync.flybackScanline = specification.AbsoluteMaxScanlines
 			}
 
 			// end of VSYNC
