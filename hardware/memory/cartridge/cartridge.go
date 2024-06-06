@@ -270,6 +270,8 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newParkerBros(cart.env, cartload)
 	case "E7":
 		cart.mapper, err = newMnetwork(cart.env, cartload)
+	case "JANE":
+		cart.mapper, err = newJANE(cart.env, cartload)
 	case "3F":
 		cart.mapper, err = newTigervision(cart.env, cartload)
 	case "UA":
