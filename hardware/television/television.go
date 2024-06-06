@@ -192,6 +192,9 @@ func (s *State) GetCoords() coords.TelevisionCoords {
 type Television struct {
 	env *environment.Environment
 
+	// the simple signal path will be used if the simple field is non-nil
+	simple *simple
+
 	// the ID with which the television was created. this overrides all spec
 	// changes unles the value is AUTO
 	creationSpecID string
@@ -497,6 +500,11 @@ func (tv *Television) End() error {
 
 // Signal updates the current state of the television.
 func (tv *Television) Signal(sig signal.SignalAttributes) {
+	if tv.simple != nil {
+		tv.signalSimple(sig)
+		return
+	}
+
 	// examine signal for resizing possibility.
 	tv.state.resizer.examine(tv.state, sig)
 

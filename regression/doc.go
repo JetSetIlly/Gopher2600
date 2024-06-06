@@ -17,7 +17,7 @@
 // adding test results to a database, the tests can be rerun automatically and
 // checked for consistancy.
 //
-// Currently, two main types of test are supported. First the video test. This
+// Currently, three main types of test are supported. First the video test. This
 // test runs a ROM for a set number of frames. A hash of the final video output
 // is created a stored for future comparison.
 //
@@ -44,4 +44,9 @@
 // VCS hardware in its default state, in particular no randomisation. The state
 // of the VCS in relation to playback regression entries is governed by the
 // recorder package.
+//
+// ### Note
+//
+// To keep things simple and to ensure backwards compatability, as of v0.32.0,
+// the regression package uses a so called 'simple television'.
 package regression

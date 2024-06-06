@@ -129,7 +129,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	output.Write([]byte(msg))
 
 	// create headless television. we'll use this to initialise the digester
-	tv, err := television.NewTelevision(reg.TVtype)
+	tv, err := television.NewSimpleTelevision(reg.TVtype)
 	if err != nil {
 		return false, "", fmt.Errorf("log: %w", err)
 	}

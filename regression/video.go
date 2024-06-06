@@ -184,7 +184,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 	output.Write([]byte(msg))
 
 	// create headless television. we'll use this to initialise the digester
-	tv, err := television.NewTelevision(reg.TVtype)
+	tv, err := television.NewSimpleTelevision(reg.TVtype)
 	if err != nil {
 		return false, "", fmt.Errorf("video: %w", err)
 	}

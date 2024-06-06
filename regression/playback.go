@@ -112,7 +112,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		return false, "", fmt.Errorf("playback: %w", err)
 	}
 
-	tv, err := television.NewTelevision(plb.TVSpec)
+	tv, err := television.NewSimpleTelevision(plb.TVSpec)
 	if err != nil {
 		return false, "", fmt.Errorf("playback: %w", err)
 	}
