@@ -194,6 +194,11 @@ func fingerprintMnetwork(loader cartridgeloader.Loader) bool {
 	return false
 }
 
+func fingerprintJANE(loader cartridgeloader.Loader) bool {
+	// fingerprint taken from Stella
+	return loader.Contains([]byte{0xad, 0xf1, 0xff, 0x60})
+}
+
 func fingerprintParkerBros(loader cartridgeloader.Loader) bool {
 	// parker bros fingerprint taken from Stella
 	fingerprint := [][]byte{
@@ -383,6 +388,10 @@ func fingerprint16k(loader cartridgeloader.Loader) string {
 
 	if fingerprintMnetwork(loader) {
 		return "E7"
+	}
+
+	if fingerprintJANE(loader) {
+		return "JANE"
 	}
 
 	return "F6"
