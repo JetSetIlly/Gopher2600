@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -131,7 +130,7 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 }
 
 // RegressRedux removes and adds an entry using the same parameters.
-func RegressRedux(output io.Writer, confirmation io.Reader) error {
+func RegressRedux(output io.Writer, confirmation io.Reader, dryRun bool, filterKeys []string) error {
 	if output == nil {
 		return fmt.Errorf("regression: redux: io.Writer should not be nil")
 	}
@@ -140,16 +139,18 @@ func RegressRedux(output io.Writer, confirmation io.Reader) error {
 		return fmt.Errorf("regression: redux: io.Reader should not be nil")
 	}
 
-	output.Write([]byte("redux is a dangerous operation. it will rerun all compatible regression entries.\n"))
+	if !dryRun {
+		output.Write([]byte("redux is a dangerous operation. it will rerun all compatible regression entries.\n"))
 
-	output.Write([]byte("redux? (y/n): "))
-	if !confirm(confirmation) {
-		return nil
-	}
+		output.Write([]byte("redux? (y/n): "))
+		if !confirm(confirmation) {
+			return nil
+		}
 
-	output.Write([]byte("sure? (y/n): "))
-	if !confirm(confirmation) {
-		return nil
+		output.Write([]byte("sure? (y/n): "))
+		if !confirm(confirmation) {
+			return nil
+		}
 	}
 
 	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
@@ -163,16 +164,17 @@ func RegressRedux(output io.Writer, confirmation io.Reader) error {
 	}
 	defer db.EndSession(true)
 
-	return db.ForEach(func(key int, e database.Entry) error {
+	// selectKeys() calls this onSelect function for every key entry
+	onSelect := func(e database.Entry, key int) error {
 		switch reg := e.(type) {
 		case *VideoRegression:
-			err = redux(db, output, key, reg)
+			err = redux(db, output, key, reg, dryRun)
 			if err != nil {
 				return fmt.Errorf("regression: redux: %w", err)
 			}
 
 		case *LogRegression:
-			err = redux(db, output, key, reg)
+			err = redux(db, output, key, reg, dryRun)
 			if err != nil {
 				return fmt.Errorf("regression: redux: %w", err)
 			}
@@ -182,13 +184,24 @@ func RegressRedux(output io.Writer, confirmation io.Reader) error {
 		}
 
 		return nil
-	})
+	}
+
+	_, err = db.SelectKeysAsStrings(onSelect, filterKeys...)
+	if err != nil {
+		return fmt.Errorf("regression: redux: %w", err)
+	}
+
+	return err
 }
 
-func redux(db *database.Session, output io.Writer, key int, reg Regressor) error {
-	err := db.Delete(key)
-	if err != nil {
-		return err
+func redux(db *database.Session, output io.Writer, key int, reg Regressor, dryRun bool) error {
+	var err error
+
+	if !dryRun {
+		err = db.Delete(key)
+		if err != nil {
+			return err
+		}
 	}
 
 	msg := fmt.Sprintf("reduxing: %s", reg)
@@ -201,9 +214,11 @@ func redux(db *database.Session, output io.Writer, key int, reg Regressor) error
 	output.Write([]byte(ansiClearLine))
 	output.Write([]byte(fmt.Sprintf("\rreduxed: %s\n", reg)))
 
-	err = db.Add(reg)
-	if err != nil {
-		return err
+	if !dryRun {
+		err = db.Add(reg)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -388,17 +403,6 @@ func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
 	}
 	defer db.EndSession(false)
 
-	// make sure any supplied keys list is in order
-	keysV := make([]int, 0, len(filterKeys))
-	for k := range filterKeys {
-		v, err := strconv.Atoi(filterKeys[k])
-		if err != nil {
-			return fmt.Errorf("regression: run: invalid key [%s]", filterKeys[k])
-		}
-		keysV = append(keysV, v)
-	}
-	sort.Ints(keysV)
-
 	numSucceed := 0
 	numFail := 0
 	numError := 0
@@ -413,7 +417,7 @@ func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
 	}()
 
 	// selectKeys() calls this onSelect function for every key entry
-	onSelect := func(ent database.Entry) error {
+	onSelect := func(ent database.Entry, key int) error {
 		// database entry should also satisfy Regressor interface
 		reg, ok := ent.(Regressor)
 		if !ok {
@@ -455,7 +459,10 @@ func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
 		return nil
 	}
 
-	_, err = db.SelectKeys(onSelect, keysV...)
+	_, err = db.SelectKeysAsStrings(onSelect, filterKeys...)
+	if err != nil {
+		return fmt.Errorf("regression: run: %w", err)
+	}
 
 	return nil
 }

@@ -15,7 +15,11 @@
 
 package database
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+	"strconv"
+)
 
 // SelectAll entries in the database. onSelect can be nil.
 //
@@ -53,11 +57,11 @@ func (db Session) SelectAll(onSelect func(Entry) error) (Entry, error) {
 //
 // Returns last matched entry in selection or an error with the last entry
 // matched before the error occurred.
-func (db Session) SelectKeys(onSelect func(Entry) error, keys ...int) (Entry, error) {
+func (db Session) SelectKeys(onSelect func(Entry, int) error, keys ...int) (Entry, error) {
 	var entry Entry
 
 	if onSelect == nil {
-		onSelect = func(_ Entry) error { return nil }
+		onSelect = func(_ Entry, _ int) error { return nil }
 	}
 
 	keyList := keys
@@ -67,15 +71,32 @@ func (db Session) SelectKeys(onSelect func(Entry) error, keys ...int) (Entry, er
 
 	for i := range keyList {
 		entry = db.entries[keyList[i]]
-		err := onSelect(entry)
+		err := onSelect(entry, keyList[i])
 		if err != nil {
 			return entry, err
 		}
 	}
 
 	if entry == nil {
-		return nil, fmt.Errorf("database: select empty")
+		return nil, fmt.Errorf("select empty")
 	}
 
 	return entry, nil
+}
+
+// SelectKeysAsStrings is the same as SelectKeys except that the list of keys
+// are supplied as strings
+func (db Session) SelectKeysAsStrings(onSelect func(Entry, int) error, keys ...string) (Entry, error) {
+	// make sure any supplied keys list is in order
+	keysV := make([]int, 0, len(keys))
+	for k := range keys {
+		v, err := strconv.Atoi(keys[k])
+		if err != nil {
+			return nil, fmt.Errorf("invalid key [%s]", keys[k])
+		}
+		keysV = append(keysV, v)
+	}
+	sort.Ints(keysV)
+
+	return db.SelectKeys(onSelect, keysV...)
 }
