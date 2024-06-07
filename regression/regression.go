@@ -16,9 +16,12 @@
 package regression
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -30,10 +33,11 @@ import (
 const ansiClearLine = "\033[2K"
 
 // the location of the regressionDB file and the location of any regression
-// scripts. these should be wrapped by resources.ResourcePath().
+// scripts. these should be wrapped by resources.JoinPath().
 const regressionPath = "regression"
 const regressionDBFile = "db"
 const regressionScripts = "scripts"
+const fails = "fails"
 
 // Regressor is the generic entry type in the regressionDB.
 type Regressor interface {
@@ -74,53 +78,79 @@ func initDBSession(db *database.Session) error {
 }
 
 // RegressList displays all entries in the database.
-func RegressList(output io.Writer) error {
+func RegressList(output io.Writer, keys []string) error {
 	if output == nil {
-		return fmt.Errorf("regression: list: io.Writer should not be nil")
+		return fmt.Errorf("regression: io.Writer should not be nil")
 	}
 
 	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
-		return fmt.Errorf("regression: list: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
 	if err != nil {
-		return fmt.Errorf("regression: list: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 	defer db.EndSession(false)
 
-	return db.ForEach(func(key int, e database.Entry) error {
-		r, ok := e.(Regressor)
-		if !ok {
-			return fmt.Errorf("regression: list: %s does not implement the Regressor interfrace", e.EntryType())
+	keys, err = addFailsToKeys(keys)
+	if err != nil {
+		if errors.Is(err, noPreviousFails) {
+			// print message about there being no previous fails after everything else
+			defer output.Write([]byte(fmt.Sprintf("no previous fails to list\n")))
+
+			// if other keys have been specified allow them to be run. if the
+			// list of keys is empty then that is treated as being all keys,
+			// which in the context of "FAILS" being a key is probably not what
+			// the user wants
+			if len(keys) == 0 {
+				return nil
+			}
+		} else {
+			return fmt.Errorf("regression: %w", err)
 		}
-		output.Write([]byte(fmt.Sprintf("%03d %s\n", key, r.String())))
+	}
+
+	onSelect := func(e database.Entry, key int) error {
+		output.Write([]byte(fmt.Sprintf("%03d %v\n", key, e)))
 		return nil
-	})
+	}
+
+	keysInt, err := convertKeys(keys)
+	if err != nil {
+		return fmt.Errorf("regression: %w", err)
+	}
+
+	_, err = db.SelectKeys(onSelect, keysInt...)
+	if err != nil {
+		return fmt.Errorf("regression: %w", err)
+	}
+
+	return nil
 }
 
 // RegressAdd adds a new regression handler to the database.
 func RegressAdd(output io.Writer, reg Regressor) error {
 	if output == nil {
-		return fmt.Errorf("regression: add: io.Writer should not be nil")
+		return fmt.Errorf("regression: io.Writer should not be nil")
 	}
 
 	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
-		return fmt.Errorf("regression: add: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityCreating, initDBSession)
 	if err != nil {
-		return fmt.Errorf("regression: add: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 	defer db.EndSession(true)
 
 	msg := fmt.Sprintf("adding: %s", reg)
 	_, _, err = reg.regress(true, output, msg)
 	if err != nil {
-		return fmt.Errorf("regression: add: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 
 	output.Write([]byte(ansiClearLine))
@@ -130,13 +160,13 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 }
 
 // RegressRedux removes and adds an entry using the same parameters.
-func RegressRedux(output io.Writer, confirmation io.Reader, dryRun bool, filterKeys []string) error {
+func RegressRedux(output io.Writer, confirmation io.Reader, dryRun bool, keys []string) error {
 	if output == nil {
-		return fmt.Errorf("regression: redux: io.Writer should not be nil")
+		return fmt.Errorf("regression: io.Writer should not be nil")
 	}
 
 	if confirmation == nil {
-		return fmt.Errorf("regression: redux: io.Reader should not be nil")
+		return fmt.Errorf("regression: io.Reader should not be nil")
 	}
 
 	if !dryRun {
@@ -155,14 +185,32 @@ func RegressRedux(output io.Writer, confirmation io.Reader, dryRun bool, filterK
 
 	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
-		return fmt.Errorf("regression: redux: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityCreating, initDBSession)
 	if err != nil {
-		return fmt.Errorf("regression: redux: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 	defer db.EndSession(true)
+
+	keys, err = addFailsToKeys(keys)
+	if err != nil {
+		if errors.Is(err, noPreviousFails) {
+			// print message about there being no previous fails after everything else
+			defer output.Write([]byte(fmt.Sprintf("no previous fails to redux\n")))
+
+			// if other keys have been specified allow them to be run. if the
+			// list of keys is empty then that is treated as being all keys,
+			// which in the context of "FAILS" being a key is probably not what
+			// the user wants
+			if len(keys) == 0 {
+				return nil
+			}
+		} else {
+			return fmt.Errorf("regression: %w", err)
+		}
+	}
 
 	// selectKeys() calls this onSelect function for every key entry
 	onSelect := func(e database.Entry, key int) error {
@@ -170,13 +218,13 @@ func RegressRedux(output io.Writer, confirmation io.Reader, dryRun bool, filterK
 		case *VideoRegression:
 			err = redux(db, output, key, reg, dryRun)
 			if err != nil {
-				return fmt.Errorf("regression: redux: %w", err)
+				return fmt.Errorf("regression: %w", err)
 			}
 
 		case *LogRegression:
 			err = redux(db, output, key, reg, dryRun)
 			if err != nil {
-				return fmt.Errorf("regression: redux: %w", err)
+				return fmt.Errorf("regression: %w", err)
 			}
 
 		default:
@@ -186,9 +234,14 @@ func RegressRedux(output io.Writer, confirmation io.Reader, dryRun bool, filterK
 		return nil
 	}
 
-	_, err = db.SelectKeysAsStrings(onSelect, filterKeys...)
+	keysInt, err := convertKeys(keys)
 	if err != nil {
-		return fmt.Errorf("regression: redux: %w", err)
+		return fmt.Errorf("regression: %w", err)
+	}
+
+	_, err = db.SelectKeys(onSelect, keysInt...)
+	if err != nil {
+		return fmt.Errorf("regression: %w", err)
 	}
 
 	return err
@@ -228,11 +281,11 @@ func redux(db *database.Session, output io.Writer, key int, reg Regressor, dryRu
 // file.
 func RegressCleanup(output io.Writer, confirmation io.Reader) error {
 	if output == nil {
-		return fmt.Errorf("regression: list: io.Writer should not be nil")
+		return fmt.Errorf("regression: io.Writer should not be nil")
 	}
 
 	if confirmation == nil {
-		return fmt.Errorf("regression: redux: io.Reader should not be nil")
+		return fmt.Errorf("regression: io.Reader should not be nil")
 	}
 
 	output.Write([]byte("cleanup is a dangerous operation. it will delete all orphaned script files.\n"))
@@ -244,12 +297,12 @@ func RegressCleanup(output io.Writer, confirmation io.Reader) error {
 
 	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
-		return fmt.Errorf("regression: cleanup: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
 	if err != nil {
-		return fmt.Errorf("regression: cleanup: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 	defer db.EndSession(false)
 
@@ -276,19 +329,19 @@ func RegressCleanup(output io.Writer, confirmation io.Reader) error {
 		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("regression: cleanup: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 
 	// gather list of files on disk in path
 	scriptPth, err := resources.JoinPath(regressionPath, regressionScripts)
 	if err != nil {
-		return fmt.Errorf("regression: list: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 
 	var filesOnDisk []os.DirEntry
 	filesOnDisk, err = os.ReadDir(scriptPth)
 	if err != nil {
-		return fmt.Errorf("regression: cleanup: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 
 	// prepare statistics
@@ -306,7 +359,7 @@ func RegressCleanup(output io.Writer, confirmation io.Reader) error {
 
 		n, err := resources.JoinPath(regressionPath, regressionScripts, e.Name())
 		if err != nil {
-			return fmt.Errorf("regression: cleanup: %w", err)
+			return fmt.Errorf("regression: %w", err)
 		}
 
 		for _, f := range filesReferenced {
@@ -344,39 +397,39 @@ func RegressCleanup(output io.Writer, confirmation io.Reader) error {
 // RegressDelete removes a cartridge from the regression db.
 func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 	if output == nil {
-		return fmt.Errorf("regression: delete: io.Writer should not be nil")
+		return fmt.Errorf("regression: io.Writer should not be nil")
 	}
 
 	if confirmation == nil {
-		return fmt.Errorf("regression: delete: io.Reader should not be nil")
+		return fmt.Errorf("regression: io.Reader should not be nil")
 	}
 
 	v, err := strconv.Atoi(key)
 	if err != nil {
-		return fmt.Errorf("regression: delete: invalid key [%s]", key)
+		return fmt.Errorf("regression: invalid key [%s]", key)
 	}
 
 	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
-		return fmt.Errorf("regression: delete: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityModifying, initDBSession)
 	if err != nil {
-		return fmt.Errorf("regression: delete: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 	defer db.EndSession(true)
 
 	ent, err := db.SelectKeys(nil, v)
 	if err != nil {
-		return fmt.Errorf("regression: delete: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 
 	output.Write([]byte(fmt.Sprintf("%s\ndelete? (y/n): ", ent)))
 	if confirm(confirmation) {
 		err = db.Delete(v)
 		if err != nil {
-			return fmt.Errorf("regression: delete: %w", err)
+			return fmt.Errorf("regression: %w", err)
 		}
 		output.Write([]byte(fmt.Sprintf("deleted test #%s from regression database\n", key)))
 	}
@@ -384,36 +437,59 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 	return nil
 }
 
-// RegressRun runs all the tests in the regression database. filterKeys
-// list specified which entries to test. an empty keys list means that every
+// RegressRun runs all the tests in the regression database. The keys argument
+// lists specified which entries to test. an empty keys list means that every
 // entry should be tested.
-func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
+func RegressRun(output io.Writer, verbose bool, keys []string) error {
 	if output == nil {
-		return fmt.Errorf("regression: run: io.Writer should not be nil")
+		return fmt.Errorf("regression: io.Writer should not be nil")
 	}
 
 	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
-		return fmt.Errorf("regression: run: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 
 	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
 	if err != nil {
-		return fmt.Errorf("regression: run: %w", err)
+		return fmt.Errorf("regression: %w", err)
 	}
 	defer db.EndSession(false)
 
-	numSucceed := 0
-	numFail := 0
-	numError := 0
+	keys, err = addFailsToKeys(keys)
+	if err != nil {
+		if errors.Is(err, noPreviousFails) {
+			// print message about there being no previous fails after everything else
+			defer output.Write([]byte(fmt.Sprintf("no previous fails to re-run\n")))
+
+			// if other keys have been specified allow them to be run. if the
+			// list of keys is empty then that is treated as being all keys,
+			// which in the context of "FAILS" being a key is probably not what
+			// the user wants
+			if len(keys) == 0 {
+				return nil
+			}
+		} else {
+			return fmt.Errorf("regression: %w", err)
+		}
+	}
+
+	var successes []string
+	var fails []string
+	var errors []string
 
 	defer func() {
-		output.Write([]byte(fmt.Sprintf("regression tests: %d succeed, %d fail", numSucceed, numFail)))
+		output.Write([]byte(fmt.Sprintf("regression tests: %d succeed, %d fail", len(successes), len(fails))))
 
-		if numError > 0 {
-			output.Write([]byte(fmt.Sprintf(" [with %d errors]", numError)))
+		if len(errors) > 0 {
+			output.Write([]byte(fmt.Sprintf(" [with %d errors]", len(errors))))
 		}
 		output.Write([]byte("\n"))
+
+		err := saveFails(fails)
+		if err != nil {
+			output.Write([]byte(fmt.Sprintf("*** error writing fail log: %s\n", err.Error())))
+		}
 	}()
 
 	// selectKeys() calls this onSelect function for every key entry
@@ -421,47 +497,48 @@ func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
 		// database entry should also satisfy Regressor interface
 		reg, ok := ent.(Regressor)
 		if !ok {
-			return fmt.Errorf("regression: run: database entry does not satisfy Regressor interface")
+			return fmt.Errorf("regression: database entry does not satisfy Regressor interface")
 		}
 
 		// run regress() function with message. message does not have a
 		// trailing newline
 		msg := fmt.Sprintf("running: %s", reg)
-		ok, failm, err := reg.regress(false, output, msg)
+		ok, msg, err := reg.regress(false, output, msg)
 
 		// once regress() has completed we clear the line ready for the
 		// completion message
 		output.Write([]byte(ansiClearLine))
 
-		// print completion message depending on result of regress()
+		// print message depending on result of regress()
 		if err != nil {
-			numError++
-			output.Write([]byte(fmt.Sprintf("\rerror: %s\n", reg)))
-
-			// output any error message on following line
+			errors = append(errors, strconv.Itoa(key))
+			fails = append(fails, strconv.Itoa(key))
+			output.Write([]byte(fmt.Sprintf("\rfailure: %s\n", reg)))
 			if verbose {
 				output.Write([]byte(fmt.Sprintf("  ^^ %s\n", err)))
 			}
-
-			// an error implies a fail
-			numFail++
 		} else if !ok {
-			numFail++
+			fails = append(fails, strconv.Itoa(key))
 			output.Write([]byte(fmt.Sprintf("\rfailure: %s\n", reg)))
-			if verbose && failm != "" {
-				output.Write([]byte(fmt.Sprintf("  ^^ %s\n", failm)))
+			if verbose && msg != "" {
+				output.Write([]byte(fmt.Sprintf("  ^^ %s\n", msg)))
 			}
 		} else {
-			numSucceed++
+			successes = append(successes, strconv.Itoa(key))
 			output.Write([]byte(fmt.Sprintf("\rsucceed: %s\n", reg)))
 		}
 
 		return nil
 	}
 
-	_, err = db.SelectKeysAsStrings(onSelect, filterKeys...)
+	keysInt, err := convertKeys(keys)
 	if err != nil {
-		return fmt.Errorf("regression: run: %w", err)
+		return fmt.Errorf("regression: %w", err)
+	}
+
+	_, err = db.SelectKeys(onSelect, keysInt...)
+	if err != nil {
+		return fmt.Errorf("regression: %w", err)
 	}
 
 	return nil
@@ -479,4 +556,17 @@ func confirm(confirmation io.Reader) bool {
 		return true
 	}
 	return false
+}
+
+func convertKeys(keys []string) ([]int, error) {
+	keysInt := make([]int, 0, len(keys))
+	for i := range keys {
+		v, err := strconv.Atoi(keys[i])
+		if err != nil {
+			return nil, fmt.Errorf("invalid key [%s]", keys[i])
+		}
+		keysInt = append(keysInt, v)
+	}
+	sort.Ints(keysInt)
+	return slices.Compact(keysInt), nil
 }

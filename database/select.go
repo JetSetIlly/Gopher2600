@@ -17,8 +17,6 @@ package database
 
 import (
 	"fmt"
-	"sort"
-	"strconv"
 )
 
 // SelectAll entries in the database. onSelect can be nil.
@@ -64,14 +62,13 @@ func (db Session) SelectKeys(onSelect func(Entry, int) error, keys ...int) (Entr
 		onSelect = func(_ Entry, _ int) error { return nil }
 	}
 
-	keyList := keys
 	if len(keys) == 0 {
-		keyList = db.SortedKeyList()
+		keys = db.SortedKeyList()
 	}
 
-	for i := range keyList {
-		entry = db.entries[keyList[i]]
-		err := onSelect(entry, keyList[i])
+	for i := range keys {
+		entry = db.entries[keys[i]]
+		err := onSelect(entry, keys[i])
 		if err != nil {
 			return entry, err
 		}
@@ -82,21 +79,4 @@ func (db Session) SelectKeys(onSelect func(Entry, int) error, keys ...int) (Entr
 	}
 
 	return entry, nil
-}
-
-// SelectKeysAsStrings is the same as SelectKeys except that the list of keys
-// are supplied as strings
-func (db Session) SelectKeysAsStrings(onSelect func(Entry, int) error, keys ...string) (Entry, error) {
-	// make sure any supplied keys list is in order
-	keysV := make([]int, 0, len(keys))
-	for k := range keys {
-		v, err := strconv.Atoi(keys[k])
-		if err != nil {
-			return nil, fmt.Errorf("invalid key [%s]", keys[k])
-		}
-		keysV = append(keysV, v)
-	}
-	sort.Ints(keysV)
-
-	return db.SelectKeys(onSelect, keysV...)
 }

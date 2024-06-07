@@ -677,7 +677,7 @@ func regressList(mode string, args []string) error {
 	}
 	args = flgs.Args()
 
-	err = regression.RegressList(os.Stdout)
+	err = regression.RegressList(os.Stdout, args)
 	if err != nil {
 		return err
 	}
