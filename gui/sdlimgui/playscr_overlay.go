@@ -224,7 +224,7 @@ func (oly *playscrOverlay) drawTopLeft() {
 			imguiSeparator()
 		}
 
-		imgui.Text(fmt.Sprintf("%.1fx scaling", oly.playscr.yscaling))
+		imgui.Text(fmt.Sprintf("%.1fx scaling", oly.playscr.scaling))
 		imgui.Text(fmt.Sprintf("%d total scanlines", oly.playscr.scr.crit.frameInfo.TotalScanlines))
 
 		imguiSeparator()

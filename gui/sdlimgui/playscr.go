@@ -38,8 +38,7 @@ type playScr struct {
 	imagePosMax imgui.Vec2
 
 	// scaling of texture and calculated dimensions
-	xscaling     float32
-	yscaling     float32
+	scaling      float32
 	scaledWidth  float32
 	scaledHeight float32
 
@@ -110,49 +109,45 @@ func (win *playScr) render() {
 
 // must be called from with a critical section.
 func (win *playScr) setScaling() {
+	// size of screen is fixed at 4:3
+	w := float32(specification.ClksVisible)
+	h := w * 3 / 4
+
+	// handle screen rotation
 	rot := win.scr.rotation.Load().(specification.Rotation)
-
-	sz := win.img.plt.displaySize()
-	screenRegion := imgui.Vec2{X: sz[0], Y: sz[1]}
-
-	w := float32(win.scr.crit.cropPixels.Bounds().Size().X)
-	h := float32(win.scr.crit.cropPixels.Bounds().Size().Y)
-
-	adj := float32(specification.AspectBias)
-	if rot == specification.NormalRotation || rot == specification.FlippedRotation {
-		adj *= pixelWidth
+	if rot != specification.NormalRotation && rot != specification.FlippedRotation {
+		w, h = h, w
 	}
 
-	adjW := w * adj
-
-	var scaling float32
+	// calculate required scaling
+	displaySize := win.img.plt.displaySize()
+	screenRegion := imgui.Vec2{X: displaySize[0], Y: displaySize[1]}
 
 	winRatio := screenRegion.X / screenRegion.Y
-	aspectRatio := adjW / h
+	aspectRatio := w / h
 
 	if aspectRatio < winRatio {
 		// window wider than TV screen
-		scaling = screenRegion.Y / h
+		win.scaling = screenRegion.Y / h
 	} else {
 		// TV screen wider than window
-		scaling = screenRegion.X / adjW
+		win.scaling = screenRegion.X / w
 	}
 
 	// limit scaling to 1x
-	if scaling < 1 {
-		scaling = 1
+	if win.scaling < 1 {
+		win.scaling = 1
 	}
 
+	// place screen in middle of window as best as we can
 	win.imagePosMin = imgui.Vec2{
-		X: float32(int((screenRegion.X - (adjW * scaling)) / 2)),
-		Y: float32(int((screenRegion.Y - (h * scaling)) / 2)),
+		X: float32(int((screenRegion.X - (w * win.scaling)) / 2)),
+		Y: float32(int((screenRegion.Y - (h * win.scaling)) / 2)),
 	}
 	win.imagePosMax = screenRegion.Minus(win.imagePosMin)
 
-	win.yscaling = scaling
-	win.xscaling = scaling * adj
-	win.scaledWidth = w * win.xscaling
-	win.scaledHeight = h * win.yscaling
+	win.scaledWidth = w * win.scaling
+	win.scaledHeight = h * win.scaling
 
 	// get visibleScanlines while we're in critical section
 	win.visibleScanlines = win.scr.crit.frameInfo.VisibleBottom - win.scr.crit.frameInfo.VisibleTop

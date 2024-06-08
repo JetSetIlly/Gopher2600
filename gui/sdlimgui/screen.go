@@ -31,6 +31,8 @@ import (
 
 // textureRenderers should consider that the timing of the VCS produces
 // "pixels" of two pixels across.
+//
+// this value can be ignored if texture is being drawn in a fixed aperture
 const pixelWidth = 2
 
 // textureRenderers can share the underlying pixels of the screen type instance. both of these functions
