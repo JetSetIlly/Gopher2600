@@ -101,7 +101,7 @@ func NewAnim(prefs *preferences.Preferences, spec string) (*Anim, error) {
 	thmb.Reset()
 
 	// create preview emulation
-	thmb.preview, err = preview.NewEmulation(thmb.vcs.Env.Prefs, "AUTO")
+	thmb.preview, err = preview.NewEmulation(thmb.vcs.Env.Prefs)
 	if err != nil {
 		return nil, fmt.Errorf("thumbnailer: %w", err)
 	}
