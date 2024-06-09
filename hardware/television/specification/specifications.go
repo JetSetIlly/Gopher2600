@@ -149,14 +149,22 @@ type Spec struct {
 	AtariSafeVisibleTop    int
 	AtariSafeVisibleBottom int
 
+	// the ideal visible top/bottom valuss are the inital values taken by the
+	// resizer. in the case of PAL and SECAM these are the same as the Atari
+	// Safe top/bottom values but in the case of NTSC and PAL_M the ideal values
+	// create a slightly larger aperture in order to create a 4:3 image in the
+	// majority of cases
+	IdealVisibleTop    int
+	IdealVisibleBottom int
+
 	// resizing of the TV is problematic because we can't rely on the VBLANK to
-	// tell us when the pixels are meant to be in view. The NewSafeVisibleTop an
-	// SafeBottom are the min/max values that the resizer should allow.
+	// tell us when the pixels are meant to be in view. The ExtendedVisibleTop an
+	// ExtendedVisibleBottom are the min/max values that the resizer should allow.
 	//
 	// think of these as the "modern" safe values as compared to the Atari
 	// defined safe values.
-	NewSafeVisibleTop    int
-	NewSafeVisibleBottom int
+	ExtendedVisibleTop    int
+	ExtendedVisibleBottom int
 }
 
 // GetColor translates a signals to the color type.
@@ -202,16 +210,6 @@ const AbsoluteMaxClks = AbsoluteMaxScanlines * ClksScanline
 // specifications. If the number of scanlines generated is greater than this
 // value then the PAL specification should be assumed
 const PALTrigger = 302
-
-// AspectBias transforms the scaling factor for the X axis. in other words,
-// for width of every pixel is height of every pixel multiplied by the
-// aspect bias
-//
-// Earlier versions of the emulator set this according to the specification that
-// was in use. However, I now believe this is wrong and a nominal value of 0.91
-// is good for all specifications. For comparison, the historical value for PAL
-// output was set to 1.09
-const AspectBias = 0.91
 
 // SpecNTSC is the specification for NTSC television type
 var SpecNTSC Spec
@@ -289,14 +287,39 @@ func init() {
 	SpecSECAM.AtariSafeVisibleTop = SpecSECAM.ScanlinesVBlank + SpecSECAM.ScanlinesVSync
 	SpecSECAM.AtariSafeVisibleBottom = SpecSECAM.ScanlinesTotal - SpecSECAM.ScanlinesOverscan
 
-	// Extended values:
+	// ideal values:
+
+	// NTSC AND PAL_M have been calculated by applying a 4:3 ratio to 160 (ClksVisible)
+	//	 = 160 / 3 * 4 = 213.333
+	//
+	// the 'atari safe' visible is 192
+	//   = 213.333 - 192 = 21.3333
+	//
+	// we therefore adjust the 'atari safe' top and bottom values by 11 and 10
+	// to give us a nice 4:3 ratio
+	//
+	// if we don't do this then we can still fit the atari safe values into a
+	// 4:3 aperture but many games will look stretched. far better to have
+	// visible VBLANK
+	SpecNTSC.IdealVisibleTop = SpecNTSC.AtariSafeVisibleTop - 11
+	SpecNTSC.IdealVisibleBottom = SpecNTSC.AtariSafeVisibleBottom + 10
+	SpecPAL_M.IdealVisibleTop = SpecPAL_M.AtariSafeVisibleTop - 11
+	SpecPAL_M.IdealVisibleBottom = SpecPAL_M.AtariSafeVisibleBottom + 10
+
+	// PAL and SECAM are the same as the atari safe values
+	SpecPAL.IdealVisibleTop = SpecPAL.AtariSafeVisibleTop
+	SpecPAL.IdealVisibleBottom = SpecPAL.AtariSafeVisibleBottom
+	SpecSECAM.IdealVisibleTop = SpecPAL.AtariSafeVisibleTop
+	SpecSECAM.IdealVisibleBottom = SpecPAL.AtariSafeVisibleBottom
+
+	// extended values:
 	// - Spike's Peak likes a bottom scanline of 250 (NTSC). this is the largest requirement I've seen.
-	SpecNTSC.NewSafeVisibleTop = 23
-	SpecNTSC.NewSafeVisibleBottom = 250
-	SpecPAL.NewSafeVisibleTop = 30
-	SpecPAL.NewSafeVisibleBottom = 299
-	SpecPAL_M.NewSafeVisibleTop = 20
-	SpecPAL_M.NewSafeVisibleBottom = 249
-	SpecSECAM.NewSafeVisibleTop = 30
-	SpecSECAM.NewSafeVisibleBottom = 299
+	SpecNTSC.ExtendedVisibleTop = 23
+	SpecNTSC.ExtendedVisibleBottom = 250
+	SpecPAL.ExtendedVisibleTop = 30
+	SpecPAL.ExtendedVisibleBottom = 299
+	SpecPAL_M.ExtendedVisibleTop = 20
+	SpecPAL_M.ExtendedVisibleBottom = 249
+	SpecSECAM.ExtendedVisibleTop = 30
+	SpecSECAM.ExtendedVisibleBottom = 299
 }

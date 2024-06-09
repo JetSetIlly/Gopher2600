@@ -121,8 +121,8 @@ func (info FrameInfo) IsDifferent(cmp FrameInfo) bool {
 }
 
 func (info *FrameInfo) reset() {
-	info.VisibleTop = info.Spec.AtariSafeVisibleTop
-	info.VisibleBottom = info.Spec.AtariSafeVisibleBottom
+	info.VisibleTop = info.Spec.IdealVisibleTop
+	info.VisibleBottom = info.Spec.IdealVisibleBottom
 	info.TotalScanlines = info.Spec.ScanlinesTotal
 	info.RefreshRate = info.Spec.RefreshRate
 	info.IsSynced = false

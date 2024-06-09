@@ -874,6 +874,12 @@ func (win *winDbgScr) render() {
 
 // must be called from with a critical section.
 func (win *winDbgScr) setScaling() {
+
+	// aspectBias transforms the scaling factor for the X axis. in other words,
+	// for width of every pixel is height of every pixel multiplied by the
+	// aspect bias
+	const aspectBias = 0.91
+
 	var w float32
 	var h float32
 
@@ -884,7 +890,7 @@ func (win *winDbgScr) setScaling() {
 		w = float32(win.scr.crit.presentationPixels.Bounds().Size().X)
 		h = float32(win.scr.crit.presentationPixels.Bounds().Size().Y)
 	}
-	adjW := w * pixelWidth * float32(specification.AspectBias)
+	adjW := w * pixelWidth * float32(aspectBias)
 
 	var scaling float32
 
@@ -910,7 +916,7 @@ func (win *winDbgScr) setScaling() {
 	}
 
 	win.yscaling = scaling
-	win.xscaling = scaling * pixelWidth * float32(specification.AspectBias)
+	win.xscaling = scaling * pixelWidth * float32(aspectBias)
 	win.scaledWidth = w * win.xscaling
 	win.scaledHeight = h * win.yscaling
 

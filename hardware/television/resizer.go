@@ -124,12 +124,12 @@ func (rz *Resizer) reset(spec specification.Spec) {
 
 // set resizer to nominal specification values
 func (rz *Resizer) setSpec(spec specification.Spec) {
-	rz.vblankTop = spec.AtariSafeVisibleTop
-	rz.vblankBottom = spec.AtariSafeVisibleBottom
-	rz.blackTop = spec.AtariSafeVisibleTop
-	rz.blackBottom = spec.AtariSafeVisibleBottom
-	rz.pendingTop = spec.AtariSafeVisibleTop
-	rz.pendingBottom = spec.AtariSafeVisibleBottom
+	rz.vblankTop = spec.IdealVisibleTop
+	rz.vblankBottom = spec.IdealVisibleBottom
+	rz.blackTop = spec.IdealVisibleTop
+	rz.blackBottom = spec.IdealVisibleBottom
+	rz.pendingTop = spec.IdealVisibleTop
+	rz.pendingBottom = spec.IdealVisibleBottom
 }
 
 // examine signal for resizing possiblity. this is an expensive operation to do
@@ -162,10 +162,10 @@ func (rz *Resizer) examine(state *State, sig signal.SignalAttributes) {
 	if sig&signal.VBlank != signal.VBlank {
 		if state.frameInfo.Stable {
 			if state.scanline < rz.vblankTop &&
-				state.scanline >= state.frameInfo.Spec.NewSafeVisibleTop {
+				state.scanline >= state.frameInfo.Spec.ExtendedVisibleTop {
 				rz.vblankTop = state.scanline
 			} else if state.scanline > rz.vblankBottom &&
-				state.scanline <= state.frameInfo.Spec.NewSafeVisibleBottom {
+				state.scanline <= state.frameInfo.Spec.ExtendedVisibleBottom {
 				rz.vblankBottom = state.scanline
 			}
 		} else {
@@ -173,12 +173,12 @@ func (rz *Resizer) examine(state *State, sig signal.SignalAttributes) {
 			// as grow. this is important for PAL60 ROMs which start off as PAL
 			// sized but will shrink to NTSC size
 			if state.scanline != rz.vblankTop &&
-				state.scanline >= state.frameInfo.Spec.NewSafeVisibleTop &&
-				state.scanline <= state.frameInfo.Spec.NewSafeVisibleTop+50 {
+				state.scanline >= state.frameInfo.Spec.ExtendedVisibleTop &&
+				state.scanline <= state.frameInfo.Spec.ExtendedVisibleTop+50 {
 				rz.vblankTop = state.scanline
 			} else if state.scanline != rz.vblankBottom &&
-				state.scanline <= state.frameInfo.Spec.NewSafeVisibleBottom &&
-				state.scanline >= state.frameInfo.Spec.NewSafeVisibleBottom-75 {
+				state.scanline <= state.frameInfo.Spec.ExtendedVisibleBottom &&
+				state.scanline >= state.frameInfo.Spec.ExtendedVisibleBottom-75 {
 				rz.vblankBottom = state.scanline
 			}
 		}
@@ -203,10 +203,10 @@ func (rz *Resizer) examine(state *State, sig signal.SignalAttributes) {
 		if col.R != 0x00 || col.G != 0x00 || col.B != 0x00 {
 			if state.frameInfo.Stable {
 				if state.scanline < rz.blackTop &&
-					state.scanline >= state.frameInfo.Spec.NewSafeVisibleTop {
+					state.scanline >= state.frameInfo.Spec.ExtendedVisibleTop {
 					rz.blackTop = state.scanline
 				} else if state.scanline > rz.blackBottom &&
-					state.scanline <= state.frameInfo.Spec.NewSafeVisibleBottom {
+					state.scanline <= state.frameInfo.Spec.ExtendedVisibleBottom {
 					rz.blackBottom = state.scanline
 				}
 			}
@@ -300,10 +300,10 @@ func (rz *Resizer) commit(state *State) error {
 		// clamp top value if it is being changed. clamping makes sure that the
 		// VisibleTop value is between the atari and new safe values
 		if state.frameInfo.VisibleTop != rz.pendingTop {
-			if rz.pendingTop < state.frameInfo.Spec.NewSafeVisibleTop {
-				rz.pendingTop = state.frameInfo.Spec.NewSafeVisibleTop
-			} else if rz.pendingTop > state.frameInfo.Spec.AtariSafeVisibleTop {
-				rz.pendingTop = state.frameInfo.Spec.AtariSafeVisibleTop
+			if rz.pendingTop < state.frameInfo.Spec.ExtendedVisibleTop {
+				rz.pendingTop = state.frameInfo.Spec.ExtendedVisibleTop
+			} else if rz.pendingTop > state.frameInfo.Spec.IdealVisibleTop {
+				rz.pendingTop = state.frameInfo.Spec.IdealVisibleTop
 			}
 			state.frameInfo.VisibleTop = rz.pendingTop
 		}
@@ -311,10 +311,10 @@ func (rz *Resizer) commit(state *State) error {
 		// clamp bottom value if it is being changed. clamping makes sure that
 		// the VisibleBottom value is between the atari and new safe values
 		if state.frameInfo.VisibleBottom != rz.pendingBottom {
-			if rz.pendingBottom > state.frameInfo.Spec.NewSafeVisibleBottom {
-				rz.pendingBottom = state.frameInfo.Spec.NewSafeVisibleBottom
-			} else if rz.pendingBottom < state.frameInfo.Spec.AtariSafeVisibleBottom {
-				rz.pendingBottom = state.frameInfo.Spec.AtariSafeVisibleBottom
+			if rz.pendingBottom > state.frameInfo.Spec.ExtendedVisibleBottom {
+				rz.pendingBottom = state.frameInfo.Spec.ExtendedVisibleBottom
+			} else if rz.pendingBottom < state.frameInfo.Spec.IdealVisibleBottom {
+				rz.pendingBottom = state.frameInfo.Spec.IdealVisibleBottom
 			}
 			state.frameInfo.VisibleBottom = rz.pendingBottom
 		}
