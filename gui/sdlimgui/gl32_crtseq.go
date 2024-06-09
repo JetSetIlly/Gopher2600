@@ -223,6 +223,8 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 			})
 		} else {
 			// add new frame to phosphor buffer (using phosphor buffer for pixel perfect fade)
+			env.textureID = sh.phosphor.Texture()
+			env.flipY = true
 			env.textureID = sh.phosphor.Process(func() {
 				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(prefs.PixelPerfectFade), newFrameForPhosphor)
 				env.draw()
