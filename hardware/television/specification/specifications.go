@@ -194,6 +194,15 @@ const (
 	ClksScanline = 228
 )
 
+// These width and height values can be used to create a TV image (pixel buffer)
+// of the appropriate asepect ratio. The values can be scaled as appropriate
+const (
+	WidthTV    = ClksVisible
+	WidthHDTV  = ClksVisible
+	HeightTV   = WidthTV * 3 / 4
+	HeightHDTV = WidthHDTV * 9 / 16
+)
+
 // The absolute number of scanlines allowed by the TV regardless of the current
 // specification. The value here is arbitrary but it represents the natural
 // resonance of the vertical oscilator

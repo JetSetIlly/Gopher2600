@@ -236,11 +236,7 @@ func (cmp *Comparison) CreateFromLoader(cartload cartridgeloader.Loader) error {
 // Resize implements the television.PixelRenderer interface.
 func (cmp *Comparison) Resize(frameInfo television.FrameInfo) error {
 	cmp.frameInfo = frameInfo
-	crop := image.Rect(
-		specification.ClksHBlank, frameInfo.VisibleTop,
-		specification.ClksHBlank+specification.ClksVisible, frameInfo.VisibleBottom,
-	)
-
+	crop := cmp.frameInfo.Crop()
 	cmp.cropImg = cmp.img.SubImage(crop).(*image.RGBA)
 	cmp.cropDiffImg = cmp.diffImg.SubImage(crop).(*image.RGBA)
 

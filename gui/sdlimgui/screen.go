@@ -32,7 +32,8 @@ import (
 // textureRenderers should consider that the timing of the VCS produces
 // "pixels" of two pixels across.
 //
-// this value can be ignored if texture is being drawn in a fixed aperture
+// this value can be ignored if texture is being drawn in a fixed aperture. for
+// example when using specification.WidthTV and specification.HeightTV
 const pixelWidth = 2
 
 // textureRenderers can share the underlying pixels of the screen type instance. both of these functions

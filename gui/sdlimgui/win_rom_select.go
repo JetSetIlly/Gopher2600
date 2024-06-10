@@ -65,17 +65,26 @@ type winSelectROM struct {
 	// height of options line at bottom of window. valid after first frame
 	controlHeight float32
 
-	thmb        *thumbnailer.Anim
-	thmbTexture texture
+	// dimensions of the listview selector
+	listviewDim imgui.Vec2
 
-	thmbImage      *image.RGBA
-	thmbDimensions image.Point
+	// animated thumbnail of emulation
+	thmb          *thumbnailer.Anim
+	thmbTexture   texture
+	thmbImage     *image.RGBA
+	thmbDim       imgui.Vec2
+	thmbPosOffset imgui.Vec2
+
+	// the emulation thumbnail is placed inside a child of the following
+	// dimensions and which is sized according the the value in both
+	// listviewDim and thmbDim
+	thmbChildDim imgui.Vec2
 
 	// map of normalised ROM titles to box art images
-	boxart           []string
-	boxartTexture    texture
-	boxartDimensions image.Point
-	boxartUse        bool
+	boxart        []string
+	boxartTexture texture
+	boxartDim     imgui.Vec2
+	boxartUse     bool
 }
 
 // boxart from libretro project
@@ -105,8 +114,11 @@ func newSelectROM(img *SdlImgui) (window, error) {
 	}
 
 	win.thmbTexture = img.rnd.addTexture(textureColor, true, true)
-	win.thmbImage = image.NewRGBA(image.Rect(0, 0, specification.ClksVisible, specification.AbsoluteMaxScanlines))
-	win.thmbDimensions = win.thmbImage.Bounds().Size()
+	win.thmbImage = image.NewRGBA(image.Rect(0, 0, 0, 0))
+	win.thmbDim = imgui.Vec2{specification.WidthTV, specification.HeightTV}.Times(2.0)
+	win.listviewDim = imgui.Vec2{300, win.thmbDim.Y * 1.4}
+	win.thmbPosOffset = imgui.Vec2{0, (win.listviewDim.Y - win.thmbDim.Y) / 2}
+	win.thmbChildDim = imgui.Vec2{win.thmbDim.X, win.listviewDim.Y}
 
 	// load and normalise box art names
 	boxartPath, err := resources.JoinPath(namedBoxarts)
@@ -223,19 +235,14 @@ func (win *winSelectROM) render() {
 	select {
 	case newImage := <-win.thmb.Render:
 		if newImage != nil {
-			// clear image
-			for i := 0; i < len(win.thmbImage.Pix); i += 4 {
-				s := win.thmbImage.Pix[i : i+4 : i+4]
-				s[0] = 10
-				s[1] = 10
-				s[2] = 10
-				s[3] = 255
+			sz := newImage.Bounds().Size()
+			if sz != win.thmbImage.Bounds().Size() {
+				win.thmbImage = image.NewRGBA(image.Rect(0, 0, sz.X, sz.Y))
+				win.thmbTexture.markForCreation()
 			}
 
 			// copy new image so that it is centred in the thumbnail image
-			sz := newImage.Bounds().Size()
-			y := ((win.thmbDimensions.Y - sz.Y) / 2)
-			draw.Copy(win.thmbImage, image.Point{X: 0, Y: y},
+			draw.Copy(win.thmbImage, image.Point{X: 0, Y: 0},
 				newImage, newImage.Bounds(), draw.Over, nil)
 
 			// render image
@@ -259,108 +266,106 @@ func (win *winSelectROM) draw() {
 	}
 
 	imgui.SameLine()
-	imgui.Text(archivefs.RemoveArchiveExt(win.path.Results.Dir))
+	const maxDisplayPath = 68
+	displayPath := archivefs.RemoveArchiveExt(win.path.Results.Dir)
+	displayPath = displayPath[max(0, len(displayPath)-maxDisplayPath):]
+	if len(displayPath) == maxDisplayPath {
+		displayPath = fmt.Sprintf(" %c%s", fonts.BackArrowDouble, displayPath)
+	}
+	imgui.Text(displayPath)
 
-	if imgui.BeginTable("romSelector", 2) {
-		imgui.TableSetupColumnV("filelist", imgui.TableColumnFlagsWidthStretch, -1, 0)
-		imgui.TableSetupColumnV("emulation", imgui.TableColumnFlagsWidthStretch, -1, 1)
+	// ROM selector listview
+	imgui.BeginChildV("##selector", win.listviewDim, true, 0)
 
-		imgui.TableNextRow()
-		imgui.TableNextColumn()
+	if win.scrollToTop {
+		imgui.SetScrollY(0)
+		win.scrollToTop = false
+	}
 
-		height := imgui.WindowHeight() - imgui.CursorPosY() - win.controlHeight - imgui.CurrentStyle().FramePadding().Y*2 - imgui.CurrentStyle().ItemInnerSpacing().Y
-		imgui.BeginChildV("##selector", imgui.Vec2{X: 300, Y: height}, true, 0)
-
-		if win.scrollToTop {
-			imgui.SetScrollY(0)
-			win.scrollToTop = false
+	// list directories
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.ROMSelectDir)
+	for _, e := range win.path.Results.Entries {
+		// ignore dot files
+		if !win.showHidden && e.Name[0] == '.' {
+			continue
 		}
 
-		// list directories
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.ROMSelectDir)
-		for _, e := range win.path.Results.Entries {
-			// ignore dot files
-			if !win.showHidden && e.Name[0] == '.' {
-				continue
+		if e.IsDir {
+			s := strings.Builder{}
+			if e.IsArchive {
+				s.WriteString(string(fonts.Paperclip))
+				s.WriteString(" ")
+				s.WriteString(archivefs.TrimArchiveExt(e.Name))
+			} else {
+				s.WriteString(string(fonts.Directory))
+				s.WriteString(" ")
+				s.WriteString(e.Name)
 			}
 
-			if e.IsDir {
-				s := strings.Builder{}
-				if e.IsArchive {
-					s.WriteString(string(fonts.Paperclip))
-					s.WriteString(" ")
-					s.WriteString(archivefs.TrimArchiveExt(e.Name))
-				} else {
-					s.WriteString(string(fonts.Directory))
-					s.WriteString(" ")
-					s.WriteString(e.Name)
-				}
-
-				if imgui.Selectable(s.String()) {
-					win.path.Set <- filepath.Join(win.path.Results.Dir, e.Name)
-					win.scrollToTop = true
-				}
+			if imgui.Selectable(s.String()) {
+				win.path.Set <- filepath.Join(win.path.Results.Dir, e.Name)
+				win.scrollToTop = true
 			}
 		}
-		imgui.PopStyleColor()
+	}
+	imgui.PopStyleColor()
 
-		// list files
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.ROMSelectFile)
-		for _, e := range win.path.Results.Entries {
-			// ignore dot files
-			if !win.showHidden && e.Name[0] == '.' {
-				continue
+	// list files
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.ROMSelectFile)
+	for _, e := range win.path.Results.Entries {
+		// ignore dot files
+		if !win.showHidden && e.Name[0] == '.' {
+			continue
+		}
+
+		// ignore invalid file extensions unless showAll flags is set
+		ext := strings.ToUpper(filepath.Ext(e.Name))
+		if !win.showAll {
+			hasExt := false
+			for _, e := range cartridgeloader.FileExtensions {
+				if e == ext {
+					hasExt = true
+					break
+				}
 			}
-
-			// ignore invalid file extensions unless showAll flags is set
-			ext := strings.ToUpper(filepath.Ext(e.Name))
-			if !win.showAll {
-				hasExt := false
-				for _, e := range cartridgeloader.FileExtensions {
+			if !hasExt {
+				for _, e := range archivefs.ArchiveExtensions {
 					if e == ext {
 						hasExt = true
 						break
 					}
 				}
-				if !hasExt {
-					for _, e := range archivefs.ArchiveExtensions {
-						if e == ext {
-							hasExt = true
-							break
-						}
-					}
-				}
-				if !hasExt {
-					continue // to next file
-				}
 			}
-
-			if !e.IsDir {
-				selected := e.Name == win.path.Results.Base
-
-				if selected && win.centreOnFile {
-					imgui.SetScrollHereY(0.0)
-					win.centreOnFile = false
-				}
-
-				if imgui.SelectableV(e.Name, selected, 0, imgui.Vec2{0, 0}) {
-					win.path.Set <- filepath.Join(win.path.Results.Dir, e.Name)
-				}
-				if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
-					win.insertCartridge()
-				}
+			if !hasExt {
+				continue // to next file
 			}
 		}
-		imgui.PopStyleColor()
 
-		imgui.EndChild()
+		if !e.IsDir {
+			selected := e.Name == win.path.Results.Base
 
-		imgui.TableNextColumn()
-		imgui.Image(imgui.TextureID(win.thmbTexture.getID()),
-			imgui.Vec2{float32(win.thmbDimensions.X) * 2, float32(win.thmbDimensions.Y)})
+			if selected && win.centreOnFile {
+				imgui.SetScrollHereY(0.0)
+				win.centreOnFile = false
+			}
 
-		imgui.EndTable()
+			if imgui.SelectableV(e.Name, selected, 0, imgui.Vec2{0, 0}) {
+				win.path.Set <- filepath.Join(win.path.Results.Dir, e.Name)
+			}
+			if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
+				win.insertCartridge()
+			}
+		}
 	}
+	imgui.PopStyleColor()
+	imgui.EndChild()
+
+	// emulation thumbnail is on the same line as the listview
+	imgui.SameLineV(0, 10)
+	imgui.BeginChildV("##emulation", win.thmbChildDim, true, 0)
+	imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.thmbPosOffset))
+	imgui.Image(imgui.TextureID(win.thmbTexture.getID()), win.thmbDim)
+	imgui.EndChild()
 
 	// control buttons. start controlHeight measurement
 	win.controlHeight = imguiMeasureHeight(func() {
@@ -510,14 +515,13 @@ func (win *winSelectROM) draw() {
 
 				if win.boxartUse {
 					imgui.TableNextColumn()
-					sz := imgui.Vec2{float32(win.boxartDimensions.X), float32(win.boxartDimensions.Y)}
 
 					// if thumbnail height is less than height of
 					// property table then we position the image so that
 					// it's centered in relation to the property table
 					p := imgui.CursorPos()
-					if sz.Y < propertyTableHeight {
-						p.Y += (propertyTableHeight - sz.Y) / 2
+					if win.boxartDim.Y < propertyTableHeight {
+						p.Y += (propertyTableHeight - win.boxartDim.Y) / 2
 						imgui.SetCursorPos(p)
 					} else {
 						// if height of thumbnail is greater than or
@@ -527,7 +531,7 @@ func (win *winSelectROM) draw() {
 						imgui.Spacing()
 					}
 
-					imgui.Image(imgui.TextureID(win.boxartTexture.getID()), sz)
+					imgui.Image(imgui.TextureID(win.boxartTexture.getID()), win.boxartDim)
 				}
 
 				imgui.EndTable()
@@ -663,7 +667,8 @@ func (win *winSelectROM) findBoxart() error {
 		b := src.Bounds()
 		dst := image.NewRGBA(image.Rect(0, 0, b.Dx()/4, b.Dy()/4))
 		draw.BiLinear.Scale(dst, dst.Bounds(), src, b, draw.Src, nil)
-		win.boxartDimensions = dst.Bounds().Max
+		sz := dst.Bounds().Max
+		win.boxartDim = imgui.Vec2{float32(sz.X), float32(sz.Y)}
 
 		// rendering the image without first marking the texture for
 		// (re)creation causes problems when transitioning from some images to

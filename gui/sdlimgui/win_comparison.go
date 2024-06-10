@@ -110,8 +110,9 @@ func (win *winComparison) playmodeDraw() bool {
 }
 
 func (win *winComparison) draw() {
-	imgui.Image(imgui.TextureID(win.cmpTexture.getID()), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
-	imgui.Image(imgui.TextureID(win.diffTexture.getID()), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
+	sz := imgui.Vec2{specification.WidthTV, specification.HeightTV}.Times(2.5)
+	imgui.Image(imgui.TextureID(win.cmpTexture.getID()), sz)
+	imgui.Image(imgui.TextureID(win.diffTexture.getID()), sz)
 	if win.audioIsDifferent {
 		imguiColorLabelSimple("Audio is different", win.img.cols.False)
 	} else {

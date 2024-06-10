@@ -40,10 +40,7 @@ type winTimeline struct {
 	// goroutine so we must thumbnail those states in the same goroutine.
 	thmb        *thumbnailer.Image
 	thmbTexture texture
-
-	// the backing image for the texture
-	thmbImage      *image.RGBA
-	thmbDimensions image.Point
+	thmbImage   *image.RGBA
 
 	// whether the thumbnail is being shown on the left of the timeline rather
 	// than the right
@@ -96,8 +93,7 @@ func newWinTimeline(img *SdlImgui) (window, error) {
 	}
 
 	win.thmbTexture = img.rnd.addTexture(textureColor, true, true)
-	win.thmbImage = image.NewRGBA(image.Rect(0, 0, specification.ClksVisible, specification.AbsoluteMaxScanlines))
-	win.thmbDimensions = win.thmbImage.Bounds().Size()
+	win.thmbImage = image.NewRGBA(image.Rect(0, 0, 0, 0))
 
 	return win, nil
 }
@@ -120,20 +116,17 @@ func (win *winTimeline) debuggerDraw() bool {
 	select {
 	case newImage := <-win.thmb.Render:
 		if newImage != nil {
-			// clear image
-			for i := 0; i < len(win.thmbImage.Pix); i += 4 {
-				s := win.thmbImage.Pix[i : i+4 : i+4]
-				s[0] = 10
-				s[1] = 10
-				s[2] = 10
-				s[3] = 255
+			sz := newImage.Bounds().Size()
+			if sz != win.thmbImage.Bounds().Size() {
+				win.thmbImage = image.NewRGBA(image.Rect(0, 0, sz.X, sz.Y))
+				win.thmbTexture.markForCreation()
 			}
 
 			// copy new image so that it is centred in the thumbnail image
-			sz := newImage.Bounds().Size()
-			y := ((win.thmbDimensions.Y - sz.Y) / 2)
-			draw.Copy(win.thmbImage, image.Point{X: 0, Y: y},
+			draw.Copy(win.thmbImage, image.Point{X: 0, Y: 0},
 				newImage, newImage.Bounds(), draw.Over, nil)
+
+			// render image
 			win.thmbTexture.render(win.thmbImage)
 		}
 	default:
@@ -356,8 +349,9 @@ func (win *winTimeline) drawTrace() {
 			win.img.cols.timelineHoverCursor)
 
 		if win.img.prefs.showTimelineThumbnail.Get().(bool) {
-			sz := imgui.Vec2{float32(win.thmbDimensions.X) * 2, float32(win.thmbDimensions.Y)}
-			sz = sz.Times(traceSize.Y / specification.AbsoluteMaxScanlines)
+			// size of thumbnail is based on height of trace area
+			sz := imgui.Vec2{specification.WidthTV, specification.HeightTV}
+			sz = sz.Times(traceSize.Y / sz.Y)
 
 			// show thumbnail on either the left or right of the timeline window
 			var pos imgui.Vec2

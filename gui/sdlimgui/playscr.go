@@ -109,9 +109,8 @@ func (win *playScr) render() {
 
 // must be called from with a critical section.
 func (win *playScr) setScaling() {
-	// size of screen is fixed at 4:3
-	w := float32(specification.ClksVisible)
-	h := w * 3 / 4
+	w := float32(specification.WidthTV)
+	h := float32(specification.HeightTV)
 
 	// handle screen rotation
 	rot := win.scr.rotation.Load().(specification.Rotation)

@@ -71,8 +71,8 @@ func newWinBot(img *SdlImgui) (window, error) {
 		screenScalingY: botImageScaling,
 	}
 
-	win.obsTexture = img.rnd.addTexture(textureColor, false, false)
-	win.mouseTexture = img.rnd.addTexture(textureColor, false, false)
+	win.obsTexture = img.rnd.addTexture(textureColor, true, true)
+	win.mouseTexture = img.rnd.addTexture(textureColor, true, true)
 
 	return win, nil
 }
