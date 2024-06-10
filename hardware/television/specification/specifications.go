@@ -207,9 +207,8 @@ const (
 // specification. The value here is arbitrary but it represents the natural
 // resonance of the vertical oscilator
 //
-// For reference, this is equivalent to a frequency of approximately 50Hz (the
-// precise frequency depends on the exact TV specification)
-const AbsoluteMaxScanlines = 313
+// For reference, this is equivalent to a frequency of approximately 45Hz
+const AbsoluteMaxScanlines = 350
 
 // The absolute number of color clock allowed by the TV regardless of
 // specification
@@ -322,11 +321,12 @@ func init() {
 	SpecSECAM.IdealVisibleBottom = SpecPAL.AtariSafeVisibleBottom
 
 	// extended values:
-	// - Spike's Peak likes a bottom scanline of 250 (NTSC). this is the largest requirement I've seen.
+	// - NTSC: Spike's Peak likes a bottom scanline of 250
+	// - PAL: Acid drop extends the main play area to around 305 scanlines
 	SpecNTSC.ExtendedVisibleTop = 23
 	SpecNTSC.ExtendedVisibleBottom = 250
 	SpecPAL.ExtendedVisibleTop = 30
-	SpecPAL.ExtendedVisibleBottom = 299
+	SpecPAL.ExtendedVisibleBottom = 305
 	SpecPAL_M.ExtendedVisibleTop = 20
 	SpecPAL_M.ExtendedVisibleBottom = 249
 	SpecSECAM.ExtendedVisibleTop = 30

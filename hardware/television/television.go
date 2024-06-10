@@ -536,6 +536,10 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 					tv.state.vsync.flybackScanline = tv.state.vsync.scanline + adj
 					tv.state.scanline = (tv.state.scanline * recovery) / 100
 				} else if tv.state.vsync.scanline > tv.state.vsync.flybackScanline {
+					// note that if the programmed number of scanlines between VSYNCs is
+					// greater than the specification.AbsoluteMaxScanlines then this condition
+					// will always be true and the screen will roll forever
+
 					// if the current and previous frames were created from a synchronised position then
 					// move the flyback scanline to the new value
 					//
