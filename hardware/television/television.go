@@ -845,9 +845,7 @@ func (tv *Television) SetSpec(spec string, forced bool) error {
 		return fmt.Errorf("television: unsupported spec (%s)", spec)
 	}
 
-	if forced {
-		tv.creationSpecID = spec
-	} else if tv.creationSpecID != "AUTO" {
+	if !forced && tv.creationSpecID != "AUTO" {
 		return nil
 	}
 

@@ -77,8 +77,6 @@ func (plb Playback) EndFrame() (bool, error) {
 //
 // The returned playback must be attached to the VCS input system (with
 // AttachToVCSInput() function) for it it to be useful.
-//
-// The integrityCheck flag should be true in most instances.
 func NewPlayback(transcript string) (*Playback, error) {
 	var err error
 
@@ -197,7 +195,7 @@ func (plb *Playback) AttachToVCSInput(vcs *hardware.VCS) error {
 	// validate header. keep it simple and disallow any difference in tv
 	// specification. some combinations may work but there's no compelling
 	// reason to figure that out just now.
-	if plb.vcs.TV.GetReqSpecID() != plb.TVSpec {
+	if plb.vcs.TV.GetCreationSpecID() != plb.TVSpec {
 		return fmt.Errorf("playback: recording was made with the %s TV spec. trying to playback with a TV spec of %s.", plb.TVSpec, vcs.TV.GetReqSpecID())
 	}
 

@@ -40,6 +40,24 @@ func NewSimpleTelevision(spec string) (*Television, error) {
 	return tv, nil
 }
 
+// SetSimple switches the television instance between simple and normal operations
+func (tv *Television) SetSimple(set bool) {
+	if set {
+		if tv.simple == nil {
+			tv.simple = &simple{}
+		}
+	} else {
+		if tv.simple != nil {
+			tv.simple = nil
+		}
+	}
+}
+
+// IsSimple returns true if the television is operating simply
+func (tv *Television) IsSimple() bool {
+	return tv.simple != nil
+}
+
 func (tv *Television) signalSimple(sig signal.SignalAttributes) {
 	// a Signal() is by definition a new color clock. increase the horizontal count
 	tv.state.clock++

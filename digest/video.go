@@ -40,9 +40,7 @@ type Video struct {
 
 const pixelDepth = 3
 
-// NewVideo initialises a new instance of DigestTV. For convenience, the
-// television argument can be nil, in which case an instance of
-// StellaTelevision will be created.
+// NewVideo initialises a new instance of DigestTV.
 func NewVideo(tv *television.Television) (*Video, error) {
 	// set up digest tv
 	dig := &Video{
