@@ -192,6 +192,13 @@ func (plb *Playback) AttachToVCSInput(vcs *hardware.VCS) error {
 	// default the hardware preferences
 	vcs.Env.Normalise()
 
+	// vcs must be reset in order for some of the normalised preferences in the
+	// env instance to be effective
+	err = vcs.Reset()
+	if err != nil {
+		return fmt.Errorf("playback: %w", err)
+	}
+
 	// validate header. keep it simple and disallow any difference in tv
 	// specification. some combinations may work but there's no compelling
 	// reason to figure that out just now.
