@@ -33,3 +33,4 @@ armcode.map
 *.macro
 go.work
 go.work.sum
+REDUX_PLAYBACK_FILES

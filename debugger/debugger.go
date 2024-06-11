@@ -820,7 +820,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 
 		// record wav file
 		if dbg.opts.Wav {
-			fn := unique.Filename("audio", cartload.Name)
+			fn := unique.Filename("audio", dbg.cartload.Name)
 			ww, err := wavwriter.NewWavWriter(fn)
 			if err != nil {
 				return fmt.Errorf("debugger: %w", err)
@@ -830,16 +830,17 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 
 		// record gameplay
 		if dbg.opts.Record {
-			dbg.startRecording(cartload.Name)
+			dbg.startRecording(dbg.cartload.Name)
 		}
 	} else {
-		if dbg.opts.Record {
-			return fmt.Errorf("debugger: cannot make a new recording using a playback file")
-		}
-
 		err = dbg.startPlayback(filename)
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
+		}
+
+		// record gameplay
+		if dbg.opts.Record {
+			dbg.startRecording(dbg.cartload.Name)
 		}
 	}
 
@@ -1274,7 +1275,12 @@ func (dbg *Debugger) startRecording(cartShortName string) error {
 	dbg.vcs.TV.SetSimple(true)
 
 	var err error
-	recording := unique.Filename("recording", cartShortName)
+	var recording string
+	if dbg.opts.RecordFilename == "" {
+		recording = unique.Filename("recording", cartShortName)
+	} else {
+		recording = dbg.opts.RecordFilename
+	}
 	dbg.recorder, err = recorder.NewRecorder(recording, dbg.vcs)
 	if err != nil {
 		return err
@@ -1301,7 +1307,7 @@ func (dbg *Debugger) endRecording() {
 func (dbg *Debugger) startPlayback(filename string) error {
 	dbg.vcs.TV.SetSimple(true)
 
-	plb, err := recorder.NewPlayback(filename)
+	plb, err := recorder.NewPlayback(filename, dbg.opts.PlaybackIgnoreDigest)
 	if err != nil {
 		return err
 	}
@@ -1311,7 +1317,6 @@ func (dbg *Debugger) startPlayback(filename string) error {
 	if err != nil {
 		return fmt.Errorf("debugger: %w", err)
 	}
-	defer cartload.Close()
 
 	// check hash of cartridge before continuing
 	if dbg.opts.PlaybackCheckROM && cartload.HashSHA1 != plb.Hash {

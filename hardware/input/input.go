@@ -81,10 +81,6 @@ func (inp *Input) PeripheralID(id plugging.PortID) plugging.PeripheralID {
 // If a playback is currently active the input will not be handled and false
 // will be returned.
 func (inp *Input) HandleInputEvent(ev ports.InputEvent) (bool, error) {
-	if inp.playback != nil {
-		return false, nil
-	}
-
 	for _, r := range inp.recorder {
 		err := r.RecordEvent(ports.TimedInputEvent{Time: inp.tv.GetCoords(), InputEvent: ev})
 		if err != nil {

@@ -107,7 +107,7 @@ func (reg PlaybackRegression) String() string {
 func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg string) (_ bool, _ string, rerr error) {
 	output.Write([]byte(msg))
 
-	plb, err := recorder.NewPlayback(reg.Script)
+	plb, err := recorder.NewPlayback(reg.Script, false)
 	if err != nil {
 		return false, "", fmt.Errorf("playback: %w", err)
 	}

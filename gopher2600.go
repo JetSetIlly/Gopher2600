@@ -314,8 +314,10 @@ func emulate(mode string, sync *mainSync, args []string) error {
 	if emulationMode == govern.ModePlay {
 		flgs.StringVar(&opts.ComparisonROM, "comparisonROM", "", "ROM to run in parallel for comparison")
 		flgs.StringVar(&opts.ComparisonPrefs, "comparisonPrefs", "", "preferences for comparison emulation")
-		flgs.BoolVar(&opts.Record, "record", false, "record user input to playback file")
-		flgs.BoolVar(&opts.PlaybackCheckROM, "playbackCheckROM", true, "check ROM hashes on playback")
+		flgs.BoolVar(&opts.Record, "record", false, "record user input to new file for future playback")
+		flgs.StringVar(&opts.RecordFilename, "recordFilename", "", "set output name for recording")
+		flgs.BoolVar(&opts.PlaybackCheckROM, "playbackCheckROM", true, "check ROM hash on playback")
+		flgs.BoolVar(&opts.PlaybackIgnoreDigest, "playbackIgnoreDigest", false, "ignore video digests in playback files")
 		flgs.StringVar(&opts.PatchFile, "patch", "", "path to apply to emulation (not playback files")
 		flgs.BoolVar(&opts.Wav, "wav", false, "record audio to wav file")
 		flgs.BoolVar(&opts.NoEject, "noeject", false, "emulator will not quit is noeject is true")

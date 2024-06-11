@@ -43,12 +43,8 @@ type EventRecorder interface {
 }
 
 // AttachEventRecorder attaches an EventRecorder implementation.
-func (inp *Input) AddRecorder(r EventRecorder) error {
-	if inp.playback != nil {
-		return fmt.Errorf("input: attach recorder: emulator already has a playback attached")
-	}
+func (inp *Input) AddRecorder(r EventRecorder) {
 	inp.recorder = append(inp.recorder, r)
-	return nil
 }
 
 // ClearRecorders removes all registered event recorders.
@@ -103,6 +99,14 @@ func (inp *Input) handlePlaybackEvents() error {
 				case inp.toPassenger <- ev:
 				default:
 					return fmt.Errorf("input: passenger event queue is full: input dropped")
+				}
+			}
+
+			// forward event to attached recorders
+			for _, r := range inp.recorder {
+				err := r.RecordEvent(ev)
+				if err != nil {
+					return err
 				}
 			}
 		}

@@ -36,14 +36,16 @@ type CommandLineOptions struct {
 	ELF       string
 
 	// playmode only
-	ComparisonROM    string
-	ComparisonPrefs  string
-	Record           bool
-	PlaybackCheckROM bool
-	PatchFile        string
-	Wav              bool
-	NoEject          bool
-	Macro            string
+	ComparisonROM        string
+	ComparisonPrefs      string
+	Record               bool
+	RecordFilename       string
+	PlaybackCheckROM     bool
+	PlaybackIgnoreDigest bool
+	PatchFile            string
+	Wav                  bool
+	NoEject              bool
+	Macro                string
 
 	// debugger only
 	InitScript string
