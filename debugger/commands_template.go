@@ -130,7 +130,7 @@ var commandTemplate = []string{
 
 	// peripherals (components that might not be present)
 	cmdPlusROM + " (NICK [%<name>S]|ID [%<id>S]|HOST [%<host>S]|PATH [%<path>S])",
-	cmdCoProc + " (ID|LIST [FAULTS|SOURCEFILES|FUNCTIONS]|TOP (%<top>N)|MEM {DUMP {%<area>S}}|REGS %<group>S|SET %<register>N %<value>N|STEP)",
+	cmdCoProc + " (ID|LIST [FAULTS|SOURCEFILES|FUNCTIONS]|TOP (%<top>N)|MEM [DUMP {%<area>S}|SEARCH {%<value>N} {%<bitwidth>N}]|REGS %<group>S|SET %<register>N %<value>N|STEP)",
 	cmdDWARF + " [FUNCTIONS|GLOBALS|LOCALS {DERIVATION|RANGES|ERROR}|FRAMEBASE {DERIVATION}|LINE %<file:line>S|CALLSTACK|CALLERS %<function>S]",
 
 	// user input

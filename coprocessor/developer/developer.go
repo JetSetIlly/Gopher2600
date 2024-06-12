@@ -17,6 +17,7 @@ package developer
 
 import (
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -43,7 +45,7 @@ type TV interface {
 // Cartridge defines the interface to the cartridge required by the developer package
 type Cartridge interface {
 	GetCoProcBus() coprocessor.CartCoProcBus
-	PushFunction(func())
+	GetStaticBus() mapper.CartStaticBus
 }
 
 // Emulation defines an interface to the emulation for retreiving the emulation state
@@ -349,4 +351,51 @@ func (dev *Developer) SetEmulationState(state govern.State) {
 // BreakOnNextStep forces the coprocess to break after next instruction execution
 func (dev *Developer) BreakNextInstruction() {
 	dev.breakNextInstruction = true
+}
+
+// SearchStaticMemory searches the cartridges static memory areas for
+func (dev *Developer) SearchStaticMemory(output io.Writer, data uint32, width int) error {
+	bus := dev.cart.GetStaticBus()
+	if bus == nil {
+		return fmt.Errorf("static memory not available")
+	}
+
+	if width != 1 && width != 2 && width != 4 {
+		return fmt.Errorf("width of %d is unsupported", width)
+	}
+
+	mem := bus.GetStatic()
+	segments := mem.Segments()
+	for _, seg := range segments {
+		for addr := seg.Origin; addr < seg.Memtop-uint32(width); addr += uint32(width) {
+			switch width {
+			case 1:
+				v, ok := mem.Read8bit(addr)
+				if !ok {
+					return fmt.Errorf("address %08x not found in segment (it should be)", addr)
+				}
+				if v == uint8(data) {
+					output.Write([]byte(fmt.Sprintf("%s %08x", seg.Name, addr)))
+				}
+			case 2:
+				v, ok := mem.Read16bit(addr)
+				if !ok {
+					return fmt.Errorf("address %08x not found in segment (it should be)", addr)
+				}
+				if v == uint16(data) {
+					output.Write([]byte(fmt.Sprintf("%s %08x", seg.Name, addr)))
+				}
+			case 4:
+				v, ok := mem.Read32bit(addr)
+				if !ok {
+					return fmt.Errorf("address %08x not found in segment (it should be)", addr)
+				}
+				if v == uint32(data) {
+					output.Write([]byte(fmt.Sprintf("%s %08x", seg.Name, addr)))
+				}
+			}
+		}
+	}
+
+	return nil
 }

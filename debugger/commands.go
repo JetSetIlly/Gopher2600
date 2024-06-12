@@ -1504,6 +1504,28 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 						dump(seg.Name)
 					}
 				}
+			case "SEARCH":
+				if v, ok := tokens.Get(); ok {
+					val, err := strconv.ParseUint(v, 0, 32)
+					if err != nil {
+						dbg.printLine(terminal.StyleError, "value argument for COPROC SEARCH must be a 32bit value")
+						return nil
+					}
+
+					if v, ok := tokens.Get(); ok {
+						bitwidth, err := strconv.ParseUint(v, 0, 8)
+						if err != nil {
+							dbg.printLine(terminal.StyleError, "bitwidth argument for COPROC SEARCH must be 8, 16, or 32")
+							return nil
+						}
+						if bitwidth != 8 && bitwidth != 16 && bitwidth != 32 {
+							dbg.printLine(terminal.StyleError, "bitwidth argument for COPROC SEARCH must be 8, 16, or 32")
+							return nil
+						}
+
+						dbg.CoProcDev.SearchStaticMemory(dbg.writerInStyle(terminal.StyleFeedback), uint32(val), int(bitwidth)/8)
+					}
+				}
 			default:
 				for _, seg := range static.Segments() {
 					s := fmt.Sprintf("%s: %08x to %08x", seg.Name, seg.Origin, seg.Memtop)

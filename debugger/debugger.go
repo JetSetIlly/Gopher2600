@@ -1218,8 +1218,8 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 		logger.Logf(logger.Allow, "debugger", err.Error())
 	}
 
-	dbg.CoProcDisasm.AttachCartridge(dbg)
-	err = dbg.CoProcDev.AttachCartridge(dbg, cartload.Filename, dbg.opts.ELF)
+	dbg.CoProcDisasm.AttachCartridge(dbg.vcs.Mem.Cart)
+	err = dbg.CoProcDev.AttachCartridge(dbg.vcs.Mem.Cart, cartload.Filename, dbg.opts.ELF)
 	if err != nil {
 		logger.Logf(logger.Allow, "debugger", err.Error())
 		if errors.Is(err, coproc_dwarf.UnsupportedDWARF) {
@@ -1512,11 +1512,6 @@ func (dbg *Debugger) GetLiveDisasmEntry() disassembly.Entry {
 	}
 
 	return *dbg.liveDisasmEntry
-}
-
-// GetCoProcBus returns the interface to a cartridge's coprocessor
-func (dbg *Debugger) GetCoProcBus() coprocessor.CartCoProcBus {
-	return dbg.vcs.Mem.Cart.GetCoProcBus()
 }
 
 // memoryProfile forces a garbage collection event and takes a runtime memory
