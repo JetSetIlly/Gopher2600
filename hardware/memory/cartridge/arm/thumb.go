@@ -1153,7 +1153,7 @@ func (arm *ARM) decodeThumbLoadStoreSignExtendedByteHalford(opcode uint16) decod
 			if hi {
 				if arm.decodeOnly {
 					return &DisasmEntry{
-						Operator: "LDSH",
+						Operator: "LDRSH",
 						Operand:  fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg),
 					}
 				}
