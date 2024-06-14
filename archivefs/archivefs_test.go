@@ -18,6 +18,7 @@ package archivefs_test
 import (
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -31,6 +32,13 @@ func TestArchivefsPath(t *testing.T) {
 	var entries []archivefs.Entry
 	var err error
 
+	// get working directory for test. we need this so we can modify the testing
+	// path for comparison with result from the archivefs.Set() function
+	wd, err := os.Getwd()
+	test.ExpectSuccess(t, err)
+	wd, err = filepath.Abs(wd)
+	test.ExpectSuccess(t, err)
+
 	// non-existant file
 	path = "foo"
 	err = afs.Set(path, false)
@@ -41,7 +49,7 @@ func TestArchivefsPath(t *testing.T) {
 	path = "testdir"
 	err = afs.Set(path, false)
 	test.ExpectSuccess(t, err)
-	test.ExpectEquality(t, afs.String(), path)
+	test.ExpectEquality(t, afs.String(), filepath.Join(wd, path))
 	test.ExpectSuccess(t, afs.IsDir())
 	test.ExpectSuccess(t, !afs.InArchive())
 
@@ -61,7 +69,7 @@ func TestArchivefsPath(t *testing.T) {
 	path = filepath.Join("testdir", "testfile")
 	err = afs.Set(path, false)
 	test.ExpectSuccess(t, err)
-	test.ExpectEquality(t, afs.String(), path)
+	test.ExpectEquality(t, afs.String(), filepath.Join(wd, path))
 	test.ExpectSuccess(t, !afs.IsDir())
 	test.ExpectSuccess(t, !afs.InArchive())
 
@@ -76,7 +84,7 @@ func TestArchivefsPath(t *testing.T) {
 	path = filepath.Join("testdir", "testarchive.zip")
 	err = afs.Set(path, false)
 	test.ExpectSuccess(t, err)
-	test.ExpectEquality(t, afs.String(), path)
+	test.ExpectEquality(t, afs.String(), filepath.Join(wd, path))
 	test.ExpectSuccess(t, afs.IsDir())
 	test.ExpectSuccess(t, afs.InArchive())
 
@@ -90,7 +98,7 @@ func TestArchivefsPath(t *testing.T) {
 	path = filepath.Join("testdir", "testarchive.zip", "archivefile1")
 	err = afs.Set(path, false)
 	test.ExpectSuccess(t, err)
-	test.ExpectEquality(t, afs.String(), path)
+	test.ExpectEquality(t, afs.String(), filepath.Join(wd, path))
 	test.ExpectSuccess(t, !afs.IsDir())
 	test.ExpectSuccess(t, afs.InArchive())
 
@@ -98,7 +106,7 @@ func TestArchivefsPath(t *testing.T) {
 	path = filepath.Join("testdir", "testarchive.zip", "archivedir")
 	err = afs.Set(path, false)
 	test.ExpectSuccess(t, err)
-	test.ExpectEquality(t, afs.String(), path)
+	test.ExpectEquality(t, afs.String(), filepath.Join(wd, path))
 	test.ExpectSuccess(t, afs.IsDir())
 	test.ExpectSuccess(t, afs.InArchive())
 
@@ -112,7 +120,7 @@ func TestArchivefsPath(t *testing.T) {
 	path = filepath.Join("testdir", "testarchive.zip", "archivedir", "archivefile3")
 	err = afs.Set(path, false)
 	test.ExpectSuccess(t, err)
-	test.ExpectEquality(t, afs.String(), path)
+	test.ExpectEquality(t, afs.String(), filepath.Join(wd, path))
 	test.ExpectSuccess(t, !afs.IsDir())
 	test.ExpectSuccess(t, afs.InArchive())
 }

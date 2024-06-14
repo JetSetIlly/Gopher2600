@@ -359,7 +359,7 @@ func (afs *Path) Set(path string, fallback bool) error {
 	}
 
 	// make sure path is clean
-	afs.current = filepath.Clean(search)
+	afs.current = filepath.Clean(afs.current)
 
 	return nil
 }
