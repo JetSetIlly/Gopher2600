@@ -35,13 +35,29 @@ const leadingFrames = 1
 const stabilityThreshold = 6
 
 type vsync struct {
-	active          bool
-	activeClock     int
-	activeScanlines int
+	active bool
+
+	// the scanline on which the most recent VSYNC signal started. this is used
+	// to populate the FrameInfo VSYNCscanline field
+	startScanline int
+
+	// the clock on which the VSYNC was activated
+	startClock int
+
+	// number of whole scanlines the VSYNC has been active for. using
+	// activeClock as the mark to increase the count
+	activeScanlineCount int
 
 	// the ideal scanline at which the "new frame" is triggered. this can be
 	// thought of as the number of scanline between valid VSYNC signals. as
 	// such, it is only reset on reception of a valid VSYNC signal
+	//
+	// that value of this can go way beyond the number of specification.AbsoluteMaxScanlines
+	// during the period when there is no VSYNC. it is therefore a good idea to
+	// modulo divide this field with AbsoluteMaxScanlines before using it
+	//
+	// when scanline is equal to flybackScanline then the television is
+	// synchronised. see isSynced() function
 	scanline int
 
 	// the scanline at which a "new frame" is actually triggered. this will be
@@ -49,22 +65,37 @@ type vsync struct {
 	// the screen to visually roll
 	flybackScanline int
 
-	// a vary good example of a ROM that requires correct handling of
-	// natural flyback is Andrew Davies' Chess (3e+ test rom)
+	// short history of the active field. updated every newFrame(). each bit
+	// from LSB to MSB records the active field from most recent to least recent
 	//
-	// (06/01/21) another example is the Artkaris NTSC version of Lili
+	// this is likely more than we need but it's simple and it works
+	history uint8
 }
 
 func (v *vsync) reset() {
 	v.active = false
-	v.activeClock = 0
-	v.activeScanlines = 0
-	v.flybackScanline = specification.AbsoluteMaxScanlines
+	v.startClock = 0
+	v.activeScanlineCount = 0
 	v.scanline = 0
+	v.flybackScanline = specification.AbsoluteMaxScanlines
+	v.startScanline = 0
+	v.history = 0
 }
 
 func (v vsync) isSynced() bool {
 	return v.scanline == v.flybackScanline
+}
+
+func (v *vsync) updateHistory() {
+	v.history <<= 1
+	if v.active {
+		v.history |= 0x01
+	}
+}
+
+func (v *vsync) desync(base int) {
+	// move flybackScanline value towards base value
+	v.flybackScanline += (base - v.flybackScanline) * 5 / 100
 }
 
 // State encapsulates the television values that can change from moment to
@@ -103,8 +134,8 @@ type State struct {
 	// vsync control
 	vsync vsync
 
-	// isSynced is a short history of vsync.isSynced() results
-	isSynced [2]bool
+	// latch to say if next flyback was a result of VSYNC or not
+	fromVSYNC bool
 
 	// frame resizer
 	resizer Resizer
@@ -312,9 +343,7 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	tv.state.scanline = 0
 	tv.state.stableFrames = 0
 	tv.state.vsync.reset()
-	for i := range tv.state.isSynced {
-		tv.state.isSynced[i] = false
-	}
+	tv.state.fromVSYNC = false
 	tv.state.lastSignal = signal.NoSignal
 
 	for i := range tv.signals {
@@ -508,51 +537,77 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 	// examine signal for resizing possibility.
 	tv.state.resizer.examine(tv.state, sig)
 
-	// count VSYNC scanlines
-	if tv.state.vsync.active && tv.state.clock == tv.state.vsync.activeClock {
-		tv.state.vsync.activeScanlines++
-	}
-
 	// check for change of VSYNC signal
 	if sig&signal.VSync != tv.state.lastSignal&signal.VSync {
 		if sig&signal.VSync == signal.VSync {
 			// VSYNC has started
 			tv.state.vsync.active = true
-			tv.state.vsync.activeScanlines = 0
-			tv.state.vsync.activeClock = tv.state.clock
+			tv.state.vsync.activeScanlineCount = 0
+			tv.state.vsync.startClock = tv.state.clock
+			tv.state.vsync.startScanline = tv.state.scanline
 		} else {
-			// the number of scanlines that the VSYNC has been held should be
-			// somewhere between two and three. anything over three is fine
-			// TODO: make this a user preference
-			if tv.state.vsync.activeScanlines >= tv.env.Prefs.TV.VSYNCscanlines.Get().(int) {
-				recovery := max(preferences.VSYNCrecoveryMin,
-					min(preferences.VSYNCrecoveryMax,
-						tv.env.Prefs.TV.VSYNCrecovery.Get().(int)))
-
+			if tv.state.vsync.activeScanlineCount >= tv.env.Prefs.TV.VSYNCscanlines.Get().(int) {
 				// adjust flyback scanline until it matches the vsync scanline.
 				// also adjust the actual scanline if it's not zero
 				if tv.state.vsync.scanline < tv.state.vsync.flybackScanline {
+					// get recovery value from user prefence and make sure value is sensible
+					recovery := max(preferences.VSYNCrecoveryMin,
+						min(preferences.VSYNCrecoveryMax,
+							tv.env.Prefs.TV.VSYNCrecovery.Get().(int)))
+
 					adj := ((tv.state.vsync.flybackScanline - tv.state.vsync.scanline) * recovery) / 100
 					tv.state.vsync.flybackScanline = tv.state.vsync.scanline + adj
 					tv.state.scanline = (tv.state.scanline * recovery) / 100
+
+					// if recovery is very close to zero, within the number of
+					// scanlines in the VSYNC, then snap scanline to zero. cap
+					// at a value of five scanlines in case of ROM going bezerk
+					//
+					// we do this because otherwise the FrameInfo type can be
+					// updated with misleading VSYNC information. for example,
+					// one frame might report have one frame with one scanline
+					// in the VSYNC and the next frame having two scanlines of
+					// VSYNC
+					if tv.state.scanline <= min(tv.state.vsync.activeScanlineCount, 5) {
+						tv.state.scanline = 0
+					}
 				} else if tv.state.vsync.scanline > tv.state.vsync.flybackScanline {
 					// note that if the programmed number of scanlines between VSYNCs is
 					// greater than the specification.AbsoluteMaxScanlines then this condition
 					// will always be true and the screen will roll forever
 
-					// if the current and previous frames were created from a synchronised position then
-					// move the flyback scanline to the new value
+					// good test cases for this branch:
 					//
-					// there is also a user preference that controls whether to allow this or not
-					if tv.state.isSynced[0] && tv.state.isSynced[1] && !tv.env.Prefs.TV.VSYNCimmediateDesync.Get().(bool) {
+					//  Snow White and the Seven Dwarfs
+					//		- movement in tunnel section
+					//  Lord of the Rings
+					//		- switching between map screen and play screen
+
+					if tv.state.vsync.history == 0x0 {
+						// almost any ROM will trigger this branch on startup
+						// because they all run for longer than a frame in order
+						// to prepare the game
+						tv.state.vsync.flybackScanline = tv.state.vsync.scanline % specification.AbsoluteMaxScanlines
+					} else if tv.env.Prefs.TV.VSYNCimmediateDesync.Get().(bool) {
+						// if the immediate desync option is on then this is the
+						// same as if the ROM has never achieved VSYNC in the
+						// recent past
 						tv.state.vsync.flybackScanline = tv.state.vsync.scanline % specification.AbsoluteMaxScanlines
 					} else {
-						tv.state.vsync.flybackScanline = specification.AbsoluteMaxScanlines
+						// move flyback scanline towards the new VSYNC scanline in all other instances
+						tv.state.vsync.desync(tv.state.vsync.scanline % specification.AbsoluteMaxScanlines)
 					}
 				} else if tv.state.vsync.scanline == tv.state.vsync.flybackScanline {
 					// continue to adjust scanline until it is zero
 					if tv.state.scanline > 0 {
+						// see above for commentary on this code
+						recovery := max(preferences.VSYNCrecoveryMin,
+							min(preferences.VSYNCrecoveryMax,
+								tv.env.Prefs.TV.VSYNCrecovery.Get().(int)))
 						tv.state.scanline = (tv.state.scanline * recovery) / 100
+						if tv.state.scanline <= min(tv.state.vsync.activeScanlineCount, 5) {
+							tv.state.scanline = 0
+						}
 					}
 				}
 
@@ -564,10 +619,23 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 
 				// reset VSYNC scanline count only when we've received a valid VSYNC signal
 				tv.state.vsync.scanline = 0
+
+				// set fromVSYNC field
+				tv.state.fromVSYNC = true
 			}
+
+			// if the VSYNC signal is not valid or doesn't happen at all then
+			// desynchronisation is performed in the newFrame() function
 
 			// end of VSYNC
 			tv.state.vsync.active = false
+		}
+	}
+
+	// count VSYNC scanlines and clocks
+	if tv.state.vsync.active {
+		if tv.state.clock == tv.state.vsync.startClock {
+			tv.state.vsync.activeScanlineCount++
 		}
 	}
 
@@ -586,6 +654,8 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 		tv.state.scanline++
 		tv.state.vsync.scanline++
 
+		// a very good example of a ROM that requires correct handling of
+		// natural flyback is Andrew Davies' Chess (3e+ test rom)
 		if tv.state.scanline >= tv.state.vsync.flybackScanline {
 			err := tv.newFrame()
 			if err != nil {
@@ -720,11 +790,6 @@ func (tv *Television) newFrame() error {
 	// update frame number
 	tv.state.frameInfo.FrameNum = tv.state.frameNum
 
-	// note whether frame is synchronised or not
-	tv.state.isSynced[1] = tv.state.isSynced[0]
-	tv.state.isSynced[0] = tv.state.vsync.isSynced()
-	tv.state.frameInfo.IsSynced = tv.state.isSynced[0]
-
 	// commit any resizing that maybe pending
 	err := tv.state.resizer.commit(tv.state)
 	if err != nil {
@@ -744,6 +809,24 @@ func (tv *Television) newFrame() error {
 	} else {
 		tv.state.frameInfo.Jitter = false
 	}
+
+	// note VSYNC information and update VSYNC history
+	tv.state.frameInfo.FromVSYNC = tv.state.fromVSYNC
+	tv.state.frameInfo.IsSynced = tv.state.vsync.isSynced()
+	tv.state.frameInfo.VSYNCscanline = tv.state.vsync.startScanline
+	tv.state.frameInfo.VSYNCcount = tv.state.vsync.activeScanlineCount
+	tv.state.vsync.updateHistory()
+
+	// desynchronise if we've not seen a valid VSYNC signal immediately before
+	// this call to newFrame()
+	if !tv.state.fromVSYNC {
+		if tv.env.Prefs.TV.VSYNCimmediateDesync.Get().(bool) {
+			tv.state.vsync.flybackScanline = specification.AbsoluteMaxScanlines
+		} else {
+			tv.state.vsync.desync(specification.AbsoluteMaxScanlines)
+		}
+	}
+	tv.state.fromVSYNC = false
 
 	// prepare for next frame
 	tv.state.frameNum++

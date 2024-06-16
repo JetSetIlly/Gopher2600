@@ -64,11 +64,11 @@ type playscrOverlay struct {
 	playscr *playScr
 
 	// fps information is updated on every pule of the time.Ticker. the fps and
-	// hz string is updated at that time and then displayed on every draw()
-	fpsPulse *time.Ticker
-	fpsForce chan bool
-	fps      string
-	hz       string
+	// refreshRate string is updated at that time and then displayed on every draw()
+	fpsPulse    *time.Ticker
+	fpsForce    chan bool
+	fps         string
+	refreshRate string
 
 	// memory stats are updated along with the fpsPulse
 	memStats runtime.MemStats
@@ -170,9 +170,9 @@ func (oly *playscrOverlay) draw() {
 }
 
 func (oly *playscrOverlay) updateRefreshRate() {
-	fps, hz := oly.playscr.img.dbg.VCS().TV.GetActualFPS()
+	fps, refreshRate := oly.playscr.img.dbg.VCS().TV.GetActualFPS()
 	oly.fps = fmt.Sprintf("%03.2f fps", fps)
-	oly.hz = fmt.Sprintf("%03.2fhz", hz)
+	oly.refreshRate = fmt.Sprintf("%03.2fhz", refreshRate)
 }
 
 // information in the top left corner of the overlay are about the emulation.
@@ -228,14 +228,18 @@ func (oly *playscrOverlay) drawTopLeft() {
 		imgui.Text(fmt.Sprintf("%d total scanlines", oly.playscr.scr.crit.frameInfo.TotalScanlines))
 
 		imguiSeparator()
+		if oly.playscr.scr.crit.frameInfo.FromVSYNC {
+			imgui.Text(fmt.Sprintf("VSYNC %d+%d", oly.playscr.scr.crit.frameInfo.VSYNCscanline,
+				oly.playscr.scr.crit.frameInfo.VSYNCcount))
+		} else {
+			imgui.Text(fmt.Sprintf("VSYNC %c none", fonts.Bug))
+		}
+
+		imguiSeparator()
 		imgui.Text(oly.playscr.img.screen.crit.frameInfo.Spec.ID)
 
 		imgui.SameLine()
-		imgui.Text(oly.hz)
-		if !oly.playscr.scr.crit.frameInfo.IsSynced {
-			imgui.SameLine()
-			imgui.Text(string(fonts.NoVSYNC))
-		}
+		imgui.Text(oly.refreshRate)
 
 		imguiSeparator()
 		imgui.Text(fmt.Sprintf("%d frame input lag", oly.playscr.scr.crit.frameQueueLen))

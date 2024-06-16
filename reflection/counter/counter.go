@@ -66,6 +66,5 @@ func (ct *Counter) TimelineCounts() rewind.TimelineCounts {
 // NewFrame implements the television.FrameTrigger interface.
 func (ct *Counter) NewFrame(info television.FrameInfo) error {
 	ct.Clear()
-	ct.counts.Hz = info.RefreshRate
 	return nil
 }
