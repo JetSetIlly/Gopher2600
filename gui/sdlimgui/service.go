@@ -193,19 +193,6 @@ func (img *SdlImgui) Service() {
 						}
 					}
 
-					// trigger service wake in time for next Service() iteration.
-					// without this, the results of the mouse button will not be
-					// seen until the timeout (in the next iteration) has elapsed.
-					//
-					// eg. closing a window: the window will be drawn on *this*
-					// frame and *this* mouse button press will be acknowledged.
-					// next frame the window will not be drawn. however, the *next*
-					// frame will sleep until the time out - *this* mouse button
-					// event has been consumed. setting alerted ensures there is no
-					// delay in drawing the *next* frame
-					img.polling.alerted = true
-
-				case *sdl.MouseWheelEvent:
 					// only respond to mouse wheel events if the window has
 					// input focus. this is because without input focus
 					// getKeyMod() will always return userinput.KeyModNone. it

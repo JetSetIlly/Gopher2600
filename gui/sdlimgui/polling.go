@@ -125,7 +125,19 @@ func (pol *polling) wait() sdl.Event {
 			timeout = playPausedSleepPeriod
 		}
 	} else {
-		if pol.img.dbg.State() == govern.Running || pol.img.wm.debuggerWindows[winSelectROMID].debuggerIsOpen() {
+		// if mouse is being held (eg. on the "step scanline" button) then it
+		// will not be detected as an event we therefore must explicitely test
+		// if it's being held
+		//
+		// (16/06/24 note that this may mean that the alerted flag is no longer
+		// required but we'll keep it in because it's a useful idea)
+		_, _, mouseState := sdl.GetMouseState()
+		mouseHeld := mouseState&sdl.ButtonLMask() != 0
+
+		if mouseHeld {
+			timeout = debugSleepPeriodRunning
+			pol.keepAwake = true
+		} else if pol.img.dbg.State() == govern.Running || pol.img.wm.debuggerWindows[winSelectROMID].debuggerIsOpen() {
 			timeout = debugSleepPeriodRunning
 		} else if pol.alerted || pol.keepAwake {
 			// this branch used to depend on a debugger flag "hasChanged". this
