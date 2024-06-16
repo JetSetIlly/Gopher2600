@@ -477,7 +477,7 @@ func (win *winDbgScr) drawCoordsLine() {
 
 		imgui.TableNextColumn()
 		signal := fmt.Sprintf("%s", win.img.cache.TV.GetLastSignal().String())
-		if !win.scr.crit.frameInfo.IsSynced {
+		if !win.scr.crit.frameInfo.FromVSYNC {
 			signal = fmt.Sprintf("%sUNSYNCED", signal)
 		}
 		imgui.Text(signal)

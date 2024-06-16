@@ -23,10 +23,15 @@ import (
 )
 
 // FrameInfo records the current frame information, as opposed to the optimal
-// values of the specification, a copy of which is provided as reference.
+// values of the specification.
 type FrameInfo struct {
+	// a copy of the television Spec that is considered to be in action. All
+	// fields with the exception of ID, Colors and HorizontalScanRate may have
+	// been superceded by values in the FrameInfo field. But they are good to
+	// have for reference
 	Spec specification.Spec
 
+	// FrameNum can be used to distinguish one FrameInfo instance from another
 	FrameNum int
 
 	// the top and bottom scanlines that are to be present visually to the
@@ -43,26 +48,32 @@ type FrameInfo struct {
 	VisibleTop    int
 	VisibleBottom int
 
-	// the number of scanlines considered to be in the frame. the number of
-	// scanlines that are actually in the frame may actually be less or more.
-	// this can happen when a the refresh rate is changing, for example.
-	//
-	// note therefore, that the refresh rate can change but the reported number
-	// of total scanlines not changing at the same time. the practical
-	// consequence of this is that it is possible for there to be more
-	// scanlines in the signals slice sent to the PixelRenderer via the
-	// SetPixels() function
+	// the number of scanlines considered to be in the frame
 	TotalScanlines int
 
-	// the refresh rate. this value is derived from the number of scanlines in
-	// the frame but note that that may not be equal to the TotalScanlines
-	// field
+	// the refresh rate. this value is derived from the number of scanlines
+	// and is really a short-cut for:
+	//
+	//    Spec.HorizontalScanRate / TotalScanlines
 	RefreshRate float32
 
-	// has the refresh rate changed since the previous frame
+	// has the TotalScanline field, and the RefreshRate field, changed since the
+	// previous frame
 	Jitter bool
 
-	// whether the TV is synchronised with the incoming TV signal
+	// whether the TV frame was begun as a result of a valid VSYNC signal
+	FromVSYNC bool
+
+	// VSYNCscanline is the scanline on which the VSYNC signal starts. not valid
+	// if FromVSYNC is false
+	VSYNCscanline int
+	VSYNCcount    int
+
+	// IsSynced indicates that the television is synchronised with the incoming
+	// VSYNC signal and is not rolling. this is different to FromVSYNC which
+	// simply tells us that this current frame was started as a result of a
+	// VSYNC signal (ie. the television might not yet have recorvered from a
+	// desynchronisation)
 	IsSynced bool
 
 	// Stable is true once the television frame has been consistent for N
@@ -125,7 +136,7 @@ func (info *FrameInfo) reset() {
 	info.VisibleBottom = info.Spec.IdealVisibleBottom
 	info.TotalScanlines = info.Spec.ScanlinesTotal
 	info.RefreshRate = info.Spec.RefreshRate
-	info.IsSynced = false
+	info.FromVSYNC = false
 	info.Stable = false
 }
 

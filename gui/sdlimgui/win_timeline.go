@@ -222,10 +222,17 @@ func (win *winTimeline) drawToolbar() {
 
 		if win.isHovered || win.isScrubbingValid() {
 			imgui.SameLineV(0, 15)
-			imguiColorLabelSimple(fmt.Sprintf("%d Scanlines", win.img.cache.Rewind.Timeline.TotalScanlines[win.hoverIdx]), win.img.cols.TimelineScanlines)
+			imgui.Text(fmt.Sprintf("Frame %d", win.img.cache.Rewind.Timeline.FrameNum[win.hoverIdx]))
 
 			imgui.SameLineV(0, 15)
-			imguiColorLabelSimple(fmt.Sprintf("%.02fHz", win.img.cache.Rewind.Timeline.Counts[win.hoverIdx].Hz), win.img.cols.TimelineHz)
+			imguiColorLabelSimple(fmt.Sprintf("%d Scanlines", win.img.cache.Rewind.Timeline.FrameInfo[win.hoverIdx].TotalScanlines), win.img.cols.TimelineScanlines)
+
+			imgui.SameLineV(0, 15)
+			if timeline.FrameInfo[win.hoverIdx].FromVSYNC {
+				imguiColorLabelSimple(fmt.Sprintf("%d+%d VSYNC", win.img.cache.Rewind.Timeline.FrameInfo[win.hoverIdx].VSYNCscanline, win.img.cache.Rewind.Timeline.FrameInfo[win.hoverIdx].VSYNCcount), win.img.cols.TimelineVSYNC)
+			} else {
+				imguiColorLabelSimple("No VSYNC", win.img.cols.TimelineVSYNC)
+			}
 
 			imgui.SameLineV(0, 15)
 			imguiColorLabelSimple(fmt.Sprintf("%.02f%% WSYNC", win.img.cache.Rewind.Timeline.Ratios[win.hoverIdx].WSYNC*100), win.img.cols.TimelineWSYNC)
@@ -388,14 +395,14 @@ func (win *winTimeline) drawTrace() {
 		plotY := yPos + graphHeight
 
 		// scale TotalScanlines value so that it covers the entire height of traceSize
-		plotY -= float32(timeline.TotalScanlines[i]) * graphHeight / specification.AbsoluteMaxScanlines
+		plotY -= float32(timeline.FrameInfo[i].TotalScanlines) * graphHeight / specification.AbsoluteMaxScanlines
 
 		// add jitter to trace to indicate changes in value through exaggeration
 		if i > 0 {
-			if timeline.TotalScanlines[i] != timeline.TotalScanlines[i-1] {
-				if timeline.TotalScanlines[i] < timeline.TotalScanlines[i-1] {
+			if timeline.FrameInfo[i].TotalScanlines != timeline.FrameInfo[i-1].TotalScanlines {
+				if timeline.FrameInfo[i].TotalScanlines < timeline.FrameInfo[i-1].TotalScanlines {
 					plotY++
-				} else if timeline.TotalScanlines[i] > timeline.TotalScanlines[i-1] {
+				} else if timeline.FrameInfo[i].TotalScanlines > timeline.FrameInfo[i-1].TotalScanlines {
 					plotY--
 				}
 
@@ -413,25 +420,27 @@ func (win *winTimeline) drawTrace() {
 			imgui.Vec2{X: plotX + plotWidth, Y: plotY + plotHeight},
 			win.img.cols.timelineScanlines)
 
-		// Hz TRACE
-		//
-		// plot Hz from a quarter from the bottom of the graph
-		plotY = yPos + (graphHeight * 0.75)
-		plotY -= float32(timeline.Counts[i].Hz) * (graphHeight * 0.75) / specification.AbsoluteMaxScanlines
+		// VSYNC TRACE
+		if timeline.FrameInfo[i].FromVSYNC {
+			vsyncCount := min(timeline.FrameInfo[i].VSYNCcount, 6)
 
-		// add jitter to trace to indicate changes in value through exaggeration
-		if i > 0 {
-			if timeline.Counts[i].Hz < timeline.Counts[i-1].Hz {
-				plotY++
-			} else if timeline.Counts[i].Hz > timeline.Counts[i-1].Hz {
-				plotY--
+			plotY = yPos + (graphHeight * 0.75)
+			plotY -= float32(timeline.FrameInfo[i].VSYNCscanline) * (graphHeight * 0.75) / specification.AbsoluteMaxScanlines
+
+			// add jitter to trace to indicate changes in value through exaggeration
+			if i > 0 {
+				diff := timeline.FrameInfo[i].VSYNCscanline - timeline.FrameInfo[i-1].VSYNCscanline
+				if diff > 0 && diff < vsyncCount {
+					plotY--
+				} else if diff < 0 && diff > -vsyncCount {
+					plotY++
+				}
 			}
-		}
 
-		// plot a dotted line if count isn't valid and a solid line if it is
-		dl.AddRectFilled(imgui.Vec2{X: plotX, Y: plotY},
-			imgui.Vec2{X: plotX + plotWidth, Y: plotY + plotHeight},
-			win.img.cols.timelineHz)
+			dl.AddRectFilled(imgui.Vec2{X: plotX, Y: plotY},
+				imgui.Vec2{X: plotX + plotWidth, Y: plotY + float32(vsyncCount)},
+				win.img.cols.timelineVSYNC)
+		}
 
 		// WSYNC TRACE
 
@@ -448,7 +457,6 @@ func (win *winTimeline) drawTrace() {
 			}
 		}
 
-		// plot a dotted line if count isn't valid and a solid line if it is
 		dl.AddRectFilled(imgui.Vec2{X: plotX, Y: plotY},
 			imgui.Vec2{X: plotX + plotWidth, Y: plotY + plotHeight},
 			win.img.cols.timelineWSYNC)
@@ -469,7 +477,6 @@ func (win *winTimeline) drawTrace() {
 				}
 			}
 
-			// plot a dotted line if count isn't valid and a solid line if it is
 			dl.AddRectFilled(imgui.Vec2{X: plotX, Y: plotY},
 				imgui.Vec2{X: plotX + plotWidth, Y: plotY + plotHeight},
 				win.img.cols.timelineCoProc)
@@ -603,10 +610,9 @@ func (win *winTimeline) saveToCSV() {
 		}
 	}()
 
-	f.WriteString("Frame Num,")
+	f.WriteString("FrameNum,")
 	f.WriteString("Scanlines,")
 	f.WriteString("CoProc,")
-	f.WriteString("Hz,")
 	f.WriteString("WSYNC,")
 	f.WriteString("Left Player,")
 	f.WriteString("Right Player,")
@@ -616,9 +622,8 @@ func (win *winTimeline) saveToCSV() {
 	timeline := win.img.cache.Rewind.Timeline
 	for i, n := range timeline.FrameNum {
 		f.WriteString(fmt.Sprintf("%d,", n))
-		f.WriteString(fmt.Sprintf("%d,", timeline.TotalScanlines[i]))
+		f.WriteString(fmt.Sprintf("%d,", timeline.FrameInfo[i].TotalScanlines))
 		f.WriteString(fmt.Sprintf("%d,", timeline.Counts[i].CoProc))
-		f.WriteString(fmt.Sprintf("%.02f,", timeline.Counts[i].Hz))
 		f.WriteString(fmt.Sprintf("%d,", timeline.Counts[i].WSYNC))
 		f.WriteString(fmt.Sprintf("%v,", timeline.LeftPlayerInput[i]))
 		f.WriteString(fmt.Sprintf("%v,", timeline.RightPlayerInput[i]))

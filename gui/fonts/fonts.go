@@ -79,7 +79,7 @@ const (
 	Pointer                = '\uf30b'
 	PaintRoller            = '\uf5aa'
 	Pencil                 = '\uf303'
-	NoVSYNC                = '\uf188'
+	Bug                    = '\uf188'
 	Cancel                 = '\uf057'
 	TV                     = '\uf108'
 	Geometry               = '\uf568'

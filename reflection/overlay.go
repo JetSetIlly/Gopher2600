@@ -25,7 +25,7 @@ type ReflectedInfo int
 
 // List of valid ReflectedInfo values.
 const (
-	Hz ReflectedInfo = iota
+	RefreshRate ReflectedInfo = iota
 	WSYNC
 	Collision
 	CXCLR

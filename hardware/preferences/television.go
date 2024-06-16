@@ -36,7 +36,7 @@ type TVPreferences struct {
 	// received. the higher the value the slower the recovery
 	VSYNCrecovery prefs.Int
 
-	// whether the television should desynchronise immediately when a VSYNC
+	// whether the televisin should desynchronise immediately when a VSYNC
 	// signal arrives late
 	VSYNCimmediateDesync prefs.Bool
 

@@ -29,7 +29,6 @@ import (
 type TimelineCounts struct {
 	WSYNC  int
 	CoProc int
-	Hz     float32
 }
 
 // TimelineCounter implementations provide system information for the
@@ -51,10 +50,10 @@ type TimelineRatios struct {
 // Useful for GUIs for example, to present the range of frame numbers that are
 // available in the rewind history.
 type Timeline struct {
-	FrameNum       []int
-	TotalScanlines []int
-	Counts         []TimelineCounts
-	Ratios         []TimelineRatios
+	FrameNum  []int
+	FrameInfo []television.FrameInfo
+	Counts    []TimelineCounts
+	Ratios    []TimelineRatios
 
 	// peripheral input (including the panel). entry is true if the peripheral
 	// was "active" at the end of a frame
@@ -77,7 +76,7 @@ const timelineLength = 1000
 func newTimeline() Timeline {
 	return Timeline{
 		FrameNum:         make([]int, 0),
-		TotalScanlines:   make([]int, 0),
+		FrameInfo:        make([]television.FrameInfo, 0),
 		Counts:           make([]TimelineCounts, 0),
 		Ratios:           make([]TimelineRatios, 0),
 		LeftPlayerInput:  make([]bool, 0),
@@ -88,7 +87,7 @@ func newTimeline() Timeline {
 
 func (tl *Timeline) reset() {
 	tl.FrameNum = tl.FrameNum[:0]
-	tl.TotalScanlines = tl.TotalScanlines[:0]
+	tl.FrameInfo = tl.FrameInfo[:0]
 	tl.Counts = tl.Counts[:0]
 	tl.Ratios = tl.Ratios[:0]
 	tl.LeftPlayerInput = tl.LeftPlayerInput[:0]
@@ -97,7 +96,7 @@ func (tl *Timeline) reset() {
 }
 
 func (tl *Timeline) checkIntegrity() error {
-	if len(tl.FrameNum) != len(tl.TotalScanlines) {
+	if len(tl.FrameNum) != len(tl.FrameInfo) {
 		return fmt.Errorf("timeline arrays are different lengths")
 	}
 
@@ -172,7 +171,7 @@ func (r *Rewind) addTimelineEntry(frameInfo television.FrameInfo) {
 		for i := range r.timeline.FrameNum {
 			if frameInfo.FrameNum <= r.timeline.FrameNum[i] {
 				r.timeline.FrameNum = r.timeline.FrameNum[:i]
-				r.timeline.TotalScanlines = r.timeline.TotalScanlines[:i]
+				r.timeline.FrameInfo = r.timeline.FrameInfo[:i]
 				r.timeline.Counts = r.timeline.Counts[:i]
 				r.timeline.LeftPlayerInput = r.timeline.LeftPlayerInput[:i]
 				r.timeline.RightPlayerInput = r.timeline.RightPlayerInput[:i]
@@ -188,7 +187,7 @@ func (r *Rewind) addTimelineEntry(frameInfo television.FrameInfo) {
 	}
 
 	r.timeline.FrameNum = append(r.timeline.FrameNum, frameInfo.FrameNum)
-	r.timeline.TotalScanlines = append(r.timeline.TotalScanlines, frameInfo.TotalScanlines)
+	r.timeline.FrameInfo = append(r.timeline.FrameInfo, frameInfo)
 	r.timeline.Counts = append(r.timeline.Counts, cts)
 	r.timeline.LeftPlayerInput = append(r.timeline.LeftPlayerInput, r.vcs.RIOT.Ports.LeftPlayer.IsActive())
 	r.timeline.RightPlayerInput = append(r.timeline.RightPlayerInput, r.vcs.RIOT.Ports.RightPlayer.IsActive())
@@ -210,7 +209,7 @@ func (r *Rewind) addTimelineEntry(frameInfo television.FrameInfo) {
 
 	if len(r.timeline.FrameNum) > timelineLength {
 		r.timeline.FrameNum = r.timeline.FrameNum[1:]
-		r.timeline.TotalScanlines = r.timeline.TotalScanlines[1:]
+		r.timeline.FrameInfo = r.timeline.FrameInfo[1:]
 		r.timeline.Counts = r.timeline.Counts[1:]
 		r.timeline.Ratios = r.timeline.Ratios[1:]
 		r.timeline.LeftPlayerInput = r.timeline.LeftPlayerInput[1:]
