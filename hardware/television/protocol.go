@@ -16,6 +16,8 @@
 package television
 
 import (
+	"errors"
+
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -178,4 +180,19 @@ type RealtimeAudioMixer interface {
 // Channel (ARC) present in modern TVs
 type VCSReturnChannel interface {
 	SetClockSpeed(specification.Spec)
+}
+
+// HaltCondition is used to tell Debugger about the halt conditions
+type HaltCondition error
+
+// list of HaltCondition values
+var HaltVSYNCTooShort = errors.New("VSYNC signal too short")
+var HaltVSYNCScanlineStart = errors.New("VSYNC start scanline is different this frame")
+var HaltVSYNCScanlineCount = errors.New("VSYNC scanline count is different this frame")
+var HaltDesynchronised = errors.New("Desynchronised")
+
+// Interface to a developer helper that can cause the emulation to halt on
+// various television related conditions
+type Debugger interface {
+	HaltFromTelevision(HaltCondition)
 }

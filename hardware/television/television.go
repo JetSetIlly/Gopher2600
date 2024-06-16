@@ -169,6 +169,9 @@ type Television struct {
 	// vcs will be nil unless AttachVCS() has been called
 	vcs VCSReturnChannel
 
+	// interface to a debugger
+	debugger Debugger
+
 	// framerate limiter
 	lmtr limiter
 
@@ -339,6 +342,11 @@ func (tv *Television) AttachVCS(env *environment.Environment, vcs VCSReturnChann
 	if tv.vcs != nil {
 		tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec)
 	}
+}
+
+// AddDebuuger adds an implementation of Debugger.
+func (tv *Television) AddDebugger(dbg Debugger) {
+	tv.debugger = dbg
 }
 
 // AddPixelRenderer adds an implementation of PixelRenderer.
@@ -558,6 +566,12 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 
 				// set fromVSYNC field
 				tv.state.fromVSYNC = true
+			} else {
+				// check VSYNC halt conditions - other conditions are checked in
+				// the newFrame() function
+				if tv.debugger != nil && tv.state.frameInfo.Stable && tv.state.frameInfo.IsSynced {
+					tv.debugger.HaltFromTelevision(HaltVSYNCTooShort)
+				}
 			}
 
 			// if the VSYNC signal is not valid or doesn't happen at all then
@@ -565,6 +579,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 
 			// end of VSYNC
 			tv.state.vsync.active = false
+
 		}
 	}
 
@@ -746,6 +761,21 @@ func (tv *Television) newFrame() error {
 		tv.state.frameInfo.Jitter = false
 	}
 
+	// check VSYNC halt conditions
+	if tv.state.fromVSYNC {
+		if tv.debugger != nil && tv.state.frameInfo.Stable && tv.state.vsync.isSynced() {
+			if tv.state.frameInfo.VSYNCscanline != tv.state.vsync.startScanline {
+				tv.debugger.HaltFromTelevision(HaltVSYNCScanlineStart)
+			} else if tv.state.frameInfo.VSYNCcount != tv.state.vsync.activeScanlineCount {
+				tv.debugger.HaltFromTelevision(HaltVSYNCScanlineCount)
+			}
+		}
+	} else {
+		if tv.debugger != nil && tv.state.frameInfo.Stable && tv.state.frameInfo.IsSynced {
+			tv.debugger.HaltFromTelevision(HaltDesynchronised)
+		}
+	}
+
 	// note VSYNC information and update VSYNC history
 	tv.state.frameInfo.FromVSYNC = tv.state.fromVSYNC
 	tv.state.frameInfo.IsSynced = tv.state.vsync.isSynced()
@@ -762,6 +792,8 @@ func (tv *Television) newFrame() error {
 			tv.state.vsync.desync(specification.AbsoluteMaxScanlines)
 		}
 	}
+
+	// reset fromVSYNC latch
 	tv.state.fromVSYNC = false
 
 	// prepare for next frame
