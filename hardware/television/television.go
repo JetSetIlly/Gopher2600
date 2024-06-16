@@ -741,6 +741,13 @@ func (tv *Television) newFrame() error {
 	// update frame number
 	tv.state.frameInfo.FrameNum = tv.state.frameNum
 
+	// check VBLANK halt condition
+	if tv.state.resizer.isChangedVBLANK() {
+		if tv.debugger != nil && tv.state.frameInfo.Stable && tv.state.vsync.isSynced() {
+			tv.debugger.HaltFromTelevision(HaltChangedVBLANK)
+		}
+	}
+
 	// commit any resizing that maybe pending
 	err := tv.state.resizer.commit(tv.state)
 	if err != nil {
