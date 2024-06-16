@@ -404,6 +404,9 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 		return nil, fmt.Errorf("debugger: %w", err)
 	}
 
+	// add TV to halting coordination
+	dbg.vcs.TV.AddDebugger(dbg.halting)
+
 	// traces
 	dbg.traces = newTraces(dbg)
 

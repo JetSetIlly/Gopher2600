@@ -16,7 +16,9 @@
 package debugger
 
 import (
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 )
 
 // haltingCoordination ties all the mechanisms that can interrupt the normal
@@ -34,6 +36,9 @@ type haltCoordination struct {
 
 	// the cartridge has issued a yield signal that we should stop the debugger for
 	cartridgeYield bool
+
+	// the television has caused a yield
+	televisionHalt television.HaltCondition
 
 	// the emulation must yield to the cartridge but it must be delayed until it
 	// is in a better state
@@ -79,6 +84,7 @@ func newHaltCoordination(dbg *Debugger) (*haltCoordination, error) {
 func (h *haltCoordination) reset() {
 	h.halt = false
 	h.cartridgeYield = false
+	h.televisionHalt = nil
 }
 
 // check for a halt condition and set the halt flag if found. returns true if
@@ -86,7 +92,12 @@ func (h *haltCoordination) reset() {
 func (h *haltCoordination) check() bool {
 	if h.cartridgeYield {
 		h.halt = true
-		return !h.halt
+		return false
+	}
+
+	if h.televisionHalt != nil {
+		h.halt = true
+		return false
 	}
 
 	// we don't check for regular break/trap/wathes if there are volatileTraps in place
@@ -143,4 +154,11 @@ func (h *haltCoordination) allowPlaymode() bool {
 	}
 
 	return true
+}
+
+// HaltFromTelevision implements television.Debugger interface
+func (h *haltCoordination) HaltFromTelevision(reason television.HaltCondition) {
+	if h.dbg.Mode() == govern.ModePlay {
+		h.televisionHalt = reason
+	}
 }
