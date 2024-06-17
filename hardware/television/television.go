@@ -570,7 +570,9 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 				// check VSYNC halt conditions - other conditions are checked in
 				// the newFrame() function
 				if tv.debugger != nil && tv.state.frameInfo.Stable && tv.state.frameInfo.IsSynced {
-					tv.debugger.HaltFromTelevision(HaltVSYNCTooShort)
+					if tv.env.Prefs.TV.HaltVSYNCTooShort.Get().(bool) {
+						tv.debugger.HaltFromTelevision(HaltVSYNCTooShort)
+					}
 				}
 			}
 
@@ -744,7 +746,9 @@ func (tv *Television) newFrame() error {
 	// check VBLANK halt condition
 	if tv.state.resizer.isChangedVBLANK() {
 		if tv.debugger != nil && tv.state.frameInfo.Stable && tv.state.vsync.isSynced() {
-			tv.debugger.HaltFromTelevision(HaltChangedVBLANK)
+			if tv.env.Prefs.TV.HaltChangedVBLANK.Get().(bool) {
+				tv.debugger.HaltFromTelevision(HaltChangedVBLANK)
+			}
 		}
 	}
 
@@ -772,14 +776,20 @@ func (tv *Television) newFrame() error {
 	if tv.state.fromVSYNC {
 		if tv.debugger != nil && tv.state.frameInfo.Stable && tv.state.vsync.isSynced() {
 			if tv.state.frameInfo.VSYNCscanline != tv.state.vsync.startScanline {
-				tv.debugger.HaltFromTelevision(HaltVSYNCScanlineStart)
+				if tv.env.Prefs.TV.HaltVSYNCScanlineStart.Get().(bool) {
+					tv.debugger.HaltFromTelevision(HaltVSYNCScanlineStart)
+				}
 			} else if tv.state.frameInfo.VSYNCcount != tv.state.vsync.activeScanlineCount {
-				tv.debugger.HaltFromTelevision(HaltVSYNCScanlineCount)
+				if tv.env.Prefs.TV.HaltVSYNCScanlineCount.Get().(bool) {
+					tv.debugger.HaltFromTelevision(HaltVSYNCScanlineCount)
+				}
 			}
 		}
 	} else {
 		if tv.debugger != nil && tv.state.frameInfo.Stable && tv.state.frameInfo.IsSynced {
-			tv.debugger.HaltFromTelevision(HaltDesynchronised)
+			if tv.env.Prefs.TV.HaltDesynchronised.Get().(bool) {
+				tv.debugger.HaltFromTelevision(HaltDesynchronised)
+			}
 		}
 	}
 

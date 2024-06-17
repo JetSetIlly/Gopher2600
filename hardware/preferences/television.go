@@ -42,6 +42,13 @@ type TVPreferences struct {
 
 	// whether the televsion should be synced on start
 	VSYNCsyncedOnStart prefs.Bool
+
+	// halt conditions
+	HaltVSYNCTooShort      prefs.Bool
+	HaltVSYNCScanlineStart prefs.Bool
+	HaltVSYNCScanlineCount prefs.Bool
+	HaltDesynchronised     prefs.Bool
+	HaltChangedVBLANK      prefs.Bool
 }
 
 func newTVPreferences() (*TVPreferences, error) {
@@ -78,6 +85,27 @@ func newTVPreferences() (*TVPreferences, error) {
 		return nil, err
 	}
 
+	err = p.dsk.Add("television.halt.vsynctooshort", &p.HaltVSYNCTooShort)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("television.halt.vsyncscanlinestart", &p.HaltVSYNCScanlineStart)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("television.halt.vsyncscanlinecount", &p.HaltVSYNCScanlineCount)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("television.halt.desynchronised", &p.HaltDesynchronised)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("television.halt.changedvblank", &p.HaltChangedVBLANK)
+	if err != nil {
+		return nil, err
+	}
+
 	err = p.dsk.Load(true)
 	if err != nil {
 		return p, err
@@ -92,6 +120,11 @@ func (p *TVPreferences) SetDefaults() {
 	p.VSYNCrecovery.Set(75)
 	p.VSYNCimmediateDesync.Set(false)
 	p.VSYNCsyncedOnStart.Set(true)
+	p.HaltVSYNCTooShort.Set(false)
+	p.HaltVSYNCScanlineStart.Set(false)
+	p.HaltVSYNCScanlineCount.Set(false)
+	p.HaltDesynchronised.Set(false)
+	p.HaltChangedVBLANK.Set(false)
 }
 
 // Load television preferences from disk.
