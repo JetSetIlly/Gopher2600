@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/prefs"
 )
 
 const winPrefsID = "Preferences"
@@ -832,5 +833,12 @@ func (win *winPrefs) drawDiskButtons() {
 		})
 
 		win.img.resetFonts = resetFontFrames
+	}
+}
+
+func prefsCheckbox(p *prefs.Bool, id string) {
+	v := p.Get().(bool)
+	if imgui.Checkbox(id, &v) {
+		p.Set(v)
 	}
 }

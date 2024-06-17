@@ -33,6 +33,8 @@ func (win *winPrefs) drawTelevision() {
 	imgui.Separator()
 	imgui.Spacing()
 	win.drawVSYNC()
+	imgui.Spacing()
+	win.drawHaltConditions()
 }
 
 func (win *winPrefs) drawColour() {
@@ -115,6 +117,17 @@ func (win *winPrefs) drawHue() {
 	}
 }
 
+func (win *winPrefs) drawHaltConditions() {
+	if imgui.CollapsingHeader("Halting") {
+		imgui.Spacing()
+		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltVSYNCTooShort, "VSYNC too short")
+		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltVSYNCScanlineStart, "VSYNC start scanline changes")
+		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltVSYNCScanlineCount, "VSYNC scanline count changes")
+		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltDesynchronised, "Screen desynchronisation")
+		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltChangedVBLANK, "VBLANK bounds change")
+	}
+}
+
 func (win *winPrefs) drawVSYNC() {
 	var label string
 
@@ -182,16 +195,11 @@ for it to be a valid VSYNC signal`)
 receiving a valid VSYNC signal`)
 
 			imgui.Spacing()
-			immediateDesync := win.img.dbg.VCS().Env.Prefs.TV.VSYNCimmediateDesync.Get().(bool)
-			imgui.Checkbox("Immediate Desyncronisation", &immediateDesync)
-			win.img.dbg.VCS().Env.Prefs.TV.VSYNCimmediateDesync.Set(immediateDesync)
+			prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.VSYNCimmediateDesync, "Immediate Dysynchronisation")
 			win.img.imguiTooltipSimple(`Desynchronise the screen immediately
 when a VSYNC signal is late`)
 
-			imgui.Spacing()
-			syncedOnStart := win.img.dbg.VCS().Env.Prefs.TV.VSYNCsyncedOnStart.Get().(bool)
-			imgui.Checkbox("Synchronised on Start", &syncedOnStart)
-			win.img.dbg.VCS().Env.Prefs.TV.VSYNCsyncedOnStart.Set(syncedOnStart)
+			prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.VSYNCsyncedOnStart, "Synchronised on start")
 			win.img.imguiTooltipSimple(`The television is synchronised on start`)
 		}
 	}
