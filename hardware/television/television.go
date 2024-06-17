@@ -75,6 +75,10 @@ type State struct {
 
 	// frame resizer
 	resizer Resizer
+
+	// bounds detection for VBLANK signal. similar to but not the same as the
+	// resizer
+	bounds vblankBounds
 }
 
 func (s *State) String() string {
@@ -293,6 +297,7 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 
 	tv.setRefreshRate(tv.state.frameInfo.Spec.RefreshRate)
 	tv.state.resizer.reset(tv.state.frameInfo.Spec)
+	tv.state.bounds.reset()
 
 	for _, r := range tv.renderers {
 		r.Reset()
@@ -480,6 +485,9 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 
 	// examine signal for resizing possibility.
 	tv.state.resizer.examine(tv.state, sig)
+
+	// check VBLANK bounds
+	tv.state.bounds.examine(sig, tv.state.scanline)
 
 	// check for change of VSYNC signal
 	if sig&signal.VSync != tv.state.lastSignal&signal.VSync {
@@ -745,14 +753,14 @@ func (tv *Television) newFrame() error {
 	tv.state.frameInfo.FrameNum = tv.state.frameNum
 
 	// check VBLANK halt condition
-	// if tv.state.resizer.isChangedVBLANK() {
-	// 	if tv.debugger != nil && tv.state.frameInfo.Stable && tv.state.vsync.isSynced() {
-	// 		if tv.env.Prefs.TV.HaltChangedVBLANK.Get().(bool) {
-	// 			tv.debugger.HaltFromTelevision(HaltChangedVBLANK)
-	// 		}
-	// 		tv.state.frameInfo.VBLANKunstable = true
-	// 	}
-	// }
+	if tv.state.bounds.commit(tv.state) {
+		if tv.debugger != nil {
+			if tv.env.Prefs.TV.HaltChangedVBLANK.Get().(bool) {
+				tv.debugger.HaltFromTelevision(HaltChangedVBLANK)
+			}
+			tv.state.frameInfo.VBLANKunstable = true
+		}
+	}
 
 	// commit any resizing that maybe pending
 	err := tv.state.resizer.commit(tv.state)

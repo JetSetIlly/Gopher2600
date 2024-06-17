@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"fmt"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -228,6 +229,23 @@ func (oly *playscrOverlay) drawTopLeft() {
 		imgui.Text(fmt.Sprintf("%d total scanlines", oly.playscr.scr.crit.frameInfo.TotalScanlines))
 
 		imguiSeparator()
+		vblankBounds := fmt.Sprintf("%c %d  %c %d",
+			fonts.VBLANKtop,
+			oly.playscr.scr.crit.frameInfo.VBLANKtop,
+			fonts.VBLANKbottom,
+			oly.playscr.scr.crit.frameInfo.VBLANKbottom)
+		vblankBounds = strings.ReplaceAll(vblankBounds, "-1", "-")
+		imgui.Text(vblankBounds)
+		if oly.playscr.scr.crit.frameInfo.VBLANKunstable {
+			imgui.SameLineV(0, 5)
+			imgui.Text(string(fonts.Bug))
+		}
+		if oly.playscr.scr.crit.frameInfo.VBLANKatari {
+			imgui.SameLineV(0, 15)
+			imgui.Text(string(fonts.VBLANKatari))
+		}
+
+		imgui.Spacing()
 		if oly.playscr.scr.crit.frameInfo.FromVSYNC {
 			imgui.Text(fmt.Sprintf("VSYNC %d+%d", oly.playscr.scr.crit.frameInfo.VSYNCscanline,
 				oly.playscr.scr.crit.frameInfo.VSYNCcount))
