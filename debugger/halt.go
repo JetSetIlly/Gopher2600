@@ -34,14 +34,18 @@ type haltCoordination struct {
 	// (via reset())
 	halt bool
 
+	// the television has issued a yield
+	televisionHalt television.HaltCondition
+
 	// the cartridge has issued a yield signal that we should stop the debugger for
 	cartridgeYield bool
 
-	// the television has caused a yield
-	televisionHalt television.HaltCondition
-
 	// the emulation must yield to the cartridge but it must be delayed until it
 	// is in a better state
+	//
+	// this is an area that's likely to change. it's of particular interest to
+	// ACE and ELF ROMs in which the coprocessor is run very early in order to
+	// retrive the 6507 reset address
 	deferredCartridgeYield bool
 
 	// halt conditions
@@ -56,6 +60,9 @@ type haltCoordination struct {
 	// emulation continues after a halt
 	volatileBreakpoints *breakpoints
 	volatileTraps       *traps
+
+	// the reason why the emulation has halted
+	haltReason string
 }
 
 func newHaltCoordination(dbg *Debugger) (*haltCoordination, error) {
@@ -91,11 +98,14 @@ func (h *haltCoordination) reset() {
 // emulation should continue and false if the emulation should halt
 func (h *haltCoordination) check() bool {
 	if h.cartridgeYield {
+		// TODO: specific information about cartridge yield. ie. memory error etc.
+		h.haltReason = "Cartridge Yield"
 		h.halt = true
 		return false
 	}
 
 	if h.televisionHalt != nil {
+		h.haltReason = h.televisionHalt.Error()
 		h.halt = true
 		return false
 	}
@@ -109,16 +119,19 @@ func (h *haltCoordination) check() bool {
 		if breakMessage != "" {
 			h.dbg.printLine(terminal.StyleFeedback, breakMessage)
 			h.halt = true
+			h.haltReason = breakMessage
 		}
 
 		if trapMessage != "" {
 			h.dbg.printLine(terminal.StyleFeedback, trapMessage)
 			h.halt = true
+			h.haltReason = trapMessage
 		}
 
 		if watchMessage != "" {
 			h.dbg.printLine(terminal.StyleFeedback, watchMessage)
 			h.halt = true
+			h.haltReason = watchMessage
 		}
 
 		return !h.halt
@@ -157,8 +170,18 @@ func (h *haltCoordination) allowPlaymode() bool {
 }
 
 // HaltFromTelevision implements television.Debugger interface
-func (h *haltCoordination) HaltFromTelevision(reason television.HaltCondition) {
+func (h *haltCoordination) HaltFromTelevision(halt television.HaltCondition) {
 	if h.dbg.Mode() == govern.ModePlay {
-		h.televisionHalt = reason
+		h.televisionHalt = halt
 	}
+}
+
+// GetHaltReason returns the haltReason field from the haltCoordination type
+func (dbg *Debugger) GetHaltReason() string {
+	return dbg.halting.haltReason
+}
+
+// ClearHaltReason clears the haltReason field in the haltCoordination type
+func (dbg *Debugger) ClearHaltReason() {
+	dbg.halting.haltReason = ""
 }

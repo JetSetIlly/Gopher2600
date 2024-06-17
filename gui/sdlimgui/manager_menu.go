@@ -220,10 +220,33 @@ func (wm *manager) drawMenu() {
 			wm.img.prefs.showTooltips.Set(!showTooltips)
 		}
 	})
+
+	haltReason := wm.img.cache.Dbg.HaltReason
+	if haltReason != "" {
+		var id int
+		drawMenuItemFromRight(func() {
+			id++
+			if imgui.Button(fmt.Sprintf("%s##%d", haltReason, id)) {
+				wm.img.dbg.PushFunctionImmediate(wm.img.dbg.ClearHaltReason)
+			}
+			imgui.Separator()
+		})
+	}
 }
 
 // this draws the item twice. the first time in an offscreen area to measure it
 // and the second time in situ
+//
+// because each item is drawn twice, once to measure and once for display, items
+// with actions must have a unique ID. something like the following:
+//
+//	var id int
+//	drawMenuItemFromRight(func() {
+//		id++
+//		if imgui.Button(fmt.Sprintf("button##%d", id)) {
+//			// do action
+//		}
+//	})
 func drawMenuItemFromRight(f func()) {
 	p := imgui.CursorScreenPos()
 

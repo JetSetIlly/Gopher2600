@@ -231,6 +231,10 @@ func (oly *playscrOverlay) drawTopLeft() {
 		if oly.playscr.scr.crit.frameInfo.FromVSYNC {
 			imgui.Text(fmt.Sprintf("VSYNC %d+%d", oly.playscr.scr.crit.frameInfo.VSYNCscanline,
 				oly.playscr.scr.crit.frameInfo.VSYNCcount))
+			if oly.playscr.scr.crit.frameInfo.VSYNCunstable {
+				imgui.SameLineV(0, 5)
+				imgui.Text(string(fonts.Bug))
+			}
 		} else {
 			imgui.Text(fmt.Sprintf("VSYNC %c none", fonts.Bug))
 		}

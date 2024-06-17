@@ -69,6 +69,7 @@ type cachedRewind struct {
 type cachedDebugger struct {
 	LiveDisasmEntry disassembly.Entry
 	Breakpoints     debugger.CheckBreakpoints
+	HaltReason      string
 }
 
 // cache is embedded in the Cache type and also used as the type carried by the
@@ -117,6 +118,7 @@ func (c *Cache) Update(vcs *hardware.VCS, rewind *rewind.Rewind, dbg *debugger.D
 		Dbg: cachedDebugger{
 			LiveDisasmEntry: dbg.GetLiveDisasmEntry(),
 			Breakpoints:     dbg.GetBreakpoints(),
+			HaltReason:      dbg.GetHaltReason(),
 		},
 	}:
 	default:

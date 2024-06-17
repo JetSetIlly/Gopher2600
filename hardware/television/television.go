@@ -573,6 +573,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 					if tv.env.Prefs.TV.HaltVSYNCTooShort.Get().(bool) {
 						tv.debugger.HaltFromTelevision(HaltVSYNCTooShort)
 					}
+					tv.state.frameInfo.VSYNCunstable = true
 				}
 			}
 
@@ -744,13 +745,14 @@ func (tv *Television) newFrame() error {
 	tv.state.frameInfo.FrameNum = tv.state.frameNum
 
 	// check VBLANK halt condition
-	if tv.state.resizer.isChangedVBLANK() {
-		if tv.debugger != nil && tv.state.frameInfo.Stable && tv.state.vsync.isSynced() {
-			if tv.env.Prefs.TV.HaltChangedVBLANK.Get().(bool) {
-				tv.debugger.HaltFromTelevision(HaltChangedVBLANK)
-			}
-		}
-	}
+	// if tv.state.resizer.isChangedVBLANK() {
+	// 	if tv.debugger != nil && tv.state.frameInfo.Stable && tv.state.vsync.isSynced() {
+	// 		if tv.env.Prefs.TV.HaltChangedVBLANK.Get().(bool) {
+	// 			tv.debugger.HaltFromTelevision(HaltChangedVBLANK)
+	// 		}
+	// 		tv.state.frameInfo.VBLANKunstable = true
+	// 	}
+	// }
 
 	// commit any resizing that maybe pending
 	err := tv.state.resizer.commit(tv.state)
@@ -779,10 +781,12 @@ func (tv *Television) newFrame() error {
 				if tv.env.Prefs.TV.HaltVSYNCScanlineStart.Get().(bool) {
 					tv.debugger.HaltFromTelevision(HaltVSYNCScanlineStart)
 				}
+				tv.state.frameInfo.VSYNCunstable = true
 			} else if tv.state.frameInfo.VSYNCcount != tv.state.vsync.activeScanlineCount {
 				if tv.env.Prefs.TV.HaltVSYNCScanlineCount.Get().(bool) {
 					tv.debugger.HaltFromTelevision(HaltVSYNCScanlineCount)
 				}
+				tv.state.frameInfo.VSYNCunstable = true
 			}
 		}
 	} else {
@@ -790,6 +794,7 @@ func (tv *Television) newFrame() error {
 			if tv.env.Prefs.TV.HaltDesynchronised.Get().(bool) {
 				tv.debugger.HaltFromTelevision(HaltDesynchronised)
 			}
+			tv.state.frameInfo.VSYNCunstable = true
 		}
 	}
 

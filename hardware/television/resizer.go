@@ -78,10 +78,6 @@ type Resizer struct {
 	blackTop     int
 	blackBottom  int
 
-	// record of vblank bounds at last commit
-	vblankTopPrev    int
-	vblankBottomPrev int
-
 	// whether the frame has a vblank. if this value is negative the
 	// blackTop/blackBottom values are the candidate values used in the
 	// commit() function
@@ -241,8 +237,6 @@ func (rz *Resizer) commit(state *State) error {
 	// make sure candidate top and bottom value are equal to stable top/bottom
 	// at beginning of a frame
 	defer func() {
-		rz.vblankTopPrev = rz.vblankTop
-		rz.vblankBottomPrev = rz.vblankBottom
 		rz.vblankTop = state.frameInfo.VisibleTop
 		rz.vblankBottom = state.frameInfo.VisibleBottom
 		rz.blackTop = state.frameInfo.VisibleTop
@@ -332,8 +326,4 @@ func (rz *Resizer) commit(state *State) error {
 	}
 
 	return nil
-}
-
-func (rz *Resizer) isChangedVBLANK() bool {
-	return rz.vblankTop != rz.vblankTopPrev || rz.vblankBottom != rz.vblankBottomPrev
 }
