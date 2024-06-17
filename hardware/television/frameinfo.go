@@ -51,6 +51,12 @@ type FrameInfo struct {
 	// the number of scanlines considered to be in the frame
 	TotalScanlines int
 
+	// the top/bottom bounds of VBLANK. this is *not* the same as VisibleTop and
+	// VisbleBottom, which takes into account ideal screen sizing and
+	// situations where VBLANK is never set
+	VBLANKtop    int
+	VBLANKbottom int
+
 	// the refresh rate. this value is derived from the number of scanlines
 	// and is really a short-cut for:
 	//
@@ -86,6 +92,14 @@ type FrameInfo struct {
 	// startup period. A good example of such a ROM is Andrew Davie's 3e+ chess
 	// demos.
 	Stable bool
+
+	// if the profile of the VSYNC signal has changed after the Stable flag has
+	// been set then VSYNCunstable will be true
+	VSYNCunstable bool
+
+	// if the profile of the VBLANK bounds has changed after the Stable flag has
+	// been set then VBLANKunstable will be true
+	VBLANKunstable bool
 }
 
 // NewFrameInfo returns an initialised FrameInfo for the specification.
