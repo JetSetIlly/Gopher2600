@@ -168,67 +168,74 @@ func (wm *manager) drawMenu() {
 		imguiColourButton(wm.img.cols.TitleBgActive, s, imguiGetFrameDim(s))
 	}
 
-	// cartridge info in menubar
-	wdth := imgui.WindowWidth()
-	wdth -= rightJustText(wdth, string(fonts.Disk), false)
-	wdth -= rightJustText(wdth, wm.img.cache.VCS.Mem.Cart.ShortName, true)
-	wdth -= rightJustText(wdth, wm.img.cache.VCS.Mem.Cart.ID(), true)
-	wdth -= rightJustText(wdth, wm.img.cache.VCS.Mem.Cart.MappedBanks(), true)
+	// position cursor for drawing menu items from the right
+	imgui.SetCursorScreenPos(imgui.Vec2{
+		X: imgui.ContentRegionMax().X,
+		Y: imgui.CursorScreenPos().Y,
+	})
 
+	// cartridge information
+	drawMenuItemFromRight(func() { imgui.Text(fmt.Sprintf("%s %c", wm.img.cache.VCS.Mem.Cart.ShortName, fonts.Disk)) })
+	drawMenuItemFromRight(func() { imgui.Text(wm.img.cache.VCS.Mem.Cart.ID()); imgui.Separator() })
+	drawMenuItemFromRight(func() { imgui.Text(wm.img.cache.VCS.Mem.Cart.MappedBanks()); imgui.Separator() })
+
+	// TV information
 	frameInfo := wm.img.cache.TV.GetFrameInfo()
 	if math.IsInf(float64(frameInfo.RefreshRate), 0) || frameInfo.RefreshRate > frameInfo.Spec.RefreshRate*2 {
-		wdth -= rightJustText(wdth, "- Hz", true)
-		wm.img.imguiTooltip(func() { imgui.Text("TV refresh rate is indeterminate") }, true)
+		drawMenuItemFromRight(func() { imgui.Text("- Hz"); imgui.Separator() })
 	} else {
-		wdth -= rightJustText(wdth, fmt.Sprintf("%.2fHz", frameInfo.RefreshRate), true)
+		drawMenuItemFromRight(func() { imgui.Text(fmt.Sprintf("%.2fHz", frameInfo.RefreshRate)); imgui.Separator() })
 	}
 
+	// FPS information
 	if wm.img.dbg.State() == govern.Running {
 		actual, _ := wm.img.dbg.VCS().TV.GetActualFPS()
 		req := wm.img.dbg.VCS().TV.GetReqFPS()
 		if req < 1.0 {
-			wdth -= rightJustText(wdth, "< 1 fps", true)
+			drawMenuItemFromRight(func() { imgui.Text("< 1 fps"); imgui.Separator() })
 		} else if math.IsInf(float64(actual), 0) {
-			wdth -= rightJustText(wdth, "- fps", true)
+			drawMenuItemFromRight(func() { imgui.Text("- fps"); imgui.Separator() })
 		} else {
-			wdth -= rightJustText(wdth, fmt.Sprintf("%.1f fps", actual), true)
+			drawMenuItemFromRight(func() { imgui.Text(fmt.Sprintf("%.1f fps", actual)); imgui.Separator() })
 		}
+	} else {
+		drawMenuItemFromRight(func() { imgui.Text("- fps"); imgui.Separator() })
 	}
 
-	wdth -= wm.drawTooltipIndicator(wdth)
+	// tooltip control
 	wm.img.tooltipIndicator = false
-}
-
-func (wm *manager) drawTooltipIndicator(wdth float32) float32 {
-	s := fmt.Sprintf("%c", fonts.SpeechBubble)
-	w := imguiGetFrameDim(s).X
-	imgui.SameLineV(wdth-w, 0.0)
-	showTooltips := wm.img.prefs.showTooltips.Get().(bool)
-	if !showTooltips {
-		if !wm.img.tooltipIndicator {
-			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-			defer imgui.PopStyleVar()
+	drawMenuItemFromRight(func() {
+		defer imgui.Separator()
+		showTooltips := wm.img.prefs.showTooltips.Get().(bool)
+		if !showTooltips {
+			if !wm.img.tooltipIndicator {
+				imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+				defer imgui.PopStyleVar()
+			}
 		}
-	}
-	imgui.BeginGroup()
-	imgui.Text(s)
-	imgui.EndGroup()
-	if imgui.IsItemClicked() {
-		wm.img.prefs.showTooltips.Set(!showTooltips)
-	}
-	return w
+		imgui.BeginGroup()
+		imgui.Text(string(fonts.SpeechBubble))
+		imgui.EndGroup()
+		if imgui.IsItemClicked() {
+			wm.img.prefs.showTooltips.Set(!showTooltips)
+		}
+	})
 }
 
-func rightJustText(width float32, text string, sep bool) float32 {
-	w := imgui.CalcTextSize(text, false, 0.0).X +
-		(imgui.CurrentStyle().FramePadding().X * 2) +
-		(imgui.CurrentStyle().ItemInnerSpacing().X * 2)
-	imgui.SameLineV(width-w, 0.0)
-	if sep {
-		imgui.Separator()
-	}
-	imgui.Text(text)
-	return w
+// this draws the item twice. the first time in an offscreen area to measure it
+// and the second time in situ
+func drawMenuItemFromRight(f func()) {
+	p := imgui.CursorScreenPos()
+
+	imgui.SetCursorScreenPos(imgui.ContentRegionMax().Plus(imgui.Vec2{10, 10}))
+	m := imgui.CursorScreenPos()
+	f()
+	width := imgui.CursorScreenPos().X - m.X
+
+	p = p.Minus(imgui.Vec2{X: width, Y: 0})
+	imgui.SetCursorScreenPos(p)
+	f()
+	imgui.SetCursorScreenPos(p)
 }
 
 func (wm *manager) drawMenuEntry(m menuEntry) {
