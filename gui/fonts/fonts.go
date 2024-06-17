@@ -98,6 +98,9 @@ const (
 	TVSaturation           = '\uf0e9'
 	TVHue                  = '\uf043'
 	Elipsis                = '\uf141'
+	VBLANKtop              = '\uf35b'
+	VBLANKbottom           = '\uf358'
+	VBLANKatari            = '\uf14a'
 )
 
 // The first and last unicode points used in the application. We use this to

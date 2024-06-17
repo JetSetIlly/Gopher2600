@@ -57,6 +57,10 @@ type FrameInfo struct {
 	VBLANKtop    int
 	VBLANKbottom int
 
+	// VBLANKatari is true if VBLANK top/bottom are equal to the values
+	// suggested by Atari
+	VBLANKatari bool
+
 	// the refresh rate. this value is derived from the number of scanlines
 	// and is really a short-cut for:
 	//
