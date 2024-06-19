@@ -285,6 +285,8 @@ func (t CoProcYieldType) String() string {
 		return "stack error"
 	case YieldExecutionError:
 		return "execution error"
+	case YieldCycleLimit:
+		return "exceeded cycle limit"
 	case YieldRunning:
 		return "running"
 	}
@@ -336,6 +338,11 @@ const (
 
 	// execution error indicates that something has gone very wrong
 	YieldExecutionError
+
+	// the number of cycles in a single call to arm.Run() has exceeded a
+	// predefined amount. note that when executing in "immediate" mode, the
+	// number of cycles limit is actually the number of instructions
+	YieldCycleLimit
 
 	// the coprocessor has not yet yielded and is still running
 	YieldRunning

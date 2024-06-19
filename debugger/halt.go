@@ -38,7 +38,8 @@ type haltCoordination struct {
 	televisionHalt television.HaltCondition
 
 	// the cartridge has issued a yield signal that we should stop the debugger for
-	cartridgeYield bool
+	cartridgeYield       bool
+	cartridgeYieldReason string
 
 	// the emulation must yield to the cartridge but it must be delayed until it
 	// is in a better state
@@ -99,7 +100,7 @@ func (h *haltCoordination) reset() {
 func (h *haltCoordination) check() bool {
 	if h.cartridgeYield {
 		// TODO: specific information about cartridge yield. ie. memory error etc.
-		h.haltReason = "Cartridge Yield"
+		h.haltReason = h.cartridgeYieldReason
 		h.halt = true
 		return false
 	}
