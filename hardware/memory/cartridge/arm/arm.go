@@ -927,14 +927,12 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 
 					// limit the number of cycles used by the ARM program
 					if arm.state.cyclesTotal >= cycleLimit {
-						logger.Logf(arm.env, "ARM7", "reached cycle limit of %d", cycleLimit)
-						panic("cycle limit")
+						arm.state.yield.Type = coprocessor.YieldCycleLimit
 					}
 				} else {
 					iterations++
 					if iterations > instructionsLimit {
-						logger.Logf(arm.env, "ARM7", "reached instructions limit of %d", instructionsLimit)
-						panic("instruction limit")
+						arm.state.yield.Type = coprocessor.YieldCycleLimit
 					}
 				}
 
