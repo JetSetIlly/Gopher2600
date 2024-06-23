@@ -1247,8 +1247,9 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	// reset cartridge loader after using it in the preview
 	cartload.Seek(0, io.SeekStart)
 
-	// copy resizer from preview to main emulation
-	dbg.vcs.TV.SetSpec(dbg.preview.Results().SpecID, true)
+	// copy resizer from preview to main emulation. we don't want to force the
+	// change of specification however
+	dbg.vcs.TV.SetSpec(dbg.preview.Results().SpecID, false)
 	dbg.vcs.TV.SetResizer(dbg.preview.Results().Resizer)
 
 	// activate bot if possible

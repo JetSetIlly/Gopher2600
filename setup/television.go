@@ -88,7 +88,7 @@ func (set television) apply(vcs *hardware.VCS) (string, error) {
 	// VCS, any setup entries will take precedence over any spec in the
 	// cartridge filename.
 
-	err := vcs.TV.SetSpec(set.spec, false)
+	err := vcs.TV.SetSpec(set.spec, true)
 	if err != nil {
 		return "", err
 	}
