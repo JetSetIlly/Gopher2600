@@ -82,6 +82,7 @@ func (r Registers) String() string {
 }
 
 func (r *Registers) reset(rand *random.Random) {
+
 	for i := range r.Fetcher {
 		if rand != nil {
 			r.Fetcher[i].Low = byte(rand.NoRewind(0xff))
@@ -99,7 +100,7 @@ func (r *Registers) reset(rand *random.Random) {
 	for i := range r.FracFetcher {
 		if rand != nil {
 			r.FracFetcher[i].Low = byte(rand.NoRewind(0xff))
-			r.FracFetcher[i].Hi = byte(rand.NoRewind(0xff))
+			r.FracFetcher[i].Hi = byte(rand.NoRewind(0xff)) & 0x0f
 			r.FracFetcher[i].Increment = byte(rand.NoRewind(0xff))
 			r.FracFetcher[i].Count = byte(rand.NoRewind(0xff))
 		} else {
@@ -139,7 +140,7 @@ type dataFetcher struct {
 
 type fractionalDataFetcher struct {
 	Low byte
-	Hi  byte
+	Hi  byte // only the lower nibble is used. value masked on assignment
 
 	Increment byte
 	Count     byte
@@ -189,7 +190,7 @@ func (df *fractionalDataFetcher) inc() {
 	if df.Count < df.Increment {
 		df.Low++
 		if df.Low == 0x00 {
-			df.Hi++
+			df.Hi = (df.Hi + 1) & 0x0f
 		}
 	}
 }
@@ -266,7 +267,7 @@ func (cart *dpcPlus) PutRegister(register string, data string) {
 		}
 		switch r[2] {
 		case "hi":
-			cart.state.registers.FracFetcher[f].Hi = uint8(d8)
+			cart.state.registers.FracFetcher[f].Hi = uint8(d8) & 0x0f
 		case "low":
 			cart.state.registers.FracFetcher[f].Low = uint8(d8)
 		case "increment":

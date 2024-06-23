@@ -16,6 +16,7 @@
 package dpcplus
 
 import (
+	"crypto/md5"
 	"fmt"
 	"io"
 
@@ -80,6 +81,17 @@ func NewDPCplus(env *environment.Environment, loader cartridgeloader.Loader) (ma
 		bankSize:  4096,
 		state:     newDPCPlusState(),
 		yieldHook: coprocessor.StubCartYieldHook{},
+	}
+
+	// set driver specific options
+	driverMD5 := fmt.Sprintf("%x", md5.Sum(data[:0xc00]))
+	if !cart.state.setDriverSpecificOptions(driverMD5) {
+		logger.Logf(cart.env, "DPC+", "unrecognised driver: %s", driverMD5)
+	}
+
+	// report on driver specific options
+	if cart.state.resetFracFetcherCounterWhenLowFieldIsSet {
+		logger.Logf(cart.env, "DPC+", "fractional fetcher counter will be reset on setting of low byte")
 	}
 
 	// create addresses
@@ -365,7 +377,12 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	case 0x2f:
 		f := addr & 0x0007
 		cart.state.registers.FracFetcher[f].Low = data
-		cart.state.registers.FracFetcher[f].Count = 0
+
+		// frac fetcher count is *sometimes* reset when the low byte is set.
+		// depending on the specific version of the DPC+ driver being used
+		if cart.state.resetFracFetcherCounterWhenLowFieldIsSet {
+			cart.state.registers.FracFetcher[f].Count = 0
+		}
 
 	// fractional data fetcher, high
 	case 0x30:
@@ -384,8 +401,8 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		fallthrough
 	case 0x37:
 		f := addr & 0x0007
-		cart.state.registers.FracFetcher[f].Hi = data
-		cart.state.registers.FracFetcher[f].Count = 0
+		cart.state.registers.FracFetcher[f].Hi = data & 0x0f
+		// frac fetcher count not reset when high byte is set
 
 	// fractional data fetcher, incrememnt
 	case 0x38:
@@ -405,6 +422,7 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	case 0x3f:
 		f := addr & 0x0007
 		cart.state.registers.FracFetcher[f].Increment = data
+		// frac fetcher count not reset when increment is set
 		cart.state.registers.FracFetcher[f].Count = 0
 
 	// data fetcher, window top
