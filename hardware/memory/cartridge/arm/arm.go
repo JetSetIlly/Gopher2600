@@ -246,6 +246,18 @@ type ARM struct {
 
 	// value used to stretch (or shink) the number of cycles used by each
 	// instruction. a value of 1.0 is a neutral regulator
+	//
+	// we only apply the regulator value when the run() function has finished.
+	// this means that the cycleLimit is less useful than it might be but
+	// there's a performance penalty for applying the regulator for every
+	// instruction
+	//
+	// we could maybe apply the regulator every N cycles to mitigate that
+	// problem but it doesn't seem worth the additional complexity
+	//
+	// we could also scale the cycle limit but again, it's added complexity for
+	// little gain and honestly, if we're worrying about the cycle limit the
+	// ARM program is running out of spec in any case
 	cycleRegulator float32
 
 	// collection of functionMap instances. indexed by programMemoryOffset to
@@ -788,6 +800,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 
 			// check program memory and continue if it's fine
 			arm.checkProgramMemory(false)
+
 			if arm.state.yield.Type == coprocessor.YieldRunning {
 				memIdx := int(arm.state.executingPC - arm.state.programMemoryOrigin)
 
@@ -842,9 +855,6 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 					// default to an S cycle for prefetch unless an instruction explicitly
 					// says otherwise
 					arm.state.prefetchCycle = S
-
-					// adjust number of cycles by cycle regulator
-					arm.state.stretchedCycles *= arm.cycleRegulator
 
 					// increases total number of program cycles by the stretched cycles for this instruction
 					arm.state.cyclesTotal += arm.state.stretchedCycles
@@ -955,7 +965,8 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 		} // check breakpoint
 	}
 
-	return arm.state.yield, arm.state.cyclesTotal
+	// cycles are stretched by the cycle regulator
+	return arm.state.yield, arm.state.cyclesTotal * arm.cycleRegulator
 }
 
 func (arm *ARM) checkBreakpoints() {
