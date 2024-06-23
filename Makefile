@@ -5,7 +5,7 @@ goBinary = go
 gcflags = -c 3 -B -wb=false
 ldflags = -s -w
 ldflags_version = $(ldflags) -X 'github.com/jetsetilly/gopher2600/version.number=$(version)'
-profilingRom = /home/steve/Desktop/2600_dev/zackattack/waterbed-bouncers-2600/source/bouncers.bin
+profilingRom = ./MattressMonkeys20240530rc4.bin
 
 # the renderer to use for the GUI
 #
@@ -104,7 +104,9 @@ race_debug: generate test
 ### profiling targets
 .PHONY: profile profile_cpu profile_cpu_play profile_cpu_debug profile_mem_play profile_mem_debug profile_trace
 
-ldflags_profile= $(ldflags) -X 'github.com/jetsetilly/gopher2600/version.number=profiling'
+# not including $(ldflags) for profiling. that woulds strip the binary of
+# debugging data which would prevent us from digging into the source code
+ldflags_profile = -X 'github.com/jetsetilly/gopher2600/version.number=profiling'
 
 profile:
 	@echo use make targets profile_cpu, profile_mem, etc.
