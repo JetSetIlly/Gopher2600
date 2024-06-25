@@ -81,8 +81,10 @@ func (s *elfSection) isEmpty() bool {
 // Snapshot implements the mapper.CartMapper interface.
 func (s *elfSection) Snapshot() *elfSection {
 	n := *s
-	n.data = make([]byte, len(s.data))
-	copy(n.data, s.data)
+	if !s.readOnly() {
+		n.data = make([]byte, len(s.data))
+		copy(n.data, s.data)
+	}
 	return &n
 }
 
@@ -730,17 +732,22 @@ func (mem *elfMemory) Snapshot() *elfMemory {
 
 	m.gpio = mem.gpio.Snapshot()
 
+	// snapshot sections. the Snapshot() function of the elfSection type decides
+	// how best to deal with the request
 	m.sections = make([]*elfSection, len(mem.sections))
 	for i := range mem.sections {
 		m.sections[i] = mem.sections[i].Snapshot()
 	}
 
+	// strongarm program is read-only by defintion
+	m.strongArmProgram = mem.strongArmProgram
+
+	// sram is likely to have changed. it would be nice to have a compressed
+	// form of memory here or one that records deltas from previous snapshots
 	m.sram = make([]byte, len(mem.sram))
 	copy(m.sram, mem.sram)
 
-	m.strongArmProgram = make([]byte, len(mem.strongArmProgram))
-	copy(m.strongArmProgram, mem.strongArmProgram)
-
+	// strongarm functions are a map and so require an explicit make()
 	m.strongArmFunctions = make(map[uint32]strongArmFunctionSpec)
 	for k := range mem.strongArmFunctions {
 		m.strongArmFunctions[k] = mem.strongArmFunctions[k]
@@ -749,8 +756,7 @@ func (mem *elfMemory) Snapshot() *elfMemory {
 	// not sure we need to copy args because they shouldn't change after the
 	// initial setup of the ARM - the setup will never run again even if the
 	// rewind reaches the very beginning of the history
-	m.args = make([]byte, len(mem.args))
-	copy(m.args, mem.args)
+	m.args = mem.args
 
 	return &m
 }
