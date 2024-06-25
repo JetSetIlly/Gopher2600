@@ -84,7 +84,7 @@ vet: check_awk
 	'
 
 ### testing targets
-.PHONY: test race race_debug
+.PHONY: test race race_debug fuzz
 
 test:
 # testing with shuffle preferred but it's only available in go 1.17 onwards
@@ -100,6 +100,10 @@ race: generate test
 race_debug: generate test
 	$(goBinary) run -race gopher2600.go debug $(profilingRom)
 
+fuzz: generate test
+# fuzz testing cannot work with multiple packages so we must list the ones
+# we want to include
+	$(goBinary) test -fuzztime=30s -fuzz . ./crunched/
 
 ### profiling targets
 .PHONY: profile profile_cpu profile_cpu_play profile_cpu_debug profile_mem_play profile_mem_debug profile_trace

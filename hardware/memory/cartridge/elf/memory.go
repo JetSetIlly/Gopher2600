@@ -24,6 +24,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
+	"github.com/jetsetilly/gopher2600/crunched"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
@@ -103,7 +104,7 @@ type elfMemory struct {
 	gpio *gpio
 
 	// RAM memory for the ARM
-	sram       []byte
+	sram       crunched.Data
 	sramOrigin uint32
 	sramMemtop uint32
 
@@ -172,6 +173,21 @@ func newElfMemory(env *environment.Environment) *elfMemory {
 
 	// always using PlusCart model for now
 	mem.model = architecture.NewMap(architecture.PlusCart)
+
+	// SRAM creation
+	const sramSize = 0x10000 // 64kb of SRAM
+	mem.sram = crunched.NewQuick(sramSize)
+	mem.sramOrigin = mem.model.SRAMOrigin
+	mem.sramMemtop = mem.sramOrigin + sramSize
+
+	// randomise sram data
+	if mem.env.Prefs.RandomState.Get().(bool) {
+		data := mem.sram.Data()
+		for i := range *data {
+			(*data)[i] = uint8(mem.env.Random.NoRewind(0xff))
+		}
+	}
+
 	return mem
 }
 
@@ -621,18 +637,6 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 	logger.Logf(mem.env, "ELF", "strongarm: %08x to %08x (%d)",
 		mem.strongArmOrigin, mem.strongArmMemtop, len(mem.strongArmProgram))
 
-	// SRAM creation
-	mem.sram = make([]byte, 0x10000) // 64k SRAM
-	mem.sramOrigin = mem.model.SRAMOrigin
-	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram))
-
-	// randomise sram data
-	if mem.env.Prefs.RandomState.Get().(bool) {
-		for i := range mem.sram {
-			mem.sram[i] = uint8(mem.env.Random.NoRewind(0xff))
-		}
-	}
-
 	// runInitialisation() must be run once ARM has been created
 
 	return nil
@@ -744,8 +748,7 @@ func (mem *elfMemory) Snapshot() *elfMemory {
 
 	// sram is likely to have changed. it would be nice to have a compressed
 	// form of memory here or one that records deltas from previous snapshots
-	m.sram = make([]byte, len(mem.sram))
-	copy(m.sram, mem.sram)
+	m.sram = mem.sram.Snapshot()
 
 	// strongarm functions are a map and so require an explicit make()
 	m.strongArmFunctions = make(map[uint32]strongArmFunctionSpec)
@@ -831,7 +834,7 @@ func (mem *elfMemory) mapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	}
 
 	if addr >= mem.sramOrigin && addr <= mem.sramMemtop {
-		return &mem.sram, mem.sramOrigin
+		return mem.sram.Data(), mem.sramOrigin
 	}
 
 	if addr >= mem.strongArmOrigin && addr <= mem.strongArmMemtop {
@@ -914,7 +917,7 @@ func (mem *elfMemory) Segments() []mapper.CartStaticSegment {
 func (mem *elfMemory) Reference(segment string) ([]uint8, bool) {
 	switch segment {
 	case "SRAM":
-		return mem.sram, true
+		return *mem.sram.Data(), true
 	case "StrongARM Program":
 		return mem.strongArmProgram, true
 	default:
