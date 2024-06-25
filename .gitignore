@@ -2,6 +2,7 @@
 *.swo
 .DS_Store
 Session.vim
+*/testdata
 vendor/*
 tags
 test_roms/*
