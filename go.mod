@@ -11,7 +11,7 @@ require (
 	github.com/pkg/term v1.1.0
 	github.com/sahilm/fuzzy v0.1.0
 	github.com/veandco/go-sdl2 v0.4.35
-	golang.org/x/image v0.13.0
+	golang.org/x/image v0.18.0
 	golang.org/x/sys v0.8.0
 )
 
