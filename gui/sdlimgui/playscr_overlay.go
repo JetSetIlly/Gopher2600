@@ -229,6 +229,13 @@ func (oly *playscrOverlay) drawTopLeft() {
 		imgui.Text(fmt.Sprintf("%d total scanlines", oly.playscr.scr.crit.frameInfo.TotalScanlines))
 
 		imguiSeparator()
+
+		// this construct (spacing followed by a same-line directive) is only
+		// necessary so that the extreme left pixel of the VBLANKtop icon is not
+		// chopped off. it's a very small detail but worth doing
+		imgui.Spacing()
+		imgui.SameLineV(0, 1)
+
 		vblankBounds := fmt.Sprintf("%c %d  %c %d",
 			fonts.VBLANKtop,
 			oly.playscr.scr.crit.frameInfo.VBLANKtop,
@@ -254,7 +261,7 @@ func (oly *playscrOverlay) drawTopLeft() {
 				imgui.Text(string(fonts.Bug))
 			}
 		} else {
-			imgui.Text(fmt.Sprintf("VSYNC %c none", fonts.Bug))
+			imgui.Text(fmt.Sprintf("VSYNC %c", fonts.Bug))
 		}
 
 		imguiSeparator()
