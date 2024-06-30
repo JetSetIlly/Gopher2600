@@ -264,34 +264,56 @@ type CoProcYield struct {
 	Error error
 }
 
-// CoProcYieldType specifies the type of yield. This is a broad categorisation
-type CoProcYieldType int
+// CoProcYieldType specifies the type of yield.
+type CoProcYieldType string
 
-func (t CoProcYieldType) String() string {
-	switch t {
-	case YieldProgramEnded:
-		return "ended"
-	case YieldSyncWithVCS:
-		return "sync"
-	case YieldBreakpoint:
-		return "breakpoint"
-	case YieldUndefinedBehaviour:
-		return "undefined behaviour"
-	case YieldUnimplementedFeature:
-		return "unimplement feature"
-	case YieldMemoryAccessError:
-		return "memory error"
-	case YieldStackError:
-		return "stack error"
-	case YieldExecutionError:
-		return "execution error"
-	case YieldCycleLimit:
-		return "exceeded cycle limit"
-	case YieldRunning:
-		return "running"
-	}
-	panic("unknown CoProcYieldType")
-}
+// List of CoProcYieldType values
+const (
+	// the coprocessor has yielded because the program has ended. in this instance the
+	// CoProcessor is not considered to be in a "yielded" state and can be modified
+	//
+	// Expected YieldReason for CDF and DPC+ type ROMs
+	//
+	// The value for this yield type is the empty string. This is principally so
+	// that the CoProcYieldType does not need to be explicitely initialised. And
+	// because YieldPrograEnded is a 'normal' yield type we don't really need a
+	// meaningful message
+	YieldProgramEnded CoProcYieldType = ""
+
+	// the coprocessor has reached a synchronisation point in the program. it
+	// must wait for the VCS before continuing
+	//
+	// Expected YieldReason for ACE and ELF type ROMs
+	YieldSyncWithVCS CoProcYieldType = "Sync with VCS"
+
+	// a user supplied breakpoint has been encountered
+	YieldBreakpoint CoProcYieldType = "Breakpoint"
+
+	// the program has triggered undefined behaviour in the coprocessor
+	YieldUndefinedBehaviour CoProcYieldType = "Undefined Behaviour"
+
+	// the program has triggered an unimplemented feature in the coprocessor
+	YieldUnimplementedFeature CoProcYieldType = "Unimplemented Feature"
+
+	// the program has tried to access memory illegally. details will have been
+	// communicated by the IllegalAccess() function of the CartCoProcDeveloper
+	// interface
+	YieldMemoryAccessError CoProcYieldType = "Memory Error"
+
+	// something has gone wrong with the stack
+	YieldStackError CoProcYieldType = "Stack Error"
+
+	// execution error indicates that something has gone very wrong
+	YieldExecutionError CoProcYieldType = "Execution Error"
+
+	// the number of cycles in a single call to arm.Run() has exceeded a
+	// predefined amount. note that when executing in "immediate" mode, the
+	// number of cycles limit is actually the number of instructions
+	YieldCycleLimit CoProcYieldType = "Exceeded Cycle Limit"
+
+	// the coprocessor has not yet yielded and is still running
+	YieldRunning CoProcYieldType = "Running"
+)
 
 // Normal returns true if yield type is expected during normal operation of the
 // coprocessor
@@ -304,49 +326,6 @@ func (t CoProcYieldType) Bug() bool {
 	return t == YieldUndefinedBehaviour || t == YieldUnimplementedFeature ||
 		t == YieldExecutionError || t == YieldMemoryAccessError || t == YieldStackError
 }
-
-// List of CoProcYieldType values
-const (
-	// the coprocessor has yielded because the program has ended. in this instance the
-	// CoProcessor is not considered to be in a "yielded" state and can be modified
-	//
-	// Expected YieldReason for CDF and DPC+ type ROMs
-	YieldProgramEnded CoProcYieldType = iota
-
-	// the coprocessor has reached a synchronisation point in the program. it
-	// must wait for the VCS before continuing
-	//
-	// Expected YieldReason for ACE and ELF type ROMs
-	YieldSyncWithVCS
-
-	// a user supplied breakpoint has been encountered
-	YieldBreakpoint
-
-	// the program has triggered undefined behaviour in the coprocessor
-	YieldUndefinedBehaviour
-
-	// the program has triggered an unimplemented feature in the coprocessor
-	YieldUnimplementedFeature
-
-	// the program has tried to access memory illegally. details will have been
-	// communicated by the IllegalAccess() function of the CartCoProcDeveloper
-	// interface
-	YieldMemoryAccessError
-
-	// something has gone wrong with the stack
-	YieldStackError
-
-	// execution error indicates that something has gone very wrong
-	YieldExecutionError
-
-	// the number of cycles in a single call to arm.Run() has exceeded a
-	// predefined amount. note that when executing in "immediate" mode, the
-	// number of cycles limit is actually the number of instructions
-	YieldCycleLimit
-
-	// the coprocessor has not yet yielded and is still running
-	YieldRunning
-)
 
 // CartCoProcDisasmSummary represents a summary of a coprocessor execution.
 type CartCoProcDisasmSummary interface {

@@ -896,8 +896,7 @@ func (dbg *Debugger) CartYield(yield coprocessor.CoProcYieldType) coprocessor.Yi
 	// resolve deferred yield
 	if dbg.halting.deferredCartridgeYield {
 		dbg.halting.deferredCartridgeYield = false
-		dbg.halting.cartridgeYield = true
-		dbg.halting.cartridgeYieldReason = yield.String()
+		dbg.halting.cartridgeYield = yield
 		return coprocessor.YieldHookEnd
 	}
 
@@ -924,8 +923,7 @@ func (dbg *Debugger) CartYield(yield coprocessor.CoProcYieldType) coprocessor.Yi
 		return coprocessor.YieldHookContinue
 	}
 
-	dbg.halting.cartridgeYield = true
-	dbg.halting.cartridgeYieldReason = yield.String()
+	dbg.halting.cartridgeYield = yield
 	dbg.continueEmulation = dbg.halting.check()
 
 	switch dbg.Mode() {

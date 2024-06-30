@@ -16,6 +16,7 @@
 package debugger
 
 import (
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -38,8 +39,7 @@ type haltCoordination struct {
 	televisionHalt television.HaltCondition
 
 	// the cartridge has issued a yield signal that we should stop the debugger for
-	cartridgeYield       bool
-	cartridgeYieldReason string
+	cartridgeYield coprocessor.CoProcYieldType
 
 	// the emulation must yield to the cartridge but it must be delayed until it
 	// is in a better state
@@ -91,16 +91,15 @@ func newHaltCoordination(dbg *Debugger) (*haltCoordination, error) {
 // reset halt condition.
 func (h *haltCoordination) reset() {
 	h.halt = false
-	h.cartridgeYield = false
+	h.cartridgeYield = coprocessor.YieldProgramEnded
 	h.televisionHalt = nil
 }
 
 // check for a halt condition and set the halt flag if found. returns true if
 // emulation should continue and false if the emulation should halt
 func (h *haltCoordination) check() bool {
-	if h.cartridgeYield {
-		// TODO: specific information about cartridge yield. ie. memory error etc.
-		h.haltReason = h.cartridgeYieldReason
+	if h.cartridgeYield != coprocessor.YieldProgramEnded {
+		h.haltReason = string(h.cartridgeYield)
 		h.halt = true
 		return false
 	}
