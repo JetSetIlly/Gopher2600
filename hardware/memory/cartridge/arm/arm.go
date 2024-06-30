@@ -548,9 +548,9 @@ func (arm *ARM) logYield() {
 		return
 	}
 	if arm.state.yield.Error != nil {
-		logger.Logf(arm.env, "ARM7", "%s: %s", arm.state.yield.Type.String(), arm.state.yield.Error.Error())
+		logger.Logf(arm.env, "ARM7", "%s: %s", arm.state.yield.Type, arm.state.yield.Error.Error())
 	} else {
-		logger.Logf(arm.env, "ARM7", "%s: no specific error", arm.state.yield.Type.String())
+		logger.Logf(arm.env, "ARM7", "%s: no specific error", arm.state.yield.Type)
 	}
 
 	// extended memory logging

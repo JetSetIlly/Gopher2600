@@ -65,7 +65,7 @@ func (p Prompt) String() string {
 	s.WriteString(strings.TrimSpace(p.Content))
 
 	if !p.CoProcYield.Type.Normal() {
-		s.WriteString(fmt.Sprintf(" (%s)", p.CoProcYield.Type.String()))
+		s.WriteString(fmt.Sprintf(" (%s)", p.CoProcYield.Type))
 	}
 
 	s.WriteString(" ]")

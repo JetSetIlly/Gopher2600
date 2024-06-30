@@ -201,14 +201,14 @@ func (win *winTerm) draw() {
 			// additional yield information
 			if !win.prompt.CoProcYield.Type.Normal() {
 				imgui.SameLine()
-				imgui.Text(fmt.Sprintf("(%s)", win.prompt.CoProcYield.Type.String()))
+				imgui.Text(fmt.Sprintf("(%s)", win.prompt.CoProcYield.Type))
 				if win.prompt.CoProcYield.Error != nil {
 					imguiTooltip(func() {
 						imgui.Text("Coprocessor Yield")
 						imgui.Spacing()
 						imgui.Separator()
 						imgui.Spacing()
-						imgui.Text(fmt.Sprintf("%s: %s", win.prompt.CoProcYield.Type.String(), win.prompt.CoProcYield.Error.Error()))
+						imgui.Text(fmt.Sprintf("%s: %s", win.prompt.CoProcYield.Type, win.prompt.CoProcYield.Error.Error()))
 					}, true, true)
 				}
 			}
