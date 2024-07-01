@@ -199,14 +199,14 @@ func NewLoaderFromFilename(filename string, mapping string, props Properties) (L
 //
 // The name argument should not include a file extension because it won't be
 // used.
-func NewLoaderFromData(name string, data []byte, mapping string, properties Properties) (Loader, error) {
+func NewLoaderFromData(name string, data []byte, mapping string, props Properties) (Loader, error) {
 	if len(data) == 0 {
-		return Loader{}, fmt.Errorf("loader: emebedded data is empty")
+		return Loader{}, fmt.Errorf("loader: data is empty")
 	}
 
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return Loader{}, fmt.Errorf("loader: no name for embedded data")
+		return Loader{}, fmt.Errorf("loader: no name for data")
 	}
 
 	mapping = strings.TrimSpace(strings.ToUpper(mapping))
@@ -227,6 +227,19 @@ func NewLoaderFromData(name string, data []byte, mapping string, properties Prop
 
 	// decide on the name for this cartridge
 	ld.Name = decideOnName(ld)
+
+	// get properties entry
+	if props != nil {
+		ld.Property = props.Lookup(ld.HashMD5)
+	}
+
+	// decide on TV specification
+	if ld.Property.IsValid() {
+		ld.ReqSpec = specification.SearchReqSpec(ld.Property.Name)
+	}
+	if ld.ReqSpec == "" {
+		ld.ReqSpec = specification.SearchReqSpec(ld.Filename)
+	}
 
 	return ld, nil
 }
