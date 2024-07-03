@@ -41,6 +41,7 @@ const MutliloadByteAddress = 0xfa
 // from a Stella bin file, and "slow" loading from a sound file.
 type tape interface {
 	snapshot() tape
+	plumb(*state, *environment.Environment)
 	load() (uint8, error)
 	step() error
 	end() error
@@ -79,9 +80,9 @@ func NewSupercharger(env *environment.Environment, cartload cartridgeloader.Load
 
 	// set up tape
 	if cartload.IsSoundData {
-		cart.state.tape, err = newSoundLoad(env, cart, cartload)
+		cart.state.tape, err = newSoundLoad(env, cartload)
 	} else {
-		cart.state.tape, err = newFastLoad(env, cart, cartload)
+		cart.state.tape, err = newFastLoad(env, cart.state, cartload)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("supercharger: %w", err)
@@ -110,6 +111,7 @@ func (cart *Supercharger) Snapshot() mapper.CartMapper {
 // Plumb implements the mapper.CartMapper interface.
 func (cart *Supercharger) Plumb(env *environment.Environment) {
 	cart.env = env
+	cart.state.tape.plumb(cart.state, env)
 }
 
 // Reset implements the mapper.CartMapper interface.
@@ -275,7 +277,8 @@ func (cart *Supercharger) GetBank(addr uint16) mapper.BankInfo {
 		}
 		return mapper.BankInfo{Number: 2, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 	}
-	panic("unknown banking method")
+
+	panic("supercharger: unknown banking method")
 }
 
 // AccessPassive implements the mapper.CartMapper interface.

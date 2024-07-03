@@ -57,8 +57,7 @@ const soundloadLogTag = "supercharger: soundload"
 // Compared to FastLoad this method is more 'authentic' and uses the BIOS
 // correctly.
 type SoundLoad struct {
-	env  *environment.Environment
-	cart *Supercharger
+	env *environment.Environment
 
 	// sound data and format information
 	pcm pcmData
@@ -88,10 +87,9 @@ type SoundLoad struct {
 }
 
 // newSoundLoad is the preferred method of initialisation for the SoundLoad type.
-func newSoundLoad(env *environment.Environment, cart *Supercharger, loader cartridgeloader.Loader) (tape, error) {
+func newSoundLoad(env *environment.Environment, loader cartridgeloader.Loader) (tape, error) {
 	tap := &SoundLoad{
-		env:  env,
-		cart: cart,
+		env: env,
 	}
 
 	var err error
@@ -140,9 +138,13 @@ func newSoundLoad(env *environment.Environment, cart *Supercharger, loader cartr
 
 // snapshot implements the tape interface.
 func (tap *SoundLoad) snapshot() tape {
-	// not copying samples. each snapshot will point to the original array
 	n := *tap
 	return &n
+}
+
+// plumb implements the tape interface.
+func (tap *SoundLoad) plumb(_ *state, env *environment.Environment) {
+	tap.env = env
 }
 
 func (tap *SoundLoad) load() (uint8, error) {
@@ -152,7 +154,7 @@ func (tap *SoundLoad) load() (uint8, error) {
 			tap.playDelay++
 			return 0x00, nil
 		}
-		tap.cart.env.Notifications.Notify(notifications.NotifySuperchargerSoundloadStarted)
+		tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundloadStarted)
 		tap.playing = true
 		tap.playDelay = 0
 		logger.Log(tap.env, soundloadLogTag, "tape playing")
@@ -197,13 +199,13 @@ func (tap *SoundLoad) step() error {
 
 // load implements the Tape interface.
 func (tap *SoundLoad) end() error {
-	return tap.cart.env.Notifications.Notify(notifications.NotifySuperchargerSoundloadEnded)
+	return tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundloadEnded)
 }
 
 // Rewind implements the mapper.CartTapeBus interface.
 func (tap *SoundLoad) Rewind() {
 	// rewinding happens instantaneously
-	tap.cart.env.Notifications.Notify(notifications.NotifySuperchargerSoundloadRewind)
+	tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundloadRewind)
 	tap.idx = 0
 	logger.Log(tap.env, soundloadLogTag, "tape rewound")
 	tap.stepLimiter = 0

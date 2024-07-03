@@ -34,14 +34,14 @@ import (
 // On success it returns the FastLoaded error. This must be interpreted by the
 // emulator driver and called with the arguments listed in the error type.
 //
-// Format information for fast-loca binary rom mailing list post:
+// Format information for fast-load binary rom mailing list post:
 //
 // Subject: Re: [stella] Supercharger BIN format
 // From: Eckhard Stolberg
 // Date: Fri, 08 Jan 1999.
 type FastLoad struct {
-	env  *environment.Environment
-	cart *Supercharger
+	env   *environment.Environment
+	state *state
 
 	// fastload binaries have a header which controls how the binary is read
 	blocks   []fastloadBlock
@@ -65,7 +65,7 @@ type fastloadBlock struct {
 	// PC address to jump to once loading has finished
 	startAddress uint16
 
-	// RAM config to be set adter tape load
+	// RAM config to be set after tape load
 	configByte uint8
 
 	// number of pages to load
@@ -85,14 +85,14 @@ type fastloadBlock struct {
 }
 
 // newFastLoad is the preferred method of initialisation for the FastLoad type.
-func newFastLoad(env *environment.Environment, cart *Supercharger, loader cartridgeloader.Loader) (tape, error) {
+func newFastLoad(env *environment.Environment, state *state, loader cartridgeloader.Loader) (tape, error) {
 	if loader.Size()%fastLoadBlockLen != 0 {
 		return nil, fmt.Errorf("fastload: wrong number of bytes in cartridge data")
 	}
 
 	fl := &FastLoad{
-		env:  env,
-		cart: cart,
+		env:   env,
+		state: state,
 	}
 
 	fl.blocks = make([]fastloadBlock, loader.Size()/fastLoadBlockLen)
@@ -122,7 +122,6 @@ func newFastLoad(env *environment.Environment, cart *Supercharger, loader cartri
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: multiload: %#02x", i, fl.blocks[i].multiload)
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: progress speed: %#02x", i, fl.blocks[i].progressSpeed)
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: page-table: %v", i, fl.blocks[i].pageTable)
-
 	}
 
 	return fl, nil
@@ -130,16 +129,22 @@ func newFastLoad(env *environment.Environment, cart *Supercharger, loader cartri
 
 // snapshot implements the tape interface.
 func (fl *FastLoad) snapshot() tape {
-	// this function doesn't copy anything. data array in each snapshot will
-	// point to the same data array
 	n := *fl
 	return &n
 }
 
+// plumb implements the tape interface.
+func (fl *FastLoad) plumb(state *state, env *environment.Environment) {
+	fl.env = env
+	fl.state = state
+}
+
 // load implements the tape interface.
 func (fl *FastLoad) load() (uint8, error) {
-	// setup cartridge according to tape instructions
-	fl.cart.env.Notifications.Notify(notifications.NotifySuperchargerFastload)
+	if fl.env.Label == environment.MainEmulation {
+		// setup cartridge according to tape instructions
+		fl.env.Notifications.Notify(notifications.NotifySuperchargerFastload)
+	}
 	return 0, nil
 }
 
@@ -189,7 +194,7 @@ func (fl *FastLoad) Fastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error 
 		page := fl.blocks[fl.blockIdx].pageTable[i] >> 2
 		ramOffset := int(page) * 0x100
 		dataOffset := i * 0x100
-		copy(fl.cart.state.ram[bank][ramOffset:ramOffset+0x100], fl.blocks[fl.blockIdx].data[dataOffset:dataOffset+0x100])
+		copy(fl.state.ram[bank][ramOffset:ramOffset+0x100], fl.blocks[fl.blockIdx].data[dataOffset:dataOffset+0x100])
 	}
 
 	// poke values into RAM. these values would be the by-product of the
@@ -224,8 +229,8 @@ func (fl *FastLoad) Fastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error 
 	}
 
 	// set the value to be used in the first instruction of the bootstrap program
-	fl.cart.state.registers.Value = fl.blocks[fl.blockIdx].configByte
-	fl.cart.state.registers.Delay = 0
+	fl.state.registers.Value = fl.blocks[fl.blockIdx].configByte
+	fl.state.registers.Delay = 0
 
 	return nil
 }
