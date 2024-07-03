@@ -26,6 +26,8 @@ type ReflectedInfo int
 // List of valid ReflectedInfo values.
 const (
 	RefreshRate ReflectedInfo = iota
+	VBLANK
+	VSYNC
 	WSYNC
 	Collision
 	CXCLR
@@ -57,6 +59,7 @@ type Overlay int
 // List of valid Overlay values.
 const (
 	OverlayNone Overlay = iota
+	OverlayVBLANK_VSYNC
 	OverlayWSYNC
 	OverlayCollision
 	OverlayHMOVE
@@ -66,4 +69,4 @@ const (
 )
 
 // OverlayLabels are names/labels for the the Policy type values.
-var OverlayLabels = []string{"No overlay", "WSYNC", "Collisions", "HMOVE", "RSYNC", "Audio", "Coprocessor"}
+var OverlayLabels = []string{"No overlay", "VBLANK/VSYNC", "WSYNC", "Collisions", "HMOVE", "RSYNC", "Audio", "Coprocessor"}

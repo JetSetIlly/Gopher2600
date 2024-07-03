@@ -511,6 +511,13 @@ func (win *winDbgScr) drawOverlayCombo() {
 				if imgui.Selectable(s) {
 					win.img.screen.crit.overlay = s
 					win.img.screen.plotOverlay()
+
+					// set striped flag for VBLANK/VSYNC overlay
+					if i == int(reflection.OverlayVBLANK_VSYNC) {
+						win.scr.crit.overlayStriped = true
+					} else {
+						win.scr.crit.overlayStriped = false
+					}
 				}
 			} else if coproc != nil {
 				// if ROM has a coprocessor change the option label to the
@@ -521,6 +528,7 @@ func (win *winDbgScr) drawOverlayCombo() {
 					// elsewhere
 					win.img.screen.crit.overlay = s
 					win.img.screen.plotOverlay()
+					win.scr.crit.overlayStriped = false
 				}
 			}
 		}
@@ -531,6 +539,16 @@ func (win *winDbgScr) drawOverlayCombo() {
 
 func (win *winDbgScr) drawOverlayComboTooltip() {
 	switch win.img.screen.crit.overlay {
+	case reflection.OverlayLabels[reflection.OverlayVBLANK_VSYNC]:
+		win.img.imguiTooltip(func() {
+			imguiColorLabelSimple("VBLANK", win.img.cols.reflectionColors[reflection.VBLANK])
+			imgui.Spacing()
+			imguiColorLabelSimple("VSYNC", win.img.cols.reflectionColors[reflection.VSYNC])
+		}, true)
+	case reflection.OverlayLabels[reflection.OverlayWSYNC]:
+		win.img.imguiTooltip(func() {
+			imguiColorLabelSimple("WSYNC", win.img.cols.reflectionColors[reflection.WSYNC])
+		}, true)
 	case reflection.OverlayLabels[reflection.OverlayWSYNC]:
 		win.img.imguiTooltip(func() {
 			imguiColorLabelSimple("WSYNC", win.img.cols.reflectionColors[reflection.WSYNC])
@@ -659,6 +677,11 @@ func (win *winDbgScr) drawReflectionTooltip() {
 
 		switch win.scr.crit.overlay {
 		case reflection.OverlayLabels[reflection.OverlayNone]:
+			fallthrough
+
+		case reflection.OverlayLabels[reflection.OverlayVBLANK_VSYNC]:
+			// tooltip for VBLANK/VSYNC overlay is the same as for when there is
+			// no overlay
 			s := ref.Signal.String()
 			if ref.IsHblank && len(s) > 0 {
 				imguiSeparator()

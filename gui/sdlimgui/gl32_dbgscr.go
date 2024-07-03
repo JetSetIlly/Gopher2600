@@ -244,6 +244,10 @@ type dbgScrOverlayShader struct {
 	shader
 	dbgScrHelper
 
+	stripe     int32 // uniform
+	stripeSize int32 // uniform
+	stripeFade int32 // uniform
+
 	img *SdlImgui
 }
 
@@ -255,12 +259,21 @@ func newDbgScrOverlayShader(img *SdlImgui) shaderProgram {
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.DbgScrHelpersShader), string(shaders.DbgScrOverlayShader))
 	sh.dbgScrHelper.get(sh.shader)
 
+	sh.stripe = gl.GetUniformLocation(sh.handle, gl.Str("Stripe"+"\x00"))
+	sh.stripeSize = gl.GetUniformLocation(sh.handle, gl.Str("Stripe_Size"+"\x00"))
+	sh.stripeFade = gl.GetUniformLocation(sh.handle, gl.Str("Stripe_Fade"+"\x00"))
+
 	return sh
 }
 
 func (sh *dbgScrOverlayShader) setAttributes(env shaderEnvironment) {
 	sh.shader.setAttributes(env)
 	sh.dbgScrHelper.set(sh.img)
+	sh.img.screen.crit.section.Lock()
+	gl.Uniform1i(sh.stripe, boolToInt32(sh.img.screen.crit.overlayStriped))
+	sh.img.screen.crit.section.Unlock()
+	gl.Uniform1f(sh.stripeSize, 3.0)
+	gl.Uniform1f(sh.stripeFade, 0.7)
 }
 
 type dbgScrMagnifyShader struct {

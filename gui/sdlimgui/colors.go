@@ -526,6 +526,8 @@ func newColors() *imguiColors {
 // reflectionColors lists the colors to be used for the reflection overlay.
 var reflectionColors = []color.RGBA{
 	reflection.RefreshRate:  {R: 50, G: 255, B: 255, A: 255},
+	reflection.VBLANK:       {R: 240, G: 240, B: 240, A: 255},
+	reflection.VSYNC:        {R: 201, G: 201, B: 201, A: 255}, // roughly equivalent to 79%. same as timeline VSYNC plot
 	reflection.WSYNC:        {R: 50, G: 50, B: 255, A: 255},
 	reflection.Collision:    {R: 255, G: 25, B: 25, A: 255},
 	reflection.CXCLR:        {R: 255, G: 25, B: 255, A: 255},
