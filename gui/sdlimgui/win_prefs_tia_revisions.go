@@ -100,13 +100,13 @@ func (win *winPrefs) drawLatePlayfield() {
 	}
 	win.drawTIARevTooltip(revision.LatePFx)
 
-	b := win.img.dbg.VCS().Env.Prefs.Revision.LateCOLUPF.Get().(bool)
-	if imgui.Checkbox("COLUPF", &b) {
+	b := win.img.dbg.VCS().Env.Prefs.Revision.LateColor.Get().(bool)
+	if imgui.Checkbox("Colour", &b) {
 		win.img.dbg.PushFunction(func() {
-			win.img.dbg.VCS().Env.Prefs.Revision.LateCOLUPF.Set(b)
+			win.img.dbg.VCS().Env.Prefs.Revision.LateColor.Set(b)
 		})
 	}
-	win.drawTIARevTooltip(revision.LateCOLUPF)
+	win.drawTIARevTooltip(revision.LateColor)
 }
 
 func (win *winPrefs) drawLostMOTCK() {

@@ -535,8 +535,8 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister, ct int) {
 
 			// update playfield color register (depending on TIA revision)
 			if update {
-				if !tia.env.Prefs.Revision.Live.LateCOLUPF.Load().(bool) {
-					update = tia.Video.UpdatePlayfieldColor(reg)
+				if !tia.env.Prefs.Revision.Live.LateColor.Load().(bool) {
+					update = tia.Video.UpdatePlayfieldAndBackgroundColor(reg)
 				}
 
 				if update {
@@ -598,8 +598,8 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister, ct int) {
 
 					if update {
 						// update playfield color register (depending on TIA revision)
-						if tia.env.Prefs.Revision.Live.LateCOLUPF.Load().(bool) {
-							update = tia.Video.UpdatePlayfieldColor(reg)
+						if tia.env.Prefs.Revision.Live.LateColor.Load().(bool) {
+							update = tia.Video.UpdatePlayfieldAndBackgroundColor(reg)
 							if update {
 								logger.Logf(tia.env, "tia", "memory altered to no affect (%04x=%02x)", reg.Address, reg.Value)
 							}

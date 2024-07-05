@@ -548,7 +548,7 @@ func (vd *Video) UpdateSpritePositioning(data chipbus.ChangedRegister) bool {
 
 // UpdateColor checks TIA memory for changes to color registers.
 //
-// See UpdatePlayfieldColor() also.
+// See UpdatePlayfieldAndBackgroundColor() also.
 //
 // Returns true if ChipData has *not* been serviced.
 func (vd *Video) UpdateColor(data chipbus.ChangedRegister) bool {
@@ -559,8 +559,6 @@ func (vd *Video) UpdateColor(data chipbus.ChangedRegister) bool {
 	case cpubus.COLUP1:
 		vd.Player1.setColor(data.Value & 0xfe)
 		vd.Missile1.setColor(data.Value & 0xfe)
-	case cpubus.COLUBK:
-		vd.Playfield.setBackground(data.Value & 0xfe)
 	default:
 		return true
 	}
@@ -569,7 +567,7 @@ func (vd *Video) UpdateColor(data chipbus.ChangedRegister) bool {
 	return false
 }
 
-// UpdatePlayfieldColor checks TIA memory for changes to playfield color
+// UpdatePlayfieldAndBackgroundColor checks TIA memory for changes to playfield color
 // registers.
 //
 // Separate from the UpdateColor() function because some TIA revisions (or
@@ -577,11 +575,13 @@ func (vd *Video) UpdateColor(data chipbus.ChangedRegister) bool {
 // playfield color register than the other registers.
 //
 // Returns true if ChipData has *not* been serviced.
-func (vd *Video) UpdatePlayfieldColor(data chipbus.ChangedRegister) bool {
+func (vd *Video) UpdatePlayfieldAndBackgroundColor(data chipbus.ChangedRegister) bool {
 	switch data.Register {
 	case cpubus.COLUPF:
 		vd.Playfield.setColor(data.Value & 0xfe)
 		vd.Ball.setColor(data.Value & 0xfe)
+	case cpubus.COLUBK:
+		vd.Playfield.setBackground(data.Value & 0xfe)
 	default:
 		return true
 	}

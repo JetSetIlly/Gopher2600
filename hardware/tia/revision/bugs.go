@@ -52,14 +52,10 @@ const (
 	// Example ROM: Pesco.
 	LatePFx
 
-	// Late COLUPF: Updating of playfield color register happens a video cycle
-	// later than it should.
+	// Late Color: Updating of playfield and background color registers happens
+	// a video cycle later than it should.
 	//
 	// Example ROM: QuickStep
-	//
-	// I am unsure if this applies to all color registers or just the
-	// Playfield. For now, I'm assuming it is only the playfield color
-	// register.
 	//
 	// This is implemented by delaying the servicing of the color register
 	// until after the pixel color is selected.
@@ -69,7 +65,12 @@ const (
 	// mod. Explanation of how this can happen:
 	//
 	// https://atariage.com/forums/topic/307533-atari-rgb-light-sixer-repair/?do=findComment&comment=4559618
-	LateCOLUPF
+	//
+	// Quickstep only requires the playfield to be affected but there are
+	// examples of ROMs where the background register needs to be affected too
+	//
+	// https://forums.atariage.com/topic/368031-powercore-wip/?do=findComment&comment=5496112
+	LateColor
 
 	// In some TIA variations, a HMOVE clock during the non-HBLANK period will
 	// cause the regular tick signal to phase out when the sprites HMOVE
@@ -106,8 +107,8 @@ func (bug Bug) Description() string {
 		return "RESPx triggers an early draw under certain HMOVE conditions"
 	case LatePFx:
 		return "PFx bits set late"
-	case LateCOLUPF:
-		return "COLUPF set late"
+	case LateColor:
+		return "COLUPF/COLUBK set late"
 	case LostMOTCK:
 		return "MOTCK is sometimes ineffective when HBLANK is off"
 	case RESPxHBLANK:
@@ -128,8 +129,8 @@ func (bug Bug) NotableROM() string {
 		return "36 Character Demos"
 	case LatePFx:
 		return "Pesco"
-	case LateCOLUPF:
-		return "Quickstep (can be triggered by RGB Mods)"
+	case LateColor:
+		return "Quickstep (James' RGB modded light sixer)"
 	case LostMOTCK:
 		return "Cosmic Ark (missile sprite)"
 	case RESPxHBLANK:

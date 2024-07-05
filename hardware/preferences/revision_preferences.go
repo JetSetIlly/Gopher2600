@@ -36,7 +36,7 @@ type LiveRevisionPreferences struct {
 	LateRESPx        atomic.Value // bool
 	EarlyScancounter atomic.Value // bool
 	LatePFx          atomic.Value // bool
-	LateCOLUPF       atomic.Value // bool
+	LateColor        atomic.Value // bool
 	LostMOTCK        atomic.Value // bool
 	RESPxHBLANK      atomic.Value // bool
 }
@@ -54,7 +54,7 @@ type RevisionPreferences struct {
 	LateRESPx        prefs.Bool
 	EarlyScancounter prefs.Bool
 	LatePFx          prefs.Bool
-	LateCOLUPF       prefs.Bool
+	LateColor        prefs.Bool
 	LostMOTCK        prefs.Bool
 	RESPxHBLANK      prefs.Bool
 }
@@ -83,8 +83,8 @@ func newRevisionPreferences() (*RevisionPreferences, error) {
 		p.Live.LatePFx.Store(v.(bool))
 		return nil
 	})
-	p.LateCOLUPF.SetHookPost(func(v prefs.Value) error {
-		p.Live.LateCOLUPF.Store(v.(bool))
+	p.LateColor.SetHookPost(func(v prefs.Value) error {
+		p.Live.LateColor.Store(v.(bool))
 		return nil
 	})
 	p.LostMOTCK.SetHookPost(func(v prefs.Value) error {
@@ -133,7 +133,7 @@ func newRevisionPreferences() (*RevisionPreferences, error) {
 		return nil, fmt.Errorf("revision: %w", err)
 	}
 
-	err = p.dsk.Add("tia.revision.playfield.latecolupf", &p.LateCOLUPF)
+	err = p.dsk.Add("tia.revision.playfield.latecolor", &p.LateColor)
 	if err != nil {
 		return nil, fmt.Errorf("revision: %w", err)
 	}
@@ -163,7 +163,7 @@ func (p *RevisionPreferences) SetDefaults() {
 	p.LateRESPx.Set(false)
 	p.EarlyScancounter.Set(false)
 	p.LatePFx.Set(false)
-	p.LateCOLUPF.Set(false)
+	p.LateColor.Set(false)
 	p.LostMOTCK.Set(false)
 	p.RESPxHBLANK.Set(false)
 }
