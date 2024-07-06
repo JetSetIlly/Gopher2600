@@ -756,7 +756,7 @@ func (tv *Television) newFrame() error {
 	if tv.state.bounds.commit(tv.state) {
 		if tv.debugger != nil {
 			if tv.env.Prefs.TV.HaltChangedVBLANK.Get().(bool) {
-				tv.debugger.HaltFromTelevision(HaltChangedVBLANK)
+				tv.debugger.HaltFromTelevision(HaltVBLANKChanged)
 			}
 			tv.state.frameInfo.VBLANKunstable = true
 		}
@@ -799,8 +799,8 @@ func (tv *Television) newFrame() error {
 		}
 	} else {
 		if tv.debugger != nil && tv.state.frameInfo.Stable && tv.state.frameInfo.IsSynced {
-			if tv.env.Prefs.TV.HaltDesynchronised.Get().(bool) {
-				tv.debugger.HaltFromTelevision(HaltDesynchronised)
+			if tv.env.Prefs.TV.HaltVSYNCabsent.Get().(bool) {
+				tv.debugger.HaltFromTelevision(HaltVSYNCAbsent)
 			}
 			tv.state.frameInfo.VSYNCunstable = true
 		}

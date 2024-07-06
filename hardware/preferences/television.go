@@ -47,7 +47,7 @@ type TVPreferences struct {
 	HaltVSYNCTooShort      prefs.Bool
 	HaltVSYNCScanlineStart prefs.Bool
 	HaltVSYNCScanlineCount prefs.Bool
-	HaltDesynchronised     prefs.Bool
+	HaltVSYNCabsent        prefs.Bool
 	HaltChangedVBLANK      prefs.Bool
 }
 
@@ -97,7 +97,7 @@ func newTVPreferences() (*TVPreferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("television.halt.desynchronised", &p.HaltDesynchronised)
+	err = p.dsk.Add("television.halt.vsyncabsent", &p.HaltVSYNCabsent)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (p *TVPreferences) SetDefaults() {
 	p.HaltVSYNCTooShort.Set(false)
 	p.HaltVSYNCScanlineStart.Set(false)
 	p.HaltVSYNCScanlineCount.Set(false)
-	p.HaltDesynchronised.Set(false)
+	p.HaltVSYNCabsent.Set(false)
 	p.HaltChangedVBLANK.Set(false)
 }
 

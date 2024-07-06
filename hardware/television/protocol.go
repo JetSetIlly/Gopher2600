@@ -189,8 +189,8 @@ type HaltCondition error
 var HaltVSYNCTooShort = errors.New("VSYNC signal too short")
 var HaltVSYNCScanlineStart = errors.New("VSYNC start scanline change")
 var HaltVSYNCScanlineCount = errors.New("VSYNC scanline count change")
-var HaltDesynchronised = errors.New("Desynchronised")
-var HaltChangedVBLANK = errors.New("VBLANK bounds change")
+var HaltVSYNCAbsent = errors.New("VSYNC absent")
+var HaltVBLANKChanged = errors.New("VBLANK bounds change")
 
 // Interface to a developer helper that can cause the emulation to halt on
 // various television related conditions

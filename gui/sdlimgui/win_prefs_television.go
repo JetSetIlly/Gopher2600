@@ -123,7 +123,7 @@ func (win *winPrefs) drawHaltConditions() {
 		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltVSYNCTooShort, "VSYNC too short")
 		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltVSYNCScanlineStart, "VSYNC start scanline changes")
 		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltVSYNCScanlineCount, "VSYNC scanline count changes")
-		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltDesynchronised, "Screen desynchronisation")
+		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltVSYNCabsent, "VSYNC absent")
 		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltChangedVBLANK, "VBLANK bounds change")
 	}
 }
