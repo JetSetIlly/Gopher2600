@@ -468,13 +468,22 @@ func (arm *ARM) updatePrefs() {
 	// set cycle counting functions
 	arm.immediateMode = arm.env.Prefs.ARM.Immediate.Get().(bool)
 	if arm.immediateMode {
-		arm.Icycle = arm.iCycleStub
-		arm.Scycle = arm.sCycleStub
-		arm.Ncycle = arm.nCycleStub
+		arm.Icycle = arm.iCycle_Stub
+		arm.Scycle = arm.sCycle_Stub
+		arm.Ncycle = arm.nCycle_Stub
 	} else {
-		arm.Icycle = arm.iCycle
-		arm.Scycle = arm.sCycle
-		arm.Ncycle = arm.nCycle
+		switch arm.mmap.ARMArchitecture {
+		case architecture.ARM7TDMI:
+			arm.Icycle = arm.iCycle_ARM7TDMI
+			arm.Scycle = arm.sCycle_ARM7TDMI
+			arm.Ncycle = arm.nCycle_ARM7TDMI
+		case architecture.ARMv7_M:
+			arm.Icycle = arm.iCycle_ARMv7_M
+			arm.Scycle = arm.sCycle_ARMv7_M
+			arm.Ncycle = arm.nCycle_ARMv7_M
+		default:
+			panic(fmt.Sprintf("unhandled ARM architecture: cannot set %s", arm.mmap.ARMArchitecture))
+		}
 	}
 
 	arm.abortOnMemoryFault = arm.env.Prefs.ARM.AbortOnMemoryFault.Get().(bool)
