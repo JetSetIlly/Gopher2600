@@ -328,6 +328,11 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) error {
 	// then the ARM is running in parallel (ie. no synchronisation)
 	cart.mem.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)
 
+	// no more work to do if this is not a cartridge access
+	if cart.mem.parallelARM {
+		return nil
+	}
+
 	// if address is the reset address then trigger the reset procedure
 	if (addr&memorymap.CartridgeBits)|memorymap.OriginCart == (cpubus.Reset&memorymap.CartridgeBits)|memorymap.OriginCart {
 		// after this call to cart reset, the cartridge will be wanting to run
