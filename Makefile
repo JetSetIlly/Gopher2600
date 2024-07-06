@@ -1,5 +1,5 @@
 
-version = v0.33.0 pre-release
+version = v0.33.0
 
 goBinary = go
 gcflags = -c 3 -B -wb=false
