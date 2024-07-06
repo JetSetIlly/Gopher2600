@@ -80,8 +80,7 @@ func (fp *fragmentParser) endCommentBlock(l *SourceLine, s string) string {
 
 	if len(sp) == 1 {
 		// comment is ongoing - add comment to SourceLine and return
-		l.Fragments = append(l.Fragments, SourceLineFragment{
-			Type:    FragmentComment,
+		l.Fragments = append(l.Fragments, SourceLineFragment{Type: FragmentComment,
 			Content: sp[0],
 		})
 		return ""
@@ -141,6 +140,28 @@ func (fp *fragmentParser) codeBlock(l *SourceLine, s string) {
 		return
 	}
 
+	// check for single-line comment
+	sp = strings.SplitN(s, `//`, 2)
+	if len(sp) > 1 {
+		// add code to fragments
+		l.Fragments = append(l.Fragments, SourceLineFragment{
+			Type:    FragmentCode,
+			Content: sp[0],
+		})
+
+		l.Fragments = append(l.Fragments, SourceLineFragment{
+			Type:    FragmentComment,
+			Content: `//`,
+		})
+
+		l.Fragments = append(l.Fragments, SourceLineFragment{
+			Type:    FragmentComment,
+			Content: sp[1],
+		})
+
+		return
+	}
+
 	// check for string block start. care taken not to match a single "
 	// contained in a character literal
 	sp = strings.SplitN(s, `"`, 2)
@@ -169,24 +190,5 @@ func (fp *fragmentParser) codeBlock(l *SourceLine, s string) {
 }
 
 func (fp *fragmentParser) parseLine(l *SourceLine) {
-	s := l.PlainContent
-
-	// parse line into fragments
-	sp := strings.SplitN(s, `//`, 2)
-	if len(sp) > 1 {
-		fp.codeBlock(l, sp[0])
-
-		l.Fragments = append(l.Fragments, SourceLineFragment{
-			Type:    FragmentComment,
-			Content: `//`,
-		})
-		l.Fragments = append(l.Fragments, SourceLineFragment{
-			Type:    FragmentComment,
-			Content: sp[1],
-		})
-
-		return
-	}
-
-	fp.codeBlock(l, s)
+	fp.codeBlock(l, l.PlainContent)
 }
