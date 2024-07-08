@@ -653,7 +653,11 @@ func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 			// breakpoints handle OnYield slightly differently
 			if arm.state.yield.Type != coprocessor.YieldBreakpoint {
 				arm.logYield()
-				arm.dev.OnYield(arm.state.registers[rPC], arm.state.yield)
+				if arm.state.yield.Type.Bug() {
+					arm.dev.OnYield(arm.state.instructionPC, arm.state.yield)
+				} else {
+					arm.dev.OnYield(arm.state.registers[rPC], arm.state.yield)
+				}
 			}
 		}()
 	}
