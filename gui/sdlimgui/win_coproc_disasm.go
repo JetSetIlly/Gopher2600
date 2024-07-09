@@ -21,6 +21,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/coprocessor/disassembly"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
@@ -240,7 +241,7 @@ func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries, lastExecu
 		if win.lastItemVisible {
 			imgui.SetScrollY(imgui.ScrollMaxY())
 		}
-		win.lastItemVisible = clipper.DisplayEnd >= len(dsm.Entries)
+		win.lastItemVisible = clipper.DisplayEnd >= len(dsm.Entries) && win.img.dbg.State() == govern.Running
 	})
 }
 
