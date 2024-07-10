@@ -63,8 +63,8 @@ func (cart *cdf) readDatastreamPointer(reg int) uint32 {
 	return binary.LittleEndian.Uint32(cart.state.static.driverRAM.data[idx:])
 }
 
-func (cart *cdf) readDatastreamIncrement(inc int) uint32 {
-	idx := cart.version.incrementBase + (uint32(inc) * 4)
+func (cart *cdf) readDatastreamIncrement(reg int) uint32 {
+	idx := cart.version.incrementBase + (uint32(reg) * 4)
 	return binary.LittleEndian.Uint32(cart.state.static.driverRAM.data[idx:])
 }
 
@@ -96,17 +96,17 @@ func (cart *cdf) readMusicFetcher(mus int) uint32 {
 }
 
 func (cart *cdf) streamData(reg int) uint8 {
-	addr := cart.readDatastreamPointer(reg)
+	ds := cart.readDatastreamPointer(reg)
 	inc := cart.readDatastreamIncrement(reg)
 
-	idx := int(addr >> cart.version.fetcherShift)
-	if idx >= len(cart.state.static.dataRAM.data) {
+	dataIdx := int(ds >> cart.version.fetcherShift)
+	if dataIdx >= len(cart.state.static.dataRAM.data) {
 		return 0
 	}
-	value := cart.state.static.dataRAM.data[idx]
+	output := cart.state.static.dataRAM.data[dataIdx]
 
-	addr += inc << cart.version.incrementShift
-	cart.updateDatastreamPointer(reg, addr)
+	ds += inc << cart.version.incrementShift
+	cart.updateDatastreamPointer(reg, ds)
 
-	return value
+	return output
 }
