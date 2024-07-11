@@ -190,6 +190,10 @@ func (varb *SourceVariable) Update() {
 // Note that the basic information about the variable is not output by this
 // function. The String() function provides that information
 func (varb *SourceVariable) WriteDerivation(w io.Writer) error {
+	if w == nil {
+		return nil
+	}
+
 	if varb.hasConstantValue {
 		w.Write([]byte(fmt.Sprintf("constant value %08x", varb.constantValue)))
 	}
