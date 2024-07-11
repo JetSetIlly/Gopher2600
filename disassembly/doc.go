@@ -46,7 +46,7 @@
 // iteration types.
 //
 // A Disassembly instance also keeps a reference to the symbols tables (see
-// symbols package). The GetSymbols() function can be used to get a reference
+// symbols package). The GetSymbol() function can be used to get a reference
 // to the Symbol tables. This reference will be valid throughout the lifetime
 // of the Disassembly instance and will "survive" calls to the FromMemory() and
 // FromCartridge() functions.

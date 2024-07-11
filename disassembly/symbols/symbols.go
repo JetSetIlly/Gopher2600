@@ -111,29 +111,40 @@ func (sym *Symbols) GetLabel(bank int, addr uint16) (Entry, bool) {
 	return Entry{}, false
 }
 
-// Getsymbol from read/write table.
-//
-// The read argument selects the table: true -> read table, false -> write table.
-func (sym *Symbols) GetSymbol(addr uint16, read bool) (Entry, bool) {
+// GetReadSymbol from symbols table.
+func (sym *Symbols) GetReadSymbol(val uint16, allowSystemSymbols bool) (Entry, bool) {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	// we first try to get the symbol with a mapped address. if the resulting
-	// symbol is of SourceSystem then the result is fine, otherwise we try
-	// again with the unmapped address
-	ma, _ := memorymap.MapAddress(addr, read)
-
-	if read {
-		if e, ok := sym.read.get(ma); !ok || e.Source == SourceSystem {
-			return e, ok
-		}
-		return sym.read.get(addr)
+	// we allow address mapping of system symbols
+	ma, _ := memorymap.MapAddress(val, true)
+	e, ok := sym.read.get(ma)
+	if !ok {
+		return e, false
+	}
+	if e.Source == SourceSystem {
+		return e, allowSystemSymbols
 	}
 
-	if e, ok := sym.write.get(ma); !ok || e.Source == SourceSystem {
-		return e, ok
+	return sym.read.get(val)
+}
+
+// GetWriteSymbol from symbols table.
+func (sym *Symbols) GetWriteSymbol(val uint16) (Entry, bool) {
+	sym.crit.Lock()
+	defer sym.crit.Unlock()
+
+	// we allow address mapping of system symbols
+	ma, _ := memorymap.MapAddress(val, false)
+	e, ok := sym.write.get(ma)
+	if !ok {
+		return e, false
 	}
-	return sym.write.get(addr)
+	if e.Source == SourceSystem {
+		return e, true
+	}
+
+	return sym.write.get(val)
 }
 
 // SymbolSource identifies the source of the symbol.

@@ -123,8 +123,8 @@ func (win *winCartRAM) draw(ram []mapper.CartRAM) {
 				// idx is based on original values of type uint16 so the type conversion is safe
 				addr := memorymap.OriginCart + uint16(idx)
 
-				read, okr := win.img.dbg.Disasm.Sym.GetSymbol(addr, true)
-				write, okw := win.img.dbg.Disasm.Sym.GetSymbol(addr, false)
+				read, okr := win.img.dbg.Disasm.Sym.GetReadSymbol(addr, false)
+				write, okw := win.img.dbg.Disasm.Sym.GetWriteSymbol(addr)
 				if okr || okw {
 					sz := imgui.FontSize() * 0.4
 					pos.X += 1.0

@@ -291,7 +291,7 @@ func (op Operand) Resolve() string {
 			}
 
 		case instructions.Read:
-			if e, ok := op.dsm.Sym.GetSymbol(data, true); ok {
+			if e, ok := op.dsm.Sym.GetReadSymbol(data, op.result.Defn.AddressingMode != instructions.Immediate); ok {
 				res = addrModeDecoration(e.Symbol, op.result.Defn.AddressingMode)
 			}
 
@@ -299,7 +299,7 @@ func (op Operand) Resolve() string {
 			fallthrough
 
 		case instructions.RMW:
-			if e, ok := op.dsm.Sym.GetSymbol(data, false); ok {
+			if e, ok := op.dsm.Sym.GetWriteSymbol(data); ok {
 				res = addrModeDecoration(e.Symbol, op.result.Defn.AddressingMode)
 			}
 		}

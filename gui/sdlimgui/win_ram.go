@@ -97,8 +97,8 @@ func (win *winRAM) draw() {
 		addr := memorymap.OriginRAM + uint16(idx)
 
 		dl := imgui.WindowDrawList()
-		read, okr := win.img.dbg.Disasm.Sym.GetSymbol(addr, true)
-		write, okw := win.img.dbg.Disasm.Sym.GetSymbol(addr, false)
+		read, okr := win.img.dbg.Disasm.Sym.GetReadSymbol(addr, false)
+		write, okw := win.img.dbg.Disasm.Sym.GetWriteSymbol(addr)
 		if okr || okw {
 			sz := imgui.FontSize() * 0.4
 			pos.X += 1.0
