@@ -190,7 +190,7 @@ func (cart *commavid) PutRAM(_ int, idx int, data uint8) {
 	cart.state.ram[idx] = data
 }
 
-// IterateBank implements the mapper.CartMapper interface.
+// CopyBanks implements the mapper.CartMapper interface.
 func (cart *commavid) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, 1)
 	c[0] = mapper.BankContent{Number: 0,

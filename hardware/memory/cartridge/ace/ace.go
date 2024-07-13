@@ -205,7 +205,7 @@ func (cart *Ace) Step(clock float32) {
 	}
 }
 
-// IterateBank implements the mapper.CartMapper interface.
+// CopyBanks implements the mapper.CartMapper interface.
 func (cart *Ace) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, 1)
 	c[0] = mapper.BankContent{Number: 0,

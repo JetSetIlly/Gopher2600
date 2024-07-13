@@ -265,7 +265,7 @@ func (cart *df) PutRAM(_ int, idx int, data uint8) {
 	cart.state.ram[idx] = data
 }
 
-// IterateBank implements the mapper.CartMapper interface.
+// CopyBanks implements the mapper.CartMapper interface.
 func (cart *df) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {

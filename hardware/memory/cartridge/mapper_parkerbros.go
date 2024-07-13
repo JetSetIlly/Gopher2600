@@ -261,7 +261,7 @@ func (cart *parkerBros) AccessPassive(_ uint16, _ uint8) error {
 func (cart *parkerBros) Step(_ float32) {
 }
 
-// IterateBank implements the mapper.CartMapper interface.
+// CopyBanks implements the mapper.CartMapper interface.
 func (cart *parkerBros) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 

@@ -394,7 +394,7 @@ func (cart *Elf) Step(clock float32) {
 	cart.arm.Step(clock)
 }
 
-// IterateBank implements the mapper.CartMapper interface.
+// CopyBanks implements the mapper.CartMapper interface.
 func (cart *Elf) CopyBanks() []mapper.BankContent {
 	return nil
 }

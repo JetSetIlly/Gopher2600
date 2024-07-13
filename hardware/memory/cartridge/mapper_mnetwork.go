@@ -370,7 +370,7 @@ func (cart *mnetwork) PutRAM(bank int, idx int, data uint8) {
 	cart.state.ram256byte[bank-1][idx] = data
 }
 
-// IterateBank implements the mapper.CartMapper interface.
+// CopyBanks implements the mapper.CartMapper interface.
 func (cart *mnetwork) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 

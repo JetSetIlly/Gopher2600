@@ -295,7 +295,7 @@ func (cart *atari) PutRAM(_ int, idx int, data uint8) {
 	cart.state.ram[idx] = data
 }
 
-// IterateBank implements the mapper.CartMapper interface.
+// CopyBanks implements the mapper.CartMapper interface.
 func (cart *atari) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {
@@ -458,7 +458,7 @@ func (cart *atari2k) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	return cart.banks[0][addr&cart.mask], mapper.CartDrivenPins, nil
 }
 
-// IterateBank implements the mapper.CartMapper interface.
+// CopyBanks implements the mapper.CartMapper interface.
 func (cart *atari2k) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, 1)
 	c[0] = mapper.BankContent{Number: 0,

@@ -208,7 +208,7 @@ func (cart *tigervision) AccessPassive(addr uint16, data uint8) error {
 func (cart *tigervision) Step(_ float32) {
 }
 
-// IterateBank implements the mapper.CartMapper interface.
+// CopyBanks implements the mapper.CartMapper interface.
 func (cart *tigervision) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 

@@ -292,7 +292,7 @@ func (cart *Supercharger) Step(_ float32) {
 	_ = cart.state.tape.step()
 }
 
-// IterateBank implements the mapper.CartMapper interface.
+// CopyBanks implements the mapper.CartMapper interface.
 func (cart *Supercharger) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.state.ram)+1)
 
