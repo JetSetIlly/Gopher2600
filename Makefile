@@ -22,7 +22,7 @@ endif
 .PHONY: all clean tidy generate check_git check_glsl glsl_validate check_pandoc readme_spell patch_file_integrity vet
 
 all:
-	@echo "use release target to build release binary"
+	@echo "use 'release' to build release binary"
 
 clean:
 	@echo "removing binary, profiling files and windows manifests"
