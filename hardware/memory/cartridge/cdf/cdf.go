@@ -418,27 +418,42 @@ func (cart *cdf) AccessVolatile(addr uint16, data uint8, poke bool) error {
 // bankswitch on hotspot access.
 func (cart *cdf) bankswitch(addr uint16) bool {
 	if addr >= 0x0ff4 && addr <= 0x0ffb {
-		if addr == 0x0ff4 {
-			cart.state.bank = 6
-		} else if addr == 0x0ff5 {
-			cart.state.bank = 0
-		} else if addr == 0x0ff6 {
-			cart.state.bank = 1
-		} else if addr == 0x0ff7 {
-			cart.state.bank = 2
-		} else if addr == 0x0ff8 {
-			cart.state.bank = 3
-		} else if addr == 0x0ff9 {
-			cart.state.bank = 4
-		} else if addr == 0x0ffa {
-			cart.state.bank = 5
-		} else if addr == 0x0ffb {
-			cart.state.bank = 6
-		}
-
 		if cart.version.submapping == "CDFJ+" {
-			cart.state.bank++
-			cart.state.bank %= 7
+			if addr == 0x0ff4 {
+				cart.state.bank = 0
+			} else if addr == 0x0ff5 {
+				cart.state.bank = 1
+			} else if addr == 0x0ff6 {
+				cart.state.bank = 2
+			} else if addr == 0x0ff7 {
+				cart.state.bank = 3
+			} else if addr == 0x0ff8 {
+				cart.state.bank = 4
+			} else if addr == 0x0ff9 {
+				cart.state.bank = 5
+			} else if addr == 0x0ffa {
+				cart.state.bank = 6
+			} else if addr == 0x0ffb {
+				cart.state.bank = 7
+			}
+		} else {
+			if addr == 0x0ff4 {
+				cart.state.bank = 6
+			} else if addr == 0x0ff5 {
+				cart.state.bank = 0
+			} else if addr == 0x0ff6 {
+				cart.state.bank = 1
+			} else if addr == 0x0ff7 {
+				cart.state.bank = 2
+			} else if addr == 0x0ff8 {
+				cart.state.bank = 3
+			} else if addr == 0x0ff9 {
+				cart.state.bank = 4
+			} else if addr == 0x0ffa {
+				cart.state.bank = 5
+			} else if addr == 0x0ffb {
+				cart.state.bank = 6
+			}
 		}
 
 		return true
