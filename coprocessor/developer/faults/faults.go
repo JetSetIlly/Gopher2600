@@ -30,6 +30,7 @@ const (
 	StackCollision   Category = "stack collision"
 	IllegalAddress   Category = "illegal address"
 	UndefinedSymbol  Category = "undefined symbol"
+	ProgramMemory    Category = "program memory"
 )
 
 // Entry is a single entry in the fault log

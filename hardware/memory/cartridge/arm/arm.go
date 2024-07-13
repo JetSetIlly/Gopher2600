@@ -766,15 +766,13 @@ func (arm *ARM) checkProgramMemory(force bool) {
 	var origin uint32
 	arm.state.programMemory, origin = arm.mem.MapAddress(addr, false)
 	if arm.state.programMemory == nil {
-		arm.state.yield.Type = coprocessor.YieldMemoryAccessError
-		arm.state.yield.Error = fmt.Errorf("can't find program memory (PC %08x)", addr)
+		arm.memoryFault("does not exist", faults.ProgramMemory, addr)
 		return
 	}
 
 	if !arm.mem.IsExecutable(addr) {
+		arm.memoryFault("not executable", faults.ProgramMemory, addr)
 		arm.state.programMemory = nil
-		arm.state.yield.Type = coprocessor.YieldMemoryAccessError
-		arm.state.yield.Error = fmt.Errorf("program memory is not executable (PC %08x)", addr)
 		return
 	}
 
