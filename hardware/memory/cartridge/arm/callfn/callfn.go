@@ -17,6 +17,8 @@
 // CDF* cartridge mappers. It does not handle the ARM itself and cartridge
 // mappers that use it should take care in particular to Run() and Step() the
 // ARM when required.
+//
+// It is not required when the ARM is intended to be run in "immediate" mode.
 package callfn
 
 import (
@@ -36,13 +38,13 @@ type CallFn struct {
 	resumeCount int
 
 	// phantom reads happen all the time but we don't normally care about them.
-	// the only place where it matters is at the moment the ARM processor is
+	// but one place where it does matter is at the moment when a CALLFN is
 	// finishing.
 	//
 	// the problem is caused by the conclusion of the ARM program not being
-	// predictable (at least not the way we're doing it). this means it's
-	// possible that it finishes sometime between the placeholder NOP and the
-	// phantom read connected with that NOP (the phantom read always happens).
+	// predictable. this means it's possible that it finishes sometime between
+	// the placeholder NOP and the phantom read connected with that NOP (the
+	// phantom read always happens).
 	//
 	// what we don't want to happen is to send the JMP opcode in response to
 	// the phantom read. so, to prevent that we toggle the phantomOnResume
@@ -81,11 +83,18 @@ func (cf *CallFn) Check(addr uint16) (uint8, bool) {
 	}
 
 	switch cf.resumeCount {
-	case 3:
-		if !cf.phantomOnResume {
-			cf.resumeCount--
-		}
+	case 4:
+		// we always send at least one NOP instruction during a CALLFN. this
+		// branch ensures that while playing nicely with the phantom read
+		// problem
 		cf.phantomOnResume = !cf.phantomOnResume
+		if cf.phantomOnResume {
+			return nop, true
+		}
+		cf.resumeCount--
+		return 0x00, true
+	case 3:
+		cf.resumeCount--
 		return jmpAbsolute, true
 	case 2:
 		cf.resumeCount--
@@ -110,17 +119,14 @@ func (cf *CallFn) Check(addr uint16) (uint8, bool) {
 
 // Accumulate cycles to the account for. Is safe to call if callfn is already
 // active.
+//
+// There is no need to call this function if the ARM is operating in "immediate"
+// mode. However, if you want to see the corrective JMP instruction at the end
+// of a CALLFN then it is safe to call this function with cycles value of 0
 func (cf *CallFn) Accumulate(cycles float32) {
-	// if the number of cycles is zero then the ARM program didn't take any
-	// time at all and there is no need to account for the phantom reads.
-	// return immediately
-	if cycles == 0 {
-		return
-	}
-
 	// if remaining cycles is zero then this is a new execution
 	if cf.remainingCycles == 0 {
-		cf.resumeCount = 3
+		cf.resumeCount = 4
 		cf.phantomOnResume = false
 	}
 
@@ -152,7 +158,7 @@ func (cf *CallFn) Step(vcsClock float32, armClock float32) float32 {
 	// consume whatever the remaining cycles is. returning true because this stil takes
 	// one VCS clock
 	//
-	// for a long time these branch returned false, meaning that the remaining
+	// for a long time this branch returned false, meaning that the remaining
 	// number of ARM cycles were not counted if that number was less than the
 	// number possible in a single VCS clock
 	if cf.remainingCycles <= armCycles {

@@ -45,6 +45,13 @@ type ARMPreferences struct {
 	// instantly
 	Immediate prefs.Bool
 
+	// whether to issue the PC correction after a CALLFN has concluded. the
+	// correction is not necessary but it is sometimes useful to see the
+	// JMP instructions
+	//
+	// * this is not intended to be an option visible to the end user
+	ImmediateCorrection prefs.Bool
+
 	// a value of MAMDriver says to use the driver supplied MAM value. any
 	// other value "forces" the MAM setting on Thumb program execution.
 	MAM prefs.Int
@@ -93,6 +100,10 @@ func newARMprefrences() (*ARMPreferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("hardware.arm7.immediateCorrection", &p.ImmediateCorrection)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("hardware.arm7.mam", &p.MAM)
 	if err != nil {
 		return nil, err
@@ -124,6 +135,7 @@ func (p *ARMPreferences) SetDefaults() {
 	p.Clock.Set(70.0)
 	p.CycleRegulator.Set(1.0)
 	p.Immediate.Set(false)
+	p.ImmediateCorrection.Set(false)
 	p.MAM.Set(-1)
 	p.AbortOnMemoryFault.Set(false)
 	p.MisalignedAccessIsFault.Set(false)

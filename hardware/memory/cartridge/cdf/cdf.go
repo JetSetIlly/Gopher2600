@@ -696,7 +696,9 @@ func (cart *cdf) SetYieldHook(hook coprocessor.CartYieldHook) {
 func (cart *cdf) runArm() coprocessor.CoProcYield {
 	yld, cycles := cart.arm.Run()
 
-	cart.state.callfn.Accumulate(cycles)
+	if cycles > 0 || cart.env.Prefs.ARM.ImmediateCorrection.Get().(bool) {
+		cart.state.callfn.Accumulate(cycles)
+	}
 
 	// update the Register types after each return from arm.Run() regardless of
 	// yield reason
