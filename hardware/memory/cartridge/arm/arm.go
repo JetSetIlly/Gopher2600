@@ -653,11 +653,12 @@ func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 			// breakpoints handle OnYield slightly differently
 			if arm.state.yield.Type != coprocessor.YieldBreakpoint {
 				arm.logYield()
-				if arm.state.yield.Type.Bug() {
-					arm.dev.OnYield(arm.state.instructionPC, arm.state.yield)
-				} else {
-					arm.dev.OnYield(arm.state.registers[rPC], arm.state.yield)
-				}
+
+				// instructionPC is the correct value to use with the OnYield()
+				// function. if we use the current PC value then we might be
+				// returning the address that is the second word of a 32bit
+				// instruction
+				arm.dev.OnYield(arm.state.instructionPC, arm.state.yield)
 			}
 		}()
 	}

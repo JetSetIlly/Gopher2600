@@ -252,10 +252,9 @@ type CartCoProcDeveloper interface {
 	// profiling
 	ProcessProfiling()
 
-	// called whenever the ARM yields to the VCS. it communicates the PC of the
-	// most recent instruction, the current PC (as it is now), and the reason
-	// for the yield
-	OnYield(currentPC uint32, reason CoProcYield)
+	// called whenever the ARM yields to the VCS. it communicates the address of
+	// the most recent instruction and the reason for the yield
+	OnYield(addr uint32, reason CoProcYield)
 }
 
 // CoProcYield describes a coprocessor yield state
