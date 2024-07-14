@@ -96,6 +96,8 @@ type aceMemory struct {
 	cycles float32
 }
 
+const maxArmInterrupCt = 6
+
 const (
 	DATA_MODER = 0x40020800
 	ADDR_IDR   = 0x40020c10

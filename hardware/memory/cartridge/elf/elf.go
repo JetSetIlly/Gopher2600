@@ -309,10 +309,17 @@ func (cart *Elf) runARM(addr uint16) bool {
 	// call arm once and then check for yield conditions
 	cart.mem.yield, _ = cart.arm.Run()
 
-	// keep calling runArm() for as long as program does not need to sync with the VCS...
+	// keep calling runArm() for as long as program does not need to sync with the VCS
 	for cart.mem.yield.Type != coprocessor.YieldSyncWithVCS {
-		// ... or if the yield hook says to return to the VCS immediately
-		switch cart.yieldHook.CartYield(cart.mem.yield.Type) {
+
+		// the ARM should never return YieldProgramEnded. if it does then it is
+		// an error and we should yield with YieldExecutionError
+		if cart.mem.yield.Type == coprocessor.YieldProgramEnded {
+			cart.mem.yield.Type = coprocessor.YieldExecutionError
+			cart.mem.yield.Error = fmt.Errorf("ELF does not support program-ended yield")
+		}
+
+		switch cart.yieldHook.CartYield(cart.mem.yield) {
 		case coprocessor.YieldHookEnd:
 			return false
 		case coprocessor.YieldHookContinue:

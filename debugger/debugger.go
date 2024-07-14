@@ -886,7 +886,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 }
 
 // CartYield implements the coprocessor.CartYieldHook interface.
-func (dbg *Debugger) CartYield(yield coprocessor.CoProcYieldType) coprocessor.YieldHookResponse {
+func (dbg *Debugger) CartYield(yield coprocessor.CoProcYield) coprocessor.YieldHookResponse {
 	// if the emulator wants to quit we need to return true to instruct the
 	// cartridge to return to the main loop immediately
 	if !dbg.running {
@@ -900,7 +900,7 @@ func (dbg *Debugger) CartYield(yield coprocessor.CoProcYieldType) coprocessor.Yi
 		return coprocessor.YieldHookEnd
 	}
 
-	switch yield {
+	switch yield.Type {
 	case coprocessor.YieldProgramEnded:
 		// expected reason for CDF and DPC+ cartridges
 		return coprocessor.YieldHookContinue

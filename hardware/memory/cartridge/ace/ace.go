@@ -157,8 +157,17 @@ func (cart *Ace) runARM() bool {
 
 	// keep calling runArm() for as long as program does not need to sync with the VCS
 	for cart.mem.yield.Type != coprocessor.YieldSyncWithVCS {
-		switch cart.yieldHook.CartYield(cart.mem.yield.Type) {
+
+		// the ARM should never return YieldProgramEnded. if it does then it is
+		// an error and we should yield with YieldExecutionError
+		if cart.mem.yield.Type == coprocessor.YieldProgramEnded {
+			cart.mem.yield.Type = coprocessor.YieldExecutionError
+			cart.mem.yield.Error = fmt.Errorf("ACE does not support program-ended yield")
+		}
+
+		switch cart.yieldHook.CartYield(cart.mem.yield) {
 		case coprocessor.YieldHookEnd:
+			cart.mem.armInterruptCt = maxArmInterrupCt
 			return false
 		case coprocessor.YieldHookContinue:
 			cart.mem.yield, cycles = cart.arm.Run()
@@ -188,7 +197,7 @@ func (cart *Ace) AccessPassive(addr uint16, data uint8) error {
 	cart.mem.gpio[ADDR_IDR-cart.mem.gpioOrigin+1] = uint8(addr >> 8)
 
 	// continue and wait for the sixth YieldSyncWithVCS...
-	for cart.mem.armInterruptCt < 6 {
+	for cart.mem.armInterruptCt < maxArmInterrupCt {
 		cart.runARM()
 	}
 	cart.mem.armInterruptCt = 0

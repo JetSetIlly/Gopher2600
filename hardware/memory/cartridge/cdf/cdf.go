@@ -399,7 +399,7 @@ func (cart *cdf) AccessVolatile(addr uint16, data uint8, poke bool) error {
 			// keep calling runArm() for as long as program has not ended
 			runArm()
 			for cart.state.yield.Type != coprocessor.YieldProgramEnded {
-				if cart.yieldHook.CartYield(cart.state.yield.Type) == coprocessor.YieldHookEnd {
+				if cart.yieldHook.CartYield(cart.state.yield) == coprocessor.YieldHookEnd {
 					break
 				}
 				runArm()

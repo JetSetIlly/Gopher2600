@@ -160,8 +160,8 @@ func (thmb *Image) Create(state *rewind.State) {
 }
 
 // CartYield implements the coprocessor.CartYieldHook interface.
-func (thmb *Image) CartYield(yield coprocessor.CoProcYieldType) coprocessor.YieldHookResponse {
-	if yield.Normal() {
+func (thmb *Image) CartYield(yield coprocessor.CoProcYield) coprocessor.YieldHookResponse {
+	if yield.Type.Normal() {
 		return coprocessor.YieldHookContinue
 	}
 

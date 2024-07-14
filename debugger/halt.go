@@ -39,7 +39,7 @@ type haltCoordination struct {
 	televisionHalt television.HaltCondition
 
 	// the cartridge has issued a yield signal that we should stop the debugger for
-	cartridgeYield coprocessor.CoProcYieldType
+	cartridgeYield coprocessor.CoProcYield
 
 	// the emulation must yield to the cartridge but it must be delayed until it
 	// is in a better state
@@ -91,15 +91,20 @@ func newHaltCoordination(dbg *Debugger) (*haltCoordination, error) {
 // reset halt condition.
 func (h *haltCoordination) reset() {
 	h.halt = false
-	h.cartridgeYield = coprocessor.YieldProgramEnded
+	h.cartridgeYield = coprocessor.CoProcYield{
+		Type: coprocessor.YieldProgramEnded,
+	}
 	h.televisionHalt = nil
 }
 
 // check for a halt condition and set the halt flag if found. returns true if
 // emulation should continue and false if the emulation should halt
 func (h *haltCoordination) check() bool {
-	if h.cartridgeYield != coprocessor.YieldProgramEnded {
-		h.haltReason = string(h.cartridgeYield)
+	if h.cartridgeYield.Type != coprocessor.YieldProgramEnded {
+		h.haltReason = string(h.cartridgeYield.Type)
+		// if h.cartridgeYield.Error != nil && h.cartridgeYield.Error.Error() != "" {
+		// 	h.haltReason = fmt.Sprintf("%s: %s", h.haltReason, h.cartridgeYield.Error.Error())
+		// }
 		h.halt = true
 		return false
 	}

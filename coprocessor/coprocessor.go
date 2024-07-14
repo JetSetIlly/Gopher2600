@@ -88,15 +88,15 @@ const (
 // coprocessor has reached a breakpoint or some other yield point (eg.
 // undefined behaviour)
 type CartYieldHook interface {
-	CartYield(CoProcYieldType) YieldHookResponse
+	CartYield(CoProcYield) YieldHookResponse
 }
 
 // StubCartYieldHook is a stub implementation for the CartYieldHook interface.
 type StubCartYieldHook struct{}
 
 // CartYield is a stub implementation for the CartYieldHook interface.
-func (_ StubCartYieldHook) CartYield(yld CoProcYieldType) YieldHookResponse {
-	if yld.Normal() {
+func (_ StubCartYieldHook) CartYield(yld CoProcYield) YieldHookResponse {
+	if yld.Type.Normal() {
 		return YieldHookContinue
 	}
 	return YieldHookEnd
