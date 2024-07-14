@@ -359,9 +359,9 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 			}
 
 			// possibly switch composition mode
-			if tok == "&" {
+			if tok == "&" || tok == "&&" {
 				andBreaks = true
-			} else if tok == "|" {
+			} else if tok == "|" || tok == "||" {
 				andBreaks = false
 			} else {
 				// if PC target has not been explicitly specified then add

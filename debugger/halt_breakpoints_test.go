@@ -45,6 +45,10 @@ func (trm *mockTerm) testBreakpoints() {
 	trm.sndInput("BREAK SL 100 & CL 100")
 	trm.cmpOutput("already exists (Scanline->100 & Clock->100)")
 
+	// as above but with alternative && connection
+	trm.sndInput("BREAK SL 100 && CL 100")
+	trm.cmpOutput("already exists (Scanline->100 & Clock->100)")
+
 	// the following break is logically the same as the previous break but
 	// expressed differently. the debugger should not add it even though the
 	// expression is not exactly the same.
