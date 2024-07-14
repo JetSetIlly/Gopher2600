@@ -254,7 +254,8 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	// in the case of the relocatable binaries, such as those provided by the
 	// "ELF" cartridge mapper, the value is taken from the ".text" section. this
 	// relies on the cartridge mapper supporting the CartCoProcRelocatable
-	// interface
+	// interface. the exception with this is if another ELF/DWARF file has been
+	// explicitely specified
 	//
 	// in the case of non-relocatable binaries the value comes from the
 	// cartridge mapper if it supports the CartCoProcOrigin interface
@@ -268,7 +269,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 
 	// acquire origin addresses and debugging sections according to whether the
 	// cartridge is relocatable or not
-	if isRelocatable {
+	if isRelocatable && fromCartridge {
 		c, ok := bus.(coprocessor.CartCoProcRelocatable)
 		if !ok {
 			return nil, fmt.Errorf("dwarf: ELF file is reloctable but the cartridge mapper does not support that")
