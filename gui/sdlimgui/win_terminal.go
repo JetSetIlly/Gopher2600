@@ -31,7 +31,7 @@ import (
 
 const winTermID = "Terminal"
 
-const outputMaxSize = 4096
+const outputMaxSize = 409600
 
 type winTerm struct {
 	debuggerWin
@@ -147,7 +147,6 @@ func (win *winTerm) draw() {
 			win.moreOutput = false
 			imgui.SetScrollHereY(0.0)
 		}
-
 	}
 	imgui.EndChild()
 
@@ -170,6 +169,9 @@ func (win *winTerm) draw() {
 	win.inputLineHeight = imguiMeasureHeight(func() {
 		imgui.Separator()
 		imgui.Spacing()
+
+		// focus-on-input grouping
+		imgui.BeginGroup()
 
 		// show prompt. if emulation is not running we show the prompt as it
 		// was supplied to us by the emulation (via the TermRead() function).
@@ -211,8 +213,14 @@ func (win *winTerm) draw() {
 						imgui.Text(fmt.Sprintf("%s: %s", win.prompt.CoProcYield.Type, win.prompt.CoProcYield.Error.Error()))
 					}, true, true)
 				}
+
 			}
+
 		}
+
+		// end of focus-on-input grouping
+		imgui.EndGroup()
+		win.focusOnInput = win.focusOnInput || imgui.IsItemActive() || (imgui.IsWindowHovered() && imgui.IsMouseReleased(0))
 
 		// chevron indicator
 		imgui.Spacing()
