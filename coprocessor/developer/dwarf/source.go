@@ -177,11 +177,11 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		ProfilingDirty: true,
 	}
 
+	var ef *elf.File
+	var fromCartridge bool
 	var err error
 
 	// open ELF file
-	var ef *elf.File
-	var fromCartridge bool
 	if elfFile != "" {
 		ef, err = elf.Open(elfFile)
 		if err != nil {
@@ -298,9 +298,17 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 			logger.Logf(logger.Allow, "dwarf", err.Error())
 		}
 	} else {
-		c, adjust := bus.(coprocessor.CartCoProcOrigin)
-		if adjust {
-			addressAdjustment = uint64(c.ExecutableOrigin())
+		var adjust bool
+
+		// if ELF file was manually specified prefer
+		if elfFile != "" {
+			addressAdjustment = uint64(ef.Entry)
+			adjust = true
+		} else {
+			if c, ok := bus.(coprocessor.CartCoProcOrigin); ok {
+				addressAdjustment = uint64(c.ExecutableOrigin())
+				adjust = true
+			}
 		}
 
 		// create frame section from the raw ELF section
@@ -320,10 +328,12 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 
 		if adjust {
 			// the addressAdjustment needs further adjustment based on the
-			// executable section with the lowest address
+			// executable section with the lowest address. the assumption here
+			// is that the list of sections are in address order lowest to
+			// highest
 			for _, sec := range ef.Sections {
 				if sec.Flags&elf.SHF_EXECINSTR == elf.SHF_EXECINSTR {
-					addressAdjustment = addressAdjustment - sec.Addr
+					addressAdjustment -= sec.Addr
 					break // for loop
 				}
 			}
