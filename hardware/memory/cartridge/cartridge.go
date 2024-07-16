@@ -213,10 +213,18 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		}
 	}()
 
+	// whether the mapping was determined automatically. we keep track of this
+	// so that we don't add a superchip if it wasn't expressly asked for
+	var auto bool
+
+	// specifying a mapper will sometimes imply the adding of a superchip
+	var forceSuperchip bool
+
 	mapping := strings.ToUpper(cartload.Mapping)
 
 	// automatic fingerprinting of cartridge
 	if mapping == "" || mapping == "AUTO" {
+		auto = true
 		mapping, err = cart.fingerprint(cartload)
 		if err != nil {
 			return fmt.Errorf("cartridge: %w", err)
@@ -228,9 +236,6 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 			return fmt.Errorf("cartridge: %w", err)
 		}
 	}
-
-	// sometimes we force the presence of a superchip
-	forceSuperchip := false
 
 	switch mapping {
 	case "2K":
@@ -340,8 +345,10 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		} else {
 			logger.Logf(cart.env, "cartridge", "cannot add superchip to %s mapper", cart.ID())
 		}
-	} else if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
-		superchip.AddSuperchip(false)
+	} else if auto {
+		if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
+			superchip.AddSuperchip(false)
+		}
 	}
 
 	// if this is a moviecart cartridge then return now without checking for plusrom
