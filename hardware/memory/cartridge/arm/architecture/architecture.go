@@ -91,6 +91,8 @@ type Map struct {
 	RNGSR  uint32
 	RNGDR  uint32
 
+	APBDIV uint32
+
 	// the address below which a null access is considered to have happened
 	NullAccessBoundary uint32
 
@@ -133,6 +135,8 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.T1TCR = 0xe0008004
 		mmap.T1TC = 0xe0008008
 
+		mmap.APBDIV = 0xE01FC100
+
 		// boundary value is arbitrary and was suggested by John Champeau (09/04/2022)
 		mmap.NullAccessBoundary = 0x00000751
 		mmap.IllegalAccessValue = 0x00000000
@@ -164,6 +168,8 @@ func NewMap(cart CartArchitecture) Map {
 
 		mmap.FlashLatency = 10.0
 
+		// there is not MAM in this architecture but the effect of MAMfull is
+		// what we want
 		mmap.PreferredMAMCR = MAMfull
 
 		mmap.HasTIM2 = true
@@ -177,6 +183,8 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.RNGCR = 0x50060800
 		mmap.RNGSR = 0x50060804
 		mmap.RNGDR = 0x50060808
+
+		mmap.APBDIV = 0x40021004
 
 		// boundary value is arbitrary and was suggested by John Champeau (09/04/2022)
 		mmap.NullAccessBoundary = 0x00000751

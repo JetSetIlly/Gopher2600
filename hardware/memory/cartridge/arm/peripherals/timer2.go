@@ -134,9 +134,14 @@ func (t *Timer2) ResolveDeferredCycles() {
 
 	// adjust prescaler and find number of ticks to accumulate counter by
 	var counterTicks uint32
-	for t.prescalerCounter >= t.prescalarShadow {
-		counterTicks++
-		t.prescalerCounter -= t.prescalarShadow
+	if t.prescalarShadow > 0 {
+		for t.prescalerCounter >= t.prescalarShadow {
+			counterTicks++
+			t.prescalerCounter -= t.prescalarShadow
+		}
+	} else {
+		counterTicks += t.prescalerCounter
+		t.prescalerCounter = 0
 	}
 
 	if counterTicks == 0 {

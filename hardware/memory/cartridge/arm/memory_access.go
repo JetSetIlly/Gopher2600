@@ -79,6 +79,9 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 				return uint8(v)
 			}
 		}
+		if addr == arm.mmap.APBDIV {
+			return uint8(0)
+		}
 
 		arm.illegalAccess("Read 8bit", addr)
 		return uint8(arm.mmap.IllegalAccessValue)
@@ -116,6 +119,9 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 			if arm.state.timer2.Write(addr, uint32(val)) {
 				return
 			}
+		}
+		if addr == arm.mmap.APBDIV {
+			return
 		}
 
 		arm.illegalAccess("Write 8bit", addr)
@@ -172,6 +178,9 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 				return uint16(v)
 			}
 		}
+		if addr == arm.mmap.APBDIV {
+			return uint16(0)
+		}
 
 		arm.illegalAccess("Read 16bit", addr)
 		return uint16(arm.mmap.IllegalAccessValue)
@@ -223,6 +232,9 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 			if arm.state.timer2.Write(addr, uint32(val)) {
 				return
 			}
+		}
+		if addr == arm.mmap.APBDIV {
+			return
 		}
 
 		arm.illegalAccess("Write 16bit", addr)
@@ -276,6 +288,9 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 				return uint32(v)
 			}
 		}
+		if addr == arm.mmap.APBDIV {
+			return uint32(0)
+		}
 
 		arm.illegalAccess("Read 32bit", addr)
 		return arm.mmap.IllegalAccessValue
@@ -327,6 +342,9 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 			if arm.state.timer2.Write(addr, uint32(val)) {
 				return
 			}
+		}
+		if addr == arm.mmap.APBDIV {
+			return
 		}
 
 		arm.illegalAccess("Write 32bit", addr)
