@@ -4,6 +4,8 @@
 
 Gopher2600 is an emulator for the Atari 2600 written in Go.
 
+See here for [Current Status](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Current-Status)
+
 Accuracy is very high and and there are no known problems with the emulation of the 6507, TIA or RIOT chips.
 
 The key features of the emulator:
