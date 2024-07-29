@@ -414,7 +414,9 @@ func (bld *build) buildTypes(src *Source) error {
 			}
 		}
 		for _, m := range typ.Members {
-			conversion(m.Type)
+			if typ != m.Type {
+				conversion(m.Type)
+			}
 		}
 		if typ.ElementType != nil {
 			conversion(typ.ElementType)
