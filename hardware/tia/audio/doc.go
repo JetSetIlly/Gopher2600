@@ -28,4 +28,12 @@
 //	 Stella (published under the GNU GPL v2.0 licence)
 //			https://github.com/stella-emu/stella/blob/e6af23d6c12893dd17711002971087f28f87c31f/src/emucore/tia/Audio.cxx
 //			https://github.com/stella-emu/stella/blob/e6af23d6c12893dd17711002971087f28f87c31f/src/emucore/tia/AudioChannel.cxx
+//
+// Additional work on volume sampling a result of this thread:
+//
+// https://forums.atariage.com/topic/370460-8-bit-digital-audio-from-2600/
+//
+// For reference, Ron Fries' audio method is represented here:
+//
+// https://raw.githubusercontent.com/alekmaul/stella/master/emucore/TIASound.c
 package audio

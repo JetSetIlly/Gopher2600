@@ -5,7 +5,7 @@ goBinary = go
 gcflags = -c 3 -B -wb=false
 ldflags = -s -w
 ldflags_version = $(ldflags) -X 'github.com/jetsetilly/gopher2600/version.number=$(version)'
-profilingRom = ./MattressMonkeys20240530rc4.bin
+profilingRom = roms/Pitfall.bin
 
 # the renderer to use for the GUI
 #

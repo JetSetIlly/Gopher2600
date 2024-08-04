@@ -56,30 +56,27 @@ func (au *Audio) ReadMemRegisters(data chipbus.ChangedRegister) bool {
 	switch data.Register {
 	case cpubus.AUDC0:
 		au.channel0.registers.Control = data.Value & 0x0f
-		au.channel0.reactAUDCx()
+		au.channel0.registersChanged = true
 	case cpubus.AUDC1:
 		au.channel1.registers.Control = data.Value & 0x0f
-		au.channel1.reactAUDCx()
+		au.channel1.registersChanged = true
 	case cpubus.AUDF0:
 		au.channel0.registers.Freq = data.Value & 0x1f
-		au.channel0.reactAUDCx()
+		au.channel0.registersChanged = true
 	case cpubus.AUDF1:
 		au.channel1.registers.Freq = data.Value & 0x1f
-		au.channel1.reactAUDCx()
+		au.channel1.registersChanged = true
 	case cpubus.AUDV0:
 		au.channel0.registers.Volume = data.Value & 0x0f
-		au.channel0.reactAUDCx()
+		au.channel0.volumeChanged = true
+		au.channel0.registersChanged = true
 	case cpubus.AUDV1:
 		au.channel1.registers.Volume = data.Value & 0x0f
-		au.channel1.reactAUDCx()
+		au.channel0.volumeChanged = true
+		au.channel1.registersChanged = true
 	default:
 		return true
 	}
 
 	return false
-}
-
-// changing the value of an AUDx registers causes some side effect.
-func (ch *channel) reactAUDCx() {
-	ch.registersChanged = true
 }

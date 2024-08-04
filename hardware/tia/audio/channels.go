@@ -28,7 +28,7 @@ type channel struct {
 	pulseCounter uint8
 	noiseCounter uint8
 
-	actualVol uint8
+	volumeChanged bool
 }
 
 func (ch *channel) String() string {
@@ -119,6 +119,11 @@ func (ch *channel) phase1() {
 			}
 		}
 	}
+}
 
-	ch.actualVol = (ch.pulseCounter & 0x01) * ch.registers.Volume
+// the actual volume of the channel is the volume in the register multiplied by
+// the lower bit of the pulsecounter. this is then used in combination with the
+// volume of the other channel to get the actual output volume
+func (ch *channel) actualVolume() uint8 {
+	return (ch.pulseCounter & 0x01) * ch.registers.Volume
 }

@@ -36,3 +36,4 @@ armcode.map
 go.work
 go.work.sum
 REDUX_PLAYBACK_FILES
+*.wav

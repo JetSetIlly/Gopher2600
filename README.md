@@ -150,6 +150,10 @@ The TIA Audio implementation is based almost entirely on the work of Chris Brenn
 
 https://atariage.com/forums/topic/249865-tia-sounding-off-in-the-digital-domain/
 
+Additional work on volume sampling a result of this thread:
+
+https://forums.atariage.com/topic/370460-8-bit-digital-audio-from-2600/
+
 Musical information as seen in the tracker window taken from Random Terrain.
 
 https://www.randomterrain.com/atari-2600-memories-music-and-sound.html
@@ -265,6 +269,6 @@ http://www.festvox.org/docs/manual-2.4.0/festival_toc.html
 At various times during the development of this project, the following people
 have provided advice and encouragement: Andrew Rice, David Kelly. And those
 from AtariAge who have provided testing, advice and most importantly,
-encouragement (alphabetically): alex_79; Al Nafuur; Andrew Davie; DirtyHairy;
-John Champeau; MarcoJ; MrSQL; Rob Bairos; Spiceware; Thomas Jenztsch; Zachary
-Scolaro; ZeroPageHomebrew
+encouragement (alphabetically): alex_79; Al Nafuur; Andrew Davie; Batari;
+DirtyHairy; John Champeau; MarcoJ; MrSQL; Rob Bairos; Spiceware; Thomas
+Jenztsch; Zachary Scolaro; ZeroPageHomebrew

@@ -575,11 +575,11 @@ func (win *winDbgScr) drawOverlayComboTooltip() {
 		}, true)
 	case reflection.OverlayLabels[reflection.OverlayAudio]:
 		win.img.imguiTooltip(func() {
+			imguiColorLabelSimple("Change", win.img.cols.reflectionColors[reflection.AudioChanged])
+			imgui.Spacing()
 			imguiColorLabelSimple("Phase 0", win.img.cols.reflectionColors[reflection.AudioPhase0])
 			imgui.Spacing()
 			imguiColorLabelSimple("Phase 1", win.img.cols.reflectionColors[reflection.AudioPhase1])
-			imgui.Spacing()
-			imguiColorLabelSimple("Change", win.img.cols.reflectionColors[reflection.AudioChanged])
 		}, true)
 	case reflection.OverlayLabels[reflection.OverlayCoproc]:
 		win.img.imguiTooltip(func() {
@@ -759,15 +759,15 @@ func (win *winDbgScr) drawReflectionTooltip() {
 			// no RSYNC specific hover information
 		case reflection.OverlayLabels[reflection.OverlayAudio]:
 			imguiSeparator()
-			if ref.AudioPhase0 || ref.AudioPhase1 || ref.AudioChanged {
+			if ref.AudioChanged || ref.AudioPhase0 || ref.AudioPhase1 {
+				if ref.AudioChanged {
+					reg := strings.Split(e.Operand.Resolve(), ",")[0]
+					imguiColorLabelSimple(fmt.Sprintf("%s updated", reg), win.img.cols.reflectionColors[reflection.AudioChanged])
+				}
 				if ref.AudioPhase0 {
 					imguiColorLabelSimple("Audio phase 0", win.img.cols.reflectionColors[reflection.AudioPhase0])
 				} else if ref.AudioPhase1 {
 					imguiColorLabelSimple("Audio phase 1", win.img.cols.reflectionColors[reflection.AudioPhase1])
-				}
-				if ref.AudioChanged {
-					reg := strings.Split(e.Operand.Resolve(), ",")[0]
-					imguiColorLabelSimple(fmt.Sprintf("%s updated", reg), win.img.cols.reflectionColors[reflection.AudioChanged])
 				}
 			} else {
 				imgui.Text("Audio unchanged")

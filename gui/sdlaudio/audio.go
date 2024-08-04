@@ -42,7 +42,7 @@ const bufferLength = 628
 const realtimeDemand = bufferLength * 2
 
 // if queued audio ever exceeds this value then push the audio into the SDL buffer
-const maxQueueLength = 16384
+const maxQueueLength = audio.SampleFreq / 2
 
 // Audio outputs sound using SDL.
 type Audio struct {

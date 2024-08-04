@@ -34,14 +34,10 @@ type Tracker interface {
 	AudioTick(env TrackerEnvironment, channel int, reg Registers)
 }
 
-// SampleFreq represents the number of samples generated per second. This is
-// the 30Khz reference frequency desribed in the Stella Programmer's Guide.
-const SampleFreq = 31400
+// SampleFreq represents the number of samples generated per second
+const SampleFreq = 15700 * 2
 
-// Audio is the implementation of the TIA audio sub-system, using Ron Fries'
-// method. Reference source code here:
-//
-// https://raw.githubusercontent.com/alekmaul/stella/master/emucore/TIASound.c
+// Audio is the implementation of the TIA audio sub-system
 type Audio struct {
 	env *environment.Environment
 
@@ -50,6 +46,11 @@ type Audio struct {
 	// 114. that's one half of a scanline so we count to 228 and update
 	// twice in that time
 	clock228 int
+
+	// the volume is sampled every colour clock and the volume at each clock is
+	// summed. at fixed points, the volume is averaged
+	sampleSum   []int
+	sampleSumCt int
 
 	// From the "Stella Programmer's Guide":
 	//
@@ -62,28 +63,25 @@ type Audio struct {
 	Vol0 uint8
 	Vol1 uint8
 
+	// the addition of a tracker is not required
 	tracker          Tracker
 	registersChanged bool
+	samplePoint      bool
 }
 
 // NewAudio is the preferred method of initialisation for the Audio sub-system.
 func NewAudio(env *environment.Environment) *Audio {
-	return &Audio{
-		env: env,
+	au := &Audio{
+		env:       env,
+		sampleSum: make([]int, 2),
 	}
+
+	return au
 }
 
 // Plumb audio into emulation
 func (au *Audio) Plumb(env *environment.Environment) {
 	au.env = env
-}
-
-func (au *Audio) Reset() {
-	au.clock228 = 0
-	au.channel0 = channel{}
-	au.channel1 = channel{}
-	au.Vol0 = 0
-	au.Vol1 = 0
 }
 
 // SetTracker adds a Tracker implementation to the Audio sub-system.
@@ -115,6 +113,8 @@ func (au *Audio) UpdateTracker() {
 // 30Khz clock.
 func (au *Audio) Step() bool {
 	au.registersChanged = false
+	au.samplePoint = false
+
 	if au.tracker != nil {
 		// it's impossible for both channels to have changed in a single video cycle
 		if au.channel0.registersChanged {
@@ -128,35 +128,42 @@ func (au *Audio) Step() bool {
 		}
 	}
 
-	au.clock228++
-	if au.clock228 >= 228 {
-		au.clock228 = 0
-		return false
-	}
+	var changed bool
+
+	// sum volume bits
+	au.sampleSum[0] += int(au.channel0.actualVolume())
+	au.sampleSum[1] += int(au.channel1.actualVolume())
+	au.sampleSumCt++
 
 	switch au.clock228 {
 	case 10:
-		au.channel0.phase0()
-		au.channel1.phase0()
-		return false
+		fallthrough
 	case 82:
 		au.channel0.phase0()
 		au.channel1.phase0()
-		return false
 	case 38:
-		au.channel0.phase1()
-		au.channel1.phase1()
+		fallthrough
 	case 150:
 		au.channel0.phase1()
 		au.channel1.phase1()
-	default:
-		return false
+
+		// take average of sum of volume bits
+		au.Vol0 = uint8(au.sampleSum[0] / au.sampleSumCt)
+		au.Vol1 = uint8(au.sampleSum[1] / au.sampleSumCt)
+		au.sampleSum[0] = 0
+		au.sampleSum[1] = 0
+		au.sampleSumCt = 0
+
+		changed = true
 	}
 
-	au.Vol0 = au.channel0.actualVol
-	au.Vol1 = au.channel1.actualVol
+	// advance 228 clock and reset sample counter
+	au.clock228++
+	if au.clock228 >= 228 {
+		au.clock228 = 0
+	}
 
-	return true
+	return changed
 }
 
 // HasTicked returns whether the audio channels were ticked on the previous
