@@ -807,172 +807,177 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 		// value used in an executing instruction is always two instructions ahead of the address."
 		arm.state.executingPC = arm.state.registers[rPC] - 2
 
-		arm.checkBreakpoints()
-		if arm.state.yield.Type == coprocessor.YieldRunning {
-
-			// check program memory and continue if it's fine
+		// check program memory if the program counter has changed
+		if arm.state.branchedExecution {
 			arm.checkProgramMemory(false)
+			if arm.state.yield.Type != coprocessor.YieldRunning {
+				break // for loop
+			}
+		}
 
-			if arm.state.yield.Type == coprocessor.YieldRunning {
-				memIdx := int(arm.state.executingPC - arm.state.programMemoryOrigin)
+		// check breakpoints
+		arm.checkBreakpoints()
+		if arm.state.yield.Type != coprocessor.YieldRunning {
+			break // for loop
+		}
 
-				// check that we're not crashing into the end of the program memory
-				if memIdx >= len(*arm.state.programMemory)-1 {
-					arm.state.yield.Type = coprocessor.YieldExecutionError
-					arm.state.yield.Error = fmt.Errorf("execution reached end of program memory")
-					break // for loop
-				}
+		memIdx := int(arm.state.executingPC - arm.state.programMemoryOrigin)
 
-				// opcode for executed instruction
-				opcode := arm.byteOrder.Uint16((*arm.state.programMemory)[memIdx:])
+		// check that we're not crashing into the end of the program memory
+		if memIdx >= len(*arm.state.programMemory)-1 {
+			arm.state.yield.Type = coprocessor.YieldExecutionError
+			arm.state.yield.Error = fmt.Errorf("execution reached end of program memory")
+			break // for loop
+		}
 
-				// bump PC counter for prefetch. actual prefetch is done after execution
-				arm.state.registers[rPC] += 2
+		// opcode for executed instruction
+		opcode := arm.byteOrder.Uint16((*arm.state.programMemory)[memIdx:])
 
-				// expectedPC is used to decide whether to add cycles due to pipeline filling
-				expectedPC := arm.state.registers[rPC]
+		// bump PC counter for prefetch. actual prefetch is done after execution
+		arm.state.registers[rPC] += 2
 
-				// expectedLR is used to change the stack frame information
-				expectedLR := arm.state.registers[rLR]
+		// expectedPC is used to decide whether to add cycles due to pipeline filling
+		expectedPC := arm.state.registers[rPC]
 
-				// expectedSP is used to decide whether to check the stack pointer
-				// for collision with other memory errors
-				expectedSP := arm.state.registers[rSP]
+		// expectedLR is used to change the stack frame information
+		expectedLR := arm.state.registers[rLR]
 
-				// execute instruction
-				arm.stepFunction(opcode, memIdx)
+		// expectedSP is used to decide whether to check the stack pointer
+		// for collision with other memory errors
+		expectedSP := arm.state.registers[rSP]
 
-				// if program counter is not what we expect then that means we have hit a branch
-				arm.state.branchedExecution = expectedPC != arm.state.registers[rPC]
+		// execute instruction
+		arm.stepFunction(opcode, memIdx)
 
-				// if arm.state.branchedExecution && arm.state.function32bitDecoding {
-				// 	panic("ARM7: impossible condition")
-				// }
+		// if program counter is not what we expect then that means we have hit a branch
+		arm.state.branchedExecution = expectedPC != arm.state.registers[rPC]
 
-				if !arm.immediateMode {
-					// add additional cycles required to fill pipeline before next iteration
-					if arm.state.branchedExecution {
-						arm.fillPipeline()
-					}
+		// if arm.state.branchedExecution && arm.state.function32bitDecoding {
+		// 	panic("ARM7: impossible condition")
+		// }
 
-					// prefetch cycle for next instruction is associated with and counts
-					// towards the total of the current instruction. most prefetch cycles
-					// are S cycles but store instructions require an N cycle
-					if arm.state.prefetchCycle == N {
-						arm.Ncycle(prefetch, arm.state.registers[rPC])
-					} else {
-						arm.Scycle(prefetch, arm.state.registers[rPC])
-					}
+		if !arm.immediateMode {
+			// add additional cycles required to fill pipeline before next iteration
+			if arm.state.branchedExecution {
+				arm.fillPipeline()
+			}
 
-					// default to an S cycle for prefetch unless an instruction explicitly
-					// says otherwise
-					arm.state.prefetchCycle = S
+			// prefetch cycle for next instruction is associated with and counts
+			// towards the total of the current instruction. most prefetch cycles
+			// are S cycles but store instructions require an N cycle
+			if arm.state.prefetchCycle == N {
+				arm.Ncycle(prefetch, arm.state.registers[rPC])
+			} else {
+				arm.Scycle(prefetch, arm.state.registers[rPC])
+			}
 
-					// increases total number of program cycles by the stretched cycles for this instruction
-					arm.state.cyclesTotal += arm.state.stretchedCycles
+			// default to an S cycle for prefetch unless an instruction explicitly
+			// says otherwise
+			arm.state.prefetchCycle = S
 
-					// update clock
-					arm.clock(arm.state.stretchedCycles)
-				} else {
-					// update clock with nominal number of cycles
-					arm.clock(1.1)
-				}
+			// increases total number of program cycles by the stretched cycles for this instruction
+			arm.state.cyclesTotal += arm.state.stretchedCycles
 
-				// stack frame has changed if LR register has changed
-				if expectedLR != arm.state.registers[rLR] {
-					arm.state.stackFrame = expectedSP
-				}
+			// update clock
+			arm.clock(arm.state.stretchedCycles)
+		} else {
+			// update clock with nominal number of cycles
+			arm.clock(1.1)
+		}
 
-				// disassemble if appropriate
-				if arm.disasm != nil {
-					if !arm.state.instruction32bitDecoding {
-						df := arm.state.currentExecutionCache[memIdx]
-						if df != nil {
-							e := arm.decodeInstruction(df)
-							if e != nil {
-								arm.completeDisasmEntry(e, opcode, true)
+		// stack frame has changed if LR register has changed
+		if expectedLR != arm.state.registers[rLR] {
+			arm.state.stackFrame = expectedSP
+		}
 
-								// update disasm summary
-								arm.disasmSummary.ImmediateMode = arm.immediateMode
-								arm.disasmSummary.add(arm.state.cycleOrder)
+		// disassemble if appropriate
+		if arm.disasm != nil {
+			if !arm.state.instruction32bitDecoding {
+				df := arm.state.currentExecutionCache[memIdx]
+				if df != nil {
+					e := arm.decodeInstruction(df)
+					if e != nil {
+						arm.completeDisasmEntry(e, opcode, true)
 
-								// executed the Step() function of the attached disassembler
-								arm.disasm.Step(*e)
+						// update disasm summary
+						arm.disasmSummary.ImmediateMode = arm.immediateMode
+						arm.disasmSummary.add(arm.state.cycleOrder)
 
-								// print additional information output for stdout
-								if _, ok := arm.disasm.(*coprocessor.CartCoProcDisassemblerStdout); ok {
-									fmt.Println(arm.disasmVerbose(*e))
-								}
-							}
+						// executed the Step() function of the attached disassembler
+						arm.disasm.Step(*e)
+
+						// print additional information output for stdout
+						if _, ok := arm.disasm.(*coprocessor.CartCoProcDisassemblerStdout); ok {
+							fmt.Println(arm.disasmVerbose(*e))
 						}
 					}
 				}
+			}
+		}
 
-				// accumulate cycle counts for profiling
-				if arm.profiler != nil {
-					arm.profiler.Entries = append(arm.profiler.Entries, coprocessor.CartCoProcProfileEntry{
-						Addr:   arm.state.instructionPC,
-						Cycles: arm.state.stretchedCycles,
-					})
-				}
+		// accumulate cycle counts for profiling
+		if arm.profiler != nil {
+			arm.profiler.Entries = append(arm.profiler.Entries, coprocessor.CartCoProcProfileEntry{
+				Addr:   arm.state.instructionPC,
+				Cycles: arm.state.stretchedCycles,
+			})
+		}
 
-				// reset cycle information
-				if !arm.immediateMode {
-					arm.state.branchTrail = BranchTrailNotUsed
-					arm.state.mergedIS = false
-					arm.state.stretchedCycles = 0
+		// reset cycle information
+		if !arm.immediateMode {
+			arm.state.branchTrail = BranchTrailNotUsed
+			arm.state.mergedIS = false
+			arm.state.stretchedCycles = 0
 
-					// reset cycle order if we're not currently decoding a 32bit
-					// instruction
-					if !arm.state.instruction32bitDecoding {
-						arm.state.cycleOrder.reset()
-					}
+			// reset cycle order if we're not currently decoding a 32bit
+			// instruction
+			if !arm.state.instruction32bitDecoding {
+				arm.state.cycleOrder.reset()
+			}
 
-					// limit the number of cycles used by the ARM program
-					if arm.state.cyclesTotal >= cycleLimit {
-						arm.state.yield.Type = coprocessor.YieldCycleLimit
-					}
-				} else {
-					iterations++
-					if iterations > instructionsLimit {
-						arm.state.yield.Type = coprocessor.YieldCycleLimit
-					}
-				}
+			// limit the number of cycles used by the ARM program
+			if arm.state.cyclesTotal >= cycleLimit {
+				arm.state.yield.Type = coprocessor.YieldCycleLimit
+			}
+		} else {
+			iterations++
+			if iterations > instructionsLimit {
+				arm.state.yield.Type = coprocessor.YieldCycleLimit
+			}
+		}
 
-				// check for stack errors
-				if arm.state.yield.Type == coprocessor.YieldStackError {
-					if !arm.abortOnMemoryFault {
-						arm.logYield()
-						arm.resetYield()
-					}
-				} else {
-					if !arm.state.yield.Type.Normal() {
-						if arm.state.registers[rSP] != expectedSP {
-							arm.stackProtectCheckSP()
-							if arm.state.yield.Type == coprocessor.YieldStackError {
-								if !arm.abortOnMemoryFault {
-									arm.logYield()
-									arm.resetYield()
-								}
-							}
+		// check for stack errors
+		if arm.state.yield.Type == coprocessor.YieldStackError {
+			if !arm.abortOnMemoryFault {
+				arm.logYield()
+				arm.resetYield()
+			}
+		} else {
+			if !arm.state.yield.Type.Normal() {
+				if arm.state.registers[rSP] != expectedSP {
+					arm.stackProtectCheckSP()
+					if arm.state.yield.Type == coprocessor.YieldStackError {
+						if !arm.abortOnMemoryFault {
+							arm.logYield()
+							arm.resetYield()
 						}
 					}
 				}
+			}
+		}
 
-				// handle memory access yields. we don't these want these to bleed out
-				// of the ARM unless the abort preference is set
-				if arm.state.yield.Type == coprocessor.YieldMemoryAccessError {
-					// choosing not to log memory access errors. it can be far
-					// too noisy particular during the pre-execution disassembly
-					// stage. we could maybe improve this by indicating that we
-					// expect memory faults and then allowing logging during
-					// normal execution
-					if !arm.abortOnMemoryFault {
-						arm.resetYield()
-					}
-				}
-			} // check program memory
-		} // check breakpoint
+		// handle memory access yields. we don't these want these to bleed out
+		// of the ARM unless the abort preference is set
+		if arm.state.yield.Type == coprocessor.YieldMemoryAccessError {
+			// choosing not to log memory access errors. it can be far
+			// too noisy particular during the pre-execution disassembly
+			// stage. we could maybe improve this by indicating that we
+			// expect memory faults and then allowing logging during
+			// normal execution
+			if !arm.abortOnMemoryFault {
+				arm.resetYield()
+			}
+		}
 	}
 
 	// cycles are stretched by the cycle regulator
