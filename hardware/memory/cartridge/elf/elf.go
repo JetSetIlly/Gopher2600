@@ -331,6 +331,10 @@ func (cart *Elf) runARM(addr uint16) bool {
 
 // AccessPassive implements the mapper.CartMapper interface.
 func (cart *Elf) AccessPassive(addr uint16, data uint8) error {
+	if cart.mem.stream.active && cart.mem.stream.drain {
+		return nil
+	}
+
 	// if memory access is not a cartridge address (ie. a TIA or RIOT address)
 	// then the ARM is running in parallel (ie. no synchronisation)
 	cart.mem.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)
