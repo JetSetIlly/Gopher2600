@@ -564,7 +564,17 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				if name == "" {
 					name = "anonymous"
 				}
-				logger.Logf(mem.env, "ELF", "relocate %s (%08x) => %08x", name, secBeingRelocated.origin+offset, tgt)
+
+				// log message is dependent on specific relocation type
+				var typ string
+				switch elf.R_ARM(relType) {
+				case elf.R_ARM_TARGET1:
+					typ = "TARGET1"
+				case elf.R_ARM_ABS32:
+					typ = "ABS32"
+				}
+
+				logger.Logf(mem.env, "ELF", "%s %s (%08x) => %08x", typ, name, secBeingRelocated.origin+offset, tgt)
 
 			case elf.R_ARM_THM_PC22:
 				// this value is labelled R_ARM_THM_CALL in objdump output
@@ -579,7 +589,8 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 					// compare to R_ARM_ABS32 where we use a stub function and
 					// allow the emulation to continue (until a memory fault is
 					// forced by the stub function)
-					return fmt.Errorf("ELF: %s is undefined", sym.Name)
+					logger.Logf(mem.env, "ELF", "THM_PC22 section is undefined")
+					continue
 				}
 
 				n := ef.Sections[sym.Section].Name
@@ -622,7 +633,38 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				if name == "" {
 					name = "anonymous"
 				}
-				logger.Logf(mem.env, "ELF", "relocate %s (%08x) => opcode %08x", name, secBeingRelocated.origin+offset, opcode)
+				logger.Logf(mem.env, "ELF", "THM_PC22 %s (%08x) => opcode %08x", name, secBeingRelocated.origin+offset, opcode)
+
+			case elf.R_ARM_REL32:
+				if sym.Section == elf.SHN_UNDEF {
+					logger.Logf(mem.env, "ELF", "REL32 section is undefined")
+					continue
+				}
+
+				n := ef.Sections[sym.Section].Name
+				if idx, ok := mem.sectionsByName[n]; !ok {
+					return fmt.Errorf("can not find section (%s) while relocating %s", n, sym.Name)
+				} else {
+					tgt = mem.sections[idx].origin
+					tgt += uint32(sym.Value)
+				}
+
+				// check address is recognised
+				if mappedData, _ := mem.mapAddress(tgt, false); mappedData == nil {
+					continue
+				}
+
+				// commit write
+				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], tgt)
+
+				logger.Logf(mem.env, "ELF", "REL32 %s (%08x) => %08x", sym.Name, secBeingRelocated.origin+offset, tgt)
+
+			case elf.R_ARM_PREL31:
+				if sym.Section&0xff00 == elf.SHN_UNDEF {
+					logger.Logf(mem.env, "ELF", "PREL31 section is undefined")
+					continue
+				}
+				return fmt.Errorf("ELF: PREL31 not fully supported")
 
 			default:
 				return fmt.Errorf("ELF: unhandled ARM relocation type (%v)", relType)
