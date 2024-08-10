@@ -157,14 +157,13 @@ func (bld *build) buildTypes(src *Source) error {
 		}
 	}
 
-	// typedefs of basic types
-	err := resolveTypeDefs()
-	if err != nil {
-		return err
-	}
+	// three passes over more complex types
+	for pass := 0; pass < 3; pass++ {
+		err := resolveTypeDefs()
+		if err != nil {
+			return err
+		}
 
-	// two passes over pointer types, const types, and composite types
-	for pass := 0; pass < 2; pass++ {
 		// pointer types
 		for _, e := range bld.order {
 			switch e.Tag {
@@ -189,12 +188,6 @@ func (bld *build) buildTypes(src *Source) error {
 
 				bld.types[e.Offset] = &typ
 			}
-		}
-
-		// typedefs of pointer types
-		err = resolveTypeDefs()
-		if err != nil {
-			return err
 		}
 
 		// resolve composite types
@@ -253,7 +246,7 @@ func (bld *build) buildTypes(src *Source) error {
 
 				// members are basically like variables but with special address
 				// handling
-				memb, err := bld.resolveVariableDeclaration(e, src)
+				memb, err := bld.resolveVariableDeclaration(e, nil, src)
 				if err != nil {
 					return err
 				}
@@ -324,12 +317,6 @@ func (bld *build) buildTypes(src *Source) error {
 			}
 		}
 
-		// typedefs of composite types
-		err = resolveTypeDefs()
-		if err != nil {
-			return err
-		}
-
 		// build array types
 		var arrayBaseType *SourceType
 		var baseTypeOffset dwarf.Offset
@@ -350,28 +337,24 @@ func (bld *build) buildTypes(src *Source) error {
 					continue
 				}
 
+				var elementCount int
+
 				fld := e.AttrField(dwarf.AttrUpperBound)
 				if fld == nil {
 					continue
 				}
-				num := fld.Val.(int64) + 1
+				elementCount = int(fld.Val.(int64) + 1)
 
 				bld.types[baseTypeOffset] = &SourceType{
 					Name:         fmt.Sprintf("%s", arrayBaseType.Name),
-					Size:         arrayBaseType.Size * int(num),
+					Size:         arrayBaseType.Size * elementCount,
 					ElementType:  arrayBaseType,
-					ElementCount: int(num),
+					ElementCount: elementCount,
 				}
 
 			default:
 				arrayBaseType = nil
 			}
-		}
-
-		// typedefs of array types
-		err = resolveTypeDefs()
-		if err != nil {
-			return err
 		}
 
 		// const types
@@ -394,12 +377,6 @@ func (bld *build) buildTypes(src *Source) error {
 
 				bld.types[e.Offset] = &typ
 			}
-		}
-
-		// typedefs of const types
-		err = resolveTypeDefs()
-		if err != nil {
-			return err
 		}
 	}
 
@@ -433,6 +410,10 @@ func (bld *build) buildTypes(src *Source) error {
 }
 
 func (bld *build) resolveType(v *dwarf.Entry, src *Source) (*SourceType, error) {
+	if v == nil {
+		return nil, nil
+	}
+
 	fld := v.AttrField(dwarf.AttrType)
 	if fld == nil {
 		return nil, nil
@@ -446,7 +427,7 @@ func (bld *build) resolveType(v *dwarf.Entry, src *Source) (*SourceType, error) 
 	return typ, nil
 }
 
-func (bld *build) resolveVariableDeclaration(v *dwarf.Entry, src *Source) (*SourceVariable, error) {
+func (bld *build) resolveVariableDeclaration(v *dwarf.Entry, t *dwarf.Entry, src *Source) (*SourceVariable, error) {
 	resolveSpec := func(v *dwarf.Entry) (*SourceVariable, error) {
 		var varb SourceVariable
 
@@ -459,12 +440,26 @@ func (bld *build) resolveVariableDeclaration(v *dwarf.Entry, src *Source) (*Sour
 
 		// variable type
 		var err error
-		varb.Type, err = bld.resolveType(v, src)
-		if err != nil {
-			return nil, err
+
+		// prefer type from 't' entry
+		if t != nil {
+			varb.Type, err = bld.resolveType(t, src)
+			if err != nil {
+				return nil, err
+			}
 		}
+
+		// if type has not been resolved use 'v' entry
 		if varb.Type == nil {
-			return nil, nil
+			varb.Type, err = bld.resolveType(v, src)
+			if err != nil {
+				return nil, err
+			}
+
+			// return nothing if there is still no type field
+			if varb.Type == nil {
+				return nil, nil
+			}
 		}
 
 		return &varb, nil
@@ -671,7 +666,9 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 			continue // for loop
 
 		case dwarf.TagFormalParameter:
+			// treat formal parameters in the same way as variables
 			fallthrough
+
 		case dwarf.TagVariable:
 			// execute rest of for block
 
@@ -680,29 +677,36 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 			continue // for loop
 		}
 
-		// get variable build entry
-		var v *dwarf.Entry
-		v = bld.entries[e.Offset]
+		// ignore any variable type with the external attribute
+		if e.AttrField(dwarf.AttrExternal) != nil {
+			continue
+		}
 
 		// resolve name and type of variable
 		var varb *SourceVariable
 		var err error
 
-		// check for abstract origin field. if it is present we resolve the
-		// abstract declartion otherwise we resolve using the current entry
-		fld := v.AttrField(dwarf.AttrAbstractOrigin)
+		// check for abstract origin field or specification field
+		//
+		// if either is present we resolve the abstract declartion otherwise we
+		// resolve using the current entry
+		fld := e.AttrField(dwarf.AttrAbstractOrigin)
+		if fld == nil {
+			fld = e.AttrField(dwarf.AttrSpecification)
+		}
+
 		if fld != nil {
-			av, ok := bld.entries[fld.Val.(dwarf.Offset)]
+			v, ok := bld.entries[fld.Val.(dwarf.Offset)]
 			if !ok {
 				return fmt.Errorf("found concrete variable without abstract")
 			}
 
-			varb, err = bld.resolveVariableDeclaration(av, src)
+			varb, err = bld.resolveVariableDeclaration(v, e, src)
 			if err != nil {
 				return err
 			}
 		} else {
-			varb, err = bld.resolveVariableDeclaration(v, src)
+			varb, err = bld.resolveVariableDeclaration(e, nil, src)
 			if err != nil {
 				return err
 			}
@@ -710,6 +714,11 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 
 		// nothing found when resolving the declaration
 		if varb == nil {
+			continue // for loop
+		}
+
+		// make sure the variable has a type
+		if varb.Type == nil {
 			continue // for loop
 		}
 
@@ -763,7 +772,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 
 		// variable actually exists if it has a location or constant value attribute
 
-		constfld := v.AttrField(dwarf.AttrConstValue)
+		constfld := e.AttrField(dwarf.AttrConstValue)
 		if constfld != nil {
 			varb.hasConstantValue = true
 
@@ -782,7 +791,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 				addLexicalLocal(varb)
 			}
 		} else {
-			locfld := v.AttrField(dwarf.AttrLocation)
+			locfld := e.AttrField(dwarf.AttrLocation)
 			if locfld != nil {
 				switch locfld.Class {
 				case dwarf.ClassLocListPtr:
