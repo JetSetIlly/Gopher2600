@@ -677,11 +677,6 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 			continue // for loop
 		}
 
-		// ignore any variable type with the external attribute
-		if e.AttrField(dwarf.AttrExternal) != nil {
-			continue
-		}
-
 		// resolve name and type of variable
 		var varb *SourceVariable
 		var err error
@@ -739,9 +734,31 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 		// add variable to list of globals if aprropriate. returns true if the
 		// variable has been added and false if it is not a global
 		addGlobal := func(varb *SourceVariable) bool {
-			if !varb.DeclLine.Function.IsStub() {
+			// detect whether this variable is a global variable
+
+			// notInFunction is not a great way of detecting global variables
+			// because the function assignment does a poor job of detecting the
+			// end of functions. this means that globals that appear in a file
+			// outside of a function but after a function has been defined, will
+			// not be detected by this method
+			notInFunction := varb.DeclLine.Function.IsStub()
+
+			// when compiled from C or C++ global variables usually have the
+			// external attribute set
+			fld := e.AttrField(dwarf.AttrExternal)
+			isExternal := fld != nil && fld.Val.(bool)
+
+			// global variables very often have a mangled variable name for
+			// linkage purposes. I'm not convinced this is needed but we'll keep
+			// it for now
+			fld = e.AttrField(dwarf.AttrLinkageName)
+			hasLinkage := fld != nil && fld.Val.(string) != varb.Name
+
+			// make a decision about variable being in global scope
+			if !(notInFunction || isExternal || hasLinkage) {
 				return false
 			}
+
 			g, ok := bld.globals[varb.Name]
 
 			if !ok || (!g.IsValid() && varb.IsValid()) {
@@ -857,6 +874,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 									continue // for loop
 								} else {
 									globalOrigin = uint64(o)
+									break // done
 								}
 							}
 						}
