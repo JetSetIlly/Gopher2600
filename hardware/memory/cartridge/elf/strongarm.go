@@ -18,6 +18,7 @@ package elf
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // signature of a strongarm function. a pointer to an instance of elfMemory is
@@ -219,36 +220,26 @@ func vcsSta3(mem *elfMemory) {
 
 // uint8_t snoopDataBus(uint16_t address)
 func snoopDataBus(mem *elfMemory) {
-	// when byte streaming is active we need to be careful in how we handle
-	// the preemption of the function
-	if mem.stream.active {
-		if mem.stream.preemptedSnoopDataBus == nil {
-			mem.stream.startDrain()
-			mem.endStrongArmFunction()
-			mem.stream.preemptedSnoopDataBus = snoopDataBus
-			return
-		}
-		mem.arm.RegisterSet(0, uint32(mem.gpio.data[DATA_IDR]))
-		mem.endStrongArmFunction()
-		mem.stream.preemptedSnoopDataBus = nil
-		return
-	}
-
 	addrIn := uint16(mem.gpio.data[ADDR_IDR])
 	addrIn |= uint16(mem.gpio.data[ADDR_IDR+1]) << 8
 	addrIn &= memorymap.Memtop
 
-	switch mem.strongarm.running.state {
-	case 0:
-		if addrIn == mem.strongarm.nextRomAddress {
-			// setting return value
-			mem.arm.RegisterSet(0, uint32(mem.gpio.data[DATA_IDR]))
-			mem.endStrongArmFunction()
-		}
+	if addrIn == mem.strongarm.nextRomAddress {
+		// setting return value
+		mem.arm.RegisterSet(0, uint32(mem.gpio.data[DATA_IDR]))
+		mem.endStrongArmFunction()
 	}
 
 	// note that this implementation of snoopDataBus is missing the "give
 	// peripheral time to respond" loop that we see in the real vcsLib
+}
+
+// snoopDataBus is significantly different when streaming is enabled
+func snoopDataBus_streaming(mem *elfMemory, addr uint16) {
+	if addr == mem.strongarm.nextRomAddress {
+		mem.arm.RegisterSet(0, uint32(mem.gpio.data[DATA_IDR]))
+		mem.stream.snoopDataBus = false
+	}
 }
 
 // uint8_t vcsRead4(uint16_t address)
@@ -267,8 +258,14 @@ func vcsRead4(mem *elfMemory) {
 		}
 	case 2:
 		if mem.injectRomByte(uint8(address >> 8)) {
-			mem.setStrongArmFunction(snoopDataBus)
-			mem.strongarm.running.function(mem)
+			if mem.stream.active {
+				mem.endStrongArmFunction()
+				mem.stream.startDrain()
+				mem.stream.snoopDataBus = true
+				return
+			} else {
+				mem.setStrongArmFunction(snoopDataBus)
+			}
 		}
 	}
 }
@@ -740,12 +737,15 @@ func (str *strongArmState) updateLookupTables() {
 	}
 }
 
-// initialise state rady for bus stuffing. we know bus stuffing is used if the
+// initialise state ready for bus stuffing. we know bus stuffing is used if the
 // vcsWrite3() function has been detected (during relocation).
 func (mem *elfMemory) busStuffingInit() {
 	if !mem.usesBusStuffing {
+		logger.Logf(mem.env, "ELF", "ROM does not use any bus stuffing instructions")
 		return
 	}
+
+	logger.Logf(mem.env, "ELF", "ROM uses bus stuffing instructions")
 
 	mem.strongarm.lowMask = 0xff
 	mem.strongarm.correctionMaskHi = 0x00

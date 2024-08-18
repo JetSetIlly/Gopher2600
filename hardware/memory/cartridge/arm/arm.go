@@ -411,7 +411,7 @@ func (arm *ARM) Plumb(env *environment.Environment, state *ARMState, mem SharedM
 
 	// execution cache must be cleared because the old cache will be pointing to
 	// functions in another instance of ARM
-	arm.executionCache = make(map[uint32][]decodeFunction)
+	clear(arm.executionCache)
 }
 
 // resetPeripherals in the ARM package.

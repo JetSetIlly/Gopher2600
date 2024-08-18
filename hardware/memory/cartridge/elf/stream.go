@@ -15,7 +15,11 @@
 
 package elf
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/jetsetilly/gopher2600/logger"
+)
 
 type streamEntry struct {
 	addr     uint16
@@ -47,10 +51,8 @@ type stream struct {
 	drainPtr int
 	drainTop int
 
-	// if the snoopDataBus() function is triggered then we need to preempt the
-	// function call and return control to the VCS so that the value can be put
-	// on the data bus in time for returning to the main ARM program
-	preemptedSnoopDataBus strongArmFunction
+	// indicates that a data bus snooping needs resolving
+	snoopDataBus bool
 }
 
 func (s *stream) startDrain() {
@@ -69,14 +71,18 @@ func (s *stream) push(e streamEntry) {
 	if s.drain {
 		s.drainTop = s.ptr
 	} else {
-		// see comment about the pushBoundary comment above
-		if s.ptr >= len(s.stream)-pushBoundary {
+		// see comment about the pushBoundary
+		if s.ptr > len(s.stream)-pushBoundary {
 			s.startDrain()
 		}
 	}
 }
 
 func (s *stream) pull() streamEntry {
+	if !s.drain {
+		logger.Logf(logger.Allow, "ELF", "unexpected call to stream.pull(). returning zero data")
+		return streamEntry{}
+	}
 	e := s.stream[s.drainPtr]
 	s.drainPtr++
 	if s.drainPtr >= s.drainTop {
@@ -87,5 +93,8 @@ func (s *stream) pull() streamEntry {
 }
 
 func (s *stream) peek() streamEntry {
-	return s.stream[s.drainPtr]
+	if s.drain {
+		return s.stream[s.drainPtr]
+	}
+	return streamEntry{}
 }

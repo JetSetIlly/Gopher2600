@@ -32,7 +32,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-type interruptARM interface {
+type elfMemoryARM interface {
 	Interrupt()
 	MemoryFault(event string, fault faults.Category)
 	CoreRegisters() [arm.NumCoreRegisters]uint32
@@ -148,7 +148,7 @@ type elfMemory struct {
 	busStuffDelay bool
 
 	// strongarm data and a small interface to the ARM
-	arm       interruptARM
+	arm       elfMemoryARM
 	strongarm strongArmState
 
 	// args is a special memory area that is used for the arguments passed to
@@ -193,6 +193,39 @@ func newElfMemory(env *environment.Environment) *elfMemory {
 	}
 
 	return mem
+}
+
+// Snapshot implements the mapper.CartMapper interface.
+func (mem *elfMemory) Snapshot() *elfMemory {
+	m := *mem
+
+	m.gpio = mem.gpio.Snapshot()
+
+	// snapshot sections. the Snapshot() function of the elfSection type decides
+	// how best to deal with the request
+	m.sections = make([]*elfSection, len(mem.sections))
+	for i := range mem.sections {
+		m.sections[i] = mem.sections[i].Snapshot()
+	}
+
+	// sram is likely to have changed
+	m.sram = mem.sram.Snapshot()
+
+	// strongarm program is read-only by defintion
+
+	// strongarm functions is a map but the data pointed to by the map to is
+	// read-only
+
+	// not sure we need to copy args because they shouldn't change after the
+	// initial setup of the ARM - the setup will never run again even if the
+	// rewind reaches the very beginning of the history
+
+	return &m
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (mem *elfMemory) Plumb(arm elfMemoryARM) {
+	mem.arm = arm
 }
 
 func (mem *elfMemory) decode(ef *elf.File) error {
@@ -751,7 +784,7 @@ func (mem *elfMemory) relocateStrongArmFunction(spec strongArmFunctionSpec) (uin
 	// strongarm functions must be on a 16bit boundary. I don't believe this
 	// should ever happen with ELF but if it does we can add a padding byte to
 	// correct. but for now, return an error so that we're forced to notice it
-	// if it every arises
+	// if it ever arises
 	if mem.strongArmOrigin&0x01 == 0x01 {
 		return 0, fmt.Errorf("ELF: misalignment of executable code. strongarm will be unreachable")
 	}
@@ -777,45 +810,6 @@ func (mem *elfMemory) relocateStrongArmFunction(spec strongArmFunctionSpec) (uin
 	// address. this means that the correct (aligned) address will be used when
 	// setting the program counter
 	return addr | 0b01, nil
-}
-
-// Snapshot implements the mapper.CartMapper interface.
-func (mem *elfMemory) Snapshot() *elfMemory {
-	m := *mem
-
-	m.gpio = mem.gpio.Snapshot()
-
-	// snapshot sections. the Snapshot() function of the elfSection type decides
-	// how best to deal with the request
-	m.sections = make([]*elfSection, len(mem.sections))
-	for i := range mem.sections {
-		m.sections[i] = mem.sections[i].Snapshot()
-	}
-
-	// strongarm program is read-only by defintion
-	m.strongArmProgram = mem.strongArmProgram
-
-	// sram is likely to have changed. it would be nice to have a compressed
-	// form of memory here or one that records deltas from previous snapshots
-	m.sram = mem.sram.Snapshot()
-
-	// strongarm functions are a map and so require an explicit make()
-	m.strongArmFunctions = make(map[uint32]strongArmFunctionSpec)
-	for k := range mem.strongArmFunctions {
-		m.strongArmFunctions[k] = mem.strongArmFunctions[k]
-	}
-
-	// not sure we need to copy args because they shouldn't change after the
-	// initial setup of the ARM - the setup will never run again even if the
-	// rewind reaches the very beginning of the history
-	m.args = mem.args
-
-	return &m
-}
-
-// Plumb implements the mapper.CartMapper interface.
-func (mem *elfMemory) Plumb(arm interruptARM) {
-	mem.arm = arm
 }
 
 // MapAddress implements the arm.SharedMemory interface.
@@ -870,7 +864,7 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 func (mem *elfMemory) mapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	if addr >= mem.gpio.dataOrigin && addr <= mem.gpio.dataMemtop {
 		if mem.stream.active {
-			logger.Log(mem.env, "ELF", "disabling byte streaming")
+			logger.Logf(mem.env, "ELF", "disabling byte streaming: %d bytes in stream", mem.stream.ptr)
 			mem.stream.active = false
 		}
 		if !write && addr == mem.gpio.dataOrigin|ADDR_IDR {
@@ -939,6 +933,16 @@ func (mem *elfMemory) Segments() []mapper.CartStaticSegment {
 			Origin: mem.sramOrigin,
 			Memtop: mem.sramMemtop,
 		},
+		{
+			Name:   "GPIO",
+			Origin: mem.gpio.dataOrigin,
+			Memtop: mem.gpio.dataMemtop,
+		},
+		{
+			Name:   "StrongARM Program",
+			Origin: mem.strongArmOrigin,
+			Memtop: mem.strongArmMemtop,
+		},
 	}
 
 	for _, n := range mem.sectionNames {
@@ -953,12 +957,6 @@ func (mem *elfMemory) Segments() []mapper.CartStaticSegment {
 		}
 	}
 
-	segments = append(segments, mapper.CartStaticSegment{
-		Name:   "StrongARM Program",
-		Origin: mem.strongArmOrigin,
-		Memtop: mem.strongArmMemtop,
-	})
-
 	return segments
 }
 
@@ -967,6 +965,8 @@ func (mem *elfMemory) Reference(segment string) ([]uint8, bool) {
 	switch segment {
 	case "SRAM":
 		return *mem.sram.Data(), true
+	case "GPIO":
+		return mem.gpio.data, true
 	case "StrongARM Program":
 		return mem.strongArmProgram, true
 	default:

@@ -491,21 +491,23 @@ func (r *Rewind) setSplicePoint(fromIdx int, toCoords coords.TelevisionCoords, o
 type findResults struct {
 	nearestIdx   int
 	nearestFrame int
-	future       bool
+
+	// the future value indicates that the requested frame is past the end of the
+	// history. if future is true then idx and frame will point to the most recent
+	// entry that we do have.
+	future bool
 }
 
 // find index nearest to the requested frame. returns the index and the frame
 // number that is actually possible with the rewind system.
 //
-// the future value indicates that the requested frame is past the end of the
-// history. if future is true then idx and frame will point to the most recent
-// entry that we do have.
-//
 // note that findFrameIndex() searches for the frame that is two frames before
 // the one that is requested.
 func (r *Rewind) findFrameIndex(frame int) findResults {
+	// the number of frames to rerun. in the case of the debugger we like rerun
+	// an additional frame so that onion-skinning is correct
 	frame--
-	if r.emulation.Mode() == govern.ModeDebugger {
+	if r.emulation.Mode() == govern.ModeDebugger && frame > 0 {
 		frame--
 	}
 	return r.findFrameIndexExact(frame)
@@ -670,8 +672,7 @@ type ComparisonState struct {
 	Locked bool
 }
 
-// GetComparisonState gets a reference to current comparison point. This is not
-// a copy of the state but the actual state. Also returns the
+// GetComparisonState gets a reference to current comparison point
 func (r *Rewind) GetComparisonState() ComparisonState {
 	return ComparisonState{
 		State:  r.comparison.snapshot(),

@@ -198,9 +198,9 @@ func (cart *Elf) PlumbFromDifferentEmulation(env *environment.Environment) {
 		panic("cannot plumb this ELF instance because the ARM state is nil")
 	}
 	cart.arm = arm.NewARM(cart.env, cart.mem.model, cart.mem, cart)
+	cart.mem.Plumb(cart.arm)
 	cart.arm.Plumb(cart.env, cart.armState, cart.mem, cart)
 	cart.armState = nil
-	cart.mem.Plumb(cart.arm)
 	cart.yieldHook = &coprocessor.StubCartYieldHook{}
 }
 
@@ -274,6 +274,7 @@ func (cart *Elf) Access(addr uint16, _ bool) (uint8, uint8, error) {
 			cart.mem.gpio.data[DATA_ODR] = e.data
 		}
 	}
+
 	cart.mem.busStuffDelay = true
 	return cart.mem.gpio.data[DATA_ODR], mapper.CartDrivenPins, nil
 }
@@ -301,11 +302,9 @@ func (cart *Elf) runARM(addr uint16) bool {
 		}
 
 		// run preempted snoopDataBus() function if required
-		if cart.mem.stream.preemptedSnoopDataBus != nil {
-			if addr != cart.mem.strongarm.nextRomAddress {
-				return true
-			}
-			cart.mem.stream.preemptedSnoopDataBus(cart.mem)
+		if cart.mem.stream.snoopDataBus {
+			snoopDataBus_streaming(cart.mem, addr)
+			return true
 		}
 	}
 
@@ -317,9 +316,9 @@ func (cart *Elf) runARM(addr uint16) bool {
 
 	// keep calling runArm() for as long as program does not need to sync with the VCS
 	for cart.mem.yield.Type != coprocessor.YieldSyncWithVCS {
-
-		// the ARM should never return YieldProgramEnded. if it does then it is
-		// an error and we should yield with YieldExecutionError
+		// the ARM should never return YieldProgramEnded when executing code
+		// from the ELF type. if it does then it is an error and we should yield
+		// with YieldExecutionError
 		if cart.mem.yield.Type == coprocessor.YieldProgramEnded {
 			cart.mem.yield.Type = coprocessor.YieldExecutionError
 			cart.mem.yield.Error = fmt.Errorf("ELF does not support program-ended yield")
@@ -332,6 +331,7 @@ func (cart *Elf) runARM(addr uint16) bool {
 			cart.mem.yield, _ = cart.arm.Run()
 		}
 	}
+
 	return true
 }
 
@@ -345,13 +345,11 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) error {
 	// then the ARM is running in parallel (ie. no synchronisation)
 	cart.mem.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)
 
-	// no more work to do if this is not a cartridge access
-	if cart.mem.parallelARM {
-		return nil
-	}
+	// reset address with any mirror origin
+	const resetAddrAnyMirror = (cpubus.Reset & memorymap.CartridgeBits) | memorymap.OriginCart
 
 	// if address is the reset address then trigger the reset procedure
-	if (addr&memorymap.CartridgeBits)|memorymap.OriginCart == (cpubus.Reset&memorymap.CartridgeBits)|memorymap.OriginCart {
+	if (addr&memorymap.CartridgeBits)|memorymap.OriginCart == resetAddrAnyMirror {
 		// after this call to cart reset, the cartridge will be wanting to run
 		// the vcsEmulationInit() strongarm function
 		cart.reset()
@@ -362,45 +360,45 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) error {
 	cart.mem.gpio.data[ADDR_IDR] = uint8(addr)
 	cart.mem.gpio.data[ADDR_IDR+1] = uint8(addr >> 8)
 
+	// if byte-streaming is active then the access is relatively simple
+	if cart.mem.stream.active {
+		cart.runARM(addr)
+		return nil
+	}
+
 	// handle ARM synchronisation for non-byte-streaming mode. the sequence of
 	// calls to runARM() and whatever strongarm function might be active was
 	// arrived through experimentation. a more efficient way of doing this
 	// hasn't been discovered yet
-	if !cart.mem.stream.active {
-		runStrongarm := func() bool {
-			if cart.mem.strongarm.running.function == nil {
-				return false
+
+	runStrongarm := func() bool {
+		if cart.mem.strongarm.running.function == nil {
+			return false
+		}
+		cart.mem.strongarm.running.function(cart.mem)
+		if cart.mem.strongarm.running.function == nil {
+			cart.runARM(addr)
+			if cart.mem.strongarm.running.function != nil {
+				cart.mem.strongarm.running.function(cart.mem)
 			}
-			cart.mem.strongarm.running.function(cart.mem)
-			if cart.mem.strongarm.running.function == nil {
-				cart.runARM(addr)
-				if cart.mem.strongarm.running.function != nil {
-					cart.mem.strongarm.running.function(cart.mem)
-				}
-			}
-			return true
 		}
+		return true
+	}
 
-		if runStrongarm() {
-			return nil
-		}
-
-		cart.runARM(addr)
-		if runStrongarm() {
-			return nil
-		}
-
-		cart.runARM(addr)
-		if runStrongarm() {
-			return nil
-		}
-
-		cart.runARM(addr)
-
+	if runStrongarm() {
 		return nil
 	}
 
-	// run ARM and strongarm function again
+	cart.runARM(addr)
+	if runStrongarm() {
+		return nil
+	}
+
+	cart.runARM(addr)
+	if runStrongarm() {
+		return nil
+	}
+
 	cart.runARM(addr)
 
 	return nil
@@ -423,6 +421,10 @@ func (cart *Elf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 
 // BusStuff implements the mapper.CartBusStuff interface.
 func (cart *Elf) BusStuff() (uint8, bool) {
+	if !cart.mem.usesBusStuffing {
+		return 0, false
+	}
+
 	if cart.mem.busStuffDelay {
 		cart.mem.busStuffDelay = false
 		return 0, false
