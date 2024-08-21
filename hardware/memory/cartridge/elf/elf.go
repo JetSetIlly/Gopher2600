@@ -29,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/notifications"
 )
 
 // Elf implements the mapper.CartMapper interface.
@@ -153,6 +154,11 @@ func NewElf(env *environment.Environment, loader cartridgeloader.Loader, inACE b
 	err = cart.mem.runInitialisation(cart.arm)
 	if err != nil {
 		return nil, fmt.Errorf("ELF: %w", err)
+	}
+
+	// notify emulator that some symbols in the ELF have
+	if cart.mem.unresolvedSymbols {
+		cart.env.Notifications.Notify(notifications.NotifyElfUndefinedSymbols)
 	}
 
 	return cart, nil

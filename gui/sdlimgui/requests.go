@@ -83,6 +83,8 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 				img.modal = modalPlusROMFirstInstallation
 			case notifications.NotifyUnsupportedDWARF:
 				img.modal = modalUnsupportedDWARF
+			case notifications.NotifyElfUndefinedSymbols:
+				img.modal = modalElfUndefinedSymbols
 			default:
 				img.playScr.overlay.set(request.args[0].(notifications.Notice))
 			}

@@ -38,6 +38,9 @@ const (
 	NotifyPlusROMNewInstall Notice = "NotifyPlusROMNewInstall"
 	NotifyPlusROMNetwork    Notice = "NotifyPlusROMNetwork"
 
+	// notifications sent by ELF cartridges
+	NotifyElfUndefinedSymbols Notice = "NotifyElfUndefinedSymbols"
+
 	// moviecart has started
 	NotifyMovieCartStarted Notice = "NotifyMoveCartStarted"
 

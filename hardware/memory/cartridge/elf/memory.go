@@ -118,6 +118,10 @@ type elfMemory struct {
 
 	symbols []elf.Symbol
 
+	// this field will be true if some symbols could not be completely resolved
+	// during loading
+	unresolvedSymbols bool
+
 	// strongARM support. like the elf sections, the strongARM program is placed
 	// in flash memory
 	strongArmProgram   []byte
@@ -530,6 +534,9 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 							},
 							support: true,
 						})
+
+						// flag presence of unresolved symbols
+						mem.unresolvedSymbols = true
 					} else {
 						n := ef.Sections[sym.Section].Name
 						if idx, ok := mem.sectionsByName[n]; !ok {

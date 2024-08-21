@@ -15,12 +15,17 @@
 
 package sdlimgui
 
+import (
+	"github.com/inkyblackness/imgui-go/v4"
+)
+
 type modal int
 
 const (
 	modalNone modal = iota
 	modalPlusROMFirstInstallation
 	modalUnsupportedDWARF
+	modalElfUndefinedSymbols
 )
 
 func (img *SdlImgui) modalDraw() {
@@ -29,9 +34,47 @@ func (img *SdlImgui) modalDraw() {
 		img.modalDrawPlusROMFirstInstallation()
 	case modalUnsupportedDWARF:
 		img.modalDrawUnsupportedDWARF()
+	case modalElfUndefinedSymbols:
+		img.modalElfUndefinedSymbols()
 	}
 }
 
 func (img *SdlImgui) modalActive() bool {
 	return img.modal != modalNone
+}
+
+func (img *SdlImgui) modalElfUndefinedSymbols() {
+	const popupTitle = "Undefined Symbols in ELF file"
+
+	imgui.OpenPopup(popupTitle)
+	flgs := imgui.WindowFlagsAlwaysAutoResize
+	flgs |= imgui.WindowFlagsNoMove
+	flgs |= imgui.WindowFlagsNoSavedSettings
+	if imgui.BeginPopupModalV(popupTitle, nil, flgs) {
+		imgui.Text("The ELF ROM contains an undefined symbol. Rather than aborting")
+		imgui.Text("the loading process the symbol has been linked to the undefined")
+		imgui.Text("symbol handler")
+		imgui.Spacing()
+		imgui.Spacing()
+		imgui.Text("The ROM will progress as expected until the symbol is accessed")
+		imgui.Spacing()
+		imgui.Spacing()
+		imgui.Text("If the symbol is accessed during execution a memory fault will")
+		imgui.Text("be generated")
+
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
+
+		sz := imgui.ContentRegionAvail()
+		sz.Y = img.fonts.guiSize
+		sz.Y += imgui.CurrentStyle().CellPadding().Y * 2
+		sz.Y += imgui.CurrentStyle().FramePadding().Y * 2
+		if imgui.ButtonV("Continue with undefined function handler", sz) {
+			imgui.CloseCurrentPopup()
+			img.modal = modalNone
+		}
+
+		imgui.EndPopup()
+	}
 }

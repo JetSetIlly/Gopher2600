@@ -1131,6 +1131,11 @@ func (dbg *Debugger) Notify(notice notifications.Notice) error {
 		if err != nil {
 			return err
 		}
+	case notifications.NotifyElfUndefinedSymbols:
+		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifyElfUndefinedSymbols)
+		if err != nil {
+			return err
+		}
 	case notifications.NotifyMovieCartStarted:
 		return dbg.vcs.TV.Reset(true)
 	default:
