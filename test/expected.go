@@ -17,42 +17,35 @@ package test
 
 import "testing"
 
-// DemandEquility is used to test equality between one value and another. If the
-// test fails it is a testing fatility
-//
-// This is particular useful if the values being tested are used in further
-// tests and so must be correct. For example, testing that the lengths of two
-// slices are equal before iterating over them in unison
-func DemandEquality[T comparable](t *testing.T, value T, expectedValue T) {
-	t.Helper()
-	if value != expectedValue {
-		t.Fatalf("equality test of type %T failed: %v does not equal %v)", value, value, expectedValue)
-	}
-}
-
 // ExpectEquality is used to test equality between one value and another
-func ExpectEquality[T comparable](t *testing.T, value T, expectedValue T) {
+func ExpectEquality[T comparable](t *testing.T, value T, expectedValue T) bool {
 	t.Helper()
 	if value != expectedValue {
-		t.Errorf("equality test of type %T failed: %v does not equal %v)", value, value, expectedValue)
+		t.Errorf("equality test of type %T failed: '%v' does not equal '%v')", value, value, expectedValue)
+		return false
 	}
+	return true
 }
 
 // ExpectInequality is used to test inequality between one value and another. In
 // other words, the test does not want to succeed if the values are equal
-func ExpectInequality[T comparable](t *testing.T, value T, expectedValue T) {
+func ExpectInequality[T comparable](t *testing.T, value T, expectedValue T) bool {
 	t.Helper()
 	if value == expectedValue {
-		t.Errorf("inequality test of type %T failed: %v does equal %v)", value, value, expectedValue)
+		t.Errorf("inequality test of type %T failed: '%v' does equal '%v')", value, value, expectedValue)
+		return false
 	}
+	return true
 }
 
 // ExpectImplements tests whether an instance is an implementation of type T
-func ExpectImplements[T comparable](t *testing.T, instance any, implements T) {
+func ExpectImplements[T comparable](t *testing.T, instance any, implements T) bool {
 	t.Helper()
 	if _, ok := instance.(T); !ok {
 		t.Fatalf("implementation test of type %T failed: type %T does not implement %T", instance, instance, implements)
+		return false
 	}
+	return true
 }
 
 // ExpectFailure tests argument v for a failure condition suitable for it's

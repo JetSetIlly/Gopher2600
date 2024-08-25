@@ -26,6 +26,10 @@
 //
 // ExpectImplements() tests whether an instance implements the specified type.
 //
+// ExpectFailure(), ExpectSuccess() and ExpectImplements() all return a boolean
+// to indicate whether the test has passed. This allows the user to control
+// larger test procedures that have several stages
+//
 // The Writer type meanwhile, implements the io.Writer interface and should be
 // used to capture output. The Writer.Compare() function can then be used to
 // test for equality.
