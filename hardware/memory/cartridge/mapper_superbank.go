@@ -98,7 +98,7 @@ func (cart *superbank) Plumb(env *environment.Environment) {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *superbank) Reset() {
-	cart.state.bank = len(cart.banks) - 1
+	cart.SetBank("AUTO")
 }
 
 // Access implements the mapper.CartMapper interface.
@@ -126,6 +126,30 @@ func (cart *superbank) GetBank(addr uint16) mapper.BankInfo {
 	// superbank cartridges are like atari cartridges in that the entire address
 	// space points to the selected bank
 	return mapper.BankInfo{Number: cart.state.bank, IsRAM: false}
+}
+
+// SetBank implements the mapper.CartMapper interface.
+func (cart *superbank) SetBank(bank string) error {
+	if mapper.IsAutoBankSelection(bank) {
+		cart.state.bank = len(cart.banks) - 1
+		return nil
+	}
+
+	b, err := mapper.SingleBankSelection(bank)
+	if err != nil {
+		return fmt.Errorf("%s: %v", cart.mappingID, err)
+	}
+
+	if b.Number >= len(cart.banks) {
+		return fmt.Errorf("%s: cartridge does not have bank '%d'", cart.mappingID, b.Number)
+	}
+	if b.IsRAM {
+		return fmt.Errorf("%s: cartridge does not have bankable RAM", cart.mappingID)
+	}
+
+	cart.state.bank = b.Number
+
+	return nil
 }
 
 // Patch implements the mapper.CartPatchable interface.

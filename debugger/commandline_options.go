@@ -29,6 +29,7 @@ type CommandLineOptions struct {
 	FpsCap    bool
 	Multiload int
 	Mapping   string
+	Bank      string
 	Left      string
 	Right     string
 	Swap      bool

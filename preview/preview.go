@@ -58,8 +58,12 @@ func (em *Emulation) RunN(loader cartridgeloader.Loader, N int) error {
 	// we don't want the preview emulation to run for too long
 	timeout := time.After(1 * time.Second)
 
-	em.vcs.AttachCartridge(loader, true)
-	err := em.vcs.RunForFrameCount(N, func(_ int) (govern.State, error) {
+	err := em.vcs.AttachCartridge(loader, true)
+	if err != nil {
+		return fmt.Errorf("preview: %w", err)
+	}
+
+	err = em.vcs.RunForFrameCount(N, func(_ int) (govern.State, error) {
 		select {
 		case <-timeout:
 			return govern.Ending, nil

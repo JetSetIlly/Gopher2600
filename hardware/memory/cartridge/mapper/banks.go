@@ -17,6 +17,8 @@ package mapper
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 // BankContent contains data and ID of a cartridge bank. Used by CopyBanks()
@@ -96,4 +98,68 @@ func (b BankInfo) String() string {
 		return fmt.Sprintf("%dR", b.Number)
 	}
 	return fmt.Sprintf("%d", b.Number)
+}
+
+// IsAutoBankSelection returns true if bank specifier indicates that the
+// selection should be automatic
+func IsAutoBankSelection(bank string) bool {
+	return strings.TrimSpace(strings.ToUpper(bank)) == "AUTO"
+}
+
+// BankSelection specifies a bank with enough information such that it can be
+// used by a cartridge implementation for bank-switching. It is up to the
+// implementation to decide whether the selection is valid
+type BankSelection struct {
+	Number int
+	IsRAM  bool
+}
+
+func (b BankSelection) String() string {
+	if b.IsRAM {
+		return fmt.Sprintf("%dR", b.Number)
+	}
+	return fmt.Sprintf("%d", b.Number)
+}
+
+// SingleBankSelection converts a bank specifier from a string to a new instance
+// of the Bank type
+func SingleBankSelection(bank string) (BankSelection, error) {
+	bank = strings.TrimSpace(strings.ToUpper(bank))
+
+	var isRAM bool
+
+	b, err := strconv.Atoi(bank)
+	if err != nil {
+		if bank, ok := strings.CutSuffix(bank, "R"); ok {
+			b, err = strconv.Atoi(bank)
+			isRAM = true
+		}
+		if err != nil {
+			return BankSelection{}, fmt.Errorf("startup bank not a valid value: %s", bank)
+		}
+	}
+
+	if b < 0 {
+		return BankSelection{}, fmt.Errorf("startup bank not a valid value: %s", bank)
+	}
+
+	return BankSelection{
+		Number: b,
+		IsRAM:  isRAM,
+	}, nil
+}
+
+// SegmentedBankSelection converts a bank specifier for a segmented scheme
+func SegmentedBankSelection(bank string) ([]BankSelection, error) {
+	var segments []BankSelection
+
+	for _, s := range strings.Split(bank, ":") {
+		b, err := SingleBankSelection(s)
+		if err != nil {
+			return []BankSelection{}, err
+		}
+		segments = append(segments, b)
+	}
+
+	return segments, nil
 }

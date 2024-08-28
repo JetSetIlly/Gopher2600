@@ -570,6 +570,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				} else {
 					dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("rom dumped to %s", romdump))
 				}
+
+			case "SETBANK":
+				spec, _ := tokens.Get()
+				err := dbg.vcs.Mem.Cart.SetBank(spec)
+				if err != nil {
+					dbg.printLine(terminal.StyleFeedback, err.Error())
+				}
 			}
 		} else {
 			dbg.printLine(terminal.StyleInstrument, dbg.vcs.Mem.Cart.String())
@@ -1811,7 +1818,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		if ok {
 			switch strings.ToUpper(controller) {
 			case "AUTO":
-				dbg.vcs.FingerprintPeripheral(id, *dbg.cartload)
+				dbg.vcs.FingerprintPeripheral(id)
 			case "STICK":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewStick)
 			case "PADDLE":

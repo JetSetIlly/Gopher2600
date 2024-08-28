@@ -73,16 +73,16 @@ type wicksteadDesign struct {
 }
 
 func newWicksteadDesign(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
-	if err != nil {
-		return nil, fmt.Errorf("WD: %w", err)
-	}
-
 	cart := &wicksteadDesign{
 		env:       env,
 		mappingID: "WD",
 		bankSize:  1024,
 		state:     newWicksteadState(),
+	}
+
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
 
 	// the only known ROM that uses this mapper is the prototype of the Pink
@@ -97,7 +97,7 @@ func newWicksteadDesign(env *environment.Environment, loader cartridgeloader.Loa
 		if len(data) == cart.bankSize*cart.NumBanks()+3 {
 			badDump = true
 		} else {
-			return nil, fmt.Errorf("WD: wrong number of bytes in the cartridge data")
+			return nil, fmt.Errorf("%s: wrong number of bytes in the cartridge data", cart.mappingID)
 		}
 	}
 
@@ -148,7 +148,7 @@ func (cart *wicksteadDesign) Reset() {
 			cart.state.ram[i] = 0
 		}
 	}
-	cart.state.segments = cart.segmentPattern(0)
+	cart.SetBank("AUTO")
 }
 
 // Access implements the mapper.CartMapper interface.
@@ -223,6 +223,37 @@ func (cart *wicksteadDesign) GetBank(addr uint16) mapper.BankInfo {
 	}
 }
 
+// SetBank implements the mapper.CartMapper interface.
+func (cart *wicksteadDesign) SetBank(bank string) error {
+	if mapper.IsAutoBankSelection(bank) {
+		p, err := cart.segmentPattern(0)
+		if err != nil {
+			return err
+		}
+		cart.state.segments = p
+		return nil
+	}
+
+	// wickstead design uses a pattern selector. we can use the single bank
+	// selection function for this
+
+	b, err := mapper.SingleBankSelection(bank)
+	if err != nil {
+		return fmt.Errorf("%s: %v", cart.mappingID, err)
+	}
+	if b.IsRAM {
+		return fmt.Errorf("%s: cartridge expects a single value between 0 and 7", cart.mappingID)
+	}
+
+	p, err := cart.segmentPattern(b.Number)
+	if err != nil {
+		return err
+	}
+	cart.state.segments = p
+
+	return nil
+}
+
 // Patch implements the mapper.CartMapper interface.
 func (cart *wicksteadDesign) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
@@ -235,7 +266,7 @@ func (cart *wicksteadDesign) Patch(offset int, data uint8) error {
 	return nil
 }
 
-func (cart *wicksteadDesign) segmentPattern(pattern int) [4]int {
+func (cart *wicksteadDesign) segmentPattern(pattern int) ([4]int, error) {
 	var p [4]int
 
 	switch pattern {
@@ -256,10 +287,10 @@ func (cart *wicksteadDesign) segmentPattern(pattern int) [4]int {
 	case 7:
 		p = [4]int{6, 0, 5, 1}
 	default:
-		panic(fmt.Sprintf("WD: invalid segment pattern: %#x", pattern))
+		return [4]int{}, fmt.Errorf("%s: invalid segment pattern (%d)", cart.mappingID, pattern)
 	}
 
-	return p
+	return p, nil
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
@@ -267,7 +298,11 @@ func (cart *wicksteadDesign) AccessPassive(addr uint16, data uint8) error {
 	// switch bank pattern
 	if addr&0xfff0 == 0x0030 {
 		pattern := int(addr & 0x0007)
-		cart.state.pending = cart.segmentPattern(pattern)
+		var err error
+		cart.state.pending, err = cart.segmentPattern(pattern)
+		if err != nil {
+			return err
+		}
 		cart.state.pendingCt = 4
 	}
 
@@ -321,7 +356,7 @@ type wicksteadState struct {
 	pending   [4]int
 	pendingCt int
 
-	// CBS cartridges had internal RAM very similar to the Atari Superchip
+	// WD cartridges have internal RAM very similar to the Atari Superchip
 	ram []uint8
 }
 

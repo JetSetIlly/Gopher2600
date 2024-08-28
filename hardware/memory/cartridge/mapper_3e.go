@@ -116,9 +116,7 @@ func (cart *m3e) Reset() {
 		}
 	}
 
-	// the last segment always points to the last bank
-	cart.state.segment[0] = cart.NumBanks() - 2
-	cart.state.segment[1] = cart.NumBanks() - 1
+	cart.SetBank("AUTO")
 }
 
 // Access implements the mapper.CartMapper interface.
@@ -174,6 +172,42 @@ func (cart *m3e) GetBank(addr uint16) mapper.BankInfo {
 		return mapper.BankInfo{Number: cart.state.segment[0], IsRAM: cart.state.segmentIsRAM[0], IsSegmented: true, Segment: 0}
 	}
 	return mapper.BankInfo{Number: cart.state.segment[1], IsRAM: cart.state.segmentIsRAM[1], IsSegmented: true, Segment: 1}
+}
+
+// SetBank implements the mapper.CartMapper interface.
+func (cart *m3e) SetBank(bank string) error {
+	if mapper.IsAutoBankSelection(bank) {
+		// the last segment always points to the last bank
+		cart.state.segment[0] = cart.NumBanks() - 2
+		cart.state.segment[1] = cart.NumBanks() - 1
+		return nil
+	}
+
+	segs, err := mapper.SegmentedBankSelection(bank)
+	if err != nil {
+		return fmt.Errorf("%s: %v", cart.mappingID, err)
+	}
+
+	if len(segs) > len(cart.state.segment) {
+		return fmt.Errorf("%s: too many segments specified (%d)", cart.mappingID, len(segs))
+	}
+
+	for i, b := range segs {
+		if b.Number >= len(cart.banks) {
+			return fmt.Errorf("%s: cartridge does not have bank '%d'", cart.mappingID, b.Number)
+		}
+		if b.IsRAM {
+			return fmt.Errorf("%s: cartridge does not have bankable RAM", cart.mappingID)
+		}
+
+		if i == len(cart.state.segment)-1 && b.Number != cart.NumBanks()-1 {
+			return fmt.Errorf("%s: last segment must always be bank %d", cart.mappingID, cart.NumBanks()-1)
+		}
+
+		cart.state.segment[i] = b.Number
+	}
+
+	return nil
 }
 
 // Patch implements the mapper.CartPatchable interface

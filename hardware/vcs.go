@@ -143,29 +143,32 @@ func (vcs *VCS) End() {
 // Note that the emulation should always be reset before emulation commences
 // but some applications might need to prepare the emulation further before
 // that happens.
-func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader, reset bool) error {
-	err := vcs.TV.SetSpec(cartload.ReqSpec, false)
+func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader, reset bool) (rerr error) {
+	vcs.Env.Loader = cartload
+
+	err := vcs.TV.SetSpec(vcs.Env.Loader.ReqSpec, false)
 	if err != nil {
 		return err
 	}
 
-	if cartload.Filename == "" {
+	if vcs.Env.Loader.Filename == "" {
 		vcs.Mem.Cart.Eject()
 	} else {
-		err := vcs.Mem.Cart.Attach(cartload)
+		err := vcs.Mem.Cart.Attach(vcs.Env.Loader)
 		if err != nil {
 			return err
 		}
 
 		// fingerprint new peripherals. peripherals are not changed if option is not set
-		err = vcs.FingerprintPeripheral(plugging.PortLeft, cartload)
+		err = vcs.FingerprintPeripheral(plugging.PortLeft)
 		if err != nil {
 			return err
 		}
-		err = vcs.FingerprintPeripheral(plugging.PortRight, cartload)
+		err = vcs.FingerprintPeripheral(plugging.PortRight)
 		if err != nil {
 			return err
 		}
+
 	}
 
 	if reset {
@@ -180,8 +183,8 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader, reset bool) err
 
 // FingerprintPeripheral inserts the peripheral that is thought to be best
 // suited for the current inserted cartridge.
-func (vcs *VCS) FingerprintPeripheral(id plugging.PortID, cartload cartridgeloader.Loader) error {
-	return vcs.RIOT.Ports.Plug(id, peripherals.Fingerprint(id, cartload))
+func (vcs *VCS) FingerprintPeripheral(id plugging.PortID) error {
+	return vcs.RIOT.Ports.Plug(id, peripherals.Fingerprint(id, vcs.Env.Loader))
 }
 
 // Reset emulates the reset switch on the console panel.

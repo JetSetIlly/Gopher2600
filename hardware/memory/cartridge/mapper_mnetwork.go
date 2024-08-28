@@ -72,7 +72,10 @@ import (
 // 8k cartridges:
 // - Bump 'n' Jump (note that some versions are 16k).
 
-const num256ByteRAMbanks = 4
+const (
+	mnetworkNum256byte = 4
+	mnetworkSegments   = 2
+)
 
 type mnetwork struct {
 	env *environment.Environment
@@ -166,8 +169,7 @@ func (cart *mnetwork) Reset() {
 		}
 	}
 
-	cart.state.bank = 0
-	cart.state.ram256byteIdx = 0
+	cart.SetBank("AUTO")
 }
 
 // Access implements the mapper.CartMapper interface.
@@ -315,6 +317,42 @@ func (cart *mnetwork) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.NumBanks() - 1, IsRAM: false, IsSegmented: true, Segment: 1}
 }
 
+// SetBank implements the mapper.CartMapper interface.
+func (cart *mnetwork) SetBank(bank string) error {
+	if mapper.IsAutoBankSelection(bank) {
+		cart.state.bank = 0
+		cart.state.use1kRAM = false
+		cart.state.ram256byteIdx = 0
+		return nil
+	}
+
+	segs, err := mapper.SegmentedBankSelection(bank)
+	if err != nil {
+		return fmt.Errorf("%s: %v", cart.mappingID, err)
+	}
+
+	if len(segs) > mnetworkSegments {
+		return fmt.Errorf("%s: too many segments specified (%d)", cart.mappingID, len(segs))
+	}
+
+	b := segs[0]
+	if b.Number >= len(cart.banks) {
+		return fmt.Errorf("%s: cartridge does not have bank '%d'", cart.mappingID, b.Number)
+	}
+	cart.state.use1kRAM = b.IsRAM
+
+	b = segs[1]
+	if b.Number >= mnetworkNum256byte {
+		return fmt.Errorf("%s: cartridge does not have 256byte bank '%d'", cart.mappingID, b.Number)
+	}
+	if !b.IsRAM {
+		return fmt.Errorf("%s: second segment is always a RAM bank", cart.mappingID)
+	}
+	cart.state.ram256byteIdx = b.Number
+
+	return nil
+}
+
 // Patch implements the mapper.CartPatchable interface.
 func (cart *mnetwork) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
@@ -338,7 +376,8 @@ func (cart *mnetwork) Step(_ float32) {
 
 // GetRAM implements the mapper.CartRAMBus interface.
 func (cart *mnetwork) GetRAM() []mapper.CartRAM {
-	r := make([]mapper.CartRAM, num256ByteRAMbanks+1)
+	// +1 to allow fot 1k block
+	r := make([]mapper.CartRAM, mnetworkNum256byte+1)
 
 	r[0] = mapper.CartRAM{
 		Label:  "1k",
@@ -348,7 +387,7 @@ func (cart *mnetwork) GetRAM() []mapper.CartRAM {
 	}
 	copy(r[0].Data, cart.state.ram1k)
 
-	for i := 0; i < num256ByteRAMbanks; i++ {
+	for i := 0; i < mnetworkNum256byte; i++ {
 		r[i+1] = mapper.CartRAM{
 			Label:  fmt.Sprintf("256B [%d]", i),
 			Origin: 0x1900,
@@ -417,7 +456,7 @@ type mnetworkState struct {
 	// identifies the currently selected bank
 	bank int
 
-	ram256byte    [num256ByteRAMbanks][]uint8
+	ram256byte    [mnetworkNum256byte][]uint8
 	ram256byteIdx int
 
 	//  o ram1k is read through addresses 0x1000 to 0x13ff and written

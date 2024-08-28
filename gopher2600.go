@@ -304,6 +304,7 @@ func emulate(mode string, sync *mainSync, args []string) error {
 	flgs.BoolVar(&opts.FpsCap, "fpscap", true, "cap FPS to emulation TV")
 	flgs.IntVar(&opts.Multiload, "multiload", -1, "force multiload byte (supercharger only; 0 to 255")
 	flgs.StringVar(&opts.Mapping, "mapping", "AUTO", "force cartridge mapper selection")
+	flgs.StringVar(&opts.Bank, "bank", "AUTO", "selected cartridge bank on reset")
 	flgs.StringVar(&opts.Left, "left", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD")
 	flgs.StringVar(&opts.Right, "right", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD")
 	flgs.BoolVar(&opts.Swap, "swap", false, "swap player ports")
@@ -510,7 +511,7 @@ func disasm(mode string, args []string) error {
 			Cycles:   true,
 		}
 
-		cartload, err := cartridgeloader.NewLoaderFromFilename(args[0], mapping, nil)
+		cartload, err := cartridgeloader.NewLoaderFromFilename(args[0], mapping, "AUTO", nil)
 		if err != nil {
 			return err
 		}
@@ -545,6 +546,7 @@ func disasm(mode string, args []string) error {
 
 func perform(mode string, sync *mainSync, args []string) error {
 	var mapping string
+	var bank string
 	var spec string
 	var uncapped bool
 	var duration string
@@ -553,6 +555,7 @@ func perform(mode string, sync *mainSync, args []string) error {
 
 	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
 	flgs.StringVar(&mapping, "mapping", "AUTO", "form cartridge mapper selection")
+	flgs.StringVar(&bank, "bank", "AUTO", "selected cartridge bank on reset")
 	flgs.StringVar(&spec, "tv", "AUTO",
 		fmt.Sprintf("television specification: %s", strings.Join(specification.ReqSpecList, ", ")))
 	flgs.BoolVar(&uncapped, "uncapped", true, "run performance no FPS cap")
@@ -578,7 +581,7 @@ func perform(mode string, sync *mainSync, args []string) error {
 	case 0:
 		return fmt.Errorf("2600 cartridge required")
 	case 1:
-		cartload, err := cartridgeloader.NewLoaderFromFilename(args[0], mapping, nil)
+		cartload, err := cartridgeloader.NewLoaderFromFilename(args[0], mapping, bank, nil)
 		if err != nil {
 			return err
 		}

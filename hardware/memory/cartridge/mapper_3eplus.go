@@ -126,13 +126,7 @@ func (cart *m3ePlus) Reset() {
 		}
 	}
 
-	// The last 1K ROM ($FC00-$FFFF) segment in the 6502 address space (ie: $1C00-$1FFF)
-	// is initialised to point to the FIRST 1K of the ROM image, so the reset vectors
-	// must be placed at the end of the first 1K in the ROM image.
-	for i := range cart.state.segment {
-		cart.state.segment[i] = 0
-		cart.state.segmentIsRAM[i] = false
-	}
+	cart.SetBank("AUTO")
 }
 
 // Access implements the mapper.CartMapper interface.
@@ -216,6 +210,53 @@ func (cart *m3ePlus) GetBank(addr uint16) mapper.BankInfo {
 		return mapper.BankInfo{Number: cart.state.segment[seg], IsRAM: true, IsSegmented: true, Segment: seg}
 	}
 	return mapper.BankInfo{Number: cart.state.segment[seg], IsSegmented: true, Segment: seg}
+}
+
+// SetBank implements the mapper.CartMapper interface.
+func (cart *m3ePlus) SetBank(bank string) error {
+	if mapper.IsAutoBankSelection(bank) {
+		// The last 1K ROM ($FC00-$FFFF) segment in the 6502 address space (ie: $1C00-$1FFF)
+		// is initialised to point to the FIRST 1K of the ROM image, so the reset vectors
+		// must be placed at the end of the first 1K in the ROM image.
+		for i := range cart.state.segment {
+			cart.state.segment[i] = 0
+			cart.state.segmentIsRAM[i] = false
+		}
+		return nil
+	}
+
+	segs, err := mapper.SegmentedBankSelection(bank)
+	if err != nil {
+		return fmt.Errorf("%s: %v", cart.mappingID, err)
+	}
+
+	if len(segs) > len(cart.state.segment) {
+		return fmt.Errorf("%s: too many segments specified (%d)", cart.mappingID, len(segs))
+	}
+
+	b := segs[0]
+	if b.Number >= len(cart.banks) {
+		return fmt.Errorf("%s: cartridge does not have bank '%d'", cart.mappingID, b.Number)
+	}
+	cart.state.segment[0] = b.Number
+	cart.state.segmentIsRAM[0] = b.IsRAM
+
+	b = segs[1]
+	if b.IsRAM {
+		if b.Number >= len(cart.state.ram) {
+			return fmt.Errorf("%s: cartridge does not have bankable RAM", cart.mappingID)
+		}
+		cart.state.segment[1] = b.Number
+		cart.state.segmentIsRAM[1] = true
+	} else {
+		if b.Number >= len(cart.banks) {
+			return fmt.Errorf("%s: cartridge does not have bank '%d'", cart.mappingID, b.Number)
+		}
+		cart.state.segment[1] = b.Number
+		cart.state.segmentIsRAM[1] = false
+	}
+
+	return nil
 }
 
 // Patch implements the mapper.CartPatchable interface

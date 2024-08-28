@@ -78,7 +78,7 @@ func (cart *wf8) Plumb(env *environment.Environment) {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *wf8) Reset() {
-	cart.reset(cart.NumBanks())
+	cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.

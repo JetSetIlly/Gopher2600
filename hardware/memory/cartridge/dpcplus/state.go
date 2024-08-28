@@ -63,9 +63,8 @@ func newDPCPlusState() *State {
 	return s
 }
 
-func (s *State) initialise(rand *random.Random, bank int) {
+func (s *State) initialise(rand *random.Random) {
 	s.registers.reset(rand)
-	s.bank = bank
 	s.lda = false
 	s.beats = 0
 	s.parameters = []uint8{}

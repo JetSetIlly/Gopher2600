@@ -398,6 +398,14 @@ func (cart *Cartridge) GetBank(addr uint16) mapper.BankInfo {
 	return bank
 }
 
+// SetBank sets the current bank of the cartridge
+func (cart *Cartridge) SetBank(bank string) error {
+	if set, ok := cart.mapper.(mapper.SelectableBank); ok {
+		return set.SetBank(bank)
+	}
+	return fmt.Errorf("cartridge: %s does not support setting of bank", cart.mapper.ID())
+}
+
 // AccessPassive is called so that the cartridge can respond to changes to the
 // address and data bus even when the data bus is not addressed to the cartridge.
 //

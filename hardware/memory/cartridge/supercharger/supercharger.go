@@ -123,9 +123,10 @@ func (cart *Supercharger) Reset() {
 	}
 
 	cart.state.registers.WriteDelay = 0
-	cart.state.registers.BankingMode = 0
 	cart.state.registers.ROMpower = true
 	cart.state.registers.RAMwrite = true
+
+	cart.SetBank("AUTO")
 }
 
 // Access implements the mapper.CartMapper interface.
@@ -279,6 +280,33 @@ func (cart *Supercharger) GetBank(addr uint16) mapper.BankInfo {
 	}
 
 	panic("supercharger: unknown banking method")
+}
+
+// SetBank implements the mapper.CartMapper interface.
+func (cart *Supercharger) SetBank(bank string) error {
+	if mapper.IsAutoBankSelection(bank) {
+		cart.state.registers.BankingMode = 0
+		return nil
+	}
+
+	// supercharger uses predfined banking modes. we can use the single bank
+	// selection function for this
+
+	b, err := mapper.SingleBankSelection(bank)
+	if err != nil {
+		return fmt.Errorf("%s: %v", cart.mappingID, err)
+	}
+	if b.IsRAM {
+		return fmt.Errorf("%s: cartridge expects a single value between 0 and 7", cart.mappingID)
+	}
+
+	if b.Number > 7 {
+		return fmt.Errorf("%s: invalid banking mode (%d)", cart.mappingID, b.Number)
+	}
+
+	cart.state.registers.BankingMode = b.Number
+
+	return nil
 }
 
 // AccessPassive implements the mapper.CartMapper interface.

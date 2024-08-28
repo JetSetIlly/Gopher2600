@@ -16,6 +16,7 @@
 package environment
 
 import (
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/notifications"
@@ -55,6 +56,9 @@ type Environment struct {
 	// any randomisation required by the emulation should be retreived through
 	// this structure
 	Random *random.Random
+
+	// current cartridge loader
+	Loader cartridgeloader.Loader
 }
 
 // NewEnvironment is the preferred method of initialisation for the Environment type.

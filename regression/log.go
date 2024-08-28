@@ -146,7 +146,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	// default the hardware preferences
 	vcs.Env.Normalise()
 
-	cartload, err := cartridgeloader.NewLoaderFromFilename(reg.Cartridge, reg.Mapping, nil)
+	cartload, err := cartridgeloader.NewLoaderFromFilename(reg.Cartridge, reg.Mapping, "AUTO", nil)
 	if err != nil {
 		return false, "", fmt.Errorf("log: %w", err)
 	}

@@ -62,6 +62,9 @@ type Loader struct {
 	// empty string or "AUTO" indicates automatic fingerprinting
 	Mapping string
 
+	// startup bank of cartridge
+	Bank string
+
 	// property entry from property package
 	Property properties.Entry
 
@@ -119,7 +122,7 @@ var NoFilename = errors.New("no filename")
 //
 // Filenames can contain whitespace, including leading and trailing whitespace,
 // but cannot consist only of whitespace.
-func NewLoaderFromFilename(filename string, mapping string, props Properties) (Loader, error) {
+func NewLoaderFromFilename(filename string, mapping string, bank string, props Properties) (Loader, error) {
 	// check filename but don't change it. we don't want to allow the empty
 	// string or a string only consisting of whitespace, but we *do* want to
 	// allow filenames with leading/trailing spaces
@@ -142,6 +145,7 @@ func NewLoaderFromFilename(filename string, mapping string, props Properties) (L
 	ld := Loader{
 		Filename: filename,
 		Mapping:  mapping,
+		Bank:     bank,
 	}
 
 	// decide what mapping to use if the requested mapping is AUTO
@@ -199,7 +203,7 @@ func NewLoaderFromFilename(filename string, mapping string, props Properties) (L
 //
 // The name argument should not include a file extension because it won't be
 // used.
-func NewLoaderFromData(name string, data []byte, mapping string, props Properties) (Loader, error) {
+func NewLoaderFromData(name string, data []byte, mapping string, bank string, props Properties) (Loader, error) {
 	if len(data) == 0 {
 		return Loader{}, fmt.Errorf("loader: data is empty")
 	}
@@ -217,6 +221,7 @@ func NewLoaderFromData(name string, data []byte, mapping string, props Propertie
 	ld := Loader{
 		Filename: name,
 		Mapping:  mapping,
+		Bank:     bank,
 		preload:  preloadLimit(data),
 		data:     bytes.NewReader(data),
 		HashSHA1: fmt.Sprintf("%x", sha1.Sum(data)),

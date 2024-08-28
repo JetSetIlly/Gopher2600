@@ -235,6 +235,14 @@ func (cart *PlusROM) GetBank(addr uint16) mapper.BankInfo {
 	return cart.state.child.GetBank(addr)
 }
 
+// SetBank implements the mapper.CartMapper interface.
+func (cart *PlusROM) SetBank(bank string) error {
+	if cart, ok := cart.state.child.(mapper.SelectableBank); ok {
+		return cart.SetBank(bank)
+	}
+	return fmt.Errorf("plusrom: %s does not support setting of bank", cart.state.child.ID())
+}
+
 // AccessPassive implements the mapper.CartMapper interface.
 func (cart *PlusROM) AccessPassive(addr uint16, data uint8) error {
 	return cart.state.child.AccessPassive(addr, data)

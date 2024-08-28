@@ -94,6 +94,12 @@ type CartMapper interface {
 	CopyBanks() []BankContent
 }
 
+// SelectableBank is implemented by mappers that can have the selected bank
+// changed explicitely by the emulation
+type SelectableBank interface {
+	SetBank(bank string) error
+}
+
 // PlumbFromDifferentEmulation is for mappers that are sensitive to being
 // transferred from one emulation to another.
 //

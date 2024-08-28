@@ -185,7 +185,8 @@ func (cart *dpcPlus) PlumbFromDifferentEmulation(env *environment.Environment) {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Reset() {
-	cart.state.initialise(cart.env.Random, len(cart.banks)-1)
+	cart.state.initialise(cart.env.Random)
+	cart.SetBank("AUTO")
 }
 
 // Access implements the mapper.CartMapper interface.
@@ -729,6 +730,30 @@ func (cart *dpcPlus) GetBank(addr uint16) mapper.BankInfo {
 		ExecutingCoprocessor:  cart.state.callfn.IsActive(),
 		CoprocessorResumeAddr: cart.state.callfn.ResumeAddr,
 	}
+}
+
+// SetBank implements the mapper.CartMapper interface.
+func (cart *dpcPlus) SetBank(bank string) error {
+	if mapper.IsAutoBankSelection(bank) {
+		cart.state.bank = len(cart.banks) - 1
+		return nil
+	}
+
+	b, err := mapper.SingleBankSelection(bank)
+	if err != nil {
+		return fmt.Errorf("%s: %v", cart.mappingID, err)
+	}
+
+	if b.Number >= len(cart.banks) {
+		return fmt.Errorf("%s: cartridge does not have bank '%d'", cart.mappingID, b.Number)
+	}
+	if b.IsRAM {
+		return fmt.Errorf("%s: cartridge does not have bankable RAM", cart.mappingID)
+	}
+
+	cart.state.bank = b.Number
+
+	return nil
 }
 
 // AccessPassive implements the mapper.CartMapper interface.

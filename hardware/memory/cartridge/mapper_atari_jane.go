@@ -77,7 +77,7 @@ func (cart *jane) Plumb(env *environment.Environment) {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *jane) Reset() {
-	cart.reset(cart.NumBanks())
+	cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.

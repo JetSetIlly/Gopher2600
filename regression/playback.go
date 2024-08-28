@@ -140,7 +140,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	}
 
 	// new cartridge loader using the information found in the playback file
-	cartload, err := cartridgeloader.NewLoaderFromFilename(plb.Cartridge, "AUTO", nil)
+	cartload, err := cartridgeloader.NewLoaderFromFilename(plb.Cartridge, "AUTO", "AUTO", nil)
 	if err != nil {
 		return false, "", fmt.Errorf("playback: %w", err)
 	}

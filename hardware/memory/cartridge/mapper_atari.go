@@ -121,7 +121,7 @@ func (cart *atari) ROMDump(filename string) error {
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			logger.Logf(cart.env, "%s", cart.mappingID, err.Error())
+			logger.Logf(cart.env, "cartridge", "%s: %v", cart.mappingID, err)
 		}
 	}()
 
@@ -147,7 +147,7 @@ func (cart *atari) ID() string {
 
 // reset is called by the Reset() function implemented in all child types of the
 // the atari type
-func (cart *atari) reset(numBanks int) {
+func (cart *atari) reset() {
 	for i := range cart.state.ram {
 		if cart.env.Prefs.RandomState.Get().(bool) {
 			cart.state.ram[i] = uint8(cart.env.Random.NoRewind(0xff))
@@ -156,8 +156,26 @@ func (cart *atari) reset(numBanks int) {
 		}
 	}
 	if cart.env.Prefs.RandomState.Get().(bool) {
-		cart.state.bank = cart.env.Random.NoRewind(numBanks)
+		cart.state.bank = cart.env.Random.NoRewind(len(cart.banks))
 	} else {
+		err := cart.SetBank(cart.env.Loader.Bank)
+		if err != nil {
+			logger.Logf(cart.env, "cartridge", err.Error())
+		}
+	}
+}
+
+// GetBank implements the mapper.CartMapper interface.
+func (cart *atari) GetBank(addr uint16) mapper.BankInfo {
+	// because atari bank switching swaps out the entire memory space, every
+	// address points to whatever the current bank is. compare to parker bros.
+	// cartridges.
+	return mapper.BankInfo{Number: cart.state.bank, IsRAM: cart.state.ram != nil && addr >= 0x80 && addr <= 0xff}
+}
+
+// SetBank implements the mapper.CartMapper interface.
+func (cart *atari) SetBank(bank string) error {
+	if mapper.IsAutoBankSelection(bank) {
 		// earlier revisions of this function handled the possibility of a different
 		// required starting bank for specific cartridges. however I now believe that the
 		// correct answer in all cases should be bank 0
@@ -182,8 +200,8 @@ func (cart *atari) reset(numBanks int) {
 		// however, I think we can do better. if we read the reset vector and
 		// test whether the address pointed to is in cartridge space then we can
 		// make a better guess at the correct starting bank
-		if numBanks > 1 {
-			for b := 0; b < numBanks; b++ {
+		if len(cart.banks) > 1 {
+			for b := 0; b < len(cart.banks); b++ {
 				reset := cpubus.Reset & memorymap.CartridgeBits
 				addr := uint16(cart.banks[b][reset]) | (uint16(cart.banks[b][reset+1]) << 8)
 				if memorymap.IsArea(addr, memorymap.Cartridge) {
@@ -204,16 +222,33 @@ func (cart *atari) reset(numBanks int) {
 					}
 				}
 			}
-		}
-	}
-}
 
-// GetBank implements the mapper.CartMapper interface.
-func (cart *atari) GetBank(addr uint16) mapper.BankInfo {
-	// because atari bank switching swaps out the entire memory space, every
-	// address points to whatever the current bank is. compare to parker bros.
-	// cartridges.
-	return mapper.BankInfo{Number: cart.state.bank, IsRAM: cart.state.ram != nil && addr >= 0x80 && addr <= 0xff}
+			// list of problem ROMs for testing:
+			// - Berzerk voice enhanced
+			// - Hack'em Hanglyman
+			//
+			// False positives:
+			// - Choplifter (prototype)
+		}
+
+		return nil
+	}
+
+	b, err := mapper.SingleBankSelection(bank)
+	if err != nil {
+		return fmt.Errorf("%s: %v", cart.mappingID, err)
+	}
+
+	if b.Number >= len(cart.banks) {
+		return fmt.Errorf("%s: cartridge does not have bank '%d'", cart.mappingID, b.Number)
+	}
+	if b.IsRAM {
+		return fmt.Errorf("%s: cartridge does not have bankable RAM", cart.mappingID)
+	}
+
+	cart.state.bank = b.Number
+
+	return nil
 }
 
 // access implements the mapper.CartMapper interface. the bool return value is true if the address
@@ -365,7 +400,7 @@ func (cart *atari4k) Plumb(env *environment.Environment) {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *atari4k) Reset() {
-	cart.reset(cart.NumBanks())
+	cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -442,7 +477,7 @@ func (cart *atari2k) Plumb(env *environment.Environment) {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *atari2k) Reset() {
-	cart.reset(cart.NumBanks())
+	cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -525,7 +560,7 @@ func (cart *atari8k) Plumb(env *environment.Environment) {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *atari8k) Reset() {
-	cart.reset(cart.NumBanks())
+	cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -636,7 +671,7 @@ func (cart *atari16k) Plumb(env *environment.Environment) {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *atari16k) Reset() {
-	cart.reset(cart.NumBanks())
+	cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -753,7 +788,7 @@ func (cart *atari32k) Plumb(env *environment.Environment) {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *atari32k) Reset() {
-	cart.reset(cart.NumBanks())
+	cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.

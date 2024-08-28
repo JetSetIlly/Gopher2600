@@ -56,8 +56,7 @@ func newCDFstate() *State {
 	return s
 }
 
-func (s *State) initialise(bank int) {
-	s.bank = bank
+func (s *State) initialise() {
 	s.fastLoad = 0
 	s.fastJMP = 0
 	s.beats = 0
