@@ -23,9 +23,39 @@ import "testing"
 // This is particular useful if the values being tested are used in further
 // tests and so must be correct. For example, testing that the lengths of two
 // slices are equal before iterating over them in unison
-func DemandEquality[T comparable](t *testing.T, value T, expectedValue T) {
+func DemandEquality[T comparable](t *testing.T, v T, expectedValue T) {
 	t.Helper()
-	if value != expectedValue {
-		t.Fatalf("equality test of type %T failed: '%v' does not equal '%v')", value, value, expectedValue)
+	if v != expectedValue {
+		t.Fatalf("equality test of type %T failed: '%v' does not equal '%v')", v, v, expectedValue)
 	}
+}
+
+// DemandSucess is used to test for a value which indicates an 'successful'
+// value for the type. See ExpectSucess() for more information on success
+// values
+func DemandSuccess(t *testing.T, v any) {
+	t.Helper()
+	if !expectSuccess(t, v) {
+		t.Fatalf("a success value is demanded for type %T", v)
+	}
+}
+
+// DemandFailure is used to test for a value which indicates an 'unsuccessful'
+// value for the type. See ExpectFailure() for more information on failure
+// values
+func DemandFailure(t *testing.T, v any) {
+	t.Helper()
+	if !expectFailure(t, v) {
+		t.Fatalf("a failure value is demanded for type %T", v)
+	}
+}
+
+// DemandImplements tests whether an instance is an implementation of type T
+func DemandImplements[T comparable](t *testing.T, instance any, implements T) bool {
+	t.Helper()
+	if _, ok := instance.(T); !ok {
+		t.Fatalf("implementation test of type %T failed: type %T does not implement %T", instance, instance, implements)
+		return false
+	}
+	return true
 }

@@ -15,7 +15,9 @@
 
 package test
 
-import "testing"
+import (
+	"testing"
+)
 
 // ExpectEquality is used to test equality between one value and another
 func ExpectEquality[T comparable](t *testing.T, value T, expectedValue T) bool {
@@ -38,71 +40,75 @@ func ExpectInequality[T comparable](t *testing.T, value T, expectedValue T) bool
 	return true
 }
 
-// ExpectImplements tests whether an instance is an implementation of type T
-func ExpectImplements[T comparable](t *testing.T, instance any, implements T) bool {
-	t.Helper()
-	if _, ok := instance.(T); !ok {
-		t.Fatalf("implementation test of type %T failed: type %T does not implement %T", instance, instance, implements)
-		return false
-	}
-	return true
-}
-
-// ExpectFailure tests argument v for a failure condition suitable for it's
-// type. Types bool and error are treated thus:
+// ExpectFailure tests for an 'unsucessful value for the value's type.
+//
+// Types bool and error are treated thus:
 //
 //	bool == false
 //	error != nil
 //
 // If type is nil then the test will fail
-func ExpectFailure(t *testing.T, v interface{}) bool {
+func ExpectFailure(t *testing.T, v any) bool {
+	t.Helper()
+	if !expectFailure(t, v) {
+		t.Errorf("a failure value is expected for type %T", v)
+		return false
+	}
+	return true
+}
+
+func expectFailure(t *testing.T, v any) bool {
 	t.Helper()
 
 	switch v := v.(type) {
 	case bool:
 		if v {
-			t.Errorf("failure test of type %T failed: %T does not equal false", v, v)
 			return false
 		}
 
 	case error:
 		if v == nil {
-			t.Errorf("failure test of type %T failed: %T equals nil", v, v)
 			return false
 		}
 
 	case nil:
-		t.Errorf("failure test of type %T failed: %T is not expected", v, v)
 		return false
 
 	default:
-		t.Fatalf("unsupported type %T for ExpectFailure()", v)
-		return false
+		t.Fatalf("unsupported type (%T) for ExpectSuccess()", v)
 	}
 
 	return true
 }
 
-// ExpectSuccess tests argument v for a success condition suitable for it's
-// type. Types bool and error are treated thus:
+// ExpectSuccess tests for a 'sucessful' value for the value's type.
+//
+// Types bool and error are treated thus:
 //
 //	bool == true
 //	error == nil
 //
 // If type is nil then the test will succeed
-func ExpectSuccess(t *testing.T, v interface{}) bool {
+func ExpectSuccess(t *testing.T, v any) bool {
+	t.Helper()
+	if !expectSuccess(t, v) {
+		t.Errorf("a success value is expected for type %T", v)
+		return false
+	}
+	return true
+}
+
+func expectSuccess(t *testing.T, v any) bool {
 	t.Helper()
 
 	switch v := v.(type) {
 	case bool:
 		if !v {
-			t.Errorf("success test of type %T failed: %T does not equal true", v, v)
 			return false
 		}
 
 	case error:
 		if v != nil {
-			t.Errorf("success test of type %T failed: %T does not equal nil", v, v)
 			return false
 		}
 
@@ -111,7 +117,6 @@ func ExpectSuccess(t *testing.T, v interface{}) bool {
 
 	default:
 		t.Fatalf("unsupported type (%T) for ExpectSuccess()", v)
-		return false
 	}
 
 	return true
