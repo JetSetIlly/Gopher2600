@@ -40,7 +40,11 @@ const (
 	squareHeight    = 17
 )
 
-var startingImage = [sha1.Size]byte{206, 150, 33, 111, 96, 82, 105, 37, 18, 218, 111, 99, 43, 70, 231, 84, 152, 24, 218, 150}
+// this is a hash of the entire screen image, including VBLANK/Overscan areas.
+// the size of the screen image is based on the AbsoluteMaxScanlines value in
+// the specification package. if that value changes then this hash value must
+// also change - or the videochess start screen will not be recognised
+var startingImage = [sha1.Size]byte{210, 170, 210, 183, 150, 8, 250, 204, 136, 161, 157, 0, 160, 50, 198, 146, 68, 9, 76, 45}
 
 var cursorImage = [...][sha1.Size]byte{
 	{83, 220, 207, 9, 64, 158, 200, 51, 169, 237, 1, 196, 0, 207, 32, 77, 219, 49, 35, 217},        // d4

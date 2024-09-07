@@ -207,7 +207,10 @@ const (
 // specification. The value here is arbitrary but it represents the natural
 // resonance of the vertical oscilator
 //
-// For reference, this is equivalent to a frequency of approximately 45Hz
+// For reference, this is equivalent to a frequency of approximately 45Hz.
+//
+// Changing this value will likely affect any previously recorded hashes of the
+// full screen. For example, playback recordings or the videochess bot
 const AbsoluteMaxScanlines = 350
 
 // The absolute number of color clock allowed by the TV regardless of
