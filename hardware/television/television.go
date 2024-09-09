@@ -1063,6 +1063,10 @@ func (tv *Television) GetCoords() coords.TelevisionCoords {
 	return tv.state.GetCoords()
 }
 
+func (tv *Television) IsFrameNum(frame int) bool {
+	return tv.state.frameNum == frame
+}
+
 // SetRotation instructs the television to a different orientation. In truth,
 // the television just forwards the request to the pixel renderers.
 func (tv *Television) SetRotation(rotation specification.Rotation) {

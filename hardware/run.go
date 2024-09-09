@@ -100,32 +100,36 @@ func (vcs *VCS) Run(continueCheck func() (govern.State, error)) error {
 // RunForFrameCount sets emulator running for the specified number of frames.
 // Useful for FPS and regression tests. Not used by the debugger because traps
 // (and volatile traps) are more flexible.
-func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (govern.State, error)) error {
+//
+// continueCheck can be used to instruct the emulation to end before the
+// specified number of frames has elapsed.
+func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func() (govern.State, error)) error {
 	if continueCheck == nil {
-		continueCheck = func(frame int) (govern.State, error) { return govern.Running, nil }
+		continueCheck = func() (govern.State, error) { return govern.Running, nil }
 	}
 
-	frameNum := vcs.TV.GetCoords().Frame
-	targetFrame := frameNum + numFrames
+	targetFrame := vcs.TV.GetCoords().Frame + numFrames
 
 	state := govern.Running
-	for frameNum != targetFrame && state != govern.Ending {
+	for state != govern.Ending {
 		// check if CPU has been killed. emulation will run forever if we don't
 		// check for this
 		if vcs.CPU.Killed {
 			return nil
 		}
 
-		err := vcs.Step(nil)
-		if err != nil {
-			return err
-		}
+		if vcs.TV.IsFrameNum(targetFrame) {
+			state = govern.Ending
+		} else {
+			err := vcs.Step(nil)
+			if err != nil {
+				return err
+			}
 
-		frameNum = vcs.TV.GetCoords().Frame
-
-		state, err = continueCheck(frameNum)
-		if err != nil {
-			return err
+			state, err = continueCheck()
+			if err != nil {
+				return err
+			}
 		}
 	}
 

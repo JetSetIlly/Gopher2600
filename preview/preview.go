@@ -63,7 +63,7 @@ func (em *Emulation) RunN(loader cartridgeloader.Loader, N int) error {
 		return fmt.Errorf("preview: %w", err)
 	}
 
-	err = em.vcs.RunForFrameCount(N, func(_ int) (govern.State, error) {
+	err = em.vcs.RunForFrameCount(N, func() (govern.State, error) {
 		select {
 		case <-timeout:
 			return govern.Ending, nil

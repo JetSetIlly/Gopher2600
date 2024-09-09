@@ -239,7 +239,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 	tck := time.NewTicker(dur)
 
 	// run emulation
-	err = vcs.RunForFrameCount(reg.NumFrames, func(frame int) (govern.State, error) {
+	err = vcs.RunForFrameCount(reg.NumFrames, func() (govern.State, error) {
 		// if the CPU is in the KIL state then the test will never end normally
 		if vcs.CPU.Killed {
 			return govern.Ending, fmt.Errorf("CPU in KIL state")
@@ -248,6 +248,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 		// display progress meter every 1 second
 		select {
 		case <-tck.C:
+			frame := vcs.TV.GetCoords().Frame
 			output.Write([]byte(fmt.Sprintf("\r%s [%d/%d (%.1f%%)]", msg, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
 		default:
 		}
