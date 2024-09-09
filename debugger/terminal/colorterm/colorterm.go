@@ -23,8 +23,8 @@ package colorterm
 import (
 	"os"
 
-	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm/easyterm"
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 )
 
 // ColorTerminal implements debugger UI interface with a basic ANSI terminal.
@@ -33,7 +33,7 @@ type ColorTerminal struct {
 
 	reader         runeReader
 	commandHistory []command
-	tabCompletion  terminal.TabCompletion
+	tabCompletion  *commandline.TabCompletion
 
 	silenced bool
 }
@@ -62,9 +62,7 @@ func (ct *ColorTerminal) CleanUp() {
 	ct.EasyTerm.CleanUp()
 }
 
-// RegisterTabCompletion adds an implementation of TabCompletion to the
-// ColorTerminal.
-func (ct *ColorTerminal) RegisterTabCompletion(tc terminal.TabCompletion) {
+func (ct *ColorTerminal) RegisterTabCompletion(tc *commandline.TabCompletion) {
 	ct.tabCompletion = tc
 }
 

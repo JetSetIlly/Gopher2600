@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -43,7 +44,7 @@ type term struct {
 	silenced bool
 
 	// reference to tab completion. used by terminal window
-	tabCompletion terminal.TabCompletion
+	tabCompletion *commandline.TabCompletion
 }
 
 func newTerm() *term {
@@ -78,7 +79,7 @@ func (trm *term) CleanUp() {
 }
 
 // RegisterTabCompletion implements the terminal.Terminal interface.
-func (trm *term) RegisterTabCompletion(tc terminal.TabCompletion) {
+func (trm *term) RegisterTabCompletion(tc *commandline.TabCompletion) {
 	trm.tabCompletion = tc
 }
 

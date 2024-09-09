@@ -15,8 +15,6 @@
 
 package commandline
 
-// #tab #completion
-
 import (
 	"fmt"
 	"strconv"
@@ -34,17 +32,18 @@ type TabCompletion struct {
 	lastCompletion string
 }
 
-// NewTabCompletion initialises a new TabCompletion instance. Completion works
-// best if Commands has been sorted.
+// NewTabCompletion initialises a new TabCompletion instance
 func NewTabCompletion(cmds *Commands) *TabCompletion {
-	tc := &TabCompletion{cmds: cmds}
+	tc := TabCompletion{
+		cmds: cmds,
+	}
 	tc.Reset()
-	return tc
+	return &tc
 }
 
 // Complete transforms the input such that the last word in the input is
 // expanded to meet the closest match allowed by the template.  Subsequent
-// calls to Complete() without an intervening call to Reset() will cycle
+// calls to Complete() without an intervening call to TabCompletionReset() will cycle
 // through the original available options.
 func (tc *TabCompletion) Complete(input string) string {
 	// split input tokens -- it's easier to work with tokens
@@ -92,9 +91,7 @@ func (tc *TabCompletion) Complete(input string) string {
 	tok = strings.ToUpper(tok)
 
 	// look for match
-	for i := range tc.cmds.cmds {
-		n := tc.cmds.cmds[i]
-
+	for _, n := range tc.cmds.list {
 		// if there is an exact match then recurse into the node looking for
 		// where the last token coincides with the node tree
 		if tok == n.tag {
@@ -106,7 +103,7 @@ func (tc *TabCompletion) Complete(input string) string {
 
 			// recurse
 			tokens.Unget()
-			tc.buildMatches(n, tokens)
+			tc.Match(n, tokens)
 
 			return endGuess()
 		}
@@ -128,9 +125,9 @@ func (tc *TabCompletion) Reset() {
 	tc.match = -1
 }
 
-func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
+func (tc *TabCompletion) Match(n *node, tokens *Tokens) {
 	// note the current state of tokens. we use this to make sure we don't
-	// continuously attempt to call buildMatches with the same token state
+	// continuously attempt to call Match() with the same token state
 	remainder := tokens.Remainder()
 
 	// if there is no more input then return true (validation has passed) if
@@ -153,13 +150,13 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 		}
 
 		tokens.Unget()
-		for ni := range n.next {
-			tc.buildMatches(n.next[ni], tokens)
+		for _, nx := range n.next {
+			tc.Match(nx, tokens)
 		}
 
-		for bi := range n.branch {
+		for _, br := range n.branch {
 			tokens.Unget()
-			tc.buildMatches(n.branch[bi], tokens)
+			tc.Match(br, tokens)
 		}
 
 		return
@@ -187,6 +184,21 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 		// see commentary for %S above
 		match = false
 
+	case "%X":
+		if x, ok := tc.cmds.extensions[n.placeholderLabel]; ok {
+			xcmds := x.Commands()
+			if xcmds != nil {
+				for _, xn := range xcmds.list {
+					// unget token on each call of match because the token would
+					// have been consumed on the previous call to match
+					tokens.Unget()
+					tc.Match(xn, tokens)
+				}
+			}
+		} else {
+			match = false
+		}
+
 	default:
 		// case sensitive matching
 		tok = strings.ToUpper(tok)
@@ -210,17 +222,16 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 		// take a note of current token position. if the token wanders past
 		// this point as a result of a branch then we can see that the branch
 		// was deeper then just one token. if this is the case then we can see
-		// that the branch was *partially* accepted and that we should not
-		// proceed onto next-nodes from here.
+		// that the branch was *partially* accepted
 		tokenAt := tokens.curr
 
-		for bi := range n.branch {
+		for _, br := range n.branch {
 			// we want to use the current token again so we unget() the last
 			// token so that it is available at the beginning of the recursed
 			// function
 			tokens.Unget()
 
-			tc.buildMatches(n.branch[bi], tokens)
+			tc.Match(br, tokens)
 		}
 
 		// the key to this condition is the tokenAt variable. see note above.
@@ -245,8 +256,8 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 	}
 
 	// token does match this node. check nodes that follow on.
-	for nx := range n.next {
-		tc.buildMatches(n.next[nx], tokens)
+	for _, nx := range n.next {
+		tc.Match(nx, tokens)
 	}
 
 	// no more nodes in the next array. move to the repeat node if there is one
@@ -255,6 +266,6 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 		if remainder == tokens.Remainder() {
 			return
 		}
-		tc.buildMatches(n.repeat, tokens)
+		tc.Match(n.repeat, tokens)
 	}
 }

@@ -18,10 +18,12 @@ package cartridge
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor"
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/ace"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/cdf"
@@ -404,6 +406,22 @@ func (cart *Cartridge) SetBank(bank string) error {
 		return set.SetBank(bank)
 	}
 	return fmt.Errorf("cartridge: %s does not support setting of bank", cart.mapper.ID())
+}
+
+// Commands returns an instance of commandline.Commands
+func (cart *Cartridge) Commands() *commandline.Commands {
+	if com, ok := cart.mapper.(mapper.TerminalCommand); ok {
+		return com.Commands()
+	}
+	return nil
+}
+
+// ParseCommand forwards a terminal command to the mapper
+func (cart *Cartridge) ParseCommand(w io.Writer, command string) error {
+	if com, ok := cart.mapper.(mapper.TerminalCommand); ok {
+		return com.ParseCommand(w, command)
+	}
+	return fmt.Errorf("cartridge: %s does not support any terminal commands", cart.mapper.ID())
 }
 
 // AccessPassive is called so that the cartridge can respond to changes to the

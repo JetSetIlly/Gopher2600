@@ -16,6 +16,9 @@
 package mapper
 
 import (
+	"io"
+
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
@@ -98,6 +101,13 @@ type CartMapper interface {
 // changed explicitely by the emulation
 type SelectableBank interface {
 	SetBank(bank string) error
+}
+
+// TerminalCommand allows a mapper to react to terminal commands from the
+// debugger
+type TerminalCommand interface {
+	Commands() *commandline.Commands
+	ParseCommand(w io.Writer, command string) error
 }
 
 // PlumbFromDifferentEmulation is for mappers that are sensitive to being

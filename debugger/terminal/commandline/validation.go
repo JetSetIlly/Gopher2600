@@ -35,9 +35,9 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 	}
 	cmd = strings.ToUpper(cmd)
 
-	for n := range cmds.cmds {
-		if cmd == cmds.cmds[n].tag {
-			err := cmds.cmds[n].validate(tokens, false)
+	for n := range cmds.list {
+		if cmd == cmds.list[n].tag {
+			err := cmds.list[n].validate(tokens, false)
 			if err != nil {
 				return err
 			}
@@ -48,7 +48,7 @@ func (cmds Commands) ValidateTokens(tokens *Tokens) error {
 				arg, _ := tokens.Get()
 
 				// special handling for help command
-				if cmd == cmds.helpCommand {
+				if cmd == HelpCommand {
 					return fmt.Errorf("no help for %s", strings.ToUpper(arg))
 				}
 
@@ -179,6 +179,11 @@ func (n *node) validate(tokens *Tokens, speculative bool) error {
 		// not checking for file existence
 		tentativeMatch = true
 		match = n.branch == nil
+
+	case "%X":
+		// we could choose to pass this to the actual extension but I don't
+		// think there's any real need to
+		match = true
 
 	default:
 		// case insensitive matching. n.tag should have been normalised

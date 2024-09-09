@@ -87,8 +87,6 @@ const (
 	cmdVersion  = "VERSION"
 )
 
-const cmdHelp = "HELP"
-
 var commandTemplate = []string{
 	cmdReset,
 	cmdQuit,
@@ -103,7 +101,7 @@ var commandTemplate = []string{
 	cmdGoto + " [%<clock>N] (%<scanline>N) (%<frame>N)",
 
 	cmdInsert + " %<cartridge>F",
-	cmdCartridge + " (PATH|NAME|MAPPER|CONTAINER|MAPPEDBANKS|HASH|STATIC|REGISTERS|RAM|DUMP|SETBANK %<bank>S)",
+	cmdCartridge + " (PATH|NAME|MAPPER|CONTAINER|MAPPEDBANKS|HASH|STATIC|REGISTERS|RAM|DUMP|SETBANK %<bank>S|{%<mapper specific>X})",
 	cmdPatch + " %<patch file>S",
 	cmdDisasm + " (BYTECODE|REDUX)",
 	cmdGrep + " (OPERATOR|OPERAND|COPROC) %<search>S",
@@ -140,9 +138,9 @@ var commandTemplate = []string{
 	cmdKeypad + " [LEFT|RIGHT] [NONE|0|1|2|3|4|5|6|7|8|9|*|#]",
 
 	// halt conditions
-	cmdBreak + " [%<pc value>S|%<target>S %<value>N] {& %<value>S|%<target>S %<value>S}",
-	cmdTrap + " [%<target>S] {%<targets>S}",
-	cmdWatch + " (READ|WRITE) (STRICT) (PHANTOM|GHOST) [%<address>S] (%<value>S)",
+	cmdBreak + " [%<symbol>S|%<target>S %<value>N] {& %<symbol>S|%<target>S %<value>S}",
+	cmdTrap + " [%<symbol>S] {%<symbol>S}",
+	cmdWatch + " (READ|WRITE) (STRICT) (PHANTOM|GHOST) [%<symbol>S] (%<value>S)",
 	cmdTrace + " (STRICT) (%<address>S)",
 	cmdList + " [BREAKS|TRAPS|WATCHES|TRACES|ALL]",
 	cmdDrop + " [BREAK|TRAP|WATCH|TRACE] %<number in list>N",

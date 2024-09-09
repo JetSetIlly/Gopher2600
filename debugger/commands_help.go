@@ -15,8 +15,10 @@
 
 package debugger
 
+import "github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
+
 var helps = map[string]string{
-	cmdHelp: "Lists commands and provides help for individual commands.",
+	commandline.HelpCommand: "Lists commands and provides help for individual commands.",
 
 	cmdReset: `Reset the emulated machine (including television) to its initial state. The
 debugger itself (breakpoints, etc.) will not be reset.`,
@@ -91,8 +93,7 @@ http:// will loaded via the http protocol. If no such protocol is present, the
 cartridge will be loaded from disk.`,
 
 	cmdCartridge: `Display information about the current cartridge. Without arguments the command
-will show where the game was loaded from, the cartridge type and bank number. The BANK
-argument meanwhile can be used to switch banks (if possible).`,
+will show where the game was loaded from, the cartridge type and bank number.`,
 
 	cmdPatch: "Apply a patch file to the loaded cartridge",
 

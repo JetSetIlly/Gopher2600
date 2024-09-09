@@ -490,6 +490,9 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 		return nil, fmt.Errorf("debugger: %w", err)
 	}
 
+	// add extensions to debugger commands
+	debuggerCommands.AddExtension("mapper specific", dbg.vcs.Mem.Cart)
+
 	return dbg, nil
 }
 

@@ -24,6 +24,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor"
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -47,6 +48,9 @@ type Elf struct {
 	// armState is a copy of the ARM's state at the moment of the most recent
 	// Snapshot. it's used only suring a Plumb() operation
 	armState *arm.ARMState
+
+	// commandline extensions
+	commands *commandline.Commands
 }
 
 // elfReaderAt is an implementation of io.ReaderAt and is used with elf.NewFile()
@@ -134,6 +138,11 @@ func NewElf(env *environment.Environment, loader cartridgeloader.Loader, inACE b
 		env:       env,
 		loader:    loader,
 		yieldHook: coprocessor.StubCartYieldHook{},
+	}
+
+	cart.commands, err = newCommands()
+	if err != nil {
+		return nil, fmt.Errorf("ELF: %w", err)
 	}
 
 	cart.mem = newElfMemory(cart.env)

@@ -30,6 +30,7 @@ package commandline
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -47,24 +48,25 @@ import (
 //
 // Placeholders
 //
-//	%N		numeric value
-//	%P		irrational number value
-//	%S     string (numbers can be strings too)
-//	%F     file name
+//	%N	numeric value
+//	%P	irrational number value
+//	%S  string (numbers can be strings too)
+//	%F  file name
+//	%X  extension
 //
 // Placeholders can be labelled. For example:
 //
 //	%<first name>S
 //	%<age>N
+//
+// Returned commands are sorted alphabetically
 func ParseCommandTemplate(template []string) (*Commands, error) {
-	cmds := &Commands{
-		cmds:  make([]*node, 0, 10),
-		Index: make(map[string]*node),
+	cmds := Commands{
+		list:  make([]*node, 0, 10),
+		index: make(map[string]*node),
 	}
 
-	for t := range template {
-		defn := template[t]
-
+	for t, defn := range template {
 		// tidy up spaces in definition string - we don't want more than one
 		// consecutive space
 		defn = strings.Join(strings.Fields(defn), " ")
@@ -85,15 +87,19 @@ func ParseCommandTemplate(template []string) (*Commands, error) {
 		}
 
 		// add to list of commands (order doesn't matter at this stage)
-		cmds.cmds = append(cmds.cmds, p)
+		cmds.list = append(cmds.list, p)
 	}
 
 	// build index
-	for ci := range cmds.cmds {
-		cmds.Index[cmds.cmds[ci].tag] = cmds.cmds[ci]
+	for _, l := range cmds.list {
+		if _, ok := cmds.index[l.tag]; ok {
+			return nil, fmt.Errorf("parser: duplicate command in template: %s", l.tag)
+		}
+		cmds.index[l.tag] = l
 	}
 
-	return cmds, nil
+	sort.Stable(cmds)
+	return &cmds, nil
 }
 
 func parseDefinition(defn string, trigger string) (*node, int, error) {
@@ -361,9 +367,17 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 				p = string(defn[i])
 			}
 
-			if p != "N" && p != "P" && p != "S" && p != "F" && p != "%" {
+			if p != "N" && p != "P" && p != "S" && p != "F" && p != "%" && p != "X" {
 				return nil, i, fmt.Errorf("unknown placeholder directive (%s)", wn.tag)
 			}
+
+			// extension placeholder requires a label for it to be effective
+			if p == "X" {
+				if len(wn.placeholderLabel) == 0 {
+					return nil, i, fmt.Errorf("%%x placeholder (%s) requires a label", wn.tag)
+				}
+			}
+
 			wn.tag = fmt.Sprintf("%%%s", p)
 
 		case ' ':

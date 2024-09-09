@@ -62,6 +62,8 @@
 //			sort(data, rising)
 //	}
 //
+// # Tab Completion
+//
 // The TabCompletion type is used to transform input such that it more closely
 // resemebles a valid command according to the supplied template. The
 // NewTabCompletion() function expects an instance of Commands.
@@ -78,4 +80,29 @@
 // be returned first followed by the second, third, etc. on subsequent calls to
 // Complete(). A tab completion session can be terminated with a call to
 // Reset().
+//
+// # Extensions
+//
+// Extensions are a way of giving a command additional arguments that are not in
+// the original template. This is good for handling specialist arguments that
+// are rarely used but none-the-less would benefit from tab-completion.
+//
+// To give a command an extension the %x directive is used. The placeholder must
+// have a label for it to be effective. In the example below the label is
+// "listing". Note that labels are case insensitive.
+//
+//	template := []string {
+//		"LIST (%<listing>x)",
+//		"PRINT [%s]",
+//		"SORT (RISING|FALLING)",
+//	}
+//
+// Once the template has been parsed, an extension handler must be added with
+// the AddExtension() function. In addition to the label argument, which must be
+// the same as the label given in the template, the AddExtension() function also
+// requires an implementation of the interface.
+//
+// The Commands() function of  the Extension interface will return another
+// instance of the Commands type. This instance will be used when the %x
+// directive is encounted during validation or tab completion.
 package commandline

@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 )
 
 // PlainTerminal is the default, most basic terminal interface. It keeps the
@@ -46,7 +47,7 @@ func (pt *PlainTerminal) CleanUp() {
 }
 
 // RegisterTabCompletion adds an implementation of TabCompletion to the terminal.
-func (pt *PlainTerminal) RegisterTabCompletion(terminal.TabCompletion) {
+func (pt *PlainTerminal) RegisterTabCompletion(*commandline.TabCompletion) {
 }
 
 // Silence implements the terminal.Terminal interface.

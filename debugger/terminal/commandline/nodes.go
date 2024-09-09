@@ -46,7 +46,7 @@ type node struct {
 	tag string
 
 	// friendly name for the placeholder tags. not used if tag is not a
-	// placeholder. you can use isPlaceholder() to check
+	// placeholder. if string is not nil then that indicates that
 	placeholderLabel string
 
 	typ nodeType
@@ -59,13 +59,12 @@ type node struct {
 }
 
 // String returns the verbose representation of the node (and its children).
-// Use this only for testing/validation purposes. HelpString() is more useful
-// to the end user.
+// Only useful this only for testing/validation purposes.
 func (n node) String() string {
 	return n.string(false, false)
 }
 
-// HelpString returns the string representation of the node (and it's children)
+// usageString returns the string representation of the node (and it's children)
 // without extraneous placeholder directives (if placeholderLabel is available)
 //
 // So called because it's better to use when displaying help.
@@ -93,10 +92,13 @@ func (n node) usageString() string {
 //
 // note: string should not be called directly except as a recursive call
 // or as an initial call from String() and usageString().
+//
+// note: fromBranch should always be false on first call. it is only ever true
+// on a recursive call
 func (n node) string(useLabels bool, fromBranch bool) string {
 	s := strings.Builder{}
 
-	if n.isPlaceholder() && n.placeholderLabel != "" {
+	if n.placeholderLabel != "" {
 		// placeholder labels come without angle brackets
 		label := fmt.Sprintf("<%s>", n.placeholderLabel)
 		if useLabels {
@@ -183,10 +185,10 @@ func (n node) string(useLabels bool, fromBranch bool) string {
 func (n node) nodeVerbose() string {
 	s := strings.Builder{}
 	s.WriteString(n.tagVerbose())
-	for bi := range n.branch {
-		if n.branch[bi].tag != "" {
+	for _, br := range n.branch {
+		if br.tag != "" {
 			s.WriteString(" or ")
-			s.WriteString(n.branch[bi].tagVerbose())
+			s.WriteString(br.tagVerbose())
 		}
 	}
 	return s.String()
@@ -195,29 +197,22 @@ func (n node) nodeVerbose() string {
 // tagVerbose returns a readable versions of the tag field, using labels if
 // possible.
 func (n node) tagVerbose() string {
-	if n.isPlaceholder() {
-		if n.placeholderLabel != "" {
-			return n.placeholderLabel
-		}
-
-		switch n.tag {
-		case "%S":
-			return "string argument"
-		case "%N":
-			return "numeric argument"
-		case "%P":
-			return "floating-point argument"
-		case "%F":
-			return "filename argument"
-		default:
-			return "placeholder argument"
-		}
+	if n.placeholderLabel == "" {
+		return n.tag
 	}
-	return n.tag
-}
 
-// isPlaceholder checks tag to see if it is a placeholder. does not check to
-// see if placeholder is valid.
-func (n node) isPlaceholder() bool {
-	return len(n.tag) == 2 && n.tag[0] == '%'
+	switch n.tag {
+	case "%S":
+		return "string argument"
+	case "%N":
+		return "numeric argument"
+	case "%P":
+		return "floating-point argument"
+	case "%F":
+		return "filename argument"
+	case "%X":
+		return "extension argument"
+	default:
+		return "placeholder argument"
+	}
 }

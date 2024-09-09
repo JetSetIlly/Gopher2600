@@ -21,7 +21,6 @@ import (
 	"io"
 	"os"
 	"runtime"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -64,23 +63,20 @@ var scriptUnsafeCommands *commandline.Commands
 func init() {
 	var err error
 
-	// parse command template
 	debuggerCommands, err = commandline.ParseCommandTemplate(commandTemplate)
 	if err != nil {
 		panic(err)
 	}
 
-	err = debuggerCommands.AddHelp(cmdHelp, helps)
+	err = commandline.AddHelp(debuggerCommands)
 	if err != nil {
 		panic(err)
 	}
-	sort.Stable(debuggerCommands)
 
 	scriptUnsafeCommands, err = commandline.ParseCommandTemplate(scriptUnsafeTemplate)
 	if err != nil {
 		panic(err)
 	}
-	sort.Stable(scriptUnsafeCommands)
 }
 
 // parseCommand tokenises the input and processes the tokens.
@@ -163,12 +159,19 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 	default:
 		return fmt.Errorf("%s is not yet implemented", command)
 
-	case cmdHelp:
-		keyword, ok := tokens.Get()
-		if ok {
-			dbg.printLine(terminal.StyleHelp, debuggerCommands.Help(keyword))
+	case commandline.HelpCommand:
+		if topic, ok := tokens.Get(); ok {
+			topic = strings.ToUpper(topic)
+			dbg.printLine(terminal.StyleHelp, helps[topic])
+
+			// also print usage command if the command has arguments
+			usage := debuggerCommands.Usage(topic)
+			if strings.Count(usage, " ") > 0 {
+				dbg.printLine(terminal.StyleHelp, "")
+				dbg.printLine(terminal.StyleHelp, fmt.Sprintf("Usage: %s", debuggerCommands.Usage(topic)))
+			}
 		} else {
-			dbg.printLine(terminal.StyleHelp, debuggerCommands.HelpOverview())
+			dbg.printLine(terminal.StyleHelp, commandline.HelpSummary(debuggerCommands))
 		}
 
 		// we don't want the HELP command to appear in the script
@@ -575,7 +578,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				spec, _ := tokens.Get()
 				err := dbg.vcs.Mem.Cart.SetBank(spec)
 				if err != nil {
-					dbg.printLine(terminal.StyleFeedback, err.Error())
+					dbg.printLine(terminal.StyleError, err.Error())
+				}
+			default:
+				tokens.Unget()
+				w := dbg.writerInStyle(terminal.StyleFeedback)
+				err := dbg.vcs.Mem.Cart.ParseCommand(w, tokens.Remainder())
+				if err != nil {
+					dbg.printLine(terminal.StyleError, err.Error())
 				}
 			}
 		} else {

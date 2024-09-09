@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/userinput"
 )
 
@@ -103,18 +104,11 @@ type Terminal interface {
 
 	// Register a tab completion implementation to use with the terminal. Not
 	// all implementations need to respond meaningfully to this.
-	RegisterTabCompletion(TabCompletion)
+	RegisterTabCompletion(*commandline.TabCompletion)
 
 	// Silence all input and output except error messages. In other words,
 	// TermPrintLine() should display error messages even if silenced is true.
 	Silence(silenced bool)
-}
-
-// TabCompletion defines the operations required for tab completion. A good
-// implementation can be found in the commandline sub-package.
-type TabCompletion interface {
-	Complete(input string) string
-	Reset()
 }
 
 // Broker implementations can identify a terminal.

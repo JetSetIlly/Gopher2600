@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/prefs"
 )
@@ -55,7 +56,7 @@ func (trm *mockTerm) Initialise() error {
 func (trm *mockTerm) CleanUp() {
 }
 
-func (trm *mockTerm) RegisterTabCompletion(_ terminal.TabCompletion) {
+func (trm *mockTerm) RegisterTabCompletion(_ *commandline.TabCompletion) {
 }
 
 func (trm *mockTerm) Silence(silenced bool) {
