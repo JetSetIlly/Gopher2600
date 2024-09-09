@@ -69,8 +69,9 @@ func ParseCommandTemplate(template []string) (*Commands, error) {
 		// consecutive space
 		defn = strings.Join(strings.Fields(defn), " ")
 
-		// normalise to upper case
-		defn = strings.ToUpper(defn)
+		// not normalising definition to upper case. normalisation requires a
+		// bit of care because we don't want to alter the case for placeholder
+		// labels
 
 		// parse the definition for this command
 		p, d, err := parseDefinition(defn, "")
@@ -336,15 +337,15 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 			}
 
 			i++
-			p := string(defn[i])
+			p := strings.ToUpper(string(defn[i]))
 
 			// test to see if the placeholder has a label
 			if p == "<" {
 				var j int
 				for j = i + 1; j < len(defn); j++ {
 					if defn[j] == '>' {
-						// found the close label delimiter,
-						wn.placeholderLabel = strings.ToLower(defn[i+1 : j])
+						// found the close label delimiter
+						wn.placeholderLabel = defn[i+1 : j]
 						break
 					}
 				}
@@ -373,7 +374,7 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 			}
 
 		default:
-			wn.tag += string(defn[i])
+			wn.tag += strings.ToUpper(string(defn[i]))
 		}
 	}
 

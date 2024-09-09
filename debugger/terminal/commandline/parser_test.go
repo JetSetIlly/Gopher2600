@@ -23,45 +23,26 @@ import (
 	"github.com/jetsetilly/gopher2600/test"
 )
 
-// expectEquality compares a template, as passed to ParseCommandTemplate(),
-// with the String() output of the resulting Commands object. both outputs
-// should be the same.
-//
-// the template is transformed slightly. each entry in the array is joined with
-// a newline character and also converted to uppercase. this is okay because
-// we're only really interested in how the groupings and branching is
-// represented.
+// wrapper for ExepectEquality in the test package
 func expectEquality(t *testing.T, template []string, cmds *commandline.Commands) {
 	t.Helper()
-
-	s := strings.ToUpper(strings.Join(template, "\n"))
-	if s != strings.ToUpper(cmds.String()) {
-		if len(template) == 1 {
-			t.Errorf("parsed commands do not match template: %s -> %s", s, cmds)
-		} else {
-			t.Errorf("parsed commands do not match template")
-		}
-	}
+	s := strings.Join(template, "\n")
+	s = strings.ToUpper(s)
+	test.ExpectEquality(t, s, cmds.String())
 }
 
-// dur to the parsing method it's not always possible to recreate the original
-// template from the parsed nodes. but that's okay, the parsed nodes have
-// effectively been optimised. in these test cases, rather than using the
-// expectEquality() function, we can use this expectEquivalency() function.
+// create a new Commands instance using the output of the supplied Commands. if
+// the new Commands output matches the output of the supplied Command instance
+// then the test is successful
 //
-// rather than using the original template, this function runs the result of
-// the parsed Commands back through itself. if the results of the second pass
-// are the same as the first then we've successfully parsed the original
-// template.
+// this is useful for testing that Commands produces correct output that can be
+// reused in another context
 func expectEquivalency(t *testing.T, cmds *commandline.Commands) {
 	t.Helper()
 
-	var err error
-
-	template := strings.Split(cmds.String(), "\n")
-	cmds, err = commandline.ParseCommandTemplate(template)
+	newCmds, err := commandline.ParseCommandTemplate(strings.Split(cmds.String(), "\n"))
 	if test.ExpectSuccess(t, err) {
-		expectEquality(t, template, cmds)
+		test.ExpectEquality(t, cmds.String(), newCmds.String())
 	}
 }
 
@@ -263,39 +244,13 @@ func TestParser_repeatGroups(t *testing.T) {
 	}
 }
 
-func TestParser_addHelp(t *testing.T) {
-	var template []string
-	var cmds *commandline.Commands
-	var err error
-
-	template = []string{
-		"DISPLAY (OFF|DEBUG|SCALE [%N]|DEBUGCOLORS)",
-		"SCRIPT [%F|RECORD %F|END]",
-		"DROP [BREAK|TRAP|WATCH] [%S]",
-		"GREP %N",
-		"SYMBOL [%S (ALL|MIRRORS)|LIST]",
-	}
-
-	cmds, err = commandline.ParseCommandTemplate(template)
-	if test.ExpectSuccess(t, err) {
-		expectEquality(t, template, cmds)
-	}
-
-	err = cmds.AddHelp("HELP", map[string]string{})
-	test.ExpectSuccess(t, err)
-
-	// adding a second HELP command is not allowed
-	err = cmds.AddHelp("HELP", map[string]string{})
-	test.ExpectFailure(t, err)
-}
-
 func TestParser_placeholderLabels(t *testing.T) {
 	var template []string
 	var cmds *commandline.Commands
 	var err error
 
 	template = []string{
-		"FOO %<bar>S",
+		"FOO %<BAR>S",
 	}
 
 	cmds, err = commandline.ParseCommandTemplate(template)

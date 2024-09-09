@@ -16,10 +16,10 @@
 package commandline_test
 
 import (
-	"sort"
 	"testing"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
+	"github.com/jetsetilly/gopher2600/test"
 )
 
 func TestTabCompletion(t *testing.T) {
@@ -33,64 +33,47 @@ func TestTabCompletion(t *testing.T) {
 		"TEST1 [arg]",
 		"FOO [bar|baz] wibble",
 	})
-	if err != nil {
-		t.Fatalf("%s", err)
-	}
-	sort.Stable(cmds)
+	test.DemandSuccess(t, err)
 
 	tc = commandline.NewTabCompletion(cmds)
 
 	completion = "TE"
 	expected = "TEST "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	// next completion option
 	expected = "TEST1 "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	// cycle back to the first completion option
 	expected = "TEST "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	tc.Reset()
 	completion = "TEST a"
 	expected = "TEST ARG "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	tc.Reset()
 	completion = "FOO ba"
 	expected = "FOO BAR "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	expected = "FOO BAZ "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	// the completion will preserve whitespace
 	tc.Reset()
 	completion = "FOO   bar     wib"
 	expected = "FOO bar WIBBLE "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 }
 
 func TestTabCompletion_placeholders(t *testing.T) {
@@ -102,19 +85,14 @@ func TestTabCompletion_placeholders(t *testing.T) {
 	cmds, err = commandline.ParseCommandTemplate([]string{
 		"TEST %P (foo|bar)",
 	})
-	if err != nil {
-		t.Fatalf("%s", err)
-	}
-	sort.Stable(cmds)
+	test.DemandSuccess(t, err)
 
 	tc = commandline.NewTabCompletion(cmds)
 
 	completion = "TEST 100 f"
 	expected = "TEST 100 FOO "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 }
 
 func TestTabCompletion_doubleArgs(t *testing.T) {
@@ -124,53 +102,39 @@ func TestTabCompletion_doubleArgs(t *testing.T) {
 	var err error
 
 	cmds, err = commandline.ParseCommandTemplate([]string{"TEST (egg|fog|nug nog|big) (tug)"})
-	if err != nil {
-		t.Fatalf("%s", err)
-	}
+	test.DemandSuccess(t, err)
 
 	tc = commandline.NewTabCompletion(cmds)
 
 	completion = "TEST eg"
 	expected = "TEST EGG "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	completion = "TEST egg T"
 	expected = "TEST egg TUG "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	completion = "TEST n"
 	expected = "TEST NUG "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	completion = "TEST nug N"
 	expected = "TEST nug NOG "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	completion = "TEST T"
 	expected = "TEST TUG "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	completion = "TEST nug nog T"
 	expected = "TEST nug nog TUG "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 }
 
 func TestTabCompletion_complex(t *testing.T) {
@@ -180,31 +144,24 @@ func TestTabCompletion_complex(t *testing.T) {
 	var err error
 
 	cmds, err = commandline.ParseCommandTemplate([]string{"TEST (arg [%P|bar]|foo)"})
-	if err != nil {
-		t.Fatalf("%s", err)
-	}
+	test.DemandSuccess(t, err)
+
 	tc = commandline.NewTabCompletion(cmds)
 
 	completion = "TEST ar"
 	expected = "TEST ARG "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	completion = "TEST arg b"
 	expected = "TEST arg BAR "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	completion = "TEST arg 10 wib"
 	expected = "TEST arg 10 wib"
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 }
 
 func TestTabCompletion_filenameFirstOption(t *testing.T) {
@@ -216,18 +173,14 @@ func TestTabCompletion_filenameFirstOption(t *testing.T) {
 	cmds, err = commandline.ParseCommandTemplate([]string{
 		"TEST [%F|foo|bar]",
 	})
-	if err != nil {
-		t.Fatalf("%s", err)
-	}
+	test.DemandSuccess(t, err)
 
 	tc = commandline.NewTabCompletion(cmds)
 
 	completion = "TEST f"
 	expected = "TEST FOO "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 }
 
 func TestTabCompletion_nestedGroups(t *testing.T) {
@@ -239,32 +192,24 @@ func TestTabCompletion_nestedGroups(t *testing.T) {
 	cmds, err = commandline.ParseCommandTemplate([]string{
 		"TEST [(foo)|bar]",
 	})
-	if err != nil {
-		t.Fatalf("%s", err)
-	}
+	test.DemandSuccess(t, err)
 
 	tc = commandline.NewTabCompletion(cmds)
 
 	completion = "TEST f"
 	expected = "TEST FOO "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	completion = "TEST FOO bA"
 	expected = "TEST FOO bA"
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	completion = "TEST bA"
 	expected = "TEST BAR "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	cmds, err = commandline.ParseCommandTemplate([]string{
 		"PREF ([SET|NO|TOGGLE] [RANDSTART|RANDPINS])",
@@ -277,37 +222,27 @@ func TestTabCompletion_nestedGroups(t *testing.T) {
 	completion = "P"
 	expected = "PREF "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	completion = "PREF S"
 	expected = "PREF SET "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	completion = "PREF Tog"
 	expected = "PREF TOGGLE "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	completion = "PREF SET R"
 	expected = "PREF SET RANDSTART "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	// tab again without changing input
 	expected = "PREF SET RANDPINS "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 }
 
 func TestTabCompletion_repeatGroups(t *testing.T) {
@@ -317,51 +252,37 @@ func TestTabCompletion_repeatGroups(t *testing.T) {
 	var err error
 
 	cmds, err = commandline.ParseCommandTemplate([]string{"TEST {foo}"})
-	if err != nil {
-		t.Fatalf("%s", err)
-	}
+	test.DemandSuccess(t, err)
 
 	tc = commandline.NewTabCompletion(cmds)
 
 	completion = "TEST f"
 	expected = "TEST FOO "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	completion = "TEST FOO fo"
 	expected = "TEST FOO FOO "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	cmds, err = commandline.ParseCommandTemplate([]string{"TEST {foo|bar}"})
-	if err != nil {
-		t.Fatalf("%s", err)
-	}
+	test.DemandSuccess(t, err)
 
 	tc = commandline.NewTabCompletion(cmds)
 
 	completion = "TEST f"
 	expected = "TEST FOO "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	completion = "TEST FOO fo"
 	expected = "TEST FOO FOO "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 
 	completion = "TEST FOO b"
 	expected = "TEST FOO BAR "
 	completion = tc.Complete(completion)
-	if completion != expected {
-		t.Errorf("expecting '%s' got '%s'", expected, completion)
-	}
+	test.ExpectEquality(t, completion, expected)
 }
