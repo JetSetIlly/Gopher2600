@@ -34,8 +34,8 @@ func newCommands() (*commandline.Commands, error) {
 	return commands, nil
 }
 
-// Commands implements the mapper.TerminalCommand interface
-func (elf *Elf) Commands() *commandline.Commands {
+// CommandExtension implements the commands.Extenstion interface
+func (elf *Elf) CommandExtension(_ string) *commandline.Commands {
 	return elf.commands
 }
 

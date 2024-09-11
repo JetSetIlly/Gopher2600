@@ -20,9 +20,10 @@ import (
 )
 
 // A commandline Extension provides an instance of Commands such that it can be
-// used to extend the number of parameters available to a command
+// used to extend the number of parameters available to a command, mainly for
+// tab-completion purposes
 type Extension interface {
-	Commands() *Commands
+	CommandExtension(extension string) *Commands
 }
 
 // Commands is the root of the node tree.
@@ -52,8 +53,8 @@ func (cmds Commands) Swap(i int, j int) {
 	cmds.list[i], cmds.list[j] = cmds.list[j], cmds.list[i]
 }
 
-// String returns the verbose representation of the command tree. Use this only
-// for testing/validation purposes. Help() is more useful to the end user.
+// String returns the verbose representation of the command tree. Only really
+// useful for the validation process.
 func (cmds Commands) String() string {
 	s := strings.Builder{}
 	for c := range cmds.list {

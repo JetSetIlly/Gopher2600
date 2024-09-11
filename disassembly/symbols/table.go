@@ -17,14 +17,15 @@ package symbols
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 )
 
 // Entry records a symbol and the source of its definition.
 type Entry struct {
-	Symbol string
-	Source SymbolSource
+	Address uint16
+	Symbol  string
+	Source  SymbolSource
 }
 
 // table maps a symbol to an address. it also keeps track of the widest symbol
@@ -33,24 +34,33 @@ type table struct {
 	// symbols indexed by address. addresses should be mapped before indexing
 	// takes place
 	byAddr map[uint16]Entry
+	index  []*Entry
 
-	// sorted array of keys to the byAddr map
-	sortedIdx []uint16
-
-	// the longest symbol in the Entries map
+	// the longest symbol in the table
 	maxWidth int
 }
 
 // newTable is the preferred method of initialisation for the table type.
 func newTable() *table {
 	t := &table{
-		byAddr:    make(map[uint16]Entry),
-		sortedIdx: make([]uint16, 0),
+		byAddr: make(map[uint16]Entry),
+		index:  make([]*Entry, 0),
 	}
 	return t
 }
 
-func (t *table) calcMaxWidth() {
+// should be called in critical section
+func (t *table) sort() {
+	// assertion check that byAddr and index are the same length
+	if len(t.byAddr) != len(t.index) {
+		panic("symbol table is inconsistent")
+	}
+
+	slices.SortFunc(t.index, func(a, b *Entry) int {
+		return int(a.Address) - int(b.Address)
+	})
+
+	// calculate max width
 	t.maxWidth = 0
 	for _, e := range t.byAddr {
 		if len(e.Symbol) > t.maxWidth {
@@ -59,10 +69,20 @@ func (t *table) calcMaxWidth() {
 	}
 }
 
+// commandlineTemplate returns a
+func (t *table) commandlineTemplate() string {
+	var s strings.Builder
+	for _, e := range t.byAddr {
+		s.WriteString(e.Symbol)
+		s.WriteString("|")
+	}
+	return s.String()
+}
+
 func (t table) String() string {
 	s := strings.Builder{}
-	for i := range t.sortedIdx {
-		s.WriteString(fmt.Sprintf("%#04x -> %s [%s]\n", t.sortedIdx[i], t.byAddr[t.sortedIdx[i]].Symbol, t.byAddr[t.sortedIdx[i]].Source))
+	for i := range t.index {
+		s.WriteString(fmt.Sprintf("%#04x -> %s [%s]\n", t.index[i].Address, t.index[i].Symbol, t.index[i].Source))
 	}
 	return s.String()
 }
@@ -103,19 +123,20 @@ func (t *table) add(source SymbolSource, addr uint16, symbol string) bool {
 	symbol = t.normaliseSymbol(symbol)
 
 	// check for duplicates
-	for i := range t.sortedIdx {
-		if t.sortedIdx[i] == addr {
+	for i := range t.index {
+		if t.index[i].Address == addr {
 			return false
 		}
 	}
 
-	t.byAddr[addr] = Entry{
-		Source: source,
-		Symbol: t.uniqueSymbol(symbol),
+	e := Entry{
+		Address: addr,
+		Source:  source,
+		Symbol:  t.uniqueSymbol(symbol),
 	}
-	t.sortedIdx = append(t.sortedIdx, addr)
-	sort.Sort(t)
-	t.calcMaxWidth()
+	t.byAddr[addr] = e
+	t.index = append(t.index, &e)
+	t.sort()
 	return true
 }
 
@@ -124,15 +145,10 @@ func (t *table) add(source SymbolSource, addr uint16, symbol string) bool {
 func (t *table) remove(addr uint16) bool {
 	if _, ok := t.byAddr[addr]; ok {
 		delete(t.byAddr, addr)
-		for i := range t.sortedIdx {
-			if t.sortedIdx[i] == addr {
-				t.sortedIdx = append(t.sortedIdx[:i], t.sortedIdx[i+1:]...)
-				sort.Sort(t)
-				t.calcMaxWidth()
-				return true
-			}
-		}
-		panic("an entry was found in a symbols map but not in the index")
+		t.index = slices.DeleteFunc(t.index, func(e *Entry) bool {
+			return e.Address == addr
+		})
+		t.sort()
 	}
 
 	return false
@@ -152,15 +168,10 @@ func (t *table) update(source SymbolSource, addr uint16, oldSymbol string, newSy
 		return false
 	}
 
-	if e, ok := t.byAddr[addr]; ok {
-		if e.Symbol == oldSymbol {
-			t.byAddr[addr] = Entry{
-				Source: source,
-				Symbol: t.uniqueSymbol(newSymbol),
-			}
-			t.calcMaxWidth()
-			return true
-		}
+	if t.byAddr[addr].Symbol == oldSymbol {
+		t.remove(addr)
+		t.add(source, addr, newSymbol)
+		return true
 	}
 
 	return false
@@ -177,19 +188,4 @@ func (t table) search(symbol string) (Entry, uint16, bool) {
 	}
 
 	return Entry{}, 0, false
-}
-
-// Len implements the sort.Interface.
-func (t table) Len() int {
-	return len(t.sortedIdx)
-}
-
-// Less implements the sort.Interface.
-func (t table) Less(i, j int) bool {
-	return t.sortedIdx[i] < t.sortedIdx[j]
-}
-
-// Swap implements the sort.Interface.
-func (t table) Swap(i, j int) {
-	t.sortedIdx[i], t.sortedIdx[j] = t.sortedIdx[j], t.sortedIdx[i]
 }

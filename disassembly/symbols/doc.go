@@ -26,4 +26,12 @@
 // Also works best in conjunction with the parent disassembly package where the
 // disassembly process will remove any labels from "unblessed" cartridge
 // addresses.
+//
+// # Terminology
+//
+// The symbols package follows the convention of referring to symbols for
+// program addresses as labels. There are no canonical labels but labels will be
+// automatically generated as a appropropriate when decoding a program.
+//
+// When referring to the labels and non-label symbols, the term symbols is used.
 package symbols

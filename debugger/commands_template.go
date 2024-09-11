@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
-// debugger keywords.
+// debugger keywords
 const (
 	cmdReset = "RESET"
 	cmdQuit  = "QUIT"
@@ -66,13 +66,13 @@ const (
 	cmdCoProc  = "COPROC"
 	cmdDWARF   = "DWARF"
 
-	// user input.
+	// user input
 	cmdPeripheral = "PERIPHERAL"
 	cmdPanel      = "PANEL"
 	cmdStick      = "STICK"
 	cmdKeypad     = "KEYPAD"
 
-	// halt conditions.
+	// halt conditions
 	cmdBreak = "BREAK"
 	cmdTrap  = "TRAP"
 	cmdWatch = "WATCH"
@@ -81,7 +81,7 @@ const (
 	cmdDrop  = "DROP"
 	cmdClear = "CLEAR"
 
-	// meta.
+	// meta
 	cmdLog      = "LOG"
 	cmdMemUsage = "MEMUSAGE"
 	cmdVersion  = "VERSION"
@@ -105,7 +105,7 @@ var commandTemplate = []string{
 	cmdPatch + " %<patch file>S",
 	cmdDisasm + " (BYTECODE|REDUX)",
 	cmdGrep + " (OPERATOR|OPERAND|COPROC) %<search>S",
-	cmdSymbol + " [LIST (LABELS|READ|WRITE)|%<symbol>S]",
+	cmdSymbol + " [LIST (LABELS|READ|WRITE)|%<symbol>X]",
 	cmdOnHalt + " (OFF|ON|%<command>S {%<commands>S})",
 	cmdOnStep + " (OFF|ON|%<command>S {%<commands>S})",
 	cmdOnTrace + " (OFF|ON|%<command>S {%<commands>S})",
@@ -126,7 +126,6 @@ var commandTemplate = []string{
 	cmdBall,
 	cmdPlayfield,
 
-	// peripherals (components that might not be present)
 	cmdPlusROM + " (NICK [%<name>S]|ID [%<id>S]|HOST [%<host>S]|PATH [%<path>S])",
 	cmdCoProc + " (ID|LIST [FAULTS|SOURCEFILES|FUNCTIONS]|TOP (%<top>N)|MEM [DUMP {%<area>S}|SEARCH {%<value>N} {%<bitwidth>N}]|REGS %<group>S|SET %<register>N %<value>N|STEP)",
 	cmdDWARF + " [FUNCTIONS|GLOBALS|LOCALS {DERIVATION|RANGES|ERROR}|FRAMEBASE {DERIVATION}|LINE %<file:line>S|CALLSTACK|CALLERS %<function>S]",
@@ -138,9 +137,9 @@ var commandTemplate = []string{
 	cmdKeypad + " [LEFT|RIGHT] [NONE|0|1|2|3|4|5|6|7|8|9|*|#]",
 
 	// halt conditions
-	cmdBreak + " [%<symbol>S|%<target>S %<value>N] {& %<symbol>S|%<target>S %<value>S}",
-	cmdTrap + " [%<symbol>S] {%<symbol>S}",
-	cmdWatch + " (READ|WRITE) (STRICT) (PHANTOM|GHOST) [%<symbol>S] (%<value>S)",
+	cmdBreak + " [%<address>S|%<target>S %<value>N] {& %<address>S|%<target>S %<value>S}",
+	cmdTrap + " [%<address>S] {%<address>S}",
+	cmdWatch + " (READ|WRITE) (STRICT) (PHANTOM|GHOST) [%<address>S] (%<value>S)",
 	cmdTrace + " (STRICT) (%<address>S)",
 	cmdList + " [BREAKS|TRAPS|WATCHES|TRACES|ALL]",
 	cmdDrop + " [BREAK|TRAP|WATCH|TRACE] %<number in list>N",

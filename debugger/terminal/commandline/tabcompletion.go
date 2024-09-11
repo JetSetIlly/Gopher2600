@@ -186,7 +186,7 @@ func (tc *TabCompletion) Match(n *node, tokens *Tokens) {
 
 	case "%X":
 		if x, ok := tc.cmds.extensions[n.placeholderLabel]; ok {
-			xcmds := x.Commands()
+			xcmds := x.CommandExtension(n.placeholderLabel)
 			if xcmds != nil {
 				for _, xn := range xcmds.list {
 					// unget token on each call of match because the token would

@@ -492,6 +492,10 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 
 	// add extensions to debugger commands
 	debuggerCommands.AddExtension("mapper specific", dbg.vcs.Mem.Cart)
+	debuggerCommands.AddExtension("symbol", &dbg.Disasm.Sym)
+	debuggerCommands.AddExtension("read symbol", &dbg.Disasm.Sym)
+	debuggerCommands.AddExtension("write symbol", &dbg.Disasm.Sym)
+	debuggerCommands.AddExtension("label", &dbg.Disasm.Sym)
 
 	return dbg, nil
 }

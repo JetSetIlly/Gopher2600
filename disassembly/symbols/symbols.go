@@ -17,25 +17,37 @@ package symbols
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"sync"
 
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Symbols contains the all currently defined symbols.
 type Symbols struct {
+	crit sync.Mutex
+
 	// the master table is made up of three sub-tables
 	label []*table
 	read  *table
 	write *table
 
-	crit sync.Mutex
+	readCommands      *commandline.Commands
+	writeCommands     *commandline.Commands
+	readwriteCommands *commandline.Commands
+	labelCommands     *commandline.Commands
 }
 
 // newSymbols is the preferred method of initialisation for the Symbols type. In
 // many instances however, ReadSymbolsFile() might be more appropriate.
 func (sym *Symbols) initialise(numBanks int) {
+	// AfterLabelChange() and AfterSymbolChange() both acquire the critical lock
+	// so we defer them before locking/unlocking in this function
+	defer sym.AfterLabelChange()
+	defer sym.AfterSymbolChange()
+
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
@@ -53,10 +65,10 @@ func (sym *Symbols) initialise(numBanks int) {
 // should be called in critical section
 func (sym *Symbols) resort() {
 	for _, l := range sym.label {
-		sort.Sort(l)
+		l.sort()
 	}
-	sort.Sort(sym.read)
-	sort.Sort(sym.write)
+	sym.read.sort()
+	sym.write.sort()
 }
 
 // LabelWidth returns the maximum number of characters required by a label in
@@ -262,4 +274,91 @@ func (sym *Symbols) UpdateSymbol(source SymbolSource, addr uint16, oldLabel stri
 	}
 
 	return sym.write.update(source, addr, oldLabel, newLabel)
+}
+
+// AfterLabelChange should be run whenever a label has been added, removed or
+// updated. It is okay to batch many changes between calls to AfterLabelChange()
+func (sym *Symbols) AfterLabelChange() {
+	sym.crit.Lock()
+	defer sym.crit.Unlock()
+
+	var s []string
+	var err error
+
+	for _, l := range sym.label {
+		for _, e := range l.byAddr {
+			s = append(s, e.Symbol)
+		}
+	}
+
+	slices.Sort(s)
+	s = slices.Compact(s)
+
+	sym.labelCommands, err = commandline.ParseCommandTemplate(s)
+	if err != nil {
+		logger.Logf(logger.Allow, "symbols", "creating commandline.Extension: %s", err.Error())
+	}
+}
+
+// AfterSymbolChange should be run whenever a symbo has been added, removed or
+// updated. It is okay to batch many changes between calls to AfterSymbolChange()
+func (sym *Symbols) AfterSymbolChange() {
+	sym.crit.Lock()
+	defer sym.crit.Unlock()
+
+	var read []string
+	var write []string
+	var err error
+
+	// read symbols
+	for _, e := range sym.read.byAddr {
+		read = append(read, e.Symbol)
+	}
+
+	slices.Sort(read)
+	read = slices.Compact(read)
+
+	sym.readCommands, err = commandline.ParseCommandTemplate(read)
+	if err != nil {
+		logger.Logf(logger.Allow, "symbols", "creating commandline.Extension: %s", err.Error())
+	}
+
+	// write symbols
+	for _, e := range sym.write.byAddr {
+		write = append(write, e.Symbol)
+	}
+
+	slices.Sort(write)
+	write = slices.Compact(write)
+
+	sym.readCommands, err = commandline.ParseCommandTemplate(write)
+	if err != nil {
+		logger.Logf(logger.Allow, "symbols", "creating commandline.Extension: %s", err.Error())
+	}
+
+	// all symbols
+	all := append(read, write...)
+
+	slices.Sort(all)
+	all = slices.Compact(all)
+
+	sym.readwriteCommands, err = commandline.ParseCommandTemplate(all)
+	if err != nil {
+		logger.Logf(logger.Allow, "symbols", "creating commandline.Extension: %s", err.Error())
+	}
+}
+
+// CommandExtension implements commandline.Extension interface
+func (sym *Symbols) CommandExtension(extension string) *commandline.Commands {
+	switch extension {
+	case "read symbol":
+		return sym.readCommands
+	case "write symbol":
+		return sym.writeCommands
+	case "symbol":
+		return sym.readwriteCommands
+	case "label":
+		return sym.labelCommands
+	}
+	return nil
 }

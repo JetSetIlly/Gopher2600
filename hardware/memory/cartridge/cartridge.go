@@ -408,10 +408,11 @@ func (cart *Cartridge) SetBank(bank string) error {
 	return fmt.Errorf("cartridge: %s does not support setting of bank", cart.mapper.ID())
 }
 
-// Commands returns an instance of commandline.Commands
-func (cart *Cartridge) Commands() *commandline.Commands {
-	if com, ok := cart.mapper.(mapper.TerminalCommand); ok {
-		return com.Commands()
+// CommandExtension returns an instance of commandline.Commands suitable for commandline
+// tab-completion. Implements commandline.Extension interface
+func (cart *Cartridge) CommandExtension(extension string) *commandline.Commands {
+	if com, ok := cart.mapper.(commandline.Extension); ok {
+		return com.CommandExtension(extension)
 	}
 	return nil
 }
