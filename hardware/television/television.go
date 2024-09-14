@@ -165,6 +165,7 @@ type Television struct {
 
 	// the simple signal path will be used if the simple field is non-nil
 	simple *simple
+	signal func(sig signal.SignalAttributes)
 
 	// the ID with which the television was created. this overrides all spec
 	// changes unles the value is AUTO
@@ -220,9 +221,6 @@ type Television struct {
 	// the index of the first Signal() in the frame
 	firstSignalIdx int
 
-	// copy of the signals and index fields from the previous frame. we use
-	// solely to support the realtime audio mixer
-	//
 	// updated in renderSignals() function. might need more nuanced
 	// copying/appending. for example if renderSignals() is called multiple
 	// times per frame. currently this will only happen in the debugger when
@@ -261,6 +259,9 @@ func NewTelevision(spec string) (*Television, error) {
 
 	// empty list of renderers
 	tv.renderers = make([]PixelRenderer, 0)
+
+	// set signal function
+	tv.signal = tv.signalFull
 
 	return tv, nil
 }
@@ -478,17 +479,10 @@ func (tv *Television) End() error {
 
 // Signal updates the current state of the television.
 func (tv *Television) Signal(sig signal.SignalAttributes) {
-	if tv.simple != nil {
-		tv.signalSimple(sig)
-		return
-	}
+	tv.signal(sig)
+}
 
-	// examine signal for resizing possibility.
-	tv.state.resizer.examine(tv.state, sig)
-
-	// check VBLANK bounds
-	tv.state.bounds.examine(sig, tv.state.scanline)
-
+func (tv *Television) signalFull(sig signal.SignalAttributes) {
 	// check for change of VSYNC signal
 	if sig&signal.VSync != tv.state.lastSignal&signal.VSync {
 		if sig&signal.VSync == signal.VSync {
@@ -632,6 +626,23 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 		}
 	}
 
+	// limit resizing/bounds check to one every 4 clocks. this is enough to
+	// catch VBLANK changes and any black-pixels as required
+	const resizeCheckPeriod = 4
+
+	// a value of 4 also means that the checks will be made at the start of a
+	// new scanline and at the end of a new scanline. this is deliberate but we
+	// may do better if we exclude the end-of-scanline check. a value of 8 or
+	// maybe 16 would achieve this (or keep using a period of 4 and only perform
+	// the period test if the clock is not ClksScanline )
+	if tv.state.clock%resizeCheckPeriod == 0 {
+		// examine signal for resizing possibility.
+		tv.state.resizer.examine(tv.state, sig)
+
+		// check VBLANK bounds
+		tv.state.bounds.examine(sig, tv.state.scanline)
+	}
+
 	// we've "faked" the flyback signal above when clock reached
 	// horizClksScanline. we need to handle the real flyback signal however, by
 	// making sure we're at the correct clock value.
@@ -668,14 +679,13 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 	sig |= signal.SignalAttributes(tv.currentSignalIdx << signal.IndexShift)
 
 	// write the signal into the correct index of the signals array.
-
 	tv.signals[tv.currentSignalIdx] = sig
 
 	// record the current signal settings so they can be used for reference
 	// during the next call to Signal()
 	tv.state.lastSignal = sig
 
-	// record signal history
+	// render queued signals
 	if tv.currentSignalIdx >= len(tv.signals) {
 		err := tv.renderSignals()
 		if err != nil {
@@ -897,6 +907,11 @@ func (tv *Television) renderSignals() error {
 		if err != nil {
 			return fmt.Errorf("television: %w", err)
 		}
+
+		// make a copy of signals just rendered _only_ if we are using a realtime mixer
+		copy(tv.prevSignals, tv.signals)
+		tv.prevSignalLastIdx = tv.currentSignalIdx
+		tv.prevSignalFirst = tv.firstSignalIdx
 	}
 
 	// update regular mixers
@@ -906,11 +921,6 @@ func (tv *Television) renderSignals() error {
 			return fmt.Errorf("television: %w", err)
 		}
 	}
-
-	// make a copy of signals just rendered
-	copy(tv.prevSignals, tv.signals)
-	tv.prevSignalLastIdx = tv.currentSignalIdx
-	tv.prevSignalFirst = tv.firstSignalIdx
 
 	return nil
 }

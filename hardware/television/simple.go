@@ -37,6 +37,7 @@ func NewSimpleTelevision(spec string) (*Television, error) {
 		return nil, err
 	}
 	tv.simple = &simple{}
+	tv.signal = tv.signalSimple
 	return tv, nil
 }
 
@@ -158,14 +159,13 @@ func (tv *Television) signalSimple(sig signal.SignalAttributes) {
 	sig |= signal.SignalAttributes(tv.currentSignalIdx << signal.IndexShift)
 
 	// write the signal into the correct index of the signals array.
-
 	tv.signals[tv.currentSignalIdx] = sig
 
 	// record the current signal settings so they can be used for reference
 	// during the next call to Signal()
 	tv.state.lastSignal = sig
 
-	// record signal history
+	// render queued signals
 	if tv.currentSignalIdx >= len(tv.signals) {
 		err := tv.renderSignals()
 		if err != nil {

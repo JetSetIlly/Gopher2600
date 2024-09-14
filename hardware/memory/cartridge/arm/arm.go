@@ -757,9 +757,8 @@ func (arm *ARM) checkProgramMemory(force bool) {
 	// mappers but will fail with others
 	addr := arm.state.executingPC + 1
 
-	if !force {
-		if arm.state.programMemory != nil &&
-			addr >= arm.state.programMemoryOrigin && addr <= arm.state.programMemoryMemtop {
+	if !force && arm.state.programMemory != nil {
+		if addr >= arm.state.programMemoryOrigin && addr <= arm.state.programMemoryMemtop {
 			return
 		}
 	}
@@ -807,7 +806,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 		// value used in an executing instruction is always two instructions ahead of the address."
 		arm.state.executingPC = arm.state.registers[rPC] - 2
 
-		// check program memory if the program counter has changed
+		// check program memory if execution branched last instruction
 		if arm.state.branchedExecution {
 			arm.checkProgramMemory(false)
 			if arm.state.yield.Type != coprocessor.YieldRunning {

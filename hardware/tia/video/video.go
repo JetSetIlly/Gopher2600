@@ -238,7 +238,7 @@ func (vd *Video) Tick() {
 		}
 	})
 
-	// playfield mush tick every time regardless of hblank or hmove state
+	// playfield must tick every time regardless of hblank or hmove state
 	vd.tiaHasChanged = vd.Playfield.tick() || vd.tiaHasChanged
 
 	// ticking of sprites can be more selective
@@ -285,7 +285,6 @@ func (vd *Video) Pixel() {
 	// if nothing has changed since last pixel then return early and leave the
 	// Video.PixelColor at the same value
 	if !vd.tiaHasChanged {
-		vd.tiaHasChanged = false
 		return
 	}
 	vd.tiaHasChanged = false
