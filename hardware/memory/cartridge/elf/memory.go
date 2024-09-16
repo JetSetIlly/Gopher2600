@@ -82,10 +82,8 @@ func (s *elfSection) isEmpty() bool {
 // Snapshot implements the mapper.CartMapper interface.
 func (s *elfSection) Snapshot() *elfSection {
 	n := *s
-	if !s.readOnly() {
-		n.data = make([]byte, len(s.data))
-		copy(n.data, s.data)
-	}
+	n.data = make([]byte, len(s.data))
+	copy(n.data, s.data)
 	return &n
 }
 
@@ -165,6 +163,10 @@ type elfMemory struct {
 
 	// byte stream support
 	stream stream
+
+	// last mapping infomation
+	lastAddress    uint32
+	lastExecutable bool
 }
 
 func newElfMemory(env *environment.Environment) *elfMemory {
@@ -205,7 +207,11 @@ func (mem *elfMemory) Snapshot() *elfMemory {
 	// how best to deal with the request
 	m.sections = make([]*elfSection, len(mem.sections))
 	for i := range mem.sections {
-		m.sections[i] = mem.sections[i].Snapshot()
+		if mem.sections[i].readOnly() {
+			m.sections[i] = mem.sections[i]
+		} else {
+			m.sections[i] = mem.sections[i].Snapshot()
+		}
 	}
 
 	// sram is likely to have changed
@@ -815,7 +821,6 @@ func (mem *elfMemory) relocateStrongArmFunction(spec strongArmFunctionSpec) (uin
 // MapAddress implements the arm.SharedMemory interface.
 func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	if addr >= mem.strongArmOrigin && addr <= mem.strongArmMemtop {
-
 		// strong arm memory is not writeable
 		if write {
 			return nil, 0
@@ -855,6 +860,7 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 			// simply wanting to read data in the strongARM memory space (for
 			// whatever reason)
 		}
+		mem.lastExecutable = true
 		return &mem.strongArmProgram, mem.strongArmOrigin
 	}
 
@@ -862,38 +868,14 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 }
 
 func (mem *elfMemory) mapAddress(addr uint32, write bool) (*[]byte, uint32) {
-	if addr >= mem.gpio.dataOrigin && addr <= mem.gpio.dataMemtop {
-		if mem.stream.active {
-			logger.Logf(mem.env, "ELF", "disabling byte streaming: %d bytes in stream", mem.stream.ptr)
-			mem.stream.active = false
-		}
-		if !write && addr == mem.gpio.dataOrigin|ADDR_IDR {
-			mem.arm.Interrupt()
-		}
-		return &mem.gpio.data, mem.gpio.dataOrigin
-	}
-	if addr >= mem.gpio.lookupOrigin && addr <= mem.gpio.lookupMemtop {
-		return &mem.gpio.lookup, mem.gpio.lookupOrigin
-	}
-
 	if addr >= mem.sramOrigin && addr <= mem.sramMemtop {
+		mem.lastExecutable = false
 		return mem.sram.Data(), mem.sramOrigin
 	}
 
-	if addr >= mem.strongArmOrigin && addr <= mem.strongArmMemtop {
-		return &mem.strongArmProgram, mem.strongArmOrigin
-	}
-
-	if addr >= argOrigin && addr <= argMemtop {
-		return &mem.args, argOrigin
-	}
-
-	// accessing ELF sections is very unlikely so do this last
 	for _, s := range mem.sections {
-		// ignore empty ELF sections. if we don't we can encounter false
-		// positives if the ARM is trying to access address zero
-		if s.isEmpty() {
-			continue
+		if s.isEmpty() || !s.inMemory() {
+			continue // for loop
 		}
 
 		// special condition for executable sections to handle instances when
@@ -905,11 +887,48 @@ func (mem *elfMemory) mapAddress(addr uint32, write bool) (*[]byte, uint32) {
 
 		if addr >= s.origin-adjust && addr <= s.memtop {
 			if write && s.readOnly() {
+				mem.lastExecutable = false
 				return nil, 0
 			}
+
+			mem.lastExecutable = s.executable()
 			return &s.data, s.origin
 		}
 	}
+
+	// GPIO access means streaming will be disabled, at which point we start to
+	// care less about performance
+	if addr >= mem.gpio.dataOrigin && addr <= mem.gpio.dataMemtop {
+		if mem.stream.active {
+			logger.Logf(mem.env, "ELF", "disabling byte streaming: %d bytes in stream", mem.stream.ptr)
+			mem.stream.active = false
+		}
+		if !write && addr == mem.gpio.dataOrigin|ADDR_IDR {
+			mem.arm.Interrupt()
+		}
+		mem.lastExecutable = false
+		return &mem.gpio.data, mem.gpio.dataOrigin
+	}
+	if addr >= mem.gpio.lookupOrigin && addr <= mem.gpio.lookupMemtop {
+		mem.lastExecutable = false
+		return &mem.gpio.lookup, mem.gpio.lookupOrigin
+	}
+
+	// strongarm check is tested in MapAddress() so we don't really need to test
+	// for it here except for those cases where mapAddress() is called directly.
+	// in which case, performance doesn't matter
+	if addr >= mem.strongArmOrigin && addr <= mem.strongArmMemtop {
+		mem.lastExecutable = true
+		return &mem.strongArmProgram, mem.strongArmOrigin
+	}
+
+	// arg memory is likely only ever read once on program startup
+	if addr >= argOrigin && addr <= argMemtop {
+		mem.lastExecutable = false
+		return &mem.args, argOrigin
+	}
+
+	mem.lastExecutable = false
 
 	return nil, 0
 }
@@ -921,8 +940,11 @@ func (mem *elfMemory) ResetVectors() (uint32, uint32, uint32) {
 
 // IsExecutable implements the arm.SharedMemory interface.
 func (mem *elfMemory) IsExecutable(addr uint32) bool {
-	// TODO: check executable flag for address
-	return true
+	if mem.lastAddress == addr {
+		return mem.lastExecutable
+	}
+	_, _ = mem.mapAddress(addr, false)
+	return mem.lastExecutable
 }
 
 // Segments implements the mapper.CartStatic interface
