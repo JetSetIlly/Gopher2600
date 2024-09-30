@@ -230,7 +230,8 @@ func (mem *elfMemory) Snapshot() *elfMemory {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (mem *elfMemory) Plumb(arm elfMemoryARM) {
+func (mem *elfMemory) Plumb(env *environment.Environment, arm elfMemoryARM) {
+	mem.env = env
 	mem.arm = arm
 }
 

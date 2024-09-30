@@ -147,7 +147,7 @@ func NewElf(env *environment.Environment, loader cartridgeloader.Loader, inACE b
 
 	cart.mem = newElfMemory(cart.env)
 	cart.arm = arm.NewARM(cart.env, cart.mem.model, cart.mem, cart)
-	cart.mem.Plumb(cart.arm)
+	cart.mem.Plumb(cart.env, cart.arm)
 	err = cart.mem.decode(ef)
 	if err != nil {
 		return nil, fmt.Errorf("ELF: %w", err)
@@ -165,7 +165,7 @@ func NewElf(env *environment.Environment, loader cartridgeloader.Loader, inACE b
 		return nil, fmt.Errorf("ELF: %w", err)
 	}
 
-	// notify emulator that some symbols in the ELF have
+	// send notification that some symbols in the ELF remain unresolved
 	if cart.mem.unresolvedSymbols {
 		cart.env.Notifications.Notify(notifications.NotifyElfUndefinedSymbols)
 	}
@@ -207,7 +207,7 @@ func (cart *Elf) PlumbFromDifferentEmulation(env *environment.Environment) {
 		panic("cannot plumb this ELF instance because the ARM state is nil")
 	}
 	cart.arm = arm.NewARM(cart.env, cart.mem.model, cart.mem, cart)
-	cart.mem.Plumb(cart.arm)
+	cart.mem.Plumb(cart.env, cart.arm)
 	cart.arm.Plumb(cart.env, cart.armState, cart.mem, cart)
 	cart.armState = nil
 	cart.yieldHook = &coprocessor.StubCartYieldHook{}
@@ -219,7 +219,7 @@ func (cart *Elf) Plumb(env *environment.Environment) {
 	if cart.armState == nil {
 		panic("cannot plumb this ELF instance because the ARM state is nil")
 	}
-	cart.mem.Plumb(cart.arm)
+	cart.mem.Plumb(cart.env, cart.arm)
 	cart.arm.Plumb(cart.env, cart.armState, cart.mem, cart)
 	cart.armState = nil
 }

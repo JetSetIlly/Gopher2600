@@ -262,7 +262,6 @@ func vcsRead4(mem *elfMemory) {
 				mem.endStrongArmFunction()
 				mem.stream.startDrain()
 				mem.stream.snoopDataBus = true
-				return
 			} else {
 				mem.setStrongArmFunction(snoopDataBus)
 			}
