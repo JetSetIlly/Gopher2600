@@ -18,6 +18,7 @@ package environment
 import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/random"
@@ -35,6 +36,7 @@ type Television interface {
 	GetSpecID() string
 	GetReqSpecID() string
 	SetRotation(specification.Rotation)
+	GetCoords() coords.TelevisionCoords
 }
 
 // Environment is used to provide context for an emulation. Particularly useful
