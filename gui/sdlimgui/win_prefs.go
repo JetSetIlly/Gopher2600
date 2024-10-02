@@ -613,6 +613,12 @@ Illegal accesses will be logged even if program does not abort.`)
 		win.img.dbg.VCS().Env.Prefs.ARM.MisalignedAccessIsFault.Set(misalignedAccessIsFault)
 	}
 
+	undefinedSymbolWarning := win.img.dbg.VCS().Env.Prefs.ARM.UndefinedSymbolWarning.Get().(bool)
+	if imgui.Checkbox("Undefined Symbols Warning", &undefinedSymbolWarning) {
+		win.img.dbg.VCS().Env.Prefs.ARM.UndefinedSymbolWarning.Set(undefinedSymbolWarning)
+	}
+	imguiTooltipSimple(`It is possible to compile an ELF binary with undefined symbols.
+This option presents causes a warning to appear when such a binary is loaded`, true)
 }
 
 func (win *winPrefs) drawPlusROMTab() {

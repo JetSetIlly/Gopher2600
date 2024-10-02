@@ -167,7 +167,9 @@ func NewElf(env *environment.Environment, loader cartridgeloader.Loader, inACE b
 
 	// send notification that some symbols in the ELF remain unresolved
 	if cart.mem.unresolvedSymbols {
-		cart.env.Notifications.Notify(notifications.NotifyElfUndefinedSymbols)
+		if cart.env.Prefs.ARM.UndefinedSymbolWarning.Get().(bool) {
+			cart.env.Notifications.Notify(notifications.NotifyElfUndefinedSymbols)
+		}
 	}
 
 	return cart, nil

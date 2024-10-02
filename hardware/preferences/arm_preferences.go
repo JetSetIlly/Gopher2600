@@ -66,6 +66,9 @@ type ARMPreferences struct {
 
 	// include disassembly and register details when logging memory faults
 	ExtendedMemoryFaultLogging prefs.Bool
+
+	// warn developer that the ELF contains an undefined symbol
+	UndefinedSymbolWarning prefs.Bool
 }
 
 func (p *ARMPreferences) String() string {
@@ -120,6 +123,10 @@ func newARMprefrences() (*ARMPreferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("hardware.arm7.undefinedSymbolWarning", &p.UndefinedSymbolWarning)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Load(true)
 	if err != nil {
 		return nil, err
@@ -140,6 +147,7 @@ func (p *ARMPreferences) SetDefaults() {
 	p.AbortOnMemoryFault.Set(false)
 	p.MisalignedAccessIsFault.Set(false)
 	p.ExtendedMemoryFaultLogging.Set(false)
+	p.UndefinedSymbolWarning.Set(false)
 }
 
 // Load current arm preference from disk.

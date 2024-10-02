@@ -70,7 +70,7 @@ func (img *SdlImgui) modalElfUndefinedSymbols() {
 		sz.Y = img.fonts.guiSize
 		sz.Y += imgui.CurrentStyle().CellPadding().Y * 2
 		sz.Y += imgui.CurrentStyle().FramePadding().Y * 2
-		if imgui.ButtonV("Continue with undefined function handler", sz) {
+		if imgui.ButtonV("Continue with 'undefined function' handler", sz) {
 			imgui.CloseCurrentPopup()
 			img.modal = modalNone
 		}
