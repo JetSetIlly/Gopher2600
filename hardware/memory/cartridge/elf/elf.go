@@ -215,6 +215,12 @@ func (cart *Elf) PlumbFromDifferentEmulation(env *environment.Environment) {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *Elf) Plumb(env *environment.Environment) {
+	// very important we inhibit strongarm access for the duration of the
+	// plumbing process. see comment in the inhibitStrongAccess declaration for
+	// explanation
+	cart.mem.inhibitStrongarmAccess = true
+	defer func() { cart.mem.inhibitStrongarmAccess = false }()
+
 	cart.env = env
 	if cart.armState == nil {
 		panic("cannot plumb this ELF instance because the ARM state is nil")

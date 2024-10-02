@@ -167,6 +167,22 @@ type elfMemory struct {
 	// last mapping infomation
 	lastAddress    uint32
 	lastExecutable bool
+
+	// a call to MapAddress() from the ARM may sometimes be to find the address
+	// of a strongarm function. the act of mapping will cause the strongarm
+	// injection process to begin, the assumption being that the ARM will go on
+	// to execute the function.
+	//
+	// however, in the instance of Plumbing() a previous state, the ARM will
+	// call MapAddress() (with the current PC register) to make sure it has the
+	// pointer to a valid/current area of (real) memory. if the PC register is
+	// pointing to a strongarm function then this means erroneous bytes will be
+	// injected into the strongarm stream. this will also happen if streaming is
+	// disabled but it seems to be less of a problem in that instance
+	//
+	// the inhibitStrongAccess boolean controls how the MapAddress() function
+	// will react to the accessing of strongarm addresses
+	inhibitStrongarmAccess bool
 }
 
 func newElfMemory(env *environment.Environment) *elfMemory {
@@ -839,7 +855,12 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 		// with that in mind we must lookup the address minus one to determine
 		// if the call address is a strongarm function. if it is not then that
 		// means the ARM program has jumped to the wrong address
-		if f, ok := mem.strongArmFunctions[addr-1]; ok {
+		//
+		// ***
+		// there is an assumption that the ARM program will only ever want to
+		// know the address of a strongarm function in order to execute it
+		// ***
+		if f, ok := mem.strongArmFunctions[addr-1]; ok && !mem.inhibitStrongarmAccess {
 			if f.support {
 				mem.runStrongArmFunction(f.function)
 			} else {
