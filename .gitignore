@@ -37,3 +37,4 @@ go.work
 go.work.sum
 REDUX_PLAYBACK_FILES
 *.wav
+rsrc_windows_amd64.syso
