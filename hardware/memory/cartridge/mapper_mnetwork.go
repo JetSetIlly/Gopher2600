@@ -339,16 +339,16 @@ func (cart *mnetwork) SetBank(bank string) error {
 	if b.Number >= len(cart.banks) {
 		return fmt.Errorf("%s: cartridge does not have bank '%d'", cart.mappingID, b.Number)
 	}
+	cart.state.bank = b.Number
 	cart.state.use1kRAM = b.IsRAM
 
-	b = segs[1]
-	if b.Number >= mnetworkNum256byte {
-		return fmt.Errorf("%s: cartridge does not have 256byte bank '%d'", cart.mappingID, b.Number)
+	if len(segs) > 1 {
+		b = segs[1]
+		if b.Number >= mnetworkNum256byte {
+			return fmt.Errorf("%s: cartridge does not have 256byte bank '%d'", cart.mappingID, b.Number)
+		}
+		cart.state.ram256byteIdx = b.Number
 	}
-	if !b.IsRAM {
-		return fmt.Errorf("%s: second segment is always a RAM bank", cart.mappingID)
-	}
-	cart.state.ram256byteIdx = b.Number
 
 	return nil
 }

@@ -159,7 +159,6 @@ func (cart *m3ePlus) Access(addr uint16, _ bool) (uint8, uint8, error) {
 
 // AccessVolatile implements the mapper.CartMapper interface.
 func (cart *m3ePlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
-
 	var segment int
 
 	if addr >= 0x0000 && addr <= 0x03ff {
@@ -234,26 +233,14 @@ func (cart *m3ePlus) SetBank(bank string) error {
 		return fmt.Errorf("%s: too many segments specified (%d)", cart.mappingID, len(segs))
 	}
 
-	b := segs[0]
-	if b.Number >= len(cart.banks) {
-		return fmt.Errorf("%s: cartridge does not have bank '%d'", cart.mappingID, b.Number)
-	}
-	cart.state.segment[0] = b.Number
-	cart.state.segmentIsRAM[0] = b.IsRAM
-
-	b = segs[1]
-	if b.IsRAM {
-		if b.Number >= len(cart.state.ram) {
-			return fmt.Errorf("%s: cartridge does not have bankable RAM", cart.mappingID)
-		}
-		cart.state.segment[1] = b.Number
-		cart.state.segmentIsRAM[1] = true
-	} else {
+	for i, b := range segs {
 		if b.Number >= len(cart.banks) {
 			return fmt.Errorf("%s: cartridge does not have bank '%d'", cart.mappingID, b.Number)
 		}
-		cart.state.segment[1] = b.Number
-		cart.state.segmentIsRAM[1] = false
+		if b.IsRAM {
+			return fmt.Errorf("%s: cartridge does not have bankable RAM", cart.mappingID)
+		}
+		cart.state.segment[i] = b.Number
 	}
 
 	return nil

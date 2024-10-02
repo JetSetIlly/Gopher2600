@@ -297,7 +297,7 @@ func (cart *Supercharger) SetBank(bank string) error {
 		return fmt.Errorf("%s: %v", cart.mappingID, err)
 	}
 	if b.IsRAM {
-		return fmt.Errorf("%s: cartridge expects a single value between 0 and 7", cart.mappingID)
+		return fmt.Errorf("%s: cartridge expects a pattern number between 0 and 7", cart.mappingID)
 	}
 
 	if b.Number > 7 {

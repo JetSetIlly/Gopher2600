@@ -192,19 +192,28 @@ func (cart *m3e) SetBank(bank string) error {
 		return fmt.Errorf("%s: too many segments specified (%d)", cart.mappingID, len(segs))
 	}
 
-	for i, b := range segs {
-		if b.Number >= len(cart.banks) {
-			return fmt.Errorf("%s: cartridge does not have bank '%d'", cart.mappingID, b.Number)
-		}
+	b := segs[0]
+	if b.Number >= len(cart.banks) {
+		return fmt.Errorf("%s: cartridge does not have bank '%d'", cart.mappingID, b.Number)
+	}
+	cart.state.segment[0] = b.Number
+	cart.state.segmentIsRAM[0] = b.IsRAM
+
+	if len(segs) > 1 {
+		b = segs[1]
 		if b.IsRAM {
-			return fmt.Errorf("%s: cartridge does not have bankable RAM", cart.mappingID)
+			if b.Number >= len(cart.state.ram) {
+				return fmt.Errorf("%s: cartridge does not have RAM bank '%d'", cart.mappingID, b.Number)
+			}
+			cart.state.segment[1] = b.Number
+			cart.state.segmentIsRAM[1] = true
+		} else {
+			if b.Number >= len(cart.banks) {
+				return fmt.Errorf("%s: cartridge does not have bank '%d'", cart.mappingID, b.Number)
+			}
+			cart.state.segment[1] = b.Number
+			cart.state.segmentIsRAM[1] = false
 		}
-
-		if i == len(cart.state.segment)-1 && b.Number != cart.NumBanks()-1 {
-			return fmt.Errorf("%s: last segment must always be bank %d", cart.mappingID, cart.NumBanks()-1)
-		}
-
-		cart.state.segment[i] = b.Number
 	}
 
 	return nil
