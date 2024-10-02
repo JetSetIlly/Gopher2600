@@ -25,7 +25,12 @@ type SharedMemory interface {
 	// instance whether it's for a 32bit or an 8bit access. For this reason the
 	// implemention can assume that the access is 8bit and that the user of the
 	// result will make further boundary checks as appropriate.
-	MapAddress(addr uint32, write bool) (*[]byte, uint32)
+	//
+	// The write and executing flags provide context for the MapAddress()
+	// implementation. for example, if the executing flag is true then
+	// MapAddress() is being called because the ARM will be running instructions
+	// stored at that address
+	MapAddress(addr uint32, write bool, executing bool) (*[]byte, uint32)
 
 	// Return reset addreses for the Stack Pointer register; the Link Register;
 	// and Program Counter

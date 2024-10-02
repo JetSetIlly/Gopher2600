@@ -29,7 +29,7 @@ func (arm *ARM) stackProtectCheckSP() {
 	}
 
 	// get memory block that the stack point is pointing to
-	stackMemory, stackOrigin := arm.mem.MapAddress(arm.state.registers[rSP], true)
+	stackMemory, stackOrigin := arm.mem.MapAddress(arm.state.registers[rSP], true, false)
 
 	if stackMemory == nil {
 		arm.state.yield.Type = coprocessor.YieldStackError
@@ -41,7 +41,7 @@ func (arm *ARM) stackProtectCheckSP() {
 
 	} else if arm.state.protectVariableMemTop {
 		// return is stack and variable memory blocks are different
-		_, variableOrigin := arm.mem.MapAddress(arm.state.variableMemtop, true)
+		_, variableOrigin := arm.mem.MapAddress(arm.state.variableMemtop, true, false)
 		if stackOrigin != variableOrigin {
 			return
 		}
@@ -72,7 +72,7 @@ func (arm *ARM) stackProtectCheckProgramMemory() {
 		return
 	}
 
-	stackMemory, _ := arm.mem.MapAddress(arm.state.registers[rSP], true)
+	stackMemory, _ := arm.mem.MapAddress(arm.state.registers[rSP], true, false)
 	if stackMemory == arm.state.programMemory {
 		arm.state.yield.Type = coprocessor.YieldStackError
 		arm.state.yield.Error = fmt.Errorf("SP is pointing to program memory")

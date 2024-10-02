@@ -57,7 +57,7 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 		arm.nullAccess("Read 8bit", addr)
 	}
 
-	mem, origin := arm.mem.MapAddress(addr, false)
+	mem, origin := arm.mem.MapAddress(addr, false, false)
 	if mem == nil {
 		if arm.mmap.HasMAM {
 			if v, ok := arm.state.mam.Read(addr); ok {
@@ -98,7 +98,7 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 		arm.nullAccess("Write 8bit", addr)
 	}
 
-	mem, origin := arm.mem.MapAddress(addr, true)
+	mem, origin := arm.mem.MapAddress(addr, true, false)
 	if mem == nil {
 		if arm.mmap.HasMAM {
 			if arm.state.mam.Write(addr, uint32(val)) {
@@ -156,7 +156,7 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 		}
 	}
 
-	mem, origin := arm.mem.MapAddress(addr, false)
+	mem, origin := arm.mem.MapAddress(addr, false, false)
 	if mem == nil {
 		if arm.mmap.HasMAM {
 			if v, ok := arm.state.mam.Read(addr); ok {
@@ -211,7 +211,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 		}
 	}
 
-	mem, origin := arm.mem.MapAddress(addr, true)
+	mem, origin := arm.mem.MapAddress(addr, true, false)
 	if mem == nil {
 		if arm.mmap.HasMAM {
 			if arm.state.mam.Write(addr, uint32(val)) {
@@ -266,7 +266,7 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 		}
 	}
 
-	mem, origin := arm.mem.MapAddress(addr, false)
+	mem, origin := arm.mem.MapAddress(addr, false, false)
 	if mem == nil {
 		if arm.mmap.HasMAM {
 			if v, ok := arm.state.mam.Read(addr); ok {
@@ -321,7 +321,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 		}
 	}
 
-	mem, origin := arm.mem.MapAddress(addr, true)
+	mem, origin := arm.mem.MapAddress(addr, true, false)
 	if mem == nil {
 		if arm.mmap.HasMAM {
 			if arm.state.mam.Write(addr, uint32(val)) {
@@ -365,7 +365,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 
 // Peek implements the coprocessor.CoProc interface
 func (arm *ARM) Peek(addr uint32) (uint32, bool) {
-	mem, origin := arm.mem.MapAddress(addr, false)
+	mem, origin := arm.mem.MapAddress(addr, false, false)
 	addr -= origin
 	if mem == nil || addr >= uint32(len(*mem)-3) {
 		return 0, false

@@ -164,7 +164,8 @@ type elfMemory struct {
 	// byte stream support
 	stream stream
 
-	// last mapping infomation
+	// last mapping infomation. the address and whether the memory space
+	// contains executable instructions
 	lastAddress    uint32
 	lastExecutable bool
 
@@ -836,51 +837,51 @@ func (mem *elfMemory) relocateStrongArmFunction(spec strongArmFunctionSpec) (uin
 }
 
 // MapAddress implements the arm.SharedMemory interface.
-func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
+func (mem *elfMemory) MapAddress(addr uint32, write bool, executing bool) (*[]byte, uint32) {
 	if addr >= mem.strongArmOrigin && addr <= mem.strongArmMemtop {
 		// strong arm memory is not writeable
 		if write {
 			return nil, 0
 		}
 
-		// strongarm functions are indexed by the address of the first
-		// instruction in the function
-		//
-		// however, MapAddress() is called with an address equal to the
-		// execution address plus one. the plus one is intended to make sure
-		// that the memory area is big enough when decoding 16bit instructions.
-		// (ie. if the ARM has jumped to the last address in a memory area then
-		// MapAddress() will return nil)
-		//
-		// with that in mind we must lookup the address minus one to determine
-		// if the call address is a strongarm function. if it is not then that
-		// means the ARM program has jumped to the wrong address
-		//
-		// ***
-		// there is an assumption that the ARM program will only ever want to
-		// know the address of a strongarm function in order to execute it
-		// ***
-		if f, ok := mem.strongArmFunctions[addr-1]; ok && !mem.inhibitStrongarmAccess {
-			if f.support {
-				mem.runStrongArmFunction(f.function)
-			} else {
-				if mem.stream.active {
-					mem.setStrongArmFunction(f.function)
-					for mem.strongarm.running.function != nil {
-						mem.strongarm.running.function(mem)
-					}
-					if mem.stream.drain {
+		// we've mapped the address to a strongarm function but we only want to
+		// trigger the side-effects of mapping the address if the executing flag
+		// is true AND if we've not deliberately inhibited strongarm access
+		if executing && !mem.inhibitStrongarmAccess {
+			// strongarm functions are indexed by the address of the first
+			// instruction in the function
+			//
+			// however, MapAddress() is called with an address equal to the
+			// execution address plus one. the plus one is intended to make sure
+			// that the memory area is big enough when decoding 16bit instructions.
+			// (ie. if the ARM has jumped to the last address in a memory area then
+			// MapAddress() will return nil)
+			//
+			// with that in mind we must lookup the address minus one to determine
+			// if the call address is a strongarm function. if it is not then that
+			// means the ARM program has jumped to the wrong address
+			if f, ok := mem.strongArmFunctions[addr-1]; ok {
+				if f.support {
+					mem.runStrongArmFunction(f.function)
+				} else {
+					if mem.stream.active {
+						mem.setStrongArmFunction(f.function)
+						for mem.strongarm.running.function != nil {
+							mem.strongarm.running.function(mem)
+						}
+						if mem.stream.drain {
+							mem.arm.Interrupt()
+						}
+					} else {
+						mem.setStrongArmFunction(f.function)
 						mem.arm.Interrupt()
 					}
-				} else {
-					mem.setStrongArmFunction(f.function)
-					mem.arm.Interrupt()
 				}
+			} else {
+				// if the strongarm function can't be found then the program is
+				// simply wanting to read data in the strongARM memory space (for
+				// whatever reason)
 			}
-		} else {
-			// if the strongarm function can't be found then the program is
-			// simply wanting to read data in the strongARM memory space (for
-			// whatever reason)
 		}
 		mem.lastExecutable = true
 		return &mem.strongArmProgram, mem.strongArmOrigin

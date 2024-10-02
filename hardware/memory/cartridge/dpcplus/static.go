@@ -131,7 +131,7 @@ func (cart *dpcPlus) newDPCplusStatic(version version, cartData []byte) (*Static
 	return &stc, nil
 }
 
-// ResetVectors implements the arm7tdmi.SharedMemory interface.
+// ResetVectors implements the arm.SharedMemory interface.
 func (stc *Static) ResetVectors() (uint32, uint32, uint32) {
 	return stc.version.stackOrigin, stc.customROM.origin, stc.customROM.origin + 8
 }
@@ -149,8 +149,8 @@ func (stc *Static) Snapshot() *Static {
 	return &n
 }
 
-// MapAddress implements the arm7tdmi.SharedMemory interface.
-func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
+// MapAddress implements the arm.SharedMemory interface.
+func (stc *Static) MapAddress(addr uint32, write bool, executing bool) (*[]byte, uint32) {
 	// tests arranged in order of most likely to be used. determined by running
 	// ZaxxonHDDemo through the go profiler
 
@@ -240,7 +240,7 @@ func (stc *Static) Reference(segment string) ([]uint8, bool) {
 
 // Read8bit implements the mapper.CartStatic interface
 func (stc *Static) Read8bit(addr uint32) (uint8, bool) {
-	mem, origin := stc.MapAddress(addr, false)
+	mem, origin := stc.MapAddress(addr, false, false)
 	addr -= origin
 	if mem == nil || addr >= uint32(len(*mem)) {
 		return 0, false
@@ -250,7 +250,7 @@ func (stc *Static) Read8bit(addr uint32) (uint8, bool) {
 
 // Read16bit implements the mapper.CartStatic interface
 func (stc *Static) Read16bit(addr uint32) (uint16, bool) {
-	mem, origin := stc.MapAddress(addr, false)
+	mem, origin := stc.MapAddress(addr, false, false)
 	addr -= origin
 	if mem == nil || addr >= uint32(len(*mem)-1) {
 		return 0, false
@@ -261,7 +261,7 @@ func (stc *Static) Read16bit(addr uint32) (uint16, bool) {
 
 // Read32bit implements the mapper.CartStatic interface
 func (stc *Static) Read32bit(addr uint32) (uint32, bool) {
-	mem, origin := stc.MapAddress(addr, false)
+	mem, origin := stc.MapAddress(addr, false, false)
 	addr -= origin
 	if mem == nil || addr >= uint32(len(*mem)-3) {
 		return 0, false

@@ -307,7 +307,7 @@ func (mem *aceMemory) Plumb(arm interruptARM) {
 }
 
 // MapAddress implements the arm.SharedMemory interface.
-func (mem *aceMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
+func (mem *aceMemory) MapAddress(addr uint32, write bool, executing bool) (*[]byte, uint32) {
 	switch addr {
 	case DATA_MODER:
 		return &mem.gpio, mem.gpioOrigin
@@ -386,7 +386,7 @@ func (a *aceMemory) Reference(segment string) ([]uint8, bool) {
 // the range given in one of the CartStaticSegment returned by the
 // Segments() function.
 func (a *aceMemory) Read8bit(addr uint32) (uint8, bool) {
-	mem, origin := a.MapAddress(addr, false)
+	mem, origin := a.MapAddress(addr, false, false)
 	addr -= origin
 	if mem == nil || addr >= uint32(len(*mem)) {
 		return 0, false
@@ -395,7 +395,7 @@ func (a *aceMemory) Read8bit(addr uint32) (uint8, bool) {
 }
 
 func (a *aceMemory) Read16bit(addr uint32) (uint16, bool) {
-	mem, origin := a.MapAddress(addr, false)
+	mem, origin := a.MapAddress(addr, false, false)
 	addr -= origin
 	if mem == nil || addr >= uint32(len(*mem)-1) {
 		return 0, false
@@ -405,7 +405,7 @@ func (a *aceMemory) Read16bit(addr uint32) (uint16, bool) {
 }
 
 func (a *aceMemory) Read32bit(addr uint32) (uint32, bool) {
-	mem, origin := a.MapAddress(addr, false)
+	mem, origin := a.MapAddress(addr, false, false)
 	addr -= origin
 	if mem == nil || addr >= uint32(len(*mem)-3) {
 		return 0, false

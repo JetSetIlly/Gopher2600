@@ -28,7 +28,7 @@ func randint(mem *elfMemory) {
 
 func memset(mem *elfMemory) {
 	addr := mem.strongarm.running.registers[0]
-	set, origin := mem.MapAddress(addr, true)
+	set, origin := mem.MapAddress(addr, true, false)
 	idx := addr - origin
 
 	if set != nil {
@@ -42,11 +42,11 @@ func memset(mem *elfMemory) {
 
 func memcpy(mem *elfMemory) {
 	toAddr := mem.strongarm.running.registers[0]
-	to, toOrigin := mem.MapAddress(toAddr, true)
+	to, toOrigin := mem.MapAddress(toAddr, true, false)
 	toIdx := toAddr - toOrigin
 
 	fromAddr := mem.strongarm.running.registers[1]
-	from, fromOrigin := mem.MapAddress(fromAddr, false)
+	from, fromOrigin := mem.MapAddress(fromAddr, false, false)
 	fromIdx := fromAddr - fromOrigin
 
 	if to != nil && from != nil {

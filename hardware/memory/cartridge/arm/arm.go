@@ -764,7 +764,7 @@ func (arm *ARM) checkProgramMemory(force bool) {
 	}
 
 	var origin uint32
-	arm.state.programMemory, origin = arm.mem.MapAddress(addr, false)
+	arm.state.programMemory, origin = arm.mem.MapAddress(addr, false, true)
 	if arm.state.programMemory == nil {
 		arm.memoryFault("does not exist", faults.ProgramMemory, addr)
 		return
