@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 )
 
 // ColorTerminal implements debugger UI interface with a basic ANSI terminal.
@@ -40,7 +41,7 @@ func (ct *ColorTerminal) CleanUp() {
 
 // RegisterTabCompletion adds an implementation of TabCompletion to the
 // ColorTerminal.
-func (ct *ColorTerminal) RegisterTabCompletion(tc terminal.TabCompletion) {
+func (ct *ColorTerminal) RegisterTabCompletion(tc *commandline.TabCompletion) {
 }
 
 // IsInteractive satisfies the terminal.Input interface.
