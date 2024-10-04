@@ -604,14 +604,6 @@ func (scr *screen) reflectionColor(ref *reflection.ReflectedVideoStep) color.RGB
 		} else if ref.RSYNCreset {
 			return reflectionColors[reflection.RSYNCreset]
 		}
-	case reflection.OverlayLabels[reflection.OverlayAudio]:
-		if ref.AudioChanged {
-			return reflectionColors[reflection.AudioChanged]
-		} else if ref.AudioPhase0 {
-			return reflectionColors[reflection.AudioPhase0]
-		} else if ref.AudioPhase1 {
-			return reflectionColors[reflection.AudioPhase1]
-		}
 	case reflection.OverlayLabels[reflection.OverlayCoproc]:
 		switch ref.CoProcSync {
 		case coprocessor.CoProcIdle:
