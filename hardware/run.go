@@ -52,19 +52,21 @@ func (vcs *VCS) Run(continueCheck func() (govern.State, error)) error {
 			return err
 		}
 
-		vcs.TIA.QuickStep(1)
-		vcs.TIA.QuickStep(2)
-
 		if reg, ok := vcs.Mem.TIA.ChipHasChanged(); ok {
+			vcs.TIA.QuickStep(1)
+			vcs.TIA.QuickStep(2)
 			vcs.TIA.Step(reg, 3)
-		} else {
-			vcs.TIA.QuickStep(3)
-		}
-
-		if reg, ok := vcs.Mem.RIOT.ChipHasChanged(); ok {
-			vcs.RIOT.Step(reg)
-		} else {
 			vcs.RIOT.QuickStep()
+		} else {
+			vcs.TIA.QuickStep(1)
+			vcs.TIA.QuickStep(2)
+			vcs.TIA.QuickStep(3)
+
+			if reg, ok := vcs.Mem.RIOT.ChipHasChanged(); ok {
+				vcs.RIOT.Step(reg)
+			} else {
+				vcs.RIOT.QuickStep()
+			}
 		}
 
 		vcs.Mem.Cart.Step(vcs.Clock)

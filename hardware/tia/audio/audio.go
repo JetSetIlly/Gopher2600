@@ -64,9 +64,7 @@ type Audio struct {
 	Vol1 uint8
 
 	// the addition of a tracker is not required
-	tracker          Tracker
-	registersChanged bool
-	samplePoint      bool
+	tracker Tracker
 }
 
 // NewAudio is the preferred method of initialisation for the Audio sub-system.
@@ -112,19 +110,14 @@ func (au *Audio) UpdateTracker() {
 // Step the audio on one TIA clock. The step will be filtered to produce a
 // 30Khz clock.
 func (au *Audio) Step() bool {
-	au.registersChanged = false
-	au.samplePoint = false
-
 	if au.tracker != nil {
 		// it's impossible for both channels to have changed in a single video cycle
 		if au.channel0.registersChanged {
 			au.tracker.AudioTick(au.env, 0, au.channel0.registers)
 			au.channel0.registersChanged = false
-			au.registersChanged = true
 		} else if au.channel1.registersChanged {
 			au.tracker.AudioTick(au.env, 1, au.channel1.registers)
 			au.channel1.registersChanged = false
-			au.registersChanged = true
 		}
 	}
 
@@ -135,15 +128,12 @@ func (au *Audio) Step() bool {
 	au.sampleSum[1] += int(au.channel1.actualVolume())
 	au.sampleSumCt++
 
-	switch au.clock228 {
-	case 10:
-		fallthrough
-	case 82:
+	if (au.clock228 >= 8 && au.clock228 <= 10) || (au.clock228 >= 80 && au.clock228 <= 82) {
 		au.channel0.phase0()
 		au.channel1.phase0()
-	case 38:
-		fallthrough
-	case 150:
+	}
+
+	if (au.clock228 >= 36 && au.clock228 <= 38) || (au.clock228 >= 148 && au.clock228 <= 150) {
 		au.channel0.phase1()
 		au.channel1.phase1()
 
@@ -158,29 +148,10 @@ func (au *Audio) Step() bool {
 	}
 
 	// advance 228 clock and reset sample counter
-	au.clock228++
+	au.clock228 += 3
 	if au.clock228 >= 228 {
 		au.clock228 = 0
 	}
 
 	return changed
-}
-
-// HasTicked returns whether the audio channels were ticked on the previous
-// video cycle. The return values indicate the ticking for phase 0 & phase 1;
-// and whether an audio register has changed. Can never return three true values
-//
-// The function is only useful for emulator reflection.
-func (au *Audio) HasTicked() (bool, bool, bool) {
-	switch au.clock228 {
-	case 10:
-		return true, false, au.registersChanged
-	case 82:
-		return true, false, au.registersChanged
-	case 38:
-		return false, true, au.registersChanged
-	case 150:
-		return false, true, au.registersChanged
-	}
-	return false, false, au.registersChanged
 }

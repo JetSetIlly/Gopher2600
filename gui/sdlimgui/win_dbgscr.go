@@ -18,7 +18,6 @@ package sdlimgui
 import (
 	"fmt"
 	"image"
-	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor"
@@ -573,14 +572,6 @@ func (win *winDbgScr) drawOverlayComboTooltip() {
 			imgui.Spacing()
 			imguiColorLabelSimple("Reset", win.img.cols.reflectionColors[reflection.RSYNCreset])
 		}, true)
-	case reflection.OverlayLabels[reflection.OverlayAudio]:
-		win.img.imguiTooltip(func() {
-			imguiColorLabelSimple("Change", win.img.cols.reflectionColors[reflection.AudioChanged])
-			imgui.Spacing()
-			imguiColorLabelSimple("Phase 0", win.img.cols.reflectionColors[reflection.AudioPhase0])
-			imgui.Spacing()
-			imguiColorLabelSimple("Phase 1", win.img.cols.reflectionColors[reflection.AudioPhase1])
-		}, true)
 	case reflection.OverlayLabels[reflection.OverlayCoproc]:
 		win.img.imguiTooltip(func() {
 			coproc := win.img.cache.VCS.Mem.Cart.GetCoProc()
@@ -757,21 +748,6 @@ func (win *winDbgScr) drawReflectionTooltip() {
 			}
 		case reflection.OverlayLabels[reflection.OverlayRSYNC]:
 			// no RSYNC specific hover information
-		case reflection.OverlayLabels[reflection.OverlayAudio]:
-			imguiSeparator()
-			if ref.AudioChanged || ref.AudioPhase0 || ref.AudioPhase1 {
-				if ref.AudioChanged {
-					reg := strings.Split(e.Operand.Resolve(), ",")[0]
-					imguiColorLabelSimple(fmt.Sprintf("%s updated", reg), win.img.cols.reflectionColors[reflection.AudioChanged])
-				}
-				if ref.AudioPhase0 {
-					imguiColorLabelSimple("Audio phase 0", win.img.cols.reflectionColors[reflection.AudioPhase0])
-				} else if ref.AudioPhase1 {
-					imguiColorLabelSimple("Audio phase 1", win.img.cols.reflectionColors[reflection.AudioPhase1])
-				}
-			} else {
-				imgui.Text("Audio unchanged")
-			}
 		case reflection.OverlayLabels[reflection.OverlayCoproc]:
 			coproc := win.img.cache.VCS.Mem.Cart.GetCoProc()
 			if coproc == nil {

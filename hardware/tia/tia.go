@@ -585,22 +585,12 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister, ct int) {
 
 	// late memory resolution
 	if update {
-		update = tia.Video.UpdateSpriteHMOVE(reg)
-
-		if update {
-			update = tia.Video.UpdateSpriteVariations(reg)
-
-			if update {
-				update = tia.Video.UpdateSpritePixels(reg)
-
-				if update {
-					update = tia.Audio.ReadMemRegisters(reg)
-
-					if update {
-						// update playfield color register (depending on TIA revision)
+		if tia.Video.UpdateSpriteHMOVE(reg) {
+			if tia.Video.UpdateSpriteVariations(reg) {
+				if tia.Video.UpdateSpritePixels(reg) {
+					if tia.Audio.ReadMemRegisters(reg) {
 						if tia.env.Prefs.Revision.Live.LateColor.Load().(bool) {
-							update = tia.Video.UpdatePlayfieldAndBackgroundColor(reg)
-							if update {
+							if tia.Video.UpdatePlayfieldAndBackgroundColor(reg) {
 								logger.Logf(tia.env, "tia", "memory altered to no affect (%04x=%02x)", reg.Address, reg.Value)
 							}
 						}
@@ -611,7 +601,7 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister, ct int) {
 	}
 
 	// mix audio and copy values to television signal
-	if tia.Audio.Step() {
+	if ct == 3 && tia.Audio.Step() {
 		tia.sig &= ^signal.AudioUpdate
 		tia.sig |= signal.AudioUpdate
 		tia.sig &= ^signal.AudioChannel0
@@ -787,7 +777,7 @@ func (tia *TIA) QuickStep(ct int) {
 	}
 
 	// mix audio and copy values to television signal
-	if tia.Audio.Step() {
+	if ct == 3 && tia.Audio.Step() {
 		tia.sig &= ^signal.AudioUpdate
 		tia.sig |= signal.AudioUpdate
 		tia.sig &= ^signal.AudioChannel0
