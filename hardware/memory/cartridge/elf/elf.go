@@ -26,9 +26,9 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/environment"
+	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/notifications"
 )
@@ -363,7 +363,7 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) error {
 	cart.mem.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)
 
 	// reset address with any mirror origin
-	const resetAddrAnyMirror = (cpubus.Reset & memorymap.CartridgeBits) | memorymap.OriginCart
+	const resetAddrAnyMirror = (cpu.Reset & memorymap.CartridgeBits) | memorymap.OriginCart
 
 	// if address is the reset address then trigger the reset procedure
 	if (addr&memorymap.CartridgeBits)|memorymap.OriginCart == resetAddrAnyMirror {

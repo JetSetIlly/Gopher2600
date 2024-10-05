@@ -23,8 +23,8 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
+	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -202,7 +202,7 @@ func (cart *atari) SetBank(bank string) error {
 		// make a better guess at the correct starting bank
 		if len(cart.banks) > 1 {
 			for b := 0; b < len(cart.banks); b++ {
-				reset := cpubus.Reset & memorymap.CartridgeBits
+				reset := cpu.Reset & memorymap.CartridgeBits
 				addr := uint16(cart.banks[b][reset]) | (uint16(cart.banks[b][reset+1]) << 8)
 				if memorymap.IsArea(addr, memorymap.Cartridge) {
 					// we also discount addresses that would not make sense even though they
@@ -216,7 +216,7 @@ func (cart *atari) SetBank(bank string) error {
 					//
 					// (masking with CartridgeBits as normal to make sure we can
 					// handle any cartridge mirror)
-					if addr&memorymap.CartridgeBits < cpubus.NMI&memorymap.CartridgeBits {
+					if addr&memorymap.CartridgeBits < cpu.NMI&memorymap.CartridgeBits {
 						cart.state.bank = b
 						break // for loop
 					}

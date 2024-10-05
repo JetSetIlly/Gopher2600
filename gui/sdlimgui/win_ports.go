@@ -177,11 +177,11 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT0")
 
 		imgui.TableNextColumn()
-		inpt0, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.INPT0])
+		inpt0, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddressByRegister[cpubus.INPT0])
 		drawRegister("##INPT0", inpt0, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.INPT0], v)
+					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddressByRegister[cpubus.INPT0], v)
 					if err != nil {
 						panic(err)
 					}
@@ -193,11 +193,11 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT1")
 
 		imgui.TableNextColumn()
-		inpt1, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.INPT1])
+		inpt1, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddressByRegister[cpubus.INPT1])
 		drawRegister("##INPT1", inpt1, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.INPT1], v)
+					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddressByRegister[cpubus.INPT1], v)
 					if err != nil {
 						panic(err)
 					}
@@ -211,11 +211,11 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT2")
 
 		imgui.TableNextColumn()
-		inpt2, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.INPT2])
+		inpt2, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddressByRegister[cpubus.INPT2])
 		drawRegister("##INPT2", inpt2, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.INPT2], v)
+					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddressByRegister[cpubus.INPT2], v)
 					if err != nil {
 						panic(err)
 					}
@@ -227,11 +227,11 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT3")
 
 		imgui.TableNextColumn()
-		inpt3, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.INPT3])
+		inpt3, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddressByRegister[cpubus.INPT3])
 		drawRegister("##INPT3", inpt3, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.INPT3], v)
+					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddressByRegister[cpubus.INPT3], v)
 					if err != nil {
 						panic(err)
 					}
@@ -245,11 +245,11 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT4")
 
 		imgui.TableNextColumn()
-		inpt4, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.INPT4])
+		inpt4, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddressByRegister[cpubus.INPT4])
 		drawRegister("##INPT4", inpt4, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.INPT4], v)
+					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddressByRegister[cpubus.INPT4], v)
 					if err != nil {
 						panic(err)
 					}
@@ -261,11 +261,11 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT5")
 
 		imgui.TableNextColumn()
-		inpt5, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.INPT5])
+		inpt5, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddressByRegister[cpubus.INPT5])
 		drawRegister("##INPT5", inpt5, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddress[cpubus.INPT5], v)
+					err := win.img.dbg.VCS().Mem.Poke(cpubus.ReadAddressByRegister[cpubus.INPT5], v)
 					if err != nil {
 						panic(err)
 					}

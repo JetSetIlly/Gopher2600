@@ -24,7 +24,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/input"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
@@ -98,7 +97,7 @@ func NewVCS(label environment.Label, tv *television.Television, notify notificat
 	}
 
 	vcs.Mem = memory.NewMemory(vcs.Env)
-	vcs.CPU = cpu.NewCPU(vcs.Env, vcs.Mem)
+	vcs.CPU = cpu.NewCPU(vcs.Mem)
 	vcs.RIOT = riot.NewRIOT(vcs.Env, vcs.Mem.RIOT, vcs.Mem.TIA)
 
 	vcs.Input = input.NewInput(vcs.TV, vcs.RIOT.Ports)
@@ -219,8 +218,18 @@ func (vcs *VCS) Reset() error {
 	// update memory to the current state of the peripherals
 	vcs.RIOT.Ports.ResetPeripherals()
 
+	// randomise CPU registers
+	if vcs.Env.Prefs.RandomState.Get().(bool) {
+		vcs.CPU.PC.Load(uint16(vcs.Env.Random.NoRewind(0xffff)))
+		vcs.CPU.A.Load(uint8(vcs.Env.Random.NoRewind(0xff)))
+		vcs.CPU.X.Load(uint8(vcs.Env.Random.NoRewind(0xff)))
+		vcs.CPU.Y.Load(uint8(vcs.Env.Random.NoRewind(0xff)))
+		vcs.CPU.SP.Load(uint8(vcs.Env.Random.NoRewind(0xff)))
+		vcs.CPU.Status.Load(uint8(vcs.Env.Random.NoRewind(0xff)))
+	}
+
 	// reset PC using reset address in cartridge memory
-	err = vcs.CPU.LoadPCIndirect(cpubus.Reset)
+	err = vcs.CPU.LoadPCIndirect(cpu.Reset)
 	if err != nil {
 		if !errors.Is(err, cartridge.Ejected) {
 			return err

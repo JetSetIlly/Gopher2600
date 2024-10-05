@@ -19,19 +19,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // CPU implements the 6507 found as found in the Atari 2600. Register logic is
 // implemented by the Register type in the registers sub-package.
 type CPU struct {
-	env *environment.Environment
-
 	PC     registers.ProgramCounter
 	A      registers.Register
 	X      registers.Register
@@ -43,7 +38,7 @@ type CPU struct {
 	acc8  registers.Register
 	acc16 registers.ProgramCounter
 
-	mem          cpubus.Memory
+	mem          Memory
 	instructions []*instructions.Definition
 
 	// cycleCallback is called for additional emulator functionality
@@ -84,11 +79,28 @@ type CPU struct {
 	Killed bool
 }
 
+const (
+	// NMI is the address where the non-maskable interrupt address is stored.
+	NMI = uint16(0xfffa)
+
+	// Reset is the address where the reset address is stored.
+	Reset = uint16(0xfffc)
+
+	// BRK is the address where the interrupt address is stored.
+	BRK = uint16(0xfffe)
+)
+
+// Memory interface to underlying implmentation. See MemoryAddressError
+// interface for optional functions
+type Memory interface {
+	Read(address uint16) (uint8, error)
+	Write(address uint16, data uint8) error
+}
+
 // NewCPU is the preferred method of initialisation for the CPU structure. Note
 // that the CPU will be initialised in a random state.
-func NewCPU(env *environment.Environment, mem cpubus.Memory) *CPU {
+func NewCPU(mem Memory) *CPU {
 	return &CPU{
-		env:          env,
 		mem:          mem,
 		PC:           registers.NewProgramCounter(0),
 		A:            registers.NewRegister(0, "A"),
@@ -109,8 +121,7 @@ func (mc *CPU) Snapshot() *CPU {
 }
 
 // Plumb CPU into emulation
-func (mc *CPU) Plumb(env *environment.Environment, mem cpubus.Memory) {
-	mc.env = env
+func (mc *CPU) Plumb(mem Memory) {
 	mc.mem = mem
 }
 
@@ -133,24 +144,12 @@ func (mc *CPU) Reset() {
 	mc.Interrupted = true
 	mc.Killed = false
 
-	// nil checks because it's possibel for NewCPU to be called with a nil
-	// environment (disassembly) or with nil Prefs instance in the environment
-	// (test package)
-	if mc.env != nil && mc.env.Prefs != nil && mc.env.Prefs.RandomState.Get().(bool) {
-		mc.PC.Load(uint16(mc.env.Random.NoRewind(0xffff)))
-		mc.A.Load(uint8(mc.env.Random.NoRewind(0xff)))
-		mc.X.Load(uint8(mc.env.Random.NoRewind(0xff)))
-		mc.Y.Load(uint8(mc.env.Random.NoRewind(0xff)))
-		mc.SP.Load(uint8(mc.env.Random.NoRewind(0xff)))
-		mc.Status.Load(uint8(mc.env.Random.NoRewind(0xff)))
-	} else {
-		mc.PC.Load(0)
-		mc.A.Load(0)
-		mc.X.Load(0)
-		mc.Y.Load(0)
-		mc.SP.Load(0xff)
-		mc.Status.Reset()
-	}
+	mc.PC.Load(0)
+	mc.A.Load(0)
+	mc.X.Load(0)
+	mc.Y.Load(0)
+	mc.SP.Load(0xff)
+	mc.Status.Reset()
 
 	mc.Status.Zero = mc.A.IsZero()
 	mc.Status.Sign = mc.A.IsNegative()
@@ -177,18 +176,12 @@ func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 
 	lo, err := mc.mem.Read(indirectAddress)
 	if err != nil {
-		if !errors.Is(err, cpubus.AddressError) {
-			return err
-		}
-		mc.LastResult.Error = err.Error()
+		return err
 	}
 
 	hi, err := mc.mem.Read(indirectAddress + 1)
 	if err != nil {
-		if !errors.Is(err, cpubus.AddressError) {
-			return err
-		}
-		mc.LastResult.Error = err.Error()
+		return err
 	}
 
 	mc.PC.Load((uint16(hi) << 8) | uint16(lo))
@@ -216,10 +209,7 @@ func (mc *CPU) read8Bit(address uint16, phantom bool) (uint8, error) {
 
 	val, err := mc.mem.Read(address)
 	if err != nil {
-		if !errors.Is(err, cpubus.AddressError) {
-			return 0, err
-		}
-		mc.LastResult.Error = err.Error()
+		return 0, err
 	}
 
 	// +1 cycle
@@ -240,10 +230,7 @@ func (mc *CPU) write8Bit(address uint16, value uint8, phantom bool) error {
 
 	err := mc.mem.Write(address, value)
 	if err != nil {
-		if !errors.Is(err, cpubus.AddressError) {
-			return err
-		}
-		mc.LastResult.Error = err.Error()
+		return err
 	}
 
 	return nil
@@ -258,10 +245,7 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 
 	lo, err := mc.mem.Read(address)
 	if err != nil {
-		if !errors.Is(err, cpubus.AddressError) {
-			return 0, err
-		}
-		mc.LastResult.Error = err.Error()
+		return 0, err
 	}
 
 	// +1 cycle
@@ -273,10 +257,7 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 
 	hi, err := mc.mem.Read(address + 1)
 	if err != nil {
-		if !errors.Is(err, cpubus.AddressError) {
-			return 0, err
-		}
-		mc.LastResult.Error = err.Error()
+		return 0, err
 	}
 
 	// +1 cycle
@@ -311,10 +292,7 @@ func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 	v, err := mc.mem.Read(mc.PC.Address())
 
 	if err != nil {
-		if !errors.Is(err, cpubus.AddressError) {
-			return err
-		}
-		mc.LastResult.Error = err.Error()
+		return err
 	}
 
 	// ignoring if program counter cycling
@@ -373,10 +351,7 @@ func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 func (mc *CPU) read16BitPC() error {
 	lo, err := mc.mem.Read(mc.PC.Address())
 	if err != nil {
-		if !errors.Is(err, cpubus.AddressError) {
-			return err
-		}
-		mc.LastResult.Error = err.Error()
+		return err
 	}
 
 	// ignoring if program counter cycling
@@ -397,10 +372,7 @@ func (mc *CPU) read16BitPC() error {
 
 	hi, err := mc.mem.Read(mc.PC.Address())
 	if err != nil {
-		if !errors.Is(err, cpubus.AddressError) {
-			return err
-		}
-		mc.LastResult.Error = err.Error()
+		return err
 	}
 
 	// ignoring if program counter cycling
@@ -678,20 +650,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 			lo, err = mc.mem.Read(indirectAddress)
 			if err != nil {
-				if !errors.Is(err, cpubus.AddressError) {
-					return err
-				}
-				mc.LastResult.Error = err.Error()
+				return err
 			}
 
 			// +1 cycle
 			mc.LastResult.Cycles++
 			err = mc.cycleCallback()
 			if err != nil {
-				if !errors.Is(err, cpubus.AddressError) {
-					return err
-				}
-				mc.LastResult.Error = err.Error()
 				return err
 			}
 
@@ -1453,7 +1418,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// perform jump
 		var brkAddress uint16
-		brkAddress, err = mc.read16Bit(cpubus.BRK)
+		brkAddress, err = mc.read16Bit(BRK)
 		if err != nil {
 			return err
 		}
@@ -1712,7 +1677,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	case instructions.KIL:
 		if !mc.NoFlowControl {
 			mc.Killed = true
-			logger.Logf(mc.env, "CPU", "KIL instruction (%#04x)", mc.PC.Address())
 		}
 
 	default:

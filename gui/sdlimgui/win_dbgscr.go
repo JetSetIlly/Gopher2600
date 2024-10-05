@@ -699,14 +699,14 @@ func (win *winDbgScr) drawReflectionTooltip() {
 
 			// TODO: these bits are the current bits and not the bits under the cursor
 
-			cxm0p, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXM0P])
-			cxm1p, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXM1P])
-			cxp0fb, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXP0FB])
-			cxp1fb, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXP1FB])
-			cxm0fb, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXM0FB])
-			cxm1fb, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXM1FB])
-			cxblpf, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXBLPF])
-			cxppmm, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddress[cpubus.CXPPMM])
+			cxm0p, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddressByRegister[cpubus.CXM0P])
+			cxm1p, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddressByRegister[cpubus.CXM1P])
+			cxp0fb, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddressByRegister[cpubus.CXP0FB])
+			cxp1fb, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddressByRegister[cpubus.CXP1FB])
+			cxm0fb, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddressByRegister[cpubus.CXM0FB])
+			cxm1fb, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddressByRegister[cpubus.CXM1FB])
+			cxblpf, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddressByRegister[cpubus.CXBLPF])
+			cxppmm, _ := win.img.cache.VCS.Mem.Peek(cpubus.ReadAddressByRegister[cpubus.CXPPMM])
 
 			imguiLabel("CXM0P ")
 			drawRegister("##CXM0P", cxm0p, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)

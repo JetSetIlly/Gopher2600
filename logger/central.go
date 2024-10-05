@@ -37,7 +37,7 @@ func Log(perm Permission, tag string, detail any) {
 
 // Logf adds a new entry to the central logger. The detail string is interpreted
 // as a formatting string as described by the fmt package
-func Logf(perm Permission, tag, detail string, args ...interface{}) {
+func Logf(perm Permission, tag, detail string, args ...any) {
 	central.Logf(perm, tag, detail, args...)
 }
 

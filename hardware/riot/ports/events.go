@@ -83,7 +83,7 @@ var PowerOff = errors.New("emulated machine has been powered off")
 // be restricted to bool, float32, or int. string is also acceptable but for
 // simplicity of playback parsers, the strings "true" or "false" should not be
 // used and numbers should be represented by float32 or int never as a string.
-type EventData interface{}
+type EventData any
 
 // EventData is from playback file and will need further parsing.
 type EventDataPlayback string

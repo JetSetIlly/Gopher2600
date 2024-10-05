@@ -69,9 +69,6 @@ type Result struct {
 	// whether a known buggy code path (in the emulated CPU) was triggered
 	CPUBug string
 
-	// error string. will be a memory access error
-	Error string
-
 	// whether branch instruction test passed (ie. branched) or not. testing of
 	// this field should be used in conjunction with Defn.IsBranch()
 	BranchSuccess bool
@@ -90,7 +87,6 @@ func (r *Result) Reset() {
 	r.Cycles = 0
 	r.PageFault = false
 	r.CPUBug = ""
-	r.Error = ""
 	r.Final = false
 }
 

@@ -20,40 +20,9 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 )
-
-// DebugBus defines the meta-operations for all memory areas. Think of these
-// functions as "debugging" functions, that is operations outside of the normal
-// operation of the machine.
-type DebugBus interface {
-	Read(address uint16) (uint8, uint8, error)
-	Write(address uint16, data uint8) error
-	Peek(address uint16) (uint8, error)
-	Poke(address uint16, value uint8) error
-}
-
-// Note that in many cases poking a register will not have the effect you might
-// imagine. It is often better, therefore, to affect a "field" rather than a
-// single address. This is because poking doesn't change the state of the
-// hardware that leads to the value that is eventually put into the register.
-//
-// For hardware components where this is important the functions PeekField()
-// and PokeField() are provided.
-//
-// The field argument and value type is component specific. The allowed values
-// and types for each field will be provided in the documentation of the
-// DebugFieldBus implemention.
-//
-// Note that unlike the functions in the DebugBus interface, these functions
-// will not return an error. The functions should panic on any unexpected
-// error.
-type FieldBus interface {
-	PeekField(field string) interface{}
-	PokeField(field string, value interface{})
-}
 
 // Memory is the monolithic representation of the memory in 2600.
 type Memory struct {
@@ -135,8 +104,16 @@ func (mem *Memory) Reset() {
 	mem.Cart.Reset()
 }
 
+// Area defines the meta-operations for all memory areas
+type Area interface {
+	Read(address uint16) (uint8, uint8, error)
+	Write(address uint16, data uint8) error
+	Peek(address uint16) (uint8, error)
+	Poke(address uint16, value uint8) error
+}
+
 // GetArea returns the actual memory of the specified area type.
-func (mem *Memory) GetArea(area memorymap.Area) DebugBus {
+func (mem *Memory) GetArea(area memorymap.Area) Area {
 	switch area {
 	case memorymap.TIA:
 		return mem.TIA
@@ -147,7 +124,6 @@ func (mem *Memory) GetArea(area memorymap.Area) DebugBus {
 	case memorymap.Cartridge:
 		return mem.Cart
 	}
-
 	panic("memory areas are not mapped correctly")
 }
 
@@ -273,17 +249,11 @@ func (mem *Memory) Write(address uint16, data uint8) error {
 // Peek implements the DebugBus interface.
 func (mem *Memory) Peek(address uint16) (uint8, error) {
 	ma, ar := memorymap.MapAddress(address, true)
-	if area, ok := mem.GetArea(ar).(DebugBus); ok {
-		return area.Peek(ma)
-	}
-	return 0, fmt.Errorf("%w: %04x", cpubus.AddressError, address)
+	return mem.GetArea(ar).Peek(ma)
 }
 
 // Poke implements the DebugBus interface.
 func (mem *Memory) Poke(address uint16, data uint8) error {
 	ma, ar := memorymap.MapAddress(address, true)
-	if area, ok := mem.GetArea(ar).(DebugBus); ok {
-		return area.Poke(ma, data)
-	}
-	return fmt.Errorf("%w: %04x", cpubus.AddressError, address)
+	return mem.GetArea(ar).Poke(ma, data)
 }

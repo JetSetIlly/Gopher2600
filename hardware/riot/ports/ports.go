@@ -25,7 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
-// Input implements the input/output part of the RIOT (the IO in RIOT).
+// Input implements the input/output part of the RIOT (the IO in RIOT)
 type Ports struct {
 	env *environment.Environment
 
@@ -46,10 +46,10 @@ type Ports struct {
 
 	// the swcha_w field is a copy of the SWCHA register as it was written
 	// by the CPU. it is not necessarily the value of SWCHA as written by the
-	// RIOT.
+	// RIOT
 	//
 	// we need this so that changing the SWACNT (by the CPU) will cause the
-	// correct value to be written to be written to the SWCHA register.
+	// correct value to be written to be written to the SWCHA register
 	//
 	// we can think of these as the input lines that are used in conjunction
 	// with the SWACNT bits to create the SWCHA register
@@ -64,7 +64,7 @@ type Ports struct {
 	swcha_mux uint8
 
 	// port B equivalents of the above. there is no swchbMux field because only
-	// one peripheral uses port B at a time.
+	// one peripheral uses port B at a time
 	//
 	// there is a swchb_raw however. this is the value as written by the
 	// peripheral (the panel) before SWBCNT has been applied to it
@@ -76,7 +76,7 @@ type Ports struct {
 	peripheralsMuted bool
 }
 
-// NewPorts is the preferred method of initialisation of the Ports type.
+// NewPorts is the preferred method of initialisation of the Ports type
 func NewPorts(env *environment.Environment, riotMem chipbus.Memory, tiaMem chipbus.Memory) *Ports {
 	p := &Ports{
 		env:   env,
@@ -99,7 +99,7 @@ func (p *Ports) End() {
 	}
 }
 
-// Snapshot returns a copy of the RIOT Ports sub-system in its current state.
+// Snapshot returns a copy of the RIOT Ports sub-system in its current state
 func (p *Ports) Snapshot() *Ports {
 	n := *p
 	n.Panel = p.Panel.Snapshot()
@@ -110,7 +110,7 @@ func (p *Ports) Snapshot() *Ports {
 
 // Plumb new ChipBusses into the Ports sub-system. Depending on context it
 // might be advisable for ResetPeripherals() to be called after plumbing has
-// succeeded.
+// succeeded
 func (p *Ports) Plumb(riotMem chipbus.Memory, tiaMem chipbus.Memory) {
 	p.riot = riotMem
 	p.tia = tiaMem
@@ -125,7 +125,7 @@ func (p *Ports) Plumb(riotMem chipbus.Memory, tiaMem chipbus.Memory) {
 	}
 }
 
-// Plug connects a peripheral to a player port.
+// Plug connects a peripheral to a player port
 func (p *Ports) Plug(port plugging.PortID, c NewPeripheral) error {
 	periph := c(p.env, port, p)
 	if periph == nil {
@@ -192,14 +192,14 @@ func (p *Ports) String() string {
 
 // mutePeripheral is implemented by peripherals that produce audio independent
 // of the emulators sound output. This is useful for implementations that call
-// on third-party applications/processes to produce output.
+// on third-party applications/processes to produce output
 //
 // used exclusively by the MutePeripherals() function
 type mutePeripheral interface {
 	Mute(bool)
 }
 
-// MutePeripherals sets the mute state of peripherals that implement the mutePeripheral interface.
+// MutePeripherals sets the mute state of peripherals that implement the mutePeripheral interface
 func (p *Ports) MutePeripherals(muted bool) {
 	if r, ok := p.LeftPlayer.(mutePeripheral); ok {
 		r.Mute(muted)
@@ -211,7 +211,7 @@ func (p *Ports) MutePeripherals(muted bool) {
 }
 
 // RestartPeripherals calls restart on any attached peripherals that implement
-// that the RestartPeripheral interface.
+// that the RestartPeripheral interface
 func (p *Ports) RestartPeripherals() {
 	if r, ok := p.LeftPlayer.(RestartPeripheral); ok {
 		r.Restart()
@@ -225,7 +225,7 @@ func (p *Ports) RestartPeripherals() {
 }
 
 // DisabledPeripherals calls restart on any attached peripherals that implement
-// that DisablePeripheral interface.
+// that DisablePeripheral interface
 func (p *Ports) DisablePeripherals(disabled bool) {
 	if r, ok := p.LeftPlayer.(DisablePeripheral); ok {
 		r.Disable(disabled)
@@ -238,7 +238,7 @@ func (p *Ports) DisablePeripherals(disabled bool) {
 	}
 }
 
-// ResetPeripherals to an initial state.
+// ResetPeripherals to an initial state
 func (p *Ports) ResetPeripherals() {
 	if p.LeftPlayer != nil {
 		p.LeftPlayer.Reset()
@@ -253,7 +253,7 @@ func (p *Ports) ResetPeripherals() {
 
 // Update checks to see if ChipData applies to the Input type and updates the
 // internal controller/panel states accordingly. Returns true if ChipData
-// requires more attention.
+// requires more attention
 func (p *Ports) Update(data chipbus.ChangedRegister) bool {
 	switch data.Register {
 	case cpubus.VBLANK:
@@ -268,7 +268,7 @@ func (p *Ports) Update(data chipbus.ChangedRegister) bool {
 
 		// mask value and set SWCHA register. some peripherals may call
 		// WriteSWCHx() as part of the Update() function which will write over
-		// this value.
+		// this value
 		//
 		// we should think of this write as the default event in case the
 		// peripheral chooses to do nothing with the new value
@@ -291,7 +291,7 @@ func (p *Ports) Update(data chipbus.ChangedRegister) bool {
 		swcha := ^(p.riot.ChipRefer(chipbus.SWACNT)) | p.swcha_w
 		p.riot.ChipWrite(chipbus.SWCHA, swcha)
 
-		// adjusting SWACNT also affects the SWCHA lines to the peripheral.
+		// adjusting SWACNT also affects the SWCHA lines to the peripheral
 		// adjust SWCHA lines and update peripheral with new SWCHA data
 		data = chipbus.ChangedRegister{
 			Register: cpubus.SWCHA,
@@ -312,9 +312,9 @@ func (p *Ports) Update(data chipbus.ChangedRegister) bool {
 	return false
 }
 
-// Step input state forward one cycle.
+// Step input state forward one cycle
 func (p *Ports) Step() {
-	// not much to do here because most input operations happen on demand.
+	// not much to do here because most input operations happen on demand
 	// recharging of the paddle capacitors however happens (a little bit) every
 	// step. also savekey needs to be processed every cycle
 	if p.LeftPlayer != nil {
@@ -326,7 +326,7 @@ func (p *Ports) Step() {
 	p.Panel.Step()
 }
 
-// AttchPlugMonitor implements the plugging.Monitorable interface.
+// AttchPlugMonitor implements the plugging.Monitorable interface
 func (p *Ports) AttachPlugMonitor(m plugging.PlugMonitor) {
 	p.monitor = m
 
@@ -348,7 +348,7 @@ func (p *Ports) AttachPlugMonitor(m plugging.PlugMonitor) {
 	}
 }
 
-// PeripheralID returns the ID of the peripheral in the identified port.
+// PeripheralID returns the ID of the peripheral in the identified port
 func (p *Ports) PeripheralID(id plugging.PortID) plugging.PeripheralID {
 	switch id {
 	case plugging.PortPanel:
@@ -362,7 +362,7 @@ func (p *Ports) PeripheralID(id plugging.PortID) plugging.PeripheralID {
 	return plugging.PeriphNone
 }
 
-// WriteSWCHx implements the peripheral.PeripheralBus interface.
+// WriteSWCHx implements the peripheral.PeripheralBus interface
 func (p *Ports) WriteSWCHx(id plugging.PortID, data uint8) {
 	switch id {
 	case plugging.PortLeft:
@@ -383,7 +383,7 @@ func (p *Ports) WriteSWCHx(id plugging.PortID, data uint8) {
 	}
 }
 
-// WriteINPTx implements the peripheral.PeripheralBus interface.
+// WriteINPTx implements the peripheral.PeripheralBus interface
 func (p *Ports) WriteINPTx(inptx chipbus.Register, data uint8) {
 	// the VBLANK latch bit only applies to INPT4 and INPT5
 	latch := false
@@ -399,7 +399,7 @@ func (p *Ports) WriteINPTx(inptx chipbus.Register, data uint8) {
 }
 
 // HandleInputEvent forwards the InputEvent to the perupheral in the correct
-// port. Returns true if the event was handled and false if not.
+// port. Returns true if the event was handled and false if not
 func (p *Ports) HandleInputEvent(inp InputEvent) (bool, error) {
 	var handled bool
 	var err error
@@ -421,11 +421,11 @@ func (p *Ports) HandleInputEvent(inp InputEvent) (bool, error) {
 	return handled, nil
 }
 
-// PeekField returns the value of the named field.
+// PeekField returns the value of the named field
 //
 // This is the same as a Peek() on the equivalent memory location in most
 // cases, but there are a couple of fields that are not directly associated
-// with a memory location.
+// with a memory location
 //
 // swacnt, swcha, swacnt and swbcnt are directly as they would be if read by
 // Peek()
@@ -435,10 +435,10 @@ func (p *Ports) HandleInputEvent(inp InputEvent) (bool, error) {
 //
 // swcha_derived is the value SWCHA should be if the RIOT ports logic hasn't
 // been interfered with. swcha_derived and swcha may be unequal because of a
-// Poke() or PokeField("swcha").
+// Poke() or PokeField("swcha")
 //
-// swchb_derived is the same as swcha_derived except for SWCHB register.
-func (p *Ports) PeekField(fld string) interface{} {
+// swchb_derived is the same as swcha_derived except for SWCHB register
+func (p *Ports) PeekField(fld string) any {
 	switch fld {
 	case "swcha_w":
 		return p.swcha_w
@@ -462,11 +462,11 @@ func (p *Ports) PeekField(fld string) interface{} {
 	panic(fmt.Sprintf("Ports.PeekField: unknown field: %s", fld))
 }
 
-// PokeField sets the named field with a new value.
+// PokeField sets the named field with a new value
 //
 // Fieldnames the same as described for PeekField() except that you cannot
-// update the swchb_derived field.
-func (p *Ports) PokeField(fld string, v interface{}) {
+// update the swchb_derived field
+func (p *Ports) PokeField(fld string, v any) {
 	switch fld {
 	case "swcha_w":
 		p.swcha_w = v.(uint8)
@@ -517,7 +517,7 @@ func (p *Ports) deriveSWCHA() uint8 {
 }
 
 // the derived value of SWCHB. the value it should be if the RIOT logic has
-// proceeded normally (ie. no poking).
+// proceeded normally (ie. no poking)
 //
 //	SWCHB_W   SWBCNT   <input>      SWCHB
 //	   0        0         1           1            ^SWCHB_W & ^SWBCNT & <input>

@@ -34,7 +34,7 @@ type DbgMem struct {
 }
 
 // GetAddressInfo allows addressing by symbols in addition to numerically.
-func (dbgmem DbgMem) GetAddressInfo(address interface{}, read bool) *AddressInfo {
+func (dbgmem DbgMem) GetAddressInfo(address any, read bool) *AddressInfo {
 	ai := &AddressInfo{Read: read}
 
 	var searchTable symbols.SearchTable
@@ -102,7 +102,7 @@ var PokeError = errors.New("cannot poke address")
 
 // Peek returns the contents of the memory address, without triggering any side
 // effects. The supplied address can be numeric of symbolic.
-func (dbgmem DbgMem) Peek(address interface{}) (*AddressInfo, error) {
+func (dbgmem DbgMem) Peek(address any) (*AddressInfo, error) {
 	ai := dbgmem.GetAddressInfo(address, true)
 	if ai == nil {
 		return nil, fmt.Errorf("%w: %v", PeekError, address)
@@ -126,7 +126,7 @@ func (dbgmem DbgMem) Peek(address interface{}) (*AddressInfo, error) {
 
 // Poke writes a value at the specified address. The supplied address be
 // numeric or symbolic.
-func (dbgmem DbgMem) Poke(address interface{}, data uint8) (*AddressInfo, error) {
+func (dbgmem DbgMem) Poke(address any, data uint8) (*AddressInfo, error) {
 	// although the words "read" and "write" might lead us to think that we
 	// "peek" from "read" addresses and "poke" to "write" addresses, it is in
 	// fact necessary to treat "poke" addresses as "read" addresses

@@ -40,7 +40,7 @@ type cachedVCS struct {
 
 // plumbing is necessary to make sure that pointers to memory etc. are correct
 func (vcs cachedVCS) plumb(env *environment.Environment) {
-	vcs.CPU.Plumb(env, vcs.Mem)
+	vcs.CPU.Plumb(vcs.Mem)
 	vcs.Mem.Plumb(env, true)
 	vcs.RIOT.Plumb(env, vcs.Mem.RIOT, vcs.Mem.TIA)
 	vcs.TIA.Plumb(env, nil, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)

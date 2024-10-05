@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	rtest "github.com/jetsetilly/gopher2600/hardware/cpu/registers/test"
 	"github.com/jetsetilly/gopher2600/test"
@@ -55,6 +54,11 @@ func (mem *testMem) Clear() {
 	for i := 0; i < len(mem.internal); i++ {
 		mem.internal[i] = 0
 	}
+}
+
+func (mem *testMem) IsAddressError(_ error) bool {
+	// test memory never returns an address error
+	return false
 }
 
 func (mem testMem) Read(address uint16) (uint8, error) {
@@ -621,7 +625,7 @@ func testKIL(t *testing.T, mc *cpu.CPU, mem *testMem) {
 
 func TestCPU(t *testing.T) {
 	mem := newTestMem()
-	mc := cpu.NewCPU(&environment.Environment{}, mem)
+	mc := cpu.NewCPU(mem)
 
 	testStatusInstructions(t, mc, mem)
 	testRegsiterArithmetic(t, mc, mem)

@@ -288,7 +288,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 	// - if it is not a valid type value, try to change the target
 	tok, present := tokens.Get()
 	for present {
-		var val interface{}
+		var val any
 		var err error
 
 		// try to interpret the token depending on the type of value the target

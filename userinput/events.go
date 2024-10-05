@@ -21,7 +21,7 @@ import "github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 //
 // Events are the things that happen in the GUI, as a result of user interaction,
 // and sent over a registered event channel.
-type Event interface{}
+type Event any
 
 // EventQuit is sent, for example, when the GUI window is closed.
 type EventQuit struct{}

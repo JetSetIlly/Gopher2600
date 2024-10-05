@@ -34,16 +34,16 @@ func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
 	// note that because Read and Write in the cpubus package are sparse
 	// arrays we need to filter out the empty entries. (the Read and Write
 	// structures used to be maps and we didn't need to do this)
-	for k, v := range cpubus.TIAReadSymbols {
+	for k, v := range cpubus.TIAReadRegisters {
 		sym.read.add(SourceSystem, k, string(v))
 	}
-	for k, v := range cpubus.RIOTReadSymbols {
+	for k, v := range cpubus.RIOTReadRegisters {
 		sym.read.add(SourceSystem, k, string(v))
 	}
-	for k, v := range cpubus.TIAWriteSymbols {
+	for k, v := range cpubus.TIAWriteRegisters {
 		sym.write.add(SourceSystem, k, string(v))
 	}
-	for k, v := range cpubus.RIOTWriteSymbols {
+	for k, v := range cpubus.RIOTWriteRegisters {
 		sym.write.add(SourceSystem, k, string(v))
 	}
 

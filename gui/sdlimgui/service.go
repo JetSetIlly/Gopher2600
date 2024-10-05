@@ -446,7 +446,7 @@ func (img *SdlImgui) renderFrame() {
 // bug described here with suggested fix:
 //
 // https://stackoverflow.com/questions/34967628/sdl2-window-turns-black-on-resize
-func (img *SdlImgui) serviceWindowEvent(ev sdl.Event, userdata interface{}) bool {
+func (img *SdlImgui) serviceWindowEvent(ev sdl.Event, userdata any) bool {
 	switch ev := ev.(type) {
 	case *sdl.WindowEvent:
 		switch ev.Event {

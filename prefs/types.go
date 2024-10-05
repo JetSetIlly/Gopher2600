@@ -24,7 +24,7 @@ import (
 )
 
 // Value represents the actual Go preference value.
-type Value interface{}
+type Value any
 
 // types support by the prefs system must implement the pref interface.
 type pref interface {

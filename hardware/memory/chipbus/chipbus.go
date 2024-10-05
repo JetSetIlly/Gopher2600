@@ -18,7 +18,7 @@ package chipbus
 import "github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 
 // ChangedRegister packages together the name of the chip register that has been
-// changed by the CPU along with the new value.
+// changed by the CPU along with the new value
 type ChangedRegister struct {
 	// the address of the register
 	Address uint16
@@ -35,12 +35,8 @@ type ChangedRegister struct {
 }
 
 // Memory defines the operations for the memory system when accessed from the
-// VCS chips (TIA, RIOT).
+// VCS chips (TIA, RIOT)
 type Memory interface {
-	// ChipHasChanged checks to see if the chip's memory area has been written to. if
-	// it has the function returns true and an instance of ChipData
-	ChipHasChanged() (ChangedRegister, bool)
-
 	// ChipWrite writes the data to the chip memory
 	ChipWrite(reg Register, data uint8)
 
@@ -53,8 +49,48 @@ type Memory interface {
 
 	// LastReadAddress returns true and the address of the last read by the
 	// CPU. Returns false if no read has taken place since the last call to the
-	// funtion.
+	// function.
 	//
 	// Only used by the RIOT timer.
 	LastReadAddress() (bool, uint16)
 }
+
+// Register specifies the offset of a chip register in the chip memory areas. It
+// is used in contexts where a register is required, as opposed to an address
+type Register int
+
+// TIA registers
+//
+// These value are used by the emulator to specify known addresses. For
+// example, when writing collision information we know we need the CXM0P
+// register. these named values make the code more readable
+const (
+	CXM0P Register = iota
+	CXM1P
+	CXP0FB
+	CXP1FB
+	CXM0FB
+	CXM1FB
+	CXBLPF
+	CXPPMM
+	INPT0
+	INPT1
+	INPT2
+	INPT3
+	INPT4
+	INPT5
+)
+
+// RIOT registers
+//
+// These value are used by the emulator to specify known addresses. For
+// example, the timer updates itself every cycle and stores time remaining
+// value in the INTIM register
+const (
+	SWCHA Register = iota
+	SWACNT
+	SWCHB
+	SWBCNT
+	INTIM
+	TIMINT
+)

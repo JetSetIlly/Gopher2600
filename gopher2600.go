@@ -80,7 +80,7 @@ const (
 
 type stateRequest struct {
 	req  stateReq
-	args interface{}
+	args any
 }
 
 // the gui create function. paired with reqCreateGUI state request.

@@ -14,7 +14,7 @@
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
 // Package chipbus defines the operations, addresses and symbols that are
-// required by the TIA and RIOT chips when updated values in memory.
+// required by the TIA and RIOT chips when accessing memory.
 //
 // Another way to think of this is: the operations, etc. that are required to
 // interface with the VCS memory from the perspective of the TIA and RIOT

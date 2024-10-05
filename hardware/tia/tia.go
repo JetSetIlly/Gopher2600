@@ -58,7 +58,6 @@ type TIA struct {
 
 	cpu CPU
 	tv  TV
-	mem chipbus.Memory
 
 	// the VBLANK register also affects the RIOT sub-system
 	riot RIOTports
@@ -140,7 +139,6 @@ func NewTIA(env *environment.Environment, tv TV, mem chipbus.Memory, riot RIOTpo
 		env:    env,
 		cpu:    cpu,
 		tv:     tv,
-		mem:    mem,
 		riot:   riot,
 		Hblank: true,
 	}
@@ -169,9 +167,8 @@ func (tia *TIA) Plumb(env *environment.Environment, tv TV, mem chipbus.Memory, r
 	tia.env = env
 	tia.cpu = cpu
 	tia.tv = tv
-	tia.mem = mem
 	tia.riot = riot
-	tia.Video.Plumb(tia.env, tia.mem, tia.tv, &tia.PClk, &tia.hsync, &tia.Hblank, &tia.Hmove)
+	tia.Video.Plumb(tia.env, mem, tia.tv, &tia.PClk, &tia.hsync, &tia.Hblank, &tia.Hmove)
 	tia.Audio.Plumb(tia.env)
 }
 

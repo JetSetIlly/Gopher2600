@@ -62,7 +62,7 @@ func (fz *fuzzyFilter) activate() {
 	fz.active = true
 }
 
-func (fz *fuzzyFilter) draw(label string, choices interface{}, onChange func(int), allowEmptyFilter bool) bool {
+func (fz *fuzzyFilter) draw(label string, choices any, onChange func(int), allowEmptyFilter bool) bool {
 	if !fz.active {
 		fz.active = true
 		fz.refocusKeyboard = true

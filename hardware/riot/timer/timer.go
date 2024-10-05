@@ -1,4 +1,4 @@
-// Tjis file is part of Gopher2600.
+// This file is part of Gopher2600.
 //
 // Gopher2600 is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 )
 
-// Divider indicates how often (in CPU cycles) the timer value decreases.
+// Divider indicates how often (in CPU cycles) the timer value decreases
 // the following rules apply:
 //   - set to 1, 8, 64 or 1024 depending on which address has been
 //     written to by the CPU
@@ -33,7 +33,7 @@ import (
 //     is read by the CPU
 type Divider int
 
-// List of valid Divider values.
+// List of valid Divider values
 const (
 	TIM1T  Divider = 1
 	TIM8T  Divider = 8
@@ -57,7 +57,7 @@ func (in Divider) String() string {
 	return ""
 }
 
-// Timer implements the timer part of the PIA 6532 (the T in RIOT).
+// Timer implements the timer part of the PIA 6532 (the T in RIOT)
 type Timer struct {
 	mem chipbus.Memory
 
@@ -81,7 +81,7 @@ type Timer struct {
 	ticksRemaining int
 }
 
-// NewTimer is the preferred method of initialisation of the Timer type.
+// NewTimer is the preferred method of initialisation of the Timer type
 func NewTimer(env *environment.Environment, mem chipbus.Memory) *Timer {
 	tmr := &Timer{
 		env:     env,
@@ -94,7 +94,7 @@ func NewTimer(env *environment.Environment, mem chipbus.Memory) *Timer {
 	return tmr
 }
 
-// Reset timer to an initial state.
+// Reset timer to an initial state
 func (tmr *Timer) Reset() {
 	tmr.pa7 = true
 
@@ -111,13 +111,13 @@ func (tmr *Timer) Reset() {
 	tmr.updateTIMINT()
 }
 
-// Snapshot creates a copy of the RIOT Timer in its current state.
+// Snapshot creates a copy of the RIOT Timer in its current state
 func (tmr *Timer) Snapshot() *Timer {
 	n := *tmr
 	return &n
 }
 
-// Plumb a new ChipBus into the Timer.
+// Plumb a new ChipBus into the Timer
 func (tmr *Timer) Plumb(mem chipbus.Memory) {
 	tmr.mem = mem
 }
@@ -131,7 +131,7 @@ func (tmr *Timer) String() string {
 	)
 }
 
-// MaskTIMINT defines the bits of TIMINT that are actually used.
+// MaskTIMINT defines the bits of TIMINT that are actually used
 const MaskTIMINT = 0b11000000
 
 // the individual TIMINT bits and what they do
@@ -141,9 +141,9 @@ const (
 )
 
 // Update checks to see if ChipData applies to the Timer type and updates the
-// internal timer state accordingly.
+// internal timer state accordingly
 //
-// Returns true if ChipData has *not* been serviced.
+// Returns true if ChipData has *not* been serviced
 func (tmr *Timer) Update(data chipbus.ChangedRegister) bool {
 	// change divider and return immediately if it hasn't been changed
 	switch data.Register {
@@ -169,14 +169,14 @@ func (tmr *Timer) Update(data chipbus.ChangedRegister) bool {
 	tmr.updateTIMINT()
 
 	// the ticks remaining value should be zero or one for accurate timing (as
-	// tested with these test ROMs https://github.com/stella-emu/stella/issues/108).
+	// tested with these test ROMs https://github.com/stella-emu/stella/issues/108)
 	//
 	// I'm not sure which value is correct so setting at zero until there's a
 	// good reason to do otherwise
 	//
 	// note however, the internal values in the emulated machine (and as reported by
 	// the debugger) will not match the debugging values in stella. to match
-	// the debugging values in stella a value of 2 is required.
+	// the debugging values in stella a value of 2 is required
 	tmr.ticksRemaining = 0
 
 	// write value to INTIM straight-away
@@ -197,12 +197,12 @@ func (tmr *Timer) updateTIMINT() {
 	tmr.mem.ChipWrite(chipbus.TIMINT, v)
 }
 
-// Step timer forward one cycle.
+// Step timer forward one cycle
 func (tmr *Timer) Step() {
 	intim := tmr.mem.ChipRefer(chipbus.INTIM)
 
 	if ok, a := tmr.mem.LastReadAddress(); ok {
-		switch cpubus.Read[a] {
+		switch cpubus.ReadAddress[a] {
 		case cpubus.INTIM:
 			// if INTIM is *read* then the decrement reverts to once per timer
 			// divider. this won't have any discernable effect unless the timer
@@ -230,11 +230,11 @@ func (tmr *Timer) Step() {
 			// Register"
 
 			// update PA7 bit and TIMINT value if necessary. writing the TIMINT
-			// value is necessary because the PA7 bit has changed.
+			// value is necessary because the PA7 bit has changed
 			//
 			// a previous version of the emulator didn't do this meaning that
 			// the PA7 bit in the register was updated only once the timer had
-			// expired (see below).
+			// expired (see below)
 			if tmr.pa7 {
 				tmr.pa7 = false
 				tmr.updateTIMINT()
@@ -262,7 +262,7 @@ func (tmr *Timer) Step() {
 }
 
 // PeekINTIM pokes a new value into the INTIM register. Same as peeking the
-// INTIM register on the cpubus - provided here for convenience.
+// INTIM register on the cpubus - provided here for convenience
 //
 // Supported fields:
 //
@@ -270,7 +270,7 @@ func (tmr *Timer) Step() {
 //	timint (uint8)
 //	ticksRemainging (int)
 //	divider (timer.Divider)
-func (tmr *Timer) PeekField(fld string) interface{} {
+func (tmr *Timer) PeekField(fld string) any {
 	switch fld {
 	case "intim":
 		return tmr.mem.ChipRefer(chipbus.INTIM)
@@ -285,10 +285,10 @@ func (tmr *Timer) PeekField(fld string) interface{} {
 }
 
 // PokeINTIM pokes a new value into the INTIM register. Same as poking the
-// INTIM register on the cpubus - provided here for convenience.
+// INTIM register on the cpubus - provided here for convenience
 //
-// Fields as described for PeekField().
-func (tmr *Timer) PokeField(fld string, v interface{}) {
+// Fields as described for PeekField()
+func (tmr *Timer) PokeField(fld string, v any) {
 	switch fld {
 	case "intim":
 		tmr.mem.ChipWrite(chipbus.INTIM, v.(uint8))

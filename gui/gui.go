@@ -28,11 +28,11 @@ type FeatureReq string
 
 // FeatureReqData represents the information associated with a FeatureReq. See
 // commentary for the defined FeatureReq values for the underlying type.
-type FeatureReqData interface{}
+type FeatureReqData any
 
 // List of valid feature requests. argument must be of the type specified or
-// else the interface{} type conversion will fail and the application will
-// probably crash.
+// else the 'any' type conversion will fail and the application will probably
+// crash.
 //
 // Note that, like the name suggests, these are requests, they may or may not
 // be satisfied depending other conditions in the GUI.

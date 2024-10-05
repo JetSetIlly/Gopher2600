@@ -27,7 +27,7 @@ import (
 // the case of the CPU program counter target, the underlying type is a uint16.
 //
 // !!TODO: candidate for generic / comparable type
-type targetValue interface{}
+type targetValue any
 
 type target struct {
 	// a label for the label

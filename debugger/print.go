@@ -29,7 +29,7 @@ import (
 // all print operations from the debugger should be made with the this printLine()
 // function. output will be normalised and sent to the attached terminal as
 // required.
-func (dbg *Debugger) printLine(sty terminal.Style, s string, a ...interface{}) {
+func (dbg *Debugger) printLine(sty terminal.Style, s string, a ...any) {
 	// resolve placeholders if there are arguments to insert
 	if len(a) > 0 {
 		s = fmt.Sprintf(s, a...)

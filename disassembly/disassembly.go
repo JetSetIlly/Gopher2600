@@ -27,7 +27,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 )
@@ -139,7 +138,7 @@ func (dsm *Disassembly) FromMemory() error {
 		return fmt.Errorf("disassembly: %w", err)
 	}
 
-	startingBank := dsm.vcs.Mem.Cart.GetBank(cpubus.Reset).Number
+	startingBank := dsm.vcs.Mem.Cart.GetBank(cpu.Reset).Number
 
 	mem := newDisasmMemory(startingBank, copiedBanks)
 	if mem == nil {
@@ -168,7 +167,7 @@ func (dsm *Disassembly) FromMemory() error {
 	}
 
 	// create a new NoFlowControl CPU to help disassemble memory
-	mc := cpu.NewCPU(nil, mem)
+	mc := cpu.NewCPU(mem)
 	mc.NoFlowControl = true
 
 	dsm.crit.Unlock()

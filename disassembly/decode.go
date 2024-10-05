@@ -22,7 +22,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -49,7 +48,7 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
 	for b := range dsm.disasmEntries.Entries {
 		// get reset address from starting bank, taking into account the
 		// possibility that bank is smalled thank 4096 bytes
-		resetVector := cpubus.Reset & (uint16(len(mem.banks[b].Data) - 1))
+		resetVector := cpu.Reset & (uint16(len(mem.banks[b].Data) - 1))
 		resetAddr := (uint16(mem.banks[b].Data[resetVector+1]) << 8) | uint16(mem.banks[b].Data[resetVector])
 
 		// make sure reset address is valid

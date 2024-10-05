@@ -94,7 +94,7 @@ import (
 const TIADrivenPins = uint8(0b11000000)
 
 // TIAMemory defines the information for and operations allowed for those
-// memory mems accessed by the VCS chips as well as the CPU.
+// memory mems accessed by the VCS chips as well as the CPU
 type TIAMemory struct {
 	env *environment.Environment
 
@@ -115,7 +115,7 @@ type TIAMemory struct {
 	writeData    uint8
 }
 
-// NewTIAMemory is the preferred method of initialisation for the TIA memory chip.
+// NewTIAMemory is the preferred method of initialisation for the TIA memory chip
 func NewTIAMemory(env *environment.Environment) *TIAMemory {
 	chip := &TIAMemory{
 		env:    env,
@@ -135,7 +135,7 @@ func NewTIAMemory(env *environment.Environment) *TIAMemory {
 	return chip
 }
 
-// Snapshot creates a copy of TIARegisters in its current state.
+// Snapshot creates a copy of TIARegisters in its current state
 func (mem *TIAMemory) Snapshot() *TIAMemory {
 	n := *mem
 	n.memory = make([]uint8, len(mem.memory))
@@ -143,32 +143,41 @@ func (mem *TIAMemory) Snapshot() *TIAMemory {
 	return &n
 }
 
-// Reset contents of TIARegisters.
+// Reset contents of TIARegisters
 func (mem *TIAMemory) Reset() {
 	for i := range mem.memory {
 		mem.memory[i] = 0
 	}
 }
 
-// Peek is an implementation of memory.DebugBus. Address must be normalised.
+// Peek is an implementation of memory.DebugBus. Address must be normalised
 func (mem *TIAMemory) Peek(address uint16) (uint8, error) {
-	if cpubus.Read[address] == cpubus.NotACPUBusRegister {
+	// an address might be in TIA memory space but it is not READABLE by the
+	// CPU and therefore should not be accessible by the Peek() function. the
+	// TIA chip view of the address should be done via the TIA chip emulation
+	if cpubus.ReadAddress[address] == cpubus.UnnamedAddress {
 		return 0, fmt.Errorf("%w: %04x", cpubus.AddressError, address)
 	}
 	return mem.memory[address^mem.origin], nil
 }
 
-// Poke is an implementation of memory.DebugBus. Address must be normalised.
+// Poke is an implementation of memory.DebugBus. Address must be normalised
 func (mem *TIAMemory) Poke(address uint16, value uint8) error {
+	// an address might be in TIA memory space but it is not WRITEABLE by the
+	// CPU and therefore should not be accessible by the Peek() function. the
+	// TIA chip view of the address should be done via the TIA chip emulation
+	if cpubus.WriteAddress[address] == cpubus.UnnamedAddress {
+		return fmt.Errorf("%w: %04x", cpubus.AddressError, address)
+	}
 	mem.memory[address^mem.origin] = value
 	return nil
 }
 
-// ChipRead is an implementation of memory.ChipBus.
+// ChipRead is an implementation of memory.ChipBus
 func (mem *TIAMemory) ChipHasChanged() (chipbus.ChangedRegister, bool) {
 	if mem.writeSignal {
 		mem.writeSignal = false
-		return chipbus.ChangedRegister{Address: mem.writeAddress, Value: mem.writeData, Register: cpubus.Write[mem.writeAddress]}, true
+		return chipbus.ChangedRegister{Address: mem.writeAddress, Value: mem.writeData, Register: cpubus.WriteAddress[mem.writeAddress]}, true
 	}
 
 	return chipbus.ChangedRegister{}, false
@@ -179,25 +188,32 @@ func (mem *TIAMemory) ChipWrite(reg chipbus.Register, data uint8) {
 	mem.memory[reg] = data
 }
 
-// ChipRefer is an implementation of memory.ChipBus.
+// ChipRefer is an implementation of memory.ChipBus
 func (mem *TIAMemory) ChipRefer(reg chipbus.Register) uint8 {
 	return mem.memory[reg]
 }
 
-// LatsReadAddress is an implementation of memory.ChipBus.
+// LatsReadAddress is an implementation of memory.ChipBus
 func (mem *TIAMemory) LastReadAddress() (bool, uint16) {
 	return false, 0
 }
 
-// Read is an implementation of memory.CPUBus. Address must be mapped.
+// Read is an implementation of memory.CPUBus. Address must be mapped
 //
 // Returned data should be masked and randomised as appropriate according to
 // the TIADrivenPins mask.
 func (mem *TIAMemory) Read(address uint16) (uint8, uint8, error) {
+	// if the address is not a valid read adress for the CPU, then we blindly
+	// return the value in the array, which in that case will be zero
+	//
+	// I'm not sure if the pins are driven in that case. if they aren't then we
+	// should return zero for the value AND the mask. a value other than 0xff
+	// for the mask instructs the memory package to mutate the value returned to
+	// the CPU
 	return mem.memory[address^mem.origin], TIADrivenPins, nil
 }
 
-// Write is an implementation of memory.CPUBus. Address must be mapped.
+// Write is an implementation of memory.CPUBus. Address must be mapped
 func (mem *TIAMemory) Write(address uint16, data uint8) error {
 	// signal that chip memory has been changed. see ChipHasChanged() function
 	mem.writeAddress = address

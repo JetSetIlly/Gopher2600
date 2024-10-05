@@ -29,8 +29,6 @@ import (
 type RIOT struct {
 	env *environment.Environment
 
-	mem chipbus.Memory
-
 	Timer *timer.Timer
 	Ports *ports.Ports
 }
@@ -39,7 +37,6 @@ type RIOT struct {
 func NewRIOT(env *environment.Environment, mem chipbus.Memory, tiaMem chipbus.Memory) *RIOT {
 	return &RIOT{
 		env:   env,
-		mem:   mem,
 		Timer: timer.NewTimer(env, mem),
 		Ports: ports.NewPorts(env, mem, tiaMem),
 	}
@@ -56,7 +53,6 @@ func (riot *RIOT) Snapshot() *RIOT {
 // Plumb new ChipBusses into the RIOT.
 func (riot *RIOT) Plumb(env *environment.Environment, mem chipbus.Memory, tiaMem chipbus.Memory) {
 	riot.env = env
-	riot.mem = mem
 	riot.Timer.Plumb(mem)
 	riot.Ports.Plumb(mem, tiaMem)
 }

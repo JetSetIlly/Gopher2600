@@ -23,7 +23,7 @@ import (
 
 // EquateRegisters is used to test equality between two instances of a register
 // type. Used in testing packages.
-func EquateRegisters(t *testing.T, value, expectedValue interface{}) {
+func EquateRegisters(t *testing.T, value, expectedValue any) {
 	t.Helper()
 
 	switch value := value.(type) {

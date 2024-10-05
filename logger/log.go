@@ -153,7 +153,7 @@ func (l *Logger) Log(perm Permission, tag string, detail any) {
 
 // Logf adds a new entry to the logger. The detail string is interpreted as a
 // formatting string as described by the fmt package
-func (l *Logger) Logf(perm Permission, tag, detail string, args ...interface{}) {
+func (l *Logger) Logf(perm Permission, tag, detail string, args ...any) {
 	l.Log(perm, tag, fmt.Sprintf(detail, args...))
 }
 
