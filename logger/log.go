@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-// Entry represents a single line/entry in the log.
+// Entry represents a single line/entry in the log
 type Entry struct {
 	Time     time.Time
 	Tag      string
@@ -33,16 +33,20 @@ type Entry struct {
 
 func (e *Entry) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s: %s", e.Tag, e.Detail))
+	if len(e.Tag) == 0 {
+		s.WriteString(e.Detail)
+	} else {
+		s.WriteString(fmt.Sprintf("%s: %s", e.Tag, e.Detail))
+	}
 	if e.Repeated > 0 {
 		s.WriteString(fmt.Sprintf(" (repeat x%d)", e.Repeated+1))
 	}
 	return s.String()
 }
 
-// not exposing logger to outside of the package. the package level functions
-// can be used to log to the central logger.
-type logger struct {
+// not exposing Logger to outside of the package. the package level functions
+// can be used to log to the central Logger
+type Logger struct {
 	crit sync.Mutex
 
 	entries    []Entry
@@ -55,37 +59,73 @@ type logger struct {
 	echo io.Writer
 }
 
-func newLogger(maxEntries int) *logger {
-	return &logger{
+// NewLogger is the preferred method of initialisation for the Logger type
+func NewLogger(maxEntries int) *Logger {
+	return &Logger{
 		entries:    make([]Entry, 0, maxEntries),
 		maxEntries: maxEntries,
 	}
 }
 
-func (l *logger) log(tag, detail string) {
+// the boolean value indicates that the detail type is 'supported'. false is
+// returned if the type is not supported and the string value has been formatted
+// with the %v verb from the fmt package
+func detailConversion(detail any) (string, bool) {
+	switch d := detail.(type) {
+	case string:
+		return d, true
+	case error:
+		return d.Error(), true
+	case fmt.Stringer:
+		return d.String(), true
+	}
+	return fmt.Sprintf("%v\n", detail), false
+}
+
+// Log adds a new entry to the logger. The detail string will be interpreted as
+// either a string, an error type or a fmt.Stringer type
+//
+// In the case of being an error type, the detail string will be taken from the
+// Error() function
+//
+// Detail arguments of an unsupported type will be formatted using the %v verb
+// from the fmt package. ie. fmt.Sprintf("%v", detail)
+func (l *Logger) Log(perm Permission, tag string, detail any) {
+	if !(perm == Allow || perm.AllowLogging()) {
+		return
+	}
+
+	detailConverted, supported := detailConversion(detail)
+	if supported {
+		p := strings.SplitN(detailConverted, ": ", 3)
+		// remove first part of the details string if it's the same as the tag
+		if len(p) > 1 && p[0] == tag {
+			detailConverted = strings.Join(p[1:], ": ")
+		}
+	}
+
+	tag = strings.TrimSpace(tag)
+
 	l.crit.Lock()
 	defer l.crit.Unlock()
-
-	// remove first part of the details string if it's the same as the tag
-	p := strings.SplitN(detail, ": ", 3)
-	if len(p) > 1 && p[0] == tag {
-		detail = strings.Join(p[1:], ": ")
-	}
 
 	last := Entry{}
 	if len(l.entries) > 0 {
 		last = l.entries[len(l.entries)-1]
 	}
 
+	// time of logging
+	now := time.Now()
+
 	// split multi-line log entries and log each separetely
-	for _, d := range strings.Split(detail, "\n") {
+	for _, d := range strings.Split(detailConverted, "\n") {
 		d = strings.TrimSpace(d)
 		if len(d) == 0 {
 			continue
 		}
 
 		e := Entry{
-			Time:   time.Now(),
+			Time:   now,
 			Tag:    tag,
 			Detail: d,
 		}
@@ -111,11 +151,14 @@ func (l *logger) log(tag, detail string) {
 	}
 }
 
-func (l *logger) logf(tag, detail string, args ...interface{}) {
-	l.log(tag, fmt.Sprintf(detail, args...))
+// Logf adds a new entry to the logger. The detail string is interpreted as a
+// formatting string as described by the fmt package
+func (l *Logger) Logf(perm Permission, tag, detail string, args ...interface{}) {
+	l.Log(perm, tag, fmt.Sprintf(detail, args...))
 }
 
-func (l *logger) clear() {
+// Clear all entries from logger
+func (l *Logger) Clear() {
 	l.crit.Lock()
 	defer l.crit.Unlock()
 
@@ -123,7 +166,8 @@ func (l *logger) clear() {
 	l.recentStart = 0
 }
 
-func (l *logger) write(output io.Writer) {
+// Write contents of central logger to io.Writer
+func (l *Logger) Write(output io.Writer) {
 	if output == nil {
 		return
 	}
@@ -137,7 +181,8 @@ func (l *logger) write(output io.Writer) {
 	}
 }
 
-func (l *logger) writeRecent(output io.Writer) {
+// WriteRecent returns only the entries added since the last call to CopyRecent
+func (l *Logger) WriteRecent(output io.Writer) {
 	l.crit.Lock()
 	defer l.crit.Unlock()
 
@@ -151,7 +196,8 @@ func (l *logger) writeRecent(output io.Writer) {
 	l.recentStart = len(l.entries)
 }
 
-func (l *logger) tail(output io.Writer, number int) {
+// Tail writes the last N entries to io.Writer
+func (l *Logger) Tail(output io.Writer, number int) {
 	if output == nil {
 		return
 	}
@@ -172,17 +218,20 @@ func (l *logger) tail(output io.Writer, number int) {
 	}
 }
 
-func (l *logger) setEcho(output io.Writer, writeRecent bool) {
+// SetEcho prints entries to io.Writer as and when they are added
+func (l *Logger) SetEcho(output io.Writer, writeRecent bool) {
 	l.crit.Lock()
 	l.echo = output
 	l.crit.Unlock()
 
 	if writeRecent {
-		l.writeRecent(output)
+		l.WriteRecent(output)
 	}
 }
 
-func (l *logger) borrowLog(f func([]Entry)) {
+// BorrowLog gives the provided function the critial section and access to the
+// list of log entries
+func (l *Logger) BorrowLog(f func([]Entry)) {
 	l.crit.Lock()
 	defer l.crit.Unlock()
 
