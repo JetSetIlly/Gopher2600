@@ -110,10 +110,10 @@ func newSoundLoad(env *environment.Environment, loader cartridgeloader.Loader) (
 
 	// number of samples in a cycle for it to be interpreted as a zero or a one
 	// values taken from "Atari 2600 Mappers" document by Kevin Horton
-	logger.Log(tap.env, soundloadLogTag, fmt.Sprintf("min/opt/max samples for zero-bit: %d/%d/%d",
-		int(158.0/timePerSample), int(227.0/timePerSample), int(317.0/timePerSample)))
-	logger.Log(tap.env, soundloadLogTag, fmt.Sprintf("min/opt/max samples for one-bit: %d/%d/%d",
-		int(317.0/timePerSample), int(340.0/timePerSample), int(2450.0/timePerSample)))
+	logger.Logf(tap.env, soundloadLogTag, "min/opt/max samples for zero-bit: %d/%d/%d",
+		int(158.0/timePerSample), int(227.0/timePerSample), int(317.0/timePerSample))
+	logger.Logf(tap.env, soundloadLogTag, "min/opt/max samples for one-bit: %d/%d/%d",
+		int(317.0/timePerSample), int(340.0/timePerSample), int(2450.0/timePerSample))
 
 	// calculate tape regulator speed. 1190000 is the frequency at which step() is called (1.19MHz)
 	//

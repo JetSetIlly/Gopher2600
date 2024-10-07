@@ -296,7 +296,7 @@ func (sym *Symbols) AfterLabelChange() {
 
 	sym.labelCommands, err = commandline.ParseCommandTemplate(s)
 	if err != nil {
-		logger.Logf(logger.Allow, "symbols", "creating commandline.Extension: %s", err.Error())
+		logger.Logf(logger.Allow, "symbols", "creating commandline.Extension: %v", err)
 	}
 }
 
@@ -320,7 +320,7 @@ func (sym *Symbols) AfterSymbolChange() {
 
 	sym.readCommands, err = commandline.ParseCommandTemplate(read)
 	if err != nil {
-		logger.Logf(logger.Allow, "symbols", "creating commandline.Extension: %s", err.Error())
+		logger.Logf(logger.Allow, "symbols", "creating commandline.Extension: %v", err)
 	}
 
 	// write symbols
@@ -333,7 +333,7 @@ func (sym *Symbols) AfterSymbolChange() {
 
 	sym.readCommands, err = commandline.ParseCommandTemplate(write)
 	if err != nil {
-		logger.Logf(logger.Allow, "symbols", "creating commandline.Extension: %s", err.Error())
+		logger.Logf(logger.Allow, "symbols", "creating commandline.Extension: %v", err)
 	}
 
 	// all symbols
@@ -344,7 +344,7 @@ func (sym *Symbols) AfterSymbolChange() {
 
 	sym.readwriteCommands, err = commandline.ParseCommandTemplate(all)
 	if err != nil {
-		logger.Logf(logger.Allow, "symbols", "creating commandline.Extension: %s", err.Error())
+		logger.Logf(logger.Allow, "symbols", "creating commandline.Extension: %v", err)
 	}
 }
 

@@ -289,13 +289,13 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		data, _, _ := c.ELFSection(".debug_frame")
 		src.debugFrame, err = newFrameSection(data, ef.ByteOrder, src.cart.GetCoProcBus().GetCoProc(), nil)
 		if err != nil {
-			logger.Logf(logger.Allow, "dwarf", err.Error())
+			logger.Log(logger.Allow, "dwarf", err)
 		}
 
 		data, _, _ = c.ELFSection(".debug_loc")
 		src.debugLoc, err = newLoclistSection(data, ef.ByteOrder, src.cart.GetCoProcBus().GetCoProc())
 		if err != nil {
-			logger.Logf(logger.Allow, "dwarf", err.Error())
+			logger.Log(logger.Allow, "dwarf", err)
 		}
 	} else {
 		var adjust bool
@@ -317,13 +317,13 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		}
 		src.debugFrame, err = newFrameSectionFromFile(ef, src.cart.GetCoProcBus().GetCoProc(), &rel)
 		if err != nil {
-			logger.Logf(logger.Allow, "dwarf", err.Error())
+			logger.Log(logger.Allow, "dwarf", err)
 		}
 
 		// create loclist section from the raw ELF section
 		src.debugLoc, err = newLoclistSectionFromFile(ef, src.cart.GetCoProcBus().GetCoProc())
 		if err != nil {
-			logger.Logf(logger.Allow, "dwarf", err.Error())
+			logger.Log(logger.Allow, "dwarf", err)
 		}
 
 		if adjust {
@@ -343,7 +343,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	// log address adjustment value. how the value was arrived at is slightly
 	// different depending on whether the ELF file relocatable or not
 	if addressAdjustment == 0 {
-		logger.Logf(logger.Allow, "dwarf", "address adjustment not required")
+		logger.Log(logger.Allow, "dwarf", "address adjustment not required")
 	} else {
 		logger.Logf(logger.Allow, "dwarf", "using address adjustment: %#x", int(addressAdjustment))
 	}
@@ -437,7 +437,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 				if _, ok := src.Files[f.Name]; !ok {
 					sf, err := readSourceFile(f.Name, src.path, &src.AllLines)
 					if err != nil {
-						logger.Logf(logger.Allow, "dwarf", "%v", err)
+						logger.Log(logger.Allow, "dwarf", err)
 					} else {
 						src.Files[sf.Filename] = sf
 						src.Filenames = append(src.Filenames, sf.Filename)

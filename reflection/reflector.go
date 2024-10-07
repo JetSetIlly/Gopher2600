@@ -73,7 +73,7 @@ func (ref *Reflector) SetEmulationState(state govern.State) {
 	case govern.Paused:
 		err := ref.render()
 		if err != nil {
-			logger.Logf(logger.Allow, "reflection", "%v", err)
+			logger.Log(logger.Allow, "reflection", err)
 		}
 	}
 }

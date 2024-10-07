@@ -740,11 +740,11 @@ func (str *strongArmState) updateLookupTables() {
 // vcsWrite3() function has been detected (during relocation).
 func (mem *elfMemory) busStuffingInit() {
 	if !mem.usesBusStuffing {
-		logger.Logf(mem.env, "ELF", "ROM does not use any bus stuffing instructions")
+		logger.Log(mem.env, "ELF", "ROM does not use any bus stuffing instructions")
 		return
 	}
 
-	logger.Logf(mem.env, "ELF", "ROM uses bus stuffing instructions")
+	logger.Log(mem.env, "ELF", "ROM uses bus stuffing instructions")
 
 	mem.strongarm.lowMask = 0xff
 	mem.strongarm.correctionMaskHi = 0x00

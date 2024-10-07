@@ -415,7 +415,7 @@ func (cart *Moviecart) processAddress(addr uint16) {
 	defer func() {
 		if r := recover(); r != nil {
 			cart.state.streamFail = true
-			logger.Logf(cart.env, "MVC", "serious data error in moviecart stream")
+			logger.Log(cart.env, "MVC", "serious data error in moviecart stream")
 		}
 	}()
 
@@ -443,7 +443,7 @@ func (cart *Moviecart) processAddress(addr uint16) {
 
 		err := cart.env.Notifications.Notify(notifications.NotifyMovieCartStarted)
 		if err != nil {
-			logger.Logf(cart.env, "moviecart", err.Error())
+			logger.Log(cart.env, "moviecart", err)
 		}
 
 	} else if cart.state.totalCycles > titleCycles {

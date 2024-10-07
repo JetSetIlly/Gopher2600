@@ -366,11 +366,11 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 		if err != nil {
 			if errors.Is(err, plusrom.NotAPlusROM) {
-				logger.Log(cart.env, "cartridge", err.Error())
+				logger.Log(cart.env, "cartridge", err)
 				return nil
 			}
 			if errors.Is(err, plusrom.CannotAdoptROM) {
-				logger.Log(cart.env, "cartridge", err.Error())
+				logger.Log(cart.env, "cartridge", err)
 				return nil
 			}
 			return fmt.Errorf("cartridge: %w", err)

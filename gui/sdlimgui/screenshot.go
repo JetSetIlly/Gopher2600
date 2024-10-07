@@ -38,7 +38,7 @@ func (img *SdlImgui) screenshot(mode screenshotMode, filenameSuffix string) {
 		// wait for result and log any errors
 		res := <-finish
 		if res.err != nil {
-			logger.Log(logger.Allow, "screenshot", res.err.Error())
+			logger.Log(logger.Allow, "screenshot", res.err)
 			return
 		}
 
@@ -61,20 +61,20 @@ func (img *SdlImgui) screenshot(mode screenshotMode, filenameSuffix string) {
 func saveJPEG(rgba *image.RGBA, path string) {
 	f, err := os.Create(path)
 	if err != nil {
-		logger.Logf(logger.Allow, "screenshot", "save failed: %v", err.Error())
+		logger.Logf(logger.Allow, "screenshot", "save failed: %v", err)
 		return
 	}
 
 	err = jpeg.Encode(f, rgba, &jpeg.Options{Quality: 100})
 	if err != nil {
-		logger.Logf(logger.Allow, "screenshot", "save failed: %v", err.Error())
+		logger.Logf(logger.Allow, "screenshot", "save failed: %v", err)
 		_ = f.Close()
 		return
 	}
 
 	err = f.Close()
 	if err != nil {
-		logger.Logf(logger.Allow, "screenshot", "save failed: %v", err.Error())
+		logger.Logf(logger.Allow, "screenshot", "save failed: %v", err)
 		return
 	}
 

@@ -585,7 +585,7 @@ func (dbg *Debugger) handleInterrupt(inputter terminal.Input) {
 	// end script scribe (if one is running)
 	err := dbg.scriptScribe.EndSession()
 	if err != nil {
-		logger.Logf(logger.Allow, "debugger", err.Error())
+		logger.Log(logger.Allow, "debugger", err)
 	}
 
 	// exit immediately if inputter is not a real terminal

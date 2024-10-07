@@ -129,7 +129,7 @@ func (vox *AtariVox) activateFestival() {
 
 		vox.Engine, err = atarivoxengines.NewFestival(vox.env)
 		if err != nil {
-			logger.Logf(vox.env, "atarivox", err.Error())
+			logger.Log(vox.env, "atarivox", err)
 		}
 	}
 }

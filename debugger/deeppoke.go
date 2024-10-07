@@ -38,7 +38,7 @@ func (dbg *Debugger) PushDeepPoke(addr uint16, value uint8, newValue uint8, valu
 	doDeepPoke := func() error {
 		err := dbg.doDeepPoke(searchState, addr, value, newValue, valueMask)
 		if err != nil {
-			logger.Logf(logger.Allow, "deeppoke", "%v", err)
+			logger.Log(logger.Allow, "deeppoke", err)
 		}
 		if done != nil {
 			done()
@@ -294,6 +294,6 @@ func deepPoke(mem *memory.Memory, poke deepPoking, value uint8, valueMask uint8)
 		return err
 	}
 	v = (v & (valueMask ^ 0xff)) | (value & valueMask)
-	logger.Log(logger.Allow, "deeppoke", fmt.Sprintf("changing %#04x (%s) to %#02x", poke.addr, poke.area, value))
+	logger.Logf(logger.Allow, "deeppoke", "changing %#04x (%s) to %#02x", poke.addr, poke.area, value)
 	return mem.Poke(poke.addr, v)
 }

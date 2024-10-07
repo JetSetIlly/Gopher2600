@@ -548,7 +548,7 @@ func (arm *ARM) logYield() {
 		return
 	}
 	if arm.state.yield.Error != nil {
-		logger.Logf(arm.env, "ARM7", "%s: %s", arm.state.yield.Type, arm.state.yield.Error.Error())
+		logger.Logf(arm.env, "ARM7", "%s: %v", arm.state.yield.Type, arm.state.yield.Error)
 	} else {
 		logger.Logf(arm.env, "ARM7", "%s: no specific error", arm.state.yield.Type)
 	}
@@ -575,8 +575,8 @@ func (arm *ARM) logYield() {
 
 	entry := arm.decodeInstruction(df)
 	if entry != nil {
-		logger.Logf(arm.env, "ARM7", "%s", entry.String())
-		logger.Logf(arm.env, "ARM7", "%s", arm.disasmVerbose(*entry))
+		logger.Log(arm.env, "ARM7", entry)
+		logger.Log(arm.env, "ARM7", arm.disasmVerbose(*entry))
 	}
 }
 

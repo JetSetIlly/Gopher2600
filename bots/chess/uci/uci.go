@@ -90,7 +90,7 @@ func NewUCI(pathToEngine string, diagnostic chan bots.Diagnostic) (*UCI, error) 
 
 		err = cmd.Wait()
 		if err != nil {
-			logger.Logf(logger.Allow, "uci", err.Error())
+			logger.Log(logger.Allow, "uci", err)
 			return
 		}
 	}()
@@ -170,7 +170,7 @@ func (uci *UCI) Start() error {
 
 				_, err = uci.stdin.Write([]byte("go depth 10\n"))
 				if err != nil {
-					logger.Logf(logger.Allow, "uci", err.Error())
+					logger.Log(logger.Allow, "uci", err)
 					return
 				}
 
@@ -180,7 +180,7 @@ func (uci *UCI) Start() error {
 
 					n, err = uci.stdout.Read(buf)
 					if err != nil {
-						logger.Logf(logger.Allow, "uci", err.Error())
+						logger.Log(logger.Allow, "uci", err)
 						return
 					}
 

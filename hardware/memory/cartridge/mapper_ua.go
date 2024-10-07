@@ -71,7 +71,7 @@ func newUA(env *environment.Environment, loader cartridgeloader.Loader) (mapper.
 	// only one cartridge dump is known to have swapped hotspots
 	if fmt.Sprintf("%0x", sha1.Sum(data)) == "6d4a94c2348bbd8e9c73b73d8f3389196d42fd54" {
 		cart.swappedHotspots = true
-		logger.Logf(env, "UA", "swapping hotspot address for this cartridge (Sorcerer's Apprentice)")
+		logger.Log(env, "UA", "swapping hotspot address for this cartridge (Sorcerer's Apprentice)")
 	}
 
 	return cart, nil

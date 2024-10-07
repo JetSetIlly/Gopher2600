@@ -83,7 +83,7 @@ func (tr *Tracker) Replay(start int, end int, mixer television.AudioMixer, onEnd
 			return govern.Running, nil
 		})
 		if err != nil {
-			logger.Logf(logger.Allow, "tracker", "replay: %s", err.Error())
+			logger.Logf(logger.Allow, "tracker", "replay: %v", err.Error())
 		}
 	}()
 }

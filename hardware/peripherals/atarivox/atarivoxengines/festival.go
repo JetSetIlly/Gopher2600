@@ -102,7 +102,7 @@ func NewFestival(env *environment.Environment) (AtariVoxEngine, error) {
 			case <-fest.quit:
 				err = cmd.Process.Kill()
 				if err != nil {
-					logger.Logf(fest.env, "festival", err.Error())
+					logger.Log(fest.env, "festival", err)
 				}
 				_ = cmd.Wait()
 				return
@@ -176,42 +176,42 @@ func (fest *festival) SpeakJet(b uint8) {
 		return
 
 	case 31: // Reset
-		logger.Logf(fest.env, "festival", "reset")
+		logger.Log(fest.env, "festival", "reset")
 		fest.reset()
 		return
 
 	case 0: // pause 0ms
 		return
 	case 1: // pause 100ms
-		logger.Logf(fest.env, "festival", "pause: 100ms: not implemented")
+		logger.Log(fest.env, "festival", "pause: 100ms: not implemented")
 		return
 	case 2: // pause 200ms
-		logger.Logf(fest.env, "festival", "pause: 200ms: not implemented")
+		logger.Log(fest.env, "festival", "pause: 200ms: not implemented")
 		return
 	case 3: // pause 700ms
-		logger.Logf(fest.env, "festival", "pause: 700ms: not implemented")
+		logger.Log(fest.env, "festival", "pause: 700ms: not implemented")
 		return
 	case 4: // pause 30ms
-		logger.Logf(fest.env, "festival", "pause: 30ms: not implemented")
+		logger.Log(fest.env, "festival", "pause: 30ms: not implemented")
 		return
 	case 5: // pause 60ms
-		logger.Logf(fest.env, "festival", "pause: 60ms: not implemented")
+		logger.Log(fest.env, "festival", "pause: 60ms: not implemented")
 		return
 	case 6: // pause 90ms
-		logger.Logf(fest.env, "festival", "pause: 90ms: not implemented")
+		logger.Log(fest.env, "festival", "pause: 90ms: not implemented")
 		return
 
 	case 7: // Fast
-		logger.Logf(fest.env, "festival", "fast: not implemented")
+		logger.Log(fest.env, "festival", "fast: not implemented")
 		return
 	case 8: // Slow
-		logger.Logf(fest.env, "festival", "slow: not implemented")
+		logger.Log(fest.env, "festival", "slow: not implemented")
 		return
 	case 14: // Stress
-		logger.Logf(fest.env, "festival", "stress: not implemented")
+		logger.Log(fest.env, "festival", "stress: not implemented")
 		return
 	case 15: // Relax
-		logger.Logf(fest.env, "festival", "relax: not implemented")
+		logger.Log(fest.env, "festival", "relax: not implemented")
 		return
 	case 20: // volume
 		logger.Logf(fest.env, "festival", "volume: not implemented")
@@ -226,30 +226,30 @@ func (fest *festival) SpeakJet(b uint8) {
 		fest.nextSpeakJetByte = pitch
 		return
 	case 23: // bend
-		logger.Logf(fest.env, "festival", "bend: not implemented")
+		logger.Log(fest.env, "festival", "bend: not implemented")
 		return
 	case 24: // PortCtr
-		logger.Logf(fest.env, "festival", "port ctr: not implemented")
+		logger.Log(fest.env, "festival", "port ctr: not implemented")
 		fest.nextSpeakJetByte = unsupported
 		return
 	case 25: // Port
-		logger.Logf(fest.env, "festival", "port: not implemented")
+		logger.Log(fest.env, "festival", "port: not implemented")
 		fest.nextSpeakJetByte = unsupported
 		return
 	case 26: // Repeat
-		logger.Logf(fest.env, "festival", "repeat: not implemented")
+		logger.Log(fest.env, "festival", "repeat: not implemented")
 		fest.nextSpeakJetByte = unsupported
 		return
 	case 28: // Call Phrase
-		logger.Logf(fest.env, "festival", "call phrase: not implemented")
+		logger.Log(fest.env, "festival", "call phrase: not implemented")
 		fest.nextSpeakJetByte = unsupported
 		return
 	case 29: // Goto Phrase
-		logger.Logf(fest.env, "festival", "goto phrase: not implemented")
+		logger.Log(fest.env, "festival", "goto phrase: not implemented")
 		fest.nextSpeakJetByte = unsupported
 		return
 	case 30: // Delay
-		logger.Logf(fest.env, "festival", "delay: not implemented")
+		logger.Log(fest.env, "festival", "delay: not implemented")
 		fest.nextSpeakJetByte = unsupported
 		return
 
