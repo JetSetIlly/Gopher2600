@@ -70,29 +70,21 @@ func fingerprintAce(loader cartridgeloader.Loader) (bool, bool) {
 }
 
 func (cart *Cartridge) fingerprintPlusROM(loader cartridgeloader.Loader) bool {
-	// there is a second fingerprint that occurs in the NewPlusROM() function
-
-	b := make([]byte, 3)
+	// search for "STA $1ff1"
+	//
+	// previous version searched the first 1024 bytes of the ROM only. however,
+	// this was incorrect in the case of "KoviKovi_R1_NTSC.bin", in which the
+	// sequence appears after 1024 bytes
+	//
+	// also, previous version searched for the STA instruction in any mirror of
+	// that address (ie. "STA $XFF1"). however, I now believe this is incorrect
+	// and likely to lead to false positions
+	//
+	// false positives will likely be eliminated by the NewPlusROM() function in
+	// which the URL is checked. if the URL is not valid then the PlusROM will
+	// be rejected
 	loader.Seek(0, io.SeekStart)
-
-	// fingerprinting beyond the first 1k can easily result in a false positive
-	const fingerprintLimit = 1024
-
-	for i := 0; i < fingerprintLimit-len(b); i++ {
-		n, err := loader.Read(b)
-		if n < len(b) {
-			break
-		}
-		if b[0] == 0x8d && b[1] == 0xf1 && b[2]&0x10 == 0x10 {
-			return true
-		}
-		if err == io.EOF {
-			break
-		}
-		loader.Seek(int64(1-len(b)), io.SeekCurrent)
-	}
-
-	return false
+	return loader.Contains([]byte{0x8d, 0xf1, 0x1f})
 }
 
 func fingerprint3e(loader cartridgeloader.Loader) bool {
