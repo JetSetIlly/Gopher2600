@@ -119,7 +119,7 @@ func (n *network) transmit() {
 
 		req, err := http.NewRequest("POST", addr.String(), &send)
 		if err != nil {
-			logger.Log(n.env, "plusrom [net]", err.Error())
+			logger.Log(n.env, "plusrom [net]", err)
 			return
 		}
 
@@ -173,7 +173,7 @@ func (n *network) transmit() {
 		// send response over network
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			logger.Log(n.env, "plusrom [net]", err.Error())
+			logger.Log(n.env, "plusrom [net]", err)
 			return
 		}
 		defer resp.Body.Close()
@@ -210,7 +210,7 @@ func (n *network) getResponse() {
 
 		l, err := r.ReadByte()
 		if err != nil {
-			logger.Log(n.env, "plusrom", err.Error())
+			logger.Log(n.env, "plusrom", err)
 			return
 		}
 
@@ -228,7 +228,7 @@ func (n *network) getResponse() {
 		// header of the response.
 		_, err = n.recvBuffer.ReadFrom(&r)
 		if err != nil {
-			logger.Log(n.env, "plusrom", err.Error())
+			logger.Log(n.env, "plusrom", err)
 			return
 		}
 
@@ -257,7 +257,7 @@ func (n *network) recv() uint8 {
 
 	b, err := n.recvBuffer.ReadByte()
 	if err != nil {
-		logger.Log(n.env, "plusrom", err.Error())
+		logger.Log(n.env, "plusrom", err)
 	}
 	return b
 }

@@ -75,13 +75,13 @@ func (ee *EEPROM) snapshot() *EEPROM {
 func (ee *EEPROM) Read() {
 	fn, err := resources.JoinPath(saveKeyPath)
 	if err != nil {
-		logger.Logf(ee.env, "savekey", "could not load eeprom file (%s)", err)
+		logger.Logf(ee.env, "savekey", "could not load eeprom file: %v", err)
 		return
 	}
 
 	f, err := os.Open(fn)
 	if err != nil {
-		logger.Logf(ee.env, "savekey", "could not load eeprom file (%s)", err)
+		logger.Logf(ee.env, "savekey", "could not load eeprom file: %v", err)
 		return
 	}
 	defer f.Close()
@@ -90,7 +90,7 @@ func (ee *EEPROM) Read() {
 	// windows version (when running under wine) does not handle that
 	fs, err := os.Stat(fn)
 	if err != nil {
-		logger.Logf(ee.env, "savekey", "could not load eeprom file (%s)", err)
+		logger.Logf(ee.env, "savekey", "could not load eeprom file: %v", err)
 		return
 	}
 	if fs.Size() != int64(len(ee.Data)) {
@@ -99,7 +99,7 @@ func (ee *EEPROM) Read() {
 
 	_, err = f.Read(ee.Data)
 	if err != nil {
-		logger.Logf(ee.env, "savekey", "could not load eeprom file (%s)", err)
+		logger.Logf(ee.env, "savekey", "could not load eeprom file: %v", err)
 		return
 	}
 
@@ -113,25 +113,25 @@ func (ee *EEPROM) Read() {
 func (ee *EEPROM) Write() {
 	fn, err := resources.JoinPath(saveKeyPath)
 	if err != nil {
-		logger.Logf(ee.env, "savekey", "could not write eeprom file (%s)", err)
+		logger.Logf(ee.env, "savekey", "could not write eeprom file: %v", err)
 		return
 	}
 
 	f, err := os.Create(fn)
 	if err != nil {
-		logger.Logf(ee.env, "savekey", "could not write eeprom file (%s)", err)
+		logger.Logf(ee.env, "savekey", "could not write eeprom file: %v", err)
 		return
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			logger.Logf(ee.env, "savekey", "could not close eeprom file (%s)", err)
+			logger.Logf(ee.env, "savekey", "could not close eeprom file: %v", err)
 		}
 	}()
 
 	n, err := f.Write(ee.Data)
 	if err != nil {
-		logger.Logf(ee.env, "savekey", "could not write eeprom file (%s)", err)
+		logger.Logf(ee.env, "savekey", "could not write eeprom file: %v", err)
 		return
 	}
 

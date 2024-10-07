@@ -1085,7 +1085,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 
 				fn, err := resolve(av)
 				if err != nil {
-					logger.Logf(logger.Allow, "dwarf", err.Error())
+					logger.Log(logger.Allow, "dwarf", err)
 					continue // build order loop
 				}
 
@@ -1115,7 +1115,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 			} else {
 				fn, err := resolve(e)
 				if err != nil {
-					logger.Logf(logger.Allow, "dwarf", err.Error())
+					logger.Log(logger.Allow, "dwarf", err)
 					continue // build order loop
 				}
 
@@ -1196,7 +1196,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 
 				err := commitInlinedSubroutine(low, high)
 				if err != nil {
-					logger.Logf(logger.Allow, "dwarf", err.Error())
+					logger.Log(logger.Allow, "dwarf", err)
 					continue // build order loop
 				}
 
@@ -1209,7 +1209,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 				commitRange := func(low uint64, high uint64) {
 					err := commitInlinedSubroutine(low, high)
 					if err != nil {
-						logger.Logf(logger.Allow, "dwarf", err.Error())
+						logger.Log(logger.Allow, "dwarf", err)
 					}
 				}
 

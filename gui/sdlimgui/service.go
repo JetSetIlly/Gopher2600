@@ -83,7 +83,7 @@ func (img *SdlImgui) Service() {
 		for peeping {
 			peepCt, err := sdl.PeepEvents(img.polling.pumpedEvents[additionalEvents:], sdl.GETEVENT, sdl.FIRSTEVENT, sdl.LASTEVENT)
 			if err != nil {
-				logger.Log(logger.Allow, "sdlimgui", err.Error())
+				logger.Log(logger.Allow, "sdlimgui", err)
 			}
 
 			// adjust the peepCt by the number of additionalEvents in the queue

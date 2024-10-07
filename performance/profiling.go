@@ -49,7 +49,7 @@ func RunProfiler(profile Profile, filenameHeader string, run func() error) error
 		defer func() {
 			err := f.Close()
 			if err != nil {
-				logger.Logf(logger.Allow, "performance", err.Error())
+				logger.Log(logger.Allow, "performance", err)
 			}
 		}()
 
@@ -68,7 +68,7 @@ func RunProfiler(profile Profile, filenameHeader string, run func() error) error
 		defer func() {
 			err := f.Close()
 			if err != nil {
-				logger.Logf(logger.Allow, "performance", err.Error())
+				logger.Log(logger.Allow, "performance", err)
 			}
 		}()
 
@@ -76,7 +76,7 @@ func RunProfiler(profile Profile, filenameHeader string, run func() error) error
 			runtime.GC()
 			err = pprof.WriteHeapProfile(f)
 			if err != nil {
-				logger.Logf(logger.Allow, "performance", err.Error())
+				logger.Log(logger.Allow, "performance", err)
 			}
 		}()
 	}
@@ -89,7 +89,7 @@ func RunProfiler(profile Profile, filenameHeader string, run func() error) error
 		defer func() {
 			err := f.Close()
 			if err != nil {
-				logger.Logf(logger.Allow, "performance", err.Error())
+				logger.Log(logger.Allow, "performance", err)
 			}
 		}()
 
@@ -108,7 +108,7 @@ func RunProfiler(profile Profile, filenameHeader string, run func() error) error
 		defer func() {
 			err := f.Close()
 			if err != nil {
-				logger.Logf(logger.Allow, "performance", err.Error())
+				logger.Log(logger.Allow, "performance", err)
 			}
 		}()
 
@@ -117,7 +117,7 @@ func RunProfiler(profile Profile, filenameHeader string, run func() error) error
 		defer func() {
 			p.WriteTo(f, 0)
 			if err != nil {
-				logger.Logf(logger.Allow, "performance", err.Error())
+				logger.Log(logger.Allow, "performance", err)
 			}
 		}()
 	}

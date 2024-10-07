@@ -154,7 +154,7 @@ func (thmb *Image) Create(state *rewind.State) {
 	})
 
 	if err != nil {
-		logger.Logf(logger.Allow, "thumbnailer", err.Error())
+		logger.Log(logger.Allow, "thumbnailer", err)
 		return
 	}
 }

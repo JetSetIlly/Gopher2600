@@ -615,13 +615,13 @@ func (tv *Television) signalFull(sig signal.SignalAttributes) {
 		if tv.state.scanline >= tv.state.vsync.flybackScanline {
 			err := tv.newFrame()
 			if err != nil {
-				logger.Log(tv.env, "TV", err.Error())
+				logger.Log(tv.env, "TV", err)
 			}
 		} else {
 			// if we're not at end of screen then indicate new scanline
 			err := tv.newScanline()
 			if err != nil {
-				logger.Log(tv.env, "TV", err.Error())
+				logger.Log(tv.env, "TV", err)
 			}
 		}
 	}
@@ -689,7 +689,7 @@ func (tv *Television) signalFull(sig signal.SignalAttributes) {
 	if tv.currentSignalIdx >= len(tv.signals) {
 		err := tv.renderSignals()
 		if err != nil {
-			logger.Log(tv.env, "TV", err.Error())
+			logger.Log(tv.env, "TV", err)
 		}
 	}
 }

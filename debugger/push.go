@@ -60,7 +60,7 @@ func (dbg *Debugger) PushSetPause(paused bool) {
 			}
 		})
 	case govern.ModeDebugger:
-		logger.Logf(logger.Allow, "debugger", "not reacting to SetPause() in debugger mode (use terminal input instead)")
+		logger.Log(logger.Allow, "debugger", "not reacting to SetPause() in debugger mode (use terminal input instead)")
 	}
 }
 
@@ -79,7 +79,7 @@ func (dbg *Debugger) PushMemoryProfile() {
 	dbg.PushFunctionImmediate(func() {
 		fn, err := dbg.memoryProfile()
 		if err != nil {
-			logger.Logf(logger.Allow, "memory profiling", err.Error())
+			logger.Log(logger.Allow, "memory profiling", err)
 			return
 		}
 		logger.Logf(logger.Allow, "memory profiling", "saved to %s", fn)

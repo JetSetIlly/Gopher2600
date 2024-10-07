@@ -213,7 +213,7 @@ func main() {
 // indicate gui creation and to quit.
 func launch(sync *mainSync, args []string) {
 
-	logger.Log(logger.Allow, "runtime", fmt.Sprintf("number of cores being used: %d", runtime.NumCPU()))
+	logger.Logf(logger.Allow, "runtime", "number of cores being used: %d", runtime.NumCPU())
 
 	// use flag set to provide the --help flag for top level command line.
 	// that's all we want it to do
@@ -410,7 +410,7 @@ func emulate(mode string, sync *mainSync, args []string) error {
 			switch strings.ToUpper(opts.TermType) {
 			default:
 				logger.Logf(logger.Allow, "terminal", "unknown terminal: %s", opts.TermType)
-				logger.Logf(logger.Allow, "terminal", "defaulting to plain")
+				logger.Log(logger.Allow, "terminal", "defaulting to plain")
 				term = &plainterm.PlainTerminal{}
 			case "PLAIN":
 				term = &plainterm.PlainTerminal{}

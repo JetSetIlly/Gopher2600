@@ -77,13 +77,13 @@ func (tv *Television) signalSimple(sig signal.SignalAttributes) {
 		if tv.state.scanline >= specification.AbsoluteMaxScanlines {
 			err := tv.newFrameSimple(false)
 			if err != nil {
-				logger.Log(tv.env, "Simple TV", err.Error())
+				logger.Log(tv.env, "Simple TV", err)
 			}
 		} else {
 			// if we're not at end of screen then indicate new scanline
 			err := tv.newScanline()
 			if err != nil {
-				logger.Log(tv.env, "Simple TV", err.Error())
+				logger.Log(tv.env, "Simple TV", err)
 			}
 		}
 	}
@@ -115,7 +115,7 @@ func (tv *Television) signalSimple(sig signal.SignalAttributes) {
 			if tv.simple.vsyncClocks > 10 {
 				err := tv.newFrameSimple(true)
 				if err != nil {
-					logger.Log(tv.env, "TV", err.Error())
+					logger.Log(tv.env, "TV", err)
 				}
 			}
 			tv.simple.vsyncActive = false
@@ -169,7 +169,7 @@ func (tv *Television) signalSimple(sig signal.SignalAttributes) {
 	if tv.currentSignalIdx >= len(tv.signals) {
 		err := tv.renderSignals()
 		if err != nil {
-			logger.Log(tv.env, "Simple TV", err.Error())
+			logger.Log(tv.env, "Simple TV", err)
 		}
 	}
 }

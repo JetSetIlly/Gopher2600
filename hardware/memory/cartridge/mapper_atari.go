@@ -160,7 +160,7 @@ func (cart *atari) reset() {
 	} else {
 		err := cart.SetBank(cart.env.Loader.Bank)
 		if err != nil {
-			logger.Logf(cart.env, "cartridge", err.Error())
+			logger.Log(cart.env, "cartridge", err)
 		}
 	}
 }

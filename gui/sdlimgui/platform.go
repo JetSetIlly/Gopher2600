@@ -233,7 +233,7 @@ func (plt *platform) setSwapInterval(i int) {
 
 	err := sdl.GLSetSwapInterval(i)
 	if err != nil {
-		logger.Logf(logger.Allow, "sdl", "GLSetSwapInterval(%d): %s", i, err.Error())
+		logger.Logf(logger.Allow, "sdl", "GLSetSwapInterval(%d): %v", i, err)
 	}
 }
 

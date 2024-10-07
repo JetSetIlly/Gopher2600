@@ -80,7 +80,7 @@ func (s *stream) push(e streamEntry) {
 
 func (s *stream) pull() streamEntry {
 	if !s.drain {
-		logger.Logf(logger.Allow, "ELF", "unexpected call to stream.pull(). returning zero data")
+		logger.Log(logger.Allow, "ELF", "unexpected call to stream.pull(). returning zero data")
 		return streamEntry{}
 	}
 	e := s.stream[s.drainPtr]
