@@ -126,6 +126,11 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	// make sure logger is clear
 	logger.Clear()
 
+	// echoing log output to buffer
+	logOutput := &strings.Builder{}
+	logger.SetEcho(logOutput, false)
+
+	// start output with message
 	output.Write([]byte(msg))
 
 	// create headless television. we'll use this to initialise the digester
@@ -161,9 +166,6 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	dur, _ := time.ParseDuration("1s")
 	tck := time.NewTicker(dur)
 
-	// writing log output to buffer
-	logOutput := &strings.Builder{}
-
 	// run emulation
 	err = vcs.RunForFrameCount(reg.NumFrames, func() (govern.State, error) {
 		// if the CPU is in the KIL state then the test will never end normally
@@ -178,8 +180,6 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 			output.Write([]byte(fmt.Sprintf("\r%s [%d/%d (%.1f%%)]", msg, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
 		default:
 		}
-
-		logger.WriteRecent(logOutput)
 
 		return govern.Running, nil
 	})
