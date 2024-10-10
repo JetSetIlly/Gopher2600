@@ -271,6 +271,8 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newCommaVid(cart.env, cartload)
 	case "FA":
 		cart.mapper, err = newCBS(cart.env, cartload)
+	case "FA2":
+		cart.mapper, err = newFA2(cart.env, cartload)
 	case "FE":
 		cart.mapper, err = newSCABS(cart.env, cartload)
 	case "E0":

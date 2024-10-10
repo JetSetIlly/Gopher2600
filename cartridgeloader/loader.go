@@ -321,6 +321,12 @@ func (ld Loader) Count(subslice []byte) int {
 	return bytes.Count(ld.preload, subslice)
 }
 
+// CountSkip returns the number of non-overlapping instances of subslice in the
+// preload data, skipping the first 'skip' elements
+func (ld Loader) CountSkip(skip int, subslice []byte) int {
+	return bytes.Count(ld.preload[skip:], subslice)
+}
+
 // open the cartridge data. filenames with a valid schema will use that method
 // to load the data. currently supported schemes are HTTP and local files.
 func (ld *Loader) open() error {

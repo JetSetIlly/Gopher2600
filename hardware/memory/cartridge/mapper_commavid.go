@@ -177,7 +177,7 @@ func (cart *commavid) GetRAM() []mapper.CartRAM {
 	r := make([]mapper.CartRAM, 1)
 	r[0] = mapper.CartRAM{
 		Label:  "CommaVid",
-		Origin: 0x0,
+		Origin: 0x1000,
 		Data:   make([]uint8, len(cart.state.ram)),
 		Mapped: true,
 	}
