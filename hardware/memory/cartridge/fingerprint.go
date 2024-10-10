@@ -309,6 +309,14 @@ func fingerprintSuperchargerFastLoad(cartload cartridgeloader.Loader) bool {
 	return cartload.Size() > 0 && cartload.Size()%8448 == 0
 }
 
+func fingerprintFA2(loader cartridgeloader.Loader) bool {
+	if loader.Size() <= 29696 {
+		return false
+	}
+	// data from 29k to 32k are padding zeros
+	return loader.CountSkip(29696, []byte{0x00}) == 3072
+}
+
 func fingerprintTigervision(loader cartridgeloader.Loader) bool {
 	// tigervision cartridges change banks by writing to memory address 0x3f. we
 	// can hypothesise that these types of cartridges will have that instruction
@@ -411,43 +419,47 @@ func fingerprint256k(loader cartridgeloader.Loader) string {
 	return "SB"
 }
 
-func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) (string, error) {
+func (cart *Cartridge) fingerprint(loader cartridgeloader.Loader) (string, error) {
 	// moviecart fingerprinting is done in cartridge loader. this is to avoid
 	// loading the entire file into memory, which we definitely don't want to do
 	// with moviecart files due to the large size
 
-	if ok := fingerprintElf(cartload, false); ok {
+	if ok := fingerprintElf(loader, false); ok {
 		return "ELF", nil
 	}
 
-	if ok, wrappedElf := fingerprintAce(cartload); ok {
+	if ok, wrappedElf := fingerprintAce(loader); ok {
 		if wrappedElf {
 			return "ACE_wrapped_ELF", nil
 		}
 		return "ACE", nil
 	}
 
-	if ok, version := fingerprintCDF(cartload); ok {
+	if ok, version := fingerprintCDF(loader); ok {
 		return version, nil
 	}
 
-	if fingerprintDPCplus(cartload) {
+	// DPC+ and FA2 are superficially the same
+	if fingerprintDPCplus(loader) {
+		if fingerprintFA2(loader) {
+			return "FA2", nil
+		}
 		return "DPC+", nil
 	}
 
-	if fingerprintSuperchargerFastLoad(cartload) {
+	if fingerprintSuperchargerFastLoad(loader) {
 		return "AR", nil
 	}
 
-	if fingerprint3ePlus(cartload) {
+	if fingerprint3ePlus(loader) {
 		return "3E+", nil
 	}
 
-	if fingerprint3e(cartload) {
+	if fingerprint3e(loader) {
 		return "3E", nil
 	}
 
-	switch cartload.Size() {
+	switch loader.Size() {
 	case 4096:
 		return "4K", nil
 
@@ -459,7 +471,7 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) (string, err
 		fallthrough
 
 	case 8192:
-		return fingerprint8k(cartload), nil
+		return fingerprint8k(loader), nil
 
 	case 10240:
 		fallthrough
@@ -471,23 +483,29 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) (string, err
 		return "FA", nil
 
 	case 16384:
-		return fingerprint16k(cartload), nil
+		return fingerprint16k(loader), nil
+
+	case 24576:
+		return "FA2", nil
+
+	case 28672:
+		return "FA2", nil
 
 	case 32768:
-		return fingerprint32k(cartload), nil
+		return fingerprint32k(loader), nil
 
 	case 65536:
-		return fingerprint64k(cartload), nil
+		return fingerprint64k(loader), nil
 
 	case 131072:
-		return fingerprint128k(cartload), nil
+		return fingerprint128k(loader), nil
 
 	case 262144:
-		return fingerprint256k(cartload), nil
+		return fingerprint256k(loader), nil
 	}
 
-	if cartload.Size() >= 4096 {
-		return "", fmt.Errorf("unrecognised size (%d bytes)", cartload.Size())
+	if loader.Size() >= 4096 {
+		return "", fmt.Errorf("unrecognised size (%d bytes)", loader.Size())
 	}
 	return "2K", nil
 }

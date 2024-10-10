@@ -248,7 +248,7 @@ func (cart *cbs) GetRAM() []mapper.CartRAM {
 	r := make([]mapper.CartRAM, 1)
 	r[0] = mapper.CartRAM{
 		Label:  "CBS+RAM",
-		Origin: 0x1080,
+		Origin: 0x1100,
 		Data:   make([]uint8, len(cart.state.ram)),
 		Mapped: true,
 	}

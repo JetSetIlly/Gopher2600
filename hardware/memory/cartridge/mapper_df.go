@@ -275,7 +275,7 @@ func (cart *df) Step(_ float32) {
 func (cart *df) GetRAM() []mapper.CartRAM {
 	r := make([]mapper.CartRAM, 1)
 	r[0] = mapper.CartRAM{
-		Label:  "df+RAM",
+		Label:  "DF+RAM",
 		Origin: 0x1080,
 		Data:   make([]uint8, len(cart.state.ram)),
 		Mapped: true,
