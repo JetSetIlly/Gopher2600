@@ -136,6 +136,9 @@ func (cart *fa2) Access(addr uint16, _ bool) (uint8, uint8, error) {
 
 // AccessVolatile implements the mapper.CartMapper interface.
 func (cart *fa2) AccessVolatile(addr uint16, data uint8, poke bool) error {
+	if cart.hotspot(addr) {
+		return nil
+	}
 	if addr <= 0x00ff {
 		cart.state.ram[addr] = data
 		return nil
@@ -152,6 +155,10 @@ func (cart *fa2) AccessVolatile(addr uint16, data uint8, poke bool) error {
 // the resource path to the nvram files
 const fa2_nvram = "fa2_nvram"
 
+// hotspot is called from both Access() and AccessVolatile(). if the Harmony
+// flash read/write time is implemented we'll need to take into account the
+// double call on Access() - the memory system calls AccessVolatile() and
+// Access() when a cartridge address is read
 func (cart *fa2) hotspot(addr uint16) bool {
 	if addr == 0x0ff4 && cart.nvram {
 		switch cart.state.ram[0xff] {
@@ -351,7 +358,6 @@ func (cart *fa2) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 		0x1ff8: {Symbol: "BANK3", Action: mapper.HotspotBankSwitch},
 		0x1ff9: {Symbol: "BANK4", Action: mapper.HotspotBankSwitch},
 		0x1ffa: {Symbol: "BANK5", Action: mapper.HotspotBankSwitch},
-		0x1ffb: {Symbol: "BANK6", Action: mapper.HotspotBankSwitch},
 	}
 	if cart.nvram {
 		m[0x1ff4] = mapper.CartHotspotInfo{Symbol: "NVRAM", Action: mapper.HotspotFunction}
@@ -367,7 +373,7 @@ func (cart *fa2) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return cart.ReadHotspots()
 }
 
-// rewindable state for the CBS cartridge.
+// rewindable state for the FA2 cartridge.
 type fa2State struct {
 	bank int
 	ram  []uint8
