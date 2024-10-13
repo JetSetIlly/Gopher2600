@@ -19,7 +19,8 @@ endif
 
 
 ### support targets
-.PHONY: all clean tidy generate check_git check_glsl glsl_validate check_pandoc readme_spell patch_file_integrity vet
+.PHONY: all clean tidy generate glsl_validate readme_spell patch_file_integrity vet lint
+.PHONY: check_glsl check_pandoc check_awk check_linters
 
 all:
 	@echo "use 'release' to build release binary"
@@ -82,6 +83,20 @@ vet: check_awk
 	{ct++; print $0}\
 	END { if (ct > 0) {exit 1} }\
 	'
+
+check_linters:
+# https://github.com/polyfloyd/go-errorlint
+ifeq (, $(shell which go-errorlint))
+	$(error "go-errorlint not installed")
+endif
+# https://github.com/mdempsky/unconvert
+ifeq (, $(shell which unconvert))
+	$(error "unconvert not installed")
+endif
+
+lint: check_linters
+	go-errorlint -c 0 -errorf -errorf-multi ./...
+	unconvert ./...
 
 ### testing targets
 .PHONY: test race race_debug fuzz

@@ -78,8 +78,8 @@ func StartSession(path string, activity Activity, init func(*Session) error) (*S
 
 	db.dbfile, err = os.OpenFile(path, flags, 0600)
 	if err != nil {
-		switch err.(type) {
-		case *os.PathError:
+		var pathError *os.PathError
+		if errors.As(err, &pathError) {
 			return nil, fmt.Errorf("%w: %s", NotAvailable, path)
 		}
 		return nil, fmt.Errorf("database: %w", err)

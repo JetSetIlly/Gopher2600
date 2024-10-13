@@ -529,7 +529,7 @@ func drawRegister(id string, val uint8, mask uint8, col imgui.PackedColor, onWri
 			if seq.rectFill(col) {
 				v := val ^ (0x80 >> i)
 				if onWrite != nil {
-					onWrite(uint8(v & mask))
+					onWrite(v & mask)
 				}
 			}
 		} else {

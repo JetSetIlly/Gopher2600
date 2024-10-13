@@ -140,7 +140,7 @@ func NewPlayback(transcript string, ignoreDigest bool) (*Playback, error) {
 			case 3:
 				entry.event.Port = plugging.PortPanel
 			default:
-				return nil, fmt.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldPortID+1], fieldSep)))
+				return nil, fmt.Errorf("playback: %w line %d, col %d", err, i+1, len(strings.Join(toks[:fieldPortID+1], fieldSep)))
 			}
 		}
 
@@ -153,7 +153,7 @@ func NewPlayback(transcript string, ignoreDigest bool) (*Playback, error) {
 
 		entry.event.Time.Frame, err = strconv.Atoi(toks[fieldFrame])
 		if err != nil {
-			return nil, fmt.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldFrame+1], fieldSep)))
+			return nil, fmt.Errorf("playback: %w line %d, col %d", err, i+1, len(strings.Join(toks[:fieldFrame+1], fieldSep)))
 		}
 
 		// assuming that frames are listed in order in the file. update
@@ -162,12 +162,12 @@ func NewPlayback(transcript string, ignoreDigest bool) (*Playback, error) {
 
 		entry.event.Time.Scanline, err = strconv.Atoi(toks[fieldScanline])
 		if err != nil {
-			return nil, fmt.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldScanline+1], fieldSep)))
+			return nil, fmt.Errorf("playback: %w line %d, col %d", err, i+1, len(strings.Join(toks[:fieldScanline+1], fieldSep)))
 		}
 
 		entry.event.Time.Clock, err = strconv.Atoi(toks[fieldClock])
 		if err != nil {
-			return nil, fmt.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldClock+1], fieldSep)))
+			return nil, fmt.Errorf("playback: %w line %d, col %d", err, i+1, len(strings.Join(toks[:fieldClock+1], fieldSep)))
 		}
 
 		entry.hash = toks[fieldHash]

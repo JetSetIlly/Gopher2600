@@ -1030,11 +1030,11 @@ func (cart *Moviecart) nextField() {
 			cart.state.rotation = rotation
 		}
 
-		cart.state.format[cart.state.streamIndex].vsync = byte(cart.state.streamBuffer[cart.state.streamIndex][9])
-		cart.state.format[cart.state.streamIndex].vblank = byte(cart.state.streamBuffer[cart.state.streamIndex][10])
-		cart.state.format[cart.state.streamIndex].overscan = byte(cart.state.streamBuffer[cart.state.streamIndex][11])
-		cart.state.format[cart.state.streamIndex].visible = byte(cart.state.streamBuffer[cart.state.streamIndex][12])
-		cart.state.format[cart.state.streamIndex].rate = byte(cart.state.streamBuffer[cart.state.streamIndex][13])
+		cart.state.format[cart.state.streamIndex].vsync = cart.state.streamBuffer[cart.state.streamIndex][9]
+		cart.state.format[cart.state.streamIndex].vblank = cart.state.streamBuffer[cart.state.streamIndex][10]
+		cart.state.format[cart.state.streamIndex].overscan = cart.state.streamBuffer[cart.state.streamIndex][11]
+		cart.state.format[cart.state.streamIndex].visible = cart.state.streamBuffer[cart.state.streamIndex][12]
+		cart.state.format[cart.state.streamIndex].rate = cart.state.streamBuffer[cart.state.streamIndex][13]
 
 		lines := int(cart.state.format[cart.state.streamIndex].vsync) +
 			int(cart.state.format[cart.state.streamIndex].vblank) +

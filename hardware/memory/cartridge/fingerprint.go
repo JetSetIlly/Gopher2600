@@ -17,6 +17,7 @@ package cartridge
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 
@@ -176,7 +177,7 @@ func fingerprintMnetwork(loader cartridgeloader.Loader) bool {
 			}
 		}
 
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 
@@ -295,7 +296,7 @@ func fingerprintCDF(loader cartridgeloader.Loader) (bool, string) {
 			return true, fmt.Sprintf("CDF%1d", b[3])
 		}
 
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 

@@ -270,22 +270,22 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 	if mem == nil {
 		if arm.mmap.HasMAM {
 			if v, ok := arm.state.mam.Read(addr); ok {
-				return uint32(v)
+				return v
 			}
 		}
 		if arm.mmap.HasRNG {
 			if v, ok := arm.state.rng.Read(addr); ok {
-				return uint32(v)
+				return v
 			}
 		}
 		if arm.mmap.HasT1 {
 			if v, ok := arm.state.timer.Read(addr); ok {
-				return uint32(v)
+				return v
 			}
 		}
 		if arm.mmap.HasTIM2 {
 			if v, ok := arm.state.timer2.Read(addr); ok {
-				return uint32(v)
+				return v
 			}
 		}
 		if addr == arm.mmap.APBDIV {
@@ -324,22 +324,22 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 	mem, origin := arm.mem.MapAddress(addr, true, false)
 	if mem == nil {
 		if arm.mmap.HasMAM {
-			if arm.state.mam.Write(addr, uint32(val)) {
+			if arm.state.mam.Write(addr, val) {
 				return
 			}
 		}
 		if arm.mmap.HasRNG {
-			if arm.state.rng.Write(addr, uint32(val)) {
+			if arm.state.rng.Write(addr, val) {
 				return
 			}
 		}
 		if arm.mmap.HasT1 {
-			if arm.state.timer.Write(addr, uint32(val)) {
+			if arm.state.timer.Write(addr, val) {
 				return
 			}
 		}
 		if arm.mmap.HasTIM2 {
-			if arm.state.timer2.Write(addr, uint32(val)) {
+			if arm.state.timer2.Write(addr, val) {
 				return
 			}
 		}

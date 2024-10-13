@@ -17,6 +17,7 @@ package regression
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -144,8 +145,11 @@ func (reg *VideoRegression) Serialise() (database.SerialisedEntry, error) {
 // CleanUp implements the database.Entry interface.
 func (reg VideoRegression) CleanUp() error {
 	err := os.Remove(reg.stateFile)
-	if _, ok := err.(*os.PathError); ok {
-		return nil
+	if err != nil {
+		var pathError *os.PathError
+		if errors.As(err, &pathError) {
+			return nil
+		}
 	}
 	return err
 }
@@ -352,7 +356,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 
 		// check that we've consumed all the lines in the recorded state file
 		_, err = reader.ReadString('\n')
-		if err == nil || err != io.EOF {
+		if err == nil || !errors.Is(err, io.EOF) {
 			failm := "unexpected end of state. entries remaining in recorded state file"
 			return false, failm, nil
 		}

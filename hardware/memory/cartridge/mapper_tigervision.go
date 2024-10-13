@@ -163,7 +163,7 @@ func (cart *tigervision) SetBank(bank string) error {
 
 	segs, err := mapper.SegmentedBankSelection(bank)
 	if err != nil {
-		return fmt.Errorf("%s: %v", cart.mappingID, err)
+		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
 
 	if len(segs) > len(cart.state.segment) {

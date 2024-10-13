@@ -17,6 +17,7 @@ package prefs
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -207,8 +208,8 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 	// open existing prefs file
 	f, err := fs.Open(path)
 	if err != nil {
-		switch err.(type) {
-		case *os.PathError:
+		var pathError *os.PathError
+		if errors.As(err, &pathError) {
 			return 0, nil
 		}
 		return numLoaded, fmt.Errorf("prefs: %w", err)

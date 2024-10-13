@@ -386,13 +386,13 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				switch sym.Name {
 				// GPIO pins
 				case "ADDR_IDR":
-					tgt = uint32(mem.gpio.lookupOrigin | ADDR_IDR)
+					tgt = mem.gpio.lookupOrigin | ADDR_IDR
 				case "DATA_ODR":
-					tgt = uint32(mem.gpio.lookupOrigin | DATA_ODR)
+					tgt = mem.gpio.lookupOrigin | DATA_ODR
 				case "DATA_MODER":
-					tgt = uint32(mem.gpio.lookupOrigin | DATA_MODER)
+					tgt = mem.gpio.lookupOrigin | DATA_MODER
 				case "DATA_IDR":
-					tgt = uint32(mem.gpio.lookupOrigin | DATA_IDR)
+					tgt = mem.gpio.lookupOrigin | DATA_IDR
 
 				// strongARM functions
 				case "vcsWrite3":

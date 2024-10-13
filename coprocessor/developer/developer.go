@@ -390,7 +390,7 @@ func (dev *Developer) SearchStaticMemory(output io.Writer, data uint32, width in
 				if !ok {
 					return fmt.Errorf("address %08x not found in segment (it should be)", addr)
 				}
-				if v == uint32(data) {
+				if v == data {
 					output.Write([]byte(fmt.Sprintf("%s %08x", seg.Name, addr)))
 				}
 			}

@@ -239,7 +239,7 @@ func (cart *wicksteadDesign) SetBank(bank string) error {
 
 	b, err := mapper.SingleBankSelection(bank)
 	if err != nil {
-		return fmt.Errorf("%s: %v", cart.mappingID, err)
+		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
 	if b.IsRAM {
 		return fmt.Errorf("%s: cartridge expects a pattern number between 0 and 7", cart.mappingID)
