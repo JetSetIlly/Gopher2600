@@ -106,7 +106,10 @@ fuzz: generate test
 	$(goBinary) test -fuzztime=30s -fuzz . ./crunched/
 
 ### profiling targets
-.PHONY: profile profile_cpu profile_cpu_play profile_cpu_debug profile_mem_play profile_mem_debug profile_trace
+.PHONY: profile
+.PHONY: profile_cpu profile_cpu_play profile_cpu_debug
+.PHONY:	profile_mem profile_mem_play profile_mem_debug
+.PHONY: profile_trace
 
 # not including $(ldflags) for profiling. that woulds strip the binary of
 # debugging data which would prevent us from digging into the source code
@@ -132,6 +135,12 @@ profile_cpu_debug : generate test
 	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
 	@./gopher2600 debug -profile=cpu -elf=none $(profilingRom)
 	@$(goBinary) tool pprof -http : ./gopher2600 debugger_cpu.profile
+
+profile_mem : generate test
+	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
+	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
+	@./gopher2600 performance -profile=mem -duration=20s $(profilingRom)
+	@$(goBinary) tool pprof -http : ./gopher2600 performance_mem.profile
 
 profile_mem_play : generate test
 	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
