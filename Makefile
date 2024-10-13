@@ -2,7 +2,7 @@
 version = v0.35.1
 
 goBinary = go
-gcflags = -c 3 -B -wb=false
+gcflags = -c 3 -B -wb=false -l -l -l -l
 ldflags = -s -w
 ldflags_version = $(ldflags) -X 'github.com/jetsetilly/gopher2600/version.number=$(version)'
 profilingRom = roms/Pitfall.bin
