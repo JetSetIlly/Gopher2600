@@ -16,6 +16,7 @@
 package supercharger
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -89,10 +90,10 @@ func getPCM(env *environment.Environment, cl cartridgeloader.Loader) (pcmData, e
 
 		err = nil
 		chunk := make([]byte, 4096)
-		for err != io.EOF {
+		for !errors.Is(err, io.EOF) {
 			var chunkLen int
 			chunkLen, err = dec.Read(chunk)
-			if err != nil && err != io.EOF {
+			if err != nil && !errors.Is(err, io.EOF) {
 				return p, fmt.Errorf("mp3: %w", err)
 			}
 

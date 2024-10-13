@@ -119,7 +119,7 @@ func (cart *scabs) SetBank(bank string) error {
 
 	b, err := mapper.SingleBankSelection(bank)
 	if err != nil {
-		return fmt.Errorf("%s: %v", cart.mappingID, err)
+		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
 
 	if b.Number >= len(cart.banks) {

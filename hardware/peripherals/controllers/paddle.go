@@ -136,7 +136,7 @@ func (pdl *Paddles) setFire() {
 	var fire uint8
 	for i := range pdl.paddles {
 		if pdl.paddles[i].fire {
-			fire |= uint8(pdl.paddles[i].buttonMask)
+			fire |= pdl.paddles[i].buttonMask
 		}
 	}
 	pdl.bus.WriteSWCHx(pdl.port, ^fire)

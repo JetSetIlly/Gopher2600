@@ -140,7 +140,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "RDY",
 				value: func() targetValue {
-					return bool(dbg.vcs.CPU.RdyFlg)
+					return dbg.vcs.CPU.RdyFlg
 				},
 				format:              "%v",
 				instructionBoundary: true,

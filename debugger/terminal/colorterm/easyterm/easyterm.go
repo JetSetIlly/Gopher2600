@@ -126,7 +126,7 @@ func (et *EasyTerm) UpdateGeometry() error {
 		uintptr(unsafe.Pointer(&et.geometry)))
 
 	if errno != 0 {
-		return fmt.Errorf("error updating terminal geometry information (%d)", errno)
+		return fmt.Errorf("error updating terminal geometry information (%w)", errno)
 	}
 
 	return nil

@@ -1026,7 +1026,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 
 			// extent of stack
 			addr := arm.state.registers[rSP] - imm32
-			arm.state.registers[rSP] -= uint32(imm32)
+			arm.state.registers[rSP] -= imm32
 
 			if sz {
 				// 64bit floats (T1 encoding)

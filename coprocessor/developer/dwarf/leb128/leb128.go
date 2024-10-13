@@ -48,7 +48,7 @@ func DecodeSLEB128(encoded []uint8) (int64, int) {
 	var n int
 	for _, v = range encoded {
 		n++
-		result |= int64((int64(v) & 0x7f) << shift)
+		result |= (int64(v) & 0x7f) << shift
 		shift += 7
 		if v&0x80 == 0x00 {
 			break
@@ -60,5 +60,5 @@ func DecodeSLEB128(encoded []uint8) (int64, int) {
 		result |= -(1 << shift)
 	}
 
-	return int64(result), n
+	return result, n
 }

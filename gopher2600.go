@@ -226,7 +226,7 @@ func launch(sync *mainSync, args []string) {
 	// execution modes summary and return
 	err := flgs.Parse(args)
 	if err != nil {
-		if err == flag.ErrHelp {
+		if errors.Is(err, flag.ErrHelp) {
 			fmt.Println("Execution Modes: RUN, DEBUG, DISASM, PERFORMANCE, REGRESS, VERSION")
 			sync.state <- stateRequest{req: reqQuit, args: 20}
 			return
@@ -616,7 +616,7 @@ func regress(mode string, args []string) error {
 	flgs := flag.NewFlagSet(mode, flag.ContinueOnError)
 	err := flgs.Parse(args)
 	if err != nil {
-		if err == flag.ErrHelp {
+		if errors.Is(err, flag.ErrHelp) {
 			fmt.Println("Sub modes: RUN, LIST, DELETE, ADD, REDUX, CLEANUP")
 		}
 		return nil
@@ -749,7 +749,7 @@ func regressAdd(mode string, args []string) error {
 	// parse args and get copy of remaining arguments
 	err := flgs.Parse(args)
 	if err != nil {
-		if err == flag.ErrHelp {
+		if errors.Is(err, flag.ErrHelp) {
 			fmt.Println()
 			fmt.Println(`The regression test to be added can be the path to a cartridge file or a previously
 recorded playback file. For playback files, the flags marked [not playback files] do not

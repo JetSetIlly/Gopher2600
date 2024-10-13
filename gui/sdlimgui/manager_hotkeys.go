@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -93,8 +94,8 @@ func (wm *manager) loadManagerHotkeys() (rerr error) {
 	// open an existing hotkeys file
 	f, err := fs.Open(pth)
 	if err != nil {
-		switch err.(type) {
-		case *os.PathError:
+		var pathError *os.PathError
+		if errors.As(err, &pathError) {
 			return nil
 		}
 		return fmt.Errorf("manager hotkeys: %w", err)

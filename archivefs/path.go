@@ -301,7 +301,7 @@ func (afs *Path) Set(path string, fallback bool) error {
 				if fallback {
 					return afs.Set(prevSearch, false)
 				}
-				return fmt.Errorf("archivefs: set: %v", err)
+				return fmt.Errorf("archivefs: set: %w", err)
 			}
 
 			zfi, err := zf.Stat()
@@ -309,7 +309,7 @@ func (afs *Path) Set(path string, fallback bool) error {
 				if fallback {
 					return afs.Set(prevSearch, false)
 				}
-				return fmt.Errorf("archivefs: set: %v", err)
+				return fmt.Errorf("archivefs: set: %w", err)
 			}
 
 			afs.isDir = zfi.IsDir()
@@ -326,7 +326,7 @@ func (afs *Path) Set(path string, fallback bool) error {
 				if fallback {
 					return afs.Set(prevSearch, false)
 				}
-				return fmt.Errorf("archivefs: set: %v", err)
+				return fmt.Errorf("archivefs: set: %w", err)
 			}
 
 			afs.isDir = fi.IsDir()
@@ -345,7 +345,7 @@ func (afs *Path) Set(path string, fallback bool) error {
 				if fallback {
 					return afs.Set(prevSearch, false)
 				}
-				return fmt.Errorf("archivefs: set: %v", err)
+				return fmt.Errorf("archivefs: set: %w", err)
 			}
 		}
 	}
@@ -355,7 +355,7 @@ func (afs *Path) Set(path string, fallback bool) error {
 	var err error
 	afs.current, err = filepath.Abs(search)
 	if err != nil {
-		return fmt.Errorf("archivefs: set: %v", err)
+		return fmt.Errorf("archivefs: set: %w", err)
 	}
 
 	// make sure path is clean

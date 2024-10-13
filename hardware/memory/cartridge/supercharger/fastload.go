@@ -109,7 +109,7 @@ func newFastLoad(env *environment.Environment, state *state, loader cartridgeloa
 		gameHeader := fl.blocks[i].data[fastLoadHeaderOffset : fastLoadHeaderOffset+fastLoadHeaderLen]
 		fl.blocks[i].startAddress = (uint16(gameHeader[1]) << 8) | uint16(gameHeader[0])
 		fl.blocks[i].configByte = gameHeader[2]
-		fl.blocks[i].numPages = uint8(gameHeader[3])
+		fl.blocks[i].numPages = gameHeader[3]
 		fl.blocks[i].checksum = gameHeader[4]
 		fl.blocks[i].multiload = gameHeader[5]
 		fl.blocks[i].progressSpeed = (uint16(gameHeader[7]) << 8) | uint16(gameHeader[6])

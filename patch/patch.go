@@ -16,6 +16,7 @@
 package patch
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -45,8 +46,8 @@ func CartridgeMemory(cart *cartridge.Cartridge, patchFile string) (bool, error) 
 
 	f, err := os.Open(p)
 	if err != nil {
-		switch err.(type) {
-		case *os.PathError:
+		var pathError *os.PathError
+		if errors.As(err, &pathError) {
 			return false, fmt.Errorf("patch: patch file not found (%s)", p)
 		}
 		return false, fmt.Errorf("patch: %w", err)

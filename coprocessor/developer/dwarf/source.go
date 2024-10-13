@@ -203,7 +203,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	}
 	b, err := debug_info.Data()
 	if err != nil {
-		return nil, fmt.Errorf("dwarf: %v", err)
+		return nil, fmt.Errorf("dwarf: %w", err)
 	}
 	version := ef.ByteOrder.Uint16(b[4:])
 	if version != 4 {
@@ -302,7 +302,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 
 		// if ELF file was manually specified prefer
 		if elfFile != "" {
-			addressAdjustment = uint64(ef.Entry)
+			addressAdjustment = ef.Entry
 			adjust = true
 		} else {
 			if c, ok := bus.(coprocessor.CartCoProcOrigin); ok {
@@ -399,7 +399,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	for {
 		e, err := r.Next()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break // for loop
 			}
 			return nil, fmt.Errorf("dwarf: %w", err)
@@ -421,7 +421,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				unit.address = addressAdjustment + uint64(fld.Val.(uint64))
+				unit.address = addressAdjustment + fld.Val.(uint64)
 			}
 
 			// assuming DWARF never has duplicate compile unit entries
@@ -604,7 +604,7 @@ func allocateSourceLines(src *Source, dwrf *dwarf.Data, addressAdjustment uint64
 		for {
 			err := r.Next(&le)
 			if err != nil {
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					break // line entry for loop. will continue with compile unit loop
 				}
 				return err
@@ -680,7 +680,7 @@ func allocateSourceLines(src *Source, dwrf *dwarf.Data, addressAdjustment uint64
 		for {
 			err := r.Next(&le)
 			if err != nil {
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					break // line entry for loop. will continue with compile unit loop
 				}
 				return err
@@ -841,12 +841,12 @@ func addFunctionStubs(src *Source, ef *elf.File) error {
 		if typ == 0x02 {
 			// align address
 			// TODO: this is a bit of ARM specific knowledge that should be removed
-			a := uint64(s.Value & 0xfffffffe)
+			a := s.Value & 0xfffffffe
 			symbolTableFunctions = append(symbolTableFunctions, fn{
 				name: s.Name,
 				rng: SourceRange{
 					Start: a,
-					End:   a + uint64(s.Size) - 1,
+					End:   a + s.Size - 1,
 				},
 			})
 		}

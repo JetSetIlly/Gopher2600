@@ -662,7 +662,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 				var ok bool
 
-				ln, ok = src.LinesByAddress[uint64(addr)]
+				ln, ok = src.LinesByAddress[addr]
 				if !ok {
 					dbg.printLine(terminal.StyleError, fmt.Sprintf("address %x does not correspond to a source line", addr))
 				} else {

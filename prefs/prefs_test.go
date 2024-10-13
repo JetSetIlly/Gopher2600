@@ -16,6 +16,7 @@
 package prefs_test
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -55,7 +56,8 @@ func delTmpPrefFile(t *testing.T, fn string) {
 	if err := os.Remove(fn); err != nil {
 		// not worrying about path errors; these are returned if
 		// file doesn't exist
-		if _, ok := err.(*os.PathError); !ok {
+		var pathError *os.PathError
+		if !errors.As(err, &pathError) {
 			t.Errorf("error removing tmp pref file: %v", err)
 		}
 	}

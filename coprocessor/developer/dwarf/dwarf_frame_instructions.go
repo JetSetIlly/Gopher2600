@@ -166,7 +166,7 @@ func decodeFrameInstruction(coproc coprocessor.CartCoProc, byteOrder binary.Byte
 			if int(reg) >= len(tab.rows[0].registers) {
 				// ignore extended registers for now
 			} else {
-				tab.rows[0].registers[reg].value = int64(offset) * cie.dataAlignment
+				tab.rows[0].registers[reg].value = offset * cie.dataAlignment
 			}
 
 			return frameInstruction{
@@ -477,7 +477,7 @@ func decodeFrameInstruction(coproc coprocessor.CartCoProc, byteOrder binary.Byte
 		if int(reg) >= len(tab.rows[0].registers) {
 			err = fmt.Errorf("bad register %d", reg)
 		} else {
-			tab.rows[0].registers[reg].value = int64(offset)
+			tab.rows[0].registers[reg].value = offset
 		}
 
 		return frameInstruction{

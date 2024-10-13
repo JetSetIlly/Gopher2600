@@ -201,7 +201,7 @@ func (win *winCartStatic) draw(static mapper.CartStatic) {
 									switch varb.Type.Size {
 									case 4:
 										if d, ok := currStatic.Read32bit(addr); ok {
-											value = uint32(d)
+											value = d
 											currValue = fmt.Sprintf("%08x", d)
 										}
 										if d, ok := compStatic.Read32bit(addr); ok {

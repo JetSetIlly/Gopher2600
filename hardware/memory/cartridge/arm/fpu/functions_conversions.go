@@ -41,7 +41,7 @@ func (fpu *FPU) FixedToFP(operand uint64, N int, fractionBits int, unsigned bool
 		}
 	case 64:
 		if unsigned {
-			realOperand = float64(uint64(operand) / uint64(math.Pow(2, float64(fractionBits))))
+			realOperand = float64(operand / uint64(math.Pow(2, float64(fractionBits))))
 		} else {
 			realOperand = float64(int64(operand) / int64(math.Pow(2, float64(fractionBits))))
 		}

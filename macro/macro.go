@@ -489,7 +489,7 @@ func (mcr *Macro) run() {
 					logf("cannot use value for POKE: %s", args[1])
 					return
 				}
-				val = uint8(v)
+				val = v
 			}
 
 			// poke address with value

@@ -75,7 +75,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *loclistSection, debug_frame *frameSec
 	for {
 		entry, err := r.Next()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break // for loop
 			}
 			return nil, err
@@ -591,7 +591,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				compilationUnitAddress += uint64(fld.Val.(uint64))
+				compilationUnitAddress += fld.Val.(uint64)
 			}
 
 			continue // for loop
@@ -605,7 +605,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				low = addressAdjustment + uint64(fld.Val.(uint64))
+				low = addressAdjustment + fld.Val.(uint64)
 
 				fld = e.AttrField(dwarf.AttrHighpc)
 				if fld == nil {
@@ -618,7 +618,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 					high = low + uint64(fld.Val.(int64))
 				case dwarf.ClassAddress:
 					// dwarf-2
-					high = uint64(fld.Val.(uint64))
+					high = fld.Val.(uint64)
 				default:
 				}
 
@@ -1036,7 +1036,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 			// 2.17.3)."
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				compilationUnitAddress += uint64(fld.Val.(uint64))
+				compilationUnitAddress += fld.Val.(uint64)
 			}
 		case dwarf.TagSubprogram:
 			// check address against low/high fields
@@ -1050,7 +1050,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 				// either concrete Subprograms or concrete InlinedSubroutines
 				continue // for loop
 			}
-			low = addressAdjustment + uint64(fld.Val.(uint64))
+			low = addressAdjustment + fld.Val.(uint64)
 
 			fld = e.AttrField(dwarf.AttrHighpc)
 			if fld == nil {
@@ -1063,7 +1063,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 				high = low + uint64(fld.Val.(int64))
 			case dwarf.ClassAddress:
 				// dwarf-2
-				high = uint64(fld.Val.(uint64))
+				high = fld.Val.(uint64)
 			default:
 				return fmt.Errorf("AttrLowpc without AttrHighpc for Subprogram")
 			}
@@ -1170,7 +1170,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				low = addressAdjustment + uint64(fld.Val.(uint64))
+				low = addressAdjustment + fld.Val.(uint64)
 
 				// high PC
 				fld = e.AttrField(dwarf.AttrHighpc)
@@ -1184,7 +1184,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 					high = low + uint64(fld.Val.(int64))
 				case dwarf.ClassAddress:
 					// dwarf-2
-					high = uint64(fld.Val.(uint64))
+					high = fld.Val.(uint64)
 				default:
 					return fmt.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine")
 				}

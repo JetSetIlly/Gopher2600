@@ -19,6 +19,7 @@ package main
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"go/format"
 	"io"
@@ -45,7 +46,7 @@ func parseCSV() (string, error) {
 	// open file
 	df, err := os.Open(definitionsCSVFile)
 	if err != nil {
-		return "", fmt.Errorf("error opening instruction definitions (%s)", err)
+		return "", fmt.Errorf("error opening instruction definitions (%w)", err)
 	}
 	defer df.Close()
 
@@ -67,10 +68,10 @@ func parseCSV() (string, error) {
 		// loop through file until EOF is reached
 		line++
 		rec, err := csvr.Read()
-		if err == io.EOF {
-			break
-		}
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
 			return "", err
 		}
 
