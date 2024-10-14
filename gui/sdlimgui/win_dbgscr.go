@@ -157,8 +157,8 @@ func (win *winDbgScr) debuggerDraw() bool {
 		defer imgui.PopStyleColorV(2)
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{8, 28}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{637, 431}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 8, Y: 28}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 637, Y: 431}, imgui.ConditionFirstUseEver)
 
 	// we don't want to ever show scrollbars
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNoScrollbar) {
@@ -179,7 +179,7 @@ func (win *winDbgScr) draw() {
 	win.screenRegion.Y -= win.toolbarHeight
 
 	// screen image, overlays, menus and tooltips
-	imgui.BeginChildV("##image", imgui.Vec2{win.screenRegion.X, win.screenRegion.Y}, false, imgui.WindowFlagsNoScrollbar)
+	imgui.BeginChildV("##image", imgui.Vec2{X: win.screenRegion.X, Y: win.screenRegion.Y}, false, imgui.WindowFlagsNoScrollbar)
 
 	// add horiz/vert padding around screen image
 	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
@@ -200,14 +200,14 @@ func (win *winDbgScr) draw() {
 	imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
-	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
+	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{X: 0.0, Y: 0.0})
 
 	imgui.PushStyleColor(imgui.StyleColorDragDropTarget, win.img.cols.Transparent)
 
 	if !win.crtPreview && win.elements {
-		imgui.ImageButton(imgui.TextureID(win.elementsTexture.getID()), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+		imgui.ImageButton(imgui.TextureID(win.elementsTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
 	} else {
-		imgui.ImageButton(imgui.TextureID(win.displayTexture.getID()), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+		imgui.ImageButton(imgui.TextureID(win.displayTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
 	}
 
 	win.mouseHover = imgui.IsItemHovered()
@@ -220,7 +220,7 @@ func (win *winDbgScr) draw() {
 	if !win.crtPreview {
 		// overlay texture on top of screen texture
 		imgui.SetCursorScreenPos(win.screenOrigin)
-		imgui.ImageButton(imgui.TextureID(win.overlayTexture.getID()), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+		imgui.ImageButton(imgui.TextureID(win.overlayTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
 
 		// popup menu on right mouse button
 		//
@@ -315,7 +315,7 @@ func (win *winDbgScr) draw() {
 		// status line
 		imgui.Spacing()
 
-		// imgui.SetCursorPos(imgui.CursorPos().Plus(imgui.Vec2{win.imagePadding.X, 0.0}))
+		// imgui.SetCursorPos(imgui.CursorPos().Plus(imgui.Vec2{X: win.imagePadding.X, Y: 0.0}))
 		win.drawCoordsLine()
 
 		// options line
@@ -407,7 +407,7 @@ func (win *winDbgScr) drawSpecCombo() {
 func (win *winDbgScr) drawCoordsLine() {
 	flgs := imgui.TableFlagsSizingFixedFit
 	flgs |= imgui.TableFlagsBordersInnerV
-	if imgui.BeginTableV("tvcoords", 5, imgui.TableFlagsSizingFixedFit, imgui.Vec2{0.0, 0.0}, 0.0) {
+	if imgui.BeginTableV("tvcoords", 5, imgui.TableFlagsSizingFixedFit, imgui.Vec2{X: 0.0, Y: 0.0}, 0.0) {
 		imgui.TableSetupColumnV("##tvcoords_icon", imgui.TableColumnFlagsNone, imguiTextWidth(2), 0)
 		imgui.TableSetupColumnV("##tvcoords_frame", imgui.TableColumnFlagsNone, imguiTextWidth(10), 1)
 		imgui.TableSetupColumnV("##tvcoords_scanline", imgui.TableColumnFlagsNone, imguiTextWidth(13), 2)
@@ -430,7 +430,7 @@ func (win *winDbgScr) drawCoordsLine() {
 				imgui.Separator()
 				imgui.Spacing()
 
-				if imgui.BeginTableV("geometry_tooltip", 2, flgs, imgui.Vec2{0.0, 0.0}, 0.0) {
+				if imgui.BeginTableV("geometry_tooltip", 2, flgs, imgui.Vec2{X: 0.0, Y: 0.0}, 0.0) {
 					imgui.TableSetupColumnV("##geometry_tooltip_desc", imgui.TableColumnFlagsNone, imguiTextWidth(9), 0)
 					imgui.TableSetupColumnV("##geometry_tooltip_val", imgui.TableColumnFlagsNone, imguiTextWidth(3), 1)
 

@@ -19,7 +19,7 @@ endif
 
 
 ### support targets
-.PHONY: all clean tidy generate glsl_validate readme_spell patch_file_integrity vet lint
+.PHONY: all clean tidy generate glsl_validate readme_spell patch_file_integrity lint
 .PHONY: check_glsl check_pandoc check_awk check_linters
 
 all:
@@ -72,18 +72,6 @@ patch_file_integrity: *.patch
 	done
 	@echo "patch files are fine"
 
-# using awk to ignore noisy errors:
-# 1) unkeyed imgui.Vec2 and imgui.Vec4 structs are plentiful and harmless
-# 2) lines starting with # simply indicate packages that have vet errors
-vet: check_awk
-	@go vet ./... 2>&1 | awk '\
-	BEGIN {ct = 0}\
-	/imgui.go\/v[0-9]*\.Vec[2,4] struct literal uses unkeyed fields/ {next}\
-	/^# / {next}\
-	{ct++; print $0}\
-	END { if (ct > 0) {exit 1} }\
-	'
-
 check_linters:
 # https://github.com/polyfloyd/go-errorlint
 ifeq (, $(shell which go-errorlint))
@@ -95,6 +83,7 @@ ifeq (, $(shell which unconvert))
 endif
 
 lint: check_linters
+	go vet ./...
 	go-errorlint -c 0 -errorf -errorf-multi ./...
 	unconvert ./...
 

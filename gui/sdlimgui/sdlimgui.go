@@ -487,5 +487,5 @@ func (img *SdlImgui) smartCursorVisibility(hidden bool) {
 func (img *SdlImgui) setReasonableWindowConstraints() {
 	x := img.plt.displaySize()[0] * 0.95
 	y := img.plt.displaySize()[1] * 0.95
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{300, 300}, imgui.Vec2{X: x, Y: y})
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{X: 300, Y: 300}, imgui.Vec2{X: x, Y: y})
 }

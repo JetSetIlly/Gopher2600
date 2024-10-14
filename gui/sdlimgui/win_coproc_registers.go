@@ -61,7 +61,7 @@ func (win *winCoProcRegisters) debuggerDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{942, 97}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 942, Y: 97}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
 
 	title := fmt.Sprintf("%s %s", coproc.ProcessorID(), winCoProcRegistersID)
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {

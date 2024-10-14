@@ -105,8 +105,8 @@ func (win *winDisasm) debuggerDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{1021, 34}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{500, 552}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 1021, Y: 34}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 500, Y: 552}, imgui.ConditionFirstUseEver)
 	win.img.setReasonableWindowConstraints()
 
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
@@ -592,7 +592,7 @@ func (win *winDisasm) drawLabel(e *disassembly.Entry, bank int) bool {
 
 	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
-	imgui.SelectableV("", false, imgui.SelectableFlagsNone, imgui.Vec2{0, 0})
+	imgui.SelectableV("", false, imgui.SelectableFlagsNone, imgui.Vec2{X: 0, Y: 0})
 	imgui.SameLine()
 	imgui.Text(e.Label.Resolve())
 	imgui.PopStyleColorV(2)
@@ -609,7 +609,7 @@ func (win *winDisasm) drawEntryCoProcessorExecution() bool {
 
 	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
-	imgui.SelectableV("", false, imgui.SelectableFlagsNone, imgui.Vec2{0, 0})
+	imgui.SelectableV("", false, imgui.SelectableFlagsNone, imgui.Vec2{X: 0, Y: 0})
 	win.drawCoProcTooltip()
 	imgui.SameLine()
 	imgui.Text(fmt.Sprintf("    %c 6507 will resume here", fonts.CoProcExecution))
@@ -648,10 +648,10 @@ func (win *winDisasm) drawEntry(currBank mapper.BankInfo, e *disassembly.Entry, 
 	// first column contains the breakpoint indicator and is also the selectable for the entire row
 	if hasPCbreak {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
-		imgui.SelectableV(string(fonts.Breakpoint), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+		imgui.SelectableV(string(fonts.Breakpoint), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
 		imgui.PopStyleColor()
 	} else {
-		imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+		imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
 	}
 
 	// single click on the address entry toggles a PC breakpoint

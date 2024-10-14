@@ -49,9 +49,9 @@ type winTracker struct {
 func newWinTracker(img *SdlImgui) (window, error) {
 	win := &winTracker{
 		img:          img,
-		blackKeys:    imgui.PackedColorFromVec4(imgui.Vec4{0, 0, 0, 1.0}),
-		whiteKeys:    imgui.PackedColorFromVec4(imgui.Vec4{1.0, 1.0, 0.90, 1.0}),
-		whiteKeysGap: imgui.PackedColorFromVec4(imgui.Vec4{0.2, 0.2, 0.2, 1.0}),
+		blackKeys:    imgui.PackedColorFromVec4(imgui.Vec4{X: 0, Y: 0, Z: 0, W: 1.0}),
+		whiteKeys:    imgui.PackedColorFromVec4(imgui.Vec4{X: 1.0, Y: 1.0, Z: 0.90, W: 1.0}),
+		whiteKeysGap: imgui.PackedColorFromVec4(imgui.Vec4{X: 0.2, Y: 0.2, Z: 0.2, W: 1.0}),
 	}
 	win.selection.clear()
 	return win, nil
@@ -72,8 +72,8 @@ func (win *winTracker) playmodeDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{494, 274}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{658, 469}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 494, Y: 274}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 658, Y: 469}, imgui.ConditionFirstUseEver)
 	win.img.setReasonableWindowConstraints()
 
 	if imgui.BeginV(win.playmodeID(win.id()), &win.playmodeOpen, imgui.WindowFlagsNone) {
@@ -93,8 +93,8 @@ func (win *winTracker) debuggerDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{494, 274}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{658, 469}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 494, Y: 274}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 658, Y: 469}, imgui.ConditionFirstUseEver)
 	win.img.setReasonableWindowConstraints()
 
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
@@ -228,7 +228,7 @@ func (win *winTracker) draw() {
 							if entry.Channel == 1 || !entry.IsMusical() {
 								imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Transparent)
 							}
-							imgui.SelectableV(string(fonts.MusicNote), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+							imgui.SelectableV(string(fonts.MusicNote), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
 							if entry.Channel == 1 || !entry.IsMusical() {
 								imgui.PopStyleColor()
 							}

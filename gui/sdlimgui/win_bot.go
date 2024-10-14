@@ -126,8 +126,8 @@ func (win *winBot) playmodeDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{75, 75}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{500, 525}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 75, Y: 75}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 500, Y: 525}, imgui.ConditionFirstUseEver)
 	win.img.setReasonableWindowConstraints()
 
 	if imgui.BeginV(win.playmodeID(win.id()), &win.playmodeOpen, imgui.WindowFlagsNone) {
@@ -146,7 +146,7 @@ func (win *winBot) draw() {
 	imgui.SetCursorPos(imgui.CursorPos().Plus(padding))
 
 	win.screenOrigin = imgui.CursorScreenPos()
-	imgui.Image(imgui.TextureID(win.obsTexture.getID()), imgui.Vec2{botImageWidth, botImageHeight})
+	imgui.Image(imgui.TextureID(win.obsTexture.getID()), imgui.Vec2{X: botImageWidth, Y: botImageHeight})
 	imgui.SetCursorScreenPos(win.screenOrigin)
 	win.drawMouseLayer()
 
@@ -175,7 +175,7 @@ func (win *winBot) drawMouseLayer() {
 	imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
-	imgui.ImageButton(imgui.TextureID(win.mouseTexture.getID()), imgui.Vec2{botImageWidth, botImageHeight})
+	imgui.ImageButton(imgui.TextureID(win.mouseTexture.getID()), imgui.Vec2{X: botImageWidth, Y: botImageHeight})
 	imgui.PopStyleColorV(3)
 
 	if imgui.IsWindowFocused() && imgui.IsItemHovered() {

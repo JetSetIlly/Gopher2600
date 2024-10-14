@@ -60,7 +60,7 @@ func (win *winCDFRegisters) debuggerDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{610, 303}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 610, Y: 303}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
 		win.draw(regs)
 	}

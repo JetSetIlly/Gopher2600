@@ -59,15 +59,15 @@ func newWin6507Pinout(img *SdlImgui) (window, error) {
 		img: img,
 	}
 
-	win.addressBus = imgui.Vec4{0.3, 0.8, 0.8, 1.0}
-	win.addressBusOff = imgui.Vec4{0.3, 0.8, 0.8, 0.5}
-	win.dataBus = imgui.Vec4{0.8, 0.8, 0.3, 1.0}
-	win.dataBusOff = imgui.Vec4{0.8, 0.8, 0.3, 0.5}
+	win.addressBus = imgui.Vec4{X: 0.3, Y: 0.8, Z: 0.8, W: 1.0}
+	win.addressBusOff = imgui.Vec4{X: 0.3, Y: 0.8, Z: 0.8, W: 0.5}
+	win.dataBus = imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.3, W: 1.0}
+	win.dataBusOff = imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.3, W: 0.5}
 
-	win.body = imgui.PackedColorFromVec4(imgui.Vec4{0.1, 0.1, 0.1, 1.0})
-	win.bodyOutline = imgui.PackedColorFromVec4(imgui.Vec4{1.0, 1.0, 1.0, 0.8})
-	win.pinOn = imgui.PackedColorFromVec4(imgui.Vec4{0.8, 0.8, 0.8, 1.0})
-	win.pinOff = imgui.PackedColorFromVec4(imgui.Vec4{0.8, 0.8, 0.8, 0.5})
+	win.body = imgui.PackedColorFromVec4(imgui.Vec4{X: 0.1, Y: 0.1, Z: 0.1, W: 1.0})
+	win.bodyOutline = imgui.PackedColorFromVec4(imgui.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 0.8})
+	win.pinOn = imgui.PackedColorFromVec4(imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0})
+	win.pinOff = imgui.PackedColorFromVec4(imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 0.5})
 	win.addressPinOn = imgui.PackedColorFromVec4(win.addressBus)
 	win.addressPinOff = imgui.PackedColorFromVec4(win.addressBusOff)
 	win.dataPinOn = imgui.PackedColorFromVec4(win.dataBus)
@@ -90,9 +90,9 @@ func (win *win6507Pinout) debuggerDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{756, 117}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{326, 338}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{326, 338}, imgui.Vec2{650, 650})
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 756, Y: 117}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 326, Y: 338}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{X: 326, Y: 338}, imgui.Vec2{X: 650, Y: 650})
 
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		win.draw()
@@ -120,7 +120,7 @@ func (win *win6507Pinout) draw() {
 		const lineThick = 2.0
 
 		// main body
-		dl.AddRectFilledV(chipPos, imgui.Vec2{chipPos.X + chipDim.X, chipPos.Y + chipDim.Y},
+		dl.AddRectFilledV(chipPos, imgui.Vec2{X: chipPos.X + chipDim.X, Y: chipPos.Y + chipDim.Y},
 			win.body, 0, imgui.DrawCornerFlagsAll)
 
 		// pins
@@ -172,8 +172,8 @@ func (win *win6507Pinout) draw() {
 			}
 
 			pinY := chipPos.Y + pinSize*0.5 + (float32(i) * pinSpacing)
-			pinPos := imgui.Vec2{pinX, pinY}
-			dl.AddRectFilledV(pinPos, imgui.Vec2{pinPos.X + pinSize, pinPos.Y + pinSize},
+			pinPos := imgui.Vec2{X: pinX, Y: pinY}
+			dl.AddRectFilledV(pinPos, imgui.Vec2{X: pinPos.X + pinSize, Y: pinPos.Y + pinSize},
 				col, 0, imgui.DrawCornerFlagsNone)
 
 			textPos := imgui.Vec2{X: chipPos.X + lineThick + chipDim.X*0.025, Y: pinPos.Y + pinTextAdj}
@@ -230,8 +230,8 @@ func (win *win6507Pinout) draw() {
 			}
 
 			pinY := chipPos.Y + pinSize*0.5 + (float32(i) * pinSpacing)
-			pinPos := imgui.Vec2{pinX, pinY}
-			dl.AddRectFilledV(pinPos, imgui.Vec2{pinPos.X + pinSize, pinPos.Y + pinSize},
+			pinPos := imgui.Vec2{X: pinX, Y: pinY}
+			dl.AddRectFilledV(pinPos, imgui.Vec2{X: pinPos.X + pinSize, Y: pinPos.Y + pinSize},
 				col, 0, imgui.DrawCornerFlagsNone)
 
 			textPos := imgui.Vec2{X: chipPos.X + chipDim.X + lineThick*2 - imguiGetFrameDim(label).X, Y: pinPos.Y + pinTextAdj}
@@ -239,7 +239,7 @@ func (win *win6507Pinout) draw() {
 		}
 
 		// main chip body (outline)
-		dl.AddRectV(chipPos, imgui.Vec2{chipPos.X + chipDim.X, chipPos.Y + chipDim.Y},
+		dl.AddRectV(chipPos, imgui.Vec2{X: chipPos.X + chipDim.X, Y: chipPos.Y + chipDim.Y},
 			win.bodyOutline, 0, imgui.DrawCornerFlagsAll, lineThick)
 
 		imgui.PopFont()

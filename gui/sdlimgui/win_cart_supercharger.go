@@ -62,7 +62,7 @@ func (win *winSuperchargerRegisters) debuggerDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{203, 134}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 203, Y: 134}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
 		win.draw(regs)
 	}
@@ -139,28 +139,28 @@ func (win *winSuperchargerRegisters) draw(regs supercharger.Registers) {
 		})
 	}
 
-	if imgui.SelectableV("  RAM 3   BIOS##bank0", banking == 0, 0, imgui.Vec2{0, 0}) {
+	if imgui.SelectableV("  RAM 3   BIOS##bank0", banking == 0, 0, imgui.Vec2{X: 0, Y: 0}) {
 		setBanking(0)
 	}
-	if imgui.SelectableV("  RAM 1   BIOS##bank1", banking == 1, 0, imgui.Vec2{0, 0}) {
+	if imgui.SelectableV("  RAM 1   BIOS##bank1", banking == 1, 0, imgui.Vec2{X: 0, Y: 0}) {
 		setBanking(1)
 	}
-	if imgui.SelectableV("  RAM 3   RAM 1##bank2", banking == 2, 0, imgui.Vec2{0, 0}) {
+	if imgui.SelectableV("  RAM 3   RAM 1##bank2", banking == 2, 0, imgui.Vec2{X: 0, Y: 0}) {
 		setBanking(2)
 	}
-	if imgui.SelectableV("  RAM 1   RAM 3##bank3", banking == 3, 0, imgui.Vec2{0, 0}) {
+	if imgui.SelectableV("  RAM 1   RAM 3##bank3", banking == 3, 0, imgui.Vec2{X: 0, Y: 0}) {
 		setBanking(3)
 	}
-	if imgui.SelectableV("  RAM 3   BIOS##bank4", banking == 4, 0, imgui.Vec2{0, 0}) {
+	if imgui.SelectableV("  RAM 3   BIOS##bank4", banking == 4, 0, imgui.Vec2{X: 0, Y: 0}) {
 		setBanking(4)
 	}
-	if imgui.SelectableV("  RAM 2   BIOS##bank5", banking == 5, 0, imgui.Vec2{0, 0}) {
+	if imgui.SelectableV("  RAM 2   BIOS##bank5", banking == 5, 0, imgui.Vec2{X: 0, Y: 0}) {
 		setBanking(5)
 	}
-	if imgui.SelectableV("  RAM 3   RAM 2##bank6", banking == 6, 0, imgui.Vec2{0, 0}) {
+	if imgui.SelectableV("  RAM 3   RAM 2##bank6", banking == 6, 0, imgui.Vec2{X: 0, Y: 0}) {
 		setBanking(6)
 	}
-	if imgui.SelectableV("  RAM 2   RAM 3##bank7", banking == 7, 0, imgui.Vec2{0, 0}) {
+	if imgui.SelectableV("  RAM 2   RAM 3##bank7", banking == 7, 0, imgui.Vec2{X: 0, Y: 0}) {
 		setBanking(7)
 	}
 }

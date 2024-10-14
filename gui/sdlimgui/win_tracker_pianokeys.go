@@ -41,8 +41,8 @@ func (win *winTracker) drawPianoKeys(history *tracker.History) float32 {
 	v1 := int(history.Recent[1].Registers.Volume)
 	s0 := (0.5 / float32(16-v0))
 	s1 := (0.5 / float32(16-v1))
-	strike0 := imgui.PackedColorFromVec4(imgui.Vec4{1.0, s0, s0, 1.0})
-	strike1 := imgui.PackedColorFromVec4(imgui.Vec4{s1, 1.0, s1, 1.0})
+	strike0 := imgui.PackedColorFromVec4(imgui.Vec4{X: 1.0, Y: s0, Z: s0, W: 1.0})
+	strike1 := imgui.PackedColorFromVec4(imgui.Vec4{X: s1, Y: 1.0, Z: s1, W: 1.0})
 
 	c0 := int(history.Recent[0].PianoKey)
 	if c0 < 0 || v0 == 0 {
@@ -62,11 +62,11 @@ func (win *winTracker) drawPianoKeys(history *tracker.History) float32 {
 			col = strike1
 		}
 
-		dl.AddRectFilledV(imgui.Vec2{p.X + float32(k)*keyWidth, p.Y},
-			imgui.Vec2{p.X + float32(k)*keyWidth + keyWidth, p.Y + whiteKeyLength},
+		dl.AddRectFilledV(imgui.Vec2{X: p.X + float32(k)*keyWidth, Y: p.Y},
+			imgui.Vec2{X: p.X + float32(k)*keyWidth + keyWidth, Y: p.Y + whiteKeyLength},
 			col, 0, imgui.DrawCornerFlagsNone)
-		dl.AddRectV(imgui.Vec2{p.X + float32(k)*keyWidth, p.Y},
-			imgui.Vec2{p.X + float32(k)*keyWidth + keyWidth, p.Y + whiteKeyLength},
+		dl.AddRectV(imgui.Vec2{X: p.X + float32(k)*keyWidth, Y: p.Y},
+			imgui.Vec2{X: p.X + float32(k)*keyWidth + keyWidth, Y: p.Y + whiteKeyLength},
 			win.whiteKeysGap, 0, imgui.DrawCornerFlagsNone, 1)
 	}
 
@@ -95,12 +95,12 @@ func (win *winTracker) drawPianoKeys(history *tracker.History) float32 {
 				col = strike1
 			}
 
-			dl.AddRectFilledV(imgui.Vec2{p.X + float32(k)*keyWidth + keyWidth*3/4, p.Y},
-				imgui.Vec2{p.X + float32(k)*keyWidth + keyWidth*5/4 + 1, p.Y + blackKeyLength},
+			dl.AddRectFilledV(imgui.Vec2{X: p.X + float32(k)*keyWidth + keyWidth*3/4, Y: p.Y},
+				imgui.Vec2{X: p.X + float32(k)*keyWidth + keyWidth*5/4 + 1, Y: p.Y + blackKeyLength},
 				col, 0, imgui.DrawCornerFlagsNone)
 			dl.AddRectV(
-				imgui.Vec2{p.X + float32(k)*keyWidth + keyWidth*3/4, p.Y},
-				imgui.Vec2{p.X + float32(k)*keyWidth + keyWidth*5/4 + 1, p.Y + blackKeyLength},
+				imgui.Vec2{X: p.X + float32(k)*keyWidth + keyWidth*3/4, Y: p.Y},
+				imgui.Vec2{X: p.X + float32(k)*keyWidth + keyWidth*5/4 + 1, Y: p.Y + blackKeyLength},
 				win.blackKeys, 0, imgui.DrawCornerFlagsNone, 1)
 		}
 	}

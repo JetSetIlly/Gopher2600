@@ -546,9 +546,9 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceFilename)
 		if isStub {
-			imgui.SelectableV("-", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+			imgui.SelectableV("-", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
 		} else {
-			imgui.SelectableV(fn.DeclLine.File.ShortFilename, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+			imgui.SelectableV(fn.DeclLine.File.ShortFilename, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
 		}
 		imgui.PopStyleColorV(3)
 
@@ -800,7 +800,7 @@ func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 		// selectable across entire width of table
 		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
 		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
-		imgui.SelectableV(ln.Function.Name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+		imgui.SelectableV(ln.Function.Name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
 		imgui.PopStyleColorV(2)
 
 		// tooltip
@@ -1017,7 +1017,7 @@ thean to the program as a whole.`)
 		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
 		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-		imgui.SelectableV(fmt.Sprintf("%d", ln.LineNumber), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+		imgui.SelectableV(fmt.Sprintf("%d", ln.LineNumber), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
 		imgui.PopStyleColorV(3)
 
 		// source on tooltip

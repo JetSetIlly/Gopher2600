@@ -97,7 +97,7 @@ func (win *winComparison) playmodeDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{75, 75}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 75, Y: 75}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
 
 	if imgui.BeginV(win.playmodeID(win.id()), &win.playmodeOpen, imgui.WindowFlagsAlwaysAutoResize) {
 		win.draw()
@@ -110,7 +110,7 @@ func (win *winComparison) playmodeDraw() bool {
 }
 
 func (win *winComparison) draw() {
-	sz := imgui.Vec2{specification.WidthTV, specification.HeightTV}.Times(2.5)
+	sz := imgui.Vec2{X: specification.WidthTV, Y: specification.HeightTV}.Times(2.5)
 	imgui.Image(imgui.TextureID(win.cmpTexture.getID()), sz)
 	imgui.Image(imgui.TextureID(win.diffTexture.getID()), sz)
 	if win.audioIsDifferent {

@@ -174,8 +174,8 @@ func (win *winCDFStreams) debuggerDraw() bool {
 	}
 	static := staticBus.GetStatic()
 
-	imgui.SetNextWindowPosV(imgui.Vec2{100, 100}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{920, 554}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 100, Y: 100}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 920, Y: 554}, imgui.ConditionFirstUseEver)
 	win.img.setReasonableWindowConstraints()
 
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsHorizontalScrollbar) {

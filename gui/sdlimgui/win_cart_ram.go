@@ -64,8 +64,8 @@ func (win *winCartRAM) debuggerDraw() bool {
 	}
 	ram := bus.GetRAM()
 
-	imgui.SetNextWindowPosV(imgui.Vec2{533, 430}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{478, 271}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 533, Y: 430}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 478, Y: 271}, imgui.ConditionFirstUseEver)
 	win.img.setReasonableWindowConstraints()
 
 	title := fmt.Sprintf("%s %s", win.img.cache.VCS.Mem.Cart.ID(), win.id())

@@ -115,10 +115,10 @@ func newSelectROM(img *SdlImgui) (window, error) {
 
 	win.thmbTexture = img.rnd.addTexture(textureColor, true, true)
 	win.thmbImage = image.NewRGBA(image.Rect(0, 0, 0, 0))
-	win.thmbDim = imgui.Vec2{specification.WidthTV, specification.HeightTV}.Times(2.0)
-	win.listviewDim = imgui.Vec2{300, win.thmbDim.Y * 1.4}
-	win.thmbPosOffset = imgui.Vec2{0, (win.listviewDim.Y - win.thmbDim.Y) / 2}
-	win.thmbChildDim = imgui.Vec2{win.thmbDim.X, win.listviewDim.Y}
+	win.thmbDim = imgui.Vec2{X: specification.WidthTV, Y: specification.HeightTV}.Times(2.0)
+	win.listviewDim = imgui.Vec2{X: 300, Y: win.thmbDim.Y * 1.4}
+	win.thmbPosOffset = imgui.Vec2{X: 0, Y: (win.listviewDim.Y - win.thmbDim.Y) / 2}
+	win.thmbChildDim = imgui.Vec2{X: win.thmbDim.X, Y: win.listviewDim.Y}
 
 	// load and normalise box art names
 	boxartPath, err := resources.JoinPath(namedBoxarts)
@@ -184,7 +184,7 @@ func (win *winSelectROM) playmodeDraw() bool {
 	posFlgs := imgui.ConditionAppearing
 	winFlgs := imgui.WindowFlagsNoSavedSettings | imgui.WindowFlagsAlwaysAutoResize
 
-	imgui.SetNextWindowPosV(imgui.Vec2{75, 75}, posFlgs, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 75, Y: 75}, posFlgs, imgui.Vec2{X: 0, Y: 0})
 
 	if imgui.BeginV(win.playmodeID(win.id()), &win.playmodeOpen, winFlgs) {
 		win.draw()
@@ -218,7 +218,7 @@ func (win *winSelectROM) debuggerDraw() bool {
 	posFlgs := imgui.ConditionFirstUseEver
 	winFlgs := imgui.WindowFlagsAlwaysAutoResize
 
-	imgui.SetNextWindowPosV(imgui.Vec2{75, 75}, posFlgs, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 75, Y: 75}, posFlgs, imgui.Vec2{X: 0, Y: 0})
 
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, winFlgs) {
 		win.draw()
@@ -349,7 +349,7 @@ func (win *winSelectROM) draw() {
 				win.centreOnFile = false
 			}
 
-			if imgui.SelectableV(e.Name, selected, 0, imgui.Vec2{0, 0}) {
+			if imgui.SelectableV(e.Name, selected, 0, imgui.Vec2{X: 0, Y: 0}) {
 				win.path.Set <- filepath.Join(win.path.Results.Dir, e.Name)
 			}
 			if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
@@ -668,7 +668,7 @@ func (win *winSelectROM) findBoxart() error {
 		dst := image.NewRGBA(image.Rect(0, 0, b.Dx()/4, b.Dy()/4))
 		draw.BiLinear.Scale(dst, dst.Bounds(), src, b, draw.Src, nil)
 		sz := dst.Bounds().Max
-		win.boxartDim = imgui.Vec2{float32(sz.X), float32(sz.Y)}
+		win.boxartDim = imgui.Vec2{X: float32(sz.X), Y: float32(sz.Y)}
 
 		// rendering the image without first marking the texture for
 		// (re)creation causes problems when transitioning from some images to

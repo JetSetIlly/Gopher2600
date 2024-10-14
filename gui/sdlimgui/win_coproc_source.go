@@ -138,8 +138,8 @@ func (win *winCoProcSource) debuggerDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{81, 297}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{641, 517}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 81, Y: 297}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 641, Y: 517}, imgui.ConditionFirstUseEver)
 	win.img.setReasonableWindowConstraints()
 
 	flgs := imgui.WindowFlagsNone
@@ -473,7 +473,7 @@ func (win *winCoProcSource) drawSource(src *dwarf.Source, bp breakpoints.Breakpo
 					imgui.TableNextColumn()
 					imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
 					imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
-					imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+					imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
 					imgui.PopStyleColorV(2)
 
 					// allow breakpoint toggle for lines with executable entries

@@ -49,7 +49,7 @@ func (win *winCollisions) debuggerDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{530, 455}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 530, Y: 455}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
 		win.draw()
 	}

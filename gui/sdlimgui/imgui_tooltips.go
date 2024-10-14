@@ -21,8 +21,8 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 )
 
-var tooltipColor = imgui.Vec4{0.08, 0.08, 0.08, 1.0}
-var tooltipBorder = imgui.Vec4{0.03, 0.03, 0.03, 1.0}
+var tooltipColor = imgui.Vec4{X: 0.08, Y: 0.08, Z: 0.08, W: 1.0}
+var tooltipBorder = imgui.Vec4{X: 0.03, Y: 0.03, Z: 0.03, W: 1.0}
 var tooltipAlpha = 0.83
 
 // shows tooltip on hover of the previous imgui digest/group. useful for simple

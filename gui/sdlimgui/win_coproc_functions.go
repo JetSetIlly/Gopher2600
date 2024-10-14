@@ -59,8 +59,8 @@ func (win *winCoProcFunctions) debuggerDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{775, 102}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{400, 655}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 775, Y: 102}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 400, Y: 655}, imgui.ConditionFirstUseEver)
 	win.img.setReasonableWindowConstraints()
 
 	title := fmt.Sprintf("%s %s", coproc.ProcessorID(), winCoProcFunctionsID)

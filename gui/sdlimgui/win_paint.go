@@ -50,7 +50,7 @@ func (win *winPaint) debuggerDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{756, 117}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 756, Y: 117}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
 
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
 		win.draw()
@@ -69,7 +69,7 @@ func (win *winPaint) draw() {
 		imgui.TableNextColumn()
 		imgui.PushFont(win.img.fonts.largeFontAwesome)
 		imgui.PushStyleVarFloat(imgui.StyleVarFrameBorderSize, 1.0)
-		imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{5.0, 10.0})
+		imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{X: 5.0, Y: 10.0})
 
 		imgui.Button(string(fonts.PaintRoller))
 		if imgui.BeginDragDropSource(imgui.DragDropFlagsNone) {

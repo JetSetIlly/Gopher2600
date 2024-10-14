@@ -67,8 +67,8 @@ func (win *winCoProcDisasm) debuggerDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{465, 285}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{551, 526}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 465, Y: 285}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 551, Y: 526}, imgui.ConditionFirstUseEver)
 	win.img.setReasonableWindowConstraints()
 
 	title := fmt.Sprintf("%s %s", coproc.ProcessorID(), winCoProcDisasmID)
@@ -257,7 +257,7 @@ func (win *winCoProcDisasm) drawEntry(src *dwarf.Source, e arm.DisasmEntry) {
 	imgui.TableNextColumn()
 	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
-	imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+	imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
 	imgui.PopStyleColorV(2)
 
 	// open source window if there is underlying source for this instruction
