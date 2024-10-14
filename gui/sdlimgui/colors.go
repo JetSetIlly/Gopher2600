@@ -248,141 +248,141 @@ type imguiColors struct {
 func newColors() *imguiColors {
 	cols := imguiColors{
 		// default colors
-		MenuBarBg:     imgui.Vec4{0.075, 0.08, 0.09, 1.0},
-		WindowBg:      imgui.Vec4{0.075, 0.08, 0.09, 1.0},
-		TitleBg:       imgui.Vec4{0.075, 0.08, 0.09, 1.0},
-		TitleBgActive: imgui.Vec4{0.16, 0.29, 0.48, 1.0},
-		Border:        imgui.Vec4{0.14, 0.14, 0.29, 1.0},
-		Text:          imgui.Vec4{1.00, 1.00, 1.00, 1.0},
+		MenuBarBg:     imgui.Vec4{X: 0.075, Y: 0.08, Z: 0.09, W: 1.0},
+		WindowBg:      imgui.Vec4{X: 0.075, Y: 0.08, Z: 0.09, W: 1.0},
+		TitleBg:       imgui.Vec4{X: 0.075, Y: 0.08, Z: 0.09, W: 1.0},
+		TitleBgActive: imgui.Vec4{X: 0.16, Y: 0.29, Z: 0.48, W: 1.0},
+		Border:        imgui.Vec4{X: 0.14, Y: 0.14, Z: 0.29, W: 1.0},
+		Text:          imgui.Vec4{X: 1.00, Y: 1.00, Z: 1.00, W: 1.0},
 
 		// additional general colors
-		True:        imgui.Vec4{0.3, 0.6, 0.3, 1.0},
-		False:       imgui.Vec4{0.6, 0.3, 0.3, 1.0},
-		TrueFalse:   imgui.Vec4{0.6, 0.6, 0.3, 1.0},
-		Transparent: imgui.Vec4{0.0, 0.0, 0.0, 0.0},
-		Warning:     imgui.Vec4{1.0, 0.2, 0.2, 1.0},
-		Cancel:      imgui.Vec4{1.0, 0.2, 0.2, 1.0},
+		True:        imgui.Vec4{X: 0.3, Y: 0.6, Z: 0.3, W: 1.0},
+		False:       imgui.Vec4{X: 0.6, Y: 0.3, Z: 0.3, W: 1.0},
+		TrueFalse:   imgui.Vec4{X: 0.6, Y: 0.6, Z: 0.3, W: 1.0},
+		Transparent: imgui.Vec4{X: 0.0, Y: 0.0, Z: 0.0, W: 0.0},
+		Warning:     imgui.Vec4{X: 1.0, Y: 0.2, Z: 0.2, W: 1.0},
+		Cancel:      imgui.Vec4{X: 1.0, Y: 0.2, Z: 0.2, W: 1.0},
 
 		// playscreen color
-		PlayWindowBg:     imgui.Vec4{0.0, 0.0, 0.0, 1.0},
-		PlayWindowBorder: imgui.Vec4{0.0, 0.0, 0.0, 1.0},
+		PlayWindowBg:     imgui.Vec4{X: 0.0, Y: 0.0, Z: 0.0, W: 1.0},
+		PlayWindowBorder: imgui.Vec4{X: 0.0, Y: 0.0, Z: 0.0, W: 1.0},
 
 		// ROM selector
-		ROMSelectDir:  imgui.Vec4{0.5, 0.5, 1.0, 1.0},
-		ROMSelectFile: imgui.Vec4{1.0, 1.0, 1.0, 1.0},
+		ROMSelectDir:  imgui.Vec4{X: 0.5, Y: 0.5, Z: 1.0, W: 1.0},
+		ROMSelectFile: imgui.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 1.0},
 
 		// deferring CapturedScreenTitle & CapturedScreenBorder
 
 		// value colors
-		ValueDiff:   imgui.Vec4{0.3, 0.2, 0.4, 1.0},
-		ValueSymbol: imgui.Vec4{0.6, 0.6, 0.0, 1.0},
-		ValueStack:  imgui.Vec4{0.5, 0.2, 0.3, 1.0},
+		ValueDiff:   imgui.Vec4{X: 0.3, Y: 0.2, Z: 0.4, W: 1.0},
+		ValueSymbol: imgui.Vec4{X: 0.6, Y: 0.6, Z: 0.0, W: 1.0},
+		ValueStack:  imgui.Vec4{X: 0.5, Y: 0.2, Z: 0.3, W: 1.0},
 
 		// control window buttons
-		ControlRun:         imgui.Vec4{0.3, 0.6, 0.3, 1.0},
-		ControlRunHovered:  imgui.Vec4{0.3, 0.65, 0.3, 1.0},
-		ControlRunActive:   imgui.Vec4{0.3, 0.65, 0.3, 1.0},
-		ControlHalt:        imgui.Vec4{0.6, 0.3, 0.3, 1.0},
-		ControlHaltHovered: imgui.Vec4{0.65, 0.3, 0.3, 1.0},
-		ControlHaltActive:  imgui.Vec4{0.65, 0.3, 0.3, 1.0},
+		ControlRun:         imgui.Vec4{X: 0.3, Y: 0.6, Z: 0.3, W: 1.0},
+		ControlRunHovered:  imgui.Vec4{X: 0.3, Y: 0.65, Z: 0.3, W: 1.0},
+		ControlRunActive:   imgui.Vec4{X: 0.3, Y: 0.65, Z: 0.3, W: 1.0},
+		ControlHalt:        imgui.Vec4{X: 0.6, Y: 0.3, Z: 0.3, W: 1.0},
+		ControlHaltHovered: imgui.Vec4{X: 0.65, Y: 0.3, Z: 0.3, W: 1.0},
+		ControlHaltActive:  imgui.Vec4{X: 0.65, Y: 0.3, Z: 0.3, W: 1.0},
 
 		// cpu window
-		CPURDY:    imgui.Vec4{0.3, 0.6, 0.3, 1.0},
-		CPUNotRDY: imgui.Vec4{0.6, 0.3, 0.3, 1.0},
-		CPUKIL:    imgui.Vec4{0.2, 0.2, 0.2, 1.0},
+		CPURDY:    imgui.Vec4{X: 0.3, Y: 0.6, Z: 0.3, W: 1.0},
+		CPUNotRDY: imgui.Vec4{X: 0.6, Y: 0.3, Z: 0.3, W: 1.0},
+		CPUKIL:    imgui.Vec4{X: 0.2, Y: 0.2, Z: 0.2, W: 1.0},
 
 		// disassembly entry columns
-		DisasmLocation: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		DisasmBank:     imgui.Vec4{0.6, 0.6, 0.8, 1.0},
-		DisasmAddress:  imgui.Vec4{0.8, 0.4, 0.4, 1.0},
-		DisasmByteCode: imgui.Vec4{0.5, 0.5, 0.6, 1.0},
-		DisasmOperator: imgui.Vec4{0.4, 0.4, 0.8, 1.0},
-		DisasmOperand:  imgui.Vec4{0.8, 0.8, 0.3, 1.0},
-		DisasmCycles:   imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		DisasmNotes:    imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		DisasmNoColour: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		DisasmLocation: imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0},
+		DisasmBank:     imgui.Vec4{X: 0.6, Y: 0.6, Z: 0.8, W: 1.0},
+		DisasmAddress:  imgui.Vec4{X: 0.8, Y: 0.4, Z: 0.4, W: 1.0},
+		DisasmByteCode: imgui.Vec4{X: 0.5, Y: 0.5, Z: 0.6, W: 1.0},
+		DisasmOperator: imgui.Vec4{X: 0.4, Y: 0.4, Z: 0.8, W: 1.0},
+		DisasmOperand:  imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.3, W: 1.0},
+		DisasmCycles:   imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0},
+		DisasmNotes:    imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0},
+		DisasmNoColour: imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0},
 
 		// disassembly other
-		DisasmStep:         imgui.Vec4{1.0, 1.0, 1.0, 0.1},
-		DisasmHover:        imgui.Vec4{0.5, 0.5, 0.5, 0.1},
-		DisasmBreakAddress: imgui.Vec4{0.9, 0.4, 0.4, 1.0},
+		DisasmStep:         imgui.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 0.1},
+		DisasmHover:        imgui.Vec4{X: 0.5, Y: 0.5, Z: 0.5, W: 0.1},
+		DisasmBreakAddress: imgui.Vec4{X: 0.9, Y: 0.4, Z: 0.4, W: 1.0},
 
 		// coprocessor source (and related) windows
-		CoProcSourceSelectedLine:     imgui.Vec4{1.0, 1.0, 1.0, 0.1},
-		CoProcSourceYieldLine:        imgui.Vec4{0.5, 1.0, 0.5, 0.1},
-		CoProcSourceYieldBugLine:     imgui.Vec4{1.0, 0.5, 0.5, 0.1},
-		CoProcSourceHoverLine:        imgui.Vec4{0.5, 0.5, 0.5, 0.1},
-		CoProcSourceFilename:         imgui.Vec4{0.7, 0.7, 0.8, 1.0},
-		CoProcSourceLineNumber:       imgui.Vec4{0.5, 0.5, 0.8, 1.0},
-		CoProcSourceLoad:             imgui.Vec4{0.8, 0.5, 0.5, 1.0},
-		CoProcSourceAvgLoad:          imgui.Vec4{0.5, 0.5, 0.8, 1.0},
-		CoProcSourceMaxLoad:          imgui.Vec4{0.8, 0.5, 0.7, 1.0},
-		CoProcSourceNoLoad:           imgui.Vec4{0.5, 0.5, 0.5, 1.0},
-		CoProcSourceCurrent:          imgui.Vec4{0.5, 0.5, 0.8, 1.0},
-		CoProcSourcePrior:            imgui.Vec4{0.8, 0.5, 0.5, 1.0},
-		CoProcSourceBug:              imgui.Vec4{0.5, 0.5, 0.8, 1.0},
-		CoProcSourceDisasmOpcode:     imgui.Vec4{0.5, 0.5, 0.6, 1.0},
-		CoProcSourceDisasmOpcodeFade: imgui.Vec4{0.3, 0.3, 0.3, 1.0},
-		CoProcSourceDisasmAddr:       imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		CoProcSourceDisasmAddrFade:   imgui.Vec4{0.5, 0.5, 0.5, 1.0},
-		CoProcSourceDisasm:           imgui.Vec4{1.0, 1.0, 1.0, 1.0},
-		CoProcSourceDisasmFade:       imgui.Vec4{0.6, 0.6, 0.6, 1.0},
-		CoProcSourceComment:          imgui.Vec4{0.4, 0.4, 0.6, 1.0},
-		CoProcSourceStringLiteral:    imgui.Vec4{0.4, 0.6, 0.6, 1.0},
-		CoProcSourceYield:            imgui.Vec4{0.5, 0.8, 0.5, 1.0},
-		CoProcFaultsAddress:          imgui.Vec4{0.8, 0.4, 0.4, 1.0},
-		CoProcFaultsFrequency:        imgui.Vec4{0.7, 0.7, 0.7, 1.0},
-		CoProcFaultsNotes:            imgui.Vec4{0.7, 0.7, 0.7, 1.0},
-		CoProcVariablesType:          imgui.Vec4{0.8, 0.6, 0.8, 1.0},
-		CoProcVariablesTypeSize:      imgui.Vec4{0.8, 0.6, 0.6, 1.0},
-		CoProcVariablesAddress:       imgui.Vec4{0.8, 0.4, 0.4, 1.0},
-		CoProcVariablesNotes:         imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		CoProcVariablesNotVisible:    imgui.Vec4{0.4, 0.4, 0.4, 1.0},
+		CoProcSourceSelectedLine:     imgui.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 0.1},
+		CoProcSourceYieldLine:        imgui.Vec4{X: 0.5, Y: 1.0, Z: 0.5, W: 0.1},
+		CoProcSourceYieldBugLine:     imgui.Vec4{X: 1.0, Y: 0.5, Z: 0.5, W: 0.1},
+		CoProcSourceHoverLine:        imgui.Vec4{X: 0.5, Y: 0.5, Z: 0.5, W: 0.1},
+		CoProcSourceFilename:         imgui.Vec4{X: 0.7, Y: 0.7, Z: 0.8, W: 1.0},
+		CoProcSourceLineNumber:       imgui.Vec4{X: 0.5, Y: 0.5, Z: 0.8, W: 1.0},
+		CoProcSourceLoad:             imgui.Vec4{X: 0.8, Y: 0.5, Z: 0.5, W: 1.0},
+		CoProcSourceAvgLoad:          imgui.Vec4{X: 0.5, Y: 0.5, Z: 0.8, W: 1.0},
+		CoProcSourceMaxLoad:          imgui.Vec4{X: 0.8, Y: 0.5, Z: 0.7, W: 1.0},
+		CoProcSourceNoLoad:           imgui.Vec4{X: 0.5, Y: 0.5, Z: 0.5, W: 1.0},
+		CoProcSourceCurrent:          imgui.Vec4{X: 0.5, Y: 0.5, Z: 0.8, W: 1.0},
+		CoProcSourcePrior:            imgui.Vec4{X: 0.8, Y: 0.5, Z: 0.5, W: 1.0},
+		CoProcSourceBug:              imgui.Vec4{X: 0.5, Y: 0.5, Z: 0.8, W: 1.0},
+		CoProcSourceDisasmOpcode:     imgui.Vec4{X: 0.5, Y: 0.5, Z: 0.6, W: 1.0},
+		CoProcSourceDisasmOpcodeFade: imgui.Vec4{X: 0.3, Y: 0.3, Z: 0.3, W: 1.0},
+		CoProcSourceDisasmAddr:       imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0},
+		CoProcSourceDisasmAddrFade:   imgui.Vec4{X: 0.5, Y: 0.5, Z: 0.5, W: 1.0},
+		CoProcSourceDisasm:           imgui.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 1.0},
+		CoProcSourceDisasmFade:       imgui.Vec4{X: 0.6, Y: 0.6, Z: 0.6, W: 1.0},
+		CoProcSourceComment:          imgui.Vec4{X: 0.4, Y: 0.4, Z: 0.6, W: 1.0},
+		CoProcSourceStringLiteral:    imgui.Vec4{X: 0.4, Y: 0.6, Z: 0.6, W: 1.0},
+		CoProcSourceYield:            imgui.Vec4{X: 0.5, Y: 0.8, Z: 0.5, W: 1.0},
+		CoProcFaultsAddress:          imgui.Vec4{X: 0.8, Y: 0.4, Z: 0.4, W: 1.0},
+		CoProcFaultsFrequency:        imgui.Vec4{X: 0.7, Y: 0.7, Z: 0.7, W: 1.0},
+		CoProcFaultsNotes:            imgui.Vec4{X: 0.7, Y: 0.7, Z: 0.7, W: 1.0},
+		CoProcVariablesType:          imgui.Vec4{X: 0.8, Y: 0.6, Z: 0.8, W: 1.0},
+		CoProcVariablesTypeSize:      imgui.Vec4{X: 0.8, Y: 0.6, Z: 0.6, W: 1.0},
+		CoProcVariablesAddress:       imgui.Vec4{X: 0.8, Y: 0.4, Z: 0.4, W: 1.0},
+		CoProcVariablesNotes:         imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0},
+		CoProcVariablesNotVisible:    imgui.Vec4{X: 0.4, Y: 0.4, Z: 0.4, W: 1.0},
 
 		// coprocessor disassembly
-		CoProcMAM0:               imgui.Vec4{0.6, 0.3, 0.3, 1.0},
-		CoProcMAM1:               imgui.Vec4{0.6, 0.6, 0.3, 1.0},
-		CoProcMAM2:               imgui.Vec4{0.3, 0.6, 0.3, 1.0},
-		CoProcBranchTrailFlushed: imgui.Vec4{0.6, 0.3, 0.3, 1.0},
-		CoProcBranchTrailUsed:    imgui.Vec4{0.3, 0.6, 0.3, 1.0},
-		CoProcMergedIS:           imgui.Vec4{0.3, 0.3, 0.6, 1.0},
+		CoProcMAM0:               imgui.Vec4{X: 0.6, Y: 0.3, Z: 0.3, W: 1.0},
+		CoProcMAM1:               imgui.Vec4{X: 0.6, Y: 0.6, Z: 0.3, W: 1.0},
+		CoProcMAM2:               imgui.Vec4{X: 0.3, Y: 0.6, Z: 0.3, W: 1.0},
+		CoProcBranchTrailFlushed: imgui.Vec4{X: 0.6, Y: 0.3, Z: 0.3, W: 1.0},
+		CoProcBranchTrailUsed:    imgui.Vec4{X: 0.3, Y: 0.6, Z: 0.3, W: 1.0},
+		CoProcMergedIS:           imgui.Vec4{X: 0.3, Y: 0.3, Z: 0.6, W: 1.0},
 
 		// datastream window
-		DataStreamNumLabel: imgui.Vec4{0.7, 0.7, 0.7, 1.0},
+		DataStreamNumLabel: imgui.Vec4{X: 0.7, Y: 0.7, Z: 0.7, W: 1.0},
 
 		// audio oscilloscope
-		AudioOscBg:   imgui.Vec4{0.21, 0.29, 0.23, 1.0},
-		AudioOscLine: imgui.Vec4{0.10, 0.97, 0.29, 1.0},
+		AudioOscBg:   imgui.Vec4{X: 0.21, Y: 0.29, Z: 0.23, W: 1.0},
+		AudioOscLine: imgui.Vec4{X: 0.10, Y: 0.97, Z: 0.29, W: 1.0},
 
 		// audio tracker
-		AudioTrackerHeader:         imgui.Vec4{0.12, 0.25, 0.25, 1.0},
-		AudioTrackerRow:            imgui.Vec4{0.10, 0.15, 0.15, 1.0},
-		AudioTrackerRowAlt:         imgui.Vec4{0.12, 0.17, 0.17, 1.0},
-		AudioTrackerRowSelected:    imgui.Vec4{0.15, 0.25, 0.25, 1.0},
-		AudioTrackerRowSelectedAlt: imgui.Vec4{0.17, 0.27, 0.27, 1.0},
-		AudioTrackerRowHover:       imgui.Vec4{0.14, 0.20, 0.20, 1.0},
-		AudioTrackerBorder:         imgui.Vec4{0.12, 0.25, 0.25, 1.0},
+		AudioTrackerHeader:         imgui.Vec4{X: 0.12, Y: 0.25, Z: 0.25, W: 1.0},
+		AudioTrackerRow:            imgui.Vec4{X: 0.10, Y: 0.15, Z: 0.15, W: 1.0},
+		AudioTrackerRowAlt:         imgui.Vec4{X: 0.12, Y: 0.17, Z: 0.17, W: 1.0},
+		AudioTrackerRowSelected:    imgui.Vec4{X: 0.15, Y: 0.25, Z: 0.25, W: 1.0},
+		AudioTrackerRowSelectedAlt: imgui.Vec4{X: 0.17, Y: 0.27, Z: 0.27, W: 1.0},
+		AudioTrackerRowHover:       imgui.Vec4{X: 0.14, Y: 0.20, Z: 0.20, W: 1.0},
+		AudioTrackerBorder:         imgui.Vec4{X: 0.12, Y: 0.25, Z: 0.25, W: 1.0},
 
 		// piano keys
-		PianoKeysBackground: imgui.Vec4{0.10, 0.09, 0.05, 1.0},
-		PianoKeysBorder:     imgui.Vec4{0.29, 0.20, 0.14, 1.0},
+		PianoKeysBackground: imgui.Vec4{X: 0.10, Y: 0.09, Z: 0.05, W: 1.0},
+		PianoKeysBorder:     imgui.Vec4{X: 0.29, Y: 0.20, Z: 0.14, W: 1.0},
 
 		// timeline
-		TimelineHoverCursor: imgui.Vec4{0.79, 0.38, 0.04, 0.4},
-		TimelineMarkers:     imgui.Vec4{1.00, 1.00, 1.00, 1.0},
-		TimelineScanlines:   imgui.Vec4{0.79, 0.04, 0.04, 1.0},
-		TimelineVSYNC:       imgui.Vec4{0.79, 0.79, 0.79, 1.0},
+		TimelineHoverCursor: imgui.Vec4{X: 0.79, Y: 0.38, Z: 0.04, W: 0.4},
+		TimelineMarkers:     imgui.Vec4{X: 1.00, Y: 1.00, Z: 1.00, W: 1.0},
+		TimelineScanlines:   imgui.Vec4{X: 0.79, Y: 0.04, Z: 0.04, W: 1.0},
+		TimelineVSYNC:       imgui.Vec4{X: 0.79, Y: 0.79, Z: 0.79, W: 1.0},
 		// deferred TimelineWSYNC and TimelineCoProc
-		TimelineRewindRange:   imgui.Vec4{0.79, 0.38, 0.04, 1.0},
-		TimelineCurrent:       imgui.Vec4{0.79, 0.38, 0.04, 1.0}, // same as TimelineRewindRange
-		TimelineComparison:    imgui.Vec4{0.30, 0.20, 0.50, 1.0}, // same as ValueDiff
-		TimelineLeftPlayer:    imgui.Vec4{0.38, 0.79, 0.04, 1.0}, // same as TimelineRewindRange
-		TimelineThumbnailTint: imgui.Vec4{1.0, 1.0, 1.0, 0.2},
-		TimelineGuides:        imgui.Vec4{1.0, 1.0, 1.0, 0.01},
-		TimelineGuidesLabel:   imgui.Vec4{1.0, 1.0, 1.0, 0.1},
+		TimelineRewindRange:   imgui.Vec4{X: 0.79, Y: 0.38, Z: 0.04, W: 1.0},
+		TimelineCurrent:       imgui.Vec4{X: 0.79, Y: 0.38, Z: 0.04, W: 1.0}, // same as TimelineRewindRange
+		TimelineComparison:    imgui.Vec4{X: 0.30, Y: 0.20, Z: 0.50, W: 1.0}, // same as ValueDiff
+		TimelineLeftPlayer:    imgui.Vec4{X: 0.38, Y: 0.79, Z: 0.04, W: 1.0}, // same as TimelineRewindRange
+		TimelineThumbnailTint: imgui.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 0.2},
+		TimelineGuides:        imgui.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 0.01},
+		TimelineGuidesLabel:   imgui.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 0.1},
 
 		// tia
-		TIApointer: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		TIApointer: imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0},
 
 		// deferring collision window CollisionBit
 
@@ -390,30 +390,30 @@ func newColors() *imguiColors {
 
 		// deferring savekey i2c/eeprom window RegisterBit
 
-		SaveKeyOscBG:      imgui.Vec4{0.10, 0.10, 0.10, 1.0},
-		SaveKeyOscSCL:     imgui.Vec4{0.10, 0.97, 0.29, 1.0},
-		SaveKeyOscSDA:     imgui.Vec4{0.97, 0.10, 0.29, 1.0},
-		SaveKeyBitPointer: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		SaveKeyOscBG:      imgui.Vec4{X: 0.10, Y: 0.10, Z: 0.10, W: 1.0},
+		SaveKeyOscSCL:     imgui.Vec4{X: 0.10, Y: 0.97, Z: 0.29, W: 1.0},
+		SaveKeyOscSDA:     imgui.Vec4{X: 0.97, Y: 0.10, Z: 0.29, W: 1.0},
+		SaveKeyBitPointer: imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0},
 
 		// terminal
-		TermBackground:             imgui.Vec4{0.1, 0.1, 0.2, 0.9},
-		TermInput:                  imgui.Vec4{0.1, 0.1, 0.25, 0.9},
-		TermStyleEcho:              imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		TermStyleHelp:              imgui.Vec4{1.0, 1.0, 1.0, 1.0},
-		TermStyleFeedback:          imgui.Vec4{1.0, 1.0, 1.0, 1.0},
-		TermStyleFeedbackSecondary: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		TermStyleCPUStep:           imgui.Vec4{0.9, 0.9, 0.5, 1.0},
-		TermStyleVideoStep:         imgui.Vec4{0.7, 0.7, 0.3, 1.0},
-		TermStyleInstrument:        imgui.Vec4{0.1, 0.95, 0.9, 1.0},
-		TermStyleError:             imgui.Vec4{0.8, 0.3, 0.3, 1.0},
-		TermStyleLog:               imgui.Vec4{0.8, 0.7, 0.3, 1.0},
+		TermBackground:             imgui.Vec4{X: 0.1, Y: 0.1, Z: 0.2, W: 0.9},
+		TermInput:                  imgui.Vec4{X: 0.1, Y: 0.1, Z: 0.25, W: 0.9},
+		TermStyleEcho:              imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0},
+		TermStyleHelp:              imgui.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 1.0},
+		TermStyleFeedback:          imgui.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 1.0},
+		TermStyleFeedbackSecondary: imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0},
+		TermStyleCPUStep:           imgui.Vec4{X: 0.9, Y: 0.9, Z: 0.5, W: 1.0},
+		TermStyleVideoStep:         imgui.Vec4{X: 0.7, Y: 0.7, Z: 0.3, W: 1.0},
+		TermStyleInstrument:        imgui.Vec4{X: 0.1, Y: 0.95, Z: 0.9, W: 1.0},
+		TermStyleError:             imgui.Vec4{X: 0.8, Y: 0.3, Z: 0.3, W: 1.0},
+		TermStyleLog:               imgui.Vec4{X: 0.8, Y: 0.7, Z: 0.3, W: 1.0},
 
 		// helpers
-		ToolTipBG: imgui.Vec4{0.2, 0.1, 0.2, 0.8},
+		ToolTipBG: imgui.Vec4{X: 0.2, Y: 0.1, Z: 0.2, W: 0.8},
 
 		// log
-		LogBackground:        imgui.Vec4{0.2, 0.2, 0.3, 0.9},
-		LogMultilineEmphasis: imgui.Vec4{1.0, 0.5, 0.5, 1.0},
+		LogBackground:        imgui.Vec4{X: 0.2, Y: 0.2, Z: 0.3, W: 0.9},
+		LogMultilineEmphasis: imgui.Vec4{X: 1.0, Y: 0.5, Z: 0.5, W: 1.0},
 	}
 
 	// set default colors
@@ -428,7 +428,7 @@ func newColors() *imguiColors {
 	// reflection colors in imgui.Vec4 and imgui.PackedColor formats
 	cols.reflectionColors = make([]imgui.Vec4, len(reflectionColors))
 	for i, v := range reflectionColors {
-		c := imgui.Vec4{float32(v.R) / 255.0, float32(v.G) / 255.0, float32(v.B) / 255.0, float32(v.A) / 255.0}
+		c := imgui.Vec4{X: float32(v.R) / 255.0, Y: float32(v.G) / 255.0, Z: float32(v.B) / 255.0, W: float32(v.A) / 255.0}
 		cols.reflectionColors[i] = c
 	}
 
@@ -474,10 +474,10 @@ func newColors() *imguiColors {
 	cols.paletteNTSC = make([]imgui.Vec4, 0, len(specification.PaletteNTSC))
 	for _, c := range specification.PaletteNTSC {
 		v := imgui.Vec4{
-			float32(c.R) / 255,
-			float32(c.G) / 255,
-			float32(c.B) / 255,
-			1.0,
+			X: float32(c.R) / 255,
+			Y: float32(c.G) / 255,
+			Z: float32(c.B) / 255,
+			W: 1.0,
 		}
 		cols.paletteNTSC = append(cols.paletteNTSC, v)
 	}
@@ -485,10 +485,10 @@ func newColors() *imguiColors {
 	cols.palettePAL = make([]imgui.Vec4, 0, len(specification.PalettePAL))
 	for _, c := range specification.PalettePAL {
 		v := imgui.Vec4{
-			float32(c.R) / 255,
-			float32(c.G) / 255,
-			float32(c.B) / 255,
-			1.0,
+			X: float32(c.R) / 255,
+			Y: float32(c.G) / 255,
+			Z: float32(c.B) / 255,
+			W: 1.0,
 		}
 		cols.palettePAL = append(cols.palettePAL, v)
 	}
@@ -496,10 +496,10 @@ func newColors() *imguiColors {
 	cols.paletteSECAM = make([]imgui.Vec4, 0, len(specification.PaletteSECAM))
 	for _, c := range specification.PaletteSECAM {
 		v := imgui.Vec4{
-			float32(c.R) / 255,
-			float32(c.G) / 255,
-			float32(c.B) / 255,
-			1.0,
+			X: float32(c.R) / 255,
+			Y: float32(c.G) / 255,
+			Z: float32(c.B) / 255,
+			W: 1.0,
 		}
 		cols.paletteSECAM = append(cols.paletteSECAM, v)
 	}

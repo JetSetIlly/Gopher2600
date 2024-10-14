@@ -250,7 +250,7 @@ func (wm *manager) drawMenu() {
 func drawMenuItemFromRight(f func()) {
 	p := imgui.CursorScreenPos()
 
-	imgui.SetCursorScreenPos(imgui.ContentRegionMax().Plus(imgui.Vec2{10, 10}))
+	imgui.SetCursorScreenPos(imgui.ContentRegionMax().Plus(imgui.Vec2{X: 10, Y: 10}))
 	m := imgui.CursorScreenPos()
 	f()
 	width := imgui.CursorScreenPos().X - m.X

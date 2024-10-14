@@ -100,14 +100,14 @@ func imguiToggleButton(id string, v *bool, fg imgui.Vec4, bg imgui.Vec4, vertica
 
 		r := false
 
-		imgui.InvisibleButtonV(id, imgui.Vec2{width, height}, imgui.ButtonFlagsMouseButtonLeft)
+		imgui.InvisibleButtonV(id, imgui.Vec2{X: width, Y: height}, imgui.ButtonFlagsMouseButtonLeft)
 		if imgui.IsItemClicked() {
 			*v = !(*v)
 			r = true
 		}
 
-		dl.AddRectFilledV(p, imgui.Vec2{p.X + width, p.Y + height}, bgCol, positioning, imgui.DrawCornerFlagsAll)
-		dl.AddCircleFilled(imgui.Vec2{p.X + positioning, p.Y + positioning + t*(width*0.5)},
+		dl.AddRectFilledV(p, imgui.Vec2{X: p.X + width, Y: p.Y + height}, bgCol, positioning, imgui.DrawCornerFlagsAll)
+		dl.AddCircleFilled(imgui.Vec2{X: p.X + positioning, Y: p.Y + positioning + t*(width*0.5)},
 			radius, fgCol)
 
 		return r
@@ -125,7 +125,7 @@ func imguiToggleButton(id string, v *bool, fg imgui.Vec4, bg imgui.Vec4, vertica
 	}
 
 	var clicked bool
-	imgui.InvisibleButtonV(id, imgui.Vec2{width, height}, imgui.ButtonFlagsMouseButtonLeft)
+	imgui.InvisibleButtonV(id, imgui.Vec2{X: width, Y: height}, imgui.ButtonFlagsMouseButtonLeft)
 	if imgui.IsItemClicked() {
 		*v = !(*v)
 		clicked = true
@@ -133,8 +133,8 @@ func imguiToggleButton(id string, v *bool, fg imgui.Vec4, bg imgui.Vec4, vertica
 
 	p = p.Plus(imgui.Vec2{X: 0, Y: imgui.FrameHeight() * ((1.0 - scaling) * 0.5)})
 
-	dl.AddRectFilledV(p, imgui.Vec2{p.X + width, p.Y + height}, bgCol, positioning, imgui.DrawCornerFlagsAll)
-	dl.AddCircleFilled(imgui.Vec2{p.X + positioning + t*(height*0.5), p.Y + positioning},
+	dl.AddRectFilledV(p, imgui.Vec2{X: p.X + width, Y: p.Y + height}, bgCol, positioning, imgui.DrawCornerFlagsAll)
+	dl.AddCircleFilled(imgui.Vec2{X: p.X + positioning + t*(height*0.5), Y: p.Y + positioning},
 		radius, fgCol)
 
 	return clicked

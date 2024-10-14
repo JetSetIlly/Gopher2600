@@ -58,7 +58,7 @@ func (mag *dbgScrMagnifyTooltip) draw(mouse dbgScrMouse) {
 
 	// the magnify texture should be opaque
 	imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 1.0)
-	imgui.Image(imgui.TextureID(mag.texture.getID()), imgui.Vec2{200, 200})
+	imgui.Image(imgui.TextureID(mag.texture.getID()), imgui.Vec2{X: 200, Y: 200})
 	imgui.PopStyleVar()
 }
 
@@ -115,8 +115,8 @@ func (mag *dbgScrMagnifyWindow) draw(cols *imguiColors) {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{8, 28}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{200, 200}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 8, Y: 28}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 200, Y: 200}, imgui.ConditionFirstUseEver)
 
 	if imgui.BeginV("Magnification", &mag.open, imgui.WindowFlagsNoScrollbar) {
 		// the size of single 2600 "pixel" as it is seen in the magnification
@@ -126,18 +126,18 @@ func (mag *dbgScrMagnifyWindow) draw(cols *imguiColors) {
 		sz := imgui.ContentRegionAvail()
 		if sz.X >= sz.Y {
 			pixelSize = sz.Y / float32(mag.zoom*2)
-			imgui.SetCursorPos(imgui.CursorPos().Plus(imgui.Vec2{(sz.X - sz.Y) / 2.0, 0}))
-			sz = imgui.Vec2{sz.Y, sz.Y}
+			imgui.SetCursorPos(imgui.CursorPos().Plus(imgui.Vec2{X: (sz.X - sz.Y) / 2.0, Y: 0}))
+			sz = imgui.Vec2{X: sz.Y, Y: sz.Y}
 		} else {
 			pixelSize = sz.X / float32(mag.zoom*2)
-			imgui.SetCursorPos(imgui.CursorPos().Plus(imgui.Vec2{0, (sz.Y - sz.X) / 2.0}))
-			sz = imgui.Vec2{sz.X, sz.X}
+			imgui.SetCursorPos(imgui.CursorPos().Plus(imgui.Vec2{X: 0, Y: (sz.Y - sz.X) / 2.0}))
+			sz = imgui.Vec2{X: sz.X, Y: sz.X}
 		}
 
 		imgui.PushStyleColor(imgui.StyleColorButton, cols.Transparent)
 		imgui.PushStyleColor(imgui.StyleColorButtonActive, cols.Transparent)
 		imgui.PushStyleColor(imgui.StyleColorButtonHovered, cols.Transparent)
-		imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
+		imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{X: 0.0, Y: 0.0})
 		imgui.ImageButton(imgui.TextureID(mag.texture.getID()), sz)
 
 		if imgui.IsItemHovered() || mag.isDragging {

@@ -139,9 +139,9 @@ func (win *winTimeline) debuggerDraw() bool {
 	const winHeightRatio = 0.05
 	const scanlineRatio = specification.AbsoluteMaxScanlines * winHeightRatio
 
-	imgui.SetNextWindowPosV(imgui.Vec2{39, 722}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{875, 220}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{750, 200}, imgui.Vec2{win.img.plt.displaySize()[0] * 0.95, 300})
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 39, Y: 722}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 875, Y: 220}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{X: 750, Y: 200}, imgui.Vec2{X: win.img.plt.displaySize()[0] * 0.95, Y: 300})
 
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		// trace area
@@ -357,7 +357,7 @@ func (win *winTimeline) drawTrace() {
 
 		if win.img.prefs.showTimelineThumbnail.Get().(bool) {
 			// size of thumbnail is based on height of trace area
-			sz := imgui.Vec2{specification.WidthTV, specification.HeightTV}
+			sz := imgui.Vec2{X: specification.WidthTV, Y: specification.HeightTV}
 			sz = sz.Times(traceSize.Y / sz.Y)
 
 			// show thumbnail on either the left or right of the timeline window
@@ -378,7 +378,7 @@ func (win *winTimeline) drawTrace() {
 			imgui.SetCursorScreenPos(pos)
 
 			imgui.ImageV(imgui.TextureID(win.thmbTexture.getID()), sz,
-				imgui.Vec2{}, imgui.Vec2{1, 1},
+				imgui.Vec2{}, imgui.Vec2{X: 1, Y: 1},
 				win.img.cols.TimelineThumbnailTint, imgui.Vec4{})
 
 			imgui.SetCursorScreenPos(rootPos)

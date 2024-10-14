@@ -61,8 +61,8 @@ func (win *winCartStatic) debuggerDraw() bool {
 	}
 	static := bus.GetStatic()
 
-	imgui.SetNextWindowPosV(imgui.Vec2{117, 248}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{468, 552}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 117, Y: 248}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 468, Y: 552}, imgui.ConditionFirstUseEver)
 	win.img.setReasonableWindowConstraints()
 
 	title := fmt.Sprintf("%s %s", win.img.cache.VCS.Mem.Cart.ID(), winCartStaticID)

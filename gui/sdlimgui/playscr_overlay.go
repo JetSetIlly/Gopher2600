@@ -151,10 +151,10 @@ func (oly *playscrOverlay) draw() {
 	imgui.PushStyleVarVec2(imgui.StyleVarWindowPadding, imgui.Vec2{})
 	defer imgui.PopStyleVarV(1)
 
-	imgui.SetNextWindowPos(imgui.Vec2{0, 0})
+	imgui.SetNextWindowPos(imgui.Vec2{X: 0, Y: 0})
 
 	sz := oly.playscr.img.plt.displaySize()
-	imgui.SetNextWindowSize(imgui.Vec2{sz[0], sz[1]})
+	imgui.SetNextWindowSize(imgui.Vec2{X: sz[0], Y: sz[1]})
 
 	imgui.BeginV("##playscrOverlay", nil, imgui.WindowFlagsAlwaysAutoResize|
 		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
@@ -317,7 +317,7 @@ func (oly *playscrOverlay) drawTopLeft() {
 		defer imgui.PopFont()
 
 		// add visibility adjustment if there is no FPS overlay
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{oly.visibility, oly.visibility, oly.visibility, oly.visibility})
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{X: oly.visibility, Y: oly.visibility, Z: oly.visibility, W: oly.visibility})
 		defer imgui.PopStyleColor()
 	}
 
@@ -472,7 +472,7 @@ func (oly *playscrOverlay) drawTopRight() {
 	imgui.PushFont(oly.playscr.img.fonts.gopher2600Icons)
 	defer imgui.PopFont()
 
-	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{oly.visibility, oly.visibility, oly.visibility, oly.visibility})
+	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{X: oly.visibility, Y: oly.visibility, Z: oly.visibility, W: oly.visibility})
 	defer imgui.PopStyleColor()
 
 	imgui.SetCursorScreenPos(pos)
@@ -531,7 +531,7 @@ func (oly *playscrOverlay) drawPeripheral(peripID plugging.PeripheralID) {
 	imgui.PushFont(oly.playscr.img.fonts.gopher2600Icons)
 	defer imgui.PopFont()
 
-	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{oly.visibility, oly.visibility, oly.visibility, oly.visibility})
+	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{X: oly.visibility, Y: oly.visibility, Z: oly.visibility, W: oly.visibility})
 	defer imgui.PopStyleColor()
 
 	switch peripID {
