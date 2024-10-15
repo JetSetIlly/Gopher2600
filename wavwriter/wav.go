@@ -46,12 +46,12 @@ func NewWavWriter(filename string) (*WavWriter, error) {
 // SetAudio implements the television.AudioMixer interface.
 func (aw *WavWriter) SetAudio(sig []signal.SignalAttributes) error {
 	for _, s := range sig {
-		if s&signal.AudioUpdate != signal.AudioUpdate {
+		if s.AudioUpdate {
 			continue
 		}
 
-		v0 := uint8((s & signal.AudioChannel0) >> signal.AudioChannel0Shift)
-		v1 := uint8((s & signal.AudioChannel1) >> signal.AudioChannel1Shift)
+		v0 := s.AudioChannel0
+		v1 := s.AudioChannel1
 
 		m := mix.Mono(v0, v1)
 		aw.buffer = append(aw.buffer, m)

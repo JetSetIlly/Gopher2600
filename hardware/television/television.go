@@ -288,10 +288,14 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	tv.state.stableFrames = 0
 	tv.state.vsync.reset()
 	tv.state.fromVSYNC = false
-	tv.state.lastSignal = signal.NoSignal
+	tv.state.lastSignal = signal.SignalAttributes{
+		Index: signal.NoSignal,
+	}
 
 	for i := range tv.signals {
-		tv.signals[i] = signal.NoSignal
+		tv.signals[i] = signal.SignalAttributes{
+			Index: signal.NoSignal,
+		}
 	}
 	tv.currentSignalIdx = 0
 	tv.firstSignalIdx = 0
@@ -484,8 +488,8 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 
 func (tv *Television) signalFull(sig signal.SignalAttributes) {
 	// check for change of VSYNC signal
-	if sig&signal.VSync != tv.state.lastSignal&signal.VSync {
-		if sig&signal.VSync == signal.VSync {
+	if sig.VSync != tv.state.lastSignal.VSync {
+		if sig.VSync {
 			// VSYNC has started
 			tv.state.vsync.active = true
 			tv.state.vsync.activeScanlineCount = 0
@@ -652,7 +656,7 @@ func (tv *Television) signalFull(sig signal.SignalAttributes) {
 	// is to enable the RSYNC smooth scrolling trick to be displayed correctly.
 	//
 	// https://atariage.com/forums/topic/224946-smooth-scrolling-playfield-i-think-ive-done-it
-	if sig&signal.HSync == signal.HSync && tv.state.lastSignal&signal.HSync != signal.HSync {
+	if sig.HSync && !tv.state.lastSignal.HSync {
 		if tv.state.clock < 13 || tv.state.clock > 22 {
 			tv.state.clock = 16
 		}
@@ -675,8 +679,7 @@ func (tv *Television) signalFull(sig signal.SignalAttributes) {
 	}
 
 	// augment television signal before storing and sending to pixel renderers
-	sig &= ^signal.Index
-	sig |= signal.SignalAttributes(tv.currentSignalIdx << signal.IndexShift)
+	sig.Index = tv.currentSignalIdx
 
 	// write the signal into the correct index of the signals array.
 	tv.signals[tv.currentSignalIdx] = sig
@@ -842,7 +845,7 @@ func (tv *Television) newFrame() error {
 
 	// nullify unused signals at end of frame
 	for i := tv.currentSignalIdx; i < len(tv.signals); i++ {
-		tv.signals[i] = signal.NoSignal
+		tv.signals[i].Index = signal.NoSignal
 	}
 
 	// set pending pixels

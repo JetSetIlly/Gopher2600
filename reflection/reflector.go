@@ -88,12 +88,11 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 	// at the time of writng, this can sometimes happen if the VCS has been
 	// reset but the emulator loop has not been unwound. The newly reset TV
 	// will return an invalid signal leading to an index that is too large
-	if sig == signal.NoSignal {
+	if sig.Index == signal.NoSignal {
 		return nil
 	}
 
-	idx := int((sig & signal.Index) >> signal.IndexShift)
-	h := ref.history[idx : idx+1]
+	h := ref.history[sig.Index : sig.Index+1]
 
 	h[0].CPU = ref.vcs.CPU.LastResult
 	h[0].WSYNC = !ref.vcs.CPU.RdyFlg
@@ -114,10 +113,10 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 	// nullify entries at the head of the array that do not have a
 	// corresponding signal. we do this because the first index of a signal
 	// after a NewFrame might be different that the previous frame
-	for i := ref.lastIdx; i < idx-1; i++ {
+	for i := ref.lastIdx; i < sig.Index-1; i++ {
 		ref.history[i] = ReflectedVideoStep{}
 	}
-	ref.lastIdx = idx
+	ref.lastIdx = sig.Index
 
 	return nil
 }

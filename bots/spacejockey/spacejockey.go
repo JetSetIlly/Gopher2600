@@ -57,7 +57,7 @@ const audioSilence = 15
 
 func (o *observer) SetAudio(sig []signal.SignalAttributes) error {
 	for _, s := range sig {
-		if uint8((s&signal.AudioChannel0)>>signal.AudioChannel0Shift) != audioSilence {
+		if s.AudioChannel0 != audioSilence {
 			select {
 			case o.audioFeedback <- true:
 			default:
@@ -101,11 +101,10 @@ func (obs *observer) SetPixels(sig []signal.SignalAttributes, last int) error {
 
 	for i := range sig {
 		// handle VBLANK by setting pixels to black
-		if sig[i]&signal.VBlank == signal.VBlank {
+		if sig[i].VBlank {
 			col = color.RGBA{R: 0, G: 0, B: 0}
 		} else {
-			px := signal.ColorSignal((sig[i] & signal.Color) >> signal.ColorShift)
-			col = obs.frameInfo.Spec.GetColor(px)
+			col = obs.frameInfo.Spec.GetColor(sig[i].Color)
 		}
 
 		// small cap improves performance, see https://golang.org/issue/27857

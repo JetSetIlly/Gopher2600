@@ -38,7 +38,7 @@ func (win *winDbgScr) paintDragAndDrop() {
 
 				ff := floodFill{
 					win:  win,
-					from: uint8((ref.Signal&signal.Color)>>signal.ColorShift) & 0xfe,
+					from: uint8(ref.Signal.Color) & 0xfe,
 					to:   payload[0] & 0xfe,
 				}
 
@@ -79,18 +79,17 @@ type floodFill struct {
 
 func (ff *floodFill) build(target floodFillTarget) {
 	ref := ff.startingReflection[target.offset]
-	if ref.Signal&signal.VBlank == signal.VBlank {
+	if ref.Signal.VBlank {
 		return
 	}
 
-	px := uint8((ref.Signal&signal.Color)>>signal.ColorShift) & 0xfe
+	px := uint8(ref.Signal.Color) & 0xfe
 	if px != ff.from {
 		return
 	}
 
 	ff.targets = append(ff.targets, target)
-	ref.Signal &= ^signal.Color
-	ref.Signal |= signal.SignalAttributes(ff.to) << signal.ColorShift
+	ref.Signal.Color = signal.ColorSignal(ff.to)
 	ff.startingReflection[target.offset] = ref
 
 	// down
@@ -134,7 +133,7 @@ func (ff *floodFill) resolve(offsetIdx int) {
 	ff.win.img.dbg.PushFunctionImmediate(func() {
 		target := ff.targets[offsetIdx]
 		ref := ff.win.scr.crit.reflection[target.offset]
-		px := uint8((ref.Signal&signal.Color)>>signal.ColorShift) & 0xfe
+		px := uint8(ref.Signal.Color) & 0xfe
 		if px != ff.from {
 			ff.resolve(offsetIdx + 1)
 			return

@@ -20,7 +20,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 // Profiling implements the coprocessor.CartCoProcDeveloper interface.
@@ -186,13 +185,13 @@ func (dev *Developer) ProcessProfiling() {
 
 	if frameInfo.Stable {
 		if coords.Scanline == frameInfo.VisibleTop {
-			if dev.tv.GetLastSignal()&signal.VBlank == signal.VBlank {
+			if dev.tv.GetLastSignal().VBlank {
 				accumulate(profiling.FocusVBLANK)
 			} else {
 				accumulate(profiling.FocusScreen)
 			}
 		} else if coords.Scanline == frameInfo.VisibleBottom {
-			if dev.tv.GetLastSignal()&signal.VBlank == signal.VBlank {
+			if dev.tv.GetLastSignal().VBlank {
 				accumulate(profiling.FocusOverscan)
 			} else {
 				accumulate(profiling.FocusScreen)

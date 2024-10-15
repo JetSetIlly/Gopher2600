@@ -123,12 +123,12 @@ func (aud *Audio) MoreAudio() bool {
 // SetAudio implements the protocol.AudioMixer interface.
 func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 	for _, s := range sig {
-		if s&signal.AudioUpdate != signal.AudioUpdate {
+		if !s.AudioUpdate {
 			continue
 		}
 
-		v0 := uint8((s & signal.AudioChannel0) >> signal.AudioChannel0Shift)
-		v1 := uint8((s & signal.AudioChannel1) >> signal.AudioChannel1Shift)
+		v0 := s.AudioChannel0
+		v1 := s.AudioChannel1
 
 		aud.stereoCh0Buffer = aud.stereoCh0Buffer[1:]
 		aud.stereoCh0Buffer = append(aud.stereoCh0Buffer, v0)

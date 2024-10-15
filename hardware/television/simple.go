@@ -99,8 +99,8 @@ func (tv *Television) signalSimple(sig signal.SignalAttributes) {
 	}
 
 	// check for change of VSYNC signal
-	if sig&signal.VSync != tv.state.lastSignal&signal.VSync {
-		if sig&signal.VSync == signal.VSync {
+	if sig.VSync != tv.state.lastSignal.VSync {
+		if sig.VSync {
 			// VSYNC has started
 			tv.simple.vsyncActive = true
 			tv.simple.vsyncScanlines = 0
@@ -134,7 +134,7 @@ func (tv *Television) signalSimple(sig signal.SignalAttributes) {
 	// is to enable the RSYNC smooth scrolling trick to be displayed correctly.
 	//
 	// https://atariage.com/forums/topic/224946-smooth-scrolling-playfield-i-think-ive-done-it
-	if sig&signal.HSync == signal.HSync && tv.state.lastSignal&signal.HSync != signal.HSync {
+	if sig.HSync && !tv.state.lastSignal.HSync {
 		if tv.state.clock < 13 || tv.state.clock > 22 {
 			tv.state.clock = 16
 		}
@@ -157,8 +157,7 @@ func (tv *Television) signalSimple(sig signal.SignalAttributes) {
 	}
 
 	// augment television signal before storing and sending to pixel renderers
-	sig &= ^signal.Index
-	sig |= signal.SignalAttributes(tv.currentSignalIdx << signal.IndexShift)
+	sig.Index = tv.currentSignalIdx
 
 	// write the signal into the correct index of the signals array.
 	tv.signals[tv.currentSignalIdx] = sig
@@ -239,7 +238,7 @@ func (tv *Television) newFrameSimple(fromVsync bool) error {
 
 	// nullify unused signals at end of frame
 	for i := tv.currentSignalIdx; i < len(tv.signals); i++ {
-		tv.signals[i] = signal.NoSignal
+		tv.signals[i].Index = signal.NoSignal
 	}
 
 	// set pending pixels

@@ -328,15 +328,12 @@ func (thmb *Anim) SetPixels(sig []signal.SignalAttributes, last int) error {
 
 	var offset int
 	for i := range sig {
-		// note vblank signal for later
-		vblank := sig[i]&signal.VBlank == signal.VBlank
 
 		// handle VBLANK by setting pixels to black
-		if vblank {
+		if sig[i].VBlank {
 			col = color.RGBA{R: 0, G: 0, B: 0}
 		} else {
-			px := signal.ColorSignal((sig[i] & signal.Color) >> signal.ColorShift)
-			col = thmb.frameInfo.Spec.GetColor(px)
+			col = thmb.frameInfo.Spec.GetColor(sig[i].Color)
 		}
 
 		// small cap improves performance, see https://golang.org/issue/27857
@@ -344,7 +341,7 @@ func (thmb *Anim) SetPixels(sig []signal.SignalAttributes, last int) error {
 		offset += 4
 
 		// monitor pixels
-		if thmb.monitorActive && !vblank && i%specification.ClksScanline > specification.ClksHBlank {
+		if thmb.monitorActive && !sig[i].VBlank && i%specification.ClksScanline > specification.ClksHBlank {
 			monitorPixels++
 			if s[0] != col.R || s[1] != col.G || s[2] != col.B {
 				monitorChanges = true
