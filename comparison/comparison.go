@@ -354,11 +354,10 @@ func (cmp *Comparison) SetPixels(sig []signal.SignalAttributes, last int) error 
 
 	for i := range sig {
 		// handle VBLANK by setting pixels to black
-		if sig[i]&signal.VBlank == signal.VBlank {
+		if sig[i].VBlank {
 			col = color.RGBA{R: 0, G: 0, B: 0}
 		} else {
-			px := signal.ColorSignal((sig[i] & signal.Color) >> signal.ColorShift)
-			col = cmp.frameInfo.Spec.GetColor(px)
+			col = cmp.frameInfo.Spec.GetColor(sig[i].Color)
 		}
 
 		// small cap improves performance, see https://golang.org/issue/27857
@@ -407,9 +406,7 @@ func (cmp *Comparison) EndRendering() error {
 // SetAudio implements the television.AudioMixer interface.
 func (cmp *Comparison) SetAudio(sig []signal.SignalAttributes) error {
 	for _, s := range sig {
-		v0 := uint8((s & signal.AudioChannel0) >> signal.AudioChannel0Shift)
-		v1 := uint8((s & signal.AudioChannel1) >> signal.AudioChannel1Shift)
-		cmp.audio = append(cmp.audio, v0, v1)
+		cmp.audio = append(cmp.audio, s.AudioChannel0, s.AudioChannel1)
 	}
 	return nil
 }

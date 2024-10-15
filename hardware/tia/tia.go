@@ -181,10 +181,7 @@ func (tia *TIA) Plumb(env *environment.Environment, tv TV, mem chipbus.Memory, r
 func (tia *TIA) Update(data chipbus.ChangedRegister) bool {
 	switch data.Register {
 	case cpubus.VSYNC:
-		tia.sig &= ^signal.VSync
-		if data.Value&0x02 == 0x02 {
-			tia.sig |= signal.VSync
-		}
+		tia.sig.VSync = data.Value&0x02 == 0x02
 		return false
 
 	case cpubus.VBLANK:
@@ -316,10 +313,7 @@ func (tia *TIA) resolveDelayedEvents() {
 	// actual vblank signal
 	tia.futureVblank.Tick(func(v uint8) {
 		tia.pendingEvents--
-		tia.sig &= ^signal.VBlank
-		if v&0x02 == 0x02 {
-			tia.sig |= signal.VBlank
-		}
+		tia.sig.VBlank = v&0x02 == 0x02
 	})
 
 	tia.futureRsyncAlign.Tick(func(v uint8) {
@@ -358,11 +352,10 @@ func (tia *TIA) resolveDelayedEvents() {
 		case hsyncEventSHB:
 			tia.newScanline()
 		case hsyncEventRHS:
-			tia.sig &= ^signal.HSync
-			tia.sig &= ^signal.CBurst
-			tia.sig |= signal.CBurst
+			tia.sig.HSync = false
+			tia.sig.CBurst = true
 		case hsyncEventRCB:
-			tia.sig &= ^signal.CBurst
+			tia.sig.CBurst = false
 		case hsyncEventRHB:
 			tia.Hblank = false
 		case hsyncEventLRHB:
@@ -464,8 +457,7 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister, ct int) {
 			// this. not clear if this is the case.
 			//
 			// !!TODO: check accuracy of HSync timing
-			tia.sig &= ^signal.HSync
-			tia.sig |= signal.HSync
+			tia.sig.HSync = true
 
 		case 8: // [RHS]
 			// reset HSYNC
@@ -576,11 +568,9 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister, ct int) {
 		// historic reasons (to do with how we handle debug colours) we leave
 		// it up to PixelRenderer implementations to switch to VideoBlack on
 		// VBLANK.
-		tia.sig &= ^signal.Color
-		tia.sig |= signal.SignalAttributes(signal.VideoBlack) << signal.ColorShift
+		tia.sig.Color = signal.VideoBlack
 	} else {
-		tia.sig &= ^signal.Color
-		tia.sig |= signal.SignalAttributes(tia.Video.PixelColor) << signal.ColorShift
+		tia.sig.Color = signal.ColorSignal(tia.Video.PixelColor)
 	}
 
 	// late memory resolution
@@ -602,14 +592,11 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister, ct int) {
 
 	// mix audio and copy values to television signal
 	if ct == 3 && tia.Audio.Step() {
-		tia.sig &= ^signal.AudioUpdate
-		tia.sig |= signal.AudioUpdate
-		tia.sig &= ^signal.AudioChannel0
-		tia.sig |= signal.SignalAttributes(tia.Audio.Vol0) << signal.AudioChannel0Shift
-		tia.sig &= ^signal.AudioChannel1
-		tia.sig |= signal.SignalAttributes(tia.Audio.Vol1) << signal.AudioChannel1Shift
+		tia.sig.AudioUpdate = true
+		tia.sig.AudioChannel0 = tia.Audio.Vol0
+		tia.sig.AudioChannel1 = tia.Audio.Vol1
 	} else {
-		tia.sig &= ^signal.AudioUpdate
+		tia.sig.AudioUpdate = false
 	}
 
 	// send signal to television
@@ -697,8 +684,7 @@ func (tia *TIA) QuickStep(ct int) {
 			// this. not clear if this is the case.
 			//
 			// !!TODO: check accuracy of HSync timing
-			tia.sig &= ^signal.HSync
-			tia.sig |= signal.HSync
+			tia.sig.HSync = true
 
 		case 8: // [RHS]
 			// reset HSYNC
@@ -769,23 +755,18 @@ func (tia *TIA) QuickStep(ct int) {
 		// historic reasons (to do with how we handle debug colours) we leave
 		// it up to PixelRenderer implementations to switch to VideoBlack on
 		// VBLANK.
-		tia.sig &= ^signal.Color
-		tia.sig |= signal.SignalAttributes(signal.VideoBlack) << signal.ColorShift
+		tia.sig.Color = signal.VideoBlack
 	} else {
-		tia.sig &= ^signal.Color
-		tia.sig |= signal.SignalAttributes(tia.Video.PixelColor) << signal.ColorShift
+		tia.sig.Color = signal.ColorSignal(tia.Video.PixelColor)
 	}
 
 	// mix audio and copy values to television signal
 	if ct == 3 && tia.Audio.Step() {
-		tia.sig &= ^signal.AudioUpdate
-		tia.sig |= signal.AudioUpdate
-		tia.sig &= ^signal.AudioChannel0
-		tia.sig |= signal.SignalAttributes(tia.Audio.Vol0) << signal.AudioChannel0Shift
-		tia.sig &= ^signal.AudioChannel1
-		tia.sig |= signal.SignalAttributes(tia.Audio.Vol1) << signal.AudioChannel1Shift
+		tia.sig.AudioUpdate = true
+		tia.sig.AudioChannel0 = tia.Audio.Vol0
+		tia.sig.AudioChannel1 = tia.Audio.Vol1
 	} else {
-		tia.sig &= ^signal.AudioUpdate
+		tia.sig.AudioUpdate = false
 	}
 
 	// send signal to television

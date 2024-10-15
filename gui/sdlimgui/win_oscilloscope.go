@@ -145,12 +145,12 @@ func (win *winOscilloscope) drawTVLabel(label string) {
 // SetAudio implements protocol.AudioMixer.
 func (win *winOscilloscope) SetAudio(sig []signal.SignalAttributes) error {
 	for _, s := range sig {
-		if s&signal.AudioUpdate != signal.AudioUpdate {
+		if !s.AudioUpdate {
 			continue
 		}
 
-		v0 := uint8((s & signal.AudioChannel0) >> signal.AudioChannel0Shift)
-		v1 := uint8((s & signal.AudioChannel1) >> signal.AudioChannel1Shift)
+		v0 := s.AudioChannel0
+		v1 := s.AudioChannel1
 		m := mix.Mono(v0, v1)
 
 		s0, s1 := mix.Stereo(v0, v1)

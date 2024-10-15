@@ -156,10 +156,10 @@ func (rz *Resizer) examine(state *State, sig signal.SignalAttributes) {
 	// some ROMs never set VBLANK but we still want to do our best and frame the
 	// screen nicely. this flag controls whether we use vblank top/bottom values
 	// or "black" top/bottom values
-	rz.usingVBLANK = rz.usingVBLANK || sig&signal.VBlank == signal.VBlank
+	rz.usingVBLANK = rz.usingVBLANK || sig.VBlank
 
 	// if VBLANK is off then update the top/bottom values note
-	if sig&signal.VBlank != signal.VBlank {
+	if !sig.VBlank {
 		if state.frameInfo.Stable {
 			if state.scanline < rz.vblankTop &&
 				state.scanline >= state.frameInfo.Spec.ExtendedVisibleTop {
@@ -197,9 +197,8 @@ func (rz *Resizer) examine(state *State, sig signal.SignalAttributes) {
 	// some ROMs never set VBLANK. for these cases we also record the extent of
 	// non-black pixels. these values are using in the commit() function in the
 	// event that usingVBLANK is false.
-	if state.clock > specification.ClksHBlank && sig&signal.VBlank != signal.VBlank {
-		px := signal.ColorSignal((sig & signal.Color) >> signal.ColorShift)
-		col := state.frameInfo.Spec.GetColor(px)
+	if state.clock > specification.ClksHBlank && !sig.VBlank {
+		col := state.frameInfo.Spec.GetColor(sig.Color)
 		if col.R != 0x00 || col.G != 0x00 || col.B != 0x00 {
 			if state.frameInfo.Stable {
 				if state.scanline < rz.blackTop &&

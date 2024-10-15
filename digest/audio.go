@@ -76,16 +76,15 @@ func (dig *Audio) ResetDigest() {
 func (dig *Audio) SetAudio(sig []signal.SignalAttributes) error {
 	for _, s := range sig {
 		// ignore invalid signals
-		if s == signal.NoSignal {
+		if s.Index == signal.NoSignal {
 			continue
 		}
 
 		// ignore signals with no audio update
-		if s&signal.AudioUpdate != signal.AudioUpdate {
+		if !s.AudioUpdate {
 			continue
 		}
-
-		dig.buffer[dig.bufferCt] = uint8((s & signal.AudioChannel0) >> signal.AudioChannel0Shift)
+		dig.buffer[dig.bufferCt] = s.AudioChannel0
 
 		dig.bufferCt++
 		if dig.bufferCt >= audioBufferLength {

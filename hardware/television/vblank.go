@@ -42,26 +42,24 @@ func (b *vblankBounds) reset() {
 }
 
 func (b *vblankBounds) examine(sig signal.SignalAttributes, scanline int) {
-	vblank := sig&signal.VBlank == signal.VBlank
-
 	switch b.phase {
 	case phaseTop:
-		if b.vblank && !vblank {
+		if b.vblank && !sig.VBlank {
 			b.top = scanline
 			b.phase = phaseMiddle
 		}
 	case phaseMiddle:
-		if !b.vblank && vblank {
+		if !b.vblank && sig.VBlank {
 			b.bottom = scanline
 			b.phase = phaseBottom
 		}
 	case phaseBottom:
-		if b.vblank && !vblank {
+		if b.vblank && !sig.VBlank {
 			b.phase = phaseMiddle
 		}
 	}
 
-	b.vblank = vblank
+	b.vblank = sig.VBlank
 }
 
 func (b *vblankBounds) commit(state *State) bool {

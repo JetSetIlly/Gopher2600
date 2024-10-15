@@ -109,13 +109,12 @@ func (dig *Video) SetPixels(sig []signal.SignalAttributes, _ int) error {
 
 	for _, s := range sig {
 		// ignore invalid signals
-		if s == signal.NoSignal {
+		if s.Index == signal.NoSignal {
 			continue
 		}
 
 		// ignore VBLANK and extract the color signal in all situations
-		px := signal.ColorSignal((s & signal.Color) >> signal.ColorShift)
-		col := dig.spec.GetColor(px)
+		col := dig.spec.GetColor(s.Color)
 
 		// setting every pixel regardless of vblank value
 		p := dig.pixels[offset : offset+3 : offset+3]

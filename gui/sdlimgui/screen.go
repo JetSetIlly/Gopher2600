@@ -489,11 +489,10 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 		}
 
 		// handle VBLANK by setting pixels to black
-		if sig[i]&signal.VBlank == signal.VBlank {
+		if sig[i].VBlank {
 			col = color.RGBA{R: 0, G: 0, B: 0}
 		} else {
-			px := signal.ColorSignal((sig[i] & signal.Color) >> signal.ColorShift)
-			col = scr.crit.frameInfo.Spec.GetColor(px)
+			col = scr.crit.frameInfo.Spec.GetColor(sig[i].Color)
 		}
 
 		// small cap improves performance, see https://golang.org/issue/27857
@@ -571,10 +570,10 @@ func (scr *screen) plotOverlay() {
 func (scr *screen) reflectionColor(ref *reflection.ReflectedVideoStep) color.RGBA {
 	switch scr.crit.overlay {
 	case reflection.OverlayLabels[reflection.OverlayVBLANK_VSYNC]:
-		if ref.Signal&signal.VBlank == signal.VBlank {
+		if ref.Signal.VBlank {
 			return reflectionColors[reflection.VBLANK]
 		}
-		if ref.Signal&signal.VSync == signal.VSync {
+		if ref.Signal.VSync {
 			return reflectionColors[reflection.VSYNC]
 		}
 	case reflection.OverlayLabels[reflection.OverlayWSYNC]:
