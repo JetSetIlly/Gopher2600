@@ -104,19 +104,24 @@ func (dig *Video) NewScanline(scanline int) error {
 
 // SetPixels implements television.PixelRenderer interface.
 func (dig *Video) SetPixels(sig []signal.SignalAttributes, _ int) error {
-	// offset always starts at after the digest leader
+	// offset always starts after the digest leader
 	offset := len(dig.digest)
 
-	for i := range sig {
+	for _, s := range sig {
+		// ignore invalid signals
+		if s == signal.NoSignal {
+			continue
+		}
+
 		// ignore VBLANK and extract the color signal in all situations
-		px := signal.ColorSignal((sig[i] & signal.Color) >> signal.ColorShift)
+		px := signal.ColorSignal((s & signal.Color) >> signal.ColorShift)
 		col := dig.spec.GetColor(px)
 
 		// setting every pixel regardless of vblank value
-		s := dig.pixels[offset : offset+3 : offset+3]
-		s[0] = col.R
-		s[1] = col.G
-		s[2] = col.B
+		p := dig.pixels[offset : offset+3 : offset+3]
+		p[0] = col.R
+		p[1] = col.G
+		p[2] = col.B
 
 		offset += pixelDepth
 	}
