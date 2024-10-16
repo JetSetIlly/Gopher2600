@@ -212,7 +212,6 @@ func main() {
 // launch is called from main() as a goroutine. uses mainSync instance to
 // indicate gui creation and to quit.
 func launch(sync *mainSync, args []string) {
-
 	logger.Logf(logger.Allow, "runtime", "number of cores being used: %d", runtime.NumCPU())
 
 	// use flag set to provide the --help flag for top level command line.
@@ -610,18 +609,23 @@ func perform(mode string, sync *mainSync, args []string) error {
 }
 
 func regress(mode string, args []string) error {
-	var subMode string
-
 	// use flag set to provide the --help flag
 	flgs := flag.NewFlagSet(mode, flag.ContinueOnError)
+
+	// output is set to nil to prevent the flag package boilerplate
+	flgs.SetOutput(&nilWriter{})
+
 	err := flgs.Parse(args)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			fmt.Println("Sub modes: RUN, LIST, DELETE, ADD, REDUX, CLEANUP")
+			return nil
 		}
-		return nil
+	} else {
+		args = flgs.Args()
 	}
-	args = flgs.Args()
+
+	var subMode string
 
 	if len(args) > 0 {
 		subMode = strings.ToUpper(args[0])
