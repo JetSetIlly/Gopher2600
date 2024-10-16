@@ -50,6 +50,9 @@ const (
 type PlaybackRegression struct {
 	Script string
 	Notes  string
+
+	// do not check screen digests during playback
+	ignoreDigest bool
 }
 
 func deserialisePlaybackEntry(fields database.SerialisedEntry) (database.Entry, error) {
@@ -106,30 +109,40 @@ func (reg PlaybackRegression) String() string {
 	return s.String()
 }
 
-// regress implements the regression.Regressor interface.
-func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg string) (_ bool, _ string, rerr error) {
-	output.Write([]byte(msg))
+// redux implements the regression.Regressor interface.
+func (reg *PlaybackRegression) redux(messages io.Writer, tag string) (Regressor, error) {
+	old := *reg
+	reg.ignoreDigest = true
+	defer func() {
+		reg.ignoreDigest = false
+	}()
+	return &old, reg.regress(true, messages, tag)
+}
 
-	plb, err := recorder.NewPlayback(reg.Script, false)
+// regress implements the regression.Regressor interface.
+func (reg *PlaybackRegression) regress(newRegression bool, messages io.Writer, tag string) (rerr error) {
+	messages.Write([]byte(tag))
+
+	plb, err := recorder.NewPlayback(reg.Script, reg.ignoreDigest)
 	if err != nil {
-		return false, "", fmt.Errorf("playback: %w", err)
+		return fmt.Errorf("playback: %w", err)
 	}
 
 	tv, err := television.NewSimpleTelevision(plb.TVSpec)
 	if err != nil {
-		return false, "", fmt.Errorf("playback: %w", err)
+		return fmt.Errorf("playback: %w", err)
 	}
 	defer tv.End()
 	tv.SetFPSCap(false)
 
 	_, err = digest.NewVideo(tv)
 	if err != nil {
-		return false, "", fmt.Errorf("playback: %w", err)
+		return fmt.Errorf("playback: %w", err)
 	}
 
 	vcs, err := hardware.NewVCS(environment.MainEmulation, tv, nil, nil)
 	if err != nil {
-		return false, "", fmt.Errorf("playback: %w", err)
+		return fmt.Errorf("playback: %w", err)
 	}
 
 	// for playback regression to work correctly we want the VCS to be a known
@@ -139,19 +152,37 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 
 	err = plb.AttachToVCSInput(vcs)
 	if err != nil {
-		return false, "", fmt.Errorf("playback: %w", err)
+		return fmt.Errorf("playback: %w", err)
 	}
 
 	// new cartridge loader using the information found in the playback file
 	cartload, err := cartridgeloader.NewLoaderFromFilename(plb.Cartridge, "AUTO", "AUTO", nil)
 	if err != nil {
-		return false, "", fmt.Errorf("playback: %w", err)
+		return fmt.Errorf("playback: %w", err)
 	}
 	defer cartload.Close()
 
 	// check hash of cartridge before continuing
 	if cartload.HashSHA1 != plb.Hash {
-		return false, "", fmt.Errorf("playback: unexpected hash")
+		return fmt.Errorf("playback: unexpected hash")
+	}
+
+	if newRegression {
+		var err error
+		reg.Script, err = uniqueFilename("playback", cartload.Name)
+		if err != nil {
+			return fmt.Errorf("playback: %w", err)
+		}
+		rec, err := recorder.NewRecorder(reg.Script, vcs)
+		if err != nil {
+			return fmt.Errorf("playback: %w", err)
+		}
+		defer func() {
+			err := rec.End()
+			if err != nil {
+				rerr = err
+			}
+		}()
 	}
 
 	// not using setup.AttachCartridge. if the playback was recorded with setup
@@ -159,7 +190,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	// will be applied that way
 	err = vcs.AttachCartridge(cartload, true)
 	if err != nil {
-		return false, "", fmt.Errorf("playback: %w", err)
+		return fmt.Errorf("playback: %w", err)
 	}
 
 	// prepare ticker for progress meter
@@ -184,7 +215,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		// display progress meter every 1 second
 		select {
 		case <-tck.C:
-			output.Write([]byte(fmt.Sprintf("\r%s [%s]", msg, plb)))
+			messages.Write([]byte(fmt.Sprintf("\r%s [%s]", tag, plb)))
 		default:
 		}
 		return govern.Running, nil
@@ -198,58 +229,11 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 			// playback script did not work. filter error and return false to
 			// indicate failure
 			coords := tv.GetCoords()
-			return false, fmt.Sprintf("%v: at fr=%d, sl=%d, cl=%d", err, coords.Frame, coords.Scanline, coords.Clock), nil
+			return fmt.Errorf("%w: at fr=%d, sl=%d, cl=%d", err, coords.Frame, coords.Scanline, coords.Clock)
 		} else {
-			return false, "", fmt.Errorf("playback: %w", err)
+			return fmt.Errorf("playback: %w", err)
 		}
 	}
 
-	// if this is a new regression we want to store the script in the
-	// regressionScripts directory
-	if newRegression {
-		// create a unique filename
-		newScript, err := uniqueFilename("playback", cartload.Name)
-		if err != nil {
-			return false, "", fmt.Errorf("playback: %w", err)
-		}
-
-		// check that the filename is unique
-		nf, _ := os.Open(newScript)
-		// no need to bother with returned error. nf tells us everything we
-		// need
-		if nf != nil {
-			return false, "", fmt.Errorf("playback: script already exists (%s)", newScript)
-		}
-		nf.Close()
-
-		// create new file
-		nf, err = os.Create(newScript)
-		if err != nil {
-			return false, "", fmt.Errorf("playback: while copying playback script: %w", err)
-		}
-		defer func() {
-			err := nf.Close()
-			if err != nil {
-				rerr = fmt.Errorf("playback: while copying playback script: %w", err)
-			}
-		}()
-
-		// open old file
-		of, err := os.Open(reg.Script)
-		if err != nil {
-			return false, "", fmt.Errorf("playback: while copying playback script: %w", err)
-		}
-		defer of.Close()
-
-		// copy old file to new file
-		_, err = io.Copy(nf, of)
-		if err != nil {
-			return false, "", fmt.Errorf("playback: while copying playback script: %w", err)
-		}
-
-		// update script name in regression type
-		reg.Script = newScript
-	}
-
-	return true, "", nil
+	return nil
 }

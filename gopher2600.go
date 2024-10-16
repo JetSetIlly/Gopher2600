@@ -844,11 +844,11 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 
 func regressRedux(mode string, args []string) error {
 	var yes bool
-	var dryRun bool
+	var verbose bool
 
 	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
 	flgs.BoolVar(&yes, "yes", false, "answer yes to confirmation request")
-	flgs.BoolVar(&dryRun, "dryrun", false, "do not perform redux, only show what would happen")
+	flgs.BoolVar(&verbose, "v", false, "output more detail")
 
 	// parse args and get copy of remaining arguments
 	err := flgs.Parse(args)
@@ -864,7 +864,7 @@ func regressRedux(mode string, args []string) error {
 		confirmation = os.Stdin
 	}
 
-	return regression.RegressRedux(os.Stdout, confirmation, dryRun, args)
+	return regression.RegressRedux(os.Stdout, confirmation, verbose, args)
 }
 
 func regressCleanup(mode string, args []string) error {

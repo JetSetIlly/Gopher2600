@@ -121,8 +121,14 @@ func (reg LogRegression) String() string {
 	return s.String()
 }
 
+// redux implements the regression.Regressor interface.
+func (reg *LogRegression) redux(messages io.Writer, tag string) (Regressor, error) {
+	old := *reg
+	return &old, reg.regress(true, messages, tag)
+}
+
 // regress implements the regression.Regressor interface.
-func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg string) (bool, string, error) {
+func (reg *LogRegression) regress(newRegression bool, messages io.Writer, tag string) error {
 	// make sure logger is clear
 	logger.Clear()
 
@@ -131,12 +137,12 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	logger.SetEcho(logOutput, false)
 
 	// start output with message
-	output.Write([]byte(msg))
+	messages.Write([]byte(tag))
 
 	// create headless television. we'll use this to initialise the digester
 	tv, err := television.NewSimpleTelevision(reg.TVtype)
 	if err != nil {
-		return false, "", fmt.Errorf("log: %w", err)
+		return fmt.Errorf("log: %w", err)
 	}
 	defer tv.End()
 	tv.SetFPSCap(false)
@@ -144,7 +150,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	// create VCS and attach cartridge
 	vcs, err := hardware.NewVCS(environment.MainEmulation, tv, nil, nil)
 	if err != nil {
-		return false, "", fmt.Errorf("log: %w", err)
+		return fmt.Errorf("log: %w", err)
 	}
 
 	// we want the machine in a known state. the easiest way to do this is to
@@ -153,13 +159,13 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 
 	cartload, err := cartridgeloader.NewLoaderFromFilename(reg.Cartridge, reg.Mapping, "AUTO", nil)
 	if err != nil {
-		return false, "", fmt.Errorf("log: %w", err)
+		return fmt.Errorf("log: %w", err)
 	}
 	defer cartload.Close()
 
 	err = setup.AttachCartridge(vcs, cartload, true)
 	if err != nil {
-		return false, "", fmt.Errorf("log: %w", err)
+		return fmt.Errorf("log: %w", err)
 	}
 
 	// display ticker for progress meter
@@ -177,7 +183,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 		select {
 		case <-tck.C:
 			frame := vcs.TV.GetCoords().Frame
-			output.Write([]byte(fmt.Sprintf("\r%s [%d/%d (%.1f%%)]", msg, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
+			messages.Write([]byte(fmt.Sprintf("\r%s [%d/%d (%.1f%%)]", tag, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
 		default:
 		}
 
@@ -185,7 +191,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	})
 
 	if err != nil {
-		return false, "", fmt.Errorf("log: %w", err)
+		return fmt.Errorf("log: %w", err)
 	}
 
 	// get hash of log output
@@ -198,8 +204,8 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 
 	// compare hashes from this run and the specimen run
 	if reg.digest != fmt.Sprintf("%x", hash) {
-		return false, "digest mismatch", nil
+		return fmt.Errorf("digest mismatch")
 	}
 
-	return true, "", nil
+	return nil
 }
