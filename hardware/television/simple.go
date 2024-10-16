@@ -46,10 +46,12 @@ func (tv *Television) SetSimple(set bool) {
 	if set {
 		if tv.simple == nil {
 			tv.simple = &simple{}
+			tv.signal = tv.signalSimple
 		}
 	} else {
 		if tv.simple != nil {
 			tv.simple = nil
+			tv.signal = tv.signalFull
 		}
 	}
 }

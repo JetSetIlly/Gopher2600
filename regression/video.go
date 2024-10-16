@@ -183,27 +183,33 @@ func (reg VideoRegression) String() string {
 	return s.String()
 }
 
+// redux implements the regression.Regressor interface.
+func (reg *VideoRegression) redux(messages io.Writer, tag string) (Regressor, error) {
+	old := *reg
+	return &old, reg.regress(true, messages, tag)
+}
+
 // regress implements the regression.Regressor interface.
-func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg string) (_ bool, _ string, rerr error) {
-	output.Write([]byte(msg))
+func (reg *VideoRegression) regress(newRegression bool, messages io.Writer, tag string) (rerr error) {
+	messages.Write([]byte(tag))
 
 	// create headless television. we'll use this to initialise the digester
 	tv, err := television.NewSimpleTelevision(reg.TVtype)
 	if err != nil {
-		return false, "", fmt.Errorf("video: %w", err)
+		return fmt.Errorf("video: %w", err)
 	}
 	defer tv.End()
 	tv.SetFPSCap(false)
 
 	dig, err := digest.NewVideo(tv)
 	if err != nil {
-		return false, "", fmt.Errorf("video: %w", err)
+		return fmt.Errorf("video: %w", err)
 	}
 
 	// create VCS and attach cartridge
 	vcs, err := hardware.NewVCS(environment.MainEmulation, tv, nil, nil)
 	if err != nil {
-		return false, "", fmt.Errorf("video: %w", err)
+		return fmt.Errorf("video: %w", err)
 	}
 
 	// we want the machine in a known state. the easiest way to do this is to
@@ -212,13 +218,13 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 
 	cartload, err := cartridgeloader.NewLoaderFromFilename(reg.Cartridge, reg.Mapping, "AUTO", nil)
 	if err != nil {
-		return false, "", fmt.Errorf("log: %w", err)
+		return fmt.Errorf("video: %w", err)
 	}
 	defer cartload.Close()
 
 	err = setup.AttachCartridge(vcs, cartload, true)
 	if err != nil {
-		return false, "", fmt.Errorf("video: %w", err)
+		return fmt.Errorf("video: %w", err)
 	}
 
 	// list of state information. we'll either save this in the event of
@@ -253,7 +259,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 		select {
 		case <-tck.C:
 			frame := vcs.TV.GetCoords().Frame
-			output.Write([]byte(fmt.Sprintf("\r%s [%d/%d (%.1f%%)]", msg, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
+			messages.Write([]byte(fmt.Sprintf("\r%s [%d/%d (%.1f%%)]", tag, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
 		default:
 		}
 
@@ -280,7 +286,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 	})
 
 	if err != nil {
-		return false, "", fmt.Errorf("video: %w", err)
+		return fmt.Errorf("video: %w", err)
 	}
 
 	if newRegression {
@@ -290,7 +296,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 			// create a unique filename
 			reg.stateFile, err = uniqueFilename("state", cartridgeloader.NameFromFilename(reg.Cartridge))
 			if err != nil {
-				return false, "", fmt.Errorf("video: %w", err)
+				return fmt.Errorf("video: %w", err)
 			}
 
 			// check that the filename is unique
@@ -299,14 +305,14 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 			// no need to bother with returned error. nf tells us everything we
 			// need
 			if nf != nil {
-				return false, "", fmt.Errorf("video: state recording file already exists (%s)", reg.stateFile)
+				return fmt.Errorf("video: state recording file already exists (%s)", reg.stateFile)
 			}
 			nf.Close()
 
 			// create new file
 			nf, err = os.Create(reg.stateFile)
 			if err != nil {
-				return false, "", fmt.Errorf("video: error creating state recording file: %w", err)
+				return fmt.Errorf("video: error creating state recording file: %w", err)
 			}
 			defer func() {
 				err := nf.Close()
@@ -318,14 +324,14 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 			for i := range state {
 				s := fmt.Sprintf("%s\n", state[i])
 				if n, err := nf.WriteString(s); err != nil || len(s) != n {
-					return false, "", fmt.Errorf("video: error writing state recording file: %w", err)
+					return fmt.Errorf("video: error writing state recording file: %w", err)
 				}
 			}
 		}
 
 		// this is a new regression entry so we don't need to do the comparison
 		// stage so we return early
-		return true, "", nil
+		return nil
 	}
 
 	// only for replay of existing regression entries. compare new state
@@ -333,7 +339,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 	if reg.State != StateNone {
 		nf, err := os.Open(reg.stateFile)
 		if err != nil {
-			return false, "", fmt.Errorf("video: old state recording file not present (%s)", reg.stateFile)
+			return fmt.Errorf("video: old state recording file not present (%s)", reg.stateFile)
 		}
 		defer nf.Close()
 
@@ -349,22 +355,20 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 			}
 
 			if s != state[i] {
-				failm := fmt.Sprintf("state mismatch line %d: expected %s (%s)", i, s, state[i])
-				return false, failm, nil
+				return fmt.Errorf("state mismatch line %d: expected %s (%s)", i, s, state[i])
 			}
 		}
 
 		// check that we've consumed all the lines in the recorded state file
 		_, err = reader.ReadString('\n')
 		if err == nil || !errors.Is(err, io.EOF) {
-			failm := "unexpected end of state. entries remaining in recorded state file"
-			return false, failm, nil
+			return fmt.Errorf("unexpected end of state. entries remaining in recorded state file")
 		}
 	}
 
 	if dig.Hash() != reg.digest {
-		return false, "digest mismatch", nil
+		return fmt.Errorf("digest mismatch")
 	}
 
-	return true, "", nil
+	return nil
 }

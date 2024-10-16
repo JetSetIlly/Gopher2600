@@ -15,10 +15,6 @@
 
 package database
 
-import (
-	"fmt"
-)
-
 // SelectAll entries in the database. onSelect can be nil.
 //
 // onSelect() should return true if select process is to continue. Continue
@@ -68,14 +64,13 @@ func (db Session) SelectKeys(onSelect func(Entry, int) error, keys ...int) (Entr
 
 	for i := range keys {
 		entry = db.entries[keys[i]]
+		if entry == nil {
+			continue
+		}
 		err := onSelect(entry, keys[i])
 		if err != nil {
 			return entry, err
 		}
-	}
-
-	if entry == nil {
-		return nil, fmt.Errorf("select empty")
 	}
 
 	return entry, nil

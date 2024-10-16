@@ -52,6 +52,17 @@ func (db Session) SortedKeyList() []int {
 	return keyList
 }
 
+// Replace an entry with another.
+func (db *Session) Replace(key int, old Entry, ent Entry) error {
+	_, ok := db.entries[key]
+	if !ok {
+		return fmt.Errorf("database: key not available (%d)", key)
+	}
+	delete(db.entries, key)
+	db.entries[key] = ent
+	return old.CleanUp()
+}
+
 // Add an entry to the db.
 func (db *Session) Add(ent Entry) error {
 	var key int
