@@ -1288,8 +1288,6 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 }
 
 func (dbg *Debugger) startRecording(cartShortName string) error {
-	dbg.vcs.TV.SetSimple(true)
-
 	var err error
 	var recording string
 	if dbg.opts.RecordFilename == "" {
@@ -1317,12 +1315,9 @@ func (dbg *Debugger) endRecording() {
 	if err != nil {
 		logger.Log(logger.Allow, "debugger", err)
 	}
-	dbg.vcs.TV.SetSimple(false)
 }
 
 func (dbg *Debugger) startPlayback(filename string) error {
-	dbg.vcs.TV.SetSimple(true)
-
 	plb, err := recorder.NewPlayback(filename, dbg.opts.PlaybackIgnoreDigest)
 	if err != nil {
 		return err
@@ -1363,7 +1358,6 @@ func (dbg *Debugger) endPlayback() {
 
 	dbg.playback = nil
 	dbg.vcs.Input.AttachPlayback(nil)
-	dbg.vcs.TV.SetSimple(false)
 }
 
 func (dbg *Debugger) startComparison(comparisonROM string, comparisonPrefs string) error {

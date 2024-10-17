@@ -164,7 +164,6 @@ type Television struct {
 	env *environment.Environment
 
 	// the simple signal path will be used if the simple field is non-nil
-	simple *simple
 	signal func(sig signal.SignalAttributes)
 
 	// the ID with which the television was created. this overrides all spec
@@ -259,9 +258,6 @@ func NewTelevision(spec string) (*Television, error) {
 
 	// empty list of renderers
 	tv.renderers = make([]PixelRenderer, 0)
-
-	// set signal function
-	tv.signal = tv.signalFull
 
 	return tv, nil
 }
@@ -483,10 +479,6 @@ func (tv *Television) End() error {
 
 // Signal updates the current state of the television.
 func (tv *Television) Signal(sig signal.SignalAttributes) {
-	tv.signal(sig)
-}
-
-func (tv *Television) signalFull(sig signal.SignalAttributes) {
 	// check for change of VSYNC signal
 	if sig.VSync != tv.state.lastSignal.VSync {
 		if sig.VSync {

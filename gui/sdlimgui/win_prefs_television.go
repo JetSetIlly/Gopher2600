@@ -133,74 +133,69 @@ func (win *winPrefs) drawVSYNC() {
 
 	if imgui.CollapsingHeader("Synchronisation") {
 		imgui.Spacing()
-		if win.img.dbg.TV().IsSimple() {
-			imgui.Text("Television is in 'simple' mode and")
-			imgui.Text("VSYNC cannot be altered")
+		imgui.Text("VSYNC Scanlines Required")
+		scanlines := int32(win.img.dbg.VCS().Env.Prefs.TV.VSYNCscanlines.Get().(int))
+
+		if scanlines == 1 {
+			label = fmt.Sprintf("%d scanline", scanlines)
 		} else {
-			imgui.Text("VSYNC Scanlines Required")
-			scanlines := int32(win.img.dbg.VCS().Env.Prefs.TV.VSYNCscanlines.Get().(int))
+			label = fmt.Sprintf("%d scanlines", scanlines)
+		}
 
-			if scanlines == 1 {
-				label = fmt.Sprintf("%d scanline", scanlines)
-			} else {
-				label = fmt.Sprintf("%d scanlines", scanlines)
-			}
+		if imgui.SliderIntV("##vsyncScanlines", &scanlines, 0, 4, label, 1.0) {
+			win.img.dbg.VCS().Env.Prefs.TV.VSYNCscanlines.Set(scanlines)
+		}
 
-			if imgui.SliderIntV("##vsyncScanlines", &scanlines, 0, 4, label, 1.0) {
-				win.img.dbg.VCS().Env.Prefs.TV.VSYNCscanlines.Set(scanlines)
-			}
-
-			win.img.imguiTooltipSimple(`The number of scanlines for which VSYNC must be enabled
+		win.img.imguiTooltipSimple(`The number of scanlines for which VSYNC must be enabled
 for it to be a valid VSYNC signal`)
 
-			imgui.Spacing()
-			imgui.Text("Speed of Recovery")
-			recovery := int32(win.img.dbg.VCS().Env.Prefs.TV.VSYNCrecovery.Get().(int))
+		imgui.Spacing()
+		imgui.Text("Speed of Recovery")
+		recovery := int32(win.img.dbg.VCS().Env.Prefs.TV.VSYNCrecovery.Get().(int))
 
-			const (
-				verySlow  = 90
-				slow      = 75
-				quick     = 60
-				veryQuick = 45
-			)
+		const (
+			verySlow  = 90
+			slow      = 75
+			quick     = 60
+			veryQuick = 45
+		)
 
-			if recovery >= verySlow {
-				recovery = 3
-				label = fmt.Sprintf("very slow")
-			} else if recovery >= slow {
-				recovery = 2
-				label = fmt.Sprintf("slow")
-			} else if recovery >= quick {
-				recovery = 1
-				label = fmt.Sprintf("quick")
-			} else if recovery >= veryQuick {
-				recovery = 0
-				label = fmt.Sprintf("very quick")
+		if recovery >= verySlow {
+			recovery = 3
+			label = fmt.Sprintf("very slow")
+		} else if recovery >= slow {
+			recovery = 2
+			label = fmt.Sprintf("slow")
+		} else if recovery >= quick {
+			recovery = 1
+			label = fmt.Sprintf("quick")
+		} else if recovery >= veryQuick {
+			recovery = 0
+			label = fmt.Sprintf("very quick")
+		}
+
+		if imgui.SliderIntV("##vsyncRecover", &recovery, 0, 3, label, 1.0) {
+			if recovery >= 3 {
+				recovery = verySlow
+			} else if recovery == 2 {
+				recovery = slow
+			} else if recovery == 1 {
+				recovery = quick
+			} else if recovery == 0 {
+				recovery = veryQuick
 			}
+			win.img.dbg.VCS().Env.Prefs.TV.VSYNCrecovery.Set(recovery)
+		}
 
-			if imgui.SliderIntV("##vsyncRecover", &recovery, 0, 3, label, 1.0) {
-				if recovery >= 3 {
-					recovery = verySlow
-				} else if recovery == 2 {
-					recovery = slow
-				} else if recovery == 1 {
-					recovery = quick
-				} else if recovery == 0 {
-					recovery = veryQuick
-				}
-				win.img.dbg.VCS().Env.Prefs.TV.VSYNCrecovery.Set(recovery)
-			}
-
-			win.img.imguiTooltipSimple(`The speed at which the TV synchronises after
+		win.img.imguiTooltipSimple(`The speed at which the TV synchronises after
 receiving a valid VSYNC signal`)
 
-			imgui.Spacing()
-			prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.VSYNCimmediateDesync, "Immediate Dysynchronisation")
-			win.img.imguiTooltipSimple(`Desynchronise the screen immediately
+		imgui.Spacing()
+		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.VSYNCimmediateDesync, "Immediate Dysynchronisation")
+		win.img.imguiTooltipSimple(`Desynchronise the screen immediately
 when a VSYNC signal is late`)
 
-			prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.VSYNCsyncedOnStart, "Synchronised on start")
-			win.img.imguiTooltipSimple(`The television is synchronised on start`)
-		}
+		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.VSYNCsyncedOnStart, "Synchronised on start")
+		win.img.imguiTooltipSimple(`The television is synchronised on start`)
 	}
 }
