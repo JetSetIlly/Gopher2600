@@ -266,7 +266,13 @@ func fingerprintDPCplus(loader cartridgeloader.Loader) bool {
 	if n, err := loader.Read(b); n != len(b) || err != nil {
 		return false
 	}
-	return bytes.Equal(b, []byte{0x1e, 0xab, 0xad, 0x10})
+	ok := bytes.Equal(b, []byte{0x1e, 0xab, 0xad, 0x10})
+
+	// the "1e ab ad 10" byte sequence is shared with FA2 so we also need to an
+	// additional check based on the number of appearances of DPC+ in the binary
+
+	loader.Seek(0, io.SeekStart)
+	return ok && loader.Count([]byte("DPC+")) >= 2
 }
 
 func fingerprintCDF(loader cartridgeloader.Loader) (bool, string) {
@@ -311,11 +317,17 @@ func fingerprintSuperchargerFastLoad(cartload cartridgeloader.Loader) bool {
 }
 
 func fingerprintFA2(loader cartridgeloader.Loader) bool {
-	if loader.Size() <= 29696 {
+	b := make([]byte, 4)
+	loader.Seek(0x0020, io.SeekStart)
+	if n, err := loader.Read(b); n != len(b) || err != nil {
 		return false
 	}
-	// data from 29k to 32k are padding zeros
-	return loader.CountSkip(29696, []byte{0x00}) == 3072
+	ok := bytes.Equal(b, []byte{0x1e, 0xab, 0xad, 0x10})
+
+	// the "1e ab ad 10" byte sequence is shared with DPC+ so we also need to an
+	// additional check based on zero padding from 29k to 32k
+
+	return ok && loader.CountSkip(29696, []byte{0x00}) == 3072
 }
 
 func fingerprintTigervision(loader cartridgeloader.Loader) bool {
@@ -399,6 +411,9 @@ func fingerprint16k(loader cartridgeloader.Loader) string {
 }
 
 func fingerprint32k(loader cartridgeloader.Loader) string {
+	if fingerprintFA2(loader) {
+		return "FA2"
+	}
 	if fingerprintTigervision(loader) {
 		return "3F"
 	}
@@ -440,11 +455,7 @@ func (cart *Cartridge) fingerprint(loader cartridgeloader.Loader) (string, error
 		return version, nil
 	}
 
-	// DPC+ and FA2 are superficially the same
 	if fingerprintDPCplus(loader) {
-		if fingerprintFA2(loader) {
-			return "FA2", nil
-		}
 		return "DPC+", nil
 	}
 
