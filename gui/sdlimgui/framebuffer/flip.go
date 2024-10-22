@@ -134,10 +134,7 @@ func (fb *Flip) Process(draw func()) uint32 {
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, id, 0)
 
 	if fb.clearOnRender {
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, fb.width, fb.height, 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(fb.emptyPixels))
+		gl.Clear(gl.COLOR_BUFFER_BIT)
 	}
 
 	draw()

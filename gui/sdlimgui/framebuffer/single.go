@@ -121,14 +121,9 @@ func (fb *Single) Texture() uint32 {
 func (fb *Single) Process(draw func()) uint32 {
 	gl.BindTexture(gl.TEXTURE_2D, fb.texture)
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fb.texture, 0)
-
 	if fb.clearOnRender {
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, fb.width, fb.height, 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(fb.emptyPixels))
+		gl.Clear(gl.COLOR_BUFFER_BIT)
 	}
-
 	draw()
 
 	return fb.texture
