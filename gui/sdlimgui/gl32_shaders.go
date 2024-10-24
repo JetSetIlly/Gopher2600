@@ -319,7 +319,6 @@ type textureSpec interface {
 	textureSpec() (uint32, float32, float32)
 }
 
-// nolint: unparam
 func (sh *sharpenShader) setAttributesArgs(env shaderEnvironment, scalingImage textureSpec, sharpness int) {
 	t, _, _ := scalingImage.textureSpec()
 	sh.shader.setAttributes(env)

@@ -687,7 +687,7 @@ func (scr *screen) copyPixelsPlaymode() {
 		return
 	}
 
-	// the bufferUsed check is important for correct operation of the rewinding
+	// the queueRecovery check is important for correct operation of the rewinding
 	// state. without it, the screen will jump after a rewind event
 	if scr.crit.queueRecovery == 0 {
 		// advance render index
@@ -700,6 +700,7 @@ func (scr *screen) copyPixelsPlaymode() {
 		// render index has bumped into the plotting index. revert render index
 		if scr.crit.renderIdx == scr.crit.plotIdx {
 			// ** emulation not keeping up with screen update **
+
 			// undo frame advancement
 			scr.crit.renderIdx = scr.crit.prevRenderIdx
 

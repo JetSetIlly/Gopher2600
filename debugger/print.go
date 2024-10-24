@@ -57,7 +57,7 @@ type styleWriter struct {
 	prefix string
 }
 
-func (dbg *Debugger) writerInStyle(sty terminal.Style, prefix ...string) *styleWriter { // nolint: unparam
+func (dbg *Debugger) writerInStyle(sty terminal.Style, prefix ...string) *styleWriter {
 	p := strings.Join(prefix, " ")
 	return &styleWriter{
 		dbg:    dbg,

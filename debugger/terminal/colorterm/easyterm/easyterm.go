@@ -32,10 +32,10 @@ import (
 
 // termGeometry contains the dimensions of a terminal (usually the output terminal).
 type termGeometry struct {
-	rows uint16 // nolint: structcheck
-	cols uint16 // nolint: structcheck
-	x    uint16 // nolint: structcheck
-	y    uint16 // nolint: structcheck
+	rows uint16
+	cols uint16
+	x    uint16
+	y    uint16
 }
 
 // EasyTerm is the main container for posix terminals. usually embedded in
