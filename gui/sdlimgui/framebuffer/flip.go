@@ -45,6 +45,11 @@ func NewFlip(clearOnRender bool) *Flip {
 	return fb
 }
 
+// id implements the FBO interface
+func (fb *Flip) id() uint32 {
+	return fb.fbo
+}
+
 // Destroy should be called when the Flip is no longer required
 func (fb *Flip) Destroy() {
 	gl.DeleteFramebuffers(1, &fb.fbo)
@@ -56,7 +61,6 @@ func (fb *Flip) Clear() {
 	}
 	for _, id := range fb.flip {
 		gl.BindTexture(gl.TEXTURE_2D, id)
-		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, id, 0)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, fb.width, fb.height, 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
@@ -130,7 +134,7 @@ func (fb *Flip) Process(draw func()) uint32 {
 	}
 
 	id := fb.flip[fb.flipIdx]
-	gl.BindTexture(gl.TEXTURE_2D, id)
+	gl.BindFramebuffer(gl.FRAMEBUFFER, fb.fbo)
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, id, 0)
 
 	if fb.clearOnRender {
@@ -140,4 +144,22 @@ func (fb *Flip) Process(draw func()) uint32 {
 	draw()
 
 	return id
+}
+
+// bindForCopy implements the FBO interface
+func (fb *Flip) bindForCopy() {
+	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, fb.fbo)
+	gl.FramebufferTexture2D(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fb.flip[fb.flipIdx], 0)
+}
+
+// Copy another framebuffer to the Flip instance. Framebuffers must be of the
+// same dimensions
+func (fb *Flip) Copy(src FBO) uint32 {
+	src.bindForCopy()
+	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, fb.fbo)
+	gl.FramebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fb.flip[fb.flipIdx], 0)
+	gl.BlitFramebuffer(0, 0, fb.width, fb.height,
+		0, 0, fb.width, fb.height,
+		gl.COLOR_BUFFER_BIT, gl.NEAREST)
+	return fb.flip[fb.flipIdx]
 }

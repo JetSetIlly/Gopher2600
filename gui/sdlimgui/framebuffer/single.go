@@ -54,7 +54,6 @@ func (fb *Single) Clear() {
 		return
 	}
 	gl.BindTexture(gl.TEXTURE_2D, fb.texture)
-	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fb.texture, 0)
 	gl.TexImage2D(gl.TEXTURE_2D, 0,
 		gl.RGBA, fb.width, fb.height, 0,
 		gl.RGBA, gl.UNSIGNED_BYTE,
@@ -119,12 +118,29 @@ func (fb *Single) Texture() uint32 {
 // by the Process function. This is ID is the same as the ID returned by
 // the Texture() function.
 func (fb *Single) Process(draw func()) uint32 {
-	gl.BindTexture(gl.TEXTURE_2D, fb.texture)
+	gl.BindFramebuffer(gl.FRAMEBUFFER, fb.fbo)
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fb.texture, 0)
 	if fb.clearOnRender {
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 	}
 	draw()
+	return fb.texture
+}
 
+// bindForCopy implements the FBO interface
+func (fb *Single) bindForCopy() {
+	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, fb.fbo)
+	gl.FramebufferTexture2D(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fb.texture, 0)
+}
+
+// Copy another framebuffer to the Single instance. Framebuffers must be of the
+// same dimensions
+func (fb *Single) Copy(src FBO) uint32 {
+	src.bindForCopy()
+	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, fb.fbo)
+	gl.FramebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fb.texture, 0)
+	gl.BlitFramebuffer(0, 0, fb.width, fb.height,
+		0, 0, fb.width, fb.height,
+		gl.COLOR_BUFFER_BIT, gl.NEAREST)
 	return fb.texture
 }

@@ -104,6 +104,7 @@ type crtSequencer struct {
 
 	sequence *framebuffer.Flip
 	phosphor *framebuffer.Flip
+	previous [3]*framebuffer.Single
 
 	sharpenShader         shaderProgram
 	phosphorShader        shaderProgram
@@ -128,6 +129,9 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 		ghostingShader:        newGhostingShader(),
 		effectsShader:         newCrtSeqEffectsShader(),
 		colorShader:           newColorShader(),
+	}
+	for i := range sh.previous {
+		sh.previous[i] = framebuffer.NewSingle(true)
 	}
 	return sh
 }
@@ -166,8 +170,12 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 	// phosphor draw
 	phosphorPasses := 1
 
-	// make sure sequence framebuffer is correct
-	_ = sh.sequence.Setup(env.width, env.height)
+	// make sure sequence and previous framebuffers are correct size
+	sh.sequence.Setup(env.width, env.height)
+
+	for i := range sh.previous {
+		sh.previous[i].Setup(env.width, env.height)
+	}
 
 	// clear phosphor is enabled state has changed
 	if prefs.Enabled != sh.enabled {
@@ -177,7 +185,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 	// note the enabled flag for comparison next frame
 	sh.enabled = prefs.Enabled
 
-	// also make sure our phosphor framebuff is correct
+	// also make sure our phosphor framebuffer is correct
 	if sh.phosphor.Setup(env.width, env.height) {
 		// if the change in framebuffer size is significant then graphical
 		// artefacts can sometimes be seen. a possible solution to this is to
@@ -203,8 +211,16 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 		})
 	}
 
-	newFrameForPhosphor := env.textureID
+	// shift previous array and copy new texture
+	for i := 1; i <= len(sh.previous)-1; i++ {
+		sh.previous[i] = sh.previous[i-1]
+	}
 
+	// the newly copied texture will be used for the phosphor blending
+	newFrameForPhosphor := sh.previous[0].Copy(sh.sequence)
+
+	// apply "phosphor". how this is done depends on whether the CRT effects are
+	// enabled. if they are not then the treatment is slightly different
 	for i := 0; i < phosphorPasses; i++ {
 		if prefs.Enabled {
 			if prefs.Phosphor {
