@@ -19,6 +19,7 @@ package sdlimgui
 
 import (
 	"strings"
+	"time"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
@@ -182,6 +183,23 @@ func newColorShader() shaderProgram {
 	sh := &colorShader{}
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.ColorShader))
 	return sh
+}
+
+type dustShader struct {
+	shader
+	time int32 // uniform
+}
+
+func newDustShader() shaderProgram {
+	sh := &dustShader{}
+	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.DustShader))
+	sh.time = gl.GetUniformLocation(sh.handle, gl.Str("Time"+"\x00"))
+	return sh
+}
+
+func (sh *dustShader) setAttributes(env shaderEnvironment) {
+	sh.shader.setAttributes(env)
+	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
 }
 
 type tvColorShader struct {

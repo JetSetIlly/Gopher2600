@@ -26,6 +26,9 @@ var GUIShader []byte
 //go:embed "color.frag"
 var ColorShader []byte
 
+//go:embed "dust.frag"
+var DustShader []byte
+
 //go:embed "dbgscr.frag"
 var DbgScrShader []byte
 

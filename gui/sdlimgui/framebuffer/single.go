@@ -121,6 +121,7 @@ func (fb *Single) Process(draw func()) uint32 {
 	gl.BindFramebuffer(gl.FRAMEBUFFER, fb.fbo)
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fb.texture, 0)
 	if fb.clearOnRender {
+		gl.ClearColor(0.0, 0.0, 0.0, 0.0)
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 	}
 	draw()

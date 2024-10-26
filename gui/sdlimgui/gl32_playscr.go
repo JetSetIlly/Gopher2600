@@ -19,6 +19,7 @@ package sdlimgui
 
 import (
 	"github.com/go-gl/gl/v3.2-core/gl"
+	"github.com/jetsetilly/gopher2600/gui/display/bevels"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -47,22 +48,36 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 		return
 	}
 
-	env.width = int32(sh.img.playScr.scaledWidth)
-	env.height = int32(sh.img.playScr.scaledHeight)
+	env.width = int32(sh.img.playScr.screenWidth)
+	env.height = int32(sh.img.playScr.screenHeight)
 
 	// set scissor and viewport
-	gl.Viewport(int32(-sh.img.playScr.imagePosMin.X),
-		int32(-sh.img.playScr.imagePosMin.Y),
-		env.width+(int32(sh.img.playScr.imagePosMin.X*2)),
-		env.height+(int32(sh.img.playScr.imagePosMin.Y*2)),
+	gl.Viewport(int32(-sh.img.playScr.screenPosMin.X),
+		int32(-sh.img.playScr.screenPosMin.Y),
+		env.width+(int32(sh.img.playScr.screenPosMin.X*2)),
+		env.height+(int32(sh.img.playScr.screenPosMin.Y*2)),
 	)
-	gl.Scissor(int32(-sh.img.playScr.imagePosMin.X),
-		int32(-sh.img.playScr.imagePosMin.Y),
-		env.width+(int32(sh.img.playScr.imagePosMin.X*2)),
-		env.height+(int32(sh.img.playScr.imagePosMin.Y*2)),
+	gl.Scissor(int32(-sh.img.playScr.screenPosMin.X),
+		int32(-sh.img.playScr.screenPosMin.Y),
+		env.width+(int32(sh.img.playScr.screenPosMin.X*2)),
+		env.height+(int32(sh.img.playScr.screenPosMin.Y*2)),
 	)
 
 	sh.screenshot.process(env, sh.img.playScr)
 
-	sh.crt.process(env, false, sh.img.playScr.visibleScanlines, specification.ClksVisible, sh.img.playScr, newCrtSeqPrefs(sh.img.displayPrefs), sh.img.screen.rotation.Load().(specification.Rotation), false)
+	env.textureID = sh.crt.process(env, false, sh.img.playScr.visibleScanlines, specification.ClksVisible, sh.img.playScr, newCrtSeqPrefs(sh.img.displayPrefs), sh.img.screen.rotation.Load().(specification.Rotation), false)
+
+	if sh.img.playScr.usingBevel {
+		env.flipY = true
+
+		f := sh.img.playScr.bevelHeight / sh.img.playScr.screenWidth
+		f *= bevels.Scale
+
+		env.projMtx[0][0] *= f
+		env.projMtx[1][1] *= f
+		env.projMtx[3][0] = -f + bevels.OffsetX
+		env.projMtx[3][1] = f + bevels.OffsetY
+
+		sh.crt.colorShader.setAttributes(env)
+	}
 }

@@ -255,10 +255,10 @@ func (plt *platform) destroy() error {
 	return nil
 }
 
-// displaySize returns the dimension of the display.
-func (plt *platform) displaySize() [2]float32 {
+// windowSize returns the dimension of the display.
+func (plt *platform) windowSize() (width, height float32) {
 	w, h := plt.window.GetSize()
-	return [2]float32{float32(w), float32(h)}
+	return float32(w), float32(h)
 }
 
 // displayDPI returns the dots/inch for the display the window is in
@@ -272,16 +272,16 @@ func (plt *platform) displayDPI() (float32, error) {
 }
 
 // framebufferSize returns the dimension of the framebuffer.
-func (plt *platform) framebufferSize() [2]float32 {
+func (plt *platform) framebufferSize() (width, height float32) {
 	w, h := plt.window.GLGetDrawableSize()
-	return [2]float32{float32(w), float32(h)}
+	return float32(w), float32(h)
 }
 
 // newFrame marks the begin of a render pass. It forwards all current state to imgui.CurrentIO().
 func (plt *platform) newFrame() {
 	// Setup display size (every frame to accommodate for window resizing)
-	displaySize := plt.displaySize()
-	imgui.CurrentIO().SetDisplaySize(imgui.Vec2{X: displaySize[0], Y: displaySize[1]})
+	winw, winh := plt.windowSize()
+	imgui.CurrentIO().SetDisplaySize(imgui.Vec2{X: winw, Y: winh})
 
 	// if mouse is captured then do not update imgui mouse information.
 	if !plt.img.isCaptured() {

@@ -46,6 +46,7 @@ const (
 	textureGUI textureType = iota
 	textureColor
 	texturePlayscr
+	textureBevel
 	textureDbgScr
 	textureDbgScrOverlay
 	textureDbgScrMagnify

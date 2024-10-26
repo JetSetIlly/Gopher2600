@@ -153,8 +153,8 @@ func (oly *playscrOverlay) draw() {
 
 	imgui.SetNextWindowPos(imgui.Vec2{X: 0, Y: 0})
 
-	sz := oly.playscr.img.plt.displaySize()
-	imgui.SetNextWindowSize(imgui.Vec2{X: sz[0], Y: sz[1]})
+	winw, winh := oly.playscr.img.plt.windowSize()
+	imgui.SetNextWindowSize(imgui.Vec2{X: winw, Y: winh})
 
 	imgui.BeginV("##playscrOverlay", nil, imgui.WindowFlagsAlwaysAutoResize|
 		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
