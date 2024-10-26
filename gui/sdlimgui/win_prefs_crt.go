@@ -104,7 +104,7 @@ func (win *winPrefs) drawCurve() {
 		label = "very curved"
 	}
 
-	if imgui.SliderFloatV("##curveamount", &f, 1.0, 0.0, label, 1.0) {
+	if imgui.SliderFloatV("##curveamount", &f, 1.0, -0.5, label, 1.0) {
 		win.img.displayPrefs.CRT.CurveAmount.Set(f)
 	}
 }

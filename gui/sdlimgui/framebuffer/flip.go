@@ -81,8 +81,6 @@ func (fb *Flip) Setup(width int32, height int32) bool {
 		return false
 	}
 
-	gl.BindFramebuffer(gl.FRAMEBUFFER, fb.fbo)
-
 	// no change to framebuffer
 	if fb.width == width && fb.height == height {
 		return false
@@ -106,8 +104,6 @@ func (fb *Flip) Setup(width int32, height int32) bool {
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
 	}
-
-	gl.BindRenderbuffer(gl.RENDERBUFFER, fb.rbo)
 
 	return changed
 }
@@ -138,6 +134,7 @@ func (fb *Flip) Process(draw func()) uint32 {
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, id, 0)
 
 	if fb.clearOnRender {
+		gl.ClearColor(0.0, 0.0, 0.0, 0.0)
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 	}
 

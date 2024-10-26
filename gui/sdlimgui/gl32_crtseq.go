@@ -281,25 +281,16 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 			env.draw()
 		})
 
-		if windowed {
-			env.textureID = sh.sequence.Process(func() {
-				sh.effectsShader.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks,
-					prefs, rotation, screenshot)
-				env.draw()
-			})
-		} else {
+		env.textureID = sh.sequence.Process(func() {
 			sh.effectsShader.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks,
 				prefs, rotation, screenshot)
-		}
+			env.draw()
+		})
 	} else {
-		if windowed {
-			env.textureID = sh.sequence.Process(func() {
-				sh.colorShader.setAttributes(env)
-				env.draw()
-			})
-		} else {
+		env.textureID = sh.sequence.Process(func() {
 			sh.colorShader.setAttributes(env)
-		}
+			env.draw()
+		})
 	}
 
 	return env.textureID

@@ -67,6 +67,7 @@ func (rnd *gl32) start() error {
 	rnd.shaders = append(rnd.shaders, newGUIShader())
 	rnd.shaders = append(rnd.shaders, newColorShader())
 	rnd.shaders = append(rnd.shaders, newPlayscrShader(rnd.img))
+	rnd.shaders = append(rnd.shaders, newBevelShader(rnd.img))
 	rnd.shaders = append(rnd.shaders, newDbgScrShader(rnd.img))
 	rnd.shaders = append(rnd.shaders, newDbgScrOverlayShader(rnd.img))
 	rnd.shaders = append(rnd.shaders, newDbgScrMagnifyShader(rnd.img))
@@ -112,22 +113,20 @@ func (rnd *gl32) preRender() {
 
 // render translates the ImGui draw data to OpenGL3 commands.
 func (rnd *gl32) render() {
-	displaySize := rnd.img.plt.displaySize()
-	framebufferSize := rnd.img.plt.framebufferSize()
+	winw, winh := rnd.img.plt.windowSize()
+	fbw, fbh := rnd.img.plt.framebufferSize()
 	drawData := imgui.RenderedDrawData()
 
 	st := storeGLState()
 	defer st.restoreGLState()
 
 	// Avoid rendering when minimised, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
-	displayWidth, displayHeight := displaySize[0], displaySize[1]
-	fbWidth, fbHeight := framebufferSize[0], framebufferSize[1]
-	if (fbWidth <= 0) || (fbHeight <= 0) {
+	if (fbw <= 0) || (fbh <= 0) {
 		return
 	}
 	drawData.ScaleClipRects(imgui.Vec2{
-		X: fbWidth / displayWidth,
-		Y: fbHeight / displayHeight,
+		X: fbw / winw,
+		Y: fbh / winh,
 	})
 
 	// Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled, polygon fill
@@ -145,8 +144,8 @@ func (rnd *gl32) render() {
 	// Our visible imgui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right).
 	// DisplayMin is typically (0,0) for single viewport apps.
 	env.projMtx = [4][4]float32{
-		{2.0 / displayWidth, 0.0, 0.0, 0.0},
-		{0.0, 2.0 / -displayHeight, 0.0, 0.0},
+		{2.0 / winw, 0.0, 0.0, 0.0},
+		{0.0, 2.0 / -winh, 0.0, 0.0},
 		{0.0, 0.0, -1.0, 0.0},
 		{-1.0, 1.0, 0.0, 1.0},
 	}
@@ -204,9 +203,9 @@ func (rnd *gl32) render() {
 
 				// viewport and scissors. these might have changed during
 				// execution of the shader
-				gl.Viewport(0, 0, int32(fbWidth), int32(fbHeight))
+				gl.Viewport(0, 0, int32(fbw), int32(fbh))
 				clipRect := cmd.ClipRect()
-				gl.Scissor(int32(clipRect.X), int32(fbHeight)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
+				gl.Scissor(int32(clipRect.X), int32(fbh)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
 
 				// process
 				env.draw()
