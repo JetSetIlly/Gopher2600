@@ -204,11 +204,20 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 	})
 
 	// apply ghosting filter to texture. this is useful for the zookeeper brick effect
-	if prefs.Enabled && prefs.Ghosting {
-		env.textureID = sh.sequence.Process(func() {
-			sh.ghostingShader.(*ghostingShader).setAttributesArgs(env, float32(prefs.GhostingAmount))
-			env.draw()
-		})
+	if prefs.Enabled {
+		// if ghosting isn't enabled then we need to run the image through a
+		// neutral shader so that the y-orientaiton is correct
+		if prefs.Ghosting {
+			env.textureID = sh.sequence.Process(func() {
+				sh.ghostingShader.(*ghostingShader).setAttributesArgs(env, float32(prefs.GhostingAmount))
+				env.draw()
+			})
+		} else {
+			env.textureID = sh.sequence.Process(func() {
+				sh.colorShader.setAttributes(env)
+				env.draw()
+			})
+		}
 	}
 
 	// shift previous array and copy new texture
@@ -248,6 +257,11 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 		}
 	}
 
+	// we've possibly altered the flipY value in the phosphor loop above, so we
+	// need to restore it to equal the windowed value (ie. as the flipY was at
+	// the beginning of the function)
+	env.flipY = windowed
+
 	// TV color shader is applied to pixel-perfect shader too
 	env.textureID = sh.sequence.Process(func() {
 		sh.tvColorShader.(*tvColorShader).setAttributesArgs(env, prefs.tvColor)
@@ -284,7 +298,6 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 				env.draw()
 			})
 		} else {
-			env.flipY = true
 			sh.colorShader.setAttributes(env)
 		}
 	}
