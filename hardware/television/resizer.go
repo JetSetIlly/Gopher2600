@@ -243,10 +243,13 @@ func (rz *Resizer) commit(state *State) error {
 		rz.usingVBLANK = false
 	}()
 
+	// NOTE: we no longer do this because it sometimes causes a visual resize if
+	// the resize hasn't been caught by the preview process
+	//
 	// do not resize unless screen is synchronised
-	if !state.vsync.isSynced() {
-		return nil
-	}
+	// 	if !state.vsync.isSynced() {
+	// 		return nil
+	// 	}
 
 	// if top/bottom values this frame are not the same as pending top/bottom
 	// values then update pending values and reset pending counter.
