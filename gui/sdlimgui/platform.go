@@ -88,6 +88,9 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		return nil, fmt.Errorf("sdl: %w", err)
 	}
 
+	// set hints for application
+	sdl.SetHint(sdl.HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0")
+
 	switch img.rnd.requires() {
 	case requiresOpenGL32:
 		err = sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3)
@@ -155,9 +158,6 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	}
 	logger.Logf(logger.Allow, "sdl", "refresh rate: %dHz", plt.mode.RefreshRate)
 
-	// map sdl key codes to imgui codes
-	plt.setKeyMapping()
-
 	plt.window, err = sdl.CreateWindow(fmt.Sprintf("%s (%s)", windowTitle, version.Version),
 		sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
 		int32(float32(plt.mode.W)*0.80), int32(float32(plt.mode.H)*0.80),
@@ -205,6 +205,14 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	}
 
 	return plt, nil
+}
+
+// call finalise after initialising imgui (which must happen after SDL creation
+// in the newPlatform() function)
+func (plt *platform) finalisePlatform() error {
+	// map sdl key codes to imgui codes
+	plt.setKeyMapping()
+	return nil
 }
 
 // list of swap intervalue values. with the exception of syncTicker all of these

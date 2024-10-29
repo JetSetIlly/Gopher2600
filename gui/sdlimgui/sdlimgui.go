@@ -140,8 +140,27 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 		cache:               caching.NewCache(),
 	}
 
+	var err error
+
+	// new renderer
+	img.rnd = newRenderer(img)
+
+	// create platform
+	img.plt, err = newPlatform(img)
+	if err != nil {
+		return nil, fmt.Errorf("sdlimgui: %w", err)
+	}
+
 	// create imgui context
 	imgui.CreateContext(nil)
+
+	// define colors
+	img.cols = newColors()
+
+	err = img.plt.finalisePlatform()
+	if err != nil {
+		return nil, fmt.Errorf("sdlimgui: %w", err)
+	}
 
 	// mode is in the none state at the beginning
 	img.mode.Store(govern.ModeNone)
@@ -152,18 +171,6 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 	imgui.CurrentIO().SetIniFilename(iniPath)
-
-	// define colors
-	img.cols = newColors()
-
-	// new renderer
-	img.rnd = newRenderer(img)
-
-	// create platform
-	img.plt, err = newPlatform(img)
-	if err != nil {
-		return nil, fmt.Errorf("sdlimgui: %w", err)
-	}
 
 	// initialise preferences after platform initialisation because there are
 	// preference hooks that reference platform fields
@@ -236,6 +243,11 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	}
 
 	return img, nil
+}
+
+func (img *SdlImgui) FinalisePlatform() {
+	// define colors
+	img.cols = newColors()
 }
 
 // Destroy implements GuiCreator interface
