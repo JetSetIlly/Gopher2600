@@ -844,6 +844,7 @@ func (tv *Television) newFrame() error {
 		// the entire entry
 		tv.signals[i] = signal.SignalAttributes{
 			Index: signal.NoSignal,
+			Color: signal.VideoBlack,
 		}
 	}
 

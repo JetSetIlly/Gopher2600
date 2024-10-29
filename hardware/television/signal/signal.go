@@ -30,7 +30,10 @@ const VideoBlack ColorSignal = 0xff
 // Index value to indicate that the signal is invalid
 const NoSignal = -1
 
-// SignalAttributes represents the data sent to the television.
+// SignalAttributes represents the data sent to the television
+//
+// When reset the Index field should be set to NoSignal and the Color field
+// should be set to VideoBlack
 type SignalAttributes struct {
 	Index         int
 	VSync         bool

@@ -61,17 +61,9 @@ type PixelRenderer interface {
 	// Every signal from SetPixels() therefore corresponds to a pixel in the
 	// bitmap - the first entry always referes to the top-left pixel
 	//
-	// Setting the color of a pixel can be done by extracting the ColorSignal
-	// from the SignalAttributes (see signal package)
-	//
-	// The last parameter indicates the index of the array entry that was most
-	// recently set. This is useful to know when showing televison images when
-	// the emulation is paused. All entries upto and including last are from
-	// teh *current* frame. All entries afterwards are from the *previous*
-	// frame
-	//
-	// If the entry contains signal.NoSignal then that screen pixel has not
-	// been written to recently
+	// If the entry contains signal.NoSignal then that screen pixel has not been
+	// written to recently. However, the bitmap may still need to be updated
+	// with "nil" information if the size of the screen has reduced
 	//
 	// For renderers that are producing an accurate visual image, the pixel
 	// should always be set to video black if VBLANK is on. Some renderers

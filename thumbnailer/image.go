@@ -206,13 +206,14 @@ func (thmb *Image) NewScanline(scanline int) error {
 
 // SetPixels implements the television.PixelRenderer interface
 func (thmb *Image) SetPixels(sig []signal.SignalAttributes, last int) error {
-	var col color.RGBA
 	var offset int
-
 	for i := range sig {
-		// handle VBLANK by setting pixels to black
-		if sig[i].VBlank {
-			col = color.RGBA{R: 0, G: 0, B: 0}
+		var col color.RGBA
+
+		// handle VBLANK by setting pixels to black. we also manually handle
+		// NoSignal in the same way
+		if sig[i].VBlank || sig[i].Index == signal.NoSignal {
+			col = thmb.frameInfo.Spec.GetColor(signal.VideoBlack)
 		} else {
 			col = thmb.frameInfo.Spec.GetColor(sig[i].Color)
 		}

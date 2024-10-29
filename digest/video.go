@@ -18,6 +18,7 @@ package digest
 import (
 	"crypto/sha1"
 	"fmt"
+	"image/color"
 
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -108,13 +109,18 @@ func (dig *Video) SetPixels(sig []signal.SignalAttributes, _ int) error {
 	offset := len(dig.digest)
 
 	for _, s := range sig {
-		// ignore invalid signals
+		// ignore invalid signals. this has a consequence that shrunken screen
+		// sizes will have pixel values left over from previous frames. but for
+		// the purposes of the digest this is okay
 		if s.Index == signal.NoSignal {
 			continue
 		}
 
-		// ignore VBLANK and extract the color signal in all situations
-		col := dig.spec.GetColor(s.Color)
+		var col color.RGBA
+
+		// signal processing is unlike other SetPixel() implementations in that
+		// we set the underlying color even if VBLANK is set
+		col = dig.spec.GetColor(s.Color)
 
 		// setting every pixel regardless of vblank value
 		p := dig.pixels[offset : offset+3 : offset+3]

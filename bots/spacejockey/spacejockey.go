@@ -100,9 +100,10 @@ func (obs *observer) SetPixels(sig []signal.SignalAttributes, last int) error {
 	var offset int
 
 	for i := range sig {
-		// handle VBLANK by setting pixels to black
-		if sig[i].VBlank {
-			col = color.RGBA{R: 0, G: 0, B: 0}
+		// handle VBLANK by setting pixels to black. we also manually handle
+		// NoSignal in the same way
+		if sig[i].VBlank || sig[i].Index == signal.NoSignal {
+			col = obs.frameInfo.Spec.GetColor(signal.VideoBlack)
 		} else {
 			col = obs.frameInfo.Spec.GetColor(sig[i].Color)
 		}
