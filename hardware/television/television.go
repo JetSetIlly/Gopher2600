@@ -837,7 +837,14 @@ func (tv *Television) newFrame() error {
 
 	// nullify unused signals at end of frame
 	for i := tv.currentSignalIdx; i < len(tv.signals); i++ {
-		tv.signals[i].Index = signal.NoSignal
+		// ideally, we should just be able to set the Index field to NoSignal
+		//
+		// however, a signal renderer may choose to process a signal even when
+		// the NoSignal index is present. for these cases, we need to nullify
+		// the entire entry
+		tv.signals[i] = signal.SignalAttributes{
+			Index: signal.NoSignal,
+		}
 	}
 
 	// set pending pixels
