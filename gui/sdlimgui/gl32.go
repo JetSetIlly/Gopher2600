@@ -313,7 +313,14 @@ func (rnd *gl32) addTexture(typ textureType, linear bool, clamp bool) texture {
 	}
 
 	gl.GenTextures(1, &tex.id)
+
+	// create 1x1 texture as a placeholder
 	gl.BindTexture(gl.TEXTURE_2D, tex.id)
+	gl.TexImage2D(gl.TEXTURE_2D, 0,
+		gl.RGBA, 1, 1, 0,
+		gl.RGBA, gl.UNSIGNED_BYTE,
+		gl.Ptr([]uint8{0}))
+
 	if linear {
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
@@ -321,6 +328,7 @@ func (rnd *gl32) addTexture(typ textureType, linear bool, clamp bool) texture {
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	}
+
 	if clamp {
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
@@ -351,11 +359,8 @@ func (tex *gl32Texture) markForCreation() {
 }
 
 func (tex *gl32Texture) clear() {
-	gl.BindTexture(gl.TEXTURE_2D, tex.id)
-	gl.TexImage2D(gl.TEXTURE_2D, 0,
-		gl.RGBA, 1, 1, 0,
-		gl.RGBA, gl.UNSIGNED_BYTE,
-		gl.Ptr([]uint8{0}))
+	gl.ClearColor(0.0, 0.0, 0.0, 0.0)
+	gl.Clear(gl.COLOR_BUFFER_BIT)
 }
 
 func (tex *gl32Texture) render(pixels *image.RGBA) {
