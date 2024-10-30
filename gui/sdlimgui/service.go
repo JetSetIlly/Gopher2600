@@ -458,7 +458,7 @@ func (img *SdlImgui) serviceWindowEvent(ev sdl.Event, userdata any) bool {
 		case sdl.WINDOWEVENT_SIZE_CHANGED:
 			if img.polling.throttleResize() {
 				img.screen.crit.section.Lock()
-				img.playScr.setScaling()
+				img.playScr.resize()
 				img.screen.crit.section.Unlock()
 				img.renderFrame()
 			}

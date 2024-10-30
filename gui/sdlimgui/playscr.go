@@ -80,7 +80,7 @@ func newPlayScr(img *SdlImgui) *playScr {
 	// set scale and padding on startup. scale and padding will be recalculated
 	// on window resize and textureRenderer.resize()
 	win.scr.crit.section.Lock()
-	win.setScaling()
+	win.resize()
 	win.scr.crit.section.Unlock()
 
 	return win
@@ -103,10 +103,17 @@ func (win *playScr) draw() {
 }
 
 // resize() implements the textureRenderer interface.
+//
+// must be called from within a critical section.
 func (win *playScr) resize() {
 	win.screenTexture.markForCreation()
 	win.bevelTexture.markForCreation()
-	win.setScaling()
+
+	win.setScalingBevel()
+	win.setScalingDisplay()
+
+	// get visibleScanlines while we're in critical section
+	win.visibleScanlines = win.scr.crit.frameInfo.VisibleBottom - win.scr.crit.frameInfo.VisibleTop
 }
 
 // updateRefreshRate() implements the textureRenderer interface.
@@ -126,15 +133,6 @@ func (win *playScr) render() {
 	win.bevelTexture.render(bevels.TV)
 
 	// unlike dbgscr, there is no need to call setScaling() every render()
-}
-
-// must be called from within a critical section.
-func (win *playScr) setScaling() {
-	win.setScalingBevel()
-	win.setScalingDisplay()
-
-	// get visibleScanlines while we're in critical section
-	win.visibleScanlines = win.scr.crit.frameInfo.VisibleBottom - win.scr.crit.frameInfo.VisibleTop
 }
 
 // must be called from with a critical section.

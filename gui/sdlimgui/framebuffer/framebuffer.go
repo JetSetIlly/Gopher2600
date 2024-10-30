@@ -19,3 +19,10 @@ type FBO interface {
 	// bind the framebuffer to READ_FRAMEBUFFER ready for a Copy()
 	bindForCopy()
 }
+
+// the framebuffer texture type contains the id of the texture as well as the
+// marker that says whether it needs (re)creating
+type texture struct {
+	id     uint32
+	create bool
+}
