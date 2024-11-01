@@ -212,7 +212,9 @@ func main() {
 // launch is called from main() as a goroutine. uses mainSync instance to
 // indicate gui creation and to quit.
 func launch(sync *mainSync, args []string) {
-	logger.Logf(logger.Allow, "runtime", "number of cores being used: %d", runtime.NumCPU())
+	logger.Logf(logger.Allow, "gopher2600", "%s", version.Version)
+	logger.Logf(logger.Allow, "gopher2600", "%s", version.Revision)
+	logger.Logf(logger.Allow, "gopher2600", "number of cores being used: %d", runtime.NumCPU())
 
 	// use flag set to provide the --help flag for top level command line.
 	// that's all we want it to do
