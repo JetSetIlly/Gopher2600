@@ -24,6 +24,7 @@ import (
 
 	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 type gl21Texture struct {
@@ -58,6 +59,11 @@ func (rnd *gl21) start() error {
 		return fmt.Errorf("gl21: %w", err)
 	}
 
+	// log GPU vendor information
+	logger.Logf(logger.Allow, "glsl", "vendor: %s", gl.GoStr(gl.GetString(gl.VENDOR)))
+	logger.Logf(logger.Allow, "glsl", "renderer: %s", gl.GoStr(gl.GetString(gl.RENDERER)))
+	logger.Logf(logger.Allow, "glsl", "driver: %s", gl.GoStr(gl.GetString(gl.VERSION)))
+
 	return nil
 }
 
@@ -74,19 +80,17 @@ func (rnd *gl21) preRender() {
 }
 
 func (rnd *gl21) render() {
-	displaySize := rnd.img.plt.displaySize()
-	framebufferSize := rnd.img.plt.framebufferSize()
+	winw, winh := rnd.img.plt.windowSize()
+	fbw, fbh := rnd.img.plt.framebufferSize()
 	drawData := imgui.RenderedDrawData()
 
 	// Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
-	displayWidth, displayHeight := displaySize[0], displaySize[1]
-	fbWidth, fbHeight := framebufferSize[0], framebufferSize[1]
-	if (fbWidth <= 0) || (fbHeight <= 0) {
+	if (fbw <= 0) || (fbh <= 0) {
 		return
 	}
 	drawData.ScaleClipRects(imgui.Vec2{
-		X: fbWidth / displayWidth,
-		Y: fbHeight / displayHeight,
+		X: fbw / winw,
+		Y: fbh / winh,
 	})
 
 	// Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled, vertex/texcoord/color pointers, polygon fill.
@@ -118,11 +122,11 @@ func (rnd *gl21) render() {
 	// Setup viewport, orthographic projection matrix
 	// Our visible imgui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right).
 	// DisplayMin is typically (0,0) for single viewport apps.
-	gl.Viewport(0, 0, int32(fbWidth), int32(fbHeight))
+	gl.Viewport(0, 0, int32(fbw), int32(fbh))
 	gl.MatrixMode(gl.PROJECTION)
 	gl.PushMatrix()
 	gl.LoadIdentity()
-	gl.Ortho(0, float64(displayWidth), float64(displayHeight), 0, -1, 1)
+	gl.Ortho(0, float64(winw), float64(winh), 0, -1, 1)
 	gl.MatrixMode(gl.MODELVIEW)
 	gl.PushMatrix()
 	gl.LoadIdentity()
@@ -151,7 +155,7 @@ func (rnd *gl21) render() {
 				command.CallUserCallback(commandList)
 			} else {
 				clipRect := command.ClipRect()
-				gl.Scissor(int32(clipRect.X), int32(fbHeight)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
+				gl.Scissor(int32(clipRect.X), int32(fbh)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
 				gl.BindTexture(gl.TEXTURE_2D, uint32(command.TextureID()))
 				gl.DrawElementsWithOffset(gl.TRIANGLES, int32(command.ElementCount()), uint32(drawType), indexBufferOffset)
 			}

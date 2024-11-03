@@ -139,6 +139,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		profile_s = " ES"
 	}
 
+	// log SDL information
 	var sdlVersion sdl.Version
 	sdl.VERSION(&sdlVersion)
 	logger.Logf(logger.Allow, "sdl", "version %d.%d.%d", sdlVersion.Major, sdlVersion.Minor, sdlVersion.Patch)
