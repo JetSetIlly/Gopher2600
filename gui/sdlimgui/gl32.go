@@ -23,6 +23,7 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 type gl32Texture struct {
@@ -76,6 +77,11 @@ func (rnd *gl32) start() error {
 
 	gl.GenBuffers(1, &rnd.vboHandle)
 	gl.GenBuffers(1, &rnd.elementsHandle)
+
+	// log GPU vendor information
+	logger.Logf(logger.Allow, "glsl", "vendor: %s", gl.GoStr(gl.GetString(gl.VENDOR)))
+	logger.Logf(logger.Allow, "glsl", "renderer: %s", gl.GoStr(gl.GetString(gl.RENDERER)))
+	logger.Logf(logger.Allow, "glsl", "driver: %s", gl.GoStr(gl.GetString(gl.VERSION)))
 
 	return nil
 }
