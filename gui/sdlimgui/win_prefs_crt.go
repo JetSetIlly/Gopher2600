@@ -67,12 +67,13 @@ func (win *winPrefs) drawCRT() {
 		win.drawFringing()
 		imgui.Spacing()
 		win.drawGhosting()
+		imgui.Spacing()
+		win.drawSharpness()
 		imgui.PopItemWidth()
 
 		imgui.TableNextColumn()
 		imgui.PushItemWidth(-1)
 		win.drawPhosphor()
-		win.drawSharpness()
 		imgui.Spacing()
 		win.drawBlackLevel()
 		imgui.Spacing()
@@ -334,6 +335,8 @@ func (win *winPrefs) drawPhosphor() {
 }
 
 func (win *winPrefs) drawSharpness() {
+	imgui.Text("Sharpness")
+
 	f := float32(win.img.displayPrefs.CRT.Sharpness.Get().(float64))
 
 	var label string
