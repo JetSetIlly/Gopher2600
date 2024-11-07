@@ -215,7 +215,7 @@ a television image that is sympathetic to the display kernel
 of the ROM.`)
 
 	imgui.Spacing()
-	if imgui.CollapsingHeader("Notification Overlay") {
+	if imgui.CollapsingHeader("Notifications") {
 		controllerNotifications := win.img.prefs.controllerNotifcations.Get().(bool)
 		if imgui.Checkbox("Controller Changes", &controllerNotifications) {
 			win.img.prefs.controllerNotifcations.Set(controllerNotifications)
@@ -240,9 +240,17 @@ of the ROM.`)
 		if imgui.SliderFloatV("Visibility", &visibility, 0.0, 100.0, "%.0f%%", imgui.SliderFlagsNone) {
 			win.img.prefs.notificationVisibility.Set(visibility / 100)
 		}
+	}
+
+	imgui.Spacing()
+	if imgui.CollapsingHeader("FPS Overlay") {
+		frameQueueMeter := win.img.prefs.frameQueueMeterInOverlay.Get().(bool)
+		if imgui.Checkbox("Frame Queue Meter", &frameQueueMeter) {
+			win.img.prefs.frameQueueMeterInOverlay.Set(frameQueueMeter)
+		}
 
 		memoryUsageInOverlay := win.img.prefs.memoryUsageInOverlay.Get().(bool)
-		if imgui.Checkbox("Memory Usage in FPS Overlay", &memoryUsageInOverlay) {
+		if imgui.Checkbox("Memory Usage", &memoryUsageInOverlay) {
 			win.img.prefs.memoryUsageInOverlay.Set(memoryUsageInOverlay)
 		}
 	}

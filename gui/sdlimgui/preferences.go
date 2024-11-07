@@ -61,6 +61,7 @@ type preferences struct {
 	audioMuteNotification     prefs.Bool
 	notificationVisibility    prefs.Float
 	memoryUsageInOverlay      prefs.Bool
+	frameQueueMeterInOverlay  prefs.Bool
 
 	// fonts
 	guiFontSize         prefs.Int
@@ -149,6 +150,10 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("sdlimgui.playmode.frameQueueMeterInOverlay", &p.frameQueueMeterInOverlay)
+	if err != nil {
+		return nil, err
+	}
 
 	// playmode audio mute options later
 
@@ -186,14 +191,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 	p.frameQueueLenAuto.SetHookPost(func(v prefs.Value) error {
-		// set frameQueue value if auto is true. there is no need to call
-		// screen.setFrameQueue() in that instance becase the post hook for the
-		// frameQueue value does that
-		if v.(bool) {
-			p.img.screen.setFrameQueue(true, 1)
-		} else {
-			p.img.screen.setFrameQueue(false, p.frameQueueLen.Get().(int))
-		}
+		p.img.screen.setFrameQueue(v.(bool), p.frameQueueLen.Get().(int))
 		return nil
 	})
 
@@ -268,6 +266,7 @@ func (p *preferences) setDefaults() {
 	p.superchargerNotifications.Set(true)
 	p.audioMuteNotification.Set(true)
 	p.notificationVisibility.Set(0.75)
+	p.memoryUsageInOverlay.Set(false)
 	p.memoryUsageInOverlay.Set(false)
 	p.guiFontSize.Set(13)
 	p.terminalFontSize.Set(12)
