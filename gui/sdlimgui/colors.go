@@ -48,9 +48,13 @@ type imguiColors struct {
 	Warning     imgui.Vec4
 	Cancel      imgui.Vec4
 
-	// playscreen color
+	// playscreen colors
 	PlayWindowBg     imgui.Vec4
 	PlayWindowBorder imgui.Vec4
+
+	// overlay colors
+	FrameQueueSlackActive   imgui.Vec4
+	FrameQueueSlackInactive imgui.Vec4
 
 	// ROM selector
 	ROMSelectDir  imgui.Vec4
@@ -263,9 +267,13 @@ func newColors() *imguiColors {
 		Warning:     imgui.Vec4{X: 1.0, Y: 0.2, Z: 0.2, W: 1.0},
 		Cancel:      imgui.Vec4{X: 1.0, Y: 0.2, Z: 0.2, W: 1.0},
 
-		// playscreen color
+		// playscreen colors
 		PlayWindowBg:     imgui.Vec4{X: 0.0, Y: 0.0, Z: 0.0, W: 1.0},
 		PlayWindowBorder: imgui.Vec4{X: 0.0, Y: 0.0, Z: 0.0, W: 1.0},
+
+		//  overlay colors
+		FrameQueueSlackActive:   imgui.Vec4{X: 1.0, Y: 0.3, Z: 0.3, W: 0.8},
+		FrameQueueSlackInactive: imgui.Vec4{X: 1.0, Y: 0.3, Z: 0.3, W: 0.3},
 
 		// ROM selector
 		ROMSelectDir:  imgui.Vec4{X: 0.5, Y: 0.5, Z: 1.0, W: 1.0},

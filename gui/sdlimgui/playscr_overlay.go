@@ -270,11 +270,23 @@ func (oly *playscrOverlay) drawTopLeft() {
 		imgui.SameLine()
 		imgui.Text(oly.refreshRate)
 
-		imguiSeparator()
-		imgui.Text(fmt.Sprintf("%d frame input lag", oly.playscr.scr.crit.frameQueueLen))
-		if oly.playscr.scr.nudgeIconCt > 0 {
-			imgui.SameLine()
-			imgui.Text(string(fonts.Nudge))
+		if oly.playscr.img.prefs.frameQueueMeterInOverlay.Get().(bool) {
+			imguiSeparator()
+
+			imgui.PushStyleColor(imgui.StyleColorText, oly.playscr.img.cols.FrameQueueSlackActive)
+			for _ = range oly.playscr.scr.frameQueueSlack + 1 {
+				imgui.Text(string(fonts.SlackCounter))
+				imgui.SameLineV(0, 0)
+			}
+
+			imgui.PushStyleColor(imgui.StyleColorText, oly.playscr.img.cols.FrameQueueSlackInactive)
+			for _ = range oly.playscr.scr.crit.frameQueueLen - oly.playscr.scr.frameQueueSlack - 1 {
+				imgui.Text(string(fonts.SlackCounter))
+				imgui.SameLineV(0, 0)
+			}
+			imgui.Text("")
+
+			imgui.PopStyleColorV(2)
 		}
 
 		if oly.playscr.img.prefs.memoryUsageInOverlay.Get().(bool) {
