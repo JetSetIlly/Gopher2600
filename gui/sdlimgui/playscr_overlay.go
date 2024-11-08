@@ -62,17 +62,14 @@ func (ct *overlayLatch) expired() bool {
 }
 
 type playscrOverlay struct {
+	img     *SdlImgui
 	playscr *playScr
 
-	// fps information is updated on every pule of the time.Ticker. the fps and
-	// refreshRate string is updated at that time and then displayed on every draw()
-	fpsPulse    *time.Ticker
-	fpsForce    chan bool
 	fps         string
 	refreshRate string
 
-	// memory stats are updated along with the fpsPulse
-	memStats runtime.MemStats
+	memStatsTicker *time.Ticker
+	memStats       runtime.MemStats
 
 	// top-left corner of the overlay includes emulation state. if the
 	// "fpsOverlay" is active then these will be drawn alongside the FPS
@@ -107,35 +104,35 @@ type playscrOverlay struct {
 
 const overlayPadding = 10
 
-func (oly *playscrOverlay) set(v any, args ...any) {
+func (ovly *playscrOverlay) set(v any, args ...any) {
 	switch n := v.(type) {
 	case plugging.PortID:
 		switch n {
 		case plugging.PortLeft:
-			oly.leftPort = args[0].(plugging.PeripheralID)
-			oly.leftPortLatch = overlayLatchShort
+			ovly.leftPort = args[0].(plugging.PeripheralID)
+			ovly.leftPortLatch = overlayLatchShort
 		case plugging.PortRight:
-			oly.rightPort = args[0].(plugging.PeripheralID)
-			oly.rightPortLatch = overlayLatchShort
+			ovly.rightPort = args[0].(plugging.PeripheralID)
+			ovly.rightPortLatch = overlayLatchShort
 		}
 	case notifications.Notice:
 		switch n {
 		case notifications.NotifySuperchargerSoundloadStarted:
-			oly.cartridge = n
-			oly.cartridgeLatch = overlayLatchPinned
+			ovly.cartridge = n
+			ovly.cartridgeLatch = overlayLatchPinned
 		case notifications.NotifySuperchargerSoundloadEnded:
-			oly.cartridge = n
-			oly.cartridgeLatch = overlayLatchShort
+			ovly.cartridge = n
+			ovly.cartridgeLatch = overlayLatchShort
 		case notifications.NotifySuperchargerSoundloadRewind:
 			return
 
 		case notifications.NotifyPlusROMNetwork:
-			oly.cartridge = n
-			oly.cartridgeLatch = overlayLatchShort
+			ovly.cartridge = n
+			ovly.cartridgeLatch = overlayLatchShort
 
 		case notifications.NotifyScreenshot:
-			oly.event = n
-			oly.eventLatch = overlayLatchShort
+			ovly.event = n
+			ovly.eventLatch = overlayLatchShort
 
 		default:
 			return
@@ -143,9 +140,9 @@ func (oly *playscrOverlay) set(v any, args ...any) {
 	}
 }
 
-func (oly *playscrOverlay) draw() {
-	imgui.PushStyleColor(imgui.StyleColorWindowBg, oly.playscr.img.cols.Transparent)
-	imgui.PushStyleColor(imgui.StyleColorBorder, oly.playscr.img.cols.Transparent)
+func (ovly *playscrOverlay) draw() {
+	imgui.PushStyleColor(imgui.StyleColorWindowBg, ovly.img.cols.Transparent)
+	imgui.PushStyleColor(imgui.StyleColorBorder, ovly.img.cols.Transparent)
 	defer imgui.PopStyleColorV(2)
 
 	imgui.PushStyleVarVec2(imgui.StyleVarWindowPadding, imgui.Vec2{})
@@ -153,7 +150,7 @@ func (oly *playscrOverlay) draw() {
 
 	imgui.SetNextWindowPos(imgui.Vec2{X: 0, Y: 0})
 
-	winw, winh := oly.playscr.img.plt.windowSize()
+	winw, winh := ovly.img.plt.windowSize()
 	imgui.SetNextWindowSize(imgui.Vec2{X: winw, Y: winh})
 
 	imgui.BeginV("##playscrOverlay", nil, imgui.WindowFlagsAlwaysAutoResize|
@@ -162,24 +159,32 @@ func (oly *playscrOverlay) draw() {
 		imgui.WindowFlagsNoBringToFrontOnFocus)
 	defer imgui.End()
 
-	oly.visibility = float32(oly.playscr.img.prefs.notificationVisibility.Get().(float64))
+	ovly.visibility = float32(ovly.img.prefs.notificationVisibility.Get().(float64))
 
-	oly.drawTopLeft()
-	oly.drawTopRight()
-	oly.drawBottomLeft()
-	oly.drawBottomRight()
+	ovly.drawTopLeft()
+	ovly.drawTopRight()
+	ovly.drawBottomLeft()
+	ovly.drawBottomRight()
 }
 
-func (oly *playscrOverlay) updateRefreshRate() {
-	fps, refreshRate := oly.playscr.img.dbg.VCS().TV.GetActualFPS()
-	oly.fps = fmt.Sprintf("%03.2f fps", fps)
-	oly.refreshRate = fmt.Sprintf("%03.2fhz", refreshRate)
+func (ovly *playscrOverlay) updateRefreshRate() {
+	fps, refreshRate := ovly.img.dbg.VCS().TV.GetActualFPS()
+	if fps == 0 {
+		ovly.fps = "waiting"
+	} else {
+		ovly.fps = fmt.Sprintf("%03.2f fps", fps)
+	}
+	if refreshRate == 0 {
+		ovly.refreshRate = "waiting"
+	} else {
+		ovly.refreshRate = fmt.Sprintf("%03.2fhz", refreshRate)
+	}
 }
 
 // information in the top left corner of the overlay are about the emulation.
 // eg. whether audio is mute, or the emulation is paused, etc. it is also used
 // to display the FPS counter and other TV information
-func (oly *playscrOverlay) drawTopLeft() {
+func (ovly *playscrOverlay) drawTopLeft() {
 	pos := imgui.CursorScreenPos()
 	pos.X += overlayPadding
 	pos.Y += overlayPadding
@@ -189,7 +194,7 @@ func (oly *playscrOverlay) drawTopLeft() {
 	var useIconQueue bool
 
 	// draw FPS information if it's enabled
-	if oly.playscr.img.prefs.fpsDetail.Get().(bool) {
+	if ovly.img.prefs.fpsDetail.Get().(bool) {
 		// it's easier if we put topleft of overlay in a window because the window
 		// will control the width and positioning automatically. if we don't then
 		// the horizntal rules will stretch the width of the screen and each new line of
@@ -202,31 +207,32 @@ func (oly *playscrOverlay) drawTopLeft() {
 			imgui.WindowFlagsNoBringToFrontOnFocus)
 		defer imgui.End()
 
+		ovly.updateRefreshRate()
+
 		select {
-		case <-oly.fpsPulse.C:
-			oly.updateRefreshRate()
-			runtime.ReadMemStats(&oly.memStats)
+		case <-ovly.memStatsTicker.C:
+			runtime.ReadMemStats(&ovly.memStats)
 		default:
 		}
 
-		imgui.Text(fmt.Sprintf("Emulation: %s", oly.fps))
-		fr := imgui.CurrentIO().Framerate()
-		if fr == 0.0 {
+		imgui.Textf("Emulation: %s", ovly.fps)
+		r := imgui.CurrentIO().Framerate()
+		if r == 0.0 {
 			imgui.Text("Rendering: waiting")
 		} else {
-			imgui.Text(fmt.Sprintf("Rendering: %03.2f fps", fr))
+			imgui.Textf("Rendering: %03.2f fps", r)
 		}
 
 		imguiSeparator()
 
-		if coproc := oly.playscr.img.cache.VCS.Mem.Cart.GetCoProc(); coproc != nil {
-			clk := float32(oly.playscr.img.dbg.VCS().Env.Prefs.ARM.Clock.Get().(float64))
+		if coproc := ovly.img.cache.VCS.Mem.Cart.GetCoProc(); coproc != nil {
+			clk := float32(ovly.img.dbg.VCS().Env.Prefs.ARM.Clock.Get().(float64))
 			imgui.Text(fmt.Sprintf("%s Clock: %.0f Mhz", coproc.ProcessorID(), clk))
 			imguiSeparator()
 		}
 
-		imgui.Text(fmt.Sprintf("%.1fx scaling", oly.playscr.scaling))
-		imgui.Text(fmt.Sprintf("%d total scanlines", oly.playscr.scr.crit.frameInfo.TotalScanlines))
+		imgui.Text(fmt.Sprintf("%.1fx scaling", ovly.playscr.scaling))
+		imgui.Text(fmt.Sprintf("%d total scanlines", ovly.playscr.scr.crit.frameInfo.TotalScanlines))
 
 		imguiSeparator()
 
@@ -238,25 +244,25 @@ func (oly *playscrOverlay) drawTopLeft() {
 
 		vblankBounds := fmt.Sprintf("%c %d  %c %d",
 			fonts.VBLANKtop,
-			oly.playscr.scr.crit.frameInfo.VBLANKtop,
+			ovly.playscr.scr.crit.frameInfo.VBLANKtop,
 			fonts.VBLANKbottom,
-			oly.playscr.scr.crit.frameInfo.VBLANKbottom)
+			ovly.playscr.scr.crit.frameInfo.VBLANKbottom)
 		vblankBounds = strings.ReplaceAll(vblankBounds, "-1", "-")
 		imgui.Text(vblankBounds)
-		if oly.playscr.scr.crit.frameInfo.VBLANKunstable {
+		if ovly.playscr.scr.crit.frameInfo.VBLANKunstable {
 			imgui.SameLineV(0, 5)
 			imgui.Text(string(fonts.Bug))
 		}
-		if oly.playscr.scr.crit.frameInfo.VBLANKatari {
+		if ovly.playscr.scr.crit.frameInfo.VBLANKatari {
 			imgui.SameLineV(0, 15)
 			imgui.Text(string(fonts.VBLANKatari))
 		}
 
 		imgui.Spacing()
-		if oly.playscr.scr.crit.frameInfo.FromVSYNC {
-			imgui.Text(fmt.Sprintf("VSYNC %d+%d", oly.playscr.scr.crit.frameInfo.VSYNCscanline,
-				oly.playscr.scr.crit.frameInfo.VSYNCcount))
-			if oly.playscr.scr.crit.frameInfo.VSYNCunstable {
+		if ovly.playscr.scr.crit.frameInfo.FromVSYNC {
+			imgui.Text(fmt.Sprintf("VSYNC %d+%d", ovly.playscr.scr.crit.frameInfo.VSYNCscanline,
+				ovly.playscr.scr.crit.frameInfo.VSYNCcount))
+			if ovly.playscr.scr.crit.frameInfo.VSYNCunstable {
 				imgui.SameLineV(0, 5)
 				imgui.Text(string(fonts.Bug))
 			}
@@ -265,22 +271,22 @@ func (oly *playscrOverlay) drawTopLeft() {
 		}
 
 		imguiSeparator()
-		imgui.Text(oly.playscr.img.screen.crit.frameInfo.Spec.ID)
+		imgui.Text(ovly.img.screen.crit.frameInfo.Spec.ID)
 
 		imgui.SameLine()
-		imgui.Text(oly.refreshRate)
+		imgui.Text(ovly.refreshRate)
 
-		if oly.playscr.img.prefs.frameQueueMeterInOverlay.Get().(bool) {
+		if ovly.img.prefs.frameQueueMeterInOverlay.Get().(bool) {
 			imguiSeparator()
 
-			imgui.PushStyleColor(imgui.StyleColorText, oly.playscr.img.cols.FrameQueueSlackActive)
-			for _ = range oly.playscr.scr.frameQueueSlack + 1 {
+			imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.FrameQueueSlackActive)
+			for _ = range ovly.playscr.scr.frameQueueSlack {
 				imgui.Text(string(fonts.SlackCounter))
 				imgui.SameLineV(0, 0)
 			}
 
-			imgui.PushStyleColor(imgui.StyleColorText, oly.playscr.img.cols.FrameQueueSlackInactive)
-			for _ = range oly.playscr.scr.crit.frameQueueLen - oly.playscr.scr.frameQueueSlack - 1 {
+			imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.FrameQueueSlackInactive)
+			for _ = range ovly.playscr.scr.crit.frameQueueLen - ovly.playscr.scr.frameQueueSlack {
 				imgui.Text(string(fonts.SlackCounter))
 				imgui.SameLineV(0, 0)
 			}
@@ -289,12 +295,12 @@ func (oly *playscrOverlay) drawTopLeft() {
 			imgui.PopStyleColorV(2)
 		}
 
-		if oly.playscr.img.prefs.memoryUsageInOverlay.Get().(bool) {
+		if ovly.img.prefs.memoryUsageInOverlay.Get().(bool) {
 			imguiSeparator()
-			imgui.Text(fmt.Sprintf("Alloc = %v MB\n", oly.memStats.Alloc/1048576))
-			imgui.Text(fmt.Sprintf(" TotalAlloc = %v MB\n", oly.memStats.TotalAlloc/1048576))
-			imgui.Text(fmt.Sprintf(" Sys = %v MB\n", oly.memStats.Sys/1048576))
-			imgui.Text(fmt.Sprintf(" NumGC = %v", oly.memStats.NumGC))
+			imgui.Text(fmt.Sprintf("Alloc = %v MB\n", ovly.memStats.Alloc/1048576))
+			imgui.Text(fmt.Sprintf(" TotalAlloc = %v MB\n", ovly.memStats.TotalAlloc/1048576))
+			imgui.Text(fmt.Sprintf(" Sys = %v MB\n", ovly.memStats.Sys/1048576))
+			imgui.Text(fmt.Sprintf(" NumGC = %v", ovly.memStats.NumGC))
 		}
 
 		// create space in the window for any icons that we might want to draw.
@@ -307,7 +313,7 @@ func (oly *playscrOverlay) drawTopLeft() {
 		imgui.SetCursorScreenPos(p)
 
 		// draw developer icon if BorrowSource() returns a non-nil value
-		oly.playscr.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
+		ovly.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 			if src != nil {
 				imgui.Text(string(fonts.Developer))
 				imgui.SameLine()
@@ -325,55 +331,55 @@ func (oly *playscrOverlay) drawTopLeft() {
 
 		// FPS overlay is not active so we increase the font size for any icons
 		// that may be drawn hereafter in this window
-		imgui.PushFont(oly.playscr.img.fonts.veryLargeFontAwesome)
+		imgui.PushFont(ovly.img.fonts.veryLargeFontAwesome)
 		defer imgui.PopFont()
 
 		// add visibility adjustment if there is no FPS overlay
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{X: oly.visibility, Y: oly.visibility, Z: oly.visibility, W: oly.visibility})
+		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{X: ovly.visibility, Y: ovly.visibility, Z: ovly.visibility, W: ovly.visibility})
 		defer imgui.PopStyleColor()
 	}
 
 	// start a new icons queue
-	oly.iconQueue = oly.iconQueue[:0]
+	ovly.iconQueue = ovly.iconQueue[:0]
 
 	// mute is likely to be the icon visible the longest so has the lowest priority
-	if oly.playscr.img.prefs.audioMutePlaymode.Get().(bool) && oly.playscr.img.prefs.audioMuteNotification.Get().(bool) {
-		oly.iconQueue = append(oly.iconQueue, fonts.AudioMute)
+	if ovly.img.prefs.audioMutePlaymode.Get().(bool) && ovly.img.prefs.audioMuteNotification.Get().(bool) {
+		ovly.iconQueue = append(ovly.iconQueue, fonts.AudioMute)
 	}
 
 	// the real current state as set by the emulation is used to decide what
 	// state to use for the overlay icon
-	state := oly.playscr.img.dbg.State()
-	subState := oly.playscr.img.dbg.SubState()
+	state := ovly.img.dbg.State()
+	subState := ovly.img.dbg.SubState()
 
 	switch state {
 	case govern.Paused:
 		// handling the pause state is the trickiest to get right. we want to
 		// prioritise the pause icon in some cases but not in others
-		switch oly.state {
+		switch ovly.state {
 		case govern.Rewinding:
 			// if the previous state was the rewinding state a pause icon will
 			// show if the pause sub-state is not normal or if the
 			// previous state latch has expired
-			if subState != govern.Normal || oly.stateLatch.expired() {
-				oly.state = state
-				oly.subState = subState
-				oly.stateLatch = overlayLatchPinned
+			if subState != govern.Normal || ovly.stateLatch.expired() {
+				ovly.state = state
+				ovly.subState = subState
+				ovly.stateLatch = overlayLatchPinned
 			}
 		default:
-			oly.state = state
-			oly.subState = subState
-			oly.stateLatch = overlayLatchPinned
+			ovly.state = state
+			ovly.subState = subState
+			ovly.stateLatch = overlayLatchPinned
 		}
 	case govern.Running:
-		if state != oly.state {
-			oly.state = state
-			oly.subState = subState
-			oly.stateLatch = overlayLatchShort
+		if state != ovly.state {
+			ovly.state = state
+			ovly.subState = subState
+			ovly.stateLatch = overlayLatchShort
 		}
 	case govern.Rewinding:
-		oly.state = state
-		oly.subState = subState
+		ovly.state = state
+		ovly.subState = subState
 
 		// refresh how the hold duration on every render frame that the
 		// rewinding state is seen. this is so that the duration of the rewind
@@ -383,30 +389,30 @@ func (oly *playscrOverlay) drawTopLeft() {
 		// rewinding state is interspersed very quickly with the paused state.
 		// that works great for internal emulation purposes but requires careful
 		// handling for UI purposes)
-		oly.stateLatch = overlayLatchBrief
+		ovly.stateLatch = overlayLatchBrief
 	}
 
 	// the state duration is ticked and the icon is shown unless the tick has
 	// expired (returns false)
-	if oly.stateLatch.tick() {
-		switch oly.state {
+	if ovly.stateLatch.tick() {
+		switch ovly.state {
 		case govern.Paused:
-			switch oly.subState {
+			switch ovly.subState {
 			case govern.PausedAtStart:
-				oly.iconQueue = append(oly.iconQueue, fonts.EmulationPausedAtStart)
+				ovly.iconQueue = append(ovly.iconQueue, fonts.EmulationPausedAtStart)
 			case govern.PausedAtEnd:
-				oly.iconQueue = append(oly.iconQueue, fonts.EmulationPausedAtEnd)
+				ovly.iconQueue = append(ovly.iconQueue, fonts.EmulationPausedAtEnd)
 			default:
-				oly.iconQueue = append(oly.iconQueue, fonts.EmulationPause)
+				ovly.iconQueue = append(ovly.iconQueue, fonts.EmulationPause)
 			}
 		case govern.Running:
-			oly.iconQueue = append(oly.iconQueue, fonts.EmulationRun)
+			ovly.iconQueue = append(ovly.iconQueue, fonts.EmulationRun)
 		case govern.Rewinding:
-			switch oly.subState {
+			switch ovly.subState {
 			case govern.RewindingBackwards:
-				oly.iconQueue = append(oly.iconQueue, fonts.EmulationRewindBack)
+				ovly.iconQueue = append(ovly.iconQueue, fonts.EmulationRewindBack)
 			case govern.RewindingForwards:
-				oly.iconQueue = append(oly.iconQueue, fonts.EmulationRewindForward)
+				ovly.iconQueue = append(ovly.iconQueue, fonts.EmulationRewindForward)
 			default:
 			}
 		}
@@ -415,24 +421,24 @@ func (oly *playscrOverlay) drawTopLeft() {
 	// events have the highest priority. we can think of these as user activated
 	// events, such as the triggering of a screenshot. we therefore want to give
 	// the user confirmation feedback immediately over other icons
-	if oly.eventLatch.tick() {
-		switch oly.event {
+	if ovly.eventLatch.tick() {
+		switch ovly.event {
 		case notifications.NotifyScreenshot:
-			oly.iconQueue = append(oly.iconQueue, fonts.Camera)
+			ovly.iconQueue = append(ovly.iconQueue, fonts.Camera)
 		}
 	}
 
 	// draw only the last (ie. most important) icon unless the icon queue flag
 	// has been set
 	if !useIconQueue {
-		if len(oly.iconQueue) > 0 {
-			imgui.Text(string(oly.iconQueue[len(oly.iconQueue)-1]))
+		if len(ovly.iconQueue) > 0 {
+			imgui.Text(string(ovly.iconQueue[len(ovly.iconQueue)-1]))
 		}
 		return
 	}
 
 	// draw icons in order of priority
-	for _, i := range oly.iconQueue {
+	for _, i := range ovly.iconQueue {
 		imgui.Text(string(i))
 		imgui.SameLine()
 	}
@@ -442,32 +448,32 @@ func (oly *playscrOverlay) drawTopLeft() {
 // information in the top right of the overlay is about the cartridge. ie.
 // information from the cartridge about what is happening. for example,
 // supercharger tape activity, or PlusROM network activity, etc.
-func (oly *playscrOverlay) drawTopRight() {
-	if !oly.cartridgeLatch.tick() {
+func (ovly *playscrOverlay) drawTopRight() {
+	if !ovly.cartridgeLatch.tick() {
 		return
 	}
 
 	var icon string
 	var secondaryIcon string
 
-	switch oly.cartridge {
+	switch ovly.cartridge {
 	case notifications.NotifySuperchargerSoundloadStarted:
-		if oly.playscr.img.prefs.superchargerNotifications.Get().(bool) {
+		if ovly.img.prefs.superchargerNotifications.Get().(bool) {
 			icon = fmt.Sprintf("%c", fonts.Tape)
 			secondaryIcon = fmt.Sprintf("%c", fonts.TapePlay)
 		}
 	case notifications.NotifySuperchargerSoundloadEnded:
-		if oly.playscr.img.prefs.superchargerNotifications.Get().(bool) {
+		if ovly.img.prefs.superchargerNotifications.Get().(bool) {
 			icon = fmt.Sprintf("%c", fonts.Tape)
 			secondaryIcon = fmt.Sprintf("%c", fonts.TapeStop)
 		}
 	case notifications.NotifySuperchargerSoundloadRewind:
-		if oly.playscr.img.prefs.superchargerNotifications.Get().(bool) {
+		if ovly.img.prefs.superchargerNotifications.Get().(bool) {
 			icon = fmt.Sprintf("%c", fonts.Tape)
 			secondaryIcon = fmt.Sprintf("%c", fonts.TapeRewind)
 		}
 	case notifications.NotifyPlusROMNetwork:
-		if oly.playscr.img.prefs.plusromNotifications.Get().(bool) {
+		if ovly.img.prefs.plusromNotifications.Get().(bool) {
 			icon = fmt.Sprintf("%c", fonts.Wifi)
 		}
 	default:
@@ -475,75 +481,75 @@ func (oly *playscrOverlay) drawTopRight() {
 	}
 
 	pos := imgui.WindowContentRegionMax()
-	pos.X -= oly.playscr.img.fonts.gopher2600IconsSize + overlayPadding
+	pos.X -= ovly.img.fonts.gopher2600IconsSize + overlayPadding
 	pos.Y = 0
 	if secondaryIcon != "" {
-		pos.X -= oly.playscr.img.fonts.largeFontAwesomeSize * 2
+		pos.X -= ovly.img.fonts.largeFontAwesomeSize * 2
 	}
 
-	imgui.PushFont(oly.playscr.img.fonts.gopher2600Icons)
+	imgui.PushFont(ovly.img.fonts.gopher2600Icons)
 	defer imgui.PopFont()
 
-	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{X: oly.visibility, Y: oly.visibility, Z: oly.visibility, W: oly.visibility})
+	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{X: ovly.visibility, Y: ovly.visibility, Z: ovly.visibility, W: ovly.visibility})
 	defer imgui.PopStyleColor()
 
 	imgui.SetCursorScreenPos(pos)
 	imgui.Text(icon)
 
 	if secondaryIcon != "" {
-		imgui.PushFont(oly.playscr.img.fonts.largeFontAwesome)
+		imgui.PushFont(ovly.img.fonts.largeFontAwesome)
 		defer imgui.PopFont()
 
 		imgui.SameLine()
 		pos = imgui.CursorScreenPos()
-		pos.Y += (oly.playscr.img.fonts.gopher2600IconsSize - oly.playscr.img.fonts.largeFontAwesomeSize) * 0.5
+		pos.Y += (ovly.img.fonts.gopher2600IconsSize - ovly.img.fonts.largeFontAwesomeSize) * 0.5
 
 		imgui.SetCursorScreenPos(pos)
 		imgui.Text(secondaryIcon)
 	}
 }
 
-func (oly *playscrOverlay) drawBottomLeft() {
-	if !oly.leftPortLatch.tick() {
+func (ovly *playscrOverlay) drawBottomLeft() {
+	if !ovly.leftPortLatch.tick() {
 		return
 	}
 
-	if !oly.playscr.img.prefs.controllerNotifcations.Get().(bool) {
+	if !ovly.img.prefs.controllerNotifcations.Get().(bool) {
 		return
 	}
 
 	pos := imgui.WindowContentRegionMax()
 	pos.X = overlayPadding
-	pos.Y -= oly.playscr.img.fonts.gopher2600IconsSize + overlayPadding
+	pos.Y -= ovly.img.fonts.gopher2600IconsSize + overlayPadding
 
 	imgui.SetCursorScreenPos(pos)
-	oly.drawPeripheral(oly.leftPort)
+	ovly.drawPeripheral(ovly.leftPort)
 }
 
-func (oly *playscrOverlay) drawBottomRight() {
-	if !oly.rightPortLatch.tick() {
+func (ovly *playscrOverlay) drawBottomRight() {
+	if !ovly.rightPortLatch.tick() {
 		return
 	}
 
-	if !oly.playscr.img.prefs.controllerNotifcations.Get().(bool) {
+	if !ovly.img.prefs.controllerNotifcations.Get().(bool) {
 		return
 	}
 
 	pos := imgui.WindowContentRegionMax()
-	pos.X -= oly.playscr.img.fonts.gopher2600IconsSize + overlayPadding
-	pos.Y -= oly.playscr.img.fonts.gopher2600IconsSize + overlayPadding
+	pos.X -= ovly.img.fonts.gopher2600IconsSize + overlayPadding
+	pos.Y -= ovly.img.fonts.gopher2600IconsSize + overlayPadding
 
 	imgui.SetCursorScreenPos(pos)
-	oly.drawPeripheral(oly.rightPort)
+	ovly.drawPeripheral(ovly.rightPort)
 }
 
 // drawPeripheral is used to draw the peripheral in the bottom left and bottom
 // right corners of the overlay
-func (oly *playscrOverlay) drawPeripheral(peripID plugging.PeripheralID) {
-	imgui.PushFont(oly.playscr.img.fonts.gopher2600Icons)
+func (ovly *playscrOverlay) drawPeripheral(peripID plugging.PeripheralID) {
+	imgui.PushFont(ovly.img.fonts.gopher2600Icons)
 	defer imgui.PopFont()
 
-	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{X: oly.visibility, Y: oly.visibility, Z: oly.visibility, W: oly.visibility})
+	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{X: ovly.visibility, Y: ovly.visibility, Z: ovly.visibility, W: ovly.visibility})
 	defer imgui.PopStyleColor()
 
 	switch peripID {

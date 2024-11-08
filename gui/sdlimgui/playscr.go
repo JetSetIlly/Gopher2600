@@ -66,8 +66,8 @@ func newPlayScr(img *SdlImgui) *playScr {
 		img: img,
 		scr: img.screen,
 		overlay: playscrOverlay{
-			fpsPulse: time.NewTicker(1 * time.Millisecond),
-			fps:      "waiting",
+			img:            img,
+			memStatsTicker: time.NewTicker(time.Second),
 		},
 	}
 	win.overlay.playscr = win
