@@ -97,8 +97,6 @@ func (img *SdlImgui) Service() {
 				case *sdl.QuitEvent:
 					img.quit()
 
-				// case *sdl.WindowEvent handled by event filter (see comment in serviceWindowEvent()
-
 				case *sdl.TextInputEvent:
 					if !img.modalActive() || !img.isCaptured() {
 						imgui.CurrentIO().AddInputCharacters(string(ev.Text[:]))
@@ -108,6 +106,17 @@ func (img *SdlImgui) Service() {
 						// the serviceKeyboard() function
 						img.phantomInput = phantomInputRune
 						img.phantomInputRune = rune(ev.Text[0])
+					}
+
+				case *sdl.WindowEvent:
+					// window events are mainly handled by serviceWindowEvent()
+					// via an event filter
+
+					switch ev.Event {
+					case sdl.WINDOWEVENT_RESIZED:
+						img.plt.resyncAfterResize()
+					default:
+						img.plt.resyncAfterWindowEvent()
 					}
 
 				case *sdl.KeyboardEvent:
@@ -460,11 +469,11 @@ func (img *SdlImgui) serviceWindowEvent(ev sdl.Event, userdata any) bool {
 				img.screen.crit.section.Lock()
 				img.playScr.resize()
 				img.screen.crit.section.Unlock()
-				img.renderFrame()
 			}
 		}
-
-		return false
 	}
+
+	// always return true so that the main service loop can make further
+	// decisions based on the WindowEvent
 	return true
 }

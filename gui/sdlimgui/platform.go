@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"math/rand"
 	"runtime"
 	"strings"
 	"time"
@@ -56,6 +57,17 @@ type platform struct {
 
 	// use ticker to synchronise with monitor
 	syncTicker *time.Ticker
+
+	// a short delay after a window event seems to help the window to resync
+	// with the monitor's refresh rate
+	resync   int
+	resizing bool
+
+	// ideal frame time in nanoseconds
+	frameDuration time.Duration
+
+	renderStart time.Time
+	renderTime  time.Duration
 }
 
 // trickle mouse button is a mechanism that allows a mouse button down/up event
@@ -205,6 +217,12 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		logger.Log(logger.Allow, "sdl", "no joysticks/gamepads found")
 	}
 
+	// duration of each frame according to monitor refresh rate
+	plt.frameDuration = time.Duration(1000000000/int64(plt.mode.RefreshRate)) * time.Nanosecond
+
+	// calculate the average render time every second
+	plt.renderStart = time.Now()
+
 	return plt, nil
 }
 
@@ -220,8 +238,7 @@ const (
 func (plt *platform) setSwapInterval(i int) {
 	if i == syncTicker {
 		// ticker to control update frequency
-		d := time.Duration(1000000000/int64(plt.mode.RefreshRate)) * time.Nanosecond
-		plt.syncTicker = time.NewTicker(d)
+		plt.syncTicker = time.NewTicker(plt.frameDuration)
 
 		// in reality syncTicker requires us to set GL swap interval to 0
 		i = 0
@@ -243,6 +260,11 @@ func (plt *platform) destroy() error {
 	for _, joy := range plt.joysticks {
 		joy.Close()
 	}
+
+	if plt.syncTicker != nil {
+		plt.syncTicker.Stop()
+	}
+	plt.syncTicker = nil
 
 	if plt.window != nil {
 		err := plt.window.Destroy()
@@ -319,12 +341,40 @@ func (plt *platform) newFrame() {
 	}
 }
 
+// call after a resizing window event
+func (plt *platform) resyncAfterResize() {
+	plt.resizing = true
+}
+
+// call after a window event that IS NOT a resize event
+func (plt *platform) resyncAfterWindowEvent() {
+	plt.resync = 5
+}
+
 // PostRender performs a buffer swap.
 func (plt *platform) postRender() {
 	if plt.syncTicker != nil {
 		<-plt.syncTicker.C
 	}
-	plt.window.GLSwap()
+
+	plt.renderTime = time.Since(plt.renderStart)
+	defer func() {
+		plt.renderStart = time.Now()
+	}()
+
+	if plt.resizing {
+		// skip GLSwap() completely for the first frame of resizing
+		plt.resizing = false
+		plt.resync = 5
+	} else {
+		if plt.resync > 0 {
+			time.Sleep(plt.frameDuration)
+			plt.resync--
+		} else {
+			time.Sleep(time.Duration(rand.Intn(10)) * time.Microsecond)
+		}
+		plt.window.GLSwap()
+	}
 }
 
 // toggle the full screeens state. does not capture mouse.
@@ -334,10 +384,6 @@ func (plt *platform) setFullScreen(fullScreen bool) {
 	} else {
 		plt.window.SetFullscreen(0)
 	}
-
-	// a short delay seems to smooth things out by giving time for the system
-	// to make the changes to the full screen state
-	<-time.After(100 * time.Millisecond)
 }
 
 // set the capture state for the mouse
