@@ -37,9 +37,10 @@ type pref interface {
 // Bool implements a boolean type in the prefs system.
 type Bool struct {
 	pref
-	value    atomic.Value // bool
-	hookPre  func(value Value) error
-	hookPost func(value Value) error
+	value      atomic.Value // bool
+	constraint func(value Value) any
+	hookPre    func(value Value) error
+	hookPost   func(value Value) error
 }
 
 func (p *Bool) String() string {
@@ -68,6 +69,10 @@ func (p *Bool) Set(v Value) error {
 		}
 	default:
 		return fmt.Errorf("set: cannot convert %T to prefs.Bool", v)
+	}
+
+	if p.constraint != nil {
+		nv = p.constraint(nv).(bool)
 	}
 
 	if p.hookPre != nil {
@@ -104,6 +109,14 @@ func (p *Bool) Reset() error {
 	return p.Set(false)
 }
 
+// SetConstraint is called before SetHookPre and can be used to alter a value so
+// that is constrained or normalised
+//
+// Not required but is useful in some contexts.
+func (p *Bool) SetConstraint(f func(value Value) any) {
+	p.constraint = f
+}
+
 // SetHookPre sets the callback function to be called just before the prefs
 // value is updated. Note that even if the value hasn't changed, the callback
 // will be executed.
@@ -125,10 +138,11 @@ func (p *Bool) SetHookPost(f func(value Value) error) {
 // String implements a string type in the prefs system.
 type String struct {
 	pref
-	maxLen   int
-	value    atomic.Value // string
-	hookPre  func(value Value) error
-	hookPost func(value Value) error
+	maxLen     int
+	value      atomic.Value // string
+	constraint func(value Value) any
+	hookPre    func(value Value) error
+	hookPost   func(value Value) error
 }
 
 func (p *String) String() string {
@@ -173,6 +187,10 @@ func (p *String) Set(v Value) error {
 		}
 	}
 
+	if p.constraint != nil {
+		nv = p.constraint(nv).(string)
+	}
+
 	// store new value
 	p.value.Store(nv)
 
@@ -196,6 +214,14 @@ func (p *String) Reset() error {
 	return p.Set("")
 }
 
+// SetConstraint is called before SetHookPre and can be used to alter a value so
+// that is constrained or normalised
+//
+// Not required but is useful in some contexts.
+func (p *String) SetConstraint(f func(value Value) any) {
+	p.constraint = f
+}
+
 // SetHookPre sets the callback function to be called just before the prefs
 // value is updated. Note that even if the value hasn't changed, the callback
 // will be executed.
@@ -217,9 +243,10 @@ func (p *String) SetHookPost(f func(value Value) error) {
 // Int implements a string type in the prefs system.
 type Int struct {
 	pref
-	value    atomic.Value // int
-	hookPre  func(value Value) error
-	hookPost func(value Value) error
+	value      atomic.Value // int
+	constraint func(value Value) any
+	hookPre    func(value Value) error
+	hookPost   func(value Value) error
 }
 
 func (p *Int) String() string {
@@ -249,6 +276,10 @@ func (p *Int) Set(v Value) error {
 		}
 	default:
 		return fmt.Errorf("set: cannot convert %T to prefs.Int", v)
+	}
+
+	if p.constraint != nil {
+		nv = p.constraint(nv).(int)
 	}
 
 	if p.hookPre != nil {
@@ -285,6 +316,14 @@ func (p *Int) Reset() error {
 	return p.Set(0)
 }
 
+// SetConstraint is called before SetHookPre and can be used to alter a value so
+// that is constrained or normalised
+//
+// Not required but is useful in some contexts.
+func (p *Int) SetConstraint(f func(value Value) any) {
+	p.constraint = f
+}
+
 // SetHookPre sets the callback function to be called just before the prefs
 // value is updated. Note that even if the value hasn't changed, the callback
 // will be executed.
@@ -306,9 +345,10 @@ func (p *Int) SetHookPost(f func(value Value) error) {
 // Int implements a string type in the prefs system.
 type Float struct {
 	pref
-	value    atomic.Value // float64
-	hookPre  func(value Value) error
-	hookPost func(value Value) error
+	value      atomic.Value // float64
+	constraint func(value Value) any
+	hookPre    func(value Value) error
+	hookPost   func(value Value) error
 }
 
 func (p *Float) String() string {
@@ -338,6 +378,10 @@ func (p *Float) Set(v Value) error {
 		}
 	default:
 		return fmt.Errorf("set: cannot convert %T to prefs.Float", v)
+	}
+
+	if p.constraint != nil {
+		nv = p.constraint(nv).(float64)
 	}
 
 	if p.hookPre != nil {
@@ -372,6 +416,14 @@ func (p *Float) Get() Value {
 // Reset sets the int value to zero.
 func (p *Float) Reset() error {
 	return p.Set(0.0)
+}
+
+// SetConstraint is called before SetHookPre and can be used to alter a value so
+// that is constrained or normalised
+//
+// Not required but is useful in some contexts.
+func (p *Float) SetConstraint(f func(value Value) any) {
+	p.constraint = f
 }
 
 // SetHookPre sets the callback function to be called just before the prefs
