@@ -297,10 +297,10 @@ func (ovly *playscrOverlay) drawTopLeft() {
 
 		if ovly.img.prefs.memoryUsageInOverlay.Get().(bool) {
 			imguiSeparator()
-			imgui.Text(fmt.Sprintf("Alloc = %v MB\n", ovly.memStats.Alloc/1048576))
-			imgui.Text(fmt.Sprintf(" TotalAlloc = %v MB\n", ovly.memStats.TotalAlloc/1048576))
-			imgui.Text(fmt.Sprintf(" Sys = %v MB\n", ovly.memStats.Sys/1048576))
-			imgui.Text(fmt.Sprintf(" NumGC = %v", ovly.memStats.NumGC))
+			imgui.Textf("Used = %v MB\n", ovly.memStats.Alloc/1048576)
+			imgui.Textf("Reserved = %v MB\n", ovly.memStats.Sys/1048576)
+			imgui.Textf("GC Sweeps = %v", ovly.memStats.NumGC)
+			imgui.Textf("GC CPU %% = %.2f%%", ovly.memStats.GCCPUFraction*100)
 		}
 
 		// create space in the window for any icons that we might want to draw.
