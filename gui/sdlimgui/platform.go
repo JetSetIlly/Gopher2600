@@ -55,9 +55,6 @@ type platform struct {
 	trickleMouseButtonLeft  trickleMouseButton
 	trickleMouseButtonRight trickleMouseButton
 
-	// use ticker to synchronise with monitor
-	syncTicker *time.Ticker
-
 	// a short delay after a window event seems to help the window to resync
 	// with the monitor's refresh rate
 	resync   int
@@ -226,29 +223,22 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	return plt, nil
 }
 
-// list of swap intervalue values. with the exception of syncTicker all of these
-// are values defined and expected by the SDL.GLSetSwapInterval() function
+// call finalise after initialising imgui (which must happen after SDL creation
+// in the newPlatform() function)
+func (plt *platform) finalisePlatform() error {
+	// map sdl key codes to imgui codes
+	plt.setKeyMapping()
+	return nil
+}
+
+// list of swap intervalue values
 const (
 	syncImmediateUpdate     = 0
 	syncWithVerticalRetrace = 1
 	syncAdaptive            = -1
-	syncTicker              = 2
 )
 
 func (plt *platform) setSwapInterval(i int) {
-	if i == syncTicker {
-		// ticker to control update frequency
-		plt.syncTicker = time.NewTicker(plt.frameDuration)
-
-		// in reality syncTicker requires us to set GL swap interval to 0
-		i = 0
-	} else {
-		if plt.syncTicker != nil {
-			plt.syncTicker.Stop()
-		}
-		plt.syncTicker = nil
-	}
-
 	err := sdl.GLSetSwapInterval(i)
 	if err != nil {
 		logger.Logf(logger.Allow, "sdl", "GLSetSwapInterval(%d): %v", i, err)
@@ -260,11 +250,6 @@ func (plt *platform) destroy() error {
 	for _, joy := range plt.joysticks {
 		joy.Close()
 	}
-
-	if plt.syncTicker != nil {
-		plt.syncTicker.Stop()
-	}
-	plt.syncTicker = nil
 
 	if plt.window != nil {
 		err := plt.window.Destroy()
@@ -353,10 +338,6 @@ func (plt *platform) resyncAfterWindowEvent() {
 
 // PostRender performs a buffer swap.
 func (plt *platform) postRender() {
-	if plt.syncTicker != nil {
-		<-plt.syncTicker.C
-	}
-
 	plt.renderTime = time.Since(plt.renderStart)
 	defer func() {
 		plt.renderStart = time.Now()

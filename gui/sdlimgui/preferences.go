@@ -199,6 +199,15 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	p.glSwapInterval.SetConstraint(func(v prefs.Value) any {
+		i := v.(int)
+		if i > 1 {
+			i = 1
+		} else if i < -1 {
+			i = -1
+		}
+		return i
+	})
 	p.glSwapInterval.SetHookPost(func(v prefs.Value) error {
 		p.img.plt.setSwapInterval(v.(int))
 		return nil

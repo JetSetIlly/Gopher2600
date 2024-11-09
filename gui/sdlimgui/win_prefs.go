@@ -172,7 +172,6 @@ func (win *winPrefs) drawGlSwapInterval() {
 		descImmediate           = "Immediate updates"
 		descWithVerticalRetrace = "Sync with vertical retrace"
 		descAdaptive            = "Adaptive VSYNC"
-		descTicker              = "Ticker"
 	)
 
 	switch win.img.prefs.glSwapInterval.Get().(int) {
@@ -182,8 +181,6 @@ func (win *winPrefs) drawGlSwapInterval() {
 		glSwapInterval = descWithVerticalRetrace
 	case -1:
 		glSwapInterval = descAdaptive
-	case 2:
-		glSwapInterval = descTicker
 	}
 
 	if imgui.BeginCombo("Swap Interval", glSwapInterval) {
@@ -195,9 +192,6 @@ func (win *winPrefs) drawGlSwapInterval() {
 		}
 		if imgui.Selectable(descAdaptive) {
 			win.img.prefs.glSwapInterval.Set(syncAdaptive)
-		}
-		if imgui.Selectable(descTicker) {
-			win.img.prefs.glSwapInterval.Set(syncTicker)
 		}
 		imgui.EndCombo()
 	}
