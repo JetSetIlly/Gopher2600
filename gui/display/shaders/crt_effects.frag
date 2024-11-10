@@ -29,9 +29,7 @@ uniform float CurveAmount;
 uniform float RoundedCornersAmount;
 uniform float BevelSize;
 uniform float MaskIntensity;
-uniform float MaskFine;
 uniform float ScanlinesIntensity;
-uniform float ScanlinesFine;
 uniform float InterferenceLevel;
 uniform float FlickerLevel;
 uniform float FringingAmount;
@@ -144,16 +142,16 @@ void main() {
 	const float brightnessCorrection = 0.7;
 
 	// scanlines - only draw if scaling is large enough
-	if (Scanlines == 1 && scaling > 1) {
-		float scans = clamp(brightnessCorrection+ScanlinesIntensity*sin(uv.y*ScreenDim.y*ScanlinesFine), 0.0, 1.0);
+	if (Scanlines == 1 && scaling > 2) {
+		float scans = clamp(brightnessCorrection+ScanlinesIntensity*sin(uv.y*NumScanlines*5), 0.0, 1.0);
 		Crt_Color.rgb *= vec3(scans);
 	} else {
 		Crt_Color.rgb *= brightnessCorrection;
 	}
 
 	// shadow mask - only draw if scaling is large enough
-	if (ShadowMask == 1 && scaling > 1) {
-		float mask = clamp(brightnessCorrection+MaskIntensity*sin(uv.x*ScreenDim.y*MaskFine), 0.0, 1.0);
+	if (ShadowMask == 1 && scaling > 2) {
+		float mask = clamp(brightnessCorrection+MaskIntensity*sin(uv.x*NumClocks*8), 0.0, 1.0);
 		Crt_Color.rgb *= vec3(mask);
 	} else {
 		Crt_Color.rgb *= brightnessCorrection;

@@ -43,9 +43,7 @@ type crtSeqPrefs struct {
 	RoundedCornersAmount float64
 	BevelSize            float64
 	MaskIntensity        float64
-	MaskFine             float64
 	ScanlinesIntensity   float64
-	ScanlinesFine        float64
 	InterferenceLevel    float64
 	FlickerLevel         float64
 	FringingAmount       float64
@@ -77,9 +75,7 @@ func newCrtSeqPrefs(prefs *display.Preferences) crtSeqPrefs {
 		RoundedCornersAmount: prefs.CRT.RoundedCornersAmount.Get().(float64),
 		BevelSize:            prefs.CRT.BevelSize.Get().(float64),
 		MaskIntensity:        prefs.CRT.MaskIntensity.Get().(float64),
-		MaskFine:             prefs.CRT.MaskFine.Get().(float64),
 		ScanlinesIntensity:   prefs.CRT.ScanlinesIntensity.Get().(float64),
-		ScanlinesFine:        prefs.CRT.ScanlinesFine.Get().(float64),
 		InterferenceLevel:    prefs.CRT.InterferenceLevel.Get().(float64),
 		FlickerLevel:         prefs.CRT.FlickerLevel.Get().(float64),
 		FringingAmount:       prefs.CRT.FringingAmount.Get().(float64),

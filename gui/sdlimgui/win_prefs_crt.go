@@ -132,22 +132,6 @@ func (win *winPrefs) drawMask() {
 	if imgui.SliderFloatV("##maskintensity", &f, 0.025, 0.125, label, 1.0) {
 		win.img.displayPrefs.CRT.MaskIntensity.Set(f)
 	}
-
-	fine := float32(win.img.displayPrefs.CRT.MaskFine.Get().(float64))
-
-	if fine >= 3.0 {
-		label = "very fine"
-	} else if fine >= 2.5 {
-		label = "fine"
-	} else if fine >= 2.0 {
-		label = "coarse"
-	} else {
-		label = "very coarse"
-	}
-
-	if imgui.SliderFloatV("##maskfine", &fine, 1.5, 3.5, label, 1.0) {
-		win.img.displayPrefs.CRT.MaskFine.Set(fine)
-	}
 }
 
 func (win *winPrefs) drawScanlines() {
@@ -172,22 +156,6 @@ func (win *winPrefs) drawScanlines() {
 
 	if imgui.SliderFloatV("##scanlinesintensity", &f, 0.025, 0.125, label, 1.0) {
 		win.img.displayPrefs.CRT.ScanlinesIntensity.Set(f)
-	}
-
-	fine := float32(win.img.displayPrefs.CRT.ScanlinesFine.Get().(float64))
-
-	if fine > 2.25 {
-		label = "very fine"
-	} else if fine > 2.00 {
-		label = "fine"
-	} else if fine >= 1.75 {
-		label = "coarse"
-	} else {
-		label = "very coarse"
-	}
-
-	if imgui.SliderFloatV("##scanlinesfine", &fine, 1.5, 2.5, label, 1.0) {
-		win.img.displayPrefs.CRT.ScanlinesFine.Set(fine)
 	}
 }
 

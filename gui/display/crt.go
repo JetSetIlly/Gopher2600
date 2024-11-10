@@ -41,9 +41,7 @@ type CRT struct {
 	RoundedCornersAmount prefs.Float
 	BevelSize            prefs.Float
 	MaskIntensity        prefs.Float
-	MaskFine             prefs.Float
 	ScanlinesIntensity   prefs.Float
-	ScanlinesFine        prefs.Float
 	InterferenceLevel    prefs.Float
 	FlickerLevel         prefs.Float
 	FringingAmount       prefs.Float
@@ -138,15 +136,7 @@ func newCRT() (*CRT, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.maskFine", &p.MaskFine)
-	if err != nil {
-		return nil, err
-	}
 	err = p.dsk.Add("crt.scanlinesIntensity", &p.ScanlinesIntensity)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.scanlinesFine", &p.ScanlinesFine)
 	if err != nil {
 		return nil, err
 	}
@@ -213,9 +203,7 @@ func (p *CRT) SetDefaults() {
 	p.RoundedCornersAmount.Set(0.059)
 	p.BevelSize.Set(0.01)
 	p.MaskIntensity.Set(0.07)
-	p.MaskFine.Set(2.9)
 	p.ScanlinesIntensity.Set(0.08)
-	p.ScanlinesFine.Set(1.80)
 	p.InterferenceLevel.Set(0.15)
 	p.FlickerLevel.Set(0.025)
 	p.FringingAmount.Set(0.15)
