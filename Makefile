@@ -5,7 +5,11 @@ goBinary = go
 gcflags = -c 3 -B -wb=false -l -l -l -l
 ldflags = -s -w
 ldflags_version = $(ldflags) -X 'github.com/jetsetilly/gopher2600/version.number=$(version)'
-profilingRom = roms/Pitfall.bin
+
+# the rom to use for the race and profiling targets
+ifndef rom
+	rom = roms/Pitfall.bin
+endif
 
 # the renderer to use for the GUI
 #
@@ -99,10 +103,10 @@ else
 endif
 
 race: generate test
-	$(goBinary) run -race gopher2600.go $(profilingRom)
+	$(goBinary) run -race gopher2600.go "$(rom)"
 
 race_debug: generate test
-	$(goBinary) run -race gopher2600.go debug $(profilingRom)
+	$(goBinary) run -race gopher2600.go debug "$(rom)"
 
 fuzz: generate test
 # fuzz testing cannot work with multiple packages so we must list the ones
@@ -111,9 +115,8 @@ fuzz: generate test
 
 ### profiling targets
 .PHONY: profile
-.PHONY: profile_cpu profile_cpu_play profile_cpu_debug
-.PHONY:	profile_mem profile_mem_play profile_mem_debug
-.PHONY: profile_trace
+.PHONY: profile_cpu profile_mem profile_trace
+.PHONY:	profile_cpu_play profile_mem_play profile_trace_play
 
 # not including $(ldflags) for profiling. that woulds strip the binary of
 # debugging data which would prevent us from digging into the source code
@@ -125,44 +128,38 @@ profile:
 profile_cpu: generate test
 	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
 	@echo "performance mode running for 20s"
-	@./gopher2600 performance -profile=cpu -duration=20s $(profilingRom)
+	@./gopher2600 performance -profile=cpu -duration=20s "$(rom)"
 	@$(goBinary) tool pprof -http : ./gopher2600 performance_cpu.profile
-
-profile_cpu_play: generate test
-	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
-	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
-	@./gopher2600 play -profile=cpu -elf=none $(profilingRom)
-	@$(goBinary) tool pprof -http : ./gopher2600 play_cpu.profile
-
-profile_cpu_debug : generate test
-	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
-	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
-	@./gopher2600 debug -profile=cpu -elf=none $(profilingRom)
-	@$(goBinary) tool pprof -http : ./gopher2600 debugger_cpu.profile
 
 profile_mem : generate test
 	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
-	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
-	@./gopher2600 performance -profile=mem -duration=20s $(profilingRom)
+	@echo "performance mode running for 20s"
+	@./gopher2600 performance -profile=mem -duration=20s "$(rom)"
 	@$(goBinary) tool pprof -http : ./gopher2600 performance_mem.profile
-
-profile_mem_play : generate test
-	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
-	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
-	@./gopher2600 play -profile=mem -elf=none $(profilingRom)
-	@$(goBinary) tool pprof -http : ./gopher2600 play_mem.profile
-
-profile_mem_debug : generate test
-	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
-	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
-	@./gopher2600 debug -profile=mem -elf=none $(profilingRom)
-	@$(goBinary) tool pprof -http : ./gopher2600 debugger_mem.profile
 
 profile_trace: generate test
 	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
 	@echo "performance mode running for 20s"
-	@./gopher2600 performance -profile=trace -duration=20s $(profilingRom)
+	@./gopher2600 performance -profile=trace -duration=20s "$(rom)"
 	@$(goBinary) tool trace -http : performance_trace.profile
+
+profile_cpu_play: generate test
+	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
+	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
+	@./gopher2600 play -profile=cpu -elf=none "$(rom)"
+	@$(goBinary) tool pprof -http : ./gopher2600 play_cpu.profile
+
+profile_mem_play : generate test
+	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
+	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
+	@./gopher2600 play -profile=mem -elf=none "$(rom)"
+	@$(goBinary) tool pprof -http : ./gopher2600 play_mem.profile
+
+profile_trace_play: generate test
+	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
+	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
+	@./gopher2600 play -profile=trace -elf=none "$(rom)"
+	@$(goBinary) tool trace -http : play_trace.profile
 
 
 ### binary building targets for host platform
