@@ -45,9 +45,7 @@ type crtSeqEffectsShader struct {
 	roundedCornersAmount int32
 	bevelSize            int32
 	maskIntensity        int32
-	maskFine             int32
 	scanlinesIntensity   int32
-	scanlinesFine        int32
 	interferenceLevel    int32
 	noiseLevel           int32
 	flickerLevel         int32
@@ -77,9 +75,7 @@ func newCrtSeqEffectsShader() shaderProgram {
 	sh.roundedCornersAmount = gl.GetUniformLocation(sh.handle, gl.Str("RoundedCornersAmount"+"\x00"))
 	sh.bevelSize = gl.GetUniformLocation(sh.handle, gl.Str("BevelSize"+"\x00"))
 	sh.maskIntensity = gl.GetUniformLocation(sh.handle, gl.Str("MaskIntensity"+"\x00"))
-	sh.maskFine = gl.GetUniformLocation(sh.handle, gl.Str("MaskFine"+"\x00"))
 	sh.scanlinesIntensity = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesIntensity"+"\x00"))
-	sh.scanlinesFine = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesFine"+"\x00"))
 	sh.interferenceLevel = gl.GetUniformLocation(sh.handle, gl.Str("InterferenceLevel"+"\x00"))
 	sh.flickerLevel = gl.GetUniformLocation(sh.handle, gl.Str("FlickerLevel"+"\x00"))
 	sh.fringingAmount = gl.GetUniformLocation(sh.handle, gl.Str("FringingAmount"+"\x00"))
@@ -114,9 +110,7 @@ func (sh *crtSeqEffectsShader) setAttributesArgs(env shaderEnvironment, numScanl
 	gl.Uniform1f(sh.roundedCornersAmount, float32(prefs.RoundedCornersAmount))
 	gl.Uniform1f(sh.bevelSize, float32(prefs.BevelSize))
 	gl.Uniform1f(sh.maskIntensity, float32(prefs.MaskIntensity))
-	gl.Uniform1f(sh.maskFine, float32(prefs.MaskFine))
 	gl.Uniform1f(sh.scanlinesIntensity, float32(prefs.ScanlinesIntensity))
-	gl.Uniform1f(sh.scanlinesFine, float32(prefs.ScanlinesFine))
 	gl.Uniform1f(sh.interferenceLevel, float32(prefs.InterferenceLevel))
 	gl.Uniform1f(sh.flickerLevel, float32(prefs.FlickerLevel))
 	gl.Uniform1f(sh.fringingAmount, float32(prefs.FringingAmount))
