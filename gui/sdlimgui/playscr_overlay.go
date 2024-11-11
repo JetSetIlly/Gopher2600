@@ -68,6 +68,8 @@ type playscrOverlay struct {
 	fps         string
 	refreshRate string
 
+	renderAlert int
+
 	memStatsTicker *time.Ticker
 	memStats       runtime.MemStats
 
@@ -293,6 +295,18 @@ func (ovly *playscrOverlay) drawTopLeft() {
 			imgui.Text("")
 
 			imgui.PopStyleColorV(2)
+
+			imgui.Spacing()
+			imgui.Textf("%2.2fms/frame", float32(ovly.img.plt.renderAvgTime.Nanoseconds())/1000000)
+			if ovly.img.plt.renderAlert {
+				ovly.renderAlert = 60
+			} else if ovly.renderAlert > 0 {
+				ovly.renderAlert--
+			}
+			if ovly.renderAlert > 0 {
+				imgui.SameLineV(0, 5)
+				imgui.Text(string(fonts.RenderTime))
+			}
 		}
 
 		if ovly.img.prefs.memoryUsageInOverlay.Get().(bool) {
