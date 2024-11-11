@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"math/rand"
 	"runtime"
 	"strings"
 	"time"
@@ -63,8 +62,11 @@ type platform struct {
 	// ideal frame time in nanoseconds
 	frameDuration time.Duration
 
-	renderStart time.Time
-	renderTime  time.Duration
+	// the start time of the last frame taken from just after the
+	renderStart     time.Time
+	renderAvgTime   time.Duration
+	renderAvgTimeCt int
+	renderAlert     bool
 }
 
 // trickle mouse button is a mechanism that allows a mouse button down/up event
@@ -338,10 +340,24 @@ func (plt *platform) resyncAfterWindowEvent() {
 
 // PostRender performs a buffer swap.
 func (plt *platform) postRender() {
-	plt.renderTime = time.Since(plt.renderStart)
+	timeDiff := time.Since(plt.renderStart)
 	defer func() {
 		plt.renderStart = time.Now()
 	}()
+	if plt.renderAvgTimeCt > 1 {
+		plt.renderAvgTime = plt.renderAvgTime + (timeDiff-plt.renderAvgTime)/time.Duration(min(plt.renderAvgTimeCt, 120))
+		if plt.renderAvgTimeCt > 120 {
+			plt.renderAvgTimeCt = 1
+		}
+	}
+	plt.renderAvgTimeCt++
+
+	if timeDiff > plt.frameDuration {
+		plt.renderAlert = true
+		plt.resync = 5
+	} else {
+		plt.renderAlert = false
+	}
 
 	if plt.resizing {
 		// skip GLSwap() completely for the first frame of resizing
@@ -351,11 +367,10 @@ func (plt *platform) postRender() {
 		if plt.resync > 0 {
 			time.Sleep(plt.frameDuration)
 			plt.resync--
-		} else {
-			time.Sleep(time.Duration(rand.Intn(10)) * time.Microsecond)
 		}
 		plt.window.GLSwap()
 	}
+
 }
 
 // toggle the full screeens state. does not capture mouse.

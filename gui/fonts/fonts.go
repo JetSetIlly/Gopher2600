@@ -101,6 +101,7 @@ const (
 	VBLANKbottom           = '\uf358'
 	VBLANKatari            = '\uf14a'
 	SlackCounter           = '\uf04d'
+	RenderTime             = '\uf06a'
 )
 
 // The first and last unicode points used in the application. We use this to
