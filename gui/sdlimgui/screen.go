@@ -29,6 +29,11 @@ import (
 	"github.com/jetsetilly/gopher2600/reflection"
 )
 
+// alllow nudging of the TV. nudging causes the emulation to uncap itself for a
+// short number of frames. the benefit of this is of dubious value so it has
+// been disabled for now. maybe removed in the future
+const allowNudging = false
+
 // textureRenderers should consider that the timing of the VCS produces
 // "pixels" of two pixels across.
 //
@@ -680,7 +685,7 @@ func (scr *screen) copyPixelsPlaymode() {
 
 	// whether the frame queue can tolerate nudging. the value can/should be
 	// supplemented with the monitorSyncHigher or monitorSyncSlower value
-	canNudge := scr.crit.frameInfo.Stable && scr.crit.frameQueueLen > 2
+	canNudge := allowNudging && scr.crit.frameInfo.Stable && scr.crit.frameQueueLen > 2
 
 	// measure frame queue slack
 	scr.frameQueueSlack = (scr.crit.renderIdx - scr.crit.plotIdx + scr.crit.frameQueueLen) % scr.crit.frameQueueLen
