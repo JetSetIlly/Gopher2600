@@ -91,7 +91,8 @@ func (varb *SourceVariable) String() string {
 	} else {
 		s.WriteString(" = ")
 		if varb.Type.Conversion != nil {
-			s.WriteString(fmt.Sprintf(varb.Type.Conversion(varb.Value())))
+			c, _ := varb.Type.Conversion(varb.Value())
+			s.WriteString(c)
 		} else {
 			s.WriteString(fmt.Sprintf(varb.Type.Hex(), varb.Value()))
 		}
