@@ -16,7 +16,6 @@
 package debugger_test
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -116,7 +115,7 @@ func (trm *mockTerm) cmpOutput(s string) {
 
 	if len(trm.output) == 0 {
 		if len(s) != 0 {
-			trm.t.Errorf(fmt.Sprintf("unexpected debugger output (nothing) should be (%s)", s))
+			trm.t.Errorf("unexpected debugger output (nothing) should be (%s)", s)
 			return
 		}
 		return
@@ -128,7 +127,7 @@ func (trm *mockTerm) cmpOutput(s string) {
 		return
 	}
 
-	trm.t.Errorf(fmt.Sprintf("unexpected debugger output (%s) should be (%s)", trm.output[l], s))
+	trm.t.Errorf("unexpected debugger output (%s) should be (%s)", trm.output[l], s)
 }
 
 func (trm *mockTerm) testSequence() {
@@ -152,14 +151,14 @@ func TestDebugger_withNonExistantInitScript(t *testing.T) {
 
 	dbg, err := debugger.NewDebugger(opts, create)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	go trm.testSequence()
 
 	err = dbg.StartInDebugMode("")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 }
 
@@ -177,13 +176,13 @@ func TestDebugger(t *testing.T) {
 
 	dbg, err := debugger.NewDebugger(opts, create)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	go trm.testSequence()
 
 	err = dbg.StartInDebugMode("")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 }

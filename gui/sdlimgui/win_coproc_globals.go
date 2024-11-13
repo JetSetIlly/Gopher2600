@@ -356,7 +356,8 @@ func drawVariableTooltip(varb *dwarf.SourceVariable, value uint32, cols *imguiCo
 			imgui.Text("Converted Value: ")
 			imgui.SameLine()
 			imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcVariablesNotes)
-			imgui.Text(fmt.Sprintf(varb.Type.Conversion(varb.Value())))
+			c, _ := varb.Type.Conversion(varb.Value())
+			imgui.Text(c)
 			imgui.PopStyleColor()
 		}
 
