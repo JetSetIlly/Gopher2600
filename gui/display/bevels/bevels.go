@@ -23,37 +23,57 @@ import (
 	"image/jpeg"
 )
 
+type Style struct {
+	TV      *image.RGBA
+	Scale   float32
+	OffsetX float32
+	OffsetY float32
+	BiasY   float32
+}
+
+var Selected Style
+
+var SolidState Style
+var Telefunken Style
+
 //go:embed "solid_state.jpg"
-var tv_jpg []byte
+var solidState []byte
 
-// TV is the decoded image
-var TV *image.RGBA
-
-// Transformations for the decoded TV image
-const (
-	Scale   = 0.85
-	OffsetX = -0.124
-	OffsetY = -0.061
-)
+//go:embed "telefunken.jpg"
+var telefunken []byte
 
 func init() {
-	r := bytes.NewReader(tv_jpg)
+	SolidState.TV = loadImage(solidState)
+	SolidState.Scale = 0.85
+	SolidState.OffsetX = -0.124
+	SolidState.OffsetY = -0.042
+	SolidState.BiasY = 1.0
+
+	Telefunken.TV = loadImage(telefunken)
+	Telefunken.Scale = 0.93
+	Telefunken.OffsetX = -0.075
+	Telefunken.OffsetY = -0.014
+	Telefunken.BiasY = 1.05
+
+	Selected = Telefunken
+}
+
+func loadImage(d []byte) *image.RGBA {
+	r := bytes.NewReader(d)
 	img, err := jpeg.Decode(r)
 	if err != nil {
 		panic(err)
 	}
-	TV = imageToRGBA(img)
-}
 
-func imageToRGBA(src image.Image) *image.RGBA {
 	// no conversion needed if image is an *image.RGBA
-	if dst, ok := src.(*image.RGBA); ok {
+	if dst, ok := img.(*image.RGBA); ok {
 		return dst
 	}
 
 	// use the image/draw package to convert to *image.RGBA
-	b := src.Bounds()
+	b := img.Bounds()
 	dst := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
-	draw.Draw(dst, dst.Bounds(), src, b.Min, draw.Src)
+	draw.Draw(dst, dst.Bounds(), img, b.Min, draw.Src)
+
 	return dst
 }

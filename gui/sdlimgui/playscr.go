@@ -130,14 +130,14 @@ func (win *playScr) render() {
 	defer win.scr.crit.section.Unlock()
 
 	win.screenTexture.render(win.scr.crit.cropPixels)
-	win.bevelTexture.render(bevels.TV)
+	win.bevelTexture.render(bevels.Selected.TV)
 
 	// unlike dbgscr, there is no need to call setScaling() every render()
 }
 
 // must be called from with a critical section.
 func (win *playScr) setScalingBevel() {
-	sz := bevels.TV.Bounds().Size()
+	sz := bevels.Selected.TV.Bounds().Size()
 	bw := float32(sz.X)
 	bh := float32(sz.Y)
 	bRatio := bw / bh
@@ -176,6 +176,7 @@ func (win *playScr) setScalingBevel() {
 func (win *playScr) setScalingDisplay() {
 	tvW := float32(specification.WidthTV)
 	tvH := float32(specification.HeightTV)
+	tvH *= bevels.Selected.BiasY
 	tvRatio := tvW / tvH
 
 	// handle screen rotation
