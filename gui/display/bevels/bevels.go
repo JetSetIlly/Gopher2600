@@ -20,7 +20,7 @@ import (
 	_ "embed"
 	"image"
 	"image/draw"
-	"image/jpeg"
+	"image/png"
 )
 
 type Style struct {
@@ -36,18 +36,18 @@ var Selected Style
 var SolidState Style
 var Telefunken Style
 
-//go:embed "solid_state.jpg"
+//go:embed "solid_state.png"
 var solidState []byte
 
-//go:embed "telefunken.jpg"
+//go:embed "telefunken.png"
 var telefunken []byte
 
 func init() {
 	SolidState.TV = loadImage(solidState)
 	SolidState.Scale = 0.85
-	SolidState.OffsetX = -0.124
-	SolidState.OffsetY = -0.042
-	SolidState.BiasY = 1.0
+	SolidState.OffsetX = -0.139
+	SolidState.OffsetY = -0.085
+	SolidState.BiasY = 1.05
 
 	Telefunken.TV = loadImage(telefunken)
 	Telefunken.Scale = 0.93
@@ -55,12 +55,13 @@ func init() {
 	Telefunken.OffsetY = -0.014
 	Telefunken.BiasY = 1.05
 
-	Selected = Telefunken
+	Selected = SolidState
 }
 
 func loadImage(d []byte) *image.RGBA {
 	r := bytes.NewReader(d)
-	img, err := jpeg.Decode(r)
+
+	img, err := png.Decode(r)
 	if err != nil {
 		panic(err)
 	}
