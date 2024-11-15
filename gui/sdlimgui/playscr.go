@@ -94,10 +94,13 @@ func (win *playScr) draw() {
 	win.usingBevel = win.img.rnd.supportsCRT() && win.img.displayPrefs.CRT.Enabled.Get().(bool)
 
 	dl := imgui.BackgroundDrawList()
+
 	if win.usingBevel {
+		dl.AddImage(imgui.TextureID(win.screenTexture.getID()), win.screenPosMin, win.screenPosMax)
 		dl.AddImage(imgui.TextureID(win.bevelTexture.getID()), win.bevelPosMin, win.bevelPosMax)
+	} else {
+		dl.AddImage(imgui.TextureID(win.screenTexture.getID()), win.screenPosMin, win.screenPosMax)
 	}
-	dl.AddImage(imgui.TextureID(win.screenTexture.getID()), win.screenPosMin, win.screenPosMax)
 
 	win.overlay.draw()
 }
