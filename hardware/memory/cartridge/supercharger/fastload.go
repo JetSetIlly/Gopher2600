@@ -149,13 +149,11 @@ func (fl *FastLoad) load() (uint8, error) {
 }
 
 // step implements the Tape interface.
-func (fl *FastLoad) step() error {
-	return nil
+func (fl *FastLoad) step() {
 }
 
 // load implements the Tape interface.
-func (tap *FastLoad) end() error {
-	return nil
+func (tap *FastLoad) end() {
 }
 
 // Fastload implements the mapper.CartSuperChargerFastLoad interface.

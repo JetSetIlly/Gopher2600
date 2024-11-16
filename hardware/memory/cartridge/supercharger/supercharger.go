@@ -43,8 +43,8 @@ type tape interface {
 	snapshot() tape
 	plumb(*state, *environment.Environment)
 	load() (uint8, error)
-	step() error
-	end() error
+	step()
+	end()
 }
 
 // Supercharger represents a supercharger cartridge.
@@ -317,7 +317,7 @@ func (cart *Supercharger) AccessPassive(addr uint16, _ uint8) error {
 
 // Step implements the mapper.CartMapper interface.
 func (cart *Supercharger) Step(_ float32) {
-	_ = cart.state.tape.step()
+	cart.state.tape.step()
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
