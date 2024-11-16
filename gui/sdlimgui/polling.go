@@ -52,20 +52,12 @@ const (
 	// running) time to update
 	timelineThumbnailerPeriod = 50
 
-	// the amount of time between interface renders caused by window resizing
-	resizePeriod = 5
+	// the timeout length when polling has been alerted
+	alertPeriod = 0
 )
 
 type polling struct {
 	img *SdlImgui
-
-	// queue of pumped events for the frame
-	pumpedEvents []sdl.Event
-
-	// functions that need to be performed in the main thread are queued for
-	// serving by the service() function
-	service    chan func()
-	serviceErr chan error
 
 	// ReqFeature() and GetFeature() hands off requests to the featureReq
 	// channel for servicing. think of these as pecial instances of the
@@ -73,30 +65,27 @@ type polling struct {
 	featureSet    chan featureRequest
 	featureSetErr chan error
 
-	// the following are not used in playmode
+	// alert is used to short-circuit any condition that increases the timeout
+	// period. it is saying that the next event should be serviced as soon as
+	// possible
+	alert bool
 
-	// alerted is used to preempt the tickers when we want to communicate between
-	// iterations of the service loop. for example, closing sdlimgui windows
-	// might feel laggy without it (see commentary in service loop for
-	// explanation).
-	alerted bool
+	// the following are not used in playmode
 
 	// the keepAwake flag is set to true for a short time (defined by
 	// wakefullnessPeriod) after the last event was received. this improves
 	// responsiveness for certain GUI operations.
-	keepAwake bool
-	lastEvent time.Time
+	keepAwake     bool
+	keepAwakeTime time.Time
 
-	lastThmbTime   time.Time
-	lastResizeTime time.Time
+	// the last time a thumbnail was created for the timeline. we don't need to
+	// generate a thumbnail too often
+	lastThmbTime time.Time
 }
 
 func newPolling(img *SdlImgui) *polling {
 	pol := &polling{
 		img:           img,
-		pumpedEvents:  make([]sdl.Event, 64),
-		service:       make(chan func(), 1),
-		serviceErr:    make(chan error, 1),
 		featureSet:    make(chan featureRequest, 1),
 		featureSetErr: make(chan error, 1),
 	}
@@ -104,15 +93,22 @@ func newPolling(img *SdlImgui) *polling {
 	return pol
 }
 
-// wait for an SDL event or for a timeout. the timeout duration depends on the
-// state of the emulation and receent user input.
-func (pol *polling) wait() sdl.Event {
+// handle any requests for features or for functions to be run in the main thread
+func (pol *polling) serviceRequests() {
 	select {
-	case f := <-pol.service:
-		f()
 	case r := <-pol.featureSet:
 		pol.img.serviceSetFeature(r)
 	default:
+	}
+}
+
+// timeout selects the appropriate duration value based on the current state of
+// the application. generally, the values are different for the debugger than
+// for playmode
+func (pol *polling) timeout() time.Duration {
+	if pol.alert {
+		pol.alert = false
+		return alertPeriod
 	}
 
 	// the amount of timeout depends on mode and state
@@ -128,9 +124,6 @@ func (pol *polling) wait() sdl.Event {
 		// if mouse is being held (eg. on the "step scanline" button) then it
 		// will not be detected as an event we therefore must explicitely test
 		// if it's being held
-		//
-		// (16/06/24 note that this may mean that the alerted flag is no longer
-		// required but we'll keep it in because it's a useful idea)
 		_, _, mouseState := sdl.GetMouseState()
 		mouseHeld := mouseState&sdl.ButtonLMask() != 0
 
@@ -139,47 +132,33 @@ func (pol *polling) wait() sdl.Event {
 			pol.keepAwake = true
 		} else if pol.img.dbg.State() == govern.Running || pol.img.wm.debuggerWindows[winSelectROMID].debuggerIsOpen() {
 			timeout = debugSleepPeriodRunning
-		} else if pol.alerted || pol.keepAwake {
+		} else if pol.keepAwake {
 			// this branch used to depend on a debugger flag "hasChanged". this
 			// no longer seems necessary, maybe because the govern.Running state
 			// is so well defined
 			timeout = debugSleepPeriod
+
+			// measure how long we've been awake and
+			pol.keepAwake = time.Since(pol.keepAwakeTime).Milliseconds() < wakefullnessPeriod
 		} else {
 			timeout = idleSleepPeriod
 		}
+
 	}
 
-	ev := sdl.WaitEventTimeout(timeout)
+	return time.Millisecond * time.Duration(timeout)
+}
 
-	if ev != nil {
-		// an event has been received so set keepAwake flag and note time of event
-		pol.keepAwake = true
-		pol.lastEvent = time.Now()
-	} else if pol.keepAwake {
-		// keepAwake flag set for wakefullnessPeriod milliseconds
-		pol.keepAwake = time.Since(pol.lastEvent).Milliseconds() < wakefullnessPeriod
-	}
-
-	// always reset alerted flag
-	pol.alerted = false
-
-	return ev
+// sets the keepAwake flag and notes the time
+func (pol *polling) awaken() {
+	pol.keepAwake = true
+	pol.keepAwakeTime = time.Now()
 }
 
 // returns true if sufficient time has passed since the last thumbnail generation
 func (pol *polling) throttleTimelineThumbnailer() bool {
 	if time.Since(pol.lastThmbTime).Milliseconds() > timelineThumbnailerPeriod {
 		pol.lastThmbTime = time.Now()
-		return true
-	}
-	return false
-}
-
-// returns true if sufficient time has passed since the last window resize event
-func (pol *polling) throttleResize() bool {
-	if time.Since(pol.lastResizeTime).Milliseconds() > resizePeriod {
-		pol.lastResizeTime = time.Now()
-		pol.lastEvent = pol.lastResizeTime
 		return true
 	}
 	return false
