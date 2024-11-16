@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
+	"github.com/jetsetilly/gopher2600/hardware/television/limiter"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -171,13 +172,13 @@ type Television struct {
 	creationSpecID string
 
 	// vcs will be nil unless AttachVCS() has been called
-	vcs VCSReturnChannel
+	vcs VCS
 
 	// interface to a debugger
 	debugger Debugger
 
 	// framerate limiter
-	lmtr limiter
+	lmtr *limiter.Limiter
 
 	// list of PixelRenderer implementations to consult
 	renderers []PixelRenderer
@@ -250,7 +251,7 @@ func NewTelevision(spec string) (*Television, error) {
 	}
 
 	// initialise frame rate limiter
-	tv.lmtr.init(tv)
+	tv.lmtr = limiter.NewLimiter()
 	tv.SetFPS(-1)
 
 	// set specification
@@ -321,7 +322,7 @@ func (tv *Television) Snapshot() *State {
 }
 
 // Plumb attaches an existing television state.
-func (tv *Television) Plumb(vcs VCSReturnChannel, state *State) {
+func (tv *Television) Plumb(vcs VCS, state *State) {
 	if state == nil {
 		panic("television: cannot plumb in a nil state")
 	}
@@ -340,7 +341,7 @@ func (tv *Television) Plumb(vcs VCSReturnChannel, state *State) {
 }
 
 // AttachVCS attaches an implementation of the VCSReturnChannel.
-func (tv *Television) AttachVCS(env *environment.Environment, vcs VCSReturnChannel) {
+func (tv *Television) AttachVCS(env *environment.Environment, vcs VCS) {
 	tv.env = env
 	tv.vcs = vcs
 
@@ -717,7 +718,7 @@ func (tv *Television) newScanline() error {
 		}
 	}
 
-	tv.lmtr.checkScanline()
+	tv.lmtr.CheckScanline()
 
 	return nil
 }
@@ -871,10 +872,10 @@ func (tv *Television) newFrame() error {
 	}
 
 	// check frame rate
-	tv.lmtr.checkFrame()
+	tv.lmtr.CheckFrame()
 
 	// measure frame rate
-	tv.lmtr.measureActual()
+	tv.lmtr.MeasureActual()
 
 	// signal index at beginning of new frame
 	tv.firstSignalIdx = tv.state.clock + (tv.state.scanline * specification.ClksScanline)
@@ -954,11 +955,10 @@ func (tv *Television) setSpec(spec string) {
 	tv.setRefreshRate(tv.state.frameInfo.Spec.RefreshRate)
 }
 
-// setRefreshRate of TV. calls frame limiter and pixel renderers as appropriate
+// setRefreshRate of TV. also calls the SetClockSpeed() function in the vcs
+// interface
 func (tv *Television) setRefreshRate(rate float32) {
-	tv.lmtr.setRefreshRate(rate)
-	tv.lmtr.setRate(rate)
-
+	tv.lmtr.SetRefreshRate(rate)
 	if tv.vcs != nil {
 		tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec)
 	}
@@ -975,7 +975,7 @@ func (tv *Television) SetEmulationState(state govern.State) error {
 		// start off the unpaused state by measuring the current framerate.
 		// this "clears" the ticker channel and means the feedback from
 		// GetActualFPS() is less misleading
-		tv.lmtr.measureActual()
+		tv.lmtr.MeasureActual()
 
 	case govern.Rewinding:
 		tv.renderSignals()
@@ -998,14 +998,14 @@ func (tv *Television) NudgeFPSCap(frames int) {
 	if frames < 0 {
 		frames = 0
 	}
-	tv.lmtr.nudge.Store(int32(frames))
+	tv.lmtr.Nudge.Store(int32(frames))
 }
 
 // SetFPSCap whether the emulation should wait for FPS limiter. Returns the
 // setting as it was previously.
 func (tv *Television) SetFPSCap(limit bool) bool {
-	prev := tv.lmtr.active
-	tv.lmtr.active = limit
+	prev := tv.lmtr.Active
+	tv.lmtr.Active = limit
 
 	// notify all pixel renderers that are interested in the FPS cap
 	for i := range tv.renderers {
@@ -1021,7 +1021,7 @@ func (tv *Television) SetFPSCap(limit bool) bool {
 // the specification. A negative value restores frame rate to the ideal value
 // (the frequency of the incoming signal).
 func (tv *Television) SetFPS(fps float32) {
-	tv.lmtr.setRate(fps)
+	tv.lmtr.SetLimit(fps)
 }
 
 // GetReqFPS returns the requested number of frames per second. Compare with
@@ -1029,7 +1029,7 @@ func (tv *Television) SetFPS(fps float32) {
 //
 // IS goroutine safe.
 func (tv *Television) GetReqFPS() float32 {
-	return tv.lmtr.requested.Load().(float32)
+	return tv.lmtr.Requested.Load().(float32)
 }
 
 // GetActualFPS returns the current number of frames per second and the
@@ -1039,7 +1039,7 @@ func (tv *Television) GetReqFPS() float32 {
 //
 // IS goroutine safe.
 func (tv *Television) GetActualFPS() (float32, float32) {
-	return tv.lmtr.measured.Load().(float32), tv.lmtr.refreshRate.Load().(float32)
+	return tv.lmtr.Measured.Load().(float32), tv.lmtr.RefreshRate.Load().(float32)
 }
 
 // GetCreationSpecID returns the specification that was requested on creation.

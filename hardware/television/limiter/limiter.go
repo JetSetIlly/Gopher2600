@@ -13,30 +13,28 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package television
+package limiter
 
 import (
 	"sync/atomic"
 	"time"
 )
 
-type limiter struct {
-	tv *Television
-
+type Limiter struct {
 	// whether to wait for fps limited each frame
-	active bool
+	Active bool
 
 	// the refresh rate of the TV signal. this is a copy of what is stored in
 	// the FrameInfo type of the TV/state type. that value however is in a
 	// critical section and it is easier/cleaner to store a copy locally as an
 	// atomic value
-	refreshRate atomic.Value // float32
+	RefreshRate atomic.Value // float32
 
 	// the requested number of frames per second
-	requested atomic.Value // float32
+	Requested atomic.Value // float32
 
 	// whether the requested frame rate is equal to the refresh rate
-	matchRefreshRate atomic.Value // bool
+	MatchRefreshRate atomic.Value // bool
 
 	// pulse that performs the limiting. the duration of the ticker will be set
 	// when the frame rate changes.
@@ -56,53 +54,63 @@ type limiter struct {
 	measureCt   int
 
 	// the measured number of frames per second
-	measured atomic.Value // float32
+	Measured atomic.Value // float32
 
-	// the number of frames to wait after setRefreshRate() before the frame
+	// the number of frames to wait after SetRefreshRate() before the frame
 	// limiter is adjusted to match
 	//
 	// some kernels will cause the refresh rate to flucutate wildly and
 	// immediately altering the frame limiter will cause performance problems
 	//
-	// value will decrease to zero on every checkFrame(). rate will change when
+	// value will decrease to zero on every CheckFrame(). rate will change when
 	// it reaches zero
 	//
 	// if matchRefreshRate is true then the matchRefreshRateDelay will be set
 	// to a value of half refresh-rate
 	//
-	// is not set if setRate() is called directly
+	// is not set if SetRate() is called directly
 	matchRefreshRateDelay int
 
 	// nudge the limiter so that it doesn't wait for the specified number of frames
-	nudge atomic.Int32
+	Nudge atomic.Int32
 }
 
-func (lmtr *limiter) init(tv *Television) {
-	lmtr.tv = tv
-	lmtr.active = true
-	lmtr.refreshRate.Store(float32(0))
-	lmtr.matchRefreshRate.Store(true)
-	lmtr.requested.Store(float32(0))
-	lmtr.measured.Store(float32(0))
-	lmtr.pulse = time.NewTicker(time.Millisecond * 10)
-	lmtr.measureTime = time.Now()
+// NewLimiter is preferred method of initialising a new instance of the Limiter
+// type. The refresh rate will be set to 60Hz and the limited rate set to match
+// the refresh rate.
+func NewLimiter() *Limiter {
+	lmtr := Limiter{}
+	lmtr.Active = true
+	lmtr.MatchRefreshRate.Store(false)
+	lmtr.Measured.Store(float32(0.0))
+
+	lmtr.pulse = time.NewTicker(time.Millisecond * 16)
 	lmtr.measuringPulse = time.NewTicker(time.Millisecond * 1000)
+
+	lmtr.SetRefreshRate(60)
+	lmtr.SetLimit(-1)
+
+	return &lmtr
 }
 
-func (lmtr *limiter) setRefreshRate(refreshRate float32) {
-	lmtr.refreshRate.Store(refreshRate)
-	if lmtr.matchRefreshRate.Load().(bool) {
+// Set the refresh rate for the limiter. This is equivalent to the refresh rate
+// of the television. It is distinict from the limit value but is related and
+// the limit value (see SetLimit() function) will usually equal the refresh rate
+func (lmtr *Limiter) SetRefreshRate(refreshRate float32) {
+	lmtr.RefreshRate.Store(refreshRate)
+	if lmtr.MatchRefreshRate.Load().(bool) {
 		lmtr.matchRefreshRateDelay = int(refreshRate / 2)
 	}
 }
 
-func (lmtr *limiter) setRate(fps float32) {
-	// if number is negative then default to ideal FPS rate
+// Set frame limit. If the supplied value is <= 0 then the limit will match the
+// refresh rate, which is the ideal value.
+func (lmtr *Limiter) SetLimit(fps float32) {
 	if fps <= 0.0 {
-		lmtr.matchRefreshRate.Store(true)
-		fps = lmtr.refreshRate.Load().(float32)
+		lmtr.MatchRefreshRate.Store(true)
+		fps = lmtr.RefreshRate.Load().(float32)
 	} else {
-		lmtr.matchRefreshRate.Store(fps == lmtr.refreshRate.Load().(float32))
+		lmtr.MatchRefreshRate.Store(fps == lmtr.RefreshRate.Load().(float32))
 	}
 
 	// reset refresh rate delay counter
@@ -114,7 +122,7 @@ func (lmtr *limiter) setRate(fps float32) {
 	}
 
 	// not selected rate
-	lmtr.requested.Store(fps)
+	lmtr.Requested.Store(fps)
 
 	// set scale and duration to wait according to requested FPS rate
 	lmtr.pulseCt = 0
@@ -127,15 +135,15 @@ func (lmtr *limiter) setRate(fps float32) {
 	lmtr.measureTime = time.Now()
 }
 
-// checkFrame should be called every frame.
-func (lmtr *limiter) checkFrame() {
+// CheckFrame should be called every frame.
+func (lmtr *Limiter) CheckFrame() {
 	lmtr.measureCt++
 
-	nudge := lmtr.nudge.Load()
+	nudge := lmtr.Nudge.Load()
 	if nudge > 0 {
-		lmtr.nudge.Store(nudge - 1)
+		lmtr.Nudge.Store(nudge - 1)
 	} else {
-		if lmtr.active {
+		if lmtr.Active {
 			lmtr.pulseCt++
 			if lmtr.pulseCt >= lmtr.pulseCtLimit {
 				lmtr.pulseCt = 0
@@ -148,25 +156,25 @@ func (lmtr *limiter) checkFrame() {
 	if lmtr.matchRefreshRateDelay > 0 {
 		lmtr.matchRefreshRateDelay--
 		if lmtr.matchRefreshRateDelay == 0 {
-			lmtr.setRate(lmtr.refreshRate.Load().(float32))
+			lmtr.SetLimit(lmtr.RefreshRate.Load().(float32))
 		}
 	}
 }
 
-// checkFrame should be called every scanline.
-func (lmtr *limiter) checkScanline() {
+// CheckScanline should be called every scanline.
+func (lmtr *Limiter) CheckScanline() {
 }
 
-// measures frame rate on every tick of the measuringPulse ticker. callers of
-// measureActual() should be mindful of how ofter the function is called,
-// regardless of the throttle provided by the measuring pulse - checking the
-// pulse channel is itself expensive.
-func (lmtr *limiter) measureActual() {
+// MeasureActual measures frame rate on every tick of the measuringPulse ticker.
+// callers of MeasureActual() should be mindful of how ofter the function is
+// called, regardless of the throttle provided by the measuring pulse - checking
+// the pulse channel is itself expensive.
+func (lmtr *Limiter) MeasureActual() {
 	select {
 	case <-lmtr.measuringPulse.C:
 		t := time.Now()
 		m := float32(lmtr.measureCt) / float32(t.Sub(lmtr.measureTime).Seconds())
-		lmtr.measured.Store(m)
+		lmtr.Measured.Store(m)
 
 		// reset time and count ready for next measurement
 		lmtr.measureTime = t

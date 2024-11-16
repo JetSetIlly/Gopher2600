@@ -167,10 +167,8 @@ type RealtimeAudioMixer interface {
 	MoreAudio() bool
 }
 
-// VCSReturnChannel is used to send information from the TV back to the parent
-// console. Named because I think of it as being similar to the Audio Return
-// Channel (ARC) present in modern TVs
-type VCSReturnChannel interface {
+// VCS is used to send information from the TV back to the parent console
+type VCS interface {
 	SetClockSpeed(specification.Spec)
 }
 
