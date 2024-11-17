@@ -644,7 +644,7 @@ func (scr *screen) clearTextureRenderers() {
 	scr.renderers = make([]textureRenderer, 0)
 }
 
-// called by service loop.
+// called by service loop
 func (scr *screen) render() {
 	scr.resize()
 
@@ -708,9 +708,10 @@ func (scr *screen) copyPixelsPlaymode() {
 				scr.crit.pauseFrame = true
 			}
 		} else {
+			// non-active pausing can end the function immediately
 			copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.renderIdx].Pix)
+			return
 		}
-		return
 	}
 
 	// the queueRecovery check is important for correct operation of the rewinding
