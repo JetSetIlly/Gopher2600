@@ -16,6 +16,7 @@
 package test
 
 import (
+	"math"
 	"testing"
 )
 
@@ -35,6 +36,31 @@ func ExpectInequality[T comparable](t *testing.T, value T, expectedValue T) bool
 	t.Helper()
 	if value == expectedValue {
 		t.Errorf("inequality test of type %T failed: '%v' does equal '%v')", value, value, expectedValue)
+		return false
+	}
+	return true
+}
+
+// Approximate constraint used by ExpectApproximate() function
+type Approximte interface {
+	~float32 | ~float64 | ~int
+}
+
+// ExpectApproximate is used to test approximate equality between one value and
+// another.
+//
+// Tolerance represents a percentage. For example, 0.5 is tolerance of +/- 50%.
+// If the tolerance value is negative then the positive equivalent is used.
+func ExpectApproximate[T Approximte](t *testing.T, value T, expectedValue T, tolerance float64) bool {
+	t.Helper()
+
+	tolerance = math.Abs(tolerance)
+
+	top := float64(expectedValue) * (1 + tolerance)
+	bot := float64(expectedValue) * (1 - tolerance)
+
+	if float64(value) < bot || float64(value) > top {
+		t.Errorf("approximation test of type %T failed: '%v' is outside the range '%v' to '%v')", value, value, top, bot)
 		return false
 	}
 	return true
