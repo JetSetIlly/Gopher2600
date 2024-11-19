@@ -56,8 +56,8 @@ type platform struct {
 
 	// a short delay after a window event seems to help the window to resync
 	// with the monitor's refresh rate
-	resync   int
-	resizing bool
+	resync      int
+	windowEvent bool
 
 	// ideal frame time in nanoseconds
 	frameDuration time.Duration
@@ -98,6 +98,10 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sdl: %w", err)
 	}
+
+	// set hints for application
+	sdl.SetHint(sdl.HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0")
+	sdl.SetHint(sdl.HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0")
 
 	switch img.rnd.requires() {
 	case requiresOpenGL32:
@@ -328,16 +332,6 @@ func (plt *platform) newFrame() {
 	}
 }
 
-// call after a resizing window event
-func (plt *platform) resyncAfterResize() {
-	plt.resizing = true
-}
-
-// call after a window event that IS NOT a resize event
-func (plt *platform) resyncAfterWindowEvent() {
-	plt.resync = 5
-}
-
 // PostRender performs a buffer swap.
 func (plt *platform) postRender() {
 	timeDiff := time.Since(plt.renderStart)
@@ -352,25 +346,14 @@ func (plt *platform) postRender() {
 	}
 	plt.renderAvgTimeCt++
 
+	// alert if frame has taken a long time to render
 	if timeDiff > plt.frameDuration {
 		plt.renderAlert = true
-		plt.resync = 5
 	} else {
 		plt.renderAlert = false
 	}
 
-	if plt.resizing {
-		// skip GLSwap() completely for the first frame of resizing
-		plt.resizing = false
-		plt.resync = 5
-	} else {
-		if plt.resync > 0 {
-			time.Sleep(plt.frameDuration)
-			plt.resync--
-		}
-		plt.window.GLSwap()
-	}
-
+	plt.window.GLSwap()
 }
 
 // toggle the full screeens state. does not capture mouse.

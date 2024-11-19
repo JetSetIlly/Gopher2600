@@ -91,12 +91,6 @@ func (img *SdlImgui) Service() {
 		case *sdl.WindowEvent:
 			// window events are mainly handled by serviceWindowEvent()
 			// via an event filter
-			switch ev.Event {
-			case sdl.WINDOWEVENT_RESIZED:
-				img.plt.resyncAfterResize()
-			default:
-				img.plt.resyncAfterWindowEvent()
-			}
 
 		case *sdl.TextInputEvent:
 			if !img.modalActive() || !img.isCaptured() {
