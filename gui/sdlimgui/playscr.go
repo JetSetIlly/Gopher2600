@@ -77,6 +77,9 @@ func newPlayScr(img *SdlImgui) *playScr {
 	win.screenTexture = img.rnd.addTexture(texturePlayscr, true, true)
 	win.bevelTexture = img.rnd.addTexture(textureBevel, true, true)
 
+	// render bevel texture once on initlisation
+	win.bevelTexture.render(bevels.Selected.TV)
+
 	// set scale and padding on startup. scale and padding will be recalculated
 	// on window resize and textureRenderer.resize()
 	win.scr.crit.section.Lock()
@@ -133,9 +136,11 @@ func (win *playScr) render() {
 	defer win.scr.crit.section.Unlock()
 
 	win.screenTexture.render(win.scr.crit.cropPixels)
-	win.bevelTexture.render(bevels.Selected.TV)
 
-	// unlike dbgscr, there is no need to call setScaling() every render()
+	// note that we don't need to render the bevel texture every frame because
+	// it never changes
+
+	// unlike dbgscr, there is alos no need to call setScaling() every render()
 }
 
 // must be called from with a critical section.

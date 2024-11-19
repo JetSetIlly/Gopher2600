@@ -55,13 +55,16 @@ type screen struct {
 
 	crit screenCrit
 
-	// atmoic access of rotation value. it's more convenient to be able to
+	// atomic access of rotation value. it's more convenient to be able to
 	// access this atomically, rather than via the screenCrit type
 	rotation atomic.Value // specification.Rotation
 
 	// list of renderers to call from render. renderers are added with
 	// addTextureRenderer()
-	renderers  []textureRenderer
+	renderers []textureRenderer
+
+	// the emulation can be made to wait until it receives an ACK. this happens
+	// when the emulation is running too fast for the frame queue
 	emuWait    chan bool
 	emuWaitAck chan bool
 
