@@ -102,6 +102,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	// set hints for application
 	sdl.SetHint(sdl.HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0")
 	sdl.SetHint(sdl.HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0")
+	sdl.SetHint(sdl.HINT_VIDEO_X11_NET_WM_PING, "0")
 
 	switch img.rnd.requires() {
 	case requiresOpenGL32:
@@ -177,7 +178,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	plt.window, err = sdl.CreateWindow(fmt.Sprintf("%s (%s)", windowTitle, version.Version),
 		sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
 		int32(float32(plt.mode.W)*0.80), int32(float32(plt.mode.H)*0.80),
-		sdl.WINDOW_OPENGL|sdl.WINDOW_ALLOW_HIGHDPI|sdl.WINDOW_RESIZABLE|sdl.WINDOW_HIDDEN|sdl.WINDOW_FOREIGN)
+		sdl.WINDOW_OPENGL|sdl.WINDOW_ALLOW_HIGHDPI|sdl.WINDOW_RESIZABLE|sdl.WINDOW_HIDDEN)
 
 	if err != nil {
 		sdl.Quit()
