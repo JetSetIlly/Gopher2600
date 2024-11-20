@@ -23,23 +23,16 @@ void main()
 		vec3(0.2115, -0.5227, 0.3112)
 	);
 
-	// contrast. black level and white level is calculated as 10% of the
-	// contrast value
-	float contrast = Contrast;
-	float whiteLevel = 1.0-(contrast*0.1);
-    float blackLevel = contrast*0.1;
-	float videoLevel = whiteLevel - blackLevel;
-    if (videoLevel > 0) {
-	    contrast /= videoLevel;
-	} else {
-        contrast = 0;
-	}
-	if (contrast < 0) {
-		contrast = 0;
-	}
-	adjust *= contrast;
+	// contrast
+	float contrast = clamp(Contrast, 0.0, 2.0);
+	adjust *= mat3(
+		vec3(contrast, 0, 0),
+		vec3(0, 1, 0),
+		vec3(0, 0, 1)
+	);
 
 	// saturation
+	float saturation = clamp(Saturation, 0.0, 2.0);
 	adjust *= mat3(
 		vec3(1, 0, 0),
 		vec3(0, Saturation, 0),
@@ -54,15 +47,20 @@ void main()
 		vec3(0, sin(hue), cos(hue))
 	);
 
+	// brightness
+	float brightness = clamp(Brightness-1.0, -1.0, 1.0);
+	adjust += mat3(
+		vec3(brightness, 0, 0),
+		vec3(0, 0, 0),
+		vec3(0, 0, 0)
+	);
+
 	// YIQ to RGB
 	adjust *= mat3(
 		vec3(1, 0.956, 0.619),
 		vec3(1, -0.272, -0.647),
 		vec3(1, -1.106, 1.703)
 	);
-
-	// Brightness
-	adjust += Brightness - 1.0;
 
 	// apply adjustment
 	Out_Color.rgb *= adjust;
