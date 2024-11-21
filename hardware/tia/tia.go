@@ -754,7 +754,7 @@ func (tia *TIA) QuickStep(ct int) {
 		// VBLANK.
 		tia.sig.Color = signal.VideoBlack
 	} else {
-		tia.sig.Color = signal.ColorSignal(tia.Video.PixelColor)
+		tia.sig.Color = signal.ColorSignal(tia.Video.PixelColor & 0xfe)
 	}
 
 	// mix audio and copy values to television signal

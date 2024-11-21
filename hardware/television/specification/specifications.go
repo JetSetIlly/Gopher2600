@@ -106,8 +106,8 @@ func SearchReqSpec(s string) string {
 
 // Spec is used to define the two television specifications.
 type Spec struct {
-	ID     string
-	Colors []color.RGBA
+	ID       string
+	getColor func(col signal.ColorSignal) color.RGBA
 
 	// horizontal scan rate is used to calculate the refresh rate figure
 	HorizontalScanRate float32
@@ -174,15 +174,10 @@ type Spec struct {
 	ExtendedVisibleBottom int
 }
 
-// GetColor translates a signals to the color type.
-func (spec *Spec) GetColor(col signal.ColorSignal) color.RGBA {
-	// we're usng the ColorSignal to index an array so we need to be extra
-	// careful to make sure the value is valid. if it's not a valid index then
-	// assume the intention was video black
-	if col == signal.VideoBlack {
-		return VideoBlack
-	}
-	return spec.Colors[col]
+// GetColor translates a signals to the color type. The RGB is not gamma
+// corrected but must should be before display
+func (spec Spec) GetColor(col signal.ColorSignal) color.RGBA {
+	return spec.getColor(col)
 }
 
 // From the Stella Programmer's Guide:
@@ -245,7 +240,6 @@ func init() {
 	SpecNTSC = Spec{
 		ID:                 "NTSC",
 		HorizontalScanRate: 15734.26,
-		Colors:             PaletteNTSC,
 		ScanlinesVSync:     3,
 		ScanlinesVBlank:    37,
 		ScanlinesVisible:   192,
@@ -256,11 +250,11 @@ func init() {
 	SpecNTSC.RefreshRate = SpecNTSC.HorizontalScanRate / float32(SpecNTSC.ScanlinesTotal)
 	SpecNTSC.AtariSafeVisibleTop = SpecNTSC.ScanlinesVBlank + SpecNTSC.ScanlinesVSync
 	SpecNTSC.AtariSafeVisibleBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.ScanlinesOverscan
+	SpecNTSC.getColor = generateNTSC
 
 	SpecPAL = Spec{
 		ID:                 "PAL",
 		HorizontalScanRate: 15625.00,
-		Colors:             PalettePAL,
 		ScanlinesVSync:     3,
 		ScanlinesVBlank:    45,
 		ScanlinesVisible:   228,
@@ -268,15 +262,14 @@ func init() {
 		ScanlinesTotal:     312,
 		RefreshRate:        50.0,
 	}
-
 	SpecPAL.RefreshRate = SpecPAL.HorizontalScanRate / float32(SpecPAL.ScanlinesTotal)
 	SpecPAL.AtariSafeVisibleTop = SpecPAL.ScanlinesVBlank + SpecPAL.ScanlinesVSync
 	SpecPAL.AtariSafeVisibleBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesOverscan
+	SpecPAL.getColor = generatePAL
 
 	SpecPAL_M = Spec{
 		ID:                 "PAL-M",
 		HorizontalScanRate: 15734.26,
-		Colors:             PaletteNTSC,
 		ScanlinesVSync:     3,
 		ScanlinesVBlank:    37,
 		ScanlinesVisible:   192,
@@ -284,15 +277,14 @@ func init() {
 		ScanlinesTotal:     262,
 		RefreshRate:        60.0,
 	}
-
 	SpecPAL_M.RefreshRate = SpecPAL_M.HorizontalScanRate / float32(SpecPAL_M.ScanlinesTotal)
 	SpecPAL_M.AtariSafeVisibleTop = SpecPAL_M.ScanlinesVBlank + SpecPAL_M.ScanlinesVSync
 	SpecPAL_M.AtariSafeVisibleBottom = SpecPAL_M.ScanlinesTotal - SpecPAL_M.ScanlinesOverscan
+	SpecPAL_M.getColor = generateNTSC
 
 	SpecSECAM = Spec{
 		ID:                 "SECAM",
 		HorizontalScanRate: 15625.00,
-		Colors:             PaletteSECAM,
 		ScanlinesVSync:     3,
 		ScanlinesVBlank:    45,
 		ScanlinesVisible:   228,
@@ -300,10 +292,10 @@ func init() {
 		ScanlinesTotal:     312,
 		RefreshRate:        50.0,
 	}
-
 	SpecSECAM.RefreshRate = SpecSECAM.HorizontalScanRate / float32(SpecSECAM.ScanlinesTotal)
 	SpecSECAM.AtariSafeVisibleTop = SpecSECAM.ScanlinesVBlank + SpecSECAM.ScanlinesVSync
 	SpecSECAM.AtariSafeVisibleBottom = SpecSECAM.ScanlinesTotal - SpecSECAM.ScanlinesOverscan
+	SpecSECAM.getColor = generateSECAM
 
 	// ideal values:
 

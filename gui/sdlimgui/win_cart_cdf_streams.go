@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/cdf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -110,7 +111,7 @@ func (win *winCDFStreams) updateStreams(regs cdf.Registers, static mapper.CartSt
 	bg := color.RGBA{10, 10, 10, 255}
 	unused := color.RGBA{10, 10, 10, 100}
 
-	_, _, _, pal := win.img.imguiTVPalette()
+	spec := win.img.cache.TV.GetFrameInfo().Spec
 
 	// draw pixels
 	for i := range regs.Datastream {
@@ -122,10 +123,10 @@ func (win *winCDFStreams) updateStreams(regs cdf.Registers, static mapper.CartSt
 			col := fg
 			if win.colouriser.active && win.colouriser.tgt == i {
 				s := regs.Datastream[win.colouriser.src].Peek(y, static)
-				col = pal[s]
+				col = spec.GetColor(signal.ColorSignal(s))
 			} else if win.colourSource[i] > -1 {
 				s := regs.Datastream[win.colourSource[i]].Peek(y, static)
-				col = pal[s]
+				col = spec.GetColor(signal.ColorSignal(s))
 			}
 
 			// plot pixels

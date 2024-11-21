@@ -26,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/display"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/caching"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/resources"
@@ -491,4 +492,15 @@ func (img *SdlImgui) setReasonableWindowConstraints() {
 	winw *= 0.95
 	winh *= 0.95
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{X: 300, Y: 300}, imgui.Vec2{X: winw, Y: winh})
+}
+
+func (img *SdlImgui) getTVColour(col uint8) imgui.PackedColor {
+	c := img.cache.TV.GetFrameInfo().Spec.GetColor(signal.ColorSignal(col))
+	v := imgui.Vec4{
+		X: float32(c.R) / 255,
+		Y: float32(c.G) / 255,
+		Z: float32(c.B) / 255,
+		W: float32(c.A) / 255,
+	}
+	return imgui.PackedColorFromVec4(v)
 }

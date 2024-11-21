@@ -27,6 +27,7 @@ type Colour struct {
 	Contrast   prefs.Float
 	Saturation prefs.Float
 	Hue        prefs.Float
+	Adj        prefs.Float
 }
 
 func (p *Colour) String() string {

@@ -64,4 +64,9 @@ void main()
 
 	// apply adjustment
 	Out_Color.rgb *= adjust;
+
+	// gamma correct signal for the monitor
+	Out_Color.r = pow(Out_Color.r, 2.2);
+	Out_Color.g = pow(Out_Color.g, 2.2);
+	Out_Color.b = pow(Out_Color.b, 2.2);
 }

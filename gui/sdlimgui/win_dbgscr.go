@@ -633,15 +633,18 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		// 	}
 		// }
 
+		spec := win.img.cache.TV.GetFrameInfo().Spec
+
 		// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
-		_, _, pal, _ := win.img.imguiTVPalette()
 		px := ref.Signal.Color
 		if (ref.IsHblank || ref.Signal.VBlank || px == signal.VideoBlack) && !win.elements {
-			imguiColorLabelSimple("No color signal", pal[0])
+			rgba := spec.GetColor(signal.VideoBlack)
+			vgba := imgui.Vec4{X: float32(rgba.R), Y: float32(rgba.G), Z: float32(rgba.B), W: float32(rgba.A)}
+			imguiColorLabelSimple("No color signal", vgba)
 		} else {
-			// not using GetColor() function. arguably we should but we've
-			// protected the array access with the VideoBlack test above.
-			imguiColorLabelSimple(ref.VideoElement.String(), pal[px])
+			rgba := spec.GetColor(px)
+			vgba := imgui.Vec4{X: float32(rgba.R), Y: float32(rgba.G), Z: float32(rgba.B), W: float32(rgba.A)}
+			imguiColorLabelSimple(ref.VideoElement.String(), vgba)
 		}
 
 		imgui.Spacing()

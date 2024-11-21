@@ -18,15 +18,11 @@ package sdlimgui
 import (
 	"image/color"
 
-	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 	"github.com/jetsetilly/gopher2600/reflection"
 
 	"github.com/inkyblackness/imgui-go/v4"
 )
-
-// packedPalette is an array of imgui.PackedColor.
-type packedPalette []imgui.PackedColor
 
 // imguiColors defines all the colors used by the GUI. Fields with leading
 // uppercase are all of type imgui.Vec4. equivalent color but of tpye
@@ -239,14 +235,6 @@ type imguiColors struct {
 
 	// reflection colors
 	reflectionColors []imgui.Vec4
-
-	// packed TV palettes
-	packedPaletteNTSC  packedPalette
-	packedPalettePAL   packedPalette
-	packedPaletteSECAM packedPalette
-	paletteNTSC        []imgui.Vec4
-	palettePAL         []imgui.Vec4
-	paletteSECAM       []imgui.Vec4
 }
 
 func newColors() *imguiColors {
@@ -475,58 +463,6 @@ func newColors() *imguiColors {
 	cols.coProcSourceAvgLoad = imgui.PackedColorFromVec4(cols.CoProcSourceAvgLoad)
 	cols.coProcSourceMaxLoad = imgui.PackedColorFromVec4(cols.CoProcSourceMaxLoad)
 	cols.coProcSourceNoLoad = imgui.PackedColorFromVec4(cols.CoProcSourceNoLoad)
-
-	// convert 2600 colours to format usable by imgui
-
-	// convert to imgui.Vec4 first...
-	cols.paletteNTSC = make([]imgui.Vec4, 0, len(specification.PaletteNTSC))
-	for _, c := range specification.PaletteNTSC {
-		v := imgui.Vec4{
-			X: float32(c.R) / 255,
-			Y: float32(c.G) / 255,
-			Z: float32(c.B) / 255,
-			W: 1.0,
-		}
-		cols.paletteNTSC = append(cols.paletteNTSC, v)
-	}
-
-	cols.palettePAL = make([]imgui.Vec4, 0, len(specification.PalettePAL))
-	for _, c := range specification.PalettePAL {
-		v := imgui.Vec4{
-			X: float32(c.R) / 255,
-			Y: float32(c.G) / 255,
-			Z: float32(c.B) / 255,
-			W: 1.0,
-		}
-		cols.palettePAL = append(cols.palettePAL, v)
-	}
-
-	cols.paletteSECAM = make([]imgui.Vec4, 0, len(specification.PaletteSECAM))
-	for _, c := range specification.PaletteSECAM {
-		v := imgui.Vec4{
-			X: float32(c.R) / 255,
-			Y: float32(c.G) / 255,
-			Z: float32(c.B) / 255,
-			W: 1.0,
-		}
-		cols.paletteSECAM = append(cols.paletteSECAM, v)
-	}
-
-	// ...then to the packedPalette
-	cols.packedPaletteNTSC = make(packedPalette, 0, len(cols.paletteNTSC))
-	for _, c := range cols.paletteNTSC {
-		cols.packedPaletteNTSC = append(cols.packedPaletteNTSC, imgui.PackedColorFromVec4(c))
-	}
-
-	cols.packedPalettePAL = make(packedPalette, 0, len(cols.packedPalettePAL))
-	for _, c := range cols.palettePAL {
-		cols.packedPalettePAL = append(cols.packedPalettePAL, imgui.PackedColorFromVec4(c))
-	}
-
-	cols.packedPaletteSECAM = make(packedPalette, 0, len(cols.packedPaletteSECAM))
-	for _, c := range cols.paletteSECAM {
-		cols.packedPaletteSECAM = append(cols.packedPaletteSECAM, imgui.PackedColorFromVec4(c))
-	}
 
 	return &cols
 }

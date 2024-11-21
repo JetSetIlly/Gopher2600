@@ -17,13 +17,11 @@ package sdlimgui
 
 import (
 	"fmt"
-	"image/color"
 	"strconv"
 	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
-	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 // return the height of the window from the current cursor position to the end
@@ -452,30 +450,12 @@ func (img *SdlImgui) imguiWindowQuadrant(p imgui.Vec2) imgui.Vec2 {
 	return q
 }
 
-// use appropriate palette for television spec.
-func (img *SdlImgui) imguiTVPalette() (string, packedPalette, []imgui.Vec4, []color.RGBA) {
-	switch img.cache.TV.GetFrameInfo().Spec.ID {
-	case "NTSC":
-		return "NTSC", img.cols.packedPaletteNTSC, img.cols.paletteNTSC, specification.PaletteNTSC
-	case "PAL":
-		return "PAL", img.cols.packedPalettePAL, img.cols.palettePAL, specification.PalettePAL
-	case "PAL-M":
-		return "PAL-M", img.cols.packedPalettePAL, img.cols.palettePAL, specification.PalettePAL
-	case "SECAM":
-		return "SECAM", img.cols.packedPaletteSECAM, img.cols.paletteSECAM, specification.PaletteSECAM
-	}
-	return "unknown", img.cols.packedPaletteNTSC, img.cols.paletteNTSC, specification.PaletteNTSC
-}
-
 // draw swatch. returns true if clicked. a good response to a click event is to
 // open up an instance of popupPalette.
 //
 // size argument should be expressed as a fraction the fraction will be applied
 // to imgui.FontSize() to obtain the radius of the swatch.
 func (img *SdlImgui) imguiSwatch(col uint8, size float32) (clicked bool) {
-	_, pal, _, _ := img.imguiTVPalette()
-	c := pal[col]
-
 	r := imgui.FontSize() * size
 
 	// position & dimensions of swatch
@@ -493,7 +473,7 @@ func (img *SdlImgui) imguiSwatch(col uint8, size float32) (clicked bool) {
 
 	// draw swatch
 	dl := imgui.WindowDrawList()
-	dl.AddCircleFilled(p, r, c)
+	dl.AddCircleFilled(p, r, img.getTVColour(col))
 
 	// set up cursor for next widget
 	p.X += 2 * r

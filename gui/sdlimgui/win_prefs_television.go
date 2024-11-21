@@ -21,6 +21,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 func (win *winPrefs) drawTelevision() {
@@ -45,6 +46,21 @@ func (win *winPrefs) drawColour() {
 	win.drawSaturation()
 	imgui.Spacing()
 	win.drawHue()
+
+	switch win.img.cache.TV.GetReqSpecID() {
+	case specification.SpecNTSC.ID:
+		imgui.Spacing()
+		if imgui.CollapsingHeader("NTSC Colour Signal") {
+			imgui.Spacing()
+			win.drawNTSCPhase()
+		}
+	case specification.SpecPAL.ID:
+		imgui.Spacing()
+		if imgui.CollapsingHeader("PAL Colour Signal") {
+			imgui.Spacing()
+			win.drawPALPhase()
+		}
+	}
 }
 
 func (win *winPrefs) drawBrightness() {
@@ -117,6 +133,67 @@ func (win *winPrefs) drawHue() {
 	}
 }
 
+func (win *winPrefs) drawNTSCPhase() {
+	imgui.BeginGroup()
+	defer imgui.EndGroup()
+
+	f := float32(specification.NTSCPhase)
+
+	imgui.AlignTextToFramePadding()
+	imgui.Text("Phase")
+	imgui.SameLineV(0, 5)
+
+	label := fmt.Sprintf("%.1f\u00b0", f)
+	if imgui.SliderFloatV("##ntsc_phase", &f, 20.0, 30.0, label, imgui.SliderFlagsNone) {
+		specification.NTSCPhase = float64(f)
+	}
+
+	imgui.Spacing()
+	switch f {
+	case specification.NTSCFieldService:
+		label = specification.NTSCFieldSericeLabel
+	case specification.NTSCVideoSoft:
+		label = specification.NTSCVidoSoftLabel
+	case specification.NTSCIdealDistribution:
+		label = specification.NTSCIdealDistributionLabel
+	default:
+		label = "Custom"
+	}
+
+	imgui.AlignTextToFramePadding()
+	imgui.Text("Preset")
+	imgui.SameLineV(0, 5)
+
+	if imgui.BeginComboV("##ntscpreset", label, imgui.ComboFlagsNone) {
+		if imgui.Selectable(specification.NTSCFieldSericeLabel) {
+			specification.NTSCPhase = specification.NTSCFieldService
+		}
+		if imgui.Selectable(specification.NTSCVidoSoftLabel) {
+			specification.NTSCPhase = specification.NTSCVideoSoft
+		}
+		if imgui.Selectable(specification.NTSCIdealDistributionLabel) {
+			specification.NTSCPhase = specification.NTSCIdealDistribution
+		}
+		imgui.EndCombo()
+	}
+}
+
+func (win *winPrefs) drawPALPhase() {
+	imgui.BeginGroup()
+	defer imgui.EndGroup()
+
+	f := float32(specification.PALPhase)
+
+	imgui.AlignTextToFramePadding()
+	imgui.Text("Phase")
+	imgui.SameLineV(0, 5)
+
+	label := fmt.Sprintf("%.1f\u00b0", f)
+	if imgui.SliderFloatV("##pal_phase", &f, 10.0, 30.0, label, imgui.SliderFlagsNone) {
+		specification.PALPhase = float64(f)
+	}
+}
+
 func (win *winPrefs) drawHaltConditions() {
 	if imgui.CollapsingHeader("Halting") {
 		imgui.Spacing()
@@ -132,6 +209,7 @@ func (win *winPrefs) drawVSYNC() {
 	var label string
 
 	if imgui.CollapsingHeader("Synchronisation") {
+
 		imgui.Spacing()
 		imgui.Text("VSYNC Scanlines Required")
 		scanlines := int32(win.img.dbg.VCS().Env.Prefs.TV.VSYNCscanlines.Get().(int))
