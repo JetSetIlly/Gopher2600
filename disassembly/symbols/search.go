@@ -93,7 +93,7 @@ func (sym *Symbols) SearchByAddress(addr uint16, table SearchTable) *SearchResul
 		addr, _ = memorymap.MapAddress(addr, true)
 
 		for _, l := range sym.label {
-			if s, ok := l.byAddr[addr]; ok {
+			if s, ok := l.symbols[addr]; ok {
 				return &SearchResults{
 					Table:   SearchLabel,
 					Entry:   s,
@@ -102,7 +102,7 @@ func (sym *Symbols) SearchByAddress(addr uint16, table SearchTable) *SearchResul
 			}
 		}
 	case SearchRead:
-		if s, ok := sym.read.byAddr[addr]; ok {
+		if s, ok := sym.read.symbols[addr]; ok {
 			return &SearchResults{
 				Table:   SearchRead,
 				Entry:   s,
@@ -110,7 +110,7 @@ func (sym *Symbols) SearchByAddress(addr uint16, table SearchTable) *SearchResul
 			}
 		}
 	case SearchWrite:
-		if s, ok := sym.write.byAddr[addr]; ok {
+		if s, ok := sym.write.symbols[addr]; ok {
 			return &SearchResults{
 				Table:   SearchWrite,
 				Entry:   s,

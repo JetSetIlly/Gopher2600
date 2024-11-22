@@ -33,8 +33,13 @@ type Entry struct {
 type table struct {
 	// symbols indexed by address. addresses should be mapped before indexing
 	// takes place
-	byAddr map[uint16]Entry
-	index  []*Entry
+	symbols map[uint16]Entry
+
+	// addresses by symbol. useful when checking for duplicate symbols
+	bySymbol map[string]uint16
+
+	// a sorted list of addresses
+	index []uint16
 
 	// the longest symbol in the table
 	maxWidth int
@@ -43,8 +48,9 @@ type table struct {
 // newTable is the preferred method of initialisation for the table type.
 func newTable() *table {
 	t := &table{
-		byAddr: make(map[uint16]Entry),
-		index:  make([]*Entry, 0),
+		symbols:  make(map[uint16]Entry),
+		bySymbol: make(map[string]uint16),
+		index:    make([]uint16, 0),
 	}
 	return t
 }
@@ -52,17 +58,18 @@ func newTable() *table {
 // should be called in critical section
 func (t *table) sort() {
 	// assertion check that byAddr and index are the same length
-	if len(t.byAddr) != len(t.index) {
+	if len(t.symbols) != len(t.index) {
+		panic("symbol table is inconsistent")
+	}
+	if len(t.bySymbol) != len(t.index) {
 		panic("symbol table is inconsistent")
 	}
 
-	slices.SortFunc(t.index, func(a, b *Entry) int {
-		return int(a.Address) - int(b.Address)
-	})
+	slices.Sort(t.index)
 
 	// calculate max width
 	t.maxWidth = 0
-	for _, e := range t.byAddr {
+	for _, e := range t.symbols {
 		if len(e.Symbol) > t.maxWidth {
 			t.maxWidth = len(e.Symbol)
 		}
@@ -72,7 +79,7 @@ func (t *table) sort() {
 // commandlineTemplate returns a
 func (t *table) commandlineTemplate() string {
 	var s strings.Builder
-	for _, e := range t.byAddr {
+	for _, e := range t.symbols {
 		s.WriteString(e.Symbol)
 		s.WriteString("|")
 	}
@@ -81,8 +88,9 @@ func (t *table) commandlineTemplate() string {
 
 func (t table) String() string {
 	s := strings.Builder{}
-	for i := range t.index {
-		s.WriteString(fmt.Sprintf("%#04x -> %s [%s]\n", t.index[i].Address, t.index[i].Symbol, t.index[i].Source))
+	for _, addr := range t.index {
+		e := t.symbols[addr]
+		s.WriteString(fmt.Sprintf("%#04x -> %s [%s]\n", e.Address, e.Symbol, e.Source))
 	}
 	return s.String()
 }
@@ -113,7 +121,7 @@ func (t *table) uniqueSymbol(symbol string) string {
 // get entry. address should be mapped before calling according to the context
 // of the table.
 func (t *table) get(addr uint16) (Entry, bool) {
-	v, ok := t.byAddr[addr]
+	v, ok := t.symbols[addr]
 	return v, ok
 }
 
@@ -122,11 +130,12 @@ func (t *table) get(addr uint16) (Entry, bool) {
 func (t *table) add(source SymbolSource, addr uint16, symbol string) bool {
 	symbol = t.normaliseSymbol(symbol)
 
-	// check for duplicates
-	for i := range t.index {
-		if t.index[i].Address == addr {
-			return false
-		}
+	// check for duplicate
+	if _, ok := t.symbols[addr]; ok {
+		return false
+	}
+	if _, ok := t.bySymbol[symbol]; ok {
+		return false
 	}
 
 	e := Entry{
@@ -134,23 +143,22 @@ func (t *table) add(source SymbolSource, addr uint16, symbol string) bool {
 		Source:  source,
 		Symbol:  t.uniqueSymbol(symbol),
 	}
-	t.byAddr[addr] = e
-	t.index = append(t.index, &e)
-	t.sort()
+	t.symbols[addr] = e
+	t.bySymbol[e.Symbol] = addr
+	t.index = append(t.index, addr)
 	return true
 }
 
 // remove entry. address should be mapped before calling according to the
 // context of the table.
 func (t *table) remove(addr uint16) bool {
-	if _, ok := t.byAddr[addr]; ok {
-		delete(t.byAddr, addr)
-		t.index = slices.DeleteFunc(t.index, func(e *Entry) bool {
-			return e.Address == addr
+	if e, ok := t.symbols[addr]; ok {
+		delete(t.symbols, addr)
+		delete(t.bySymbol, e.Symbol)
+		t.index = slices.DeleteFunc(t.index, func(a uint16) bool {
+			return a == addr
 		})
-		t.sort()
 	}
-
 	return false
 }
 
@@ -168,7 +176,7 @@ func (t *table) update(source SymbolSource, addr uint16, oldSymbol string, newSy
 		return false
 	}
 
-	if t.byAddr[addr].Symbol == oldSymbol {
+	if t.symbols[addr].Symbol == oldSymbol {
 		t.remove(addr)
 		t.add(source, addr, newSymbol)
 		return true
@@ -181,10 +189,9 @@ func (t *table) update(source SymbolSource, addr uint16, oldSymbol string, newSy
 func (t table) search(symbol string) (Entry, uint16, bool) {
 	symbol = t.normaliseSymbol(symbol)
 
-	for addr, e := range t.byAddr {
-		if strings.ToUpper(e.Symbol) == symbol {
-			return e, addr, true
-		}
+	if addr, ok := t.bySymbol[symbol]; ok {
+		e := t.symbols[addr]
+		return e, e.Address, true
 	}
 
 	return Entry{}, 0, false

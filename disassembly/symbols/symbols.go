@@ -60,6 +60,7 @@ func (sym *Symbols) initialise(numBanks int) {
 	sym.write = newTable()
 
 	sym.canonise(nil)
+	sym.resort()
 }
 
 // should be called in critical section
@@ -69,6 +70,13 @@ func (sym *Symbols) resort() {
 	}
 	sym.read.sort()
 	sym.write.sort()
+}
+
+// Resort all symbols tables
+func (sym *Symbols) Resort() {
+	sym.crit.Lock()
+	defer sym.crit.Unlock()
+	sym.resort()
 }
 
 // LabelWidth returns the maximum number of characters required by a label in
@@ -116,7 +124,7 @@ func (sym *Symbols) GetLabel(bank int, addr uint16) (Entry, bool) {
 
 	addr, _ = memorymap.MapAddress(addr, true)
 
-	if e, ok := sym.label[bank].byAddr[addr]; ok {
+	if e, ok := sym.label[bank].symbols[addr]; ok {
 		return e, ok
 	}
 
@@ -199,7 +207,7 @@ func (sym *Symbols) RemoveLabel(source SymbolSource, bank int, addr uint16) bool
 
 	addr, _ = memorymap.MapAddress(addr, true)
 
-	if sym.label[bank].byAddr[addr].Source != source {
+	if sym.label[bank].symbols[addr].Source != source {
 		return false
 	}
 
@@ -286,7 +294,7 @@ func (sym *Symbols) AfterLabelChange() {
 	var err error
 
 	for _, l := range sym.label {
-		for _, e := range l.byAddr {
+		for _, e := range l.symbols {
 			s = append(s, e.Symbol)
 		}
 	}
@@ -311,7 +319,7 @@ func (sym *Symbols) AfterSymbolChange() {
 	var err error
 
 	// read symbols
-	for _, e := range sym.read.byAddr {
+	for _, e := range sym.read.symbols {
 		read = append(read, e.Symbol)
 	}
 
@@ -324,7 +332,7 @@ func (sym *Symbols) AfterSymbolChange() {
 	}
 
 	// write symbols
-	for _, e := range sym.write.byAddr {
+	for _, e := range sym.write.symbols {
 		write = append(write, e.Symbol)
 	}
 

@@ -26,6 +26,9 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+// IMPORTANT: all functions in this file should be called in the Dissasembly
+// critical section
+
 func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory) error {
 	// basic decoding pass
 	err := dsm.decode(mc, mem)
@@ -216,11 +219,6 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 	// mask address into indexable range
 	a := addr & memorymap.CartridgeBits
 
-	// blessing can happen at the same time as iteration which is probably
-	// being run from a different goroutine. acknowledge the critical section
-	dsm.crit.Lock()
-	defer dsm.crit.Unlock()
-
 	hasCommitted := false
 
 	// examine every entry from the starting point a. next entry determined in
@@ -301,11 +299,6 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 }
 
 func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
-	// decoding can happen at the same time as iteration which is probably
-	// being run from a different goroutine. acknowledge the critical section
-	dsm.crit.Lock()
-	defer dsm.crit.Unlock()
-
 	for _, bank := range mem.banks {
 		mem.currentBank = bank.Number
 

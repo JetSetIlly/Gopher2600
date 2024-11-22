@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/disassembly/symbols"
@@ -29,6 +30,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Disassembly represents the annotated disassembly of a 6507 binary.
@@ -47,8 +49,12 @@ type Disassembly struct {
 	// emulation goroutine
 	disasmEntries DisasmEntries
 
-	// critical sectioning to protect disasmEntries
+	// critical sectioning to protect disasmEntries. the symbols table has it's
+	// own critical section
 	crit sync.Mutex
+
+	// is true if background disassembly is active
+	background atomic.Bool
 }
 
 // DisasmEntries contains the individual disassembled entries of the current ROM.
@@ -73,6 +79,7 @@ func NewDisassembly(vcs *hardware.VCS) (*Disassembly, *symbols.Symbols, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("disassembly: %w", err)
 	}
+	dsm.background.Store(false)
 
 	return dsm, &dsm.Sym, nil
 }
@@ -121,20 +128,30 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 	return dsm, nil
 }
 
+// Background performs a disassembly from memory but in the background
+func (dsm *Disassembly) Background(cartload cartridgeloader.Loader) {
+	go func() {
+		dsm.background.Store(true)
+		defer dsm.background.Store(false)
+		err := dsm.FromMemory()
+		if err != nil {
+			logger.Logf(dsm.vcs.Env, "disassembly background", err.Error())
+		}
+	}()
+}
+
 // FromMemory disassembles an existing instance of cartridge memory using a
 // cpu with no flow control. Unlike the FromCartridge() function this function
 // requires an existing instance of Disassembly.
 //
 // Disassembly will start/assume the cartridge is in the correct starting bank.
 func (dsm *Disassembly) FromMemory() error {
-	// unlocking manually before we call the disassmeble() function. this means
-	// we have to be careful to manually unlock before returning an error.
 	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
 
 	// create new memory
 	copiedBanks, err := dsm.vcs.Mem.Cart.CopyBanks()
 	if err != nil {
-		dsm.crit.Unlock()
 		return fmt.Errorf("disassembly: %w", err)
 	}
 
@@ -142,14 +159,12 @@ func (dsm *Disassembly) FromMemory() error {
 
 	mem := newDisasmMemory(startingBank, copiedBanks)
 	if mem == nil {
-		dsm.crit.Unlock()
 		return fmt.Errorf("disassembly: %s", "could not create memory for disassembly")
 	}
 
 	// read symbols file
 	err = dsm.Sym.ReadDASMSymbolsFile(dsm.vcs.Mem.Cart)
 	if err != nil {
-		dsm.crit.Unlock()
 		return err
 	}
 
@@ -162,16 +177,12 @@ func (dsm *Disassembly) FromMemory() error {
 
 	// exit early if cartridge memory self reports as being ejected
 	if dsm.vcs.Mem.Cart.IsEjected() {
-		dsm.crit.Unlock()
 		return nil
 	}
 
 	// create a new NoFlowControl CPU to help disassemble memory
 	mc := cpu.NewCPU(mem)
 	mc.NoFlowControl = true
-
-	dsm.crit.Unlock()
-	// end of critical section
 
 	// disassemble cartridge binary
 	return dsm.disassemble(mc, mem)
@@ -238,6 +249,11 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	// check. there's no comment to say why this condition was added so leave
 	// it for now
 	if bank.Number >= len(dsm.disasmEntries.Entries) {
+		return e
+	}
+
+	// do not update disassembly if background disassembly is ongoing
+	if dsm.background.Load() {
 		return e
 	}
 
@@ -381,9 +397,14 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 // Function will be executed with a nil argument if disassembly is not valid.
 //
 // Should not be called from the emulation goroutine.
-func (dsm *Disassembly) BorrowDisasm(f func(*DisasmEntries)) {
+func (dsm *Disassembly) BorrowDisasm(f func(*DisasmEntries)) bool {
+	if dsm.background.Load() {
+		return false
+	}
+
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
 	f(&dsm.disasmEntries)
+	return true
 }

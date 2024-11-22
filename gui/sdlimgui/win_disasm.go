@@ -341,7 +341,7 @@ func (win *winDisasm) drawBank(currBank mapper.BankInfo, focusAddr uint16) {
 	height := imguiRemainingWinHeight() - win.optionsHeight
 	imgui.BeginChildV(fmt.Sprintf("##bank %d", win.selectedBank), imgui.Vec2{X: 0, Y: height}, false, imgui.WindowFlagsAlwaysVerticalScrollbar)
 
-	win.img.dbg.Disasm.BorrowDisasm(func(dsmEntries *disassembly.DisasmEntries) {
+	f := func(dsmEntries *disassembly.DisasmEntries) {
 		// disassembly is not valid and so dsmEntires is nil
 		if dsmEntries == nil {
 			imgui.Text("No disassembly available")
@@ -576,7 +576,10 @@ func (win *winDisasm) drawBank(currBank mapper.BankInfo, focusAddr uint16) {
 		imgui.Text("")
 
 		imgui.EndTable()
-	})
+	}
+	if !win.img.dbg.Disasm.BorrowDisasm(f) {
+		imgui.Text("disassembling...")
+	}
 
 	imgui.EndChild()
 }

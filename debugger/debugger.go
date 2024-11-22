@@ -1228,10 +1228,8 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	dbg.ref.Clear()
 	dbg.counter.Clear()
 
-	err = dbg.Disasm.FromMemory()
-	if err != nil {
-		logger.Log(logger.Allow, "debugger", err)
-	}
+	// performe disassembly in the background
+	dbg.Disasm.Background(cartload)
 
 	dbg.CoProcDisasm.AttachCartridge(dbg.vcs.Mem.Cart)
 	err = dbg.CoProcDev.AttachCartridge(dbg.vcs.Mem.Cart, cartload.Filename, dbg.opts.ELF)

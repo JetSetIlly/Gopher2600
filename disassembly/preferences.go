@@ -50,6 +50,8 @@ func newPreferences(dsm *Disassembly) (*Preferences, error) {
 		} else {
 			p.mirrorOrigin = memorymap.OriginCart
 		}
+		dsm.crit.Lock()
+		defer dsm.crit.Unlock()
 		dsm.setCartMirror()
 		return nil
 	})
@@ -102,10 +104,9 @@ func (p *Preferences) Save() error {
 
 // setCartMirror sets the mirror bits to the user's preference. called by the
 // FxxxMirror callback.
+//
+// must be called inside the Disassembly critical section
 func (dsm *Disassembly) setCartMirror() {
-	dsm.crit.Lock()
-	defer dsm.crit.Unlock()
-
 	for b := range dsm.disasmEntries.Entries {
 		for _, e := range dsm.disasmEntries.Entries[b] {
 			if e == nil {

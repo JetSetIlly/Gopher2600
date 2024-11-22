@@ -27,8 +27,6 @@ import (
 //
 // should be called in critical section.
 func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
-	defer sym.resort()
-
 	// loop through the array of canonical names.
 	//
 	// note that because Read and Write in the cpubus package are sparse
