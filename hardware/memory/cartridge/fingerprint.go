@@ -361,6 +361,40 @@ func fingerprintWF8(loader cartridgeloader.Loader) bool {
 	return loader.HashMD5 == smurf || loader.HashMD5 == zaxxon
 }
 
+func fingerprintEF(loader cartridgeloader.Loader) (superchip bool, ok bool) {
+	if loader.Contains([]byte{'E', 'F', 'E', 'F'}) {
+		return false, true
+	}
+	if loader.Contains([]byte{'E', 'F', 'S', 'C'}) {
+		return true, true
+	}
+	return false, false
+}
+
+func fingerprintBF(loader cartridgeloader.Loader) (superchip bool, ok bool) {
+	if loader.Contains([]byte{'B', 'F', 'B', 'F'}) {
+		return false, true
+	}
+	if loader.Contains([]byte{'B', 'F', 'S', 'C'}) {
+		return true, true
+	}
+	return false, false
+}
+
+func fingerprintSB(loader cartridgeloader.Loader) bool {
+	// SB fingerprint taken from Stella
+	fingerprint := [][]byte{
+		{0xbd, 0x00, 0x08}, // LDA $0800,X
+		{0xad, 0x00, 0x08}, // LDA $0800
+	}
+	for _, f := range fingerprint {
+		if loader.Contains(f) {
+			return true
+		}
+	}
+	return false
+}
+
 func fingerprint8k(loader cartridgeloader.Loader) string {
 	if fingerprintWF8(loader) {
 		return "WF8"
@@ -421,19 +455,43 @@ func fingerprint32k(loader cartridgeloader.Loader) string {
 }
 
 func fingerprint64k(loader cartridgeloader.Loader) string {
-	return "EF"
+	if sc, ok := fingerprintEF(loader); ok {
+		if sc {
+			return "EFSC"
+		}
+		return "EF"
+	}
+	return unrecognisedMapper
 }
 
 func fingerprint128k(loader cartridgeloader.Loader) string {
 	if fingerprintDF(loader) {
 		return "DF"
 	}
-	return "SB"
+	if fingerprintSB(loader) {
+		return "SB"
+	}
+	return unrecognisedMapper
 }
 
 func fingerprint256k(loader cartridgeloader.Loader) string {
-	return "SB"
+	if sc, ok := fingerprintBF(loader); ok {
+		if sc {
+			return "BFSC"
+		}
+		return "BF"
+	}
+	if fingerprintSB(loader) {
+		return "SB"
+	}
+	return unrecognisedMapper
 }
+
+// returned by fingerprint if the mapper is not recognised. most files will
+// result in something and an attachement to the console is always attempted.
+// but in some cases (particularly for larger, modern cartridges) we can say for
+// certain whether or nor a file is a valid ROM file
+const unrecognisedMapper = "unrecognised mapper"
 
 func (cart *Cartridge) fingerprint(loader cartridgeloader.Loader) (string, error) {
 	// moviecart fingerprinting is done in cartridge loader. this is to avoid

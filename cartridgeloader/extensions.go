@@ -30,7 +30,7 @@ var explicitFileExtensions = []string{
 	".2K", ".4K", ".F8", ".WF8", ".F6", ".F4", ".2K+", ".2KSC",
 	".4K+", ".4KSC", ".F8+", ".F8SC", ".F6+", ".F6SC", ".F4+", ".F4SC", ".CV",
 	".FA", ".FA2", ".FE", ".E0", ".E7", ".JANE", ".3F", ".UA", ".AR", ".DF", ".3E", ".E3P",
-	".E3+", ".3E+", ".EF", ".EFSC", ".SB", ".WD", ".ACE", ".CDF0", ".CDF1", ".CDFJ",
+	".E3+", ".3E+", ".EF", ".EFSC", ".BF", ".BFSC", ".SB", ".WD", ".ACE", ".CDF0", ".CDF1", ".CDFJ",
 	".CDFJ+", ".DP+", ".DPC", ".CDF", ".MVC", ".ELF",
 }
 

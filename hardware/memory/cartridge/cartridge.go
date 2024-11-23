@@ -240,6 +240,8 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	}
 
 	switch mapping {
+	case unrecognisedMapper:
+		return fmt.Errorf("cartridge: unrecognised mapper")
 	case "2K":
 		cart.mapper, err = newAtari2k(cart.env, cartload)
 	case "4K":
@@ -303,6 +305,11 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newEF(cart.env, cartload)
 	case "EFSC":
 		cart.mapper, err = newEF(cart.env, cartload)
+		forceSuperchip = true
+	case "BF":
+		cart.mapper, err = newBF(cart.env, cartload)
+	case "BFSC":
+		cart.mapper, err = newBF(cart.env, cartload)
 		forceSuperchip = true
 	case "SB":
 		cart.mapper, err = newSuperbank(cart.env, cartload)
