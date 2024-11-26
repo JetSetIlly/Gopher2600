@@ -736,14 +736,19 @@ func (scr *screen) copyPixelsPlaymode() {
 
 			// undo frame advancement by restoring an older index
 			//
-			// by choosing the frame previous to the frame shown on the last
-			// render, we are smoothing out graphical glitches caused by flicker
-			// kernels
+			// for television that have a similar refresh rates to the monitor
+			// we choose the the frame previous to the frame shown on the last
+			// render. this helps to smooth out graphical glitches caused by
+			// flicker kernels
 			//
-			// this may mean that there will be visible jump of graphical
+			// it also may mean that there will be visible jump of graphical
 			// elements in some situations. but hopefully they are not
 			// noticeable
-			scr.crit.renderIdx = scr.crit.prevRenderIdx[1]
+			if scr.crit.monitorSyncSimilar {
+				scr.crit.renderIdx = scr.crit.prevRenderIdx[1]
+			} else {
+				scr.crit.renderIdx = scr.crit.prevRenderIdx[0]
+			}
 
 			// set nudge flag
 			nudge = canNudge && scr.crit.monitorSyncSimilar
