@@ -69,28 +69,35 @@ func SearchReqSpec(s string) string {
 	// http://www.atarimania.com/rom_collection_archive_atari_2600_roms.html
 	s = filepath.Base(s)
 
-	// look for spec substring in the supplied string
+	// trim file extension to avoid any remote possibility of a false match
+	s = strings.TrimSuffix(s, filepath.Ext(s))
+
 	s = strings.ToUpper(s)
 	for _, spec := range ReqSpecList {
-		if strings.Contains(s, spec) {
+		// searching from the end because spec directives usually appear at the
+		// end of a string
+		n := strings.LastIndex(s, spec)
+
+		// ignore any matches at the beginning of the filename to reduce
+		// possibility of false matches
+		//
+		// for example, a ROM named "paletteTest.bin" will falsely say it is a
+		// PAL ROM (because palette starts with pal)
+		//
+		// of course, "myPaletteTest.bin" will match and likely be a false match
+		// but this will do for now. an improvement to this scheme would require
+		// thinking about the surrounding characters; or more simply, to insist
+		// on strict case matching
+		if n > 0 {
 			switch spec {
 			case "AUTO":
 				// ignore appearance of auto in the string
 			case "PAL-60":
 				id = "PAL60"
-			case "PAL60":
-				id = "PAL60"
-			case "PAL-M":
-				id = "PAL-M"
-			case "PALM":
-				id = "PAL-M"
-			case "NTSC":
-				id = "NTSC"
-			case "PAL":
-				id = "PAL"
-			case "SECAM":
-				id = "SECAM"
+			default:
+				id = spec
 			}
+			break // end for loop on the first match
 		}
 	}
 
