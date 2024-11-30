@@ -489,17 +489,33 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 			tv.state.vsync.startClock = tv.state.clock
 			tv.state.vsync.startScanline = tv.state.scanline
 		} else {
+			// VSYNC has been disabled this cycle
 			if tv.state.vsync.activeScanlineCount >= tv.env.Prefs.TV.VSYNCscanlines.Get().(int) {
+				// at least the required number of VSYNC scanlines have been seen
+
 				// adjust flyback scanline until it matches the vsync scanline.
 				// also adjust the actual scanline if it's not zero
-				if tv.state.vsync.scanline < tv.state.vsync.flybackScanline {
+				if tv.state.vsync.scanline != tv.state.vsync.flybackScanline {
 					// get recovery value from user prefence and make sure value is sensible
 					recovery := max(preferences.VSYNCrecoveryMin,
 						min(preferences.VSYNCrecoveryMax,
 							tv.env.Prefs.TV.VSYNCrecovery.Get().(int)))
 
+					// adjust flyback scanline either forward or backward
+					// towards the current VSYNC scanline
 					adj := ((tv.state.vsync.flybackScanline - tv.state.vsync.scanline) * recovery) / 100
+					if tv.state.vsync.scanline > tv.state.vsync.flybackScanline {
+						adj *= -1
+					}
 					tv.state.vsync.flybackScanline = tv.state.vsync.scanline + adj
+
+					// cap limit of flyback scanline. an alternative method for
+					// this with a different visual effect is to modulo divide
+					// flybackScanline by specification.AbsoluteMaxScanlines
+					tv.state.vsync.flybackScanline = min(tv.state.vsync.flybackScanline, specification.AbsoluteMaxScanlines)
+					tv.state.vsync.flybackScanline = max(tv.state.vsync.flybackScanline, 0)
+
+					// adjust scanline until it is zero
 					tv.state.scanline = (tv.state.scanline * recovery) / 100
 
 					// if recovery is very close to zero, within the number of
@@ -511,46 +527,24 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 					// one frame might report have one frame with one scanline
 					// in the VSYNC and the next frame having two scanlines of
 					// VSYNC
+					//
+					// 1/12/24 - after re-reading this doesn't seem like a good
+					// way of solving this problem, but I can't think of any
+					// alternative
 					if tv.state.scanline <= min(tv.state.vsync.activeScanlineCount, 5) {
 						tv.state.scanline = 0
 					}
-				} else if tv.state.vsync.scanline > tv.state.vsync.flybackScanline {
-					// note that if the programmed number of scanlines between VSYNCs is
-					// greater than the specification.AbsoluteMaxScanlines then this condition
-					// will always be true and the screen will roll forever
+				} else if tv.state.scanline > 0 {
+					recovery := max(preferences.VSYNCrecoveryMin,
+						min(preferences.VSYNCrecoveryMax,
+							tv.env.Prefs.TV.VSYNCrecovery.Get().(int)))
 
-					// good test cases for this branch:
-					//
-					//  Snow White and the Seven Dwarfs
-					//		- movement in tunnel section
-					//  Lord of the Rings
-					//		- switching between map screen and play screen
-
-					if tv.state.vsync.history == 0x0 {
-						// almost any ROM will trigger this branch on startup
-						// because they all run for longer than a frame in order
-						// to prepare the game
-						tv.state.vsync.flybackScanline = tv.state.vsync.scanline % specification.AbsoluteMaxScanlines
-					} else if tv.env.Prefs.TV.VSYNCimmediateDesync.Get().(bool) {
-						// if the immediate desync option is on then this is the
-						// same as if the ROM has never achieved VSYNC in the
-						// recent past
-						tv.state.vsync.flybackScanline = tv.state.vsync.scanline % specification.AbsoluteMaxScanlines
-					} else {
-						// move flyback scanline towards the new VSYNC scanline in all other instances
-						tv.state.vsync.desync(tv.state.vsync.scanline % specification.AbsoluteMaxScanlines)
-					}
-				} else if tv.state.vsync.scanline == tv.state.vsync.flybackScanline {
 					// continue to adjust scanline until it is zero
-					if tv.state.scanline > 0 {
-						// see above for commentary on this code
-						recovery := max(preferences.VSYNCrecoveryMin,
-							min(preferences.VSYNCrecoveryMax,
-								tv.env.Prefs.TV.VSYNCrecovery.Get().(int)))
-						tv.state.scanline = (tv.state.scanline * recovery) / 100
-						if tv.state.scanline <= min(tv.state.vsync.activeScanlineCount, 5) {
-							tv.state.scanline = 0
-						}
+					tv.state.scanline = (tv.state.scanline * recovery) / 100
+
+					// see comment above
+					if tv.state.scanline <= min(tv.state.vsync.activeScanlineCount, 5) {
+						tv.state.scanline = 0
 					}
 				}
 
@@ -822,11 +816,7 @@ func (tv *Television) newFrame() error {
 	// desynchronise if we've not seen a valid VSYNC signal immediately before
 	// this call to newFrame()
 	if !tv.state.fromVSYNC {
-		if tv.env.Prefs.TV.VSYNCimmediateDesync.Get().(bool) {
-			tv.state.vsync.flybackScanline = specification.AbsoluteMaxScanlines
-		} else {
-			tv.state.vsync.desync(specification.AbsoluteMaxScanlines)
-		}
+		tv.state.vsync.desync(specification.AbsoluteMaxScanlines)
 	}
 
 	// reset fromVSYNC latch

@@ -78,6 +78,7 @@ var defunct = []string{
 	"crt.vsync.sensitivity",
 	"crt.integerScaling",
 	"television.halt.desynchronised",
+	"television.vsync.immediatedesync",
 }
 
 // returns true if string is in list of defunct values.

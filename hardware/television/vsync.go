@@ -15,7 +15,23 @@
 
 package television
 
-import "github.com/jetsetilly/gopher2600/hardware/television/specification"
+import (
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+)
+
+// good test cases for bad VSYNC:
+//
+//  Lord of the Rings
+//	- switching between map screen and play screen
+//
+//	MsPacman
+//	- when bouncing fruit arrives and the player and ghost are at similar
+//	vertical position
+//
+//  Snow White and the Seven Dwarfs
+//	- movement in tunnel section
+//	- this tests differing VSYNC profile per frame. VSYNC is not actually lost,
+//	it just changes during movement
 
 type vsync struct {
 	active bool
@@ -32,7 +48,7 @@ type vsync struct {
 	activeScanlineCount int
 
 	// the ideal scanline at which the "new frame" is triggered. this can be
-	// thought of as the number of scanline between valid VSYNC signals. as
+	// thought of as the number of scanlines between valid VSYNC signals. as
 	// such, it is only reset on reception of a valid VSYNC signal
 	//
 	// that value of this can go way beyond the number of specification.AbsoluteMaxScanlines
@@ -77,6 +93,14 @@ func (v *vsync) updateHistory() {
 }
 
 func (v *vsync) desync(base int) {
-	// move flybackScanline value towards base value
-	v.flybackScanline += (base - v.flybackScanline) * 5 / 100
+	// move flybackScanline value towards base value. taking into account which
+	// value is higher
+	if base >= v.flybackScanline {
+		v.flybackScanline += (base - v.flybackScanline) * 5 / 100
+	} else {
+		v.flybackScanline += (v.flybackScanline - base) * 5 / 100
+	}
+
+	// do not go past the limits of the TV
+	v.flybackScanline = min(v.flybackScanline, specification.AbsoluteMaxScanlines)
 }
