@@ -191,9 +191,6 @@ for it to be a valid VSYNC signal`)
 receiving a valid VSYNC signal`)
 
 		imgui.Spacing()
-		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.VSYNCimmediateDesync, "Immediate Desynchronisation")
-		win.img.imguiTooltipSimple(`Desynchronise the screen immediately
-when a VSYNC signal is late`)
 
 		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.VSYNCsyncedOnStart, "Synchronised on start")
 		win.img.imguiTooltipSimple(`The television is synchronised on start`)
