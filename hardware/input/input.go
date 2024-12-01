@@ -81,24 +81,26 @@ func (inp *Input) PeripheralID(id plugging.PortID) plugging.PeripheralID {
 // If a playback is currently active the input will not be handled and false
 // will be returned.
 func (inp *Input) HandleInputEvent(ev ports.InputEvent) (bool, error) {
-	for _, r := range inp.recorder {
-		err := r.RecordEvent(ports.TimedInputEvent{Time: inp.tv.GetCoords(), InputEvent: ev})
-		if err != nil {
-			return false, err
-		}
-	}
-
 	handled, err := inp.ports.HandleInputEvent(ev)
 	if err != nil {
 		return handled, err
 	}
 
-	// forward to passenger if one is defined
-	if handled && inp.toPassenger != nil {
-		select {
-		case inp.toPassenger <- ports.TimedInputEvent{Time: inp.tv.GetCoords(), InputEvent: ev}:
-		default:
-			return handled, fmt.Errorf("input: passenger event queue is full: input dropped")
+	if handled {
+		for _, r := range inp.recorder {
+			err := r.RecordEvent(ports.TimedInputEvent{Time: inp.tv.GetCoords(), InputEvent: ev})
+			if err != nil {
+				return false, err
+			}
+		}
+
+		// forward to passenger if one is defined
+		if handled && inp.toPassenger != nil {
+			select {
+			case inp.toPassenger <- ports.TimedInputEvent{Time: inp.tv.GetCoords(), InputEvent: ev}:
+			default:
+				return handled, fmt.Errorf("input: passenger event queue is full: input dropped")
+			}
 		}
 	}
 
