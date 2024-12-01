@@ -170,9 +170,17 @@ type InputEvent struct {
 	D    EventData
 }
 
+func (ev InputEvent) String() string {
+	return fmt.Sprintf("%s=%v on %s", ev.Ev, ev.D, ev.Port)
+}
+
 // TimedInputEvent embeds the InputEvent type and adds a Time field (time
 // measured by TelevisionCoords).
 type TimedInputEvent struct {
 	Time coords.TelevisionCoords
 	InputEvent
+}
+
+func (ev TimedInputEvent) String() string {
+	return fmt.Sprintf("%s @ %s", ev.InputEvent, ev.Time)
 }

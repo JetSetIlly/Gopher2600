@@ -105,13 +105,6 @@ func (s *State) String() string {
 	return fmt.Sprintf("f%03d", s.TV.GetCoords().Frame)
 }
 
-// an overhead of two is required:
-// (1) to accommodate the next index required for effective appending
-// (2) we can't generate a screen for the first entry in the history, unless
-// it's a reset entry, so we do not allow the rewind system to move to that
-// frame.
-const overhead = 2
-
 // Rewind contains a history of machine states for the emulation.
 type Rewind struct {
 	emulation Emulation
@@ -139,6 +132,29 @@ type Rewind struct {
 	// the point at which new entries will be added
 	splice int
 
+	// user input is recorded separately to the machine state. userinput is
+	// re-inserted into the emulation via the playback mechanism during catchup
+	//
+	// the oldest userinput entry is no older than the oldest state in the
+	// entries field
+	//
+	// a great test case for userinput is Pitfall:
+	//
+	// 		WATCH WRITE $e1
+	// 		STICK LEFT RIGHT
+	// 		CPU
+	// 		PC=f913 A=00 X=02 Y=00 SP=ff SR=sv-BdIzc
+	// 		STEP BACK
+	// 		CPU
+	// 		PC=f911 A=00 X=02 Y=00 SP=ff SR=sv-BdIZc
+	//
+	// without userinput insertion STEP BACK will leave the PC register
+	// somewhere else. this is because the memory write to $e1 happens after the
+	// last frame snapshot and the write happens only in response to the STICK
+	// input. without userinput insertion this memorywrite is lost and so the
+	// desired state as a result of STEP BACK can not be recreated
+	userinput userinput
+
 	// pointer to the comparison point
 	comparison       *State
 	comparisonLocked bool
@@ -151,6 +167,9 @@ type Rewind struct {
 
 	// a reset boundary has been detected
 	resetBoundaryNextFrame bool
+
+	// the current state of the emulation
+	emulationState govern.State
 }
 
 // NewRewind is the preferred method of initialisation for the Rewind type.
@@ -175,7 +194,7 @@ func NewRewind(emulation Emulation, runner Runner) (*Rewind, error) {
 }
 
 // AddTimelineCounter to the rewind system. Augments Timeline information that
-// would otherwisde be awkward to gather.
+// would otherwise be awkward to gather.
 //
 // Only one timeline counter can be used at any one time (ie. subsequent calls
 // to AddTimelineCounter() will override previous calls.)
@@ -185,6 +204,13 @@ func (r *Rewind) AddTimelineCounter(ctr TimelineCounter) {
 
 // initialise space for entries and reset rewind system.
 func (r *Rewind) allocate() {
+	// an overhead of two is required when allocating space for the entries array:
+	// (1) to accommodate the next index required for effective appending
+	// (2) we can't generate a screen for the first entry in the history, unless
+	// it's a reset entry, so we do not allow the rewind system to move to that
+	// frame.
+	const overhead = 2
+
 	r.entries = make([]*State, r.Prefs.MaxEntries.Get().(int)+overhead)
 	r.reset(levelReset)
 }
@@ -207,8 +233,6 @@ func (r *Rewind) reset(level snapshotLevel) {
 	for i := range r.entries {
 		r.entries[i] = nil
 	}
-
-	r.comparison = nil
 
 	r.newFrame = false
 	r.resetBoundaryNextFrame = false
@@ -233,9 +257,11 @@ func (r *Rewind) reset(level snapshotLevel) {
 	// and as the second entry
 	r.append(r.snapshot(levelFrame))
 
+	// reset userinput
+	r.userinput.reset()
+
 	// first comparison is to the snapshot of the reset machine
 	r.comparison = r.entries[r.start]
-
 }
 
 // String outputs the entry information for the entire rewind history. The
@@ -268,53 +294,6 @@ func (r *Rewind) String() string {
 	return s.String()
 }
 
-// Peephole outputs a short summary of the state of the rewind system centered
-// on the current splice value
-func (r *Rewind) Peephole() string {
-	const peephole = 5
-
-	var split bool
-	peepi := r.splice - peephole
-	if peepi < 0 {
-		peepi += len(r.entries)
-		split = true
-	}
-	peepj := r.splice + peephole
-	if peepj >= len(r.entries) {
-		peepj -= len(r.entries)
-		if split {
-			panic("length of entries in rewind is too short")
-		}
-		split = true
-	}
-
-	// build output string
-	b := strings.Builder{}
-
-	f := func(i, j int) {
-		for k, e := range r.entries[i:j] {
-			if k+i == r.splice {
-				b.WriteString(fmt.Sprintf("(%s) ", e))
-			} else {
-				b.WriteString(fmt.Sprintf("%s ", e))
-			}
-		}
-	}
-
-	b.WriteString(fmt.Sprintf("[%03d] ", peepi))
-	if split {
-		f(peepi, len(r.entries))
-		b.WriteString(fmt.Sprintf("| "))
-		f(0, peepj)
-	} else {
-		b.WriteString("  ")
-		f(peepi, peepj)
-	}
-	b.WriteString(fmt.Sprintf("[%03d]\n", peepj))
-
-	return b.String()
-}
-
 // the index of the last entry in the circular rewind history to be written to.
 // the end index points to the *next* entry to be written to.
 func (r *Rewind) lastEntryIdx() int {
@@ -337,6 +316,16 @@ func snapshot(vcs *hardware.VCS, level snapshotLevel) *State {
 // snapshot the 'current' VCS instance.
 func (r *Rewind) snapshot(level snapshotLevel) *State {
 	return snapshot(r.vcs, level)
+}
+
+// SetEmulationState is called by the emulation whenever state changes
+func (r *Rewind) SetEmulationState(state govern.State) {
+	if r.emulationState != state && r.emulationState == govern.Running {
+		// make sure user input is not being inserted by the rewind system
+		r.vcs.Input.AttachPlayback(nil)
+		r.userinput.stopPlayback()
+	}
+	r.emulationState = state
 }
 
 // RecordState should be called after every CPU instruction. A new state will
@@ -366,15 +355,17 @@ func (r *Rewind) RecordState() {
 		return
 	}
 
-	// add an "execution" rewind state if the frame is not coincident with the
-	// rewind frequency
 	fn := r.vcs.TV.GetCoords().Frame
-	if fn%r.Prefs.Freq.Get().(int) != 0 {
+	if fn%r.Prefs.Freq.Get().(int) == 0 {
+		// create frame snapshot if frame number is coincident with frequency preference
+		r.append(r.snapshot(levelFrame))
+	} else {
+		// a temporary execution snapshot for interim frame numbers
 		r.append(r.snapshot(levelExecution))
-		return
 	}
 
-	r.append(r.snapshot(levelFrame))
+	// crop old entries from userinput list
+	r.userinput.crop(r.entries[r.splice].TV.GetCoords())
 }
 
 // RecordExecutionCoords records the coordinates of the current execution state.
@@ -449,6 +440,14 @@ func (r *Rewind) runFromStateToCoords(fromState *State, toCoords coords.Televisi
 		}
 	}
 
+	// start playback and if successful attach rewind to VCS input as a playback source
+	if r.userinput.startPlayback(fromState.TV.GetCoords()) {
+		err := r.vcs.Input.AttachPlayback(r)
+		if err != nil {
+			return fmt.Errorf("rewind: %w", err)
+		}
+	}
+
 	err := r.runner.CatchUpLoop(toCoords)
 	if err != nil {
 		return fmt.Errorf("rewind: %w", err)
@@ -506,9 +505,11 @@ type findResults struct {
 func (r *Rewind) findFrameIndex(frame int) findResults {
 	// the number of frames to rerun. in the case of the debugger we like rerun
 	// an additional frame so that onion-skinning is correct
-	frame--
-	if r.emulation.Mode() == govern.ModeDebugger && frame > 0 {
+	if frame > 0 {
 		frame--
+		if r.emulation.Mode() == govern.ModeDebugger && frame > 0 {
+			frame--
+		}
 	}
 	return r.findFrameIndexExact(frame)
 }
@@ -621,28 +622,6 @@ func (r *Rewind) GotoFrame(frame int) error {
 	return r.GotoCoords(coords.TelevisionCoords{Frame: frame, Clock: -specification.ClksHBlank})
 }
 
-// UpdateComparison points comparison to the current state
-func (r *Rewind) UpdateComparison() {
-	if r.comparisonLocked {
-		return
-	}
-	r.comparison = r.GetCurrentState()
-}
-
-// SetComparison points comparison to the supplied state
-func (r *Rewind) SetComparison(frame int) {
-	res := r.findFrameIndexExact(frame)
-	s := r.entries[res.nearestIdx]
-	if s != nil {
-		r.comparison = s.snapshot()
-	}
-}
-
-// LockComparison stops the comparison point from being updated
-func (r *Rewind) LockComparison(locked bool) {
-	r.comparisonLocked = locked
-}
-
 // NewFrame is in an implementation of television.FrameTrigger.
 func (r *Rewind) NewFrame(frameInfo television.FrameInfo) error {
 	r.addTimelineEntry(frameInfo)
@@ -666,16 +645,49 @@ func (r *Rewind) GetCurrentState() *State {
 	return r.snapshot(levelTemporary)
 }
 
-// ComparisonState is returned by GetComparisonState()
-type ComparisonState struct {
-	State  *State
-	Locked bool
-}
+// Peephole outputs a short summary of the state of the rewind system centered
+// on the current splice value
+func (r *Rewind) Peephole() string {
+	const peephole = 5
 
-// GetComparisonState gets a reference to current comparison point
-func (r *Rewind) GetComparisonState() ComparisonState {
-	return ComparisonState{
-		State:  r.comparison.snapshot(),
-		Locked: r.comparisonLocked,
+	var split bool
+	peepi := r.splice - peephole
+	if peepi < 0 {
+		peepi += len(r.entries)
+		split = true
 	}
+	peepj := r.splice + peephole
+	if peepj >= len(r.entries) {
+		peepj -= len(r.entries)
+		if split {
+			panic("length of entries in rewind is too short")
+		}
+		split = true
+	}
+
+	// build output string
+	b := strings.Builder{}
+
+	f := func(i, j int) {
+		for k, e := range r.entries[i:j] {
+			if k+i == r.splice {
+				b.WriteString(fmt.Sprintf("(%s) ", e))
+			} else {
+				b.WriteString(fmt.Sprintf("%s ", e))
+			}
+		}
+	}
+
+	b.WriteString(fmt.Sprintf("[%03d] ", peepi))
+	if split {
+		f(peepi, len(r.entries))
+		b.WriteString(fmt.Sprintf("| "))
+		f(0, peepj)
+	} else {
+		b.WriteString("  ")
+		f(peepi, peepj)
+	}
+	b.WriteString(fmt.Sprintf("[%03d]\n", peepj))
+
+	return b.String()
 }

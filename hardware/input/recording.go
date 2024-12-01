@@ -71,7 +71,7 @@ func (inp *Input) handlePlaybackEvents() error {
 		return nil
 	}
 
-	// loop with GetPlayback() until we encounter a NoPortID or NoEvent
+	// loop with GetPlayback() until we encounter an PortUnplugged or NoEvent
 	// condition. there might be more than one entry for a particular
 	// frame/scanline/horizpas state so we need to make sure we've processed
 	// them all.
@@ -88,9 +88,12 @@ func (inp *Input) handlePlaybackEvents() error {
 
 		morePlayback = ev.Port != plugging.PortUnplugged && ev.Ev != ports.NoEvent
 		if morePlayback {
-			_, err := inp.ports.HandleInputEvent(ev.InputEvent)
+			handled, err := inp.ports.HandleInputEvent(ev.InputEvent)
 			if err != nil {
 				return err
+			}
+			if !handled {
+				continue
 			}
 
 			// forward to passenger if necessary

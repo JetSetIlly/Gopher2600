@@ -56,11 +56,11 @@ func (c TelevisionCoords) String() string {
 //
 // If the Frame field is undefined for either argument then the Frame field is
 // ignored for the test.
-func Equal(A, B TelevisionCoords) bool {
-	if A.Frame == FrameIsUndefined || B.Frame == FrameIsUndefined {
-		return A.Scanline == B.Scanline && A.Clock == B.Clock
+func Equal(a, b TelevisionCoords) bool {
+	if a.Frame == FrameIsUndefined || b.Frame == FrameIsUndefined {
+		return a.Scanline == b.Scanline && a.Clock == b.Clock
 	}
-	return A.Frame == B.Frame && A.Scanline == B.Scanline && A.Clock == B.Clock
+	return a.Frame == b.Frame && a.Scanline == b.Scanline && a.Clock == b.Clock
 }
 
 // GreaterThanOrEqual compares two instances of TelevisionCoords and return
@@ -68,12 +68,12 @@ func Equal(A, B TelevisionCoords) bool {
 //
 // If the Frame field is undefined for either argument then the Frame field is
 // ignored for the test.
-func GreaterThanOrEqual(A, B TelevisionCoords) bool {
-	if A.Frame == FrameIsUndefined || B.Frame == FrameIsUndefined {
-		return A.Scanline > B.Scanline || (A.Scanline == B.Scanline && A.Clock >= B.Clock)
+func GreaterThanOrEqual(a, b TelevisionCoords) bool {
+	if a.Frame == FrameIsUndefined || b.Frame == FrameIsUndefined {
+		return a.Scanline > b.Scanline || (a.Scanline == b.Scanline && a.Clock >= b.Clock)
 	}
 
-	return A.Frame > B.Frame || (A.Frame == B.Frame && A.Scanline > B.Scanline) || (A.Frame == B.Frame && A.Scanline == B.Scanline && A.Clock >= B.Clock)
+	return a.Frame > b.Frame || (a.Frame == b.Frame && a.Scanline > b.Scanline) || (a.Frame == b.Frame && a.Scanline == b.Scanline && a.Clock >= b.Clock)
 }
 
 // GreaterThan compares two instances of TelevisionCoords and return true if A
@@ -81,11 +81,11 @@ func GreaterThanOrEqual(A, B TelevisionCoords) bool {
 //
 // If the Frame field is undefined for either argument then the Frame field is
 // ignored for the test.
-func GreaterThan(A, B TelevisionCoords) bool {
-	if A.Frame == FrameIsUndefined || B.Frame == FrameIsUndefined {
-		return A.Scanline > B.Scanline || (A.Scanline == B.Scanline && A.Clock > B.Clock)
+func GreaterThan(a, b TelevisionCoords) bool {
+	if a.Frame == FrameIsUndefined || b.Frame == FrameIsUndefined {
+		return a.Scanline > b.Scanline || (a.Scanline == b.Scanline && a.Clock > b.Clock)
 	}
-	return A.Frame > B.Frame || (A.Frame == B.Frame && A.Scanline > B.Scanline) || (A.Frame == B.Frame && A.Scanline == B.Scanline && A.Clock > B.Clock)
+	return a.Frame > b.Frame || (a.Frame == b.Frame && a.Scanline > b.Scanline) || (a.Frame == b.Frame && a.Scanline == b.Scanline && a.Clock > b.Clock)
 }
 
 // Diff returns the difference between the B and A instances. The
@@ -95,11 +95,11 @@ func GreaterThan(A, B TelevisionCoords) bool {
 //
 // If the Frame field is undefined for either TelevisionCoords argument then the
 // Frame field in the result of the function is also undefined.
-func Diff(A, B TelevisionCoords, scanlinesPerFrame int) TelevisionCoords {
+func Diff(a, b TelevisionCoords, scanlinesPerFrame int) TelevisionCoords {
 	D := TelevisionCoords{
-		Frame:    A.Frame - B.Frame,
-		Scanline: A.Scanline - B.Scanline,
-		Clock:    A.Clock - B.Clock,
+		Frame:    a.Frame - b.Frame,
+		Scanline: a.Scanline - b.Scanline,
+		Clock:    a.Clock - b.Clock,
 	}
 
 	if D.Clock < specification.ClksHBlank {
@@ -120,7 +120,7 @@ func Diff(A, B TelevisionCoords, scanlinesPerFrame int) TelevisionCoords {
 
 	// if the Frame field in either A or B is undefined then we can set the diff
 	// Frame field as undefined alse
-	if A.Frame == FrameIsUndefined || B.Frame == FrameIsUndefined {
+	if a.Frame == FrameIsUndefined || b.Frame == FrameIsUndefined {
 		D.Frame = FrameIsUndefined
 	}
 
@@ -131,11 +131,22 @@ func Diff(A, B TelevisionCoords, scanlinesPerFrame int) TelevisionCoords {
 //
 // If the Frame field is undefined for the TelevisionCoords then the Frame field
 // in the result of the function is also undefined.
-func Sum(A TelevisionCoords, scanlinesPerFrame int) int {
-	if A.Frame == FrameIsUndefined {
-		return (A.Scanline * specification.ClksScanline) + A.Clock
+func Sum(a TelevisionCoords, scanlinesPerFrame int) int {
+	if a.Frame == FrameIsUndefined {
+		return (a.Scanline * specification.ClksScanline) + a.Clock
 	}
 
 	numPerFrame := scanlinesPerFrame * specification.ClksScanline
-	return (A.Frame * numPerFrame) + (A.Scanline * specification.ClksScanline) + A.Clock
+	return (a.Frame * numPerFrame) + (a.Scanline * specification.ClksScanline) + a.Clock
+}
+
+// Cmp returns 0 if A and B are equal, 1 if A > B and -1 if A < B
+func Cmp(a, b TelevisionCoords) int {
+	if Equal(a, b) {
+		return 0
+	}
+	if GreaterThan(a, b) {
+		return 1
+	}
+	return -1
 }

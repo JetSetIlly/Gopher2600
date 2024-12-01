@@ -460,6 +460,9 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 		return nil, fmt.Errorf("debugger: %w", err)
 	}
 
+	// attach rewind system as an event recorder
+	dbg.vcs.Input.AddRecorder(dbg.Rewind)
+
 	// add reflection system to the GUI
 	dbg.ref = reflection.NewReflector(dbg.vcs)
 	if r, ok := dbg.gui.(reflection.Broker); ok {
@@ -576,6 +579,7 @@ func (dbg *Debugger) setState(state govern.State, subState govern.SubState) {
 		dbg.ref.SetEmulationState(state)
 	}
 	dbg.CoProcDev.SetEmulationState(state)
+	dbg.Rewind.SetEmulationState(state)
 
 	dbg.state.Store(state)
 	dbg.subState.Store(subState)
