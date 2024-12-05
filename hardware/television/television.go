@@ -496,55 +496,66 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 				// adjust flyback scanline until it matches the vsync scanline.
 				// also adjust the actual scanline if it's not zero
 				if tv.state.vsync.scanline != tv.state.vsync.flybackScanline {
-					// get recovery value from user prefence and make sure value is sensible
-					recovery := max(preferences.VSYNCrecoveryMin,
-						min(preferences.VSYNCrecoveryMax,
-							tv.env.Prefs.TV.VSYNCrecovery.Get().(int)))
+					// tolerate a brief deviation from established flyback scanline before destabilising the frame.
+					// it might also be a good idea to only allow a small deviation. eg just one or two scanlines.
+					// but I don't have any examples yet where this is desirable
+					if tv.state.vsync.unstableScanlineOnVSYNC < toleranceUnstableScanlineOnVSYNC {
+						tv.state.vsync.unstableScanlineOnVSYNC++
+					} else {
+						// get recovery value from user prefence and make sure value is sensible
+						recovery := max(preferences.VSYNCrecoveryMin,
+							min(preferences.VSYNCrecoveryMax,
+								tv.env.Prefs.TV.VSYNCrecovery.Get().(int)))
 
-					// adjust flyback scanline either forward or backward
-					// towards the current VSYNC scanline
-					adj := ((tv.state.vsync.flybackScanline - tv.state.vsync.scanline) * recovery) / 100
-					if tv.state.vsync.scanline > tv.state.vsync.flybackScanline {
-						adj *= -1
+						// adjust flyback scanline either forward or backward
+						// towards the current VSYNC scanline
+						adj := ((tv.state.vsync.flybackScanline - tv.state.vsync.scanline) * recovery) / 100
+						if tv.state.vsync.scanline > tv.state.vsync.flybackScanline {
+							adj *= -1
+						}
+						tv.state.vsync.flybackScanline = tv.state.vsync.scanline + adj
+
+						// cap limit of flyback scanline. an alternative method for
+						// this with a different visual effect is to modulo divide
+						// flybackScanline by specification.AbsoluteMaxScanlines
+						tv.state.vsync.flybackScanline = min(tv.state.vsync.flybackScanline, specification.AbsoluteMaxScanlines)
+						tv.state.vsync.flybackScanline = max(tv.state.vsync.flybackScanline, 0)
+
+						// adjust scanline until it is zero
+						tv.state.scanline = (tv.state.scanline * recovery) / 100
+
+						// if recovery is very close to zero, within the number of
+						// scanlines in the VSYNC, then snap scanline to zero. cap
+						// at a value of five scanlines in case of ROM going bezerk
+						//
+						// we do this because otherwise the FrameInfo type can be
+						// updated with misleading VSYNC information. for example,
+						// one frame might report have one frame with one scanline
+						// in the VSYNC and the next frame having two scanlines of
+						// VSYNC
+						//
+						// 1/12/24 - after re-reading this doesn't seem like a good
+						// way of solving this problem, but I can't think of any
+						// alternative
+						if tv.state.scanline <= min(tv.state.vsync.activeScanlineCount, 5) {
+							tv.state.scanline = 0
+						}
 					}
-					tv.state.vsync.flybackScanline = tv.state.vsync.scanline + adj
+				} else {
+					tv.state.vsync.unstableScanlineOnVSYNC = 0
 
-					// cap limit of flyback scanline. an alternative method for
-					// this with a different visual effect is to modulo divide
-					// flybackScanline by specification.AbsoluteMaxScanlines
-					tv.state.vsync.flybackScanline = min(tv.state.vsync.flybackScanline, specification.AbsoluteMaxScanlines)
-					tv.state.vsync.flybackScanline = max(tv.state.vsync.flybackScanline, 0)
+					if tv.state.scanline > 0 {
+						recovery := max(preferences.VSYNCrecoveryMin,
+							min(preferences.VSYNCrecoveryMax,
+								tv.env.Prefs.TV.VSYNCrecovery.Get().(int)))
 
-					// adjust scanline until it is zero
-					tv.state.scanline = (tv.state.scanline * recovery) / 100
+						// continue to adjust scanline until it is zero
+						tv.state.scanline = (tv.state.scanline * recovery) / 100
 
-					// if recovery is very close to zero, within the number of
-					// scanlines in the VSYNC, then snap scanline to zero. cap
-					// at a value of five scanlines in case of ROM going bezerk
-					//
-					// we do this because otherwise the FrameInfo type can be
-					// updated with misleading VSYNC information. for example,
-					// one frame might report have one frame with one scanline
-					// in the VSYNC and the next frame having two scanlines of
-					// VSYNC
-					//
-					// 1/12/24 - after re-reading this doesn't seem like a good
-					// way of solving this problem, but I can't think of any
-					// alternative
-					if tv.state.scanline <= min(tv.state.vsync.activeScanlineCount, 5) {
-						tv.state.scanline = 0
-					}
-				} else if tv.state.scanline > 0 {
-					recovery := max(preferences.VSYNCrecoveryMin,
-						min(preferences.VSYNCrecoveryMax,
-							tv.env.Prefs.TV.VSYNCrecovery.Get().(int)))
-
-					// continue to adjust scanline until it is zero
-					tv.state.scanline = (tv.state.scanline * recovery) / 100
-
-					// see comment above
-					if tv.state.scanline <= min(tv.state.vsync.activeScanlineCount, 5) {
-						tv.state.scanline = 0
+						// see comment above
+						if tv.state.scanline <= min(tv.state.vsync.activeScanlineCount, 5) {
+							tv.state.scanline = 0
+						}
 					}
 				}
 
