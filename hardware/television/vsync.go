@@ -32,6 +32,12 @@ import (
 //	- movement in tunnel section
 //	- this tests differing VSYNC profile per frame. VSYNC is not actually lost,
 //	it just changes during movement
+//
+//	RsTennis
+//	- always has a valid VSYNC signal but the extent of the frame changes
+//	briefly (when the logo bounces on the title screen)
+//	- the unstableScanlineOnVSYNC field keeps track of how many frames this
+//	happens consecutively and allows a brief deviation
 
 type vsync struct {
 	active bool
@@ -59,6 +65,10 @@ type vsync struct {
 	// synchronised. see isSynced() function
 	scanline int
 
+	// the number of consecutive valid VSYNC signals where the scanline does not
+	// equal the flybackScanline. capped at toleranceUnstableScanlineOnVSYNC
+	unstableScanlineOnVSYNC int
+
 	// the scanline at which a "new frame" is actually triggered. this will be
 	// different than the scanlines field during the synchronisation process causing
 	// the screen to visually roll
@@ -70,6 +80,10 @@ type vsync struct {
 	// this is likely more than we need but it's simple and it works
 	history uint8
 }
+
+// maximum value for the unstableScanlineOnVSYNC field. this should not be too
+// large. a value of one is ideal
+const toleranceUnstableScanlineOnVSYNC = 1
 
 func (v *vsync) reset() {
 	v.active = false
