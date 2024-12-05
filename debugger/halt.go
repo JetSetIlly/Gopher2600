@@ -17,7 +17,6 @@ package debugger
 
 import (
 	"github.com/jetsetilly/gopher2600/coprocessor"
-	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 )
@@ -176,9 +175,7 @@ func (h *haltCoordination) allowPlaymode() bool {
 
 // HaltFromTelevision implements television.Debugger interface
 func (h *haltCoordination) HaltFromTelevision(halt television.HaltCondition) {
-	if h.dbg.Mode() == govern.ModePlay {
-		h.televisionHalt = halt
-	}
+	h.televisionHalt = halt
 }
 
 // GetHaltReason returns the haltReason field from the haltCoordination type
