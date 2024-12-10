@@ -38,6 +38,8 @@ type renderer interface {
 	screenshot(mode screenshotMode, finish chan screenshotResult)
 	addTexture(typ textureType, linear bool, clamp bool) texture
 	addFontTexture(fnt imgui.FontAtlas) texture
+	pushTVColor()
+	popTVColor()
 }
 
 type textureType int
@@ -49,7 +51,7 @@ const (
 	textureBevel
 	textureDbgScr
 	textureDbgScrOverlay
-	textureDbgScrMagnify
+	textureTVColor
 )
 
 type texture interface {

@@ -23,6 +23,7 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/gui/display"
 	"github.com/jetsetilly/gopher2600/gui/display/shaders"
 )
 
@@ -204,15 +205,23 @@ func (sh *dustShader) setAttributes(env shaderEnvironment) {
 
 type tvColorShader struct {
 	shader
+
+	fromGUI    int32
 	brightness int32
 	contrast   int32
 	saturation int32
 	hue        int32
+
+	prefs      *display.Colour
+	setFromGUI bool
 }
 
-func newTVColorShader() shaderProgram {
-	sh := &tvColorShader{}
+func newTVColorShader(prefs *display.Colour) shaderProgram {
+	sh := &tvColorShader{
+		prefs: prefs,
+	}
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.TVColorShader))
+	sh.fromGUI = gl.GetUniformLocation(sh.handle, gl.Str("FromGUI"+"\x00"))
 	sh.brightness = gl.GetUniformLocation(sh.handle, gl.Str("Brightness"+"\x00"))
 	sh.contrast = gl.GetUniformLocation(sh.handle, gl.Str("Contrast"+"\x00"))
 	sh.saturation = gl.GetUniformLocation(sh.handle, gl.Str("Saturation"+"\x00"))
@@ -220,19 +229,17 @@ func newTVColorShader() shaderProgram {
 	return sh
 }
 
-type tvColorShaderPrefs struct {
-	Contrast   float64
-	Brightness float64
-	Saturation float64
-	Hue        float64
-}
-
-func (sh *tvColorShader) setAttributesArgs(env shaderEnvironment, prefs tvColorShaderPrefs) {
+func (sh *tvColorShader) setAttributes(env shaderEnvironment) {
 	sh.shader.setAttributes(env)
-	gl.Uniform1f(sh.contrast, float32(prefs.Contrast))
-	gl.Uniform1f(sh.brightness, float32(prefs.Brightness))
-	gl.Uniform1f(sh.saturation, float32(prefs.Saturation))
-	gl.Uniform1f(sh.hue, float32(prefs.Hue))
+	brightness := sh.prefs.Brightness.Get().(float64)
+	contrast := sh.prefs.Contrast.Get().(float64)
+	saturation := sh.prefs.Saturation.Get().(float64)
+	hue := sh.prefs.Hue.Get().(float64)
+	gl.Uniform1i(sh.fromGUI, boolToInt32(sh.setFromGUI))
+	gl.Uniform1f(sh.contrast, float32(contrast))
+	gl.Uniform1f(sh.brightness, float32(brightness))
+	gl.Uniform1f(sh.saturation, float32(saturation))
+	gl.Uniform1f(sh.hue, float32(hue))
 }
 
 type blackCorrectionShader struct {

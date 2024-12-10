@@ -275,29 +275,3 @@ func (sh *dbgScrOverlayShader) setAttributes(env shaderEnvironment) {
 	gl.Uniform1f(sh.stripeSize, 3.0)
 	gl.Uniform1f(sh.stripeFade, 0.7)
 }
-
-type dbgScrMagnifyShader struct {
-	img           *SdlImgui
-	tvColorShader shaderProgram
-}
-
-func newDbgScrMagnifyShader(img *SdlImgui) shaderProgram {
-	sh := &dbgScrMagnifyShader{
-		img:           img,
-		tvColorShader: newTVColorShader(),
-	}
-	return sh
-}
-
-func (sh *dbgScrMagnifyShader) destroy() {
-	sh.tvColorShader.destroy()
-}
-
-func (sh *dbgScrMagnifyShader) setAttributes(env shaderEnvironment) {
-	sh.tvColorShader.(*tvColorShader).setAttributesArgs(env, tvColorShaderPrefs{
-		Brightness: sh.img.displayPrefs.Colour.Brightness.Get().(float64),
-		Contrast:   sh.img.displayPrefs.Colour.Contrast.Get().(float64),
-		Saturation: sh.img.displayPrefs.Colour.Saturation.Get().(float64),
-		Hue:        sh.img.displayPrefs.Colour.Hue.Get().(float64),
-	})
-}

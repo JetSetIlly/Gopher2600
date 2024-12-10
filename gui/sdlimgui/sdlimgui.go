@@ -173,6 +173,12 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 
+	// initialise display preferences
+	img.displayPrefs, err = display.NewPreferences()
+	if err != nil {
+		return nil, fmt.Errorf("sdlimgui: %w", err)
+	}
+
 	// start renderer after platform and preferences
 	err = img.rnd.start()
 	if err != nil {
@@ -215,12 +221,6 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 	img.dbg.VCS().TV.AddRealtimeAudioMixer(img.audio)
-
-	// initialise display preferences
-	img.displayPrefs, err = display.NewPreferences()
-	if err != nil {
-		return nil, fmt.Errorf("sdlimgui: %w", err)
-	}
 
 	// set event filter for SDL see comment for serviceWindowEvent()
 	sdl.AddEventWatchFunc(img.serviceWindowEvent, nil)

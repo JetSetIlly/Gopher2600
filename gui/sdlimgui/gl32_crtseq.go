@@ -52,8 +52,6 @@ type crtSeqPrefs struct {
 	PhosphorBloom        float64
 	Sharpness            float64
 	BlackLevel           float64
-
-	tvColor tvColorShaderPrefs
 }
 
 func newCrtSeqPrefs(prefs *display.Preferences) crtSeqPrefs {
@@ -84,13 +82,6 @@ func newCrtSeqPrefs(prefs *display.Preferences) crtSeqPrefs {
 		PhosphorBloom:        prefs.CRT.PhosphorBloom.Get().(float64),
 		Sharpness:            prefs.CRT.Sharpness.Get().(float64),
 		BlackLevel:           prefs.CRT.BlackLevel.Get().(float64),
-
-		tvColor: tvColorShaderPrefs{
-			Brightness: prefs.Colour.Brightness.Get().(float64),
-			Contrast:   prefs.Colour.Contrast.Get().(float64),
-			Saturation: prefs.Colour.Saturation.Get().(float64),
-			Hue:        prefs.Colour.Hue.Get().(float64),
-		},
 	}
 }
 
@@ -118,7 +109,7 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 		phosphor:              framebuffer.NewFlip(false),
 		sharpenShader:         newSharpenShader(),
 		phosphorShader:        newPhosphorShader(),
-		tvColorShader:         newTVColorShader(),
+		tvColorShader:         newTVColorShader(img.displayPrefs.Colour),
 		blackCorrectionShader: newBlackCorrectionShader(),
 		blurShader:            newBlurShader(),
 		ghostingShader:        newGhostingShader(),
@@ -245,7 +236,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 
 	// TV color shader is applied to pixel-perfect shader too
 	env.textureID = sh.sequence.Process(func() {
-		sh.tvColorShader.(*tvColorShader).setAttributesArgs(env, prefs.tvColor)
+		sh.tvColorShader.setAttributes(env)
 		env.draw()
 	})
 

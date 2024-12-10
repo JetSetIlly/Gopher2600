@@ -113,8 +113,8 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	win.displayTexture = img.rnd.addTexture(textureDbgScr, true, true)
 	win.overlayTexture = img.rnd.addTexture(textureDbgScrOverlay, false, false)
 	win.elementsTexture = img.rnd.addTexture(textureDbgScr, true, true)
-	win.magnifyTooltip.texture = img.rnd.addTexture(textureDbgScrMagnify, false, false)
-	win.magnifyWindow.texture = img.rnd.addTexture(textureDbgScrMagnify, false, false)
+	win.magnifyTooltip.texture = img.rnd.addTexture(textureTVColor, false, false)
+	win.magnifyWindow.texture = img.rnd.addTexture(textureTVColor, false, false)
 
 	// call setScaling() now so that render() has something to work with - even
 	// though setScaling() is called every draw if the window is open it will

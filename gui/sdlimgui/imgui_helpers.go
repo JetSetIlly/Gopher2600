@@ -455,7 +455,10 @@ func (img *SdlImgui) imguiWindowQuadrant(p imgui.Vec2) imgui.Vec2 {
 //
 // size argument should be expressed as a fraction the fraction will be applied
 // to imgui.FontSize() to obtain the radius of the swatch.
-func (img *SdlImgui) imguiSwatch(col uint8, size float32) (clicked bool) {
+func (img *SdlImgui) imguiTVColourSwatch(col uint8, size float32) (clicked bool) {
+	img.rnd.pushTVColor()
+	defer img.rnd.popTVColor()
+
 	r := imgui.FontSize() * size
 
 	// position & dimensions of swatch

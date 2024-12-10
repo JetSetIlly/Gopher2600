@@ -36,7 +36,7 @@ func (win *winTIA) drawPlayfield() {
 
 	imguiLabel("Foreground")
 	fgCol := playfield.ForegroundColor
-	if win.img.imguiSwatch(fgCol, 0.75) {
+	if win.img.imguiTVColourSwatch(fgCol, 0.75) {
 		win.popupPalette.request(&fgCol, func() {
 			win.img.dbg.PushFunction(func() {
 				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
@@ -50,7 +50,7 @@ func (win *winTIA) drawPlayfield() {
 	// background color indicator. when clicked popup palette is requested
 	imguiLabel("Background")
 	bgCol := playfield.BackgroundColor
-	if win.img.imguiSwatch(bgCol, 0.75) {
+	if win.img.imguiTVColourSwatch(bgCol, 0.75) {
 		win.popupPalette.request(&bgCol, func() {
 			win.img.dbg.PushFunction(func() {
 				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
@@ -116,6 +116,7 @@ func (win *winTIA) drawPlayfield() {
 	imgui.BeginGroup()
 	imguiLabel("PF0")
 	imgui.SameLine()
+	win.img.rnd.pushTVColor()
 	seq := newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
 	pf0d := playfield.PF0
 	for i := 0; i < 4; i++ {
@@ -136,11 +137,13 @@ func (win *winTIA) drawPlayfield() {
 		seq.sameLine()
 	}
 	seq.end()
+	win.img.rnd.popTVColor()
 
 	imgui.SameLine()
 	imguiLabel("PF1")
 	imgui.SameLine()
 	seq.start()
+	win.img.rnd.pushTVColor()
 	pf1d := playfield.PF1
 	for i := 0; i < 8; i++ {
 		var col uint8
@@ -160,11 +163,13 @@ func (win *winTIA) drawPlayfield() {
 		seq.sameLine()
 	}
 	seq.end()
+	win.img.rnd.popTVColor()
 
 	imgui.SameLine()
 	imguiLabel("PF2")
 	imgui.SameLine()
 	seq.start()
+	win.img.rnd.pushTVColor()
 	pf2d := playfield.PF2
 	for i := 0; i < 8; i++ {
 		var col uint8
@@ -184,6 +189,8 @@ func (win *winTIA) drawPlayfield() {
 		seq.sameLine()
 	}
 	seq.end()
+	win.img.rnd.popTVColor()
+
 	imgui.EndGroup()
 
 	imgui.Spacing()
@@ -192,7 +199,9 @@ func (win *winTIA) drawPlayfield() {
 	// playfield data for the scanline
 	imgui.BeginGroup()
 	imguiLabel("Scanline")
+
 	seq = newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight() * 0.5, Y: imgui.FrameHeight()}, false)
+	win.img.rnd.pushTVColor()
 
 	// first half of the playfield
 	for _, v := range *playfield.LeftData {
@@ -226,6 +235,7 @@ func (win *winTIA) drawPlayfield() {
 		seq.sameLine()
 	}
 	seq.end()
+	win.img.rnd.popTVColor()
 
 	// playfield index pointer
 	if playfield.Region != video.RegionOffScreen {

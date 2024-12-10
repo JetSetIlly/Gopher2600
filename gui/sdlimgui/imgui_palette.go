@@ -86,8 +86,6 @@ func (pop *popupPalette) draw() {
 	imgui.Text(pop.name)
 	imgui.SameLine()
 	imgui.Text(fmt.Sprintf("%02x", *pop.target))
-	// 	imgui.SameLine()
-	// 	imgui.Text(fmt.Sprintf("#%06x", pop.palette[*pop.target]&0x00ffffff))
 
 	imgui.Spacing()
 
@@ -158,6 +156,9 @@ func (pal *palette) draw(selection int) (int, bool) {
 }
 
 func (pal *palette) colRect(idx int, col imgui.PackedColor, selected bool) bool {
+	pal.img.rnd.pushTVColor()
+	defer pal.img.rnd.popTVColor()
+
 	// position & dimensions of playfield bit
 	a := imgui.CursorScreenPos()
 	b := a
@@ -179,8 +180,9 @@ func (pal *palette) colRect(idx int, col imgui.PackedColor, selected bool) bool 
 		}, false)
 	}
 
-	// show rectangle with color
 	dl := imgui.WindowDrawList()
+
+	// show rectangle with color
 	if selected {
 		c := a.Plus(b).Times(0.5)
 		dl.AddCircleFilled(c, pal.swatchSize*0.5, col)

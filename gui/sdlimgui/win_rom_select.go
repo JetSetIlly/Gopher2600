@@ -113,7 +113,7 @@ func newSelectROM(img *SdlImgui) (window, error) {
 		return nil, err
 	}
 
-	win.thmbTexture = img.rnd.addTexture(textureColor, true, true)
+	win.thmbTexture = img.rnd.addTexture(textureTVColor, true, true)
 	win.thmbImage = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	win.thmbDim = imgui.Vec2{X: specification.WidthTV, Y: specification.HeightTV}.Times(2.0)
 	win.listviewDim = imgui.Vec2{X: 300, Y: win.thmbDim.Y * 1.4}

@@ -186,6 +186,12 @@ func (rnd *gl21) screenshot(mode screenshotMode, finish chan screenshotResult) {
 	}
 }
 
+func (rnd *gl21) pushTVColor() {
+}
+
+func (rnd *gl21) popTVColor() {
+}
+
 func (rnd *gl21) addTexture(_ textureType, linear bool, clamp bool) texture {
 	tex := gl21Texture{
 		create: true,

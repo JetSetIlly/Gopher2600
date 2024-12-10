@@ -33,7 +33,7 @@ func (win *winTIA) drawBall() {
 	imgui.BeginGroup()
 	imguiLabel("Colour")
 	col := ball.Color
-	if win.img.imguiSwatch(col, 0.75) {
+	if win.img.imguiTVColourSwatch(col, 0.75) {
 		win.popupPalette.request(&col, func() {
 			win.img.dbg.PushFunction(func() {
 				realBall := win.img.dbg.VCS().TIA.Video.Ball

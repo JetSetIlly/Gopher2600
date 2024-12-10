@@ -65,7 +65,7 @@ func (win *winTIA) drawPlayer(num int) {
 	// selection in palette, missile color is changed too
 	imguiLabel("Colour")
 	col := player.Color
-	if win.img.imguiSwatch(col, 0.75) {
+	if win.img.imguiTVColourSwatch(col, 0.75) {
 		win.popupPalette.request(&col, func() {
 			win.img.dbg.PushFunction(func() {
 				realPlayer().Color = col
@@ -128,6 +128,7 @@ func (win *winTIA) drawPlayer(num int) {
 	imguiLabel("New Gfx")
 	ngfxSeq := newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
 	od := player.GfxDataNew
+	win.img.rnd.pushTVColor()
 	for i := 0; i < 8; i++ {
 		var col uint8
 		if (od<<i)&0x80 == 0x80 {
@@ -148,12 +149,14 @@ func (win *winTIA) drawPlayer(num int) {
 		// woulnd't make sense in this debugging context to do that.
 	}
 	ngfxSeq.end()
+	win.img.rnd.popTVColor()
 
 	// graphics data - old
 	imgui.SameLine()
 	imguiLabel("Old Gfx")
 	ogfxSeq := newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
 	nd := player.GfxDataOld
+	win.img.rnd.pushTVColor()
 	for i := 0; i < 8; i++ {
 		var col uint8
 		if (nd<<i)&0x80 == 0x80 {
@@ -174,6 +177,7 @@ func (win *winTIA) drawPlayer(num int) {
 		// woulnd't make sense in this debugging context to do that.
 	}
 	ogfxSeq.end()
+	win.img.rnd.popTVColor()
 
 	// scancounter index pointer
 	if player.ScanCounter.IsActive() {

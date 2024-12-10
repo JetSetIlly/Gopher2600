@@ -1,4 +1,5 @@
 uniform sampler2D Texture;
+uniform int FromGUI;
 uniform float Brightness;
 uniform float Contrast;
 uniform float Saturation;
@@ -11,7 +12,13 @@ out vec4 Out_Color;
 
 void main()
 {
-	Out_Color = Frag_Color * texture(Texture, Frag_UV);
+	if (FromGUI == 1) {
+		// shader has been run instead of the GUI shader. this means we have to
+		// extract the rgba values from the texture slightly differently
+		Out_Color = vec4(Frag_Color.rgb, Frag_Color.a * texture(Texture, Frag_UV).r);
+	} else {
+		Out_Color = Frag_Color * texture(Texture, Frag_UV);
+	}
 
 	// RGB to YIQ conversions taken from:
 	// https://en.wikipedia.org/w/index.php?title=YIQ&oldid=1220238306

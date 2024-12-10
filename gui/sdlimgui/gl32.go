@@ -27,9 +27,10 @@ import (
 )
 
 type gl32Texture struct {
-	id     uint32
-	typ    textureType
-	create bool
+	id             uint32
+	typ            textureType
+	create         bool
+	tvColoursInGui bool
 }
 
 type gl32 struct {
@@ -71,7 +72,7 @@ func (rnd *gl32) start() error {
 	rnd.shaders = append(rnd.shaders, newBevelShader(rnd.img))
 	rnd.shaders = append(rnd.shaders, newDbgScrShader(rnd.img))
 	rnd.shaders = append(rnd.shaders, newDbgScrOverlayShader(rnd.img))
-	rnd.shaders = append(rnd.shaders, newDbgScrMagnifyShader(rnd.img))
+	rnd.shaders = append(rnd.shaders, newTVColorShader(rnd.img.displayPrefs.Colour))
 
 	// dererring font setup until later
 
@@ -181,40 +182,57 @@ func (rnd *gl32) render() {
 		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, rnd.elementsHandle)
 		gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, indexBufferSize, indexBuffer, gl.STREAM_DRAW)
 
+		// whether the tvColoursEnable texture has been pushed. used to decide
+		// which shader to use for the GUI
+		var setFromGUI bool
+
 		for _, cmd := range list.Commands() {
 			if cmd.HasUserCallback() {
 				cmd.CallUserCallback(list)
 			} else {
 				// texture id
-				env.textureID = uint32(cmd.TextureID())
-
-				// select shader program to use
-				var shader shaderProgram
-
-				if tex, ok := rnd.textures[env.textureID]; ok {
-					shader = rnd.shaders[tex.typ]
+				id := cmd.TextureID()
+				if id == tvColoursEnable {
+					rnd.shaders[textureTVColor].(*tvColorShader).setFromGUI = true
+					setFromGUI = true
+				} else if id == tvColoursDisable {
+					rnd.shaders[textureTVColor].(*tvColorShader).setFromGUI = false
+					setFromGUI = false
 				} else {
-					shader = rnd.shaders[textureGUI]
+					env.textureID = uint32(id)
+
+					// select shader program to use
+					var shader shaderProgram
+
+					if tex, ok := rnd.textures[env.textureID]; ok {
+						if setFromGUI && tex.typ == textureGUI {
+							shader = rnd.shaders[textureTVColor]
+						} else {
+							shader = rnd.shaders[tex.typ]
+						}
+					} else {
+						panic("no shader found for texture")
+					}
+
+					env.draw = func() {
+						gl.DrawElementsWithOffset(gl.TRIANGLES, int32(cmd.ElementCount()), uint32(drawType), indexBufferOffset)
+					}
+
+					// set attributes for the selected shader
+					shader.setAttributes(env)
+
+					// draw using the currently selected shader to the real framebuffer
+					gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+
+					// viewport and scissors. these might have changed during
+					// execution of the shader
+					gl.Viewport(0, 0, int32(fbw), int32(fbh))
+					clipRect := cmd.ClipRect()
+					gl.Scissor(int32(clipRect.X), int32(fbh)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
+
+					// process
+					env.draw()
 				}
-
-				env.draw = func() {
-					gl.DrawElementsWithOffset(gl.TRIANGLES, int32(cmd.ElementCount()), uint32(drawType), indexBufferOffset)
-				}
-
-				// set attributes for the selected shader
-				shader.setAttributes(env)
-
-				// draw using the currently selected shader to the real framebuffer
-				gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
-
-				// viewport and scissors. these might have changed during
-				// execution of the shader
-				gl.Viewport(0, 0, int32(fbw), int32(fbh))
-				clipRect := cmd.ClipRect()
-				gl.Scissor(int32(clipRect.X), int32(fbh)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
-
-				// process
-				env.draw()
 			}
 			indexBufferOffset += uintptr(cmd.ElementCount() * indexSize)
 		}
@@ -224,6 +242,19 @@ func (rnd *gl32) render() {
 
 func (rnd *gl32) screenshot(mode screenshotMode, finish chan screenshotResult) {
 	rnd.shaders[texturePlayscr].(*playscrShader).screenshot.start(mode, finish)
+}
+
+const (
+	tvColoursEnable  imgui.TextureID = 0x5555ffff
+	tvColoursDisable imgui.TextureID = 0x5555fffe
+)
+
+func (rnd *gl32) pushTVColor() {
+	imgui.WindowDrawList().AddImage(tvColoursEnable, imgui.Vec2{}, imgui.Vec2{})
+}
+
+func (rnd *gl32) popTVColor() {
+	imgui.WindowDrawList().AddImage(tvColoursDisable, imgui.Vec2{}, imgui.Vec2{})
 }
 
 // glState stores GL state with the intention of restoration after a short period.
