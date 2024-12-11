@@ -394,15 +394,17 @@ func (img *SdlImgui) applyAudioMutePreference() {
 		return
 	}
 
+	// mute any sound producing peripherals attached to the VCS. the call to
+	// MutePeripherals() must be done in the emulation goroutine
 	var mute bool
-
 	if img.isPlaymode() {
 		mute = img.prefs.audioMutePlaymode.Get().(bool)
-		img.dbg.VCS().RIOT.Ports.MutePeripherals(mute)
 	} else {
 		mute = img.prefs.audioMuteDebugger.Get().(bool)
-		img.dbg.VCS().RIOT.Ports.MutePeripherals(mute)
 	}
+	img.dbg.PushFunction(func() {
+		img.dbg.VCS().RIOT.Ports.MutePeripherals(mute)
+	})
 
 	img.audio.Mute(mute)
 }
