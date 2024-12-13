@@ -18,6 +18,7 @@ package plusrom
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/environment"
@@ -59,75 +60,73 @@ func (s *state) Plumb(env *environment.Environment) {
 	s.child.Plumb(env)
 }
 
-func NewPlusROM(env *environment.Environment, child mapper.CartMapper) (mapper.CartMapper, error) {
+func NewPlusROM(env *environment.Environment, child mapper.CartMapper, romfile io.ReadSeeker) (mapper.CartMapper, error) {
 	cart := &PlusROM{env: env}
 	cart.state = &state{}
 	cart.state.child = child
 
 	cart.net = newNetwork(cart.env)
 
-	// get reference to last bank
-	banks := child.CopyBanks()
-	if banks == nil {
-		return nil, fmt.Errorf("plusrom: %w: %s is not providing bank data", CannotAdoptROM, child.ID())
+	// host/path information are found at the address pointed to by an address
+	// stored near the end of the ROM file. this is roughly equivalent to the
+	// NMI vector of the last bank stored in the ROM file
+
+	var b [2]byte
+
+	_, err := romfile.Seek(-6, io.SeekEnd)
+	if err != nil {
+		return nil, fmt.Errorf("plusrom: %w: %w", CannotAdoptROM, err)
 	}
-	lastBank := banks[cart.NumBanks()-1]
-
-	// host/path information is found at address 0x1ffa. we've got a reference
-	// to the last bank above but we need to consider that the last bank might not
-	// take the entirity of the cartridge map.
-	addrMask := uint16(len(lastBank.Data) - 1)
-
-	// host/path information are found at the address pointed to by the following
-	// 16bit address
-	const addrinfoMSB = 0x1ffb
-	const addrinfoLSB = 0x1ffa
-
-	a := uint16(lastBank.Data[addrinfoLSB&addrMask])
-	a |= (uint16(lastBank.Data[addrinfoMSB&addrMask]) << 8)
-
-	// get bank to which the NMI vector points
-	b := int((a & 0xf000) >> 12)
-
-	if b == 0 || b > cart.NumBanks() {
-		return nil, fmt.Errorf("plusrom: %w: invalid NMI vector", NotAPlusROM)
+	n, err := romfile.Read(b[:])
+	if err != nil {
+		if !errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("plusrom: %w: %w", CannotAdoptROM, err)
+		}
+	}
+	if n != 2 {
+		return nil, fmt.Errorf("plusrom: %w: invalid NMI vector", CannotAdoptROM)
 	}
 
-	// normalise indirect address so it's suitable for indexing bank data
-	a &= addrMask
+	// the address of the host/path information
+	hostPathAddr := (uint16(b[1]) << 8) | uint16(b[0])
 
-	// get the bank to which the NMI vector points
-	lastBank = child.CopyBanks()[b-1]
+	// the retrieved address is defined to be relative to memory origin 0x1000
+	// but is actually an offset into the ROM file. correcting the origin
+	// address by subtracting 0x1000
+	hostPathAddr -= 0x1000
+
+	logger.Logf(env, "plusrom", "host address at ROM offset 0x%04x", hostPathAddr)
+
+	_, err = romfile.Seek(int64(hostPathAddr), io.SeekStart)
+	if err != nil {
+		return nil, fmt.Errorf("plusrom: %w: %w", CannotAdoptROM, err)
+	}
 
 	// read path string from the first bank using the indirect address retrieved above
 	path := strings.Builder{}
 	for path.Len() < maxPathLength {
-		if int(a) >= len(lastBank.Data) {
-			a = 0x0000
+		_, err := romfile.Read(b[:1])
+		if err != nil {
+			return nil, fmt.Errorf("plusrom: %w: %w", CannotAdoptROM, err)
 		}
-		c := lastBank.Data[a]
-
-		a++
-		if c == 0x00 {
+		if b[0] == 0x00 {
 			break // for loop
 		}
-		path.WriteRune(rune(c))
+		path.WriteRune(rune(b[0]))
 	}
 
 	// read host string. this string continues on from the path string. the
 	// address pointer will be in the correct place.
 	host := strings.Builder{}
 	for host.Len() <= maxHostLength {
-		if int(a) >= len(lastBank.Data) {
-			a = 0x0000
+		_, err := romfile.Read(b[:1])
+		if err != nil {
+			return nil, fmt.Errorf("plusrom: %w: %w", CannotAdoptROM, err)
 		}
-		c := lastBank.Data[a]
-
-		a++
-		if c == 0x00 {
+		if b[0] == 0x00 {
 			break // for loop
 		}
-		host.WriteRune(rune(c))
+		host.WriteRune(rune(b[0]))
 	}
 
 	// fail if host or path is not valid
