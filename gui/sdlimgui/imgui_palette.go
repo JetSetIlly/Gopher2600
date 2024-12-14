@@ -102,8 +102,6 @@ func (pop *popupPalette) draw() {
 type palette struct {
 	img *SdlImgui
 
-	// we set sizing information at time of request. it may be too early to do
-	// this on popupPalette creation
 	swatchSize float32
 	swatchGap  float32
 }
@@ -121,6 +119,7 @@ func newPalette(img *SdlImgui) *palette {
 
 const paletteDragDropName = "PALETTE"
 
+// use selection value of less than zero to not indicate
 func (pal *palette) draw(selection int) (int, bool) {
 	val := -1
 
@@ -174,8 +173,6 @@ func (pal *palette) colRect(idx int, col imgui.PackedColor, selected bool) bool 
 	// tooltip
 	if hover {
 		pal.img.imguiTooltip(func() {
-			imgui.Text(fmt.Sprintf("%02x", idx))
-			imgui.SameLine()
 			imgui.Text(fmt.Sprintf("#%06x", col&0x00ffffff))
 		}, false)
 	}

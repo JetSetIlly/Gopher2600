@@ -25,6 +25,17 @@ import (
 )
 
 func (win *winPrefs) drawTelevision() {
+	pos := imgui.CursorScreenPos()
+	pos.X += imgui.WindowWidth()
+	defer func() {
+		imgui.SetNextWindowPos(pos)
+		if imgui.BeginV("##prefspalette", &win.playmodeOpen, imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoDecoration) {
+			p := newPalette(win.img)
+			p.draw(-1)
+		}
+		imgui.End()
+	}()
+
 	imgui.PushItemWidth(400)
 	defer imgui.PopItemWidth()
 
