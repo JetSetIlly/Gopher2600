@@ -1,5 +1,5 @@
 
-version = v0.35.3
+version = v0.35.3-maintenance
 
 goBinary = go
 gcflags = -c 3 -B -wb=false -l -l -l -l
