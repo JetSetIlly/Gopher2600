@@ -36,22 +36,23 @@ type renderer interface {
 	preRender()
 	render()
 	screenshot(mode screenshotMode, finish chan screenshotResult)
-	addTexture(typ textureType, linear bool, clamp bool) texture
+	addTexture(typ shaderType, linear bool, clamp bool) texture
 	addFontTexture(fnt imgui.FontAtlas) texture
-	pushTVColor()
-	popTVColor()
+	pushTVColour()
+	popTVColour()
 }
 
-type textureType int
+type shaderType int
 
 const (
-	textureGUI textureType = iota
-	textureColor
-	texturePlayscr
-	textureBevel
-	textureDbgScr
-	textureDbgScrOverlay
-	textureTVColor
+	shaderNone shaderType = iota
+	shaderGUI
+	shaderColor
+	shaderPlayscr
+	shaderBevel
+	shaderDbgScr
+	shaderDbgScrOverlay
+	shaderTVColour
 )
 
 type texture interface {

@@ -44,8 +44,8 @@ func newWinComparison(img *SdlImgui) (window, error) {
 		img: img,
 	}
 
-	win.cmpTexture = img.rnd.addTexture(textureColor, true, true)
-	win.diffTexture = img.rnd.addTexture(textureColor, true, true)
+	win.cmpTexture = img.rnd.addTexture(shaderColor, true, true)
+	win.diffTexture = img.rnd.addTexture(shaderColor, true, true)
 
 	return win, nil
 }

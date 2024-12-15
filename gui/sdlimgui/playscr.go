@@ -74,8 +74,8 @@ func newPlayScr(img *SdlImgui) *playScr {
 
 	// set texture, creation of textures will be done after every call to resize()
 	// clamp is important for LINEAR filtering. not noticeable for NEAREST filtering
-	win.screenTexture = img.rnd.addTexture(texturePlayscr, true, true)
-	win.bevelTexture = img.rnd.addTexture(textureBevel, true, true)
+	win.screenTexture = img.rnd.addTexture(shaderPlayscr, true, true)
+	win.bevelTexture = img.rnd.addTexture(shaderBevel, true, true)
 
 	// render bevel texture once on initlisation
 	win.bevelTexture.render(bevels.Selected.TV)

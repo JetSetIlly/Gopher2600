@@ -155,9 +155,6 @@ func (pal *palette) draw(selection int) (int, bool) {
 }
 
 func (pal *palette) colRect(idx int, col imgui.PackedColor, selected bool) bool {
-	pal.img.rnd.pushTVColor()
-	defer pal.img.rnd.popTVColor()
-
 	// position & dimensions of playfield bit
 	a := imgui.CursorScreenPos()
 	b := a
@@ -178,6 +175,7 @@ func (pal *palette) colRect(idx int, col imgui.PackedColor, selected bool) bool 
 	}
 
 	dl := imgui.WindowDrawList()
+	pal.img.rnd.pushTVColour()
 
 	// show rectangle with color
 	if selected {
@@ -186,6 +184,7 @@ func (pal *palette) colRect(idx int, col imgui.PackedColor, selected bool) bool 
 	} else {
 		dl.AddRectFilled(a, b, col)
 	}
+	pal.img.rnd.popTVColour()
 
 	// set up cursor for next widget
 	a.X += pal.swatchSize + pal.swatchGap

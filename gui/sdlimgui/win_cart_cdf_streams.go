@@ -70,11 +70,11 @@ func newWinCDFStreams(img *SdlImgui) (window, error) {
 	win.clearColours()
 
 	for i := range win.streamTextures {
-		win.streamTextures[i] = img.rnd.addTexture(textureColor, false, false)
+		win.streamTextures[i] = img.rnd.addTexture(shaderColor, false, false)
 		win.streamPixels[i] = image.NewRGBA(image.Rect(0, 0, 8, specification.AbsoluteMaxScanlines))
 	}
 
-	win.detailTexture = img.rnd.addTexture(textureColor, false, false)
+	win.detailTexture = img.rnd.addTexture(shaderColor, false, false)
 
 	win.pixelsSize = win.streamPixels[0].Bounds().Size()
 	for y := 0; y < win.pixelsSize.Y; y++ {

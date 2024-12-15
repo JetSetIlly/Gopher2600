@@ -28,7 +28,7 @@ import (
 
 type gl32Texture struct {
 	id             uint32
-	typ            textureType
+	typ            shaderType
 	create         bool
 	tvColoursInGui bool
 }
@@ -36,19 +36,24 @@ type gl32Texture struct {
 type gl32 struct {
 	img *SdlImgui
 
-	shaders []shaderProgram
-
 	vboHandle      uint32
 	elementsHandle uint32
 
 	textures map[uint32]gl32Texture
+	shaders  map[shaderType]shaderProgram
+
+	// false texture IDs used for enabling and disabling TV colour in the GUI
+	enableTVColour  imgui.TextureID
+	disableTVColour imgui.TextureID
 }
 
 func newRenderer(img *SdlImgui) renderer {
-	return &gl32{
+	rnd := &gl32{
 		img:      img,
 		textures: make(map[uint32]gl32Texture),
+		shaders:  make(map[shaderType]shaderProgram),
 	}
+	return rnd
 }
 
 func (rnd *gl32) requires() requirement {
@@ -66,15 +71,15 @@ func (rnd *gl32) start() error {
 	}
 
 	// setup shaders
-	rnd.shaders = append(rnd.shaders, newGUIShader())
-	rnd.shaders = append(rnd.shaders, newColorShader())
-	rnd.shaders = append(rnd.shaders, newPlayscrShader(rnd.img))
-	rnd.shaders = append(rnd.shaders, newBevelShader(rnd.img))
-	rnd.shaders = append(rnd.shaders, newDbgScrShader(rnd.img))
-	rnd.shaders = append(rnd.shaders, newDbgScrOverlayShader(rnd.img))
-	rnd.shaders = append(rnd.shaders, newTVColorShader(rnd.img.displayPrefs.Colour))
+	rnd.shaders[shaderGUI] = newGUIShader()
+	rnd.shaders[shaderColor] = newColorShader()
+	rnd.shaders[shaderPlayscr] = newPlayscrShader(rnd.img)
+	rnd.shaders[shaderBevel] = newBevelShader(rnd.img)
+	rnd.shaders[shaderDbgScr] = newDbgScrShader(rnd.img)
+	rnd.shaders[shaderDbgScrOverlay] = newDbgScrOverlayShader(rnd.img)
+	rnd.shaders[shaderTVColour] = newTVColorShader(rnd.img.displayPrefs.Colour)
 
-	// dererring font setup until later
+	// deferring font setup until later
 
 	gl.GenBuffers(1, &rnd.vboHandle)
 	gl.GenBuffers(1, &rnd.elementsHandle)
@@ -83,6 +88,10 @@ func (rnd *gl32) start() error {
 	logger.Logf(logger.Allow, "glsl", "vendor: %s", gl.GoStr(gl.GetString(gl.VENDOR)))
 	logger.Logf(logger.Allow, "glsl", "renderer: %s", gl.GoStr(gl.GetString(gl.RENDERER)))
 	logger.Logf(logger.Allow, "glsl", "driver: %s", gl.GoStr(gl.GetString(gl.VERSION)))
+
+	// set up false texture IDs to use for enabling/disabling TV colour in the GUI
+	rnd.enableTVColour = imgui.TextureID(rnd.addTexture(shaderNone, false, false).getID())
+	rnd.disableTVColour = imgui.TextureID(rnd.addTexture(shaderNone, false, false).getID())
 
 	return nil
 }
@@ -184,7 +193,7 @@ func (rnd *gl32) render() {
 
 		// whether the tvColoursEnable texture has been pushed. used to decide
 		// which shader to use for the GUI
-		var setFromGUI bool
+		var preferTVColour int
 
 		for _, cmd := range list.Commands() {
 			if cmd.HasUserCallback() {
@@ -192,12 +201,19 @@ func (rnd *gl32) render() {
 			} else {
 				// texture id
 				id := cmd.TextureID()
-				if id == tvColoursEnable {
-					rnd.shaders[textureTVColor].(*tvColorShader).setFromGUI = true
-					setFromGUI = true
-				} else if id == tvColoursDisable {
-					rnd.shaders[textureTVColor].(*tvColorShader).setFromGUI = false
-					setFromGUI = false
+
+				// decide which shader to use. if the texture ID indicates that
+				// the tv colour shader is to be preferred going forward then
+				// the texture is not drawn
+				if rnd.isEnableTVColour(id) {
+					rnd.shaders[shaderTVColour].(*tvColorShader).setFromGUI = true
+					preferTVColour++
+				} else if rnd.isDisableTVColour(id) {
+					rnd.shaders[shaderTVColour].(*tvColorShader).setFromGUI = false
+					preferTVColour--
+					if preferTVColour < 0 {
+						panic("too many calls to renderer.popTVColour()")
+					}
 				} else {
 					env.textureID = uint32(id)
 
@@ -205,12 +221,16 @@ func (rnd *gl32) render() {
 					var shader shaderProgram
 
 					if tex, ok := rnd.textures[env.textureID]; ok {
-						if setFromGUI && tex.typ == textureGUI {
-							shader = rnd.shaders[textureTVColor]
+						// use tv color shader if the intended shader is the gui
+						// shader but the setFromGUI flag has been set
+						if preferTVColour > 0 && tex.typ == shaderGUI {
+							shader = rnd.shaders[shaderTVColour]
 						} else {
 							shader = rnd.shaders[tex.typ]
 						}
-					} else {
+					}
+
+					if shader == nil {
 						panic("no shader found for texture")
 					}
 
@@ -236,25 +256,35 @@ func (rnd *gl32) render() {
 			}
 			indexBufferOffset += uintptr(cmd.ElementCount() * indexSize)
 		}
+
+		if preferTVColour > 0 {
+			panic("not enough calls to renderer.popTVColour()")
+		}
 	}
 	gl.DeleteVertexArrays(1, &vaoHandle)
 }
 
 func (rnd *gl32) screenshot(mode screenshotMode, finish chan screenshotResult) {
-	rnd.shaders[texturePlayscr].(*playscrShader).screenshot.start(mode, finish)
+	rnd.shaders[shaderPlayscr].(*playscrShader).screenshot.start(mode, finish)
 }
 
-const (
-	tvColoursEnable  imgui.TextureID = 0x5555ffff
-	tvColoursDisable imgui.TextureID = 0x5555fffe
-)
+// the push and pop TV color functions are a way of informing the drawlist to
+// treat the next element with the TV Colour shader, rather than the GUI shader
 
-func (rnd *gl32) pushTVColor() {
-	imgui.WindowDrawList().AddImage(tvColoursEnable, imgui.Vec2{}, imgui.Vec2{})
+func (rnd *gl32) isEnableTVColour(id imgui.TextureID) bool {
+	return id == rnd.enableTVColour
 }
 
-func (rnd *gl32) popTVColor() {
-	imgui.WindowDrawList().AddImage(tvColoursDisable, imgui.Vec2{}, imgui.Vec2{})
+func (rnd *gl32) isDisableTVColour(id imgui.TextureID) bool {
+	return id == rnd.disableTVColour
+}
+
+func (rnd *gl32) pushTVColour() {
+	imgui.WindowDrawList().AddImage(rnd.enableTVColour, imgui.Vec2{}, imgui.Vec2{})
+}
+
+func (rnd *gl32) popTVColour() {
+	imgui.WindowDrawList().AddImage(rnd.disableTVColour, imgui.Vec2{}, imgui.Vec2{})
 }
 
 // glState stores GL state with the intention of restoration after a short period.
@@ -343,7 +373,7 @@ func (st *glState) restoreGLState() {
 	gl.Scissor(st.lastScissorBox[0], st.lastScissorBox[1], st.lastScissorBox[2], st.lastScissorBox[3])
 }
 
-func (rnd *gl32) addTexture(typ textureType, linear bool, clamp bool) texture {
+func (rnd *gl32) addTexture(typ shaderType, linear bool, clamp bool) texture {
 	tex := gl32Texture{
 		create: true,
 		typ:    typ,
@@ -377,7 +407,7 @@ func (rnd *gl32) addTexture(typ textureType, linear bool, clamp bool) texture {
 }
 
 func (rnd *gl32) addFontTexture(fnts imgui.FontAtlas) texture {
-	tex := rnd.addTexture(textureGUI, true, false)
+	tex := rnd.addTexture(shaderGUI, true, false)
 	image := fnts.TextureDataAlpha8()
 
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
