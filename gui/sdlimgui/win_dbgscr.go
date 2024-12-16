@@ -633,23 +633,32 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		// 	}
 		// }
 
-		spec := win.img.cache.TV.GetFrameInfo().Spec
-
 		// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
-		px := ref.Signal.Color
+		var px signal.ColorSignal
+		var label string
 		if (ref.IsHblank || ref.Signal.VBlank || px == signal.VideoBlack) && !win.elements {
-			rgba := spec.GetColor(signal.VideoBlack)
-			vgba := imgui.Vec4{X: float32(rgba.R), Y: float32(rgba.G), Z: float32(rgba.B), W: float32(rgba.A)}
-			imguiColorLabelSimple("No color signal", vgba)
+			px = signal.VideoBlack
+			label = "No color signal"
 		} else {
-			rgba := spec.GetColor(px)
-			vgba := imgui.Vec4{X: float32(rgba.R), Y: float32(rgba.G), Z: float32(rgba.B), W: float32(rgba.A)}
-			imguiColorLabelSimple(ref.VideoElement.String(), vgba)
+			px = ref.Signal.Color
+			label = ref.VideoElement.String()
 		}
 
-		imgui.Spacing()
+		spec := win.img.cache.TV.GetFrameInfo().Spec
+		rgba := spec.GetColor(px)
+		col := imgui.Vec4{
+			X: float32(rgba.R) / 255, Y: float32(rgba.G) / 255, Z: float32(rgba.B) / 255, W: float32(rgba.A) / 255,
+		}
+		imgui.PushStyleColor(imgui.StyleColorText, col)
+		win.img.rnd.pushTVColour()
+		imgui.Text(string(fonts.ColorSwatch))
+		win.img.rnd.popTVColour()
+		imgui.PopStyleColor()
+		imgui.SameLine()
+		imgui.Text(label)
 
 		// instruction information
+		imgui.Spacing()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
 		if win.img.cache.VCS.Mem.Cart.NumBanks() > 1 {
 			imgui.Text(fmt.Sprintf("%s [bank %s]", e.Address, ref.Bank))
