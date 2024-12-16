@@ -31,7 +31,7 @@ func (win *winPrefs) drawTelevision() {
 		imgui.SetNextWindowPos(pos)
 		if imgui.BeginV("##prefspalette", &win.playmodeOpen, imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoDecoration) {
 			p := newPalette(win.img)
-			p.draw(-1)
+			p.draw(paletteNoSelection)
 		}
 		imgui.End()
 	}()
