@@ -28,7 +28,7 @@ import (
 )
 
 // version string to attach to all shaders
-const fragVersion = "#version 150\n\n"
+const fragVersion = "#version 150\n"
 
 type shaderProgram interface {
 	destroy()
@@ -206,14 +206,14 @@ func (sh *dustShader) setAttributes(env shaderEnvironment) {
 type tvColorShader struct {
 	shader
 
-	fromGUI    int32
+	gui        int32
 	brightness int32
 	contrast   int32
 	saturation int32
 	hue        int32
 
-	prefs      *display.Colour
-	setFromGUI bool
+	prefs  *display.Colour
+	setGUI bool
 }
 
 func newTVColorShader(prefs *display.Colour) shaderProgram {
@@ -221,7 +221,7 @@ func newTVColorShader(prefs *display.Colour) shaderProgram {
 		prefs: prefs,
 	}
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.TVColorShader))
-	sh.fromGUI = gl.GetUniformLocation(sh.handle, gl.Str("FromGUI"+"\x00"))
+	sh.gui = gl.GetUniformLocation(sh.handle, gl.Str("FromGUI"+"\x00"))
 	sh.brightness = gl.GetUniformLocation(sh.handle, gl.Str("Brightness"+"\x00"))
 	sh.contrast = gl.GetUniformLocation(sh.handle, gl.Str("Contrast"+"\x00"))
 	sh.saturation = gl.GetUniformLocation(sh.handle, gl.Str("Saturation"+"\x00"))
@@ -235,7 +235,7 @@ func (sh *tvColorShader) setAttributes(env shaderEnvironment) {
 	contrast := sh.prefs.Contrast.Get().(float64)
 	saturation := sh.prefs.Saturation.Get().(float64)
 	hue := sh.prefs.Hue.Get().(float64)
-	gl.Uniform1i(sh.fromGUI, boolToInt32(sh.setFromGUI))
+	gl.Uniform1i(sh.gui, boolToInt32(sh.setGUI))
 	gl.Uniform1f(sh.contrast, float32(contrast))
 	gl.Uniform1f(sh.brightness, float32(brightness))
 	gl.Uniform1f(sh.saturation, float32(saturation))
@@ -254,7 +254,7 @@ func newBlackCorrectionShader() shaderProgram {
 	return sh
 }
 
-func (sh *blackCorrectionShader) setAttributesArgs(env shaderEnvironment, blackLevel float32) {
+func (sh *blackCorrectionShader) process(env shaderEnvironment, blackLevel float32) {
 	sh.shader.setAttributes(env)
 	gl.Uniform1f(sh.blackLevel, blackLevel)
 }
@@ -274,7 +274,7 @@ func newPhosphorShader() shaderProgram {
 	return sh
 }
 
-func (sh *phosphorShader) setAttributesArgs(env shaderEnvironment, latency float32, newFrame uint32) {
+func (sh *phosphorShader) process(env shaderEnvironment, latency float32, newFrame uint32) {
 	sh.shader.setAttributes(env)
 	gl.Uniform1f(sh.latency, latency)
 	gl.ActiveTexture(gl.TEXTURE1)
@@ -294,7 +294,7 @@ func newBlurShader() shaderProgram {
 	return sh
 }
 
-func (sh *blurShader) setAttributesArgs(env shaderEnvironment, blur float32) {
+func (sh *blurShader) process(env shaderEnvironment, blur float32) {
 	sh.shader.setAttributes(env)
 
 	// normalise blur amount depending on screen size
@@ -318,7 +318,7 @@ func newGhostingShader() shaderProgram {
 	return sh
 }
 
-func (sh *ghostingShader) setAttributesArgs(env shaderEnvironment, amount float32) {
+func (sh *ghostingShader) process(env shaderEnvironment, amount float32) {
 	sh.shader.setAttributes(env)
 	gl.Uniform2f(sh.screenDim, float32(env.width), float32(env.height))
 	gl.Uniform1f(sh.amount, amount)
@@ -326,31 +326,19 @@ func (sh *ghostingShader) setAttributesArgs(env shaderEnvironment, amount float3
 
 type sharpenShader struct {
 	shader
-	texture   int32
 	sharpness int32
 }
 
 func newSharpenShader() shaderProgram {
 	sh := &sharpenShader{}
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.SharpenShader))
-	sh.texture = gl.GetUniformLocation(sh.handle, gl.Str("Texture"+"\x00"))
 	sh.sharpness = gl.GetUniformLocation(sh.handle, gl.Str("Sharpness"+"\x00"))
 	return sh
 }
 
-// textureSpec is used by the sharpen shader
-type textureSpec interface {
-	// returns texture ID and the width and height of the texture
-	textureSpec() (uint32, float32, float32)
-}
-
-func (sh *sharpenShader) setAttributesArgs(env shaderEnvironment, scalingImage textureSpec, sharpness int) {
-	t, _, _ := scalingImage.textureSpec()
+func (sh *sharpenShader) process(env shaderEnvironment, sharpness float32) {
 	sh.shader.setAttributes(env)
-	gl.ActiveTexture(gl.TEXTURE1)
-	gl.BindTexture(gl.TEXTURE_2D, t)
-	gl.Uniform1i(sh.texture, 1)
-	gl.Uniform1i(sh.sharpness, int32(sharpness))
+	gl.Uniform1f(sh.sharpness, sharpness)
 }
 
 type guiShader struct {

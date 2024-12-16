@@ -111,9 +111,9 @@ func (fb *Flip) Dimensions() (width int32, height int32) {
 	return fb.width, fb.height
 }
 
-// Texture returns the texture ID of the last Flip texture to be processed.
+// TextureID returns the texture ID of the last Flip texture to be processed.
 // Using this ID can be an effective way of chaining shaders
-func (fb *Flip) Texture() uint32 {
+func (fb *Flip) TextureID() uint32 {
 	return fb.textures[fb.idx].id
 }
 

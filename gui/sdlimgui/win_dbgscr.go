@@ -934,11 +934,3 @@ func (win *winDbgScr) setScaling() {
 	// get numscanlines while we're in critical section
 	win.numScanlines = win.scr.crit.frameInfo.VisibleBottom - win.scr.crit.frameInfo.VisibleTop
 }
-
-// textureSpec implements the scalingImage specification
-func (win *winDbgScr) textureSpec() (uint32, float32, float32) {
-	if !win.crtPreview && win.elements {
-		return win.elementsTexture.getID(), win.scaledWidth, win.scaledHeight
-	}
-	return win.displayTexture.getID(), win.scaledWidth, win.scaledHeight
-}

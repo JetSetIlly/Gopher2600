@@ -206,10 +206,10 @@ func (rnd *gl32) render() {
 				// the tv colour shader is to be preferred going forward then
 				// the texture is not drawn
 				if rnd.isEnableTVColour(id) {
-					rnd.shaders[shaderTVColour].(*tvColorShader).setFromGUI = true
+					rnd.shaders[shaderTVColour].(*tvColorShader).setGUI = true
 					preferTVColour++
 				} else if rnd.isDisableTVColour(id) {
-					rnd.shaders[shaderTVColour].(*tvColorShader).setFromGUI = false
+					rnd.shaders[shaderTVColour].(*tvColorShader).setGUI = false
 					preferTVColour--
 					if preferTVColour < 0 {
 						panic("too many calls to renderer.popTVColour()")

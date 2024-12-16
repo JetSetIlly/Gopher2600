@@ -59,12 +59,6 @@ type gl32Screenshot struct {
 	finalise chan func(shaderEnvironment) *image.RGBA
 }
 
-// returns texture ID and the width and height of the texture
-func (sh *gl32Screenshot) textureSpec() (uint32, float32, float32) {
-	width, height := sh.compositeBuffer.Dimensions()
-	return sh.compositeBuffer.Texture(), float32(width), float32(height)
-}
-
 func newGl32Screenshot(img *SdlImgui) *gl32Screenshot {
 	sh := &gl32Screenshot{
 		img:      img,
@@ -123,7 +117,7 @@ func (sh *gl32Screenshot) start(mode screenshotMode, finish chan screenshotResul
 	sh.crt.flushPhosphor()
 }
 
-func (sh *gl32Screenshot) process(env shaderEnvironment, scalingImage textureSpec) {
+func (sh *gl32Screenshot) process(env shaderEnvironment, textureID uint32) {
 	// if there is no finish channel then there is nothing to do
 	if sh.finish == nil {
 		return
@@ -151,13 +145,15 @@ func (sh *gl32Screenshot) process(env shaderEnvironment, scalingImage textureSpe
 	// screenshotting is still ongoing
 	switch sh.mode {
 	case modeComposite:
-		sh.compositeProcess(env, scalingImage)
+		env.textureID = textureID
+		sh.compositeProcess(env)
 	default:
-		sh.crtProcess(env, scalingImage)
+		env.textureID = textureID
+		sh.crtProcess(env)
 	}
 }
 
-func (sh *gl32Screenshot) crtProcess(env shaderEnvironment, scalingImage textureSpec) {
+func (sh *gl32Screenshot) crtProcess(env shaderEnvironment) {
 	prefs := newCrtSeqPrefs(sh.img.displayPrefs)
 
 	if sh.mode == modeFlicker {
@@ -174,7 +170,8 @@ func (sh *gl32Screenshot) crtProcess(env shaderEnvironment, scalingImage texture
 		}
 	}
 
-	textureID := sh.crt.process(env, true, sh.img.playScr.visibleScanlines, specification.ClksVisible, sh.img.playScr,
+	textureID := sh.crt.process(env, env.textureID,
+		true, sh.img.playScr.visibleScanlines, specification.ClksVisible,
 		prefs, sh.img.screen.rotation.Load().(specification.Rotation), true)
 
 	// reduce exposure count and return if there is still more to do
@@ -203,7 +200,7 @@ func (sh *gl32Screenshot) crtProcess(env shaderEnvironment, scalingImage texture
 	sh.finish = nil
 }
 
-func (sh *gl32Screenshot) compositeProcess(env shaderEnvironment, scalingImage textureSpec) {
+func (sh *gl32Screenshot) compositeProcess(env shaderEnvironment) {
 	// textures must be flipped for the compositing process
 	env.flipY = true
 
@@ -213,7 +210,7 @@ func (sh *gl32Screenshot) compositeProcess(env shaderEnvironment, scalingImage t
 
 	// sharpen image from play screen
 	env.textureID = sh.compositeBuffer.Process(func() {
-		sh.compositeSharpen.(*sharpenShader).setAttributesArgs(env, scalingImage, 1)
+		sh.compositeSharpen.(*sharpenShader).process(env, 1)
 		env.draw()
 	})
 
@@ -327,17 +324,18 @@ func (sh *gl32Screenshot) compositeAssemble() (*image.RGBA, error) {
 func (sh *gl32Screenshot) compositeFinalise(env shaderEnvironment, composite *image.RGBA) *image.RGBA {
 	// copy composite pixels to framebuffer texture
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(composite.Stride)/4)
-	gl.BindTexture(gl.TEXTURE_2D, sh.compositeBuffer.Texture())
+	gl.BindTexture(gl.TEXTURE_2D, sh.compositeBuffer.TextureID())
 	gl.TexImage2D(gl.TEXTURE_2D, 0,
 		gl.RGBA, int32(composite.Bounds().Size().X), int32(composite.Bounds().Size().Y), 0,
 		gl.RGBA, gl.UNSIGNED_BYTE,
 		gl.Ptr(composite.Pix))
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-	env.textureID = sh.compositeBuffer.Texture()
+	env.textureID = sh.compositeBuffer.TextureID()
 
 	// pass composite image through CRT shaders
-	textureID := sh.crt.process(env, true, sh.img.playScr.visibleScanlines, specification.ClksVisible,
-		sh, newCrtSeqPrefs(sh.img.displayPrefs), sh.img.screen.rotation.Load().(specification.Rotation), true)
+	textureID := sh.crt.process(env, sh.compositeBuffer.TextureID(),
+		true, sh.img.playScr.visibleScanlines, specification.ClksVisible,
+		newCrtSeqPrefs(sh.img.displayPrefs), sh.img.screen.rotation.Load().(specification.Rotation), true)
 
 	gl.BindTexture(gl.TEXTURE_2D, textureID)
 

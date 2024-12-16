@@ -143,9 +143,9 @@ func (sh *crtSequencer) flushPhosphor() {
 // debugger TV Screen window should have a windowed value of true
 //
 // returns the textureID of the processed image
-func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlines int, numClocks int,
-	image textureSpec, prefs crtSeqPrefs, rotation specification.Rotation,
-	screenshot bool) uint32 {
+func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
+	windowed bool, numScanlines int, numClocks int,
+	prefs crtSeqPrefs, rotation specification.Rotation, screenshot bool) uint32 {
 
 	// the flipY value depends on whether the texture is to be windowed
 	env.flipY = windowed
@@ -174,9 +174,17 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 		phosphorPasses = 3
 	}
 
+	env.textureID = textureID
+
 	// sharpen image
 	env.textureID = sh.sequence.Process(func() {
-		sh.sharpenShader.(*sharpenShader).setAttributesArgs(env, image, 2)
+		sh.sharpenShader.(*sharpenShader).process(env, 2)
+		env.draw()
+	})
+
+	// TV color shader is applied to pixel-perfect shader too
+	env.textureID = sh.sequence.Process(func() {
+		sh.tvColorShader.setAttributes(env)
 		env.draw()
 	})
 
@@ -186,7 +194,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 		// neutral shader so that the y-orientaiton is correct
 		if prefs.Ghosting {
 			env.textureID = sh.sequence.Process(func() {
-				sh.ghostingShader.(*ghostingShader).setAttributesArgs(env, float32(prefs.GhostingAmount))
+				sh.ghostingShader.(*ghostingShader).process(env, float32(prefs.GhostingAmount))
 				env.draw()
 			})
 		} else {
@@ -206,24 +214,24 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 		if prefs.Enabled {
 			if prefs.Phosphor {
 				// use blur shader to add bloom to previous phosphor
-				env.textureID = sh.phosphor.Texture()
+				env.textureID = sh.phosphor.TextureID()
 				env.textureID = sh.phosphor.Process(func() {
-					sh.blurShader.(*blurShader).setAttributesArgs(env, float32(prefs.PhosphorBloom))
+					sh.blurShader.(*blurShader).process(env, float32(prefs.PhosphorBloom))
 					env.draw()
 				})
 			}
 
 			// add new frame to phosphor buffer
 			env.textureID = sh.phosphor.Process(func() {
-				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(prefs.PhosphorLatency), newFrameForPhosphor)
+				sh.phosphorShader.(*phosphorShader).process(env, float32(prefs.PhosphorLatency), newFrameForPhosphor)
 				env.draw()
 			})
 		} else {
 			// add new frame to phosphor buffer (using phosphor buffer for pixel perfect fade)
-			env.textureID = sh.phosphor.Texture()
+			env.textureID = sh.phosphor.TextureID()
 			env.flipY = true
 			env.textureID = sh.phosphor.Process(func() {
-				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(prefs.PixelPerfectFade), newFrameForPhosphor)
+				sh.phosphorShader.(*phosphorShader).process(env, float32(prefs.PixelPerfectFade), newFrameForPhosphor)
 				env.draw()
 			})
 		}
@@ -234,22 +242,16 @@ func (sh *crtSequencer) process(env shaderEnvironment, windowed bool, numScanlin
 	// the beginning of the function)
 	env.flipY = windowed
 
-	// TV color shader is applied to pixel-perfect shader too
-	env.textureID = sh.sequence.Process(func() {
-		sh.tvColorShader.setAttributes(env)
-		env.draw()
-	})
-
 	if prefs.Enabled {
 		// video-black correction
 		env.textureID = sh.sequence.Process(func() {
-			sh.blackCorrectionShader.(*blackCorrectionShader).setAttributesArgs(env, float32(prefs.BlackLevel))
+			sh.blackCorrectionShader.(*blackCorrectionShader).process(env, float32(prefs.BlackLevel))
 			env.draw()
 		})
 
 		// sharpness value
 		env.textureID = sh.sequence.Process(func() {
-			sh.blurShader.(*blurShader).setAttributesArgs(env, float32(prefs.Sharpness))
+			sh.blurShader.(*blurShader).process(env, float32(prefs.Sharpness))
 			env.draw()
 		})
 

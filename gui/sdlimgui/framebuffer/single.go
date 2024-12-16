@@ -96,8 +96,8 @@ func (fb *Single) Dimensions() (width int32, height int32) {
 	return fb.width, fb.height
 }
 
-// Texture returns the texture ID used by the single framebuffer
-func (fb *Single) Texture() uint32 {
+// TextureID returns the texture ID used by the single framebuffer
+func (fb *Single) TextureID() uint32 {
 	return fb.texture.id
 }
 

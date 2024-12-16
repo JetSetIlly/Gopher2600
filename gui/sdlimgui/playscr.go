@@ -225,11 +225,6 @@ func (win *playScr) setScalingDisplay() {
 	win.screenRatio = win.screenWidth / win.screenHeight
 }
 
-// textureSpec implements the scalingImage specification
-func (win *playScr) textureSpec() (uint32, float32, float32) {
-	return win.screenTexture.getID(), win.screenWidth, win.screenHeight
-}
-
 // SetRotation implements the television.PixelRendererRotation interface
 func (win *playScr) SetRotation(rotation specification.Rotation) {
 	win.resize()

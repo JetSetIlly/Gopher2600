@@ -213,8 +213,8 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 		prefs.Enabled = true
 		prefs.Bevel = false
 
-		env.textureID = sh.crt.process(env, true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible,
-			sh.img.wm.dbgScr, prefs, specification.NormalRotation, false)
+		env.textureID = sh.crt.process(env, sh.img.wm.dbgScr.displayTexture.getID(),
+			true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible, prefs, specification.NormalRotation, false)
 		env.projMtx = projection
 	} else {
 		// if crtPreview is disabled we still go through the crt process. we do
@@ -231,8 +231,16 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 		prefs := newCrtSeqPrefs(sh.img.displayPrefs)
 		prefs.Enabled = false
 
-		env.textureID = sh.crt.process(env, true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible,
-			sh.img.wm.dbgScr, prefs, specification.NormalRotation, false)
+		var id uint32
+		if sh.img.wm.dbgScr.elements {
+			id = sh.img.wm.dbgScr.elementsTexture.getID()
+		} else {
+			id = sh.img.wm.dbgScr.displayTexture.getID()
+		}
+
+		env.textureID = sh.crt.process(env, id,
+			true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible,
+			prefs, specification.NormalRotation, false)
 		env.projMtx = projection
 	}
 
