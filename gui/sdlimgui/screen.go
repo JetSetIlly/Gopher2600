@@ -123,7 +123,7 @@ type screenCrit struct {
 	// frameQueue are what we plot pixels to while we wait for a frame to complete.
 	// - the larger the queue the greater the input lag
 	// - a three to five frame queue seems good. ten frames can feel very laggy
-	frameQueue [maxFrameQueue]*image.RGBA
+	frameQueue [maxFrameQueue][]signal.SignalAttributes
 
 	// local copies of frame queue preferences values. updated by setFrameQueue()
 	// which is called when the underlying preference is changed
@@ -214,7 +214,7 @@ func newScreen(img *SdlImgui) *screen {
 
 	// allocate frame queue images
 	for i := range scr.crit.frameQueue {
-		scr.crit.frameQueue[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
+		scr.crit.frameQueue[i] = make([]signal.SignalAttributes, specification.AbsoluteMaxClks)
 	}
 
 	scr.crit.section.Unlock()
@@ -303,7 +303,7 @@ func (scr *screen) updateFrameQueue() {
 	scr.crit.queueRecovery = scr.crit.frameQueueLen
 
 	// restore previous plot frame to all entries in the queue
-	var old *image.RGBA
+	var old []signal.SignalAttributes
 	switch scr.img.dbg.Mode() {
 	case govern.ModePlay:
 		old = scr.crit.frameQueue[scr.crit.renderIdx]
@@ -312,7 +312,7 @@ func (scr *screen) updateFrameQueue() {
 	}
 	if old != nil {
 		for i := range scr.crit.frameQueue {
-			copy(scr.crit.frameQueue[i].Pix, old.Pix)
+			copy(scr.crit.frameQueue[i], old)
 		}
 	}
 
@@ -344,11 +344,7 @@ func (scr *screen) Reset() {
 func (scr *screen) clearPixels() {
 	// clear pixels in frame queue
 	for i := range scr.crit.frameQueue {
-		for y := 0; y < scr.crit.presentationPixels.Bounds().Size().Y; y++ {
-			for x := 0; x < scr.crit.presentationPixels.Bounds().Size().X; x++ {
-				scr.crit.frameQueue[i].SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-			}
-		}
+		clear(scr.crit.frameQueue[i])
 	}
 
 	// clear pixels
@@ -492,35 +488,14 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 		}
 	}
 
-	var col color.RGBA
-	var offset int
-
-	for i := range sig {
-		// end of pixel queue reached but there are still signals to process.
-		// return immediately to simplify bounds issues. this shouldn't ever be
-		// an issue
-		if offset >= len(scr.crit.frameQueue[0].Pix) {
-			return nil
-		}
-
-		// handle VBLANK by setting pixels to black. we also manually handle
-		// NoSignal in the same way
-		if sig[i].VBlank || sig[i].Index == signal.NoSignal {
-			col = scr.crit.frameInfo.Spec.GetColor(signal.VideoBlack)
-		} else {
-			col = scr.crit.frameInfo.Spec.GetColor(sig[i].Color)
-		}
-
-		// small cap improves performance, see https://golang.org/issue/27857
-		s := scr.crit.frameQueue[scr.crit.plotIdx].Pix[offset : offset+3 : offset+3]
-		s[0] = col.R
-		s[1] = col.G
-		s[2] = col.B
-
-		// alpha channel never changes
-
-		offset += 4
+	// sanity check number of signals and size of the frame queue
+	if len(sig) > len(scr.crit.frameQueue[0]) {
+		panic("signal framequeue in sdlimgui is not large enough for the number of signals from the TV")
 	}
+
+	// make a copy of the signal attributes. colour based on the signals will be
+	// generated in the gui goroutine as required
+	copy(scr.crit.frameQueue[scr.crit.plotIdx], sig)
 
 	scr.crit.lastY = last / specification.ClksScanline
 	scr.crit.lastX = last % specification.ClksScanline
@@ -662,13 +637,37 @@ func (scr *screen) render() {
 	}
 }
 
+func (scr *screen) generatePresentationPixels(idx int) {
+	var col color.RGBA
+	var offset int
+
+	sig := scr.crit.frameQueue[idx]
+
+	for i := range sig {
+		// handle VBLANK by setting pixels to black. we also manually handle
+		// NoSignal in the same way
+		if sig[i].VBlank || sig[i].Index == signal.NoSignal {
+			col = scr.crit.frameInfo.Spec.GetColor(signal.VideoBlack)
+		} else {
+			col = scr.crit.frameInfo.Spec.GetColor(sig[i].Color)
+		}
+
+		// small cap improves performance, see https://golang.org/issue/27857
+		// alpha channel never changes
+		s := scr.crit.presentationPixels.Pix[offset : offset+3 : offset+3]
+		s[0] = col.R
+		s[1] = col.G
+		s[2] = col.B
+
+		offset += 4
+	}
+}
+
 // copy pixels from queue to the live copy.
 func (scr *screen) copyPixelsDebugmode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
-
-	// copy pixels from pixel queue to the live copy.
-	copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.plotIdx].Pix)
+	scr.generatePresentationPixels(scr.crit.plotIdx)
 }
 
 // copy pixels from queue to the live copy.
@@ -704,15 +703,15 @@ func (scr *screen) copyPixelsPlaymode() {
 	if scr.img.dbg.State() == govern.Paused {
 		if scr.crit.queueRecovery == 0 && scr.img.prefs.activePause.Get().(bool) {
 			if scr.crit.pauseFrame {
-				copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.prevRenderIdx[0]].Pix)
+				scr.generatePresentationPixels(scr.crit.prevRenderIdx[0])
 				scr.crit.pauseFrame = false
 			} else {
-				copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.renderIdx].Pix)
+				scr.generatePresentationPixels(scr.crit.renderIdx)
 				scr.crit.pauseFrame = true
 			}
 		} else {
 			// non-active pausing can end the function immediately
-			copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.renderIdx].Pix)
+			scr.generatePresentationPixels(scr.crit.renderIdx)
 			return
 		}
 	}
@@ -782,7 +781,7 @@ func (scr *screen) copyPixelsPlaymode() {
 		}
 	}
 
-	copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.renderIdx].Pix)
+	scr.generatePresentationPixels(scr.crit.renderIdx)
 
 	// nudge fps cap to try to bring the plot and render indexes back into equilibrium
 	if nudge {
