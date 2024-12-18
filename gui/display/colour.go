@@ -72,7 +72,7 @@ func newColour() (*Colour, error) {
 		return nil, err
 	}
 
-	err = p.dsk.Load(true)
+	err = p.dsk.Load()
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (p *Colour) SetDefaults() {
 
 // Load colour values from disk
 func (p *Colour) Load() error {
-	return p.dsk.Load(false)
+	return p.dsk.Load()
 }
 
 // Save current colour values to disk

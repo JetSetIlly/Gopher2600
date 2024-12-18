@@ -42,7 +42,6 @@ type ColourGen struct {
 }
 
 // NewColourGen is the preferred method of intialisation for the ColourGen type.
-// Note that the saving of colourgen preferences are disabled by default
 func NewColourGen() (*ColourGen, error) {
 	c := &ColourGen{
 		ntsc:  make([]entry, 128),
@@ -61,7 +60,6 @@ func NewColourGen() (*ColourGen, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.dsk.EnableSaving(false)
 
 	err = c.dsk.Add("television.color.ntscphase", &c.NTSCPhase)
 	if err != nil {
@@ -81,7 +79,7 @@ func NewColourGen() (*ColourGen, error) {
 		return nil
 	})
 
-	err = c.dsk.Load(true)
+	err = c.dsk.Load()
 	if err != nil {
 		return nil, err
 	}
@@ -138,17 +136,12 @@ func (c *ColourGen) SetDefaults() {
 	c.PALPhase.Set(PALDefault)
 }
 
-func (c *ColourGen) EnableSaving(set bool) {
-	c.dsk.EnableSaving(set)
-}
-
 // Load colour values from disk
 func (c *ColourGen) Load() error {
-	return c.dsk.Load(false)
+	return c.dsk.Load()
 }
 
-// Save current colour values to disk. Note that saving is disabled by default
-// when the ColourGen instance is created with NewColourGen()
+// Save current colour values to disk
 func (c *ColourGen) Save() error {
 	return c.dsk.Save()
 }

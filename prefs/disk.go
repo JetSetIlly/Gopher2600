@@ -59,9 +59,8 @@ func (e entryMap) String() string {
 
 // Disk represents preference values as stored on disk.
 type Disk struct {
-	path          string
-	entries       entryMap
-	disableSaving bool
+	path    string
+	entries entryMap
 }
 
 func (dsk Disk) String() string {
@@ -106,22 +105,13 @@ func (dsk *Disk) Reset() error {
 	return nil
 }
 
-// EnablSaving allows the save function to be enalbed/disabled for this specific
-// Disk instance. Compare to the global DisableSaving variable which is really
-// only intended for testing contexts.
-//
-// Saving is enabled by default
-func (dsk *Disk) EnableSaving(set bool) {
-	dsk.disableSaving = !set
-}
-
 // DisableSaving is useful for testing when a blanket prohibition on saving to
-// disk is required. Consider using Disk.DisableSaving() function instead
+// disk is required
 var DisableSaving = false
 
 // Save current preference values to disk.
 func (dsk *Disk) Save() (rerr error) {
-	if DisableSaving || dsk.disableSaving {
+	if DisableSaving {
 		return nil
 	}
 
@@ -177,11 +167,9 @@ func (dsk *Disk) Save() (rerr error) {
 	return nil
 }
 
-// Load preference values from disk. The saveonFirstUse argument is useful when
-// loading preferences on initialisation. It makes sure default preferences are
-// saved to disk if they are not present in the preferences file.
-func (dsk *Disk) Load(saveOnFirstUse bool) error {
-	numLoaded, err := load(dsk.path, &dsk.entries, true)
+// Load preference values from disk
+func (dsk *Disk) Load() error {
+	_, err := load(dsk.path, &dsk.entries, true)
 	if err != nil {
 		return err
 	}
@@ -191,15 +179,6 @@ func (dsk *Disk) Load(saveOnFirstUse bool) error {
 		if ok, v := GetCommandLinePref(k); ok {
 			dsk.entries[k].Set(v)
 		}
-	}
-
-	// if the number of entries loaded by the load() function is not equal to
-	// then number of entries in this Disk instance then we can say that a new
-	// preference value has been added since the last save to disk. if
-	// saveOnFirstUse is true then save immediately to make sure the default
-	// value is on disk.
-	if saveOnFirstUse && numLoaded != len(dsk.entries) {
-		return dsk.Save()
 	}
 
 	return nil

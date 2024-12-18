@@ -148,7 +148,7 @@ func newRevisionPreferences() (*RevisionPreferences, error) {
 		return nil, fmt.Errorf("revision: %w", err)
 	}
 
-	err = p.dsk.Load(true)
+	err = p.dsk.Load()
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func (p *RevisionPreferences) SetDefaults() {
 
 // Load revision preferences from disk.
 func (p *RevisionPreferences) Load() error {
-	return p.dsk.Load(false)
+	return p.dsk.Load()
 }
 
 // Save current revision preferences to disk.

@@ -97,7 +97,7 @@ func newTVPreferences() (*TVPreferences, error) {
 		return nil, err
 	}
 
-	err = p.dsk.Load(true)
+	err = p.dsk.Load()
 	if err != nil {
 		return p, err
 	}
@@ -119,7 +119,7 @@ func (p *TVPreferences) SetDefaults() {
 
 // Load television preferences from disk.
 func (p *TVPreferences) Load() error {
-	return p.dsk.Load(false)
+	return p.dsk.Load()
 }
 
 // Save current television preferences to disk.

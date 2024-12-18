@@ -84,7 +84,7 @@ func newPlusROMpreferences() (*PlusROMPreferences, error) {
 		return nil, err
 	}
 
-	err = p.dsk.Load(true)
+	err = p.dsk.Load()
 	if err != nil {
 		return p, err
 	}
@@ -138,7 +138,7 @@ func (p *PlusROMPreferences) SetDefaults() {
 
 // Load plusrom preferences from disk.
 func (p *PlusROMPreferences) Load() error {
-	return p.dsk.Load(false)
+	return p.dsk.Load()
 }
 
 // Save current plusrom preferences to disk.

@@ -295,7 +295,7 @@ func (p *preferences) load() error {
 	// of the emulator) then the hook will not be triggered by the load process
 	p.setDefaults()
 
-	return p.dsk.Load(false)
+	return p.dsk.Load()
 }
 
 // save preferences to disk. does not save window preferences.
@@ -427,12 +427,12 @@ func (p *preferences) loadWindowPreferences() error {
 		return err
 	}
 
-	err = p.dskWinGeom.Load(true)
+	err = p.dskWinGeom.Load()
 	if err != nil {
 		return err
 	}
 
-	err = p.dskWinFullScreen.Load(true)
+	err = p.dskWinFullScreen.Load()
 	if err != nil {
 		return err
 	}

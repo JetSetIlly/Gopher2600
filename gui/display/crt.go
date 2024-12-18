@@ -177,7 +177,7 @@ func newCRT() (*CRT, error) {
 		return nil, err
 	}
 
-	err = p.dsk.Load(true)
+	err = p.dsk.Load()
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func (p *CRT) SetDefaults() {
 
 // Load CRT values from disk.
 func (p *CRT) Load() error {
-	return p.dsk.Load(false)
+	return p.dsk.Load()
 }
 
 // Save current CRT values to disk.
