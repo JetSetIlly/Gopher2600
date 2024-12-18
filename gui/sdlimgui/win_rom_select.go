@@ -166,11 +166,6 @@ func (win *winSelectROM) playmodeSetOpen(open bool) {
 	win.playmodeWin.playmodeSetOpen(open)
 	win.centreOnFile = true
 	win.setOpen(open)
-
-	// set centreOnFile to true, ready for next time window is open
-	if !open {
-		win.centreOnFile = true
-	}
 }
 
 func (win *winSelectROM) playmodeDraw() bool {
@@ -200,11 +195,6 @@ func (win *winSelectROM) debuggerSetOpen(open bool) {
 	win.debuggerWin.debuggerSetOpen(open)
 	win.centreOnFile = true
 	win.setOpen(open)
-
-	// set centreOnFile to true, ready for next time window is open
-	if !open {
-		win.centreOnFile = true
-	}
 }
 
 func (win *winSelectROM) debuggerDraw() bool {
@@ -346,7 +336,7 @@ func (win *winSelectROM) draw() {
 
 			if selected && win.centreOnFile {
 				imgui.SetScrollHereY(0.0)
-				win.centreOnFile = false
+				win.centreOnFile = !win.path.Results.Complete
 			}
 
 			if imgui.SelectableV(e.Name, selected, 0, imgui.Vec2{X: 0, Y: 0}) {
