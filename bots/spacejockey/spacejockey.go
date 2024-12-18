@@ -29,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/colourgen"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -162,7 +163,7 @@ func (bot *spaceJockeyBot) findEnemy() int {
 	for y := enemyWindow.Min.Y; y < enemyWindow.Max.Y; y++ {
 		ct := 0
 		for x := enemyWindow.Min.X; x < enemyWindow.Max.X; x++ {
-			if bot.findEnemyImage.At(x, y) != specification.VideoBlack {
+			if bot.findEnemyImage.At(x, y) != colourgen.VideoBlack {
 				ct++
 			}
 

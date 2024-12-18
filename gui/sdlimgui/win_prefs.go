@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/prefs"
 )
@@ -98,6 +99,7 @@ func (win *winPrefs) draw() {
 		win.drawTelevision()
 		imgui.EndTabItem()
 		setDef = func() {
+			specification.ColourGen.SetDefaults()
 			win.img.dbg.VCS().Env.Prefs.TV.SetDefaults()
 			win.img.displayPrefs.Colour.SetDefaults()
 		}
@@ -743,6 +745,10 @@ func (win *winPrefs) drawDiskButtons() {
 		if err != nil {
 			logger.Logf(logger.Allow, "sdlimgui", "could not save (display/colour) preferences: %v", err)
 		}
+		err = specification.ColourGen.Save()
+		if err != nil {
+			logger.Logf(logger.Allow, "sdlimgui", "could not save (television/colour) preferences: %v", err)
+		}
 		err = win.img.audio.Prefs.Save()
 		if err != nil {
 			logger.Logf(logger.Allow, "sdlimgui", "could not save (sdlaudio) preferences: %v", err)
@@ -798,6 +804,10 @@ func (win *winPrefs) drawDiskButtons() {
 		err = win.img.displayPrefs.Colour.Load()
 		if err != nil {
 			logger.Logf(logger.Allow, "sdlimgui", "could not restore (display/colour) preferences: %v", err)
+		}
+		err = specification.ColourGen.Load()
+		if err != nil {
+			logger.Logf(logger.Allow, "sdlimgui", "could not restore (television/colour) preferences: %v", err)
 		}
 		err = win.img.audio.Prefs.Load()
 		if err != nil {

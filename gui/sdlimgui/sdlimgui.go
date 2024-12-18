@@ -27,6 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/caching"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/resources"
@@ -178,6 +179,9 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
+
+	// enable disk saving for colour generation preferences
+	specification.ColourGen.EnableSaving(true)
 
 	// start renderer after platform and preferences
 	err = img.rnd.start()

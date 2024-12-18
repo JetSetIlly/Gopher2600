@@ -59,8 +59,9 @@ func (e entryMap) String() string {
 
 // Disk represents preference values as stored on disk.
 type Disk struct {
-	path    string
-	entries entryMap
+	path          string
+	entries       entryMap
+	disableSaving bool
 }
 
 func (dsk Disk) String() string {
@@ -105,13 +106,22 @@ func (dsk *Disk) Reset() error {
 	return nil
 }
 
+// EnablSaving allows the save function to be enalbed/disabled for this specific
+// Disk instance. Compare to the global DisableSaving variable which is really
+// only intended for testing contexts.
+//
+// Saving is enabled by default
+func (dsk *Disk) EnableSaving(set bool) {
+	dsk.disableSaving = !set
+}
+
 // DisableSaving is useful for testing when a blanket prohibition on saving to
-// disk is required.
+// disk is required. Consider using Disk.DisableSaving() function instead
 var DisableSaving = false
 
 // Save current preference values to disk.
 func (dsk *Disk) Save() (rerr error) {
-	if DisableSaving {
+	if DisableSaving || dsk.disableSaving {
 		return nil
 	}
 

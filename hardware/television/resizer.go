@@ -198,8 +198,7 @@ func (rz *Resizer) examine(state *State, sig signal.SignalAttributes) {
 	// non-black pixels. these values are using in the commit() function in the
 	// event that usingVBLANK is false.
 	if state.clock > specification.ClksHBlank && !sig.VBlank {
-		col := state.frameInfo.Spec.GetColor(sig.Color)
-		if col.R != 0x00 || col.G != 0x00 || col.B != 0x00 {
+		if sig.Color == 0x00 {
 			if state.frameInfo.Stable {
 				if state.scanline < rz.blackTop &&
 					state.scanline >= state.frameInfo.Spec.ExtendedVisibleTop {

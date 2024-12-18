@@ -21,6 +21,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/television/colourgen"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -148,7 +149,7 @@ func (win *winPrefs) drawNTSCPhase() {
 	imgui.BeginGroup()
 	defer imgui.EndGroup()
 
-	f := float32(specification.NTSCPhase)
+	f := float32(specification.ColourGen.NTSCPhase.Get().(float64))
 
 	imgui.AlignTextToFramePadding()
 	imgui.Text("Phase")
@@ -156,17 +157,17 @@ func (win *winPrefs) drawNTSCPhase() {
 
 	label := fmt.Sprintf("%.1f\u00b0", f)
 	if imgui.SliderFloatV("##ntsc_phase", &f, 20.0, 30.0, label, imgui.SliderFlagsNone) {
-		specification.NTSCPhase = float64(f)
+		specification.ColourGen.NTSCPhase.Set(f)
 	}
 
 	imgui.Spacing()
 	switch f {
-	case specification.NTSCFieldService:
-		label = specification.NTSCFieldSericeLabel
-	case specification.NTSCVideoSoft:
-		label = specification.NTSCVidoSoftLabel
-	case specification.NTSCIdealDistribution:
-		label = specification.NTSCIdealDistributionLabel
+	case colourgen.NTSCFieldService:
+		label = colourgen.NTSCFieldSericeLabel
+	case colourgen.NTSCVideoSoft:
+		label = colourgen.NTSCVidoSoftLabel
+	case colourgen.NTSCIdealDistribution:
+		label = colourgen.NTSCIdealDistributionLabel
 	default:
 		label = "Custom"
 	}
@@ -176,14 +177,14 @@ func (win *winPrefs) drawNTSCPhase() {
 	imgui.SameLineV(0, 5)
 
 	if imgui.BeginComboV("##ntscpreset", label, imgui.ComboFlagsNone) {
-		if imgui.Selectable(specification.NTSCFieldSericeLabel) {
-			specification.NTSCPhase = specification.NTSCFieldService
+		if imgui.Selectable(colourgen.NTSCFieldSericeLabel) {
+			specification.ColourGen.NTSCPhase.Set(colourgen.NTSCFieldService)
 		}
-		if imgui.Selectable(specification.NTSCVidoSoftLabel) {
-			specification.NTSCPhase = specification.NTSCVideoSoft
+		if imgui.Selectable(colourgen.NTSCVidoSoftLabel) {
+			specification.ColourGen.NTSCPhase.Set(colourgen.NTSCVideoSoft)
 		}
-		if imgui.Selectable(specification.NTSCIdealDistributionLabel) {
-			specification.NTSCPhase = specification.NTSCIdealDistribution
+		if imgui.Selectable(colourgen.NTSCIdealDistributionLabel) {
+			specification.ColourGen.NTSCPhase.Set(colourgen.NTSCIdealDistribution)
 		}
 		imgui.EndCombo()
 	}
@@ -193,7 +194,7 @@ func (win *winPrefs) drawPALPhase() {
 	imgui.BeginGroup()
 	defer imgui.EndGroup()
 
-	f := float32(specification.PALPhase)
+	f := float32(specification.ColourGen.PALPhase.Get().(float64))
 
 	imgui.AlignTextToFramePadding()
 	imgui.Text("Phase")
@@ -201,7 +202,7 @@ func (win *winPrefs) drawPALPhase() {
 
 	label := fmt.Sprintf("%.1f\u00b0", f)
 	if imgui.SliderFloatV("##pal_phase", &f, 10.0, 30.0, label, imgui.SliderFlagsNone) {
-		specification.PALPhase = float64(f)
+		specification.ColourGen.PALPhase.Set(f)
 	}
 }
 

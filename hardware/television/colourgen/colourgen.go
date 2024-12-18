@@ -13,36 +13,81 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package specification
+package colourgen
 
 import (
 	"image/color"
 	"math"
 
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/prefs"
+	"github.com/jetsetilly/gopher2600/resources"
 )
 
-func clamp(v float64) float64 {
-	if v < 0.0 {
-		return 0.0
-	}
-	if v > 1.0 {
-		return 1.0
-	}
-	return v
+type entry struct {
+	col       color.RGBA
+	generated bool
 }
 
-// VideoBlack is the color produced by a television in the absence of a color signal
-var VideoBlack = color.RGBA{0, 0, 0, 255}
+// ColourGen creates and caches colour values for the different types of
+// television systems
+type ColourGen struct {
+	ntsc  []entry
+	pal   []entry
+	secam []entry
 
-// gamma values taken from the "Standard Gammas" section of:
-// https://en.wikipedia.org/w/index.php?title=Gamma_correction&oldid=1253179068
-const (
-	ntscGamma = 2.2
-	palGamma  = 2.8
-)
+	dsk       *prefs.Disk
+	NTSCPhase prefs.Float
+	PALPhase  prefs.Float
+}
 
-var NTSCPhase float64
+// NewColourGen is the preferred method of intialisation for the ColourGen type.
+// Note that the saving of colourgen preferences are disabled by default
+func NewColourGen() (*ColourGen, error) {
+	c := &ColourGen{
+		ntsc:  make([]entry, 128),
+		pal:   make([]entry, 128),
+		secam: make([]entry, 128),
+	}
+
+	c.SetDefaults()
+
+	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
+	if err != nil {
+		return nil, err
+	}
+
+	c.dsk, err = prefs.NewDisk(pth)
+	if err != nil {
+		return nil, err
+	}
+	c.dsk.EnableSaving(false)
+
+	err = c.dsk.Add("television.color.ntscphase", &c.NTSCPhase)
+	if err != nil {
+		return nil, err
+	}
+	c.NTSCPhase.SetHookPost(func(_ prefs.Value) error {
+		clear(c.ntsc)
+		return nil
+	})
+
+	err = c.dsk.Add("television.color.palphase", &c.PALPhase)
+	if err != nil {
+		return nil, err
+	}
+	c.PALPhase.SetHookPost(func(_ prefs.Value) error {
+		clear(c.pal)
+		return nil
+	})
+
+	err = c.dsk.Load(true)
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
 
 // The correct calibration of the NTSC console is somewhat controversial.
 // However, there are three basic values that we can identify. In all cases
@@ -86,13 +131,53 @@ const (
 	NTSCFieldSericeLabel = "Field Service Manual"
 )
 
-func init() {
-	NTSCPhase = NTSCFieldService
+const PALDefault = 16.35
+
+func (c *ColourGen) SetDefaults() {
+	c.NTSCPhase.Set(NTSCFieldService)
+	c.PALPhase.Set(PALDefault)
 }
 
-func generateNTSC(col signal.ColorSignal) color.RGBA {
+func (c *ColourGen) EnableSaving(set bool) {
+	c.dsk.EnableSaving(set)
+}
+
+// Load colour values from disk
+func (c *ColourGen) Load() error {
+	return c.dsk.Load(false)
+}
+
+// Save current colour values to disk. Note that saving is disabled by default
+// when the ColourGen instance is created with NewColourGen()
+func (c *ColourGen) Save() error {
+	return c.dsk.Save()
+}
+
+// VideoBlack is the color produced by a television in the absence of a color signal
+var VideoBlack = color.RGBA{0, 0, 0, 255}
+
+func clamp(v float64) float64 {
+	if v < 0.0 {
+		return 0.0
+	}
+	if v > 1.0 {
+		return 1.0
+	}
+	return v
+}
+
+// GenerateNTSC creates the RGB values for the ColorSignal using the current
+// colour generation preferences and for the NTSC television system
+func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
+	// the video black signal is special and is never cached
 	if col == signal.VideoBlack {
 		return VideoBlack
+	}
+
+	idx := uint8(col) >> 1
+
+	if c.ntsc[idx].generated == true {
+		return c.ntsc[idx].col
 	}
 
 	// color-luminance components of color signal
@@ -112,19 +197,21 @@ func generateNTSC(col signal.ColorSignal) color.RGBA {
 	// only the luminance is used
 	if hue == 0x00 {
 		if lum == 0x00 {
-			// black is defined as 0% luminance, the same as for when VBLANK is
-			// enabled
+			// black is defined as 0% luminance, the same as for when VBLANK is enabled
 			//
 			// some RGB mods for the 2600 produce a non-zero black value. for
 			// example, the CyberTech AV mod produces a black with a value of 0.075
-			return color.RGBA{A: 255}
+			c.ntsc[idx].col = color.RGBA{A: 255}
+		} else {
+			y := uint8(Y * 255)
+			c.ntsc[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
 		}
-		g := uint8(Y * 255)
-		return color.RGBA{R: g, G: g, B: g, A: 255}
+		c.ntsc[idx].generated = true
+		return c.ntsc[idx].col
 	}
 
 	// the colour component indicates a point on the 'colour wheel'
-	phiHue := (float64(hue) - 1) * -NTSCPhase
+	phiHue := (float64(hue) - 1) * -c.NTSCPhase.Get().(float64)
 
 	// angle of the colour burst reference is 180 by defintion
 	const phiBurst = 180
@@ -187,23 +274,30 @@ func generateNTSC(col signal.ColorSignal) color.RGBA {
 	// 	G := clamp(Y - (0.2721 * I) - (0.6474 * Q))
 	// 	B := clamp(Y - (1.1070 * I) + (1.7046 * Q))
 
-	return color.RGBA{
+	// create and cache
+	c.ntsc[idx].generated = true
+	c.ntsc[idx].col = color.RGBA{
 		R: uint8(R * 255.0),
 		G: uint8(G * 255.0),
 		B: uint8(B * 255.0),
 		A: 255,
 	}
+
+	return c.ntsc[idx].col
 }
 
-var PALPhase float64
-
-func init() {
-	PALPhase = 16.35
-}
-
-func generatePAL(col signal.ColorSignal) color.RGBA {
+// GeneratePAL creates the RGB values for the ColorSignal using the current
+// colour generation preferences and for the PAL television system
+func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
+	// the video black signal is special and is never cached
 	if col == signal.VideoBlack {
 		return VideoBlack
+	}
+
+	idx := uint8(col) >> 1
+
+	if c.pal[idx].generated == true {
+		return c.pal[idx].col
 	}
 
 	// color-luminance components of color signal
@@ -222,15 +316,17 @@ func generatePAL(col signal.ColorSignal) color.RGBA {
 	// PAL creates a grayscale for hues 0, 1, 14 and 15
 	if hue <= 0x01 || hue >= 0x0e {
 		if lum == 0x00 {
-			// black is defined as 0% luminance, the same as for when VBLANK is
-			// enabled
+			// black is defined as 0% luminance, the same as for when VBLANK is enabled
 			//
 			// some RGB mods for the 2600 produce a non-zero black value. for
 			// example, the CyberTech AV mod produces a black with a value of 0.075
-			return color.RGBA{A: 255}
+			c.ntsc[idx].col = color.RGBA{A: 255}
+		} else {
+			y := uint8(Y * 255)
+			c.ntsc[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
 		}
-		g := uint8(Y * 255)
-		return color.RGBA{R: g, G: g, B: g, A: 255}
+		c.ntsc[idx].generated = true
+		return c.ntsc[idx].col
 	}
 
 	var phiHue float64
@@ -238,10 +334,10 @@ func generatePAL(col signal.ColorSignal) color.RGBA {
 	// even-numbered hue numbers go in the opposite direction for some reason
 	if hue&0x01 == 0x01 {
 		// green to lilac
-		phiHue = float64(hue) * -PALPhase
+		phiHue = float64(hue) * -c.PALPhase.Get().(float64)
 	} else {
 		// gold to purple
-		phiHue = (float64(hue) - 2) * PALPhase
+		phiHue = (float64(hue) - 2) * c.PALPhase.Get().(float64)
 	}
 
 	// angle of the colour burst reference is 180 by defintion
@@ -271,31 +367,51 @@ func generatePAL(col signal.ColorSignal) color.RGBA {
 	G := clamp(Y - (0.395 * U) - (0.581 * V))
 	B := clamp(Y + (2.033 * U))
 
-	return color.RGBA{
+	// create and cache
+	c.pal[idx].generated = true
+	c.pal[idx].col = color.RGBA{
 		R: uint8(R * 255.0),
 		G: uint8(G * 255.0),
 		B: uint8(B * 255.0),
 		A: 255,
 	}
+
+	return c.pal[idx].col
 }
 
-func generateSECAM(col signal.ColorSignal) color.RGBA {
+// GenerateSECAM creates the RGB values for the ColorSignal using the current
+// colour generation preferences and for the SECAM television system
+func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
+	// the video black signal is special and is never cached
 	if col == signal.VideoBlack {
 		return VideoBlack
+	}
+
+	idx := uint8(col) >> 1
+
+	if c.secam[idx].generated == true {
+		return c.secam[idx].col
 	}
 
 	// only the luminance data of the colour signal is used
 	lum := (col & 0x0e) >> 1
 
-	// the luminance is actually fixed (Y = 1.0) and is used to create a U and V value
-	// rather than calculate the U and V we just looked up the RGB value directly
+	// in the 2600/SECAM system the luminance is actually a fixed value (Y = 1.0) and
+	// the lum value used to create a U and V value. the hue component of the
+	// signal.ColorSignal value is unused
+
+	// rather than calculate the U and V we look up the RGB value from a preset.
+	// this makes sense because there is currently no way of changing the
+	// "phase" of the SECAM signal like we do with the NTSC and PAL
 	var secam = []uint32{0x000000, 0x2121ff, 0xf03c79, 0xff50ff, 0x7fff00, 0x7fffff, 0xffff3f, 0xffffff}
 	v := secam[lum]
 
-	return color.RGBA{
+	c.secam[idx].generated = true
+	c.secam[idx].col = color.RGBA{
 		R: uint8((v & 0xff0000) >> 16),
 		G: uint8((v & 0xff00) >> 8),
 		B: uint8(v & 0xff),
 		A: 255,
 	}
+	return c.secam[idx].col
 }
