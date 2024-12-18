@@ -159,7 +159,7 @@ func (win *winSelectROM) setOpen(open bool) {
 	}
 
 	// open at the most recently selected ROM
-	win.path.Set <- win.img.dbg.Prefs.RecentROM.String()
+	win.path.Set <- win.img.prefs.recentROM.String()
 }
 
 func (win *winSelectROM) playmodeSetOpen(open bool) {
@@ -592,7 +592,13 @@ func (win *winSelectROM) insertCartridge() {
 		return
 	}
 
-	win.img.dbg.InsertCartridge(win.path.Results.Selected)
+	done := make(chan bool)
+	win.img.dbg.InsertCartridge(win.path.Results.Selected, done)
+	go func() {
+		if <-done {
+			win.img.prefs.recentROM.Set(win.path.Results.Selected)
+		}
+	}()
 
 	// close rom selected in both the debugger and playmode
 	win.debuggerSetOpen(false)

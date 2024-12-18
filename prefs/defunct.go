@@ -81,6 +81,7 @@ var defunct = []string{
 	"television.vsync.immediatedesync",
 	"crt.maskFine",
 	"crt.scanlinesFine",
+	"emulation.recentrom", // replaced with sdlimgui.emulation.recentrom
 }
 
 // returns true if string is in list of defunct values.

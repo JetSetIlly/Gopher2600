@@ -243,6 +243,14 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 //
 // MUST ONLY be called from the gui thread.
 func (img *SdlImgui) Destroy() {
+	// set recentROM value before saving. recentROM is set when a new ROM is
+	// loaded vie the ROM selector but this catches those instances where a ROM
+	// is loaded fromt he command line on debugger terminal
+	cart := img.dbg.VCS().Mem.Cart
+	if !cart.IsEjected() {
+		img.prefs.recentROM.Set(cart.Filename)
+	}
+
 	err := img.prefs.saveOnExitDsk.Save()
 	if err != nil {
 		logger.Log(logger.Allow, "sdlimgui", err)
@@ -352,12 +360,18 @@ func (img *SdlImgui) setEmulationMode(mode govern.Mode) error {
 		img.screen.addTextureRenderer(img.wm.dbgScr)
 		img.plt.window.Show()
 		img.plt.window.Raise()
+		if img.dbg.VCS().Mem.Cart.IsEjected() {
+			img.wm.debuggerWindows[winSelectROMID].debuggerSetOpen(true)
+		}
 
 	case govern.ModePlay:
 		img.screen.clearTextureRenderers()
 		img.screen.addTextureRenderer(img.playScr)
 		img.plt.window.Show()
 		img.plt.window.Raise()
+		if img.dbg.VCS().Mem.Cart.IsEjected() {
+			img.wm.playmodeWindows[winSelectROMID].playmodeSetOpen(true)
+		}
 	}
 
 	img.applyAudioMutePreference()

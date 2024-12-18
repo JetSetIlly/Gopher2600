@@ -18,20 +18,9 @@ package debugger
 import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/userinput"
 )
-
-func (dbg *Debugger) forceROMSelector() error {
-	dbg.forcedROMselection = make(chan bool, 1)
-	err := dbg.gui.SetFeature(gui.ReqROMSelector)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 func (dbg *Debugger) playLoop() error {
 	// if forcedROMSelection is active (is not nil) then the event loop is

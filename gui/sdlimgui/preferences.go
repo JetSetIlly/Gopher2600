@@ -42,6 +42,9 @@ type preferences struct {
 	// prefs that will be saved automatically on program exit
 	saveOnExitDsk *prefs.Disk
 
+	// emulation preferences
+	recentROM prefs.String
+
 	// debugger preferences
 	terminalOnError       prefs.Bool
 	audioMuteDebugger     prefs.Bool
@@ -98,6 +101,12 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 
+	err = p.dsk.Add("sdlimgui.emulation.recentrom", &p.recentROM)
+	if err != nil {
+		return nil, err
+	}
+
+	// debugger options
 	err = p.dsk.Add("sdlimgui.debugger.terminalOnError", &p.terminalOnError)
 	if err != nil {
 		return nil, err
@@ -237,6 +246,10 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.saveOnExitDsk.Add("sdlimgui.emulation.recentrom", &p.recentROM)
+	if err != nil {
+		return nil, err
+	}
 	err = p.saveOnExitDsk.Add("sdlimgui.debugger.showTooltips", &p.showTooltips)
 	if err != nil {
 		return nil, err
@@ -262,6 +275,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 }
 
 func (p *preferences) setDefaults() {
+	// recentROM does not have a default value
 	p.terminalOnError.Set(true)
 	p.audioMuteDebugger.Set(true)
 	p.showTooltips.Set(true)
