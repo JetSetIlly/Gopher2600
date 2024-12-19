@@ -271,7 +271,15 @@ func (bs *BallSprite) resetPosition() {
 	// see player sprite resetPosition() for commentary on delay values
 	delay := 4
 	if *bs.tia.hblank {
-		if !bs.tia.hmove.Latch || bs.lastHmoveCt >= 1 && bs.lastHmoveCt <= 15 {
+		// the difference between a delay of 2 and 3 seems to be whether the
+		// HMOVE is currently rippling. I'm not sure why the test should be
+		// "greater than zero" rather than "greater than or equal to zero"
+		//
+		// good tests for identifying the condition so far are the "reset_during_hmove/ball" roms
+		// and also Activision's Seaquest. The scuba divers are drawn with the ball sprite in
+		// that game. a delay of 2 causes the diver to just be visible on the right of the
+		// screen (in the wings, as it were)
+		if bs.tia.hmove.Ripple > 0 {
 			delay = 2
 		} else {
 			delay = 3

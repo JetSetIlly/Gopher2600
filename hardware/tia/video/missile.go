@@ -337,7 +337,9 @@ func (ms *MissileSprite) resetPosition() {
 	// see player sprite resetPosition() for commentary on delay values
 	delay := 4
 	if *ms.tia.hblank {
-		if !ms.tia.hmove.Latch || ms.tia.hmove.Ripple >= 1 && ms.tia.hmove.Ripple <= 15 {
+		// the condition to differentiate a delay of 2 and three is taken from
+		// the ball sprite. there are better tests for the ball sprite
+		if ms.tia.hmove.Ripple > 0 {
 			delay = 2
 		} else {
 			delay = 3
