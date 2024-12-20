@@ -81,7 +81,11 @@ var defunct = []string{
 	"television.vsync.immediatedesync",
 	"crt.maskFine",
 	"crt.scanlinesFine",
-	"emulation.recentrom", // replaced with sdlimgui.emulation.recentrom
+	"emulation.recentrom",      // replaced with sdlimgui.emulation.recentrom
+	"display.color.brightness", // replaced with television.color.brightness
+	"display.color.contrast",   // replaced with television.color.contrast
+	"display.color.hue",        // replaced with television.color.hue
+	"display.color.saturation", // replaced with television.color.saturation
 }
 
 // returns true if string is in list of defunct values.

@@ -121,8 +121,8 @@ type SdlImgui struct {
 
 	// gui specific preferences. crt preferences are handled separately. all
 	// other preferences are handled by the emulation
-	prefs        *preferences
-	displayPrefs *display.Preferences
+	prefs *preferences
+	crt   *display.CRT
 
 	// modal window
 	modal modal
@@ -174,7 +174,7 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	}
 
 	// initialise display preferences
-	img.displayPrefs, err = display.NewPreferences()
+	img.crt, err = display.NewCRT()
 	if err != nil {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}

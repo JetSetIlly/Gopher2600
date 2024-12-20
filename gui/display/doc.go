@@ -13,10 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package display specifies the preference values for the displaying of a TV
-// image by a GUI. The types in this package are intended to be agnostic of
-// which GUI system is being used.
-//
-// The package also houses the shaders subpackage. GLSL shaders should also be
-// GUI system agnostic.
+// Package display is intended to be independent of GUI system and houses the
+// shaders, bevels and preference information that is potentially applicable to
+// multiple frontends.
 package display

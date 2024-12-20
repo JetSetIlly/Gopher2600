@@ -27,10 +27,9 @@ import (
 )
 
 type gl32Texture struct {
-	id             uint32
-	typ            shaderType
-	create         bool
-	tvColoursInGui bool
+	id     uint32
+	typ    shaderType
+	create bool
 }
 
 type gl32 struct {
@@ -41,10 +40,6 @@ type gl32 struct {
 
 	textures map[uint32]gl32Texture
 	shaders  map[shaderType]shaderProgram
-
-	// false texture IDs used for enabling and disabling TV colour in the GUI
-	enableTVColour  imgui.TextureID
-	disableTVColour imgui.TextureID
 }
 
 func newRenderer(img *SdlImgui) renderer {
@@ -77,7 +72,6 @@ func (rnd *gl32) start() error {
 	rnd.shaders[shaderBevel] = newBevelShader(rnd.img)
 	rnd.shaders[shaderDbgScr] = newDbgScrShader(rnd.img)
 	rnd.shaders[shaderDbgScrOverlay] = newDbgScrOverlayShader(rnd.img)
-	rnd.shaders[shaderTVColour] = newTVColorShader(rnd.img.displayPrefs.Colour)
 
 	// deferring font setup until later
 
@@ -88,10 +82,6 @@ func (rnd *gl32) start() error {
 	logger.Logf(logger.Allow, "glsl", "vendor: %s", gl.GoStr(gl.GetString(gl.VENDOR)))
 	logger.Logf(logger.Allow, "glsl", "renderer: %s", gl.GoStr(gl.GetString(gl.RENDERER)))
 	logger.Logf(logger.Allow, "glsl", "driver: %s", gl.GoStr(gl.GetString(gl.VERSION)))
-
-	// set up false texture IDs to use for enabling/disabling TV colour in the GUI
-	rnd.enableTVColour = imgui.TextureID(rnd.addTexture(shaderNone, false, false).getID())
-	rnd.disableTVColour = imgui.TextureID(rnd.addTexture(shaderNone, false, false).getID())
 
 	return nil
 }
@@ -191,10 +181,6 @@ func (rnd *gl32) render() {
 		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, rnd.elementsHandle)
 		gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, indexBufferSize, indexBuffer, gl.STREAM_DRAW)
 
-		// whether the tvColoursEnable texture has been pushed. used to decide
-		// which shader to use for the GUI
-		var preferTVColour int
-
 		for _, cmd := range list.Commands() {
 			if cmd.HasUserCallback() {
 				cmd.CallUserCallback(list)
@@ -202,63 +188,39 @@ func (rnd *gl32) render() {
 				// texture id
 				id := cmd.TextureID()
 
-				// decide which shader to use. if the texture ID indicates that
-				// the tv colour shader is to be preferred going forward then
-				// the texture is not drawn
-				if rnd.isEnableTVColour(id) {
-					rnd.shaders[shaderTVColour].(*tvColorShader).setGUI = true
-					preferTVColour++
-				} else if rnd.isDisableTVColour(id) {
-					rnd.shaders[shaderTVColour].(*tvColorShader).setGUI = false
-					preferTVColour--
-					if preferTVColour < 0 {
-						panic("too many calls to renderer.popTVColour()")
-					}
-				} else {
-					env.textureID = uint32(id)
+				env.textureID = uint32(id)
 
-					// select shader program to use
-					var shader shaderProgram
+				// select shader program to use
+				var shader shaderProgram
 
-					if tex, ok := rnd.textures[env.textureID]; ok {
-						// use tv color shader if the intended shader is the gui
-						// shader but the setFromGUI flag has been set
-						if preferTVColour > 0 && tex.typ == shaderGUI {
-							shader = rnd.shaders[shaderTVColour]
-						} else {
-							shader = rnd.shaders[tex.typ]
-						}
-					}
-
-					if shader == nil {
-						panic("no shader found for texture")
-					}
-
-					env.draw = func() {
-						gl.DrawElementsWithOffset(gl.TRIANGLES, int32(cmd.ElementCount()), uint32(drawType), indexBufferOffset)
-					}
-
-					// set attributes for the selected shader
-					shader.setAttributes(env)
-
-					// draw using the currently selected shader to the real framebuffer
-					gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
-
-					// viewport and scissors. these might have changed during
-					// execution of the shader
-					gl.Viewport(0, 0, int32(fbw), int32(fbh))
-					clipRect := cmd.ClipRect()
-					gl.Scissor(int32(clipRect.X), int32(fbh)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
-
-					// process
-					env.draw()
+				if tex, ok := rnd.textures[env.textureID]; ok {
+					shader = rnd.shaders[tex.typ]
 				}
+
+				if shader == nil {
+					panic("no shader found for texture")
+				}
+
+				env.draw = func() {
+					gl.DrawElementsWithOffset(gl.TRIANGLES, int32(cmd.ElementCount()), uint32(drawType), indexBufferOffset)
+				}
+
+				// set attributes for the selected shader
+				shader.setAttributes(env)
+
+				// draw using the currently selected shader to the real framebuffer
+				gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+
+				// viewport and scissors. these might have changed during
+				// execution of the shader
+				gl.Viewport(0, 0, int32(fbw), int32(fbh))
+				clipRect := cmd.ClipRect()
+				gl.Scissor(int32(clipRect.X), int32(fbh)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
+
+				// process
+				env.draw()
 			}
 			indexBufferOffset += uintptr(cmd.ElementCount() * indexSize)
-		}
-
-		if preferTVColour > 0 {
-			panic("not enough calls to renderer.popTVColour()")
 		}
 	}
 	gl.DeleteVertexArrays(1, &vaoHandle)
@@ -266,25 +228,6 @@ func (rnd *gl32) render() {
 
 func (rnd *gl32) screenshot(mode screenshotMode, finish chan screenshotResult) {
 	rnd.shaders[shaderPlayscr].(*playscrShader).screenshot.start(mode, finish)
-}
-
-// the push and pop TV color functions are a way of informing the drawlist to
-// treat the next element with the TV Colour shader, rather than the GUI shader
-
-func (rnd *gl32) isEnableTVColour(id imgui.TextureID) bool {
-	return id == rnd.enableTVColour
-}
-
-func (rnd *gl32) isDisableTVColour(id imgui.TextureID) bool {
-	return id == rnd.disableTVColour
-}
-
-func (rnd *gl32) pushTVColour() {
-	imgui.WindowDrawList().AddImage(rnd.enableTVColour, imgui.Vec2{}, imgui.Vec2{})
-}
-
-func (rnd *gl32) popTVColour() {
-	imgui.WindowDrawList().AddImage(rnd.disableTVColour, imgui.Vec2{}, imgui.Vec2{})
 }
 
 // glState stores GL state with the intention of restoration after a short period.

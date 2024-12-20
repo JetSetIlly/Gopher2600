@@ -113,8 +113,8 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	win.displayTexture = img.rnd.addTexture(shaderDbgScr, true, true)
 	win.overlayTexture = img.rnd.addTexture(shaderDbgScrOverlay, false, false)
 	win.elementsTexture = img.rnd.addTexture(shaderDbgScr, true, true)
-	win.magnifyTooltip.texture = img.rnd.addTexture(shaderTVColour, false, false)
-	win.magnifyWindow.texture = img.rnd.addTexture(shaderTVColour, false, false)
+	win.magnifyTooltip.texture = img.rnd.addTexture(shaderColor, false, false)
+	win.magnifyWindow.texture = img.rnd.addTexture(shaderColor, false, false)
 
 	// call setScaling() now so that render() has something to work with - even
 	// though setScaling() is called every draw if the window is open it will
@@ -650,9 +650,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 			X: float32(rgba.R) / 255, Y: float32(rgba.G) / 255, Z: float32(rgba.B) / 255, W: float32(rgba.A) / 255,
 		}
 		imgui.PushStyleColor(imgui.StyleColorText, col)
-		win.img.rnd.pushTVColour()
 		imgui.Text(string(fonts.ColorSwatch))
-		win.img.rnd.popTVColour()
 		imgui.PopStyleColor()
 		imgui.SameLine()
 		imgui.Text(label)

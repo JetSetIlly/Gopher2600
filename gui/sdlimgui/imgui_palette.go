@@ -133,7 +133,6 @@ func (pal *palette) draw(selection int) int {
 	selected := paletteNoSelection
 
 	// step through all colours in palette
-	pal.img.rnd.pushTVColour()
 	for hue := 0; hue <= 0x0f; hue++ {
 		for lum := 0; lum <= 0x0e; lum += 2 {
 			c := (hue << 4) | lum
@@ -154,7 +153,6 @@ func (pal *palette) draw(selection int) int {
 		p.X -= 8 * (pal.swatchSize + pal.swatchGap)
 		imgui.SetCursorScreenPos(p)
 	}
-	pal.img.rnd.popTVColour()
 
 	if showTooltip {
 		pal.img.imguiTooltip(func() {

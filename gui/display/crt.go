@@ -58,7 +58,7 @@ func (p *CRT) String() string {
 	return p.dsk.String()
 }
 
-func newCRT() (*CRT, error) {
+func NewCRT() (*CRT, error) {
 	p := &CRT{}
 	p.SetDefaults()
 

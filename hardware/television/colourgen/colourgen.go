@@ -36,9 +36,15 @@ type ColourGen struct {
 	pal   []entry
 	secam []entry
 
-	dsk       *prefs.Disk
+	dsk *prefs.Disk
+
 	NTSCPhase prefs.Float
 	PALPhase  prefs.Float
+
+	Brightness prefs.Float
+	Contrast   prefs.Float
+	Saturation prefs.Float
+	Hue        prefs.Float
 }
 
 // NewColourGen is the preferred method of intialisation for the ColourGen type.
@@ -78,6 +84,35 @@ func NewColourGen() (*ColourGen, error) {
 		clear(c.pal)
 		return nil
 	})
+
+	err = c.dsk.Add("television.color.brightness", &c.Brightness)
+	if err != nil {
+		return nil, err
+	}
+	err = c.dsk.Add("television.color.contrast", &c.Contrast)
+	if err != nil {
+		return nil, err
+	}
+	err = c.dsk.Add("television.color.saturation", &c.Saturation)
+	if err != nil {
+		return nil, err
+	}
+	err = c.dsk.Add("television.color.hue", &c.Hue)
+	if err != nil {
+		return nil, err
+	}
+
+	f := func(_ prefs.Value) error {
+		clear(c.ntsc)
+		clear(c.pal)
+		clear(c.secam)
+		return nil
+	}
+
+	c.Brightness.SetHookPost(f)
+	c.Contrast.SetHookPost(f)
+	c.Saturation.SetHookPost(f)
+	c.Hue.SetHookPost(f)
 
 	err = c.dsk.Load()
 	if err != nil {
@@ -131,9 +166,18 @@ const (
 
 const PALDefault = 16.35
 
+const (
+	ntscGamma = 2.2
+	palGamma  = 2.8
+)
+
 func (c *ColourGen) SetDefaults() {
 	c.NTSCPhase.Set(NTSCFieldService)
 	c.PALPhase.Set(PALDefault)
+	c.Brightness.Set(0.0)
+	c.Contrast.Set(1.0)
+	c.Saturation.Set(1.0)
+	c.Hue.Set(0.0)
 }
 
 // Load colour values from disk
@@ -173,18 +217,21 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 		return c.ntsc[idx].col
 	}
 
+	// YIQ is the colour space used by the NTSC television system
+	var Y, I, Q float64
+
 	// color-luminance components of color signal
 	lum := (col & 0x0e) >> 1
 	hue := (col & 0xf0) >> 4
 
-	// the min/max values for the Y component of greyscale hues
+	// the min/max values for the Y component
 	const (
 		minY = 0.35
 		maxY = 1.00
 	)
 
 	// Y value in the range minY to MaxY based on the lum value
-	Y := minY + (float64(lum)/8)*(maxY-minY)
+	Y = minY + (float64(lum)/8)*(maxY-minY)
 
 	// if hue is zero then that indicates there is no colour component and
 	// only the luminance is used
@@ -196,7 +243,8 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 			// example, the CyberTech AV mod produces a black with a value of 0.075
 			c.ntsc[idx].col = color.RGBA{A: 255}
 		} else {
-			y := uint8(Y * 255)
+			Y, I, Q = c.adjustYIQ(Y, I, Q)
+			y := uint8(clamp(Y) * 255)
 			c.ntsc[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
 		}
 		c.ntsc[idx].generated = true
@@ -246,8 +294,11 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	const saturation = 0.3
 
 	// the chroma values are scaled by the luminance value
-	I := Y * saturation * math.Sin(phi)
-	Q := Y * saturation * math.Cos(phi)
+	I = Y * saturation * math.Sin(phi)
+	Q = Y * saturation * math.Cos(phi)
+
+	// apply brightness/constrast/saturation/hue settings to YIQ
+	Y, I, Q = c.adjustYIQ(Y, I, Q)
 
 	// YIQ to RGB conversion
 	//
@@ -256,6 +307,11 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	R := clamp(Y + (0.956 * I) + (0.619 * Q))
 	G := clamp(Y - (0.272 * I) - (0.647 * Q))
 	B := clamp(Y - (1.106 * I) + (1.703 * Q))
+
+	// gamma correction
+	R = math.Pow(R, ntscGamma)
+	G = math.Pow(G, ntscGamma)
+	B = math.Pow(B, ntscGamma)
 
 	// from the "FCC NTSC Standard (SMPTE C)" of the same wikipedia article
 	// 		R := clamp(Y + (0.9469 * I) + (0.6236 * Q))
@@ -293,18 +349,21 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 		return c.pal[idx].col
 	}
 
+	// YUV is the colour space used by the PAL television system
+	var Y, U, V float64
+
 	// color-luminance components of color signal
 	lum := (col & 0x0e) >> 1
 	hue := (col & 0xf0) >> 4
 
-	// the min/max values for the Y component of greyscale hues
+	// the min/max values for the Y component
 	const (
 		minY = 0.35
 		maxY = 1.00
 	)
 
 	// Y value in the range minY to MaxY based on the lum value
-	Y := minY + (float64(lum)/8)*(maxY-minY)
+	Y = minY + (float64(lum)/8)*(maxY-minY)
 
 	// PAL creates a grayscale for hues 0, 1, 14 and 15
 	if hue <= 0x01 || hue >= 0x0e {
@@ -315,7 +374,8 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 			// example, the CyberTech AV mod produces a black with a value of 0.075
 			c.ntsc[idx].col = color.RGBA{A: 255}
 		} else {
-			y := uint8(Y * 255)
+			Y, U, V = c.adjustYUV(Y, U, V)
+			y := uint8(clamp(Y) * 255)
 			c.ntsc[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
 		}
 		c.ntsc[idx].generated = true
@@ -349,8 +409,11 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	const saturation = 0.3
 
 	// create UV from hue
-	U := Y * saturation * -math.Sin(phi)
-	V := Y * saturation * -math.Cos(phi)
+	U = Y * saturation * -math.Sin(phi)
+	V = Y * saturation * -math.Cos(phi)
+
+	// apply brightness/constrast/saturation/hue settings to YUV
+	Y, U, V = c.adjustYUV(Y, U, V)
 
 	// YUV to RGB conversion
 	//
@@ -359,6 +422,11 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	R := clamp(Y + (1.140 * V))
 	G := clamp(Y - (0.395 * U) - (0.581 * V))
 	B := clamp(Y + (2.033 * U))
+
+	// gamma correction
+	R = math.Pow(R, palGamma)
+	G = math.Pow(G, palGamma)
+	B = math.Pow(B, palGamma)
 
 	// create and cache
 	c.pal[idx].generated = true
@@ -372,8 +440,6 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	return c.pal[idx].col
 }
 
-// GenerateSECAM creates the RGB values for the ColorSignal using the current
-// colour generation preferences and for the SECAM television system
 func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
 	// the video black signal is special and is never cached
 	if col == signal.VideoBlack {
@@ -386,25 +452,84 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
 		return c.secam[idx].col
 	}
 
-	// only the luminance data of the colour signal is used
+	// SECAM uses the YUV colour space but in a different way to PAL
+	var Y, U, V float64
+
+	// color-luminance components of color signal
 	lum := (col & 0x0e) >> 1
 
-	// in the 2600/SECAM system the luminance is actually a fixed value (Y = 1.0) and
-	// the lum value used to create a U and V value. the hue component of the
-	// signal.ColorSignal value is unused
+	// the hue nibble of the signal.ColourSignal value is ignored by SECAM
+	// consoles
 
-	// rather than calculate the U and V we look up the RGB value from a preset.
-	// this makes sense because there is currently no way of changing the
-	// "phase" of the SECAM signal like we do with the NTSC and PAL
-	var secam = []uint32{0x000000, 0x2121ff, 0xf03c79, 0xff50ff, 0x7fff00, 0x7fffff, 0xffff3f, 0xffffff}
-	v := secam[lum]
+	// special treatment of a lum value of zero
+	if lum == 0 {
+		c.secam[idx].col = color.RGBA{A: 255}
+		c.secam[idx].generated = true
+		return c.secam[idx].col
+	}
 
+	// the min/max values for the Y component is different for SECAM when
+	// compared to NTSCL and PAL
+	const (
+		minY = 0.60
+		maxY = 1.00
+	)
+
+	// Y value in the range minY to MaxY based on the lum value
+	Y = minY + (float64(lum)/8)*(maxY-minY)
+
+	var phi float64
+	switch lum {
+	case 1:
+		phi = 225
+	case 2:
+		phi = 135
+	case 3:
+		phi = 180
+	case 4:
+		phi = 45
+	case 5:
+		phi = 270
+	case 6:
+		phi = 90
+	case 7:
+		Y, U, V = c.adjustYUV(Y, U, V)
+		y := uint8(clamp(Y) * 255)
+		c.secam[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
+		return c.secam[idx].col
+	}
+
+	// saturation of chroma in final colour. value currently uncertain
+	const saturation = 0.3
+
+	// create UV from hue
+	U = Y * saturation * -math.Sin(phi)
+	V = Y * saturation * -math.Cos(phi)
+
+	// apply brightness/constrast/saturation/hue settings to YUV
+	Y, U, V = c.adjustYUV(Y, U, V)
+
+	// YUV to RGB conversion
+	//
+	// YUV conversion values taken from the "SDTV with BT.470" section of:
+	// https://en.wikipedia.org/w/index.php?title=Y%E2%80%B2UV&oldid=1249546174
+	R := clamp(Y + (1.140 * V))
+	G := clamp(Y - (0.395 * U) - (0.581 * V))
+	B := clamp(Y + (2.033 * U))
+
+	// gamma correction
+	R = math.Pow(R, palGamma)
+	G = math.Pow(G, palGamma)
+	B = math.Pow(B, palGamma)
+
+	// create and cache
 	c.secam[idx].generated = true
 	c.secam[idx].col = color.RGBA{
-		R: uint8((v & 0xff0000) >> 16),
-		G: uint8((v & 0xff00) >> 8),
-		B: uint8(v & 0xff),
+		R: uint8(R * 255.0),
+		G: uint8(G * 255.0),
+		B: uint8(B * 255.0),
 		A: 255,
 	}
+
 	return c.secam[idx].col
 }

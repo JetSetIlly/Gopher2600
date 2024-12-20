@@ -67,7 +67,7 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 
 	env.textureID = sh.crt.process(env, sh.img.playScr.screenTexture.getID(),
 		false, sh.img.playScr.visibleScanlines, specification.ClksVisible,
-		newCrtSeqPrefs(sh.img.displayPrefs), sh.img.screen.rotation.Load().(specification.Rotation), false)
+		newCrtSeqPrefs(sh.img.crt), sh.img.screen.rotation.Load().(specification.Rotation), false)
 
 	if sh.img.playScr.usingBevel {
 		env.flipY = true

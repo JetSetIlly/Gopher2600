@@ -94,7 +94,7 @@ func (win *playScr) draw() {
 	defer win.img.screen.crit.section.Unlock()
 
 	// note whether we're using a bevel image or not
-	win.usingBevel = win.img.rnd.supportsCRT() && win.img.displayPrefs.CRT.Enabled.Get().(bool)
+	win.usingBevel = win.img.rnd.supportsCRT() && win.img.crt.Enabled.Get().(bool)
 
 	dl := imgui.BackgroundDrawList()
 

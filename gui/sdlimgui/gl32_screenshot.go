@@ -95,7 +95,7 @@ func (sh *gl32Screenshot) start(mode screenshotMode, finish chan screenshotResul
 	sh.mode = mode
 
 	// description of screenshot to be returned to caller over finish channel
-	if sh.img.displayPrefs.CRT.Enabled.Get().(bool) {
+	if sh.img.crt.Enabled.Get().(bool) {
 		sh.description = fmt.Sprintf("crt_%s", sh.mode)
 	} else {
 		sh.description = fmt.Sprintf("pix_%s", sh.mode)
@@ -154,7 +154,7 @@ func (sh *gl32Screenshot) process(env shaderEnvironment, textureID uint32) {
 }
 
 func (sh *gl32Screenshot) crtProcess(env shaderEnvironment) {
-	prefs := newCrtSeqPrefs(sh.img.displayPrefs)
+	prefs := newCrtSeqPrefs(sh.img.crt)
 
 	if sh.mode == modeFlicker {
 		switch sh.frames {
@@ -335,7 +335,7 @@ func (sh *gl32Screenshot) compositeFinalise(env shaderEnvironment, composite *im
 	// pass composite image through CRT shaders
 	textureID := sh.crt.process(env, sh.compositeBuffer.TextureID(),
 		true, sh.img.playScr.visibleScanlines, specification.ClksVisible,
-		newCrtSeqPrefs(sh.img.displayPrefs), sh.img.screen.rotation.Load().(specification.Rotation), true)
+		newCrtSeqPrefs(sh.img.crt), sh.img.screen.rotation.Load().(specification.Rotation), true)
 
 	gl.BindTexture(gl.TEXTURE_2D, textureID)
 

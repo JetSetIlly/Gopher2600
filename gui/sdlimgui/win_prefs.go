@@ -101,7 +101,6 @@ func (win *winPrefs) draw() {
 		setDef = func() {
 			specification.ColourGen.SetDefaults()
 			win.img.dbg.VCS().Env.Prefs.TV.SetDefaults()
-			win.img.displayPrefs.Colour.SetDefaults()
 		}
 		setDefLabel = "Television"
 	}
@@ -110,7 +109,7 @@ func (win *winPrefs) draw() {
 		if imgui.BeginTabItem("CRT") {
 			win.drawCRT()
 			imgui.EndTabItem()
-			setDef = win.img.displayPrefs.CRT.SetDefaults
+			setDef = win.img.crt.SetDefaults
 			setDefLabel = "CRT"
 		}
 	}
@@ -737,13 +736,9 @@ func (win *winPrefs) drawDiskButtons() {
 		if err != nil {
 			logger.Logf(logger.Allow, "sdlimgui", "could not save (imgui debugger) preferences: %v", err)
 		}
-		err = win.img.displayPrefs.CRT.Save()
+		err = win.img.crt.Save()
 		if err != nil {
 			logger.Logf(logger.Allow, "sdlimgui", "could not save (display/crt) preferences: %v", err)
-		}
-		err = win.img.displayPrefs.Colour.Save()
-		if err != nil {
-			logger.Logf(logger.Allow, "sdlimgui", "could not save (display/colour) preferences: %v", err)
 		}
 		err = specification.ColourGen.Save()
 		if err != nil {
@@ -797,13 +792,9 @@ func (win *winPrefs) drawDiskButtons() {
 		if err != nil {
 			logger.Logf(logger.Allow, "sdlimgui", "could not restore (imgui debugger) preferences: %v", err)
 		}
-		err = win.img.displayPrefs.CRT.Load()
+		err = win.img.crt.Load()
 		if err != nil {
 			logger.Logf(logger.Allow, "sdlimgui", "could not restore (display/crt) preferences: %v", err)
-		}
-		err = win.img.displayPrefs.Colour.Load()
-		if err != nil {
-			logger.Logf(logger.Allow, "sdlimgui", "could not restore (display/colour) preferences: %v", err)
 		}
 		err = specification.ColourGen.Load()
 		if err != nil {

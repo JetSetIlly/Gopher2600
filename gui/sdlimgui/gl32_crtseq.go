@@ -54,34 +54,34 @@ type crtSeqPrefs struct {
 	BlackLevel           float64
 }
 
-func newCrtSeqPrefs(prefs *display.Preferences) crtSeqPrefs {
+func newCrtSeqPrefs(crt *display.CRT) crtSeqPrefs {
 	return crtSeqPrefs{
-		Enabled:              prefs.CRT.Enabled.Get().(bool),
-		PixelPerfectFade:     prefs.CRT.PixelPerfectFade.Get().(float64),
-		Curve:                prefs.CRT.Curve.Get().(bool),
-		RoundedCorners:       prefs.CRT.RoundedCorners.Get().(bool),
-		Bevel:                prefs.CRT.Bevel.Get().(bool),
-		Shine:                prefs.CRT.Shine.Get().(bool),
-		Mask:                 prefs.CRT.Mask.Get().(bool),
-		Scanlines:            prefs.CRT.Scanlines.Get().(bool),
-		Interference:         prefs.CRT.Interference.Get().(bool),
-		Flicker:              prefs.CRT.Flicker.Get().(bool),
-		Fringing:             prefs.CRT.Fringing.Get().(bool),
-		Ghosting:             prefs.CRT.Ghosting.Get().(bool),
-		Phosphor:             prefs.CRT.Phosphor.Get().(bool),
-		CurveAmount:          prefs.CRT.CurveAmount.Get().(float64),
-		RoundedCornersAmount: prefs.CRT.RoundedCornersAmount.Get().(float64),
-		BevelSize:            prefs.CRT.BevelSize.Get().(float64),
-		MaskIntensity:        prefs.CRT.MaskIntensity.Get().(float64),
-		ScanlinesIntensity:   prefs.CRT.ScanlinesIntensity.Get().(float64),
-		InterferenceLevel:    prefs.CRT.InterferenceLevel.Get().(float64),
-		FlickerLevel:         prefs.CRT.FlickerLevel.Get().(float64),
-		FringingAmount:       prefs.CRT.FringingAmount.Get().(float64),
-		GhostingAmount:       prefs.CRT.GhostingAmount.Get().(float64),
-		PhosphorLatency:      prefs.CRT.PhosphorLatency.Get().(float64),
-		PhosphorBloom:        prefs.CRT.PhosphorBloom.Get().(float64),
-		Sharpness:            prefs.CRT.Sharpness.Get().(float64),
-		BlackLevel:           prefs.CRT.BlackLevel.Get().(float64),
+		Enabled:              crt.Enabled.Get().(bool),
+		PixelPerfectFade:     crt.PixelPerfectFade.Get().(float64),
+		Curve:                crt.Curve.Get().(bool),
+		RoundedCorners:       crt.RoundedCorners.Get().(bool),
+		Bevel:                crt.Bevel.Get().(bool),
+		Shine:                crt.Shine.Get().(bool),
+		Mask:                 crt.Mask.Get().(bool),
+		Scanlines:            crt.Scanlines.Get().(bool),
+		Interference:         crt.Interference.Get().(bool),
+		Flicker:              crt.Flicker.Get().(bool),
+		Fringing:             crt.Fringing.Get().(bool),
+		Ghosting:             crt.Ghosting.Get().(bool),
+		Phosphor:             crt.Phosphor.Get().(bool),
+		CurveAmount:          crt.CurveAmount.Get().(float64),
+		RoundedCornersAmount: crt.RoundedCornersAmount.Get().(float64),
+		BevelSize:            crt.BevelSize.Get().(float64),
+		MaskIntensity:        crt.MaskIntensity.Get().(float64),
+		ScanlinesIntensity:   crt.ScanlinesIntensity.Get().(float64),
+		InterferenceLevel:    crt.InterferenceLevel.Get().(float64),
+		FlickerLevel:         crt.FlickerLevel.Get().(float64),
+		FringingAmount:       crt.FringingAmount.Get().(float64),
+		GhostingAmount:       crt.GhostingAmount.Get().(float64),
+		PhosphorLatency:      crt.PhosphorLatency.Get().(float64),
+		PhosphorBloom:        crt.PhosphorBloom.Get().(float64),
+		Sharpness:            crt.Sharpness.Get().(float64),
+		BlackLevel:           crt.BlackLevel.Get().(float64),
 	}
 }
 
@@ -94,7 +94,6 @@ type crtSequencer struct {
 
 	sharpenShader         shaderProgram
 	phosphorShader        shaderProgram
-	tvColorShader         shaderProgram
 	blackCorrectionShader shaderProgram
 	blurShader            shaderProgram
 	ghostingShader        shaderProgram
@@ -109,7 +108,6 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 		phosphor:              framebuffer.NewFlip(false),
 		sharpenShader:         newSharpenShader(),
 		phosphorShader:        newPhosphorShader(),
-		tvColorShader:         newTVColorShader(img.displayPrefs.Colour),
 		blackCorrectionShader: newBlackCorrectionShader(),
 		blurShader:            newBlurShader(),
 		ghostingShader:        newGhostingShader(),
@@ -124,7 +122,6 @@ func (sh *crtSequencer) destroy() {
 	sh.phosphor.Destroy()
 	sh.sharpenShader.destroy()
 	sh.phosphorShader.destroy()
-	sh.tvColorShader.destroy()
 	sh.blackCorrectionShader.destroy()
 	sh.blurShader.destroy()
 	sh.ghostingShader.destroy()
@@ -184,7 +181,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 
 	// TV color shader is applied to pixel-perfect shader too
 	env.textureID = sh.sequence.Process(func() {
-		sh.tvColorShader.setAttributes(env)
+		sh.colorShader.setAttributes(env)
 		env.draw()
 	})
 

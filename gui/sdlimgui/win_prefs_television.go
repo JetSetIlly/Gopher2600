@@ -81,14 +81,14 @@ func (win *winPrefs) drawBrightness() {
 
 	imgui.Text(fmt.Sprintf("%c Brightness", fonts.TVBrightness))
 
-	f := float32(win.img.displayPrefs.Colour.Brightness.Get().(float64))
+	f := float32(specification.ColourGen.Brightness.Get().(float64))
 
-	minv := float32(0.1)
-	maxv := float32(1.90)
+	minv := float32(-0.9)
+	maxv := float32(0.9)
 	label := fmt.Sprintf("%.0f", 100*(f-minv)/(maxv-minv))
 
 	if imgui.SliderFloatV("##brightness", &f, minv, maxv, label, imgui.SliderFlagsNone) {
-		win.img.displayPrefs.Colour.Brightness.Set(f)
+		specification.ColourGen.Brightness.Set(f)
 	}
 }
 
@@ -98,14 +98,14 @@ func (win *winPrefs) drawContrast() {
 
 	imgui.Text(fmt.Sprintf("%c Contrast", fonts.TVContrast))
 
-	f := float32(win.img.displayPrefs.Colour.Contrast.Get().(float64))
+	f := float32(specification.ColourGen.Contrast.Get().(float64))
 
 	minv := float32(0.1)
 	maxv := float32(1.90)
 	label := fmt.Sprintf("%.0f", 100*(f-minv)/(maxv-minv))
 
 	if imgui.SliderFloatV("##contrast", &f, minv, maxv, label, imgui.SliderFlagsNone) {
-		win.img.displayPrefs.Colour.Contrast.Set(f)
+		specification.ColourGen.Contrast.Set(f)
 	}
 }
 
@@ -115,14 +115,14 @@ func (win *winPrefs) drawSaturation() {
 
 	imgui.Text(fmt.Sprintf("%c Saturation", fonts.TVSaturation))
 
-	f := float32(win.img.displayPrefs.Colour.Saturation.Get().(float64))
+	f := float32(specification.ColourGen.Saturation.Get().(float64))
 
 	minv := float32(0.1)
 	maxv := float32(1.90)
 	label := fmt.Sprintf("%.0f", 100*(f-minv)/(maxv-minv))
 
 	if imgui.SliderFloatV("##saturation", &f, minv, maxv, label, imgui.SliderFlagsNone) {
-		win.img.displayPrefs.Colour.Saturation.Set(f)
+		specification.ColourGen.Saturation.Set(f)
 	}
 }
 
@@ -132,16 +132,16 @@ func (win *winPrefs) drawHue() {
 
 	imgui.Text(fmt.Sprintf("%c Hue", fonts.TVHue))
 
-	f := float32(win.img.displayPrefs.Colour.Hue.Get().(float64))
+	f := float32(specification.ColourGen.Hue.Get().(float64))
 
-	minv := float32(-0.99)
-	maxv := float32(0.99)
+	minv := float32(-180)
+	maxv := float32(180)
 	aminv := float32(math.Abs(float64(minv)))
 	amaxv := float32(math.Abs(float64(maxv)))
 	label := fmt.Sprintf("%.0f\u00b0", (f+minv+maxv)/(aminv+amaxv)*360)
 
 	if imgui.SliderFloatV("##hue", &f, minv, maxv, label, imgui.SliderFlagsNone) {
-		win.img.displayPrefs.Colour.Hue.Set(f)
+		specification.ColourGen.Hue.Set(f)
 	}
 }
 

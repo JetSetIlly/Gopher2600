@@ -209,7 +209,7 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 		// something for the future.
 		env.textureID = sh.img.wm.dbgScr.displayTexture.getID()
 
-		prefs := newCrtSeqPrefs(sh.img.displayPrefs)
+		prefs := newCrtSeqPrefs(sh.img.crt)
 		prefs.Enabled = true
 		prefs.Bevel = false
 
@@ -228,7 +228,7 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 		// note that we specify integer scaling for the non-CRT preview image,
 		// this is so that the overlay is aligned properly with the TV image
 
-		prefs := newCrtSeqPrefs(sh.img.displayPrefs)
+		prefs := newCrtSeqPrefs(sh.img.crt)
 		prefs.Enabled = false
 
 		var id uint32

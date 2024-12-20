@@ -23,7 +23,6 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/gui/display"
 	"github.com/jetsetilly/gopher2600/gui/display/shaders"
 )
 
@@ -201,45 +200,6 @@ func newDustShader() shaderProgram {
 func (sh *dustShader) setAttributes(env shaderEnvironment) {
 	sh.shader.setAttributes(env)
 	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
-}
-
-type tvColorShader struct {
-	shader
-
-	gui        int32
-	brightness int32
-	contrast   int32
-	saturation int32
-	hue        int32
-
-	prefs  *display.Colour
-	setGUI bool
-}
-
-func newTVColorShader(prefs *display.Colour) shaderProgram {
-	sh := &tvColorShader{
-		prefs: prefs,
-	}
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.TVColorShader))
-	sh.gui = gl.GetUniformLocation(sh.handle, gl.Str("FromGUI"+"\x00"))
-	sh.brightness = gl.GetUniformLocation(sh.handle, gl.Str("Brightness"+"\x00"))
-	sh.contrast = gl.GetUniformLocation(sh.handle, gl.Str("Contrast"+"\x00"))
-	sh.saturation = gl.GetUniformLocation(sh.handle, gl.Str("Saturation"+"\x00"))
-	sh.hue = gl.GetUniformLocation(sh.handle, gl.Str("Hue"+"\x00"))
-	return sh
-}
-
-func (sh *tvColorShader) setAttributes(env shaderEnvironment) {
-	sh.shader.setAttributes(env)
-	brightness := sh.prefs.Brightness.Get().(float64)
-	contrast := sh.prefs.Contrast.Get().(float64)
-	saturation := sh.prefs.Saturation.Get().(float64)
-	hue := sh.prefs.Hue.Get().(float64)
-	gl.Uniform1i(sh.gui, boolToInt32(sh.setGUI))
-	gl.Uniform1f(sh.contrast, float32(contrast))
-	gl.Uniform1f(sh.brightness, float32(brightness))
-	gl.Uniform1f(sh.saturation, float32(saturation))
-	gl.Uniform1f(sh.hue, float32(hue))
 }
 
 type blackCorrectionShader struct {
