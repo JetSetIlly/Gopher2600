@@ -8,7 +8,6 @@
 //		https://github.com/libretro/glsl-shaders/blob/master/crt/shaders/crt-pi.glsl
 
 uniform sampler2D Texture;
-uniform sampler2D Frame;
 in vec2 Frag_UV;
 in vec4 Frag_Color;
 out vec4 Out_Color;
@@ -25,6 +24,7 @@ uniform int Scanlines;
 uniform int Interference;
 uniform int Flicker;
 uniform int Fringing;
+uniform float BlackLevel;
 uniform float CurveAmount;
 uniform float RoundedCornersAmount;
 uniform float BevelSize;
@@ -89,6 +89,45 @@ vec2 curve(in vec2 uv)
 	return uv;
 }
 
+// convert RGB to YIQ. note that the Y component of the YIQ vector is
+// actually the x field of the vectore and not y!
+vec3 RGBtoYIQ(in vec3 rgb)
+{
+	float gamma = 1.0/2.2;
+
+	mat3 adjust = mat3(
+		vec3(gamma, 0.0, 0.0),
+		vec3(0.0, gamma, 0.0),
+		vec3(0.0, 0.0, gamma)
+	);
+
+	adjust *= mat3(
+		vec3(0.299, 0.587, 0.114),
+		vec3(0.5959, -0.2746, -0.3213),
+		vec3(0.2115, -0.5227, 0.3112)
+	);
+
+	return rgb * adjust;
+}
+
+vec3 YIQtoRGB(in vec3 yiq)
+{
+	mat3 adjust = mat3(
+		vec3(1, 0.956, 0.619),
+		vec3(1, -0.272, -0.647),
+		vec3(1, -1.106, 1.703)
+	);
+
+	float gamma = 2.2;
+
+	adjust *= mat3(
+		vec3(gamma, 0.0, 0.0),
+		vec3(0.0, gamma, 0.0),
+		vec3(0.0, 0.0, gamma)
+	);
+
+	return yiq * adjust;
+}
 
 void main() {
 	// working on uv rather than Frag_UV for convenience and in case we need
@@ -135,6 +174,27 @@ void main() {
 	// apply basic color
 	vec4 Crt_Color = Frag_Color * texture(Texture, uv.st);
 
+	// black correction 
+	Crt_Color.rgb = clamp(Crt_Color.rgb, vec3(BlackLevel*3.00), Crt_Color.rgb);
+
+	// Interference. This effect is split into two halves. The second half happens later
+	if (Interference == 1) {
+		vec4 noise = interferenceAmount(uv);
+
+		// a little but of horizontal movement works well
+		uv.x += noise.w * InterferenceLevel / 150;
+
+		// YIQ interference
+		vec3 yiq = RGBtoYIQ(Crt_Color.rgb);
+		yiq.x *= 0.5 + noise.w * InterferenceLevel * 2.0;
+		Crt_Color.rgb = YIQtoRGB(yiq);
+	}
+
+	// flicker
+	if (Flicker == 1) {
+		Crt_Color *= (1.0-FlickerLevel*(sin(50.0*Time)*0.5+0.5));
+	}
+
 	// using y axis to determine scaling.
 	float scaling = float(ScreenDim.y) / float(NumScanlines);
 
@@ -145,50 +205,38 @@ void main() {
 	if (Scanlines == 1 && scaling > 2) {
 		float scans = clamp(brightnessCorrection+ScanlinesIntensity*sin(uv.y*NumScanlines*5), 0.0, 1.0);
 		Crt_Color.rgb *= vec3(scans);
-	} else {
-		Crt_Color.rgb *= brightnessCorrection;
 	}
 
 	// shadow mask - only draw if scaling is large enough
 	if (ShadowMask == 1 && scaling > 2) {
 		float mask = clamp(brightnessCorrection+MaskIntensity*sin(uv.x*NumClocks*8), 0.0, 1.0);
 		Crt_Color.rgb *= vec3(mask);
-	} else {
-		Crt_Color.rgb *= brightnessCorrection;
 	}
 
-	// Interference. This effect is split into two halves. The second half happens later
-	if (Interference == 1) {
-		vec4 noise = interferenceAmount(uv);
-		uv.x += noise.w * InterferenceLevel / 150;
-	}
-
-	// flicker
-	if (Flicker == 1) {
-		Crt_Color *= (1.0-FlickerLevel*(sin(50.0*Time)*0.5+0.5));
-	}
-
-	// fringing (chromatic aberration)
-	if (Fringing == 1) {
+	// colour fringing (chromatic aberration). we always do this even if
+	// fringing is disabled, we just use an aberation value of zero. performing
+	// if seems to soften the scanlines / shadow mask, which is desirable
+	{
 		vec2 ab = vec2(0.0);
+		if (Fringing == 1) {
+			if (Curve == 1) {
+				ab.x = abs(uv.x-0.5);
+				ab.y = abs(uv.y-0.5);
 
-		if (Curve == 1) {
-			ab.x = abs(uv.x-0.5);
-			ab.y = abs(uv.y-0.5);
+				// modulate fringing amount by curvature
+				float m = 0.020 - (0.010 * CurveAmount);
+				float l = FringingAmount * m;
 
-			// modulate fringing amount by curvature
-			float m = 0.020 - (0.010 * CurveAmount);
-			float l = FringingAmount * m;
+				// aberration amount limited to reasonable values
+				ab *= l;
 
-			// aberration amount limited to reasonable values
-			ab *= l;
-
-			// minimum amount of aberration
-			ab = clamp(vec2(0.04), ab, ab);
-		} else {
-			ab.x = abs(uv.x-0.5);
-			ab.y = abs(uv.y-0.5);
-			ab *= FringingAmount * 0.015;
+				// minimum amount of aberration
+				ab = clamp(vec2(0.04), ab, ab);
+			} else {
+				ab.x = abs(uv.x-0.5);
+				ab.y = abs(uv.y-0.5);
+				ab *= FringingAmount * 0.015;
+			}
 		}
 
 		// adjust sign depending on which quadrant the pixel is in
@@ -203,25 +251,18 @@ void main() {
 		Crt_Color.r += texture(Texture, vec2(uv.x+(1.0*ab.x), uv.y+(1.0*ab.y))).r;
 		Crt_Color.g += texture(Texture, vec2(uv.x+(1.4*ab.x), uv.y+(1.4*ab.y))).g;
 		Crt_Color.b += texture(Texture, vec2(uv.x+(1.8*ab.x), uv.y+(1.8*ab.y))).b;
-		Crt_Color.rgb *= 0.50;
-	} else {
-		// adjust brightness if fringing hasn't been applied
-		Crt_Color.rgb *= 1.50;
+
+		// decrease gain slightly caused by aberration 
+		Crt_Color.rgb *= 0.70;
 	}
 
-	// apply perlin noise as required
+	// we always add perlin noise because we always want to elimiate banding. we
+	// used to use perlin for interference noise but we've found it better to
+	// give a small random deviation to the Y channel
 	float perlin = fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);
-	if (Interference == 1 && Screenshot == 0) {
-		perlin *= InterferenceLevel*0.20;
-	} else {
-		perlin *= 0.005;
+	perlin *= 0.005;
 
-		// compensate for the lower value perlin noise with a small brightness increase
-		Crt_Color.rgb *= 1.02;
-	}
-	Crt_Color.rgb += vec3(perlin);
-
-	// shine affect
+	// shine effect
 	if (Shine == 1) {
 		vec2 shineUV = 1.0 - shineUV;
 		float shine = shineUV.s * shineUV.t;
@@ -231,7 +272,7 @@ void main() {
 	// vignette effect
 	if (Curve == 1) {
 		float vignette = 10*uv.x*uv.y*(1.0-uv.x)*(1.0-uv.y);
-		Crt_Color.rgb *= pow(vignette, 0.12) * 1.1;
+		Crt_Color.rgb *= pow(vignette, 0.25) * 1.2;
 	}
 
 	// rounded corners

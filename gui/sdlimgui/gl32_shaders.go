@@ -202,23 +202,6 @@ func (sh *dustShader) setAttributes(env shaderEnvironment) {
 	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
 }
 
-type blackCorrectionShader struct {
-	shader
-	blackLevel int32
-}
-
-func newBlackCorrectionShader() shaderProgram {
-	sh := &blackCorrectionShader{}
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTBlackCorrection))
-	sh.blackLevel = gl.GetUniformLocation(sh.handle, gl.Str("BlackLevel"+"\x00"))
-	return sh
-}
-
-func (sh *blackCorrectionShader) process(env shaderEnvironment, blackLevel float32) {
-	sh.shader.setAttributes(env)
-	gl.Uniform1f(sh.blackLevel, blackLevel)
-}
-
 type phosphorShader struct {
 	shader
 

@@ -293,7 +293,7 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	phi *= math.Pi / 180
 
 	// saturation of chroma in final colour. value currently uncertain
-	const saturation = 0.3
+	const saturation = 0.5
 
 	// the chroma values are scaled by the luminance value
 	I = Y * saturation * math.Sin(phi)
@@ -310,20 +310,20 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	G := clamp(Y - (0.272 * I) - (0.647 * Q))
 	B := clamp(Y - (1.106 * I) + (1.703 * Q))
 
-	// gamma correction
-	R = math.Pow(R, ntscGamma)
-	G = math.Pow(G, ntscGamma)
-	B = math.Pow(B, ntscGamma)
-
 	// from the "FCC NTSC Standard (SMPTE C)" of the same wikipedia article
-	// 		R := clamp(Y + (0.9469 * I) + (0.6236 * Q))
-	// 		G := clamp(Y - (0.2748 * I) - (0.6357 * Q))
-	// 		B := clamp(Y - (1.1 * I) + (1.7 * Q))
+	// 	R := clamp(Y + (0.9469 * I) + (0.6236 * Q))
+	// 	G := clamp(Y - (0.2748 * I) - (0.6357 * Q))
+	// 	B := clamp(Y - (1.1 * I) + (1.7 * Q))
 
 	// the coefficients used by Stella (7.0)
 	// 	R := clamp(Y + (0.9563 * I) + (0.6210 * Q))
 	// 	G := clamp(Y - (0.2721 * I) - (0.6474 * Q))
 	// 	B := clamp(Y - (1.1070 * I) + (1.7046 * Q))
+
+	// gamma correction
+	R = math.Pow(R, ntscGamma)
+	G = math.Pow(G, ntscGamma)
+	B = math.Pow(B, ntscGamma)
 
 	// create and cache
 	c.ntsc[idx].generated = true
@@ -409,7 +409,7 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	phi *= math.Pi / 180
 
 	// saturation of chroma in final colour. value currently uncertain
-	const saturation = 0.3
+	const saturation = 0.5
 
 	// create UV from hue
 	U = Y * saturation * -math.Sin(phi)

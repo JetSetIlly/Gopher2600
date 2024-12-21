@@ -52,6 +52,3 @@ var CRTGhostingFragShader []byte
 
 //go:embed "crt_phosphor.frag"
 var CRTPhosphorFragShader []byte
-
-//go:embed "crt_blackcorrection.frag"
-var CRTBlackCorrection []byte

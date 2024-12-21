@@ -46,7 +46,7 @@ func init() {
 	SolidState.TV = loadImage(solidState)
 	SolidState.Scale = 0.85
 	SolidState.OffsetX = -0.139
-	SolidState.OffsetY = -0.085
+	SolidState.OffsetY = -0.080
 	SolidState.BiasY = 1.05
 
 	Telefunken.TV = loadImage(telefunken)

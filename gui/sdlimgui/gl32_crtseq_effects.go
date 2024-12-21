@@ -41,6 +41,7 @@ type crtSeqEffectsShader struct {
 	noise                int32
 	flicker              int32
 	fringing             int32
+	blackLevel           int32
 	curveAmount          int32
 	roundedCornersAmount int32
 	bevelSize            int32
@@ -71,6 +72,7 @@ func newCrtSeqEffectsShader() shaderProgram {
 	sh.interference = gl.GetUniformLocation(sh.handle, gl.Str("Interference"+"\x00"))
 	sh.flicker = gl.GetUniformLocation(sh.handle, gl.Str("Flicker"+"\x00"))
 	sh.fringing = gl.GetUniformLocation(sh.handle, gl.Str("Fringing"+"\x00"))
+	sh.blackLevel = gl.GetUniformLocation(sh.handle, gl.Str("BlackLevel"+"\x00"))
 	sh.curveAmount = gl.GetUniformLocation(sh.handle, gl.Str("CurveAmount"+"\x00"))
 	sh.roundedCornersAmount = gl.GetUniformLocation(sh.handle, gl.Str("RoundedCornersAmount"+"\x00"))
 	sh.bevelSize = gl.GetUniformLocation(sh.handle, gl.Str("BevelSize"+"\x00"))
@@ -106,6 +108,7 @@ func (sh *crtSeqEffectsShader) setAttributesArgs(env shaderEnvironment, numScanl
 	gl.Uniform1i(sh.interference, boolToInt32(prefs.Interference))
 	gl.Uniform1i(sh.flicker, boolToInt32(prefs.Flicker))
 	gl.Uniform1i(sh.fringing, boolToInt32(prefs.Fringing))
+	gl.Uniform1f(sh.blackLevel, float32(prefs.BlackLevel))
 	gl.Uniform1f(sh.curveAmount, float32(prefs.CurveAmount))
 	gl.Uniform1f(sh.roundedCornersAmount, float32(prefs.RoundedCornersAmount))
 	gl.Uniform1f(sh.bevelSize, float32(prefs.BevelSize))

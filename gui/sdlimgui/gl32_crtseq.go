@@ -92,27 +92,25 @@ type crtSequencer struct {
 	sequence *framebuffer.Flip
 	phosphor *framebuffer.Flip
 
-	sharpenShader         shaderProgram
-	phosphorShader        shaderProgram
-	blackCorrectionShader shaderProgram
-	blurShader            shaderProgram
-	ghostingShader        shaderProgram
-	effectsShader         shaderProgram
-	colorShader           shaderProgram
+	sharpenShader  shaderProgram
+	phosphorShader shaderProgram
+	blurShader     shaderProgram
+	ghostingShader shaderProgram
+	effectsShader  shaderProgram
+	colorShader    shaderProgram
 }
 
 func newCRTSequencer(img *SdlImgui) *crtSequencer {
 	sh := &crtSequencer{
-		img:                   img,
-		sequence:              framebuffer.NewFlip(true),
-		phosphor:              framebuffer.NewFlip(false),
-		sharpenShader:         newSharpenShader(),
-		phosphorShader:        newPhosphorShader(),
-		blackCorrectionShader: newBlackCorrectionShader(),
-		blurShader:            newBlurShader(),
-		ghostingShader:        newGhostingShader(),
-		effectsShader:         newCrtSeqEffectsShader(),
-		colorShader:           newColorShader(),
+		img:            img,
+		sequence:       framebuffer.NewFlip(true),
+		phosphor:       framebuffer.NewFlip(false),
+		sharpenShader:  newSharpenShader(),
+		phosphorShader: newPhosphorShader(),
+		blurShader:     newBlurShader(),
+		ghostingShader: newGhostingShader(),
+		effectsShader:  newCrtSeqEffectsShader(),
+		colorShader:    newColorShader(),
 	}
 	return sh
 }
@@ -122,7 +120,6 @@ func (sh *crtSequencer) destroy() {
 	sh.phosphor.Destroy()
 	sh.sharpenShader.destroy()
 	sh.phosphorShader.destroy()
-	sh.blackCorrectionShader.destroy()
 	sh.blurShader.destroy()
 	sh.ghostingShader.destroy()
 	sh.effectsShader.destroy()
@@ -179,12 +176,6 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 		env.draw()
 	})
 
-	// TV color shader is applied to pixel-perfect shader too
-	env.textureID = sh.sequence.Process(func() {
-		sh.colorShader.setAttributes(env)
-		env.draw()
-	})
-
 	// apply ghosting filter to texture. this is useful for the zookeeper brick effect
 	if prefs.Enabled {
 		// if ghosting isn't enabled then we need to run the image through a
@@ -200,6 +191,12 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 				env.draw()
 			})
 		}
+	} else {
+		// TV color shader is applied to pixel-perfect shader too
+		env.textureID = sh.sequence.Process(func() {
+			sh.colorShader.setAttributes(env)
+			env.draw()
+		})
 	}
 
 	// the newly copied texture will be used for the phosphor blending
@@ -240,12 +237,6 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 	env.flipY = windowed
 
 	if prefs.Enabled {
-		// video-black correction
-		env.textureID = sh.sequence.Process(func() {
-			sh.blackCorrectionShader.(*blackCorrectionShader).process(env, float32(prefs.BlackLevel))
-			env.draw()
-		})
-
 		// sharpness value
 		env.textureID = sh.sequence.Process(func() {
 			sh.blurShader.(*blurShader).process(env, float32(prefs.Sharpness))
