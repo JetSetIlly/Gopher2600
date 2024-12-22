@@ -372,14 +372,14 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 			//
 			// some RGB mods for the 2600 produce a non-zero black value. for
 			// example, the CyberTech AV mod produces a black with a value of 0.075
-			c.ntsc[idx].col = color.RGBA{A: 255}
+			c.pal[idx].col = color.RGBA{A: 255}
 		} else {
 			Y, U, V = c.adjustYUV(Y, U, V)
 			y := uint8(clamp(Y) * 255)
-			c.ntsc[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
+			c.pal[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
 		}
-		c.ntsc[idx].generated = true
-		return c.ntsc[idx].col
+		c.pal[idx].generated = true
+		return c.pal[idx].col
 	}
 
 	var phiHue float64
