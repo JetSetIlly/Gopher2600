@@ -19,6 +19,7 @@ import (
 	"image/color"
 	"math"
 
+	"github.com/jetsetilly/gopher2600/hardware/clocks"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
@@ -281,7 +282,7 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	// I think this is what the test in the programmer's guide is saying but I'm
 	// not sure. none-the-less, the results seem accurate and there is at least
 	// some rationale for the value
-	const phiAdj = -57.28
+	const phiAdj = -(clocks.NTSC_TIA * 16)
 	phiHue += phiAdj
 
 	// the final angle is the angle of the calculated hue plus the adjusted color burst
@@ -398,7 +399,7 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 
 	// see comments in generateNTSC for why we apply the adjusment and burst value to the
 	// calculated phi
-	const phiAdj = -57.28
+	const phiAdj = -(clocks.PAL_TIA * 16)
 	phiHue += phiAdj
 	phi := phiHue + phiBurst
 
