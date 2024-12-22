@@ -158,6 +158,12 @@ func (win *winSelectROM) setOpen(open bool) {
 		return
 	}
 
+	// take the opportunity to make sure recentROM is set correctly
+	cart := win.img.dbg.VCS().Mem.Cart
+	if !cart.IsEjected() {
+		win.img.prefs.recentROM.Set(cart.Filename)
+	}
+
 	// open at the most recently selected ROM
 	win.path.Set <- archivefs.Options{Path: win.img.prefs.recentROM.String()}
 }
@@ -586,6 +592,7 @@ func (win *winSelectROM) insertCartridge() {
 	win.img.dbg.InsertCartridge(win.path.Results.Selected, done)
 	go func() {
 		if <-done {
+			// set recentROM if insertion was successful
 			win.img.prefs.recentROM.Set(win.path.Results.Selected)
 		}
 	}()
