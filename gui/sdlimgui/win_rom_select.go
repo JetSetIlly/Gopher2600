@@ -159,7 +159,7 @@ func (win *winSelectROM) setOpen(open bool) {
 	}
 
 	// open at the most recently selected ROM
-	win.path.Set <- win.img.prefs.recentROM.String()
+	win.path.Set <- archivefs.Options{Path: win.img.prefs.recentROM.String()}
 }
 
 func (win *winSelectROM) playmodeSetOpen(open bool) {
@@ -251,7 +251,7 @@ func (win *winSelectROM) draw() {
 	imgui.BeginGroup()
 
 	if imgui.Button("Parent") {
-		win.path.Set <- filepath.Dir(win.path.Results.Dir)
+		win.path.Set <- archivefs.Options{Path: filepath.Dir(win.path.Results.Dir)}
 		win.scrollToTop = true
 	}
 
@@ -293,7 +293,7 @@ func (win *winSelectROM) draw() {
 			}
 
 			if imgui.Selectable(s.String()) {
-				win.path.Set <- filepath.Join(win.path.Results.Dir, e.Name)
+				win.path.Set <- archivefs.Options{Path: filepath.Join(win.path.Results.Dir, e.Name)}
 				win.scrollToTop = true
 			}
 		}
@@ -340,7 +340,7 @@ func (win *winSelectROM) draw() {
 			}
 
 			if imgui.SelectableV(e.Name, selected, 0, imgui.Vec2{X: 0, Y: 0}) {
-				win.path.Set <- filepath.Join(win.path.Results.Dir, e.Name)
+				win.path.Set <- archivefs.Options{Path: filepath.Join(win.path.Results.Dir, e.Name)}
 			}
 			if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
 				win.insertCartridge()

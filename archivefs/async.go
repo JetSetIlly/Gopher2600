@@ -36,11 +36,17 @@ type AsyncResults struct {
 	Complete bool
 }
 
+// Options are sent to the AsyncPath Set channel
+type Options struct {
+	Path  string
+	Force bool
+}
+
 // AsyncPath provides asynchronous access to an archivefs
 type AsyncPath struct {
 	setter FilenameSetter
 
-	Set     chan string
+	Set     chan Options
 	Close   chan bool
 	Destroy chan bool
 
@@ -56,7 +62,7 @@ type AsyncPath struct {
 func NewAsyncPath(setter FilenameSetter) AsyncPath {
 	pth := AsyncPath{
 		setter:  setter,
-		Set:     make(chan string, 1),
+		Set:     make(chan Options, 1),
 		Close:   make(chan bool, 1),
 		Destroy: make(chan bool, 1),
 
@@ -88,7 +94,7 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 			case <-pth.Close:
 				afs.Close()
 
-			case path := <-pth.Set:
+			case options := <-pth.Set:
 				// send cancel to existing list goroutine
 				select {
 				case cancel <- true:
@@ -117,7 +123,7 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 						}
 					}
 
-					err := afs.Set(path, true)
+					err := afs.Set(options.Path, true)
 					if err != nil {
 						pth.err <- err
 						return
@@ -134,7 +140,8 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 
 					// directory hasn't changed so there's no need to
 					// call the list() function
-					if currentDir == result.Dir {
+					if !options.Force && currentDir == result.Dir {
+						result.Complete = true
 						pth.prep <- result
 						return
 					}
