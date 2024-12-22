@@ -29,13 +29,16 @@ func (c *ColourGen) adjustYIQ(Y, I, Q float64) (float64, float64, float64) {
 	// YIQ * |  C   0   0  |
 	//       |  0   1   0  |
 	//       |  0   0   1  |
-	Y *= contrast
+	Y = 0.5 + (Y-0.5)*contrast
 
 	// B = brightness
-	// YIQ + |  B   0   0  |
-	//       |  0   0   0  |
-	//       |  0   0   0  |
-	Y += brightness
+	// YIQ * |  B   0   0  |
+	//       |  0   1   0  |
+	//       |  0   0   1  |
+	Y *= brightness
+
+	// clamp Y after contrast and brightness transforms
+	Y = clamp(Y)
 
 	// S = saturation
 	// YIQ * |  1   0   0  |

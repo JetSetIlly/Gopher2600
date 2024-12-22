@@ -175,7 +175,7 @@ const (
 func (c *ColourGen) SetDefaults() {
 	c.NTSCPhase.Set(NTSCFieldService)
 	c.PALPhase.Set(PALDefault)
-	c.Brightness.Set(0.0)
+	c.Brightness.Set(1.0)
 	c.Contrast.Set(1.0)
 	c.Saturation.Set(1.0)
 	c.Hue.Set(0.0)
@@ -225,15 +225,6 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	lum := (col & 0x0e) >> 1
 	hue := (col & 0xf0) >> 4
 
-	// the min/max values for the Y component
-	const (
-		minY = 0.35
-		maxY = 1.00
-	)
-
-	// Y value in the range minY to MaxY based on the lum value
-	Y = minY + (float64(lum)/8)*(maxY-minY)
-
 	// if hue is zero then that indicates there is no colour component and
 	// only the luminance is used
 	if hue == 0x00 {
@@ -244,6 +235,7 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 			// example, the CyberTech AV mod produces a black with a value of 0.075
 			c.ntsc[idx].col = color.RGBA{A: 255}
 		} else {
+			Y = float64(lum) / 7
 			Y, I, Q = c.adjustYIQ(Y, I, Q)
 			y := uint8(clamp(Y) * 255)
 			c.ntsc[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
@@ -251,6 +243,15 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 		c.ntsc[idx].generated = true
 		return c.ntsc[idx].col
 	}
+
+	// the min/max values for the Y component
+	const (
+		minY = 0.30
+		maxY = 1.00
+	)
+
+	// Y value in the range minY to MaxY based on the lum value
+	Y = minY + (float64(lum)/8)*(maxY-minY)
 
 	// the colour component indicates a point on the 'colour wheel'
 	phiHue := (float64(hue) - 1) * -c.NTSCPhase.Get().(float64)
@@ -357,15 +358,6 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	lum := (col & 0x0e) >> 1
 	hue := (col & 0xf0) >> 4
 
-	// the min/max values for the Y component
-	const (
-		minY = 0.35
-		maxY = 1.00
-	)
-
-	// Y value in the range minY to MaxY based on the lum value
-	Y = minY + (float64(lum)/8)*(maxY-minY)
-
 	// PAL creates a grayscale for hues 0, 1, 14 and 15
 	if hue <= 0x01 || hue >= 0x0e {
 		if lum == 0x00 {
@@ -375,6 +367,7 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 			// example, the CyberTech AV mod produces a black with a value of 0.075
 			c.pal[idx].col = color.RGBA{A: 255}
 		} else {
+			Y = float64(lum) / 7
 			Y, U, V = c.adjustYUV(Y, U, V)
 			y := uint8(clamp(Y) * 255)
 			c.pal[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
@@ -382,6 +375,15 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 		c.pal[idx].generated = true
 		return c.pal[idx].col
 	}
+
+	// the min/max values for the Y component
+	const (
+		minY = 0.30
+		maxY = 1.00
+	)
+
+	// Y value in the range minY to MaxY based on the lum value
+	Y = minY + (float64(lum)/8)*(maxY-minY)
 
 	var phiHue float64
 
@@ -397,8 +399,8 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	// angle of the colour burst reference is 180 by defintion
 	const phiBurst = 180
 
-	// see comments in generateNTSC for why we apply the adjusment and burst value to the
-	// calculated phi
+	// see comments in generateNTSC for/how why we apply the adjustment and
+	// burst value to the calculated phi
 	const phiAdj = -(clocks.PAL_TIA * 16)
 	phiHue += phiAdj
 	phi := phiHue + phiBurst

@@ -83,8 +83,8 @@ func (win *winPrefs) drawBrightness() {
 
 	f := float32(specification.ColourGen.Brightness.Get().(float64))
 
-	minv := float32(-0.9)
-	maxv := float32(0.9)
+	minv := float32(0.1)
+	maxv := float32(1.9)
 	label := fmt.Sprintf("%.0f", 100*(f-minv)/(maxv-minv))
 
 	if imgui.SliderFloatV("##brightness", &f, minv, maxv, label, imgui.SliderFlagsNone) {
