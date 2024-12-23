@@ -518,20 +518,26 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister, ct int) {
 		// pixel and before HBLANK etc. are in the state they need to be)
 		update = tia.Video.UpdateSpritePositioning(reg)
 
-		// update color registers
 		if update {
-			update = tia.Video.UpdateColor(reg)
+			// early sprite variations. there is another call later on which
+			// also affects the sprite objects
+			update = tia.Video.UpdateSpriteVariationsEarly(reg)
 
-			// update playfield color register (depending on TIA revision)
 			if update {
-				if !tia.env.Prefs.Revision.Live.LateColor.Load().(bool) {
-					update = tia.Video.UpdatePlayfieldAndBackgroundColor(reg)
-				}
+				// update color registers
+				update = tia.Video.UpdateColor(reg)
 
 				if update {
-					// update playfield bits (depending on TIA revisions)
-					if !tia.env.Prefs.Revision.Live.LatePFx.Load().(bool) {
-						update = tia.Video.UpdatePlayfield(reg)
+					// update playfield color register (depending on TIA revision)
+					if !tia.env.Prefs.Revision.Live.LateColor.Load().(bool) {
+						update = tia.Video.UpdatePlayfieldAndBackgroundColor(reg)
+					}
+
+					if update {
+						// update playfield bits (depending on TIA revisions)
+						if !tia.env.Prefs.Revision.Live.LatePFx.Load().(bool) {
+							update = tia.Video.UpdatePlayfield(reg)
+						}
 					}
 				}
 			}

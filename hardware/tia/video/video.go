@@ -631,6 +631,25 @@ func (vd *Video) UpdateSpritePixels(data chipbus.ChangedRegister) bool {
 	return false
 }
 
+func (vd *Video) UpdateSpriteVariationsEarly(data chipbus.ChangedRegister) bool {
+	switch data.Register {
+	case cpubus.NUSIZ0:
+		vd.Missile0.SetNUSIZ(data.Value)
+	case cpubus.NUSIZ1:
+		vd.Missile1.SetNUSIZ(data.Value)
+	}
+
+	// always returning true because we're only dealing with NUSIZx for missiles
+	// and not players
+	//
+	// NOTE: setting of NUSIZx for the player sprite should probably also happen
+	// at this point too. however, the SetNUSIZ() function for Player has been
+	// tuned assuming that it happens later. there's a comment on the SetNUSIZ()
+	// function saying that it can probably be untangled and I think that's
+	// right. the key to that would be to move the call to it to this function
+	return true
+}
+
 // UpdateSpriteVariations checks TIA memory for writes to registers that affect
 // how sprite pixels are output. Note that CTRLPF is serviced here rather than
 // in UpdatePlayfield(), because it affects the ball sprite.
@@ -655,10 +674,8 @@ func (vd *Video) UpdateSpriteVariations(data chipbus.ChangedRegister) bool {
 		vd.Missile1.setResetToPlayer(data.Value&RESMPxMask == RESMPxMask)
 	case cpubus.NUSIZ0:
 		vd.Player0.setNUSIZ(data.Value)
-		vd.Missile0.SetNUSIZ(data.Value)
 	case cpubus.NUSIZ1:
 		vd.Player1.setNUSIZ(data.Value)
-		vd.Missile1.SetNUSIZ(data.Value)
 	case cpubus.CXCLR:
 		vd.Collisions.Clear()
 	default:
