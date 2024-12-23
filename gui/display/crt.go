@@ -27,23 +27,19 @@ type CRT struct {
 
 	Curve          prefs.Bool
 	RoundedCorners prefs.Bool
-	Bevel          prefs.Bool
 	Shine          prefs.Bool
 	Mask           prefs.Bool
 	Scanlines      prefs.Bool
 	Interference   prefs.Bool
-	Flicker        prefs.Bool
 	Fringing       prefs.Bool
 	Ghosting       prefs.Bool
 	Phosphor       prefs.Bool
 
 	CurveAmount          prefs.Float
 	RoundedCornersAmount prefs.Float
-	BevelSize            prefs.Float
 	MaskIntensity        prefs.Float
 	ScanlinesIntensity   prefs.Float
 	InterferenceLevel    prefs.Float
-	FlickerLevel         prefs.Float
 	FringingAmount       prefs.Float
 	GhostingAmount       prefs.Float
 	PhosphorLatency      prefs.Float
@@ -84,10 +80,6 @@ func NewCRT() (*CRT, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.bevel", &p.Bevel)
-	if err != nil {
-		return nil, err
-	}
 	err = p.dsk.Add("crt.shine", &p.Shine)
 	if err != nil {
 		return nil, err
@@ -101,10 +93,6 @@ func NewCRT() (*CRT, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("crt.interference", &p.Interference)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.flicker", &p.Flicker)
 	if err != nil {
 		return nil, err
 	}
@@ -128,10 +116,6 @@ func NewCRT() (*CRT, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.bevelSize", &p.BevelSize)
-	if err != nil {
-		return nil, err
-	}
 	err = p.dsk.Add("crt.maskIntensity", &p.MaskIntensity)
 	if err != nil {
 		return nil, err
@@ -141,10 +125,6 @@ func NewCRT() (*CRT, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("crt.interferenceLevel", &p.InterferenceLevel)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.flickerLevel", &p.FlickerLevel)
 	if err != nil {
 		return nil, err
 	}
@@ -190,22 +170,18 @@ func (p *CRT) SetDefaults() {
 	p.Enabled.Set(true)
 	p.Curve.Set(true)
 	p.RoundedCorners.Set(true)
-	p.Bevel.Set(false)
 	p.Shine.Set(true)
 	p.Mask.Set(false)
 	p.Scanlines.Set(true)
 	p.Interference.Set(true)
-	p.Flicker.Set(false)
 	p.Fringing.Set(true)
 	p.Ghosting.Set(true)
 	p.Phosphor.Set(true)
 	p.CurveAmount.Set(0.5)
 	p.RoundedCornersAmount.Set(0.059)
-	p.BevelSize.Set(0.01)
 	p.MaskIntensity.Set(0.07)
 	p.ScanlinesIntensity.Set(0.08)
 	p.InterferenceLevel.Set(0.15)
-	p.FlickerLevel.Set(0.025)
 	p.FringingAmount.Set(0.15)
 	p.GhostingAmount.Set(2.9)
 	p.PhosphorLatency.Set(0.5)

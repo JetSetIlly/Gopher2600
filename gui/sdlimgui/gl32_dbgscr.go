@@ -211,7 +211,6 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 
 		prefs := newCrtSeqPrefs(sh.img.crt)
 		prefs.Enabled = true
-		prefs.Bevel = false
 
 		env.textureID = sh.crt.process(env, sh.img.wm.dbgScr.displayTexture.getID(),
 			true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible, prefs, specification.NormalRotation, false)

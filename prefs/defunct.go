@@ -86,6 +86,10 @@ var defunct = []string{
 	"display.color.contrast",   // replaced with television.color.contrast
 	"display.color.hue",        // replaced with television.color.hue
 	"display.color.saturation", // replaced with television.color.saturation
+	"crt.bevel",
+	"crt.bevelSize",
+	"crt.flicker",
+	"crt.flickerLevel",
 }
 
 // returns true if string is in list of defunct values.

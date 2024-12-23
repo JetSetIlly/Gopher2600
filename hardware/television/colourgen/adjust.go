@@ -19,6 +19,16 @@ import (
 	"math"
 )
 
+func clampRange(v float64, mn float64, mx float64) float64 {
+	if v < mn {
+		return mn
+	}
+	if v > mx {
+		return mx
+	}
+	return v
+}
+
 func (c *ColourGen) adjustYIQ(Y, I, Q float64) (float64, float64, float64) {
 	brightness := c.Brightness.Get().(float64)
 	contrast := c.Contrast.Get().(float64)
@@ -38,7 +48,7 @@ func (c *ColourGen) adjustYIQ(Y, I, Q float64) (float64, float64, float64) {
 	Y *= brightness
 
 	// clamp Y after contrast and brightness transforms
-	Y = clamp(Y)
+	Y = clampRange(Y, 0.0, 0.90)
 
 	// S = saturation
 	// YIQ * |  1   0   0  |

@@ -46,6 +46,7 @@ type ColourGen struct {
 	Contrast   prefs.Float
 	Saturation prefs.Float
 	Hue        prefs.Float
+	Gamma      prefs.Float
 }
 
 // NewColourGen is the preferred method of intialisation for the ColourGen type.
@@ -102,6 +103,10 @@ func NewColourGen() (*ColourGen, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = c.dsk.Add("television.color.gamma", &c.Gamma)
+	if err != nil {
+		return nil, err
+	}
 
 	f := func(_ prefs.Value) error {
 		clear(c.ntsc)
@@ -114,6 +119,7 @@ func NewColourGen() (*ColourGen, error) {
 	c.Contrast.SetHookPost(f)
 	c.Saturation.SetHookPost(f)
 	c.Hue.SetHookPost(f)
+	c.Gamma.SetHookPost(f)
 
 	err = c.dsk.Load()
 	if err != nil {
@@ -167,18 +173,21 @@ const (
 
 const PALDefault = 16.35
 
-const (
-	ntscGamma = 2.2
-	palGamma  = 2.8
-)
-
 func (c *ColourGen) SetDefaults() {
 	c.NTSCPhase.Set(NTSCFieldService)
 	c.PALPhase.Set(PALDefault)
-	c.Brightness.Set(1.0)
-	c.Contrast.Set(1.0)
-	c.Saturation.Set(1.0)
+	c.Brightness.Set(1.140)
+	c.Contrast.Set(0.762)
+	c.Saturation.Set(0.991)
 	c.Hue.Set(0.0)
+
+	// I used to think that the different TV specifications had a specific
+	// gamma. NTSC has an inherent gamma of 2.2 and PAL has 2.8. I no longer
+	// belive this and now use a single gamma value for all specififcations.
+	//
+	// this is currently 2.2 and if the user wants to change it, they need to
+	// change the preference file
+	c.Gamma.Set(2.2)
 }
 
 // Load colour values from disk
@@ -321,9 +330,10 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	// 	B := clamp(Y - (1.1070 * I) + (1.7046 * Q))
 
 	// gamma correction
-	R = math.Pow(R, ntscGamma)
-	G = math.Pow(G, ntscGamma)
-	B = math.Pow(B, ntscGamma)
+	gamma := c.Gamma.Get().(float64)
+	R = math.Pow(R, gamma)
+	G = math.Pow(G, gamma)
+	B = math.Pow(B, gamma)
 
 	// create and cache
 	c.ntsc[idx].generated = true
@@ -427,9 +437,10 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	B := clamp(Y + (2.033 * U))
 
 	// gamma correction
-	R = math.Pow(R, palGamma)
-	G = math.Pow(G, palGamma)
-	B = math.Pow(B, palGamma)
+	gamma := c.Gamma.Get().(float64)
+	R = math.Pow(R, gamma)
+	G = math.Pow(G, gamma)
+	B = math.Pow(B, gamma)
 
 	// create and cache
 	c.pal[idx].generated = true
@@ -521,9 +532,10 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
 	B := clamp(Y + (2.033 * U))
 
 	// gamma correction
-	R = math.Pow(R, palGamma)
-	G = math.Pow(G, palGamma)
-	B = math.Pow(B, palGamma)
+	gamma := c.Gamma.Get().(float64)
+	R = math.Pow(R, gamma)
+	G = math.Pow(G, gamma)
+	B = math.Pow(B, gamma)
 
 	// create and cache
 	c.secam[idx].generated = true

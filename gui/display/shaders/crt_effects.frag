@@ -17,12 +17,10 @@ uniform int NumScanlines;
 uniform int NumClocks;
 uniform int Curve;
 uniform int RoundedCorners;
-uniform int Bevel;
 uniform int Shine;
 uniform int ShadowMask;
 uniform int Scanlines;
 uniform int Interference;
-uniform int Flicker;
 uniform int Fringing;
 uniform float BlackLevel;
 uniform float CurveAmount;
@@ -31,7 +29,6 @@ uniform float BevelSize;
 uniform float MaskIntensity;
 uniform float ScanlinesIntensity;
 uniform float InterferenceLevel;
-uniform float FlickerLevel;
 uniform float FringingAmount;
 uniform float Time;
 
@@ -134,11 +131,6 @@ void main() {
 	// Frag_UV unaltered later on for some reason
 	vec2 uv = Frag_UV;
 
-	// decrease size of image if bevel is active
-	if (Bevel == 1) {
-		uv = (uv - 0.5) * 1.02 + 0.5;
-	}
-
 	// apply curve. uv coordinates will be curved from here on out
 	if (Curve == 1) {
 		float m = (CurveAmount * 0.4) + 0.6; // bring into sensible range
@@ -159,23 +151,14 @@ void main() {
     );
 	uv += 0.5;
 
-	// capture the uv cordinates before reducing the size of the image. we use
-	// this for the bevel effect which we don't want to be slightly larger than
-	// the main image
-	vec2 bevelUV = uv;
-
-	// reduce size of image (and the shine coordinates) shine if bevel is active
-	if (Bevel == 1) {
-		float margin = 1.0 + BevelSize;
-		uv = (uv - 0.5) * margin + 0.5;
-		shineUV = (shineUV - 0.5) * margin + 0.5;
-	}
-
 	// apply basic color
 	vec4 Crt_Color = Frag_Color * texture(Texture, uv.st);
 
 	// black correction 
 	Crt_Color.rgb = clamp(Crt_Color.rgb, vec3(BlackLevel*3.00), Crt_Color.rgb);
+
+	// the following effects are applied to the YIQ signal
+	vec3 yiq = RGBtoYIQ(Crt_Color.rgb);
 
 	// Interference. This effect is split into two halves. The second half happens later
 	if (Interference == 1) {
@@ -185,33 +168,37 @@ void main() {
 		uv.x += noise.w * InterferenceLevel / 150;
 
 		// YIQ interference
-		vec3 yiq = RGBtoYIQ(Crt_Color.rgb);
+		yiq.x *= 0.85;
 		yiq.x *= 0.5 + noise.w * InterferenceLevel * 2.0;
-		Crt_Color.rgb = YIQtoRGB(yiq);
+	} else {
+		// no interference but we want to reduce the Y channel so that the
+		// apparent brightness of the image is similar to when interference is
+		// enabled
+		yiq.x *= 0.60;
 	}
 
-	// flicker
-	if (Flicker == 1) {
-		Crt_Color *= (1.0-FlickerLevel*(sin(50.0*Time)*0.5+0.5));
+	// scanline/mask effect
+	{
+		// using y axis to determine scaling.
+		float scaling = float(ScreenDim.y) / float(NumScanlines);
+
+
+		// scanlines - only draw if scaling is large enough
+		if (Scanlines == 1 && scaling > 2) {
+			float scans = clamp(1.0+ScanlinesIntensity*sin(uv.y*NumScanlines*5), 0.0, 1.0);
+			yiq.x *= scans;
+		}
+
+		// shadow mask - only draw if scaling is large enough
+		if (ShadowMask == 1 && scaling > 2) {
+			float mask = clamp(1.0+MaskIntensity*sin(uv.x*NumClocks*8), 0.0, 1.0);
+			yiq.x *= mask;
+		}
+
 	}
 
-	// using y axis to determine scaling.
-	float scaling = float(ScreenDim.y) / float(NumScanlines);
-
-	// applying scanlines and/or shadowmask to the image causes it to dim
-	const float brightnessCorrection = 0.7;
-
-	// scanlines - only draw if scaling is large enough
-	if (Scanlines == 1 && scaling > 2) {
-		float scans = clamp(brightnessCorrection+ScanlinesIntensity*sin(uv.y*NumScanlines*5), 0.0, 1.0);
-		Crt_Color.rgb *= vec3(scans);
-	}
-
-	// shadow mask - only draw if scaling is large enough
-	if (ShadowMask == 1 && scaling > 2) {
-		float mask = clamp(brightnessCorrection+MaskIntensity*sin(uv.x*NumClocks*8), 0.0, 1.0);
-		Crt_Color.rgb *= vec3(mask);
-	}
+	// the end of the effects that work on the YIQ signal
+	Crt_Color.rgb = YIQtoRGB(yiq);
 
 	// colour fringing (chromatic aberration). we always do this even if
 	// fringing is disabled, we just use an aberation value of zero. performing
@@ -259,8 +246,9 @@ void main() {
 	// we always add perlin noise because we always want to elimiate banding. we
 	// used to use perlin for interference noise but we've found it better to
 	// give a small random deviation to the Y channel
-	float perlin = fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);
+	float perlin = fract(sin(dot(uv, vec2(12.9898, 78.233))*Time) * 43758.5453);
 	perlin *= 0.005;
+	Crt_Color.rgb += vec3(perlin);
 
 	// shine effect
 	if (Shine == 1) {
@@ -272,7 +260,7 @@ void main() {
 	// vignette effect
 	if (Curve == 1) {
 		float vignette = 10*uv.x*uv.y*(1.0-uv.x)*(1.0-uv.y);
-		Crt_Color.rgb *= pow(vignette, 0.25) * 1.2;
+		Crt_Color.rgb *= pow(vignette, 0.12) * 1.1;
 	}
 
 	// rounded corners
@@ -283,16 +271,6 @@ void main() {
 		float pct = bl.x * bl.y * tr.x * tr.y;
 		if (pct < 0.1) {
 			Crt_Color = vec4(pct);
-		}
-	}
-
-	// bevel
-	if (Bevel == 1) {
-		vec2 bl = smoothstep(vec2(-BevelSize), vec2(BevelSize), bevelUV.st);
-		vec2 tr = smoothstep(vec2(-BevelSize), vec2(BevelSize), 1.0-bevelUV.st);
-		float pct = bl.x * bl.y * tr.x * tr.y;
-		if (pct < 0.75) {
-			Crt_Color = vec4(0.1, 0.1, 0.11, 1.0) * (1.0-pct);
 		}
 	}
 

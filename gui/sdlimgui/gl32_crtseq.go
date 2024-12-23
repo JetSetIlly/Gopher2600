@@ -29,23 +29,19 @@ type crtSeqPrefs struct {
 
 	Curve          bool
 	RoundedCorners bool
-	Bevel          bool
 	Shine          bool
 	Mask           bool
 	Scanlines      bool
 	Interference   bool
-	Flicker        bool
 	Fringing       bool
 	Ghosting       bool
 	Phosphor       bool
 
 	CurveAmount          float64
 	RoundedCornersAmount float64
-	BevelSize            float64
 	MaskIntensity        float64
 	ScanlinesIntensity   float64
 	InterferenceLevel    float64
-	FlickerLevel         float64
 	FringingAmount       float64
 	GhostingAmount       float64
 	PhosphorLatency      float64
@@ -60,22 +56,18 @@ func newCrtSeqPrefs(crt *display.CRT) crtSeqPrefs {
 		PixelPerfectFade:     crt.PixelPerfectFade.Get().(float64),
 		Curve:                crt.Curve.Get().(bool),
 		RoundedCorners:       crt.RoundedCorners.Get().(bool),
-		Bevel:                crt.Bevel.Get().(bool),
 		Shine:                crt.Shine.Get().(bool),
 		Mask:                 crt.Mask.Get().(bool),
 		Scanlines:            crt.Scanlines.Get().(bool),
 		Interference:         crt.Interference.Get().(bool),
-		Flicker:              crt.Flicker.Get().(bool),
 		Fringing:             crt.Fringing.Get().(bool),
 		Ghosting:             crt.Ghosting.Get().(bool),
 		Phosphor:             crt.Phosphor.Get().(bool),
 		CurveAmount:          crt.CurveAmount.Get().(float64),
 		RoundedCornersAmount: crt.RoundedCornersAmount.Get().(float64),
-		BevelSize:            crt.BevelSize.Get().(float64),
 		MaskIntensity:        crt.MaskIntensity.Get().(float64),
 		ScanlinesIntensity:   crt.ScanlinesIntensity.Get().(float64),
 		InterferenceLevel:    crt.InterferenceLevel.Get().(float64),
-		FlickerLevel:         crt.FlickerLevel.Get().(float64),
 		FringingAmount:       crt.FringingAmount.Get().(float64),
 		GhostingAmount:       crt.GhostingAmount.Get().(float64),
 		PhosphorLatency:      crt.PhosphorLatency.Get().(float64),

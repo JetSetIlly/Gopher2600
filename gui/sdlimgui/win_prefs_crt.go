@@ -57,12 +57,11 @@ func (win *winPrefs) drawCRT() {
 		imgui.Spacing()
 		win.drawScanlines()
 		imgui.PopItemWidth()
+		imgui.Spacing()
 
 		imgui.TableNextColumn()
 		imgui.PushItemWidth(-1)
 		win.drawInterference()
-		imgui.Spacing()
-		win.drawFlicker()
 		imgui.Spacing()
 		win.drawFringing()
 		imgui.Spacing()
@@ -70,6 +69,7 @@ func (win *winPrefs) drawCRT() {
 		imgui.Spacing()
 		win.drawSharpness()
 		imgui.PopItemWidth()
+		imgui.Spacing()
 
 		imgui.TableNextColumn()
 		imgui.PushItemWidth(-1)
@@ -77,10 +77,9 @@ func (win *winPrefs) drawCRT() {
 		imgui.Spacing()
 		win.drawBlackLevel()
 		imgui.Spacing()
-		win.drawBevel()
-		imgui.Spacing()
 		win.drawShine()
 		imgui.PopItemWidth()
+		imgui.Spacing()
 
 		imgui.EndTable()
 	}
@@ -181,31 +180,6 @@ func (win *winPrefs) drawInterference() {
 
 	if imgui.SliderFloatV("##interferencelevel", &f, 0.1, 0.2, label, 1.0) {
 		win.img.crt.InterferenceLevel.Set(f)
-	}
-}
-
-func (win *winPrefs) drawFlicker() {
-	b := win.img.crt.Flicker.Get().(bool)
-	if imgui.Checkbox("Flicker##flicker", &b) {
-		win.img.crt.Flicker.Set(b)
-	}
-
-	f := float32(win.img.crt.FlickerLevel.Get().(float64))
-
-	var label string
-
-	if f >= 0.06 {
-		label = "very high"
-	} else if f >= 0.04 {
-		label = "high"
-	} else if f >= 0.03 {
-		label = "low"
-	} else {
-		label = "very low"
-	}
-
-	if imgui.SliderFloatV("##flickerlevel", &f, 0.01, 0.06, label, 1.0) {
-		win.img.crt.FlickerLevel.Set(f)
 	}
 }
 
@@ -366,31 +340,6 @@ func (win *winPrefs) drawRoundedCorners() {
 
 	if imgui.SliderFloatV("##roundedcornersamount", &f, 0.02, 0.09, label, 1.0) {
 		win.img.crt.RoundedCornersAmount.Set(f)
-	}
-}
-
-func (win *winPrefs) drawBevel() {
-	b := win.img.crt.Bevel.Get().(bool)
-	if imgui.Checkbox("Bevel##bevel", &b) {
-		win.img.crt.Bevel.Set(b)
-	}
-
-	f := float32(win.img.crt.BevelSize.Get().(float64))
-
-	var label string
-
-	if f >= 0.02 {
-		label = "very deep"
-	} else if f >= 0.015 {
-		label = "deep"
-	} else if f >= 0.01 {
-		label = "shallow"
-	} else {
-		label = "very shallow"
-	}
-
-	if imgui.SliderFloatV("##bevelSize", &f, 0.005, 0.025, label, 1.0) {
-		win.img.crt.BevelSize.Set(f)
 	}
 }
 
