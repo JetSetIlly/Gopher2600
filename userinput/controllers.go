@@ -190,7 +190,7 @@ func (c *Controllers) differentiateKeyboard(key string, down bool) (bool, error)
 		portID = c.handleSwap(plugging.PortRight)
 		if c.inputHandler.PeripheralID(portID) == plugging.PeriphKeypad {
 			ev = keyEv
-			d = '6'
+			d = '3'
 		} else {
 			ev = ports.SecondFire
 			d = fireEvData
