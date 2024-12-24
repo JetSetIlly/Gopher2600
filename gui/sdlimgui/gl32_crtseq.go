@@ -48,6 +48,7 @@ type crtSeqPrefs struct {
 	PhosphorBloom        float64
 	Sharpness            float64
 	BlackLevel           float64
+	Gamma                float64
 }
 
 func newCrtSeqPrefs(crt *display.CRT) crtSeqPrefs {
@@ -74,6 +75,7 @@ func newCrtSeqPrefs(crt *display.CRT) crtSeqPrefs {
 		PhosphorBloom:        crt.PhosphorBloom.Get().(float64),
 		Sharpness:            crt.Sharpness.Get().(float64),
 		BlackLevel:           crt.BlackLevel.Get().(float64),
+		Gamma:                specification.ColourGen.Gamma.Get().(float64),
 	}
 }
 
@@ -171,7 +173,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 	// apply ghosting filter to texture. this is useful for the zookeeper brick effect
 	if prefs.Enabled {
 		// if ghosting isn't enabled then we need to run the image through a
-		// neutral shader so that the y-orientaiton is correct
+		// neutral shader so that the y-orientation is correct
 		if prefs.Ghosting {
 			env.textureID = sh.sequence.Process(func() {
 				sh.ghostingShader.(*ghostingShader).process(env, float32(prefs.GhostingAmount))

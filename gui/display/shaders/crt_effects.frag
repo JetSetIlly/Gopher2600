@@ -23,6 +23,7 @@ uniform int Scanlines;
 uniform int Interference;
 uniform int Fringing;
 uniform float BlackLevel;
+uniform float Gamma;
 uniform float CurveAmount;
 uniform float RoundedCornersAmount;
 uniform float BevelSize;
@@ -90,7 +91,7 @@ vec2 curve(in vec2 uv)
 // actually the x field of the vectore and not y!
 vec3 RGBtoYIQ(in vec3 rgb)
 {
-	float gamma = 1.0/2.2;
+	float gamma = 1.0/Gamma;
 
 	mat3 adjust = mat3(
 		vec3(gamma, 0.0, 0.0),
@@ -115,12 +116,10 @@ vec3 YIQtoRGB(in vec3 yiq)
 		vec3(1, -1.106, 1.703)
 	);
 
-	float gamma = 2.2;
-
 	adjust *= mat3(
-		vec3(gamma, 0.0, 0.0),
-		vec3(0.0, gamma, 0.0),
-		vec3(0.0, 0.0, gamma)
+		vec3(Gamma, 0.0, 0.0),
+		vec3(0.0, Gamma, 0.0),
+		vec3(0.0, 0.0, Gamma)
 	);
 
 	return yiq * adjust;
@@ -151,10 +150,13 @@ void main() {
     );
 	uv += 0.5;
 
-	// apply basic color
-	vec4 Crt_Color = Frag_Color * texture(Texture, uv.st);
+	// all colour transformation will be based the Crt_Color variable. the value of this will be 
+	// assigned to the Out_Color at the end of the main function
+	vec4 Crt_Color;
+	Crt_Color.rgb = texture2D(Texture, uv).rgb;
+	Crt_Color.a = 1.0;
 
-	// black correction 
+	// black correction
 	Crt_Color.rgb = clamp(Crt_Color.rgb, vec3(BlackLevel*3.00), Crt_Color.rgb);
 
 	// the following effects are applied to the YIQ signal
@@ -162,14 +164,22 @@ void main() {
 
 	// Interference. This effect is split into two halves. The second half happens later
 	if (Interference == 1) {
+		// colour interference
+		//vec3 bleed = texture2D(Texture, uv + vec2(0.005, 0.001)+InterferenceLevel*0.009).rgb;
+		//vec3 yiqBleed = RGBtoYIQ(bleed);
+		//float i = InterferenceLevel * 3.5;
+		//yiq.x += (yiqBleed.y + yiqBleed.z) * i;
+
+		// amount of noise to introduce
 		vec4 noise = interferenceAmount(uv);
 
-		// a little but of horizontal movement works well
-		uv.x += noise.w * InterferenceLevel / 150;
-
-		// YIQ interference
+		// luminence noise
 		yiq.x *= 0.85;
-		yiq.x *= 0.5 + noise.w * InterferenceLevel * 2.0;
+		yiq.x *= 0.5 + noise.w * InterferenceLevel * 1.5;
+
+		// a little bit of horizontal jitter works well
+		uv.x += noise.w * InterferenceLevel * 0.01;
+
 	} else {
 		// no interference but we want to reduce the Y channel so that the
 		// apparent brightness of the image is similar to when interference is
@@ -181,7 +191,6 @@ void main() {
 	{
 		// using y axis to determine scaling.
 		float scaling = float(ScreenDim.y) / float(NumScanlines);
-
 
 		// scanlines - only draw if scaling is large enough
 		if (Scanlines == 1 && scaling > 2) {
@@ -200,9 +209,9 @@ void main() {
 	// the end of the effects that work on the YIQ signal
 	Crt_Color.rgb = YIQtoRGB(yiq);
 
-	// colour fringing (chromatic aberration). we always do this even if
-	// fringing is disabled, we just use an aberation value of zero. performing
-	// if seems to soften the scanlines / shadow mask, which is desirable
+	// chromatic aberration. we always do this even if the effect is disabled,
+	// we just use an aberation value of zero. performing if seems to soften the
+	// scanlines / shadow mask, which is desirable
 	{
 		vec2 ab = vec2(0.0);
 		if (Fringing == 1) {

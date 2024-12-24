@@ -171,7 +171,12 @@ const (
 	NTSCFieldSericeLabel = "Field Service Manual"
 )
 
+// Unlike NTSC the default phase for PAL seems to be less contentious. A single
+// value acts as the default preset
 const PALDefault = 16.35
+
+// The gamma value assumed by all colour conversion
+const Gamma = 2.2
 
 func (c *ColourGen) SetDefaults() {
 	c.NTSCPhase.Set(NTSCFieldService)
@@ -187,7 +192,7 @@ func (c *ColourGen) SetDefaults() {
 	//
 	// this is currently 2.2 and if the user wants to change it, they need to
 	// change the preference file
-	c.Gamma.Set(2.2)
+	c.Gamma.Set(Gamma)
 }
 
 // Load colour values from disk
