@@ -1805,10 +1805,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 	case cmdPeripheral:
 		player, _ := tokens.Get()
+		player = strings.ToUpper(player)
 
 		var id plugging.PortID
 
-		switch strings.ToUpper(player) {
+		switch player {
 		case "LEFT":
 			id = plugging.PortLeft
 		case "RIGHT":
@@ -1822,11 +1823,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			return nil
 		}
 
-		var err error
-
 		controller, ok := tokens.Get()
 		if ok {
-			switch strings.ToUpper(controller) {
+			var err error
+
+			controller = strings.ToUpper(controller)
+			switch controller {
 			case "AUTO":
 				dbg.vcs.FingerprintPeripheral(id)
 			case "STICK":
@@ -1842,10 +1844,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			case "ATARIVOX":
 				err = dbg.vcs.RIOT.Ports.Plug(id, atarivox.NewAtariVox)
 			}
-		}
 
-		if err != nil {
-			return err
+			if err != nil {
+				return err
+			}
+
+			dbg.printLine(terminal.StyleFeedback, "%s inserted for %s player", controller, player)
+			return nil
 		}
 
 		var p ports.Peripheral
