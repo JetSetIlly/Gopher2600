@@ -38,8 +38,7 @@ type CPU struct {
 	acc8  registers.Register
 	acc16 registers.ProgramCounter
 
-	mem          Memory
-	instructions []*instructions.Definition
+	mem Memory
 
 	// cycleCallback is called for additional emulator functionality
 	cycleCallback func() error
@@ -101,16 +100,15 @@ type Memory interface {
 // that the CPU will be initialised in a random state.
 func NewCPU(mem Memory) *CPU {
 	return &CPU{
-		mem:          mem,
-		PC:           registers.NewProgramCounter(0),
-		A:            registers.NewRegister(0, "A"),
-		X:            registers.NewRegister(0, "X"),
-		Y:            registers.NewRegister(0, "Y"),
-		SP:           registers.NewStackPointer(0),
-		Status:       registers.NewStatusRegister(),
-		acc8:         registers.NewRegister(0, "accumulator"),
-		acc16:        registers.NewProgramCounter(0),
-		instructions: instructions.GetDefinitions(),
+		mem:    mem,
+		PC:     registers.NewProgramCounter(0),
+		A:      registers.NewRegister(0, "A"),
+		X:      registers.NewRegister(0, "X"),
+		Y:      registers.NewRegister(0, "Y"),
+		SP:     registers.NewStackPointer(0),
+		Status: registers.NewStatusRegister(),
+		acc8:   registers.NewRegister(0, "accumulator"),
+		acc16:  registers.NewProgramCounter(0),
 	}
 }
 
@@ -314,7 +312,7 @@ func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 
 	case newOpcode:
 		// look up definition
-		mc.LastResult.Defn = mc.instructions[v]
+		mc.LastResult.Defn = instructions.Definitions[v]
 
 		// even though all opcodes are defined we'll leave this error check in
 		// just in case something goes wrong with the instruction generator
