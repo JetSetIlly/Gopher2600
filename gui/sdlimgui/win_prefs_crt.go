@@ -32,10 +32,6 @@ func (win *winPrefs) drawCRT() {
 		defer imgui.PopItemFlag()
 	}
 
-	// there is deliberately no option for IntegerScaling in the GUI. the
-	// option exists in the prefs file but we're not exposing the option to the
-	// end user
-
 	imgui.Spacing()
 	imgui.Separator()
 	imgui.Spacing()

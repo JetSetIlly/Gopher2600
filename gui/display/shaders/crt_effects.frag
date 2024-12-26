@@ -125,6 +125,16 @@ vec3 YIQtoRGB(in vec3 yiq)
 	return yiq * adjust;
 }
 
+float YIQtoRF(in vec3 yiq)
+{
+	return 0.0;
+}
+
+vec3 RFtoYIQ(in float rf)
+{
+	return vec3(0.0);
+}
+
 void main() {
 	// working on uv rather than Frag_UV for convenience and in case we need
 	// Frag_UV unaltered later on for some reason
@@ -162,24 +172,27 @@ void main() {
 	// the following effects are applied to the YIQ signal
 	vec3 yiq = RGBtoYIQ(Crt_Color.rgb);
 
-	// Interference. This effect is split into two halves. The second half happens later
+	// interference
 	if (Interference == 1) {
-		// colour interference
-		//vec3 bleed = texture2D(Texture, uv + vec2(0.005, 0.001)+InterferenceLevel*0.009).rgb;
-		//vec3 yiqBleed = RGBtoYIQ(bleed);
-		//float i = InterferenceLevel * 3.5;
-		//yiq.x += (yiqBleed.y + yiqBleed.z) * i;
+		// a very small amount of jitter added to the colour interference
+		float ja = sin(Time)/2500;
+		float jb = cos(Time)/2500;
 
-		// amount of noise to introduce
-		vec4 noise = interferenceAmount(uv);
+		// colour interference
+		vec3 rightBleed = RGBtoYIQ(texture2D(Texture, uv + vec2(0.005+ja, 0.0005+jb)+InterferenceLevel*0.006).rgb);
+		vec3 leftBleed = RGBtoYIQ(texture2D(Texture, uv - vec2(0.005+jb, 0.0005+ja)+InterferenceLevel*0.006).rgb);
+		float i = InterferenceLevel * 4.5;
+		yiq.x += (rightBleed.x - leftBleed.x) * i * 0.75;
+		yiq.y += (rightBleed.z - leftBleed.z) * i;
+		yiq.z += (rightBleed.y - leftBleed.y) * i;
 
 		// luminence noise
+		vec4 noise = interferenceAmount(uv);
 		yiq.x *= 0.85;
 		yiq.x *= 0.5 + noise.w * InterferenceLevel * 1.5;
 
 		// a little bit of horizontal jitter works well
 		uv.x += noise.w * InterferenceLevel * 0.01;
-
 	} else {
 		// no interference but we want to reduce the Y channel so that the
 		// apparent brightness of the image is similar to when interference is
@@ -203,7 +216,6 @@ void main() {
 			float mask = clamp(1.0+MaskIntensity*sin(uv.x*NumClocks*8), 0.0, 1.0);
 			yiq.x *= mask;
 		}
-
 	}
 
 	// the end of the effects that work on the YIQ signal
@@ -256,7 +268,7 @@ void main() {
 	// used to use perlin for interference noise but we've found it better to
 	// give a small random deviation to the Y channel
 	float perlin = fract(sin(dot(uv, vec2(12.9898, 78.233))*Time) * 43758.5453);
-	perlin *= 0.005;
+	perlin *= 0.001;
 	Crt_Color.rgb += vec3(perlin);
 
 	// shine effect
