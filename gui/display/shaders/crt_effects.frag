@@ -168,7 +168,7 @@ void main() {
 	// all colour transformation will be based the Crt_Color variable. the value of this will be 
 	// assigned to the Out_Color at the end of the main function
 	vec4 Crt_Color;
-	Crt_Color.rgb = texture2D(Texture, uv).rgb;
+	Crt_Color.rgb = texture(Texture, uv).rgb;
 	Crt_Color.a = 1.0;
 
 	// black correction
@@ -184,8 +184,8 @@ void main() {
 		float jb = cos(Time)/2500;
 
 		// colour interference
-		vec3 rightBleed = RGBtoYIQ(texture2D(Texture, uv + vec2(0.005+ja, 0.0005+jb)+InterferenceLevel*0.006).rgb);
-		vec3 leftBleed = RGBtoYIQ(texture2D(Texture, uv - vec2(0.005+jb, 0.0005+ja)+InterferenceLevel*0.006).rgb);
+		vec3 rightBleed = RGBtoYIQ(texture(Texture, uv + vec2(0.005+ja, 0.0005+jb)+InterferenceLevel*0.006).rgb);
+		vec3 leftBleed = RGBtoYIQ(texture(Texture, uv - vec2(0.005+jb, 0.0005+ja)+InterferenceLevel*0.006).rgb);
 		float i = InterferenceLevel * 4.5;
 		yiq.x += (rightBleed.x - leftBleed.x) * i * 0.75;
 		yiq.y += (rightBleed.z - leftBleed.z) * i;
