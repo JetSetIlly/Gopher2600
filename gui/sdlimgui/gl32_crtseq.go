@@ -19,6 +19,7 @@ package sdlimgui
 
 import (
 	"github.com/jetsetilly/gopher2600/gui/display"
+	"github.com/jetsetilly/gopher2600/gui/display/bevels"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/framebuffer"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -49,7 +50,7 @@ type crtSeqPrefs struct {
 }
 
 func newCrtSeqPrefs(crt *display.CRT) crtSeqPrefs {
-	return crtSeqPrefs{
+	p := crtSeqPrefs{
 		PixelPerfect:         crt.PixelPerfect.Get().(bool),
 		PixelPerfectFade:     crt.PixelPerfectFade.Get().(float64),
 		Curve:                crt.Curve.Get().(bool),
@@ -71,6 +72,13 @@ func newCrtSeqPrefs(crt *display.CRT) crtSeqPrefs {
 		Shine:                crt.Shine.Get().(bool),
 		Gamma:                specification.ColourGen.Gamma.Get().(float64),
 	}
+	if crt.UseBevel.Get().(bool) {
+		p.Curve = true
+		p.CurveAmount = float64(bevels.SolidState.CurveAmount)
+		p.RoundedCorners = true
+		p.RoundedCornersAmount = float64(bevels.SolidState.RoundCornersAmount)
+	}
+	return p
 }
 
 type crtSequencer struct {

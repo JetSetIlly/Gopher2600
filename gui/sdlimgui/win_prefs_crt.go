@@ -37,7 +37,7 @@ func (win *winPrefs) drawCRT() {
 	imgui.Spacing()
 
 	if imgui.BeginTableV("crtprefs", 3, imgui.TableFlagsBordersInnerV, imgui.Vec2{}, 1.0) {
-		imgui.TableSetupColumnV("0", imgui.TableColumnFlagsWidthFixed, 200, 0)
+		imgui.TableSetupColumnV("0", imgui.TableColumnFlagsWidthFixed, 250, 0)
 		imgui.TableSetupColumnV("1", imgui.TableColumnFlagsWidthFixed, 200, 1)
 		imgui.TableSetupColumnV("2", imgui.TableColumnFlagsWidthFixed, 200, 2)
 
@@ -45,26 +45,30 @@ func (win *winPrefs) drawCRT() {
 
 		imgui.TableNextColumn()
 		imgui.PushItemWidth(-1)
-		win.drawCurve()
+
+		usingBevel := win.drawUsingBevel()
+		win.drawCurve(usingBevel)
 		imgui.Spacing()
-		win.drawRoundedCorners()
+		win.drawRoundedCorners(usingBevel)
+
+		imgui.PopItemWidth()
+		imgui.Spacing()
+		imgui.TableNextColumn()
+		imgui.PushItemWidth(-1)
+
+		win.drawInterference()
+		imgui.Spacing()
+		win.drawPhosphor()
 		imgui.Spacing()
 		win.drawMask()
 		imgui.Spacing()
 		win.drawScanlines()
+
 		imgui.PopItemWidth()
 		imgui.Spacing()
-
 		imgui.TableNextColumn()
 		imgui.PushItemWidth(-1)
-		win.drawInterference()
-		imgui.Spacing()
-		win.drawPhosphor()
-		imgui.PopItemWidth()
-		imgui.Spacing()
 
-		imgui.TableNextColumn()
-		imgui.PushItemWidth(-1)
 		win.drawSharpness()
 		imgui.Spacing()
 		win.drawChromaticAberration()
@@ -72,14 +76,36 @@ func (win *winPrefs) drawCRT() {
 		win.drawBlackLevel()
 		imgui.Spacing()
 		win.drawShine()
+
 		imgui.PopItemWidth()
 		imgui.Spacing()
-
 		imgui.EndTable()
 	}
 }
 
-func (win *winPrefs) drawCurve() {
+func (win *winPrefs) drawUsingBevel() bool {
+	bvl := win.img.crt.UseBevel.Get().(bool)
+	if imgui.Checkbox("Use Bevel##bevel", &bvl) {
+		win.img.crt.UseBevel.Set(bvl)
+	}
+	imgui.PushFont(win.img.fonts.smallGui)
+	imgui.PushTextWrapPos()
+	imgui.Text("There is currently only one bevel available. Future versions will allow a wider selection")
+	imgui.PopTextWrapPos()
+	imgui.PopFont()
+	imgui.Spacing()
+	imgui.Spacing()
+	return bvl
+}
+
+func (win *winPrefs) drawCurve(usingBevel bool) {
+	if usingBevel {
+		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+		defer imgui.PopStyleVar()
+		defer imgui.PopItemFlag()
+	}
+
 	b := win.img.crt.Curve.Get().(bool)
 	if imgui.Checkbox("Curve##curve", &b) {
 		win.img.crt.Curve.Set(b)
@@ -283,7 +309,14 @@ func (win *winPrefs) drawBlackLevel() {
 	}
 }
 
-func (win *winPrefs) drawRoundedCorners() {
+func (win *winPrefs) drawRoundedCorners(usingBevel bool) {
+	if usingBevel {
+		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+		defer imgui.PopStyleVar()
+		defer imgui.PopItemFlag()
+	}
+
 	b := win.img.crt.RoundedCorners.Get().(bool)
 	if imgui.Checkbox("Rounded Corners##roundedcorners", &b) {
 		win.img.crt.RoundedCorners.Set(b)

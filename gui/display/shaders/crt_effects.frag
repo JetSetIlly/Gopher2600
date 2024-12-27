@@ -271,7 +271,7 @@ void main() {
 	// used to use perlin for interference noise but we've found it better to
 	// give a small random deviation to the Y channel
 	float perlin = fract(sin(dot(uv, vec2(12.9898, 78.233))*Time) * 43758.5453);
-	perlin *= 0.001;
+	perlin *= 0.01;
 	Crt_Color.rgb += vec3(perlin);
 
 	// shine effect

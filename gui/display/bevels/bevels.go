@@ -29,18 +29,15 @@ type Style struct {
 	OffsetX float32
 	OffsetY float32
 	BiasY   float32
+
+	CurveAmount        float32
+	RoundCornersAmount float32
 }
 
-var Selected Style
-
 var SolidState Style
-var Telefunken Style
 
 //go:embed "solid_state.png"
 var solidState []byte
-
-//go:embed "telefunken.png"
-var telefunken []byte
 
 func init() {
 	SolidState.TV = loadImage(solidState)
@@ -48,14 +45,8 @@ func init() {
 	SolidState.OffsetX = -0.139
 	SolidState.OffsetY = -0.080
 	SolidState.BiasY = 1.05
-
-	Telefunken.TV = loadImage(telefunken)
-	Telefunken.Scale = 0.93
-	Telefunken.OffsetX = -0.075
-	Telefunken.OffsetY = -0.014
-	Telefunken.BiasY = 1.05
-
-	Selected = SolidState
+	SolidState.CurveAmount = -0.500
+	SolidState.RoundCornersAmount = 0.090
 }
 
 func loadImage(d []byte) *image.RGBA {

@@ -25,6 +25,7 @@ type CRT struct {
 
 	PixelPerfect         prefs.Bool
 	PixelPerfectFade     prefs.Float
+	UseBevel             prefs.Bool
 	Curve                prefs.Bool
 	CurveAmount          prefs.Float
 	RoundedCorners       prefs.Bool
@@ -67,6 +68,10 @@ func NewCRT() (*CRT, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("crt.pixelPerfectFade", &p.PixelPerfectFade)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.useBevel", &p.UseBevel)
 	if err != nil {
 		return nil, err
 	}
@@ -151,22 +156,23 @@ func NewCRT() (*CRT, error) {
 func (p *CRT) SetDefaults() {
 	p.PixelPerfect.Set(false)
 	p.PixelPerfectFade.Set(0.4)
+	p.UseBevel.Set(true)
 	p.Curve.Set(true)
-	p.CurveAmount.Set(0.5)
+	p.CurveAmount.Set(-0.030)
 	p.RoundedCorners.Set(true)
-	p.RoundedCornersAmount.Set(0.059)
-	p.Scanlines.Set(true)
-	p.ScanlinesIntensity.Set(0.08)
+	p.RoundedCornersAmount.Set(0.060)
+	p.Scanlines.Set(false)
+	p.ScanlinesIntensity.Set(0.039)
 	p.Mask.Set(false)
-	p.MaskIntensity.Set(0.07)
-	p.Interference.Set(true)
-	p.InterferenceLevel.Set(0.15)
+	p.MaskIntensity.Set(0.037)
+	p.Interference.Set(false)
+	p.InterferenceLevel.Set(0.122)
 	p.Phosphor.Set(true)
 	p.PhosphorLatency.Set(0.5)
 	p.PhosphorBloom.Set(1.0)
-	p.ChromaticAberration.Set(0.15)
-	p.Sharpness.Set(0.55)
-	p.BlackLevel.Set(0.045)
+	p.ChromaticAberration.Set(0.044)
+	p.Sharpness.Set(0.408)
+	p.BlackLevel.Set(0.030)
 	p.Shine.Set(true)
 }
 

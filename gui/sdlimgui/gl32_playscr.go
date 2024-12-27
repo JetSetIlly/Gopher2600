@@ -73,7 +73,7 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 		env.flipY = true
 
 		f := sh.img.playScr.bevelHeight / sh.img.playScr.screenWidth
-		f *= bevels.Selected.Scale
+		f *= bevels.SolidState.Scale
 
 		ww, wh := sh.img.plt.windowSize()
 		wwr := ww / sh.img.playScr.bevelWidth
@@ -81,8 +81,8 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 
 		env.projMtx[0][0] *= f
 		env.projMtx[1][1] *= f
-		env.projMtx[3][0] = -f + (bevels.Selected.OffsetX / wwr)
-		env.projMtx[3][1] = f + (bevels.Selected.OffsetY / whr)
+		env.projMtx[3][0] = -f + (bevels.SolidState.OffsetX / wwr)
+		env.projMtx[3][1] = f + (bevels.SolidState.OffsetY / whr)
 
 		sh.crt.colorShader.setAttributes(env)
 	}

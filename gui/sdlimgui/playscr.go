@@ -78,7 +78,7 @@ func newPlayScr(img *SdlImgui) *playScr {
 	win.bevelTexture = img.rnd.addTexture(shaderBevel, true, true)
 
 	// render bevel texture once on initlisation
-	win.bevelTexture.render(bevels.Selected.TV)
+	win.bevelTexture.render(bevels.SolidState.TV)
 
 	// set scale and padding on startup. scale and padding will be recalculated
 	// on window resize and textureRenderer.resize()
@@ -94,7 +94,7 @@ func (win *playScr) draw() {
 	defer win.img.screen.crit.section.Unlock()
 
 	// note whether we're using a bevel image or not
-	win.usingBevel = win.img.rnd.supportsCRT() && !win.img.crt.PixelPerfect.Get().(bool)
+	win.usingBevel = win.img.rnd.supportsCRT() && !win.img.crt.PixelPerfect.Get().(bool) && win.img.crt.UseBevel.Get().(bool)
 
 	dl := imgui.BackgroundDrawList()
 
@@ -145,7 +145,7 @@ func (win *playScr) render() {
 
 // must be called from with a critical section.
 func (win *playScr) setScalingBevel() {
-	sz := bevels.Selected.TV.Bounds().Size()
+	sz := bevels.SolidState.TV.Bounds().Size()
 	bw := float32(sz.X)
 	bh := float32(sz.Y)
 	bRatio := bw / bh
@@ -184,7 +184,7 @@ func (win *playScr) setScalingBevel() {
 func (win *playScr) setScalingDisplay() {
 	tvW := float32(specification.WidthTV)
 	tvH := float32(specification.HeightTV)
-	tvH *= bevels.Selected.BiasY
+	tvH *= bevels.SolidState.BiasY
 	tvRatio := tvW / tvH
 
 	// handle screen rotation
