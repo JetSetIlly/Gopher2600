@@ -62,9 +62,10 @@ type texture interface {
 type screenshotMode string
 
 const (
-	modeSingle    screenshotMode = "single"
-	modeFlicker   screenshotMode = "flicker"
-	modeComposite screenshotMode = "composite"
+	modeSingle   screenshotMode = "single"
+	modeDouble   screenshotMode = "double"
+	modeTriple   screenshotMode = "triple"
+	modeMovement screenshotMode = "movement"
 )
 
 type screenshotResult struct {

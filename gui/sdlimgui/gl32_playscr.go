@@ -24,23 +24,20 @@ import (
 )
 
 type playscrShader struct {
-	img        *SdlImgui
-	crt        *crtSequencer
-	screenshot *gl32Screenshot
+	img *SdlImgui
+	crt *crtSequencer
 }
 
 func newPlayscrShader(img *SdlImgui) shaderProgram {
 	sh := &playscrShader{
-		img:        img,
-		crt:        newCRTSequencer(img),
-		screenshot: newGl32Screenshot(img),
+		img: img,
+		crt: newCRTSequencer(img),
 	}
 	return sh
 }
 
 func (sh *playscrShader) destroy() {
 	sh.crt.destroy()
-	sh.screenshot.destroy()
 }
 
 func (sh *playscrShader) setAttributes(env shaderEnvironment) {
@@ -62,8 +59,6 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 		env.width+(int32(sh.img.playScr.screenPosMin.X*2)),
 		env.height+(int32(sh.img.playScr.screenPosMin.Y*2)),
 	)
-
-	sh.screenshot.process(env, sh.img.playScr.screenTexture.getID())
 
 	env.textureID = sh.crt.process(env, sh.img.playScr.screenTexture.getID(),
 		false, sh.img.playScr.visibleScanlines, specification.ClksVisible,

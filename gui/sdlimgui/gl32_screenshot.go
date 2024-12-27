@@ -23,325 +23,178 @@ import (
 	"image/color"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
-	"github.com/jetsetilly/gopher2600/gui/sdlimgui/framebuffer"
-	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+)
+
+const (
+	maxFrames = 5
 )
 
 type gl32Screenshot struct {
-	img *SdlImgui
-	crt *crtSequencer
+	images [maxFrames]*image.RGBA
 
-	// when the screenshot process is finished. the channel is sent to the
-	// startProcess() function
-	finish chan screenshotResult
+	width  int32
+	height int32
 
-	// the description of the screenshot to be returned over the finish channel
-	// as part of screenshotResult
-	description string
-
-	// the screenshot mode we're working with
-	mode screenshotMode
-
-	// the number of frames required for the screenshot processing
+	idx    int
 	frames int
 
-	// for composited screenshots we need to sharpen the shader manually
-	compositeSharpen shaderProgram
+	mode   screenshotMode
+	finish chan screenshotResult
 
-	// a framebuffer to be used during compositing
-	compositeBuffer *framebuffer.Single
-
-	// list of exposures. used to create a composited image
-	compositeExposures []*image.RGBA
-
-	// finalisation of sequence. the function will be called in the main
-	// goroutine so this is used for the composite process
-	finalise chan func(shaderEnvironment) *image.RGBA
+	// the finalisation of the screenshot happens in a separate goroutine. the
+	// result is passed over the finalise channel before being passed to the
+	// finish channel
+	//
+	// the finalise channel is closed and nilled once the result has been
+	// received. checking the finalise field for nil can be used to test if the
+	// finalise goroutine is working, so long as the field is given the value
+	// nil after a result has been received
+	//
+	// the goroutine accesses the other fields in this struct so it's important
+	// that once the finalise channel has been created no other field is touched
+	// outside of the finalise goroutine
+	finalise chan screenshotResult
 }
 
-func newGl32Screenshot(img *SdlImgui) *gl32Screenshot {
-	sh := &gl32Screenshot{
-		img:      img,
-		finalise: make(chan func(shaderEnvironment) *image.RGBA, 1),
-
-		compositeBuffer:  framebuffer.NewSingle(false),
-		compositeSharpen: newSharpenShader(),
-		crt:              newCRTSequencer(img),
-	}
-	return sh
+func newGl32Screenshot() *gl32Screenshot {
+	sht := &gl32Screenshot{}
+	return sht
 }
 
-func (sh *gl32Screenshot) destroy() {
-	sh.compositeBuffer.Destroy()
-	sh.compositeSharpen.destroy()
-	sh.crt.destroy()
+func (sht *gl32Screenshot) destroy() {
+	close(sht.finalise)
 }
 
-// filenameSuffix will be appended to the short filename of the cartridge. if
-// the string is empty then the default suffix is used
-func (sh *gl32Screenshot) start(mode screenshotMode, finish chan screenshotResult) {
-	// begin screenshot process if possible
-	if sh.finish != nil {
+func (sht *gl32Screenshot) finished() bool {
+	return sht.finalise == nil && sht.idx >= sht.frames
+}
+
+func (sht *gl32Screenshot) start(mode screenshotMode, finish chan screenshotResult) {
+	// checking sht.finalise first ensures the the idx and frames fields aren't
+	// touched (in the finished() function) if the condition fails. in other
+	// words, if finalise is not nil then we have successfully avoided accessing
+	// other fields in the sht struct
+	if sht.finalise != nil && !sht.finished() {
 		finish <- screenshotResult{
 			err: fmt.Errorf("previous screenshotting still in progress"),
 		}
 		return
 	}
 
-	// note the channel to use on screenshot completion
-	sh.finish = finish
-
-	// mode of screenshot
-	sh.mode = mode
-
-	// description of screenshot to be returned to caller over finish channel
-	if sh.img.crt.PixelPerfect.Get().(bool) {
-		sh.description = fmt.Sprintf("pix_%s", sh.mode)
-	} else {
-		sh.description = fmt.Sprintf("crt_%s", sh.mode)
-	}
-
-	switch sh.mode {
+	switch mode {
 	case modeSingle:
-		sh.frames = 1
-	case modeFlicker:
-		// a large value for flicker means that static elements are captured
-		// nicely but also moving/flicking elements are captured with some
-		// phosphor
-		sh.frames = 20
-	case modeComposite:
-		sh.frames = 6
-	}
-
-	sh.compositeExposures = sh.compositeExposures[:0]
-	sh.crt.flushPhosphor()
-}
-
-func (sh *gl32Screenshot) process(env shaderEnvironment, textureID uint32) {
-	// if there is no finish channel then there is nothing to do
-	if sh.finish == nil {
-		return
-	}
-
-	// once frames counter has reached zero, we need to start listening for
-	// screen finalise functions
-	if sh.frames <= 0 {
-		select {
-		case f := <-sh.finalise:
-			// call finalise function and return over finish channel
-			sh.finish <- screenshotResult{
-				description: sh.description,
-				image:       f(env),
-			}
-
-			// indicate that screenshot is completed by forgetting about the
-			// finish channel
-			sh.finish = nil
-		default:
-		}
-		return
-	}
-
-	// screenshotting is still ongoing
-	switch sh.mode {
-	case modeComposite:
-		env.textureID = textureID
-		sh.compositeProcess(env)
+		sht.frames = 1
+	case modeDouble:
+		sht.frames = 2
+	case modeTriple:
+		sht.frames = 3
+	case modeMovement:
+		sht.frames = 5
 	default:
-		env.textureID = textureID
-		sh.crtProcess(env)
+		return
 	}
+	sht.mode = mode
+	sht.finish = finish
+	sht.idx = 0
 }
 
-func (sh *gl32Screenshot) crtProcess(env shaderEnvironment) {
-	prefs := newCrtSeqPrefs(sh.img.crt)
-
-	if sh.mode == modeFlicker {
-		switch sh.frames {
-		case 1:
-			prefs.PixelPerfectFade = 1.0
-			prefs.PhosphorLatency = 1.0
-			prefs.PhosphorBloom = 0.1
+func (sht *gl32Screenshot) process(width int32, height int32) {
+	// checking for a finalised result before continuing. if the finalise
+	// channel is not nil (ie. a finalise goroutine is in progress) we don't
+	// want to continue unless a result is ready on the finalise channel
+	if sht.finalise != nil {
+		select {
+		case r := <-sht.finalise:
+			sht.finish <- r
+			close(sht.finalise)
+			sht.finalise = nil
 		default:
-			prefs.Scanlines = false
-			prefs.Mask = false
-			prefs.Shine = false
-			prefs.Interference = false
+			return
 		}
 	}
 
-	textureID := sh.crt.process(env, env.textureID,
-		true, sh.img.playScr.visibleScanlines, specification.ClksVisible,
-		prefs, sh.img.screen.rotation.Load().(specification.Rotation), true)
-
-	// reduce exposure count and return if there is still more to do
-	sh.frames--
-	if sh.frames > 0 {
+	// the finished() function checks that a screenshot has recently been started
+	if sht.finished() {
 		return
 	}
 
-	final := image.NewRGBA(image.Rect(0, 0, int(env.width), int(env.height)))
-	if final == nil {
-		sh.finish <- screenshotResult{
-			err: fmt.Errorf("save failed: cannot allocate image data"),
-		}
-		sh.finish = nil
-		return
-	}
-
-	gl.BindTexture(gl.TEXTURE_2D, textureID)
-	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, textureID, 0)
-	gl.ReadPixels(0, 0, env.width, env.height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(final.Pix))
-
-	sh.finish <- screenshotResult{
-		description: sh.description,
-		image:       final,
-	}
-	sh.finish = nil
-}
-
-func (sh *gl32Screenshot) compositeProcess(env shaderEnvironment) {
-	// textures must be flipped for the compositing process
-	env.flipY = true
-
-	// set up composite frame buffer. we don't care if the dimensions have
-	// changed (Setup() function returns true)
-	_ = sh.compositeBuffer.Setup(env.width, env.height)
-
-	// sharpen image from play screen
-	env.textureID = sh.compositeBuffer.Process(func() {
-		sh.compositeSharpen.(*sharpenShader).process(env, 1)
-		env.draw()
-	})
-
-	// retrieve exposure
-	newExposure := image.NewRGBA(image.Rect(0, 0, int(env.width), int(env.height)))
-	if newExposure == nil {
-		sh.finish <- screenshotResult{
-			err: fmt.Errorf("save failed: cannot allocate image data"),
-		}
-		sh.finish = nil
-		return
-	}
-
-	gl.BindTexture(gl.TEXTURE_2D, env.textureID)
-	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, env.textureID, 0)
-	gl.ReadPixels(0, 0, env.width, env.height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(newExposure.Pix))
-
-	// add to list of exposures
-	sh.compositeExposures = append(sh.compositeExposures, newExposure)
-
-	// reduce exposure count and return if there is still more to do
-	sh.frames--
-	if sh.frames > 0 {
-		return
-	}
-
-	// composite exposures. we can do this in a separate goroutine. doing it in
-	// the main thread causes a noticeable pause in the emulation
-	//
-	// note however that the final composition step must be conducting in the
-	// main goroutine so we make use of the finalise channel
-	go func() {
-		composite, err := sh.compositeAssemble()
-
-		if err != nil {
-			sh.finish <- screenshotResult{
-				err: fmt.Errorf("save failed: %w", err),
+	if width != sht.width || height != sht.height {
+		sht.width = width
+		sht.height = height
+		for i := range sht.images {
+			sht.images[i] = image.NewRGBA(image.Rect(0, 0, int(sht.width), int(sht.height)))
+			if sht.images[i] == nil {
+				sht.finish <- screenshotResult{
+					err: fmt.Errorf("save failed: cannot allocate image data"),
+				}
+				sht.idx = sht.frames
+				return
 			}
-			sh.finish = nil
+		}
+		sht.idx = 0
+		return
+	}
+
+	gl.ReadPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(sht.images[sht.idx].Pix))
+
+	sht.idx++
+	if !sht.finished() {
+		return
+	}
+
+	sht.finalise = make(chan screenshotResult)
+	go func() {
+		// create final image
+		final := image.NewRGBA(image.Rect(0, 0, int(sht.width), int(sht.height)))
+		if final == nil {
+			sht.finish <- screenshotResult{
+				err: fmt.Errorf("save failed: cannot allocate image data"),
+			}
+			sht.idx = sht.frames
 			return
 		}
 
-		sh.finalise <- func(env shaderEnvironment) *image.RGBA {
-			return sh.compositeFinalise(env, composite)
-		}
-	}()
-}
-
-func (sh *gl32Screenshot) compositeAssemble() (*image.RGBA, error) {
-	switch len(sh.compositeExposures) {
-	case 0:
-		return nil, fmt.Errorf("composition: exposure list is empty")
-	case 1:
-		// if there is only one exposure then the composition is by
-		// defintion already completed
-		return sh.compositeExposures[0], nil
-	}
-
-	rgba := image.NewRGBA(sh.compositeExposures[0].Rect)
-	if rgba == nil {
-		return nil, fmt.Errorf("composition: cannot allocate image data")
-	}
-
-	width, height := sh.compositeBuffer.Dimensions()
-
-	luminance := func(a color.RGBA) float64 {
-		r := float64(a.R) / 255
-		g := float64(a.G) / 255
-		b := float64(a.B) / 255
-		return r*0.2126 + g*0.7152 + b*0.0722
-	}
-
-	// returns true if a is brighter than b
-	brighter := func(a color.RGBA, b color.RGBA) bool {
-		return luminance(a) >= luminance(b)
-	}
-
-	blend := func(a uint8, b uint8) uint8 {
-		A := float64(a)
-		A = A * 0.67
-		B := float64(b)
-		B = B * 0.33
-		return uint8(A + B)
-	}
-
-	for y := 0; y < int(height); y++ {
-		for x := 0; x < int(width); x++ {
-			ep := rgba.RGBAAt(x, y)
-			for _, e := range sh.compositeExposures {
-				np := e.RGBAAt(x, y)
-
-				if brighter(np, ep) {
-					ep.R = blend(ep.R, np.R)
-					ep.G = blend(ep.G, np.G)
-					ep.B = blend(ep.B, np.B)
-				}
-
-				// ep.R = accumulate(ep.R, np.R)
-				// ep.G = accumulate(ep.G, np.G)
-				// ep.B = accumulate(ep.B, np.B)
+		// blend pixels
+		for p := 0; p < len(final.Pix); p++ {
+			var a int
+			for f := 0; f < sht.idx; f++ {
+				a += int(sht.images[f].Pix[p])
 			}
-			ep.A = 255
-			rgba.SetRGBA(x, y, ep)
+			final.Pix[p] = uint8(a / sht.frames)
 		}
-	}
 
-	return rgba, nil
-}
+		// special treatment of movement mode
+		if sht.mode == modeMovement {
+			luminance := func(rgba color.RGBA) float32 {
+				return 0.299*float32(rgba.R) + 0.587*float32(rgba.G) + 0.114*float32(rgba.B)
+			}
 
-// finalise composite by passing it through the CRT shaders and then saving the image
-func (sh *gl32Screenshot) compositeFinalise(env shaderEnvironment, composite *image.RGBA) *image.RGBA {
-	// copy composite pixels to framebuffer texture
-	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(composite.Stride)/4)
-	gl.BindTexture(gl.TEXTURE_2D, sh.compositeBuffer.TextureID())
-	gl.TexImage2D(gl.TEXTURE_2D, 0,
-		gl.RGBA, int32(composite.Bounds().Size().X), int32(composite.Bounds().Size().Y), 0,
-		gl.RGBA, gl.UNSIGNED_BYTE,
-		gl.Ptr(composite.Pix))
-	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-	env.textureID = sh.compositeBuffer.TextureID()
+			for y := range int(sht.height) {
+				for x := range int(sht.width) {
+					px := sht.images[sht.idx-1].RGBAAt(x, y)
+					fpx := final.RGBAAt(x, y)
+					if luminance(px) >= luminance(fpx) {
+						final.Set(x, y, px)
+					}
+				}
+			}
+		}
 
-	// pass composite image through CRT shaders
-	textureID := sh.crt.process(env, sh.compositeBuffer.TextureID(),
-		true, sh.img.playScr.visibleScanlines, specification.ClksVisible,
-		newCrtSeqPrefs(sh.img.crt), sh.img.screen.rotation.Load().(specification.Rotation), true)
+		// flip pixels
+		rowSize := int(sht.width * 4)
+		swp := make([]byte, rowSize)
+		for y := 0; y < int(sht.height)/2; y++ {
+			top := final.Pix[y*rowSize : (y+1)*rowSize]
+			bot := final.Pix[(int(height)-y-1)*rowSize : (int(height)-y)*rowSize]
+			copy(swp, top)
+			copy(top, bot)
+			copy(bot, swp)
+		}
 
-	gl.BindTexture(gl.TEXTURE_2D, textureID)
+		var r screenshotResult
+		r.description = string(sht.mode)
+		r.image = final
 
-	// copy processed pixels back into composite image
-	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, textureID, 0)
-	gl.ReadPixels(0, 0, env.width, env.height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(composite.Pix))
-
-	return composite
+		sht.finalise <- r
+	}()
 }

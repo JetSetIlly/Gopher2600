@@ -40,6 +40,8 @@ type gl32 struct {
 
 	textures map[uint32]gl32Texture
 	shaders  map[shaderType]shaderProgram
+
+	scrsht *gl32Screenshot
 }
 
 func newRenderer(img *SdlImgui) renderer {
@@ -47,6 +49,7 @@ func newRenderer(img *SdlImgui) renderer {
 		img:      img,
 		textures: make(map[uint32]gl32Texture),
 		shaders:  make(map[shaderType]shaderProgram),
+		scrsht:   newGl32Screenshot(),
 	}
 	return rnd
 }
@@ -122,6 +125,8 @@ func (rnd *gl32) render() {
 	winw, winh := rnd.img.plt.windowSize()
 	fbw, fbh := rnd.img.plt.framebufferSize()
 	drawData := imgui.RenderedDrawData()
+
+	defer rnd.scrsht.process(int32(fbw), int32(fbh))
 
 	st := storeGLState()
 	defer st.restoreGLState()
@@ -227,7 +232,7 @@ func (rnd *gl32) render() {
 }
 
 func (rnd *gl32) screenshot(mode screenshotMode, finish chan screenshotResult) {
-	rnd.shaders[shaderPlayscr].(*playscrShader).screenshot.start(mode, finish)
+	rnd.scrsht.start(mode, finish)
 }
 
 // glState stores GL state with the intention of restoration after a short period.
