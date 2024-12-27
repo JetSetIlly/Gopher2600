@@ -59,17 +59,15 @@ func (win *winPrefs) drawCRT() {
 		imgui.PushItemWidth(-1)
 		win.drawInterference()
 		imgui.Spacing()
-		win.drawFringing()
-		imgui.Spacing()
-		win.drawGhosting()
-		imgui.Spacing()
-		win.drawSharpness()
+		win.drawPhosphor()
 		imgui.PopItemWidth()
 		imgui.Spacing()
 
 		imgui.TableNextColumn()
 		imgui.PushItemWidth(-1)
-		win.drawPhosphor()
+		win.drawSharpness()
+		imgui.Spacing()
+		win.drawChromaticAberration()
 		imgui.Spacing()
 		win.drawBlackLevel()
 		imgui.Spacing()
@@ -179,53 +177,24 @@ func (win *winPrefs) drawInterference() {
 	}
 }
 
-func (win *winPrefs) drawFringing() {
-	b := win.img.crt.Fringing.Get().(bool)
-	if imgui.Checkbox("Colour Fringing##fringing", &b) {
-		win.img.crt.Fringing.Set(b)
-	}
-
-	f := float32(win.img.crt.FringingAmount.Get().(float64))
+func (win *winPrefs) drawChromaticAberration() {
+	imgui.Text("Chromatic Aberration")
+	f := float32(win.img.crt.ChromaticAberration.Get().(float64))
 
 	var label string
 
-	if f >= 0.45 {
+	if f >= 1.5 {
 		label = "very high"
-	} else if f >= 0.30 {
+	} else if f >= 1.00 {
 		label = "high"
-	} else if f >= 0.15 {
+	} else if f >= 0.50 {
 		label = "low"
 	} else {
 		label = "very low"
 	}
 
-	if imgui.SliderFloatV("##fringingamount", &f, 0.0, 0.6, label, 1.0) {
-		win.img.crt.FringingAmount.Set(f)
-	}
-}
-
-func (win *winPrefs) drawGhosting() {
-	b := win.img.crt.Ghosting.Get().(bool)
-	if imgui.Checkbox("Ghosting##ghosting", &b) {
-		win.img.crt.Ghosting.Set(b)
-	}
-
-	f := float32(win.img.crt.GhostingAmount.Get().(float64))
-
-	var label string
-
-	if f >= 3.5 {
-		label = "very high"
-	} else if f >= 2.5 {
-		label = "high"
-	} else if f >= 1.5 {
-		label = "low"
-	} else {
-		label = "very low"
-	}
-
-	if imgui.SliderFloatV("##ghostingamount", &f, 0.0, 4.5, label, 1.0) {
-		win.img.crt.GhostingAmount.Set(f)
+	if imgui.SliderFloatV("##aberration", &f, 0.0, 0.2, label, 1.0) {
+		win.img.crt.ChromaticAberration.Set(f)
 	}
 }
 
@@ -347,12 +316,12 @@ func (win *winPrefs) drawShine() {
 }
 
 func (win *winPrefs) drawPixelPerfect() bool {
-	b := !win.img.crt.Enabled.Get().(bool)
+	b := win.img.crt.PixelPerfect.Get().(bool)
 	if imgui.Checkbox("Pixel Perfect##pixelpefect", &b) {
-		win.img.crt.Enabled.Set(!b)
+		win.img.crt.PixelPerfect.Set(b)
 	}
 
-	if win.img.crt.Enabled.Get().(bool) {
+	if !win.img.crt.PixelPerfect.Get().(bool) {
 		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
 		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
 		defer imgui.PopStyleVar()

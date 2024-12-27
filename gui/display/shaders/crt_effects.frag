@@ -15,23 +15,25 @@ out vec4 Out_Color;
 uniform vec2 ScreenDim;
 uniform int NumScanlines;
 uniform int NumClocks;
+
 uniform int Curve;
+uniform float CurveAmount;
 uniform int RoundedCorners;
-uniform int Shine;
-uniform int ShadowMask;
+uniform float RoundedCornersAmount;
+
 uniform int Scanlines;
+uniform float ScanlinesIntensity;
+uniform int ShadowMask;
+uniform float MaskIntensity;
+
 uniform int Interference;
-uniform int Fringing;
+uniform float InterferenceLevel;
+
+uniform float ChromaticAberration;
+uniform int Shine;
 uniform float BlackLevel;
 uniform float Gamma;
-uniform float CurveAmount;
-uniform float RoundedCornersAmount;
 uniform float BevelSize;
-uniform float MaskIntensity;
-uniform float ScanlinesIntensity;
-uniform float InterferenceLevel;
-uniform float FringingAmount;
-uniform float Time;
 
 // rotation values are the values in hardware/television/specification/rotation.go
 uniform int Rotation;
@@ -39,6 +41,9 @@ uniform int Rotation;
 // the screenshot boolean indicates that the shader is working to create a still
 // image. this affects the intensity of some effects
 uniform int Screenshot;
+
+// time in nanoseconds. used for randomisation
+uniform float Time;
 
 
 // From: Hash without Sine by Dave Hoskins
@@ -226,25 +231,23 @@ void main() {
 	// scanlines / shadow mask, which is desirable
 	{
 		vec2 ab = vec2(0.0);
-		if (Fringing == 1) {
-			if (Curve == 1) {
-				ab.x = abs(uv.x-0.5);
-				ab.y = abs(uv.y-0.5);
+		if (Curve == 1) {
+			ab.x = abs(uv.x-0.5);
+			ab.y = abs(uv.y-0.5);
 
-				// modulate fringing amount by curvature
-				float m = 0.020 - (0.010 * CurveAmount);
-				float l = FringingAmount * m;
+			// modulate aberration amount by curvature
+			float m = 0.020 - (0.010 * CurveAmount);
+			float l = ChromaticAberration * m;
 
-				// aberration amount limited to reasonable values
-				ab *= l;
+			// aberration amount limited to reasonable values
+			ab *= l;
 
-				// minimum amount of aberration
-				ab = clamp(vec2(0.04), ab, ab);
-			} else {
-				ab.x = abs(uv.x-0.5);
-				ab.y = abs(uv.y-0.5);
-				ab *= FringingAmount * 0.015;
-			}
+			// minimum amount of aberration
+			ab = clamp(vec2(0.04), ab, ab);
+		} else {
+			ab.x = abs(uv.x-0.5);
+			ab.y = abs(uv.y-0.5);
+			ab *= ChromaticAberration * 0.015;
 		}
 
 		// adjust sign depending on which quadrant the pixel is in

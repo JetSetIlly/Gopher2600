@@ -95,10 +95,10 @@ func (sh *gl32Screenshot) start(mode screenshotMode, finish chan screenshotResul
 	sh.mode = mode
 
 	// description of screenshot to be returned to caller over finish channel
-	if sh.img.crt.Enabled.Get().(bool) {
-		sh.description = fmt.Sprintf("crt_%s", sh.mode)
-	} else {
+	if sh.img.crt.PixelPerfect.Get().(bool) {
 		sh.description = fmt.Sprintf("pix_%s", sh.mode)
+	} else {
+		sh.description = fmt.Sprintf("crt_%s", sh.mode)
 	}
 
 	switch sh.mode {

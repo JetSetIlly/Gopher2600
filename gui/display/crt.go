@@ -23,31 +23,25 @@ import (
 type CRT struct {
 	dsk *prefs.Disk
 
-	Enabled prefs.Bool
-
-	Curve          prefs.Bool
-	RoundedCorners prefs.Bool
-	Shine          prefs.Bool
-	Mask           prefs.Bool
-	Scanlines      prefs.Bool
-	Interference   prefs.Bool
-	Fringing       prefs.Bool
-	Ghosting       prefs.Bool
-	Phosphor       prefs.Bool
-
+	PixelPerfect         prefs.Bool
+	PixelPerfectFade     prefs.Float
+	Curve                prefs.Bool
 	CurveAmount          prefs.Float
+	RoundedCorners       prefs.Bool
 	RoundedCornersAmount prefs.Float
-	MaskIntensity        prefs.Float
+	Scanlines            prefs.Bool
 	ScanlinesIntensity   prefs.Float
+	Mask                 prefs.Bool
+	MaskIntensity        prefs.Float
+	Interference         prefs.Bool
 	InterferenceLevel    prefs.Float
-	FringingAmount       prefs.Float
-	GhostingAmount       prefs.Float
+	Phosphor             prefs.Bool
 	PhosphorLatency      prefs.Float
 	PhosphorBloom        prefs.Float
+	ChromaticAberration  prefs.Float
 	Sharpness            prefs.Float
 	BlackLevel           prefs.Float
-
-	PixelPerfectFade prefs.Float
+	Shine                prefs.Bool
 }
 
 func (p *CRT) String() string {
@@ -68,7 +62,11 @@ func NewCRT() (*CRT, error) {
 		return nil, err
 	}
 
-	err = p.dsk.Add("crt.enabled", &p.Enabled)
+	err = p.dsk.Add("crt.pixelPerfect", &p.PixelPerfect)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.pixelPerfectFade", &p.PixelPerfectFade)
 	if err != nil {
 		return nil, err
 	}
@@ -76,39 +74,11 @@ func NewCRT() (*CRT, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.roundedCorners", &p.RoundedCorners)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.shine", &p.Shine)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.mask", &p.Mask)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.scanlines", &p.Scanlines)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.interference", &p.Interference)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.fringing", &p.Fringing)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.ghosting", &p.Ghosting)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.phosphor", &p.Phosphor)
-	if err != nil {
-		return nil, err
-	}
 	err = p.dsk.Add("crt.curveAmount", &p.CurveAmount)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.roundedCorners", &p.RoundedCorners)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +86,7 @@ func NewCRT() (*CRT, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.maskIntensity", &p.MaskIntensity)
+	err = p.dsk.Add("crt.scanlines", &p.Scanlines)
 	if err != nil {
 		return nil, err
 	}
@@ -124,15 +94,23 @@ func NewCRT() (*CRT, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("crt.mask", &p.Mask)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.maskIntensity", &p.MaskIntensity)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.interference", &p.Interference)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("crt.interferenceLevel", &p.InterferenceLevel)
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.fringingAmount", &p.FringingAmount)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.ghostingAmount", &p.GhostingAmount)
+	err = p.dsk.Add("crt.phosphor", &p.Phosphor)
 	if err != nil {
 		return nil, err
 	}
@@ -144,6 +122,10 @@ func NewCRT() (*CRT, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("crt.chromaticAberration", &p.ChromaticAberration)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("crt.sharpness", &p.Sharpness)
 	if err != nil {
 		return nil, err
@@ -152,7 +134,7 @@ func NewCRT() (*CRT, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.pixelPerfectFade", &p.PixelPerfectFade)
+	err = p.dsk.Add("crt.shine", &p.Shine)
 	if err != nil {
 		return nil, err
 	}
@@ -167,29 +149,25 @@ func NewCRT() (*CRT, error) {
 
 // SetDefaults revers all CRT settings to default values.
 func (p *CRT) SetDefaults() {
-	p.Enabled.Set(true)
+	p.PixelPerfect.Set(false)
+	p.PixelPerfectFade.Set(0.4)
 	p.Curve.Set(true)
-	p.RoundedCorners.Set(true)
-	p.Shine.Set(true)
-	p.Mask.Set(false)
-	p.Scanlines.Set(true)
-	p.Interference.Set(true)
-	p.Fringing.Set(true)
-	p.Ghosting.Set(true)
-	p.Phosphor.Set(true)
 	p.CurveAmount.Set(0.5)
+	p.RoundedCorners.Set(true)
 	p.RoundedCornersAmount.Set(0.059)
-	p.MaskIntensity.Set(0.07)
+	p.Scanlines.Set(true)
 	p.ScanlinesIntensity.Set(0.08)
+	p.Mask.Set(false)
+	p.MaskIntensity.Set(0.07)
+	p.Interference.Set(true)
 	p.InterferenceLevel.Set(0.15)
-	p.FringingAmount.Set(0.15)
-	p.GhostingAmount.Set(2.9)
+	p.Phosphor.Set(true)
 	p.PhosphorLatency.Set(0.5)
 	p.PhosphorBloom.Set(1.0)
+	p.ChromaticAberration.Set(0.15)
 	p.Sharpness.Set(0.55)
 	p.BlackLevel.Set(0.045)
-
-	p.PixelPerfectFade.Set(0.4)
+	p.Shine.Set(true)
 }
 
 // Load CRT values from disk.

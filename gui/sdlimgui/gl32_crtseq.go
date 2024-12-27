@@ -24,74 +24,69 @@ import (
 )
 
 type crtSeqPrefs struct {
-	Enabled          bool
+	PixelPerfect     bool
 	PixelPerfectFade float64
 
-	Curve          bool
-	RoundedCorners bool
-	Shine          bool
-	Mask           bool
-	Scanlines      bool
-	Interference   bool
-	Fringing       bool
-	Ghosting       bool
-	Phosphor       bool
-
+	Curve                bool
 	CurveAmount          float64
+	RoundedCorners       bool
 	RoundedCornersAmount float64
-	MaskIntensity        float64
+	Scanlines            bool
 	ScanlinesIntensity   float64
+	Mask                 bool
+	MaskIntensity        float64
+	Interference         bool
 	InterferenceLevel    float64
-	FringingAmount       float64
-	GhostingAmount       float64
+	Phosphor             bool
 	PhosphorLatency      float64
 	PhosphorBloom        float64
-	Sharpness            float64
-	BlackLevel           float64
-	Gamma                float64
+
+	ChromaticAberration float64
+	Sharpness           float64
+	BlackLevel          float64
+	Shine               bool
+	Gamma               float64
 }
 
 func newCrtSeqPrefs(crt *display.CRT) crtSeqPrefs {
 	return crtSeqPrefs{
-		Enabled:              crt.Enabled.Get().(bool),
+		PixelPerfect:         crt.PixelPerfect.Get().(bool),
 		PixelPerfectFade:     crt.PixelPerfectFade.Get().(float64),
 		Curve:                crt.Curve.Get().(bool),
-		RoundedCorners:       crt.RoundedCorners.Get().(bool),
-		Shine:                crt.Shine.Get().(bool),
-		Mask:                 crt.Mask.Get().(bool),
-		Scanlines:            crt.Scanlines.Get().(bool),
-		Interference:         crt.Interference.Get().(bool),
-		Fringing:             crt.Fringing.Get().(bool),
-		Ghosting:             crt.Ghosting.Get().(bool),
-		Phosphor:             crt.Phosphor.Get().(bool),
 		CurveAmount:          crt.CurveAmount.Get().(float64),
+		RoundedCorners:       crt.RoundedCorners.Get().(bool),
 		RoundedCornersAmount: crt.RoundedCornersAmount.Get().(float64),
-		MaskIntensity:        crt.MaskIntensity.Get().(float64),
+		Scanlines:            crt.Scanlines.Get().(bool),
 		ScanlinesIntensity:   crt.ScanlinesIntensity.Get().(float64),
+		Mask:                 crt.Mask.Get().(bool),
+		MaskIntensity:        crt.MaskIntensity.Get().(float64),
+		Interference:         crt.Interference.Get().(bool),
 		InterferenceLevel:    crt.InterferenceLevel.Get().(float64),
-		FringingAmount:       crt.FringingAmount.Get().(float64),
-		GhostingAmount:       crt.GhostingAmount.Get().(float64),
+		Phosphor:             crt.Phosphor.Get().(bool),
 		PhosphorLatency:      crt.PhosphorLatency.Get().(float64),
 		PhosphorBloom:        crt.PhosphorBloom.Get().(float64),
+		ChromaticAberration:  crt.ChromaticAberration.Get().(float64),
 		Sharpness:            crt.Sharpness.Get().(float64),
 		BlackLevel:           crt.BlackLevel.Get().(float64),
+		Shine:                crt.Shine.Get().(bool),
 		Gamma:                specification.ColourGen.Gamma.Get().(float64),
 	}
 }
 
 type crtSequencer struct {
-	img     *SdlImgui
-	enabled bool
-
+	img      *SdlImgui
 	sequence *framebuffer.Flip
 	phosphor *framebuffer.Flip
 
 	sharpenShader  shaderProgram
 	phosphorShader shaderProgram
 	blurShader     shaderProgram
-	ghostingShader shaderProgram
 	effectsShader  shaderProgram
 	colorShader    shaderProgram
+
+	// the pixel pefect setting at the most recent pass of the crt sequencer. if
+	// the setting changes then we clear the phosphor buffer
+	mostRecentPixelPerfect bool
 }
 
 func newCRTSequencer(img *SdlImgui) *crtSequencer {
@@ -102,8 +97,7 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 		sharpenShader:  newSharpenShader(),
 		phosphorShader: newPhosphorShader(),
 		blurShader:     newBlurShader(),
-		ghostingShader: newGhostingShader(),
-		effectsShader:  newCrtSeqEffectsShader(),
+		effectsShader:  newEffectsShader(),
 		colorShader:    newColorShader(),
 	}
 	return sh
@@ -115,7 +109,6 @@ func (sh *crtSequencer) destroy() {
 	sh.sharpenShader.destroy()
 	sh.phosphorShader.destroy()
 	sh.blurShader.destroy()
-	sh.ghostingShader.destroy()
 	sh.effectsShader.destroy()
 	sh.colorShader.destroy()
 }
@@ -145,12 +138,12 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 	sh.sequence.Setup(env.width, env.height)
 
 	// clear phosphor is enabled state has changed
-	if prefs.Enabled != sh.enabled {
+	if prefs.PixelPerfect != sh.mostRecentPixelPerfect {
 		sh.phosphor.Clear()
 	}
 
 	// note the enabled flag for comparison next frame
-	sh.enabled = prefs.Enabled
+	sh.mostRecentPixelPerfect = prefs.PixelPerfect
 
 	// also make sure our phosphor framebuffer is correct
 	if sh.phosphor.Setup(env.width, env.height) {
@@ -170,28 +163,11 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 		env.draw()
 	})
 
-	// apply ghosting filter to texture. this is useful for the zookeeper brick effect
-	if prefs.Enabled {
-		// if ghosting isn't enabled then we need to run the image through a
-		// neutral shader so that the y-orientation is correct
-		if prefs.Ghosting {
-			env.textureID = sh.sequence.Process(func() {
-				sh.ghostingShader.(*ghostingShader).process(env, float32(prefs.GhostingAmount))
-				env.draw()
-			})
-		} else {
-			env.textureID = sh.sequence.Process(func() {
-				sh.colorShader.setAttributes(env)
-				env.draw()
-			})
-		}
-	} else {
-		// TV color shader is applied to pixel-perfect shader too
-		env.textureID = sh.sequence.Process(func() {
-			sh.colorShader.setAttributes(env)
-			env.draw()
-		})
-	}
+	// neutral shader to keep frame buffer oriented correctly
+	env.textureID = sh.sequence.Process(func() {
+		sh.colorShader.setAttributes(env)
+		env.draw()
+	})
 
 	// the newly copied texture will be used for the phosphor blending
 	newFrameForPhosphor := env.textureID
@@ -199,7 +175,15 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 	// apply "phosphor". how this is done depends on whether the CRT effects are
 	// enabled. if they are not then the treatment is slightly different
 	for i := 0; i < phosphorPasses; i++ {
-		if prefs.Enabled {
+		if prefs.PixelPerfect {
+			// add new frame to phosphor buffer (using phosphor buffer for pixel perfect fade)
+			env.textureID = sh.phosphor.TextureID()
+			env.flipY = true
+			env.textureID = sh.phosphor.Process(func() {
+				sh.phosphorShader.(*phosphorShader).process(env, float32(prefs.PixelPerfectFade), newFrameForPhosphor)
+				env.draw()
+			})
+		} else {
 			if prefs.Phosphor {
 				// use blur shader to add bloom to previous phosphor
 				env.textureID = sh.phosphor.TextureID()
@@ -214,14 +198,6 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 				sh.phosphorShader.(*phosphorShader).process(env, float32(prefs.PhosphorLatency), newFrameForPhosphor)
 				env.draw()
 			})
-		} else {
-			// add new frame to phosphor buffer (using phosphor buffer for pixel perfect fade)
-			env.textureID = sh.phosphor.TextureID()
-			env.flipY = true
-			env.textureID = sh.phosphor.Process(func() {
-				sh.phosphorShader.(*phosphorShader).process(env, float32(prefs.PixelPerfectFade), newFrameForPhosphor)
-				env.draw()
-			})
 		}
 	}
 
@@ -230,21 +206,22 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 	// the beginning of the function)
 	env.flipY = windowed
 
-	if prefs.Enabled {
+	if prefs.PixelPerfect {
+		env.textureID = sh.sequence.Process(func() {
+			sh.colorShader.setAttributes(env)
+			env.draw()
+		})
+	} else {
 		// sharpness value
 		env.textureID = sh.sequence.Process(func() {
 			sh.blurShader.(*blurShader).process(env, float32(prefs.Sharpness))
 			env.draw()
 		})
 
+		// apply the actual crt effects shader
 		env.textureID = sh.sequence.Process(func() {
-			sh.effectsShader.(*crtSeqEffectsShader).setAttributesArgs(env, numScanlines, numClocks,
+			sh.effectsShader.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks,
 				prefs, rotation, screenshot)
-			env.draw()
-		})
-	} else {
-		env.textureID = sh.sequence.Process(func() {
-			sh.colorShader.setAttributes(env)
 			env.draw()
 		})
 	}

@@ -246,27 +246,6 @@ func (sh *blurShader) process(env shaderEnvironment, blur float32) {
 	gl.Uniform2f(sh.blur, blur/float32(env.width), blur/float32(env.height))
 }
 
-type ghostingShader struct {
-	shader
-	img       *SdlImgui
-	screenDim int32
-	amount    int32
-}
-
-func newGhostingShader() shaderProgram {
-	sh := &ghostingShader{}
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTGhostingFragShader))
-	sh.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
-	sh.amount = gl.GetUniformLocation(sh.handle, gl.Str("Amount"+"\x00"))
-	return sh
-}
-
-func (sh *ghostingShader) process(env shaderEnvironment, amount float32) {
-	sh.shader.setAttributes(env)
-	gl.Uniform2f(sh.screenDim, float32(env.width), float32(env.height))
-	gl.Uniform1f(sh.amount, amount)
-}
-
 type sharpenShader struct {
 	shader
 	sharpness int32

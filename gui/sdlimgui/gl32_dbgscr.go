@@ -210,7 +210,7 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 		env.textureID = sh.img.wm.dbgScr.displayTexture.getID()
 
 		prefs := newCrtSeqPrefs(sh.img.crt)
-		prefs.Enabled = true
+		prefs.PixelPerfect = false
 
 		env.textureID = sh.crt.process(env, sh.img.wm.dbgScr.displayTexture.getID(),
 			true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible, prefs, specification.NormalRotation, false)
@@ -228,7 +228,7 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 		// this is so that the overlay is aligned properly with the TV image
 
 		prefs := newCrtSeqPrefs(sh.img.crt)
-		prefs.Enabled = false
+		prefs.PixelPerfect = true
 
 		var id uint32
 		if sh.img.wm.dbgScr.elements {

@@ -90,6 +90,12 @@ var defunct = []string{
 	"crt.bevelSize",
 	"crt.flicker",
 	"crt.flickerLevel",
+	"crt.ghosting",
+	"crt.ghostingAmount",
+	"crt.fringing",
+	"crt.fringingAmount", // replaced with crt.chromaticAberration
+	"crt.enabled",        // replaced with crt.pixelPerfect (inverted setting)
+	"crt.whiteLevel",
 }
 
 // returns true if string is in list of defunct values.

@@ -47,8 +47,5 @@ var CRTEffectsFragShader []byte
 //go:embed "crt_blur.frag"
 var CRTBlurFragShader []byte
 
-//go:embed "crt_ghosting.frag"
-var CRTGhostingFragShader []byte
-
 //go:embed "crt_phosphor.frag"
 var CRTPhosphorFragShader []byte
