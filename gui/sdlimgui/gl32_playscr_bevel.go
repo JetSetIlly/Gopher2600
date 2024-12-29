@@ -22,20 +22,20 @@ import (
 )
 
 type bevelShader struct {
-	img  *SdlImgui
-	dust shaderProgram
+	img    *SdlImgui
+	perlin shaderProgram
 }
 
 func newBevelShader(img *SdlImgui) shaderProgram {
 	sh := &bevelShader{
-		img:  img,
-		dust: newDustShader(),
+		img:    img,
+		perlin: newPerlinShader(),
 	}
 	return sh
 }
 
 func (sh *bevelShader) destroy() {
-	sh.dust.destroy()
+	sh.perlin.destroy()
 }
 
 func (sh *bevelShader) setAttributes(env shaderEnvironment) {
@@ -62,5 +62,5 @@ func (sh *bevelShader) setAttributes(env shaderEnvironment) {
 		env.height+(int32(sh.img.playScr.bevelPosMin.Y*2)),
 	)
 
-	sh.dust.setAttributes(env)
+	sh.perlin.setAttributes(env)
 }

@@ -185,19 +185,19 @@ func newColorShader() shaderProgram {
 	return sh
 }
 
-type dustShader struct {
+type perlinShader struct {
 	shader
 	time int32 // uniform
 }
 
-func newDustShader() shaderProgram {
-	sh := &dustShader{}
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.DustShader))
+func newPerlinShader() shaderProgram {
+	sh := &perlinShader{}
+	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.PerlinShader))
 	sh.time = gl.GetUniformLocation(sh.handle, gl.Str("Time"+"\x00"))
 	return sh
 }
 
-func (sh *dustShader) setAttributes(env shaderEnvironment) {
+func (sh *perlinShader) setAttributes(env shaderEnvironment) {
 	sh.shader.setAttributes(env)
 	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
 }

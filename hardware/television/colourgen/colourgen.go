@@ -268,10 +268,15 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	Y = minY + (float64(lum)/8)*(maxY-minY)
 
 	// the colour component indicates a point on the 'colour wheel'
-	phiHue := (float64(hue) - 1) * -c.NTSCPhase.Get().(float64)
+	phi := (float64(hue)) * -c.NTSCPhase.Get().(float64)
 
 	// angle of the colour burst reference is 180 by defintion
 	const phiBurst = 180
+	phi += phiBurst
+
+	// NTSC works in YIQ colour space. YIQ is YUV rotated by 33°
+	const phiAdjYIQ = 33
+	phi += phiAdjYIQ
 
 	// however, from the "Stella Programmer's Guide" (page 28):
 	//
@@ -292,16 +297,10 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	// Blank is decoded as 68 counts and sync and color burst as 16 counts."
 	//
 	// so 16 multipled by 3.58 is 57.28. the negative of this value seems
-	// correct because we know that hue 1 must be in the yellow region
-	//
-	// I think this is what the test in the programmer's guide is saying but I'm
-	// not sure. none-the-less, the results seem accurate and there is at least
-	// some rationale for the value
-	const phiAdj = -(clocks.NTSC_TIA * 16)
-	phiHue += phiAdj
-
-	// the final angle is the angle of the calculated hue plus the adjusted color burst
-	phi := phiHue + phiBurst
+	// correct because we know that hue 1 must be in the 'gold' region of the
+	// colour wheel
+	const phiAdjBurst = -(clocks.NTSC_TIA * 16)
+	phi += phiAdjBurst
 
 	// phi has been calculated in degrees but the math functions require radians
 	phi *= math.Pi / 180
@@ -400,25 +399,25 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	// Y value in the range minY to MaxY based on the lum value
 	Y = minY + (float64(lum)/8)*(maxY-minY)
 
-	var phiHue float64
+	var phi float64
 
 	// even-numbered hue numbers go in the opposite direction for some reason
 	if hue&0x01 == 0x01 {
 		// green to lilac
-		phiHue = float64(hue) * -c.PALPhase.Get().(float64)
+		phi = float64(hue) * -c.PALPhase.Get().(float64)
 	} else {
 		// gold to purple
-		phiHue = (float64(hue) - 2) * c.PALPhase.Get().(float64)
+		phi = (float64(hue) - 2) * c.PALPhase.Get().(float64)
 	}
 
 	// angle of the colour burst reference is 180 by defintion
 	const phiBurst = 180
+	phi += phiBurst
 
 	// see comments in generateNTSC for/how why we apply the adjustment and
 	// burst value to the calculated phi
-	const phiAdj = -(clocks.PAL_TIA * 16)
-	phiHue += phiAdj
-	phi := phiHue + phiBurst
+	const phiAdjBurst = -(clocks.PAL_TIA * 16)
+	phi += phiAdjBurst
 
 	// phi has been calculated in degrees but the math functions require radians
 	phi *= math.Pi / 180
