@@ -110,6 +110,17 @@ func (tk Tokens) Peek() (string, bool) {
 	return tk.tokens[tk.curr], true
 }
 
+// ForRemaining calls the function f() for as long as the number of remaining
+// tokens hasn't changed. So, if after f() returns the number of remaining the
+// tokens has not changed the call to ForRemaining() ends.
+func (tk *Tokens) ForRemaining(f func()) {
+	remaining := 0
+	for tk.Remaining() != remaining {
+		remaining = tk.Remaining()
+		f()
+	}
+}
+
 // TokeniseInput creates and returns a new Tokens instance.
 func TokeniseInput(input string) *Tokens {
 	tk := &Tokens{}

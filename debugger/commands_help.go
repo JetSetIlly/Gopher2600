@@ -496,6 +496,10 @@ address.
 The above example will watch for the value 10 (decimal) to be written to memory
 address 0x80.
 
+The CHANGED argument can be used to watch for any change of value.
+
+	WATCH WRITE CHANGED 0x80
+
 By default WATCH will monitor all mirror addresses.
 
 	WATCH 0xf000

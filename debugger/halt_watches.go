@@ -25,13 +25,22 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 )
 
+type watcherCmp int
+
+const (
+	watchCmpAny watcherCmp = iota
+	watchCmpChanged
+	watchCmpMatch
+)
+
 type watcher struct {
 	ai dbgmem.AddressInfo
 
-	// whether to watch for a specific value. a matchValue of false means the
-	// watcher will match regardless of the value
-	matchValue bool
-	value      uint8
+	// the compare method
+	cmp watcherCmp
+
+	// the cmpValue being compared
+	cmpValue uint8
 
 	// whether the address should be interpreted strictly or whether mirrors
 	// should be considered too
@@ -43,8 +52,11 @@ type watcher struct {
 
 func (w watcher) String() string {
 	val := ""
-	if w.matchValue {
-		val = fmt.Sprintf(" (value=%#02x)", w.value)
+	switch w.cmp {
+	case watchCmpMatch:
+		val = fmt.Sprintf(" (value=%#02x)", w.cmpValue)
+	case watchCmpChanged:
+		val = " (value=changed)"
 	}
 	event := "write"
 	if w.ai.Read {
@@ -113,7 +125,7 @@ func (wtc *watches) check() string {
 
 	checkString := strings.Builder{}
 
-	for _, w := range wtc.watches {
+	for i, w := range wtc.watches {
 		// filter phantom accesses
 		if !w.phantom && wtc.dbg.vcs.CPU.PhantomMemAccess {
 			return ""
@@ -130,8 +142,16 @@ func (wtc *watches) check() string {
 			}
 		}
 
-		if w.matchValue && w.value != wtc.dbg.vcs.Mem.LastCPUData {
-			continue
+		switch w.cmp {
+		case watchCmpMatch:
+			if w.cmpValue != wtc.dbg.vcs.Mem.LastCPUData {
+				continue
+			}
+		case watchCmpChanged:
+			if w.cmpValue == wtc.dbg.vcs.Mem.LastCPUData {
+				continue
+			}
+			wtc.watches[i].cmpValue = wtc.dbg.vcs.Mem.LastCPUData
 		}
 
 		lai := wtc.dbg.dbgmem.GetAddressInfo(wtc.dbg.vcs.Mem.LastCPUAddressLiteral, !wtc.dbg.vcs.Mem.LastCPUWrite)
@@ -176,47 +196,56 @@ func (wtc *watches) list() {
 // parse tokens and add new watch. unlike breakpoints and traps, only one watch
 // at a time can be specified on the command line.
 func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
-	var read bool
+	var write bool
 	var strict bool
 	var phantom bool
+	var cmp watcherCmp
 
-	// event type
-	arg, _ := tokens.Get()
-	arg = strings.ToUpper(arg)
-	switch arg {
-	case "READ":
-		read = true
-	case "WRITE":
-		read = false
-	default:
-		// default watch event is READ
-		read = true
-		tokens.Unget()
-	}
+	tokens.ForRemaining(func() {
+		// event type
+		arg, _ := tokens.Get()
+		arg = strings.ToUpper(arg)
+		switch arg {
+		case "READ":
+			write = false
+		case "WRITE":
+			write = true
+		default:
+			tokens.Unget()
+		}
 
-	// strict addressing or not
-	arg, _ = tokens.Get()
-	arg = strings.ToUpper(arg)
-	switch arg {
-	case "STRICT":
-		strict = true
-	default:
-		strict = false
-		tokens.Unget()
-	}
+		// strict addressing or not
+		arg, _ = tokens.Get()
+		arg = strings.ToUpper(arg)
+		switch arg {
+		case "STRICT":
+			strict = true
+		default:
+			tokens.Unget()
+		}
 
-	// strict addressing or not
-	arg, _ = tokens.Get()
-	arg = strings.ToUpper(arg)
-	switch arg {
-	case "PHANTOM":
-		fallthrough
-	case "GHOST":
-		phantom = true
-	default:
-		phantom = false
-		tokens.Unget()
-	}
+		// phantom addressing
+		arg, _ = tokens.Get()
+		arg = strings.ToUpper(arg)
+		switch arg {
+		case "PHANTOM":
+			fallthrough
+		case "GHOST":
+			phantom = true
+		default:
+			tokens.Unget()
+		}
+
+		// changed values
+		arg, _ = tokens.Get()
+		arg = strings.ToUpper(arg)
+		switch arg {
+		case "CHANGED":
+			cmp = watchCmpChanged
+		default:
+			tokens.Unget()
+		}
+	})
 
 	// get address. required.
 	a, _ := tokens.Get()
@@ -224,25 +253,28 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 	// convert address
 	var ai *dbgmem.AddressInfo
 
-	if read {
-		ai = wtc.dbg.dbgmem.GetAddressInfo(a, true)
-	} else {
+	if write {
 		ai = wtc.dbg.dbgmem.GetAddressInfo(a, false)
+	} else {
+		ai = wtc.dbg.dbgmem.GetAddressInfo(a, true)
 	}
 
 	// mapping of the address was unsuccessful
 	if ai == nil {
-		if read {
-			return fmt.Errorf("invalid watch address (%s) expecting 16-bit address or a read symbol", a)
+		if write {
+			return fmt.Errorf("invalid watch address (%s) expecting 16-bit address or a write symbol", a)
 		}
-		return fmt.Errorf("invalid watch address (%s) expecting 16-bit address or a write symbol", a)
+		return fmt.Errorf("invalid watch address (%s) expecting 16-bit address or a read symbol", a)
 	}
 
 	// get value if possible
 	var val uint64
 	var err error
-	v, useVal := tokens.Get()
-	if useVal {
+	if v, ok := tokens.Get(); ok {
+		if cmp != watchCmpAny {
+			return fmt.Errorf("match value given with CHANGED argument")
+		}
+		cmp = watchCmpMatch
 		val, err = strconv.ParseUint(v, 0, 8)
 		if err != nil {
 			return fmt.Errorf("invalid watch value (%s) expecting 8-bit value", a)
@@ -250,11 +282,11 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 	}
 
 	nw := watcher{
-		ai:         *ai,
-		matchValue: useVal,
-		value:      uint8(val),
-		strict:     strict,
-		phantom:    phantom,
+		ai:       *ai,
+		cmp:      cmp,
+		cmpValue: uint8(val),
+		strict:   strict,
+		phantom:  phantom,
 	}
 
 	// check to see if watch already exists
@@ -269,7 +301,7 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 		// that only the larger set remains, it may confuse the user
 		if w.ai.Address == nw.ai.Address &&
 			w.ai.Read == nw.ai.Read &&
-			w.matchValue == nw.matchValue && w.value == nw.value {
+			w.cmp == nw.cmp {
 			return fmt.Errorf("already being watched (%s)", w)
 		}
 	}
