@@ -672,6 +672,11 @@ func (scr *screen) copyPixelsDebugmode() {
 
 // copy pixels from queue to the live copy.
 func (scr *screen) copyPixelsPlaymode() {
+	// check if emulation is running slowly. if it is then we disable some
+	// rendering options that would be confusing because of the slow running
+	fps, hz := scr.img.dbg.VCS().TV.GetActualFPS()
+	tooSlow := fps < hz*0.95
+
 	// let the emulator thread know it's okay to continue as soon as possible
 	select {
 	case <-scr.emuWait:
@@ -701,7 +706,7 @@ func (scr *screen) copyPixelsPlaymode() {
 
 	// show pause frames
 	if scr.img.dbg.State() == govern.Paused {
-		if scr.crit.queueRecovery == 0 && scr.img.prefs.activePause.Get().(bool) {
+		if !tooSlow && scr.crit.queueRecovery == 0 && scr.img.prefs.activePause.Get().(bool) {
 			if scr.crit.pauseFrame {
 				scr.generatePresentationPixels(scr.crit.prevRenderIdx[0])
 				scr.crit.pauseFrame = false
@@ -710,8 +715,12 @@ func (scr *screen) copyPixelsPlaymode() {
 				scr.crit.pauseFrame = true
 			}
 		} else {
-			// non-active pausing can end the function immediately
+			// note that we're call generatePresentationPixels() even though you would
+			// think we don't need to. but we want to make sure that any change
+			// in the colour preferences is reflected on the screen
 			scr.generatePresentationPixels(scr.crit.renderIdx)
+
+			// non-active pausing can end the function immediately
 			return
 		}
 	}
@@ -743,7 +752,7 @@ func (scr *screen) copyPixelsPlaymode() {
 			// it also may mean that there will be visible jump of graphical
 			// elements in some situations. but hopefully they are not
 			// noticeable
-			if scr.crit.monitorSyncSimilar {
+			if !tooSlow && scr.crit.monitorSyncSimilar {
 				scr.crit.renderIdx = scr.crit.prevRenderIdx[1]
 			} else {
 				scr.crit.renderIdx = scr.crit.prevRenderIdx[0]
