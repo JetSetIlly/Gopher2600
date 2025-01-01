@@ -658,19 +658,19 @@ func regress(mode string, args []string) error {
 }
 
 func regressRun(mode string, args []string) error {
-	var verbose bool
+	var opts regression.RegressRunOptions
 
 	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
-	flgs.BoolVar(&verbose, "v", false, "output more detail")
+	flgs.BoolVar(&opts.Verbose, "v", false, "output more detail")
 
 	// parse args and get copy of remaining arguments
 	err := flgs.Parse(args)
 	if err != nil {
 		return err
 	}
-	args = flgs.Args()
+	opts.Keys = flgs.Args()
 
-	err = regression.RegressRun(os.Stdout, verbose, args)
+	err = regression.RegressRun(os.Stdout, opts)
 	if err != nil {
 		return err
 	}

@@ -370,10 +370,17 @@ func RegressDelete(messages io.Writer, confirmation io.Reader, key string) error
 	return nil
 }
 
+// RegressRunOptions is passed to RegressRun() to control the function's behaviour
+type RegressRunOptions struct {
+	Keys        []string
+	Verbose     bool
+	UseFullPath bool
+}
+
 // RegressRun runs all the tests in the regression database. The keys argument
 // lists specified which entries to test. an empty keys list means that every
 // entry should be tested.
-func RegressRun(messages io.Writer, verbose bool, keys []string) error {
+func RegressRun(messages io.Writer, opts RegressRunOptions) error {
 	if messages == nil {
 		return fmt.Errorf("regression: messages should not be nil")
 	}
@@ -417,7 +424,7 @@ func RegressRun(messages io.Writer, verbose bool, keys []string) error {
 		if err != nil {
 			fails = append(fails, strconv.Itoa(key))
 			messages.Write([]byte(fmt.Sprintf("\rfailure: %s\n", reg)))
-			if verbose {
+			if opts.Verbose {
 				messages.Write([]byte(fmt.Sprintf("  ^^ %s\n", err)))
 			}
 		} else {
@@ -428,7 +435,7 @@ func RegressRun(messages io.Writer, verbose bool, keys []string) error {
 		return nil
 	}
 
-	keysInt, err := convertKeys(keys)
+	keysInt, err := convertKeys(opts.Keys)
 	if err != nil {
 		return fmt.Errorf("regression: %w", err)
 	}
