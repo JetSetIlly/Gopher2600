@@ -480,6 +480,23 @@ func (tv *Television) End() error {
 
 // Signal updates the current state of the television.
 func (tv *Television) Signal(sig signal.SignalAttributes) {
+	// count VSYNC scanlines based on when HSync ends. this means that if
+	// VSYNC is set after HSYNC on a scanline, the scanlines won't be
+	// counted for almost an entire scanline
+	const strictVSYNC = false
+
+	if strictVSYNC {
+		if !sig.HSync && tv.state.lastSignal.HSync {
+			tv.state.vsync.activeScanlineCount++
+		}
+	} else {
+		// without strictVSYNC enabled, we use the clock the VSYNC started as
+		// the counting point
+		if tv.state.clock == tv.state.vsync.startClock {
+			tv.state.vsync.activeScanlineCount++
+		}
+	}
+
 	// check for change of VSYNC signal
 	if sig.VSync != tv.state.lastSignal.VSync {
 		if sig.VSync {
@@ -502,7 +519,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 					if tv.state.vsync.unstableScanlineOnVSYNC < toleranceUnstableScanlineOnVSYNC {
 						tv.state.vsync.unstableScanlineOnVSYNC++
 					} else {
-						// get recovery value from user prefence and make sure value is sensible
+						// get recovery value from user preference and make sure value is sensible
 						recovery := max(preferences.VSYNCrecoveryMin,
 							min(preferences.VSYNCrecoveryMax,
 								tv.env.Prefs.TV.VSYNCrecovery.Get().(int)))
@@ -534,9 +551,9 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 						// in the VSYNC and the next frame having two scanlines of
 						// VSYNC
 						//
-						// 1/12/24 - after re-reading this doesn't seem like a good
-						// way of solving this problem, but I can't think of any
-						// alternative
+						// 1/12/24 - after re-reading this comment, this doesn't
+						// seem like a good way of solving this problem, but I
+						// can't think of any alternative
 						if tv.state.scanline <= min(tv.state.vsync.activeScanlineCount, 5) {
 							tv.state.scanline = 0
 						}
@@ -587,13 +604,6 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 			// end of VSYNC
 			tv.state.vsync.active = false
 
-		}
-	}
-
-	// count VSYNC scanlines and clocks
-	if tv.state.vsync.active {
-		if tv.state.clock == tv.state.vsync.startClock {
-			tv.state.vsync.activeScanlineCount++
 		}
 	}
 
@@ -822,7 +832,6 @@ func (tv *Television) newFrame() error {
 	tv.state.frameInfo.IsSynced = tv.state.vsync.isSynced()
 	tv.state.frameInfo.VSYNCscanline = tv.state.vsync.startScanline
 	tv.state.frameInfo.VSYNCcount = tv.state.vsync.activeScanlineCount
-	tv.state.vsync.updateHistory()
 
 	// desynchronise if we've not seen a valid VSYNC signal immediately before
 	// this call to newFrame()

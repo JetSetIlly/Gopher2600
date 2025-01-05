@@ -38,6 +38,10 @@ import (
 //	briefly (when the logo bounces on the title screen)
 //	- the unstableScanlineOnVSYNC field keeps track of how many frames this
 //	happens consecutively and allows a brief deviation
+//
+//	Tapper
+//	- inconsistent number of scanlines per frame
+//	- fluctuates between 261 and 262
 
 type vsync struct {
 	active bool
@@ -73,12 +77,6 @@ type vsync struct {
 	// different than the scanlines field during the synchronisation process causing
 	// the screen to visually roll
 	flybackScanline int
-
-	// short history of the active field. updated every newFrame(). each bit
-	// from LSB to MSB records the active field from most recent to least recent
-	//
-	// this is likely more than we need but it's simple and it works
-	history uint8
 }
 
 // maximum value for the unstableScanlineOnVSYNC field. this should not be too
@@ -92,18 +90,10 @@ func (v *vsync) reset() {
 	v.scanline = 0
 	v.flybackScanline = specification.AbsoluteMaxScanlines
 	v.startScanline = 0
-	v.history = 0
 }
 
 func (v vsync) isSynced() bool {
 	return v.scanline == v.flybackScanline
-}
-
-func (v *vsync) updateHistory() {
-	v.history <<= 1
-	if v.active {
-		v.history |= 0x01
-	}
 }
 
 func (v *vsync) desync(base int) {
