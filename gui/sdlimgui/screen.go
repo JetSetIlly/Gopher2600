@@ -179,9 +179,6 @@ type screenCrit struct {
 	// the selected overlay
 	overlay string
 
-	// whether the overaly color should be striped
-	overlayStriped bool
-
 	// when paused we show two adjacent frames over-and-over. this flag tracks
 	// which of those frames to show
 	pauseFrame bool
@@ -562,11 +559,15 @@ func (scr *screen) plotOverlay() {
 func (scr *screen) reflectionColor(ref *reflection.ReflectedVideoStep) color.RGBA {
 	switch scr.crit.overlay {
 	case reflection.OverlayLabels[reflection.OverlayVBLANK_VSYNC]:
-		if ref.Signal.VBlank {
-			return reflectionColors[reflection.VBLANK]
-		}
-		if ref.Signal.VSync {
-			return reflectionColors[reflection.VSYNC]
+		if ref.Signal.VSync && ref.Signal.VBlank {
+			return reflectionColors[reflection.VSYNC_WITH_VBLANK]
+		} else {
+			if ref.Signal.VSync {
+				return reflectionColors[reflection.VSYNC_NO_VBLANK]
+			}
+			if ref.Signal.VBlank {
+				return reflectionColors[reflection.VBLANK]
+			}
 		}
 	case reflection.OverlayLabels[reflection.OverlayWSYNC]:
 		if ref.WSYNC {

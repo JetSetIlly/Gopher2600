@@ -469,17 +469,18 @@ func newColors() *imguiColors {
 
 // reflectionColors lists the colors to be used for the reflection overlay.
 var reflectionColors = []color.RGBA{
-	reflection.RefreshRate:  {R: 50, G: 255, B: 255, A: 255},
-	reflection.VBLANK:       {R: 240, G: 240, B: 240, A: 255},
-	reflection.VSYNC:        {R: 201, G: 201, B: 201, A: 255}, // roughly equivalent to 79%. same as timeline VSYNC plot
-	reflection.WSYNC:        {R: 50, G: 50, B: 255, A: 255},
-	reflection.Collision:    {R: 255, G: 25, B: 25, A: 255},
-	reflection.CXCLR:        {R: 255, G: 25, B: 255, A: 255},
-	reflection.HMOVEdelay:   {R: 150, G: 50, B: 50, A: 255},
-	reflection.HMOVEripple:  {R: 50, G: 150, B: 50, A: 255},
-	reflection.HMOVElatched: {R: 50, G: 50, B: 150, A: 255},
-	reflection.RSYNCalign:   {R: 50, G: 50, B: 200, A: 255},
-	reflection.RSYNCreset:   {R: 50, G: 200, B: 200, A: 255},
+	reflection.RefreshRate:       {R: 50, G: 255, B: 255, A: 255},
+	reflection.VBLANK:            {R: 50, G: 50, B: 150, A: 255},
+	reflection.VSYNC_NO_VBLANK:   {R: 150, G: 100, B: 100, A: 255},
+	reflection.VSYNC_WITH_VBLANK: {R: 100, G: 150, B: 100, A: 255},
+	reflection.WSYNC:             {R: 50, G: 50, B: 255, A: 255},
+	reflection.Collision:         {R: 255, G: 25, B: 25, A: 255},
+	reflection.CXCLR:             {R: 255, G: 25, B: 255, A: 255},
+	reflection.HMOVEdelay:        {R: 150, G: 50, B: 50, A: 255},
+	reflection.HMOVEripple:       {R: 50, G: 150, B: 50, A: 255},
+	reflection.HMOVElatched:      {R: 50, G: 50, B: 150, A: 255},
+	reflection.RSYNCalign:        {R: 50, G: 50, B: 200, A: 255},
+	reflection.RSYNCreset:        {R: 50, G: 200, B: 200, A: 255},
 
 	reflection.CoProcInactive: {R: 0, G: 0, B: 0, A: 0},
 	reflection.CoProcActive:   {R: 200, G: 50, B: 200, A: 255},

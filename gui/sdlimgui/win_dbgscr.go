@@ -510,13 +510,6 @@ func (win *winDbgScr) drawOverlayCombo() {
 				if imgui.Selectable(s) {
 					win.img.screen.crit.overlay = s
 					win.img.screen.plotOverlay()
-
-					// set striped flag for VBLANK/VSYNC overlay
-					if i == int(reflection.OverlayVBLANK_VSYNC) {
-						win.scr.crit.overlayStriped = true
-					} else {
-						win.scr.crit.overlayStriped = false
-					}
 				}
 			} else if coproc != nil {
 				// if ROM has a coprocessor change the option label to the
@@ -527,7 +520,6 @@ func (win *winDbgScr) drawOverlayCombo() {
 					// elsewhere
 					win.img.screen.crit.overlay = s
 					win.img.screen.plotOverlay()
-					win.scr.crit.overlayStriped = false
 				}
 			}
 		}
@@ -542,7 +534,9 @@ func (win *winDbgScr) drawOverlayComboTooltip() {
 		win.img.imguiTooltip(func() {
 			imguiColorLabelSimple("VBLANK", win.img.cols.reflectionColors[reflection.VBLANK])
 			imgui.Spacing()
-			imguiColorLabelSimple("VSYNC", win.img.cols.reflectionColors[reflection.VSYNC])
+			imguiColorLabelSimple("VSYNC", win.img.cols.reflectionColors[reflection.VSYNC_WITH_VBLANK])
+			imgui.Spacing()
+			imguiColorLabelSimple("VSYNC without VBLANK", win.img.cols.reflectionColors[reflection.VSYNC_NO_VBLANK])
 		}, true)
 	case reflection.OverlayLabels[reflection.OverlayWSYNC]:
 		win.img.imguiTooltip(func() {
@@ -588,6 +582,12 @@ func (win *winDbgScr) drawOverlayComboTooltip() {
 // called from within a win.scr.crit.section Lock().
 func (win *winDbgScr) drawReflectionTooltip() {
 	if win.isCaptured || !win.mouse.valid {
+		return
+	}
+
+	// no useful reflection if mouse is outside TV area
+	if win.mouse.tv.Scanline > win.scr.crit.frameInfo.TotalScanlines {
+		imguiTooltipSimple("no TV signal", true)
 		return
 	}
 

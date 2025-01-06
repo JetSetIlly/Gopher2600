@@ -28,24 +28,32 @@ void main()
 			}
 		}
 
-		// hblank guide
+		// no signal area extends from the lastNewFrameAtScanline pixel to the
+		// bottom of the texture
+		float lastNewFrameAtScanline = pixelY * LastNewFrameAtScanline;
+		if (Frag_UV.y >= lastNewFrameAtScanline) {
+			// adding x and y frag coords creates a diagonal stripe
+			if (mod(floor(gl_FragCoord.x+gl_FragCoord.y), 8) < 3.0) {
+				Out_Color.r = 0.05;
+				Out_Color.g = 0.05;
+				Out_Color.b = 0.05;
+				Out_Color.a = 0.8;
+				return;
+			} else {
+				Out_Color.r = 0.03;
+				Out_Color.g = 0.03;
+				Out_Color.b = 0.03;
+				Out_Color.a = 0.8;
+				return;
+			}
+		}
+
+		// hblank guide. doesn't extend into the no signal area
 		float hblank = pixelX * Hblank;
 		if (isNearEqual(Frag_UV.x, hblank, pixelX)) {
 			if (mod(floor(gl_FragCoord.y), 4) < 2.0) {
 				Out_Color.r = 1.0;
 				Out_Color.g = 1.0;
-				Out_Color.b = 1.0;
-				Out_Color.a = 0.1;
-				return;
-			}
-		}
-
-		// frame flyback guide
-		float lastNewFrameAtScanline = pixelY * LastNewFrameAtScanline;
-		if (isNearEqual(Frag_UV.y, lastNewFrameAtScanline, pixelY)) {
-			if (mod(floor(gl_FragCoord.x), 8) < 3.0) {
-				Out_Color.r = 1.0;
-				Out_Color.g = 0.0;
 				Out_Color.b = 1.0;
 				Out_Color.a = 0.1;
 				return;
@@ -68,25 +76,28 @@ void main()
 				Out_Color.a = 0.5;
 		}
 
-		// alternative magnification guide (dotted line around area)
-		/*
-		if (Frag_UV.x > xmin && Frag_UV.x < xmax && (isNearEqual(Frag_UV.y, ymin, pixelY) || isNearEqual(Frag_UV.y, ymax, pixelY)) ) {
-			if (mod(floor(gl_FragCoord.x), 8) < 5.0) {
-				Out_Color.r = 1.0;
-				Out_Color.g = 1.0;
-				Out_Color.b = 1.0;
-				Out_Color.a = 1.0;
+		// pixel thickness of dotted outline
+		#define pixelThickness 0.0
+
+		if (pixelThickness > 0.0) {
+			// dotted line around magnification area
+			if (Frag_UV.x > xmin && Frag_UV.x < xmax && (isNearEqual(Frag_UV.y, ymin, pixelY*pixelThickness) || isNearEqual(Frag_UV.y, ymax, pixelY*pixelThickness)) ) {
+				if (mod(floor(gl_FragCoord.x), 8) < 5.0) {
+					Out_Color.r = 0.8;
+					Out_Color.g = 0.8;
+					Out_Color.b = 0.8;
+					Out_Color.a = 1.0;
+				}
+			}
+			if (Frag_UV.y > ymin && Frag_UV.y < ymax && (isNearEqual(Frag_UV.x, xmin, pixelX*pixelThickness) || isNearEqual(Frag_UV.x, xmax, pixelX*pixelThickness))) {
+				if (mod(floor(gl_FragCoord.y), 8) < 5.0) {
+					Out_Color.r = 0.8;
+					Out_Color.g = 0.8;
+					Out_Color.b = 0.8;
+					Out_Color.a = 1.0;
+				}
 			}
 		}
-		if (Frag_UV.y > ymin && Frag_UV.y < ymax && (isNearEqual(Frag_UV.x, xmin, pixelX) || isNearEqual(Frag_UV.x, xmax, pixelX))) {
-			if (mod(floor(gl_FragCoord.y), 8) < 5.0) {
-				Out_Color.r = 1.0;
-				Out_Color.g = 1.0;
-				Out_Color.b = 1.0;
-				Out_Color.a = 1.0;
-			}
-		}
-		*/
 	}
 
 	// show cursor. the cursor illustrates the *most recent* pixel to be drawn

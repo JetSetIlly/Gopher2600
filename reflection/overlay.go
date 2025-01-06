@@ -27,7 +27,8 @@ type ReflectedInfo int
 const (
 	RefreshRate ReflectedInfo = iota
 	VBLANK
-	VSYNC
+	VSYNC_NO_VBLANK
+	VSYNC_WITH_VBLANK
 	WSYNC
 	Collision
 	CXCLR
