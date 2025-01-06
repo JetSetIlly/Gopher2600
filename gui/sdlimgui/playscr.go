@@ -96,6 +96,9 @@ func (win *playScr) draw() {
 	// note whether we're using a bevel image or not
 	win.usingBevel = win.img.rnd.supportsCRT() && !win.img.crt.PixelPerfect.Get().(bool) && win.img.crt.UseBevel.Get().(bool)
 
+	// rotation also plays a part in the decision to use the bevel
+	win.usingBevel = win.usingBevel && win.img.screen.rotation.Load() == specification.NormalRotation
+
 	dl := imgui.BackgroundDrawList()
 
 	if win.usingBevel {
@@ -184,17 +187,21 @@ func (win *playScr) setScalingBevel() {
 func (win *playScr) setScalingDisplay() {
 	tvW := float32(specification.WidthTV)
 	tvH := float32(specification.HeightTV)
-	tvH *= bevels.SolidState.BiasY
-	tvRatio := tvW / tvH
+	if win.usingBevel {
+		tvH *= bevels.SolidState.BiasY
+	}
+
+	winW, winH := win.img.plt.windowSize()
+	winRatio := winW / winH
 
 	// handle screen rotation
 	rotation := win.scr.rotation.Load().(specification.Rotation)
 	if rotation != specification.NormalRotation && rotation != specification.FlippedRotation {
 		tvW, tvH = tvH, tvW
+		tvW *= 1.05
 	}
 
-	winW, winH := win.img.plt.windowSize()
-	winRatio := winW / winH
+	tvRatio := tvW / tvH
 
 	// calculate required scaling
 	if tvRatio < winRatio {
