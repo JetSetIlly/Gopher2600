@@ -36,8 +36,9 @@ type crtSeqPrefs struct {
 	ScanlinesIntensity   float64
 	Mask                 bool
 	MaskIntensity        float64
-	Interference         bool
-	InterferenceLevel    float64
+	RFInterference       bool
+	RFNoiseLevel         float64
+	RFGhostingLevel      float64
 	Phosphor             bool
 	PhosphorLatency      float64
 	PhosphorBloom        float64
@@ -61,8 +62,9 @@ func newCrtSeqPrefs(crt *display.CRT) crtSeqPrefs {
 		ScanlinesIntensity:   crt.ScanlinesIntensity.Get().(float64),
 		Mask:                 crt.Mask.Get().(bool),
 		MaskIntensity:        crt.MaskIntensity.Get().(float64),
-		Interference:         crt.Interference.Get().(bool),
-		InterferenceLevel:    crt.InterferenceLevel.Get().(float64),
+		RFInterference:       crt.RFInterference.Get().(bool),
+		RFNoiseLevel:         crt.RFNoiseLevel.Get().(float64),
+		RFGhostingLevel:      crt.RFGhostingLevel.Get().(float64),
 		Phosphor:             crt.Phosphor.Get().(bool),
 		PhosphorLatency:      crt.PhosphorLatency.Get().(float64),
 		PhosphorBloom:        crt.PhosphorBloom.Get().(float64),

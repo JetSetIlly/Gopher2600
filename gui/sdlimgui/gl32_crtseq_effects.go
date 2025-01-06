@@ -42,8 +42,9 @@ type effectsShader struct {
 	mask               int32
 	maskIntensity      int32
 
-	interference      int32
-	interferenceLevel int32
+	rfInterference  int32
+	rfNoiseLevel    int32
+	rfGhostingLevel int32
 
 	chromaticAberration int32
 	shine               int32
@@ -74,8 +75,9 @@ func newEffectsShader() shaderProgram {
 	sh.mask = gl.GetUniformLocation(sh.handle, gl.Str("ShadowMask"+"\x00"))
 	sh.maskIntensity = gl.GetUniformLocation(sh.handle, gl.Str("MaskIntensity"+"\x00"))
 
-	sh.interference = gl.GetUniformLocation(sh.handle, gl.Str("Interference"+"\x00"))
-	sh.interferenceLevel = gl.GetUniformLocation(sh.handle, gl.Str("InterferenceLevel"+"\x00"))
+	sh.rfInterference = gl.GetUniformLocation(sh.handle, gl.Str("RFInterference"+"\x00"))
+	sh.rfNoiseLevel = gl.GetUniformLocation(sh.handle, gl.Str("RFNoiseLevel"+"\x00"))
+	sh.rfGhostingLevel = gl.GetUniformLocation(sh.handle, gl.Str("RFGhostingLevel"+"\x00"))
 
 	sh.chromaticAberration = gl.GetUniformLocation(sh.handle, gl.Str("ChromaticAberration"+"\x00"))
 	sh.shine = gl.GetUniformLocation(sh.handle, gl.Str("Shine"+"\x00"))
@@ -111,8 +113,9 @@ func (sh *effectsShader) setAttributesArgs(env shaderEnvironment, numScanlines i
 	gl.Uniform1i(sh.mask, boolToInt32(prefs.Mask))
 	gl.Uniform1f(sh.maskIntensity, float32(prefs.MaskIntensity))
 
-	gl.Uniform1i(sh.interference, boolToInt32(prefs.Interference))
-	gl.Uniform1f(sh.interferenceLevel, float32(prefs.InterferenceLevel))
+	gl.Uniform1i(sh.rfInterference, boolToInt32(prefs.RFInterference))
+	gl.Uniform1f(sh.rfNoiseLevel, float32(prefs.RFNoiseLevel))
+	gl.Uniform1f(sh.rfGhostingLevel, float32(prefs.RFGhostingLevel))
 
 	gl.Uniform1f(sh.chromaticAberration, float32(prefs.ChromaticAberration))
 	gl.Uniform1i(sh.shine, boolToInt32(prefs.Shine))

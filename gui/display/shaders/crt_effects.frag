@@ -26,8 +26,9 @@ uniform float ScanlinesIntensity;
 uniform int ShadowMask;
 uniform float MaskIntensity;
 
-uniform int Interference;
-uniform float InterferenceLevel;
+uniform int RFInterference;
+uniform float RFNoiseLevel;
+uniform float RFGhostingLevel;
 
 uniform float ChromaticAberration;
 uniform int Shine;
@@ -178,15 +179,15 @@ void main() {
 	vec3 yiq = RGBtoYIQ(Crt_Color.rgb);
 
 	// interference
-	if (Interference == 1) {
+	if (RFInterference == 1) {
 		// a very small amount of jitter added to the colour interference
 		float ja = sin(Time)/2500;
 		float jb = cos(Time)/2500;
 
-		// colour interference
-		vec3 rightBleed = RGBtoYIQ(texture(Texture, uv + vec2(0.005+ja, 0.0005+jb)+InterferenceLevel*0.006).rgb);
-		vec3 leftBleed = RGBtoYIQ(texture(Texture, uv - vec2(0.005+jb, 0.0005+ja)+InterferenceLevel*0.006).rgb);
-		float i = InterferenceLevel * 4.5;
+		// colour interference. this creates a ghosting effect
+		vec3 rightBleed = RGBtoYIQ(texture(Texture, uv + vec2(0.005+ja, 0.0005+jb)+RFGhostingLevel*0.006).rgb);
+		vec3 leftBleed = RGBtoYIQ(texture(Texture, uv - vec2(0.005+jb, 0.0005+ja)+RFGhostingLevel*0.006).rgb);
+		float i = RFGhostingLevel * 4.5;
 		yiq.x += (rightBleed.x - leftBleed.x) * i * 0.75;
 		yiq.y += (rightBleed.z - leftBleed.z) * i;
 		yiq.z += (rightBleed.y - leftBleed.y) * i;
@@ -194,10 +195,10 @@ void main() {
 		// luminence noise
 		vec4 noise = interferenceAmount(uv);
 		yiq.x *= 0.85;
-		yiq.x *= 0.5 + noise.w * InterferenceLevel * 1.5;
+		yiq.x *= 0.5 + noise.w * RFNoiseLevel * 1.5;
 
 		// a little bit of horizontal jitter works well
-		uv.x += noise.w * InterferenceLevel * 0.01;
+		uv.x += noise.w * RFNoiseLevel * 0.01;
 	} else {
 		// no interference but we want to reduce the Y channel so that the
 		// apparent brightness of the image is similar to when interference is

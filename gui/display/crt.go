@@ -34,8 +34,9 @@ type CRT struct {
 	ScanlinesIntensity   prefs.Float
 	Mask                 prefs.Bool
 	MaskIntensity        prefs.Float
-	Interference         prefs.Bool
-	InterferenceLevel    prefs.Float
+	RFInterference       prefs.Bool
+	RFNoiseLevel         prefs.Float
+	RFGhostingLevel      prefs.Float
 	Phosphor             prefs.Bool
 	PhosphorLatency      prefs.Float
 	PhosphorBloom        prefs.Float
@@ -107,11 +108,15 @@ func NewCRT() (*CRT, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.interference", &p.Interference)
+	err = p.dsk.Add("crt.rfInterference", &p.RFInterference)
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.interferenceLevel", &p.InterferenceLevel)
+	err = p.dsk.Add("crt.rfNoiseLevel", &p.RFNoiseLevel)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.rfGhostingLevel", &p.RFGhostingLevel)
 	if err != nil {
 		return nil, err
 	}
@@ -165,8 +170,9 @@ func (p *CRT) SetDefaults() {
 	p.ScanlinesIntensity.Set(0.039)
 	p.Mask.Set(false)
 	p.MaskIntensity.Set(0.037)
-	p.Interference.Set(false)
-	p.InterferenceLevel.Set(0.122)
+	p.RFInterference.Set(false)
+	p.RFNoiseLevel.Set(0.122)
+	p.RFGhostingLevel.Set(0.134)
 	p.Phosphor.Set(true)
 	p.PhosphorLatency.Set(0.5)
 	p.PhosphorBloom.Set(1.0)

@@ -179,27 +179,43 @@ func (win *winPrefs) drawScanlines() {
 }
 
 func (win *winPrefs) drawInterference() {
-	b := win.img.crt.Interference.Get().(bool)
-	if imgui.Checkbox("Interference##interference", &b) {
-		win.img.crt.Interference.Set(b)
+	b := win.img.crt.RFInterference.Get().(bool)
+	if imgui.Checkbox("RF Noise / Ghosting##interference", &b) {
+		win.img.crt.RFInterference.Set(b)
 	}
 
-	f := float32(win.img.crt.InterferenceLevel.Get().(float64))
+	f := float32(win.img.crt.RFNoiseLevel.Get().(float64))
 
 	var label string
 
-	if f >= 0.18 {
+	if f >= 0.175 {
 		label = "very high"
-	} else if f >= 0.16 {
+	} else if f >= 0.15 {
 		label = "high"
-	} else if f >= 0.14 {
+	} else if f >= 0.125 {
 		label = "low"
 	} else {
 		label = "very low"
 	}
 
-	if imgui.SliderFloatV("##interferencelevel", &f, 0.1, 0.2, label, 1.0) {
-		win.img.crt.InterferenceLevel.Set(f)
+	if imgui.SliderFloatV("##rfnoiselevel", &f, 0.1, 0.2, label, 1.0) {
+		win.img.crt.RFNoiseLevel.Set(f)
+	}
+
+	f = float32(win.img.crt.RFGhostingLevel.Get().(float64))
+
+	if f >= 0.175 {
+		label = "very high"
+	} else if f >= 0.15 {
+		label = "high"
+	} else if f >= 0.125 {
+		label = "low"
+	} else {
+		label = "very low"
+	}
+
+	if imgui.SliderFloatV("##rfghostinglevel", &f, 0.1, 0.2, label, 1.0) {
+		win.img.crt.RFGhostingLevel.Set(f)
 	}
 }
 
