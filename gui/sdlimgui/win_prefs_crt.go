@@ -188,33 +188,33 @@ func (win *winPrefs) drawInterference() {
 
 	var label string
 
-	if f >= 0.175 {
+	if f >= 0.1625 {
 		label = "very high"
-	} else if f >= 0.15 {
-		label = "high"
 	} else if f >= 0.125 {
+		label = "high"
+	} else if f >= 0.0875 {
 		label = "low"
 	} else {
 		label = "very low"
 	}
 
-	if imgui.SliderFloatV("##rfnoiselevel", &f, 0.1, 0.2, label, 1.0) {
+	if imgui.SliderFloatV("##rfnoiselevel", &f, 0.05, 0.2, label, 1.0) {
 		win.img.crt.RFNoiseLevel.Set(f)
 	}
 
 	f = float32(win.img.crt.RFGhostingLevel.Get().(float64))
 
-	if f >= 0.175 {
+	if f >= 0.1625 {
 		label = "very high"
-	} else if f >= 0.15 {
-		label = "high"
 	} else if f >= 0.125 {
+		label = "high"
+	} else if f >= 0.0875 {
 		label = "low"
 	} else {
 		label = "very low"
 	}
 
-	if imgui.SliderFloatV("##rfghostinglevel", &f, 0.1, 0.2, label, 1.0) {
+	if imgui.SliderFloatV("##rfghostinglevel", &f, 0.05, 0.2, label, 1.0) {
 		win.img.crt.RFGhostingLevel.Set(f)
 	}
 }
