@@ -255,7 +255,7 @@ func (ovly *playscrOverlay) drawTopLeft() {
 			imgui.SameLineV(0, 5)
 			imgui.Text(string(fonts.Bug))
 		}
-		if ovly.playscr.scr.crit.frameInfo.VBLANKatari {
+		if ovly.playscr.scr.crit.frameInfo.AtariSafe() {
 			imgui.SameLineV(0, 15)
 			imgui.Text(string(fonts.VBLANKatari))
 		}

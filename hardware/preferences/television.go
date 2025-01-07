@@ -32,19 +32,16 @@ type TVPreferences struct {
 	// number of scanlines required for a valid scanline signal
 	VSYNCscanlines prefs.Int
 
-	// the speed at which the screen recovers once a valid VSYNC signal is
-	// received. the higher the value the slower the recovery
-	VSYNCrecovery prefs.Int
+	// whether synchronisation should happen immediately
+	VSYNCimmedateSync prefs.Bool
 
-	// whether the televsion should be synced on start
+	// whether the televsion should be synced on start. the value of this should
+	// be ignored if 'immedate sync' is enabled
 	VSYNCsyncedOnStart prefs.Bool
 
 	// halt conditions
-	HaltVSYNCTooShort      prefs.Bool
-	HaltVSYNCScanlineStart prefs.Bool
-	HaltVSYNCScanlineCount prefs.Bool
-	HaltVSYNCabsent        prefs.Bool
-	HaltChangedVBLANK      prefs.Bool
+	HaltChangedVBLANK prefs.Bool
+	HaltChangedVSYNC  prefs.Bool
 }
 
 func newTVPreferences() (*TVPreferences, error) {
@@ -66,7 +63,7 @@ func newTVPreferences() (*TVPreferences, error) {
 		return nil, err
 	}
 
-	err = p.dsk.Add("television.vsync.recovery", &p.VSYNCrecovery)
+	err = p.dsk.Add("television.vsync.immediatesync", &p.VSYNCimmedateSync)
 	if err != nil {
 		return nil, err
 	}
@@ -76,23 +73,12 @@ func newTVPreferences() (*TVPreferences, error) {
 		return nil, err
 	}
 
-	err = p.dsk.Add("television.halt.vsynctooshort", &p.HaltVSYNCTooShort)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("television.halt.vsyncscanlinestart", &p.HaltVSYNCScanlineStart)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("television.halt.vsyncscanlinecount", &p.HaltVSYNCScanlineCount)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("television.halt.vsyncabsent", &p.HaltVSYNCabsent)
-	if err != nil {
-		return nil, err
-	}
 	err = p.dsk.Add("television.halt.changedvblank", &p.HaltChangedVBLANK)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.dsk.Add("television.halt.changedvsync", &p.HaltChangedVSYNC)
 	if err != nil {
 		return nil, err
 	}
@@ -108,13 +94,10 @@ func newTVPreferences() (*TVPreferences, error) {
 // SetDefaults reverts all settings to default values.
 func (p *TVPreferences) SetDefaults() {
 	p.VSYNCscanlines.Set(2)
-	p.VSYNCrecovery.Set(75)
+	p.VSYNCimmedateSync.Set(false)
 	p.VSYNCsyncedOnStart.Set(true)
-	p.HaltVSYNCTooShort.Set(false)
-	p.HaltVSYNCScanlineStart.Set(false)
-	p.HaltVSYNCScanlineCount.Set(false)
-	p.HaltVSYNCabsent.Set(false)
 	p.HaltChangedVBLANK.Set(false)
+	p.HaltChangedVSYNC.Set(false)
 }
 
 // Load television preferences from disk.

@@ -176,11 +176,8 @@ type VCS interface {
 type HaltCondition error
 
 // list of HaltCondition values
-var HaltVSYNCTooShort = errors.New("VSYNC signal too short")
-var HaltVSYNCScanlineStart = errors.New("VSYNC start scanline change")
-var HaltVSYNCScanlineCount = errors.New("VSYNC scanline count change")
-var HaltVSYNCAbsent = errors.New("VSYNC absent")
-var HaltVBLANKChanged = errors.New("VBLANK bounds change")
+var HaltChangedVBLANK = errors.New("VBLANK changed")
+var HaltBadVSYNC = errors.New("VSYNC")
 
 // Interface to a developer helper that can cause the emulation to halt on
 // various television related conditions

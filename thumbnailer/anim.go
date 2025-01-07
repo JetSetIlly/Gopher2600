@@ -205,7 +205,7 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, spec string, numFrames
 	thmb.monitorInputDelay = 0
 
 	// update TV specification in case it has changed
-	thmb.vcs.TV.SetSpec(spec, true)
+	thmb.vcs.TV.SetSpec(spec, false)
 
 	// reset function is usually called from the television. we call it here
 	// because it's useful for clearing the image and to put the now empty
@@ -253,7 +253,7 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, spec string, numFrames
 		// run preview some more in order to get excellent frame information
 		err = thmb.preview.Run(cartload)
 		if err == nil || errors.Is(err, cartridgeloader.NoFilename) {
-			thmb.vcs.TV.SetSpec(thmb.preview.Results().SpecID, true)
+			thmb.vcs.TV.SetSpec(thmb.preview.Results().SpecID, false)
 			thmb.vcs.TV.SetResizer(thmb.preview.Results().Resizer)
 		}
 

@@ -26,22 +26,23 @@ import (
 )
 
 type dbgScrHelper struct {
-	showCursor             int32 // uniform
-	isCropped              int32 // uniform
-	screenDim              int32 // uniform
-	scalingX               int32 // uniform
-	scalingY               int32 // uniform
-	lastX                  int32 // uniform
-	lastY                  int32 // uniform
-	hblank                 int32 // uniform
-	visibleTop             int32 // uniform
-	visibleBottom          int32 // uniform
-	magShow                int32 // uniform
-	magXmin                int32 // uniform
-	magXmax                int32 // uniform
-	magYmin                int32 // uniform
-	magYmax                int32 // uniform
-	lastNewFrameAtScanline int32 // uniform
+	showCursor     int32 // uniform
+	isCropped      int32 // uniform
+	screenDim      int32 // uniform
+	scalingX       int32 // uniform
+	scalingY       int32 // uniform
+	lastX          int32 // uniform
+	lastY          int32 // uniform
+	hblank         int32 // uniform
+	visibleTop     int32 // uniform
+	visibleBottom  int32 // uniform
+	magShow        int32 // uniform
+	magXmin        int32 // uniform
+	magXmax        int32 // uniform
+	magYmin        int32 // uniform
+	magYmax        int32 // uniform
+	totalScanlines int32 // uniform
+	topScanline    int32 // uniform
 }
 
 func (attr *dbgScrHelper) get(sh shader) {
@@ -53,7 +54,8 @@ func (attr *dbgScrHelper) get(sh shader) {
 	attr.lastX = gl.GetUniformLocation(sh.handle, gl.Str("LastX"+"\x00"))
 	attr.lastY = gl.GetUniformLocation(sh.handle, gl.Str("LastY"+"\x00"))
 	attr.hblank = gl.GetUniformLocation(sh.handle, gl.Str("Hblank"+"\x00"))
-	attr.lastNewFrameAtScanline = gl.GetUniformLocation(sh.handle, gl.Str("LastNewFrameAtScanline"+"\x00"))
+	attr.totalScanlines = gl.GetUniformLocation(sh.handle, gl.Str("TotalScanlines"+"\x00"))
+	attr.topScanline = gl.GetUniformLocation(sh.handle, gl.Str("TopScanline"+"\x00"))
 	attr.visibleTop = gl.GetUniformLocation(sh.handle, gl.Str("VisibleTop"+"\x00"))
 	attr.visibleBottom = gl.GetUniformLocation(sh.handle, gl.Str("VisibleBottom"+"\x00"))
 	attr.magShow = gl.GetUniformLocation(sh.handle, gl.Str("MagShow"+"\x00"))
@@ -97,7 +99,8 @@ func (attr *dbgScrHelper) set(img *SdlImgui) {
 	gl.Uniform1f(attr.hblank, (specification.ClksHBlank)*xscaling)
 	gl.Uniform1f(attr.visibleTop, float32(img.screen.crit.frameInfo.VisibleTop)*yscaling)
 	gl.Uniform1f(attr.visibleBottom, float32(img.screen.crit.frameInfo.VisibleBottom)*yscaling)
-	gl.Uniform1f(attr.lastNewFrameAtScanline, float32(img.screen.crit.frameInfo.TotalScanlines)*yscaling)
+	gl.Uniform1f(attr.totalScanlines, float32(img.screen.crit.frameInfo.TotalScanlines)*yscaling)
+	gl.Uniform1f(attr.topScanline, float32(img.screen.crit.frameInfo.TopScanline)*yscaling)
 
 	// window magnification
 	var magXmin, magYmin, magXmax, magYmax float32

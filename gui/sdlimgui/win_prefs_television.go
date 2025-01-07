@@ -46,8 +46,6 @@ func (win *winPrefs) drawTelevision() {
 	imgui.Separator()
 	imgui.Spacing()
 	win.drawVSYNC()
-	imgui.Spacing()
-	win.drawHaltConditions()
 }
 
 func (win *winPrefs) drawColour() {
@@ -59,7 +57,7 @@ func (win *winPrefs) drawColour() {
 	imgui.Spacing()
 	win.drawHue()
 
-	switch win.img.cache.TV.GetReqSpecID() {
+	switch win.img.cache.TV.GetFrameInfo().Spec.ID {
 	case specification.SpecNTSC.ID:
 		imgui.Spacing()
 		if imgui.CollapsingHeader("NTSC Colour Signal") {
@@ -154,7 +152,6 @@ func (win *winPrefs) drawNTSCPhase() {
 	imgui.AlignTextToFramePadding()
 	imgui.Text("Phase")
 	imgui.SameLineV(0, 5)
-	imgui.Spacing()
 
 	label := fmt.Sprintf("%.1f\u00b0", f)
 	changed := imgui.SliderFloatV("##ntsc_phase", &f, 20.0, 30.0, label, imgui.SliderFlagsNone)
@@ -181,6 +178,7 @@ func (win *winPrefs) drawNTSCPhase() {
 		label = "Custom"
 	}
 
+	imgui.Spacing()
 	imgui.AlignTextToFramePadding()
 	imgui.Text("Preset")
 	imgui.SameLineV(0, 5)
@@ -218,22 +216,10 @@ func (win *winPrefs) drawPALPhase() {
 	}
 }
 
-func (win *winPrefs) drawHaltConditions() {
-	if imgui.CollapsingHeader("Halting") {
-		imgui.Spacing()
-		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltVSYNCTooShort, "VSYNC too short")
-		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltVSYNCScanlineStart, "VSYNC start scanline changes")
-		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltVSYNCScanlineCount, "VSYNC scanline count changes")
-		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltVSYNCabsent, "VSYNC absent")
-		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltChangedVBLANK, "VBLANK bounds change")
-	}
-}
-
 func (win *winPrefs) drawVSYNC() {
 	var label string
 
 	if imgui.CollapsingHeader("Synchronisation") {
-
 		imgui.Spacing()
 		imgui.Text("VSYNC Scanlines Required")
 		scanlines := int32(win.img.dbg.VCS().Env.Prefs.TV.VSYNCscanlines.Get().(int))
@@ -247,54 +233,21 @@ func (win *winPrefs) drawVSYNC() {
 		if imgui.SliderIntV("##vsyncScanlines", &scanlines, 0, 4, label, 1.0) {
 			win.img.dbg.VCS().Env.Prefs.TV.VSYNCscanlines.Set(scanlines)
 		}
-
-		win.img.imguiTooltipSimple(`The number of scanlines for which VSYNC must be enabled
-for it to be a valid VSYNC signal`)
+		win.img.imguiTooltipSimple("Number of scanlines for valid VSYNC")
 
 		imgui.Spacing()
-		imgui.Text("Speed of Recovery")
-		recovery := int32(win.img.dbg.VCS().Env.Prefs.TV.VSYNCrecovery.Get().(int))
+		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.VSYNCimmedateSync, "Immediate Synchronisation")
+		win.img.imguiTooltipSimple("Whether the screen should synchroise immediately")
 
-		const (
-			verySlow  = 90
-			slow      = 75
-			quick     = 60
-			veryQuick = 45
-		)
+		drawDisabled(win.img.dbg.VCS().Env.Prefs.TV.VSYNCimmedateSync.Get().(bool), func() {
+			prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.VSYNCsyncedOnStart, "Synchronised on start")
+			win.img.imguiTooltipSimple("No visible synchronisation on start")
+		})
 
-		if recovery >= verySlow {
-			recovery = 3
-			label = fmt.Sprintf("very slow")
-		} else if recovery >= slow {
-			recovery = 2
-			label = fmt.Sprintf("slow")
-		} else if recovery >= quick {
-			recovery = 1
-			label = fmt.Sprintf("quick")
-		} else if recovery >= veryQuick {
-			recovery = 0
-			label = fmt.Sprintf("very quick")
-		}
+		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltChangedVSYNC, "Abort on bad VSYNC")
+		win.img.imguiTooltipSimple("Enter debugger when VSYNC is bad")
 
-		if imgui.SliderIntV("##vsyncRecover", &recovery, 0, 3, label, 1.0) {
-			if recovery >= 3 {
-				recovery = verySlow
-			} else if recovery == 2 {
-				recovery = slow
-			} else if recovery == 1 {
-				recovery = quick
-			} else if recovery == 0 {
-				recovery = veryQuick
-			}
-			win.img.dbg.VCS().Env.Prefs.TV.VSYNCrecovery.Set(recovery)
-		}
-
-		win.img.imguiTooltipSimple(`The speed at which the TV synchronises after
-receiving a valid VSYNC signal`)
-
-		imgui.Spacing()
-
-		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.VSYNCsyncedOnStart, "Synchronised on start")
-		win.img.imguiTooltipSimple(`The television is synchronised on start`)
+		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltChangedVBLANK, "Abort on changed VBLANK bounds")
+		win.img.imguiTooltipSimple("Enter debugger when use of VBLANK changes")
 	}
 }

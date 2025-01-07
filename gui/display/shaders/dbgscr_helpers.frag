@@ -6,7 +6,8 @@ uniform float ScalingY;
 uniform float LastX; 
 uniform float LastY;
 uniform float Hblank;
-uniform float LastNewFrameAtScanline;
+uniform float TotalScanlines;
+uniform float TopScanline;
 
 // the top and bottom scanlines to show. in the case of IsCropped then these
 // values will be used to draw the screen guides

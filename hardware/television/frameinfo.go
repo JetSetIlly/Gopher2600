@@ -51,15 +51,16 @@ type FrameInfo struct {
 	// the number of scanlines considered to be in the frame
 	TotalScanlines int
 
+	// the scanline which the screen starts at. ie. the scanline the TV flies
+	// back to. is zero in most cases. if it is not zero then the screen is
+	// recoving from a roll and is therefore not synced. see IsSynced() function
+	TopScanline int
+
 	// the top/bottom bounds of VBLANK. this is *not* the same as VisibleTop and
 	// VisbleBottom, which takes into account ideal screen sizing and
 	// situations where VBLANK is never set
 	VBLANKtop    int
 	VBLANKbottom int
-
-	// VBLANKatari is true if VBLANK top/bottom are equal to the values
-	// suggested by Atari
-	VBLANKatari bool
 
 	// the refresh rate. this value is derived from the number of scanlines
 	// and is really a short-cut for:
@@ -78,13 +79,6 @@ type FrameInfo struct {
 	// if FromVSYNC is false
 	VSYNCscanline int
 	VSYNCcount    int
-
-	// IsSynced indicates that the television is synchronised with the incoming
-	// VSYNC signal and is not rolling. this is different to FromVSYNC which
-	// simply tells us that this current frame was started as a result of a
-	// VSYNC signal (ie. the television might not yet have recorvered from a
-	// desynchronisation)
-	IsSynced bool
 
 	// Stable is true once the television frame has been consistent for N
 	// frames after reset. This is useful for pixel renderers that don't want
@@ -158,12 +152,6 @@ func (info *FrameInfo) reset() {
 	info.Stable = false
 }
 
-// IsAtariSafe returns true if the current frame matches the AtariSafe values
-// of the current specification.
-func (info FrameInfo) IsAtariSafe() bool {
-	return info.VisibleTop == info.Spec.AtariSafeVisibleTop && info.VisibleBottom == info.Spec.AtariSafeVisibleBottom
-}
-
 // TotalClocks returns the total number of clocks required to generate the
 // frame. The value returned assumes scanlines are complete - which may not be
 // the case.
@@ -184,4 +172,18 @@ func (info FrameInfo) ScreenClocks() int {
 // OverscanClocks returns the number of clocks in the Overscan portion of the frame.
 func (info FrameInfo) OverscanClocks() int {
 	return (info.TotalScanlines - info.VisibleBottom) * specification.ClksScanline
+}
+
+// AtariSage is true if VBLANK top/bottom are equal to the values suggested by
+// Atari for the specification.
+func (info FrameInfo) AtariSafe() bool {
+	return info.VisibleTop == info.Spec.AtariSafeVisibleTop &&
+		info.VisibleBottom == info.Spec.AtariSafeVisibleBottom
+}
+
+// IsSynced returns true if the frame is synchronised properly. The FromVSYNC
+// field tells us that the frame was generated from a corrected VSYNC signal but
+// the screen might still not be settled in a synchronised state.
+func (info FrameInfo) IsSynced() bool {
+	return info.TopScanline == 0 && info.FromVSYNC
 }

@@ -163,7 +163,7 @@ func (rz *Resizer) examine(state *State, sig signal.SignalAttributes) {
 		if state.frameInfo.Stable {
 			// if frame is not synced then it is probably rolling. we don't want
 			// to test for extended top and bottom unless the frame is synced
-			if state.frameInfo.IsSynced {
+			if state.frameInfo.IsSynced() {
 				if state.scanline < rz.vblankTop &&
 					state.scanline >= state.frameInfo.Spec.ExtendedVisibleTop {
 					rz.vblankTop = state.scanline
@@ -204,7 +204,7 @@ func (rz *Resizer) examine(state *State, sig signal.SignalAttributes) {
 	if state.clock > specification.ClksHBlank && !sig.VBlank {
 		if sig.Color == 0x00 {
 			// screen must be stable and synced
-			if state.frameInfo.Stable && state.frameInfo.IsSynced {
+			if state.frameInfo.Stable && state.frameInfo.IsSynced() {
 				if state.scanline < rz.blackTop &&
 					state.scanline >= state.frameInfo.Spec.ExtendedVisibleTop {
 					rz.blackTop = state.scanline

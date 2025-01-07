@@ -3,6 +3,8 @@ in vec2 Frag_UV;
 in vec4 Frag_Color;
 out vec4 Out_Color;
 
+bool cursor();
+
 void main()
 {
 	prepareDbgScr();
@@ -11,8 +13,16 @@ void main()
 	if (IsCropped == 1) {
 		visibleBottom = (VisibleBottom - VisibleTop) / ScreenDim.y;
 		lastY -=  pixelY * VisibleTop;
-	} else {
-		// visible screen guides
+	}
+
+	// draw cursor as a priority. it is always drawn in preference to any other pixel
+	if (ShowCursor == 1) {
+		if (cursor() == true) {
+			return;
+		}
+	}
+
+	if (IsCropped == 0) {
 		float visibleTop = pixelY * VisibleTop;
 		visibleBottom = pixelY * VisibleBottom;
 
@@ -28,10 +38,11 @@ void main()
 			}
 		}
 
-		// no signal area extends from the lastNewFrameAtScanline pixel to the
+		// no signal area extends from the total scanlines pixel to the
 		// bottom of the texture
-		float lastNewFrameAtScanline = pixelY * LastNewFrameAtScanline;
-		if (Frag_UV.y >= lastNewFrameAtScanline) {
+		float totalScanlines = pixelY * TotalScanlines;
+		float topScanline = pixelY * TopScanline;
+		if (Frag_UV.y >= totalScanlines || Frag_UV.y < topScanline) {
 			// adding x and y frag coords creates a diagonal stripe
 			if (mod(floor(gl_FragCoord.x+gl_FragCoord.y), 8) < 3.0) {
 				Out_Color.r = 0.05;
@@ -100,82 +111,85 @@ void main()
 		}
 	}
 
-	// show cursor. the cursor illustrates the *most recent* pixel to be drawn
+
+	// painting effect but if the emulation is still on the first line of
+	// the TV frame
 	if (ShowCursor == 1) {
-		// draw cursor if pixel is at the last x/y position
-		if (lastY >= 0 && lastX >= 0) {
-			if (isNearEqual(Frag_UV.y, lastY+texelY, texelY) && isNearEqual(Frag_UV.x, lastX+texelX/2, texelX/2)) {
-				Out_Color.r = 1.0;
-				Out_Color.g = 1.0;
-				Out_Color.b = 1.0;
-				Out_Color.a = 1.0;
-				return;
-			}
-		}
-
-		// draw off-screen cursor for HBLANK
-		if (lastX < 0 && isNearEqual(Frag_UV.y, lastY+texelY, texelY) && isNearEqual(Frag_UV.x, 0, texelX/2)) {
-			Out_Color.r = 1.0;
-			Out_Color.g = 0.0;
-			Out_Color.b = 0.0;
-			Out_Color.a = 1.0;
-			return;
-		}
-
-		// for cropped screens there are a few more conditions that we need to
-		// consider for drawing an off-screen cursor
-		if (IsCropped == 1) {
-			// when VBLANK is active but HBLANK is off
-			if (isNearEqual(Frag_UV.x, lastX, texelX/2)) {
-				// top of screen
-				if (lastY < 0 && isNearEqual(Frag_UV.y, 0, texelY)) {
-					Out_Color.r = 1.0;
-					Out_Color.g = 0.0;
-					Out_Color.b = 0.0;
-					Out_Color.a = 1.0;
-					return;
-				}
-			
-				// bottom of screen (knocking a pixel off the scanline
-				// boundary check to make sure the cursor is visible)
-				if (lastY > visibleBottom-pixelY && isNearEqual(Frag_UV.y, visibleBottom, texelY)) {
-					Out_Color.r = 1.0;
-					Out_Color.g = 0.0;
-					Out_Color.b = 0.0;
-					Out_Color.a = 1.0;
-					return;
-				}
-			}
-
-			// when HBLANK and VBLANK are both active
-			if (lastX < 0 && isNearEqual(Frag_UV.x, 0, texelX/2)) {
-				// top/left corner of screen
-				if (lastY < 0 && isNearEqual(Frag_UV.y, 0, texelY)) {
-					Out_Color.r = 1.0;
-					Out_Color.g = 0.0;
-					Out_Color.b = 0.0;
-					Out_Color.a = 1.0;
-					return;
-				}
-
-				// bottom/left corner of screen (knocking a pixel off the
-				// scanline boundary check to make sure the cursor is
-				// visible)
-				if (lastY > visibleBottom-pixelY && isNearEqual(Frag_UV.y, visibleBottom, texelY)) {
-					Out_Color.r = 1.0;
-					Out_Color.g = 0.0;
-					Out_Color.b = 0.0;
-					Out_Color.a = 1.0;
-					return;
-				}
-			}
-		}
-
-		// painting effect but if the emulation is still on the first line of
-		// the TV frame
 		if (LastY > 0) {
 			Out_Color = paintingEffect(Frag_UV, Out_Color);
 		}
 	}
 }
 
+bool cursor() {
+	// draw cursor if pixel is at the last x/y position
+	if (lastY >= 0 && lastX >= 0) {
+		if (isNearEqual(Frag_UV.y, lastY+texelY, texelY) && isNearEqual(Frag_UV.x, lastX+texelX/2, texelX/2)) {
+			Out_Color.r = 1.0;
+			Out_Color.g = 1.0;
+			Out_Color.b = 1.0;
+			Out_Color.a = 1.0;
+			return true;
+		}
+	}
+
+	// draw off-screen cursor for HBLANK
+	if (lastX < 0 && isNearEqual(Frag_UV.y, lastY+texelY, texelY) && isNearEqual(Frag_UV.x, 0, texelX/2)) {
+		Out_Color.r = 1.0;
+		Out_Color.g = 0.0;
+		Out_Color.b = 0.0;
+		Out_Color.a = 1.0;
+		return true;
+	}
+
+	// for cropped screens there are a few more conditions that we need to
+	// consider for drawing an off-screen cursor
+	if (IsCropped == 1) {
+		// when VBLANK is active but HBLANK is off
+		if (isNearEqual(Frag_UV.x, lastX, texelX/2)) {
+			// top of screen
+			if (lastY < 0 && isNearEqual(Frag_UV.y, 0, texelY)) {
+				Out_Color.r = 1.0;
+				Out_Color.g = 0.0;
+				Out_Color.b = 0.0;
+				Out_Color.a = 1.0;
+				return true;
+			}
+		
+			// bottom of screen (knocking a pixel off the scanline
+			// boundary check to make sure the cursor is visible)
+			if (lastY > visibleBottom-pixelY && isNearEqual(Frag_UV.y, visibleBottom, texelY)) {
+				Out_Color.r = 1.0;
+				Out_Color.g = 0.0;
+				Out_Color.b = 0.0;
+				Out_Color.a = 1.0;
+				return true;
+			}
+		}
+
+		// when HBLANK and VBLANK are both active
+		if (lastX < 0 && isNearEqual(Frag_UV.x, 0, texelX/2)) {
+			// top/left corner of screen
+			if (lastY < 0 && isNearEqual(Frag_UV.y, 0, texelY)) {
+				Out_Color.r = 1.0;
+				Out_Color.g = 0.0;
+				Out_Color.b = 0.0;
+				Out_Color.a = 1.0;
+				return true;
+			}
+
+			// bottom/left corner of screen (knocking a pixel off the
+			// scanline boundary check to make sure the cursor is
+			// visible)
+			if (lastY > visibleBottom-pixelY && isNearEqual(Frag_UV.y, visibleBottom, texelY)) {
+				Out_Color.r = 1.0;
+				Out_Color.g = 0.0;
+				Out_Color.b = 0.0;
+				Out_Color.a = 1.0;
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
