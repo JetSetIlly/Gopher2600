@@ -85,8 +85,8 @@ func (win *winDbgScr) mouseFromVec2(pos imgui.Vec2) dbgScrMouse {
 	// frame field of the coordinates field is undefined in this context
 	mouse.tv.Frame = coords.FrameIsUndefined
 
-	// adjust depending on whether screen is cropped (or in CRT Preview)
-	if win.cropped || win.crtPreview {
+	// adjust depending on whether screen is cropped
+	if win.cropped {
 		mouse.scaled.x += specification.ClksHBlank
 		mouse.scaled.y += win.scr.crit.frameInfo.VisibleTop
 		mouse.tv.Scanline += win.scr.crit.frameInfo.VisibleTop

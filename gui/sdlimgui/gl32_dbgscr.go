@@ -21,6 +21,7 @@ import (
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/display/shaders"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/framebuffer"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -83,7 +84,7 @@ func (attr *dbgScrHelper) set(img *SdlImgui) {
 	cursorY := img.screen.crit.lastY
 
 	// if crt preview is enabled then force cropping
-	if img.wm.dbgScr.cropped || img.wm.dbgScr.crtPreview {
+	if img.wm.dbgScr.cropped {
 		gl.Uniform1f(attr.lastX, float32(cursorX-specification.ClksHBlank)*xscaling)
 		gl.Uniform1i(attr.isCropped, boolToInt32(true))
 	} else {
@@ -100,7 +101,7 @@ func (attr *dbgScrHelper) set(img *SdlImgui) {
 
 	// window magnification
 	var magXmin, magYmin, magXmax, magYmax float32
-	if img.wm.dbgScr.cropped || img.wm.dbgScr.crtPreview {
+	if img.wm.dbgScr.cropped {
 		magXmin = float32(img.wm.dbgScr.magnifyWindow.clip.Min.X-specification.ClksHBlank) * xscaling
 		magYmin = float32(img.wm.dbgScr.magnifyWindow.clip.Min.Y-img.screen.crit.frameInfo.VisibleTop) * yscaling
 		magXmax = float32(img.wm.dbgScr.magnifyWindow.clip.Max.X-specification.ClksHBlank) * xscaling
@@ -138,14 +139,17 @@ type dbgScrShader struct {
 	dbgScrHelper
 
 	img *SdlImgui
-	crt *crtSequencer
+
+	sequence *framebuffer.Flip
+	sharpen  shaderProgram
 }
 
 func newDbgScrShader(img *SdlImgui) shaderProgram {
 	sh := &dbgScrShader{
-		img: img,
+		img:      img,
+		sequence: framebuffer.NewFlip(true),
+		sharpen:  newSharpenShader(),
 	}
-	sh.crt = newCRTSequencer(img)
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.DbgScrHelpersShader), string(shaders.DbgScrShader))
 	sh.dbgScrHelper.get(sh.shader)
 
@@ -153,12 +157,19 @@ func newDbgScrShader(img *SdlImgui) shaderProgram {
 }
 
 func (sh *dbgScrShader) destroy() {
-	sh.crt.destroy()
+	sh.sequence.Destroy()
+	sh.sharpen.destroy()
 }
 
 func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 	env.width = int32(sh.img.wm.dbgScr.scaledWidth)
 	env.height = int32(sh.img.wm.dbgScr.scaledHeight)
+
+	if sh.img.wm.dbgScr.elements {
+		env.textureID = sh.img.wm.dbgScr.elementsTexture.getID()
+	} else {
+		env.textureID = sh.img.wm.dbgScr.displayTexture.getID()
+	}
 
 	gl.Viewport(-int32(sh.img.wm.dbgScr.screenOrigin.X),
 		-int32(sh.img.wm.dbgScr.screenOrigin.Y),
@@ -171,7 +182,7 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 		env.height+int32(sh.img.wm.dbgScr.screenOrigin.Y),
 	)
 
-	projection := env.projMtx
+	projMtx := env.projMtx
 	env.projMtx = [4][4]float32{
 		{2.0 / (sh.img.wm.dbgScr.scaledWidth + sh.img.wm.dbgScr.screenOrigin.X), 0.0, 0.0, 0.0},
 		{0.0, -2.0 / (sh.img.wm.dbgScr.scaledHeight + sh.img.wm.dbgScr.screenOrigin.Y), 0.0, 0.0},
@@ -179,70 +190,15 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 		{-1.0, 1.0, 0.0, 1.0},
 	}
 
-	if sh.img.wm.dbgScr.crtPreview {
-		// this is a bit weird but in the case of crtPreview we need to force
-		// the use of the dbgscr's normalTexture. this is because for a period
-		// of one frame the value of crtPreview and the texture being used in
-		// the dbgscr's image button may not agree.
-		//
-		// consider the sequence and interaction of dbgscr with glsl:
-		//
-		// 1) crtPreview is checked to decide whether to show the normalTexture
-		// 2) if it is false and elements is true then the elementsTexture is
-		//          selected
-		// 3) the crt checkbox is shown and clicked. the crtPreview value is
-		//          changed on this frame
-		// 4) for one frame therefore, it is possible to reach this point
-		//          (crtPreview is true) but for the elementsTexture to have
-		//          been chosen
-		//
-		// forcing the use of the normalTexture at this point seems the least
-		// obtrusive solution. another solutions could be to defer otion
-		// changes to the following frame but that would involve a manager of
-		// some sort.
-		//
-		// altenatively, we could try a more structured method of attaching a
-		// texture to an imgui.Image and packaging texture specific options
-		// within that structure.
-		//
-		// both alternative solutions seem baroque for a single use case. maybe
-		// something for the future.
-		env.textureID = sh.img.wm.dbgScr.displayTexture.getID()
+	env.flipY = true
+	sh.sequence.Setup(env.width, env.height)
+	env.textureID = sh.sequence.Process(func() {
+		sh.sharpen.(*sharpenShader).process(env, 2)
+		env.draw()
+	})
+	env.flipY = false
 
-		prefs := newCrtSeqPrefs(sh.img.crt)
-		prefs.PixelPerfect = false
-
-		env.textureID = sh.crt.process(env, sh.img.wm.dbgScr.displayTexture.getID(),
-			true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible, prefs, specification.NormalRotation, false)
-		env.projMtx = projection
-	} else {
-		// if crtPreview is disabled we still go through the crt process. we do
-		// this for two reasons.
-		//
-		// 1) to scale the image to the correct size
-		//
-		// 2) the phosphor is kept up to date, which is important for the
-		// moment the crtPreview is enabled.
-		//
-		// note that we specify integer scaling for the non-CRT preview image,
-		// this is so that the overlay is aligned properly with the TV image
-
-		prefs := newCrtSeqPrefs(sh.img.crt)
-		prefs.PixelPerfect = true
-
-		var id uint32
-		if sh.img.wm.dbgScr.elements {
-			id = sh.img.wm.dbgScr.elementsTexture.getID()
-		} else {
-			id = sh.img.wm.dbgScr.displayTexture.getID()
-		}
-
-		env.textureID = sh.crt.process(env, id,
-			true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible,
-			prefs, specification.NormalRotation, false)
-		env.projMtx = projection
-	}
-
+	env.projMtx = projMtx
 	sh.shader.setAttributes(env)
 	sh.dbgScrHelper.set(sh.img)
 }

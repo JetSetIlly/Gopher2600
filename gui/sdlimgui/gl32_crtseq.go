@@ -135,11 +135,8 @@ func (sh *crtSequencer) flushPhosphor() {
 //
 // returns the textureID of the processed image
 func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
-	windowed bool, numScanlines int, numClocks int,
+	numScanlines int, numClocks int,
 	prefs crtSeqPrefs, rotation specification.Rotation, screenshot bool) uint32 {
-
-	// the flipY value depends on whether the texture is to be windowed
-	env.flipY = windowed
 
 	// phosphor draw
 	phosphorPasses := 1
@@ -193,6 +190,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 				sh.phosphorShader.(*phosphorShader).process(env, float32(prefs.PixelPerfectFade), newFrameForPhosphor)
 				env.draw()
 			})
+			env.flipY = false
 		} else {
 			if prefs.Phosphor {
 				// use blur shader to add bloom to previous phosphor
@@ -210,11 +208,6 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 			})
 		}
 	}
-
-	// we've possibly altered the flipY value in the phosphor loop above, so we
-	// need to restore it to equal the windowed value (ie. as the flipY was at
-	// the beginning of the function)
-	env.flipY = windowed
 
 	if prefs.PixelPerfect {
 		env.textureID = sh.sequence.Process(func() {
