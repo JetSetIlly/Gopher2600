@@ -144,7 +144,7 @@ type AudioMixer interface {
 	//
 	//		...
 	//	}
-	SetAudio(sig []signal.SignalAttributes) error
+	SetAudio(sig []signal.AudioSignalAttributes) error
 
 	// some mixers may need to conclude and/or dispose of resources gently.
 	// for simplicity, the AudioMixer should be considered unusable after
@@ -156,15 +156,20 @@ type AudioMixer interface {
 	Reset()
 }
 
-// RealtimeAudioMixer is an extension for the AudioMixer interface.
-// Implementations of this interface expect to be given more audio data on
-// demand
-//
-// MoreAudio() is called periodically (every scanline) and the implementation
-// should return true if more audio data is required immediately
+// RealtimeAudioMixer should be implemented by audio mixers that are sensitive
+// to the refresh rate of the console/television
 type RealtimeAudioMixer interface {
 	AudioMixer
-	MoreAudio() bool
+
+	// Notifies the mixer of the basic refresh rate of the television. If the
+	// refresh rate is significantly outside the nominal rate for the
+	// specification then the audio queue will be suboptimal
+	SetSpec(specification.Spec)
+
+	// Regulate returns a positive number if the rate at which SetAudio() is
+	// being called is too low; and a negative number if the rate is too high. A
+	// value of zero indicates that the rate is okay
+	Regulate() int
 }
 
 // VCS is used to send information from the TV back to the parent console

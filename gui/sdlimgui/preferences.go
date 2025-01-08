@@ -65,6 +65,7 @@ type preferences struct {
 	notificationVisibility    prefs.Float
 	memoryUsageInOverlay      prefs.Bool
 	frameQueueMeterInOverlay  prefs.Bool
+	audioQueueMeterInOverlay  prefs.Bool
 
 	// fonts
 	guiFontSize         prefs.Int
@@ -160,6 +161,10 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("sdlimgui.playmode.frameQueueMeterInOverlay", &p.frameQueueMeterInOverlay)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.playmode.audioQueueMeterInOverlay", &p.audioQueueMeterInOverlay)
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +295,8 @@ func (p *preferences) setDefaults() {
 	p.audioMuteNotification.Set(true)
 	p.notificationVisibility.Set(0.75)
 	p.memoryUsageInOverlay.Set(false)
-	p.memoryUsageInOverlay.Set(false)
+	p.frameQueueMeterInOverlay.Set(false)
+	p.audioQueueMeterInOverlay.Set(false)
 	p.guiFontSize.Set(13)
 	p.terminalFontSize.Set(12)
 	p.codeFontSize.Set(15)

@@ -244,6 +244,11 @@ of the ROM.`)
 			win.img.prefs.frameQueueMeterInOverlay.Set(frameQueueMeter)
 		}
 
+		audioQueueMeter := win.img.prefs.audioQueueMeterInOverlay.Get().(bool)
+		if imgui.Checkbox("Audio Queue Meter", &audioQueueMeter) {
+			win.img.prefs.audioQueueMeterInOverlay.Set(audioQueueMeter)
+		}
+
 		memoryUsageInOverlay := win.img.prefs.memoryUsageInOverlay.Get().(bool)
 		if imgui.Checkbox("Memory Usage", &memoryUsageInOverlay) {
 			win.img.prefs.memoryUsageInOverlay.Set(memoryUsageInOverlay)

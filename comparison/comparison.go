@@ -405,7 +405,7 @@ func (cmp *Comparison) EndRendering() error {
 }
 
 // SetAudio implements the television.AudioMixer interface.
-func (cmp *Comparison) SetAudio(sig []signal.SignalAttributes) error {
+func (cmp *Comparison) SetAudio(sig []signal.AudioSignalAttributes) error {
 	for _, s := range sig {
 		cmp.audio = append(cmp.audio, s.AudioChannel0, s.AudioChannel1)
 	}

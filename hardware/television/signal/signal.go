@@ -41,15 +41,12 @@ const NoSignal = -1
 // When reset the Index field should be set to NoSignal and the Color field
 // should be set to VideoBlack
 type SignalAttributes struct {
-	Index         int
-	VSync         bool
-	VBlank        bool
-	CBurst        bool
-	HSync         bool
-	AudioUpdate   bool
-	AudioChannel0 uint8
-	AudioChannel1 uint8
-	Color         ColorSignal
+	Index  int
+	VSync  bool
+	VBlank bool
+	CBurst bool
+	HSync  bool
+	Color  ColorSignal
 }
 
 func (a SignalAttributes) String() string {
@@ -67,4 +64,9 @@ func (a SignalAttributes) String() string {
 		s.WriteString("HSYNC ")
 	}
 	return s.String()
+}
+
+type AudioSignalAttributes struct {
+	AudioChannel0 uint8
+	AudioChannel1 uint8
 }

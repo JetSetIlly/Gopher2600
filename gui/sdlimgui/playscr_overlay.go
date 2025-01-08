@@ -25,6 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/notifications"
 )
@@ -283,13 +284,13 @@ func (ovly *playscrOverlay) drawTopLeft() {
 
 			imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.FrameQueueSlackActive)
 			for _ = range ovly.playscr.scr.frameQueueSlack {
-				imgui.Text(string(fonts.SlackCounter))
+				imgui.Text(string(fonts.MeterSegment))
 				imgui.SameLineV(0, 0)
 			}
 
 			imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.FrameQueueSlackInactive)
 			for _ = range ovly.playscr.scr.crit.frameQueueLen - ovly.playscr.scr.frameQueueSlack {
-				imgui.Text(string(fonts.SlackCounter))
+				imgui.Text(string(fonts.MeterSegment))
 				imgui.SameLineV(0, 0)
 			}
 			imgui.Text("")
@@ -306,6 +307,60 @@ func (ovly *playscrOverlay) drawTopLeft() {
 			if ovly.renderAlert > 0 {
 				imgui.SameLineV(0, 5)
 				imgui.Text(string(fonts.RenderTime))
+			}
+		}
+
+		if ovly.img.prefs.audioQueueMeterInOverlay.Get().(bool) {
+			// draw separator if there is no frame queue meter
+			if !ovly.img.prefs.frameQueueMeterInOverlay.Get().(bool) {
+				imguiSeparator()
+			} else {
+				imgui.Spacing()
+			}
+
+			if ovly.img.audio.QueuedBytes == 0 {
+				imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.AudioQueueInactive)
+				imgui.Text(string(fonts.MeterSegment))
+				imgui.SameLineV(0, 0)
+				imgui.Text(string(fonts.MeterSegment))
+				imgui.SameLineV(0, 0)
+				imgui.Text(string(fonts.MeterSegment))
+				imgui.SameLineV(0, 0)
+				imgui.PopStyleColor()
+			} else if ovly.img.audio.QueuedBytes < sdlaudio.MeterOkay {
+				imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.AudioQueueActive)
+				imgui.Text(string(fonts.MeterSegment))
+				imgui.SameLineV(0, 0)
+				imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.AudioQueueInactive)
+				imgui.Text(string(fonts.MeterSegment))
+				imgui.SameLineV(0, 0)
+				imgui.Text(string(fonts.MeterSegment))
+				imgui.SameLineV(0, 0)
+				imgui.PopStyleColorV(2)
+			} else if ovly.img.audio.QueuedBytes < sdlaudio.MeterWarning {
+				imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.AudioQueueActive)
+				imgui.Text(string(fonts.MeterSegment))
+				imgui.SameLineV(0, 0)
+				imgui.Text(string(fonts.MeterSegment))
+				imgui.SameLineV(0, 0)
+				imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.AudioQueueInactive)
+				imgui.Text(string(fonts.MeterSegment))
+				imgui.SameLineV(0, 0)
+				imgui.PopStyleColorV(2)
+			} else {
+				imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.AudioQueueActive)
+				imgui.Text(string(fonts.MeterSegment))
+				imgui.SameLineV(0, 0)
+				imgui.Text(string(fonts.MeterSegment))
+				imgui.SameLineV(0, 0)
+				imgui.Text(string(fonts.MeterSegment))
+				imgui.SameLineV(0, 0)
+				imgui.PopStyleColor()
+			}
+
+			imgui.Spacing()
+			if !ovly.img.prefs.audioMutePlaymode.Get().(bool) {
+				imgui.Textf("%dkb audio queue", ovly.img.audio.QueuedBytes/1024)
 			}
 		}
 

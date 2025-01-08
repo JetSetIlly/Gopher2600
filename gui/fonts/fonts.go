@@ -100,7 +100,7 @@ const (
 	VBLANKtop              = '\uf35b'
 	VBLANKbottom           = '\uf358'
 	VBLANKatari            = '\uf14a'
-	SlackCounter           = '\uf04d'
+	MeterSegment           = '\uf04d'
 	RenderTime             = '\uf06a'
 	SelectedTick           = '\uf058'
 )

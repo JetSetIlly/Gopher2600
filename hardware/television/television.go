@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/limiter"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -75,6 +76,13 @@ type State struct {
 
 	// latch to say if next flyback was a result of VSYNC or not
 	fromVSYNC bool
+
+	// if VSYNC was attempted but failed due to the current TV settings. in that
+	// case fromVSYNC will be false and failedVSYNC will be true
+	//
+	// we use this to prevent the setRefreshRate() function from changing the
+	// audio refresh rate if the ROM is at least trying to synchronise
+	failedVSYNC bool
 
 	// frame resizer
 	resizer Resizer
@@ -166,9 +174,6 @@ func (s *State) GetCoords() coords.TelevisionCoords {
 type Television struct {
 	env *environment.Environment
 
-	// the simple signal path will be used if the simple field is non-nil
-	signal func(sig signal.SignalAttributes)
-
 	// the ID with which the television was created. this overrides all spec
 	// changes unles the value is AUTO
 	creationSpecID string
@@ -194,8 +199,7 @@ type Television struct {
 	// list of audio mixers to consult
 	mixers []AudioMixer
 
-	// realtime mixer. only one allowed
-	realtimeMixer RealtimeAudioMixer
+	realTimeMixer RealtimeAudioMixer
 
 	// instance of current state (as supported by the rewind system)
 	state *State
@@ -215,25 +219,24 @@ type Television struct {
 	//
 	// because each SignalAttribute can be decoded for scanline and clock
 	// information the array can be sliced freely
-	signals []signal.SignalAttributes
-
-	// the index of the most recent Signal()
+	//
+	// currentSignalIdx is the index of the most recent Signal()
+	//
+	// firstSignalIdx the index of the first Signal() in the frame
+	signals          []signal.SignalAttributes
 	currentSignalIdx int
+	firstSignalIdx   int
 
-	// the index of the first Signal() in the frame
-	firstSignalIdx int
-
-	// updated in renderSignals() function. might need more nuanced
-	// copying/appending. for example if renderSignals() is called multiple
-	// times per frame. currently this will only happen in the debugger when
-	// execution is halted mid frame so I don't think it's an issue
-	prevSignals       []signal.SignalAttributes
-	prevSignalLastIdx int
-	prevSignalFirst   int
+	audioSignals     []signal.AudioSignalAttributes
+	audioSignalLimit int
 
 	// state of emulation
 	emulationState govern.State
 }
+
+// baseline value for audio signal limit. this will move up and down based on
+// any realtime mixer that's attached
+const baselineAudioSignalLimit = 600
 
 // NewTelevision creates a new instance of the television type, satisfying the
 // Television interface.
@@ -248,8 +251,7 @@ func NewTelevision(spec string) (*Television, error) {
 		state: &State{
 			reqSpecID: spec,
 		},
-		signals:     make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
-		prevSignals: make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
+		signals: make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
 	}
 
 	// initialise frame rate limiter
@@ -287,6 +289,7 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	tv.state.stableFrames = 0
 	tv.state.vsync.reset()
 	tv.state.fromVSYNC = false
+	tv.state.failedVSYNC = false
 	tv.state.lastSignal = signal.SignalAttributes{
 		Index: signal.NoSignal,
 	}
@@ -309,10 +312,6 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 
 	for _, m := range tv.mixers {
 		m.Reset()
-	}
-
-	if tv.realtimeMixer != nil {
-		tv.realtimeMixer.Reset()
 	}
 
 	return nil
@@ -424,6 +423,12 @@ func (tv *Television) RemoveScanlineTrigger(f ScanlineTrigger) {
 	}
 }
 
+// SetRealTimeAudioMixer specified which realtime audio mixer to use. Only one
+// realtime mixer can be set at once. Unset with nil
+func (tv *Television) SetRealTimeAudioMixer(m RealtimeAudioMixer) {
+	tv.realTimeMixer = m
+}
+
 // AddAudioMixer adds an implementation of AudioMixer.
 func (tv *Television) AddAudioMixer(m AudioMixer) {
 	for i := range tv.mixers {
@@ -446,18 +451,6 @@ func (tv *Television) RemoveAudioMixer(m AudioMixer) {
 	}
 }
 
-// AddRealtimeAudioMixer adds a RealtimeAudioMixer. Any previous assignment is
-// lost.
-func (tv *Television) AddRealtimeAudioMixer(m RealtimeAudioMixer) {
-	tv.realtimeMixer = m
-}
-
-// RemoveRealtimeAudioMixer removes any RealtimeAudioMixer implementation from
-// the Television.
-func (tv *Television) RemoveRealtimeAudioMixer() {
-	tv.realtimeMixer = nil
-}
-
 // some televisions may need to conclude and/or dispose of resources
 // gently. implementations of End() should call EndRendering() and
 // EndMixing() on each PixelRenderer and AudioMixer that has been added.
@@ -478,6 +471,38 @@ func (tv *Television) End() error {
 	}
 
 	return err
+}
+
+// AudioSignal updates the audio stream.
+func (tv *Television) AudioSignal(sig signal.AudioSignalAttributes) {
+	tv.audioSignals = append(tv.audioSignals, sig)
+	if len(tv.audioSignals) >= tv.audioSignalLimit {
+		if tv.realTimeMixer != nil {
+			// find balance point for the realtime mixer queue
+			b := tv.realTimeMixer.Regulate()
+			if b > 0 {
+				tv.audioSignalLimit -= 3 * audio.SamplesPerScanline
+				tv.audioSignalLimit = max(tv.audioSignalLimit, 100)
+			} else if b < 0 {
+				tv.audioSignalLimit += 3 * audio.SamplesPerScanline
+				tv.audioSignalLimit = min(tv.audioSignalLimit, 1200)
+			}
+
+			err := tv.realTimeMixer.SetAudio(tv.audioSignals[:])
+			if err != nil {
+				logger.Log(tv.env, "TV", err)
+			}
+		}
+
+		// update normal mixers
+		for _, m := range tv.mixers {
+			err := m.SetAudio(tv.audioSignals[:])
+			if err != nil {
+				logger.Log(tv.env, "TV", err)
+			}
+		}
+		tv.audioSignals = tv.audioSignals[:0]
+	}
 }
 
 // Signal updates the current state of the television.
@@ -534,6 +559,8 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 					}
 					tv.state.frameInfo.VSYNCunstable = true
 				}
+			} else {
+				tv.state.failedVSYNC = true
 			}
 		}
 	}
@@ -666,17 +693,6 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 }
 
 func (tv *Television) newScanline() error {
-	// check for realtime mixing requirements. if it is required then
-	// immediately push the audio data from the previous frame to the mixer
-	if tv.realtimeMixer != nil && tv.emulationState == govern.Running && tv.state.frameInfo.Stable {
-		if tv.realtimeMixer.MoreAudio() {
-			err := tv.realtimeMixer.SetAudio(tv.prevSignals[:tv.prevSignalLastIdx])
-			if err != nil {
-				return err
-			}
-		}
-	}
-
 	// notify renderers of new scanline
 	for _, r := range tv.renderers {
 		err := r.NewScanline(tv.state.scanline)
@@ -839,8 +855,9 @@ func (tv *Television) newFrame() error {
 	tv.state.frameInfo.VSYNCclock = tv.state.vsync.startClock
 	tv.state.frameInfo.VSYNCcount = tv.state.vsync.activeScanlineCount
 
-	// reset fromVSYNC latch
+	// reset fromVSYNC latch and failedVSYNC latch
 	tv.state.fromVSYNC = false
+	tv.state.failedVSYNC = false
 
 	// nullify unused signals at end of frame
 	for i := tv.currentSignalIdx; i < len(tv.signals); i++ {
@@ -890,26 +907,6 @@ func (tv *Television) newFrame() error {
 }
 
 func (tv *Television) renderSignals() error {
-	// update realtime mixers
-	//
-	// an additional condition saying the realtimeMixer is used only once the
-	// frame is stable has been removed. it was thought to improve sound on
-	// startup for some ROMs but in some pathological cases it means sound is
-	// never output. in particular, the tunabit demo ROM.
-	//
-	// https://atariage.com/forums/topic/274172-tiatune-tia-music-player-with-correct-tuning/
-	if tv.realtimeMixer != nil {
-		err := tv.realtimeMixer.SetAudio(tv.signals[tv.firstSignalIdx:tv.currentSignalIdx])
-		if err != nil {
-			return err
-		}
-
-		// make a copy of signals just rendered _only_ if we are using a realtime mixer
-		copy(tv.prevSignals, tv.signals)
-		tv.prevSignalLastIdx = tv.currentSignalIdx
-		tv.prevSignalFirst = tv.firstSignalIdx
-	}
-
 	// do not render pixels if emulation is in the rewinding state
 	if tv.emulationState != govern.Rewinding {
 		for _, r := range tv.renderers {
@@ -917,14 +914,6 @@ func (tv *Television) renderSignals() error {
 			if err != nil {
 				return err
 			}
-		}
-	}
-
-	// update mixers
-	for _, m := range tv.mixers {
-		err := m.SetAudio(tv.signals[tv.firstSignalIdx:tv.currentSignalIdx])
-		if err != nil {
-			return err
 		}
 	}
 
@@ -957,6 +946,9 @@ func (tv *Television) SetSpec(spec string, forced bool) error {
 func (tv *Television) setSpec(spec string) {
 	tv.state.setSpec(spec)
 	tv.setRefreshRate(tv.state.frameInfo.Spec.RefreshRate)
+	if tv.realTimeMixer != nil {
+		tv.realTimeMixer.SetSpec(tv.state.frameInfo.Spec)
+	}
 }
 
 // setRefreshRate of TV. also calls the SetClockSpeed() function in the vcs
@@ -966,6 +958,7 @@ func (tv *Television) setRefreshRate(rate float32) {
 	if tv.vcs != nil {
 		tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec)
 	}
+	tv.audioSignalLimit = baselineAudioSignalLimit
 }
 
 // SetEmulationState is called by emulation whenever state changes. How we

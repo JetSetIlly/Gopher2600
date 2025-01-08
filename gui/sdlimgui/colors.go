@@ -51,6 +51,8 @@ type imguiColors struct {
 	// overlay colors
 	FrameQueueSlackActive   imgui.Vec4
 	FrameQueueSlackInactive imgui.Vec4
+	AudioQueueActive        imgui.Vec4
+	AudioQueueInactive      imgui.Vec4
 
 	// ROM selector
 	ROMSelectDir  imgui.Vec4
@@ -262,6 +264,8 @@ func newColors() *imguiColors {
 		//  overlay colors
 		FrameQueueSlackActive:   imgui.Vec4{X: 1.0, Y: 0.3, Z: 0.3, W: 0.8},
 		FrameQueueSlackInactive: imgui.Vec4{X: 1.0, Y: 0.3, Z: 0.3, W: 0.3},
+		AudioQueueActive:        imgui.Vec4{X: 0.3, Y: 0.3, Z: 1.0, W: 0.8},
+		AudioQueueInactive:      imgui.Vec4{X: 0.3, Y: 0.3, Z: 1.0, W: 0.3},
 
 		// ROM selector
 		ROMSelectDir:  imgui.Vec4{X: 0.5, Y: 0.5, Z: 1.0, W: 1.0},

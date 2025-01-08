@@ -220,7 +220,7 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
-	img.dbg.VCS().TV.AddRealtimeAudioMixer(img.audio)
+	img.dbg.VCS().TV.SetRealTimeAudioMixer(img.audio)
 
 	// set event filter for SDL see comment for serviceWindowEvent()
 	sdl.AddEventWatchFunc(img.serviceWindowEvent, nil)
