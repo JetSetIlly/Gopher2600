@@ -58,8 +58,8 @@ type vsync struct {
 
 func (v *vsync) reset() {
 	v.active = false
+	v.startScanline = 0
 	v.startClock = 0
 	v.activeScanlineCount = 0
-	v.startScanline = 0
 	v.topScanline = 0
 }

@@ -78,6 +78,7 @@ type FrameInfo struct {
 	// VSYNCscanline is the scanline on which the VSYNC signal starts. not valid
 	// if FromVSYNC is false
 	VSYNCscanline int
+	VSYNCclock    int
 	VSYNCcount    int
 
 	// Stable is true once the television frame has been consistent for N

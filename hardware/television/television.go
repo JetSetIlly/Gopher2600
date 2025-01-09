@@ -353,7 +353,7 @@ func (tv *Television) AttachVCS(env *environment.Environment, vcs VCS) {
 	}
 }
 
-// AddDebuuger adds an implementation of Debugger.
+// AddDebugger adds an implementation of Debugger.
 func (tv *Television) AddDebugger(dbg Debugger) {
 	tv.debugger = dbg
 }
@@ -485,18 +485,8 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 	// count VSYNC scanlines based on when HSync ends. this means that if
 	// VSYNC is set after HSYNC on a scanline, the scanlines won't be
 	// counted for almost an entire scanline
-	const strictVSYNC = false
-
-	if strictVSYNC {
-		if !sig.HSync && tv.state.lastSignal.HSync {
-			tv.state.vsync.activeScanlineCount++
-		}
-	} else {
-		// without strictVSYNC enabled, we use the clock the VSYNC started as
-		// the counting point
-		if tv.state.clock == tv.state.vsync.startClock {
-			tv.state.vsync.activeScanlineCount++
-		}
+	if tv.state.vsync.active && !sig.HSync && tv.state.lastSignal.HSync {
+		tv.state.vsync.activeScanlineCount++
 	}
 
 	// check for change of VSYNC signal
@@ -505,22 +495,27 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 			// VSYNC has started
 			tv.state.vsync.active = true
 			tv.state.vsync.activeScanlineCount = 0
-			tv.state.vsync.startClock = tv.state.clock
 			tv.state.vsync.startScanline = tv.state.scanline
+			tv.state.vsync.startClock = tv.state.clock
 
 			// check that VSYNC start scanline hasn't changed
-			if tv.state.frameInfo.VSYNCscanline != tv.state.vsync.startScanline {
-				if tv.state.frameInfo.Stable && tv.debugger != nil {
+			if tv.state.frameInfo.Stable && tv.debugger != nil {
+				if tv.state.frameInfo.VSYNCscanline != tv.state.vsync.startScanline {
 					if tv.env.Prefs.TV.HaltChangedVSYNC.Get().(bool) {
 						tv.debugger.HaltFromTelevision(fmt.Errorf("%w: start scanline", HaltBadVSYNC))
+					}
+					tv.state.frameInfo.VSYNCunstable = true
+				} else if tv.state.frameInfo.VSYNCclock != tv.state.vsync.startClock {
+					if tv.env.Prefs.TV.HaltChangedVSYNC.Get().(bool) {
+						tv.debugger.HaltFromTelevision(fmt.Errorf("%w: start clock", HaltBadVSYNC))
 					}
 					tv.state.frameInfo.VSYNCunstable = true
 				}
 			}
 		} else {
 			// check that VSYNC count hasn't changed
-			if tv.state.frameInfo.VSYNCcount != tv.state.vsync.activeScanlineCount {
-				if tv.state.frameInfo.Stable && tv.debugger != nil {
+			if tv.state.frameInfo.Stable && tv.debugger != nil {
+				if tv.state.frameInfo.VSYNCcount != tv.state.vsync.activeScanlineCount {
 					if tv.env.Prefs.TV.HaltChangedVSYNC.Get().(bool) {
 						tv.debugger.HaltFromTelevision(fmt.Errorf("%w: count changed", HaltBadVSYNC))
 					}
@@ -638,6 +633,17 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 	// index can never run past the end of the signals array
 	tv.currentSignalIdx = tv.state.clock + (tv.state.scanline * specification.ClksScanline)
 
+	// currentSignalIdx should be inside the range of the signals array. we
+	// don't need to check and we don't need to push the outstanding signals to
+	// the pixel renderers
+	//
+	// the size of the signals array is based on the specification values and
+	// the range of the clock and scanline fields are bounded by that
+	//
+	// if something has gone wrong then the program will panic on it's own. we
+	// don't need to add an additional check where the only course of action is
+	// to panic
+
 	// sometimes the current signal can come out "behind" the firstSignalIdx.
 	// this can happen when RSYNC is triggered on the first scanline of the
 	// frame. not common but we should handle it
@@ -657,14 +663,6 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 	// record the current signal settings so they can be used for reference
 	// during the next call to Signal()
 	tv.state.lastSignal = sig
-
-	// render queued signals
-	if tv.currentSignalIdx >= len(tv.signals) {
-		err := tv.renderSignals()
-		if err != nil {
-			logger.Log(tv.env, "TV", err)
-		}
-	}
 }
 
 func (tv *Television) newScanline() error {
@@ -759,18 +757,15 @@ func (tv *Television) newFrame() error {
 		recoverySpeed = 0.80
 	)
 
-	// record total scanlines and refresh rate if changed. note that this is
-	// independent of the resizer.commit() call above.
-	//
-	// this is important to do and failure to set the refresh rate correctly
-	// is most noticeable in the Supercharger tape loading process
 	if tv.state.frameInfo.TotalScanlines != tv.state.scanline {
 		if tv.state.fromVSYNC {
 			tv.state.frameInfo.TotalScanlines = tv.state.scanline
 		} else {
-			tv.state.frameInfo.TotalScanlines += int(float32(tv.state.scanline-tv.state.frameInfo.TotalScanlines) * desyncSpeed)
-
+			// how bad VSYNC
 			if tv.env.Prefs.TV.VSYNCimmedateSync.Get().(bool) {
+				// size of frame immediately goes to the maximum
+				tv.state.frameInfo.TotalScanlines = specification.AbsoluteMaxScanlines
+
 				// reset 'top scanline' value in case the 'immediate sync'
 				// option has been enabled sometime after desynchronisation
 				// started
@@ -797,6 +792,8 @@ func (tv *Television) newFrame() error {
 				}
 			}
 		}
+
+		// scanline count has changed which means the refresh rate has changed
 		tv.state.frameInfo.RefreshRate = tv.state.frameInfo.Spec.HorizontalScanRate / float32(tv.state.scanline)
 		tv.setRefreshRate(tv.state.frameInfo.RefreshRate)
 		tv.state.frameInfo.Jitter = true
@@ -839,6 +836,7 @@ func (tv *Television) newFrame() error {
 	tv.state.frameInfo.TopScanline = tv.state.scanline
 	tv.state.frameInfo.FromVSYNC = tv.state.fromVSYNC
 	tv.state.frameInfo.VSYNCscanline = tv.state.vsync.startScanline
+	tv.state.frameInfo.VSYNCclock = tv.state.vsync.startClock
 	tv.state.frameInfo.VSYNCcount = tv.state.vsync.activeScanlineCount
 
 	// reset fromVSYNC latch
@@ -857,7 +855,7 @@ func (tv *Television) newFrame() error {
 		}
 	}
 
-	// set pending pixels
+	// push pending pixels and audio data
 	err = tv.renderSignals()
 	if err != nil {
 		return err
@@ -891,8 +889,6 @@ func (tv *Television) newFrame() error {
 	return nil
 }
 
-// renderSignals forwards pixels in the signalHistory buffer to all pixel
-// renderers and audio mixers.
 func (tv *Television) renderSignals() error {
 	// update realtime mixers
 	//
@@ -924,7 +920,7 @@ func (tv *Television) renderSignals() error {
 		}
 	}
 
-	// update regular mixers
+	// update mixers
 	for _, m := range tv.mixers {
 		err := m.SetAudio(tv.signals[tv.firstSignalIdx:tv.currentSignalIdx])
 		if err != nil {
