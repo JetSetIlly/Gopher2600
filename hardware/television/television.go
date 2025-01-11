@@ -583,11 +583,15 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 		var newFrame bool
 
 		// a very good example of a ROM that requires correct handling of
-		// natural flyback is Andrew Davies' Chess (3e+ test rom)
+		// natural flyback is Andrew Davies' Chess (3e+ test rom) and also the
+		// supercharger loading screen. the latter has sound and so is a good
+		// test for how the television interacts with the audio mixers under
+		// unsynchronised conditions
 		if tv.state.fromVSYNC {
 			newFrame = true
 
 		} else {
+			// treat newframe differently depending on whether the previous frame was synced or not
 			if tv.state.frameInfo.FromVSYNC {
 				if tv.state.scanline >= specification.AbsoluteMaxScanlines {
 					newFrame = true
@@ -601,10 +605,10 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 					}
 				}
 			} else {
-				flyback := min(specification.AbsoluteMaxScanlines, int(float32(tv.state.frameInfo.TotalScanlines)*1.05))
-				if tv.state.scanline >= flyback {
-					newFrame = true
-				}
+				// this is a continuing unsyncrhonised state over multiple
+				// frames. if the scanline goes past the current flyback point,
+				// denoted by TotalScanlines, then we trigger a new frame
+				newFrame = tv.state.scanline > min(specification.AbsoluteMaxScanlines-1, tv.state.frameInfo.TotalScanlines)
 			}
 		}
 
@@ -809,8 +813,12 @@ func (tv *Television) newFrame() error {
 			}
 		}
 
-		// scanline count has changed which means the refresh rate has changed
-		tv.state.frameInfo.RefreshRate = tv.state.frameInfo.Spec.HorizontalScanRate / float32(tv.state.scanline)
+		// we must use TotalScanlines for the refresh rate calculation. the
+		// tv.state.scanlines value (ie. the current scanline value) will not
+		// work. it is true that the current scanline and TotalScanlines will be
+		// same but not when the screen is unsynced, which in this codepath we
+		// will be
+		tv.state.frameInfo.RefreshRate = tv.state.frameInfo.Spec.HorizontalScanRate / float32(tv.state.frameInfo.TotalScanlines)
 		tv.setRefreshRate(tv.state.frameInfo.RefreshRate)
 		tv.state.frameInfo.Jitter = true
 	} else {
