@@ -89,15 +89,25 @@ func newPlayScr(img *SdlImgui) *playScr {
 	return win
 }
 
-func (win *playScr) draw() {
-	win.img.screen.crit.section.Lock()
-	defer win.img.screen.crit.section.Unlock()
-
+// the usingBevel flag is set in the draw() function however, we need to make
+// sure it's set before a resize too. this is particularly important on
+// initialisation when the resize() function is called before the draw()
+// function is called fro the first time. without explicitely setting the
+// usingBevel flag the scaleing of the TV screen will not take into account the
+// BiasY value for the bevel
+func (win *playScr) setUsingBevel() {
 	// note whether we're using a bevel image or not
 	win.usingBevel = win.img.rnd.supportsCRT() && !win.img.crt.PixelPerfect.Get().(bool) && win.img.crt.UseBevel.Get().(bool)
 
 	// rotation also plays a part in the decision to use the bevel
 	win.usingBevel = win.usingBevel && win.img.screen.rotation.Load() == specification.NormalRotation
+}
+
+func (win *playScr) draw() {
+	win.img.screen.crit.section.Lock()
+	defer win.img.screen.crit.section.Unlock()
+
+	win.setUsingBevel()
 
 	dl := imgui.BackgroundDrawList()
 
@@ -115,6 +125,9 @@ func (win *playScr) draw() {
 //
 // must be called from within a critical section.
 func (win *playScr) resize() {
+	// see comment for setUsingBevel() function for why we call it here
+	win.setUsingBevel()
+
 	win.screenTexture.markForCreation()
 	win.bevelTexture.markForCreation()
 
