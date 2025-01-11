@@ -23,7 +23,6 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/gui/display"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/caching"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -122,7 +121,7 @@ type SdlImgui struct {
 	// gui specific preferences. crt preferences are handled separately. all
 	// other preferences are handled by the emulation
 	prefs *preferences
-	crt   *display.CRT
+	crt   *preferencesCRT
 
 	// modal window
 	modal modal
@@ -174,7 +173,7 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	}
 
 	// initialise display preferences
-	img.crt, err = display.NewCRT()
+	img.crt, err = newPreferenceCRT(img)
 	if err != nil {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}

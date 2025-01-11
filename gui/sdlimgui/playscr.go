@@ -97,7 +97,7 @@ func newPlayScr(img *SdlImgui) *playScr {
 // BiasY value for the bevel
 func (win *playScr) setUsingBevel() {
 	// note whether we're using a bevel image or not
-	win.usingBevel = win.img.rnd.supportsCRT() && !win.img.crt.PixelPerfect.Get().(bool) && win.img.crt.UseBevel.Get().(bool)
+	win.usingBevel = win.img.rnd.supportsCRT() && !win.img.crt.pixelPerfect.Get().(bool) && win.img.crt.useBevel.Get().(bool)
 
 	// rotation also plays a part in the decision to use the bevel
 	win.usingBevel = win.usingBevel && win.img.screen.rotation.Load() == specification.NormalRotation
