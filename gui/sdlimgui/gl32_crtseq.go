@@ -182,14 +182,22 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 	// enabled. if they are not then the treatment is slightly different
 	for i := 0; i < phosphorPasses; i++ {
 		if prefs.pixelPerfect {
+			// this draw doesn't do anything except keep the phosphor textures
+			// the correct orientation. if we don't have this then we can see
+			// inverted graphical artefacts when we switch between pixelperfect
+			// and CRT rendering
+			env.textureID = sh.phosphor.TextureID()
+			env.textureID = sh.phosphor.Process(func() {
+				sh.colorShader.(*colorShader).setAttributes(env)
+				env.draw()
+			})
+
 			// add new frame to phosphor buffer (using phosphor buffer for pixel perfect fade)
 			env.textureID = sh.phosphor.TextureID()
-			env.flipY = true
 			env.textureID = sh.phosphor.Process(func() {
 				sh.phosphorShader.(*phosphorShader).process(env, float32(prefs.pixelPerfectFade), newFrameForPhosphor)
 				env.draw()
 			})
-			env.flipY = false
 		} else {
 			if prefs.phosphor {
 				// use blur shader to add bloom to previous phosphor
@@ -208,12 +216,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 		}
 	}
 
-	if prefs.pixelPerfect {
-		env.textureID = sh.sequence.Process(func() {
-			sh.colorShader.setAttributes(env)
-			env.draw()
-		})
-	} else {
+	if !prefs.pixelPerfect {
 		// sharpness value
 		env.textureID = sh.sequence.Process(func() {
 			sh.blurShader.(*blurShader).process(env, float32(prefs.sharpness))

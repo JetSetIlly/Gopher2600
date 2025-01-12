@@ -251,17 +251,17 @@ func (win *winPrefs) drawPhosphor() {
 	// latency
 	f := float32(win.img.crt.phosphorLatency.Get().(float64))
 
-	if f > 0.7 {
+	if f > 0.6 {
 		label = "very slow"
-	} else if f >= 0.5 {
+	} else if f >= 0.4 {
 		label = "slow"
-	} else if f >= 0.3 {
+	} else if f >= 0.2 {
 		label = "fast"
 	} else {
 		label = "very fast"
 	}
 
-	if imgui.SliderFloatV("##phosphorlatency", &f, 0.9, 0.1, label, 1.0) {
+	if imgui.SliderFloatV("##phosphorlatency", &f, 0.8, 0.0, label, 1.0) {
 		win.img.crt.phosphorLatency.Set(f)
 	}
 
@@ -382,18 +382,18 @@ func (win *winPrefs) drawPixelPerfect() bool {
 	f := float32(win.img.crt.pixelPerfectFade.Get().(float64))
 
 	var label string
-	if f > 0.7 {
+	if f > 0.6 {
 		label = "extreme fade"
 	} else if f >= 0.4 {
 		label = "high fade"
-	} else if f > 0.0 {
+	} else if f > 0.2 {
 		label = "tiny fade"
 	} else if f == 0.0 {
 		label = "no fade"
 	}
 
 	imgui.PushItemWidth(imguiRemainingWinWidth() * 0.75)
-	if imgui.SliderFloatV("##pixelperfectfade", &f, 0.0, 0.9, label, 1.0) {
+	if imgui.SliderFloatV("##pixelperfectfade", &f, 0.0, 0.8, label, 1.0) {
 		win.img.crt.pixelPerfectFade.Set(f)
 	}
 	imgui.PopItemWidth()

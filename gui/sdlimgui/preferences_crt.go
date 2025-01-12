@@ -88,6 +88,14 @@ func newPreferenceCRT(img *SdlImgui) (*preferencesCRT, error) {
 	if err != nil {
 		return nil, err
 	}
+	p.useBevel.SetHookPost(func(v prefs.Value) error {
+		if p.img.playScr != nil {
+			// resize playscreen on useBevel change because the bevel and non
+			// bevel displays may have different scaling requirements
+			p.img.playScr.resize()
+		}
+		return nil
+	})
 	err = p.dsk.Add("crt.curve", &p.curve)
 	if err != nil {
 		return nil, err
