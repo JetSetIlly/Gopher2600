@@ -92,7 +92,7 @@ func newWinTimeline(img *SdlImgui) (window, error) {
 		return nil, fmt.Errorf("debugger: %w", err)
 	}
 
-	win.thmbTexture = img.rnd.addTexture(shaderColor, true, true)
+	win.thmbTexture = img.rnd.addTexture(shaderColor, true, true, nil)
 	win.thmbImage = image.NewRGBA(image.Rect(0, 0, 0, 0))
 
 	return win, nil

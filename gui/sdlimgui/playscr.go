@@ -41,12 +41,13 @@ type playScr struct {
 	scaling float32
 
 	// bevel
-	bevelTexture texture
-	bevelPosMin  imgui.Vec2
-	bevelPosMax  imgui.Vec2
-	bevelWidth   float32
-	bevelHeight  float32
-	bevelRatio   float32
+	bevelTexture    texture
+	bevelPosMin     imgui.Vec2
+	bevelPosMax     imgui.Vec2
+	bevelWidth      float32
+	bevelHeight     float32
+	bevelRatio      float32
+	bevelRimTexture texture
 
 	// whether the bevel is being used
 	usingBevel bool
@@ -74,11 +75,15 @@ func newPlayScr(img *SdlImgui) *playScr {
 
 	// set texture, creation of textures will be done after every call to resize()
 	// clamp is important for LINEAR filtering. not noticeable for NEAREST filtering
-	win.screenTexture = img.rnd.addTexture(shaderPlayscr, true, true)
-	win.bevelTexture = img.rnd.addTexture(shaderBevel, true, true)
+	win.screenTexture = img.rnd.addTexture(shaderPlayscr, true, true, nil)
+	win.bevelTexture = img.rnd.addTexture(shaderBevel, true, true, false)
+
+	// additional configuration detail for the rim texture
+	win.bevelRimTexture = img.rnd.addTexture(shaderBevel, true, true, true)
 
 	// render bevel texture once on initlisation
-	win.bevelTexture.render(bevels.SolidState.TV)
+	win.bevelTexture.render(bevels.SolidState.Bevel)
+	win.bevelRimTexture.render(bevels.SolidState.BevelRim)
 
 	// set scale and padding on startup. scale and padding will be recalculated
 	// on window resize and textureRenderer.resize()
@@ -114,6 +119,7 @@ func (win *playScr) draw() {
 	if win.usingBevel {
 		dl.AddImage(imgui.TextureID(win.screenTexture.getID()), win.screenPosMin, win.screenPosMax)
 		dl.AddImage(imgui.TextureID(win.bevelTexture.getID()), win.bevelPosMin, win.bevelPosMax)
+		dl.AddImage(imgui.TextureID(win.bevelRimTexture.getID()), win.bevelPosMin, win.bevelPosMax)
 	} else {
 		dl.AddImage(imgui.TextureID(win.screenTexture.getID()), win.screenPosMin, win.screenPosMax)
 	}
@@ -156,12 +162,12 @@ func (win *playScr) render() {
 	// note that we don't need to render the bevel texture every frame because
 	// it never changes
 
-	// unlike dbgscr, there is alos no need to call setScaling() every render()
+	// unlike dbgscr, there is also no need to call setScaling() every render()
 }
 
 // must be called from with a critical section.
 func (win *playScr) setScalingBevel() {
-	sz := bevels.SolidState.TV.Bounds().Size()
+	sz := bevels.SolidState.Bevel.Bounds().Size()
 	bw := float32(sz.X)
 	bh := float32(sz.Y)
 	bRatio := bw / bh

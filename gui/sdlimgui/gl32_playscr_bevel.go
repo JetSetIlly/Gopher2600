@@ -18,24 +18,29 @@
 package sdlimgui
 
 import (
+	"time"
+
 	"github.com/go-gl/gl/v3.2-core/gl"
+	"github.com/jetsetilly/gopher2600/gui/display/shaders"
 )
 
 type bevelShader struct {
+	shader
 	img    *SdlImgui
-	perlin shaderProgram
+	time   int32 // uniform
+	rim    int32 // uniform
+	screen int32 // uniform
 }
 
 func newBevelShader(img *SdlImgui) shaderProgram {
 	sh := &bevelShader{
-		img:    img,
-		perlin: newPerlinShader(),
+		img: img,
 	}
+	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTBevel))
+	sh.time = gl.GetUniformLocation(sh.handle, gl.Str("Time"+"\x00"))
+	sh.rim = gl.GetUniformLocation(sh.handle, gl.Str("Rim"+"\x00"))
+	sh.screen = gl.GetUniformLocation(sh.handle, gl.Str("Screen"+"\x00"))
 	return sh
-}
-
-func (sh *bevelShader) destroy() {
-	sh.perlin.destroy()
 }
 
 func (sh *bevelShader) setAttributes(env shaderEnvironment) {
@@ -62,5 +67,16 @@ func (sh *bevelShader) setAttributes(env shaderEnvironment) {
 		env.height+(int32(sh.img.playScr.bevelPosMin.Y*2)),
 	)
 
-	sh.perlin.setAttributes(env)
+	sh.shader.setAttributes(env)
+
+	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
+	if rim, ok := env.config.(bool); ok {
+		gl.Uniform1i(sh.rim, boolToInt32(rim))
+
+		gl.ActiveTexture(gl.TEXTURE1)
+		gl.BindTexture(gl.TEXTURE_2D, sh.img.playScr.screenTexture.getID())
+		gl.Uniform1i(sh.screen, 1)
+	} else {
+		gl.Uniform1i(sh.rim, boolToInt32(false))
+	}
 }

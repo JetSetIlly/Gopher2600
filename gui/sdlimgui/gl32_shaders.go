@@ -19,7 +19,6 @@ package sdlimgui
 
 import (
 	"strings"
-	"time"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
@@ -50,6 +49,9 @@ type shaderEnvironment struct {
 	// width and height of texture. optional depending on the shader
 	width  int32
 	height int32
+
+	// user configuration from texture
+	config any
 }
 
 // helper function to convert bool to int32.
@@ -185,26 +187,8 @@ func newColorShader() shaderProgram {
 	return sh
 }
 
-type perlinShader struct {
-	shader
-	time int32 // uniform
-}
-
-func newPerlinShader() shaderProgram {
-	sh := &perlinShader{}
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.PerlinShader))
-	sh.time = gl.GetUniformLocation(sh.handle, gl.Str("Time"+"\x00"))
-	return sh
-}
-
-func (sh *perlinShader) setAttributes(env shaderEnvironment) {
-	sh.shader.setAttributes(env)
-	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
-}
-
 type phosphorShader struct {
 	shader
-
 	newFrame int32
 	latency  int32
 }

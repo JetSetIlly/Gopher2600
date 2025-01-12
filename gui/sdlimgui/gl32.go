@@ -30,6 +30,7 @@ type gl32Texture struct {
 	id     uint32
 	typ    shaderType
 	create bool
+	config any
 }
 
 type gl32 struct {
@@ -200,6 +201,7 @@ func (rnd *gl32) render() {
 
 				if tex, ok := rnd.textures[env.textureID]; ok {
 					shader = rnd.shaders[tex.typ]
+					env.config = tex.config
 				}
 
 				if shader == nil {
@@ -321,10 +323,11 @@ func (st *glState) restoreGLState() {
 	gl.Scissor(st.lastScissorBox[0], st.lastScissorBox[1], st.lastScissorBox[2], st.lastScissorBox[3])
 }
 
-func (rnd *gl32) addTexture(typ shaderType, linear bool, clamp bool) texture {
+func (rnd *gl32) addTexture(typ shaderType, linear bool, clamp bool, config any) texture {
 	tex := gl32Texture{
 		create: true,
 		typ:    typ,
+		config: config,
 	}
 
 	gl.GenTextures(1, &tex.id)
@@ -355,7 +358,7 @@ func (rnd *gl32) addTexture(typ shaderType, linear bool, clamp bool) texture {
 }
 
 func (rnd *gl32) addFontTexture(fnts imgui.FontAtlas) texture {
-	tex := rnd.addTexture(shaderGUI, true, false)
+	tex := rnd.addTexture(shaderGUI, true, false, nil)
 	image := fnts.TextureDataAlpha8()
 
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)

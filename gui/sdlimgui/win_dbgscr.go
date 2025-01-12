@@ -105,11 +105,11 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	win.debuggerGeom.noFocusTracking = true
 
 	// set texture, creation of textures will be done after every call to resize()
-	win.displayTexture = img.rnd.addTexture(shaderDbgScr, true, true)
-	win.overlayTexture = img.rnd.addTexture(shaderDbgScrOverlay, false, false)
-	win.elementsTexture = img.rnd.addTexture(shaderDbgScr, true, true)
-	win.magnifyTooltip.texture = img.rnd.addTexture(shaderColor, false, false)
-	win.magnifyWindow.texture = img.rnd.addTexture(shaderColor, false, false)
+	win.displayTexture = img.rnd.addTexture(shaderDbgScr, true, true, nil)
+	win.overlayTexture = img.rnd.addTexture(shaderDbgScrOverlay, false, false, nil)
+	win.elementsTexture = img.rnd.addTexture(shaderDbgScr, true, true, nil)
+	win.magnifyTooltip.texture = img.rnd.addTexture(shaderColor, false, false, nil)
+	win.magnifyWindow.texture = img.rnd.addTexture(shaderColor, false, false, nil)
 
 	// call setScaling() now so that render() has something to work with - even
 	// though setScaling() is called every draw if the window is open it will

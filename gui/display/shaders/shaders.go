@@ -26,9 +26,6 @@ var GUIShader []byte
 //go:embed "color.frag"
 var ColorShader []byte
 
-//go:embed "perlin.frag"
-var PerlinShader []byte
-
 //go:embed "dbgscr.frag"
 var DbgScrShader []byte
 
@@ -49,3 +46,6 @@ var CRTBlurFragShader []byte
 
 //go:embed "crt_phosphor.frag"
 var CRTPhosphorFragShader []byte
+
+//go:embed "crt_bevel.frag"
+var CRTBevel []byte

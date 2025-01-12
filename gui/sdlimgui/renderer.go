@@ -36,7 +36,7 @@ type renderer interface {
 	preRender()
 	render()
 	screenshot(mode screenshotMode, finish chan screenshotResult)
-	addTexture(typ shaderType, linear bool, clamp bool) texture
+	addTexture(typ shaderType, linear bool, clamp bool, config any) texture
 	addFontTexture(fnt imgui.FontAtlas) texture
 }
 

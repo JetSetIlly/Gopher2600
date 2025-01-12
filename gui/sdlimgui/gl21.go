@@ -30,6 +30,7 @@ import (
 type gl21Texture struct {
 	id     uint32
 	create bool
+	config any
 }
 
 type gl21 struct {
@@ -186,9 +187,10 @@ func (rnd *gl21) screenshot(mode screenshotMode, finish chan screenshotResult) {
 	}
 }
 
-func (rnd *gl21) addTexture(_ textureType, linear bool, clamp bool) texture {
+func (rnd *gl21) addTexture(_ textureType, linear bool, clamp bool, config any) texture {
 	tex := gl21Texture{
 		create: true,
+		config: config,
 	}
 
 	gl.GenTextures(1, &tex.id)

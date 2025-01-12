@@ -24,7 +24,7 @@ import (
 )
 
 type Style struct {
-	TV      *image.RGBA
+	Bevel   *image.RGBA
 	Scale   float32
 	OffsetX float32
 	OffsetY float32
@@ -32,21 +32,27 @@ type Style struct {
 
 	CurveAmount        float32
 	RoundCornersAmount float32
+
+	BevelRim *image.RGBA
 }
 
 var SolidState Style
 
-//go:embed "solid_state.png"
-var solidState []byte
+//go:embed "solid_state_bevel.png"
+var solidStateBevel []byte
+
+//go:embed "solid_state_rim.png"
+var solidStateRim []byte
 
 func init() {
-	SolidState.TV = loadImage(solidState)
+	SolidState.Bevel = loadImage(solidStateBevel)
 	SolidState.Scale = 0.85
-	SolidState.OffsetX = -0.139
+	SolidState.OffsetX = -0.137
 	SolidState.OffsetY = -0.080
 	SolidState.BiasY = 1.05
 	SolidState.CurveAmount = -0.500
 	SolidState.RoundCornersAmount = 0.090
+	SolidState.BevelRim = loadImage(solidStateRim)
 }
 
 func loadImage(d []byte) *image.RGBA {
