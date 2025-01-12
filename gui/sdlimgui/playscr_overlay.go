@@ -327,7 +327,7 @@ func (ovly *playscrOverlay) drawTopLeft() {
 				imgui.Text(string(fonts.MeterSegment))
 				imgui.SameLineV(0, 0)
 				imgui.PopStyleColor()
-			} else if ovly.img.audio.QueuedBytes < sdlaudio.MeterOkay {
+			} else if ovly.img.audio.QueuedBytes < sdlaudio.QueueOkay {
 				imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.AudioQueueActive)
 				imgui.Text(string(fonts.MeterSegment))
 				imgui.SameLineV(0, 0)
@@ -337,7 +337,7 @@ func (ovly *playscrOverlay) drawTopLeft() {
 				imgui.Text(string(fonts.MeterSegment))
 				imgui.SameLineV(0, 0)
 				imgui.PopStyleColorV(2)
-			} else if ovly.img.audio.QueuedBytes < sdlaudio.MeterWarning {
+			} else if ovly.img.audio.QueuedBytes < sdlaudio.QueueWarning {
 				imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.AudioQueueActive)
 				imgui.Text(string(fonts.MeterSegment))
 				imgui.SameLineV(0, 0)

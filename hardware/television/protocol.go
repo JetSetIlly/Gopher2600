@@ -165,11 +165,6 @@ type RealtimeAudioMixer interface {
 	// refresh rate is significantly outside the nominal rate for the
 	// specification then the audio queue will be suboptimal
 	SetSpec(specification.Spec)
-
-	// Regulate returns a positive number if the rate at which SetAudio() is
-	// being called is too low; and a negative number if the rate is too high. A
-	// value of zero indicates that the rate is okay
-	Regulate() int
 }
 
 // VCS is used to send information from the TV back to the parent console

@@ -75,8 +75,10 @@ type Audio struct {
 	QueuedBytes        int
 }
 
-const bufferLen = 1024
-const stereoBufferLen = 1024
+const (
+	bufferLen       = 1000 // 250 samples
+	stereoBufferLen = 1024
+)
 
 // NewAudio is the preferred method of initialisation for the Audio Type.
 func NewAudio() (*Audio, error) {
@@ -86,7 +88,7 @@ func NewAudio() (*Audio, error) {
 		stereoCh1Buffer:    make([]uint8, stereoBufferLen),
 		updateCancel:       make(chan bool),
 		updateCommit:       make(chan specification.Spec),
-		queuedBytesMeasure: time.NewTicker(500 * time.Millisecond),
+		queuedBytesMeasure: time.NewTicker(250 * time.Millisecond),
 	}
 
 	var err error
@@ -217,10 +219,6 @@ func (aud *Audio) setSpec(spec specification.Spec) {
 	logger.Logf(logger.Allow, "sdlaudio", "calculated frequency: %d * %.2f * %d = %.2f",
 		spec.ScanlinesTotal, spec.RefreshRate, audio.SamplesPerScanline, sampleFreq)
 
-	// lower sample rate very slightly. this seems to work well
-	sampleFreq *= 0.998
-	logger.Logf(logger.Allow, "sdlaudio", "adjusted frequency: %.2f", sampleFreq)
-
 	request := &sdl.AudioSpec{
 		Freq:     int32(sampleFreq),
 		Format:   sdl.AUDIO_S16MSB,
@@ -255,49 +253,55 @@ func (aud *Audio) Mute(muted bool) {
 	aud.muted = muted
 }
 
-// Audio queue length thresholds, measured in bytes. Used by Regulate() to
-// determine response and by SetAudio() to flush the queue when necessary
 const (
-	NotEnough  = 5000
-	TooMuch    = 8000
-	WayTooMuch = 20000
+	rateRepeat = 1000
+	rateDrop   = 10000
+	rateReset  = 20000
 
-	MeterOkay    = 6000
-	MeterWarning = 14000
+	QueueOkay    = 2000
+	QueueWarning = 8000
 )
-
-// Regulate implements the television.RealtimeAudioMixer interface.
-func (aud *Audio) Regulate() int {
-	if aud.QueuedBytes < NotEnough {
-		return 1
-	}
-	if aud.QueuedBytes > TooMuch {
-		return -1
-	}
-	return 0
-}
 
 // SetAudio implements the television.AudioMixer interface.
 func (aud *Audio) SetAudio(sig []signal.AudioSignalAttributes) error {
+	if len(sig) > specification.AbsoluteMaxScanlines*audio.SamplesPerScanline {
+		panic("too many samples received by SetAudio() in one call")
+	}
+
 	if aud.id == 0 {
 		return nil
 	}
 
+	// resolve specifcation committal
 	select {
 	case u := <-aud.updateCommit:
 		aud.setSpec(u)
 	default:
 	}
 
+	// always measure queued bytes
+	queuedBytes := int(sdl.GetQueuedAudioSize(aud.id))
+
+	// update public QueuedBytes value less frequently
 	select {
 	case <-aud.queuedBytesMeasure.C:
-		aud.QueuedBytes = int(sdl.GetQueuedAudioSize(aud.id))
-		if aud.QueuedBytes > WayTooMuch {
-			logger.Logf(logger.Allow, "sdlaudio", "flushed audio queue: %d", aud.QueuedBytes)
-			sdl.ClearQueuedAudio(aud.id)
-			aud.QueuedBytes = int(sdl.GetQueuedAudioSize(aud.id))
-		}
+		aud.QueuedBytes = queuedBytes
 	default:
+		// update public QueuedBytes immediately if the queue is empty
+		if queuedBytes < rateRepeat {
+			aud.QueuedBytes = 0
+		}
+	}
+
+	// regulate rate by either flushing the queue (which we only do as a last
+	// resort) or by dropping the latest batch of samples
+	if queuedBytes > rateReset {
+		logger.Logf(logger.Allow, "sdlaudio", "flushed audio queue: %d", queuedBytes)
+		sdl.ClearQueuedAudio(aud.id)
+		aud.QueuedBytes = int(sdl.GetQueuedAudioSize(aud.id))
+	} else if queuedBytes > rateDrop {
+		// drop samples. the number of samples is so small that we won't audibly miss them
+		return nil
 	}
 
 	// we still want to measure the audio queue even if the audio is muted. so
@@ -305,6 +309,12 @@ func (aud *Audio) SetAudio(sig []signal.AudioSignalAttributes) error {
 	if aud.muted {
 		return nil
 	}
+
+	// update local preference values. we don't need these values if the audio
+	// is muted
+	aud.stereo = aud.Prefs.Stereo.Get().(bool)
+	aud.discrete = aud.Prefs.Discrete.Get().(bool)
+	aud.separation = aud.Prefs.Separation.Get().(int)
 
 	for _, s := range sig {
 		v0 := s.AudioChannel0
@@ -357,31 +367,35 @@ func (aud *Audio) SetAudio(sig []signal.AudioSignalAttributes) error {
 			aud.bufferCt++
 		}
 
-		if aud.bufferCt >= len(aud.buffer) {
-			if err := aud.queueBuffer(); err != nil {
-				return fmt.Errorf("sdlaudio: %w", err)
-			}
-		}
+		// we don't want to overrun the buffer
+		aud.queue()
 	}
 
-	if err := aud.queueBuffer(); err != nil {
-		return fmt.Errorf("sdlaudio: %w", err)
-	}
+	// make sure we've added something
+	aud.queue()
 
 	return nil
 }
 
-func (aud *Audio) queueBuffer() error {
-	err := sdl.QueueAudio(aud.id, aud.buffer[:aud.bufferCt])
-	if err != nil {
-		return err
+func (aud *Audio) queue() error {
+	// we always add to the queue at least once. if it results in too much data
+	// then we regulate that on the next call to SetAudio()
+	if err := sdl.QueueAudio(aud.id, aud.buffer[:aud.bufferCt]); err != nil {
+		return fmt.Errorf("sdlaudio: %w", err)
 	}
-	aud.bufferCt = 0
 
-	// update local preference values
-	aud.stereo = aud.Prefs.Stereo.Get().(bool)
-	aud.discrete = aud.Prefs.Discrete.Get().(bool)
-	aud.separation = aud.Prefs.Separation.Get().(int)
+	queuedBytes := int(sdl.GetQueuedAudioSize(aud.id))
+
+	// make sure we have a minimum amount of data in the queue
+	for queuedBytes < rateRepeat {
+		if err := sdl.QueueAudio(aud.id, aud.buffer[:aud.bufferCt]); err != nil {
+			return fmt.Errorf("sdlaudio: %w", err)
+		}
+		queuedBytes = int(sdl.GetQueuedAudioSize(aud.id))
+	}
+
+	// the data in the buffer is now dealt with
+	aud.bufferCt = 0
 
 	return nil
 }

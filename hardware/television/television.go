@@ -24,7 +24,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/limiter"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
-	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -234,9 +233,7 @@ type Television struct {
 	emulationState govern.State
 }
 
-// baseline value for audio signal limit. this will move up and down based on
-// any realtime mixer that's attached
-const baselineAudioSignalLimit = 600
+const baselineAudioSignalLimit = 200
 
 // NewTelevision creates a new instance of the television type, satisfying the
 // Television interface.
@@ -476,18 +473,8 @@ func (tv *Television) End() error {
 // AudioSignal updates the audio stream.
 func (tv *Television) AudioSignal(sig signal.AudioSignalAttributes) {
 	tv.audioSignals = append(tv.audioSignals, sig)
-	if len(tv.audioSignals) >= tv.audioSignalLimit {
+	if len(tv.audioSignals) >= tv.state.frameInfo.TotalScanlines {
 		if tv.realTimeMixer != nil {
-			// find balance point for the realtime mixer queue
-			b := tv.realTimeMixer.Regulate()
-			if b > 0 {
-				tv.audioSignalLimit -= 3 * audio.SamplesPerScanline
-				tv.audioSignalLimit = max(tv.audioSignalLimit, 100)
-			} else if b < 0 {
-				tv.audioSignalLimit += 3 * audio.SamplesPerScanline
-				tv.audioSignalLimit = min(tv.audioSignalLimit, 1200)
-			}
-
 			err := tv.realTimeMixer.SetAudio(tv.audioSignals[:])
 			if err != nil {
 				logger.Log(tv.env, "TV", err)
@@ -501,6 +488,8 @@ func (tv *Television) AudioSignal(sig signal.AudioSignalAttributes) {
 				logger.Log(tv.env, "TV", err)
 			}
 		}
+
+		// flush audio signal after both realtime and normal mixers have been processed
 		tv.audioSignals = tv.audioSignals[:0]
 	}
 }
