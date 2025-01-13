@@ -190,7 +190,7 @@ func (p *preferencesCRT) SetDefaults() {
 	p.scanlinesIntensity.Set(0.039)
 	p.mask.Set(false)
 	p.maskIntensity.Set(0.037)
-	p.rfInterference.Set(false)
+	p.rfInterference.Set(true)
 	p.rfNoiseLevel.Set(0.127)
 	p.rfGhostingLevel.Set(0.092)
 	p.phosphor.Set(true)

@@ -181,9 +181,9 @@ const Gamma = 2.2
 func (c *ColourGen) SetDefaults() {
 	c.NTSCPhase.Set(NTSCFieldService)
 	c.PALPhase.Set(PALDefault)
-	c.Brightness.Set(1.140)
+	c.Brightness.Set(1.126)
 	c.Contrast.Set(0.762)
-	c.Saturation.Set(0.991)
+	c.Saturation.Set(0.571)
 	c.Hue.Set(0.0)
 
 	// I used to think that the different TV specifications had a specific
