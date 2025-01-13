@@ -161,12 +161,16 @@ func (rz *Resizer) examine(state *State, sig signal.SignalAttributes) {
 	// if VBLANK is off then update the top/bottom values note
 	if !sig.VBlank {
 		if state.frameInfo.Stable {
-			if state.scanline < rz.vblankTop &&
-				state.scanline >= state.frameInfo.Spec.ExtendedVisibleTop {
-				rz.vblankTop = state.scanline
-			} else if state.scanline > rz.vblankBottom &&
-				state.scanline <= state.frameInfo.Spec.ExtendedVisibleBottom {
-				rz.vblankBottom = state.scanline
+			// if frame is not synced then it is probably rolling. we don't want
+			// to test for extended top and bottom unless the frame is synced
+			if state.frameInfo.IsSynced() {
+				if state.scanline < rz.vblankTop &&
+					state.scanline >= state.frameInfo.Spec.ExtendedVisibleTop {
+					rz.vblankTop = state.scanline
+				} else if state.scanline > rz.vblankBottom &&
+					state.scanline <= state.frameInfo.Spec.ExtendedVisibleBottom {
+					rz.vblankBottom = state.scanline
+				}
 			}
 		} else {
 			// if television is not yet stable then the size can shrink as well
@@ -198,9 +202,9 @@ func (rz *Resizer) examine(state *State, sig signal.SignalAttributes) {
 	// non-black pixels. these values are using in the commit() function in the
 	// event that usingVBLANK is false.
 	if state.clock > specification.ClksHBlank && !sig.VBlank {
-		col := state.frameInfo.Spec.GetColor(sig.Color)
-		if col.R != 0x00 || col.G != 0x00 || col.B != 0x00 {
-			if state.frameInfo.Stable {
+		if sig.Color == 0x00 {
+			// screen must be stable and synced
+			if state.frameInfo.Stable && state.frameInfo.IsSynced() {
 				if state.scanline < rz.blackTop &&
 					state.scanline >= state.frameInfo.Spec.ExtendedVisibleTop {
 					rz.blackTop = state.scanline

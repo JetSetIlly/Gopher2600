@@ -401,7 +401,7 @@ func parseDefinition(defn string, trigger string) (*node, int, error) {
 	// if we reach this point and trigger is non-empty then that implies that
 	// the opening trigger has not been closed correctly
 	if trigger == "[" || trigger == "(" {
-		return nil, len(defn), fmt.Errorf(fmt.Sprintf("unclosed %s group", trigger))
+		return nil, len(defn), fmt.Errorf("unclosed %s group", trigger)
 	}
 
 	return sn, len(defn), nil

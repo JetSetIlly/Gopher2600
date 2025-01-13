@@ -17,32 +17,17 @@ package sdlaudio
 
 import (
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio/mix"
 	"github.com/jetsetilly/gopher2600/logger"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
-
-// number of samples in the SDL audio buffer at any one time. tha value is an
-// estimate calculated by dividing the VCS audio frequency by the frame rate of
-// the PAL specification.
-//
-//	31403 / 50 = 628.06
-//
-// (any value we use must be a multiple of four)
-const bufferLength = 628
-
-// realtimeDemand is the minimum number of samples that need to be in the SDL
-// queue for MoreAudio() to return false
-//
-// no reasoning behind this value, it's just what seems to work well in practice
-const realtimeDemand = bufferLength * 2
-
-// if queued audio ever exceeds this value then push the audio into the SDL buffer
-const maxQueueLength = audio.SampleFreq / 2
 
 // Audio outputs sound using SDL.
 type Audio struct {
@@ -52,6 +37,11 @@ type Audio struct {
 	buffer   []uint8
 	bufferCt int
 
+	// stereo buffers are used to mix a stereo output
+	stereoCh0Buffer []uint8
+	stereoCh1Buffer []uint8
+
+	// audio preferences
 	Prefs *Preferences
 
 	// local copy of some oft used preference values (too expensive to access
@@ -61,17 +51,44 @@ type Audio struct {
 	discrete   bool
 	separation int
 
-	stereoCh0Buffer []uint8
-	stereoCh1Buffer []uint8
+	// whether the device is muted
+	muted bool
+
+	// SetSpec() control. we don't want the sample frequency of the driver to
+	// change too often so we throttle it by forwarding the request to an
+	// interim go routine that either:
+	// 1) waits for a timeout and forwards the change to the main thread
+	// 2) waits for a cancel. cancels happen when a new change request is made
+	//       before the timeout
+	updateSync   sync.WaitGroup
+	updateCancel chan bool
+	updateCommit chan specification.Spec
+	updateID     string
+
+	// the most recent specification ID to be commited
+	committedID string
+
+	// measure size of audio queue periodically and cull it if it's getting too
+	// long. called from SetAudio() so it is only checked when the emulation is
+	// running
+	queuedBytesMeasure *time.Ticker
+	QueuedBytes        int
 }
 
-const stereoBufferLen = 1024
+const (
+	bufferLen       = 1000 // 250 samples
+	stereoBufferLen = 1024
+)
 
 // NewAudio is the preferred method of initialisation for the Audio Type.
 func NewAudio() (*Audio, error) {
 	aud := &Audio{
-		stereoCh0Buffer: make([]uint8, stereoBufferLen),
-		stereoCh1Buffer: make([]uint8, stereoBufferLen),
+		buffer:             make([]uint8, bufferLen),
+		stereoCh0Buffer:    make([]uint8, stereoBufferLen),
+		stereoCh1Buffer:    make([]uint8, stereoBufferLen),
+		updateCancel:       make(chan bool),
+		updateCommit:       make(chan specification.Spec),
+		queuedBytesMeasure: time.NewTicker(250 * time.Millisecond),
 	}
 
 	var err error
@@ -84,49 +101,222 @@ func NewAudio() (*Audio, error) {
 	aud.discrete = aud.Prefs.Discrete.Get().(bool)
 	aud.separation = aud.Prefs.Separation.Get().(int)
 
-	spec := &sdl.AudioSpec{
-		Freq:     audio.SampleFreq,
-		Format:   sdl.AUDIO_S16MSB,
-		Channels: 2,
-		Samples:  uint16(bufferLength),
-	}
+	aud.setSpec(specification.SpecNTSC)
 
-	var actualSpec sdl.AudioSpec
-
-	aud.id, err = sdl.OpenAudioDevice("", false, spec, &actualSpec, 0)
-	if err != nil {
-		return nil, fmt.Errorf("sdlaudio: %w", err)
-	}
-
-	aud.spec = actualSpec
-
-	logger.Logf(logger.Allow, "sdl: audio", "frequency: %d samples/sec", aud.spec.Freq)
-	logger.Logf(logger.Allow, "sdl: audio", "format: %d", aud.spec.Format)
-	logger.Logf(logger.Allow, "sdl: audio", "channels: %d", aud.spec.Channels)
-	logger.Logf(logger.Allow, "sdl: audio", "buffer size: %d samples", bufferLength)
-	logger.Logf(logger.Allow, "sdl: audio", "realtime demand: %d samples", realtimeDemand)
-	logger.Logf(logger.Allow, "sdl: audio", "max samples: %d samples", maxQueueLength)
-	logger.Logf(logger.Allow, "sdl: audio", "silence: %d", aud.spec.Silence)
-
-	sdl.PauseAudioDevice(aud.id, false)
-
-	aud.Reset()
+	logger.Logf(logger.Allow, "sdlaudio", "id: %d", aud.id)
+	logger.Logf(logger.Allow, "sdlaudio", "format: %d", aud.spec.Format)
+	logger.Logf(logger.Allow, "sdlaudio", "channels: %d", aud.spec.Channels)
+	logger.Logf(logger.Allow, "sdlaudio", "silence: %d", aud.spec.Silence)
 
 	return aud, nil
 }
 
-// SetAudio implements the protocol.RealtimeAudioMixer interface.
-func (aud *Audio) MoreAudio() bool {
-	return sdl.GetQueuedAudioSize(aud.id) < realtimeDemand
+// EndMixing implements the television.AudioMixer interface.
+func (aud *Audio) EndMixing() error {
+	if aud.id == 0 {
+		return nil
+	}
+	sdl.CloseAudioDevice(aud.id)
+	aud.id = 0
+	return nil
 }
 
-// SetAudio implements the protocol.AudioMixer interface.
-func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
-	for _, s := range sig {
-		if !s.AudioUpdate {
-			continue
-		}
+// Reset implements the television.AudioMixer interface.
+func (aud *Audio) Reset() {
+	if aud.id == 0 {
+		return
+	}
 
+	// fill buffers with silence
+	for i := range aud.buffer {
+		aud.buffer[i] = aud.spec.Silence
+	}
+	for i := range aud.stereoCh0Buffer {
+		aud.stereoCh0Buffer[i] = aud.spec.Silence
+		aud.stereoCh1Buffer[i] = aud.spec.Silence
+	}
+
+	sdl.ClearQueuedAudio(aud.id)
+}
+
+// SetSpec implements the television.RealtimeAudioMixer interface.
+func (aud *Audio) SetSpec(spec specification.Spec) {
+	if spec.ID == aud.updateID || spec.ID == aud.committedID {
+		return
+	}
+
+	// record the request. if the same values are requested again we ignore it
+	aud.updateID = spec.ID
+
+	// cancel any outstanding requests
+	select {
+	case aud.updateCancel <- true:
+	default:
+	}
+
+	// drain commit channel
+	select {
+	case <-aud.updateCommit:
+	default:
+	}
+
+	// wait for any cancelled/ongoing request to complete
+	aud.updateSync.Wait()
+
+	// drain cancel channel in case we sent a cancel request when there was no
+	// outstanding request
+	select {
+	case <-aud.updateCancel:
+	default:
+	}
+
+	// start new request
+	aud.updateSync.Add(1)
+
+	go func() {
+		// request always signals when it's done
+		defer aud.updateSync.Done()
+
+		// wait for cancel request or a timeout
+		select {
+		case <-aud.updateCancel:
+			return
+		case <-time.After(100 * time.Millisecond):
+			// if we see the timeout signal then commit the request to the main
+			// audio goroutine
+			aud.updateCommit <- spec
+		}
+	}()
+}
+
+func (aud *Audio) setSpec(spec specification.Spec) {
+	// this check is different to the one in the public SetSpec() function. this
+	// check protects against instances of brief refresh rate interruption.
+	// without this check the final updateRequest will get through and we
+	// reinitisaliase the audio device with the same settings, creating a
+	// audible gap in the sound
+	//
+	// we could put this check in the SetRefreshRate() function alongside the
+	// other check but this is clearer and means any other codepath to this
+	// function is covered.
+	//
+	// also, rather than scanlines and refreshRate, we could compare against the
+	// calculated sample frequency that is to used for reinitialisation. this
+	// would cover the instance where the calculation arrives at the same
+	// frequency value through different inputs. I've not tested if that can
+	// happen but it seems unlikely
+	if spec.ID == aud.committedID {
+		return
+	}
+	aud.committedID = spec.ID
+
+	if aud.id > 0 {
+		sdl.ClearQueuedAudio(aud.id)
+		sdl.CloseAudioDevice(aud.id)
+	}
+
+	sampleFreq := float32(spec.ScanlinesTotal) * float32(spec.RefreshRate) * audio.SamplesPerScanline
+	logger.Logf(logger.Allow, "sdlaudio", "calculated frequency: %d * %.2f * %d = %.2f",
+		spec.ScanlinesTotal, spec.RefreshRate, audio.SamplesPerScanline, sampleFreq)
+
+	request := &sdl.AudioSpec{
+		Freq:     int32(sampleFreq),
+		Format:   sdl.AUDIO_S16MSB,
+		Channels: 2,
+		Samples:  uint16(len(aud.buffer)),
+	}
+
+	var err error
+	var actual sdl.AudioSpec
+
+	aud.id, err = sdl.OpenAudioDevice("", false, request, &actual, 0)
+	if err != nil {
+		logger.Log(logger.Allow, "sdlaudio", err.Error())
+	}
+	aud.spec = actual
+
+	logger.Logf(logger.Allow, "sdlaudio", "requested frequency: %d samples/sec", int(sampleFreq))
+	logger.Logf(logger.Allow, "sdlaudio", "actual frequency: %d samples/sec", aud.spec.Freq)
+	logger.Logf(logger.Allow, "sdlaudio", "buffer size: %d samples", len(aud.buffer))
+
+	aud.Reset()
+	sdl.PauseAudioDevice(aud.id, aud.muted)
+}
+
+// Mute silences the audio device.
+func (aud *Audio) Mute(muted bool) {
+	if aud.id == 0 {
+		return
+	}
+	sdl.ClearQueuedAudio(aud.id)
+	sdl.PauseAudioDevice(aud.id, muted)
+	aud.muted = muted
+}
+
+const (
+	rateRepeat = 1000
+	rateDrop   = 10000
+	rateReset  = 20000
+
+	QueueOkay    = 2000
+	QueueWarning = 8000
+)
+
+// SetAudio implements the television.AudioMixer interface.
+func (aud *Audio) SetAudio(sig []signal.AudioSignalAttributes) error {
+	if len(sig) > specification.AbsoluteMaxScanlines*audio.SamplesPerScanline {
+		panic("too many samples received by SetAudio() in one call")
+	}
+
+	if aud.id == 0 {
+		return nil
+	}
+
+	// resolve specifcation committal
+	select {
+	case u := <-aud.updateCommit:
+		aud.setSpec(u)
+	default:
+	}
+
+	// always measure queued bytes
+	queuedBytes := int(sdl.GetQueuedAudioSize(aud.id))
+
+	// update public QueuedBytes value less frequently
+	select {
+	case <-aud.queuedBytesMeasure.C:
+		aud.QueuedBytes = queuedBytes
+	default:
+		// update public QueuedBytes immediately if the queue is empty
+		if queuedBytes < rateRepeat {
+			aud.QueuedBytes = 0
+		}
+	}
+
+	// regulate rate by either flushing the queue (which we only do as a last
+	// resort) or by dropping the latest batch of samples
+	if queuedBytes > rateReset {
+		logger.Logf(logger.Allow, "sdlaudio", "flushed audio queue: %d", queuedBytes)
+		sdl.ClearQueuedAudio(aud.id)
+		aud.QueuedBytes = int(sdl.GetQueuedAudioSize(aud.id))
+	} else if queuedBytes > rateDrop {
+		// drop samples. the number of samples is so small that we won't audibly miss them
+		return nil
+	}
+
+	// we still want to measure the audio queue even if the audio is muted. so
+	// this check comes after the measurement
+	if aud.muted {
+		return nil
+	}
+
+	// update local preference values. we don't need these values if the audio
+	// is muted
+	aud.stereo = aud.Prefs.Stereo.Get().(bool)
+	aud.discrete = aud.Prefs.Discrete.Get().(bool)
+	aud.separation = aud.Prefs.Separation.Get().(int)
+
+	for _, s := range sig {
 		v0 := s.AudioChannel0
 		v1 := s.AudioChannel1
 
@@ -177,70 +367,35 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 			aud.bufferCt++
 		}
 
-		remaining := int(sdl.GetQueuedAudioSize(aud.id))
-		if aud.bufferCt >= len(aud.buffer) {
-			if err := aud.queueBuffer(); err != nil {
-				return fmt.Errorf("sdlaudio: %w", err)
-			}
-		} else if remaining < realtimeDemand {
-			if err := aud.queueBuffer(); err != nil {
-				return fmt.Errorf("sdlaudio: %w", err)
-			}
-		} else if remaining > maxQueueLength {
-			// if length of sdl: audio: queue is getting too long then clear it
-			//
-			// condition valid when the frame rate is SIGNIFICANTLY MORE than 50/60fps
-			//
-			// if we don't do this the video will get ahead of the audio (ie. the audio
-			// will lag)
-			//
-			// this is a brute force approach but it'll do for now
-			sdl.ClearQueuedAudio(aud.id)
-			break // for loop
+		// we don't want to overrun the buffer
+		aud.queue()
+	}
+
+	// make sure we've added something
+	aud.queue()
+
+	return nil
+}
+
+func (aud *Audio) queue() error {
+	// we always add to the queue at least once. if it results in too much data
+	// then we regulate that on the next call to SetAudio()
+	if err := sdl.QueueAudio(aud.id, aud.buffer[:aud.bufferCt]); err != nil {
+		return fmt.Errorf("sdlaudio: %w", err)
+	}
+
+	queuedBytes := int(sdl.GetQueuedAudioSize(aud.id))
+
+	// make sure we have a minimum amount of data in the queue
+	for queuedBytes < rateRepeat {
+		if err := sdl.QueueAudio(aud.id, aud.buffer[:aud.bufferCt]); err != nil {
+			return fmt.Errorf("sdlaudio: %w", err)
 		}
+		queuedBytes = int(sdl.GetQueuedAudioSize(aud.id))
 	}
 
-	return nil
-}
-
-func (aud *Audio) queueBuffer() error {
-	err := sdl.QueueAudio(aud.id, aud.buffer[:aud.bufferCt])
-	if err != nil {
-		return err
-	}
+	// the data in the buffer is now dealt with
 	aud.bufferCt = 0
 
-	// update local preference values
-	aud.stereo = aud.Prefs.Stereo.Get().(bool)
-	aud.discrete = aud.Prefs.Discrete.Get().(bool)
-	aud.separation = aud.Prefs.Separation.Get().(int)
-
 	return nil
-}
-
-// EndMixing implements the protocol.AudioMixer interface.
-func (aud *Audio) EndMixing() error {
-	sdl.CloseAudioDevice(aud.id)
-	return nil
-}
-
-// Reset implements the protocol.AudioMixer interface.
-func (aud *Audio) Reset() {
-	aud.buffer = make([]uint8, bufferLength)
-	aud.bufferCt = 0
-
-	// fill buffers with silence
-	for i := range aud.buffer {
-		aud.buffer[i] = aud.spec.Silence
-	}
-
-	sdl.ClearQueuedAudio(aud.id)
-}
-
-// Mute silences the audio device.
-func (aud *Audio) Mute(muted bool) {
-	if !muted {
-		sdl.ClearQueuedAudio(aud.id)
-	}
-	sdl.PauseAudioDevice(aud.id, muted)
 }

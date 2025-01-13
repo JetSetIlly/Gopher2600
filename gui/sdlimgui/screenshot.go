@@ -46,11 +46,11 @@ func (img *SdlImgui) screenshot(mode screenshotMode, filenameSuffix string) {
 		var path string
 
 		if len(filenameSuffix) == 0 {
-			path = unique.Filename(res.description, cartName)
+			path = unique.Filename("scrshot", cartName)
 		} else {
 			path = fmt.Sprintf("%s_%s", cartName, filenameSuffix)
 		}
-		path = fmt.Sprintf("%s.jpg", path)
+		path = fmt.Sprintf("%s_%s.jpg", path, res.description)
 
 		// save image to file as a JPEG
 		saveJPEG(res.image, path)

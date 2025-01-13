@@ -54,9 +54,6 @@ const (
 	// peripheral has been changed for one of the ports.
 	ReqPeripheralPlugged FeatureReq = "ReqPeripheralPlugging" // plugging.PortID, plugging.PeripheralID
 
-	// open ROM selector.
-	ReqROMSelector FeatureReq = "ReqROMSelector" // nil
-
 	// request for a comparison window to be opened.
 	ReqComparison FeatureReq = "ReqComparison" // chan *image.RGBA, chan *image.RGBA, chan string
 

@@ -158,10 +158,12 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				img.prefs.fullScreen.Set(!img.prefs.fullScreen.Get().(bool))
 
 			case sdl.SCANCODE_F12:
-				if ctrl && !shift {
-					img.screenshot(modeComposite, "")
-				} else if shift && !ctrl {
-					img.screenshot(modeFlicker, "")
+				if alt && !ctrl && !shift {
+					img.screenshot(modeMovement, "")
+				} else if ctrl && !shift && !alt {
+					img.screenshot(modeTriple, "")
+				} else if shift && !ctrl && !alt {
+					img.screenshot(modeDouble, "")
 				} else {
 					img.screenshot(modeSingle, "")
 				}

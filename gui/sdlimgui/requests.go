@@ -90,16 +90,6 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			}
 		}
 
-	case gui.ReqROMSelector:
-		err = argLen(request.args, 0)
-		if err == nil {
-			if img.isPlaymode() {
-				img.wm.playmodeWindows[winSelectROMID].playmodeSetOpen(true)
-			} else {
-				img.wm.debuggerWindows[winSelectROMID].debuggerSetOpen(true)
-			}
-		}
-
 	case gui.ReqComparison:
 		err = argLen(request.args, 3)
 		if err == nil {

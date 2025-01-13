@@ -35,10 +35,7 @@ type popupPalette struct {
 	state    popupState
 	target   *uint8
 	callback func()
-
-	// similarly, the palette to use will be decided at request time
-	palette     packedPalette
-	paletteName string
+	name     string
 
 	pos imgui.Vec2
 	cnt imgui.Vec2
@@ -55,8 +52,8 @@ func (pop *popupPalette) request(target *uint8, callback func()) {
 	pop.state = popupRequested
 	pop.target = target
 	pop.callback = callback
+	pop.name = pop.img.cache.TV.GetFrameInfo().Spec.ID
 	pop.pos = imgui.MousePos()
-	pop.paletteName, pop.palette, _, _ = pop.img.imguiTVPalette()
 	pop.cnt = pop.img.imguiWindowQuadrant(pop.pos)
 }
 
@@ -86,16 +83,14 @@ func (pop *popupPalette) draw() {
 	// information bar
 	imgui.Text("Current: ")
 	imgui.SameLine()
-	imgui.Text(pop.paletteName)
+	imgui.Text(pop.name)
 	imgui.SameLine()
 	imgui.Text(fmt.Sprintf("%02x", *pop.target))
-	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("#%06x", pop.palette[*pop.target]&0x00ffffff))
 
 	imgui.Spacing()
 
 	palette := newPalette(pop.img)
-	if selection, ok := palette.draw(int(*pop.target)); ok {
+	if selection := palette.draw(int(*pop.target)); selection != paletteNoSelection {
 		*pop.target = uint8(selection)
 		pop.callback()
 		pop.state = popupClosed
@@ -107,8 +102,6 @@ func (pop *popupPalette) draw() {
 type palette struct {
 	img *SdlImgui
 
-	// we set sizing information at time of request. it may be too early to do
-	// this on popupPalette creation
 	swatchSize float32
 	swatchGap  float32
 }
@@ -124,66 +117,82 @@ func newPalette(img *SdlImgui) *palette {
 	return pal
 }
 
-const paletteDragDropName = "PALETTE"
+const paletteNoSelection = -1
 
-func (pal *palette) draw(selection int) (int, bool) {
-	_, packed, _, _ := pal.img.imguiTVPalette()
-	val := -1
+// returns the selected colour value or paletteNoSelection if no entry was
+// clicked on
+//
+// use argument of paletteNoSelection to indicate that no palette entry
+// should be shown to have been selected - selected entries will be drawn as a
+// circle instead of a square
+func (pal *palette) draw(selection int) int {
+	var startDragAndDrop bool
+	var showTooltip bool
+	var hoverRGBA imgui.PackedColor
+
+	selected := paletteNoSelection
 
 	// step through all colours in palette
-	for i := 0; i < len(packed); i++ {
-		if pal.colRect(i, packed[i], selection == i) {
-			val = i
-
-			imgui.PushStyleVarFloat(imgui.StyleVarPopupBorderSize, 0.0)
-			imgui.PushStyleColor(imgui.StyleColorPopupBg, pal.img.cols.Transparent)
-			if imgui.BeginDragDropSource(imgui.DragDropFlagsNone) {
-				imgui.SetDragDropPayload(paletteDragDropName, []byte{byte(i)}, imgui.ConditionAlways)
-				imgui.PushFont(pal.img.fonts.largeFontAwesome)
-				imgui.Text(string(fonts.PaintRoller))
-				imgui.PopFont()
-				imgui.EndDragDropSource()
+	for hue := 0; hue <= 0x0f; hue++ {
+		for lum := 0; lum <= 0x0e; lum += 2 {
+			c := (hue << 4) | lum
+			rgba := pal.img.getTVColour(uint8(c))
+			hov, clck := pal.colRect(c, rgba, selection == c)
+			if clck {
+				selected = c
+				startDragAndDrop = true
 			}
-			imgui.PopStyleColor()
-			imgui.PopStyleVar()
+			if hov {
+				hoverRGBA = rgba
+				showTooltip = true
+			}
 		}
 
-		// start a new row every 16 swatches
-		if (i+1)%16 == 0 {
-			p := imgui.CursorScreenPos()
-			p.Y += pal.swatchSize + pal.swatchGap
-			p.X -= 16 * (pal.swatchSize + pal.swatchGap)
-			imgui.SetCursorScreenPos(p)
-		}
+		p := imgui.CursorScreenPos()
+		p.Y += pal.swatchSize + pal.swatchGap
+		p.X -= 8 * (pal.swatchSize + pal.swatchGap)
+		imgui.SetCursorScreenPos(p)
 	}
 
-	return val, val != -1
+	if showTooltip {
+		pal.img.imguiTooltip(func() {
+			imgui.Text(fmt.Sprintf("#%06x", hoverRGBA&0x00ffffff))
+		}, false)
+	}
+
+	if startDragAndDrop {
+		imgui.PushStyleVarFloat(imgui.StyleVarPopupBorderSize, 0.0)
+		imgui.PushStyleColor(imgui.StyleColorPopupBg, pal.img.cols.Transparent)
+		if imgui.BeginDragDropSource(imgui.DragDropFlagsNone) {
+			const paletteDragDropName = "PALETTE_DRAG_AND_DROP"
+			imgui.SetDragDropPayload(paletteDragDropName, []byte{byte(selected)}, imgui.ConditionAlways)
+			imgui.PushFont(pal.img.fonts.largeFontAwesome)
+			imgui.Text(string(fonts.PaintRoller))
+			imgui.PopFont()
+			imgui.EndDragDropSource()
+		}
+		imgui.PopStyleColor()
+		imgui.PopStyleVar()
+	}
+
+	return selected
 }
 
-func (pal *palette) colRect(idx int, col imgui.PackedColor, selected bool) bool {
+func (pal *palette) colRect(idx int, col imgui.PackedColor, selected bool) (hover bool, clicked bool) {
 	// position & dimensions of playfield bit
 	a := imgui.CursorScreenPos()
 	b := a
 	b.X += pal.swatchSize
 	b.Y += pal.swatchSize
 
-	mp := imgui.MousePos()
-	hover := mp.X >= a.X && mp.X <= b.X && mp.Y >= a.Y && mp.Y <= b.Y
-
 	// if mouse is clicked in the range of the playfield bit
-	clicked := hover && imgui.IsMouseClicked(0)
+	mp := imgui.MousePos()
+	hover = mp.X >= a.X && mp.X <= b.X && mp.Y >= a.Y && mp.Y <= b.Y
+	clicked = hover && imgui.IsMouseClicked(0)
 
-	// tooltip
-	if hover {
-		pal.img.imguiTooltip(func() {
-			imgui.Text(fmt.Sprintf("%02x", idx))
-			imgui.SameLine()
-			imgui.Text(fmt.Sprintf("#%06x", col&0x00ffffff))
-		}, false)
-	}
+	dl := imgui.WindowDrawList()
 
 	// show rectangle with color
-	dl := imgui.WindowDrawList()
 	if selected {
 		c := a.Plus(b).Times(0.5)
 		dl.AddCircleFilled(c, pal.swatchSize*0.5, col)
@@ -195,5 +204,5 @@ func (pal *palette) colRect(idx int, col imgui.PackedColor, selected bool) bool 
 	a.X += pal.swatchSize + pal.swatchGap
 	imgui.SetCursorScreenPos(a)
 
-	return clicked
+	return hover, clicked
 }

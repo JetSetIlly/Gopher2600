@@ -65,15 +65,13 @@ func (b *vblankBounds) examine(sig signal.SignalAttributes, scanline int) {
 func (b *vblankBounds) commit(state *State) bool {
 	var changed bool
 
-	if state.frameInfo.Stable && state.vsync.isSynced() {
+	if state.frameInfo.Stable {
 		changed = state.frameInfo.VBLANKtop != b.top || state.frameInfo.VBLANKbottom != b.bottom
 		state.frameInfo.VBLANKunstable = state.frameInfo.VBLANKunstable || changed
 	}
 
 	state.frameInfo.VBLANKtop = b.top
 	state.frameInfo.VBLANKbottom = b.bottom
-	state.frameInfo.VBLANKatari = b.top == state.frameInfo.Spec.AtariSafeVisibleTop &&
-		b.bottom == state.frameInfo.Spec.AtariSafeVisibleBottom
 
 	b.reset()
 

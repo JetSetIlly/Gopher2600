@@ -75,7 +75,7 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Load(true)
+	err = p.dsk.Load()
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (p *Preferences) SetDefaults() {
 
 // Load current hardware preference from disk.
 func (p *Preferences) Load() error {
-	return p.dsk.Load(false)
+	return p.dsk.Load()
 }
 
 // Save current hardware preferences to disk.

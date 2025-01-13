@@ -23,6 +23,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/hardware/television/colourgen"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
@@ -106,8 +107,7 @@ func SearchReqSpec(s string) string {
 
 // Spec is used to define the two television specifications.
 type Spec struct {
-	ID     string
-	Colors []color.RGBA
+	ID string
 
 	// horizontal scan rate is used to calculate the refresh rate figure
 	HorizontalScanRate float32
@@ -172,17 +172,14 @@ type Spec struct {
 	// defined safe values.
 	ExtendedVisibleTop    int
 	ExtendedVisibleBottom int
+
+	colourGen func(signal.ColorSignal) color.RGBA
 }
 
-// GetColor translates a signals to the color type.
-func (spec *Spec) GetColor(col signal.ColorSignal) color.RGBA {
-	// we're usng the ColorSignal to index an array so we need to be extra
-	// careful to make sure the value is valid. if it's not a valid index then
-	// assume the intention was video black
-	if col == signal.VideoBlack {
-		return VideoBlack
-	}
-	return spec.Colors[col]
+// GetColor translates a signals to the color type. The RGB is not gamma
+// corrected but must should be before display
+func (spec Spec) GetColor(col signal.ColorSignal) color.RGBA {
+	return spec.colourGen(col)
 }
 
 // From the Stella Programmer's Guide:
@@ -241,17 +238,26 @@ var SpecPAL_M Spec
 // SpecSECAM is the specification for SECAM television type
 var SpecSECAM Spec
 
+// Colour generation for entire emulation
+var ColourGen *colourgen.ColourGen
+
 func init() {
+	var err error
+	ColourGen, err = colourgen.NewColourGen()
+	if err != nil {
+		panic(err)
+	}
+
 	SpecNTSC = Spec{
 		ID:                 "NTSC",
 		HorizontalScanRate: 15734.26,
-		Colors:             PaletteNTSC,
 		ScanlinesVSync:     3,
 		ScanlinesVBlank:    37,
 		ScanlinesVisible:   192,
 		ScanlinesOverscan:  30,
 		ScanlinesTotal:     262,
 		RefreshRate:        60.0,
+		colourGen:          ColourGen.GenerateNTSC,
 	}
 	SpecNTSC.RefreshRate = SpecNTSC.HorizontalScanRate / float32(SpecNTSC.ScanlinesTotal)
 	SpecNTSC.AtariSafeVisibleTop = SpecNTSC.ScanlinesVBlank + SpecNTSC.ScanlinesVSync
@@ -260,15 +266,14 @@ func init() {
 	SpecPAL = Spec{
 		ID:                 "PAL",
 		HorizontalScanRate: 15625.00,
-		Colors:             PalettePAL,
 		ScanlinesVSync:     3,
 		ScanlinesVBlank:    45,
 		ScanlinesVisible:   228,
 		ScanlinesOverscan:  36,
 		ScanlinesTotal:     312,
 		RefreshRate:        50.0,
+		colourGen:          ColourGen.GeneratePAL,
 	}
-
 	SpecPAL.RefreshRate = SpecPAL.HorizontalScanRate / float32(SpecPAL.ScanlinesTotal)
 	SpecPAL.AtariSafeVisibleTop = SpecPAL.ScanlinesVBlank + SpecPAL.ScanlinesVSync
 	SpecPAL.AtariSafeVisibleBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesOverscan
@@ -276,15 +281,14 @@ func init() {
 	SpecPAL_M = Spec{
 		ID:                 "PAL-M",
 		HorizontalScanRate: 15734.26,
-		Colors:             PaletteNTSC,
 		ScanlinesVSync:     3,
 		ScanlinesVBlank:    37,
 		ScanlinesVisible:   192,
 		ScanlinesOverscan:  30,
 		ScanlinesTotal:     262,
 		RefreshRate:        60.0,
+		colourGen:          ColourGen.GenerateNTSC,
 	}
-
 	SpecPAL_M.RefreshRate = SpecPAL_M.HorizontalScanRate / float32(SpecPAL_M.ScanlinesTotal)
 	SpecPAL_M.AtariSafeVisibleTop = SpecPAL_M.ScanlinesVBlank + SpecPAL_M.ScanlinesVSync
 	SpecPAL_M.AtariSafeVisibleBottom = SpecPAL_M.ScanlinesTotal - SpecPAL_M.ScanlinesOverscan
@@ -292,15 +296,14 @@ func init() {
 	SpecSECAM = Spec{
 		ID:                 "SECAM",
 		HorizontalScanRate: 15625.00,
-		Colors:             PaletteSECAM,
 		ScanlinesVSync:     3,
 		ScanlinesVBlank:    45,
 		ScanlinesVisible:   228,
 		ScanlinesOverscan:  36,
 		ScanlinesTotal:     312,
 		RefreshRate:        50.0,
+		colourGen:          ColourGen.GenerateSECAM,
 	}
-
 	SpecSECAM.RefreshRate = SpecSECAM.HorizontalScanRate / float32(SpecSECAM.ScanlinesTotal)
 	SpecSECAM.AtariSafeVisibleTop = SpecSECAM.ScanlinesVBlank + SpecSECAM.ScanlinesVSync
 	SpecSECAM.AtariSafeVisibleBottom = SpecSECAM.ScanlinesTotal - SpecSECAM.ScanlinesOverscan

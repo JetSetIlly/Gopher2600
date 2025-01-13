@@ -15,10 +15,6 @@
 
 package television
 
-import (
-	"github.com/jetsetilly/gopher2600/hardware/television/specification"
-)
-
 // good test cases for bad VSYNC:
 //
 //  Lord of the Rings
@@ -36,8 +32,10 @@ import (
 //	RsTennis
 //	- always has a valid VSYNC signal but the extent of the frame changes
 //	briefly (when the logo bounces on the title screen)
-//	- the unstableScanlineOnVSYNC field keeps track of how many frames this
-//	happens consecutively and allows a brief deviation
+//
+//	Tapper
+//	- always has a valid VSYNC signal but the extent of the frame changes
+//	- fluctuates between 261 and 262
 
 type vsync struct {
 	active bool
@@ -53,68 +51,15 @@ type vsync struct {
 	// activeClock as the mark to increase the count
 	activeScanlineCount int
 
-	// the ideal scanline at which the "new frame" is triggered. this can be
-	// thought of as the number of scanlines between valid VSYNC signals. as
-	// such, it is only reset on reception of a valid VSYNC signal
-	//
-	// that value of this can go way beyond the number of specification.AbsoluteMaxScanlines
-	// during the period when there is no VSYNC. it is therefore a good idea to
-	// modulo divide this field with AbsoluteMaxScanlines before using it
-	//
-	// when scanline is equal to flybackScanline then the television is
-	// synchronised. see isSynced() function
-	scanline int
-
-	// the number of consecutive valid VSYNC signals where the scanline does not
-	// equal the flybackScanline. capped at toleranceUnstableScanlineOnVSYNC
-	unstableScanlineOnVSYNC int
-
-	// the scanline at which a "new frame" is actually triggered. this will be
-	// different than the scanlines field during the synchronisation process causing
-	// the screen to visually roll
-	flybackScanline int
-
-	// short history of the active field. updated every newFrame(). each bit
-	// from LSB to MSB records the active field from most recent to least recent
-	//
-	// this is likely more than we need but it's simple and it works
-	history uint8
+	// the scanline the flyback returns to when frame is started as a result of
+	// a valid VSYNC signal
+	topScanline int
 }
-
-// maximum value for the unstableScanlineOnVSYNC field. this should not be too
-// large. a value of one is ideal
-const toleranceUnstableScanlineOnVSYNC = 1
 
 func (v *vsync) reset() {
 	v.active = false
+	v.startScanline = 0
 	v.startClock = 0
 	v.activeScanlineCount = 0
-	v.scanline = 0
-	v.flybackScanline = specification.AbsoluteMaxScanlines
-	v.startScanline = 0
-	v.history = 0
-}
-
-func (v vsync) isSynced() bool {
-	return v.scanline == v.flybackScanline
-}
-
-func (v *vsync) updateHistory() {
-	v.history <<= 1
-	if v.active {
-		v.history |= 0x01
-	}
-}
-
-func (v *vsync) desync(base int) {
-	// move flybackScanline value towards base value. taking into account which
-	// value is higher
-	if base >= v.flybackScanline {
-		v.flybackScanline += (base - v.flybackScanline) * 5 / 100
-	} else {
-		v.flybackScanline += (v.flybackScanline - base) * 5 / 100
-	}
-
-	// do not go past the limits of the TV
-	v.flybackScanline = min(v.flybackScanline, specification.AbsoluteMaxScanlines)
+	v.topScanline = 0
 }

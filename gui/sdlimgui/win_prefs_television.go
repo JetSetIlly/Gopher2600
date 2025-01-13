@@ -21,9 +21,22 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/television/colourgen"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 func (win *winPrefs) drawTelevision() {
+	pos := imgui.CursorScreenPos()
+	pos.X += imgui.WindowWidth()
+	defer func() {
+		imgui.SetNextWindowPos(pos)
+		if imgui.BeginV("##prefspalette", &win.playmodeOpen, imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoDecoration) {
+			p := newPalette(win.img)
+			p.draw(paletteNoSelection)
+		}
+		imgui.End()
+	}()
+
 	imgui.PushItemWidth(400)
 	defer imgui.PopItemWidth()
 
@@ -33,8 +46,6 @@ func (win *winPrefs) drawTelevision() {
 	imgui.Separator()
 	imgui.Spacing()
 	win.drawVSYNC()
-	imgui.Spacing()
-	win.drawHaltConditions()
 }
 
 func (win *winPrefs) drawColour() {
@@ -45,6 +56,21 @@ func (win *winPrefs) drawColour() {
 	win.drawSaturation()
 	imgui.Spacing()
 	win.drawHue()
+
+	switch win.img.cache.TV.GetFrameInfo().Spec.ID {
+	case specification.SpecNTSC.ID:
+		imgui.Spacing()
+		if imgui.CollapsingHeader("NTSC Colour Signal") {
+			imgui.Spacing()
+			win.drawNTSCPhase()
+		}
+	case specification.SpecPAL.ID:
+		imgui.Spacing()
+		if imgui.CollapsingHeader("PAL Colour Signal") {
+			imgui.Spacing()
+			win.drawPALPhase()
+		}
+	}
 }
 
 func (win *winPrefs) drawBrightness() {
@@ -53,14 +79,14 @@ func (win *winPrefs) drawBrightness() {
 
 	imgui.Text(fmt.Sprintf("%c Brightness", fonts.TVBrightness))
 
-	f := float32(win.img.displayPrefs.Colour.Brightness.Get().(float64))
+	f := float32(specification.ColourGen.Brightness.Get().(float64))
 
 	minv := float32(0.1)
-	maxv := float32(1.90)
+	maxv := float32(1.9)
 	label := fmt.Sprintf("%.0f", 100*(f-minv)/(maxv-minv))
 
 	if imgui.SliderFloatV("##brightness", &f, minv, maxv, label, imgui.SliderFlagsNone) {
-		win.img.displayPrefs.Colour.Brightness.Set(f)
+		specification.ColourGen.Brightness.Set(f)
 	}
 }
 
@@ -70,14 +96,14 @@ func (win *winPrefs) drawContrast() {
 
 	imgui.Text(fmt.Sprintf("%c Contrast", fonts.TVContrast))
 
-	f := float32(win.img.displayPrefs.Colour.Contrast.Get().(float64))
+	f := float32(specification.ColourGen.Contrast.Get().(float64))
 
 	minv := float32(0.1)
 	maxv := float32(1.90)
 	label := fmt.Sprintf("%.0f", 100*(f-minv)/(maxv-minv))
 
 	if imgui.SliderFloatV("##contrast", &f, minv, maxv, label, imgui.SliderFlagsNone) {
-		win.img.displayPrefs.Colour.Contrast.Set(f)
+		specification.ColourGen.Contrast.Set(f)
 	}
 }
 
@@ -87,14 +113,14 @@ func (win *winPrefs) drawSaturation() {
 
 	imgui.Text(fmt.Sprintf("%c Saturation", fonts.TVSaturation))
 
-	f := float32(win.img.displayPrefs.Colour.Saturation.Get().(float64))
+	f := float32(specification.ColourGen.Saturation.Get().(float64))
 
 	minv := float32(0.1)
 	maxv := float32(1.90)
 	label := fmt.Sprintf("%.0f", 100*(f-minv)/(maxv-minv))
 
 	if imgui.SliderFloatV("##saturation", &f, minv, maxv, label, imgui.SliderFlagsNone) {
-		win.img.displayPrefs.Colour.Saturation.Set(f)
+		specification.ColourGen.Saturation.Set(f)
 	}
 }
 
@@ -104,27 +130,89 @@ func (win *winPrefs) drawHue() {
 
 	imgui.Text(fmt.Sprintf("%c Hue", fonts.TVHue))
 
-	f := float32(win.img.displayPrefs.Colour.Hue.Get().(float64))
+	f := float32(specification.ColourGen.Hue.Get().(float64))
 
-	minv := float32(-0.99)
-	maxv := float32(0.99)
+	minv := float32(-180)
+	maxv := float32(180)
 	aminv := float32(math.Abs(float64(minv)))
 	amaxv := float32(math.Abs(float64(maxv)))
 	label := fmt.Sprintf("%.0f\u00b0", (f+minv+maxv)/(aminv+amaxv)*360)
 
 	if imgui.SliderFloatV("##hue", &f, minv, maxv, label, imgui.SliderFlagsNone) {
-		win.img.displayPrefs.Colour.Hue.Set(f)
+		specification.ColourGen.Hue.Set(f)
 	}
 }
 
-func (win *winPrefs) drawHaltConditions() {
-	if imgui.CollapsingHeader("Halting") {
-		imgui.Spacing()
-		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltVSYNCTooShort, "VSYNC too short")
-		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltVSYNCScanlineStart, "VSYNC start scanline changes")
-		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltVSYNCScanlineCount, "VSYNC scanline count changes")
-		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltVSYNCabsent, "VSYNC absent")
-		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltChangedVBLANK, "VBLANK bounds change")
+func (win *winPrefs) drawNTSCPhase() {
+	imgui.BeginGroup()
+	defer imgui.EndGroup()
+
+	f := float32(specification.ColourGen.NTSCPhase.Get().(float64))
+
+	imgui.AlignTextToFramePadding()
+	imgui.Text("Phase")
+	imgui.SameLineV(0, 5)
+
+	label := fmt.Sprintf("%.1f\u00b0", f)
+	changed := imgui.SliderFloatV("##ntsc_phase", &f, 20.0, 30.0, label, imgui.SliderFlagsNone)
+
+	// round to one decimal place so that the selected value can
+	// better match the preset value as required
+	f = float32(math.Round(float64(f)*10) / 10)
+
+	// commit change to NTSC phase
+	if changed {
+		specification.ColourGen.NTSCPhase.Set(f)
+	}
+
+	// the colourgen preset values should have been rounded to 1 decimal place
+	// so that the comparison to the rounded f value can work
+	switch f {
+	case colourgen.NTSCFieldService:
+		label = colourgen.NTSCFieldSericeLabel
+	case colourgen.NTSCVideoSoft:
+		label = colourgen.NTSCVidoSoftLabel
+	case colourgen.NTSCIdealDistribution:
+		label = colourgen.NTSCIdealDistributionLabel
+	default:
+		label = "Custom"
+	}
+
+	imgui.Spacing()
+	imgui.AlignTextToFramePadding()
+	imgui.Text("Preset")
+	imgui.SameLineV(0, 5)
+
+	if imgui.BeginComboV("##ntscpreset", label, imgui.ComboFlagsNone) {
+		if imgui.Selectable(colourgen.NTSCFieldSericeLabel) {
+			specification.ColourGen.NTSCPhase.Set(colourgen.NTSCFieldService)
+		}
+		if imgui.Selectable(colourgen.NTSCVidoSoftLabel) {
+			specification.ColourGen.NTSCPhase.Set(colourgen.NTSCVideoSoft)
+		}
+		if imgui.Selectable(colourgen.NTSCIdealDistributionLabel) {
+			specification.ColourGen.NTSCPhase.Set(colourgen.NTSCIdealDistribution)
+		}
+		imgui.EndCombo()
+	}
+}
+
+func (win *winPrefs) drawPALPhase() {
+	imgui.BeginGroup()
+	defer imgui.EndGroup()
+
+	f := float32(specification.ColourGen.PALPhase.Get().(float64))
+
+	imgui.AlignTextToFramePadding()
+	imgui.Text("Phase")
+	imgui.SameLineV(0, 5)
+
+	label := fmt.Sprintf("%.1f\u00b0", f)
+	if imgui.SliderFloatV("##pal_phase", &f, 10.0, 30.0, label, imgui.SliderFlagsNone) {
+		// round to one decimal place. this matches what we do in the NTSC phase
+		// widget, although we don't have presets like we do with NTSC
+		f := math.Round(float64(f)*10) / 10
+		specification.ColourGen.PALPhase.Set(f)
 	}
 }
 
@@ -145,54 +233,21 @@ func (win *winPrefs) drawVSYNC() {
 		if imgui.SliderIntV("##vsyncScanlines", &scanlines, 0, 4, label, 1.0) {
 			win.img.dbg.VCS().Env.Prefs.TV.VSYNCscanlines.Set(scanlines)
 		}
-
-		win.img.imguiTooltipSimple(`The number of scanlines for which VSYNC must be enabled
-for it to be a valid VSYNC signal`)
+		win.img.imguiTooltipSimple("Number of scanlines for valid VSYNC")
 
 		imgui.Spacing()
-		imgui.Text("Speed of Recovery")
-		recovery := int32(win.img.dbg.VCS().Env.Prefs.TV.VSYNCrecovery.Get().(int))
+		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.VSYNCimmedateSync, "Immediate Synchronisation")
+		win.img.imguiTooltipSimple("Whether the screen should synchroise immediately")
 
-		const (
-			verySlow  = 90
-			slow      = 75
-			quick     = 60
-			veryQuick = 45
-		)
+		drawDisabled(win.img.dbg.VCS().Env.Prefs.TV.VSYNCimmedateSync.Get().(bool), func() {
+			prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.VSYNCsyncedOnStart, "Synchronised on start")
+			win.img.imguiTooltipSimple("No visible synchronisation on start")
+		})
 
-		if recovery >= verySlow {
-			recovery = 3
-			label = fmt.Sprintf("very slow")
-		} else if recovery >= slow {
-			recovery = 2
-			label = fmt.Sprintf("slow")
-		} else if recovery >= quick {
-			recovery = 1
-			label = fmt.Sprintf("quick")
-		} else if recovery >= veryQuick {
-			recovery = 0
-			label = fmt.Sprintf("very quick")
-		}
+		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltChangedVSYNC, "Abort on bad VSYNC")
+		win.img.imguiTooltipSimple("Enter debugger when VSYNC is bad")
 
-		if imgui.SliderIntV("##vsyncRecover", &recovery, 0, 3, label, 1.0) {
-			if recovery >= 3 {
-				recovery = verySlow
-			} else if recovery == 2 {
-				recovery = slow
-			} else if recovery == 1 {
-				recovery = quick
-			} else if recovery == 0 {
-				recovery = veryQuick
-			}
-			win.img.dbg.VCS().Env.Prefs.TV.VSYNCrecovery.Set(recovery)
-		}
-
-		win.img.imguiTooltipSimple(`The speed at which the TV synchronises after
-receiving a valid VSYNC signal`)
-
-		imgui.Spacing()
-
-		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.VSYNCsyncedOnStart, "Synchronised on start")
-		win.img.imguiTooltipSimple(`The television is synchronised on start`)
+		prefsCheckbox(&win.img.dbg.VCS().Env.Prefs.TV.HaltChangedVBLANK, "Abort on changed VBLANK bounds")
+		win.img.imguiTooltipSimple("Enter debugger when use of VBLANK changes")
 	}
 }

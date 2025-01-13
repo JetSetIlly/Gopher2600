@@ -52,7 +52,7 @@ func newAtariVoxPreferences() (*AtariVoxPreferences, error) {
 		return nil, err
 	}
 
-	err = p.dsk.Load(true)
+	err = p.dsk.Load()
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func (p *AtariVoxPreferences) SetDefaults() {
 
 // Load disassembly preferences and apply to the current disassembly.
 func (p *AtariVoxPreferences) Load() error {
-	return p.dsk.Load(false)
+	return p.dsk.Load()
 }
 
 // Save current disassembly preferences to disk.

@@ -41,6 +41,7 @@ type CPU interface {
 // TV defines the television functions required by the TIA type.
 type TV interface {
 	Signal(signal.SignalAttributes)
+	AudioSignal(signal.AudioSignalAttributes)
 	GetCoords() coords.TelevisionCoords
 }
 
@@ -595,11 +596,10 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister, ct int) {
 
 	// mix audio and copy values to television signal
 	if ct == 3 && tia.Audio.Step() {
-		tia.sig.AudioUpdate = true
-		tia.sig.AudioChannel0 = tia.Audio.Vol0
-		tia.sig.AudioChannel1 = tia.Audio.Vol1
-	} else {
-		tia.sig.AudioUpdate = false
+		tia.tv.AudioSignal(signal.AudioSignalAttributes{
+			AudioChannel0: tia.Audio.Vol0,
+			AudioChannel1: tia.Audio.Vol1,
+		})
 	}
 
 	// send signal to television
@@ -760,16 +760,15 @@ func (tia *TIA) QuickStep(ct int) {
 		// VBLANK.
 		tia.sig.Color = signal.VideoBlack
 	} else {
-		tia.sig.Color = signal.ColorSignal(tia.Video.PixelColor)
+		tia.sig.Color = signal.ColorSignal(tia.Video.PixelColor & 0xfe)
 	}
 
 	// mix audio and copy values to television signal
 	if ct == 3 && tia.Audio.Step() {
-		tia.sig.AudioUpdate = true
-		tia.sig.AudioChannel0 = tia.Audio.Vol0
-		tia.sig.AudioChannel1 = tia.Audio.Vol1
-	} else {
-		tia.sig.AudioUpdate = false
+		tia.tv.AudioSignal(signal.AudioSignalAttributes{
+			AudioChannel0: tia.Audio.Vol0,
+			AudioChannel1: tia.Audio.Vol1,
+		})
 	}
 
 	// send signal to television

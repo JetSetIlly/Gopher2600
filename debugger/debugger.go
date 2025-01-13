@@ -93,9 +93,6 @@ type Debugger struct {
 	state    atomic.Value // emulation.State
 	subState atomic.Value // emulation.RewindingSubState
 
-	// preferences for the emulation
-	Prefs *Preferences
-
 	// reference to emulated hardware. this pointer never changes through the
 	// life of the emulation even though the hardware may change and the
 	// components may change (during rewind for example)
@@ -341,12 +338,6 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	dbg.quantum.Store(govern.QuantumInstruction)
 
 	var err error
-
-	// load preferences
-	dbg.Prefs, err = newPreferences()
-	if err != nil {
-		return nil, fmt.Errorf("debugger: %w", err)
-	}
 
 	// creat a new television. this will be used during the initialisation of
 	// the VCS and not referred to directly again
@@ -638,17 +629,7 @@ func (dbg *Debugger) setMode(mode govern.Mode) error {
 	case govern.ModePlay:
 		dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
 		dbg.vcs.TV.AddFrameTrigger(dbg.counter)
-
-		// simple detection of whether cartridge is ejected when switching to
-		// playmode. if it is ejected then open ROM selected.
-		if dbg.Mode() == govern.ModePlay && dbg.vcs.Mem.Cart.IsEjected() {
-			err = dbg.forceROMSelector()
-			if err != nil {
-				return fmt.Errorf("debugger: %w", err)
-			}
-		} else {
-			dbg.setState(govern.Running, govern.Normal)
-		}
+		dbg.setState(govern.Running, govern.Normal)
 
 	case govern.ModeDebugger:
 		dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
@@ -693,12 +674,6 @@ func (dbg *Debugger) end() {
 
 	// set ending state
 	err := dbg.gui.SetFeature(gui.ReqEnd)
-	if err != nil {
-		logger.Log(logger.Allow, "debugger", err)
-	}
-
-	// save preferences
-	err = dbg.Prefs.Save()
 	if err != nil {
 		logger.Log(logger.Allow, "debugger", err)
 	}
@@ -975,15 +950,7 @@ func (dbg *Debugger) run() error {
 		case govern.ModePlay:
 			err := dbg.playLoop()
 			if err != nil {
-				// if we ever encounter a cartridge ejected error in playmode
-				// then simply open up the ROM selector and continue with the
-				// running loop
-				if errors.Is(err, cartridge.Ejected) {
-					err = dbg.forceROMSelector()
-					if err != nil {
-						return fmt.Errorf("debugger: %w", err)
-					}
-				} else if errors.Is(err, terminal.UserReload) {
+				if errors.Is(err, terminal.UserReload) {
 					err = dbg.reloadCartridge()
 					if err != nil {
 						logger.Log(logger.Allow, "debugger", err)
@@ -1264,8 +1231,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	// reset cartridge loader after using it in the preview
 	cartload.Seek(0, io.SeekStart)
 
-	// copy resizer from preview to main emulation. we don't want to force the
-	// change of specification however
+	// copy resizer from preview to main emulation
 	dbg.vcs.TV.SetSpec(dbg.preview.Results().SpecID, false)
 	dbg.vcs.TV.SetResizer(dbg.preview.Results().Resizer)
 
@@ -1279,11 +1245,6 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	err = dbg.gui.SetFeature(gui.ReqBotFeedback, feedback)
 	if err != nil {
 		return err
-	}
-
-	// record the most filename as the most recent ROM loaded if appropriate
-	if !dbg.vcs.Mem.Cart.IsEjected() {
-		dbg.Prefs.RecentROM.Set(cartload.Filename)
 	}
 
 	return nil
@@ -1507,11 +1468,13 @@ func (dbg *Debugger) insertCartridge(filename string) error {
 //
 // It should not be run directly from the emulation/debugger goroutine, use
 // insertCartridge() for that
-func (dbg *Debugger) InsertCartridge(filename string) {
+func (dbg *Debugger) InsertCartridge(filename string, done chan bool) {
 	dbg.PushFunctionImmediate(func() {
 		dbg.setState(govern.Initialising, govern.Normal)
 		dbg.unwindLoop(func() error {
-			return dbg.insertCartridge(filename)
+			err := dbg.insertCartridge(filename)
+			done <- err == nil
+			return err
 		})
 	})
 }

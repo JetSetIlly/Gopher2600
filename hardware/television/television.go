@@ -20,7 +20,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/environment"
-	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/limiter"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -34,6 +33,9 @@ const leadingFrames = 1
 // the number of synced frames required before the TV is considered to be
 // stable. once the tv is stable then specification switching cannot happen.
 const stabilityThreshold = 6
+
+// the number of unsynced frames before we give in and say that the frame is stable
+const stabilityThresholdNoSync = 30
 
 // State encapsulates the television values that can change from moment to
 // moment. Used by the rewind system when recording the current television
@@ -56,7 +58,7 @@ type State struct {
 	scanline int
 	clock    int
 
-	// the number of consistent frames seen after reset. once the count reaches
+	// the number of VSYNCED frames seen after reset. once the count reaches
 	// stabilityThreshold then Stable flag in the FrameInfo type is set to
 	// true.
 	//
@@ -73,6 +75,13 @@ type State struct {
 
 	// latch to say if next flyback was a result of VSYNC or not
 	fromVSYNC bool
+
+	// if VSYNC was attempted but failed due to the current TV settings. in that
+	// case fromVSYNC will be false and failedVSYNC will be true
+	//
+	// we use this to prevent the setRefreshRate() function from changing the
+	// audio refresh rate if the ROM is at least trying to synchronise
+	failedVSYNC bool
 
 	// frame resizer
 	resizer Resizer
@@ -164,9 +173,6 @@ func (s *State) GetCoords() coords.TelevisionCoords {
 type Television struct {
 	env *environment.Environment
 
-	// the simple signal path will be used if the simple field is non-nil
-	signal func(sig signal.SignalAttributes)
-
 	// the ID with which the television was created. this overrides all spec
 	// changes unles the value is AUTO
 	creationSpecID string
@@ -192,8 +198,7 @@ type Television struct {
 	// list of audio mixers to consult
 	mixers []AudioMixer
 
-	// realtime mixer. only one allowed
-	realtimeMixer RealtimeAudioMixer
+	realTimeMixer RealtimeAudioMixer
 
 	// instance of current state (as supported by the rewind system)
 	state *State
@@ -213,25 +218,22 @@ type Television struct {
 	//
 	// because each SignalAttribute can be decoded for scanline and clock
 	// information the array can be sliced freely
-	signals []signal.SignalAttributes
-
-	// the index of the most recent Signal()
+	//
+	// currentSignalIdx is the index of the most recent Signal()
+	//
+	// firstSignalIdx the index of the first Signal() in the frame
+	signals          []signal.SignalAttributes
 	currentSignalIdx int
+	firstSignalIdx   int
 
-	// the index of the first Signal() in the frame
-	firstSignalIdx int
-
-	// updated in renderSignals() function. might need more nuanced
-	// copying/appending. for example if renderSignals() is called multiple
-	// times per frame. currently this will only happen in the debugger when
-	// execution is halted mid frame so I don't think it's an issue
-	prevSignals       []signal.SignalAttributes
-	prevSignalLastIdx int
-	prevSignalFirst   int
+	audioSignals     []signal.AudioSignalAttributes
+	audioSignalLimit int
 
 	// state of emulation
 	emulationState govern.State
 }
+
+const baselineAudioSignalLimit = 200
 
 // NewTelevision creates a new instance of the television type, satisfying the
 // Television interface.
@@ -246,8 +248,7 @@ func NewTelevision(spec string) (*Television, error) {
 		state: &State{
 			reqSpecID: spec,
 		},
-		signals:     make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
-		prevSignals: make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
+		signals: make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
 	}
 
 	// initialise frame rate limiter
@@ -285,6 +286,7 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	tv.state.stableFrames = 0
 	tv.state.vsync.reset()
 	tv.state.fromVSYNC = false
+	tv.state.failedVSYNC = false
 	tv.state.lastSignal = signal.SignalAttributes{
 		Index: signal.NoSignal,
 	}
@@ -307,10 +309,6 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 
 	for _, m := range tv.mixers {
 		m.Reset()
-	}
-
-	if tv.realtimeMixer != nil {
-		tv.realtimeMixer.Reset()
 	}
 
 	return nil
@@ -351,7 +349,7 @@ func (tv *Television) AttachVCS(env *environment.Environment, vcs VCS) {
 	}
 }
 
-// AddDebuuger adds an implementation of Debugger.
+// AddDebugger adds an implementation of Debugger.
 func (tv *Television) AddDebugger(dbg Debugger) {
 	tv.debugger = dbg
 }
@@ -422,6 +420,12 @@ func (tv *Television) RemoveScanlineTrigger(f ScanlineTrigger) {
 	}
 }
 
+// SetRealTimeAudioMixer specified which realtime audio mixer to use. Only one
+// realtime mixer can be set at once. Unset with nil
+func (tv *Television) SetRealTimeAudioMixer(m RealtimeAudioMixer) {
+	tv.realTimeMixer = m
+}
+
 // AddAudioMixer adds an implementation of AudioMixer.
 func (tv *Television) AddAudioMixer(m AudioMixer) {
 	for i := range tv.mixers {
@@ -442,18 +446,6 @@ func (tv *Television) RemoveAudioMixer(m AudioMixer) {
 			return
 		}
 	}
-}
-
-// AddRealtimeAudioMixer adds a RealtimeAudioMixer. Any previous assignment is
-// lost.
-func (tv *Television) AddRealtimeAudioMixer(m RealtimeAudioMixer) {
-	tv.realtimeMixer = m
-}
-
-// RemoveRealtimeAudioMixer removes any RealtimeAudioMixer implementation from
-// the Television.
-func (tv *Television) RemoveRealtimeAudioMixer() {
-	tv.realtimeMixer = nil
 }
 
 // some televisions may need to conclude and/or dispose of resources
@@ -478,122 +470,87 @@ func (tv *Television) End() error {
 	return err
 }
 
+// AudioSignal updates the audio stream.
+func (tv *Television) AudioSignal(sig signal.AudioSignalAttributes) {
+	tv.audioSignals = append(tv.audioSignals, sig)
+	if len(tv.audioSignals) >= tv.state.frameInfo.TotalScanlines {
+		if tv.realTimeMixer != nil {
+			err := tv.realTimeMixer.SetAudio(tv.audioSignals[:])
+			if err != nil {
+				logger.Log(tv.env, "TV", err)
+			}
+		}
+
+		// update normal mixers
+		for _, m := range tv.mixers {
+			err := m.SetAudio(tv.audioSignals[:])
+			if err != nil {
+				logger.Log(tv.env, "TV", err)
+			}
+		}
+
+		// flush audio signal after both realtime and normal mixers have been processed
+		tv.audioSignals = tv.audioSignals[:0]
+	}
+}
+
 // Signal updates the current state of the television.
 func (tv *Television) Signal(sig signal.SignalAttributes) {
+	// count VSYNC scanlines based on when HSync ends. this means that if
+	// VSYNC is set after HSYNC on a scanline, the scanlines won't be
+	// counted for almost an entire scanline
+	if tv.state.vsync.active && !sig.HSync && tv.state.lastSignal.HSync {
+		tv.state.vsync.activeScanlineCount++
+	}
+
 	// check for change of VSYNC signal
 	if sig.VSync != tv.state.lastSignal.VSync {
 		if sig.VSync {
 			// VSYNC has started
 			tv.state.vsync.active = true
 			tv.state.vsync.activeScanlineCount = 0
-			tv.state.vsync.startClock = tv.state.clock
 			tv.state.vsync.startScanline = tv.state.scanline
+			tv.state.vsync.startClock = tv.state.clock
+
+			// check that VSYNC start scanline hasn't changed
+			if tv.state.frameInfo.Stable && tv.debugger != nil {
+				if tv.state.frameInfo.VSYNCscanline != tv.state.vsync.startScanline {
+					if tv.env.Prefs.TV.HaltChangedVSYNC.Get().(bool) {
+						tv.debugger.HaltFromTelevision(fmt.Errorf("%w: start scanline", HaltBadVSYNC))
+					}
+					tv.state.frameInfo.VSYNCunstable = true
+				} else if tv.state.frameInfo.VSYNCclock != tv.state.vsync.startClock {
+					if tv.env.Prefs.TV.HaltChangedVSYNC.Get().(bool) {
+						tv.debugger.HaltFromTelevision(fmt.Errorf("%w: start clock", HaltBadVSYNC))
+					}
+					tv.state.frameInfo.VSYNCunstable = true
+				}
+			}
 		} else {
-			// VSYNC has been disabled this cycle
-			if tv.state.vsync.activeScanlineCount >= tv.env.Prefs.TV.VSYNCscanlines.Get().(int) {
-				// at least the required number of VSYNC scanlines have been seen
-
-				// adjust flyback scanline until it matches the vsync scanline.
-				// also adjust the actual scanline if it's not zero
-				if tv.state.vsync.scanline != tv.state.vsync.flybackScanline {
-					// tolerate a brief deviation from established flyback scanline before destabilising the frame.
-					// it might also be a good idea to only allow a small deviation. eg just one or two scanlines.
-					// but I don't have any examples yet where this is desirable
-					if tv.state.vsync.unstableScanlineOnVSYNC < toleranceUnstableScanlineOnVSYNC {
-						tv.state.vsync.unstableScanlineOnVSYNC++
-					} else {
-						// get recovery value from user prefence and make sure value is sensible
-						recovery := max(preferences.VSYNCrecoveryMin,
-							min(preferences.VSYNCrecoveryMax,
-								tv.env.Prefs.TV.VSYNCrecovery.Get().(int)))
-
-						// adjust flyback scanline either forward or backward
-						// towards the current VSYNC scanline
-						adj := ((tv.state.vsync.flybackScanline - tv.state.vsync.scanline) * recovery) / 100
-						if tv.state.vsync.scanline > tv.state.vsync.flybackScanline {
-							adj *= -1
-						}
-						tv.state.vsync.flybackScanline = tv.state.vsync.scanline + adj
-
-						// cap limit of flyback scanline. an alternative method for
-						// this with a different visual effect is to modulo divide
-						// flybackScanline by specification.AbsoluteMaxScanlines
-						tv.state.vsync.flybackScanline = min(tv.state.vsync.flybackScanline, specification.AbsoluteMaxScanlines)
-						tv.state.vsync.flybackScanline = max(tv.state.vsync.flybackScanline, 0)
-
-						// adjust scanline until it is zero
-						tv.state.scanline = (tv.state.scanline * recovery) / 100
-
-						// if recovery is very close to zero, within the number of
-						// scanlines in the VSYNC, then snap scanline to zero. cap
-						// at a value of five scanlines in case of ROM going bezerk
-						//
-						// we do this because otherwise the FrameInfo type can be
-						// updated with misleading VSYNC information. for example,
-						// one frame might report have one frame with one scanline
-						// in the VSYNC and the next frame having two scanlines of
-						// VSYNC
-						//
-						// 1/12/24 - after re-reading this doesn't seem like a good
-						// way of solving this problem, but I can't think of any
-						// alternative
-						if tv.state.scanline <= min(tv.state.vsync.activeScanlineCount, 5) {
-							tv.state.scanline = 0
-						}
-					}
-				} else {
-					tv.state.vsync.unstableScanlineOnVSYNC = 0
-
-					if tv.state.scanline > 0 {
-						recovery := max(preferences.VSYNCrecoveryMin,
-							min(preferences.VSYNCrecoveryMax,
-								tv.env.Prefs.TV.VSYNCrecovery.Get().(int)))
-
-						// continue to adjust scanline until it is zero
-						tv.state.scanline = (tv.state.scanline * recovery) / 100
-
-						// see comment above
-						if tv.state.scanline <= min(tv.state.vsync.activeScanlineCount, 5) {
-							tv.state.scanline = 0
-						}
-					}
-				}
-
-				if tv.state.frameNum < tv.state.resizer.previewFrameNum && tv.state.resizer.previewStable {
-					if tv.env.Prefs.TV.VSYNCsyncedOnStart.Get().(bool) {
-						tv.state.scanline = 0
-					}
-				}
-
-				// reset VSYNC scanline count only when we've received a valid VSYNC signal
-				tv.state.vsync.scanline = 0
-
-				// set fromVSYNC field
-				tv.state.fromVSYNC = true
-			} else {
-				// check VSYNC halt conditions - other conditions are checked in
-				// the newFrame() function
-				if tv.debugger != nil && tv.state.frameInfo.Stable && tv.state.frameInfo.IsSynced {
-					if tv.env.Prefs.TV.HaltVSYNCTooShort.Get().(bool) {
-						tv.debugger.HaltFromTelevision(HaltVSYNCTooShort)
+			// check that VSYNC count hasn't changed
+			if tv.state.frameInfo.Stable && tv.debugger != nil {
+				if tv.state.frameInfo.VSYNCcount != tv.state.vsync.activeScanlineCount {
+					if tv.env.Prefs.TV.HaltChangedVSYNC.Get().(bool) {
+						tv.debugger.HaltFromTelevision(fmt.Errorf("%w: count changed", HaltBadVSYNC))
 					}
 					tv.state.frameInfo.VSYNCunstable = true
 				}
 			}
 
-			// if the VSYNC signal is not valid or doesn't happen at all then
-			// desynchronisation is performed in the newFrame() function
-
-			// end of VSYNC
+			// VSYNC has been disabled this cycle
 			tv.state.vsync.active = false
-
-		}
-	}
-
-	// count VSYNC scanlines and clocks
-	if tv.state.vsync.active {
-		if tv.state.clock == tv.state.vsync.startClock {
-			tv.state.vsync.activeScanlineCount++
+			tv.state.fromVSYNC = tv.state.vsync.activeScanlineCount >= tv.env.Prefs.TV.VSYNCscanlines.Get().(int)
+			if !tv.state.fromVSYNC {
+				// VSYNC was too short
+				if tv.state.frameInfo.Stable && tv.debugger != nil {
+					if tv.env.Prefs.TV.HaltChangedVSYNC.Get().(bool) {
+						tv.debugger.HaltFromTelevision(fmt.Errorf("%w: too short", HaltBadVSYNC))
+					}
+					tv.state.frameInfo.VSYNCunstable = true
+				}
+			} else {
+				tv.state.failedVSYNC = true
+			}
 		}
 	}
 
@@ -610,17 +567,47 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 
 		// bump scanline counter
 		tv.state.scanline++
-		tv.state.vsync.scanline++
+
+		// whether to call newFrame() or newScanline()
+		var newFrame bool
 
 		// a very good example of a ROM that requires correct handling of
-		// natural flyback is Andrew Davies' Chess (3e+ test rom)
-		if tv.state.scanline >= tv.state.vsync.flybackScanline {
+		// natural flyback is Andrew Davies' Chess (3e+ test rom) and also the
+		// supercharger loading screen. the latter has sound and so is a good
+		// test for how the television interacts with the audio mixers under
+		// unsynchronised conditions
+		if tv.state.fromVSYNC {
+			newFrame = true
+
+		} else {
+			// treat newframe differently depending on whether the previous frame was synced or not
+			if tv.state.frameInfo.FromVSYNC {
+				if tv.state.scanline >= specification.AbsoluteMaxScanlines {
+					newFrame = true
+
+					// new frame is a result of a natural flyback
+					if tv.state.frameInfo.Stable && tv.debugger != nil {
+						if tv.env.Prefs.TV.HaltChangedVSYNC.Get().(bool) {
+							tv.debugger.HaltFromTelevision(fmt.Errorf("%w: natural flyback", HaltBadVSYNC))
+						}
+						tv.state.frameInfo.VSYNCunstable = true
+					}
+				}
+			} else {
+				// this is a continuing unsyncrhonised state over multiple
+				// frames. if the scanline goes past the current flyback point,
+				// denoted by TotalScanlines, then we trigger a new frame
+				newFrame = tv.state.scanline > min(specification.AbsoluteMaxScanlines-1, tv.state.frameInfo.TotalScanlines)
+			}
+		}
+
+		// call newFrame() or newScanline()
+		if newFrame {
 			err := tv.newFrame()
 			if err != nil {
 				logger.Log(tv.env, "TV", err)
 			}
 		} else {
-			// if we're not at end of screen then indicate new scanline
 			err := tv.newScanline()
 			if err != nil {
 				logger.Log(tv.env, "TV", err)
@@ -666,6 +653,17 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 	// index can never run past the end of the signals array
 	tv.currentSignalIdx = tv.state.clock + (tv.state.scanline * specification.ClksScanline)
 
+	// currentSignalIdx should be inside the range of the signals array. we
+	// don't need to check and we don't need to push the outstanding signals to
+	// the pixel renderers
+	//
+	// the size of the signals array is based on the specification values and
+	// the range of the clock and scanline fields are bounded by that
+	//
+	// if something has gone wrong then the program will panic on it's own. we
+	// don't need to add an additional check where the only course of action is
+	// to panic
+
 	// sometimes the current signal can come out "behind" the firstSignalIdx.
 	// this can happen when RSYNC is triggered on the first scanline of the
 	// frame. not common but we should handle it
@@ -685,14 +683,6 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 	// record the current signal settings so they can be used for reference
 	// during the next call to Signal()
 	tv.state.lastSignal = sig
-
-	// render queued signals
-	if tv.currentSignalIdx >= len(tv.signals) {
-		err := tv.renderSignals()
-		if err != nil {
-			logger.Log(tv.env, "TV", err)
-		}
-	}
 }
 
 func (tv *Television) newScanline() error {
@@ -701,17 +691,6 @@ func (tv *Television) newScanline() error {
 		err := r.NewScanline(tv.state.scanline)
 		if err != nil {
 			return err
-		}
-	}
-
-	// check for realtime mixing requirements. if it is required then
-	// immediately push the audio data from the previous frame to the mixer
-	if tv.realtimeMixer != nil && tv.emulationState == govern.Running && tv.state.frameInfo.Stable {
-		if tv.realtimeMixer.MoreAudio() {
-			err := tv.realtimeMixer.SetAudio(tv.prevSignals[:tv.prevSignalLastIdx])
-			if err != nil {
-				return err
-			}
 		}
 	}
 
@@ -731,13 +710,11 @@ func (tv *Television) newScanline() error {
 func (tv *Television) newFrame() error {
 	// increase or reset stable frame count as required
 	if tv.state.stableFrames <= stabilityThreshold {
-		if tv.state.vsync.isSynced() {
+		if tv.state.frameInfo.IsSynced() {
 			tv.state.stableFrames++
-			tv.state.frameInfo.Stable = tv.state.stableFrames >= stabilityThreshold
-		} else {
-			tv.state.stableFrames = 0
-			tv.state.frameInfo.Stable = false
 		}
+	} else {
+		tv.state.frameInfo.Stable = true
 	}
 
 	// specification change between NTSC and PAL. PAL-M is treated the same as
@@ -750,12 +727,16 @@ func (tv *Television) newFrame() error {
 		case specification.SpecPAL_M.ID:
 			fallthrough
 		case specification.SpecNTSC.ID:
-			if tv.state.reqSpecID == "AUTO" && tv.state.scanline > specification.PALTrigger {
-				tv.setSpec("PAL")
+			if tv.state.frameInfo.Spec.ID != "PAL" {
+				if tv.state.reqSpecID == "AUTO" && tv.state.scanline > specification.PALTrigger {
+					tv.setSpec("PAL")
+				}
 			}
 		case specification.SpecPAL.ID:
-			if tv.state.reqSpecID == "AUTO" && tv.state.scanline <= specification.PALTrigger {
-				tv.setSpec("NTSC")
+			if tv.state.frameInfo.Spec.ID != "NTSC" {
+				if tv.state.reqSpecID == "AUTO" && tv.state.scanline <= specification.PALTrigger {
+					tv.setSpec("NTSC")
+				}
 			}
 		}
 	}
@@ -767,7 +748,7 @@ func (tv *Television) newFrame() error {
 	if tv.state.bounds.commit(tv.state) {
 		if tv.debugger != nil {
 			if tv.env.Prefs.TV.HaltChangedVBLANK.Get().(bool) {
-				tv.debugger.HaltFromTelevision(HaltVBLANKChanged)
+				tv.debugger.HaltFromTelevision(HaltChangedVBLANK)
 			}
 			tv.state.frameInfo.VBLANKunstable = true
 		}
@@ -779,63 +760,101 @@ func (tv *Television) newFrame() error {
 		return err
 	}
 
-	// record total scanlines and refresh rate if changed. note that this is
-	// independent of the resizer.commit() call above.
-	//
-	// this is important to do and failure to set the refresh rate correctly
-	// is most noticeable in the Supercharger tape loading process
+	// values for screen rolling
+	const (
+		desyncSpeed   = 1.10
+		recoverySpeed = 0.80
+	)
+
 	if tv.state.frameInfo.TotalScanlines != tv.state.scanline {
-		tv.state.frameInfo.TotalScanlines = tv.state.scanline
-		tv.state.frameInfo.RefreshRate = tv.state.frameInfo.Spec.HorizontalScanRate / float32(tv.state.scanline)
+		if tv.state.fromVSYNC {
+			tv.state.frameInfo.TotalScanlines = tv.state.scanline
+		} else {
+			// how bad VSYNC
+			if tv.env.Prefs.TV.VSYNCimmedateSync.Get().(bool) {
+				// size of frame immediately goes to the maximum
+				tv.state.frameInfo.TotalScanlines = specification.AbsoluteMaxScanlines
+
+				// reset 'top scanline' value in case the 'immediate sync'
+				// option has been enabled sometime after desynchronisation
+				// started
+				tv.state.vsync.topScanline = 0
+			} else {
+				// size of frame slowly grows to the maximum
+				if tv.state.frameInfo.TotalScanlines < specification.AbsoluteMaxScanlines {
+					// +1 so that low scanline values always grow. very low desyncSpeed values
+					// might result in a static scanline value
+					//
+					// An example of a ROM that might not is "Bezerk Voice Enhanced" which creates
+					// a very short frame of 44 scanlines before allowing the screen to sync freely
+					tv.state.frameInfo.TotalScanlines = int(float64(tv.state.frameInfo.TotalScanlines)*desyncSpeed) + 1
+					tv.state.frameInfo.TotalScanlines = min(tv.state.frameInfo.TotalScanlines, specification.AbsoluteMaxScanlines)
+				}
+
+				// change top scanline if it hasn't been changed recently
+				if tv.state.vsync.topScanline == 0 {
+					// take into account frame stability and whether the 'synced on
+					// start' preference has been set
+					if tv.state.frameInfo.Stable || !tv.env.Prefs.TV.VSYNCsyncedOnStart.Get().(bool) {
+						tv.state.vsync.topScanline = (specification.AbsoluteMaxScanlines - tv.state.frameInfo.VisibleBottom) / 2
+					}
+				}
+			}
+		}
+
+		// we must use TotalScanlines for the refresh rate calculation. the
+		// tv.state.scanlines value (ie. the current scanline value) will not
+		// work. it is true that the current scanline and TotalScanlines will be
+		// same but not when the screen is unsynced, which in this codepath we
+		// will be
+		tv.state.frameInfo.RefreshRate = tv.state.frameInfo.Spec.HorizontalScanRate / float32(tv.state.frameInfo.TotalScanlines)
 		tv.setRefreshRate(tv.state.frameInfo.RefreshRate)
 		tv.state.frameInfo.Jitter = true
 	} else {
 		tv.state.frameInfo.Jitter = false
 	}
 
-	// check VSYNC halt conditions
+	// prepare for next frame
+	tv.state.frameNum++
+
+	// handle scanline value. this is based on the current 'top scanline' value
+	// if this is a frame as a result of a valid VSYNC
 	if tv.state.fromVSYNC {
-		if tv.debugger != nil && tv.state.frameInfo.Stable && tv.state.vsync.isSynced() {
-			if tv.state.frameInfo.VSYNCscanline != tv.state.vsync.startScanline {
-				if tv.env.Prefs.TV.HaltVSYNCScanlineStart.Get().(bool) {
-					tv.debugger.HaltFromTelevision(HaltVSYNCScanlineStart)
-				}
-				tv.state.frameInfo.VSYNCunstable = true
-			} else if tv.state.frameInfo.VSYNCcount != tv.state.vsync.activeScanlineCount {
-				if tv.env.Prefs.TV.HaltVSYNCScanlineCount.Get().(bool) {
-					tv.debugger.HaltFromTelevision(HaltVSYNCScanlineCount)
-				}
-				tv.state.frameInfo.VSYNCunstable = true
+		// once the screen has synced then visible top comes into play and we
+		// need to make sure there's no residual signal at the beginning of the
+		// signal array
+		for i := 0; i <= tv.state.vsync.topScanline*specification.ClksScanline; i++ {
+			// see comment below about nullifying signals at the end of the frame
+			tv.signals[i] = signal.SignalAttributes{
+				Index: signal.NoSignal,
+				Color: signal.VideoBlack,
+			}
+		}
+
+		tv.state.scanline = tv.state.vsync.topScanline
+
+		// recover from screen roll by altering 'top scanline' value
+		if tv.state.vsync.topScanline > 0 {
+			if tv.state.frameInfo.FromVSYNC {
+				tv.state.vsync.topScanline = int(float32(tv.state.vsync.topScanline) * recoverySpeed)
+			} else {
+				tv.state.vsync.topScanline = int(float32(tv.state.vsync.topScanline) * recoverySpeed * 0.5)
 			}
 		}
 	} else {
-		if tv.debugger != nil && tv.state.frameInfo.Stable && tv.state.frameInfo.IsSynced {
-			if tv.env.Prefs.TV.HaltVSYNCabsent.Get().(bool) {
-				tv.debugger.HaltFromTelevision(HaltVSYNCAbsent)
-			}
-			tv.state.frameInfo.VSYNCunstable = true
-		}
+		tv.state.scanline = 0
 	}
 
 	// note VSYNC information and update VSYNC history
+	tv.state.frameInfo.TopScanline = tv.state.scanline
 	tv.state.frameInfo.FromVSYNC = tv.state.fromVSYNC
-	tv.state.frameInfo.IsSynced = tv.state.vsync.isSynced()
 	tv.state.frameInfo.VSYNCscanline = tv.state.vsync.startScanline
+	tv.state.frameInfo.VSYNCclock = tv.state.vsync.startClock
 	tv.state.frameInfo.VSYNCcount = tv.state.vsync.activeScanlineCount
-	tv.state.vsync.updateHistory()
 
-	// desynchronise if we've not seen a valid VSYNC signal immediately before
-	// this call to newFrame()
-	if !tv.state.fromVSYNC {
-		tv.state.vsync.desync(specification.AbsoluteMaxScanlines)
-	}
-
-	// reset fromVSYNC latch
+	// reset fromVSYNC latch and failedVSYNC latch
 	tv.state.fromVSYNC = false
-
-	// prepare for next frame
-	tv.state.frameNum++
-	tv.state.scanline = 0
+	tv.state.failedVSYNC = false
 
 	// nullify unused signals at end of frame
 	for i := tv.currentSignalIdx; i < len(tv.signals); i++ {
@@ -850,7 +869,7 @@ func (tv *Television) newFrame() error {
 		}
 	}
 
-	// set pending pixels
+	// push pending pixels and audio data
 	err = tv.renderSignals()
 	if err != nil {
 		return err
@@ -884,57 +903,23 @@ func (tv *Television) newFrame() error {
 	return nil
 }
 
-// renderSignals forwards pixels in the signalHistory buffer to all pixel
-// renderers and audio mixers.
 func (tv *Television) renderSignals() error {
 	// do not render pixels if emulation is in the rewinding state
 	if tv.emulationState != govern.Rewinding {
 		for _, r := range tv.renderers {
 			err := r.SetPixels(tv.signals, tv.currentSignalIdx)
 			if err != nil {
-				return fmt.Errorf("television: %w", err)
+				return err
 			}
-		}
-	}
-
-	// ... but we do mix audio even if the emulation is rewinding
-
-	// update realtime mixers
-	//
-	// an additional condition saying the realtimeMixer is used only once the
-	// frame is stable has been removed. it was thought to improve sound on
-	// startup for some ROMs but in some pathological cases it means sound is
-	// never output. in particular, the tunabit demo ROM.
-	//
-	// https://atariage.com/forums/topic/274172-tiatune-tia-music-player-with-correct-tuning/
-	if tv.realtimeMixer != nil {
-		err := tv.realtimeMixer.SetAudio(tv.signals[tv.firstSignalIdx:tv.currentSignalIdx])
-		if err != nil {
-			return fmt.Errorf("television: %w", err)
-		}
-
-		// make a copy of signals just rendered _only_ if we are using a realtime mixer
-		copy(tv.prevSignals, tv.signals)
-		tv.prevSignalLastIdx = tv.currentSignalIdx
-		tv.prevSignalFirst = tv.firstSignalIdx
-	}
-
-	// update regular mixers
-	for _, m := range tv.mixers {
-		err := m.SetAudio(tv.signals[tv.firstSignalIdx:tv.currentSignalIdx])
-		if err != nil {
-			return fmt.Errorf("television: %w", err)
 		}
 	}
 
 	return nil
 }
 
-// SetSpec sets the television's specification if the creation ID is AUTO. This
-// means that the television specification on creation overrides all other
-// specifcation requests
-//
-// The forced argument overrides this rule.
+// SetSpec sets the television's specification if the current requested
+// specification is "AUTO". The forced argument causes the specification to
+// change even if the requested specification is not "AUTO"
 func (tv *Television) SetSpec(spec string, forced bool) error {
 	spec, ok := specification.NormaliseReqSpecID(spec)
 	if !ok {
@@ -945,7 +930,11 @@ func (tv *Television) SetSpec(spec string, forced bool) error {
 		return nil
 	}
 
-	tv.state.reqSpecID = spec
+	// we only set the reqSpecID if the forced parameter has been set
+	if forced {
+		tv.state.reqSpecID = spec
+	}
+
 	tv.setSpec(spec)
 
 	return nil
@@ -954,6 +943,9 @@ func (tv *Television) SetSpec(spec string, forced bool) error {
 func (tv *Television) setSpec(spec string) {
 	tv.state.setSpec(spec)
 	tv.setRefreshRate(tv.state.frameInfo.Spec.RefreshRate)
+	if tv.realTimeMixer != nil {
+		tv.realTimeMixer.SetSpec(tv.state.frameInfo.Spec)
+	}
 }
 
 // setRefreshRate of TV. also calls the SetClockSpeed() function in the vcs
@@ -963,6 +955,7 @@ func (tv *Television) setRefreshRate(rate float32) {
 	if tv.vcs != nil {
 		tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec)
 	}
+	tv.audioSignalLimit = baselineAudioSignalLimit
 }
 
 // SetEmulationState is called by emulation whenever state changes. How we

@@ -89,7 +89,7 @@ func (win *winPaint) draw() {
 		imgui.PopFont()
 
 		imgui.TableNextColumn()
-		if selection, ok := win.palette.draw(win.selectedColor); ok {
+		if selection := win.palette.draw(win.selectedColor); selection != paletteNoSelection {
 			win.selectedColor = selection
 		}
 

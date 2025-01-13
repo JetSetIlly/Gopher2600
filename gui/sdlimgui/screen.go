@@ -29,6 +29,11 @@ import (
 	"github.com/jetsetilly/gopher2600/reflection"
 )
 
+// alllow nudging of the TV. nudging causes the emulation to uncap itself for a
+// short number of frames. the benefit of this is of dubious value so it has
+// been disabled for now. maybe removed in the future
+const allowNudging = false
+
 // textureRenderers should consider that the timing of the VCS produces
 // "pixels" of two pixels across.
 //
@@ -50,13 +55,16 @@ type screen struct {
 
 	crit screenCrit
 
-	// atmoic access of rotation value. it's more convenient to be able to
+	// atomic access of rotation value. it's more convenient to be able to
 	// access this atomically, rather than via the screenCrit type
 	rotation atomic.Value // specification.Rotation
 
 	// list of renderers to call from render. renderers are added with
 	// addTextureRenderer()
-	renderers  []textureRenderer
+	renderers []textureRenderer
+
+	// the emulation can be made to wait until it receives an ACK. this happens
+	// when the emulation is running too fast for the frame queue
 	emuWait    chan bool
 	emuWaitAck chan bool
 
@@ -65,20 +73,23 @@ type screen struct {
 	gotoCoordsX int
 	gotoCoordsY int
 
-	// nudgeIconCt is used to display a nudge icon in the playscreen information window
-	nudgeIconCt int
+	// the number of frames the emulation currently is ahead
+	frameQueueSlack int
 }
 
-// frame queue constant values
 const (
-	maxFrameQueue              = 10
+	// these values indicate that the frame queue should be extended when there
+	// are two consecutive frames when the frame queue is full
 	frameQueueAutoInc          = 20
-	frameQueueAutoIncDecay     = 1
 	frameQueueAutoIncThreshold = 40
-)
 
-// show nudge icon for (approx) half a second
-const nudgeIconCt = 30
+	// a small decay value means that a flurry of slow frames, that are not
+	// necessarily consecutive, will be detected and cause the queuen to grow
+	frameQueueAutoIncDecay = 1
+
+	// the frame queue should never be longer than this
+	maxFrameQueue = 10
+)
 
 // for clarity, variables accessed in the critical section are encapsulated in
 // their own subtype.
@@ -112,16 +123,16 @@ type screenCrit struct {
 	// frameQueue are what we plot pixels to while we wait for a frame to complete.
 	// - the larger the queue the greater the input lag
 	// - a three to five frame queue seems good. ten frames can feel very laggy
-	frameQueue [maxFrameQueue]*image.RGBA
+	frameQueue [maxFrameQueue][]signal.SignalAttributes
 
-	// local copies of frame queue value. updated by setFrameQueue() which
-	// is called when the underlying preference is changed
-	localFrameQueueLen  int
-	localFrameQueueAuto bool
+	// local copies of frame queue preferences values. updated by setFrameQueue()
+	// which is called when the underlying preference is changed
+	prefsFrameQueueAuto bool
+	prefsFrameQueueLen  int
 
 	// the actual frame queue value depends on whether FPS is capped or not
-	frameQueueLen  int
 	frameQueueAuto bool
+	frameQueueLen  int
 
 	// frame queue count is increased on every dropped frame and decreased on
 	// every on-time frame. when it reaches a predetermined threshold the
@@ -147,7 +158,7 @@ type screenCrit struct {
 	renderIdx int
 
 	//  the previous render index value is used to help smooth frame queue collisions
-	prevRenderIdx int
+	prevRenderIdx [2]int
 
 	// element colors and overlay colors are only used in the debugger
 	elementPixels *image.RGBA
@@ -167,9 +178,6 @@ type screenCrit struct {
 
 	// the selected overlay
 	overlay string
-
-	// whether the overaly color should be striped
-	overlayStriped bool
 
 	// when paused we show two adjacent frames over-and-over. this flag tracks
 	// which of those frames to show
@@ -203,7 +211,7 @@ func newScreen(img *SdlImgui) *screen {
 
 	// allocate frame queue images
 	for i := range scr.crit.frameQueue {
-		scr.crit.frameQueue[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
+		scr.crit.frameQueue[i] = make([]signal.SignalAttributes, specification.AbsoluteMaxClks)
 	}
 
 	scr.crit.section.Unlock()
@@ -262,8 +270,8 @@ func (scr *screen) setSyncPolicy(tvRefreshRate float32) {
 func (scr *screen) setFrameQueue(auto bool, length int) {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
-	scr.crit.localFrameQueueAuto = auto
-	scr.crit.localFrameQueueLen = length
+	scr.crit.prefsFrameQueueAuto = auto
+	scr.crit.prefsFrameQueueLen = length
 	scr.updateFrameQueue()
 }
 
@@ -277,8 +285,12 @@ func (scr *screen) updateFrameQueue() {
 
 	// make local copies of frame queue preferences if fpsCapped is enabled
 	if scr.crit.fpsCapped {
-		scr.crit.frameQueueAuto = scr.crit.localFrameQueueAuto
-		scr.crit.frameQueueLen = scr.crit.localFrameQueueLen
+		scr.crit.frameQueueAuto = scr.crit.prefsFrameQueueAuto
+		if scr.crit.frameQueueAuto {
+			scr.crit.frameQueueLen = 1
+		} else {
+			scr.crit.frameQueueLen = scr.crit.prefsFrameQueueLen
+		}
 	} else {
 		scr.crit.frameQueueAuto = false
 		scr.crit.frameQueueLen = 1
@@ -288,7 +300,7 @@ func (scr *screen) updateFrameQueue() {
 	scr.crit.queueRecovery = scr.crit.frameQueueLen
 
 	// restore previous plot frame to all entries in the queue
-	var old *image.RGBA
+	var old []signal.SignalAttributes
 	switch scr.img.dbg.Mode() {
 	case govern.ModePlay:
 		old = scr.crit.frameQueue[scr.crit.renderIdx]
@@ -297,13 +309,12 @@ func (scr *screen) updateFrameQueue() {
 	}
 	if old != nil {
 		for i := range scr.crit.frameQueue {
-			copy(scr.crit.frameQueue[i].Pix, old.Pix)
+			copy(scr.crit.frameQueue[i], old)
 		}
 	}
 
-	// set plotIdx to beginning of queue
 	scr.crit.plotIdx = 0
-	scr.crit.renderIdx = scr.crit.frameQueueLen / 2
+	scr.crit.renderIdx = 0
 }
 
 // Reset implements the television.PixelRenderer interface. Note that Reset
@@ -330,11 +341,7 @@ func (scr *screen) Reset() {
 func (scr *screen) clearPixels() {
 	// clear pixels in frame queue
 	for i := range scr.crit.frameQueue {
-		for y := 0; y < scr.crit.presentationPixels.Bounds().Size().Y; y++ {
-			for x := 0; x < scr.crit.presentationPixels.Bounds().Size().X; x++ {
-				scr.crit.frameQueue[i].SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-			}
-		}
+		clear(scr.crit.frameQueue[i])
 	}
 
 	// clear pixels
@@ -478,34 +485,14 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 		}
 	}
 
-	var col color.RGBA
-	var offset int
-
-	for i := range sig {
-		// end of pixel queue reached but there are still signals to process.
-		// return to beginning of. this shouldn't ever be an issue
-		if offset >= len(scr.crit.frameQueue[0].Pix) {
-			return nil
-		}
-
-		// handle VBLANK by setting pixels to black. we also manually handle
-		// NoSignal in the same way
-		if sig[i].VBlank || sig[i].Index == signal.NoSignal {
-			col = scr.crit.frameInfo.Spec.GetColor(signal.VideoBlack)
-		} else {
-			col = scr.crit.frameInfo.Spec.GetColor(sig[i].Color)
-		}
-
-		// small cap improves performance, see https://golang.org/issue/27857
-		s := scr.crit.frameQueue[scr.crit.plotIdx].Pix[offset : offset+3 : offset+3]
-		s[0] = col.R
-		s[1] = col.G
-		s[2] = col.B
-
-		// alpha channel never changes
-
-		offset += 4
+	// sanity check number of signals and size of the frame queue
+	if len(sig) > len(scr.crit.frameQueue[0]) {
+		panic("signal framequeue in sdlimgui is not large enough for the number of signals from the TV")
 	}
+
+	// make a copy of the signal attributes. colour based on the signals will be
+	// generated in the gui goroutine as required
+	copy(scr.crit.frameQueue[scr.crit.plotIdx], sig)
 
 	scr.crit.lastY = last / specification.ClksScanline
 	scr.crit.lastX = last % specification.ClksScanline
@@ -544,7 +531,8 @@ func (scr *screen) plotOverlay() {
 
 	for i := range scr.crit.reflection {
 		// end of pixel queue reached but there are still signals to process.
-		// return to beginning of. this shouldn't ever be an issue
+		// return immediately to simplify bounds issues. this shouldn't ever be
+		// an issue
 		if offset >= len(scr.crit.overlayPixels.Pix) {
 			return
 		}
@@ -571,11 +559,15 @@ func (scr *screen) plotOverlay() {
 func (scr *screen) reflectionColor(ref *reflection.ReflectedVideoStep) color.RGBA {
 	switch scr.crit.overlay {
 	case reflection.OverlayLabels[reflection.OverlayVBLANK_VSYNC]:
-		if ref.Signal.VBlank {
-			return reflectionColors[reflection.VBLANK]
-		}
-		if ref.Signal.VSync {
-			return reflectionColors[reflection.VSYNC]
+		if ref.Signal.VSync && ref.Signal.VBlank {
+			return reflectionColors[reflection.VSYNC_WITH_VBLANK]
+		} else {
+			if ref.Signal.VSync {
+				return reflectionColors[reflection.VSYNC_NO_VBLANK]
+			}
+			if ref.Signal.VBlank {
+				return reflectionColors[reflection.VBLANK]
+			}
 		}
 	case reflection.OverlayLabels[reflection.OverlayWSYNC]:
 		if ref.WSYNC {
@@ -631,7 +623,7 @@ func (scr *screen) clearTextureRenderers() {
 	scr.renderers = make([]textureRenderer, 0)
 }
 
-// called by service loop.
+// called by service loop
 func (scr *screen) render() {
 	scr.resize()
 
@@ -646,17 +638,46 @@ func (scr *screen) render() {
 	}
 }
 
+func (scr *screen) generatePresentationPixels(idx int) {
+	var col color.RGBA
+	var offset int
+
+	sig := scr.crit.frameQueue[idx]
+
+	for i := range sig {
+		// handle VBLANK by setting pixels to black. we also manually handle
+		// NoSignal in the same way
+		if sig[i].VBlank || sig[i].Index == signal.NoSignal {
+			col = scr.crit.frameInfo.Spec.GetColor(signal.VideoBlack)
+		} else {
+			col = scr.crit.frameInfo.Spec.GetColor(sig[i].Color)
+		}
+
+		// small cap improves performance, see https://golang.org/issue/27857
+		// alpha channel never changes
+		s := scr.crit.presentationPixels.Pix[offset : offset+3 : offset+3]
+		s[0] = col.R
+		s[1] = col.G
+		s[2] = col.B
+
+		offset += 4
+	}
+}
+
 // copy pixels from queue to the live copy.
 func (scr *screen) copyPixelsDebugmode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
-
-	// copy pixels from pixel queue to the live copy.
-	copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.plotIdx].Pix)
+	scr.generatePresentationPixels(scr.crit.plotIdx)
 }
 
 // copy pixels from queue to the live copy.
 func (scr *screen) copyPixelsPlaymode() {
+	// check if emulation is running slowly. if it is then we disable some
+	// rendering options that would be confusing because of the slow running
+	fps, hz := scr.img.dbg.VCS().TV.GetActualFPS()
+	tooSlow := fps < hz*0.95
+
 	// let the emulator thread know it's okay to continue as soon as possible
 	select {
 	case <-scr.emuWait:
@@ -664,35 +685,55 @@ func (scr *screen) copyPixelsPlaymode() {
 	default:
 	}
 
-	// reduce nudge icon count
-	if scr.nudgeIconCt > 0 {
-		scr.nudgeIconCt--
-	}
-
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
+	// whether to nudge the TV or not
+	var nudge bool
+
+	// whether the frame queue can tolerate nudging. the value can/should be
+	// supplemented with the monitorSyncHigher or monitorSyncSlower value
+	canNudge := allowNudging && scr.crit.frameInfo.Stable && scr.crit.frameQueueLen > 2
+
+	// measure frame queue slack
+	scr.frameQueueSlack = (scr.crit.renderIdx - scr.crit.plotIdx + scr.crit.frameQueueLen) % scr.crit.frameQueueLen
+
+	// set nudge to true if frame slack is too small
+	if canNudge && scr.crit.monitorSyncSimilar {
+		if scr.frameQueueSlack < scr.crit.frameQueueLen/2 {
+			nudge = true
+		}
+	}
+
 	// show pause frames
 	if scr.img.dbg.State() == govern.Paused {
-		if scr.crit.queueRecovery == 0 && scr.img.prefs.activePause.Get().(bool) {
+		if !tooSlow && scr.crit.queueRecovery == 0 && scr.img.prefs.activePause.Get().(bool) {
 			if scr.crit.pauseFrame {
-				copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.prevRenderIdx].Pix)
+				scr.generatePresentationPixels(scr.crit.prevRenderIdx[0])
 				scr.crit.pauseFrame = false
 			} else {
-				copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.renderIdx].Pix)
+				scr.generatePresentationPixels(scr.crit.renderIdx)
 				scr.crit.pauseFrame = true
 			}
 		} else {
-			copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.renderIdx].Pix)
+			// note that we're call generatePresentationPixels() even though you would
+			// think we don't need to. but we want to make sure that any change
+			// in the colour preferences is reflected on the screen
+			scr.generatePresentationPixels(scr.crit.renderIdx)
+
+			// non-active pausing can end the function immediately
+			return
 		}
-		return
 	}
 
 	// the queueRecovery check is important for correct operation of the rewinding
 	// state. without it, the screen will jump after a rewind event
 	if scr.crit.queueRecovery == 0 {
+		// keep a small history of prev render indexes
+		scr.crit.prevRenderIdx[1] = scr.crit.prevRenderIdx[0]
+		scr.crit.prevRenderIdx[0] = scr.crit.renderIdx
+
 		// advance render index
-		scr.crit.prevRenderIdx = scr.crit.renderIdx
 		scr.crit.renderIdx++
 		if scr.crit.renderIdx >= scr.crit.frameQueueLen {
 			scr.crit.renderIdx = 0
@@ -702,14 +743,24 @@ func (scr *screen) copyPixelsPlaymode() {
 		if scr.crit.renderIdx == scr.crit.plotIdx {
 			// ** emulation not keeping up with screen update **
 
-			// undo frame advancement
-			scr.crit.renderIdx = scr.crit.prevRenderIdx
-
-			// nudge fps cap to try to bring the plot and render indexes back into equilibrium
-			if scr.crit.monitorSyncSimilar && scr.crit.frameInfo.Stable && scr.crit.frameQueueLen > 2 {
-				scr.img.dbg.VCS().TV.NudgeFPSCap(scr.crit.frameQueueLen)
-				scr.nudgeIconCt = nudgeIconCt
+			// undo frame advancement by restoring an older index
+			//
+			// for television that have a similar refresh rates to the monitor
+			// we choose the the frame previous to the frame shown on the last
+			// render. this helps to smooth out graphical glitches caused by
+			// flicker kernels
+			//
+			// it also may mean that there will be visible jump of graphical
+			// elements in some situations. but hopefully they are not
+			// noticeable
+			if !tooSlow && scr.crit.monitorSyncSimilar {
+				scr.crit.renderIdx = scr.crit.prevRenderIdx[1]
+			} else {
+				scr.crit.renderIdx = scr.crit.prevRenderIdx[0]
 			}
+
+			// set nudge flag
+			nudge = canNudge && scr.crit.monitorSyncSimilar
 
 			// adjust frame queue increase counter
 			if scr.crit.frameQueueAuto && scr.crit.frameInfo.Stable && scr.crit.frameQueueLen < maxFrameQueue {
@@ -717,8 +768,19 @@ func (scr *screen) copyPixelsPlaymode() {
 				if scr.crit.frameQueueIncCt >= frameQueueAutoIncThreshold {
 					scr.crit.frameQueueIncCt = 0
 
-					// increase frame queue and set the underlying preference value
-					scr.crit.frameQueueLen++
+					// increase frame queue length depending on whether monitor
+					// sync is similar to TV. if it is not we limit the frame
+					// queue length to the manual preference value
+					//
+					// this prevents, for example, queues immediately growing to
+					// a maximum size for PAL50 TVs on 60Hz monitors
+					if scr.crit.monitorSyncSimilar {
+						scr.crit.frameQueueLen++
+					} else {
+						if scr.crit.frameQueueLen < scr.crit.prefsFrameQueueLen {
+							scr.crit.frameQueueLen++
+						}
+					}
 				}
 			}
 		} else {
@@ -729,5 +791,10 @@ func (scr *screen) copyPixelsPlaymode() {
 		}
 	}
 
-	copy(scr.crit.presentationPixels.Pix, scr.crit.frameQueue[scr.crit.renderIdx].Pix)
+	scr.generatePresentationPixels(scr.crit.renderIdx)
+
+	// nudge fps cap to try to bring the plot and render indexes back into equilibrium
+	if nudge {
+		scr.img.dbg.VCS().TV.NudgeFPSCap(1)
+	}
 }

@@ -36,19 +36,20 @@ type renderer interface {
 	preRender()
 	render()
 	screenshot(mode screenshotMode, finish chan screenshotResult)
-	addTexture(typ textureType, linear bool, clamp bool) texture
+	addTexture(typ shaderType, linear bool, clamp bool, config any) texture
 	addFontTexture(fnt imgui.FontAtlas) texture
 }
 
-type textureType int
+type shaderType int
 
 const (
-	textureGUI textureType = iota
-	textureColor
-	texturePlayscr
-	textureDbgScr
-	textureDbgScrOverlay
-	textureDbgScrMagnify
+	shaderNone shaderType = iota
+	shaderGUI
+	shaderColor
+	shaderPlayscr
+	shaderBevel
+	shaderDbgScr
+	shaderDbgScrOverlay
 )
 
 type texture interface {
@@ -61,9 +62,10 @@ type texture interface {
 type screenshotMode string
 
 const (
-	modeSingle    screenshotMode = "single"
-	modeFlicker   screenshotMode = "flicker"
-	modeComposite screenshotMode = "composite"
+	modeSingle   screenshotMode = "single"
+	modeDouble   screenshotMode = "double"
+	modeTriple   screenshotMode = "triple"
+	modeMovement screenshotMode = "movement"
 )
 
 type screenshotResult struct {

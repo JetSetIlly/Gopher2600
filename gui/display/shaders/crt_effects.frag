@@ -8,7 +8,6 @@
 //		https://github.com/libretro/glsl-shaders/blob/master/crt/shaders/crt-pi.glsl
 
 uniform sampler2D Texture;
-uniform sampler2D Frame;
 in vec2 Frag_UV;
 in vec4 Frag_Color;
 out vec4 Out_Color;
@@ -16,26 +15,26 @@ out vec4 Out_Color;
 uniform vec2 ScreenDim;
 uniform int NumScanlines;
 uniform int NumClocks;
+
 uniform int Curve;
-uniform int RoundedCorners;
-uniform int Bevel;
-uniform int Shine;
-uniform int ShadowMask;
-uniform int Scanlines;
-uniform int Interference;
-uniform int Flicker;
-uniform int Fringing;
 uniform float CurveAmount;
+uniform int RoundedCorners;
 uniform float RoundedCornersAmount;
-uniform float BevelSize;
-uniform float MaskIntensity;
-uniform float MaskFine;
+
+uniform int Scanlines;
 uniform float ScanlinesIntensity;
-uniform float ScanlinesFine;
-uniform float InterferenceLevel;
-uniform float FlickerLevel;
-uniform float FringingAmount;
-uniform float Time;
+uniform int ShadowMask;
+uniform float MaskIntensity;
+
+uniform int RFInterference;
+uniform float RFNoiseLevel;
+uniform float RFGhostingLevel;
+
+uniform float ChromaticAberration;
+uniform int Shine;
+uniform float BlackLevel;
+uniform float Gamma;
+uniform float BevelSize;
 
 // rotation values are the values in hardware/television/specification/rotation.go
 uniform int Rotation;
@@ -43,6 +42,9 @@ uniform int Rotation;
 // the screenshot boolean indicates that the shader is working to create a still
 // image. this affects the intensity of some effects
 uniform int Screenshot;
+
+// time in nanoseconds. used for randomisation
+uniform float Time;
 
 
 // From: Hash without Sine by Dave Hoskins
@@ -91,16 +93,58 @@ vec2 curve(in vec2 uv)
 	return uv;
 }
 
+// convert RGB to YIQ. note that the Y component of the YIQ vector is
+// actually the x field of the vectore and not y!
+vec3 RGBtoYIQ(in vec3 rgb)
+{
+	float gamma = 1.0/Gamma;
+
+	mat3 adjust = mat3(
+		vec3(gamma, 0.0, 0.0),
+		vec3(0.0, gamma, 0.0),
+		vec3(0.0, 0.0, gamma)
+	);
+
+	adjust *= mat3(
+		vec3(0.299, 0.587, 0.114),
+		vec3(0.5959, -0.2746, -0.3213),
+		vec3(0.2115, -0.5227, 0.3112)
+	);
+
+	return rgb * adjust;
+}
+
+vec3 YIQtoRGB(in vec3 yiq)
+{
+	mat3 adjust = mat3(
+		vec3(1, 0.956, 0.619),
+		vec3(1, -0.272, -0.647),
+		vec3(1, -1.106, 1.703)
+	);
+
+	adjust *= mat3(
+		vec3(Gamma, 0.0, 0.0),
+		vec3(0.0, Gamma, 0.0),
+		vec3(0.0, 0.0, Gamma)
+	);
+
+	return yiq * adjust;
+}
+
+float YIQtoRF(in vec3 yiq)
+{
+	return 0.0;
+}
+
+vec3 RFtoYIQ(in float rf)
+{
+	return vec3(0.0);
+}
 
 void main() {
 	// working on uv rather than Frag_UV for convenience and in case we need
 	// Frag_UV unaltered later on for some reason
 	vec2 uv = Frag_UV;
-
-	// decrease size of image if bevel is active
-	if (Bevel == 1) {
-		uv = (uv - 0.5) * 1.02 + 0.5;
-	}
 
 	// apply curve. uv coordinates will be curved from here on out
 	if (Curve == 1) {
@@ -122,65 +166,79 @@ void main() {
     );
 	uv += 0.5;
 
-	// capture the uv cordinates before reducing the size of the image. we use
-	// this for the bevel effect which we don't want to be slightly larger than
-	// the main image
-	vec2 bevelUV = uv;
+	// all colour transformation will be based the Crt_Color variable. the value of this will be 
+	// assigned to the Out_Color at the end of the main function
+	vec4 Crt_Color;
+	Crt_Color.rgb = texture(Texture, uv).rgb;
+	Crt_Color.a = 1.0;
 
-	// reduce size of image (and the shine coordinates) shine if bevel is active
-	if (Bevel == 1) {
-		float margin = 1.0 + BevelSize;
-		uv = (uv - 0.5) * margin + 0.5;
-		shineUV = (shineUV - 0.5) * margin + 0.5;
-	}
+	// black correction
+	Crt_Color.rgb = clamp(Crt_Color.rgb, vec3(BlackLevel*3.00), Crt_Color.rgb);
 
-	// apply basic color
-	vec4 Crt_Color = Frag_Color * texture(Texture, uv.st);
+	// the following effects are applied to the YIQ signal
+	vec3 yiq = RGBtoYIQ(Crt_Color.rgb);
 
-	// using y axis to determine scaling.
-	float scaling = float(ScreenDim.y) / float(NumScanlines);
+	// interference
+	if (RFInterference == 1) {
+		// a very small amount of jitter added to the colour interference
+		float ja = sin(Time)/2500;
+		float jb = cos(Time)/2500;
 
-	// applying scanlines and/or shadowmask to the image causes it to dim
-	const float brightnessCorrection = 0.7;
+		// colour interference. this creates a ghosting effect
+		vec3 rightBleed = RGBtoYIQ(texture(Texture, uv + vec2(0.005+ja, 0.0005+jb)+RFGhostingLevel*0.006).rgb);
+		vec3 leftBleed = RGBtoYIQ(texture(Texture, uv - vec2(0.005+jb, 0.0005+ja)+RFGhostingLevel*0.006).rgb);
+		float i = RFGhostingLevel * 4.5;
+		yiq.x += (rightBleed.x - leftBleed.x) * i * 0.75;
+		yiq.y += (rightBleed.z - leftBleed.z) * i;
+		yiq.z += (rightBleed.y - leftBleed.y) * i;
 
-	// scanlines - only draw if scaling is large enough
-	if (Scanlines == 1 && scaling > 1) {
-		float scans = clamp(brightnessCorrection+ScanlinesIntensity*sin(uv.y*ScreenDim.y*ScanlinesFine), 0.0, 1.0);
-		Crt_Color.rgb *= vec3(scans);
-	} else {
-		Crt_Color.rgb *= brightnessCorrection;
-	}
-
-	// shadow mask - only draw if scaling is large enough
-	if (ShadowMask == 1 && scaling > 1) {
-		float mask = clamp(brightnessCorrection+MaskIntensity*sin(uv.x*ScreenDim.y*MaskFine), 0.0, 1.0);
-		Crt_Color.rgb *= vec3(mask);
-	} else {
-		Crt_Color.rgb *= brightnessCorrection;
-	}
-
-	// Interference. This effect is split into two halves. The second half happens later
-	if (Interference == 1) {
+		// luminence noise
 		vec4 noise = interferenceAmount(uv);
-		uv.x += noise.w * InterferenceLevel / 150;
+		yiq.x *= 0.85;
+		yiq.x *= 0.5 + noise.w * RFNoiseLevel * 1.5;
+
+		// a little bit of horizontal jitter works well
+		uv.x += noise.w * RFNoiseLevel * 0.01;
+	} else {
+		// no interference but we want to reduce the Y channel so that the
+		// apparent brightness of the image is similar to when interference is
+		// enabled
+		yiq.x *= 0.60;
 	}
 
-	// flicker
-	if (Flicker == 1) {
-		Crt_Color *= (1.0-FlickerLevel*(sin(50.0*Time)*0.5+0.5));
+	// scanline/mask effect
+	{
+		// using y axis to determine scaling.
+		float scaling = float(ScreenDim.y) / float(NumScanlines);
+
+		// scanlines - only draw if scaling is large enough
+		if (Scanlines == 1 && scaling > 2) {
+			float scans = clamp(1.0+ScanlinesIntensity*sin(uv.y*NumScanlines*5), 0.0, 1.0);
+			yiq.x *= scans;
+		}
+
+		// shadow mask - only draw if scaling is large enough
+		if (ShadowMask == 1 && scaling > 2) {
+			float mask = clamp(1.0+MaskIntensity*sin(uv.x*NumClocks*8), 0.0, 1.0);
+			yiq.x *= mask;
+		}
 	}
 
-	// fringing (chromatic aberration)
-	if (Fringing == 1) {
+	// the end of the effects that work on the YIQ signal
+	Crt_Color.rgb = YIQtoRGB(yiq);
+
+	// chromatic aberration. we always do this even if the effect is disabled,
+	// we just use an aberation value of zero. performing if seems to soften the
+	// scanlines / shadow mask, which is desirable
+	{
 		vec2 ab = vec2(0.0);
-
 		if (Curve == 1) {
 			ab.x = abs(uv.x-0.5);
 			ab.y = abs(uv.y-0.5);
 
-			// modulate fringing amount by curvature
+			// modulate aberration amount by curvature
 			float m = 0.020 - (0.010 * CurveAmount);
-			float l = FringingAmount * m;
+			float l = ChromaticAberration * m;
 
 			// aberration amount limited to reasonable values
 			ab *= l;
@@ -190,7 +248,7 @@ void main() {
 		} else {
 			ab.x = abs(uv.x-0.5);
 			ab.y = abs(uv.y-0.5);
-			ab *= FringingAmount * 0.015;
+			ab *= ChromaticAberration * 0.015;
 		}
 
 		// adjust sign depending on which quadrant the pixel is in
@@ -205,25 +263,19 @@ void main() {
 		Crt_Color.r += texture(Texture, vec2(uv.x+(1.0*ab.x), uv.y+(1.0*ab.y))).r;
 		Crt_Color.g += texture(Texture, vec2(uv.x+(1.4*ab.x), uv.y+(1.4*ab.y))).g;
 		Crt_Color.b += texture(Texture, vec2(uv.x+(1.8*ab.x), uv.y+(1.8*ab.y))).b;
-		Crt_Color.rgb *= 0.50;
-	} else {
-		// adjust brightness if fringing hasn't been applied
-		Crt_Color.rgb *= 1.50;
+
+		// decrease gain slightly caused by aberration 
+		Crt_Color.rgb *= 0.70;
 	}
 
-	// apply perlin noise as required
-	float perlin = fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);
-	if (Interference == 1 && Screenshot == 0) {
-		perlin *= InterferenceLevel*0.20;
-	} else {
-		perlin *= 0.005;
-
-		// compensate for the lower value perlin noise with a small brightness increase
-		Crt_Color.rgb *= 1.02;
-	}
+	// we always add perlin noise because we always want to elimiate banding. we
+	// used to use perlin for interference noise but we've found it better to
+	// give a small random deviation to the Y channel
+	float perlin = fract(sin(dot(uv, vec2(12.9898, 78.233))*Time) * 43758.5453);
+	perlin *= 0.01;
 	Crt_Color.rgb += vec3(perlin);
 
-	// shine affect
+	// shine effect
 	if (Shine == 1) {
 		vec2 shineUV = 1.0 - shineUV;
 		float shine = shineUV.s * shineUV.t;
@@ -244,16 +296,6 @@ void main() {
 		float pct = bl.x * bl.y * tr.x * tr.y;
 		if (pct < 0.1) {
 			Crt_Color = vec4(pct);
-		}
-	}
-
-	// bevel
-	if (Bevel == 1) {
-		vec2 bl = smoothstep(vec2(-BevelSize), vec2(BevelSize), bevelUV.st);
-		vec2 tr = smoothstep(vec2(-BevelSize), vec2(BevelSize), 1.0-bevelUV.st);
-		float pct = bl.x * bl.y * tr.x * tr.y;
-		if (pct < 0.75) {
-			Crt_Color = vec4(0.1, 0.1, 0.11, 1.0) * (1.0-pct);
 		}
 	}
 

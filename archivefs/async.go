@@ -31,19 +31,28 @@ type AsyncResults struct {
 	IsDir    bool
 	Dir      string
 	Base     string
+
+	// Complete field is set to true when all entries have been returned
+	Complete bool
+}
+
+// Options are sent to the AsyncPath Set channel
+type Options struct {
+	Path  string
+	Force bool
 }
 
 // AsyncPath provides asynchronous access to an archivefs
 type AsyncPath struct {
 	setter FilenameSetter
 
-	Set     chan string
+	Set     chan Options
 	Close   chan bool
 	Destroy chan bool
 
-	results chan AsyncResults
-	entry   chan Entry
-	err     chan error
+	prep  chan AsyncResults
+	entry chan Entry
+	err   chan error
 
 	// Results of most recent change of path settings
 	Results AsyncResults
@@ -53,15 +62,15 @@ type AsyncPath struct {
 func NewAsyncPath(setter FilenameSetter) AsyncPath {
 	pth := AsyncPath{
 		setter:  setter,
-		Set:     make(chan string, 1),
+		Set:     make(chan Options, 1),
 		Close:   make(chan bool, 1),
 		Destroy: make(chan bool, 1),
 
-		// results must be an unbuffered channel to make sure that content from
-		// the Entry channel comes after a new response from the results channle
-		results: make(chan AsyncResults, 0),
-		entry:   make(chan Entry, 100),
-		err:     make(chan error, 0),
+		// prep must be an unbuffered channel to make sure that content from
+		// the Entry channel comes after a new response from the results channel
+		prep:  make(chan AsyncResults, 0),
+		entry: make(chan Entry, 100),
+		err:   make(chan error, 0),
 	}
 
 	go func() {
@@ -85,7 +94,7 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 			case <-pth.Close:
 				afs.Close()
 
-			case path := <-pth.Set:
+			case options := <-pth.Set:
 				// send cancel to existing list goroutine
 				select {
 				case cancel <- true:
@@ -114,7 +123,7 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 						}
 					}
 
-					err := afs.Set(path, true)
+					err := afs.Set(options.Path, true)
 					if err != nil {
 						pth.err <- err
 						return
@@ -122,6 +131,7 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 
 					result := AsyncResults{
 						Entries:  nil,
+						Complete: false,
 						Selected: afs.String(),
 						IsDir:    afs.IsDir(),
 						Dir:      afs.Dir(),
@@ -130,8 +140,9 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 
 					// directory hasn't changed so there's no need to
 					// call the list() function
-					if currentDir == result.Dir {
-						pth.results <- result
+					if !options.Force && currentDir == result.Dir {
+						result.Complete = true
+						pth.prep <- result
 						return
 					}
 					currentDir = result.Dir
@@ -139,7 +150,7 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 					// this is a new directory being scanned. indicate that by
 					// setting the Entries field to an empty list rather than nil
 					result.Entries = []Entry{}
-					pth.results <- result
+					pth.prep <- result
 
 					// all communication happens over channels so launching another
 					// goroutine is fine. in fact, we have to do this in order for
@@ -159,6 +170,24 @@ func (pth *AsyncPath) Process() error {
 	for !done {
 		select {
 		case err := <-pth.err:
+			// drain pth.entry channel
+			var done bool
+			for !done {
+				select {
+				case ent := <-pth.entry:
+					pth.Results.Entries = append(pth.Results.Entries, ent)
+					select {
+					case ent := <-pth.entry:
+						pth.Results.Entries = append(pth.Results.Entries, ent)
+					default:
+						done = true
+					}
+				default:
+					done = true
+				}
+			}
+			Sort(pth.Results.Entries)
+			pth.Results.Complete = true
 			return err
 
 		case ent := <-pth.entry:
@@ -171,7 +200,7 @@ func (pth *AsyncPath) Process() error {
 			}
 			Sort(pth.Results.Entries)
 
-		case results := <-pth.results:
+		case results := <-pth.prep:
 			entries := pth.Results.Entries
 			pth.Results = results
 			if pth.Results.Entries == nil {

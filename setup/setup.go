@@ -102,7 +102,7 @@ func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader, resetVC
 			if err != nil {
 				return err
 			}
-			logger.Logf(logger.Allow, "setup", msg)
+			logger.Log(logger.Allow, "setup", msg)
 		}
 
 		return nil

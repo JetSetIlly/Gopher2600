@@ -54,8 +54,19 @@ type platform struct {
 	trickleMouseButtonLeft  trickleMouseButton
 	trickleMouseButtonRight trickleMouseButton
 
-	// use ticker to synchronise with monitor
-	syncTicker *time.Ticker
+	// a short delay after a window event seems to help the window to resync
+	// with the monitor's refresh rate
+	resync      int
+	windowEvent bool
+
+	// ideal frame time in nanoseconds
+	frameDuration time.Duration
+
+	// the start time of the last frame taken from just after the
+	renderStart     time.Time
+	renderAvgTime   time.Duration
+	renderAvgTimeCt int
+	renderAlert     bool
 }
 
 // trickle mouse button is a mechanism that allows a mouse button down/up event
@@ -87,6 +98,11 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sdl: %w", err)
 	}
+
+	// set hints for application
+	sdl.SetHint(sdl.HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0")
+	sdl.SetHint(sdl.HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0")
+	sdl.SetHint(sdl.HINT_VIDEO_X11_NET_WM_PING, "0")
 
 	switch img.rnd.requires() {
 	case requiresOpenGL32:
@@ -139,6 +155,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		profile_s = " ES"
 	}
 
+	// log SDL information
 	var sdlVersion sdl.Version
 	sdl.VERSION(&sdlVersion)
 	logger.Logf(logger.Allow, "sdl", "version %d.%d.%d", sdlVersion.Major, sdlVersion.Minor, sdlVersion.Patch)
@@ -161,7 +178,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	plt.window, err = sdl.CreateWindow(fmt.Sprintf("%s (%s)", windowTitle, version.Version),
 		sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
 		int32(float32(plt.mode.W)*0.80), int32(float32(plt.mode.H)*0.80),
-		sdl.WINDOW_OPENGL|sdl.WINDOW_ALLOW_HIGHDPI|sdl.WINDOW_RESIZABLE|sdl.WINDOW_HIDDEN|sdl.WINDOW_FOREIGN)
+		sdl.WINDOW_OPENGL|sdl.WINDOW_ALLOW_HIGHDPI|sdl.WINDOW_RESIZABLE|sdl.WINDOW_HIDDEN)
 
 	if err != nil {
 		sdl.Quit()
@@ -204,33 +221,31 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		logger.Log(logger.Allow, "sdl", "no joysticks/gamepads found")
 	}
 
+	// duration of each frame according to monitor refresh rate
+	plt.frameDuration = time.Duration(1000000000/int64(plt.mode.RefreshRate)) * time.Nanosecond
+
+	// calculate the average render time every second
+	plt.renderStart = time.Now()
+
 	return plt, nil
 }
 
-// list of swap intervalue values. with the exception of syncTicker all of these
-// are values defined and expected by the SDL.GLSetSwapInterval() function
+// call finalise after initialising imgui (which must happen after SDL creation
+// in the newPlatform() function)
+func (plt *platform) finalisePlatform() error {
+	// map sdl key codes to imgui codes
+	plt.setKeyMapping()
+	return nil
+}
+
+// list of swap intervalue values
 const (
 	syncImmediateUpdate     = 0
 	syncWithVerticalRetrace = 1
 	syncAdaptive            = -1
-	syncTicker              = 2
 )
 
 func (plt *platform) setSwapInterval(i int) {
-	if i == syncTicker {
-		// ticker to control update frequency
-		d := time.Duration(1000000000/int64(plt.mode.RefreshRate)) * time.Nanosecond
-		plt.syncTicker = time.NewTicker(d)
-
-		// in reality syncTicker requires us to set GL swap interval to 0
-		i = 0
-	} else {
-		if plt.syncTicker != nil {
-			plt.syncTicker.Stop()
-		}
-		plt.syncTicker = nil
-	}
-
 	err := sdl.GLSetSwapInterval(i)
 	if err != nil {
 		logger.Logf(logger.Allow, "sdl", "GLSetSwapInterval(%d): %v", i, err)
@@ -255,10 +270,10 @@ func (plt *platform) destroy() error {
 	return nil
 }
 
-// displaySize returns the dimension of the display.
-func (plt *platform) displaySize() [2]float32 {
+// windowSize returns the dimension of the display.
+func (plt *platform) windowSize() (width, height float32) {
 	w, h := plt.window.GetSize()
-	return [2]float32{float32(w), float32(h)}
+	return float32(w), float32(h)
 }
 
 // displayDPI returns the dots/inch for the display the window is in
@@ -272,16 +287,16 @@ func (plt *platform) displayDPI() (float32, error) {
 }
 
 // framebufferSize returns the dimension of the framebuffer.
-func (plt *platform) framebufferSize() [2]float32 {
+func (plt *platform) framebufferSize() (width, height float32) {
 	w, h := plt.window.GLGetDrawableSize()
-	return [2]float32{float32(w), float32(h)}
+	return float32(w), float32(h)
 }
 
 // newFrame marks the begin of a render pass. It forwards all current state to imgui.CurrentIO().
 func (plt *platform) newFrame() {
 	// Setup display size (every frame to accommodate for window resizing)
-	displaySize := plt.displaySize()
-	imgui.CurrentIO().SetDisplaySize(imgui.Vec2{X: displaySize[0], Y: displaySize[1]})
+	winw, winh := plt.windowSize()
+	imgui.CurrentIO().SetDisplaySize(imgui.Vec2{X: winw, Y: winh})
 
 	// if mouse is captured then do not update imgui mouse information.
 	if !plt.img.isCaptured() {
@@ -320,9 +335,25 @@ func (plt *platform) newFrame() {
 
 // PostRender performs a buffer swap.
 func (plt *platform) postRender() {
-	if plt.syncTicker != nil {
-		<-plt.syncTicker.C
+	timeDiff := time.Since(plt.renderStart)
+	defer func() {
+		plt.renderStart = time.Now()
+	}()
+	if plt.renderAvgTimeCt > 1 {
+		plt.renderAvgTime = plt.renderAvgTime + (timeDiff-plt.renderAvgTime)/time.Duration(min(plt.renderAvgTimeCt, 120))
+		if plt.renderAvgTimeCt > 120 {
+			plt.renderAvgTimeCt = 1
+		}
 	}
+	plt.renderAvgTimeCt++
+
+	// alert if frame has taken a long time to render
+	if timeDiff > plt.frameDuration {
+		plt.renderAlert = true
+	} else {
+		plt.renderAlert = false
+	}
+
 	plt.window.GLSwap()
 }
 
@@ -333,10 +364,6 @@ func (plt *platform) setFullScreen(fullScreen bool) {
 	} else {
 		plt.window.SetFullscreen(0)
 	}
-
-	// a short delay seems to smooth things out by giving time for the system
-	// to make the changes to the full screen state
-	<-time.After(100 * time.Millisecond)
 }
 
 // set the capture state for the mouse

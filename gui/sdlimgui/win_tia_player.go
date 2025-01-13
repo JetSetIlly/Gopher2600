@@ -65,7 +65,7 @@ func (win *winTIA) drawPlayer(num int) {
 	// selection in palette, missile color is changed too
 	imguiLabel("Colour")
 	col := player.Color
-	if win.img.imguiSwatch(col, 0.75) {
+	if win.img.imguiTVColourSwatch(col, 0.75) {
 		win.popupPalette.request(&col, func() {
 			win.img.dbg.PushFunction(func() {
 				realPlayer().Color = col
@@ -124,9 +124,6 @@ func (win *winTIA) drawPlayer(num int) {
 	imgui.Spacing()
 	imgui.Spacing()
 
-	// tv palette used to draw bit sequences with correct colours
-	_, palette, _, _ := win.img.imguiTVPalette()
-
 	// graphics data - new
 	imguiLabel("New Gfx")
 	ngfxSeq := newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
@@ -139,7 +136,7 @@ func (win *winTIA) drawPlayer(num int) {
 			col = 0x0
 			ngfxSeq.nextItemDepressed = true
 		}
-		if ngfxSeq.rectFill(palette[col]) {
+		if ngfxSeq.rectFill(win.img.getTVColour(col)) {
 			od ^= 0x80 >> i
 			win.img.dbg.PushFunction(func() {
 				realPlayer().GfxDataNew = od
@@ -165,7 +162,7 @@ func (win *winTIA) drawPlayer(num int) {
 			col = 0x0
 			ogfxSeq.nextItemDepressed = true
 		}
-		if ogfxSeq.rectFill(palette[col]) {
+		if ogfxSeq.rectFill(win.img.getTVColour(col)) {
 			nd ^= 0x80 >> i
 			win.img.dbg.PushFunction(func() {
 				realPlayer().GfxDataOld = nd

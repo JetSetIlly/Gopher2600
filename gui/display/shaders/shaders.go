@@ -38,20 +38,14 @@ var DbgScrHelpersShader []byte
 //go:embed "sharpen.frag"
 var SharpenShader []byte
 
-//go:embed "tv_color.frag"
-var TVColorShader []byte
-
 //go:embed "crt_effects.frag"
 var CRTEffectsFragShader []byte
 
 //go:embed "crt_blur.frag"
 var CRTBlurFragShader []byte
 
-//go:embed "crt_ghosting.frag"
-var CRTGhostingFragShader []byte
-
 //go:embed "crt_phosphor.frag"
 var CRTPhosphorFragShader []byte
 
-//go:embed "crt_blackcorrection.frag"
-var CRTBlackCorrection []byte
+//go:embed "crt_bevel.frag"
+var CRTBevel []byte

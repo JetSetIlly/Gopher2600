@@ -26,7 +26,7 @@ import (
 )
 
 // version string to attach to all shaders
-const fragVersion = "#version 150\n\n"
+const fragVersion = "#version 150\n"
 
 type shaderProgram interface {
 	destroy()
@@ -49,6 +49,9 @@ type shaderEnvironment struct {
 	// width and height of texture. optional depending on the shader
 	width  int32
 	height int32
+
+	// user configuration from texture
+	config any
 }
 
 // helper function to convert bool to int32.
@@ -184,59 +187,8 @@ func newColorShader() shaderProgram {
 	return sh
 }
 
-type tvColorShader struct {
-	shader
-	brightness int32
-	contrast   int32
-	saturation int32
-	hue        int32
-}
-
-func newTVColorShader() shaderProgram {
-	sh := &tvColorShader{}
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.TVColorShader))
-	sh.brightness = gl.GetUniformLocation(sh.handle, gl.Str("Brightness"+"\x00"))
-	sh.contrast = gl.GetUniformLocation(sh.handle, gl.Str("Contrast"+"\x00"))
-	sh.saturation = gl.GetUniformLocation(sh.handle, gl.Str("Saturation"+"\x00"))
-	sh.hue = gl.GetUniformLocation(sh.handle, gl.Str("Hue"+"\x00"))
-	return sh
-}
-
-type tvColorShaderPrefs struct {
-	Contrast   float64
-	Brightness float64
-	Saturation float64
-	Hue        float64
-}
-
-func (sh *tvColorShader) setAttributesArgs(env shaderEnvironment, prefs tvColorShaderPrefs) {
-	sh.shader.setAttributes(env)
-	gl.Uniform1f(sh.contrast, float32(prefs.Contrast))
-	gl.Uniform1f(sh.brightness, float32(prefs.Brightness))
-	gl.Uniform1f(sh.saturation, float32(prefs.Saturation))
-	gl.Uniform1f(sh.hue, float32(prefs.Hue))
-}
-
-type blackCorrectionShader struct {
-	shader
-	blackLevel int32
-}
-
-func newBlackCorrectionShader() shaderProgram {
-	sh := &blackCorrectionShader{}
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTBlackCorrection))
-	sh.blackLevel = gl.GetUniformLocation(sh.handle, gl.Str("BlackLevel"+"\x00"))
-	return sh
-}
-
-func (sh *blackCorrectionShader) setAttributesArgs(env shaderEnvironment, blackLevel float32) {
-	sh.shader.setAttributes(env)
-	gl.Uniform1f(sh.blackLevel, blackLevel)
-}
-
 type phosphorShader struct {
 	shader
-
 	newFrame int32
 	latency  int32
 }
@@ -249,7 +201,7 @@ func newPhosphorShader() shaderProgram {
 	return sh
 }
 
-func (sh *phosphorShader) setAttributesArgs(env shaderEnvironment, latency float32, newFrame uint32) {
+func (sh *phosphorShader) process(env shaderEnvironment, latency float32, newFrame uint32) {
 	sh.shader.setAttributes(env)
 	gl.Uniform1f(sh.latency, latency)
 	gl.ActiveTexture(gl.TEXTURE1)
@@ -269,7 +221,7 @@ func newBlurShader() shaderProgram {
 	return sh
 }
 
-func (sh *blurShader) setAttributesArgs(env shaderEnvironment, blur float32) {
+func (sh *blurShader) process(env shaderEnvironment, blur float32) {
 	sh.shader.setAttributes(env)
 
 	// normalise blur amount depending on screen size
@@ -278,54 +230,21 @@ func (sh *blurShader) setAttributesArgs(env shaderEnvironment, blur float32) {
 	gl.Uniform2f(sh.blur, blur/float32(env.width), blur/float32(env.height))
 }
 
-type ghostingShader struct {
-	shader
-	img       *SdlImgui
-	screenDim int32
-	amount    int32
-}
-
-func newGhostingShader() shaderProgram {
-	sh := &ghostingShader{}
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTGhostingFragShader))
-	sh.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
-	sh.amount = gl.GetUniformLocation(sh.handle, gl.Str("Amount"+"\x00"))
-	return sh
-}
-
-func (sh *ghostingShader) setAttributesArgs(env shaderEnvironment, amount float32) {
-	sh.shader.setAttributes(env)
-	gl.Uniform2f(sh.screenDim, float32(env.width), float32(env.height))
-	gl.Uniform1f(sh.amount, amount)
-}
-
 type sharpenShader struct {
 	shader
-	texture   int32
 	sharpness int32
 }
 
 func newSharpenShader() shaderProgram {
 	sh := &sharpenShader{}
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.SharpenShader))
-	sh.texture = gl.GetUniformLocation(sh.handle, gl.Str("Texture"+"\x00"))
 	sh.sharpness = gl.GetUniformLocation(sh.handle, gl.Str("Sharpness"+"\x00"))
 	return sh
 }
 
-// textureSpec is used by the sharpen shader
-type textureSpec interface {
-	// returns texture ID and the width and height of the texture
-	textureSpec() (uint32, float32, float32)
-}
-
-func (sh *sharpenShader) setAttributesArgs(env shaderEnvironment, scalingImage textureSpec, sharpness int) {
-	t, _, _ := scalingImage.textureSpec()
+func (sh *sharpenShader) process(env shaderEnvironment, sharpness float32) {
 	sh.shader.setAttributes(env)
-	gl.ActiveTexture(gl.TEXTURE1)
-	gl.BindTexture(gl.TEXTURE_2D, t)
-	gl.Uniform1i(sh.texture, 1)
-	gl.Uniform1i(sh.sharpness, int32(sharpness))
+	gl.Uniform1f(sh.sharpness, sharpness)
 }
 
 type guiShader struct {

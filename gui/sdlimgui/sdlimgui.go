@@ -23,9 +23,9 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/gui/display"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/caching"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/resources"
@@ -120,8 +120,8 @@ type SdlImgui struct {
 
 	// gui specific preferences. crt preferences are handled separately. all
 	// other preferences are handled by the emulation
-	prefs        *preferences
-	displayPrefs *display.Preferences
+	prefs *preferences
+	crt   *preferencesCRT
 
 	// modal window
 	modal modal
@@ -172,6 +172,12 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 
+	// initialise display preferences
+	img.crt, err = newPreferenceCRT(img)
+	if err != nil {
+		return nil, fmt.Errorf("sdlimgui: %w", err)
+	}
+
 	// start renderer after platform and preferences
 	err = img.rnd.start()
 	if err != nil {
@@ -213,13 +219,7 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
-	img.dbg.VCS().TV.AddRealtimeAudioMixer(img.audio)
-
-	// initialise display preferences
-	img.displayPrefs, err = display.NewPreferences()
-	if err != nil {
-		return nil, fmt.Errorf("sdlimgui: %w", err)
-	}
+	img.dbg.VCS().TV.SetRealTimeAudioMixer(img.audio)
 
 	// set event filter for SDL see comment for serviceWindowEvent()
 	sdl.AddEventWatchFunc(img.serviceWindowEvent, nil)
@@ -242,6 +242,14 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 //
 // MUST ONLY be called from the gui thread.
 func (img *SdlImgui) Destroy() {
+	// set recentROM value before saving. recentROM is set when a new ROM is
+	// loaded vie the ROM selector but this catches those instances where a ROM
+	// is loaded fromt he command line on debugger terminal
+	cart := img.dbg.VCS().Mem.Cart
+	if !cart.IsEjected() {
+		img.prefs.recentROM.Set(cart.Filename)
+	}
+
 	err := img.prefs.saveOnExitDsk.Save()
 	if err != nil {
 		logger.Log(logger.Allow, "sdlimgui", err)
@@ -351,12 +359,18 @@ func (img *SdlImgui) setEmulationMode(mode govern.Mode) error {
 		img.screen.addTextureRenderer(img.wm.dbgScr)
 		img.plt.window.Show()
 		img.plt.window.Raise()
+		if img.dbg.VCS().Mem.Cart.IsEjected() {
+			img.wm.debuggerWindows[winSelectROMID].debuggerSetOpen(true)
+		}
 
 	case govern.ModePlay:
 		img.screen.clearTextureRenderers()
 		img.screen.addTextureRenderer(img.playScr)
 		img.plt.window.Show()
 		img.plt.window.Raise()
+		if img.dbg.VCS().Mem.Cart.IsEjected() {
+			img.wm.playmodeWindows[winSelectROMID].playmodeSetOpen(true)
+		}
 	}
 
 	img.applyAudioMutePreference()
@@ -487,7 +501,19 @@ func (img *SdlImgui) smartCursorVisibility(hidden bool) {
 }
 
 func (img *SdlImgui) setReasonableWindowConstraints() {
-	x := img.plt.displaySize()[0] * 0.95
-	y := img.plt.displaySize()[1] * 0.95
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{X: 300, Y: 300}, imgui.Vec2{X: x, Y: y})
+	winw, winh := img.plt.windowSize()
+	winw *= 0.95
+	winh *= 0.95
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{X: 300, Y: 300}, imgui.Vec2{X: winw, Y: winh})
+}
+
+func (img *SdlImgui) getTVColour(col uint8) imgui.PackedColor {
+	c := img.cache.TV.GetFrameInfo().Spec.GetColor(signal.ColorSignal(col))
+	v := imgui.Vec4{
+		X: float32(c.R) / 255,
+		Y: float32(c.G) / 255,
+		Z: float32(c.B) / 255,
+		W: float32(c.A) / 255,
+	}
+	return imgui.PackedColorFromVec4(v)
 }

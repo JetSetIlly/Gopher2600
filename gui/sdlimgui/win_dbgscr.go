@@ -82,10 +82,6 @@ type winDbgScr struct {
 	// number of scanlines in current image. taken from screen but is crit section safe
 	numScanlines int
 
-	// crtPreview option is special. it overrides the other options in the dbgScr to
-	// show an uncropped CRT preview in the dbgscr window.
-	crtPreview bool
-
 	// magnification fields
 	magnifyTooltip dbgScrMagnifyTooltip
 	magnifyWindow  dbgScrMagnifyWindow
@@ -96,10 +92,9 @@ type winDbgScr struct {
 
 func newWinDbgScr(img *SdlImgui) (window, error) {
 	win := &winDbgScr{
-		img:        img,
-		scr:        img.screen,
-		crtPreview: false,
-		cropped:    true,
+		img:     img,
+		scr:     img.screen,
+		cropped: true,
 		magnifyTooltip: dbgScrMagnifyTooltip{
 			zoom: magnifyDef,
 		},
@@ -110,11 +105,11 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	win.debuggerGeom.noFocusTracking = true
 
 	// set texture, creation of textures will be done after every call to resize()
-	win.displayTexture = img.rnd.addTexture(textureDbgScr, true, true)
-	win.overlayTexture = img.rnd.addTexture(textureDbgScrOverlay, false, false)
-	win.elementsTexture = img.rnd.addTexture(textureDbgScr, true, true)
-	win.magnifyTooltip.texture = img.rnd.addTexture(textureDbgScrMagnify, false, false)
-	win.magnifyWindow.texture = img.rnd.addTexture(textureDbgScrMagnify, false, false)
+	win.displayTexture = img.rnd.addTexture(shaderDbgScr, true, true, nil)
+	win.overlayTexture = img.rnd.addTexture(shaderDbgScrOverlay, false, false, nil)
+	win.elementsTexture = img.rnd.addTexture(shaderDbgScr, true, true, nil)
+	win.magnifyTooltip.texture = img.rnd.addTexture(shaderColor, false, false, nil)
+	win.magnifyWindow.texture = img.rnd.addTexture(shaderColor, false, false, nil)
 
 	// call setScaling() now so that render() has something to work with - even
 	// though setScaling() is called every draw if the window is open it will
@@ -204,7 +199,7 @@ func (win *winDbgScr) draw() {
 
 	imgui.PushStyleColor(imgui.StyleColorDragDropTarget, win.img.cols.Transparent)
 
-	if !win.crtPreview && win.elements {
+	if win.elements {
 		imgui.ImageButton(imgui.TextureID(win.elementsTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
 	} else {
 		imgui.ImageButton(imgui.TextureID(win.displayTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
@@ -217,43 +212,41 @@ func (win *winDbgScr) draw() {
 
 	imageHovered := imgui.IsItemHovered()
 
-	if !win.crtPreview {
-		// overlay texture on top of screen texture
-		imgui.SetCursorScreenPos(win.screenOrigin)
-		imgui.ImageButton(imgui.TextureID(win.overlayTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
+	// overlay texture on top of screen texture
+	imgui.SetCursorScreenPos(win.screenOrigin)
+	imgui.ImageButton(imgui.TextureID(win.overlayTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
 
-		// popup menu on right mouse button
-		//
-		// we only call OpenPopup() if it's not already open. also, care taken to
-		// avoid menu opening when releasing a captured mouse.
-		if !win.isCaptured && imgui.IsItemHovered() && imgui.IsMouseDown(1) {
-			imgui.OpenPopup(breakMenuPopupID)
-		}
+	// popup menu on right mouse button
+	//
+	// we only call OpenPopup() if it's not already open. also, care taken to
+	// avoid menu opening when releasing a captured mouse.
+	if !win.isCaptured && imgui.IsItemHovered() && imgui.IsMouseDown(1) {
+		imgui.OpenPopup(breakMenuPopupID)
+	}
 
-		if imgui.BeginPopup(breakMenuPopupID) {
-			imgui.Text("Break on TV Coords")
-			imguiSeparator()
-			if imgui.Selectable(fmt.Sprintf("Scanline %d", win.mouse.tv.Scanline)) {
-				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.mouse.tv.Scanline))
-			}
-			if imgui.Selectable(fmt.Sprintf("Clock %d", win.mouse.tv.Clock)) {
-				win.img.term.pushCommand(fmt.Sprintf("BREAK CL %d", win.mouse.tv.Clock))
-			}
-			if imgui.Selectable(fmt.Sprintf("Scanline %d & Clock %d", win.mouse.tv.Scanline, win.mouse.tv.Clock)) {
-				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & CL %d", win.mouse.tv.Scanline, win.mouse.tv.Clock))
-			}
-			imguiSeparator()
-			if imgui.Selectable(fmt.Sprintf("%c Magnify in Window", fonts.MagnifyingGlass)) {
-				win.magnifyWindow.open = true
-				win.magnifyWindow.setClipCenter(win.mouse)
-			}
-			imgui.EndPopup()
+	if imgui.BeginPopup(breakMenuPopupID) {
+		imgui.Text("Break on TV Coords")
+		imguiSeparator()
+		if imgui.Selectable(fmt.Sprintf("Scanline %d", win.mouse.tv.Scanline)) {
+			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.mouse.tv.Scanline))
 		}
+		if imgui.Selectable(fmt.Sprintf("Clock %d", win.mouse.tv.Clock)) {
+			win.img.term.pushCommand(fmt.Sprintf("BREAK CL %d", win.mouse.tv.Clock))
+		}
+		if imgui.Selectable(fmt.Sprintf("Scanline %d & Clock %d", win.mouse.tv.Scanline, win.mouse.tv.Clock)) {
+			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & CL %d", win.mouse.tv.Scanline, win.mouse.tv.Clock))
+		}
+		imguiSeparator()
+		if imgui.Selectable(fmt.Sprintf("%c Magnify in Window", fonts.MagnifyingGlass)) {
+			win.magnifyWindow.open = true
+			win.magnifyWindow.setClipCenter(win.mouse)
+		}
+		imgui.EndPopup()
+	}
 
-		// draw tool tip
-		if imgui.IsItemHovered() {
-			win.drawReflectionTooltip()
-		}
+	// draw tool tip
+	if imgui.IsItemHovered() {
+		win.drawReflectionTooltip()
 	}
 
 	// if mouse is over tv image then accept mouse clicks
@@ -330,37 +323,23 @@ func (win *winDbgScr) draw() {
 		imgui.AlignTextToFramePadding()
 		imgui.Text(fmt.Sprintf("%.1fx", win.yscaling))
 
-		// crt preview affects which debugging toggles are visible
-		if win.img.rnd.supportsCRT() {
-			imgui.SameLineV(0, 15)
-			if imgui.Checkbox("CRT Preview", &win.crtPreview) {
-				win.resize()
-			}
+		// debugging toggles
+		imgui.SameLineV(0, 15)
+		imgui.Checkbox("Debug Colours", &win.elements)
+
+		imgui.SameLineV(0, 15)
+		if imgui.Checkbox("Cropping", &win.cropped) {
+			win.resize()
 		}
 
-		// debugging toggles
-		if win.crtPreview {
-			imgui.SameLineV(0, 15)
-			imgui.AlignTextToFramePadding()
-			imgui.Text("(using current CRT preferences)")
-		} else {
-			imgui.SameLineV(0, 15)
-			imgui.Checkbox("Debug Colours", &win.elements)
+		imgui.SameLineV(0, 15)
+		win.drawOverlayCombo()
+		win.drawOverlayComboTooltip()
 
+		if win.img.screen.crit.overlay == reflection.OverlayLabels[reflection.OverlayNone] {
 			imgui.SameLineV(0, 15)
-			if imgui.Checkbox("Cropping", &win.cropped) {
-				win.resize()
-			}
-
-			imgui.SameLineV(0, 15)
-			win.drawOverlayCombo()
-			win.drawOverlayComboTooltip()
-
-			if win.img.screen.crit.overlay == reflection.OverlayLabels[reflection.OverlayNone] {
-				imgui.SameLineV(0, 15)
-				imgui.Checkbox("Magnify on hover", &win.magnifyTooltip.showInTooltip)
-				win.img.imguiTooltipSimple(fmt.Sprintf("Show magnification in tooltip\n%c Mouse wheel to adjust zoom", fonts.Mouse))
-			}
+			imgui.Checkbox("Magnify on hover", &win.magnifyTooltip.showInTooltip)
+			win.img.imguiTooltipSimple(fmt.Sprintf("Show magnification in tooltip\n%c Mouse wheel to adjust zoom", fonts.Mouse))
 		}
 	})
 }
@@ -510,13 +489,6 @@ func (win *winDbgScr) drawOverlayCombo() {
 				if imgui.Selectable(s) {
 					win.img.screen.crit.overlay = s
 					win.img.screen.plotOverlay()
-
-					// set striped flag for VBLANK/VSYNC overlay
-					if i == int(reflection.OverlayVBLANK_VSYNC) {
-						win.scr.crit.overlayStriped = true
-					} else {
-						win.scr.crit.overlayStriped = false
-					}
 				}
 			} else if coproc != nil {
 				// if ROM has a coprocessor change the option label to the
@@ -527,7 +499,6 @@ func (win *winDbgScr) drawOverlayCombo() {
 					// elsewhere
 					win.img.screen.crit.overlay = s
 					win.img.screen.plotOverlay()
-					win.scr.crit.overlayStriped = false
 				}
 			}
 		}
@@ -542,7 +513,9 @@ func (win *winDbgScr) drawOverlayComboTooltip() {
 		win.img.imguiTooltip(func() {
 			imguiColorLabelSimple("VBLANK", win.img.cols.reflectionColors[reflection.VBLANK])
 			imgui.Spacing()
-			imguiColorLabelSimple("VSYNC", win.img.cols.reflectionColors[reflection.VSYNC])
+			imguiColorLabelSimple("VSYNC", win.img.cols.reflectionColors[reflection.VSYNC_WITH_VBLANK])
+			imgui.Spacing()
+			imguiColorLabelSimple("VSYNC without VBLANK", win.img.cols.reflectionColors[reflection.VSYNC_NO_VBLANK])
 		}, true)
 	case reflection.OverlayLabels[reflection.OverlayWSYNC]:
 		win.img.imguiTooltip(func() {
@@ -591,6 +564,12 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		return
 	}
 
+	// no useful reflection if mouse is outside TV area
+	if win.mouse.tv.Scanline > win.scr.crit.frameInfo.TotalScanlines {
+		imguiTooltipSimple("no TV signal", true)
+		return
+	}
+
 	// get reflection information
 	ref := win.scr.crit.reflection[win.mouse.offset]
 
@@ -634,19 +613,29 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		// }
 
 		// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
-		_, _, pal, _ := win.img.imguiTVPalette()
-		px := ref.Signal.Color
+		var px signal.ColorSignal
+		var label string
 		if (ref.IsHblank || ref.Signal.VBlank || px == signal.VideoBlack) && !win.elements {
-			imguiColorLabelSimple("No color signal", pal[0])
+			px = signal.VideoBlack
+			label = "No color signal"
 		} else {
-			// not using GetColor() function. arguably we should but we've
-			// protected the array access with the VideoBlack test above.
-			imguiColorLabelSimple(ref.VideoElement.String(), pal[px])
+			px = ref.Signal.Color
+			label = ref.VideoElement.String()
 		}
 
-		imgui.Spacing()
+		spec := win.img.cache.TV.GetFrameInfo().Spec
+		rgba := spec.GetColor(px)
+		col := imgui.Vec4{
+			X: float32(rgba.R) / 255, Y: float32(rgba.G) / 255, Z: float32(rgba.B) / 255, W: float32(rgba.A) / 255,
+		}
+		imgui.PushStyleColor(imgui.StyleColorText, col)
+		imgui.Text(string(fonts.ColorSwatch))
+		imgui.PopStyleColor()
+		imgui.SameLine()
+		imgui.Text(label)
 
 		// instruction information
+		imgui.Spacing()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
 		if win.img.cache.VCS.Mem.Cart.NumBanks() > 1 {
 			imgui.Text(fmt.Sprintf("%s [bank %s]", e.Address, ref.Bank))
@@ -790,7 +779,7 @@ func (win *winDbgScr) updateRefreshRate() {
 // render is called by service loop (via screen.render()). must be inside
 // screen critical section.
 func (win *winDbgScr) render() {
-	if win.cropped || win.crtPreview {
+	if win.cropped {
 		win.displayTexture.render(win.scr.crit.cropPixels)
 		win.elementsTexture.render(win.scr.crit.cropElementPixels)
 		win.overlayTexture.render(win.scr.crit.cropOverlayPixels)
@@ -882,7 +871,7 @@ func (win *winDbgScr) setScaling() {
 	var w float32
 	var h float32
 
-	if win.cropped || win.crtPreview {
+	if win.cropped {
 		w = float32(win.scr.crit.cropPixels.Bounds().Size().X)
 		h = float32(win.scr.crit.cropPixels.Bounds().Size().Y)
 	} else {
@@ -921,12 +910,4 @@ func (win *winDbgScr) setScaling() {
 
 	// get numscanlines while we're in critical section
 	win.numScanlines = win.scr.crit.frameInfo.VisibleBottom - win.scr.crit.frameInfo.VisibleTop
-}
-
-// textureSpec implements the scalingImage specification
-func (win *winDbgScr) textureSpec() (uint32, float32, float32) {
-	if !win.crtPreview && win.elements {
-		return win.elementsTexture.getID(), win.scaledWidth, win.scaledHeight
-	}
-	return win.displayTexture.getID(), win.scaledWidth, win.scaledHeight
 }

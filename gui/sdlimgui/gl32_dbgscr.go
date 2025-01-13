@@ -21,26 +21,28 @@ import (
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/display/shaders"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/framebuffer"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 type dbgScrHelper struct {
-	showCursor             int32 // uniform
-	isCropped              int32 // uniform
-	screenDim              int32 // uniform
-	scalingX               int32 // uniform
-	scalingY               int32 // uniform
-	lastX                  int32 // uniform
-	lastY                  int32 // uniform
-	hblank                 int32 // uniform
-	visibleTop             int32 // uniform
-	visibleBottom          int32 // uniform
-	magShow                int32 // uniform
-	magXmin                int32 // uniform
-	magXmax                int32 // uniform
-	magYmin                int32 // uniform
-	magYmax                int32 // uniform
-	lastNewFrameAtScanline int32 // uniform
+	showCursor     int32 // uniform
+	isCropped      int32 // uniform
+	screenDim      int32 // uniform
+	scalingX       int32 // uniform
+	scalingY       int32 // uniform
+	lastX          int32 // uniform
+	lastY          int32 // uniform
+	hblank         int32 // uniform
+	visibleTop     int32 // uniform
+	visibleBottom  int32 // uniform
+	magShow        int32 // uniform
+	magXmin        int32 // uniform
+	magXmax        int32 // uniform
+	magYmin        int32 // uniform
+	magYmax        int32 // uniform
+	totalScanlines int32 // uniform
+	topScanline    int32 // uniform
 }
 
 func (attr *dbgScrHelper) get(sh shader) {
@@ -52,7 +54,8 @@ func (attr *dbgScrHelper) get(sh shader) {
 	attr.lastX = gl.GetUniformLocation(sh.handle, gl.Str("LastX"+"\x00"))
 	attr.lastY = gl.GetUniformLocation(sh.handle, gl.Str("LastY"+"\x00"))
 	attr.hblank = gl.GetUniformLocation(sh.handle, gl.Str("Hblank"+"\x00"))
-	attr.lastNewFrameAtScanline = gl.GetUniformLocation(sh.handle, gl.Str("LastNewFrameAtScanline"+"\x00"))
+	attr.totalScanlines = gl.GetUniformLocation(sh.handle, gl.Str("TotalScanlines"+"\x00"))
+	attr.topScanline = gl.GetUniformLocation(sh.handle, gl.Str("TopScanline"+"\x00"))
 	attr.visibleTop = gl.GetUniformLocation(sh.handle, gl.Str("VisibleTop"+"\x00"))
 	attr.visibleBottom = gl.GetUniformLocation(sh.handle, gl.Str("VisibleBottom"+"\x00"))
 	attr.magShow = gl.GetUniformLocation(sh.handle, gl.Str("MagShow"+"\x00"))
@@ -83,7 +86,7 @@ func (attr *dbgScrHelper) set(img *SdlImgui) {
 	cursorY := img.screen.crit.lastY
 
 	// if crt preview is enabled then force cropping
-	if img.wm.dbgScr.cropped || img.wm.dbgScr.crtPreview {
+	if img.wm.dbgScr.cropped {
 		gl.Uniform1f(attr.lastX, float32(cursorX-specification.ClksHBlank)*xscaling)
 		gl.Uniform1i(attr.isCropped, boolToInt32(true))
 	} else {
@@ -96,11 +99,12 @@ func (attr *dbgScrHelper) set(img *SdlImgui) {
 	gl.Uniform1f(attr.hblank, (specification.ClksHBlank)*xscaling)
 	gl.Uniform1f(attr.visibleTop, float32(img.screen.crit.frameInfo.VisibleTop)*yscaling)
 	gl.Uniform1f(attr.visibleBottom, float32(img.screen.crit.frameInfo.VisibleBottom)*yscaling)
-	gl.Uniform1f(attr.lastNewFrameAtScanline, float32(img.screen.crit.frameInfo.TotalScanlines)*yscaling)
+	gl.Uniform1f(attr.totalScanlines, float32(img.screen.crit.frameInfo.TotalScanlines)*yscaling)
+	gl.Uniform1f(attr.topScanline, float32(img.screen.crit.frameInfo.TopScanline)*yscaling)
 
 	// window magnification
 	var magXmin, magYmin, magXmax, magYmax float32
-	if img.wm.dbgScr.cropped || img.wm.dbgScr.crtPreview {
+	if img.wm.dbgScr.cropped {
 		magXmin = float32(img.wm.dbgScr.magnifyWindow.clip.Min.X-specification.ClksHBlank) * xscaling
 		magYmin = float32(img.wm.dbgScr.magnifyWindow.clip.Min.Y-img.screen.crit.frameInfo.VisibleTop) * yscaling
 		magXmax = float32(img.wm.dbgScr.magnifyWindow.clip.Max.X-specification.ClksHBlank) * xscaling
@@ -138,14 +142,17 @@ type dbgScrShader struct {
 	dbgScrHelper
 
 	img *SdlImgui
-	crt *crtSequencer
+
+	sequence *framebuffer.Flip
+	sharpen  shaderProgram
 }
 
 func newDbgScrShader(img *SdlImgui) shaderProgram {
 	sh := &dbgScrShader{
-		img: img,
+		img:      img,
+		sequence: framebuffer.NewFlip(true),
+		sharpen:  newSharpenShader(),
 	}
-	sh.crt = newCRTSequencer(img)
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.DbgScrHelpersShader), string(shaders.DbgScrShader))
 	sh.dbgScrHelper.get(sh.shader)
 
@@ -153,12 +160,19 @@ func newDbgScrShader(img *SdlImgui) shaderProgram {
 }
 
 func (sh *dbgScrShader) destroy() {
-	sh.crt.destroy()
+	sh.sequence.Destroy()
+	sh.sharpen.destroy()
 }
 
 func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 	env.width = int32(sh.img.wm.dbgScr.scaledWidth)
 	env.height = int32(sh.img.wm.dbgScr.scaledHeight)
+
+	if sh.img.wm.dbgScr.elements {
+		env.textureID = sh.img.wm.dbgScr.elementsTexture.getID()
+	} else {
+		env.textureID = sh.img.wm.dbgScr.displayTexture.getID()
+	}
 
 	gl.Viewport(-int32(sh.img.wm.dbgScr.screenOrigin.X),
 		-int32(sh.img.wm.dbgScr.screenOrigin.Y),
@@ -171,7 +185,7 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 		env.height+int32(sh.img.wm.dbgScr.screenOrigin.Y),
 	)
 
-	projection := env.projMtx
+	projMtx := env.projMtx
 	env.projMtx = [4][4]float32{
 		{2.0 / (sh.img.wm.dbgScr.scaledWidth + sh.img.wm.dbgScr.screenOrigin.X), 0.0, 0.0, 0.0},
 		{0.0, -2.0 / (sh.img.wm.dbgScr.scaledHeight + sh.img.wm.dbgScr.screenOrigin.Y), 0.0, 0.0},
@@ -179,63 +193,15 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 		{-1.0, 1.0, 0.0, 1.0},
 	}
 
-	if sh.img.wm.dbgScr.crtPreview {
-		// this is a bit weird but in the case of crtPreview we need to force
-		// the use of the dbgscr's normalTexture. this is because for a period
-		// of one frame the value of crtPreview and the texture being used in
-		// the dbgscr's image button may not agree.
-		//
-		// consider the sequence and interaction of dbgscr with glsl:
-		//
-		// 1) crtPreview is checked to decide whether to show the normalTexture
-		// 2) if it is false and elements is true then the elementsTexture is
-		//          selected
-		// 3) the crt checkbox is shown and clicked. the crtPreview value is
-		//          changed on this frame
-		// 4) for one frame therefore, it is possible to reach this point
-		//          (crtPreview is true) but for the elementsTexture to have
-		//          been chosen
-		//
-		// forcing the use of the normalTexture at this point seems the least
-		// obtrusive solution. another solutions could be to defer otion
-		// changes to the following frame but that would involve a manager of
-		// some sort.
-		//
-		// altenatively, we could try a more structured method of attaching a
-		// texture to an imgui.Image and packaging texture specific options
-		// within that structure.
-		//
-		// both alternative solutions seem baroque for a single use case. maybe
-		// something for the future.
-		env.textureID = sh.img.wm.dbgScr.displayTexture.getID()
+	env.flipY = true
+	sh.sequence.Setup(env.width, env.height)
+	env.textureID = sh.sequence.Process(func() {
+		sh.sharpen.(*sharpenShader).process(env, 2)
+		env.draw()
+	})
+	env.flipY = false
 
-		prefs := newCrtSeqPrefs(sh.img.displayPrefs)
-		prefs.Enabled = true
-		prefs.Bevel = false
-
-		env.textureID = sh.crt.process(env, true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible,
-			sh.img.wm.dbgScr, prefs, specification.NormalRotation, false)
-		env.projMtx = projection
-	} else {
-		// if crtPreview is disabled we still go through the crt process. we do
-		// this for two reasons.
-		//
-		// 1) to scale the image to the correct size
-		//
-		// 2) the phosphor is kept up to date, which is important for the
-		// moment the crtPreview is enabled.
-		//
-		// note that we specify integer scaling for the non-CRT preview image,
-		// this is so that the overlay is aligned properly with the TV image
-
-		prefs := newCrtSeqPrefs(sh.img.displayPrefs)
-		prefs.Enabled = false
-
-		env.textureID = sh.crt.process(env, true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible,
-			sh.img.wm.dbgScr, prefs, specification.NormalRotation, false)
-		env.projMtx = projection
-	}
-
+	env.projMtx = projMtx
 	sh.shader.setAttributes(env)
 	sh.dbgScrHelper.set(sh.img)
 }
@@ -243,11 +209,6 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 type dbgScrOverlayShader struct {
 	shader
 	dbgScrHelper
-
-	stripe     int32 // uniform
-	stripeSize int32 // uniform
-	stripeFade int32 // uniform
-
 	img *SdlImgui
 }
 
@@ -259,10 +220,6 @@ func newDbgScrOverlayShader(img *SdlImgui) shaderProgram {
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.DbgScrHelpersShader), string(shaders.DbgScrOverlayShader))
 	sh.dbgScrHelper.get(sh.shader)
 
-	sh.stripe = gl.GetUniformLocation(sh.handle, gl.Str("Stripe"+"\x00"))
-	sh.stripeSize = gl.GetUniformLocation(sh.handle, gl.Str("Stripe_Size"+"\x00"))
-	sh.stripeFade = gl.GetUniformLocation(sh.handle, gl.Str("Stripe_Fade"+"\x00"))
-
 	return sh
 }
 
@@ -270,34 +227,5 @@ func (sh *dbgScrOverlayShader) setAttributes(env shaderEnvironment) {
 	sh.shader.setAttributes(env)
 	sh.dbgScrHelper.set(sh.img)
 	sh.img.screen.crit.section.Lock()
-	gl.Uniform1i(sh.stripe, boolToInt32(sh.img.screen.crit.overlayStriped))
 	sh.img.screen.crit.section.Unlock()
-	gl.Uniform1f(sh.stripeSize, 3.0)
-	gl.Uniform1f(sh.stripeFade, 0.7)
-}
-
-type dbgScrMagnifyShader struct {
-	img           *SdlImgui
-	tvColorShader shaderProgram
-}
-
-func newDbgScrMagnifyShader(img *SdlImgui) shaderProgram {
-	sh := &dbgScrMagnifyShader{
-		img:           img,
-		tvColorShader: newTVColorShader(),
-	}
-	return sh
-}
-
-func (sh *dbgScrMagnifyShader) destroy() {
-	sh.tvColorShader.destroy()
-}
-
-func (sh *dbgScrMagnifyShader) setAttributes(env shaderEnvironment) {
-	sh.tvColorShader.(*tvColorShader).setAttributesArgs(env, tvColorShaderPrefs{
-		Brightness: sh.img.displayPrefs.Colour.Brightness.Get().(float64),
-		Contrast:   sh.img.displayPrefs.Colour.Contrast.Get().(float64),
-		Saturation: sh.img.displayPrefs.Colour.Saturation.Get().(float64),
-		Hue:        sh.img.displayPrefs.Colour.Hue.Get().(float64),
-	})
 }

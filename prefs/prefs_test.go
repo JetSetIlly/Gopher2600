@@ -268,7 +268,7 @@ func TestGeneric(t *testing.T) {
 	h = 0
 
 	// reload them from disk
-	err = dsk.Load(false)
+	err = dsk.Load()
 	if err != nil {
 		t.Errorf("error saving disk: %v", err)
 	}

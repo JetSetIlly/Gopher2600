@@ -36,7 +36,7 @@ func (win *winTIA) drawPlayfield() {
 
 	imguiLabel("Foreground")
 	fgCol := playfield.ForegroundColor
-	if win.img.imguiSwatch(fgCol, 0.75) {
+	if win.img.imguiTVColourSwatch(fgCol, 0.75) {
 		win.popupPalette.request(&fgCol, func() {
 			win.img.dbg.PushFunction(func() {
 				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
@@ -50,7 +50,7 @@ func (win *winTIA) drawPlayfield() {
 	// background color indicator. when clicked popup palette is requested
 	imguiLabel("Background")
 	bgCol := playfield.BackgroundColor
-	if win.img.imguiSwatch(bgCol, 0.75) {
+	if win.img.imguiTVColourSwatch(bgCol, 0.75) {
 		win.popupPalette.request(&bgCol, func() {
 			win.img.dbg.PushFunction(func() {
 				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
@@ -112,9 +112,6 @@ func (win *winTIA) drawPlayfield() {
 	imgui.Spacing()
 	imgui.Spacing()
 
-	// tv palette used to draw bit sequences with correct colours
-	_, palette, _, _ := win.img.imguiTVPalette()
-
 	// playfield data
 	imgui.BeginGroup()
 	imguiLabel("PF0")
@@ -129,7 +126,7 @@ func (win *winTIA) drawPlayfield() {
 			col = playfield.BackgroundColor
 			seq.nextItemDepressed = true
 		}
-		if seq.rectFill(palette[col]) {
+		if seq.rectFill(win.img.getTVColour(col)) {
 			pf0d ^= 0x80 >> i
 			win.img.dbg.PushFunction(func() {
 				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
@@ -153,7 +150,7 @@ func (win *winTIA) drawPlayfield() {
 			col = playfield.BackgroundColor
 			seq.nextItemDepressed = true
 		}
-		if seq.rectFill(palette[col]) {
+		if seq.rectFill(win.img.getTVColour(col)) {
 			pf1d ^= 0x80 >> i
 			win.img.dbg.PushFunction(func() {
 				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
@@ -177,7 +174,7 @@ func (win *winTIA) drawPlayfield() {
 			col = playfield.BackgroundColor
 			seq.nextItemDepressed = true
 		}
-		if seq.rectFill(palette[col]) {
+		if seq.rectFill(win.img.getTVColour(col)) {
 			pf2d ^= 0x80 >> i
 			win.img.dbg.PushFunction(func() {
 				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
@@ -187,6 +184,7 @@ func (win *winTIA) drawPlayfield() {
 		seq.sameLine()
 	}
 	seq.end()
+
 	imgui.EndGroup()
 
 	imgui.Spacing()
@@ -195,6 +193,7 @@ func (win *winTIA) drawPlayfield() {
 	// playfield data for the scanline
 	imgui.BeginGroup()
 	imguiLabel("Scanline")
+
 	seq = newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight() * 0.5, Y: imgui.FrameHeight()}, false)
 
 	// first half of the playfield
@@ -209,7 +208,7 @@ func (win *winTIA) drawPlayfield() {
 		} else {
 			col = playfield.BackgroundColor
 		}
-		seq.rectFill(palette[col])
+		seq.rectFill(win.img.getTVColour(col))
 		seq.sameLine()
 	}
 
@@ -225,7 +224,7 @@ func (win *winTIA) drawPlayfield() {
 		} else {
 			col = playfield.BackgroundColor
 		}
-		seq.rectFill(palette[col])
+		seq.rectFill(win.img.getTVColour(col))
 		seq.sameLine()
 	}
 	seq.end()

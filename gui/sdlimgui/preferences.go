@@ -42,6 +42,9 @@ type preferences struct {
 	// prefs that will be saved automatically on program exit
 	saveOnExitDsk *prefs.Disk
 
+	// emulation preferences
+	recentROM prefs.String
+
 	// debugger preferences
 	terminalOnError       prefs.Bool
 	audioMuteDebugger     prefs.Bool
@@ -61,6 +64,8 @@ type preferences struct {
 	audioMuteNotification     prefs.Bool
 	notificationVisibility    prefs.Float
 	memoryUsageInOverlay      prefs.Bool
+	frameQueueMeterInOverlay  prefs.Bool
+	audioQueueMeterInOverlay  prefs.Bool
 
 	// fonts
 	guiFontSize         prefs.Int
@@ -97,6 +102,12 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 
+	err = p.dsk.Add("sdlimgui.emulation.recentrom", &p.recentROM)
+	if err != nil {
+		return nil, err
+	}
+
+	// debugger options
 	err = p.dsk.Add("sdlimgui.debugger.terminalOnError", &p.terminalOnError)
 	if err != nil {
 		return nil, err
@@ -149,6 +160,14 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("sdlimgui.playmode.frameQueueMeterInOverlay", &p.frameQueueMeterInOverlay)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.playmode.audioQueueMeterInOverlay", &p.audioQueueMeterInOverlay)
+	if err != nil {
+		return nil, err
+	}
 
 	// playmode audio mute options later
 
@@ -186,14 +205,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 	p.frameQueueLenAuto.SetHookPost(func(v prefs.Value) error {
-		// set frameQueue value if auto is true. there is no need to call
-		// screen.setFrameQueue() in that instance becase the post hook for the
-		// frameQueue value does that
-		if v.(bool) {
-			p.img.screen.setFrameQueue(true, 1)
-		} else {
-			p.img.screen.setFrameQueue(false, p.frameQueueLen.Get().(int))
-		}
+		p.img.screen.setFrameQueue(v.(bool), p.frameQueueLen.Get().(int))
 		return nil
 	})
 
@@ -201,6 +213,15 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	p.glSwapInterval.SetConstraint(func(v prefs.Value) any {
+		i := v.(int)
+		if i > 1 {
+			i = 1
+		} else if i < -1 {
+			i = -1
+		}
+		return i
+	})
 	p.glSwapInterval.SetHookPost(func(v prefs.Value) error {
 		p.img.plt.setSwapInterval(v.(int))
 		return nil
@@ -230,6 +251,10 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.saveOnExitDsk.Add("sdlimgui.emulation.recentrom", &p.recentROM)
+	if err != nil {
+		return nil, err
+	}
 	err = p.saveOnExitDsk.Add("sdlimgui.debugger.showTooltips", &p.showTooltips)
 	if err != nil {
 		return nil, err
@@ -255,6 +280,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 }
 
 func (p *preferences) setDefaults() {
+	// recentROM does not have a default value
 	p.terminalOnError.Set(true)
 	p.audioMuteDebugger.Set(true)
 	p.showTooltips.Set(true)
@@ -269,6 +295,8 @@ func (p *preferences) setDefaults() {
 	p.audioMuteNotification.Set(true)
 	p.notificationVisibility.Set(0.75)
 	p.memoryUsageInOverlay.Set(false)
+	p.frameQueueMeterInOverlay.Set(false)
+	p.audioQueueMeterInOverlay.Set(false)
 	p.guiFontSize.Set(13)
 	p.terminalFontSize.Set(12)
 	p.codeFontSize.Set(15)
@@ -287,7 +315,7 @@ func (p *preferences) load() error {
 	// of the emulator) then the hook will not be triggered by the load process
 	p.setDefaults()
 
-	return p.dsk.Load(false)
+	return p.dsk.Load()
 }
 
 // save preferences to disk. does not save window preferences.
@@ -419,12 +447,12 @@ func (p *preferences) loadWindowPreferences() error {
 		return err
 	}
 
-	err = p.dskWinGeom.Load(true)
+	err = p.dskWinGeom.Load()
 	if err != nil {
 		return err
 	}
 
-	err = p.dskWinFullScreen.Load(true)
+	err = p.dskWinFullScreen.Load()
 	if err != nil {
 		return err
 	}

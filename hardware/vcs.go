@@ -20,6 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
+	"github.com/jetsetilly/gopher2600/hardware/clocks"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/input"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
@@ -93,7 +94,7 @@ func NewVCS(label environment.Label, tv *television.Television, notify notificat
 	vcs := &VCS{
 		Env:   env,
 		TV:    tv,
-		Clock: ntscClock,
+		Clock: clocks.NTSC,
 	}
 
 	vcs.Mem = memory.NewMemory(vcs.Env)
@@ -245,36 +246,27 @@ func (vcs *VCS) Reset() error {
 	return nil
 }
 
-// clock speeds taken from
-// http://www.taswegian.com/WoodgrainWizard/tiki-index.php?page=Clock-Speeds
-const (
-	ntscClock  = 1.193182
-	palClock   = 1.182298
-	palMClock  = 1.191870
-	secamClock = 1.187500
-)
-
 // SetClockSpeed is an implemtation of the television.VCSReturnChannel interface.
 func (vcs *VCS) SetClockSpeed(spec specification.Spec) {
 	switch spec.ID {
 	case specification.SpecNTSC.ID:
-		if vcs.Clock != ntscClock {
-			vcs.Clock = ntscClock
+		if vcs.Clock != clocks.NTSC {
+			vcs.Clock = clocks.NTSC
 			logger.Log(vcs.Env, "vcs", "switching to NTSC clock")
 		}
 	case specification.SpecPAL.ID:
-		if vcs.Clock != palClock {
-			vcs.Clock = palClock
+		if vcs.Clock != clocks.PAL {
+			vcs.Clock = clocks.PAL
 			logger.Log(vcs.Env, "vcs", "switching to PAL clock")
 		}
 	case specification.SpecPAL_M.ID:
-		if vcs.Clock != palMClock {
-			vcs.Clock = palMClock
+		if vcs.Clock != clocks.PAL_M {
+			vcs.Clock = clocks.PAL_M
 			logger.Log(vcs.Env, "vcs", "switching to PAL-M clock")
 		}
 	case specification.SpecSECAM.ID:
-		if vcs.Clock != secamClock {
-			vcs.Clock = secamClock
+		if vcs.Clock != clocks.SECAM {
+			vcs.Clock = clocks.SECAM
 			logger.Log(vcs.Env, "vcs", "switching to SECAM clock")
 		}
 	default:

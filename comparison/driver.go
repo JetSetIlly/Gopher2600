@@ -148,7 +148,7 @@ func (drv *driver) EndRendering() error {
 }
 
 // SetAudio implements the television.AudioMixer interface.
-func (drv *driver) SetAudio(sig []signal.SignalAttributes) error {
+func (drv *driver) SetAudio(sig []signal.AudioSignalAttributes) error {
 	var idx int
 	if drv.swapIdx {
 		idx = 0

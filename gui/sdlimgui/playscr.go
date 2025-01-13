@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/gui/display/bevels"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -28,19 +29,31 @@ type playScr struct {
 	// reference to screen data
 	scr *screen
 
-	// textures. displayTexture is the presentation texture
-	displayTexture texture
+	// screen
+	screenTexture texture
+	screenPosMin  imgui.Vec2
+	screenPosMax  imgui.Vec2
+	screenWidth   float32
+	screenHeight  float32
+	screenRatio   float32
+
+	// scaling of texture and calculated dimensions
+	scaling float32
+
+	// bevel
+	bevelTexture    texture
+	bevelPosMin     imgui.Vec2
+	bevelPosMax     imgui.Vec2
+	bevelWidth      float32
+	bevelHeight     float32
+	bevelRatio      float32
+	bevelRimTexture texture
+
+	// whether the bevel is being used
+	usingBevel bool
 
 	// the tv screen has captured mouse input
 	isCaptured bool
-
-	imagePosMin imgui.Vec2
-	imagePosMax imgui.Vec2
-
-	// scaling of texture and calculated dimensions
-	scaling      float32
-	scaledWidth  float32
-	scaledHeight float32
 
 	// number of scanlines in current image. taken from screen but is crit section safe
 	visibleScanlines int
@@ -54,39 +67,81 @@ func newPlayScr(img *SdlImgui) *playScr {
 		img: img,
 		scr: img.screen,
 		overlay: playscrOverlay{
-			fpsPulse: time.NewTicker(1 * time.Millisecond),
-			fps:      "waiting",
+			img:            img,
+			memStatsTicker: time.NewTicker(time.Second),
 		},
 	}
 	win.overlay.playscr = win
 
 	// set texture, creation of textures will be done after every call to resize()
 	// clamp is important for LINEAR filtering. not noticeable for NEAREST filtering
-	win.displayTexture = img.rnd.addTexture(texturePlayscr, true, true)
+	win.screenTexture = img.rnd.addTexture(shaderPlayscr, true, true, nil)
+	win.bevelTexture = img.rnd.addTexture(shaderBevel, true, true, false)
+
+	// additional configuration detail for the rim texture
+	win.bevelRimTexture = img.rnd.addTexture(shaderBevel, true, true, true)
+
+	// render bevel texture once on initlisation
+	win.bevelTexture.render(bevels.SolidState.Bevel)
+	win.bevelRimTexture.render(bevels.SolidState.BevelRim)
 
 	// set scale and padding on startup. scale and padding will be recalculated
 	// on window resize and textureRenderer.resize()
 	win.scr.crit.section.Lock()
-	win.setScaling()
+	win.resize()
 	win.scr.crit.section.Unlock()
 
 	return win
+}
+
+// the usingBevel flag is set in the draw() function however, we need to make
+// sure it's set before a resize too. this is particularly important on
+// initialisation when the resize() function is called before the draw()
+// function is called fro the first time. without explicitely setting the
+// usingBevel flag the scaleing of the TV screen will not take into account the
+// BiasY value for the bevel
+func (win *playScr) setUsingBevel() {
+	// note whether we're using a bevel image or not
+	win.usingBevel = win.img.rnd.supportsCRT() && !win.img.crt.pixelPerfect.Get().(bool) && win.img.crt.useBevel.Get().(bool)
+
+	// rotation also plays a part in the decision to use the bevel
+	win.usingBevel = win.usingBevel && win.img.screen.rotation.Load() == specification.NormalRotation
 }
 
 func (win *playScr) draw() {
 	win.img.screen.crit.section.Lock()
 	defer win.img.screen.crit.section.Unlock()
 
+	win.setUsingBevel()
+
 	dl := imgui.BackgroundDrawList()
-	dl.AddImage(imgui.TextureID(win.displayTexture.getID()), win.imagePosMin, win.imagePosMax)
+
+	if win.usingBevel {
+		dl.AddImage(imgui.TextureID(win.screenTexture.getID()), win.screenPosMin, win.screenPosMax)
+		dl.AddImage(imgui.TextureID(win.bevelTexture.getID()), win.bevelPosMin, win.bevelPosMax)
+		dl.AddImage(imgui.TextureID(win.bevelRimTexture.getID()), win.bevelPosMin, win.bevelPosMax)
+	} else {
+		dl.AddImage(imgui.TextureID(win.screenTexture.getID()), win.screenPosMin, win.screenPosMax)
+	}
 
 	win.overlay.draw()
 }
 
 // resize() implements the textureRenderer interface.
+//
+// must be called from within a critical section.
 func (win *playScr) resize() {
-	win.displayTexture.markForCreation()
-	win.setScaling()
+	// see comment for setUsingBevel() function for why we call it here
+	win.setUsingBevel()
+
+	win.screenTexture.markForCreation()
+	win.bevelTexture.markForCreation()
+
+	win.setScalingBevel()
+	win.setScalingDisplay()
+
+	// get visibleScanlines while we're in critical section
+	win.visibleScanlines = win.scr.crit.frameInfo.VisibleBottom - win.scr.crit.frameInfo.VisibleTop
 }
 
 // updateRefreshRate() implements the textureRenderer interface.
@@ -102,35 +157,78 @@ func (win *playScr) render() {
 	win.scr.crit.section.Lock()
 	defer win.scr.crit.section.Unlock()
 
-	win.displayTexture.render(win.scr.crit.cropPixels)
+	win.screenTexture.render(win.scr.crit.cropPixels)
 
-	// unlike dbgscr, there is no need to call setScaling() every render()
+	// note that we don't need to render the bevel texture every frame because
+	// it never changes
+
+	// unlike dbgscr, there is also no need to call setScaling() every render()
 }
 
 // must be called from with a critical section.
-func (win *playScr) setScaling() {
-	w := float32(specification.WidthTV)
-	h := float32(specification.HeightTV)
+func (win *playScr) setScalingBevel() {
+	sz := bevels.SolidState.Bevel.Bounds().Size()
+	bw := float32(sz.X)
+	bh := float32(sz.Y)
+	bRatio := bw / bh
 
-	// handle screen rotation
-	rot := win.scr.rotation.Load().(specification.Rotation)
-	if rot != specification.NormalRotation && rot != specification.FlippedRotation {
-		w, h = h, w
+	winW, winH := win.img.plt.windowSize()
+	winRatio := winW / winH
+
+	var scaling float32
+
+	// place bevel in middle of window as best as we can
+	if bRatio < winRatio {
+		scaling = winH / bh
+		win.bevelPosMin = imgui.Vec2{
+			X: float32(int((winW - (bw * scaling)) / 2)),
+			Y: 0,
+		}
+	} else {
+		scaling = winW / bw
+		win.bevelPosMin = imgui.Vec2{
+			X: 0,
+			Y: float32(int((winH - (bh * scaling)) / 2)),
+		}
 	}
 
+	win.bevelPosMax = imgui.Vec2{
+		X: winW - win.bevelPosMin.X,
+		Y: winH - win.bevelPosMin.Y,
+	}
+
+	win.bevelWidth = bw * scaling
+	win.bevelHeight = bh * scaling
+	win.bevelRatio = win.bevelWidth / win.bevelHeight
+}
+
+// must be called from with a critical section.
+func (win *playScr) setScalingDisplay() {
+	tvW := float32(specification.WidthTV)
+	tvH := float32(specification.HeightTV)
+	if win.usingBevel {
+		tvH *= bevels.SolidState.BiasY
+	}
+
+	winW, winH := win.img.plt.windowSize()
+	winRatio := winW / winH
+
+	// handle screen rotation
+	rotation := win.scr.rotation.Load().(specification.Rotation)
+	if rotation != specification.NormalRotation && rotation != specification.FlippedRotation {
+		tvW, tvH = tvH, tvW
+		tvW *= 1.05
+	}
+
+	tvRatio := tvW / tvH
+
 	// calculate required scaling
-	displaySize := win.img.plt.displaySize()
-	screenRegion := imgui.Vec2{X: displaySize[0], Y: displaySize[1]}
-
-	winRatio := screenRegion.X / screenRegion.Y
-	aspectRatio := w / h
-
-	if aspectRatio < winRatio {
+	if tvRatio < winRatio {
 		// window wider than TV screen
-		win.scaling = screenRegion.Y / h
+		win.scaling = winH / tvH
 	} else {
 		// TV screen wider than window
-		win.scaling = screenRegion.X / w
+		win.scaling = winW / tvW
 	}
 
 	// limit scaling to 1x
@@ -138,23 +236,19 @@ func (win *playScr) setScaling() {
 		win.scaling = 1
 	}
 
-	// place screen in middle of window as best as we can
-	win.imagePosMin = imgui.Vec2{
-		X: float32(int((screenRegion.X - (w * win.scaling)) / 2)),
-		Y: float32(int((screenRegion.Y - (h * win.scaling)) / 2)),
+	// place display in middle of window as best as we can
+	win.screenPosMin = imgui.Vec2{
+		X: float32(int((winW - (tvW * win.scaling)) / 2)),
+		Y: float32(int((winH - (tvH * win.scaling)) / 2)),
 	}
-	win.imagePosMax = screenRegion.Minus(win.imagePosMin)
+	win.screenPosMax = imgui.Vec2{
+		X: winW - win.screenPosMin.X,
+		Y: winH - win.screenPosMin.Y,
+	}
 
-	win.scaledWidth = w * win.scaling
-	win.scaledHeight = h * win.scaling
-
-	// get visibleScanlines while we're in critical section
-	win.visibleScanlines = win.scr.crit.frameInfo.VisibleBottom - win.scr.crit.frameInfo.VisibleTop
-}
-
-// textureSpec implements the scalingImage specification
-func (win *playScr) textureSpec() (uint32, float32, float32) {
-	return win.displayTexture.getID(), win.scaledWidth, win.scaledHeight
+	win.screenWidth = tvW * win.scaling
+	win.screenHeight = tvH * win.scaling
+	win.screenRatio = win.screenWidth / win.screenHeight
 }
 
 // SetRotation implements the television.PixelRendererRotation interface

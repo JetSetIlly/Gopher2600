@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/prefs"
 )
@@ -98,8 +99,8 @@ func (win *winPrefs) draw() {
 		win.drawTelevision()
 		imgui.EndTabItem()
 		setDef = func() {
+			specification.ColourGen.SetDefaults()
 			win.img.dbg.VCS().Env.Prefs.TV.SetDefaults()
-			win.img.displayPrefs.Colour.SetDefaults()
 		}
 		setDefLabel = "Television"
 	}
@@ -108,7 +109,7 @@ func (win *winPrefs) draw() {
 		if imgui.BeginTabItem("CRT") {
 			win.drawCRT()
 			imgui.EndTabItem()
-			setDef = win.img.displayPrefs.CRT.SetDefaults
+			setDef = win.img.crt.SetDefaults
 			setDefLabel = "CRT"
 		}
 	}
@@ -172,7 +173,6 @@ func (win *winPrefs) drawGlSwapInterval() {
 		descImmediate           = "Immediate updates"
 		descWithVerticalRetrace = "Sync with vertical retrace"
 		descAdaptive            = "Adaptive VSYNC"
-		descTicker              = "Ticker"
 	)
 
 	switch win.img.prefs.glSwapInterval.Get().(int) {
@@ -182,8 +182,6 @@ func (win *winPrefs) drawGlSwapInterval() {
 		glSwapInterval = descWithVerticalRetrace
 	case -1:
 		glSwapInterval = descAdaptive
-	case 2:
-		glSwapInterval = descTicker
 	}
 
 	if imgui.BeginCombo("Swap Interval", glSwapInterval) {
@@ -195,9 +193,6 @@ func (win *winPrefs) drawGlSwapInterval() {
 		}
 		if imgui.Selectable(descAdaptive) {
 			win.img.prefs.glSwapInterval.Set(syncAdaptive)
-		}
-		if imgui.Selectable(descTicker) {
-			win.img.prefs.glSwapInterval.Set(syncTicker)
 		}
 		imgui.EndCombo()
 	}
@@ -215,7 +210,7 @@ a television image that is sympathetic to the display kernel
 of the ROM.`)
 
 	imgui.Spacing()
-	if imgui.CollapsingHeader("Notification Overlay") {
+	if imgui.CollapsingHeader("Notifications") {
 		controllerNotifications := win.img.prefs.controllerNotifcations.Get().(bool)
 		if imgui.Checkbox("Controller Changes", &controllerNotifications) {
 			win.img.prefs.controllerNotifcations.Set(controllerNotifications)
@@ -240,9 +235,22 @@ of the ROM.`)
 		if imgui.SliderFloatV("Visibility", &visibility, 0.0, 100.0, "%.0f%%", imgui.SliderFlagsNone) {
 			win.img.prefs.notificationVisibility.Set(visibility / 100)
 		}
+	}
+
+	imgui.Spacing()
+	if imgui.CollapsingHeader("FPS Overlay") {
+		frameQueueMeter := win.img.prefs.frameQueueMeterInOverlay.Get().(bool)
+		if imgui.Checkbox("Frame Queue Meter", &frameQueueMeter) {
+			win.img.prefs.frameQueueMeterInOverlay.Set(frameQueueMeter)
+		}
+
+		audioQueueMeter := win.img.prefs.audioQueueMeterInOverlay.Get().(bool)
+		if imgui.Checkbox("Audio Queue Meter", &audioQueueMeter) {
+			win.img.prefs.audioQueueMeterInOverlay.Set(audioQueueMeter)
+		}
 
 		memoryUsageInOverlay := win.img.prefs.memoryUsageInOverlay.Get().(bool)
-		if imgui.Checkbox("Memory Usage in FPS Overlay", &memoryUsageInOverlay) {
+		if imgui.Checkbox("Memory Usage", &memoryUsageInOverlay) {
 			win.img.prefs.memoryUsageInOverlay.Set(memoryUsageInOverlay)
 		}
 	}
@@ -733,13 +741,13 @@ func (win *winPrefs) drawDiskButtons() {
 		if err != nil {
 			logger.Logf(logger.Allow, "sdlimgui", "could not save (imgui debugger) preferences: %v", err)
 		}
-		err = win.img.displayPrefs.CRT.Save()
+		err = win.img.crt.Save()
 		if err != nil {
 			logger.Logf(logger.Allow, "sdlimgui", "could not save (display/crt) preferences: %v", err)
 		}
-		err = win.img.displayPrefs.Colour.Save()
+		err = specification.ColourGen.Save()
 		if err != nil {
-			logger.Logf(logger.Allow, "sdlimgui", "could not save (display/colour) preferences: %v", err)
+			logger.Logf(logger.Allow, "sdlimgui", "could not save (television/colour) preferences: %v", err)
 		}
 		err = win.img.audio.Prefs.Save()
 		if err != nil {
@@ -789,13 +797,13 @@ func (win *winPrefs) drawDiskButtons() {
 		if err != nil {
 			logger.Logf(logger.Allow, "sdlimgui", "could not restore (imgui debugger) preferences: %v", err)
 		}
-		err = win.img.displayPrefs.CRT.Load()
+		err = win.img.crt.Load()
 		if err != nil {
 			logger.Logf(logger.Allow, "sdlimgui", "could not restore (display/crt) preferences: %v", err)
 		}
-		err = win.img.displayPrefs.Colour.Load()
+		err = specification.ColourGen.Load()
 		if err != nil {
-			logger.Logf(logger.Allow, "sdlimgui", "could not restore (display/colour) preferences: %v", err)
+			logger.Logf(logger.Allow, "sdlimgui", "could not restore (television/colour) preferences: %v", err)
 		}
 		err = win.img.audio.Prefs.Load()
 		if err != nil {

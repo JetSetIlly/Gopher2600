@@ -73,19 +73,9 @@ func (dig *Audio) ResetDigest() {
 }
 
 // SetAudio implements the protocol.AudioMixer interface.
-func (dig *Audio) SetAudio(sig []signal.SignalAttributes) error {
+func (dig *Audio) SetAudio(sig []signal.AudioSignalAttributes) error {
 	for _, s := range sig {
-		// ignore invalid signals
-		if s.Index == signal.NoSignal {
-			continue
-		}
-
-		// ignore signals with no audio update
-		if !s.AudioUpdate {
-			continue
-		}
 		dig.buffer[dig.bufferCt] = s.AudioChannel0
-
 		dig.bufferCt++
 		if dig.bufferCt >= audioBufferLength {
 			return dig.flushAudio()

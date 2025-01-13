@@ -44,12 +44,8 @@ func NewWavWriter(filename string) (*WavWriter, error) {
 }
 
 // SetAudio implements the television.AudioMixer interface.
-func (aw *WavWriter) SetAudio(sig []signal.SignalAttributes) error {
+func (aw *WavWriter) SetAudio(sig []signal.AudioSignalAttributes) error {
 	for _, s := range sig {
-		if s.AudioUpdate {
-			continue
-		}
-
 		v0 := s.AudioChannel0
 		v1 := s.AudioChannel1
 
@@ -71,7 +67,7 @@ func (aw *WavWriter) EndMixing() error {
 	}
 	defer f.Close()
 
-	enc := wav.NewEncoder(f, tia.SampleFreq, bitDepth, numChannels, 1)
+	enc := wav.NewEncoder(f, tia.AverageSampleFreq, bitDepth, numChannels, 1)
 	if enc == nil {
 		return fmt.Errorf("wavwriter: bad parameters for wav encoding")
 	}
@@ -80,7 +76,7 @@ func (aw *WavWriter) EndMixing() error {
 	buf := audio.PCMBuffer{
 		Format: &audio.Format{
 			NumChannels: numChannels,
-			SampleRate:  tia.SampleFreq,
+			SampleRate:  tia.AverageSampleFreq,
 		},
 		I16:            aw.buffer,
 		DataType:       audio.DataTypeI16,

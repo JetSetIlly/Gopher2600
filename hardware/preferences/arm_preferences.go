@@ -127,7 +127,7 @@ func newARMprefrences() (*ARMPreferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Load(true)
+	err = p.dsk.Load()
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (p *ARMPreferences) SetDefaults() {
 
 // Load current arm preference from disk.
 func (p *ARMPreferences) Load() error {
-	return p.dsk.Load(false)
+	return p.dsk.Load()
 }
 
 // Save current arm preferences to disk.

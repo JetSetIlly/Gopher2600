@@ -34,8 +34,20 @@ type Tracker interface {
 	AudioTick(env TrackerEnvironment, channel int, reg Registers)
 }
 
-// SampleFreq represents the number of samples generated per second
-const SampleFreq = 15700 * 2
+// The TIA emulation takes two samples per scanline, so by definition the sample
+// frequency is double the horizontal scan rate for the machine
+//
+// 31468.52 for NTSC
+// 31250 for PAL
+//
+// an average of the two can be rounded to 31360
+const AverageSampleFreq = 31360
+
+// For a long time we used a sample frequency of 31400, or 15700*2
+const OldSampleFreq = 31400
+
+// The TIA audio volume state for both channles is sampled twice per scanline
+const SamplesPerScanline = 2
 
 // Audio is the implementation of the TIA audio sub-system
 type Audio struct {

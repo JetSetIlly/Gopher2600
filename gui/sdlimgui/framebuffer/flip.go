@@ -23,8 +23,9 @@ import (
 type Flip struct {
 	clearOnRender bool
 
-	flip    [2]uint32
-	flipIdx int
+	// array of textures and the index of the last texture to be processed
+	textures [2]texture
+	idx      int
 
 	width  int32
 	height int32
@@ -32,7 +33,11 @@ type Flip struct {
 	fbo uint32
 	rbo uint32
 
-	// empty pixels used to clear texture on intiialisation and on clear
+	// empty pixels used to clear texture on create()
+	//
+	// the length of the array is based on the dimensions of the texture. to
+	// avoid excessive reallocation the length of the array never reduces and we
+	// simply take the slice we require if the texture is smaller
 	emptyPixels []uint8
 }
 
@@ -42,6 +47,9 @@ func NewFlip(clearOnRender bool) *Flip {
 		clearOnRender: clearOnRender,
 	}
 	gl.GenFramebuffers(1, &fb.fbo)
+	for i := range fb.textures {
+		gl.GenTextures(1, &fb.textures[i].id)
+	}
 	return fb
 }
 
@@ -56,15 +64,10 @@ func (fb *Flip) Destroy() {
 }
 
 func (fb *Flip) Clear() {
-	if len(fb.emptyPixels) == 0 {
-		return
-	}
-	for _, id := range fb.flip {
-		gl.BindTexture(gl.TEXTURE_2D, id)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, fb.width, fb.height, 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(fb.emptyPixels))
+	for i := range fb.textures {
+		gl.BindTexture(gl.TEXTURE_2D, fb.textures[i].id)
+		gl.ClearColor(0.0, 0.0, 0.0, 0.0)
+		gl.Clear(gl.COLOR_BUFFER_BIT)
 	}
 }
 
@@ -81,35 +84,26 @@ func (fb *Flip) Setup(width int32, height int32) bool {
 		return false
 	}
 
-	gl.BindFramebuffer(gl.FRAMEBUFFER, fb.fbo)
-
 	// no change to framebuffer
 	if fb.width == width && fb.height == height {
 		return false
 	}
 
-	changed := fb.width != 0 || fb.height != 0
-
 	fb.width = width
 	fb.height = height
-	fb.emptyPixels = make([]uint8, width*height*4)
 
-	for i := range fb.flip {
-		gl.GenTextures(1, &fb.flip[i])
-		gl.BindTexture(gl.TEXTURE_2D, fb.flip[i])
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, fb.width, fb.height, 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(fb.emptyPixels))
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
+	// make sure emptyPixels is big enough
+	sz := int(fb.width * fb.height * 4)
+	if sz > cap(fb.emptyPixels) {
+		fb.emptyPixels = make([]uint8, sz, sz*2)
 	}
 
-	gl.BindRenderbuffer(gl.RENDERBUFFER, fb.rbo)
+	// mark textures for creation
+	for i := range fb.textures {
+		fb.textures[i].create = true
+	}
 
-	return changed
+	return true
 }
 
 // Dimensions returns the width and height of the frame buffer used in the Flip
@@ -117,10 +111,22 @@ func (fb *Flip) Dimensions() (width int32, height int32) {
 	return fb.width, fb.height
 }
 
-// Texture returns the texture ID of the last Flip texture to be processed.
+// TextureID returns the texture ID of the last Flip texture to be processed.
 // Using this ID can be an effective way of chaining shaders
-func (fb *Flip) Texture() uint32 {
-	return fb.flip[fb.flipIdx]
+func (fb *Flip) TextureID() uint32 {
+	return fb.textures[fb.idx].id
+}
+
+func (fb *Flip) create(idx int) {
+	gl.BindTexture(gl.TEXTURE_2D, fb.textures[idx].id)
+	gl.TexImage2D(gl.TEXTURE_2D, 0,
+		gl.RGBA, fb.width, fb.height, 0,
+		gl.RGBA, gl.UNSIGNED_BYTE,
+		gl.Ptr(fb.emptyPixels[:fb.width*fb.height*4]))
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
 }
 
 // Process the Flip using the suppied draw function. The draw function should
@@ -128,38 +134,48 @@ func (fb *Flip) Texture() uint32 {
 // by the Process function. This is ID is the same as the ID returned by
 // the Texture() function
 func (fb *Flip) Process(draw func()) uint32 {
-	fb.flipIdx++
-	if fb.flipIdx >= len(fb.flip) {
-		fb.flipIdx = 0
+	fb.idx++
+	if fb.idx >= len(fb.textures) {
+		fb.idx = 0
 	}
 
-	id := fb.flip[fb.flipIdx]
+	if fb.textures[fb.idx].create {
+		fb.create(fb.idx)
+		fb.textures[fb.idx].create = false
+	}
+
 	gl.BindFramebuffer(gl.FRAMEBUFFER, fb.fbo)
-	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, id, 0)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fb.textures[fb.idx].id, 0)
 
 	if fb.clearOnRender {
+		gl.ClearColor(0.0, 0.0, 0.0, 0.0)
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 	}
 
 	draw()
 
-	return id
+	return fb.textures[fb.idx].id
 }
 
 // bindForCopy implements the FBO interface
 func (fb *Flip) bindForCopy() {
 	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, fb.fbo)
-	gl.FramebufferTexture2D(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fb.flip[fb.flipIdx], 0)
+	gl.FramebufferTexture2D(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fb.textures[fb.idx].id, 0)
 }
 
 // Copy another framebuffer to the Flip instance. Framebuffers must be of the
 // same dimensions
 func (fb *Flip) Copy(src FBO) uint32 {
+	if fb.textures[fb.idx].create {
+		fb.create(fb.idx)
+		fb.textures[fb.idx].create = false
+	}
+
 	src.bindForCopy()
 	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, fb.fbo)
-	gl.FramebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fb.flip[fb.flipIdx], 0)
+	gl.FramebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fb.textures[fb.idx].id, 0)
 	gl.BlitFramebuffer(0, 0, fb.width, fb.height,
 		0, 0, fb.width, fb.height,
 		gl.COLOR_BUFFER_BIT, gl.NEAREST)
-	return fb.flip[fb.flipIdx]
+	return fb.textures[fb.idx].id
 }

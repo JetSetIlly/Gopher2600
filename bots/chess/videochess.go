@@ -86,7 +86,7 @@ func newObserver() *observer {
 
 const audioSilence = 15
 
-func (o *observer) SetAudio(sig []signal.SignalAttributes) error {
+func (o *observer) SetAudio(sig []signal.AudioSignalAttributes) error {
 	for _, s := range sig {
 		if s.AudioChannel0 != audioSilence {
 			select {

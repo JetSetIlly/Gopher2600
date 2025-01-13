@@ -34,6 +34,9 @@ type fontAtlas struct {
 	gui     imgui.Font
 	guiSize float32
 
+	smallGui     imgui.Font
+	smallGuiSize float32
+
 	// used for notifications (eg. network access, etc.)
 	largeFontAwesome     imgui.Font
 	largeFontAwesomeSize float32
@@ -73,6 +76,23 @@ func (atlas *fontAtlas) initialise(display fontDisplay, renderer renderer, prefs
 	err = atlas.setDefaultFont(prefs, dpi)
 	if err != nil {
 		return err
+	}
+
+	// load small gui font
+	if atlas.smallGui == 0 {
+		smallGuiConfig := imgui.NewFontConfig()
+		defer smallGuiConfig.Delete()
+		smallGuiConfig.SetPixelSnapH(true)
+
+		var smallGuiBuilder imgui.GlyphRangesBuilder
+		smallGuiBuilder.Add(fonts.JetBrainsMonoMin, fonts.JetBrainsMonoMax)
+
+		atlas.smallGuiSize = float32(prefs.guiFontSize.Get().(int)) * 0.85
+		atlas.smallGuiSize = scaleFontForDPI(atlas.smallGuiSize, dpi)
+		atlas.smallGui = imgui.CurrentIO().Fonts().AddFontFromMemoryTTFV(fonts.JetBrainsMono, atlas.smallGuiSize, smallGuiConfig, smallGuiBuilder.Build().GlyphRanges)
+		if atlas.smallGui == 0 {
+			return fmt.Errorf("font: error loading JetBrainsMono font from memory")
+		}
 	}
 
 	// load large font awesome

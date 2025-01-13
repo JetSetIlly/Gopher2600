@@ -113,7 +113,7 @@ func newSelectROM(img *SdlImgui) (window, error) {
 		return nil, err
 	}
 
-	win.thmbTexture = img.rnd.addTexture(textureColor, true, true)
+	win.thmbTexture = img.rnd.addTexture(shaderColor, true, true, nil)
 	win.thmbImage = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	win.thmbDim = imgui.Vec2{X: specification.WidthTV, Y: specification.HeightTV}.Times(2.0)
 	win.listviewDim = imgui.Vec2{X: 300, Y: win.thmbDim.Y * 1.4}
@@ -136,7 +136,7 @@ func newSelectROM(img *SdlImgui) (window, error) {
 	}
 
 	// prepare boxart texture
-	win.boxartTexture = img.rnd.addTexture(textureColor, false, false)
+	win.boxartTexture = img.rnd.addTexture(shaderColor, false, false, nil)
 
 	return win, nil
 }
@@ -158,19 +158,20 @@ func (win *winSelectROM) setOpen(open bool) {
 		return
 	}
 
+	// take the opportunity to make sure recentROM is set correctly
+	cart := win.img.dbg.VCS().Mem.Cart
+	if !cart.IsEjected() {
+		win.img.prefs.recentROM.Set(cart.Filename)
+	}
+
 	// open at the most recently selected ROM
-	win.path.Set <- win.img.dbg.Prefs.RecentROM.String()
+	win.path.Set <- archivefs.Options{Path: win.img.prefs.recentROM.String()}
 }
 
 func (win *winSelectROM) playmodeSetOpen(open bool) {
 	win.playmodeWin.playmodeSetOpen(open)
 	win.centreOnFile = true
 	win.setOpen(open)
-
-	// set centreOnFile to true, ready for next time window is open
-	if !open {
-		win.centreOnFile = true
-	}
 }
 
 func (win *winSelectROM) playmodeDraw() bool {
@@ -200,11 +201,6 @@ func (win *winSelectROM) debuggerSetOpen(open bool) {
 	win.debuggerWin.debuggerSetOpen(open)
 	win.centreOnFile = true
 	win.setOpen(open)
-
-	// set centreOnFile to true, ready for next time window is open
-	if !open {
-		win.centreOnFile = true
-	}
 }
 
 func (win *winSelectROM) debuggerDraw() bool {
@@ -261,7 +257,7 @@ func (win *winSelectROM) draw() {
 	imgui.BeginGroup()
 
 	if imgui.Button("Parent") {
-		win.path.Set <- filepath.Dir(win.path.Results.Dir)
+		win.path.Set <- archivefs.Options{Path: filepath.Dir(win.path.Results.Dir)}
 		win.scrollToTop = true
 	}
 
@@ -303,7 +299,7 @@ func (win *winSelectROM) draw() {
 			}
 
 			if imgui.Selectable(s.String()) {
-				win.path.Set <- filepath.Join(win.path.Results.Dir, e.Name)
+				win.path.Set <- archivefs.Options{Path: filepath.Join(win.path.Results.Dir, e.Name)}
 				win.scrollToTop = true
 			}
 		}
@@ -346,11 +342,11 @@ func (win *winSelectROM) draw() {
 
 			if selected && win.centreOnFile {
 				imgui.SetScrollHereY(0.0)
-				win.centreOnFile = false
+				win.centreOnFile = !win.path.Results.Complete
 			}
 
 			if imgui.SelectableV(e.Name, selected, 0, imgui.Vec2{X: 0, Y: 0}) {
-				win.path.Set <- filepath.Join(win.path.Results.Dir, e.Name)
+				win.path.Set <- archivefs.Options{Path: filepath.Join(win.path.Results.Dir, e.Name)}
 			}
 			if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
 				win.insertCartridge()
@@ -592,7 +588,14 @@ func (win *winSelectROM) insertCartridge() {
 		return
 	}
 
-	win.img.dbg.InsertCartridge(win.path.Results.Selected)
+	done := make(chan bool)
+	win.img.dbg.InsertCartridge(win.path.Results.Selected, done)
+	go func() {
+		if <-done {
+			// set recentROM if insertion was successful
+			win.img.prefs.recentROM.Set(win.path.Results.Selected)
+		}
+	}()
 
 	// close rom selected in both the debugger and playmode
 	win.debuggerSetOpen(false)

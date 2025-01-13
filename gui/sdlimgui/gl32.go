@@ -23,30 +23,36 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 type gl32Texture struct {
 	id     uint32
-	typ    textureType
+	typ    shaderType
 	create bool
+	config any
 }
 
 type gl32 struct {
 	img *SdlImgui
 
-	shaders []shaderProgram
-
 	vboHandle      uint32
 	elementsHandle uint32
 
 	textures map[uint32]gl32Texture
+	shaders  map[shaderType]shaderProgram
+
+	scrsht *gl32Screenshot
 }
 
 func newRenderer(img *SdlImgui) renderer {
-	return &gl32{
+	rnd := &gl32{
 		img:      img,
 		textures: make(map[uint32]gl32Texture),
+		shaders:  make(map[shaderType]shaderProgram),
+		scrsht:   newGl32Screenshot(),
 	}
+	return rnd
 }
 
 func (rnd *gl32) requires() requirement {
@@ -64,17 +70,22 @@ func (rnd *gl32) start() error {
 	}
 
 	// setup shaders
-	rnd.shaders = append(rnd.shaders, newGUIShader())
-	rnd.shaders = append(rnd.shaders, newColorShader())
-	rnd.shaders = append(rnd.shaders, newPlayscrShader(rnd.img))
-	rnd.shaders = append(rnd.shaders, newDbgScrShader(rnd.img))
-	rnd.shaders = append(rnd.shaders, newDbgScrOverlayShader(rnd.img))
-	rnd.shaders = append(rnd.shaders, newDbgScrMagnifyShader(rnd.img))
+	rnd.shaders[shaderGUI] = newGUIShader()
+	rnd.shaders[shaderColor] = newColorShader()
+	rnd.shaders[shaderPlayscr] = newPlayscrShader(rnd.img)
+	rnd.shaders[shaderBevel] = newBevelShader(rnd.img)
+	rnd.shaders[shaderDbgScr] = newDbgScrShader(rnd.img)
+	rnd.shaders[shaderDbgScrOverlay] = newDbgScrOverlayShader(rnd.img)
 
-	// dererring font setup until later
+	// deferring font setup until later
 
 	gl.GenBuffers(1, &rnd.vboHandle)
 	gl.GenBuffers(1, &rnd.elementsHandle)
+
+	// log GPU vendor information
+	logger.Logf(logger.Allow, "glsl", "vendor: %s", gl.GoStr(gl.GetString(gl.VENDOR)))
+	logger.Logf(logger.Allow, "glsl", "renderer: %s", gl.GoStr(gl.GetString(gl.RENDERER)))
+	logger.Logf(logger.Allow, "glsl", "driver: %s", gl.GoStr(gl.GetString(gl.VERSION)))
 
 	return nil
 }
@@ -112,22 +123,22 @@ func (rnd *gl32) preRender() {
 
 // render translates the ImGui draw data to OpenGL3 commands.
 func (rnd *gl32) render() {
-	displaySize := rnd.img.plt.displaySize()
-	framebufferSize := rnd.img.plt.framebufferSize()
+	winw, winh := rnd.img.plt.windowSize()
+	fbw, fbh := rnd.img.plt.framebufferSize()
 	drawData := imgui.RenderedDrawData()
+
+	defer rnd.scrsht.process(int32(fbw), int32(fbh))
 
 	st := storeGLState()
 	defer st.restoreGLState()
 
 	// Avoid rendering when minimised, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
-	displayWidth, displayHeight := displaySize[0], displaySize[1]
-	fbWidth, fbHeight := framebufferSize[0], framebufferSize[1]
-	if (fbWidth <= 0) || (fbHeight <= 0) {
+	if (fbw <= 0) || (fbh <= 0) {
 		return
 	}
 	drawData.ScaleClipRects(imgui.Vec2{
-		X: fbWidth / displayWidth,
-		Y: fbHeight / displayHeight,
+		X: fbw / winw,
+		Y: fbh / winh,
 	})
 
 	// Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled, polygon fill
@@ -145,8 +156,8 @@ func (rnd *gl32) render() {
 	// Our visible imgui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right).
 	// DisplayMin is typically (0,0) for single viewport apps.
 	env.projMtx = [4][4]float32{
-		{2.0 / displayWidth, 0.0, 0.0, 0.0},
-		{0.0, 2.0 / -displayHeight, 0.0, 0.0},
+		{2.0 / winw, 0.0, 0.0, 0.0},
+		{0.0, 2.0 / -winh, 0.0, 0.0},
 		{0.0, 0.0, -1.0, 0.0},
 		{-1.0, 1.0, 0.0, 1.0},
 	}
@@ -181,15 +192,20 @@ func (rnd *gl32) render() {
 				cmd.CallUserCallback(list)
 			} else {
 				// texture id
-				env.textureID = uint32(cmd.TextureID())
+				id := cmd.TextureID()
+
+				env.textureID = uint32(id)
 
 				// select shader program to use
 				var shader shaderProgram
 
 				if tex, ok := rnd.textures[env.textureID]; ok {
 					shader = rnd.shaders[tex.typ]
-				} else {
-					shader = rnd.shaders[textureGUI]
+					env.config = tex.config
+				}
+
+				if shader == nil {
+					panic("no shader found for texture")
 				}
 
 				env.draw = func() {
@@ -204,9 +220,9 @@ func (rnd *gl32) render() {
 
 				// viewport and scissors. these might have changed during
 				// execution of the shader
-				gl.Viewport(0, 0, int32(fbWidth), int32(fbHeight))
+				gl.Viewport(0, 0, int32(fbw), int32(fbh))
 				clipRect := cmd.ClipRect()
-				gl.Scissor(int32(clipRect.X), int32(fbHeight)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
+				gl.Scissor(int32(clipRect.X), int32(fbh)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
 
 				// process
 				env.draw()
@@ -218,7 +234,7 @@ func (rnd *gl32) render() {
 }
 
 func (rnd *gl32) screenshot(mode screenshotMode, finish chan screenshotResult) {
-	rnd.shaders[texturePlayscr].(*playscrShader).screenshot.start(mode, finish)
+	rnd.scrsht.start(mode, finish)
 }
 
 // glState stores GL state with the intention of restoration after a short period.
@@ -307,14 +323,22 @@ func (st *glState) restoreGLState() {
 	gl.Scissor(st.lastScissorBox[0], st.lastScissorBox[1], st.lastScissorBox[2], st.lastScissorBox[3])
 }
 
-func (rnd *gl32) addTexture(typ textureType, linear bool, clamp bool) texture {
+func (rnd *gl32) addTexture(typ shaderType, linear bool, clamp bool, config any) texture {
 	tex := gl32Texture{
 		create: true,
 		typ:    typ,
+		config: config,
 	}
 
 	gl.GenTextures(1, &tex.id)
+
+	// create 1x1 texture as a placeholder
 	gl.BindTexture(gl.TEXTURE_2D, tex.id)
+	gl.TexImage2D(gl.TEXTURE_2D, 0,
+		gl.RGBA, 1, 1, 0,
+		gl.RGBA, gl.UNSIGNED_BYTE,
+		gl.Ptr([]uint8{0}))
+
 	if linear {
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
@@ -322,6 +346,7 @@ func (rnd *gl32) addTexture(typ textureType, linear bool, clamp bool) texture {
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	}
+
 	if clamp {
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
@@ -333,7 +358,7 @@ func (rnd *gl32) addTexture(typ textureType, linear bool, clamp bool) texture {
 }
 
 func (rnd *gl32) addFontTexture(fnts imgui.FontAtlas) texture {
-	tex := rnd.addTexture(textureGUI, true, false)
+	tex := rnd.addTexture(shaderGUI, true, false, nil)
 	image := fnts.TextureDataAlpha8()
 
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
@@ -352,11 +377,8 @@ func (tex *gl32Texture) markForCreation() {
 }
 
 func (tex *gl32Texture) clear() {
-	gl.BindTexture(gl.TEXTURE_2D, tex.id)
-	gl.TexImage2D(gl.TEXTURE_2D, 0,
-		gl.RGBA, 1, 1, 0,
-		gl.RGBA, gl.UNSIGNED_BYTE,
-		gl.Ptr([]uint8{0}))
+	gl.ClearColor(0.0, 0.0, 0.0, 0.0)
+	gl.Clear(gl.COLOR_BUFFER_BIT)
 }
 
 func (tex *gl32Texture) render(pixels *image.RGBA) {

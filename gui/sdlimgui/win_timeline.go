@@ -92,7 +92,7 @@ func newWinTimeline(img *SdlImgui) (window, error) {
 		return nil, fmt.Errorf("debugger: %w", err)
 	}
 
-	win.thmbTexture = img.rnd.addTexture(textureColor, true, true)
+	win.thmbTexture = img.rnd.addTexture(shaderColor, true, true, nil)
 	win.thmbImage = image.NewRGBA(image.Rect(0, 0, 0, 0))
 
 	return win, nil
@@ -141,7 +141,8 @@ func (win *winTimeline) debuggerDraw() bool {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{X: 39, Y: 722}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{X: 875, Y: 220}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{X: 750, Y: 200}, imgui.Vec2{X: win.img.plt.displaySize()[0] * 0.95, Y: 300})
+	w, _ := win.img.plt.windowSize()
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{X: 750, Y: 200}, imgui.Vec2{X: w * 0.95, Y: 300})
 
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		// trace area
