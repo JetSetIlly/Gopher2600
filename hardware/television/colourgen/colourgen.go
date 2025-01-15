@@ -144,6 +144,12 @@ const (
 	// experienced NTSC colour historically
 	//
 	// https://www.atarimania.com/game-atari-2600-vcs-color-bar-generator-cart_11600.html
+	//
+	// This phase value is supported by the information on page 38 of the "JAN_programming_guide"
+	//
+	// Mathematically this is the same as dividing 360° by 14. This makes sense
+	// because hue-1 and hue-15 have the same colour description and are thus in
+	// the same location on the colour wheel.
 	NTSCVideoSoft     = 25.7
 	NTSCVidoSoftLabel = "Video Soft Test Pattern Cartridge"
 
@@ -268,44 +274,47 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	Y = minY + (float64(lum)/8)*(maxY-minY)
 
 	// the colour component indicates a point on the 'colour wheel'
-	phi := (float64(hue)) * -c.NTSCPhase.Get().(float64)
+	phi := (float64(hue - 1)) * -c.NTSCPhase.Get().(float64)
 
 	// angle of the colour burst reference is 180 by defintion
 	const phiBurst = 180
 	phi += phiBurst
-
-	// NTSC works in YIQ colour space. YIQ is YUV rotated by 33°
-	const phiAdjYIQ = 33
-	phi += phiAdjYIQ
 
 	// however, from the "Stella Programmer's Guide" (page 28):
 	//
 	// "Binary code 0 selects no color. Code 1 selects gold (same phase as
 	// color burst)"
 	//
-	// this means that hue 1 must be "gold" rather than "green"
+	// what "gold" means is subjective. indeed the JAN programming guide says it
+	// is light orange. but whatever the precise colour, we can say that hue 1
+	// should be more in the orange section of the colour wheel than the green
+	// section, which it would be if we left it at 180°
 	//
-	// what "gold" means is subjective but none-the-less, we must adjust the hue
-	// so that hue 1 is more gold than green
-	//
-	// the current value was arrived at from study of the "Stella Programmer's
-	// Guide" (page 18):
+	// from page 28 of the "Stella Programmer's Guide":
 	//
 	// "A hardware counter on this chip produces all horizontal timing (such as
 	// sync, blank, burst) independent of the microprocessor, This counter is
 	// driven from an external 3.58 Mhz oscillator and has a total count of 228.
 	// Blank is decoded as 68 counts and sync and color burst as 16 counts."
 	//
-	// so 16 multipled by 3.58 is 57.28. the negative of this value seems
-	// correct because we know that hue 1 must be in the 'gold' region of the
-	// colour wheel
+	// (NOTE: I really don't know if the following is correct. It produces
+	// pleasing results but I can't really justify the logic behind it. either
+	// way it doesn't really matter - the end result is for hue 1 to be "gold"
+	// or "light orange" so even if the colour being created here isn't the
+	// 'natural' colour burst value the user will be adjusting the TV's hue so
+	// that it is gold/orange. all we're doing is making the zero hue adjustment
+	// the 'correct' value)
+	//
+	// using the values on page 28 of the guide: 16 multipled by 3.58 is 57.28.
+	// if we subtract this from 180 we get an angle that is in the gold/orange
+	// section of the colour wheel
 	const phiAdjBurst = -(clocks.NTSC_TIA * 16)
 	phi += phiAdjBurst
 
 	// phi has been calculated in degrees but the math functions require radians
 	phi *= math.Pi / 180
 
-	// saturation of chroma in final colour. value currently uncertain
+	// saturation of chroma in final colour. ideal value currently uncertain
 	const saturation = 0.5
 
 	// the chroma values are scaled by the luminance value
@@ -415,14 +424,16 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	phi += phiBurst
 
 	// see comments in generateNTSC for/how why we apply the adjustment and
-	// burst value to the calculated phi
+	// burst value to the calculated phi. we use the PAL clock rather than the
+	// NTSC clock of course. and rather than hue 1 being gold/orange it is hue 2
+	// that must be that colour
 	const phiAdjBurst = -(clocks.PAL_TIA * 16)
 	phi += phiAdjBurst
 
 	// phi has been calculated in degrees but the math functions require radians
 	phi *= math.Pi / 180
 
-	// saturation of chroma in final colour. value currently uncertain
+	// saturation of chroma in final colour. ideal value currently uncertain
 	const saturation = 0.5
 
 	// create UV from hue
@@ -517,7 +528,7 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
 		return c.secam[idx].col
 	}
 
-	// saturation of chroma in final colour. value currently uncertain
+	// saturation of chroma in final colour. ideal value currently uncertain
 	const saturation = 0.3
 
 	// create UV from hue
