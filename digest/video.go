@@ -18,7 +18,6 @@ package digest
 import (
 	"crypto/sha1"
 	"fmt"
-	"image/color"
 
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -39,8 +38,6 @@ type Video struct {
 	frameNum int
 }
 
-const pixelDepth = 3
-
 // NewVideo initialises a new instance of DigestTV.
 func NewVideo(tv *television.Television) (*Video, error) {
 	// set up digest tv
@@ -54,7 +51,7 @@ func NewVideo(tv *television.Television) (*Video, error) {
 
 	// length of pixels array contains enough room for the previous frames digest value
 	l := len(dig.digest)
-	l += specification.AbsoluteMaxClks * pixelDepth
+	l += specification.AbsoluteMaxClks
 
 	// allocate enough pixels for entire frame
 	dig.pixels = make([]byte, l)
@@ -115,20 +112,8 @@ func (dig *Video) SetPixels(sig []signal.SignalAttributes, _ int) error {
 		if s.Index == signal.NoSignal {
 			continue
 		}
-
-		var col color.RGBA
-
-		// signal processing is unlike other SetPixel() implementations in that
-		// we set the underlying color even if VBLANK is set
-		col = dig.spec.GetColor(s.Color)
-
-		// setting every pixel regardless of vblank value
-		p := dig.pixels[offset : offset+3 : offset+3]
-		p[0] = col.R
-		p[1] = col.G
-		p[2] = col.B
-
-		offset += pixelDepth
+		dig.pixels[offset] = byte(s.Color)
+		offset++
 	}
 	return nil
 }
