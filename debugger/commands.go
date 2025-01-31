@@ -594,15 +594,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 	case cmdPatch:
 		f, _ := tokens.Get()
-		patched, err := patch.CartridgeMemory(dbg.vcs.Mem.Cart, f)
+		err := patch.CartridgeMemoryFromFile(dbg.vcs.Mem.Cart, f)
 		if err != nil {
 			dbg.printLine(terminal.StyleError, "%v", err)
-			if patched {
-				dbg.printLine(terminal.StyleError, "error during patching. cartridge might be unusable.")
-			}
-			return nil
-		}
-		if patched {
+		} else {
 			dbg.printLine(terminal.StyleFeedback, "cartridge patched")
 		}
 

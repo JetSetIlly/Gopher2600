@@ -801,9 +801,15 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 		// apply patch if requested. note that this will be in addition to any
 		// patches applied during setup.AttachCartridge
 		if dbg.opts.PatchFile != "" {
-			_, err := patch.CartridgeMemory(dbg.vcs.Mem.Cart, dbg.opts.PatchFile)
+			err := patch.CartridgeMemoryFromFile(dbg.vcs.Mem.Cart, dbg.opts.PatchFile)
 			if err != nil {
-				return fmt.Errorf("debugger: %w", err)
+				if errors.Is(err, patch.PatchFileNotFound) {
+					logger.Log(logger.Allow, "debugger", err)
+				} else {
+					return fmt.Errorf("debugger: %w", err)
+				}
+			} else {
+				logger.Logf(logger.Allow, "debugger", "cartridge patched: %s", dbg.opts.PatchFile)
 			}
 		}
 

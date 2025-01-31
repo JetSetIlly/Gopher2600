@@ -16,6 +16,7 @@
 package setup
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/database"
@@ -85,9 +86,13 @@ func (set Patch) matchCartHash(hash string) bool {
 
 // apply implements setupEntry interface.
 func (set Patch) apply(vcs *hardware.VCS) (string, error) {
-	_, err := patch.CartridgeMemory(vcs.Mem.Cart, set.cartHash)
+	err := patch.CartridgeMemoryFromHash(vcs.Mem.Cart)
 	if err != nil {
-		return "", fmt.Errorf("patch: %w", err)
+		if errors.Is(err, patch.PatchFileNotFound) {
+			return err.Error(), nil
+		} else {
+			return "", err
+		}
 	}
-	return fmt.Sprintf("patching cartridge: %s: %s", set.cartName, set.notes), nil
+	return fmt.Sprintf("patch: %s: %s", set.cartName, set.notes), nil
 }
