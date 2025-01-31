@@ -1199,7 +1199,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	dbg.ref.Clear()
 	dbg.counter.Clear()
 
-	// performe disassembly in the background
+	// perform disassembly in the background
 	dbg.Disasm.Background(cartload)
 
 	dbg.CoProcDisasm.AttachCartridge(dbg.vcs.Mem.Cart)

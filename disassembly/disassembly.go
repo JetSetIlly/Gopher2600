@@ -135,7 +135,7 @@ func (dsm *Disassembly) Background(cartload cartridgeloader.Loader) {
 		defer dsm.background.Store(false)
 		err := dsm.FromMemory()
 		if err != nil {
-			logger.Logf(dsm.vcs.Env, "disassembly background", err.Error())
+			logger.Log(dsm.vcs.Env, "disassembly", err.Error())
 		}
 	}()
 }
