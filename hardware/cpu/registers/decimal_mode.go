@@ -36,7 +36,7 @@ func addDecimal(a, b uint8, carry bool) (r uint8, rcarry bool) {
 // AddDecimal adds value to register as though both registers are decimal
 // representations. Returns new carry state, zero, overflow, sign bit
 // information.
-func (r *Register) AddDecimal(val uint8, carry bool) (bool, bool, bool, bool) {
+func (r *Data) AddDecimal(val uint8, carry bool) (bool, bool, bool, bool) {
 	var zero, overflow, sign bool
 	var ucarry, tcarry bool
 
@@ -91,7 +91,7 @@ func subtractDecimal(a, b uint8, carry bool) (r uint8, rcarry bool) {
 // SubtractDecimal subtracts value to from as though both registers are decimal
 // representations. Returns new carry state, zero, overflow, sign bit
 // information.
-func (r *Register) SubtractDecimal(val uint8, carry bool) (bool, bool, bool, bool) {
+func (r *Data) SubtractDecimal(val uint8, carry bool) (bool, bool, bool, bool) {
 	var zero, overflow, sign bool
 	var ucarry, tcarry bool
 

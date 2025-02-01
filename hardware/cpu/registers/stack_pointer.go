@@ -18,13 +18,13 @@ package registers
 // StackPointer is a special purpose Register. It can be treated as a register
 // if required through the Register field.
 type StackPointer struct {
-	Register
+	Data
 }
 
 // NewStackPointer creates a new stack pointer register.
 func NewStackPointer(val uint8) StackPointer {
 	return StackPointer{
-		Register: Register{
+		Data: Data{
 			value: val,
 			label: "SP",
 		},

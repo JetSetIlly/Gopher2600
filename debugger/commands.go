@@ -1112,7 +1112,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 						dbg.printLine(terminal.StyleError, "value must be a positive 8 bit number")
 					}
 
-					var reg *registers.Register
+					var reg *registers.Data
 					switch strings.ToUpper(target) {
 					case "A":
 						reg = &dbg.vcs.CPU.A
@@ -1121,7 +1121,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					case "Y":
 						reg = &dbg.vcs.CPU.Y
 					case "SP":
-						reg = &dbg.vcs.CPU.SP.Register
+						reg = &dbg.vcs.CPU.SP.Data
 					}
 
 					reg.Load(uint8(v))

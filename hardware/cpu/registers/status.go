@@ -19,8 +19,8 @@ import (
 	"strings"
 )
 
-// StatusRegister is the special purpose register that stores the flags of the CPU.
-type StatusRegister struct {
+// Status is the special purpose register that stores the flags of the CPU.
+type Status struct {
 	Sign             bool
 	Overflow         bool
 	Break            bool
@@ -30,20 +30,19 @@ type StatusRegister struct {
 	Carry            bool
 }
 
-// NewStatusRegister is the preferred method of initialisation for the status
-// register.
-func NewStatusRegister() StatusRegister {
-	sr := StatusRegister{}
+// NewStatus is the preferred method of initialisation for the status register.
+func NewStatus() Status {
+	sr := Status{}
 	sr.Load(0x00)
 	return sr
 }
 
 // Label returns the canonical name for the status register.
-func (sr StatusRegister) Label() string {
+func (sr Status) Label() string {
 	return "SR"
 }
 
-func (sr StatusRegister) String() string {
+func (sr Status) String() string {
 	s := strings.Builder{}
 
 	if sr.Sign {
@@ -89,13 +88,13 @@ func (sr StatusRegister) String() string {
 }
 
 // Reset status flags to initial state.
-func (sr *StatusRegister) Reset() {
+func (sr *Status) Reset() {
 	sr.Load(0x00)
 }
 
 // Value converts the StatusRegister struct into a value suitable for pushing
 // onto the stack.
-func (sr StatusRegister) Value() uint8 {
+func (sr Status) Value() uint8 {
 	var v uint8
 
 	if sr.Sign {
@@ -129,7 +128,7 @@ func (sr StatusRegister) Value() uint8 {
 
 // Load sets the status register flags from an 8 bit integer (which has been
 // taken from the stack, for example)
-func (sr *StatusRegister) Load(v uint8) {
+func (sr *Status) Load(v uint8) {
 	sr.Sign = v&0x80 == 0x80
 	sr.Overflow = v&0x40 == 0x40
 	sr.DecimalMode = v&0x08 == 0x08

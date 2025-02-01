@@ -27,7 +27,7 @@ func TestDecimalModeCarry(t *testing.T) {
 	var rcarry bool
 
 	// initialisation
-	r8 := registers.NewRegister(0, "test")
+	r8 := registers.NewData(0, "test")
 
 	// addition without carry
 	rcarry, _, _, _ = r8.AddDecimal(1, false)
@@ -75,7 +75,7 @@ func TestDecimalModeZero(t *testing.T) {
 	var zero bool
 
 	// initialisation
-	r8 := registers.NewRegister(0, "test")
+	r8 := registers.NewData(0, "test")
 
 	// subtract to zero
 	r8.Load(0x02)
@@ -88,7 +88,7 @@ func TestDecimalModeZero(t *testing.T) {
 func TestDecimalModeInvalid(t *testing.T) {
 	var rcarry, rzero bool
 
-	r8 := registers.NewRegister(0x99, "test")
+	r8 := registers.NewData(0x99, "test")
 	rcarry, rzero, _, _ = r8.AddDecimal(1, false)
 	rtest.EquateRegisters(t, r8, 0x00)
 	test.ExpectEquality(t, rcarry, true)

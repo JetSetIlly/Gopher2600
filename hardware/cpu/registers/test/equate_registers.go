@@ -30,7 +30,7 @@ func EquateRegisters(t *testing.T, value, expectedValue any) {
 	default:
 		t.Fatalf("not a register type (%T)", value)
 
-	case registers.Register:
+	case registers.Data:
 		switch expectedValue := expectedValue.(type) {
 		default:
 			t.Fatalf("unhandled type (%T)", value)
@@ -52,7 +52,7 @@ func EquateRegisters(t *testing.T, value, expectedValue any) {
 			}
 		}
 
-	case registers.StatusRegister:
+	case registers.Status:
 		switch expectedValue := expectedValue.(type) {
 		default:
 			t.Fatalf("unhandled type (%T)", value)

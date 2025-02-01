@@ -28,14 +28,14 @@ import (
 // implemented by the Register type in the registers sub-package.
 type CPU struct {
 	PC     registers.ProgramCounter
-	A      registers.Register
-	X      registers.Register
-	Y      registers.Register
+	A      registers.Data
+	X      registers.Data
+	Y      registers.Data
 	SP     registers.StackPointer
-	Status registers.StatusRegister
+	Status registers.Status
 
 	// some operations only need an accumulator
-	acc8  registers.Register
+	acc8  registers.Data
 	acc16 registers.ProgramCounter
 
 	mem Memory
@@ -102,12 +102,12 @@ func NewCPU(mem Memory) *CPU {
 	return &CPU{
 		mem:    mem,
 		PC:     registers.NewProgramCounter(0),
-		A:      registers.NewRegister(0, "A"),
-		X:      registers.NewRegister(0, "X"),
-		Y:      registers.NewRegister(0, "Y"),
+		A:      registers.NewData(0, "A"),
+		X:      registers.NewData(0, "X"),
+		Y:      registers.NewData(0, "Y"),
 		SP:     registers.NewStackPointer(0),
-		Status: registers.NewStatusRegister(),
-		acc8:   registers.NewRegister(0, "accumulator"),
+		Status: registers.NewStatus(),
+		acc8:   registers.NewData(0, "accumulator"),
 		acc16:  registers.NewProgramCounter(0),
 	}
 }
@@ -1103,7 +1103,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Sign = mc.Y.IsNegative()
 
 	case instructions.Asl:
-		var r *registers.Register
+		var r *registers.Data
 		if defn.Effect == instructions.RMW {
 			r = &mc.acc8
 			r.Load(value)
@@ -1116,7 +1116,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		value = r.Value()
 
 	case instructions.Lsr:
-		var r *registers.Register
+		var r *registers.Data
 		if defn.Effect == instructions.RMW {
 			r = &mc.acc8
 			r.Load(value)
@@ -1158,7 +1158,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 	case instructions.Ror:
-		var r *registers.Register
+		var r *registers.Data
 		if defn.Effect == instructions.RMW {
 			r = &mc.acc8
 			r.Load(value)
@@ -1171,7 +1171,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		value = r.Value()
 
 	case instructions.Rol:
-		var r *registers.Register
+		var r *registers.Data
 		if defn.Effect == instructions.RMW {
 			r = &mc.acc8
 			r.Load(value)
@@ -1724,7 +1724,7 @@ func (mc *CPU) PredictRTS() (uint16, bool) {
 		return 0, false
 	}
 
-	var SP registers.Register
+	var SP registers.Data
 
 	SP.Load(mc.SP.Value())
 	SP.Add(1, false)

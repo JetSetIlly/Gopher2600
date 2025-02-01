@@ -27,7 +27,7 @@ func TestRegister(t *testing.T) {
 	var carry, overflow bool
 
 	// initialisation
-	r8 := registers.NewRegister(0, "test")
+	r8 := registers.NewData(0, "test")
 	test.ExpectEquality(t, r8.IsZero(), true)
 	rtest.EquateRegisters(t, r8, 0)
 

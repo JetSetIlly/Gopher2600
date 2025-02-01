@@ -113,7 +113,7 @@ func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	_ = mem.putInstructions(origin, 0x08, 0x28)
 	step(t, mc) // PHP
 	rtest.EquateRegisters(t, mc.Status, "sv-BdIZc")
-	rtest.EquateRegisters(t, mc.SP.Register, 254)
+	rtest.EquateRegisters(t, mc.SP.Data, 254)
 
 	// mangle status register
 	mc.Status.Sign = true
@@ -122,7 +122,7 @@ func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 
 	// restore status register
 	step(t, mc) // PLP
-	rtest.EquateRegisters(t, mc.SP.Register, 255)
+	rtest.EquateRegisters(t, mc.SP.Data, 255)
 
 	// break flag is always set on PLP
 	rtest.EquateRegisters(t, mc.Status, "sv-BdIZc")
@@ -208,7 +208,7 @@ func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	origin = mem.putInstructions(origin, 0xa9, 5, 0x48, 0xa9, 0, 0x68)
 	step(t, mc) // LDA #5
 	step(t, mc) // PHA
-	rtest.EquateRegisters(t, mc.SP.Register, 254)
+	rtest.EquateRegisters(t, mc.SP.Data, 254)
 	step(t, mc) // LDA #0
 	rtest.EquateRegisters(t, mc.A, 0)
 	rtest.EquateRegisters(t, mc.Status, "sv-BdiZc")
@@ -238,7 +238,7 @@ func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	rtest.EquateRegisters(t, mc.X, 255)
 	step(t, mc) // LDX #100
 	step(t, mc) // TXS
-	rtest.EquateRegisters(t, mc.SP.Register, 100)
+	rtest.EquateRegisters(t, mc.SP.Data, 100)
 }
 
 func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *testMem) {
@@ -574,14 +574,14 @@ func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	rtest.EquateRegisters(t, mc.PC, 0x0100)
 	mem.assert(t, 0x01ff, 0x00)
 	mem.assert(t, 0x01fe, 0x02)
-	rtest.EquateRegisters(t, mc.SP.Register, 253)
+	rtest.EquateRegisters(t, mc.SP.Data, 253)
 
 	_ = mem.putInstructions(0x100, 0x60)
 	step(t, mc) // RTS
 	rtest.EquateRegisters(t, mc.PC, 0x0003)
 	mem.assert(t, 0x01ff, 0x00)
 	mem.assert(t, 0x01fe, 0x02)
-	rtest.EquateRegisters(t, mc.SP.Register, 255)
+	rtest.EquateRegisters(t, mc.SP.Data, 255)
 }
 
 func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *testMem) {

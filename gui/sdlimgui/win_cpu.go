@@ -20,7 +20,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
-	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 
 	"github.com/inkyblackness/imgui-go/v4"
 )
@@ -241,7 +240,13 @@ func (win *winCPU) draw() {
 	}
 }
 
-func (win *winCPU) drawRegister(reg registers.Generic) {
+type register interface {
+	Label() string
+	String() string
+	BitWidth() int
+}
+
+func (win *winCPU) drawRegister(reg register) {
 	if reg == nil {
 		return
 	}
