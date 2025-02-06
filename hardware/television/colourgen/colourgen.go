@@ -194,7 +194,7 @@ const (
 
 // Unlike NTSC the default phase for PAL seems to be less contentious. A single
 // value acts as the default preset
-const PALDefault = 16.35
+const PALDefault = NTSCFieldService / 2.0
 
 // The gamma value assumed by all colour conversion
 const Gamma = 2.2
@@ -203,9 +203,9 @@ func (c *ColourGen) SetDefaults() {
 	c.Legacy.Set(false)
 	c.NTSCPhase.Set(NTSCFieldService)
 	c.PALPhase.Set(PALDefault)
-	c.Brightness.Set(1.126)
-	c.Contrast.Set(0.762)
-	c.Saturation.Set(0.571)
+	c.Brightness.Set(1.00)
+	c.Contrast.Set(1.00)
+	c.Saturation.Set(1.00)
 	c.Hue.Set(0.0)
 
 	// I used to think that the different TV specifications had a specific
@@ -289,7 +289,7 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 
 	// the min/max values for the Y component
 	const (
-		minY = 0.30
+		minY = 0.40
 		maxY = 1.00
 	)
 
@@ -338,11 +338,12 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	phi *= math.Pi / 180
 
 	// saturation of chroma in final colour. ideal value currently uncertain
-	const saturation = 0.5
+	const saturation = 0.3
 
-	// the chroma values are scaled by the luminance value
-	I = Y * saturation * math.Sin(phi)
-	Q = Y * saturation * math.Cos(phi)
+	// (IQ used to by multplied by the luminance (Y) value but I no longer
+	// believe this is correct)
+	I = saturation * math.Sin(phi)
+	Q = saturation * math.Cos(phi)
 
 	// apply brightness/constrast/saturation/hue settings to YIQ
 	Y, I, Q = c.adjustYIQ(Y, I, Q)
@@ -431,7 +432,7 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 
 	// the min/max values for the Y component
 	const (
-		minY = 0.30
+		minY = 0.40
 		maxY = 1.00
 	)
 
@@ -464,11 +465,12 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	phi *= math.Pi / 180
 
 	// saturation of chroma in final colour. ideal value currently uncertain
-	const saturation = 0.5
+	const saturation = 0.3
 
-	// create UV from hue
-	U = Y * saturation * -math.Sin(phi)
-	V = Y * saturation * -math.Cos(phi)
+	// (UV used to by multplied by the luminance (Y) value but I no longer
+	// believe this is correct)
+	U = saturation * -math.Sin(phi)
+	V = saturation * -math.Cos(phi)
 
 	// apply brightness/constrast/saturation/hue settings to YUV
 	Y, U, V = c.adjustYUV(Y, U, V)
@@ -534,10 +536,9 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
 		return c.secam[idx].col
 	}
 
-	// the min/max values for the Y component is different for SECAM when
-	// compared to NTSCL and PAL
+	// the min/max values for the Y component
 	const (
-		minY = 0.60
+		minY = 0.40
 		maxY = 1.00
 	)
 
@@ -568,9 +569,10 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
 	// saturation of chroma in final colour. ideal value currently uncertain
 	const saturation = 0.3
 
-	// create UV from hue
-	U = Y * saturation * -math.Sin(phi)
-	V = Y * saturation * -math.Cos(phi)
+	// (UV used to by multplied by the luminance (Y) value but I no longer
+	// believe this is correct)
+	U = saturation * -math.Sin(phi)
+	V = saturation * -math.Cos(phi)
 
 	// apply brightness/constrast/saturation/hue settings to YUV
 	Y, U, V = c.adjustYUV(Y, U, V)
