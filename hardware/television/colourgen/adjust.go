@@ -16,6 +16,7 @@
 package colourgen
 
 import (
+	"image/color"
 	"math"
 )
 
@@ -29,12 +30,7 @@ func clampRange(v float64, mn float64, mx float64) float64 {
 	return v
 }
 
-func (c *ColourGen) adjustYIQ(Y, I, Q float64) (float64, float64, float64) {
-	brightness := c.Brightness.Get().(float64)
-	contrast := c.Contrast.Get().(float64)
-	saturation := c.Saturation.Get().(float64)
-	hue := c.Hue.Get().(float64)
-
+func adjustYIQ(Y, I, Q float64, brightness, contrast, saturation, hue float64) (float64, float64, float64) {
 	// C = contrast
 	// YIQ * |  C   0   0  |
 	//       |  0   1   0  |
@@ -73,6 +69,49 @@ func (c *ColourGen) adjustYIQ(Y, I, Q float64) (float64, float64, float64) {
 	Q = q
 
 	return Y, I, Q
+}
+
+func adjustRGB(col color.RGBA, brightness, contrast, saturation, hue float64) color.RGBA {
+	// clamp black value at zero. if we don't do this then the black will be
+	// affected by the contrast setting, which we don't want
+	if col.R == 0 && col.G == 0 && col.B == 0 {
+		return col
+	}
+
+	var R, G, B float64
+	R = float64(col.R) / 255
+	G = float64(col.G) / 255
+	B = float64(col.B) / 255
+
+	var Y, I, Q float64
+
+	Y = 0.299*R + 0.587*G + 0.114*B
+	I = 0.5959*R - 0.2746*G - 0.3213*B
+	Q = 0.2115*R - 0.5227*G + 0.31122*B
+
+	Y, I, Q = adjustYIQ(Y, I, Q, brightness, contrast, saturation, hue)
+
+	col.R = uint8(clamp(Y+(0.956*I)+(0.619*Q)) * 255)
+	col.G = uint8(clamp(Y-(0.272*I)-(0.647*Q)) * 255)
+	col.B = uint8(clamp(Y-(1.106*I)+(1.703*Q)) * 255)
+
+	return col
+}
+
+func (c *ColourGen) adjustRGB(col color.RGBA) color.RGBA {
+	brightness := c.Brightness.Get().(float64)
+	contrast := c.Contrast.Get().(float64)
+	saturation := c.Saturation.Get().(float64)
+	hue := c.Hue.Get().(float64)
+	return adjustRGB(col, brightness, contrast, saturation, hue)
+}
+
+func (c *ColourGen) adjustYIQ(Y, I, Q float64) (float64, float64, float64) {
+	brightness := c.Brightness.Get().(float64)
+	contrast := c.Contrast.Get().(float64)
+	saturation := c.Saturation.Get().(float64)
+	hue := c.Hue.Get().(float64)
+	return adjustYIQ(Y, I, Q, brightness, contrast, saturation, hue)
 }
 
 func (c *ColourGen) adjustYUV(Y, U, V float64) (float64, float64, float64) {

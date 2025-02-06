@@ -144,7 +144,15 @@ https://forums.atariage.com/topic/367157-smurf-rescue-alternative-rom-with-wf8-b
 The "Stella Programmer's Guide" by Steve Wright is of course a key document,
 used frequently throughout development.
 
-Colour values for NTSC and PAL television signals taken from https://www.qotile.net/minidig/docs/tia_color.html
+Colour value information for NTSC, PAL and SECAM palettes taken from (in versions prior to v0.40.0):
+
+https://www.qotile.net/minidig/docs/tia_color.html
+https://www.randomterrain.com/atari-2600-memories-tia-color-charts.html
+https://forums.atariage.com/topic/240893-question-for-homebrewers-atari-2600-colors/
+
+Ongoing work to improve palette handling with a new mathematical model is ongoing and was prompted by this thread:
+
+https://forums.atariage.com/topic/375698-how-are-ntsc-console-colors-really-set-up
 
 The TIA Audio implementation is based almost entirely on the work of Chris Brenner.
 

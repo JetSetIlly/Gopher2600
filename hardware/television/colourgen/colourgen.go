@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/clocks"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
 )
@@ -38,6 +39,9 @@ type ColourGen struct {
 	secam []entry
 
 	dsk *prefs.Disk
+
+	Legacy      prefs.Bool
+	legacyModel legacyModel
 
 	NTSCPhase prefs.Float
 	PALPhase  prefs.Float
@@ -65,6 +69,11 @@ func NewColourGen() (*ColourGen, error) {
 	}
 
 	c.dsk, err = prefs.NewDisk(pth)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.dsk.Add("television.color.legacy", &c.Legacy)
 	if err != nil {
 		return nil, err
 	}
@@ -115,6 +124,7 @@ func NewColourGen() (*ColourGen, error) {
 		return nil
 	}
 
+	c.Legacy.SetHookPost(f)
 	c.Brightness.SetHookPost(f)
 	c.Contrast.SetHookPost(f)
 	c.Saturation.SetHookPost(f)
@@ -124,6 +134,11 @@ func NewColourGen() (*ColourGen, error) {
 	err = c.dsk.Load()
 	if err != nil {
 		return nil, err
+	}
+
+	err = initialiseLegacyModel(&c.legacyModel)
+	if err != nil {
+		logger.Log(logger.Allow, "colourgen", err)
 	}
 
 	return c, nil
@@ -185,6 +200,7 @@ const PALDefault = 16.35
 const Gamma = 2.2
 
 func (c *ColourGen) SetDefaults() {
+	c.Legacy.Set(false)
 	c.NTSCPhase.Set(NTSCFieldService)
 	c.PALPhase.Set(PALDefault)
 	c.Brightness.Set(1.126)
@@ -236,6 +252,13 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 
 	if c.ntsc[idx].generated == true {
 		return c.ntsc[idx].col
+	}
+
+	if c.Legacy.Get().(bool) {
+		rgb := c.adjustRGB(c.legacyModel.ntsc[col>>1])
+		c.ntsc[idx].col = rgb
+		c.ntsc[idx].generated = true
+		return rgb
 	}
 
 	// YIQ is the colour space used by the NTSC television system
@@ -374,6 +397,13 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 		return c.pal[idx].col
 	}
 
+	if c.Legacy.Get().(bool) {
+		rgb := c.adjustRGB(c.legacyModel.pal[col>>1])
+		c.pal[idx].col = rgb
+		c.pal[idx].generated = true
+		return rgb
+	}
+
 	// YUV is the colour space used by the PAL television system
 	var Y, U, V float64
 
@@ -479,6 +509,13 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
 
 	if c.secam[idx].generated == true {
 		return c.secam[idx].col
+	}
+
+	if c.Legacy.Get().(bool) {
+		rgb := c.adjustRGB(c.legacyModel.secam[col>>1])
+		c.secam[idx].col = rgb
+		c.secam[idx].generated = true
+		return rgb
 	}
 
 	// SECAM uses the YUV colour space but in a different way to PAL

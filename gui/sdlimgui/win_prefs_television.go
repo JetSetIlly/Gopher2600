@@ -57,6 +57,19 @@ func (win *winPrefs) drawColour() {
 	imgui.Spacing()
 	win.drawHue()
 
+	imgui.Spacing()
+	legacy := specification.ColourGen.Legacy.Get().(bool)
+	if imgui.Checkbox("Legacy Colour Model", &legacy) {
+		specification.ColourGen.Legacy.Set(legacy)
+	}
+
+	if legacy {
+		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+		defer imgui.PopStyleVar()
+		defer imgui.PopItemFlag()
+	}
+
 	switch win.img.cache.TV.GetFrameInfo().Spec.ID {
 	case specification.SpecNTSC.ID:
 		imgui.Spacing()
