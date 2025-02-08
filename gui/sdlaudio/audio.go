@@ -76,7 +76,8 @@ type Audio struct {
 }
 
 const (
-	bufferLen       = 1000 // 250 samples
+	stretchAmount   = 3
+	bufferLen       = 4 * stretchAmount // 4 bytes per sample
 	stereoBufferLen = 1024
 )
 
@@ -254,9 +255,10 @@ func (aud *Audio) Mute(muted bool) {
 }
 
 const (
-	rateRepeat = 1000
-	rateDrop   = 10000
-	rateReset  = 20000
+	rateRepeat  = 1000
+	rateStretch = 2000
+	rateDrop    = 10000
+	rateReset   = 20000
 
 	QueueOkay    = 2000
 	QueueWarning = 8000
@@ -280,26 +282,26 @@ func (aud *Audio) SetAudio(sig []signal.AudioSignalAttributes) error {
 	}
 
 	// always measure queued bytes
-	queuedBytes := int(sdl.GetQueuedAudioSize(aud.id))
+	b := int(sdl.GetQueuedAudioSize(aud.id))
 
-	// update public QueuedBytes value less frequently
+	// update queuedBytes value less frequently
 	select {
 	case <-aud.queuedBytesMeasure.C:
-		aud.QueuedBytes = queuedBytes
+		aud.QueuedBytes = b
 	default:
-		// update public QueuedBytes immediately if the queue is empty
-		if queuedBytes < rateRepeat {
-			aud.QueuedBytes = 0
+		// update queuedBytes immediately if it's running low
+		if b < rateRepeat {
+			aud.QueuedBytes = b
 		}
 	}
 
 	// regulate rate by either flushing the queue (which we only do as a last
 	// resort) or by dropping the latest batch of samples
-	if queuedBytes > rateReset {
-		logger.Logf(logger.Allow, "sdlaudio", "flushed audio queue: %d", queuedBytes)
+	if b > rateReset {
+		logger.Logf(logger.Allow, "sdlaudio", "flushed audio queue: %d", b)
 		sdl.ClearQueuedAudio(aud.id)
 		aud.QueuedBytes = int(sdl.GetQueuedAudioSize(aud.id))
-	} else if queuedBytes > rateDrop {
+	} else if b > rateDrop {
 		// drop samples. the number of samples is so small that we won't audibly miss them
 		return nil
 	}
@@ -315,6 +317,12 @@ func (aud *Audio) SetAudio(sig []signal.AudioSignalAttributes) error {
 	aud.stereo = aud.Prefs.Stereo.Get().(bool)
 	aud.discrete = aud.Prefs.Discrete.Get().(bool)
 	aud.separation = aud.Prefs.Separation.Get().(int)
+
+	// stretch each sample as required
+	stretch := 1
+	if b < rateStretch {
+		stretch = stretchAmount
+	}
 
 	for _, s := range sig {
 		v0 := s.AudioChannel0
@@ -347,51 +355,64 @@ func (aud *Audio) SetAudio(sig []signal.AudioSignalAttributes) error {
 				s0, s1 = mix.Stereo(v0+(aud.stereoCh1Buffer[idx]>>1), v1+(aud.stereoCh0Buffer[idx]>>1))
 			}
 
-			aud.buffer[aud.bufferCt] = uint8(s0>>8) + aud.spec.Silence
-			aud.bufferCt++
-			aud.buffer[aud.bufferCt] = uint8(s0) + aud.spec.Silence
-			aud.bufferCt++
-			aud.buffer[aud.bufferCt] = uint8(s1>>8) + aud.spec.Silence
-			aud.bufferCt++
-			aud.buffer[aud.bufferCt] = uint8(s1) + aud.spec.Silence
-			aud.bufferCt++
+			for range stretch {
+				aud.buffer[aud.bufferCt] = uint8(s0>>8) + aud.spec.Silence
+				aud.bufferCt++
+				aud.buffer[aud.bufferCt] = uint8(s0) + aud.spec.Silence
+				aud.bufferCt++
+				aud.buffer[aud.bufferCt] = uint8(s1>>8) + aud.spec.Silence
+				aud.bufferCt++
+				aud.buffer[aud.bufferCt] = uint8(s1) + aud.spec.Silence
+				aud.bufferCt++
+			}
 		} else {
 			m := mix.Mono(v0, v1)
-			aud.buffer[aud.bufferCt] = uint8(m>>8) + aud.spec.Silence
-			aud.bufferCt++
-			aud.buffer[aud.bufferCt] = uint8(m) + aud.spec.Silence
-			aud.bufferCt++
-			aud.buffer[aud.bufferCt] = uint8(m>>8) + aud.spec.Silence
-			aud.bufferCt++
-			aud.buffer[aud.bufferCt] = uint8(m) + aud.spec.Silence
-			aud.bufferCt++
+			for range stretch {
+				aud.buffer[aud.bufferCt] = uint8(m>>8) + aud.spec.Silence
+				aud.bufferCt++
+				aud.buffer[aud.bufferCt] = uint8(m) + aud.spec.Silence
+				aud.bufferCt++
+				aud.buffer[aud.bufferCt] = uint8(m>>8) + aud.spec.Silence
+				aud.bufferCt++
+				aud.buffer[aud.bufferCt] = uint8(m) + aud.spec.Silence
+				aud.bufferCt++
+			}
 		}
 
-		// we don't want to overrun the buffer
-		aud.queue()
+		// we don't want to overrun the buffer but we don't want to call queue() too often
+		if aud.bufferCt >= len(aud.buffer) {
+			err := aud.queue(false)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	// make sure we've added something
-	aud.queue()
-
-	return nil
+	return aud.queue(true)
 }
 
-func (aud *Audio) queue() error {
+func (aud *Audio) queue(allowRepeat bool) error {
+	if aud.bufferCt == 0 {
+		return nil
+	}
+
 	// we always add to the queue at least once. if it results in too much data
 	// then we regulate that on the next call to SetAudio()
 	if err := sdl.QueueAudio(aud.id, aud.buffer[:aud.bufferCt]); err != nil {
 		return fmt.Errorf("sdlaudio: %w", err)
 	}
 
-	queuedBytes := int(sdl.GetQueuedAudioSize(aud.id))
+	if allowRepeat {
+		b := int(sdl.GetQueuedAudioSize(aud.id))
 
-	// make sure we have a minimum amount of data in the queue
-	for queuedBytes < rateRepeat {
-		if err := sdl.QueueAudio(aud.id, aud.buffer[:aud.bufferCt]); err != nil {
-			return fmt.Errorf("sdlaudio: %w", err)
+		// make sure we have a minimum amount of data in the queue
+		for b < rateRepeat {
+			if err := sdl.QueueAudio(aud.id, aud.buffer[:aud.bufferCt]); err != nil {
+				return fmt.Errorf("sdlaudio: %w", err)
+			}
+			b = int(sdl.GetQueuedAudioSize(aud.id))
 		}
-		queuedBytes = int(sdl.GetQueuedAudioSize(aud.id))
 	}
 
 	// the data in the buffer is now dealt with
