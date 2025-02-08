@@ -269,25 +269,25 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	hue := (col & 0xf0) >> 4
 
 	// if hue is zero then that indicates there is no colour component and
-	// only the luminance is used
+	// only the luminance is used, producing a grayscale
 	if hue == 0x00 {
-		if lum == 0x00 {
-			// black is defined as 0% luminance, the same as for when VBLANK is enabled
-			//
-			// some RGB mods for the 2600 produce a non-zero black value. for
-			// example, the CyberTech AV mod produces a black with a value of 0.075
-			c.ntsc[idx].col = color.RGBA{A: 255}
+		if lum == 0.0 {
+			Y = blackLevel
 		} else {
-			Y = float64(lum) / 7
-			Y, I, Q = c.adjustYIQ(Y, I, Q)
-			y := uint8(clamp(Y) * 255)
-			c.ntsc[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
+			Y = float64(lum) / 8
 		}
+		Y, _, _ = c.adjustYIQ(Y, 0, 0)
+		y := uint8(clamp(Y) * 255)
+		c.ntsc[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
 		c.ntsc[idx].generated = true
 		return c.ntsc[idx].col
 	}
 
 	// the min/max values for the Y component
+	//
+	// this is not the same as blackLevel and whiteLevel defined in adjust.go.
+	// the min/max values here are used for generate the lumunoisty range for
+	// hues 1 to 15
 	const (
 		minY = 0.40
 		maxY = 1.00
@@ -414,23 +414,23 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 
 	// PAL creates a grayscale for hues 0, 1, 14 and 15
 	if hue <= 0x01 || hue >= 0x0e {
-		if lum == 0x00 {
-			// black is defined as 0% luminance, the same as for when VBLANK is enabled
-			//
-			// some RGB mods for the 2600 produce a non-zero black value. for
-			// example, the CyberTech AV mod produces a black with a value of 0.075
-			c.pal[idx].col = color.RGBA{A: 255}
+		if lum == 0.0 {
+			Y = blackLevel
 		} else {
-			Y = float64(lum) / 7
-			Y, U, V = c.adjustYUV(Y, U, V)
-			y := uint8(clamp(Y) * 255)
-			c.pal[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
+			Y = float64(lum) / 8
 		}
+		Y, _, _ = c.adjustYUV(Y, 0, 0)
+		y := uint8(clamp(Y) * 255)
+		c.pal[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
 		c.pal[idx].generated = true
 		return c.pal[idx].col
 	}
 
 	// the min/max values for the Y component
+	//
+	// this is not the same as blackLevel and whiteLevel defined in adjust.go.
+	// the min/max values here are used for generate the lumunoisty range for
+	// hues 1 to 15
 	const (
 		minY = 0.40
 		maxY = 1.00

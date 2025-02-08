@@ -30,21 +30,29 @@ func clampRange(v float64, mn float64, mx float64) float64 {
 	return v
 }
 
+// mininmum/maximum values for Y component
+//
+// IRE levels taken from https://en.wikipedia.org/w/index.php?title=NTSC&oldid=1274410783
+const (
+	blackLevel = 0.075
+	whiteLevel = 1.00
+)
+
 func adjustYIQ(Y, I, Q float64, brightness, contrast, saturation, hue float64) (float64, float64, float64) {
 	// C = contrast
 	// YIQ * |  C   0   0  |
 	//       |  0   1   0  |
 	//       |  0   0   1  |
-	Y = 0.5 + (Y-0.5)*contrast
+	Y = blackLevel + (Y-blackLevel)*contrast
 
 	// B = brightness
 	// YIQ * |  B   0   0  |
 	//       |  0   1   0  |
 	//       |  0   0   1  |
-	Y *= brightness
+	Y += (brightness - 1.0)
 
 	// clamp Y after contrast and brightness transforms
-	Y = clampRange(Y, 0.0, 0.90)
+	Y = clampRange(Y, 0.0, 1.0)
 
 	// S = saturation
 	// YIQ * |  1   0   0  |
@@ -72,12 +80,6 @@ func adjustYIQ(Y, I, Q float64, brightness, contrast, saturation, hue float64) (
 }
 
 func adjustRGB(col color.RGBA, brightness, contrast, saturation, hue float64) color.RGBA {
-	// clamp black value at zero. if we don't do this then the black will be
-	// affected by the contrast setting, which we don't want
-	if col.R == 0 && col.G == 0 && col.B == 0 {
-		return col
-	}
-
 	var R, G, B float64
 	R = float64(col.R) / 255
 	G = float64(col.G) / 255
