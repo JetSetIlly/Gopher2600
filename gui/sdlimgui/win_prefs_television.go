@@ -49,15 +49,6 @@ func (win *winPrefs) drawTelevision() {
 }
 
 func (win *winPrefs) drawColour() {
-	win.drawBrightness()
-	imgui.Spacing()
-	win.drawContrast()
-	imgui.Spacing()
-	win.drawSaturation()
-	imgui.Spacing()
-	win.drawHue()
-
-	imgui.Spacing()
 	legacy := specification.ColourGen.Legacy.Get().(bool)
 	if imgui.Checkbox("Legacy Colour Model", &legacy) {
 		specification.ColourGen.Legacy.Set(legacy)
@@ -69,6 +60,18 @@ func (win *winPrefs) drawColour() {
 		defer imgui.PopStyleVar()
 		defer imgui.PopItemFlag()
 	}
+
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+
+	win.drawBrightness()
+	imgui.Spacing()
+	win.drawContrast()
+	imgui.Spacing()
+	win.drawSaturation()
+	imgui.Spacing()
+	win.drawHue()
 
 	switch win.img.cache.TV.GetFrameInfo().Spec.ID {
 	case specification.SpecNTSC.ID:

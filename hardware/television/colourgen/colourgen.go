@@ -203,9 +203,9 @@ func (c *ColourGen) SetDefaults() {
 	c.Legacy.Set(false)
 	c.NTSCPhase.Set(NTSCFieldService)
 	c.PALPhase.Set(PALDefault)
-	c.Brightness.Set(1.00)
-	c.Contrast.Set(1.00)
-	c.Saturation.Set(1.00)
+	c.Brightness.Set(0.949)
+	c.Contrast.Set(1.205)
+	c.Saturation.Set(0.874)
 	c.Hue.Set(0.0)
 
 	// I used to think that the different TV specifications had a specific
@@ -255,7 +255,7 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	}
 
 	if c.Legacy.Get().(bool) {
-		rgb := c.adjustRGB(c.legacyModel.ntsc[col>>1])
+		rgb := c.legacyModel.ntsc[col>>1]
 		c.ntsc[idx].col = rgb
 		c.ntsc[idx].generated = true
 		return rgb
@@ -399,7 +399,7 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	}
 
 	if c.Legacy.Get().(bool) {
-		rgb := c.adjustRGB(c.legacyModel.pal[col>>1])
+		rgb := c.legacyModel.pal[col>>1]
 		c.pal[idx].col = rgb
 		c.pal[idx].generated = true
 		return rgb
@@ -514,7 +514,7 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
 	}
 
 	if c.Legacy.Get().(bool) {
-		rgb := c.adjustRGB(c.legacyModel.secam[col>>1])
+		rgb := c.legacyModel.secam[col>>1]
 		c.secam[idx].col = rgb
 		c.secam[idx].generated = true
 		return rgb
