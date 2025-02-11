@@ -212,13 +212,17 @@ func main() {
 // launch is called from main() as a goroutine. uses mainSync instance to
 // indicate gui creation and to quit.
 func launch(sync *mainSync, args []string) {
-	logger.Logf(logger.Allow, "gopher2600", "%s", version.Version)
-	logger.Logf(logger.Allow, "gopher2600", "%s", version.Revision)
+	// log version
+	ver, rev, _ := version.Version()
+	logger.Logf(logger.Allow, "gopher2600", "%s", ver)
+	logger.Logf(logger.Allow, "gopher2600", "%s", rev)
+
+	// number of cores
 	logger.Logf(logger.Allow, "gopher2600", "number of cores being used: %d", runtime.NumCPU())
 
 	// use flag set to provide the --help flag for top level command line.
 	// that's all we want it to do
-	flgs := flag.NewFlagSet("Gopher2600", flag.ContinueOnError)
+	flgs := flag.NewFlagSet(version.ApplicationName, flag.ContinueOnError)
 
 	// output is set to nil to prevent the flag package boilerplate
 	flgs.SetOutput(&nilWriter{})
@@ -899,9 +903,10 @@ func showVersion(mode string, args []string) error {
 	flgs.BoolVar(&revision, "v", false, "display revision information (if available")
 	flgs.Parse(args)
 
-	fmt.Println(version.Version)
+	ver, rev, _ := version.Version()
+	fmt.Println(ver)
 	if revision {
-		fmt.Println(version.Revision)
+		fmt.Println(rev)
 	}
 
 	return nil

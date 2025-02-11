@@ -20,29 +20,38 @@ import (
 	"runtime/debug"
 )
 
+// The name to use when referring to the application
+const ApplicationName = "Gopher2600"
+
 // if number is empty then the project was probably not built using the makefile
 var number string
 
+// Revision contains the vcs revision. If the source has been modified but
+// has not been committed then the Revision string will be suffixed with
+// "+dirty"
+var revision string
+
 // Version contains a the current version number of the project
 //
-// If the version string is "development" then it means that the project has
-// been manually built (ie. not with the makefile). However, there is git
-// information and so can be discerned to be part of the development process
+// If the version string is "unreleased" then it means that the project has
+// been manually built (ie. not with the makefile)
 //
-// If the version string is "unknown" then it means that there is no no version
-// number and no git information. This can happen when compiling/running with
+// If the version string is "local" then it means that there is no no version
+// number and no vcs information. This can happen when compiling/running with
 // "go run ."
-var Version string
+var version string
 
-// Revision contains the git revision hash. If the source has been modified but
-// has not been committed then the Revision string will be suffixed with
-// "[modified]"
-var Revision string
+// Version returns the version string, the revision string and whether this is a
+// numbered "release" version. if release is true then the revision information
+// should be used sparingly
+func Version() (string, string, bool) {
+	return version, revision, version == number
+}
 
 func init() {
 	var vcs bool
-	var revision string
-	var modified bool
+	var vcsRevision string
+	var vcsModified bool
 
 	info, ok := debug.ReadBuildInfo()
 	if ok {
@@ -51,34 +60,34 @@ func init() {
 			case "vcs":
 				vcs = true
 			case "vcs.revision":
-				revision = v.Value
+				vcsRevision = v.Value
 			case "vcs.modified":
 				switch v.Value {
 				case "true":
-					modified = true
+					vcsModified = true
 				default:
-					modified = false
+					vcsModified = false
 				}
 			}
 		}
 	}
 
-	if revision == "" {
-		Revision = "no revision information"
+	if vcsRevision == "" {
+		revision = "no revision information"
 	} else {
-		Revision = revision
-		if modified {
-			Revision = fmt.Sprintf("%s [modified]", Revision)
+		revision = vcsRevision
+		if vcsModified {
+			revision = fmt.Sprintf("%s+dirty", revision)
 		}
 	}
 
 	if number == "" {
 		if vcs {
-			Version = "development"
+			version = "unreleased"
 		} else {
-			Version = "unknown"
+			version = "local"
 		}
 	} else {
-		Version = number
+		version = number
 	}
 }

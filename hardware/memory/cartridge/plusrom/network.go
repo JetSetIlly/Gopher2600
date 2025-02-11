@@ -139,9 +139,9 @@ func (n *network) transmit() {
 		// The new "PlusROM-Info" header is discussed/explained in this AtariAge thread:
 		// https://atariage.com/forums/topic/324456-redesign-plusrom-request-http-header"
 		//
+		ver, _, _ := version.Version()
 		id := fmt.Sprintf("agent=Gopher2600; ver=%s; id=%s; nick=%s",
-			version.Version,
-			// whether or not ID and Nick are valid has been handled in the preferences system
+			ver,
 			n.env.Prefs.PlusROM.ID.String(),
 			n.env.Prefs.PlusROM.Nick.String(),
 		)

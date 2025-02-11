@@ -2183,14 +2183,15 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 	case cmdVersion:
-		dbg.printLine(terminal.StyleLog, version.Version)
+		ver, rev, _ := version.Version()
+		dbg.printLine(terminal.StyleLog, ver)
 
 		option, ok := tokens.Get()
 		if ok {
 			option = strings.ToUpper(option)
 			switch option {
 			case "REVISION":
-				dbg.printLine(terminal.StyleLog, version.Revision)
+				dbg.printLine(terminal.StyleLog, rev)
 			}
 		}
 	}
