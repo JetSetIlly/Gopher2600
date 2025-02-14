@@ -54,24 +54,25 @@ func (win *winPrefs) drawColour() {
 		specification.ColourGen.Legacy.Set(legacy)
 	}
 
-	if legacy {
-		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-		defer imgui.PopStyleVar()
-		defer imgui.PopItemFlag()
-	}
-
 	imgui.Spacing()
 	imgui.Separator()
 	imgui.Spacing()
 
-	win.drawBrightness()
+	// select which adjustments settings to use
+	var adjust *colourgen.Adjust
+	if legacy {
+		adjust = &specification.ColourGen.LegacyModel.Adjust
+	} else {
+		adjust = &specification.ColourGen.Adjust
+	}
+
+	win.drawBrightness(adjust)
 	imgui.Spacing()
-	win.drawContrast()
+	win.drawContrast(adjust)
 	imgui.Spacing()
-	win.drawSaturation()
+	win.drawSaturation(adjust)
 	imgui.Spacing()
-	win.drawHue()
+	win.drawHue(adjust)
 
 	switch win.img.cache.TV.GetFrameInfo().Spec.ID {
 	case specification.SpecNTSC.ID:
@@ -89,64 +90,64 @@ func (win *winPrefs) drawColour() {
 	}
 }
 
-func (win *winPrefs) drawBrightness() {
+func (win *winPrefs) drawBrightness(adjust *colourgen.Adjust) {
 	imgui.BeginGroup()
 	defer imgui.EndGroup()
 
 	imgui.Text(fmt.Sprintf("%c Brightness", fonts.TVBrightness))
 
-	f := float32(specification.ColourGen.Brightness.Get().(float64))
+	f := float32(adjust.Brightness.Get().(float64))
 
 	minv := float32(0.1)
 	maxv := float32(1.9)
 	label := fmt.Sprintf("%.0f", 100*(f-minv)/(maxv-minv))
 
 	if imgui.SliderFloatV("##brightness", &f, minv, maxv, label, imgui.SliderFlagsNone) {
-		specification.ColourGen.Brightness.Set(f)
+		adjust.Brightness.Set(f)
 	}
 }
 
-func (win *winPrefs) drawContrast() {
+func (win *winPrefs) drawContrast(adjust *colourgen.Adjust) {
 	imgui.BeginGroup()
 	defer imgui.EndGroup()
 
 	imgui.Text(fmt.Sprintf("%c Contrast", fonts.TVContrast))
 
-	f := float32(specification.ColourGen.Contrast.Get().(float64))
+	f := float32(adjust.Contrast.Get().(float64))
 
 	minv := float32(0.1)
 	maxv := float32(1.90)
 	label := fmt.Sprintf("%.0f", 100*(f-minv)/(maxv-minv))
 
 	if imgui.SliderFloatV("##contrast", &f, minv, maxv, label, imgui.SliderFlagsNone) {
-		specification.ColourGen.Contrast.Set(f)
+		adjust.Contrast.Set(f)
 	}
 }
 
-func (win *winPrefs) drawSaturation() {
+func (win *winPrefs) drawSaturation(adjust *colourgen.Adjust) {
 	imgui.BeginGroup()
 	defer imgui.EndGroup()
 
 	imgui.Text(fmt.Sprintf("%c Saturation", fonts.TVSaturation))
 
-	f := float32(specification.ColourGen.Saturation.Get().(float64))
+	f := float32(adjust.Saturation.Get().(float64))
 
 	minv := float32(0.1)
 	maxv := float32(1.90)
 	label := fmt.Sprintf("%.0f", 100*(f-minv)/(maxv-minv))
 
 	if imgui.SliderFloatV("##saturation", &f, minv, maxv, label, imgui.SliderFlagsNone) {
-		specification.ColourGen.Saturation.Set(f)
+		adjust.Saturation.Set(f)
 	}
 }
 
-func (win *winPrefs) drawHue() {
+func (win *winPrefs) drawHue(adjust *colourgen.Adjust) {
 	imgui.BeginGroup()
 	defer imgui.EndGroup()
 
 	imgui.Text(fmt.Sprintf("%c Hue", fonts.TVHue))
 
-	f := float32(specification.ColourGen.Hue.Get().(float64))
+	f := float32(adjust.Hue.Get().(float64))
 
 	minv := float32(-180)
 	maxv := float32(180)
@@ -155,7 +156,7 @@ func (win *winPrefs) drawHue() {
 	label := fmt.Sprintf("%.0f\u00b0", (f+minv+maxv)/(aminv+amaxv)*360)
 
 	if imgui.SliderFloatV("##hue", &f, minv, maxv, label, imgui.SliderFlagsNone) {
-		specification.ColourGen.Hue.Set(f)
+		adjust.Hue.Set(f)
 	}
 }
 

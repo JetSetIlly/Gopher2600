@@ -72,15 +72,16 @@ var stellaSECAM = []uint32{
 }
 
 // the values used when the legacy colour model is enabled
-type legacyModel struct {
-	ntsc  []color.RGBA
-	pal   []color.RGBA
-	secam []color.RGBA
+type LegacyModel struct {
+	Adjust Adjust
+	ntsc   []color.RGBA
+	pal    []color.RGBA
+	secam  []color.RGBA
 }
 
 const legacyFile = "legacy.pal"
 
-func initialiseLegacyModel(legacy *legacyModel) error {
+func initialiseLegacyModel(legacy *LegacyModel) error {
 	clear(legacy.ntsc)
 	clear(legacy.pal)
 	clear(legacy.secam)
@@ -114,7 +115,7 @@ func initialiseLegacyModel(legacy *legacyModel) error {
 	return fmt.Errorf("palette file: loaded legacy.pal")
 }
 
-func useStellaPalette(legacy *legacyModel) {
+func useStellaPalette(legacy *LegacyModel) {
 	for _, v := range legacyNTSCfromStella {
 		legacy.ntsc = append(legacy.ntsc, color.RGBA{
 			R: uint8(v >> 16),
@@ -145,7 +146,7 @@ func useStellaPalette(legacy *legacyModel) {
 	}
 }
 
-func usePaletteFile(legacy *legacyModel, data []byte) {
+func usePaletteFile(legacy *LegacyModel, data []byte) {
 	for i := range 128 {
 		idx := i * 3
 		rgb := color.RGBA{R: data[idx], G: data[idx+1], B: data[idx+2], A: 255}

@@ -18,6 +18,8 @@ package colourgen
 import (
 	"image/color"
 	"math"
+
+	"github.com/jetsetilly/gopher2600/prefs"
 )
 
 func clampRange(v float64, mn float64, mx float64) float64 {
@@ -100,7 +102,14 @@ func adjustRGB(col color.RGBA, brightness, contrast, saturation, hue float64) co
 	return col
 }
 
-func (c *ColourGen) adjustRGB(col color.RGBA) color.RGBA {
+type Adjust struct {
+	Brightness prefs.Float
+	Contrast   prefs.Float
+	Saturation prefs.Float
+	Hue        prefs.Float
+}
+
+func (c *Adjust) rgb(col color.RGBA) color.RGBA {
 	brightness := c.Brightness.Get().(float64)
 	contrast := c.Contrast.Get().(float64)
 	saturation := c.Saturation.Get().(float64)
@@ -108,7 +117,7 @@ func (c *ColourGen) adjustRGB(col color.RGBA) color.RGBA {
 	return adjustRGB(col, brightness, contrast, saturation, hue)
 }
 
-func (c *ColourGen) adjustYIQ(Y, I, Q float64) (float64, float64, float64) {
+func (c Adjust) yiq(Y, I, Q float64) (float64, float64, float64) {
 	brightness := c.Brightness.Get().(float64)
 	contrast := c.Contrast.Get().(float64)
 	saturation := c.Saturation.Get().(float64)
@@ -116,7 +125,7 @@ func (c *ColourGen) adjustYIQ(Y, I, Q float64) (float64, float64, float64) {
 	return adjustYIQ(Y, I, Q, brightness, contrast, saturation, hue)
 }
 
-func (c *ColourGen) adjustYUV(Y, U, V float64) (float64, float64, float64) {
+func (c Adjust) yuv(Y, U, V float64) (float64, float64, float64) {
 	// adjustYIQ() works just as well on YUV values as YIQ
-	return c.adjustYIQ(Y, U, V)
+	return c.yiq(Y, U, V)
 }

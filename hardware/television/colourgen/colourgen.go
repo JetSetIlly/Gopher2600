@@ -34,6 +34,7 @@ type entry struct {
 // ColourGen creates and caches colour values for the different types of
 // television systems
 type ColourGen struct {
+	// cached colour entries. used for legacy and non-legacy colour models
 	ntsc  []entry
 	pal   []entry
 	secam []entry
@@ -41,16 +42,14 @@ type ColourGen struct {
 	dsk *prefs.Disk
 
 	Legacy      prefs.Bool
-	legacyModel legacyModel
+	LegacyModel LegacyModel
 
+	Adjust    Adjust
 	NTSCPhase prefs.Float
 	PALPhase  prefs.Float
 
-	Brightness prefs.Float
-	Contrast   prefs.Float
-	Saturation prefs.Float
-	Hue        prefs.Float
-	Gamma      prefs.Float
+	// gamma is the same for both legacy and non-legacy models
+	Gamma prefs.Float
 }
 
 // NewColourGen is the preferred method of intialisation for the ColourGen type.
@@ -77,6 +76,61 @@ func NewColourGen() (*ColourGen, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = c.dsk.Add("television.color.legacy.brightness", &c.LegacyModel.Adjust.Brightness)
+	if err != nil {
+		return nil, err
+	}
+	err = c.dsk.Add("television.color.legacy.contrast", &c.LegacyModel.Adjust.Contrast)
+	if err != nil {
+		return nil, err
+	}
+	err = c.dsk.Add("television.color.legacy.saturation", &c.LegacyModel.Adjust.Saturation)
+	if err != nil {
+		return nil, err
+	}
+	err = c.dsk.Add("television.color.legacy.hue", &c.LegacyModel.Adjust.Hue)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.dsk.Add("television.color.brightness", &c.Adjust.Brightness)
+	if err != nil {
+		return nil, err
+	}
+	err = c.dsk.Add("television.color.contrast", &c.Adjust.Contrast)
+	if err != nil {
+		return nil, err
+	}
+	err = c.dsk.Add("television.color.saturation", &c.Adjust.Saturation)
+	if err != nil {
+		return nil, err
+	}
+	err = c.dsk.Add("television.color.hue", &c.Adjust.Hue)
+	if err != nil {
+		return nil, err
+	}
+
+	// the cache of generated colours are always cleared when most adjustment
+	// settings are changed
+	//
+	// the only exceptions are the phase values that only need to clear NTSC or
+	// PAL depending on which phase is being adjusted
+	f := func(_ prefs.Value) error {
+		clear(c.ntsc)
+		clear(c.pal)
+		clear(c.secam)
+		return nil
+	}
+
+	c.Legacy.SetHookPost(f)
+	c.LegacyModel.Adjust.Brightness.SetHookPost(f)
+	c.LegacyModel.Adjust.Contrast.SetHookPost(f)
+	c.LegacyModel.Adjust.Saturation.SetHookPost(f)
+	c.LegacyModel.Adjust.Hue.SetHookPost(f)
+	c.Adjust.Brightness.SetHookPost(f)
+	c.Adjust.Contrast.SetHookPost(f)
+	c.Adjust.Saturation.SetHookPost(f)
+	c.Adjust.Hue.SetHookPost(f)
 
 	err = c.dsk.Add("television.color.ntscphase", &c.NTSCPhase)
 	if err != nil {
@@ -96,39 +150,13 @@ func NewColourGen() (*ColourGen, error) {
 		return nil
 	})
 
-	err = c.dsk.Add("television.color.brightness", &c.Brightness)
-	if err != nil {
-		return nil, err
-	}
-	err = c.dsk.Add("television.color.contrast", &c.Contrast)
-	if err != nil {
-		return nil, err
-	}
-	err = c.dsk.Add("television.color.saturation", &c.Saturation)
-	if err != nil {
-		return nil, err
-	}
-	err = c.dsk.Add("television.color.hue", &c.Hue)
-	if err != nil {
-		return nil, err
-	}
+	// gamma is the same for every variation of colour generation. it should
+	// maybe be adjustable by the user or otherwise reactive to the monitor's
+	// gamma setting
 	err = c.dsk.Add("television.color.gamma", &c.Gamma)
 	if err != nil {
 		return nil, err
 	}
-
-	f := func(_ prefs.Value) error {
-		clear(c.ntsc)
-		clear(c.pal)
-		clear(c.secam)
-		return nil
-	}
-
-	c.Legacy.SetHookPost(f)
-	c.Brightness.SetHookPost(f)
-	c.Contrast.SetHookPost(f)
-	c.Saturation.SetHookPost(f)
-	c.Hue.SetHookPost(f)
 	c.Gamma.SetHookPost(f)
 
 	err = c.dsk.Load()
@@ -136,7 +164,7 @@ func NewColourGen() (*ColourGen, error) {
 		return nil, err
 	}
 
-	err = initialiseLegacyModel(&c.legacyModel)
+	err = initialiseLegacyModel(&c.LegacyModel)
 	if err != nil {
 		logger.Log(logger.Allow, "colourgen", err)
 	}
@@ -200,13 +228,18 @@ const PALDefault = NTSCFieldService / 2.0
 const Gamma = 2.2
 
 func (c *ColourGen) SetDefaults() {
-	c.Legacy.Set(false)
+	c.Legacy.Set(true)
+	c.LegacyModel.Adjust.Brightness.Set(1.00)
+	c.LegacyModel.Adjust.Contrast.Set(1.00)
+	c.LegacyModel.Adjust.Saturation.Set(1.00)
+	c.LegacyModel.Adjust.Hue.Set(0.0)
+	c.Adjust.Brightness.Set(0.949)
+	c.Adjust.Contrast.Set(1.205)
+	c.Adjust.Saturation.Set(0.874)
+	c.Adjust.Hue.Set(0.0)
+
 	c.NTSCPhase.Set(NTSCFieldService)
 	c.PALPhase.Set(PALDefault)
-	c.Brightness.Set(0.949)
-	c.Contrast.Set(1.205)
-	c.Saturation.Set(0.874)
-	c.Hue.Set(0.0)
 
 	// I used to think that the different TV specifications had a specific
 	// gamma. NTSC has an inherent gamma of 2.2 and PAL has 2.8. I no longer
@@ -255,7 +288,8 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	}
 
 	if c.Legacy.Get().(bool) {
-		rgb := c.legacyModel.ntsc[col>>1]
+		rgb := c.LegacyModel.ntsc[col>>1]
+		rgb = c.LegacyModel.Adjust.rgb(rgb)
 		c.ntsc[idx].col = rgb
 		c.ntsc[idx].generated = true
 		return rgb
@@ -276,7 +310,7 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 		} else {
 			Y = float64(lum) / 8
 		}
-		Y, _, _ = c.adjustYIQ(Y, 0, 0)
+		Y, _, _ = c.Adjust.yiq(Y, 0, 0)
 		y := uint8(clamp(Y) * 255)
 		c.ntsc[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
 		c.ntsc[idx].generated = true
@@ -346,7 +380,7 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	Q = saturation * math.Cos(phi)
 
 	// apply brightness/constrast/saturation/hue settings to YIQ
-	Y, I, Q = c.adjustYIQ(Y, I, Q)
+	Y, I, Q = c.Adjust.yiq(Y, I, Q)
 
 	// YIQ to RGB conversion
 	//
@@ -399,7 +433,8 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	}
 
 	if c.Legacy.Get().(bool) {
-		rgb := c.legacyModel.pal[col>>1]
+		rgb := c.LegacyModel.pal[col>>1]
+		rgb = c.LegacyModel.Adjust.rgb(rgb)
 		c.pal[idx].col = rgb
 		c.pal[idx].generated = true
 		return rgb
@@ -419,7 +454,7 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 		} else {
 			Y = float64(lum) / 8
 		}
-		Y, _, _ = c.adjustYUV(Y, 0, 0)
+		Y, _, _ = c.Adjust.yuv(Y, 0, 0)
 		y := uint8(clamp(Y) * 255)
 		c.pal[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
 		c.pal[idx].generated = true
@@ -473,7 +508,7 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	V = saturation * -math.Cos(phi)
 
 	// apply brightness/constrast/saturation/hue settings to YUV
-	Y, U, V = c.adjustYUV(Y, U, V)
+	Y, U, V = c.Adjust.yuv(Y, U, V)
 
 	// YUV to RGB conversion
 	//
@@ -514,7 +549,8 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
 	}
 
 	if c.Legacy.Get().(bool) {
-		rgb := c.legacyModel.secam[col>>1]
+		rgb := c.LegacyModel.secam[col>>1]
+		rgb = c.LegacyModel.Adjust.rgb(rgb)
 		c.secam[idx].col = rgb
 		c.secam[idx].generated = true
 		return rgb
@@ -560,7 +596,7 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
 	case 6:
 		phi = 90
 	case 7:
-		Y, U, V = c.adjustYUV(Y, U, V)
+		Y, U, V = c.Adjust.yuv(Y, U, V)
 		y := uint8(clamp(Y) * 255)
 		c.secam[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
 		return c.secam[idx].col
@@ -575,7 +611,7 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
 	V = saturation * -math.Cos(phi)
 
 	// apply brightness/constrast/saturation/hue settings to YUV
-	Y, U, V = c.adjustYUV(Y, U, V)
+	Y, U, V = c.Adjust.yuv(Y, U, V)
 
 	// YUV to RGB conversion
 	//
