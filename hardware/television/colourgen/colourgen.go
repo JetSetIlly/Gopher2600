@@ -229,9 +229,9 @@ const Gamma = 2.2
 
 func (c *ColourGen) SetDefaults() {
 	c.Legacy.Set(true)
-	c.LegacyModel.Adjust.Brightness.Set(1.00)
+	c.LegacyModel.Adjust.Brightness.Set(0.893)
 	c.LegacyModel.Adjust.Contrast.Set(1.00)
-	c.LegacyModel.Adjust.Saturation.Set(1.00)
+	c.LegacyModel.Adjust.Saturation.Set(1.033)
 	c.LegacyModel.Adjust.Hue.Set(0.0)
 	c.Adjust.Brightness.Set(0.949)
 	c.Adjust.Contrast.Set(1.205)
