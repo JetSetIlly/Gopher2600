@@ -26,10 +26,12 @@ import (
 
 type bevelShader struct {
 	shader
-	img    *SdlImgui
-	time   int32 // uniform
-	rim    int32 // uniform
-	screen int32 // uniform
+	img                 *SdlImgui
+	time                int32 // uniform
+	rim                 int32 // uniform
+	screen              int32 // uniform
+	ambientTint         int32 // uniform
+	ambientTintStrength int32 // uniform
 }
 
 func newBevelShader(img *SdlImgui) shaderProgram {
@@ -40,6 +42,8 @@ func newBevelShader(img *SdlImgui) shaderProgram {
 	sh.time = gl.GetUniformLocation(sh.handle, gl.Str("Time"+"\x00"))
 	sh.rim = gl.GetUniformLocation(sh.handle, gl.Str("Rim"+"\x00"))
 	sh.screen = gl.GetUniformLocation(sh.handle, gl.Str("Screen"+"\x00"))
+	sh.ambientTint = gl.GetUniformLocation(sh.handle, gl.Str("AmbientTint"+"\x00"))
+	sh.ambientTintStrength = gl.GetUniformLocation(sh.handle, gl.Str("AmbientTintStrength"+"\x00"))
 	return sh
 }
 
@@ -72,11 +76,13 @@ func (sh *bevelShader) setAttributes(env shaderEnvironment) {
 	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
 	if rim, ok := env.config.(bool); ok {
 		gl.Uniform1i(sh.rim, boolToInt32(rim))
-
 		gl.ActiveTexture(gl.TEXTURE1)
 		gl.BindTexture(gl.TEXTURE_2D, sh.img.playScr.screenTexture.getID())
 		gl.Uniform1i(sh.screen, 1)
 	} else {
 		gl.Uniform1i(sh.rim, boolToInt32(false))
 	}
+
+	gl.Uniform1i(sh.ambientTint, boolToInt32(sh.img.crt.ambientTint.Get().(bool)))
+	gl.Uniform1f(sh.ambientTintStrength, float32(sh.img.crt.ambientTintStrength.Get().(float64)))
 }

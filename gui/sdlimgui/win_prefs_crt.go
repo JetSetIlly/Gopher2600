@@ -47,6 +47,9 @@ func (win *winPrefs) drawCRT() {
 		imgui.PushItemWidth(-1)
 
 		usingBevel := win.drawUsingBevel()
+		imgui.Spacing()
+		win.drawEnvironment(usingBevel)
+		imgui.Spacing()
 		win.drawCurve(usingBevel)
 		imgui.Spacing()
 		win.drawRoundedCorners(usingBevel)
@@ -125,6 +128,25 @@ func (win *winPrefs) drawCurve(usingBevel bool) {
 
 	if imgui.SliderFloatV("##curveamount", &f, 1.0, -0.5, label, 1.0) {
 		win.img.crt.curveAmount.Set(f)
+	}
+}
+
+func (win *winPrefs) drawEnvironment(usingBevel bool) {
+	if !usingBevel {
+		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+		defer imgui.PopStyleVar()
+		defer imgui.PopItemFlag()
+	}
+
+	b := win.img.crt.ambientTint.Get().(bool)
+	if imgui.Checkbox("Blue Ambient Light##blueambientlight", &b) {
+		win.img.crt.ambientTint.Set(b)
+	}
+
+	f := float32(win.img.crt.ambientTintStrength.Get().(float64))
+	if imgui.SliderFloatV("##blueambientlightstrength", &f, 0.05, 0.6, "%0.2f", 1.0) {
+		win.img.crt.ambientTintStrength.Set(f)
 	}
 }
 

@@ -46,6 +46,9 @@ type preferencesCRT struct {
 	sharpness            prefs.Float
 	blackLevel           prefs.Float
 	shine                prefs.Bool
+
+	ambientTint         prefs.Bool
+	ambientTintStrength prefs.Float
 }
 
 func (p *preferencesCRT) String() string {
@@ -168,6 +171,14 @@ func newPreferenceCRT(img *SdlImgui) (*preferencesCRT, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("crt.ambient.tint", &p.ambientTint)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.ambient.tintStrength", &p.ambientTintStrength)
+	if err != nil {
+		return nil, err
+	}
 
 	err = p.dsk.Load()
 	if err != nil {
@@ -200,6 +211,8 @@ func (p *preferencesCRT) SetDefaults() {
 	p.sharpness.Set(0.408)
 	p.blackLevel.Set(0.030)
 	p.shine.Set(true)
+	p.ambientTint.Set(false)
+	p.ambientTintStrength.Set(0.3)
 }
 
 // Load CRT values from disk.

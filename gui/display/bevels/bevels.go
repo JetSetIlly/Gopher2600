@@ -46,11 +46,11 @@ var solidStateRim []byte
 
 func init() {
 	SolidState.Bevel = loadImage(solidStateBevel)
-	SolidState.Scale = 0.85
+	SolidState.Scale = 0.86
 	SolidState.OffsetX = -0.137
 	SolidState.OffsetY = -0.080
 	SolidState.BiasY = 1.05
-	SolidState.CurveAmount = -0.500
+	SolidState.CurveAmount = -0.800
 	SolidState.RoundCornersAmount = 0.090
 	SolidState.BevelRim = loadImage(solidStateRim)
 }
