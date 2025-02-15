@@ -134,6 +134,11 @@ type ARMState struct {
 	// note that when executing from RAM (which isn't normal) it's possible for
 	// code to be modified (ie. self-modifying code). in that case currentExecutionCache
 	// may be unreliable.
+	//
+	// note that this is a sparse array rather than a map. even with the
+	// improved map implementation in go 1.24.0 a map is too slow for our
+	// purposes. a sparse array means greater memory usage but that's a
+	// necessary trade-off
 	currentExecutionCache []decodeFunction
 
 	// if developer information is available then the emulation's stack protection will try to
@@ -265,6 +270,8 @@ type ARM struct {
 	//
 	// allocated in NewARM() and added to in checkProgramMemory() if an entry
 	// does not exist
+	//
+	// see note on currentExecutionCache field in the ARMState type
 	executionCache map[uint32][]decodeFunction
 
 	// only decode an instruction do not execute. consider using the
@@ -527,14 +534,14 @@ func (arm *ARM) clock(cycles float32) {
 	cycles += arm.state.accumulatedCycles
 
 	// isolate integer and fractional part and save fraction for next clock()
-	c := uint32(cycles)
-	arm.state.accumulatedCycles = cycles - float32(c)
+	i, f := math.Modf(float64(cycles))
+	arm.state.accumulatedCycles = float32(f)
 
 	if arm.mmap.HasT1 {
-		arm.state.timer.Step(c)
+		arm.state.timer.Step(uint32(i))
 	}
 	if arm.mmap.HasTIM2 {
-		arm.state.timer2.Step(c)
+		arm.state.timer2.Step(uint32(i))
 	}
 }
 
