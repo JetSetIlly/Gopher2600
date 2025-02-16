@@ -74,20 +74,22 @@ func (win *winPrefs) drawColour() {
 	imgui.Spacing()
 	win.drawHue(adjust)
 
-	switch win.img.cache.TV.GetFrameInfo().Spec.ID {
-	case specification.SpecNTSC.ID:
-		imgui.Spacing()
-		if imgui.CollapsingHeader("NTSC Colour Signal") {
+	drawDisabled(legacy, func() {
+		switch win.img.cache.TV.GetFrameInfo().Spec.ID {
+		case specification.SpecNTSC.ID:
 			imgui.Spacing()
-			win.drawNTSCPhase()
-		}
-	case specification.SpecPAL.ID:
-		imgui.Spacing()
-		if imgui.CollapsingHeader("PAL Colour Signal") {
+			if imgui.CollapsingHeader("NTSC Colour Signal") {
+				imgui.Spacing()
+				win.drawNTSCPhase()
+			}
+		case specification.SpecPAL.ID:
 			imgui.Spacing()
-			win.drawPALPhase()
+			if imgui.CollapsingHeader("PAL Colour Signal") {
+				imgui.Spacing()
+				win.drawPALPhase()
+			}
 		}
-	}
+	})
 }
 
 func (win *winPrefs) drawBrightness(adjust *colourgen.Adjust) {

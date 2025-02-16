@@ -229,9 +229,9 @@ const Gamma = 2.2
 
 func (c *ColourGen) SetDefaults() {
 	c.Legacy.Set(true)
-	c.LegacyModel.Adjust.Brightness.Set(0.893)
-	c.LegacyModel.Adjust.Contrast.Set(1.00)
-	c.LegacyModel.Adjust.Saturation.Set(1.033)
+	c.LegacyModel.Adjust.Brightness.Set(1.210)
+	c.LegacyModel.Adjust.Contrast.Set(0.851)
+	c.LegacyModel.Adjust.Saturation.Set(0.963)
 	c.LegacyModel.Adjust.Hue.Set(0.0)
 	c.Adjust.Brightness.Set(0.949)
 	c.Adjust.Contrast.Set(1.205)
@@ -290,6 +290,7 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	if c.Legacy.Get().(bool) {
 		rgb := c.LegacyModel.ntsc[col>>1]
 		rgb = c.LegacyModel.Adjust.rgb(rgb)
+		rgb = c.gammaCorrectRGB(rgb)
 		c.ntsc[idx].col = rgb
 		c.ntsc[idx].generated = true
 		return rgb
@@ -401,10 +402,7 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	// 	B := clamp(Y - (1.1070 * I) + (1.7046 * Q))
 
 	// gamma correction
-	gamma := c.Gamma.Get().(float64)
-	R = math.Pow(R, gamma)
-	G = math.Pow(G, gamma)
-	B = math.Pow(B, gamma)
+	R, G, B = c.gammaCorrect(R, G, B)
 
 	// create and cache
 	c.ntsc[idx].generated = true
@@ -435,6 +433,7 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	if c.Legacy.Get().(bool) {
 		rgb := c.LegacyModel.pal[col>>1]
 		rgb = c.LegacyModel.Adjust.rgb(rgb)
+		rgb = c.gammaCorrectRGB(rgb)
 		c.pal[idx].col = rgb
 		c.pal[idx].generated = true
 		return rgb
@@ -519,10 +518,7 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	B := clamp(Y + (2.033 * U))
 
 	// gamma correction
-	gamma := c.Gamma.Get().(float64)
-	R = math.Pow(R, gamma)
-	G = math.Pow(G, gamma)
-	B = math.Pow(B, gamma)
+	R, G, B = c.gammaCorrect(R, G, B)
 
 	// create and cache
 	c.pal[idx].generated = true
@@ -551,6 +547,7 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
 	if c.Legacy.Get().(bool) {
 		rgb := c.LegacyModel.secam[col>>1]
 		rgb = c.LegacyModel.Adjust.rgb(rgb)
+		rgb = c.gammaCorrectRGB(rgb)
 		c.secam[idx].col = rgb
 		c.secam[idx].generated = true
 		return rgb
@@ -622,10 +619,7 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
 	B := clamp(Y + (2.033 * U))
 
 	// gamma correction
-	gamma := c.Gamma.Get().(float64)
-	R = math.Pow(R, gamma)
-	G = math.Pow(G, gamma)
-	B = math.Pow(B, gamma)
+	R, G, B = c.gammaCorrect(R, G, B)
 
 	// create and cache
 	c.secam[idx].generated = true
