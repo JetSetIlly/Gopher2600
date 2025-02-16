@@ -82,14 +82,14 @@ ifeq (, $(shell which go-errorlint))
 	$(error "go-errorlint not installed")
 endif
 # https://github.com/mdempsky/unconvert
-# ifeq (, $(shell which unconvert))
-# 	$(error "unconvert not installed")
-# endif
+ifeq (, $(shell which unconvert))
+	$(error "unconvert not installed")
+endif
 
 lint: check_linters
 	go vet ./...
 	go-errorlint -c 0 -errorf -errorf-multi ./...
-	# unconvert ./...
+	unconvert ./...
 
 ### testing targets
 .PHONY: test race race_debug fuzz
