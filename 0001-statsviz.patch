@@ -3,7 +3,7 @@ index 7575b599c..adfee04bf 100644
 --- a/go.mod
 +++ b/go.mod
 @@ -3,6 +3,7 @@ module github.com/jetsetilly/gopher2600
- go 1.22.0
+ go 1.24.0
  
  require (
 +	github.com/arl/statsviz v0.6.0
