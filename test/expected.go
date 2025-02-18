@@ -42,7 +42,7 @@ func ExpectInequality[T comparable](t *testing.T, value T, expectedValue T) bool
 }
 
 // Approximate constraint used by ExpectApproximate() function
-type Approximte interface {
+type Approximate interface {
 	~float32 | ~float64 | ~int
 }
 
@@ -51,7 +51,7 @@ type Approximte interface {
 //
 // Tolerance represents a percentage. For example, 0.5 is tolerance of +/- 50%.
 // If the tolerance value is negative then the positive equivalent is used.
-func ExpectApproximate[T Approximte](t *testing.T, value T, expectedValue T, tolerance float64) bool {
+func ExpectApproximate[T Approximate](t *testing.T, value T, expectedValue T, tolerance float64) bool {
 	t.Helper()
 
 	tolerance = math.Abs(tolerance)
