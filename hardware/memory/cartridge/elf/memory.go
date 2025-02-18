@@ -123,10 +123,13 @@ type elfMemory struct {
 
 	// strongARM support. like the elf sections, the strongARM program is placed
 	// in flash memory
-	strongArmProgram   []byte
-	strongArmOrigin    uint32
-	strongArmMemtop    uint32
-	strongArmFunctions map[uint32]strongArmFunctionSpec
+	strongArmProgram []byte
+	strongArmOrigin  uint32
+	strongArmMemtop  uint32
+
+	// for performance reasons this is a sparse array and not a map. this means
+	// that when indexing the address should be adjusted by strongArmOrigin
+	strongArmFunctions []*strongArmFunctionSpec
 
 	// will be set to true if the vcsWrite3(), vcsPlp4Ex(), or vcsPla4Ex() function is used
 	usesBusStuffing bool
@@ -320,7 +323,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 	sort.Strings(mem.sectionNames)
 
 	// strongarm functions are added during relocation
-	mem.strongArmFunctions = make(map[uint32]strongArmFunctionSpec)
+	mem.strongArmFunctions = make([]*strongArmFunctionSpec, 0)
 	mem.strongArmOrigin = origin
 	mem.strongArmMemtop = mem.strongArmOrigin
 
@@ -818,8 +821,12 @@ func (mem *elfMemory) relocateStrongArmFunction(spec strongArmFunctionSpec) (uin
 	// address of new function in memory
 	addr := mem.strongArmMemtop
 
-	// specification for this strongarm function
-	mem.strongArmFunctions[addr] = spec
+	// add specification for this strongarm function
+	extend := int(mem.strongArmMemtop-mem.strongArmOrigin) - len(mem.strongArmFunctions) + 1
+	for range extend {
+		mem.strongArmFunctions = append(mem.strongArmFunctions, nil)
+	}
+	mem.strongArmFunctions[addr-mem.strongArmOrigin] = &spec
 
 	// add null function to end of strongArmProgram array
 	mem.strongArmProgram = append(mem.strongArmProgram, strongArmStub...)
@@ -862,7 +869,10 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool, executing bool) (*[]by
 			// with that in mind we must lookup the address minus one to determine
 			// if the call address is a strongarm function. if it is not then that
 			// means the ARM program has jumped to the wrong address
-			if f, ok := mem.strongArmFunctions[addr-1]; ok {
+			//
+			// note that we must also adjust the address by the strongArmOrigin
+			// value because strongArmFunctions is a sparse array and not a map
+			if f := mem.strongArmFunctions[addr-mem.strongArmOrigin-1]; f != nil {
 				if f.support {
 					mem.runStrongArmFunction(f.function)
 				} else {
