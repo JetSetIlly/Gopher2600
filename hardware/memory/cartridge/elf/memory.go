@@ -40,9 +40,10 @@ type elfMemoryARM interface {
 }
 
 type elfSection struct {
-	name  string
-	flags elf.SectionFlag
-	typ   elf.SectionType
+	name      string
+	flags     elf.SectionFlag
+	typ       elf.SectionType
+	debugging bool
 
 	data   []byte
 	origin uint32
@@ -68,7 +69,7 @@ func (sec elfSection) inMemory() bool {
 	return (sec.typ == elf.SHT_INIT_ARRAY ||
 		sec.typ == elf.SHT_NOBITS ||
 		sec.typ == elf.SHT_PROGBITS) &&
-		!strings.Contains(sec.name, ".debug")
+		sec.debugging == false
 }
 
 func (s *elfSection) String() string {
@@ -260,9 +261,10 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 	origin := mem.model.FlashOrigin
 	for _, sec := range ef.Sections {
 		section := &elfSection{
-			name:  sec.Name,
-			flags: sec.Flags,
-			typ:   sec.Type,
+			name:      sec.Name,
+			flags:     sec.Flags,
+			typ:       sec.Type,
+			debugging: strings.Contains(sec.Name, ".debug"),
 		}
 
 		var err error
