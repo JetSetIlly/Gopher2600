@@ -825,9 +825,11 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 		}
 
 		// check breakpoints
-		arm.checkBreakpoints()
-		if arm.state.yield.Type != coprocessor.YieldRunning {
-			break // for loop
+		if arm.breakpointsEnabled {
+			arm.checkBreakpoints()
+			if arm.state.yield.Type != coprocessor.YieldRunning {
+				break // for loop
+			}
 		}
 
 		memIdx := int(arm.state.executingPC - arm.state.programMemoryOrigin)
@@ -996,7 +998,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 func (arm *ARM) checkBreakpoints() {
 	// check breakpoints unless they are disabled. we also don't want to match
 	// if we're in the middle of decoding a 32bit instruction
-	if arm.dev != nil && arm.breakpointsEnabled && !arm.state.instruction32bitDecoding {
+	if arm.dev != nil && !arm.state.instruction32bitDecoding {
 		var addr uint32
 
 		if arm.state.branchedExecution {

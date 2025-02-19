@@ -317,7 +317,9 @@ func (dev *Developer) SetEmulationState(state govern.State) {
 		case govern.Rewinding:
 			dev.cart.GetCoProcBus().GetCoProc().BreakpointsEnable(false)
 		default:
-			dev.cart.GetCoProcBus().GetCoProc().BreakpointsEnable(true)
+			// breakpoints only work when source is available so there's no need
+			// to enable breakpoint checking if there is no source
+			dev.cart.GetCoProcBus().GetCoProc().BreakpointsEnable(dev.source != nil)
 		}
 	}
 
