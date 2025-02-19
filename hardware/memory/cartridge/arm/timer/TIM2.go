@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package peripherals
+package timer
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
@@ -24,9 +24,10 @@ import (
 //
 // https://www.st.com/resource/en/reference_manual/dm00031020-stm32f405-415-stm32f407-417-stm32f427-437-and-stm32f429-439-advanced-arm-based-32-bit-mcus-stmicroelectronics.pdf
 
-// Timer2 implements the TIM2 timer found in STM32 processors.
-type Timer2 struct {
-	mmap architecture.Map
+// TIM2 implements the TIM2 timer found in STM32 processors.
+type TIM2 struct {
+	mmap   architecture.Map
+	cycles cycles
 
 	// current register values
 	control    uint32
@@ -54,24 +55,27 @@ type Timer2 struct {
 	// will still be ticking towards the prescalarShadow value
 	prescalarShadow  uint32
 	prescalerCounter uint32
-
-	deferredCycles uint32
 }
 
-func NewTimer2(mmap architecture.Map) Timer2 {
-	return Timer2{
+func NewTIM2(mmap architecture.Map) *TIM2 {
+	return &TIM2{
 		mmap: mmap,
+		cycles: cycles{
+			clkDiv: mmap.ClkDiv,
+		},
 	}
 }
 
-func (t *Timer2) Reset() {
+// Reset implementes the Timer interface
+func (t *TIM2) Reset() {
 	t.setControlRegister(0x00000000)
 	t.prescaler = 0x0
 	t.autoreload = 0xffffffff
 	t.counter = 0.0
+	t.cycles.resolve()
 }
 
-func (t *Timer2) setControlRegister(val uint32) {
+func (t *TIM2) setControlRegister(val uint32) {
 	// control value
 	t.control = val
 
@@ -106,25 +110,24 @@ func (t *Timer2) setControlRegister(val uint32) {
 	}
 }
 
-// Step ticks TIM2 by the specified number of cycles. In reality the cycles are
-// deferred until ResolveDeferredCycles().
-func (t *Timer2) Step(cycles uint32) {
-	t.deferredCycles += cycles
+// Step implementes the Timer interface
+func (t *TIM2) Step(cycles float32) {
+	if t.cycles.step(cycles) {
+		t.Resolve()
+	}
 }
 
-// ResolveDeferredCycles makes sure that the TIM2 registers are updated. Under
-// normal operation the resolve function is called automatically when the
-// TIM2CNT value is required. But it should also be called when the emulation
-// ends (either naturally or as a result of a breakpoint etc.) so that debugging
-// information is accurate.
-func (t *Timer2) ResolveDeferredCycles() {
-	cycles := t.deferredCycles
-	t.deferredCycles = 0.0
-
+// Resolve implementes the Timer interface
+func (t *TIM2) Resolve() {
 	// nothing to do if TIM2 is not enabled
 	if !t.enable {
+		// just reset the cycles counter
+		t.cycles.reset()
 		return
 	}
+
+	// resolve cycles
+	cycles := t.cycles.resolve()
 
 	// adjust for clock division value
 	cycles /= t.clockDivision
@@ -169,7 +172,7 @@ func (t *Timer2) ResolveDeferredCycles() {
 	}
 }
 
-func (t *Timer2) updateEvent() {
+func (t *TIM2) updateEvent() {
 	if !t.updateEventDisabled {
 		t.prescalarShadow = t.prescaler
 		t.autoreloadShadow = t.autoreload
@@ -196,10 +199,28 @@ func (t *Timer2) updateEvent() {
 	t.prescalerCounter = 0
 }
 
-// "18.4.21 TIMx register map" of "RM0090 reference"
+// Read implementes the Timer interface
+func (t *TIM2) Read(addr uint32) (uint32, bool) {
+	var val uint32
 
-func (t *Timer2) Write(addr uint32, val uint32) bool {
+	switch addr {
+	case t.mmap.TIM2CR1:
+		// TIMx Control register
+		val = t.control
+	case t.mmap.TIM2CNT:
+		// TIMx Counter
+		t.Resolve()
+		val = t.counter
+	default:
+		return 0, false
+	}
 
+	return val, true
+}
+
+// Write implementes the Timer interface
+func (t *TIM2) Write(addr uint32, val uint32) bool {
+	// "18.4.21 TIMx register map" of "RM0090 reference"
 	switch addr {
 	case t.mmap.TIM2CR1:
 		// TIMx Control
@@ -222,8 +243,9 @@ func (t *Timer2) Write(addr uint32, val uint32) bool {
 		}
 	case t.mmap.TIM2CNT:
 		// TIMx Counter
+		// should the cycles field be reset() or should we honour any remaining
+		// accumulated cycles? I'm not sure
 		t.counter = val
-		t.deferredCycles = 0
 	case t.mmap.TIM2PSC:
 		// TIMx Prescalar
 		t.prescaler = val & 0x0000ffff
@@ -240,22 +262,4 @@ func (t *Timer2) Write(addr uint32, val uint32) bool {
 	}
 
 	return true
-}
-
-func (t *Timer2) Read(addr uint32) (uint32, bool) {
-	var val uint32
-
-	switch addr {
-	case t.mmap.TIM2CR1:
-		// TIMx Control register
-		val = t.control
-	case t.mmap.TIM2CNT:
-		// TIMx Counter
-		t.ResolveDeferredCycles()
-		val = t.counter
-	default:
-		return 0, false
-	}
-
-	return val, true
 }

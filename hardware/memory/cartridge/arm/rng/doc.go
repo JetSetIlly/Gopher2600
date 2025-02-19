@@ -13,6 +13,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package peripherals implements the optional modules that can make up the ARM
-// processor. For example: timers.
-package peripherals
+// Package rng contains an implementation of a RNG peripheral found in some ARM
+// CPU packages. For example, the STM32F4xx found in the PlusCart.
+package rng

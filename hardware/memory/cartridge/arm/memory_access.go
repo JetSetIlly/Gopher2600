@@ -70,12 +70,12 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 			}
 		}
 		if arm.mmap.HasT1 {
-			if v, ok := arm.state.timer.Read(addr); ok {
+			if v, ok := arm.state.t1.Read(addr); ok {
 				return uint8(v)
 			}
 		}
 		if arm.mmap.HasTIM2 {
-			if v, ok := arm.state.timer2.Read(addr); ok {
+			if v, ok := arm.state.tim2.Read(addr); ok {
 				return uint8(v)
 			}
 		}
@@ -111,12 +111,12 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 			}
 		}
 		if arm.mmap.HasT1 {
-			if arm.state.timer.Write(addr, uint32(val)) {
+			if arm.state.t1.Write(addr, uint32(val)) {
 				return
 			}
 		}
 		if arm.mmap.HasTIM2 {
-			if arm.state.timer2.Write(addr, uint32(val)) {
+			if arm.state.tim2.Write(addr, uint32(val)) {
 				return
 			}
 		}
@@ -169,12 +169,12 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 			}
 		}
 		if arm.mmap.HasT1 {
-			if v, ok := arm.state.timer.Read(addr); ok {
+			if v, ok := arm.state.t1.Read(addr); ok {
 				return uint16(v)
 			}
 		}
 		if arm.mmap.HasTIM2 {
-			if v, ok := arm.state.timer2.Read(addr); ok {
+			if v, ok := arm.state.tim2.Read(addr); ok {
 				return uint16(v)
 			}
 		}
@@ -224,12 +224,12 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 			}
 		}
 		if arm.mmap.HasT1 {
-			if arm.state.timer.Write(addr, uint32(val)) {
+			if arm.state.t1.Write(addr, uint32(val)) {
 				return
 			}
 		}
 		if arm.mmap.HasTIM2 {
-			if arm.state.timer2.Write(addr, uint32(val)) {
+			if arm.state.tim2.Write(addr, uint32(val)) {
 				return
 			}
 		}
@@ -279,12 +279,12 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 			}
 		}
 		if arm.mmap.HasT1 {
-			if v, ok := arm.state.timer.Read(addr); ok {
+			if v, ok := arm.state.t1.Read(addr); ok {
 				return v
 			}
 		}
 		if arm.mmap.HasTIM2 {
-			if v, ok := arm.state.timer2.Read(addr); ok {
+			if v, ok := arm.state.tim2.Read(addr); ok {
 				return v
 			}
 		}
@@ -334,12 +334,12 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 			}
 		}
 		if arm.mmap.HasT1 {
-			if arm.state.timer.Write(addr, val) {
+			if arm.state.t1.Write(addr, val) {
 				return
 			}
 		}
 		if arm.mmap.HasTIM2 {
-			if arm.state.timer2.Write(addr, val) {
+			if arm.state.tim2.Write(addr, val) {
 				return
 			}
 		}

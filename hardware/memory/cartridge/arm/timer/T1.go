@@ -13,43 +13,74 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package peripherals
+package timer
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 )
 
-// Timer implements a simple timer as used in the LCP2000.
-type Timer struct {
+// T1 implements a simple timer as used in the LCP2000.
+type T1 struct {
 	mmap    architecture.Map
+	cycles  cycles
 	enabled bool
 	reset   bool
 	control uint32
 	counter uint32
 }
 
-func NewTimer(mmap architecture.Map) Timer {
-	return Timer{
+func NewT1(mmap architecture.Map) *T1 {
+	return &T1{
 		mmap: mmap,
+		cycles: cycles{
+			clkDiv: mmap.ClkDiv,
+		},
 	}
 }
 
-func (t *Timer) Reset() {
-	t.counter = 0
+// Reset implementes the Timer interface
+func (t *T1) Reset() {
+	t.cycles.reset()
 }
 
-// stepping of timer assumes an APB divider value of one.
-func (t *Timer) Step(cycles uint32) {
+// Step implementes the Timer interface
+func (t *T1) Step(cycles float32) {
 	if t.reset {
-		t.counter = 0
+		t.cycles.reset()
 	}
 	if !t.enabled {
 		return
 	}
-	t.counter += cycles
+	if t.cycles.step(cycles) {
+		t.counter += t.cycles.resolve()
+	}
 }
 
-func (t *Timer) Write(addr uint32, val uint32) bool {
+// Resolve implementes the Timer interface
+func (t *T1) Resolve() {
+	t.counter += t.cycles.resolve()
+}
+
+// Read implementes the Timer interface
+func (t *T1) Read(addr uint32) (uint32, bool) {
+	var val uint32
+
+	switch addr {
+	case t.mmap.T1TCR:
+		// reserved bits could be randomised
+		val = t.control
+	case t.mmap.T1TC:
+		t.Resolve()
+		val = t.counter
+	default:
+		return 0, false
+	}
+
+	return val, true
+}
+
+// Write implementes the Timer interface
+func (t *T1) Write(addr uint32, val uint32) bool {
 	switch addr {
 	case t.mmap.T1TCR:
 		// from "5.2 Timer Control Register" in "UM10161", page 196
@@ -63,20 +94,4 @@ func (t *Timer) Write(addr uint32, val uint32) bool {
 	}
 
 	return true
-}
-
-func (t *Timer) Read(addr uint32) (uint32, bool) {
-	var val uint32
-
-	switch addr {
-	case t.mmap.T1TCR:
-		// reserved bits could be randomised
-		val = t.control
-	case t.mmap.T1TC:
-		val = t.counter
-	default:
-		return 0, false
-	}
-
-	return val, true
 }

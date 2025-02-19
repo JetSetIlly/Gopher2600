@@ -26,7 +26,8 @@ import (
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/fpu"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/peripherals"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/rng"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/timer"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -83,11 +84,11 @@ type ARMState struct {
 	// see note about status register in the documentation of the type
 	status status
 
-	mam    mam
-	rng    peripherals.RNG
-	timer  peripherals.Timer
-	timer2 peripherals.Timer2
-	fpu    fpu.FPU
+	mam  mam
+	rng  rng.RNG
+	t1   timer.Timer
+	tim2 timer.Timer
+	fpu  fpu.FPU
 
 	// the PC of the opcode being processed and the PC of the instruction being
 	// executed
@@ -339,9 +340,13 @@ func NewARM(env *environment.Environment, mmap architecture.Map, mem SharedMemor
 	}
 
 	arm.state.mam = newMam(arm.env, arm.mmap)
-	arm.state.rng = peripherals.NewRNG(arm.env, arm.mmap)
-	arm.state.timer = peripherals.NewTimer(arm.mmap)
-	arm.state.timer2 = peripherals.NewTimer2(arm.mmap)
+	arm.state.rng = rng.NewRNG(arm.env, arm.mmap)
+	if arm.mmap.HasT1 {
+		arm.state.t1 = timer.NewT1(arm.mmap)
+	}
+	if arm.mmap.HasTIM2 {
+		arm.state.tim2 = timer.NewTIM2(arm.mmap)
+	}
 
 	// by definition the ARM starts in a program ended state
 	arm.state.yield.Type = coprocessor.YieldProgramEnded
@@ -426,11 +431,11 @@ func (arm *ARM) resetPeripherals() {
 	if arm.mmap.HasRNG {
 		arm.state.rng.Reset()
 	}
-	if arm.mmap.HasT1 {
-		arm.state.timer.Reset()
+	if arm.state.t1 != nil {
+		arm.state.t1.Reset()
 	}
-	if arm.mmap.HasTIM2 {
-		arm.state.timer2.Reset()
+	if arm.state.tim2 != nil {
+		arm.state.tim2.Reset()
 	}
 }
 
@@ -524,24 +529,17 @@ func (arm *ARM) Step(vcsClock float32) {
 }
 
 func (arm *ARM) clock(cycles float32) {
-	// timer devices use the peripheral clock (PLCK) rather than the clock of
-	// the processor (CCLK) directly. the ClkDiv value scales the incoming
-	// number cycles
-	cycles /= arm.mmap.ClkDiv
+	// the timer uses the peripheral clock (PCLK) rather the processor clock
+	// (CCLK). the number of cycles is therefore divided by CLKDIV (contained in
+	// the architecture.Map for the processor) but we defer that division until
+	// later
 
-	// add accumulated cycles (ClkDiv has already been applied to this
-	// additional value)
-	cycles += arm.state.accumulatedCycles
-
-	// isolate integer and fractional part and save fraction for next clock()
-	i, f := math.Modf(float64(cycles))
-	arm.state.accumulatedCycles = float32(f)
-
-	if arm.mmap.HasT1 {
-		arm.state.timer.Step(uint32(i))
+	if arm.state.t1 != nil {
+		arm.state.t1.Step(cycles)
 	}
-	if arm.mmap.HasTIM2 {
-		arm.state.timer2.Step(uint32(i))
+
+	if arm.state.tim2 != nil {
+		arm.state.tim2.Step(cycles)
 	}
 }
 
@@ -652,9 +650,14 @@ func (arm *ARM) ProcessProfiling() {
 func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 	if arm.dev != nil {
 		defer func() {
+			// make sure T1 is up to date
+			if arm.state.t1 != nil {
+				arm.state.t1.Resolve()
+			}
+
 			// make sure TIM2 is up to date
-			if arm.mmap.HasTIM2 {
-				arm.state.timer2.ResolveDeferredCycles()
+			if arm.state.tim2 != nil {
+				arm.state.tim2.Resolve()
 			}
 
 			// breakpoints handle OnYield slightly differently
