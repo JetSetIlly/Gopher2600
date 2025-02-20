@@ -827,7 +827,7 @@ func (tv *Television) newFrame() error {
 			// see comment below about nullifying signals at the end of the frame
 			tv.signals[i] = signal.SignalAttributes{
 				Index: signal.NoSignal,
-				Color: signal.VideoBlack,
+				Color: signal.ZeroBlack,
 			}
 		}
 
@@ -865,7 +865,7 @@ func (tv *Television) newFrame() error {
 		// the entire entry
 		tv.signals[i] = signal.SignalAttributes{
 			Index: signal.NoSignal,
-			Color: signal.VideoBlack,
+			Color: signal.ZeroBlack,
 		}
 	}
 

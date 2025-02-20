@@ -565,14 +565,13 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister, ct int) {
 	// resolve video pixels
 	tia.Video.Pixel()
 	if tia.Hblank {
-		// if hblank is on then we don't sent the resolved color but the video
-		// black signal instead
+		// if hblank is on then we don't sent the resolved color but the
+		// zeroblack signal instead
 		//
-		// we should probably send VideoBlack in the case of VBLANK but for
-		// historic reasons (to do with how we handle debug colours) we leave
-		// it up to PixelRenderer implementations to switch to VideoBlack on
-		// VBLANK.
-		tia.sig.Color = signal.VideoBlack
+		// we should probably send ZeroBlack in the case of VBLANK but for
+		// historic reasons (to do with how we handle debug colours) we leave it
+		// up to PixelRenderer implementations to switch to ZeroBlack on VBLANK.
+		tia.sig.Color = signal.ZeroBlack
 	} else {
 		tia.sig.Color = signal.ColorSignal(tia.Video.PixelColor)
 	}
@@ -751,14 +750,13 @@ func (tia *TIA) QuickStep(ct int) {
 	// resolve video pixels
 	tia.Video.Pixel()
 	if tia.Hblank {
-		// if hblank is on then we don't sent the resolved color but the video
-		// black signal instead
+		// if hblank is on then we don't sent the resolved color but the
+		// zeroblack signal instead
 		//
-		// we should probably send VideoBlack in the case of VBLANK but for
-		// historic reasons (to do with how we handle debug colours) we leave
-		// it up to PixelRenderer implementations to switch to VideoBlack on
-		// VBLANK.
-		tia.sig.Color = signal.VideoBlack
+		// we should probably send ZeroBlack in the case of VBLANK too but for
+		// historic reasons (to do with how we handle debug colours) we leave it
+		// up to PixelRenderer implementations to switch to ZeroBlack on VBLANK.
+		tia.sig.Color = signal.ZeroBlack
 	} else {
 		tia.sig.Color = signal.ColorSignal(tia.Video.PixelColor & 0xfe)
 	}

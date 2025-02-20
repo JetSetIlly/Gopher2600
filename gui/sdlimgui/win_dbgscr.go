@@ -615,8 +615,8 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
 		var px signal.ColorSignal
 		var label string
-		if (ref.IsHblank || ref.Signal.VBlank || px == signal.VideoBlack) && !win.elements {
-			px = signal.VideoBlack
+		if (ref.IsHblank || ref.Signal.VBlank || px == signal.ZeroBlack) && !win.elements {
+			px = signal.ZeroBlack
 			label = "No color signal"
 		} else {
 			px = ref.Signal.Color

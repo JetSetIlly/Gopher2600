@@ -35,9 +35,10 @@ type entry struct {
 // television systems
 type ColourGen struct {
 	// cached colour entries. used for legacy and non-legacy colour models
-	ntsc  []entry
-	pal   []entry
-	secam []entry
+	ntsc      []entry
+	pal       []entry
+	secam     []entry
+	zeroBlack entry
 
 	dsk *prefs.Disk
 
@@ -119,6 +120,7 @@ func NewColourGen() (*ColourGen, error) {
 		clear(c.ntsc)
 		clear(c.pal)
 		clear(c.secam)
+		c.zeroBlack.generated = false
 		return nil
 	}
 
@@ -138,6 +140,7 @@ func NewColourGen() (*ColourGen, error) {
 	}
 	c.NTSCPhase.SetHookPost(func(_ prefs.Value) error {
 		clear(c.ntsc)
+		c.zeroBlack.generated = false
 		return nil
 	})
 
@@ -147,6 +150,7 @@ func NewColourGen() (*ColourGen, error) {
 	}
 	c.PALPhase.SetHookPost(func(_ prefs.Value) error {
 		clear(c.pal)
+		c.zeroBlack.generated = false
 		return nil
 	})
 
@@ -260,9 +264,6 @@ func (c *ColourGen) Save() error {
 	return c.dsk.Save()
 }
 
-// VideoBlack is the color produced by a television in the absence of a color signal
-var VideoBlack = color.RGBA{0, 0, 0, 255}
-
 func clamp(v float64) float64 {
 	if v < 0.0 {
 		return 0.0
@@ -273,12 +274,57 @@ func clamp(v float64) float64 {
 	return v
 }
 
+// the black level for a ZeroBlank signal
+const zeroBlack = 0.0
+
+// there are some RGB mods that output 7.5 IRE for "black" and 0.0 for ZeroBlank. we
+// don't emulate that difference yet. if we did it would complicate handling of
+// the legacy palettes a little bit
+//
+// Note that according to the NTSC standard videoBlack should be 0.075 (7.5 IRE)
+// but the 2600 does not seem to output that value
+//
+// IRE levels taken from https://en.wikipedia.org/w/index.php?title=NTSC&oldid=1274410783
+//
+// # PAL Video Black is 0.0 IRE I believe which simplifies things for us
+//
+// a great example of a ROM that uses ZeroBlack as a shortcut for VideoBlack
+// (ie. it enabled VBLANK instead of dealing with colour registers) is the CDFJ
+// game Boom, by Chris Walton. in this game the bouncing AtariAge logo at the
+// beginning of the is bounded by a VBLANK "box"
+const videoBlack = zeroBlack
+
+func (c *ColourGen) generateZeroBlack() color.RGBA {
+	if c.zeroBlack.generated {
+		return c.zeroBlack.col
+	}
+
+	legacy := c.Legacy.Get().(bool)
+
+	var Y float64
+
+	if legacy {
+		Y, _, _ = c.LegacyModel.Adjust.yiq(videoBlack, 0, 0)
+	} else {
+		Y, _, _ = c.Adjust.yiq(videoBlack, 0, 0)
+	}
+
+	y := uint8(clamp(Y) * 255)
+	c.zeroBlack.col = color.RGBA{R: y, G: y, B: y, A: 255}
+	c.zeroBlack.generated = true
+
+	if legacy {
+		c.zeroBlack.col = c.gammaCorrectRGB(c.zeroBlack.col)
+	}
+
+	return c.zeroBlack.col
+}
+
 // GenerateNTSC creates the RGB values for the ColorSignal using the current
 // colour generation preferences and for the NTSC television system
 func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
-	// the video black signal is special and is never cached
-	if col == signal.VideoBlack {
-		return VideoBlack
+	if col == signal.ZeroBlack {
+		return c.generateZeroBlack()
 	}
 
 	idx := uint8(col) >> 1
@@ -307,14 +353,17 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 	// only the luminance is used, producing a grayscale
 	if hue == 0x00 {
 		if lum == 0.0 {
-			Y = blackLevel
+			Y = videoBlack
 		} else {
 			Y = float64(lum) / 8
 		}
+
 		Y, _, _ = c.Adjust.yiq(Y, 0, 0)
 		y := uint8(clamp(Y) * 255)
+
 		c.ntsc[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
 		c.ntsc[idx].generated = true
+
 		return c.ntsc[idx].col
 	}
 
@@ -419,9 +468,8 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 // GeneratePAL creates the RGB values for the ColorSignal using the current
 // colour generation preferences and for the PAL television system
 func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
-	// the video black signal is special and is never cached
-	if col == signal.VideoBlack {
-		return VideoBlack
+	if col == signal.ZeroBlack {
+		return c.generateZeroBlack()
 	}
 
 	idx := uint8(col) >> 1
@@ -449,14 +497,17 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	// PAL creates a grayscale for hues 0, 1, 14 and 15
 	if hue <= 0x01 || hue >= 0x0e {
 		if lum == 0.0 {
-			Y = blackLevel
+			Y = videoBlack
 		} else {
 			Y = float64(lum) / 8
 		}
+
 		Y, _, _ = c.Adjust.yuv(Y, 0, 0)
 		y := uint8(clamp(Y) * 255)
+
 		c.pal[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
 		c.pal[idx].generated = true
+
 		return c.pal[idx].col
 	}
 
@@ -533,9 +584,8 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 }
 
 func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
-	// the video black signal is special and is never cached
-	if col == signal.VideoBlack {
-		return VideoBlack
+	if col == signal.ZeroBlack {
+		return c.generateZeroBlack()
 	}
 
 	idx := uint8(col) >> 1
@@ -564,7 +614,9 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
 
 	// special treatment of a lum value of zero
 	if lum == 0 {
-		c.secam[idx].col = color.RGBA{A: 255}
+		Y, _, _ := c.Adjust.yiq(videoBlack, 0, 0)
+		y := uint8(clamp(Y) * 255)
+		c.secam[idx].col = color.RGBA{R: y, G: y, B: y, A: 255}
 		c.secam[idx].generated = true
 		return c.secam[idx].col
 	}

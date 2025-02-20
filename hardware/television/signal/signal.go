@@ -28,10 +28,16 @@ import (
 // it would arguably be more correct
 type ColorSignal uint8
 
-// VideoBlack is the ColorSignal value that indicates no pixel is being output.
-// This is only possible because the least-significant bit is not used in the
-// colour signal from the 2600 (it has been masked away)
-const VideoBlack ColorSignal = 0xff
+// ZeroBlack is the ColorSignal value that indicates no pixel is being output.
+// It is what is output when VBLANK is active.
+//
+// The value of 0xff takes advantage of the fact that least-significant bit is
+// not used in the colour signal from the 2600 (it has been masked away)
+//
+// the colourgen package handles the convertion of the ZeroBlack signal into a
+// visible colour. As the name suggests the value of "zero black" should be 0.0
+// IRE regardless of the value of "video black"
+const ZeroBlack ColorSignal = 0xff
 
 // Index value to indicate that the signal is invalid
 const NoSignal = -1
@@ -39,7 +45,7 @@ const NoSignal = -1
 // SignalAttributes represents the data sent to the television
 //
 // When reset the Index field should be set to NoSignal and the Color field
-// should be set to VideoBlack
+// should be set to ZeroBlack
 type SignalAttributes struct {
 	Index  int
 	VSync  bool

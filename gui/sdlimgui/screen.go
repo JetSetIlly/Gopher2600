@@ -648,7 +648,7 @@ func (scr *screen) generatePresentationPixels(idx int) {
 		// handle VBLANK by setting pixels to black. we also manually handle
 		// NoSignal in the same way
 		if sig[i].VBlank || sig[i].Index == signal.NoSignal {
-			col = scr.crit.frameInfo.Spec.GetColor(signal.VideoBlack)
+			col = scr.crit.frameInfo.Spec.GetColor(signal.ZeroBlack)
 		} else {
 			col = scr.crit.frameInfo.Spec.GetColor(sig[i].Color)
 		}

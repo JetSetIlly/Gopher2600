@@ -134,7 +134,7 @@ func (obs *observer) SetPixels(sig []signal.SignalAttributes, last int) error {
 		// handle VBLANK by setting pixels to black. we also manually handle
 		// NoSignal in the same way
 		if sig[i].VBlank || sig[i].Index == signal.NoSignal {
-			col = obs.frameInfo.Spec.GetColor(signal.VideoBlack)
+			col = obs.frameInfo.Spec.GetColor(signal.ZeroBlack)
 		} else {
 			col = obs.frameInfo.Spec.GetColor(sig[i].Color)
 		}

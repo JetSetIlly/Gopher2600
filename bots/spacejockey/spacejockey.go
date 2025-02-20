@@ -29,7 +29,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
-	"github.com/jetsetilly/gopher2600/hardware/television/colourgen"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -104,7 +103,7 @@ func (obs *observer) SetPixels(sig []signal.SignalAttributes, last int) error {
 		// handle VBLANK by setting pixels to black. we also manually handle
 		// NoSignal in the same way
 		if sig[i].VBlank || sig[i].Index == signal.NoSignal {
-			col = obs.frameInfo.Spec.GetColor(signal.VideoBlack)
+			col = obs.frameInfo.Spec.GetColor(signal.ZeroBlack)
 		} else {
 			col = obs.frameInfo.Spec.GetColor(sig[i].Color)
 		}
@@ -160,10 +159,12 @@ func (bot *spaceJockeyBot) findEnemy() int {
 	bot.findEnemyImage = image.NewRGBA(enemyWindow)
 	draw.Draw(bot.findEnemyImage, enemyWindow, bot.image.SubImage(enemyWindow), enemyWindow.Min, draw.Src)
 
+	zeroBlack := bot.obs.frameInfo.Spec.GetColor(signal.ZeroBlack)
+
 	for y := enemyWindow.Min.Y; y < enemyWindow.Max.Y; y++ {
 		ct := 0
 		for x := enemyWindow.Min.X; x < enemyWindow.Max.X; x++ {
-			if bot.findEnemyImage.At(x, y) != colourgen.VideoBlack {
+			if bot.findEnemyImage.At(x, y) != zeroBlack {
 				ct++
 			}
 

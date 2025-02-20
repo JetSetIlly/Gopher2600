@@ -32,15 +32,11 @@ func clampRange(v float64, mn float64, mx float64) float64 {
 	return v
 }
 
-// mininmum/maximum values for Y component
-//
-// IRE levels taken from https://en.wikipedia.org/w/index.php?title=NTSC&oldid=1274410783
-const (
-	blackLevel = 0.075
-	whiteLevel = 1.00
-)
-
 func adjustYIQ(Y, I, Q float64, brightness, contrast, saturation, hue float64) (float64, float64, float64) {
+	// the black level cap for contrast adjustment. we're using a value
+	// equivalent to 7.5 IRE for this
+	const blackLevel = 0.00
+
 	// C = contrast
 	// YIQ * |  C   0   0  |
 	//       |  0   1   0  |
@@ -48,7 +44,7 @@ func adjustYIQ(Y, I, Q float64, brightness, contrast, saturation, hue float64) (
 	Y = blackLevel + (Y-blackLevel)*contrast
 
 	// B = brightness
-	// YIQ * |  B   0   0  |
+	// YIQ + |  B   0   0  |
 	//       |  0   1   0  |
 	//       |  0   0   1  |
 	Y += (brightness - 1.0)
