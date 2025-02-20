@@ -538,9 +538,9 @@ func (cart *cdf) Step(clock float32) {
 		if cart.arm.ImmediateMode() {
 			cart.arm.Step(clock)
 		} else {
-			timerClock := cart.state.callfn.Step(clock, cart.arm.Clk)
-			if timerClock > 0 {
-				cart.arm.Step(timerClock)
+			r := cart.state.callfn.Step(clock, cart.arm.Clk)
+			if r > 0 {
+				cart.arm.Step(r)
 			}
 		}
 

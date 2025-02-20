@@ -20,6 +20,9 @@ import (
 )
 
 // T1 implements a simple timer as used in the LCP2000.
+//
+// An example of a game that uses T1 is Draconian. It uses it to test what spec
+// the console is (NTSC, PAL, etc.)
 type T1 struct {
 	mmap    architecture.Map
 	cycles  cycles

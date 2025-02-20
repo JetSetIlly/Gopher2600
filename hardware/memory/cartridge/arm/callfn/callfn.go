@@ -22,6 +22,8 @@
 package callfn
 
 import (
+	"math"
+
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -141,33 +143,23 @@ func (cf *CallFn) Accumulate(cycles float32) {
 	// cap did not exist.
 }
 
-// Step forward one clock. Returns true if the ARM program is running and false
-// otherwise.
+// Step forward one clock. Returns 0 or a value that should be used to call
+// arm.Step()
 //
-// Returns 0 or the adjusted clock speed to be passed to the ARM.Step()
-// function.
-//
-// CallFn.IsActive() should have been checked before calling this function.
-//
-// Also consider whether the function needs to be called at all - the ARM
-// emulation might be in immediate mode
+// callfn.IsActive() should have been checked before calling this function. Also
+// consider whether the function needs to be called at all - the ARM emulation
+// might be in immediate mode
 func (cf *CallFn) Step(vcsClock float32, armClock float32) float32 {
 	// number of arm cycles consumed for every colour clock
 	armCycles := float32(armClock / vcsClock)
 
-	// consume whatever the remaining cycles is. returning true because this stil takes
-	// one VCS clock
-	//
-	// for a long time this branch returned false, meaning that the remaining
-	// number of ARM cycles were not counted if that number was less than the
-	// number possible in a single VCS clock
-	if cf.remainingCycles <= armCycles {
-		remnantClock := float32(int(armClock / (armCycles - cf.remainingCycles)))
-		cf.remainingCycles = 0
-		return remnantClock
+	if cf.remainingCycles > armCycles {
+		cf.remainingCycles -= armCycles
+		return 0
 	}
 
-	cf.remainingCycles -= armCycles
+	remnantClock, _ := math.Modf(float64(armClock / (armCycles - cf.remainingCycles)))
+	cf.remainingCycles = 0
 
-	return 0
+	return float32(remnantClock)
 }
