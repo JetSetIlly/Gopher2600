@@ -543,10 +543,9 @@ func (cart *Cartridge) fingerprint(loader cartridgeloader.Loader) (string, error
 	case 8192:
 		return fingerprint8k(loader), nil
 
-	case 10240:
-		fallthrough
-
-	case 10495:
+	case 10240, 10495, 10496:
+		// 10240 is the ideal size of a Pitfall2 dump. 10495 and 10496 are both
+		// sizes of actual dumps of the cartridge
 		return "DPC", nil
 
 	case 12288:

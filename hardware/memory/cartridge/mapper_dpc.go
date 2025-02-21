@@ -64,6 +64,9 @@ func newDPC(env *environment.Environment, loader cartridgeloader.Loader) (mapper
 
 	cart.banks = make([][]uint8, cart.NumBanks())
 
+	// this is a minimum length check because the common dumps contain more than 10240 bytes.
+	// any extra data is random data from the cartridges RNG
+	// https://forums.bannister.org/ubbthreads.php?ubb=showflat&Number=123431
 	if len(data) < cart.bankSize*cart.NumBanks()+staticSize {
 		return nil, fmt.Errorf("DPC: wrong number of bytes in the cartridge data")
 	}
@@ -74,10 +77,12 @@ func newDPC(env *environment.Environment, loader cartridgeloader.Loader) (mapper
 		cart.banks[k] = data[offset : offset+cart.bankSize]
 	}
 
-	// copy some data into the static area of the DPC state structure
+	// copy 2k of data into the static area of the DPC state structure
 	staticStart := cart.NumBanks() * cart.bankSize
 	cart.state.static.data = make([]byte, staticSize)
 	copy(cart.state.static.data, data[staticStart:staticStart+staticSize])
+
+	// any remaining data in the file is literally random data from the dumping process
 
 	return cart, nil
 }
@@ -110,13 +115,26 @@ func (cart *dpc) Reset() {
 	cart.SetBank("AUTO")
 }
 
+// the RNG should be pumped every time the CS (cartridge select) signal is
+// active. this by definition means that the rngPump() function should be called
+// on every call to Access() and to AccessVolatile()
+func (cart *dpc) rngPump() {
+	// rng description in patent [col 7, ln 58-62, fig 8]
+	v := ((cart.state.registers.RNG>>3)&0x01 ^ (cart.state.registers.RNG>>4)&0x01 ^ (cart.state.registers.RNG>>5)&0x01 ^ (cart.state.registers.RNG>>7)&0x01) ^ 0x01
+	cart.state.registers.RNG <<= 1
+	cart.state.registers.RNG |= v
+
+	// we don't want RNG to ever equal 0xff, which so long as the reset value is
+	// not 0xff it never will be. we could have a check here to make sure the
+	// value remains valid but I'm convinced it'll never happen
+}
+
 // Access implements the mapper.CartMapper interface.
 func (cart *dpc) Access(addr uint16, peek bool) (uint8, uint8, error) {
-	var data uint8
+	// the RNG is pumped every time a cartridge address is selected
+	cart.rngPump()
 
-	// chip select is active by definition when read() is called. pump RNG [col 7, ln 58-62, fig 8]
-	cart.state.registers.RNG |= (cart.state.registers.RNG>>3)&0x01 ^ (cart.state.registers.RNG>>4)&0x01 ^ (cart.state.registers.RNG>>5)&0x01 ^ (cart.state.registers.RNG>>7)&0x01
-	cart.state.registers.RNG <<= 1
+	var data uint8
 
 	// bankswitch on hotspot access
 	if !peek {
@@ -225,6 +243,9 @@ func (cart *dpc) Access(addr uint16, peek bool) (uint8, uint8, error) {
 
 // AccessVolatile implements the mapper.CartMapper interface.
 func (cart *dpc) AccessVolatile(addr uint16, data uint8, poke bool) error {
+	// the RNG is pumped every time a cartridge address is selected
+	cart.rngPump()
+
 	if !poke {
 		if cart.bankswitch(addr) {
 			return nil
@@ -266,8 +287,10 @@ func (cart *dpc) AccessVolatile(addr uint16, data uint8, poke bool) error {
 			cart.state.registers.Fetcher[f].OSCclock = data&0x20 == 0x20
 		}
 	} else if addr >= 0x0070 && addr <= 0x0077 {
-		// reset random number generator
-		cart.state.registers.RNG = 0xff
+		// reset random number generator. a reset value of 0xff is not good
+		// because that will cause the pump algorithm to produce an endless
+		// sequence of 0xff values
+		cart.state.registers.RNG = 0x00
 	} else {
 		if poke {
 			cart.banks[cart.state.bank][addr] = data
@@ -642,7 +665,12 @@ func (r *DPCregisters) reset(rand *random.Random) {
 	}
 
 	if rand != nil {
-		r.RNG = uint8(rand.NoRewind(0xff))
+		// reset random number generator. a reset value of 0xff is not good
+		// because that will cause the pump algorithm to produce an endless
+		// sequence of 0xff values
+		//
+		// this is why we call rand.NoRewind() with a value of 0xfe
+		r.RNG = uint8(rand.NoRewind(0xfe))
 	} else {
 		r.RNG = 0
 	}
