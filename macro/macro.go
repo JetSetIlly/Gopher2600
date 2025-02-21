@@ -27,6 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/userinput"
 )
@@ -42,7 +43,7 @@ type Input interface {
 
 type TV interface {
 	AddFrameTrigger(f television.FrameTrigger)
-	GetFrameInfo() television.FrameInfo
+	GetFrameInfo() frameinfo.Current
 }
 
 type GUI interface {
@@ -521,7 +522,7 @@ func (mcr *Macro) Reset() {
 }
 
 // NewFrame implements the television.FrameTrigger interface
-func (mcr *Macro) NewFrame(frameInfo television.FrameInfo) error {
+func (mcr *Macro) NewFrame(frameInfo frameinfo.Current) error {
 	// drain any frameNum channel before pushing a new value
 	select {
 	case <-mcr.frameNum:

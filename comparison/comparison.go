@@ -28,6 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/notifications"
@@ -38,7 +39,7 @@ import (
 type Comparison struct {
 	VCS *hardware.VCS
 
-	frameInfo television.FrameInfo
+	frameInfo frameinfo.Current
 
 	img         *image.RGBA
 	cropImg     *image.RGBA
@@ -75,7 +76,7 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 
 	// create a new television. this will be used during the initialisation of
 	// the VCS and not referred to directly again
-	tv, err := television.NewTelevision(driverVCS.TV.GetCreationSpecID())
+	tv, err := television.NewTelevision(driverVCS.TV.GetResetSpecID())
 	if err != nil {
 		return nil, fmt.Errorf("comparison: %w", err)
 	}
@@ -93,7 +94,7 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 	cmp.diffImg = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 
 	// start with a NTSC television as default
-	cmp.Resize(television.NewFrameInfo(specification.SpecNTSC))
+	cmp.Resize(frameinfo.NewCurrent(specification.SpecNTSC))
 	cmp.Reset()
 
 	// create driver
@@ -186,7 +187,7 @@ func (cmp *Comparison) CreateFromLoader(cartload cartridgeloader.Loader) error {
 		}()
 
 		// not using setup system to attach cartridge. maybe we should?
-		err := cmp.VCS.AttachCartridge(cartload, true)
+		err := cmp.VCS.AttachCartridge(cartload)
 		if err != nil {
 			cmp.driver.quit <- err
 			return
@@ -234,7 +235,7 @@ func (cmp *Comparison) CreateFromLoader(cartload cartridgeloader.Loader) error {
 }
 
 // Resize implements the television.PixelRenderer interface.
-func (cmp *Comparison) Resize(frameInfo television.FrameInfo) error {
+func (cmp *Comparison) Resize(frameInfo frameinfo.Current) error {
 	cmp.frameInfo = frameInfo
 	crop := cmp.frameInfo.Crop()
 	cmp.cropImg = cmp.img.SubImage(crop).(*image.RGBA)
@@ -244,7 +245,7 @@ func (cmp *Comparison) Resize(frameInfo television.FrameInfo) error {
 }
 
 // NewFrame implements the television.PixelRenderer interface.
-func (cmp *Comparison) NewFrame(frameInfo television.FrameInfo) error {
+func (cmp *Comparison) NewFrame(frameInfo frameinfo.Current) error {
 	cmp.frameInfo = frameInfo
 
 	img := *cmp.cropImg

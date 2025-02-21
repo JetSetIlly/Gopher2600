@@ -29,15 +29,15 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // TV is the interface from the developer type to the television implementation.
 type TV interface {
-	GetFrameInfo() television.FrameInfo
+	GetFrameInfo() frameinfo.Current
 	GetCoords() coords.TelevisionCoords
 	GetLastSignal() signal.SignalAttributes
 }
@@ -216,7 +216,7 @@ func (dev *Developer) HasSource() bool {
 const maxWaitUpdateTime = 60 // in frames
 
 // NewFrame implements the television.FrameTrigger interface.
-func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
+func (dev *Developer) NewFrame(frameInfo frameinfo.Current) error {
 	// only update FrameCycles if new frame was caused by a VSYNC or we've
 	// waited long enough since the last update
 	dev.framesSinceLastUpdate++

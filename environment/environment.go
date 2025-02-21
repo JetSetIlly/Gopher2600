@@ -19,6 +19,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/random"
@@ -33,8 +34,7 @@ const MainEmulation = Label("main")
 // Television interface exposing a minimum amount of the real television
 // implementation
 type Television interface {
-	GetSpecID() string
-	GetReqSpecID() string
+	GetFrameInfo() frameinfo.Current
 	SetRotation(specification.Rotation)
 	GetCoords() coords.TelevisionCoords
 }

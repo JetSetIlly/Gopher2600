@@ -28,12 +28,12 @@ import (
 )
 
 // SpecList is the list of specifications that the television may adopt.
-var SpecList = []string{"NTSC", "PAL", "PAL-M", "SECAM"}
+var SpecList = []string{"NTSC", "PAL", "PAL60", "PAL-M", "SECAM"}
 
 // ReqSpecList is the list of specifications that can be requested. This is
 // different to the actual spec list in that it includes "PAL60" and "AUTO" as
 // an option
-var ReqSpecList = slices.Concat([]string{"AUTO"}, SpecList, []string{"PAL60"})
+var ReqSpecList = slices.Concat([]string{"AUTO"}, SpecList)
 
 // NormaliseReqSpecID converts the ID string such that it is one of the values
 // in ReqSpecList. If the ID is not in ReqSpecList then false is returned.
@@ -73,10 +73,14 @@ func SearchReqSpec(s string) string {
 	// trim file extension to avoid any remote possibility of a false match
 	s = strings.TrimSuffix(s, filepath.Ext(s))
 
+	// normalise the string being searched
 	s = strings.ToUpper(s)
-	for _, spec := range ReqSpecList {
-		// searching from the end because spec directives usually appear at the
-		// end of a string
+
+	// searching backwards so that PAL is not matched with PAL60 (PAL60 appears
+	// after PAL in ReqSpecList)
+	for _, spec := range slices.Backward(ReqSpecList) {
+
+		// LastIndex() because spec directives usually appear at the end of a string
 		n := strings.LastIndex(s, spec)
 
 		// ignore any matches at the beginning of the filename to reduce
@@ -232,6 +236,11 @@ var SpecNTSC Spec
 // SpecPAL is the specification for PAL television type
 var SpecPAL Spec
 
+// SpecPAL60 is the specification for PAL60 television type. PAL60 isn't really
+// a specification at all, it really only describes a PAL specification but with
+// NTSC refresh rate and NTSC sizing rules
+var SpecPAL60 Spec
+
 // SpecPAL_M is the specification for PALM television type
 var SpecPAL_M Spec
 
@@ -277,6 +286,21 @@ func init() {
 	SpecPAL.RefreshRate = SpecPAL.HorizontalScanRate / float32(SpecPAL.ScanlinesTotal)
 	SpecPAL.AtariSafeVisibleTop = SpecPAL.ScanlinesVBlank + SpecPAL.ScanlinesVSync
 	SpecPAL.AtariSafeVisibleBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesOverscan
+
+	SpecPAL60 = Spec{
+		ID:                 "PAL60",
+		HorizontalScanRate: 15625.00,
+		ScanlinesVSync:     3,
+		ScanlinesVBlank:    37,
+		ScanlinesVisible:   192,
+		ScanlinesOverscan:  30,
+		ScanlinesTotal:     262,
+		RefreshRate:        60.0,
+		colourGen:          ColourGen.GeneratePAL,
+	}
+	SpecPAL60.RefreshRate = SpecNTSC.HorizontalScanRate / float32(SpecNTSC.ScanlinesTotal)
+	SpecPAL60.AtariSafeVisibleTop = SpecNTSC.ScanlinesVBlank + SpecNTSC.ScanlinesVSync
+	SpecPAL60.AtariSafeVisibleBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.ScanlinesOverscan
 
 	SpecPAL_M = Spec{
 		ID:                 "PAL-M",
@@ -327,11 +351,15 @@ func init() {
 	SpecPAL_M.IdealVisibleTop = SpecPAL_M.AtariSafeVisibleTop - 11
 	SpecPAL_M.IdealVisibleBottom = SpecPAL_M.AtariSafeVisibleBottom + 10
 
-	// PAL and SECAM are the same as the atari safe values
+	// we'll treat PAL60 the as NTSC for sizing purposes
+	SpecPAL60.IdealVisibleTop = SpecPAL60.AtariSafeVisibleTop - 11
+	SpecPAL60.IdealVisibleBottom = SpecPAL60.AtariSafeVisibleBottom + 10
+
+	// ideal values for PAL and SECAM are the same as the atari safe values
 	SpecPAL.IdealVisibleTop = SpecPAL.AtariSafeVisibleTop
 	SpecPAL.IdealVisibleBottom = SpecPAL.AtariSafeVisibleBottom
-	SpecSECAM.IdealVisibleTop = SpecPAL.AtariSafeVisibleTop
-	SpecSECAM.IdealVisibleBottom = SpecPAL.AtariSafeVisibleBottom
+	SpecSECAM.IdealVisibleTop = SpecSECAM.AtariSafeVisibleTop
+	SpecSECAM.IdealVisibleBottom = SpecSECAM.AtariSafeVisibleBottom
 
 	// extended values:
 	// - NTSC: Spike's Peak likes a bottom scanline of 250
@@ -340,8 +368,11 @@ func init() {
 	SpecNTSC.ExtendedVisibleBottom = 250
 	SpecPAL.ExtendedVisibleTop = 30
 	SpecPAL.ExtendedVisibleBottom = 305
+	SpecPAL60.ExtendedVisibleTop = 23
+	SpecPAL60.ExtendedVisibleBottom = 250
 	SpecPAL_M.ExtendedVisibleTop = 20
 	SpecPAL_M.ExtendedVisibleBottom = 249
 	SpecSECAM.ExtendedVisibleTop = 30
 	SpecSECAM.ExtendedVisibleBottom = 299
+
 }

@@ -25,7 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -96,7 +96,7 @@ func (tv *coProcProfilingTV) scheduleReset(set bool) {
 }
 
 // NewFrame implements the television.FrameTrigger interface.
-func (tv *coProcProfilingTV) NewFrame(_ television.FrameInfo) error {
+func (tv *coProcProfilingTV) NewFrame(_ frameinfo.Current) error {
 	// this code is running in the emulator goroutine and NOT the GUI goroutine
 	if tv.schedule.Load().(bool) {
 		tv.schedule.Store(false)

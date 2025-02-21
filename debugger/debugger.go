@@ -365,7 +365,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	}
 
 	// create preview emulation
-	dbg.preview, err = preview.NewEmulation(dbg.vcs.Env.Prefs)
+	dbg.preview, err = preview.NewEmulation(dbg.vcs.Env.Prefs, tv.GetResetSpecID())
 	if err != nil {
 		return nil, fmt.Errorf("debugger: %w", err)
 	}
@@ -1020,6 +1020,7 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 	if err != nil {
 		return err
 	}
+
 	dbg.Rewind.Reset()
 	dbg.Tracker.Reset()
 
@@ -1180,13 +1181,13 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	dbg.cartload = &cartload
 
 	// reset of vcs is implied with attach cartridge
-	err := setup.AttachCartridge(dbg.vcs, cartload, false)
+	err := setup.AttachCartridge(dbg.vcs, cartload)
 	if err != nil && !errors.Is(err, cartridge.Ejected) {
 		logger.Log(logger.Allow, "debugger", err)
 		// an error has occurred so attach the ejected cartridge
 		//
 		// !TODO: a special error cartridge to make it more obvious what has happened
-		if err := setup.AttachCartridge(dbg.vcs, cartridgeloader.Loader{}, true); err != nil {
+		if err := setup.AttachCartridge(dbg.vcs, cartridgeloader.Loader{}); err != nil {
 			return err
 		}
 	}
@@ -1238,7 +1239,9 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	cartload.Seek(0, io.SeekStart)
 
 	// copy resizer from preview to main emulation
-	dbg.vcs.TV.SetSpec(dbg.preview.Results().SpecID, false)
+	if dbg.vcs.TV.IsAutoSpec() {
+		dbg.vcs.TV.SetSpec(dbg.preview.Results().SpecID)
+	}
 	dbg.vcs.TV.SetResizer(dbg.preview.Results().Resizer)
 
 	// activate bot if possible

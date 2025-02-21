@@ -28,7 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/bots/chess/uci"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -65,7 +65,7 @@ var levelIndicator = [...][sha1.Size]byte{
 }
 
 type observer struct {
-	frameInfo     television.FrameInfo
+	frameInfo     frameinfo.Current
 	img           *image.RGBA
 	analysis      chan *image.RGBA
 	audioFeedback chan bool
@@ -78,7 +78,7 @@ func newObserver() *observer {
 		audioFeedback: make(chan bool, 1),
 	}
 
-	obs.Resize(television.NewFrameInfo(specification.SpecNTSC))
+	obs.Resize(frameinfo.NewCurrent(specification.SpecNTSC))
 	obs.Reset()
 
 	return obs
@@ -102,12 +102,12 @@ func (o *observer) EndMixing() error {
 	return nil
 }
 
-func (obs *observer) Resize(frameInfo television.FrameInfo) error {
+func (obs *observer) Resize(frameInfo frameinfo.Current) error {
 	obs.frameInfo = frameInfo
 	return nil
 }
 
-func (obs *observer) NewFrame(frameInfo television.FrameInfo) error {
+func (obs *observer) NewFrame(frameInfo frameinfo.Current) error {
 	obs.frameInfo = frameInfo
 
 	img := *obs.img

@@ -260,7 +260,7 @@ func (cart *Elf) reset() {
 
 	// set arguments for initial execution of ARM program
 	systemType := argSystemType_NTSC
-	switch cart.env.TV.GetReqSpecID() {
+	switch cart.env.TV.GetFrameInfo().Spec.ID {
 	case "NTSC":
 		systemType = argSystemType_NTSC
 	case "PAL":

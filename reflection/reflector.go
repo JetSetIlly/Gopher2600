@@ -21,7 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -135,7 +135,7 @@ func (ref *Reflector) render() error {
 }
 
 // NewFrame implements the television.FrameTrigger interface.
-func (ref *Reflector) NewFrame(_ television.FrameInfo) error {
+func (ref *Reflector) NewFrame(_ frameinfo.Current) error {
 	// nullify unused entries at end of frame
 	//
 	// note that this echoes a similar construct in the television.NewFrame()

@@ -20,6 +20,7 @@ import (
 	"image/color"
 
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -27,7 +28,7 @@ import (
 type driver struct {
 	tv *television.Television
 
-	frameInfo television.FrameInfo
+	frameInfo frameinfo.Current
 
 	img     [2]*image.RGBA
 	cropImg [2]*image.RGBA
@@ -51,14 +52,14 @@ func newDriver(tv *television.Television) driver {
 	drv.img[1] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 
 	// start with a NTSC television as default
-	drv.Resize(television.NewFrameInfo(specification.SpecNTSC))
+	drv.Resize(frameinfo.NewCurrent(specification.SpecNTSC))
 	drv.Reset()
 
 	return drv
 }
 
 // Resize implements the television.PixelRenderer interface.
-func (drv *driver) Resize(frameInfo television.FrameInfo) error {
+func (drv *driver) Resize(frameInfo frameinfo.Current) error {
 	drv.frameInfo = frameInfo
 	crop := image.Rect(
 		specification.ClksHBlank, frameInfo.VisibleTop,
@@ -72,7 +73,7 @@ func (drv *driver) Resize(frameInfo television.FrameInfo) error {
 }
 
 // NewFrame implements the television.PixelRenderer interface.
-func (drv *driver) NewFrame(frameInfo television.FrameInfo) error {
+func (drv *driver) NewFrame(frameInfo frameinfo.Current) error {
 	drv.frameInfo = frameInfo
 	drv.swapIdx = !drv.swapIdx
 

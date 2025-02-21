@@ -34,11 +34,11 @@ type Emulation struct {
 const previewLabel = environment.Label("preview")
 
 // NewEmulation is the preferred method of initialisation for the Emulation type
-func NewEmulation(prefs *preferences.Preferences) (*Emulation, error) {
+func NewEmulation(prefs *preferences.Preferences, spec string) (*Emulation, error) {
 	em := &Emulation{}
 
 	// the VCS and not referred to directly again
-	tv, err := television.NewTelevision("AUTO")
+	tv, err := television.NewTelevision(spec)
 	if err != nil {
 		return nil, fmt.Errorf("preview: %w", err)
 	}
@@ -58,7 +58,7 @@ func (em *Emulation) RunN(loader cartridgeloader.Loader, N int) error {
 	// we don't want the preview emulation to run for too long
 	timeout := time.After(1 * time.Second)
 
-	err := em.vcs.AttachCartridge(loader, true)
+	err := em.vcs.AttachCartridge(loader)
 	if err != nil {
 		return fmt.Errorf("preview: %w", err)
 	}

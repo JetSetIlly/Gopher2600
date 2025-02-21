@@ -31,6 +31,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -47,7 +48,7 @@ type Anim struct {
 	previewResults *preview.Results
 	previewUpdate  chan *preview.Results
 
-	frameInfo television.FrameInfo
+	frameInfo frameinfo.Current
 
 	img     *image.RGBA
 	cropImg *image.RGBA
@@ -101,7 +102,7 @@ func NewAnim(prefs *preferences.Preferences, spec string) (*Anim, error) {
 	thmb.Reset()
 
 	// create preview emulation
-	thmb.preview, err = preview.NewEmulation(thmb.vcs.Env.Prefs)
+	thmb.preview, err = preview.NewEmulation(thmb.vcs.Env.Prefs, spec)
 	if err != nil {
 		return nil, fmt.Errorf("thumbnailer: %w", err)
 	}
@@ -205,7 +206,7 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, spec string, numFrames
 	thmb.monitorInputDelay = 0
 
 	// update TV specification in case it has changed
-	thmb.vcs.TV.SetSpec(spec, false)
+	thmb.vcs.TV.SetSpec(spec)
 
 	// reset function is usually called from the television. we call it here
 	// because it's useful for clearing the image and to put the now empty
@@ -226,7 +227,7 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, spec string, numFrames
 		}
 
 		// attach cartridge using the setup system
-		err := setup.AttachCartridge(thmb.vcs, cartload, true)
+		err := setup.AttachCartridge(thmb.vcs, cartload)
 		if err != nil {
 			logger.Log(logger.Allow, "thumbnailer", err)
 			return
@@ -253,7 +254,7 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, spec string, numFrames
 		// run preview some more in order to get excellent frame information
 		err = thmb.preview.Run(cartload)
 		if err == nil || errors.Is(err, cartridgeloader.NoFilename) {
-			thmb.vcs.TV.SetSpec(thmb.preview.Results().SpecID, false)
+			thmb.vcs.TV.SetSpec(thmb.preview.Results().SpecID)
 			thmb.vcs.TV.SetResizer(thmb.preview.Results().Resizer)
 		}
 
@@ -279,7 +280,7 @@ func (thmb *Anim) Create(cartload cartridgeloader.Loader, spec string, numFrames
 	}()
 }
 
-func (thmb *Anim) resize(frameInfo television.FrameInfo) {
+func (thmb *Anim) resize(frameInfo frameinfo.Current) {
 	if thmb.frameInfo.IsDifferent(frameInfo) {
 		thmb.cropImg = thmb.img.SubImage(frameInfo.Crop()).(*image.RGBA)
 	}
@@ -287,7 +288,7 @@ func (thmb *Anim) resize(frameInfo television.FrameInfo) {
 }
 
 // NewFrame implements the television.PixelRenderer interface
-func (thmb *Anim) NewFrame(frameInfo television.FrameInfo) error {
+func (thmb *Anim) NewFrame(frameInfo frameinfo.Current) error {
 	// act on monitor input
 	if thmb.monitorActive && thmb.monitorInputDelay > 0 {
 		thmb.monitorInputDelay--
@@ -405,7 +406,7 @@ func (thmb *Anim) SetPixels(sig []signal.SignalAttributes, last int) error {
 // Reset implements the television.PixelRenderer interface
 func (thmb *Anim) Reset() {
 	// start with a NTSC television as default
-	thmb.resize(television.NewFrameInfo(specification.SpecNTSC))
+	thmb.resize(frameinfo.NewCurrent(specification.SpecNTSC))
 
 	// clear pixels. setting the alpha channel so we don't have to later (the
 	// alpha channel never changes)

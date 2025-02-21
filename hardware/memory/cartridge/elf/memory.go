@@ -576,7 +576,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 					tgt = mem.relocateStrongArmTable(reverseByteTable)
 
 				case "ColorLookup":
-					switch mem.env.TV.GetSpecID() {
+					switch mem.env.TV.GetFrameInfo().Spec.ID {
 					case "PAL":
 						tgt = mem.relocateStrongArmTable(palColorTable)
 					case "NTSC":

@@ -222,7 +222,7 @@ func (reg *VideoRegression) regress(newRegression bool, messages io.Writer, tag 
 	}
 	defer cartload.Close()
 
-	err = setup.AttachCartridge(vcs, cartload, true)
+	err = setup.AttachCartridge(vcs, cartload)
 	if err != nil {
 		return fmt.Errorf("video: %w", err)
 	}

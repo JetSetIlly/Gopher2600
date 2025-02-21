@@ -1104,7 +1104,7 @@ func (cart *Moviecart) writeJMPaddr(addr uint16, jmpAddr uint16) {
 
 // adjust program to reflect console timing
 func (cart *Moviecart) setConsoleTiming() {
-	id := cart.env.TV.GetSpecID()
+	id := cart.env.TV.GetFrameInfo().Spec.ID
 
 	// do nothing if specification hasn't changed
 	if cart.specID == id {

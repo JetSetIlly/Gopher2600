@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -77,13 +78,13 @@ func (dig *Video) ResetDigest() {
 // digest is immune from changes to the frame resizing method used by the
 // television implementation. Changes to how the specification is flipped might
 // cause comparison failures however.
-func (dig *Video) Resize(frameInfo television.FrameInfo) error {
+func (dig *Video) Resize(frameInfo frameinfo.Current) error {
 	dig.spec = frameInfo.Spec
 	return nil
 }
 
 // NewFrame implements television.PixelRenderer interface.
-func (dig *Video) NewFrame(_ television.FrameInfo) error {
+func (dig *Video) NewFrame(_ frameinfo.Current) error {
 	// chain fingerprints by copying the value of the last fingerprint
 	// to the head of the video data
 	n := copy(dig.pixels, dig.digest[:])

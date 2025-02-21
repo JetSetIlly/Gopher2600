@@ -13,24 +13,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package preview
-
-import (
-	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/hardware/television"
-)
-
-type Results struct {
-	VCS     *hardware.State
-	Resizer television.Resizer
-	SpecID  string
-}
-
-func (em *Emulation) Results() *Results {
-	r := Results{
-		VCS:     em.vcs.Snapshot(),
-		Resizer: em.vcs.TV.GetResizer(),
-		SpecID:  em.vcs.TV.GetFrameInfo().Spec.ID,
-	}
-	return &r
-}
+// Package frameinfo contains the FrameInfo type. This type defines the current
+// state of the television. For example the current TV specification (NTSC, etc.)
+package frameinfo

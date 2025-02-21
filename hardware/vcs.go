@@ -137,19 +137,9 @@ func (vcs *VCS) End() {
 // AttachCartridge to this VCS. While this function can be called directly it
 // is advised that the setup package be used in most circumstances.
 //
-// The emulated VCS is *not* reset after AttachCartridge() unless the reset
-// argument is true.
-//
-// Note that the emulation should always be reset before emulation commences
-// but some applications might need to prepare the emulation further before
-// that happens.
-func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader, reset bool) (rerr error) {
+// The emulated VCS is *not* reset after AttachCartridge()
+func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) (rerr error) {
 	vcs.Env.Loader = cartload
-
-	err := vcs.TV.SetSpec(vcs.Env.Loader.ReqSpec, false)
-	if err != nil {
-		return err
-	}
 
 	if vcs.Env.Loader.Filename == "" {
 		vcs.Mem.Cart.Eject()
@@ -171,11 +161,10 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader, reset bool) (re
 
 	}
 
-	if reset {
-		err = vcs.Reset()
-		if err != nil {
-			return err
-		}
+	// reset machine
+	err := vcs.Reset()
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -192,6 +181,16 @@ func (vcs *VCS) Reset() error {
 	err := vcs.TV.Reset(false)
 	if err != nil {
 		return err
+	}
+
+	// attaching the TV spec is done after a call to tv.Reset(). this happens
+	// even if the cartridge has already been attached because we may reset the
+	// console after ROM selection
+	if vcs.TV.IsAutoSpec() {
+		err = vcs.TV.SetSpec(vcs.Env.Loader.ReqSpec)
+		if err != nil {
+			return err
+		}
 	}
 
 	// easiest way of resetting the TIA is to just create new one

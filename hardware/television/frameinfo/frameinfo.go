@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package television
+package frameinfo
 
 import (
 	"fmt"
@@ -22,9 +22,9 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
-// FrameInfo records the current frame information, as opposed to the optimal
+// Current records the current frame information, as opposed to the optimal
 // values of the specification.
-type FrameInfo struct {
+type Current struct {
 	// a copy of the television Spec that is considered to be in action. All
 	// fields with the exception of ID, Colors and HorizontalScanRate may have
 	// been superceded by values in the FrameInfo field. But they are good to
@@ -101,16 +101,16 @@ type FrameInfo struct {
 	VBLANKunstable bool
 }
 
-// NewFrameInfo returns an initialised FrameInfo for the specification.
-func NewFrameInfo(spec specification.Spec) FrameInfo {
-	info := FrameInfo{
+// NewCurrent is the preferred method of initialisation for the Current type
+func NewCurrent(spec specification.Spec) Current {
+	info := Current{
 		Spec: spec,
 	}
 	info.reset()
 	return info
 }
 
-func (info FrameInfo) String() string {
+func (info Current) String() string {
 	return fmt.Sprintf("top: %d, bottom: %d, total: %d", info.VisibleTop, info.VisibleBottom, info.TotalScanlines)
 }
 
@@ -129,7 +129,7 @@ func (info FrameInfo) String() string {
 // The height of this rectangle will be zero, as shown by the Size() function
 //
 //	isZero := r.Size().Y == 0
-func (info FrameInfo) Crop() image.Rectangle {
+func (info Current) Crop() image.Rectangle {
 	return image.Rect(
 		specification.ClksHBlank, info.VisibleTop,
 		specification.ClksHBlank+specification.ClksVisible, info.VisibleBottom+1,
@@ -138,13 +138,13 @@ func (info FrameInfo) Crop() image.Rectangle {
 
 // IsDifferent returns true if any of the pertinent display information is
 // different between the two copies of FrameInfo
-func (info FrameInfo) IsDifferent(cmp FrameInfo) bool {
+func (info Current) IsDifferent(cmp Current) bool {
 	return info.Spec.ID != cmp.Spec.ID ||
 		info.VisibleTop != cmp.VisibleTop ||
 		info.VisibleBottom != cmp.VisibleBottom
 }
 
-func (info *FrameInfo) reset() {
+func (info *Current) reset() {
 	info.VisibleTop = info.Spec.IdealVisibleTop
 	info.VisibleBottom = info.Spec.IdealVisibleBottom
 	info.TotalScanlines = info.Spec.ScanlinesTotal
@@ -156,28 +156,28 @@ func (info *FrameInfo) reset() {
 // TotalClocks returns the total number of clocks required to generate the
 // frame. The value returned assumes scanlines are complete - which may not be
 // the case.
-func (info FrameInfo) TotalClocks() int {
+func (info Current) TotalClocks() int {
 	return info.TotalScanlines * specification.ClksScanline
 }
 
 // VBLANKClocks returns the number of clocks in the VBLANK portion of the frame.
-func (info FrameInfo) VBLANKClocks() int {
+func (info Current) VBLANKClocks() int {
 	return info.VisibleTop * specification.ClksScanline
 }
 
 // ScreenClocks returns the number of clocks in the visible portion of the frame.
-func (info FrameInfo) ScreenClocks() int {
+func (info Current) ScreenClocks() int {
 	return (info.VisibleBottom - info.VisibleTop) * specification.ClksScanline
 }
 
 // OverscanClocks returns the number of clocks in the Overscan portion of the frame.
-func (info FrameInfo) OverscanClocks() int {
+func (info Current) OverscanClocks() int {
 	return (info.TotalScanlines - info.VisibleBottom) * specification.ClksScanline
 }
 
 // AtariSage is true if VBLANK top/bottom are equal to the values suggested by
 // Atari for the specification.
-func (info FrameInfo) AtariSafe() bool {
+func (info Current) AtariSafe() bool {
 	return info.VisibleTop == info.Spec.AtariSafeVisibleTop &&
 		info.VisibleBottom == info.Spec.AtariSafeVisibleBottom
 }
@@ -185,6 +185,6 @@ func (info FrameInfo) AtariSafe() bool {
 // IsSynced returns true if the frame is synchronised properly. The FromVSYNC
 // field tells us that the frame was generated from a corrected VSYNC signal but
 // the screen might still not be settled in a synchronised state.
-func (info FrameInfo) IsSynced() bool {
+func (info Current) IsSynced() bool {
 	return info.TopScanline == 0 && info.FromVSYNC
 }

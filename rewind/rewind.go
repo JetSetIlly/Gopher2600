@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -623,7 +624,7 @@ func (r *Rewind) GotoFrame(frame int) error {
 }
 
 // NewFrame is in an implementation of television.FrameTrigger.
-func (r *Rewind) NewFrame(frameInfo television.FrameInfo) error {
+func (r *Rewind) NewFrame(frameInfo frameinfo.Current) error {
 	r.addTimelineEntry(frameInfo)
 	r.newFrame = true
 	return nil

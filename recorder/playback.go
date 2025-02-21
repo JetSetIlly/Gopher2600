@@ -206,8 +206,8 @@ func (plb *Playback) AttachToVCSInput(vcs *hardware.VCS) error {
 	// validate header. keep it simple and disallow any difference in tv
 	// specification. some combinations may work but there's no compelling
 	// reason to figure that out just now.
-	if plb.vcs.TV.GetCreationSpecID() != plb.TVSpec {
-		return fmt.Errorf("playback: recording was made with the %s TV spec. trying to playback with a TV spec of %s.", plb.TVSpec, vcs.TV.GetReqSpecID())
+	if plb.vcs.TV.GetResetSpecID() != plb.TVSpec {
+		return fmt.Errorf("playback: recording was made with the %s TV spec. trying to playback with a TV spec of %s.", plb.TVSpec, vcs.TV.GetFrameInfo().Spec.ID)
 	}
 
 	plb.digest, err = digest.NewVideo(plb.vcs.TV)

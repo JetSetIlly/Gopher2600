@@ -48,7 +48,7 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 	addr, _ = memorymap.MapAddress(addr, false)
 
 	// create a new TV and VCS to search with
-	searchTV, err := television.NewTelevision(r.vcs.TV.GetSpecID())
+	searchTV, err := television.NewTelevision(r.vcs.TV.GetFrameInfo().Spec.ID)
 	if err != nil {
 		return nil, fmt.Errorf("rewind: search: %w", err)
 	}
@@ -112,7 +112,7 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg rune, value uint8, valueMas
 	var matchingState *State
 	var mostRecentTVstate string
 
-	searchTV, err := television.NewTelevision(r.vcs.TV.GetSpecID())
+	searchTV, err := television.NewTelevision(r.vcs.TV.GetFrameInfo().Spec.ID)
 	if err != nil {
 		return nil, fmt.Errorf("rewind: search: %w", err)
 	}

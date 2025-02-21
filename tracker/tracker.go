@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/rewind"
 )
@@ -31,7 +32,7 @@ type Rewind interface {
 
 type Television interface {
 	GetCoords() coords.TelevisionCoords
-	GetSpecID() string
+	GetFrameInfo() frameinfo.Current
 }
 
 type Emulation interface {

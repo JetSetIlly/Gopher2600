@@ -88,10 +88,14 @@ func (set television) apply(vcs *hardware.VCS) (string, error) {
 	// VCS, any setup entries will take precedence over any spec in the
 	// cartridge filename.
 
-	err := vcs.TV.SetSpec(set.spec, true)
-	if err != nil {
-		return "", err
+	if vcs.TV.IsAutoSpec() {
+		err := vcs.TV.SetSpec(set.spec)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("forcing %s spec: %s", set.spec, set.cartName), nil
+	} else {
+		return fmt.Sprintf("not forcing %s spec for %s: tv not in AUTO", set.spec, set.cartName), nil
 	}
 
-	return fmt.Sprintf("forcing %s mode: %s", set.spec, set.cartName), nil
 }

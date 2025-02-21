@@ -39,7 +39,7 @@ const (
 //
 // https://www.randomterrain.com/atari-2600-memories-music-and-sound.html
 func LookupMusicalNote(tv Television, reg audio.Registers) MusicalNote {
-	switch tv.GetSpecID() {
+	switch tv.GetFrameInfo().Spec.ID {
 	case "NTSC":
 		switch reg.Control {
 		case 1: // Buzzy

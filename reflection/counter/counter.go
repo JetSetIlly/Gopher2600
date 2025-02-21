@@ -18,8 +18,8 @@ package counter
 import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/rewind"
 )
 
@@ -64,7 +64,7 @@ func (ct *Counter) TimelineCounts() rewind.TimelineCounts {
 }
 
 // NewFrame implements the television.FrameTrigger interface.
-func (ct *Counter) NewFrame(info television.FrameInfo) error {
+func (ct *Counter) NewFrame(info frameinfo.Current) error {
 	ct.Clear()
 	return nil
 }

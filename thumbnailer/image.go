@@ -28,6 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -39,7 +40,7 @@ import (
 type Image struct {
 	vcs *hardware.VCS
 
-	frameInfo television.FrameInfo
+	frameInfo frameinfo.Current
 
 	img     *image.RGBA
 	cropImg *image.RGBA
@@ -175,7 +176,7 @@ func (thmb *Image) CartYield(yield coprocessor.CoProcYield) coprocessor.YieldHoo
 	return coprocessor.YieldHookEnd
 }
 
-func (thmb *Image) resize(frameInfo television.FrameInfo, force bool) error {
+func (thmb *Image) resize(frameInfo frameinfo.Current, force bool) error {
 	if thmb.frameInfo.IsDifferent(frameInfo) && (force || frameInfo.Stable) {
 		thmb.cropImg = thmb.img.SubImage(frameInfo.Crop()).(*image.RGBA)
 	}
@@ -184,7 +185,7 @@ func (thmb *Image) resize(frameInfo television.FrameInfo, force bool) error {
 }
 
 // NewFrame implements the television.PixelRenderer interface
-func (thmb *Image) NewFrame(frameInfo television.FrameInfo) error {
+func (thmb *Image) NewFrame(frameInfo frameinfo.Current) error {
 	thmb.resize(frameInfo, false)
 
 	img := *thmb.cropImg
@@ -232,7 +233,7 @@ func (thmb *Image) SetPixels(sig []signal.SignalAttributes, last int) error {
 // Reset implements the television.PixelRenderer interface
 func (thmb *Image) Reset() {
 	// start with a NTSC television as default
-	thmb.resize(television.NewFrameInfo(specification.SpecNTSC), true)
+	thmb.resize(frameinfo.NewCurrent(specification.SpecNTSC), true)
 
 	// clear pixels. setting the alpha channel so we don't have to later (the
 	// alpha channel never changes)

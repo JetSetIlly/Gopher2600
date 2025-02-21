@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -51,7 +51,7 @@ type TimelineRatios struct {
 // available in the rewind history.
 type Timeline struct {
 	FrameNum  []int
-	FrameInfo []television.FrameInfo
+	FrameInfo []frameinfo.Current
 	Counts    []TimelineCounts
 	Ratios    []TimelineRatios
 
@@ -76,7 +76,7 @@ const timelineLength = 1000
 func newTimeline() Timeline {
 	return Timeline{
 		FrameNum:         make([]int, 0),
-		FrameInfo:        make([]television.FrameInfo, 0),
+		FrameInfo:        make([]frameinfo.Current, 0),
 		Counts:           make([]TimelineCounts, 0),
 		Ratios:           make([]TimelineRatios, 0),
 		LeftPlayerInput:  make([]bool, 0),
@@ -159,7 +159,7 @@ func (r *Rewind) GetTimeline() Timeline {
 	return r.timeline
 }
 
-func (r *Rewind) addTimelineEntry(frameInfo television.FrameInfo) {
+func (r *Rewind) addTimelineEntry(frameInfo frameinfo.Current) {
 	// do not alter the timeline information if we're in the rewinding state
 	if r.emulation.State() == govern.Rewinding {
 		return

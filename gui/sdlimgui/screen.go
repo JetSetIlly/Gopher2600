@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/reflection"
@@ -99,7 +100,7 @@ type screenCrit struct {
 
 	// the most recent frameInfo information from the television. information
 	// received via the NewFrame() function
-	frameInfo television.FrameInfo
+	frameInfo frameinfo.Current
 
 	// screen will resize on next GUI iteration if resize is true. if resizeHold
 	// is true however, the resize will be delayed until the current state is no
@@ -217,7 +218,7 @@ func newScreen(img *SdlImgui) *screen {
 	scr.crit.section.Unlock()
 
 	// default to NTSC
-	scr.crit.frameInfo = television.NewFrameInfo(specification.SpecNTSC)
+	scr.crit.frameInfo = frameinfo.NewCurrent(specification.SpecNTSC)
 	scr.crit.resize = true
 	scr.resize()
 	scr.Reset()
@@ -419,7 +420,7 @@ func (scr *screen) resize() {
 // NewFrame implements the television.PixelRenderer interface
 //
 // MUST NOT be called from the gui thread.
-func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
+func (scr *screen) NewFrame(frameInfo frameinfo.Current) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 

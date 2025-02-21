@@ -104,7 +104,6 @@ type Resizer struct {
 	// if the current frame number is prior to the previewFrameNum then resizing
 	// can be skipped
 	previewFrameNum int
-	previewStable   bool
 }
 
 func (rz *Resizer) String() string {
@@ -118,18 +117,14 @@ func (rz *Resizer) String() string {
 }
 
 func (rz *Resizer) reset(spec specification.Spec) {
-	rz.setSpec(spec)
-	rz.previewFrameNum = 0
-}
-
-// set resizer to nominal specification values
-func (rz *Resizer) setSpec(spec specification.Spec) {
 	rz.vblankTop = spec.IdealVisibleTop
 	rz.vblankBottom = spec.IdealVisibleBottom
 	rz.blackTop = spec.IdealVisibleTop
 	rz.blackBottom = spec.IdealVisibleBottom
+	rz.usingVBLANK = false
 	rz.pendingTop = spec.IdealVisibleTop
 	rz.pendingBottom = spec.IdealVisibleBottom
+	rz.pendingCt = 0
 }
 
 // examine signal for resizing possiblity. this is an expensive operation to do
@@ -173,9 +168,7 @@ func (rz *Resizer) examine(state *State, sig signal.SignalAttributes) {
 				}
 			}
 		} else {
-			// if television is not yet stable then the size can shrink as well
-			// as grow. this is important for PAL60 ROMs which start off as PAL
-			// sized but will shrink to NTSC size
+			// if television is not yet stable then the size can shrink as well as grow
 			if state.scanline != rz.vblankTop &&
 				state.scanline >= state.frameInfo.Spec.ExtendedVisibleTop &&
 				state.scanline <= state.frameInfo.Spec.ExtendedVisibleTop+50 {

@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 )
 
 // TV defines the television functions required by the Input system.
@@ -147,6 +148,6 @@ func (inp *Input) setHandleFunc() {
 }
 
 // See NewFrame() comment for PixelRenderer interface.
-func (inp *Input) NewFrame(_ television.FrameInfo) error {
+func (inp *Input) NewFrame(_ frameinfo.Current) error {
 	return inp.handlePushed()
 }

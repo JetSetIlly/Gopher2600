@@ -1288,26 +1288,22 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				dbg.printLine(terminal.StyleInstrument, frameInfo.String())
 
 			case "SPEC":
-				newspec, ok := tokens.Get()
+				spec, ok := tokens.Get()
 				if ok {
 					// unknown specifciations already handled by ValidateTokens()
-					err := dbg.vcs.TV.SetSpec(newspec, true)
+					err := dbg.vcs.TV.SetSpec(spec)
 					if err != nil {
 						return err
 					}
 
 					if dbg.State() == govern.Paused {
 						dbg.RerunLastNFrames(10, func(s *rewind.State) {
-							s.TV.SetReqSpec(newspec)
+							s.TV.SetSpec(spec)
 						})
 					}
 				}
 
-				dbg.printLine(terminal.StyleInstrument,
-					fmt.Sprintf("actual=%s, requested=%s",
-						dbg.vcs.TV.GetFrameInfo().Spec.ID,
-						dbg.vcs.TV.GetReqSpecID(),
-					))
+				dbg.printLine(terminal.StyleInstrument, dbg.vcs.TV.SpecString())
 
 			default:
 				// already caught by command line ValidateTokens()

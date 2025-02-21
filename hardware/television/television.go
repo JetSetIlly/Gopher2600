@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/limiter"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -34,19 +35,18 @@ const leadingFrames = 1
 // stable. once the tv is stable then specification switching cannot happen.
 const stabilityThreshold = 6
 
-// the number of unsynced frames before we give in and say that the frame is stable
-const stabilityThresholdNoSync = 30
-
 // State encapsulates the television values that can change from moment to
 // moment. Used by the rewind system when recording the current television
 // state.
 type State struct {
 	// the FrameInfo for the current frame
-	frameInfo FrameInfo
+	frameInfo frameinfo.Current
 
-	// the requested television specification from outside of the TV package.
-	// this should only be set with the SetSpec() function
-	reqSpecID string
+	// the specification to use when the television is reset
+	resetSpec string
+
+	// whether the current specification was decided upon by an AUTO request
+	autoSpec bool
 
 	// state of the television. these values correspond to the most recent
 	// signal received
@@ -108,44 +108,47 @@ func (s *State) Snapshot() *State {
 
 // spec string MUST be normalised with specification.NormaliseReqSpecID()
 func (s *State) setSpec(spec string) {
-	switch spec {
-	case "AUTO":
-		s.frameInfo = NewFrameInfo(specification.SpecNTSC)
-		s.resizer.setSpec(specification.SpecNTSC)
-		s.stableFrames = 0
-	case "NTSC":
-		s.frameInfo = NewFrameInfo(specification.SpecNTSC)
-		s.resizer.setSpec(specification.SpecNTSC)
-	case "PAL":
-		s.frameInfo = NewFrameInfo(specification.SpecPAL)
-		s.resizer.setSpec(specification.SpecPAL)
-	case "PAL-M":
-		s.frameInfo = NewFrameInfo(specification.SpecPAL_M)
-		s.resizer.setSpec(specification.SpecPAL_M)
-	case "SECAM":
-		s.frameInfo = NewFrameInfo(specification.SpecSECAM)
-		s.resizer.setSpec(specification.SpecSECAM)
-	case "PAL60":
-		// we treat PAL60 as just another name for PAL. whether it is 60HZ or
-		// not depends on the generated frame
-		s.frameInfo = NewFrameInfo(specification.SpecPAL)
-		s.resizer.setSpec(specification.SpecPAL)
-	}
-}
-
-// SetReqSpec sets the requested specification ID
-func (s *State) SetReqSpec(spec string) {
 	spec, ok := specification.NormaliseReqSpecID(spec)
 	if !ok {
 		return
 	}
-	s.reqSpecID = spec
-	s.setSpec(spec)
+
+	// conert AUTO to the resetSpec value
+	if spec == "AUTO" {
+		spec = s.resetSpec
+	}
+
+	// if spec is still AUTO then we default to NTSC
+
+	switch spec {
+	case "AUTO", "NTSC":
+		s.frameInfo = frameinfo.NewCurrent(specification.SpecNTSC)
+		s.resizer.reset(specification.SpecNTSC)
+		s.autoSpec = spec == "AUTO"
+	case "PAL":
+		s.frameInfo = frameinfo.NewCurrent(specification.SpecPAL)
+		s.resizer.reset(specification.SpecPAL)
+		s.autoSpec = false
+	case "PAL60":
+		s.frameInfo = frameinfo.NewCurrent(specification.SpecPAL60)
+		s.resizer.reset(specification.SpecPAL60)
+		s.autoSpec = false
+	case "PAL-M":
+		s.frameInfo = frameinfo.NewCurrent(specification.SpecPAL_M)
+		s.resizer.reset(specification.SpecPAL_M)
+		s.autoSpec = false
+	case "SECAM":
+		s.frameInfo = frameinfo.NewCurrent(specification.SpecSECAM)
+		s.resizer.reset(specification.SpecSECAM)
+		s.autoSpec = false
+	}
+
+	s.stableFrames = 0
 }
 
-// GetReqSpecID returns the specification that was most recently requested
-func (s *State) GetReqSpecID() string {
-	return s.reqSpecID
+// SetSpec sets the requested specification ID
+func (s *State) SetSpec(spec string) {
+	s.setSpec(spec)
 }
 
 // GetLastSignal returns a copy of the most SignalAttributes sent to the TV
@@ -155,7 +158,7 @@ func (s *State) GetLastSignal() signal.SignalAttributes {
 }
 
 // GetFrameInfo returns the television's current frame information.
-func (s *State) GetFrameInfo() FrameInfo {
+func (s *State) GetFrameInfo() frameinfo.Current {
 	return s.frameInfo
 }
 
@@ -172,10 +175,6 @@ func (s *State) GetCoords() coords.TelevisionCoords {
 // honesty, it's most likely the only implementation required.
 type Television struct {
 	env *environment.Environment
-
-	// the ID with which the television was created. this overrides all spec
-	// changes unles the value is AUTO
-	creationSpecID string
 
 	// vcs will be nil unless AttachVCS() has been called
 	vcs VCS
@@ -244,28 +243,31 @@ func NewTelevision(spec string) (*Television, error) {
 	}
 
 	tv := &Television{
-		creationSpecID: spec,
-		state: &State{
-			reqSpecID: spec,
-		},
 		signals: make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
+		state: &State{
+			resetSpec: spec,
+		},
 	}
 
 	// initialise frame rate limiter
 	tv.lmtr = limiter.NewLimiter()
 	tv.SetFPS(-1)
 
-	// set specification
-	tv.setSpec(spec)
-
 	// empty list of renderers
 	tv.renderers = make([]PixelRenderer, 0)
+
+	// all other intialisation happens as part of a reset opertion
+	tv.Reset(false)
 
 	return tv, nil
 }
 
 func (tv *Television) String() string {
 	return tv.state.String()
+}
+
+func (tv *Television) SpecString() string {
+	return fmt.Sprintf("current=%s reset=%s", tv.state.frameInfo.Spec.ID, tv.state.resetSpec)
 }
 
 // Reset the television to an initial state.
@@ -280,6 +282,8 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	if !keepFrameNum {
 		tv.state.frameNum = 0
 	}
+
+	tv.setSpec(tv.state.resetSpec)
 
 	tv.state.clock = 0
 	tv.state.scanline = 0
@@ -728,13 +732,13 @@ func (tv *Television) newFrame() error {
 			fallthrough
 		case specification.SpecNTSC.ID:
 			if tv.state.frameInfo.Spec.ID != "PAL" {
-				if tv.state.reqSpecID == "AUTO" && tv.state.scanline > specification.PALTrigger {
+				if tv.state.autoSpec && tv.state.scanline > specification.PALTrigger {
 					tv.setSpec("PAL")
 				}
 			}
 		case specification.SpecPAL.ID:
 			if tv.state.frameInfo.Spec.ID != "NTSC" {
-				if tv.state.reqSpecID == "AUTO" && tv.state.scanline <= specification.PALTrigger {
+				if tv.state.autoSpec && tv.state.scanline <= specification.PALTrigger {
 					tv.setSpec("NTSC")
 				}
 			}
@@ -917,26 +921,14 @@ func (tv *Television) renderSignals() error {
 	return nil
 }
 
-// SetSpec sets the television's specification if the current requested
-// specification is "AUTO". The forced argument causes the specification to
-// change even if the requested specification is not "AUTO"
-func (tv *Television) SetSpec(spec string, forced bool) error {
+// SetSpec sets the tv specification. Used when a new cartridge is attached to
+// the console and when the user explicitely requests a change.
+func (tv *Television) SetSpec(spec string) error {
 	spec, ok := specification.NormaliseReqSpecID(spec)
 	if !ok {
 		return fmt.Errorf("television: unsupported spec (%s)", spec)
 	}
-
-	if !forced && tv.creationSpecID != "AUTO" {
-		return nil
-	}
-
-	// we only set the reqSpecID if the forced parameter has been set
-	if forced {
-		tv.state.reqSpecID = spec
-	}
-
 	tv.setSpec(spec)
-
 	return nil
 }
 
@@ -1036,23 +1028,19 @@ func (tv *Television) GetActualFPS() (float32, float32) {
 	return tv.lmtr.Measured.Load().(float32), tv.lmtr.RefreshRate.Load().(float32)
 }
 
-// GetCreationSpecID returns the specification that was requested on creation.
-func (tv *Television) GetCreationSpecID() string {
-	return tv.creationSpecID
+// GetResetSpecID returns the specification that the television resets to. This
+// is useful for learning more about how the television was created
+func (tv *Television) GetResetSpecID() string {
+	return tv.state.resetSpec
 }
 
-// GetReqSpecID returns the specification that was most recently requested.
-func (tv *Television) GetReqSpecID() string {
-	return tv.state.reqSpecID
-}
-
-// GetSpecID returns the current specification.
-func (tv *Television) GetSpecID() string {
-	return tv.state.frameInfo.Spec.ID
+// IsAutoSpec returns true if the requested specification was "AUTO"
+func (tv *Television) IsAutoSpec() bool {
+	return tv.state.autoSpec
 }
 
 // GetFrameInfo returns the television's current frame information.
-func (tv *Television) GetFrameInfo() FrameInfo {
+func (tv *Television) GetFrameInfo() frameinfo.Current {
 	return tv.state.frameInfo
 }
 
@@ -1089,7 +1077,6 @@ func (tv *Television) GetResizer() Resizer {
 	// make copy of resizer and set the validFrom fields
 	rz := tv.state.resizer
 	rz.previewFrameNum = tv.state.frameInfo.FrameNum
-	rz.previewStable = tv.state.frameInfo.Stable
 	return rz
 }
 

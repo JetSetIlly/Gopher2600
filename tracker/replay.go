@@ -34,7 +34,7 @@ func (tr *Tracker) createReplayEmulation(mixer television.AudioMixer) error {
 		return nil
 	}
 
-	tv, err := television.NewTelevision(tr.tv.GetSpecID())
+	tv, err := television.NewTelevision(tr.tv.GetFrameInfo().Spec.ID)
 	if err != nil {
 		return fmt.Errorf("tracker: create replay emulation: %w", err)
 	}

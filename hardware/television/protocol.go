@@ -18,6 +18,7 @@ package television
 import (
 	"errors"
 
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -45,7 +46,7 @@ type PixelRenderer interface {
 	// smaller or larger frame size. Renderers should also expect NewFrame to be
 	// called multiple times but not necesssarily with NewScanline() or
 	// SetPixels() being called
-	NewFrame(FrameInfo) error
+	NewFrame(frameinfo.Current) error
 
 	// NewScanline is called at the start of a new scanline
 	NewScanline(scanline int) error
@@ -116,13 +117,13 @@ type PauseTrigger interface {
 // FrameTrigger implementations listen for NewFrame events. FrameTrigger is a
 // subset of PixelRenderer
 type FrameTrigger interface {
-	NewFrame(FrameInfo) error
+	NewFrame(frameinfo.Current) error
 }
 
 // ScanlineTrigger implementations listen for NewScanline events. It is a
 // subset of PixelRenderer
 type ScanlineTrigger interface {
-	NewScanline(FrameInfo) error
+	NewScanline(frameinfo.Current) error
 }
 
 // AudioMixer implementations work with sound; most probably playing it. An
