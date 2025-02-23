@@ -1283,6 +1283,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		if ok {
 			option = strings.ToUpper(option)
 			switch option {
+			case "FRAME":
+				frameInfo := dbg.vcs.TV.GetFrameInfo()
+				dbg.printLine(terminal.StyleInstrument, frameInfo.String())
+
 			case "SPEC":
 				newspec, ok := tokens.Get()
 				if ok {
