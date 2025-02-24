@@ -47,7 +47,7 @@ type dpc struct {
 	state *dpcState
 }
 
-func newDPC(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+func newDPC(env *environment.Environment, loader cartridgeloader.Loader) (*dpc, error) {
 	data, err := io.ReadAll(loader)
 	if err != nil {
 		return nil, fmt.Errorf("DPC: %w", err)
