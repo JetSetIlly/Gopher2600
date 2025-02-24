@@ -76,7 +76,6 @@ func TestDPCRNG(t *testing.T) {
 	// RNG directly
 	ld, err := cartridgeloader.NewLoaderFromData("dpc_test", make([]byte, 10240), "DPC", "", properties.Properties{})
 	test.ExpectSuccess(t, err)
-
 	cart, err := newDPC(nil, ld)
 	test.ExpectSuccess(t, err)
 
@@ -132,4 +131,36 @@ func TestDPCRNG(t *testing.T) {
 	// byte between the wrap-around value 0x80 and the end byte 0x0a
 	test.ExpectEquality(t, cart.state.registers.RNG, 0)
 	test.ExpectInequality(t, cart.state.registers.RNG, dpcRNG_b960c29e[255])
+}
+
+// test that each value in the sequence is seen only once and that value 0xff is never seen
+func TestDPCRNG_Distribution(t *testing.T) {
+	// create an empty file and load it as a DPC cartridge. the file is empty
+	// but that doesn't matter for our purposes because we'll be testing the
+	// RNG directly
+	ld, err := cartridgeloader.NewLoaderFromData("dpc_test", make([]byte, 10240), "DPC", "", properties.Properties{})
+	test.ExpectSuccess(t, err)
+	cart, err := newDPC(nil, ld)
+	test.ExpectSuccess(t, err)
+
+	// make sure we're starting at the beginning of the sequence
+	cart.state.registers.reset(nil)
+	test.ExpectEquality(t, cart.state.registers.RNG, 0)
+
+	// count number of occurances of each number in the sequence
+	var count [255]int
+
+	for i := range 255 {
+		test.ExpectInequality(t, cart.state.registers.RNG, 0xff)
+		count[i]++
+		cart.rngPump()
+	}
+
+	// the loop should finish on the wrap-around value of zero
+	test.ExpectEquality(t, cart.state.registers.RNG, 0)
+
+	// each value in count array should be one
+	for _, v := range count {
+		test.ExpectEquality(t, v, 1)
+	}
 }
