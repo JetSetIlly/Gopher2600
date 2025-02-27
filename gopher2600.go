@@ -224,7 +224,8 @@ func launch(sync *mainSync, args []string) {
 	// that's all we want it to do
 	flgs := flag.NewFlagSet(version.ApplicationName, flag.ContinueOnError)
 
-	// output is set to nil to prevent the flag package boilerplate
+	// setting flag output to the nilWriter because we need to control how
+	// unrecognised arguments are displayed
 	flgs.SetOutput(&nilWriter{})
 
 	// parse arguments. if the help flag has been used then print out the
@@ -232,10 +233,14 @@ func launch(sync *mainSync, args []string) {
 	err := flgs.Parse(args)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
+			flgs.Usage()
 			fmt.Println("Execution Modes: RUN, DEBUG, DISASM, PERFORMANCE, REGRESS, VERSION")
-			sync.state <- stateRequest{req: reqQuit, args: 20}
+			sync.state <- stateRequest{req: reqQuit, args: 0}
 			return
 		}
+
+		// ignoring any other flag.Parse() error. this can happen when an
+		// argument is intended for the default run mode
 	} else {
 		// get remaining arguments for passing to execution mode functions
 		args = flgs.Args()
@@ -618,15 +623,13 @@ func regress(mode string, args []string) error {
 	// use flag set to provide the --help flag
 	flgs := flag.NewFlagSet(mode, flag.ContinueOnError)
 
-	// output is set to nil to prevent the flag package boilerplate
-	flgs.SetOutput(&nilWriter{})
-
 	err := flgs.Parse(args)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			fmt.Println("Sub modes: RUN, LIST, DELETE, ADD, REDUX, CLEANUP")
 			return nil
 		}
+		return err
 	} else {
 		args = flgs.Args()
 	}
