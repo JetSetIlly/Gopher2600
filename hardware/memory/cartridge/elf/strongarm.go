@@ -711,6 +711,8 @@ func vcsJmpToRam3(mem *elfMemory) {
 		if mem.yieldDataBus(address) {
 			mem.endStrongArmFunction()
 			mem.setNextRomAddress(address)
+			mem.arm.Interrupt()
+			mem.stream.startDrain()
 		}
 	}
 }
