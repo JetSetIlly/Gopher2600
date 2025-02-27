@@ -805,6 +805,9 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 	// number of iterations. only used when in immediate mode
 	var iterations int
 
+	// count of how many consecutive times the same PC address has been seen
+	var duplicateCt int
+
 	// loop through instructions until we reach an exit condition
 	for arm.state.yield.Type == coprocessor.YieldRunning {
 		// program counter to execute:
@@ -814,10 +817,18 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 		// "The program counter points to the instruction being fetched rather than to the instruction
 		// being executed. This is important because it means that the Program Counter (PC)
 		// value used in an executing instruction is always two instructions ahead of the address."
+		prev := arm.state.executingPC
 		arm.state.executingPC = arm.state.registers[rPC] - 2
 
 		// check program memory if execution branched last instruction
 		if arm.state.branchedExecution {
+			if prev == arm.state.executingPC {
+				duplicateCt++
+				if duplicateCt > 2 {
+					arm.state.yield.Type = coprocessor.YieldSyncWithVCS
+					break
+				}
+			}
 			arm.checkProgramMemory(false)
 			if arm.state.yield.Type != coprocessor.YieldRunning {
 				break // for loop
