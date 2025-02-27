@@ -689,6 +689,32 @@ func vcsCopyOverblankToRiotRam(mem *elfMemory) {
 	}
 }
 
+// void vcsJmpToRam3(uint16_t address)
+func vcsJmpToRam3(mem *elfMemory) {
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x4c) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		address := uint16(mem.strongarm.running.registers[0])
+		if mem.injectRomByte(uint8(address)) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		address := uint16(mem.strongarm.running.registers[0])
+		if mem.injectRomByte(uint8(address >> 8)) {
+			mem.strongarm.running.state++
+		}
+	case 3:
+		address := uint16(mem.strongarm.running.registers[0])
+		if mem.yieldDataBus(address) {
+			mem.endStrongArmFunction()
+			mem.setNextRomAddress(address)
+		}
+	}
+}
+
 // sequence for initialisation triggered by the accessing of the cpubus.Reset
 // address. the sequence is very strict so there is no need for coordination
 // with setNextAddress() or injectRomByte()

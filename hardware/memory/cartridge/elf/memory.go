@@ -583,6 +583,12 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 						function: vcsCopyOverblankToRiotRam,
 						support:  false,
 					})
+				case "vcsJmpToRam3":
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
+						function: vcsJmpToRam3,
+						support:  false,
+					})
 
 				// C library functions that are often not linked but required
 				case "randint":
