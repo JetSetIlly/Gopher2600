@@ -29,6 +29,7 @@ type strongArmFunction func(*elfMemory)
 // the strongarm function specification lists the implementation function and
 // any meta-information for a single strongarm function
 type strongArmFunctionSpec struct {
+	name     string
 	function strongArmFunction
 	support  bool
 }

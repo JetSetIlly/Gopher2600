@@ -326,6 +326,13 @@ func (win *winCoProcDisasm) drawEntry(src *dwarf.Source, e arm.DisasmEntry) {
 
 func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry, ln *dwarf.SourceLine) {
 	win.img.imguiTooltip(func() {
+		if e.Annotation != nil {
+			imgui.Text(e.Annotation.String())
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+		}
+
 		// if ln is nil then that means there is no source code available for the disassembly
 		if ln != nil && ln.Function != nil {
 			imgui.Text("Function:")

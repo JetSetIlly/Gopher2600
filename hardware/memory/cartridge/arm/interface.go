@@ -15,6 +15,8 @@
 
 package arm
 
+import "fmt"
+
 // SharedMemory represents the memory passed between the parent
 // cartridge-mapper implementation and the ARM.
 type SharedMemory interface {
@@ -40,13 +42,25 @@ type SharedMemory interface {
 	IsExecutable(addr uint32) bool
 }
 
-// CartridgeHook allows the parent cartridge mapping to emulate ARM code in a
-// more direct way. This is primarily because we do not yet emulate full ARM
-// bytecode only Thumb bytecode, and the value of doing so is unclear.
+// CartridgeHook is used to extend a cartridge with additional cartridge
+// specific functionality
 type CartridgeHook interface {
+	// ARMinterrupt allows the parent cartridge mapping to emulate ARM code in a
+	// more direct way. This is primarily because we do not yet emulate 32bit ARM
+	// bytecode
+	//
 	// Returns false if parent cartridge mapping does not understand the
 	// address.
+	//
+	// * This is primarily here for DPC+ and CDF compatability with the Harmony
+	// implementation of those mappers.
 	ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (ARMinterruptReturn, error)
+}
+
+// Optional extension to the CartridgeHook interface that allows the cartridge
+// to annotate an disassembly entry
+type CartridgeHookDisassembly interface {
+	AnnotateDisassembly(*DisasmEntry) fmt.Stringer
 }
 
 // ARMInterruptReturn is the return value of the ARMinterrupt type.

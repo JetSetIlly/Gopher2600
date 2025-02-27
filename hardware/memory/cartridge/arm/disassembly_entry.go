@@ -73,6 +73,11 @@ type DisasmEntry struct {
 	// whether this entry was executed in immediate mode. if this field is true
 	// then the Cycles and "cycle details" fields will be zero
 	ImmediateMode bool
+
+	// any annotation received from the cartridge. whatever is stored as the
+	// annotation must satisfy the Stringer interface at a minimum but it really
+	// could be anything
+	Annotation fmt.Stringer
 }
 
 // Key implements the CartCoProcDisasmEntry interface.
@@ -125,5 +130,10 @@ func (arm *ARM) completeDisasmEntry(e *DisasmEntry, opcode uint16, includeLiveIn
 		e.BranchTrail = arm.state.branchTrail
 		e.MergedIS = arm.state.mergedIS
 		e.ImmediateMode = arm.immediateMode
+	}
+
+	// add annotation to disassembly entry if it's supported by the cartridge
+	if hook, ok := arm.hook.(CartridgeHookDisassembly); ok {
+		e.Annotation = hook.AnnotateDisassembly(e)
 	}
 }
