@@ -402,154 +402,184 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				// strongARM functions
 				case "vcsWrite3":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsWrite3,
 						support:  false,
 					})
 					mem.usesBusStuffing = true
 				case "vcsPlp4Ex":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsPlp4Ex,
 						support:  false,
 					})
 					mem.usesBusStuffing = true
 				case "vcsPla4Ex":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsPla4Ex,
 						support:  false,
 					})
 					mem.usesBusStuffing = true
 				case "vcsJmp3":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsJmp3,
 						support:  false,
 					})
 				case "vcsLda2":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsLda2,
 						support:  false,
 					})
 				case "vcsSta3":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsSta3,
 						support:  false,
 					})
 				case "SnoopDataBus":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: snoopDataBus,
 						support:  false,
 					})
 				case "vcsRead4":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsRead4,
 						support:  false,
 					})
 				case "vcsStartOverblank":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsStartOverblank,
 						support:  false,
 					})
 				case "vcsEndOverblank":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsEndOverblank,
 						support:  false,
 					})
 				case "vcsLdaForBusStuff2":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsLdaForBusStuff2,
 						support:  false,
 					})
 				case "vcsLdxForBusStuff2":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsLdxForBusStuff2,
 						support:  false,
 					})
 				case "vcsLdyForBusStuff2":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsLdyForBusStuff2,
 						support:  false,
 					})
 				case "vcsWrite5":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsWrite5,
 						support:  false,
 					})
 				case "vcsLdx2":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsLdx2,
 						support:  false,
 					})
 				case "vcsLdy2":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsLdy2,
 						support:  false,
 					})
 				case "vcsSta4":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsSta4,
 						support:  false,
 					})
 				case "vcsStx3":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsStx3,
 						support:  false,
 					})
 				case "vcsStx4":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsStx4,
 						support:  false,
 					})
 				case "vcsSty3":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsSty3,
 						support:  false,
 					})
 				case "vcsSty4":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsSty4,
 						support:  false,
 					})
 				case "vcsSax3":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsSax3,
 						support:  false,
 					})
 				case "vcsTxs2":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsTxs2,
 						support:  false,
 					})
 				case "vcsJsr6":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsJsr6,
 						support:  false,
 					})
 				case "vcsNop2":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsNop2,
 						support:  false,
 					})
 				case "vcsNop2n":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsNop2n,
 						support:  false,
 					})
 				case "vcsPhp3":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsPhp3,
 						support:  false,
 					})
 				case "vcsPlp4":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsPlp4,
 						support:  false,
 					})
 				case "vcsPla4":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsPla4,
 						support:  false,
 					})
 				case "vcsCopyOverblankToRiotRam":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: vcsCopyOverblankToRiotRam,
 						support:  false,
 					})
@@ -557,16 +587,19 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				// C library functions that are often not linked but required
 				case "randint":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: randint,
 						support:  true,
 					})
 				case "memset":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: memset,
 						support:  true,
 					})
 				case "memcpy":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
 						function: memcpy,
 						support:  true,
 					})
