@@ -43,7 +43,15 @@ func (s streamEntry) String() string {
 const pushBoundary = 200
 
 type stream struct {
+	// diabled indicates that the stream is not available and should not be
+	// activated
+	disabled bool
+
+	// whether the stream is acutally active. setting this value should only be
+	// true if the disabled field is false.
+	// ie. only 'active = !disabled' or 'active = false'
 	active bool
+
 	stream [1000 + pushBoundary]streamEntry
 	ptr    int
 

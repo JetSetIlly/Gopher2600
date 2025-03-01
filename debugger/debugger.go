@@ -608,6 +608,9 @@ func (dbg *Debugger) setMode(mode govern.Mode) error {
 		return err
 	}
 
+	// notify coproc developer of the change
+	dbg.CoProcDev.SetEmulationMode(mode)
+
 	// remove all triggers that we work with in the debugger. we'll add the
 	// one's we want depending on playmode.
 	//
