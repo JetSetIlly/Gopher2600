@@ -310,6 +310,11 @@ func (dev *Developer) MemoryFault(event string, fault faults.Category, instructi
 	dev.faults.NewEntry(fault, event, instructionAddr, accessAddr)
 }
 
+// SetEmulationMoe is called by the emulation whenever the mode changes
+func (dev *Developer) SetEmulationMode(mode govern.Mode) {
+	dev.cart.GetCoProcBus().SetEmulationMode(mode)
+}
+
 // SetEmulationState is called by the emulation whenever state changes
 func (dev *Developer) SetEmulationState(state govern.State) {
 	if dev.cart != nil {

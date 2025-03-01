@@ -975,6 +975,7 @@ func (mem *elfMemory) mapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	if addr >= mem.gpio.dataOrigin && addr <= mem.gpio.dataMemtop {
 		if mem.stream.active {
 			logger.Logf(mem.env, "ELF", "disabling byte streaming: %d bytes in stream", mem.stream.ptr)
+			mem.stream.disabled = true
 			mem.stream.active = false
 		}
 		if !write && addr == mem.gpio.dataOrigin|ADDR_IDR {

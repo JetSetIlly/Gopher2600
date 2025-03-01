@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 )
 
 // CoProcExecutionState details the current condition of the coprocessor's execution
@@ -198,6 +199,9 @@ type CartCoProcBus interface {
 
 	// the state of the coprocessor
 	CoProcExecutionState() CoProcExecutionState
+
+	// notify cartridge of a change in emulation  mode
+	SetEmulationMode(govern.Mode)
 }
 
 // CartCoProcRelocatable is implemented by cartridge mappers where coprocessor

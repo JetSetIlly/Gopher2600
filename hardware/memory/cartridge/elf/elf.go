@@ -24,6 +24,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
@@ -240,7 +241,7 @@ func (cart *Elf) Reset() {
 // reading of the cpubus.Reset address.
 func (cart *Elf) reset() {
 	// stream bytes rather than injecting them into the VCS as they arrive
-	cart.mem.stream.active = true
+	cart.mem.stream.active = !cart.mem.stream.disabled
 
 	// initialise ROM for the VCS
 	if cart.mem.stream.active {
@@ -493,6 +494,18 @@ func (cart *Elf) GetCoProc() coprocessor.CartCoProc {
 // SetYieldHook implements the coprocessor.CartCoProcBus interface.
 func (cart *Elf) SetYieldHook(hook coprocessor.CartYieldHook) {
 	cart.yieldHook = hook
+}
+
+// SetEmulationMode implements the coprocessor.CartCoProcBus interface.
+func (cart *Elf) SetEmulationMode(mode govern.Mode) {
+	switch mode {
+	case govern.ModePlay:
+		cart.mem.stream.active = !cart.mem.stream.disabled
+	case govern.ModeDebugger:
+		cart.mem.stream.active = false
+	default:
+		panic(fmt.Sprintf("unknown govern.Mode: %v", mode))
+	}
 }
 
 // GetStatic implements the mapper.CartStaticBus interface.
