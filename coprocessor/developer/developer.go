@@ -312,6 +312,9 @@ func (dev *Developer) MemoryFault(event string, fault faults.Category, instructi
 
 // SetEmulationMoe is called by the emulation whenever the mode changes
 func (dev *Developer) SetEmulationMode(mode govern.Mode) {
+	if dev.cart == nil {
+		return
+	}
 	dev.cart.GetCoProcBus().SetEmulationMode(mode)
 }
 
