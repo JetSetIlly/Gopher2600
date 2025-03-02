@@ -169,9 +169,10 @@ type elfMemory struct {
 	stream stream
 
 	// last mapping infomation. the address and whether the memory space
-	// contains executable instructions
-	lastAddress    uint32
-	lastExecutable bool
+	// contains executable instructions. used by IsExecutable() to return
+	// additional information about the address
+	lastMappedAddress    uint32
+	lastMappedExecutable bool
 
 	// a call to MapAddress() from the ARM may sometimes be to find the address
 	// of a strongarm function. the act of mapping will cause the strongarm
@@ -889,6 +890,8 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool, executing bool) (*[]by
 	if addr >= mem.strongArmOrigin && addr <= mem.strongArmMemtop {
 		// strong arm memory is not writeable
 		if write {
+			mem.lastMappedAddress = addr
+			mem.lastMappedExecutable = false
 			return nil, 0
 		}
 
@@ -934,7 +937,8 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool, executing bool) (*[]by
 				// whatever reason)
 			}
 		}
-		mem.lastExecutable = true
+		mem.lastMappedAddress = addr
+		mem.lastMappedExecutable = true
 		return &mem.strongArmProgram, mem.strongArmOrigin
 	}
 
@@ -943,7 +947,8 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool, executing bool) (*[]by
 
 func (mem *elfMemory) mapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	if addr >= mem.sramOrigin && addr <= mem.sramMemtop {
-		mem.lastExecutable = false
+		mem.lastMappedAddress = addr
+		mem.lastMappedExecutable = false
 		return mem.sram.Data(), mem.sramOrigin
 	}
 
@@ -961,11 +966,13 @@ func (mem *elfMemory) mapAddress(addr uint32, write bool) (*[]byte, uint32) {
 
 		if addr >= s.origin-adjust && addr <= s.memtop {
 			if write && s.readOnly() {
-				mem.lastExecutable = false
+				mem.lastMappedAddress = addr
+				mem.lastMappedExecutable = false
 				return nil, 0
 			}
 
-			mem.lastExecutable = s.executable()
+			mem.lastMappedAddress = addr
+			mem.lastMappedExecutable = s.executable()
 			return &s.data, s.origin
 		}
 	}
@@ -981,11 +988,13 @@ func (mem *elfMemory) mapAddress(addr uint32, write bool) (*[]byte, uint32) {
 		if !write && addr == mem.gpio.dataOrigin|ADDR_IDR {
 			mem.arm.Interrupt()
 		}
-		mem.lastExecutable = false
+		mem.lastMappedAddress = addr
+		mem.lastMappedExecutable = false
 		return &mem.gpio.data, mem.gpio.dataOrigin
 	}
 	if addr >= mem.gpio.lookupOrigin && addr <= mem.gpio.lookupMemtop {
-		mem.lastExecutable = false
+		mem.lastMappedAddress = addr
+		mem.lastMappedExecutable = false
 		return &mem.gpio.lookup, mem.gpio.lookupOrigin
 	}
 
@@ -993,18 +1002,20 @@ func (mem *elfMemory) mapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// for it here except for those cases where mapAddress() is called directly.
 	// in which case, performance doesn't matter
 	if addr >= mem.strongArmOrigin && addr <= mem.strongArmMemtop {
-		mem.lastExecutable = true
+		mem.lastMappedAddress = addr
+		mem.lastMappedExecutable = true
 		return &mem.strongArmProgram, mem.strongArmOrigin
 	}
 
 	// arg memory is likely only ever read once on program startup
 	if addr >= argOrigin && addr <= argMemtop {
-		mem.lastExecutable = false
+		mem.lastMappedAddress = addr
+		mem.lastMappedExecutable = false
 		return &mem.args, argOrigin
 	}
 
-	mem.lastExecutable = false
-
+	mem.lastMappedAddress = addr
+	mem.lastMappedExecutable = false
 	return nil, 0
 }
 
@@ -1015,11 +1026,11 @@ func (mem *elfMemory) ResetVectors() (uint32, uint32, uint32) {
 
 // IsExecutable implements the arm.SharedMemory interface.
 func (mem *elfMemory) IsExecutable(addr uint32) bool {
-	if mem.lastAddress == addr {
-		return mem.lastExecutable
+	if mem.lastMappedAddress == addr {
+		return mem.lastMappedExecutable
 	}
 	_, _ = mem.mapAddress(addr, false)
-	return mem.lastExecutable
+	return mem.lastMappedExecutable
 }
 
 // Segments implements the mapper.CartStatic interface
