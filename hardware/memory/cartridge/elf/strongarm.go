@@ -717,6 +717,30 @@ func vcsJmpToRam3(mem *elfMemory) {
 	}
 }
 
+// void vcsPokeRomByte(uint16_t uint16_t address, uint8_t data)
+func vcsPokeRomByte(mem *elfMemory) {
+	address := uint16(mem.strongarm.running.registers[0])
+	data := uint8(mem.strongarm.running.registers[1])
+	mem.setNextRomAddress(address)
+
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(data) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.yieldDataBusToStack() {
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsSetNextAddress(uint16_t address)
+func vcsSetNextAddress(mem *elfMemory) {
+	address := uint16(mem.strongarm.running.registers[0])
+	mem.setNextRomAddress(address)
+}
+
 // sequence for initialisation triggered by the accessing of the cpubus.Reset
 // address. the sequence is very strict so there is no need for coordination
 // with setNextAddress() or injectRomByte()

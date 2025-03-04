@@ -590,6 +590,18 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 						function: vcsJmpToRam3,
 						support:  false,
 					})
+				case "vcsPokeRomByte":
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
+						function: vcsPokeRomByte,
+						support:  false,
+					})
+				case "vcsSetNextAddress":
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
+						function: vcsSetNextAddress,
+						support:  true,
+					})
 
 				// C library functions that are often not linked but required
 				case "randint":
