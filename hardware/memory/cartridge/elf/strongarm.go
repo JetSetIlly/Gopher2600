@@ -646,20 +646,14 @@ func vcsPla4Ex(mem *elfMemory) {
 
 // void vcsCopyOverblankToRiotRam()
 func vcsCopyOverblankToRiotRam(mem *elfMemory) {
-	const subCounterError = -1
-
 	switch mem.strongarm.running.state {
 	case 0:
-		if mem.strongarm.running.counter >= len(overblank) {
-			mem.strongarm.running.state++
-			mem.strongarm.running.subCounter = subCounterError
-		} else {
-			mem.strongarm.running.state++
-			mem.strongarm.running.subCounter = 0
-		}
+		mem.strongarm.running.state++
+		mem.strongarm.running.counter = 0
+		mem.strongarm.running.subCounter = 0
 		fallthrough
 	case 1:
-		if mem.strongarm.running.subCounter == subCounterError {
+		if mem.strongarm.running.counter >= len(overblank) {
 			mem.endStrongArmFunction()
 		} else {
 			switch mem.strongarm.running.subCounter {
@@ -682,7 +676,7 @@ func vcsCopyOverblankToRiotRam(mem *elfMemory) {
 			case 4:
 				if mem.yieldDataBus(uint16(0x80 + mem.strongarm.running.counter)) {
 					mem.strongarm.running.counter++
-					mem.strongarm.running.state = 0
+					mem.strongarm.running.subCounter = 0
 				}
 			}
 		}
@@ -719,12 +713,11 @@ func vcsJmpToRam3(mem *elfMemory) {
 
 // void vcsPokeRomByte(uint16_t uint16_t address, uint8_t data)
 func vcsPokeRomByte(mem *elfMemory) {
-	address := uint16(mem.strongarm.running.registers[0])
-	data := uint8(mem.strongarm.running.registers[1])
-	mem.setNextRomAddress(address)
-
 	switch mem.strongarm.running.state {
 	case 0:
+		address := uint16(mem.strongarm.running.registers[0])
+		data := uint8(mem.strongarm.running.registers[1])
+		mem.setNextRomAddress(address)
 		if mem.injectRomByte(data) {
 			mem.strongarm.running.state++
 		}
