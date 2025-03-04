@@ -713,7 +713,6 @@ func vcsJmpToRam3(mem *elfMemory) {
 
 // void vcsPokeRomByte(uint16_t uint16_t address, uint8_t data)
 func vcsPokeRomByte(mem *elfMemory) {
-
 	switch mem.strongarm.running.state {
 	case 0:
 		address := uint16(mem.strongarm.running.registers[0])
