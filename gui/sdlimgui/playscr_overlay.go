@@ -318,7 +318,9 @@ func (ovly *playscrOverlay) drawTopLeft() {
 				imgui.Spacing()
 			}
 
-			if ovly.img.audio.QueuedBytes == 0 {
+			queuedBytes := ovly.img.audio.QueuedBytes.Load()
+
+			if queuedBytes == 0 {
 				imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.AudioQueueInactive)
 				imgui.Text(string(fonts.MeterSegment))
 				imgui.SameLineV(0, 0)
@@ -327,7 +329,7 @@ func (ovly *playscrOverlay) drawTopLeft() {
 				imgui.Text(string(fonts.MeterSegment))
 				imgui.SameLineV(0, 0)
 				imgui.PopStyleColor()
-			} else if ovly.img.audio.QueuedBytes < sdlaudio.QueueOkay {
+			} else if queuedBytes < sdlaudio.QueueOkay {
 				imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.AudioQueueActive)
 				imgui.Text(string(fonts.MeterSegment))
 				imgui.SameLineV(0, 0)
@@ -337,7 +339,7 @@ func (ovly *playscrOverlay) drawTopLeft() {
 				imgui.Text(string(fonts.MeterSegment))
 				imgui.SameLineV(0, 0)
 				imgui.PopStyleColorV(2)
-			} else if ovly.img.audio.QueuedBytes < sdlaudio.QueueWarning {
+			} else if queuedBytes < sdlaudio.QueueWarning {
 				imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.AudioQueueActive)
 				imgui.Text(string(fonts.MeterSegment))
 				imgui.SameLineV(0, 0)
@@ -360,7 +362,7 @@ func (ovly *playscrOverlay) drawTopLeft() {
 
 			imgui.Spacing()
 			if !ovly.img.prefs.audioMutePlaymode.Get().(bool) {
-				imgui.Textf("%dkb audio queue", ovly.img.audio.QueuedBytes/1024)
+				imgui.Textf("%dkb audio queue", queuedBytes/1024)
 			}
 		}
 

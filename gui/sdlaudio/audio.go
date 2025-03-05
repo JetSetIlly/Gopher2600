@@ -18,6 +18,7 @@ package sdlaudio
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -72,7 +73,7 @@ type Audio struct {
 	// long. called from SetAudio() so it is only checked when the emulation is
 	// running
 	queuedBytesMeasure *time.Ticker
-	QueuedBytes        int
+	QueuedBytes        atomic.Int32
 }
 
 const (
@@ -282,16 +283,16 @@ func (aud *Audio) SetAudio(sig []signal.AudioSignalAttributes) error {
 	}
 
 	// always measure queued bytes
-	b := int(sdl.GetQueuedAudioSize(aud.id))
+	b := int32(sdl.GetQueuedAudioSize(aud.id))
 
 	// update queuedBytes value less frequently
 	select {
 	case <-aud.queuedBytesMeasure.C:
-		aud.QueuedBytes = b
+		aud.QueuedBytes.Store(b)
 	default:
 		// update queuedBytes immediately if it's running low
 		if b < rateRepeat {
-			aud.QueuedBytes = b
+			aud.QueuedBytes.Store(b)
 		}
 	}
 
@@ -300,7 +301,7 @@ func (aud *Audio) SetAudio(sig []signal.AudioSignalAttributes) error {
 	if b > rateReset {
 		logger.Logf(logger.Allow, "sdlaudio", "flushed audio queue: %d", b)
 		sdl.ClearQueuedAudio(aud.id)
-		aud.QueuedBytes = int(sdl.GetQueuedAudioSize(aud.id))
+		aud.QueuedBytes.Store(int32(sdl.GetQueuedAudioSize(aud.id)))
 	} else if b > rateDrop {
 		// drop samples. the number of samples is so small that we won't audibly miss them
 		return nil
