@@ -157,7 +157,7 @@ func NewElf(env *environment.Environment, loader cartridgeloader.Loader, inACE b
 	cart.arm.SetByteOrder(ef.ByteOrder)
 	cart.mem.busStuffingInit()
 
-	// defer VCS reset until the VCS tries to read the cpubus.Reset address
+	// defer VCS reset until the VCS tries to read the reset address
 
 	// run arm initialisation functions if present. next call to arm.Run() will
 	// cause the main function to execute
@@ -238,7 +238,7 @@ func (cart *Elf) Reset() {
 }
 
 // reset is distinct from Reset(). this reset function is implied by the
-// reading of the cpubus.Reset address.
+// reading of the reset address.
 func (cart *Elf) reset() {
 	// stream bytes rather than injecting them into the VCS as they arrive
 	cart.mem.stream.active = !cart.mem.stream.disabled
