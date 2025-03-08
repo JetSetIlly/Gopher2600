@@ -734,9 +734,9 @@ func vcsSetNextAddress(mem *elfMemory) {
 	mem.setNextRomAddress(address)
 }
 
-// sequence for initialisation triggered by the accessing of the cpubus.Reset
-// address. the sequence is very strict so there is no need for coordination
-// with setNextAddress() or injectRomByte()
+// sequence for initialisation triggered by the accessing of the reset address.
+// the sequence is very strict so there is no need for coordination with
+// setNextAddress() or injectRomByte()
 func vcsEmulationInit(mem *elfMemory) {
 	switch mem.strongarm.running.state {
 	case 0:
