@@ -217,9 +217,9 @@ func (aud *Audio) setSpec(spec specification.Spec) {
 		sdl.CloseAudioDevice(aud.id)
 	}
 
-	sampleFreq := float32(spec.ScanlinesTotal) * float32(spec.RefreshRate) * audio.SamplesPerScanline
-	logger.Logf(logger.Allow, "sdlaudio", "calculated frequency: %d * %.2f * %d = %.2f",
-		spec.ScanlinesTotal, spec.RefreshRate, audio.SamplesPerScanline, sampleFreq)
+	sampleFreq := float32(spec.HorizontalScanRate) * audio.SamplesPerScanline
+	logger.Logf(logger.Allow, "sdlaudio", "calculated frequency: %.2f * %d = %.2f",
+		spec.HorizontalScanRate, audio.SamplesPerScanline, sampleFreq)
 
 	request := &sdl.AudioSpec{
 		Freq:     int32(sampleFreq),
