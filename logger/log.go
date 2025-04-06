@@ -196,7 +196,8 @@ func (l *Logger) WriteRecent(output io.Writer) {
 	l.recentStart = len(l.entries)
 }
 
-// Tail writes the last N entries to io.Writer
+// Tail writes the last N entries in the central logger to io.Writer. A number
+// parameter of <0 will output the entire log.
 func (l *Logger) Tail(output io.Writer, number int) {
 	if output == nil {
 		return
@@ -206,10 +207,10 @@ func (l *Logger) Tail(output io.Writer, number int) {
 	defer l.crit.Unlock()
 
 	var n int
-
-	n = len(l.entries) - number
-	if n < 0 {
+	if number < 0 {
 		n = 0
+	} else {
+		n = max(len(l.entries)-number, 0)
 	}
 
 	for _, e := range l.entries[n:] {

@@ -57,7 +57,8 @@ func WriteRecent(output io.Writer) {
 	central.WriteRecent(output)
 }
 
-// Tail writes the last N entries in the central logger to io.Writer
+// Tail writes the last N entries in the central logger to io.Writer. A number
+// parameter of <0 will output the entire log.
 func Tail(output io.Writer, number int) {
 	central.Tail(output, number)
 }
