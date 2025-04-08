@@ -490,6 +490,12 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 						function: vcsWrite5,
 						support:  false,
 					})
+				case "vcsWrite6":
+					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+						name:     sym.Name,
+						function: vcsWrite6,
+						support:  false,
+					})
 				case "vcsLdx2":
 					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
 						name:     sym.Name,

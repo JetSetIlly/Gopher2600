@@ -358,6 +358,38 @@ func vcsWrite5(mem *elfMemory) {
 	}
 }
 
+// void vcsWrite6(uint8_t ZP, uint8_t data)
+func vcsWrite6(mem *elfMemory) {
+	address := uint16(mem.strongarm.running.registers[0])
+	data := uint8(mem.strongarm.running.registers[1])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0xa9) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(data) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.injectRomByte(0x8d) {
+			mem.strongarm.running.state++
+		}
+	case 3:
+		if mem.injectRomByte(uint8(address & 0xff)) {
+			mem.strongarm.running.state++
+		}
+	case 4:
+		if mem.injectRomByte(uint8(address >> 8)) {
+			mem.strongarm.running.state++
+		}
+	case 5:
+		if mem.yieldDataBus(address) {
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
 // void vcsLdx2(uint8_t data)
 func vcsLdx2(mem *elfMemory) {
 	data := uint8(mem.strongarm.running.registers[0])
