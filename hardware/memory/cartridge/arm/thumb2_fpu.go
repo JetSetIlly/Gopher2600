@@ -1036,14 +1036,14 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 
 				for i := uint16(0); i < imm8; i += 2 {
 					if arm.byteOrder == binary.LittleEndian {
-						arm.write32bit(addr, arm.state.fpu.Registers[d], true)
+						arm.write32bit(addr, arm.state.fpu.Registers[d+i], true)
 						addr += 4
-						arm.write32bit(addr, arm.state.fpu.Registers[d+1], true)
+						arm.write32bit(addr, arm.state.fpu.Registers[d+i+1], true)
 						addr += 4
 					} else {
-						arm.write32bit(addr, arm.state.fpu.Registers[d+1], true)
+						arm.write32bit(addr, arm.state.fpu.Registers[d+i+1], true)
 						addr += 4
-						arm.write32bit(addr, arm.state.fpu.Registers[d], true)
+						arm.write32bit(addr, arm.state.fpu.Registers[d+i], true)
 						addr += 4
 					}
 				}
@@ -1191,6 +1191,64 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 					panic("too many registers for VLDM")
 				}
 
+				for i := uint16(0); i < imm8; i++ {
+					arm.state.fpu.Registers[d+i] = arm.read32bit(addr, true)
+					addr += 4
+				}
+			}
+
+			return nil
+		}
+	} else if maskedOp == 0b01011 && Rn == 0b1101 {
+		// "A7.7.251 VPOP" of "ARMv7-M"
+
+		D := (arm.state.instruction32bitOpcodeHi & 0x0040) >> 6
+		Vd := (opcode & 0xf000) >> 12
+		imm8 := opcode & 0x00ff
+		imm32 := uint32(imm8 << 2)
+		sz := opcode&0x0100 == 0x0100
+
+		var d uint16
+		var regPrefix rune
+
+		if sz {
+			d = D<<4 | Vd
+			regPrefix = 'D'
+		} else {
+			d = Vd<<1 | D
+			regPrefix = 'S'
+		}
+
+		// if regs == 0 || (d + regs) > 32 then UNPREDICTABLE
+
+		return func() *DisasmEntry {
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "VPOP",
+					Operand:  reglistToMnemonic(regPrefix, uint8(imm8), ""),
+				}
+			}
+
+			addr := arm.state.registers[rSP]
+			arm.state.registers[rSP] += imm32
+
+			if sz {
+				// 64bit floats (T1 encoding)
+				for i := uint16(0); i < imm8; i += 2 {
+					word1 := arm.read32bit(addr, true)
+					word2 := arm.read32bit(addr+4, true)
+					addr += 8
+					if arm.byteOrder == binary.LittleEndian {
+						arm.state.fpu.Registers[d+i] = word1
+						arm.state.fpu.Registers[d+i+1] = word2
+					} else {
+						arm.state.fpu.Registers[d+i+1] = word1
+						arm.state.fpu.Registers[d+i] = word2
+					}
+				}
+			} else {
+				// 32bit floats (T2 encoding)
 				for i := uint16(0); i < imm8; i++ {
 					arm.state.fpu.Registers[d+i] = arm.read32bit(addr, true)
 					addr += 4

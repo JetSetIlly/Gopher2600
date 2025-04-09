@@ -34,13 +34,13 @@ func (arm *ARM) decodeThumb2Coproc(opcode uint16) decodeFunction {
 	// moment
 
 	// the coprocessor type is encoded in the lower 16 bits of the instruction
-	coproc := (opcode & 0xe00) >> 8
+	coproc := (opcode & 0xf00) >> 8
 
 	// only supporting the FPU for now
 	switch coproc {
 	case 0b1010:
 		fallthrough
-	case 0b1110:
+	case 0b1011:
 		return arm.decodeThumb2FPU(opcode)
 	}
 
