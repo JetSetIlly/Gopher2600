@@ -698,16 +698,16 @@ func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 		arm.disasmSummary.S = 0
 		if arm.state.yield.Type.Normal() {
 			arm.disasm.Start()
-		}
 
-		defer func() {
-			// wrapping disasmEnd because we don't want to capture disasmSummary
-			// too early (because the deferred func() is invoked as part of the
-			// declaration any arguments to the function will be captured at
-			// that point. wrapping the call to disasm.End() prevents
-			// disasmSummary being captured)
-			arm.disasm.End(arm.disasmSummary)
-		}()
+			defer func() {
+				// wrapping disasmEnd because we don't want to capture disasmSummary
+				// too early (because the deferred func() is invoked as part of the
+				// declaration any arguments to the function will be captured at
+				// that point. wrapping the call to disasm.End() prevents
+				// disasmSummary being captured)
+				arm.disasm.End(arm.disasmSummary)
+			}()
+		}
 	}
 
 	// get developer information. this probably hasn't changed since ARM
