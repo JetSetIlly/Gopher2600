@@ -3241,7 +3241,7 @@ func (arm *ARM) decode32bitThumb2LoadStoreMultiple(opcode uint16) decodeFunction
 						return &DisasmEntry{
 							Is32bit:  true,
 							Operator: "POP",
-							Operand:  fmt.Sprintf("{%s}", reglistToMnemonic('R', uint8(regList), "")),
+							Operand:  fmt.Sprintf("{%s}", reglistToMnemonic('R', regList, "")),
 						}
 					}
 
@@ -3283,7 +3283,7 @@ func (arm *ARM) decode32bitThumb2LoadStoreMultiple(opcode uint16) decodeFunction
 						return &DisasmEntry{
 							Is32bit:  true,
 							Operator: "LDMIA",
-							Operand:  fmt.Sprintf("R%d%c, {%s}", Rn, writebackSign, reglistToMnemonic('R', uint8(regList), "")),
+							Operand:  fmt.Sprintf("R%d%c, {%s}", Rn, writebackSign, reglistToMnemonic('R', regList, "")),
 						}
 					}
 
@@ -3332,7 +3332,7 @@ func (arm *ARM) decode32bitThumb2LoadStoreMultiple(opcode uint16) decodeFunction
 					return &DisasmEntry{
 						Is32bit:  true,
 						Operator: "STMIA",
-						Operand:  fmt.Sprintf("R%d%c, {%s}", Rn, writebackSign, reglistToMnemonic('R', uint8(regList), "")),
+						Operand:  fmt.Sprintf("R%d%c, {%s}", Rn, writebackSign, reglistToMnemonic('R', regList, "")),
 					}
 				}
 
@@ -3380,7 +3380,7 @@ func (arm *ARM) decode32bitThumb2LoadStoreMultiple(opcode uint16) decodeFunction
 					return &DisasmEntry{
 						Is32bit:  true,
 						Operator: "LDMDB",
-						Operand:  fmt.Sprintf("R%d%c, {%s}", Rn, writebackSign, reglistToMnemonic('R', uint8(regList), "")),
+						Operand:  fmt.Sprintf("R%d%c, {%s}", Rn, writebackSign, reglistToMnemonic('R', regList, "")),
 					}
 				}
 
@@ -3427,7 +3427,7 @@ func (arm *ARM) decode32bitThumb2LoadStoreMultiple(opcode uint16) decodeFunction
 						return &DisasmEntry{
 							Is32bit:  true,
 							Operator: "PUSH",
-							Operand:  fmt.Sprintf("{%s}", reglistToMnemonic('R', uint8(regList), "")),
+							Operand:  fmt.Sprintf("{%s}", reglistToMnemonic('R', regList, "")),
 						}
 					}
 
@@ -3464,7 +3464,7 @@ func (arm *ARM) decode32bitThumb2LoadStoreMultiple(opcode uint16) decodeFunction
 						return &DisasmEntry{
 							Is32bit:  true,
 							Operator: "STMDB",
-							Operand:  fmt.Sprintf("R%d%c, {%s}", Rn, writebackSign, reglistToMnemonic('R', uint8(regList), "")),
+							Operand:  fmt.Sprintf("R%d%c, {%s}", Rn, writebackSign, reglistToMnemonic('R', regList, "")),
 						}
 					}
 

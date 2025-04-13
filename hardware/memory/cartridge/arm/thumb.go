@@ -1524,12 +1524,12 @@ func (arm *ARM) decodeThumbPushPopRegisters(opcode uint16) decodeFunction {
 				if pclr {
 					return &DisasmEntry{
 						Operator: "POP",
-						Operand:  fmt.Sprintf("{%s}", reglistToMnemonic('R', regList, "PC")),
+						Operand:  fmt.Sprintf("{%s}", reglistToMnemonic('R', uint16(regList), "PC")),
 					}
 				}
 				return &DisasmEntry{
 					Operator: "POP",
-					Operand:  fmt.Sprintf("{%s}", reglistToMnemonic('R', regList, "")),
+					Operand:  fmt.Sprintf("{%s}", reglistToMnemonic('R', uint16(regList), "")),
 				}
 			}
 
@@ -1610,12 +1610,12 @@ func (arm *ARM) decodeThumbPushPopRegisters(opcode uint16) decodeFunction {
 			if pclr {
 				return &DisasmEntry{
 					Operator: "PUSH",
-					Operand:  fmt.Sprintf("{%s}", reglistToMnemonic('R', regList, "LR")),
+					Operand:  fmt.Sprintf("{%s}", reglistToMnemonic('R', uint16(regList), "LR")),
 				}
 			}
 			return &DisasmEntry{
 				Operator: "PUSH",
-				Operand:  fmt.Sprintf("{%s}", reglistToMnemonic('R', regList, "")),
+				Operand:  fmt.Sprintf("{%s}", reglistToMnemonic('R', uint16(regList), "")),
 			}
 		}
 
@@ -1706,12 +1706,12 @@ func (arm *ARM) decodeThumbMultipleLoadStore(opcode uint16) decodeFunction {
 			if load {
 				return &DisasmEntry{
 					Operator: "LDMIA",
-					Operand:  fmt.Sprintf("R%d!, {%s}", baseReg, reglistToMnemonic('R', regList, "")),
+					Operand:  fmt.Sprintf("R%d!, {%s}", baseReg, reglistToMnemonic('R', uint16(regList), "")),
 				}
 			}
 			return &DisasmEntry{
 				Operator: "STMIA",
-				Operand:  fmt.Sprintf("R%d!, {%s}", baseReg, reglistToMnemonic('R', regList, "")),
+				Operand:  fmt.Sprintf("R%d!, {%s}", baseReg, reglistToMnemonic('R', uint16(regList), "")),
 			}
 		}
 

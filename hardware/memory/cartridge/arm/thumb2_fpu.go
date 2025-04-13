@@ -900,7 +900,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 				return &DisasmEntry{
 					Is32bit:  true,
 					Operator: "VSTM",
-					Operand:  fmt.Sprintf("R%d!, {%s}", Rn, reglistToMnemonic(regPrefix, uint8(imm8), "")),
+					Operand:  fmt.Sprintf("R%d!, {%s}", Rn, reglistToMnemonic(regPrefix, imm8, "")),
 				}
 			}
 
@@ -1020,7 +1020,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 				return &DisasmEntry{
 					Is32bit:  true,
 					Operator: "VPUSH",
-					Operand:  fmt.Sprintf("{%s}", reglistToMnemonic(regPrefix, uint8(imm8), "")),
+					Operand:  fmt.Sprintf("{%s}", reglistToMnemonic(regPrefix, imm8, "")),
 				}
 			}
 
@@ -1165,7 +1165,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 				return &DisasmEntry{
 					Is32bit:  true,
 					Operator: "VLDM",
-					Operand:  fmt.Sprintf("R%d!, {%s}", Rn, reglistToMnemonic(regPrefix, uint8(imm8), "")),
+					Operand:  fmt.Sprintf("R%d!, {%s}", Rn, reglistToMnemonic(regPrefix, imm8, "")),
 				}
 			}
 
@@ -1226,7 +1226,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 				return &DisasmEntry{
 					Is32bit:  true,
 					Operator: "VPOP",
-					Operand:  reglistToMnemonic(regPrefix, uint8(imm8), ""),
+					Operand:  reglistToMnemonic(regPrefix, imm8, ""),
 				}
 			}
 

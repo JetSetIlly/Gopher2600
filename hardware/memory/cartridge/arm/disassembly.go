@@ -147,10 +147,10 @@ func shiftTypeToMnemonic(typ uint16) string {
 
 // converts reglist to a string of register names separated by commas. does not
 // add the surrounding braces
-func reglistToMnemonic(regPrefix rune, regList uint8, suffix string) string {
+func reglistToMnemonic(regPrefix rune, regList uint16, suffix string) string {
 	s := strings.Builder{}
 	comma := false
-	for i := 0; i <= 7; i++ {
+	for i := 0; i <= 15; i++ {
 		if regList&0x01 == 0x01 {
 			if comma {
 				s.WriteString(",")
