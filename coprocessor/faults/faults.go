@@ -89,7 +89,7 @@ func (flt Faults) WriteLog(w io.Writer) {
 }
 
 // NewEntry adds a new entry to the list of faults
-func (flt *Faults) NewEntry(category Category, event string, instructionAddr uint32, accessAddr uint32) {
+func (flt *Faults) NewEntry(event string, category Category, instructionAddr uint32, accessAddr uint32) {
 	key := fmt.Sprintf("%08x%08x", instructionAddr, accessAddr)
 
 	e, found := flt.entries[key]

@@ -317,7 +317,7 @@ func (dev *Developer) MemoryFault(event string, fault faults.Category, instructi
 	dev.faultsLock.Lock()
 	defer dev.faultsLock.Unlock()
 
-	dev.faults.NewEntry(fault, event, instructionAddr, accessAddr)
+	dev.faults.NewEntry(event, fault, instructionAddr, accessAddr)
 }
 
 // SetEmulationState is called by the emulation whenever state changes
