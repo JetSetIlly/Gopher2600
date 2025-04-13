@@ -776,12 +776,12 @@ func (arm *ARM) checkProgramMemory(force bool) {
 	var origin uint32
 	arm.state.programMemory, origin = arm.mem.MapAddress(addr, false, true)
 	if arm.state.programMemory == nil {
-		arm.memoryFault("does not exist", faults.ProgramMemory, addr)
+		arm.memoryFault("program memory does not exist", faults.ProgramMemory, addr)
 		return
 	}
 
 	if !arm.mem.IsExecutable(addr) {
-		arm.memoryFault("not executable", faults.ProgramMemory, addr)
+		arm.memoryFault("program memory not executable", faults.ProgramMemory, addr)
 		arm.state.programMemory = nil
 		return
 	}
