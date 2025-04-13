@@ -172,6 +172,17 @@ func reglistToMnemonic(regPrefix rune, regList uint16, suffix string) string {
 	return s.String()
 }
 
+// converts a count to a numeric range, counting from the start value
+func regcountToMnemonic(regPrefix rune, count uint16, start uint16) string {
+	if count == 0 {
+		return "<invalid regcount>"
+	}
+	if count == 1 {
+		return fmt.Sprintf("%c%d", regPrefix, start)
+	}
+	return fmt.Sprintf("%c%d-%c%d", regPrefix, start, regPrefix, start+count-1)
+}
+
 // adds the S suffix for a instructions that have an optional 'set flags' stage
 func setFlagsMnemonic(setFlags bool) string {
 	if setFlags {

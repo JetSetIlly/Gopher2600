@@ -1020,7 +1020,7 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 				return &DisasmEntry{
 					Is32bit:  true,
 					Operator: "VPUSH",
-					Operand:  fmt.Sprintf("{%s}", reglistToMnemonic(regPrefix, imm8, "")),
+					Operand:  fmt.Sprintf("{%s}", regcountToMnemonic(regPrefix, imm8>>1, uint16(d))),
 				}
 			}
 
@@ -1219,14 +1219,12 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 			regPrefix = 'S'
 		}
 
-		// if regs == 0 || (d + regs) > 32 then UNPREDICTABLE
-
 		return func() *DisasmEntry {
 			if arm.decodeOnly {
 				return &DisasmEntry{
 					Is32bit:  true,
 					Operator: "VPOP",
-					Operand:  reglistToMnemonic(regPrefix, imm8, ""),
+					Operand:  fmt.Sprintf("{%s}", regcountToMnemonic(regPrefix, imm8>>1, uint16(d))),
 				}
 			}
 
@@ -1235,6 +1233,10 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 
 			if sz {
 				// 64bit floats (T1 encoding)
+				if imm8 == 0 || imm8 > 16 || imm8+d > 32 {
+					panic("too many registers for VPOP")
+				}
+
 				for i := uint16(0); i < imm8; i += 2 {
 					word1 := arm.read32bit(addr, true)
 					word2 := arm.read32bit(addr+4, true)
@@ -1249,6 +1251,9 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 				}
 			} else {
 				// 32bit floats (T2 encoding)
+				if imm8 == 0 || imm8+d > 32 {
+					panic("too many registers for VPOP")
+				}
 				for i := uint16(0); i < imm8; i++ {
 					arm.state.fpu.Registers[d+i] = arm.read32bit(addr, true)
 					addr += 4
