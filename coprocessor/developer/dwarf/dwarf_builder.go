@@ -107,7 +107,7 @@ func (bld *build) buildTypes(src *Source) error {
 		for _, e := range bld.order {
 			switch e.Tag {
 			case dwarf.TagTypedef:
-				baseType, err := bld.resolveType(e, src)
+				baseType, err := bld.resolveType(e)
 				if err != nil {
 					return err
 				}
@@ -170,7 +170,7 @@ func (bld *build) buildTypes(src *Source) error {
 			case dwarf.TagPointerType:
 				var typ SourceType
 
-				typ.PointerType, err = bld.resolveType(e, src)
+				typ.PointerType, err = bld.resolveType(e)
 				if err != nil {
 					return err
 				}
@@ -324,7 +324,7 @@ func (bld *build) buildTypes(src *Source) error {
 			switch e.Tag {
 			case dwarf.TagArrayType:
 				var err error
-				arrayBaseType, err = bld.resolveType(e, src)
+				arrayBaseType, err = bld.resolveType(e)
 				if err != nil {
 					return err
 				}
@@ -361,7 +361,7 @@ func (bld *build) buildTypes(src *Source) error {
 		for _, e := range bld.order {
 			switch e.Tag {
 			case dwarf.TagConstType:
-				baseType, err := bld.resolveType(e, src)
+				baseType, err := bld.resolveType(e)
 				if err != nil {
 					return err
 				}
@@ -409,7 +409,7 @@ func (bld *build) buildTypes(src *Source) error {
 	return nil
 }
 
-func (bld *build) resolveType(v *dwarf.Entry, src *Source) (*SourceType, error) {
+func (bld *build) resolveType(v *dwarf.Entry) (*SourceType, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -443,7 +443,7 @@ func (bld *build) resolveVariableDeclaration(v *dwarf.Entry, t *dwarf.Entry, src
 
 		// prefer type from 't' entry
 		if t != nil {
-			varb.Type, err = bld.resolveType(t, src)
+			varb.Type, err = bld.resolveType(t)
 			if err != nil {
 				return nil, err
 			}
@@ -451,7 +451,7 @@ func (bld *build) resolveVariableDeclaration(v *dwarf.Entry, t *dwarf.Entry, src
 
 		// if type has not been resolved use 'v' entry
 		if varb.Type == nil {
-			varb.Type, err = bld.resolveType(v, src)
+			varb.Type, err = bld.resolveType(v)
 			if err != nil {
 				return nil, err
 			}
@@ -952,8 +952,14 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 		}
 		files := lr.Files()
 
-		// name of entry
+		// name of entry might be the entry we've been given or in a specification
 		fld := e.AttrField(dwarf.AttrName)
+		if fld == nil {
+			sp := e.AttrField(dwarf.AttrSpecification)
+			if sp != nil {
+				fld = bld.entries[sp.Val.(dwarf.Offset)].AttrField(dwarf.AttrName)
+			}
+		}
 		if fld == nil {
 			return nil, fmt.Errorf("no function name")
 		}
@@ -1077,6 +1083,9 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 			// inlined subprograms)
 
 			fld = e.AttrField(dwarf.AttrAbstractOrigin)
+			if fld == nil {
+				fld = e.AttrField(dwarf.AttrSpecification)
+			}
 			if fld != nil {
 				av, ok := bld.entries[fld.Val.(dwarf.Offset)]
 				if !ok {
@@ -1111,25 +1120,25 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 				currentFrameBase = fn.framebaseLoclist
 
 				commit(fn)
-
-			} else {
-				fn, err := resolve(e)
-				if err != nil {
-					logger.Log(logger.Allow, "dwarf", err)
-					continue // build order loop
-				}
-
-				// start/end address of function
-				fn.Range = append(fn.Range, SourceRange{
-					Start: low,
-					End:   high,
-				})
-
-				// note framebase so that we can use it for inlined functions
-				currentFrameBase = fn.framebaseLoclist
-
-				commit(fn)
+				continue // for bld.order
 			}
+
+			fn, err := resolve(e)
+			if err != nil {
+				logger.Log(logger.Allow, "dwarf", err)
+				continue // build order loop
+			}
+
+			// start/end address of function
+			fn.Range = append(fn.Range, SourceRange{
+				Start: low,
+				End:   high,
+			})
+
+			// note framebase so that we can use it for inlined functions
+			currentFrameBase = fn.framebaseLoclist
+
+			commit(fn)
 
 		case dwarf.TagInlinedSubroutine:
 			// inlined subroutines have more complex memory placement

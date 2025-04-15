@@ -25,6 +25,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -714,8 +715,58 @@ func addVariableChildren(src *Source) {
 	}
 }
 
-// assign source lines to a function
 func assignFunctionToSourceLines(src *Source) {
+	// for every source line in every file find the function with the smallest
+	// range in which any of the instructions for the line falls in any of the
+	// functions possible ranges
+	for _, sf := range src.Files {
+		for _, ln := range sf.Content.Lines {
+			// move on if there are no instructions for the line
+			if len(ln.Instruction) > 0 {
+				var candidateFunction *SourceFunction
+				var rangeSize uint64
+
+				// maximise the range size so that the first comparison will
+				// always succeed (the comparison is "less than rangeSize")
+				rangeSize = ^uint64(0)
+
+				for _, ins := range ln.Instruction {
+					addr := uint64(ins.Addr)
+					for _, fn := range src.Functions {
+						for _, r := range fn.Range {
+							if addr >= r.Start && addr <= r.End {
+								if r.End-r.Start < rangeSize {
+									rangeSize = r.End - r.Start
+									candidateFunction = fn
+									break // range loop
+								}
+							}
+						}
+					}
+				}
+
+				// commit to candidate function
+				ln.Function = candidateFunction
+			}
+		}
+	}
+
+	// any source lines without a function assigned to it is allocated the
+	// function of the preceeding line
+	for _, sf := range src.Files {
+		var currentFunction *SourceFunction
+		for _, ln := range sf.Content.Lines {
+			if ln.Function == nil {
+				ln.Function = currentFunction
+			} else {
+				currentFunction = ln.Function
+			}
+		}
+	}
+}
+
+// assign source lines to a function
+func assignFunctionToSourceLines_old(src *Source) {
 	// for each line in a file compare the address of the first instruction for
 	// the line to each range in every function. the function with the smallest
 	// range is the function the line belongs to
@@ -745,20 +796,16 @@ func assignFunctionToSourceLines(src *Source) {
 				}
 			}
 		}
+	}
 
-		// assign functions to lines that don't have instructions. this method
-		// isn't great because we can't detect the end of a function, meaning
-		// that a global variable declared between functions will be wrongly
-		// allocated
-		//
-		// however, this shortcoming can be corrected in the buildVariables()
-		// function when a global variable is encountered
-		currentFunction := &SourceFunction{Name: stubIndicator}
+	for _, sf := range src.Files {
+		var currentFunction *SourceFunction
 		for _, ln := range sf.Content.Lines {
-			if ln.Function.IsStub() {
+			if ln.Function == nil {
 				ln.Function = currentFunction
+			} else {
+				currentFunction = ln.Function
 			}
-			currentFunction = ln.Function
 		}
 	}
 }
@@ -816,6 +863,19 @@ func findHighAddress(src *Source) {
 	}
 }
 
+// regular expressions used by addFunctionStubs() to test whether the stubs
+// should be added or whether they are compiler artefacts
+var (
+	mangledCppNames        *regexp.Regexp
+	compilerGeneratedNames *regexp.Regexp
+)
+
+// initialisation of regular expressions used by addFunctionStubs()
+func init() {
+	mangledCppNames = regexp.MustCompile(`^(?:_Z[\w\d_]+|\?[^\s@]+\@.*)$`)
+	compilerGeneratedNames = regexp.MustCompile(`^_GLOBAL__(sub_I|D|I)_[\w\d_]+$`)
+}
+
 // add function stubs for functions without DWARF data. we do this *after*
 // we've looked for functions in the DWARF data (via the line reader) because
 // it appears that not every function will necessarily have a symbol and it's
@@ -837,6 +897,16 @@ func addFunctionStubs(src *Source, ef *elf.File) error {
 
 	// the functions from the symbol table
 	for _, s := range syms {
+		if mangledCppNames.MatchString(s.Name) {
+			logger.Logf(logger.Allow, "dwarf", "not adding stub with mangled name: %s", s.Name)
+			continue // for loop
+		}
+
+		if compilerGeneratedNames.MatchString(s.Name) {
+			logger.Logf(logger.Allow, "dwarf", "not adding stub with compiler-generated name: %s", s.Name)
+			continue // for loop
+		}
+
 		typ := s.Info & 0x0f
 		if typ == 0x02 {
 			// align address
