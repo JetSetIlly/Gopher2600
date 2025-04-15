@@ -25,42 +25,39 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-type loclistSection struct {
+type loclistDecoder struct {
 	coproc    coprocessor.CartCoProc
 	byteOrder binary.ByteOrder
 	data      []uint8
 }
 
-func newLoclistSectionFromFile(ef *elf.File, coproc coprocessor.CartCoProc) (*loclistSection, error) {
+func newLoclistDecoderFromFile(ef *elf.File, coproc coprocessor.CartCoProc) (*loclistDecoder, error) {
+	var data []uint8
 	sec := ef.Section(".debug_loc")
-	if sec == nil {
-		return nil, fmt.Errorf("no .debug_loc section")
+	if sec != nil {
+		data, _ = sec.Data()
 	}
-	data, err := sec.Data()
-	if err != nil {
-		return nil, err
-	}
-	return newLoclistSection(data, ef.ByteOrder, coproc)
+	return newLoclistDecoder(data, ef.ByteOrder, coproc)
 }
 
-func newLoclistSection(data []uint8, byteOrder binary.ByteOrder, coproc coprocessor.CartCoProc) (*loclistSection, error) {
-	sec := &loclistSection{
+// newLoclistDecoder will always return a new instance of loclistDecoder but it
+// may come with a warning about the .debug_loc section being empty
+func newLoclistDecoder(data []uint8, byteOrder binary.ByteOrder, coproc coprocessor.CartCoProc) (*loclistDecoder, error) {
+	sec := &loclistDecoder{
 		data:      data,
 		coproc:    coproc,
 		byteOrder: byteOrder,
 	}
-
 	if len(data) == 0 {
-		return nil, fmt.Errorf("empty .debug_loc section")
+		return sec, fmt.Errorf("empty .debug_loc section")
 	}
-
 	return sec, nil
 }
 
-// loclistFramebase provides context to the location list. implemented by
+// framebaseResolver provides context to the location list. implemented by
 // SourceVariable, SourceFunction and the frame section.
-type loclistFramebase interface {
-	framebase() (uint64, error)
+type framebaseResolver interface {
+	resolveFramebase() (uint64, error)
 }
 
 type loclistStackClass int
@@ -100,21 +97,21 @@ type loclistResult struct {
 
 type loclist struct {
 	coproc coprocessor.CartCoProc
-	ctx    loclistFramebase
+	ctx    framebaseResolver
 
 	list []loclistOperator
 
 	stack  []loclistStack
 	pieces []loclistPiece
 
-	singleLoc  bool
-	loclistPtr int64
+	singleLoc bool
+	ptr       int64
 
 	// the derivation for the loclist is written to the io.Writer
 	derivation io.Writer
 }
 
-func (sec *loclistSection) newLoclistJustContext(ctx loclistFramebase) *loclist {
+func (sec *loclistDecoder) newLoclistJustContext(ctx framebaseResolver) *loclist {
 	return &loclist{
 		coproc:    sec.coproc,
 		ctx:       ctx,
@@ -122,7 +119,7 @@ func (sec *loclistSection) newLoclistJustContext(ctx loclistFramebase) *loclist 
 	}
 }
 
-func (sec *loclistSection) newLoclistFromSingleOperator(ctx loclistFramebase, expr []uint8) (*loclist, error) {
+func (sec *loclistDecoder) newLoclistFromSingleOperator(ctx framebaseResolver, expr []uint8) (*loclist, error) {
 	loc := &loclist{
 		coproc:    sec.coproc,
 		ctx:       ctx,
@@ -141,7 +138,7 @@ func (sec *loclistSection) newLoclistFromSingleOperator(ctx loclistFramebase, ex
 
 type commitLoclist func(start, end uint64, loc *loclist)
 
-func (sec *loclistSection) newLoclist(ctx loclistFramebase, ptr int64,
+func (sec *loclistDecoder) newLoclist(ctx framebaseResolver, ptr int64,
 	compilationUnitAddress uint64, commit commitLoclist) error {
 
 	// "Location lists, which are used to describe objects that have a limited lifetime or change
@@ -172,7 +169,9 @@ func (sec *loclistSection) newLoclist(ctx loclistFramebase, ptr int64,
 	// page 31 of "DWARF4 Standard"
 	baseAddress := compilationUnitAddress
 
-	loclistNumber := ptr
+	if int(ptr)+8 > len(sec.data) {
+		return fmt.Errorf("loclist ptr beyond scope of .debug_loc data: %d > %d", ptr, len(sec.data))
+	}
 
 	// start and end address. this will be updated at the end of every for loop iteration
 	startAddress := uint64(sec.byteOrder.Uint32(sec.data[ptr:]))
@@ -186,9 +185,12 @@ func (sec *loclistSection) newLoclist(ctx loclistFramebase, ptr int64,
 	// program". page 31 of "DWARF4 Standard"
 	for !(startAddress == 0x0 && endAddress == 0x0) {
 		loc := &loclist{
-			coproc:     sec.coproc,
-			ctx:        ctx,
-			loclistPtr: loclistNumber,
+			coproc: sec.coproc,
+			ctx:    ctx,
+
+			// we've already read the start and end address information so we
+			// adjust the ptr by the length of two 32byte values
+			ptr: ptr - 8,
 		}
 
 		// "A base address selection entry consists of:
@@ -240,8 +242,10 @@ func (sec *loclistSection) newLoclist(ctx loclistFramebase, ptr int64,
 			}
 		}
 
-		// update loclist number
-		loclistNumber = ptr
+		// bounds check
+		if int(ptr)+8 > len(sec.data) {
+			return fmt.Errorf("loclist ptr beyond scope of .debug_loc data: %d > %d", ptr, len(sec.data))
+		}
 
 		// read next address range
 		startAddress = uint64(sec.byteOrder.Uint32(sec.data[ptr:]))
@@ -259,11 +263,11 @@ func (loc *loclist) addOperator(r loclistOperator) {
 
 func (loc *loclist) resolve() (loclistResult, error) {
 	if loc.ctx == nil {
-		return loclistResult{}, fmt.Errorf("no context [%x]", loc.loclistPtr)
+		return loclistResult{}, fmt.Errorf("no context [%x]", loc.ptr)
 	}
 
 	if len(loc.list) == 0 {
-		return loclistResult{}, fmt.Errorf("no loclist operations defined [%x]", loc.loclistPtr)
+		return loclistResult{}, fmt.Errorf("no loclist operations defined [%x]", loc.ptr)
 	}
 
 	// clear lists
@@ -321,12 +325,12 @@ func (loc *loclist) resolve() (loclistResult, error) {
 	// no pieces so just use top of stack
 
 	if len(loc.stack) == 0 {
-		return loclistResult{}, fmt.Errorf("stack is empty [%x]", loc.loclistPtr)
+		return loclistResult{}, fmt.Errorf("stack is empty [%x]", loc.ptr)
 	}
 
 	// stack should only have one entry in it
 	if len(loc.stack) > 1 {
-		logger.Logf(logger.Allow, "dwarf", "loclist stack has more than one entry after resolve [%x]", loc.loclistPtr)
+		logger.Logf(logger.Allow, "dwarf", "loclist stack has more than one entry after resolve [%x]", loc.ptr)
 	}
 
 	// top of stack is the result

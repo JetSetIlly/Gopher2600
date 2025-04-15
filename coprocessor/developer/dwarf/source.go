@@ -63,7 +63,7 @@ type Source struct {
 	path string
 
 	// ELF sections that help DWARF locate local variables in memory
-	debugLoc   *loclistSection
+	debugLoc   *loclistDecoder
 	debugFrame *frameSection
 
 	// source is compiled with optimisation
@@ -284,17 +284,21 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		// always create debugFrame and debugLoc sections even when the
 		// cartridge doesn't have the corresponding sections. in the case of
 		// the loclist section this is definitely needed because even without
-		// .debug_loc data we use the loclistSection to help decode single
+		// .debug_loc data we use the loclistDecoder to help decode single
 		// address descriptions (which will definitely be present)
 
+		// ignoring the boolean return value because the newFrameSection() will
+		// warn about an empty data section
 		data, _, _ := c.ELFSection(".debug_frame")
 		src.debugFrame, err = newFrameSection(data, ef.ByteOrder, src.cart.GetCoProcBus().GetCoProc(), nil)
 		if err != nil {
 			logger.Log(logger.Allow, "dwarf", err)
 		}
 
+		// ignoring the boolean return value because the newLolistDecoder() will
+		// warn about an empty data section
 		data, _, _ = c.ELFSection(".debug_loc")
-		src.debugLoc, err = newLoclistSection(data, ef.ByteOrder, src.cart.GetCoProcBus().GetCoProc())
+		src.debugLoc, err = newLoclistDecoder(data, ef.ByteOrder, src.cart.GetCoProcBus().GetCoProc())
 		if err != nil {
 			logger.Log(logger.Allow, "dwarf", err)
 		}
@@ -322,7 +326,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		}
 
 		// create loclist section from the raw ELF section
-		src.debugLoc, err = newLoclistSectionFromFile(ef, src.cart.GetCoProcBus().GetCoProc())
+		src.debugLoc, err = newLoclistDecoderFromFile(ef, src.cart.GetCoProcBus().GetCoProc())
 		if err != nil {
 			logger.Log(logger.Allow, "dwarf", err)
 		}
@@ -1141,7 +1145,7 @@ func (src *Source) FramebaseCurrent(derivation io.Writer) (uint64, error) {
 	defer func() {
 		src.debugFrame.derivation = old
 	}()
-	return src.debugFrame.framebase()
+	return src.debugFrame.resolveFramebase()
 }
 
 func simplifyPath(path string) string {

@@ -244,7 +244,7 @@ func (varb *SourceVariable) resolve() loclistResult {
 
 // addVariableChildren populates the variable child array with SourceVariable
 // instances that describe areas of memory related to the parent variable.
-func (varb *SourceVariable) addVariableChildren(debug_loc *loclistSection) {
+func (varb *SourceVariable) addVariableChildren(debug_loc *loclistDecoder) {
 	if varb.Type.IsArray() {
 		for i := 0; i < varb.Type.ElementCount; i++ {
 			elem := &SourceVariable{
@@ -353,13 +353,13 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistSection) {
 	}
 }
 
-// framebase implements the loclistFramebase interface
-func (varb *SourceVariable) framebase() (uint64, error) {
+// resolveFramebase implements the loclistResolver interface
+func (varb *SourceVariable) resolveFramebase() (uint64, error) {
 	if varb.DeclLine == nil || varb.DeclLine.Function == nil {
 		return 0, fmt.Errorf("no framebase")
 	}
 
-	fb, err := varb.DeclLine.Function.framebase()
+	fb, err := varb.DeclLine.Function.resolveFramebase()
 	if err != nil {
 		return 0, fmt.Errorf("framebase for %s: %w", varb.DeclLine.Function.Name, err)
 	}

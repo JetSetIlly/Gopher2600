@@ -34,7 +34,7 @@ type build struct {
 	dwrf *dwarf.Data
 
 	// ELF sections that help DWARF locate local variables in memory
-	debug_loc   *loclistSection
+	debug_loc   *loclistDecoder
 	debug_frame *frameSection
 
 	globals map[string]*SourceVariable
@@ -58,7 +58,7 @@ type build struct {
 	compileUnits map[dwarf.Offset]*dwarf.Entry
 }
 
-func newBuild(dwrf *dwarf.Data, debug_loc *loclistSection, debug_frame *frameSection) (*build, error) {
+func newBuild(dwrf *dwarf.Data, debug_loc *loclistDecoder, debug_frame *frameSection) (*build, error) {
 	bld := &build{
 		dwrf:         dwrf,
 		debug_loc:    debug_loc,
@@ -263,10 +263,6 @@ func (bld *build) buildTypes(src *Source) error {
 				if fld != nil {
 					switch fld.Class {
 					case dwarf.ClassConstant:
-						if bld.debug_loc == nil {
-							return errors.New(fmt.Sprintf("no .debug_loc data for %s", memb.Name))
-						}
-
 						memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
 						address := fld.Val.(int64)
 						memb.loclist.addOperator(loclistOperator{
@@ -279,10 +275,6 @@ func (bld *build) buildTypes(src *Source) error {
 							operator: "member offset",
 						})
 					case dwarf.ClassExprLoc:
-						if bld.debug_loc == nil {
-							return errors.New(fmt.Sprintf("no .debug_loc data for %s", memb.Name))
-						}
-
 						memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
 						expr := fld.Val.([]uint8)
 						r, n, err := bld.debug_loc.decodeLoclistOperation(expr)
@@ -812,24 +804,20 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 			if locfld != nil {
 				switch locfld.Class {
 				case dwarf.ClassLocListPtr:
-					if bld.debug_loc == nil {
-						return errors.New(fmt.Sprintf("no .debug_loc data for %s", varb.Name))
+					ptrCommit := func(start, end uint64, loc *loclist) {
+						cp := *varb
+						cp.loclist = loc
+						local := &SourceVariableLocal{
+							SourceVariable: &cp,
+							Range: SourceRange{
+								Start: start,
+								End:   end,
+							},
+						}
+						bld.locals = append(bld.locals, local)
 					}
 
-					var err error
-					err = bld.debug_loc.newLoclist(varb, locfld.Val.(int64), compilationUnitAddress,
-						func(start, end uint64, loc *loclist) {
-							cp := *varb
-							cp.loclist = loc
-							local := &SourceVariableLocal{
-								SourceVariable: &cp,
-								Range: SourceRange{
-									Start: start,
-									End:   end,
-								},
-							}
-							bld.locals = append(bld.locals, local)
-						})
+					err := bld.debug_loc.newLoclist(varb, locfld.Val.(int64), compilationUnitAddress, ptrCommit)
 					if err != nil {
 						if errors.Is(err, UnsupportedDWARF) {
 							return err
@@ -837,70 +825,26 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 						logger.Logf(logger.Allow, "dwarf", "%s: %v", varb.Name, err)
 					}
 
-					// I don't believe variables with the class of location
-					// attribute can ever be a global variable but I don't know that
-					// for sure. either way, attempting to add to the global list
-					// does no harm
 					if !addGlobal(varb) {
 						addLexicalLocal(varb)
 					}
 
 				case dwarf.ClassExprLoc:
-					if bld.debug_loc == nil {
-						return errors.New(fmt.Sprintf("no .debug_loc data for %s", varb.Name))
-					}
-
 					// Single location description "They are sufficient for describing the location of any object
 					// as long as its lifetime is either static or the same as the lexical block that owns it,
 					// and it does not move during its lifetime"
 					// page 26 of "DWARF4 Standard"
 
-					// the origin address from which the loclist address is set is
-					// dependent on which section the symbol appears in
-					var globalOrigin uint64
-
-					// this is a slow solution and should be replaced with a preprocessed symbol-to-section map
-					if relocatable == nil {
-						globalOrigin = compilationUnitAddress
-					} else {
-						syms, err := ef.Symbols()
-						if err != nil {
-							return err
-						}
-						for _, s := range syms {
-							if s.Name == varb.Name {
-								section := ef.Sections[s.Section]
-								if _, o, ok := relocatable.ELFSection(section.Name); !ok {
-									continue // for loop
-								} else {
-									globalOrigin = uint64(o)
-									break // done
-								}
-							}
-						}
-					}
-
-					expr := locfld.Val.([]uint8)
-					r, n, err := bld.debug_loc.decodeLoclistOperationWithOrigin(expr, globalOrigin)
+					var err error
+					varb.loclist, err = bld.debug_loc.newLoclistFromSingleOperator(src.debugFrame, locfld.Val.([]uint8))
 					if err != nil {
 						return err
 					}
-					if n == 0 {
-						logger.Logf(logger.Allow, "dwarf", "unhandled expression operator %02x", expr[0])
-					}
 
-					varb.loclist = bld.debug_loc.newLoclistJustContext(varb)
-					varb.loclist.addOperator(r)
-
-					// we don't have a range for this variable it is either a global
-					// or a variable that we can assume is visible for the lexical
-					// range
 					if !addGlobal(varb) {
 						addLexicalLocal(varb)
 					}
 				}
-			} else if !addGlobal(varb) {
-				addLexicalLocal(varb)
 			}
 		}
 	}
@@ -916,10 +860,6 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 		if fld != nil {
 			switch fld.Class {
 			case dwarf.ClassExprLoc:
-				if bld.debug_loc == nil {
-					return nil, fmt.Errorf("no .debug_loc data for %s", e.Tag)
-				}
-
 				var err error
 				framebase, err = bld.debug_loc.newLoclistFromSingleOperator(src.debugFrame, fld.Val.([]uint8))
 				if err != nil {
@@ -994,9 +934,9 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 		}
 
 		fn := &SourceFunction{
-			Name:             name,
-			DeclLine:         src.Files[filename].Content.Lines[linenum-1],
-			framebaseLoclist: framebase,
+			Name:      name,
+			DeclLine:  src.Files[filename].Content.Lines[linenum-1],
+			framebase: framebase,
 		}
 
 		return fn, nil
@@ -1107,8 +1047,8 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 				// try to acquire framebase for concrete subroutine. we don't expect
 				// for the framebase to have been found already but we'll check it
 				// to make sure in any case
-				if fn.framebaseLoclist == nil {
-					fn.framebaseLoclist, err = resolveFramebase(e)
+				if fn.framebase == nil {
+					fn.framebase, err = resolveFramebase(e)
 					if err != nil {
 						logger.Logf(logger.Allow, "dwarf", "framebase for %s will be unreliable: %v", fn.Name, err)
 					}
@@ -1117,7 +1057,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 				}
 
 				// note framebase so that we can use it for inlined functions
-				currentFrameBase = fn.framebaseLoclist
+				currentFrameBase = fn.framebase
 
 				commit(fn)
 				continue // for bld.order
@@ -1136,7 +1076,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 			})
 
 			// note framebase so that we can use it for inlined functions
-			currentFrameBase = fn.framebaseLoclist
+			currentFrameBase = fn.framebase
 
 			commit(fn)
 
@@ -1167,7 +1107,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 
 				// inlined functions will not have a framebase attribute so we
 				// use the most recent one found
-				fn.framebaseLoclist = currentFrameBase
+				fn.framebase = currentFrameBase
 
 				commit(fn)
 

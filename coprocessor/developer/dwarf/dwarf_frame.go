@@ -213,8 +213,8 @@ func newFrameSection(data []uint8, byteOrder binary.ByteOrder,
 // sentinal error returned by framebase()
 var noFDE = errors.New("no FDE")
 
-// coproc implements the loclistFramebase interface
-func (fr *frameSection) framebase() (uint64, error) {
+// coproc implements the loclistResolver interface
+func (fr *frameSection) resolveFramebase() (uint64, error) {
 	// TODO: replace magic number with a PC mnemonic. the mnemonic can then
 	// refer to appropriate register for the coprocessor. the value of 15 is
 	// fine for the ARM coprocessor

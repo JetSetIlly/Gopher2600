@@ -216,7 +216,7 @@ type SourceFunction struct {
 	Range []SourceRange
 
 	// location list. used to identify the frame base of a function
-	framebaseLoclist *loclist
+	framebase *loclist
 
 	// first source line for each instance of the function. note that the first
 	// line of a function may not have any code directly associated with it
@@ -255,17 +255,17 @@ func (fn *SourceFunction) IsInlined() bool {
 	return false
 }
 
-// framebase implements the loclistFramebase interface
-func (fn *SourceFunction) framebase() (uint64, error) {
+// resolveFramebase implements the loclistResolver interface
+func (fn *SourceFunction) resolveFramebase() (uint64, error) {
 	if fn.IsStub() {
 		return 0, fmt.Errorf("no framebase for function")
 	}
 
-	if fn.framebaseLoclist == nil {
+	if fn.framebase == nil {
 		return 0, fmt.Errorf("no framebase loclist for %s", fn.Name)
 	}
 
-	r, err := fn.framebaseLoclist.resolve()
+	r, err := fn.framebase.resolve()
 	if err != nil {
 		return 0, err
 	}

@@ -26,7 +26,7 @@ import (
 // only then when the expression appears outside of a location list
 //
 // returns empty loclistOperator and zero if expression cannot be handled
-func (sec *loclistSection) decodeLoclistOperationWithOrigin(expr []uint8, origin uint64) (loclistOperator, int, error) {
+func (sec *loclistDecoder) decodeLoclistOperationWithOrigin(expr []uint8, origin uint64) (loclistOperator, int, error) {
 	switch expr[0] {
 	case 0x03:
 		// DW_OP_addr
@@ -63,7 +63,7 @@ func (sec *loclistSection) decodeLoclistOperationWithOrigin(expr []uint8, origin
 // the expr slice
 //
 // returns empty loclistOperator and zero if expression cannot be handled
-func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator, int, error) {
+func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator, int, error) {
 	// expression location operators reference
 	//
 	// "DWARF Debugging Information Format Version 4", page 17 to 24
@@ -930,7 +930,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 		offset, n := leb128.DecodeSLEB128(expr[1:])
 		return loclistOperator{
 			resolve: func(loc *loclist) (loclistStack, error) {
-				fb, err := loc.ctx.framebase()
+				fb, err := loc.ctx.resolveFramebase()
 				if err != nil {
 					return loclistStack{}, err
 				}
@@ -1077,7 +1077,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// Frame Information"
 		return loclistOperator{
 			resolve: func(loc *loclist) (loclistStack, error) {
-				fb, err := loc.ctx.framebase()
+				fb, err := loc.ctx.resolveFramebase()
 				if err != nil {
 					return loclistStack{}, err
 				}
