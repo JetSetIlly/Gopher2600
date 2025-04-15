@@ -527,3 +527,12 @@ func (cart *Elf) PutStatic(segment string, idx int, data uint8) bool {
 
 	return true
 }
+
+// GetFunctionRange implements the source.CartridgeFunctionSymbol interface in
+// the coprocessor package
+func (cart *Elf) GetFunctionRange(name string) (uint64, uint64, bool) {
+	if f, ok := cart.mem.strongArmFunctionsByName[name]; ok {
+		return uint64(f.origin), uint64(f.memtop), true
+	}
+	return 0, 0, false
+}

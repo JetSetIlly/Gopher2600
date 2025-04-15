@@ -481,7 +481,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 
 	// complete function list with stubs for functions where we don't have any
 	// DWARF data (but do have symbol data)
-	addFunctionStubs(src, ef)
+	resolveSymbols(bus, src, ef)
 
 	// sanity check of functions list
 	if len(src.Functions) != len(src.FunctionNames) {
@@ -863,17 +863,23 @@ func findHighAddress(src *Source) {
 	}
 }
 
-// regular expressions used by addFunctionStubs() to test whether the stubs
+// regular expressions used by resolveSymbols() to test whether the stubs
 // should be added or whether they are compiler artefacts
 var (
 	mangledCppNames        *regexp.Regexp
 	compilerGeneratedNames *regexp.Regexp
 )
 
-// initialisation of regular expressions used by addFunctionStubs()
+// initialisation of regular expressions used by resolveSymbols()
 func init() {
 	mangledCppNames = regexp.MustCompile(`^(?:_Z[\w\d_]+|\?[^\s@]+\@.*)$`)
 	compilerGeneratedNames = regexp.MustCompile(`^_GLOBAL__(sub_I|D|I)_[\w\d_]+$`)
+}
+
+// CartridgeFunctionSymbol is implemented by cartridges that can supply missing
+// symbol information about functions
+type CartridgeFunctionSymbol interface {
+	GetFunctionRange(name string) (uint64, uint64, bool)
 }
 
 // add function stubs for functions without DWARF data. we do this *after*
@@ -881,7 +887,10 @@ func init() {
 // it appears that not every function will necessarily have a symbol and it's
 // easier to handle the adding of stubs *after* the the line reader. it does
 // mean though that we need to check that a function has not already been added
-func addFunctionStubs(src *Source, ef *elf.File) error {
+func resolveSymbols(cart coprocessor.CartCoProcBus, src *Source, ef *elf.File) error {
+	// we'll use the cartridge to resolve symbols if at all possible
+	cartSymbols := cart.(CartridgeFunctionSymbol)
+
 	// all the symbols in the ELF file
 	syms, err := ef.Symbols()
 	if err != nil {
@@ -919,6 +928,17 @@ func addFunctionStubs(src *Source, ef *elf.File) error {
 					End:   a + s.Size - 1,
 				},
 			})
+		} else if cartSymbols != nil {
+			a, b, ok := cartSymbols.GetFunctionRange(s.Name)
+			if ok {
+				symbolTableFunctions = append(symbolTableFunctions, fn{
+					name: s.Name,
+					rng: SourceRange{
+						Start: a,
+						End:   b,
+					},
+				})
+			}
 		}
 	}
 

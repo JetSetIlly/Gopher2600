@@ -129,7 +129,8 @@ type elfMemory struct {
 
 	// for performance reasons this is a sparse array and not a map. this means
 	// that when indexing the address should be adjusted by strongArmOrigin
-	strongArmFunctions []*strongArmFunctionSpec
+	strongArmFunctions       []*strongArmFunctionSpec
+	strongArmFunctionsByName map[string]*strongArmFunctionSpec
 
 	// will be set to true if the vcsWrite3(), vcsPlp4Ex(), or vcsPla4Ex() function is used
 	usesBusStuffing bool
@@ -193,10 +194,11 @@ type elfMemory struct {
 
 func newElfMemory(env *environment.Environment) *elfMemory {
 	mem := &elfMemory{
-		env:            env,
-		gpio:           newGPIO(),
-		sectionsByName: make(map[string]int),
-		args:           make([]byte, argMemtop-argOrigin),
+		env:                      env,
+		gpio:                     newGPIO(),
+		sectionsByName:           make(map[string]int),
+		strongArmFunctionsByName: make(map[string]*strongArmFunctionSpec),
+		args:                     make([]byte, argMemtop-argOrigin),
 	}
 
 	// always using PlusCart model for now
@@ -324,7 +326,6 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 	sort.Strings(mem.sectionNames)
 
 	// strongarm functions are added during relocation
-	mem.strongArmFunctions = make([]*strongArmFunctionSpec, 0)
 	mem.strongArmOrigin = origin
 	mem.strongArmMemtop = mem.strongArmOrigin
 
@@ -871,20 +872,22 @@ func (mem *elfMemory) relocateStrongArmFunction(spec strongArmFunctionSpec) (uin
 	}
 
 	// address of new function in memory
-	addr := mem.strongArmMemtop
+	spec.origin = mem.strongArmMemtop
+	spec.memtop = spec.origin + uint32(len(strongArmStub))
+
+	// add null function to end of strongArmProgram array
+	mem.strongArmProgram = append(mem.strongArmProgram, strongArmStub...)
+
+	// update memtop of strongArm program
+	mem.strongArmMemtop = uint32(spec.memtop)
 
 	// add specification for this strongarm function
 	extend := int(mem.strongArmMemtop-mem.strongArmOrigin) - len(mem.strongArmFunctions) + 1
 	for range extend {
 		mem.strongArmFunctions = append(mem.strongArmFunctions, nil)
 	}
-	mem.strongArmFunctions[addr-mem.strongArmOrigin] = &spec
-
-	// add null function to end of strongArmProgram array
-	mem.strongArmProgram = append(mem.strongArmProgram, strongArmStub...)
-
-	// update memtop of strongArm program
-	mem.strongArmMemtop += uint32(len(strongArmStub))
+	mem.strongArmFunctions[spec.origin-mem.strongArmOrigin] = &spec
+	mem.strongArmFunctionsByName[spec.name] = &spec
 
 	// although the code location of a strongarm function must be on a 16bit
 	// boundary, the code is reached by interwork branching. we're using the
@@ -894,7 +897,7 @@ func (mem *elfMemory) relocateStrongArmFunction(spec strongArmFunctionSpec) (uin
 	// interwork branching uses the BLX instruction. BLX ignores bit zero of the
 	// address. this means that the correct (aligned) address will be used when
 	// setting the program counter
-	return addr | 0b01, nil
+	return spec.origin | 0b01, nil
 }
 
 // MapAddress implements the arm.SharedMemory interface.

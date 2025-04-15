@@ -32,6 +32,10 @@ type strongArmFunctionSpec struct {
 	name     string
 	function strongArmFunction
 	support  bool
+
+	// range of function will be filled in during relocation
+	origin uint32
+	memtop uint32
 }
 
 // strongarm function state records the progress of a single strongarm function
