@@ -889,7 +889,7 @@ type CartridgeFunctionSymbol interface {
 // mean though that we need to check that a function has not already been added
 func resolveSymbols(cart coprocessor.CartCoProcBus, src *Source, ef *elf.File) error {
 	// we'll use the cartridge to resolve symbols if at all possible
-	cartSymbols := cart.(CartridgeFunctionSymbol)
+	cartSymbols, _ := cart.(CartridgeFunctionSymbol)
 
 	// all the symbols in the ELF file
 	syms, err := ef.Symbols()
