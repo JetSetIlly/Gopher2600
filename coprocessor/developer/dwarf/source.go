@@ -923,12 +923,10 @@ func resolveSymbols(cart coprocessor.CartCoProcBus, src *Source, ef *elf.File) e
 	// the functions from the symbol table
 	for _, s := range syms {
 		if mangledCppNames.MatchString(s.Name) {
-			logger.Logf(logger.Allow, "dwarf", "not adding stub with mangled name: %s", s.Name)
 			continue // for loop
 		}
 
 		if compilerGeneratedNames.MatchString(s.Name) {
-			logger.Logf(logger.Allow, "dwarf", "not adding stub with compiler-generated name: %s", s.Name)
 			continue // for loop
 		}
 
