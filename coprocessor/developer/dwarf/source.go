@@ -493,7 +493,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	}
 
 	// read source lines
-	err = allocateSourceLines(src, dwrf)
+	err = allocateSourceLines(src, dwrf, addressAdjustment)
 	if err != nil {
 		return nil, fmt.Errorf("dwarf: %w", err)
 	}
@@ -585,27 +585,15 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	return src, nil
 }
 
-func allocateSourceLines(src *Source, dwrf *dwarf.Data) error {
+func allocateSourceLines(src *Source, dwrf *dwarf.Data, addressAdjustment uint64) error {
 	var addressConflicts int
 
 	for _, e := range src.compileUnits {
-		// the source line we're working on
-		var ln *SourceLine
-
 		// read every line in the compile unit
 		r, err := dwrf.LineReader(e.unit)
 		if err != nil {
 			return err
 		}
-
-		// the start address of a sequence is reset every time the EndSequence
-		// flag in a dwarf.LineEntry is set to true
-		var resetStartAddr bool
-		var startAddr uint64
-
-		// it is implied that the need to reset the start address on the first
-		// loop iteration
-		resetStartAddr = true
 
 		var le dwarf.LineEntry
 		for {
@@ -627,19 +615,32 @@ func allocateSourceLines(src *Source, dwrf *dwarf.Data) error {
 				break // line entry for loop. will continue with compile unit loop
 			}
 
-			// reset start address value if necessary
-			if resetStartAddr {
-				startAddr = le.Address + e.address
-				resetStartAddr = le.EndSequence
-				continue
-			}
+			ln := src.Files[le.File.Name].Content.Lines[le.Line-1]
 
-			// adjust address by executable origin
-			endAddr := le.Address + e.address
+			// start and end address of line entry
+			var startAddr, endAddr uint64
+			startAddr = le.Address + addressAdjustment
+
+			// end address determined by peeking at the next entry
+			p := r.Tell()
+			var peek dwarf.LineEntry
+			err = r.Next(&peek)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break // line entry for loop. will continue with compile unit loop
+				}
+				return err
+			}
+			endAddr = peek.Address + addressAdjustment
+			r.Seek(p)
 
 			// sanity check start/end address
 			if startAddr > endAddr {
-				return fmt.Errorf("dwarf: allocate source line: start address (%08x) is after end address (%08x)", startAddr, endAddr)
+				if le.EndSequence {
+					continue
+				} else {
+					return fmt.Errorf("dwarf: allocate source line: start address (%08x) is after end address (%08x)", startAddr, endAddr)
+				}
 			}
 
 			// add breakpoint and instruction information to the source line
@@ -671,14 +672,6 @@ func allocateSourceLines(src *Source, dwrf *dwarf.Data) error {
 					}
 				}
 			}
-
-			// prepare for next iteration
-			ln = src.Files[le.File.Name].Content.Lines[le.Line-1]
-			startAddr = endAddr
-
-			// if this is the end of a sequence then the start address must be
-			// reset for the next line item
-			resetStartAddr = le.EndSequence
 		}
 	}
 
@@ -704,7 +697,7 @@ func allocateSourceLines(src *Source, dwrf *dwarf.Data) error {
 
 			// add breakpoint address to the correct line
 			if le.IsStmt {
-				addr := le.Address + e.address
+				addr := le.Address + addressAdjustment
 				ln := src.LinesByAddress[addr]
 				if ln != nil {
 					ln.BreakAddresses = append(ln.BreakAddresses, uint32(addr))
