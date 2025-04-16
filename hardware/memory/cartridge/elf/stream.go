@@ -18,6 +18,7 @@ package elf
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -43,6 +44,8 @@ func (s streamEntry) String() string {
 const pushBoundary = 200
 
 type stream struct {
+	env *environment.Environment
+
 	// diabled indicates that the stream is not available and should not be
 	// activated
 	disabled bool
@@ -88,7 +91,7 @@ func (s *stream) push(e streamEntry) {
 
 func (s *stream) pull() streamEntry {
 	if !s.drain {
-		logger.Log(logger.Allow, "ELF", "unexpected call to stream.pull(). returning zero data")
+		logger.Log(s.env, "ELF", "unexpected call to stream.pull(). returning zero data")
 		return streamEntry{}
 	}
 	e := s.stream[s.drainPtr]

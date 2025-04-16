@@ -199,6 +199,9 @@ func newElfMemory(env *environment.Environment) *elfMemory {
 		sectionsByName:           make(map[string]int),
 		strongArmFunctionsByName: make(map[string]*strongArmFunctionSpec),
 		args:                     make([]byte, argMemtop-argOrigin),
+		stream: stream{
+			env: env,
+		},
 	}
 
 	// always using PlusCart model for now
