@@ -493,7 +493,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	}
 
 	// read source lines
-	err = allocateSourceLines(src, dwrf, addressAdjustment)
+	err = allocateSourceLines(src, dwrf)
 	if err != nil {
 		return nil, fmt.Errorf("dwarf: %w", err)
 	}
@@ -585,7 +585,9 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 	return src, nil
 }
 
-func allocateSourceLines(src *Source, dwrf *dwarf.Data, addressAdjustment uint64) error {
+func allocateSourceLines(src *Source, dwrf *dwarf.Data) error {
+	var addressConflicts int
+
 	for _, e := range src.compileUnits {
 		// the source line we're working on
 		var ln *SourceLine
@@ -627,13 +629,13 @@ func allocateSourceLines(src *Source, dwrf *dwarf.Data, addressAdjustment uint64
 
 			// reset start address value if necessary
 			if resetStartAddr {
-				startAddr = le.Address + addressAdjustment
+				startAddr = le.Address + e.address
 				resetStartAddr = le.EndSequence
 				continue
 			}
 
 			// adjust address by executable origin
-			endAddr := le.Address + addressAdjustment
+			endAddr := le.Address + e.address
 
 			// sanity check start/end address
 			if startAddr > endAddr {
@@ -646,14 +648,20 @@ func allocateSourceLines(src *Source, dwrf *dwarf.Data, addressAdjustment uint64
 				for addr := startAddr; addr < endAddr; addr++ {
 					// look for address in list of source instructions
 					if ins, ok := src.Instructions[addr]; ok {
+
 						// add instruction to the list for the source line
 						ln.Instruction = append(ln.Instruction, ins)
 
 						// link source line to instruction
 						ins.Line = ln
 
-						// add source line to list of lines by address
-						src.LinesByAddress[addr] = ln
+						// add source line to list of lines by address if the
+						// address has not been allocated a line already
+						if x := src.LinesByAddress[addr]; x == nil {
+							src.LinesByAddress[addr] = ln
+						} else {
+							addressConflicts++
+						}
 
 						// advance address value by opcode size. reduce value by
 						// one because the loop increment advances by one
@@ -696,13 +704,17 @@ func allocateSourceLines(src *Source, dwrf *dwarf.Data, addressAdjustment uint64
 
 			// add breakpoint address to the correct line
 			if le.IsStmt {
-				addr := le.Address + addressAdjustment
+				addr := le.Address + e.address
 				ln := src.LinesByAddress[addr]
 				if ln != nil {
 					ln.BreakAddresses = append(ln.BreakAddresses, uint32(addr))
 				}
 			}
 		}
+	}
+
+	if addressConflicts > 0 {
+		logger.Logf(logger.Allow, "dwarf", "address conflicts when allocating to source lines: %d", addressConflicts)
 	}
 
 	return nil
