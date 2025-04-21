@@ -69,9 +69,6 @@ type frameSection struct {
 
 	// reading data should be done with the byteOrder functions
 	byteOrder binary.ByteOrder
-
-	// the derivation for the framebase is written to the io.Writer
-	derivation io.Writer
 }
 
 // controls whether frame section should be relocated towards the actual executable origin
@@ -214,7 +211,7 @@ func newFrameSection(data []uint8, byteOrder binary.ByteOrder,
 var noFDE = errors.New("no FDE")
 
 // coproc implements the loclistResolver interface
-func (fr *frameSection) resolveFramebase() (uint64, error) {
+func (fr *frameSection) resolveFramebase(derive io.Writer) (uint64, error) {
 	// TODO: replace magic number with a PC mnemonic. the mnemonic can then
 	// refer to appropriate register for the coprocessor. the value of 15 is
 	// fine for the ARM coprocessor
@@ -223,18 +220,23 @@ func (fr *frameSection) resolveFramebase() (uint64, error) {
 		return 0, fmt.Errorf("cannot retrieve value from PC of coprocessor")
 	}
 
-	return fr.framebaseForAddr(addr)
+	return fr.framebaseForAddr(addr, derive)
 }
 
-func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
+func (fr *frameSection) framebaseForAddr(addr uint32, derive io.Writer) (uint64, error) {
 	var tab frameTable
 	tab.remember()
 
+	if derive != nil {
+		derive.Write([]byte(fmt.Sprintf("looking for address %08x\n", addr)))
+	}
+
 	var fde *frameSectionFDE
 	for _, f := range fr.fde {
-		if addr >= f.startAddress && addr <= f.endAddress {
+		if addr >= f.startAddress && addr < f.endAddress {
 			tab.location = f.startAddress
 			fde = f
+			break // for loop
 		}
 	}
 	if fde == nil {
@@ -242,10 +244,6 @@ func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
 	}
 	if fde.cie == nil {
 		return 0, fmt.Errorf("no parent CIE for FDE at address %08x", addr)
-	}
-
-	if fr.derivation != nil {
-		fr.derivation.Write([]byte(fmt.Sprintf("looking for address %08x\n", addr)))
 	}
 
 	ptr := 0
@@ -259,13 +257,13 @@ func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
 		}
 		ptr += r.length
 
-		if fr.derivation != nil {
-			fr.derivation.Write([]byte(fmt.Sprintf("CIE %v\n", r)))
+		if derive != nil {
+			derive.Write([]byte(fmt.Sprintf("CIE %v\n", r)))
 		}
 	}
 
-	if fr.derivation != nil {
-		fr.derivation.Write([]byte(fmt.Sprintf("trying FDE Block: %v\n", fde)))
+	if derive != nil {
+		derive.Write([]byte(fmt.Sprintf("trying FDE Block: %v\n", fde)))
 	}
 
 	ptr = 0
@@ -279,8 +277,8 @@ func (fr *frameSection) framebaseForAddr(addr uint32) (uint64, error) {
 		}
 		ptr += r.length
 
-		if fr.derivation != nil {
-			fr.derivation.Write([]byte(fmt.Sprintf("FDE %v [%08x]\n", r, tab.location)))
+		if derive != nil {
+			derive.Write([]byte(fmt.Sprintf("FDE %v [%08x]\n", r, tab.location)))
 		}
 
 		// we've found the row of the call frame table we need

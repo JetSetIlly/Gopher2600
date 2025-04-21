@@ -17,6 +17,7 @@ package dwarf
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
@@ -256,7 +257,7 @@ func (fn *SourceFunction) IsInlined() bool {
 }
 
 // resolveFramebase implements the loclistResolver interface
-func (fn *SourceFunction) resolveFramebase() (uint64, error) {
+func (fn *SourceFunction) resolveFramebase(derive io.Writer) (uint64, error) {
 	if fn.IsStub() {
 		return 0, fmt.Errorf("no framebase for function")
 	}
@@ -265,7 +266,7 @@ func (fn *SourceFunction) resolveFramebase() (uint64, error) {
 		return 0, fmt.Errorf("no framebase loclist for %s", fn.Name)
 	}
 
-	r, err := fn.framebase.resolve()
+	r, err := fn.framebase.resolve(derive)
 	if err != nil {
 		return 0, err
 	}

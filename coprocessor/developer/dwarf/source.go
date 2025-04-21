@@ -554,7 +554,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 
 	// sorted variables
 	for _, g := range bld.globals {
-		src.GlobalsByAddress[g.resolve().address] = g
+		src.GlobalsByAddress[g.resolve(nil).address] = g
 		src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, g)
 	}
 
@@ -857,7 +857,7 @@ func findHighAddress(src *Source) {
 	src.HighAddress = 0
 
 	for _, g := range src.SortedGlobals.Variables {
-		a := g.resolve().address + uint64(g.Type.Size)
+		a := g.resolve(nil).address + uint64(g.Type.Size)
 		if a > src.HighAddress {
 			src.HighAddress = a
 		}
@@ -1142,13 +1142,8 @@ func (src *Source) GetLocalVariables(ln *SourceLine, addr uint32) []*SourceVaria
 }
 
 // FramebaseCurrent returns the current framebase value
-func (src *Source) FramebaseCurrent(derivation io.Writer) (uint64, error) {
-	old := src.debugFrame.derivation
-	src.debugFrame.derivation = derivation
-	defer func() {
-		src.debugFrame.derivation = old
-	}()
-	return src.debugFrame.resolveFramebase()
+func (src *Source) FramebaseCurrent(derive io.Writer) (uint64, error) {
+	return src.debugFrame.resolveFramebase(derive)
 }
 
 func simplifyPath(path string) string {

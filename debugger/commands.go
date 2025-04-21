@@ -1651,6 +1651,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				}
 			})
 		case "GLOBALS":
+			var w io.Writer
+			if option, ok := tokens.Get(); ok {
+				if option == "DERIVATION" {
+					w = dbg.writerInStyle(terminal.StyleFeedbackSecondary, "\t")
+				}
+			}
+
 			dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 				if src == nil {
 					dbg.printLine(terminal.StyleError, "no source available")
@@ -1660,18 +1667,22 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				for _, g := range src.SortedGlobals.Variables {
 					g.Update()
 					dbg.printLine(terminal.StyleFeedback, g.String())
+					e := g.WriteDerivation(w)
+					if e != nil {
+						for _, s := range strings.Split(e.Error(), ":") {
+							dbg.printLine(terminal.StyleError, fmt.Sprintf("\t%s", s))
+						}
+					}
 				}
 			})
 		case "LOCALS":
 			var derivation bool
 			var ranges bool
-			var err bool
 
 			option, ok := tokens.Get()
 			for ok {
 				derivation = derivation || option == "DERIVATION"
 				ranges = ranges || option == "RANGES"
-				err = err || option == "ERROR"
 				option, ok = tokens.Get()
 			}
 
@@ -1689,7 +1700,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				for _, l := range yld.LocalVariables {
 					dbg.printLine(terminal.StyleFeedback, l.String())
 					e := l.WriteDerivation(w)
-					if err && e != nil {
+					if e != nil {
 						for _, s := range strings.Split(e.Error(), ":") {
 							dbg.printLine(terminal.StyleError, fmt.Sprintf("\t%s", s))
 						}

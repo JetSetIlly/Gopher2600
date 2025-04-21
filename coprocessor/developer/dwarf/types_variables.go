@@ -179,7 +179,7 @@ func (varb *SourceVariable) Child(i int) *SourceVariable {
 //
 // Be careful to only call this from the emulation goroutine.
 func (varb *SourceVariable) Update() {
-	varb.cachedLocation.Store(varb.resolve())
+	varb.cachedLocation.Store(varb.resolve(nil))
 	for _, c := range varb.children {
 		c.Update()
 	}
@@ -190,29 +190,24 @@ func (varb *SourceVariable) Update() {
 //
 // Note that the basic information about the variable is not output by this
 // function. The String() function provides that information
-func (varb *SourceVariable) WriteDerivation(w io.Writer) error {
-	if w == nil {
+func (varb *SourceVariable) WriteDerivation(derive io.Writer) error {
+	if derive == nil {
 		return nil
 	}
 
 	if varb.hasConstantValue {
-		w.Write([]byte(fmt.Sprintf("constant value %08x", varb.constantValue)))
+		derive.Write([]byte(fmt.Sprintf("constant value %08x", varb.constantValue)))
 	}
 
 	if varb.loclist == nil {
 		return nil
 	}
-	old := varb.loclist.derivation
-	varb.loclist.derivation = w
-	defer func() {
-		varb.loclist.derivation = old
-	}()
-	varb.resolve()
+	varb.resolve(derive)
 	return varb.Error
 }
 
 // resolve address/value
-func (varb *SourceVariable) resolve() loclistResult {
+func (varb *SourceVariable) resolve(derive io.Writer) loclistResult {
 	if varb.hasConstantValue {
 		return loclistResult{
 			value: varb.constantValue,
@@ -224,7 +219,7 @@ func (varb *SourceVariable) resolve() loclistResult {
 		return loclistResult{}
 	}
 
-	r, err := varb.loclist.resolve()
+	r, err := varb.loclist.resolve(derive)
 	if err != nil {
 		varb.Error = err
 		return loclistResult{}
@@ -252,12 +247,12 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistDecoder) {
 				Type:     varb.Type.ElementType,
 				DeclLine: varb.DeclLine,
 			}
-			elem.loclist = debug_loc.newLoclistJustContext(varb)
+			elem.loclist = debug_loc.newLoclistJustFramebase(varb)
 
 			if varb.loclist != nil {
 				o := i
 				elem.loclist.addOperator(loclistOperator{
-					resolve: func(_ *loclist) (loclistStack, error) {
+					resolve: func(_ *loclist, _ io.Writer) (loclistStack, error) {
 						address, ok := varb.Address()
 						if !ok {
 							return loclistStack{}, fmt.Errorf("no base address for array")
@@ -284,13 +279,13 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistDecoder) {
 				Type:     m.Type,
 				DeclLine: varb.DeclLine,
 			}
-			memb.loclist = debug_loc.newLoclistJustContext(varb)
+			memb.loclist = debug_loc.newLoclistJustFramebase(varb)
 
 			if varb.loclist != nil {
-				offset := m.resolve().value
+				offset := m.resolve(nil).value
 				idx := i
 				memb.loclist.addOperator(loclistOperator{
-					resolve: func(_ *loclist) (loclistStack, error) {
+					resolve: func(_ *loclist, _ io.Writer) (loclistStack, error) {
 						np := varb.hasPieces()
 						if np == 0 {
 							address, ok := varb.Address()
@@ -336,10 +331,10 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistDecoder) {
 			Type:     varb.Type.PointerType,
 			DeclLine: varb.DeclLine,
 		}
-		deref.loclist = debug_loc.newLoclistJustContext(varb)
+		deref.loclist = debug_loc.newLoclistJustFramebase(varb)
 
 		deref.loclist.addOperator(loclistOperator{
-			resolve: func(_ *loclist) (loclistStack, error) {
+			resolve: func(_ *loclist, _ io.Writer) (loclistStack, error) {
 				return loclistStack{
 					class: stackClassSingleAddress,
 					value: varb.Value(),
@@ -354,12 +349,12 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistDecoder) {
 }
 
 // resolveFramebase implements the loclistResolver interface
-func (varb *SourceVariable) resolveFramebase() (uint64, error) {
+func (varb *SourceVariable) resolveFramebase(derviation io.Writer) (uint64, error) {
 	if varb.DeclLine == nil || varb.DeclLine.Function == nil {
 		return 0, fmt.Errorf("no framebase")
 	}
 
-	fb, err := varb.DeclLine.Function.resolveFramebase()
+	fb, err := varb.DeclLine.Function.resolveFramebase(derviation)
 	if err != nil {
 		return 0, fmt.Errorf("framebase for %s: %w", varb.DeclLine.Function.Name, err)
 	}

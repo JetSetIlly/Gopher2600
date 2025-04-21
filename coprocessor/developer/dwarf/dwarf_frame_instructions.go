@@ -31,7 +31,10 @@ type frameTableRegister struct {
 type frameTableRow struct {
 	// location (program counter) to which the current table state corresponds
 	cfaRegister int
-	registers   [15]frameTableRegister
+
+	// TODO: the array size of 15 is ARM specific. we should base this number on
+	// the specific coprocess in use
+	registers [15]frameTableRegister
 }
 
 type frameTable struct {

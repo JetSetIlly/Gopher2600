@@ -34,8 +34,8 @@ type build struct {
 	dwrf *dwarf.Data
 
 	// ELF sections that help DWARF locate local variables in memory
-	debug_loc   *loclistDecoder
-	debug_frame *frameSection
+	debugLoc   *loclistDecoder
+	debugFrame *frameSection
 
 	globals map[string]*SourceVariable
 	locals  []*SourceVariableLocal
@@ -61,8 +61,8 @@ type build struct {
 func newBuild(dwrf *dwarf.Data, debug_loc *loclistDecoder, debug_frame *frameSection) (*build, error) {
 	bld := &build{
 		dwrf:         dwrf,
-		debug_loc:    debug_loc,
-		debug_frame:  debug_frame,
+		debugLoc:     debug_loc,
+		debugFrame:   debug_frame,
 		globals:      make(map[string]*SourceVariable),
 		types:        make(map[dwarf.Offset]*SourceType),
 		entries:      make(map[dwarf.Offset]*dwarf.Entry),
@@ -263,10 +263,10 @@ func (bld *build) buildTypes(src *Source) error {
 				if fld != nil {
 					switch fld.Class {
 					case dwarf.ClassConstant:
-						memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
+						memb.loclist = bld.debugLoc.newLoclistJustFramebase(memb)
 						address := fld.Val.(int64)
 						memb.loclist.addOperator(loclistOperator{
-							resolve: func(loc *loclist) (loclistStack, error) {
+							resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
 								return loclistStack{
 									class: stackClassIsValue,
 									value: uint32(address),
@@ -275,9 +275,9 @@ func (bld *build) buildTypes(src *Source) error {
 							operator: "member offset",
 						})
 					case dwarf.ClassExprLoc:
-						memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
+						memb.loclist = bld.debugLoc.newLoclistJustFramebase(memb)
 						expr := fld.Val.([]uint8)
-						r, n, err := bld.debug_loc.decodeLoclistOperation(expr)
+						r, n, err := bld.debugLoc.decodeLoclistOperation(expr)
 						if err != nil {
 							return err
 						}
@@ -790,7 +790,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 				varb.constantValue = uint32(constfld.Val.(int64))
 			case []uint8:
 				// eg. a float value
-				varb.constantValue = bld.debug_loc.byteOrder.Uint32(constfld.Val.([]uint8))
+				varb.constantValue = bld.debugLoc.byteOrder.Uint32(constfld.Val.([]uint8))
 			default:
 				logger.Logf(logger.Allow, "dwarf", "unhandled DW_AT_const_value type %T", constfld.Val)
 				continue // for loop
@@ -817,7 +817,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 						bld.locals = append(bld.locals, local)
 					}
 
-					err := bld.debug_loc.newLoclist(varb, locfld.Val.(int64), compilationUnitAddress, ptrCommit)
+					err := bld.debugLoc.newLoclistFromPtr(varb, locfld.Val.(int64), compilationUnitAddress, ptrCommit)
 					if err != nil {
 						if errors.Is(err, UnsupportedDWARF) {
 							return err
@@ -836,7 +836,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 					// page 26 of "DWARF4 Standard"
 
 					var err error
-					varb.loclist, err = bld.debug_loc.newLoclistFromSingleOperator(src.debugFrame, locfld.Val.([]uint8))
+					varb.loclist, err = bld.debugLoc.newLoclistFromExpr(bld.debugFrame, locfld.Val.([]uint8))
 					if err != nil {
 						return err
 					}
@@ -861,13 +861,13 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 			switch fld.Class {
 			case dwarf.ClassExprLoc:
 				var err error
-				framebase, err = bld.debug_loc.newLoclistFromSingleOperator(src.debugFrame, fld.Val.([]uint8))
+				framebase, err = bld.debugLoc.newLoclistFromExpr(bld.debugFrame, fld.Val.([]uint8))
 				if err != nil {
 					return nil, err
 				}
 
 			case dwarf.ClassLocListPtr:
-				err := bld.debug_loc.newLoclist(src.debugFrame, fld.Val.(int64), addressAdjustment,
+				err := bld.debugLoc.newLoclistFromPtr(bld.debugFrame, fld.Val.(int64), addressAdjustment,
 					func(_, _ uint64, loc *loclist) {
 						framebase = loc
 					})

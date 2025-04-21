@@ -57,7 +57,7 @@ func newLoclistDecoder(data []uint8, byteOrder binary.ByteOrder, coproc coproces
 // framebaseResolver provides context to the location list. implemented by
 // SourceVariable, SourceFunction and the frame section.
 type framebaseResolver interface {
-	resolveFramebase() (uint64, error)
+	resolveFramebase(derive io.Writer) (uint64, error)
 }
 
 type loclistStackClass int
@@ -83,7 +83,7 @@ type loclistPiece struct {
 
 type loclistOperator struct {
 	operator string
-	resolve  func(*loclist) (loclistStack, error)
+	resolve  func(*loclist, io.Writer) (loclistStack, error)
 }
 
 type loclistResult struct {
@@ -95,35 +95,40 @@ type loclistResult struct {
 	pieces []loclistPiece
 }
 
+type loclistClass int
+
+const (
+	classExpr loclistClass = iota
+	classPtr
+	classJustCtx
+)
+
 type loclist struct {
 	coproc coprocessor.CartCoProc
-	ctx    framebaseResolver
+	fb     framebaseResolver
 
 	list []loclistOperator
 
 	stack  []loclistStack
 	pieces []loclistPiece
 
-	singleLoc bool
-	ptr       int64
-
-	// the derivation for the loclist is written to the io.Writer
-	derivation io.Writer
+	class loclistClass
+	ptr   int64
 }
 
-func (sec *loclistDecoder) newLoclistJustContext(ctx framebaseResolver) *loclist {
+func (sec *loclistDecoder) newLoclistJustFramebase(fb framebaseResolver) *loclist {
 	return &loclist{
-		coproc:    sec.coproc,
-		ctx:       ctx,
-		singleLoc: true,
+		coproc: sec.coproc,
+		fb:     fb,
+		class:  classJustCtx,
 	}
 }
 
-func (sec *loclistDecoder) newLoclistFromSingleOperator(ctx framebaseResolver, expr []uint8) (*loclist, error) {
+func (sec *loclistDecoder) newLoclistFromExpr(fb framebaseResolver, expr []uint8) (*loclist, error) {
 	loc := &loclist{
-		coproc:    sec.coproc,
-		ctx:       ctx,
-		singleLoc: true,
+		coproc: sec.coproc,
+		fb:     fb,
+		class:  classExpr,
 	}
 	op, n, err := sec.decodeLoclistOperation(expr)
 	if err != nil {
@@ -138,7 +143,7 @@ func (sec *loclistDecoder) newLoclistFromSingleOperator(ctx framebaseResolver, e
 
 type commitLoclist func(start, end uint64, loc *loclist)
 
-func (sec *loclistDecoder) newLoclist(ctx framebaseResolver, ptr int64,
+func (sec *loclistDecoder) newLoclistFromPtr(fb framebaseResolver, ptr int64,
 	compilationUnitAddress uint64, commit commitLoclist) error {
 
 	// "Location lists, which are used to describe objects that have a limited lifetime or change
@@ -186,7 +191,8 @@ func (sec *loclistDecoder) newLoclist(ctx framebaseResolver, ptr int64,
 	for !(startAddress == 0x0 && endAddress == 0x0) {
 		loc := &loclist{
 			coproc: sec.coproc,
-			ctx:    ctx,
+			fb:     fb,
+			class:  classPtr,
 
 			// we've already read the start and end address information so we
 			// adjust the ptr by the length of two 32byte values
@@ -261,8 +267,8 @@ func (loc *loclist) addOperator(r loclistOperator) {
 	loc.list = append(loc.list, r)
 }
 
-func (loc *loclist) resolve() (loclistResult, error) {
-	if loc.ctx == nil {
+func (loc *loclist) resolve(derive io.Writer) (loclistResult, error) {
+	if loc.fb == nil {
 		return loclistResult{}, fmt.Errorf("no context [%x]", loc.ptr)
 	}
 
@@ -279,9 +285,13 @@ func (loc *loclist) resolve() (loclistResult, error) {
 
 	// resolve every entry in the loclist
 	for i := range loc.list {
-		s, err := loc.list[i].resolve(loc)
+		s, err := loc.list[i].resolve(loc, derive)
 		if err != nil {
 			return loclistResult{}, fmt.Errorf("%s: %w", loc.list[i].operator, err)
+		}
+
+		if derive != nil {
+			derive.Write([]byte(fmt.Sprintf("%s %08x\n", loc.list[i].operator, s.value)))
 		}
 
 		// process result according to the result class
@@ -308,10 +318,6 @@ func (loc *loclist) resolve() (loclistResult, error) {
 			return r, nil
 		case stackClassPiece:
 			// all functionality of a piece operation is contained in the actual loclistOperator implementation
-		}
-
-		if loc.derivation != nil {
-			loc.derivation.Write([]byte(fmt.Sprintf("%s %08x", loc.list[i].operator, s.value)))
 		}
 	}
 
