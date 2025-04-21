@@ -880,12 +880,19 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 		return framebase, nil
 	}
 
-	// resolve sets the return fn value for the entire function.
+	// resolve the dwarf entry e for the filename and framebase. if the
+	// framebase is in another dwarf entry then that can be specificed with the
+	// fb paramenter. fb can be nil
 	//
 	// may return nil for both error and SourceFunction value. therefore, the
 	// caller should check for an error first and if that is nil, check the
 	// SourceFunction value before working with it
-	resolve := func(e *dwarf.Entry) (*SourceFunction, error) {
+	resolve := func(e *dwarf.Entry, fb *dwarf.Entry) (*SourceFunction, error) {
+		// if fb is nil then use e by default
+		if fb == nil {
+			fb = e
+		}
+
 		lr, err := bld.dwrf.LineReader(bld.compileUnits[e.Offset])
 		if err != nil {
 			return nil, err
@@ -921,7 +928,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 
 		// framebase. non-abstract functions will not have a framebase
 		// attribute. for those functions we can resolve it later
-		framebase, err := resolveFramebase(e)
+		framebase, err := resolveFramebase(fb)
 		if err != nil {
 			logger.Logf(logger.Allow, "dwarf", "framebase for %s will be unreliable: %v", name, err)
 		}
@@ -1032,10 +1039,21 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 					return fmt.Errorf("found inlined subroutine without abstract")
 				}
 
-				fn, err := resolve(av)
-				if err != nil {
-					logger.Log(logger.Allow, "dwarf", err)
-					continue // build order loop
+				var fn *SourceFunction
+				var err error
+
+				if fld.Attr == dwarf.AttrSpecification {
+					fn, err = resolve(e, av)
+					if err != nil {
+						logger.Log(logger.Allow, "dwarf", err)
+						continue // build order loop
+					}
+				} else {
+					fn, err = resolve(av, nil)
+					if err != nil {
+						logger.Log(logger.Allow, "dwarf", err)
+						continue // build order loop
+					}
 				}
 
 				// start/end address of function
@@ -1063,7 +1081,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 				continue // for bld.order
 			}
 
-			fn, err := resolve(e)
+			fn, err := resolve(e, nil)
 			if err != nil {
 				logger.Log(logger.Allow, "dwarf", err)
 				continue // build order loop
@@ -1093,7 +1111,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 					return fmt.Errorf("found inlined subroutine without abstract")
 				}
 
-				fn, err := resolve(av)
+				fn, err := resolve(av, nil)
 				if err != nil {
 					return err
 				}
