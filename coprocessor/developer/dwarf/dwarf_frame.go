@@ -225,7 +225,7 @@ func (fr *frameSection) resolveFramebase(derive io.Writer) (uint64, error) {
 
 func (fr *frameSection) framebaseForAddr(addr uint32, derive io.Writer) (uint64, error) {
 	var tab frameTable
-	tab.remember()
+	tab.addRow()
 
 	if derive != nil {
 		derive.Write([]byte(fmt.Sprintf("looking for address %08x\n", addr)))
@@ -234,7 +234,6 @@ func (fr *frameSection) framebaseForAddr(addr uint32, derive io.Writer) (uint64,
 	var fde *frameSectionFDE
 	for _, f := range fr.fde {
 		if addr >= f.startAddress && addr < f.endAddress {
-			tab.location = f.startAddress
 			fde = f
 			break // for loop
 		}
@@ -278,11 +277,11 @@ func (fr *frameSection) framebaseForAddr(addr uint32, derive io.Writer) (uint64,
 		ptr += r.length
 
 		if derive != nil {
-			derive.Write([]byte(fmt.Sprintf("FDE %v [%08x]\n", r, tab.location)))
+			derive.Write([]byte(fmt.Sprintf("FDE %v [%08x]\n", r, tab.rows[0].location)))
 		}
 
 		// we've found the row of the call frame table we need
-		if tab.location >= addr {
+		if tab.rows[0].location >= addr {
 			break
 		}
 	}
@@ -291,7 +290,7 @@ func (fr *frameSection) framebaseForAddr(addr uint32, derive io.Writer) (uint64,
 	if !ok {
 		return 0, fmt.Errorf("error retreiving framebase from register %d", tab.rows[0].cfaRegister)
 	}
-	framebase = uint32(int64(framebase) + tab.rows[0].registers[tab.rows[0].cfaRegister].value)
+	framebase = uint32(int64(framebase) + tab.rows[0].cfaOffset)
 
 	return uint64(framebase), nil
 }

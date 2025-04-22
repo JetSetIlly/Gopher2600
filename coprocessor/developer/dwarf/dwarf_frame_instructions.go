@@ -30,7 +30,11 @@ type frameTableRegister struct {
 
 type frameTableRow struct {
 	// location (program counter) to which the current table state corresponds
+	location uint32
+
+	// cfa register and cfa offset are disinct to the array of registers
 	cfaRegister int
+	cfaOffset   int64
 
 	// TODO: the array size of 15 is ARM specific. we should base this number on
 	// the specific coprocess in use
@@ -38,23 +42,12 @@ type frameTableRow struct {
 }
 
 type frameTable struct {
-	location uint32
-	rows     []frameTableRow
+	rows  []frameTableRow
+	stack [][]frameTableRow
 }
 
-func (tab *frameTable) remember() {
-	if len(tab.rows) == 0 {
-		tab.rows = append(tab.rows, frameTableRow{})
-	} else {
-		tab.rows = append([]frameTableRow{tab.rows[0]}, tab.rows...)
-	}
-}
-
-func (tab *frameTable) restore() {
-	if len(tab.rows) < 2 {
-		panic("too few rows in frameTable to be able to restore()")
-	}
-	tab.rows = tab.rows[1:]
+func (tab *frameTable) addRow() {
+	tab.rows = append(tab.rows, frameTableRow{})
 }
 
 type frameInstruction struct {
@@ -103,7 +96,7 @@ func decodeFrameInstruction(coproc coprocessor.CartCoProc, byteOrder binary.Byte
 			// other values in the new row are initially identical to the current row. The new location value
 			// is always greater than the current one. If the segment_size field of this FDE's CIE is non-
 			// zero, the initial location is preceded by a segment selector of the given length"
-			tab.location = byteOrder.Uint32(instructions[1:])
+			tab.rows[0].location = byteOrder.Uint32(instructions[1:])
 			return frameInstruction{
 				length: 5,
 				opcode: "DW_CFA_set_loc",
@@ -115,8 +108,9 @@ func decodeFrameInstruction(coproc coprocessor.CartCoProc, byteOrder binary.Byte
 			// "The DW_CFA_advance_loc1 instruction takes a single ubyte operand that represents a
 			// constant delta. This instruction is identical to DW_CFA_advance_loc except for the encoding
 			// and size of the delta operand", page 132
+			tab.addRow()
 			delta := uint64(instructions[1]) * cie.codeAlignment
-			tab.location += uint32(delta)
+			tab.rows[0].location += uint32(delta)
 			return frameInstruction{
 				length:  2,
 				opcode:  "DW_CFA_advance_loc1",
@@ -129,8 +123,9 @@ func decodeFrameInstruction(coproc coprocessor.CartCoProc, byteOrder binary.Byte
 			// "The DW_CFA_advance_loc2 instruction takes a single uhalf operand that represents a
 			// constant delta. This instruction is identical to DW_CFA_advance_loc except for the encoding
 			// and size of the delta operand", page 132
+			tab.addRow()
 			delta := uint64(byteOrder.Uint16(instructions[1:])) * cie.codeAlignment
-			tab.location += uint32(delta)
+			tab.rows[0].location += uint32(delta)
 			return frameInstruction{
 				length:  3,
 				opcode:  "DW_CFA_advance_loc2",
@@ -143,8 +138,9 @@ func decodeFrameInstruction(coproc coprocessor.CartCoProc, byteOrder binary.Byte
 			// "The DW_CFA_advance_loc4 instruction takes a single uword operand that represents a
 			// constant delta. This instruction is identical to DW_CFA_advance_loc except for the encoding
 			// and size of the delta operand", page 132
+			tab.addRow()
 			delta := uint64(byteOrder.Uint32(instructions[1:])) * cie.codeAlignment
-			tab.location += uint32(delta)
+			tab.rows[0].location += uint32(delta)
 			return frameInstruction{
 				length:  5,
 				opcode:  "DW_CFA_advance_loc4",
@@ -249,7 +245,9 @@ func decodeFrameInstruction(coproc coprocessor.CartCoProc, byteOrder binary.Byte
 			// "The DW_CFA_remember_state instruction takes no operands. The required action is to push
 			// the set of rules for every register onto an implicit stack", page 136
 
-			tab.remember()
+			var e []frameTableRow
+			e = append(e, tab.rows...)
+			tab.stack = append(tab.stack, e)
 			return frameInstruction{
 				length: 1,
 				opcode: "DW_CFA_remember_state",
@@ -261,11 +259,16 @@ func decodeFrameInstruction(coproc coprocessor.CartCoProc, byteOrder binary.Byte
 			// "The DW_CFA_restore_state instruction takes no operands. The required action is to pop the
 			// set of rules off the implicit stack and place them in the current row", page 136
 
-			tab.restore()
+			var err error
+			if len(tab.stack) == 0 {
+				err = fmt.Errorf("stack is empty")
+			} else {
+				tab.stack = tab.stack[:len(tab.stack)-1]
+			}
 			return frameInstruction{
 				length: 1,
 				opcode: "DW_CFA_restore_state",
-			}, nil
+			}, err
 
 		case 0x0c:
 			// DW_CFA_def_cfa
@@ -284,7 +287,7 @@ func decodeFrameInstruction(coproc coprocessor.CartCoProc, byteOrder binary.Byte
 				err = fmt.Errorf("bad register %d", reg)
 			} else {
 				tab.rows[0].cfaRegister = int(reg)
-				tab.rows[0].registers[reg].value = int64(offset)
+				tab.rows[0].cfaOffset = int64(offset)
 			}
 
 			return frameInstruction{
@@ -320,7 +323,7 @@ func decodeFrameInstruction(coproc coprocessor.CartCoProc, byteOrder binary.Byte
 			n := 1
 			offset, l := leb128.DecodeULEB128(instructions[n:])
 			n += l
-			tab.rows[0].registers[tab.rows[0].cfaRegister].value = int64(offset)
+			tab.rows[0].cfaOffset = int64(offset)
 			return frameInstruction{
 				length:  n,
 				opcode:  "DW_CFA_def_cfa_offset",
@@ -454,8 +457,9 @@ func decodeFrameInstruction(coproc coprocessor.CartCoProc, byteOrder binary.Byte
 		// value that is computed by taking the current entry’s location value and adding the value of
 		// delta * code_alignment_factor. All other values in the new row are initially identical
 		// to the current row", page 132
+		tab.addRow()
 		delta := uint64(extendedOpcode) * cie.codeAlignment
-		tab.location += uint32(delta)
+		tab.rows[0].location += uint32(delta)
 		return frameInstruction{
 			length:  1,
 			opcode:  "DW_CFA_advance_loc",
