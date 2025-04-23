@@ -44,7 +44,9 @@ type build struct {
 	types map[dwarf.Offset]*SourceType
 
 	// the order in which we encountered the subprograms and inlined
-	// subroutines is important
+	// subroutines is important. this is actually the same as using the DWARF
+	// reader but it's a bit easier to traverse through an array once we've read
+	// all the entries
 	order []*dwarf.Entry
 
 	// all entries in the DWARF data
@@ -82,9 +84,6 @@ func newBuild(dwrf *dwarf.Data, debug_loc *loclistDecoder, debug_frame *frameSec
 		}
 		if entry == nil {
 			break // for loop
-		}
-		if entry.Offset == 0 {
-			continue // for loop
 		}
 
 		bld.order = append(bld.order, entry)
@@ -544,6 +543,14 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 	// constructing address ranges
 	var compilationUnitAddress uint64
 
+	// stack of entries representing the tree. the newest entry is always at
+	// index zero
+	var stack []*dwarf.Entry
+
+	// if the length of the stack is equal to this value then that means any
+	// variable is in global scope
+	const globalDepth = 1
+
 	// walk through the entire DWARF sequence in order. we'll only deal with
 	// the entries that are of interest to us
 	for _, e := range bld.order {
@@ -557,7 +564,19 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 			}
 		}
 
+		// increase depth if the entry has children. the moment when we choose
+		// to increase the depth value impacts what is meant by globalDepth (see
+		// constant value of same name)
+		if e.Children {
+			stack = append([]*dwarf.Entry{e}, stack...)
+		}
+
 		switch e.Tag {
+		case 0:
+			// reduce depth value if this is a null entry
+			if len(stack) > 0 {
+				stack = stack[1:]
+			}
 		case dwarf.TagCompileUnit:
 			// the sibling entry indicates when a lexical block ends. if an
 			// entry we're interested in (subprogram etc.) does not have a
@@ -726,28 +745,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 		// add variable to list of globals if aprropriate. returns true if the
 		// variable has been added and false if it is not a global
 		addGlobal := func(varb *SourceVariable) bool {
-			// detect whether this variable is a global variable
-
-			// notInFunction is not a great way of detecting global variables
-			// because the function assignment does a poor job of detecting the
-			// end of functions. this means that globals that appear in a file
-			// outside of a function but after a function has been defined, will
-			// not be detected by this method
-			notInFunction := varb.DeclLine.Function.IsStub()
-
-			// when compiled from C or C++ global variables usually have the
-			// external attribute set
-			fld := e.AttrField(dwarf.AttrExternal)
-			isExternal := fld != nil && fld.Val.(bool)
-
-			// global variables very often have a mangled variable name for
-			// linkage purposes. I'm not convinced this is needed but we'll keep
-			// it for now
-			fld = e.AttrField(dwarf.AttrLinkageName)
-			hasLinkage := fld != nil && fld.Val.(string) != varb.Name
-
-			// make a decision about variable being in global scope
-			if !(notInFunction || isExternal || hasLinkage) {
+			if len(stack) != globalDepth {
 				return false
 			}
 
