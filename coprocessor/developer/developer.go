@@ -152,7 +152,7 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 	t := time.Now()
 
 	dev.sourceLock.Lock()
-	dev.source, err = dwarf.NewSource(romFile, cart, elfFile)
+	dev.source, err = dwarf.NewSource(romFile, cart, elfFile, &dev.yieldState)
 	dev.sourceLock.Unlock()
 
 	if err != nil {

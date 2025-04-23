@@ -153,7 +153,7 @@ type Source struct {
 //
 // Once the ELF and DWARF file has been identified then Source will always be
 // non-nil but with the understanding that the fields may be empty.
-func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) {
+func NewSource(romFile string, cart Cartridge, elfFile string, yld YieldAddress) (*Source, error) {
 	src := &Source{
 		cart:             cart,
 		path:             simplifyPath(filepath.Dir(romFile)),
@@ -290,7 +290,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		// ignoring the boolean return value because the newFrameSection() will
 		// warn about an empty data section
 		data, _, _ := c.ELFSection(".debug_frame")
-		src.debugFrame, err = newFrameSection(data, ef.ByteOrder, src.cart.GetCoProcBus().GetCoProc(), nil)
+		src.debugFrame, err = newFrameSection(data, ef.ByteOrder, src.cart.GetCoProcBus().GetCoProc(), yld, nil)
 		if err != nil {
 			logger.Log(logger.Allow, "dwarf", err)
 		}
@@ -320,7 +320,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string) (*Source, error) 
 		rel := frameSectionRelocate{
 			origin: uint32(addressAdjustment),
 		}
-		src.debugFrame, err = newFrameSectionFromFile(ef, src.cart.GetCoProcBus().GetCoProc(), &rel)
+		src.debugFrame, err = newFrameSectionFromFile(ef, src.cart.GetCoProcBus().GetCoProc(), yld, &rel)
 		if err != nil {
 			logger.Log(logger.Allow, "dwarf", err)
 		}

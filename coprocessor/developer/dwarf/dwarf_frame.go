@@ -60,12 +60,23 @@ func (c *frameSectionCIE) String() string {
 	return s.String()
 }
 
+// It is important that the framebased uses the current yield address. This is
+// because the list of (local) variables is based on that address, rather than
+// the address of the current PC. The yield address will be based on the most
+// recent instruction address which could be 1 or 2 words behind the PC value,
+// or maybe completely different in the case of a branch instruction.
+type YieldAddress interface {
+	YieldAddress() uint32
+}
+
 // information about the structure of call frame information can be found in
 // the "DWARF-4 Specification" in section 6.4
 type frameSection struct {
 	coproc coprocessor.CartCoProc
-	cie    map[uint32]*frameSectionCIE
-	fde    []*frameSectionFDE
+	yld    YieldAddress
+
+	cie map[uint32]*frameSectionCIE
+	fde []*frameSectionFDE
 
 	// reading data should be done with the byteOrder functions
 	byteOrder binary.ByteOrder
@@ -76,7 +87,7 @@ type frameSectionRelocate struct {
 	origin uint32
 }
 
-func newFrameSectionFromFile(ef *elf.File, coproc coprocessor.CartCoProc,
+func newFrameSectionFromFile(ef *elf.File, coproc coprocessor.CartCoProc, yld YieldAddress,
 	rel *frameSectionRelocate) (*frameSection, error) {
 
 	sec := ef.Section(".debug_frame")
@@ -87,14 +98,15 @@ func newFrameSectionFromFile(ef *elf.File, coproc coprocessor.CartCoProc,
 	if err != nil {
 		return nil, err
 	}
-	return newFrameSection(data, ef.ByteOrder, coproc, rel)
+	return newFrameSection(data, ef.ByteOrder, coproc, yld, rel)
 }
 
 func newFrameSection(data []uint8, byteOrder binary.ByteOrder,
-	coproc coprocessor.CartCoProc, rel *frameSectionRelocate) (*frameSection, error) {
+	coproc coprocessor.CartCoProc, yld YieldAddress, rel *frameSectionRelocate) (*frameSection, error) {
 
 	frm := &frameSection{
 		coproc:    coproc,
+		yld:       yld,
 		cie:       make(map[uint32]*frameSectionCIE),
 		byteOrder: byteOrder,
 	}
@@ -212,14 +224,10 @@ var noFDE = errors.New("no FDE")
 
 // coproc implements the loclistResolver interface
 func (fr *frameSection) resolveFramebase(derive io.Writer) (uint64, error) {
-	// TODO: replace magic number with a PC mnemonic. the mnemonic can then
-	// refer to appropriate register for the coprocessor. the value of 15 is
-	// fine for the ARM coprocessor
-	addr, ok := fr.coproc.Register(15)
-	if !ok {
-		return 0, fmt.Errorf("cannot retrieve value from PC of coprocessor")
+	if fr.yld == nil {
+		return 0, fmt.Errorf("cannot retrieve current yield address for coprocessor")
 	}
-
+	addr := fr.yld.YieldAddress()
 	return fr.framebaseForAddr(addr, derive)
 }
 

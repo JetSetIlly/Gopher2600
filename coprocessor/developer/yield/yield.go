@@ -48,3 +48,8 @@ func (yld State) LocalVariableView(state govern.State) (uint32, []*dwarf.SourceV
 	}
 	return yld.Addr, yld.LocalVariables
 }
+
+// Address returns the current address field
+func (yld State) YieldAddress() uint32 {
+	return yld.Addr
+}
