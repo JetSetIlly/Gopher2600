@@ -17,14 +17,12 @@ package dwarf
 
 import (
 	"debug/dwarf"
-	"debug/elf"
 	"errors"
 	"fmt"
 	"io"
 	"math"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -521,23 +519,7 @@ func (bld *build) resolveVariableDeclaration(v *dwarf.Entry, t *dwarf.Entry, src
 
 // buildVariables populates variables map in the *Source tree. local variables
 // will need to be relocated for relocatable ELF files
-func (bld *build) buildVariables(src *Source, ef *elf.File,
-	relocatable coprocessor.CartCoProcRelocatable, addressAdjustment uint64) error {
-
-	// keep track of the lexical range as we walk through the DWARF data in
-	// order. if we need to add a variable to the list of locals and the DWARF
-	// entry has a location attribute of class ExprLoc, then we use the most
-	// recent lexical range as the resolvable range
-	var lexStart [][]uint64
-	var lexEnd [][]uint64
-	var lexSibling []dwarf.Offset
-	var lexStackTop int
-
-	// default to zero for start/end addresses. this means we can access the
-	// arrays without any special conditions
-	lexStart = append(lexStart, []uint64{0})
-	lexEnd = append(lexEnd, []uint64{0})
-	lexSibling = append(lexSibling, 0)
+func (bld *build) buildVariables(src *Source, addressAdjustment uint64) error {
 
 	// location lists use a base address of the current compilation unit when
 	// constructing address ranges
@@ -554,16 +536,6 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 	// walk through the entire DWARF sequence in order. we'll only deal with
 	// the entries that are of interest to us
 	for _, e := range bld.order {
-		// reset lexical block stack
-		if e.Offset == lexSibling[lexStackTop] {
-			lexStackTop--
-			if lexStackTop < 0 {
-				// this should never happen unless the DWARF file is corrupt in some way
-				logger.Logf(logger.Allow, "dwarf", "trying to end a lexical block without one being opened")
-				lexStackTop = 0
-			}
-		}
-
 		// increase depth if the entry has children. the moment when we choose
 		// to increase the depth value impacts what is meant by globalDepth (see
 		// constant value of same name)
@@ -578,16 +550,6 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 				stack = stack[1:]
 			}
 		case dwarf.TagCompileUnit:
-			// the sibling entry indicates when a lexical block ends. if an
-			// entry we're interested in (subprogram etc.) does not have a
-			// sibling however, then that indicates that the lexical block is
-			// at the end of the compilation unit and that the sibling is
-			// implied
-			//
-			// when we encounter a compile unit tag therefore, we reset the
-			// lexical block stack
-			lexStackTop = 0
-
 			// basic compilation address is the address adjustment value. this
 			// will be changed depending on the presence of AttrLowpc
 			compilationUnitAddress = addressAdjustment
@@ -604,83 +566,9 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 			if fld != nil {
 				compilationUnitAddress += fld.Val.(uint64)
 			}
-
 			continue // for loop
 
-		case dwarf.TagSubprogram:
-			fallthrough
-		case dwarf.TagInlinedSubroutine:
-			fallthrough
-		case dwarf.TagLexDwarfBlock:
-			var low, high uint64
-
-			fld := e.AttrField(dwarf.AttrLowpc)
-			if fld != nil {
-				low = addressAdjustment + fld.Val.(uint64)
-
-				fld = e.AttrField(dwarf.AttrHighpc)
-				if fld == nil {
-					continue // for loop
-				}
-
-				switch fld.Class {
-				case dwarf.ClassConstant:
-					// dwarf-4
-					high = low + uint64(fld.Val.(int64))
-				case dwarf.ClassAddress:
-					// dwarf-2
-					high = fld.Val.(uint64)
-				default:
-				}
-
-				// "high address is the first location past the last instruction
-				// associated with the entity"
-				// page 34 of "DWARF4 Standard"
-				high--
-
-				lexStackTop++
-				lexStart = append(lexStart[:lexStackTop], []uint64{low})
-				lexEnd = append(lexEnd[:lexStackTop], []uint64{high})
-			} else {
-				fld = e.AttrField(dwarf.AttrRanges)
-				if fld == nil {
-					continue // for loop
-				}
-
-				var start []uint64
-				var end []uint64
-
-				commitRange := func(low uint64, high uint64) {
-					start = append(start, low)
-					end = append(end, high)
-				}
-
-				err := bld.processRanges(e, compilationUnitAddress, commitRange)
-				if err != nil {
-					return err
-				}
-
-				lexStackTop++
-				lexStart = append(lexStart[:lexStackTop], start)
-				lexEnd = append(lexEnd[:lexStackTop], end)
-			}
-
-			// if there is no sibling for the lexical block then that indicates
-			// that the block will end with the compilation unit
-			fld = e.AttrField(dwarf.AttrSibling)
-			if fld != nil {
-				lexSibling = append(lexSibling[:lexStackTop], fld.Val.(dwarf.Offset))
-			} else {
-				lexSibling = append(lexSibling[:lexStackTop], 0)
-			}
-
-			continue // for loop
-
-		case dwarf.TagFormalParameter:
-			// treat formal parameters in the same way as variables
-			fallthrough
-
-		case dwarf.TagVariable:
+		case dwarf.TagVariable, dwarf.TagFormalParameter:
 			// execute rest of for block
 
 		default:
@@ -761,20 +649,77 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 			return true
 		}
 
-		// add variable to current lexcial range
-		addLexicalLocal := func(varb *SourceVariable) {
-			for i := range lexStart[lexStackTop] {
-				cp := *varb
-				local := &SourceVariableLocal{
-					SourceVariable: &cp,
-					Range: SourceRange{
-						Start: lexStart[lexStackTop][i],
-						End:   lexEnd[lexStackTop][i],
-					},
-				}
+		// add local variable
+		addLocal := func(varb *SourceVariable) {
+			findRange := func(e *dwarf.Entry) (uint64, uint64, bool) {
+				var low, high uint64
+				fld := e.AttrField(dwarf.AttrLowpc)
+				if fld != nil {
+					low = addressAdjustment + fld.Val.(uint64)
 
-				bld.locals = append(bld.locals, local)
+					fld = e.AttrField(dwarf.AttrHighpc)
+					if fld == nil {
+						return 0, 0, false
+					}
+
+					switch fld.Class {
+					case dwarf.ClassConstant:
+						// dwarf-4
+						high = low + uint64(fld.Val.(int64))
+					case dwarf.ClassAddress:
+						// dwarf-2
+						high = fld.Val.(uint64)
+					default:
+					}
+
+					// "high address is the first location past the last instruction
+					// associated with the entity"
+					// page 34 of "DWARF4 Standard"
+					high--
+				} else {
+					fld = e.AttrField(dwarf.AttrRanges)
+					if fld == nil {
+						return 0, 0, false
+					}
+
+					var start []uint64
+					var end []uint64
+
+					commitRange := func(low uint64, high uint64) {
+						start = append(start, low)
+						end = append(end, high)
+					}
+
+					err := bld.processRanges(e, compilationUnitAddress, commitRange)
+					if err != nil {
+						return 0, 0, false
+					}
+				}
+				return low, high, true
 			}
+
+			var low, high uint64
+			var foundRange bool
+			for _, e := range stack {
+				low, high, foundRange = findRange(e)
+				if foundRange {
+					break // for loop
+				}
+			}
+			if !foundRange {
+				logger.Logf(logger.Allow, "dwarf", "orphaned local variable: %s", varb.Name)
+			}
+
+			cp := *varb
+			local := &SourceVariableLocal{
+				SourceVariable: &cp,
+				Range: SourceRange{
+					Start: low,
+					End:   high,
+				},
+			}
+
+			bld.locals = append(bld.locals, local)
 		}
 
 		// variable actually exists if it has a location or constant value attribute
@@ -795,7 +740,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 			}
 
 			if !addGlobal(varb) {
-				addLexicalLocal(varb)
+				addLocal(varb)
 			}
 		} else {
 			locfld := e.AttrField(dwarf.AttrLocation)
@@ -824,7 +769,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 					}
 
 					if !addGlobal(varb) {
-						addLexicalLocal(varb)
+						addLocal(varb)
 					}
 
 				case dwarf.ClassExprLoc:
@@ -840,7 +785,7 @@ func (bld *build) buildVariables(src *Source, ef *elf.File,
 					}
 
 					if !addGlobal(varb) {
-						addLexicalLocal(varb)
+						addLocal(varb)
 					}
 				}
 			}

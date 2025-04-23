@@ -530,11 +530,7 @@ func NewSource(romFile string, cart Cartridge, elfFile string, yld YieldAddress)
 	}
 
 	// build variables
-	if relocatable, ok := bus.(coprocessor.CartCoProcRelocatable); ok {
-		err = bld.buildVariables(src, ef, relocatable, addressAdjustment)
-	} else {
-		err = bld.buildVariables(src, ef, nil, addressAdjustment)
-	}
+	err = bld.buildVariables(src, addressAdjustment)
 	if err != nil {
 		return nil, fmt.Errorf("dwarf: %w", err)
 	}

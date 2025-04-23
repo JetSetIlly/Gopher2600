@@ -187,7 +187,9 @@ func (win *winCoProcLocals) drawVariableLocal(local *dwarf.SourceVariableLocal, 
 }
 
 func (win *winCoProcLocals) drawVariable(varb *dwarf.SourceVariable, indentLevel int, nodeID string) {
-	// update variable
+	// update variable. this is good because it means variables are updated if
+	// the actual memory location has been edited. there's probably a more
+	// efficient way of doing it but this is fine for now
 	win.img.dbg.PushFunction(func() {
 		win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 			varb.Update()
