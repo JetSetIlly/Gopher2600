@@ -20,16 +20,14 @@ import (
 	"math"
 )
 
-func (c *ColourGen) gammaCorrectRGB(rgb color.RGBA) color.RGBA {
-	gamma := c.Gamma.Get().(float64)
+func gammaCorrectRGB(rgb color.RGBA, gamma float64) color.RGBA {
 	rgb.R = uint8(math.Pow(float64(rgb.R)/255, gamma) * 255)
 	rgb.G = uint8(math.Pow(float64(rgb.G)/255, gamma) * 255)
 	rgb.B = uint8(math.Pow(float64(rgb.B)/255, gamma) * 255)
 	return rgb
 }
 
-func (c *ColourGen) gammaCorrect(r, g, b float64) (float64, float64, float64) {
-	gamma := c.Gamma.Get().(float64)
+func gammaCorrect(r, g, b float64, gamma float64) (float64, float64, float64) {
 	r = math.Pow(r, gamma)
 	g = math.Pow(g, gamma)
 	b = math.Pow(b, gamma)

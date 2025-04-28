@@ -97,8 +97,9 @@ var defunct = []string{
 	"crt.enabled",        // replaced with crt.pixelPerfect (inverted setting)
 	"crt.whiteLevel",
 	"crt.interference",      // replaced with crt.rfInterference
-	"crt.interferenceLevel", // replace with crt.rfNoiseLevel and crt.rfGhostingLevel
+	"crt.interferenceLevel", // replaces with crt.rfNoiseLevel and crt.rfGhostingLevel
 	"television.vsync.recovery",
+	"television.color.legacy", // replaced with television.color.legacy.enabled
 }
 
 // returns true if string is in list of defunct values.

@@ -17,13 +17,6 @@ package colourgen
 
 import (
 	_ "embed"
-	"errors"
-	"fmt"
-	"image/color"
-	"io/fs"
-	"os"
-
-	"github.com/jetsetilly/gopher2600/resources"
 )
 
 // values taken from Stella 7.0 file common/PaletteHandler.cxx
@@ -71,99 +64,4 @@ var legacyPALfromStella = []uint32{
 // values taken from Stella 7.0 file common/PaletteHandler.cxx
 var legacySECAMfromStella = []uint32{
 	0x000000, 0x2121ff, 0xf03c79, 0xff50ff, 0x7fff00, 0x7fffff, 0xffff3f, 0xffffff,
-}
-
-// the values used when the legacy colour model is enabled
-type LegacyModel struct {
-	Adjust Adjust
-	ntsc   []color.RGBA
-	pal    []color.RGBA
-	secam  []color.RGBA
-}
-
-const legacyFile = "legacy.pal"
-
-func initialiseLegacyModel(legacy *LegacyModel) error {
-	clear(legacy.ntsc)
-	clear(legacy.pal)
-	clear(legacy.secam)
-
-	// try loading legacy palette file first
-	pth, err := resources.JoinPath(legacyFile)
-	if err != nil {
-		useStellaPalette(legacy)
-		return fmt.Errorf("palette file: %w", err)
-	}
-	data, err := os.ReadFile(pth)
-
-	if err != nil {
-		useStellaPalette(legacy)
-
-		// if ReadFile() is not about the file not existing then return the
-		// error, otherwise return nil
-		if !errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("palette file: %w", err)
-		}
-		return nil
-	}
-
-	// check validity of file
-	if len(data) != 792 {
-		useStellaPalette(legacy)
-		return fmt.Errorf("palette file: incorrect length")
-	}
-
-	usePaletteFile(legacy, data)
-	return fmt.Errorf("palette file: loaded legacy.pal")
-}
-
-func useStellaPalette(legacy *LegacyModel) {
-	for _, v := range legacyNTSCfromStella {
-		legacy.ntsc = append(legacy.ntsc, color.RGBA{
-			R: uint8(v >> 16),
-			G: uint8(v >> 8),
-			B: uint8(v),
-			A: 255,
-		})
-	}
-
-	for _, v := range legacyPALfromStella {
-		legacy.pal = append(legacy.pal, color.RGBA{
-			R: uint8(v >> 16),
-			G: uint8(v >> 8),
-			B: uint8(v),
-			A: 255,
-		})
-	}
-
-	for range 16 {
-		for _, v := range legacySECAMfromStella {
-			legacy.secam = append(legacy.secam, color.RGBA{
-				R: uint8(v >> 16),
-				G: uint8(v >> 8),
-				B: uint8(v),
-				A: 255,
-			})
-		}
-	}
-}
-
-func usePaletteFile(legacy *LegacyModel, data []byte) {
-	for i := range 128 {
-		idx := i * 3
-		rgb := color.RGBA{R: data[idx], G: data[idx+1], B: data[idx+2], A: 255}
-		legacy.ntsc = append(legacy.ntsc, rgb)
-
-		idx += (128 * 3)
-		rgb = color.RGBA{R: data[idx], G: data[idx+1], B: data[idx+2], A: 255}
-		legacy.pal = append(legacy.pal, rgb)
-	}
-
-	for range 16 {
-		for i := range 8 {
-			idx := 768 + (i * 3)
-			rgb := color.RGBA{R: data[idx], G: data[idx+1], B: data[idx+2], A: 255}
-			legacy.secam = append(legacy.secam, rgb)
-		}
-	}
 }
