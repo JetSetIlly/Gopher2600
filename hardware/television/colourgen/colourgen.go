@@ -188,8 +188,8 @@ func NewColourGen() (*ColourGen, error) {
 
 func (c *ColourGen) SetDefaults() {
 	c.LegacyEnabled.Set(true)
-	c.LegacyAdjust.Brightness.Set(1.210)
-	c.LegacyAdjust.Contrast.Set(0.851)
+	c.LegacyAdjust.Brightness.Set(1.196)
+	c.LegacyAdjust.Contrast.Set(1.000)
 	c.LegacyAdjust.Saturation.Set(0.963)
 	c.LegacyAdjust.Hue.Set(0.0)
 	c.LegacyAdjust.NTSCPhase.Set(0.0)
