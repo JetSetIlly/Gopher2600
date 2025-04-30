@@ -182,6 +182,7 @@ func (win *winPrefs) drawNTSCPhaseAdj() {
 
 	f := float32(specification.ColourGen.LegacyAdjust.NTSCPhase.Get().(float64))
 
+	imgui.AlignTextToFramePadding()
 	imgui.Text("Phase Adjust")
 	imgui.SameLineV(0, 5)
 
@@ -196,6 +197,7 @@ func (win *winPrefs) drawPALPhaseAdj() {
 
 	f := float32(specification.ColourGen.LegacyAdjust.PALPhase.Get().(float64))
 
+	imgui.AlignTextToFramePadding()
 	imgui.Text("Phase Adjust")
 	imgui.SameLineV(0, 5)
 
