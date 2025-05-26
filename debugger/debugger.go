@@ -574,6 +574,12 @@ func (dbg *Debugger) setState(state govern.State, subState govern.SubState) {
 
 	dbg.state.Store(state)
 	dbg.subState.Store(subState)
+
+	// clear halt reason if the state changes from paused. the emulation will be
+	// put into the paused state on halt so we don't want to clear it immediately
+	if state != govern.Paused {
+		dbg.ClearHaltReason()
+	}
 }
 
 // set the emulation mode
