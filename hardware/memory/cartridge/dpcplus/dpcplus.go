@@ -22,7 +22,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor"
-	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -995,10 +994,6 @@ func (cart *dpcPlus) GetCoProc() coprocessor.CartCoProc {
 // SetYieldHook implements the coprocessor.CartCoProcBus interface.
 func (cart *dpcPlus) SetYieldHook(hook coprocessor.CartYieldHook) {
 	cart.yieldHook = hook
-}
-
-// SetEmulationMode implements the coprocessor.CartCoProcBus interface.
-func (cart *dpcPlus) SetEmulationMode(mode govern.Mode) {
 }
 
 func (cart *dpcPlus) runArm() coprocessor.CoProcYield {

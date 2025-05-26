@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
-	"github.com/jetsetilly/gopher2600/debugger/govern"
 )
 
 // CoProcExecutionState details the current condition of the coprocessor's execution
@@ -199,9 +198,15 @@ type CartCoProcBus interface {
 
 	// the state of the coprocessor
 	CoProcExecutionState() CoProcExecutionState
+}
 
-	// notify cartridge of a change in emulation  mode
-	SetEmulationMode(govern.Mode)
+// CartCoProcSourceDebugging is implemented by cartridges that are sensitive to
+// being handled by the debugger (eg. breakpoints). This interface allows the
+// cartridge to disable any optimisations that might interfere with that
+type CartCoProcSourceDebugging interface {
+	// putting the cartridge into debuggging mode should happen as soon as
+	// possible in order to give it the best chance of working correctly
+	CoProcSourceDebugging()
 }
 
 // CartCoProcRelocatable is implemented by cartridge mappers where coprocessor

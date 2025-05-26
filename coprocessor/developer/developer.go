@@ -161,6 +161,11 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 		logger.Logf(logger.Allow, "developer", "DWARF loaded in %s", time.Since(t))
 	}
 
+	// put cartridge into source debugging mode if it requires it
+	if c, ok := dev.cart.GetCoProcBus().(coprocessor.CartCoProcSourceDebugging); ok {
+		c.CoProcSourceDebugging()
+	}
+
 	return nil
 }
 
@@ -308,14 +313,6 @@ func (dev *Developer) MemoryFault(event string, fault faults.Category, instructi
 	defer dev.faultsLock.Unlock()
 
 	dev.faults.NewEntry(fault, event, instructionAddr, accessAddr)
-}
-
-// SetEmulationMoe is called by the emulation whenever the mode changes
-func (dev *Developer) SetEmulationMode(mode govern.Mode) {
-	if dev.cart == nil {
-		return
-	}
-	dev.cart.GetCoProcBus().SetEmulationMode(mode)
 }
 
 // SetEmulationState is called by the emulation whenever state changes

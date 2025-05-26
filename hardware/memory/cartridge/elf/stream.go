@@ -99,6 +99,10 @@ func (s *stream) pull() streamEntry {
 	if s.drainPtr >= s.drainTop {
 		s.drain = false
 		s.ptr = 0
+
+		// disabled might have changed while we were successfully streaming. if
+		// it has then we don't want to continue it
+		s.active = !s.disabled
 	}
 	return e
 }

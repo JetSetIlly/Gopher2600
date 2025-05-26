@@ -24,7 +24,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor"
-	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
@@ -496,18 +495,6 @@ func (cart *Elf) SetYieldHook(hook coprocessor.CartYieldHook) {
 	cart.yieldHook = hook
 }
 
-// SetEmulationMode implements the coprocessor.CartCoProcBus interface.
-func (cart *Elf) SetEmulationMode(mode govern.Mode) {
-	switch mode {
-	case govern.ModePlay:
-		cart.mem.stream.active = !cart.mem.stream.disabled
-	case govern.ModeDebugger:
-		cart.mem.stream.active = false
-	default:
-		panic(fmt.Sprintf("unknown govern.Mode: %v", mode))
-	}
-}
-
 // GetStatic implements the mapper.CartStaticBus interface.
 func (cart *Elf) GetStatic() mapper.CartStatic {
 	return cart.mem.Snapshot()
@@ -535,4 +522,10 @@ func (cart *Elf) GetFunctionRange(name string) (uint64, uint64, bool) {
 		return uint64(f.origin), uint64(f.memtop), true
 	}
 	return 0, 0, false
+}
+
+// CoProcSourceDebugging implements the source coprocessor.CartCoProcSourceDebugging interface
+func (cart *Elf) CoProcSourceDebugging() {
+	// streaming can interfere with breakpoint recovery
+	cart.mem.stream.disabled = true
 }
