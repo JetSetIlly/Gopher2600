@@ -556,7 +556,7 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 		optimisedWarning := win.cumulative && fn.OptimisedCallStack
 
 		// tooltip
-		win.tooltip(fn.Cycles.Overall.CyclesProgram, fn, fn.DeclLine, false)
+		win.tooltip(fn, fn.DeclLine, false)
 
 		if optimisedWarning {
 			win.img.imguiTooltip(func() {
@@ -807,7 +807,7 @@ func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 		if isStub {
 			win.img.imguiTooltipSimple(fmt.Sprintf("This entry represent all lines of code in %s", ln.Function.Name))
 		} else {
-			win.tooltip(ln.Cycles.Overall.CyclesProgram, ln.Function, ln, true)
+			win.tooltip(ln.Function, ln, true)
 		}
 
 		// open source window on click
@@ -1022,9 +1022,9 @@ thean to the program as a whole.`)
 
 		// source on tooltip
 		if win.functionTabScale {
-			win.tooltip(ln.Cycles.Overall.CyclesFunction, ln.Function, ln, true)
+			win.tooltip(ln.Function, ln, true)
 		} else {
-			win.tooltip(ln.Cycles.Overall.CyclesProgram, ln.Function, ln, true)
+			win.tooltip(ln.Function, ln, true)
 		}
 
 		// open source window on click
@@ -1135,17 +1135,14 @@ thean to the program as a whole.`)
 // function is a stub function
 //
 // showDisasm should be false if the context doesn't require disassembly detail
-func (win *winCoProcProfiling) tooltip(scope profiling.CycleFigures,
-	fn *dwarf.SourceFunction, ln *dwarf.SourceLine,
-	showDisasm bool) {
-
+func (win *winCoProcProfiling) tooltip(fn *dwarf.SourceFunction, ln *dwarf.SourceLine, showDisasm bool) {
 	win.img.imguiTooltip(func() {
 		if fn.IsStub() {
 			if fn.Name == dwarf.DriverFunctionName {
 				imgui.Text("Instructions that are executed")
 				imgui.Text("outside of the ROM and in the driver")
 			} else {
-				imgui.Text("Function has no source code")
+				win.img.drawFilenameAndLineNumber(ln.File.Filename, ln.LineNumber, -1)
 			}
 		} else {
 			win.img.drawFilenameAndLineNumber(ln.File.Filename, ln.LineNumber, -1)

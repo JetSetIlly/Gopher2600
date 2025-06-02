@@ -969,14 +969,28 @@ func (bld *build) buildFunctions(src *Source) error {
 		// declaration file
 		fld = e.AttrField(dwarf.AttrDeclFile)
 		if fld == nil {
-			return nil, fmt.Errorf("no source file for %s", name)
+			fld = e.AttrField(dwarf.AttrSpecification)
+			if fld == nil {
+				return nil, fmt.Errorf("no source file for %s", name)
+			}
+			fld = bld.idx[fld.Val.(dwarf.Offset)].AttrField(dwarf.AttrDeclFile)
+			if fld == nil {
+				return nil, fmt.Errorf("no source file for %s", name)
+			}
 		}
 		filenum := fld.Val.(int64)
 
 		// declaration line
 		fld = e.AttrField(dwarf.AttrDeclLine)
 		if fld == nil {
-			return nil, fmt.Errorf("no line number for %s", name)
+			fld = e.AttrField(dwarf.AttrSpecification)
+			if fld == nil {
+				return nil, fmt.Errorf("no line number for %s", name)
+			}
+			fld = bld.idx[fld.Val.(dwarf.Offset)].AttrField(dwarf.AttrDeclLine)
+			if fld == nil {
+				return nil, fmt.Errorf("no line number for %s", name)
+			}
 		}
 		linenum := fld.Val.(int64)
 
