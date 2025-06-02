@@ -489,8 +489,14 @@ func (win *winCoProcSource) drawSource(src *dwarf.Source, bp breakpoints.Breakpo
 						// add/remove lines before showing the tooltip. this
 						// produces better visual results
 						if imgui.IsMouseClicked(0) {
-							win.selection.dragStart(ln.LineNumber)
+							// if ctrl key is pressed then extend selection
+							if imgui.CurrentIO().KeyCtrlPressed() {
+								win.selection.drag(ln.LineNumber)
+							} else {
+								win.selection.dragStart(ln.LineNumber)
+							}
 						}
+
 						if imgui.IsMouseDragging(0, 0.0) {
 							win.selection.drag(ln.LineNumber)
 							win.selectionRange.Clear()

@@ -242,11 +242,18 @@ func (win *winTracker) draw() {
 							// context menu on right mouse button
 							if imgui.IsItemHovered() {
 								if imgui.IsMouseClicked(0) {
-									win.selection.dragStart(i)
+									// if ctrl key is pressed then extend selection
+									if imgui.CurrentIO().KeyCtrlPressed() {
+										win.selection.drag(i)
+									} else {
+										win.selection.dragStart(i)
+									}
 								}
+
 								if imgui.IsMouseDragging(0, 0.0) {
 									win.selection.drag(i)
 								}
+
 								if imgui.IsMouseDown(1) {
 									imgui.OpenPopup(trackerContextMenuID)
 									win.contextMenu = entry.Coords
