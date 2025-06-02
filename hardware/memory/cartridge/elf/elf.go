@@ -16,6 +16,7 @@
 package elf
 
 import (
+	"debug/dwarf"
 	"debug/elf"
 	"encoding/binary"
 	"fmt"
@@ -462,15 +463,6 @@ func (cart *Elf) BusStuff() (uint8, bool) {
 	return 0, false
 }
 
-// ELFSection implements the coprocessor.CartCoProcRelocatable interface.
-func (cart *Elf) ELFSection(name string) ([]uint8, uint32, bool) {
-	if idx, ok := cart.mem.sectionsByName[name]; ok {
-		s := cart.mem.sections[idx]
-		return s.data, s.origin, true
-	}
-	return nil, 0, false
-}
-
 // CoProcExecutionState implements the coprocessor.CartCoProcBus interface.
 func (cart *Elf) CoProcExecutionState() coprocessor.CoProcExecutionState {
 	if cart.mem.parallelARM {
@@ -515,17 +507,63 @@ func (cart *Elf) PutStatic(segment string, idx int, data uint8) bool {
 	return true
 }
 
-// GetFunctionRange implements the source.CartridgeFunctionSymbol interface in
-// the coprocessor package
-func (cart *Elf) GetFunctionRange(name string) (uint64, uint64, bool) {
-	if f, ok := cart.mem.strongArmFunctionsByName[name]; ok {
-		return uint64(f.origin), uint64(f.memtop), true
-	}
-	return 0, 0, false
-}
-
 // CoProcSourceDebugging implements the source coprocessor.CartCoProcSourceDebugging interface
 func (cart *Elf) CoProcSourceDebugging() {
 	// streaming can interfere with breakpoint recovery
 	cart.mem.stream.disabled = true
+}
+
+// Section implements the coprocessor.CartCoProcELF interface.
+func (cart *Elf) Section(name string) ([]uint8, uint32) {
+	if sec, ok := cart.mem.sectionsByName[name]; ok {
+		return sec.data, sec.origin
+	}
+	return nil, 0
+}
+
+func (cart *Elf) ExecutableSections() []string {
+	var x []string
+	for _, sec := range cart.mem.sections {
+		if sec.executable() {
+			x = append(x, sec.name)
+		}
+	}
+	return x
+}
+
+// DWARF implements the coprocessor.CartCoProcELF interface.
+func (cart *Elf) DWARF() (*dwarf.Data, error) {
+	get := func(name string) []byte {
+		s, ok := cart.mem.sectionsByName[name]
+		if ok {
+			return s.data
+		}
+		return nil
+	}
+
+	d, err := dwarf.New(
+		get(".debug_abbrev"),
+		get(".debug_aranges"),
+		get(".debug_frame"),
+		get(".debug_info"),
+		get(".debug_line"),
+		get(".debug_pubnames"),
+		get(".debug_ranges"),
+		get(".debug_str"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return d, nil
+}
+
+// ByteOrder implements the coprocessor.CartCoProcELF interface.
+func (cart *Elf) ByteOrder() binary.ByteOrder {
+	return cart.mem.byteOrder
+}
+
+// Symbols implements the coprocessor.CartCoProcELF interface.
+func (cart *Elf) Symbols() []elf.Symbol {
+	return cart.mem.symbols
 }

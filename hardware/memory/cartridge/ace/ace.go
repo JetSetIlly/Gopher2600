@@ -239,7 +239,6 @@ func (cart *Ace) BusStuff() (uint8, bool) {
 	return 0, false
 }
 
-// ExecutableOrigin implements the coprocessor.CartCoProcRelocatable interface.
 func (cart *Ace) ExecutableOrigin() uint32 {
 	return cart.mem.resetPC
 }

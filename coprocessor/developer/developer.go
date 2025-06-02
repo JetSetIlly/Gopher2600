@@ -151,8 +151,13 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 
 	t := time.Now()
 
+	coprocBus := cart.GetCoProcBus()
+	if coprocBus == nil {
+		return fmt.Errorf("developer: cartridge does not have a coprocessor")
+	}
+
 	dev.sourceLock.Lock()
-	dev.source, err = dwarf.NewSource(romFile, cart, elfFile, &dev.yieldState)
+	dev.source, err = dwarf.NewSource(coprocBus, romFile, elfFile, &dev.yieldState)
 	dev.sourceLock.Unlock()
 
 	if err != nil {

@@ -16,6 +16,9 @@
 package coprocessor
 
 import (
+	"debug/dwarf"
+	"debug/elf"
+	"encoding/binary"
 	"fmt"
 	"strings"
 
@@ -209,13 +212,22 @@ type CartCoProcSourceDebugging interface {
 	CoProcSourceDebugging()
 }
 
-// CartCoProcRelocatable is implemented by cartridge mappers where coprocessor
-// programs can be located anywhere in the coprcessor's memory
-type CartCoProcRelocatable interface {
-	// returns the offset of the named ELF section and whether the named
-	// section exists. not all cartridges that implement this interface will be
-	// able to meaningfully answer this function call
-	ELFSection(string) ([]uint8, uint32, bool)
+// CartCoProcELF is implemented by cartridge mappers that can masquerade as ELF files
+type CartCoProcELF interface {
+	// returns the offset of the named ELF section and whether the named section exists
+	Section(string) ([]uint8, uint32)
+
+	// list of executable sections
+	ExecutableSections() []string
+
+	// returns any DWARF data for the cartridge
+	DWARF() (*dwarf.Data, error)
+
+	// the byte ordering used by the data
+	ByteOrder() binary.ByteOrder
+
+	// list of symbols in the ELF
+	Symbols() []elf.Symbol
 }
 
 // CartCoProcOrigin is implemented by cartridge mappers where coprocessor

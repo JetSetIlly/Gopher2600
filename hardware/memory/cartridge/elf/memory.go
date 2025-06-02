@@ -113,7 +113,7 @@ type elfMemory struct {
 	// is built of individual data arrays in each elfSections
 	sections       []*elfSection
 	sectionNames   []string
-	sectionsByName map[string]int
+	sectionsByName map[string]*elfSection
 
 	symbols []elf.Symbol
 
@@ -196,7 +196,7 @@ func newElfMemory(env *environment.Environment) *elfMemory {
 	mem := &elfMemory{
 		env:                      env,
 		gpio:                     newGPIO(),
-		sectionsByName:           make(map[string]int),
+		sectionsByName:           make(map[string]*elfSection),
 		strongArmFunctionsByName: make(map[string]*strongArmFunctionSpec),
 		args:                     make([]byte, argMemtop-argOrigin),
 		stream: stream{
@@ -321,7 +321,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 		if _, ok := mem.sectionsByName[section.name]; !ok {
 			mem.sections = append(mem.sections, section)
 			mem.sectionNames = append(mem.sectionNames, section.name)
-			mem.sectionsByName[section.name] = len(mem.sectionNames) - 1
+			mem.sectionsByName[section.name] = section
 		}
 	}
 
@@ -348,22 +348,20 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 		}
 
 		// section being relocated
-		var secBeingRelocated *elfSection
-		if idx, ok := mem.sectionsByName[rel.Name[4:]]; !ok {
+		sec, ok := mem.sectionsByName[rel.Name[4:]]
+		if !ok {
 			return fmt.Errorf("ELF: could not find section corresponding to %s", rel.Name)
-		} else {
-			secBeingRelocated = mem.sections[idx]
 		}
 
 		// I'm not sure how to handle .debug_macro. it seems to be very
 		// different to other sections. problems I've seen so far (1) relocated
 		// value will be out of range according to the MapAddress check (2) the
 		// offset value can go beyond the end of the .debug_macro data slice
-		if secBeingRelocated.name == ".debug_macro" {
-			logger.Logf(mem.env, "ELF", "not relocating %s", secBeingRelocated.name)
+		if sec.name == ".debug_macro" {
+			logger.Logf(mem.env, "ELF", "not relocating %s", sec.name)
 			continue
 		} else {
-			logger.Logf(mem.env, "ELF", "relocating %s", secBeingRelocated.name)
+			logger.Logf(mem.env, "ELF", "relocating %s", sec.name)
 		}
 
 		// relocation data. we walk over the data and extract the relocation
@@ -657,10 +655,10 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 						mem.unresolvedSymbols = true
 					} else {
 						n := ef.Sections[sym.Section].Name
-						if idx, ok := mem.sectionsByName[n]; !ok {
+						if sec, ok := mem.sectionsByName[n]; !ok {
 							return fmt.Errorf("can not find section (%s) while relocating %s", n, sym.Name)
 						} else {
-							tgt = mem.sections[idx].origin
+							tgt = sec.origin
 							tgt += uint32(sym.Value)
 						}
 					}
@@ -671,7 +669,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				// add placeholder value to relocation address
-				addend := ef.ByteOrder.Uint32(secBeingRelocated.data[offset:])
+				addend := ef.ByteOrder.Uint32(sec.data[offset:])
 				tgt += addend
 
 				// check address is recognised
@@ -680,7 +678,10 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				// commit write
-				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], tgt)
+				ef.ByteOrder.PutUint32(sec.data[offset:], tgt)
+				if d, err := ef.Section(sec.name).Data(); err == nil {
+					ef.ByteOrder.PutUint32(d[offset:], tgt)
+				}
 
 				// log relocation address. note that in the case of strongarm
 				// functions, because of how BLX works, the target address
@@ -699,7 +700,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 					typ = "ABS32"
 				}
 
-				logger.Logf(mem.env, "ELF", "%s %s (%08x) => %08x", typ, name, secBeingRelocated.origin+offset, tgt)
+				logger.Logf(mem.env, "ELF", "%s %s (%08x) => %08x", typ, name, sec.origin+offset, tgt)
 
 			case elf.R_ARM_THM_PC22:
 				// this value is labelled R_ARM_THM_CALL in objdump output
@@ -719,14 +720,14 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				n := ef.Sections[sym.Section].Name
-				if idx, ok := mem.sectionsByName[n]; !ok {
+				if sec, ok := mem.sectionsByName[n]; !ok {
 					return fmt.Errorf("ELF: can not find section (%s)", n)
 				} else {
-					tgt = mem.sections[idx].origin
+					tgt = sec.origin
 				}
 				tgt += uint32(sym.Value)
 				tgt &= 0xfffffffe
-				tgt -= (secBeingRelocated.origin + offset + 4)
+				tgt -= (sec.origin + offset + 4)
 
 				imm11 := (tgt >> 1) & 0x7ff
 				imm10 := (tgt >> 12) & 0x3ff
@@ -751,14 +752,17 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				opcode := uint32(lo) | (uint32(hi) << 16)
 
 				// commit write
-				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], opcode)
+				ef.ByteOrder.PutUint32(sec.data[offset:], opcode)
+				if d, err := ef.Section(sec.name).Data(); err == nil {
+					ef.ByteOrder.PutUint32(d[offset:], opcode)
+				}
 
 				// log relocated opcode
 				name := sym.Name
 				if name == "" {
 					name = "anonymous"
 				}
-				logger.Logf(mem.env, "ELF", "THM_PC22 %s (%08x) => opcode %08x", name, secBeingRelocated.origin+offset, opcode)
+				logger.Logf(mem.env, "ELF", "THM_PC22 %s (%08x) => opcode %08x", name, sec.origin+offset, opcode)
 
 			case elf.R_ARM_REL32:
 				if sym.Section == elf.SHN_UNDEF {
@@ -767,10 +771,10 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				n := ef.Sections[sym.Section].Name
-				if idx, ok := mem.sectionsByName[n]; !ok {
+				if sec, ok := mem.sectionsByName[n]; !ok {
 					return fmt.Errorf("can not find section (%s) while relocating %s", n, sym.Name)
 				} else {
-					tgt = mem.sections[idx].origin
+					tgt = sec.origin
 					tgt += uint32(sym.Value)
 				}
 
@@ -780,9 +784,12 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				// commit write
-				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], tgt)
+				ef.ByteOrder.PutUint32(sec.data[offset:], tgt)
+				if d, err := ef.Section(sec.name).Data(); err == nil {
+					ef.ByteOrder.PutUint32(d[offset:], tgt)
+				}
 
-				logger.Logf(mem.env, "ELF", "REL32 %s (%08x) => %08x", sym.Name, secBeingRelocated.origin+offset, tgt)
+				logger.Logf(mem.env, "ELF", "REL32 %s (%08x) => %08x", sym.Name, sec.origin+offset, tgt)
 
 			case elf.R_ARM_PREL31:
 				if sym.Section&0xff00 == elf.SHN_UNDEF {
@@ -842,8 +849,8 @@ func (mem *elfMemory) runInitialisation(arm *arm.ARM) error {
 	// the elf.File structure is no good for our purposes
 	for _, s := range mem.symbols {
 		if s.Name == "main" || s.Name == "elf_main" {
-			idx := mem.sectionsByName[".text"]
-			mem.resetPC = mem.sections[idx].origin + uint32(s.Value)
+			sec := mem.sectionsByName[".text"]
+			mem.resetPC = sec.origin + uint32(s.Value)
 			mem.resetPC &= 0xfffffffe
 			break // for loop
 		}
@@ -882,7 +889,7 @@ func (mem *elfMemory) relocateStrongArmFunction(spec strongArmFunctionSpec) (uin
 	mem.strongArmProgram = append(mem.strongArmProgram, strongArmStub...)
 
 	// update memtop of strongArm program
-	mem.strongArmMemtop = uint32(spec.memtop)
+	mem.strongArmMemtop = spec.memtop
 
 	// add specification for this strongarm function
 	extend := int(mem.strongArmMemtop-mem.strongArmOrigin) - len(mem.strongArmFunctions) + 1
@@ -1072,13 +1079,12 @@ func (mem *elfMemory) Segments() []mapper.CartStaticSegment {
 	}
 
 	for _, n := range mem.sectionNames {
-		idx := mem.sectionsByName[n]
-		s := mem.sections[idx]
-		if s.inMemory() {
+		sec := mem.sectionsByName[n]
+		if sec.inMemory() {
 			segments = append(segments, mapper.CartStaticSegment{
-				Name:   s.name,
-				Origin: s.origin,
-				Memtop: s.memtop,
+				Name:   sec.name,
+				Origin: sec.origin,
+				Memtop: sec.memtop,
 			})
 		}
 	}
@@ -1096,8 +1102,8 @@ func (mem *elfMemory) Reference(segment string) ([]uint8, bool) {
 	case "StrongARM Program":
 		return mem.strongArmProgram, true
 	default:
-		if idx, ok := mem.sectionsByName[segment]; ok {
-			return mem.sections[idx].data, true
+		if sec, ok := mem.sectionsByName[segment]; ok {
+			return sec.data, true
 		}
 	}
 	return []uint8{}, false

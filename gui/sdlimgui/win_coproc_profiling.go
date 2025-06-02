@@ -310,7 +310,7 @@ func (win *winCoProcProfiling) draw(coproc coprocessor.CartCoProc) {
 			imgui.Separator()
 			imgui.Spacing()
 
-			if src.Optimised {
+			if src.Optimisation {
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
 				imgui.Text(string(fonts.Warning))
 				imgui.PopStyleColor()

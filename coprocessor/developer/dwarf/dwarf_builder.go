@@ -26,50 +26,66 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// the build struct is only used during construction of the debugging
-// information to help the NewSource() function
+// compile units are made up of many children. for convenience we keep track of
+// all children in an index
+type compileUnit struct {
+	e *dwarf.Entry
+
+	// name of the compilation unit. the dwarf.AttrName value from the dwarf.Entry
+	name string
+
+	// the index of all entries that are grouped under this compilation unit
+	children map[dwarf.Offset]*dwarf.Entry
+
+	// the base address for addresses found under this compilation unit
+	origin uint64
+
+	// the range of addresses covered by the compilation unit
+	ranges [][2]uint64
+
+	// whether this compilation unit appears to optimised
+	optimisation bool
+}
+
+// the build struct is only used during construction of debugging information
 type build struct {
 	dwrf *dwarf.Data
 
-	// ELF sections that help DWARF locate local variables in memory
-	debugLoc   *loclistDecoder
-	debugFrame *frameSection
+	// it is sometimes useful to access an dwarf entry directly by an offset value.
+	// references from one entry to another is done by offset so in those situations
+	// an index saves searching. a more general solution would be to create a tree
+	// from the dwarf data and limit the search, but this is okay
+	idx map[dwarf.Offset]*dwarf.Entry
 
-	globals map[string]*SourceVariable
-	locals  []*SourceVariableLocal
-
-	// types used in the source
-	types map[dwarf.Offset]*SourceType
-
-	// the order in which we encountered the subprograms and inlined
-	// subroutines is important. this is actually the same as using the DWARF
-	// reader but it's a bit easier to traverse through an array once we've read
-	// all the entries
+	// it's easier to traverse a linear array rather than dealing with the
+	// dwardf.Data.Reader() on multiple occasions
 	order []*dwarf.Entry
 
-	// all entries in the DWARF data
-	entries map[dwarf.Offset]*dwarf.Entry
+	// the parent compileunit for every dwarf entry. we directly record this
+	// relationship because sometimes a DWARF entry will reference another DWARF
+	// entry in a different compile unit and we need to know the compile unit of
+	// that second entry. (the reason we need to know the compile unit is so we
+	// can attain the line reader)
+	parent map[dwarf.Offset]*compileUnit
 
-	// the parent compile unit for every dwarf offset. we record this because
-	// sometimes a DWARF entry will reference another DWARF entry in a
-	// different compile unit. this is important because acquiring a line
-	// reader depends on the compile unit and the reason we need a line reader
-	// is in order to match an AttrDeclFile with a file name
-	compileUnits map[dwarf.Offset]*dwarf.Entry
+	// an index of just the compile units. indexed by the offset of the compile unit
+	units map[dwarf.Offset]*compileUnit
+
+	// the type, globals and local variables discovered during the build process
+	types   map[dwarf.Offset]*SourceType
+	globals map[string]*SourceVariable
+	locals  []*SourceVariableLocal
 }
 
-func newBuild(dwrf *dwarf.Data, debug_loc *loclistDecoder, debug_frame *frameSection) (*build, error) {
+func newBuild(dwrf *dwarf.Data) (*build, error) {
 	bld := &build{
-		dwrf:         dwrf,
-		debugLoc:     debug_loc,
-		debugFrame:   debug_frame,
-		globals:      make(map[string]*SourceVariable),
-		types:        make(map[dwarf.Offset]*SourceType),
-		entries:      make(map[dwarf.Offset]*dwarf.Entry),
-		compileUnits: make(map[dwarf.Offset]*dwarf.Entry),
+		dwrf:    dwrf,
+		idx:     make(map[dwarf.Offset]*dwarf.Entry),
+		parent:  make(map[dwarf.Offset]*compileUnit),
+		units:   make(map[dwarf.Offset]*compileUnit),
+		types:   make(map[dwarf.Offset]*SourceType),
+		globals: make(map[string]*SourceVariable),
 	}
-
-	var compileUnit *dwarf.Entry
 
 	r := bld.dwrf.Reader()
 	for {
@@ -85,16 +101,106 @@ func newBuild(dwrf *dwarf.Data, debug_loc *loclistDecoder, debug_frame *frameSec
 		}
 
 		bld.order = append(bld.order, entry)
-		bld.entries[entry.Offset] = entry
-		bld.compileUnits[entry.Offset] = compileUnit
-
-		switch entry.Tag {
-		case dwarf.TagCompileUnit:
-			compileUnit = entry
-		}
+		bld.idx[entry.Offset] = entry
 	}
 
 	return bld, nil
+}
+
+// build list of compilation units in the DWARF data
+func (bld *build) buildCompilationUnits() error {
+	var unit *compileUnit
+
+	for _, e := range bld.order {
+		switch e.Tag {
+		case dwarf.TagCompileUnit:
+			unit = &compileUnit{
+				e:        e,
+				children: make(map[dwarf.Offset]*dwarf.Entry),
+			}
+
+			fld := e.AttrField(dwarf.AttrLowpc)
+			if fld != nil {
+				unit.origin = fld.Val.(uint64)
+
+				fld := e.AttrField(dwarf.AttrHighpc)
+				if fld != nil {
+					var high uint64
+					switch fld.Class {
+					case dwarf.ClassConstant:
+						// dwarf-4
+						high = unit.origin + uint64(fld.Val.(int64))
+					case dwarf.ClassAddress:
+						// dwarf-2
+						high = fld.Val.(uint64)
+					default:
+					}
+					unit.ranges = append(unit.ranges, [2]uint64{unit.origin, high})
+
+					fld = e.AttrField(dwarf.AttrRanges)
+					if fld != nil {
+						return fmt.Errorf("unexpected AttrRanges in compilation unit")
+					}
+
+				} else {
+					fld = e.AttrField(dwarf.AttrRanges)
+					if fld != nil {
+						commitRange := func(low uint64, high uint64) {
+							unit.ranges = append(unit.ranges, [2]uint64{low, high})
+						}
+
+						err := bld.processRanges(e, unit.origin, commitRange)
+						if err != nil {
+							return err
+						}
+					}
+				}
+			}
+
+			fld = e.AttrField(dwarf.AttrName)
+			if fld != nil {
+				unit.name = fld.Val.(string)
+			}
+
+			// sub-optimal detection of whether the compileunit was generated with compiler
+			// optimisation enabled
+			fld = unit.e.AttrField(dwarf.AttrProducer)
+			if fld != nil {
+				s := fld.Val.(string)
+				unit.optimisation = strings.HasPrefix(s, "GNU") && strings.Contains(s, " -O")
+			}
+
+			bld.units[e.Offset] = unit
+		default:
+			bld.parent[e.Offset] = unit
+		}
+	}
+
+	return nil
+}
+
+// read the source files used by each compilation units
+func (bld *build) buildSourceFiles(src *Source) error {
+	for _, u := range bld.units {
+		// read each file referenced by the compilation unit
+		r, err := bld.dwrf.LineReader(u.e)
+		if err == nil {
+			for _, f := range r.Files()[1:] {
+				if _, ok := src.Files[f.Name]; !ok {
+					sf, err := readSourceFile(f.Name, src.path, &src.AllLines)
+					if err != nil {
+						logger.Log(logger.Allow, "dwarf", err)
+					} else {
+						src.Files[sf.Filename] = sf
+						src.Filenames = append(src.Filenames, sf.Filename)
+						src.FilesByShortname[sf.ShortFilename] = sf
+						src.ShortFilenames = append(src.ShortFilenames, sf.ShortFilename)
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // buildTypes creates the types necessary to build variable information. in
@@ -260,7 +366,7 @@ func (bld *build) buildTypes(src *Source) error {
 				if fld != nil {
 					switch fld.Class {
 					case dwarf.ClassConstant:
-						memb.loclist = bld.debugLoc.newLoclistJustFramebase(memb)
+						memb.loclist = src.debugLoc.newLoclistJustFramebase(memb)
 						address := fld.Val.(int64)
 						memb.loclist.addOperator(loclistOperator{
 							resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
@@ -272,9 +378,9 @@ func (bld *build) buildTypes(src *Source) error {
 							operator: "member offset",
 						})
 					case dwarf.ClassExprLoc:
-						memb.loclist = bld.debugLoc.newLoclistJustFramebase(memb)
+						memb.loclist = src.debugLoc.newLoclistJustFramebase(memb)
 						expr := fld.Val.([]uint8)
-						r, n, err := bld.debugLoc.decodeLoclistOperation(expr)
+						r, n, err := src.debugLoc.decodeLoclistOperation(expr)
 						if err != nil {
 							return err
 						}
@@ -463,7 +569,7 @@ func (bld *build) resolveVariableDeclaration(v *dwarf.Entry, t *dwarf.Entry, src
 	if fld != nil {
 		var ok bool
 
-		spec, ok := bld.entries[fld.Val.(dwarf.Offset)]
+		spec, ok := bld.idx[fld.Val.(dwarf.Offset)]
 		if !ok {
 			return nil, nil
 		}
@@ -502,7 +608,7 @@ func (bld *build) resolveVariableDeclaration(v *dwarf.Entry, t *dwarf.Entry, src
 	}
 	declLine := fld.Val.(int64)
 
-	lr, err := bld.dwrf.LineReader(bld.compileUnits[v.Offset])
+	lr, err := bld.dwrf.LineReader(bld.parent[v.Offset].e)
 	if err != nil {
 		return nil, err
 	}
@@ -519,8 +625,7 @@ func (bld *build) resolveVariableDeclaration(v *dwarf.Entry, t *dwarf.Entry, src
 
 // buildVariables populates variables map in the *Source tree. local variables
 // will need to be relocated for relocatable ELF files
-func (bld *build) buildVariables(src *Source, addressAdjustment uint64) error {
-
+func (bld *build) buildVariables(src *Source) error {
 	// location lists use a base address of the current compilation unit when
 	// constructing address ranges
 	var compilationUnitAddress uint64
@@ -552,20 +657,7 @@ func (bld *build) buildVariables(src *Source, addressAdjustment uint64) error {
 		case dwarf.TagCompileUnit:
 			// basic compilation address is the address adjustment value. this
 			// will be changed depending on the presence of AttrLowpc
-			compilationUnitAddress = addressAdjustment
-
-			// note that although a DW_AT_ranges attribute may exist, we're only
-			// interested in the low pc:
-			//
-			// "A DW_AT_low_pc attribute may also be specified in combination
-			// with DW_AT_ranges to specify the default base address for use in
-			// location lists (see Section 2.6.2) and range lists (see Section
-			// 2.17.3)."
-
-			fld := e.AttrField(dwarf.AttrLowpc)
-			if fld != nil {
-				compilationUnitAddress += fld.Val.(uint64)
-			}
+			compilationUnitAddress = bld.units[e.Offset].origin
 			continue // for loop
 
 		case dwarf.TagVariable, dwarf.TagFormalParameter:
@@ -590,7 +682,7 @@ func (bld *build) buildVariables(src *Source, addressAdjustment uint64) error {
 		}
 
 		if fld != nil {
-			v, ok := bld.entries[fld.Val.(dwarf.Offset)]
+			v, ok := bld.idx[fld.Val.(dwarf.Offset)]
 			if !ok {
 				return fmt.Errorf("found concrete variable without abstract")
 			}
@@ -655,7 +747,7 @@ func (bld *build) buildVariables(src *Source, addressAdjustment uint64) error {
 				var low, high uint64
 				fld := e.AttrField(dwarf.AttrLowpc)
 				if fld != nil {
-					low = addressAdjustment + fld.Val.(uint64)
+					low = fld.Val.(uint64)
 
 					fld = e.AttrField(dwarf.AttrHighpc)
 					if fld == nil {
@@ -733,7 +825,7 @@ func (bld *build) buildVariables(src *Source, addressAdjustment uint64) error {
 				varb.constantValue = uint32(constfld.Val.(int64))
 			case []uint8:
 				// eg. a float value
-				varb.constantValue = bld.debugLoc.byteOrder.Uint32(constfld.Val.([]uint8))
+				varb.constantValue = src.debugLoc.byteOrder.Uint32(constfld.Val.([]uint8))
 			default:
 				logger.Logf(logger.Allow, "dwarf", "unhandled DW_AT_const_value type %T", constfld.Val)
 				continue // for loop
@@ -760,7 +852,7 @@ func (bld *build) buildVariables(src *Source, addressAdjustment uint64) error {
 						bld.locals = append(bld.locals, local)
 					}
 
-					err := bld.debugLoc.newLoclistFromPtr(varb, locfld.Val.(int64), compilationUnitAddress, ptrCommit)
+					err := src.debugLoc.newLoclistFromPtr(varb, locfld.Val.(int64), compilationUnitAddress, ptrCommit)
 					if err != nil {
 						if errors.Is(err, UnsupportedDWARF) {
 							return err
@@ -779,7 +871,7 @@ func (bld *build) buildVariables(src *Source, addressAdjustment uint64) error {
 					// page 26 of "DWARF4 Standard"
 
 					var err error
-					varb.loclist, err = bld.debugLoc.newLoclistFromExpr(bld.debugFrame, locfld.Val.([]uint8))
+					varb.loclist, err = src.debugLoc.newLoclistFromExpr(src.debugFrame, locfld.Val.([]uint8))
 					if err != nil {
 						return err
 					}
@@ -795,7 +887,11 @@ func (bld *build) buildVariables(src *Source, addressAdjustment uint64) error {
 	return nil
 }
 
-func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
+func (bld *build) buildFunctions(src *Source) error {
+	// location lists use a base address of the current compilation unit when
+	// constructing address ranges
+	var compilationUnitAddress uint64
+
 	resolveFramebase := func(e *dwarf.Entry) (*loclist, error) {
 		var framebase *loclist
 
@@ -804,13 +900,13 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 			switch fld.Class {
 			case dwarf.ClassExprLoc:
 				var err error
-				framebase, err = bld.debugLoc.newLoclistFromExpr(bld.debugFrame, fld.Val.([]uint8))
+				framebase, err = src.debugLoc.newLoclistFromExpr(src.debugFrame, fld.Val.([]uint8))
 				if err != nil {
 					return nil, err
 				}
 
 			case dwarf.ClassLocListPtr:
-				err := bld.debugLoc.newLoclistFromPtr(bld.debugFrame, fld.Val.(int64), addressAdjustment,
+				err := src.debugLoc.newLoclistFromPtr(src.debugFrame, fld.Val.(int64), compilationUnitAddress,
 					func(_, _ uint64, loc *loclist) {
 						framebase = loc
 					})
@@ -824,7 +920,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 	}
 
 	// resolve the dwarf entry e for the filename and framebase. if the
-	// framebase is in another dwarf entry then that can be specificed with the
+	// framebase is in another dwarf entry then that can be specified with the
 	// fb paramenter. fb can be nil
 	//
 	// may return nil for both error and SourceFunction value. therefore, the
@@ -836,7 +932,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 			fb = e
 		}
 
-		lr, err := bld.dwrf.LineReader(bld.compileUnits[e.Offset])
+		lr, err := bld.dwrf.LineReader(bld.parent[e.Offset].e)
 		if err != nil {
 			return nil, err
 		}
@@ -847,13 +943,28 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 		if fld == nil {
 			sp := e.AttrField(dwarf.AttrSpecification)
 			if sp != nil {
-				fld = bld.entries[sp.Val.(dwarf.Offset)].AttrField(dwarf.AttrName)
+				fld = bld.idx[sp.Val.(dwarf.Offset)].AttrField(dwarf.AttrName)
 			}
 		}
 		if fld == nil {
 			return nil, fmt.Errorf("no function name")
 		}
 		name := fld.Val.(string)
+
+		// linkage name may be different to the name of the function
+		linkageName := name
+		fld = e.AttrField(dwarf.AttrLinkageName)
+		if fld == nil {
+			fld = e.AttrField(dwarf.AttrSpecification)
+			if fld != nil {
+				fld = bld.idx[fld.Val.(dwarf.Offset)].AttrField(dwarf.AttrLinkageName)
+				if fld != nil {
+					linkageName = fld.Val.(string)
+				}
+			}
+		} else {
+			linkageName = fld.Val.(string)
+		}
 
 		// declaration file
 		fld = e.AttrField(dwarf.AttrDeclFile)
@@ -884,9 +995,10 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 		}
 
 		fn := &SourceFunction{
-			Name:      name,
-			DeclLine:  src.Files[filename].Content.Lines[linenum-1],
-			framebase: framebase,
+			Name:        name,
+			linkageName: linkageName,
+			DeclLine:    src.Files[filename].Content.Lines[linenum-1],
+			framebase:   framebase,
 		}
 
 		return fn, nil
@@ -914,26 +1026,10 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 	// the framebase location list to use when preparing inline functions
 	var currentFrameBase *loclist
 
-	// location lists use a base address of the current compilation unit when
-	// constructing address ranges
-	var compilationUnitAddress uint64
-
 	for _, e := range bld.order {
 		switch e.Tag {
 		case dwarf.TagCompileUnit:
-			compilationUnitAddress := addressAdjustment
-
-			// note that although a DW_AT_ranges attribute may exist, we're only
-			// interested in the low pc:
-			//
-			// "A DW_AT_low_pc attribute may also be specified in combination
-			// with DW_AT_ranges to specify the default base address for use in
-			// location lists (see Section 2.6.2) and range lists (see Section
-			// 2.17.3)."
-			fld := e.AttrField(dwarf.AttrLowpc)
-			if fld != nil {
-				compilationUnitAddress += fld.Val.(uint64)
-			}
+			compilationUnitAddress = bld.units[e.Offset].origin
 		case dwarf.TagSubprogram:
 			// check address against low/high fields
 			var low uint64
@@ -946,7 +1042,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 				// either concrete Subprograms or concrete InlinedSubroutines
 				continue // for loop
 			}
-			low = addressAdjustment + fld.Val.(uint64)
+			low = fld.Val.(uint64)
 
 			fld = e.AttrField(dwarf.AttrHighpc)
 			if fld == nil {
@@ -977,7 +1073,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 				fld = e.AttrField(dwarf.AttrSpecification)
 			}
 			if fld != nil {
-				av, ok := bld.entries[fld.Val.(dwarf.Offset)]
+				av, ok := bld.idx[fld.Val.(dwarf.Offset)]
 				if !ok {
 					return fmt.Errorf("found inlined subroutine without abstract")
 				}
@@ -1049,7 +1145,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 					return fmt.Errorf("missing abstract origin for inlined subroutine")
 				}
 
-				av, ok := bld.entries[fld.Val.(dwarf.Offset)]
+				av, ok := bld.idx[fld.Val.(dwarf.Offset)]
 				if !ok {
 					return fmt.Errorf("found inlined subroutine without abstract")
 				}
@@ -1080,7 +1176,7 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				low = addressAdjustment + fld.Val.(uint64)
+				low = fld.Val.(uint64)
 
 				// high PC
 				fld = e.AttrField(dwarf.AttrHighpc)
@@ -1136,19 +1232,20 @@ func (bld *build) buildFunctions(src *Source, addressAdjustment uint64) error {
 }
 
 // process ranges by calling the supplied commit function for every range entry.
-// the compilationUnitAddress will be the base address of each entry
+// the compilationUnitAddress will be the base address of each entry, as
+// described in the DWARF 4 standard
 func (bld *build) processRanges(e *dwarf.Entry, compilationUnitAddress uint64, commit func(uint64, uint64)) error {
 	rngs, err := bld.dwrf.Ranges(e)
 	if err != nil {
 		return err
 	}
 
-	// "The applicable base address of a range list entry is determined by the closest
-	// preceding base address selection entry (see below) in the same range list. If
-	// there is no such selection entry, then the applicable base address defaults to
-	// the base address of the compilation unit"
+	// "The applicable rangeBase address of a range list entry is determined by the closest
+	// preceding rangeBase address selection entry (see below) in the same range list. If
+	// there is no such selection entry, then the applicable rangeBase address defaults to
+	// the rangeBase address of the compilation unit"
 	// page 39 of "DWARF4 Standard"
-	baseAddress := compilationUnitAddress
+	rangeBase := compilationUnitAddress
 
 	for _, r := range rngs {
 		// "A base address selection entry consists of:
@@ -1161,7 +1258,7 @@ func (bld *build) processRanges(e *dwarf.Entry, compilationUnitAddress uint64, c
 			// not sure if the adjustment is required or if it should be
 			// executable origin address rather than the compilation unit
 			// address
-			baseAddress = compilationUnitAddress + r[1]
+			rangeBase = compilationUnitAddress + r[1]
 			continue
 		}
 
@@ -1170,8 +1267,8 @@ func (bld *build) processRanges(e *dwarf.Entry, compilationUnitAddress uint64, c
 			continue
 		}
 
-		low := baseAddress + r[0]
-		high := baseAddress + r[1]
+		low := rangeBase + r[0]
+		high := rangeBase + r[1]
 
 		// "[high address] marks the first address past the end of the address range.The ending address
 		// must be greater than or equal to the beginning address"

@@ -213,6 +213,9 @@ type SourceFunction struct {
 	// name of function
 	Name string
 
+	// the linkage name of the function maybe different to the name of the function
+	linkageName string
+
 	// range of addresses in which function resides
 	Range []SourceRange
 
