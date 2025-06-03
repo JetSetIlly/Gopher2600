@@ -54,6 +54,9 @@ func Mono(channel0 uint8, channel1 uint8) int16 {
 	//
 	// because this only seems to happen during rewinding it is acceptable to return
 	// zero and not worry about the root cause too much
+	//
+	// update: this should no longer happen because the average channel volume is
+	// now masked to a maximum of four bits (see audio.Step() function)
 	if int(channel0+channel1) >= len(mono) {
 		logger.Logf(logger.Allow, "tia", "channel volumes out of bounds: %d/%d", channel0, channel1)
 		return 0

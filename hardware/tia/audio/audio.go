@@ -150,8 +150,8 @@ func (au *Audio) Step() bool {
 		au.channel1.phase1()
 
 		// take average of sum of volume bits
-		au.Vol0 = uint8(au.sampleSum[0] / au.sampleSumCt)
-		au.Vol1 = uint8(au.sampleSum[1] / au.sampleSumCt)
+		au.Vol0 = uint8(au.sampleSum[0]/au.sampleSumCt) & 0x0f
+		au.Vol1 = uint8(au.sampleSum[1]/au.sampleSumCt) & 0x0f
 		au.sampleSum[0] = 0
 		au.sampleSum[1] = 0
 		au.sampleSumCt = 0
