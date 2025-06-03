@@ -127,14 +127,7 @@ func (dbgmem DbgMem) Peek(address any) (*AddressInfo, error) {
 // Poke writes a value at the specified address. The supplied address be
 // numeric or symbolic.
 func (dbgmem DbgMem) Poke(address any, data uint8) (*AddressInfo, error) {
-	// although the words "read" and "write" might lead us to think that we
-	// "peek" from "read" addresses and "poke" to "write" addresses, it is in
-	// fact necessary to treat "poke" addresses as "read" addresses
-	//
-	// on the surface this doesn't appear to be correct but on further thought
-	// it is obviously true - we are in fact changing the value that is
-	// subsequently read by the CPU, so that means poking to a read address
-	ai := dbgmem.GetAddressInfo(address, true)
+	ai := dbgmem.GetAddressInfo(address, false)
 	if ai == nil {
 		return nil, fmt.Errorf("%w: %v", PokeError, address)
 	}
