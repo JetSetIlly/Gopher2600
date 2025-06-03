@@ -68,8 +68,8 @@ type Audio struct {
 	//
 	// "There are two audio circuits for generating sound. They are identical but
 	// completely independent and can be operated simultaneously [...]"
-	channel0 channel
-	channel1 channel
+	Channel0 channel
+	Channel1 channel
 
 	// the volume output for each channel
 	Vol0 uint8
@@ -108,9 +108,9 @@ func (au *Audio) Snapshot() *Audio {
 func (au *Audio) String() string {
 	s := strings.Builder{}
 	s.WriteString("ch0: ")
-	s.WriteString(au.channel0.String())
+	s.WriteString(au.Channel0.String())
 	s.WriteString("  ch1: ")
-	s.WriteString(au.channel1.String())
+	s.WriteString(au.Channel1.String())
 	return s.String()
 }
 
@@ -124,30 +124,30 @@ func (au *Audio) UpdateTracker() {
 func (au *Audio) Step() bool {
 	if au.tracker != nil {
 		// it's impossible for both channels to have changed in a single video cycle
-		if au.channel0.registersChanged {
-			au.tracker.AudioTick(au.env, 0, au.channel0.registers)
-			au.channel0.registersChanged = false
-		} else if au.channel1.registersChanged {
-			au.tracker.AudioTick(au.env, 1, au.channel1.registers)
-			au.channel1.registersChanged = false
+		if au.Channel0.registersChanged {
+			au.tracker.AudioTick(au.env, 0, au.Channel0.Registers)
+			au.Channel0.registersChanged = false
+		} else if au.Channel1.registersChanged {
+			au.tracker.AudioTick(au.env, 1, au.Channel1.Registers)
+			au.Channel1.registersChanged = false
 		}
 	}
 
 	var changed bool
 
 	// sum volume bits
-	au.sampleSum[0] += int(au.channel0.actualVolume())
-	au.sampleSum[1] += int(au.channel1.actualVolume())
+	au.sampleSum[0] += int(au.Channel0.actualVolume())
+	au.sampleSum[1] += int(au.Channel1.actualVolume())
 	au.sampleSumCt++
 
 	if (au.clock228 >= 8 && au.clock228 <= 10) || (au.clock228 >= 80 && au.clock228 <= 82) {
-		au.channel0.phase0()
-		au.channel1.phase0()
+		au.Channel0.phase0()
+		au.Channel1.phase0()
 	}
 
 	if (au.clock228 >= 36 && au.clock228 <= 38) || (au.clock228 >= 148 && au.clock228 <= 150) {
-		au.channel0.phase1()
-		au.channel1.phase1()
+		au.Channel0.phase1()
+		au.Channel1.phase1()
 
 		// take average of sum of volume bits
 		au.Vol0 = uint8(au.sampleSum[0]/au.sampleSumCt) & 0x0f

@@ -25,6 +25,7 @@ import (
 )
 
 const winTIAID = "TIA"
+const winTIAMenu = "TIA (Video)"
 
 type winTIA struct {
 	debuggerWin

@@ -50,7 +50,8 @@ var windowDefs = [...]windowDef{
 	{create: newWinRAM, menu: menuEntry{group: menuVCS}, defaultOpen: true},
 	{create: newWinPeripherals, menu: menuEntry{group: menuVCS}},
 	{create: newWinPorts, menu: menuEntry{group: menuVCS}},
-	{create: newWinTIA, menu: menuEntry{group: menuVCS}, defaultOpen: true},
+	{create: newWinTIA, menu: menuEntry{group: menuVCS, label: winTIAMenu}, defaultOpen: true},
+	{create: newWinTIAAudio, menu: menuEntry{group: menuVCS, label: winTIAAudioMenu}},
 	{create: newWinTimer, menu: menuEntry{group: menuVCS}, defaultOpen: true},
 
 	// windows that appear in the "tools" menu
