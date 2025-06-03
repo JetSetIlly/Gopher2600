@@ -34,9 +34,17 @@ type ChangedRegister struct {
 	Register cpubus.Register
 }
 
+// PokeNotify links a memory area to the chip implementation
+type PokeNotify interface {
+	AfterPoke(ChangedRegister)
+}
+
 // Memory defines the operations for the memory system when accessed from the
 // VCS chips (TIA, RIOT)
 type Memory interface {
+	// SetPokeNotify links a memory area with the chip implementation
+	SetPokeNotify(PokeNotify)
+
 	// ChipWrite writes the data to the chip memory
 	ChipWrite(reg Register, data uint8)
 

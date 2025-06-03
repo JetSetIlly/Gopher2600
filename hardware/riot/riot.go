@@ -92,3 +92,9 @@ func (riot *RIOT) QuickStep() {
 	// see comment above about riot.Ports.Step()
 	riot.Ports.Step()
 }
+
+// AfterPoke implements the chipbus.PokeNotify interface
+func (riot *RIOT) AfterPoke(reg chipbus.ChangedRegister) {
+	_ = riot.Timer.Update(reg)
+	_ = riot.Ports.Update(reg)
+}

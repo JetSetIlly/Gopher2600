@@ -206,6 +206,10 @@ func (vcs *VCS) Reset() error {
 	}
 	vcs.TIA.Audio = audio
 
+	// link memory and chips for poking purposes
+	vcs.Mem.TIA.SetPokeNotify(vcs.TIA)
+	vcs.Mem.RIOT.SetPokeNotify(vcs.RIOT)
+
 	// other areas of the VCS are simply reset because the emulation may have
 	// altered the part of the state that we do *not* want to reset. notably,
 	// memory may have a cartridge attached - we wouldn't want to lose that.

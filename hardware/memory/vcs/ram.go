@@ -22,14 +22,13 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// RAM represents the 128bytes of RAM in the PIA 6532 chip, found in the Atari
-// VCS.
+// RAM represents the 128bytes of RAM in the PIA 6532 chip, found in the Atari VCS
 type RAM struct {
 	env *environment.Environment
 	RAM []uint8
 }
 
-// NewRAM is the preferred method of initialisation for the RAM memory area.
+// NewRAM is the preferred method of initialisation for the RAM memory area
 func NewRAM(env *environment.Environment) *RAM {
 	ram := &RAM{
 		env: env,
@@ -38,7 +37,7 @@ func NewRAM(env *environment.Environment) *RAM {
 	return ram
 }
 
-// Snapshot creates a copy of RAM in its current state.
+// Snapshot creates a copy of RAM in its current state
 func (ram *RAM) Snapshot() *RAM {
 	n := *ram
 	n.RAM = make([]uint8, len(ram.RAM))
@@ -46,7 +45,7 @@ func (ram *RAM) Snapshot() *RAM {
 	return &n
 }
 
-// Reset contents of RAM.
+// Reset contents of RAM
 func (ram *RAM) Reset() {
 	for i := range ram.RAM {
 		if ram.env != nil && ram.env.Prefs.RandomState.Get().(bool) {
@@ -61,25 +60,23 @@ func (ram *RAM) String() string {
 	return hex.Dump(ram.RAM)
 }
 
-// Peek is the implementation of memory.DebugBus. Address must be
-// normalised.
+// Peek is an implementation of the memory.Area interface
 func (ram *RAM) Peek(address uint16) (uint8, error) {
 	v, _, err := ram.Read(address)
 	return v, err
 }
 
-// Poke is the implementation of memory.DebugBus. Address must be
-// normalised.
+// Poke is an implementation of the memory.Area interface
 func (ram *RAM) Poke(address uint16, value uint8) error {
 	return ram.Write(address, value)
 }
 
-// Read is an implementatio of memory.ChipBus. Address must be normalised.
+// Read is an implementation of the memory.Area interface
 func (ram *RAM) Read(address uint16) (uint8, uint8, error) {
 	return ram.RAM[address^memorymap.OriginRAM], 0xff, nil
 }
 
-// Write is an implementatio of memory.ChipBus. Address must be normalised.
+// Write is an implementation of the memory.Area interface
 func (ram *RAM) Write(address uint16, data uint8) error {
 	ram.RAM[address^memorymap.OriginRAM] = data
 	return nil

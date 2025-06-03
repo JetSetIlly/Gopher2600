@@ -176,20 +176,20 @@ func (tia *TIA) Plumb(env *environment.Environment, tv TV, mem chipbus.Memory, r
 // Update checks to see if ChipData applies tot he TIA and updates accordingly.
 //
 // Returns true if ChipData has *not* been serviced.
-func (tia *TIA) Update(data chipbus.ChangedRegister) bool {
-	switch data.Register {
+func (tia *TIA) Update(reg chipbus.ChangedRegister) bool {
+	switch reg.Register {
 	case cpubus.VSYNC:
-		tia.sig.VSync = data.Value&0x02 == 0x02
+		tia.sig.VSync = reg.Value&0x02 == 0x02
 		return false
 
 	case cpubus.VBLANK:
 		// homebrew Donkey Kong shows the need for a delay of at least one
 		// cycle for VBLANK. see area just before score box on play screen
-		tia.futureVblank.Schedule(1, data.Value)
+		tia.futureVblank.Schedule(1, reg.Value)
 		tia.pendingEvents++
 
 		// the VBLANK register also affects the RIOT riot sub-system
-		tia.riot.Update(data)
+		tia.riot.Update(reg)
 
 		return false
 
@@ -771,4 +771,18 @@ func (tia *TIA) QuickStep(ct int) {
 
 	// send signal to television
 	tia.tv.Signal(tia.sig)
+}
+
+// AfterPoke implements the chipbus.PokeNotify interface
+func (tia *TIA) AfterPoke(reg chipbus.ChangedRegister) {
+	_ = tia.Update(reg)
+	_ = tia.Video.UpdateSpritePositioning(reg)
+	_ = tia.Video.UpdateSpriteVariationsEarly(reg)
+	_ = tia.Video.UpdateColor(reg)
+	_ = tia.Video.UpdatePlayfieldAndBackgroundColor(reg)
+	_ = tia.Video.UpdatePlayfield(reg)
+	_ = tia.Video.UpdateSpriteHMOVE(reg)
+	_ = tia.Video.UpdateSpriteVariations(reg)
+	_ = tia.Video.UpdateSpritePixels(reg)
+	_ = tia.Audio.ReadMemRegisters(reg)
 }

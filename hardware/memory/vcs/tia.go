@@ -113,6 +113,9 @@ type TIAMemory struct {
 	writeSignal  bool
 	writeAddress uint16
 	writeData    uint8
+
+	// after poke is called after a poke operation
+	pokeNotify chipbus.PokeNotify
 }
 
 // NewTIAMemory is the preferred method of initialisation for the TIA memory chip
@@ -135,6 +138,11 @@ func NewTIAMemory(env *environment.Environment) *TIAMemory {
 	return chip
 }
 
+// SetPokeNotify implements the chipbus.Memory interface
+func (mem *TIAMemory) SetPokeNotify(pokeNotify chipbus.PokeNotify) {
+	mem.pokeNotify = pokeNotify
+}
+
 // Snapshot creates a copy of TIARegisters in its current state
 func (mem *TIAMemory) Snapshot() *TIAMemory {
 	n := *mem
@@ -146,30 +154,33 @@ func (mem *TIAMemory) Snapshot() *TIAMemory {
 // Reset contents of TIARegisters
 func (mem *TIAMemory) Reset() {
 	for i := range mem.memory {
-		mem.memory[i] = 0
+		mem.Poke(uint16(i+int(mem.origin)), 0)
 	}
 }
 
-// Peek is an implementation of memory.DebugBus. Address must be normalised
+// Peek is an implementation of the memory.Area interface
 func (mem *TIAMemory) Peek(address uint16) (uint8, error) {
-	// an address might be in TIA memory space but it is not READABLE by the
-	// CPU and therefore should not be accessible by the Peek() function. the
-	// TIA chip view of the address should be done via the TIA chip emulation
 	if cpubus.ReadAddress[address] == cpubus.UnnamedAddress {
 		return 0, fmt.Errorf("%w: %04x", cpubus.AddressError, address)
 	}
 	return mem.memory[address^mem.origin], nil
 }
 
-// Poke is an implementation of memory.DebugBus. Address must be normalised
+// Poke is an implementation of the memory.Area interface
 func (mem *TIAMemory) Poke(address uint16, value uint8) error {
-	// an address might be in TIA memory space but it is not WRITEABLE by the
-	// CPU and therefore should not be accessible by the Peek() function. the
-	// TIA chip view of the address should be done via the TIA chip emulation
 	if cpubus.WriteAddress[address] == cpubus.UnnamedAddress {
 		return fmt.Errorf("%w: %04x", cpubus.AddressError, address)
 	}
 	mem.memory[address^mem.origin] = value
+
+	if mem.pokeNotify != nil {
+		mem.pokeNotify.AfterPoke(chipbus.ChangedRegister{
+			Address:  address,
+			Value:    value,
+			Register: cpubus.WriteAddress[address],
+		})
+	}
+
 	return nil
 }
 
@@ -183,25 +194,22 @@ func (mem *TIAMemory) ChipHasChanged() (chipbus.ChangedRegister, bool) {
 	return chipbus.ChangedRegister{}, false
 }
 
-// ChipWrite is an implementation of memory.ChipBus
+// ChipWrite implements the chipbus.Memory interface
 func (mem *TIAMemory) ChipWrite(reg chipbus.Register, data uint8) {
 	mem.memory[reg] = data
 }
 
-// ChipRefer is an implementation of memory.ChipBus
+// ChipRefer implements the chipbus.Memory interface
 func (mem *TIAMemory) ChipRefer(reg chipbus.Register) uint8 {
 	return mem.memory[reg]
 }
 
-// LatsReadAddress is an implementation of memory.ChipBus
+// LastReadAddress implements the chipbus.Memory interface
 func (mem *TIAMemory) LastReadAddress() (bool, uint16) {
 	return false, 0
 }
 
-// Read is an implementation of memory.CPUBus. Address must be mapped
-//
-// Returned data should be masked and randomised as appropriate according to
-// the TIADrivenPins mask.
+// Read is an implementation of the memory.Area interface
 func (mem *TIAMemory) Read(address uint16) (uint8, uint8, error) {
 	// if the address is not a valid read adress for the CPU, then we blindly
 	// return the value in the array, which in that case will be zero
@@ -213,7 +221,7 @@ func (mem *TIAMemory) Read(address uint16) (uint8, uint8, error) {
 	return mem.memory[address^mem.origin], TIADrivenPins, nil
 }
 
-// Write is an implementation of memory.CPUBus. Address must be mapped
+// Write is an implementation of the memory.Area interface
 func (mem *TIAMemory) Write(address uint16, data uint8) error {
 	// signal that chip memory has been changed. see ChipHasChanged() function
 	mem.writeAddress = address

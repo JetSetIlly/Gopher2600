@@ -45,6 +45,9 @@ type RIOTMemory struct {
 
 	readSignal  bool
 	readAddress uint16
+
+	// after poke is called after a poke operation
+	pokeNotify chipbus.PokeNotify
 }
 
 // NewRIOTMemory is the preferred method of initialisation for the RIOT memory mem
@@ -64,6 +67,11 @@ func NewRIOTMemory(env *environment.Environment) *RIOTMemory {
 	return chip
 }
 
+// SetPokeNotify implements the chipbus.Memory interface
+func (mem *RIOTMemory) SetPokeNotify(pokeNotify chipbus.PokeNotify) {
+	mem.pokeNotify = pokeNotify
+}
+
 // Snapshot creates a copy of RIOTRegisters in its current state
 func (mem *RIOTMemory) Snapshot() *RIOTMemory {
 	n := *mem
@@ -75,34 +83,36 @@ func (mem *RIOTMemory) Snapshot() *RIOTMemory {
 // Reset contents of RIOTRegisters
 func (mem *RIOTMemory) Reset() {
 	for i := range mem.memory {
-		mem.memory[i] = 0
+		mem.Poke(uint16(i+int(mem.origin)), 0)
 	}
 }
 
-// Peek is an implementation of memory.DebugBus. Address must be normalised
+// Peek is an implementation of the memory.Area interface
 func (mem *RIOTMemory) Peek(address uint16) (uint8, error) {
-	// an address might be in RIOT memory space but it is not READABLE by the
-	// CPU and therefore should not be accessible by the Peek() function. the
-	// RIOT chip view of the address should be done via the RIOT chip emulation
 	if cpubus.ReadAddress[address] == cpubus.UnnamedAddress {
 		return 0, fmt.Errorf("%w: %04x", cpubus.AddressError, address)
 	}
 	return mem.memory[address^mem.origin], nil
 }
 
-// Poke is an implementation of memory.DebugBus. Address must be normalised
+// Poke is an implementation of the memory.Area interface
 func (mem *RIOTMemory) Poke(address uint16, value uint8) error {
-	// an address might be in RIOT memory space but it is not WRITEABLE by the
-	// CPU and therefore should not be accessible by the Peek() function. the
-	// RIOT chip view of the address should be done via the RIOT chip emulation
 	if cpubus.WriteAddress[address] == cpubus.UnnamedAddress {
 		return fmt.Errorf("%w: %04x", cpubus.AddressError, address)
 	}
 	mem.memory[address^mem.origin] = value
+
+	if mem.pokeNotify != nil {
+		mem.pokeNotify.AfterPoke(chipbus.ChangedRegister{
+			Address:  address,
+			Value:    value,
+			Register: cpubus.WriteAddress[address],
+		})
+	}
 	return nil
 }
 
-// ChipRead is an implementation of memory.ChipBus.
+// ChipRead is an implementation of memory.ChipBus
 func (mem *RIOTMemory) ChipHasChanged() (chipbus.ChangedRegister, bool) {
 	if mem.writeSignal {
 		mem.writeSignal = false
@@ -112,17 +122,17 @@ func (mem *RIOTMemory) ChipHasChanged() (chipbus.ChangedRegister, bool) {
 	return chipbus.ChangedRegister{}, false
 }
 
-// ChipWrite is an implementation of memory.ChipBus
+// ChipWrite implements the chipbus.Memory interface
 func (mem *RIOTMemory) ChipWrite(reg chipbus.Register, data uint8) {
 	mem.memory[reg] = data
 }
 
-// ChipRefer is an implementation of memory.ChipBus
+// ChipRefer implements the chipbus.Memory interface
 func (mem *RIOTMemory) ChipRefer(reg chipbus.Register) uint8 {
 	return mem.memory[reg]
 }
 
-// LastReadAddress is an implementation of memory.ChipBus
+// LastReadAddress implements the chipbus.Memory interface
 func (mem *RIOTMemory) LastReadAddress() (bool, uint16) {
 	if mem.readSignal {
 		mem.readSignal = false
@@ -131,7 +141,7 @@ func (mem *RIOTMemory) LastReadAddress() (bool, uint16) {
 	return false, 0
 }
 
-// Read is an implementation of memory.CPUBus. Address must be normalised
+// Read is an implementation of the memory.Area interface
 func (mem *RIOTMemory) Read(address uint16) (uint8, uint8, error) {
 	mem.readAddress = address
 	mem.readSignal = true
@@ -146,7 +156,7 @@ func (mem *RIOTMemory) Read(address uint16) (uint8, uint8, error) {
 	return mem.memory[address^mem.origin], 0xff, nil
 }
 
-// Write is an implementation of memory.CPUBus. Address must be normalised
+// Write is an implementation of the memory.Area interface
 func (mem *RIOTMemory) Write(address uint16, data uint8) error {
 	// check that the last write to this memory mem has been serviced. this
 	// shouldn't ever happen.
