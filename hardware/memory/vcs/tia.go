@@ -143,7 +143,7 @@ func (mem *TIAMemory) SetPokeNotify(pokeNotify chipbus.PokeNotify) {
 	mem.pokeNotify = pokeNotify
 }
 
-// Snapshot creates a copy of TIARegisters in its current state
+// Snapshot creates a copy of TIAMemory in its current state
 func (mem *TIAMemory) Snapshot() *TIAMemory {
 	n := *mem
 	n.memory = make([]uint8, len(mem.memory))
@@ -151,7 +151,7 @@ func (mem *TIAMemory) Snapshot() *TIAMemory {
 	return &n
 }
 
-// Reset contents of TIARegisters
+// Reset contents of TIAMemory
 func (mem *TIAMemory) Reset() {
 	for i := range mem.memory {
 		mem.Poke(uint16(i+int(mem.origin)), 0)

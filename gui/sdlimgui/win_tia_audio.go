@@ -20,6 +20,7 @@ import (
 	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 )
 
 const winTIAAudioID = "TIA Audio"
@@ -59,48 +60,59 @@ func (win *winTIAAudio) debuggerDraw() bool {
 }
 
 func (win *winTIAAudio) draw() {
-	ch0 := win.img.cache.VCS.TIA.Audio.Channel0.Registers
-	ch1 := win.img.cache.VCS.TIA.Audio.Channel1.Registers
+	r := win.img.cache.VCS.TIA.Audio.PeekChannels()
 
-	audc0 := fmt.Sprintf("%02x", ch0.Control)
+	audc0 := fmt.Sprintf("%02x", r[0].Control)
 	if imguiHexInput("AUDC0##audc0", 2, &audc0) {
 		if v, err := strconv.ParseUint(audc0, 16, 8); err == nil {
-			win.img.dbg.PushFunction(func() { win.img.dbg.VCS().TIA.Audio.Channel0.Registers.Control = uint8(v) })
+			win.img.dbg.PushFunction(func() {
+				win.img.dbg.VCS().Mem.Poke(cpubus.WriteAddressByRegister[cpubus.AUDC0], uint8(v))
+			})
 		}
 	}
 	imgui.SameLineV(0, 10)
-	audc1 := fmt.Sprintf("%02x", ch1.Control)
+	audc1 := fmt.Sprintf("%02x", r[1].Control)
 	if imguiHexInput("AUDC1##audc1", 2, &audc1) {
 		if v, err := strconv.ParseUint(audc1, 16, 8); err == nil {
-			win.img.dbg.PushFunction(func() { win.img.dbg.VCS().TIA.Audio.Channel1.Registers.Control = uint8(v) })
+			win.img.dbg.PushFunction(func() {
+				win.img.dbg.VCS().Mem.Poke(cpubus.WriteAddressByRegister[cpubus.AUDC1], uint8(v))
+			})
 		}
 	}
 
-	audf0 := fmt.Sprintf("%02x", ch0.Freq)
+	audf0 := fmt.Sprintf("%02x", r[0].Freq)
 	if imguiHexInput("AUDF0##audf0", 2, &audf0) {
 		if v, err := strconv.ParseUint(audf0, 16, 8); err == nil {
-			win.img.dbg.PushFunction(func() { win.img.dbg.VCS().TIA.Audio.Channel0.Registers.Freq = uint8(v) })
+			win.img.dbg.PushFunction(func() {
+				win.img.dbg.VCS().Mem.Poke(cpubus.WriteAddressByRegister[cpubus.AUDF0], uint8(v))
+			})
 		}
 	}
 	imgui.SameLineV(0, 10)
-	audf1 := fmt.Sprintf("%02x", ch1.Freq)
+	audf1 := fmt.Sprintf("%02x", r[1].Freq)
 	if imguiHexInput("AUDF1##audf1", 2, &audf1) {
 		if v, err := strconv.ParseUint(audf1, 16, 8); err == nil {
-			win.img.dbg.PushFunction(func() { win.img.dbg.VCS().TIA.Audio.Channel1.Registers.Freq = uint8(v) })
+			win.img.dbg.PushFunction(func() {
+				win.img.dbg.VCS().Mem.Poke(cpubus.WriteAddressByRegister[cpubus.AUDF1], uint8(v))
+			})
 		}
 	}
 
-	audv0 := fmt.Sprintf("%02x", ch0.Volume)
+	audv0 := fmt.Sprintf("%02x", r[0].Volume)
 	if imguiHexInput("AUDV0##audv0", 2, &audv0) {
 		if v, err := strconv.ParseUint(audv0, 16, 8); err == nil {
-			win.img.dbg.PushFunction(func() { win.img.dbg.VCS().TIA.Audio.Channel0.Registers.Volume = uint8(v) })
+			win.img.dbg.PushFunction(func() {
+				win.img.dbg.VCS().Mem.Poke(cpubus.WriteAddressByRegister[cpubus.AUDV0], uint8(v))
+			})
 		}
 	}
 	imgui.SameLineV(0, 10)
-	audv1 := fmt.Sprintf("%02x", ch1.Volume)
+	audv1 := fmt.Sprintf("%02x", r[1].Volume)
 	if imguiHexInput("AUDV1##audv1", 2, &audv1) {
 		if v, err := strconv.ParseUint(audv1, 16, 8); err == nil {
-			win.img.dbg.PushFunction(func() { win.img.dbg.VCS().TIA.Audio.Channel1.Registers.Volume = uint8(v) })
+			win.img.dbg.PushFunction(func() {
+				win.img.dbg.VCS().Mem.Poke(cpubus.WriteAddressByRegister[cpubus.AUDV1], uint8(v))
+			})
 		}
 	}
 }

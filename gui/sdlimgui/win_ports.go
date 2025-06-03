@@ -75,11 +75,11 @@ func (win *winPorts) draw() {
 		imguiLabel("SWCHA")
 
 		imgui.TableNextColumn()
-		swcha_w := win.img.cache.VCS.RIOT.Ports.PeekField("swcha_w").(uint8)
+		swcha_w := win.img.cache.VCS.RIOT.Ports.PeekState("swcha_w").(uint8)
 		drawRegister("##SWCHA_W", swcha_w, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.dbg.VCS().RIOT.Ports.PokeField("swcha_w", v)
+					win.img.dbg.VCS().RIOT.Ports.PokeState("swcha_w", v)
 				})
 			})
 
@@ -90,11 +90,11 @@ func (win *winPorts) draw() {
 		imguiLabel("SWCHB")
 
 		imgui.TableNextColumn()
-		swchb_w := win.img.cache.VCS.RIOT.Ports.PeekField("swchb_w").(uint8)
+		swchb_w := win.img.cache.VCS.RIOT.Ports.PeekState("swchb_w").(uint8)
 		drawRegister("##SWCHB_W", swchb_w, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.dbg.VCS().RIOT.Ports.PokeField("swchb_w", v)
+					win.img.dbg.VCS().RIOT.Ports.PokeState("swchb_w", v)
 				})
 			})
 
@@ -105,11 +105,11 @@ func (win *winPorts) draw() {
 		imguiLabel("SWACNT")
 
 		imgui.TableNextColumn()
-		swacnt := win.img.cache.VCS.RIOT.Ports.PeekField("swacnt").(uint8)
+		swacnt := win.img.cache.VCS.RIOT.Ports.PeekState("swacnt").(uint8)
 		drawRegister("##SWACNT", swacnt, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.dbg.VCS().RIOT.Ports.PokeField("swacnt", v)
+					win.img.dbg.VCS().RIOT.Ports.PokeState("swacnt", v)
 				})
 			})
 
@@ -118,19 +118,19 @@ func (win *winPorts) draw() {
 		imguiLabel("SWBCNT")
 
 		imgui.TableNextColumn()
-		swbcnt := win.img.cache.VCS.RIOT.Ports.PeekField("swbcnt").(uint8)
+		swbcnt := win.img.cache.VCS.RIOT.Ports.PeekState("swbcnt").(uint8)
 		drawRegister("##SWBCNT", swbcnt, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.dbg.VCS().RIOT.Ports.PokeField("swbcnt", v)
+					win.img.dbg.VCS().RIOT.Ports.PokeState("swbcnt", v)
 				})
 			})
 
 		// actual SWCHx values
 		imgui.TableNextRow()
 		imgui.TableNextColumn()
-		swcha := win.img.cache.VCS.RIOT.Ports.PeekField("swcha").(uint8)
-		swcha_derived := win.img.cache.VCS.RIOT.Ports.PeekField("swcha_derived").(uint8)
+		swcha := win.img.cache.VCS.RIOT.Ports.PeekState("swcha").(uint8)
+		swcha_derived := win.img.cache.VCS.RIOT.Ports.PeekState("swcha_derived").(uint8)
 		if swcha != swcha_derived {
 			imguiLabel(fmt.Sprintf("%c", fonts.Unlocked))
 		}
@@ -142,13 +142,13 @@ func (win *winPorts) draw() {
 		drawRegister("##SWCHA_R", swcha, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.dbg.VCS().RIOT.Ports.PokeField("swcha", v)
+					win.img.dbg.VCS().RIOT.Ports.PokeState("swcha", v)
 				})
 			})
 
 		imgui.TableNextColumn()
-		swchb := win.img.cache.VCS.RIOT.Ports.PeekField("swchb").(uint8)
-		swchb_derived := win.img.cache.VCS.RIOT.Ports.PeekField("swchb_derived").(uint8)
+		swchb := win.img.cache.VCS.RIOT.Ports.PeekState("swchb").(uint8)
+		swchb_derived := win.img.cache.VCS.RIOT.Ports.PeekState("swchb_derived").(uint8)
 		if swchb != swchb_derived {
 			imguiLabel(fmt.Sprintf("%c", fonts.Unlocked))
 		}
@@ -160,7 +160,7 @@ func (win *winPorts) draw() {
 		drawRegister("##SWCHB_R", swchb, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushFunction(func() {
-					win.img.dbg.VCS().RIOT.Ports.PokeField("swchb", v)
+					win.img.dbg.VCS().RIOT.Ports.PokeState("swchb", v)
 				})
 			})
 

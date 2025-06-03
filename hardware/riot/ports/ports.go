@@ -421,11 +421,8 @@ func (p *Ports) HandleInputEvent(inp InputEvent) (bool, error) {
 	return handled, nil
 }
 
-// PeekField returns the value of the named field
-//
-// This is the same as a Peek() on the equivalent memory location in most
-// cases, but there are a couple of fields that are not directly associated
-// with a memory location
+// PeekState returns an internal value directly from the Ports instance. These values
+// may be impossible to get through the normal memory interface.
 //
 // swacnt, swcha, swacnt and swbcnt are directly as they would be if read by
 // Peek()
@@ -438,7 +435,7 @@ func (p *Ports) HandleInputEvent(inp InputEvent) (bool, error) {
 // Poke() or PokeField("swcha")
 //
 // swchb_derived is the same as swcha_derived except for SWCHB register
-func (p *Ports) PeekField(fld string) any {
+func (p *Ports) PeekState(fld string) any {
 	switch fld {
 	case "swcha_w":
 		return p.swcha_w
@@ -459,14 +456,14 @@ func (p *Ports) PeekField(fld string) any {
 		return p.deriveSWCHB()
 	}
 
-	panic(fmt.Sprintf("Ports.PeekField: unknown field: %s", fld))
+	panic(fmt.Sprintf("ports peek state: unknown field: %s", fld))
 }
 
-// PokeField sets the named field with a new value
+// PokeState sets the named field with a new value
 //
-// Fieldnames the same as described for PeekField() except that you cannot
-// update the swchb_derived field
-func (p *Ports) PokeField(fld string, v any) {
+// Supported states as described for PeekField() except that you cannot update the swcha and
+// swchb derived fields
+func (p *Ports) PokeState(fld string, v any) {
 	switch fld {
 	case "swcha_w":
 		p.swcha_w = v.(uint8)
@@ -487,7 +484,7 @@ func (p *Ports) PokeField(fld string, v any) {
 		p.riot.ChipWrite(chipbus.SWCHB, v.(uint8))
 
 	default:
-		panic(fmt.Sprintf("Ports.PokeField: unknown field: %s", fld))
+		panic(fmt.Sprintf("ports poke state: unknown field: %s", fld))
 	}
 }
 

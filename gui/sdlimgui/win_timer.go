@@ -64,10 +64,10 @@ func (win *winTimer) debuggerDraw() bool {
 }
 
 func (win *winTimer) draw() {
-	Divider := win.img.cache.VCS.RIOT.Timer.PeekField("divider").(timer.Divider)
-	INTIM := win.img.cache.VCS.RIOT.Timer.PeekField("intim").(uint8)
-	TicksRemaining := win.img.cache.VCS.RIOT.Timer.PeekField("ticksRemaining").(int)
-	TIMINT := win.img.cache.VCS.RIOT.Timer.PeekField("timint").(uint8)
+	Divider := win.img.cache.VCS.RIOT.Timer.PeekState("divider").(timer.Divider)
+	INTIM := win.img.cache.VCS.RIOT.Timer.PeekState("intim").(uint8)
+	TicksRemaining := win.img.cache.VCS.RIOT.Timer.PeekState("ticksRemaining").(int)
+	TIMINT := win.img.cache.VCS.RIOT.Timer.PeekState("timint").(uint8)
 
 	if imgui.BeginComboV("##divider", Divider.String(), imgui.ComboFlagsNone) {
 		for _, s := range dividerList {

@@ -72,7 +72,7 @@ func (mem *RIOTMemory) SetPokeNotify(pokeNotify chipbus.PokeNotify) {
 	mem.pokeNotify = pokeNotify
 }
 
-// Snapshot creates a copy of RIOTRegisters in its current state
+// Snapshot creates a copy of RIOTMemory in its current state
 func (mem *RIOTMemory) Snapshot() *RIOTMemory {
 	n := *mem
 	n.memory = make([]uint8, len(mem.memory))
@@ -80,7 +80,7 @@ func (mem *RIOTMemory) Snapshot() *RIOTMemory {
 	return &n
 }
 
-// Reset contents of RIOTRegisters
+// Reset contents of RIOTMemory
 func (mem *RIOTMemory) Reset() {
 	for i := range mem.memory {
 		mem.Poke(uint16(i+int(mem.origin)), 0)

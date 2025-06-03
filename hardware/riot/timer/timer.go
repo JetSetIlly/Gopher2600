@@ -261,16 +261,16 @@ func (tmr *Timer) Step() {
 	}
 }
 
-// PeekINTIM pokes a new value into the INTIM register. Same as peeking the
-// INTIM register on the cpubus - provided here for convenience
+// PeekState returns an internal value directly from the timer. These values
+// may be impossible to get through the normal memory interface.
 //
-// Supported fields:
+// Supported states:
 //
 //	intim (uint8)
 //	timint (uint8)
 //	ticksRemainging (int)
 //	divider (timer.Divider)
-func (tmr *Timer) PeekField(fld string) any {
+func (tmr *Timer) PeekState(fld string) any {
 	switch fld {
 	case "intim":
 		return tmr.mem.ChipRefer(chipbus.INTIM)
@@ -281,13 +281,13 @@ func (tmr *Timer) PeekField(fld string) any {
 	case "divider":
 		return tmr.divider
 	}
-	panic(fmt.Sprintf("Timer.PeekField: unknown field: %s", fld))
+	panic(fmt.Sprintf("timer peek state: unknown field: %s", fld))
 }
 
-// PokeINTIM pokes a new value into the INTIM register. Same as poking the
-// INTIM register on the cpubus - provided here for convenience
+// PokeState allows the updated of the timer's internal state. These values
+// may be impossible to access through the normal memory interface.
 //
-// Fields as described for PeekField()
+// Supported states as described for PeekField()
 func (tmr *Timer) PokeField(fld string, v any) {
 	switch fld {
 	case "intim":
@@ -301,6 +301,6 @@ func (tmr *Timer) PokeField(fld string, v any) {
 	case "divider":
 		tmr.divider = v.(Divider)
 	default:
-		panic(fmt.Sprintf("Timer.PokeField: unknown field: %s", fld))
+		panic(fmt.Sprintf("timer poke state: unknown field: %s", fld))
 	}
 }

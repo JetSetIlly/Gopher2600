@@ -127,8 +127,6 @@ func (mem *Memory) GetArea(area memorymap.Area) Area {
 	panic("memory areas are not mapped correctly")
 }
 
-// Readt is an implementation of CPUBus. Address will be normalised and processed by the correct
-// memory areas.
 func (mem *Memory) Read(address uint16) (uint8, error) {
 	var err error
 
@@ -210,8 +208,6 @@ func (mem *Memory) Read(address uint16) (uint8, error) {
 	return data, err
 }
 
-// Write is an implementation of CPUBus. Address will be normalised and processed by the correct
-// memory areas.
 func (mem *Memory) Write(address uint16, data uint8) error {
 	// the address bus value is the literal address masked to the 13 bits
 	// available to the 6507
@@ -246,14 +242,12 @@ func (mem *Memory) Write(address uint16, data uint8) error {
 	return area.Write(ma, data)
 }
 
-// Peek implements the DebugBus interface.
 func (mem *Memory) Peek(address uint16) (uint8, error) {
 	ma, ar := memorymap.MapAddress(address, true)
 	return mem.GetArea(ar).Peek(ma)
 }
 
-// Poke implements the DebugBus interface.
 func (mem *Memory) Poke(address uint16, data uint8) error {
-	ma, ar := memorymap.MapAddress(address, true)
+	ma, ar := memorymap.MapAddress(address, false)
 	return mem.GetArea(ar).Poke(ma, data)
 }
