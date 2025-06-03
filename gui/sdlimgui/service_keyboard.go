@@ -50,9 +50,6 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 	// enable window searching based on keyboard modifiers
 	img.wm.searchActive = ctrl && shift
 
-	// force tooltips if shift key is held down
-	img.tooltipForce = shift
-
 	if ev.Type == sdl.KEYUP {
 		// special handling if window searching is enabled
 		if img.wm.searchActive {

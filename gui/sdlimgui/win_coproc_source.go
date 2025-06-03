@@ -490,7 +490,7 @@ func (win *winCoProcSource) drawSource(src *dwarf.Source, bp breakpoints.Breakpo
 						// produces better visual results
 						if imgui.IsMouseClicked(0) {
 							// if ctrl key is pressed then extend selection
-							if imgui.CurrentIO().KeyCtrlPressed() {
+							if imgui.CurrentIO().KeyShiftPressed() {
 								win.selection.drag(ln.LineNumber)
 							} else {
 								win.selection.dragStart(ln.LineNumber)

@@ -28,7 +28,7 @@ var tooltipAlpha = 0.83
 // shows tooltip on hover of the previous imgui digest/group. useful for simple
 // tooltips.
 func (img *SdlImgui) imguiTooltipSimple(tooltip string) {
-	show := img.tooltipForce || img.prefs.showTooltips.Get().(bool)
+	show := img.prefs.showTooltips.Get().(bool) || imgui.CurrentIO().KeyCtrlPressed()
 	img.tooltipIndicator = imguiTooltipSimple(tooltip, show) || img.tooltipIndicator
 }
 
@@ -72,7 +72,7 @@ func imguiTooltipSimple(tooltip string, show bool) bool {
 // this argument is false then it implies that the decision to show the tooltip
 // has already been made by the calling function.
 func (img *SdlImgui) imguiTooltip(f func(), hoverTest bool) {
-	show := img.tooltipForce || img.prefs.showTooltips.Get().(bool)
+	show := img.prefs.showTooltips.Get().(bool) || imgui.CurrentIO().KeyCtrlPressed()
 	img.tooltipIndicator = imguiTooltip(f, hoverTest, show) || img.tooltipIndicator
 }
 

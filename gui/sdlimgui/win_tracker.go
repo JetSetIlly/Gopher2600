@@ -243,7 +243,7 @@ func (win *winTracker) draw() {
 							if imgui.IsItemHovered() {
 								if imgui.IsMouseClicked(0) {
 									// if ctrl key is pressed then extend selection
-									if imgui.CurrentIO().KeyCtrlPressed() {
+									if imgui.CurrentIO().KeyShiftPressed() {
 										win.selection.drag(i)
 									} else {
 										win.selection.dragStart(i)
