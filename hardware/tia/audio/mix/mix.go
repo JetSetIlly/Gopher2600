@@ -37,12 +37,27 @@
 //			https://github.com/stella-emu/stella/blob/e6af23d6c12893dd17711002971087f28f87c31f/src/emucore/tia/AudioChannel.cxx
 package mix
 
+import "github.com/jetsetilly/gopher2600/logger"
+
 const maxVolume = 0x1e
 
 var mono [maxVolume + 1]int16
 
 // Mono returns a single volume value.
 func Mono(channel0 uint8, channel1 uint8) int16 {
+	// boundary check. in very rare instances, the sum will be more than 0x1e so we
+	// check and return zero if it is
+	//
+	// this has only been seen during rewinding and only on some games at specific
+	// points. a reasonably reliable test case is rewinding in ChampGames Gorf
+	// during the laser stage, particularly over a player death explosion SFX
+	//
+	// because this only seems to happen during rewinding it is acceptable to return
+	// zero and not worry about the root cause too much
+	if int(channel0+channel1) >= len(mono) {
+		logger.Logf(logger.Allow, "tia", "channel volumes out of bounds: %d/%d", channel0, channel1)
+		return 0
+	}
 	return mono[int16(channel0+channel1)] >> 1
 }
 
