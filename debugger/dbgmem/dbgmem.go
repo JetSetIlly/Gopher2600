@@ -143,7 +143,7 @@ func (dbgmem DbgMem) Poke(address any, data uint8) (*AddressInfo, error) {
 	}
 
 	ai.Data = data
-	ai.Peeked = true
+	ai.Peeked = false
 
 	return ai, err
 }

@@ -35,7 +35,8 @@ type AddressInfo struct {
 	// address is to be used for reading or writing
 	Read bool
 
-	// the data at the address. if peeked is false then data may not be valid
+	// the data at the address. if peeked is false then data may not be valid and
+	// will not be printed by the String() function
 	Peeked bool
 	Data   uint8
 }
@@ -56,7 +57,7 @@ func (ai AddressInfo) String() string {
 	s.WriteString(fmt.Sprintf(" (%s)", ai.Area.String()))
 
 	if ai.Peeked {
-		s.WriteString(fmt.Sprintf(" -> %#02x", ai.Data))
+		s.WriteString(fmt.Sprintf(" = %#02x", ai.Data))
 	}
 
 	return s.String()

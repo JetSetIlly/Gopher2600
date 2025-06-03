@@ -1200,7 +1200,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			if err != nil {
 				dbg.printLine(terminal.StyleError, "%s", err)
 			} else {
-				dbg.printLine(terminal.StyleInstrument, ai.String())
+				dbg.printLine(terminal.StyleInstrument, fmt.Sprintf("%#02x poked to %s", val, ai.String()))
 			}
 
 			// loop through all values
