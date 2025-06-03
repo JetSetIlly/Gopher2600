@@ -21,7 +21,9 @@ import (
 	"image/jpeg"
 	"os"
 
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/resources/unique"
 )
 
@@ -35,6 +37,9 @@ func (img *SdlImgui) screenshot(mode screenshotMode, filenameSuffix string) {
 	cartName := img.cache.VCS.Mem.Cart.ShortName
 
 	go func() {
+		// notify that screenshot has been made
+		defer img.SetFeature(gui.ReqNotification, notifications.NotifyScreenshot)
+
 		// wait for result and log any errors
 		res := <-finish
 		if res.err != nil {

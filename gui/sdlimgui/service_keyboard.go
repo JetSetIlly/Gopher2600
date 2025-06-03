@@ -25,7 +25,6 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/userinput"
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -164,7 +163,6 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				} else {
 					img.screenshot(modeSingle, "")
 				}
-				img.playScr.overlay.set(notifications.NotifyScreenshot)
 
 			case sdl.SCANCODE_F14:
 				fallthrough
