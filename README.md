@@ -1,23 +1,22 @@
 # Gopher2600
 
-<img align="right" src="https://github.com/JetSetIlly/Gopher2600-Dev-Docs/blob/master/gopher2600_logo/logo4.png" width="250" alt="gopher2600 logo"/>
+<img align="right" src="https://github.com/user-attachments/assets/59a43085-6aa1-4d8b-a8f1-42986fdff594" heigh=25% width=auto/>
 
-Gopher2600 is an emulator for the Atari 2600 written in Go.
+Gopher2600 is an emulator for the Atari 2600. Accuracy is very high and and
+there are no known problems with the emulation of the 6507, TIA or RIOT chips.
 
-See here for [Current Status](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Current-Status)
-
-Accuracy is very high and and there are no known problems with the emulation of the 6507, TIA or RIOT chips.
+The emulator is suitable for both playing 2600 games and for developing new
+games. In particular, the debugging features available for developers of CDFJ,
+DPC+ and ELF type ROMs are unique.
 
 The key features of the emulator:
 
-* [Support for many of the known cartridge formats](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supported-Cartridge-Mappers)
+* [Support for most cartridge formats](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supported-Cartridge-Mappers)
     * emulation of the [Supercharger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supercharger) - supports loading from WAV files
-* Emulation of the [ARM7TDMI](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/ATM7TDMI-Emulation) as found in the `Harmony` cartridge
-	* Preliminary support for the ARMv7-M as used in the `UnoCart` and `PlusCart` is also included
+* Emulation of the `ARM7TDMI` found in the `Harmony` cartridge and of the `ARMv7-M` used by the `UnoCart` and `PlusCart`
 * Network access through [PlusROM](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/PlusROM) emulation
 * [AtariVox and SaveKey](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/AtariVox-and-SaveKey) support
-    * Speech support via `Festival`
-* CRT TV Effects
+* CRT TV effects
 * Flexible [screenshot](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Creating-Screenshots) features
 * Accurate audio reproduction (and optional stereo output)
 * Support for common [TIA revisions](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/TIA-Revisions)
@@ -25,9 +24,9 @@ The key features of the emulator:
 * [Gameplay rewinding](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Rewinding)
 * Tracker/Piano Keys visualisation
 * [Gameplay recording and playback](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Recording-Gamplay)
-* Support for (and auto-detection of) the stick, paddle, keypad and also Sega Genesis style [controllers](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Hand-Controllers-and-Front-Panel)
-* ROM selector with live emulation preview and optional support for
-  [boxart and the standard stella.pro file](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Box-Art-and-stella.pro-file)
+* Support for the stick, paddle, keypad and also Sega Genesis style [controllers](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Hand-Controllers-and-Front-Panel)
+* ROM selector with real emulation preview
+	* optional support for [boxart and the standard stella.pro file](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Box-Art-and-stella.pro-file)
 
 The graphical [debugger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Debugger):
 
@@ -39,52 +38,13 @@ The graphical [debugger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Debu
 	* Source code inspection and breakpoints
 	* DWARF support (global & local variable inspection)
 
-Logo is based on [Gopherize.me](https://github.com/matryer/gopherize.me) which itself is based on the work of [Ashley McNamara](https://github.com/ashleymcnamara/gophers) and is [licensed under the Creative Commons](https://github.com/ashleymcnamara/gophers/blob/master/LICENSE).
-
 ## Documentation
 
-User documentation for the emulator can be found in the [Gopher2600-Docs repository](https://github.com/JetSetIlly/Gopher2600-Docs/) and in particular the [live wiki](https://github.com/JetSetIlly/Gopher2600-Docs/wiki).
+User documentation for the emulator can be found in the project [wiki](https://github.com/JetSetIlly/Gopher2600-Docs/wiki).
 
 Development & Maintenance documentation can be found in the [Gopher2600-Dev-Docs repository](https://github.com/JetSetIlly/Gopher2600-Dev-Docs/). Also, source level documentation (for the most recent release) can be found on [go.dev](https://pkg.go.dev/github.com/jetsetilly/gopher2600).
 
-## Example Screenshots
-
-The following [screenshots](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Creating-Screenshots) were taken in `playmode` with CRT effects enabled.
-
-<table align="center">
-	<tr>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/pitfall.jpg" height="150" alt="pitfall"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/chiphead.jpg" height="150" alt="chiphead"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/thrust.jpg" height="150" alt="thrust"/>
-		</td>
-	</tr>
-	<tr>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/mangoesdown.jpg" height="150" alt="man goes down"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/beast.jpg" height="150" alt="soul of the beast"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/genesis.jpg" height="150" alt="egypt genesis"/>
-		</td>
-	</tr>
-	<tr>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/draconian.jpg" height="150" alt="draconian"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/zookeeper.jpg" height="150" alt="zookeeper"/>
-		</td>
-	</tr>
-</table>
-
-ROMs shown: Pitfall; [Chiphead](https://www.pouet.net/prod.php?which=68505); Thrust; Man Goes Down; [Soul of the Beast](https://aeriform.itch.io/beast); [Egypt 2600BC](https://www.pouet.net/prod.php?which=72716) ; Draconian; [Zookeeper](https://champ.games/downloads)
+There is also a project [blog](https://jetsetilly.github.io/Gopher2600-Blog/) which will be updated periodically with topical articles. 
 
 ## Resources used
 
