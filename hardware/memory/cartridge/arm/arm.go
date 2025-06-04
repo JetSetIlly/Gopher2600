@@ -351,6 +351,7 @@ func NewARM(env *environment.Environment, mmap architecture.Map, mem SharedMemor
 	// by definition the ARM starts in a program ended state
 	arm.state.yield.Type = coprocessor.YieldProgramEnded
 
+	arm.state.fpu.Reset()
 	arm.resetPeripherals()
 	arm.resetRegisters()
 	arm.updatePrefs()

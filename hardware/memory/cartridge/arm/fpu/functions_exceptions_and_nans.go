@@ -23,17 +23,20 @@ const (
 	FPExc_Overflow
 	FPExc_Underflow
 	FPExc_Inexact
+	FPExc_ReservedBit5
+	FPExc_ReservedBit6
 	FPExc_InputDenorm
 )
 
 func (fpu *FPU) FPProcessException(exception FPException, fpscr FPSCR) {
 	// page A2-49 of "ARMv7-M"
 
-	// we're taking advantage of the fact that the enable bits and the
-	// "cumulative" bits are 8 bits apart in the FPU status register
+	const enableBitOffset = 8
 
-	if fpscr.value>>uint32(exception+8) == 0x01 {
-		panic("IMPLEMENTATION DEFINED floating-point trap handling")
+	if exception <= FPExc_Inexact {
+		if fpscr.value>>uint32(int(exception)+enableBitOffset)&0x01 == 0x01 {
+			fpu.Status.value |= (0x01 << exception)
+		}
 	} else {
 		fpu.Status.value |= (0x01 << exception)
 	}

@@ -18,8 +18,8 @@ package fpu
 func (fpu *FPU) VFPExpandImm(imm8 uint8, N int) uint64 {
 	// on pages A6-166 of "ARMv7-M"
 
+	// number of exponent bits
 	var E int
-
 	switch N {
 	case 32:
 		E = 8
@@ -29,20 +29,20 @@ func (fpu *FPU) VFPExpandImm(imm8 uint8, N int) uint64 {
 		panic("unsupported number of bits in VFPExpandImm()")
 	}
 
+	// number of fraction bits
 	F := N - E - 1
 
-	imm64 := uint64(imm8)
-
-	sign := (imm64 & 0x80) >> 7
-	bit6 := (imm64 & 0x40) >> 6
-	expA := (^bit6) & 0b01
-	expB := uint64(0)
-	if bit6 == 0b01 {
-		expB = (bit6 << (E - 3)) - 1
+	// NOT(imm8<6>):Replicate(imm8<6>, E-3):imm8<5:4>
+	bit6 := (imm8 & 0x40) >> 6
+	exp := uint64(^bit6) << E
+	for i := 0; i < E-3; i++ {
+		exp |= uint64(bit6) << (E - 2 - i)
 	}
-	expC := (imm64 & 0x30) >> 4
-	exp := (expA << (E - 1)) | (expB << 2) | expC
-	frac := (imm64 & 0x0f) << (F - 4)
+	exp |= uint64((imm8 & 0x30) >> 4)
 
-	return (sign << (E + F)) | (exp << F) | frac
+	// imm8<3:0>:Zeros(F-4)
+	frac := uint64(imm8&0x0f) << (F - 4)
+
+	sign := (imm8 >> 7) & 0x1
+	return (uint64(sign) << (N - 1)) | (exp << F) | frac
 }

@@ -15,10 +15,40 @@
 
 package fpu
 
+import "strings"
+
 type FPSCR struct {
 	// "A2.5.3 Floating-point Status and Control Register, FPSCR" of "ARMv7-M"
 	// Page A2-37
 	value uint32
+}
+
+// String returns the NZCV bits as a string. If the bit is set the flag
+// indicator will be in upper-case and if it is unset the indicator will be in
+// lower-case
+func (fpscr *FPSCR) String() string {
+	var s strings.Builder
+	if fpscr.value&0x80000000 == 0x80000000 {
+		s.WriteRune('N')
+	} else {
+		s.WriteRune('n')
+	}
+	if fpscr.value&0x40000000 == 0x40000000 {
+		s.WriteRune('Z')
+	} else {
+		s.WriteRune('z')
+	}
+	if fpscr.value&0x20000000 == 0x20000000 {
+		s.WriteRune('C')
+	} else {
+		s.WriteRune('c')
+	}
+	if fpscr.value&0x10000000 == 0x10000000 {
+		s.WriteRune('V')
+	} else {
+		s.WriteRune('v')
+	}
+	return s.String()
 }
 
 func (fpscr *FPSCR) Value() uint32 {

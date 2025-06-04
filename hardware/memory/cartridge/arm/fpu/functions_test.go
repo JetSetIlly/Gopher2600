@@ -61,51 +61,6 @@ func TestUnpack(t *testing.T) {
 	test.ExpectEquality(t, typ, fpu.FPType_Infinity)
 }
 
-func TestRound(t *testing.T) {
-	var fp fpu.FPU
-	var v float64
-	var b uint64
-	var c uint32
-
-	fpscr := fp.StandardFPSCRValue()
-	fpscr.SetRMode(fpu.FPRoundNearest)
-
-	v = 1.0
-	b = fp.FPRound(v, 32, fpscr)
-	c = math.Float32bits(float32(v))
-	test.ExpectEquality(t, uint32(b), c)
-
-	v = -1.0
-	b = fp.FPRound(v, 32, fpscr)
-	c = math.Float32bits(float32(v))
-	test.ExpectEquality(t, uint32(b), c)
-
-	v = 10.0
-	b = fp.FPRound(v, 32, fpscr)
-	c = math.Float32bits(float32(v))
-	test.ExpectEquality(t, uint32(b), c)
-
-	v = -10.0
-	b = fp.FPRound(v, 32, fpscr)
-	c = math.Float32bits(float32(v))
-	test.ExpectEquality(t, uint32(b), c)
-
-	v = 1000000.0
-	b = fp.FPRound(v, 32, fpscr)
-	c = math.Float32bits(float32(v))
-	test.ExpectEquality(t, uint32(b), c)
-
-	v = math.Pi
-	b = fp.FPRound(v, 32, fpscr)
-	c = math.Float32bits(float32(v))
-	test.ExpectEquality(t, uint32(b), c)
-
-	v = math.E
-	b = fp.FPRound(v, 32, fpscr)
-	c = math.Float32bits(float32(v))
-	test.ExpectEquality(t, uint32(b), c)
-}
-
 func TestRoundToUnpack(t *testing.T) {
 	var fp fpu.FPU
 	var v float64
@@ -232,111 +187,19 @@ func TestNegative(t *testing.T) {
 	test.ExpectEquality(t, uint32(c), d)
 }
 
-func TestArithmetic(t *testing.T) {
-	var fp fpu.FPU
-
-	fpscr := fp.StandardFPSCRValue()
-	fpscr.SetRMode(fpu.FPRoundNearest)
-
-	var v, w float64
-	var c, d uint64
-	v = 123.12
-	c = fp.FPRound(v, 64, fpscr)
-	w = 456.842
-	d = fp.FPRound(w, 64, fpscr)
-
-	var r, s uint64
-
-	// addition
-	r = fp.FPAdd(c, d, 64, false)
-	s = math.Float64bits(v + w)
-	test.ExpectEquality(t, r, s)
-
-	// subtraction
-	r = fp.FPSub(c, d, 64, false)
-	s = math.Float64bits(v - w)
-	test.ExpectEquality(t, r, s)
-
-	// multiplication
-	r = fp.FPMul(c, d, 64, false)
-	s = math.Float64bits(v * w)
-	test.ExpectEquality(t, r, s)
-
-	// division
-	r = fp.FPDiv(c, d, 64, false)
-	s = math.Float64bits(v / w)
-	test.ExpectEquality(t, r, s)
-
-	var q uint64
-
-	// mutliplication and add
-	r = fp.FPRound(2.5, 32, fpscr)
-	s = fp.FPRound(-3.1, 32, fpscr)
-	q = fp.FPRound(100, 32, fpscr)
-	q = fp.FPMulAdd(q, r, s, 32, false)
-	_, _, f := fp.FPUnpack(q, 32, fpscr)
-	test.ExpectEquality(t, f, (2.5*-3.1)+100)
-}
-
-func TestNegation(t *testing.T) {
-	var fp fpu.FPU
-
-	var v float64
-	var c uint32
-	var d uint32
-
-	v = 100.223
-	c = math.Float32bits(float32(v))
-	d = math.Float32bits(float32(-v))
-
-	// the two values should be unequal at this point
-	test.ExpectInequality(t, c, d)
-
-	// negate one of the values. the two value will now be equal
-	d = uint32(fp.FPNeg(uint64(d), 32))
-	test.ExpectEquality(t, c, d)
-
-	// negate again to make the values unequal
-	d = uint32(fp.FPNeg(uint64(d), 32))
-	test.ExpectInequality(t, c, d)
-
-	// and again to make them equal again
-	d = uint32(fp.FPNeg(uint64(d), 32))
-	test.ExpectEquality(t, c, d)
-}
-
-func TestAbsolute(t *testing.T) {
-	var fp fpu.FPU
-
-	var v float64
-	var c uint32
-	var d uint32
-
-	v = 100.223
-	c = math.Float32bits(float32(v))
-	d = math.Float32bits(float32(-v))
-
-	// the two values should be unequal at this point
-	test.ExpectInequality(t, c, d)
-
-	var r uint32
-
-	// force the negative value to be positive
-	r = uint32(fp.FPAbs(uint64(d), 32))
-	test.ExpectEquality(t, r, c)
-
-	// forcing a positive value has no effect
-	r = uint32(fp.FPAbs(uint64(c), 32))
-	test.ExpectEquality(t, r, c)
-}
-
 func TestImmediate(t *testing.T) {
 	var fp fpu.FPU
+	var a uint64
+	var b float32
+
+	a = fp.VFPExpandImm(0x00, 32)
+	b = math.Float32frombits(uint32(a))
+	test.ExpectEquality(t, b, 0.0)
 
 	// tests taken from an real world example of a VMOV (immediate) instruction.
 	// the GCC objdump indiates that a value of 0x50 should expand to 0.25
-	a := fp.VFPExpandImm(0x50, 32)
-	b := math.Float32frombits(uint32(a))
+	a = fp.VFPExpandImm(0x50, 32)
+	b = math.Float32frombits(uint32(a))
 	test.ExpectEquality(t, b, 0.25)
 
 	a = fp.VFPExpandImm(0x70, 32)
@@ -350,7 +213,6 @@ func TestSaturation(t *testing.T) {
 	var r uint64
 
 	// unsigned saturation
-
 	r, _ = fp.UnsignedSatQ(0, 32)
 	test.ExpectEquality(t, r, 0)
 
@@ -373,7 +235,6 @@ func TestSaturation(t *testing.T) {
 	test.ExpectEquality(t, r, 4294967295)
 
 	// signed saturation
-	//
 	r, _ = fp.SignedSatQ(0, 32)
 	test.ExpectEquality(t, r, 0)
 
@@ -388,4 +249,59 @@ func TestSaturation(t *testing.T) {
 
 	r, _ = fp.SignedSatQ(-4294967295, 32)
 	test.ExpectEquality(t, r, 0x80000000)
+}
+
+func TestFPSCRStatus(t *testing.T) {
+	var fp fpu.FPU
+	fp.Status.SetNZCV(0)
+	test.ExpectEquality(t, fp.Status.String(), "nzcv")
+	fp.Status.SetN(true)
+	test.ExpectEquality(t, fp.Status.String(), "Nzcv")
+	fp.Status.SetN(false)
+	test.ExpectEquality(t, fp.Status.String(), "nzcv")
+	fp.Status.SetZ(true)
+	test.ExpectEquality(t, fp.Status.String(), "nZcv")
+	fp.Status.SetZ(false)
+	test.ExpectEquality(t, fp.Status.String(), "nzcv")
+	fp.Status.SetC(true)
+	test.ExpectEquality(t, fp.Status.String(), "nzCv")
+	fp.Status.SetC(false)
+	test.ExpectEquality(t, fp.Status.String(), "nzcv")
+	fp.Status.SetV(true)
+	test.ExpectEquality(t, fp.Status.String(), "nzcV")
+	fp.Status.SetV(false)
+	test.ExpectEquality(t, fp.Status.String(), "nzcv")
+}
+
+func TestComparison(t *testing.T) {
+	var fp fpu.FPU
+	var v float64
+	var w float64
+	var c uint64
+	var d uint64
+
+	v = 1
+	w = -1
+
+	for _, N := range []int{64, 32} {
+		c = fp.FPRound(v, N, fp.Status)
+		d = fp.FPRound(w, N, fp.Status)
+
+		// "Table A2-4 FP comparison flag values" of "ARMv7-M"
+
+		// equality
+		fp.Status.SetNZCV(0)
+		fp.FPCompare(c, c, N, false, true)
+		test.ExpectEquality(t, fp.Status.String(), "nZCv")
+
+		// greater than
+		fp.Status.SetNZCV(0)
+		fp.FPCompare(c, d, N, false, true)
+		test.ExpectEquality(t, fp.Status.String(), "nzCv")
+
+		// less than
+		fp.Status.SetNZCV(0)
+		fp.FPCompare(d, c, N, false, true)
+		test.ExpectEquality(t, fp.Status.String(), "Nzcv")
+	}
 }

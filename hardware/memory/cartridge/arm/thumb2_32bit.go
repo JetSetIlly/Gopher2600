@@ -514,6 +514,12 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						result = (arm.state.registers[Rm] >> imm5)
 					case 0b10:
 						// with arithmetic right shift
+
+						// carry bit
+						m := uint32(0x01) << (imm5 - 1)
+						carry = arm.state.registers[Rm]&m == m
+
+						// perform shift (with sign extension)
 						signExtend := (arm.state.registers[Rm] & 0x80000000) >> 31
 						result = arm.state.registers[Rm] >> imm5
 						if signExtend == 0x01 {
@@ -589,6 +595,12 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 					result = arm.state.registers[Rn] ^ (arm.state.registers[Rm] >> imm5)
 				case 0b10:
 					// with arithmetic right shift
+
+					// carry bit
+					m := uint32(0x01) << (imm5 - 1)
+					carry = arm.state.registers[Rm]&m == m
+
+					// perform shift (with sign extension)
 					signExtend := (arm.state.registers[Rm] & 0x80000000) >> 31
 					result = arm.state.registers[Rn] ^ (arm.state.registers[Rm] >> imm5)
 					if signExtend == 0x01 {
@@ -644,6 +656,9 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						shifted = arm.state.registers[Rm] >> imm5
 					case 0b10:
 						// with arithmetic right shift
+						// (no need to worry about carry just yet)
+
+						// perform shift (with sign extension)
 						signExtend := (arm.state.registers[Rm] & 0x80000000) >> 31
 						shifted = arm.state.registers[Rm] >> imm5
 						if signExtend == 0x01 {
@@ -826,6 +841,9 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						shifted = arm.state.registers[Rm] >> imm5
 					case 0b10:
 						// with arithmetic right shift
+						// (no need to worry about carry just yet)
+
+						// perform shift (with sign extension)
 						signExtend := (arm.state.registers[Rm] & 0x80000000) >> 31
 						shifted = arm.state.registers[Rm] >> imm5
 						if signExtend == 0x01 {
@@ -1512,7 +1530,7 @@ func (arm *ARM) decode32bitThumb2LoadStoreDoubleEtc(opcode uint16) decodeFunctio
 					Is32bit:  true,
 					Operator: operator,
 				}
-				e.Operand = fmt.Sprintf("R%d, R%d, [R%d,", Rt, Rt2, Rn)
+				e.Operand = fmt.Sprintf("R%d, R%d, [R%d", Rt, Rt2, Rn)
 				if u {
 					e.Operand = fmt.Sprintf("%s, #+%d]", e.Operand, imm32)
 				} else {

@@ -43,13 +43,23 @@ func (fpu *FPU) FPDiv(op1 uint64, op2 uint64, N int, fpscrControlled bool) uint6
 			result = fpu.FPDefaultNaN(N)
 			fpu.FPProcessException(FPExc_InvalidOp, fpscr)
 		} else if inf1 || zero2 {
-			resultSign := sign1 != sign2
+			var resultSign bool
+			if sign1 == sign2 {
+				resultSign = false
+			} else {
+				resultSign = true
+			}
 			result = fpu.FPInfinity(resultSign, N)
 			if !inf1 {
 				fpu.FPProcessException(FPExc_DivideByZero, fpscr)
 			}
 		} else if zero1 || inf2 {
-			resultSign := sign1 != sign2
+			var resultSign bool
+			if sign1 == sign2 {
+				resultSign = false
+			} else {
+				resultSign = true
+			}
 			result = fpu.FPZero(resultSign, N)
 		} else {
 			result = fpu.FPRound(value1/value2, N, fpscr)
@@ -137,7 +147,7 @@ func (fpu *FPU) FPSub(op1 uint64, op2 uint64, N int, fpscrControlled bool) uint6
 			result = fpu.FPInfinity(false, N)
 		} else if (inf1 && sign1) || (inf2 && !sign2) {
 			result = fpu.FPInfinity(true, N)
-		} else if zero1 && zero2 && sign1 != sign2 {
+		} else if zero1 && zero2 && sign1 == !sign2 {
 			result = fpu.FPZero(sign1, N)
 		} else {
 			resultValue := value1 - value2
@@ -181,10 +191,20 @@ func (fpu *FPU) FPMul(op1 uint64, op2 uint64, N int, fpscrControlled bool) uint6
 			result = fpu.FPDefaultNaN(N)
 			fpu.FPProcessException(FPExc_InvalidOp, fpscr)
 		} else if inf1 || inf2 {
-			resultSign := sign1 != sign2
+			var resultSign bool
+			if sign1 == sign2 {
+				resultSign = false
+			} else {
+				resultSign = true
+			}
 			result = fpu.FPInfinity(resultSign, N)
 		} else if zero1 || zero2 {
-			resultSign := sign1 != sign2
+			var resultSign bool
+			if sign1 == sign2 {
+				resultSign = false
+			} else {
+				resultSign = true
+			}
 			result = fpu.FPZero(resultSign, N)
 		} else {
 			result = fpu.FPRound(value1*value2, N, fpscr)
@@ -247,15 +267,15 @@ func (fpu *FPU) FPMulAdd(addend uint64, op1 uint64, op2 uint64, N int, fpscrCont
 
 		// "Non SNaN-generated Invalid Operation cases are multiplies of zero by infinity and
 		// additions of opposite-signed infinities"
-		if (inf1 && zero2) || (zero1 && inf2) || (infA && infP && signA != signP) {
+		if (inf1 && zero2) || (zero1 && inf2) || (infA && infP && signA == !signP) {
 			result = fpu.FPDefaultNaN(N)
 			fpu.FPProcessException(FPExc_InvalidOp, fpscr)
 
 			// "Other cases involving infinities produce an infinity of the same sign"
 		} else if (infA && !signA) || (infP && !signP) {
-			result = fpu.FPInfinity(false, 32)
+			result = fpu.FPInfinity(false, N)
 		} else if (infA && signA) || (infP && signP) {
-			result = fpu.FPInfinity(true, 32)
+			result = fpu.FPInfinity(true, N)
 
 			// "Cases where the result is exactly zero and its sign is not determined by the
 			// rounding mode are addition of the same-signed zeros"
@@ -264,8 +284,7 @@ func (fpu *FPU) FPMulAdd(addend uint64, op1 uint64, op2 uint64, N int, fpscrCont
 
 			// Otherwise calculate numerical result and round it
 		} else {
-			resultValue := value1 * value2
-			resultValue += valueA
+			resultValue := valueA + (value1 * value2)
 			if resultValue == 0.0 {
 				resultSign := fpscr.RMode() == FPRoundNegInf
 				result = fpu.FPZero(resultSign, N)

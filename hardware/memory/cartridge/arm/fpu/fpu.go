@@ -19,3 +19,10 @@ type FPU struct {
 	Registers [32]uint32
 	Status    FPSCR
 }
+
+func (fpu *FPU) Reset() {
+	for i := range fpu.Registers {
+		fpu.Registers[i] = 0x0
+	}
+	fpu.Status.SetRMode(FPRoundZero)
+}
