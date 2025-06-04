@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
-	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
+	"github.com/jetsetilly/gopher2600/coprocessor/faults"
 	"github.com/jetsetilly/gopher2600/crunched"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"

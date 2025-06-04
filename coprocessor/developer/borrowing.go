@@ -19,8 +19,8 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/breakpoints"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/callstack"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
-	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
+	"github.com/jetsetilly/gopher2600/coprocessor/faults"
 )
 
 // BorrowSource will lock the source code structure for the durction of the

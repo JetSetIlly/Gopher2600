@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
+	"github.com/jetsetilly/gopher2600/coprocessor/faults"
 )
 
 // CoProcExecutionState details the current condition of the coprocessor's execution

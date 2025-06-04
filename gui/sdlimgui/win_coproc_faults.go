@@ -20,7 +20,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
-	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
+	"github.com/jetsetilly/gopher2600/coprocessor/faults"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 

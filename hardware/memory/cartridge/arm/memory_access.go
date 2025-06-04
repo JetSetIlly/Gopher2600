@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
-	"github.com/jetsetilly/gopher2600/coprocessor/developer/faults"
+	"github.com/jetsetilly/gopher2600/coprocessor/faults"
 )
 
 func (arm *ARM) memoryFault(event string, fault faults.Category, addr uint32) {
