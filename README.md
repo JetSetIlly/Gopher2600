@@ -1,90 +1,46 @@
 # Gopher2600
 
-<img align="right" src="https://github.com/JetSetIlly/Gopher2600-Dev-Docs/blob/master/gopher2600_logo/logo4.png" width="250" alt="gopher2600 logo"/>
+<img align="right" src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/new_pitfall_as_banner.png" height=50% width=50%/>
 
-Gopher2600 is an emulator for the Atari 2600 written in Go.
+Gopher2600 is an emulator for the Atari 2600. Accuracy is very high and and there are no known problems with the emulation of the 6507, TIA or RIOT chips.
 
-See here for [Current Status](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Current-Status)
+The emulator is suitable for both playing 2600 games and for developing new games. In particular, the debugging features available for developers of CDFJ, DPC+ and ELF type ROMs that make use of an ARM coprocessor, are unique.
 
-Accuracy is very high and and there are no known problems with the emulation of the 6507, TIA or RIOT chips.
+Most ["bank switching"](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supported-Cartridge-Mappers) types are supported, including the above mentioned CDFJ, DPC+ and ELF types. Also notable is the support for [Supercharger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supercharger) and in particular, the loading of Supercharger tapes stored as a WAV or MP3 file. Also supported is the [Movie Cart](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Movie-Cart)
 
-The key features of the emulator:
+Games using [PlusROM](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/PlusROM) features are also supported.
 
-* [Support for many of the known cartridge formats](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supported-Cartridge-Mappers)
-    * emulation of the [Supercharger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supercharger) - supports loading from WAV files
-* Emulation of the [ARM7TDMI](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/ATM7TDMI-Emulation) as found in the `Harmony` cartridge
-	* Preliminary support for the ARMv7-M as used in the `UnoCart` and `PlusCart` is also included
-* Network access through [PlusROM](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/PlusROM) emulation
-* [AtariVox and SaveKey](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/AtariVox-and-SaveKey) support
-    * Speech support via `Festival`
-* CRT TV Effects
-* Flexible [screenshot](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Creating-Screenshots) features
-* Accurate audio reproduction (and optional stereo output)
-* Support for common [TIA revisions](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/TIA-Revisions)
-* Implementation of [Movie Cart](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Movie-Cart)
-* [Gameplay rewinding](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Rewinding)
-* Tracker/Piano Keys visualisation
-* [Gameplay recording and playback](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Recording-Gamplay)
-* Support for (and auto-detection of) the stick, paddle, keypad and also Sega Genesis style [controllers](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Hand-Controllers-and-Front-Panel)
-* ROM selector with live emulation preview and optional support for
-  [boxart and the standard stella.pro file](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Box-Art-and-stella.pro-file)
+The [AtariVox and SaveKey](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/AtariVox-and-SaveKey) peripherals are emulated. Uniquely, the AtariVox voice features can be  emulated with the third-party application `Festival`. While this is imperfect being able to hear feedback for AtariVox voice commands can be helpful.
 
-The graphical [debugger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Debugger):
+The vintage CRT television, contemporaneous with the console, is emulated with a selection of interference effects and bevel images. This is an ongoing area of development and will be improved further in the future.
 
-* CPU and Color Clock level interaction
-* Breakpoints, traps, watches on various CPU, TIA and RIOT targets
-* Terminal interface (headless operation optional)
-* Advanced ARM monitoring
-	* Performance profiling
-	* Source code inspection and breakpoints
-	* DWARF support (global & local variable inspection)
+Flexible [screenshot](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Creating-Screenshots) features so that games using "flicker" kernels can be effectively captured.
 
-Logo is based on [Gopherize.me](https://github.com/matryer/gopherize.me) which itself is based on the work of [Ashley McNamara](https://github.com/ashleymcnamara/gophers) and is [licensed under the Creative Commons](https://github.com/ashleymcnamara/gophers/blob/master/LICENSE).
+Accurate audio reproduction with optional stereo output. The intensity of the stereo effect can be altered.
 
-## Documentation
+Over the course of its lifetime, the Atari2600 came in several versions which introduced subtle variations in the TIA chip. Gopher2600 supports the common [TIA revisions](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/TIA-Revisions)
 
-User documentation for the emulator can be found in the [Gopher2600-Docs repository](https://github.com/JetSetIlly/Gopher2600-Docs/) and in particular the [live wiki](https://github.com/JetSetIlly/Gopher2600-Docs/wiki).
+For the player who wants to master a game quickly there is convenient [gameplay rewinding](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Rewinding). The rewinding feature is also available in the emulator's debugger in the form of a "timeline" window.
 
-Development & Maintenance documentation can be found in the [Gopher2600-Dev-Docs repository](https://github.com/JetSetIlly/Gopher2600-Dev-Docs/). Also, source level documentation (for the most recent release) can be found on [go.dev](https://pkg.go.dev/github.com/jetsetilly/gopher2600).
+Gameplay can also be [recorded and played back](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Recording-Gamplay). In addition to keeping gameplay sessions for future study or enjoyment, recordings are also useful for testing purposes during ROM development.
 
-## Example Screenshots
+The standard controllers are supported. The joystick, the paddle, the keypad and also Sega Genesis style [controllers](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Hand-Controllers-and-Front-Panel)
 
-The following [screenshots](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Creating-Screenshots) were taken in `playmode` with CRT effects enabled.
+The graphical [debugger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Debugger) provides a powerful interface to the internals of the Atari 2600. The state of the console can be inspected and rewound at the CPU and Colour Clock level. Breakpoints and watches can be set on many areas of the CPU, TIA and RIOT and the same areas can be be peeked and poked as required.
 
-<table align="center">
-	<tr>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/pitfall.jpg" height="150" alt="pitfall"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/chiphead.jpg" height="150" alt="chiphead"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/thrust.jpg" height="150" alt="thrust"/>
-		</td>
-	</tr>
-	<tr>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/mangoesdown.jpg" height="150" alt="man goes down"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/beast.jpg" height="150" alt="soul of the beast"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/genesis.jpg" height="150" alt="egypt genesis"/>
-		</td>
-	</tr>
-	<tr>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/draconian.jpg" height="150" alt="draconian"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/zookeeper.jpg" height="150" alt="zookeeper"/>
-		</td>
-	</tr>
-</table>
+In addition to the graphical windows of the debugger, a terminal interface is provided.
 
-ROMs shown: Pitfall; [Chiphead](https://www.pouet.net/prod.php?which=68505); Thrust; Man Goes Down; [Soul of the Beast](https://aeriform.itch.io/beast); [Egypt 2600BC](https://www.pouet.net/prod.php?which=72716) ; Draconian; [Zookeeper](https://champ.games/downloads)
+The most powerful use of the debugger however is the debugging and profiling of ROMs that use an ARM coprocessor (Harmony, PlusCart, etc.) When [compiled correctly](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Preparing-ARM-Enabled-Projects-for-the-Gopher2600-Debugger) Gopher2600 can use standard DWARF information to help profile performance; to identify incorrect code flow; and to identify incorrect use of the program's global and local variables.
+
+## Documentation and Help
+
+User documentation for the emulator can be found in the project [wiki](https://github.com/JetSetIlly/Gopher2600-Docs/wiki).
+
+Development & Maintenance documentation can be found in the [Gopher2600-Dev-Docs repository](https://github.com/JetSetIlly/Gopher2600-Dev-Docs/).
+
+Source level documentation can be found on the [Go package documentation site](https://pkg.go.dev/github.com/jetsetilly/gopher2600).
+
+There is also a project [blog](https://jetsetilly.github.io/Gopher2600-Blog/) which will be updated periodically with topical articles. 
 
 ## Resources used
 
@@ -274,9 +230,23 @@ http://www.festvox.org/docs/manual-2.4.0/festival_toc.html
 
 ## Personal Thanks and Acknowledgements
 
-At various times during the development of this project, the following people
-have provided advice and encouragement: Andrew Rice, David Kelly. And those
-from AtariAge who have provided testing, advice and most importantly,
-encouragement (alphabetically): alex_79; Al Nafuur; Andrew Davie; Batari;
-DirtyHairy; John Champeau; MarcoJ; MrSQL; Rob Bairos; Spiceware; Thomas
-Jenztsch; Zachary Scolaro; ZeroPageHomebrew
+<img align="right" src="https://github.com/JetSetIlly/Gopher2600-Dev-Docs/blob/master/gopher2600_logo/logo4.png" height="400px" />
+
+* Andrew Rice
+* David Kelly
+* And those from the wider Atari community:
+	* alex_79
+	* Al Nafuur
+	* Andrew Davie
+	* Batari
+	* Darrell Spice (Spiceware)
+  	* DirtyHairy
+	* John Champeau (Champ Games)
+	* MarcoJ
+	* MrSQL
+	* Rob Bairos
+	* Thomas Jenztsch
+	* Zachary Scolaro
+	* ZeroPageHomebrew
+
+_Logo is based on [Gopherize.me](https://github.com/matryer/gopherize.me) which itself is based on the work of [Ashley McNamara](https://github.com/ashleymcnamara/gophers) and is [licensed under the Creative Commons](https://github.com/ashleymcnamara/gophers/blob/master/LICENSE)_
