@@ -193,7 +193,6 @@ func (rnd *gl32) render() {
 			} else {
 				// texture id
 				id := cmd.TextureID()
-
 				env.textureID = uint32(id)
 
 				// select shader program to use

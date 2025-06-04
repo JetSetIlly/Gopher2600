@@ -54,10 +54,22 @@ type effectsShader struct {
 	rotation   int32
 	screenshot int32
 	time       int32
+
+	isScrsht isScreenshotting
 }
 
-func newEffectsShader() shaderProgram {
-	sh := &effectsShader{}
+// used by the effects shader to determine if a screenshot is taking place. if
+// it is then specific effects settings are used with the aim of improving the
+// screenshot image
+type isScreenshotting interface {
+	isScreenshotting() bool
+}
+
+func newEffectsShader(isScrsht isScreenshotting) shaderProgram {
+	sh := &effectsShader{
+		isScrsht: isScrsht,
+	}
+
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTEffectsFragShader))
 
 	sh.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
@@ -125,4 +137,9 @@ func (sh *effectsShader) setAttributesArgs(env shaderEnvironment, numScanlines i
 	gl.Uniform1i(sh.rotation, int32(rotation))
 	gl.Uniform1i(sh.screenshot, boolToInt32(screenshot))
 	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
+
+	// no noise when a screenshot is taking place
+	if sh.isScrsht.isScreenshotting() {
+		gl.Uniform1f(sh.rfNoiseLevel, float32(0))
+	}
 }

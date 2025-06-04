@@ -106,7 +106,7 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 		sharpenShader:  newSharpenShader(),
 		phosphorShader: newPhosphorShader(),
 		blurShader:     newBlurShader(),
-		effectsShader:  newEffectsShader(),
+		effectsShader:  newEffectsShader(img.rnd),
 		colorShader:    newColorShader(),
 	}
 	return sh
