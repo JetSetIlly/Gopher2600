@@ -515,6 +515,11 @@ func (arm *ARM) String() string {
 		}
 		s.WriteString(fmt.Sprintf("R%-2d: %08x", i, r))
 	}
+	s.WriteString("\n")
+	s.WriteString(arm.state.status.String())
+	if arm.mmap.ARMArchitecture == architecture.ARMv7_M {
+		s.WriteString(fmt.Sprintf("\tIT: cond=%04b mask=%04b", arm.state.status.itCond, arm.state.status.itMask))
+	}
 	return s.String()
 }
 
