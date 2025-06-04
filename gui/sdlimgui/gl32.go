@@ -237,6 +237,10 @@ func (rnd *gl32) screenshot(mode screenshotMode, finish chan screenshotResult) {
 	rnd.scrsht.start(mode, finish)
 }
 
+func (rnd *gl32) isScreenshotting() bool {
+	return !rnd.scrsht.finished()
+}
+
 // glState stores GL state with the intention of restoration after a short period.
 type glState struct {
 	lastActiveTexture      int32
