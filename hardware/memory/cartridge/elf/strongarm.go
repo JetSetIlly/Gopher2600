@@ -358,7 +358,7 @@ func vcsWrite5(mem *elfMemory) {
 	}
 }
 
-// void vcsWrite6(uint8_t ZP, uint8_t data)
+// void vcsWrite6(uint8_t address, uint8_t data)
 func vcsWrite6(mem *elfMemory) {
 	address := uint16(mem.strongarm.running.registers[0])
 	data := uint8(mem.strongarm.running.registers[1])
