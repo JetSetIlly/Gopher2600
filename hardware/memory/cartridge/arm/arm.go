@@ -19,6 +19,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"os"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
@@ -32,9 +33,9 @@ import (
 )
 
 // it is sometimes convenient to dissassemble every instruction and to print it
-// to stdout for inspection. we most likely need this during the early stages of
+// to stderr for inspection. we most likely need this during the early stages of
 // debugging of a new cartridge type
-const disassembleToStdout = false
+const disassembleToStderr = false
 
 // core register names
 const (
@@ -326,8 +327,8 @@ func NewARM(env *environment.Environment, mmap architecture.Map, mem SharedMemor
 	}
 
 	// disassembly printed to stdout
-	if disassembleToStdout {
-		arm.disasm = &coprocessor.CartCoProcDisassemblerStdout{}
+	if disassembleToStderr {
+		arm.disasm = &coprocessor.CartCoProcDisassemblerStderr{}
 	}
 
 	switch arm.mmap.ARMArchitecture {
@@ -935,8 +936,8 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 						arm.disasm.Step(*e)
 
 						// print additional information output for stdout
-						if _, ok := arm.disasm.(*coprocessor.CartCoProcDisassemblerStdout); ok {
-							fmt.Println(arm.disasmVerbose(*e))
+						if _, ok := arm.disasm.(*coprocessor.CartCoProcDisassemblerStderr); ok {
+							fmt.Fprintln(os.Stderr, arm.disasmVerbose(*e))
 						}
 					}
 				}
