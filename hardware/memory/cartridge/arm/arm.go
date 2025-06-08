@@ -747,7 +747,7 @@ func (arm *ARM) Interrupt() {
 
 // MemoryFault causes a memory fault to be triggered
 func (arm *ARM) MemoryFault(event string, fault faults.Category) {
-	arm.memoryFault(event, faults.UndefinedSymbol, arm.state.instructionPC)
+	arm.memoryFault(event, fault, arm.state.instructionPC)
 }
 
 // StackFrame implements the coprocess.CartCoProc interface

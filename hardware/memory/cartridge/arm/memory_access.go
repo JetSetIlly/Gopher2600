@@ -37,12 +37,16 @@ func (arm *ARM) illegalAccess(event string, addr uint32) {
 	if arm.state.stackHasCollided {
 		return
 	}
-	arm.memoryFault(event, faults.IllegalAddress, addr)
+	if arm.abortOnMemoryFault {
+		arm.memoryFault(event, faults.IllegalAddress, addr)
+	}
 }
 
 // nullAccess is a special condition of illegalAccess()
 func (arm *ARM) nullAccess(event string, addr uint32) {
-	arm.memoryFault(event, faults.NullDereference, addr)
+	if arm.abortOnMemoryFault {
+		arm.memoryFault(event, faults.NullDereference, addr)
+	}
 }
 
 // misalignedAccess is a special condition of illegalAccess()
