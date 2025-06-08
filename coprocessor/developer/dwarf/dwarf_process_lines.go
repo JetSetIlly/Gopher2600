@@ -98,7 +98,7 @@ func addInstructionsToLines(src *Source, bld *build, symbols []elf.Symbol) error
 				logger.Logf(logger.Allow, "dwarf", "file not available for linereader: %s", le.File.Name)
 				break // line entry for loop. will continue with compile unit loop
 			}
-			if le.Line-1 > src.Files[le.File.Name].Content.Len() {
+			if le.Line == 0 || le.Line-1 > src.Files[le.File.Name].Content.Len() {
 				logger.Logf(logger.Allow, "dwarf", "current source is unrelated to ELF/DWARF data (number of lines)")
 				break // line entry for loop. will continue with compile unit loop
 			}
