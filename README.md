@@ -191,6 +191,12 @@ ARM specific DWARF information taken from:
 
 https://github.com/ARM-software/abi-aa/releases/download/2023Q1/aadwarf32.pdf
 
+Information about ELF for the ARM Architecture, particular information about relocation types, taken from:
+
+https://prog5.gricad-pages.univ-grenoble-alpes.fr/Projet/IHI0044F_aaelf.pdf
+
+https://kolegite.com/EE_library/standards/ARM_ABI/aaelf32.pdf
+
 ## Other Software / Libraries
 
 The following projects are used in the `Gopher2600` project:
