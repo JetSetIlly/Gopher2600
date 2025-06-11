@@ -862,7 +862,15 @@ func (mem *elfMemory) runInitialisation(arm *arm.ARM) error {
 	// the elf.File structure is no good for our purposes
 	for _, s := range mem.symbols {
 		if s.Name == "main" || s.Name == "elf_main" {
-			sec := mem.sectionsByName[".text"]
+			// ".text.main" is emitted by the rust compiler, while ".text" is emitted by GCC
+			// there must be a more robust way of finding the principal section
+			sec, ok := mem.sectionsByName[".text.main"]
+			if !ok {
+				sec, ok = mem.sectionsByName[".text"]
+				if !ok {
+					return fmt.Errorf("ELF: could not find .text section")
+				}
+			}
 			mem.resetPC = sec.origin + uint32(s.Value)
 			mem.resetPC &= 0xfffffffe
 			break // for loop
