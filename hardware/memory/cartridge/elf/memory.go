@@ -348,7 +348,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 		}
 
 		// section being relocated
-		sec, ok := mem.sectionsByName[rel.Name[4:]]
+		secBeingRelocated, ok := mem.sectionsByName[rel.Name[4:]]
 		if !ok {
 			return fmt.Errorf("ELF: could not find section corresponding to %s", rel.Name)
 		}
@@ -357,11 +357,11 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 		// different to other sections. problems I've seen so far (1) relocated
 		// value will be out of range according to the MapAddress check (2) the
 		// offset value can go beyond the end of the .debug_macro data slice
-		if sec.name == ".debug_macro" {
-			logger.Logf(mem.env, "ELF", "not relocating %s", sec.name)
+		if secBeingRelocated.name == ".debug_macro" {
+			logger.Logf(mem.env, "ELF", "not relocating %s", secBeingRelocated.name)
 			continue
 		} else {
-			logger.Logf(mem.env, "ELF", "relocating %s", sec.name)
+			logger.Logf(mem.env, "ELF", "relocating %s", secBeingRelocated.name)
 		}
 
 		// relocation data. we walk over the data and extract the relocation
@@ -374,8 +374,6 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 
 		// every relocation entry
 		for i := 0; i < len(relData); i += 8 {
-			var tgt uint32
-
 			// the relocation entry fields
 			offset := ef.ByteOrder.Uint32(relData[i:])
 			info := ef.ByteOrder.Uint32(relData[i+4:])
@@ -388,284 +386,45 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 			relType := info & 0xff
 
 			switch elf.R_ARM(relType) {
-			case elf.R_ARM_TARGET1:
-				fallthrough
-			case elf.R_ARM_ABS32:
-				switch sym.Name {
-				// GPIO pins
-				case "ADDR_IDR":
-					tgt = mem.gpio.lookupOrigin | ADDR_IDR
-				case "DATA_ODR":
-					tgt = mem.gpio.lookupOrigin | DATA_ODR
-				case "DATA_MODER":
-					tgt = mem.gpio.lookupOrigin | DATA_MODER
-				case "DATA_IDR":
-					tgt = mem.gpio.lookupOrigin | DATA_IDR
+			case elf.R_ARM_TARGET1, elf.R_ARM_ABS32:
+				ok, tgt, err := getStrongArmDefinition(mem, sym.Name)
+				if err != nil {
+					return fmt.Errorf("%s: %w", sym.Name, err)
+				}
+				if !ok {
+					switch sym.Name {
+					// GPIO pins
+					case "ADDR_IDR":
+						tgt = mem.gpio.lookupOrigin | ADDR_IDR
+					case "DATA_ODR":
+						tgt = mem.gpio.lookupOrigin | DATA_ODR
+					case "DATA_MODER":
+						tgt = mem.gpio.lookupOrigin | DATA_MODER
+					case "DATA_IDR":
+						tgt = mem.gpio.lookupOrigin | DATA_IDR
 
-				// strongARM functions
-				case "vcsWrite3":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsWrite3,
-						support:  false,
-					})
-					mem.usesBusStuffing = true
-				case "vcsPlp4Ex":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsPlp4Ex,
-						support:  false,
-					})
-					mem.usesBusStuffing = true
-				case "vcsPla4Ex":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsPla4Ex,
-						support:  false,
-					})
-					mem.usesBusStuffing = true
-				case "vcsJmp3":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsJmp3,
-						support:  false,
-					})
-				case "vcsLda2":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsLda2,
-						support:  false,
-					})
-				case "vcsSta3":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsSta3,
-						support:  false,
-					})
-				case "SnoopDataBus":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: snoopDataBus,
-						support:  false,
-					})
-				case "vcsRead4":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsRead4,
-						support:  false,
-					})
-				case "vcsStartOverblank":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsStartOverblank,
-						support:  false,
-					})
-				case "vcsEndOverblank":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsEndOverblank,
-						support:  false,
-					})
-				case "vcsLdaForBusStuff2":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsLdaForBusStuff2,
-						support:  false,
-					})
-				case "vcsLdxForBusStuff2":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsLdxForBusStuff2,
-						support:  false,
-					})
-				case "vcsLdyForBusStuff2":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsLdyForBusStuff2,
-						support:  false,
-					})
-				case "vcsWrite5":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsWrite5,
-						support:  false,
-					})
-				case "vcsWrite6":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsWrite6,
-						support:  false,
-					})
-				case "vcsLdx2":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsLdx2,
-						support:  false,
-					})
-				case "vcsLdy2":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsLdy2,
-						support:  false,
-					})
-				case "vcsSta4":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsSta4,
-						support:  false,
-					})
-				case "vcsStx3":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsStx3,
-						support:  false,
-					})
-				case "vcsStx4":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsStx4,
-						support:  false,
-					})
-				case "vcsSty3":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsSty3,
-						support:  false,
-					})
-				case "vcsSty4":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsSty4,
-						support:  false,
-					})
-				case "vcsSax3":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsSax3,
-						support:  false,
-					})
-				case "vcsTxs2":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsTxs2,
-						support:  false,
-					})
-				case "vcsJsr6":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsJsr6,
-						support:  false,
-					})
-				case "vcsNop2":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsNop2,
-						support:  false,
-					})
-				case "vcsNop2n":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsNop2n,
-						support:  false,
-					})
-				case "vcsPhp3":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsPhp3,
-						support:  false,
-					})
-				case "vcsPlp4":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsPlp4,
-						support:  false,
-					})
-				case "vcsPla4":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsPla4,
-						support:  false,
-					})
-				case "vcsCopyOverblankToRiotRam":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsCopyOverblankToRiotRam,
-						support:  false,
-					})
-				case "vcsJmpToRam3":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsJmpToRam3,
-						support:  false,
-					})
-				case "vcsPokeRomByte":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsPokeRomByte,
-						support:  false,
-					})
-				case "vcsSetNextAddress":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: vcsSetNextAddress,
-						support:  true,
-					})
-
-				// C library functions that are often not linked but required
-				case "randint":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: randint,
-						support:  true,
-					})
-				case "memset":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: memset,
-						support:  true,
-					})
-				case "memcpy":
-					tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-						name:     sym.Name,
-						function: memcpy,
-						support:  true,
-					})
-
-				// strongARM tables
-				case "ReverseByte":
-					tgt = mem.relocateStrongArmTable(reverseByteTable)
-
-				case "ColorLookup":
-					switch mem.env.TV.GetFrameInfo().Spec.ID {
-					case "PAL":
-						tgt = mem.relocateStrongArmTable(palColorTable)
-					case "NTSC":
-						fallthrough
 					default:
-						tgt = mem.relocateStrongArmTable(ntscColorTable)
-					}
+						if sym.Section == elf.SHN_UNDEF {
+							// for R_ARM_ABS32 type symbols we create a stub function and use it to
+							// generate a memory fault when it's accessed
+							logger.Logf(mem.env, "ELF", "using stub for %s (will cause memory fault when called)", sym.Name)
+							tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+								function: func(mem *elfMemory) {
+									mem.arm.MemoryFault(sym.Name, faults.UndefinedSymbol)
+								},
+								support: true,
+							})
 
-				default:
-					if sym.Section == elf.SHN_UNDEF {
-						// for R_ARM_ABS32 type symbols we create a stub function and use it to
-						// generate a memory fault when it's accessed
-						logger.Logf(mem.env, "ELF", "using stub for %s (will cause memory fault when called)", sym.Name)
-						tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-							function: func(mem *elfMemory) {
-								mem.arm.MemoryFault(sym.Name, faults.UndefinedSymbol)
-							},
-							support: true,
-						})
-
-						// flag presence of unresolved symbols
-						mem.unresolvedSymbols = true
-					} else {
-						n := ef.Sections[sym.Section].Name
-						if sec, ok := mem.sectionsByName[n]; !ok {
-							return fmt.Errorf("can not find section (%s) while relocating %s", n, sym.Name)
+							// flag presence of unresolved symbols
+							mem.unresolvedSymbols = true
 						} else {
-							tgt = sec.origin
-							tgt += uint32(sym.Value)
+							n := ef.Sections[sym.Section].Name
+							if sec, ok := mem.sectionsByName[n]; !ok {
+								return fmt.Errorf("can not find section (%s) while relocating %s", n, sym.Name)
+							} else {
+								tgt = sec.origin
+								tgt += uint32(sym.Value)
+							}
 						}
 					}
 				}
@@ -675,7 +434,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				// add placeholder value to relocation address
-				addend := ef.ByteOrder.Uint32(sec.data[offset:])
+				addend := ef.ByteOrder.Uint32(secBeingRelocated.data[offset:])
 				tgt += addend
 
 				// check address is recognised
@@ -684,8 +443,8 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				// commit write
-				ef.ByteOrder.PutUint32(sec.data[offset:], tgt)
-				if d, err := ef.Section(sec.name).Data(); err == nil {
+				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], tgt)
+				if d, err := ef.Section(secBeingRelocated.name).Data(); err == nil {
 					ef.ByteOrder.PutUint32(d[offset:], tgt)
 				}
 
@@ -706,7 +465,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 					typ = "ABS32"
 				}
 
-				logger.Logf(mem.env, "ELF", "%s %s (%08x) => %08x", typ, name, sec.origin+offset, tgt)
+				logger.Logf(mem.env, "ELF", "%s %s (%08x) => %08x", typ, name, secBeingRelocated.origin+offset, tgt)
 
 			case elf.R_ARM_THM_PC22, elf.R_ARM_THM_JUMP24:
 				// this value is labelled R_ARM_THM_CALL in objdump output
@@ -716,24 +475,33 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				// least significant bits. The unit is 2-byte Thumb instructions."
 				// page 32 of "SWS ESPC 0003 A-08"
 
-				if sym.Section == elf.SHN_UNDEF {
-					// return with an error for undefined symbols of this type.
-					// compare to R_ARM_ABS32 where we use a stub function and
-					// allow the emulation to continue (until a memory fault is
-					// forced by the stub function)
-					logger.Logf(logger.Allow, "ELF", "THM_PC22 section is undefined")
-					continue
+				ok, tgt, err := getStrongArmDefinition(mem, sym.Name)
+				if err != nil {
+					return fmt.Errorf("%s: %w", sym.Name, err)
+				}
+				if !ok {
+					if sym.Section == elf.SHN_UNDEF {
+						switch elf.R_ARM(relType) {
+						case elf.R_ARM_THM_PC22:
+							logger.Logf(logger.Allow, "ELF", "THM_PC22 section is undefined")
+						case elf.R_ARM_THM_JUMP24:
+							logger.Logf(logger.Allow, "ELF", "THM_JUMP24 section is undefined")
+						}
+						continue
+					}
+
+					n := ef.Sections[sym.Section].Name
+					sec, ok := mem.sectionsByName[n]
+					if !ok {
+						return fmt.Errorf("ELF: can not find section (%s)", n)
+					}
+
+					tgt = sec.origin
+					tgt += uint32(sym.Value)
 				}
 
-				n := ef.Sections[sym.Section].Name
-				if sec, ok := mem.sectionsByName[n]; !ok {
-					return fmt.Errorf("ELF: can not find section (%s)", n)
-				} else {
-					tgt = sec.origin
-				}
-				tgt += uint32(sym.Value)
 				tgt &= 0xfffffffe
-				tgt -= (sec.origin + offset + 4)
+				tgt -= (secBeingRelocated.origin + offset + 4)
 
 				imm11 := (tgt >> 1) & 0x7ff
 				imm10 := (tgt >> 12) & 0x3ff
@@ -763,7 +531,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				// commit write
-				ef.ByteOrder.PutUint32(sec.data[offset:], opcode)
+				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], opcode)
 
 				// log relocated opcode depending on relocation type
 				name := sym.Name
@@ -772,9 +540,9 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				if elf.R_ARM(relType) == elf.R_ARM_THM_PC22 {
-					logger.Logf(logger.Allow, "ELF", "THM_PC22 %s (%08x) => opcode %08x", name, sec.origin+offset, opcode)
+					logger.Logf(logger.Allow, "ELF", "THM_PC22 %s (%08x) => opcode %08x", name, secBeingRelocated.origin+offset, opcode)
 				} else {
-					logger.Logf(logger.Allow, "ELF", "THM_JUMP24 %s (%08x) no veneer => opcode %08x", name, sec.origin+offset, opcode)
+					logger.Logf(logger.Allow, "ELF", "THM_JUMP24 %s (%08x) no veneer => opcode %08x", name, secBeingRelocated.origin+offset, opcode)
 				}
 
 			case elf.R_ARM_REL32:
@@ -784,12 +552,13 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				n := ef.Sections[sym.Section].Name
-				if sec, ok := mem.sectionsByName[n]; !ok {
+				sec, ok := mem.sectionsByName[n]
+				if !ok {
 					return fmt.Errorf("can not find section (%s) while relocating %s", n, sym.Name)
-				} else {
-					tgt = sec.origin
-					tgt += uint32(sym.Value)
 				}
+
+				tgt := sec.origin
+				tgt += uint32(sym.Value)
 
 				// check address is recognised
 				if mappedData, _ := mem.mapAddress(tgt, false); mappedData == nil {
@@ -797,12 +566,12 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				// commit write
-				ef.ByteOrder.PutUint32(sec.data[offset:], tgt)
-				if d, err := ef.Section(sec.name).Data(); err == nil {
+				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], tgt)
+				if d, err := ef.Section(secBeingRelocated.name).Data(); err == nil {
 					ef.ByteOrder.PutUint32(d[offset:], tgt)
 				}
 
-				logger.Logf(mem.env, "ELF", "REL32 %s (%08x) => %08x", sym.Name, sec.origin+offset, tgt)
+				logger.Logf(mem.env, "ELF", "REL32 %s (%08x) => %08x", sym.Name, secBeingRelocated.origin+offset, tgt)
 
 			case elf.R_ARM_PREL31:
 				if sym.Section&0xff00 == elf.SHN_UNDEF {
@@ -810,6 +579,69 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 					continue
 				}
 				return fmt.Errorf("ELF: PREL31 not fully supported")
+
+			case elf.R_ARM_THM_MOVW_ABS_NC, elf.R_ARM_THM_MOVT_ABS:
+				if sym.Section == elf.SHN_UNDEF {
+					logger.Logf(logger.Allow, "ELF", "THM_MOVW/MOVT symbol is undefined")
+					continue
+				}
+
+				n := ef.Sections[sym.Section].Name
+				sec, ok := mem.sectionsByName[n]
+				if !ok {
+					return fmt.Errorf("cannot find section (%s) while relocating %s", n, sym.Name)
+				}
+
+				tgt := sec.origin
+				tgt += uint32(sym.Value)
+				tgt &= 0xfffffffe
+
+				// "4.6.1.6 Static Thumb32 relocations"
+				// of "ELF for the ARM Architecture, 24th November 2015"
+				switch elf.R_ARM(relType) {
+				case elf.R_ARM_THM_MOVW_ABS_NC:
+					tgt &= 0x0000ffff
+				case elf.R_ARM_THM_MOVT_ABS:
+					tgt >>= 16
+				}
+
+				// extract fields. opposite of this (from thumb2_32bit.go)
+				// 		imm16 := uint16((imm4 << 12) | (i << 11) | (imm3 << 8) | imm8)
+				imm4 := (tgt >> 12) & 0x000f
+				i := (tgt >> 11) & 0x0001
+				imm3 := (tgt >> 8) & 0x0007
+				imm8 := tgt & 0x00ff
+
+				// opcode to be transformed
+				op := ef.ByteOrder.Uint32(secBeingRelocated.data[offset:])
+				op = (op << 16) | (op >> 16)
+
+				// clear bits
+				op &= 0b11111011111100001000111100000000
+
+				// set bits
+				switch elf.R_ARM(relType) {
+				case elf.R_ARM_THM_MOVT_ABS:
+					op |= (imm4 << 16)
+					op |= (i << 26)
+					op |= (imm3 << 12)
+					op |= imm8
+				case elf.R_ARM_THM_MOVW_ABS_NC:
+					op |= (imm4 << 16)
+					op |= (i << 26)
+					op |= (imm3 << 12)
+					op |= imm8
+				}
+
+				// commit write
+				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], (op<<16)|(op>>16))
+
+				switch elf.R_ARM(relType) {
+				case elf.R_ARM_THM_MOVW_ABS_NC:
+					logger.Logf(logger.Allow, "ELF", "THM_MOVW_ABS_NC %s (%08x) => %08x", sym.Name, secBeingRelocated.origin+offset, tgt)
+				case elf.R_ARM_THM_MOVT_ABS:
+					logger.Logf(logger.Allow, "ELF", "THM_MOVT_ABS %s (%08x) => %08x", sym.Name, secBeingRelocated.origin+offset, tgt)
+				}
 
 			default:
 				return fmt.Errorf("ELF: unhandled ARM relocation type (%v)", relType)
