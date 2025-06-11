@@ -2141,17 +2141,17 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 		op := (arm.state.instruction32bitOpcodeHi & 0x0080) >> 7
 		op2 := (arm.state.instruction32bitOpcodeHi & 0x0030) >> 4
 
-		i := (arm.state.instruction32bitOpcodeHi & 0x0400) >> 10
-		imm4 := arm.state.instruction32bitOpcodeHi & 0x000f
-		imm3 := (opcode & 0x7000) >> 12
-		Rd := (opcode & 0x0f00) >> 8
-		imm8 := opcode & 0x00ff
-
-		imm32 := uint32((imm4 << 12) | (i << 11) | (imm3 << 8) | imm8)
-
 		if op == 0b0 && op2 == 0b00 {
 			// "4.6.76 MOV (immediate)" of "Thumb-2 Supplement"
 			// T3 encoding
+
+			i := (arm.state.instruction32bitOpcodeHi & 0x0400) >> 10
+			imm4 := arm.state.instruction32bitOpcodeHi & 0x000f
+			imm3 := (opcode & 0x7000) >> 12
+			Rd := (opcode & 0x0f00) >> 8
+			imm8 := opcode & 0x00ff
+			imm32 := uint32((imm4 << 12) | (i << 11) | (imm3 << 8) | imm8)
+
 			return func() *DisasmEntry {
 				if arm.decodeOnly {
 					return &DisasmEntry{
@@ -2165,7 +2165,29 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 				return nil
 			}
 		} else if op == 0b1 && op2 == 0b00 {
-			panic("unimplemented MOVT")
+			// "4.6.79 MOVT" of "Thumb-2 Supplement"
+
+			i := (arm.state.instruction32bitOpcodeHi & 0x0400) >> 10
+			imm4 := arm.state.instruction32bitOpcodeHi & 0x000f
+			imm3 := (opcode & 0x7000) >> 12
+			Rd := (opcode & 0x0f00) >> 8
+			imm8 := opcode & 0x00ff
+			imm16 := (imm4 << 12) | (i << 11) | (imm3 << 8) | imm8
+
+			return func() *DisasmEntry {
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "MOVT",
+						Operand:  fmt.Sprintf("R%d, #$%04x", Rd, imm16),
+					}
+				}
+				v := arm.state.registers[Rd]
+				v &= 0x0000ffff
+				v |= uint32(imm16) << 16
+				arm.state.registers[Rd] = v
+				return nil
+			}
 		} else {
 			panic(fmt.Sprintf("unimplemented 'data processing instructions with plain 16bit immediate (%01b) (%02b)'", op, op2))
 		}
