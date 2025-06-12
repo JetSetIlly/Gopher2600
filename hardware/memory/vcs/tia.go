@@ -154,7 +154,7 @@ func (mem *TIAMemory) Snapshot() *TIAMemory {
 // Reset contents of TIAMemory
 func (mem *TIAMemory) Reset() {
 	for i := range mem.memory {
-		mem.Poke(uint16(i+int(mem.origin)), 0)
+		mem.memory[i] = 0
 	}
 }
 

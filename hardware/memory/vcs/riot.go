@@ -83,7 +83,7 @@ func (mem *RIOTMemory) Snapshot() *RIOTMemory {
 // Reset contents of RIOTMemory
 func (mem *RIOTMemory) Reset() {
 	for i := range mem.memory {
-		mem.Poke(uint16(i+int(mem.origin)), 0)
+		mem.memory[i] = 0
 	}
 }
 
