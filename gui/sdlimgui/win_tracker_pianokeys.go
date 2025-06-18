@@ -29,7 +29,7 @@ func hasBlack(key int) bool {
 // drawlist calls to create the piano keys taken from https://github.com/shric/midi/blob/master/src/Piano.cpp
 // licenced under the MIT licence
 func (win *winTracker) drawPianoKeys(history *tracker.History) float32 {
-	keyWidth := imgui.WindowContentRegionWidth() / float32(numPianoKeys)
+	keyWidth := imgui.ContentRegionAvail().X / float32(numPianoKeys)
 	whiteKeyLength := keyWidth * 6.0
 	blackKeyLength := whiteKeyLength * 0.6666
 

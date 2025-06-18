@@ -91,6 +91,7 @@ func newWinTimeline(img *SdlImgui) (window, error) {
 	if err != nil {
 		return nil, fmt.Errorf("debugger: %w", err)
 	}
+	win.thmb.SetAlpha(50)
 
 	win.thmbTexture = img.rnd.addTexture(shaderColor, true, true, nil)
 	win.thmbImage = image.NewRGBA(image.Rect(0, 0, 0, 0))
@@ -124,7 +125,7 @@ func (win *winTimeline) debuggerDraw() bool {
 
 			// copy new image so that it is centred in the thumbnail image
 			draw.Copy(win.thmbImage, image.Point{X: 0, Y: 0},
-				newImage, newImage.Bounds(), draw.Over, nil)
+				newImage, newImage.Bounds(), draw.Src, nil)
 
 			// render image
 			win.thmbTexture.render(win.thmbImage)
@@ -313,6 +314,7 @@ func (win *winTimeline) drawTrace() {
 	rootPos := imgui.CursorScreenPos()
 	rootPos.X += iconRadius
 	imgui.SetCursorScreenPos(rootPos)
+	imgui.Dummy(imgui.Vec2{X: iconRadius, Y: iconRadius})
 
 	// the Y position of each trace area
 	yPos := rootPos.Y + gap
@@ -376,12 +378,9 @@ func (win *winTimeline) drawTrace() {
 					pos.X = rootPos.X + iconRadius*2
 				}
 			}
+
 			imgui.SetCursorScreenPos(pos)
-
-			imgui.ImageV(imgui.TextureID(win.thmbTexture.getID()), sz,
-				imgui.Vec2{}, imgui.Vec2{X: 1, Y: 1},
-				win.img.cols.TimelineThumbnailTint, imgui.Vec4{})
-
+			imgui.Image(imgui.TextureID(win.thmbTexture.getID()), sz)
 			imgui.SetCursorScreenPos(rootPos)
 		}
 	}

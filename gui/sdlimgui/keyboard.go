@@ -15,55 +15,50 @@
 
 package sdlimgui
 
-import (
-	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/veandco/go-sdl2/sdl"
-)
-
 func (plt *platform) setKeyMapping() {
-	keys := map[int]int{
-		imgui.KeyTab:        sdl.SCANCODE_TAB,
-		imgui.KeyLeftArrow:  sdl.SCANCODE_LEFT,
-		imgui.KeyRightArrow: sdl.SCANCODE_RIGHT,
-		imgui.KeyUpArrow:    sdl.SCANCODE_UP,
-		imgui.KeyDownArrow:  sdl.SCANCODE_DOWN,
-		imgui.KeyPageUp:     sdl.SCANCODE_PAGEUP,
-		imgui.KeyPageDown:   sdl.SCANCODE_PAGEDOWN,
-		imgui.KeyHome:       sdl.SCANCODE_HOME,
-		imgui.KeyEnd:        sdl.SCANCODE_END,
-		imgui.KeyInsert:     sdl.SCANCODE_INSERT,
-		imgui.KeyDelete:     sdl.SCANCODE_DELETE,
-		imgui.KeyBackspace:  sdl.SCANCODE_BACKSPACE,
-		imgui.KeySpace:      sdl.SCANCODE_BACKSPACE,
-		imgui.KeyEnter:      sdl.SCANCODE_RETURN,
-		imgui.KeyEscape:     sdl.SCANCODE_ESCAPE,
-		imgui.KeyA:          sdl.SCANCODE_A,
-		imgui.KeyC:          sdl.SCANCODE_C,
-		imgui.KeyV:          sdl.SCANCODE_V,
-		imgui.KeyX:          sdl.SCANCODE_X,
-		imgui.KeyY:          sdl.SCANCODE_Y,
-		imgui.KeyZ:          sdl.SCANCODE_Z,
-	}
+	// keys := map[int]int{
+	// 	imgui.KeyTab:        sdl.SCANCODE_TAB,
+	// 	imgui.KeyLeftArrow:  sdl.SCANCODE_LEFT,
+	// 	imgui.KeyRightArrow: sdl.SCANCODE_RIGHT,
+	// 	imgui.KeyUpArrow:    sdl.SCANCODE_UP,
+	// 	imgui.KeyDownArrow:  sdl.SCANCODE_DOWN,
+	// 	imgui.KeyPageUp:     sdl.SCANCODE_PAGEUP,
+	// 	imgui.KeyPageDown:   sdl.SCANCODE_PAGEDOWN,
+	// 	imgui.KeyHome:       sdl.SCANCODE_HOME,
+	// 	imgui.KeyEnd:        sdl.SCANCODE_END,
+	// 	imgui.KeyInsert:     sdl.SCANCODE_INSERT,
+	// 	imgui.KeyDelete:     sdl.SCANCODE_DELETE,
+	// 	imgui.KeyBackspace:  sdl.SCANCODE_BACKSPACE,
+	// 	imgui.KeySpace:      sdl.SCANCODE_BACKSPACE,
+	// 	imgui.KeyEnter:      sdl.SCANCODE_RETURN,
+	// 	imgui.KeyEscape:     sdl.SCANCODE_ESCAPE,
+	// 	imgui.KeyA:          sdl.SCANCODE_A,
+	// 	imgui.KeyC:          sdl.SCANCODE_C,
+	// 	imgui.KeyV:          sdl.SCANCODE_V,
+	// 	imgui.KeyX:          sdl.SCANCODE_X,
+	// 	imgui.KeyY:          sdl.SCANCODE_Y,
+	// 	imgui.KeyZ:          sdl.SCANCODE_Z,
+	// }
 
 	// Keyboard mapping. ImGui will use those indices to peek into the io.KeysDown[] array.
-	for imguiKey, nativeKey := range keys {
-		imgui.CurrentIO().KeyMap(imguiKey, nativeKey)
-	}
+	// for imguiKey, nativeKey := range keys {
+	// 	imgui.CurrentIO().KeyMap(imguiKey, nativeKey)
+	// }
 }
 
 func (img *SdlImgui) updateKeyModifier() {
-	modState := sdl.GetModState()
-	mapModifier := func(lMask sdl.Keymod, lKey int, rMask sdl.Keymod, rKey int) (lResult int, rResult int) {
-		if (modState & lMask) != 0 {
-			lResult = lKey
-		}
-		if (modState & rMask) != 0 {
-			rResult = rKey
-		}
-		return
-	}
-	io := imgui.CurrentIO()
-	io.KeyShift(mapModifier(sdl.KMOD_LSHIFT, sdl.SCANCODE_LSHIFT, sdl.KMOD_RSHIFT, sdl.SCANCODE_RSHIFT))
-	io.KeyCtrl(mapModifier(sdl.KMOD_LCTRL, sdl.SCANCODE_LCTRL, sdl.KMOD_RCTRL, sdl.SCANCODE_RCTRL))
-	io.KeyAlt(mapModifier(sdl.KMOD_LALT, sdl.SCANCODE_LALT, sdl.KMOD_RALT, sdl.SCANCODE_RALT))
+	// modState := sdl.GetModState()
+	// mapModifier := func(lMask sdl.Keymod, lKey int, rMask sdl.Keymod, rKey int) (lResult int, rResult int) {
+	// 	if (modState & lMask) != 0 {
+	// 		lResult = lKey
+	// 	}
+	// 	if (modState & rMask) != 0 {
+	// 		rResult = rKey
+	// 	}
+	// 	return
+	// }
+	// io := imgui.CurrentIO()
+	// io.KeyShift(mapModifier(sdl.KMOD_LSHIFT, sdl.SCANCODE_LSHIFT, sdl.KMOD_RSHIFT, sdl.SCANCODE_RSHIFT))
+	// io.KeyCtrl(mapModifier(sdl.KMOD_LCTRL, sdl.SCANCODE_LCTRL, sdl.KMOD_RCTRL, sdl.SCANCODE_RCTRL))
+	// io.KeyAlt(mapModifier(sdl.KMOD_LALT, sdl.SCANCODE_LALT, sdl.KMOD_RALT, sdl.SCANCODE_RALT))
 }

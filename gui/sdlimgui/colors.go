@@ -157,19 +157,18 @@ type imguiColors struct {
 	PianoKeysBorder     imgui.Vec4
 
 	// timeline plot
-	TimelineHoverCursor   imgui.Vec4
-	TimelineMarkers       imgui.Vec4
-	TimelineScanlines     imgui.Vec4
-	TimelineVSYNC         imgui.Vec4
-	TimelineWSYNC         imgui.Vec4
-	TimelineCoProc        imgui.Vec4
-	TimelineRewindRange   imgui.Vec4
-	TimelineCurrent       imgui.Vec4
-	TimelineComparison    imgui.Vec4
-	TimelineLeftPlayer    imgui.Vec4
-	TimelineThumbnailTint imgui.Vec4
-	TimelineGuides        imgui.Vec4
-	TimelineGuidesLabel   imgui.Vec4
+	TimelineHoverCursor imgui.Vec4
+	TimelineMarkers     imgui.Vec4
+	TimelineScanlines   imgui.Vec4
+	TimelineVSYNC       imgui.Vec4
+	TimelineWSYNC       imgui.Vec4
+	TimelineCoProc      imgui.Vec4
+	TimelineRewindRange imgui.Vec4
+	TimelineCurrent     imgui.Vec4
+	TimelineComparison  imgui.Vec4
+	TimelineLeftPlayer  imgui.Vec4
+	TimelineGuides      imgui.Vec4
+	TimelineGuidesLabel imgui.Vec4
 
 	// tia window
 	TIApointer imgui.Vec4
@@ -373,13 +372,12 @@ func newColors() *imguiColors {
 		TimelineScanlines:   imgui.Vec4{X: 0.79, Y: 0.04, Z: 0.04, W: 1.0},
 		TimelineVSYNC:       imgui.Vec4{X: 0.79, Y: 0.79, Z: 0.79, W: 1.0},
 		// deferred TimelineWSYNC and TimelineCoProc
-		TimelineRewindRange:   imgui.Vec4{X: 0.79, Y: 0.38, Z: 0.04, W: 1.0},
-		TimelineCurrent:       imgui.Vec4{X: 0.79, Y: 0.38, Z: 0.04, W: 1.0}, // same as TimelineRewindRange
-		TimelineComparison:    imgui.Vec4{X: 0.30, Y: 0.20, Z: 0.50, W: 1.0}, // same as ValueDiff
-		TimelineLeftPlayer:    imgui.Vec4{X: 0.38, Y: 0.79, Z: 0.04, W: 1.0}, // same as TimelineRewindRange
-		TimelineThumbnailTint: imgui.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 0.2},
-		TimelineGuides:        imgui.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 0.01},
-		TimelineGuidesLabel:   imgui.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 0.1},
+		TimelineRewindRange: imgui.Vec4{X: 0.79, Y: 0.38, Z: 0.04, W: 1.0},
+		TimelineCurrent:     imgui.Vec4{X: 0.79, Y: 0.38, Z: 0.04, W: 1.0}, // same as TimelineRewindRange
+		TimelineComparison:  imgui.Vec4{X: 0.30, Y: 0.20, Z: 0.50, W: 1.0}, // same as ValueDiff
+		TimelineLeftPlayer:  imgui.Vec4{X: 0.38, Y: 0.79, Z: 0.04, W: 1.0}, // same as TimelineRewindRange
+		TimelineGuides:      imgui.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 0.01},
+		TimelineGuidesLabel: imgui.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 0.1},
 
 		// tia
 		TIApointer: imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0},

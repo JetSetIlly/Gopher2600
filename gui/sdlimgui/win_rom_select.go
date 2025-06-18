@@ -369,7 +369,11 @@ func (win *winSelectROM) draw() {
 		previewResults := win.thmb.UpdateResults()
 
 		imgui.SetNextItemOpen(win.informationOpen, imgui.ConditionAlways)
-		if !imgui.CollapsingHeaderV(win.selectedName, imgui.TreeNodeFlagsNone) {
+		selectedName := win.selectedName
+		if len(selectedName) == 0 {
+			selectedName = "No ROM Selected"
+		}
+		if !imgui.CollapsingHeaderV(selectedName, imgui.TreeNodeFlagsNone) {
 			win.informationOpen = false
 		} else {
 			win.informationOpen = true

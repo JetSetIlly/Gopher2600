@@ -627,7 +627,7 @@ func (win *winCoProcSource) drawSource(src *dwarf.Source, bp breakpoints.Breakpo
 			// scroll to correct line
 			if win.updateSelectedFile {
 				s, _ := win.selection.limits()
-				imgui.SetScrollY(clipper.ItemsHeight * float32(s-10))
+				imgui.SetScrollY(float32(clipper.ItemsHeight * (s - 10)))
 			}
 		}
 

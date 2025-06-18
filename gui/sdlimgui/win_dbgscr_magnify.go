@@ -138,7 +138,7 @@ func (mag *dbgScrMagnifyWindow) draw(cols *imguiColors) {
 		imgui.PushStyleColor(imgui.StyleColorButtonActive, cols.Transparent)
 		imgui.PushStyleColor(imgui.StyleColorButtonHovered, cols.Transparent)
 		imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{X: 0.0, Y: 0.0})
-		imgui.ImageButton(imgui.TextureID(mag.texture.getID()), sz)
+		imgui.ImageButton("magnify", imgui.TextureID(mag.texture.getID()), sz)
 
 		if imgui.IsItemHovered() || mag.isDragging {
 			// adjust zoom with mouse wheel

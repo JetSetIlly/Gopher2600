@@ -45,6 +45,9 @@ type Image struct {
 	img     *image.RGBA
 	cropImg *image.RGBA
 
+	// the alpha value to use in the image
+	alpha uint8
+
 	isEmulating        atomic.Value
 	emulationQuit      chan bool
 	emulationCompleted chan bool
@@ -57,6 +60,7 @@ var imageLabel = environment.Label("image")
 // NewImage is the preferred method of initialisation for the Image type
 func NewImage(prefs *preferences.Preferences, spec string) (*Image, error) {
 	thmb := &Image{
+		alpha:              255,
 		emulationQuit:      make(chan bool, 1),
 		emulationCompleted: make(chan bool, 1),
 		Render:             make(chan *image.RGBA, 1),
@@ -86,6 +90,13 @@ func NewImage(prefs *preferences.Preferences, spec string) (*Image, error) {
 	thmb.Reset()
 
 	return thmb, nil
+}
+
+// SetAlpha changes the value of the alpha channel for every pixel in the
+// thumbnail image. Calls Reset() to recreate the image.
+func (thmb *Image) SetAlpha(alpha uint8) {
+	thmb.alpha = alpha
+	thmb.Reset()
 }
 
 func (thmb *Image) String() string {
@@ -239,7 +250,7 @@ func (thmb *Image) Reset() {
 	// alpha channel never changes)
 	for y := 0; y < thmb.img.Bounds().Size().Y; y++ {
 		for x := 0; x < thmb.img.Bounds().Size().X; x++ {
-			thmb.img.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+			thmb.img.SetRGBA(x, y, color.RGBA{0, 0, 0, thmb.alpha})
 		}
 	}
 

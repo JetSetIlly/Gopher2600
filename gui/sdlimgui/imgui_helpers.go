@@ -479,6 +479,7 @@ func (img *SdlImgui) imguiTVColourSwatch(col uint8, size float32) (clicked bool)
 	p.X += 2 * r
 	p.Y -= l
 	imgui.SetCursorScreenPos(p)
+	imgui.Dummy(imgui.Vec2{2 * r, l})
 
 	return clicked
 }

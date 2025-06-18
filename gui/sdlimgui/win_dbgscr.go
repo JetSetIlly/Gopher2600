@@ -200,9 +200,9 @@ func (win *winDbgScr) draw() {
 	imgui.PushStyleColor(imgui.StyleColorDragDropTarget, win.img.cols.Transparent)
 
 	if win.elements {
-		imgui.ImageButton(imgui.TextureID(win.elementsTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
+		imgui.ImageButton("elements", imgui.TextureID(win.elementsTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
 	} else {
-		imgui.ImageButton(imgui.TextureID(win.displayTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
+		imgui.ImageButton("display", imgui.TextureID(win.displayTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
 	}
 
 	win.mouseHover = imgui.IsItemHovered()
@@ -214,7 +214,7 @@ func (win *winDbgScr) draw() {
 
 	// overlay texture on top of screen texture
 	imgui.SetCursorScreenPos(win.screenOrigin)
-	imgui.ImageButton(imgui.TextureID(win.overlayTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
+	imgui.ImageButton("overlay", imgui.TextureID(win.overlayTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
 
 	// popup menu on right mouse button
 	//

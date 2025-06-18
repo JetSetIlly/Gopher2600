@@ -175,7 +175,7 @@ func (win *winBot) drawMouseLayer() {
 	imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
-	imgui.ImageButton(imgui.TextureID(win.mouseTexture.getID()), imgui.Vec2{X: botImageWidth, Y: botImageHeight})
+	imgui.ImageButton("bot_mouse_layer", imgui.TextureID(win.mouseTexture.getID()), imgui.Vec2{X: botImageWidth, Y: botImageHeight})
 	imgui.PopStyleColorV(3)
 
 	if imgui.IsWindowFocused() && imgui.IsItemHovered() {

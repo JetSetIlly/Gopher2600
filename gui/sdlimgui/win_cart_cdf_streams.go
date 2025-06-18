@@ -219,7 +219,7 @@ func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
 
 			// Have to use ImageButton() rather than Image() because we want to use
 			// drag and drop
-			imgui.ImageButton(imgui.TextureID(win.streamTextures[i].getID()), imgui.Vec2{
+			imgui.ImageButton(fmt.Sprintf("dnd_%d", i), imgui.TextureID(win.streamTextures[i].getID()), imgui.Vec2{
 				X: float32(win.pixelsSize.X) * (scaling + 1),
 				Y: float32(win.pixelsSize.Y) * scaling,
 			})

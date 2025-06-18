@@ -551,7 +551,7 @@ func (ovly *playscrOverlay) drawTopRight() {
 		return
 	}
 
-	pos := imgui.WindowContentRegionMax()
+	pos := imgui.ContentRegionAvail()
 	pos.X -= ovly.img.fonts.gopher2600IconsSize + overlayPadding
 	pos.Y = 0
 	if secondaryIcon != "" {
@@ -589,7 +589,7 @@ func (ovly *playscrOverlay) drawBottomLeft() {
 		return
 	}
 
-	pos := imgui.WindowContentRegionMax()
+	pos := imgui.ContentRegionAvail()
 	pos.X = overlayPadding
 	pos.Y -= ovly.img.fonts.gopher2600IconsSize + overlayPadding
 
@@ -606,7 +606,7 @@ func (ovly *playscrOverlay) drawBottomRight() {
 		return
 	}
 
-	pos := imgui.WindowContentRegionMax()
+	pos := imgui.ContentRegionAvail()
 	pos.X -= ovly.img.fonts.gopher2600IconsSize + overlayPadding
 	pos.Y -= ovly.img.fonts.gopher2600IconsSize + overlayPadding
 
