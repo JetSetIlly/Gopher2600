@@ -19,49 +19,49 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 )
 
-// T1 implements a simple timer as used in the LCP2000.
+// T1 implements a simple timer as used in the LPC2000.
 //
 // An example of a game that uses T1 is Draconian. It uses it to test what spec
 // the console is (NTSC, PAL, etc.)
+//
+// Another good example is Andrew Davie's ARM powered Boulderdash. it also uses
+// the timer to test for the console spec; and also to time the wipe that starts
+// and ends the level. character movemement is also affected by the timer
 type T1 struct {
-	mmap    architecture.Map
-	cycles  cycles
+	mmap architecture.Map
+
+	// storing the counter register as a float because it makes cycle counting
+	// easier.  the value is truncated to a uint32 only when the T1TC register is read
+	counter float32
+
+	// the enabled and reset fields reflect the corresponding bits in the control register
+	control uint32
 	enabled bool
 	reset   bool
-	control uint32
-	counter uint32
 }
 
 func NewT1(mmap architecture.Map) *T1 {
 	return &T1{
 		mmap: mmap,
-		cycles: cycles{
-			clkDiv: mmap.ClkDiv,
-		},
 	}
 }
 
 // Reset implementes the Timer interface
 func (t *T1) Reset() {
-	t.cycles.reset()
+	t.counter = 0
 }
 
 // Step implementes the Timer interface
 func (t *T1) Step(cycles float32) {
 	if t.reset {
-		t.cycles.reset()
+		// not setting reset flag to false because, "The counters remain reset until TCR[1] is
+		// returned to zero" from "5.2 Timer Control Register" in "UM10161", page 197
+		t.Reset()
 	}
 	if !t.enabled {
 		return
 	}
-	if t.cycles.step(cycles) {
-		t.counter += t.cycles.resolve()
-	}
-}
-
-// Resolve implementes the Timer interface
-func (t *T1) Resolve() {
-	t.counter += t.cycles.resolve()
+	t.counter += cycles
 }
 
 // Read implementes the Timer interface
@@ -70,11 +70,10 @@ func (t *T1) Read(addr uint32) (uint32, bool) {
 
 	switch addr {
 	case t.mmap.T1TCR:
-		// reserved bits could be randomised
+		// TODO: reserved bits could be randomised
 		val = t.control
 	case t.mmap.T1TC:
-		t.Resolve()
-		val = t.counter
+		val = uint32(t.counter / t.mmap.ClkDiv)
 	default:
 		return 0, false
 	}
@@ -91,7 +90,7 @@ func (t *T1) Write(addr uint32, val uint32) bool {
 		t.enabled = val&0x01 == 0x01
 		t.reset = val&0x02 == 0x02
 	case t.mmap.T1TC:
-		t.counter = val
+		t.counter = float32(val)
 	default:
 		return false
 	}

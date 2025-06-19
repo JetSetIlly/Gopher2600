@@ -148,6 +148,7 @@ func NewElf(env *environment.Environment, loader cartridgeloader.Loader, inACE b
 
 	cart.mem = newElfMemory(cart.env)
 	cart.arm = arm.NewARM(cart.env, cart.mem.model, cart.mem, cart)
+	cart.arm.CycleDuringImmediateMode(true)
 	cart.mem.Plumb(cart.env, cart.arm)
 	err = cart.mem.decode(ef)
 	if err != nil {

@@ -16,6 +16,8 @@
 package timer
 
 import (
+	"math"
+
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 )
 
@@ -113,12 +115,11 @@ func (t *TIM2) setControlRegister(val uint32) {
 // Step implementes the Timer interface
 func (t *TIM2) Step(cycles float32) {
 	if t.cycles.step(cycles) {
-		t.Resolve()
+		t.resolve()
 	}
 }
 
-// Resolve implementes the Timer interface
-func (t *TIM2) Resolve() {
+func (t *TIM2) resolve() {
 	// nothing to do if TIM2 is not enabled
 	if !t.enable {
 		// just reset the cycles counter
@@ -209,7 +210,7 @@ func (t *TIM2) Read(addr uint32) (uint32, bool) {
 		val = t.control
 	case t.mmap.TIM2CNT:
 		// TIMx Counter
-		t.Resolve()
+		t.resolve()
 		val = t.counter
 	default:
 		return 0, false
@@ -262,4 +263,43 @@ func (t *TIM2) Write(addr uint32, val uint32) bool {
 	}
 
 	return true
+}
+
+// cycles is used by TIM2 to count cycles before advancing the counter field
+type cycles struct {
+	// number of accumulated cycles since the last reset() or resolve(). in the
+	// case of resolve there may be a fractional amount of cycles remaining
+	accumulation float32
+
+	// number of calls to step
+	stepCount int
+
+	// timer devices use the peripheral clock (PCLK) rather than the clock of
+	// the processor (CCLK) directly. the ClkDiv value scales the incoming
+	// number cycles. we delay this to when we resolve() the timer
+	clkDiv float32
+}
+
+func (t *cycles) reset() {
+	t.accumulation = 0
+}
+
+func (t *cycles) step(cycles float32) bool {
+	// number of calls to step before the timer must be resolved
+	const resolveOnStepCount = 10000
+
+	t.accumulation += cycles
+	t.stepCount++
+	if t.stepCount >= resolveOnStepCount {
+		t.stepCount = 0
+		return true
+	}
+	return false
+}
+
+func (t *cycles) resolve() uint32 {
+	t.accumulation /= t.clkDiv
+	i, f := math.Modf(float64(t.accumulation))
+	t.accumulation = float32(f)
+	return uint32(i)
 }

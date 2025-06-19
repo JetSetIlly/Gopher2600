@@ -61,6 +61,7 @@ func NewAce(env *environment.Environment, loader cartridgeloader.Loader) (mapper
 	}
 
 	cart.arm = arm.NewARM(cart.env, cart.mem.model, cart.mem, cart)
+	cart.arm.CycleDuringImmediateMode(true)
 	cart.mem.Plumb(cart.arm)
 
 	logger.Logf(env, "ACE", "ccm: %08x to %08x", cart.mem.ccmOrigin, cart.mem.ccmMemtop)
