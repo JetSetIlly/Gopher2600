@@ -335,7 +335,7 @@ func NewARM(env *environment.Environment, mmap architecture.Map, mem SharedMemor
 		state:          &ARMState{},
 	}
 
-	// disassembly printed to stdout
+	// disassembly printed to stderr
 	if disassembleToStderr {
 		arm.disasm = &coprocessor.CartCoProcDisassemblerStderr{}
 	}
@@ -942,7 +942,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 						// executed the Step() function of the attached disassembler
 						arm.disasm.Step(*e)
 
-						// print additional information output for stdout
+						// print additional information output for stderr
 						if _, ok := arm.disasm.(*coprocessor.CartCoProcDisassemblerStderr); ok {
 							fmt.Fprintln(os.Stderr, arm.disasmVerbose(*e))
 						}
