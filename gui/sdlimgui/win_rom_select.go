@@ -418,30 +418,28 @@ func (win *winSelectROM) draw() {
 
 					imgui.TableNextRow()
 					imgui.TableNextColumn()
-					imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-					imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-					imgui.AlignTextToFramePadding()
-					imgui.Text("Television")
-					imgui.TableNextColumn()
-					if previewResults != nil {
-						imgui.SetNextItemWidth(80)
-						if imgui.BeginCombo("##tvspec", previewResults.SpecID) {
-							for _, s := range specification.SpecList {
-								if imgui.Selectable(s) {
+
+					drawDisabled(true, func() {
+						imgui.AlignTextToFramePadding()
+						imgui.Text("Television")
+						imgui.TableNextColumn()
+						if previewResults != nil {
+							imgui.SetNextItemWidth(80)
+							if imgui.BeginCombo("##tvspec", previewResults.SpecID) {
+								for _, s := range specification.SpecList {
+									if imgui.Selectable(s) {
+									}
 								}
+								imgui.EndCombo()
 							}
-							imgui.EndCombo()
+						} else {
+							imgui.Text("-")
 						}
-					} else {
-						imgui.Text("-")
-					}
-					imgui.PopStyleVar()
-					imgui.PopItemFlag()
+					})
 
 					imgui.TableNextRow()
 					imgui.TableNextColumn()
-					imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-					imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+
 					imgui.AlignTextToFramePadding()
 					imgui.Text("Players")
 					imgui.TableNextColumn()
@@ -468,8 +466,6 @@ func (win *winSelectROM) draw() {
 					} else {
 						imgui.Text("-")
 					}
-					imgui.PopStyleVar()
-					imgui.PopItemFlag()
 
 					if win.selectedProperties.Manufacturer != "" {
 						imgui.TableNextRow()

@@ -275,29 +275,15 @@ of the ROM.`)
 		frameQueueLen := int32(win.img.screen.crit.frameQueueLen)
 		win.img.screen.crit.section.Unlock()
 
-		if !fpsCapped {
-			imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-			defer imgui.PopItemFlag()
-			defer imgui.PopStyleVar()
-		}
-
-		if imgui.Checkbox("Automatic Frame Queue Length", &frameQueueAuto) {
-			win.img.prefs.frameQueueLenAuto.Set(frameQueueAuto)
-		}
-
-		imgui.Spacing()
-
-		if frameQueueAuto {
-			imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-			defer imgui.PopItemFlag()
-			defer imgui.PopStyleVar()
-		}
-
-		if imgui.SliderInt("Frame Queue Length", &frameQueueLen, 1, maxFrameQueue) {
-			win.img.prefs.frameQueueLen.Set(frameQueueLen)
-		}
+		drawDisabled(!fpsCapped, func() {
+			if imgui.Checkbox("Automatic Frame Queue Length", &frameQueueAuto) {
+				win.img.prefs.frameQueueLenAuto.Set(frameQueueAuto)
+			}
+			imgui.Spacing()
+			if imgui.SliderInt("Frame Queue Length", &frameQueueLen, 1, maxFrameQueue) {
+				win.img.prefs.frameQueueLen.Set(frameQueueLen)
+			}
+		})
 	}
 }
 
@@ -428,47 +414,30 @@ func (win *winPrefs) drawVCS() {
 			win.img.audio.Prefs.Stereo.Set(stereo)
 		}
 
-		if !stereo {
-			imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-		}
+		drawDisabled(!stereo, func() {
+			imgui.SameLineV(0, 15)
+			discrete := win.img.audio.Prefs.Discrete.Get().(bool)
+			if imgui.Checkbox("Discrete Channels", &discrete) {
+				win.img.audio.Prefs.Discrete.Set(discrete)
+			}
 
-		imgui.SameLineV(0, 15)
-		discrete := win.img.audio.Prefs.Discrete.Get().(bool)
-		if imgui.Checkbox("Discrete Channels", &discrete) {
-			win.img.audio.Prefs.Discrete.Set(discrete)
-		}
+			// seperation values assume that there are three levels of effect
+			// support by sdlaudio
+			separation := int32(win.img.audio.Prefs.Separation.Get().(int))
+			seperationLabel := ""
+			switch separation {
+			case 1:
+				seperationLabel = "Narrow"
+			case 2:
+				seperationLabel = "Wide"
+			case 3:
+				seperationLabel = "Very Wide"
+			}
+			if imgui.SliderIntV("Separation", &separation, 1, 3, seperationLabel, 1.0) {
+				win.img.audio.Prefs.Separation.Set(separation)
+			}
+		})
 
-		if discrete {
-			imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-		}
-
-		// seperation values assume that there are three levels of effect
-		// support by sdlaudio
-		separation := int32(win.img.audio.Prefs.Separation.Get().(int))
-		seperationLabel := ""
-		switch separation {
-		case 1:
-			seperationLabel = "Narrow"
-		case 2:
-			seperationLabel = "Wide"
-		case 3:
-			seperationLabel = "Very Wide"
-		}
-		if imgui.SliderIntV("Separation", &separation, 1, 3, seperationLabel, 1.0) {
-			win.img.audio.Prefs.Separation.Set(separation)
-		}
-
-		if discrete {
-			imgui.PopStyleVar()
-			imgui.PopItemFlag()
-		}
-
-		if !stereo {
-			imgui.PopStyleVar()
-			imgui.PopItemFlag()
-		}
 	}
 
 	imgui.Spacing()
@@ -533,42 +502,38 @@ func (win *winPrefs) drawARMTab() {
 	}
 	win.img.imguiTooltipSimple("ARM program consumes no 6507 time (like Stella)\nIf this option is set the other ARM settings are irrelevant")
 
-	if immediate {
-		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-	}
+	drawDisabled(immediate, func() {
+		imgui.Spacing()
 
-	imgui.Spacing()
-
-	var mamState string
-	switch win.img.dbg.VCS().Env.Prefs.ARM.MAM.Get().(int) {
-	case -1:
-		mamState = "Driver"
-	case 0:
-		mamState = "Disabled"
-	case 1:
-		mamState = "Partial"
-	case 2:
-		mamState = "Full"
-	}
-	imgui.PushItemWidth(imguiGetFrameDim("Disabled").X + imgui.FrameHeight())
-	if imgui.BeginComboV("Default MAM State##mam", mamState, imgui.ComboFlagsNone) {
-		if imgui.Selectable("Driver") {
-			win.img.dbg.VCS().Env.Prefs.ARM.MAM.Set(-1)
+		var mamState string
+		switch win.img.dbg.VCS().Env.Prefs.ARM.MAM.Get().(int) {
+		case -1:
+			mamState = "Driver"
+		case 0:
+			mamState = "Disabled"
+		case 1:
+			mamState = "Partial"
+		case 2:
+			mamState = "Full"
 		}
-		if imgui.Selectable("Disabled") {
-			win.img.dbg.VCS().Env.Prefs.ARM.MAM.Set(0)
+		imgui.PushItemWidth(imguiGetFrameDim("Disabled").X + imgui.FrameHeight())
+		if imgui.BeginComboV("Default MAM State##mam", mamState, imgui.ComboFlagsNone) {
+			if imgui.Selectable("Driver") {
+				win.img.dbg.VCS().Env.Prefs.ARM.MAM.Set(-1)
+			}
+			if imgui.Selectable("Disabled") {
+				win.img.dbg.VCS().Env.Prefs.ARM.MAM.Set(0)
+			}
+			if imgui.Selectable("Partial") {
+				win.img.dbg.VCS().Env.Prefs.ARM.MAM.Set(1)
+			}
+			if imgui.Selectable("Full") {
+				win.img.dbg.VCS().Env.Prefs.ARM.MAM.Set(2)
+			}
+			imgui.EndCombo()
 		}
-		if imgui.Selectable("Partial") {
-			win.img.dbg.VCS().Env.Prefs.ARM.MAM.Set(1)
-		}
-		if imgui.Selectable("Full") {
-			win.img.dbg.VCS().Env.Prefs.ARM.MAM.Set(2)
-		}
-		imgui.EndCombo()
-	}
-	imgui.PopItemWidth()
-	win.img.imguiTooltipSimple(`The MAM state at the start of the Thumb program.
+		imgui.PopItemWidth()
+		win.img.imguiTooltipSimple(`The MAM state at the start of the Thumb program.
 
 For most purposes, this should be set to 'Driver'. This means that the emulated driver
 for the cartridge mapper decides what the value should be.
@@ -578,28 +543,24 @@ prevented from changing the MAM state.
 
 The MAM should almost never be disabled completely.`)
 
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
 
-	clk := float32(win.img.dbg.VCS().Env.Prefs.ARM.Clock.Get().(float64))
-	if imgui.SliderFloatV("Clock Speed", &clk, 50, 300, "%.0f Mhz", imgui.SliderFlagsNone) {
-		win.img.dbg.VCS().Env.Prefs.ARM.Clock.Set(float64(clk))
-	}
+		clk := float32(win.img.dbg.VCS().Env.Prefs.ARM.Clock.Get().(float64))
+		if imgui.SliderFloatV("Clock Speed", &clk, 50, 300, "%.0f Mhz", imgui.SliderFlagsNone) {
+			win.img.dbg.VCS().Env.Prefs.ARM.Clock.Set(float64(clk))
+		}
 
-	imgui.Spacing()
+		imgui.Spacing()
 
-	reg := float32(win.img.dbg.VCS().Env.Prefs.ARM.CycleRegulator.Get().(float64))
-	if imgui.SliderFloatV("Cycle Regulator", &reg, 0.5, 2.0, "%.02f", imgui.SliderFlagsNone) {
-		win.img.dbg.VCS().Env.Prefs.ARM.CycleRegulator.Set(float64(reg))
-	}
-	imguiTooltipSimple(`The cycle regulator is a way of adjusting the amount of
+		reg := float32(win.img.dbg.VCS().Env.Prefs.ARM.CycleRegulator.Get().(float64))
+		if imgui.SliderFloatV("Cycle Regulator", &reg, 0.5, 2.0, "%.02f", imgui.SliderFlagsNone) {
+			win.img.dbg.VCS().Env.Prefs.ARM.CycleRegulator.Set(float64(reg))
+		}
+		imguiTooltipSimple(`The cycle regulator is a way of adjusting the amount of
 time each instruction in the ARM program takes`, true)
-
-	if immediate {
-		imgui.PopStyleVar()
-		imgui.PopItemFlag()
-	}
+	})
 
 	imgui.Spacing()
 	imgui.Separator()

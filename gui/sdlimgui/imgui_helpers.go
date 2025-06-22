@@ -551,9 +551,7 @@ func drawDisabled(disabled bool, f func()) {
 		f()
 		return
 	}
-	imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-	imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+	imgui.BeginDisabled()
 	f()
-	imgui.PopItemFlag()
-	imgui.PopStyleVar()
+	imgui.EndDisabled()
 }

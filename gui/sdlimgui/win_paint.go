@@ -78,12 +78,10 @@ func (win *winPaint) draw() {
 			imgui.EndDragDropSource()
 		}
 
-		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-		imgui.Button(string(fonts.PaintBrush))
-		imgui.Button(string(fonts.Pencil))
-		imgui.PopStyleVar()
-		imgui.PopItemFlag()
+		drawDisabled(true, func() {
+			imgui.Button(string(fonts.PaintBrush))
+			imgui.Button(string(fonts.Pencil))
+		})
 
 		imgui.PopStyleVarV(2)
 		imgui.PopFont()

@@ -104,18 +104,14 @@ func (f *filter) draw(id string) {
 		if f.flags&filterFlagsNoEdit == filterFlagsNoEdit {
 			// function wrapped for the convenience of the defer statement
 			func() {
-				if len(f.text) == 0 {
-					imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-					imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-					defer imgui.PopStyleVar()
-					defer imgui.PopItemFlag()
-				}
-				imgui.AlignTextToFramePadding()
-				filterText := "no filter"
-				if len(f.text) > 0 {
-					filterText = f.text
-				}
-				imgui.Text(fmt.Sprintf("%s%s", filterText, strings.Repeat(" ", 15-len(filterText))))
+				drawDisabled(len(f.text) == 0, func() {
+					imgui.AlignTextToFramePadding()
+					filterText := "no filter"
+					if len(f.text) > 0 {
+						filterText = f.text
+					}
+					imgui.Text(fmt.Sprintf("%s%s", filterText, strings.Repeat(" ", 15-len(filterText))))
+				})
 			}()
 		} else {
 			imgui.PushItemWidth(10 * imgui.FontSize())

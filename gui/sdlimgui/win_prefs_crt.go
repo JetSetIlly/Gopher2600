@@ -25,65 +25,61 @@ func (win *winPrefs) drawCRT() {
 	imgui.PushItemWidth(-1)
 	pixPerf := win.drawPixelPerfect()
 	imgui.PopItemWidth()
-	if pixPerf {
-		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-		defer imgui.PopStyleVar()
-		defer imgui.PopItemFlag()
-	}
 
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+	drawDisabled(pixPerf, func() {
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
 
-	if imgui.BeginTableV("crtprefs", 3, imgui.TableFlagsBordersInnerV, imgui.Vec2{}, 1.0) {
-		imgui.TableSetupColumnV("0", imgui.TableColumnFlagsWidthFixed, 250, 0)
-		imgui.TableSetupColumnV("1", imgui.TableColumnFlagsWidthFixed, 200, 1)
-		imgui.TableSetupColumnV("2", imgui.TableColumnFlagsWidthFixed, 200, 2)
+		if imgui.BeginTableV("crtprefs", 3, imgui.TableFlagsBordersInnerV, imgui.Vec2{}, 1.0) {
+			imgui.TableSetupColumnV("0", imgui.TableColumnFlagsWidthFixed, 250, 0)
+			imgui.TableSetupColumnV("1", imgui.TableColumnFlagsWidthFixed, 200, 1)
+			imgui.TableSetupColumnV("2", imgui.TableColumnFlagsWidthFixed, 200, 2)
 
-		imgui.TableNextRow()
+			imgui.TableNextRow()
 
-		imgui.TableNextColumn()
-		imgui.PushItemWidth(-1)
+			imgui.TableNextColumn()
+			imgui.PushItemWidth(-1)
 
-		usingBevel := win.drawUsingBevel()
-		imgui.Spacing()
-		win.drawEnvironment(usingBevel)
-		imgui.Spacing()
-		win.drawCurve(usingBevel)
-		imgui.Spacing()
-		win.drawRoundedCorners(usingBevel)
+			usingBevel := win.drawUsingBevel()
+			imgui.Spacing()
+			drawDisabled(!usingBevel, win.drawEnvironment)
+			imgui.Spacing()
+			drawDisabled(!usingBevel, win.drawCurve)
+			imgui.Spacing()
+			drawDisabled(!usingBevel, win.drawRoundedCorners)
 
-		imgui.PopItemWidth()
-		imgui.Spacing()
-		imgui.TableNextColumn()
-		imgui.PushItemWidth(-1)
+			imgui.PopItemWidth()
+			imgui.Spacing()
+			imgui.TableNextColumn()
+			imgui.PushItemWidth(-1)
 
-		win.drawInterference()
-		imgui.Spacing()
-		win.drawPhosphor()
-		imgui.Spacing()
-		win.drawMask()
-		imgui.Spacing()
-		win.drawScanlines()
+			win.drawInterference()
+			imgui.Spacing()
+			win.drawPhosphor()
+			imgui.Spacing()
+			win.drawMask()
+			imgui.Spacing()
+			win.drawScanlines()
 
-		imgui.PopItemWidth()
-		imgui.Spacing()
-		imgui.TableNextColumn()
-		imgui.PushItemWidth(-1)
+			imgui.PopItemWidth()
+			imgui.Spacing()
+			imgui.TableNextColumn()
+			imgui.PushItemWidth(-1)
 
-		win.drawSharpness()
-		imgui.Spacing()
-		win.drawChromaticAberration()
-		imgui.Spacing()
-		win.drawBlackLevel()
-		imgui.Spacing()
-		win.drawShine()
+			win.drawSharpness()
+			imgui.Spacing()
+			win.drawChromaticAberration()
+			imgui.Spacing()
+			win.drawBlackLevel()
+			imgui.Spacing()
+			win.drawShine()
 
-		imgui.PopItemWidth()
-		imgui.Spacing()
-		imgui.EndTable()
-	}
+			imgui.PopItemWidth()
+			imgui.Spacing()
+			imgui.EndTable()
+		}
+	})
 }
 
 func (win *winPrefs) drawUsingBevel() bool {
@@ -101,14 +97,7 @@ func (win *winPrefs) drawUsingBevel() bool {
 	return bvl
 }
 
-func (win *winPrefs) drawCurve(usingBevel bool) {
-	if usingBevel {
-		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-		defer imgui.PopStyleVar()
-		defer imgui.PopItemFlag()
-	}
-
+func (win *winPrefs) drawCurve() {
 	b := win.img.crt.curve.Get().(bool)
 	if imgui.Checkbox("Curve##curve", &b) {
 		win.img.crt.curve.Set(b)
@@ -131,14 +120,7 @@ func (win *winPrefs) drawCurve(usingBevel bool) {
 	}
 }
 
-func (win *winPrefs) drawEnvironment(usingBevel bool) {
-	if !usingBevel {
-		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-		defer imgui.PopStyleVar()
-		defer imgui.PopItemFlag()
-	}
-
+func (win *winPrefs) drawEnvironment() {
 	b := win.img.crt.ambientTint.Get().(bool)
 	if imgui.Checkbox("Blue Ambient Light##blueambientlight", &b) {
 		win.img.crt.ambientTint.Set(b)
@@ -347,14 +329,7 @@ func (win *winPrefs) drawBlackLevel() {
 	}
 }
 
-func (win *winPrefs) drawRoundedCorners(usingBevel bool) {
-	if usingBevel {
-		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-		defer imgui.PopStyleVar()
-		defer imgui.PopItemFlag()
-	}
-
+func (win *winPrefs) drawRoundedCorners() {
 	b := win.img.crt.roundedCorners.Get().(bool)
 	if imgui.Checkbox("Rounded Corners##roundedcorners", &b) {
 		win.img.crt.roundedCorners.Set(b)
@@ -392,37 +367,32 @@ func (win *winPrefs) drawPixelPerfect() bool {
 		win.img.crt.pixelPerfect.Set(b)
 	}
 
-	if !win.img.crt.pixelPerfect.Get().(bool) {
-		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-		defer imgui.PopStyleVar()
-		defer imgui.PopItemFlag()
-	}
+	drawDisabled(!win.img.crt.pixelPerfect.Get().(bool), func() {
+		imgui.SameLineV(0, 25)
 
-	imgui.SameLineV(0, 25)
+		f := float32(win.img.crt.pixelPerfectFade.Get().(float64))
 
-	f := float32(win.img.crt.pixelPerfectFade.Get().(float64))
+		var label string
+		if f > 0.6 {
+			label = "extreme fade"
+		} else if f >= 0.4 {
+			label = "high fade"
+		} else if f > 0.2 {
+			label = "tiny fade"
+		} else if f == 0.0 {
+			label = "no fade"
+		}
 
-	var label string
-	if f > 0.6 {
-		label = "extreme fade"
-	} else if f >= 0.4 {
-		label = "high fade"
-	} else if f > 0.2 {
-		label = "tiny fade"
-	} else if f == 0.0 {
-		label = "no fade"
-	}
+		imgui.PushItemWidth(imguiRemainingWinWidth() * 0.75)
+		if imgui.SliderFloatV("##pixelperfectfade", &f, 0.0, 0.8, label, 1.0) {
+			win.img.crt.pixelPerfectFade.Set(f)
+		}
+		imgui.PopItemWidth()
 
-	imgui.PushItemWidth(imguiRemainingWinWidth() * 0.75)
-	if imgui.SliderFloatV("##pixelperfectfade", &f, 0.0, 0.8, label, 1.0) {
-		win.img.crt.pixelPerfectFade.Set(f)
-	}
-	imgui.PopItemWidth()
-
-	win.img.imguiTooltipSimple(`The fade slider controls how quickly pixels fade to
+		win.img.imguiTooltipSimple(`The fade slider controls how quickly pixels fade to
 black. It is similar to the phosphor option that is
 available when 'Pixel Perfect' mode is disabled.`)
+	})
 
 	return b
 }

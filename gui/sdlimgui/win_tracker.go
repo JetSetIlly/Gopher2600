@@ -109,34 +109,29 @@ func (win *winTracker) debuggerDraw() bool {
 
 func (win *winTracker) drawReplayButton() {
 	s, e := win.selection.limits()
-	if s == -1 || e == -1 || win.img.dbg.State() != govern.Paused {
-		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-		defer imgui.PopItemFlag()
-		defer imgui.PopStyleVar()
-	}
+	drawDisabled(s == -1 || e == -1 || win.img.dbg.State() != govern.Paused, func() {
+		if imgui.Button("Replay") {
+			// unmute audio for the duration of the replay
+			win.img.audio.Mute(false)
 
-	if imgui.Button("Replay") {
-		// unmute audio for the duration of the replay
-		win.img.audio.Mute(false)
+			win.img.dbg.Tracker.Replay(s, e, win.img.audio, func() {
+				w, _ := time.ParseDuration("0.25s")
+				time.Sleep(w)
 
-		win.img.dbg.Tracker.Replay(s, e, win.img.audio, func() {
-			w, _ := time.ParseDuration("0.25s")
-			time.Sleep(w)
+				// which audio mute preference we're using depends on emulation mode
+				var mutePrefs prefs.Bool
+				if win.img.isPlaymode() {
+					mutePrefs = win.img.prefs.audioMutePlaymode
+				} else {
+					mutePrefs = win.img.prefs.audioMuteDebugger
+				}
 
-			// which audio mute preference we're using depends on emulation mode
-			var mutePrefs prefs.Bool
-			if win.img.isPlaymode() {
-				mutePrefs = win.img.prefs.audioMutePlaymode
-			} else {
-				mutePrefs = win.img.prefs.audioMuteDebugger
-			}
-
-			if mutePrefs.Get().(bool) {
-				win.img.audio.Mute(true)
-			}
-		})
-	}
+				if mutePrefs.Get().(bool) {
+					win.img.audio.Mute(true)
+				}
+			})
+		}
+	})
 }
 
 func (win *winTracker) draw() {

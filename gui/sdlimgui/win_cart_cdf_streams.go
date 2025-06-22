@@ -401,17 +401,11 @@ func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
 		imgui.Spacing()
 
 		imguiLabel("Stream length")
-		if win.trackScreen {
-			imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-		}
-		imgui.PushItemWidth(200)
-		imgui.SliderInt("##streamlength", &win.scanlines, 100, specification.AbsoluteMaxScanlines)
-		imgui.PopItemWidth()
-		if win.trackScreen {
-			imgui.PopItemFlag()
-			imgui.PopStyleVar()
-		}
+		drawDisabled(win.trackScreen, func() {
+			imgui.PushItemWidth(200)
+			imgui.SliderInt("##streamlength", &win.scanlines, 100, specification.AbsoluteMaxScanlines)
+			imgui.PopItemWidth()
+		})
 
 		imgui.SameLineV(0, 20)
 		imgui.Checkbox("Track Screen Size", &win.trackScreen)
@@ -425,17 +419,11 @@ func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
 				break
 			}
 		}
-		if !enableClearColours {
-			imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-		}
-		if imgui.Button("Clear Colours") {
-			win.clearColours()
-		}
-		if !enableClearColours {
-			imgui.PopStyleVar()
-			imgui.PopItemFlag()
-		}
+		drawDisabled(!enableClearColours, func() {
+			if imgui.Button("Clear Colours") {
+				win.clearColours()
+			}
+		})
 	})
 }
 
