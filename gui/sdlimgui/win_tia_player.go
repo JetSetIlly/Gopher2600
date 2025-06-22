@@ -76,6 +76,7 @@ func (win *winTIA) drawPlayer(num int) {
 		})
 	}
 
+	imgui.SameLine()
 	imguiLabel("Reflected")
 	ref := player.Reflected
 	if imgui.Checkbox("##reflected", &ref) {

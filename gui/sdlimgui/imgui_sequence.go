@@ -138,6 +138,7 @@ func (seq *drawlistSequence) rectFill(col imgui.PackedColor) (clicked bool) {
 
 	// set cursor position for any non colorSequence widgets
 	imgui.SetCursorScreenPos(imgui.Vec2{X: x + seq.size.X + seq.spacing.X, Y: y})
+	imgui.Dummy(imgui.Vec2{})
 
 	return clicked
 }
@@ -184,4 +185,5 @@ func (seq *drawlistSequence) rectEmpty(col imgui.PackedColor) {
 
 	// set cursor position for any non colorSequence widgets
 	imgui.SetCursorScreenPos(imgui.Vec2{X: x + seq.size.X + seq.spacing.X, Y: y})
+	imgui.Dummy(imgui.Vec2{})
 }

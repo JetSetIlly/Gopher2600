@@ -47,6 +47,8 @@ func (win *winTIA) drawPlayfield() {
 		})
 	}
 
+	imgui.SameLine()
+
 	// background color indicator. when clicked popup palette is requested
 	imguiLabel("Background")
 	bgCol := playfield.BackgroundColor

@@ -149,9 +149,13 @@ func (pal *palette) draw(selection int) int {
 		}
 
 		p := imgui.CursorScreenPos()
-		p.Y += pal.swatchSize + pal.swatchGap
-		p.X -= 8 * (pal.swatchSize + pal.swatchGap)
+		z := imgui.Vec2{
+			X: -8 * (pal.swatchSize + pal.swatchGap),
+			Y: pal.swatchSize + pal.swatchGap,
+		}
+		p = p.Plus(z)
 		imgui.SetCursorScreenPos(p)
+		imgui.Dummy(imgui.Vec2{})
 	}
 
 	if showTooltip {
@@ -180,29 +184,32 @@ func (pal *palette) draw(selection int) int {
 
 func (pal *palette) colRect(idx int, col imgui.PackedColor, selected bool) (hover bool, clicked bool) {
 	// position & dimensions of playfield bit
-	a := imgui.CursorScreenPos()
-	b := a
-	b.X += pal.swatchSize
-	b.Y += pal.swatchSize
+	p := imgui.CursorScreenPos()
+	z := imgui.Vec2{X: pal.swatchSize, Y: pal.swatchSize}
+	b := p.Plus(z)
 
 	// if mouse is clicked in the range of the playfield bit
 	mp := imgui.MousePos()
-	hover = mp.X >= a.X && mp.X <= b.X && mp.Y >= a.Y && mp.Y <= b.Y
+	hover = mp.X >= p.X && mp.X <= b.X && mp.Y >= p.Y && mp.Y <= b.Y
 	clicked = hover && imgui.IsMouseClicked(0)
 
 	dl := imgui.WindowDrawList()
 
 	// show rectangle with color
 	if selected {
-		c := a.Plus(b).Times(0.5)
+		c := p.Plus(b).Times(0.5)
 		dl.AddCircleFilled(c, pal.swatchSize*0.5, col)
 	} else {
-		dl.AddRectFilled(a, b, col)
+		dl.AddRectFilled(p, b, col)
 	}
 
 	// set up cursor for next widget
-	a.X += pal.swatchSize + pal.swatchGap
-	imgui.SetCursorScreenPos(a)
+	z = imgui.Vec2{X: pal.swatchSize + pal.swatchGap}
+	p = imgui.CursorScreenPos().Plus(z)
+	imgui.SetCursorScreenPos(p)
+	b = imgui.CursorScreenPos()
+	imgui.Dummy(imgui.Vec2{})
+	imgui.SetCursorScreenPos(b)
 
 	return hover, clicked
 }

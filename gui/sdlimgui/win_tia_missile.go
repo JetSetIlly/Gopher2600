@@ -73,6 +73,7 @@ func (win *winTIA) drawMissile(num int) {
 		})
 	}
 
+	imgui.SameLine()
 	imguiLabel("Reset-to-Player")
 	r2p := missile.ResetToPlayer
 	if imgui.Checkbox("##resettoplayer", &r2p) {

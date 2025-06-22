@@ -44,6 +44,7 @@ func (win *winTIA) drawBall() {
 		})
 	}
 
+	imgui.SameLine()
 	imguiLabel("Enabled")
 	enb := ball.Enabled
 	if imgui.Checkbox("##enabled", &enb) {

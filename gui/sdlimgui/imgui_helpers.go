@@ -461,8 +461,7 @@ func (img *SdlImgui) imguiTVColourSwatch(col uint8, size float32) (clicked bool)
 	// position & dimensions of swatch
 	l := imgui.FontSize() * 0.75
 	p := imgui.CursorScreenPos()
-	p.X += r
-	p.Y += l
+	p = p.Plus(imgui.Vec2{X: r, Y: l})
 
 	// if mouse is clicked in the range of the swatch. very simple detection,
 	// not accounting for the fact that the swatch is visibly circular
@@ -476,10 +475,9 @@ func (img *SdlImgui) imguiTVColourSwatch(col uint8, size float32) (clicked bool)
 	dl.AddCircleFilled(p, r, img.getTVColour(col))
 
 	// set up cursor for next widget
-	p.X += 2 * r
-	p.Y -= l
+	p = p.Plus(imgui.Vec2{X: r, Y: -l})
 	imgui.SetCursorScreenPos(p)
-	imgui.Dummy(imgui.Vec2{2 * r, l})
+	imgui.Dummy(imgui.Vec2{})
 
 	return clicked
 }
