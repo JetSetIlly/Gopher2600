@@ -272,13 +272,12 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 	}
 
 	// remaining keypresses forwarded to imgui io system
+	k := sdl2KeyEventToImguiKey(ev.Keysym.Sym, ev.Keysym.Scancode)
 	switch ev.Type {
 	case sdl.KEYDOWN:
-		imgui.CurrentIO().KeyPress(int(ev.Keysym.Scancode))
-		img.updateKeyModifier()
+		imgui.CurrentIO().AddKeyEvent(k, true)
 	case sdl.KEYUP:
-		imgui.CurrentIO().KeyRelease(int(ev.Keysym.Scancode))
-		img.updateKeyModifier()
+		imgui.CurrentIO().AddKeyEvent(k, false)
 	}
 }
 

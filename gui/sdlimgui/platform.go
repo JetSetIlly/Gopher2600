@@ -170,9 +170,6 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	}
 	logger.Logf(logger.Allow, "sdl", "refresh rate: %dHz", plt.mode.RefreshRate)
 
-	// map sdl key codes to imgui codes
-	plt.setKeyMapping()
-
 	var title string
 	ver, rev, rel := version.Version()
 	if rel {
@@ -238,8 +235,6 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 // call finalise after initialising imgui (which must happen after SDL creation
 // in the newPlatform() function)
 func (plt *platform) finalisePlatform() error {
-	// map sdl key codes to imgui codes
-	plt.setKeyMapping()
 	return nil
 }
 
