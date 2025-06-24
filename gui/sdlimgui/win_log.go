@@ -67,13 +67,9 @@ func (win *winLog) debuggerDraw() bool {
 
 func (win *winLog) draw() {
 	logger.BorrowLog(func(log []logger.Entry) {
-		var clipper imgui.ListClipper
-		clipper.Begin(len(log))
-		for clipper.Step() {
-			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-				imgui.Text(log[i].String())
-			}
-		}
+		imgui.ListClipperAll(len(log), func(i int) {
+			imgui.Text(log[i].String())
+		})
 
 		// scroll to bottom if last entry in log is new
 		lastEntry := log[len(log)-1]
