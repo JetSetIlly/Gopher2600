@@ -149,6 +149,7 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 	imgui.CurrentIO().SetIniFilename(iniPath)
+	imgui.CurrentIO().SetHighlightIdConflicts(false)
 
 	// define colors
 	img.cols = newColors()
