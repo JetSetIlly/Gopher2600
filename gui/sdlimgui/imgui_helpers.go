@@ -302,66 +302,61 @@ func drawByteGrid(id string, data []uint8, origin uint32,
 
 		// offset and address will be increased as we draw each column
 
-		var clipper imgui.ListClipper
-		clipper.Begin(clipperLen / numColumns)
+		imgui.ListClipperAll(clipperLen/numColumns, func(i int) {
+			idx := (i * numColumns) - leadingColumns
+			addr := origin + uint32(idx)
 
-		for clipper.Step() {
-			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-				idx := (i * numColumns) - leadingColumns
-				addr := origin + uint32(idx)
+			imgui.TableNextRow()
+			imgui.TableNextColumn()
+			imgui.AlignTextToFramePadding()
+			imgui.Text(fmt.Sprintf("%08x-", addr/16)[columnCrop+1:])
 
-				imgui.TableNextRow()
-				imgui.TableNextColumn()
-				imgui.AlignTextToFramePadding()
-				imgui.Text(fmt.Sprintf("%08x-", addr/16)[columnCrop+1:])
+			// column limit for row changes depending on the requirements
+			// of the first row
+			columnLimitForRow := numColumns
 
-				// column limit for row changes depending on the requirements
-				// of the first row
-				columnLimitForRow := numColumns
-
-				// add blank columns to first row as necessary
-				if firstRow {
-					for j := 0; j < leadingColumns; j++ {
-						imgui.TableNextColumn()
-						idx++
-						addr++
-					}
-					columnLimitForRow -= leadingColumns
-					firstRow = false
-				}
-
-				for j := 0; j < columnLimitForRow; j++ {
-					// check that offset hasn't gone beyond the end of data
-					if idx >= len(data) {
-						break
-					}
-
+			// add blank columns to first row as necessary
+			if firstRow {
+				for j := 0; j < leadingColumns; j++ {
 					imgui.TableNextColumn()
-
-					if before != nil {
-						before(idx)
-					}
-
-					// editable byte
-					b := data[idx]
-
-					s := fmt.Sprintf("%02x", b)
-					if imguiHexInput(fmt.Sprintf("%s##%08x", id, addr), 2, &s) {
-						if v, err := strconv.ParseUint(s, 16, 8); err == nil {
-							commit(idx, uint8(v))
-						}
-					}
-
-					if after != nil {
-						after(idx)
-					}
-
-					// advance offset and addr by one
 					idx++
 					addr++
 				}
+				columnLimitForRow -= leadingColumns
+				firstRow = false
 			}
-		}
+
+			for j := 0; j < columnLimitForRow; j++ {
+				// check that offset hasn't gone beyond the end of data
+				if idx >= len(data) {
+					break
+				}
+
+				imgui.TableNextColumn()
+
+				if before != nil {
+					before(idx)
+				}
+
+				// editable byte
+				b := data[idx]
+
+				s := fmt.Sprintf("%02x", b)
+				if imguiHexInput(fmt.Sprintf("%s##%08x", id, addr), 2, &s) {
+					if v, err := strconv.ParseUint(s, 16, 8); err == nil {
+						commit(idx, uint8(v))
+					}
+				}
+
+				if after != nil {
+					after(idx)
+				}
+
+				// advance offset and addr by one
+				idx++
+				addr++
+			}
+		})
 	}
 }
 
