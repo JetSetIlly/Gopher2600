@@ -443,186 +443,182 @@ func (win *winCoProcSource) drawSource(src *dwarf.Source, bp breakpoints.Breakpo
 		}
 
 		if win.selectedFile != nil {
-			var clipper imgui.ListClipper
-			clipper.Begin(win.selectedFile.Content.Len())
-			for clipper.Step() {
-				for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-					if i >= win.selectedFile.Content.Len() {
-						break
-					}
+			clipper := imgui.ListClipperAll(win.selectedFile.Content.Len(), func(i int) {
+				if i >= win.selectedFile.Content.Len() {
+					return
+				}
 
-					ln := win.selectedFile.Content.Lines[i]
-					imgui.TableNextRow()
+				ln := win.selectedFile.Content.Lines[i]
+				imgui.TableNextRow()
 
-					// highlight selected line(s)
-					if win.selection.inRange(ln.LineNumber) {
-						imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceSelectedLine)
-					}
+				// highlight selected line(s)
+				if win.selection.inRange(ln.LineNumber) {
+					imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceSelectedLine)
+				}
 
-					// highlight yield line
-					if win.yieldLine != nil && win.yieldLine.File != nil {
-						if win.yieldLine.LineNumber == ln.LineNumber && win.yieldLine.File == win.selectedFile {
-							if win.yieldLine.Bug {
-								imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceYieldBugLine)
-							} else {
-								imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceYieldLine)
-							}
+				// highlight yield line
+				if win.yieldLine != nil && win.yieldLine.File != nil {
+					if win.yieldLine.LineNumber == ln.LineNumber && win.yieldLine.File == win.selectedFile {
+						if win.yieldLine.Bug {
+							imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceYieldBugLine)
+						} else {
+							imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceYieldLine)
 						}
 					}
+				}
 
-					imgui.TableNextColumn()
-					imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
-					imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
-					imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
-					imgui.PopStyleColorV(2)
+				imgui.TableNextColumn()
+				imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
+				imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
+				imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
+				imgui.PopStyleColorV(2)
 
-					// allow breakpoint toggle for lines with executable entries
-					if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
-						bp.ToggleBreakpoint(ln)
-					}
+				// allow breakpoint toggle for lines with executable entries
+				if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
+					bp.ToggleBreakpoint(ln)
+				}
 
-					// is the sourceline an executable line
-					var hoverExecutableLine bool
+				// is the sourceline an executable line
+				var hoverExecutableLine bool
 
-					// select source lines with mouse click and drag
-					if imgui.IsItemHovered() {
-						// add/remove lines before showing the tooltip. this
-						// produces better visual results
-						if imgui.IsMouseClicked(0) {
-							// if ctrl key is pressed then extend selection
-							if imgui.CurrentIO().KeyShiftPressed() {
-								win.selection.drag(ln.LineNumber)
-							} else {
-								win.selection.dragStart(ln.LineNumber)
-							}
-						}
-
-						if imgui.IsMouseDragging(0, 0.0) {
+				// select source lines with mouse click and drag
+				if imgui.IsItemHovered() {
+					// add/remove lines before showing the tooltip. this
+					// produces better visual results
+					if imgui.IsMouseClicked(0) {
+						// if ctrl key is pressed then extend selection
+						if imgui.CurrentIO().KeyShiftPressed() {
 							win.selection.drag(ln.LineNumber)
-							win.selectionRange.Clear()
-							s, e := win.selection.limits()
-							for i := s; i <= e; i++ {
-								win.selectionRange.Add(win.selectedFile.Content.Lines[i-1])
-							}
+						} else {
+							win.selection.dragStart(ln.LineNumber)
 						}
+					}
 
-						multiline := !win.selection.isSingle() && win.selection.inRange(ln.LineNumber)
-						hoverExecutableLine = (!multiline && len(ln.Instruction) > 0) ||
-							(multiline && !win.selectionRange.IsEmpty())
+					if imgui.IsMouseDragging(0, 0.0) {
+						win.selection.drag(ln.LineNumber)
+						win.selectionRange.Clear()
+						s, e := win.selection.limits()
+						for i := s; i <= e; i++ {
+							win.selectionRange.Add(win.selectedFile.Content.Lines[i-1])
+						}
+					}
 
-						// how we show the asm depends on whether there are
-						// multiple lines selected and whether there is any
-						// diassembly for those lines.
-						//
-						// if only a single line is selected then we simply
-						// check that there is are asm entries for that line
-						if hoverExecutableLine {
-							imgui.PopFont()
+					multiline := !win.selection.isSingle() && win.selection.inRange(ln.LineNumber)
+					hoverExecutableLine = (!multiline && len(ln.Instruction) > 0) ||
+						(multiline && !win.selectionRange.IsEmpty())
 
-							win.img.imguiTooltip(func() {
-								// remove cell/item styling for the duration of the tooltip
-								pad := style.CellPadding()
-								item := style.ItemSpacing()
-								imgui.PopStyleVarV(2)
-								defer imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, pad)
-								defer imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, item)
+					// how we show the asm depends on whether there are
+					// multiple lines selected and whether there is any
+					// diassembly for those lines.
+					//
+					// if only a single line is selected then we simply
+					// check that there is are asm entries for that line
+					if hoverExecutableLine {
+						imgui.PopFont()
 
-								// this block is a more developed version of win.img.drawFilenameAndLineNumber()
-								// there is no need to complicate that function
-								if multiline && !win.selection.isSingle() {
-									s, e := win.selection.limits()
-									win.img.drawFilenameAndLineNumber(ln.File.Filename, s, e)
-								} else {
-									win.img.drawFilenameAndLineNumber(ln.File.Filename, ln.LineNumber, -1)
-								}
+						win.img.imguiTooltip(func() {
+							// remove cell/item styling for the duration of the tooltip
+							pad := style.CellPadding()
+							item := style.ItemSpacing()
+							imgui.PopStyleVarV(2)
+							defer imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, pad)
+							defer imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, item)
 
+							// this block is a more developed version of win.img.drawFilenameAndLineNumber()
+							// there is no need to complicate that function
+							if multiline && !win.selection.isSingle() {
+								s, e := win.selection.limits()
+								win.img.drawFilenameAndLineNumber(ln.File.Filename, s, e)
+							} else {
+								win.img.drawFilenameAndLineNumber(ln.File.Filename, ln.LineNumber, -1)
+							}
+
+							imgui.Spacing()
+							imgui.Separator()
+							imgui.Spacing()
+
+							// choose which disasm list to use
+							disasm := ln.Instruction
+							if multiline {
+								disasm = win.selectionRange.Instructions
+							}
+
+							win.img.drawDisasmForCoProc(disasm, ln, multiline, true, win.yieldState.Addr, shortDisasmWindow)
+
+							if ln.Function.IsInlined() {
 								imgui.Spacing()
 								imgui.Separator()
 								imgui.Spacing()
+								imgui.Text(fmt.Sprintf("%c This function is inlined", fonts.Inlined))
+							}
+						}, false)
 
-								// choose which disasm list to use
-								disasm := ln.Instruction
-								if multiline {
-									disasm = win.selectionRange.Instructions
-								}
-
-								win.img.drawDisasmForCoProc(disasm, ln, multiline, true, win.yieldState.Addr, shortDisasmWindow)
-
-								if ln.Function.IsInlined() {
-									imgui.Spacing()
-									imgui.Separator()
-									imgui.Spacing()
-									imgui.Text(fmt.Sprintf("%c This function is inlined", fonts.Inlined))
-								}
-							}, false)
-
-							imgui.PushFont(win.img.fonts.code)
-						}
+						imgui.PushFont(win.img.fonts.code)
 					}
-
-					// show appropriate icon in the gutter
-					imgui.TableNextColumn()
-					if bp.HasBreakpoint(ln) {
-						// the presence of a breakpoint is the most important information
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
-						imgui.Text(string(fonts.Breakpoint))
-						imgui.PopStyleColor()
-					} else if hoverExecutableLine && bp.CanBreakpoint(ln) {
-						// prioritise showing the breakpoint indicator over the bug symbol
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress.Times(0.6))
-						imgui.Text(string(fonts.Breakpoint))
-						imgui.PopStyleColor()
-					} else if ln.Bug {
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
-						imgui.Text(string(fonts.CoProcBug))
-						imgui.PopStyleColor()
-					}
-
-					// execution state
-					imgui.TableNextColumn()
-					if ln.Cycles.Overall.HasExecuted() {
-						if ln.Cycles.Overall.CyclesProgram.FrameValid {
-							drawExecutionIndicator(win.img.cols.coProcSourceLoad)
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-							imgui.Text(fmt.Sprintf("%.02f", ln.Cycles.Overall.CyclesProgram.FrameLoad))
-							imgui.PopStyleColor()
-						} else if ln.Cycles.Overall.CyclesProgram.AverageValid {
-							drawExecutionIndicator(win.img.cols.coProcSourceAvgLoad)
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-							imgui.Text(fmt.Sprintf("%.02f", ln.Cycles.Overall.CyclesProgram.AverageLoad))
-							imgui.PopStyleColor()
-						} else if ln.Cycles.Overall.CyclesProgram.MaxValid {
-							drawExecutionIndicator(win.img.cols.coProcSourceMaxLoad)
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-							imgui.Text(fmt.Sprintf("%.02f", ln.Cycles.Overall.CyclesProgram.MaxLoad))
-							imgui.PopStyleColor()
-						} else {
-							drawExecutionIndicator(win.img.cols.coProcSourceNoLoad)
-						}
-					} else if len(ln.Instruction) > 0 {
-						drawExecutionIndicator(win.img.cols.coProcSourceNoLoad)
-					} else {
-						drawExecutionIndicator(win.img.cols.windowBg)
-					}
-
-					// line numbering
-					imgui.TableNextColumn()
-					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-					imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
-					imgui.PopStyleColor()
-
-					// source line
-					imgui.TableNextColumn()
-
-					if win.syntaxHighlighting {
-						win.img.drawSourceLine(ln, false)
-					} else {
-						imgui.Text(ln.PlainContent)
-					}
-
 				}
+
+				// show appropriate icon in the gutter
+				imgui.TableNextColumn()
+				if bp.HasBreakpoint(ln) {
+					// the presence of a breakpoint is the most important information
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
+					imgui.Text(string(fonts.Breakpoint))
+					imgui.PopStyleColor()
+				} else if hoverExecutableLine && bp.CanBreakpoint(ln) {
+					// prioritise showing the breakpoint indicator over the bug symbol
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress.Times(0.6))
+					imgui.Text(string(fonts.Breakpoint))
+					imgui.PopStyleColor()
+				} else if ln.Bug {
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
+					imgui.Text(string(fonts.CoProcBug))
+					imgui.PopStyleColor()
+				}
+
+				// execution state
+				imgui.TableNextColumn()
+				if ln.Cycles.Overall.HasExecuted() {
+					if ln.Cycles.Overall.CyclesProgram.FrameValid {
+						drawExecutionIndicator(win.img.cols.coProcSourceLoad)
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
+						imgui.Text(fmt.Sprintf("%.02f", ln.Cycles.Overall.CyclesProgram.FrameLoad))
+						imgui.PopStyleColor()
+					} else if ln.Cycles.Overall.CyclesProgram.AverageValid {
+						drawExecutionIndicator(win.img.cols.coProcSourceAvgLoad)
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
+						imgui.Text(fmt.Sprintf("%.02f", ln.Cycles.Overall.CyclesProgram.AverageLoad))
+						imgui.PopStyleColor()
+					} else if ln.Cycles.Overall.CyclesProgram.MaxValid {
+						drawExecutionIndicator(win.img.cols.coProcSourceMaxLoad)
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
+						imgui.Text(fmt.Sprintf("%.02f", ln.Cycles.Overall.CyclesProgram.MaxLoad))
+						imgui.PopStyleColor()
+					} else {
+						drawExecutionIndicator(win.img.cols.coProcSourceNoLoad)
+					}
+				} else if len(ln.Instruction) > 0 {
+					drawExecutionIndicator(win.img.cols.coProcSourceNoLoad)
+				} else {
+					drawExecutionIndicator(win.img.cols.windowBg)
+				}
+
+				// line numbering
+				imgui.TableNextColumn()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+				imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
+				imgui.PopStyleColor()
+
+				// source line
+				imgui.TableNextColumn()
+
+				if win.syntaxHighlighting {
+					win.img.drawSourceLine(ln, false)
+				} else {
+					imgui.Text(ln.PlainContent)
+				}
+
 				drawExecutionIndicator(win.img.cols.windowBg)
-			}
+			})
 
 			// scroll to correct line
 			if win.updateSelectedFile {
