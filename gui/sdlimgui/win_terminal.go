@@ -133,14 +133,9 @@ func (win *winTerm) draw() {
 	if imgui.BeginChildV("scrollback", imgui.Vec2{X: 0, Y: height}, false, 0) {
 		win.focusOnInput = win.focusOnInput || imgui.IsItemActive() || (imgui.IsWindowHovered() && imgui.IsMouseReleased(0))
 
-		// only draw elements that will be visible
-		var clipper imgui.ListClipper
-		clipper.Begin(len(win.output))
-		for clipper.Step() {
-			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-				win.output[i].draw(win.wrap)
-			}
-		}
+		imgui.ListClipperAll(len(win.output), func(i int) {
+			win.output[i].draw(win.wrap)
+		})
 
 		// if output has been added to, scroll to bottom of window
 		if win.moreOutput {
@@ -237,7 +232,7 @@ func (win *winTerm) draw() {
 			win.focusOnInput = false
 		}
 
-		if imgui.InputTextV("", &win.input,
+		if imgui.InputTextV("##prompt", &win.input,
 			imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|imgui.InputTextFlagsCallbackHistory,
 			win.tabCompleteAndHistory) {
 
