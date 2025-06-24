@@ -201,131 +201,127 @@ func (win *winTracker) draw() {
 					// altenate row colors at change of frame number
 					var altRowCol bool
 
-					var clipper imgui.ListClipper
-					clipper.Begin(numEntries)
-					for clipper.Step() {
-						for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-							entry := history.Entries[i]
+					imgui.ListClipperAll(numEntries, func(i int) {
+						entry := history.Entries[i]
 
-							imgui.TableNextRow()
-							altRowCol = !altRowCol
+						imgui.TableNextRow()
+						altRowCol = !altRowCol
 
-							if altRowCol {
-								imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.AudioTrackerRowAlt)
-								imgui.TableSetBgColor(imgui.TableBgTargetRowBg1, win.img.cols.AudioTrackerRowAlt)
-								if win.selection.inRange(i) {
-									imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.AudioTrackerRowSelectedAlt)
-									imgui.TableSetBgColor(imgui.TableBgTargetRowBg1, win.img.cols.AudioTrackerRowSelectedAlt)
-								}
-							} else {
-								imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.AudioTrackerRow)
-								imgui.TableSetBgColor(imgui.TableBgTargetRowBg1, win.img.cols.AudioTrackerRow)
-								if win.selection.inRange(i) {
-									imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.AudioTrackerRowSelected)
-									imgui.TableSetBgColor(imgui.TableBgTargetRowBg1, win.img.cols.AudioTrackerRowSelected)
-								}
+						if altRowCol {
+							imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.AudioTrackerRowAlt)
+							imgui.TableSetBgColor(imgui.TableBgTargetRowBg1, win.img.cols.AudioTrackerRowAlt)
+							if win.selection.inRange(i) {
+								imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.AudioTrackerRowSelectedAlt)
+								imgui.TableSetBgColor(imgui.TableBgTargetRowBg1, win.img.cols.AudioTrackerRowSelectedAlt)
 							}
-
-							// add selectable for row. the text for the selectable
-							// depends on which channel the tracker entry represents
-							imgui.TableNextColumn()
-							if entry.Channel == 1 || !entry.IsMusical() {
-								imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Transparent)
+						} else {
+							imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.AudioTrackerRow)
+							imgui.TableSetBgColor(imgui.TableBgTargetRowBg1, win.img.cols.AudioTrackerRow)
+							if win.selection.inRange(i) {
+								imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.AudioTrackerRowSelected)
+								imgui.TableSetBgColor(imgui.TableBgTargetRowBg1, win.img.cols.AudioTrackerRowSelected)
 							}
-							imgui.SelectableV(string(fonts.MusicNote), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
-							if entry.Channel == 1 || !entry.IsMusical() {
-								imgui.PopStyleColor()
-							}
-
-							win.img.imguiTooltip(func() {
-								imgui.Text(fmt.Sprintf("Frame: %d", entry.Coords.Frame))
-								imgui.Text(fmt.Sprintf("Scanline: %d", entry.Coords.Scanline))
-								imgui.Text(fmt.Sprintf("Clock: %d", entry.Coords.Clock))
-							}, true)
-
-							// context menu on right mouse button
-							if imgui.IsItemHovered() {
-								if imgui.IsMouseClicked(0) {
-									// if ctrl key is pressed then extend selection
-									if imgui.CurrentIO().KeyShiftPressed() {
-										win.selection.drag(i)
-									} else {
-										win.selection.dragStart(i)
-									}
-								}
-
-								if imgui.IsMouseDragging(0, 0.0) {
-									win.selection.drag(i)
-								}
-
-								if imgui.IsMouseDown(1) {
-									imgui.OpenPopup(trackerContextMenuID)
-									win.contextMenu = entry.Coords
-								}
-							}
-							if entry.Coords == win.contextMenu {
-								if imgui.BeginPopup(trackerContextMenuID) {
-									if imgui.Selectable("Clear note history") {
-										win.img.dbg.PushFunction(win.img.dbg.Tracker.Reset)
-									}
-									if imgui.Selectable(fmt.Sprintf("Rewind (to %s)", entry.Coords)) {
-										win.img.dbg.GotoCoords(entry.Coords)
-									}
-									imgui.EndPopup()
-								}
-							}
-
-							// if tracker entry is for channel one then skip the
-							// first half-dozen columns and add whatever the 'note
-							// icon' is
-							if entry.Channel == 1 {
-								imgui.TableNextColumn()
-								imgui.TableNextColumn()
-								imgui.TableNextColumn()
-								imgui.TableNextColumn()
-								imgui.TableNextColumn()
-								imgui.TableNextColumn()
-								if entry.IsMusical() {
-									imgui.Text(string(fonts.MusicNote))
-								}
-							}
-
-							imgui.TableNextColumn()
-							imgui.Text(fmt.Sprintf("%04b", entry.Registers.Control&0x0f))
-							imgui.TableNextColumn()
-							imgui.Text(fmt.Sprintf("%s", entry.Distortion))
-							imgui.TableNextColumn()
-							imgui.Text(fmt.Sprintf("%05b", entry.Registers.Freq&0x1f))
-							imgui.TableNextColumn()
-
-							// convert musical note into something worth showing
-							musicalNote := string(entry.MusicalNote)
-							switch entry.MusicalNote {
-							case tracker.Noise:
-								musicalNote = ""
-							case tracker.Low:
-								musicalNote = ""
-							case tracker.Silence:
-								musicalNote = ""
-							default:
-								imgui.Text(musicalNote)
-							}
-
-							imgui.TableNextColumn()
-
-							// volum column
-							var volumeArrow rune
-
-							switch entry.Volume {
-							case tracker.VolumeRising:
-								volumeArrow = fonts.VolumeRising
-							case tracker.VolumeFalling:
-								volumeArrow = fonts.VolumeFalling
-							}
-
-							imgui.Text(fmt.Sprintf("%02d %c", entry.Registers.Volume&0x4b, volumeArrow))
 						}
-					}
+
+						// add selectable for row. the text for the selectable
+						// depends on which channel the tracker entry represents
+						imgui.TableNextColumn()
+						if entry.Channel == 1 || !entry.IsMusical() {
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Transparent)
+						}
+						imgui.SelectableV(string(fonts.MusicNote), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
+						if entry.Channel == 1 || !entry.IsMusical() {
+							imgui.PopStyleColor()
+						}
+
+						win.img.imguiTooltip(func() {
+							imgui.Text(fmt.Sprintf("Frame: %d", entry.Coords.Frame))
+							imgui.Text(fmt.Sprintf("Scanline: %d", entry.Coords.Scanline))
+							imgui.Text(fmt.Sprintf("Clock: %d", entry.Coords.Clock))
+						}, true)
+
+						// context menu on right mouse button
+						if imgui.IsItemHovered() {
+							if imgui.IsMouseClicked(0) {
+								// if ctrl key is pressed then extend selection
+								if imgui.CurrentIO().KeyShiftPressed() {
+									win.selection.drag(i)
+								} else {
+									win.selection.dragStart(i)
+								}
+							}
+
+							if imgui.IsMouseDragging(0, 0.0) {
+								win.selection.drag(i)
+							}
+
+							if imgui.IsMouseDown(1) {
+								imgui.OpenPopup(trackerContextMenuID)
+								win.contextMenu = entry.Coords
+							}
+						}
+						if entry.Coords == win.contextMenu {
+							if imgui.BeginPopup(trackerContextMenuID) {
+								if imgui.Selectable("Clear note history") {
+									win.img.dbg.PushFunction(win.img.dbg.Tracker.Reset)
+								}
+								if imgui.Selectable(fmt.Sprintf("Rewind (to %s)", entry.Coords)) {
+									win.img.dbg.GotoCoords(entry.Coords)
+								}
+								imgui.EndPopup()
+							}
+						}
+
+						// if tracker entry is for channel one then skip the
+						// first half-dozen columns and add whatever the 'note
+						// icon' is
+						if entry.Channel == 1 {
+							imgui.TableNextColumn()
+							imgui.TableNextColumn()
+							imgui.TableNextColumn()
+							imgui.TableNextColumn()
+							imgui.TableNextColumn()
+							imgui.TableNextColumn()
+							if entry.IsMusical() {
+								imgui.Text(string(fonts.MusicNote))
+							}
+						}
+
+						imgui.TableNextColumn()
+						imgui.Text(fmt.Sprintf("%04b", entry.Registers.Control&0x0f))
+						imgui.TableNextColumn()
+						imgui.Text(fmt.Sprintf("%s", entry.Distortion))
+						imgui.TableNextColumn()
+						imgui.Text(fmt.Sprintf("%05b", entry.Registers.Freq&0x1f))
+						imgui.TableNextColumn()
+
+						// convert musical note into something worth showing
+						musicalNote := string(entry.MusicalNote)
+						switch entry.MusicalNote {
+						case tracker.Noise:
+							musicalNote = ""
+						case tracker.Low:
+							musicalNote = ""
+						case tracker.Silence:
+							musicalNote = ""
+						default:
+							imgui.Text(musicalNote)
+						}
+
+						imgui.TableNextColumn()
+
+						// volum column
+						var volumeArrow rune
+
+						switch entry.Volume {
+						case tracker.VolumeRising:
+							volumeArrow = fonts.VolumeRising
+						case tracker.VolumeFalling:
+							volumeArrow = fonts.VolumeFalling
+						}
+
+						imgui.Text(fmt.Sprintf("%02d %c", entry.Registers.Volume&0x4b, volumeArrow))
+					})
 
 					if win.img.dbg.State() == govern.Running {
 						imgui.SetScrollHereY(1.0)

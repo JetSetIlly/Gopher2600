@@ -151,17 +151,13 @@ func (win *winBot) draw() {
 	win.drawMouseLayer()
 
 	if imgui.BeginChildV("##log", imgui.Vec2{}, true, imgui.ChildFlagsNone) {
-		var clipper imgui.ListClipper
-		clipper.Begin(len(win.diagnostics))
-		for clipper.Step() {
-			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-				imgui.Text(win.diagnostics[i].Group)
-				for _, s := range strings.Split(win.diagnostics[i].Diagnostic, "\n") {
-					imgui.SameLine()
-					imgui.Text(s)
-				}
+		imgui.ListClipperAll(len(win.diagnostics), func(i int) {
+			imgui.Text(win.diagnostics[i].Group)
+			for _, s := range strings.Split(win.diagnostics[i].Diagnostic, "\n") {
+				imgui.SameLine()
+				imgui.Text(s)
 			}
-		}
+		})
 
 		if win.dirty {
 			imgui.SetScrollHereY(0.0)
