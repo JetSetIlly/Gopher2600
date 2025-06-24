@@ -113,7 +113,7 @@ func (win *win6507Pinout) draw() {
 	chipDim := imgui.Vec2{X: avail.X * 0.5, Y: avail.Y * 0.9}
 	chipPos := imgui.Vec2{X: p.X + avail.X*0.5 - chipDim.X*0.5, Y: p.Y + avail.Y*0.5 - chipDim.Y*0.5}
 
-	if imgui.BeginChildV("pinout", avail, false, imgui.WindowFlagsNone) {
+	if imgui.BeginChildV("pinout", avail, false, imgui.ChildFlagsNone) {
 		dl := imgui.WindowDrawList()
 		imgui.PushFont(win.img.fonts.diagram)
 

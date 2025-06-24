@@ -150,7 +150,7 @@ func (win *winBot) draw() {
 	imgui.SetCursorScreenPos(win.screenOrigin)
 	win.drawMouseLayer()
 
-	if imgui.BeginChildV("##log", imgui.Vec2{}, true, imgui.WindowFlagsAlwaysAutoResize) {
+	if imgui.BeginChildV("##log", imgui.Vec2{}, true, imgui.ChildFlagsNone) {
 		var clipper imgui.ListClipper
 		clipper.Begin(len(win.diagnostics))
 		for clipper.Step() {

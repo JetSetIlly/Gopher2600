@@ -192,7 +192,7 @@ func (win *winCDFStreams) debuggerDraw() bool {
 func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
 	scaling := float32(win.img.prefs.guiFontSize.Get().(int)) / 10
 
-	if imgui.BeginChildV("##stream", imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, false, imgui.WindowFlagsNone) {
+	if imgui.BeginChildV("##stream", imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, false, imgui.ChildFlagsNone) {
 		win.updateStreams(regs, static)
 
 		// disable preview color. it will be turned on if drag and drop is being used this frame.

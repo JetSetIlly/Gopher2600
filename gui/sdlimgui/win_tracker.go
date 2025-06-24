@@ -44,6 +44,9 @@ type winTracker struct {
 	pianoKeysHeight float32
 
 	selection imguiSelection
+
+	// is the tracker area or piano keys are hovered over
+	isHovered bool
 }
 
 func newWinTracker(img *SdlImgui) (window, error) {
@@ -97,7 +100,13 @@ func (win *winTracker) debuggerDraw() bool {
 	imgui.SetNextWindowSizeV(imgui.Vec2{X: 658, Y: 469}, imgui.ConditionFirstUseEver)
 	win.img.setReasonableWindowConstraints()
 
-	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
+	var flgs imgui.WindowFlags
+	if win.isHovered {
+		flgs = imgui.WindowFlagsNoMove
+	} else {
+		flgs = imgui.WindowFlagsNone
+	}
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, flgs) {
 		win.draw()
 	}
 
@@ -327,11 +336,13 @@ func (win *winTracker) draw() {
 			}
 		}
 		imgui.EndChild()
+		win.isHovered = imgui.IsItemHovered()
 
 		// don't allow grabbing or movement of window when piano keys are clicked
-		if imgui.BeginChildV("##pianokeys", imgui.Vec2{}, false, imgui.WindowFlagsNoMove) {
+		if imgui.BeginChildV("##pianokeys", imgui.Vec2{}, false, imgui.ChildFlagsNone) {
 			win.pianoKeysHeight = win.drawPianoKeys(history)
 		}
 		imgui.EndChild()
+		win.isHovered = win.isHovered || imgui.IsItemHovered()
 	})
 }

@@ -145,7 +145,13 @@ func (win *winTimeline) debuggerDraw() bool {
 	w, _ := win.img.plt.windowSize()
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{X: 750, Y: 200}, imgui.Vec2{X: w * 0.95, Y: 300})
 
-	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
+	var flgs imgui.WindowFlags
+	if win.isHovered {
+		flgs = imgui.WindowFlagsNoMove
+	} else {
+		flgs = imgui.WindowFlagsNone
+	}
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, flgs) {
 		// trace area
 		win.drawTrace()
 
@@ -307,7 +313,7 @@ func (win *winTimeline) drawTrace() {
 	scanlineJitter = append(scanlineJitter, 0)
 
 	// scanline/coproc/WSYNC trace
-	imgui.BeginChildV("##timelinetrace", traceSize, false, imgui.WindowFlagsNoMove)
+	imgui.BeginChildV("##timelinetrace", traceSize, false, imgui.ChildFlagsNone)
 
 	// the position of the trace widget. move right slightly to create a margin
 	// of width iconRadius

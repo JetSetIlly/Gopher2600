@@ -339,7 +339,7 @@ func (win *winDisasm) drawBank(currBank mapper.BankInfo, focusAddr uint16) {
 	onBank := win.selectedBank == currBank.Number
 
 	height := imguiRemainingWinHeight() - win.optionsHeight
-	imgui.BeginChildV(fmt.Sprintf("##bank %d", win.selectedBank), imgui.Vec2{X: 0, Y: height}, false, imgui.WindowFlagsAlwaysVerticalScrollbar)
+	imgui.BeginChildV(fmt.Sprintf("##bank %d", win.selectedBank), imgui.Vec2{X: 0, Y: height}, false, imgui.ChildFlagsNone)
 
 	f := func(dsmEntries *disassembly.DisasmEntries) {
 		// disassembly is not valid and so dsmEntires is nil

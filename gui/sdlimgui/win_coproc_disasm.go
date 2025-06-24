@@ -93,7 +93,7 @@ func (win *winCoProcDisasm) draw() {
 	isEnabled := win.img.dbg.CoProcDisasm.IsEnabled()
 
 	win.img.dbg.CoProcDisasm.BorrowDisassembly(func(dsm *disassembly.DisasmEntries) {
-		if imgui.BeginChildV("##coprocDisasmMain", imgui.Vec2{X: 0, Y: height}, false, imgui.WindowFlagsNone) {
+		if imgui.BeginChildV("##coprocDisasmMain", imgui.Vec2{X: 0, Y: height}, false, imgui.ChildFlagsNone) {
 			if isEnabled {
 				imgui.BeginTabBar("##coprocDisasmTabBar")
 				if imgui.BeginTabItem("Disassembly") {

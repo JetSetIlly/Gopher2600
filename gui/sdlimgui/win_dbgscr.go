@@ -174,7 +174,7 @@ func (win *winDbgScr) draw() {
 	win.screenRegion.Y -= win.toolbarHeight
 
 	// screen image, overlays, menus and tooltips
-	imgui.BeginChildV("##image", imgui.Vec2{X: win.screenRegion.X, Y: win.screenRegion.Y}, false, imgui.WindowFlagsNoScrollbar)
+	imgui.BeginChildV("##image", imgui.Vec2{X: win.screenRegion.X, Y: win.screenRegion.Y}, false, imgui.ChildFlagsNone)
 
 	// add horiz/vert padding around screen image
 	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
