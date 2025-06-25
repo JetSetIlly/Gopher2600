@@ -551,7 +551,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 
 	// no useful reflection if mouse is outside TV area
 	if win.mouse.tv.Scanline > win.scr.crit.frameInfo.TotalScanlines {
-		imguiTooltipSimple("no TV signal", true)
+		win.img.imguiTooltipSimple("no TV signal")
 		return
 	}
 

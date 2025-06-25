@@ -129,7 +129,7 @@ func (win *winCoProcLocals) draw() {
 			// if strobe line is different to yield line then show the tooltip
 			sln := src.SourceLineByAddr(yieldState.StrobeAddr)
 			if sln != ln {
-				imguiTooltipSimple(fmt.Sprintf("Strobe is currently set to:\n%s line %d", sln.File.ShortFilename, sln.LineNumber), true)
+				win.img.imguiTooltipSimple(fmt.Sprintf("Strobe is currently set to:\n%s line %d", sln.File.ShortFilename, sln.LineNumber))
 			}
 		} else {
 			if imgui.Button("Set Strobe") {
