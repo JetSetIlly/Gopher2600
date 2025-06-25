@@ -169,22 +169,66 @@ func (wm *manager) drawMenu() {
 	}
 
 	// position cursor for drawing menu items from the right
+	imgui.SetCursorScreenPos(imgui.Vec2{})
 	imgui.SetCursorScreenPos(imgui.Vec2{
 		X: imgui.ContentRegionAvail().X,
 		Y: imgui.CursorScreenPos().Y,
 	})
 
+	spacing := imgui.CurrentStyle().ItemSpacing().X
+
+	textFromRight := func(s string, separator bool, f func()) {
+		// no separator but we still want to include the space. this helps any
+		// additional entries after this one, particurlar buttons
+		if !separator {
+			s = " " + s
+		}
+		sz := imgui.CalcTextSize(s, false, -1)
+		p := imgui.CursorScreenPos()
+		p.X -= sz.X
+		if separator {
+			p.X -= spacing
+		}
+		imgui.SetCursorScreenPos(p)
+		if separator {
+			imgui.Separator()
+		}
+		imgui.Text(s)
+		if f != nil {
+			f()
+		}
+		if separator {
+			p.X -= spacing
+		}
+		imgui.SetCursorScreenPos(p)
+	}
+
+	buttonFromRight := func(s string, f func()) {
+		sz := imgui.CalcTextSize(s, false, -1)
+		p := imgui.CursorScreenPos()
+		p.X -= sz.X
+		p.X -= spacing
+		imgui.SetCursorScreenPos(p)
+		if imgui.Button(s) {
+			if f != nil {
+				f()
+			}
+		}
+		p.X -= spacing
+		imgui.SetCursorScreenPos(p)
+	}
+
 	// cartridge information
-	drawMenuItemFromRight(func() { imgui.Text(fmt.Sprintf("%s %c", wm.img.cache.VCS.Mem.Cart.ShortName, fonts.Disk)) })
-	drawMenuItemFromRight(func() { imgui.Text(wm.img.cache.VCS.Mem.Cart.ID()); imgui.Separator() })
-	drawMenuItemFromRight(func() { imgui.Text(wm.img.cache.VCS.Mem.Cart.MappedBanks()); imgui.Separator() })
+	textFromRight(fmt.Sprintf("%s %c", wm.img.cache.VCS.Mem.Cart.ShortName, fonts.Disk), true, nil)
+	textFromRight(wm.img.cache.VCS.Mem.Cart.ID(), true, nil)
+	textFromRight(wm.img.cache.VCS.Mem.Cart.MappedBanks(), true, nil)
 
 	// TV information
 	frameInfo := wm.img.cache.TV.GetFrameInfo()
 	if math.IsInf(float64(frameInfo.RefreshRate), 0) || frameInfo.RefreshRate > frameInfo.Spec.RefreshRate*2 {
-		drawMenuItemFromRight(func() { imgui.Text("- Hz"); imgui.Separator() })
+		textFromRight("- Hz", true, nil)
 	} else {
-		drawMenuItemFromRight(func() { imgui.Text(fmt.Sprintf("%.2fHz", frameInfo.RefreshRate)); imgui.Separator() })
+		textFromRight(fmt.Sprintf("%.2fHz", frameInfo.RefreshRate), true, nil)
 	}
 
 	// FPS information
@@ -192,20 +236,19 @@ func (wm *manager) drawMenu() {
 		actual, _ := wm.img.dbg.VCS().TV.GetActualFPS()
 		req := wm.img.dbg.VCS().TV.GetReqFPS()
 		if req < 1.0 {
-			drawMenuItemFromRight(func() { imgui.Text("< 1 fps"); imgui.Separator() })
+			textFromRight("< 1 fps", true, nil)
 		} else if math.IsInf(float64(actual), 0) {
-			drawMenuItemFromRight(func() { imgui.Text("- fps"); imgui.Separator() })
+			textFromRight("- fps", true, nil)
 		} else {
-			drawMenuItemFromRight(func() { imgui.Text(fmt.Sprintf("%.1f fps", actual)); imgui.Separator() })
+			textFromRight(fmt.Sprintf("%.1f fps", actual), true, nil)
 		}
 	} else {
-		drawMenuItemFromRight(func() { imgui.Text("- fps"); imgui.Separator() })
+		textFromRight("- fps", true, nil)
 	}
 
 	// tooltip control
-	wm.img.tooltipIndicator = false
-	drawMenuItemFromRight(func() {
-		defer imgui.Separator()
+	func() {
+		wm.img.tooltipIndicator = false
 		showTooltips := wm.img.prefs.showTooltips.Get().(bool)
 		if !showTooltips {
 			if !wm.img.tooltipIndicator {
@@ -213,57 +256,25 @@ func (wm *manager) drawMenu() {
 				defer imgui.PopStyleVar()
 			}
 		}
-		imgui.BeginGroup()
-		imgui.Text(string(fonts.SpeechBubble))
-		imgui.EndGroup()
-		if imgui.IsItemClicked() {
-			wm.img.prefs.showTooltips.Set(!showTooltips)
-		}
-	})
+		textFromRight(string(fonts.SpeechBubble), false, func() {
+			if imgui.IsItemClicked() {
+				wm.img.prefs.showTooltips.Set(!showTooltips)
+			}
+		})
+	}()
 
+	// halt reason
 	haltReason := wm.img.cache.Dbg.HaltReason
 	if haltReason.Reason != "" {
-		var id int
-		drawMenuItemFromRight(func() {
-			id++
-			if imgui.Button(fmt.Sprintf("%s##%d", haltReason.Reason, id)) {
-				wm.img.dbg.PushFunctionImmediate(wm.img.dbg.ClearHaltReason)
-			}
-			wm.img.imguiTooltip(func() {
-				imgui.Text(fmt.Sprintf("Frame: %d", haltReason.Coords.Frame))
-				imgui.Text(fmt.Sprintf("Scanline: %d", haltReason.Coords.Scanline))
-				imgui.Text(fmt.Sprintf("Clock: %d", haltReason.Coords.Clock))
-			}, true)
-			imgui.Separator()
+		buttonFromRight(haltReason.Reason, func() {
+			wm.img.dbg.PushFunctionImmediate(wm.img.dbg.ClearHaltReason)
 		})
+		wm.img.imguiTooltip(func() {
+			imgui.Text(fmt.Sprintf("Frame: %d", haltReason.Coords.Frame))
+			imgui.Text(fmt.Sprintf("Scanline: %d", haltReason.Coords.Scanline))
+			imgui.Text(fmt.Sprintf("Clock: %d", haltReason.Coords.Clock))
+		}, true)
 	}
-}
-
-// this draws the item twice. the first time in an offscreen area to measure it
-// and the second time in situ
-//
-// because each item is drawn twice, once to measure and once for display, items
-// with actions must have a unique ID. something like the following:
-//
-//	var id int
-//	drawMenuItemFromRight(func() {
-//		id++
-//		if imgui.Button(fmt.Sprintf("button##%d", id)) {
-//			// do action
-//		}
-//	})
-func drawMenuItemFromRight(f func()) {
-	p := imgui.CursorScreenPos()
-
-	imgui.SetCursorScreenPos(imgui.ContentRegionAvail().Plus(imgui.Vec2{X: 10, Y: 10}))
-	m := imgui.CursorScreenPos()
-	f()
-	width := imgui.CursorScreenPos().X - m.X
-
-	p = p.Minus(imgui.Vec2{X: width, Y: 0})
-	imgui.SetCursorScreenPos(p)
-	f()
-	imgui.SetCursorScreenPos(p)
 }
 
 func (wm *manager) drawMenuEntry(m menuEntry) {
