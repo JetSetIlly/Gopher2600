@@ -238,7 +238,7 @@ func (win *winCoProcSource) draw() {
 			win.drawLineSearch(src)
 			imgui.SameLineV(0, 10)
 
-			if imgui.Button(fmt.Sprintf("%c Focus Yield Line", fonts.DisasmGotoCurrent)) {
+			if imgui.Button(fmt.Sprintf("%c Focus Yield Line", fonts.DisasmFocusCurrent)) {
 				win.focusYieldLine = true
 				win.focusYieldLineManual = true
 			}

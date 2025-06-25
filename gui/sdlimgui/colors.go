@@ -84,6 +84,7 @@ type imguiColors struct {
 	DisasmLocation imgui.Vec4
 	DisasmBank     imgui.Vec4
 	DisasmAddress  imgui.Vec4
+	DisasmLabel    imgui.Vec4
 	DisasmByteCode imgui.Vec4
 	DisasmOperator imgui.Vec4
 	DisasmOperand  imgui.Vec4
@@ -294,7 +295,8 @@ func newColors() *imguiColors {
 		DisasmLocation: imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0},
 		DisasmBank:     imgui.Vec4{X: 0.6, Y: 0.6, Z: 0.8, W: 1.0},
 		DisasmAddress:  imgui.Vec4{X: 0.8, Y: 0.4, Z: 0.4, W: 1.0},
-		DisasmByteCode: imgui.Vec4{X: 0.5, Y: 0.5, Z: 0.6, W: 1.0},
+		DisasmLabel:    imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0},
+		DisasmByteCode: imgui.Vec4{X: 0.6, Y: 0.6, Z: 0.7, W: 1.0},
 		DisasmOperator: imgui.Vec4{X: 0.4, Y: 0.4, Z: 0.8, W: 1.0},
 		DisasmOperand:  imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.3, W: 1.0},
 		DisasmCycles:   imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0},

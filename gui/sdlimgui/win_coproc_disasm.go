@@ -204,44 +204,36 @@ func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries, lastExecu
 	imgui.PushStyleColor(imgui.StyleColorTableRowBgAlt, win.img.cols.WindowBg)
 	defer imgui.PopStyleColorV(2)
 
-	var clipper imgui.ListClipper
-
 	win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
+		var results imgui.ListClipper
+
 		if lastExecution {
 			imgui.Text("State of execution has recently changed. Last execution details currently unavailable.")
-			clipper.Begin(len(dsm.LastExecution))
-			for clipper.Step() {
-				for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-					if i >= len(dsm.LastExecution) {
-						imgui.Text("")
-						break
-					}
-					e := dsm.LastExecution[i]
-					win.drawEntry(src, e.(arm.DisasmEntry))
+			imgui.ListClipperAll(len(dsm.LastExecution), func(i int) {
+				if i >= len(dsm.LastExecution) {
+					imgui.Text("")
+					return
 				}
-			}
+				e := dsm.LastExecution[i]
+				win.drawEntry(src, e.(arm.DisasmEntry))
+			})
 		} else {
-			clipper.Begin(len(dsm.Entries))
-			for clipper.Step() {
-				for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-					if i >= len(dsm.Keys) {
-						imgui.Text("")
-						break
-					}
-					k := dsm.Keys[i]
-					e := dsm.Entries[k]
-					win.drawEntry(src, e.(arm.DisasmEntry))
+			imgui.ListClipperAll(len(dsm.Entries), func(i int) {
+				if i >= len(dsm.Keys) {
+					imgui.Text("")
+					return
 				}
-			}
-
+				k := dsm.Keys[i]
+				e := dsm.Entries[k]
+				win.drawEntry(src, e.(arm.DisasmEntry))
+			})
 		}
 
-		// scroll window with the last item, if the last item was visible on the
-		// last frame
+		// scroll window with the last item, if the last item was visible on the last frame
 		if win.lastItemVisible {
 			imgui.SetScrollY(imgui.ScrollMaxY())
 		}
-		win.lastItemVisible = clipper.DisplayEnd >= len(dsm.Entries) && win.img.dbg.State() == govern.Running
+		win.lastItemVisible = results.DisplayEnd >= len(dsm.Entries) && win.img.dbg.State() == govern.Running
 	})
 }
 

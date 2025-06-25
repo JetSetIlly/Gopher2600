@@ -325,12 +325,6 @@ func (win *winPrefs) drawDebuggerTab() {
 		usesymbols := win.img.dbg.Disasm.Prefs.Symbols.Get().(bool)
 		if imgui.Checkbox("Use Symbols", &usesymbols) {
 			win.img.dbg.Disasm.Prefs.Symbols.Set(usesymbols)
-
-			// if disassembly has address labels then turning symbols off may alter
-			// the vertical scrolling of the disassembly window.
-			//
-			// set focusOnAddr to true to force preference change to take effect
-			win.img.wm.debuggerWindows[winDisasmID].(*winDisasm).focusOnAddr = true
 		}
 
 		colorDisasm := win.img.prefs.colorDisasm.Get().(bool)
