@@ -158,12 +158,11 @@ func (cart *Ace) runARM() bool {
 
 	// keep calling runArm() for as long as program does not need to sync with the VCS
 	for cart.mem.yield.Type != coprocessor.YieldSyncWithVCS {
-
 		// the ARM should never return YieldProgramEnded. if it does then it is
 		// an error and we should yield with YieldExecutionError
 		if cart.mem.yield.Type == coprocessor.YieldProgramEnded {
 			cart.mem.yield.Type = coprocessor.YieldExecutionError
-			cart.mem.yield.Error = fmt.Errorf("ACE does not support program-ended yield")
+			cart.mem.yield.Error = fmt.Errorf("ACE does not support ProgramEnded yield type")
 		}
 
 		switch cart.yieldHook.CartYield(cart.mem.yield) {

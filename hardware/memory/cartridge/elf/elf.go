@@ -340,7 +340,7 @@ func (cart *Elf) runARM(addr uint16) bool {
 		// with YieldExecutionError
 		if cart.mem.yield.Type == coprocessor.YieldProgramEnded {
 			cart.mem.yield.Type = coprocessor.YieldExecutionError
-			cart.mem.yield.Error = fmt.Errorf("ELF does not support program-ended yield")
+			cart.mem.yield.Error = fmt.Errorf("ELF does not support ProgramEnded yield")
 		}
 
 		switch cart.yieldHook.CartYield(cart.mem.yield) {

@@ -547,6 +547,14 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 			// keep calling runArm() for as long as program has not ended
 			runArm()
 			for cart.state.yield.Type != coprocessor.YieldProgramEnded {
+				// the ARM should never return YieldSyncWithVCS when executing code
+				// from the DPC+ type. if it does then it is an error and we should yield
+				// with YieldExecutionError
+				if cart.state.yield.Type == coprocessor.YieldSyncWithVCS {
+					cart.state.yield.Type = coprocessor.YieldExecutionError
+					cart.state.yield.Error = fmt.Errorf("DPC+ does not support SyncWithVCS yield type")
+				}
+
 				if cart.yieldHook.CartYield(cart.state.yield) == coprocessor.YieldHookEnd {
 					break
 				}
