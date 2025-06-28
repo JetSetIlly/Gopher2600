@@ -19,12 +19,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/tracker"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 const winTrackerID = "Audio Tracker"

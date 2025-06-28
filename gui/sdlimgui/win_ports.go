@@ -18,10 +18,10 @@ package sdlimgui
 import (
 	"fmt"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 const winPortsID = "Ports"

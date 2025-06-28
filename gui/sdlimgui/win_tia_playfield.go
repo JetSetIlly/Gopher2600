@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 func (win *winTIA) drawPlayfield() {

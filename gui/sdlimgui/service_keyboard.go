@@ -21,11 +21,11 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/userinput"
+	"github.com/jetsetilly/imgui-go/v5"
 	"github.com/veandco/go-sdl2/sdl"
 )
 

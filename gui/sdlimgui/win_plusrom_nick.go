@@ -16,10 +16,10 @@
 package sdlimgui
 
 import (
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom/plusnet"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 const winPlusROMNickID = "PlusROM Nick"

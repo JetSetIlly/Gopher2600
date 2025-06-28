@@ -16,7 +16,7 @@
 package sdlimgui
 
 import (
-	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 type modal int

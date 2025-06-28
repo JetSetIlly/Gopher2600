@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 const winTIAAudioID = "TIA Audio"

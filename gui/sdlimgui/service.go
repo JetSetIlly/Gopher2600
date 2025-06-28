@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/userinput"
 
-	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/imgui-go/v5"
 	"github.com/veandco/go-sdl2/sdl"
 )
 

@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 const win6507PinoutID = "6507 Pinout"

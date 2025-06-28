@@ -18,7 +18,7 @@ package sdlimgui
 import (
 	"strings"
 
-	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 var tooltipColor = imgui.Vec4{X: 0.08, Y: 0.08, Z: 0.08, W: 1.0}

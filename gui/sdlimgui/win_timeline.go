@@ -20,12 +20,12 @@ import (
 	"image"
 	"os"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
 	"github.com/jetsetilly/gopher2600/thumbnailer"
+	"github.com/jetsetilly/imgui-go/v5"
 	"golang.org/x/image/draw"
 )
 

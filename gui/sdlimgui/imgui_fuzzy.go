@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/imgui-go/v5"
 	"github.com/sahilm/fuzzy"
 )
 

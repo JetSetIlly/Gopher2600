@@ -18,8 +18,8 @@ package sdlimgui
 import (
 	"time"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 const winLogID = "Log"

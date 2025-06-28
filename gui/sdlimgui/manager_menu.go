@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 // the window menus grouped by type. the types are:.

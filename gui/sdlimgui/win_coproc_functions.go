@@ -18,8 +18,8 @@ package sdlimgui
 import (
 	"fmt"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 const winCoProcFunctionsID = "Coprocessor Functions"

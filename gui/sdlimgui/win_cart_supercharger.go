@@ -18,8 +18,8 @@ package sdlimgui
 import (
 	"fmt"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 const winSuperchargerRegistersID = "AR Registers"

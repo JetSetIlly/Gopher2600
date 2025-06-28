@@ -1,5 +1,5 @@
 diff --git a/go.mod b/go.mod
-index 7575b599c..adfee04bf 100644
+index 94421d750..cc8a72055 100644
 --- a/go.mod
 +++ b/go.mod
 @@ -3,6 +3,7 @@ module github.com/jetsetilly/gopher2600
@@ -10,16 +10,15 @@ index 7575b599c..adfee04bf 100644
  	github.com/go-audio/audio v1.0.0
  	github.com/go-audio/wav v1.1.0
  	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6
-@@ -17,6 +18,7 @@ require (
+@@ -17,5 +18,6 @@ require (
  
  require (
  	github.com/go-audio/riff v1.0.0 // indirect
 +	github.com/gorilla/websocket v1.5.0 // indirect
  	github.com/kylelemons/godebug v1.1.0 // indirect
  )
- 
 diff --git a/go.sum b/go.sum
-index d610ef91e..8e6f0975c 100644
+index cf0c083e8..d48014080 100644
 --- a/go.sum
 +++ b/go.sum
 @@ -1,3 +1,5 @@
@@ -53,7 +52,7 @@ index d610ef91e..8e6f0975c 100644
 +golang.org/x/tools v0.1.12 h1:VveCTK38A2rkS8ZqFY25HIDFscX5X9OoEhJd3quQmXU=
 +golang.org/x/tools v0.1.12/go.mod h1:hNGJHUnrk76NpqgfD5Aqm5Crs+Hm0VOH/i9J2+nxYbc=
 diff --git a/gopher2600.go b/gopher2600.go
-index a3294cbc6..0f0795f68 100644
+index 2738ce2fa..c560cd576 100644
 --- a/gopher2600.go
 +++ b/gopher2600.go
 @@ -20,12 +20,14 @@ import (
@@ -71,7 +70,7 @@ index a3294cbc6..0f0795f68 100644
  	"github.com/jetsetilly/gopher2600/cartridgeloader"
  	"github.com/jetsetilly/gopher2600/debugger"
  	"github.com/jetsetilly/gopher2600/debugger/govern"
-@@ -337,6 +339,12 @@ func emulate(mode string, sync *mainSync, args []string) error {
+@@ -352,6 +354,12 @@ func emulate(mode string, sync *mainSync, args []string) error {
  		opts.TermType = "IMGUI"
  	}
  
@@ -84,7 +83,7 @@ index a3294cbc6..0f0795f68 100644
  	// parse args and get copy of remaining arguments
  	err := flgs.Parse(args)
  	if err != nil {
-@@ -366,6 +374,19 @@ func emulate(mode string, sync *mainSync, args []string) error {
+@@ -381,6 +389,19 @@ func emulate(mode string, sync *mainSync, args []string) error {
  	// turning the emulation's interrupt handler off
  	sync.state <- stateRequest{req: reqNoIntSig}
  

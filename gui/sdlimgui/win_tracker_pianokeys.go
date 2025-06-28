@@ -16,8 +16,8 @@
 package sdlimgui
 
 import (
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/tracker"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 const numPianoKeys = 59

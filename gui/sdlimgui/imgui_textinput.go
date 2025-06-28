@@ -18,7 +18,7 @@ package sdlimgui
 import (
 	"strings"
 
-	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 // length limited input of allowed hexadecimal characters.

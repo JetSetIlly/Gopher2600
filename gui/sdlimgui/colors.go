@@ -21,7 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 	"github.com/jetsetilly/gopher2600/reflection"
 
-	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 // imguiColors defines all the colors used by the GUI. Fields with leading

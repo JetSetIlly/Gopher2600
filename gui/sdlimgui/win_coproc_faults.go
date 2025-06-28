@@ -18,10 +18,10 @@ package sdlimgui
 import (
 	"fmt"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/coprocessor/faults"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 const winCoProcFaultsID = "Memory Faults"

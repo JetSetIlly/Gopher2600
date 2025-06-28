@@ -16,7 +16,6 @@
 package sdlimgui
 
 import (
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -24,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/reflection"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 func (win *winDbgScr) paintDragAndDrop() {

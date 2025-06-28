@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
@@ -27,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 const winCoProcProfilingID = "Coprocessor Profiling"

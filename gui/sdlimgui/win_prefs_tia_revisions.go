@@ -18,8 +18,8 @@ package sdlimgui
 import (
 	"fmt"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/hardware/tia/revision"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 func (win *winPrefs) drawTIARev() {

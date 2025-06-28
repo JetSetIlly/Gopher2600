@@ -19,8 +19,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 // manager handles windows and menus in the system.

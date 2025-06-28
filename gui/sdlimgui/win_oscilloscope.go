@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio/mix"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 const winOscilloscopeID = "Oscilloscope"

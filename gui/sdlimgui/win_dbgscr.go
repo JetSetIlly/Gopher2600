@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"image"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/disassembly"
@@ -30,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/reflection"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 const winDbgScrID = "TV Screen"

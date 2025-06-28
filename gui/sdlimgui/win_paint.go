@@ -16,8 +16,8 @@
 package sdlimgui
 
 import (
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 const winPaintID = "Paint"

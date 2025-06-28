@@ -26,7 +26,6 @@ import (
 
 	"golang.org/x/image/draw"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/archivefs"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
@@ -36,6 +35,7 @@ import (
 	"github.com/jetsetilly/gopher2600/properties"
 	"github.com/jetsetilly/gopher2600/resources"
 	"github.com/jetsetilly/gopher2600/thumbnailer"
+	"github.com/jetsetilly/imgui-go/v5"
 	"github.com/sahilm/fuzzy"
 )
 

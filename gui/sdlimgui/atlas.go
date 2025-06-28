@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 type fontDisplay interface {

@@ -17,7 +17,7 @@
 
 package sdlimgui
 
-import "github.com/inkyblackness/imgui-go/v4"
+import "github.com/jetsetilly/imgui-go/v5"
 
 func usingFreetypeRendering() bool {
 	return true

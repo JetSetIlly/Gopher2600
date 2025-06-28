@@ -20,7 +20,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/breakpoints"
@@ -30,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 const winCoProcSourceID = "Coprocessor Source"

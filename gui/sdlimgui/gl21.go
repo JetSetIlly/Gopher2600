@@ -23,8 +23,8 @@ import (
 	"unsafe"
 
 	"github.com/go-gl/gl/v2.1/gl"
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 type gl21Texture struct {

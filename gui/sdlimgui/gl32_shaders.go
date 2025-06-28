@@ -21,8 +21,8 @@ import (
 	"strings"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/display/shaders"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 // version string to attach to all shaders

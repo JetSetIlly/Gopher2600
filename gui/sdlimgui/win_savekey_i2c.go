@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey/i2c"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 const winSaveKeyI2CID = "SaveKey I2C"

@@ -18,9 +18,9 @@ package sdlimgui
 import (
 	"time"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/display/bevels"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 type playScr struct {

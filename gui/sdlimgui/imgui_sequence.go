@@ -16,7 +16,7 @@
 package sdlimgui
 
 import (
-	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 // drawlistSequence provides a neat way of drawlist elements of a uniform size in

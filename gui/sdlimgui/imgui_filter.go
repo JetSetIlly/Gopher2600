@@ -20,8 +20,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 // filterFlags is used to control how the filter control is drawn

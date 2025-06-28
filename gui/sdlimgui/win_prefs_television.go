@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/television/colourgen"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/imgui-go/v5"
 )
 
 func (win *winPrefs) drawTelevision() {
