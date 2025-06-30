@@ -42,7 +42,7 @@ var MissileSizes = []string{
 	"single width",
 	"double width",
 	"quadruple width",
-	"doubt-quad width",
+	"double-quad width",
 }
 
 // MissileSprite represents a moveable missile sprite in the VCS graphical display.
@@ -50,6 +50,7 @@ var MissileSizes = []string{
 type MissileSprite struct {
 	tia tia
 
+	// link to player to be informed about whether to reset the missile position
 	resetToPlayer func() bool
 
 	// ^^^ references to other parts of the VCS ^^^
@@ -245,11 +246,10 @@ func (ms *MissileSprite) tickHMOVE() bool {
 // returns true if pixel has changed.
 func (ms *MissileSprite) tick() bool {
 	// reset-to-player placement note: we don't do the missile-to-player reset
-	// unless we're hmoving or ticking. if we place this block before the
-	// "early return if nothing to do" block above, then it will produce
-	// incorrect results. we can see this (occasionally) in Supercharger
-	// Frogger - the top row of trucks will sometimes extend by a pixel as they
-	// drive off screen.
+	// unless we're hmoving or ticking. if we place this block before the "early return
+	// if nothing to do" block (in the tickHBLANK() and tickHMOVE() blocks), then it will
+	// produce incorrect results. we can see this (occasionally) in Supercharger Frogger
+	// - the top row of trucks will sometimes extend by a pixel as they drive off screen.
 	if ms.ResetToPlayer && ms.resetToPlayer() {
 		ms.position = polycounter.ResetValue
 		ms.pclk = phaseclock.ResetValue

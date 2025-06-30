@@ -27,10 +27,10 @@ import (
 
 // BallSizes maps ball size values to descriptions of those sizes.
 var BallSizes = []string{
-	"single size",
-	"double size",
-	"quad size",
-	"double-quad size",
+	"single width",
+	"double width",
+	"quad width",
+	"double-quad width",
 }
 
 // ballSizesBrief maps ball size values to brief descriptions of those sizes.
