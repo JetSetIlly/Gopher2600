@@ -163,6 +163,9 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 		return nil, fmt.Errorf("sdlimgui: %w", err)
 	}
 
+	// add clipboard support
+	imgui.CurrentPlatformIO().SetClipboard(img.plt)
+
 	// initialise preferences after platform initialisation because there are
 	// preference hooks that reference platform fields
 	img.prefs, err = newPreferences(img)

@@ -20,6 +20,16 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+// these functions are not specific gopher2600 and are good candidates for
+// moving into an external package
+
+func sdl2SetImguiModKey(io imgui.IO, mod uint16) {
+	io.AddKeyEvent(imgui.KeyModCtrl, (mod&sdl.KMOD_CTRL) != 0)
+	io.AddKeyEvent(imgui.KeyModShift, (mod&sdl.KMOD_SHIFT) != 0)
+	io.AddKeyEvent(imgui.KeyModAlt, (mod&sdl.KMOD_ALT) != 0)
+	io.AddKeyEvent(imgui.KeyModSuper, (mod&sdl.KMOD_GUI) != 0)
+}
+
 func sdl2KeyEventToImguiKey(keycode sdl.Keycode, scancode sdl.Scancode) imgui.ImguiKey {
 	switch keycode {
 	case sdl.K_TAB:

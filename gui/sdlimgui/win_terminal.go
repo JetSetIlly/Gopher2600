@@ -154,6 +154,9 @@ func (win *winTerm) draw() {
 		if imgui.Selectable("Clear terminal") {
 			win.output = win.output[:0]
 		}
+		if imgui.Selectable("Copy to clipboard") {
+			win.copyToClipboard()
+		}
 		if imgui.Selectable("Save output to file") {
 			win.saveOutput()
 		}
@@ -261,6 +264,15 @@ func (win *winTerm) draw() {
 
 		imgui.PopItemWidth()
 	})
+}
+
+func (win *winTerm) copyToClipboard() {
+	var s strings.Builder
+	for _, o := range win.output {
+		s.WriteString(o.text)
+		s.WriteString("\n")
+	}
+	win.img.plt.SetClipboardText(s.String())
 }
 
 func (win *winTerm) saveOutput() {

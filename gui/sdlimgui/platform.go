@@ -370,3 +370,13 @@ func (plt *platform) setFullScreen(fullScreen bool) {
 func (plt *platform) setCapture(set bool) {
 	sdl.SetRelativeMouseMode(set)
 }
+
+// ClipboardText returns the current clipboard text, if available
+func (_ *platform) ClipboardText() (string, error) {
+	return sdl.GetClipboardText()
+}
+
+// SetClipboardText sets the text as the current clipboard text
+func (_ *platform) SetClipboardText(text string) {
+	_ = sdl.SetClipboardText(text)
+}

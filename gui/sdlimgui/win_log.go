@@ -16,6 +16,7 @@
 package sdlimgui
 
 import (
+	"strings"
 	"time"
 
 	"github.com/jetsetilly/gopher2600/logger"
@@ -66,16 +67,43 @@ func (win *winLog) debuggerDraw() bool {
 }
 
 func (win *winLog) draw() {
-	logger.BorrowLog(func(log []logger.Entry) {
-		imgui.ListClipperAll(len(log), func(i int) {
-			imgui.Text(log[i].String())
-		})
+	if imgui.BeginChild("##log") {
+		logger.BorrowLog(func(log []logger.Entry) {
+			imgui.ListClipperAll(len(log), func(i int) {
+				imgui.Text(log[i].String())
+			})
 
-		// scroll to bottom if last entry in log is new
-		lastEntry := log[len(log)-1]
-		if lastEntry.Time != win.lastEntryTime {
-			win.lastEntryTime = lastEntry.Time
-			imgui.SetScrollHereY(0.0)
+			// scroll to bottom if last entry in log is new
+			if len(log) > 0 {
+				lastEntry := log[len(log)-1]
+				if lastEntry.Time != win.lastEntryTime {
+					win.lastEntryTime = lastEntry.Time
+					imgui.SetScrollHereY(0.0)
+				}
+			}
+		})
+	}
+	imgui.EndChild()
+
+	if imgui.BeginPopupContextItem() {
+		if imgui.Selectable("Clear log") {
+			logger.Clear()
 		}
+		if imgui.Selectable("Copy to clipboard") {
+			win.copyToClipboard()
+		}
+		imgui.EndPopup()
+	}
+
+}
+
+func (win *winLog) copyToClipboard() {
+	logger.BorrowLog(func(log []logger.Entry) {
+		var s strings.Builder
+		for _, o := range log {
+			s.WriteString(o.String())
+			s.WriteString("\n")
+		}
+		win.img.plt.SetClipboardText(s.String())
 	})
 }
