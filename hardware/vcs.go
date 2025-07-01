@@ -257,7 +257,7 @@ func (vcs *VCS) SetClockSpeed(spec specification.Spec) {
 			vcs.Clock = clocks.NTSC
 			logger.Log(vcs.Env, "vcs", "switching to NTSC clock")
 		}
-	case specification.SpecPAL.ID:
+	case specification.SpecPAL.ID, specification.SpecPAL60.ID:
 		if vcs.Clock != clocks.PAL {
 			vcs.Clock = clocks.PAL
 			logger.Log(vcs.Env, "vcs", "switching to PAL clock")
