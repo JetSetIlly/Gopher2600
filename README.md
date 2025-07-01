@@ -24,13 +24,25 @@ For the player who wants to master a game quickly there is convenient [gameplay 
 
 Gameplay can also be [recorded and played back](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Recording-Gamplay). In addition to keeping gameplay sessions for future study or enjoyment, recordings are also useful for testing purposes during ROM development.
 
-The standard controllers are supported. The joystick, the paddle, the keypad and also Sega Genesis style [controllers](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Hand-Controllers-and-Front-Panel)
+The standard controllers are supported. The joystick, the paddle, the keypad and also Sega Genesis style [controllers](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Hand-Controllers-and-Front-Panel).
 
 The graphical [debugger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Debugger) provides a powerful interface to the internals of the Atari 2600. The state of the console can be inspected and rewound at the CPU and Colour Clock level. Breakpoints and watches can be set on many areas of the CPU, TIA and RIOT and the same areas can be be peeked and poked as required.
 
 In addition to the graphical windows of the debugger, a terminal interface is provided.
 
 The most powerful use of the debugger however is the debugging and profiling of ROMs that use an ARM coprocessor (Harmony, PlusCart, etc.) When [compiled correctly](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Preparing-ARM-Enabled-Projects-for-the-Gopher2600-Debugger) Gopher2600 can use standard DWARF information to help profile performance; to identify incorrect code flow; and to identify incorrect use of the program's global and local variables.
+
+## Basic Usage
+
+Launching the emulator from the desktop or command line will open the emulator in `playmode`. The ROM selector allows you to select a 2600 ROM file from your collection. The ROM selector can be opened at any time by pressing the `TAB` key.
+
+For joystick games, player one can be controlled with the keyboard - using cursor keys and the space bar for fire. Alternatively, any attached gamepad can be used. For games that do not use a joystick see the [controllers wiki entry](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Hand-Controllers-and-Front-Panel) for more details. This page also lists the keys for the console's panel switches.
+
+The preferences window can be opened by pressing the `F10` key. Amongst other settings, the television can be adjusted from this window and in particular, the CRT effects can be changed or disabled if necessary.
+
+Finally, the debugger can be activated by pressing the backquote `` ` `` key. 
+
+All other documentation and help for Gopher2600 is listed in the following section.
 
 ## Documentation and Help
 
