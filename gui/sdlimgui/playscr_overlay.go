@@ -393,21 +393,6 @@ func (ovly *playscrOverlay) drawTopLeft() {
 
 		// we can draw multiple icons if required
 		useIconQueue = true
-
-	} else {
-		// we'll only be drawing one icon so we only need to set the cursor
-		// position once, so there's no need for a window as would be the case
-		// if fps detail was activated
-		imgui.SetCursorScreenPos(pos)
-
-		// FPS overlay is not active so we increase the font size for any icons
-		// that may be drawn hereafter in this window
-		imgui.PushFont(ovly.img.fonts.veryLargeFontAwesome)
-		defer imgui.PopFont()
-
-		// add visibility adjustment if there is no FPS overlay
-		imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{X: ovly.visibility, Y: ovly.visibility, Z: ovly.visibility, W: ovly.visibility})
-		defer imgui.PopStyleColor()
 	}
 
 	// start a new icons queue
@@ -503,6 +488,22 @@ func (ovly *playscrOverlay) drawTopLeft() {
 	// has been set
 	if !useIconQueue {
 		if len(ovly.iconQueue) > 0 {
+			// we'll only be drawing one icon so we only need to set the cursor
+			// position once, so there's no need for a window as would be the case
+			// if fps detail was activated
+			imgui.SetCursorScreenPos(pos)
+
+			// FPS overlay is not active so we increase the font size for any icons
+			// that may be drawn hereafter in this window
+			imgui.PushFont(ovly.img.fonts.veryLargeFontAwesome)
+			defer imgui.PopFont()
+
+			// add visibility adjustment if there is no FPS overlay
+			imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{X: ovly.visibility, Y: ovly.visibility, Z: ovly.visibility, W: ovly.visibility})
+			defer imgui.PopStyleColor()
+		}
+
+		if len(ovly.iconQueue) > 0 {
 			imgui.Text(string(ovly.iconQueue[len(ovly.iconQueue)-1]))
 		}
 		return
@@ -513,6 +514,7 @@ func (ovly *playscrOverlay) drawTopLeft() {
 		imgui.Text(string(i))
 		imgui.SameLine()
 	}
+
 	return
 }
 
