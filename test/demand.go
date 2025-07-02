@@ -17,7 +17,7 @@ package test
 
 import "testing"
 
-// DemandEquility is used to test equality between one value and another. If the
+// DemandEquality is used to test equality between one value and another. If the
 // test fails it is a testing fatility
 //
 // This is particular useful if the values being tested are used in further
@@ -30,12 +30,12 @@ func DemandEquality[T comparable](t *testing.T, v T, expectedValue T) {
 	}
 }
 
-// DemandSucess is used to test for a value which indicates an 'successful'
+// DemandSuccess is used to test for a value which indicates an 'successful'
 // value for the type. See ExpectSucess() for more information on success
 // values
 func DemandSuccess(t *testing.T, v any) {
 	t.Helper()
-	if !expectSuccess(t, v) {
+	if !expect(t, v) {
 		t.Fatalf("a success value is demanded for type %T", v)
 	}
 }
@@ -45,7 +45,7 @@ func DemandSuccess(t *testing.T, v any) {
 // values
 func DemandFailure(t *testing.T, v any) {
 	t.Helper()
-	if !expectFailure(t, v) {
+	if expect(t, v) {
 		t.Fatalf("a failure value is demanded for type %T", v)
 	}
 }

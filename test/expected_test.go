@@ -13,30 +13,38 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package test
+package test_test
 
-// Writer is an implementation of the io.Writer interface. It should be used to
-// capture output and to compare with predefined strings.
-type Writer struct {
-	buffer []byte
+import (
+	"errors"
+	"testing"
+
+	"github.com/jetsetilly/gopher2600/test"
+)
+
+func TestExpectFailure(t *testing.T) {
+	test.ExpectFailure(t, false)
+	test.ExpectFailure(t, errors.New("test"))
 }
 
-func (tw *Writer) Write(p []byte) (n int, err error) {
-	tw.buffer = append(tw.buffer, p...)
-	return len(p), nil
+func TestExpectSuccess(t *testing.T) {
+	test.ExpectSuccess(t, true)
+	var err error
+	test.ExpectSuccess(t, err)
+	test.ExpectSuccess(t, nil)
 }
 
-// clear string empties the buffer.
-func (tw *Writer) Clear() {
-	tw.buffer = tw.buffer[:0]
+func TestExpectEquality(t *testing.T) {
+	test.ExpectEquality(t, 10, 5+5)
+	test.ExpectEquality(t, true, true)
+	test.ExpectEquality(t, true, !false)
 }
 
-// Compare buffered output with predefined/example string.
-func (tw *Writer) Compare(s string) bool {
-	return s == string(tw.buffer)
+func TestExpectInequality(t *testing.T) {
+	test.ExpectInequality(t, 11, 5+5)
+	test.ExpectInequality(t, true, false)
 }
 
-// implements Stringer interface.
-func (tw *Writer) String() string {
-	return string(tw.buffer)
+func TestExpectApproximate(t *testing.T) {
+	test.ExpectApproximate(t, 10, 11, 0.1)
 }

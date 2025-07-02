@@ -73,37 +73,15 @@ func ExpectApproximate[T Approximate](t *testing.T, value T, expectedValue T, to
 //	bool == false
 //	error != nil
 //
-// If type is nil then the test will fail
+// # If type is nil then the test will fail
+//
+// Any other type will fatally fail - only bool, error and nil are supported
 func ExpectFailure(t *testing.T, v any) bool {
 	t.Helper()
-	if !expectFailure(t, v) {
+	if expect(t, v) {
 		t.Errorf("a failure value is expected for type %T", v)
 		return false
 	}
-	return true
-}
-
-func expectFailure(t *testing.T, v any) bool {
-	t.Helper()
-
-	switch v := v.(type) {
-	case bool:
-		if v {
-			return false
-		}
-
-	case error:
-		if v == nil {
-			return false
-		}
-
-	case nil:
-		return false
-
-	default:
-		t.Fatalf("unsupported type (%T) for ExpectSuccess()", v)
-	}
-
 	return true
 }
 
@@ -114,17 +92,21 @@ func expectFailure(t *testing.T, v any) bool {
 //	bool == true
 //	error == nil
 //
-// If type is nil then the test will succeed
+// # If type is nil then the test will succeed
+//
+// Any other type will fatally fail - only bool, error and nil are supported
 func ExpectSuccess(t *testing.T, v any) bool {
 	t.Helper()
-	if !expectSuccess(t, v) {
+	if !expect(t, v) {
 		t.Errorf("a success value is expected for type %T", v)
 		return false
 	}
 	return true
 }
 
-func expectSuccess(t *testing.T, v any) bool {
+// expect is a basic test for success/failure. if it returns true the value v is
+// considered to be "successful"
+func expect(t *testing.T, v any) bool {
 	t.Helper()
 
 	switch v := v.(type) {
@@ -142,7 +124,7 @@ func expectSuccess(t *testing.T, v any) bool {
 		return true
 
 	default:
-		t.Fatalf("unsupported type (%T) for ExpectSuccess()", v)
+		t.Fatalf("unsupported type (%T) for expect test", v)
 	}
 
 	return true
