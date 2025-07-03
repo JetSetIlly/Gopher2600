@@ -103,7 +103,7 @@ func (win *winCartTape) draw(tape mapper.CartTapeState) {
 	w -= (imgui.CurrentStyle().FramePadding().X * 2) + (imgui.CurrentStyle().ItemInnerSpacing().X * 2)
 	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.AudioOscBg)
 	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.AudioOscLine)
-	imgui.PlotLinesV("", tape.Data, 0, "", -1.0, 1.0,
+	imgui.PlotLinesV("##tapeoscilloscope", tape.Data, 0, "", -1.0, 1.0,
 		imgui.Vec2{X: w, Y: imgui.FrameHeight() * 2})
 	imgui.PopStyleColorV(2)
 	imgui.Spacing()
