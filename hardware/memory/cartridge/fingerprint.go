@@ -289,8 +289,17 @@ func fingerprintCDF(loader cartridgeloader.Loader) (bool, string) {
 	b := make([]byte, 4)
 	loader.Seek(0, io.SeekStart)
 
-	// fingerprinting beyond the first 1k can easily result in a false positive
-	const fingerprintLimit = 1024
+	// fingerprinting beyond the first 2k can easily result in a false positive
+	const fingerprintLimit = 0x0800
+
+	// the CDFx sequence must happen at least twice
+	var ct int
+
+	// the version number we're using to check. the first version number we find is
+	// the one used to match against subsequence versions. we can easily imagine
+	// situations where this might not be sufficient but it's not important enough
+	// to complicate the code for
+	var version byte
 
 	for i := 0; i < fingerprintLimit-len(b); i++ {
 		n, err := loader.Read(b)
@@ -299,7 +308,17 @@ func fingerprintCDF(loader cartridgeloader.Loader) (bool, string) {
 		}
 
 		if bytes.Equal(b[:3], []byte("CDF")) {
-			return true, fmt.Sprintf("CDF%1d", b[3])
+			// I am aware of only two version numbers used for old-school CDF
+			if b[3] == 0 || b[3] == 1 {
+				if ct == 0 {
+					version = b[3]
+					ct++
+				} else if ct == 1 {
+					if b[3] == version {
+						return true, fmt.Sprintf("CDF%d", b[3])
+					}
+				}
+			}
 		}
 
 		if errors.Is(err, io.EOF) {

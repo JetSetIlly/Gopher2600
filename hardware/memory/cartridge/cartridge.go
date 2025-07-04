@@ -240,8 +240,6 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	}
 
 	switch mapping {
-	case unrecognisedMapper:
-		return fmt.Errorf("cartridge: unrecognised mapper")
 	case "2K":
 		cart.mapper, err = newAtari2k(cart.env, cartload)
 	case "4K":
@@ -342,6 +340,12 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 	case "ELF":
 		cart.mapper, err = elf.NewElf(cart.env, cartload, false)
+
+	case unrecognisedMapper:
+		return fmt.Errorf("cartridge: unrecognised mapper")
+
+	default:
+		return fmt.Errorf("cartridge: unrecognised mapper (%s)", mapping)
 	}
 	if err != nil {
 		return fmt.Errorf("cartridge: %w", err)
