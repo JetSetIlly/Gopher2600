@@ -668,7 +668,8 @@ func regressRun(mode string, args []string) error {
 	var opts regression.RegressRunOptions
 
 	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
-	flgs.BoolVar(&opts.Verbose, "v", false, "output more detail")
+	flgs.BoolVar(&opts.Verbose, "verbose", false, "output more detail")
+	flgs.BoolVar(&opts.Concurrent, "concurrent", true, "run tests concurrently where possible")
 
 	// parse args and get copy of remaining arguments
 	err := flgs.Parse(args)
@@ -720,7 +721,6 @@ func regressDelete(mode string, args []string) error {
 	case 0:
 		return fmt.Errorf("database key required")
 	case 1:
-
 		// use stdin for confirmation unless "yes" flag has been sent
 		var confirmation io.Reader
 		if yes {

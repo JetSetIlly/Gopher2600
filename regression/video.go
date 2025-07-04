@@ -183,6 +183,11 @@ func (reg VideoRegression) String() string {
 	return s.String()
 }
 
+// concurrentSafe implements the regression.Regressor interface.
+func (reg *VideoRegression) concurrentSafe() bool {
+	return true
+}
+
 // redux implements the regression.Regressor interface.
 func (reg *VideoRegression) redux(messages io.Writer, tag string) (Regressor, error) {
 	old := *reg
@@ -259,7 +264,7 @@ func (reg *VideoRegression) regress(newRegression bool, messages io.Writer, tag 
 		select {
 		case <-tck.C:
 			frame := vcs.TV.GetCoords().Frame
-			messages.Write([]byte(fmt.Sprintf("\r%s [%d/%d (%.1f%%)]", tag, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
+			messages.Write([]byte(fmt.Sprintf("%s [%d/%d (%.1f%%)]", tag, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
 		default:
 		}
 

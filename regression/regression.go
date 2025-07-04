@@ -23,6 +23,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/resources"
@@ -54,6 +56,9 @@ type Regressor interface {
 	// is a copy of the regressor before it was reduxed. For some regressors it
 	// may be the exact same instance
 	redux(messages io.Writer, tag string) (Regressor, error)
+
+	// returns true if the regressor is safe to run concurrently
+	concurrentSafe() bool
 }
 
 // when starting a database session we need to register what entries we will
@@ -375,6 +380,7 @@ type RegressRunOptions struct {
 	Keys        []string
 	Verbose     bool
 	UseFullPath bool
+	Concurrent  bool
 }
 
 // RegressRun runs all the tests in the regression database. The keys argument
@@ -399,25 +405,23 @@ func RegressRun(messages io.Writer, opts RegressRunOptions) error {
 	var successes []string
 	var fails []string
 
+	startTime := time.Now()
 	defer func() {
-		messages.Write([]byte(fmt.Sprintf("regression tests: %d succeed, %d fail", len(successes), len(fails))))
-		messages.Write([]byte("\n"))
+		messages.Write([]byte(fmt.Sprintf("regression tests: %d success, %d fail", len(successes), len(fails))))
+		messages.Write([]byte(fmt.Sprintf(" (elapsed %s)\n", time.Since(startTime).Round(time.Second))))
 	}()
 
-	// selectKeys() calls this onSelect function for every key entry
-	onSelect := func(e database.Entry, key int) error {
-		// database entry should also satisfy Regressor interface
-		reg, ok := e.(Regressor)
-		if !ok {
-			return fmt.Errorf("database entry does not satisfy Regressor interface")
-		}
+	// run tests concurrently if possible
+	var wg sync.WaitGroup
+	var concurrentUnsafe []int
 
+	// function run the actual regression. called from onSelect()
+	runTest := func(reg Regressor, key int) {
 		// run regress() function with message. message does not have a
 		// trailing newline
-		err := reg.regress(false, messages, fmt.Sprintf("running: %s", reg))
+		err := reg.regress(false, messages, fmt.Sprintf("\r%srunning: %s", ansiClearLine, reg))
 
-		// once regress() has completed we clear the line ready for the
-		// completion message
+		// clear line before success/failure message
 		messages.Write([]byte(ansiClearLine))
 
 		// print message depending on result of regress()
@@ -431,6 +435,25 @@ func RegressRun(messages io.Writer, opts RegressRunOptions) error {
 			successes = append(successes, strconv.Itoa(key))
 			messages.Write([]byte(fmt.Sprintf("\rsucceed: %s\n", reg)))
 		}
+	}
+
+	// selectKeys() calls this onSelect function for every key entry
+	onSelect := func(e database.Entry, key int) error {
+		// database entry should also satisfy Regressor interface
+		reg, ok := e.(Regressor)
+		if !ok {
+			return fmt.Errorf("database entry does not satisfy Regressor interface")
+		}
+		if !opts.Concurrent || !reg.concurrentSafe() {
+			concurrentUnsafe = append(concurrentUnsafe, key)
+			return nil
+		}
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			runTest(reg, key)
+		}()
 
 		return nil
 	}
@@ -443,6 +466,25 @@ func RegressRun(messages io.Writer, opts RegressRunOptions) error {
 	_, err = db.SelectKeys(onSelect, keysInt...)
 	if err != nil {
 		return fmt.Errorf("regression: %w", err)
+	}
+
+	// wait for all concurrent tests to complete
+	wg.Wait()
+
+	// run tests that can not be run concurrently. this uses a simpled onSelect() function
+	onSelect = func(e database.Entry, key int) error {
+		reg, ok := e.(Regressor)
+		if !ok {
+			return fmt.Errorf("database entry does not satisfy Regressor interface")
+		}
+		runTest(reg, key)
+		return nil
+	}
+
+	// check that concurrent unsafe list has entries otherwise, the SelectKeys()
+	// function will match every key
+	if len(concurrentUnsafe) > 0 {
+		_, err = db.SelectKeys(onSelect, concurrentUnsafe...)
 	}
 
 	return nil

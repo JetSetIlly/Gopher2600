@@ -121,6 +121,13 @@ func (reg LogRegression) String() string {
 	return s.String()
 }
 
+// concurrentSafe implements the regression.Regressor interface.
+func (reg *LogRegression) concurrentSafe() bool {
+	// log regressor is only unsafe because we only have a global logger. we should be able to
+	// change this to true if we make logging context dependent
+	return false
+}
+
 // redux implements the regression.Regressor interface.
 func (reg *LogRegression) redux(messages io.Writer, tag string) (Regressor, error) {
 	old := *reg

@@ -109,6 +109,11 @@ func (reg PlaybackRegression) String() string {
 	return s.String()
 }
 
+// concurrentSafe implements the regression.Regressor interface.
+func (reg *PlaybackRegression) concurrentSafe() bool {
+	return true
+}
+
 // redux implements the regression.Regressor interface.
 func (reg *PlaybackRegression) redux(messages io.Writer, tag string) (Regressor, error) {
 	old := *reg
