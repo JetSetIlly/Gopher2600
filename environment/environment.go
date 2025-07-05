@@ -97,9 +97,11 @@ func NewEnvironment(label Label, tv Television, notify notifications.Notify, pre
 func (env *Environment) Normalise() {
 	env.Random.ZeroSeed = true
 	env.Prefs.SetDefaults()
-	env.Prefs.Revision.SetDefaults()
+	env.Prefs.TV.SetDefaults()
 	env.Prefs.ARM.SetDefaults()
 	env.Prefs.PlusROM.SetDefaults()
+	env.Prefs.Revision.SetDefaults()
+	env.Prefs.AtariVox.SetDefaults()
 }
 
 // IsEmulation checks the emulation label and returns true if it matches
