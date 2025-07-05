@@ -419,7 +419,7 @@ func RegressRun(messages io.Writer, opts RegressRunOptions) error {
 	runTest := func(reg Regressor, key int) {
 		// run regress() function with message. message does not have a
 		// trailing newline
-		err := reg.regress(false, messages, fmt.Sprintf("\r%srunning: %s", ansiClearLine, reg))
+		err := reg.regress(false, messages, fmt.Sprintf("\r%srunning: %03d %s", ansiClearLine, key, reg))
 
 		// clear line before success/failure message
 		messages.Write([]byte(ansiClearLine))
@@ -427,13 +427,13 @@ func RegressRun(messages io.Writer, opts RegressRunOptions) error {
 		// print message depending on result of regress()
 		if err != nil {
 			fails = append(fails, strconv.Itoa(key))
-			messages.Write([]byte(fmt.Sprintf("\rfailure: %s\n", reg)))
+			messages.Write([]byte(fmt.Sprintf("\rfailure: %03d %s\n", key, reg)))
 			if opts.Verbose {
 				messages.Write([]byte(fmt.Sprintf("  ^^ %s\n", err)))
 			}
 		} else {
 			successes = append(successes, strconv.Itoa(key))
-			messages.Write([]byte(fmt.Sprintf("\rsucceed: %s\n", reg)))
+			messages.Write([]byte(fmt.Sprintf("\rsucceed: %03d %s\n", key, reg)))
 		}
 	}
 

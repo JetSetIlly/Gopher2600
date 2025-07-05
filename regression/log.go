@@ -62,10 +62,10 @@ func deserialiseLogEntry(fields database.SerialisedEntry) (database.Entry, error
 
 	// basic sanity check
 	if len(fields) > numLogFields {
-		return nil, fmt.Errorf("log: too many fields")
+		return nil, fmt.Errorf("too many fields")
 	}
 	if len(fields) < numLogFields {
-		return nil, fmt.Errorf("log: too few fields")
+		return nil, fmt.Errorf("too few fields")
 	}
 
 	reg.Cartridge = fields[videoFieldCartName]
@@ -78,8 +78,7 @@ func deserialiseLogEntry(fields database.SerialisedEntry) (database.Entry, error
 
 	reg.NumFrames, err = strconv.Atoi(fields[logFieldNumFrames])
 	if err != nil {
-		msg := fmt.Sprintf("invalid numFrames field [%s]", fields[logFieldNumFrames])
-		return nil, fmt.Errorf("log: %s", msg)
+		return nil, fmt.Errorf("invalid numFrames field [%s]", fields[logFieldNumFrames])
 	}
 
 	return reg, nil
@@ -149,7 +148,7 @@ func (reg *LogRegression) regress(newRegression bool, messages io.Writer, tag st
 	// create headless television. we'll use this to initialise the digester
 	tv, err := television.NewTelevision(reg.TVtype)
 	if err != nil {
-		return fmt.Errorf("log: %w", err)
+		return err
 	}
 	defer tv.End()
 	tv.SetFPSCap(false)
@@ -157,7 +156,7 @@ func (reg *LogRegression) regress(newRegression bool, messages io.Writer, tag st
 	// create VCS and attach cartridge
 	vcs, err := hardware.NewVCS(environment.MainEmulation, tv, nil, nil)
 	if err != nil {
-		return fmt.Errorf("log: %w", err)
+		return err
 	}
 
 	// we want the machine in a known state. the easiest way to do this is to
@@ -166,13 +165,13 @@ func (reg *LogRegression) regress(newRegression bool, messages io.Writer, tag st
 
 	cartload, err := cartridgeloader.NewLoaderFromFilename(reg.Cartridge, reg.Mapping, "AUTO", nil)
 	if err != nil {
-		return fmt.Errorf("log: %w", err)
+		return err
 	}
 	defer cartload.Close()
 
 	err = setup.AttachCartridge(vcs, cartload)
 	if err != nil {
-		return fmt.Errorf("log: %w", err)
+		return err
 	}
 
 	// display ticker for progress meter
@@ -198,7 +197,7 @@ func (reg *LogRegression) regress(newRegression bool, messages io.Writer, tag st
 	})
 
 	if err != nil {
-		return fmt.Errorf("log: %w", err)
+		return err
 	}
 
 	// get hash of log output
@@ -211,7 +210,7 @@ func (reg *LogRegression) regress(newRegression bool, messages io.Writer, tag st
 
 	// compare hashes from this run and the specimen run
 	if reg.digest != fmt.Sprintf("%x", hash) {
-		return fmt.Errorf("digest mismatch")
+		return fmt.Errorf("log digest mismatch (%s)", vcs.TV.GetCoords())
 	}
 
 	return nil

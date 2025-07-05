@@ -60,10 +60,10 @@ func deserialisePlaybackEntry(fields database.SerialisedEntry) (database.Entry, 
 
 	// basic sanity check
 	if len(fields) > numPlaybackFields {
-		return nil, fmt.Errorf("playback: too many fields")
+		return nil, fmt.Errorf("too many fields")
 	}
 	if len(fields) < numPlaybackFields {
-		return nil, fmt.Errorf("playback: too few fields")
+		return nil, fmt.Errorf("too few fields")
 	}
 
 	// string fields need no conversion
@@ -130,24 +130,24 @@ func (reg *PlaybackRegression) regress(newRegression bool, messages io.Writer, t
 
 	plb, err := recorder.NewPlayback(reg.Script, reg.ignoreDigest)
 	if err != nil {
-		return fmt.Errorf("playback: %w", err)
+		return err
 	}
 
 	tv, err := television.NewTelevision(plb.TVSpec)
 	if err != nil {
-		return fmt.Errorf("playback: %w", err)
+		return err
 	}
 	defer tv.End()
 	tv.SetFPSCap(false)
 
 	_, err = digest.NewVideo(tv)
 	if err != nil {
-		return fmt.Errorf("playback: %w", err)
+		return err
 	}
 
 	vcs, err := hardware.NewVCS(environment.MainEmulation, tv, nil, nil)
 	if err != nil {
-		return fmt.Errorf("playback: %w", err)
+		return err
 	}
 
 	// for playback regression to work correctly we want the VCS to be a known
@@ -157,30 +157,30 @@ func (reg *PlaybackRegression) regress(newRegression bool, messages io.Writer, t
 
 	err = plb.AttachToVCSInput(vcs)
 	if err != nil {
-		return fmt.Errorf("playback: %w", err)
+		return err
 	}
 
 	// new cartridge loader using the information found in the playback file
 	cartload, err := cartridgeloader.NewLoaderFromFilename(plb.Cartridge, "AUTO", "AUTO", nil)
 	if err != nil {
-		return fmt.Errorf("playback: %w", err)
+		return err
 	}
 	defer cartload.Close()
 
 	// check hash of cartridge before continuing
 	if cartload.HashSHA1 != plb.Hash {
-		return fmt.Errorf("playback: unexpected hash")
+		return fmt.Errorf("unexpected hash")
 	}
 
 	if newRegression {
 		var err error
 		reg.Script, err = uniqueFilename("playback", cartload.Name)
 		if err != nil {
-			return fmt.Errorf("playback: %w", err)
+			return err
 		}
 		rec, err := recorder.NewRecorder(reg.Script, vcs)
 		if err != nil {
-			return fmt.Errorf("playback: %w", err)
+			return err
 		}
 		defer func() {
 			err := rec.End()
@@ -195,7 +195,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, messages io.Writer, t
 	// will be applied that way
 	err = vcs.AttachCartridge(cartload)
 	if err != nil {
-		return fmt.Errorf("playback: %w", err)
+		return err
 	}
 
 	// prepare ticker for progress meter
@@ -211,10 +211,10 @@ func (reg *PlaybackRegression) regress(newRegression bool, messages io.Writer, t
 
 		hasEnded, err := plb.EndFrame()
 		if err != nil {
-			return govern.Ending, fmt.Errorf("playback: %w", err)
+			return govern.Ending, err
 		}
 		if hasEnded {
-			return govern.Ending, fmt.Errorf("playback: ended unexpectedly")
+			return govern.Ending, fmt.Errorf("playback ended unexpectedly")
 		}
 
 		// display progress meter every 1 second
@@ -233,10 +233,9 @@ func (reg *PlaybackRegression) regress(newRegression bool, messages io.Writer, t
 			// PlaybackHashError means that a screen digest somewhere in the
 			// playback script did not work. filter error and return false to
 			// indicate failure
-			coords := tv.GetCoords()
-			return fmt.Errorf("%w: at fr=%d, sl=%d, cl=%d", err, coords.Frame, coords.Scanline, coords.Clock)
+			return fmt.Errorf("%w (%s)", err, tv.GetCoords().String())
 		} else {
-			return fmt.Errorf("playback: %w", err)
+			return err
 		}
 	}
 
