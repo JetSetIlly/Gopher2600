@@ -520,12 +520,12 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 			if tv.state.frameInfo.Stable && tv.debugger != nil {
 				if tv.state.frameInfo.VSYNCscanline != tv.state.vsync.startScanline {
 					if tv.env.Prefs.TV.HaltChangedVSYNC.Get().(bool) {
-						tv.debugger.HaltFromTelevision(fmt.Errorf("%w: start scanline", HaltBadVSYNC))
+						tv.debugger.HaltFromTelevision("change of VSYNC start scanline")
 					}
 					tv.state.frameInfo.VSYNCunstable = true
 				} else if tv.state.frameInfo.VSYNCclock != tv.state.vsync.startClock {
 					if tv.env.Prefs.TV.HaltChangedVSYNC.Get().(bool) {
-						tv.debugger.HaltFromTelevision(fmt.Errorf("%w: start clock", HaltBadVSYNC))
+						tv.debugger.HaltFromTelevision("change of VSYNC start clock")
 					}
 					tv.state.frameInfo.VSYNCunstable = true
 				}
@@ -535,7 +535,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 			if tv.state.frameInfo.Stable && tv.debugger != nil {
 				if tv.state.frameInfo.VSYNCcount != tv.state.vsync.activeScanlineCount {
 					if tv.env.Prefs.TV.HaltChangedVSYNC.Get().(bool) {
-						tv.debugger.HaltFromTelevision(fmt.Errorf("%w: count changed", HaltBadVSYNC))
+						tv.debugger.HaltFromTelevision("change of VSYNC count")
 					}
 					tv.state.frameInfo.VSYNCunstable = true
 				}
@@ -548,7 +548,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 				// VSYNC was too short
 				if tv.state.frameInfo.Stable && tv.debugger != nil {
 					if tv.env.Prefs.TV.HaltChangedVSYNC.Get().(bool) {
-						tv.debugger.HaltFromTelevision(fmt.Errorf("%w: too short", HaltBadVSYNC))
+						tv.debugger.HaltFromTelevision("VSYNC too short")
 					}
 					tv.state.frameInfo.VSYNCunstable = true
 				}
@@ -592,7 +592,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) {
 					// new frame is a result of a natural flyback
 					if tv.state.frameInfo.Stable && tv.debugger != nil {
 						if tv.env.Prefs.TV.HaltChangedVSYNC.Get().(bool) {
-							tv.debugger.HaltFromTelevision(fmt.Errorf("%w: natural flyback", HaltBadVSYNC))
+							tv.debugger.HaltFromTelevision("no VSYNC (natural flyback)")
 						}
 						tv.state.frameInfo.VSYNCunstable = true
 					}
@@ -752,7 +752,7 @@ func (tv *Television) newFrame() error {
 	if tv.state.bounds.commit(tv.state) {
 		if tv.debugger != nil {
 			if tv.env.Prefs.TV.HaltChangedVBLANK.Get().(bool) {
-				tv.debugger.HaltFromTelevision(HaltChangedVBLANK)
+				tv.debugger.HaltFromTelevision("change of VBLANK boundaries")
 			}
 			tv.state.frameInfo.VBLANKunstable = true
 		}

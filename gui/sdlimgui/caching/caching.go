@@ -69,7 +69,7 @@ type cachedRewind struct {
 type cachedDebugger struct {
 	LiveDisasmEntry disassembly.Entry
 	Breakpoints     debugger.CheckBreakpoints
-	HaltReason      string
+	HaltReason      debugger.HaltReason
 }
 
 // cache is embedded in the Cache type and also used as the type carried by the

@@ -205,6 +205,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		})
 
 	case cmdRun:
+		dbg.ClearHaltReason()
 		dbg.runUntilHalt = true
 		dbg.continueEmulation = true
 		return nil
@@ -213,6 +214,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		dbg.haltImmediately = true
 
 	case cmdStep:
+		dbg.ClearHaltReason()
 		adjAmount := 1
 		back := false
 

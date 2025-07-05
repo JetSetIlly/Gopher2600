@@ -18,8 +18,13 @@ package debugger
 import (
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
+
+type HaltReason struct {
+	Reason string
+	Coords coords.TelevisionCoords
+}
 
 // haltingCoordination ties all the mechanisms that can interrupt the normal
 // running of the emulation.
@@ -35,7 +40,7 @@ type haltCoordination struct {
 	halt bool
 
 	// the television has issued a yield
-	televisionHalt television.HaltCondition
+	televisionHalt string
 
 	// the cartridge has issued a yield signal that we should stop the debugger for
 	cartridgeYield coprocessor.CoProcYield
@@ -62,7 +67,7 @@ type haltCoordination struct {
 	volatileTraps       *traps
 
 	// the reason why the emulation has halted
-	haltReason string
+	haltReason HaltReason
 }
 
 func newHaltCoordination(dbg *Debugger) (*haltCoordination, error) {
@@ -93,24 +98,28 @@ func (h *haltCoordination) reset() {
 	h.cartridgeYield = coprocessor.CoProcYield{
 		Type: coprocessor.YieldProgramEnded,
 	}
-	h.televisionHalt = nil
+	h.televisionHalt = ""
 }
 
 // check for a halt condition and set the halt flag if found. returns true if
 // emulation should continue and false if the emulation should halt
 func (h *haltCoordination) check() bool {
 	if h.cartridgeYield.Type != coprocessor.YieldProgramEnded {
-		h.haltReason = string(h.cartridgeYield.Type)
-		// if h.cartridgeYield.Error != nil && h.cartridgeYield.Error.Error() != "" {
-		// 	h.haltReason = fmt.Sprintf("%s: %s", h.haltReason, h.cartridgeYield.Error.Error())
-		// }
+		h.haltReason = HaltReason{
+			Reason: string(h.cartridgeYield.Type),
+			Coords: h.dbg.vcs.TV.GetCoords(),
+		}
 		h.halt = true
 		return false
 	}
 
-	if h.televisionHalt != nil {
-		h.haltReason = h.televisionHalt.Error()
+	if h.televisionHalt != "" {
+		h.haltReason = HaltReason{
+			Reason: h.televisionHalt,
+			Coords: h.dbg.vcs.TV.GetCoords(),
+		}
 		h.halt = true
+		h.televisionHalt = ""
 		return false
 	}
 
@@ -123,19 +132,28 @@ func (h *haltCoordination) check() bool {
 		if breakMessage != "" {
 			h.dbg.printLine(terminal.StyleFeedback, breakMessage)
 			h.halt = true
-			h.haltReason = breakMessage
+			h.haltReason = HaltReason{
+				Reason: h.televisionHalt,
+				Coords: h.dbg.vcs.TV.GetCoords(),
+			}
 		}
 
 		if trapMessage != "" {
 			h.dbg.printLine(terminal.StyleFeedback, trapMessage)
 			h.halt = true
-			h.haltReason = trapMessage
+			h.haltReason = HaltReason{
+				Reason: h.televisionHalt,
+				Coords: h.dbg.vcs.TV.GetCoords(),
+			}
 		}
 
 		if watchMessage != "" {
 			h.dbg.printLine(terminal.StyleFeedback, watchMessage)
 			h.halt = true
-			h.haltReason = watchMessage
+			h.haltReason = HaltReason{
+				Reason: h.televisionHalt,
+				Coords: h.dbg.vcs.TV.GetCoords(),
+			}
 		}
 
 		return !h.halt
@@ -174,16 +192,16 @@ func (h *haltCoordination) allowPlaymode() bool {
 }
 
 // HaltFromTelevision implements television.Debugger interface
-func (h *haltCoordination) HaltFromTelevision(halt television.HaltCondition) {
+func (h *haltCoordination) HaltFromTelevision(halt string) {
 	h.televisionHalt = halt
 }
 
 // GetHaltReason returns the haltReason field from the haltCoordination type
-func (dbg *Debugger) GetHaltReason() string {
+func (dbg *Debugger) GetHaltReason() HaltReason {
 	return dbg.halting.haltReason
 }
 
 // ClearHaltReason clears the haltReason field in the haltCoordination type
 func (dbg *Debugger) ClearHaltReason() {
-	dbg.halting.haltReason = ""
+	dbg.halting.haltReason = HaltReason{}
 }

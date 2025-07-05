@@ -222,13 +222,18 @@ func (wm *manager) drawMenu() {
 	})
 
 	haltReason := wm.img.cache.Dbg.HaltReason
-	if haltReason != "" {
+	if haltReason.Reason != "" {
 		var id int
 		drawMenuItemFromRight(func() {
 			id++
-			if imgui.Button(fmt.Sprintf("%s##%d", haltReason, id)) {
+			if imgui.Button(fmt.Sprintf("%s##%d", haltReason.Reason, id)) {
 				wm.img.dbg.PushFunctionImmediate(wm.img.dbg.ClearHaltReason)
 			}
+			wm.img.imguiTooltip(func() {
+				imgui.Text(fmt.Sprintf("Frame: %d", haltReason.Coords.Frame))
+				imgui.Text(fmt.Sprintf("Scanline: %d", haltReason.Coords.Scanline))
+				imgui.Text(fmt.Sprintf("Clock: %d", haltReason.Coords.Clock))
+			}, true)
 			imgui.Separator()
 		})
 	}

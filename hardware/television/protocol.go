@@ -16,8 +16,6 @@
 package television
 
 import (
-	"errors"
-
 	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -173,15 +171,8 @@ type VCS interface {
 	SetClockSpeed(specification.Spec)
 }
 
-// HaltCondition is used to tell Debugger about the halt conditions
-type HaltCondition error
-
-// list of HaltCondition values
-var HaltChangedVBLANK = errors.New("VBLANK changed")
-var HaltBadVSYNC = errors.New("VSYNC")
-
 // Interface to a developer helper that can cause the emulation to halt on
 // various television related conditions
 type Debugger interface {
-	HaltFromTelevision(HaltCondition)
+	HaltFromTelevision(reason string)
 }
