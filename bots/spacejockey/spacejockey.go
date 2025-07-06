@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"math/rand/v2"
 	"time"
 
 	"golang.org/x/image/draw"
@@ -32,6 +33,30 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
+
+// the hash and the rectangle used to create the hash for the starting state.
+// the rectangle only needs to cover the "SPACE JOCKEY" banner at the bottom
+var startRect = image.Rectangle{Min: image.Point{X: 116, Y: 213}, Max: image.Point{X: 174, Y: 233}}
+var startHash = [sha1.Size]uint8{0x3a, 0xda, 0xec, 0xe4, 0x8a, 0x41, 0x35, 0x49, 0x18, 0xd, 0xbf, 0xf, 0xf2, 0x5d, 0x26, 0x50, 0x83, 0xad, 0xd5, 0x58}
+
+// player is the just the top half of the ship because it never changes. if we
+// use the whole ship we would need to have multiple hashes to compare against
+var playerHeight = 5
+var playerHash = [sha1.Size]uint8{0xe5, 0x3d, 0xb4, 0xe3, 0x5d, 0xa4, 0xed, 0xea, 0x9e, 0xfb, 0xec, 0xeb, 0xa6, 0x65, 0x6d, 0x9b, 0x84, 0x60, 0x59, 0x55}
+
+// the X coords of the player limit rectangle should be exactly the width of the
+// rectangle used to create the playerHash
+var playerLimitRect = image.Rectangle{Min: image.Point{X: 79, Y: 62}, Max: image.Point{X: 95, Y: 213}}
+
+// the area in which to look for enemies
+var enemyWindow = image.Rectangle{Min: image.Point{X: 101, Y: 61}, Max: image.Point{X: 223, Y: 202}}
+
+// mid point of player limit rectangle
+var playerMidPoint int
+
+func init() {
+	playerMidPoint = (playerLimitRect.Max.Y - playerLimitRect.Min.Y) / 2
+}
 
 type observer struct {
 	frameInfo     frameinfo.Current
@@ -134,21 +159,6 @@ func (obs *observer) EndRendering() error {
 	return nil
 }
 
-var startRect = image.Rectangle{Min: image.Point{X: 117, Y: 206}, Max: image.Point{X: 174, Y: 239}}
-var startHash = [sha1.Size]byte{0xc8, 0x78, 0x33, 0x7, 0x3b, 0x5a, 0x4b, 0xab, 0xfe, 0x81, 0xbe, 0x54, 0x89, 0xfb, 0xfd, 0x4, 0x40, 0x19, 0x8f, 0xec}
-
-var playerLimitRect = image.Rectangle{Min: image.Point{X: 80, Y: 62}, Max: image.Point{X: 96, Y: 213}}
-var playerRect = image.Rectangle{Min: image.Point{X: 80, Y: 194}, Max: image.Point{X: 96, Y: 199}}
-var playerHash = [sha1.Size]uint8{0x23, 0x56, 0x8d, 0x92, 0x83, 0xd, 0x98, 0x33, 0x55, 0xc, 0x0, 0x24, 0x56, 0xfc, 0x70, 0xc1, 0xac, 0xf4, 0x8c, 0xe9}
-
-var enemyWindow = image.Rectangle{Min: image.Point{X: 101, Y: 61}, Max: image.Point{X: 223, Y: 202}}
-
-// this is the same as: (playerLimitRect.Max().Y - playerLimitRect.Min().Y) / 2
-var playerMidPoint = 137
-
-// the amount of leeway in player move accuracy
-var playerFuzz = 5
-
 func cmpSubImage(src *image.RGBA, sub image.Rectangle, hash [sha1.Size]byte) bool {
 	searchImage := image.NewRGBA(sub)
 	draw.Draw(searchImage, sub, src.SubImage(sub), sub.Min, draw.Src)
@@ -156,19 +166,23 @@ func cmpSubImage(src *image.RGBA, sub image.Rectangle, hash [sha1.Size]byte) boo
 }
 
 func (bot *spaceJockeyBot) findEnemy() int {
-	bot.findEnemyImage = image.NewRGBA(enemyWindow)
-	draw.Draw(bot.findEnemyImage, enemyWindow, bot.image.SubImage(enemyWindow), enemyWindow.Min, draw.Src)
+	findEnemyImage := image.NewRGBA(enemyWindow)
+	draw.Draw(findEnemyImage, enemyWindow, bot.image.SubImage(enemyWindow), enemyWindow.Min, draw.Src)
 
 	zeroBlack := bot.obs.frameInfo.Spec.GetColor(signal.ZeroBlack)
 
 	for y := enemyWindow.Min.Y; y < enemyWindow.Max.Y; y++ {
 		ct := 0
 		for x := enemyWindow.Min.X; x < enemyWindow.Max.X; x++ {
-			if bot.findEnemyImage.At(x, y) != zeroBlack {
+			if findEnemyImage.At(x, y) != zeroBlack {
 				ct++
 			}
 
 			if ct > 4 {
+				bot.enemy.Min.X = x
+				bot.enemy.Max.X = x + 2
+				bot.enemy.Min.Y = y
+				bot.enemy.Max.Y = y + 2
 				return y
 			}
 		}
@@ -179,15 +193,21 @@ func (bot *spaceJockeyBot) findEnemy() int {
 
 func (bot *spaceJockeyBot) findPlayer() int {
 	for y := playerLimitRect.Min.Y; y <= playerLimitRect.Max.Y; y++ {
-		r := playerRect
+		var r image.Rectangle
+		r.Min.X = playerLimitRect.Min.X
+		r.Max.X = playerLimitRect.Max.X
 		r.Min.Y = y
-		r.Max.Y = y + playerRect.Size().Y
+		r.Max.Y = y + playerHeight
 		if cmpSubImage(bot.image, r, playerHash) {
+			bot.player = r
 			return y
 		}
 	}
 	return -1
 }
+
+// the amount of fuzz in player move accuracy
+var playerFuzz = 5
 
 func (bot *spaceJockeyBot) movePlayerUpToY(y int) {
 	py := bot.findPlayer()
@@ -196,7 +216,9 @@ func (bot *spaceJockeyBot) movePlayerUpToY(y int) {
 	}
 
 	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Up, D: ports.DataStickTrue})
-	for y < py && y < py+playerFuzz && py > playerLimitRect.Min.Y {
+
+	fy := rand.IntN(playerFuzz)
+	for y < py && y < py+fy && py > playerLimitRect.Min.Y {
 		select {
 		case bot.image = <-bot.obs.analysis:
 		case <-bot.quit:
@@ -222,7 +244,9 @@ func (bot *spaceJockeyBot) movePlayerDownToY(y int) {
 	}
 
 	bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Down, D: ports.DataStickTrue})
-	for y > py && y > py+playerFuzz && py < playerLimitRect.Max.Y {
+
+	fy := rand.IntN(playerFuzz)
+	for y > py && y > py+fy && py < playerLimitRect.Max.Y {
 		select {
 		case bot.image = <-bot.obs.analysis:
 		case <-bot.quit:
@@ -247,6 +271,8 @@ type spaceJockeyBot struct {
 	input bots.Input
 	tv    bots.TV
 
+	feedback bots.Feedback
+
 	// quit as soon as possible when a value appears on the channel
 	quit     chan bool
 	quitting bool
@@ -254,9 +280,9 @@ type spaceJockeyBot struct {
 	// the most recent image from the observer
 	image *image.RGBA
 
-	findEnemyImage *image.RGBA
-
-	feedback bots.Feedback
+	// current position of detected sprites
+	player image.Rectangle
+	enemy  image.Rectangle
 }
 
 // NewSpaceJockey creates a new bot able to play Space Jockey.
@@ -377,6 +403,11 @@ func (bot *spaceJockeyBot) commitDebuggingRender() {
 	img := *bot.image
 	img.Pix = make([]uint8, len(bot.image.Pix))
 	copy(img.Pix, bot.image.Pix)
+
+	// highligh player and detected enemy
+	col := color.RGBA{50, 200, 50, 100}
+	draw.Draw(&img, bot.player, &image.Uniform{col}, image.Point{}, draw.Over)
+	draw.Draw(&img, bot.enemy, &image.Uniform{col}, image.Point{}, draw.Over)
 
 	select {
 	case bot.feedback.Images <- &img:
