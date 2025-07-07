@@ -18,6 +18,7 @@ package atarivoxengines
 import (
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -25,23 +26,31 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-type speakJetCode int
+type speakJetAction int
 
 const (
-	none speakJetCode = iota
+	noAction speakJetAction = iota
 	unsupported
 	speed
 	pitch
+	volume
 )
 
 type phonemes struct {
 	env *environment.Environment
 	strings.Builder
+	ct int
+}
+
+func (p *phonemes) Reset() {
+	p.ct = 0
+	p.Builder.Reset()
 }
 
 func (p *phonemes) WriteString(s string) (int, error) {
+	p.ct++
 	logger.Logf(p.env, "festival", "phoneme: %s", s)
-	return p.Builder.WriteString(s)
+	return p.Builder.WriteString(s + " ")
 }
 
 type festival struct {
@@ -50,6 +59,9 @@ type festival struct {
 	stdin  io.WriteCloser
 	stdout io.ReadCloser
 
+	// echo raw festival commands
+	echo io.Writer
+
 	stream   []uint8
 	phonemes phonemes
 
@@ -57,10 +69,20 @@ type festival struct {
 	say  chan string
 	cmd  chan string
 
-	nextSpeakJetByte speakJetCode
+	nextSpeakJetByte speakJetAction
 
-	speed uint8
-	pitch uint8
+	speed  uint8
+	pitch  uint8
+	volume uint8
+}
+
+const echoToStdErr = false
+
+// nilWriter is an empty writer.
+type nilWriter struct{}
+
+func (*nilWriter) Write(p []byte) (n int, err error) {
+	return 0, nil
 }
 
 // NewFestival creats a new festival instance and starts a new festival process
@@ -74,6 +96,11 @@ func NewFestival(env *environment.Environment) (AtariVoxEngine, error) {
 		quit: make(chan bool, 1),
 		say:  make(chan string, 1),
 		cmd:  make(chan string, 1),
+		echo: &nilWriter{},
+	}
+
+	if echoToStdErr {
+		fest.echo = os.Stderr
 	}
 
 	executablePath := env.Prefs.AtariVox.FestivalBinary.Get().(string)
@@ -111,10 +138,14 @@ func NewFestival(env *environment.Environment) (AtariVoxEngine, error) {
 				logger.Logf(fest.env, "festival", "say: %s", text)
 				sayphones := fmt.Sprintf("(SayPhones '(%s))", text)
 				fest.stdin.Write([]byte(sayphones))
+				fest.echo.Write([]byte(sayphones))
+				fest.echo.Write([]byte("\n"))
 
 			case command := <-fest.cmd:
 				// https://www.cstr.ed.ac.uk/projects/festival/manual/festival_34.html#SEC141
 				fest.stdin.Write([]byte(command))
+				fest.echo.Write([]byte(command))
+				fest.echo.Write([]byte("\n"))
 			}
 		}
 	}()
@@ -125,12 +156,23 @@ func NewFestival(env *environment.Environment) (AtariVoxEngine, error) {
 }
 
 func (fest *festival) reset() {
-	fest.Flush()
-	fest.speed = 114
-	fest.pitch = 88
-	fest.cmd <- fmt.Sprintf("(set! FP_duration %d)", fest.speed)
-	fest.cmd <- fmt.Sprintf("(set! FP_F0 %d)", fest.pitch)
-	fest.nextSpeakJetByte = none
+	const (
+		defaultSpeed  = 114
+		defaultPitch  = 88
+		defaultVolume = 128
+	)
+
+	// no need to do anything if speed, pitch and duration are already at the default values
+	if fest.speed != defaultSpeed || fest.pitch != defaultPitch || fest.volume != defaultVolume {
+		fest.Flush()
+		fest.speed = defaultSpeed
+		fest.pitch = defaultPitch
+		fest.volume = defaultVolume
+		fest.cmd <- fmt.Sprintf("(set! FP_duration %d)", fest.speed)
+		fest.cmd <- fmt.Sprintf("(set! FP_F0 %d)", fest.pitch)
+	}
+
+	fest.nextSpeakJetByte = noAction
 }
 
 // Quit implements the AtariVoxEngine interface.
@@ -147,274 +189,284 @@ func (fest *festival) SpeakJet(b uint8) {
 
 	// https://people.ece.cornell.edu/land/courses/ece4760/Speech/speakjetusermanual.pdf
 
+	fest.stream = append(fest.stream, b)
+
 	switch fest.nextSpeakJetByte {
+	case noAction:
 	case unsupported:
-		fest.nextSpeakJetByte = none
+		fest.nextSpeakJetByte = noAction
 		return
 	case speed:
+		fest.Flush()
 		fest.speed = b
-		logger.Logf(fest.env, "festival", "speed: %d", fest.speed)
+		logger.Logf(fest.env, "festival", "speed: %#02x", fest.speed)
 		fest.cmd <- fmt.Sprintf("(set! FP_duration %d)", fest.speed)
-		fest.nextSpeakJetByte = none
+		fest.nextSpeakJetByte = noAction
 		return
 	case pitch:
+		fest.Flush()
 		fest.pitch = b
-		logger.Logf(fest.env, "festival", "pitch: %d", fest.pitch)
+		logger.Logf(fest.env, "festival", "pitch: %#02x", fest.pitch)
 		fest.cmd <- fmt.Sprintf("(set! FP_F0 %d)", fest.pitch)
-		fest.nextSpeakJetByte = none
+		fest.nextSpeakJetByte = noAction
 		return
+	case volume:
+		fest.Flush()
+		fest.volume = b
+		logger.Logf(fest.env, "festival", "volume: %#02x", fest.pitch)
+		// volume not implemented directly by a festival command. see Flush()
+		// function for how we deal with it as a special case
+		fest.nextSpeakJetByte = noAction
 	}
 
 	if b >= 215 && b <= 254 {
-		logger.Logf(fest.env, "festival", "sound effect: %d", b)
+		logger.Logf(fest.env, "festival", "sound effect: %#02x", b)
 		return
 	}
 
 	switch b {
 	default:
-		logger.Logf(fest.env, "festival", "unsupported byte (%d)", b)
-		return
+		logger.Logf(fest.env, "festival", "unsupported byte: %#02x", b)
 
 	case 31: // Reset
 		logger.Log(fest.env, "festival", "reset")
 		fest.reset()
-		return
 
 	case 0: // pause 0ms
-		return
 	case 1: // pause 100ms
-		logger.Log(fest.env, "festival", "pause: 100ms: not implemented")
-		return
+		logger.Log(fest.env, "festival", "pause: 100ms")
 	case 2: // pause 200ms
-		logger.Log(fest.env, "festival", "pause: 200ms: not implemented")
-		return
+		logger.Log(fest.env, "festival", "pause: 200ms")
 	case 3: // pause 700ms
-		logger.Log(fest.env, "festival", "pause: 700ms: not implemented")
-		return
+		logger.Log(fest.env, "festival", "pause: 700ms")
 	case 4: // pause 30ms
-		logger.Log(fest.env, "festival", "pause: 30ms: not implemented")
-		return
+		logger.Log(fest.env, "festival", "pause: 30ms")
 	case 5: // pause 60ms
-		logger.Log(fest.env, "festival", "pause: 60ms: not implemented")
-		return
+		logger.Log(fest.env, "festival", "pause: 60ms")
 	case 6: // pause 90ms
-		logger.Log(fest.env, "festival", "pause: 90ms: not implemented")
-		return
+		logger.Log(fest.env, "festival", "pause: 90ms")
 
+	// implementing fast/slow and stress/relax is tricky with the festival
+	// SayPhones() function. single phonemes do not render very well and so
+	// it's best to do without these per-phoneme instructions
 	case 7: // Fast
 		logger.Log(fest.env, "festival", "fast: not implemented")
-		return
 	case 8: // Slow
 		logger.Log(fest.env, "festival", "slow: not implemented")
-		return
 	case 14: // Stress
 		logger.Log(fest.env, "festival", "stress: not implemented")
-		return
 	case 15: // Relax
 		logger.Log(fest.env, "festival", "relax: not implemented")
-		return
+
 	case 20: // volume
-		logger.Logf(fest.env, "festival", "volume: not implemented")
-		fest.nextSpeakJetByte = unsupported
-		return
+		fest.nextSpeakJetByte = volume
 	case 21: // speed
-		fest.Flush()
 		fest.nextSpeakJetByte = speed
-		return
 	case 22: // pitch
-		fest.Flush()
 		fest.nextSpeakJetByte = pitch
-		return
+
 	case 23: // bend
 		logger.Log(fest.env, "festival", "bend: not implemented")
-		return
+		fest.nextSpeakJetByte = unsupported
 	case 24: // PortCtr
 		logger.Log(fest.env, "festival", "port ctr: not implemented")
 		fest.nextSpeakJetByte = unsupported
-		return
 	case 25: // Port
 		logger.Log(fest.env, "festival", "port: not implemented")
 		fest.nextSpeakJetByte = unsupported
-		return
 	case 26: // Repeat
 		logger.Log(fest.env, "festival", "repeat: not implemented")
 		fest.nextSpeakJetByte = unsupported
-		return
 	case 28: // Call Phrase
 		logger.Log(fest.env, "festival", "call phrase: not implemented")
 		fest.nextSpeakJetByte = unsupported
-		return
 	case 29: // Goto Phrase
 		logger.Log(fest.env, "festival", "goto phrase: not implemented")
 		fest.nextSpeakJetByte = unsupported
-		return
 	case 30: // Delay
 		logger.Log(fest.env, "festival", "delay: not implemented")
 		fest.nextSpeakJetByte = unsupported
-		return
 
 	case 128:
-		fest.phonemes.WriteString("iy ")
+		fest.phonemes.WriteString("iy")
 	case 129:
-		fest.phonemes.WriteString("ih ")
+		fest.phonemes.WriteString("ih")
 
 	case 130:
-		fest.phonemes.WriteString("ey ")
+		fest.phonemes.WriteString("ey")
 	case 131:
-		fest.phonemes.WriteString("eh ")
+		fest.phonemes.WriteString("eh")
 	case 132:
-		fest.phonemes.WriteString("ae ")
+		fest.phonemes.WriteString("ae")
 	case 133:
-		fest.phonemes.WriteString("eh ") // cotten ?? (the 'e' in cotten)
+		fest.phonemes.WriteString("en") // cotten ??
 	case 134:
-		fest.phonemes.WriteString("uh ")
+		fest.phonemes.WriteString("uh")
 	case 135:
-		fest.phonemes.WriteString("ah ") // hot, clock, fox ??
+		fest.phonemes.WriteString("ah") // hot, clock, fox ??
 	case 136:
-		fest.phonemes.WriteString("aa ")
+		fest.phonemes.WriteString("aa")
 	case 137:
-		fest.phonemes.WriteString("ow ")
+		fest.phonemes.WriteString("ow")
 	case 138:
-		fest.phonemes.WriteString("uh ") // book, could, should ??  'ah' possibly)
+		fest.phonemes.WriteString("uh") // book, could, should ??  'ah' possibly)
 	case 139:
-		fest.phonemes.WriteString("uw ")
+		fest.phonemes.WriteString("uw")
 
 	case 140:
-		fest.phonemes.WriteString("m ")
+		fest.phonemes.WriteString("m")
 	case 141:
-		fest.phonemes.WriteString("n ")
+		fest.phonemes.WriteString("n")
 	case 142:
-		fest.phonemes.WriteString("ow ")
+		fest.phonemes.WriteString("n")
 	case 143:
-		fest.phonemes.WriteString("ng ")
+		fest.phonemes.WriteString("ng")
 	case 144:
-		fest.phonemes.WriteString("ng ")
+		fest.phonemes.WriteString("ng")
 	case 145:
-		fest.phonemes.WriteString("l ") // lake, alarm, lapel ??
+		fest.phonemes.WriteString("l") // lake, alarm, lapel ??
 	case 146:
-		fest.phonemes.WriteString("l ") // clock, plus, hello ??
+		fest.phonemes.WriteString("l") // clock, plus, hello ??
 	case 147:
-		fest.phonemes.WriteString("w ")
+		fest.phonemes.WriteString("w")
 	case 148:
-		fest.phonemes.WriteString("r ")
+		fest.phonemes.WriteString("r")
 	case 149:
-		fest.phonemes.WriteString("iy er ") // clear, hear, year ??
+		fest.phonemes.WriteString("iy") // clear, hear, year ??
+		fest.phonemes.WriteString("er")
 
 	case 150:
-		fest.phonemes.WriteString("er ") // hair, stair, repair ??
+		fest.phonemes.WriteString("er") // hair, stair, repair ??
 	case 151:
-		fest.phonemes.WriteString("er ")
+		fest.phonemes.WriteString("er")
 	case 152:
-		fest.phonemes.WriteString("aa ")
+		fest.phonemes.WriteString("aa")
 	case 153:
-		fest.phonemes.WriteString("aw ")
+		fest.phonemes.WriteString("ao")
 	case 154:
-		fest.phonemes.WriteString("ey ")
+		fest.phonemes.WriteString("ey")
 	case 155:
-		fest.phonemes.WriteString("ay ")
+		fest.phonemes.WriteString("ay")
 	case 156:
-		fest.phonemes.WriteString("oy ")
+		fest.phonemes.WriteString("oy")
 	case 157:
-		fest.phonemes.WriteString("ay ")
+		fest.phonemes.WriteString("ay")
 	case 158:
-		fest.phonemes.WriteString("y ")
+		fest.phonemes.WriteString("y")
 	case 159:
-		fest.phonemes.WriteString("l ")
+		fest.phonemes.WriteString("l")
 
 	case 160:
-		fest.phonemes.WriteString("y uw uw ") // cute, few ??
+		fest.phonemes.WriteString("y") // cute, few ??
+		fest.phonemes.WriteString("uw")
 	case 161:
-		fest.phonemes.WriteString("aw ")
+		fest.phonemes.WriteString("aw")
 	case 162:
-		fest.phonemes.WriteString("uw ")
+		fest.phonemes.WriteString("uw")
 	case 163:
-		fest.phonemes.WriteString("aw ")
+		fest.phonemes.WriteString("aw")
 	case 164:
-		fest.phonemes.WriteString("ow ")
+		fest.phonemes.WriteString("ow")
 	case 165:
-		fest.phonemes.WriteString("jh ")
+		fest.phonemes.WriteString("jh")
 	case 166:
-		fest.phonemes.WriteString("v ")
+		fest.phonemes.WriteString("v")
 	case 167:
-		fest.phonemes.WriteString("z ")
+		fest.phonemes.WriteString("z")
 	case 168:
-		fest.phonemes.WriteString("zh ")
+		fest.phonemes.WriteString("zh")
 	case 169:
-		fest.phonemes.WriteString("th ")
+		fest.phonemes.WriteString("th")
 
 	case 170:
-		fest.phonemes.WriteString("b ")
+		fest.phonemes.WriteString("b")
 	case 171:
-		fest.phonemes.WriteString("b ")
+		fest.phonemes.WriteString("b")
 	case 172:
-		fest.phonemes.WriteString("b ")
+		fest.phonemes.WriteString("b")
 	case 173:
-		fest.phonemes.WriteString("b ")
+		fest.phonemes.WriteString("b")
 	case 174:
-		fest.phonemes.WriteString("d ")
+		fest.phonemes.WriteString("d")
 	case 175:
-		fest.phonemes.WriteString("d ")
+		fest.phonemes.WriteString("d")
 	case 176:
-		fest.phonemes.WriteString("d ")
+		fest.phonemes.WriteString("d")
 	case 177:
-		fest.phonemes.WriteString("d ")
+		fest.phonemes.WriteString("d")
 	case 178:
-		fest.phonemes.WriteString("g ")
+		fest.phonemes.WriteString("g")
+		fest.phonemes.WriteString("g")
 	case 179:
-		fest.phonemes.WriteString("g ")
+		fest.phonemes.WriteString("g")
+		fest.phonemes.WriteString("g")
 
 	case 180:
-		fest.phonemes.WriteString("g ")
+		fest.phonemes.WriteString("g")
+		fest.phonemes.WriteString("g")
 	case 181:
-		fest.phonemes.WriteString("g ")
+		fest.phonemes.WriteString("g")
+		fest.phonemes.WriteString("g")
 	case 182:
-		fest.phonemes.WriteString("ch ")
+		fest.phonemes.WriteString("ch")
 	case 183:
-		fest.phonemes.WriteString("hh ")
+		fest.phonemes.WriteString("hh")
 	case 184:
-		fest.phonemes.WriteString("hh ")
+		fest.phonemes.WriteString("hh")
 	case 185:
-		fest.phonemes.WriteString("w ") // who, whale, white ??
+		fest.phonemes.WriteString("w") // who, whale, white ??
 	case 186:
-		fest.phonemes.WriteString("f ")
+		fest.phonemes.WriteString("f")
 	case 187:
-		fest.phonemes.WriteString("s ")
+		fest.phonemes.WriteString("s")
 	case 188:
-		fest.phonemes.WriteString("s ")
+		fest.phonemes.WriteString("s")
 	case 189:
-		fest.phonemes.WriteString("sh ")
+		fest.phonemes.WriteString("sh")
 
 	case 190:
-		fest.phonemes.WriteString("th ")
+		fest.phonemes.WriteString("th")
 	case 191:
-		fest.phonemes.WriteString("t ")
+		fest.phonemes.WriteString("t")
 	case 192:
-		fest.phonemes.WriteString("t ")
+		fest.phonemes.WriteString("t")
 	case 193:
-		fest.phonemes.WriteString("s ") // parts, costs, robots ??
+		fest.phonemes.WriteString("s") // parts, costs, robots ??
 	case 194:
-		fest.phonemes.WriteString("k ")
+		fest.phonemes.WriteString("k")
 	case 195:
-		fest.phonemes.WriteString("k ")
+		fest.phonemes.WriteString("k")
 	case 196:
-		fest.phonemes.WriteString("k ")
+		fest.phonemes.WriteString("k")
 	case 197:
-		fest.phonemes.WriteString("k ")
+		fest.phonemes.WriteString("k")
 	case 198:
-		fest.phonemes.WriteString("p ")
+		fest.phonemes.WriteString("p")
 	case 199:
-		fest.phonemes.WriteString("p ")
+		fest.phonemes.WriteString("p")
 	}
-
-	fest.stream = append(fest.stream, b)
 }
 
 // Flush implements the AtariVoxEngine interface.
 func (fest *festival) Flush() {
-	if fest.phonemes.Len() == 0 {
+	if fest.phonemes.ct == 0 {
 		return
 	}
 
-	fest.say <- fest.phonemes.String()
+	// festival does not work well with single phones (when using the SayPhones
+	// function). in these situations we add a 'hh' phone which is audible but
+	// not too distracting
+	if fest.phonemes.ct == 1 {
+		fest.phonemes.WriteString("hh")
+	}
+
+	// only say something if volume is above zero
+	if fest.volume > 0 {
+		fest.say <- fest.phonemes.String()
+	} else {
+		fest.say <- "pau"
+	}
+
+	// clear phonemes
 	fest.phonemes.Reset()
 }
