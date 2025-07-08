@@ -160,6 +160,9 @@ The "Mostly Inclusive Atari 2600 Mapper / Selected Hardware Document" (dated 03/
 
 Supercharger information from the Kevin Horton document above and also the `sctech.txt` document
 
+Information about the SpeakJet chip found in the AtariVox peripheral
+https://people.ece.cornell.edu/land/courses/ece4760/Speech/speakjetusermanual.pdf
+
 Reference for the ARM7TDMI-S, as used in the Harmony cartridge formats:
 
 https://developer.arm.com/documentation/ddi0234/b

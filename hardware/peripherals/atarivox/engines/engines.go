@@ -15,7 +15,7 @@
 
 // Package atarivoxengines contains implementations of the AtariVoxEngine
 // interface, for use with the AtariVox peripheral.
-package atarivoxengines
+package engines
 
 // AtariVoxEngine defines the operations required by any process that can
 // interperet SpeakJet codes.
@@ -24,7 +24,7 @@ type AtariVoxEngine interface {
 	Quit()
 
 	// Interpret SpeakJet code and forward to engine
-	SpeakJet(uint8)
+	SpeakJet(command uint8, data uint8)
 
 	// Flush any outstanding instructions from previous calls to SpeakJet()
 	Flush()

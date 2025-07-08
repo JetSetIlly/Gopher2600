@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package atarivoxengines
+package engines
 
 import (
 	"fmt"
@@ -62,15 +62,17 @@ type festival struct {
 	// echo raw festival commands
 	echo io.Writer
 
-	stream   []uint8
+	// phonemes not yet pushed to say channel
 	phonemes phonemes
 
 	quit chan bool
 	say  chan string
 	cmd  chan string
 
+	// some bytes require a second byte
 	nextSpeakJetByte speakJetAction
 
+	// current settings for voice output. volume is not fully implemented
 	speed  uint8
 	pitch  uint8
 	volume uint8
@@ -184,67 +186,34 @@ func (fest *festival) Quit() {
 }
 
 // SpeakJet implements the AtariVoxEngine interface.
-func (fest *festival) SpeakJet(b uint8) {
+func (fest *festival) SpeakJet(command uint8, data uint8) {
 	// http://festvox.org/festvox-1.2/festvox_18.html
 
 	// https://people.ece.cornell.edu/land/courses/ece4760/Speech/speakjetusermanual.pdf
 
-	fest.stream = append(fest.stream, b)
-
-	switch fest.nextSpeakJetByte {
-	case noAction:
-	case unsupported:
-		fest.nextSpeakJetByte = noAction
-		return
-	case speed:
-		fest.Flush()
-		fest.speed = b
-		logger.Logf(fest.env, "festival", "speed: %#02x", fest.speed)
-		fest.cmd <- fmt.Sprintf("(set! FP_duration %d)", fest.speed)
-		fest.nextSpeakJetByte = noAction
-		return
-	case pitch:
-		fest.Flush()
-		fest.pitch = b
-		logger.Logf(fest.env, "festival", "pitch: %#02x", fest.pitch)
-		fest.cmd <- fmt.Sprintf("(set! FP_F0 %d)", fest.pitch)
-		fest.nextSpeakJetByte = noAction
-		return
-	case volume:
-		fest.Flush()
-		fest.volume = b
-		logger.Logf(fest.env, "festival", "volume: %#02x", fest.pitch)
-		// volume not implemented directly by a festival command. see Flush()
-		// function for how we deal with it as a special case
-		fest.nextSpeakJetByte = noAction
-	}
-
-	if b >= 215 && b <= 254 {
-		logger.Logf(fest.env, "festival", "sound effect: %#02x", b)
+	if command >= 215 && command <= 254 {
+		logger.Logf(fest.env, "festival", "sound effect: %#02x", command)
 		return
 	}
 
-	switch b {
+	switch command {
 	default:
-		logger.Logf(fest.env, "festival", "unsupported byte: %#02x", b)
-
-	case 31: // Reset
-		logger.Log(fest.env, "festival", "reset")
-		fest.reset()
+		logger.Logf(fest.env, "festival", "unsupported byte: %#02x", command)
 
 	case 0: // pause 0ms
+		logger.Log(fest.env, "festival", "pause: 0ms")
 	case 1: // pause 100ms
-		logger.Log(fest.env, "festival", "pause: 100ms")
+		logger.Log(fest.env, "festival", "pause: 100ms: not implemented")
 	case 2: // pause 200ms
-		logger.Log(fest.env, "festival", "pause: 200ms")
+		logger.Log(fest.env, "festival", "pause: 200ms: not implemented")
 	case 3: // pause 700ms
-		logger.Log(fest.env, "festival", "pause: 700ms")
+		logger.Log(fest.env, "festival", "pause: 700ms: not implemented")
 	case 4: // pause 30ms
-		logger.Log(fest.env, "festival", "pause: 30ms")
+		logger.Log(fest.env, "festival", "pause: 30ms: not implemented")
 	case 5: // pause 60ms
-		logger.Log(fest.env, "festival", "pause: 60ms")
+		logger.Log(fest.env, "festival", "pause: 60ms: not implemented")
 	case 6: // pause 90ms
-		logger.Log(fest.env, "festival", "pause: 90ms")
+		logger.Log(fest.env, "festival", "pause: 90ms: not implemented")
 
 	// implementing fast/slow and stress/relax is tricky with the festival
 	// SayPhones() function. single phonemes do not render very well and so
@@ -258,12 +227,25 @@ func (fest *festival) SpeakJet(b uint8) {
 	case 15: // Relax
 		logger.Log(fest.env, "festival", "relax: not implemented")
 
+	case 16: // Wait
+		logger.Log(fest.env, "festival", "wait: not implemented")
+
 	case 20: // volume
-		fest.nextSpeakJetByte = volume
+		fest.Flush()
+		fest.volume = data
+		logger.Logf(fest.env, "festival", "volume: %#02x", fest.volume)
+		// volume not implemented directly by a festival command. see Flush()
+		// function for how we deal with it as a special case
 	case 21: // speed
-		fest.nextSpeakJetByte = speed
+		fest.Flush()
+		fest.speed = data
+		logger.Logf(fest.env, "festival", "speed: %#02x", fest.speed)
+		fest.cmd <- fmt.Sprintf("(set! FP_duration %d)", fest.speed)
 	case 22: // pitch
-		fest.nextSpeakJetByte = pitch
+		fest.Flush()
+		fest.pitch = data
+		logger.Logf(fest.env, "festival", "pitch: %#02x", fest.pitch)
+		fest.cmd <- fmt.Sprintf("(set! FP_F0 %d)", fest.pitch)
 
 	case 23: // bend
 		logger.Log(fest.env, "festival", "bend: not implemented")
@@ -286,6 +268,10 @@ func (fest *festival) SpeakJet(b uint8) {
 	case 30: // Delay
 		logger.Log(fest.env, "festival", "delay: not implemented")
 		fest.nextSpeakJetByte = unsupported
+
+	case 31: // Reset
+		logger.Log(fest.env, "festival", "reset")
+		fest.reset()
 
 	case 128:
 		fest.phonemes.WriteString("iy")

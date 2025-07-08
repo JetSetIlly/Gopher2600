@@ -21,7 +21,8 @@ import (
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
-	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox/atarivoxengines"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox/engines"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox/msa"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey/i2c"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
@@ -40,6 +41,9 @@ const (
 	AtariVoxEnding
 )
 
+// the maximum number of bytes in the SpeakJetStream slice
+const maxSpeakJetStream = 128
+
 type AtariVox struct {
 	env *environment.Environment
 
@@ -48,19 +52,26 @@ type AtariVox struct {
 
 	swcha uint8
 
+	// current state of the atarivox peripheal
+	State AtariVoxState
+
 	// speakjet pins
 	SpeakJetDATA  i2c.Trace
 	SpeakJetREADY i2c.Trace
 
-	State AtariVoxState
+	// stream of date interpreted as speakjet commands
+	SpeakJetStream []uint8
 
-	// Data is sent by the VCS one bit at a time. see pushBits(), popBits() and
+	// data is sent by the VCS one bit at a time. see pushBits(), popBits() and
 	// resetBits() for
-	Bits   uint8
-	BitsCt int
+	bits   uint8
+	bitsCt int
+
+	pushed     bool
+	pushedBits uint8
 
 	// text to speech engine
-	Engine atarivoxengines.AtariVoxEngine
+	engine engines.AtariVoxEngine
 
 	// slow down the rate at which stepAtariVox() operates once state is in the
 	// Starting, Data or Ending state.
@@ -119,15 +130,15 @@ func (vox *AtariVox) activateFestival() {
 		return
 	}
 
-	if vox.Engine != nil {
-		vox.Engine.Quit()
-		vox.Engine = nil
+	if vox.engine != nil {
+		vox.engine.Quit()
+		vox.engine = nil
 	}
 
 	if vox.env.Prefs.AtariVox.FestivalEnabled.Get().(bool) {
 		var err error
 
-		vox.Engine, err = atarivoxengines.NewFestival(vox.env)
+		vox.engine, err = engines.NewFestival(vox.env)
 		if err != nil {
 			logger.Log(vox.env, "atarivox", err)
 		}
@@ -137,9 +148,9 @@ func (vox *AtariVox) activateFestival() {
 // Unplug implements the ports.Peripheral interface.
 func (vox *AtariVox) Unplug() {
 	vox.SaveKey.Unplug()
-	if vox.Engine != nil {
-		vox.Engine.Quit()
-		vox.Engine = nil
+	if vox.engine != nil {
+		vox.engine.Quit()
+		vox.engine = nil
 	}
 }
 
@@ -231,22 +242,22 @@ func (vox *AtariVox) Update(data chipbus.ChangedRegister) bool {
 // recvBit will return true if bits field is full. the bits and bitsCt field
 // will be reset on the next call.
 func (vox *AtariVox) recvBit(v bool) bool {
-	if vox.BitsCt >= 8 {
+	if vox.bitsCt >= 8 {
 		vox.resetBits()
 	}
 
 	if v {
 		// bits received from the other direction to the EEPROM
-		vox.Bits |= 0x01 << vox.BitsCt
+		vox.bits |= 0x01 << vox.bitsCt
 	}
-	vox.BitsCt++
+	vox.bitsCt++
 
-	return vox.BitsCt == 8
+	return vox.bitsCt == 8
 }
 
 func (vox *AtariVox) resetBits() {
-	vox.Bits = 0
-	vox.BitsCt = 0
+	vox.bits = 0
+	vox.bitsCt = 0
 }
 
 // Step is called every CPU clock.
@@ -275,8 +286,8 @@ func (vox *AtariVox) Step() {
 			if vox.flushCount < flushCount {
 				vox.flushCount++
 				if vox.flushCount >= flushCount {
-					if vox.Engine != nil {
-						vox.Engine.Flush()
+					if vox.engine != nil {
+						vox.engine.Flush()
 					}
 				}
 			}
@@ -304,8 +315,76 @@ func (vox *AtariVox) Step() {
 	case AtariVoxEnding:
 		if vox.SpeakJetDATA.Hi() {
 			vox.State = AtariVoxStopped
-			if vox.Engine != nil && !(vox.disabled || vox.muted) {
-				vox.Engine.SpeakJet(vox.Bits)
+
+			// some speakjet commands require 16 bits. for these commands we pushe the current 8
+			// bits and send them after the next 8 bits, interpretting those next 8 bits as data
+			var pushed bool
+
+			// the following condition could be expressed more simply but a large switch like this
+			// allows for more commentary and also provides a structure in case additional logic is
+			// ever required
+			//
+			// note that we don't set the pushed flag if the previous command was pushed. this is so
+			// that we don't interpret data incorrectly - ie. the data payload for any of these
+			// commands can be any value
+			switch vox.bits {
+			case 20: // volume
+				pushed = !vox.pushed
+			case 21: // speed
+				pushed = !vox.pushed
+			case 22: // pitch
+				pushed = !vox.pushed
+			case 23: // bend
+				pushed = !vox.pushed
+			case 24: // PortCtr
+				pushed = !vox.pushed
+			case 25: // Port
+				pushed = !vox.pushed
+			case 26: // Repeat
+				pushed = !vox.pushed
+			case 28: // Call Phrase
+				pushed = !vox.pushed
+			case 29: // Goto Phrase
+				pushed = !vox.pushed
+			case 30: // Delay
+				pushed = !vox.pushed
+			}
+
+			if pushed {
+				vox.pushed = true
+				vox.pushedBits = vox.bits
+			} else {
+				if vox.engine != nil && !(vox.disabled || vox.muted) {
+					if vox.pushed {
+						vox.engine.SpeakJet(vox.pushedBits, vox.bits)
+					} else {
+						vox.engine.SpeakJet(vox.bits, 0)
+					}
+					vox.SpeakJetStream = append(vox.SpeakJetStream, vox.bits)
+
+					// log atarivox phoneme
+					switch c := msa.Commands[vox.bits].(type) {
+					case msa.Allophone:
+						logger.Log(vox.env, "atarivox", c.Phoneme)
+					}
+
+					if len(vox.SpeakJetStream) > maxSpeakJetStream {
+						// we've only added one byte to the stream so we probably only need to crop one byte
+						vox.SpeakJetStream = vox.SpeakJetStream[1:]
+
+						// however, that one byte might be a double-byte command, in which case we need
+						// to crop two bytes
+						switch c := msa.Commands[vox.SpeakJetStream[0]].(type) {
+						case msa.ControlCode:
+							if c.Double {
+								vox.SpeakJetStream = vox.SpeakJetStream[1:]
+							}
+						}
+					}
+				}
+
+				// always reset pushed flag, even if engine is disabled, muted or missing
+				vox.pushed = false
 			}
 		} else {
 			logger.Log(vox.env, "atarivox", "unexpected end bit of 0. should be 1")

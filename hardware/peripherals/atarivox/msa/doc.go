@@ -13,10 +13,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package atarivox implements the atarivox peripheral. It supports output of
-// atarivox voice audio through Festival (if installed). See atarivox/engines
-// package.
+// Package msa provides information about the Mathematical Sound Architecture
+// and related information found in the SpeakJet manual (rev 1.1, Sept 17th 2004)
 //
-// The AtariVox type also embeds the SaveKey peripheral and forwards all data
-// to it as necessary.
-package atarivox
+// https://people.ece.cornell.edu/land/courses/ece4760/Speech/speakjetusermanual.pdf
+package msa
