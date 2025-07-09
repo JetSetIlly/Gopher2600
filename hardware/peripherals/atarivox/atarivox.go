@@ -17,6 +17,7 @@ package atarivox
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
@@ -70,8 +71,8 @@ type AtariVox struct {
 	pushed     bool
 	pushedBits uint8
 
-	// text to speech engine
-	engine engines.AtariVoxEngine
+	// text to speech engines
+	engines []engines.AtariVoxEngine
 
 	// slow down the rate at which stepAtariVox() operates once state is in the
 	// Starting, Data or Ending state.
@@ -130,28 +131,38 @@ func (vox *AtariVox) activateFestival() {
 		return
 	}
 
-	if vox.engine != nil {
-		vox.engine.Quit()
-		vox.engine = nil
+	for _, e := range vox.engines {
+		if e != nil {
+			e.Quit()
+		}
 	}
+	vox.engines = vox.engines[:0]
 
+	// add festival engine according to preferences
 	if vox.env.Prefs.AtariVox.FestivalEnabled.Get().(bool) {
-		var err error
-
-		vox.engine, err = engines.NewFestival(vox.env)
+		e, err := engines.NewFestival(vox.env)
 		if err != nil {
 			logger.Log(vox.env, "atarivox", err)
 		}
+		vox.engines = append(vox.engines, e)
+	}
+
+	// add subtitles engine
+	const useSubtitles = false
+	if useSubtitles {
+		vox.engines = append(vox.engines, engines.NewSubtitles(os.Stderr))
 	}
 }
 
 // Unplug implements the ports.Peripheral interface.
 func (vox *AtariVox) Unplug() {
 	vox.SaveKey.Unplug()
-	if vox.engine != nil {
-		vox.engine.Quit()
-		vox.engine = nil
+	for _, e := range vox.engines {
+		if e != nil {
+			e.Quit()
+		}
 	}
+	vox.engines = vox.engines[:0]
 }
 
 // Snapshot implements the ports.Peripheral interface.
@@ -286,8 +297,8 @@ func (vox *AtariVox) Step() {
 			if vox.flushCount < flushCount {
 				vox.flushCount++
 				if vox.flushCount >= flushCount {
-					if vox.engine != nil {
-						vox.engine.Flush()
+					for _, e := range vox.engines {
+						e.Flush()
 					}
 				}
 			}
@@ -319,47 +330,25 @@ func (vox *AtariVox) Step() {
 			// some speakjet commands require 16 bits. for these commands we pushe the current 8
 			// bits and send them after the next 8 bits, interpretting those next 8 bits as data
 			var pushed bool
-
-			// the following condition could be expressed more simply but a large switch like this
-			// allows for more commentary and also provides a structure in case additional logic is
-			// ever required
-			//
-			// note that we don't set the pushed flag if the previous command was pushed. this is so
-			// that we don't interpret data incorrectly - ie. the data payload for any of these
-			// commands can be any value
-			switch vox.bits {
-			case 20: // volume
-				pushed = !vox.pushed
-			case 21: // speed
-				pushed = !vox.pushed
-			case 22: // pitch
-				pushed = !vox.pushed
-			case 23: // bend
-				pushed = !vox.pushed
-			case 24: // PortCtr
-				pushed = !vox.pushed
-			case 25: // Port
-				pushed = !vox.pushed
-			case 26: // Repeat
-				pushed = !vox.pushed
-			case 28: // Call Phrase
-				pushed = !vox.pushed
-			case 29: // Goto Phrase
-				pushed = !vox.pushed
-			case 30: // Delay
-				pushed = !vox.pushed
+			if !vox.pushed {
+				if c, ok := msa.Commands[vox.bits].(msa.ControlCode); ok {
+					pushed = c.Double
+				}
 			}
 
 			if pushed {
 				vox.pushed = true
 				vox.pushedBits = vox.bits
 			} else {
-				if vox.engine != nil && !(vox.disabled || vox.muted) {
-					if vox.pushed {
-						vox.engine.SpeakJet(vox.pushedBits, vox.bits)
-					} else {
-						vox.engine.SpeakJet(vox.bits, 0)
+				if !(vox.disabled || vox.muted) {
+					for _, e := range vox.engines {
+						if vox.pushed {
+							e.SpeakJet(vox.pushedBits, vox.bits)
+						} else {
+							e.SpeakJet(vox.bits, 0)
+						}
 					}
+
 					vox.SpeakJetStream = append(vox.SpeakJetStream, vox.bits)
 
 					// log atarivox phoneme
@@ -383,7 +372,7 @@ func (vox *AtariVox) Step() {
 					}
 				}
 
-				// always reset pushed flag, even if engine is disabled, muted or missing
+				// always reset pushed flag, even if engines are disabled or muted
 				vox.pushed = false
 			}
 		} else {

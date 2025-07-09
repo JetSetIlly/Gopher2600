@@ -27,17 +27,26 @@ var Commands [256]Command
 func init() {
 	for _, c := range controlCodes {
 		if Commands[c.Code] != nil {
-			panic(fmt.Sprintf("atarivox code tables are malformed: %d already used", c.Code))
+			panic(fmt.Sprintf("atarivox control code table is malformed: %d already used", c.Code))
 		}
 		Commands[c.Code] = c
 	}
 	for _, a := range allophones {
 		if Commands[a.Code] != nil {
-			panic(fmt.Sprintf("atarivox code tables are malformed: %d already used", a.Code))
+			panic(fmt.Sprintf("atarivox allophone table is malformed: %d already used", a.Code))
 		}
 		Commands[a.Code] = a
 	}
+	for _, s := range soundeffects {
+		if Commands[s.Code] != nil {
+			panic(fmt.Sprintf("atarivox sound effects table is malformed: %d already used", s.Code))
+		}
+		Commands[s.Code] = s
+	}
 }
+
+// The time in milliseconds for each pause control
+var PauseLengths = [7]int{0, 1000, 200, 700, 30, 60, 90}
 
 // ControlCode describes the MSA codes that control the output of future phonemes
 type ControlCode struct {
@@ -55,12 +64,25 @@ type Allophone struct {
 	Code    byte
 	Phoneme string
 	Sample  string
-	msec    int
+	MSec    int
 	Type    string
 }
 
 func (a Allophone) String() string {
 	return a.Phoneme
+}
+
+// Allophone describes the MSA codes that cause a preset sound effect to be generated
+type SoundEffect struct {
+	Code    byte
+	Phoneme string
+	Sample  string
+	MSec    int
+	Type    string
+}
+
+func (s SoundEffect) String() string {
+	return s.Type
 }
 
 var controlCodes = [...]ControlCode{
@@ -162,4 +184,62 @@ var allophones = [...]Allophone{
 	{197, "OK", "Book, Took, October", 45, "Voiceless Stop"},
 	{198, "PE", "People, Computer", 99, "Voiceless Stop"},
 	{199, "PO", "Paw, Copy", 99, "Voiceless Stop"},
+}
+
+var soundeffects = [...]SoundEffect{
+	{200, "R0", "", 80, "Robot"},
+	{201, "R1", "", 80, "Robot"},
+	{202, "R2", "", 80, "Robot"},
+	{203, "R3", "", 80, "Robot"},
+	{204, "R4", "", 80, "Robot"},
+	{205, "R5", "", 80, "Robot"},
+	{206, "R6", "", 80, "Robot"},
+	{207, "R7", "", 80, "Robot"},
+	{208, "R8", "", 80, "Robot"},
+	{209, "R9", "", 80, "Robot"},
+	{210, "A0", "", 300, "Alarm"},
+	{211, "A1", "", 101, "Alarm"},
+	{212, "A2", "", 102, "Alarm"},
+	{213, "A3", "", 540, "Alarm"},
+	{214, "A4", "", 530, "Alarm"},
+	{215, "A5", "", 500, "Alarm"},
+	{216, "A6", "", 135, "Alarm"},
+	{217, "A7", "", 600, "Alarm"},
+	{218, "A8", "", 300, "Alarm"},
+	{219, "A9", "", 250, "Alarm"},
+	{220, "B0", "", 200, "Beeps"},
+	{221, "B1", "", 270, "Beeps"},
+	{222, "B2", "", 280, "Beeps"},
+	{223, "B3", "", 260, "Beeps"},
+	{224, "B4", "", 300, "Beeps"},
+	{225, "B5", "", 100, "Beeps"},
+	{226, "B6", "", 104, "Beeps"},
+	{227, "B7", "", 100, "Beeps"},
+	{228, "B8", "", 270, "Beeps"},
+	{229, "B9", "", 262, "Beeps"},
+	{230, "C0", "", 160, "Biological"},
+	{231, "C1", "", 300, "Biological"},
+	{232, "C2", "", 182, "Biological"},
+	{233, "C3", "", 120, "Biological"},
+	{234, "C4", "", 175, "Biological"},
+	{235, "C5", "", 350, "Biological"},
+	{236, "C6", "", 160, "Biological"},
+	{237, "C7", "", 260, "Biological"},
+	{238, "C8", "", 95, "Biological"},
+	{239, "C9", "", 75, "Biological"},
+	{240, "D0", "0", 95, "DTMF"},
+	{241, "D1", "1", 95, "DTMF"},
+	{242, "D2", "2", 95, "DTMF"},
+	{243, "D3", "3", 95, "DTMF"},
+	{244, "D4", "4", 95, "DTMF"},
+	{245, "D5", "5", 95, "DTMF"},
+	{246, "D6", "6", 95, "DTMF"},
+	{247, "D7", "7", 95, "DTMF"},
+	{248, "D8", "8", 95, "DTMF"},
+	{249, "D9", "9", 95, "DTMF"},
+	{250, "D10", "*", 95, "DTMF"},
+	{251, "D11", "#", 95, "DTMF"},
+	{252, "M0", "Sonar Ping", 125, "Miscellaneous"},
+	{253, "M1", "Pistol Shot", 250, "Miscellaneous"},
+	{254, "M2", "WOW", 530, "Miscellaneous"},
 }
