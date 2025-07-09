@@ -1859,14 +1859,19 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 		var p ports.Peripheral
-		switch strings.ToUpper(player) {
+		switch player {
 		case "LEFT":
 			p = dbg.vcs.RIOT.Ports.LeftPlayer
+			dbg.printLine(terminal.StyleInstrument, p.String())
 		case "RIGHT":
 			p = dbg.vcs.RIOT.Ports.RightPlayer
+			dbg.printLine(terminal.StyleInstrument, p.String())
+		default:
+			p = dbg.vcs.RIOT.Ports.LeftPlayer
+			dbg.printLine(terminal.StyleInstrument, p.String())
+			p = dbg.vcs.RIOT.Ports.RightPlayer
+			dbg.printLine(terminal.StyleInstrument, p.String())
 		}
-
-		dbg.printLine(terminal.StyleInstrument, p.String())
 
 	case cmdPanel:
 		mode, ok := tokens.Get()
