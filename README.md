@@ -1,6 +1,6 @@
 # Gopher2600
 
-<img align="right" src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/new_pitfall_as_banner.png" height=50% width=50%/>
+<img align="right" src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/new_pitfall_as_banner.png" width=50% />
 
 Gopher2600 is an emulator for the Atari 2600. Accuracy is very high and and there are no known problems with the emulation of the 6507, TIA or RIOT chips.
 
