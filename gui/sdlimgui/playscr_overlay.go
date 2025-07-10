@@ -164,10 +164,15 @@ func (ovly *playscrOverlay) draw() {
 
 	ovly.visibility = float32(ovly.img.prefs.notificationVisibility.Get().(float64))
 
+	// we used to use ContentRegionMax() but that's no longer available. replacing with
+	// ContentRegionAvail() is fine but we must be careful about cursor positioning. taking the
+	// content region now before the cursor has been adjusted is fine
+	maxRegion := imgui.ContentRegionAvail()
+
 	ovly.drawTopLeft()
-	ovly.drawTopRight()
-	ovly.drawBottomLeft()
-	ovly.drawBottomRight()
+	ovly.drawTopRight(maxRegion)
+	ovly.drawBottomLeft(maxRegion)
+	ovly.drawBottomRight(maxRegion)
 }
 
 func (ovly *playscrOverlay) updateRefreshRate() {
@@ -521,7 +526,7 @@ func (ovly *playscrOverlay) drawTopLeft() {
 // information in the top right of the overlay is about the cartridge. ie.
 // information from the cartridge about what is happening. for example,
 // supercharger tape activity, or PlusROM network activity, etc.
-func (ovly *playscrOverlay) drawTopRight() {
+func (ovly *playscrOverlay) drawTopRight(pos imgui.Vec2) {
 	if !ovly.cartridgeLatch.tick() {
 		return
 	}
@@ -553,7 +558,6 @@ func (ovly *playscrOverlay) drawTopRight() {
 		return
 	}
 
-	pos := imgui.ContentRegionAvail()
 	pos.X -= ovly.img.fonts.gopher2600IconsSize + overlayPadding
 	pos.Y = 0
 	if secondaryIcon != "" {
@@ -582,7 +586,7 @@ func (ovly *playscrOverlay) drawTopRight() {
 	}
 }
 
-func (ovly *playscrOverlay) drawBottomLeft() {
+func (ovly *playscrOverlay) drawBottomLeft(pos imgui.Vec2) {
 	if !ovly.leftPortLatch.tick() {
 		return
 	}
@@ -591,7 +595,6 @@ func (ovly *playscrOverlay) drawBottomLeft() {
 		return
 	}
 
-	pos := imgui.ContentRegionAvail()
 	pos.X = overlayPadding
 	pos.Y -= ovly.img.fonts.gopher2600IconsSize + overlayPadding
 
@@ -599,7 +602,7 @@ func (ovly *playscrOverlay) drawBottomLeft() {
 	ovly.drawPeripheral(ovly.leftPort)
 }
 
-func (ovly *playscrOverlay) drawBottomRight() {
+func (ovly *playscrOverlay) drawBottomRight(pos imgui.Vec2) {
 	if !ovly.rightPortLatch.tick() {
 		return
 	}
@@ -608,7 +611,6 @@ func (ovly *playscrOverlay) drawBottomRight() {
 		return
 	}
 
-	pos := imgui.ContentRegionAvail()
 	pos.X -= ovly.img.fonts.gopher2600IconsSize + overlayPadding
 	pos.Y -= ovly.img.fonts.gopher2600IconsSize + overlayPadding
 
