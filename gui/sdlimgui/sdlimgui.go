@@ -41,6 +41,9 @@ const imguiIniFile = "debugger_imgui.ini"
 // the number of frames to count before resetting fonts
 const resetFontFrames = 2
 
+// slightly longer when window is being resized
+const resetFontFramesOnWindowResize = 30
+
 // the amount to fade a widget by when disabled
 const disabledAlpha = 0.3
 

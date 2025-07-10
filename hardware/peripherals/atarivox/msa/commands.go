@@ -46,7 +46,7 @@ func init() {
 }
 
 // The time in milliseconds for each pause control
-var PauseLengths = [7]int{0, 1000, 200, 700, 30, 60, 90}
+var PauseLengths = [7]int{0, 100, 200, 700, 30, 60, 90}
 
 // ControlCode describes the MSA codes that control the output of future phonemes
 type ControlCode struct {

@@ -18,7 +18,19 @@ package fonts
 import _ "embed"
 
 //go:embed "fa-solid-900.ttf"
-var FontAwesome []byte
+var fontAwesome []byte
+
+type FontSpec struct {
+	Data []byte
+	Min  rune
+	Max  rune
+}
+
+var FontAwesome FontSpec = FontSpec{
+	Data: fontAwesome,
+	Min:  '\ue005',
+	Max:  '\uf8ff',
+}
 
 // Unicode points in FontAwesome for icons used in the application.
 const (
@@ -107,15 +119,14 @@ const (
 	SelectedTick           = '\uf058'
 )
 
-// The first and last unicode points used in the application. We use this to
-// make sure we're using as small a font texture as possible.
-const (
-	FontAwesomeMin = '\ue005'
-	FontAwesomeMax = '\uf8ff'
-)
-
 //go:embed "Gopher2600-Icons.ttf"
-var Gopher2600Icons []byte
+var gopher2600Icons []byte
+
+var Gopher2600Icons FontSpec = FontSpec{
+	Data: gopher2600Icons,
+	Min:  '\ue000',
+	Max:  '\ue007',
+}
 
 // Unicode points in AtariIcons for icons used in the application.
 const (
@@ -129,37 +140,29 @@ const (
 	AtariVox = '\ue007'
 )
 
-// The first and last unicode points used in the application. We use this to
-// make sure we're using as small a font texture as possible.
-const (
-	Gopher2600IconMin = '\ue000'
-	Gopher2600IconMax = '\ue007'
-)
-
 //go:embed "Hack-Regular.ttf"
-var Hack []byte
+var hack []byte
 
-// The first and last unicode points used in the application. We use this to
-// make sure we're using as small a font texture as possible.
-const (
-	HackMin = '\u0003'
-	HackMax = '\u1ef9'
-)
+var Hack FontSpec = FontSpec{
+	Data: hack,
+	Min:  '\u0003',
+	Max:  '\u1ef9',
+}
 
 //go:embed "JetBrainsMono-Regular.ttf"
-var JetBrainsMono []byte
+var jetBrainsMono []byte
 
-// The first and last unicode points used in the application. We use this to
-// make sure we're using as small a font texture as possible.
-const (
-	JetBrainsMonoMin = '\u0003'
-	JetBrainsMonoMax = '\u00ff'
-)
+var JetBrainsMono FontSpec = FontSpec{
+	Data: jetBrainsMono,
+	Min:  '\u0003',
+	Max:  '\u00ff',
+}
 
 //go:embed "JetBrainsMono-Bold.ttf"
-var Subtitle []byte
+var jetBrainsMonoBold []byte
 
-const (
-	SubtitleMin = '\u0003'
-	SubtitleMax = '\u00ff'
-)
+var JetBrainsMonoBold FontSpec = FontSpec{
+	Data: jetBrainsMonoBold,
+	Min:  '\u0003',
+	Max:  '\u00ff',
+}
