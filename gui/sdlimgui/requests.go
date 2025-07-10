@@ -38,9 +38,9 @@ func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...gui.FeatureReqDa
 }
 
 // check length of arguments sent with feature request.
-func argLen(args []gui.FeatureReqData, expectedLen int) error {
-	if len(args) != expectedLen {
-		return fmt.Errorf("wrong number of arguments (%d instead of %d)", len(args), expectedLen)
+func argLen(args []gui.FeatureReqData, minct int, maxct int) error {
+	if len(args) < minct || len(args) > maxct {
+		return fmt.Errorf("wrong number of arguments: %d", len(args))
 	}
 	return nil
 }
@@ -52,46 +52,57 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 
 	switch request.request {
 	case gui.ReqSetEmulationMode:
-		err = argLen(request.args, 1)
+		err = argLen(request.args, 1, 1)
 		if err == nil {
 			img.setEmulationMode(request.args[0].(govern.Mode))
 		}
 
 	case gui.ReqEnd:
-		err = argLen(request.args, 0)
+		err = argLen(request.args, 0, 0)
 		if err == nil {
 			img.end()
 		}
 
 	case gui.ReqFullScreen:
-		err = argLen(request.args, 1)
+		err = argLen(request.args, 1, 1)
 		if err == nil {
 			img.plt.setFullScreen(request.args[0].(bool))
 		}
 
 	case gui.ReqPeripheralPlugged:
-		err = argLen(request.args, 2)
+		err = argLen(request.args, 2, 2)
 		if err == nil {
 			img.playScr.overlay.set(request.args[0], request.args[1])
 		}
 
 	case gui.ReqNotification:
-		err = argLen(request.args, 1)
+		err = argLen(request.args, 1, 2)
 		if err == nil {
 			switch request.args[0].(notifications.Notice) {
 			case notifications.NotifyPlusROMNewInstall:
+				err = argLen(request.args, 1, 1)
 				img.modal = modalPlusROMFirstInstallation
 			case notifications.NotifyUnsupportedDWARF:
+				err = argLen(request.args, 1, 1)
 				img.modal = modalUnsupportedDWARF
 			case notifications.NotifyElfUndefinedSymbols:
+				err = argLen(request.args, 1, 1)
 				img.modal = modalElfUndefinedSymbols
 			default:
-				img.playScr.overlay.set(request.args[0].(notifications.Notice))
+				notice := request.args[0].(notifications.Notice)
+				switch notice {
+				case notifications.NotifyAtariVoxSubtitle:
+					err = argLen(request.args, 2, 2)
+					img.playScr.overlay.set(notice, request.args[1:])
+				default:
+					err = argLen(request.args, 1, 1)
+					img.playScr.overlay.set(notice)
+				}
 			}
 		}
 
 	case gui.ReqComparison:
-		err = argLen(request.args, 3)
+		err = argLen(request.args, 3, 3)
 		if err == nil {
 			open := false
 			if request.args[0] != nil {
@@ -110,14 +121,14 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		}
 
 	case gui.ReqBotFeedback:
-		err = argLen(request.args, 1)
+		err = argLen(request.args, 1, 1)
 		if err == nil {
 			f := request.args[0].(*bots.Feedback)
 			img.wm.playmodeWindows[winBotID].(*winBot).startBotSession(f)
 		}
 
 	case gui.ReqCoProcSourceLine:
-		err = argLen(request.args, 1)
+		err = argLen(request.args, 1, 1)
 		if err == nil {
 			ln := request.args[0].(*dwarf.SourceLine)
 			srcWin := img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)

@@ -162,8 +162,13 @@ func (thmb *Anim) wait() {
 	}
 }
 
+// PushNotify implements the notifications.Notify interface
+func (thmb *Anim) PushNotify(notice notifications.Notice, data ...string) error {
+	return nil
+}
+
 // Notify implements the notifications.Notify interface
-func (thmb *Anim) Notify(notice notifications.Notice) error {
+func (thmb *Anim) Notify(notice notifications.Notice, data ...string) error {
 	switch notice {
 	case notifications.NotifySuperchargerFastload:
 		// the supercharger ROM will eventually start execution from the PC

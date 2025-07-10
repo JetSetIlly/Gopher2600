@@ -60,6 +60,10 @@ type fontAtlas struct {
 	// source code
 	code     imgui.Font
 	codeSize float32
+
+	// atarivox subtitles
+	subtitles     imgui.Font
+	subtitlesSize float32
 }
 
 func scaleFontForDPI(pt float32, dpi float32) float32 {
@@ -172,6 +176,12 @@ func (atlas *fontAtlas) initialise(display fontDisplay, renderer renderer, prefs
 		return fmt.Errorf("font: %w", err)
 	}
 
+	// load source code font
+	err = atlas.subtitlesFont(prefs, dpi)
+	if err != nil {
+		return fmt.Errorf("font: %w", err)
+	}
+
 	// create textures and register with imgui
 	tex := renderer.addFontTexture(imgui.CurrentIO().Fonts())
 	imgui.CurrentIO().Fonts().SetTextureID(imgui.TextureID(tex.getID()))
@@ -248,6 +258,28 @@ func (atlas *fontAtlas) terminalFont(prefs *preferences, dpi float32) error {
 	}
 
 	atlas.mergeFontAwesome(terminalSize, 0.0)
+
+	return nil
+}
+
+func (atlas *fontAtlas) subtitlesFont(prefs *preferences, dpi float32) error {
+	subtitlesSize := float32(20.0)
+	if atlas.subtitlesSize != 0 && subtitlesSize == atlas.subtitlesSize {
+		return nil
+	}
+	atlas.subtitlesSize = subtitlesSize
+
+	cfg := imgui.NewFontConfig()
+	defer cfg.Delete()
+
+	var builder imgui.GlyphRangesBuilder
+	builder.Add(fonts.SubtitleMin, fonts.SubtitleMax)
+
+	subtitlesSize = scaleFontForDPI(subtitlesSize, dpi)
+	atlas.subtitles = imgui.CurrentIO().Fonts().AddFontFromMemoryTTFV(fonts.Subtitle, subtitlesSize, cfg, builder.Build().GlyphRanges)
+	if atlas.code == 0 {
+		return fmt.Errorf("font: error loading Hack font from memory")
+	}
 
 	return nil
 }

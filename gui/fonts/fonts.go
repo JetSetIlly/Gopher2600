@@ -155,3 +155,11 @@ const (
 	JetBrainsMonoMin = '\u0003'
 	JetBrainsMonoMax = '\u00ff'
 )
+
+//go:embed "JetBrainsMono-Bold.ttf"
+var Subtitle []byte
+
+const (
+	SubtitleMin = '\u0003'
+	SubtitleMax = '\u00ff'
+)

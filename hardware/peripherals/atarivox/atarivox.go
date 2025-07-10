@@ -17,7 +17,6 @@ package atarivox
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
@@ -148,9 +147,9 @@ func (vox *AtariVox) activateFestival() {
 	}
 
 	// add subtitles engine
-	const useSubtitles = false
+	const useSubtitles = true
 	if useSubtitles {
-		vox.engines = append(vox.engines, engines.NewSubtitles(os.Stderr))
+		vox.engines = append(vox.engines, engines.NewSubtitles(vox.env.Notifications))
 	}
 }
 

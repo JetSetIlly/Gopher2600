@@ -23,8 +23,10 @@ import (
 
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox/engines"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/imgui-go/v5"
@@ -39,10 +41,6 @@ const (
 	overlayLatchShort  = 60
 	overlayLatchLong   = 90
 )
-
-func (ct *overlayLatch) forceExpire() {
-	*ct = overlayLatchOff
-}
 
 // reduces the duration value. returns false if count has expired. if the
 // duration has been "pinned" then value will return true
@@ -103,6 +101,9 @@ type playscrOverlay struct {
 
 	// visibility of icons is set from the preferences once per draw()
 	visibility float32
+
+	// subtitles are in a category of their own
+	subtitles strings.Builder
 }
 
 const overlayPadding = 10
@@ -136,6 +137,14 @@ func (ovly *playscrOverlay) set(v any, args ...any) {
 		case notifications.NotifyScreenshot:
 			ovly.event = n
 			ovly.eventLatch = overlayLatchShort
+
+		case notifications.NotifyAtariVoxSubtitle:
+			s := args[0].([]gui.FeatureReqData)[0]
+			if s == engines.StaleSubtitle {
+				ovly.subtitles.Reset()
+			} else {
+				ovly.subtitles.WriteString(s.(string))
+			}
 
 		default:
 			return
@@ -173,6 +182,7 @@ func (ovly *playscrOverlay) draw() {
 	ovly.drawTopRight(maxRegion)
 	ovly.drawBottomLeft(maxRegion)
 	ovly.drawBottomRight(maxRegion)
+	ovly.drawSubtitles(maxRegion)
 }
 
 func (ovly *playscrOverlay) updateRefreshRate() {
@@ -187,6 +197,47 @@ func (ovly *playscrOverlay) updateRefreshRate() {
 	} else {
 		ovly.refreshRate = fmt.Sprintf("%03.2fhz", refreshRate)
 	}
+}
+
+func (ovly *playscrOverlay) drawSubtitles(maxRegion imgui.Vec2) {
+	// only show the most recent subtitle 'sentence'
+	sub := strings.TrimSpace(ovly.subtitles.String())
+	splt := strings.Split(sub, engines.SubtitleSentence)
+	if len(splt) > 1 && len(splt[len(splt)-1]) > 0 {
+		sub = splt[len(splt)-1]
+	}
+	sub = strings.TrimSpace(sub)
+	if len(sub) == 0 {
+		return
+	}
+
+	p := imgui.Vec2{X: 0.0, Y: maxRegion.Y * 0.85}
+	imgui.SetNextWindowPos(p)
+	imgui.SetNextWindowSize(imgui.Vec2{X: maxRegion.X, Y: p.Y})
+
+	imgui.BeginV("##subtitles", nil, imgui.WindowFlagsAlwaysAutoResize|
+		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
+		imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings|
+		imgui.WindowFlagsNoBringToFrontOnFocus)
+	defer imgui.End()
+
+	imgui.PushFont(ovly.img.fonts.subtitles)
+	defer imgui.PopFont()
+
+	padding := float32(5.0)
+
+	sz := imgui.CalcTextSize(sub, false, 0.0)
+	p = imgui.CursorScreenPos()
+	p.X = (maxRegion.X - sz.X) / 2
+	imgui.SetCursorScreenPos(p)
+
+	p = p.Plus(imgui.Vec2{X: -padding, Y: padding})
+	dl := imgui.WindowDrawList()
+	dl.AddRectFilled(p, p.Plus(sz).Plus(imgui.Vec2{X: padding * 2, Y: -padding}), ovly.img.cols.subtitlesBackground)
+
+	imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.SubtitlesText)
+	imgui.Text(sub)
+	imgui.PopStyleColor()
 }
 
 // information in the top left corner of the overlay are about the emulation.
@@ -288,13 +339,13 @@ func (ovly *playscrOverlay) drawTopLeft() {
 			imguiSeparator()
 
 			imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.FrameQueueSlackActive)
-			for _ = range ovly.playscr.scr.frameQueueSlack {
+			for range ovly.playscr.scr.frameQueueSlack {
 				imgui.Text(string(fonts.MeterSegment))
 				imgui.SameLineV(0, 0)
 			}
 
 			imgui.PushStyleColor(imgui.StyleColorText, ovly.img.cols.FrameQueueSlackInactive)
-			for _ = range ovly.playscr.scr.crit.frameQueueLen - ovly.playscr.scr.frameQueueSlack {
+			for range ovly.playscr.scr.crit.frameQueueLen - ovly.playscr.scr.frameQueueSlack {
 				imgui.Text(string(fonts.MeterSegment))
 				imgui.SameLineV(0, 0)
 			}

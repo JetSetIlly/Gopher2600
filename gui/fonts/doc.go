@@ -46,5 +46,5 @@
 //
 // Hack-Regular is licenced under the MIT License.
 //
-// JetBrainsMono-Regular is licenced under the OFL-1.1 License
+// JetBrainsMono-Regular is licenced under the OFL-1.1 License.
 package fonts

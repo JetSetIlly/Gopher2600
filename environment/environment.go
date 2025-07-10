@@ -117,6 +117,10 @@ func (env *Environment) AllowLogging() bool {
 // stub implementation of the notification interface
 type notificationStub struct{}
 
-func (_ notificationStub) Notify(_ notifications.Notice) error {
+func (_ notificationStub) PushNotify(_ notifications.Notice, _ ...string) error {
+	return nil
+}
+
+func (_ notificationStub) Notify(_ notifications.Notice, _ ...string) error {
 	return nil
 }

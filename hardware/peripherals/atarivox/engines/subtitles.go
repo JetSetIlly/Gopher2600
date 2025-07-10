@@ -16,41 +16,78 @@
 package engines
 
 import (
-	"io"
 	"time"
 
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox/msa"
+	"github.com/jetsetilly/gopher2600/notifications"
 )
 
-type Subtitles struct {
-	w     io.Writer
-	reset chan bool
-	quit  chan bool
+type subtitle struct {
+	phoneme string
+	delay   time.Duration
 }
 
+type Subtitles struct {
+	notify notifications.Notify
+	push   chan subtitle
+	quit   chan bool
+}
+
+const (
+	// Enough time has elapsed to consider the subtitle to be "stale". Visualisers should be cleared
+	StaleSubtitle = "\n"
+
+	// AtariVox was idle long enough to consider the preceding text to be a single "sentence"
+	SubtitleSentence = "\r"
+
+	// the phoneme that indicates a possible space in the subtitles
+	spacePhoneme = " "
+)
+
 // NewFestival creats a new subtitles instance
-func NewSubtitles(w io.Writer) *Subtitles {
+func NewSubtitles(notify notifications.Notify) *Subtitles {
 	sub := &Subtitles{
-		w:     w,
-		reset: make(chan bool, 1),
-		quit:  make(chan bool, 1),
+		notify: notify,
+		push:   make(chan subtitle, 100), // generous queue required because of artificial delay
+		quit:   make(chan bool, 1),
 	}
 
-	// amount of time to wait before outputting a newline
-	const delay = 1 * time.Second
+	const (
+		newlineDelay = 3 * time.Second
+		nextDelay    = 250 * time.Millisecond
+	)
 
 	go func() {
-		timer := time.NewTimer(0)
-		timer.Stop()
+		newlineTimer := time.NewTimer(0)
+		newlineTimer.Stop()
+		nextTimer := time.NewTimer(0)
+		nextTimer.Stop()
+
+		var lastPhonemeWasSpace bool
+
 		for {
 			select {
-			case <-sub.reset:
-				timer.Reset(delay)
+			case s := <-sub.push:
+				if s.phoneme == spacePhoneme {
+					if !lastPhonemeWasSpace {
+						sub.notify.PushNotify(notifications.NotifyAtariVoxSubtitle, spacePhoneme)
+					}
+					lastPhonemeWasSpace = true
+				} else {
+					sub.notify.PushNotify(notifications.NotifyAtariVoxSubtitle, s.phoneme)
+					lastPhonemeWasSpace = false
+				}
+				time.Sleep(s.delay)
+				newlineTimer.Reset(newlineDelay)
+				nextTimer.Reset(nextDelay)
 			case <-sub.quit:
-				timer.Stop()
+				newlineTimer.Stop()
+				nextTimer.Stop()
 				return
-			case <-timer.C:
-				w.Write([]byte("\n"))
+			case <-newlineTimer.C:
+				sub.notify.PushNotify(notifications.NotifyAtariVoxSubtitle, StaleSubtitle)
+			case <-nextTimer.C:
+				sub.notify.PushNotify(notifications.NotifyAtariVoxSubtitle, SubtitleSentence)
 			}
 		}
 	}()
@@ -67,15 +104,40 @@ func (sub *Subtitles) Quit() {
 }
 
 // SpeakJet implements the AtariVoxEngine interface.
-func (sub *Subtitles) SpeakJet(command uint8, _ uint8) {
-	if a, ok := msa.Commands[command].(msa.Allophone); ok {
-		p := msa.Phonetics[a.Phoneme]
-		sub.w.Write([]byte(p.Phonetic))
+func (sub *Subtitles) SpeakJet(command uint8, data uint8) {
+	switch cmd := msa.Commands[command].(type) {
+	case msa.Allophone:
+		p := msa.Phonetics[cmd.Phoneme]
 		select {
-		case sub.reset <- true:
+		case sub.push <- subtitle{
+			phoneme: p.Phonetic,
+			delay:   time.Duration(cmd.MSec) * time.Millisecond,
+		}:
 		default:
 		}
+	case msa.ControlCode:
+		switch cmd.Code {
+		case 0, 1, 2, 3, 4, 5, 6:
+			// pauses
+			select {
+			case sub.push <- subtitle{
+				phoneme: spacePhoneme,
+				delay:   time.Duration(msa.PauseLengths[cmd.Code]) * time.Millisecond,
+			}:
+			default:
+			}
+		case 30:
+			// delay
+			select {
+			case sub.push <- subtitle{
+				phoneme: spacePhoneme,
+				delay:   time.Duration(data) * time.Millisecond,
+			}:
+			default:
+			}
+		}
 	}
+
 }
 
 // Flush implements the AtariVoxEngine interface.

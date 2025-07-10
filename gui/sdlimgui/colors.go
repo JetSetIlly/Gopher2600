@@ -53,6 +53,8 @@ type imguiColors struct {
 	FrameQueueSlackInactive imgui.Vec4
 	AudioQueueActive        imgui.Vec4
 	AudioQueueInactive      imgui.Vec4
+	SubtitlesText           imgui.Vec4
+	SubtitlesBackground     imgui.Vec4
 
 	// ROM selector
 	ROMSelectDir  imgui.Vec4
@@ -234,6 +236,7 @@ type imguiColors struct {
 	coProcSourceAvgLoad imgui.PackedColor
 	coProcSourceMaxLoad imgui.PackedColor
 	coProcSourceNoLoad  imgui.PackedColor
+	subtitlesBackground imgui.PackedColor
 
 	// reflection colors
 	reflectionColors []imgui.Vec4
@@ -266,6 +269,8 @@ func newColors() *imguiColors {
 		FrameQueueSlackInactive: imgui.Vec4{X: 1.0, Y: 0.3, Z: 0.3, W: 0.3},
 		AudioQueueActive:        imgui.Vec4{X: 0.3, Y: 0.3, Z: 1.0, W: 0.8},
 		AudioQueueInactive:      imgui.Vec4{X: 0.3, Y: 0.3, Z: 1.0, W: 0.3},
+		SubtitlesText:           imgui.Vec4{X: 0.0, Y: 1.0, Z: 0.0, W: 0.9},
+		SubtitlesBackground:     imgui.Vec4{X: 0.0, Y: 0.0, Z: 0.0, W: 0.9},
 
 		// ROM selector
 		ROMSelectDir:  imgui.Vec4{X: 0.5, Y: 0.5, Z: 1.0, W: 1.0},
@@ -467,6 +472,7 @@ func newColors() *imguiColors {
 	cols.coProcSourceAvgLoad = imgui.PackedColorFromVec4(cols.CoProcSourceAvgLoad)
 	cols.coProcSourceMaxLoad = imgui.PackedColorFromVec4(cols.CoProcSourceMaxLoad)
 	cols.coProcSourceNoLoad = imgui.PackedColorFromVec4(cols.CoProcSourceNoLoad)
+	cols.subtitlesBackground = imgui.PackedColorFromVec4(cols.SubtitlesBackground)
 
 	return &cols
 }

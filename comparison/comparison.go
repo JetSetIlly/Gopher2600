@@ -144,8 +144,13 @@ func (cmp *Comparison) Quit() {
 	cmp.emulationQuit <- true
 }
 
+// PushNotify implements the notifications.Notify interface
+func (cmp *Comparison) PushNotify(notice notifications.Notice, data ...string) error {
+	return nil
+}
+
 // Notify implements the notifications.Notify interface
-func (cmp *Comparison) Notify(notice notifications.Notice) error {
+func (cmp *Comparison) Notify(notice notifications.Notice, data ...string) error {
 	switch notice {
 	case notifications.NotifySuperchargerFastload:
 		// the supercharger ROM will eventually start execution from the PC

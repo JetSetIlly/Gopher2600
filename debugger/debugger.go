@@ -1037,8 +1037,16 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 	return nil
 }
 
+// PushNotify implements the notifications.Notify interface
+func (dbg *Debugger) PushNotify(notice notifications.Notice, data ...string) error {
+	dbg.PushFunction(func() {
+		dbg.Notify(notice, data...)
+	})
+	return nil
+}
+
 // Notify implements the notifications.Notify interface
-func (dbg *Debugger) Notify(notice notifications.Notice) error {
+func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 	switch notice {
 
 	case notifications.NotifySuperchargerFastload:
@@ -1124,6 +1132,11 @@ func (dbg *Debugger) Notify(notice notifications.Notice) error {
 		}
 	case notifications.NotifyMovieCartStarted:
 		return dbg.vcs.TV.Reset(true)
+	case notifications.NotifyAtariVoxSubtitle:
+		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifyAtariVoxSubtitle, data[0])
+		if err != nil {
+			return err
+		}
 	default:
 		logger.Logf(logger.Allow, "debugger", "unhandled notification for plusrom (%v)", notice)
 	}

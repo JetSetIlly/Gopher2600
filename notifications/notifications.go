@@ -46,6 +46,9 @@ const (
 
 	// unsupported DWARF data
 	NotifyUnsupportedDWARF Notice = "NotifyUnsupportedDWARF"
+
+	// atarivox notifications
+	NotifyAtariVoxSubtitle Notice = "NotifyAtariVoxSubtitle"
 )
 
 // Notify is used for direct communication between a the hardware and the
@@ -57,5 +60,6 @@ const (
 // PlusROM cartridges need information about network connectivity from the user
 // on first use of the PlusROM system.
 type Notify interface {
-	Notify(notice Notice) error
+	Notify(notice Notice, data ...string) error
+	PushNotify(notice Notice, data ...string) error
 }
