@@ -71,8 +71,9 @@ func scaleFontForDPI(pt float32, dpi float32) float32 {
 
 type fontSpec struct {
 	fonts.FontSpec
-	size float32
-	cfg  imgui.FontConfig
+	size  float32
+	cfg   imgui.FontConfig
+	merge bool
 }
 
 func (atlas *fontAtlas) loadFont(spec fontSpec) (imgui.Font, error) {
@@ -90,7 +91,9 @@ func (atlas *fontAtlas) loadFont(spec fontSpec) (imgui.Font, error) {
 		return 0, fmt.Errorf("error loading font from memory")
 	}
 
-	atlas.mergeFontAwesome(spec.size, 1.0)
+	if spec.merge {
+		atlas.mergeFontAwesome(spec.size, 1.0)
+	}
 	return f, nil
 }
 
@@ -113,7 +116,7 @@ func (atlas *fontAtlas) mergeFontAwesome(size float32, adjust float32) error {
 	return nil
 }
 
-func (atlas *fontAtlas) initialise(display fontDisplay, renderer renderer, prefs *preferences) error {
+func (atlas *fontAtlas) loadFonts(display fontDisplay, renderer renderer, prefs *preferences) error {
 	setFontBuilderFlags(imgui.CurrentIO().Fonts())
 	dpi, err := display.displayDPI()
 	if err != nil {
@@ -129,6 +132,7 @@ func (atlas *fontAtlas) initialise(display fontDisplay, renderer renderer, prefs
 		atlas.gui, err = atlas.loadFont(fontSpec{
 			FontSpec: fonts.JetBrainsMono,
 			size:     atlas.guiSize,
+			merge:    true,
 		})
 
 		if err != nil {
@@ -142,6 +146,7 @@ func (atlas *fontAtlas) initialise(display fontDisplay, renderer renderer, prefs
 		atlas.smallGui, err = atlas.loadFont(fontSpec{
 			FontSpec: fonts.JetBrainsMono,
 			size:     atlas.smallGuiSize,
+			merge:    true,
 		})
 
 		if err != nil {
@@ -223,6 +228,7 @@ func (atlas *fontAtlas) initialise(display fontDisplay, renderer renderer, prefs
 			FontSpec: fonts.Hack,
 			size:     atlas.diagramSize,
 			cfg:      cfg,
+			merge:    true,
 		})
 
 		if err != nil {
@@ -240,6 +246,7 @@ func (atlas *fontAtlas) initialise(display fontDisplay, renderer renderer, prefs
 		atlas.terminal, err = atlas.loadFont(fontSpec{
 			FontSpec: fonts.JetBrainsMono,
 			size:     atlas.terminalSize,
+			merge:    true,
 		})
 
 		if err != nil {
@@ -257,6 +264,7 @@ func (atlas *fontAtlas) initialise(display fontDisplay, renderer renderer, prefs
 		atlas.code, err = atlas.loadFont(fontSpec{
 			FontSpec: fonts.JetBrainsMono,
 			size:     atlas.codeSize,
+			merge:    true,
 		})
 
 		if err != nil {
@@ -272,7 +280,7 @@ func (atlas *fontAtlas) initialise(display fontDisplay, renderer renderer, prefs
 		atlas.subtitlesSize = sz
 
 		atlas.subtitles, err = atlas.loadFont(fontSpec{
-			FontSpec: fonts.JetBrainsMonoBold,
+			FontSpec: fonts.JetBrainsMonoBold_ReducedRange,
 			size:     atlas.subtitlesSize,
 		})
 

@@ -166,3 +166,9 @@ var JetBrainsMonoBold FontSpec = FontSpec{
 	Min:  '\u0003',
 	Max:  '\u00ff',
 }
+
+var JetBrainsMonoBold_ReducedRange FontSpec = FontSpec{
+	Data: jetBrainsMonoBold,
+	Min:  '\u0020',
+	Max:  '\u007e',
+}
