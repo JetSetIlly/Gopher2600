@@ -252,6 +252,7 @@ func (wm *manager) drawMenu() {
 		showTooltips := wm.img.prefs.showTooltips.Get().(bool)
 		if !showTooltips {
 			if !wm.img.tooltipIndicator {
+				disabledAlpha := imgui.CurrentStyle().DisabledAlpha()
 				imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
 				defer imgui.PopStyleVar()
 			}

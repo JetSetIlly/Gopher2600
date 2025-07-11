@@ -101,7 +101,11 @@ func (win *winPlusROMNetwork) draw(plus *plusrom.PlusROM) {
 
 	imguiSeparator()
 
+	disabledAlpha := imgui.CurrentStyle().DisabledAlpha()
+
 	if imgui.CollapsingHeaderV("Send Buffer", imgui.TreeNodeFlagsDefaultOpen) {
+		// whether we've pushed an alpha value onto the style stack. this is used to (a) pop the
+		// value and (b) make sure we don't push it more than once
 		alpha := false
 
 		before := func(idx int) {
@@ -109,11 +113,11 @@ func (win *winPlusROMNetwork) draw(plus *plusrom.PlusROM) {
 
 		after := func(idx int) {
 			if send.Cycles > 0 {
-				if idx == int(send.SendLen) {
+				if !alpha && idx == int(send.SendLen) {
 					imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
 					alpha = true
 				}
-			} else if idx == int(send.WritePtr) {
+			} else if !alpha && idx == int(send.WritePtr) {
 				imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
 				alpha = true
 			}

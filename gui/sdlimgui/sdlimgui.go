@@ -44,9 +44,6 @@ const resetFontFrames = 2
 // slightly longer when window is being resized
 const resetFontFramesOnWindowResize = 30
 
-// the amount to fade a widget by when disabled
-const disabledAlpha = 0.3
-
 // the phantom input system allows windows to obey key presses without any
 // specific widget being active
 type phantomInput int
