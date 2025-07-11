@@ -221,7 +221,7 @@ func (ovly *playscrOverlay) drawSubtitles(maxRegion imgui.Vec2) {
 		imgui.WindowFlagsNoBringToFrontOnFocus)
 	defer imgui.End()
 
-	imgui.PushFont(ovly.img.fonts.subtitles)
+	imgui.PushFont(ovly.img.fonts.subtitles[ovly.img.fonts.subtitlesIdx])
 	defer imgui.PopFont()
 
 	padding := float32(5.0)

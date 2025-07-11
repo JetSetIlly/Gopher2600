@@ -435,8 +435,8 @@ func (img *SdlImgui) serviceWindowEvent(ev sdl.Event, userdata any) bool {
 
 		case sdl.WINDOWEVENT_SIZE_CHANGED:
 			img.screen.crit.section.Lock()
+			img.fonts.resize(img.plt)
 			img.playScr.resize()
-			img.resetFonts = resetFontFramesOnWindowResize
 			img.screen.crit.section.Unlock()
 		}
 

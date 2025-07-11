@@ -60,9 +60,11 @@ type fontAtlas struct {
 	code     imgui.Font
 	codeSize float32
 
-	// atarivox subtitles
-	subtitles     imgui.Font
-	subtitlesSize float32
+	// subtitles are a little different to other fonts. 10 different sizes are preloaded and then
+	// when the window is resized, the preloaded size nearest to the required size is used
+	subtitles     [10]imgui.Font
+	subtitlesSize [10]float32
+	subtitlesIdx  int
 }
 
 func scaleFontForDPI(pt float32, dpi float32) float32 {
@@ -272,26 +274,45 @@ func (atlas *fontAtlas) loadFonts(display fontDisplay, renderer renderer, prefs 
 		}
 	}
 
-	// load subtitle font at 5% of window size
-	_, h := display.windowSize()
-	sz = float32(h * 0.05)
-	sz = scaleFontForDPI(sz, dpi)
-	if sz != atlas.subtitlesSize {
-		atlas.subtitlesSize = sz
+	// load a range of subtitle sizes
+	for i := range len(atlas.subtitlesSize) {
+		const baseSubtitleSize = 10
+		sz := float32(baseSubtitleSize * (i + 1))
+		sz = scaleFontForDPI(sz, dpi)
+		if sz != atlas.subtitlesSize[i] {
+			atlas.subtitlesSize[i] = sz
+			atlas.subtitles[i], err = atlas.loadFont(fontSpec{
+				FontSpec: fonts.JetBrainsMonoBold_ReducedRange,
+				size:     atlas.subtitlesSize[i],
+			})
 
-		atlas.subtitles, err = atlas.loadFont(fontSpec{
-			FontSpec: fonts.JetBrainsMonoBold_ReducedRange,
-			size:     atlas.subtitlesSize,
-		})
-
-		if err != nil {
-			return fmt.Errorf("code font: %w", err)
+			if err != nil {
+				return fmt.Errorf("code font: %w", err)
+			}
 		}
 	}
+	atlas.resize(display)
 
 	// create textures and register with imgui
 	tex := renderer.addFontTexture(imgui.CurrentIO().Fonts())
 	imgui.CurrentIO().Fonts().SetTextureID(imgui.TextureID(tex.getID()))
 
+	return nil
+}
+
+// resize is called when the containing window is resized
+func (atlas *fontAtlas) resize(display fontDisplay) error {
+	dpi, err := display.displayDPI()
+	if err != nil {
+		return fmt.Errorf("font: %w", err)
+	}
+	_, h := display.windowSize()
+	sz := float32(h * 0.05)
+	sz = scaleFontForDPI(sz, dpi)
+	for i := range len(atlas.subtitlesSize) {
+		if sz >= atlas.subtitlesSize[i] {
+			atlas.subtitlesIdx = i
+		}
+	}
 	return nil
 }
