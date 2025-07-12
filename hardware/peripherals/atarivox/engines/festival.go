@@ -18,7 +18,6 @@ package engines
 import (
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"strings"
 
@@ -59,9 +58,6 @@ type festival struct {
 	stdin  io.WriteCloser
 	stdout io.ReadCloser
 
-	// echo raw festival commands
-	echo io.Writer
-
 	// phonemes not yet pushed to say channel
 	phonemes phonemes
 
@@ -69,22 +65,10 @@ type festival struct {
 	say  chan string
 	cmd  chan string
 
-	// some bytes require a second byte
-	nextSpeakJetByte speakJetAction
-
 	// current settings for voice output. volume is not fully implemented
 	speed  uint8
 	pitch  uint8
 	volume uint8
-}
-
-const echoToStdErr = false
-
-// nilWriter is an empty writer.
-type nilWriter struct{}
-
-func (*nilWriter) Write(p []byte) (n int, err error) {
-	return 0, nil
 }
 
 // NewFestival creats a new festival instance and starts a new festival process
@@ -98,11 +82,6 @@ func NewFestival(env *environment.Environment) (AtariVoxEngine, error) {
 		quit: make(chan bool, 1),
 		say:  make(chan string, 1),
 		cmd:  make(chan string, 1),
-		echo: &nilWriter{},
-	}
-
-	if echoToStdErr {
-		fest.echo = os.Stderr
 	}
 
 	executablePath := env.Prefs.AtariVox.FestivalBinary.Get().(string)
@@ -140,14 +119,10 @@ func NewFestival(env *environment.Environment) (AtariVoxEngine, error) {
 				logger.Logf(fest.env, "festival", "say: %s", text)
 				sayphones := fmt.Sprintf("(SayPhones '(%s))", text)
 				fest.stdin.Write([]byte(sayphones))
-				fest.echo.Write([]byte(sayphones))
-				fest.echo.Write([]byte("\n"))
 
 			case command := <-fest.cmd:
 				// https://www.cstr.ed.ac.uk/projects/festival/manual/festival_34.html#SEC141
 				fest.stdin.Write([]byte(command))
-				fest.echo.Write([]byte(command))
-				fest.echo.Write([]byte("\n"))
 			}
 		}
 	}()
@@ -173,8 +148,6 @@ func (fest *festival) reset() {
 		fest.cmd <- fmt.Sprintf("(set! FP_duration %d)", fest.speed)
 		fest.cmd <- fmt.Sprintf("(set! FP_F0 %d)", fest.pitch)
 	}
-
-	fest.nextSpeakJetByte = noAction
 }
 
 // Quit implements the AtariVoxEngine interface.
@@ -249,25 +222,18 @@ func (fest *festival) SpeakJet(command uint8, data uint8) {
 
 	case 23: // bend
 		logger.Log(fest.env, "festival", "bend: not implemented")
-		fest.nextSpeakJetByte = unsupported
 	case 24: // PortCtr
 		logger.Log(fest.env, "festival", "port ctr: not implemented")
-		fest.nextSpeakJetByte = unsupported
 	case 25: // Port
 		logger.Log(fest.env, "festival", "port: not implemented")
-		fest.nextSpeakJetByte = unsupported
 	case 26: // Repeat
 		logger.Log(fest.env, "festival", "repeat: not implemented")
-		fest.nextSpeakJetByte = unsupported
 	case 28: // Call Phrase
 		logger.Log(fest.env, "festival", "call phrase: not implemented")
-		fest.nextSpeakJetByte = unsupported
 	case 29: // Goto Phrase
 		logger.Log(fest.env, "festival", "goto phrase: not implemented")
-		fest.nextSpeakJetByte = unsupported
 	case 30: // Delay
 		logger.Log(fest.env, "festival", "delay: not implemented")
-		fest.nextSpeakJetByte = unsupported
 
 	case 31: // Reset
 		logger.Log(fest.env, "festival", "reset")
