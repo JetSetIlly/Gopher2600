@@ -99,6 +99,7 @@ func NewSubtitles(notify notifications.Notify) *Subtitles {
 func (sub *Subtitles) Quit() {
 	select {
 	case sub.quit <- true:
+		sub.notify.PushNotify(notifications.NotifyAtariVoxSubtitle, StaleSubtitle)
 	default:
 	}
 }

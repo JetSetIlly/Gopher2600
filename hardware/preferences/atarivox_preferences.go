@@ -23,8 +23,9 @@ import (
 type AtariVoxPreferences struct {
 	dsk *prefs.Disk
 
-	FestivalEnabled prefs.Bool
-	FestivalBinary  prefs.String
+	FestivalEnabled  prefs.Bool
+	FestivalBinary   prefs.String
+	SubtitlesEnabled prefs.Bool
 }
 
 // NewPreferences is the preferred method of initialisation for the Preferences type.
@@ -52,6 +53,11 @@ func newAtariVoxPreferences() (*AtariVoxPreferences, error) {
 		return nil, err
 	}
 
+	err = p.dsk.Add("peripherals.atarivox.subtitles.enabled", &p.SubtitlesEnabled)
+	if err != nil {
+		return nil, err
+	}
+
 	err = p.dsk.Load()
 	if err != nil {
 		return nil, err
@@ -64,6 +70,7 @@ func newAtariVoxPreferences() (*AtariVoxPreferences, error) {
 func (p *AtariVoxPreferences) SetDefaults() {
 	p.FestivalEnabled.Set(true)
 	p.FestivalBinary.Set(p.binary())
+	p.SubtitlesEnabled.Set(false)
 }
 
 // Load disassembly preferences and apply to the current disassembly.

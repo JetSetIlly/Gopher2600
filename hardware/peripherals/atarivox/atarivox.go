@@ -70,8 +70,11 @@ type AtariVox struct {
 	pushed     bool
 	pushedBits uint8
 
-	// text to speech engines
-	engines []engines.AtariVoxEngine
+	// text-to-speech engine
+	speech engines.AtariVoxEngine
+
+	// subtitler engine
+	subtitler engines.AtariVoxEngine
 
 	// slow down the rate at which stepAtariVox() operates once state is in the
 	// Starting, Data or Ending state.
@@ -116,7 +119,7 @@ func NewAtariVox(env *environment.Environment, port plugging.PortID, bus ports.P
 		SpeakJetREADY: i2c.NewTrace(),
 	}
 
-	vox.activateFestival()
+	vox.activateEngines()
 	logger.Logf(env, "atarivox", "attached [%v]", vox.port)
 
 	// attach savekey to same port
@@ -125,43 +128,50 @@ func NewAtariVox(env *environment.Environment, port plugging.PortID, bus ports.P
 	return vox
 }
 
-func (vox *AtariVox) activateFestival() {
+func (vox *AtariVox) activateEngines() {
 	if !vox.env.IsEmulation(environment.MainEmulation) {
 		return
 	}
 
-	for _, e := range vox.engines {
-		if e != nil {
-			e.Quit()
-		}
-	}
-	vox.engines = vox.engines[:0]
+	var err error
 
 	// add festival engine according to preferences
 	if vox.env.Prefs.AtariVox.FestivalEnabled.Get().(bool) {
-		e, err := engines.NewFestival(vox.env)
-		if err != nil {
-			logger.Log(vox.env, "atarivox", err)
+		if vox.speech == nil {
+			vox.speech, err = engines.NewFestival(vox.env)
+			if err != nil {
+				logger.Log(vox.env, "atarivox", err)
+			}
 		}
-		vox.engines = append(vox.engines, e)
+	} else if vox.speech != nil {
+		vox.speech.Quit()
+		vox.speech = nil
 	}
 
 	// add subtitles engine
-	const useSubtitles = true
-	if useSubtitles {
-		vox.engines = append(vox.engines, engines.NewSubtitles(vox.env.Notifications))
+	if vox.env.Prefs.AtariVox.SubtitlesEnabled.Get().(bool) {
+		if vox.subtitler == nil {
+			vox.subtitler = engines.NewSubtitles(vox.env.Notifications)
+		}
+	} else if vox.subtitler != nil {
+		vox.subtitler.Quit()
+		vox.subtitler = nil
 	}
 }
 
 // Unplug implements the ports.Peripheral interface.
 func (vox *AtariVox) Unplug() {
 	vox.SaveKey.Unplug()
-	for _, e := range vox.engines {
-		if e != nil {
-			e.Quit()
-		}
+
+	if vox.speech != nil {
+		vox.speech.Quit()
+		vox.speech = nil
 	}
-	vox.engines = vox.engines[:0]
+
+	if vox.subtitler != nil {
+		vox.subtitler.Quit()
+		vox.subtitler = nil
+	}
 }
 
 // Snapshot implements the ports.Peripheral interface.
@@ -200,7 +210,7 @@ func (vox *AtariVox) Reset() {
 
 // Restart implements the ports.RestartPeripheral interface.
 func (vox *AtariVox) Restart() {
-	vox.activateFestival()
+	vox.activateEngines()
 }
 
 // Restart implements the ports.DisablePeripheral interface.
@@ -296,8 +306,11 @@ func (vox *AtariVox) Step() {
 			if vox.flushCount < flushCount {
 				vox.flushCount++
 				if vox.flushCount >= flushCount {
-					for _, e := range vox.engines {
-						e.Flush()
+					if vox.speech != nil {
+						vox.speech.Flush()
+					}
+					if vox.subtitler != nil {
+						vox.subtitler.Flush()
 					}
 				}
 			}
@@ -340,11 +353,19 @@ func (vox *AtariVox) Step() {
 				vox.pushedBits = vox.bits
 			} else {
 				if !(vox.disabled || vox.muted) {
-					for _, e := range vox.engines {
-						if vox.pushed {
-							e.SpeakJet(vox.pushedBits, vox.bits)
-						} else {
-							e.SpeakJet(vox.bits, 0)
+					if vox.pushed {
+						if vox.speech != nil {
+							vox.speech.SpeakJet(vox.pushedBits, vox.bits)
+						}
+						if vox.subtitler != nil {
+							vox.subtitler.SpeakJet(vox.pushedBits, vox.bits)
+						}
+					} else {
+						if vox.speech != nil {
+							vox.speech.SpeakJet(vox.bits, 0)
+						}
+						if vox.subtitler != nil {
+							vox.subtitler.SpeakJet(vox.bits, 0)
 						}
 					}
 

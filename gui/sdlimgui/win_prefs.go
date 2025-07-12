@@ -441,17 +441,6 @@ func (win *winPrefs) drawVCS() {
 
 	imgui.Spacing()
 	if imgui.CollapsingHeader("AtariVox") {
-		imgui.Spacing()
-		imgui.Text("AtariVox output is currently only available")
-		imgui.Text("via the Festival voice synthsizer. The path")
-		imgui.Text("to the binary is specified below:")
-
-		imgui.Spacing()
-		binary := win.img.dbg.VCS().Env.Prefs.AtariVox.FestivalBinary.Get().(string)
-		if imgui.InputTextV("##festivalbinary", &binary, imgui.InputTextFlagsEnterReturnsTrue, nil) {
-			win.img.dbg.VCS().Env.Prefs.AtariVox.FestivalBinary.Set(binary)
-			win.img.dbg.PushFunction(win.img.dbg.VCS().RIOT.Ports.RestartPeripherals)
-		}
 
 		imgui.Spacing()
 		enabled := win.img.dbg.VCS().Env.Prefs.AtariVox.FestivalEnabled.Get().(bool)
@@ -459,6 +448,8 @@ func (win *winPrefs) drawVCS() {
 			win.img.dbg.VCS().Env.Prefs.AtariVox.FestivalEnabled.Set(enabled)
 			win.img.dbg.PushFunction(win.img.dbg.VCS().RIOT.Ports.RestartPeripherals)
 		}
+		win.img.imguiTooltipSimple(`AtariVox output is currently only available
+via the Festival voice synthsizer`)
 
 		var warning bool
 
@@ -478,6 +469,23 @@ func (win *winPrefs) drawVCS() {
 			win.img.imguiTooltipSimple(`Emulation audio is currently muted. There will
 be no AtariVox output even though the engine is
 currently enabled.`)
+		}
+
+		if enabled {
+			imgui.Spacing()
+			imguiLabel("Festival Path")
+			binary := win.img.dbg.VCS().Env.Prefs.AtariVox.FestivalBinary.Get().(string)
+			if imgui.InputTextV("##festivalbinary", &binary, imgui.InputTextFlagsEnterReturnsTrue, nil) {
+				win.img.dbg.VCS().Env.Prefs.AtariVox.FestivalBinary.Set(binary)
+				win.img.dbg.PushFunction(win.img.dbg.VCS().RIOT.Ports.RestartPeripherals)
+			}
+		}
+
+		imgui.Spacing()
+		subtitles := win.img.dbg.VCS().Env.Prefs.AtariVox.SubtitlesEnabled.Get().(bool)
+		if imgui.Checkbox("Phonetic Subtitles", &subtitles) {
+			win.img.dbg.VCS().Env.Prefs.AtariVox.SubtitlesEnabled.Set(subtitles)
+			win.img.dbg.PushFunction(win.img.dbg.VCS().RIOT.Ports.RestartPeripherals)
 		}
 	}
 }

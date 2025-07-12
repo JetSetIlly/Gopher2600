@@ -10,7 +10,7 @@ Most ["bank switching"](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Suppo
 
 Games using [PlusROM](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/PlusROM) features are also supported.
 
-The [AtariVox and SaveKey](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/AtariVox-and-SaveKey) peripherals are emulated. Uniquely, the AtariVox voice features can be  emulated with the third-party application `Festival`. While this is imperfect being able to hear feedback for AtariVox voice commands can be helpful.
+The [AtariVox and SaveKey](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/AtariVox-and-SaveKey) peripherals are emulated. Uniquely, the AtariVox voice features can be emulated with the third-party application `Festival`. While this is imperfect being able to hear feedback for AtariVox voice commands can be helpful. A subtitler is available. Again, this is imperfect and only shows phonetic spellings but sometimes this feedback can be helpful.
 
 The vintage CRT television, contemporaneous with the console, is emulated with a selection of interference effects and bevel images. This is an ongoing area of development and will be improved further in the future.
 
