@@ -13,6 +13,8 @@ github.com/hajimehoshi/go-mp3 v0.3.4/go.mod h1:fRtZraRFcWb0pu7ok0LqyFhCUrPeMsGRS
 github.com/hajimehoshi/oto/v2 v2.3.1/go.mod h1:seWLbgHH7AyUMYKfKYT9pg7PhUu9/SisyJvNTT+ASQo=
 github.com/jetsetilly/imgui-go/v5 v5.0.2 h1:dsFpLQIwrB2Ayi5G4fNJyK3QTSuZf5gIfIwihXWP+Fw=
 github.com/jetsetilly/imgui-go/v5 v5.0.2/go.mod h1:UZOMPCKlp2QbTjkvPYh5tZ5z4kiKmtCtMmW21m0/dps=
+github.com/jetsetilly/imgui-go/v5 v5.0.3 h1:Sk7aM0elptxYQvQRwD42wFYLa9yBm1KhMKsDEDl7UC8=
+github.com/jetsetilly/imgui-go/v5 v5.0.3/go.mod h1:UZOMPCKlp2QbTjkvPYh5tZ5z4kiKmtCtMmW21m0/dps=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/pkg/term v1.1.0 h1:xIAAdCMh3QIAy+5FrE8Ad8XoDhEU4ufwbaSozViP9kk=
