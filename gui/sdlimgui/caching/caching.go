@@ -54,7 +54,7 @@ func (vcs cachedVCS) GetSaveKey() *savekey.SaveKey {
 	}
 	vox, savekeyActive := vcs.RIOT.Ports.RightPlayer.(*atarivox.AtariVox)
 	if savekeyActive {
-		return vox.SaveKey.(*savekey.SaveKey)
+		return vox.SaveKey
 	}
 	return nil
 }

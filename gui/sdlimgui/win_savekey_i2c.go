@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey/i2c"
 	"github.com/jetsetilly/imgui-go/v5"
@@ -91,27 +92,24 @@ func (win *winSaveKeyI2C) draw() {
 }
 
 func (win *winSaveKeyI2C) drawOscilloscope() {
-	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.SaveKeyOscBG)
-
 	w := imgui.WindowWidth()
 	w -= (imgui.CurrentStyle().FramePadding().X * 2) + (imgui.CurrentStyle().ItemInnerSpacing().X * 2)
 
+	dim := imgui.Vec2{X: w, Y: imgui.FrameHeight() * 2}
 	pos := imgui.CursorPos()
+
+	// SCL
+	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.SaveKeyOscBG)
 	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.SaveKeyOscSCL)
-	imgui.PlotLinesV("", win.savekey.SCL.Activity, 0, "", i2c.TraceLo, i2c.TraceHi,
-		imgui.Vec2{X: w, Y: imgui.FrameHeight() * 2})
+	imgui.PlotLinesV("##savekeySCL", win.savekey.SCL.Activity, 0, "", i2c.TraceLo, i2c.TraceHi, dim)
 
 	// reset cursor pos with a slight offset
-	pos.Y += 2.0
-	imgui.SetCursorPos(pos)
+	imgui.SetCursorPos(pos.Plus(imgui.Vec2{Y: 2.0}))
 
-	// transparent background color for second plotlines widget.
+	// SDA
 	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.SaveKeyOscBG)
-
-	// plot lines
 	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.SaveKeyOscSDA)
-	imgui.PlotLinesV("", win.savekey.SDA.Activity, 0, "", i2c.TraceLo, i2c.TraceHi,
-		imgui.Vec2{X: w, Y: imgui.FrameHeight() * 2})
+	imgui.PlotLinesV("##savekeySDA", win.savekey.SDA.Activity, 0, "", i2c.TraceLo, i2c.TraceHi, dim)
 
 	imgui.PopStyleColorV(4)
 
@@ -150,10 +148,12 @@ func (win *winSaveKeyI2C) drawACK() {
 	imgui.AlignTextToFramePadding()
 	imgui.Text("ACK")
 	imgui.SameLine()
-	if imgui.Checkbox("##ACK", &v) {
+	if imgui.Checkbox("##savekeyACK", &v) {
 		win.img.dbg.PushFunction(func() {
 			if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
 				sk.Ack = v
+			} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+				vox.SaveKey.Ack = v
 			}
 		})
 	}
@@ -173,7 +173,7 @@ func (win *winSaveKeyI2C) drawBits() {
 
 	s := fmt.Sprintf("%02x", bits)
 	imguiLabel(label)
-	if imguiHexInput(fmt.Sprintf("##%s", label), 2, &s) {
+	if imguiHexInput(fmt.Sprintf("##savekey%s", label), 2, &s) {
 		v, err := strconv.ParseUint(s, 16, 8)
 		if err != nil {
 			panic(err)
@@ -181,6 +181,8 @@ func (win *winSaveKeyI2C) drawBits() {
 		win.img.dbg.PushFunction(func() {
 			if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
 				sk.Bits = uint8(v)
+			} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+				vox.SaveKey.Bits = uint8(v)
 			}
 		})
 	}
@@ -197,6 +199,8 @@ func (win *winSaveKeyI2C) drawBits() {
 			win.img.dbg.PushFunction(func() {
 				if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
 					sk.Bits = v
+				} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+					vox.SaveKey.Bits = v
 				}
 			})
 		}
@@ -215,7 +219,7 @@ func (win *winSaveKeyI2C) drawAddress() {
 	label := "Address"
 	s := fmt.Sprintf("%04x", addr)
 	imguiLabel(label)
-	if imguiHexInput(fmt.Sprintf("##%s", label), 4, &s) {
+	if imguiHexInput(fmt.Sprintf("##savekey%s", label), 4, &s) {
 		v, err := strconv.ParseUint(s, 16, 16)
 		if err != nil {
 			panic(err)
@@ -223,6 +227,8 @@ func (win *winSaveKeyI2C) drawAddress() {
 		win.img.dbg.PushFunction(func() {
 			if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
 				sk.EEPROM.Address = uint16(v)
+			} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+				vox.SaveKey.EEPROM.Address = uint16(v)
 			}
 		})
 	}

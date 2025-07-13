@@ -78,17 +78,10 @@ func (win *winSaveKeyEEPROM) draw() {
 
 	win.img.drawByteGridSimple("eepromByteGrid", win.savekey.EEPROM.Data, win.savekey.EEPROM.DiskData, win.img.cols.ValueDiff, 0x00, func(idx int, data uint8) {
 		win.img.dbg.PushFunction(func() {
-			var sk *savekey.SaveKey
-
-			if av, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
-				sk = av.SaveKey.(*savekey.SaveKey)
-			} else {
-				sk = win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey)
-			}
-
-			if sk != nil {
-				// eeprom space is maximum of uint16 so the type conversion is safe
+			if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
 				sk.EEPROM.Poke(uint16(idx), data)
+			} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+				vox.SaveKey.EEPROM.Poke(uint16(idx), data)
 			}
 		})
 	})
@@ -101,16 +94,10 @@ func (win *winSaveKeyEEPROM) draw() {
 
 		if imgui.Button("Save to disk") {
 			win.img.dbg.PushFunction(func() {
-				var sk *savekey.SaveKey
-
-				if av, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
-					sk = av.SaveKey.(*savekey.SaveKey)
-				} else {
-					sk = win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey)
-				}
-
-				if sk != nil {
+				if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
 					sk.EEPROM.Write()
+				} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+					vox.SaveKey.EEPROM.Write()
 				}
 			})
 		}

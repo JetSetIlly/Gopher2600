@@ -85,7 +85,7 @@ type AtariVox struct {
 	flushCount int
 
 	// the savekey portion of the AtariVox is the same as a stand alone savekey
-	SaveKey ports.Peripheral
+	SaveKey *savekey.SaveKey
 
 	// the atarivox should not process data when it is disabled (see comment
 	// for mute below)
@@ -123,7 +123,7 @@ func NewAtariVox(env *environment.Environment, port plugging.PortID, bus ports.P
 	logger.Logf(env, "atarivox", "attached [%v]", vox.port)
 
 	// attach savekey to same port
-	vox.SaveKey = savekey.NewSaveKey(env, port, bus)
+	vox.SaveKey = savekey.NewSaveKey(env, port, bus).(*savekey.SaveKey)
 
 	return vox
 }
@@ -177,7 +177,7 @@ func (vox *AtariVox) Unplug() {
 // Snapshot implements the ports.Peripheral interface.
 func (vox *AtariVox) Snapshot() ports.Peripheral {
 	n := *vox
-	n.SaveKey = vox.SaveKey.Snapshot()
+	n.SaveKey = vox.SaveKey.Snapshot().(*savekey.SaveKey)
 	return &n
 }
 
