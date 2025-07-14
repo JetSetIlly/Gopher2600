@@ -21,7 +21,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
-	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey/i2c"
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
@@ -75,10 +74,6 @@ func (win *winSaveKeyI2C) debuggerDraw() bool {
 }
 
 func (win *winSaveKeyI2C) draw() {
-	win.drawStatus()
-
-	imguiSeparator()
-
 	win.drawAddress()
 	imgui.SameLine()
 	win.drawBits()
@@ -86,38 +81,14 @@ func (win *winSaveKeyI2C) draw() {
 	win.drawACK()
 
 	imgui.Spacing()
+	style := imgui.CurrentStyle()
+	dim := imgui.Vec2{
+		X: imgui.WindowWidth() - ((style.FramePadding().X * 2) + (style.ItemInnerSpacing().X * 2)),
+		Y: imgui.FrameHeight() * 2}
+	drawI2C(win.savekey.SCL, win.savekey.SDA, dim, win.img.cols, win.img)
+
 	imgui.Spacing()
-
-	win.drawOscilloscope()
-}
-
-func (win *winSaveKeyI2C) drawOscilloscope() {
-	w := imgui.WindowWidth()
-	w -= (imgui.CurrentStyle().FramePadding().X * 2) + (imgui.CurrentStyle().ItemInnerSpacing().X * 2)
-
-	dim := imgui.Vec2{X: w, Y: imgui.FrameHeight() * 2}
-	pos := imgui.CursorPos()
-
-	// SCL
-	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.SaveKeyOscBG)
-	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.SaveKeyOscSCL)
-	imgui.PlotLinesV("##savekeySCL", win.savekey.SCL.Activity, 0, "", i2c.TraceLo, i2c.TraceHi, dim)
-
-	// reset cursor pos with a slight offset
-	imgui.SetCursorPos(pos.Plus(imgui.Vec2{Y: 2.0}))
-
-	// SDA
-	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.SaveKeyOscBG)
-	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.SaveKeyOscSDA)
-	imgui.PlotLinesV("##savekeySDA", win.savekey.SDA.Activity, 0, "", i2c.TraceLo, i2c.TraceHi, dim)
-
-	imgui.PopStyleColorV(4)
-
-	// key to oscilloscope
-	imgui.Spacing()
-	imguiColorLabelSimple("SCL", win.img.cols.SaveKeyOscSCL)
-	imgui.SameLine()
-	imguiColorLabelSimple("SDA", win.img.cols.SaveKeyOscSDA)
+	win.drawStatus()
 }
 
 func (win *winSaveKeyI2C) drawStatus() {
@@ -208,9 +179,11 @@ func (win *winSaveKeyI2C) drawBits() {
 	}
 	seq.end()
 
-	dl := imgui.WindowDrawList()
-	dl.AddCircleFilled(imgui.Vec2{X: seq.offsetX(bitCt), Y: imgui.CursorScreenPos().Y},
-		imgui.FontSize()*0.20, win.img.cols.saveKeyBitPointer)
+	if win.savekey.State != savekey.SaveKeyStopped && bitCt < 8 {
+		dl := imgui.WindowDrawList()
+		dl.AddCircleFilled(imgui.Vec2{X: seq.offsetX(bitCt), Y: imgui.CursorScreenPos().Y},
+			imgui.FontSize()*0.20, win.img.cols.saveKeyBitPointer)
+	}
 }
 
 func (win *winSaveKeyI2C) drawAddress() {

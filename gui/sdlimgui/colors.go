@@ -186,10 +186,10 @@ type imguiColors struct {
 	TimerBit imgui.Vec4
 
 	// savekey i2c/eeprom window
-	SaveKeyBit        imgui.Vec4
 	SaveKeyOscBG      imgui.Vec4
 	SaveKeyOscSCL     imgui.Vec4
 	SaveKeyOscSDA     imgui.Vec4
+	SaveKeyBit        imgui.Vec4
 	SaveKeyBitPointer imgui.Vec4
 
 	// terminal
@@ -218,6 +218,9 @@ type imguiColors struct {
 	collisionBit        imgui.PackedColor
 	portsBit            imgui.PackedColor
 	timerBit            imgui.PackedColor
+	saveKeyOscBG        imgui.PackedColor
+	saveKeyOscSCL       imgui.PackedColor
+	saveKeyOscSDA       imgui.PackedColor
 	saveKeyBit          imgui.PackedColor
 	saveKeyBitPointer   imgui.PackedColor
 	timelineHoverCursor imgui.PackedColor
@@ -395,9 +398,10 @@ func newColors() *imguiColors {
 
 		// deferring savekey i2c/eeprom window RegisterBit
 
-		SaveKeyOscBG:      imgui.Vec4{X: 0.10, Y: 0.10, Z: 0.10, W: 1.0},
-		SaveKeyOscSCL:     imgui.Vec4{X: 0.10, Y: 0.97, Z: 0.29, W: 1.0},
-		SaveKeyOscSDA:     imgui.Vec4{X: 0.97, Y: 0.10, Z: 0.29, W: 1.0},
+		SaveKeyOscBG:  imgui.Vec4{X: 0.10, Y: 0.10, Z: 0.10, W: 1.0},
+		SaveKeyOscSCL: imgui.Vec4{X: 0.10, Y: 0.97, Z: 0.29, W: 1.0},
+		SaveKeyOscSDA: imgui.Vec4{X: 0.97, Y: 0.40, Z: 0.29, W: 1.0},
+		// deferring SaveKeyBit
 		SaveKeyBitPointer: imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0},
 
 		// terminal
@@ -454,6 +458,9 @@ func newColors() *imguiColors {
 	cols.collisionBit = imgui.PackedColorFromVec4(cols.CollisionBit)
 	cols.portsBit = imgui.PackedColorFromVec4(cols.PortsBit)
 	cols.timerBit = imgui.PackedColorFromVec4(cols.TimerBit)
+	cols.saveKeyOscBG = imgui.PackedColorFromVec4(cols.SaveKeyOscBG)
+	cols.saveKeyOscSCL = imgui.PackedColorFromVec4(cols.SaveKeyOscSCL)
+	cols.saveKeyOscSDA = imgui.PackedColorFromVec4(cols.SaveKeyOscSDA)
 	cols.saveKeyBit = imgui.PackedColorFromVec4(cols.SaveKeyBit)
 	cols.saveKeyBitPointer = imgui.PackedColorFromVec4(cols.SaveKeyBitPointer)
 	cols.timelineHoverCursor = imgui.PackedColorFromVec4(cols.TimelineHoverCursor)

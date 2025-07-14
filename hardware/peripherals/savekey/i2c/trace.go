@@ -15,9 +15,6 @@
 
 package i2c
 
-// length of activity trace
-const activityLength = 64
-
 // Trace records the state of electrical line, whether it is high or low, and
 // also whether the immediately previous state is also high or low.
 //
@@ -34,41 +31,34 @@ const activityLength = 64
 //			E()
 //	 }
 type Trace struct {
-	// a recent history of the i2c trace. wraps around at activityLength
-	Activity []float32
-
-	// ptr is the next activity index to be written to
-	ptr int
-
-	// rather than indexing the activity field and dealing with wrap around, we
-	// record the hi state of the trace as a boolean for the most recent recent
-	// time period and for the period before that (in the 2600 the period is
-	// the speed of the 6507)
-	//
-	// labelled from and to because this is how we think about these values
-	// when checking whether the trace is rising or falling
-	from bool
-	to   bool // most recent time period
+	// new values are added to the end of the array
+	Activity []bool
+	from     bool
+	to       bool
 }
 
 const (
-	TraceHi = 1.0
-	TraceLo = -1.0
+	traceHi = true
+	traceLo = false
+)
+
+const (
+	activityLength = 64
 )
 
 func NewTrace() Trace {
 	tr := Trace{
-		Activity: make([]float32, activityLength),
+		Activity: make([]bool, activityLength),
 	}
 	for i := range tr.Activity {
-		tr.Activity[i] = TraceHi
+		tr.Activity[i] = traceHi
 	}
 	return tr
 }
 
 func (tr *Trace) Snapshot() *Trace {
 	cp := *tr
-	cp.Activity = make([]float32, len(tr.Activity))
+	cp.Activity = make([]bool, len(tr.Activity))
 	copy(cp.Activity, tr.Activity)
 	return &cp
 }
@@ -96,13 +86,5 @@ func (tr *Trace) Lo() bool {
 func (tr *Trace) Tick(v bool) {
 	tr.from = tr.to
 	tr.to = v
-	if v {
-		tr.Activity[tr.ptr] = TraceHi
-	} else {
-		tr.Activity[tr.ptr] = TraceLo
-	}
-	tr.ptr++
-	if tr.ptr >= len(tr.Activity) {
-		tr.ptr = 0
-	}
+	tr.Activity = append(tr.Activity[1:], v)
 }

@@ -25,13 +25,6 @@ var tooltipColor = imgui.Vec4{X: 0.08, Y: 0.08, Z: 0.08, W: 1.0}
 var tooltipBorder = imgui.Vec4{X: 0.03, Y: 0.03, Z: 0.03, W: 1.0}
 var tooltipAlpha = 0.83
 
-// shows tooltip on hover of the previous imgui digest/group. useful for simple
-// tooltips.
-func (img *SdlImgui) imguiTooltipSimple(tooltip string) {
-	show := img.prefs.showTooltips.Get().(bool) || imgui.CurrentIO().KeyCtrlPressed()
-	img.tooltipIndicator = imguiTooltipSimple(tooltip, show) || img.tooltipIndicator
-}
-
 // shows simple tooltip but without global preferences test
 //
 // returns true if the tooltip would have been displayed except for the show
@@ -65,17 +58,6 @@ func imguiTooltipSimple(tooltip string, show bool) bool {
 	return displayed
 }
 
-// shows tooltip that require more complex formatting than a single string.
-//
-// the hoverTest argument says that the tooltip should be displayed only
-// when the last imgui widget/group is being hovered over with the mouse. if
-// this argument is false then it implies that the decision to show the tooltip
-// has already been made by the calling function.
-func (img *SdlImgui) imguiTooltip(f func(), hoverTest bool) {
-	show := img.prefs.showTooltips.Get().(bool) || imgui.CurrentIO().KeyCtrlPressed()
-	img.tooltipIndicator = imguiTooltip(f, hoverTest, show) || img.tooltipIndicator
-}
-
 // shows tooltip but without global preferences test
 //
 // returns true if the tooltip would have been displayed except for the show
@@ -102,4 +84,27 @@ func imguiTooltip(f func(), hoverTest bool, show bool) bool {
 	}
 
 	return displayed
+}
+
+type tooltips interface {
+	imguiTooltipSimple(tooltip string)
+	imguiTooltip(f func(), hoverTest bool)
+}
+
+// shows tooltip on hover of the previous imgui digest/group. useful for simple
+// tooltips.
+func (img *SdlImgui) imguiTooltipSimple(tooltip string) {
+	show := img.prefs.showTooltips.Get().(bool) || imgui.CurrentIO().KeyCtrlPressed()
+	img.tooltipIndicator = imguiTooltipSimple(tooltip, show) || img.tooltipIndicator
+}
+
+// shows tooltip that require more complex formatting than a single string.
+//
+// the hoverTest argument says that the tooltip should be displayed only
+// when the last imgui widget/group is being hovered over with the mouse. if
+// this argument is false then it implies that the decision to show the tooltip
+// has already been made by the calling function.
+func (img *SdlImgui) imguiTooltip(f func(), hoverTest bool) {
+	show := img.prefs.showTooltips.Get().(bool) || imgui.CurrentIO().KeyCtrlPressed()
+	img.tooltipIndicator = imguiTooltip(f, hoverTest, show) || img.tooltipIndicator
 }
