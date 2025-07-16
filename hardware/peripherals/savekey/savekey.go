@@ -122,7 +122,7 @@ func (sk *SaveKey) Snapshot() ports.Peripheral {
 	n := *sk
 	n.EEPROM = sk.EEPROM.snapshot()
 	n.SDA = *sk.SDA.Snapshot()
-	n.SCL = *sk.SDA.Snapshot()
+	n.SCL = *sk.SCL.Snapshot()
 	return &n
 }
 
