@@ -31,10 +31,13 @@ package i2c
 //			E()
 //	 }
 type Trace struct {
+	Label string
+
 	// new values are added to the end of the array
 	Activity []bool
-	from     bool
-	to       bool
+
+	from bool
+	to   bool
 }
 
 const (
@@ -46,8 +49,9 @@ const (
 	activityLength = 64
 )
 
-func NewTrace() Trace {
+func NewTrace(label string) Trace {
 	tr := Trace{
+		Label:    label,
 		Activity: make([]bool, activityLength),
 	}
 	for i := range tr.Activity {

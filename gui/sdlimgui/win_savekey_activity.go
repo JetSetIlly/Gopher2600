@@ -24,10 +24,10 @@ import (
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
-const winSaveKeyI2CID = "SaveKey I2C"
-const winSaveKeyI2CMenu = "I2C"
+const winSaveKeyActivityID = "SaveKey Activity"
+const winSaveKeyActivityMenu = "Activity"
 
-type winSaveKeyI2C struct {
+type winSaveKeyActivity struct {
 	debuggerWin
 
 	img *SdlImgui
@@ -36,22 +36,22 @@ type winSaveKeyI2C struct {
 	savekey *savekey.SaveKey
 }
 
-func newWinSaveKeyI2C(img *SdlImgui) (window, error) {
-	win := &winSaveKeyI2C{
+func newWinSaveKeyActivity(img *SdlImgui) (window, error) {
+	win := &winSaveKeyActivity{
 		img: img,
 	}
 
 	return win, nil
 }
 
-func (win *winSaveKeyI2C) init() {
+func (win *winSaveKeyActivity) init() {
 }
 
-func (win *winSaveKeyI2C) id() string {
-	return winSaveKeyI2CID
+func (win *winSaveKeyActivity) id() string {
+	return winSaveKeyActivityID
 }
 
-func (win *winSaveKeyI2C) debuggerDraw() bool {
+func (win *winSaveKeyActivity) debuggerDraw() bool {
 	if !win.debuggerOpen {
 		return false
 	}
@@ -73,7 +73,7 @@ func (win *winSaveKeyI2C) debuggerDraw() bool {
 	return true
 }
 
-func (win *winSaveKeyI2C) draw() {
+func (win *winSaveKeyActivity) draw() {
 	win.drawAddress()
 	imgui.SameLine()
 	win.drawBits()
@@ -91,7 +91,7 @@ func (win *winSaveKeyI2C) draw() {
 	win.drawStatus()
 }
 
-func (win *winSaveKeyI2C) drawStatus() {
+func (win *winSaveKeyActivity) drawStatus() {
 	imgui.AlignTextToFramePadding()
 	switch win.savekey.State {
 	case savekey.SaveKeyStopped:
@@ -114,7 +114,7 @@ func (win *winSaveKeyI2C) drawStatus() {
 	}
 }
 
-func (win *winSaveKeyI2C) drawACK() {
+func (win *winSaveKeyActivity) drawACK() {
 	v := win.savekey.Ack
 	imgui.AlignTextToFramePadding()
 	imgui.Text("ACK")
@@ -130,7 +130,7 @@ func (win *winSaveKeyI2C) drawACK() {
 	}
 }
 
-func (win *winSaveKeyI2C) drawBits() {
+func (win *winSaveKeyActivity) drawBits() {
 	bits := win.savekey.Bits
 	bitCt := win.savekey.BitsCt
 
@@ -186,7 +186,7 @@ func (win *winSaveKeyI2C) drawBits() {
 	}
 }
 
-func (win *winSaveKeyI2C) drawAddress() {
+func (win *winSaveKeyActivity) drawAddress() {
 	addr := win.savekey.EEPROM.Address
 
 	label := "Address"

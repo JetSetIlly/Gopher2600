@@ -31,14 +31,14 @@ import (
 )
 
 // AtariVoxState records how incoming signals to the AtariVox will be interpreted.
-type AtariVoxState int
+type AtariVoxState string
 
 // List of valid AtariVoxStaate values.
 const (
-	AtariVoxStopped AtariVoxState = iota
-	AtariVoxStarting
-	AtariVoxData
-	AtariVoxEnding
+	AtariVoxStopped  AtariVoxState = "Stopped"
+	AtariVoxStarting AtariVoxState = "Starting"
+	AtariVoxData     AtariVoxState = "Recieving"
+	AtariVoxEnding   AtariVoxState = "Ending"
 )
 
 // the maximum number of bytes in the SpeakJetStream slice
@@ -115,8 +115,9 @@ func NewAtariVox(env *environment.Environment, port plugging.PortID, bus ports.P
 		env:           env,
 		port:          port,
 		bus:           bus,
-		SpeakJetDATA:  i2c.NewTrace(),
-		SpeakJetREADY: i2c.NewTrace(),
+		SpeakJetDATA:  i2c.NewTrace("Data"),
+		SpeakJetREADY: i2c.NewTrace("Ready"),
+		State:         AtariVoxStopped,
 	}
 
 	vox.activateEngines()
@@ -189,7 +190,7 @@ func (vox *AtariVox) Plumb(bus ports.PeripheralBus) {
 
 // String implements the ports.Peripheral interface.
 func (vox *AtariVox) String() string {
-	return fmt.Sprintf("atarivox: %s", vox.SaveKey.String())
+	return fmt.Sprintf("atarivox: %s [%s]", vox.State, vox.SaveKey.String())
 }
 
 // PortID implements the ports.Peripheral interface.

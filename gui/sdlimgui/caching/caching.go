@@ -59,6 +59,15 @@ func (vcs cachedVCS) GetSaveKey() *savekey.SaveKey {
 	return nil
 }
 
+// GetAtariVox returns nil if no savekey is present
+func (vcs cachedVCS) GetAtariVox() *atarivox.AtariVox {
+	vox, atariVoxActive := vcs.RIOT.Ports.RightPlayer.(*atarivox.AtariVox)
+	if atariVoxActive {
+		return vox
+	}
+	return nil
+}
+
 // cachedVCS contains the cached components of the rewind system
 type cachedRewind struct {
 	Timeline   rewind.Timeline

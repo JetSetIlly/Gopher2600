@@ -16,16 +16,18 @@
 package sdlimgui
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey/i2c"
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
-func drawI2C(scl i2c.Trace, sda i2c.Trace, dim imgui.Vec2, cols *imguiColors, tips tooltips) {
-	if len(scl.Activity) != len(sda.Activity) {
+func drawI2C(A i2c.Trace, B i2c.Trace, dim imgui.Vec2, cols *imguiColors, tips tooltips) {
+	if len(A.Activity) != len(B.Activity) {
 		imgui.Text("ERROR: SCL and SDA trace lengths must be the same length")
 		return
 	}
-	traceLength := len(scl.Activity)
+	traceLength := len(A.Activity)
 
 	pos := imgui.CursorScreenPos()
 	imgui.Dummy(dim)
@@ -36,13 +38,14 @@ func drawI2C(scl i2c.Trace, sda i2c.Trace, dim imgui.Vec2, cols *imguiColors, ti
 	const (
 		plotWidth  = float32(8)
 		plotHeight = float32(2)
-		xpad       = float32(0)
 		ypad       = float32(2)
 		gap        = float32(2)
 	)
 
 	maxActivity := min(int(dim.X/(plotWidth+gap)), traceLength)
 	origin := traceLength - maxActivity
+
+	var xpad = (dim.X - float32(maxActivity*int(plotWidth+gap))) / 2
 
 	plot := func(trace []bool, col imgui.PackedColor) {
 		p := pos.Plus(imgui.Vec2{X: xpad, Y: ypad})
@@ -56,24 +59,23 @@ func drawI2C(scl i2c.Trace, sda i2c.Trace, dim imgui.Vec2, cols *imguiColors, ti
 		}
 	}
 
-	plot(scl.Activity, cols.saveKeyOscSCL)
-
+	plot(A.Activity, cols.i2cOscA)
 	pos = pos.Plus(imgui.Vec2{Y: plotHeight * 2})
-	plot(sda.Activity, cols.saveKeyOscSDA)
+	plot(B.Activity, cols.i2cOscB)
 
 	tips.imguiTooltip(func() {
 		x := imgui.MousePos().X - pos.X
 		i := int((x-xpad)/(plotWidth+gap)) + origin
 		if i > 0 && i < traceLength {
-			if scl.Activity[i] {
-				imguiColorLabelSimple("SCL high", cols.SaveKeyOscSCL)
+			if A.Activity[i] {
+				imguiColorLabelSimple(fmt.Sprintf("%s high", A.Label), cols.I2COscA)
 			} else {
-				imguiColorLabelSimple("SCL low", cols.SaveKeyOscSCL)
+				imguiColorLabelSimple(fmt.Sprintf("%s low", A.Label), cols.I2COscA)
 			}
-			if sda.Activity[i] {
-				imguiColorLabelSimple("SDA high", cols.SaveKeyOscSDA)
+			if B.Activity[i] {
+				imguiColorLabelSimple(fmt.Sprintf("%s high", B.Label), cols.I2COscB)
 			} else {
-				imguiColorLabelSimple("SDA low", cols.SaveKeyOscSDA)
+				imguiColorLabelSimple(fmt.Sprintf("%s low", B.Label), cols.I2COscB)
 			}
 		}
 	}, true)

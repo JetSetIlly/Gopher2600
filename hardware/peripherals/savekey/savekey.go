@@ -101,8 +101,8 @@ func NewSaveKey(env *environment.Environment, port plugging.PortID, bus ports.Pe
 		env:    env,
 		port:   port,
 		bus:    bus,
-		SDA:    i2c.NewTrace(),
-		SCL:    i2c.NewTrace(),
+		SDA:    i2c.NewTrace("SDA"),
+		SCL:    i2c.NewTrace("SCL"),
 		State:  SaveKeyStopped,
 		EEPROM: newEeprom(env),
 	}

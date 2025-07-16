@@ -86,8 +86,11 @@ var windowDefs = [...]windowDef{
 	{create: newWinPlusROMNick, menu: menuEntry{group: menuPlusROM, label: winPlusROMNickMenu}},
 
 	// savekey windows
-	{create: newWinSaveKeyI2C, menu: menuEntry{group: menuSaveKey, label: winSaveKeyI2CMenu}},
+	{create: newWinSaveKeyActivity, menu: menuEntry{group: menuSaveKey, label: winSaveKeyActivityMenu}},
 	{create: newWinSaveKeyEEPROM, menu: menuEntry{group: menuSaveKey, label: winSaveKeyEEPROMMenu}},
+
+	// atarivox windows
+	{create: newWinAtarivox, menu: menuEntry{group: menuAtariVox, label: winAtariVoxActivityMenu}},
 
 	// windows that do not have a menu entry (windows for playmode only)
 	{create: newWinComparison, menu: menuEntry{group: menuNone}, defaultOpen: false},
