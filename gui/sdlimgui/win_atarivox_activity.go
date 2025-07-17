@@ -49,7 +49,7 @@ func (win *winAtariVoxActivity) debuggerDraw() bool {
 		return false
 	}
 
-	// do not draw if savekey is not active
+	// do not draw if atarivox is not active
 	win.atarivox = win.img.cache.VCS.GetAtariVox()
 	if win.atarivox == nil {
 		return false
