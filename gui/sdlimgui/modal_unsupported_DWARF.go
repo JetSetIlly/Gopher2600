@@ -42,7 +42,7 @@ func (img *SdlImgui) modalDrawUnsupportedDWARF() {
 		imgui.Text("The DWARF data being loaded for your development purposes is")
 		imgui.Text("not supported and will not be used")
 		imgui.Text("")
-		imgui.Text("If you're using the GNU compiler to preare the ROM, the debugging")
+		imgui.Text("If you are using the GNU compiler to prepare the ROM, the debugging")
 		imgui.Text("options should be:")
 		imgui.Text("")
 		imgui.PushFont(img.fonts.code)
