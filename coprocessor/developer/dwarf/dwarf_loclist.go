@@ -291,7 +291,7 @@ func (loc *loclist) resolve(derive io.Writer) (loclistResult, error) {
 		}
 
 		if derive != nil {
-			derive.Write([]byte(fmt.Sprintf("%s %08x\n", loc.list[i].operator, s.value)))
+			fmt.Fprintf(derive, "%s %08x\n", loc.list[i].operator, s.value)
 		}
 
 		// process result according to the result class

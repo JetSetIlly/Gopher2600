@@ -69,7 +69,7 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 	//
 	// "DWARF Debugging Information Format Version 4", page 17 to 24
 	//
-	// also the table of values on page 153, "section 7.7.1 DWARF Expressions"
+	// also the table of values on pages 163-167, "section 7.7.1 DWARF Expressions"
 
 	switch expr[0] {
 	case 0x03:
@@ -1089,6 +1089,10 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 			},
 			operator: "DW_OP_call_frame_cfa",
 		}, 1, nil
+
+	case 0x9d:
+		// DW_OP_bit_piece
+		return loclistOperator{}, 0, nil
 
 	case 0x9e:
 		// DW_OP_implicit_value
