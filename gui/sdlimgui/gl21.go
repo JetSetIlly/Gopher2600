@@ -187,7 +187,11 @@ func (rnd *gl21) screenshot(mode screenshotMode, finish chan screenshotResult) {
 	}
 }
 
-func (rnd *gl21) addTexture(_ textureType, linear bool, clamp bool, config any) texture {
+func (rnd *gl21) isScreenshotting() bool {
+	return false
+}
+
+func (rnd *gl21) addTexture(_ shaderType, linear bool, clamp bool, config any) texture {
 	tex := gl21Texture{
 		create: true,
 		config: config,
@@ -213,7 +217,7 @@ func (rnd *gl21) addTexture(_ textureType, linear bool, clamp bool, config any) 
 }
 
 func (rnd *gl21) addFontTexture(fnts imgui.FontAtlas) texture {
-	tex := rnd.addTexture(textureGUI, true, false)
+	tex := rnd.addTexture(shaderGUI, true, false, nil)
 	image := fnts.TextureDataRGBA32()
 
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
