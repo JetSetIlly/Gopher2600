@@ -441,7 +441,7 @@ func (bld *build) buildTypes(src *Source) error {
 				elementCount = int(fld.Val.(int64) + 1)
 
 				bld.types[baseTypeOffset] = &SourceType{
-					Name:         fmt.Sprintf("%s", arrayBaseType.Name),
+					Name:         fmt.Sprintf("%s[%d]", arrayBaseType.Name, elementCount),
 					Size:         arrayBaseType.Size * elementCount,
 					ElementType:  arrayBaseType,
 					ElementCount: elementCount,
