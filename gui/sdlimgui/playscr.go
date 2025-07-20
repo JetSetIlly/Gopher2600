@@ -16,8 +16,6 @@
 package sdlimgui
 
 import (
-	"time"
-
 	"github.com/jetsetilly/gopher2600/gui/display/bevels"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/imgui-go/v5"
@@ -67,8 +65,7 @@ func newPlayScr(img *SdlImgui) *playScr {
 		img: img,
 		scr: img.screen,
 		overlay: playscrOverlay{
-			img:            img,
-			memStatsTicker: time.NewTicker(time.Second),
+			img: img,
 		},
 	}
 	win.overlay.playscr = win

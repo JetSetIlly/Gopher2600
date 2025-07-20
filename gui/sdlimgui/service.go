@@ -392,6 +392,9 @@ func (img *SdlImgui) renderFrame() {
 	img.plt.newFrame()
 	imgui.NewFrame()
 
+	// update metrics
+	img.metrics.update()
+
 	// draw all windows according to debug/playmode
 	img.draw()
 

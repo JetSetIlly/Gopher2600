@@ -62,6 +62,9 @@ type SdlImgui struct {
 	rnd   renderer
 	fonts fontAtlas
 
+	// memory and other metrics for the system
+	metrics metric
+
 	// resetFonts value will be reduced to 0 each GUI frame. at value 1 the
 	// fonts will be reset.
 	//
@@ -135,7 +138,11 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 		dbg:                 dbg,
 		postRenderFunctions: make(chan func(), 100),
 		cache:               caching.NewCache(),
+		metrics:             newMetric(),
 	}
+
+	// update metrics to make sure there's something there
+	img.metrics.update()
 
 	// create imgui context
 	imgui.CreateContext(nil)
