@@ -241,7 +241,7 @@ func (bld *build) buildTypes(src *Source) error {
 	// basic types first because everything else is built on basic types
 	for _, e := range bld.order {
 		switch e.Tag {
-		case dwarf.TagBaseType:
+		case dwarf.TagBaseType, dwarf.TagEnumerationType:
 			var typ SourceType
 
 			fld := e.AttrField(dwarf.AttrName)
