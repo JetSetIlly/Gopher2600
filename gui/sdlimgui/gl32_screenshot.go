@@ -62,7 +62,10 @@ func newGl32Screenshot() *gl32Screenshot {
 }
 
 func (sht *gl32Screenshot) destroy() {
-	close(sht.finalise)
+	if sht.finalise != nil {
+		close(sht.finalise)
+		sht.finalise = nil
+	}
 }
 
 func (sht *gl32Screenshot) finished() bool {

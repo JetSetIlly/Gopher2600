@@ -113,6 +113,8 @@ func (rnd *gl32) destroy() {
 
 	clear(rnd.textures)
 	clear(rnd.shaders)
+
+	rnd.scrsht.destroy()
 }
 
 // preRender clears the framebuffer.
