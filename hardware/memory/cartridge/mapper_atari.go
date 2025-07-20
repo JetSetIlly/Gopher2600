@@ -93,24 +93,13 @@ type atari struct {
 	needsSuperchip bool
 }
 
-// size of superchip RAM
-const superchipRAMsize = 128
+// size of superchip RAM. the origin of the superchip addresses is at the beginning of the cartridge
+// area so we only need to think about size
+const superchipSize = 0x80
 
-// look for empty area (representing RAM) in binary data.
-func hasEmptyArea(d []uint8) bool {
-	// if the first byte in the cartridge is repeated 'superchipRAMsize' times
-	// then we deem it to be an empty area.
-	//
-	// for example: the Fatal Run (NTSC) ROM uses FF rather than 00 to fill the
-	// empty space.
-	b := d[0]
-	for i := 1; i < superchipRAMsize; i++ {
-		if d[i] != b {
-			return false
-		}
-	}
-	return true
-}
+// a cartridge with a superchip contains seperate read and write addresses, which means that the
+// number of addresses that access the superchip is double the superchip size
+const superchipAddressSize = superchipSize << 1
 
 // ROMDump implements the mapper.CartROMDump interface.
 func (cart *atari) ROMDump(filename string) error {
@@ -259,7 +248,7 @@ func (cart *atari) access(addr uint16) (uint8, uint8, bool) {
 			return 0, 0, true
 		}
 		if addr >= 0x80 && addr <= 0xff {
-			return cart.state.ram[addr-superchipRAMsize], mapper.CartDrivenPins, true
+			return cart.state.ram[addr-superchipSize], mapper.CartDrivenPins, true
 		}
 	}
 	return 0, mapper.CartDrivenPins, false
@@ -346,7 +335,7 @@ func (cart *atari) CopyBanks() []mapper.BankContent {
 func (cart *atari) AddSuperchip(force bool) {
 	if force || cart.needsSuperchip {
 		cart.mappingID = fmt.Sprintf("%s (SC)", cart.mappingID)
-		cart.state.ram = make([]uint8, superchipRAMsize)
+		cart.state.ram = make([]uint8, superchipSize)
 	}
 }
 
@@ -372,7 +361,7 @@ func newAtari4k(env *environment.Environment, loader cartridgeloader.Loader) (ma
 			mappingID:      "4k",
 			banks:          make([][]uint8, 1),
 			state:          newAtariState(),
-			needsSuperchip: hasEmptyArea(data),
+			needsSuperchip: hasSuperchip(data),
 		},
 	}
 
@@ -451,7 +440,7 @@ func newAtari2k(env *environment.Environment, loader cartridgeloader.Loader) (ma
 			bankSize:       len(data),
 			mappingID:      "2k",
 			banks:          make([][]uint8, 1),
-			needsSuperchip: hasEmptyArea(data),
+			needsSuperchip: hasSuperchip(data),
 			state:          newAtariState(),
 		},
 		mask: uint16(len(data) - 1),
@@ -527,7 +516,7 @@ func newAtari8k(env *environment.Environment, loader cartridgeloader.Loader) (ma
 			env:            env,
 			bankSize:       4096,
 			mappingID:      "F8",
-			needsSuperchip: hasEmptyArea(data),
+			needsSuperchip: hasSuperchip(data),
 			state:          newAtariState(),
 		},
 	}
@@ -638,7 +627,7 @@ func newAtari16k(env *environment.Environment, loader cartridgeloader.Loader) (m
 			env:            env,
 			bankSize:       4096,
 			mappingID:      "F6",
-			needsSuperchip: hasEmptyArea(data),
+			needsSuperchip: hasSuperchip(data),
 			state:          newAtariState(),
 		},
 	}
@@ -755,7 +744,7 @@ func newAtari32k(env *environment.Environment, loader cartridgeloader.Loader) (m
 			env:            env,
 			bankSize:       4096,
 			mappingID:      "F4",
-			needsSuperchip: hasEmptyArea(data),
+			needsSuperchip: hasSuperchip(data),
 			state:          newAtariState(),
 		},
 	}

@@ -20,8 +20,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/bits"
+	"slices"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // if anwhere parameter is true then the ELF magic number can appear anywhere
@@ -504,6 +508,103 @@ func fingerprint256k(loader cartridgeloader.Loader) string {
 		return "SB"
 	}
 	return unrecognisedMapper
+}
+
+// check if dump data indidcates the presence of a SARA superchip in the cartridge
+func hasSuperchip(d []uint8) bool {
+	// the data that is in the superchip area depends on how the ROM file was dumped
+	//
+	// in an ideal dump, the data will be all zeros or something like that. for example, the Fatal
+	// Run ROM (with the MD5 value of 85470dcb7989e5e856f36b962d815537) contains all 0xff values in
+	// the superchip area
+	//
+	// in some cases though, the data seems random. for example, the Dig Dug dump (with the MD5
+	// value of 6dda84fb8e442ecf34241ac0d1d91d69) contains seemingly random data
+	//
+	// we need a strategy to distinguish likely random data from real code
+
+	// before anything else, we want to reject dump lenths that are not 2k, 4k, 8k, etc. we are
+	// saying that the superchip is only ever present in regular sized cartridges
+	if bits.OnesCount(uint(len(d))) > 1 {
+		return false
+	}
+
+	// we can also say that a superchip is not present if the reset address is in the superchip
+	// address area
+
+	// to decide if this is the case we first need to acquire the reset vector and to mask it
+	// appropriately so it is within range of the dump data (the second step here is really only
+	// required for 2k dumps. it does nothing for 4k dumps and above)
+	resetVector := (cpu.Reset & memorymap.CartridgeBits)
+	resetVector &= uint16(len(d) - 1)
+
+	// we can now read the actual reset address and compare against the superchip address size. if
+	// the entry address is in the super chip address area then a superchip is not present
+	entryAddress := uint16(d[resetVector]) | (uint16(d[resetVector+1])<<8)&memorymap.CartridgeBits
+	if entryAddress < superchipAddressSize {
+		return false
+	}
+
+	// before continuing, we'll prepare a value based on the entry address. we use this value to
+	// help eliminate some possible false positives later
+	const minExtension = 128
+	extendedArea := int(min(superchipAddressSize+minExtension, entryAddress) - superchipAddressSize)
+
+	// for the next step in the analysis we first need to count the number of instances of each byte
+	// value in the superchip area
+	var cts = make([]int, 0x100)
+	for _, b := range d[:superchipAddressSize] {
+		cts[b]++
+	}
+
+	// we then sort the counts into descending order. note that we're
+	// only interested in the counts and not the byte values themselves
+	slices.Sort(cts)
+	slices.Reverse(cts)
+
+	// if the second element in the array is zero then that must mean that every address in the
+	// superchip address area is the same. this almost certainly means that a superchip was present
+	// during dumping
+	if cts[1] == 0 {
+		// this might be a false positive however, because it might just be homogenous ROM data
+
+		// to eliminate this possibility, we check to see if the data in the extended-area (defined
+		// above) is the same as the superchip area
+		for _, b := range d[superchipAddressSize : superchipAddressSize+extendedArea] {
+			if b != d[0] {
+				return true
+			}
+		}
+
+		// if the data in the extended area is the same as the superchip area then we say that there
+		// is no superchip in the cartridge
+		return false
+	}
+
+	// finally, if the majority of bytes in the superchip address area are one of either two byte
+	// values then it is highly likely that this is a dump from a superchip cartridge
+	if cts[0]+cts[1] > superchipAddressSize>>1 {
+		// however, this isn't a certainty because there's a possibility that the cartridge contains
+		// ROM data with just those characteristics
+
+		// to eliminate this possible false positive we scan the extended-area (defined above)
+		clear(cts)
+		for _, b := range d[superchipAddressSize : superchipAddressSize+extendedArea] {
+			cts[b]++
+		}
+		slices.Sort(cts)
+		slices.Reverse(cts)
+
+		// if the characterstics of the extended-area is similar to the superchip area then we
+		// say that there is no superchip
+		if cts[0]+cts[1] > extendedArea>>1 {
+			return false
+		}
+
+		return true
+	}
+
+	return false
 }
 
 // returned by fingerprint if the mapper is not recognised. most files will

@@ -41,7 +41,7 @@ func newEF(env *environment.Environment, loader cartridgeloader.Loader) (mapper.
 			env:            env,
 			bankSize:       4096,
 			mappingID:      "EF",
-			needsSuperchip: hasEmptyArea(data),
+			needsSuperchip: hasSuperchip(data),
 			state:          newAtariState(),
 		},
 	}

@@ -45,7 +45,7 @@ func newWF8(env *environment.Environment, loader cartridgeloader.Loader) (mapper
 			env:            env,
 			bankSize:       4096,
 			mappingID:      "WF8",
-			needsSuperchip: hasEmptyArea(data),
+			needsSuperchip: hasSuperchip(data),
 			state:          newAtariState(),
 		},
 	}

@@ -42,7 +42,7 @@ func newBF(env *environment.Environment, loader cartridgeloader.Loader) (mapper.
 			env:            env,
 			bankSize:       4096,
 			mappingID:      "BF",
-			needsSuperchip: hasEmptyArea(data),
+			needsSuperchip: hasSuperchip(data),
 			state:          newAtariState(),
 		},
 	}
