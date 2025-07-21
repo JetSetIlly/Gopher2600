@@ -1820,11 +1820,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		case "RIGHT":
 			id = plugging.PortRight
 		case "SWAP":
-			if dbg.controllers.Swap() {
-				dbg.printLine(terminal.StyleFeedback, "player peripherals are in the swapped state")
-			} else {
-				dbg.printLine(terminal.StyleFeedback, "player peripherals are in the normal state")
-			}
+			dbg.controllers.SwappedPorts(true)
+			dbg.printLine(terminal.StyleFeedback, "player ports are in the swapped state")
 			return nil
 		}
 
@@ -1838,8 +1835,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				dbg.vcs.FingerprintPeripheral(id)
 			case "STICK":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewStick)
-			case "PADDLE":
+			case "PADDLE", "PADDLEA":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewPaddlePair)
+			case "PADDLEB":
+				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewPaddlePair)
+				dbg.controllers.SwappedPaddles(true)
 			case "KEYPAD":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewKeypad)
 			case "GAMEPAD":

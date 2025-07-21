@@ -63,10 +63,10 @@ type Paddles struct {
 	paddles [2]paddle
 }
 
-// NewPaddlePair is the preferred method of initialisation for the PaddlePair
+// NewPaddles is the preferred method of initialisation for the PaddlePair
 // type Satisifies the ports.NewPeripheral interface and can be used as an
 // argument to ports.AttachPlayer0() and ports.AttachPlayer1().
-func NewPaddlePair(env *environment.Environment, port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
+func NewPaddles(env *environment.Environment, port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	pdl := &Paddles{
 		port: port,
 		bus:  bus,
@@ -93,7 +93,7 @@ func NewPaddlePair(env *environment.Environment, port plugging.PortID, bus ports
 
 // Unplug implements the Peripheral interface.
 func (pdl *Paddles) Unplug() {
-	// no need to go through the paddle pair specific writeSWCHx()
+	// no need to go through the paddles specific writeSWCHx()
 	pdl.bus.WriteSWCHx(pdl.port, paddleNoFire)
 
 	// write no charge value to inptx
@@ -195,14 +195,11 @@ func (pdl *Paddles) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 		// handle the incoming data
 		handle := func(d ports.EventDataPaddle) {
 			if d.Relative {
-				pdl.paddles[0].resistance -= int(d.A)
-				pdl.paddles[1].resistance -= int(d.B)
+				pdl.paddles[d.Paddle].resistance -= int(d.Motion)
 			} else {
-				pdl.paddles[0].resistance = (int(d.A) + math.MaxInt16) / 256
-				pdl.paddles[1].resistance = (int(d.B) + math.MaxInt16) / 256
+				pdl.paddles[d.Paddle].resistance = (int(d.Motion) + math.MaxInt16) / 256
 			}
-			pdl.paddles[0].resistance = clamp(pdl.paddles[0].resistance)
-			pdl.paddles[1].resistance = clamp(pdl.paddles[1].resistance)
+			pdl.paddles[d.Paddle].resistance = clamp(pdl.paddles[d.Paddle].resistance)
 		}
 
 		switch d := data.(type) {
@@ -227,7 +224,7 @@ func (pdl *Paddles) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 func (pdl *Paddles) Update(data chipbus.ChangedRegister) bool {
 	switch data.Register {
 	case cpubus.VBLANK:
-		// ground paddle's puck when the high bit of VBLANK is set
+		// ground paddle when the high bit of VBLANK is set
 		if data.Value&0x80 == 0x80 {
 			for i := range pdl.paddles {
 				pdl.paddles[i].charge = 0x00

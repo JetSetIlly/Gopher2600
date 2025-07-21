@@ -32,7 +32,7 @@ type CommandLineOptions struct {
 	Bank      string
 	Left      string
 	Right     string
-	Swap      bool
+	SwapPorts bool
 	Profile   string
 	ELF       string
 

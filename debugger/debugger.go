@@ -754,7 +754,7 @@ func (dbg *Debugger) setPeripheralsOnStartup() error {
 		return err
 	}
 
-	if dbg.opts.Swap {
+	if dbg.opts.SwapPorts {
 		err = dbg.parseCommand(fmt.Sprintf("PERIPHERAL SWAP"), false, false)
 		if err != nil {
 			return err

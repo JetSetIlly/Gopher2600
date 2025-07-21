@@ -91,25 +91,21 @@ type EventDataPlayback string
 // Event data for stick types.
 type EventDataStick string
 
-// Event data for paddle types. first entry is for primary paddle for the part
-// (ie. INP0 or INP2) and the second entry is for the secondary paddle (ie.
-// INP1 or INP3)
+// Event data for paddle types. The Paddle field indicates which paddle the data refers to.
 //
-// The values are relative (to the current position) if the Relative field is
-// set to true
-//
-// For non-relative values (ie. absolute values) the value should be scaled to
-// be in the range of -32768 and +32767
+// Values in the motion field are relative (to the current position) if the Relative field is set to
+// true. For non-relative values (ie. absolute values) the value should be scaled to be in the range
+// of -32768 and +32767
 type EventDataPaddle struct {
-	A        int16
-	B        int16
+	Paddle   int // 0 or 1
+	Motion   int16
 	Relative bool
 }
 
 // String implements the string.Stringer interface and is intended to be used
 // when writing to a playback file
 func (ev EventDataPaddle) String() string {
-	return fmt.Sprintf("%d;%d;%v", ev.A, ev.B, ev.Relative)
+	return fmt.Sprintf("%d;%d;%v", ev.Paddle, ev.Motion, ev.Relative)
 }
 
 // FromString is the inverse of the String() function
@@ -124,13 +120,13 @@ func (ev *EventDataPaddle) FromString(s string) error {
 	if err != nil {
 		return fmt.Errorf("illegal value in paddle string")
 	}
-	ev.A = int16(f)
+	ev.Paddle = int(f)
 
 	f, err = strconv.ParseInt(sp[1], 10, 32)
 	if err != nil {
 		return fmt.Errorf("illegal value in paddle string")
 	}
-	ev.B = int16(f)
+	ev.Motion = int16(f)
 
 	switch sp[2] {
 	case "true":
