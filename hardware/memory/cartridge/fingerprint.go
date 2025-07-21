@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"math/bits"
-	"slices"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
@@ -521,7 +520,7 @@ func hasSuperchip(d []uint8) bool {
 	// in some cases though, the data seems random. for example, the Dig Dug dump (with the MD5
 	// value of 6dda84fb8e442ecf34241ac0d1d91d69) contains seemingly random data
 	//
-	// we need a strategy to distinguish likely random data from real code
+	// we need a strategy to distinguish what looks like random data from real data
 
 	// before anything else, we want to reject dump lenths that are not 2k, 4k, 8k, etc. we are
 	// saying that the superchip is only ever present in regular sized cartridges
@@ -545,66 +544,39 @@ func hasSuperchip(d []uint8) bool {
 		return false
 	}
 
-	// before continuing, we'll prepare a value based on the entry address. we use this value to
-	// help eliminate some possible false positives later
-	const minExtension = 128
-	extendedArea := int(min(superchipAddressSize+minExtension, entryAddress) - superchipAddressSize)
-
-	// for the next step in the analysis we first need to count the number of instances of each byte
-	// value in the superchip area
-	var cts = make([]int, 0x100)
-	for _, b := range d[:superchipAddressSize] {
-		cts[b]++
-	}
-
-	// we then sort the counts into descending order. note that we're
-	// only interested in the counts and not the byte values themselves
-	slices.Sort(cts)
-	slices.Reverse(cts)
-
-	// if the second element in the array is zero then that must mean that every address in the
-	// superchip address area is the same. this almost certainly means that a superchip was present
-	// during dumping
-	if cts[1] == 0 {
-		// this might be a false positive however, because it might just be homogenous ROM data
-
-		// to eliminate this possibility, we check to see if the data in the extended-area (defined
-		// above) is the same as the superchip area
-		for _, b := range d[superchipAddressSize : superchipAddressSize+extendedArea] {
-			if b != d[0] {
-				return true
+	// for every "bank" in the cartridge dump check to see every byte in the range 0x00-0x80 mirror
+	// the bytes in the range 0x81-0xff. if they do not then this is almost certainly not a
+	// superchip dump
+	for p := range len(d) / 4096 {
+		pd := d[p*4096:]
+		for i, b := range pd[:superchipSize] {
+			if b != pd[i+superchipSize] {
+				return false
 			}
 		}
-
-		// if the data in the extended area is the same as the superchip area then we say that there
-		// is no superchip in the cartridge
-		return false
 	}
 
-	// finally, if the majority of bytes in the superchip address area are one of either two byte
-	// values then it is highly likely that this is a dump from a superchip cartridge
-	if cts[0]+cts[1] > superchipAddressSize>>1 {
-		// however, this isn't a certainty because there's a possibility that the cartridge contains
-		// ROM data with just those characteristics
+	// the reason for the duplicate data in the superchip area is because of how cartridge dumpers
+	// work and what the superchip does when the addresses are accessed
+	//
+	// the first thing to understand is that there are only 128 locations in the superchip RAM.
+	// however, because there is no r/w line in the cartridge bus, there 256 addresses related to
+	// the superchip. the first 128 addresses are used to write to the superchip, and the second 128
+	// addresses are used to read the superchip. both sets of addresses access the same
+	// corresponding RAM location
+	//
+	// assuming the cartridge dumper accesses addresses sequentially, this means that the write
+	// addresses are accessed first and the data that's on the data bus (whatever that might be)
+	// will be written to the superchip RAM. the read addresses are accessed next and so the data
+	// that was just written will be read back
 
-		// to eliminate this possible false positive we scan the extended-area (defined above)
-		clear(cts)
-		for _, b := range d[superchipAddressSize : superchipAddressSize+extendedArea] {
-			cts[b]++
-		}
-		slices.Sort(cts)
-		slices.Reverse(cts)
+	// there's a very remote possibility that the cartidge contains real ROM data that just so
+	// happens to look like superchip dump data, but this is highly unlikely and probably not
+	// distinguishable. moreover, because we check the first page of every bank in the cartridge,
+	// the larger the cartridge the less likelihood there is for a false positive
 
-		// if the characterstics of the extended-area is similar to the superchip area then we
-		// say that there is no superchip
-		if cts[0]+cts[1] > extendedArea>>1 {
-			return false
-		}
-
-		return true
-	}
-
-	return false
+	// all the tests have passed so it seems likely that this is a superchip dump
+	return true
 }
 
 // returned by fingerprint if the mapper is not recognised. most files will

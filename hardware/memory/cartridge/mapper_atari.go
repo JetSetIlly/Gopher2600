@@ -95,7 +95,7 @@ type atari struct {
 
 // size of superchip RAM. the origin of the superchip addresses is at the beginning of the cartridge
 // area so we only need to think about size
-const superchipSize = 0x80
+const superchipSize = 128
 
 // a cartridge with a superchip contains seperate read and write addresses, which means that the
 // number of addresses that access the superchip is double the superchip size
