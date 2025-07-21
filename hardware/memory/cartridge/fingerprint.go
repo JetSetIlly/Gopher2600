@@ -547,7 +547,11 @@ func hasSuperchip(d []uint8) bool {
 	// for every "bank" in the cartridge dump check to see every byte in the range 0x00-0x80 mirror
 	// the bytes in the range 0x81-0xff. if they do not then this is almost certainly not a
 	// superchip dump
-	for p := range len(d) / 4096 {
+	//
+	// the min() directive is to make sure the loop iterates at least once. we want to check ROMs
+	// that are less than 4k in size and dividing the length of those dumps by 4k means no
+	// iterations
+	for p := range len(d) / min(len(d), 4096) {
 		pd := d[p*4096:]
 		for i, b := range pd[:superchipSize] {
 			if b != pd[i+superchipSize] {

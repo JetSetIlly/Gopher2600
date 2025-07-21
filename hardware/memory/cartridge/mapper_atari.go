@@ -440,7 +440,7 @@ func newAtari2k(env *environment.Environment, loader cartridgeloader.Loader) (ma
 			bankSize:       len(data),
 			mappingID:      "2k",
 			banks:          make([][]uint8, 1),
-			needsSuperchip: hasSuperchip(data),
+			needsSuperchip: false,
 			state:          newAtariState(),
 		},
 		mask: uint16(len(data) - 1),
