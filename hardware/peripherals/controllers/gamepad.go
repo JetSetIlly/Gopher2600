@@ -230,14 +230,35 @@ func (pad *Gamepad) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 	}
 
 	// set/unset bits according to the event data
-	if e == ports.DataStickTrue {
+	switch e {
+	case ports.DataStickTrue:
+		// we don't want to allow impossible positions for the gamepad. for example, holding left and
+		// right at the same time is impossible. the cancel function cancels any existing position
+		// that is in opposition to the new axis
+		cancel := func(chk uint8) {
+			if pad.axis&chk != chk {
+				pad.axis |= chk
+			}
+		}
+
+		switch axis {
+		case axisLeft:
+			cancel(axisRight)
+		case axisRight:
+			cancel(axisLeft)
+		case axisUp:
+			cancel(axisDown)
+		case axisDown:
+			cancel(axisUp)
+		}
+
 		pad.axis ^= axis
-	} else if e == ports.DataStickFalse {
+	case ports.DataStickFalse:
 		pad.axis |= axis
-	} else if e == ports.DataStickSet {
+	case ports.DataStickSet:
 		pad.axis = axisCenter
 		pad.axis ^= axis
-	} else {
+	default:
 		return false, fmt.Errorf("gamepad: %v: unexpected event data (%v)", event, e)
 	}
 

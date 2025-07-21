@@ -28,13 +28,13 @@ import (
 
 // stick values.
 const (
-	stickFire   = 0x00
-	stickNoFire = 0x80
-	axisRight   = 0x80
-	axisLeft    = 0x40
-	axisDown    = 0x20
-	axisUp      = 0x10
-	axisCenter  = 0xf0
+	stickFire   uint8 = 0x00
+	stickNoFire uint8 = 0x80
+	axisRight   uint8 = 0x80
+	axisLeft    uint8 = 0x40
+	axisDown    uint8 = 0x20
+	axisUp      uint8 = 0x10
+	axisCenter  uint8 = 0xf0
 )
 
 // Stick represents the VCS digital joystick controller.
@@ -184,14 +184,35 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) (bool, er
 	}
 
 	// set/unset bits according to the event data
-	if e == ports.DataStickTrue {
+	switch e {
+	case ports.DataStickTrue:
+		// we don't want to allow impossible positions for the stick. for example, holding left and
+		// right at the same time is impossible. the cancel function cancels any existing position
+		// that is in opposition to the new axis
+		cancel := func(chk uint8) {
+			if stk.axis&chk != chk {
+				stk.axis |= chk
+			}
+		}
+
+		switch axis {
+		case axisLeft:
+			cancel(axisRight)
+		case axisRight:
+			cancel(axisLeft)
+		case axisUp:
+			cancel(axisDown)
+		case axisDown:
+			cancel(axisUp)
+		}
+
 		stk.axis ^= axis
-	} else if e == ports.DataStickFalse {
+	case ports.DataStickFalse:
 		stk.axis |= axis
-	} else if e == ports.DataStickSet {
+	case ports.DataStickSet:
 		stk.axis = axisCenter
 		stk.axis ^= axis
-	} else {
+	default:
 		return false, fmt.Errorf("stick: %v: unexpected event data (%v)", event, e)
 	}
 
