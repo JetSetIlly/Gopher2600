@@ -123,7 +123,7 @@ func (pan *Panel) ID() plugging.PeripheralID {
 
 // Reset implements the Peripheral interface.
 func (pan *Panel) Reset() {
-	// write current panel settings
+	// not changing panel settings on console reset
 	pan.write()
 }
 
@@ -132,12 +132,20 @@ func (pan *Panel) write() {
 	// pins 2, 4 and 5 are not used and from the view of the panel are always set
 	v := uint8(0x34)
 
+	// bit positions described in the "Stella Programmer's Guide", page 13
+	//
+	// note that the P0 and P1 difficulty bit positions are maybe different to what you would
+	// intuitively expect. from the outset of gopher2600, the positions of the difficulty bits were
+	// the opposite of what they should be. this meant that when user input was trying to set the P0
+	// difficulty it was affecting the P1 difficulty bits. in practice, the bug was not noticeable
+	// unless the input switches were altered
+
 	if pan.p0pro {
-		v |= 0x80
+		v |= 0x40
 	}
 
 	if pan.p1pro {
-		v |= 0x40
+		v |= 0x80
 	}
 
 	if pan.color {
