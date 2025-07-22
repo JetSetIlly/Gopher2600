@@ -60,6 +60,9 @@ func new3e(env *environment.Environment, loader cartridgeloader.Loader) (mapper.
 	}
 
 	numBanks := len(data) / cart.bankSize
+	if numBanks > 255 {
+		return nil, fmt.Errorf("3E: too many banks (%d)", numBanks)
+	}
 	cart.banks = make([][]uint8, numBanks)
 
 	// partition binary
@@ -123,7 +126,7 @@ func (cart *m3e) Reset() {
 func (cart *m3e) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	var data uint8
 
-	if addr >= 0x0000 && addr <= 0x07ff {
+	if addr <= 0x07ff {
 		if cart.state.segmentIsRAM[0] {
 			if addr <= 0x3ff {
 				bank := cart.state.segment[0]
@@ -145,7 +148,7 @@ func (cart *m3e) Access(addr uint16, _ bool) (uint8, uint8, error) {
 
 // AccessVolatile implements the mapper.CartMapper interface.
 func (cart *m3e) AccessVolatile(addr uint16, data uint8, poke bool) error {
-	if addr >= 0x0000 && addr <= 0x07ff {
+	if addr <= 0x07ff {
 		bank := cart.state.segment[0]
 		if cart.state.segmentIsRAM[0] == false {
 			if poke {
@@ -237,11 +240,12 @@ func (cart *m3e) AccessPassive(addr uint16, data uint8) error {
 	// AccessPassive() mechanism. see the tigervision commentary for details
 
 	// bankswitch on hotspot access
-	if addr == 0x3f {
+	switch addr {
+	case 0x3f:
 		romBank := (data & 0x3f) % uint8(cart.NumBanks())
 		cart.state.segment[0] = int(romBank)
 		cart.state.segmentIsRAM[0] = false
-	} else if addr == 0x3e {
+	case 0x3e:
 		ramBank := (data & 0x3f) % uint8(len(cart.state.ram))
 		cart.state.segment[0] = int(ramBank)
 		cart.state.segmentIsRAM[0] = true
