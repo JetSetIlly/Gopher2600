@@ -41,3 +41,4 @@ REDUX_PLAYBACK_FILES
 rsrc_windows_amd64.syso
 !hardware/cpu/klaus2m5/**/*.lst
 !hardware/cpu/klaus2m5/**/*.bin
+*.mp4

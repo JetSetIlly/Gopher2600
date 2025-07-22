@@ -43,6 +43,7 @@ type gl32 struct {
 	shaders  map[shaderType]shaderProgram
 
 	scrsht *gl32Screenshot
+	video  *gl32Video
 }
 
 func newRenderer(img *SdlImgui) renderer {
@@ -51,6 +52,7 @@ func newRenderer(img *SdlImgui) renderer {
 		textures: make(map[uint32]gl32Texture),
 		shaders:  make(map[shaderType]shaderProgram),
 		scrsht:   newGl32Screenshot(),
+		video:    newGl32Video(),
 	}
 	return rnd
 }
@@ -115,6 +117,7 @@ func (rnd *gl32) destroy() {
 	clear(rnd.shaders)
 
 	rnd.scrsht.destroy()
+	rnd.video.destroy()
 }
 
 // preRender clears the framebuffer.
@@ -129,7 +132,20 @@ func (rnd *gl32) render() {
 	fbw, fbh := rnd.img.plt.framebufferSize()
 	drawData := imgui.RenderedDrawData()
 
+	err := rnd.video.start(
+		int(rnd.img.screen.lastFrameGenerated.Load()),
+		int32(fbw), int32(fbh),
+		float32(rnd.img.plt.mode.RefreshRate))
+	if err != nil {
+		logger.Log(logger.Allow, "gl32", err.Error())
+	}
+
 	defer rnd.scrsht.process(int32(fbw), int32(fbh))
+	defer func() {
+		if rnd.video.isRecording() {
+			rnd.video.process(int(rnd.img.screen.lastFrameGenerated.Load()), int32(fbw), int32(fbh))
+		}
+	}()
 
 	st := storeGLState()
 	defer st.restoreGLState()
@@ -240,6 +256,10 @@ func (rnd *gl32) screenshot(mode screenshotMode, finish chan screenshotResult) {
 
 func (rnd *gl32) isScreenshotting() bool {
 	return !rnd.scrsht.finished()
+}
+
+func (rnd *gl32) isRecording() bool {
+	return rnd.video.isRecording()
 }
 
 // glState stores GL state with the intention of restoration after a short period.

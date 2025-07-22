@@ -232,12 +232,6 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	return plt, nil
 }
 
-// call finalise after initialising imgui (which must happen after SDL creation
-// in the newPlatform() function)
-func (plt *platform) finalisePlatform() error {
-	return nil
-}
-
 // list of swap intervalue values
 const (
 	syncImmediateUpdate     = 0

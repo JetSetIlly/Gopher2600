@@ -76,6 +76,9 @@ type screen struct {
 
 	// the number of frames the emulation currently is ahead
 	frameQueueSlack int
+
+	// the frame number of the last frame generated for rendering
+	lastFrameGenerated atomic.Int64
 }
 
 const (
@@ -91,6 +94,11 @@ const (
 	// the frame queue should never be longer than this
 	maxFrameQueue = 10
 )
+
+type frameQueueEntry struct {
+	sigs []signal.SignalAttributes
+	num  int
+}
 
 // for clarity, variables accessed in the critical section are encapsulated in
 // their own subtype.
@@ -124,7 +132,7 @@ type screenCrit struct {
 	// frameQueue are what we plot pixels to while we wait for a frame to complete.
 	// - the larger the queue the greater the input lag
 	// - a three to five frame queue seems good. ten frames can feel very laggy
-	frameQueue [maxFrameQueue][]signal.SignalAttributes
+	frameQueue [maxFrameQueue]frameQueueEntry
 
 	// local copies of frame queue preferences values. updated by setFrameQueue()
 	// which is called when the underlying preference is changed
@@ -212,7 +220,9 @@ func newScreen(img *SdlImgui) *screen {
 
 	// allocate frame queue images
 	for i := range scr.crit.frameQueue {
-		scr.crit.frameQueue[i] = make([]signal.SignalAttributes, specification.AbsoluteMaxClks)
+		scr.crit.frameQueue[i] = frameQueueEntry{
+			sigs: make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
+		}
 	}
 
 	scr.crit.section.Unlock()
@@ -301,16 +311,16 @@ func (scr *screen) updateFrameQueue() {
 	scr.crit.queueRecovery = scr.crit.frameQueueLen
 
 	// restore previous plot frame to all entries in the queue
-	var old []signal.SignalAttributes
+	var old *frameQueueEntry
 	switch scr.img.dbg.Mode() {
 	case govern.ModePlay:
-		old = scr.crit.frameQueue[scr.crit.renderIdx]
+		old = &scr.crit.frameQueue[scr.crit.renderIdx]
 	case govern.ModeDebugger:
-		old = scr.crit.frameQueue[scr.crit.plotIdx]
+		old = &scr.crit.frameQueue[scr.crit.plotIdx]
 	}
 	if old != nil {
 		for i := range scr.crit.frameQueue {
-			copy(scr.crit.frameQueue[i], old)
+			copy(scr.crit.frameQueue[i].sigs, old.sigs)
 		}
 	}
 
@@ -342,7 +352,7 @@ func (scr *screen) Reset() {
 func (scr *screen) clearPixels() {
 	// clear pixels in frame queue
 	for i := range scr.crit.frameQueue {
-		clear(scr.crit.frameQueue[i])
+		clear(scr.crit.frameQueue[i].sigs)
 	}
 
 	// clear pixels
@@ -475,9 +485,11 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 				scr.crit.queueRecovery--
 			}
 
-			scr.crit.plotIdx++
-			if scr.crit.plotIdx >= scr.crit.frameQueueLen {
-				scr.crit.plotIdx = 0
+			if !scr.img.rnd.isRecording() {
+				scr.crit.plotIdx++
+				if scr.crit.plotIdx >= scr.crit.frameQueueLen || scr.crit.plotIdx >= len(scr.crit.frameQueue) {
+					scr.crit.plotIdx = 0
+				}
 			}
 
 			// if plot index has crashed into the render index then set wait flag
@@ -487,13 +499,14 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	}
 
 	// sanity check number of signals and size of the frame queue
-	if len(sig) > len(scr.crit.frameQueue[0]) {
+	if len(sig) > len(scr.crit.frameQueue[0].sigs) {
 		panic("signal framequeue in sdlimgui is not large enough for the number of signals from the TV")
 	}
 
 	// make a copy of the signal attributes. colour based on the signals will be
 	// generated in the gui goroutine as required
-	copy(scr.crit.frameQueue[scr.crit.plotIdx], sig)
+	copy(scr.crit.frameQueue[scr.crit.plotIdx].sigs, sig)
+	scr.crit.frameQueue[scr.crit.plotIdx].num = scr.crit.frameInfo.FrameNum
 
 	scr.crit.lastY = last / specification.ClksScanline
 	scr.crit.lastX = last % specification.ClksScanline
@@ -643,7 +656,7 @@ func (scr *screen) generatePresentationPixels(idx int) {
 	var col color.RGBA
 	var offset int
 
-	sig := scr.crit.frameQueue[idx]
+	sig := scr.crit.frameQueue[idx].sigs
 
 	for i := range sig {
 		// handle VBLANK by setting pixels to black. we also manually handle
@@ -663,6 +676,8 @@ func (scr *screen) generatePresentationPixels(idx int) {
 
 		offset += 4
 	}
+
+	scr.lastFrameGenerated.Store(int64(scr.crit.frameQueue[idx].num))
 }
 
 // copy pixels from queue to the live copy.
@@ -735,9 +750,11 @@ func (scr *screen) copyPixelsPlaymode() {
 		scr.crit.prevRenderIdx[0] = scr.crit.renderIdx
 
 		// advance render index
-		scr.crit.renderIdx++
-		if scr.crit.renderIdx >= scr.crit.frameQueueLen {
-			scr.crit.renderIdx = 0
+		if !scr.img.rnd.isRecording() {
+			scr.crit.renderIdx++
+			if scr.crit.renderIdx >= scr.crit.frameQueueLen || scr.crit.renderIdx >= len(scr.crit.frameQueue) {
+				scr.crit.renderIdx = 0
+			}
 		}
 
 		// render index has bumped into the plotting index. revert render index
