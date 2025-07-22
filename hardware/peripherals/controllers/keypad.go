@@ -105,12 +105,12 @@ func (key *Keypad) HandleEvent(event ports.Event, data ports.EventData) (bool, e
 		case ports.EventDataPlayback:
 			n, err := strconv.ParseInt(string(d), 10, 64)
 			if err != nil {
-				return false, fmt.Errorf("keypad: %v: unexpected event data", event)
+				return false, fmt.Errorf("keypad: %#v: unexpected event data", event)
 			}
 			k = rune(n)
 
 		default:
-			return false, fmt.Errorf("keypad: %v: unexpected event data", event)
+			return false, fmt.Errorf("keypad: %#v: unexpected event data", event)
 		}
 
 		if k != '1' && k != '2' && k != '3' &&
@@ -129,7 +129,7 @@ func (key *Keypad) HandleEvent(event ports.Event, data ports.EventData) (bool, e
 			// expected data
 		case ports.EventDataPlayback:
 			if len(string(d)) > 0 {
-				return false, fmt.Errorf("keypad: %v: unexpected event data", event)
+				return false, fmt.Errorf("keypad: %#v: unexpected event data", event)
 			}
 		}
 		key.key = noKey

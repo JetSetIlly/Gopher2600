@@ -155,11 +155,11 @@ func (pdl *Paddles) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 		case ports.EventDataPlayback:
 			b, err := strconv.ParseBool(string(d))
 			if err != nil {
-				return false, fmt.Errorf("paddle: %v: unexpected event data", event)
+				return false, fmt.Errorf("paddle: %#v: unexpected event data", event)
 			}
 			pdl.paddles[0].fire = b
 		default:
-			return false, fmt.Errorf("paddle: %v: unexpected event data", event)
+			return false, fmt.Errorf("paddle: %#v: unexpected event data", event)
 		}
 
 		pdl.setFire()
@@ -171,11 +171,11 @@ func (pdl *Paddles) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 		case ports.EventDataPlayback:
 			b, err := strconv.ParseBool(string(d))
 			if err != nil {
-				return false, fmt.Errorf("paddle: %v: unexpected event data", event)
+				return false, fmt.Errorf("paddle: %#v: unexpected event data", event)
 			}
 			pdl.paddles[1].fire = b
 		default:
-			return false, fmt.Errorf("paddle: %v: unexpected event data", event)
+			return false, fmt.Errorf("paddle: %#v: unexpected event data", event)
 		}
 
 		pdl.setFire()
@@ -193,24 +193,36 @@ func (pdl *Paddles) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 		}
 
 		// handle the incoming data
-		handle := func(d ports.EventDataPaddle) {
+		handle := func(d ports.EventDataPaddle) error {
+			if d.Paddle < 0 || d.Paddle > 1 {
+				return fmt.Errorf("paddle: %#v: paddle field must be 0 or 1", d)
+			}
+
 			if d.Relative {
 				pdl.paddles[d.Paddle].resistance -= int(d.Motion)
 			} else {
 				pdl.paddles[d.Paddle].resistance = (int(d.Motion) + math.MaxInt16) / 256
 			}
 			pdl.paddles[d.Paddle].resistance = clamp(pdl.paddles[d.Paddle].resistance)
+
+			return nil
 		}
 
 		switch d := data.(type) {
 		case ports.EventDataPaddle:
-			handle(d)
+			err := handle(d)
+			if err != nil {
+				return false, err
+			}
 		case ports.EventDataPlayback:
 			var v ports.EventDataPaddle
 			v.FromString(string(d))
-			handle(v)
+			err := handle(v)
+			if err != nil {
+				return false, err
+			}
 		default:
-			return false, fmt.Errorf("paddle: %v: unexpected event data", event)
+			return false, fmt.Errorf("paddle: %#v: unexpected event data", event)
 		}
 
 	default:

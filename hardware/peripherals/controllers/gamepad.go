@@ -135,7 +135,7 @@ func (pad *Gamepad) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 		case ports.EventDataPlayback:
 			b, err := strconv.ParseBool(string(d))
 			if err != nil {
-				return false, fmt.Errorf("gamepad: %v: unexpected event data", event)
+				return false, fmt.Errorf("gamepad: %#v: unexpected event data", event)
 			}
 			if b {
 				pad.second = secondFire
@@ -143,7 +143,7 @@ func (pad *Gamepad) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 				pad.second = secondNoFire
 			}
 		default:
-			return false, fmt.Errorf("gamepad: %v: unexpected event data", event)
+			return false, fmt.Errorf("gamepad: %#v: unexpected event data", event)
 		}
 		pad.bus.WriteINPTx(pad.secondInptx, pad.second)
 		return true, nil
@@ -165,7 +165,7 @@ func (pad *Gamepad) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 		case ports.EventDataPlayback:
 			b, err := strconv.ParseBool(string(d))
 			if err != nil {
-				return false, fmt.Errorf("gamepad: %v: unexpected event data", event)
+				return false, fmt.Errorf("gamepad: %#v: unexpected event data", event)
 			}
 			if b {
 				pad.button = stickFire
@@ -173,7 +173,7 @@ func (pad *Gamepad) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 				pad.button = stickNoFire
 			}
 		default:
-			return false, fmt.Errorf("gamepad: %v: unexpected event data", event)
+			return false, fmt.Errorf("gamepad: %#v: unexpected event data", event)
 		}
 		pad.bus.WriteINPTx(pad.buttonInptx, pad.button)
 		return true, nil
@@ -184,10 +184,10 @@ func (pad *Gamepad) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 			// ideal path
 		case ports.EventDataPlayback:
 			if len(d) > 0 {
-				return false, fmt.Errorf("gamepad: %v: unexpected event data", event)
+				return false, fmt.Errorf("gamepad: %#v: unexpected event data", event)
 			}
 		default:
-			return false, fmt.Errorf("gamepad: %v: unexpected event data", event)
+			return false, fmt.Errorf("gamepad: %#v: unexpected event data", event)
 		}
 		pad.axis = axisCenter
 		pad.bus.WriteSWCHx(pad.port, pad.axis)
@@ -226,7 +226,7 @@ func (pad *Gamepad) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 	case ports.EventDataPlayback:
 		e = ports.EventDataStick(d)
 	default:
-		return false, fmt.Errorf("gamepad: %v: unexpected event data", event)
+		return false, fmt.Errorf("gamepad: %#v: unexpected event data", event)
 	}
 
 	// set/unset bits according to the event data
@@ -259,7 +259,7 @@ func (pad *Gamepad) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 		pad.axis = axisCenter
 		pad.axis ^= axis
 	default:
-		return false, fmt.Errorf("gamepad: %v: unexpected event data (%v)", event, e)
+		return false, fmt.Errorf("gamepad: %#v: unexpected event data (%#v)", event, e)
 	}
 
 	// update register
