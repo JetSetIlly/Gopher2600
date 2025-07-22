@@ -257,17 +257,18 @@ http://www.festvox.org/docs/manual-2.4.0/festival_toc.html
 * David Kelly
 * And those from the wider Atari community:
 	* alex_79
-	* Al Nafuur
 	* Andrew Davie
-	* Batari
+	* Christian Speckner (DirtyHairy)
 	* Darrell Spice (Spiceware)
-  	* DirtyHairy
+	* Fred Quimby (Batari)
+	* James O'Brien (ZeroPageHomebrew)
 	* John Champeau (Champ Games)
-	* MarcoJ
+	* Marco Johannes (MarcoJ)
 	* MrSQL
 	* Rob Bairos
+	* Rob Tuccitto (Trebor)
 	* Thomas Jenztsch
+	* Wolfgang Stubig (Al Nafuur)
 	* Zachary Scolaro
-	* ZeroPageHomebrew
 
 _Logo is based on [Gopherize.me](https://github.com/matryer/gopherize.me) which itself is based on the work of [Ashley McNamara](https://github.com/ashleymcnamara/gophers) and is [licensed under the Creative Commons](https://github.com/ashleymcnamara/gophers/blob/master/LICENSE)_
