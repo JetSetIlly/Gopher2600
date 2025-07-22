@@ -1835,11 +1835,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				dbg.vcs.FingerprintPeripheral(id)
 			case "STICK":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewStick)
-			case "PADDLE", "PADDLEA":
-				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewPaddlePair)
-			case "PADDLEB":
-				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewPaddlePair)
-				dbg.controllers.SwappedPaddles(true)
+			case "PADDLE":
+				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewPaddles)
 			case "KEYPAD":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewKeypad)
 			case "GAMEPAD":

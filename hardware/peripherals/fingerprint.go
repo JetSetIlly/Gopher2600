@@ -65,7 +65,7 @@ func Fingerprint(port plugging.PortID, loader cartridgeloader.Loader) ports.NewP
 		}
 	} else {
 		if fingerprintPaddle(port, loader) {
-			return controllers.NewPaddlePair
+			return controllers.NewPaddles
 		}
 	}
 

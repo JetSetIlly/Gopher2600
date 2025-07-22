@@ -193,7 +193,16 @@ func (pdl *Paddles) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 		}
 
 		// handle the incoming data
-		handle := func(d ports.EventDataPaddle) error {
+		var handle func(d ports.EventDataPaddle) error
+		handle = func(d ports.EventDataPaddle) error {
+			if d.Paddle == -1 {
+				d.Paddle = 0
+				_ = handle(d)
+				d.Paddle = 1
+				_ = handle(d)
+				return nil
+			}
+
 			if d.Paddle < 0 || d.Paddle > 1 {
 				return fmt.Errorf("paddle: %#v: paddle field must be 0 or 1", d)
 			}

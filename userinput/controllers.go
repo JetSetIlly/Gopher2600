@@ -25,9 +25,8 @@ const ThumbstickDeadzone = 10000
 
 // Controllers keeps track of hardware userinput options.
 type Controllers struct {
-	inputHandler   HandleInput
-	swappedPorts   bool
-	swappedPaddles bool
+	inputHandler HandleInput
+	swappedPorts bool
 }
 
 // Controllers is the preferred method of initialisation for the Controllers type.
@@ -42,12 +41,6 @@ func (c *Controllers) SwappedPorts(swapped bool) {
 	c.swappedPorts = swapped
 }
 
-// SwappedPaddles is similar to SwapperPorts but affects which paddle of a paddle pair is to be
-// controlled by user input
-func (c *Controllers) SwappedPaddles(swapped bool) {
-	c.swappedPaddles = swapped
-}
-
 // handlePortSwap returns the required PortID relative to the supplied PortID if the
 // controls have been swapped
 func (c Controllers) handlePortSwap(port plugging.PortID) plugging.PortID {
@@ -60,14 +53,6 @@ func (c Controllers) handlePortSwap(port plugging.PortID) plugging.PortID {
 		}
 	}
 	return port
-}
-
-// handlePaddleSwap returns the required paddle number according to whether the player
-func (c Controllers) handlePaddleSwap() int {
-	if c.swappedPaddles {
-		return 1
-	}
-	return 0
 }
 
 // handleEvents sends the port/event information to each HandleInput
@@ -102,7 +87,7 @@ func (c *Controllers) mouseMotion(ev EventMouseMotion) (bool, error) {
 	}
 
 	return c.handleEvents(c.handlePortSwap(plugging.PortLeft), ports.PaddleSet, ports.EventDataPaddle{
-		Paddle:   c.handlePaddleSwap(),
+		Paddle:   -1,
 		Motion:   motion,
 		Relative: true,
 	})
@@ -112,17 +97,19 @@ func (c *Controllers) mouseButton(ev EventMouseButton) (bool, error) {
 	switch ev.Button {
 	case MouseButtonLeft:
 		if ev.Down {
-			if c.swappedPaddles {
-				return c.handleEvents(c.handlePortSwap(plugging.PortLeft), ports.SecondFire, true)
-			} else {
-				return c.handleEvents(c.handlePortSwap(plugging.PortLeft), ports.Fire, true)
+			a, err := c.handleEvents(c.handlePortSwap(plugging.PortLeft), ports.Fire, true)
+			if err != nil {
+				return false, err
 			}
+			b, err := c.handleEvents(c.handlePortSwap(plugging.PortLeft), ports.SecondFire, true)
+			return a && b, err
 		} else {
-			if c.swappedPaddles {
-				return c.handleEvents(c.handlePortSwap(plugging.PortLeft), ports.SecondFire, false)
-			} else {
-				return c.handleEvents(c.handlePortSwap(plugging.PortLeft), ports.Fire, false)
+			a, err := c.handleEvents(c.handlePortSwap(plugging.PortLeft), ports.Fire, false)
+			if err != nil {
+				return false, err
 			}
+			b, err := c.handleEvents(c.handlePortSwap(plugging.PortLeft), ports.SecondFire, false)
+			return a && b, err
 		}
 	}
 
@@ -464,7 +451,7 @@ func (c *Controllers) stelladaptor(ev EventStelladaptor) (bool, error) {
 
 	case plugging.PeriphPaddles:
 		return c.handleEvents(c.handlePortSwap(ev.ID), ports.PaddleSet, ports.EventDataPaddle{
-			Paddle: c.handlePaddleSwap(),
+			Paddle: -1,
 			Motion: -ev.Horiz - 1,
 		})
 	}

@@ -91,13 +91,14 @@ type EventDataPlayback string
 // Event data for stick types.
 type EventDataStick string
 
-// Event data for paddle types. The Paddle field indicates which paddle the data refers to.
+// Event data for paddle types. The Paddle field indicates which paddle the data refers to. A paddle
+// value of -1 indicates that both paddles in the pair are being controlled
 //
 // Values in the motion field are relative (to the current position) if the Relative field is set to
 // true. For non-relative values (ie. absolute values) the value should be scaled to be in the range
 // of -32768 and +32767
 type EventDataPaddle struct {
-	Paddle   int // 0 or 1
+	Paddle   int // 0 or 1 or -1
 	Motion   int16
 	Relative bool
 }
