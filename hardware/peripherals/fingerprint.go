@@ -17,6 +17,7 @@ package peripherals
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox"
@@ -41,6 +42,12 @@ import (
 func Fingerprint(port plugging.PortID, loader cartridgeloader.Loader) ports.NewPeripheral {
 	if port != plugging.PortRight && port != plugging.PortLeft {
 		panic(fmt.Sprintf("cannot fingerprint for port %v", port))
+	}
+
+	// scan filename for any mention of a controller. this takes priority over everything else
+	p := fingerprintFilename(loader.Filename)
+	if p != nil {
+		return p
 	}
 
 	// atarivox and savekey are the most specific peripheral. because atarivox
@@ -71,6 +78,23 @@ func Fingerprint(port plugging.PortID, loader cartridgeloader.Loader) ports.NewP
 
 	// default to normal joystick
 	return controllers.NewStick
+}
+
+func fingerprintFilename(name string) ports.NewPeripheral {
+	name = strings.ToUpper(name)
+	if strings.Contains(name, "(PADDLE)") {
+		return controllers.NewPaddles
+	}
+	if strings.Contains(name, "(GAMEPAD)") {
+		return controllers.NewGamepad
+	}
+	if strings.Contains(name, "(KEYPAD)") {
+		return controllers.NewKeypad
+	}
+	if strings.Contains(name, "(JOYSTICK)") {
+		return controllers.NewStick
+	}
+	return nil
 }
 
 // fingerprinting beyond the first 64k or so of cartridge data can result in
