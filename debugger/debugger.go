@@ -721,7 +721,7 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 			err = dbg.inputLoop(scr, false)
 			if err != nil {
 				dbg.term.Silence(false)
-				return fmt.Errorf("debugger: %w", err)
+				return err
 			}
 
 			dbg.term.Silence(false)
@@ -962,7 +962,7 @@ func (dbg *Debugger) run() error {
 						logger.Log(logger.Allow, "debugger", err)
 					}
 				} else {
-					return fmt.Errorf("debugger: %w", err)
+					return err
 				}
 			}
 
@@ -985,7 +985,7 @@ func (dbg *Debugger) run() error {
 				if errors.Is(err, terminal.UserReload) {
 					dbg.reloadCartridge()
 				} else {
-					return fmt.Errorf("debugger: %w", err)
+					return err
 				}
 			}
 
@@ -997,7 +997,7 @@ func (dbg *Debugger) run() error {
 		if dbg.unwindLoopRestart != nil {
 			err := dbg.unwindLoopRestart()
 			if err != nil {
-				return fmt.Errorf("debugger: %w", err)
+				return err
 			}
 			dbg.unwindLoopRestart = nil
 		} else if dbg.State() == govern.Ending {

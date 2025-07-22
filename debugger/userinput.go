@@ -16,8 +16,6 @@
 package debugger
 
 import (
-	"fmt"
-
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/userinput"
@@ -139,7 +137,7 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 	// pass to VCS controller emulation via the userinput package
 	handled, err := dbg.controllers.HandleUserInput(ev)
 	if err != nil {
-		return fmt.Errorf("debugger: %w", err)
+		return err
 	}
 
 	// the user input was something that controls the emulation (eg. a joystick
