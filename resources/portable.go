@@ -13,23 +13,31 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-//go:build release
-// +build release
-
 package resources
 
 import (
 	"os"
-	"path/filepath"
+	"strings"
 )
 
-const gopherConfigDir = "gopher2600"
+const (
+	portableFile = "portable.txt"
+	portablePath = "Gopher2600_UserData"
+)
 
-func resourcePath() (string, error) {
-	p, err := os.UserConfigDir()
+// check working directory for a file named portable.txt
+func checkPortable() bool {
+	files, err := os.ReadDir(".")
 	if err != nil {
-		return "", err
+		return false
 	}
 
-	return filepath.Join(p, gopherConfigDir), nil
+	// the name of the portable.txt file is case insensitive
+	for _, file := range files {
+		if strings.ToLower(file.Name()) == portableFile {
+			return true
+		}
+	}
+
+	return false
 }

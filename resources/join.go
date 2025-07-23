@@ -32,11 +32,22 @@ func JoinPath(path ...string) (string, error) {
 	// join supplied path
 	p := filepath.Join(path...)
 
-	// do not prepend OS/build specific base path if it is already present
-	b, err := baseResourcePath()
-	if err != nil {
-		return "", err
+	var b string
+
+	// resources are either in the portable path or the path returned by resourcePath(). the
+	// resourcePath() function depends on how the program has been compiled - as a release binary or
+	// as a development binary
+	if checkPortable() {
+		b = portablePath
+	} else {
+		var err error
+		b, err = resourcePath()
+		if err != nil {
+			return "", err
+		}
 	}
+
+	// do not prepend base path if it is already present
 	if !strings.HasPrefix(p, b) {
 		p = filepath.Join(b, filepath.Join(path...))
 	}

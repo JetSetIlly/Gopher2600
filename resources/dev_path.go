@@ -20,6 +20,6 @@ package resources
 
 const gopherConfigDir = ".gopher2600"
 
-func baseResourcePath() (string, error) {
+func resourcePath() (string, error) {
 	return gopherConfigDir, nil
 }
