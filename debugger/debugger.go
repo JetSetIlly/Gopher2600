@@ -813,16 +813,6 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 			}
 		}
 
-		// record wav file
-		if dbg.opts.Wav {
-			fn := unique.Filename("audio", dbg.cartload.Name)
-			ww, err := wavwriter.NewWavWriter(fn)
-			if err != nil {
-				return fmt.Errorf("debugger: %w", err)
-			}
-			dbg.vcs.TV.AddAudioMixer(ww)
-		}
-
 		// record gameplay
 		if dbg.opts.Record {
 			dbg.startRecording(dbg.cartload.Name)
@@ -832,11 +822,16 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
 		}
+	}
 
-		// record gameplay
-		if dbg.opts.Record {
-			dbg.startRecording(dbg.cartload.Name)
+	// record wav file
+	if dbg.opts.Wav {
+		fn := unique.Filename("audio", dbg.cartload.Name)
+		ww, err := wavwriter.NewWavWriter(fn)
+		if err != nil {
+			return fmt.Errorf("debugger: %w", err)
 		}
+		dbg.vcs.TV.AddAudioMixer(ww)
 	}
 
 	if dbg.opts.Macro != "" {
