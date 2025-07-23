@@ -813,15 +813,16 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 			}
 		}
 
-		// record gameplay
-		if dbg.opts.Record {
-			dbg.startRecording(dbg.cartload.Name)
-		}
 	} else {
 		err = dbg.startPlayback(filename)
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
 		}
+	}
+
+	// record gameplay
+	if dbg.opts.Record {
+		dbg.startRecording()
 	}
 
 	// record wav file
@@ -1268,11 +1269,11 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	return nil
 }
 
-func (dbg *Debugger) startRecording(cartShortName string) error {
+func (dbg *Debugger) startRecording() error {
 	var err error
 	var recording string
 	if dbg.opts.RecordFilename == "" {
-		recording = unique.Filename("recording", cartShortName)
+		recording = unique.Filename("recording", dbg.cartload.Name)
 	} else {
 		recording = dbg.opts.RecordFilename
 	}
@@ -1280,7 +1281,6 @@ func (dbg *Debugger) startRecording(cartShortName string) error {
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
