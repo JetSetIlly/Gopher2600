@@ -67,4 +67,7 @@ const (
 	// request a screenshot to be taken
 	// optional argument is the filename for the screenshot
 	ReqScreenshot FeatureReq = "ReqScreenshot" // [optional] filename
+
+	// video should be recorded
+	ReqVideoRecord FeatureReq = "ReqVideoRecord" // bool
 )

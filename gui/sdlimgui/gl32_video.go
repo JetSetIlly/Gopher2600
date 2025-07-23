@@ -70,7 +70,7 @@ func (vid *gl32Video) destroy() {
 	vid.frame = nil
 }
 
-func (vid *gl32Video) start(frameNum int, width int32, height int32, hz float32) error {
+func (vid *gl32Video) start(outputFile string, frameNum int, width int32, height int32, hz float32) error {
 	if !vid.enabled {
 		return nil
 	}
@@ -118,8 +118,8 @@ func (vid *gl32Video) start(frameNum int, width int32, height int32, hz float32)
 	}
 
 	var ffmpegOutput = []string{
-		"-y",         // always overwrite output file
-		"output.mp4", // output file
+		"-y", // always overwrite output file
+		fmt.Sprintf("%s.mp4", outputFile),
 	}
 
 	var opts []string

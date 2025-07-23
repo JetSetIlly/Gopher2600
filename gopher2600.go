@@ -331,6 +331,7 @@ func emulate(mode string, sync *mainSync, args []string) error {
 		flgs.BoolVar(&opts.PlaybackIgnoreDigest, "playbackIgnoreDigest", false, "ignore video digests in playback files")
 		flgs.StringVar(&opts.PatchFile, "patch", "", "patch to apply to emulation (not playback files)")
 		flgs.BoolVar(&opts.Wav, "wav", false, "record audio to wav file")
+		flgs.BoolVar(&opts.Video, "video", false, "record video to mp4 file")
 		flgs.BoolVar(&opts.NoEject, "noeject", false, "emulator will not quit is noeject is true")
 		flgs.StringVar(&opts.Macro, "macro", "", "macro file to be run on trigger")
 	}

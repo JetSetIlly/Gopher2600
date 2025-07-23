@@ -835,6 +835,11 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 		dbg.vcs.TV.AddAudioMixer(ww)
 	}
 
+	// record video
+	if dbg.opts.Video {
+		dbg.gui.SetFeature(gui.ReqVideoRecord, true)
+	}
+
 	if dbg.opts.Macro != "" {
 		dbg.macro, err = macro.NewMacro(dbg.opts.Macro, dbg, dbg.vcs.Input, dbg.vcs.TV, dbg.gui)
 		if err != nil {

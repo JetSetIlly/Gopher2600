@@ -149,6 +149,12 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			err = fmt.Errorf("wrong number of arguments (%d instead of 1 or zero)", len(request.args))
 		}
 
+	case gui.ReqVideoRecord:
+		err = argLen(request.args, 1, 1)
+		if err == nil {
+			img.enableVideoRecording(request.args[0].(bool))
+		}
+
 	default:
 		err = fmt.Errorf("sdlimgui: unsupport feature request (%s)", request.request)
 	}

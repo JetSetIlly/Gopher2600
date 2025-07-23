@@ -363,6 +363,13 @@ func (img *SdlImgui) setEmulationMode(mode govern.Mode) error {
 
 	switch mode {
 	case govern.ModeDebugger:
+		// we don't disable video recording when we switch to the debugger. if we do want to then we
+		// should do it here
+		const disableVideoForDebugger = false
+		if disableVideoForDebugger {
+			img.enableVideoRecording(false)
+		}
+
 		img.screen.clearTextureRenderers()
 		img.screen.addTextureRenderer(img.wm.dbgScr)
 		img.plt.window.Show()
@@ -524,4 +531,12 @@ func (img *SdlImgui) getTVColour(col uint8) imgui.PackedColor {
 		W: float32(c.A) / 255,
 	}
 	return imgui.PackedColorFromVec4(v)
+}
+
+// video recording inhibits overlay drawing and gui windows. video recording is not disabled when
+// emulation is switched to debugger mode. video recording will resume if playmode is resumed
+func (img *SdlImgui) enableVideoRecording(enable bool) {
+	img.rnd.record(enable)
+	img.playScr.overlay.inhibit = enable
+	img.wm.playmodeWindowsInhibit = enable
 }

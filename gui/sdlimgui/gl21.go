@@ -191,6 +191,13 @@ func (rnd *gl21) isScreenshotting() bool {
 	return false
 }
 
+func (rnd *gl21) record(_ bool) {
+}
+
+func (rnd *gl21) isRecording() bool {
+	return false
+}
+
 func (rnd *gl21) addTexture(_ shaderType, linear bool, clamp bool, config any) texture {
 	tex := gl21Texture{
 		create: true,

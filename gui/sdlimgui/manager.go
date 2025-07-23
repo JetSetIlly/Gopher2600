@@ -34,7 +34,8 @@ type manager struct {
 	windows map[string]window
 
 	// playmode windows
-	playmodeWindows map[string]playmodeWindow
+	playmodeWindows        map[string]playmodeWindow
+	playmodeWindowsInhibit bool
 
 	// debugger windows
 	debuggerWindows map[string]debuggerWindow
@@ -158,20 +159,24 @@ func (wm *manager) draw() {
 
 	switch wm.img.mode.Load().(govern.Mode) {
 	case govern.ModePlay:
-		// reset playmodeHover flag by default. it's only ever true if a window is open (and that
-		// window is being hovered over)
-		wm.playmodeCaptureInhibit = false
+		// draw playmode windows if the playmodeWindowsInhibit flag is not enabled. this is done for
+		// video recording because we don't want to include windows in the output stream
+		if !wm.playmodeWindowsInhibit {
+			// reset playmodeHover flag by default. it's only ever true if a window is open (and that
+			// window is being hovered over)
+			wm.playmodeCaptureInhibit = false
 
-		// playmode draws the screen and other windows that have been listed
-		// as being safe to draw in playmode
-		for _, w := range wm.playmodeWindows {
-			if w.playmodeDraw() {
-				wm.playmodeCaptureInhibit = wm.playmodeCaptureInhibit || w.playmodeIsHovered()
+			// playmode draws the screen and other windows that have been listed
+			// as being safe to draw in playmode
+			for _, w := range wm.playmodeWindows {
+				if w.playmodeDraw() {
+					wm.playmodeCaptureInhibit = wm.playmodeCaptureInhibit || w.playmodeIsHovered()
+				}
 			}
-		}
 
-		// inhibit playmode capture if any popup is open
-		wm.playmodeCaptureInhibit = wm.playmodeCaptureInhibit || imgui.IsPopupOpenV("", imgui.PopupFlagsAnyPopup)
+			// inhibit playmode capture if any popup is open
+			wm.playmodeCaptureInhibit = wm.playmodeCaptureInhibit || imgui.IsPopupOpenV("", imgui.PopupFlagsAnyPopup)
+		}
 
 	case govern.ModeDebugger:
 		// see commentary for screenPos in windowManager declaration

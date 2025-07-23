@@ -45,6 +45,7 @@ type CommandLineOptions struct {
 	PlaybackIgnoreDigest bool
 	PatchFile            string
 	Wav                  bool
+	Video                bool
 	NoEject              bool
 	Macro                string
 

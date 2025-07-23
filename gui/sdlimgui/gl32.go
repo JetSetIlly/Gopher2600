@@ -23,6 +23,7 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/resources/unique"
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
@@ -133,6 +134,7 @@ func (rnd *gl32) render() {
 	drawData := imgui.RenderedDrawData()
 
 	err := rnd.video.start(
+		unique.Filename("video", rnd.img.cache.VCS.Mem.Cart.ShortName),
 		int(rnd.img.screen.lastFrameGenerated.Load()),
 		int32(fbw), int32(fbh),
 		float32(rnd.img.plt.mode.RefreshRate))
@@ -142,8 +144,10 @@ func (rnd *gl32) render() {
 
 	defer rnd.scrsht.process(int32(fbw), int32(fbh))
 	defer func() {
-		if rnd.video.isRecording() {
-			rnd.video.process(int(rnd.img.screen.lastFrameGenerated.Load()), int32(fbw), int32(fbh))
+		if rnd.img.isPlaymode() {
+			if rnd.video.isRecording() {
+				rnd.video.process(int(rnd.img.screen.lastFrameGenerated.Load()), int32(fbw), int32(fbh))
+			}
 		}
 	}()
 
@@ -256,6 +260,10 @@ func (rnd *gl32) screenshot(mode screenshotMode, finish chan screenshotResult) {
 
 func (rnd *gl32) isScreenshotting() bool {
 	return !rnd.scrsht.finished()
+}
+
+func (rnd *gl32) record(enabled bool) {
+	rnd.video.enabled = enabled
 }
 
 func (rnd *gl32) isRecording() bool {
