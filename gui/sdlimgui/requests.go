@@ -93,10 +93,14 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 				switch notice {
 				case notifications.NotifyAtariVoxSubtitle:
 					err = argLen(request.args, 2, 2)
-					img.playScr.overlay.set(notice, request.args[1:])
+					if err == nil {
+						img.playScr.overlay.set(notice, request.args[1:])
+					}
 				default:
 					err = argLen(request.args, 1, 1)
-					img.playScr.overlay.set(notice)
+					if err == nil {
+						img.playScr.overlay.set(notice)
+					}
 				}
 			}
 		}

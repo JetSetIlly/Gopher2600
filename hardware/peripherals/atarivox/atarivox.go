@@ -91,11 +91,13 @@ type AtariVox struct {
 	// for mute below)
 	disabled bool
 
-	// the atarivox should not process data when it is muted. slightly
+	// the atarivox should not process speech data when it is muted. slightly
 	// different flag to disabled because they are set via different code
 	// paths. muted is intended to follow the wider audio mute settings. the
 	// disabled flag meanwhile is independent of muting and allows AtariVox to
 	// be turned off even when emulation wide audio is not muted.
+	//
+	// muted does not effect the subtitler
 	muted bool
 }
 
@@ -353,16 +355,16 @@ func (vox *AtariVox) Step() {
 				vox.pushed = true
 				vox.pushedBits = vox.bits
 			} else {
-				if !(vox.disabled || vox.muted) {
+				if !vox.disabled {
 					if vox.pushed {
-						if vox.speech != nil {
+						if vox.speech != nil && !vox.muted {
 							vox.speech.SpeakJet(vox.pushedBits, vox.bits)
 						}
 						if vox.subtitler != nil {
 							vox.subtitler.SpeakJet(vox.pushedBits, vox.bits)
 						}
 					} else {
-						if vox.speech != nil {
+						if vox.speech != nil && !vox.muted {
 							vox.speech.SpeakJet(vox.bits, 0)
 						}
 						if vox.subtitler != nil {
