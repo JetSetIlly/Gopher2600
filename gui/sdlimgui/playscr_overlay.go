@@ -226,7 +226,7 @@ func (o *playscrOverlay) drawSubtitles(maxRegion imgui.Vec2) {
 	p.X = (maxRegion.X - sz.X) / 2
 	imgui.SetCursorScreenPos(p)
 
-	p = p.Plus(imgui.Vec2{X: -padding, Y: padding})
+	p = p.Plus(imgui.Vec2{X: -padding, Y: padding / 2})
 	dl := imgui.WindowDrawList()
 	dl.AddRectFilled(p, p.Plus(sz).Plus(imgui.Vec2{X: padding * 2, Y: -padding}), o.img.cols.subtitlesBackground)
 
