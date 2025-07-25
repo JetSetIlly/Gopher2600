@@ -23,7 +23,7 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/resources/unique"
+	"github.com/jetsetilly/gopher2600/video"
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
@@ -44,7 +44,12 @@ type gl32 struct {
 	shaders  map[shaderType]shaderProgram
 
 	scrsht *gl32Screenshot
-	video  *gl32Video
+	video  *video.FFMPEG
+}
+
+// ReadPixels implements the video.Renderer interface
+func (rnd *gl32) ReadPixels(width int32, height int32, pix []uint8) {
+	gl.ReadPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pix))
 }
 
 func newRenderer(img *SdlImgui) renderer {
@@ -53,8 +58,8 @@ func newRenderer(img *SdlImgui) renderer {
 		textures: make(map[uint32]gl32Texture),
 		shaders:  make(map[shaderType]shaderProgram),
 		scrsht:   newGl32Screenshot(),
-		video:    newGl32Video(),
 	}
+	rnd.video = video.NewFFMPEG(rnd)
 	return rnd
 }
 
@@ -118,7 +123,7 @@ func (rnd *gl32) destroy() {
 	clear(rnd.shaders)
 
 	rnd.scrsht.destroy()
-	rnd.video.destroy()
+	rnd.video.Destroy()
 }
 
 // preRender clears the framebuffer.
@@ -133,23 +138,20 @@ func (rnd *gl32) render() {
 	fbw, fbh := rnd.img.plt.framebufferSize()
 	drawData := imgui.RenderedDrawData()
 
-	err := rnd.video.start(
-		unique.Filename("video", rnd.img.cache.VCS.Mem.Cart.ShortName),
-		int(rnd.img.screen.lastFrameGenerated.Load()),
-		int32(fbw), int32(fbh),
-		float32(rnd.img.plt.mode.RefreshRate))
-	if err != nil {
-		logger.Log(logger.Allow, "gl32", err.Error())
-	}
-
 	defer rnd.scrsht.process(int32(fbw), int32(fbh))
-	defer func() {
-		if rnd.img.isPlaymode() {
-			if rnd.video.isRecording() {
-				rnd.video.process(int(rnd.img.screen.lastFrameGenerated.Load()), int32(fbw), int32(fbh))
-			}
+
+	if rnd.img.isPlaymode() {
+		err := rnd.video.Preprocess(
+			rnd.img.cache.VCS.Mem.Cart.ShortName,
+			int32(fbw), int32(fbh), float32(rnd.img.plt.mode.RefreshRate),
+			video.ProfileFast)
+		if err != nil {
+			logger.Log(logger.Allow, "gl32", err.Error())
 		}
-	}()
+		defer func() {
+			rnd.video.Process()
+		}()
+	}
 
 	st := storeGLState()
 	defer st.restoreGLState()
@@ -262,12 +264,12 @@ func (rnd *gl32) isScreenshotting() bool {
 	return !rnd.scrsht.finished()
 }
 
-func (rnd *gl32) record(enabled bool) {
-	rnd.video.enabled = enabled
+func (rnd *gl32) record(enable bool) {
+	rnd.video.Enable(enable)
 }
 
 func (rnd *gl32) isRecording() bool {
-	return rnd.video.isRecording()
+	return rnd.video.IsRecording()
 }
 
 // glState stores GL state with the intention of restoration after a short period.

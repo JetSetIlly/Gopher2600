@@ -539,4 +539,5 @@ func (img *SdlImgui) enableVideoRecording(enable bool) {
 	img.rnd.record(enable)
 	img.playScr.overlay.inhibit = enable
 	img.wm.playmodeWindowsInhibit = enable
+	img.screen.Reset()
 }

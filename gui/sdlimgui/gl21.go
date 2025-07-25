@@ -24,6 +24,7 @@ import (
 
 	"github.com/go-gl/gl/v2.1/gl"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/video"
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
@@ -37,13 +38,21 @@ type gl21 struct {
 	img      *SdlImgui
 	textures map[uint32]gl21Texture
 	font     gl21Texture
+	video    *video.FFMPEG
+}
+
+// ReadPixels implements the video.Renderer interface
+func (rnd *gl21) ReadPixels(width int32, height int32, pix []uint8) {
+	gl.ReadPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pix))
 }
 
 func newRenderer(img *SdlImgui) renderer {
-	return &gl21{
+	rnd := &gl21{
 		img:      img,
 		textures: make(map[uint32]gl21Texture),
 	}
+	rnd.video = video.NewFFMPEG(rnd)
+	return rnd
 }
 
 func (rnd *gl21) requires() requirement {
@@ -73,6 +82,7 @@ func (rnd *gl21) destroy() {
 		gl.DeleteTextures(1, &tex.id)
 	}
 	clear(rnd.textures)
+	rnd.video.Destroy()
 }
 
 func (rnd *gl21) preRender() {
@@ -93,6 +103,19 @@ func (rnd *gl21) render() {
 		X: fbw / winw,
 		Y: fbh / winh,
 	})
+
+	if rnd.img.isPlaymode() {
+		err := rnd.video.Preprocess(
+			rnd.img.cache.VCS.Mem.Cart.ShortName,
+			int32(fbw), int32(fbh), float32(rnd.img.plt.mode.RefreshRate),
+			video.Profile1080)
+		if err != nil {
+			logger.Log(logger.Allow, "gl21", err.Error())
+		}
+		defer func() {
+			rnd.video.Process()
+		}()
+	}
 
 	// Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled, vertex/texcoord/color pointers, polygon fill.
 	var lastTexture int32
@@ -191,11 +214,12 @@ func (rnd *gl21) isScreenshotting() bool {
 	return false
 }
 
-func (rnd *gl21) record(_ bool) {
+func (rnd *gl21) record(enable bool) {
+	rnd.video.Enable(enable)
 }
 
 func (rnd *gl21) isRecording() bool {
-	return false
+	return rnd.video.IsRecording()
 }
 
 func (rnd *gl21) addTexture(_ shaderType, linear bool, clamp bool, config any) texture {
