@@ -119,6 +119,8 @@ func (rec *Recorder) End() error {
 		return fmt.Errorf("recorder: %w", err)
 	}
 
+	rec.vcs.Input.RemoveRecorder(rec)
+
 	return nil
 }
 

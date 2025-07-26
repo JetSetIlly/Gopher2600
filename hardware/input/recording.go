@@ -17,6 +17,7 @@ package input
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -42,9 +43,15 @@ type EventRecorder interface {
 	RecordEvent(ports.TimedInputEvent) error
 }
 
-// AttachEventRecorder attaches an EventRecorder implementation.
+// AttachRecorder attaches an EventRecorder implementation.
 func (inp *Input) AddRecorder(r EventRecorder) {
 	inp.recorder = append(inp.recorder, r)
+}
+
+// RemoveRecorder deletes an EventRecorder implementation from the list.
+func (inp *Input) RemoveRecorder(r EventRecorder) {
+	i := slices.Index(inp.recorder, r)
+	inp.recorder = slices.Delete(inp.recorder, i, i+1)
 }
 
 // ClearRecorders removes all registered event recorders.
