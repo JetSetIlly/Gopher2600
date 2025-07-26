@@ -149,7 +149,7 @@ func (rnd *gl32) render() {
 			logger.Log(logger.Allow, "gl32", err.Error())
 		}
 		defer func() {
-			rnd.video.Process()
+			rnd.video.Process(int(rnd.img.screen.lastVideoFrame.Load()))
 		}()
 	}
 

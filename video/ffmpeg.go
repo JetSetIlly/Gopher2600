@@ -24,7 +24,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
-	"github.com/jetsetilly/gopher2600/wavwriter"
 )
 
 // Profile is used to specify which set of ffmpeg settings to use
@@ -71,10 +70,11 @@ type FFMPEG struct {
 	pipe    io.WriteCloser
 
 	// pixels is read by the ReadPixels() function of the supplied Renderer interface
-	pixels []uint8
+	pixels            []uint8
+	lastFrameRendered int
 
 	// we record audio to a separate file and then mux it with the video in a final step
-	wavs *wavwriter.WavWriter
+	wavs television.AudioMixer
 }
 
 func NewFFMPEG(rnd Renderer, tv Television) *FFMPEG {
@@ -250,8 +250,8 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 
 	vid.pixels = make([]uint8, vid.width*vid.height*4)
 
-	// create wavwriter
-	vid.wavs, err = wavwriter.NewWavWriter(vid.tempAudioFilename)
+	// create wavwriter via package specific audio package
+	vid.wavs, err = newAudio(vid.tempAudioFilename)
 	if err != nil {
 		return fmt.Errorf("ffmpeg: %w", err)
 	}
@@ -268,10 +268,15 @@ func (vid *FFMPEG) IsRecording() bool {
 	return vid.pipe != nil
 }
 
-func (vid *FFMPEG) Process() {
+func (vid *FFMPEG) Process(framenum int) {
 	if vid.pipe == nil {
 		return
 	}
+
+	if framenum != -1 && framenum <= vid.lastFrameRendered {
+		return
+	}
+	vid.lastFrameRendered = framenum
 
 	// get pixel data for frame and forward it to the running command
 	vid.rnd.ReadPixels(vid.width, vid.height, vid.pixels)

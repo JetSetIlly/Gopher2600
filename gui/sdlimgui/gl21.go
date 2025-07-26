@@ -51,7 +51,7 @@ func newRenderer(img *SdlImgui) renderer {
 		img:      img,
 		textures: make(map[uint32]gl21Texture),
 	}
-	rnd.video = video.NewFFMPEG(rnd)
+	rnd.video = video.NewFFMPEG(rnd, img.dbg.TV())
 	return rnd
 }
 
@@ -113,7 +113,7 @@ func (rnd *gl21) render() {
 			logger.Log(logger.Allow, "gl21", err.Error())
 		}
 		defer func() {
-			rnd.video.Process()
+			rnd.video.Process(int(rnd.img.screen.lastVideoFrame.Load()))
 		}()
 	}
 

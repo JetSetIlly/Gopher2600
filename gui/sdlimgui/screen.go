@@ -77,8 +77,8 @@ type screen struct {
 	// the number of frames the emulation currently is ahead
 	frameQueueSlack int
 
-	// the frame number of the last frame generated for rendering
-	lastFrameGenerated atomic.Int64
+	// the frame number of the last frame generated for video recording
+	lastVideoFrame atomic.Int64
 }
 
 const (
@@ -466,6 +466,24 @@ func (scr *screen) NewScanline(scanline int) error {
 
 // SetPixels implements the television.PixelRenderer interface.
 func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
+	if scr.img.rnd.isRecording() {
+		scr.crit.section.Lock()
+		defer func() {
+			scr.crit.section.Unlock()
+			scr.emuWait <- true
+			<-scr.emuWaitAck
+		}()
+		scr.crit.plotIdx = 0
+		if len(sig) > len(scr.crit.frameQueue[0].sigs) {
+			panic("signal framequeue in sdlimgui is not large enough for the number of signals from the TV")
+		}
+		copy(scr.crit.frameQueue[scr.crit.plotIdx].sigs, sig)
+		scr.crit.frameQueue[scr.crit.plotIdx].num = scr.crit.frameInfo.FrameNum
+		scr.crit.lastY = last / specification.ClksScanline
+		scr.crit.lastX = last % specification.ClksScanline
+		return nil
+	}
+
 	// wait flag indicates whether to slow down the emulation
 	// * will only be set in playmode
 	wait := false
@@ -476,6 +494,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	if scr.img.isPlaymode() {
 		switch scr.img.dbg.State() {
 		case govern.Rewinding:
+			wait = true
 			fallthrough
 		case govern.Paused:
 			scr.crit.queueRecovery = scr.crit.frameQueueLen
@@ -485,11 +504,9 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 				scr.crit.queueRecovery--
 			}
 
-			if !scr.img.rnd.isRecording() {
-				scr.crit.plotIdx++
-				if scr.crit.plotIdx >= scr.crit.frameQueueLen || scr.crit.plotIdx >= len(scr.crit.frameQueue) {
-					scr.crit.plotIdx = 0
-				}
+			scr.crit.plotIdx++
+			if scr.crit.plotIdx >= scr.crit.frameQueueLen || scr.crit.plotIdx >= len(scr.crit.frameQueue) {
+				scr.crit.plotIdx = 0
 			}
 
 			// if plot index has crashed into the render index then set wait flag
@@ -676,8 +693,6 @@ func (scr *screen) generatePresentationPixels(idx int) {
 
 		offset += 4
 	}
-
-	scr.lastFrameGenerated.Store(int64(scr.crit.frameQueue[idx].num))
 }
 
 // copy pixels from queue to the live copy.
@@ -689,6 +704,25 @@ func (scr *screen) copyPixelsDebugmode() {
 
 // copy pixels from queue to the live copy.
 func (scr *screen) copyPixelsPlaymode() {
+	if scr.img.rnd.isRecording() {
+		select {
+		case <-scr.emuWait:
+			scr.emuWaitAck <- true
+		default:
+		}
+		scr.crit.section.Lock()
+		defer scr.crit.section.Unlock()
+		scr.crit.renderIdx = scr.crit.plotIdx
+		scr.generatePresentationPixels(scr.crit.renderIdx)
+
+		if scr.img.dbg.State() != govern.Running {
+			scr.lastVideoFrame.Store(int64(-1))
+		} else {
+			scr.lastVideoFrame.Store(int64(scr.crit.frameQueue[scr.crit.renderIdx].num))
+		}
+		return
+	}
+
 	// check if emulation is running slowly. if it is then we disable some
 	// rendering options that would be confusing because of the slow running
 	fps, hz := scr.img.dbg.VCS().TV.GetActualFPS()
@@ -750,11 +784,10 @@ func (scr *screen) copyPixelsPlaymode() {
 		scr.crit.prevRenderIdx[0] = scr.crit.renderIdx
 
 		// advance render index
-		if !scr.img.rnd.isRecording() {
-			scr.crit.renderIdx++
-			if scr.crit.renderIdx >= scr.crit.frameQueueLen || scr.crit.renderIdx >= len(scr.crit.frameQueue) {
-				scr.crit.renderIdx = 0
-			}
+		scr.crit.renderIdx = scr.crit.plotIdx
+		scr.crit.renderIdx++
+		if scr.crit.renderIdx >= scr.crit.frameQueueLen || scr.crit.renderIdx >= len(scr.crit.frameQueue) {
+			scr.crit.renderIdx = 0
 		}
 
 		// render index has bumped into the plotting index. revert render index
