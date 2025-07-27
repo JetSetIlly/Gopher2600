@@ -90,30 +90,30 @@ func step(t *testing.T, mc *cpu.CPU) {
 func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	// SEC; CLC; CLI; SEI; SED; CLD; CLV
 	origin = mem.putInstructions(origin, 0x38, 0x18, 0x58, 0x78, 0xf8, 0xd8, 0xb8)
 	step(t, mc) // SEC
-	rtest.EquateRegisters(t, mc.Status, "sv-BdiZC")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIzC")
 	step(t, mc) // CLC
-	rtest.EquateRegisters(t, mc.Status, "sv-BdiZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIzc")
 	step(t, mc) // CLI
-	rtest.EquateRegisters(t, mc.Status, "sv-BdiZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-Bdizc")
 	step(t, mc) // SEI
-	rtest.EquateRegisters(t, mc.Status, "sv-BdIZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIzc")
 	step(t, mc) // SED
-	rtest.EquateRegisters(t, mc.Status, "sv-BDIZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BDIzc")
 	step(t, mc) // CLD
-	rtest.EquateRegisters(t, mc.Status, "sv-BdIZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIzc")
 	step(t, mc) // CLV
-	rtest.EquateRegisters(t, mc.Status, "sv-BdIZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIzc")
 
 	// PHP; PLP
 	_ = mem.putInstructions(origin, 0x08, 0x28)
 	step(t, mc) // PHP
-	rtest.EquateRegisters(t, mc.Status, "sv-BdIZc")
-	rtest.EquateRegisters(t, mc.SP.Data, 254)
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIzc")
+	rtest.EquateRegisters(t, mc.SP.Data, 0xfc)
 
 	// mangle status register
 	mc.Status.Sign = true
@@ -122,16 +122,16 @@ func testStatusInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 
 	// restore status register
 	step(t, mc) // PLP
-	rtest.EquateRegisters(t, mc.SP.Data, 255)
+	rtest.EquateRegisters(t, mc.SP.Data, 0xfd)
 
 	// break flag is always set on PLP
-	rtest.EquateRegisters(t, mc.Status, "sv-BdIZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIzc")
 }
 
 func testRegsiterArithmetic(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	// LDA immediate; ADC immediate
 	origin = mem.putInstructions(origin, 0xa9, 1, 0x69, 10)
@@ -149,7 +149,7 @@ func testRegsiterArithmetic(t *testing.T, mc *cpu.CPU, mem *testMem) {
 func testRegsiterBitwiseInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	// ORA immediate; EOR immediate; AND immediate
 	origin = mem.putInstructions(origin, 0x09, 0xff, 0x49, 0xf0, 0x29, 0x01)
@@ -165,34 +165,34 @@ func testRegsiterBitwiseInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	origin = mem.putInstructions(origin, 0x0a, 0x4a, 0x4a)
 	step(t, mc) // ASL
 	rtest.EquateRegisters(t, mc.A, 2)
-	rtest.EquateRegisters(t, mc.Status, "sv-Bdizc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIzc")
 	step(t, mc) // LSR
 	rtest.EquateRegisters(t, mc.A, 1)
-	rtest.EquateRegisters(t, mc.Status, "sv-Bdizc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIzc")
 	step(t, mc) // LSR
 	rtest.EquateRegisters(t, mc.A, 0)
-	rtest.EquateRegisters(t, mc.Status, "sv-BdiZC")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIZC")
 
 	// ROL implied; ROR implied; ROR implied; ROR implied
 	_ = mem.putInstructions(origin, 0x2a, 0x6a, 0x6a, 0x6a)
 	step(t, mc) // ROL
 	rtest.EquateRegisters(t, mc.A, 1)
-	rtest.EquateRegisters(t, mc.Status, "sv-Bdizc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIzc")
 	step(t, mc) // ROR
 	rtest.EquateRegisters(t, mc.A, 0)
-	rtest.EquateRegisters(t, mc.Status, "sv-BdiZC")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIZC")
 	step(t, mc) // ROR
 	rtest.EquateRegisters(t, mc.A, 128)
-	rtest.EquateRegisters(t, mc.Status, "Sv-Bdizc")
+	rtest.EquateRegisters(t, mc.Status, "Sv-BdIzc")
 	step(t, mc) // ROR
 	rtest.EquateRegisters(t, mc.A, 64)
-	rtest.EquateRegisters(t, mc.Status, "sv-Bdizc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIzc")
 }
 
 func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	// LDX immediate; INX; DEX
 	origin = mem.putInstructions(origin, 0xa2, 5, 0xe8, 0xca)
@@ -202,16 +202,16 @@ func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	rtest.EquateRegisters(t, mc.X, 6)
 	step(t, mc) // DEX
 	rtest.EquateRegisters(t, mc.X, 5)
-	rtest.EquateRegisters(t, mc.Status, "sv-Bdizc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIzc")
 
 	// PHA; LDA immediate; PLA
 	origin = mem.putInstructions(origin, 0xa9, 5, 0x48, 0xa9, 0, 0x68)
 	step(t, mc) // LDA #5
 	step(t, mc) // PHA
-	rtest.EquateRegisters(t, mc.SP.Data, 254)
+	rtest.EquateRegisters(t, mc.SP.Data, 0xfc)
 	step(t, mc) // LDA #0
 	rtest.EquateRegisters(t, mc.A, 0)
-	rtest.EquateRegisters(t, mc.Status, "sv-BdiZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIZc")
 	step(t, mc) // PLA
 	rtest.EquateRegisters(t, mc.A, 5)
 
@@ -235,7 +235,7 @@ func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	// TSX; LDX immediate; TXS
 	_ = mem.putInstructions(origin, 0xba, 0xa2, 100, 0x9a)
 	step(t, mc) // TSX
-	rtest.EquateRegisters(t, mc.X, 255)
+	rtest.EquateRegisters(t, mc.X, 0xfd)
 	step(t, mc) // LDX #100
 	step(t, mc) // TXS
 	rtest.EquateRegisters(t, mc.SP.Data, 100)
@@ -244,7 +244,7 @@ func testImmediateImplied(t *testing.T, mc *cpu.CPU, mem *testMem) {
 func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	mem.putInstructions(0x0100, 123, 43)
 	mem.putInstructions(0x01a2, 47)
@@ -319,7 +319,7 @@ func testOtherAddressingModes(t *testing.T, mc *cpu.CPU, mem *testMem) {
 func testPostIndexedIndirect(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	mem.putInstructions(0xee00, 0x01, 0x02, 0x03)
 
@@ -336,7 +336,7 @@ func testPostIndexedIndirect(t *testing.T, mc *cpu.CPU, mem *testMem) {
 func testStorageInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	// LDA immediate; STA absolute
 	origin = mem.putInstructions(origin, 0xa9, 0x54, 0x8d, 0x00, 0x01)
@@ -370,32 +370,32 @@ func testStorageInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 func testBranching(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	origin = 0
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 	_ = mem.putInstructions(origin, 0x10, 0x10)
 	step(t, mc) // BPL $10
 	rtest.EquateRegisters(t, mc.PC, 0x12)
 
 	origin = 0
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 	_ = mem.putInstructions(origin, 0x50, 0x10)
 	step(t, mc) // BVC $10
 	rtest.EquateRegisters(t, mc.PC, 0x12)
 
 	origin = 0
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 	_ = mem.putInstructions(origin, 0x90, 0x10)
 	step(t, mc) // BCC $10
 	rtest.EquateRegisters(t, mc.PC, 0x12)
 
 	origin = 0
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 	_ = mem.putInstructions(origin, 0x38, 0xb0, 0x10)
 	step(t, mc) // SEC
 	step(t, mc) // BCS $10
@@ -403,7 +403,7 @@ func testBranching(t *testing.T, mc *cpu.CPU, mem *testMem) {
 
 	origin = 0
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 	_ = mem.putInstructions(origin, 0xe8, 0xd0, 0x10)
 	step(t, mc) // INX
 	step(t, mc) // BNE $10
@@ -411,7 +411,7 @@ func testBranching(t *testing.T, mc *cpu.CPU, mem *testMem) {
 
 	origin = 0
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 	_ = mem.putInstructions(origin, 0xca, 0x30, 0x10)
 	step(t, mc) // DEX
 	step(t, mc) // BMI $10
@@ -424,7 +424,7 @@ func testBranching(t *testing.T, mc *cpu.CPU, mem *testMem) {
 
 	origin = 0
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 	// fudging overflow test
 	mc.Status.Overflow = true
 	_ = mem.putInstructions(origin, 0x70, 0x10)
@@ -435,10 +435,10 @@ func testBranching(t *testing.T, mc *cpu.CPU, mem *testMem) {
 func testBranchingBackwards(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	origin = 0x20
 	err := mc.LoadPC(0x20)
@@ -462,7 +462,7 @@ func testBranchingBackwards(t *testing.T, mc *cpu.CPU, mem *testMem) {
 func testBranchingPageFaults(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	// BNE backwards - with PC wrap (causing a page fault)
 	origin = 0x20
@@ -489,7 +489,7 @@ func testBranchingPageFaults(t *testing.T, mc *cpu.CPU, mem *testMem) {
 func testJumps(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	// JMP absolute
 	_ = mem.putInstructions(origin, 0x4c, 0x00, 0x01)
@@ -499,7 +499,7 @@ func testJumps(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	// JMP indirect
 	origin = 0
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	mem.putInstructions(0x0050, 0x49, 0x01)
 	_ = mem.putInstructions(origin, 0x6c, 0x50, 0x00)
@@ -509,7 +509,7 @@ func testJumps(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	// JMP indirect (bug)
 	origin = 0
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	mem.putInstructions(0x01FF, 0x03)
 	mem.putInstructions(0x0100, 0x00)
@@ -521,52 +521,52 @@ func testJumps(t *testing.T, mc *cpu.CPU, mem *testMem) {
 func testComparisonInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	// CMP immediate (equality)
 	origin = mem.putInstructions(origin, 0xc9, 0x00)
 	step(t, mc) // CMP $00
-	rtest.EquateRegisters(t, mc.Status, "sv-BdiZC")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIZC")
 
 	// LDA immediate; CMP immediate
 	origin = mem.putInstructions(origin, 0xa9, 0xf6, 0xc9, 0x18)
 	step(t, mc) // LDA $F6
 	step(t, mc) // CMP $10
-	rtest.EquateRegisters(t, mc.Status, "Sv-BdizC")
+	rtest.EquateRegisters(t, mc.Status, "Sv-BdIzC")
 
 	// LDX immediate; CMP immediate
 	origin = mem.putInstructions(origin, 0xa2, 0xf6, 0xe0, 0x18)
 	step(t, mc) // LDX $F6
 	step(t, mc) // CMP $10
-	rtest.EquateRegisters(t, mc.Status, "Sv-BdizC")
+	rtest.EquateRegisters(t, mc.Status, "Sv-BdIzC")
 
 	// LDY immediate; CMP immediate
 	origin = mem.putInstructions(origin, 0xa0, 0xf6, 0xc0, 0x18)
 	step(t, mc) // LDY $F6
 	step(t, mc) // CMP $10
-	rtest.EquateRegisters(t, mc.Status, "Sv-BdizC")
+	rtest.EquateRegisters(t, mc.Status, "Sv-BdIzC")
 
 	// LDA immediate; CMP immediate
 	origin = mem.putInstructions(origin, 0xa9, 0x18, 0xc9, 0xf6)
 	step(t, mc) // LDA $F6
 	step(t, mc) // CMP $10
-	rtest.EquateRegisters(t, mc.Status, "sv-Bdizc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIzc")
 
 	// BIT zero page
 	origin = mem.putInstructions(origin, 0x24, 0x01)
 	step(t, mc) // BIT $01
-	rtest.EquateRegisters(t, mc.Status, "sv-BdiZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIZc")
 
 	// BIT immediate
 	_ = mem.putInstructions(origin, 0x24, 0x01)
 	step(t, mc) // BIT $01
-	rtest.EquateRegisters(t, mc.Status, "sv-BdiZc")
+	rtest.EquateRegisters(t, mc.Status, "sv-BdIZc")
 }
 
 func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	// JSR absolute
 	_ = mem.putInstructions(origin, 0x20, 0x00, 0x01)
@@ -574,20 +574,20 @@ func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	rtest.EquateRegisters(t, mc.PC, 0x0100)
 	mem.assert(t, 0x01ff, 0x00)
 	mem.assert(t, 0x01fe, 0x02)
-	rtest.EquateRegisters(t, mc.SP.Data, 253)
+	rtest.EquateRegisters(t, mc.SP.Data, 254)
 
 	_ = mem.putInstructions(0x100, 0x60)
 	step(t, mc) // RTS
 	rtest.EquateRegisters(t, mc.PC, 0x0003)
 	mem.assert(t, 0x01ff, 0x00)
 	mem.assert(t, 0x01fe, 0x02)
-	rtest.EquateRegisters(t, mc.SP.Data, 255)
+	rtest.EquateRegisters(t, mc.SP.Data, 0x00)
 }
 
 func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	_ = mem.putInstructions(origin, 0xf8, 0xa9, 0x20, 0x38, 0xe9, 0x01)
 	step(t, mc) // SED
@@ -600,7 +600,7 @@ func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *testMem) {
 func testBRK(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	_ = mem.putInstructions(origin, 0x69, 0x01, 0x00)
 	step(t, mc) // ADC #$01
@@ -613,7 +613,7 @@ func testBRK(t *testing.T, mc *cpu.CPU, mem *testMem) {
 func testKIL(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	mem.Clear()
-	mc.Reset()
+	mc.Reset(nil)
 
 	_ = mem.putInstructions(origin, 0x02, 0x69, 0x01)
 	step(t, mc) // KIL

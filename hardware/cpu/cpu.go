@@ -135,26 +135,41 @@ func (mc *CPU) SetRDY(rdy bool) {
 	mc.RdyFlg = rdy
 }
 
+type Random interface {
+	Intn(int) int
+}
+
 // Reset reinitialises all registers. Does not load PC with RESET vector. Use
 // cpu.LoadPCIndirect(cpubus.Reset) when appropriate.
-func (mc *CPU) Reset() {
+func (mc *CPU) Reset(rnd Random) {
 	mc.LastResult.Reset()
 	mc.Interrupted = true
 	mc.Killed = false
 
-	mc.PC.Load(0)
-	mc.A.Load(0)
-	mc.X.Load(0)
-	mc.Y.Load(0)
-	mc.SP.Load(0xff)
-	mc.Status.Reset()
+	if rnd == nil {
+		mc.PC.Load(0x0000)
+		mc.A.Load(0x00)
+		mc.X.Load(0x00)
+		mc.Y.Load(0x00)
+		mc.Status.Load(0x00)
+	} else {
+		mc.PC.Load(uint16(rnd.Intn(0xffff)))
+		mc.A.Load(uint8(rnd.Intn(0xff)))
+		mc.X.Load(uint8(rnd.Intn(0xff)))
+		mc.Y.Load(uint8(rnd.Intn(0xff)))
+		mc.Status.Load(uint8(rnd.Intn(0xff)))
+	}
 
-	mc.Status.Zero = mc.A.IsZero()
-	mc.Status.Sign = mc.A.IsNegative()
+	// the stack pointer always starts with a value of 0xfd
+	mc.SP.Load(0xfd)
+
+	// the interrupt disable flag is always set on reset
+	// note that the zero and negative flags remain undefined and is unaffected by the value in the
+	// A or any other register
+	mc.Status.InterruptDisable = true
+
 	mc.RdyFlg = true
 	mc.cycleCallback = nil
-
-	// not touching NoFlowControl
 }
 
 // HasReset checks whether the CPU has recently been reset.

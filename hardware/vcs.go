@@ -215,22 +215,16 @@ func (vcs *VCS) Reset() error {
 	// memory may have a cartridge attached - we wouldn't want to lose that.
 
 	vcs.Mem.Reset()
-	vcs.CPU.Reset()
+	if vcs.Env.Prefs.RandomState.Get().(bool) {
+		vcs.CPU.Reset(vcs.Env.Random)
+	} else {
+		vcs.CPU.Reset(nil)
+	}
 	vcs.RIOT.Timer.Reset()
 
 	// reset of ports must happen after reset of memory because ports will
 	// update memory to the current state of the peripherals
 	vcs.RIOT.Ports.ResetPeripherals()
-
-	// randomise CPU registers
-	if vcs.Env.Prefs.RandomState.Get().(bool) {
-		vcs.CPU.PC.Load(uint16(vcs.Env.Random.Intn(0xffff)))
-		vcs.CPU.A.Load(uint8(vcs.Env.Random.Intn(0xff)))
-		vcs.CPU.X.Load(uint8(vcs.Env.Random.Intn(0xff)))
-		vcs.CPU.Y.Load(uint8(vcs.Env.Random.Intn(0xff)))
-		vcs.CPU.SP.Load(uint8(vcs.Env.Random.Intn(0xff)))
-		vcs.CPU.Status.Load(uint8(vcs.Env.Random.Intn(0xff)))
-	}
 
 	// reset PC using reset address in cartridge memory
 	err = vcs.CPU.LoadPCIndirect(cpu.Reset)

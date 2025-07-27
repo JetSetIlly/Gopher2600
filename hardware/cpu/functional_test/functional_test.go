@@ -116,7 +116,7 @@ func TestFunctional(t *testing.T) {
 		totalCycles = 0
 		startTime = time.Now()
 
-		mc.Reset()
+		mc.Reset(nil)
 		mc.LoadPCIndirect(cpu.Reset)
 
 		for {

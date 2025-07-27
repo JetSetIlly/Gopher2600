@@ -87,11 +87,6 @@ func (sr Status) String() string {
 	return s.String()
 }
 
-// Reset status flags to initial state.
-func (sr *Status) Reset() {
-	sr.Load(0x00)
-}
-
 // Value converts the StatusRegister struct into a value suitable for pushing
 // onto the stack.
 func (sr Status) Value() uint8 {

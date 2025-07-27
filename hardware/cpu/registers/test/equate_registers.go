@@ -79,7 +79,7 @@ func EquateRegisters(t *testing.T, value, expectedValue any) {
 				t.Errorf("unexpected StatusRegister flag (decimal mode)")
 			}
 			if expectedValue[5] != 'i' && !value.InterruptDisable || expectedValue[5] != 'I' && value.InterruptDisable {
-				t.Errorf("unexpected StatusRegister flag (interrupt diable)")
+				t.Errorf("unexpected StatusRegister flag (interrupt disable)")
 			}
 			if expectedValue[6] != 'z' && !value.Zero || expectedValue[6] != 'Z' && value.Zero {
 				t.Errorf("unexpected StatusRegister flag (zero)")

@@ -314,7 +314,7 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 			memtop := origin + uint16(len(bank.Data)) - 1
 
 			// reset CPU for each bank/origin
-			mc.Reset()
+			mc.Reset(nil)
 
 			// loop over entire address space for cartridge. even then bank
 			// sizes are smaller than the address space it makes things easier
