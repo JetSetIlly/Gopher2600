@@ -13,23 +13,17 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package random should be used in preference to the math/rand package when a
-// random number is required inside the emulation.
+// Package random is used instead of the math/rand or math/rand/v2 packages when
+// a random number is required inside the emulation.
 //
-// There are two functions belonging to the Rewind type that return random
-// numbers:
+// The Random type is an instance of the standard rand.Rand type and in
+// addition, provides the Rewindable() function.
 //
-// Rewindable() returns numbers based on the current television coordinates.
-// The number will always return the same number for the same coordinates. As
-// such it is compatible with the emulator's rewind system.
+// The Rewindable() function returns numbers based on the current television
+// coordinates. The number will always return the same number for the same
+// coordinates. As such it is compatible with the emulator's rewind system.
 //
-// NoRewind() returns random numbers regardless of the current television
-// coordinates. It is therefore, not compatiable with the emulator's rewind
-// system.
-//
-// Parallel emulators should return the same sequence of random numbers even if
-// NoRewind() is used.
-//
-// If the same random numbers are required every single time then set ZeroSeed
-// to true. This is useful for testing purposes.
+// If predictable random numbers are required from the Rewindable() function
+// then set ZeroSeed to true. This can be enabled and disabled at any time.
+// Predicable random numbers is useful for testing purposes.
 package random

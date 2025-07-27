@@ -103,12 +103,12 @@ func (cart *cdf) newCDFstatic(env *environment.Environment, version version, car
 	// randomise initial state if preference is set
 	if env.Prefs.RandomState.Get().(bool) {
 		for i := range stc.dataRAM.data {
-			stc.dataRAM.data[i] = uint8(env.Random.NoRewind(0xff))
+			stc.dataRAM.data[i] = uint8(env.Random.Intn(0xff))
 		}
 
 		if stc.hasVariableSegment() {
 			for i := range stc.variablesRAM.data {
-				stc.variablesRAM.data[i] = uint8(env.Random.NoRewind(0xff))
+				stc.variablesRAM.data[i] = uint8(env.Random.Intn(0xff))
 			}
 		}
 	}

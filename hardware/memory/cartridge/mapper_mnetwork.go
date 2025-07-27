@@ -154,7 +154,7 @@ func (cart *mnetwork) Reset() {
 	for b := range cart.state.ram256byte {
 		for i := range cart.state.ram256byte[b] {
 			if cart.env.Prefs.RandomState.Get().(bool) {
-				cart.state.ram256byte[b][i] = uint8(cart.env.Random.NoRewind(0xff))
+				cart.state.ram256byte[b][i] = uint8(cart.env.Random.Intn(0xff))
 			} else {
 				cart.state.ram256byte[b][i] = 0
 			}
@@ -163,7 +163,7 @@ func (cart *mnetwork) Reset() {
 
 	for i := range cart.state.ram1k {
 		if cart.env.Prefs.RandomState.Get().(bool) {
-			cart.state.ram1k[i] = uint8(cart.env.Random.NoRewind(0xff))
+			cart.state.ram1k[i] = uint8(cart.env.Random.Intn(0xff))
 		} else {
 			cart.state.ram1k[i] = 0
 		}

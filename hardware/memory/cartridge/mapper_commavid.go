@@ -111,7 +111,7 @@ func (cart *commavid) Reset() {
 	// always starting with random state. this is because Video Life, one of
 	// the few original CommaVid cartridges, expects it for the opening effect
 	for i := range cart.state.ram {
-		cart.state.ram[i] = uint8(cart.env.Random.NoRewind(0xff))
+		cart.state.ram[i] = uint8(cart.env.Random.Intn(0xff))
 	}
 }
 

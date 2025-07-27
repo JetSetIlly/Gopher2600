@@ -23,10 +23,10 @@ import (
 	"github.com/jetsetilly/gopher2600/test"
 )
 
-type mockTV struct {
+type tv struct {
 }
 
-func (m *mockTV) GetCoords() coords.TelevisionCoords {
+func (m *tv) GetCoords() coords.TelevisionCoords {
 	return coords.TelevisionCoords{
 		Frame:    100,
 		Scanline: 32,
@@ -35,8 +35,10 @@ func (m *mockTV) GetCoords() coords.TelevisionCoords {
 }
 
 func TestRandom(t *testing.T) {
-	a := random.NewRandom(&mockTV{})
-	b := random.NewRandom(&mockTV{})
+	a := random.NewRandom(&tv{})
+	b := random.NewRandom(&tv{})
+	a.ZeroSeed = true
+	b.ZeroSeed = true
 
 	for i := 1; i < 256; i++ {
 		test.ExpectEquality(t, a.Rewindable(i), b.Rewindable(i))

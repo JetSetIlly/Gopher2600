@@ -139,13 +139,13 @@ func (cart *atari) ID() string {
 func (cart *atari) reset() {
 	for i := range cart.state.ram {
 		if cart.env.Prefs.RandomState.Get().(bool) {
-			cart.state.ram[i] = uint8(cart.env.Random.NoRewind(0xff))
+			cart.state.ram[i] = uint8(cart.env.Random.Intn(0xff))
 		} else {
 			cart.state.ram[i] = 0
 		}
 	}
 	if cart.env.Prefs.RandomState.Get().(bool) {
-		cart.state.bank = cart.env.Random.NoRewind(len(cart.banks))
+		cart.state.bank = cart.env.Random.Intn(len(cart.banks))
 	} else {
 		err := cart.SetBank(cart.env.Loader.Bank)
 		if err != nil {

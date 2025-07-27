@@ -85,10 +85,10 @@ func (r *Registers) reset(rand *random.Random) {
 
 	for i := range r.Fetcher {
 		if rand != nil {
-			r.Fetcher[i].Low = byte(rand.NoRewind(0xff))
-			r.Fetcher[i].Hi = byte(rand.NoRewind(0xff))
-			r.Fetcher[i].Top = byte(rand.NoRewind(0xff))
-			r.Fetcher[i].Bottom = byte(rand.NoRewind(0xff))
+			r.Fetcher[i].Low = byte(rand.Intn(0xff))
+			r.Fetcher[i].Hi = byte(rand.Intn(0xff))
+			r.Fetcher[i].Top = byte(rand.Intn(0xff))
+			r.Fetcher[i].Bottom = byte(rand.Intn(0xff))
 		} else {
 			r.Fetcher[i].Low = 0
 			r.Fetcher[i].Hi = 0
@@ -99,10 +99,10 @@ func (r *Registers) reset(rand *random.Random) {
 
 	for i := range r.FracFetcher {
 		if rand != nil {
-			r.FracFetcher[i].Low = byte(rand.NoRewind(0xff))
-			r.FracFetcher[i].Hi = byte(rand.NoRewind(0xff)) & 0x0f
-			r.FracFetcher[i].Increment = byte(rand.NoRewind(0xff))
-			r.FracFetcher[i].Count = byte(rand.NoRewind(0xff))
+			r.FracFetcher[i].Low = byte(rand.Intn(0xff))
+			r.FracFetcher[i].Hi = byte(rand.Intn(0xff)) & 0x0f
+			r.FracFetcher[i].Increment = byte(rand.Intn(0xff))
+			r.FracFetcher[i].Count = byte(rand.Intn(0xff))
 		} else {
 			r.FracFetcher[i].Low = 0
 			r.FracFetcher[i].Hi = 0
@@ -113,9 +113,9 @@ func (r *Registers) reset(rand *random.Random) {
 
 	for i := range r.MusicFetcher {
 		if rand != nil {
-			r.MusicFetcher[i].Waveform = uint32(rand.NoRewind(0x7fffffff))
-			r.MusicFetcher[i].Freq = uint32(rand.NoRewind(0x7fffffff))
-			r.MusicFetcher[i].Count = uint32(rand.NoRewind(0x7fffffff))
+			r.MusicFetcher[i].Waveform = uint32(rand.Intn(0x7fffffff))
+			r.MusicFetcher[i].Freq = uint32(rand.Intn(0x7fffffff))
+			r.MusicFetcher[i].Count = uint32(rand.Intn(0x7fffffff))
 		} else {
 			r.MusicFetcher[i].Waveform = 0
 			r.MusicFetcher[i].Freq = 0
@@ -124,7 +124,7 @@ func (r *Registers) reset(rand *random.Random) {
 	}
 
 	if rand != nil {
-		r.RNG.Value = uint32(rand.NoRewind(0x7fffffff))
+		r.RNG.Value = uint32(rand.Intn(0x7fffffff))
 	} else {
 		r.RNG.Value = 0
 	}

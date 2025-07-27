@@ -224,12 +224,12 @@ func (vcs *VCS) Reset() error {
 
 	// randomise CPU registers
 	if vcs.Env.Prefs.RandomState.Get().(bool) {
-		vcs.CPU.PC.Load(uint16(vcs.Env.Random.NoRewind(0xffff)))
-		vcs.CPU.A.Load(uint8(vcs.Env.Random.NoRewind(0xff)))
-		vcs.CPU.X.Load(uint8(vcs.Env.Random.NoRewind(0xff)))
-		vcs.CPU.Y.Load(uint8(vcs.Env.Random.NoRewind(0xff)))
-		vcs.CPU.SP.Load(uint8(vcs.Env.Random.NoRewind(0xff)))
-		vcs.CPU.Status.Load(uint8(vcs.Env.Random.NoRewind(0xff)))
+		vcs.CPU.PC.Load(uint16(vcs.Env.Random.Intn(0xffff)))
+		vcs.CPU.A.Load(uint8(vcs.Env.Random.Intn(0xff)))
+		vcs.CPU.X.Load(uint8(vcs.Env.Random.Intn(0xff)))
+		vcs.CPU.Y.Load(uint8(vcs.Env.Random.Intn(0xff)))
+		vcs.CPU.SP.Load(uint8(vcs.Env.Random.Intn(0xff)))
+		vcs.CPU.Status.Load(uint8(vcs.Env.Random.Intn(0xff)))
 	}
 
 	// reset PC using reset address in cartridge memory

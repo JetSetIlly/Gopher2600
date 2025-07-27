@@ -100,8 +100,8 @@ func (tmr *Timer) Reset() {
 
 	if tmr.env.Prefs.RandomState.Get().(bool) {
 		tmr.divider = T1024T
-		tmr.ticksRemaining = tmr.env.Random.NoRewind(0xffff)
-		tmr.mem.ChipWrite(chipbus.INTIM, uint8(tmr.env.Random.NoRewind(0xff)))
+		tmr.ticksRemaining = int(tmr.env.Random.Intn(0xffff))
+		tmr.mem.ChipWrite(chipbus.INTIM, uint8(tmr.env.Random.Intn(0xff)))
 	} else {
 		tmr.divider = T1024T
 		tmr.ticksRemaining = int(T1024T)

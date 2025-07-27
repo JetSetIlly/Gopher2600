@@ -217,7 +217,7 @@ func newElfMemory(env *environment.Environment) *elfMemory {
 	if mem.env.Prefs.RandomState.Get().(bool) {
 		data := mem.sram.Data()
 		for i := range *data {
-			(*data)[i] = uint8(mem.env.Random.NoRewind(0xff))
+			(*data)[i] = uint8(mem.env.Random.Intn(0xff))
 		}
 	}
 

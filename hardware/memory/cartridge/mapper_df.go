@@ -93,7 +93,7 @@ func (cart *df) Plumb(env *environment.Environment) {
 func (cart *df) Reset() {
 	for i := range cart.state.ram {
 		if cart.env.Prefs.RandomState.Get().(bool) {
-			cart.state.ram[i] = uint8(cart.env.Random.NoRewind(0xff))
+			cart.state.ram[i] = uint8(cart.env.Random.Intn(0xff))
 		} else {
 			cart.state.ram[i] = 0
 		}

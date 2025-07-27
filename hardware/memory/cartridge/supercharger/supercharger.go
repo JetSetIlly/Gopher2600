@@ -118,7 +118,7 @@ func (cart *Supercharger) Plumb(env *environment.Environment) {
 func (cart *Supercharger) Reset() {
 	for b := range cart.state.ram {
 		for i := range cart.state.ram[b] {
-			cart.state.ram[b][i] = uint8(cart.env.Random.NoRewind(0xff))
+			cart.state.ram[b][i] = uint8(cart.env.Random.Intn(0xff))
 		}
 	}
 
