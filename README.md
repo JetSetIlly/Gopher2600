@@ -4,13 +4,13 @@
 
 Gopher2600 is an emulator for the Atari 2600. Accuracy is very high and and there are no known problems with the emulation of the 6507, TIA or RIOT chips.
 
-The emulator is suitable for both playing 2600 games and for developing new games. In particular, the debugging features available for developers of CDFJ, DPC+ and ELF type ROMs that make use of an ARM coprocessor, are unique.
+The emulator is suitable for both playing 2600 games and for developing new games. In particular, the debugging features available for developers of CDFJ, DPC+ and ELF type cartridges (cartridges that make use of an ARM coprocessor) are unique.
 
 Most ["bank switching"](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supported-Cartridge-Mappers) types are supported, including the above mentioned CDFJ, DPC+ and ELF types. Also notable is the support for [Supercharger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supercharger) and in particular, the loading of Supercharger tapes stored as a WAV or MP3 file. Also supported is the [Movie Cart](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Movie-Cart)
 
 Games using [PlusROM](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/PlusROM) features are also supported.
 
-The [AtariVox and SaveKey](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/AtariVox-and-SaveKey) peripherals are emulated. Uniquely, the AtariVox voice features can be emulated with the third-party application `Festival`. While this is imperfect being able to hear feedback for AtariVox voice commands can be helpful. A subtitler is available. Again, this is imperfect and only shows phonetic spellings but sometimes this feedback can be helpful.
+The [AtariVox and SaveKey](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/AtariVox-and-SaveKey) peripherals are emulated. Uniquely, the AtariVox voice features can be emulated with the third-party application `Festival`. Although the voice reproduction is imperfect, it is helpful to hear feedback for AtariVox voice commands. A subtitler for the AtariVox voice output is also available. Again, this is imperfect and only shows phonetic spellings.
 
 The vintage CRT television, contemporaneous with the console, is emulated with a selection of interference effects and bevel images. This is an ongoing area of development and will be improved further in the future.
 
@@ -22,7 +22,7 @@ Over the course of its lifetime, the Atari2600 came in several versions which in
 
 For the player who wants to master a game quickly there is convenient [gameplay rewinding](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Rewinding). The rewinding feature is also available in the emulator's debugger in the form of a "timeline" window.
 
-Gameplay can also be [recorded and played back](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Recording-Gamplay). In addition to keeping gameplay sessions for future study or enjoyment, recordings are also useful for testing purposes during ROM development.
+Gameplay can also be [recorded and played back](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Recording-Gamplay). In addition to keeping gameplay sessions for future study or enjoyment, recordings are also useful for testing purposes during game development.
 
 The standard controllers are supported. The joystick, the paddle, the keypad and also Sega Genesis style [controllers](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Hand-Controllers-and-Front-Panel).
 
@@ -30,7 +30,7 @@ The graphical [debugger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Debu
 
 In addition to the graphical windows of the debugger, a terminal interface is provided.
 
-The most powerful use of the debugger however is the debugging and profiling of ROMs that use an ARM coprocessor (Harmony, PlusCart, etc.) When [compiled correctly](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Preparing-ARM-Enabled-Projects-for-the-Gopher2600-Debugger) Gopher2600 can use standard DWARF information to help profile performance; to identify incorrect code flow; and to identify incorrect use of the program's global and local variables.
+The most powerful use of the debugger however is the debugging and profiling of cartridges that use an ARM coprocessor (Harmony, PlusCart, etc.) When the game to be debugged is [compiled correctly](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Preparing-ARM-Enabled-Projects-for-the-Gopher2600-Debugger) Gopher2600 can use the DWARF information to  profile performance; to identify incorrect code flow; and to identify incorrect use of the program's global and local variables.
 
 ## Basic Usage
 
