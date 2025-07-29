@@ -116,7 +116,10 @@ func TestFunctional(t *testing.T) {
 		totalCycles = 0
 		startTime = time.Now()
 
-		mc.Reset(nil)
+		err := mc.Reset(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		for {
 			addr := mc.PC.Address()

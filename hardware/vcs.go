@@ -207,17 +207,17 @@ func (vcs *VCS) Reset() error {
 	vcs.Mem.TIA.SetPokeNotify(vcs.TIA)
 	vcs.Mem.RIOT.SetPokeNotify(vcs.RIOT)
 
-	// other areas of the VCS are simply reset because the emulation may have
-	// altered the part of the state that we do *not* want to reset. notably,
-	// memory may have a cartridge attached - we wouldn't want to lose that.
-
 	vcs.Mem.Reset()
-	if vcs.Env.Prefs.RandomState.Get().(bool) {
-		vcs.CPU.Reset(vcs.Env.Random)
-	} else {
-		vcs.CPU.Reset(nil)
-	}
 	vcs.RIOT.Timer.Reset()
+
+	if vcs.Env.Prefs.RandomState.Get().(bool) {
+		err = vcs.CPU.Reset(vcs.Env.Random)
+	} else {
+		err = vcs.CPU.Reset(nil)
+	}
+	if err != nil {
+		return err
+	}
 
 	// reset of ports must happen after reset of memory because ports will
 	// update memory to the current state of the peripherals
