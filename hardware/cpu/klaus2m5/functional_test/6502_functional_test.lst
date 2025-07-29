@@ -1,477 +1,6 @@
 AS65 Assembler for R6502 [1.42].                                     Page    1
 -------------------------- 6502_functional_test.a65 --------------------------
 
--------------------------------- Symbol Table --------------------------------
-
-              Symbol   Value        Decimal
-
-               absAN : $025f            607
-              absANa : $026b            619
-               absEO : $0263            611
-              absEOa : $026f            623
-              absflo : $0277            631
-               absOR : $025b            603
-              absORa : $0267            615
-              absrlo : $0273            627
-                abst : $0203            515
-                abs1 : $0218            536
-               abs7f : $021c            540
-                ada2 : $0203            515
-                adfc : $000c             12
-               adiy2 : $0058             88
-                adi2 : $0054             84
-                adrf : $0011             17
-                adrh : $0010             16
-                adrl : $000f             15
-                 ad1 : $000d             13
-                 ad2 : $000e             14
-         bin_rti_ret : $3469          13417
-               brcc1 : $071e           1822
-               brcc2 : $0721           1825
-               brcc3 : $0725           1829
-               brcc4 : $0728           1832
-               brcc5 : $072c           1836
-               brcc6 : $072f           1839
-               brcc7 : $0733           1843
-               brcc8 : $0736           1846
-               brcs1 : $069e           1694
-               brcs2 : $06a1           1697
-               brcs3 : $06a5           1701
-               brcs4 : $06a8           1704
-               brcs5 : $06ac           1708
-               brcs6 : $06af           1711
-               brcs7 : $06b3           1715
-               brcs8 : $06b6           1718
-               break : $0010             16
-              break2 : $3809          14345
-            brk_ret0 : $09dc           2524
-            brk_ret1 : $0a0b           2571
-               brmi1 : $06be           1726
-               brmi2 : $06c1           1729
-               brmi3 : $06c5           1733
-               brmi4 : $06c8           1736
-               brmi5 : $06cc           1740
-               brmi6 : $06cf           1743
-               brmi7 : $06d3           1747
-               brmi8 : $06d6           1750
-               brpl1 : $073e           1854
-               brpl2 : $0741           1857
-               brpl3 : $0745           1861
-               brpl4 : $0748           1864
-               brpl5 : $074c           1868
-               brpl6 : $074f           1871
-               brpl7 : $0753           1875
-               brpl8 : $0756           1878
-               brvc1 : $075e           1886
-AS65 Assembler for R6502 [1.42].                                     Page    2
--------------------------- 6502_functional_test.a65 --------------------------
-
-               brvc2 : $0761           1889
-               brvc3 : $0765           1893
-               brvc4 : $0768           1896
-               brvc5 : $076c           1900
-               brvc6 : $076f           1903
-               brvc7 : $0773           1907
-               brvc8 : $0776           1910
-               brvs1 : $06de           1758
-               brvs2 : $06e1           1761
-               brvs3 : $06e5           1765
-               brvs4 : $06e8           1768
-               brvs5 : $06ec           1772
-               brvs6 : $06ef           1775
-               brvs7 : $06f3           1779
-               brvs8 : $06f6           1782
-               brzc1 : $06fe           1790
-               brzc2 : $0701           1793
-               brzc3 : $0705           1797
-               brzc4 : $0708           1800
-               brzc5 : $070c           1804
-               brzc6 : $070f           1807
-               brzc7 : $0713           1811
-               brzc8 : $0716           1814
-               brzs1 : $067e           1662
-               brzs2 : $0681           1665
-               brzs3 : $0685           1669
-               brzs4 : $0688           1672
-               brzs5 : $068c           1676
-               brzs6 : $068f           1679
-               brzs7 : $0693           1683
-               brzs8 : $0696           1686
-                 br1 : $0619           1561
-                br11 : $0655           1621
-                br12 : $065a           1626
-                br13 : $065f           1631
-                br14 : $0670           1648
-                 br2 : $061e           1566
-                 br3 : $0623           1571
-                 br4 : $0634           1588
-               carry : $0001              1
-           check_ram : <macro>
-              chkadd : $35b6          13750
-              chkdad : $3483          13443
-               ckad1 : $35cb          13771
-            cmp_flag : <macro>
-        code_segment : $0400           1024   *
-            data_bss : $0209            521
-        data_bss_end : $027b            635
-        data_segment : $0200            512   *
-             decmode : $0008              8
-         dec_rti_ret : $3460          13408
-     disable_decimal : $0000              0   *
-     disable_selfmod : $0000              0   *
-            eor_flag : <macro>
-             ex_adci : $0212            530
-             ex_andi : $0209            521
-             ex_eori : $020c            524
-             ex_orai : $020f            527
-             ex_sbci : $0215            533
-                fASL : $0239            569
-                 fai : $0034             52
-                faid : $003c             60
-AS65 Assembler for R6502 [1.42].                                     Page    3
--------------------------- 6502_functional_test.a65 --------------------------
-
-                 fao : $0030             48
-                faod : $0038             56
-             far_ret : $090f           2319
-                  fc : $0001              1
-                fINC : $0256            598
-                fLDx : $021d            541
-                fLSR : $0245            581
-                  fn : $0080            128
-                 fnc : $0081            129
-                 fnv : $00c0            192
-                 fnz : $0082            130
-                fnzc : $0083            131
-                fROL : $0239            569
-               fROLc : $023f            575
-                fROR : $0245            581
-               fRORc : $024b            587
-                  fv : $0040             64
-                 fvz : $0042             66
-                  fz : $0002              2
-                 fzc : $0003              3
-              I_flag : $0003              3   *
-               indAN : $003c             60
-               indEO : $0044             68
-               indOR : $004c             76
-                indt : $0032             50
-                ind1 : $0026             38
-             ind_ret : $0964           2404
-              intdis : $0004              4
-                inwt : $003a             58
-                inw1 : $0030             48
-               irq_a : $000a             10
-            irq_trap : $37bf          14271
-               irq_x : $000b             11
-             jsr_ret : $099a           2458   *
-    load_data_direct : $0001              1   *
-           load_flag : <macro>
-               minus : $0080            128
-                  m8 : $00ff            255
-                 m8i : $00fb            251
-                nbr1 : $0628           1576
-               nbr11 : $0664           1636
-               nbr12 : $0667           1639
-               nbr13 : $066a           1642
-               nbr14 : $066d           1645
-                nbr2 : $062b           1579
-                nbr3 : $062e           1582
-                nbr4 : $0631           1585
-           next_test : <macro>
-            nmi_trap : $37b1          14257
-              overfl : $0040             64
-            psb_back : $0429           1065
-            psb_bwok : $040e           1038
-            psb_forw : $041a           1050
-            psb_fwok : $0438           1080
-            psb_test : $0433           1075
-         ptr_ind_ret : $3734          14132
-         ptr_tst_ind : $3732          14130
-         ROM_vectors : $0000              0   *
-                rASL : $0221            545
-           ram_chksm : $0201            513
-             ram_top : $ffff             -1   *
-           range_adr : $04e6           1254   *
-AS65 Assembler for R6502 [1.42].                                     Page    4
--------------------------- 6502_functional_test.a65 --------------------------
-
-           range_end : $0581           1409
-            range_fw : $0453           1107
-          range_loop : $0446           1094
-            range_ok : $0575           1397
-            range_op : $04e5           1253
-              report : $0000              0   *
-              reserv : $0020             32
-            res_trap : $37b7          14263
-                rINC : $0251            593
-                rLSR : $022d            557
-                rROL : $0221            545
-               rROLc : $0227            551
-                rROR : $022d            557
-               rRORc : $0233            563
-                sba2 : $0204            516
-               sbiy2 : $005a             90
-                sbi2 : $0056             86
-                 sb2 : $0012             18
-               set_a : <macro>
-             set_abs : <macro>
-            set_absx : <macro>
-              set_ax : <macro>
-              set_ay : <macro>
-            set_stat : <macro>
-               set_x : <macro>
-               set_y : <macro>
-               set_z : <macro>
-              set_zx : <macro>
-               start : $0400           1024
-             success : <macro>
-                tadd : $333b          13115
-               tadd1 : $334d          13133
-                tand : $2d35          11573
-               tand1 : $2d57          11607
-              tand10 : $2e6f          11887
-              tand11 : $2e8c          11916
-              tand12 : $2eab          11947
-              tand13 : $2ecb          11979
-              tand14 : $2ee9          12009
-              tand15 : $2f05          12037
-               tand2 : $2d79          11641
-               tand3 : $2d99          11673
-               tand4 : $2db9          11705
-               tand5 : $2ddb          11739
-               tand6 : $2dfd          11773
-               tand7 : $2e19          11801
-               tand8 : $2e35          11829
-               tand9 : $2e52          11858
-                tasl : $22d9           8921
-               tasl1 : $22f3           8947
-               tasl2 : $241d           9245
-               tasl3 : $243c           9276
-               tasl4 : $259d           9629
-               tasl5 : $25bf           9663
-               tasl6 : $2741          10049
-               tasl7 : $2760          10080
-               tasl8 : $28c1          10433
-               tasl9 : $28e3          10467
-                tdad : $339e          13214
-               tdad1 : $33b0          13232
-               tdad2 : $33c0          13248
-               tdad3 : $33c2          13250
-AS65 Assembler for R6502 [1.42].                                     Page    5
--------------------------- 6502_functional_test.a65 --------------------------
-
-               tdad4 : $33dc          13276
-               tdad5 : $33e1          13281
-               tdad6 : $3405          13317
-               tdad7 : $3419          13337
-                tdec : $2a8f          10895
-               tdec1 : $2ab2          10930
-              tdec10 : $2ade          10974
-              tdec11 : $2b01          11009
-              tdec12 : $2b95          11157
-              tdec13 : $2bbb          11195
-              tdec14 : $2c44          11332
-              tdec15 : $2c69          11369
-              tdec16 : $2cfe          11518
-              tdec17 : $2d27          11559
-               tdec2 : $2b3e          11070
-               tdec3 : $2b64          11108
-               tdec4 : $2bf3          11251
-               tdec5 : $2c18          11288
-               tdec6 : $2ca5          11429
-               tdec7 : $2cce          11470
-                teor : $2f2d          12077
-               teor1 : $2f4f          12111
-              teor10 : $3067          12391
-              teor11 : $3084          12420
-              teor12 : $30a3          12451
-              teor13 : $30c3          12483
-              teor14 : $30e1          12513
-              teor15 : $30fd          12541
-               teor2 : $2f71          12145
-               teor3 : $2f91          12177
-               teor4 : $2fb1          12209
-               teor5 : $2fd3          12243
-               teor6 : $2ff5          12277
-               teor7 : $3011          12305
-               teor8 : $302d          12333
-               teor9 : $304a          12362
-            test_bne : $0594           1428
-           test_case : $0200            512
-            test_far : $3703          14083
-            test_ind : $373b          14139
-            test_jsr : $3771          14193
-           test_near : $0932           2354
-            test_num : $002b             43   *
-                tinc : $2a69          10857
-               tinc1 : $2a88          10888
-              tinc10 : $2ab8          10936
-              tinc11 : $2ad7          10967
-              tinc12 : $2b6b          11115
-              tinc13 : $2b8d          11149
-              tinc14 : $2c1c          11292
-              tinc15 : $2c3d          11325
-              tinc16 : $2cd2          11474
-              tinc17 : $2cf7          11511
-               tinc2 : $2b14          11028
-               tinc3 : $2b36          11062
-               tinc4 : $2bcb          11211
-               tinc5 : $2bec          11244
-               tinc6 : $2c79          11385
-               tinc7 : $2c9e          11422
-               tldax : $164c           5708
-              tldax1 : $166e           5742
-              tldax2 : $1690           5776
-AS65 Assembler for R6502 [1.42].                                     Page    6
--------------------------- 6502_functional_test.a65 --------------------------
-
-              tldax3 : $16b1           5809
-              tldax4 : $17af           6063
-              tldax5 : $17d4           6100
-              tldax6 : $1818           6168
-              tldax7 : $1824           6180
-               tlday : $16fd           5885
-              tlday1 : $171f           5919
-              tlday2 : $1756           5974
-              tlday3 : $1777           6007
-              tlday4 : $184d           6221
-              tlday5 : $186e           6254
-              tlday6 : $188f           6287
-                tldx : $0e68           3688
-               tldx1 : $0e8b           3723
-               tldx2 : $0eae           3758
-               tldx3 : $0ed2           3794
-               tldx4 : $0f23           3875
-               tldx5 : $0f30           3888
-                tldy : $0f65           3941
-               tldy1 : $0f88           3976
-               tldy2 : $0fab           4011
-               tldy3 : $0fce           4046
-               tldy4 : $101c           4124
-               tldy5 : $1029           4137
-                tlsr : $230d           8973
-               tlsr1 : $2327           8999
-               tlsr2 : $245b           9307
-               tlsr3 : $247a           9338
-               tlsr4 : $25e1           9697
-               tlsr5 : $2603           9731
-               tlsr6 : $277f          10111
-               tlsr7 : $279e          10142
-               tlsr8 : $2905          10501
-               tlsr9 : $2927          10535
-                tora : $3125          12581
-               tora1 : $3147          12615
-              tora10 : $325f          12895
-              tora11 : $327c          12924
-              tora12 : $329b          12955
-              tora13 : $32bb          12987
-              tora14 : $32d9          13017
-              tora15 : $32f5          13045
-               tora2 : $3169          12649
-               tora3 : $3189          12681
-               tora4 : $31a9          12713
-               tora5 : $31cb          12747
-               tora6 : $31ed          12781
-               tora7 : $3209          12809
-               tora8 : $3225          12837
-               tora9 : $3242          12866
-                trap : <macro>
-             trap_cc : <macro>
-             trap_cs : <macro>
-             trap_eq : <macro>
-             trap_mi : <macro>
-             trap_ne : <macro>
-             trap_pl : <macro>
-             trap_vc : <macro>
-             trap_vs : <macro>
-                trol : $2341           9025
-               trolc : $2375           9077
-              trolc1 : $238f           9103
-AS65 Assembler for R6502 [1.42].                                     Page    7
--------------------------- 6502_functional_test.a65 --------------------------
-
-              trolc2 : $24d7           9431
-              trolc3 : $24f6           9462
-              trolc4 : $2669           9833
-              trolc5 : $268b           9867
-              trolc6 : $27fb          10235
-              trolc7 : $281a          10266
-              trolc8 : $298d          10637
-              trolc9 : $29af          10671
-               trol1 : $235b           9051
-               trol2 : $2499           9369
-               trol3 : $24b8           9400
-               trol4 : $2625           9765
-               trol5 : $2647           9799
-               trol6 : $27bd          10173
-               trol7 : $27dc          10204
-               trol8 : $2949          10569
-               trol9 : $296b          10603
-                tror : $23a9           9129
-               trorc : $23dd           9181
-              trorc1 : $23f7           9207
-              trorc2 : $2553           9555
-              trorc3 : $2572           9586
-              trorc4 : $26f1           9969
-              trorc5 : $2713          10003
-              trorc6 : $2877          10359
-              trorc7 : $2896          10390
-              trorc8 : $2a15          10773
-              trorc9 : $2a37          10807
-               tror1 : $23c3           9155
-               tror2 : $2515           9493
-               tror3 : $2534           9524
-               tror4 : $26ad           9901
-               tror5 : $26cf           9935
-               tror6 : $2839          10297
-               tror7 : $2858          10328
-               tror8 : $29d1          10705
-               tror9 : $29f3          10739
-               tstax : $16d4           5844
-              tstax1 : $1832           6194
-               tstay : $1743           5955
-              tstay1 : $179a           6042
-              tstay2 : $17f9           6137
-              tstay4 : $185d           6237
-              tstay5 : $187c           6268
-              tstay6 : $189e           6302
-                tstx : $0ef8           3832
-               tstx1 : $0f3e           3902
-                tsty : $0ff3           4083
-               tsty1 : $1037           4151
-               tst_a : <macro>
-             tst_abs : <macro>
-            tst_absx : <macro>
-              tst_ax : <macro>
-              tst_ay : <macro>
-            tst_stat : <macro>
-               tst_x : <macro>
-               tst_y : <macro>
-               tst_z : <macro>
-              tst_zx : <macro>
-                zero : $0002              2
-           zero_page : $000a             10   *
-                zpAN : $001e             30
-AS65 Assembler for R6502 [1.42].                                     Page    8
--------------------------- 6502_functional_test.a65 --------------------------
-
-                zpEO : $0022             34
-                zpOR : $001a             26
-                 zps : $0013             19
-                 zpt : $000c             12
-                 zp1 : $0015             21
-                zp7f : $0019             25
-              zp_bss : $0013             19
-          zp_bss_end : $005c             92
-            __6502__ : $0001              1
-
-404 labels used
-
-6109 lines read, no errors in pass 1.
-AS65 Assembler for R6502 [1.42].                                     Page    9
--------------------------- 6502_functional_test.a65 --------------------------
-
                         ;
                         ; 6 5 0 2   F U N C T I O N A L   T E S T
                         ;
@@ -534,7 +63,7 @@ AS65 Assembler for R6502 [1.42].                                     Page    1
                         ;   28-jul-2012  1st version distributed for testing
                         ;   29-jul-2012  fixed references to location 0, now #
                         ;                added license - GPLv3
-AS65 Assembler for R6502 [1.42].                                     Page   10
+AS65 Assembler for R6502 [1.42].                                     Page    2
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         ;   30-jul-2012  added configuration options
@@ -599,7 +128,7 @@ AS65 Assembler for R6502 [1.42].                                     Page    1
 0000 =                  report = 0
                         
                         ;RAM integrity test option. Checks for undesired RAM w
-AS65 Assembler for R6502 [1.42].                                     Page   11
+AS65 Assembler for R6502 [1.42].                                     Page    3
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         ;set lowest non RAM or RAM mirror address page (-1=dis
@@ -664,7 +193,7 @@ ffff =                  ram_top = -1
                         trap    macro
                                 jsr report_error
                                 endm
-AS65 Assembler for R6502 [1.42].                                     Page   12
+AS65 Assembler for R6502 [1.42].                                     Page    4
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         trap_eq macro
@@ -729,7 +258,7 @@ ffff =                  ram_top = -1
 0003 =                  fzc     equ carry+zero
 0040 =                  fv      equ overfl
 0042 =                  fvz     equ overfl+zero
-AS65 Assembler for R6502 [1.42].                                     Page   13
+AS65 Assembler for R6502 [1.42].                                     Page    5
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0080 =                  fn      equ minus
@@ -794,7 +323,7 @@ ffff =                  ram_top = -1
                         cmp_flag    macro
                                     cmp #(\1|fao)&m8    ;expected flags + alwa
                                     endm
-AS65 Assembler for R6502 [1.42].                                     Page   14
+AS65 Assembler for R6502 [1.42].                                     Page    6
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         eor_flag    macro
@@ -859,7 +388,7 @@ ffff =                  ram_top = -1
                                     endm
                                 endif
                             endif
-AS65 Assembler for R6502 [1.42].                                     Page   15
+AS65 Assembler for R6502 [1.42].                                     Page    7
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -924,7 +453,7 @@ ffff =                  ram_top = -1
                         set_abs     macro       ;precharging indexed memory & 
                                     load_flag \2
                                     pha         ;use stack to load status
-AS65 Assembler for R6502 [1.42].                                     Page   16
+AS65 Assembler for R6502 [1.42].                                     Page    8
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                     lda \1,x    ;load to memory
@@ -989,7 +518,7 @@ ffff =                  ram_top = -1
                                     trap_ne
                                     pla         ;load status
                                     eor_flag \3
-AS65 Assembler for R6502 [1.42].                                     Page   17
+AS65 Assembler for R6502 [1.42].                                     Page    9
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                     cmp \2,x    ;test flags
@@ -1054,7 +583,7 @@ ffff =                  ram_top = -1
                         ;   verifies that none of the previous tests has alter
                         ;   designated write areas.
                         ;   uses zpt word as indirect pointer, zpt+2 word as c
-AS65 Assembler for R6502 [1.42].                                     Page   18
+AS65 Assembler for R6502 [1.42].                                     Page   10
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 if ram_top > -1
@@ -1119,7 +648,7 @@ ffff =                  ram_top = -1
                         ;break test interrupt save
 000a : 00               irq_a   ds  1               ;a register
 000b : 00               irq_x   ds  1               ;x register
-AS65 Assembler for R6502 [1.42].                                     Page   19
+AS65 Assembler for R6502 [1.42].                                     Page   11
 -------------------------- 6502_functional_test.a65 --------------------------
 
                             if I_flag = 2
@@ -1145,34 +674,34 @@ ffff =                  ram_top = -1
 001e : 0fff7f80         zpAN    db  $0f,$ff,$7f,$80 ;test pattern for AND
 0022 : ff0f8f8f         zpEO    db  $ff,$0f,$8f,$8f ;test pattern for EOR
                         ;indirect addressing pointers
-0026 : 1802             ind1    dw  abs1            ;indirect pointer to patte
-0028 : 1902                     dw  abs1+1
-002a : 1a02                     dw  abs1+2
-002c : 1b02                     dw  abs1+3
-002e : 1c02                     dw  abs7f
-0030 : 2001             inw1    dw  abs1-$f8        ;indirect pointer for wrap
-0032 : 0302             indt    dw  abst            ;indirect pointer to store
-0034 : 0402                     dw  abst+1
-0036 : 0502                     dw  abst+2
-0038 : 0602                     dw  abst+3
-003a : 0b01             inwt    dw  abst-$f8        ;indirect pointer for wrap
-003c : 5f02             indAN   dw  absAN           ;indirect pointer to AND p
-003e : 6002                     dw  absAN+1
-0040 : 6102                     dw  absAN+2
-0042 : 6202                     dw  absAN+3
-0044 : 6302             indEO   dw  absEO           ;indirect pointer to EOR p
-0046 : 6402                     dw  absEO+1
-0048 : 6502                     dw  absEO+2
-004a : 6602                     dw  absEO+3
-004c : 5b02             indOR   dw  absOR           ;indirect pointer to OR pa
-004e : 5c02                     dw  absOR+1
-0050 : 5d02                     dw  absOR+2
-0052 : 5e02                     dw  absOR+3
+0026 : 0000             ind1    dw  abs1            ;indirect pointer to patte
+0028 : 0000                     dw  abs1+1
+002a : 0000                     dw  abs1+2
+002c : 0000                     dw  abs1+3
+002e : 0000                     dw  abs7f
+0030 : 0000             inw1    dw  abs1-$f8        ;indirect pointer for wrap
+0032 : 0000             indt    dw  abst            ;indirect pointer to store
+0034 : 0000                     dw  abst+1
+0036 : 0000                     dw  abst+2
+0038 : 0000                     dw  abst+3
+003a : 0000             inwt    dw  abst-$f8        ;indirect pointer for wrap
+003c : 0000             indAN   dw  absAN           ;indirect pointer to AND p
+003e : 0000                     dw  absAN+1
+0040 : 0000                     dw  absAN+2
+0042 : 0000                     dw  absAN+3
+0044 : 0000             indEO   dw  absEO           ;indirect pointer to EOR p
+0046 : 0000                     dw  absEO+1
+0048 : 0000                     dw  absEO+2
+004a : 0000                     dw  absEO+3
+004c : 0000             indOR   dw  absOR           ;indirect pointer to OR pa
+004e : 0000                     dw  absOR+1
+0050 : 0000                     dw  absOR+2
+0052 : 0000                     dw  absOR+3
                         ;add/subtract indirect pointers
-0054 : 0302             adi2    dw  ada2            ;indirect pointer to opera
-0056 : 0402             sbi2    dw  sba2            ;indirect pointer to compl
-0058 : 0401             adiy2   dw  ada2-$ff        ;with offset for indirect 
-005a : 0501             sbiy2   dw  sba2-$ff
+0054 : 0000             adi2    dw  ada2            ;indirect pointer to opera
+0056 : 0000             sbi2    dw  sba2            ;indirect pointer to compl
+0058 : 0000             adiy2   dw  ada2-$ff        ;with offset for indirect 
+005a : 0000             sbiy2   dw  sba2-$ff
 005c :                  zp_bss_end
                            
 0200 =                          org data_segment
@@ -1184,7 +713,7 @@ ffff =                  ram_top = -1
 0204 : 00               sba2    ds  1               ;operand 2 complemented fo
 0205 : 00000000                 ds  4               ;fill remaining bytes
 0209 :                  data_bss
-AS65 Assembler for R6502 [1.42].                                     Page   20
+AS65 Assembler for R6502 [1.42].                                     Page   12
 -------------------------- 6502_functional_test.a65 --------------------------
 
                             if load_data_direct = 1
@@ -1249,7 +778,7 @@ ffff =                  ram_top = -1
 0406 : 8d0002                   sta test_case
 0000 =                  test_num = 0
                         
-AS65 Assembler for R6502 [1.42].                                     Page   21
+AS65 Assembler for R6502 [1.42].                                     Page   13
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         ;stop interrupts before initializing BSS
@@ -1264,10 +793,10 @@ ffff =                  ram_top = -1
                             
                         ;pretest small branch offset
 0409 : a205                     ldx #5
-040b : 4c3304                   jmp psb_test
+040b : 4c0000                   jmp psb_test
 040e :                  psb_bwok
 040e : a005                     ldy #5
-0410 : d008                     bne psb_forw
+0410 : d0fe                     bne psb_forw
                                 trap        ;branch should be taken
 0412 : 4c1204          >        jmp *           ;failed anyway
                         
@@ -1282,7 +811,7 @@ ffff =                  ram_top = -1
 041c : 88                       dey
 041d : 88                       dey
 041e : 88                       dey
-041f : f017                     beq psb_fwok
+041f : f0fe                     beq psb_fwok
                                 trap        ;forward offset
 0421 : 4c2104          >        jmp *           ;failed anyway
                         
@@ -1314,7 +843,7 @@ ffff =                  ram_top = -1
                                 ldx #zp_end-zp_init-1
                         ld_zp   lda zp_init,x
                                 sta zp_bss,x
-AS65 Assembler for R6502 [1.42].                                     Page   22
+AS65 Assembler for R6502 [1.42].                                     Page   14
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 dex
@@ -1379,7 +908,7 @@ ffff =                  ram_top = -1
 043b : c900            >            cmp #test_num
                        >            trap_ne         ;test is out of sequence
 043d : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page   23
+AS65 Assembler for R6502 [1.42].                                     Page   15
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -1396,7 +925,7 @@ ffff =                  ram_top = -1
 0446 : 88                       dey             ;next relative address
 0447 : 98                       tya
 0448 : aa                       tax             ;precharge count to end of loo
-0449 : 1008                     bpl range_fw    ;calculate relative address
+0449 : 10fe                     bpl range_fw    ;calculate relative address
 044b : 18                       clc             ;avoid branch self or to relat
 044c : 6902                     adc #2
 044e : ea                       nop             ;offset landing zone - tolerat
@@ -1411,9 +940,9 @@ ffff =                  ram_top = -1
 0456 : ea                       nop
 0457 : ea                       nop
 0458 : 497f                     eor #$7f        ;complement except sign
-045a : 8de604                   sta range_adr   ;load into test target
+045a : 8d0000                   sta range_adr   ;load into test target
 045d : a900                     lda #0          ;should set zero flag in statu
-045f : 4ce504                   jmp range_op
+045f : 4c0000                   jmp range_op
                                 
 0462 : ca                       dex             ; offset landing zone - backwa
 0463 : ca                       dex
@@ -1444,7 +973,7 @@ ffff =                  ram_top = -1
 047b : ca                       dex
 047c : ca                       dex
 047d : ca                       dex
-AS65 Assembler for R6502 [1.42].                                     Page   24
+AS65 Assembler for R6502 [1.42].                                     Page   16
 -------------------------- 6502_functional_test.a65 --------------------------
 
 047e : ca                       dex
@@ -1509,7 +1038,7 @@ ffff =                  ram_top = -1
 04b9 : ca                       dex
 04ba : ca                       dex
 04bb : ca                       dex
-AS65 Assembler for R6502 [1.42].                                     Page   25
+AS65 Assembler for R6502 [1.42].                                     Page   17
 -------------------------- 6502_functional_test.a65 --------------------------
 
 04bc : ca                       dex
@@ -1574,7 +1103,7 @@ ffff =                  ram_top = -1
 04f6 : ca                       dex
 04f7 : ca                       dex
 04f8 : ca                       dex
-AS65 Assembler for R6502 [1.42].                                     Page   26
+AS65 Assembler for R6502 [1.42].                                     Page   18
 -------------------------- 6502_functional_test.a65 --------------------------
 
 04f9 : ca                       dex
@@ -1639,7 +1168,7 @@ ffff =                  ram_top = -1
 0534 : ca                       dex
 0535 : ca                       dex
 0536 : ca                       dex
-AS65 Assembler for R6502 [1.42].                                     Page   27
+AS65 Assembler for R6502 [1.42].                                     Page   19
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0537 : ca                       dex             ;+80
@@ -1694,7 +1223,7 @@ ffff =                  ram_top = -1
 0568 : ea                       nop
 0569 : ea                       nop
 056a : ea                       nop
-056b : f008                     beq range_ok    ;+127 - max forward
+056b : f0fe                     beq range_ok    ;+127 - max forward
                                 trap            ; bad range
 056d : 4c6d05          >        jmp *           ;failed anyway
                         
@@ -1704,7 +1233,7 @@ ffff =                  ram_top = -1
 0573 : ea                       nop
 0574 : ea                       nop
 0575 :                  range_ok
-AS65 Assembler for R6502 [1.42].                                     Page   28
+AS65 Assembler for R6502 [1.42].                                     Page   20
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0575 : ea                       nop
@@ -1713,7 +1242,7 @@ ffff =                  ram_top = -1
 0578 : ea                       nop
 0579 : ea                       nop
 057a : c000                     cpy #0
-057c : f003                     beq range_end   
+057c : f0fe                     beq range_end   
 057e : 4c4604                   jmp range_loop
 0581 :                  range_end               ;range test successful
                             endif
@@ -1731,7 +1260,7 @@ ffff =                  ram_top = -1
                         
                         ;partial test BNE & CMP, CPX, CPY immediate
 058d : c001                     cpy #1          ;testing BNE true
-058f : d003                     bne test_bne
+058f : d0fe                     bne test_bne
                                 trap 
 0591 : 4c9105          >        jmp *           ;failed anyway
                         
@@ -1769,7 +1298,7 @@ ffff =                  ram_top = -1
 05ad : 30fe            >        bmi *           ;failed minus (bit 7 set)
                         
 05af : e001                     cpx #1
-AS65 Assembler for R6502 [1.42].                                     Page   29
+AS65 Assembler for R6502 [1.42].                                     Page   21
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 trap_eq 
@@ -1834,7 +1363,7 @@ ffff =                  ram_top = -1
 05e8 : 68                       pla
 05e9 : c9aa                     cmp #$aa        ;successful retreived from sta
                                 trap_ne
-AS65 Assembler for R6502 [1.42].                                     Page   30
+AS65 Assembler for R6502 [1.42].                                     Page   22
 -------------------------- 6502_functional_test.a65 --------------------------
 
 05eb : d0fe            >        bne *           ;failed not equal (non zero)
@@ -1873,23 +1402,23 @@ ffff =                  ram_top = -1
 060a : 48              >            pha         ;use stack to load status
 060b : 28              >            plp
                         
-060c : 101a                     bpl nbr1        ;branches should not be taken
-060e : 501b                     bvc nbr2
-0610 : 901c                     bcc nbr3
-0612 : d01d                     bne nbr4
-0614 : 3003                     bmi br1         ;branches should be taken
+060c : 10fe                     bpl nbr1        ;branches should not be taken
+060e : 50fe                     bvc nbr2
+0610 : 90fe                     bcc nbr3
+0612 : d0fe                     bne nbr4
+0614 : 30fe                     bmi br1         ;branches should be taken
                                 trap 
 0616 : 4c1606          >        jmp *           ;failed anyway
                         
-0619 : 7003             br1     bvs br2
+0619 : 70fe             br1     bvs br2
                                 trap 
 061b : 4c1b06          >        jmp *           ;failed anyway
                         
-061e : b003             br2     bcs br3
+061e : b0fe             br2     bcs br3
                                 trap 
 0620 : 4c2006          >        jmp *           ;failed anyway
                         
-0623 : f00f             br3     beq br4
+0623 : f0fe             br3     beq br4
                                 trap 
 0625 : 4c2506          >        jmp *           ;failed anyway
                         
@@ -1899,7 +1428,7 @@ ffff =                  ram_top = -1
                         
 062b :                  nbr2
                                 trap            ;previous bvc taken
-AS65 Assembler for R6502 [1.42].                                     Page   31
+AS65 Assembler for R6502 [1.42].                                     Page   23
 -------------------------- 6502_functional_test.a65 --------------------------
 
 062b : 4c2b06          >        jmp *           ;failed anyway
@@ -1937,23 +1466,23 @@ ffff =                  ram_top = -1
 0646 : 48              >            pha         ;use stack to load status
 0647 : 28              >            plp
                         
-0648 : 301a                     bmi nbr11       ;branches should not be taken
-064a : 701b                     bvs nbr12
-064c : b01c                     bcs nbr13
-064e : f01d                     beq nbr14
-0650 : 1003                     bpl br11        ;branches should be taken
+0648 : 30fe                     bmi nbr11       ;branches should not be taken
+064a : 70fe                     bvs nbr12
+064c : b0fe                     bcs nbr13
+064e : f0fe                     beq nbr14
+0650 : 10fe                     bpl br11        ;branches should be taken
                                 trap 
 0652 : 4c5206          >        jmp *           ;failed anyway
                         
-0655 : 5003             br11    bvc br12
+0655 : 50fe             br11    bvc br12
                                 trap 
 0657 : 4c5706          >        jmp *           ;failed anyway
                         
-065a : 9003             br12    bcc br13
+065a : 90fe             br12    bcc br13
                                 trap 
 065c : 4c5c06          >        jmp *           ;failed anyway
                         
-065f : d00f             br13    bne br14
+065f : d0fe             br13    bne br14
                                 trap 
 0661 : 4c6106          >        jmp *           ;failed anyway
                         
@@ -1964,7 +1493,7 @@ ffff =                  ram_top = -1
 0667 :                  nbr12
                                 trap            ;previous bvs taken 
 0667 : 4c6706          >        jmp *           ;failed anyway
-AS65 Assembler for R6502 [1.42].                                     Page   32
+AS65 Assembler for R6502 [1.42].                                     Page   24
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -1992,26 +1521,26 @@ ffff =                  ram_top = -1
 0678 : 48              >            pha         ;use stack to load status
 0679 : 28              >            plp
                         
-067a : d002                     bne brzs1
-067c : f003                     beq brzs2
+067a : d0fe                     bne brzs1
+067c : f0fe                     beq brzs2
 067e :                  brzs1
                                 trap            ;branch zero/non zero
 067e : 4c7e06          >        jmp *           ;failed anyway
                         
-0681 : b002             brzs2   bcs brzs3
-0683 : 9003                     bcc brzs4
+0681 : b0fe             brzs2   bcs brzs3
+0683 : 90fe                     bcc brzs4
 0685 :                  brzs3
                                 trap            ;branch carry/no carry
 0685 : 4c8506          >        jmp *           ;failed anyway
                         
-0688 : 3002             brzs4   bmi brzs5
-068a : 1003                     bpl brzs6
+0688 : 30fe             brzs4   bmi brzs5
+068a : 10fe                     bpl brzs6
 068c :                  brzs5
                                 trap            ;branch minus/plus
 068c : 4c8c06          >        jmp *           ;failed anyway
                         
-068f : 7002             brzs6   bvs brzs7
-0691 : 5003                     bvc brzs8
+068f : 70fe             brzs6   bvs brzs7
+0691 : 50fe                     bvc brzs8
 0693 :                  brzs7
                                 trap            ;branch overflow/no overflow
 0693 : 4c9306          >        jmp *           ;failed anyway
@@ -2024,29 +1553,29 @@ ffff =                  ram_top = -1
 0698 : 48              >            pha         ;use stack to load status
 0699 : 28              >            plp
                         
-069a : f002                     beq brcs1
-069c : d003                     bne brcs2
+069a : f0fe                     beq brcs1
+069c : d0fe                     bne brcs2
 069e :                  brcs1
                                 trap            ;branch zero/non zero
 069e : 4c9e06          >        jmp *           ;failed anyway
-AS65 Assembler for R6502 [1.42].                                     Page   33
+AS65 Assembler for R6502 [1.42].                                     Page   25
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
-06a1 : 9002             brcs2   bcc brcs3
-06a3 : b003                     bcs brcs4
+06a1 : 90fe             brcs2   bcc brcs3
+06a3 : b0fe                     bcs brcs4
 06a5 :                  brcs3
                                 trap            ;branch carry/no carry
 06a5 : 4ca506          >        jmp *           ;failed anyway
                         
-06a8 : 3002             brcs4   bmi brcs5
-06aa : 1003                     bpl brcs6
+06a8 : 30fe             brcs4   bmi brcs5
+06aa : 10fe                     bpl brcs6
 06ac :                  brcs5
                                 trap            ;branch minus/plus
 06ac : 4cac06          >        jmp *           ;failed anyway
                         
-06af : 7002             brcs6   bvs brcs7
-06b1 : 5003                     bvc brcs8
+06af : 70fe             brcs6   bvs brcs7
+06b1 : 50fe                     bvc brcs8
 06b3 :                  brcs7
                                 trap            ;branch overflow/no overflow
 06b3 : 4cb306          >        jmp *           ;failed anyway
@@ -2060,26 +1589,26 @@ ffff =                  ram_top = -1
 06b8 : 48              >            pha         ;use stack to load status
 06b9 : 28              >            plp
                         
-06ba : f002                     beq brmi1
-06bc : d003                     bne brmi2
+06ba : f0fe                     beq brmi1
+06bc : d0fe                     bne brmi2
 06be :                  brmi1
                                 trap            ;branch zero/non zero
 06be : 4cbe06          >        jmp *           ;failed anyway
                         
-06c1 : b002             brmi2   bcs brmi3
-06c3 : 9003                     bcc brmi4
+06c1 : b0fe             brmi2   bcs brmi3
+06c3 : 90fe                     bcc brmi4
 06c5 :                  brmi3
                                 trap            ;branch carry/no carry
 06c5 : 4cc506          >        jmp *           ;failed anyway
                         
-06c8 : 1002             brmi4   bpl brmi5
-06ca : 3003                     bmi brmi6
+06c8 : 10fe             brmi4   bpl brmi5
+06ca : 30fe                     bmi brmi6
 06cc :                  brmi5
                                 trap            ;branch minus/plus
 06cc : 4ccc06          >        jmp *           ;failed anyway
                         
-06cf : 7002             brmi6   bvs brmi7
-06d1 : 5003                     bvc brmi8
+06cf : 70fe             brmi6   bvs brmi7
+06d1 : 50fe                     bvc brmi8
 06d3 :                  brmi7
                                 trap            ;branch overflow/no overflow
 06d3 : 4cd306          >        jmp *           ;failed anyway
@@ -2092,29 +1621,29 @@ ffff =                  ram_top = -1
 06d8 : 48              >            pha         ;use stack to load status
 06d9 : 28              >            plp
                         
-06da : f002                     beq brvs1
-06dc : d003                     bne brvs2
-AS65 Assembler for R6502 [1.42].                                     Page   34
+06da : f0fe                     beq brvs1
+06dc : d0fe                     bne brvs2
+AS65 Assembler for R6502 [1.42].                                     Page   26
 -------------------------- 6502_functional_test.a65 --------------------------
 
 06de :                  brvs1
                                 trap            ;branch zero/non zero
 06de : 4cde06          >        jmp *           ;failed anyway
                         
-06e1 : b002             brvs2   bcs brvs3
-06e3 : 9003                     bcc brvs4
+06e1 : b0fe             brvs2   bcs brvs3
+06e3 : 90fe                     bcc brvs4
 06e5 :                  brvs3
                                 trap            ;branch carry/no carry
 06e5 : 4ce506          >        jmp *           ;failed anyway
                         
-06e8 : 3002             brvs4   bmi brvs5
-06ea : 1003                     bpl brvs6
+06e8 : 30fe             brvs4   bmi brvs5
+06ea : 10fe                     bpl brvs6
 06ec :                  brvs5
                                 trap            ;branch minus/plus
 06ec : 4cec06          >        jmp *           ;failed anyway
                         
-06ef : 5002             brvs6   bvc brvs7
-06f1 : 7003                     bvs brvs8
+06ef : 50fe             brvs6   bvc brvs7
+06f1 : 70fe                     bvs brvs8
 06f3 :                  brvs7
                                 trap            ;branch overflow/no overflow
 06f3 : 4cf306          >        jmp *           ;failed anyway
@@ -2127,26 +1656,26 @@ ffff =                  ram_top = -1
 06f8 : 48              >            pha         ;use stack to load status
 06f9 : 28              >            plp
                         
-06fa : f002                     beq brzc1
-06fc : d003                     bne brzc2
+06fa : f0fe                     beq brzc1
+06fc : d0fe                     bne brzc2
 06fe :                  brzc1
                                 trap            ;branch zero/non zero
 06fe : 4cfe06          >        jmp *           ;failed anyway
                         
-0701 : 9002             brzc2   bcc brzc3
-0703 : b003                     bcs brzc4
+0701 : 90fe             brzc2   bcc brzc3
+0703 : b0fe                     bcs brzc4
 0705 :                  brzc3
                                 trap            ;branch carry/no carry
 0705 : 4c0507          >        jmp *           ;failed anyway
                         
-0708 : 1002             brzc4   bpl brzc5
-070a : 3003                     bmi brzc6
+0708 : 10fe             brzc4   bpl brzc5
+070a : 30fe                     bmi brzc6
 070c :                  brzc5
                                 trap            ;branch minus/plus
 070c : 4c0c07          >        jmp *           ;failed anyway
                         
-070f : 5002             brzc6   bvc brzc7
-0711 : 7003                     bvs brzc8
+070f : 50fe             brzc6   bvc brzc7
+0711 : 70fe                     bvs brzc8
 0713 :                  brzc7
                                 trap            ;branch overflow/no overflow
 0713 : 4c1307          >        jmp *           ;failed anyway
@@ -2159,29 +1688,29 @@ ffff =                  ram_top = -1
 0718 : 48              >            pha         ;use stack to load status
 0719 : 28              >            plp
                         
-AS65 Assembler for R6502 [1.42].                                     Page   35
+AS65 Assembler for R6502 [1.42].                                     Page   27
 -------------------------- 6502_functional_test.a65 --------------------------
 
-071a : d002                     bne brcc1
-071c : f003                     beq brcc2
+071a : d0fe                     bne brcc1
+071c : f0fe                     beq brcc2
 071e :                  brcc1
                                 trap            ;branch zero/non zero
 071e : 4c1e07          >        jmp *           ;failed anyway
                         
-0721 : b002             brcc2   bcs brcc3
-0723 : 9003                     bcc brcc4
+0721 : b0fe             brcc2   bcs brcc3
+0723 : 90fe                     bcc brcc4
 0725 :                  brcc3
                                 trap            ;branch carry/no carry
 0725 : 4c2507          >        jmp *           ;failed anyway
                         
-0728 : 1002             brcc4   bpl brcc5
-072a : 3003                     bmi brcc6
+0728 : 10fe             brcc4   bpl brcc5
+072a : 30fe                     bmi brcc6
 072c :                  brcc5
                                 trap            ;branch minus/plus
 072c : 4c2c07          >        jmp *           ;failed anyway
                         
-072f : 5002             brcc6   bvc brcc7
-0731 : 7003                     bvs brcc8
+072f : 50fe             brcc6   bvc brcc7
+0731 : 70fe                     bvs brcc8
 0733 :                  brcc7
                                 trap            ;branch overflow/no overflow
 0733 : 4c3307          >        jmp *           ;failed anyway
@@ -2194,26 +1723,26 @@ ffff =                  ram_top = -1
 0738 : 48              >            pha         ;use stack to load status
 0739 : 28              >            plp
                         
-073a : d002                     bne brpl1
-073c : f003                     beq brpl2
+073a : d0fe                     bne brpl1
+073c : f0fe                     beq brpl2
 073e :                  brpl1
                                 trap            ;branch zero/non zero
 073e : 4c3e07          >        jmp *           ;failed anyway
                         
-0741 : 9002             brpl2   bcc brpl3
-0743 : b003                     bcs brpl4
+0741 : 90fe             brpl2   bcc brpl3
+0743 : b0fe                     bcs brpl4
 0745 :                  brpl3
                                 trap            ;branch carry/no carry
 0745 : 4c4507          >        jmp *           ;failed anyway
                         
-0748 : 3002             brpl4   bmi brpl5
-074a : 1003                     bpl brpl6
+0748 : 30fe             brpl4   bmi brpl5
+074a : 10fe                     bpl brpl6
 074c :                  brpl5
                                 trap            ;branch minus/plus
 074c : 4c4c07          >        jmp *           ;failed anyway
                         
-074f : 5002             brpl6   bvc brpl7
-0751 : 7003                     bvs brpl8
+074f : 50fe             brpl6   bvc brpl7
+0751 : 70fe                     bvs brpl8
 0753 :                  brpl7
                                 trap            ;branch overflow/no overflow
 0753 : 4c5307          >        jmp *           ;failed anyway
@@ -2224,31 +1753,31 @@ ffff =                  ram_top = -1
 0756 : a9bf            >            lda #$ff-overfl             ;allow test to
                        >
 0758 : 48              >            pha         ;use stack to load status
-AS65 Assembler for R6502 [1.42].                                     Page   36
+AS65 Assembler for R6502 [1.42].                                     Page   28
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0759 : 28              >            plp
                         
-075a : d002                     bne brvc1
-075c : f003                     beq brvc2
+075a : d0fe                     bne brvc1
+075c : f0fe                     beq brvc2
 075e :                  brvc1
                                 trap            ;branch zero/non zero
 075e : 4c5e07          >        jmp *           ;failed anyway
                         
-0761 : 9002             brvc2   bcc brvc3
-0763 : b003                     bcs brvc4
+0761 : 90fe             brvc2   bcc brvc3
+0763 : b0fe                     bcs brvc4
 0765 :                  brvc3
                                 trap            ;branch carry/no carry
 0765 : 4c6507          >        jmp *           ;failed anyway
                         
-0768 : 1002             brvc4   bpl brvc5
-076a : 3003                     bmi brvc6
+0768 : 10fe             brvc4   bpl brvc5
+076a : 30fe                     bmi brvc6
 076c :                  brvc5
                                 trap            ;branch minus/plus
 076c : 4c6c07          >        jmp *           ;failed anyway
                         
-076f : 7002             brvc6   bvs brvc7
-0771 : 5003                     bvc brvc8
+076f : 70fe             brvc6   bvs brvc7
+0771 : 50fe                     bvc brvc8
 0773 :                  brvc7
                                 trap            ;branch overflow/no overflow
 0773 : 4c7307          >        jmp *           ;failed anyway
@@ -2289,7 +1818,7 @@ ffff =                  ram_top = -1
                        >            cmp_flag $ff
 0794 : c9ff            >            cmp #($ff|fao)&m8    ;expected flags + alw
                        >
-AS65 Assembler for R6502 [1.42].                                     Page   37
+AS65 Assembler for R6502 [1.42].                                     Page   29
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            trap_ne
@@ -2354,7 +1883,7 @@ ffff =                  ram_top = -1
 07c1 : 48              >            pha         ;use stack to load status
 07c2 : a901            >            lda #1     ;precharge accu
 07c4 : 28              >            plp
-AS65 Assembler for R6502 [1.42].                                     Page   38
+AS65 Assembler for R6502 [1.42].                                     Page   30
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -2419,7 +1948,7 @@ ffff =                  ram_top = -1
 07f2 : 48              >            pha
                        >            cmp_flag 0
 07f3 : c930            >            cmp #(0|fao)&m8    ;expected flags + alway
-AS65 Assembler for R6502 [1.42].                                     Page   39
+AS65 Assembler for R6502 [1.42].                                     Page   31
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -2484,7 +2013,7 @@ ffff =                  ram_top = -1
                        >
 0820 : 48              >            pha         ;use stack to load status
 0821 : a9fe            >            lda #$fe     ;precharge accu
-AS65 Assembler for R6502 [1.42].                                     Page   40
+AS65 Assembler for R6502 [1.42].                                     Page   32
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0823 : 28              >            plp
@@ -2549,7 +2078,7 @@ ffff =                  ram_top = -1
 0850 : 68              >            pla         ;load status
 0851 : 48              >            pha
                        >            cmp_flag $ff-minus
-AS65 Assembler for R6502 [1.42].                                     Page   41
+AS65 Assembler for R6502 [1.42].                                     Page   33
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0852 : c97f            >            cmp #($ff-minus|fao)&m8    ;expected flags
@@ -2614,7 +2143,7 @@ ffff =                  ram_top = -1
 0883 : 28              >            plp
                         
 0884 : 49c3                     eor #$c3
-AS65 Assembler for R6502 [1.42].                                     Page   42
+AS65 Assembler for R6502 [1.42].                                     Page   34
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 tst_a $ff,fn
@@ -2679,7 +2208,7 @@ ffff =                  ram_top = -1
 08b6 : a900            >            lda #0             ;allow test to change I
                        >
 08b8 : 48              >            pha         ;use stack to load status
-AS65 Assembler for R6502 [1.42].                                     Page   43
+AS65 Assembler for R6502 [1.42].                                     Page   35
 -------------------------- 6502_functional_test.a65 --------------------------
 
 08b9 : a918            >            lda #$18     ;precharge accu
@@ -2744,7 +2273,7 @@ ffff =                  ram_top = -1
 08ec : c0bd                     cpy #$bd
                                 trap_ne
 08ee : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page   44
+AS65 Assembler for R6502 [1.42].                                     Page   36
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -2771,7 +2300,7 @@ ffff =                  ram_top = -1
 0900 : a946                     lda #'F'
 0902 : a241                     ldx #'A'
 0904 : a052                     ldy #'R'        ;N=0, V=0, Z=0, C=0
-0906 : 4c0337                   jmp test_far
+0906 : 4c0000                   jmp test_far
 0909 : ea                       nop
 090a : ea                       nop
                                 trap_ne         ;runover protection
@@ -2809,10 +2338,10 @@ ffff =                  ram_top = -1
 0925 : c8                       iny
 0926 : c8                       iny
 0927 : 49aa                     eor #$aa        ;N=0, V=1, Z=0, C=1
-AS65 Assembler for R6502 [1.42].                                     Page   45
+AS65 Assembler for R6502 [1.42].                                     Page   37
 -------------------------- 6502_functional_test.a65 --------------------------
 
-0929 : 4c3209                   jmp test_near
+0929 : 4c0000                   jmp test_near
 092c : ea                       nop
 092d : ea                       nop
                                 trap_ne         ;runover protection
@@ -2868,13 +2397,13 @@ ffff =                  ram_top = -1
 0956 : a949                     lda #'I'
 0958 : a24e                     ldx #'N'
 095a : a044                     ldy #'D'        ;N=0, V=0, Z=0, C=0
-095c : 6c3237                   jmp (ptr_tst_ind)
+095c : 6c5c09                   jmp (ptr_tst_ind)
 095f : ea                       nop
                                 trap_ne         ;runover protection
 0960 : d0fe            >        bne *           ;failed not equal (non zero)
                         
 0962 : 88                       dey
-AS65 Assembler for R6502 [1.42].                                     Page   46
+AS65 Assembler for R6502 [1.42].                                     Page   38
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0963 : 88                       dey
@@ -2936,10 +2465,10 @@ ffff =                  ram_top = -1
 0992 : a94a                     lda #'J'
 0994 : a253                     ldx #'S'
 0996 : a052                     ldy #'R'        ;N=0, V=0, Z=0, C=0
-0998 : 207137                   jsr test_jsr
+0998 : 200000                   jsr test_jsr
 099a =                  jsr_ret = *-1           ;last address of jsr = return 
 099b : 08                       php             ;either SP or Y count will fai
-AS65 Assembler for R6502 [1.42].                                     Page   47
+AS65 Assembler for R6502 [1.42].                                     Page   39
 -------------------------- 6502_functional_test.a65 --------------------------
 
 099c : 88                       dey
@@ -2997,14 +2526,14 @@ ffff =                  ram_top = -1
                                 plp             ;N=0, V=0, Z=0, C=0
                                 brk
                             else
-09c5 : a909                     lda #hi brk_ret0 ;emulated break
+09c5 : a900                     lda #hi brk_ret0 ;emulated break
 09c7 : 48                       pha
-09c8 : a9dc                     lda #lo brk_ret0
+09c8 : a900                     lda #lo brk_ret0
 09ca : 48                       pha
                                 load_flag fao    ;set break & unused on stack
 09cb : a930            >            lda #fao                 ;allow test to ch
                         
-AS65 Assembler for R6502 [1.42].                                     Page   48
+AS65 Assembler for R6502 [1.42].                                     Page   40
 -------------------------- 6502_functional_test.a65 --------------------------
 
 09cd : 48                       pha
@@ -3016,7 +2545,7 @@ ffff =                  ram_top = -1
 09d3 : a252                     ldx #'R'
 09d5 : a04b                     ldy #'K'
 09d7 : 28                       plp             ;N=0, V=0, Z=0, C=0
-09d8 : 4cbf37                   jmp irq_trap
+09d8 : 4c0000                   jmp irq_trap
                             endif
 09db : 88                       dey             ;should not be executed
 09dc :                  brk_ret0                ;address of break return
@@ -3058,9 +2587,9 @@ ffff =                  ram_top = -1
                                 plp             ;N=1, V=1, Z=1, C=1
                                 brk
                             else
-09f6 : a90a                     lda #hi brk_ret1 ;emulated break
+09f6 : a900                     lda #hi brk_ret1 ;emulated break
 09f8 : 48                       pha
-09f9 : a90b                     lda #lo brk_ret1
+09f9 : a900                     lda #lo brk_ret1
 09fb : 48                       pha
                                 load_flag $ff
 09fc : a9ff            >            lda #$ff             ;allow test to change
@@ -3069,12 +2598,12 @@ ffff =                  ram_top = -1
 09ff : 48                       pha             ;actual flags
 0a00 : a9bd                     lda #$ff-'B'
 0a02 : a2ad                     ldx #$ff-'R'
-AS65 Assembler for R6502 [1.42].                                     Page   49
+AS65 Assembler for R6502 [1.42].                                     Page   41
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0a04 : a0b4                     ldy #$ff-'K'
 0a06 : 28                       plp             ;N=1, V=1, Z=1, C=1
-0a07 : 4cbf37                   jmp irq_trap
+0a07 : 4c0000                   jmp irq_trap
                             endif
 0a0a : 88                       dey             ;should not be executed
 0a0b :                  brk_ret1                ;address of break return
@@ -3134,7 +2663,7 @@ ffff =                  ram_top = -1
 0a38 : 48              >            pha
                        >            cmp_flag $ff-carry
 0a39 : c9fe            >            cmp #($ff-carry|fao)&m8    ;expected flags
-AS65 Assembler for R6502 [1.42].                                     Page   50
+AS65 Assembler for R6502 [1.42].                                     Page   42
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -3199,7 +2728,7 @@ ffff =                  ram_top = -1
                         
 0a62 : f8                       sed
                                 tst_stat $ff
-AS65 Assembler for R6502 [1.42].                                     Page   51
+AS65 Assembler for R6502 [1.42].                                     Page   43
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0a63 : 08              >            php         ;save status
@@ -3264,7 +2793,7 @@ ffff =                  ram_top = -1
 0a8b : 68              >            pla         ;use stack to retrieve status
 0a8c : 48              >            pha
                        >            cmp_flag 0  
-AS65 Assembler for R6502 [1.42].                                     Page   52
+AS65 Assembler for R6502 [1.42].                                     Page   44
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0a8d : c930            >            cmp #(0  |fao)&m8    ;expected flags + alw
@@ -3329,7 +2858,7 @@ ffff =                  ram_top = -1
 0ab5 : 28              >            plp         ;restore status
                         
                                 set_stat overfl
-AS65 Assembler for R6502 [1.42].                                     Page   53
+AS65 Assembler for R6502 [1.42].                                     Page   45
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            load_flag overfl
@@ -3394,7 +2923,7 @@ ffff =                  ram_top = -1
 0ae3 : 68              >            pla         ;load status
 0ae4 : 48              >            pha
                        >            cmp_flag $ff-zero
-AS65 Assembler for R6502 [1.42].                                     Page   54
+AS65 Assembler for R6502 [1.42].                                     Page   46
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0ae5 : c9fd            >            cmp #($ff-zero|fao)&m8    ;expected flags 
@@ -3459,7 +2988,7 @@ ffff =                  ram_top = -1
                                 tst_x $ff,$ff-zero
 0b12 : 08              >            php         ;save flags
 0b13 : e0ff            >            cpx #$ff     ;test result
-AS65 Assembler for R6502 [1.42].                                     Page   55
+AS65 Assembler for R6502 [1.42].                                     Page   47
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            trap_ne
@@ -3524,7 +3053,7 @@ ffff =                  ram_top = -1
                        >            trap_ne
 0b41 : d0fe            >        bne *           ;failed not equal (non zero)
                        >
-AS65 Assembler for R6502 [1.42].                                     Page   56
+AS65 Assembler for R6502 [1.42].                                     Page   48
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0b43 : 68              >            pla         ;load status
@@ -3589,7 +3118,7 @@ ffff =                  ram_top = -1
                        >
 0b70 : 68              >            pla         ;load status
 0b71 : 48              >            pha
-AS65 Assembler for R6502 [1.42].                                     Page   57
+AS65 Assembler for R6502 [1.42].                                     Page   49
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            cmp_flag $ff-zero
@@ -3654,7 +3183,7 @@ ffff =                  ram_top = -1
 0b9e : 88                       dey             ;ff
                                 tst_y $ff,$ff-zero
 0b9f : 08              >            php         ;save flags
-AS65 Assembler for R6502 [1.42].                                     Page   58
+AS65 Assembler for R6502 [1.42].                                     Page   50
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0ba0 : c0ff            >            cpy #$ff     ;test result
@@ -3719,7 +3248,7 @@ ffff =                  ram_top = -1
 0bcc : c001            >            cpy #1     ;test result
                        >            trap_ne
 0bce : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page   59
+AS65 Assembler for R6502 [1.42].                                     Page   51
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -3784,7 +3313,7 @@ ffff =                  ram_top = -1
 0bfb : d0fe            >        bne *           ;failed not equal (non zero)
                        >
 0bfd : 68              >            pla         ;load status
-AS65 Assembler for R6502 [1.42].                                     Page   60
+AS65 Assembler for R6502 [1.42].                                     Page   52
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0bfe : 48              >            pha
@@ -3849,7 +3378,7 @@ ffff =                  ram_top = -1
 0c2a : c901            >            cmp #1     ;test result
                        >            trap_ne
 0c2c : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page   61
+AS65 Assembler for R6502 [1.42].                                     Page   53
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -3914,7 +3443,7 @@ ffff =                  ram_top = -1
                         
 0c5b : 98                       tya
                                 tst_a $ff,$ff-zero
-AS65 Assembler for R6502 [1.42].                                     Page   62
+AS65 Assembler for R6502 [1.42].                                     Page   54
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0c5c : 08              >            php         ;save flags
@@ -3979,7 +3508,7 @@ ffff =                  ram_top = -1
 0c8a : 48              >            pha         ;use stack to load status
 0c8b : 28              >            plp
                         
-AS65 Assembler for R6502 [1.42].                                     Page   63
+AS65 Assembler for R6502 [1.42].                                     Page   55
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0c8c : 98                       tya
@@ -4044,7 +3573,7 @@ ffff =                  ram_top = -1
 0cb9 : a9ff            >            lda #$ff             ;allow test to change
                         
 0cbb : 48                       pha
-AS65 Assembler for R6502 [1.42].                                     Page   64
+AS65 Assembler for R6502 [1.42].                                     Page   56
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0cbc : a2ff                     ldx #$ff        ;ff
@@ -4109,7 +3638,7 @@ ffff =                  ram_top = -1
                        >
 0cee : 28              >            plp         ;restore status
                         
-AS65 Assembler for R6502 [1.42].                                     Page   65
+AS65 Assembler for R6502 [1.42].                                     Page   57
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 load_flag 0
@@ -4174,7 +3703,7 @@ ffff =                  ram_top = -1
 0d20 : c9b0            >            cmp #(minus|fao)&m8    ;expected flags + a
                        >
                        >            trap_ne
-AS65 Assembler for R6502 [1.42].                                     Page   66
+AS65 Assembler for R6502 [1.42].                                     Page   58
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0d22 : d0fe            >        bne *           ;failed not equal (non zero)
@@ -4239,7 +3768,7 @@ ffff =                  ram_top = -1
                        >            trap_ne
 0d52 : d0fe            >        bne *           ;failed not equal (non zero)
                        >
-AS65 Assembler for R6502 [1.42].                                     Page   67
+AS65 Assembler for R6502 [1.42].                                     Page   59
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0d54 : 68              >            pla         ;load status
@@ -4304,7 +3833,7 @@ ffff =                  ram_top = -1
 0d84 : aa                       tax
                                 tst_x $ff,minus
 0d85 : 08              >            php         ;save flags
-AS65 Assembler for R6502 [1.42].                                     Page   68
+AS65 Assembler for R6502 [1.42].                                     Page   60
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0d86 : e0ff            >            cpx #$ff     ;test result
@@ -4369,7 +3898,7 @@ ffff =                  ram_top = -1
 0db7 : d0fe            >        bne *           ;failed not equal (non zero)
                         
 0db9 : ca                       dex             ;00
-AS65 Assembler for R6502 [1.42].                                     Page   69
+AS65 Assembler for R6502 [1.42].                                     Page   61
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 set_stat $ff
@@ -4434,7 +3963,7 @@ ffff =                  ram_top = -1
                                 cmp_flag 0
 0deb : c930            >            cmp #(0|fao)&m8    ;expected flags + alway
                         
-AS65 Assembler for R6502 [1.42].                                     Page   70
+AS65 Assembler for R6502 [1.42].                                     Page   62
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 
@@ -4499,7 +4028,7 @@ ffff =                  ram_top = -1
                         
                                 trap_ne
 0e21 : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page   71
+AS65 Assembler for R6502 [1.42].                                     Page   63
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -4564,7 +4093,7 @@ ffff =                  ram_top = -1
 0e55 : c9b0            >            cmp #(minus|fao)&m8    ;expected flags + a
                         
                                 trap_ne
-AS65 Assembler for R6502 [1.42].                                     Page   72
+AS65 Assembler for R6502 [1.42].                                     Page   64
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0e57 : d0fe            >        bne *           ;failed not equal (non zero)
@@ -4629,7 +4158,7 @@ ffff =                  ram_top = -1
 0e91 : 08                       php         ;test stores do not alter flags
 0e92 : 8a                       txa
 0e93 : 49c3                     eor #$c3
-AS65 Assembler for R6502 [1.42].                                     Page   73
+AS65 Assembler for R6502 [1.42].                                     Page   65
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0e95 : 28                       plp
@@ -4694,7 +4223,7 @@ ffff =                  ram_top = -1
 0ed5 : 28              >            plp
                         
 0ed6 : be1802                   ldx abs1,y
-AS65 Assembler for R6502 [1.42].                                     Page   74
+AS65 Assembler for R6502 [1.42].                                     Page   66
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0ed9 : 08                       php         ;test stores do not alter flags
@@ -4759,7 +4288,7 @@ ffff =                  ram_top = -1
 0f29 : 88                       dey
 0f2a : c0fa                     cpy #$fa
 0f2c : b0f5                     bcs tldx4                  
-AS65 Assembler for R6502 [1.42].                                     Page   75
+AS65 Assembler for R6502 [1.42].                                     Page   67
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0f2e : a0fd                     ldy #3+$fa
@@ -4824,7 +4353,7 @@ ffff =                  ram_top = -1
 0f7c : 4930            >            eor #0|fao         ;invert expected flags 
                         
 0f7e : dd1d02                   cmp fLDx,x  ;test flags
-AS65 Assembler for R6502 [1.42].                                     Page   76
+AS65 Assembler for R6502 [1.42].                                     Page   68
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 trap_ne
@@ -4889,7 +4418,7 @@ ffff =                  ram_top = -1
                         
 0fc1 : 68                       pla         ;load status
                                 eor_flag 0
-AS65 Assembler for R6502 [1.42].                                     Page   77
+AS65 Assembler for R6502 [1.42].                                     Page   69
 -------------------------- 6502_functional_test.a65 --------------------------
 
 0fc2 : 4930            >            eor #0|fao         ;invert expected flags 
@@ -4954,7 +4483,7 @@ ffff =                  ram_top = -1
 100b : ca                       dex
 100c : 10e5                     bpl tsty
                                 next_test
-AS65 Assembler for R6502 [1.42].                                     Page   78
+AS65 Assembler for R6502 [1.42].                                     Page   70
 -------------------------- 6502_functional_test.a65 --------------------------
 
 100e : ad0002          >            lda test_case   ;previous test
@@ -5019,7 +4548,7 @@ ffff =                  ram_top = -1
 105c : 48              >            pha         ;use stack to load status
 105d : 28              >            plp
                         
-AS65 Assembler for R6502 [1.42].                                     Page   79
+AS65 Assembler for R6502 [1.42].                                     Page   71
 -------------------------- 6502_functional_test.a65 --------------------------
 
 105e : a615                     ldx zp1
@@ -5084,7 +4613,7 @@ ffff =                  ram_top = -1
 109e : 08                       php         ;test stores do not alter flags
 109f : 8a                       txa
 10a0 : 49c3                     eor #$c3
-AS65 Assembler for R6502 [1.42].                                     Page   80
+AS65 Assembler for R6502 [1.42].                                     Page   72
 -------------------------- 6502_functional_test.a65 --------------------------
 
 10a2 : aa                       tax
@@ -5149,7 +4678,7 @@ ffff =                  ram_top = -1
 10e0 : aa                       tax
 10e1 : 28                       plp
 10e2 : 8e0302                   stx abst  
-AS65 Assembler for R6502 [1.42].                                     Page   81
+AS65 Assembler for R6502 [1.42].                                     Page   73
 -------------------------- 6502_functional_test.a65 --------------------------
 
 10e5 : 08                       php         ;flags after load/store sequence
@@ -5214,7 +4743,7 @@ ffff =                  ram_top = -1
 1124 : 49c3                     eor #$c3
 1126 : aa                       tax
 1127 : e041                     cpx #$41    ;test result
-AS65 Assembler for R6502 [1.42].                                     Page   82
+AS65 Assembler for R6502 [1.42].                                     Page   74
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 trap_ne     ;
@@ -5279,7 +4808,7 @@ ffff =                  ram_top = -1
 1166 : d0fe            >        bne *           ;failed not equal (non zero)
                         
 1168 : 68                       pla         ;load status
-AS65 Assembler for R6502 [1.42].                                     Page   83
+AS65 Assembler for R6502 [1.42].                                     Page   75
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 eor_flag 0
@@ -5344,7 +4873,7 @@ ffff =                  ram_top = -1
 11a7 : cd1f02                   cmp fLDx+2  ;test flags
                                 trap_ne
 11aa : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page   84
+AS65 Assembler for R6502 [1.42].                                     Page   76
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -5409,7 +4938,7 @@ ffff =                  ram_top = -1
                                 set_stat $ff
                        >            load_flag $ff
 11e9 : a9ff            >            lda #$ff             ;allow test to change
-AS65 Assembler for R6502 [1.42].                                     Page   85
+AS65 Assembler for R6502 [1.42].                                     Page   77
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -5474,7 +5003,7 @@ ffff =                  ram_top = -1
 1229 : 48              >            pha         ;use stack to load status
 122a : 28              >            plp
                         
-AS65 Assembler for R6502 [1.42].                                     Page   86
+AS65 Assembler for R6502 [1.42].                                     Page   78
 -------------------------- 6502_functional_test.a65 --------------------------
 
 122b : ae1b02                   ldx abs1+3
@@ -5539,7 +5068,7 @@ ffff =                  ram_top = -1
 1267 : 4930            >            eor #0|fao         ;invert expected flags 
                         
 1269 : cd1e02                   cmp fLDx+1  ;test flags
-AS65 Assembler for R6502 [1.42].                                     Page   87
+AS65 Assembler for R6502 [1.42].                                     Page   79
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 trap_ne
@@ -5604,7 +5133,7 @@ ffff =                  ram_top = -1
 12a2 : 68                       pla         ;load status
                                 eor_flag lo~fnz ;mask bits not altered
 12a3 : 497d            >            eor #lo~fnz |fao         ;invert expected 
-AS65 Assembler for R6502 [1.42].                                     Page   88
+AS65 Assembler for R6502 [1.42].                                     Page   80
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -5669,7 +5198,7 @@ ffff =                  ram_top = -1
                         
 12de : 68                       pla         ;load status
                                 eor_flag lo~fnz ;mask bits not altered
-AS65 Assembler for R6502 [1.42].                                     Page   89
+AS65 Assembler for R6502 [1.42].                                     Page   81
 -------------------------- 6502_functional_test.a65 --------------------------
 
 12df : 497d            >            eor #lo~fnz |fao         ;invert expected 
@@ -5734,7 +5263,7 @@ ffff =                  ram_top = -1
 133c : cd1b02                   cmp abs1+3
                                 trap_ne     ;store to abs data
 133f : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page   90
+AS65 Assembler for R6502 [1.42].                                     Page   82
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -5799,7 +5328,7 @@ ffff =                  ram_top = -1
 137f : 49c3                     eor #$c3
 1381 : a8                       tay
 1382 : c082                     cpy #$82    ;test result
-AS65 Assembler for R6502 [1.42].                                     Page   91
+AS65 Assembler for R6502 [1.42].                                     Page   83
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 trap_ne
@@ -5864,7 +5393,7 @@ ffff =                  ram_top = -1
 13c2 : d0fe            >        bne *           ;failed not equal (non zero)
                         
 13c4 : 68                       pla         ;load status
-AS65 Assembler for R6502 [1.42].                                     Page   92
+AS65 Assembler for R6502 [1.42].                                     Page   84
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 eor_flag 0
@@ -5929,7 +5458,7 @@ ffff =                  ram_top = -1
                                 eor_flag lo~fnz ;mask bits not altered
 1403 : 497d            >            eor #lo~fnz |fao         ;invert expected 
                         
-AS65 Assembler for R6502 [1.42].                                     Page   93
+AS65 Assembler for R6502 [1.42].                                     Page   85
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1405 : cd1e02                   cmp fLDx+1  ;test flags
@@ -5994,7 +5523,7 @@ ffff =                  ram_top = -1
                                 trap_ne
 1446 : d0fe            >        bne *           ;failed not equal (non zero)
                         
-AS65 Assembler for R6502 [1.42].                                     Page   94
+AS65 Assembler for R6502 [1.42].                                     Page   86
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 
@@ -6059,7 +5588,7 @@ ffff =                  ram_top = -1
                                 set_stat 0
                        >            load_flag 0
 1486 : a900            >            lda #0             ;allow test to change I
-AS65 Assembler for R6502 [1.42].                                     Page   95
+AS65 Assembler for R6502 [1.42].                                     Page   87
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -6124,7 +5653,7 @@ ffff =                  ram_top = -1
                        >
 14c6 : 48              >            pha         ;use stack to load status
 14c7 : 28              >            plp
-AS65 Assembler for R6502 [1.42].                                     Page   96
+AS65 Assembler for R6502 [1.42].                                     Page   88
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -6189,7 +5718,7 @@ ffff =                  ram_top = -1
 1506 : ac1a02                   ldy abs1+2
 1509 : 08                       php         ;test stores do not alter flags
 150a : 98                       tya
-AS65 Assembler for R6502 [1.42].                                     Page   97
+AS65 Assembler for R6502 [1.42].                                     Page   89
 -------------------------- 6502_functional_test.a65 --------------------------
 
 150b : 49c3                     eor #$c3
@@ -6254,7 +5783,7 @@ ffff =                  ram_top = -1
 1547 : cc1802                   cpy abs1    ;test result
                                 trap_ne
 154a : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page   98
+AS65 Assembler for R6502 [1.42].                                     Page   90
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -6319,7 +5848,7 @@ ffff =                  ram_top = -1
 1582 : 08                       php
 1583 : cc1b02                   cpy abs1+3  ;test result
                                 trap_ne
-AS65 Assembler for R6502 [1.42].                                     Page   99
+AS65 Assembler for R6502 [1.42].                                     Page   91
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1586 : d0fe            >        bne *           ;failed not equal (non zero)
@@ -6384,7 +5913,7 @@ ffff =                  ram_top = -1
                         
 15bc : a041                     ldy #$41
 15be : 08                       php
-AS65 Assembler for R6502 [1.42].                                     Page  100
+AS65 Assembler for R6502 [1.42].                                     Page   92
 -------------------------- 6502_functional_test.a65 --------------------------
 
 15bf : cc1a02                   cpy abs1+2   ;test result
@@ -6449,7 +5978,7 @@ ffff =                  ram_top = -1
                                 trap_ne     ;store to abs+1 data
 160b : d0fe            >        bne *           ;failed not equal (non zero)
                         
-AS65 Assembler for R6502 [1.42].                                     Page  101
+AS65 Assembler for R6502 [1.42].                                     Page   93
 -------------------------- 6502_functional_test.a65 --------------------------
 
 160d : 8c0402                   sty abst+1  ;clear                
@@ -6514,7 +6043,7 @@ ffff =                  ram_top = -1
 165c : dd1802                   cmp abs1,x  ;test result
                                 trap_ne
 165f : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page  102
+AS65 Assembler for R6502 [1.42].                                     Page   94
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -6579,7 +6108,7 @@ ffff =                  ram_top = -1
 16a0 : d515                     cmp zp1,x   ;test result
                                 trap_ne
 16a2 : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page  103
+AS65 Assembler for R6502 [1.42].                                     Page   95
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -6644,7 +6173,7 @@ ffff =                  ram_top = -1
 16e9 : 9d0302                   sta abst,x  ;clear                
 16ec : ca                       dex
 16ed : 10e5                     bpl tstax
-AS65 Assembler for R6502 [1.42].                                     Page  104
+AS65 Assembler for R6502 [1.42].                                     Page   96
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 next_test
@@ -6709,7 +6238,7 @@ ffff =                  ram_top = -1
 172d : 49c3                     eor #$c3
 172f : d91802                   cmp abs1,y  ;test result
                                 trap_ne
-AS65 Assembler for R6502 [1.42].                                     Page  105
+AS65 Assembler for R6502 [1.42].                                     Page   97
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1732 : d0fe            >        bne *           ;failed not equal (non zero)
@@ -6774,7 +6303,7 @@ ffff =                  ram_top = -1
                                 set_stat $ff
                        >            load_flag $ff
 1777 : a9ff            >            lda #$ff             ;allow test to change
-AS65 Assembler for R6502 [1.42].                                     Page  106
+AS65 Assembler for R6502 [1.42].                                     Page   98
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -6839,7 +6368,7 @@ ffff =                  ram_top = -1
                         
 17c3 : 68                       pla         ;load status
                                 eor_flag 0
-AS65 Assembler for R6502 [1.42].                                     Page  107
+AS65 Assembler for R6502 [1.42].                                     Page   99
 -------------------------- 6502_functional_test.a65 --------------------------
 
 17c4 : 4930            >            eor #0|fao         ;invert expected flags 
@@ -6904,7 +6433,7 @@ ffff =                  ram_top = -1
 180d : c916            >            cmp #test_num
                        >            trap_ne         ;test is out of sequence
 180f : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page  108
+AS65 Assembler for R6502 [1.42].                                     Page  100
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -6969,7 +6498,7 @@ ffff =                  ram_top = -1
                                 
 186c : a0fb                     ldy #3+$f8
 186e : b92001           tlday5  lda abs1-$f8,y  ;no wrap on indexed abs
-AS65 Assembler for R6502 [1.42].                                     Page  109
+AS65 Assembler for R6502 [1.42].                                     Page  101
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1871 : 913a                     sta (inwt),y
@@ -7034,7 +6563,7 @@ ffff =                  ram_top = -1
 18c2 : 28                       plp
 18c3 : 8d0302                   sta abst
 18c6 : 08                       php         ;flags after load/store sequence
-AS65 Assembler for R6502 [1.42].                                     Page  110
+AS65 Assembler for R6502 [1.42].                                     Page  102
 -------------------------- 6502_functional_test.a65 --------------------------
 
 18c7 : 49c3                     eor #$c3
@@ -7099,7 +6628,7 @@ ffff =                  ram_top = -1
 1906 : 4930            >            eor #0|fao         ;invert expected flags 
                         
 1908 : cd1f02                   cmp fLDx+2  ;test flags
-AS65 Assembler for R6502 [1.42].                                     Page  111
+AS65 Assembler for R6502 [1.42].                                     Page  103
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 trap_ne
@@ -7164,7 +6693,7 @@ ffff =                  ram_top = -1
 1947 : 48              >            pha         ;use stack to load status
 1948 : 28              >            plp
                         
-AS65 Assembler for R6502 [1.42].                                     Page  112
+AS65 Assembler for R6502 [1.42].                                     Page  104
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1949 : a516                     lda zp1+1
@@ -7229,7 +6758,7 @@ ffff =                  ram_top = -1
 198d : c900                     cmp #0      ;test result
                                 trap_ne
 198f : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page  113
+AS65 Assembler for R6502 [1.42].                                     Page  105
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -7294,7 +6823,7 @@ ffff =                  ram_top = -1
 19cf : d0fe            >        bne *           ;failed not equal (non zero)
                         
                                 set_stat 0
-AS65 Assembler for R6502 [1.42].                                     Page  114
+AS65 Assembler for R6502 [1.42].                                     Page  106
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            load_flag 0
@@ -7359,7 +6888,7 @@ ffff =                  ram_top = -1
 1a10 : 08                       php         ;test stores do not alter flags
 1a11 : 49c3                     eor #$c3
 1a13 : 28                       plp
-AS65 Assembler for R6502 [1.42].                                     Page  115
+AS65 Assembler for R6502 [1.42].                                     Page  107
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1a14 : 850c                     sta zpt  
@@ -7424,7 +6953,7 @@ ffff =                  ram_top = -1
 1a55 : 68                       pla         ;load status
                                 eor_flag lo~fnz ;mask bits not altered
 1a56 : 497d            >            eor #lo~fnz |fao         ;invert expected 
-AS65 Assembler for R6502 [1.42].                                     Page  116
+AS65 Assembler for R6502 [1.42].                                     Page  108
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -7489,7 +7018,7 @@ ffff =                  ram_top = -1
 1a91 : a982                     lda #$82
 1a93 : 08                       php
 1a94 : cd1902                   cmp abs1+1  ;test result
-AS65 Assembler for R6502 [1.42].                                     Page  117
+AS65 Assembler for R6502 [1.42].                                     Page  109
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 trap_ne
@@ -7554,7 +7083,7 @@ ffff =                  ram_top = -1
 1acc : 28              >            plp
                         
 1acd : a9c3                     lda #$c3  
-AS65 Assembler for R6502 [1.42].                                     Page  118
+AS65 Assembler for R6502 [1.42].                                     Page  110
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1acf : 08                       php
@@ -7619,7 +7148,7 @@ ffff =                  ram_top = -1
 1b07 : 48              >            pha         ;use stack to load status
 1b08 : 28              >            plp
                         
-AS65 Assembler for R6502 [1.42].                                     Page  119
+AS65 Assembler for R6502 [1.42].                                     Page  111
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1b09 : a900                     lda #0
@@ -7684,7 +7213,7 @@ ffff =                  ram_top = -1
 1b62 : 49c3                     eor #$c3
 1b64 : c518                     cmp zp1+3
                                 trap_ne     ;store to zp data
-AS65 Assembler for R6502 [1.42].                                     Page  120
+AS65 Assembler for R6502 [1.42].                                     Page  112
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1b66 : d0fe            >        bne *           ;failed not equal (non zero)
@@ -7749,7 +7278,7 @@ ffff =                  ram_top = -1
 1b9f : 08              >            php         ;save flags
 1ba0 : c901            >            cmp #1     ;test result
                        >            trap_ne
-AS65 Assembler for R6502 [1.42].                                     Page  121
+AS65 Assembler for R6502 [1.42].                                     Page  113
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1ba2 : d0fe            >        bne *           ;failed not equal (non zero)
@@ -7814,7 +7343,7 @@ ffff =                  ram_top = -1
                        >
 1bd2 : 28              >            plp         ;restore status
                         
-AS65 Assembler for R6502 [1.42].                                     Page  122
+AS65 Assembler for R6502 [1.42].                                     Page  114
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 
@@ -7879,7 +7408,7 @@ ffff =                  ram_top = -1
 1c01 : 2416                     bit zp1+1   ;82 - should set N (M7) & Z / clea
                                 tst_a 1,~fv
 1c03 : 08              >            php         ;save flags
-AS65 Assembler for R6502 [1.42].                                     Page  123
+AS65 Assembler for R6502 [1.42].                                     Page  115
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1c04 : c901            >            cmp #1     ;test result
@@ -7944,7 +7473,7 @@ ffff =                  ram_top = -1
                        >
                        >            trap_ne
 1c35 : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page  124
+AS65 Assembler for R6502 [1.42].                                     Page  116
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -8009,7 +7538,7 @@ ffff =                  ram_top = -1
 1c67 : 28              >            plp
                         
 1c68 : 2c1802                   bit abs1    ;c3 - should set N (M7) & V (M6) /
-AS65 Assembler for R6502 [1.42].                                     Page  125
+AS65 Assembler for R6502 [1.42].                                     Page  117
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 tst_a 1,fnv
@@ -8074,7 +7603,7 @@ ffff =                  ram_top = -1
                        >            cmp_flag ~fnz
 1c9c : c97d            >            cmp #(~fnz|fao)&m8    ;expected flags + al
                        >
-AS65 Assembler for R6502 [1.42].                                     Page  126
+AS65 Assembler for R6502 [1.42].                                     Page  118
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            trap_ne
@@ -8139,7 +7668,7 @@ ffff =                  ram_top = -1
 1cd0 : d0fe            >        bne *           ;failed not equal (non zero)
                        >
 001a =                 >test_num = test_num + 1
-AS65 Assembler for R6502 [1.42].                                     Page  127
+AS65 Assembler for R6502 [1.42].                                     Page  119
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1cd2 : a91a            >            lda #test_num   ;*** next tests' number
@@ -8204,7 +7733,7 @@ ffff =                  ram_top = -1
                                 set_x $80,$ff
                        >            load_flag $ff
 1d01 : a9ff            >            lda #$ff             ;allow test to change
-AS65 Assembler for R6502 [1.42].                                     Page  128
+AS65 Assembler for R6502 [1.42].                                     Page  120
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -8269,7 +7798,7 @@ ffff =                  ram_top = -1
 1d31 : ec1c02                   cpx abs7f
                                 tst_stat fc
 1d34 : 08              >            php         ;save status
-AS65 Assembler for R6502 [1.42].                                     Page  129
+AS65 Assembler for R6502 [1.42].                                     Page  121
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1d35 : 68              >            pla         ;use stack to retrieve status
@@ -8334,7 +7863,7 @@ ffff =                  ram_top = -1
 1d66 : d0fe            >        bne *           ;failed not equal (non zero)
                        >
 1d68 : 28              >            plp         ;restore status
-AS65 Assembler for R6502 [1.42].                                     Page  130
+AS65 Assembler for R6502 [1.42].                                     Page  122
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -8399,7 +7928,7 @@ ffff =                  ram_top = -1
 1d99 : 68              >            pla         ;use stack to retrieve status
 1d9a : 48              >            pha
                        >            cmp_flag fzc
-AS65 Assembler for R6502 [1.42].                                     Page  131
+AS65 Assembler for R6502 [1.42].                                     Page  123
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1d9b : c933            >            cmp #(fzc|fao)&m8    ;expected flags + alw
@@ -8464,7 +7993,7 @@ ffff =                  ram_top = -1
                         
 1dca : ca                       dex
 1dcb : e07f                     cpx #$7f
-AS65 Assembler for R6502 [1.42].                                     Page  132
+AS65 Assembler for R6502 [1.42].                                     Page  124
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 tst_x $7e,~fzc
@@ -8529,7 +8058,7 @@ ffff =                  ram_top = -1
                        >            trap_ne
 1dfd : d0fe            >        bne *           ;failed not equal (non zero)
                        >
-AS65 Assembler for R6502 [1.42].                                     Page  133
+AS65 Assembler for R6502 [1.42].                                     Page  125
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1dff : 28              >            plp         ;restore status
@@ -8594,7 +8123,7 @@ ffff =                  ram_top = -1
 1e2e : c07e            >            cpy #$7e     ;test result
                        >            trap_ne
 1e30 : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page  134
+AS65 Assembler for R6502 [1.42].                                     Page  126
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -8659,7 +8188,7 @@ ffff =                  ram_top = -1
                        >
                        >            trap_ne
 1e63 : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page  135
+AS65 Assembler for R6502 [1.42].                                     Page  127
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -8724,7 +8253,7 @@ ffff =                  ram_top = -1
 1e93 : a900            >            lda #0             ;allow test to change I
                        >
 1e95 : 48              >            pha         ;use stack to load status
-AS65 Assembler for R6502 [1.42].                                     Page  136
+AS65 Assembler for R6502 [1.42].                                     Page  128
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1e96 : a080            >            ldy #$80     ;precharge index y
@@ -8789,7 +8318,7 @@ ffff =                  ram_top = -1
 1ec6 : 68              >            pla         ;use stack to retrieve status
 1ec7 : 48              >            pha
                        >            cmp_flag ~fnz
-AS65 Assembler for R6502 [1.42].                                     Page  137
+AS65 Assembler for R6502 [1.42].                                     Page  129
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1ec8 : c97d            >            cmp #(~fnz|fao)&m8    ;expected flags + al
@@ -8854,7 +8383,7 @@ ffff =                  ram_top = -1
                         
 1ef9 : c519                     cmp zp7f
                                 tst_a $80,fc
-AS65 Assembler for R6502 [1.42].                                     Page  138
+AS65 Assembler for R6502 [1.42].                                     Page  130
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1efb : 08              >            php         ;save flags
@@ -8919,7 +8448,7 @@ ffff =                  ram_top = -1
                        >
                        >            trap_ne
 1f2c : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page  139
+AS65 Assembler for R6502 [1.42].                                     Page  131
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -8984,7 +8513,7 @@ ffff =                  ram_top = -1
 1f5c : 28              >            plp
                         
 1f5d : c519                     cmp zp7f
-AS65 Assembler for R6502 [1.42].                                     Page  140
+AS65 Assembler for R6502 [1.42].                                     Page  132
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 tst_a $7e,~fzc
@@ -9049,7 +8578,7 @@ ffff =                  ram_top = -1
                        >            cmp_flag fzc
 1f90 : c933            >            cmp #(fzc|fao)&m8    ;expected flags + alw
                        >
-AS65 Assembler for R6502 [1.42].                                     Page  141
+AS65 Assembler for R6502 [1.42].                                     Page  133
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            trap_ne
@@ -9114,7 +8643,7 @@ ffff =                  ram_top = -1
 1fc1 : 48              >            pha         ;use stack to load status
 1fc2 : a97f            >            lda #$7f     ;precharge accu
 1fc4 : 28              >            plp
-AS65 Assembler for R6502 [1.42].                                     Page  142
+AS65 Assembler for R6502 [1.42].                                     Page  134
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -9179,7 +8708,7 @@ ffff =                  ram_top = -1
 1ff6 : 68              >            pla         ;load status
 1ff7 : 48              >            pha
                        >            cmp_flag fc
-AS65 Assembler for R6502 [1.42].                                     Page  143
+AS65 Assembler for R6502 [1.42].                                     Page  135
 -------------------------- 6502_functional_test.a65 --------------------------
 
 1ff8 : c931            >            cmp #(fc|fao)&m8    ;expected flags + alwa
@@ -9244,7 +8773,7 @@ ffff =                  ram_top = -1
 2025 : a9ff            >            lda #$ff             ;allow test to change
                        >
 2027 : 48              >            pha         ;use stack to load status
-AS65 Assembler for R6502 [1.42].                                     Page  144
+AS65 Assembler for R6502 [1.42].                                     Page  136
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2028 : a980            >            lda #$80     ;precharge accu
@@ -9309,7 +8838,7 @@ ffff =                  ram_top = -1
                        >
 205a : 68              >            pla         ;load status
 205b : 48              >            pha
-AS65 Assembler for R6502 [1.42].                                     Page  145
+AS65 Assembler for R6502 [1.42].                                     Page  137
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            cmp_flag ~fzc
@@ -9374,7 +8903,7 @@ ffff =                  ram_top = -1
                         
                                 set_a $7e,0
                        >            load_flag 0
-AS65 Assembler for R6502 [1.42].                                     Page  146
+AS65 Assembler for R6502 [1.42].                                     Page  138
 -------------------------- 6502_functional_test.a65 --------------------------
 
 208b : a900            >            lda #0             ;allow test to change I
@@ -9439,7 +8968,7 @@ ffff =                  ram_top = -1
 20bc : c97f            >            cmp #$7f     ;test result
                        >            trap_ne
 20be : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page  147
+AS65 Assembler for R6502 [1.42].                                     Page  139
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -9504,7 +9033,7 @@ ffff =                  ram_top = -1
                        >
 20ef : 28              >            plp         ;restore status
                         
-AS65 Assembler for R6502 [1.42].                                     Page  148
+AS65 Assembler for R6502 [1.42].                                     Page  140
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 set_a $7f,0
@@ -9569,7 +9098,7 @@ ffff =                  ram_top = -1
                                 tst_a $80,~fnz
 2123 : 08              >            php         ;save flags
 2124 : c980            >            cmp #$80     ;test result
-AS65 Assembler for R6502 [1.42].                                     Page  149
+AS65 Assembler for R6502 [1.42].                                     Page  141
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            trap_ne
@@ -9634,7 +9163,7 @@ ffff =                  ram_top = -1
 2156 : d0fe            >        bne *           ;failed not equal (non zero)
                        >
 2158 : 28              >            plp         ;restore status
-AS65 Assembler for R6502 [1.42].                                     Page  150
+AS65 Assembler for R6502 [1.42].                                     Page  142
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -9699,7 +9228,7 @@ ffff =                  ram_top = -1
 218a : a97e            >            lda #$7e     ;precharge accu
 218c : 28              >            plp
                         
-AS65 Assembler for R6502 [1.42].                                     Page  151
+AS65 Assembler for R6502 [1.42].                                     Page  143
 -------------------------- 6502_functional_test.a65 --------------------------
 
 218d : d91802                   cmp abs1,y
@@ -9764,7 +9293,7 @@ ffff =                  ram_top = -1
                        >            cmp_flag ~fn
 21c1 : c97f            >            cmp #(~fn|fao)&m8    ;expected flags + alw
                        >
-AS65 Assembler for R6502 [1.42].                                     Page  152
+AS65 Assembler for R6502 [1.42].                                     Page  144
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            trap_ne
@@ -9829,7 +9358,7 @@ ffff =                  ram_top = -1
                        >
 21f1 : 48              >            pha         ;use stack to load status
 21f2 : a97f            >            lda #$7f     ;precharge accu
-AS65 Assembler for R6502 [1.42].                                     Page  153
+AS65 Assembler for R6502 [1.42].                                     Page  145
 -------------------------- 6502_functional_test.a65 --------------------------
 
 21f4 : 28              >            plp
@@ -9894,7 +9423,7 @@ ffff =                  ram_top = -1
 2224 : 68              >            pla         ;load status
 2225 : 48              >            pha
                        >            cmp_flag ~fnz
-AS65 Assembler for R6502 [1.42].                                     Page  154
+AS65 Assembler for R6502 [1.42].                                     Page  146
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2226 : c97d            >            cmp #(~fnz|fao)&m8    ;expected flags + al
@@ -9959,7 +9488,7 @@ ffff =                  ram_top = -1
                        >            load_flag 0
 2253 : a900            >            lda #0             ;allow test to change I
                        >
-AS65 Assembler for R6502 [1.42].                                     Page  155
+AS65 Assembler for R6502 [1.42].                                     Page  147
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2255 : 48              >            pha         ;use stack to load status
@@ -10024,7 +9553,7 @@ ffff =                  ram_top = -1
 2286 : d0fe            >        bne *           ;failed not equal (non zero)
                        >
 2288 : 68              >            pla         ;load status
-AS65 Assembler for R6502 [1.42].                                     Page  156
+AS65 Assembler for R6502 [1.42].                                     Page  148
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2289 : 48              >            pha
@@ -10089,7 +9618,7 @@ ffff =                  ram_top = -1
                                 set_a $7e,$ff
                        >            load_flag $ff
 22b7 : a9ff            >            lda #$ff             ;allow test to change
-AS65 Assembler for R6502 [1.42].                                     Page  157
+AS65 Assembler for R6502 [1.42].                                     Page  149
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -10154,7 +9683,7 @@ ffff =                  ram_top = -1
 22ec : d0fe            >        bne *           ;failed not equal (non zero)
                        >
                         
-AS65 Assembler for R6502 [1.42].                                     Page  158
+AS65 Assembler for R6502 [1.42].                                     Page  150
 -------------------------- 6502_functional_test.a65 --------------------------
 
 22ee : ca                       dex
@@ -10219,7 +9748,7 @@ ffff =                  ram_top = -1
 2325 : a205                     ldx #5
 2327 :                  tlsr1
                                 set_ax zps,$ff
-AS65 Assembler for R6502 [1.42].                                     Page  159
+AS65 Assembler for R6502 [1.42].                                     Page  151
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            load_flag $ff
@@ -10284,7 +9813,7 @@ ffff =                  ram_top = -1
                        >
 235d : 48              >            pha         ;use stack to load status
 235e : b513            >            lda zps,x    ;precharge accu
-AS65 Assembler for R6502 [1.42].                                     Page  160
+AS65 Assembler for R6502 [1.42].                                     Page  152
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2360 : 28              >            plp
@@ -10349,7 +9878,7 @@ ffff =                  ram_top = -1
 2395 : 2a                       rol a
                                 tst_ax rROLc,fROLc,$ff-fnzc
 2396 : 08              >            php         ;save flags
-AS65 Assembler for R6502 [1.42].                                     Page  161
+AS65 Assembler for R6502 [1.42].                                     Page  153
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2397 : dd2702          >            cmp rROLc,x    ;test result
@@ -10414,7 +9943,7 @@ ffff =                  ram_top = -1
 23ce : d0fe            >        bne *           ;failed not equal (non zero)
                        >
 23d0 : 68              >            pla         ;load status
-AS65 Assembler for R6502 [1.42].                                     Page  162
+AS65 Assembler for R6502 [1.42].                                     Page  154
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            eor_flag $ff-fnzc
@@ -10479,7 +10008,7 @@ ffff =                  ram_top = -1
                        >
 2407 : dd4b02          >            cmp fRORc,x    ;test flags
                        >            trap_ne     ;
-AS65 Assembler for R6502 [1.42].                                     Page  163
+AS65 Assembler for R6502 [1.42].                                     Page  155
 -------------------------- 6502_functional_test.a65 --------------------------
 
 240a : d0fe            >        bne *           ;failed not equal (non zero)
@@ -10544,7 +10073,7 @@ ffff =                  ram_top = -1
 2444 : 060c                     asl zpt
                                 tst_z rASL,fASL,$ff-fnzc
 2446 : 08              >            php         ;save flags
-AS65 Assembler for R6502 [1.42].                                     Page  164
+AS65 Assembler for R6502 [1.42].                                     Page  156
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2447 : a50c            >            lda zpt
@@ -10609,7 +10138,7 @@ ffff =                  ram_top = -1
                                 tst_z rLSR,fLSR,$ff-fnzc
 2484 : 08              >            php         ;save flags
 2485 : a50c            >            lda zpt
-AS65 Assembler for R6502 [1.42].                                     Page  165
+AS65 Assembler for R6502 [1.42].                                     Page  157
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2487 : dd2d02          >            cmp rLSR,x    ;test result
@@ -10674,7 +10203,7 @@ ffff =                  ram_top = -1
 24c2 : 08              >            php         ;save flags
 24c3 : a50c            >            lda zpt
 24c5 : dd2102          >            cmp rROL,x    ;test result
-AS65 Assembler for R6502 [1.42].                                     Page  166
+AS65 Assembler for R6502 [1.42].                                     Page  158
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            trap_ne
@@ -10739,7 +10268,7 @@ ffff =                  ram_top = -1
 2501 : a50c            >            lda zpt
 2503 : dd2702          >            cmp rROLc,x    ;test result
                        >            trap_ne
-AS65 Assembler for R6502 [1.42].                                     Page  167
+AS65 Assembler for R6502 [1.42].                                     Page  159
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2506 : d0fe            >        bne *           ;failed not equal (non zero)
@@ -10804,7 +10333,7 @@ ffff =                  ram_top = -1
 2541 : dd2d02          >            cmp rROR,x    ;test result
                        >            trap_ne
 2544 : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page  168
+AS65 Assembler for R6502 [1.42].                                     Page  160
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -10869,7 +10398,7 @@ ffff =                  ram_top = -1
                        >            trap_ne
 2582 : d0fe            >        bne *           ;failed not equal (non zero)
                        >
-AS65 Assembler for R6502 [1.42].                                     Page  169
+AS65 Assembler for R6502 [1.42].                                     Page  161
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2584 : 68              >            pla         ;load status
@@ -10934,7 +10463,7 @@ ffff =                  ram_top = -1
                        >
 25c1 : 48              >            pha         ;use stack to load status
 25c2 : b513            >            lda zps,x    ;load to memory
-AS65 Assembler for R6502 [1.42].                                     Page  170
+AS65 Assembler for R6502 [1.42].                                     Page  162
 -------------------------- 6502_functional_test.a65 --------------------------
 
 25c4 : 8d0302          >            sta abst
@@ -10999,7 +10528,7 @@ ffff =                  ram_top = -1
 2605 : 48              >            pha         ;use stack to load status
 2606 : b513            >            lda zps,x    ;load to memory
 2608 : 8d0302          >            sta abst
-AS65 Assembler for R6502 [1.42].                                     Page  171
+AS65 Assembler for R6502 [1.42].                                     Page  163
 -------------------------- 6502_functional_test.a65 --------------------------
 
 260b : 28              >            plp
@@ -11064,7 +10593,7 @@ ffff =                  ram_top = -1
 264a : b513            >            lda zps,x    ;load to memory
 264c : 8d0302          >            sta abst
 264f : 28              >            plp
-AS65 Assembler for R6502 [1.42].                                     Page  172
+AS65 Assembler for R6502 [1.42].                                     Page  164
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -11129,7 +10658,7 @@ ffff =                  ram_top = -1
 2690 : 8d0302          >            sta abst
 2693 : 28              >            plp
                         
-AS65 Assembler for R6502 [1.42].                                     Page  173
+AS65 Assembler for R6502 [1.42].                                     Page  165
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2694 : 2e0302                   rol abst
@@ -11194,7 +10723,7 @@ ffff =                  ram_top = -1
 26d7 : 28              >            plp
                         
 26d8 : 6e0302                   ror abst
-AS65 Assembler for R6502 [1.42].                                     Page  174
+AS65 Assembler for R6502 [1.42].                                     Page  166
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 tst_abs rROR,fROR,$ff-fnzc
@@ -11259,7 +10788,7 @@ ffff =                  ram_top = -1
                         
 271c : 6e0302                   ror abst
                                 tst_abs rRORc,fRORc,$ff-fnzc
-AS65 Assembler for R6502 [1.42].                                     Page  175
+AS65 Assembler for R6502 [1.42].                                     Page  167
 -------------------------- 6502_functional_test.a65 --------------------------
 
 271f : 08              >            php         ;save flags
@@ -11324,7 +10853,7 @@ ffff =                  ram_top = -1
 275c : 10e3                     bpl tasl6
 275e : a205                     ldx #5
 2760 :                  tasl7
-AS65 Assembler for R6502 [1.42].                                     Page  176
+AS65 Assembler for R6502 [1.42].                                     Page  168
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 set_zx zps,$ff
@@ -11389,7 +10918,7 @@ ffff =                  ram_top = -1
 279c : a205                     ldx #5
 279e :                  tlsr7
                                 set_zx zps,$ff
-AS65 Assembler for R6502 [1.42].                                     Page  177
+AS65 Assembler for R6502 [1.42].                                     Page  169
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            load_flag $ff
@@ -11454,7 +10983,7 @@ ffff =                  ram_top = -1
 27dc :                  trol7
                                 set_zx zps,$ff-fc
                        >            load_flag $ff-fc
-AS65 Assembler for R6502 [1.42].                                     Page  178
+AS65 Assembler for R6502 [1.42].                                     Page  170
 -------------------------- 6502_functional_test.a65 --------------------------
 
 27dc : a9fe            >            lda #$ff-fc             ;allow test to cha
@@ -11519,7 +11048,7 @@ ffff =                  ram_top = -1
                                 set_zx zps,$ff
                        >            load_flag $ff
 281a : a9ff            >            lda #$ff             ;allow test to change
-AS65 Assembler for R6502 [1.42].                                     Page  179
+AS65 Assembler for R6502 [1.42].                                     Page  171
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -11584,7 +11113,7 @@ ffff =                  ram_top = -1
                        >            load_flag $ff-fc
 2858 : a9fe            >            lda #$ff-fc             ;allow test to cha
                        >
-AS65 Assembler for R6502 [1.42].                                     Page  180
+AS65 Assembler for R6502 [1.42].                                     Page  172
 -------------------------- 6502_functional_test.a65 --------------------------
 
 285a : 48              >            pha         ;use stack to load status
@@ -11649,7 +11178,7 @@ ffff =                  ram_top = -1
 2896 : a9ff            >            lda #$ff             ;allow test to change
                        >
 2898 : 48              >            pha         ;use stack to load status
-AS65 Assembler for R6502 [1.42].                                     Page  181
+AS65 Assembler for R6502 [1.42].                                     Page  173
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2899 : b513            >            lda zps,x    ;load to indexed zeropage
@@ -11714,7 +11243,7 @@ ffff =                  ram_top = -1
 28d9 : dd3902          >            cmp fASL,x    ;test flags
                        >            trap_ne
 28dc : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page  182
+AS65 Assembler for R6502 [1.42].                                     Page  174
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -11779,7 +11308,7 @@ ffff =                  ram_top = -1
                        >            trap_ne
 2920 : d0fe            >        bne *           ;failed not equal (non zero)
                        >
-AS65 Assembler for R6502 [1.42].                                     Page  183
+AS65 Assembler for R6502 [1.42].                                     Page  175
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -11844,7 +11373,7 @@ ffff =                  ram_top = -1
 2964 : d0fe            >        bne *           ;failed not equal (non zero)
                        >
                         
-AS65 Assembler for R6502 [1.42].                                     Page  184
+AS65 Assembler for R6502 [1.42].                                     Page  176
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2966 : ca                       dex
@@ -11909,7 +11438,7 @@ ffff =                  ram_top = -1
                        >
                         
 29aa : ca                       dex
-AS65 Assembler for R6502 [1.42].                                     Page  185
+AS65 Assembler for R6502 [1.42].                                     Page  177
 -------------------------- 6502_functional_test.a65 --------------------------
 
 29ab : 10e0                     bpl trolc8
@@ -11974,7 +11503,7 @@ ffff =                  ram_top = -1
                         
 29ee : ca                       dex
 29ef : 10e0                     bpl tror8
-AS65 Assembler for R6502 [1.42].                                     Page  186
+AS65 Assembler for R6502 [1.42].                                     Page  178
 -------------------------- 6502_functional_test.a65 --------------------------
 
 29f1 : a205                     ldx #5
@@ -12039,7 +11568,7 @@ ffff =                  ram_top = -1
 2a32 : ca                       dex
 2a33 : 10e0                     bpl trorc8
 2a35 : a205                     ldx #5
-AS65 Assembler for R6502 [1.42].                                     Page  187
+AS65 Assembler for R6502 [1.42].                                     Page  179
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2a37 :                  trorc9
@@ -12104,7 +11633,7 @@ ffff =                  ram_top = -1
                        >            trap_ne
 2a75 : d0fe            >        bne *           ;failed not equal (non zero)
                        >
-AS65 Assembler for R6502 [1.42].                                     Page  188
+AS65 Assembler for R6502 [1.42].                                     Page  180
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2a77 : 68              >            pla         ;load status
@@ -12118,7 +11647,7 @@ ffff =                  ram_top = -1
                         
 2a7f : e8                       inx
 2a80 : e002                     cpx #2
-2a82 : d004                     bne tinc1
+2a82 : d0fe                     bne tinc1
 2a84 : a9fe                     lda #$fe
 2a86 : 850c                     sta zpt
 2a88 : e005             tinc1   cpx #5
@@ -12151,7 +11680,7 @@ ffff =                  ram_top = -1
                        >
                         
 2aa5 : ca                       dex
-2aa6 : 300a                     bmi tdec1
+2aa6 : 30fe                     bmi tdec1
 2aa8 : e001                     cpx #1
 2aaa : d0e3                     bne tdec
 2aac : a981                     lda #$81
@@ -12169,7 +11698,7 @@ ffff =                  ram_top = -1
 2aba : 48              >            pha         ;use stack to load status
 2abb : 28              >            plp
                         
-AS65 Assembler for R6502 [1.42].                                     Page  189
+AS65 Assembler for R6502 [1.42].                                     Page  181
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2abc : e60c                     inc zpt
@@ -12191,7 +11720,7 @@ ffff =                  ram_top = -1
                         
 2ace : e8                       inx
 2acf : e002                     cpx #2
-2ad1 : d004                     bne tinc11
+2ad1 : d0fe                     bne tinc11
 2ad3 : a9fe                     lda #$fe
 2ad5 : 850c                     sta zpt
 2ad7 : e005             tinc11  cpx #5
@@ -12224,7 +11753,7 @@ ffff =                  ram_top = -1
                        >
                         
 2af4 : ca                       dex
-2af5 : 300a                     bmi tdec11
+2af5 : 30fe                     bmi tdec11
 2af7 : e001                     cpx #1
 2af9 : d0e3                     bne tdec10
 2afb : a981                     lda #$81
@@ -12234,7 +11763,7 @@ ffff =                  ram_top = -1
                                 next_test
 2b01 : ad0002          >            lda test_case   ;previous test
 2b04 : c922            >            cmp #test_num
-AS65 Assembler for R6502 [1.42].                                     Page  190
+AS65 Assembler for R6502 [1.42].                                     Page  182
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            trap_ne         ;test is out of sequence
@@ -12277,7 +11806,7 @@ ffff =                  ram_top = -1
                         
 2b2c : e8                       inx
 2b2d : e002                     cpx #2
-2b2f : d005                     bne tinc3
+2b2f : d0fe                     bne tinc3
 2b31 : a9fe                     lda #$fe
 2b33 : 8d0302                   sta abst
 2b36 : e005             tinc3   cpx #5
@@ -12299,7 +11828,7 @@ ffff =                  ram_top = -1
 2b49 : dd5102          >            cmp rINC,x    ;test result
                        >            trap_ne
 2b4c : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page  191
+AS65 Assembler for R6502 [1.42].                                     Page  183
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -12313,7 +11842,7 @@ ffff =                  ram_top = -1
                        >
                         
 2b56 : ca                       dex
-2b57 : 300b                     bmi tdec3
+2b57 : 30fe                     bmi tdec3
 2b59 : e001                     cpx #1
 2b5b : d0e1                     bne tdec2
 2b5d : a981                     lda #$81
@@ -12350,7 +11879,7 @@ ffff =                  ram_top = -1
                         
 2b83 : e8                       inx
 2b84 : e002                     cpx #2
-2b86 : d005                     bne tinc13
+2b86 : d0fe                     bne tinc13
 2b88 : a9fe                     lda #$fe
 2b8a : 8d0302                   sta abst
 2b8d : e005             tinc13   cpx #5
@@ -12364,7 +11893,7 @@ ffff =                  ram_top = -1
                        >
 2b97 : 48              >            pha         ;use stack to load status
 2b98 : 28              >            plp
-AS65 Assembler for R6502 [1.42].                                     Page  192
+AS65 Assembler for R6502 [1.42].                                     Page  184
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -12386,7 +11915,7 @@ ffff =                  ram_top = -1
                        >
                         
 2bad : ca                       dex
-2bae : 300b                     bmi tdec13
+2bae : 30fe                     bmi tdec13
 2bb0 : e001                     cpx #1
 2bb2 : d0e1                     bne tdec12
 2bb4 : a981                     lda #$81
@@ -12429,7 +11958,7 @@ ffff =                  ram_top = -1
 2bdc : 4930            >            eor #0|fao         ;invert expected flags 
                        >
 2bde : dd5602          >            cmp fINC,x    ;test flags
-AS65 Assembler for R6502 [1.42].                                     Page  193
+AS65 Assembler for R6502 [1.42].                                     Page  185
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            trap_ne
@@ -12439,7 +11968,7 @@ ffff =                  ram_top = -1
 2be3 : b50c                     lda zpt,x
 2be5 : e8                       inx
 2be6 : e002                     cpx #2
-2be8 : d002                     bne tinc5
+2be8 : d0fe                     bne tinc5
 2bea : a9fe                     lda #$fe
 2bec : e005             tinc5   cpx #5
 2bee : d0db                     bne tinc4
@@ -12472,7 +12001,7 @@ ffff =                  ram_top = -1
                         
 2c0b : b50c                     lda zpt,x
 2c0d : ca                       dex
-2c0e : 3008                     bmi tdec5
+2c0e : 30fe                     bmi tdec5
 2c10 : e001                     cpx #1
 2c12 : d0df                     bne tdec4
 2c14 : a981                     lda #$81
@@ -12494,7 +12023,7 @@ ffff =                  ram_top = -1
 2c25 : b50c            >            lda zpt,x
 2c27 : dd5102          >            cmp rINC,x    ;test result
                        >            trap_ne
-AS65 Assembler for R6502 [1.42].                                     Page  194
+AS65 Assembler for R6502 [1.42].                                     Page  186
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2c2a : d0fe            >        bne *           ;failed not equal (non zero)
@@ -12511,7 +12040,7 @@ ffff =                  ram_top = -1
 2c34 : b50c                     lda zpt,x
 2c36 : e8                       inx
 2c37 : e002                     cpx #2
-2c39 : d002                     bne tinc15
+2c39 : d0fe                     bne tinc15
 2c3b : a9fe                     lda #$fe
 2c3d : e005             tinc15  cpx #5
 2c3f : d0db                     bne tinc14
@@ -12544,7 +12073,7 @@ ffff =                  ram_top = -1
                         
 2c5c : b50c                     lda zpt,x
 2c5e : ca                       dex
-2c5f : 3008                     bmi tdec15
+2c5f : 30fe                     bmi tdec15
 2c61 : e001                     cpx #1
 2c63 : d0df                     bne tdec14
 2c65 : a981                     lda #$81
@@ -12559,7 +12088,7 @@ ffff =                  ram_top = -1
 0025 =                 >test_num = test_num + 1
 2c70 : a925            >            lda #test_num   ;*** next tests' number
 2c72 : 8d0002          >            sta test_case
-AS65 Assembler for R6502 [1.42].                                     Page  195
+AS65 Assembler for R6502 [1.42].                                     Page  187
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            ;check_ram       ;uncomment to find altere
@@ -12596,7 +12125,7 @@ ffff =                  ram_top = -1
 2c94 : bd0302                   lda abst,x
 2c97 : e8                       inx
 2c98 : e002                     cpx #2
-2c9a : d002                     bne tinc7
+2c9a : d0fe                     bne tinc7
 2c9c : a9fe                     lda #$fe
 2c9e : e005             tinc7   cpx #5
 2ca0 : d0d7                     bne tinc6
@@ -12624,7 +12153,7 @@ ffff =                  ram_top = -1
                        >
 2cbb : dd5602          >            cmp fINC,x    ;test flags
                        >            trap_ne
-AS65 Assembler for R6502 [1.42].                                     Page  196
+AS65 Assembler for R6502 [1.42].                                     Page  188
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2cbe : d0fe            >        bne *           ;failed not equal (non zero)
@@ -12632,7 +12161,7 @@ ffff =                  ram_top = -1
                         
 2cc0 : bd0302                   lda abst,x
 2cc3 : ca                       dex
-2cc4 : 3008                     bmi tdec7
+2cc4 : 30fe                     bmi tdec7
 2cc6 : e001                     cpx #1
 2cc8 : d0db                     bne tdec6
 2cca : a981                     lda #$81
@@ -12668,7 +12197,7 @@ ffff =                  ram_top = -1
 2ced : bd0302                   lda abst,x
 2cf0 : e8                       inx
 2cf1 : e002                     cpx #2
-2cf3 : d002                     bne tinc17
+2cf3 : d0fe                     bne tinc17
 2cf5 : a9fe                     lda #$fe
 2cf7 : e005             tinc17  cpx #5
 2cf9 : d0d7                     bne tinc16
@@ -12689,7 +12218,7 @@ ffff =                  ram_top = -1
 2d0c : dd5102          >            cmp rINC,x    ;test result
                        >            trap_ne
 2d0f : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page  197
+AS65 Assembler for R6502 [1.42].                                     Page  189
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -12704,7 +12233,7 @@ ffff =                  ram_top = -1
                         
 2d19 : bd0302                   lda abst,x
 2d1c : ca                       dex
-2d1d : 3008                     bmi tdec17
+2d1d : 30fe                     bmi tdec17
 2d1f : e001                     cpx #1
 2d21 : d0db                     bne tdec16
 2d23 : a981                     lda #$81
@@ -12754,7 +12283,7 @@ ffff =                  ram_top = -1
 2d52 : ca                       dex
 2d53 : 10e0                     bpl tand
 2d55 : a203                     ldx #3
-AS65 Assembler for R6502 [1.42].                                     Page  198
+AS65 Assembler for R6502 [1.42].                                     Page  190
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2d57 : b51e             tand1   lda zpAN,x
@@ -12819,7 +12348,7 @@ ffff =                  ram_top = -1
 2d99 : b51e             tand3   lda zpAN,x
 2d9b : 850c                     sta zpt
                                 set_ax  absANa,$ff
-AS65 Assembler for R6502 [1.42].                                     Page  199
+AS65 Assembler for R6502 [1.42].                                     Page  191
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            load_flag $ff
@@ -12884,7 +12413,7 @@ ffff =                  ram_top = -1
                        >            load_flag $ff
 2de0 : a9ff            >            lda #$ff             ;allow test to change
                        >
-AS65 Assembler for R6502 [1.42].                                     Page  200
+AS65 Assembler for R6502 [1.42].                                     Page  192
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2de2 : 48              >            pha         ;use stack to load status
@@ -12908,7 +12437,7 @@ ffff =                  ram_top = -1
                        >
                         
 2df8 : ca                       dex
-2df9 : 1002                     bpl tand6
+2df9 : 10fe                     bpl tand6
                         
 2dfb : a203                     ldx #3      ;zp,x
 2dfd :                  tand6
@@ -12949,7 +12478,7 @@ ffff =                  ram_top = -1
 2e1f : 28              >            plp
                         
 2e20 : 351e                     and zpAN,x
-AS65 Assembler for R6502 [1.42].                                     Page  201
+AS65 Assembler for R6502 [1.42].                                     Page  193
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 tst_ax  absrlo,absflo,$ff-fnz
@@ -13014,7 +12543,7 @@ ffff =                  ram_top = -1
 2e5d : dd7302          >            cmp absrlo,x    ;test result
                        >            trap_ne
 2e60 : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page  202
+AS65 Assembler for R6502 [1.42].                                     Page  194
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -13079,7 +12608,7 @@ ffff =                  ram_top = -1
                        >            eor_flag $ff-fnz
 2e9d : 497d            >            eor #$ff-fnz|fao         ;invert expected 
                        >
-AS65 Assembler for R6502 [1.42].                                     Page  203
+AS65 Assembler for R6502 [1.42].                                     Page  195
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2e9f : d97702          >            cmp absflo,y    ;test flags
@@ -13144,7 +12673,7 @@ ffff =                  ram_top = -1
 2edb : 497d            >            eor #$ff-fnz|fao         ;invert expected 
                        >
 2edd : d97702          >            cmp absflo,y    ;test flags
-AS65 Assembler for R6502 [1.42].                                     Page  204
+AS65 Assembler for R6502 [1.42].                                     Page  196
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            trap_ne
@@ -13209,7 +12738,7 @@ ffff =                  ram_top = -1
                        >            trap_ne
 2f1a : d0fe            >        bne *           ;failed not equal (non zero)
                        >
-AS65 Assembler for R6502 [1.42].                                     Page  205
+AS65 Assembler for R6502 [1.42].                                     Page  197
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -13274,7 +12803,7 @@ ffff =                  ram_top = -1
 2f5f : dd7302          >            cmp absrlo,x    ;test result
                        >            trap_ne
 2f62 : d0fe            >        bne *           ;failed not equal (non zero)
-AS65 Assembler for R6502 [1.42].                                     Page  206
+AS65 Assembler for R6502 [1.42].                                     Page  198
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -13339,7 +12868,7 @@ ffff =                  ram_top = -1
                        >
 2fa4 : 68              >            pla         ;load status
                        >            eor_flag $ff-fnz
-AS65 Assembler for R6502 [1.42].                                     Page  207
+AS65 Assembler for R6502 [1.42].                                     Page  199
 -------------------------- 6502_functional_test.a65 --------------------------
 
 2fa5 : 497d            >            eor #$ff-fnz|fao         ;invert expected 
@@ -13404,7 +12933,7 @@ ffff =                  ram_top = -1
 2fe9 : 497d            >            eor #$ff-fnz|fao         ;invert expected 
                        >
 2feb : dd7702          >            cmp absflo,x    ;test flags
-AS65 Assembler for R6502 [1.42].                                     Page  208
+AS65 Assembler for R6502 [1.42].                                     Page  200
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            trap_ne     ;
@@ -13412,7 +12941,7 @@ ffff =                  ram_top = -1
                        >
                         
 2ff0 : ca                       dex
-2ff1 : 1002                     bpl teor6
+2ff1 : 10fe                     bpl teor6
                         
 2ff3 : a203                     ldx #3      ;zp,x
 2ff5 :                  teor6
@@ -13469,7 +12998,7 @@ ffff =                  ram_top = -1
                        >
                         
 3028 : ca                       dex
-AS65 Assembler for R6502 [1.42].                                     Page  209
+AS65 Assembler for R6502 [1.42].                                     Page  201
 -------------------------- 6502_functional_test.a65 --------------------------
 
 3029 : 10e6                     bpl teor7
@@ -13534,7 +13063,7 @@ ffff =                  ram_top = -1
 3065 : a003                     ldy #3      ;abs,y
 3067 :                  teor10
                                 set_ay  absEOa,0
-AS65 Assembler for R6502 [1.42].                                     Page  210
+AS65 Assembler for R6502 [1.42].                                     Page  202
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            load_flag 0
@@ -13599,7 +13128,7 @@ ffff =                  ram_top = -1
 30a3 : a900            >            lda #0             ;allow test to change I
                        >
 30a5 : 48              >            pha         ;use stack to load status
-AS65 Assembler for R6502 [1.42].                                     Page  211
+AS65 Assembler for R6502 [1.42].                                     Page  203
 -------------------------- 6502_functional_test.a65 --------------------------
 
 30a6 : b96f02          >            lda absEOa,y    ;precharge accu
@@ -13664,7 +13193,7 @@ ffff =                  ram_top = -1
 30e1 : a900            >            lda #0             ;allow test to change I
                        >
 30e3 : 48              >            pha         ;use stack to load status
-AS65 Assembler for R6502 [1.42].                                     Page  212
+AS65 Assembler for R6502 [1.42].                                     Page  204
 -------------------------- 6502_functional_test.a65 --------------------------
 
 30e4 : b96f02          >            lda absEOa,y    ;precharge accu
@@ -13729,7 +13258,7 @@ ffff =                  ram_top = -1
                         
                         
                         ; OR
-AS65 Assembler for R6502 [1.42].                                     Page  213
+AS65 Assembler for R6502 [1.42].                                     Page  205
 -------------------------- 6502_functional_test.a65 --------------------------
 
 3123 : a203                     ldx #3          ;immediate - self modifying co
@@ -13794,7 +13323,7 @@ ffff =                  ram_top = -1
 3167 : a203                     ldx #3      ;zp
 3169 : b51a             tora2   lda zpOR,x
 316b : 850c                     sta zpt
-AS65 Assembler for R6502 [1.42].                                     Page  214
+AS65 Assembler for R6502 [1.42].                                     Page  206
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 set_ax  absORa,0
@@ -13859,7 +13388,7 @@ ffff =                  ram_top = -1
                                 set_ax  absORa,0
                        >            load_flag 0
 31ae : a900            >            lda #0             ;allow test to change I
-AS65 Assembler for R6502 [1.42].                                     Page  215
+AS65 Assembler for R6502 [1.42].                                     Page  207
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >
@@ -13913,7 +13442,7 @@ ffff =                  ram_top = -1
                        >
                         
 31e8 : ca                       dex
-31e9 : 1002                     bpl tora6
+31e9 : 10fe                     bpl tora6
                         
 31eb : a203                     ldx #3      ;zp,x
 31ed :                  tora6
@@ -13924,7 +13453,7 @@ ffff =                  ram_top = -1
 31ef : 48              >            pha         ;use stack to load status
 31f0 : bd6702          >            lda absORa,x    ;precharge accu
 31f3 : 28              >            plp
-AS65 Assembler for R6502 [1.42].                                     Page  216
+AS65 Assembler for R6502 [1.42].                                     Page  208
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         
@@ -13989,7 +13518,7 @@ ffff =                  ram_top = -1
                                 tst_ax  absrlo,absflo,0
 322f : 08              >            php         ;save flags
 3230 : dd7302          >            cmp absrlo,x    ;test result
-AS65 Assembler for R6502 [1.42].                                     Page  217
+AS65 Assembler for R6502 [1.42].                                     Page  209
 -------------------------- 6502_functional_test.a65 --------------------------
 
                        >            trap_ne
@@ -14054,7 +13583,7 @@ ffff =                  ram_top = -1
                        >
 326f : 68              >            pla         ;load status
                        >            eor_flag 0
-AS65 Assembler for R6502 [1.42].                                     Page  218
+AS65 Assembler for R6502 [1.42].                                     Page  210
 -------------------------- 6502_functional_test.a65 --------------------------
 
 3270 : 4930            >            eor #0|fao         ;invert expected flags 
@@ -14119,7 +13648,7 @@ ffff =                  ram_top = -1
                        >
 32ad : d97702          >            cmp absflo,y    ;test flags
                        >            trap_ne
-AS65 Assembler for R6502 [1.42].                                     Page  219
+AS65 Assembler for R6502 [1.42].                                     Page  211
 -------------------------- 6502_functional_test.a65 --------------------------
 
 32b0 : d0fe            >        bne *           ;failed not equal (non zero)
@@ -14184,7 +13713,7 @@ ffff =                  ram_top = -1
                        >
 32eb : d97702          >            cmp absflo,y    ;test flags
                        >            trap_ne
-AS65 Assembler for R6502 [1.42].                                     Page  220
+AS65 Assembler for R6502 [1.42].                                     Page  212
 -------------------------- 6502_functional_test.a65 --------------------------
 
 32ee : d0fe            >        bne *           ;failed not equal (non zero)
@@ -14249,7 +13778,7 @@ ffff =                  ram_top = -1
 332c : 850f                     sta adrl        ;expected result bits 0-7
 332e : 8510                     sta adrh        ;expected result bit 8 (carry 
 3330 : a9ff                     lda #$ff        ;complemented operand 2 for su
-AS65 Assembler for R6502 [1.42].                                     Page  221
+AS65 Assembler for R6502 [1.42].                                     Page  213
 -------------------------- 6502_functional_test.a65 --------------------------
 
 3332 : 8512                     sta sb2
@@ -14257,7 +13786,7 @@ ffff =                  ram_top = -1
 3337 : a902                     lda #2          ;expected Z-flag
 3339 : 8511                     sta adrf
 333b : 18               tadd    clc             ;test with carry clear
-333c : 20b635                   jsr chkadd
+333c : 200000                   jsr chkadd
 333f : e60c                     inc adfc        ;now with carry
 3341 : e60f                     inc adrl        ;result +1
 3343 : 08                       php             ;save N & Z from low result
@@ -14265,12 +13794,12 @@ ffff =                  ram_top = -1
 3345 : 68                       pla             ;accu holds expected flags
 3346 : 2982                     and #$82        ;mask N & Z
 3348 : 28                       plp
-3349 : d002                     bne tadd1
+3349 : d0fe                     bne tadd1
 334b : e610                     inc adrh        ;result bit 8 - carry
 334d : 0510             tadd1   ora adrh        ;merge C to expected flags
 334f : 8511                     sta adrf        ;save expected flags except ov
 3351 : 38                       sec             ;test with carry set
-3352 : 20b635                   jsr chkadd
+3352 : 200000                   jsr chkadd
 3355 : c60c                     dec adfc        ;same for operand +1 but no ca
 3357 : e60d                     inc ad1
 3359 : d0e0                     bne tadd        ;iterate op1
@@ -14314,7 +13843,7 @@ ffff =                  ram_top = -1
 338c : 8d0302                   sta ada2        ;non zp
 338f : 850f                     sta adrl        ;expected result bits 0-7
 3391 : a901                     lda #1          ;set carry in & out
-AS65 Assembler for R6502 [1.42].                                     Page  222
+AS65 Assembler for R6502 [1.42].                                     Page  214
 -------------------------- 6502_functional_test.a65 --------------------------
 
 3393 : 850c                     sta adfc        ;carry in - for diag
@@ -14323,16 +13852,16 @@ ffff =                  ram_top = -1
 3399 : 8512                     sta sb2
 339b : 8d0402                   sta sba2        ;non zp
 339e : 38               tdad    sec             ;test with carry set
-339f : 208334                   jsr chkdad
+339f : 200000                   jsr chkdad
 33a2 : c60c                     dec adfc        ;now with carry clear
 33a4 : a50f                     lda adrl        ;decimal adjust result
-33a6 : d008                     bne tdad1       ;skip clear carry & preset res
+33a6 : d0fe                     bne tdad1       ;skip clear carry & preset res
 33a8 : c610                     dec adrh
 33aa : a999                     lda #$99
 33ac : 850f                     sta adrl
-33ae : d012                     bne tdad3
+33ae : d0fe                     bne tdad3
 33b0 : 290f             tdad1   and #$f         ;lower nibble mask
-33b2 : d00c                     bne tdad2       ;no decimal adjust needed
+33b2 : d0fe                     bne tdad2       ;no decimal adjust needed
 33b4 : c60f                     dec adrl        ;decimal adjust (?0-6)
 33b6 : c60f                     dec adrl
 33b8 : c60f                     dec adrl
@@ -14341,12 +13870,12 @@ ffff =                  ram_top = -1
 33be : c60f                     dec adrl
 33c0 : c60f             tdad2   dec adrl        ;result -1
 33c2 : 18               tdad3   clc             ;test with carry clear
-33c3 : 208334                   jsr chkdad
+33c3 : 200000                   jsr chkdad
 33c6 : e60c                     inc adfc        ;same for operand -1 but with 
 33c8 : a50d                     lda ad1         ;decimal adjust operand 1
-33ca : f015                     beq tdad5       ;iterate operand 2
+33ca : f0fe                     beq tdad5       ;iterate operand 2
 33cc : 290f                     and #$f         ;lower nibble mask
-33ce : d00c                     bne tdad4       ;skip decimal adjust
+33ce : d0fe                     bne tdad4       ;skip decimal adjust
 33d0 : c60d                     dec ad1         ;decimal adjust (?0-6)
 33d2 : c60d                     dec ad1
 33d4 : c60d                     dec ad1
@@ -14359,9 +13888,9 @@ ffff =                  ram_top = -1
 33e1 : a999             tdad5   lda #$99        ;precharge op1 max
 33e3 : 850d                     sta ad1
 33e5 : a50e                     lda ad2         ;decimal adjust operand 2
-33e7 : f030                     beq tdad7       ;end of iteration
+33e7 : f0fe                     beq tdad7       ;end of iteration
 33e9 : 290f                     and #$f         ;lower nibble mask
-33eb : d018                     bne tdad6       ;skip decimal adjust
+33eb : d0fe                     bne tdad6       ;skip decimal adjust
 33ed : c60e                     dec ad2         ;decimal adjust (?0-6)
 33ef : c60e                     dec ad2
 33f1 : c60e                     dec ad2
@@ -14379,7 +13908,7 @@ ffff =                  ram_top = -1
 3409 : a512                     lda sb2
 340b : 8d0402                   sta sba2        ;copy as non zp operand
 340e : a50e                     lda ad2
-AS65 Assembler for R6502 [1.42].                                     Page  223
+AS65 Assembler for R6502 [1.42].                                     Page  215
 -------------------------- 6502_functional_test.a65 --------------------------
 
 3410 : 8d0302                   sta ada2        ;copy as non zp operand
@@ -14436,18 +13965,18 @@ ffff =                  ram_top = -1
 344c : d0fe            >        bne *           ;failed not equal (non zero)
                         
 344e : 18                       clc
-344f : a934                     lda #hi bin_rti_ret ;emulated interrupt for rt
+344f : a900                     lda #hi bin_rti_ret ;emulated interrupt for rt
 3451 : 48                       pha
-3452 : a969                     lda #lo bin_rti_ret
+3452 : a900                     lda #lo bin_rti_ret
 3454 : 48                       pha
 3455 : 08                       php
 3456 : f8                       sed
-3457 : a934                     lda #hi dec_rti_ret ;emulated interrupt for rt
+3457 : a900                     lda #hi dec_rti_ret ;emulated interrupt for rt
 3459 : 48                       pha
-AS65 Assembler for R6502 [1.42].                                     Page  224
+AS65 Assembler for R6502 [1.42].                                     Page  216
 -------------------------- 6502_functional_test.a65 --------------------------
 
-345a : a960                     lda #lo dec_rti_ret
+345a : a900                     lda #lo dec_rti_ret
 345c : 48                       pha
 345d : 08                       php
 345e : d8                       cld
@@ -14509,7 +14038,7 @@ ffff =                  ram_top = -1
                         ; decimal ADC / SBC zp
 3483 : 08                       php             ;save carry for subtract
 3484 : a50d                     lda ad1
-AS65 Assembler for R6502 [1.42].                                     Page  225
+AS65 Assembler for R6502 [1.42].                                     Page  217
 -------------------------- 6502_functional_test.a65 --------------------------
 
 3486 : 650e                     adc ad2         ;perform add
@@ -14574,7 +14103,7 @@ ffff =                  ram_top = -1
                         ; decimal ADC / SBC #
 34cd : 08                       php             ;save carry for subtract
 34ce : a50e                     lda ad2
-AS65 Assembler for R6502 [1.42].                                     Page  226
+AS65 Assembler for R6502 [1.42].                                     Page  218
 -------------------------- 6502_functional_test.a65 --------------------------
 
 34d0 : 8d1302                   sta ex_adci+1   ;set ADC # operand
@@ -14639,7 +14168,7 @@ ffff =                  ram_top = -1
                                 trap_ne         ;bad carry
 351e : d0fe            >        bne *           ;failed not equal (non zero)
                         
-AS65 Assembler for R6502 [1.42].                                     Page  227
+AS65 Assembler for R6502 [1.42].                                     Page  219
 -------------------------- 6502_functional_test.a65 --------------------------
 
 3520 : 28                       plp
@@ -14704,7 +14233,7 @@ ffff =                  ram_top = -1
                                 trap_ne         ;bad carry
 356a : d0fe            >        bne *           ;failed not equal (non zero)
                         
-AS65 Assembler for R6502 [1.42].                                     Page  228
+AS65 Assembler for R6502 [1.42].                                     Page  220
 -------------------------- 6502_functional_test.a65 --------------------------
 
 356c : 28                       plp
@@ -14769,7 +14298,7 @@ ffff =                  ram_top = -1
                                 trap_ne         ;bad carry
 35b2 : d0fe            >        bne *           ;failed not equal (non zero)
                         
-AS65 Assembler for R6502 [1.42].                                     Page  229
+AS65 Assembler for R6502 [1.42].                                     Page  221
 -------------------------- 6502_functional_test.a65 --------------------------
 
 35b4 : 28                       plp
@@ -14784,10 +14313,10 @@ ffff =                  ram_top = -1
 35ba : 48                       pha
 35bb : a50d                     lda ad1         ;test sign unequal between ope
 35bd : 450e                     eor ad2
-35bf : 300a                     bmi ckad1       ;no overflow possible - operan
+35bf : 30fe                     bmi ckad1       ;no overflow possible - operan
 35c1 : a50d                     lda ad1         ;test sign equal between opera
 35c3 : 450f                     eor adrl
-35c5 : 1004                     bpl ckad1       ;no overflow occured - operand
+35c5 : 10fe                     bpl ckad1       ;no overflow occured - operand
 35c7 : 68                       pla
 35c8 : 0940                     ora #$40        ;set V
 35ca : 48                       pha
@@ -14834,7 +14363,7 @@ ffff =                  ram_top = -1
 35fb : d0fe            >        bne *           ;failed not equal (non zero)
                         
 35fd : 68                       pla             ;check flags
-AS65 Assembler for R6502 [1.42].                                     Page  230
+AS65 Assembler for R6502 [1.42].                                     Page  222
 -------------------------- 6502_functional_test.a65 --------------------------
 
 35fe : 29c3                     and #$c3        ;mask NV----ZC
@@ -14899,7 +14428,7 @@ ffff =                  ram_top = -1
 364b : 7500                     adc 0,x         ;perform add
 364d : 08                       php          
 364e : c50f                     cmp adrl        ;check result
-AS65 Assembler for R6502 [1.42].                                     Page  231
+AS65 Assembler for R6502 [1.42].                                     Page  223
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 trap_ne         ;bad result
@@ -14964,7 +14493,7 @@ ffff =                  ram_top = -1
 3695 : 790401                   adc ada2-$ff,y  ;perform add
 3698 : 08                       php          
 3699 : c50f                     cmp adrl        ;check result
-AS65 Assembler for R6502 [1.42].                                     Page  232
+AS65 Assembler for R6502 [1.42].                                     Page  224
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 trap_ne         ;bad result
@@ -15029,7 +14558,7 @@ ffff =                  ram_top = -1
 36df : 7158                     adc (adiy2),y   ;perform add
 36e1 : 08                       php          
 36e2 : c50f                     cmp adrl        ;check result
-AS65 Assembler for R6502 [1.42].                                     Page  233
+AS65 Assembler for R6502 [1.42].                                     Page  225
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 trap_ne         ;bad result
@@ -15094,7 +14623,7 @@ ffff =                  ram_top = -1
                         
 371c : 48                       pha             ;save a,x
 371d : 8a                       txa
-AS65 Assembler for R6502 [1.42].                                     Page  234
+AS65 Assembler for R6502 [1.42].                                     Page  226
 -------------------------- 6502_functional_test.a65 --------------------------
 
 371e : 48                       pha
@@ -15119,7 +14648,7 @@ ffff =                  ram_top = -1
                                 
                         ; target for the jump indirect test
 3731 : 00                       align
-3732 : 3b37             ptr_tst_ind dw test_ind
+3732 : 0000             ptr_tst_ind dw test_ind
 3734 : 6409             ptr_ind_ret dw ind_ret
                                 trap            ;runover protection
 3736 : 4c3637          >        jmp *           ;failed anyway
@@ -15159,7 +14688,7 @@ ffff =                  ram_top = -1
 3754 : 48                       pha             ;save a,x
 3755 : 8a                       txa
 3756 : 48                       pha
-AS65 Assembler for R6502 [1.42].                                     Page  235
+AS65 Assembler for R6502 [1.42].                                     Page  227
 -------------------------- 6502_functional_test.a65 --------------------------
 
 3757 : ba                       tsx
@@ -15224,7 +14753,7 @@ ffff =                  ram_top = -1
 378d : ba                       tsx             ;sp -4? (return addr,a,x)
 378e : e0fb                     cpx #$fb
                                 trap_ne
-AS65 Assembler for R6502 [1.42].                                     Page  236
+AS65 Assembler for R6502 [1.42].                                     Page  228
 -------------------------- 6502_functional_test.a65 --------------------------
 
 3790 : d0fe            >        bne *           ;failed not equal (non zero)
@@ -15280,7 +14809,7 @@ ffff =                  ram_top = -1
                                 ;check stack for BREAK and originating locatio
                                 ;possible jump/branch into weeds (uninitialize
 37c3 : c9bd                     cmp #$ff-'B'    ;BRK pass 2 registers loaded?
-37c5 : f042                     beq break2
+37c5 : f0fe                     beq break2
 37c7 : c942                     cmp #'B'        ;BRK pass 1 registers loaded?
                                 trap_ne
 37c9 : d0fe            >        bne *           ;failed not equal (non zero)
@@ -15289,7 +14818,7 @@ ffff =                  ram_top = -1
                                 trap_ne        
 37cd : d0fe            >        bne *           ;failed not equal (non zero)
                         
-AS65 Assembler for R6502 [1.42].                                     Page  237
+AS65 Assembler for R6502 [1.42].                                     Page  229
 -------------------------- 6502_functional_test.a65 --------------------------
 
 37cf : c048                     cpy #'K'-3
@@ -15354,7 +14883,7 @@ ffff =                  ram_top = -1
                         
 3811 : 850a                     sta irq_a       ;save registers during break t
 3813 : 860b                     stx irq_x
-AS65 Assembler for R6502 [1.42].                                     Page  238
+AS65 Assembler for R6502 [1.42].                                     Page  230
 -------------------------- 6502_functional_test.a65 --------------------------
 
 3815 : ba                       tsx             ;test break on stack
@@ -15419,7 +14948,7 @@ ffff =                  ram_top = -1
                         zpEO_   db  $ff,$0f,$8f,$8f ;test pattern for EOR
                         ;indirect addressing pointers
                         ind1_   dw  abs1            ;indirect pointer to patte
-AS65 Assembler for R6502 [1.42].                                     Page  239
+AS65 Assembler for R6502 [1.42].                                     Page  231
 -------------------------- 6502_functional_test.a65 --------------------------
 
                                 dw  abs1+1
@@ -15484,7 +15013,7 @@ ffff =                  ram_top = -1
                         fROR_   db  0,fzc,fc,0,fc,fz        ;no carry in
                         fRORc_  db  fn,fnc,fnc,fn,fnc,fn    ;carry in
                         ;increments (decrements)
-AS65 Assembler for R6502 [1.42].                                     Page  240
+AS65 Assembler for R6502 [1.42].                                     Page  232
 -------------------------- 6502_functional_test.a65 --------------------------
 
                         rINC_   db  $7f,$80,$ff,0,1         ;expected result f
@@ -15523,6 +15052,236 @@ ffff =                  ram_top = -1
 3809 =                          end start
                                     
                         
+6109 lines read, no errors in pass 1.
+------------------ Memory Usage Map ('x'=used, '-'=unused) -------------------
+
+0000 : ----------xxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0040 : xxxxxxxxxxxxxxxx xxxxxxxxxxxx---- ---------------- ---------------- 
+0200 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0240 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxx----- 
+0400 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0440 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0480 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+04c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0500 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0540 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0580 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+05c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0600 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0640 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0680 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+06c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0700 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0740 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0780 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+07c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0800 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0840 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0880 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+AS65 Assembler for R6502 [1.42].                                     Page  233
+-------------------------- 6502_functional_test.a65 --------------------------
+
+08c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0900 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0940 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0980 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+09c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0a00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0a40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0a80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0ac0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0b00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0b40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0b80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0bc0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0c00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0c40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0c80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0cc0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0d00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0d40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0d80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0dc0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0e00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0e40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0e80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0ec0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0f00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0f40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0f80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0fc0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1000 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1040 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1080 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+10c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1100 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1140 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1180 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+11c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1200 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1240 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1280 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+12c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1300 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1340 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1380 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+13c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1400 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1440 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1480 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+14c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1500 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1540 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1580 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+15c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1600 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1640 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1680 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+16c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1700 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1740 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1780 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+17c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1800 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+AS65 Assembler for R6502 [1.42].                                     Page  234
+-------------------------- 6502_functional_test.a65 --------------------------
+
+1840 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1880 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+18c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1900 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1940 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1980 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+19c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1a00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1a40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1a80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1ac0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1b00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1b40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1b80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1bc0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1c00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1c40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1c80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1cc0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1d00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1d40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1d80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1dc0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1e00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1e40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1e80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1ec0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1f00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1f40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1f80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+1fc0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2000 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2040 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2080 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+20c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2100 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2140 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2180 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+21c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2200 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2240 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2280 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+22c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2300 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2340 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2380 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+23c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2400 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2440 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2480 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+24c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2500 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2540 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2580 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+25c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2600 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2640 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2680 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+26c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2700 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2740 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2780 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+AS65 Assembler for R6502 [1.42].                                     Page  235
+-------------------------- 6502_functional_test.a65 --------------------------
+
+27c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2800 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2840 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2880 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+28c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2900 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2940 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2980 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+29c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2a00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2a40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2a80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2ac0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2b00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2b40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2b80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2bc0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2c00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2c40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2c80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2cc0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2d00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2d40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2d80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2dc0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2e00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2e40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2e80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2ec0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2f00 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2f40 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2f80 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+2fc0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3000 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3040 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3080 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+30c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3100 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3140 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3180 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+31c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3200 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3240 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3280 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+32c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3300 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3340 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3380 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+33c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3400 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3440 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3480 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+34c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3500 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3540 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3580 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+35c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3600 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3640 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3680 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+36c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3700 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+AS65 Assembler for R6502 [1.42].                                     Page  236
+-------------------------- 6502_functional_test.a65 --------------------------
+
+3740 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3780 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+37c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3800 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+3840 : xxxxxxxxx------- ---------------- ---------------- ---------------- 
+
 No errors in pass 2.
 Wrote binary from address $000a through $3848.
 Total size 14399 bytes.
