@@ -43,16 +43,12 @@ type CPU struct {
 	// cycleCallback is called for additional emulator functionality
 	cycleCallback func() error
 
-	// controls whether cpu executes a cycle when it receives a clock tick (pin
-	// 3 of the 6507)
+	// controls whether cpu executes a cycle when it receives a clock tick (pin 3 of the 6507)
 	RdyFlg bool
 
-	// last result. the address field is guaranteed to be always valid except
-	// when the CPU has just been reset. we use this fact to help us decide
-	// whether the CPU has just been reset (see HasReset() function)
-	//
-	// note a peculiarity in the current emulation means that LastResult is not
-	// reset unless the RdyFlg is true at the start of the execution.
+	// most recent execution result. the state of LastResult is used to detect if the CPU has just
+	// been reset. it is also used to ensure that ExecuteInstruction() or LoadPC() is not called
+	// when the CPU is not in a suitable state
 	LastResult execution.Result
 
 	// NoFlowControl sets whether the cpu responds accurately to instructions
@@ -64,12 +60,6 @@ type CPU struct {
 	// possible even if NoFlowControl is true. this is because bank switching
 	// is outside of the direct control of the CPU.
 	NoFlowControl bool
-
-	// Interrupted indicated that the CPU has been put into a state outside of
-	// its normal operation. When true work may be done on the CPU that would
-	// otherwise be considered an error. Resets to false on every call to
-	// ExecuteInstruction()
-	Interrupted bool
 
 	// Whether the last memory access by the CPU was a phantom access
 	PhantomMemAccess bool
@@ -139,10 +129,9 @@ type Random interface {
 	Intn(int) int
 }
 
-// Reset CPU
+// Reset CPU in either a random or non-random state. The random state is more accurate
 func (mc *CPU) Reset(rnd Random) error {
 	mc.LastResult.Reset()
-	mc.Interrupted = true
 	mc.Killed = false
 	mc.cycleCallback = nil
 
@@ -186,22 +175,29 @@ func (mc *CPU) Reset(rnd Random) error {
 	// cpu is ready immediately after reset
 	mc.RdyFlg = true
 
+	// the reset procedure is special in that it leaves the information about the last executed
+	// instruction in the "final" state
+	mc.LastResult.Final = true
+
 	return nil
 }
 
 // HasReset checks whether the CPU has recently been reset.
 func (mc *CPU) HasReset() bool {
-	return mc.LastResult.Address == 0 && mc.LastResult.Defn == nil
+	// instead of an explicit "has reset" flag, we can use the information about the last executed
+	// to detect wehether the CPU has been recently reset
+	//
+	// the Final flag in LastResult is not normally set when the defintion field is nil. however, we
+	// explicitely set the Final flag to true when resetting the CPU
+	return mc.LastResult.Defn == nil && mc.LastResult.Final == true
 }
 
 // LoadPC loads the contents of directAddress into the PC.
 func (mc *CPU) LoadPC(directAddress uint16) error {
-	if !mc.LastResult.Final && !mc.Interrupted {
+	if !mc.LastResult.Final {
 		return fmt.Errorf("cpu: load PC invalid mid-instruction")
 	}
-
 	mc.PC.Load(directAddress)
-
 	return nil
 }
 
@@ -495,12 +491,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	// a previous call to ExecuteInstruction() has not yet completed. it is
 	// impossible to begin a new instruction
-	if !mc.LastResult.Final && !mc.Interrupted {
+	if !mc.LastResult.Final {
 		return fmt.Errorf("cpu: starting a new instruction is invalid mid-instruction")
 	}
-
-	// reset Interrupted flag
-	mc.Interrupted = false
 
 	// do nothing and return nothing if ready flag is false
 	if !mc.RdyFlg {

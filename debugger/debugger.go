@@ -1049,9 +1049,6 @@ func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 		// the supercharger ROM will eventually start execution from the PC
 		// address given in the supercharger file
 
-		// CPU execution has been interrupted. update state of CPU
-		dbg.vcs.CPU.Interrupted = true
-
 		// the interrupted CPU means it never got a chance to
 		// finalise the result. we force that here by simply
 		// setting the Final flag to true.

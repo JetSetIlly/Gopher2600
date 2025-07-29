@@ -512,7 +512,6 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 		// error has occurred before CPU has completed its instruction
 		if !dbg.vcs.CPU.LastResult.Final {
 			dbg.printLine(terminal.StyleError, "CPU halted mid-instruction. next step may be inaccurate.")
-			dbg.vcs.CPU.Interrupted = true
 		}
 	} else {
 		// update rewind state if the last CPU instruction took place during a new
