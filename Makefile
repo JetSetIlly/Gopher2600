@@ -95,11 +95,14 @@ lint: check_linters
 .PHONY: test race race_debug fuzz
 
 test:
+
 # testing with shuffle preferred but it's only available in go 1.17 onwards
 ifeq ($(shell $(goBinary) version | awk '{print($$3 >= "go1.17.0")}'), 1)
-	$(goBinary) test -shuffle on ./...
+	# running with -count=1 forces the test to be rerun every time and not rely on
+	# cached results
+	$(goBinary) test -count=1 -shuffle on ./...
 else
-	$(goBinary) test ./...
+	$(goBinary) test -count=1 ./...
 endif
 
 race: generate test
