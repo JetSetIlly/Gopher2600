@@ -117,7 +117,6 @@ func TestFunctional(t *testing.T) {
 		startTime = time.Now()
 
 		mc.Reset(nil)
-		mc.LoadPCIndirect(cpu.Reset)
 
 		for {
 			addr := mc.PC.Address()

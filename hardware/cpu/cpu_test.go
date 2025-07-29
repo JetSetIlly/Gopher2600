@@ -41,11 +41,11 @@ func (mem *testMem) putInstructions(origin uint16, bytes ...uint8) uint16 {
 	return origin + uint16(len(bytes))
 }
 
-func (mem testMem) assert(t *testing.T, address uint16, value uint8) {
+func (mem testMem) assert(t *testing.T, address uint16, expected uint8) {
 	t.Helper()
 	d, _ := mem.Read(address)
-	if d != value {
-		t.Errorf("memory assertion failed (%v  - wanted %v at address %04x", d, value, address)
+	if d != expected {
+		t.Errorf("memory assertion failed: %#04x = %#02x (expected %#02x)", address, d, expected)
 	}
 }
 
@@ -572,16 +572,16 @@ func testSubroutineInstructions(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	_ = mem.putInstructions(origin, 0x20, 0x00, 0x01)
 	step(t, mc) // JSR $0100
 	rtest.EquateRegisters(t, mc.PC, 0x0100)
-	mem.assert(t, 0x01ff, 0x00)
-	mem.assert(t, 0x01fe, 0x02)
-	rtest.EquateRegisters(t, mc.SP.Data, 254)
+	mem.assert(t, 0x01fd, 0x00)
+	mem.assert(t, 0x01fc, 0x02)
+	rtest.EquateRegisters(t, mc.SP.Data, 0xfb)
 
 	_ = mem.putInstructions(0x100, 0x60)
 	step(t, mc) // RTS
 	rtest.EquateRegisters(t, mc.PC, 0x0003)
-	mem.assert(t, 0x01ff, 0x00)
-	mem.assert(t, 0x01fe, 0x02)
-	rtest.EquateRegisters(t, mc.SP.Data, 0x00)
+	mem.assert(t, 0x01fd, 0x00)
+	mem.assert(t, 0x01fc, 0x02)
+	rtest.EquateRegisters(t, mc.SP.Data, 0xfd)
 }
 
 func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *testMem) {

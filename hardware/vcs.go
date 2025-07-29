@@ -16,15 +16,12 @@
 package hardware
 
 import (
-	"errors"
-
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/clocks"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/input"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
@@ -225,14 +222,6 @@ func (vcs *VCS) Reset() error {
 	// reset of ports must happen after reset of memory because ports will
 	// update memory to the current state of the peripherals
 	vcs.RIOT.Ports.ResetPeripherals()
-
-	// reset PC using reset address in cartridge memory
-	err = vcs.CPU.LoadPCIndirect(cpu.Reset)
-	if err != nil {
-		if !errors.Is(err, cartridge.Ejected) {
-			return err
-		}
-	}
 
 	// reset cart after loaded PC value. this seems unnecessary but some
 	// cartridge types may switch banks on LoadPCIndirect() - those that switch

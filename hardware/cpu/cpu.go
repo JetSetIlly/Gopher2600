@@ -139,12 +139,12 @@ type Random interface {
 	Intn(int) int
 }
 
-// Reset reinitialises all registers. Does not load PC with RESET vector. Use
-// cpu.LoadPCIndirect(cpubus.Reset) when appropriate.
-func (mc *CPU) Reset(rnd Random) {
+// Reset CPU
+func (mc *CPU) Reset(rnd Random) error {
 	mc.LastResult.Reset()
 	mc.Interrupted = true
 	mc.Killed = false
+	mc.cycleCallback = nil
 
 	if rnd == nil {
 		mc.PC.Load(0x0000)
@@ -152,54 +152,46 @@ func (mc *CPU) Reset(rnd Random) {
 		mc.X.Load(0x00)
 		mc.Y.Load(0x00)
 		mc.Status.Load(0x00)
+		mc.SP.Load(0x00)
 	} else {
 		mc.PC.Load(uint16(rnd.Intn(0xffff)))
 		mc.A.Load(uint8(rnd.Intn(0xff)))
 		mc.X.Load(uint8(rnd.Intn(0xff)))
 		mc.Y.Load(uint8(rnd.Intn(0xff)))
 		mc.Status.Load(uint8(rnd.Intn(0xff)))
+		mc.SP.Load(uint8(rnd.Intn(0xff)))
 	}
-
-	// the stack pointer always starts with a value of 0xfd
-	mc.SP.Load(0xfd)
 
 	// the interrupt disable flag is always set on reset
 	// note that the zero and negative flags remain undefined and is unaffected by the value in the
 	// A or any other register
 	mc.Status.InterruptDisable = true
 
+	// we simplify the reset procedure to reducing the stack value three times and then loading the
+	// reset address into the PC. there's no need to emulate the full eight cycles of the
+	// initilisation process
+	mc.SP.Add(0xff, false)
+	mc.SP.Add(0xff, false)
+	mc.SP.Add(0xff, false)
+	lo, err := mc.mem.Read(Reset)
+	if err != nil {
+		return fmt.Errorf("cpu reset: %w", err)
+	}
+	hi, err := mc.mem.Read(Reset + 1)
+	if err != nil {
+		return fmt.Errorf("cpu reset: %w", err)
+	}
+	mc.PC.Load((uint16(hi) << 8) | uint16(lo))
+
+	// cpu is ready immediately after reset
 	mc.RdyFlg = true
-	mc.cycleCallback = nil
+
+	return nil
 }
 
 // HasReset checks whether the CPU has recently been reset.
 func (mc *CPU) HasReset() bool {
 	return mc.LastResult.Address == 0 && mc.LastResult.Defn == nil
-}
-
-// LoadPCIndirect loads the contents of indirectAddress into the PC.
-func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
-	mc.PhantomMemAccess = false
-
-	if !mc.LastResult.Final && !mc.Interrupted {
-		return fmt.Errorf("cpu: load PC indirect invalid mid-instruction")
-	}
-
-	// read 16 bit address from specified indirect address
-
-	lo, err := mc.mem.Read(indirectAddress)
-	if err != nil {
-		return err
-	}
-
-	hi, err := mc.mem.Read(indirectAddress + 1)
-	if err != nil {
-		return err
-	}
-
-	mc.PC.Load((uint16(hi) << 8) | uint16(lo))
-
-	return nil
 }
 
 // LoadPC loads the contents of directAddress into the PC.
