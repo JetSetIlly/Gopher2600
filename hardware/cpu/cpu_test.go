@@ -689,12 +689,14 @@ func testDecimalMode(t *testing.T, mc *cpu.CPU, mem *testMem) {
 		t.Fatal(err)
 	}
 
-	_ = mem.putInstructions(origin, 0xf8, 0xa9, 0x20, 0x38, 0xe9, 0x01)
+	_ = mem.putInstructions(origin, 0xf8, 0xa9, 0x20, 0x18, 0x69, 0x01, 0x38, 0xe9, 0x01)
 	step(t, mc) // SED
 	step(t, mc) // LDA #$20
+	step(t, mc) // CLC
+	step(t, mc) // ADC #01
 	step(t, mc) // SEC
 	step(t, mc) // SBC #$00
-	rtest.EquateRegisters(t, mc.A, 0x19)
+	rtest.EquateRegisters(t, mc.A, 0x20)
 }
 
 func testBRK(t *testing.T, mc *cpu.CPU, mem *testMem) {
