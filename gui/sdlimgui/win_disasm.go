@@ -190,7 +190,7 @@ func (win *winDisasm) draw() {
 	} else {
 		// focus address depends on if we're in the middle of an CPU
 		// instruction or not. special condition for freshly reset CPUs
-		if win.img.cache.Dbg.LiveDisasmEntry.Result.Final || win.img.cache.VCS.CPU.HasReset() {
+		if win.img.cache.Dbg.LiveDisasmEntry.Result.Final {
 			focusAddr = win.img.cache.VCS.CPU.PC.Address() & memorymap.CartridgeBits
 		} else {
 			focusAddr = win.img.cache.Dbg.LiveDisasmEntry.Result.Address & memorymap.CartridgeBits

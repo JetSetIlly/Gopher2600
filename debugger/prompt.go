@@ -29,7 +29,7 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 	var e *disassembly.Entry
 
 	// decide which address value to use
-	if dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.HasReset() {
+	if dbg.vcs.CPU.LastResult.Final {
 		e = dbg.Disasm.GetEntryByAddress(dbg.vcs.CPU.PC.Address())
 	} else {
 		// if we're in the middle of an instruction then use the addresss in
@@ -66,7 +66,7 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 	}
 
 	// LastResult final is false on CPU reset so we must check for that also
-	if dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.HasReset() {
+	if dbg.vcs.CPU.LastResult.Final {
 		p.Type = terminal.PromptTypeCPUStep
 	} else {
 		p.Type = terminal.PromptTypeVideoStep

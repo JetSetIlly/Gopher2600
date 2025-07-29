@@ -333,7 +333,7 @@ func (r *Rewind) SetEmulationState(state govern.State) {
 // be recorded if the current rewind policy agrees.
 func (r *Rewind) RecordState() {
 	// sanity check to make sure the main loop is behaving correctly
-	if !r.vcs.CPU.LastResult.Final && !r.vcs.CPU.HasReset() {
+	if !r.vcs.CPU.LastResult.Final {
 		logger.Logf(logger.Allow, "rewind", "RecordState() attempted mid CPU instruction")
 		return
 	}
