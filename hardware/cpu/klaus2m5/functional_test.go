@@ -151,11 +151,18 @@ func TestFunctional(t *testing.T) {
 		check: func(mc *cpu.CPU, mem *testMem) checkResult {
 			// this test succeeds when it reaches a jmp instruction that jumps to it's own address.
 			// ie. an exceedingly tight infinite loop
+
+			// both success and fail happen when a JMP instruction jumps to itself causing an
+			// infinite loop. we first detect this loop and then check for the success address
 			a := mc.PC.Address()
 			if mc.LastResult.Address == a {
 				loopCt++
 				if loopCt >= 10 {
-					return success
+					// success address from functional_test/6502_functional_test.lst
+					if a == 0x347d {
+						return success
+					}
+					return fail
 				}
 			} else {
 				loopCt = 0
