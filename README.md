@@ -141,9 +141,15 @@ Undocumented 650x instructions and implementation details in "6502/6510/8500/850
 
 http://www.oxyron.de/html/opcodes02.html
 
+6502 overflow flag
+
+https://www.righto.com/2012/12/the-6502-overflow-flag-explained.html
+
 Details about the 6502 decimal mode
 
 http://www.6502.org/tutorials/decimal_mode.html
+
+https://forums.atariage.com/topic/163876-flags-on-decimal-mode-on-the-nmos-6502
 
 6502 functional tests from https://github.com/Klaus2m5/6502_65C02_functional_tests
 

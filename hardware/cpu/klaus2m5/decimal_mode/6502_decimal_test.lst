@@ -32,7 +32,7 @@ AS65 Assembler for R6502 [1.42].                                     Page    1
 0000 =                  vld_bcd = 0         ; 0 = allow invalid bcd, 1 = valid
 0001 =                  chk_a   = 1         ; check accumulator
 0001 =                  chk_n   = 1         ; check sign (negative) flag
-0000 =                  chk_v   = 0         ; check overflow flag
+0001 =                  chk_v   = 1         ; check overflow flag
 0001 =                  chk_z   = 1         ; check zero flag
 0001 =                  chk_c   = 1         ; check carry flag
                         
@@ -284,49 +284,49 @@ AS65 Assembler for R6502 [1.42].                                     Page    1
 02d2 : d0fe                         bne C1
                                 endif
                                 if chk_v = 1
-                                    lda DNVZC ; [8] see text
-                                    eor VF
-                                    and #$40  ; mask off V flag
-                                    bne C1    ; [9] see text
+02d4 : a505                         lda DNVZC ; [8] see text
+02d6 : 4508                         eor VF
+02d8 : 2940                         and #$40  ; mask off V flag
+02da : d0fe                         bne C1    ; [9] see text
                                 endif
                                 if chk_z = 1
-02d4 : a505                         lda DNVZC
-02d6 : 4509                         eor ZF    ; mask off Z flag
-02d8 : 2902                         and #2
-02da : d0fe                         bne C1    ; [10] see text
+02dc : a505                         lda DNVZC
+02de : 4509                         eor ZF    ; mask off Z flag
+02e0 : 2902                         and #2
+02e2 : d0fe                         bne C1    ; [10] see text
                                 endif
                                 if chk_c = 1
-02dc : a505                         lda DNVZC
-02de : 450a                         eor CF
-02e0 : 2901                         and #1    ; mask off C flag
+02e4 : a505                         lda DNVZC
+02e6 : 450a                         eor CF
+02e8 : 2901                         and #1    ; mask off C flag
                                 endif
-02e2 : 60               C1      rts
+02ea : 60               C1      rts
                                    
                         ; These routines store the predicted values for ADC an
                         ; 65C02, and 65816 in AR, CF, NF, VF, and ZF
                         
                                 if cputype = 0
                         
-02e3 : a508             A6502       lda VF      ; 6502
+02eb : a508             A6502       lda VF      ; 6502
                         ;          
                         ; since all 8 bits of the P register were stored in VF
                         ; the N flag for NF
                         ;          
-02e5 : 8507                         sta NF
-02e7 : a503                         lda HNVZC
-02e9 : 8509                         sta ZF
-02eb : 60                           rts
-                                   
-02ec : 20ab02           S6502       jsr SUB1
+02ed : 8507                         sta NF
 02ef : a503                         lda HNVZC
-02f1 : 8507                         sta NF
-02f3 : 8508                         sta VF
-02f5 : 8509                         sta ZF
-02f7 : 850a                         sta CF
+02f1 : 8509                         sta ZF
+02f3 : 60                           rts
+                                   
+02f4 : 20ab02           S6502       jsr SUB1
+02f7 : a503                         lda HNVZC
+02f9 : 8507                         sta NF
+02fb : 8508                         sta VF
+02fd : 8509                         sta ZF
+02ff : 850a                         sta CF
 AS65 Assembler for R6502 [1.42].                                     Page    6
 --------------------------- 6502_decimal_test.a65 ----------------------------
 
-02f9 : 60                           rts
+0301 : 60                           rts
                         
                                 endif
                                 if  cputype = 1
@@ -372,7 +372,7 @@ AS65 Assembler for R6502 [1.42].                                     Page    1
                         
                                 endif
                         
-02ec =                          end TEST
+02f4 =                          end TEST
                         
 355 lines read, no errors in pass 1.
 ------------------ Memory Usage Map ('x'=used, '-'=unused) -------------------
@@ -380,10 +380,11 @@ AS65 Assembler for R6502 [1.42].                                     Page    1
 0200 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
 0240 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
 0280 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
-02c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxx------ 
+02c0 : xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxx 
+0300 : xx-------------- ---------------- ---------------- ---------------- 
 
 No errors in pass 2.
-Wrote binary from address $0200 through $02f9.
-Total size 250 bytes.
+Wrote binary from address $0200 through $0301.
+Total size 258 bytes.
 Program start address is at $0200 (512).
 

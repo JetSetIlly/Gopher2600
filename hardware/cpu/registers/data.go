@@ -102,9 +102,12 @@ func (r *Data) Add(val uint8, carry bool) (rcarry bool, overflow bool) {
 		r.value++
 	}
 
-	// overflow detection from Ken Shirriff's blog: "The 6502 overflow flag
-	// explained mathematically"
+	// overflow detection from Ken Shirriff's blog: "The 6502 overflow flag explained mathematically"
+	// https://www.righto.com/2012/12/the-6502-overflow-flag-explained.html
 	overflow = ((v ^ r.value) & (val ^ r.value) & 0x80) != 0
+	//
+	// or alternatively the following expression is equivalent
+	// overflow = (^(v ^ val) & (val ^ r.value) & 0x80) != 0
 
 	// carry detection
 	if v == r.value {

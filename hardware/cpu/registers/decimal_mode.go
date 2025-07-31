@@ -23,6 +23,10 @@ package registers
 // Appendix A of the following URL was used as a reference:
 //
 // http://www.6502.org/tutorials/decimal_mode.html
+//
+// Also, the paper by Jorge Cwik was useful:
+//
+// https://forums.atariage.com/topic/163876-flags-on-decimal-mode-on-the-nmos-6502
 
 func (r *Data) AddDecimal(val uint8, carry bool) (bool, bool, bool, bool) {
 	// for BCD addition the zero flag is set as though it was a binary subtraction
@@ -31,8 +35,6 @@ func (r *Data) AddDecimal(val uint8, carry bool) (bool, bool, bool, bool) {
 	rzero := br.IsZero()
 
 	// for the other flags they are set according to the rules of Seq.1 and Seq.2 (Appendix A of 6502.org)
-
-	// the final value is set according to the rules of Seq.2
 
 	// Seq.1
 
@@ -73,7 +75,13 @@ func (r *Data) AddDecimal(val uint8, carry bool) (bool, bool, bool, bool) {
 	rsign := a2&0x80 == 0x80
 
 	// 2f. The V flag result is 1 if A < -128 or A > 127, and is 0 if -128 <= A <= 127
-	roverflow := a2 < -128 || a2 > 127
+	//
+	// however, this isn't actually how the NMOS 6502 works. instead the overflow flag behaves
+	// more like how the overflow flag is set for binary addition
+	roverflow := ((r.value ^ uint8(a2)) & (val ^ uint8(a2)) & 0x80) != 0
+	//
+	// or alternatively, the following expression is equivalent
+	// roverflow := (^(r.value ^ val) & (r.value ^ uint8(a2)) & 0x80) != 0
 
 	// store result in register (using a1 from Seq.2)
 	r.value = uint8(a1)

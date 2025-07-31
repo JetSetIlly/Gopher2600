@@ -29,7 +29,7 @@ cputype = 0         ; 0 = 6502, 1 = 65C02, 2 = 65C816
 vld_bcd = 0         ; 0 = allow invalid bcd, 1 = valid bcd only
 chk_a   = 1         ; check accumulator
 chk_n   = 1         ; check sign (negative) flag
-chk_v   = 0         ; check overflow flag
+chk_v   = 1         ; check overflow flag
 chk_z   = 1         ; check zero flag
 chk_c   = 1         ; check carry flag
 
