@@ -134,10 +134,12 @@ func (pal *palette) draw(selection int) int {
 
 	// step through all colours in palette
 	for hue := 0; hue <= 0x0f; hue++ {
+		p := imgui.CursorScreenPos()
+
 		for lum := 0; lum <= 0x0e; lum += 2 {
 			c := (hue << 4) | lum
 			rgba := pal.img.getTVColour(uint8(c))
-			hov, clck := pal.colRect(c, rgba, selection == c)
+			hov, clck := pal.colRect(rgba, selection == c)
 			if clck {
 				selected = c
 				startDragAndDrop = true
@@ -148,13 +150,11 @@ func (pal *palette) draw(selection int) int {
 			}
 		}
 
-		p := imgui.CursorScreenPos()
-		z := imgui.Vec2{
-			X: -8 * (pal.swatchSize + pal.swatchGap),
-			Y: pal.swatchSize + pal.swatchGap,
-		}
-		p = p.Plus(z)
-		imgui.SetCursorScreenPos(p)
+		imgui.SetCursorScreenPos(
+			p.Plus(imgui.Vec2{
+				Y: pal.swatchSize - imgui.CurrentStyle().ItemSpacing().Y + pal.swatchGap,
+			}),
+		)
 		imgui.Dummy(imgui.Vec2{})
 	}
 
@@ -182,7 +182,7 @@ func (pal *palette) draw(selection int) int {
 	return selected
 }
 
-func (pal *palette) colRect(idx int, col imgui.PackedColor, selected bool) (hover bool, clicked bool) {
+func (pal *palette) colRect(col imgui.PackedColor, selected bool) (hover bool, clicked bool) {
 	// position & dimensions of playfield bit
 	p := imgui.CursorScreenPos()
 	z := imgui.Vec2{X: pal.swatchSize, Y: pal.swatchSize}
