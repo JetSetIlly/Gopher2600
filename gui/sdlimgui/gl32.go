@@ -59,7 +59,7 @@ func newRenderer(img *SdlImgui) renderer {
 		shaders:  make(map[shaderType]shaderProgram),
 		scrsht:   newGl32Screenshot(),
 	}
-	rnd.video = video.NewFFMPEG(rnd)
+	rnd.video = video.NewFFMPEG(rnd, img.dbg.TV())
 	return rnd
 }
 

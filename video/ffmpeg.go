@@ -21,8 +21,10 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
+	"github.com/jetsetilly/gopher2600/wavwriter"
 )
 
 // Profile is used to specify which set of ffmpeg settings to use
@@ -40,17 +42,26 @@ type Renderer interface {
 	ReadPixels(width int32, height int32, pix []uint8)
 }
 
+type Television interface {
+	AddAudioMixer(m television.AudioMixer)
+	RemoveAudioMixer(m television.AudioMixer)
+}
+
 type FFMPEG struct {
 	rnd Renderer
+	tv  Television
 
 	// details set by the preprocess() function. the function checks to see if the parameters change
 	// between calls. if they change while ffmpeg is enabled then the preprocess() function returns
 	// an error
-	cartName string
-	width    int32
-	height   int32
-	hz       float32
-	profile  Profile
+	cartName           string
+	width              int32
+	height             int32
+	hz                 float32
+	profile            Profile
+	finalVideoFilename string
+	tempVideoFilename  string
+	tempAudioFilename  string
 
 	// is video recording enabled
 	enabled bool
@@ -61,26 +72,71 @@ type FFMPEG struct {
 
 	// pixels is read by the ReadPixels() function of the supplied Renderer interface
 	pixels []uint8
+
+	// we record audio to a separate file and then mux it with the video in a final step
+	wavs *wavwriter.WavWriter
 }
 
-func NewFFMPEG(rnd Renderer) *FFMPEG {
+func NewFFMPEG(rnd Renderer, tv Television) *FFMPEG {
 	vid := &FFMPEG{
 		rnd: rnd,
+		tv:  tv,
 	}
 	return vid
 }
 
 func (vid *FFMPEG) Destroy() {
+	// we try to mux if we ever close the ffmpeg pipe or wavwriter
+	var mux bool
+
 	if vid.pipe != nil {
 		vid.pipe.Close()
 		if err := vid.encoder.Wait(); err != nil {
-			logger.Log(logger.Allow, "video", err.Error())
+			logger.Log(logger.Allow, "ffmpeg", err.Error())
 		}
 		vid.pipe = nil
 		vid.encoder = nil
+		mux = true
 	}
 	vid.pixels = nil
 	vid.enabled = false
+
+	if vid.wavs != nil {
+		if err := vid.wavs.EndMixing(); err != nil {
+			logger.Log(logger.Allow, "ffmpeg", err.Error())
+		}
+		vid.tv.RemoveAudioMixer(vid.wavs)
+		vid.wavs = nil
+		mux = true
+	}
+
+	if !mux {
+		return
+	}
+
+	// muxing with ffmpeg
+	muxer := exec.Command("ffmpeg",
+		"-i", vid.tempVideoFilename, "-i", vid.tempAudioFilename,
+		"-vcodec", "copy", "-acodec", "mp3",
+		vid.finalVideoFilename)
+
+	// using Run() function because we want to wait for ffmpeg to complete
+	err := muxer.Run()
+	if err != nil {
+		logger.Log(logger.Allow, "ffmpeg", err.Error())
+		// don't delete temp files if muxing failed
+		return
+	}
+
+	// removing temp files
+	err = os.Remove(vid.tempVideoFilename)
+	if err != nil {
+		logger.Log(logger.Allow, "ffmpeg", err.Error())
+	}
+	err = os.Remove(vid.tempAudioFilename)
+	if err != nil {
+		logger.Log(logger.Allow, "ffmpeg", err.Error())
+	}
 }
 
 func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz float32, profile Profile) error {
@@ -107,7 +163,11 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 	vid.hz = hz
 	vid.profile = profile
 
-	outputFile := unique.Filename("video", cartName)
+	// the base for the output file's name. we append .mp4 for the video file and .wav for the audio file
+	outputFilenameBase := unique.Filename("video", cartName)
+	vid.finalVideoFilename = fmt.Sprintf("%s.mp4", outputFilenameBase)
+	vid.tempVideoFilename = fmt.Sprintf("_tmp_%s.mp4", outputFilenameBase)
+	vid.tempAudioFilename = fmt.Sprintf("_tmp_%s.wav", outputFilenameBase)
 
 	var ffmpegInput = []string{
 		"-f", "rawvideo",
@@ -154,7 +214,7 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 
 	var ffmpegOutput = []string{
 		"-y", // always overwrite output file
-		fmt.Sprintf("%s.mp4", outputFile),
+		vid.tempVideoFilename,
 	}
 
 	var opts []string
@@ -190,6 +250,13 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 
 	vid.pixels = make([]uint8, vid.width*vid.height*4)
 
+	// create wavwriter
+	vid.wavs, err = wavwriter.NewWavWriter(vid.tempAudioFilename)
+	if err != nil {
+		return fmt.Errorf("ffmpeg: %w", err)
+	}
+	vid.tv.AddAudioMixer(vid.wavs)
+
 	return nil
 }
 
@@ -211,7 +278,7 @@ func (vid *FFMPEG) Process() {
 
 	_, err := vid.pipe.Write(vid.pixels)
 	if err != nil {
-		logger.Log(logger.Allow, "video", err.Error())
+		logger.Log(logger.Allow, "ffmpeg", err.Error())
 		vid.Destroy()
 	}
 }

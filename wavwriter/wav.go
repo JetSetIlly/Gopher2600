@@ -19,6 +19,7 @@ package wavwriter
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	tia "github.com/jetsetilly/gopher2600/hardware/tia/audio"
@@ -36,9 +37,12 @@ type WavWriter struct {
 
 // New is the preferred method of initialisation for the WavWriter type
 func NewWavWriter(filename string) (*WavWriter, error) {
+	if !strings.HasSuffix(strings.ToLower(filename), ".wav") {
+		filename = fmt.Sprintf("%s.wav", filename)
+	}
 	aw := &WavWriter{
-		filename: fmt.Sprintf("%s.wav", filename),
-		buffer:   make([]int16, 0, 0),
+		filename: filename,
+		buffer:   make([]int16, 0),
 	}
 	return aw, nil
 }
