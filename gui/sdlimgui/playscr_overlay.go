@@ -99,9 +99,6 @@ type playscrOverlay struct {
 
 	// subtitles are in a category of their own
 	subtitles strings.Builder
-
-	// all overlay output is inhibited
-	inhibit bool
 }
 
 const overlayPadding = 10
@@ -177,12 +174,10 @@ func (o *playscrOverlay) draw() {
 	maxRegion := imgui.ContentRegionAvail()
 
 	// only draw subtitles if inhibit is enabled
-	if !o.inhibit {
-		o.drawTopLeft()
-		o.drawTopRight(maxRegion)
-		o.drawBottomLeft(maxRegion)
-		o.drawBottomRight(maxRegion)
-	}
+	o.drawTopLeft()
+	o.drawTopRight(maxRegion)
+	o.drawBottomLeft(maxRegion)
+	o.drawBottomRight(maxRegion)
 
 	o.drawSubtitles(maxRegion)
 }

@@ -138,21 +138,6 @@ func (rnd *gl32) render() {
 	fbw, fbh := rnd.img.plt.framebufferSize()
 	drawData := imgui.RenderedDrawData()
 
-	defer rnd.scrsht.process(int32(fbw), int32(fbh))
-
-	if rnd.img.isPlaymode() {
-		err := rnd.video.Preprocess(
-			rnd.img.cache.VCS.Mem.Cart.ShortName,
-			int32(fbw), int32(fbh), float32(rnd.img.plt.mode.RefreshRate),
-			video.ProfileFast)
-		if err != nil {
-			logger.Log(logger.Allow, "gl32", err.Error())
-		}
-		defer func() {
-			rnd.video.Process(int(rnd.img.screen.lastVideoFrame.Load()))
-		}()
-	}
-
 	st := storeGLState()
 	defer st.restoreGLState()
 
@@ -211,46 +196,79 @@ func (rnd *gl32) render() {
 		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, rnd.elementsHandle)
 		gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, indexBufferSize, indexBuffer, gl.STREAM_DRAW)
 
-		for _, cmd := range list.Commands() {
-			if cmd.HasUserCallback() {
-				cmd.CallUserCallback(list)
-			} else {
-				// texture id
-				id := cmd.TextureID()
-				env.textureID = uint32(id)
+		// two passes to allow rendering of video and screenshots without windows, overlays, etc.
+		for pass := range 2 {
+			for _, cmd := range list.Commands() {
+				if cmd.HasUserCallback() {
+					cmd.CallUserCallback(list)
+				} else {
+					// texture id
+					id := cmd.TextureID()
+					env.textureID = uint32(id)
 
-				// select shader program to use
-				var shader shaderProgram
+					// select shader program to use
+					var shader shaderProgram
 
-				if tex, ok := rnd.textures[env.textureID]; ok {
-					shader = rnd.shaders[tex.typ]
-					env.config = tex.config
+					switch pass {
+					case 0:
+						if !(env.textureID == rnd.img.playScr.screenTexture.getID() ||
+							env.textureID == rnd.img.playScr.bevelTexture.getID() ||
+							env.textureID == rnd.img.playScr.bevelRimTexture.getID()) {
+							continue
+						}
+					case 1:
+						if env.textureID == rnd.img.playScr.screenTexture.getID() ||
+							env.textureID == rnd.img.playScr.bevelTexture.getID() ||
+							env.textureID == rnd.img.playScr.bevelRimTexture.getID() {
+							continue
+						}
+					}
+
+					if tex, ok := rnd.textures[env.textureID]; ok {
+						shader = rnd.shaders[tex.typ]
+						env.config = tex.config
+					}
+
+					if shader == nil {
+						panic("no shader found for texture")
+					}
+
+					env.draw = func() {
+						gl.DrawElementsWithOffset(gl.TRIANGLES, int32(cmd.ElementCount()), uint32(drawType), indexBufferOffset)
+					}
+
+					// set attributes for the selected shader
+					shader.setAttributes(env)
+
+					// draw using the currently selected shader to the real framebuffer
+					gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+
+					// viewport and scissors. these might have changed during
+					// execution of the shader
+					gl.Viewport(0, 0, int32(fbw), int32(fbh))
+					clipRect := cmd.ClipRect()
+					gl.Scissor(int32(clipRect.X), int32(fbh)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
+
+					// process
+					env.draw()
 				}
-
-				if shader == nil {
-					panic("no shader found for texture")
-				}
-
-				env.draw = func() {
-					gl.DrawElementsWithOffset(gl.TRIANGLES, int32(cmd.ElementCount()), uint32(drawType), indexBufferOffset)
-				}
-
-				// set attributes for the selected shader
-				shader.setAttributes(env)
-
-				// draw using the currently selected shader to the real framebuffer
-				gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
-
-				// viewport and scissors. these might have changed during
-				// execution of the shader
-				gl.Viewport(0, 0, int32(fbw), int32(fbh))
-				clipRect := cmd.ClipRect()
-				gl.Scissor(int32(clipRect.X), int32(fbh)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
-
-				// process
-				env.draw()
+				indexBufferOffset += uintptr(cmd.ElementCount() * indexSize)
 			}
-			indexBufferOffset += uintptr(cmd.ElementCount() * indexSize)
+
+			// do screenshots and video processing at the end of the first pass
+			if pass == 0 {
+				if rnd.img.isPlaymode() {
+					err := rnd.video.Preprocess(
+						rnd.img.cache.VCS.Mem.Cart.ShortName,
+						int32(fbw), int32(fbh), float32(rnd.img.plt.mode.RefreshRate),
+						video.ProfileFast)
+					if err != nil {
+						logger.Log(logger.Allow, "gl32", err.Error())
+					}
+					rnd.scrsht.process(int32(fbw), int32(fbh))
+					rnd.video.Process(int(rnd.img.screen.lastVideoFrame.Load()))
+				}
+			}
 		}
 	}
 	gl.DeleteVertexArrays(1, &vaoHandle)

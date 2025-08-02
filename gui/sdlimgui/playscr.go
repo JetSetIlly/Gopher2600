@@ -121,9 +121,7 @@ func (win *playScr) draw() {
 		dl.AddImage(imgui.TextureID(win.screenTexture.getID()), win.screenPosMin, win.screenPosMax)
 	}
 
-	if !win.img.rnd.isScreenshotting() {
-		win.overlay.draw()
-	}
+	win.overlay.draw()
 }
 
 // resize() implements the textureRenderer interface.

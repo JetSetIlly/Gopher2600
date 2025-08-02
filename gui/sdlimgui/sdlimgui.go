@@ -537,7 +537,5 @@ func (img *SdlImgui) getTVColour(col uint8) imgui.PackedColor {
 // emulation is switched to debugger mode. video recording will resume if playmode is resumed
 func (img *SdlImgui) enableVideoRecording(enable bool) {
 	img.rnd.record(enable)
-	img.playScr.overlay.inhibit = enable
-	img.wm.playmodeWindowsInhibit = enable
 	img.screen.Reset()
 }
