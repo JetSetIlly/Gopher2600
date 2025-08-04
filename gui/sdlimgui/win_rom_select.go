@@ -432,37 +432,37 @@ func (win *winSelectROM) draw() {
 						} else {
 							imgui.Text("-")
 						}
+
+						imgui.TableNextRow()
+						imgui.TableNextColumn()
+
+						imgui.AlignTextToFramePadding()
+						imgui.Text("Players")
+						imgui.TableNextColumn()
+						if previewResults != nil {
+							imgui.SetNextItemWidth(100)
+							if imgui.BeginCombo("##leftplayer", string(previewResults.VCS.RIOT.Ports.LeftPlayer.ID())) {
+								for _, s := range peripherals.AvailableLeftPlayer {
+									if imgui.Selectable(s) {
+									}
+								}
+								imgui.EndCombo()
+							}
+							imgui.SameLineV(0, 15)
+							imgui.Text("&")
+							imgui.SameLineV(0, 15)
+							imgui.SetNextItemWidth(100)
+							if imgui.BeginCombo("##rightplayer", string(previewResults.VCS.RIOT.Ports.RightPlayer.ID())) {
+								for _, s := range peripherals.AvailableRightPlayer {
+									if imgui.Selectable(s) {
+									}
+								}
+								imgui.EndCombo()
+							}
+						} else {
+							imgui.Text("-")
+						}
 					})
-
-					imgui.TableNextRow()
-					imgui.TableNextColumn()
-
-					imgui.AlignTextToFramePadding()
-					imgui.Text("Players")
-					imgui.TableNextColumn()
-					if previewResults != nil {
-						imgui.SetNextItemWidth(100)
-						if imgui.BeginCombo("##leftplayer", string(previewResults.VCS.RIOT.Ports.LeftPlayer.ID())) {
-							for _, s := range peripherals.AvailableLeftPlayer {
-								if imgui.Selectable(s) {
-								}
-							}
-							imgui.EndCombo()
-						}
-						imgui.SameLineV(0, 15)
-						imgui.Text("&")
-						imgui.SameLineV(0, 15)
-						imgui.SetNextItemWidth(100)
-						if imgui.BeginCombo("##rightplayer", string(previewResults.VCS.RIOT.Ports.RightPlayer.ID())) {
-							for _, s := range peripherals.AvailableRightPlayer {
-								if imgui.Selectable(s) {
-								}
-							}
-							imgui.EndCombo()
-						}
-					} else {
-						imgui.Text("-")
-					}
 
 					if win.selectedProperties.Manufacturer != "" {
 						imgui.TableNextRow()
