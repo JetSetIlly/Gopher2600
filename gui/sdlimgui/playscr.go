@@ -56,8 +56,9 @@ type playScr struct {
 	// number of scanlines in current image. taken from screen but is crit section safe
 	visibleScanlines int
 
-	// overlay for play screen
-	overlay playscrOverlay
+	// overlays and subtitles for play screen
+	overlay   playscrOverlay
+	subtitles playscrSubtitles
 }
 
 func newPlayScr(img *SdlImgui) *playScr {
@@ -65,6 +66,9 @@ func newPlayScr(img *SdlImgui) *playScr {
 		img: img,
 		scr: img.screen,
 		overlay: playscrOverlay{
+			img: img,
+		},
+		subtitles: playscrSubtitles{
 			img: img,
 		},
 	}
@@ -122,6 +126,7 @@ func (win *playScr) draw() {
 	}
 
 	win.overlay.draw()
+	win.subtitles.draw()
 }
 
 // resize() implements the textureRenderer interface.

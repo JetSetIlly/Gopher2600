@@ -21,10 +21,8 @@ import (
 
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
-	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox/engines"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/imgui-go/v5"
@@ -96,9 +94,6 @@ type playscrOverlay struct {
 
 	// visibility of icons is set from the preferences once per draw()
 	visibility float32
-
-	// subtitles are in a category of their own
-	subtitles strings.Builder
 }
 
 const overlayPadding = 10
@@ -133,14 +128,6 @@ func (o *playscrOverlay) set(v any, args ...any) {
 			o.event = n
 			o.eventLatch = overlayLatchShort
 
-		case notifications.NotifyAtariVoxSubtitle:
-			s := args[0].([]gui.FeatureReqData)[0]
-			if s == engines.StaleSubtitle {
-				o.subtitles.Reset()
-			} else {
-				o.subtitles.WriteString(s.(string))
-			}
-
 		default:
 			return
 		}
@@ -173,13 +160,10 @@ func (o *playscrOverlay) draw() {
 	// content region now before the cursor has been adjusted is fine
 	maxRegion := imgui.ContentRegionAvail()
 
-	// only draw subtitles if inhibit is enabled
 	o.drawTopLeft()
 	o.drawTopRight(maxRegion)
 	o.drawBottomLeft(maxRegion)
 	o.drawBottomRight(maxRegion)
-
-	o.drawSubtitles(maxRegion)
 }
 
 func (o *playscrOverlay) updateRefreshRate() {
@@ -194,47 +178,6 @@ func (o *playscrOverlay) updateRefreshRate() {
 	} else {
 		o.refreshRate = fmt.Sprintf("%03.2fhz", refreshRate)
 	}
-}
-
-func (o *playscrOverlay) drawSubtitles(maxRegion imgui.Vec2) {
-	// only show the most recent subtitle 'sentence'
-	sub := strings.TrimSpace(o.subtitles.String())
-	splt := strings.Split(sub, engines.SubtitleSentence)
-	if len(splt) > 1 && len(splt[len(splt)-1]) > 0 {
-		sub = splt[len(splt)-1]
-	}
-	sub = strings.TrimSpace(sub)
-	if len(sub) == 0 {
-		return
-	}
-
-	p := imgui.Vec2{X: 0.0, Y: maxRegion.Y * 0.85}
-	imgui.SetNextWindowPos(p)
-	imgui.SetNextWindowSize(imgui.Vec2{X: maxRegion.X, Y: p.Y})
-
-	imgui.BeginV("##subtitles", nil, imgui.WindowFlagsAlwaysAutoResize|
-		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
-		imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings|
-		imgui.WindowFlagsNoBringToFrontOnFocus)
-	defer imgui.End()
-
-	imgui.PushFont(o.img.fonts.subtitles[o.img.fonts.subtitlesIdx])
-	defer imgui.PopFont()
-
-	padding := float32(5.0)
-
-	sz := imgui.CalcTextSize(sub, false, 0.0)
-	p = imgui.CursorScreenPos()
-	p.X = (maxRegion.X - sz.X) / 2
-	imgui.SetCursorScreenPos(p)
-
-	p = p.Plus(imgui.Vec2{X: -padding, Y: padding / 2})
-	dl := imgui.WindowDrawList()
-	dl.AddRectFilled(p, p.Plus(sz).Plus(imgui.Vec2{X: padding * 2, Y: -padding}), o.img.cols.subtitlesBackground)
-
-	imgui.PushStyleColor(imgui.StyleColorText, o.img.cols.SubtitlesText)
-	imgui.Text(sub)
-	imgui.PopStyleColor()
 }
 
 // information in the top left corner of the overlay are about the emulation.
@@ -557,8 +500,6 @@ func (o *playscrOverlay) drawTopLeft() {
 		imgui.Text(string(i))
 		imgui.SameLine()
 	}
-
-	return
 }
 
 // information in the top right of the overlay is about the cartridge. ie.
