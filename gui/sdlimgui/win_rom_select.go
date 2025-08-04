@@ -256,19 +256,16 @@ func (win *winSelectROM) draw() {
 
 	imgui.BeginGroup()
 
-	if imgui.Button("Parent") {
+	if imgui.Button(fmt.Sprintf("%c Parent", fonts.BackArrow)) {
 		win.path.Set <- archivefs.Options{Path: filepath.Dir(win.path.Results.Dir)}
 		win.scrollToTop = true
 	}
 
 	imgui.SameLine()
-	const maxDisplayPath = 68
-	displayPath := archivefs.RemoveArchiveExt(win.path.Results.Dir)
-	displayPath = displayPath[max(0, len(displayPath)-maxDisplayPath):]
-	if len(displayPath) == maxDisplayPath {
-		displayPath = fmt.Sprintf(" %c%s", fonts.BackArrowDouble, displayPath)
-	}
+	displayPath := filepath.Base(win.path.Results.Dir)
+	displayPath = archivefs.RemoveArchiveExt(displayPath)
 	imgui.Text(displayPath)
+	win.img.imguiTooltipSimple(win.path.Results.Dir)
 
 	// ROM selector listview
 	imgui.BeginChildV("##selector", win.listviewDim, true, 0)
@@ -340,8 +337,8 @@ func (win *winSelectROM) draw() {
 		if !e.IsDir {
 			selected := e.Name == win.path.Results.Base
 
-			if selected && win.centreOnFile {
-				imgui.SetScrollHereY(0.0)
+			if selected && win.centreOnFile && win.path.Results.Complete {
+				imgui.SetScrollHereY(0.1)
 				win.centreOnFile = !win.path.Results.Complete
 			}
 
