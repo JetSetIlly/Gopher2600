@@ -85,6 +85,10 @@ type winSelectROM struct {
 	boxartTexture texture
 	boxartDim     imgui.Vec2
 	boxartUse     bool
+
+	// was the rom select window open on the previous frame. used to control if we clear the
+	// thumbnail image
+	wasOpen bool
 }
 
 // boxart from libretro project
@@ -154,9 +158,34 @@ func (win winSelectROM) id() string {
 
 func (win *winSelectROM) setOpen(open bool) {
 	if !open {
-		win.path.Close <- true
+		if win.wasOpen {
+			win.wasOpen = false
+			win.path.Close <- true
+
+			// drain render channel to make sure we don't get any dregs if the ROM selector window
+			// is reopened
+			var done bool
+			for !done {
+				select {
+				case <-win.thmb.Render:
+				default:
+					done = true
+				}
+			}
+
+			// clear the thumbnail image and render it to the thumbnail texture
+			for i := range win.thmbImage.Pix {
+				win.thmbImage.Pix[i] = 0
+			}
+			win.thmbTexture.render(win.thmbImage)
+		}
+
+		// no more to do if window is now closed
 		return
 	}
+
+	// the window will be open this frame and we will need to cleanup when we next close it
+	win.wasOpen = true
 
 	// take the opportunity to make sure recentROM is set correctly
 	cart := win.img.dbg.VCS().Mem.Cart
