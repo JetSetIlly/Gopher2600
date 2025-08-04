@@ -134,7 +134,7 @@ func (o *playscrOverlay) set(v any, args ...any) {
 	}
 }
 
-func (o *playscrOverlay) draw() {
+func (o *playscrOverlay) draw(posMin imgui.Vec2, posMax imgui.Vec2) {
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, o.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorBorder, o.img.cols.Transparent)
 	defer imgui.PopStyleColorV(2)
@@ -142,10 +142,9 @@ func (o *playscrOverlay) draw() {
 	imgui.PushStyleVarVec2(imgui.StyleVarWindowPadding, imgui.Vec2{})
 	defer imgui.PopStyleVarV(1)
 
-	imgui.SetNextWindowPos(imgui.Vec2{X: 0, Y: 0})
-
-	winw, winh := o.img.plt.windowSize()
-	imgui.SetNextWindowSize(imgui.Vec2{X: winw, Y: winh})
+	sz := posMax.Minus(posMin)
+	imgui.SetNextWindowPos(posMin)
+	imgui.SetNextWindowSize(sz)
 
 	imgui.BeginV("##playscrOverlay", nil, imgui.WindowFlagsAlwaysAutoResize|
 		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
@@ -155,15 +154,10 @@ func (o *playscrOverlay) draw() {
 
 	o.visibility = float32(o.img.prefs.notificationVisibility.Get().(float64))
 
-	// we used to use ContentRegionMax() but that's no longer available. replacing with
-	// ContentRegionAvail() is fine but we must be careful about cursor positioning. taking the
-	// content region now before the cursor has been adjusted is fine
-	maxRegion := imgui.ContentRegionAvail()
-
-	o.drawTopLeft()
-	o.drawTopRight(maxRegion)
-	o.drawBottomLeft(maxRegion)
-	o.drawBottomRight(maxRegion)
+	o.drawTopLeft(posMin, posMax)
+	o.drawTopRight(posMin, posMax)
+	o.drawBottomLeft(posMin, posMax)
+	o.drawBottomRight(posMin, posMax)
 }
 
 func (o *playscrOverlay) updateRefreshRate() {
@@ -183,8 +177,9 @@ func (o *playscrOverlay) updateRefreshRate() {
 // information in the top left corner of the overlay are about the emulation.
 // eg. whether audio is mute, or the emulation is paused, etc. it is also used
 // to display the FPS counter and other TV information
-func (o *playscrOverlay) drawTopLeft() {
-	pos := imgui.CursorScreenPos()
+func (o *playscrOverlay) drawTopLeft(posMin imgui.Vec2, posMax imgui.Vec2) {
+	pos := posMin
+	imgui.SetCursorScreenPos(pos)
 	pos.X += overlayPadding
 	pos.Y += overlayPadding
 
@@ -505,7 +500,7 @@ func (o *playscrOverlay) drawTopLeft() {
 // information in the top right of the overlay is about the cartridge. ie.
 // information from the cartridge about what is happening. for example,
 // supercharger tape activity, or PlusROM network activity, etc.
-func (o *playscrOverlay) drawTopRight(pos imgui.Vec2) {
+func (o *playscrOverlay) drawTopRight(posMin imgui.Vec2, posMax imgui.Vec2) {
 	if !o.cartridgeLatch.tick() {
 		return
 	}
@@ -537,8 +532,8 @@ func (o *playscrOverlay) drawTopRight(pos imgui.Vec2) {
 		return
 	}
 
+	pos := imgui.Vec2{X: posMax.X, Y: posMin.Y}
 	pos.X -= o.img.fonts.gopher2600IconsSize + overlayPadding
-	pos.Y = 0
 	if secondaryIcon != "" {
 		pos.X -= o.img.fonts.largeFontAwesomeSize * 2
 	}
@@ -565,7 +560,7 @@ func (o *playscrOverlay) drawTopRight(pos imgui.Vec2) {
 	}
 }
 
-func (o *playscrOverlay) drawBottomLeft(pos imgui.Vec2) {
+func (o *playscrOverlay) drawBottomLeft(posMin imgui.Vec2, posMax imgui.Vec2) {
 	if !o.leftPortLatch.tick() {
 		return
 	}
@@ -574,14 +569,15 @@ func (o *playscrOverlay) drawBottomLeft(pos imgui.Vec2) {
 		return
 	}
 
-	pos.X = overlayPadding
+	pos := imgui.Vec2{X: posMin.X, Y: posMax.Y}
+	pos.X += overlayPadding
 	pos.Y -= o.img.fonts.gopher2600IconsSize + overlayPadding
 
 	imgui.SetCursorScreenPos(pos)
 	o.drawPeripheral(o.leftPort)
 }
 
-func (o *playscrOverlay) drawBottomRight(pos imgui.Vec2) {
+func (o *playscrOverlay) drawBottomRight(_ imgui.Vec2, posMax imgui.Vec2) {
 	if !o.rightPortLatch.tick() {
 		return
 	}
@@ -590,6 +586,7 @@ func (o *playscrOverlay) drawBottomRight(pos imgui.Vec2) {
 		return
 	}
 
+	pos := imgui.Vec2{X: posMax.X, Y: posMax.Y}
 	pos.X -= o.img.fonts.gopher2600IconsSize + overlayPadding
 	pos.Y -= o.img.fonts.gopher2600IconsSize + overlayPadding
 

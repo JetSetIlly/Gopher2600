@@ -125,7 +125,12 @@ func (win *playScr) draw() {
 		dl.AddImage(imgui.TextureID(win.screenTexture.getID()), win.screenPosMin, win.screenPosMax)
 	}
 
-	win.overlay.draw()
+	if win.usingBevel {
+		win.overlay.draw(win.bevelPosMin, win.bevelPosMax)
+	} else {
+		winw, winh := win.img.plt.windowSize()
+		win.overlay.draw(imgui.Vec2{}, imgui.Vec2{X: winw, Y: winh})
+	}
 	win.subtitles.draw()
 }
 
