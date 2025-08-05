@@ -501,7 +501,7 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	if c.LegacyEnabled.Get().(bool) {
 		Y, U, V = c.LegacyAdjust.yuv(Y, U, V)
 	} else {
-		Y, V, V = c.Adjust.yuv(Y, U, V)
+		Y, U, V = c.Adjust.yuv(Y, U, V)
 	}
 
 	// YUV to RGB conversion
