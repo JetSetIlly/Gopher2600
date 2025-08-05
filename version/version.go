@@ -48,6 +48,19 @@ func Version() (string, string, bool) {
 	return version, revision, version == number
 }
 
+// Title returns a string that can be used in a window title. It concatenates the application name
+// with the version number depending on whether the program is a "release" version
+func Title() string {
+	var title string
+	ver, rev, rel := Version()
+	if rel {
+		title = fmt.Sprintf("%s (%s)", ApplicationName, ver)
+	} else {
+		title = fmt.Sprintf("%s (%s)", ApplicationName, rev)
+	}
+	return title
+}
+
 func init() {
 	var vcs bool
 	var vcsRevision string

@@ -170,14 +170,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	}
 	logger.Logf(logger.Allow, "sdl", "refresh rate: %dHz", plt.mode.RefreshRate)
 
-	var title string
-	ver, rev, rel := version.Version()
-	if rel {
-		title = fmt.Sprintf("%s (%s)", version.ApplicationName, ver)
-	} else {
-		title = fmt.Sprintf("%s (%s)", version.ApplicationName, rev)
-	}
-	plt.window, err = sdl.CreateWindow(title,
+	plt.window, err = sdl.CreateWindow(version.Title(),
 		sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
 		int32(float32(plt.mode.W)*0.80), int32(float32(plt.mode.H)*0.80),
 		sdl.WINDOW_OPENGL|sdl.WINDOW_ALLOW_HIGHDPI|sdl.WINDOW_RESIZABLE|sdl.WINDOW_HIDDEN)
