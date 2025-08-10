@@ -179,11 +179,14 @@ func NewElf(env *environment.Environment, loader cartridgeloader.Loader, inACE b
 
 // MappedBanks implements the mapper.CartMapper interface.
 func (cart *Elf) MappedBanks() string {
-	return fmt.Sprintf("Bank: 0")
+	return ""
 }
 
 // ID implements the mapper.CartMapper interface.
 func (cart *Elf) ID() string {
+	if cart.mem.hasPXE {
+		return "ELF (with PXE)"
+	}
 	return "ELF"
 }
 
@@ -567,4 +570,10 @@ func (cart *Elf) ByteOrder() binary.ByteOrder {
 // Symbols implements the coprocessor.CartCoProcELF interface.
 func (cart *Elf) Symbols() []elf.Symbol {
 	return cart.mem.symbols
+}
+
+// PXE returns true if a PXE section was found during loading. The returned string value is the name
+// of the PXE section, which can be used with the Section() function to retrieve the data
+func (cart *Elf) PXE() (bool, string) {
+	return cart.mem.hasPXE, pxeSection
 }

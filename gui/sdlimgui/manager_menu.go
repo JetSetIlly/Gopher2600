@@ -236,7 +236,10 @@ func (wm *manager) drawMenu() {
 	// cartridge information
 	textFromRight(fmt.Sprintf("%s %c", wm.img.cache.VCS.Mem.Cart.ShortName, fonts.Disk), true, nil)
 	textFromRight(wm.img.cache.VCS.Mem.Cart.ID(), true, nil)
-	textFromRight(wm.img.cache.VCS.Mem.Cart.MappedBanks(), true, nil)
+	banking := wm.img.cache.VCS.Mem.Cart.MappedBanks()
+	if banking != "" {
+		textFromRight(banking, true, nil)
+	}
 
 	// TV information
 	frameInfo := wm.img.cache.TV.GetFrameInfo()

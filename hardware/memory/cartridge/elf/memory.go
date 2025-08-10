@@ -88,6 +88,8 @@ func (s *elfSection) Snapshot() *elfSection {
 	return &n
 }
 
+const pxeSection = ".bbpxe"
+
 type elfMemory struct {
 	env *environment.Environment
 
@@ -114,6 +116,9 @@ type elfMemory struct {
 	sections       []*elfSection
 	sectionNames   []string
 	sectionsByName map[string]*elfSection
+
+	// whether the ELF file has a .bbpxe section
+	hasPXE bool
 
 	symbols []elf.Symbol
 
@@ -322,6 +327,12 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 			mem.sections = append(mem.sections, section)
 			mem.sectionNames = append(mem.sectionNames, section.name)
 			mem.sectionsByName[section.name] = section
+		}
+
+		// note the existence of PXE
+		if section.name == pxeSection {
+			mem.hasPXE = true
+			logger.Logf(mem.env, "ELF", "PXE section found")
 		}
 	}
 
