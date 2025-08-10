@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/imgui-go/v5"
@@ -49,7 +50,11 @@ func (win *winRAM) debuggerDraw() bool {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{X: 1081, Y: 607}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
-		win.draw()
+		var isPXE bool
+		if ef, ok := win.img.cache.VCS.Mem.Cart.GetCoProcBus().(coprocessor.CartCoProcELF); ok {
+			isPXE, _ = ef.PXE()
+		}
+		win.draw(isPXE)
 	}
 
 	win.debuggerGeom.update()
@@ -58,7 +63,7 @@ func (win *winRAM) debuggerDraw() bool {
 	return true
 }
 
-func (win *winRAM) draw() {
+func (win *winRAM) draw(isPXE bool) {
 	var diff []uint8
 	if win.img.cache.Rewind.Comparison.State != nil {
 		diff = win.img.cache.Rewind.Comparison.State.VCS.Mem.RAM.RAM
@@ -96,34 +101,36 @@ func (win *winRAM) draw() {
 		// idx is based on original values of type uint16 so the type conversion is safe
 		addr := memorymap.OriginRAM + uint16(idx)
 
-		dl := imgui.WindowDrawList()
-		read, okr := win.img.dbg.Disasm.Sym.GetReadSymbol(addr, false)
-		write, okw := win.img.dbg.Disasm.Sym.GetWriteSymbol(addr)
-		if okr || okw {
-			sz := imgui.FontSize() * 0.4
-			pos.X += 1.0
-			pos.Y += 1.0
-			p1 := pos
-			p1.Y += sz
-			p2 := pos
-			p2.X += sz
-			dl.AddTriangleFilled(pos, p1, p2, imgui.PackedColorFromVec4(win.img.cols.ValueSymbol))
-		}
+		if !isPXE {
+			dl := imgui.WindowDrawList()
+			read, okr := win.img.dbg.Disasm.Sym.GetReadSymbol(addr, false)
+			write, okw := win.img.dbg.Disasm.Sym.GetWriteSymbol(addr)
+			if okr || okw {
+				sz := imgui.FontSize() * 0.4
+				pos.X += 1.0
+				pos.Y += 1.0
+				p1 := pos
+				p1.Y += sz
+				p2 := pos
+				p2.X += sz
+				dl.AddTriangleFilled(pos, p1, p2, imgui.PackedColorFromVec4(win.img.cols.ValueSymbol))
+			}
 
-		if okr && okw && read.Symbol == write.Symbol {
-			win.img.imguiTooltip(func() {
-				imguiColorLabelSimple(read.Symbol, win.img.cols.ValueSymbol)
-			}, true)
-		} else {
-			if okr {
+			if okr && okw && read.Symbol == write.Symbol {
 				win.img.imguiTooltip(func() {
 					imguiColorLabelSimple(read.Symbol, win.img.cols.ValueSymbol)
 				}, true)
-			}
-			if okw {
-				win.img.imguiTooltip(func() {
-					imguiColorLabelSimple(write.Symbol, win.img.cols.ValueSymbol)
-				}, true)
+			} else {
+				if okr {
+					win.img.imguiTooltip(func() {
+						imguiColorLabelSimple(read.Symbol, win.img.cols.ValueSymbol)
+					}, true)
+				}
+				if okw {
+					win.img.imguiTooltip(func() {
+						imguiColorLabelSimple(write.Symbol, win.img.cols.ValueSymbol)
+					}, true)
+				}
 			}
 		}
 

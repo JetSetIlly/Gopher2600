@@ -28,6 +28,10 @@ type Entry struct {
 	Source  SymbolSource
 }
 
+func (e *Entry) IsRAMSymbol() bool {
+	return e.Address >= 0x80 && e.Address <= 0xff
+}
+
 // table maps a symbol to an address. it also keeps track of the widest symbol
 // in the table.
 type table struct {
@@ -37,6 +41,8 @@ type table struct {
 
 	// addresses by symbol. useful when checking for duplicate symbols
 	bySymbol map[string]uint16
+
+	keys []string
 
 	// a sorted list of addresses
 	index []uint16
@@ -50,6 +56,7 @@ func newTable() *table {
 	t := &table{
 		symbols:  make(map[uint16]Entry),
 		bySymbol: make(map[string]uint16),
+		keys:     make([]string, 0),
 		index:    make([]uint16, 0),
 	}
 	return t
@@ -58,6 +65,9 @@ func newTable() *table {
 // should be called in critical section
 func (t *table) sort() {
 	// assertion check that byAddr and index are the same length
+	if len(t.symbols) != len(t.keys) {
+		panic("symbol table is inconsistent")
+	}
 	if len(t.symbols) != len(t.index) {
 		panic("symbol table is inconsistent")
 	}
@@ -65,6 +75,7 @@ func (t *table) sort() {
 		panic("symbol table is inconsistent")
 	}
 
+	slices.Sort(t.keys)
 	slices.Sort(t.index)
 
 	// calculate max width
@@ -145,6 +156,7 @@ func (t *table) add(source SymbolSource, addr uint16, symbol string) bool {
 	}
 	t.symbols[addr] = e
 	t.bySymbol[e.Symbol] = addr
+	t.keys = append(t.keys, e.Symbol)
 	t.index = append(t.index, addr)
 	return true
 }
@@ -155,6 +167,9 @@ func (t *table) remove(addr uint16) bool {
 	if e, ok := t.symbols[addr]; ok {
 		delete(t.symbols, addr)
 		delete(t.bySymbol, e.Symbol)
+		t.keys = slices.DeleteFunc(t.keys, func(s string) bool {
+			return s == e.Symbol
+		})
 		t.index = slices.DeleteFunc(t.index, func(a uint16) bool {
 			return a == addr
 		})

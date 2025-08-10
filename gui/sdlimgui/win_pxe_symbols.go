@@ -1,0 +1,128 @@
+package sdlimgui
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/jetsetilly/gopher2600/coprocessor"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/imgui-go/v5"
+)
+
+const winPXESymbolsID = "PXE Symbols"
+
+type winPXESymbols struct {
+	debuggerWin
+	img *SdlImgui
+}
+
+func newWinPXESymbols(img *SdlImgui) (window, error) {
+	win := &winPXESymbols{img: img}
+	return win, nil
+}
+
+func (win *winPXESymbols) init() {
+}
+
+// id should return a unique identifier for the window. note that the
+// window title and any menu entry do not have to have the same value as
+// the id() but it can.
+func (win *winPXESymbols) id() string {
+	return winPXESymbolsID
+}
+
+func (win *winPXESymbols) debuggerDraw() bool {
+	if !win.debuggerOpen {
+		return false
+	}
+
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 1229, Y: 77}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 290, Y: 630})
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
+		win.draw()
+	}
+
+	win.debuggerGeom.update()
+	imgui.End()
+
+	return true
+}
+
+func (win *winPXESymbols) draw() {
+	ef, ok := win.img.cache.VCS.Mem.Cart.GetCoProcBus().(coprocessor.CartCoProcELF)
+	if !ok {
+		imgui.Text("not an ELF cartridge")
+		return
+	}
+
+	ok, secname := ef.PXE()
+	if !ok {
+		imgui.Text("not a PXE cartridge")
+		return
+	}
+
+	_, origin := ef.Section(secname)
+
+	bus, ok := ef.(mapper.CartStaticBus)
+	if !ok {
+		imgui.Text("no static cartridge memory")
+		return
+	}
+	mem := bus.GetStatic()
+
+	flgs := imgui.TableFlagsBordersInnerV |
+		imgui.TableFlagsScrollY |
+		imgui.TableFlagsSizingStretchProp |
+		imgui.TableFlagsResizable
+
+	if imgui.BeginTableV("##pxesymbols", 3, flgs, imgui.Vec2{}, 0) {
+		width := imgui.ContentRegionAvail().X
+
+		imgui.TableSetupColumnV("Symbol", imgui.TableColumnFlagsPreferSortDescending, width*0.45, 0)
+		imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsPreferSortDescending, width*0.25, 0)
+		imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNoSort, width*0.25, 0)
+
+		imgui.TableSetupScrollFreeze(0, 1)
+		imgui.TableHeadersRow()
+
+		for e := range win.img.dbg.Disasm.Sym.PXESymbols {
+			imgui.TableNextRow()
+			if imgui.TableNextColumn() {
+				imgui.Text(e.Symbol)
+			}
+
+			address := origin + uint32(e.Address)
+
+			if imgui.TableNextColumn() {
+				imgui.Textf("%08x\n", address)
+			}
+
+			if imgui.TableNextColumn() {
+				v, ok := mem.Read8bit(address)
+				if !ok {
+					imgui.Text("illegal address")
+				} else {
+					s := fmt.Sprintf("%02x", uint8(v))
+					if imguiHexInput(fmt.Sprintf("##pxe%8x", address), 2, &s) {
+						var segment string
+						var idx int
+
+						for _, seg := range mem.Segments() {
+							if address >= seg.Origin && address <= seg.Memtop {
+								segment = seg.Name
+								idx = int(address - seg.Origin)
+								break // for loop
+							}
+						}
+
+						win.img.dbg.PushFunction(func() {
+							if v, err := strconv.ParseUint(s, 16, 8); err == nil {
+								bus.PutStatic(segment, idx, uint8(v))
+							}
+						})
+					}
+				}
+			}
+		}
+		imgui.EndTable()
+	}
+}

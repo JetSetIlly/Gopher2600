@@ -62,6 +62,10 @@ func (ef *elfShim) Symbols() []elf.Symbol {
 	return syms
 }
 
+func (ef *elfShim) PXE() (bool, string) {
+	return false, ""
+}
+
 // find the corresponding ELF file for the specified rom file. the ELF file may
 // or may not have DWARF data, the DWARF() function will return an error if not
 func findELF(romFile string) coprocessor.CartCoProcELF {

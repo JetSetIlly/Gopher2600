@@ -182,12 +182,18 @@ func (cart *Elf) MappedBanks() string {
 	return ""
 }
 
+// List of IDs that can be returned by the ID() function.
+const (
+	IdElf        = "ELF"
+	IdElfWithPXE = "ELF (with PXE)"
+)
+
 // ID implements the mapper.CartMapper interface.
 func (cart *Elf) ID() string {
 	if cart.mem.hasPXE {
-		return "ELF (with PXE)"
+		return IdElfWithPXE
 	}
-	return "ELF"
+	return IdElf
 }
 
 // Snapshot implements the mapper.CartMapper interface.

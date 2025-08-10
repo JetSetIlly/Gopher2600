@@ -370,3 +370,19 @@ func (sym *Symbols) CommandExtension(extension string) *commandline.Commands {
 	}
 	return nil
 }
+
+// PXESymbols is an iterator over the write array that returns only symbols that point to system RAM
+func (sym *Symbols) PXESymbols(yield func(Entry) bool) {
+	sym.crit.Lock()
+	defer sym.crit.Unlock()
+
+	for _, s := range sym.write.keys {
+		a := sym.write.bySymbol[s]
+		e := sym.write.symbols[a]
+		if e.Address <= 0x0fff && e.Source == SourceDASM {
+			if !yield(e) {
+				break // for loop
+			}
+		}
+	}
+}

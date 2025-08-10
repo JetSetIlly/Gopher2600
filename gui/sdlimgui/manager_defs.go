@@ -15,6 +15,8 @@
 
 package sdlimgui
 
+import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/elf"
+
 // windowDef specifies a window creator, the menu it appears in whether it
 // should open on start.
 type windowDef struct {
@@ -67,6 +69,7 @@ var windowDefs = [...]windowDef{
 	{create: newWinCDFRegisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"CDF", "CDFJ", "CDF0", "CDF1", "CDFJ+"}}},
 	{create: newWinCDFStreams, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"CDF", "CDFJ", "CDF0", "CDF1", "CDFJ+"}}},
 	{create: newWinSuperchargerRegisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"AR"}}},
+	{create: newWinPXESymbols, menu: menuEntry{group: menuCart, restrictMapper: []string{elf.IdElfWithPXE}}},
 	{create: newWinCartTape, menu: menuEntry{group: menuCart, restrictBus: menuRestrictTape}},
 	{create: newWinCartRAM, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRAM}},
 	{create: newWinCartStatic, menu: menuEntry{group: menuCart, restrictBus: menuRestrictStatic}},
