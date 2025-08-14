@@ -53,9 +53,10 @@ type preferences struct {
 	colorDisasm           prefs.Bool
 
 	// playmode preferences
-	audioMutePlaymode prefs.Bool
-	fpsDetail         prefs.Bool
-	activePause       prefs.Bool
+	audioMutePlaymode    prefs.Bool
+	fpsDetail            prefs.Bool
+	activePause          prefs.Bool
+	paddleOnMouseCapture prefs.Bool
 
 	// playmode notifications
 	controllerNotifcations    prefs.Bool
@@ -133,6 +134,10 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("sdlimgui.playmode.activePause", &p.activePause)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.playmode.paddleOnMouseCapture", &p.paddleOnMouseCapture)
 	if err != nil {
 		return nil, err
 	}
@@ -288,6 +293,7 @@ func (p *preferences) setDefaults() {
 	p.colorDisasm.Set(true)
 	p.fpsDetail.Set(false)
 	p.activePause.Set(false)
+	p.paddleOnMouseCapture.Set(true)
 	p.audioMutePlaymode.Set(false)
 	p.controllerNotifcations.Set(true)
 	p.plusromNotifications.Set(true)

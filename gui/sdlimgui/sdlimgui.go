@@ -25,6 +25,8 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/caching"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/controllers"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/reflection"
@@ -450,6 +452,19 @@ func (img *SdlImgui) isCaptured() bool {
 func (img *SdlImgui) setCapture(set bool) {
 	if img.isPlaymode() {
 		img.playScr.isCaptured = set
+
+		if set && img.prefs.paddleOnMouseCapture.Get().(bool) {
+			img.dbg.PushFunction(func() {
+				if img.dbg.VCS().RIOT.Ports.LeftPlayer.ID() == plugging.PeriphPaddles {
+					return
+				}
+				err := img.dbg.VCS().RIOT.Ports.Plug(plugging.PortLeft, controllers.NewPaddles)
+				if err != nil {
+					logger.Log(logger.Allow, "sdlimgui", err)
+				}
+			})
+		}
+
 	} else {
 		if set {
 			img.wm.dbgScr.debuggerSetOpen(true)

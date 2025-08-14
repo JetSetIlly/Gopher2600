@@ -202,12 +202,19 @@ func (win *winPrefs) drawPlaymodeTab() {
 	imgui.Spacing()
 
 	activePause := win.img.prefs.activePause.Get().(bool)
-	if imgui.Checkbox("'Active' Pause Screen", &activePause) {
+	if imgui.Checkbox("Active Pause Screen", &activePause) {
 		win.img.prefs.activePause.Set(activePause)
 	}
 	win.img.imguiTooltipSimple(`An 'active' pause screen is one that tries to present
 a television image that is sympathetic to the display kernel
 of the ROM.`)
+
+	paddleOnMouseCapture := win.img.prefs.paddleOnMouseCapture.Get().(bool)
+	if imgui.Checkbox("Use Paddle On Mouse Capture", &paddleOnMouseCapture) {
+		win.img.prefs.paddleOnMouseCapture.Set(paddleOnMouseCapture)
+	}
+	win.img.imguiTooltipSimple(`The left player be given a paddle automatically
+when the mouse is captured (with the right mouse button)`)
 
 	imgui.Spacing()
 	if imgui.CollapsingHeader("Notifications") {
