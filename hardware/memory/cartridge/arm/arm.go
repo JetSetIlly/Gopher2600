@@ -843,8 +843,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 				// detect exceedingly tight loops of the "while (true) {}" type
 				loopDetectionCt++
 				if loopDetectionCt > 2 {
-					arm.state.yield.Type = coprocessor.YieldCycleLimit
-					arm.state.yield.Error = fmt.Errorf("infinite loop detected")
+					arm.state.yield.Type = coprocessor.YieldInfiniteLoop
 					break
 				}
 			}

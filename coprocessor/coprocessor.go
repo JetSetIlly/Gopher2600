@@ -336,6 +336,9 @@ const (
 	// number of cycles limit is actually the number of instructions
 	YieldCycleLimit CoProcYieldType = "Exceeded Cycle Limit"
 
+	// returned when an infinite loop is detected
+	YieldInfiniteLoop CoProcYieldType = "Infinite Loop Detected"
+
 	// the coprocessor has not yet yielded and is still running
 	YieldRunning CoProcYieldType = "Running"
 )

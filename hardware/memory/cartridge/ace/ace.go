@@ -165,6 +165,11 @@ func (cart *Ace) runARM() bool {
 			cart.mem.yield.Error = fmt.Errorf("ACE does not support ProgramEnded yield type")
 		}
 
+		// treat infinite loops like a YieldSyncWithVCS
+		if cart.mem.yield.Type == coprocessor.YieldInfiniteLoop {
+			return true
+		}
+
 		switch cart.yieldHook.CartYield(cart.mem.yield) {
 		case coprocessor.YieldHookEnd:
 			cart.mem.armInterruptCt = maxArmInterrupCt

@@ -352,6 +352,11 @@ func (cart *Elf) runARM(addr uint16) bool {
 			cart.mem.yield.Error = fmt.Errorf("ELF does not support ProgramEnded yield")
 		}
 
+		// treat infinite loops like a YieldSyncWithVCS
+		if cart.mem.yield.Type == coprocessor.YieldInfiniteLoop {
+			return true
+		}
+
 		switch cart.yieldHook.CartYield(cart.mem.yield) {
 		case coprocessor.YieldHookEnd:
 			return false
