@@ -69,60 +69,89 @@ func (win *winPXESymbols) draw() {
 	}
 	mem := bus.GetStatic()
 
-	flgs := imgui.TableFlagsBordersInnerV |
-		imgui.TableFlagsScrollY |
-		imgui.TableFlagsSizingStretchProp |
-		imgui.TableFlagsResizable
+	// there's no good way of determining whether there are any PXE symbols to display so we need to
+	// be smart about how we call imgui.BeginTable()
+	//
+	// on the first iteration of the PXESymbols loop we call beginTable() and noting that it was
+	// sucessful with the usingTable boolean. then at the end of the function we can either call
+	// imgui.EndTable() or display the 'no symbols' text
 
-	if imgui.BeginTableV("##pxesymbols", 3, flgs, imgui.Vec2{}, 0) {
-		width := imgui.ContentRegionAvail().X
+	beginTable := func() bool {
+		flgs := imgui.TableFlagsBordersInnerV |
+			imgui.TableFlagsScrollY |
+			imgui.TableFlagsSizingStretchProp |
+			imgui.TableFlagsResizable
 
-		imgui.TableSetupColumnV("Symbol", imgui.TableColumnFlagsPreferSortDescending, width*0.45, 0)
-		imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsPreferSortDescending, width*0.25, 0)
-		imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNoSort, width*0.25, 0)
+		if imgui.BeginTableV("##pxesymbols", 3, flgs, imgui.Vec2{}, 0) {
+			width := imgui.ContentRegionAvail().X
 
-		imgui.TableSetupScrollFreeze(0, 1)
-		imgui.TableHeadersRow()
+			imgui.TableSetupColumnV("Symbol", imgui.TableColumnFlagsPreferSortDescending, width*0.45, 0)
+			imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsPreferSortDescending, width*0.25, 0)
+			imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNoSort, width*0.25, 0)
 
-		for e := range win.img.dbg.Disasm.Sym.PXESymbols {
-			imgui.TableNextRow()
-			if imgui.TableNextColumn() {
-				imgui.Text(e.Symbol)
+			imgui.TableSetupScrollFreeze(0, 1)
+			imgui.TableHeadersRow()
+			return true
+		}
+		return false
+	}
+
+	var usingTable bool
+
+	defer func() {
+		if usingTable {
+			imgui.EndTable()
+		} else {
+			imgui.Spacing()
+			imgui.Text("No PXE symbols available")
+		}
+	}()
+
+	for e := range win.img.dbg.Disasm.Sym.PXESymbols {
+		if !usingTable {
+			usingTable = beginTable()
+			if !usingTable {
+				break
 			}
+		}
 
-			address := origin + uint32(e.Address)
+		imgui.TableNextRow()
+		if imgui.TableNextColumn() {
+			imgui.Text(e.Symbol)
+		}
 
-			if imgui.TableNextColumn() {
-				imgui.Textf("%08x\n", address)
-			}
+		address := origin + uint32(e.Address)
 
-			if imgui.TableNextColumn() {
-				v, ok := mem.Read8bit(address)
-				if !ok {
-					imgui.Text("illegal address")
-				} else {
-					s := fmt.Sprintf("%02x", uint8(v))
-					if imguiHexInput(fmt.Sprintf("##pxe%8x", address), 2, &s) {
-						var segment string
-						var idx int
+		if imgui.TableNextColumn() {
+			imgui.Textf("%08x\n", address)
+		}
 
-						for _, seg := range mem.Segments() {
-							if address >= seg.Origin && address <= seg.Memtop {
-								segment = seg.Name
-								idx = int(address - seg.Origin)
-								break // for loop
-							}
+		if imgui.TableNextColumn() {
+			v, ok := mem.Read8bit(address)
+			if !ok {
+				imgui.Text("illegal address")
+			} else {
+				s := fmt.Sprintf("%02x", uint8(v))
+				if imguiHexInput(fmt.Sprintf("##pxe%8x", address), 2, &s) {
+					var segment string
+					var idx int
+
+					for _, seg := range mem.Segments() {
+						if address >= seg.Origin && address <= seg.Memtop {
+							segment = seg.Name
+							idx = int(address - seg.Origin)
+							break // for loop
 						}
-
-						win.img.dbg.PushFunction(func() {
-							if v, err := strconv.ParseUint(s, 16, 8); err == nil {
-								bus.PutStatic(segment, idx, uint8(v))
-							}
-						})
 					}
+
+					win.img.dbg.PushFunction(func() {
+						if v, err := strconv.ParseUint(s, 16, 8); err == nil {
+							bus.PutStatic(segment, idx, uint8(v))
+						}
+					})
 				}
 			}
 		}
-		imgui.EndTable()
 	}
+
 }
