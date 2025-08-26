@@ -36,7 +36,8 @@ func (win *winPXESymbols) debuggerDraw() bool {
 		return false
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{X: 1229, Y: 77}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 290, Y: 630})
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 978, Y: 164}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 551, Y: 589}, imgui.ConditionFirstUseEver)
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		win.draw()
 	}
