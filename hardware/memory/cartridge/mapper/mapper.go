@@ -221,6 +221,9 @@ type CartStaticBus interface {
 	// GetStatic returns a copy of the cartridge's static areas
 	GetStatic() CartStatic
 
+	// ReferenceStatic returns the cartridge's live static areas. Be careful with goroutines
+	ReferenceStatic() CartStatic
+
 	// Update the value at the index of the specified segment. the segment
 	// argument should come from the Name field of the CartStaticSegment type
 	// returned by CartStatic.Segments()
@@ -261,6 +264,8 @@ type CartStatic interface {
 	Read8bit(addr uint32) (uint8, bool)
 	Read16bit(addr uint32) (uint16, bool)
 	Read32bit(addr uint32) (uint32, bool)
+
+	Write8bit(addr uint32, data uint8) bool
 }
 
 // CartTapeBus defines additional debugging functions for cartridge types that use tapes.

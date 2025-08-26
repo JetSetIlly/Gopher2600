@@ -70,6 +70,7 @@ var windowDefs = [...]windowDef{
 	{create: newWinCDFStreams, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"CDF", "CDFJ", "CDF0", "CDF1", "CDFJ+"}}},
 	{create: newWinSuperchargerRegisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"AR"}}},
 	{create: newWinPXESymbols, menu: menuEntry{group: menuCart, restrictMapper: []string{elf.IdElfWithPXE}}},
+	{create: newWinPXEColours, menu: menuEntry{group: menuCart, restrictMapper: []string{elf.IdElfWithPXE}}},
 	{create: newWinCartTape, menu: menuEntry{group: menuCart, restrictBus: menuRestrictTape}},
 	{create: newWinCartRAM, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRAM}},
 	{create: newWinCartStatic, menu: menuEntry{group: menuCart, restrictBus: menuRestrictStatic}},

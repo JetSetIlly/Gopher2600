@@ -256,9 +256,25 @@ func (stc *Static) Read32bit(addr uint32) (uint32, bool) {
 		uint32((*mem)[addr+3])<<24, true
 }
 
+// Read8bit implements the mapper.CartStatic interface
+func (stc *Static) Write8bit(addr uint32, data uint8) bool {
+	mem, origin := stc.MapAddress(addr, false, false)
+	addr -= origin
+	if mem == nil || addr >= uint32(len(*mem)) {
+		return false
+	}
+	(*mem)[addr] = data
+	return true
+}
+
 // GetStatic implements the mapper.CartStaticBus interface.
 func (cart *cdf) GetStatic() mapper.CartStatic {
 	return cart.state.static.Snapshot()
+}
+
+// ReferenceStatic implements the mapper.CartStaticBus interface.
+func (cart *cdf) ReferenceStatic() mapper.CartStatic {
+	return cart.state.static
 }
 
 // StaticWrite implements the mapper.CartStaticBus interface.

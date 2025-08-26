@@ -230,9 +230,9 @@ type CartCoProcELF interface {
 	// list of symbols in the ELF
 	Symbols() []elf.Symbol
 
-	// return whether the ELF cartridge is of the PXE type. the name of the PXE section
-	// is also returned
-	PXE() (bool, string)
+	// return whether the ELF cartridge is of the PXE type. the origin address of pRAM is also
+	// returned
+	PXE() (bool, uint32)
 }
 
 // CartCoProcOrigin is implemented by cartridge mappers where coprocessor

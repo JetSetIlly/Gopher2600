@@ -472,7 +472,7 @@ func (img *SdlImgui) imguiTVColourSwatch(col uint8, size float32) (clicked bool)
 	// set up cursor for next widget
 	p = p.Plus(imgui.Vec2{X: r, Y: -l})
 	imgui.SetCursorScreenPos(p)
-	imgui.Dummy(imgui.Vec2{})
+	imgui.Dummy(imgui.Vec2{X: 0, Y: r * 2})
 
 	return clicked
 }

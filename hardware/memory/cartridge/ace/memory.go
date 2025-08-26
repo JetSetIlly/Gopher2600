@@ -416,9 +416,25 @@ func (a *aceMemory) Read32bit(addr uint32) (uint32, bool) {
 		uint32((*mem)[addr+3])<<24, true
 }
 
+// Read8bit implements the mapper.CartStatic interface
+func (a *aceMemory) Write8bit(addr uint32, data uint8) bool {
+	mem, origin := a.MapAddress(addr, false, false)
+	addr -= origin
+	if mem == nil || addr >= uint32(len(*mem)) {
+		return false
+	}
+	(*mem)[addr] = data
+	return true
+}
+
 // GetStatic implements the mapper.CartStaticBus interface.
 func (cart *Ace) GetStatic() mapper.CartStatic {
 	return cart.mem.Snapshot()
+}
+
+// ReferenceStatic implements the mapper.CartStaticBus interface.
+func (cart *Ace) ReferenceStatic() mapper.CartStatic {
+	return cart.mem
 }
 
 // StaticWrite implements the mapper.CartStaticBus interface.

@@ -802,9 +802,19 @@ func (stc *dpcStatic) Read32bit(addr uint32) (uint32, bool) {
 	return 0, false
 }
 
+// Read8bit returns a 8 bit value from address
+func (stc *dpcStatic) Write8bit(addr uint32, data uint8) bool {
+	return false
+}
+
 // GetStatic implements the mapper.CartStaticBus interface
 func (cart *dpc) GetStatic() mapper.CartStatic {
 	return cart.state.static.Snapshot()
+}
+
+// ReferenceStatic implements the mapper.CartStaticBus interface.
+func (cart *dpc) ReferenceStatic() mapper.CartStatic {
+	return cart.state.static
 }
 
 // PutStatic implements the mapper.CartStaticBus interface

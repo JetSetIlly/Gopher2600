@@ -507,6 +507,11 @@ func (cart *Elf) GetStatic() mapper.CartStatic {
 	return cart.mem.Snapshot()
 }
 
+// ReferenceStatic implements the mapper.CartStaticBus interface.
+func (cart *Elf) ReferenceStatic() mapper.CartStatic {
+	return cart.mem
+}
+
 // StaticWrite implements the mapper.CartStaticBus interface.
 func (cart *Elf) PutStatic(segment string, idx int, data uint8) bool {
 	mem, ok := cart.mem.Reference(segment)
@@ -583,8 +588,17 @@ func (cart *Elf) Symbols() []elf.Symbol {
 	return cart.mem.symbols
 }
 
-// PXE returns true if a PXE section was found during loading. The returned string value is the name
-// of the PXE section, which can be used with the Section() function to retrieve the data
-func (cart *Elf) PXE() (bool, string) {
-	return cart.mem.hasPXE, pxeSection
+// PXE returns true if a PXE section was found during loading. The returned uint32 value is the
+// origin address of pRAM
+func (cart *Elf) PXE() (bool, uint32) {
+	var v uint32
+	if sec, ok := cart.mem.sectionsByName[pxeSection]; ok {
+		v, ok = cart.mem.Read32bit(sec.origin + cart.mem.pRAM)
+		if !ok {
+			return false, 0
+		}
+	} else {
+		return false, 0
+	}
+	return cart.mem.hasPXE, v
 }

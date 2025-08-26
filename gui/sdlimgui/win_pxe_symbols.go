@@ -55,20 +55,30 @@ func (win *winPXESymbols) draw() {
 		return
 	}
 
-	ok, secname := ef.PXE()
+	ok, origin := ef.PXE()
 	if !ok {
 		imgui.Text("not a PXE cartridge")
 		return
 	}
 
-	_, origin := ef.Section(secname)
-
 	bus, ok := ef.(mapper.CartStaticBus)
 	if !ok {
-		imgui.Text("no static cartridge memory")
+		imgui.Text("PXE memory not initialised")
 		return
 	}
 	mem := bus.GetStatic()
+
+	_, ok = mem.Read8bit(origin)
+	if !ok {
+		imgui.Text("PXE memory not initialised")
+		return
+	}
+
+	commit := func(address uint32, data uint8) {
+		win.img.dbg.PushFunction(func() {
+			win.img.dbg.VCS().Mem.Cart.GetStaticBus().ReferenceStatic().Write8bit(address, data)
+		})
+	}
 
 	// there's no good way of determining whether there are any PXE symbols to display so we need to
 	// be smart about how we call imgui.BeginTable()
@@ -134,20 +144,9 @@ func (win *winPXESymbols) draw() {
 			} else {
 				s := fmt.Sprintf("%02x", uint8(v))
 				if imguiHexInput(fmt.Sprintf("##pxe%8x", address), 2, &s) {
-					var segment string
-					var idx int
-
-					for _, seg := range mem.Segments() {
-						if address >= seg.Origin && address <= seg.Memtop {
-							segment = seg.Name
-							idx = int(address - seg.Origin)
-							break // for loop
-						}
-					}
-
 					win.img.dbg.PushFunction(func() {
 						if v, err := strconv.ParseUint(s, 16, 8); err == nil {
-							bus.PutStatic(segment, idx, uint8(v))
+							commit(address, uint8(v))
 						}
 					})
 				}

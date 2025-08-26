@@ -119,6 +119,7 @@ type elfMemory struct {
 
 	// whether the ELF file has a .bbpxe section
 	hasPXE bool
+	pRAM   uint32
 
 	symbols []elf.Symbol
 
@@ -660,6 +661,20 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 		}
 	}
 
+	// get pram
+	if mem.hasPXE {
+		// search for pRAM. if it can't be found the hasPXE is set to false
+		mem.hasPXE = false
+		for _, e := range mem.symbols {
+			if e.Name == "pRAM" {
+				mem.pRAM = uint32(e.Value)
+				mem.hasPXE = true
+				logger.Logf(mem.env, "ELF", "pRAM symbol found")
+				logger.Logf(mem.env, "ELF", "PXE confirmed")
+			}
+		}
+	}
+
 	// strongarm program has been created so we adjust the memtop value
 	mem.strongArmMemtop -= 1
 
@@ -1005,4 +1020,15 @@ func (m *elfMemory) Read32bit(addr uint32) (uint32, bool) {
 		uint32((*mem)[addr+1])<<8 |
 		uint32((*mem)[addr+2])<<16 |
 		uint32((*mem)[addr+3])<<24, true
+}
+
+// Write8bit implements the mapper.CartStatic interface
+func (m *elfMemory) Write8bit(addr uint32, data uint8) bool {
+	mem, origin := m.mapAddress(addr, true)
+	addr -= origin
+	if mem == nil || addr >= uint32(len(*mem)) {
+		return false
+	}
+	(*mem)[addr] = data
+	return true
 }

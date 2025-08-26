@@ -62,8 +62,8 @@ func (ef *elfShim) Symbols() []elf.Symbol {
 	return syms
 }
 
-func (ef *elfShim) PXE() (bool, string) {
-	return false, ""
+func (ef *elfShim) PXE() (bool, uint32) {
+	return false, 0
 }
 
 // find the corresponding ELF file for the specified rom file. the ELF file may
