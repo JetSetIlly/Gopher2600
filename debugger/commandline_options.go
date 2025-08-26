@@ -34,7 +34,7 @@ type CommandLineOptions struct {
 	Right     string
 	SwapPorts bool
 	Profile   string
-	ELF       string
+	DWARF     string
 
 	// playmode only
 	ComparisonROM        string

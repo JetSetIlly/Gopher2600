@@ -1222,7 +1222,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	dbg.Disasm.Background(cartload)
 
 	dbg.CoProcDisasm.AttachCartridge(dbg.vcs.Mem.Cart)
-	err = dbg.CoProcDev.AttachCartridge(dbg.vcs.Mem.Cart, cartload.Filename, dbg.opts.ELF)
+	err = dbg.CoProcDev.AttachCartridge(dbg.vcs.Mem.Cart, cartload.Filename, dbg.opts.DWARF)
 	if err != nil {
 		logger.Log(logger.Allow, "debugger", err)
 		if errors.Is(err, coproc_dwarf.UnsupportedDWARF) {

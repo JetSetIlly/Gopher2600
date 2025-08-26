@@ -106,7 +106,7 @@ func NewDeveloper(state Emulation, tv TV) Developer {
 	}
 }
 
-func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile string) error {
+func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, dwarfFile string) error {
 	dev.cart = nil
 
 	dev.sourceLock.Lock()
@@ -157,7 +157,7 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, elfFile st
 	}
 
 	dev.sourceLock.Lock()
-	dev.source, err = dwarf.NewSource(coprocBus, romFile, elfFile, &dev.yieldState)
+	dev.source, err = dwarf.NewSource(coprocBus, romFile, dwarfFile, &dev.yieldState)
 	dev.sourceLock.Unlock()
 
 	if err != nil {
