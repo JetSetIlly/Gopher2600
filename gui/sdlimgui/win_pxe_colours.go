@@ -78,7 +78,6 @@ func (win *winPXEColours) draw() {
 	commit := func(address uint32, data uint8) {
 		win.img.dbg.PushFunction(func() {
 			win.img.dbg.VCS().Mem.Cart.GetStaticBus().ReferenceStatic().Write8bit(address, data)
-			win.img.dbg.VCS().Mem.Cart.GetStaticBus().ReferenceStatic().Write8bit(address-1, data)
 		})
 	}
 
