@@ -103,7 +103,11 @@ func (win *winPXESymbols) drawSymbolTable() {
 			width := imgui.ContentRegionAvail().X
 
 			imgui.TableSetupColumnV("Symbol", imgui.TableColumnFlagsPreferSortDescending, width*0.45, 0)
-			imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsPreferSortDescending, width*0.25, 0)
+			if win.optionColourOnly {
+				imgui.TableSetupColumnV("Palette Index", imgui.TableColumnFlagsPreferSortDescending, width*0.25, 0)
+			} else {
+				imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsPreferSortDescending, width*0.25, 0)
+			}
 			imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNoSort, width*0.25, 0)
 
 			imgui.TableSetupScrollFreeze(0, 1)
@@ -153,7 +157,11 @@ func (win *winPXESymbols) drawSymbolTable() {
 
 		if imgui.TableNextColumn() {
 			imgui.AlignTextToFramePadding()
-			imgui.Textf("%08x\n", address)
+			if win.optionColourOnly {
+				imgui.Textf("%02x\n", e.Address-0x0700)
+			} else {
+				imgui.Textf("%04x\n", e.Address)
+			}
 		}
 
 		if imgui.TableNextColumn() {
