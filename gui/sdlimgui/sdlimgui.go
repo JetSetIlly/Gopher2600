@@ -554,3 +554,11 @@ func (img *SdlImgui) enableVideoRecording(enable bool) {
 	img.rnd.record(enable)
 	img.screen.Reset()
 }
+
+// commit data to address in static memory. should onlybe called if you know for a fact that
+// GetStaticbus() returns a non-nil value
+func (img *SdlImgui) commitStaticMemory(address uint32, data uint8) {
+	img.dbg.PushFunction(func() {
+		img.dbg.VCS().Mem.Cart.GetStaticBus().ReferenceStatic().Write8bit(address, data)
+	})
+}

@@ -75,22 +75,16 @@ func (win *winPXEColours) draw() {
 		return
 	}
 
-	commit := func(address uint32, data uint8) {
-		win.img.dbg.PushFunction(func() {
-			win.img.dbg.VCS().Mem.Cart.GetStaticBus().ReferenceStatic().Write8bit(address, data)
-		})
-	}
-
 	for i := 0; i <= 0xff; i++ {
 		address := origin + 0x0700 + uint32(i)
 		v, ok := mem.Read8bit(address)
-		v &= 0xfe
 		if !ok {
 			imgui.Text("illegal address")
 		} else {
+			v &= 0xfe
 			if win.img.imguiTVColourSwatch(v, 0.75) {
 				win.popupPalette.request(&v, func() {
-					commit(address, v)
+					win.img.commitStaticMemory(address, v)
 				})
 			}
 			if (i+1)%16 != 0 {

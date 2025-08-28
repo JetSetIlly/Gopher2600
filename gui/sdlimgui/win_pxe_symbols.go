@@ -13,11 +13,18 @@ const winPXESymbolsID = "PXE Symbols"
 
 type winPXESymbols struct {
 	debuggerWin
-	img *SdlImgui
+	img          *SdlImgui
+	popupPalette *popupPalette
+
+	optionColourOnly bool
+	optionsHeight    float32
 }
 
 func newWinPXESymbols(img *SdlImgui) (window, error) {
-	win := &winPXESymbols{img: img}
+	win := &winPXESymbols{
+		img:          img,
+		popupPalette: newPopupPalette(img),
+	}
 	return win, nil
 }
 
@@ -39,7 +46,9 @@ func (win *winPXESymbols) debuggerDraw() bool {
 	imgui.SetNextWindowPosV(imgui.Vec2{X: 978, Y: 164}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{X: 551, Y: 589}, imgui.ConditionFirstUseEver)
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
-		win.draw()
+		win.drawSymbolTable()
+		win.drawFilters()
+		win.popupPalette.draw()
 	}
 
 	win.debuggerGeom.update()
@@ -48,7 +57,7 @@ func (win *winPXESymbols) debuggerDraw() bool {
 	return true
 }
 
-func (win *winPXESymbols) draw() {
+func (win *winPXESymbols) drawSymbolTable() {
 	ef, ok := win.img.cache.VCS.Mem.Cart.GetCoProcBus().(coprocessor.CartCoProcELF)
 	if !ok {
 		imgui.Text("not an ELF cartridge")
@@ -74,12 +83,6 @@ func (win *winPXESymbols) draw() {
 		return
 	}
 
-	commit := func(address uint32, data uint8) {
-		win.img.dbg.PushFunction(func() {
-			win.img.dbg.VCS().Mem.Cart.GetStaticBus().ReferenceStatic().Write8bit(address, data)
-		})
-	}
-
 	// there's no good way of determining whether there are any PXE symbols to display so we need to
 	// be smart about how we call imgui.BeginTable()
 	//
@@ -88,12 +91,15 @@ func (win *winPXESymbols) draw() {
 	// imgui.EndTable() or display the 'no symbols' text
 
 	beginTable := func() bool {
-		flgs := imgui.TableFlagsBordersInnerV |
-			imgui.TableFlagsScrollY |
-			imgui.TableFlagsSizingStretchProp |
+		flgs := imgui.TableFlagsScrollY |
+			imgui.TableFlagsSizingStretchSame |
 			imgui.TableFlagsResizable
 
-		if imgui.BeginTableV("##pxesymbols", 3, flgs, imgui.Vec2{}, 0) {
+		sz := imgui.Vec2{
+			Y: imguiRemainingWinHeight() - win.optionsHeight,
+		}
+
+		if imgui.BeginTableV("##pxesymbols", 3, flgs, sz, 0) {
 			width := imgui.ContentRegionAvail().X
 
 			imgui.TableSetupColumnV("Symbol", imgui.TableColumnFlagsPreferSortDescending, width*0.45, 0)
@@ -126,32 +132,65 @@ func (win *winPXESymbols) draw() {
 			}
 		}
 
-		imgui.TableNextRow()
-		if imgui.TableNextColumn() {
-			imgui.Text(e.Symbol)
+		isColour := e.Address >= 0x0700 && e.Address <= 0x07ff
+
+		if win.optionColourOnly && !isColour {
+			continue
 		}
 
 		address := origin + uint32(e.Address)
+		v, ok := mem.Read8bit(address)
+		if !ok {
+			// this shouldn't happen if the PXESymbols iterator is correct
+			continue
+		}
+
+		imgui.TableNextRow()
+		if imgui.TableNextColumn() {
+			imgui.AlignTextToFramePadding()
+			imgui.Text(e.Symbol)
+		}
 
 		if imgui.TableNextColumn() {
+			imgui.AlignTextToFramePadding()
 			imgui.Textf("%08x\n", address)
 		}
 
 		if imgui.TableNextColumn() {
-			v, ok := mem.Read8bit(address)
-			if !ok {
-				imgui.Text("illegal address")
-			} else {
-				s := fmt.Sprintf("%02x", uint8(v))
-				if imguiHexInput(fmt.Sprintf("##pxe%8x", address), 2, &s) {
-					win.img.dbg.PushFunction(func() {
-						if v, err := strconv.ParseUint(s, 16, 8); err == nil {
-							commit(address, uint8(v))
-						}
+			s := fmt.Sprintf("%02x", uint8(v))
+			if imguiHexInput(fmt.Sprintf("##pxesymbol%s", e.Symbol), 2, &s) {
+				win.img.dbg.PushFunction(func() {
+					if v, err := strconv.ParseUint(s, 16, 8); err == nil {
+						win.img.commitStaticMemory(address, uint8(v))
+					}
+				})
+			}
+
+			const (
+				swatchSize    = 0.5
+				swatchPadding = 10
+			)
+
+			imgui.SameLineV(0, swatchPadding)
+			if isColour {
+				v &= 0xfe
+				if win.img.imguiTVColourSwatch(v, swatchSize) {
+					win.popupPalette.request(&v, func() {
+						win.img.commitStaticMemory(address, v)
 					})
 				}
+			} else {
+				imgui.Dummy(imgui.Vec2{X: imgui.FontSize()*swatchSize*2 + swatchPadding})
 			}
 		}
 	}
+}
 
+func (win *winPXESymbols) drawFilters() {
+	win.optionsHeight = imguiMeasureHeight(func() {
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
+		imgui.Checkbox("Colour symbols only##pxecolouronly", &win.optionColourOnly)
+	})
 }
