@@ -2,6 +2,7 @@ package sdlimgui
 
 import (
 	"github.com/jetsetilly/gopher2600/coprocessor"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/elf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/imgui-go/v5"
 )
@@ -75,8 +76,8 @@ func (win *winPXEColours) draw() {
 		return
 	}
 
-	for i := 0; i <= 0xff; i++ {
-		address := origin + 0x0700 + uint32(i)
+	for i := elf.PXEPaletteOrigin; i <= elf.PXEPaletteMemtop; i++ {
+		address := origin + uint32(i)
 		v, ok := mem.Read8bit(address)
 		if !ok {
 			imgui.Text("illegal address")

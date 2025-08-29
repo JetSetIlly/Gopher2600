@@ -587,18 +587,3 @@ func (cart *Elf) ByteOrder() binary.ByteOrder {
 func (cart *Elf) Symbols() []elf.Symbol {
 	return cart.mem.symbols
 }
-
-// PXE returns true if a PXE section was found during loading. The returned uint32 value is the
-// origin address of pRAM
-func (cart *Elf) PXE() (bool, uint32) {
-	var v uint32
-	if sec, ok := cart.mem.sectionsByName[pxeSection]; ok {
-		v, ok = cart.mem.Read32bit(sec.origin + cart.mem.pRAM)
-		if !ok {
-			return false, 0
-		}
-	} else {
-		return false, 0
-	}
-	return cart.mem.hasPXE, v
-}

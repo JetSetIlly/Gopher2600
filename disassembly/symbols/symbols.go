@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/elf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -379,7 +380,7 @@ func (sym *Symbols) PXESymbols(yield func(Entry) bool) {
 	for _, s := range sym.write.keys {
 		a := sym.write.bySymbol[s]
 		e := sym.write.symbols[a]
-		if e.Address <= 0x0fff && e.Source == SourceDASM {
+		if e.Address <= elf.PXEMemtop && e.Source == SourceDASM {
 			if !yield(e) {
 				break // for loop
 			}

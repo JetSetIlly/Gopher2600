@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/elf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/imgui-go/v5"
 )
@@ -136,7 +137,7 @@ func (win *winPXESymbols) drawSymbolTable() {
 			}
 		}
 
-		isColour := e.Address >= 0x0700 && e.Address <= 0x07ff
+		isColour := e.Address >= elf.PXEPaletteOrigin && e.Address <= elf.PXEPaletteMemtop
 
 		if win.optionColourOnly && !isColour {
 			continue
@@ -158,14 +159,14 @@ func (win *winPXESymbols) drawSymbolTable() {
 		if imgui.TableNextColumn() {
 			imgui.AlignTextToFramePadding()
 			if win.optionColourOnly {
-				imgui.Textf("%02x\n", e.Address-0x0700)
+				imgui.Textf("%02x\n", e.Address-elf.PXEPaletteOrigin)
 			} else {
 				imgui.Textf("%04x\n", e.Address)
 			}
 		}
 
 		if imgui.TableNextColumn() {
-			s := fmt.Sprintf("%02x", uint8(v))
+			s := fmt.Sprintf("%02x", v)
 			if imguiHexInput(fmt.Sprintf("##pxesymbol%s", e.Symbol), 2, &s) {
 				win.img.dbg.PushFunction(func() {
 					if v, err := strconv.ParseUint(s, 16, 8); err == nil {
