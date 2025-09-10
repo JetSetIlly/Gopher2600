@@ -116,16 +116,17 @@ func (arm *ARM) disasmVerbose(entry DisasmEntry) string {
 
 	s.WriteString(fmt.Sprintf("instruction PC: %08x\n", entry.Addr))
 	if entry.Is32bit {
-		s.WriteString(fmt.Sprintf("opcode: %04x %04x \n", entry.OpcodeHi, entry.Opcode))
+		s.WriteString(fmt.Sprintf("opcode: %04x %04x ", entry.OpcodeHi, entry.Opcode))
 	} else {
-		s.WriteString(fmt.Sprintf("opcode: %04x       \n", entry.Opcode))
+		s.WriteString(fmt.Sprintf("opcode: %04x      ", entry.Opcode))
 	}
+	s.WriteString(fmt.Sprintf("%s %s\n", entry.Operator, entry.Operand))
 
 	// register information for verbose output
 	for i, r := range arm.state.registers {
 		s.WriteString(fmt.Sprintf("\tR%02d: %08x", i, r))
 		if (i+1)%4 == 0 {
-			s.WriteString(fmt.Sprintf("\n"))
+			s.WriteString("\n")
 		}
 	}
 
