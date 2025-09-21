@@ -466,7 +466,7 @@ func (scr *screen) NewScanline(scanline int) error {
 
 // SetPixels implements the television.PixelRenderer interface.
 func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
-	if scr.img.rnd.isRecording() {
+	if scr.img.rnd.isRecording() && scr.img.isPlaymode() {
 		scr.crit.section.Lock()
 		defer func() {
 			scr.crit.section.Unlock()
