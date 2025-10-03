@@ -44,10 +44,20 @@ func (win *winPXESymbols) debuggerDraw() bool {
 		return false
 	}
 
+	ef, ok := win.img.cache.VCS.Mem.Cart.GetCoProcBus().(coprocessor.CartCoProcELF)
+	if !ok {
+		return false
+	}
+
+	ok, origin := ef.PXE()
+	if !ok {
+		return false
+	}
+
 	imgui.SetNextWindowPosV(imgui.Vec2{X: 978, Y: 164}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{X: 551, Y: 589}, imgui.ConditionFirstUseEver)
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
-		win.drawSymbolTable()
+		win.drawSymbolTable(ef, origin)
 		win.drawFilters()
 		win.popupPalette.draw()
 	}
@@ -58,19 +68,7 @@ func (win *winPXESymbols) debuggerDraw() bool {
 	return true
 }
 
-func (win *winPXESymbols) drawSymbolTable() {
-	ef, ok := win.img.cache.VCS.Mem.Cart.GetCoProcBus().(coprocessor.CartCoProcELF)
-	if !ok {
-		imgui.Text("not an ELF cartridge")
-		return
-	}
-
-	ok, origin := ef.PXE()
-	if !ok {
-		imgui.Text("not a PXE cartridge")
-		return
-	}
-
+func (win *winPXESymbols) drawSymbolTable(ef coprocessor.CartCoProcELF, origin uint32) {
 	bus, ok := ef.(mapper.CartStaticBus)
 	if !ok {
 		imgui.Text("PXE memory not initialised")
