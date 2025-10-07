@@ -291,7 +291,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 		} else {
 			section.data, err = sec.Data()
 			if err != nil {
-				return fmt.Errorf("ELF: %w", err)
+				return err
 			}
 		}
 
@@ -349,7 +349,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 	// symbols used during relocation
 	mem.symbols, err = ef.Symbols()
 	if err != nil {
-		return fmt.Errorf("ELF: %w", err)
+		return err // the error value already has the 'ELF:' prefix
 	}
 
 	// relocate all sections
@@ -362,7 +362,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 		// section being relocated
 		secBeingRelocated, ok := mem.sectionsByName[rel.Name[4:]]
 		if !ok {
-			return fmt.Errorf("ELF: could not find section corresponding to %s", rel.Name)
+			return fmt.Errorf("could not find section corresponding to %s", rel.Name)
 		}
 
 		// I'm not sure how to handle .debug_macro. it seems to be very
@@ -381,7 +381,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 		// (for some reason)
 		relData, err := rel.Data()
 		if err != nil {
-			return fmt.Errorf("ELF: %w", err)
+			return err
 		}
 
 		// every relocation entry
@@ -446,6 +446,9 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				// add placeholder value to relocation address
+				if offset >= uint32(len(secBeingRelocated.data)) {
+					return fmt.Errorf("relocation out-of-bounds (%s)", sym.Name)
+				}
 				addend := ef.ByteOrder.Uint32(secBeingRelocated.data[offset:])
 				tgt += addend
 
@@ -455,8 +458,14 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				// commit write
+				if offset >= uint32(len(secBeingRelocated.data)) {
+					return fmt.Errorf("relocation out-of-bounds (%s)", sym.Name)
+				}
 				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], tgt)
 				if d, err := ef.Section(secBeingRelocated.name).Data(); err == nil {
+					if offset >= uint32(len(d)) {
+						return fmt.Errorf("relocation out-of-bounds (%s)", sym.Name)
+					}
 					ef.ByteOrder.PutUint32(d[offset:], tgt)
 				}
 
@@ -505,7 +514,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 					n := ef.Sections[sym.Section].Name
 					sec, ok := mem.sectionsByName[n]
 					if !ok {
-						return fmt.Errorf("ELF: can not find section (%s)", n)
+						return fmt.Errorf("can not find section (%s)", n)
 					}
 
 					tgt = sec.origin
@@ -543,6 +552,12 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				// commit write
+				if offset >= uint32(len(secBeingRelocated.data)) {
+					return fmt.Errorf("relocation out-of-bounds (%s)", sym.Name)
+				}
+				if offset >= uint32(len(secBeingRelocated.data)) {
+					return fmt.Errorf("relocation out-of-bounds (%s)", sym.Name)
+				}
 				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], opcode)
 
 				// log relocated opcode depending on relocation type
@@ -578,8 +593,14 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				// commit write
+				if offset >= uint32(len(secBeingRelocated.data)) {
+					return fmt.Errorf("relocation out-of-bounds (%s)", sym.Name)
+				}
 				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], tgt)
 				if d, err := ef.Section(secBeingRelocated.name).Data(); err == nil {
+					if offset >= uint32(len(d)) {
+						return fmt.Errorf("relocation out-of-bounds (%s)", sym.Name)
+					}
 					ef.ByteOrder.PutUint32(d[offset:], tgt)
 				}
 
@@ -590,7 +611,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 					logger.Logf(mem.env, "ELF", "PREL31 section is undefined")
 					continue
 				}
-				return fmt.Errorf("ELF: PREL31 not fully supported")
+				return fmt.Errorf("PREL31 not fully supported")
 
 			case elf.R_ARM_THM_MOVW_ABS_NC, elf.R_ARM_THM_MOVT_ABS:
 				if sym.Section == elf.SHN_UNDEF {
@@ -625,6 +646,9 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				imm8 := tgt & 0x00ff
 
 				// opcode to be transformed
+				if offset >= uint32(len(secBeingRelocated.data)) {
+					return fmt.Errorf("relocation out-of-bounds (%s)", sym.Name)
+				}
 				op := ef.ByteOrder.Uint32(secBeingRelocated.data[offset:])
 				op = (op << 16) | (op >> 16)
 
@@ -646,6 +670,9 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				// commit write
+				if offset >= uint32(len(secBeingRelocated.data)) {
+					return fmt.Errorf("relocation out-of-bounds (%s)", sym.Name)
+				}
 				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], (op<<16)|(op>>16))
 
 				switch elf.R_ARM(relType) {
@@ -656,7 +683,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 			default:
-				return fmt.Errorf("ELF: unhandled ARM relocation type (%v)", relType)
+				return fmt.Errorf("unhandled ARM relocation type (%v)", relType)
 			}
 		}
 	}
@@ -701,7 +728,7 @@ func (mem *elfMemory) runInitialisation(arm *arm.ARM) error {
 		for _, sec := range mem.sections {
 			if sec.typ == typ {
 				ptr := 0
-				for {
+				for ptr < len(sec.data) {
 					mem.resetPC = mem.byteOrder.Uint32(sec.data[ptr:])
 					ptr += 4
 					if mem.resetPC == 0x00000000 {
@@ -749,7 +776,7 @@ func (mem *elfMemory) relocateStrongArmFunction(spec strongArmFunctionSpec) (uin
 	// correct. but for now, return an error so that we're forced to notice it
 	// if it ever arises
 	if mem.strongArmOrigin&0x01 == 0x01 {
-		return 0, fmt.Errorf("ELF: misalignment of executable code. strongarm will be unreachable")
+		return 0, fmt.Errorf("misalignment of executable code. strongarm will be unreachable")
 	}
 
 	// address of new function in memory

@@ -126,9 +126,10 @@ func NewElf(env *environment.Environment, loader cartridgeloader.Loader, inACE b
 	if ef.FileHeader.Version != elf.EV_CURRENT {
 		return nil, fmt.Errorf("ELF: unknown version")
 	}
-	if ef.FileHeader.Type != elf.ET_REL {
-		return nil, fmt.Errorf("ELF: is not relocatable")
-	}
+
+	// if ef.FileHeader.Type != elf.ET_REL {
+	// 	return nil, fmt.Errorf("ELF: is not relocatable")
+	// }
 
 	// big endian byte order is probably fine but we've not tested it
 	if ef.FileHeader.ByteOrder != binary.LittleEndian {
