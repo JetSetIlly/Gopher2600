@@ -451,10 +451,16 @@ func (img *SdlImgui) imguiWindowQuadrant(p imgui.Vec2) imgui.Vec2 {
 // size argument should be expressed as a fraction the fraction will be applied
 // to imgui.FontSize() to obtain the radius of the swatch.
 func (img *SdlImgui) imguiTVColourSwatch(col uint8, size float32) (clicked bool) {
+	ok, _, _ := img.imguiTVColourSwatchWithGeom(col, size, false)
+	return ok
+}
+
+// like imguiTVColourSwatch but returns the centre point and radius, in addition to the clicked result
+func (img *SdlImgui) imguiTVColourSwatchWithGeom(col uint8, size float32, highlight bool) (clicked bool, centre imgui.Vec2, radius float32) {
 	r := imgui.FontSize() * size
 
 	// position & dimensions of swatch
-	l := imgui.FontSize() * 0.75
+	l := imgui.FontSize() * size
 	p := imgui.CursorScreenPos()
 	p = p.Plus(imgui.Vec2{X: r, Y: l})
 
@@ -467,14 +473,18 @@ func (img *SdlImgui) imguiTVColourSwatch(col uint8, size float32) (clicked bool)
 
 	// draw swatch
 	dl := imgui.WindowDrawList()
-	dl.AddCircleFilled(p, r, img.getTVColour(col))
+	if highlight {
+		dl.AddCircleV(p, r, img.getTVColour(col), 0, 3.0)
+		dl.AddCircleFilled(p, r*0.65, img.getTVColour(col))
+	} else {
+		dl.AddCircleFilled(p, r, img.getTVColour(col))
+	}
 
 	// set up cursor for next widget
-	p = p.Plus(imgui.Vec2{X: r, Y: -l})
-	imgui.SetCursorScreenPos(p)
+	imgui.SetCursorScreenPos(p.Plus(imgui.Vec2{X: r, Y: -l}))
 	imgui.Dummy(imgui.Vec2{X: 0, Y: r * 2})
 
-	return clicked
+	return clicked, p, r
 }
 
 // draw value with hex input and bit toggles. doesn't draw a label.

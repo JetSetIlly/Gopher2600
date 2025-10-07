@@ -117,9 +117,8 @@ type elfMemory struct {
 	sectionNames   []string
 	sectionsByName map[string]*elfSection
 
-	// whether the ELF file has a .bbpxe section
-	hasPXE bool
-	pRAM   uint32
+	// .bbpxe section if available
+	pxe pxe
 
 	symbols []elf.Symbol
 
@@ -332,7 +331,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 
 		// note the existence of PXE
 		if section.name == pxeSection {
-			mem.hasPXE = true
+			mem.pxe.enabled = true
 			logger.Logf(mem.env, "ELF", "PXE section found")
 		}
 	}
@@ -689,13 +688,13 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 	}
 
 	// get pram
-	if mem.hasPXE {
+	if mem.pxe.enabled {
 		// search for pRAM. if it can't be found the hasPXE is set to false
-		mem.hasPXE = false
+		mem.pxe.enabled = false
 		for _, e := range mem.symbols {
 			if e.Name == "pRAM" {
-				mem.pRAM = uint32(e.Value)
-				mem.hasPXE = true
+				mem.pxe.pRAM = uint32(e.Value)
+				mem.pxe.enabled = true
 				logger.Logf(mem.env, "ELF", "pRAM symbol found")
 				logger.Logf(mem.env, "ELF", "PXE confirmed")
 			}
@@ -892,6 +891,14 @@ func (mem *elfMemory) mapAddress(addr uint32, write bool) (*[]byte, uint32) {
 				mem.lastMappedAddress = addr
 				mem.lastMappedExecutable = false
 				return nil, 0
+			}
+
+			// note pxe palette access
+			if !write && mem.pxe.initialised {
+				if addr >= mem.pxe.origin+PXEPaletteOrigin && addr <= mem.pxe.origin+PXEPaletteMemtop {
+					colour := s.data[addr-s.origin]
+					mem.pxe.pushLastPaletteAddr(colour, addr)
+				}
 			}
 
 			mem.lastMappedAddress = addr

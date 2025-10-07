@@ -127,9 +127,6 @@ type SdlImgui struct {
 
 	// modal window
 	modal modal
-
-	// functions that should only be run after gui rendering
-	postRenderFunctions chan func()
 }
 
 // NewSdlImgui is the preferred method of initialisation for type SdlImgui
@@ -137,10 +134,9 @@ type SdlImgui struct {
 // MUST ONLY be called from the gui thread.
 func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	img := &SdlImgui{
-		dbg:                 dbg,
-		postRenderFunctions: make(chan func(), 100),
-		cache:               caching.NewCache(),
-		metrics:             newMetric(),
+		dbg:     dbg,
+		cache:   caching.NewCache(),
+		metrics: newMetric(),
 	}
 
 	// update metrics to make sure there's something there
@@ -342,6 +338,10 @@ func (img *SdlImgui) draw() {
 
 	img.wm.draw()
 	img.modalDraw()
+}
+
+func (img *SdlImgui) postRender() {
+	img.wm.postRender()
 }
 
 // is the gui in playmode or not. thread safe. called from emulation thread
@@ -557,6 +557,8 @@ func (img *SdlImgui) enableVideoRecording(enable bool) {
 
 // commit data to address in static memory. should onlybe called if you know for a fact that
 // GetStaticbus() returns a non-nil value
+//
+// NOTE: no need to use this function if changing a memory in a rewind state
 func (img *SdlImgui) commitStaticMemory(address uint32, data uint8) {
 	img.dbg.PushFunction(func() {
 		img.dbg.VCS().Mem.Cart.GetStaticBus().ReferenceStatic().Write8bit(address, data)

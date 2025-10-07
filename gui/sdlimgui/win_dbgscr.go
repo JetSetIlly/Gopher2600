@@ -741,6 +741,13 @@ func (win *winDbgScr) drawReflectionTooltip() {
 				}
 			}
 		}
+
+		// update pxe colours window with information about location of mouse pointer over the debug
+		// screen window. whether the arrow is acutally drawn is controlled by the colours window
+		win.img.wm.windows[winPXEColoursID].(*winPXEColours).clearArrow()
+		if sref, ok := win.img.screen.findReflection(ref, win.mouse.offset); ok {
+			win.img.wm.windows[winPXEColoursID].(*winPXEColours).setArrow(sref.PXEPaletteAddr)
+		}
 	}, false)
 }
 

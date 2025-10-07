@@ -233,6 +233,10 @@ type CartCoProcELF interface {
 	// return whether the ELF cartridge is of the PXE type. the origin address of pRAM is also
 	// returned
 	PXE() (bool, uint32)
+
+	// the last pxe palette address that was referenced. returns false if the PXE is not
+	// enabled or initialised
+	LastPXEPalette(colour uint8) (bool, uint32)
 }
 
 // CartCoProcOrigin is implemented by cartridge mappers where coprocessor

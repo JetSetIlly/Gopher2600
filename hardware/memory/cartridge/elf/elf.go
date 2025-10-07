@@ -191,7 +191,7 @@ const (
 
 // ID implements the mapper.CartMapper interface.
 func (cart *Elf) ID() string {
-	if cart.mem.hasPXE {
+	if cart.mem.pxe.enabled {
 		return IdElfWithPXE
 	}
 	return IdElf

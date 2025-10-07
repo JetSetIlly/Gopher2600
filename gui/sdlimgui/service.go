@@ -404,17 +404,7 @@ func (img *SdlImgui) renderFrame() {
 	img.screen.render()
 	img.rnd.render()
 	img.plt.postRender()
-
-	// process any functions that should only be done after rendering
-	done := false
-	for !done {
-		select {
-		case f := <-img.postRenderFunctions:
-			f()
-		default:
-			done = true
-		}
-	}
+	img.postRender()
 }
 
 // serviceWindowEvent implements the sdl.EventFilter interface

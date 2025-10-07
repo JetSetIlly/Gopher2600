@@ -18,9 +18,12 @@ package reflection
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -110,9 +113,34 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 
 	h[0].RSYNCalign, h[0].RSYNCreset = ref.vcs.TIA.RSYNCstate()
 
+	// PXE colour reflection
+	h[0].PXEColourWrite = false
+	if ref.vcs.CPU.LastResult.Defn.Effect == instructions.Write {
+		if ef, ok := ref.vcs.Mem.Cart.GetCoProcBus().(coprocessor.CartCoProcELF); ok {
+			colour := ref.vcs.Mem.LastCPUData
+			if ok, a := ef.LastPXEPalette(colour); ok {
+				f := func(r cpubus.Register) {
+					h[0].PXEColourWrite = true
+					h[0].PXEColourRegister = r
+					h[0].PXEPaletteAddr = a
+				}
+				switch ref.vcs.Mem.LastCPUAddressMapped {
+				case cpubus.WriteAddressByRegister[cpubus.COLUP0]:
+					f(cpubus.COLUP0)
+				case cpubus.WriteAddressByRegister[cpubus.COLUP1]:
+					f(cpubus.COLUP1)
+				case cpubus.WriteAddressByRegister[cpubus.COLUPF]:
+					f(cpubus.COLUPF)
+				case cpubus.WriteAddressByRegister[cpubus.COLUBK]:
+					f(cpubus.COLUBK)
+				}
+			}
+		}
+	}
+
 	// nullify entries at the head of the array that do not have a
 	// corresponding signal. we do this because the first index of a signal
-	// after a NewFrame might be different that the previous frame
+	// after a NewFrame might be different than the previous frame
 	for i := ref.lastIdx; i < sig.Index-1; i++ {
 		ref.history[i] = ReflectedVideoStep{}
 	}

@@ -66,6 +66,10 @@ func (ef *elfShim) PXE() (bool, uint32) {
 	return false, 0
 }
 
+func (ef *elfShim) LastPXEPalette(_ uint8) (bool, uint32) {
+	return false, 0
+}
+
 // find the corresponding ELF file for the specified rom file. the ELF file may
 // or may not have DWARF data, the DWARF() function will return an error if not
 func findELF(romFile string) coprocessor.CartCoProcELF {

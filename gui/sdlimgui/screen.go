@@ -23,10 +23,12 @@ import (
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 	"github.com/jetsetilly/gopher2600/reflection"
 )
 
@@ -196,6 +198,9 @@ type screenCrit struct {
 	// the same values that would be in coords.TelevisionCoords
 	lastX int
 	lastY int
+
+	// the index of the last entry in the sigs and reflections arrays
+	lastIdx int
 }
 
 func newScreen(img *SdlImgui) *screen {
@@ -481,6 +486,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 		scr.crit.frameQueue[scr.crit.plotIdx].num = scr.crit.frameInfo.FrameNum
 		scr.crit.lastY = last / specification.ClksScanline
 		scr.crit.lastX = last % specification.ClksScanline
+		scr.crit.lastIdx = last
 		return nil
 	}
 
@@ -527,6 +533,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 
 	scr.crit.lastY = last / specification.ClksScanline
 	scr.crit.lastX = last % specification.ClksScanline
+	scr.crit.lastIdx = last
 
 	scr.crit.section.Unlock()
 
@@ -554,6 +561,31 @@ func (scr *screen) Reflect(ref []reflection.ReflectedVideoStep) error {
 	scr.plotOverlay()
 
 	return nil
+}
+
+func (scr *screen) findReflection(ref reflection.ReflectedVideoStep, idx int) (reflection.ReflectedVideoStep, bool) {
+	var r cpubus.Register
+	switch ref.VideoElement {
+	case video.ElementPlayer0, video.ElementMissile0:
+		r = cpubus.COLUP0
+	case video.ElementPlayer1, video.ElementMissile1:
+		r = cpubus.COLUP1
+	case video.ElementPlayfield, video.ElementBall:
+		r = cpubus.COLUPF
+	case video.ElementBackground:
+		r = cpubus.COLUBK
+	}
+
+	if idx > 0 {
+		for i := idx - 1; i >= 0; i-- {
+			sref := scr.crit.reflection[i]
+			if sref.PXEColourWrite && sref.PXEColourRegister == r {
+				return sref, true
+			}
+		}
+	}
+
+	return reflection.ReflectedVideoStep{}, false
 }
 
 func (scr *screen) plotOverlay() {
@@ -700,6 +732,12 @@ func (scr *screen) copyPixelsDebugmode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 	scr.generatePresentationPixels(scr.crit.plotIdx)
+
+	// update pxe colours window with information about the current cursor location
+	ref := scr.crit.reflection[scr.crit.lastIdx]
+	if sref, ok := scr.findReflection(ref, scr.crit.lastIdx); ok {
+		scr.img.wm.windows[winPXEColoursID].(*winPXEColours).cursorAddress = sref.PXEPaletteAddr
+	}
 }
 
 // copy pixels from queue to the live copy.

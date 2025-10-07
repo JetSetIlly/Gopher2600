@@ -280,6 +280,14 @@ func (wm *manager) draw() {
 	}
 }
 
+func (wm *manager) postRender() {
+	for _, w := range wm.windows {
+		if c, ok := w.(windowPostRender); ok {
+			c.postRender()
+		}
+	}
+}
+
 // return true if the mouse pointer is hovering over any playmode window.
 // returns false if the mouse is over the main playmode TV screen
 func (wm *manager) hoverAnyWindowPlaymode() bool {

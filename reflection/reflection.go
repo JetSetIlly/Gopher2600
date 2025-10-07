@@ -19,6 +19,7 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 )
@@ -71,6 +72,11 @@ type ReflectedVideoStep struct {
 	// The only pointer is in execution.Result, which points to a CPU
 	// instruction defintion. the definition never changes however so this is
 	// also safe.
+
+	// pxe colour writes
+	PXEColourWrite    bool
+	PXEColourRegister cpubus.Register
+	PXEPaletteAddr    uint32
 }
 
 // Hmove groups the HMOVE reflection information. It's too complex a property

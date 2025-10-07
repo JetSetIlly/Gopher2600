@@ -242,6 +242,7 @@ type imguiColors struct {
 	coProcSourceMaxLoad imgui.PackedColor
 	coProcSourceNoLoad  imgui.PackedColor
 	subtitlesBackground imgui.PackedColor
+	pxeColorArrow       imgui.PackedColor
 
 	// reflection colors
 	reflectionColors []imgui.Vec4
@@ -484,6 +485,7 @@ func newColors() *imguiColors {
 	cols.coProcSourceMaxLoad = imgui.PackedColorFromVec4(cols.CoProcSourceMaxLoad)
 	cols.coProcSourceNoLoad = imgui.PackedColorFromVec4(cols.CoProcSourceNoLoad)
 	cols.subtitlesBackground = imgui.PackedColorFromVec4(cols.SubtitlesBackground)
+	cols.pxeColorArrow = imgui.PackedColorFromVec4(imgui.Vec4{X: 1.0, Y: 1.0, Z: 1.0, W: 1.0})
 
 	return &cols
 }

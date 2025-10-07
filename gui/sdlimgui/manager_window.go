@@ -37,6 +37,11 @@ type windowDestroy interface {
 	destroy()
 }
 
+// windows that require post-render treatment implement the windowPostRender interface
+type windowPostRender interface {
+	postRender()
+}
+
 // information about the window, including window geometry
 //
 // is embedded in playmodeWin and debuggerWin interfaces. for window type that
