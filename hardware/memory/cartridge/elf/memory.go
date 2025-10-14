@@ -528,17 +528,13 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				t1 := (tgt >> 22) & 0x01
 				t2 := (tgt >> 23) & 0x01
 				s := (tgt >> 24) & 0x01
-				j1 := uint32(0)
-				j2 := uint32(0)
-				if t1 == 0x01 {
-					j1 = s ^ 0x00
-				} else {
-					j1 = s ^ 0x01
+				j1 := s
+				j2 := s
+				if t1 != 0x01 {
+					j1 ^= 0x01
 				}
-				if t2 == 0x01 {
-					j2 = s ^ 0x00
-				} else {
-					j2 = s ^ 0x01
+				if t2 != 0x01 {
+					j2 ^= 0x01
 				}
 
 				lo := uint16(0xf000 | (s << 10) | imm10)
@@ -747,6 +743,10 @@ func (mem *elfMemory) runInitialisation(arm *arm.ARM) error {
 	for _, s := range mem.symbols {
 		if s.Name == "main" || s.Name == "elf_main" {
 			sec := mem.sections[s.Section]
+			if sec.typ != elf.SHT_PROGBITS {
+				logger.Logf(mem.env, "ELF", "%s not in a section of SHT_PROGBITS type", s.Name)
+				return nil
+			}
 			mem.resetPC = sec.origin + uint32(s.Value)
 			mem.resetPC &= 0xfffffffe
 			break // for loop
