@@ -822,7 +822,6 @@ func (scr *screen) copyPixelsPlaymode() {
 		scr.crit.prevRenderIdx[0] = scr.crit.renderIdx
 
 		// advance render index
-		scr.crit.renderIdx = scr.crit.plotIdx
 		scr.crit.renderIdx++
 		if scr.crit.renderIdx >= scr.crit.frameQueueLen || scr.crit.renderIdx >= len(scr.crit.frameQueue) {
 			scr.crit.renderIdx = 0
