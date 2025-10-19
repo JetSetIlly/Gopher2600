@@ -34,7 +34,7 @@ type Limiter struct {
 	Requested atomic.Value // float32
 
 	// whether the requested frame rate is equal to the refresh rate
-	MatchRefreshRate atomic.Value // bool
+	MatchesRefreshRate atomic.Value // bool
 
 	// pulse that performs the limiting. the duration of the ticker will be set
 	// when the frame rate changes.
@@ -65,11 +65,11 @@ type Limiter struct {
 	// value will decrease to zero on every CheckFrame(). rate will change when
 	// it reaches zero
 	//
-	// if matchRefreshRate is true then the matchRefreshRateDelay will be set
+	// if matchRefreshRate is true then the syncWithRefreshRateDelay will be set
 	// to a value of half refresh-rate
 	//
 	// is not set if SetRate() is called directly
-	matchRefreshRateDelay int
+	syncWithRefreshRateDelay int
 
 	// nudge the limiter so that it doesn't wait for the specified number of frames
 	Nudge atomic.Int32
@@ -81,7 +81,7 @@ type Limiter struct {
 func NewLimiter() *Limiter {
 	lmtr := Limiter{}
 	lmtr.Active = true
-	lmtr.MatchRefreshRate.Store(false)
+	lmtr.MatchesRefreshRate.Store(false)
 	lmtr.Measured.Store(float32(0.0))
 
 	lmtr.pulse = time.NewTicker(time.Millisecond * 16)
@@ -98,8 +98,8 @@ func NewLimiter() *Limiter {
 // the limit value (see SetLimit() function) will usually equal the refresh rate
 func (lmtr *Limiter) SetRefreshRate(refreshRate float32) {
 	lmtr.RefreshRate.Store(refreshRate)
-	if lmtr.MatchRefreshRate.Load().(bool) {
-		lmtr.matchRefreshRateDelay = int(refreshRate / 2)
+	if lmtr.MatchesRefreshRate.Load().(bool) {
+		lmtr.syncWithRefreshRateDelay = int(refreshRate / 2)
 	}
 }
 
@@ -107,14 +107,12 @@ func (lmtr *Limiter) SetRefreshRate(refreshRate float32) {
 // refresh rate, which is the ideal value.
 func (lmtr *Limiter) SetLimit(fps float32) {
 	if fps <= 0.0 {
-		lmtr.MatchRefreshRate.Store(true)
 		fps = lmtr.RefreshRate.Load().(float32)
-	} else {
-		lmtr.MatchRefreshRate.Store(fps == lmtr.RefreshRate.Load().(float32))
 	}
+	lmtr.MatchesRefreshRate.Store(fps == lmtr.RefreshRate.Load().(float32))
 
 	// reset refresh rate delay counter
-	lmtr.matchRefreshRateDelay = 0
+	lmtr.syncWithRefreshRateDelay = 0
 
 	// if fps is still zero (spec probably hasn't been set) then don't do anything
 	if fps == 0.0 {
@@ -153,10 +151,10 @@ func (lmtr *Limiter) CheckFrame() {
 	}
 
 	// check to see if rate is to change
-	if lmtr.matchRefreshRateDelay > 0 {
-		lmtr.matchRefreshRateDelay--
-		if lmtr.matchRefreshRateDelay == 0 {
-			lmtr.SetLimit(lmtr.RefreshRate.Load().(float32))
+	if lmtr.syncWithRefreshRateDelay > 0 {
+		lmtr.syncWithRefreshRateDelay--
+		if lmtr.syncWithRefreshRateDelay == 0 {
+			lmtr.SetLimit(-1)
 		}
 	}
 }
