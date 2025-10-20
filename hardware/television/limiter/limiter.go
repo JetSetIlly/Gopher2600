@@ -22,6 +22,10 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
+type Display interface {
+	DisplayRefreshRate() (float32, bool)
+}
+
 type Limiter struct {
 	// whether to wait for fps limited each frame
 	Active bool
@@ -75,6 +79,9 @@ type Limiter struct {
 
 	// nudge the limiter so that it doesn't wait for the specified number of frames
 	Nudge atomic.Int32
+
+	// the display the limiter is working for
+	display Display
 }
 
 // NewLimiter is preferred method of initialising a new instance of the Limiter
@@ -93,6 +100,12 @@ func NewLimiter() *Limiter {
 	lmtr.SetLimit(MatchRefreshRate)
 
 	return &lmtr
+}
+
+// Set the display interface for the limiter
+func (lmtr *Limiter) SetDisplay(display Display) {
+	lmtr.display = display
+	lmtr.SetLimit(lmtr.RequestedFPS.Load().(float32))
 }
 
 // Set the refresh rate for the limiter. This is equivalent to the refresh rate
@@ -128,6 +141,16 @@ func (lmtr *Limiter) SetLimit(fps float32) {
 	// the actual requested fps rate (taken into account the possibility of a negative number
 	// to indicate the refresh rate)
 	lmtr.RequestedFPS.Store(fps)
+
+	// quantise refresh rate based on refresh rate of television
+	if lmtr.display != nil {
+		hz, quantise := lmtr.display.DisplayRefreshRate()
+		if quantise {
+			if fps >= hz*0.96 && fps <= hz*1.04 {
+				fps = hz
+			}
+		}
+	}
 
 	// set scale and duration to wait according to requested FPS rate
 	lmtr.pulseCt = 0

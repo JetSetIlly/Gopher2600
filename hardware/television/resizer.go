@@ -326,3 +326,45 @@ func (rz *Resizer) commit(state *State) error {
 
 	return nil
 }
+
+// SetRotation instructs the television to a different orientation. In truth,
+// the television just forwards the request to the pixel renderers.
+func (tv *Television) SetRotation(rotation specification.Rotation) {
+	for _, r := range tv.renderers {
+		if s, ok := r.(PixelRendererRotation); ok {
+			s.SetRotation(rotation)
+		}
+	}
+}
+
+// GetResizer returns a copy of the television resizer in it's current state.
+func (tv *Television) GetResizer() Resizer {
+	// make copy of resizer and set the validFrom fields
+	rz := tv.state.resizer
+	rz.previewFrameNum = tv.state.frameInfo.FrameNum
+	return rz
+}
+
+// SetResizer sets the state of the television resizer and sets the current
+// frame info accordingly.
+//
+// Note that the Resizer type does not include specification information. When
+// transferring state between television instances it is okay to call SetSpec()
+// but it should be done before SetResizer() is called
+func (tv *Television) SetResizer(rz Resizer) {
+	tv.state.resizer = rz
+	if tv.state.resizer.usingVBLANK {
+		tv.state.frameInfo.VisibleTop = tv.state.resizer.vblankTop
+		tv.state.frameInfo.VisibleBottom = tv.state.resizer.vblankBottom
+	} else {
+		tv.state.frameInfo.VisibleTop = tv.state.resizer.blackTop
+		tv.state.frameInfo.VisibleBottom = tv.state.resizer.blackBottom
+	}
+
+	// call new frame for all pixel renderers. this will force the new size
+	// information to be handled immediately but it won't result in a "phantom"
+	// frame because we won't change the FrameNum field in the FrameInfo
+	for _, r := range tv.renderers {
+		r.NewFrame(tv.state.frameInfo)
+	}
+}

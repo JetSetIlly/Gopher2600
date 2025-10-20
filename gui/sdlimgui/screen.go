@@ -886,3 +886,8 @@ func (scr *screen) copyPixelsPlaymode() {
 		scr.img.dbg.VCS().TV.NudgeFPSLimiter(1)
 	}
 }
+
+// DisplayRefreshRate implements the television.PixelRendererRotation interface
+func (scr *screen) DisplayRefreshRate() (float32, bool) {
+	return float32(scr.img.plt.mode.RefreshRate), false
+}

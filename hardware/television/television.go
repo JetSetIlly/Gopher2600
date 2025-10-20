@@ -188,6 +188,10 @@ type Television struct {
 	// list of PixelRenderer implementations to consult
 	renderers []PixelRenderer
 
+	// the most recently added pixel rendererer that implements PixelRendererDisplay. there can only
+	// be one of these at any one time and a new one added will replace the previous display
+	rendererDisplay PixelRendererDisplay
+
 	// list of FrameTrigger implementations to consult
 	frameTriggers []FrameTrigger
 
@@ -358,8 +362,15 @@ func (tv *Television) AddDebugger(dbg Debugger) {
 	tv.debugger = dbg
 }
 
-// AddPixelRenderer adds an implementation of PixelRenderer.
+// AddPixelRenderer adds an implementation of PixelRenderer. If the PixelRenderer is also an
+// implementation of PixelRendererDisplay then note that there can only be one such renderer and any
+// such renderer previously added will be replaced.
 func (tv *Television) AddPixelRenderer(r PixelRenderer) {
+	if r, ok := r.(PixelRendererDisplay); ok {
+		tv.RemovePixelRenderer(tv.rendererDisplay)
+		tv.rendererDisplay = r
+		tv.lmtr.SetDisplay(r)
+	}
 	for i := range tv.renderers {
 		if tv.renderers[i] == r {
 			return
@@ -371,6 +382,12 @@ func (tv *Television) AddPixelRenderer(r PixelRenderer) {
 // RemovePixelRenderer removes a single PixelRenderer implementation from the
 // list of renderers. Order is not maintained.
 func (tv *Television) RemovePixelRenderer(r PixelRenderer) {
+	if r, ok := r.(PixelRendererDisplay); ok {
+		if tv.rendererDisplay == r {
+			tv.rendererDisplay = nil
+			tv.lmtr.SetDisplay(r)
+		}
+	}
 	for i := range tv.renderers {
 		if tv.renderers[i] == r {
 			tv.renderers[i] = tv.renderers[len(tv.renderers)-1]
@@ -976,56 +993,6 @@ func (tv *Television) SetEmulationState(state govern.State) error {
 	return nil
 }
 
-// NudgeFPSLimiter stops the FPS limiter for the specified number of frames. A value
-// of zero (or less) will stop any existing nudge
-func (tv *Television) NudgeFPSLimiter(frames int) {
-	if frames < 0 {
-		frames = 0
-	}
-	tv.lmtr.Nudge.Store(int32(frames))
-}
-
-// SetFPSLimit whether the emulation should wait for FPS limiter. Returns the
-// setting as it was previously.
-func (tv *Television) SetFPSLimit(limit bool) bool {
-	prev := tv.lmtr.Active
-	tv.lmtr.Active = limit
-
-	// notify all pixel renderers that are interested in the FPS limiter
-	for i := range tv.renderers {
-		if r, ok := tv.renderers[i].(PixelRendererFPSLimiter); ok {
-			r.SetFPSLimit(limit)
-		}
-	}
-
-	return prev
-}
-
-// SetFPS requests the number frames per second. This overrides the frame rate of
-// the specification. A negative value restores frame rate to the ideal value
-// (the frequency of the incoming signal).
-func (tv *Television) SetFPS(fps float32) {
-	tv.lmtr.SetLimit(fps)
-}
-
-// GetReqFPS returns the requested number of frames per second. Compare with
-// GetActualFPS() to check for accuracy.
-//
-// IS goroutine safe.
-func (tv *Television) GetReqFPS() float32 {
-	return tv.lmtr.RequestedFPS.Load().(float32)
-}
-
-// GetActualFPS returns the current number of frames per second and the
-// detected frequency of the TV signal.
-//
-// Note that FPS measurement still works even when the frame limiter is disabled.
-//
-// IS goroutine safe.
-func (tv *Television) GetActualFPS() (float32, float32) {
-	return tv.lmtr.Measured.Load().(float32), tv.lmtr.RefreshRate.Load().(float32)
-}
-
 // GetResetSpecID returns the specification that the television resets to. This
 // is useful for learning more about how the television was created
 func (tv *Television) GetResetSpecID() string {
@@ -1058,46 +1025,4 @@ func (tv *Television) GetCoords() coords.TelevisionCoords {
 
 func (tv *Television) IsFrameNum(frame int) bool {
 	return tv.state.frameNum == frame
-}
-
-// SetRotation instructs the television to a different orientation. In truth,
-// the television just forwards the request to the pixel renderers.
-func (tv *Television) SetRotation(rotation specification.Rotation) {
-	for _, r := range tv.renderers {
-		if s, ok := r.(PixelRendererRotation); ok {
-			s.SetRotation(rotation)
-		}
-	}
-}
-
-// GetResizer returns a copy of the television resizer in it's current state.
-func (tv *Television) GetResizer() Resizer {
-	// make copy of resizer and set the validFrom fields
-	rz := tv.state.resizer
-	rz.previewFrameNum = tv.state.frameInfo.FrameNum
-	return rz
-}
-
-// SetResizer sets the state of the television resizer and sets the current
-// frame info accordingly.
-//
-// Note that the Resizer type does not include specification information. When
-// transferring state between television instances it is okay to call SetSpec()
-// but it should be done before SetResizer() is called
-func (tv *Television) SetResizer(rz Resizer) {
-	tv.state.resizer = rz
-	if tv.state.resizer.usingVBLANK {
-		tv.state.frameInfo.VisibleTop = tv.state.resizer.vblankTop
-		tv.state.frameInfo.VisibleBottom = tv.state.resizer.vblankBottom
-	} else {
-		tv.state.frameInfo.VisibleTop = tv.state.resizer.blackTop
-		tv.state.frameInfo.VisibleBottom = tv.state.resizer.blackBottom
-	}
-
-	// call new frame for all pixel renderers. this will force the new size
-	// information to be handled immediately but it won't result in a "phantom"
-	// frame because we won't change the FrameNum field in the FrameInfo
-	for _, r := range tv.renderers {
-		r.NewFrame(tv.state.frameInfo)
-	}
 }

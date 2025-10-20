@@ -92,6 +92,17 @@ type PixelRenderer interface {
 	EndRendering() error
 }
 
+// PixelRendererDisplay is a special case of the the PixelRenderer interface. it should be
+// implemented by a renderer that works with a hardware display.
+type PixelRendererDisplay interface {
+	PixelRenderer
+
+	// returns refresh rate of display and whether the limiter should quantise the emulated frame
+	// rate to the monitor speed. the boolean indicates whether the current purpose of the display
+	// is suitable for quantisation by a frame limiter
+	DisplayRefreshRate() (float32, bool)
+}
+
 // PixelRendererRotation is an extension to the PixelRenderer interface. Pixel
 // renderes that implement this interface can show the television image in a
 // rotated aspect. Not all pixel renderers need to worry about rotation.
