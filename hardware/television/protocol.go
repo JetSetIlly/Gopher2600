@@ -99,12 +99,12 @@ type PixelRendererRotation interface {
 	SetRotation(specification.Rotation)
 }
 
-// PixelRendererFPSCap is an extension to the PixelRenderer interface. Pixel
+// PixelRendererFPSLimiter is an extension to the PixelRenderer interface. Pixel
 // renderers that implement this interface will be notified when the
 // television's frame capping policy is changed. Not all pixel renderers need to
 // worry about frame rate.
-type PixelRendererFPSCap interface {
-	SetFPSCap(limit bool)
+type PixelRendererFPSLimiter interface {
+	SetFPSLimit(limit bool)
 }
 
 // FrameTrigger implementations listen for Pause events

@@ -42,7 +42,7 @@ func NewEmulation(prefs *preferences.Preferences, spec string) (*Emulation, erro
 	if err != nil {
 		return nil, fmt.Errorf("preview: %w", err)
 	}
-	tv.SetFPSCap(false)
+	tv.SetFPSLimit(false)
 
 	// create a new VCS emulation
 	em.vcs, err = hardware.NewVCS(previewLabel, tv, nil, prefs)

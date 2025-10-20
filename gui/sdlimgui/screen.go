@@ -257,8 +257,8 @@ func (scr *screen) SetRotation(rotation specification.Rotation) {
 	}
 }
 
-// SetFPSCap implements the television.PixelRendererFPSCap interface
-func (scr *screen) SetFPSCap(limit bool) {
+// SetFPSLimit implements the television.PixelRendererFPSLimiter interface
+func (scr *screen) SetFPSLimit(limit bool) {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
@@ -883,6 +883,6 @@ func (scr *screen) copyPixelsPlaymode() {
 
 	// nudge fps cap to try to bring the plot and render indexes back into equilibrium
 	if nudge {
-		scr.img.dbg.VCS().TV.NudgeFPSCap(1)
+		scr.img.dbg.VCS().TV.NudgeFPSLimiter(1)
 	}
 }

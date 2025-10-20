@@ -44,8 +44,8 @@ func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords) error {
 
 	switch dbg.Mode() {
 	case govern.ModePlay:
-		fpscap := dbg.vcs.TV.SetFPSCap(false)
-		defer dbg.vcs.TV.SetFPSCap(fpscap)
+		fpscap := dbg.vcs.TV.SetFPSLimit(false)
+		defer dbg.vcs.TV.SetFPSLimit(fpscap)
 
 		dbg.vcs.Run(func() (govern.State, error) {
 			dbg.userInputHandler_catchUpLoop()
@@ -59,7 +59,7 @@ func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords) error {
 
 	case govern.ModeDebugger:
 		// turn off TV's fps frame limiter
-		fpsCap := dbg.vcs.TV.SetFPSCap(false)
+		fpsCap := dbg.vcs.TV.SetFPSLimit(false)
 
 		dbg.catchupContinue = func() bool {
 			newCoords := dbg.vcs.TV.GetCoords()
@@ -76,7 +76,7 @@ func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords) error {
 		// loss is still too great to do so
 
 		dbg.catchupEnd = func() {
-			dbg.vcs.TV.SetFPSCap(fpsCap)
+			dbg.vcs.TV.SetFPSLimit(fpsCap)
 			dbg.catchupContinue = nil
 			dbg.catchupEnd = nil
 			dbg.setState(govern.Paused, govern.Normal)

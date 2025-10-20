@@ -82,7 +82,7 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 	}
 	tv.AddPixelRenderer(cmp)
 	tv.AddAudioMixer(cmp)
-	tv.SetFPSCap(false)
+	tv.SetFPSLimit(false)
 
 	// create a new VCS emulation
 	cmp.VCS, err = hardware.NewVCS(comparisonLabel, tv, cmp, driverVCS.Env.Prefs)

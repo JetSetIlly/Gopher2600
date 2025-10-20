@@ -251,7 +251,7 @@ func NewTelevision(spec string) (*Television, error) {
 
 	// initialise frame rate limiter
 	tv.lmtr = limiter.NewLimiter()
-	tv.SetFPS(-1)
+	tv.SetFPS(limiter.MatchRefreshRate)
 
 	// empty list of renderers
 	tv.renderers = make([]PixelRenderer, 0)
@@ -706,8 +706,6 @@ func (tv *Television) newScanline() error {
 		}
 	}
 
-	tv.lmtr.CheckScanline()
-
 	return nil
 }
 
@@ -978,25 +976,25 @@ func (tv *Television) SetEmulationState(state govern.State) error {
 	return nil
 }
 
-// NudgeFPSCap stops the FPS limiter for the specified number of frames. A value
+// NudgeFPSLimiter stops the FPS limiter for the specified number of frames. A value
 // of zero (or less) will stop any existing nudge
-func (tv *Television) NudgeFPSCap(frames int) {
+func (tv *Television) NudgeFPSLimiter(frames int) {
 	if frames < 0 {
 		frames = 0
 	}
 	tv.lmtr.Nudge.Store(int32(frames))
 }
 
-// SetFPSCap whether the emulation should wait for FPS limiter. Returns the
+// SetFPSLimit whether the emulation should wait for FPS limiter. Returns the
 // setting as it was previously.
-func (tv *Television) SetFPSCap(limit bool) bool {
+func (tv *Television) SetFPSLimit(limit bool) bool {
 	prev := tv.lmtr.Active
 	tv.lmtr.Active = limit
 
-	// notify all pixel renderers that are interested in the FPS cap
+	// notify all pixel renderers that are interested in the FPS limiter
 	for i := range tv.renderers {
-		if r, ok := tv.renderers[i].(PixelRendererFPSCap); ok {
-			r.SetFPSCap(limit)
+		if r, ok := tv.renderers[i].(PixelRendererFPSLimiter); ok {
+			r.SetFPSLimit(limit)
 		}
 	}
 
@@ -1015,13 +1013,13 @@ func (tv *Television) SetFPS(fps float32) {
 //
 // IS goroutine safe.
 func (tv *Television) GetReqFPS() float32 {
-	return tv.lmtr.Requested.Load().(float32)
+	return tv.lmtr.RequestedFPS.Load().(float32)
 }
 
 // GetActualFPS returns the current number of frames per second and the
 // detected frequency of the TV signal.
 //
-// Note that FPS measurement still works even when frame capping is disabled.
+// Note that FPS measurement still works even when the frame limiter is disabled.
 //
 // IS goroutine safe.
 func (tv *Television) GetActualFPS() (float32, float32) {

@@ -91,7 +91,7 @@ func NewAnim(prefs *preferences.Preferences, spec string) (*Anim, error) {
 		return nil, fmt.Errorf("thumbnailer: %w", err)
 	}
 	tv.AddPixelRenderer(thmb)
-	tv.SetFPSCap(true)
+	tv.SetFPSLimit(true)
 
 	// create a new VCS emulation
 	thmb.vcs, err = hardware.NewVCS(animLabel, tv, thmb, prefs)

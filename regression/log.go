@@ -151,7 +151,7 @@ func (reg *LogRegression) regress(newRegression bool, messages io.Writer, tag st
 		return err
 	}
 	defer tv.End()
-	tv.SetFPSCap(false)
+	tv.SetFPSLimit(false)
 
 	// create VCS and attach cartridge
 	vcs, err := hardware.NewVCS(environment.MainEmulation, tv, nil, nil)

@@ -33,9 +33,9 @@ type winControl struct {
 
 	img *SdlImgui
 
-	repeatID     string
-	repeatTime   time.Time
-	repeatFPSCap atomic.Value // bool
+	repeatID         string
+	repeatTime       time.Time
+	repeatFPSLimiter atomic.Value // bool
 }
 
 func newWinControl(img *SdlImgui) (window, error) {
@@ -62,8 +62,8 @@ func (win *winControl) repeatButtonV(id string, f func(), fill imgui.Vec2) {
 	if imgui.IsItemActive() {
 		if id != win.repeatID {
 			win.img.dbg.PushFunction(func() {
-				v := win.img.dbg.VCS().TV.SetFPSCap(false)
-				win.repeatFPSCap.Store(v)
+				v := win.img.dbg.VCS().TV.SetFPSLimit(false)
+				win.repeatFPSLimiter.Store(v)
 			})
 			win.repeatID = id
 			win.repeatTime = time.Now()
@@ -78,8 +78,8 @@ func (win *winControl) repeatButtonV(id string, f func(), fill imgui.Vec2) {
 	} else if imgui.IsItemDeactivated() {
 		win.repeatID = ""
 		win.img.dbg.PushFunction(func() {
-			v := win.repeatFPSCap.Load().(bool)
-			win.img.dbg.VCS().TV.SetFPSCap(v)
+			v := win.repeatFPSLimiter.Load().(bool)
+			win.img.dbg.VCS().TV.SetFPSLimit(v)
 		})
 	}
 }

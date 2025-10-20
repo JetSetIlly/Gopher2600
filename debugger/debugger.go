@@ -476,7 +476,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	dbg.vcs.RIOT.Ports.AttachPlugMonitor(dbg)
 
 	// set fps cap
-	dbg.vcs.TV.SetFPSCap(opts.FpsCap)
+	dbg.vcs.TV.SetFPSLimit(opts.FpsCap)
 
 	// initialise terminal
 	err = dbg.term.Initialise()

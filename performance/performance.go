@@ -47,7 +47,7 @@ func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, s
 	defer tv.End()
 
 	// set fps cap on television
-	tv.SetFPSCap(!uncapped)
+	tv.SetFPSLimit(!uncapped)
 
 	// create vcs
 	vcs, err := hardware.NewVCS(environment.MainEmulation, tv, nil, nil)

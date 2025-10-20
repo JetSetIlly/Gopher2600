@@ -18,6 +18,8 @@ package limiter
 import (
 	"sync/atomic"
 	"time"
+
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 type Limiter struct {
@@ -31,17 +33,17 @@ type Limiter struct {
 	RefreshRate atomic.Value // float32
 
 	// the requested number of frames per second
-	Requested atomic.Value // float32
+	RequestedFPS atomic.Value // float32
 
-	// whether the requested frame rate is equal to the refresh rate
-	MatchesRefreshRate atomic.Value // bool
+	// whether the requested frame rate is to equal the refresh rate
+	requestMatchRefreshRate atomic.Value // bool
 
 	// pulse that performs the limiting. the duration of the ticker will be set
-	// when the frame rate changes.
+	// when SetLimit() is called with a new fps value
 	pulse *time.Ticker
 
 	// we don't want to measure the frame rate too often because it's
-	// relatively expensive. a simple counter is an effective limiter
+	// relatively expensive. a simple counter is good enough for this
 	pulseCt      int
 	pulseCtLimit int
 
@@ -81,14 +83,14 @@ type Limiter struct {
 func NewLimiter() *Limiter {
 	lmtr := Limiter{}
 	lmtr.Active = true
-	lmtr.MatchesRefreshRate.Store(false)
+	lmtr.requestMatchRefreshRate.Store(false)
 	lmtr.Measured.Store(float32(0.0))
 
 	lmtr.pulse = time.NewTicker(time.Millisecond * 16)
 	lmtr.measuringPulse = time.NewTicker(time.Millisecond * 1000)
 
-	lmtr.SetRefreshRate(60)
-	lmtr.SetLimit(-1)
+	lmtr.SetRefreshRate(specification.SpecNTSC.RefreshRate)
+	lmtr.SetLimit(MatchRefreshRate)
 
 	return &lmtr
 }
@@ -98,18 +100,22 @@ func NewLimiter() *Limiter {
 // the limit value (see SetLimit() function) will usually equal the refresh rate
 func (lmtr *Limiter) SetRefreshRate(refreshRate float32) {
 	lmtr.RefreshRate.Store(refreshRate)
-	if lmtr.MatchesRefreshRate.Load().(bool) {
+	if lmtr.requestMatchRefreshRate.Load().(bool) {
 		lmtr.syncWithRefreshRateDelay = int(refreshRate / 2)
 	}
 }
 
-// Set frame limit. If the supplied value is <= 0 then the limit will match the
-// refresh rate, which is the ideal value.
+const MatchRefreshRate float32 = -1.0
+
+// Set frame limit. Use a value of MatchRefreshRate to indicate that the limiter should equal the
+// television refresh rate.
 func (lmtr *Limiter) SetLimit(fps float32) {
 	if fps <= 0.0 {
 		fps = lmtr.RefreshRate.Load().(float32)
+		lmtr.requestMatchRefreshRate.Store(fps == lmtr.RefreshRate.Load().(float32))
+	} else {
+		lmtr.requestMatchRefreshRate.Store(false)
 	}
-	lmtr.MatchesRefreshRate.Store(fps == lmtr.RefreshRate.Load().(float32))
 
 	// reset refresh rate delay counter
 	lmtr.syncWithRefreshRateDelay = 0
@@ -119,8 +125,9 @@ func (lmtr *Limiter) SetLimit(fps float32) {
 		return
 	}
 
-	// not selected rate
-	lmtr.Requested.Store(fps)
+	// the actual requested fps rate (taken into account the possibility of a negative number
+	// to indicate the refresh rate)
+	lmtr.RequestedFPS.Store(fps)
 
 	// set scale and duration to wait according to requested FPS rate
 	lmtr.pulseCt = 0
@@ -154,13 +161,9 @@ func (lmtr *Limiter) CheckFrame() {
 	if lmtr.syncWithRefreshRateDelay > 0 {
 		lmtr.syncWithRefreshRateDelay--
 		if lmtr.syncWithRefreshRateDelay == 0 {
-			lmtr.SetLimit(-1)
+			lmtr.SetLimit(MatchRefreshRate)
 		}
 	}
-}
-
-// CheckScanline should be called every scanline.
-func (lmtr *Limiter) CheckScanline() {
 }
 
 // MeasureActual measures frame rate on every tick of the measuringPulse ticker.
