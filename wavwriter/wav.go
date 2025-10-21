@@ -82,7 +82,7 @@ func (aw *WavWriter) EndMixing() error {
 	buf := audio.PCMBuffer{
 		Format: &audio.Format{
 			NumChannels: numChannels,
-			SampleRate:  int(aw.sampleRate),
+			SampleRate:  aw.sampleRate,
 		},
 		I16:            aw.buffer,
 		DataType:       audio.DataTypeI16,

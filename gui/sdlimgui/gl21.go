@@ -20,6 +20,7 @@ package sdlimgui
 import (
 	"fmt"
 	"image"
+	"io"
 	"unsafe"
 
 	"github.com/go-gl/gl/v2.1/gl"
@@ -214,8 +215,8 @@ func (rnd *gl21) isScreenshotting() bool {
 	return false
 }
 
-func (rnd *gl21) record(enable bool, w io.Writer) error {
-	return rnd.video.Enable(enable, w)
+func (rnd *gl21) record(enable bool, w io.Writer, lastFrame int) error {
+	return rnd.video.Enable(enable, w, lastFrame)
 }
 
 func (rnd *gl21) isRecording() bool {

@@ -72,6 +72,9 @@ type FFMPEG struct {
 	// the time the recording started
 	start time.Time
 
+	// the frame number of the last frame expected in the video
+	lastFrame int
+
 	// write messages to an io.Writer
 	log io.Writer
 
@@ -385,10 +388,11 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 	return nil
 }
 
-func (vid *FFMPEG) Enable(enable bool, w io.Writer) error {
+func (vid *FFMPEG) Enable(enable bool, w io.Writer, lastFrame int) error {
 	vid.enabled = enable
 	vid.log = w
 	vid.start = time.Now()
+	vid.lastFrame = lastFrame
 
 	if vid.log != nil {
 		fmt.Fprintln(vid.log, "testing for ffmpeg and ffprobe")
@@ -425,7 +429,11 @@ func (vid *FFMPEG) Process(framenum int) {
 	vid.lastFrameRendered = framenum
 
 	if vid.log != nil {
-		fmt.Fprintf(vid.log, "frame %d...\r", framenum)
+		if framenum > vid.lastFrame {
+			fmt.Fprintf(vid.log, "frame %d\r", framenum)
+		} else {
+			fmt.Fprintf(vid.log, "frame %d of %d\r", framenum, vid.lastFrame)
+		}
 	}
 
 	// get pixel data for frame and forward it to the running command

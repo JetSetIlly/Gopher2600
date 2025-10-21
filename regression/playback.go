@@ -209,7 +209,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, messages io.Writer, t
 			return govern.Ending, fmt.Errorf("CPU in KIL state")
 		}
 
-		hasEnded, err := plb.EndFrame()
+		hasEnded, err := plb.IsEndFrame()
 		if err != nil {
 			return govern.Ending, err
 		}

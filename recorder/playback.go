@@ -65,15 +65,18 @@ func (plb Playback) String() string {
 	return fmt.Sprintf("%d/%d (%.1f%%)", currFrame, plb.endFrame, 100*(float64(currFrame)/float64(plb.endFrame)))
 }
 
-// EndFrame returns true if emulation has gone past the last frame of the
-// playback.
-func (plb Playback) EndFrame() (bool, error) {
+// IsEndFrame returns true if emulation has gone past the last frame of the playback.
+func (plb Playback) IsEndFrame() (bool, error) {
 	currFrame := plb.digest.GetCoords().Frame
 	if currFrame > plb.endFrame {
 		return true, nil
 	}
-
 	return false, nil
+}
+
+// EndFrame returns the frame number of the last frame in the playback file
+func (plb Playback) EndFrame() int {
+	return plb.endFrame
 }
 
 // NewPlayback is the preferred method of implementation for the Playback type.

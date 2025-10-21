@@ -38,7 +38,7 @@ type renderer interface {
 	render()
 	screenshot(mode screenshotMode, finish chan screenshotResult)
 	isScreenshotting() bool
-	record(enable bool, w io.Writer) error
+	record(enable bool, w io.Writer, lastFrame int) error
 	isRecording() bool
 	addTexture(typ shaderType, linear bool, clamp bool, config any) texture
 	addFontTexture(fnt imgui.FontAtlas) texture
