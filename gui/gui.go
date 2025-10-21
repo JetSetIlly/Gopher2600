@@ -69,5 +69,6 @@ const (
 	ReqScreenshot FeatureReq = "ReqScreenshot" // [optional] filename
 
 	// video should be recorded
-	ReqVideoRecord FeatureReq = "ReqVideoRecord" // bool, io.Writer
+	// the second argument is only meaningful if the bool (enable recording) is true
+	ReqVideoRecord FeatureReq = "ReqVideoRecord" // bool, video.Session
 )

@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"io"
 	"sync/atomic"
 	"time"
 
@@ -33,6 +32,7 @@ import (
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/resources"
 	"github.com/jetsetilly/gopher2600/userinput"
+	"github.com/jetsetilly/gopher2600/video"
 	"github.com/veandco/go-sdl2/sdl"
 
 	"github.com/jetsetilly/imgui-go/v5"
@@ -370,7 +370,7 @@ func (img *SdlImgui) setEmulationMode(mode govern.Mode) error {
 		// should do it here
 		const disableVideoForDebugger = false
 		if disableVideoForDebugger {
-			_ = img.enableVideoRecording(false, nil, 0)
+			_ = img.enableVideoRecording(false, video.Session{})
 		}
 
 		img.screen.clearTextureRenderers()
@@ -551,8 +551,8 @@ func (img *SdlImgui) getTVColour(col uint8) imgui.PackedColor {
 
 // video recording inhibits overlay drawing and gui windows. video recording is not disabled when
 // emulation is switched to debugger mode. video recording will resume if playmode is resumed
-func (img *SdlImgui) enableVideoRecording(enable bool, w io.Writer, lastFrame int) error {
-	err := img.rnd.record(enable, w, lastFrame)
+func (img *SdlImgui) enableVideoRecording(enable bool, conf video.Session) error {
+	err := img.rnd.record(enable, conf)
 	if err != nil {
 		return err
 	}

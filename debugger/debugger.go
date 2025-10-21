@@ -67,6 +67,7 @@ import (
 	"github.com/jetsetilly/gopher2600/setup"
 	"github.com/jetsetilly/gopher2600/tracker"
 	"github.com/jetsetilly/gopher2600/userinput"
+	"github.com/jetsetilly/gopher2600/video"
 	"github.com/jetsetilly/gopher2600/wavwriter"
 )
 
@@ -842,7 +843,11 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 		if dbg.playback != nil {
 			endFrame = dbg.playback.EndFrame()
 		}
-		err := dbg.gui.SetFeature(gui.ReqVideoRecord, true, os.Stdout, endFrame)
+		err := dbg.gui.SetFeature(gui.ReqVideoRecord, true, video.Session{
+			Log:       os.Stdout,
+			LastFrame: endFrame,
+			Profile:   video.ProfileFast,
+		})
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
 		}

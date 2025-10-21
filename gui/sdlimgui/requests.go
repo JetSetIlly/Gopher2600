@@ -18,13 +18,13 @@ package sdlimgui
 import (
 	"fmt"
 	"image"
-	"io"
 
 	"github.com/jetsetilly/gopher2600/bots"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/notifications"
+	"github.com/jetsetilly/gopher2600/video"
 )
 
 type featureRequest struct {
@@ -151,12 +151,9 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		}
 
 	case gui.ReqVideoRecord:
-		err = argLen(request.args, 1, 3)
+		err = argLen(request.args, 1, 2)
 		if err == nil {
-			err = img.enableVideoRecording(request.args[0].(bool),
-				request.args[1].(io.Writer),
-				request.args[2].(int),
-			)
+			err = img.enableVideoRecording(request.args[0].(bool), request.args[1].(video.Session))
 		}
 
 	default:

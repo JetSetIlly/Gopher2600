@@ -20,7 +20,6 @@ package sdlimgui
 import (
 	"fmt"
 	"image"
-	"io"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -283,8 +282,8 @@ func (rnd *gl32) isScreenshotting() bool {
 	return !rnd.scrsht.finished()
 }
 
-func (rnd *gl32) record(enable bool, w io.Writer, lastFrame int) error {
-	return rnd.video.Enable(enable, w, lastFrame)
+func (rnd *gl32) record(enable bool, conf video.Session) error {
+	return rnd.video.Enable(enable, conf)
 }
 
 func (rnd *gl32) isRecording() bool {
