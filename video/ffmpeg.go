@@ -20,8 +20,11 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
 )
@@ -44,6 +47,7 @@ type Renderer interface {
 type Television interface {
 	AddAudioMixer(m television.AudioMixer)
 	RemoveAudioMixer(m television.AudioMixer)
+	GetFrameInfo() frameinfo.Current
 }
 
 type FFMPEG struct {
@@ -82,12 +86,17 @@ func NewFFMPEG(rnd Renderer, tv Television) *FFMPEG {
 		rnd: rnd,
 		tv:  tv,
 	}
+
 	return vid
 }
 
 func (vid *FFMPEG) Destroy() {
+	vid.enabled = false
+	vid.pixels = nil
+
 	// we try to mux if we ever close the ffmpeg pipe or wavwriter
-	var mux bool
+	var muxVideo bool
+	var muxAudio bool
 
 	if vid.pipe != nil {
 		vid.pipe.Close()
@@ -96,10 +105,8 @@ func (vid *FFMPEG) Destroy() {
 		}
 		vid.pipe = nil
 		vid.encoder = nil
-		mux = true
+		muxVideo = true
 	}
-	vid.pixels = nil
-	vid.enabled = false
 
 	if vid.wavs != nil {
 		if err := vid.wavs.EndMixing(); err != nil {
@@ -107,28 +114,70 @@ func (vid *FFMPEG) Destroy() {
 		}
 		vid.tv.RemoveAudioMixer(vid.wavs)
 		vid.wavs = nil
-		mux = true
+		muxAudio = true
 	}
 
-	if !mux {
+	if !(muxVideo && muxAudio) {
 		return
 	}
 
-	// muxing with ffmpeg
+	// duration of video file
+	probeVideo := exec.Command("ffprobe",
+		"-v", "error",
+		"-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1",
+		vid.tempVideoFilename)
+
+	probeResult, err := probeVideo.Output()
+	if err != nil {
+		logger.Log(logger.Allow, "ffmpeg: probe video", err.Error())
+		return
+	}
+	probeResult = []byte(strings.TrimSpace(string(probeResult)))
+
+	videoRate, err := strconv.ParseFloat(string(probeResult), 64)
+	if err != nil {
+		logger.Log(logger.Allow, "ffmpeg: parse audio probe", err.Error())
+		return
+	}
+
+	// duration of audio file
+	probeAudio := exec.Command("ffprobe",
+		"-v", "error",
+		"-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1",
+		vid.tempAudioFilename)
+
+	probeResult, err = probeAudio.Output()
+	if err != nil {
+		logger.Log(logger.Allow, "ffmpeg: probe audio", err.Error())
+		return
+	}
+	probeResult = []byte(strings.TrimSpace(string(probeResult)))
+
+	audioRate, err := strconv.ParseFloat(string(probeResult), 64)
+	if err != nil {
+		logger.Log(logger.Allow, "ffmpeg", err.Error())
+		return
+	}
+
+	// calculate stretch value
+	stretch := audioRate / videoRate
+
+	// muxing with ffmpeg using the probed and calculated rates
 	muxer := exec.Command("ffmpeg",
+		"-v", "error",
 		"-i", vid.tempVideoFilename, "-i", vid.tempAudioFilename,
 		"-vcodec", "copy", "-acodec", "mp3",
+		"-filter:a", fmt.Sprintf("atempo=%f", stretch),
 		vid.finalVideoFilename)
 
 	// using Run() function because we want to wait for ffmpeg to complete
-	err := muxer.Run()
+	err = muxer.Run()
 	if err != nil {
-		logger.Log(logger.Allow, "ffmpeg", err.Error())
-		// don't delete temp files if muxing failed
+		logger.Log(logger.Allow, "ffmpeg: muxing", err.Error())
 		return
 	}
 
-	// removing temp files
+	// removing temp files only if probing and muxing has succeeded
 	err = os.Remove(vid.tempVideoFilename)
 	if err != nil {
 		logger.Log(logger.Allow, "ffmpeg", err.Error())
@@ -213,6 +262,7 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 	}
 
 	var ffmpegOutput = []string{
+		"-v", "error", // less noisy output from the ffmpeg command
 		"-y", // always overwrite output file
 		vid.tempVideoFilename,
 	}
@@ -229,6 +279,8 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 		opts = append(opts, ffmpegYouTube1080...)
 	case ProfileYouTube4k:
 		opts = append(opts, ffmpegYouTube4k...)
+	default:
+		return fmt.Errorf("ffmpeg: unknown profile: %d", vid.profile)
 	}
 	opts = append(opts, ffmpegOutput...)
 
@@ -250,8 +302,8 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 
 	vid.pixels = make([]uint8, vid.width*vid.height*4)
 
-	// create wavwriter via package specific audio package
-	vid.wavs, err = newAudio(vid.tempAudioFilename)
+	// create wavwriter via local audio type
+	vid.wavs, err = newAudio(vid.tempAudioFilename, vid.tv.GetFrameInfo().Spec)
 	if err != nil {
 		return fmt.Errorf("ffmpeg: %w", err)
 	}
@@ -260,8 +312,23 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 	return nil
 }
 
-func (vid *FFMPEG) Enable(enable bool) {
+func (vid *FFMPEG) Enable(enable bool) error {
 	vid.enabled = enable
+
+	// check that both ffprobe and ffmpeg are available in the executable path
+	if vid.enabled {
+		if _, err := exec.LookPath("ffmpeg"); err != nil {
+			vid.enabled = false
+			return fmt.Errorf("ffmpeg not installed")
+		} else {
+			if _, err := exec.LookPath("ffprobe"); err != nil {
+				vid.enabled = false
+				return fmt.Errorf("ffprobe not installed")
+			}
+		}
+	}
+
+	return nil
 }
 
 func (vid *FFMPEG) IsRecording() bool {

@@ -51,6 +51,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
+	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/macro"
 	"github.com/jetsetilly/gopher2600/notifications"
@@ -828,7 +829,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 	// record wav file
 	if dbg.opts.Wav {
 		fn := unique.Filename("audio", dbg.cartload.Name)
-		ww, err := wavwriter.NewWavWriter(fn)
+		ww, err := wavwriter.NewWavWriter(fn, audio.AverageSampleFreq)
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
 		}
@@ -837,7 +838,10 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 
 	// record video
 	if dbg.opts.Video {
-		dbg.gui.SetFeature(gui.ReqVideoRecord, true)
+		err := dbg.gui.SetFeature(gui.ReqVideoRecord, true)
+		if err != nil {
+			return fmt.Errorf("debugger: %w", err)
+		}
 	}
 
 	if dbg.opts.Macro != "" {

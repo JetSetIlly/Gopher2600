@@ -214,8 +214,8 @@ func (rnd *gl21) isScreenshotting() bool {
 	return false
 }
 
-func (rnd *gl21) record(enable bool) {
-	rnd.video.Enable(enable)
+func (rnd *gl21) record(enable bool) error {
+	return rnd.video.Enable(enable)
 }
 
 func (rnd *gl21) isRecording() bool {

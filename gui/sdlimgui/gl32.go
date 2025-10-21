@@ -282,8 +282,8 @@ func (rnd *gl32) isScreenshotting() bool {
 	return !rnd.scrsht.finished()
 }
 
-func (rnd *gl32) record(enable bool) {
-	rnd.video.Enable(enable)
+func (rnd *gl32) record(enable bool) error {
+	return rnd.video.Enable(enable)
 }
 
 func (rnd *gl32) isRecording() bool {

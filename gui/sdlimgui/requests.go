@@ -152,7 +152,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	case gui.ReqVideoRecord:
 		err = argLen(request.args, 1, 1)
 		if err == nil {
-			img.enableVideoRecording(request.args[0].(bool))
+			err = img.enableVideoRecording(request.args[0].(bool))
 		}
 
 	default:

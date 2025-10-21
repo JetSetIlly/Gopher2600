@@ -31,18 +31,20 @@ import (
 
 // WavWriter implements the television.AudioMixer interface
 type WavWriter struct {
-	filename string
-	buffer   []int16
+	filename   string
+	buffer     []int16
+	sampleRate int
 }
 
 // New is the preferred method of initialisation for the WavWriter type
-func NewWavWriter(filename string) (*WavWriter, error) {
+func NewWavWriter(filename string, sampleRate int) (*WavWriter, error) {
 	if !strings.HasSuffix(strings.ToLower(filename), ".wav") {
 		filename = fmt.Sprintf("%s.wav", filename)
 	}
 	aw := &WavWriter{
-		filename: filename,
-		buffer:   make([]int16, 0),
+		filename:   filename,
+		buffer:     make([]int16, 0),
+		sampleRate: sampleRate,
 	}
 	return aw, nil
 }
@@ -80,7 +82,7 @@ func (aw *WavWriter) EndMixing() error {
 	buf := audio.PCMBuffer{
 		Format: &audio.Format{
 			NumChannels: numChannels,
-			SampleRate:  tia.AverageSampleFreq,
+			SampleRate:  int(aw.sampleRate),
 		},
 		I16:            aw.buffer,
 		DataType:       audio.DataTypeI16,
