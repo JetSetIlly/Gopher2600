@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"fmt"
 	"image"
+	"io"
 
 	"github.com/jetsetilly/gopher2600/bots"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
@@ -150,9 +151,9 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		}
 
 	case gui.ReqVideoRecord:
-		err = argLen(request.args, 1, 1)
+		err = argLen(request.args, 1, 2)
 		if err == nil {
-			err = img.enableVideoRecording(request.args[0].(bool))
+			err = img.enableVideoRecording(request.args[0].(bool), request.args[1].(io.Writer))
 		}
 
 	default:

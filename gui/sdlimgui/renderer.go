@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"image"
+	"io"
 
 	"github.com/jetsetilly/imgui-go/v5"
 )
@@ -37,7 +38,7 @@ type renderer interface {
 	render()
 	screenshot(mode screenshotMode, finish chan screenshotResult)
 	isScreenshotting() bool
-	record(enable bool) error
+	record(enable bool, w io.Writer) error
 	isRecording() bool
 	addTexture(typ shaderType, linear bool, clamp bool, config any) texture
 	addFontTexture(fnt imgui.FontAtlas) texture

@@ -838,7 +838,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 
 	// record video
 	if dbg.opts.Video {
-		err := dbg.gui.SetFeature(gui.ReqVideoRecord, true)
+		err := dbg.gui.SetFeature(gui.ReqVideoRecord, true, os.Stdout)
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
 		}

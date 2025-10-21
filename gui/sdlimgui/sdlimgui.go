@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"io"
 	"sync/atomic"
 	"time"
 
@@ -369,7 +370,7 @@ func (img *SdlImgui) setEmulationMode(mode govern.Mode) error {
 		// should do it here
 		const disableVideoForDebugger = false
 		if disableVideoForDebugger {
-			_ = img.enableVideoRecording(false)
+			_ = img.enableVideoRecording(false, nil)
 		}
 
 		img.screen.clearTextureRenderers()
@@ -550,8 +551,8 @@ func (img *SdlImgui) getTVColour(col uint8) imgui.PackedColor {
 
 // video recording inhibits overlay drawing and gui windows. video recording is not disabled when
 // emulation is switched to debugger mode. video recording will resume if playmode is resumed
-func (img *SdlImgui) enableVideoRecording(enable bool) error {
-	err := img.rnd.record(enable)
+func (img *SdlImgui) enableVideoRecording(enable bool, w io.Writer) error {
+	err := img.rnd.record(enable, w)
 	if err != nil {
 		return err
 	}

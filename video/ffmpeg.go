@@ -22,10 +22,10 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
-	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
 )
 
@@ -69,6 +69,12 @@ type FFMPEG struct {
 	// is video recording enabled
 	enabled bool
 
+	// the time the recording started
+	start time.Time
+
+	// write messages to an io.Writer
+	log io.Writer
+
 	// the running ffmpeg command and the data pipe from the emulation
 	encoder *exec.Cmd
 	pipe    io.WriteCloser
@@ -101,7 +107,9 @@ func (vid *FFMPEG) Destroy() {
 	if vid.pipe != nil {
 		vid.pipe.Close()
 		if err := vid.encoder.Wait(); err != nil {
-			logger.Log(logger.Allow, "ffmpeg", err.Error())
+			if vid.log != nil {
+				fmt.Fprintln(vid.log, err.Error())
+			}
 		}
 		vid.pipe = nil
 		vid.encoder = nil
@@ -110,7 +118,9 @@ func (vid *FFMPEG) Destroy() {
 
 	if vid.wavs != nil {
 		if err := vid.wavs.EndMixing(); err != nil {
-			logger.Log(logger.Allow, "ffmpeg", err.Error())
+			if vid.log != nil {
+				fmt.Fprintln(vid.log, err.Error())
+			}
 		}
 		vid.tv.RemoveAudioMixer(vid.wavs)
 		vid.wavs = nil
@@ -121,6 +131,43 @@ func (vid *FFMPEG) Destroy() {
 		return
 	}
 
+	// summarise results
+	if vid.log != nil {
+		diff := time.Since(vid.start)
+		fps := float64(vid.lastFrameRendered) / diff.Seconds()
+
+		hrs := int(diff.Hours()) % 24
+		mins := int(diff.Minutes()) % 60
+		secs := int(diff.Seconds()) % 60
+
+		var dur strings.Builder
+		if hrs > 0 {
+			fmt.Fprintf(&dur, " %dhr", hrs)
+			if hrs > 1 {
+				fmt.Fprintf(&dur, "s")
+			}
+		}
+		if mins > 0 {
+			fmt.Fprintf(&dur, " %dmin", mins)
+			if mins > 1 {
+				fmt.Fprintf(&dur, "s")
+			}
+		}
+		if secs > 0 {
+			fmt.Fprintf(&dur, " %dsec", secs)
+			if secs > 1 {
+				fmt.Fprintf(&dur, "s")
+			}
+		}
+
+		fmt.Fprintf(vid.log, "%d frames recorded in%s (%.02f fps)\n", vid.lastFrameRendered, dur.String(), fps)
+	}
+
+	// probe temporary files before muxing
+	if vid.log != nil {
+		fmt.Fprintln(vid.log, "probing intermediary video and audio files")
+	}
+
 	// duration of video file
 	probeVideo := exec.Command("ffprobe",
 		"-v", "error",
@@ -129,14 +176,18 @@ func (vid *FFMPEG) Destroy() {
 
 	probeResult, err := probeVideo.Output()
 	if err != nil {
-		logger.Log(logger.Allow, "ffmpeg: probe video", err.Error())
+		if vid.log != nil {
+			fmt.Fprintln(vid.log, err.Error())
+		}
 		return
 	}
 	probeResult = []byte(strings.TrimSpace(string(probeResult)))
 
 	videoRate, err := strconv.ParseFloat(string(probeResult), 64)
 	if err != nil {
-		logger.Log(logger.Allow, "ffmpeg: parse audio probe", err.Error())
+		if vid.log != nil {
+			fmt.Fprintln(vid.log, err.Error())
+		}
 		return
 	}
 
@@ -148,21 +199,33 @@ func (vid *FFMPEG) Destroy() {
 
 	probeResult, err = probeAudio.Output()
 	if err != nil {
-		logger.Log(logger.Allow, "ffmpeg: probe audio", err.Error())
+		if vid.log != nil {
+			fmt.Fprintln(vid.log, err.Error())
+		}
 		return
 	}
 	probeResult = []byte(strings.TrimSpace(string(probeResult)))
 
 	audioRate, err := strconv.ParseFloat(string(probeResult), 64)
 	if err != nil {
-		logger.Log(logger.Allow, "ffmpeg", err.Error())
+		if vid.log != nil {
+			fmt.Fprintln(vid.log, err.Error())
+		}
 		return
 	}
 
 	// calculate stretch value
 	stretch := audioRate / videoRate
 
+	if vid.log != nil {
+		fmt.Fprintf(vid.log, "stretching audio by a factor of %0.2f\n", 1.0/stretch)
+	}
+
 	// muxing with ffmpeg using the probed and calculated rates
+	if vid.log != nil {
+		fmt.Fprintf(vid.log, "muxing final output file: %s\n", vid.finalVideoFilename)
+	}
+
 	muxer := exec.Command("ffmpeg",
 		"-v", "error",
 		"-i", vid.tempVideoFilename, "-i", vid.tempAudioFilename,
@@ -173,18 +236,24 @@ func (vid *FFMPEG) Destroy() {
 	// using Run() function because we want to wait for ffmpeg to complete
 	err = muxer.Run()
 	if err != nil {
-		logger.Log(logger.Allow, "ffmpeg: muxing", err.Error())
+		if vid.log != nil {
+			fmt.Fprintln(vid.log, err.Error())
+		}
 		return
 	}
 
 	// removing temp files only if probing and muxing has succeeded
 	err = os.Remove(vid.tempVideoFilename)
 	if err != nil {
-		logger.Log(logger.Allow, "ffmpeg", err.Error())
+		if vid.log != nil {
+			fmt.Fprintln(vid.log, err.Error())
+		}
 	}
 	err = os.Remove(vid.tempAudioFilename)
 	if err != nil {
-		logger.Log(logger.Allow, "ffmpeg", err.Error())
+		if vid.log != nil {
+			fmt.Fprintln(vid.log, err.Error())
+		}
 	}
 }
 
@@ -309,11 +378,21 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 	}
 	vid.tv.AddAudioMixer(vid.wavs)
 
+	if vid.log != nil {
+		fmt.Fprintln(vid.log, "recording video")
+	}
+
 	return nil
 }
 
-func (vid *FFMPEG) Enable(enable bool) error {
+func (vid *FFMPEG) Enable(enable bool, w io.Writer) error {
 	vid.enabled = enable
+	vid.log = w
+	vid.start = time.Now()
+
+	if vid.log != nil {
+		fmt.Fprintln(vid.log, "testing for ffmpeg and ffprobe")
+	}
 
 	// check that both ffprobe and ffmpeg are available in the executable path
 	if vid.enabled {
@@ -345,12 +424,16 @@ func (vid *FFMPEG) Process(framenum int) {
 	}
 	vid.lastFrameRendered = framenum
 
+	if vid.log != nil {
+		fmt.Fprintf(vid.log, "frame %d...\r", framenum)
+	}
+
 	// get pixel data for frame and forward it to the running command
 	vid.rnd.ReadPixels(vid.width, vid.height, vid.pixels)
 
 	_, err := vid.pipe.Write(vid.pixels)
 	if err != nil {
-		logger.Log(logger.Allow, "ffmpeg", err.Error())
+		fmt.Fprintln(vid.log, err.Error())
 		vid.Destroy()
 	}
 }
