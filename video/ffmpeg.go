@@ -354,7 +354,7 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 	case ProfileYouTube4k:
 		opts = append(opts, ffmpegYouTube4k...)
 	default:
-		return fmt.Errorf("ffmpeg: unknown profile: %d", vid.profile)
+		return fmt.Errorf("ffmpeg: unknown profile: %s", vid.profile)
 	}
 	opts = append(opts, ffmpegOutput...)
 

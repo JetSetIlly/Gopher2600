@@ -20,7 +20,6 @@ package sdlimgui
 import (
 	"fmt"
 	"image"
-	"io"
 	"unsafe"
 
 	"github.com/go-gl/gl/v2.1/gl"
