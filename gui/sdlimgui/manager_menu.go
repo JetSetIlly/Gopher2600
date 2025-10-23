@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
@@ -218,16 +219,19 @@ func (wm *manager) drawMenu() {
 		imgui.SetCursorScreenPos(p)
 	}
 
-	buttonFromRight := func(s string, f func()) {
+	buttonFromRight := func(s string, leftclick func(), rightclick func()) {
 		sz := imgui.CalcTextSize(s, false, -1)
 		p := imgui.CursorScreenPos()
 		p.X -= sz.X
 		p.X -= spacing
 		imgui.SetCursorScreenPos(p)
 		if imgui.Button(s) {
-			if f != nil {
-				f()
+			if leftclick != nil {
+				leftclick()
 			}
+		}
+		if rightclick != nil && imgui.IsItemHovered() && imgui.IsMouseClicked(1) {
+			rightclick()
 		}
 		p.X -= spacing
 		imgui.SetCursorScreenPos(p)
@@ -285,9 +289,16 @@ func (wm *manager) drawMenu() {
 	// halt reason
 	haltReason := wm.img.cache.Dbg.HaltReason
 	if haltReason.Reason != "" {
-		buttonFromRight(haltReason.Reason, func() {
-			wm.img.dbg.PushFunctionImmediate(wm.img.dbg.ClearHaltReason)
-		})
+		buttonFromRight(haltReason.Reason,
+			func() {
+				if coprocessor.CoProcYieldType(haltReason.Reason) == coprocessor.YieldMemoryAccessError {
+					wm.debuggerWindows[winCoProcFaultsID].debuggerSetOpen(true)
+				}
+			},
+			func() {
+				wm.img.dbg.PushFunctionImmediate(wm.img.dbg.ClearHaltReason)
+			},
+		)
 		wm.img.imguiTooltip(func() {
 			imgui.Text(fmt.Sprintf("Frame: %d", haltReason.Coords.Frame))
 			imgui.Text(fmt.Sprintf("Scanline: %d", haltReason.Coords.Scanline))
