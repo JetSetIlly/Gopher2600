@@ -69,7 +69,7 @@ const (
 )
 
 // NewDPCplus is the preferred method of initialisation for the dpcPlus type.
-func NewDPCplus(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+func NewDPCplus(env *environment.Environment, loader cartridgeloader.Loader, arch string) (mapper.CartMapper, error) {
 	data, err := io.ReadAll(loader)
 	if err != nil {
 		return nil, fmt.Errorf("DPC+: %w", err)
@@ -95,7 +95,7 @@ func NewDPCplus(env *environment.Environment, loader cartridgeloader.Loader) (ma
 	}
 
 	// create addresses
-	cart.version, err = newVersion(env.Prefs.ARM.Model.Get().(string), data)
+	cart.version, err = newVersion(arch, data)
 	if err != nil {
 		return nil, fmt.Errorf("DPC+: %s", err.Error())
 	}

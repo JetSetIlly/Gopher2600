@@ -49,28 +49,33 @@ func fingerprintElf(loader cartridgeloader.Loader, anywhere bool) bool {
 	return false
 }
 
-func fingerprintAce(loader cartridgeloader.Loader) (bool, bool) {
-	// some ACE files embed an ELF file inside the ACE data. these files are
-	// identified by the presence of "elf-relocatable" in the data premable
-	wrappedELF := loader.ContainsLimit(144, []byte("elf-relocatable"))
+func fingerprintAce(loader cartridgeloader.Loader, unwrap bool) (bool, string) {
+	if unwrap {
+		// some ACE files embed an ELF file inside the ACE data. these files are
+		// identified by the presence of "elf-relocatable" in the data premable
+		wrappedELF := loader.ContainsLimit(144, []byte("elf-relocatable"))
 
-	// make double sure this is actually an elf file. otherwise it's just an
-	// ACE file with elf-relocatable in the data preamble
-	wrappedELF = wrappedELF && fingerprintElf(loader, true)
+		// make double sure this is actually an elf file. otherwise it's just an
+		// ACE file with elf-relocatable in the data preamble
+		if wrappedELF && fingerprintElf(loader, true) {
+			return true, "ELF_in_ACE"
+		}
 
-	if loader.ContainsLimit(144, []byte("ACE-2600")) {
-		return true, wrappedELF
+		// do the same for DPCp files
+		wrappedDPCp := loader.ContainsLimit(144, []byte("DPCp"))
+		if wrappedDPCp {
+			return true, "DPCp_in_ACE"
+		}
 	}
 
-	if loader.ContainsLimit(144, []byte("ACE-PC00")) {
-		return true, wrappedELF
+	if loader.ContainsLimit(144, []byte("ACE-2600")) ||
+		loader.ContainsLimit(144, []byte("ACE-PC00")) ||
+		loader.ContainsLimit(144, []byte("ACE-UF00")) {
+
+		return true, "ACE"
 	}
 
-	if loader.ContainsLimit(144, []byte("ACE-UF00")) {
-		return true, wrappedELF
-	}
-
-	return false, false
+	return false, ""
 }
 
 func (cart *Cartridge) fingerprintPlusROM(loader cartridgeloader.Loader) bool {
@@ -598,11 +603,10 @@ func (cart *Cartridge) fingerprint(loader cartridgeloader.Loader) (string, error
 		return "ELF", nil
 	}
 
-	if ok, wrappedElf := fingerprintAce(loader); ok {
-		if wrappedElf {
-			return "ACE_wrapped_ELF", nil
-		}
-		return "ACE", nil
+	unwrap := cart.env.Prefs.ARM.UnwrapACE.Get().(bool)
+
+	if ok, mapping := fingerprintAce(loader, unwrap); ok {
+		return mapping, nil
 	}
 
 	if ok, version := fingerprintCDF(loader); ok {

@@ -216,9 +216,9 @@ func (win *winCoProcFaults) draw(flt *faults.Faults, src *dwarf.Source) {
 
 		if src != nil {
 			imgui.Checkbox("Show Source in Tooltip", &win.showSrcInTooltip)
+			imgui.SameLineV(0, 20)
 		}
 
-		imgui.SameLineV(0, 20)
 		if imgui.Button("Clear") {
 			flt.Clear()
 		}

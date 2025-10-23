@@ -317,7 +317,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	case "DPC":
 		cart.mapper, err = newDPC(cart.env, cartload)
 	case "DPC+":
-		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload)
+		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload, "LPC2000")
 
 	case "CDF":
 		cart.mapper, err = cdf.NewCDF(cart.env, cartload, "CDFJ")
@@ -332,15 +332,15 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 	case "MVC":
 		cart.mapper, err = moviecart.NewMoviecart(cart.env, cartload)
-
 	case "ACE":
 		cart.mapper, err = ace.NewAce(cart.env, cartload)
-
-	case "ACE_wrapped_ELF":
-		cart.mapper, err = elf.NewElf(cart.env, cartload, true)
-
 	case "ELF":
 		cart.mapper, err = elf.NewElf(cart.env, cartload, false)
+
+	case "DPCp_in_ACE":
+		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload, "STM32F407VGT6")
+	case "ELF_in_ACE":
+		cart.mapper, err = elf.NewElf(cart.env, cartload, true)
 
 	case unrecognisedMapper:
 		return fmt.Errorf("cartridge: unrecognised mapper")

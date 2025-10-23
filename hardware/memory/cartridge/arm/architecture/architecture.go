@@ -135,7 +135,7 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.T1TCR = 0xe0008004
 		mmap.T1TC = 0xe0008008
 
-		mmap.APBDIV = 0xE01FC100
+		mmap.APBDIV = 0xe01fc100
 
 		// boundary value is arbitrary and was suggested by John Champeau (09/04/2022)
 		mmap.NullAccessBoundary = 0x00000751
