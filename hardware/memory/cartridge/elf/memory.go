@@ -983,16 +983,23 @@ func (mem *elfMemory) Segments() []mapper.CartStaticSegment {
 		},
 	}
 
+	var sections []mapper.CartStaticSegment
+
 	for _, n := range mem.sectionNames {
 		sec := mem.sectionsByName[n]
 		if sec.inMemory() {
-			segments = append(segments, mapper.CartStaticSegment{
+			sections = append(sections, mapper.CartStaticSegment{
 				Name:   sec.name,
 				Origin: sec.origin,
 				Memtop: sec.memtop,
 			})
 		}
 	}
+
+	segments = append(segments, mapper.CartStaticSegment{
+		Name:        "Sections",
+		SubSegments: sections,
+	})
 
 	return segments
 }

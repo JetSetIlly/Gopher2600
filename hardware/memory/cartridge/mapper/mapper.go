@@ -243,9 +243,10 @@ type CartStaticBus interface {
 // memory. The Name field can be used to reference the actual memory or to
 // update the underlying memory with CartStaticBus.PutStatic()
 type CartStaticSegment struct {
-	Name   string
-	Origin uint32
-	Memtop uint32
+	Name        string
+	Origin      uint32
+	Memtop      uint32
+	SubSegments []CartStaticSegment
 }
 
 // CartStatic conceptualises a static data area that is inaccessible through the 6507.

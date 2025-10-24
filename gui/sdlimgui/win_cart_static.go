@@ -109,159 +109,173 @@ func (win *winCartStatic) draw(static mapper.CartStatic) {
 	// affected by the CellPadding value
 	cellPadding := imgui.CurrentStyle().CellPadding()
 
+	drawHeader := func(seg mapper.CartStaticSegment) {
+		imgui.Spacing()
+		imgui.Text("Origin:")
+		imgui.SameLine()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
+		imgui.Text(fmt.Sprintf("%08x", seg.Origin))
+		imgui.PopStyleColor()
+		imgui.SameLineV(0, 20)
+		imgui.Text("Memtop:")
+		imgui.SameLine()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
+		imgui.Text(fmt.Sprintf("%08x", seg.Memtop))
+		imgui.PopStyleColor()
+
+		imgui.Spacing()
+		imgui.Spacing()
+	}
+
+	drawSegment := func(seg mapper.CartStaticSegment) {
+		currStatic := static
+		currData, ok := currStatic.Reference(seg.Name)
+
+		if ok {
+			win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
+				// the borrowed source instance is used in the after()
+				// function to help decorate the memory cells in the table.
+				// a check for nil is done then
+
+				compData, ok := compStatic.Reference(seg.Name)
+				if ok {
+					// take copy of seg.Name because we'll be accessing it in a PushFunction() below
+					segname := seg.Name
+
+					// pos is retreived in before() and used in after()
+					var pos imgui.Vec2
+
+					// number of colors to pop in afer()
+					popColor := 0
+
+					before := func(idx int) {
+						pos = imgui.CursorScreenPos()
+
+						// difference colour
+						a := currData[idx]
+						b := compData[idx]
+						if a != b {
+							imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.ValueDiff)
+							popColor++
+						}
+					}
+
+					after := func(idx int) {
+						imgui.PopStyleColorV(popColor)
+						popColor = 0
+
+						// if no source is available then there is nothing
+						// more to do in the after() function
+						if src == nil {
+							return
+						}
+
+						// idx is based on original values of type uint16 so the type conversion is safe
+						addr := seg.Origin + uint32(idx)
+
+						dl := imgui.WindowDrawList()
+						if varb, ok := src.GlobalsByAddress[uint64(addr)]; ok {
+							sz := imgui.FontSize() * 0.4
+							pos.X += 1.0
+							pos.Y += 1.0
+							p1 := pos
+							p1.Y += sz
+							p2 := pos
+							p2.X += sz
+							dl.AddTriangleFilled(pos, p1, p2, imgui.PackedColorFromVec4(win.img.cols.ValueSymbol))
+
+							win.img.imguiTooltip(func() {
+								var value uint32
+								currValue := "??"
+								compValue := "??"
+
+								switch varb.Type.Size {
+								case 4:
+									if d, ok := currStatic.Read32bit(addr); ok {
+										value = d
+										currValue = fmt.Sprintf("%08x", d)
+									}
+									if d, ok := compStatic.Read32bit(addr); ok {
+										compValue = fmt.Sprintf("%08x", d)
+									}
+								case 2:
+									if d, ok := currStatic.Read16bit(addr); ok {
+										value = uint32(d)
+										currValue = fmt.Sprintf("%04x", d)
+									}
+									if d, ok := compStatic.Read16bit(addr); ok {
+										compValue = fmt.Sprintf("%04x", d)
+									}
+								default:
+									if d, ok := currStatic.Read8bit(addr); ok {
+										value = uint32(d)
+										currValue = fmt.Sprintf("%02x", d)
+									}
+									if d, ok := compStatic.Read8bit(addr); ok {
+										compValue = fmt.Sprintf("%02x", d)
+									}
+								}
+
+								// wrap drawVariableTooltip() in a cellpadding style. see comment for
+								// cellPadding declartion above
+								imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, cellPadding)
+								drawVariableTooltip(varb, value, win.img.cols)
+								imgui.PopStyleVar()
+
+								if currValue != compValue {
+									imgui.Spacing()
+									imgui.Separator()
+									imgui.Spacing()
+									imguiColorLabelSimple(fmt.Sprintf("%s %c %s", compValue, fonts.ByteChange, currValue), win.img.cols.ValueDiff)
+								}
+							}, true)
+						} else {
+							a := compData[idx]
+							b := currData[idx]
+							if a != b {
+								win.img.imguiTooltip(func() {
+									imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
+								}, true)
+							}
+						}
+					}
+
+					commit := func(idx int, data uint8) {
+						win.img.dbg.PushFunction(func() {
+							win.img.dbg.VCS().Mem.Cart.GetStaticBus().PutStatic(segname, idx, data)
+						})
+					}
+
+					drawByteGrid(fmt.Sprintf("##cartStatic##%s", segname), currData, seg.Origin, before, after, commit)
+				}
+			})
+		}
+	}
+
 	imgui.BeginTabBar("")
 	for _, seg := range static.Segments() {
 		// skip any segments that are empty for whatever reason
-		if seg.Origin == seg.Memtop {
+		if seg.Origin == seg.Memtop && len(seg.SubSegments) == 0 {
 			continue
 		}
 
 		if imgui.BeginTabItemV(seg.Name, nil, 0) {
 			win.selectedArea = seg.Name
-
-			imgui.Spacing()
-			imgui.Text("Origin:")
-			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
-			imgui.Text(fmt.Sprintf("%08x", seg.Origin))
-			imgui.PopStyleColor()
-			imgui.SameLineV(0, 20)
-			imgui.Text("Memtop:")
-			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
-			imgui.Text(fmt.Sprintf("%08x", seg.Memtop))
-			imgui.PopStyleColor()
-
-			imgui.Spacing()
-			imgui.Spacing()
-
-			imgui.BeginChildV("cartstatic", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
-
-			currStatic := static
-			currData, ok := currStatic.Reference(seg.Name)
-
-			if ok {
-				win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
-					// the borrowed source instance is used in the after()
-					// function to help decorate the memory cells in the table.
-					// a check for nil is done then
-
-					compData, ok := compStatic.Reference(seg.Name)
-					if ok {
-						// take copy of seg.Name because we'll be accessing it in a PushFunction() below
-						segname := seg.Name
-
-						// pos is retreived in before() and used in after()
-						var pos imgui.Vec2
-
-						// number of colors to pop in afer()
-						popColor := 0
-
-						before := func(idx int) {
-							pos = imgui.CursorScreenPos()
-
-							// difference colour
-							a := currData[idx]
-							b := compData[idx]
-							if a != b {
-								imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.ValueDiff)
-								popColor++
-							}
-						}
-
-						after := func(idx int) {
-							imgui.PopStyleColorV(popColor)
-							popColor = 0
-
-							// if no source is available then there is nothing
-							// more to do in the after() function
-							if src == nil {
-								return
-							}
-
-							// idx is based on original values of type uint16 so the type conversion is safe
-							addr := seg.Origin + uint32(idx)
-
-							dl := imgui.WindowDrawList()
-							if varb, ok := src.GlobalsByAddress[uint64(addr)]; ok {
-								sz := imgui.FontSize() * 0.4
-								pos.X += 1.0
-								pos.Y += 1.0
-								p1 := pos
-								p1.Y += sz
-								p2 := pos
-								p2.X += sz
-								dl.AddTriangleFilled(pos, p1, p2, imgui.PackedColorFromVec4(win.img.cols.ValueSymbol))
-
-								win.img.imguiTooltip(func() {
-									var value uint32
-									currValue := "??"
-									compValue := "??"
-
-									switch varb.Type.Size {
-									case 4:
-										if d, ok := currStatic.Read32bit(addr); ok {
-											value = d
-											currValue = fmt.Sprintf("%08x", d)
-										}
-										if d, ok := compStatic.Read32bit(addr); ok {
-											compValue = fmt.Sprintf("%08x", d)
-										}
-									case 2:
-										if d, ok := currStatic.Read16bit(addr); ok {
-											value = uint32(d)
-											currValue = fmt.Sprintf("%04x", d)
-										}
-										if d, ok := compStatic.Read16bit(addr); ok {
-											compValue = fmt.Sprintf("%04x", d)
-										}
-									default:
-										if d, ok := currStatic.Read8bit(addr); ok {
-											value = uint32(d)
-											currValue = fmt.Sprintf("%02x", d)
-										}
-										if d, ok := compStatic.Read8bit(addr); ok {
-											compValue = fmt.Sprintf("%02x", d)
-										}
-									}
-
-									// wrap drawVariableTooltip() in a cellpadding style. see comment for
-									// cellPadding declartion above
-									imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, cellPadding)
-									drawVariableTooltip(varb, value, win.img.cols)
-									imgui.PopStyleVar()
-
-									if currValue != compValue {
-										imgui.Spacing()
-										imgui.Separator()
-										imgui.Spacing()
-										imguiColorLabelSimple(fmt.Sprintf("%s %c %s", compValue, fonts.ByteChange, currValue), win.img.cols.ValueDiff)
-									}
-								}, true)
-							} else {
-								a := compData[idx]
-								b := currData[idx]
-								if a != b {
-									win.img.imguiTooltip(func() {
-										imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
-									}, true)
-								}
-							}
-						}
-
-						commit := func(idx int, data uint8) {
-							win.img.dbg.PushFunction(func() {
-								win.img.dbg.VCS().Mem.Cart.GetStaticBus().PutStatic(segname, idx, data)
-							})
-						}
-
-						drawByteGrid(fmt.Sprintf("##cartStatic##%s", segname), currData, seg.Origin, before, after, commit)
+			if len(seg.SubSegments) == 0 {
+				drawHeader(seg)
+				imgui.BeginChildV("cartstatic", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
+				drawSegment(seg)
+				imgui.EndChild()
+			} else {
+				imgui.BeginChildV("cartstatic", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
+				for _, sub := range seg.SubSegments {
+					if imgui.CollapsingHeader(sub.Name) {
+						drawHeader(sub)
+						drawSegment(sub)
 					}
-				})
+				}
+				imgui.EndChild()
 			}
-
-			imgui.EndChild()
-
 			imgui.EndTabItem()
 		}
 	}
