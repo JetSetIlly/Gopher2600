@@ -38,12 +38,8 @@ func (arm *ARM) sCycle_ARMv7_M(_ busAccess, addr uint32) {
 	}
 	arm.state.lastCycle = S
 
-	if !arm.mmap.IsFlash(addr) {
-		arm.state.stretchedCycles++
-		return
-	}
-
-	arm.state.stretchedCycles += arm.clklenFlash
+	latency := arm.mmap.AddrLatency(addr)
+	arm.state.stretchedCycles += arm.clkLen[latency]
 }
 
 func (arm *ARM) nCycle_ARMv7_M(_ busAccess, addr uint32) {
@@ -62,10 +58,11 @@ func (arm *ARM) nCycle_ARMv7_M(_ busAccess, addr uint32) {
 	}
 	arm.state.lastCycle = N
 
-	if !arm.mmap.IsFlash(addr) {
+	latency := arm.mmap.AddrLatency(addr)
+	if latency < slowMemoryLatency {
 		arm.state.stretchedCycles += float32(mclkNonFlash)
 		return
 	}
 
-	arm.state.stretchedCycles += arm.clklenFlash * float32(mclkFlash)
+	arm.state.stretchedCycles += arm.clkLen[latency] * float32(mclkFlash)
 }

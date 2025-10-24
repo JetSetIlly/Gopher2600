@@ -65,8 +65,8 @@ func NewAce(env *environment.Environment, loader cartridgeloader.Loader) (mapper
 	cart.mem.Plumb(cart.arm)
 
 	logger.Logf(env, "ACE", "ccm: %08x to %08x", cart.mem.ccmOrigin, cart.mem.ccmMemtop)
-	logger.Logf(env, "ACE", "flash: %08x to %08x", cart.mem.downloadOrigin, cart.mem.downloadMemtop)
-	logger.Logf(env, "ACE", "buffer: %08x to %08x", cart.mem.bufferOrigin, cart.mem.bufferMemtop)
+	logger.Logf(env, "ACE", "flash: %08x to %08x", cart.mem.flashOrigin, cart.mem.flashMemtop)
+	logger.Logf(env, "ACE", "buffer: %08x to %08x", cart.mem.sramOrigin, cart.mem.sramMemtop)
 	logger.Logf(env, "ACE", "gpio: %08x to %08x", cart.mem.gpioOrigin, cart.mem.gpioMemtop)
 
 	return cart, nil
@@ -223,7 +223,7 @@ func (cart *Ace) Step(clock float32) {
 func (cart *Ace) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, 1)
 	c[0] = mapper.BankContent{Number: 0,
-		Data:    cart.mem.buffer,
+		Data:    cart.mem.sram,
 		Origins: []uint16{memorymap.OriginCart},
 	}
 	return c

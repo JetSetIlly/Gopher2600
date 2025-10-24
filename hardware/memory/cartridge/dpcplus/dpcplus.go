@@ -46,7 +46,7 @@ type dpcPlus struct {
 
 	// there is only one version of DPC+ currently but this method of
 	// specifying addresses mirrors how we do it in the CDF type
-	version version
+	version mmap
 
 	// banks and the currently selected bank
 	bankSize int
@@ -69,7 +69,7 @@ const (
 )
 
 // NewDPCplus is the preferred method of initialisation for the dpcPlus type.
-func NewDPCplus(env *environment.Environment, loader cartridgeloader.Loader, arch string) (mapper.CartMapper, error) {
+func NewDPCplus(env *environment.Environment, loader cartridgeloader.Loader, version string) (mapper.CartMapper, error) {
 	data, err := io.ReadAll(loader)
 	if err != nil {
 		return nil, fmt.Errorf("DPC+: %w", err)
@@ -77,7 +77,7 @@ func NewDPCplus(env *environment.Environment, loader cartridgeloader.Loader, arc
 
 	cart := &dpcPlus{
 		env:       env,
-		mappingID: "DPC+",
+		mappingID: version,
 		bankSize:  4096,
 		state:     newDPCPlusState(),
 		yieldHook: coprocessor.StubCartYieldHook{},
@@ -95,7 +95,7 @@ func NewDPCplus(env *environment.Environment, loader cartridgeloader.Loader, arc
 	}
 
 	// create addresses
-	cart.version, err = newVersion(arch, data)
+	cart.version, err = newVersion(version)
 	if err != nil {
 		return nil, fmt.Errorf("DPC+: %s", err.Error())
 	}
@@ -129,7 +129,7 @@ func NewDPCplus(env *environment.Environment, loader cartridgeloader.Loader, arc
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm.NewARM(cart.env, cart.version.mmap, cart.state.static, cart)
+	cart.arm = arm.NewARM(cart.env, cart.version.arch, cart.state.static, cart)
 
 	return cart, nil
 }
@@ -177,7 +177,7 @@ func (cart *dpcPlus) PlumbFromDifferentEmulation(env *environment.Environment) {
 	if cart.armState == nil {
 		panic("cannot plumb this ELF instance because the ARM state is nil")
 	}
-	cart.arm = arm.NewARM(cart.env, cart.version.mmap, cart.state.static, cart)
+	cart.arm = arm.NewARM(cart.env, cart.version.arch, cart.state.static, cart)
 	cart.arm.Plumb(cart.env, cart.armState, cart.state.static, cart)
 	cart.armState = nil
 	cart.yieldHook = &coprocessor.StubCartYieldHook{}

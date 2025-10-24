@@ -111,25 +111,25 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 	ver := version{
 		mmap: mmap,
 
-		driverROMOrigin: mmap.FlashOrigin,
-		driverROMMemtop: mmap.FlashOrigin | 0x000007ff, // 2k
-		customROMOrigin: mmap.FlashOrigin | 0x00000800,
-		customROMMemtop: mmap.FlashMemtop,
-		driverRAMOrigin: mmap.SRAMOrigin,
-		driverRAMMemtop: mmap.SRAMOrigin | 0x000007ff, // 2k
-		dataRAMOrigin:   mmap.SRAMOrigin | 0x00000800,
+		driverROMOrigin: mmap.Regions["Flash"].Origin,
+		driverROMMemtop: mmap.Regions["Flash"].Origin | 0x000007ff, // 2k
+		customROMOrigin: mmap.Regions["Flash"].Origin | 0x00000800,
+		customROMMemtop: mmap.Regions["Flash"].Memtop,
+		driverRAMOrigin: mmap.Regions["SRAM"].Origin,
+		driverRAMMemtop: mmap.Regions["SRAM"].Origin | 0x000007ff, // 2k
+		dataRAMOrigin:   mmap.Regions["SRAM"].Origin | 0x00000800,
 
 		// data RAM memtop is different for CDFJ+
-		dataRAMMemtop: mmap.SRAMOrigin | 0x000017ff,
+		dataRAMMemtop: mmap.Regions["SRAM"].Origin | 0x000017ff,
 
 		// there is no variables segment in CDFJ+ so these value are reset in
 		// that instance
-		variablesRAMOrigin: mmap.SRAMOrigin | 0x00001800,
-		variablesRAMMemtop: mmap.SRAMOrigin | 0x00001fff,
+		variablesRAMOrigin: mmap.Regions["SRAM"].Origin | 0x00001800,
+		variablesRAMMemtop: mmap.Regions["SRAM"].Origin | 0x00001fff,
 	}
 
 	// entry point into ARM program (different for CDFJ+)
-	ver.entrySP = mmap.SRAMOrigin | 0x00001fdc
+	ver.entrySP = mmap.Regions["SRAM"].Origin | 0x00001fdc
 	ver.entryLR = ver.customROMOrigin
 	ver.entryPC = ver.entryLR + 8
 
@@ -137,7 +137,7 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 	switch v {
 	case "CDFJ+":
 		// data RAM memtop is different for CDFJ+
-		ver.dataRAMMemtop = mmap.SRAMOrigin | 0x00007fff
+		ver.dataRAMMemtop = mmap.Regions["SRAM"].Origin | 0x00007fff
 
 		// variables segment concept not used in CDFJ+
 		ver.variablesRAMOrigin = 0x0

@@ -60,6 +60,9 @@ const cycleLimit = 1500000
 // running in immediate mode
 const instructionsLimit = 1300000
 
+// The latency above which the memory is considered slow for cycle counting purposes
+const slowMemoryLatency = 25.0
+
 // stepFunction variations are a result of different ARM architectures
 type stepFunction func(opcode uint16, memIdx int)
 
@@ -218,6 +221,9 @@ type ARM struct {
 	mem  SharedMemory
 	hook CartridgeHook
 
+	// map of clkLen values per possible latency values
+	clkLen map[float64]float32
+
 	// the binary interface for reading data returned by SharedMemory interface.
 	// defaults to LittleEndian
 	byteOrder binary.ByteOrder
@@ -248,8 +254,7 @@ type ARM struct {
 	// MAM also requires no stretching.
 	//
 	// updated from prefs on every Run() invocation
-	Clk         float32
-	clklenFlash float32
+	Clk float32
 
 	// value used to stretch (or shink) the number of cycles used by each
 	// instruction. a value of 1.0 is a neutral regulator
@@ -330,6 +335,7 @@ func NewARM(env *environment.Environment, mmap architecture.Map, mem SharedMemor
 		mmap:           mmap,
 		mem:            mem,
 		hook:           hook,
+		clkLen:         make(map[float64]float32),
 		byteOrder:      binary.LittleEndian,
 		executionCache: make(map[uint32][]decodeFunction),
 		state:          &ARMState{},
@@ -485,9 +491,13 @@ func (arm *ARM) updatePrefs() {
 	// update clock value from preferences
 	arm.Clk = float32(arm.env.Prefs.ARM.Clock.Get().(float64))
 
-	// clklen for flash based on flash latency setting
-	latencyInMhz := (1 / (arm.mmap.FlashLatency / 1000000000)) / 1000000
-	arm.clklenFlash = float32(math.Ceil(float64(arm.Clk) / latencyInMhz))
+	// update clk len values in architecture mmap
+	for _, r := range arm.mmap.Regions {
+		if _, ok := arm.clkLen[r.Latency]; !ok {
+			latencyInMhz := (1 / (r.Latency / 1000000000)) / 1000000
+			arm.clkLen[r.Latency] = float32(math.Ceil(float64(arm.Clk) / latencyInMhz))
+		}
+	}
 
 	// get clock regulator from preferences
 	arm.cycleRegulator = float32(arm.env.Prefs.ARM.CycleRegulator.Get().(float64))

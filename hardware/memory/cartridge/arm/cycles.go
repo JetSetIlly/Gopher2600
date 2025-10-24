@@ -141,8 +141,8 @@ func (arm *ARM) storeRegisterCycles(addr uint32) {
 // add cycles accumulated during an BX to ARM code instruction. this is
 // definitely only an estimate.
 func (arm *ARM) armInterruptCycles(i ARMinterruptReturn) {
-	// we'll assume all writes are to flash memory
-	arm.state.stretchedCycles += float32(i.NumMemAccess) * arm.clklenFlash
+	// not taking into account latency of memory access
+	arm.state.stretchedCycles += float32(i.NumMemAccess)
 	arm.state.stretchedCycles += float32(i.NumAdditionalCycles)
 }
 

@@ -45,6 +45,13 @@ const (
 	MAMfull
 )
 
+// Regions of memory in the architecture's map
+type MemoryRegion struct {
+	Origin  uint32
+	Memtop  uint32
+	Latency float64
+}
+
 // Map of the differences between architectures. The differences are led by the
 // cartridge architecture.
 type Map struct {
@@ -54,14 +61,8 @@ type Map struct {
 	// some ARM architectures allow misaligned accesses for some instructions
 	MisalignedAccesses bool
 
-	FlashOrigin uint32
-	FlashMemtop uint32
-
-	SRAMOrigin uint32
-	SRAMMemtop uint32
-
-	// the memory latency of the Flash memory block (in nanoseconds)
-	FlashLatency float64
+	// list of memory regions
+	Regions map[string]*MemoryRegion
 
 	// peripherals
 
@@ -107,6 +108,7 @@ type Map struct {
 func NewMap(cart CartArchitecture) Map {
 	mmap := Map{
 		CartArchitecture: cart,
+		Regions:          make(map[string]*MemoryRegion),
 	}
 
 	switch mmap.CartArchitecture {
@@ -119,12 +121,16 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.ARMArchitecture = ARM7TDMI
 		mmap.MisalignedAccesses = false
 
-		mmap.FlashOrigin = 0x00000000
-		mmap.FlashMemtop = 0x0fffffff
-		mmap.SRAMOrigin = 0x40000000
-		mmap.SRAMMemtop = 0x4fffffff
-
-		mmap.FlashLatency = 50.0
+		mmap.Regions["Flash"] = &MemoryRegion{
+			Origin:  0x00000000,
+			Memtop:  0x0fffffff,
+			Latency: 50.0,
+		}
+		mmap.Regions["SRAM"] = &MemoryRegion{
+			Origin:  0x40000000,
+			Memtop:  0x4fffffff,
+			Latency: 10.0,
+		}
 
 		mmap.HasMAM = true
 		mmap.MAMCR = 0xe01fc000
@@ -161,15 +167,24 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.ARMArchitecture = ARMv7_M
 		mmap.MisalignedAccesses = true
 
-		mmap.FlashOrigin = 0x20000000
-		mmap.FlashMemtop = 0x2fffffff
-		mmap.SRAMOrigin = 0x10000000
-		mmap.SRAMMemtop = 0x1fffffff
+		mmap.Regions["Flash"] = &MemoryRegion{
+			Origin:  0x08020000,
+			Memtop:  0x0802ffff,
+			Latency: 50.0,
+		}
+		mmap.Regions["SRAM"] = &MemoryRegion{
+			Origin:  0x20000000,
+			Memtop:  0x2fffffff,
+			Latency: 10.0,
+		}
+		mmap.Regions["CCM"] = &MemoryRegion{
+			Origin:  0x10000000,
+			Memtop:  0x1fffffff,
+			Latency: 1.0,
+		}
 
-		mmap.FlashLatency = 10.0
-
-		// there is not MAM in this architecture but the effect of MAMfull is
-		// what we want
+		// there is no MAM in this architecture but the effect of MAMfull is what we want
+		mmap.HasMAM = false
 		mmap.PreferredMAMCR = MAMfull
 
 		mmap.HasTIM2 = true
@@ -200,7 +215,11 @@ func NewMap(cart CartArchitecture) Map {
 	return mmap
 }
 
-// IsFlash returns true if address is in flash memory range.
-func (mmap *Map) IsFlash(addr uint32) bool {
-	return addr >= mmap.FlashOrigin && addr <= mmap.FlashMemtop
+func (mmap *Map) AddrLatency(addr uint32) float64 {
+	for _, r := range mmap.Regions {
+		if addr >= r.Origin && addr <= r.Memtop {
+			return r.Latency
+		}
+	}
+	return 1.0
 }

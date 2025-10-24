@@ -16,13 +16,13 @@
 package dpcplus
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 )
 
-// there is only one version of DPC+ currently but this method of specifying
-// addresses mirrors how we do it in the CDF type.
-type version struct {
-	mmap architecture.Map
+type mmap struct {
+	arch architecture.Map
 
 	// segment origins
 	driverROMOrigin uint32
@@ -45,52 +45,60 @@ type version struct {
 	dataRAMMemtop   uint32
 	freqRAMMemtop   uint32
 
-	// stack should be within the range of the RAM copy of the frequency tables.
-	stackOrigin uint32
+	ccmAvailable bool
+	ccmOrigin    uint32
+	ccmMemtop    uint32
 }
 
-func newVersion(memModel string, data []uint8) (version, error) {
-	var mmap architecture.Map
+func newVersion(id string) (mmap, error) {
+	var arch architecture.Map
 
-	switch memModel {
-	case "AUTO":
-		mmap = architecture.NewMap(architecture.Harmony)
+	switch id {
+	case "DPC+":
+		arch = architecture.NewMap(architecture.Harmony)
+		return mmap{
+			arch:            arch,
+			driverROMOrigin: arch.Regions["Flash"].Origin,
+			driverROMMemtop: arch.Regions["Flash"].Origin | 0x00000bff,
+			customROMOrigin: arch.Regions["Flash"].Origin | 0x00000c00,
+			customROMMemtop: arch.Regions["Flash"].Origin | 0x00006bff,
+			dataROMOrigin:   arch.Regions["Flash"].Origin | 0x00006c00,
+			dataROMMemtop:   arch.Regions["Flash"].Origin | 0x00007bff,
+			freqROMOrigin:   arch.Regions["Flash"].Origin | 0x00007c00,
+			freqROMMemtop:   arch.Regions["Flash"].Origin | 0x00008000,
+			driverRAMOrigin: arch.Regions["SRAM"].Origin,
+			driverRAMMemtop: arch.Regions["SRAM"].Origin | 0x00000bff,
+			dataRAMOrigin:   arch.Regions["SRAM"].Origin | 0x00000c00,
+			dataRAMMemtop:   arch.Regions["SRAM"].Origin | 0x00001bff,
+			freqRAMOrigin:   arch.Regions["SRAM"].Origin | 0x00001c00,
+			freqRAMMemtop:   arch.Regions["SRAM"].Origin | 0x00002000,
+		}, nil
 
-	case "LPC2000":
-		// older preference value. deprecated
-		fallthrough
-	case "ARM7TDMI":
-		// old value used to indicate ARM7TDMI architecture. easiest to support
-		// it here in this manner
-		mmap = architecture.NewMap(architecture.Harmony)
+	case "DPCp":
+		arch = architecture.NewMap(architecture.PlusCart)
+		return mmap{
+			arch:            arch,
+			driverROMOrigin: arch.Regions["SRAM"].Origin,
+			driverROMMemtop: arch.Regions["SRAM"].Origin | 0x00000bff,
+			customROMOrigin: arch.Regions["SRAM"].Origin | 0x00000c00,
+			customROMMemtop: arch.Regions["SRAM"].Origin | 0x00006bff,
+			dataROMOrigin:   arch.Regions["SRAM"].Origin | 0x00006c00,
+			dataROMMemtop:   arch.Regions["SRAM"].Origin | 0x00007bff,
+			freqROMOrigin:   arch.Regions["SRAM"].Origin | 0x00007c00,
+			freqROMMemtop:   arch.Regions["SRAM"].Origin | 0x00008000,
+			driverRAMOrigin: arch.Regions["SRAM"].Origin | 0x00010000,
+			driverRAMMemtop: arch.Regions["SRAM"].Origin | 0x00010bff,
+			dataRAMOrigin:   arch.Regions["SRAM"].Origin | 0x00010c00,
+			dataRAMMemtop:   arch.Regions["SRAM"].Origin | 0x00011bff,
+			freqRAMOrigin:   arch.Regions["SRAM"].Origin | 0x00011c00,
+			freqRAMMemtop:   arch.Regions["SRAM"].Origin | 0x00012000,
 
-	case "STM32F407VGT6":
-		// older preference value. deprecated
-		fallthrough
-	case "ARMv7_M":
-		// old value used to indicate ARM7TDMI architecture. easiest to support
-		// it here in this manner
-		mmap = architecture.NewMap(architecture.PlusCart)
+			// DPCp has CCM memory
+			ccmAvailable: true,
+			ccmOrigin:    arch.Regions["CCM"].Origin,
+			ccmMemtop:    arch.Regions["CCM"].Origin | 0x00010000,
+		}, nil
 	}
 
-	return version{
-		mmap:            mmap,
-		driverROMOrigin: mmap.FlashOrigin,
-		driverROMMemtop: mmap.FlashOrigin | 0x00000bff,
-		customROMOrigin: mmap.FlashOrigin | 0x00000c00,
-		customROMMemtop: mmap.FlashOrigin | 0x00006bff,
-		dataROMOrigin:   mmap.FlashOrigin | 0x00006c00,
-		dataROMMemtop:   mmap.FlashOrigin | 0x00007bff,
-		freqROMOrigin:   mmap.FlashOrigin | 0x00007c00,
-		freqROMMemtop:   mmap.FlashOrigin | 0x00008000,
-		driverRAMOrigin: mmap.SRAMOrigin | 0x00000000,
-		driverRAMMemtop: mmap.SRAMOrigin | 0x00000bff,
-		dataRAMOrigin:   mmap.SRAMOrigin | 0x00000c00,
-		dataRAMMemtop:   mmap.SRAMOrigin | 0x00001bff,
-		freqRAMOrigin:   mmap.SRAMOrigin | 0x00001c00,
-		freqRAMMemtop:   mmap.SRAMOrigin | 0x00002000,
-
-		// stack should be within the range of the RAM copy of the frequency tables.
-		stackOrigin: mmap.SRAMOrigin | 0x00001fdc,
-	}, nil
+	return mmap{}, fmt.Errorf("unknown DPC+ version: %s", id)
 }

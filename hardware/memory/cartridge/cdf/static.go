@@ -68,7 +68,8 @@ func (cart *cdf) newCDFstatic(env *environment.Environment, version version, car
 
 	// custom ARM program begins immediately after the ARM driver
 	stc.customROM.name = "Custom ROM"
-	stc.customROM.data = cartData[stc.version.customROMOrigin-stc.version.mmap.FlashOrigin:]
+	flashOrigin := stc.version.mmap.Regions["Flash"].Origin
+	stc.customROM.data = cartData[stc.version.customROMOrigin-flashOrigin:]
 	stc.customROM.origin = stc.version.customROMOrigin
 	stc.customROM.memtop = stc.version.customROMOrigin + uint32(len(stc.customROM.data)) - 1
 	if stc.customROM.memtop > stc.version.customROMMemtop {

@@ -317,7 +317,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	case "DPC":
 		cart.mapper, err = newDPC(cart.env, cartload)
 	case "DPC+":
-		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload, "LPC2000")
+		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload, "DPC+")
 
 	case "CDF":
 		cart.mapper, err = cdf.NewCDF(cart.env, cartload, "CDFJ")
@@ -338,7 +338,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = elf.NewElf(cart.env, cartload, false)
 
 	case "DPCp_in_ACE":
-		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload, "STM32F407VGT6")
+		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload, "DPCp")
 	case "ELF_in_ACE":
 		cart.mapper, err = elf.NewElf(cart.env, cartload, true)
 

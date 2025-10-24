@@ -65,20 +65,20 @@ type aceMemory struct {
 	gpioOrigin uint32
 	gpioMemtop uint32
 
-	// SRAM is called CCM in the Uno/PlusROM architecture
+	// CCM is a faster RAM than SRAM
 	ccm       []byte
 	ccmOrigin uint32
 	ccmMemtop uint32
 
-	// download memory is divided into three segments
-	download       []byte
-	downloadOrigin uint32
-	downloadMemtop uint32
+	// flash memory is divided into three segments
+	flash       []byte
+	flashOrigin uint32
+	flashMemtop uint32
 
-	// the buffer and ARM segments must be consecutive
-	buffer       []byte
-	bufferOrigin uint32
-	bufferMemtop uint32
+	// the sram and ARM segments must be consecutive
+	sram       []byte
+	sramOrigin uint32
+	sramMemtop uint32
 
 	// minimal interface to the ARM
 	arm            interruptARM
@@ -129,8 +129,8 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 	}
 
 	// CCM creation
-	mem.ccm = make([]byte, 0x00010000) // 4k
-	mem.ccmOrigin = mem.model.SRAMOrigin
+	mem.ccm = make([]byte, 0x00002000) // 8k
+	mem.ccmOrigin = mem.model.Regions["CCM"].Origin
 	mem.ccmMemtop = mem.ccmOrigin + uint32(len(mem.ccm)) - 1
 
 	// read header
@@ -164,23 +164,23 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 		(uint32(data[aceHeaderEntryPoint+3]) << 24)
 	logger.Logf(mem.env, "ACE", "header: entrypoint: %08x", mem.header.entry)
 
-	mem.download = data[:]
+	mem.flash = data[:]
 	switch mem.header.version {
 	case "ACE-PC00":
-		mem.downloadOrigin = 0x08020000
+		mem.flashOrigin = mem.model.Regions["Flash"].Origin
 		mem.header.entry = 0x1028
 		logger.Logf(mem.env, "ACE", "header: entrypoint adjusted to: %08x", mem.header.entry)
 	case "ACE-UF00":
-		mem.downloadOrigin = 0x08020000
+		mem.flashOrigin = mem.model.Regions["Flash"].Origin
 	case "ACE-2600":
 		fallthrough
 	default:
 		return nil, fmt.Errorf("ACE: version: %s not supported", mem.header.version)
 	}
-	mem.downloadMemtop = mem.downloadOrigin + uint32(len(mem.download))
+	mem.flashMemtop = mem.flashOrigin + uint32(len(mem.flash))
 
 	// the placement of data in memory revolves around the ARM entry point
-	mem.resetPC = arm.AlignTo16bits(mem.downloadOrigin + mem.header.entry)
+	mem.resetPC = arm.AlignTo16bits(mem.flashOrigin + mem.header.entry)
 	mem.resetLR = mem.resetPC
 	mem.resetSP = mem.ccmMemtop - 3
 
@@ -196,18 +196,18 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 	}
 
 	// placing nullFunction at end of ARM program
-	nullFunctionAddress := mem.downloadMemtop + 1
+	nullFunctionAddress := mem.flashMemtop + 1
 
 	// the code location of the null function must not be on a 16bit boundary
 	if arm.IsAlignedTo16bits(nullFunctionAddress) {
 		logger.Logf(mem.env, "ACE", "correcting alignment at end of ARM program")
-		mem.download = append(mem.download, 0x00)
-		mem.downloadMemtop++
+		mem.flash = append(mem.flash, 0x00)
+		mem.flashMemtop++
 		nullFunctionAddress++
 	}
 
-	mem.download = append(mem.download, nullFunction...)
-	mem.downloadMemtop += uint32(len(nullFunction))
+	mem.flash = append(mem.flash, nullFunction...)
+	mem.flashMemtop += uint32(len(nullFunction))
 
 	// although the code location of the null function is on a 16bit boundary
 	// (see above), the code is reached by interwork branching. we're using the
@@ -221,24 +221,10 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 
 	logger.Logf(mem.env, "ACE", "null function place at %08x", nullFunctionAddress)
 
-	// choose size for the remainder of the flash memory and place at the flash
-	// origin value for architecture
-	const bufferOverhead = 64000
-	var buffserSize uint32
-
-	if len(data) < 128000-bufferOverhead {
-		buffserSize = 128000
-	} else if len(data) < 256000-bufferOverhead {
-		buffserSize = 256000
-	} else if len(data) < 512000-bufferOverhead {
-		buffserSize = 512000
-	} else {
-		buffserSize = bufferOverhead
-	}
-
-	mem.buffer = make([]byte, buffserSize)
-	mem.bufferOrigin = mem.model.FlashOrigin
-	mem.bufferMemtop = mem.bufferOrigin + uint32(len(mem.buffer)-1)
+	// generous amount for SRAM to accomodate DPCp
+	mem.sram = make([]byte, 0x20000)
+	mem.sramOrigin = mem.model.Regions["SRAM"].Origin
+	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram)-1)
 
 	// set virtual argument. detailed information in the PlusCart firmware
 	// source:
@@ -246,36 +232,36 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 	// atari-2600-pluscart-master/source/STM32firmware/PlusCart/Src/cartridge_emulation_ACE.c
 
 	// ROM file argument
-	binary.LittleEndian.PutUint32(mem.buffer, mem.downloadOrigin)
+	binary.LittleEndian.PutUint32(mem.sram, mem.flashOrigin)
 
 	// CCM memory argument
-	binary.LittleEndian.PutUint32(mem.buffer[4:], mem.ccmOrigin)
+	binary.LittleEndian.PutUint32(mem.sram[4:], mem.ccmOrigin)
 
 	// addresses of func_reboot_into_cartridge() and emulate_firmware_cartridge()
 	// for our purposes, the function needs only to jump back to the link address
-	binary.LittleEndian.PutUint32(mem.buffer[8:], nullFunctionAddress)
-	binary.LittleEndian.PutUint32(mem.buffer[12:], nullFunctionAddress)
+	binary.LittleEndian.PutUint32(mem.sram[8:], nullFunctionAddress)
+	binary.LittleEndian.PutUint32(mem.sram[12:], nullFunctionAddress)
 
 	// system clock argument
 	clk := int(armPrefs.Clock.Get().(float64) * 1000000)
-	binary.LittleEndian.PutUint32(mem.buffer[16:], uint32(clk))
+	binary.LittleEndian.PutUint32(mem.sram[16:], uint32(clk))
 
 	// ACE version number
 	aceVersion := 2
-	binary.LittleEndian.PutUint32(mem.buffer[20:], uint32(aceVersion))
+	binary.LittleEndian.PutUint32(mem.sram[20:], uint32(aceVersion))
 
 	// pluscart revision number
 	plusCartRevision := 3
-	binary.LittleEndian.PutUint32(mem.buffer[24:], uint32(plusCartRevision))
+	binary.LittleEndian.PutUint32(mem.sram[24:], uint32(plusCartRevision))
 
 	// GPIO addresses
-	binary.LittleEndian.PutUint32(mem.buffer[28:], ADDR_IDR)
-	binary.LittleEndian.PutUint32(mem.buffer[32:], DATA_IDR)
-	binary.LittleEndian.PutUint32(mem.buffer[36:], DATA_ODR)
-	binary.LittleEndian.PutUint32(mem.buffer[40:], DATA_MODER)
+	binary.LittleEndian.PutUint32(mem.sram[28:], ADDR_IDR)
+	binary.LittleEndian.PutUint32(mem.sram[32:], DATA_IDR)
+	binary.LittleEndian.PutUint32(mem.sram[36:], DATA_ODR)
+	binary.LittleEndian.PutUint32(mem.sram[40:], DATA_MODER)
 
 	// end of argument indicator
-	copy(mem.buffer[44:48], []byte{0x00, 0x26, 0xe4, 0xac})
+	copy(mem.sram[44:48], []byte{0x00, 0x26, 0xe4, 0xac})
 
 	// GPIO pins
 	mem.gpio = make([]byte, GPIO_MEMTOP-GPIO_ORIGIN+1)
@@ -294,10 +280,10 @@ func (mem *aceMemory) Snapshot() *aceMemory {
 	copy(m.gpio, mem.gpio)
 	m.ccm = make([]byte, len(mem.ccm))
 	copy(m.ccm, mem.ccm)
-	m.download = make([]byte, len(mem.download))
-	copy(m.download, mem.download)
-	m.buffer = make([]byte, len(mem.buffer))
-	copy(m.buffer, mem.buffer)
+	m.flash = make([]byte, len(mem.flash))
+	copy(m.flash, mem.flash)
+	m.sram = make([]byte, len(mem.sram))
+	copy(m.sram, mem.sram)
 	return &m
 }
 
@@ -323,11 +309,11 @@ func (mem *aceMemory) MapAddress(addr uint32, write bool, executing bool) (*[]by
 		return &mem.gpio, mem.gpioOrigin
 	}
 
-	if addr >= mem.bufferOrigin && addr <= mem.bufferMemtop {
-		return &mem.buffer, mem.bufferOrigin
+	if addr >= mem.sramOrigin && addr <= mem.sramMemtop {
+		return &mem.sram, mem.sramOrigin
 	}
-	if addr >= mem.downloadOrigin && addr <= mem.downloadMemtop {
-		return &mem.download, mem.downloadOrigin
+	if addr >= mem.flashOrigin && addr <= mem.flashMemtop {
+		return &mem.flash, mem.flashOrigin
 	}
 	if addr >= mem.ccmOrigin && addr <= mem.ccmMemtop {
 		return &mem.ccm, mem.ccmOrigin
@@ -351,13 +337,13 @@ func (a *aceMemory) Segments() []mapper.CartStaticSegment {
 	return []mapper.CartStaticSegment{
 		{
 			Name:   "Download",
-			Origin: a.downloadOrigin,
-			Memtop: a.downloadMemtop,
+			Origin: a.flashOrigin,
+			Memtop: a.flashMemtop,
 		},
 		{
 			Name:   "Buffer",
-			Origin: a.bufferOrigin,
-			Memtop: a.bufferMemtop,
+			Origin: a.sramOrigin,
+			Memtop: a.sramMemtop,
 		},
 		{
 			Name:   "CCM",
@@ -373,9 +359,9 @@ func (a *aceMemory) Segments() []mapper.CartStaticSegment {
 func (a *aceMemory) Reference(segment string) ([]uint8, bool) {
 	switch segment {
 	case "Download":
-		return a.download, true
+		return a.flash, true
 	case "Buffer":
-		return a.buffer, true
+		return a.sram, true
 	case "CCM":
 		return a.ccm, true
 	}

@@ -37,7 +37,7 @@ func (seg segment) snapshot() segment {
 
 // Static implements the mapper.CartStatic interface.
 type Static struct {
-	version version
+	version mmap
 
 	// slices of cartDataROM that should not be modified during execution
 	driverROM segment
@@ -49,11 +49,23 @@ type Static struct {
 	driverRAM segment
 	dataRAM   segment
 	freqRAM   segment
+
+	// not all versions have a ccm segment
+	ccm          segment
+	ccmAvailable bool
 }
 
-func (cart *dpcPlus) newDPCplusStatic(version version, cartData []byte) (*Static, error) {
+func (cart *dpcPlus) newDPCplusStatic(version mmap, cartData []byte) (*Static, error) {
 	stc := Static{
 		version: version,
+	}
+
+	stc.ccmAvailable = version.ccmAvailable
+	if stc.ccmAvailable {
+		stc.ccm.name = "CCM"
+		stc.ccm.origin = version.ccmOrigin
+		stc.ccm.memtop = version.ccmMemtop
+		stc.ccm.data = make([]byte, stc.ccm.memtop-stc.ccm.origin)
 	}
 
 	// the offset into the cart data where the data segment begins
@@ -133,7 +145,9 @@ func (cart *dpcPlus) newDPCplusStatic(version version, cartData []byte) (*Static
 
 // ResetVectors implements the arm.SharedMemory interface.
 func (stc *Static) ResetVectors() (uint32, uint32, uint32) {
-	return stc.version.stackOrigin, stc.customROM.origin, stc.customROM.origin + 8
+	// stack should be within the range of the RAM copy of the frequency tables.
+	stackOrigin := stc.freqRAM.memtop - 3
+	return stackOrigin, stc.customROM.origin, stc.customROM.origin + 8
 }
 
 // IsExecutable implements the arm.SharedMemory interface.
@@ -146,12 +160,15 @@ func (stc *Static) Snapshot() *Static {
 	n.driverRAM = stc.driverRAM.snapshot()
 	n.dataRAM = stc.dataRAM.snapshot()
 	n.freqRAM = stc.freqRAM.snapshot()
+	if n.ccmAvailable {
+		n.ccm = stc.ccm.snapshot()
+	}
 	return &n
 }
 
 // MapAddress implements the arm.SharedMemory interface.
 func (stc *Static) MapAddress(addr uint32, write bool, executing bool) (*[]byte, uint32) {
-	// tests arranged in order of most likely to be used. determined by running
+	// remaining tests arranged in order of most likely to be used. determined by running
 	// ZaxxonHDDemo through the go profiler
 
 	// data (RAM)
@@ -201,12 +218,17 @@ func (stc *Static) MapAddress(addr uint32, write bool, executing bool) (*[]byte,
 		return &stc.freqROM.data, stc.freqROM.origin
 	}
 
+	// CCM memory
+	if stc.ccmAvailable && addr >= stc.ccm.origin && addr <= stc.ccm.memtop {
+		return &stc.ccm.data, stc.ccm.origin
+	}
+
 	return nil, 0
 }
 
 // Segments implements the mapper.CartStatic interface
 func (stc *Static) Segments() []mapper.CartStaticSegment {
-	return []mapper.CartStaticSegment{
+	segs := []mapper.CartStaticSegment{
 		{
 			Name:   stc.driverRAM.name,
 			Origin: stc.driverRAM.origin,
@@ -223,6 +245,14 @@ func (stc *Static) Segments() []mapper.CartStaticSegment {
 			Memtop: stc.freqRAM.memtop,
 		},
 	}
+	if stc.ccmAvailable {
+		segs = append(segs, mapper.CartStaticSegment{
+			Name:   stc.ccm.name,
+			Origin: stc.ccm.origin,
+			Memtop: stc.ccm.memtop,
+		})
+	}
+	return segs
 }
 
 // Reference implements the mapper.CartStatic interface
@@ -234,6 +264,8 @@ func (stc *Static) Reference(segment string) ([]uint8, bool) {
 		return stc.dataRAM.data, true
 	case stc.freqRAM.name:
 		return stc.freqRAM.data, true
+	case stc.ccm.name:
+		return stc.ccm.data, true
 	}
 	return []uint8{}, false
 }
