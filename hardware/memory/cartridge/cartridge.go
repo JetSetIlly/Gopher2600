@@ -240,6 +240,21 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		}
 	}
 
+	// if the mapping has explicitely set as ACE we still want to unwrap it according to the current
+	// preference value. this requires a call to fingerprintACE to get the correct unwrapp mapping.
+	// if the fingerprint fails we just continue with original ACE mapping and let the actual ACE
+	// mapper deal with the error (as it would if unwrapACE preference is not enabled)
+	if mapping == "ACE" {
+		if cart.env.Prefs.ARM.UnwrapACE.Get().(bool) {
+			var ok bool
+			ok, mapping = fingerprintAce(cartload, true)
+			if ok {
+				logger.Logf(cart.env, "cartridge", "ACE wrapping suggested but %s preferred", mapping)
+				cartload.Mapping = mapping
+			}
+		}
+	}
+
 	switch mapping {
 	case "2K":
 		cart.mapper, err = newAtari2k(cart.env, cartload)
@@ -318,6 +333,8 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newDPC(cart.env, cartload)
 	case "DPC+":
 		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload, "DPC+")
+	case "DPCP":
+		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload, "DPCP")
 
 	case "CDF":
 		cart.mapper, err = cdf.NewCDF(cart.env, cartload, "CDFJ")
@@ -337,8 +354,6 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	case "ELF":
 		cart.mapper, err = elf.NewElf(cart.env, cartload, false)
 
-	case "DPCp_in_ACE":
-		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload, "DPCp")
 	case "ELF_in_ACE":
 		cart.mapper, err = elf.NewElf(cart.env, cartload, true)
 

@@ -83,15 +83,17 @@ func NewDPCplus(env *environment.Environment, loader cartridgeloader.Loader, ver
 		yieldHook: coprocessor.StubCartYieldHook{},
 	}
 
-	// set driver specific options
-	driverMD5 := fmt.Sprintf("%x", md5.Sum(data[:0xc00]))
-	if !cart.state.setDriverSpecificOptions(driverMD5) {
-		logger.Logf(cart.env, "DPC+", "unrecognised driver: %s", driverMD5)
+	// set driver specific options for DPC+
+	if version == "DPC+" {
+		driverMD5 := fmt.Sprintf("%x", md5.Sum(data[:0xc00]))
+		if !cart.state.setDriverSpecificOptions(driverMD5) {
+			logger.Logf(cart.env, cart.mappingID, "unrecognised driver: %s", driverMD5)
+		}
 	}
 
 	// report on driver specific options
 	if cart.state.resetFracFetcherCounterWhenLowFieldIsSet {
-		logger.Logf(cart.env, "DPC+", "fractional fetcher counter will be reset on setting of low byte")
+		logger.Logf(cart.env, cart.mappingID, "fractional fetcher counter will be reset on setting of low byte")
 	}
 
 	// create addresses
@@ -506,7 +508,7 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		case 1:
 			// copy rom to fetcher
 			if len(cart.state.parameters) != 4 {
-				logger.Logf(cart.env, "DPC+", "wrong number of parameters for function call [%02x]", data)
+				logger.Logf(cart.env, cart.mappingID, "wrong number of parameters for function call [%02x]", data)
 				break // switch data
 			}
 
@@ -523,7 +525,7 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		case 2:
 			// copy value to fetcher
 			if len(cart.state.parameters) != 4 {
-				logger.Logf(cart.env, "DPC+", "wrong number of parameters for function call [%02x]", data)
+				logger.Logf(cart.env, cart.mappingID, "wrong number of parameters for function call [%02x]", data)
 				break // switch data
 			}
 

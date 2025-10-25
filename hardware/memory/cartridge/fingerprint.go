@@ -61,10 +61,12 @@ func fingerprintAce(loader cartridgeloader.Loader, unwrap bool) (bool, string) {
 			return true, "ELF_in_ACE"
 		}
 
-		// do the same for DPCp files
-		wrappedDPCp := loader.ContainsLimit(144, []byte("DPCp"))
-		if wrappedDPCp {
-			return true, "DPCp_in_ACE"
+		// do the same for DPCP files. the 'p' is lower case in the data. if there is ever a time
+		// where an uppercase 'P' is used to indicate a new variation then a new strategy for mapper
+		// IDs will be required
+		wrappedDPCP := loader.ContainsLimit(144, []byte("DPCp"))
+		if wrappedDPCP {
+			return true, "DPCP"
 		}
 	}
 

@@ -221,7 +221,7 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 
 	logger.Logf(mem.env, "ACE", "null function place at %08x", nullFunctionAddress)
 
-	// generous amount for SRAM to accomodate DPCp
+	// generous amount for SRAM to accomodate DPCP
 	mem.sram = make([]byte, 0x20000)
 	mem.sramOrigin = mem.model.Regions["SRAM"].Origin
 	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram)-1)

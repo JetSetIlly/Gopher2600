@@ -77,7 +77,7 @@ func newVersion(id string) (mmap, error) {
 			freqRAMMemtop:   arch.Regions["SRAM"].Origin | 0x00002000,
 		}, nil
 
-	case "DPCp":
+	case "DPCP":
 		arch = architecture.NewMap(architecture.PlusCart)
 		return mmap{
 			arch:            arch,
@@ -96,12 +96,12 @@ func newVersion(id string) (mmap, error) {
 			freqRAMOrigin:   arch.Regions["SRAM"].Origin | 0x00011c00,
 			freqRAMMemtop:   arch.Regions["SRAM"].Origin | 0x00012000,
 
-			// DPCp has CCM memory
+			// DPCP has CCM memory
 			ccmAvailable: true,
 			ccmOrigin:    arch.Regions["CCM"].Origin,
 			ccmMemtop:    arch.Regions["CCM"].Origin | 0x00010000,
 
-			// the driverRAM area is initialised with a copy of the DPCp driver. the code in the
+			// the driverRAM area is initialised with a copy of the DPCP driver. the code in the
 			// boot consists partly of the custom.S boot code written originally for the DPC+ on the
 			// Harmony. that's fine but the small alterations required for the PlusCart mean that
 			// byte 24 of that segment is not the correct value for the boot code to run correctly.
