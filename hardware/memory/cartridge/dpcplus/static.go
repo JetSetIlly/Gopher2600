@@ -56,7 +56,7 @@ type Static struct {
 }
 
 func (cart *dpcPlus) newDPCplusStatic(version mmap, cartData []byte) (*Static, error) {
-	stc := Static{
+	stc := &Static{
 		version: version,
 	}
 
@@ -140,7 +140,12 @@ func (cart *dpcPlus) newDPCplusStatic(version mmap, cartData []byte) (*Static, e
 	}
 	copy(stc.freqRAM.data, stc.freqROM.data)
 
-	return &stc, nil
+	// initialise static memory for version if necessary
+	if version.init != nil {
+		version.init(stc)
+	}
+
+	return stc, nil
 }
 
 // ResetVectors implements the arm.SharedMemory interface.

@@ -48,6 +48,9 @@ type mmap struct {
 	ccmAvailable bool
 	ccmOrigin    uint32
 	ccmMemtop    uint32
+
+	// custom initialisation for a specific version
+	init func(stc *Static)
 }
 
 func newVersion(id string) (mmap, error) {
@@ -97,6 +100,15 @@ func newVersion(id string) (mmap, error) {
 			ccmAvailable: true,
 			ccmOrigin:    arch.Regions["CCM"].Origin,
 			ccmMemtop:    arch.Regions["CCM"].Origin | 0x00010000,
+
+			// the driverRAM area is initialised with a copy of the DPCp driver. the code in the
+			// boot consists partly of the custom.S boot code written originally for the DPC+ on the
+			// Harmony. that's fine but the small alterations required for the PlusCart mean that
+			// byte 24 of that segment is not the correct value for the boot code to run correctly.
+			// the initialisation process makes sure that that the data for that address is zero
+			init: func(stc *Static) {
+				stc.driverRAM.data[0x24] = 0x00
+			},
 		}, nil
 	}
 
