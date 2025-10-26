@@ -23,6 +23,7 @@ import (
 
 type HaltReason struct {
 	Reason string
+	Detail string
 	Coords coords.TelevisionCoords
 }
 
@@ -104,7 +105,16 @@ func (h *haltCoordination) reset() {
 // check for a halt condition and set the halt flag if found. returns true if
 // emulation should continue and false if the emulation should halt
 func (h *haltCoordination) check() bool {
-	if h.cartridgeYield.Type != coprocessor.YieldProgramEnded {
+	if h.dbg.vcs.CPU.Killed {
+		h.haltReason = HaltReason{
+			Reason: "CPU KIL",
+			Coords: h.dbg.vcs.TV.GetCoords(),
+		}
+		h.halt = true
+		return false
+	}
+
+	if !h.cartridgeYield.Type.Normal() {
 		h.haltReason = HaltReason{
 			Reason: string(h.cartridgeYield.Type),
 			Coords: h.dbg.vcs.TV.GetCoords(),
@@ -133,7 +143,8 @@ func (h *haltCoordination) check() bool {
 			h.dbg.printLine(terminal.StyleFeedback, breakMessage)
 			h.halt = true
 			h.haltReason = HaltReason{
-				Reason: h.televisionHalt,
+				Reason: "Breakpoint",
+				Detail: breakMessage,
 				Coords: h.dbg.vcs.TV.GetCoords(),
 			}
 		}
@@ -142,7 +153,8 @@ func (h *haltCoordination) check() bool {
 			h.dbg.printLine(terminal.StyleFeedback, trapMessage)
 			h.halt = true
 			h.haltReason = HaltReason{
-				Reason: h.televisionHalt,
+				Reason: "Trap",
+				Detail: breakMessage,
 				Coords: h.dbg.vcs.TV.GetCoords(),
 			}
 		}
@@ -151,7 +163,8 @@ func (h *haltCoordination) check() bool {
 			h.dbg.printLine(terminal.StyleFeedback, watchMessage)
 			h.halt = true
 			h.haltReason = HaltReason{
-				Reason: h.televisionHalt,
+				Reason: "Watch",
+				Detail: breakMessage,
 				Coords: h.dbg.vcs.TV.GetCoords(),
 			}
 		}
@@ -159,7 +172,7 @@ func (h *haltCoordination) check() bool {
 		return !h.halt
 	}
 
-	// check volatile conditions
+	// check volatile conditions. there is no halt reason set for these
 	breakMessage := h.volatileBreakpoints.check()
 	trapMessage := h.volatileTraps.check()
 	h.halt = h.halt || breakMessage != "" || trapMessage != ""

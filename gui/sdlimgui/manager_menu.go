@@ -300,6 +300,12 @@ func (wm *manager) drawMenu() {
 			},
 		)
 		wm.img.imguiTooltip(func() {
+			if haltReason.Detail != "" {
+				imgui.Text(haltReason.Detail)
+				imgui.Spacing()
+				imgui.Separator()
+				imgui.Spacing()
+			}
 			imgui.Text(fmt.Sprintf("Frame: %d", haltReason.Coords.Frame))
 			imgui.Text(fmt.Sprintf("Scanline: %d", haltReason.Coords.Scanline))
 			imgui.Text(fmt.Sprintf("Clock: %d", haltReason.Coords.Clock))
