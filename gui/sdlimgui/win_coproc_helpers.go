@@ -21,19 +21,29 @@ import (
 
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
-const (
-	shortDisasmWindow   = 10
-	LongDisasmWindow    = 20
-	showAllDisasmWindow = -1
-)
+func (img *SdlImgui) drawRegistersForCoProcDisasmEntry(id string, e arm.DisasmEntry) {
+	var flgs imgui.TableFlags
+	flgs = imgui.TableFlagsBordersInnerV
+	if imgui.BeginTableV(fmt.Sprintf("%s##coprocRegisters", id), 2, flgs, imgui.Vec2{}, 0.0) {
+		for i := 0; i < len(e.Registers); i += 2 {
+			imgui.TableNextRow()
+			imgui.TableNextColumn()
+			imgui.Text(fmt.Sprintf("R%02d: %08x", i, e.Registers[i]))
+			imgui.TableNextColumn()
+			imgui.Text(fmt.Sprintf("R%02d: %08x", i+1, e.Registers[i+1]))
+		}
+		imgui.EndTable()
+	}
+}
 
-func (img *SdlImgui) drawDisasmForCoProc(disasm []*dwarf.SourceInstruction, ln *dwarf.SourceLine,
-	multiline bool, showYield bool, yldAddress uint32, windowSize int) {
+func (img *SdlImgui) drawDisasmForCoProc(id string, disasm []*dwarf.SourceInstruction, ln *dwarf.SourceLine,
+	multiline bool, showYield bool, yldAddress uint32) {
 
-	imgui.BeginTable("##disasmTable", 4)
+	imgui.BeginTable(fmt.Sprintf("%s##disasmTable", id), 4)
 	defer imgui.EndTable()
 
 	// draw disassembly, colouring the text according to whether the disassembly entry
@@ -49,6 +59,9 @@ func (img *SdlImgui) drawDisasmForCoProc(disasm []*dwarf.SourceInstruction, ln *
 
 	// find window limits
 	var start, end int
+
+	// number of entries shown
+	const windowSize = 10
 
 	if windowSize < 0 || multiline {
 		start = 0

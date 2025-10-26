@@ -1169,7 +1169,7 @@ func (win *winCoProcProfiling) tooltip(fn *dwarf.SourceFunction, ln *dwarf.Sourc
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()
-			win.img.drawDisasmForCoProc(ln.Instruction, ln, false, false, 0, shortDisasmWindow)
+			win.img.drawDisasmForCoProc("coprocProfiling", ln.Instruction, ln, false, false, 0)
 		}
 
 	}, true)

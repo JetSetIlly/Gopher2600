@@ -414,16 +414,8 @@ func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry, ln *dwarf.Source
 		imgui.Spacing()
 		imgui.Separator()
 		imgui.Spacing()
+
 		imgui.Indent()
-		if imgui.BeginTable("coprocDisasmTooltipRegisters", 2) {
-			for r, v := range e.Registers {
-				imgui.TableNextRow()
-				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("R%d", r))
-				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("%08x", v))
-			}
-			imgui.EndTable()
-		}
+		win.img.drawRegistersForCoProcDisasmEntry("coprocDisasm", e)
 	}, false)
 }
