@@ -31,6 +31,7 @@ const (
 	IllegalAddress   Category = "illegal address"
 	UndefinedSymbol  Category = "undefined symbol"
 	ProgramMemory    Category = "program memory"
+	Unimplemented    Category = "unimplemented"
 )
 
 // Entry is a single entry in the fault log

@@ -23,37 +23,56 @@ import (
 )
 
 func (arm *ARM) memoryFault(event string, fault faults.Category, addr uint32) {
-	arm.state.yield.Type = coprocessor.YieldMemoryAccessError
-	arm.state.yield.Error = fmt.Errorf("%s: %s: %08x (PC: %08x)", fault, event, addr, arm.state.instructionPC)
-
-	if arm.dev == nil {
-		return
-	}
-
-	arm.dev.MemoryFault(event, fault, arm.state.instructionPC, addr)
-}
-
-func (arm *ARM) illegalAccess(event string, addr uint32) {
 	if arm.state.stackHasCollided {
 		return
 	}
-	if arm.abortOnMemoryFault {
-		arm.memoryFault(event, faults.IllegalAddress, addr)
+
+	if arm.dev != nil {
+		arm.dev.MemoryFault(event, fault, arm.state.instructionPC, addr)
 	}
+
+	var abort bool
+
+	switch fault {
+	case faults.ProgramMemory:
+		abort = true
+	case faults.StackCollision:
+		abort = arm.abortOnMemoryFault
+	case faults.IllegalAddress:
+		abort = arm.abortOnMemoryFault
+	case faults.NullDereference:
+		abort = arm.abortOnMemoryFault
+	case faults.MisalignedAccess:
+		abort = arm.misalignedAccessIsFault
+	case faults.UndefinedSymbol:
+		abort = true
+	case faults.Unimplemented:
+		abort = false
+	}
+
+	if abort {
+		arm.state.yield.Type = coprocessor.YieldMemoryAccessError
+		arm.state.yield.Error = fmt.Errorf("%s: %s: %08x (PC: %08x)", fault, event, addr, arm.state.instructionPC)
+	}
+
+}
+
+func (arm *ARM) unimplemented(name string, addr uint32) {
+	arm.memoryFault(name, faults.Unimplemented, addr)
+}
+
+func (arm *ARM) illegalAccess(event string, addr uint32) {
+	arm.memoryFault(event, faults.IllegalAddress, addr)
 }
 
 // nullAccess is a special condition of illegalAccess()
 func (arm *ARM) nullAccess(event string, addr uint32) {
-	if arm.abortOnMemoryFault {
-		arm.memoryFault(event, faults.NullDereference, addr)
-	}
+	arm.memoryFault(event, faults.NullDereference, addr)
 }
 
 // misalignedAccess is a special condition of illegalAccess()
 func (arm *ARM) misalignedAccess(event string, addr uint32) {
-	if arm.misalignedAccessIsFault {
-		arm.memoryFault(event, faults.MisalignedAccess, addr)
-	}
+	arm.memoryFault(event, faults.MisalignedAccess, addr)
 }
 
 func (arm *ARM) read8bit(addr uint32) uint8 {
@@ -84,6 +103,11 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 			}
 		}
 		if addr == arm.mmap.APBDIV {
+			return uint8(0)
+		}
+
+		if ok, name := arm.mmap.IsUnimplemented(addr); ok {
+			arm.unimplemented(fmt.Sprintf("Read 8bit: %s", name), addr)
 			return uint8(0)
 		}
 
@@ -125,6 +149,11 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 			}
 		}
 		if addr == arm.mmap.APBDIV {
+			return
+		}
+
+		if ok, name := arm.mmap.IsUnimplemented(addr); ok {
+			arm.unimplemented(fmt.Sprintf("Write 8bit: %s", name), addr)
 			return
 		}
 
@@ -186,6 +215,11 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 			return uint16(0)
 		}
 
+		if ok, name := arm.mmap.IsUnimplemented(addr); ok {
+			arm.unimplemented(fmt.Sprintf("Read 16bit: %s", name), addr)
+			return uint16(0)
+		}
+
 		arm.illegalAccess("Read 16bit", addr)
 		return uint16(arm.mmap.IllegalAccessValue)
 	}
@@ -238,6 +272,11 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 			}
 		}
 		if addr == arm.mmap.APBDIV {
+			return
+		}
+
+		if ok, name := arm.mmap.IsUnimplemented(addr); ok {
+			arm.unimplemented(fmt.Sprintf("Write 16bit: %s", name), addr)
 			return
 		}
 
@@ -296,6 +335,11 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 			return uint32(0)
 		}
 
+		if ok, name := arm.mmap.IsUnimplemented(addr); ok {
+			arm.unimplemented(fmt.Sprintf("Read 32bit: %s", name), addr)
+			return uint32(0)
+		}
+
 		arm.illegalAccess("Read 32bit", addr)
 		return arm.mmap.IllegalAccessValue
 	}
@@ -348,6 +392,11 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 			}
 		}
 		if addr == arm.mmap.APBDIV {
+			return
+		}
+
+		if ok, name := arm.mmap.IsUnimplemented(addr); ok {
+			arm.unimplemented(fmt.Sprintf("Write 32bit: %s", name), addr)
 			return
 		}
 

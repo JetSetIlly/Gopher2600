@@ -208,10 +208,20 @@ func (t *TIM2) Read(addr uint32) (uint32, bool) {
 	case t.mmap.TIM2CR1:
 		// TIMx Control register
 		val = t.control
+	case t.mmap.TIM2EGR:
+		// TIMx Event Generation
+		// (is a write only register)
+		val = 0
 	case t.mmap.TIM2CNT:
 		// TIMx Counter
 		t.resolve()
 		val = t.counter
+	case t.mmap.TIM2PSC:
+		// TIMx Prescalar
+		val = t.prescaler
+	case t.mmap.TIM2ARR:
+		// TIMx Auto reload
+		val = t.autoreload
 	default:
 		return 0, false
 	}
@@ -251,7 +261,7 @@ func (t *TIM2) Write(addr uint32, val uint32) bool {
 		// TIMx Prescalar
 		t.prescaler = val & 0x0000ffff
 	case t.mmap.TIM2ARR:
-		// TIMx Autoload
+		// TIMx Auto reload
 		t.autoreload = val
 
 		// copy autoreload value to shadow immediately if autoReloadBuffered is false

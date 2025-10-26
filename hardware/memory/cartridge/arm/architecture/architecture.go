@@ -47,6 +47,7 @@ const (
 
 // Regions of memory in the architecture's map
 type MemoryRegion struct {
+	Name    string
 	Origin  uint32
 	Memtop  uint32
 	Latency float64
@@ -102,6 +103,9 @@ type Map struct {
 
 	// the divisor to apply to the main clock when ticking peripherals (eg. timers)
 	ClkDiv float32
+
+	// list of unimplemented address ranges that should be ignored
+	Unimplemented []MemoryRegion
 }
 
 // NewMap is the preferred method of initialisation for the Map type.
@@ -122,11 +126,13 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.MisalignedAccesses = false
 
 		mmap.Regions["Flash"] = &MemoryRegion{
+			Name:    "Flash",
 			Origin:  0x00000000,
 			Memtop:  0x0fffffff,
 			Latency: 50.0,
 		}
 		mmap.Regions["SRAM"] = &MemoryRegion{
+			Name:    "SRAM",
 			Origin:  0x40000000,
 			Memtop:  0x4fffffff,
 			Latency: 10.0,
@@ -168,16 +174,19 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.MisalignedAccesses = true
 
 		mmap.Regions["Flash"] = &MemoryRegion{
+			Name:    "Flash",
 			Origin:  0x08020000,
 			Memtop:  0x0802ffff,
 			Latency: 50.0,
 		}
 		mmap.Regions["SRAM"] = &MemoryRegion{
+			Name:    "SRAM",
 			Origin:  0x20000000,
 			Memtop:  0x2fffffff,
 			Latency: 10.0,
 		}
 		mmap.Regions["CCM"] = &MemoryRegion{
+			Name:    "CCM",
 			Origin:  0x10000000,
 			Memtop:  0x1fffffff,
 			Latency: 1.0,
@@ -206,13 +215,24 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.IllegalAccessValue = 0xffffffff
 
 		mmap.ClkDiv = 2
+
+		mmap.Unimplemented = []MemoryRegion{
+			{Name: "RCC", Origin: 0x40023800, Memtop: 0x4002388c},
+			{Name: "DMA1", Origin: 0x40026000, Memtop: 0x400263ff},
+			{Name: "DMA2", Origin: 0x40026400, Memtop: 0x400267ff},
+		}
 	}
 
-	// logger.Logf(env, "ARM Architecture", "using %s/%s", mmap.CartArchitecture, mmap.ARMArchitecture)
-	// logger.Logf(env, "ARM Architecture", "flash origin: %#08x", mmap.FlashOrigin)
-	// logger.Logf(env, "ARM Architecture", "sram origin: %#08x", mmap.SRAMOrigin)
-
 	return mmap
+}
+
+func (mmap *Map) IsUnimplemented(addr uint32) (bool, string) {
+	for _, u := range mmap.Unimplemented {
+		if addr >= u.Origin && addr <= u.Memtop {
+			return true, u.Name
+		}
+	}
+	return false, ""
 }
 
 func (mmap *Map) AddrLatency(addr uint32) float64 {
