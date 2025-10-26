@@ -67,8 +67,8 @@ func initDBSession(db *database.Session) error {
 // AttachCartridge to the VCS and apply setup information from the setupDB.
 // This function should be preferred to the hardware.VCS.AttachCartridge()
 // function in almost all cases.
-func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader) error {
-	err := vcs.AttachCartridge(cartload)
+func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader, hook func()) error {
+	err := vcs.AttachCartridge(cartload, hook)
 	if err != nil {
 		// not adding the "setup" prefix for this. the setup package has not
 		// added any value yet and it would just be noise

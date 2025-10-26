@@ -1205,17 +1205,37 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	}
 	dbg.cartload = &cartload
 
+	attachHook := func() {
+		dbg.CoProcDisasm.AttachCartridge(dbg.vcs.Mem.Cart)
+		err := dbg.CoProcDev.AttachCartridge(dbg.vcs.Mem.Cart, cartload.Filename, dbg.opts.DWARF)
+		if err != nil {
+			logger.Log(logger.Allow, "debugger", err)
+			if errors.Is(err, coproc_dwarf.UnsupportedDWARF) {
+				err = dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifyUnsupportedDWARF)
+				if err != nil {
+					logger.Log(logger.Allow, "debugger", err)
+				}
+			}
+		}
+
+		// attach current debugger as the yield hook for cartridge
+		dbg.vcs.Mem.Cart.SetYieldHook(dbg)
+	}
+
 	// reset of vcs is implied with attach cartridge
-	err := setup.AttachCartridge(dbg.vcs, cartload)
+	err := setup.AttachCartridge(dbg.vcs, cartload, attachHook)
 	if err != nil && !errors.Is(err, cartridge.Ejected) {
 		logger.Log(logger.Allow, "debugger", err)
 		// an error has occurred so attach the ejected cartridge
 		//
 		// !TODO: a special error cartridge to make it more obvious what has happened
-		if err := setup.AttachCartridge(dbg.vcs, cartridgeloader.Loader{}); err != nil {
+		if err := setup.AttachCartridge(dbg.vcs, cartridgeloader.Loader{}, nil); err != nil {
 			return err
 		}
 	}
+
+	// perform disassembly in the background
+	dbg.Disasm.Background(cartload)
 
 	// check for cartridge ejection. if the NoEject option is set then return error
 	if dbg.opts.NoEject && dbg.vcs.Mem.Cart.IsEjected() {
@@ -1230,24 +1250,6 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	// clear existing reflection and counter data
 	dbg.ref.Clear()
 	dbg.counter.Clear()
-
-	// perform disassembly in the background
-	dbg.Disasm.Background(cartload)
-
-	dbg.CoProcDisasm.AttachCartridge(dbg.vcs.Mem.Cart)
-	err = dbg.CoProcDev.AttachCartridge(dbg.vcs.Mem.Cart, cartload.Filename, dbg.opts.DWARF)
-	if err != nil {
-		logger.Log(logger.Allow, "debugger", err)
-		if errors.Is(err, coproc_dwarf.UnsupportedDWARF) {
-			err = dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifyUnsupportedDWARF)
-			if err != nil {
-				logger.Log(logger.Allow, "debugger", err)
-			}
-		}
-	}
-
-	// attach current debugger as the yield hook for cartridge
-	dbg.vcs.Mem.Cart.SetYieldHook(dbg)
 
 	// make sure everything is reset after disassembly (including breakpoints, etc.)
 	dbg.reset(newCartridge)

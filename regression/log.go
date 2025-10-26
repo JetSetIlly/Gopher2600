@@ -169,7 +169,7 @@ func (reg *LogRegression) regress(newRegression bool, messages io.Writer, tag st
 	}
 	defer cartload.Close()
 
-	err = setup.AttachCartridge(vcs, cartload)
+	err = setup.AttachCartridge(vcs, cartload, nil)
 	if err != nil {
 		return err
 	}

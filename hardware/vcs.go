@@ -135,7 +135,7 @@ func (vcs *VCS) End() {
 // is advised that the setup package be used in most circumstances.
 //
 // The emulated VCS is *not* reset after AttachCartridge()
-func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) (rerr error) {
+func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader, hook func()) (rerr error) {
 	vcs.Env.Loader = cartload
 
 	if vcs.Env.Loader.Filename == "" {
@@ -156,6 +156,10 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) (rerr error) {
 			return err
 		}
 
+	}
+
+	if hook != nil {
+		hook()
 	}
 
 	// reset machine

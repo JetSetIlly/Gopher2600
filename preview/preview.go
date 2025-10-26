@@ -58,7 +58,7 @@ func (em *Emulation) RunN(loader cartridgeloader.Loader, N int) error {
 	// we don't want the preview emulation to run for too long
 	timeout := time.After(1 * time.Second)
 
-	err := em.vcs.AttachCartridge(loader)
+	err := em.vcs.AttachCartridge(loader, nil)
 	if err != nil {
 		return fmt.Errorf("preview: %w", err)
 	}
