@@ -296,7 +296,7 @@ func (cart *Elf) reset() {
 func (cart *Elf) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	if cart.mem.stream.active {
 		if !cart.mem.stream.drain {
-			cart.runARM(addr)
+			_ = cart.runARM(addr)
 		}
 		if addr == cart.mem.stream.peek().addr&memorymap.CartridgeBits {
 			e := cart.mem.stream.pull()
@@ -396,7 +396,7 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) error {
 
 	// if byte-streaming is active then the access is relatively simple
 	if cart.mem.stream.active {
-		cart.runARM(addr)
+		_ = cart.runARM(addr)
 		return nil
 	}
 
@@ -411,9 +411,10 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) error {
 		}
 		cart.mem.strongarm.running.function(cart.mem)
 		if cart.mem.strongarm.running.function == nil {
-			cart.runARM(addr)
-			if cart.mem.strongarm.running.function != nil {
-				cart.mem.strongarm.running.function(cart.mem)
+			if cart.runARM(addr) {
+				if cart.mem.strongarm.running.function != nil {
+					cart.mem.strongarm.running.function(cart.mem)
+				}
 			}
 		}
 		return true
@@ -423,17 +424,19 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) error {
 		return nil
 	}
 
-	cart.runARM(addr)
-	if runStrongarm() {
-		return nil
-	}
+	if cart.runARM(addr) {
+		if runStrongarm() {
+			return nil
+		}
 
-	cart.runARM(addr)
-	if runStrongarm() {
-		return nil
-	}
+		if cart.runARM(addr) {
+			if runStrongarm() {
+				return nil
+			}
 
-	cart.runARM(addr)
+			_ = cart.runARM(addr)
+		}
+	}
 
 	return nil
 }

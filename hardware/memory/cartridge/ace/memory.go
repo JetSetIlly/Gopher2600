@@ -336,12 +336,12 @@ func (mem *aceMemory) IsExecutable(addr uint32) bool {
 func (a *aceMemory) Segments() []mapper.CartStaticSegment {
 	return []mapper.CartStaticSegment{
 		{
-			Name:   "Download",
+			Name:   "Flash",
 			Origin: a.flashOrigin,
 			Memtop: a.flashMemtop,
 		},
 		{
-			Name:   "Buffer",
+			Name:   "SRAM",
 			Origin: a.sramOrigin,
 			Memtop: a.sramMemtop,
 		},
@@ -358,9 +358,9 @@ func (a *aceMemory) Segments() []mapper.CartStaticSegment {
 // returned by the Segments() function
 func (a *aceMemory) Reference(segment string) ([]uint8, bool) {
 	switch segment {
-	case "Download":
+	case "Flash":
 		return a.flash, true
-	case "Buffer":
+	case "SRAM":
 		return a.sram, true
 	case "CCM":
 		return a.ccm, true

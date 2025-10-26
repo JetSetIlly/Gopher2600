@@ -74,7 +74,7 @@ func NewAce(env *environment.Environment, loader cartridgeloader.Loader) (mapper
 
 // MappedBanks implements the mapper.CartMapper interface.
 func (cart *Ace) MappedBanks() string {
-	return fmt.Sprintf("Bank: 0")
+	return ""
 }
 
 // ID implements the mapper.CartMapper interface.
@@ -151,6 +151,10 @@ func (cart *Ace) GetBank(_ uint16) mapper.BankInfo {
 }
 
 func (cart *Ace) runARM() bool {
+	// start profiling before the run sequence
+	cart.arm.StartProfiling()
+	defer cart.arm.ProcessProfiling()
+
 	// call arm once and then check for yield conditions
 	var cycles float32
 	cart.mem.yield, cycles = cart.arm.Run()
@@ -188,24 +192,22 @@ func (cart *Ace) AccessPassive(addr uint16, data uint8) error {
 	// then the ARM is running in parallel (ie. no synchronisation)
 	cart.mem.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)
 
-	// start profiling before the run sequence
-	cart.arm.StartProfiling()
-	defer cart.arm.ProcessProfiling()
-
 	// set data first and continue once. this seems to be necessary to allow
 	// the PlusROM exit routine to work correctly
 	cart.mem.gpio[DATA_IDR-cart.mem.gpioOrigin] = data
-	_ = cart.runARM()
+	if cart.runARM() {
+		// set address for ARM program
+		cart.mem.gpio[ADDR_IDR-cart.mem.gpioOrigin] = uint8(addr)
+		cart.mem.gpio[ADDR_IDR-cart.mem.gpioOrigin+1] = uint8(addr >> 8)
 
-	// set address for ARM program
-	cart.mem.gpio[ADDR_IDR-cart.mem.gpioOrigin] = uint8(addr)
-	cart.mem.gpio[ADDR_IDR-cart.mem.gpioOrigin+1] = uint8(addr >> 8)
-
-	// continue and wait for the sixth YieldSyncWithVCS...
-	for cart.mem.armInterruptCt < maxArmInterrupCt {
-		cart.runARM()
+		// continue and wait for the sixth YieldSyncWithVCS...
+		for cart.mem.armInterruptCt < maxArmInterrupCt {
+			if !cart.runARM() {
+				break // for loop
+			}
+		}
+		cart.mem.armInterruptCt = 0
 	}
-	cart.mem.armInterruptCt = 0
 
 	return nil
 }
