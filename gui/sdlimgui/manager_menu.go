@@ -291,7 +291,7 @@ func (wm *manager) drawMenu() {
 	if haltReason.Reason != "" {
 		buttonFromRight(haltReason.Reason,
 			func() {
-				if coprocessor.CoProcYieldType(haltReason.Reason) == coprocessor.YieldMemoryAccessError {
+				if coprocessor.CoProcYieldType(haltReason.Reason) == coprocessor.YieldMemoryFault {
 					wm.debuggerWindows[winCoProcFaultsID].debuggerSetOpen(true)
 				}
 			},

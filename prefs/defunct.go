@@ -99,7 +99,8 @@ var defunct = []string{
 	"crt.interference",      // replaced with crt.rfInterference
 	"crt.interferenceLevel", // replaces with crt.rfNoiseLevel and crt.rfGhostingLevel
 	"television.vsync.recovery",
-	"television.color.legacy", // replaced with television.color.legacy.enabled
+	"television.color.legacy",               // replaced with television.color.legacy.enabled
+	"hardware.arm7.MisalignedAccessIsFault", // replaced with hardware.arm7.abortOnMisalignedAccess
 }
 
 // returns true if string is in list of defunct values.

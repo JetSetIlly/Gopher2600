@@ -151,9 +151,8 @@ type ARMState struct {
 	protectVariableMemTop bool
 	variableMemtop        uint32
 
-	// once the stack has been found to have collided there are no more attempts
-	// to protect the stack
-	stackHasCollided bool
+	// once a stack has caused an error we no longer check for more stack errors
+	stackHasErrors bool
 
 	// cycle counting
 
@@ -236,8 +235,7 @@ type ARM struct {
 	state *ARMState
 
 	// updated on every call to run()
-	abortOnMemoryFault      bool
-	misalignedAccessIsFault bool
+	abortOnMemoryFault bool
 
 	// the speed at which the arm is running at and the required stretching for
 	// access to flash memory. speed is in MHz. Access latency of Flash memory is
@@ -526,7 +524,6 @@ func (arm *ARM) updatePrefs() {
 	}
 
 	arm.abortOnMemoryFault = arm.env.Prefs.ARM.AbortOnMemoryFault.Get().(bool)
-	arm.misalignedAccessIsFault = arm.env.Prefs.ARM.MisalignedAccessIsFault.Get().(bool)
 }
 
 func (arm *ARM) String() string {
@@ -937,7 +934,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 
 		// stack frame has changed if LR register has changed
 		if expectedLR != arm.state.registers[rLR] {
-			arm.state.stackFrame = expectedSP
+			arm.state.stackFrame = arm.state.registers[rSP]
 		}
 
 		// disassemble if appropriate
@@ -996,32 +993,16 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 			}
 		}
 
-		// check for stack errors
-		if arm.state.yield.Type == coprocessor.YieldStackError {
-			if !arm.abortOnMemoryFault {
-				arm.logYield()
-				arm.resetYield()
-			}
-		} else {
-			if !arm.state.yield.Type.Normal() {
-				if arm.state.registers[rSP] != expectedSP {
-					arm.stackProtectCheckSP()
-					if arm.state.yield.Type == coprocessor.YieldStackError {
-						if !arm.abortOnMemoryFault {
-							arm.logYield()
-							arm.resetYield()
-						}
-					}
-				}
+		// check for stack errors if the arm is not already yielding and if the stack has changed
+		if arm.state.yield.Type.Normal() {
+			if arm.state.registers[rSP] != expectedSP {
+				arm.stackProtectCheckSP()
 			}
 		}
 
 		// handle memory access yields. we don't these want these to bleed out
 		// of the ARM unless the abort preference is set
-		if arm.state.yield.Type == coprocessor.YieldMemoryAccessError {
-			// choosing not to log memory access errors. it can be far too noisy particular during
-			// the pre-execution disassembly stage. we could maybe improve this by indicating that
-			// we expect memory faults and then allowing logging during normal execution
+		if arm.state.yield.Type == coprocessor.YieldMemoryFault {
 			if !arm.abortOnMemoryFault {
 				arm.resetYield()
 			}

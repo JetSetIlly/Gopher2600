@@ -25,13 +25,21 @@ type Category string
 
 // List of valid Category values
 const (
-	NullDereference  Category = "null dereference"
-	MisalignedAccess Category = "misaligned access"
-	StackCollision   Category = "stack collision"
-	IllegalAddress   Category = "illegal address"
-	UndefinedSymbol  Category = "undefined symbol"
-	ProgramMemory    Category = "program memory"
-	Unimplemented    Category = "unimplemented"
+	// a program memory fault is special because it will always cause a fatal error
+	ProgramMemory Category = "program memory"
+
+	// these are general "memory faults"
+	NullDereference Category = "null dereference"
+	StackError      Category = "stack collision"
+	IllegalAddress  Category = "illegal address"
+
+	// these are memory faults but are usually treated as warnings
+	MisalignedAddressing    Category = "misaligned addressing"
+	UnimplementedPeripheral Category = "unimplemented peripheral"
+
+	// an undefined symbol is encountered when a symbol has not been resolved at load time. the
+	// fault is raised whenever the symbol is encountered
+	UndefinedSymbol Category = "undefined symbol"
 )
 
 // Entry is a single entry in the fault log
@@ -113,7 +121,7 @@ func (flt *Faults) NewEntry(event string, category Category, instructionAddr uin
 	e.Count++
 
 	// if this is a stack collision then record that fact
-	if category == StackCollision {
+	if category == StackError {
 		flt.HasStackCollision = true
 	}
 }

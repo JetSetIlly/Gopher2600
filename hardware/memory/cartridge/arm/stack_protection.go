@@ -24,7 +24,7 @@ import (
 
 func (arm *ARM) stackProtectCheckSP() {
 	// do nothing if stack has already collided
-	if arm.state.stackHasCollided {
+	if arm.state.stackHasErrors {
 		return
 	}
 
@@ -32,12 +32,12 @@ func (arm *ARM) stackProtectCheckSP() {
 	stackMemory, stackOrigin := arm.mem.MapAddress(arm.state.registers[rSP], true, false)
 
 	if stackMemory == nil {
-		arm.state.yield.Type = coprocessor.YieldStackError
-		arm.state.yield.Error = fmt.Errorf("SP is not pointing to a valid address (%08x)", arm.state.registers[rSP])
+		arm.state.yield.Type = coprocessor.YieldMemoryFault
+		arm.state.yield.Error = fmt.Errorf("illegal stack address (%08x)", arm.state.registers[rSP])
 
 	} else if stackMemory == arm.state.programMemory {
-		arm.state.yield.Type = coprocessor.YieldStackError
-		arm.state.yield.Error = fmt.Errorf("SP is pointing to program memory (%08x)", arm.state.registers[rSP])
+		arm.state.yield.Type = coprocessor.YieldMemoryFault
+		arm.state.yield.Error = fmt.Errorf("stack is in program memory (%08x)", arm.state.registers[rSP])
 
 	} else if arm.state.protectVariableMemTop {
 		// return is stack and variable memory blocks are different
@@ -51,38 +51,38 @@ func (arm *ARM) stackProtectCheckSP() {
 			return
 		}
 
-		// set yield type
-		arm.state.yield.Type = coprocessor.YieldStackError
-		arm.state.yield.Error = fmt.Errorf("stack collision (SP %08x) with variables (top %08x) ",
+		arm.state.yield.Type = coprocessor.YieldMemoryFault
+		arm.state.yield.Error = fmt.Errorf("stack collides (SP %08x) with variables (memtop %08x)",
 			arm.state.registers[rSP], arm.state.variableMemtop)
 	} else {
 		return
 	}
 
-	arm.state.stackHasCollided = true
+	arm.state.stackHasErrors = true
 
-	// add developer details if possible
 	if arm.dev != nil {
-		arm.dev.MemoryFault(arm.state.yield.Error.Error(), faults.StackCollision, arm.state.executingPC, arm.state.registers[rSP])
+		arm.dev.MemoryFault(arm.state.yield.Error.Error(), faults.StackError, arm.state.executingPC, arm.state.registers[rSP])
 	}
 }
 
+// called whenever program memory changes
 func (arm *ARM) stackProtectCheckProgramMemory() {
-	if arm.state.stackHasCollided {
+	if arm.state.stackHasErrors {
 		return
 	}
 
 	stackMemory, _ := arm.mem.MapAddress(arm.state.registers[rSP], true, false)
 	if stackMemory == arm.state.programMemory {
-		arm.state.yield.Type = coprocessor.YieldStackError
-		arm.state.yield.Error = fmt.Errorf("SP is pointing to program memory")
-		arm.state.stackHasCollided = true
+		arm.state.yield.Type = coprocessor.YieldMemoryFault
+		arm.state.yield.Error = fmt.Errorf("stack is in program memory (%08x)", arm.state.registers[rSP])
+		arm.state.stackHasErrors = true
 	} else {
 		return
 	}
 
-	// add developer details if possible
+	arm.state.stackHasErrors = true
+
 	if arm.dev != nil {
-		arm.dev.MemoryFault(arm.state.yield.Error.Error(), faults.StackCollision, arm.state.executingPC, arm.state.registers[rSP])
+		arm.dev.MemoryFault(arm.state.yield.Error.Error(), faults.StackError, arm.state.executingPC, arm.state.registers[rSP])
 	}
 }

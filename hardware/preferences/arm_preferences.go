@@ -56,13 +56,8 @@ type ARMPreferences struct {
 	// other value "forces" the MAM setting on Thumb program execution.
 	MAM prefs.Int
 
-	// abort execution on memory fault (eg. accessing memory that doesn't exist)
+	// abort conditions for memory faults
 	AbortOnMemoryFault prefs.Bool
-
-	// treat misaligned accesses as a memory fault. (ie. will be reported as a
-	// memory fault and will cause execution to abort if AbortOnMemoryFault is
-	// true)
-	MisalignedAccessIsFault prefs.Bool
 
 	// include disassembly and register details when logging memory faults
 	ExtendedMemoryFaultLogging prefs.Bool
@@ -118,10 +113,6 @@ func newARMprefrences() (*ARMPreferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("hardware.arm7.MisalignedAccessIsFault", &p.MisalignedAccessIsFault)
-	if err != nil {
-		return nil, err
-	}
 	err = p.dsk.Add("hardware.arm7.extendedMemoryFaultLogging", &p.ExtendedMemoryFaultLogging)
 	if err != nil {
 		return nil, err
@@ -152,10 +143,8 @@ func (p *ARMPreferences) SetDefaults() {
 	p.ImmediateCorrection.Set(false)
 	p.MAM.Set(-1)
 	p.AbortOnMemoryFault.Set(false)
-	p.MisalignedAccessIsFault.Set(false)
 	p.ExtendedMemoryFaultLogging.Set(false)
 	p.UndefinedSymbolWarning.Set(false)
-	p.UnwrapACE.Set(false)
 }
 
 // Load current arm preference from disk.

@@ -325,12 +325,8 @@ const (
 	YieldUnimplementedFeature CoProcYieldType = "Unimplemented Feature"
 
 	// the program has tried to access memory illegally. details will have been
-	// communicated by the IllegalAccess() function of the CartCoProcDeveloper
-	// interface
-	YieldMemoryAccessError CoProcYieldType = "Memory Error"
-
-	// something has gone wrong with the stack
-	YieldStackError CoProcYieldType = "Stack Error"
+	// communicated by the MemoryFault() function in the CartCoProcDeveloper interface
+	YieldMemoryFault CoProcYieldType = "Memory Fault"
 
 	// execution error indicates that something has gone very wrong
 	YieldExecutionError CoProcYieldType = "Execution Error"
@@ -356,7 +352,7 @@ func (t CoProcYieldType) Normal() bool {
 // Bug returns true if the yield type indicates a likely bug
 func (t CoProcYieldType) Bug() bool {
 	return t == YieldUndefinedBehaviour || t == YieldUnimplementedFeature ||
-		t == YieldExecutionError || t == YieldMemoryAccessError || t == YieldStackError
+		t == YieldExecutionError || t == YieldMemoryFault
 }
 
 // CartCoProcDisasmSummary represents a summary of a coprocessor execution.
