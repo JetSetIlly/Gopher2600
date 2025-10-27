@@ -129,7 +129,7 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 	}
 
 	// CCM creation
-	mem.ccm = make([]byte, 0x00002000) // 8k
+	mem.ccm = make([]byte, 0x00010000)
 	mem.ccmOrigin = mem.model.Regions["CCM"].Origin
 	mem.ccmMemtop = mem.ccmOrigin + uint32(len(mem.ccm)) - 1
 
@@ -222,7 +222,26 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 	logger.Logf(mem.env, "ACE", "null function place at %08x", nullFunctionAddress)
 
 	// generous amount for SRAM to accomodate DPCP
-	mem.sram = make([]byte, 0x20000)
+	// mem.sram = make([]byte, 0x20000)
+	// mem.sramOrigin = mem.model.Regions["SRAM"].Origin
+	// mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram)-1)
+
+	// choose size for the remainder of the flash memory and place at the flash
+	// origin value for architecture
+	const sramOverhead = 64000
+	var sramSize uint32
+
+	if len(data) < 128000-sramOverhead {
+		sramSize = 128000
+	} else if len(data) < 256000-sramOverhead {
+		sramSize = 256000
+	} else if len(data) < 512000-sramOverhead {
+		sramSize = 512000
+	} else {
+		sramSize = sramOverhead
+	}
+
+	mem.sram = make([]byte, sramSize)
 	mem.sramOrigin = mem.model.Regions["SRAM"].Origin
 	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram)-1)
 
