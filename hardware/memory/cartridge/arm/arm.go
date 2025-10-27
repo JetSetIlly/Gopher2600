@@ -213,6 +213,12 @@ func (s *ARMState) Plumb(env *environment.Environment) {
 	s.programMemoryMemtop = 0
 }
 
+// precalculated clock length values for each memory region
+type clkLen struct {
+	length float32
+	useMAM bool
+}
+
 // ARM implements the ARM7TDMI-S LPC2103 processor.
 type ARM struct {
 	env  *environment.Environment
@@ -220,8 +226,8 @@ type ARM struct {
 	mem  SharedMemory
 	hook CartridgeHook
 
-	// map of clkLen values per possible latency values
-	clkLen map[float64]float32
+	// precalculated clock length values for each memory region
+	clkLen []clkLen
 
 	// the binary interface for reading data returned by SharedMemory interface.
 	// defaults to LittleEndian
@@ -333,7 +339,7 @@ func NewARM(env *environment.Environment, mmap architecture.Map, mem SharedMemor
 		mmap:           mmap,
 		mem:            mem,
 		hook:           hook,
-		clkLen:         make(map[float64]float32),
+		clkLen:         make([]clkLen, len(mmap.Regions)+1),
 		byteOrder:      binary.LittleEndian,
 		executionCache: make(map[uint32][]decodeFunction),
 		state:          &ARMState{},
@@ -489,12 +495,20 @@ func (arm *ARM) updatePrefs() {
 	// update clock value from preferences
 	arm.Clk = float32(arm.env.Prefs.ARM.Clock.Get().(float64))
 
-	// update clk len values in architecture mmap
+	// update clkLen entries
 	for _, r := range arm.mmap.Regions {
-		if _, ok := arm.clkLen[r.Latency]; !ok {
-			latencyInMhz := (1 / (r.Latency / 1000000000)) / 1000000
-			arm.clkLen[r.Latency] = float32(math.Ceil(float64(arm.Clk) / latencyInMhz))
+		id := arm.mmap.RegionID(r.Origin)
+		latencyInMhz := (1 / (r.Latency / 1000000000)) / 1000000
+		arm.clkLen[id] = clkLen{
+			length: float32(math.Ceil(float64(arm.Clk) / latencyInMhz)),
+			useMAM: r.UseMAM,
 		}
+	}
+
+	// default clk length
+	latencyInMhz := (1 / (1.0 / 1000000000)) / 1000000
+	arm.clkLen[0] = clkLen{
+		length: float32(math.Ceil(float64(arm.Clk) / latencyInMhz)),
 	}
 
 	// get clock regulator from preferences

@@ -51,6 +51,9 @@ type MemoryRegion struct {
 	Origin  uint32
 	Memtop  uint32
 	Latency float64
+
+	// whether the memory region is subject to MAM. the architecture might not have MAM at all
+	UseMAM bool
 }
 
 // Map of the differences between architectures. The differences are led by the
@@ -64,6 +67,14 @@ type Map struct {
 
 	// list of memory regions
 	Regions map[string]*MemoryRegion
+
+	// the mask to apply to an address to quickly determine which region it belongs to
+	RegionMask uint32
+
+	// returns a numeric region ID for the address. the number of possible IDs is the number of
+	// memory regions in the architecture when counted from one. an ID of zero indicates that the
+	// address falls outside all the specified regions
+	RegionID func(addr uint32) int
 
 	// peripherals
 
@@ -130,12 +141,25 @@ func NewMap(cart CartArchitecture) Map {
 			Origin:  0x00000000,
 			Memtop:  0x0fffffff,
 			Latency: 50.0,
+			UseMAM:  true,
 		}
 		mmap.Regions["SRAM"] = &MemoryRegion{
 			Name:    "SRAM",
 			Origin:  0x40000000,
 			Memtop:  0x4fffffff,
 			Latency: 10.0,
+		}
+
+		mmap.RegionMask = 0xf0000000
+
+		mmap.RegionID = func(addr uint32) int {
+			switch addr & mmap.RegionMask {
+			case 0x40000000:
+				return 1 // Flash
+			case 0x00000000:
+				return 2 // SRAM
+			}
+			return 0
 		}
 
 		mmap.HasMAM = true
@@ -192,6 +216,20 @@ func NewMap(cart CartArchitecture) Map {
 			Latency: 1.0,
 		}
 
+		mmap.RegionMask = 0xf0000000
+
+		mmap.RegionID = func(addr uint32) int {
+			switch addr & mmap.RegionMask {
+			case 0x00000000:
+				return 1 // Flash
+			case 0x20000000:
+				return 2 // SRAM
+			case 0x10000000:
+				return 3 // CCM
+			}
+			return 0
+		}
+
 		// there is no MAM in this architecture but the effect of MAMfull is what we want
 		mmap.HasMAM = false
 		mmap.PreferredMAMCR = MAMfull
@@ -233,13 +271,4 @@ func (mmap *Map) IsUnimplemented(addr uint32) (bool, string) {
 		}
 	}
 	return false, ""
-}
-
-func (mmap *Map) AddrLatency(addr uint32) float64 {
-	for _, r := range mmap.Regions {
-		if addr >= r.Origin && addr <= r.Memtop {
-			return r.Latency
-		}
-	}
-	return 1.0
 }
