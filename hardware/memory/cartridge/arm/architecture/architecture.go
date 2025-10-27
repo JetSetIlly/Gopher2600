@@ -177,13 +177,13 @@ func NewMap(cart CartArchitecture) Map {
 			Name:    "Flash",
 			Origin:  0x08020000,
 			Memtop:  0x0802ffff,
-			Latency: 50.0,
+			Latency: 1.0,
 		}
 		mmap.Regions["SRAM"] = &MemoryRegion{
 			Name:    "SRAM",
 			Origin:  0x20000000,
 			Memtop:  0x2fffffff,
-			Latency: 10.0,
+			Latency: 1.0,
 		}
 		mmap.Regions["CCM"] = &MemoryRegion{
 			Name:    "CCM",
