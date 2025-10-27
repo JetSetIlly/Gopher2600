@@ -154,7 +154,7 @@ func (h *haltCoordination) check() bool {
 			h.halt = true
 			h.haltReason = HaltReason{
 				Reason: "Trap",
-				Detail: breakMessage,
+				Detail: trapMessage,
 				Coords: h.dbg.vcs.TV.GetCoords(),
 			}
 		}
@@ -164,7 +164,7 @@ func (h *haltCoordination) check() bool {
 			h.halt = true
 			h.haltReason = HaltReason{
 				Reason: "Watch",
-				Detail: breakMessage,
+				Detail: watchMessage,
 				Coords: h.dbg.vcs.TV.GetCoords(),
 			}
 		}
