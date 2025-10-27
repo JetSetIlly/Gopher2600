@@ -23,10 +23,6 @@ import (
 )
 
 func (arm *ARM) memoryFault(event string, fault faults.Category, addr uint32) {
-	if arm.state.stackHasErrors {
-		return
-	}
-
 	if arm.dev != nil {
 		arm.dev.MemoryFault(event, fault, arm.state.instructionPC, addr)
 	}
