@@ -149,19 +149,19 @@ profile_trace: generate test
 profile_cpu_play: generate test
 	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
 	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
-	@./gopher2600 play -profile=cpu -elf=none "$(rom)"
+	@./gopher2600 play -profile=cpu -dwarf=none "$(rom)"
 	@$(goBinary) tool pprof -http : ./gopher2600 play_cpu.profile
 
 profile_mem_play : generate test
 	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
 	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
-	@./gopher2600 play -profile=mem -elf=none "$(rom)"
+	@./gopher2600 play -profile=mem -dwarf=none "$(rom)"
 	@$(goBinary) tool pprof -http : ./gopher2600 play_mem.profile
 
 profile_trace_play: generate test
 	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
 	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
-	@./gopher2600 play -profile=trace -elf=none "$(rom)"
+	@./gopher2600 play -profile=trace -dwarf=none "$(rom)"
 	@$(goBinary) tool trace -http : play_trace.profile
 
 
