@@ -151,7 +151,7 @@ func (cart *Ace) NumBanks() int {
 
 // GetBank implements the mapper.CartMapper interface.
 func (cart *Ace) GetBank(_ uint16) mapper.BankInfo {
-	return mapper.BankInfo{Number: 0, IsRAM: false}
+	return mapper.BankInfo{Sequential: true, Number: 0, IsRAM: false}
 }
 
 func (cart *Ace) runARM() bool {

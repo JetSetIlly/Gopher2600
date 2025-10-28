@@ -34,6 +34,13 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 		}
 	}
 
+	if dbg.liveBankInfo.Sequential {
+		return terminal.Prompt{
+			Content:   fmt.Sprintf("$%04x", dbg.vcs.CPU.PC.Address()),
+			Recording: dbg.scriptScribe.IsActive(),
+		}
+	}
+
 	var e *disassembly.Entry
 
 	// decide which address value to use

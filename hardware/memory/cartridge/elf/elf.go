@@ -320,7 +320,7 @@ func (cart *Elf) NumBanks() int {
 
 // GetBank implements the mapper.CartMapper interface.
 func (cart *Elf) GetBank(_ uint16) mapper.BankInfo {
-	return mapper.BankInfo{Number: 0, IsRAM: false}
+	return mapper.BankInfo{Sequential: true, Number: 0, IsRAM: false}
 }
 
 func (cart *Elf) runARM(addr uint16) bool {

@@ -190,9 +190,8 @@ func (win *winDisasm) draw() {
 			addr = win.img.cache.Dbg.LiveDisasmEntry.Result.Address & memorymap.CartridgeBits
 		}
 	}
-	onlySequential := win.img.cache.VCS.Mem.Cart.MappedBanks() == ""
-	if win.showSequential || onlySequential {
-		win.drawSequential(addr, currBank, onlySequential)
+	if win.showSequential || currBank.Sequential {
+		win.drawSequential(addr, currBank, currBank.Sequential)
 	} else {
 		win.drawBanked(addr, currBank)
 	}
