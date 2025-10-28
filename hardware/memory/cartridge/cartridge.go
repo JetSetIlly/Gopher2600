@@ -123,7 +123,7 @@ func (cart *Cartridge) String() string {
 }
 
 // MappedBanks returns a string summary of the mapping. ie. what banks are mapped in. If bank
-// switching is not applicable to the cartridge then an empty string should be returned.
+// switching is not applicable to the cartridge then an empty string is returned.
 func (cart *Cartridge) MappedBanks() string {
 	return cart.mapper.MappedBanks()
 }

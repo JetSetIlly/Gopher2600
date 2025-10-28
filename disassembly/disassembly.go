@@ -61,6 +61,9 @@ type Disassembly struct {
 type DisasmEntries struct {
 	// indexed by bank and address. address should be masked with memorymap.CartridgeBits before access
 	Entries [][]*Entry
+
+	// executed entries in order of execution
+	Sequential []*Entry
 }
 
 // NewDisassembly is the preferred method of initialisation for the Disassembly
@@ -138,6 +141,10 @@ func (dsm *Disassembly) Background(cartload cartridgeloader.Loader) {
 			logger.Log(dsm.vcs.Env, "disassembly", err.Error())
 		}
 	}()
+}
+
+func (dsm *Disassembly) Reset() {
+	dsm.disasmEntries.Sequential = dsm.disasmEntries.Sequential[:0]
 }
 
 // FromMemory disassembles an existing instance of cartridge memory using a
@@ -222,6 +229,14 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 // checkNextAddr should be false if the result does no represent a completed
 // instruction. in other words, if the instruction has only partially completed
 func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Result, checkNextAddr bool, nextAddr uint16) *Entry {
+	// we don't need to do anything if CPU hasn't moved on from previous result
+	if len(dsm.disasmEntries.Sequential) != 0 {
+		last := dsm.disasmEntries.Sequential[len(dsm.disasmEntries.Sequential)-1]
+		if result.Address == last.Result.Address && !result.Defn.IsBranch() {
+			return last
+		}
+	}
+
 	e := dsm.FormatResult(bank, result, EntryLevelExecuted)
 
 	// if co-processor is executing then whatever has been executed by the 6507
@@ -285,6 +300,12 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 		} else if ne.Level < EntryLevelBlessed {
 			ne.Level = EntryLevelBlessed
 		}
+	}
+
+	// add to sequenctial list
+	dsm.disasmEntries.Sequential = append(dsm.disasmEntries.Sequential, e)
+	if len(dsm.disasmEntries.Sequential) > 10000 {
+		dsm.disasmEntries.Sequential = dsm.disasmEntries.Sequential[1:]
 	}
 
 	return e

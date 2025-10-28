@@ -533,14 +533,14 @@ func disasm(mode string, args []string) error {
 			// print what disassembly output we do have
 			if dsm != nil {
 				// ignore any further errors
-				_ = dsm.Write(os.Stdout, attr)
+				_ = dsm.Write(os.Stdout, attr, false)
 			}
 			return err
 		}
 
 		// output entire disassembly or just a specific bank
 		if bank < 0 {
-			err = dsm.Write(os.Stdout, attr)
+			err = dsm.Write(os.Stdout, attr, false)
 		} else {
 			err = dsm.WriteBank(os.Stdout, attr, bank)
 		}

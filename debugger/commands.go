@@ -604,7 +604,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 	case cmdDisasm:
-		bytecode := false
+		var bytecode bool
+		var sequential bool
 
 		arg, ok := tokens.Get()
 		if ok {
@@ -617,6 +618,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				return nil
 			case "BYTECODE":
 				bytecode = true
+			case "SEQUENTIAL":
+				sequential = true
 			}
 		}
 
@@ -627,12 +630,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 		s := strings.Builder{}
-		err := dbg.Disasm.Write(&s, attr)
+		err := dbg.Disasm.Write(&s, attr, sequential)
 		if err != nil {
 			dbg.printLine(terminal.StyleFeedback, err.Error())
+		} else {
+			dbg.printLine(terminal.StyleFeedback, s.String())
 		}
-
-		dbg.printLine(terminal.StyleFeedback, s.String())
 
 	case cmdGrep:
 		scope := disassembly.GrepAll

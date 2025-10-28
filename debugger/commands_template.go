@@ -103,7 +103,7 @@ var commandTemplate = []string{
 	cmdInsert + " %<cartridge>F",
 	cmdCartridge + " (PATH|NAME|MAPPER|CONTAINER|MAPPEDBANKS|HASH|STATIC|REGISTERS|RAM|DUMP|SETBANK %<bank>S|{%<mapper specific>X})",
 	cmdPatch + " %<patch file>S",
-	cmdDisasm + " (BYTECODE|REDUX)",
+	cmdDisasm + " (BYTECODE|REDUX|SEQUENTIAL)",
 	cmdGrep + " (OPERATOR|OPERAND|COPROC) %<search>S",
 	cmdSymbol + " [LIST (LABELS|READ|WRITE)|%<symbol>X]",
 	cmdOnHalt + " (OFF|ON|%<command>S {%<commands>S})",

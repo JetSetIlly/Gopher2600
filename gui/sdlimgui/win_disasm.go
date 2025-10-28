@@ -58,8 +58,9 @@ type winDisasm struct {
 	usingColor bool
 
 	// selected filter and selected bank to display when filter is 'filterBank'
-	filter       disasmFilter
-	selectedBank int
+	filter         disasmFilter
+	selectedBank   int
+	showSequential bool
 
 	// special handling of a new ROM with a different number of banks is achieved by
 	// checking whether the CPU has been recently reset. this flag allows us to
@@ -141,11 +142,6 @@ func (win *winDisasm) debuggerDraw() bool {
 }
 
 func (win *winDisasm) draw() {
-	if imgui.IsWindowCollapsed() {
-		return
-	}
-
-	// the currBank that is currently selected
 	addr := win.img.cache.VCS.CPU.PC.Address()
 	currBank := win.img.cache.VCS.Mem.Cart.GetBank(addr)
 
@@ -174,35 +170,53 @@ func (win *winDisasm) draw() {
 			win.selectedBank = currBank.Number
 		}
 	}
-	win.focus.lastAddress = win.img.cache.VCS.CPU.PC.Address()
+	win.focus.lastAddress = addr
 	win.focus.lastState = win.img.dbg.State()
 
 	// the value of focusAddr depends on the state of the CPU. if the Final
 	// state of the CPU's last execution result is true then we can be sure the
 	// PC value is valid and points to a real instruction. we need this because
 	// we can never be sure when we are going to draw this window
-	var focusAddr uint16
-
 	if currBank.ExecutingCoprocessor {
 		// if coprocessor is running then jam the focusAddr value at address the
 		// CPU will resume from once the coprocessor has finished.
-		focusAddr = currBank.CoprocessorResumeAddr & memorymap.CartridgeBits
+		addr = currBank.CoprocessorResumeAddr & memorymap.CartridgeBits
 	} else {
 		// focus address depends on if we're in the middle of an CPU
 		// instruction or not. special condition for freshly reset CPUs
 		if win.img.cache.Dbg.LiveDisasmEntry.Result.Final {
-			focusAddr = win.img.cache.VCS.CPU.PC.Address() & memorymap.CartridgeBits
+			addr = win.img.cache.VCS.CPU.PC.Address() & memorymap.CartridgeBits
 		} else {
-			focusAddr = win.img.cache.Dbg.LiveDisasmEntry.Result.Address & memorymap.CartridgeBits
+			addr = win.img.cache.Dbg.LiveDisasmEntry.Result.Address & memorymap.CartridgeBits
 		}
 	}
-
-	win.drawControlBar(currBank)
-	win.drawBank(currBank, focusAddr)
-	win.drawOptionsBar(currBank)
+	onlySequential := win.img.cache.VCS.Mem.Cart.MappedBanks() == ""
+	if win.showSequential || onlySequential {
+		win.drawSequential(addr, currBank, onlySequential)
+	} else {
+		win.drawBanked(addr, currBank)
+	}
 }
 
-func (win *winDisasm) drawControlBar(currBank mapper.BankInfo) {
+func (win *winDisasm) drawSequential(addr uint16, currBank mapper.BankInfo, onlySequential bool) {
+	render := func(dsm *disassembly.DisasmEntries) {
+		win.drawEntries("sequential", dsm.Sequential, len(dsm.Sequential)-1, currBank)
+	}
+
+	if !win.img.dbg.Disasm.BorrowDisasm(render) {
+		imgui.Text("disassembling...")
+	}
+
+	win.drawOptionsBar(currBank, !onlySequential)
+}
+
+func (win *winDisasm) drawBanked(addr uint16, currBank mapper.BankInfo) {
+	win.drawBankSelection(currBank)
+	win.drawBank(addr, currBank)
+	win.drawOptionsBar(currBank, true)
+}
+
+func (win *winDisasm) drawBankSelection(currBank mapper.BankInfo) {
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
 	numColumns := 2
@@ -308,43 +322,7 @@ func (win *winDisasm) drawControlBar(currBank mapper.BankInfo) {
 	imgui.Spacing()
 }
 
-func (win *winDisasm) drawBank(currBank mapper.BankInfo, focusAddr uint16) {
-	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
-	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
-	defer imgui.PopStyleColorV(2)
-
-	height := imguiRemainingWinHeight() - win.optionsHeight
-	imgui.BeginChildV(fmt.Sprintf("##bank %d", win.selectedBank), imgui.Vec2{X: 0, Y: height}, false, imgui.ChildFlagsNone)
-	defer imgui.EndChild()
-
-	numColumns := 7
-	flgs := imgui.TableFlagsNone
-	flgs |= imgui.TableFlagsSizingFixedFit
-	if !imgui.BeginTableV("disasmbank", numColumns, flgs, imgui.Vec2{}, 0) {
-		return
-	}
-	defer imgui.EndTable()
-
-	operandWidth := imgui.ContentRegionAvail().X - imgui.CurrentStyle().ItemSpacing().X*float32(numColumns)
-	operandWidth -= win.widthSum
-
-	imgui.TableSetupColumnV("##break", imgui.TableColumnFlagsNone, win.widthBreak, 0)
-	imgui.TableSetupColumnV("##label", imgui.TableColumnFlagsNone, win.widthLabel, 1)
-	imgui.TableSetupColumnV("##address", imgui.TableColumnFlagsNone, win.widthAddr, 2)
-	imgui.TableSetupColumnV("##operator", imgui.TableColumnFlagsNone, win.widthOperator, 3)
-	imgui.TableSetupColumnV("##operand", imgui.TableColumnFlagsNone, operandWidth, 4)
-	imgui.TableSetupColumnV("##cycles", imgui.TableColumnFlagsNone, win.widthCycles, 5)
-	imgui.TableSetupColumnV("##notes", imgui.TableColumnFlagsNone, win.widthNotes, 6)
-
-	// draw is called for each column. it handles the colour preference
-	draw := func(s string, col imgui.Vec4) {
-		if win.usingColor {
-			imgui.PushStyleColor(imgui.StyleColorText, col)
-			defer imgui.PopStyleColor()
-		}
-		imgui.Text(s)
-	}
-
+func (win *winDisasm) drawBank(addr uint16, currBank mapper.BankInfo) {
 	// render is called via a call to BorrowDisasm()
 	render := func(dsm *disassembly.DisasmEntries) {
 		// because we're running concurrently with the emulation there may be instances
@@ -377,117 +355,12 @@ func (win *winDisasm) drawBank(currBank mapper.BankInfo, focusAddr uint16) {
 				}
 			}
 
-			if e.Result.Address&memorymap.CartridgeBits == focusAddr {
+			if e.Result.Address&memorymap.CartridgeBits == addr {
 				current = len(entries) - 1
 			}
 		}
 
-		results := imgui.ListClipperAll(len(entries), func(i int) {
-			lbl := entries[i].Label.Resolve()
-			nts := entries[i].Notes()
-
-			// does this entry/address have a PC break applied to it
-			var hasPCbreak bool
-			if win.img.cache.Dbg.Breakpoints != nil {
-				hasPCbreak, _ = win.img.cache.Dbg.Breakpoints.HasPCBreak(entries[i].Result.Address, currBank.Number)
-			}
-
-			imgui.TableNextRow()
-			if imgui.TableNextColumn() {
-				if hasPCbreak {
-					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
-					imgui.SelectableV(string(fonts.Breakpoint), i == current, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
-					imgui.PopStyleColor()
-				} else {
-					imgui.SelectableV("", i == current, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
-				}
-
-				// single click on the address entry toggles a PC breakpoint
-				if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
-					win.img.dbg.PushTogglePCBreak(entries[i])
-				}
-
-				// tooltip information about the instruction
-				win.img.imguiTooltip(func() {
-					if lbl != "" {
-						imgui.Spacing()
-						imgui.Text(fmt.Sprintf("%c %s", fonts.Label, lbl))
-					}
-					if imgui.BeginTableV("disasmtooltip", 4, imgui.TableFlagsBorders, imgui.Vec2{}, 0) {
-						imgui.TableSetupColumn("Bytecode")
-						imgui.TableSetupColumn("Address")
-						imgui.TableSetupColumn("Operator")
-						imgui.TableSetupColumn("Operand")
-						imgui.TableHeadersRow()
-						imgui.TableNextRow()
-						imgui.TableNextColumn()
-						draw(entries[i].Bytecode, win.img.cols.DisasmByteCode)
-						imgui.TableNextColumn()
-						draw(entries[i].Address, win.img.cols.DisasmAddress)
-						imgui.TableNextColumn()
-						draw(entries[i].Operator, win.img.cols.DisasmOperator)
-						imgui.TableNextColumn()
-						draw(entries[i].Operand.Resolve(), win.img.cols.DisasmOperand)
-						imgui.EndTable()
-					}
-					if hasPCbreak {
-						imgui.Spacing()
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
-						imgui.Text(string(fonts.Breakpoint))
-						imgui.PopStyleColor()
-						imgui.SameLine()
-						imgui.Textf("breakpoint on %s", entries[i].Address)
-					}
-					if current == i && currBank.ExecutingCoprocessor {
-						imgui.Spacing()
-						draw(fmt.Sprintf("%c coprocessor executing", fonts.CoProcExecution), win.img.cols.DisasmNotes)
-					}
-					if entries[i].Level < disassembly.EntryLevelExecuted {
-						imgui.Spacing()
-						draw("never been executed", win.img.cols.DisasmNotes)
-					} else {
-						imgui.Spacing()
-						draw(fmt.Sprintf("last took %s cycles", entries[i].Cycles()), win.img.cols.DisasmCycles)
-					}
-					if nts != "" {
-						imgui.Spacing()
-						draw(fmt.Sprintf("%c %s", fonts.Notes, nts), win.img.cols.DisasmNotes)
-					}
-				}, true)
-			}
-			if imgui.TableNextColumn() {
-				if lbl != "" {
-					draw(string(fonts.Label), win.img.cols.DisasmLabel)
-				}
-			}
-			if imgui.TableNextColumn() {
-				draw(entries[i].Address, win.img.cols.DisasmAddress)
-			}
-			if imgui.TableNextColumn() {
-				draw(entries[i].Operator, win.img.cols.DisasmOperator)
-			}
-			if imgui.TableNextColumn() {
-				draw(entries[i].Operand.Resolve(), win.img.cols.DisasmOperand)
-			}
-			if imgui.TableNextColumn() {
-				draw(entries[i].Cycles(), win.img.cols.DisasmCycles)
-			}
-			if imgui.TableNextColumn() {
-				if current == i && currBank.ExecutingCoprocessor {
-					draw(string(fonts.CoProcExecution), win.img.cols.DisasmNotes)
-				} else {
-					if nts != "" {
-						draw(string(fonts.Notes), win.img.cols.DisasmNotes)
-					}
-				}
-			}
-		})
-
-		if win.focus.active {
-			const margin = 3
-			imgui.SetScrollY(float32(current-margin) * results.ItemsHeight)
-			win.focus.active = false
-		}
+		win.drawEntries("banked", entries, current, currBank)
 	}
 
 	if !win.img.dbg.Disasm.BorrowDisasm(render) {
@@ -495,7 +368,7 @@ func (win *winDisasm) drawBank(currBank mapper.BankInfo, focusAddr uint16) {
 	}
 }
 
-func (win *winDisasm) drawOptionsBar(currBank mapper.BankInfo) {
+func (win *winDisasm) drawOptionsBar(currBank mapper.BankInfo, showSequential bool) {
 	// draw options and status line. start height measurement
 	win.optionsHeight = imguiMeasureHeight(func() {
 		imgui.Spacing()
@@ -514,6 +387,17 @@ func (win *winDisasm) drawOptionsBar(currBank mapper.BankInfo) {
 			win.img.prefs.colorDisasm.Set(win.usingColor)
 		}
 
+		if showSequential {
+			imgui.SameLineV(0, 15)
+			if imgui.Checkbox("Show Sequential", &win.showSequential) {
+				// follow CPU if appropriate
+				if win.followCPU {
+					win.focus.active = true
+					win.selectedBank = currBank.Number
+				}
+			}
+		}
+
 		// special execution icons
 		if currBank.ExecutingCoprocessor {
 			imgui.SameLineV(0, 15)
@@ -528,4 +412,155 @@ func (win *winDisasm) drawOptionsBar(currBank mapper.BankInfo) {
 			win.img.imguiTooltipSimple("Executing a non-cartridge address!")
 		}
 	})
+}
+
+// drawEntries is called from both drawBanked() and drawSequential()
+func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, current int, currBank mapper.BankInfo) {
+	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
+	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
+	defer imgui.PopStyleColorV(2)
+
+	height := imguiRemainingWinHeight() - win.optionsHeight
+	imgui.BeginChildV(fmt.Sprintf("##disamentries%s", id), imgui.Vec2{X: 0, Y: height}, false, imgui.ChildFlagsNone)
+	defer imgui.EndChild()
+
+	if len(entries) == 0 {
+		imgui.Text("disassembling...")
+		return
+	}
+
+	numColumns := 7
+	flgs := imgui.TableFlagsNone
+	flgs |= imgui.TableFlagsSizingFixedFit
+	if !imgui.BeginTableV(fmt.Sprintf("##disasmtable%s", id), numColumns, flgs, imgui.Vec2{}, 0) {
+		return
+	}
+	defer imgui.EndTable()
+
+	operandWidth := imgui.ContentRegionAvail().X - imgui.CurrentStyle().ItemSpacing().X*float32(numColumns)
+	operandWidth -= win.widthSum
+
+	imgui.TableSetupColumnV("##break", imgui.TableColumnFlagsNone, win.widthBreak, 0)
+	imgui.TableSetupColumnV("##label", imgui.TableColumnFlagsNone, win.widthLabel, 1)
+	imgui.TableSetupColumnV("##address", imgui.TableColumnFlagsNone, win.widthAddr, 2)
+	imgui.TableSetupColumnV("##operator", imgui.TableColumnFlagsNone, win.widthOperator, 3)
+	imgui.TableSetupColumnV("##operand", imgui.TableColumnFlagsNone, operandWidth, 4)
+	imgui.TableSetupColumnV("##cycles", imgui.TableColumnFlagsNone, win.widthCycles, 5)
+	imgui.TableSetupColumnV("##notes", imgui.TableColumnFlagsNone, win.widthNotes, 6)
+
+	// draw is called for each column. it handles the colour preference
+	draw := func(s string, col imgui.Vec4) {
+		if win.usingColor {
+			imgui.PushStyleColor(imgui.StyleColorText, col)
+			defer imgui.PopStyleColor()
+		}
+		imgui.Text(s)
+	}
+
+	results := imgui.ListClipperAll(len(entries), func(i int) {
+		lbl := entries[i].Label.Resolve()
+		nts := entries[i].Notes()
+
+		// does this entry/address have a PC break applied to it
+		var hasPCbreak bool
+		if win.img.cache.Dbg.Breakpoints != nil {
+			hasPCbreak, _ = win.img.cache.Dbg.Breakpoints.HasPCBreak(entries[i].Result.Address, currBank.Number)
+		}
+
+		imgui.TableNextRow()
+		if imgui.TableNextColumn() {
+			if hasPCbreak {
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
+				imgui.SelectableV(string(fonts.Breakpoint), i == current, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
+				imgui.PopStyleColor()
+			} else {
+				imgui.SelectableV("", i == current, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
+			}
+
+			// single click on the address entry toggles a PC breakpoint
+			if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
+				win.img.dbg.PushTogglePCBreak(entries[i])
+			}
+
+			// tooltip information about the instruction
+			win.img.imguiTooltip(func() {
+				if lbl != "" {
+					imgui.Spacing()
+					imgui.Text(fmt.Sprintf("%c %s", fonts.Label, lbl))
+				}
+				if imgui.BeginTableV("disasmtooltip", 4, imgui.TableFlagsBorders, imgui.Vec2{}, 0) {
+					imgui.TableSetupColumn("Bytecode")
+					imgui.TableSetupColumn("Address")
+					imgui.TableSetupColumn("Operator")
+					imgui.TableSetupColumn("Operand")
+					imgui.TableHeadersRow()
+					imgui.TableNextRow()
+					imgui.TableNextColumn()
+					draw(entries[i].Bytecode, win.img.cols.DisasmByteCode)
+					imgui.TableNextColumn()
+					draw(entries[i].Address, win.img.cols.DisasmAddress)
+					imgui.TableNextColumn()
+					draw(entries[i].Operator, win.img.cols.DisasmOperator)
+					imgui.TableNextColumn()
+					draw(entries[i].Operand.Resolve(), win.img.cols.DisasmOperand)
+					imgui.EndTable()
+				}
+				if hasPCbreak {
+					imgui.Spacing()
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
+					imgui.Text(string(fonts.Breakpoint))
+					imgui.PopStyleColor()
+					imgui.SameLine()
+					imgui.Textf("breakpoint on %s", entries[i].Address)
+				}
+				if current == i && currBank.ExecutingCoprocessor {
+					imgui.Spacing()
+					draw(fmt.Sprintf("%c coprocessor executing", fonts.CoProcExecution), win.img.cols.DisasmNotes)
+				}
+				if entries[i].Level < disassembly.EntryLevelExecuted {
+					imgui.Spacing()
+					draw("never been executed", win.img.cols.DisasmNotes)
+				} else {
+					imgui.Spacing()
+					draw(fmt.Sprintf("last took %s cycles", entries[i].Cycles()), win.img.cols.DisasmCycles)
+				}
+				if nts != "" {
+					imgui.Spacing()
+					draw(fmt.Sprintf("%c %s", fonts.Notes, nts), win.img.cols.DisasmNotes)
+				}
+			}, true)
+		}
+		if imgui.TableNextColumn() {
+			if lbl != "" {
+				draw(string(fonts.Label), win.img.cols.DisasmLabel)
+			}
+		}
+		if imgui.TableNextColumn() {
+			draw(entries[i].Address, win.img.cols.DisasmAddress)
+		}
+		if imgui.TableNextColumn() {
+			draw(entries[i].Operator, win.img.cols.DisasmOperator)
+		}
+		if imgui.TableNextColumn() {
+			draw(entries[i].Operand.Resolve(), win.img.cols.DisasmOperand)
+		}
+		if imgui.TableNextColumn() {
+			draw(entries[i].Cycles(), win.img.cols.DisasmCycles)
+		}
+		if imgui.TableNextColumn() {
+			if current == i && currBank.ExecutingCoprocessor {
+				draw(string(fonts.CoProcExecution), win.img.cols.DisasmNotes)
+			} else {
+				if nts != "" {
+					draw(string(fonts.Notes), win.img.cols.DisasmNotes)
+				}
+			}
+		}
+	})
+
+	if win.focus.active {
+		const margin = 3
+		imgui.SetScrollY(float32(current-margin) * results.ItemsHeight)
+		win.focus.active = false
+	}
 }
