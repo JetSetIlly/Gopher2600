@@ -125,6 +125,10 @@ func (cart *Ace) Plumb(env *environment.Environment) {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *Ace) Reset() {
+	cart.arm.Reset()
+
+	// not resetting memory. some ROMs likely need memory to be reinitialised or reset but for now
+	// we're not doing that
 }
 
 // Access implements the mapper.CartMapper interface.
