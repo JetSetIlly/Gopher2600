@@ -116,7 +116,7 @@ var commandTemplate = []string{
 	cmdPeek + " [%<address>S] {%<addresses>S}",
 	cmdPoke + " %<address>S [%<value>N] {%<values>N}",
 	cmdSwap + " %<address>S %<address>S",
-	cmdRAM,
+	cmdRAM + " (STACK)",
 	cmdTIA + " (HMOVE)",
 	cmdRIOT + " (PORTS|TIMER)",
 	cmdAudio,

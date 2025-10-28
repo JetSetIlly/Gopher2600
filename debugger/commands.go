@@ -1255,7 +1255,17 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("%04x: %02x->%02x and %04x: %02x->%02x", ai.Address, ai.Data, aj.Data, bi.Address, bi.Data, bj.Data))
 
 	case cmdRAM:
-		dbg.printLine(terminal.StyleInstrument, dbg.vcs.Mem.RAM.String())
+		arg, _ := tokens.Get()
+		switch arg {
+		case "STACK":
+			var s strings.Builder
+			for i := int((dbg.vcs.CPU.SP.Value() + 1) & 0x7f); i <= 0x7f; i++ {
+				s.WriteString(fmt.Sprintf("%02x ", dbg.vcs.Mem.RAM.RAM[i]))
+			}
+			dbg.printLine(terminal.StyleInstrument, s.String())
+		default:
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.Mem.RAM.String())
+		}
 
 	case cmdTIA:
 		arg, _ := tokens.Get()
