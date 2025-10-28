@@ -44,6 +44,11 @@ type imguiColors struct {
 	Warning     imgui.Vec4
 	Cancel      imgui.Vec4
 
+	// menu bar colours
+	HaltReason        imgui.Vec4
+	HaltReasonHovered imgui.Vec4
+	HaltReasonActive  imgui.Vec4
+
 	// playscreen colors
 	PlayWindowBg     imgui.Vec4
 	PlayWindowBorder imgui.Vec4
@@ -265,6 +270,11 @@ func newColors() *imguiColors {
 		Transparent: imgui.Vec4{X: 0.0, Y: 0.0, Z: 0.0, W: 0.0},
 		Warning:     imgui.Vec4{X: 1.0, Y: 0.2, Z: 0.2, W: 1.0},
 		Cancel:      imgui.Vec4{X: 1.0, Y: 0.2, Z: 0.2, W: 1.0},
+
+		// menu bar colours
+		HaltReason:        imgui.Vec4{X: 0.6, Y: 0.3, Z: 0.3, W: 1.0},
+		HaltReasonHovered: imgui.Vec4{X: 0.65, Y: 0.3, Z: 0.3, W: 1.0},
+		HaltReasonActive:  imgui.Vec4{X: 0.65, Y: 0.3, Z: 0.3, W: 1.0},
 
 		// playscreen colors
 		PlayWindowBg:     imgui.Vec4{X: 0.0, Y: 0.0, Z: 0.0, W: 1.0},
