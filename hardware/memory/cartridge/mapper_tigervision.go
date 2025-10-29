@@ -112,8 +112,9 @@ func (cart *tigervision) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *tigervision) Reset() {
+func (cart *tigervision) Reset() error {
 	cart.SetBank("AUTO")
+	return nil
 }
 
 // Access implements the mapper.CartMapper interface.

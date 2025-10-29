@@ -53,7 +53,7 @@ type CartMapper interface {
 	// reset volatile areas of the cartridge. for many cartridge mappers this
 	// will do nothing but those with registers or ram should perform an
 	// explicit reset (possibly with randomisation)
-	Reset()
+	Reset() error
 
 	// access the cartridge at the specified address. the cartridge is expected to
 	// drive the data bus and so this can be thought of as a "read" operation

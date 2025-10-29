@@ -178,8 +178,8 @@ func (cart *PlusROM) ContainerID() string {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *PlusROM) Reset() {
-	cart.state.child.Reset()
+func (cart *PlusROM) Reset() error {
+	return cart.state.child.Reset()
 }
 
 // READ implements the mapper.CartMapper interface.

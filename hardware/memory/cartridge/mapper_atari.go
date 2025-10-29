@@ -136,7 +136,7 @@ func (cart *atari) ID() string {
 
 // reset is called by the Reset() function implemented in all child types of the
 // the atari type
-func (cart *atari) reset() {
+func (cart *atari) reset() error {
 	for i := range cart.state.ram {
 		if cart.env.Prefs.RandomState.Get().(bool) {
 			cart.state.ram[i] = uint8(cart.env.Random.Intn(0xff))
@@ -152,6 +152,8 @@ func (cart *atari) reset() {
 			logger.Log(cart.env, "cartridge", err)
 		}
 	}
+
+	return nil
 }
 
 // GetBank implements the mapper.CartMapper interface.
@@ -388,8 +390,8 @@ func (cart *atari4k) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *atari4k) Reset() {
-	cart.reset()
+func (cart *atari4k) Reset() error {
+	return cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -465,8 +467,8 @@ func (cart *atari2k) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *atari2k) Reset() {
-	cart.reset()
+func (cart *atari2k) Reset() error {
+	return cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -548,8 +550,8 @@ func (cart *atari8k) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *atari8k) Reset() {
-	cart.reset()
+func (cart *atari8k) Reset() error {
+	return cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -659,8 +661,8 @@ func (cart *atari16k) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *atari16k) Reset() {
-	cart.reset()
+func (cart *atari16k) Reset() error {
+	return cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -776,8 +778,8 @@ func (cart *atari32k) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *atari32k) Reset() {
-	cart.reset()
+func (cart *atari32k) Reset() error {
+	return cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.

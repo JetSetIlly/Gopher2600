@@ -150,7 +150,7 @@ func (cart *mnetwork) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *mnetwork) Reset() {
+func (cart *mnetwork) Reset() error {
 	for b := range cart.state.ram256byte {
 		for i := range cart.state.ram256byte[b] {
 			if cart.env.Prefs.RandomState.Get().(bool) {
@@ -170,6 +170,8 @@ func (cart *mnetwork) Reset() {
 	}
 
 	cart.SetBank("AUTO")
+
+	return nil
 }
 
 // Access implements the mapper.CartMapper interface.

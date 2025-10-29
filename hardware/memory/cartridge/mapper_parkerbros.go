@@ -103,8 +103,9 @@ func (cart *parkerBros) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *parkerBros) Reset() {
+func (cart *parkerBros) Reset() error {
 	cart.SetBank("AUTO")
+	return nil
 }
 
 // Access implements the mapper.CartMapper interface.

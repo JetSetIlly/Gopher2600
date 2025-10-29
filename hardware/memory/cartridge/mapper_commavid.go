@@ -107,12 +107,14 @@ func (cart *commavid) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *commavid) Reset() {
+func (cart *commavid) Reset() error {
 	// always starting with random state. this is because Video Life, one of
 	// the few original CommaVid cartridges, expects it for the opening effect
 	for i := range cart.state.ram {
 		cart.state.ram[i] = uint8(cart.env.Random.Intn(0xff))
 	}
+
+	return nil
 }
 
 // Access implements the mapper.CartMapper interface.

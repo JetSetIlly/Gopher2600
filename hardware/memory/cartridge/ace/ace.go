@@ -45,14 +45,14 @@ type Ace struct {
 
 // NewAce is the preferred method of initialisation for the Ace type.
 func NewAce(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
-	if err != nil {
-		return nil, fmt.Errorf("ACE: %w", err)
-	}
-
 	cart := &Ace{
 		env:       env,
 		yieldHook: coprocessor.StubCartYieldHook{},
+	}
+
+	data, err := io.ReadAll(loader)
+	if err != nil {
+		return nil, fmt.Errorf("ACE: %w", err)
 	}
 
 	cart.mem, err = newAceMemory(env, data, cart.env.Prefs.ARM)
@@ -70,6 +70,29 @@ func NewAce(env *environment.Environment, loader cartridgeloader.Loader) (mapper
 	logger.Logf(env, "ACE", "gpio: %08x to %08x", cart.mem.gpioOrigin, cart.mem.gpioMemtop)
 
 	return cart, nil
+}
+
+// Reset implements the mapper.CartMapper interface.
+func (cart *Ace) Reset() error {
+	// reset probably not needed but we'll do it anyway
+	cart.env.Loader.Reset()
+
+	data, err := io.ReadAll(cart.env.Loader)
+	if err != nil {
+		return fmt.Errorf("ACE: %w", err)
+	}
+
+	cart.mem, err = newAceMemory(cart.env, data, cart.env.Prefs.ARM)
+	if err != nil {
+		return fmt.Errorf("ACE: %w", err)
+	}
+
+	cart.arm.Reset()
+	armState := cart.arm.Snapshot()
+	cart.arm.Plumb(cart.env, armState, cart.mem, cart)
+	cart.mem.Plumb(cart.arm)
+
+	return nil
 }
 
 // MappedBanks implements the mapper.CartMapper interface.
@@ -121,14 +144,6 @@ func (cart *Ace) Plumb(env *environment.Environment) {
 	cart.mem.Plumb(cart.arm)
 	cart.arm.Plumb(cart.env, cart.armState, cart.mem, cart)
 	cart.armState = nil
-}
-
-// Reset implements the mapper.CartMapper interface.
-func (cart *Ace) Reset() {
-	cart.arm.Reset()
-
-	// not resetting memory. some ROMs likely need memory to be reinitialised or reset but for now
-	// we're not doing that
 }
 
 // Access implements the mapper.CartMapper interface.

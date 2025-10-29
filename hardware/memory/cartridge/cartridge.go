@@ -102,8 +102,8 @@ func (cart *Cartridge) Plumb(env *environment.Environment, fromDifferentEmulatio
 }
 
 // Reset volative contents of Cartridge.
-func (cart *Cartridge) Reset() {
-	cart.mapper.Reset()
+func (cart *Cartridge) Reset() error {
+	return cart.mapper.Reset()
 }
 
 // String returns a summary of the cartridge, it's mapper and any containers.

@@ -107,8 +107,8 @@ func (cart *bf) bankswitch(addr uint16) bool {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *bf) Reset() {
-	cart.reset()
+func (cart *bf) Reset() error {
+	return cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.

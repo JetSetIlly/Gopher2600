@@ -115,7 +115,7 @@ func (cart *Supercharger) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *Supercharger) Reset() {
+func (cart *Supercharger) Reset() error {
 	for b := range cart.state.ram {
 		for i := range cart.state.ram[b] {
 			cart.state.ram[b][i] = uint8(cart.env.Random.Intn(0xff))
@@ -127,6 +127,8 @@ func (cart *Supercharger) Reset() {
 	cart.state.registers.RAMwrite = true
 
 	cart.SetBank("AUTO")
+
+	return nil
 }
 
 // Access implements the mapper.CartMapper interface.

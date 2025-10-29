@@ -140,7 +140,7 @@ func (cart *wicksteadDesign) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *wicksteadDesign) Reset() {
+func (cart *wicksteadDesign) Reset() error {
 	for i := range cart.state.ram {
 		if cart.env.Prefs.RandomState.Get().(bool) {
 			cart.state.ram[i] = uint8(cart.env.Random.Intn(0xff))
@@ -148,7 +148,10 @@ func (cart *wicksteadDesign) Reset() {
 			cart.state.ram[i] = 0
 		}
 	}
+
 	cart.SetBank("AUTO")
+
+	return nil
 }
 
 // Access implements the mapper.CartMapper interface.

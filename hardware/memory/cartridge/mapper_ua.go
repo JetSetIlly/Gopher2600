@@ -99,8 +99,9 @@ func (cart *ua) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface
-func (cart *ua) Reset() {
+func (cart *ua) Reset() error {
 	cart.SetBank("AUTO")
+	return nil
 }
 
 // Access implements the mapper.CartMapper interface

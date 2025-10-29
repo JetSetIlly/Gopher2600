@@ -187,9 +187,10 @@ func (cart *cdf) PlumbFromDifferentEmulation(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *cdf) Reset() {
+func (cart *cdf) Reset() error {
 	cart.state.initialise()
 	cart.SetBank("AUTO")
+	return nil
 }
 
 const (

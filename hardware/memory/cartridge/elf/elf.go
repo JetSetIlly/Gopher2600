@@ -245,7 +245,8 @@ func (cart *Elf) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *Elf) Reset() {
+func (cart *Elf) Reset() error {
+	return nil
 }
 
 // reset is distinct from Reset(). this reset function is implied by the

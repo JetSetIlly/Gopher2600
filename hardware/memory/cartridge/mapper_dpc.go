@@ -110,9 +110,10 @@ func (cart *dpc) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *dpc) Reset() {
+func (cart *dpc) Reset() error {
 	cart.state.registers.reset(cart.env.Random)
 	cart.SetBank("AUTO")
+	return nil
 }
 
 // the RNG should be pumped every time the CS (cartridge select) signal is

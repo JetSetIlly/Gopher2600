@@ -186,9 +186,10 @@ func (cart *dpcPlus) PlumbFromDifferentEmulation(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *dpcPlus) Reset() {
+func (cart *dpcPlus) Reset() error {
 	cart.state.initialise(cart.env.Random)
 	cart.SetBank("AUTO")
+	return nil
 }
 
 // Access implements the mapper.CartMapper interface.
