@@ -244,6 +244,7 @@ func (mem *elfMemory) Snapshot() *elfMemory {
 		} else {
 			m.sections[i] = mem.sections[i].Snapshot()
 		}
+		m.sectionsByName[mem.sections[i].name] = m.sections[i]
 	}
 
 	// sram is likely to have changed

@@ -81,6 +81,14 @@ func (wm *manager) drawMenu() {
 			wm.drawMenuEntry(m)
 		}
 
+		imguiSeparator()
+
+		if imgui.Selectable("  Reset") {
+			wm.img.dbg.PushFunction(func() {
+				_ = wm.img.dbg.VCS().Reset()
+			})
+		}
+
 		// if imgui.Selectable("  Save ROM") {
 		// 	wm.img.dbg.PushFunction(func() {
 		// 		_, err := wm.img.dbg.VCS().(*hardware.VCS).Mem.Cart.ROMDump()
