@@ -21,7 +21,6 @@ import (
 	"math/bits"
 	"os"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -350,8 +349,8 @@ type atari4k struct {
 	atari
 }
 
-func newAtari4k(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
+func newAtari4k(env *environment.Environment) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("4k: %w", err)
 	}
@@ -425,8 +424,8 @@ type atari2k struct {
 	mask uint16
 }
 
-func newAtari2k(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
+func newAtari2k(env *environment.Environment) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("2k: %w", err)
 	}
@@ -507,8 +506,8 @@ type atari8k struct {
 	atari
 }
 
-func newAtari8k(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
+func newAtari8k(env *environment.Environment) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("F8: %w", err)
 	}
@@ -618,8 +617,8 @@ type atari16k struct {
 	atari
 }
 
-func newAtari16k(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
+func newAtari16k(env *environment.Environment) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("F6: %w", err)
 	}
@@ -735,8 +734,8 @@ type atari32k struct {
 	atari
 }
 
-func newAtari32k(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
+func newAtari32k(env *environment.Environment) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("F4: %w", err)
 	}

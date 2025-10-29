@@ -23,7 +23,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/environment"
@@ -37,7 +36,6 @@ import (
 // Elf implements the mapper.CartMapper interface.
 type Elf struct {
 	env     *environment.Environment
-	loader  cartridgeloader.Loader
 	version string
 
 	arm *arm.ARM
@@ -81,12 +79,12 @@ func (r *elfReaderAt) ReadAt(p []byte, start int64) (n int, err error) {
 }
 
 // NewElf is the preferred method of initialisation for the Elf type.
-func NewElf(env *environment.Environment, loader cartridgeloader.Loader, inACE bool) (mapper.CartMapper, error) {
+func NewElf(env *environment.Environment, inACE bool) (mapper.CartMapper, error) {
 	r := &elfReaderAt{}
 
 	// open file in the normal way and read all data. close the file
 	// immediately once all data is rad
-	o, err := os.Open(loader.Filename)
+	o, err := os.Open(env.Loader.Filename)
 	if err != nil {
 		return nil, fmt.Errorf("ELF: %w", err)
 	}
@@ -138,7 +136,6 @@ func NewElf(env *environment.Environment, loader cartridgeloader.Loader, inACE b
 
 	cart := &Elf{
 		env:       env,
-		loader:    loader,
 		yieldHook: coprocessor.StubCartYieldHook{},
 	}
 

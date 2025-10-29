@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -294,10 +293,10 @@ type Moviecart struct {
 	state *state
 }
 
-func NewMoviecart(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+func NewMoviecart(env *environment.Environment) (mapper.CartMapper, error) {
 	cart := &Moviecart{
 		env:       env,
-		data:      loader,
+		data:      env.Loader,
 		mappingID: "MVC",
 	}
 

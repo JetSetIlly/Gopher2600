@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -72,7 +71,7 @@ type wicksteadDesign struct {
 	state *wicksteadState
 }
 
-func newWicksteadDesign(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+func newWicksteadDesign(env *environment.Environment) (mapper.CartMapper, error) {
 	cart := &wicksteadDesign{
 		env:       env,
 		mappingID: "WD",
@@ -80,7 +79,7 @@ func newWicksteadDesign(env *environment.Environment, loader cartridgeloader.Loa
 		state:     newWicksteadState(),
 	}
 
-	data, err := io.ReadAll(loader)
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
