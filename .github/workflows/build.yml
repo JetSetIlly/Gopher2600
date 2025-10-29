@@ -21,6 +21,7 @@ jobs:
     - name: Upload package
       uses: actions/upload-artifact@v4
       with:
+        name: gopher2600_darwin_amd64
         path: gopher2600_darwin_amd64
 
   build-macos-arm64:
@@ -36,6 +37,7 @@ jobs:
     - name: Upload package
       uses: actions/upload-artifact@v4
       with:
+        name: gopher2600_darwin_arm64
         path: gopher2600_darwin_arm64
 
 # TODO: Add Windows and Linux builds
