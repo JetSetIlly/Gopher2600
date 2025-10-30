@@ -23,6 +23,8 @@ jobs:
     - name: Bundle SDL2 framework
       run: |
         SDL2_PREFIX=$(brew --prefix sdl2)
+        echo "Inspecting Homebrew SDL2 prefix at $SDL2_PREFIX"
+        ls -R "$SDL2_PREFIX"
         SDL2_FRAMEWORK="$SDL2_PREFIX/lib/SDL2.framework"
         if [ ! -d "$SDL2_FRAMEWORK" ]; then
           echo "::error::SDL2.framework not found at $SDL2_FRAMEWORK"
@@ -41,7 +43,7 @@ jobs:
         path: package/Gopher2600.zip
 
   # build-macos-arm64:
-  #   runs-on: macos-latest
+  #   runs-on: macos-14
   #   steps:
   #   - name: Install dependencies
   #     run: |
