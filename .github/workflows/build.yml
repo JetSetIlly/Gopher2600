@@ -15,15 +15,25 @@ jobs:
         brew install sdl2
         brew install dylibbundler
     - uses: actions/checkout@v4
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=$(awk -F ' = ' '/^version = / {print $2; exit}' Makefile)
+        if [ -z "$VERSION" ]; then
+          echo "Failed to extract version from Makefile" >&2
+          exit 1
+        fi
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
     - name: Build Gopher2600 (Intel)
       run: make release
     - name: Copy executable to package
       run: |
         mkdir -p .package/Gopher2600.app/Contents/MacOS
         cp gopher2600_darwin_amd64 .package/Gopher2600.app/Contents/MacOS/
-    - name: Set CFBundleExecutable
+    - name: Set plist metadata
       run: |
-        plutil -replace CFBundleExecutable -string gopher2600_darwin_amd64 .package/Gopher2600.app/Contents/Info.plist
+        plutil -insert CFBundleExecutable -string gopher2600_darwin_amd64 .package/Gopher2600.app/Contents/Info.plist
+        plutil -insert CFBundleShortVersionString -string "${{ steps.version.outputs.version }}" .package/Gopher2600.app/Contents/Info.plist
     - name: Run dylibbundler
       run: |
         export DYLD_LIBRARY_PATH="$(brew --prefix sdl2)/lib"

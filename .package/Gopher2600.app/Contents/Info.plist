@@ -4,14 +4,10 @@
 <dict>
   <key>CFBundleGetInfoString</key>
     <string>Gopher2600 - Atari 2600 Emulator</string>
-  <key>CFBundleExecutable</key>
-    <string>gopher2600_darwin_amd64</string>
   <key>CFBundleIdentifier</key>
     <string>org.gopher2600</string>
   <key>CFBundleName</key>
     <string>Gopher2600</string>
-  <key>CFBundleShortVersionString</key>
-    <string>0.51.1</string>
   <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
   <key>CFBundlePackageType</key>
