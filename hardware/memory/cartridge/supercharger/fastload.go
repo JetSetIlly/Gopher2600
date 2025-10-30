@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
@@ -85,8 +84,8 @@ type fastloadBlock struct {
 }
 
 // newFastLoad is the preferred method of initialisation for the FastLoad type.
-func newFastLoad(env *environment.Environment, state *state, loader cartridgeloader.Loader) (tape, error) {
-	if loader.Size()%fastLoadBlockLen != 0 {
+func newFastLoad(env *environment.Environment, state *state) (tape, error) {
+	if env.Loader.Size()%fastLoadBlockLen != 0 {
 		return nil, fmt.Errorf("fastload: wrong number of bytes in cartridge data")
 	}
 
@@ -95,8 +94,8 @@ func newFastLoad(env *environment.Environment, state *state, loader cartridgeloa
 		state: state,
 	}
 
-	fl.blocks = make([]fastloadBlock, loader.Size()/fastLoadBlockLen)
-	data, err := io.ReadAll(loader)
+	fl.blocks = make([]fastloadBlock, env.Loader.Size()/fastLoadBlockLen)
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, err
 	}

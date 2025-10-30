@@ -81,6 +81,14 @@ func (wm *manager) drawMenu() {
 			wm.drawMenuEntry(m)
 		}
 
+		imguiSeparator()
+
+		if imgui.Selectable("  Reset") {
+			wm.img.dbg.PushFunction(func() {
+				_ = wm.img.dbg.VCS().Reset()
+			})
+		}
+
 		// if imgui.Selectable("  Save ROM") {
 		// 	wm.img.dbg.PushFunction(func() {
 		// 		_, err := wm.img.dbg.VCS().(*hardware.VCS).Mem.Cart.ROMDump()
@@ -223,7 +231,7 @@ func (wm *manager) drawMenu() {
 		sz := imgui.CalcTextSize(s, false, -1)
 		p := imgui.CursorScreenPos()
 		p.X -= sz.X
-		p.X -= spacing
+		p.X -= spacing * 2
 		imgui.SetCursorScreenPos(p)
 		if imgui.Button(s) {
 			if leftclick != nil {
@@ -289,7 +297,10 @@ func (wm *manager) drawMenu() {
 	// halt reason
 	haltReason := wm.img.cache.Dbg.HaltReason
 	if haltReason.Reason != "" {
-		buttonFromRight(haltReason.Reason,
+		imgui.PushStyleColor(imgui.StyleColorButton, wm.img.cols.HaltReason)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, wm.img.cols.HaltReasonHovered)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, wm.img.cols.HaltReasonActive)
+		buttonFromRight(fmt.Sprintf("Halt for %s", haltReason.Reason),
 			func() {
 				if coprocessor.CoProcYieldType(haltReason.Reason) == coprocessor.YieldMemoryFault {
 					wm.debuggerWindows[winCoProcFaultsID].debuggerSetOpen(true)
@@ -299,6 +310,8 @@ func (wm *manager) drawMenu() {
 				wm.img.dbg.PushFunctionImmediate(wm.img.dbg.ClearHaltReason)
 			},
 		)
+		imgui.PopStyleColorV(3)
+
 		wm.img.imguiTooltip(func() {
 			if haltReason.Detail != "" {
 				imgui.Text(haltReason.Detail)
@@ -306,9 +319,9 @@ func (wm *manager) drawMenu() {
 				imgui.Separator()
 				imgui.Spacing()
 			}
-			imgui.Text(fmt.Sprintf("Frame: %d", haltReason.Coords.Frame))
-			imgui.Text(fmt.Sprintf("Scanline: %d", haltReason.Coords.Scanline))
-			imgui.Text(fmt.Sprintf("Clock: %d", haltReason.Coords.Clock))
+			imgui.Textf("Frame: %d", haltReason.Coords.Frame)
+			imgui.Textf("Scanline: %d", haltReason.Coords.Scanline)
+			imgui.Textf("Clock: %d", haltReason.Coords.Clock)
 		}, true)
 	}
 }

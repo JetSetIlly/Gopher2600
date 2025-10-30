@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -52,8 +51,8 @@ type parkerBros struct {
 	state *parkerBrosState
 }
 
-func newParkerBros(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
+func newParkerBros(env *environment.Environment) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("E0: %w", err)
 	}
@@ -103,8 +102,9 @@ func (cart *parkerBros) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *parkerBros) Reset() {
+func (cart *parkerBros) Reset() error {
 	cart.SetBank("AUTO")
+	return nil
 }
 
 // Access implements the mapper.CartMapper interface.

@@ -20,7 +20,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -52,8 +51,8 @@ type m3ePlus struct {
 //     cartridges:
 //
 //   - chess (Andrew Davie)
-func new3ePlus(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
+func new3ePlus(env *environment.Environment) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("3E+: %w", err)
 	}
@@ -115,7 +114,7 @@ func (cart *m3ePlus) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *m3ePlus) Reset() {
+func (cart *m3ePlus) Reset() error {
 	for b := range cart.state.ram {
 		for i := range cart.state.ram[b] {
 			if cart.env.Prefs.RandomState.Get().(bool) {
@@ -127,6 +126,8 @@ func (cart *m3ePlus) Reset() {
 	}
 
 	cart.SetBank("AUTO")
+
+	return nil
 }
 
 // Access implements the mapper.CartMapper interface.

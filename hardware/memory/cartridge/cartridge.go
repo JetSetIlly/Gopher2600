@@ -102,8 +102,8 @@ func (cart *Cartridge) Plumb(env *environment.Environment, fromDifferentEmulatio
 }
 
 // Reset volative contents of Cartridge.
-func (cart *Cartridge) Reset() {
-	cart.mapper.Reset()
+func (cart *Cartridge) Reset() error {
+	return cart.mapper.Reset()
 }
 
 // String returns a summary of the cartridge, it's mapper and any containers.
@@ -123,7 +123,7 @@ func (cart *Cartridge) String() string {
 }
 
 // MappedBanks returns a string summary of the mapping. ie. what banks are mapped in. If bank
-// switching is not applicable to the cartridge then an empty string should be returned.
+// switching is not applicable to the cartridge then an empty string is returned.
 func (cart *Cartridge) MappedBanks() string {
 	return cart.mapper.MappedBanks()
 }
@@ -257,56 +257,56 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 	switch mapping {
 	case "2K":
-		cart.mapper, err = newAtari2k(cart.env, cartload)
+		cart.mapper, err = newAtari2k(cart.env)
 	case "4K":
-		cart.mapper, err = newAtari4k(cart.env, cartload)
+		cart.mapper, err = newAtari4k(cart.env)
 	case "F8":
-		cart.mapper, err = newAtari8k(cart.env, cartload)
+		cart.mapper, err = newAtari8k(cart.env)
 	case "WF8":
-		cart.mapper, err = newWF8(cart.env, cartload)
+		cart.mapper, err = newWF8(cart.env)
 	case "F6":
-		cart.mapper, err = newAtari16k(cart.env, cartload)
+		cart.mapper, err = newAtari16k(cart.env)
 	case "F4":
-		cart.mapper, err = newAtari32k(cart.env, cartload)
+		cart.mapper, err = newAtari32k(cart.env)
 	case "2KSC":
-		cart.mapper, err = newAtari2k(cart.env, cartload)
+		cart.mapper, err = newAtari2k(cart.env)
 		forceSuperchip = true
 	case "4KSC":
-		cart.mapper, err = newAtari4k(cart.env, cartload)
+		cart.mapper, err = newAtari4k(cart.env)
 		forceSuperchip = true
 	case "F8SC":
-		cart.mapper, err = newAtari8k(cart.env, cartload)
+		cart.mapper, err = newAtari8k(cart.env)
 		forceSuperchip = true
 	case "F6SC":
-		cart.mapper, err = newAtari16k(cart.env, cartload)
+		cart.mapper, err = newAtari16k(cart.env)
 		forceSuperchip = true
 	case "F4SC":
-		cart.mapper, err = newAtari32k(cart.env, cartload)
+		cart.mapper, err = newAtari32k(cart.env)
 		forceSuperchip = true
 	case "CV":
-		cart.mapper, err = newCommaVid(cart.env, cartload)
+		cart.mapper, err = newCommaVid(cart.env)
 	case "FA":
-		cart.mapper, err = newCBS(cart.env, cartload)
+		cart.mapper, err = newCBS(cart.env)
 	case "FA2":
-		cart.mapper, err = newFA2(cart.env, cartload)
+		cart.mapper, err = newFA2(cart.env)
 	case "FE":
-		cart.mapper, err = newSCABS(cart.env, cartload)
+		cart.mapper, err = newSCABS(cart.env)
 	case "E0":
-		cart.mapper, err = newParkerBros(cart.env, cartload)
+		cart.mapper, err = newParkerBros(cart.env)
 	case "E7":
-		cart.mapper, err = newMnetwork(cart.env, cartload)
+		cart.mapper, err = newMnetwork(cart.env)
 	case "JANE":
-		cart.mapper, err = newJANE(cart.env, cartload)
+		cart.mapper, err = newJANE(cart.env)
 	case "3F":
-		cart.mapper, err = newTigervision(cart.env, cartload)
+		cart.mapper, err = newTigervision(cart.env)
 	case "UA":
-		cart.mapper, err = newUA(cart.env, cartload)
+		cart.mapper, err = newUA(cart.env)
 	case "AR":
-		cart.mapper, err = supercharger.NewSupercharger(cart.env, cartload)
+		cart.mapper, err = supercharger.NewSupercharger(cart.env)
 	case "DF":
-		cart.mapper, err = newDF(cart.env, cartload)
+		cart.mapper, err = newDF(cart.env)
 	case "3E":
-		cart.mapper, err = new3e(cart.env, cartload)
+		cart.mapper, err = new3e(cart.env)
 	case "E3P":
 		// synonym for 3E+
 		fallthrough
@@ -314,48 +314,48 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		// synonym for 3E+
 		fallthrough
 	case "3E+":
-		cart.mapper, err = new3ePlus(cart.env, cartload)
+		cart.mapper, err = new3ePlus(cart.env)
 	case "EF":
-		cart.mapper, err = newEF(cart.env, cartload)
+		cart.mapper, err = newEF(cart.env)
 	case "EFSC":
-		cart.mapper, err = newEF(cart.env, cartload)
+		cart.mapper, err = newEF(cart.env)
 		forceSuperchip = true
 	case "BF":
-		cart.mapper, err = newBF(cart.env, cartload)
+		cart.mapper, err = newBF(cart.env)
 	case "BFSC":
-		cart.mapper, err = newBF(cart.env, cartload)
+		cart.mapper, err = newBF(cart.env)
 		forceSuperchip = true
 	case "SB":
-		cart.mapper, err = newSuperbank(cart.env, cartload)
+		cart.mapper, err = newSuperbank(cart.env)
 	case "WD":
-		cart.mapper, err = newWicksteadDesign(cart.env, cartload)
+		cart.mapper, err = newWicksteadDesign(cart.env)
 	case "DPC":
 		cart.mapper, err = newDPC(cart.env, cartload)
 	case "DPC+":
-		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload, "DPC+")
+		cart.mapper, err = dpcplus.NewDPCplus(cart.env, "DPC+")
 	case "DPCP":
-		cart.mapper, err = dpcplus.NewDPCplus(cart.env, cartload, "DPCP")
+		cart.mapper, err = dpcplus.NewDPCplus(cart.env, "DPCP")
 
 	case "CDF":
-		cart.mapper, err = cdf.NewCDF(cart.env, cartload, "CDFJ")
+		cart.mapper, err = cdf.NewCDF(cart.env, "CDFJ")
 	case "CDF0":
-		cart.mapper, err = cdf.NewCDF(cart.env, cartload, "CDF0")
+		cart.mapper, err = cdf.NewCDF(cart.env, "CDF0")
 	case "CDF1":
-		cart.mapper, err = cdf.NewCDF(cart.env, cartload, "CDF1")
+		cart.mapper, err = cdf.NewCDF(cart.env, "CDF1")
 	case "CDFJ":
-		cart.mapper, err = cdf.NewCDF(cart.env, cartload, "CDFJ")
+		cart.mapper, err = cdf.NewCDF(cart.env, "CDFJ")
 	case "CDFJ+":
-		cart.mapper, err = cdf.NewCDF(cart.env, cartload, "CDFJ+")
+		cart.mapper, err = cdf.NewCDF(cart.env, "CDFJ+")
 
 	case "MVC":
-		cart.mapper, err = moviecart.NewMoviecart(cart.env, cartload)
+		cart.mapper, err = moviecart.NewMoviecart(cart.env)
 	case "ACE":
-		cart.mapper, err = ace.NewAce(cart.env, cartload)
+		cart.mapper, err = ace.NewAce(cart.env)
 	case "ELF":
-		cart.mapper, err = elf.NewElf(cart.env, cartload, false)
+		cart.mapper, err = elf.NewElf(cart.env, false)
 
 	case "ELF_in_ACE":
-		cart.mapper, err = elf.NewElf(cart.env, cartload, true)
+		cart.mapper, err = elf.NewElf(cart.env, true)
 
 	case unrecognisedMapper:
 		return fmt.Errorf("cartridge: unrecognised mapper")

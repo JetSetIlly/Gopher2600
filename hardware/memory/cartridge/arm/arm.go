@@ -379,6 +379,12 @@ func NewARM(env *environment.Environment, mmap architecture.Map, mem SharedMemor
 	return arm
 }
 
+func (arm *ARM) Reset() {
+	arm.resetPeripherals()
+	arm.resetRegisters()
+	arm.resetYield()
+}
+
 // Sets the immediate mode cycle flag. This is required to be set for ARM drivers that yield
 // less frequently (eg. ELF or ACE)
 func (arm *ARM) CycleDuringImmediateMode(set bool) {

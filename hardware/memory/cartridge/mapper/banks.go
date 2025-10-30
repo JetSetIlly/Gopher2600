@@ -53,6 +53,12 @@ type BankContent struct {
 // be identified by it's bank number only. In other contexts more detail is
 // required and so BankInfo is used isntead.
 type BankInfo struct {
+	// whether the data from the cartridge is sequential, meaning the cartridge is likely using a
+	// coprocessor and a format such as ACE or ELF
+	//
+	// if this field is true then the other fields are meaningless, except for the NonCart field
+	Sequential bool
+
 	// bank number
 	Number int
 

@@ -48,7 +48,8 @@ func (cart *ejected) Plumb(_ *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *ejected) Reset() {
+func (cart *ejected) Reset() error {
+	return nil
 }
 
 // Access implements the mapper.CartMapper interface.

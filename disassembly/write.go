@@ -21,14 +21,26 @@ import (
 )
 
 // Write the entire disassembly to io.Writer.
-func (dsm *Disassembly) Write(output io.Writer, attr ColumnAttr) error {
+func (dsm *Disassembly) Write(output io.Writer, attr ColumnAttr, sequential bool) error {
 	ct := 0
-	for b := range dsm.disasmEntries.Entries {
-		for _, e := range dsm.disasmEntries.Entries[b] {
+
+	if sequential {
+		for _, e := range dsm.disasmEntries.Sequential {
 			if e != nil && e.Level >= EntryLevelBlessed {
 				ct++
 				output.Write([]byte(e.StringColumnated(attr)))
 				output.Write([]byte("\n"))
+			}
+		}
+
+	} else {
+		for b := range dsm.disasmEntries.Entries {
+			for _, e := range dsm.disasmEntries.Entries[b] {
+				if e != nil && e.Level >= EntryLevelBlessed {
+					ct++
+					output.Write([]byte(e.StringColumnated(attr)))
+					output.Write([]byte("\n"))
+				}
 			}
 		}
 	}

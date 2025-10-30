@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -87,7 +86,7 @@ type SoundLoad struct {
 }
 
 // newSoundLoad is the preferred method of initialisation for the SoundLoad type.
-func newSoundLoad(env *environment.Environment, loader cartridgeloader.Loader) (tape, error) {
+func newSoundLoad(env *environment.Environment) (tape, error) {
 	tap := &SoundLoad{
 		env: env,
 	}
@@ -95,7 +94,7 @@ func newSoundLoad(env *environment.Environment, loader cartridgeloader.Loader) (
 	var err error
 
 	// get PCM data from data loaded from file
-	tap.pcm, err = getPCM(env, loader)
+	tap.pcm, err = getPCM(env, env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("soundload: %w", err)
 	}

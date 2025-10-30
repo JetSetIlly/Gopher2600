@@ -1529,10 +1529,81 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 	case instructions.ARR:
-		mc.A.AND(value)
-		mc.Status.Carry = mc.A.ROR(mc.Status.Carry)
-		mc.Status.Zero = mc.A.IsZero()
-		mc.Status.Sign = mc.A.IsNegative()
+		// description for "64doc.txt"
+		//
+		// "This instruction seems to be a harmless combination of AND and ROR at
+		// first sight, but it turns out that it affects the V flag and also has
+		// a special kind of decimal mode. This is because the instruction has
+		// inherited some properties of the ADC instruction ($69) in addition to
+		// the ROR ($6A)"
+		if !mc.Status.DecimalMode {
+			// "In Binary mode (D flag clear), the instruction effectively does an AND
+			// between the accumulator and the immediate parameter, and then shifts
+			// the accumulator to the right, copying the C flag to the 8th bit. It
+			// sets the Negative and Zero flags just like the ROR would. The ADC code
+			// shows up in the Carry and oVerflow flags. The C flag will be copied
+			// from the bit 6 of the result (which doesn't seem too logical), and the
+			// V flag is the result of an Exclusive OR operation between the bit 6
+			// and the bit 5 of the result.  This makes sense, since the V flag will
+			// be normally set by an Exclusive OR, too"
+			mc.A.AND(value)
+			_ = mc.A.ROR(mc.Status.Carry)
+			mc.Status.Zero = mc.A.IsZero()
+			mc.Status.Sign = mc.A.IsNegative()
+			mc.Status.Carry = (mc.A.Value() >> 6 & 0x01) == 0x01
+			mc.Status.Overflow = (((mc.A.Value() >> 6) & 0x01) ^ ((mc.A.Value() >> 5) & 0x01)) == 0x01
+		} else {
+			// "In Decimal mode (D flag set), the ARR instruction first performs the
+			// AND and ROR, just like in Binary mode. The N flag will be copied from
+			// the initial C flag, and the Z flag will be set according to the ROR
+			// result, as expected. The V flag will be set if the bit 6 of the
+			// accumulator changed its state between the AND and the ROR, cleared
+			// otherwise.
+			//
+			// Now comes the funny part. If the low nybble of the AND result,
+			// incremented by its lowmost bit, is greater than 5, the low nybble in
+			// the ROR result will be incremented by 6. The low nybble may overflow
+			// as a consequence of this BCD fixup, but the high nybble won't be
+			// adjusted. The high nybble will be BCD fixed in a similar way. If the
+			// high nybble of the AND result, incremented by its lowmost bit, is
+			// greater than 5, the high nybble in the ROR result will be incremented
+			// by 6, and the Carry flag will be set. Otherwise the C flag will be
+			// cleared"
+
+			// "perform the AND"
+			t := mc.A.Value() & value
+			ah := t >> 4
+			al := t & 0x0f
+
+			// "separate the high and low nybbles"
+			if mc.Status.Carry {
+				mc.A.Load(0x80 | (t >> 1))
+			} else {
+				mc.A.Load(t >> 1)
+			}
+
+			// "set the N and Z flags traditionally"
+			mc.Status.Sign = mc.Status.Carry
+			mc.Status.Zero = mc.A.IsZero()
+
+			// "and the V flag in a weird way"
+			mc.Status.Overflow = (t^mc.A.Value())&0x40 == 0x040
+
+			// "BCD 'fixup' for low nybble"
+			if al+(al&0x01) > 5 {
+				v := mc.A.Value()&0xf0 | (mc.A.Value()+6)&0x0f
+				mc.A.Load(v)
+			}
+
+			// "set the carry flag"
+			mc.Status.Carry = (ah + (ah & 1)) > 5
+
+			// "BCD 'fixup' for high nybble"
+			if mc.Status.Carry {
+				v := mc.A.Value() + 0x60
+				mc.A.Load(v)
+			}
+		}
 
 	case instructions.SLO:
 		r := mc.acc8

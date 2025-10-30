@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -56,8 +55,8 @@ type cbs struct {
 	state *cbsState
 }
 
-func newCBS(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
+func newCBS(env *environment.Environment) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("FA: %w", err)
 	}
@@ -107,7 +106,7 @@ func (cart *cbs) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *cbs) Reset() {
+func (cart *cbs) Reset() error {
 	for i := range cart.state.ram {
 		if cart.env.Prefs.RandomState.Get().(bool) {
 			cart.state.ram[i] = uint8(cart.env.Random.Intn(0xff))
@@ -117,6 +116,8 @@ func (cart *cbs) Reset() {
 	}
 
 	cart.SetBank("AUTO")
+
+	return nil
 }
 
 // Access implements the mapper.CartMapper interface.

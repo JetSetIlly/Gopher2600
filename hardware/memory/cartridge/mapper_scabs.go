@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -37,8 +36,8 @@ type scabs struct {
 	state     *scabsState
 }
 
-func newSCABS(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
+func newSCABS(env *environment.Environment) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("FE: %w", err)
 	}
@@ -86,8 +85,9 @@ func (cart *scabs) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *scabs) Reset() {
+func (cart *scabs) Reset() error {
 	cart.SetBank("AUTO")
+	return nil
 }
 
 // Access implements the mapper.CartMapper interface.

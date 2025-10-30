@@ -20,7 +20,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -89,8 +88,8 @@ type mnetwork struct {
 	state *mnetworkState
 }
 
-func newMnetwork(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
+func newMnetwork(env *environment.Environment) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("E7: %w", err)
 	}
@@ -150,7 +149,7 @@ func (cart *mnetwork) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *mnetwork) Reset() {
+func (cart *mnetwork) Reset() error {
 	for b := range cart.state.ram256byte {
 		for i := range cart.state.ram256byte[b] {
 			if cart.env.Prefs.RandomState.Get().(bool) {
@@ -170,6 +169,8 @@ func (cart *mnetwork) Reset() {
 	}
 
 	cart.SetBank("AUTO")
+
+	return nil
 }
 
 // Access implements the mapper.CartMapper interface.

@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -62,7 +61,7 @@ type Supercharger struct {
 
 // NewSupercharger is the preferred method of initialisation for the
 // Supercharger type.
-func NewSupercharger(env *environment.Environment, cartload cartridgeloader.Loader) (mapper.CartMapper, error) {
+func NewSupercharger(env *environment.Environment) (mapper.CartMapper, error) {
 	cart := &Supercharger{
 		env:       env,
 		mappingID: "AR",
@@ -73,16 +72,16 @@ func NewSupercharger(env *environment.Environment, cartload cartridgeloader.Load
 	var err error
 
 	// load bios and activate
-	cart.bios, err = loadBIOS(env, filepath.Dir(cartload.Filename))
+	cart.bios, err = loadBIOS(env, filepath.Dir(env.Loader.Filename))
 	if err != nil {
 		return nil, fmt.Errorf("supercharger: %w", err)
 	}
 
 	// set up tape
-	if cartload.IsSoundData {
-		cart.state.tape, err = newSoundLoad(env, cartload)
+	if env.Loader.IsSoundData {
+		cart.state.tape, err = newSoundLoad(env)
 	} else {
-		cart.state.tape, err = newFastLoad(env, cart.state, cartload)
+		cart.state.tape, err = newFastLoad(env, cart.state)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("supercharger: %w", err)
@@ -115,7 +114,7 @@ func (cart *Supercharger) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *Supercharger) Reset() {
+func (cart *Supercharger) Reset() error {
 	for b := range cart.state.ram {
 		for i := range cart.state.ram[b] {
 			cart.state.ram[b][i] = uint8(cart.env.Random.Intn(0xff))
@@ -127,6 +126,8 @@ func (cart *Supercharger) Reset() {
 	cart.state.registers.RAMwrite = true
 
 	cart.SetBank("AUTO")
+
+	return nil
 }
 
 // Access implements the mapper.CartMapper interface.

@@ -97,11 +97,11 @@ func (mem *Memory) Plumb(env *environment.Environment, fromDifferentEmulation bo
 }
 
 // Reset contents of memory.
-func (mem *Memory) Reset() {
+func (mem *Memory) Reset() error {
 	mem.RIOT.Reset()
 	mem.TIA.Reset()
 	mem.RAM.Reset()
-	mem.Cart.Reset()
+	return mem.Cart.Reset()
 }
 
 // Area defines the meta-operations for all memory areas

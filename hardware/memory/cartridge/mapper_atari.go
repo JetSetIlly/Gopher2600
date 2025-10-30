@@ -21,7 +21,6 @@ import (
 	"math/bits"
 	"os"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -136,7 +135,7 @@ func (cart *atari) ID() string {
 
 // reset is called by the Reset() function implemented in all child types of the
 // the atari type
-func (cart *atari) reset() {
+func (cart *atari) reset() error {
 	for i := range cart.state.ram {
 		if cart.env.Prefs.RandomState.Get().(bool) {
 			cart.state.ram[i] = uint8(cart.env.Random.Intn(0xff))
@@ -152,6 +151,8 @@ func (cart *atari) reset() {
 			logger.Log(cart.env, "cartridge", err)
 		}
 	}
+
+	return nil
 }
 
 // GetBank implements the mapper.CartMapper interface.
@@ -348,8 +349,8 @@ type atari4k struct {
 	atari
 }
 
-func newAtari4k(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
+func newAtari4k(env *environment.Environment) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("4k: %w", err)
 	}
@@ -388,8 +389,8 @@ func (cart *atari4k) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *atari4k) Reset() {
-	cart.reset()
+func (cart *atari4k) Reset() error {
+	return cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -423,8 +424,8 @@ type atari2k struct {
 	mask uint16
 }
 
-func newAtari2k(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
+func newAtari2k(env *environment.Environment) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("2k: %w", err)
 	}
@@ -465,8 +466,8 @@ func (cart *atari2k) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *atari2k) Reset() {
-	cart.reset()
+func (cart *atari2k) Reset() error {
+	return cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -505,8 +506,8 @@ type atari8k struct {
 	atari
 }
 
-func newAtari8k(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
+func newAtari8k(env *environment.Environment) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("F8: %w", err)
 	}
@@ -548,8 +549,8 @@ func (cart *atari8k) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *atari8k) Reset() {
-	cart.reset()
+func (cart *atari8k) Reset() error {
+	return cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -616,8 +617,8 @@ type atari16k struct {
 	atari
 }
 
-func newAtari16k(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
+func newAtari16k(env *environment.Environment) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("F6: %w", err)
 	}
@@ -659,8 +660,8 @@ func (cart *atari16k) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *atari16k) Reset() {
-	cart.reset()
+func (cart *atari16k) Reset() error {
+	return cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -733,8 +734,8 @@ type atari32k struct {
 	atari
 }
 
-func newAtari32k(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
+func newAtari32k(env *environment.Environment) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("F4: %w", err)
 	}
@@ -776,8 +777,8 @@ func (cart *atari32k) Plumb(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *atari32k) Reset() {
-	cart.reset()
+func (cart *atari32k) Reset() error {
+	return cart.reset()
 }
 
 // NumBanks implements the mapper.CartMapper interface.

@@ -1047,6 +1047,7 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 		dbg.traces.clear()
 	}
 
+	dbg.Disasm.Reset()
 	dbg.liveDisasmEntry = &disassembly.Entry{Result: execution.Result{Final: true}}
 	return nil
 }

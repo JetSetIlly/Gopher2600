@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
@@ -76,8 +75,8 @@ const (
 )
 
 // NewCDF is the preferred method of initialisation for the CDF type.
-func NewCDF(env *environment.Environment, loader cartridgeloader.Loader, version string) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
+func NewCDF(env *environment.Environment, version string) (mapper.CartMapper, error) {
+	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("CDF: %w", err)
 	}
@@ -91,7 +90,7 @@ func NewCDF(env *environment.Environment, loader cartridgeloader.Loader, version
 	}
 
 	// size check
-	if cart.NumBanks()*cart.bankSize > loader.Size() {
+	if cart.NumBanks()*cart.bankSize > env.Loader.Size() {
 		return nil, fmt.Errorf("CDF: not enough bytes in cartridge data")
 	}
 
@@ -187,9 +186,10 @@ func (cart *cdf) PlumbFromDifferentEmulation(env *environment.Environment) {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *cdf) Reset() {
+func (cart *cdf) Reset() error {
 	cart.state.initialise()
 	cart.SetBank("AUTO")
+	return nil
 }
 
 const (

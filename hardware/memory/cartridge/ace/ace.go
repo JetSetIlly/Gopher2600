@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
@@ -44,15 +43,15 @@ type Ace struct {
 }
 
 // NewAce is the preferred method of initialisation for the Ace type.
-func NewAce(env *environment.Environment, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
-	data, err := io.ReadAll(loader)
-	if err != nil {
-		return nil, fmt.Errorf("ACE: %w", err)
-	}
-
+func NewAce(env *environment.Environment) (mapper.CartMapper, error) {
 	cart := &Ace{
 		env:       env,
 		yieldHook: coprocessor.StubCartYieldHook{},
+	}
+
+	data, err := io.ReadAll(env.Loader)
+	if err != nil {
+		return nil, fmt.Errorf("ACE: %w", err)
 	}
 
 	cart.mem, err = newAceMemory(env, data, cart.env.Prefs.ARM)
@@ -70,6 +69,29 @@ func NewAce(env *environment.Environment, loader cartridgeloader.Loader) (mapper
 	logger.Logf(env, "ACE", "gpio: %08x to %08x", cart.mem.gpioOrigin, cart.mem.gpioMemtop)
 
 	return cart, nil
+}
+
+// Reset implements the mapper.CartMapper interface.
+func (cart *Ace) Reset() error {
+	// reset probably not needed but we'll do it anyway
+	cart.env.Loader.Reset()
+
+	data, err := io.ReadAll(cart.env.Loader)
+	if err != nil {
+		return fmt.Errorf("ACE: %w", err)
+	}
+
+	cart.mem, err = newAceMemory(cart.env, data, cart.env.Prefs.ARM)
+	if err != nil {
+		return fmt.Errorf("ACE: %w", err)
+	}
+
+	cart.arm.Reset()
+	armState := cart.arm.Snapshot()
+	cart.arm.Plumb(cart.env, armState, cart.mem, cart)
+	cart.mem.Plumb(cart.arm)
+
+	return nil
 }
 
 // MappedBanks implements the mapper.CartMapper interface.
@@ -123,10 +145,6 @@ func (cart *Ace) Plumb(env *environment.Environment) {
 	cart.armState = nil
 }
 
-// Reset implements the mapper.CartMapper interface.
-func (cart *Ace) Reset() {
-}
-
 // Access implements the mapper.CartMapper interface.
 func (cart *Ace) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	if cart.mem.isDataModeOut() {
@@ -147,7 +165,7 @@ func (cart *Ace) NumBanks() int {
 
 // GetBank implements the mapper.CartMapper interface.
 func (cart *Ace) GetBank(_ uint16) mapper.BankInfo {
-	return mapper.BankInfo{Number: 0, IsRAM: false}
+	return mapper.BankInfo{Sequential: true, Number: 0, IsRAM: false}
 }
 
 func (cart *Ace) runARM() bool {

@@ -211,7 +211,10 @@ func (vcs *VCS) Reset() error {
 	vcs.Mem.TIA.SetPokeNotify(vcs.TIA)
 	vcs.Mem.RIOT.SetPokeNotify(vcs.RIOT)
 
-	vcs.Mem.Reset()
+	err = vcs.Mem.Reset()
+	if err != nil {
+		return err
+	}
 	vcs.RIOT.Timer.Reset()
 
 	if vcs.Env.Prefs.RandomState.Get().(bool) {
@@ -231,9 +234,7 @@ func (vcs *VCS) Reset() error {
 	// cartridge types may switch banks on LoadPCIndirect() - those that switch
 	// on Listen() - this is an artefact of the emulation method so we need to make
 	// sure it's initialised correctly.
-	vcs.Mem.Cart.Reset()
-
-	return nil
+	return vcs.Mem.Cart.Reset()
 }
 
 // SetClockSpeed is an implemtation of the television.VCSReturnChannel interface.
