@@ -8,6 +8,8 @@ jobs:
 
   build-macos-intel:
     runs-on: macOS-13
+    env:
+      BINARY_NAME: gopher2600_darwin_amd64
     steps:
     - name: Install dependencies
       run: |
@@ -15,7 +17,7 @@ jobs:
         brew install sdl2
         brew install dylibbundler
     - uses: actions/checkout@v4
-    - name: Extract version
+    - name: Extract version from Makefile
       id: version
       run: |
         VERSION=$(awk -F ' = ' '/^version = / {print $2; exit}' Makefile)
@@ -29,15 +31,15 @@ jobs:
     - name: Copy executable to package
       run: |
         mkdir -p .package/Gopher2600.app/Contents/MacOS
-        cp gopher2600_darwin_amd64 .package/Gopher2600.app/Contents/MacOS/
+        cp "$BINARY_NAME" .package/Gopher2600.app/Contents/MacOS/
     - name: Set plist metadata
       run: |
-        plutil -insert CFBundleExecutable -string gopher2600_darwin_amd64 .package/Gopher2600.app/Contents/Info.plist
+        plutil -insert CFBundleExecutable -string "$BINARY_NAME" .package/Gopher2600.app/Contents/Info.plist
         plutil -insert CFBundleShortVersionString -string "${{ steps.version.outputs.version }}" .package/Gopher2600.app/Contents/Info.plist
     - name: Run dylibbundler
       run: |
         export DYLD_LIBRARY_PATH="$(brew --prefix sdl2)/lib"
-        dylibbundler -x .package/Gopher2600.app/Contents/MacOS/gopher2600_darwin_amd64 -b -cd -d .package/Gopher2600.app/Contents/libs
+        dylibbundler -x ".package/Gopher2600.app/Contents/MacOS/$BINARY_NAME" -b -cd -d .package/Gopher2600.app/Contents/libs
     - name: Zip package
       run: |
         cd .package
