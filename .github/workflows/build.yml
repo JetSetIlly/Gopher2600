@@ -13,6 +13,7 @@ jobs:
       run: |
         brew install go
         brew install sdl2
+        brew install dylibbundler
     - uses: actions/checkout@v4
     - name: Build Gopher2600 (Intel)
       run: make release
@@ -20,18 +21,10 @@ jobs:
       run: |
         mkdir -p package/Gopher2600.app/Contents/MacOS
         cp gopher2600_darwin_amd64 package/Gopher2600.app/Contents/MacOS/
-    - name: Bundle SDL2 framework
+    - name: Run dylibbundler
       run: |
-        SDL2_PREFIX=$(brew --prefix sdl2)
-        echo "Inspecting Homebrew SDL2 prefix at $SDL2_PREFIX"
-        ls -R "$SDL2_PREFIX"
-        SDL2_FRAMEWORK="$SDL2_PREFIX/lib/SDL2.framework"
-        if [ ! -d "$SDL2_FRAMEWORK" ]; then
-          echo "::error::SDL2.framework not found at $SDL2_FRAMEWORK"
-          exit 1
-        fi
-        mkdir -p package/Gopher2600.app/Contents/Frameworks
-        ditto "$SDL2_FRAMEWORK" package/Gopher2600.app/Contents/Frameworks/SDL2.framework
+        export DYLD_LIBRARY_PATH=/usr/local/opt/sdl2/lib
+        dylibbundler -x package/Gopher2600.app/Contents/MacOS/gopher2600_darwin_amd64 -b -cd -d package/Gopher2600.app/Contents/libs
     - name: Zip package
       run: |
         cd package
