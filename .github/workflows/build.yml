@@ -32,23 +32,36 @@ jobs:
     - name: Upload package
       uses: actions/upload-artifact@v4
       with:
-        name: Gopher2600-snapshot-macos
+        name: Gopher2600-snapshot-macos-intel
         path: package/Gopher2600.zip
 
-  # build-macos-arm64:
-  #   runs-on: macos-14
-  #   steps:
-  #   - name: Install dependencies
-  #     run: |
-  #       brew install go
-  #       brew install sdl2
-  #   - uses: actions/checkout@v4
-  #   - name: Build Gopher2600 (ARM64)
-  #     run: make release
-  #   - name: Upload package
-  #     uses: actions/upload-artifact@v4
-  #     with:
-  #       name: gopher2600_darwin_arm64
-  #       path: gopher2600_darwin_arm64
+  build-macos-arm64:
+    runs-on: macOS-14
+    steps:
+    - name: Install dependencies
+      run: |
+        brew install go
+        brew install sdl2
+        brew install dylibbundler
+    - uses: actions/checkout@v4
+    - name: Build Gopher2600 (ARM64)
+      run: make release
+    - name: Copy executable to package
+      run: |
+        mkdir -p package/Gopher2600.app/Contents/MacOS
+        cp gopher2600_darwin_arm64 package/Gopher2600.app/Contents/MacOS/
+    - name: Run dylibbundler
+      run: |
+        export DYLD_LIBRARY_PATH="$(brew --prefix sdl2)/lib"
+        dylibbundler -x package/Gopher2600.app/Contents/MacOS/gopher2600_darwin_arm64 -b -cd -d package/Gopher2600.app/Contents/libs
+    - name: Zip package
+      run: |
+        cd package
+        zip -vr Gopher2600.zip Gopher2600.app
+    - name: Upload package
+      uses: actions/upload-artifact@v4
+      with:
+        name: Gopher2600-snapshot-macos-arm64
+        path: package/Gopher2600.zip
 
 # TODO: Add Windows and Linux builds
