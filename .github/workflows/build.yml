@@ -24,7 +24,7 @@ jobs:
     - name: Run dylibbundler
       run: |
         export DYLD_LIBRARY_PATH=/usr/local/opt/sdl2/lib
-        dylibbundler -x package/Gopher2600.app/Contents/MacOS/gopher2600_darwin_amd64 -b -cd -d package/Gopher2600.app/Contents/libs
+        dylibbundler -x gopher2600_darwin_amd64 -b -cd -d package/Gopher2600.app/Contents/libs
     - name: Zip package
       run: |
         cd package
