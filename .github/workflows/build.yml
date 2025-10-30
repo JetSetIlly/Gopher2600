@@ -28,15 +28,15 @@ jobs:
       run: |
         export DYLD_LIBRARY_PATH="$(brew --prefix sdl2)/lib"
         dylibbundler -x package/Gopher2600.app/Contents/MacOS/gopher2600_darwin_amd64 -b -cd -d package/Gopher2600.app/Contents/libs
-    - name: Zip package
-      run: |
-        cd package
-        zip -vr Gopher2600.zip Gopher2600.app
+    # - name: Zip package
+    #   run: |
+    #     cd package
+    #     zip -vr Gopher2600.zip Gopher2600.app
     - name: Upload package
       uses: actions/upload-artifact@v4
       with:
         name: Gopher2600-macOS-Intel
-        path: package/Gopher2600.zip
+        path: package/Gopher2600.app
 
   # build-macos-arm64:
   #   runs-on: macOS-14
