@@ -25,6 +25,9 @@ jobs:
       run: |
         export DYLD_LIBRARY_PATH="$(brew --prefix sdl2)/lib"
         dylibbundler -x package/Gopher2600.app/Contents/MacOS/gopher2600_darwin_amd64 -b -cd -d package/Gopher2600.app/Contents/libs
+    - name: Set CFBundleExecutable
+      run: |
+        plutil -replace CFBundleExecutable -string gopher2600_darwin_amd64 package/Gopher2600.app/Contents/Info.plist
     - name: Zip package
       run: |
         cd package
@@ -32,7 +35,7 @@ jobs:
     - name: Upload package
       uses: actions/upload-artifact@v4
       with:
-        name: Gopher2600-snapshot-macos-intel
+        name: Gopher2600-macOS-Intel
         path: package/Gopher2600.zip
 
   build-macos-arm64:
@@ -54,6 +57,9 @@ jobs:
       run: |
         export DYLD_LIBRARY_PATH="$(brew --prefix sdl2)/lib"
         dylibbundler -x package/Gopher2600.app/Contents/MacOS/gopher2600_darwin_arm64 -b -cd -d package/Gopher2600.app/Contents/libs
+    - name: Set CFBundleExecutable
+      run: |
+        plutil -replace CFBundleExecutable -string gopher2600_darwin_arm64 package/Gopher2600.app/Contents/Info.plist
     - name: Zip package
       run: |
         cd package
@@ -61,7 +67,7 @@ jobs:
     - name: Upload package
       uses: actions/upload-artifact@v4
       with:
-        name: Gopher2600-snapshot-macos-arm64
+        name: Gopher2600-macOS-AppleSilicon
         path: package/Gopher2600.zip
 
 # TODO: Add Windows and Linux builds
