@@ -8,8 +8,6 @@ jobs:
 
   build-macos-intel:
     runs-on: macOS-13
-    env:
-      MACOSX_DEPLOYMENT_TARGET: 10.11
     steps:
     - name: Install dependencies
       run: |
@@ -19,7 +17,19 @@ jobs:
     - name: Build Gopher2600 (Intel)
       run: make release
     - name: Copy executable to package
-      run: cp gopher2600_darwin_amd64 package/Gopher2600.app/Contents/MacOS/
+      run: |
+        mkdir -p package/Gopher2600.app/Contents/MacOS
+        cp gopher2600_darwin_amd64 package/Gopher2600.app/Contents/MacOS/
+    - name: Bundle SDL2 framework
+      run: |
+        SDL2_PREFIX=$(brew --prefix sdl2)
+        SDL2_FRAMEWORK="$SDL2_PREFIX/lib/SDL2.framework"
+        if [ ! -d "$SDL2_FRAMEWORK" ]; then
+          echo "::error::SDL2.framework not found at $SDL2_FRAMEWORK"
+          exit 1
+        fi
+        mkdir -p package/Gopher2600.app/Contents/Frameworks
+        ditto "$SDL2_FRAMEWORK" package/Gopher2600.app/Contents/Frameworks/SDL2.framework
     - name: Zip package
       run: |
         cd package
