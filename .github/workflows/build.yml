@@ -7,7 +7,7 @@ on:
 jobs:
 
   build-macos-intel:
-    runs-on: macOS-13
+    runs-on: macos-15-intel
     env:
       BINARY_NAME: gopher2600_darwin_amd64
     steps:
