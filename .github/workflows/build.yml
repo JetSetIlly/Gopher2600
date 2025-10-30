@@ -18,26 +18,32 @@ jobs:
     - uses: actions/checkout@v4
     - name: Build Gopher2600 (Intel)
       run: make release
-    - name: Upload package
-      uses: actions/upload-artifact@v4
-      with:
-        name: gopher2600_darwin_amd64
-        path: gopher2600_darwin_amd64
-
-  build-macos-arm64:
-    runs-on: macos-latest
-    steps:
-    - name: Install dependencies
+    - name: Copy executable to package
+      run: cp gopher2600_darwin_amd64 package/Gopher2600.app/Contents/MacOS/
+    - name: Zip package
       run: |
-        brew install go
-        brew install sdl2
-    - uses: actions/checkout@v4
-    - name: Build Gopher2600 (ARM64)
-      run: make release
+        cd package
+        zip -vr Gopher2600.zip Gopher2600.app
     - name: Upload package
       uses: actions/upload-artifact@v4
       with:
-        name: gopher2600_darwin_arm64
-        path: gopher2600_darwin_arm64
+        name: Gopher2600-snapshot-macos
+        path: package/Gopher2600.zip
+
+  # build-macos-arm64:
+  #   runs-on: macos-latest
+  #   steps:
+  #   - name: Install dependencies
+  #     run: |
+  #       brew install go
+  #       brew install sdl2
+  #   - uses: actions/checkout@v4
+  #   - name: Build Gopher2600 (ARM64)
+  #     run: make release
+  #   - name: Upload package
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: gopher2600_darwin_arm64
+  #       path: gopher2600_darwin_arm64
 
 # TODO: Add Windows and Linux builds
