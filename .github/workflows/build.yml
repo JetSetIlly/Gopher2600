@@ -21,13 +21,13 @@ jobs:
       run: |
         mkdir -p package/Gopher2600.app/Contents/MacOS
         cp gopher2600_darwin_amd64 package/Gopher2600.app/Contents/MacOS/
+    - name: Set CFBundleExecutable
+      run: |
+        plutil -replace CFBundleExecutable -string gopher2600_darwin_amd64 package/Gopher2600.app/Contents/Info.plist
     - name: Run dylibbundler
       run: |
         export DYLD_LIBRARY_PATH="$(brew --prefix sdl2)/lib"
         dylibbundler -x package/Gopher2600.app/Contents/MacOS/gopher2600_darwin_amd64 -b -cd -d package/Gopher2600.app/Contents/libs
-    # - name: Set CFBundleExecutable
-    #   run: |
-    #     plutil -replace CFBundleExecutable -string gopher2600_darwin_amd64 package/Gopher2600.app/Contents/Info.plist
     - name: Zip package
       run: |
         cd package
