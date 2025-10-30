@@ -19,23 +19,22 @@ jobs:
       run: make release
     - name: Copy executable to package
       run: |
-        mkdir -p package/Gopher2600.app/Contents/MacOS
-        cp gopher2600_darwin_amd64 package/Gopher2600.app/Contents/MacOS/
+        mkdir -p .package/Gopher2600.app/Contents/MacOS
+        cp gopher2600_darwin_amd64 .package/Gopher2600.app/Contents/MacOS/
     - name: Set CFBundleExecutable
       run: |
-        plutil -replace CFBundleExecutable -string gopher2600_darwin_amd64 package/Gopher2600.app/Contents/Info.plist
+        plutil -replace CFBundleExecutable -string gopher2600_darwin_amd64 .package/Gopher2600.app/Contents/Info.plist
     - name: Run dylibbundler
       run: |
         export DYLD_LIBRARY_PATH="$(brew --prefix sdl2)/lib"
-        dylibbundler -x package/Gopher2600.app/Contents/MacOS/gopher2600_darwin_amd64 -b -cd -d package/Gopher2600.app/Contents/libs
+        dylibbundler -x .package/Gopher2600.app/Contents/MacOS/gopher2600_darwin_amd64 -b -cd -d .package/Gopher2600.app/Contents/libs
     - name: Zip package
       run: |
-        cd package
+        cd .package
         zip -vr Gopher2600.zip Gopher2600.app
     - name: Upload package
       uses: actions/upload-artifact@v4
       with:
         name: Gopher2600-macOS
-        path: package/Gopher2600.zip
+        path: .package/Gopher2600.zip
 
-# TODO: Add Windows and Linux package/installer builds
