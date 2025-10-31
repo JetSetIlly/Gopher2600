@@ -1497,8 +1497,25 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Sign = mc.A.IsNegative()
 
 	case instructions.XAA:
-		mc.A.Load(mc.X.Value())
-		mc.A.AND(value)
+		// description for "64doc.txt"
+		//
+		// "A = (A | #$EE) & X & #byte
+		// same as
+		// A = ((A & #$11 & X) | ( #$EE & X)) & #byte
+		//
+		// In real 6510/8502 the internal parameter #$11 may occasionally be #$10, #$01 or even
+		// #$00. This occurs when the video chip starts DMA between the opcode fetch and the
+		// parameter fetch of the instruction.  The value probably depends on the data that was left
+		// on the bus by the VIC-II"
+		//
+		// note that XAA is referred to as ANE in 64doc.txt
+
+		// the 'internal parameter' is whatever is on the databus according to "64doc.txt". on the
+		// 2600 and 7800 it's not possible for the databus to change mid-instruction by DMA or
+		// anything else, so the value of 'internal parameter' must be equal to the operand
+		internalParameter := value
+
+		mc.A.Load((mc.A.Value() | 0xee) & mc.X.Value() & internalParameter)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
