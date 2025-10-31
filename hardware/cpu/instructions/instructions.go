@@ -365,7 +365,7 @@ type Definition struct {
 
 // String returns a single instruction definition as a string.
 func (defn Definition) String() string {
-	return fmt.Sprintf("%02x %s +%dbytes (%s cycles) [mode=%d pagesens=%t effect=%d]", defn.OpCode, defn.Operator, defn.Bytes, defn.Cycles.Formatted, defn.AddressingMode, defn.PageSensitive, defn.Effect)
+	return fmt.Sprintf("%02x %s +%dbytes (%s cycles) [mode=%s pagesens=%t effect=%d]", defn.OpCode, defn.Operator, defn.Bytes, defn.Cycles.Formatted, defn.AddressingMode, defn.PageSensitive, defn.Effect)
 }
 
 // IsBranch returns true if instruction is a branch instruction.
