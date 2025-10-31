@@ -65,10 +65,6 @@ func (mem testMem) Read(address uint16) (uint8, error) {
 	return mem.internal[address], nil
 }
 
-func (mem testMem) ReadZeroPage(address uint8) (uint8, error) {
-	return mem.Read(uint16(address))
-}
-
 func (mem *testMem) Write(address uint16, data uint8) error {
 	mem.internal[address] = data
 	return nil
