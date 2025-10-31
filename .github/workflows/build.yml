@@ -9,6 +9,7 @@ jobs:
   build-macos-intel:
     runs-on: macos-15-intel
     env:
+      MACOSX_DEPLOYMENT_TARGET: 10.11
       BINARY_NAME: gopher2600_darwin_amd64
     steps:
     - name: Install dependencies
