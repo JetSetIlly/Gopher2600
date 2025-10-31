@@ -25,4 +25,17 @@
 //
 // All functions a return a boolean to indicate whether the test has passed. This allows
 // the user to control larger test procedures that have several stages.
+//
+// The tags argument for every public function allows the test to be tagged with
+// additional information. Each tag will appear at the beginning of any error
+// message separated by a colon. For example,
+//
+//	v := false
+//	testFile = "my test data"
+//	lineNo = 100
+//	test.ExpectSuccess(t, v, testFile, lineNo)
+//
+// will fail with the following:
+//
+//	my test data: 100: a success value is expected for type bool
 package test
