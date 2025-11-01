@@ -23,4 +23,19 @@
 //
 // Add the instructions you want to test from the 6502/v1 directory on Github to
 // the 6502/v1 directory in this package.
+//
+// The full test suite is slow so by default no tests will run. To enable the
+// individual opcode tests set the GOPHER2600_SINGLESTEP_TEST environment
+// variable. For example will run the tests for every opcode.
+//
+//	GOPHER2600_SINGLESTEP_TEST=00-ff go test -test.v .
+//
+// Opcodes can be specified individually and separated by a comma.
+//
+//  00,12,3d,fd
+//
+// Or as a range or as a mixture of both.
+//
+//  00-0f,23,45,a4-a9
+
 package thomharte

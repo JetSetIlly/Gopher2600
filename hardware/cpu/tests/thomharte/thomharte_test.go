@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
@@ -143,21 +146,48 @@ func (d *Tests) UnmarshalJSON(data []byte) error {
 var testsPath = filepath.Join("6502", "v1")
 
 func TestThomHarte(t *testing.T) {
-	d, err := os.ReadDir(testsPath)
-	if err != nil {
-		t.Fatal(err)
+	var env = os.Getenv("GOPHER2600_SINGLESTEP_TEST")
+	if len(env) == 0 {
+		return
 	}
 
-	for _, e := range d {
-		switch e.Name() {
-		case ".gitkeep":
-			continue
-		}
-		if e.Type().IsRegular() {
-			testThomHarte(t, filepath.Join(testsPath, e.Name()))
+	selected := strings.Split(env, ",")
+	for _, s := range selected {
+		rng := strings.SplitN(s, "-", 2)
+		switch len(rng) {
+		case 1:
+			n, err := strconv.ParseUint(rng[0], 16, 8)
+			if err != nil {
+				t.Fatalf("opcode is malformed: %s: %v", s, err)
+			}
+			testThomHarte(t, filepath.Join(testsPath, fmt.Sprintf("%02x.json", n)))
+		case 2:
+			n, err := strconv.ParseUint(rng[0], 16, 8)
+			if err != nil {
+				t.Fatalf("opcode range is malformed: %s: %v", s, err)
+			}
+			e, err := strconv.ParseUint(rng[1], 16, 8)
+			if err != nil {
+				t.Fatalf("opcode range is malformed: %s: %v", s, err)
+			}
+			if n >= e {
+				t.Fatalf("opcode ranges should run from low to high: ie. %02x-%02x not %s", e, n, s)
+			}
+			for n <= e {
+				testThomHarte(t, filepath.Join(testsPath, fmt.Sprintf("%02x.json", n)))
+				n++
+			}
+		default:
+			t.Fatalf("opcode is malformed: %s", s)
 		}
 	}
 }
+
+// not working:
+// 	AHX: 93, 9f
+// 	TAS: 9b
+// 	SHY: 9c
+// 	SHX: 9e
 
 func testThomHarte(t *testing.T, testFile string) {
 	t.Logf("testing %s", testFile)
@@ -174,9 +204,16 @@ func testThomHarte(t *testing.T, testFile string) {
 
 	mem := newTestMem()
 	mc := cpu.NewCPU(mem)
-	mc.Reset(nil)
 
 	for i, s := range tests {
+		mc.Reset(nil)
+
+		fatalTest := func() {
+			debug.PrintStack()
+			t.Logf("last instruction: %s", mc.LastResult.Defn.String())
+			t.Fatalf("%s: failed on line %d, cycle %d", testFile, i, mc.LastResult.Cycles-1)
+		}
+
 		mc.PC.Load(uint16(s.Initial.PC))
 		mc.A.Load(uint8(s.Initial.A))
 		mc.X.Load(uint8(s.Initial.X))
@@ -192,13 +229,15 @@ func testThomHarte(t *testing.T, testFile string) {
 
 			var fail bool
 
-			fail = !test.ExpectEquality(t, mem.addressBus, s.Cycles[cycle].Address, testFile, i, "address bus") || fail
-			fail = !test.ExpectEquality(t, mem.dataBus, s.Cycles[cycle].Data, testFile, i, "data bus") || fail
-			fail = !test.ExpectEquality(t, mem.lastEvent, s.Cycles[cycle].Event, testFile, i, "memory event") || fail
+			fail = !test.ExpectEquality(t, mem.addressBus, s.Cycles[cycle].Address,
+				testFile, i, "address bus cycle", cycle) || fail
+			fail = !test.ExpectEquality(t, mem.dataBus, s.Cycles[cycle].Data,
+				testFile, i, "data bus cycle", cycle) || fail
+			fail = !test.ExpectEquality(t, mem.lastEvent, s.Cycles[cycle].Event,
+				testFile, i, "memory event cycle", cycle) || fail
 
 			if fail {
-				t.Logf("last instruction: %s", mc.LastResult.Defn.String())
-				t.Fatalf("%s: failed on line %d, cycle %d", testFile, i, mc.LastResult.Cycles-1)
+				fatalTest()
 			}
 
 			return nil
@@ -216,14 +255,20 @@ func testThomHarte(t *testing.T, testFile string) {
 		fail = !test.ExpectEquality(t, mc.X.Value(), uint8(s.Final.X), testFile, i, "X") || fail
 		fail = !test.ExpectEquality(t, mc.Y.Value(), uint8(s.Final.Y), testFile, i, "Y") || fail
 		fail = !test.ExpectEquality(t, mc.SP.Value(), uint8(s.Final.S), testFile, i, "SP") || fail
-		fail = !test.ExpectEquality(t, mc.Status.Value()&0xef, uint8(s.Final.P), testFile, i, "Status") || fail
+		fail = !test.ExpectEquality(t, mc.Status.Value()&0xef, uint8(s.Final.P&0xef), testFile, i, "Status") || fail
 		for _, r := range s.Final.RAM {
-			fail = !test.ExpectEquality(t, mem.internal[r.Address], r.Value, testFile, i, "RAM %04x", r.Address) || fail
+			fail = !test.ExpectEquality(t, mem.internal[r.Address], r.Value,
+				testFile, i, fmt.Sprintf("RAM %04x", r.Address)) || fail
+		}
+
+		// the number of entries in the cycles array is way too many in the tests. we don't test
+		// them because we are confident that the number executed by KIL is correct
+		if mc.LastResult.Defn.Operator.String() != "KIL" {
+			fail = !test.ExpectEquality(t, mc.LastResult.Cycles, len(s.Cycles), testFile, i, "cycle count") || fail
 		}
 
 		if fail {
-			t.Logf("last instruction: %s", mc.LastResult.Defn.String())
-			t.Fatalf("%s: failed on line %d", testFile, i)
+			fatalTest()
 		}
 	}
 }
