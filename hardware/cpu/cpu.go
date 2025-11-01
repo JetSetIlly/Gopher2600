@@ -1394,11 +1394,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
+
+		// dummy fetch from stack
+		mc.read8Bit(mc.SP.Address(), true)
 
 		// the current value of the PC is now correct, even though we've only read
 		// one byte of the address so far. remember, RTS increments the PC when
@@ -1545,17 +1543,15 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			}
 		}
 
+		// +1 cycles
+		_, err = mc.read8Bit(mc.SP.Address(), true)
+		if err != nil {
+			return err
+		}
+
 		// pull status register (same effect as PLP)
 		if !mc.NoFlowControl {
 			mc.SP.Add(1, false)
-		}
-
-		// not sure when this cycle should occur
-		// +1 cycle
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
 		}
 
 		// +1 cycles
