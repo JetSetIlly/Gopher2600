@@ -1759,8 +1759,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Carry = r.ROL(mc.Status.Carry)
 		value = r.Value()
 		mc.A.AND(r.Value())
-		mc.Status.Zero = r.IsZero()
-		mc.Status.Sign = r.IsNegative()
+		mc.Status.Zero = mc.A.IsZero()
+		mc.Status.Sign = mc.A.IsNegative()
 
 	case instructions.ISC:
 		r := mc.acc8
@@ -1777,7 +1777,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.A.AND(value)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
-		mc.Status.Carry = value&0x80 == 0x80
+		mc.Status.Carry = mc.A.Value()&0x80 == 0x80
 
 	case instructions.SRE:
 		// untested
@@ -1786,8 +1786,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Carry = r.LSR()
 		value = r.Value()
 		mc.A.EOR(value)
-		mc.Status.Zero = r.IsZero()
-		mc.Status.Sign = r.IsNegative()
+		mc.Status.Zero = mc.A.IsZero()
+		mc.Status.Sign = mc.A.IsNegative()
 
 	case instructions.RRA:
 		// untested
