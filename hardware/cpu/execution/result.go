@@ -76,6 +76,12 @@ type Result struct {
 	// whether this data has been finalised - some fields in this struct will
 	// be undefined if Final is false
 	Final bool
+
+	// was this result as a result of an interrupt
+	FromInterrupt bool
+
+	// was this result executed inside an interrupt
+	InInterrupt bool
 }
 
 // Reset nullifies all members of the Result instance.
@@ -88,6 +94,7 @@ func (r *Result) Reset() {
 	r.PageFault = false
 	r.CPUBug = ""
 	r.Final = false
+	r.FromInterrupt = false
 }
 
 // very rough disassembly. it should not be used in preference to the

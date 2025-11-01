@@ -61,6 +61,20 @@ type CPU struct {
 	// is outside of the direct control of the CPU.
 	NoFlowControl bool
 
+	// whether the CPU is in an interrupt block of code. this field is >0 when
+	// the PC has been loaded with the address pointed to by the NMI address. it
+	// is possible for the the code to be interrupted while inside an interrupt,
+	// which is why this field is an integer rather than a boolean
+	//
+	// we can think of this as an extended I status flag that is increased on a
+	// NMI or IRQ signal (but not a BRK instruction) and reduced on RTI (when
+	// the break flag in the status register is cleared)
+	interruptDepth int
+
+	// an interrupt has occured and so the next instruction will indicate that
+	// it was executed as a result of the interrupt
+	interrupt bool
+
 	// Whether the last memory access by the CPU was a phantom access
 	PhantomMemAccess bool
 
@@ -75,8 +89,12 @@ const (
 	// Reset is the address where the reset address is stored.
 	Reset = uint16(0xfffc)
 
-	// BRK is the address where the interrupt address is stored.
-	BRK = uint16(0xfffe)
+	// IRQ is the address where the interrupt address is stored.
+	IRQ = uint16(0xfffe)
+
+	// for clarity, BRK is another name for IRQ. we use this when triggering
+	// software interrupts
+	BRK = IRQ
 )
 
 // Memory interface to underlying implmentation. See MemoryAddressError
@@ -117,12 +135,76 @@ func (mc *CPU) String() string {
 	return fmt.Sprintf("%s=%s %s=%s %s=%s %s=%s %s=%s %s=%s",
 		mc.PC.Label(), mc.PC, mc.A.Label(), mc.A,
 		mc.X.Label(), mc.X, mc.Y.Label(), mc.Y,
-		mc.SP.Label(), mc.SP, mc.Status.Label(), mc.Status)
+		mc.SP.Label(), mc.SP, mc.Status.Label(), mc.Status,
+	)
 }
 
 // SetRDY sets the CPU RDY flag. equivalent to pin 3 of the 6507
 func (mc *CPU) SetRDY(rdy bool) {
 	mc.RdyFlg = rdy
+}
+
+// InInterrupt returns true if executed instructions will be between an NMI/IRQ
+// and an RTI. Remember that it's possible for an NMI to interrupt on an ongoing
+// interrupt handler, so an RTI will not necessarily cause InInterrupt to return
+// false on the next call
+func (mc *CPU) InInterrupt() bool {
+	return mc.interruptDepth > 0
+}
+
+// Interrupt loads the PC with the 16bit value at the NMI address (when
+// NMI is true) or at the IRQ address
+func (mc *CPU) Interrupt(nonMaskable bool) error {
+	// the interruptDepth field is now >0 and indicates that the CPU is in the
+	// interrupted state. if the CPU has been interrupted previously without an
+	// intervening RTI then the field will be >1
+	mc.interruptDepth++
+
+	// an interrupt has occurred and will be indicated in the restul for the next instruction
+	mc.interrupt = true
+
+	// IRQ interrupts only take effect if the InterruptDisable flag is unset
+	if !nonMaskable {
+		if mc.Status.InterruptDisable {
+			return nil
+		}
+	}
+
+	// TODO: call cycleCallback after every cycle
+
+	// push MSB of PC onto stack, and decrement SP
+	err := mc.write8Bit(mc.SP.Address(), uint8(mc.PC.Address()>>8), false)
+	if err != nil {
+		return err
+	}
+	mc.SP.Add(0xff, false)
+
+	// push LSB of PC onto stack, and decrement SP
+	err = mc.write8Bit(mc.SP.Address(), uint8(mc.PC.Address()), false)
+	if err != nil {
+		return err
+	}
+	mc.SP.Add(0xff, false)
+
+	// push status register
+	err = mc.write8Bit(mc.SP.Address(), mc.Status.Value(), false)
+	if err != nil {
+		return err
+	}
+	mc.SP.Add(0xff, false)
+
+	// set the interrupt disable flag after pushing the status register to the
+	// stack. this is so the flag is cleared when the status register is restored
+	//
+	// NMI interrupts do not set the InterruptDisable flag
+	if !nonMaskable {
+		mc.Status.InterruptDisable = true
+	}
+
+	if nonMaskable {
+		return mc.LoadPCIndirect(NMI)
+	}
+	return mc.LoadPCIndirect(IRQ)
 }
 
 type Random interface {
@@ -134,6 +216,8 @@ func (mc *CPU) Reset(rnd Random) error {
 	mc.LastResult.Reset()
 	mc.Killed = false
 	mc.cycleCallback = nil
+	mc.interruptDepth = 0
+	mc.interrupt = false
 
 	if rnd == nil {
 		mc.PC.Load(0x0000)
@@ -156,28 +240,23 @@ func (mc *CPU) Reset(rnd Random) error {
 	// A or any other register
 	mc.Status.InterruptDisable = true
 
+	// the reset procedure is special in that it leaves the information about the last executed
+	// instruction in the "final" state
+	mc.LastResult.Final = true
+
 	// we simplify the reset procedure to reducing the stack value three times and then loading the
 	// reset address into the PC. there's no need to emulate the full eight cycles of the
 	// initilisation process
 	mc.SP.Add(0xff, false)
 	mc.SP.Add(0xff, false)
 	mc.SP.Add(0xff, false)
-	lo, err := mc.mem.Read(Reset)
+	err := mc.LoadPCIndirect(Reset)
 	if err != nil {
-		return fmt.Errorf("cpu reset: %w", err)
+		return err
 	}
-	hi, err := mc.mem.Read(Reset + 1)
-	if err != nil {
-		return fmt.Errorf("cpu reset: %w", err)
-	}
-	mc.PC.Load((uint16(hi) << 8) | uint16(lo))
 
 	// cpu is ready immediately after reset
 	mc.RdyFlg = true
-
-	// the reset procedure is special in that it leaves the information about the last executed
-	// instruction in the "final" state
-	mc.LastResult.Final = true
 
 	return nil
 }
@@ -190,6 +269,27 @@ func (mc *CPU) HasReset() bool {
 	// the Final flag in LastResult is not normally set when the defintion field is nil. however, we
 	// explicitely set the Final flag to true when resetting the CPU
 	return mc.LastResult.Defn == nil && mc.LastResult.Final == true
+}
+
+// LoadPC loads the contents of directAddress into the PC.
+func (mc *CPU) LoadPCIndirect(address uint16) error {
+	if !mc.LastResult.Final {
+		return fmt.Errorf("cpu: load PC invalid mid-instruction")
+	}
+
+	mc.PhantomMemAccess = false
+
+	lo, err := mc.mem.Read(address)
+	if err != nil {
+		return err
+	}
+	hi, err := mc.mem.Read(address + 1)
+	if err != nil {
+		return err
+	}
+	mc.PC.Load((uint16(hi) << 8) | uint16(lo))
+
+	return nil
 }
 
 // LoadPC loads the contents of directAddress into the PC.
@@ -506,6 +606,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	// prepare new round of results
 	mc.LastResult.Reset()
 	mc.LastResult.Address = mc.PC.Address()
+	mc.LastResult.FromInterrupt = mc.interrupt
+	mc.interrupt = false
+	mc.LastResult.InInterrupt = mc.InInterrupt()
 
 	var err error
 
@@ -1411,8 +1514,11 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 
-		// set the break flag
+		// set the break and interrupt disable flags after pushing the status
+		// register to the stack. this is so the flags are cleared when the
+		// status register is restored
 		mc.Status.Break = true
+		mc.Status.InterruptDisable = true
 
 		// perform jump
 		var brkAddress uint16
@@ -1425,6 +1531,20 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 	case instructions.Rti:
+		// software breaks (the BRK instruction) can be distinguished from
+		// hardware interrupts by the break flag
+		if mc.Status.Break {
+			if mc.interruptDepth > 0 {
+				// reduce depth count by one. if the count is now zero then the CPU is
+				// no longer in the interrupt state. if however, the an interrupt
+				// happened whilst inside an interrupt, the count will still be >0
+				mc.interruptDepth--
+			} else {
+				// if interruptDepth is zero then that means that RTI has been called outside of
+				// interupt block
+			}
+		}
+
 		// pull status register (same effect as PLP)
 		if !mc.NoFlowControl {
 			mc.SP.Add(1, false)
