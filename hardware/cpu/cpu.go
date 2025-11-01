@@ -1047,12 +1047,11 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case instructions.Pla:
 		// +1 cycle
-		mc.SP.Add(1, false)
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
+		value, err = mc.read8Bit(mc.SP.Address(), true)
 		if err != nil {
 			return err
 		}
+		mc.SP.Add(1, false)
 
 		// +1 cycle
 		value, err = mc.read8Bit(mc.SP.Address(), false)
@@ -1078,12 +1077,12 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case instructions.Plp:
 		// +1 cycle
-		mc.SP.Add(1, false)
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
+		value, err = mc.read8Bit(mc.SP.Address(), true)
 		if err != nil {
 			return err
 		}
+		mc.SP.Add(1, false)
+
 		// +1 cycle
 		value, err = mc.read8Bit(mc.SP.Address(), false)
 		if err != nil {
