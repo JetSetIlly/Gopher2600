@@ -97,6 +97,12 @@ const (
 	BRK = IRQ
 )
 
+// it is believed that internalParameter is a value that is inherent to the brand of chip. whatever it is
+// exactly, if is used in the XAA or LAX (immediate) instructions
+//
+// we call it internalParameter because that's how it's referred to in 64doc.txt
+const internalParameter = 0xee
+
 // Memory interface to underlying implmentation. See MemoryAddressError
 // interface for optional functions
 type Memory interface {
@@ -1581,10 +1587,14 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// does nothing (2 byte nop)
 
 	case instructions.LAX:
-		mc.A.Load(value)
+		if defn.AddressingMode == instructions.Immediate {
+			mc.A.Load((mc.A.Value() | internalParameter) & value)
+		} else {
+			mc.A.Load(value)
+		}
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
-		mc.X.Load(value)
+		mc.X.Load(mc.A.Value())
 
 	case instructions.DCP:
 		// AND the contents of the A register with value...
@@ -1622,12 +1632,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		//
 		// note that XAA is referred to as ANE in 64doc.txt
 
-		// the 'internal parameter' is whatever is on the databus according to "64doc.txt". on the
-		// 2600 and 7800 it's not possible for the databus to change mid-instruction by DMA or
-		// anything else, so the value of 'internal parameter' must be equal to the operand
-		internalParameter := value
-
-		mc.A.Load((mc.A.Value() | 0xee) & mc.X.Value() & internalParameter)
+		mc.A.Load((mc.A.Value() | internalParameter) & mc.X.Value() & value)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
