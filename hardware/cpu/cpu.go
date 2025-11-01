@@ -1233,10 +1233,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case instructions.Adc:
 		if mc.Status.DecimalMode {
-			mc.Status.Carry,
-				mc.Status.Zero,
-				mc.Status.Overflow,
-				mc.Status.Sign = mc.A.AddDecimal(value, mc.Status.Carry)
+			mc.Status.Carry, mc.Status.Zero, mc.Status.Overflow, mc.Status.Sign = mc.A.AddDecimal(value, mc.Status.Carry)
 		} else {
 			mc.Status.Carry, mc.Status.Overflow = mc.A.Add(value, mc.Status.Carry)
 			mc.Status.Zero = mc.A.IsZero()
@@ -1762,9 +1759,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		r.Load(value)
 		r.Add(1, false)
 		value = r.Value()
-		mc.Status.Carry, mc.Status.Overflow = mc.A.Subtract(value, mc.Status.Carry)
-		mc.Status.Zero = mc.A.IsZero()
-		mc.Status.Sign = mc.A.IsNegative()
+		if mc.Status.DecimalMode {
+			mc.Status.Carry, mc.Status.Zero, mc.Status.Overflow, mc.Status.Sign = mc.A.SubtractDecimal(value, mc.Status.Carry)
+		} else {
+			mc.Status.Carry, mc.Status.Overflow = mc.A.Subtract(value, mc.Status.Carry)
+			mc.Status.Zero = mc.A.IsZero()
+			mc.Status.Sign = mc.A.IsNegative()
+		}
 
 	case instructions.ANC:
 		// immediate AND. puts bit 7 into the carry flag (in microcode terms
@@ -1790,9 +1791,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		r.Load(value)
 		mc.Status.Carry = r.ROR(mc.Status.Carry)
 		value = r.Value()
-		mc.Status.Carry, mc.Status.Overflow = mc.A.Add(value, mc.Status.Carry)
-		mc.Status.Zero = r.IsZero()
-		mc.Status.Sign = r.IsNegative()
+		if mc.Status.DecimalMode {
+			mc.Status.Carry, mc.Status.Zero, mc.Status.Overflow, mc.Status.Sign = mc.A.AddDecimal(r.Value(), mc.Status.Carry)
+		} else {
+			mc.Status.Carry, mc.Status.Overflow = mc.A.Add(r.Value(), mc.Status.Carry)
+			mc.Status.Zero = mc.A.IsZero()
+			mc.Status.Sign = mc.A.IsNegative()
+		}
 
 	case instructions.AHX:
 		// untested
