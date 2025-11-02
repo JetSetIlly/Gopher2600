@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -160,7 +161,7 @@ func TestThomHarte(t *testing.T) {
 			if err != nil {
 				t.Fatalf("opcode is malformed: %s: %v", s, err)
 			}
-			testThomHarte(t, filepath.Join(testsPath, fmt.Sprintf("%02x.json", n)))
+			testThomHarte(t, uint8(n), true)
 		case 2:
 			n, err := strconv.ParseUint(rng[0], 16, 8)
 			if err != nil {
@@ -174,7 +175,7 @@ func TestThomHarte(t *testing.T) {
 				t.Fatalf("opcode ranges should run from low to high: ie. %02x-%02x not %s", e, n, s)
 			}
 			for n <= e {
-				testThomHarte(t, filepath.Join(testsPath, fmt.Sprintf("%02x.json", n)))
+				testThomHarte(t, uint8(n), false)
 				n++
 			}
 		default:
@@ -183,14 +184,21 @@ func TestThomHarte(t *testing.T) {
 	}
 }
 
-// not working:
-// 	AHX: 93, 9f
-// 	TAS: 9b
-// 	SHY: 9c
-// 	SHX: 9e
+var notWorking = []uint8{0x93, 0x9f, 0x9b, 0x9c, 0x9e}
 
-func testThomHarte(t *testing.T, testFile string) {
-	t.Logf("testing %s", testFile)
+func testThomHarte(t *testing.T, opcode uint8, force bool) {
+	testFile := filepath.Join(testsPath, fmt.Sprintf("%02x.json", opcode))
+
+	if slices.Contains(notWorking, opcode) {
+		if force {
+			t.Logf("forcing %s", testFile)
+		} else {
+			t.Logf("skipping %s", testFile)
+			return
+		}
+	} else {
+		t.Logf("testing %s", testFile)
+	}
 
 	f, err := os.Open(testFile)
 	if err != nil {

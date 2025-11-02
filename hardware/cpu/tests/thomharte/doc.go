@@ -37,5 +37,19 @@
 // Or as a range or as a mixture of both.
 //
 //  00-0f,23,45,a4-a9
+//
+// Currently there are some opcode tests that don't succeed with the current
+// implementation - there is something about those instructions which I don't
+// understand. When those opcodes appear as part of a range they are skipped.
+// When they appear singly, there are forcibly run. The log output indicates
+// that.
+//
+// The current set of (working but not single-step-passing opcodes) is:
+//
+//	0x93	AHX (indirect inexed)
+//	0x9f	AHX (absolute indexed Y)
+//	0x9b	TAS
+//	0x9c	SHY
+//	0x9e	SHX
 
 package thomharte
