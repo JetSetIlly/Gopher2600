@@ -176,8 +176,6 @@ func (mc *CPU) Interrupt(nonMaskable bool) error {
 		}
 	}
 
-	// TODO: call cycleCallback after every cycle
-
 	// push MSB of PC onto stack, and decrement SP
 	err := mc.write8Bit(mc.SP.Address(), uint8(mc.PC.Address()>>8), false)
 	if err != nil {
@@ -336,6 +334,13 @@ func (mc *CPU) write8Bit(address uint16, value uint8, phantom bool) error {
 	mc.PhantomMemAccess = phantom
 
 	err := mc.mem.Write(address, value)
+	if err != nil {
+		return err
+	}
+
+	// +1 cycle
+	mc.LastResult.Cycles++
+	err = mc.cycleCallback()
 	if err != nil {
 		return err
 	}
@@ -1004,12 +1009,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			if err != nil {
 				return err
 			}
-
-			mc.LastResult.Cycles++
-			err = mc.cycleCallback()
-			if err != nil {
-				return err
-			}
 		}
 	}
 
@@ -1046,11 +1045,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 		mc.SP.Add(0xff, false)
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
 
 	case instructions.Pla:
 		// +1 cycle
@@ -1076,11 +1070,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 		mc.SP.Add(0xff, false)
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
 
 	case instructions.Plp:
 		// +1 cycle
@@ -1162,11 +1151,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
 
 	case instructions.Stx:
 		// +1 cycle
@@ -1174,20 +1158,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
 
 	case instructions.Sty:
 		// +1 cycle
 		err = mc.write8Bit(address, mc.Y.Value(), false)
-		if err != nil {
-			return err
-		}
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1406,11 +1380,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 		mc.SP.Add(0xff, false)
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
 
 		// push LSB of PC onto stack, and decrement SP
 		// +1 cycle
@@ -1419,11 +1388,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 		mc.SP.Add(0xff, false)
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
 
 		// +1 cycle
 		err = mc.read8BitPC(hiByte)
@@ -1476,11 +1440,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// +1 cycle
 		mc.SP.Add(0xff, false)
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
 
 		err = mc.write8Bit(mc.SP.Address(), uint8(mc.PC.Address()), false)
 		if err != nil {
@@ -1489,11 +1448,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// +1 cycle
 		mc.SP.Add(0xff, false)
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
 
 		// push status register (same effect as PHP)
 		err = mc.write8Bit(mc.SP.Address(), mc.Status.Value(), false)
@@ -1501,13 +1455,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 
-		// +1 cycle
 		mc.SP.Add(0xff, false)
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
 
 		// set the break and interrupt disable flags after pushing the status
 		// register to the stack. this is so the flags are cleared when the
@@ -1646,11 +1594,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// +1 cycle
 		err = mc.write8Bit(address, mc.acc8.Value(), false)
-		if err != nil {
-			return err
-		}
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1802,11 +1745,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
 
 	case instructions.TAS:
 		mc.acc8.Load(mc.A.Value())
@@ -1816,11 +1754,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// +1 cycle
 		err = mc.write8Bit(address, mc.acc8.Value(), false)
-		if err != nil {
-			return err
-		}
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1834,11 +1767,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
-		}
 
 	case instructions.SHX:
 		mc.acc8.Load(mc.X.Value())
@@ -1846,11 +1774,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// +1 cycle
 		err = mc.write8Bit(address, mc.acc8.Value(), false)
-		if err != nil {
-			return err
-		}
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1873,14 +1796,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	// for RMW instructions: write altered value back to memory
 	if defn.Effect == instructions.RMW {
-		err = mc.write8Bit(address, value, false)
-		if err != nil {
-			return err
-		}
-
 		// +1 cycle
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
+		err = mc.write8Bit(address, value, false)
 		if err != nil {
 			return err
 		}
