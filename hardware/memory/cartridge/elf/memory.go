@@ -238,6 +238,7 @@ func (mem *elfMemory) Snapshot() *elfMemory {
 	// snapshot sections. the Snapshot() function of the elfSection type decides
 	// how best to deal with the request
 	m.sections = make([]*elfSection, len(mem.sections))
+	m.sectionsByName = make(map[string]*elfSection)
 	for i := range mem.sections {
 		if mem.sections[i].readOnly() {
 			m.sections[i] = mem.sections[i]
