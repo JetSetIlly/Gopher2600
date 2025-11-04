@@ -101,7 +101,10 @@ const (
 // exactly, if is used in the XAA or LAX (immediate) instructions
 //
 // we call it internalParameter because that's how it's referred to in 64doc.txt
-const internalParameter = 0xee
+const (
+	internalParameterXAA = 0xee
+	internalParameterLAX = 0x00
+)
 
 // Memory interface to underlying implmentation. See MemoryAddressError
 // interface for optional functions
@@ -1531,7 +1534,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case instructions.LAX:
 		if defn.AddressingMode == instructions.Immediate {
-			mc.A.Load((mc.A.Value() | internalParameter) & value)
+			mc.A.Load((mc.A.Value() | internalParameterLAX) & value)
 		} else {
 			mc.A.Load(value)
 		}
@@ -1574,7 +1577,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		//
 		// note that XAA is referred to as ANE in 64doc.txt
 
-		mc.A.Load((mc.A.Value() | internalParameter) & mc.X.Value() & value)
+		mc.A.Load((mc.A.Value() | internalParameterXAA) & mc.X.Value() & value)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
