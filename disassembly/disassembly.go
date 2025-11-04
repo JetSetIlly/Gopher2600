@@ -302,7 +302,7 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 		}
 	}
 
-	// add to sequenctial list
+	// add to sequential list
 	dsm.disasmEntries.Sequential = append(dsm.disasmEntries.Sequential, e)
 	if len(dsm.disasmEntries.Sequential) > 10000 {
 		dsm.disasmEntries.Sequential = dsm.disasmEntries.Sequential[1:]
@@ -332,6 +332,7 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 			result: result,
 			bank:   bank,
 		},
+		Coords: dsm.vcs.TV.GetCoords(),
 	}
 
 	// address of instruction

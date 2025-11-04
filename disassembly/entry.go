@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
 
 // EntryLevel describes the level of the Entry.
@@ -84,6 +85,9 @@ type Entry struct {
 	Address  string
 	Operator string
 	Operand  Operand
+
+	// when the disassembly entry was created
+	Coords coords.TelevisionCoords
 }
 
 // some fields in the disassembly entry are updated on every execution.

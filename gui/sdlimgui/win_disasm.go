@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/disassembly"
@@ -54,13 +55,14 @@ type winDisasm struct {
 	optionsHeight float32
 
 	// options
-	followCPU  bool
-	usingColor bool
+	followCPU       bool
+	sequential      bool
+	groupByScanline bool
+	usingColor      bool
 
 	// selected filter and selected bank to display when filter is 'filterBank'
-	filter         disasmFilter
-	selectedBank   int
-	showSequential bool
+	filter       disasmFilter
+	selectedBank int
 
 	// special handling of a new ROM with a different number of banks is achieved by
 	// checking whether the CPU has been recently reset. this flag allows us to
@@ -145,6 +147,9 @@ func (win *winDisasm) draw() {
 	addr := win.img.cache.VCS.CPU.PC.Address()
 	currBank := win.img.cache.VCS.Mem.Cart.GetBank(addr)
 
+	// update options from prefs variables
+	win.usingColor = win.img.prefs.colorDisasm.Get().(bool)
+
 	// handle a change of cartridge by monitoring the CPU reset flag. this gives us
 	// the opportunity to change the selectedBank value
 	if win.img.cache.VCS.CPU.HasReset() {
@@ -190,29 +195,29 @@ func (win *winDisasm) draw() {
 			addr = win.img.cache.Dbg.LiveDisasmEntry.Result.Address & memorymap.CartridgeBits
 		}
 	}
-	if win.showSequential || currBank.Sequential {
-		win.drawSequential(addr, currBank, currBank.Sequential)
+	if win.sequential || currBank.Sequential {
+		win.drawSequential(currBank)
 	} else {
 		win.drawBanked(addr, currBank)
 	}
 }
 
-func (win *winDisasm) drawSequential(addr uint16, currBank mapper.BankInfo, onlySequential bool) {
+func (win *winDisasm) drawSequential(currBank mapper.BankInfo) {
 	render := func(dsm *disassembly.DisasmEntries) {
-		win.drawEntries("sequential", dsm.Sequential, len(dsm.Sequential)-1, currBank)
+		win.drawEntries("sequential", dsm.Sequential, len(dsm.Sequential)-1, currBank, true)
 	}
 
 	if !win.img.dbg.Disasm.BorrowDisasm(render) {
 		imgui.Text("disassembling...")
 	}
 
-	win.drawOptionsBar(currBank, !onlySequential)
+	win.drawOptionsBar(currBank)
 }
 
 func (win *winDisasm) drawBanked(addr uint16, currBank mapper.BankInfo) {
 	win.drawBankSelection(currBank)
 	win.drawBank(addr, currBank)
-	win.drawOptionsBar(currBank, true)
+	win.drawOptionsBar(currBank)
 }
 
 func (win *winDisasm) drawBankSelection(currBank mapper.BankInfo) {
@@ -359,7 +364,7 @@ func (win *winDisasm) drawBank(addr uint16, currBank mapper.BankInfo) {
 			}
 		}
 
-		win.drawEntries("banked", entries, current, currBank)
+		win.drawEntries("banked", entries, current, currBank, false)
 	}
 
 	if !win.img.dbg.Disasm.BorrowDisasm(render) {
@@ -367,35 +372,34 @@ func (win *winDisasm) drawBank(addr uint16, currBank mapper.BankInfo) {
 	}
 }
 
-func (win *winDisasm) drawOptionsBar(currBank mapper.BankInfo, showSequential bool) {
+func (win *winDisasm) drawOptionsBar(currBank mapper.BankInfo) {
 	// draw options and status line. start height measurement
 	win.optionsHeight = imguiMeasureHeight(func() {
 		imgui.Spacing()
 		imgui.Separator()
 		imgui.Spacing()
+
 		if imgui.Checkbox("Follow CPU", &win.followCPU) {
-			// set focus options immediately
 			if win.followCPU {
 				win.focus.active = true
 				win.selectedBank = currBank.Number
 			}
 		}
+
 		imgui.SameLineV(0, 15)
-		win.usingColor = win.img.prefs.colorDisasm.Get().(bool)
 		if imgui.Checkbox("Use Colour", &win.usingColor) {
 			win.img.prefs.colorDisasm.Set(win.usingColor)
 		}
 
-		if showSequential {
+		if !currBank.Sequential {
 			imgui.SameLineV(0, 15)
-			if imgui.Checkbox("Show Sequential", &win.showSequential) {
-				// follow CPU if appropriate
-				if win.followCPU {
-					win.focus.active = true
-					win.selectedBank = currBank.Number
-				}
-			}
+			_ = imgui.Checkbox("Show Sequential", &win.sequential)
 		}
+
+		imgui.SameLineV(0, 15)
+		drawDisabled(!currBank.Sequential && !win.sequential, func() {
+			imgui.Checkbox("Group by Scanline", &win.groupByScanline)
+		})
 
 		// special execution icons
 		if currBank.ExecutingCoprocessor {
@@ -414,7 +418,9 @@ func (win *winDisasm) drawOptionsBar(currBank mapper.BankInfo, showSequential bo
 }
 
 // drawEntries is called from both drawBanked() and drawSequential()
-func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, current int, currBank mapper.BankInfo) {
+func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, current int, currBank mapper.BankInfo,
+	sequential bool) {
+
 	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
 	defer imgui.PopStyleColorV(2)
@@ -431,6 +437,9 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 	numColumns := 7
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
+	if win.groupByScanline {
+		flgs |= imgui.TableFlagsRowBg
+	}
 	if !imgui.BeginTableV(fmt.Sprintf("##disasmtable%s", id), numColumns, flgs, imgui.Vec2{}, 0) {
 		return
 	}
@@ -464,6 +473,18 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 		var hasPCbreak bool
 		if win.img.cache.Dbg.Breakpoints != nil {
 			hasPCbreak, _ = win.img.cache.Dbg.Breakpoints.HasPCBreak(entries[i].Result.Address, currBank.Number)
+		}
+
+		// group entries by scanline
+		if sequential && win.groupByScanline && i > 0 {
+			if entries[i-1].Coords.Scanline&0x01 == 0x01 {
+				col := imgui.CurrentStyle().Color(imgui.StyleColorTableRowBgAlt)
+				imgui.PushStyleColor(imgui.StyleColorTableRowBg, col)
+			} else {
+				col := imgui.CurrentStyle().Color(imgui.StyleColorTableRowBg)
+				imgui.PushStyleColor(imgui.StyleColorTableRowBgAlt, col)
+			}
+			defer imgui.PopStyleColor()
 		}
 
 		imgui.TableNextRow()
@@ -527,6 +548,7 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 					imgui.Spacing()
 					draw(fmt.Sprintf("%c %s", fonts.Notes, nts), win.img.cols.DisasmNotes)
 				}
+				draw(strings.ToLower(entries[i].Coords.String()), win.img.cols.DisasmNotes)
 			}, true)
 		}
 		if imgui.TableNextColumn() {
@@ -558,8 +580,12 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 	})
 
 	if win.focus.active {
-		const margin = 3
-		imgui.SetScrollY(float32(current-margin) * results.ItemsHeight)
+		if win.sequential || currBank.Sequential {
+			imgui.SetScrollY(imgui.ScrollMaxY())
+		} else {
+			const margin = 3
+			imgui.SetScrollY(float32(current-margin) * results.ItemsHeight)
+		}
 		win.focus.active = false
 	}
 }
