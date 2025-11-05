@@ -50,7 +50,10 @@ type preferences struct {
 	audioMuteDebugger     prefs.Bool
 	showTooltips          prefs.Bool
 	showTimelineThumbnail prefs.Bool
-	colorDisasm           prefs.Bool
+	disasmColour          prefs.Bool
+	disasmSequential      prefs.Bool
+	disasmGroupScanlines  prefs.Bool
+	pxeColourIndicators   prefs.Bool
 
 	// playmode preferences
 	audioMutePlaymode    prefs.Bool
@@ -121,7 +124,19 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("sdlimgui.debugger.disasm.color", &p.colorDisasm)
+	err = p.dsk.Add("sdlimgui.debugger.disasm.color", &p.disasmColour)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.debugger.disasm.sequential", &p.disasmSequential)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.debugger.disasm.groupScanlines", &p.disasmGroupScanlines)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.debugger.pxe.colorIndicators", &p.pxeColourIndicators)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +279,19 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.debugger.disasm.color", &p.colorDisasm)
+	err = p.saveOnExitDsk.Add("sdlimgui.debugger.disasm.color", &p.disasmColour)
+	if err != nil {
+		return nil, err
+	}
+	err = p.saveOnExitDsk.Add("sdlimgui.debugger.disasm.sequential", &p.disasmSequential)
+	if err != nil {
+		return nil, err
+	}
+	err = p.saveOnExitDsk.Add("sdlimgui.debugger.disasm.groupScanlines", &p.disasmGroupScanlines)
+	if err != nil {
+		return nil, err
+	}
+	err = p.saveOnExitDsk.Add("sdlimgui.debugger.pxe.colorIndicators", &p.pxeColourIndicators)
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +317,10 @@ func (p *preferences) setDefaults() {
 	p.audioMuteDebugger.Set(true)
 	p.showTooltips.Set(true)
 	p.showTimelineThumbnail.Set(false)
-	p.colorDisasm.Set(true)
+	p.disasmColour.Set(true)
+	p.disasmSequential.Set(false)
+	p.disasmGroupScanlines.Set(false)
+	p.pxeColourIndicators.Set(false)
 	p.fpsDetail.Set(false)
 	p.activePause.Set(false)
 	p.paddleOnMouseCapture.Set(true)

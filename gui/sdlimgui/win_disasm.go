@@ -147,9 +147,6 @@ func (win *winDisasm) draw() {
 	addr := win.img.cache.VCS.CPU.PC.Address()
 	currBank := win.img.cache.VCS.Mem.Cart.GetBank(addr)
 
-	// update options from prefs variables
-	win.usingColor = win.img.prefs.colorDisasm.Get().(bool)
-
 	// handle a change of cartridge by monitoring the CPU reset flag. this gives us
 	// the opportunity to change the selectedBank value
 	if win.img.cache.VCS.CPU.HasReset() {
@@ -387,18 +384,25 @@ func (win *winDisasm) drawOptionsBar(currBank mapper.BankInfo) {
 		}
 
 		imgui.SameLineV(0, 15)
+		win.usingColor = win.img.prefs.disasmColour.Get().(bool)
 		if imgui.Checkbox("Use Colour", &win.usingColor) {
-			win.img.prefs.colorDisasm.Set(win.usingColor)
+			win.img.prefs.disasmColour.Set(win.usingColor)
 		}
 
 		if !currBank.Sequential {
 			imgui.SameLineV(0, 15)
-			_ = imgui.Checkbox("Show Sequential", &win.sequential)
+			win.sequential = win.img.prefs.disasmSequential.Get().(bool)
+			if imgui.Checkbox("Show Sequential", &win.sequential) {
+				win.img.prefs.disasmSequential.Set(win.sequential)
+			}
 		}
 
 		imgui.SameLineV(0, 15)
 		drawDisabled(!currBank.Sequential && !win.sequential, func() {
-			imgui.Checkbox("Group by Scanline", &win.groupByScanline)
+			win.groupByScanline = win.img.prefs.disasmGroupScanlines.Get().(bool)
+			if imgui.Checkbox("Group by Scanline", &win.groupByScanline) {
+				win.img.prefs.disasmGroupScanlines.Set(win.groupByScanline)
+			}
 		})
 
 		// special execution icons
@@ -437,7 +441,7 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 	numColumns := 7
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
-	if win.groupByScanline {
+	if win.sequential && win.groupByScanline {
 		flgs |= imgui.TableFlagsRowBg
 	}
 	if !imgui.BeginTableV(fmt.Sprintf("##disasmtable%s", id), numColumns, flgs, imgui.Vec2{}, 0) {

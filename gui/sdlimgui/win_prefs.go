@@ -334,9 +334,9 @@ func (win *winPrefs) drawDebuggerTab() {
 			win.img.dbg.Disasm.Prefs.Symbols.Set(usesymbols)
 		}
 
-		colorDisasm := win.img.prefs.colorDisasm.Get().(bool)
+		colorDisasm := win.img.prefs.disasmColour.Get().(bool)
 		if imgui.Checkbox("Listing in Colour", &colorDisasm) {
-			win.img.prefs.colorDisasm.Set(colorDisasm)
+			win.img.prefs.disasmColour.Set(colorDisasm)
 		}
 	}
 

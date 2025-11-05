@@ -30,7 +30,6 @@ func newWinPXEColours(img *SdlImgui) (window, error) {
 	win := &winPXEColours{
 		img:          img,
 		popupPalette: newPopupPalette(img),
-		arrowShow:    true,
 	}
 	return win, nil
 }
@@ -72,7 +71,10 @@ func (win *winPXEColours) debuggerDraw() bool {
 		if win.drawPalette(ef, origin) {
 			win.popupPalette.draw()
 			imguiSeparator()
-			imgui.Checkbox("'TV Screen' indicators", &win.arrowShow)
+			win.arrowShow = win.img.prefs.pxeColourIndicators.Get().(bool)
+			if imgui.Checkbox("Show Indicators", &win.arrowShow) {
+				win.img.prefs.pxeColourIndicators.Set(win.arrowShow)
+			}
 		}
 	}
 
