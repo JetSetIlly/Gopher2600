@@ -184,7 +184,10 @@ func TestThomHarte(t *testing.T) {
 	}
 }
 
-var notWorking = []uint8{0x93, 0x9f, 0x9b, 0x9c, 0x9e}
+// 0xab (LAX immediate) is working but the "internal parameter" we're using in the cpu package is
+// not what the tests expect. the instruction is therefore disabled until we add the option to set
+// the internal parameter manually
+var notWorking = []uint8{0x93, 0x9f, 0x9b, 0x9c, 0x9e, 0xab}
 
 func testThomHarte(t *testing.T, opcode uint8, force bool) {
 	testFile := filepath.Join(testsPath, fmt.Sprintf("%02x.json", opcode))

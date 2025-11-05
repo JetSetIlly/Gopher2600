@@ -355,9 +355,7 @@ func (mc *CPU) write8Bit(address uint16, value uint8, phantom bool) error {
 //
 // side-effects:
 //   - calls cycleCallback after each 8bit read
-func (mc *CPU) read16Bit(address uint16, phantom bool) (uint16, error) {
-	mc.PhantomMemAccess = phantom
-
+func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 	lo, err := mc.mem.Read(address)
 	if err != nil {
 		return 0, err
@@ -797,7 +795,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			// normal, non-buggy behaviour
 
 			// +2 cycles
-			address, err = mc.read16Bit(indirectAddress, false)
+			address, err = mc.read16Bit(indirectAddress)
 			if err != nil {
 				return err
 			}
@@ -829,7 +827,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 		// +2 cycles
-		address, err = mc.read16Bit(mc.acc8.Address(), false)
+		address, err = mc.read16Bit(mc.acc8.Address())
 		if err != nil {
 			return err
 		}
@@ -846,7 +844,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// +2 cycles
 		var indexedAddress uint16
-		indexedAddress, err = mc.read16Bit(indirectAddress, false)
+		indexedAddress, err = mc.read16Bit(indirectAddress)
 		if err != nil {
 			return err
 		}
@@ -1420,19 +1418,19 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// +2 cycles
 		var rtsAddress uint16
-		rtsAddress, err = mc.read16Bit(mc.SP.Address(), false)
+		rtsAddress, err = mc.read16Bit(mc.SP.Address())
 		if err != nil {
 			return err
 		}
 
 		mc.SP.Add(1, false)
 		if !mc.NoFlowControl {
-			// load and correct PC
 			mc.PC.Load(rtsAddress)
-			// +1 cycle
-			_, err = mc.read8Bit(mc.PC.Address(), false)
-			mc.PC.Add(1)
 		}
+
+		// +1 cycle
+		_, err = mc.read8Bit(mc.PC.Address(), false)
+		mc.PC.Add(1)
 
 	case instructions.Brk:
 		// push PC onto register (same effect as JSR)
@@ -1468,7 +1466,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// perform jump
 		var brkAddress uint16
-		brkAddress, err = mc.read16Bit(BRK, false)
+		brkAddress, err = mc.read16Bit(BRK)
 		if err != nil {
 			return err
 		}
@@ -1516,7 +1514,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// +2 cycles
 		var rtiAddress uint16
-		rtiAddress, err = mc.read16Bit(mc.SP.Address(), false)
+		rtiAddress, err = mc.read16Bit(mc.SP.Address())
 		if err != nil {
 			return err
 		}
