@@ -151,7 +151,7 @@ http://www.6502.org/tutorials/decimal_mode.html
 
 https://forums.atariage.com/topic/163876-flags-on-decimal-mode-on-the-nmos-6502
 
-6502 functional tests from https://github.com/Klaus2m5/6502_65C02_functional_tests
+6502 functional tests from https://github.com/Klaus2m5/6502_65C02_functional_tests and single step tests from https://github.com/SingleStepTests/65x02/tree/main/6502
 
 US Patent Number 4,644,495 was referenced for the implementation of the DPC cartridge format
 (the format used in Pitfall 2) https://patents.google.com/patent/US4644495/en
