@@ -747,6 +747,31 @@ func vcsJmpToRam3(mem *elfMemory) {
 	}
 }
 
+// void vcsWrite4(uint16_t address, uint8_t data)
+func vcsWrite4(mem *elfMemory) {
+	address := uint16(mem.strongarm.running.registers[0])
+	data := uint8(mem.strongarm.running.registers[1])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(mem.strongarm.opcodeLookup[data] + 8) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(uint8(address)) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.injectRomByte(uint8(address >> 8)) {
+			mem.strongarm.running.state++
+		}
+		mem.injectBusStuff(data)
+	case 3:
+		if mem.yieldDataBus(address) {
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
 // void vcsPokeRomByte(uint16_t uint16_t address, uint8_t data)
 func vcsPokeRomByte(mem *elfMemory) {
 	switch mem.strongarm.running.state {
