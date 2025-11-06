@@ -82,6 +82,11 @@ type Result struct {
 
 	// was this result executed inside an interrupt
 	InInterrupt bool
+
+	// whether the CPU was in the RDY state at the end of the instruction. on the 2600/7800 the CPU
+	// can be out of the RDY state if an instruction has written to the WSYNC memory address. this
+	// field is undefined if Final is false
+	Rdy bool
 }
 
 // Reset nullifies all members of the Result instance.

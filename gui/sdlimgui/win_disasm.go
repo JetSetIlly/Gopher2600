@@ -441,7 +441,7 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 	numColumns := 7
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
-	if win.sequential && win.groupByScanline {
+	if (currBank.Sequential || win.sequential) && win.groupByScanline {
 		flgs |= imgui.TableFlagsRowBg
 	}
 	if !imgui.BeginTableV(fmt.Sprintf("##disasmtable%s", id), numColumns, flgs, imgui.Vec2{}, 0) {

@@ -27,6 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -300,15 +301,38 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 
 		// the decision whether to ammend of append is more complex than you might expect because we
 		// need to consider if the results being worked with is a 'final' result or an interim result
+
+		// when running in the instruction quantum, every result passed to this function will be final
 		if result.Final {
-			if !last.Result.Final {
-				dsm.disasmEntries.Sequential[len(dsm.disasmEntries.Sequential)-1] = e
-			} else {
-				dsm.disasmEntries.Sequential = append(dsm.disasmEntries.Sequential, e)
+			// we don't want to do anything with the sequence if the CPU has moved from the RDY
+			// state to the non-RDY state. this prevents STA WSYNC instructions or similar from
+			// being repeated while the CPU is not executing
+			//
+			// looking at the CPU RDY state directly will not work for this. if we only looked the
+			// RDY state directly then that will mean a STA WSYNC instruction, for example, will
+			// appear to have occurred at the beginning of a scanline
+			if result.Rdy || (!result.Rdy && last.Result.Rdy) {
+				// if the last result is not final then that means we are in the cycle of clock
+				// quantums and we need to replace the last entry with the newer result - the newer
+				// result represents the same instruction but it contains more information
+				if !last.Result.Final {
+					dsm.disasmEntries.Sequential[len(dsm.disasmEntries.Sequential)-1] = e
+				} else {
+					if last.Result.Address == result.Address &&
+						!(result.Defn.IsBranch() || result.Defn.Effect != instructions.Flow) {
+						dsm.disasmEntries.Sequential[len(dsm.disasmEntries.Sequential)-1] = e
+					} else {
+						dsm.disasmEntries.Sequential = append(dsm.disasmEntries.Sequential, e)
+					}
+				}
 			}
 		} else if !last.Result.Final {
+			// if the previous entry was not final then always replace it with the new entry
+			// (this can happen when in the cycle or clock quantums)
 			dsm.disasmEntries.Sequential[len(dsm.disasmEntries.Sequential)-1] = e
 		} else {
+			// if the new result is not final and the last result was final then append the new entry
+			// (this can happen when in the cycle or clock quantums)
 			dsm.disasmEntries.Sequential = append(dsm.disasmEntries.Sequential, e)
 		}
 

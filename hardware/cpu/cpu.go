@@ -1804,6 +1804,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 	}
 
+	// record the CPU Rdy flag at the end of the instruction
+	mc.LastResult.Rdy = mc.RdyFlg
+
 	// finalise result
 	if mc.LastResult.Defn != nil {
 		mc.LastResult.Final = true
