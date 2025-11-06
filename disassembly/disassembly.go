@@ -229,14 +229,6 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 // checkNextAddr should be false if the result does no represent a completed
 // instruction. in other words, if the instruction has only partially completed
 func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Result, checkNextAddr bool, nextAddr uint16) *Entry {
-	// we don't need to do anything if CPU hasn't moved on from previous result
-	if len(dsm.disasmEntries.Sequential) != 0 {
-		last := dsm.disasmEntries.Sequential[len(dsm.disasmEntries.Sequential)-1]
-		if result.Address == last.Result.Address && !result.Defn.IsBranch() {
-			return last
-		}
-	}
-
 	e := dsm.FormatResult(bank, result, EntryLevelExecuted)
 
 	// if co-processor is executing then whatever has been executed by the 6507
@@ -302,8 +294,28 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 		}
 	}
 
-	// add to sequential list
-	dsm.disasmEntries.Sequential = append(dsm.disasmEntries.Sequential, e)
+	// add to sequential list or ammend the last entry as appropriate
+	if len(dsm.disasmEntries.Sequential) != 0 {
+		last := dsm.disasmEntries.Sequential[len(dsm.disasmEntries.Sequential)-1]
+
+		// the decision whether to ammend of append is more complex than you might expect because we
+		// need to consider if the results being worked with is a 'final' result or an interim result
+		if result.Final {
+			if !last.Result.Final {
+				dsm.disasmEntries.Sequential[len(dsm.disasmEntries.Sequential)-1] = e
+			} else {
+				dsm.disasmEntries.Sequential = append(dsm.disasmEntries.Sequential, e)
+			}
+		} else if !last.Result.Final {
+			dsm.disasmEntries.Sequential[len(dsm.disasmEntries.Sequential)-1] = e
+		} else {
+			dsm.disasmEntries.Sequential = append(dsm.disasmEntries.Sequential, e)
+		}
+
+	} else {
+		dsm.disasmEntries.Sequential = append(dsm.disasmEntries.Sequential, e)
+	}
+
 	if len(dsm.disasmEntries.Sequential) > 10000 {
 		dsm.disasmEntries.Sequential = dsm.disasmEntries.Sequential[1:]
 	}

@@ -110,7 +110,7 @@ func (win *winDisasm) init() {
 	win.widthLabel = imgui.CalcTextSize(string(fonts.Label), true, 0).X
 	win.widthAddr = imgui.CalcTextSize("$FFFF ", true, 0).X
 	win.widthOperator = imgui.CalcTextSize("AND ", true, 0).X
-	win.widthCycles = imgui.CalcTextSize("2/3 ", true, 0).X
+	win.widthCycles = imgui.CalcTextSize("1 of 2/3", true, 0).X
 	win.widthNotes = imgui.CalcTextSize(string(fonts.CPUBug), true, 0).X
 
 	// we need to take into account the possibility of a scrollbar
