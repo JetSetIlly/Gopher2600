@@ -221,6 +221,12 @@ func getStrongArmDefinition(mem *elfMemory, name string) (bool, uint32, error) {
 			function: vcsWrite4,
 			support:  false,
 		})
+	case "vcsPokeRomByte":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name:     name,
+			function: vcsPokeRomByte,
+			support:  false,
+		})
 	case "vcsSetNextAddress":
 		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
 			name:     name,
