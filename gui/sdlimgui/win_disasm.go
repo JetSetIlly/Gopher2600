@@ -584,6 +584,7 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 	})
 
 	if win.focus.active {
+		// scrolling for sequential disassembly is different then for normal disassembly
 		if win.sequential || currBank.Sequential {
 			imgui.SetScrollY(imgui.ScrollMaxY())
 		} else {

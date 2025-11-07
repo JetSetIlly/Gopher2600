@@ -17,6 +17,7 @@ package rewind
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
@@ -46,6 +47,11 @@ type Runner interface {
 	// request the rewind in the first place. Such details are outside the
 	// scope of the rewind package however.
 	CatchUpLoop(coords.TelevisionCoords) error
+}
+
+// Splicer implementations can synchronise themselves with the Rewind
+type Splicer interface {
+	Splice(coords.TelevisionCoords)
 }
 
 // State contains pointers to areas of the VCS emulation. They can be read for
@@ -109,8 +115,11 @@ func (s *State) String() string {
 // Rewind contains a history of machine states for the emulation.
 type Rewind struct {
 	emulation Emulation
-	vcs       *hardware.VCS
 	runner    Runner
+	vcs       *hardware.VCS
+
+	// list of splicer implementations that are interested in the state of the rewind system
+	splicers []Splicer
 
 	// optional timeline counter implementation
 	ctr TimelineCounter
@@ -201,6 +210,23 @@ func NewRewind(emulation Emulation, runner Runner) (*Rewind, error) {
 // to AddTimelineCounter() will override previous calls.)
 func (r *Rewind) AddTimelineCounter(ctr TimelineCounter) {
 	r.ctr = ctr
+}
+
+// AddSplicer to list of splicers
+func (r *Rewind) AddSplicer(s Splicer) {
+	for i := range r.splicers {
+		if r.splicers[i] == s {
+			return
+		}
+	}
+	r.splicers = append(r.splicers, s)
+}
+
+// RemoveSplicer from list of splicers
+func (r *Rewind) RemoveSplicer(s Splicer) {
+	r.splicers = slices.DeleteFunc(r.splicers, func(d Splicer) bool {
+		return s == d
+	})
 }
 
 // initialise space for entries and reset rewind system.
@@ -478,6 +504,11 @@ func (r *Rewind) setSplicePoint(fromIdx int, toCoords coords.TelevisionCoords, o
 		onSplice(fromState)
 	}
 
+	// run all attached splicers
+	for _, s := range r.splicers {
+		s.Splice(fromState.TV.GetCoords())
+	}
+
 	err := r.runFromStateToCoords(fromState, toCoords)
 	if err != nil {
 		return err
@@ -682,7 +713,7 @@ func (r *Rewind) Peephole() string {
 	b.WriteString(fmt.Sprintf("[%03d] ", peepi))
 	if split {
 		f(peepi, len(r.entries))
-		b.WriteString(fmt.Sprintf("| "))
+		b.WriteString("| ")
 		f(0, peepj)
 	} else {
 		b.WriteString("  ")

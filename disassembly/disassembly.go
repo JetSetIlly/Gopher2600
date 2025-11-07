@@ -31,6 +31,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -243,55 +244,52 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 		return e
 	}
 
-	// if executed entry is in non-cartridge space then we just format the
-	// result and return it. there's nothing else we can really do - there's no
-	// point caching it anywhere
-	if bank.NonCart {
-		return e
-	}
+	// if executed entry is in non-cartridge space then there's nothing we an do other than updating
+	// the sequential disaasembly
+	if !bank.NonCart {
+		// similarly, if bank number is outside the banks we've already decoded
+		// then format the result and return
+		//
+		// I'm not sure when this would apply. maybe it's just a belt-and-braces
+		// check. there's no comment to say why this condition was added so leave
+		// it for now
+		if bank.Number >= len(dsm.disasmEntries.Entries) {
+			return e
+		}
 
-	// similarly, if bank number is outside the banks we've already decoded
-	// then format the result and return
-	//
-	// I'm not sure when this would apply. maybe it's just a belt-and-braces
-	// check. there's no comment to say why this condition was added so leave
-	// it for now
-	if bank.Number >= len(dsm.disasmEntries.Entries) {
-		return e
-	}
+		// do not update disassembly if background disassembly is ongoing
+		if dsm.background.Load() {
+			return e
+		}
 
-	// do not update disassembly if background disassembly is ongoing
-	if dsm.background.Load() {
-		return e
-	}
+		// updating an entry can happen at the same time as iteration which is
+		// probably being run from a different goroutine. acknowledge the critical
+		// section
+		dsm.crit.Lock()
+		defer dsm.crit.Unlock()
 
-	// updating an entry can happen at the same time as iteration which is
-	// probably being run from a different goroutine. acknowledge the critical
-	// section
-	dsm.crit.Lock()
-	defer dsm.crit.Unlock()
+		// add/update entry to disassembly
+		idx := result.Address & memorymap.CartridgeBits
+		o := dsm.disasmEntries.Entries[bank.Number][idx]
+		if o != nil && o.Result.Final {
+			e.updateExecutionEntry(result)
+		}
+		dsm.disasmEntries.Entries[bank.Number][idx] = e
 
-	// add/update entry to disassembly
-	idx := result.Address & memorymap.CartridgeBits
-	o := dsm.disasmEntries.Entries[bank.Number][idx]
-	if o != nil && o.Result.Final {
-		e.updateExecutionEntry(result)
-	}
-	dsm.disasmEntries.Entries[bank.Number][idx] = e
-
-	// bless next entry in case it was missed by the original decoding. there's
-	// no guarantee that the bank for the next address will be the same as the
-	// current bank, so we have to call the GetBank() function.
-	if checkNextAddr && result.Final {
-		bank = dsm.vcs.Mem.Cart.GetBank(nextAddr)
-		idx := nextAddr & memorymap.CartridgeBits
-		ne := dsm.disasmEntries.Entries[bank.Number][idx]
-		if ne == nil {
-			dsm.disasmEntries.Entries[bank.Number][idx] = dsm.FormatResult(bank, execution.Result{
-				Address: nextAddr,
-			}, EntryLevelBlessed)
-		} else if ne.Level < EntryLevelBlessed {
-			ne.Level = EntryLevelBlessed
+		// bless next entry in case it was missed by the original decoding. there's
+		// no guarantee that the bank for the next address will be the same as the
+		// current bank, so we have to call the GetBank() function.
+		if checkNextAddr && result.Final {
+			bank = dsm.vcs.Mem.Cart.GetBank(nextAddr)
+			idx := nextAddr & memorymap.CartridgeBits
+			ne := dsm.disasmEntries.Entries[bank.Number][idx]
+			if ne == nil {
+				dsm.disasmEntries.Entries[bank.Number][idx] = dsm.FormatResult(bank, execution.Result{
+					Address: nextAddr,
+				}, EntryLevelBlessed)
+			} else if ne.Level < EntryLevelBlessed {
+				ne.Level = EntryLevelBlessed
+			}
 		}
 	}
 
@@ -335,13 +333,13 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 			// (this can happen when in the cycle or clock quantums)
 			dsm.disasmEntries.Sequential = append(dsm.disasmEntries.Sequential, e)
 		}
-
 	} else {
 		dsm.disasmEntries.Sequential = append(dsm.disasmEntries.Sequential, e)
 	}
 
-	if len(dsm.disasmEntries.Sequential) > 10000 {
-		dsm.disasmEntries.Sequential = dsm.disasmEntries.Sequential[1:]
+	const maxLength = 10000
+	if len(dsm.disasmEntries.Sequential) > maxLength {
+		dsm.disasmEntries.Sequential = dsm.disasmEntries.Sequential[len(dsm.disasmEntries.Sequential)-maxLength:]
 	}
 
 	return e
@@ -465,4 +463,20 @@ func (dsm *Disassembly) BorrowDisasm(f func(*DisasmEntries)) bool {
 
 	f(&dsm.disasmEntries)
 	return true
+}
+
+// Splice implements the rewinder.Splicer interface
+func (dsm *Disassembly) Splice(c coords.TelevisionCoords) {
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
+
+	for i, e := range dsm.disasmEntries.Sequential {
+		if coords.GreaterThan(e.Coords, c) {
+			if i == 0 {
+				dsm.disasmEntries.Sequential = dsm.disasmEntries.Sequential[:0]
+			} else {
+				dsm.disasmEntries.Sequential = dsm.disasmEntries.Sequential[:i-1]
+			}
+		}
+	}
 }

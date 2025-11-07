@@ -466,6 +466,9 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	dbg.counter = counter.NewCounter(dbg.vcs)
 	dbg.Rewind.AddTimelineCounter(dbg.counter)
 
+	// add disassembly to rewind system. this is for the sequential disassembly listing
+	dbg.Rewind.AddSplicer(dbg.Disasm)
+
 	// adding TV frame triggers in setMode(). what the TV triggers on depending
 	// on the mode for performance reasons (eg. no reflection required in
 	// playmode)
