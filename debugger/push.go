@@ -85,3 +85,10 @@ func (dbg *Debugger) PushMemoryProfile() {
 		logger.Logf(logger.Allow, "memory profiling", "saved to %s", fn)
 	})
 }
+
+// ReloadCartridge inserts the current cartridge and states the emulation over.
+func (dbg *Debugger) PushReset() {
+	dbg.PushFunction(func() {
+		dbg.reset(false)
+	})
+}
