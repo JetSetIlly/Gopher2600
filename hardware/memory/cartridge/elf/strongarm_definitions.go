@@ -216,6 +216,7 @@ func getStrongArmDefinition(mem *elfMemory, name string) (bool, uint32, error) {
 			support:  false,
 		})
 	case "vcsWrite4":
+		mem.usesBusStuffing = true
 		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
 			name:     name,
 			function: vcsWrite4,
