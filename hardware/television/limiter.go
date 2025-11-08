@@ -47,12 +47,12 @@ func (tv *Television) SetFPS(fps float32) {
 	tv.lmtr.SetLimit(fps)
 }
 
-// GetReqFPS returns the requested number of frames per second. Compare with
-// GetActualFPS() to check for accuracy.
+// GetIdealFPS returns the ideal number of frames per second. Compare with GetActualFPS() to check for
+// accuracy and if the emulation is achieving full speed
 //
 // IS goroutine safe.
-func (tv *Television) GetReqFPS() float32 {
-	return tv.lmtr.RequestedFPS.Load().(float32)
+func (tv *Television) GetIdealFPS() float32 {
+	return tv.lmtr.IdealFPS.Load().(float32)
 }
 
 // GetActualFPS returns the current number of frames per second and the

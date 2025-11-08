@@ -36,8 +36,11 @@ type Limiter struct {
 	// atomic value
 	RefreshRate atomic.Value // float32
 
-	// the requested number of frames per second
-	RequestedFPS atomic.Value // float32
+	// the ideal number of frames per second if everything was working nicely
+	IdealFPS atomic.Value // float32
+
+	// the actual value sent to the SetLimit() function. no
+	requestedFPS atomic.Value // float32
 
 	// whether the requested frame rate is to equal the refresh rate
 	requestMatchRefreshRate atomic.Value // bool
@@ -105,7 +108,7 @@ func NewLimiter() *Limiter {
 // Set the display interface for the limiter
 func (lmtr *Limiter) SetDisplay(display Display) {
 	lmtr.display = display
-	lmtr.SetLimit(lmtr.RequestedFPS.Load().(float32))
+	lmtr.SetLimit(lmtr.requestedFPS.Load().(float32))
 }
 
 // Set the refresh rate for the limiter. This is equivalent to the refresh rate
@@ -123,6 +126,9 @@ const MatchRefreshRate float32 = -1.0
 // Set frame limit. Use a value of MatchRefreshRate to indicate that the limiter should equal the
 // television refresh rate.
 func (lmtr *Limiter) SetLimit(fps float32) {
+	// the actual fps value passed to the function
+	lmtr.requestedFPS.Store(fps)
+
 	if fps <= 0.0 {
 		fps = lmtr.RefreshRate.Load().(float32)
 		lmtr.requestMatchRefreshRate.Store(fps == lmtr.RefreshRate.Load().(float32))
@@ -138,10 +144,6 @@ func (lmtr *Limiter) SetLimit(fps float32) {
 		return
 	}
 
-	// the actual requested fps rate (taken into account the possibility of a negative number
-	// to indicate the refresh rate)
-	lmtr.RequestedFPS.Store(fps)
-
 	// quantise refresh rate based on refresh rate of television
 	if lmtr.display != nil {
 		hz, quantise := lmtr.display.DisplayRefreshRate()
@@ -151,6 +153,9 @@ func (lmtr *Limiter) SetLimit(fps float32) {
 			}
 		}
 	}
+
+	// the ideal fps rate including quantisation
+	lmtr.IdealFPS.Store(fps)
 
 	// set scale and duration to wait according to requested FPS rate
 	lmtr.pulseCt = 0

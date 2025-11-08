@@ -209,7 +209,7 @@ func (win *winControl) drawStep() {
 }
 
 func (win *winControl) drawFPS() {
-	req := win.img.dbg.VCS().TV.GetReqFPS()
+	ideal := win.img.dbg.VCS().TV.GetIdealFPS()
 	actual, _ := win.img.dbg.VCS().TV.GetActualFPS()
 	frameInfo := win.img.cache.TV.GetFrameInfo()
 
@@ -221,8 +221,8 @@ func (win *winControl) drawFPS() {
 	defer imgui.PopItemWidth()
 
 	// fps slider
-	if imgui.SliderFloatV("##fps", &req, 1, 100, "%.0f fps", imgui.SliderFlagsNone) {
-		win.img.dbg.PushFunction(func() { win.img.dbg.VCS().TV.SetFPS(req) })
+	if imgui.SliderFloatV("##fps", &ideal, 1, 100, "%.0f fps", imgui.SliderFlagsNone) {
+		win.img.dbg.PushFunction(func() { win.img.dbg.VCS().TV.SetFPS(ideal) })
 	}
 
 	// reset to specification rate on right mouse click
@@ -232,16 +232,16 @@ func (win *winControl) drawFPS() {
 
 	imgui.Spacing()
 	if win.img.dbg.State() == govern.Running {
-		if actual <= req*0.95 {
+		if actual <= ideal*0.95 {
 			imgui.Text("running below requested FPS")
-		} else if actual > req*1.05 {
+		} else if actual > ideal*1.05 {
 			imgui.Text("running above requested FPS")
 		} else {
 			imgui.Text("running at requested FPS")
 		}
-	} else if req < frameInfo.Spec.RefreshRate*0.95 {
+	} else if ideal < frameInfo.Spec.RefreshRate*0.95 {
 		imgui.Text(fmt.Sprintf("below ideal frequency of %.0fHz", frameInfo.Spec.RefreshRate))
-	} else if req > frameInfo.Spec.RefreshRate*1.05 {
+	} else if ideal > frameInfo.Spec.RefreshRate*1.05 {
 		imgui.Text(fmt.Sprintf("above ideal frequency of %.0fHz", frameInfo.Spec.RefreshRate))
 	} else {
 		imgui.Text(fmt.Sprintf("ideal frequency %.0fHz", frameInfo.Spec.RefreshRate))

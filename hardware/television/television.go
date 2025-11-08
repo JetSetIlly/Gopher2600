@@ -385,7 +385,7 @@ func (tv *Television) RemovePixelRenderer(r PixelRenderer) {
 	if r, ok := r.(PixelRendererDisplay); ok {
 		if tv.rendererDisplay == r {
 			tv.rendererDisplay = nil
-			tv.lmtr.SetDisplay(r)
+			tv.lmtr.SetDisplay(nil)
 		}
 	}
 	for i := range tv.renderers {

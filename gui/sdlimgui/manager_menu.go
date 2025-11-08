@@ -262,8 +262,7 @@ func (wm *manager) drawMenu() {
 	// FPS information
 	if wm.img.dbg.State() == govern.Running {
 		actual, _ := wm.img.dbg.VCS().TV.GetActualFPS()
-		req := wm.img.dbg.VCS().TV.GetReqFPS()
-		if req < 1.0 {
+		if actual < 1.0 {
 			textFromRight("< 1 fps", true, nil)
 		} else if math.IsInf(float64(actual), 0) {
 			textFromRight("- fps", true, nil)
