@@ -270,6 +270,7 @@ http://www.festvox.org/docs/manual-2.4.0/festival_toc.html
 	* Andrew Davie
 	* Christian Speckner (DirtyHairy)
 	* Darrell Spice (Spiceware)
+   	* Dion Olsthoorn (Dionoid)
 	* Fred Quimby (Batari)
 	* James O'Brien (ZeroPageHomebrew)
 	* John Champeau (Champ Games)
