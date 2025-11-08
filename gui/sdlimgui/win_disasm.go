@@ -38,13 +38,15 @@ const (
 	filterPageFault
 )
 
-// focusing the disassembly scroll view on the correct address is tricky. all
-// the information we need to track is in this type
-type disasmFocus struct {
-	active      bool
+// scroll the disassembly to the correct point
+type disasmScroll struct {
+	active      int
 	lastState   govern.State
 	lastAddress uint16
 }
+
+// number of frames to keep the disasmScroll active. this helps ensure that the correct
+const numScrollFrames = 5
 
 type winDisasm struct {
 	debuggerWin
@@ -74,8 +76,8 @@ type winDisasm struct {
 	// flag stating whether bank combo is open
 	selectedBankComboOpen bool
 
-	// focusing the disassembly scroll view on the correct address is tricky
-	focus disasmFocus
+	// centering the disassembly scroll view on the correct address is tricky
+	scroll disasmScroll
 
 	// widths of columns in the disasm table
 	// widthOperands is implied and is the width of the window minus widthSum
@@ -89,8 +91,8 @@ type winDisasm struct {
 	// sum of all the widths above
 	widthSum float32
 
-	// widths of focus button in control bar. bank selector column takes the remainder of the space
-	widthFocusCurrent float32
+	// widths of scroll-to button in control bar. bank selector column takes the remainder of the space
+	widthScrollToCurrent float32
 }
 
 func newWinDisasm(img *SdlImgui) (window, error) {
@@ -102,8 +104,8 @@ func newWinDisasm(img *SdlImgui) (window, error) {
 }
 
 func (win *winDisasm) init() {
-	// width of the focus button in the top toolbar of the window
-	win.widthFocusCurrent = imgui.CalcTextSize(string(fonts.DisasmFocusCurrent), true, 0).X
+	// width of the scroll-to button in the top toolbar of the window
+	win.widthScrollToCurrent = imgui.CalcTextSize(string(fonts.DisasmFocusCurrent), true, 0).X
 
 	// the widths of the columns in the disassembly table
 	win.widthBreak = imgui.CalcTextSize(string(fonts.Breakpoint), true, 0).X
@@ -158,43 +160,39 @@ func (win *winDisasm) draw() {
 		win.reset = false
 	}
 
-	// focus on address if the state has changed to the paused state and
-	// followCPU is set; or the PC has changed (this is because the state
-	// change might be missed)
-	//
-	// using the lazy govern.State value rather than the live state - the
-	// live state can cause synchronisation problems meaning focus is lost
+	// scroll to address if the state has changed to the paused state and followCPU is set; or the
+	// PC has changed (this is because the state change might be missed)
 	if win.followCPU {
-		if (win.img.dbg.State() == govern.Paused && win.focus.lastState != govern.Paused) ||
-			win.img.cache.VCS.CPU.PC.Address() != win.focus.lastAddress {
+		if (win.img.dbg.State() == govern.Paused && win.scroll.lastState != govern.Paused) ||
+			win.img.cache.VCS.CPU.PC.Address() != win.scroll.lastAddress {
 
-			win.focus.active = true
+			win.scroll.active = numScrollFrames
 			win.selectedBank = currBank.Number
 		}
 	}
-	win.focus.lastAddress = addr
-	win.focus.lastState = win.img.dbg.State()
+	win.scroll.lastAddress = addr
+	win.scroll.lastState = win.img.dbg.State()
 
-	// the value of focusAddr depends on the state of the CPU. if the Final
-	// state of the CPU's last execution result is true then we can be sure the
-	// PC value is valid and points to a real instruction. we need this because
-	// we can never be sure when we are going to draw this window
-	if currBank.ExecutingCoprocessor {
-		// if coprocessor is running then jam the focusAddr value at address the
-		// CPU will resume from once the coprocessor has finished.
-		addr = currBank.CoprocessorResumeAddr & memorymap.CartridgeBits
-	} else {
-		// focus address depends on if we're in the middle of an CPU
-		// instruction or not. special condition for freshly reset CPUs
-		if win.img.cache.Dbg.LiveDisasmEntry.Result.Final {
-			addr = win.img.cache.VCS.CPU.PC.Address() & memorymap.CartridgeBits
-		} else {
-			addr = win.img.cache.Dbg.LiveDisasmEntry.Result.Address & memorymap.CartridgeBits
-		}
-	}
 	if win.sequential || currBank.Sequential {
 		win.drawSequential(currBank)
 	} else {
+		// the value of address depends on the state of the CPU. if the Final state of the CPU's last
+		// execution result is true then we can be sure the PC value is valid and points to a real
+		// instruction. we need this because we can never be sure when we are going to draw this window
+		if currBank.ExecutingCoprocessor {
+			// if coprocessor is running then jam the address value at the point the CPU will resume
+			// from once the coprocessor has finished.
+			addr = currBank.CoprocessorResumeAddr & memorymap.CartridgeBits
+		} else {
+			// address depends on if we're in the middle of an CPU instruction or not. special
+			// condition for freshly reset CPUs
+			if win.img.cache.Dbg.LiveDisasmEntry.Result.Final {
+				addr = win.img.cache.VCS.CPU.PC.Address() & memorymap.CartridgeBits
+			} else {
+				addr = win.img.cache.Dbg.LiveDisasmEntry.Result.Address & memorymap.CartridgeBits
+			}
+		}
+
 		win.drawBanked(addr, currBank)
 	}
 }
@@ -224,30 +222,30 @@ func (win *winDisasm) drawBankSelection(currBank mapper.BankInfo) {
 	imgui.BeginTableV("##controlBar", numColumns, flgs, imgui.Vec2{}, 0)
 
 	bankWidth := imgui.ContentRegionAvail().X - imgui.CurrentStyle().ItemSpacing().X*float32(numColumns)
-	bankWidth -= win.widthFocusCurrent
-	imgui.TableSetupColumnV("focus", imgui.TableColumnFlagsNone, win.widthFocusCurrent, 0)
+	bankWidth -= win.widthScrollToCurrent
+	imgui.TableSetupColumnV("scroll", imgui.TableColumnFlagsNone, win.widthScrollToCurrent, 0)
 	imgui.TableSetupColumnV("bank", imgui.TableColumnFlagsNone, bankWidth, 1)
 
 	imgui.TableNextRow()
 
-	// focus on current CPU address
+	// scroll to (focus on) current CPU address
 	imgui.TableNextColumn()
 	imgui.AlignTextToFramePadding()
 	imgui.Text(string(fonts.DisasmFocusCurrent))
 	if imgui.IsItemHovered() {
 		if imgui.IsItemClicked() {
-			win.focus.active = true
+			win.scroll.active = numScrollFrames
 			win.selectedBank = currBank.Number
 			win.filter = filterBank
 		} else {
 			win.img.imguiTooltip(func() {
 				if currBank.ExecutingCoprocessor {
-					imgui.Text("Focus on 6507 resume address")
+					imgui.Text("Scroll to 6507 resume address")
 				} else {
 					if currBank.NonCart {
-						imgui.Text("Non-Cartridge execution. Nothing to focus on.")
+						imgui.Text("Non-Cartridge execution. No disassembly.")
 					} else {
-						imgui.Text("Focus on PC address")
+						imgui.Text("Scroll to PC address")
 						imgui.SameLine()
 						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
 						imgui.Text(fmt.Sprintf("$%04x", win.img.cache.VCS.CPU.PC.Address()))
@@ -378,7 +376,7 @@ func (win *winDisasm) drawOptionsBar(currBank mapper.BankInfo) {
 
 		if imgui.Checkbox("Follow CPU", &win.followCPU) {
 			if win.followCPU {
-				win.focus.active = true
+				win.scroll.active = numScrollFrames
 				win.selectedBank = currBank.Number
 			}
 		}
@@ -551,8 +549,9 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 				if nts != "" {
 					imgui.Spacing()
 					draw(fmt.Sprintf("%c %s", fonts.Notes, nts), win.img.cols.DisasmNotes)
+					imgui.Spacing()
 				}
-				draw(strings.ToLower(entries[i].Coords.String()), win.img.cols.DisasmNotes)
+				draw(strings.ToLower(entries[i].Coords.String()), win.img.cols.DisasmCoords)
 			}, true)
 		}
 		if imgui.TableNextColumn() {
@@ -583,7 +582,7 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 		}
 	})
 
-	if win.focus.active {
+	if win.scroll.active > 0 {
 		// scrolling for sequential disassembly is different then for normal disassembly
 		if win.sequential || currBank.Sequential {
 			imgui.SetScrollY(imgui.ScrollMaxY())
@@ -591,6 +590,6 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 			const margin = 3
 			imgui.SetScrollY(float32(current-margin) * results.ItemsHeight)
 		}
-		win.focus.active = false
+		win.scroll.active--
 	}
 }
