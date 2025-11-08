@@ -72,7 +72,7 @@ const (
 	Label                  = '\uf22d'
 	CPUBug                 = '\uf188'
 	Paw                    = '\uf1b0'
-	NonCartExecution       = '\uf54c'
+	NonCartExecution       = '\uf2db'
 	CoProcExecution        = '\uf135'
 	DisasmFocusCurrent     = '\uf530'
 	Notes                  = '\uf02d'
