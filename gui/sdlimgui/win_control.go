@@ -143,12 +143,16 @@ func (win *winControl) drawStep() {
 		imgui.BeginGroup()
 		imgui.TableNextColumn()
 		win.repeatButton(fmt.Sprintf("%c ##Step", fonts.BackArrowDouble), func() {
-			win.img.term.pushCommand("STEP BACK")
+			if win.img.dbg.State() == govern.Paused {
+				win.img.term.pushCommand("STEP BACK")
+			}
 		})
 
 		imgui.SameLineV(0.0, 0.0)
 		win.repeatButtonV("Step", func() {
-			win.img.term.pushCommand("STEP")
+			if win.img.dbg.State() == govern.Paused {
+				win.img.term.pushCommand("STEP")
+			}
 		}, fillWidth)
 		imgui.EndGroup()
 
@@ -173,7 +177,9 @@ func (win *winControl) drawStep() {
 	}
 
 	win.repeatButtonV(fmt.Sprintf("%c Step Over", fonts.StepOver), func() {
-		win.img.term.pushCommand("STEP OVER")
+		if win.img.dbg.State() == govern.Paused {
+			win.img.term.pushCommand("STEP OVER")
+		}
 	}, fillWidth)
 
 	if imgui.BeginTable("stepframescanline", 2) {
@@ -184,11 +190,15 @@ func (win *winControl) drawStep() {
 
 		imgui.BeginGroup()
 		win.repeatButton(fmt.Sprintf("%c ##Frame", fonts.UpArrowDouble), func() {
-			win.img.term.pushCommand("STEP BACK FRAME")
+			if win.img.dbg.State() == govern.Paused {
+				win.img.term.pushCommand("STEP BACK FRAME")
+			}
 		})
 		imgui.SameLineV(0.0, 0.0)
 		win.repeatButtonV("Frame", func() {
-			win.img.term.pushCommand("STEP FRAME")
+			if win.img.dbg.State() == govern.Paused {
+				win.img.term.pushCommand("STEP FRAME")
+			}
 		}, fillWidth)
 		imgui.EndGroup()
 
@@ -196,11 +206,15 @@ func (win *winControl) drawStep() {
 
 		imgui.BeginGroup()
 		win.repeatButton(fmt.Sprintf("%c ##Scanline", fonts.UpArrow), func() {
-			win.img.term.pushCommand("STEP BACK SCANLINE")
+			if win.img.dbg.State() == govern.Paused {
+				win.img.term.pushCommand("STEP BACK SCANLINE")
+			}
 		})
 		imgui.SameLineV(0.0, 0.0)
 		win.repeatButtonV("Scanline", func() {
-			win.img.term.pushCommand("STEP SCANLINE")
+			if win.img.dbg.State() == govern.Paused {
+				win.img.term.pushCommand("STEP SCANLINE")
+			}
 		}, fillWidth)
 		imgui.EndGroup()
 
