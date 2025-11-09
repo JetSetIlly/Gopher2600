@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 
 	"github.com/jetsetilly/imgui-go/v5"
 )
@@ -93,6 +94,10 @@ type winDisasm struct {
 
 	// widths of scroll-to button in control bar. bank selector column takes the remainder of the space
 	widthScrollToCurrent float32
+
+	// the most recent copy of the sequential disassembly. this is useful for keeping a stable
+	// looking listing when stepping back
+	sequenceCache []*disassembly.Entry
 }
 
 func newWinDisasm(img *SdlImgui) (window, error) {
@@ -199,11 +204,19 @@ func (win *winDisasm) draw() {
 
 func (win *winDisasm) drawSequential(currBank mapper.BankInfo) {
 	render := func(dsm *disassembly.DisasmEntries) {
-		win.drawEntries("sequential", dsm.Sequential, len(dsm.Sequential)-1, currBank, true)
+		if win.img.dbg.State() == govern.Rewinding {
+			win.drawEntries("sequential", win.sequenceCache, len(win.sequenceCache)-1, currBank, true)
+		} else {
+			if len(win.sequenceCache) == 0 || len(dsm.Sequential) == 0 || len(win.sequenceCache) != len(dsm.Sequential) || !coords.Equal(win.sequenceCache[0].Coords, dsm.Sequential[0].Coords) {
+				win.sequenceCache = dsm.Sequential[:]
+			}
+			win.drawEntries("sequential", dsm.Sequential, len(dsm.Sequential)-1, currBank, true)
+		}
 	}
 
 	if !win.img.dbg.Disasm.BorrowDisasm(render) {
 		imgui.Text("disassembling...")
+		return
 	}
 
 	win.drawOptionsBar(currBank)
@@ -420,8 +433,8 @@ func (win *winDisasm) drawOptionsBar(currBank mapper.BankInfo) {
 }
 
 // drawEntries is called from both drawBanked() and drawSequential()
-func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, current int, currBank mapper.BankInfo,
-	sequential bool) {
+func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, current int,
+	currBank mapper.BankInfo, sequential bool) {
 
 	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
@@ -432,7 +445,6 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 	defer imgui.EndChild()
 
 	if len(entries) == 0 {
-		imgui.Text("disassembling...")
 		return
 	}
 
@@ -567,6 +579,10 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 		}
 		if imgui.TableNextColumn() {
 			draw(entries[i].Operand.Resolve(), win.img.cols.DisasmOperand)
+			if !entries[i].Result.Final {
+				imgui.SameLine()
+				draw("...", win.img.cols.DisasmNotes)
+			}
 		}
 		if imgui.TableNextColumn() {
 			draw(entries[i].Cycles(), win.img.cols.DisasmCycles)

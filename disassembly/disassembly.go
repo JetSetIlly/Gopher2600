@@ -477,6 +477,7 @@ func (dsm *Disassembly) Splice(c coords.TelevisionCoords) {
 			} else {
 				dsm.disasmEntries.Sequential = dsm.disasmEntries.Sequential[:i-1]
 			}
+			break // for loop
 		}
 	}
 }
