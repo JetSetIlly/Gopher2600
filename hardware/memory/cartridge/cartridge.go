@@ -245,7 +245,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	// if the fingerprint fails we just continue with original ACE mapping and let the actual ACE
 	// mapper deal with the error (as it would if unwrapACE preference is not enabled)
 	if mapping == "ACE" {
-		if cart.env.Prefs.ARM.UnwrapACE.Get().(bool) {
+		if cart.env.Prefs.UnwrapACE.Get().(bool) {
 			var ok bool
 			ok, mapping = fingerprintAce(cartload, true)
 			if ok {

@@ -33,6 +33,9 @@ type Preferences struct {
 	// unused pins randomly on a read/peek"
 	RandomPins prefs.Bool
 
+	// unwrap ACE binaries when possible and use a more direct emulation
+	UnwrapACE prefs.Bool
+
 	// preferences used by the television
 	TV *TVPreferences
 
@@ -75,6 +78,10 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("hardware.unwrapAce", &p.UnwrapACE)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Load()
 	if err != nil {
 		return nil, err
@@ -113,6 +120,7 @@ func (p *Preferences) SetDefaults() {
 	// initialise random number generator
 	p.RandomState.Set(false)
 	p.RandomPins.Set(false)
+	p.UnwrapACE.Set(true)
 }
 
 // Load current hardware preference from disk.

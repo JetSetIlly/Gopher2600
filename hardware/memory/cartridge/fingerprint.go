@@ -605,7 +605,7 @@ func (cart *Cartridge) fingerprint(loader cartridgeloader.Loader) (string, error
 		return "ELF", nil
 	}
 
-	unwrap := cart.env.Prefs.ARM.UnwrapACE.Get().(bool)
+	unwrap := cart.env.Prefs.UnwrapACE.Get().(bool)
 
 	if ok, mapping := fingerprintAce(loader, unwrap); ok {
 		return mapping, nil

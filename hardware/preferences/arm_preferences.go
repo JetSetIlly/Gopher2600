@@ -64,9 +64,6 @@ type ARMPreferences struct {
 
 	// warn developer that the ELF contains an undefined symbol
 	UndefinedSymbolWarning prefs.Bool
-
-	// whether to use native emulation where possible instead of ACE
-	UnwrapACE prefs.Bool
 }
 
 func (p *ARMPreferences) String() string {
@@ -118,10 +115,6 @@ func newARMprefrences() (*ARMPreferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("hardware.arm7.undefinedSymbolWarning", &p.UndefinedSymbolWarning)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("hardware.arm7.unwrapAce", &p.UnwrapACE)
 	if err != nil {
 		return nil, err
 	}

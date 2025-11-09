@@ -101,6 +101,7 @@ var defunct = []string{
 	"television.vsync.recovery",
 	"television.color.legacy",               // replaced with television.color.legacy.enabled
 	"hardware.arm7.MisalignedAccessIsFault", // replaced with hardware.arm7.abortOnMisalignedAccess
+	"hardware.arm7.unwrapACE",               // replaced with hardware.unwrapACE
 }
 
 // returns true if string is in list of defunct values.
