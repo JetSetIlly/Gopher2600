@@ -81,8 +81,7 @@ func (r Registers) String() string {
 	return s.String()
 }
 
-func (r *Registers) reset(rand *random.Random) {
-
+func (r *Registers) reset(version mmap, rand *random.Random) {
 	for i := range r.Fetcher {
 		if rand != nil {
 			r.Fetcher[i].Low = byte(rand.Intn(0xff))
@@ -126,7 +125,7 @@ func (r *Registers) reset(rand *random.Random) {
 	if rand != nil {
 		r.RNG.Value = uint32(rand.Intn(0x7fffffff))
 	} else {
-		r.RNG.Value = 0
+		r.RNG.Value = version.randomSeed
 	}
 }
 
@@ -165,10 +164,20 @@ func (df *dataFetcher) isWindow() bool {
 	// toa high (ie. beyond the top value) for the window to caught in the
 	// flag->true condition.
 
-	if df.Top > df.Bottom {
-		return df.Low > df.Top || df.Low < df.Bottom
-	}
-	return df.Low > df.Top && df.Low < df.Bottom
+	return (uint16(df.Top)-uint16(df.Low))&0xff > (uint16(df.Top)-uint16(df.Bottom))&0xff
+
+	// the following condition formed the emulators' original implementation of isWindow(). it works
+	// in ideal data scenarios, but can produce incorrect results in pathological examples. for
+	// example, when the low and bottom values are both zero
+	//
+	// low and bottom and both being zero is what happens on initialisation according to the
+	// original reference implementation of DPC+. meaning that isWindow() will return the wrong
+	// value if the fetcher is used without being explicitely set by the ROM
+	//
+	// 		if df.Top > df.Bottom {
+	// 			return df.Low > df.Top || df.Low < df.Bottom
+	// 		}
+	// 		return df.Low > df.Top && df.Low < df.Bottom
 }
 
 func (df *dataFetcher) inc() {

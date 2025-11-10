@@ -63,8 +63,8 @@ func newDPCPlusState() *State {
 	return s
 }
 
-func (s *State) initialise(rand *random.Random) {
-	s.registers.reset(rand)
+func (s *State) initialise(version mmap, rand *random.Random) {
+	s.registers.reset(version, rand)
 	s.lda = false
 	s.beats = 0
 	s.parameters = []uint8{}

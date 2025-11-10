@@ -45,6 +45,12 @@ type mmap struct {
 	dataRAMMemtop   uint32
 	freqRAMMemtop   uint32
 
+	// the random number is different for each version because the seed string is used to help
+	// fingerprint the data. ie. the string ASCII representation of "DPC+" is used as the random
+	// seed in the original implementation
+	randomSeed uint32
+
+	// not all versions of DPC+ require or make use of CCM memory regions
 	ccmAvailable bool
 	ccmOrigin    uint32
 	ccmMemtop    uint32
@@ -75,6 +81,7 @@ func newVersion(id string) (mmap, error) {
 			dataRAMMemtop:   arch.Regions["SRAM"].Origin | 0x00001bff,
 			freqRAMOrigin:   arch.Regions["SRAM"].Origin | 0x00001c00,
 			freqRAMMemtop:   arch.Regions["SRAM"].Origin | 0x00002000,
+			randomSeed:      0x2b435044, // '+CPD'
 		}, nil
 
 	case "DPCP":
@@ -95,6 +102,7 @@ func newVersion(id string) (mmap, error) {
 			dataRAMMemtop:   arch.Regions["SRAM"].Origin | 0x00011bff,
 			freqRAMOrigin:   arch.Regions["SRAM"].Origin | 0x00011c00,
 			freqRAMMemtop:   arch.Regions["SRAM"].Origin | 0x00012000,
+			randomSeed:      0x70435044, // 'pCPD'
 
 			// DPCP has CCM memory
 			ccmAvailable: true,

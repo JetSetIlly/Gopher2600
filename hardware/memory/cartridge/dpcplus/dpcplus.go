@@ -26,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/random"
 )
 
 // dpcPlus implements the mapper.CartMapper interface.
@@ -186,7 +187,11 @@ func (cart *dpcPlus) PlumbFromDifferentEmulation(env *environment.Environment) {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Reset() error {
-	cart.state.initialise(cart.env.Random)
+	var rnd *random.Random
+	if cart.env.Prefs.RandomState.Get().(bool) {
+		rnd = cart.env.Random
+	}
+	cart.state.initialise(cart.version, rnd)
 	cart.SetBank("AUTO")
 	return nil
 }
