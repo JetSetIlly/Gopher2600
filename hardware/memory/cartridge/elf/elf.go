@@ -166,7 +166,7 @@ func NewElf(env *environment.Environment, inACE bool) (mapper.CartMapper, error)
 	}
 
 	cart.arm.SetByteOrder(ef.ByteOrder)
-	cart.mem.busStuffingInit()
+	cart.mem.vcsInitBusStuffing()
 
 	// defer VCS reset until the VCS tries to read the reset address
 
@@ -293,7 +293,7 @@ func (cart *Elf) reset() {
 		cart.mem.strongarm.nextRomAddress = 0x1000
 		cart.mem.stream.startDrain()
 	} else {
-		cart.mem.setStrongArmFunction(vcsEmulationInit)
+		cart.mem.setStrongArmFunction(vcsLibInit)
 	}
 
 	// set arguments for initial execution of ARM program

@@ -20,6 +20,32 @@ func getStrongArmDefinition(mem *elfMemory, name string) (bool, uint32, error) {
 	var err error
 
 	switch name {
+	case "vcsCopyOverblankToRiotRam":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name:     name,
+			function: vcsCopyOverblankToRiotRam,
+			support:  false,
+		})
+	case "vcsLibInit":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name:     name,
+			function: vcsLibInit,
+			support:  false,
+		})
+	case "vcsInitBusStuffing":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name:     name,
+			function: vcsInitBusStuffing,
+			support:  true,
+		})
+	case "updateLookupTables":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name: name,
+			function: func(mem *elfMemory) {
+				mem.strongarm.updateLookupTables()
+			},
+			support: true,
+		})
 	case "vcsWrite3":
 		mem.usesBusStuffing = true
 		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
@@ -27,20 +53,6 @@ func getStrongArmDefinition(mem *elfMemory, name string) (bool, uint32, error) {
 			function: vcsWrite3,
 			support:  false,
 		})
-	case "vcsPlp4Ex":
-		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-			name:     name,
-			function: vcsPlp4Ex,
-			support:  false,
-		})
-		mem.usesBusStuffing = true
-	case "vcsPla4Ex":
-		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-			name:     name,
-			function: vcsPla4Ex,
-			support:  false,
-		})
-		mem.usesBusStuffing = true
 	case "vcsJmp3":
 		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
 			name:     name,
@@ -131,6 +143,12 @@ func getStrongArmDefinition(mem *elfMemory, name string) (bool, uint32, error) {
 			function: vcsSta4,
 			support:  false,
 		})
+	case "vcsSax3":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name:     name,
+			function: vcsSax3,
+			support:  false,
+		})
 	case "vcsStx3":
 		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
 			name:     name,
@@ -155,18 +173,6 @@ func getStrongArmDefinition(mem *elfMemory, name string) (bool, uint32, error) {
 			function: vcsSty4,
 			support:  false,
 		})
-	case "vcsSax3":
-		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-			name:     name,
-			function: vcsSax3,
-			support:  false,
-		})
-	case "vcsTxs2":
-		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-			name:     name,
-			function: vcsTxs2,
-			support:  false,
-		})
 	case "vcsJsr6":
 		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
 			name:     name,
@@ -185,16 +191,22 @@ func getStrongArmDefinition(mem *elfMemory, name string) (bool, uint32, error) {
 			function: vcsNop2n,
 			support:  false,
 		})
+	case "vcsTxs2":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name:     name,
+			function: vcsTxs2,
+			support:  false,
+		})
+	case "vcsPha3":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name:     name,
+			function: vcsPha3,
+			support:  false,
+		})
 	case "vcsPhp3":
 		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
 			name:     name,
 			function: vcsPhp3,
-			support:  false,
-		})
-	case "vcsPlp4":
-		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
-			name:     name,
-			function: vcsPlp4,
 			support:  false,
 		})
 	case "vcsPla4":
@@ -203,10 +215,30 @@ func getStrongArmDefinition(mem *elfMemory, name string) (bool, uint32, error) {
 			function: vcsPla4,
 			support:  false,
 		})
-	case "vcsCopyOverblankToRiotRam":
+	case "vcsPlp4":
 		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
 			name:     name,
-			function: vcsCopyOverblankToRiotRam,
+			function: vcsPlp4,
+			support:  false,
+		})
+	case "vcsPla4Ex":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name:     name,
+			function: vcsPla4Ex,
+			support:  false,
+		})
+		mem.usesBusStuffing = true
+	case "vcsPlp4Ex":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name:     name,
+			function: vcsPlp4Ex,
+			support:  false,
+		})
+		mem.usesBusStuffing = true
+	case "vcsWaitForAddress":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name:     name,
+			function: vcsWaitForAddress,
 			support:  false,
 		})
 	case "vcsJmpToRam3":
