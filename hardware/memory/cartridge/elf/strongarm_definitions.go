@@ -83,6 +83,12 @@ func getStrongArmDefinition(mem *elfMemory, name string) (bool, uint32, error) {
 			function: vcsRead4,
 			support:  false,
 		})
+	case "vcsRead6":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name:     name,
+			function: vcsRead6,
+			support:  false,
+		})
 	case "vcsStartOverblank":
 		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
 			name:     name,
