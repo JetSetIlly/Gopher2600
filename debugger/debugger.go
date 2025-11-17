@@ -1475,7 +1475,10 @@ func (dbg *Debugger) reloadCartridge() error {
 
 // ReloadCartridge inserts the current cartridge and states the emulation over.
 func (dbg *Debugger) ReloadCartridge() {
-	dbg.events.Signal <- syscall.SIGHUP
+	select {
+	case dbg.events.Signal <- syscall.SIGHUP:
+	default:
+	}
 }
 
 func (dbg *Debugger) insertCartridge(filename string) error {
