@@ -146,7 +146,7 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader, hook func()) (r
 			return err
 		}
 
-		// fingerprint new peripherals. peripherals are not changed if option is not set
+		// fingerprint new peripherals. this may be superceded by the hook() function
 		err = vcs.FingerprintPeripheral(plugging.PortLeft)
 		if err != nil {
 			return err
@@ -155,7 +155,6 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader, hook func()) (r
 		if err != nil {
 			return err
 		}
-
 	}
 
 	if hook != nil {

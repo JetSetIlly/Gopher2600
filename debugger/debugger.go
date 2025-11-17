@@ -708,11 +708,6 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 		return fmt.Errorf("debugger: %w", err)
 	}
 
-	err = dbg.setPeripheralsOnStartup()
-	if err != nil {
-		return fmt.Errorf("debugger: %w", err)
-	}
-
 	err = dbg.setMode(govern.ModeDebugger)
 	if err != nil {
 		return fmt.Errorf("debugger: %w", err)
@@ -746,7 +741,7 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 	return nil
 }
 
-func (dbg *Debugger) setPeripheralsOnStartup() error {
+func (dbg *Debugger) setPeripherals() error {
 	dbg.term.Silence(true)
 	defer dbg.term.Silence(false)
 
@@ -760,7 +755,7 @@ func (dbg *Debugger) setPeripheralsOnStartup() error {
 	}
 
 	if dbg.opts.SwapPorts {
-		err = dbg.parseCommand(fmt.Sprintf("PERIPHERAL SWAP"), false, false)
+		err = dbg.parseCommand("PERIPHERAL SWAP", false, false)
 		if err != nil {
 			return err
 		}
@@ -794,11 +789,6 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 		// cartload is should be passed to attachCartridge() almost immediately. the
 		// closure of cartload will then be handled for us
 		err = dbg.attachCartridge(cartload)
-		if err != nil {
-			return fmt.Errorf("debugger: %w", err)
-		}
-
-		err = dbg.setPeripheralsOnStartup()
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
 		}
@@ -1215,8 +1205,13 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	dbg.cartload = &cartload
 
 	attachHook := func() {
+		err := dbg.setPeripherals()
+		if err != nil {
+			logger.Log(logger.Allow, "debugger", err)
+		}
+
 		dbg.CoProcDisasm.AttachCartridge(dbg.vcs.Mem.Cart)
-		err := dbg.CoProcDev.AttachCartridge(dbg.vcs.Mem.Cart, cartload.Filename, dbg.opts.DWARF)
+		err = dbg.CoProcDev.AttachCartridge(dbg.vcs.Mem.Cart, cartload.Filename, dbg.opts.DWARF)
 		if err != nil {
 			logger.Log(logger.Allow, "debugger", err)
 			if errors.Is(err, coproc_dwarf.UnsupportedDWARF) {
