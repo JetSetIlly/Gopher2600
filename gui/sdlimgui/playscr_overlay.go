@@ -28,32 +28,38 @@ import (
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
-type overlayLatch int
+type overlayLatch struct {
+	duration int
+	delay    int
+}
 
 const (
 	overlayLatchPinned = -1
 	overlayLatchOff    = 0
 	overlayLatchBrief  = 30
 	overlayLatchShort  = 60
-	overlayLatchLong   = 90
 )
 
 // reduces the duration value. returns false if count has expired. if the
 // duration has been "pinned" then value will return true
 func (ct *overlayLatch) tick() bool {
-	if *ct == overlayLatchOff {
+	if ct.delay > 0 {
+		ct.delay--
 		return false
 	}
-	if *ct == overlayLatchPinned {
+	if ct.duration == overlayLatchOff {
+		return false
+	}
+	if ct.duration == overlayLatchPinned {
 		return true
 	}
-	*ct = *ct - 1
+	ct.duration = ct.duration - 1
 	return true
 }
 
 // returns true if duration is not off or pinned
 func (ct *overlayLatch) expired() bool {
-	return *ct != overlayLatchPinned && *ct == overlayLatchOff
+	return ct.duration != overlayLatchPinned && ct.duration == overlayLatchOff
 }
 
 type playscrOverlay struct {
@@ -104,29 +110,29 @@ func (o *playscrOverlay) set(v any, args ...any) {
 		switch n {
 		case plugging.PortLeft:
 			o.leftPort = args[0].(plugging.PeripheralID)
-			o.leftPortLatch = overlayLatchShort
+			o.leftPortLatch = overlayLatch{duration: overlayLatchShort, delay: 20}
 		case plugging.PortRight:
 			o.rightPort = args[0].(plugging.PeripheralID)
-			o.rightPortLatch = overlayLatchShort
+			o.rightPortLatch = overlayLatch{duration: overlayLatchShort, delay: 20}
 		}
 	case notifications.Notice:
 		switch n {
 		case notifications.NotifySuperchargerSoundloadStarted:
 			o.cartridge = n
-			o.cartridgeLatch = overlayLatchPinned
+			o.cartridgeLatch = overlayLatch{duration: overlayLatchPinned}
 		case notifications.NotifySuperchargerSoundloadEnded:
 			o.cartridge = n
-			o.cartridgeLatch = overlayLatchShort
+			o.cartridgeLatch = overlayLatch{duration: overlayLatchShort}
 		case notifications.NotifySuperchargerSoundloadRewind:
 			return
 
 		case notifications.NotifyPlusROMNetwork:
 			o.cartridge = n
-			o.cartridgeLatch = overlayLatchShort
+			o.cartridgeLatch = overlayLatch{duration: overlayLatchShort}
 
 		case notifications.NotifyScreenshot:
 			o.event = n
-			o.eventLatch = overlayLatchShort
+			o.eventLatch = overlayLatch{duration: overlayLatchShort}
 
 		default:
 			return
@@ -401,18 +407,18 @@ func (o *playscrOverlay) drawTopLeft(posMin imgui.Vec2, posMax imgui.Vec2) {
 			if subState != govern.Normal || o.stateLatch.expired() {
 				o.state = state
 				o.subState = subState
-				o.stateLatch = overlayLatchPinned
+				o.stateLatch = overlayLatch{duration: overlayLatchPinned}
 			}
 		default:
 			o.state = state
 			o.subState = subState
-			o.stateLatch = overlayLatchPinned
+			o.stateLatch = overlayLatch{duration: overlayLatchPinned}
 		}
 	case govern.Running:
 		if state != o.state {
 			o.state = state
 			o.subState = subState
-			o.stateLatch = overlayLatchShort
+			o.stateLatch = overlayLatch{duration: overlayLatchShort}
 		}
 	case govern.Rewinding:
 		o.state = state
@@ -426,7 +432,7 @@ func (o *playscrOverlay) drawTopLeft(posMin imgui.Vec2, posMax imgui.Vec2) {
 		// rewinding state is interspersed very quickly with the paused state.
 		// that works great for internal emulation purposes but requires careful
 		// handling for UI purposes)
-		o.stateLatch = overlayLatchBrief
+		o.stateLatch = overlayLatch{duration: overlayLatchBrief}
 	}
 
 	// the state duration is ticked and the icon is shown unless the tick has
