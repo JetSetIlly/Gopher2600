@@ -40,8 +40,8 @@ const (
 
 // supported values for argAddrFlags
 const (
-	argFlags_NoExit = iota
-
-	// indicates that the ELF is loaded by a multicart that supports reentry
-	argFlags_ExitToMultiCart
+	argFlags_MultiCart = 1 << iota
+	argFlags_Chameleon
+	argFlags_ReducedHMOVE
+	argFlags_NVStorage
 )

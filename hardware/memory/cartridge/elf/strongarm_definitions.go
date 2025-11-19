@@ -273,6 +273,35 @@ func getStrongArmDefinition(mem *elfMemory, name string) (bool, uint32, error) {
 			support:  true,
 		})
 
+	// function for NV memory
+	case "vcsInitNvStore":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name:     name,
+			function: vcsInitNvStore,
+			support:  true,
+		})
+
+	case "vcsWriteNvChunk":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name:     name,
+			function: vcsWriteNvChunk,
+			support:  true,
+		})
+
+	case "vcsProcessNvStoreEvents":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name:     name,
+			function: vcsProcessNvStoreEvents,
+			support:  true,
+		})
+
+	case "vcsIsNvBusy":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name:     name,
+			function: vcsIsNvBusy,
+			support:  true,
+		})
+
 	// C library functions that are often not linked but required
 	case "randint":
 		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{

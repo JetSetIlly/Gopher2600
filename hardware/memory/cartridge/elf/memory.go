@@ -199,6 +199,9 @@ type elfMemory struct {
 	// followSnoopBusWithNOP exists only to help vcsRead6(). if there is ever a need to do something
 	// other than a NOP after a snoopDataBus we can think about a more generalised mechanism
 	followSnoopBusWithNOP bool
+
+	// non-volatile memory
+	nv nonVolatileMem
 }
 
 func newElfMemory(env *environment.Environment) *elfMemory {
@@ -475,7 +478,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				// log relocation address. note that in the case of strongarm
-				// functions, because of how BLX works, the target address
+				// functions, because of how BLX works, the arget address
 				// printed below is not the address the execution will start at
 				name := sym.Name
 				if name == "" {
