@@ -125,19 +125,20 @@ var gopher2600Icons []byte
 var Gopher2600Icons FontSpec = FontSpec{
 	Data: gopher2600Icons,
 	Min:  '\ue000',
-	Max:  '\ue007',
+	Max:  '\ue008',
 }
 
 // Unicode points in AtariIcons for icons used in the application.
 const (
-	Stick    = '\ue000'
-	Paddle   = '\ue001'
-	Keypad   = '\ue002'
-	Tape     = '\ue003'
-	Wifi     = '\ue004'
-	Savekey  = '\ue005'
-	Gamepad  = '\ue006'
-	AtariVox = '\ue007'
+	Stick      = '\ue000'
+	Paddle     = '\ue001'
+	Keypad     = '\ue002'
+	Tape       = '\ue003'
+	Wifi       = '\ue004'
+	Savekey    = '\ue005'
+	Gamepad    = '\ue006'
+	AtariVox   = '\ue007'
+	Keyportari = '\ue008'
 )
 
 //go:embed "Hack-Regular.ttf"

@@ -305,6 +305,7 @@ func emulate(mode string, sync *mainSync, args []string) error {
 
 	// opts collates the individual options that can be set by the command line
 	var opts debugger.CommandLineOptions
+	var bothPorts string
 
 	// arguments common to both play and debugging modes
 	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
@@ -315,8 +316,9 @@ func emulate(mode string, sync *mainSync, args []string) error {
 	flgs.IntVar(&opts.Multiload, "multiload", -1, "force multiload byte (supercharger only; 0 to 255")
 	flgs.StringVar(&opts.Mapping, "mapping", "AUTO", "force cartridge mapper selection")
 	flgs.StringVar(&opts.Bank, "bank", "AUTO", "selected cartridge bank on reset")
-	flgs.StringVar(&opts.Left, "left", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD")
-	flgs.StringVar(&opts.Right, "right", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD")
+	flgs.StringVar(&opts.Left, "left", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD, KEYPORTARI")
+	flgs.StringVar(&opts.Right, "right", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD, SAVEKEY, ATARIVOX, KEYPORTARI")
+	flgs.StringVar(&bothPorts, "both", "AUTO", "plug a peripheral in both ports. this is espcially convenient for adapters like the KEYPORTARI")
 	flgs.BoolVar(&opts.SwapPorts, "swap", false, "swap player ports")
 	flgs.StringVar(&opts.Profile, "profile", "none", "run performance check with profiling: CPU, MEM, TRACE, ALL (comma sep)")
 	flgs.StringVar(&opts.DWARF, "dwarf", "", "path to DWARF file. only valid for some coproc supporting ROMs")
@@ -373,6 +375,12 @@ func emulate(mode string, sync *mainSync, args []string) error {
 		logger.SetEcho(os.Stdout, true)
 	} else {
 		logger.SetEcho(nil, false)
+	}
+
+	// handle '-both' option
+	if bothPorts != "AUTO" {
+		opts.Left = bothPorts
+		opts.Right = bothPorts
 	}
 
 	// turn off fallback ctrl-c handling. this so that the debugger can handle

@@ -622,5 +622,7 @@ func (o *playscrOverlay) drawPeripheral(peripID plugging.PeripheralID) {
 		imgui.Text(fmt.Sprintf("%c", fonts.Gamepad))
 	case plugging.PeriphAtariVox:
 		imgui.Text(fmt.Sprintf("%c", fonts.AtariVox))
+	case plugging.PeriphKeyportari:
+		imgui.Text(fmt.Sprintf("%c", fonts.Keyportari))
 	}
 }

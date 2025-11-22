@@ -121,7 +121,7 @@ func (c *Controllers) mouseButton(ev EventMouseButton) (bool, error) {
 // the attached peripheral.
 //
 // like the handleEvent() function if sends the port/event information to each
-// HandleInput implemtation, when appropriate.
+// HandleInput implementation, when appropriate.
 //
 // returns True if event has been handled/recognised by at least one of the
 // registered input handlers.
@@ -215,7 +215,58 @@ func (c *Controllers) differentiateKeyboard(key string, down bool) (bool, error)
 	return handled, nil
 }
 
+func (c *Controllers) keyboard_keyportari(ev EventKeyboard) (bool, error) {
+	if c.inputHandler.PeripheralID(plugging.PortLeft) != plugging.PeriphKeyportari {
+		return false, nil
+	}
+
+	var event ports.InputEvent
+
+	switch ev.Key {
+	case "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12":
+		return false, nil
+	default:
+		if ev.Down {
+			event = ports.InputEvent{
+				Ev: ports.KeyportariDown,
+				D: ports.EventDataKeyportari{
+					Key:   ev.Key,
+					Shift: ev.Mod == KeyModShift,
+				}}
+		} else {
+			event = ports.InputEvent{
+				Ev: ports.KeyportariUp,
+				D: ports.EventDataKeyportari{
+					Key:   ev.Key,
+					Shift: ev.Mod == KeyModShift,
+				}}
+		}
+	}
+
+	event.Port = plugging.PortLeft
+	l, err := c.inputHandler.HandleInputEvent(event)
+	if err != nil {
+		return false, err
+	}
+
+	event.Port = plugging.PortRight
+	r, err := c.inputHandler.HandleInputEvent(event)
+	if err != nil {
+		return false, err
+	}
+
+	return l || r, nil
+}
+
 func (c *Controllers) keyboard(ev EventKeyboard) (bool, error) {
+	handled, err := c.keyboard_keyportari(ev)
+	if err != nil {
+		return false, err
+	}
+	if handled {
+		return true, nil
+	}
+
 	if ev.Down && ev.Mod == KeyModNone {
 		switch ev.Key {
 		// panel
@@ -289,7 +340,7 @@ func (c *Controllers) keyboard(ev EventKeyboard) (bool, error) {
 			// * keypad and joystick share some keys (see above for other inputs)
 			return c.differentiateKeyboard(ev.Key, true)
 		}
-	} else {
+	} else if ev.Mod == KeyModNone {
 		switch ev.Key {
 		// panel
 		case "F1":
@@ -329,6 +380,8 @@ func (c *Controllers) keyboard(ev EventKeyboard) (bool, error) {
 			return c.differentiateKeyboard(ev.Key, false)
 		}
 	}
+
+	return false, nil
 }
 
 func (c *Controllers) gamepadDPad(ev EventGamepadDPad) (bool, error) {

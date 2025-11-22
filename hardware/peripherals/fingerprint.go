@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/controllers"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/keyportari"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -93,6 +94,9 @@ func fingerprintFilename(name string) ports.NewPeripheral {
 	}
 	if strings.Contains(name, "(JOYSTICK)") {
 		return controllers.NewStick
+	}
+	if strings.Contains(name, "(KEYPORTARI)") {
+		return keyportari.NewKeyportari
 	}
 	return nil
 }
