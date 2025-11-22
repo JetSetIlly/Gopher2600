@@ -265,8 +265,10 @@ func (win *winTracker) draw() {
 								if imgui.Selectable("Clear note history") {
 									win.img.dbg.PushFunction(win.img.dbg.Tracker.Reset)
 								}
-								if imgui.Selectable(fmt.Sprintf("Rewind (to %s)", entry.Coords)) {
-									win.img.dbg.GotoCoords(entry.Coords)
+								if !win.img.isPlaymode() {
+									if imgui.Selectable(fmt.Sprintf("Rewind (to %s)", entry.Coords)) {
+										win.img.dbg.GotoCoords(entry.Coords)
+									}
 								}
 								imgui.EndPopup()
 							}
