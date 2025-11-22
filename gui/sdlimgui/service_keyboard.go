@@ -220,33 +220,24 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			}
 		}
 	} else if ev.Type == sdl.KEYDOWN {
-		// for debugger mode we test for the ESC key press on the down event
-		// and not the up event. this is because imgui widgets react to the ESC
-		// key on the down event and we only want to perform our special ESC
-		// key handling if no widget is active
-		//
-		// if we perform out special handling on the up stroke then the active
-		// widget will be unselected and then the special handling perfomed on
-		// every ESC KEY press. we don't want that. we want the active widget
-		// to be deselected and for the special handling to require a
-		// completely separate key press
-
-		if !img.isPlaymode() && !img.modalActive() {
+		if !img.modalActive() {
 			switch ev.Keysym.Scancode {
 			case sdl.SCANCODE_TAB:
-				// in debugger mode do not handle if an imgui widget is not
-				// active (see the sdl.KEYUP branch above for opposite
-				// condition)
-				//
-				// this prevents a KEYDOWN being forwarded to imgui and without
-				// the corresponding KEYUP if the TAB key was consumed becaue
-				// IsAnyItemActive() was true at time of KEYUP. without this
-				// check imgui thinks the TAB key is being held down
 				if !imgui.IsAnyItemActive() {
 					return
 				}
 			case sdl.SCANCODE_ESCAPE:
-				if !imgui.IsAnyItemActive() {
+				// for debugger mode we test for the ESC key press on the down event
+				// and not the up event. this is because imgui widgets react to the ESC
+				// key on the down event and we only want to perform our special ESC
+				// key handling if no widget is active
+				//
+				// if we perform out special handling on the up stroke then the active
+				// widget will be unselected and then the special handling perfomed on
+				// every ESC KEY press. we don't want that. we want the active widget
+				// to be deselected and for the special handling to require a
+				// completely separate key press
+				if !img.isPlaymode() && !imgui.IsAnyItemActive() {
 					img.setCapturedRunning(!img.isCapturedRunning())
 				}
 			}
