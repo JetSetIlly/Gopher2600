@@ -197,6 +197,12 @@ func getStrongArmDefinition(mem *elfMemory, name string) (bool, uint32, error) {
 			function: vcsNop2n,
 			support:  false,
 		})
+	case "vcsNop3":
+		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
+			name:     name,
+			function: vcsNop3,
+			support:  false,
+		})
 	case "vcsTxs2":
 		tgt, err = mem.relocateStrongArmFunction(strongArmFunctionSpec{
 			name:     name,

@@ -613,6 +613,18 @@ func vcsNop2n(mem *elfMemory) {
 	}
 }
 
+// void vcsNop3()
+func vcsNop3(mem *elfMemory) {
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x04) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		mem.endStrongArmFunction()
+	}
+}
+
 // void vcsTxs2()
 func vcsTxs2(mem *elfMemory) {
 	switch mem.strongarm.running.state {
