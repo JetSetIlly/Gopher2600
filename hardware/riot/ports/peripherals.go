@@ -59,6 +59,26 @@ type Peripheral interface {
 	IsActive() bool
 }
 
+// PeripheralShim implementations allow other peripherals to be plugged into them
+type PeripheralShim interface {
+	// plug peripheral into shim. the implementation should handle the call to Unplug() for any
+	// existing peripheral
+	Plug(Peripheral)
+
+	// the child of this peripheral
+	Periph() Peripheral
+
+	// ShimID is the ID of the shim. For the ID of the peripheral plugged into it use the ID()
+	// function
+	ShimID() plugging.PeripheralID
+
+	// the ID of the peripheral plugged into the shim
+	ID() plugging.PeripheralID
+
+	// shim specific protocol information
+	Protocol() string
+}
+
 // RestartPeripheral is implemented by peripherals that can significantly
 // change configuration. For example, the AtariVox can make use of an external
 // program which might be changed during the emulation.
@@ -98,4 +118,48 @@ type PeripheralBus interface {
 	// Peripherals attached to the panel port can use the entire byte of the
 	// SWCHB register
 	WriteSWCHx(id plugging.PortID, data uint8)
+}
+
+type peripheralNone struct {
+	port plugging.PortID
+}
+
+func (_ peripheralNone) String() string {
+	return string(plugging.PeriphNone)
+}
+
+func (_ peripheralNone) Unplug() {
+}
+
+func (p peripheralNone) Snapshot() Peripheral {
+	return p
+}
+
+func (_ peripheralNone) Plumb(PeripheralBus) {
+}
+
+func (p peripheralNone) PortID() plugging.PortID {
+	return p.port
+}
+
+func (_ peripheralNone) ID() plugging.PeripheralID {
+	return plugging.PeriphNone
+}
+
+func (_ peripheralNone) HandleEvent(Event, EventData) (bool, error) {
+	return false, nil
+}
+
+func (_ peripheralNone) Update(chipbus.ChangedRegister) bool {
+	return false
+}
+
+func (_ peripheralNone) Step() {
+}
+
+func (_ peripheralNone) Reset() {
+}
+
+func (_ peripheralNone) IsActive() bool {
+	return false
 }

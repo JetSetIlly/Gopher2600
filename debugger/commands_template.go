@@ -71,6 +71,7 @@ const (
 	cmdPanel      = "PANEL"
 	cmdStick      = "STICK"
 	cmdKeypad     = "KEYPAD"
+	cmdKeyportari = "KEYPORTARI"
 
 	// halt conditions
 	cmdBreak = "BREAK"
@@ -131,10 +132,11 @@ var commandTemplate = []string{
 	cmdDWARF + " [FUNCTIONS|GLOBALS (DERIVATION)|LOCALS {DERIVATION|RANGES}|FRAMEBASE (DERIVATION)|LINE %<file:line>S|CALLSTACK|CALLERS %<function>S]",
 
 	// user input
-	cmdPeripheral + " ([LEFT|RIGHT] (AUTO|STICK|PADDLE|PADDLES|KEYPAD|GAMEPAD|SAVEKEY|ATARIVOX|KEYPORTARI)|SWAP)",
+	cmdPeripheral + " ([LEFT|RIGHT] (AUTO|STICK|PADDLE|PADDLES|KEYPAD|GAMEPAD|SAVEKEY|ATARIVOX)|SWAP)",
 	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL]|[HOLD|RELEASE] [SELECT|RESET])",
 	cmdStick + " [LEFT|RIGHT] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
 	cmdKeypad + " [LEFT|RIGHT] [NONE|0|1|2|3|4|5|6|7|8|9|*|#]",
+	cmdKeyportari + " (NONE|ASCII|24CHAR)",
 
 	// halt conditions
 	cmdBreak + " [%<address>S|%<target>S %<value>N] {& %<address>S|%<target>S %<value>S}",

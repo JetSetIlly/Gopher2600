@@ -761,6 +761,11 @@ func (dbg *Debugger) setPeripherals() error {
 		}
 	}
 
+	err = dbg.parseCommand(fmt.Sprintf("KEYPORTARI %s", dbg.opts.Keyportari), false, false)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

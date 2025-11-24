@@ -16,111 +16,117 @@
 package keyportari
 
 import (
-	"strings"
-
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
-type Keyportari struct {
-	port plugging.PortID
-	bus  ports.PeripheralBus
+type keyportari struct {
+	env     *environment.Environment
+	port    plugging.PortID
+	bus     ports.PeripheralBus
+	periph  ports.Peripheral
+	keydown bool
 }
 
-func NewKeyportari(env *environment.Environment, port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
-	kp := &Keyportari{
+func newKeyportari(env *environment.Environment, port plugging.PortID, bus ports.PeripheralBus) keyportari {
+	kp := keyportari{
 		port: port,
 		bus:  bus,
+	}
+	if port == plugging.PortLeft {
+		kp.periph = controllers.NewStick(env, port, bus)
 	}
 	return kp
 }
 
-func (kp *Keyportari) String() string {
-	return "keyportari: nothing to report"
+// Plug implements plugging.PeripheralShim
+func (kp *keyportari) Plug(periph ports.Peripheral) {
+	if kp.periph != nil {
+		kp.Unplug()
+	}
+	kp.periph = periph
 }
 
-func (kp *Keyportari) Unplug() {
-	kp.bus.WriteSWCHx(kp.port, 0xf0)
+// Child implements plugging.PeripheralShim
+func (kp *keyportari) Periph() ports.Peripheral {
+	return kp.periph
 }
 
-func (kp *Keyportari) Snapshot() ports.Peripheral {
-	n := *kp
-	return &n
-}
-
-func (kp *Keyportari) Plumb(bus ports.PeripheralBus) {
-	kp.bus = bus
-}
-
-func (kp *Keyportari) PortID() plugging.PortID {
-	return kp.port
-}
-
-func (kp *Keyportari) ID() plugging.PeripheralID {
+// ShimID implements plugging.PeripheralShim
+func (kp *keyportari) ShimID() plugging.PeripheralID {
 	return plugging.PeriphKeyportari
 }
 
-func (kp *Keyportari) HandleEvent(event ports.Event, data ports.EventData) (bool, error) {
-	switch event {
-	case ports.KeyportariUp:
-		kp.bus.WriteSWCHx(kp.port, 0xf0)
-		return true, nil
-	case ports.KeyportariDown:
-		var v uint8
-		d := data.(ports.EventDataKeyportari)
-		switch d.Key {
-		case "Return":
-			v = 0x0a
-		case "Backspace":
-			v = 0x7f
-		case "Space":
-			v = 0x20
-		case "Left Shift", "Right Shift":
-			return true, nil
-		case "Left Ctrl", "Right Ctrl":
-			return true, nil
-		case "Left Alt", "Right Alt":
-			return true, nil
-		case "Escape":
-			return true, nil
-		default:
-			v = strings.ToLower(d.Key)[0]
-			if d.Shift {
-				switch v {
-				case '2':
-					v = '"'
-				default:
-					v = strings.ToUpper(string(v))[0]
-				}
-			}
-		}
-
-		switch kp.port {
-		case plugging.PortLeft:
-			kp.bus.WriteSWCHx(plugging.PortLeft, v&0xf0)
-		case plugging.PortRight:
-			kp.bus.WriteSWCHx(plugging.PortRight, v<<4)
-		}
-
-		return true, nil
+func (kp *keyportari) String() string {
+	if kp.periph != nil {
+		return kp.periph.String()
 	}
-
-	return false, nil
+	return "keyportari"
 }
 
-func (kp *Keyportari) Update(chipbus.ChangedRegister) bool {
-	return false
-}
-
-func (kp *Keyportari) Step() {
-}
-
-func (kp *Keyportari) Reset() {
+func (kp *keyportari) Unplug() {
+	if kp.periph != nil {
+		kp.periph.Unplug()
+	}
 	kp.bus.WriteSWCHx(kp.port, 0xf0)
 }
 
-func (kp *Keyportari) IsActive() bool {
-	return true
+// keyportari does not have a Snapshot() function because it doesn't work well when it is embedded.
+// a snapshot would just take a snapshot of the embedded type when want we want is a snapshot of the
+// containing type too
+
+func (kp *keyportari) Plumb(bus ports.PeripheralBus) {
+	kp.bus = bus
+	if kp.periph != nil {
+		kp.periph.Plumb(bus)
+	}
+}
+
+func (kp *keyportari) PortID() plugging.PortID {
+	return kp.port
+}
+
+func (kp *keyportari) ID() plugging.PeripheralID {
+	if kp.periph == nil {
+		return plugging.PeriphNone
+	}
+	return kp.periph.ID()
+}
+
+func (kp *keyportari) HandleEvent(event ports.Event, data ports.EventData) (bool, error) {
+	if kp.periph != nil {
+		return kp.periph.HandleEvent(event, data)
+	}
+	return false, nil
+}
+
+func (kp *keyportari) Update(data chipbus.ChangedRegister) bool {
+	if kp.periph != nil {
+		return kp.periph.Update(data)
+	}
+	return false
+}
+
+func (kp *keyportari) Step() {
+	if kp.periph != nil {
+		kp.periph.Step()
+	}
+}
+
+func (kp *keyportari) Reset() {
+	if kp.periph != nil {
+		kp.periph.Reset()
+	}
+	kp.keydown = false
+	kp.bus.WriteSWCHx(kp.port, 0xf0)
+}
+
+func (kp *keyportari) IsActive() bool {
+	if kp.periph != nil {
+		return kp.keydown || kp.periph.IsActive()
+	}
+	return kp.keydown
 }

@@ -16,4 +16,11 @@
 // Package keyportari implments the Keyportari keyboard adapter. The physical
 // adapater works by plugging into both player peripheral ports. The emulated
 // adapater therefore is designed to be plugged into each port separately.
+//
+// The ASCII and 24CHAR protocols are supported. The 24CHAR protocol also
+// provides joystick control - although whether or not keyboard cursor keys
+// results in joystick events (riot/ports/events.go) depends on the configuration
+// of the physical keyboard translation layer (userinput/controllers.go).
+// Currently, a physical gamepad is required for joystick input when a 24CHAR
+// keyportari is being used.
 package keyportari

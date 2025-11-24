@@ -96,7 +96,10 @@ func fingerprintFilename(name string) ports.NewPeripheral {
 		return controllers.NewStick
 	}
 	if strings.Contains(name, "(KEYPORTARI)") {
-		return keyportari.NewKeyportari
+		return keyportari.NewKeyportariASCII
+	}
+	if strings.Contains(name, "(KEYPORTARI24)") {
+		return keyportari.NewKeyportari24char
 	}
 	return nil
 }

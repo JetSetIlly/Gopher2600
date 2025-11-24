@@ -32,6 +32,7 @@ type winPeripherals struct {
 
 	// required dimensions for controller dropdown
 	controllerComboDim imgui.Vec2
+	keyportariComboDim imgui.Vec2
 }
 
 func newWinPeripherals(img *SdlImgui) (window, error) {
@@ -44,6 +45,7 @@ func newWinPeripherals(img *SdlImgui) (window, error) {
 
 func (win *winPeripherals) init() {
 	win.controllerComboDim = imguiGetFrameDim("", peripherals.AvailableRightPlayer...)
+	win.keyportariComboDim = imguiGetFrameDim("", peripherals.AvailableKeyportari...)
 }
 
 func (win *winPeripherals) id() string {
@@ -87,11 +89,35 @@ func (win *winPeripherals) draw() {
 	imgui.Spacing()
 	win.drawPeripheral(win.img.cache.VCS.RIOT.Ports.RightPlayer, peripherals.AvailableRightPlayer)
 	imgui.EndGroup()
+
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+
+	var protocol string
+	if shim, ok := win.img.cache.VCS.RIOT.Ports.LeftPlayer.(ports.PeripheralShim); ok {
+		protocol = shim.Protocol()
+	} else {
+		protocol = "None"
+	}
+
+	imgui.PushItemWidth(win.keyportariComboDim.X)
+	imguiLabel("Keyportari")
+	if imgui.BeginComboV("##keyportari", protocol, imgui.ComboFlagsNoArrowButton) {
+		for _, s := range peripherals.AvailableKeyportari {
+			if imgui.Selectable(s) {
+				termCmd := fmt.Sprintf("KEYPORTARI %s", s)
+				win.img.term.pushCommand(termCmd)
+			}
+		}
+		imgui.EndCombo()
+	}
+	imgui.PopItemWidth()
 }
 
 func (win *winPeripherals) drawPeripheral(p ports.Peripheral, periphList []string) {
 	imgui.PushItemWidth(win.controllerComboDim.X)
-	if imgui.BeginComboV(fmt.Sprintf("##%v", p.PortID()), string(p.ID()), imgui.ComboFlagsNoArrowButton) {
+	if imgui.BeginComboV(fmt.Sprintf("##controllers_%v", p.PortID()), string(p.ID()), imgui.ComboFlagsNoArrowButton) {
 		for _, s := range periphList {
 			if imgui.Selectable(s) {
 				termCmd := fmt.Sprintf("PERIPHERAL %s %s", p.PortID(), s)

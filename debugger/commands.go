@@ -1859,10 +1859,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				err = dbg.vcs.RIOT.Ports.Plug(id, savekey.NewSaveKey)
 			case "ATARIVOX":
 				err = dbg.vcs.RIOT.Ports.Plug(id, atarivox.NewAtariVox)
-			case "KEYPORTARI":
-				err = dbg.vcs.RIOT.Ports.Plug(id, keyportari.NewKeyportari)
 			}
-
 			if err != nil {
 				return err
 			}
@@ -2043,6 +2040,52 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		if err != nil {
 			return err
 		}
+
+	case cmdKeyportari:
+		var f ports.NewPeripheral
+		var create bool
+
+		if protocol, ok := tokens.Get(); ok {
+			switch protocol {
+			case "ASCII":
+				f = keyportari.NewKeyportariASCII
+				create = true
+			case "24CHAR":
+				f = keyportari.NewKeyportari24char
+				create = true
+			case "NONE":
+				f = nil
+				create = true
+			}
+		}
+
+		if create {
+			err := dbg.vcs.RIOT.Ports.Plug(plugging.PortLeft, f)
+			if err != nil {
+				return err
+			}
+			err = dbg.vcs.RIOT.Ports.Plug(plugging.PortRight, f)
+			if err != nil {
+				return err
+			}
+		}
+
+		if shim, ok := dbg.vcs.RIOT.Ports.LeftPlayer.(ports.PeripheralShim); ok {
+			protocol := shim.Protocol()
+			if create {
+				dbg.printLine(terminal.StyleFeedback, "KEYPORTARI (%s) inserted", protocol)
+			} else {
+				dbg.printLine(terminal.StyleFeedback, "KEYPORTARI (%s)", protocol)
+			}
+		} else {
+			if create {
+				dbg.printLine(terminal.StyleFeedback, "KEYPORTARI removed")
+			} else {
+				dbg.printLine(terminal.StyleFeedback, "KEYPORTARI absent")
+			}
+		}
+
+		return nil
 
 	case cmdBreak:
 		err := dbg.halting.breakpoints.parseCommand(tokens)

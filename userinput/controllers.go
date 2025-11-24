@@ -216,10 +216,6 @@ func (c *Controllers) differentiateKeyboard(key string, down bool) (bool, error)
 }
 
 func (c *Controllers) keyboard_keyportari(ev EventKeyboard) (bool, error) {
-	if c.inputHandler.PeripheralID(plugging.PortLeft) != plugging.PeriphKeyportari {
-		return false, nil
-	}
-
 	var event ports.InputEvent
 
 	switch ev.Key {

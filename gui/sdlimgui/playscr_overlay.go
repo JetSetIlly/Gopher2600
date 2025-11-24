@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -104,7 +105,7 @@ type playscrOverlay struct {
 
 const overlayPadding = 10
 
-func (o *playscrOverlay) set(v any, args ...any) {
+func (o *playscrOverlay) set(v gui.FeatureReqData, args ...gui.FeatureReqData) {
 	switch n := v.(type) {
 	case plugging.PortID:
 		switch n {
@@ -183,7 +184,7 @@ func (o *playscrOverlay) updateRefreshRate() {
 // information in the top left corner of the overlay are about the emulation.
 // eg. whether audio is mute, or the emulation is paused, etc. it is also used
 // to display the FPS counter and other TV information
-func (o *playscrOverlay) drawTopLeft(posMin imgui.Vec2, posMax imgui.Vec2) {
+func (o *playscrOverlay) drawTopLeft(posMin imgui.Vec2, _ imgui.Vec2) {
 	pos := posMin
 	imgui.SetCursorScreenPos(pos)
 	pos.X += overlayPadding
@@ -566,6 +567,8 @@ func (o *playscrOverlay) drawTopRight(posMin imgui.Vec2, posMax imgui.Vec2) {
 	}
 }
 
+const shimVisibilityIncrease = 1.1
+
 func (o *playscrOverlay) drawBottomLeft(posMin imgui.Vec2, posMax imgui.Vec2) {
 	if !o.leftPortLatch.tick() {
 		return
@@ -575,10 +578,16 @@ func (o *playscrOverlay) drawBottomLeft(posMin imgui.Vec2, posMax imgui.Vec2) {
 		return
 	}
 
+	imgui.PushFont(o.img.fonts.gopher2600Icons)
+	defer imgui.PopFont()
+	imgui.PushStyleColor(imgui.StyleColorText,
+		imgui.Vec4{X: o.visibility, Y: o.visibility, Z: o.visibility, W: o.visibility},
+	)
+	defer imgui.PopStyleColor()
+
 	pos := imgui.Vec2{X: posMin.X, Y: posMax.Y}
 	pos.X += overlayPadding
 	pos.Y -= o.img.fonts.gopher2600IconsSize + overlayPadding
-
 	imgui.SetCursorScreenPos(pos)
 	o.drawPeripheral(o.leftPort)
 }
@@ -592,24 +601,24 @@ func (o *playscrOverlay) drawBottomRight(_ imgui.Vec2, posMax imgui.Vec2) {
 		return
 	}
 
+	imgui.PushFont(o.img.fonts.gopher2600Icons)
+	defer imgui.PopFont()
+	imgui.PushStyleColor(imgui.StyleColorText,
+		imgui.Vec4{X: o.visibility, Y: o.visibility, Z: o.visibility, W: o.visibility},
+	)
+	defer imgui.PopStyleColor()
+
 	pos := imgui.Vec2{X: posMax.X, Y: posMax.Y}
 	pos.X -= o.img.fonts.gopher2600IconsSize + overlayPadding
 	pos.Y -= o.img.fonts.gopher2600IconsSize + overlayPadding
-
 	imgui.SetCursorScreenPos(pos)
 	o.drawPeripheral(o.rightPort)
 }
 
 // drawPeripheral is used to draw the peripheral in the bottom left and bottom
 // right corners of the overlay
-func (o *playscrOverlay) drawPeripheral(peripID plugging.PeripheralID) {
-	imgui.PushFont(o.img.fonts.gopher2600Icons)
-	defer imgui.PopFont()
-
-	imgui.PushStyleColor(imgui.StyleColorText, imgui.Vec4{X: o.visibility, Y: o.visibility, Z: o.visibility, W: o.visibility})
-	defer imgui.PopStyleColor()
-
-	switch peripID {
+func (o *playscrOverlay) drawPeripheral(id plugging.PeripheralID) {
+	switch id {
 	case plugging.PeriphStick:
 		imgui.Text(fmt.Sprintf("%c", fonts.Stick))
 	case plugging.PeriphPaddles:
@@ -624,5 +633,7 @@ func (o *playscrOverlay) drawPeripheral(peripID plugging.PeripheralID) {
 		imgui.Text(fmt.Sprintf("%c", fonts.AtariVox))
 	case plugging.PeriphKeyportari:
 		imgui.Text(fmt.Sprintf("%c", fonts.Keyportari))
+	default:
+		imgui.Text("")
 	}
 }

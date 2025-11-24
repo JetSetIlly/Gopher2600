@@ -23,7 +23,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/input"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals"
-	"github.com/jetsetilly/gopher2600/hardware/peripherals/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/panel"
@@ -101,16 +100,6 @@ func NewVCS(label environment.Label, tv *television.Television, notify notificat
 	vcs.Input = input.NewInput(vcs.TV, vcs.RIOT.Ports)
 
 	vcs.TIA, err = tia.NewTIA(vcs.Env, vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
-	if err != nil {
-		return nil, err
-	}
-
-	err = vcs.RIOT.Ports.Plug(plugging.PortLeft, controllers.NewStick)
-	if err != nil {
-		return nil, err
-	}
-
-	err = vcs.RIOT.Ports.Plug(plugging.PortRight, controllers.NewStick)
 	if err != nil {
 		return nil, err
 	}

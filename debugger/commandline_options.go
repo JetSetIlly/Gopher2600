@@ -24,17 +24,18 @@ package debugger
 // library, which is where this requirement originates.
 type CommandLineOptions struct {
 	// common to debugger and play modes
-	Log       bool
-	Spec      string
-	FpsCap    bool
-	Multiload int
-	Mapping   string
-	Bank      string
-	Left      string
-	Right     string
-	SwapPorts bool
-	Profile   string
-	DWARF     string
+	Log        bool
+	Spec       string
+	FpsCap     bool
+	Multiload  int
+	Mapping    string
+	Bank       string
+	Left       string
+	Right      string
+	SwapPorts  bool
+	Keyportari string
+	Profile    string
+	DWARF      string
 
 	// playmode only
 	ComparisonROM        string
