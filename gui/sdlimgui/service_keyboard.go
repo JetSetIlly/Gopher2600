@@ -50,6 +50,8 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 	// enable window searching based on keyboard modifiers
 	img.wm.searchActive = ctrl && shift
 
+	handled := true
+
 	if ev.Type == sdl.KEYUP {
 		// special handling if window searching is enabled
 		if img.wm.searchActive {
@@ -72,8 +74,6 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			}
 			return
 		}
-
-		handled := true
 
 		if img.isPlaymode() {
 			switch ev.Keysym.Scancode {
@@ -222,12 +222,10 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			default:
 				handled = false
 			}
-
-			if handled {
-				return
-			}
 		}
-	} else if ev.Type == sdl.KEYDOWN {
+	}
+
+	if ev.Type == sdl.KEYDOWN {
 		if !img.modalActive() {
 			switch ev.Keysym.Scancode {
 			case sdl.SCANCODE_TAB:
@@ -248,8 +246,19 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				if !img.isPlaymode() && !imgui.IsAnyItemActive() {
 					img.setCapturedRunning(!img.isCapturedRunning())
 				}
+			case sdl.SCANCODE_GRAVE:
+				// this is the key we use to switch playmode & debugger. it's okay to forward this
+				// to the userinput except when keyportari is in use, when the grave can introduce
+				// bogus input
+			default:
+				handled = false
 			}
 		}
+	}
+
+	// early return if keypress has been handled
+	if handled {
+		return
 	}
 
 	// forward keypresses to userinput.Event channel
@@ -258,9 +267,21 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 		case sdl.KEYDOWN:
 			fallthrough
 		case sdl.KEYUP:
+			key := sdl.GetScancodeName(ev.Keysym.Scancode)
+
+			// TODO: keyboard mapping sensitive. this is required for keyportari protocols
+
+			// for some reason GetScancodeName() does not work for all symbols
+			if key == "" {
+				switch ev.Keysym.Scancode {
+				case 100:
+					key = "\\"
+				}
+			}
+
 			select {
 			case img.dbg.UserInput() <- userinput.EventKeyboard{
-				Key:  sdl.GetScancodeName(ev.Keysym.Scancode),
+				Key:  key,
 				Down: ev.Type == sdl.KEYDOWN,
 				Mod:  getKeyMod(),
 			}:

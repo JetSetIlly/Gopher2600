@@ -71,6 +71,10 @@ func (kp *KeyportariASCII) HandleEvent(event ports.Event, data ports.EventData) 
 		case "Escape":
 			return true, nil
 		default:
+			if len(d.Key) == 0 {
+				return false, nil
+			}
+
 			v = strings.ToLower(d.Key)[0]
 			if d.Shift {
 				switch v {
