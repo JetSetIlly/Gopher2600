@@ -1849,7 +1849,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				dbg.vcs.FingerprintPeripheral(id)
 			case "STICK":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewStick)
-			case "PADDLE":
+			case "PADDLE", "PADDLES":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewPaddles)
 			case "KEYPAD":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewKeypad)

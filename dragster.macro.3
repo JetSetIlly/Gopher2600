@@ -1,0 +1,87 @@
+gopher2600macro
+
+-- we want absolute control of how long the stick is held for
+SET STICK 0
+
+-- start the game
+WAIT 60
+RESET 
+
+-- end of countdown
+LEFT
+WAIT 157
+
+-- flip to absolute frame measuring for the remainder of the script
+WAIT ABSOLUTE
+WAIT RESET
+
+-- neutral to first
+CENTER
+FIRE
+
+-- first to second
+WAIT 17
+LEFT
+WAIT 18
+CENTER
+
+-- second to third
+WAIT 31
+LEFT
+WAIT 32
+CENTER
+
+-- third to fourth
+WAIT 56
+LEFT
+WAIT 57
+CENTER
+
+WAIT 80 
+LEFT
+WAIT 81
+CENTER
+
+WAIT 87 
+LEFT
+WAIT 88
+CENTER
+
+WAIT 96 
+LEFT
+WAIT 97
+CENTER
+
+WAIT 109 
+LEFT
+WAIT 110
+CENTER
+
+WAIT 118 
+LEFT
+WAIT 119
+CENTER
+
+WAIT 123 
+LEFT
+WAIT 124
+CENTER
+
+WAIT 137 
+LEFT
+WAIT 138
+CENTER
+
+WAIT 139 
+LEFT
+WAIT 140
+CENTER
+
+WAIT 141 
+LEFT
+WAIT 166
+CENTER
+
+WAIT 168
+NOFIRE
+

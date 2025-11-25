@@ -1,0 +1,40 @@
+gopher2600macro
+
+--start the game
+WAIT 60
+RESET 
+
+-- end of countdown
+WAIT 160
+
+-- neutral to first
+LEFT
+WAIT 1
+CENTER
+FIRE
+
+-- first to second
+WAIT 28
+LEFT
+WAIT 1
+CENTER
+
+-- second to third
+WAIT 20
+NOFIRE
+WAIT 2
+FIRE
+LEFT
+WAIT 1
+CENTER
+
+NOFIRE
+WAIT 1
+FIRE
+
+-- third to fourth
+WAIT 18
+LEFT
+WAIT 1
+CENTER
+
