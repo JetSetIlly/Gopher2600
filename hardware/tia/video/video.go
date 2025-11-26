@@ -277,7 +277,7 @@ func (vd *Video) PrepareSpritesForHMOVE() {
 // Pixel returns the color of the pixel at the current clock and also sets the
 // collision registers. It will default to returning the background color if no
 // sprite or playfield pixel is present.
-func (vd *Video) Pixel() {
+func (vd *Video) Pixel(vblank bool) {
 	// if nothing has changed since last pixel then return early and leave the
 	// Video.PixelColor at the same value
 	if !vd.tiaHasChanged {
@@ -295,9 +295,9 @@ func (vd *Video) Pixel() {
 
 	// only check for collisions if at least one sprite thinks it might be
 	// worth doing
-	if vd.Player0.pixelCollision || vd.Player1.pixelCollision ||
+	if !vblank && (vd.Player0.pixelCollision || vd.Player1.pixelCollision ||
 		vd.Missile0.pixelCollision || vd.Missile1.pixelCollision ||
-		vd.Ball.pixelCollision {
+		vd.Ball.pixelCollision) {
 
 		vd.Collisions.tick(vd.Player0.pixelCollision, vd.Player1.pixelCollision,
 			vd.Missile0.pixelCollision, vd.Missile1.pixelCollision,

@@ -563,7 +563,7 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister, ct int) {
 	}
 
 	// resolve video pixels
-	tia.Video.Pixel()
+	tia.Video.Pixel(tia.sig.VBlank)
 	if tia.Hblank {
 		// if hblank is on then we don't sent the resolved color but the
 		// zeroblack signal instead
@@ -748,7 +748,7 @@ func (tia *TIA) QuickStep(ct int) {
 	}
 
 	// resolve video pixels
-	tia.Video.Pixel()
+	tia.Video.Pixel(tia.sig.VBlank)
 	if tia.Hblank {
 		// if hblank is on then we don't sent the resolved color but the
 		// zeroblack signal instead
