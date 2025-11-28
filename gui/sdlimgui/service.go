@@ -93,7 +93,7 @@ func (img *SdlImgui) Service() {
 			// via an event filter
 
 		case *sdl.TextInputEvent:
-			if !img.modalActive() || !img.isCaptured() {
+			if !img.suppressTextInput && (!img.modalActive() || !img.isCaptured()) {
 				imgui.CurrentIO().AddInputCharacters(string(ev.Text[:]))
 
 				// text input events are perfect for indicating the

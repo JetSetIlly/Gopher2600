@@ -116,6 +116,11 @@ type SdlImgui struct {
 	phantomInput     phantomInput
 	phantomInputRune rune
 
+	// suppress the next text input event. we use this to prevent the grave key from appearing in
+	// text input widgets. for example, if the terminal is active and the user presses the grave key
+	// to switch to playmode, the terminal will have the grave symbol in the terminal input
+	suppressTextInput bool
+
 	// the time the window was focused. we use this to prevent the TAB key from
 	// opening the ROM requester if the window was focused with the alt-TAB key
 	// combo used by Windows and many Linux desktops

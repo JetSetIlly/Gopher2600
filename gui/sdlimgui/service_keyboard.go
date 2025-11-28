@@ -136,6 +136,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				}
 
 			case sdl.SCANCODE_GRAVE:
+				img.suppressTextInput = false
 				if img.isPlaymode() {
 					img.dbg.PushSetMode(govern.ModeDebugger)
 				} else {
@@ -250,6 +251,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				// this is the key we use to switch playmode & debugger. it's okay to forward this
 				// to the userinput except when keyportari is in use, when the grave can introduce
 				// bogus input
+				img.suppressTextInput = true
 			default:
 				handled = false
 			}
