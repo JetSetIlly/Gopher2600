@@ -136,7 +136,7 @@ var commandTemplate = []string{
 	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL]|[HOLD|RELEASE] [SELECT|RESET])",
 	cmdStick + " [LEFT|RIGHT] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
 	cmdKeypad + " [LEFT|RIGHT] [NONE|0|1|2|3|4|5|6|7|8|9|*|#]",
-	cmdKeyportari + " (NONE|ASCII|24CHAR)",
+	cmdKeyportari + " (NONE|24CHAR|ASCII)",
 
 	// halt conditions
 	cmdBreak + " [%<address>S|%<target>S %<value>N] {& %<address>S|%<target>S %<value>S}",

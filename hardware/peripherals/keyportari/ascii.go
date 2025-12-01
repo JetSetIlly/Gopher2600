@@ -16,8 +16,6 @@
 package keyportari
 
 import (
-	"strings"
-
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -49,51 +47,33 @@ func (kp *KeyportariASCII) HandleEvent(event ports.Event, data ports.EventData) 
 	switch event {
 	case ports.KeyportariUp:
 		kp.keydown = false
-		kp.bus.WriteSWCHx(kp.port, 0xf0)
+		kp.writeSWCHx(0xff)
 		return true, nil
+
 	case ports.KeyportariDown:
 		kp.keydown = true
 		var v uint8
 		d := data.(ports.EventDataKeyportari)
 		switch d.Key {
-		case "Return":
+		case "return":
 			v = 0x0a
-		case "Backspace":
+		case "backspace":
 			v = 0x7f
-		case "Space":
+		case "space":
 			v = 0x20
-		case "Left Shift", "Right Shift":
-			return true, nil
-		case "Left Ctrl", "Right Ctrl":
-			return true, nil
-		case "Left Alt", "Right Alt":
-			return true, nil
-		case "Escape":
-			return true, nil
 		default:
-			if len(d.Key) == 0 {
-				return false, nil
-			}
-
-			v = strings.ToLower(d.Key)[0]
-			if d.Shift {
-				switch v {
-				case '2':
-					v = '"'
-				default:
-					v = strings.ToUpper(string(v))[0]
-				}
-			}
+			return true, nil
 		}
-
-		switch kp.port {
-		case plugging.PortLeft:
-			kp.bus.WriteSWCHx(plugging.PortLeft, v&0xf0)
-		case plugging.PortRight:
-			kp.bus.WriteSWCHx(plugging.PortRight, v<<4)
-		}
-
+		kp.writeSWCHx(v)
 		return true, nil
+
+	case ports.KeyportariText:
+		d := data.(ports.EventDataKeyportari)
+		if r, ok := kp.isPrint(d.Key); ok {
+			kp.writeSWCHx(uint8(r))
+		}
+		return true, nil
+
 	default:
 		kp.keyportari.HandleEvent(event, data)
 	}

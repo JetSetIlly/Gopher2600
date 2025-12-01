@@ -2047,11 +2047,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 		if protocol, ok := tokens.Get(); ok {
 			switch protocol {
-			case "ASCII":
-				f = keyportari.NewKeyportariASCII
-				create = true
 			case "24CHAR":
 				f = keyportari.NewKeyportari24char
+				create = true
+			case "ASCII":
+				f = keyportari.NewKeyportariASCII
 				create = true
 			case "NONE":
 				f = nil

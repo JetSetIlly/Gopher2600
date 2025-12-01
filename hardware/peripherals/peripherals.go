@@ -33,4 +33,5 @@ var AvailableLeftPlayer = []string{"Stick", "Paddle", "Keypad", "Gamepad"}
 // ports.Peripheral implementations in this package.
 var AvailableRightPlayer = []string{"Stick", "Paddle", "Keypad", "Gamepad", "SaveKey", "AtariVox"}
 
+// AvailableKeyportari is the list of protocols implemented for keyportari
 var AvailableKeyportari = []string{"None", "24char", "ASCII"}

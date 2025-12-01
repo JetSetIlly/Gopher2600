@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"time"
+	"unicode/utf8"
 
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -94,13 +95,23 @@ func (img *SdlImgui) Service() {
 
 		case *sdl.TextInputEvent:
 			if !img.suppressTextInput && (!img.modalActive() || !img.isCaptured()) {
-				imgui.CurrentIO().AddInputCharacters(string(ev.Text[:]))
+				txt := ev.GetText()
+				imgui.CurrentIO().AddInputCharacters(txt)
 
 				// text input events are perfect for indicating the
 				// addition of a phantom rune. backspaces are handled in
 				// the serviceKeyboard() function
 				img.phantomInput = phantomInputRune
-				img.phantomInputRune = rune(ev.Text[0])
+				img.phantomInputRune, _ = utf8.DecodeRuneInString(txt)
+
+				// forward to userinput.Event channel
+				select {
+				case img.dbg.UserInput() <- userinput.EventText{
+					Key: txt,
+				}:
+				default:
+					logger.Log(logger.Allow, "sdlimgui", "dropped text event")
+				}
 			}
 
 		case *sdl.KeyboardEvent:

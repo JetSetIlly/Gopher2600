@@ -254,6 +254,28 @@ func (c *Controllers) keyboard_keyportari(ev EventKeyboard) (bool, error) {
 	return l || r, nil
 }
 
+func (c *Controllers) text(ev EventText) (bool, error) {
+	event := ports.InputEvent{
+		Ev: ports.KeyportariText,
+		D: ports.EventDataKeyportari{
+			Key: ev.Key,
+		}}
+
+	event.Port = plugging.PortLeft
+	l, err := c.inputHandler.HandleInputEvent(event)
+	if err != nil {
+		return false, err
+	}
+
+	event.Port = plugging.PortRight
+	r, err := c.inputHandler.HandleInputEvent(event)
+	if err != nil {
+		return false, err
+	}
+
+	return l || r, nil
+}
+
 func (c *Controllers) keyboard(ev EventKeyboard) (bool, error) {
 	handled, err := c.keyboard_keyportari(ev)
 	if err != nil {
@@ -517,6 +539,8 @@ func (c *Controllers) HandleUserInput(ev Event) (bool, error) {
 	switch ev := ev.(type) {
 	case EventKeyboard:
 		return c.keyboard(ev)
+	case EventText:
+		return c.text(ev)
 	case EventMouseButton:
 		return c.mouseButton(ev)
 	case EventMouseMotion:

@@ -63,6 +63,7 @@ const (
 
 	// keyportari
 	KeyportariDown Event = "KeyportariDown" // EventDataKeyportari
+	KeyportariText Event = "KeyportariText" // EventDataKeyportari
 	KeyportariUp   Event = "KeyportariUp"   // EventDataKeyportari
 
 	// panel

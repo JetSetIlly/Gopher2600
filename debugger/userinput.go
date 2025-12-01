@@ -35,14 +35,17 @@ func (dbg *Debugger) userInputHandler_catchUpLoop() {
 }
 
 func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
-	// quit event
+	// quit event handling is simple
 	switch ev.(type) {
 	case userinput.EventQuit:
 		dbg.running = false
 		return terminal.UserQuit
 	}
 
-	// special handling of some user input (not passed to the VCS as controller input)
+	// if an event has been handled we return early and cut out later parts of the input handling
+	var handled bool
+
+	// handling of rewind events differs depending on which mode we're in
 	switch dbg.Mode() {
 	case govern.ModeDebugger:
 		switch ev := ev.(type) {
@@ -55,14 +58,14 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 				amount = int(ev.Delta) * 5
 			}
 			dbg.RewindByAmount(dbg.rewindMouseWheelAccumulation + amount)
-			return nil
+			handled = true
 		}
 
 	case govern.ModePlay:
 		switch ev := ev.(type) {
 		case userinput.EventMouseWheel:
 			dbg.RewindByAmount(int(ev.Delta))
-			return nil
+			handled = true
 
 		case userinput.EventKeyboard:
 			if ev.Down {
@@ -72,20 +75,20 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 						if dbg.rewindKeyboardAccumulation >= 0 {
 							dbg.rewindKeyboardAccumulation = -1
 						}
-						return nil
+						handled = true
 					}
 				case "Right":
 					if ev.Mod == userinput.KeyModShift {
 						if dbg.rewindKeyboardAccumulation <= 0 {
 							dbg.rewindKeyboardAccumulation = 1
 						}
-						return nil
+						handled = true
 					}
 				}
 			} else {
 				dbg.rewindKeyboardAccumulation = 0
 				if dbg.State() != govern.Running {
-					return nil
+					handled = true
 				}
 			}
 		case userinput.EventGamepadButton:
@@ -95,20 +98,25 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 					if dbg.rewindKeyboardAccumulation >= 0 {
 						dbg.rewindKeyboardAccumulation = -1
 					}
-					return nil
+					handled = true
 				case userinput.GamepadButtonBumperRight:
 					if dbg.rewindKeyboardAccumulation <= 0 {
 						dbg.rewindKeyboardAccumulation = 1
 					}
-					return nil
+					handled = true
 				}
 			} else {
 				dbg.rewindKeyboardAccumulation = 0
 				if dbg.State() != govern.Running {
-					return nil
+					handled = true
 				}
 			}
 		}
+	}
+
+	// early return if event has been handled
+	if handled {
+		return nil
 	}
 
 	// applies to both playmode and debugger
@@ -122,7 +130,7 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 				} else {
 					dbg.PushSetPause(false)
 				}
-				return nil
+				handled = true
 			case userinput.GamepadButtonGuide:
 				switch dbg.Mode() {
 				case govern.ModePlay:
@@ -130,8 +138,14 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 				case govern.ModeDebugger:
 					dbg.PushSetMode(govern.ModePlay)
 				}
+				handled = true
 			}
 		}
+	}
+
+	// early return if event has been handled
+	if handled {
+		return nil
 	}
 
 	// pass to VCS controller emulation via the userinput package
@@ -140,10 +154,8 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 		return err
 	}
 
-	// the user input was something that controls the emulation (eg. a joystick
-	// direction). unpause if the emulation is currently paused
-	//
-	// * we're only allowing this for playmode
+	// the user input was something that controls the emulation (eg. a joystick direction). unpause
+	// if the emulation is currently paused
 	if dbg.Mode() == govern.ModePlay && dbg.State() == govern.Paused && handled {
 		dbg.PushSetPause(false)
 	}

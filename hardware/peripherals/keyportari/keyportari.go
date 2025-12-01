@@ -16,6 +16,9 @@
 package keyportari
 
 import (
+	"unicode"
+	"unicode/utf8"
+
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/controllers"
@@ -33,6 +36,7 @@ type keyportari struct {
 
 func newKeyportari(env *environment.Environment, port plugging.PortID, bus ports.PeripheralBus) keyportari {
 	kp := keyportari{
+		env:  env,
 		port: port,
 		bus:  bus,
 	}
@@ -129,4 +133,24 @@ func (kp *keyportari) IsActive() bool {
 		return kp.keydown || kp.periph.IsActive()
 	}
 	return kp.keydown
+}
+
+func (kp *keyportari) isPrint(key string) (rune, bool) {
+	if len(key) != 1 {
+		return ' ', false
+	}
+	r, sz := utf8.DecodeRuneInString(key)
+	if sz > 1 {
+		return ' ', false
+	}
+	return r, unicode.IsPrint(r)
+}
+
+func (kp *keyportari) writeSWCHx(v uint8) {
+	switch kp.port {
+	case plugging.PortLeft:
+		kp.bus.WriteSWCHx(plugging.PortLeft, v&0xf0)
+	case plugging.PortRight:
+		kp.bus.WriteSWCHx(plugging.PortRight, v<<4)
+	}
 }

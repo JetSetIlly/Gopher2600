@@ -50,67 +50,70 @@ func (kp *Keyportari24char) HandleEvent(event ports.Event, data ports.EventData)
 
 		d := data.(ports.EventDataKeyportari)
 		switch d.Key {
-		case "Up":
+		case "up":
 			if kp.periph != nil {
 				return kp.periph.HandleEvent(ports.Up, ports.DataStickFalse)
 			}
-		case "Down":
+		case "down":
 			if kp.periph != nil {
 				return kp.periph.HandleEvent(ports.Down, ports.DataStickFalse)
 			}
-		case "Left":
+		case "left":
 			if kp.periph != nil {
 				return kp.periph.HandleEvent(ports.Left, ports.DataStickFalse)
 			}
-		case "Right":
+		case "right":
 			if kp.periph != nil {
 				return kp.periph.HandleEvent(ports.Right, ports.DataStickFalse)
 			}
 		}
 
-		kp.bus.WriteSWCHx(kp.port, 0xf0)
+		kp.writeSWCHx(0xff)
 		return true, nil
 
 	case ports.KeyportariDown:
 		kp.keydown = true
 
-		var v uint8
 		d := data.(ports.EventDataKeyportari)
 		switch d.Key {
-		case ",":
-			v = 0x00
-		case ".":
-			v = 0x01
-		case "Backspace", "Delete":
-			v = 0x02
-		case "Return":
-			v = 0x03
-		case "Up":
+		case "backspace", "delete":
+			kp.writeSWCHx(0x02)
+		case "return":
+			kp.writeSWCHx(0x03)
+		case "up":
 			if kp.periph != nil {
 				return kp.periph.HandleEvent(ports.Up, ports.DataStickTrue)
 			}
-			return true, nil
-		case "Down":
+		case "down":
 			if kp.periph != nil {
 				return kp.periph.HandleEvent(ports.Down, ports.DataStickTrue)
 			}
-			return true, nil
-		case "Left":
+		case "left":
 			if kp.periph != nil {
 				return kp.periph.HandleEvent(ports.Left, ports.DataStickTrue)
 			}
-			return true, nil
-		case "Right":
+		case "right":
 			if kp.periph != nil {
 				return kp.periph.HandleEvent(ports.Right, ports.DataStickTrue)
 			}
-			return true, nil
-		default:
-			// default is space
-			v = 0x04
+		}
 
-			if len(d.Key) == 1 {
-				c := d.Key[0]
+		return true, nil
+
+	case ports.KeyportariText:
+		d := data.(ports.EventDataKeyportari)
+		if r, ok := kp.isPrint(d.Key); ok {
+			var v uint8
+
+			switch r {
+			case ',':
+				v = 0x00
+			case '.':
+				v = 0x01
+			default:
+				// default is space
+				v = 0x04
+				c := (uint8(r))
 				if c > 64 && c < 91 {
 					// upper chase characters (A-Z)
 					v = (c - 63) * 4
@@ -122,16 +125,11 @@ func (kp *Keyportari24char) HandleEvent(event ports.Event, data ports.EventData)
 					v = (c + 6) * 4
 				}
 			}
-		}
 
-		switch kp.port {
-		case plugging.PortLeft:
-			kp.bus.WriteSWCHx(plugging.PortLeft, v&0xf0)
-		case plugging.PortRight:
-			kp.bus.WriteSWCHx(plugging.PortRight, v<<4)
+			kp.writeSWCHx(v)
 		}
-
 		return true, nil
+
 	default:
 		kp.keyportari.HandleEvent(event, data)
 	}
