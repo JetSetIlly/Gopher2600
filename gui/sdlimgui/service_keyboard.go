@@ -47,7 +47,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 	alt := ev.Keysym.Mod&sdl.KMOD_LALT == sdl.KMOD_LALT || ev.Keysym.Mod&sdl.KMOD_RALT == sdl.KMOD_RALT
 	shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
 
-	// enable window searching based on keyboard modifiers. this means that ctrl and shit cannot be
+	// enable window searching based on keyboard modifiers. this means that ctrl and shift cannot be
 	// used as a key combo for anything else
 	img.wm.searchActive = ctrl && shift
 
