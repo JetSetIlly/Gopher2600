@@ -214,12 +214,6 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 	if img.isCaptured() || (img.isPlaymode() && !imgui.IsAnyItemActive()) {
 		key := sdl.GetScancodeName(ev.Keysym.Scancode)
 
-		// lower case unless shift is pressed. note that sdl.GetScancodeName() returns uppercase for key name
-		mod := getKeyMod()
-		if mod != userinput.KeyModShift {
-			key = strings.ToLower(key)
-		}
-
 		select {
 		case img.dbg.UserInput() <- userinput.EventKeyboard{
 			Key:  key,

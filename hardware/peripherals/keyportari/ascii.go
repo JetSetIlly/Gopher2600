@@ -51,15 +51,15 @@ func (kp *KeyportariASCII) HandleEvent(event ports.Event, data ports.EventData) 
 		return true, nil
 
 	case ports.KeyportariDown:
+		d := data.(ports.EventDataKeyportari)
 		kp.keydown = true
 		var v uint8
-		d := data.(ports.EventDataKeyportari)
 		switch d.Key {
-		case "return":
+		case "Return":
 			v = 0x0a
-		case "backspace":
+		case "Backspace":
 			v = 0x7f
-		case "space":
+		case "Space":
 			v = 0x20
 		default:
 			return true, nil

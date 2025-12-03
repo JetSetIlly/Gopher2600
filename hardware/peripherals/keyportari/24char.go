@@ -44,25 +44,26 @@ func (kp *Keyportari24char) Protocol() string {
 }
 
 func (kp *Keyportari24char) HandleEvent(event ports.Event, data ports.EventData) (bool, error) {
+
 	switch event {
 	case ports.KeyportariUp:
 		kp.keydown = false
 
 		d := data.(ports.EventDataKeyportari)
 		switch d.Key {
-		case "up":
+		case "Up":
 			if kp.periph != nil {
 				return kp.periph.HandleEvent(ports.Up, ports.DataStickFalse)
 			}
-		case "down":
+		case "Down":
 			if kp.periph != nil {
 				return kp.periph.HandleEvent(ports.Down, ports.DataStickFalse)
 			}
-		case "left":
+		case "Left":
 			if kp.periph != nil {
 				return kp.periph.HandleEvent(ports.Left, ports.DataStickFalse)
 			}
-		case "right":
+		case "Right":
 			if kp.periph != nil {
 				return kp.periph.HandleEvent(ports.Right, ports.DataStickFalse)
 			}
@@ -76,23 +77,23 @@ func (kp *Keyportari24char) HandleEvent(event ports.Event, data ports.EventData)
 
 		d := data.(ports.EventDataKeyportari)
 		switch d.Key {
-		case "backspace", "delete":
+		case "Backspace", "Delete":
 			kp.writeSWCHx(0x02)
-		case "return":
+		case "Return":
 			kp.writeSWCHx(0x03)
-		case "up":
+		case "Up":
 			if kp.periph != nil {
 				return kp.periph.HandleEvent(ports.Up, ports.DataStickTrue)
 			}
-		case "down":
+		case "Down":
 			if kp.periph != nil {
 				return kp.periph.HandleEvent(ports.Down, ports.DataStickTrue)
 			}
-		case "left":
+		case "Left":
 			if kp.periph != nil {
 				return kp.periph.HandleEvent(ports.Left, ports.DataStickTrue)
 			}
-		case "right":
+		case "Right":
 			if kp.periph != nil {
 				return kp.periph.HandleEvent(ports.Right, ports.DataStickTrue)
 			}
