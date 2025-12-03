@@ -1,5 +1,15 @@
 
-version = v0.53.0-preview
+version = v0.53.0
+final = false
+
+ifeq ($(final),false)
+  tag = nightly
+  ifeq ($(shell git tag --points-at HEAD | grep -Fx $(tag)),$(tag))
+    version := $(version)-nightly
+  else
+    version := $(version)-preview
+  endif
+endif
 
 goBinary = go
 gcflags = -c 3 -B -wb=false -l -l -l -l
