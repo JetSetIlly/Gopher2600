@@ -1,6 +1,6 @@
 
 version = v0.53.0
-final = false
+final = true
 
 ifeq ($(final),false)
   tag = nightly
