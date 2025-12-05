@@ -33,7 +33,7 @@ armcode.map
 *.jpg
 !gui/display/bevels/*.jpg
 *.bin
-*.macro
+*.macro*
 go.work
 go.work.sum
 REDUX_PLAYBACK_FILES
