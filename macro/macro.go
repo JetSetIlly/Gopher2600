@@ -60,8 +60,9 @@ type Macro struct {
 	filename     string
 	instructions []string
 
-	quit     chan bool
-	frameNum chan int
+	quit      chan bool
+	frameNum  chan int
+	lastFrame int
 }
 
 const headerID = "gopher2600macro"
@@ -172,16 +173,25 @@ func (mcr *Macro) run() {
 	// quit instructs the main script loop to end
 	var quit bool
 
-	// wait for the specificed number of frames and run the onEnd() function
-	// (can be nil)
-	wait := func(w int, onEnd func()) {
-		target := w + <-mcr.frameNum
+	// whether wait frames should be relative or absolute
+	var wait func(w int, onEnd func()) bool
+	var waitAbsoluteBase int
+
+	waitAbsolute := func(w int, onEnd func()) bool {
+		w += waitAbsoluteBase
+		if w < mcr.lastFrame {
+			return false
+		}
+		if w == mcr.lastFrame {
+			return true
+		}
 
 		var done bool
 		for !done {
 			select {
 			case fn := <-mcr.frameNum:
-				if fn >= target {
+				mcr.lastFrame = fn
+				if fn >= w {
 					if onEnd != nil {
 						onEnd()
 					}
@@ -192,7 +202,48 @@ func (mcr *Macro) run() {
 				quit = true
 			}
 		}
+
+		return true
 	}
+
+	waitRelative := func(w int, onEnd func()) bool {
+		if w < 0 {
+			return false
+		}
+		if w == 0 {
+			return true
+		}
+
+		w += mcr.lastFrame
+
+		var done bool
+		for !done {
+			select {
+			case fn := <-mcr.frameNum:
+				mcr.lastFrame = fn
+				if fn >= w {
+					if onEnd != nil {
+						onEnd()
+					}
+					done = true
+				}
+			case <-mcr.quit:
+				done = true
+				quit = true
+			}
+		}
+
+		return true
+	}
+
+	// wait is relative by default
+	wait = waitRelative
+
+	// number of frames to hold joystick before resuming
+	var stickHold int
+	var panelHold int
+	stickHold = 2
+	panelHold = 2
 
 	var loops []loop
 	variables := make(map[string]any)
@@ -206,29 +257,29 @@ func (mcr *Macro) run() {
 		n = n[1:]
 		v, ok := variables[n]
 		if !ok {
-			return 0, true, fmt.Errorf("cannot use variable '%s' in POKE because it does not exist", n)
+			return 0, true, fmt.Errorf("variable '%s' does not exist", n)
 		}
 		return v.(int), true, nil
 	}
 
+instructionLoop:
 	for ln := 0; ln < len(mcr.instructions) && !quit; ln++ {
 		logf := func(msg string, args ...any) {
-			logger.Logf(logger.Allow, "macro", "%s: %d: %s", mcr.filename, ln+headerNumLines, fmt.Sprintf(msg, args...))
+			logger.Logf(logger.Allow, "macro", "%s: %d: %s", mcr.filename, ln+headerNumLines+1, fmt.Sprintf(msg, args...))
 		}
 
 		// convert argument to number
-		number := func(s string) int {
+		number := func(s string) (int, bool) {
 			n, err := strconv.Atoi(s)
 			if err != nil {
-				logf(err.Error())
-				quit = true
+				return 0, false
 			}
-			return n
+			return n, true
 		}
 
 		select {
 		case <-mcr.quit:
-			break // for loop
+			break instructionLoop
 		default:
 		}
 
@@ -250,6 +301,9 @@ func (mcr *Macro) run() {
 			logf("unrecognised command: %s", cmd)
 			return
 
+		case "END":
+			break instructionLoop
+
 		case "DO":
 			ct := len(args)
 			switch ct {
@@ -259,11 +313,16 @@ func (mcr *Macro) run() {
 			case 2:
 				fallthrough
 			case 1:
+				ct, ok := number(args[0])
+				if !ok {
+					logf("%s counter is not a number: %s", cmd, args[0])
+					return
+				}
 				lp := loop{
 					line:     ln,
-					countEnd: number(args[0]),
+					countEnd: ct,
 				}
-				if ct == 2 {
+				if len(args) == 2 {
 					lp.countName = args[1]
 					variables[lp.countName] = lp.count
 				}
@@ -282,7 +341,7 @@ func (mcr *Macro) run() {
 			// check for a quit signal but don't wait for it
 			select {
 			case <-mcr.quit:
-				return
+				break instructionLoop
 			default:
 			}
 
@@ -310,15 +369,30 @@ func (mcr *Macro) run() {
 			}
 
 		case "WAIT":
-			// default to 60 frames
-			w := 60
-
 			switch len(args) {
 			case 1:
-				w = number(args[0])
-				fallthrough
+				n, ok := number(args[0])
+				if !ok {
+					switch args[0] {
+					case "RELATIVE":
+						wait = waitRelative
+					case "ABSOLUTE":
+						wait = waitAbsolute
+					case "RESET":
+						waitAbsoluteBase = mcr.lastFrame
+					default:
+						logf("%s argument is not a number: %s", cmd, args[0])
+						return
+					}
+				} else {
+					if !wait(n, nil) {
+						logf("%s argument is invalid", cmd, args[0])
+						return
+					}
+				}
 			case 0:
-				wait(w, nil)
+				// default to 60 frames
+				waitRelative(60, nil)
 
 			default:
 				logf("too many arguments for %s", cmd)
@@ -330,7 +404,7 @@ func (mcr *Macro) run() {
 			for _, c := range args {
 				v, ok, err := lookupVariable(c)
 				if err != nil {
-					logf(err.Error())
+					logf("%s: %s", cmd, err.Error())
 					return
 				}
 				if ok {
@@ -346,7 +420,7 @@ func (mcr *Macro) run() {
 			filenameSuffix := strings.Join(strings.Fields(s.String()), "_")
 
 			mcr.gui.SetFeature(gui.ReqScreenshot, filenameSuffix)
-			wait(10, nil)
+			waitRelative(10, nil)
 
 		case "QUIT":
 			if len(args) > 0 {
@@ -355,15 +429,47 @@ func (mcr *Macro) run() {
 			}
 			mcr.emulation.UserInput() <- userinput.EventQuit{}
 
+		case "HOLD":
+			// sets the number of frames a stick or panel command is held for
+			switch len(args) {
+			case 2:
+				switch args[0] {
+				case "STICK":
+					var ok bool
+					stickHold, ok = number(args[1])
+					if !ok {
+						logf("%s %s value is not a number: %s", cmd, args[0], args[1])
+						return
+					}
+				case "PANEL":
+					var ok bool
+					panelHold, ok = number(args[1])
+					if !ok {
+						logf("%s %s value is not a number: %s", cmd, args[0], args[1])
+						return
+					}
+				default:
+					logf("unrecognised option for %s: %s", cmd, args[1])
+				}
+			default:
+				logf("wrong number of arguments for %s", cmd)
+				return
+			}
+
 		case "FIRE":
 			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Fire, D: true})
 			switch len(args) {
 			case 1:
-				wait(number(args[0]), func() {
+				ct, ok := number(args[0])
+				if !ok {
+					logf("%s counter is not a number: %s", cmd, args[0])
+					return
+				}
+				waitRelative(ct, func() {
 					mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Fire, D: false})
 				})
 			case 0:
-				wait(2, nil)
+				waitRelative(stickHold, nil)
 			default:
 				logf("too many arguments for %s", cmd)
 			}
@@ -373,7 +479,7 @@ func (mcr *Macro) run() {
 				return
 			}
 			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Fire, D: false})
-			wait(2, nil)
+			waitRelative(stickHold, nil)
 
 		case "LEFT":
 			if len(args) > 0 {
@@ -381,56 +487,56 @@ func (mcr *Macro) run() {
 				return
 			}
 			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Left, D: ports.DataStickTrue})
-			wait(2, nil)
+			waitRelative(stickHold, nil)
 		case "RIGHT":
 			if len(args) > 0 {
 				logf("too many arguments for %s", cmd)
 				return
 			}
 			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Right, D: ports.DataStickTrue})
-			wait(2, nil)
+			waitRelative(stickHold, nil)
 		case "UP":
 			if len(args) > 0 {
 				logf("too many arguments for %s", cmd)
 				return
 			}
 			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Up, D: ports.DataStickTrue})
-			wait(2, nil)
+			waitRelative(stickHold, nil)
 		case "DOWN":
 			if len(args) > 0 {
 				logf("too many arguments for %s", cmd)
 				return
 			}
 			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Down, D: ports.DataStickTrue})
-			wait(2, nil)
+			waitRelative(stickHold, nil)
 		case "LEFTUP":
 			if len(args) > 0 {
 				logf("too many arguments for %s", cmd)
 				return
 			}
 			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.LeftUp, D: ports.DataStickTrue})
-			wait(2, nil)
+			waitRelative(stickHold, nil)
 		case "LEFTDOWN":
 			if len(args) > 0 {
 				logf("too many arguments for %s", cmd)
 				return
 			}
 			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.LeftDown, D: ports.DataStickTrue})
-			wait(2, nil)
+			waitRelative(stickHold, nil)
 		case "RIGHTUP":
 			if len(args) > 0 {
 				logf("too many arguments for %s", cmd)
 				return
 			}
 			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.RightUp, D: ports.DataStickTrue})
-			wait(2, nil)
+			waitRelative(stickHold, nil)
 		case "RIGHTDOWN":
 			if len(args) > 0 {
 				logf("too many arguments for %s", cmd)
 				return
 			}
 			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.RightDown, D: ports.DataStickTrue})
-			wait(2, nil)
+			waitRelative(stickHold, nil)
 
 		case "CENTER":
 			fallthrough
@@ -440,7 +546,7 @@ func (mcr *Macro) run() {
 				return
 			}
 			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortLeft, Ev: ports.Centre})
-			wait(2, nil)
+			waitRelative(stickHold, nil)
 
 		case "SELECT":
 			if len(args) > 0 {
@@ -448,7 +554,7 @@ func (mcr *Macro) run() {
 				return
 			}
 			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSelect, D: true})
-			wait(2, func() {
+			waitRelative(panelHold, func() {
 				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSelect, D: false})
 			})
 
@@ -458,7 +564,7 @@ func (mcr *Macro) run() {
 				return
 			}
 			mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelReset, D: true})
-			wait(2, func() {
+			waitRelative(panelHold, func() {
 				mcr.input.PushEvent(ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelReset, D: false})
 			})
 
@@ -479,7 +585,7 @@ func (mcr *Macro) run() {
 
 			v, ok, err := lookupVariable(args[1])
 			if err != nil {
-				logf(err.Error())
+				logf("%s: %s", cmd, err.Error())
 				return
 			}
 			if ok {
@@ -516,9 +622,14 @@ func (mcr *Macro) Quit() {
 }
 
 // Reset restarts the macro
-func (mcr *Macro) Reset() {
+func (mcr *Macro) Reset() error {
 	mcr.Quit()
+	err := mcr.readFile()
+	if err != nil {
+		return fmt.Errorf("macro: %w", err)
+	}
 	mcr.Run()
+	return nil
 }
 
 // NewFrame implements the television.FrameTrigger interface

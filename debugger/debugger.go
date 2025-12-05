@@ -1469,12 +1469,20 @@ func (dbg *Debugger) reloadCartridge() error {
 		return nil
 	}
 
-	// reset macro to beginning
-	if dbg.macro != nil {
-		dbg.macro.Reset()
+	err := dbg.insertCartridge(dbg.cartload.Filename)
+	if err != nil {
+		return err
 	}
 
-	return dbg.insertCartridge(dbg.cartload.Filename)
+	// reset macro to beginning
+	if dbg.macro != nil {
+		err := dbg.macro.Reset()
+		if err != nil {
+			logger.Logf(logger.Allow, "debugger", "cannot reload macro: %s", err.Error())
+		}
+	}
+
+	return nil
 }
 
 func (dbg *Debugger) insertCartridge(filename string) error {
