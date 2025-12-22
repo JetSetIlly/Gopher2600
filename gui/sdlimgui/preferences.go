@@ -55,6 +55,12 @@ type preferences struct {
 	disasmGroupScanlines  prefs.Bool
 	pxeColourIndicators   prefs.Bool
 
+	// arm profiler preferences
+	armProfilerHideUnexecuted prefs.Bool
+	armProfilerPercentile     prefs.Bool
+	armProfilerCumulative     prefs.Bool
+	armProfilerCyclesPerCall  prefs.Bool
+
 	// playmode preferences
 	audioMutePlaymode    prefs.Bool
 	fpsDetail            prefs.Bool
@@ -137,6 +143,23 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("sdlimgui.debugger.pxe.colorIndicators", &p.pxeColourIndicators)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.dsk.Add("sdlimgui.debugger.armProfiler.hideUnexecuted", &p.armProfilerHideUnexecuted)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.debugger.armProfiler.percentile", &p.armProfilerPercentile)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.debugger.armProfiler.cumulative", &p.armProfilerCumulative)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.debugger.armProfiler.cyclesPerCall", &p.armProfilerCyclesPerCall)
 	if err != nil {
 		return nil, err
 	}
@@ -295,6 +318,22 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.saveOnExitDsk.Add("sdlimgui.debugger.armProfiler.hideUnexecuted", &p.armProfilerHideUnexecuted)
+	if err != nil {
+		return nil, err
+	}
+	err = p.saveOnExitDsk.Add("sdlimgui.debugger.armProfiler.percentile", &p.armProfilerPercentile)
+	if err != nil {
+		return nil, err
+	}
+	err = p.saveOnExitDsk.Add("sdlimgui.debugger.armProfiler.cumulative", &p.armProfilerCumulative)
+	if err != nil {
+		return nil, err
+	}
+	err = p.saveOnExitDsk.Add("sdlimgui.debugger.armProfiler.cyclesPerCall", &p.armProfilerCyclesPerCall)
+	if err != nil {
+		return nil, err
+	}
 	err = p.saveOnExitDsk.Add("sdlimgui.playmode.fpsDetail", &p.fpsDetail)
 	if err != nil {
 		return nil, err
@@ -321,6 +360,10 @@ func (p *preferences) setDefaults() {
 	p.disasmSequential.Set(false)
 	p.disasmGroupScanlines.Set(false)
 	p.pxeColourIndicators.Set(false)
+	p.armProfilerHideUnexecuted.Set(false)
+	p.armProfilerPercentile.Set(true)
+	p.armProfilerCumulative.Set(false)
+	p.armProfilerCyclesPerCall.Set(false)
 	p.fpsDetail.Set(false)
 	p.activePause.Set(false)
 	p.paddleOnMouseCapture.Set(true)
