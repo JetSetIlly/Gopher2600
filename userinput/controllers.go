@@ -16,6 +16,8 @@
 package userinput
 
 import (
+	"math"
+
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
@@ -71,7 +73,7 @@ func (c *Controllers) handleEvents(id plugging.PortID, ev ports.Event, d ports.E
 func (c *Controllers) mouseMotion(ev EventMouseMotion) (bool, error) {
 	// mix y-axis with x-axis. in this scenario the absolute value of the y-axis
 	// is given the same sign as the x-axis
-	motion := ev.X
+	delta := ev.X
 
 	// absolute value of y
 	y := ev.Y
@@ -81,14 +83,21 @@ func (c *Controllers) mouseMotion(ev EventMouseMotion) (bool, error) {
 
 	// add/subtract y-value to x-axis (according to sign of x-axis)
 	if ev.X < 0 {
-		motion -= y
+		delta -= y
 	} else if ev.X > 0 {
-		motion += y
+		delta += y
 	}
+
+	const exp = 0.6
+	negativeAcceleration := func(dx float64) float64 {
+		return math.Copysign(math.Pow(math.Abs(dx), exp), dx)
+	}
+
+	delta = int16(negativeAcceleration(float64(ev.X)))
 
 	return c.handleEvents(c.handlePortSwap(plugging.PortLeft), ports.PaddleSet, ports.EventDataPaddle{
 		Paddle:   -1,
-		Motion:   motion,
+		Motion:   delta,
 		Relative: true,
 	})
 }
