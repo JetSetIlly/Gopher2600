@@ -116,6 +116,7 @@ func (win *winPrefs) drawCurve() {
 	}
 
 	if imgui.SliderFloatV("##curveamount", &f, 1.0, -0.5, label, 1.0) {
+		win.img.crt.curve.Set(true)
 		win.img.crt.curveAmount.Set(f)
 	}
 }
@@ -128,6 +129,7 @@ func (win *winPrefs) drawEnvironment() {
 
 	f := float32(win.img.crt.ambientTintStrength.Get().(float64))
 	if imgui.SliderFloatV("##blueambientlightstrength", &f, 0.05, 0.6, "%0.2f", 1.0) {
+		win.img.crt.ambientTint.Set(true)
 		win.img.crt.ambientTintStrength.Set(f)
 	}
 }
@@ -153,6 +155,7 @@ func (win *winPrefs) drawMask() {
 	}
 
 	if imgui.SliderFloatV("##maskintensity", &f, 0.025, 0.125, label, 1.0) {
+		win.img.crt.mask.Set(true)
 		win.img.crt.maskIntensity.Set(f)
 	}
 }
@@ -178,6 +181,7 @@ func (win *winPrefs) drawScanlines() {
 	}
 
 	if imgui.SliderFloatV("##scanlinesintensity", &f, 0.025, 0.125, label, 1.0) {
+		win.img.crt.scanlines.Set(true)
 		win.img.crt.scanlinesIntensity.Set(f)
 	}
 }
@@ -203,6 +207,7 @@ func (win *winPrefs) drawInterference() {
 	}
 
 	if imgui.SliderFloatV("##rfnoiselevel", &f, 0.05, 0.2, label, 1.0) {
+		win.img.crt.rfInterference.Set(true)
 		win.img.crt.rfNoiseLevel.Set(f)
 	}
 
@@ -219,6 +224,7 @@ func (win *winPrefs) drawInterference() {
 	}
 
 	if imgui.SliderFloatV("##rfghostinglevel", &f, 0.05, 0.2, label, 1.0) {
+		win.img.crt.rfInterference.Set(true)
 		win.img.crt.rfGhostingLevel.Set(f)
 	}
 }
@@ -266,6 +272,7 @@ func (win *winPrefs) drawPhosphor() {
 	}
 
 	if imgui.SliderFloatV("##phosphorlatency", &f, 0.8, 0.0, label, 1.0) {
+		win.img.crt.phosphor.Set(true)
 		win.img.crt.phosphorLatency.Set(f)
 	}
 
@@ -283,6 +290,7 @@ func (win *winPrefs) drawPhosphor() {
 	}
 
 	if imgui.SliderFloatV("##phosphorbloom", &g, 0.20, 2.20, label, 1.0) {
+		win.img.crt.phosphor.Set(true)
 		win.img.crt.phosphorBloom.Set(g)
 	}
 }
@@ -325,6 +333,7 @@ func (win *winPrefs) drawBlackLevel() {
 	}
 
 	if imgui.SliderFloatV("##blacklevel", &f, 0.00, 0.20, label, 1.0) {
+		win.img.crt.phosphor.Set(true)
 		win.img.crt.blackLevel.Set(f)
 	}
 }
@@ -350,6 +359,7 @@ func (win *winPrefs) drawRoundedCorners() {
 	}
 
 	if imgui.SliderFloatV("##roundedcornersamount", &f, 0.02, 0.09, label, 1.0) {
+		win.img.crt.roundedCorners.Set(true)
 		win.img.crt.roundedCornersAmount.Set(f)
 	}
 }
