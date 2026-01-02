@@ -134,7 +134,7 @@ func (win *win6507Pinout) draw() {
 
 		// left pins
 		pinX := chipPos.X - pinSize
-		for i := 0; i < 14; i++ {
+		for i := range 14 {
 			col := win.pinOff
 			label := ""
 			switch i {
@@ -181,7 +181,7 @@ func (win *win6507Pinout) draw() {
 		}
 
 		pinX = chipPos.X + chipDim.X
-		for i := 0; i < 14; i++ {
+		for i := range 14 {
 			col := win.pinOff
 			label := ""
 			switch i {
@@ -284,11 +284,11 @@ func (win *win6507Pinout) draw() {
 					s2 := strings.Builder{}
 					for i := 7; i >= 0; i-- {
 						if (win.img.cache.VCS.Mem.DataBusDriven>>i)&0x01 == 0x01 {
-							s1.WriteString(fmt.Sprintf("%d", (win.img.cache.VCS.Mem.DataBus>>i)&0x01))
+							fmt.Fprintf(&s1, "%d", (win.img.cache.VCS.Mem.DataBus>>i)&0x01)
 							s2.WriteRune(' ')
 						} else {
 							s1.WriteRune(' ')
-							s2.WriteString(fmt.Sprintf("%d", (win.img.cache.VCS.Mem.DataBus>>i)&0x01))
+							fmt.Fprintf(&s2, "%d", (win.img.cache.VCS.Mem.DataBus>>i)&0x01)
 						}
 					}
 					imgui.PushStyleColor(imgui.StyleColorText, win.dataBus)

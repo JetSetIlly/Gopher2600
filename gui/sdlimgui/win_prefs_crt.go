@@ -45,9 +45,9 @@ func (win *winPrefs) drawCRT() {
 			imgui.Spacing()
 			drawDisabled(!usingBevel, win.drawEnvironment)
 			imgui.Spacing()
-			drawDisabled(!usingBevel, win.drawCurve)
+			drawDisabled(usingBevel, win.drawCurve)
 			imgui.Spacing()
-			drawDisabled(!usingBevel, win.drawRoundedCorners)
+			drawDisabled(usingBevel, win.drawRoundedCorners)
 
 			imgui.PopItemWidth()
 			imgui.Spacing()
