@@ -173,7 +173,7 @@ void main() {
 	Crt_Color.a = 1.0;
 
 	// black correction
-	Crt_Color.rgb = clamp(Crt_Color.rgb, vec3(BlackLevel*3.00), Crt_Color.rgb);
+	Crt_Color.rgb = clamp(Crt_Color.rgb, vec3(BlackLevel*3.00), vec3(1.0));
 
 	// the following effects are applied to the YIQ signal
 	vec3 yiq = RGBtoYIQ(Crt_Color.rgb);
