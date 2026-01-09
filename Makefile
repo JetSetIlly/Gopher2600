@@ -1,5 +1,5 @@
 
-version = v0.54.0
+version = v0.54.0-nightly
 final = false
 
 ifeq ($(final),false)
