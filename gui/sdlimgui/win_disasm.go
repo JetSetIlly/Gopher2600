@@ -295,7 +295,12 @@ func (win *winDisasm) drawBankSelection(currBank mapper.BankInfo) {
 		for n := 0; n < win.img.cache.VCS.Mem.Cart.NumBanks(); n++ {
 			if imgui.Selectable(fmt.Sprintf("View bank %d", n)) {
 				win.filter = filterBank
-				win.selectedBank = n
+
+				// if a new bank has been selected then update scroll
+				if n != win.selectedBank {
+					win.scroll.active = numScrollFrames
+					win.selectedBank = n
+				}
 			}
 
 			// set scroll on the first frame that the combo is open
@@ -340,7 +345,7 @@ func (win *winDisasm) drawBank(addr uint16, currBank mapper.BankInfo) {
 		// because we're running concurrently with the emulation there may be instances
 		// current bank number is out of date when compared to the disassembly. this can
 		// happen when loading a new ROM with fewer banks than the previous ROM
-		if currBank.Number >= len(dsm.Entries) {
+		if win.selectedBank >= len(dsm.Entries) {
 			return
 		}
 
@@ -348,7 +353,7 @@ func (win *winDisasm) drawBank(addr uint16, currBank mapper.BankInfo) {
 
 		// pre-filter blessed entries
 		var entries []*disassembly.Entry
-		for _, e := range dsm.Entries[currBank.Number] {
+		for _, e := range dsm.Entries[win.selectedBank] {
 			if e == nil {
 				continue
 			}
@@ -486,7 +491,7 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 		// does this entry/address have a PC break applied to it
 		var hasPCbreak bool
 		if win.img.cache.Dbg.Breakpoints != nil {
-			hasPCbreak, _ = win.img.cache.Dbg.Breakpoints.HasPCBreak(entries[i].Result.Address, currBank.Number)
+			hasPCbreak, _ = win.img.cache.Dbg.Breakpoints.HasPCBreak(entries[i].Result.Address, win.selectedBank)
 		}
 
 		// group entries by scanline
@@ -503,12 +508,13 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 
 		imgui.TableNextRow()
 		if imgui.TableNextColumn() {
+			selected := i == current && currBank.Number == win.selectedBank
 			if hasPCbreak {
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
-				imgui.SelectableV(string(fonts.Breakpoint), i == current, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
+				imgui.SelectableV(string(fonts.Breakpoint), selected, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
 				imgui.PopStyleColor()
 			} else {
-				imgui.SelectableV("", i == current, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
+				imgui.SelectableV("", selected, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
 			}
 
 			// single click on the address entry toggles a PC breakpoint
