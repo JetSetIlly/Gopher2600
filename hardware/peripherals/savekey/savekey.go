@@ -40,7 +40,7 @@ const (
 	SaveKeyData
 )
 
-// DataDirection indicates the direction of data flow between the VCS and the SaveKey.
+// DataDirection indicates the direction of data flow between the console and the SaveKey.
 type DataDirection int
 
 // Valid DataDirection values.
@@ -71,13 +71,12 @@ type SaveKey struct {
 
 	// incoming data is interpreted depending on the state of the i2c protocol.
 	// we also need to know the direction of data flow at any given time and
-	// whether the next bit should be acknowledged (the Ack bool)
+	// whether the next bit should be acknowledged
 	State SaveKeyState
 	Dir   DataDirection
 	Ack   bool
 
-	// Data is sent by the VCS one bit at a time. see pushBits(), popBits() and
-	// resetBits() for
+	// data is sent by the console one bit at a time. see recvBit(), sendBit() and resetBits()
 	Bits   uint8
 	BitsCt int
 
@@ -268,7 +267,7 @@ func (sk *SaveKey) Step() {
 		return
 	}
 
-	// if the VCS is waiting for an ACK then handle that now
+	// if the console is waiting for an ACK then handle that now
 	if sk.Ack {
 		if sk.Dir == Reading && sk.SDA.Falling() {
 			sk.bus.WriteSWCHx(sk.port, maskSaveKeySDA)
@@ -304,7 +303,8 @@ func (sk *SaveKey) Step() {
 				sk.Dir = Writing
 				sk.Ack = true
 			default:
-				logger.Log(sk.env, "savekey", "unrecognised message")
+				logger.Logf(sk.env, "savekey", "unrecognised message: %08b", sk.Bits)
+				logger.Log(sk.env, "savekey", "stopped message")
 				sk.State = SaveKeyStopped
 			}
 		}
