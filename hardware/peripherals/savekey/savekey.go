@@ -128,6 +128,7 @@ func (sk *SaveKey) Snapshot() ports.Peripheral {
 // Plumb implements the ports.Peripheral interface.
 func (sk *SaveKey) Plumb(bus ports.PeripheralBus) {
 	sk.bus = bus
+	sk.EEPROM.plumb()
 }
 
 func (sk *SaveKey) String() string {

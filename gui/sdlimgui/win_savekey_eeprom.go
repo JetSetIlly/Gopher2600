@@ -16,6 +16,8 @@
 package sdlimgui
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
 	"github.com/jetsetilly/imgui-go/v5"
@@ -34,6 +36,9 @@ type winSaveKeyEEPROM struct {
 
 	// savekey instance
 	savekey *savekey.SaveKey
+
+	// scroll to scratchpad
+	scrollScratch bool
 }
 
 func newWinSaveKeyEEPROM(img *SdlImgui) (window, error) {
@@ -76,15 +81,39 @@ func (win *winSaveKeyEEPROM) debuggerDraw() bool {
 func (win *winSaveKeyEEPROM) draw() {
 	imgui.BeginChildV("eepromData", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)
 
-	win.img.drawByteGridSimple("eepromByteGrid", win.savekey.EEPROM.Data, win.savekey.EEPROM.DiskData, win.img.cols.ValueDiff, 0x00, func(idx int, data uint8) {
-		win.img.dbg.PushFunction(func() {
-			if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
-				sk.EEPROM.Poke(uint16(idx), data)
-			} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
-				vox.SaveKey.EEPROM.Poke(uint16(idx), data)
-			}
-		})
-	})
+	for p := range savekey.EEPROMnumPages {
+		origin := p * savekey.EEPROMpageSize
+		memtop := origin + savekey.EEPROMpageSize - 1
+
+		header := fmt.Sprintf("Page %03d (%04x - %04x)", p, origin, memtop)
+		scratch := origin >= 0x3000 && origin < 0x4000
+		if scratch {
+			header = fmt.Sprintf("%s Scratchpad %d", header, ((origin-0x3000)/savekey.EEPROMpageSize)+1)
+		}
+
+		drawByteGrid := imgui.CollapsingHeader(header)
+
+		if scratch && win.scrollScratch {
+			win.scrollScratch = false
+			imgui.SetScrollHereY(0)
+		}
+
+		if drawByteGrid {
+			d := win.savekey.EEPROM.Data[origin:memtop]
+			dd := win.savekey.EEPROM.DiskData[origin:memtop]
+			win.img.drawByteGridSimple(fmt.Sprintf("eepromPage%d", p), d, dd, win.img.cols.ValueDiff, uint32(origin),
+				func(idx int, data uint8) {
+					win.img.dbg.PushFunction(func() {
+						if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+							sk.EEPROM.Poke(uint16(origin+idx), data)
+						} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+							vox.SaveKey.EEPROM.Poke(uint16(origin+idx), data)
+						}
+					})
+				},
+			)
+		}
+	}
 
 	imgui.EndChild()
 
@@ -92,14 +121,33 @@ func (win *winSaveKeyEEPROM) draw() {
 		imgui.Spacing()
 		imgui.Spacing()
 
-		if imgui.Button("Save to disk") {
-			win.img.dbg.PushFunction(func() {
-				if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
-					sk.EEPROM.Write()
-				} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
-					vox.SaveKey.EEPROM.Write()
-				}
-			})
+		if imgui.Button("Jump to Scratchpad") {
+			win.scrollScratch = true
 		}
+
+		if !win.savekey.EEPROM.IsSaved() {
+			imgui.SameLineV(0, 20)
+			if imgui.Button("Save to disk") {
+				win.img.dbg.PushFunction(func() {
+					if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+						sk.EEPROM.Write()
+					} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+						vox.SaveKey.EEPROM.Write()
+					}
+				})
+			}
+
+			imgui.SameLineV(0, 5)
+			if imgui.Button("Reload") {
+				win.img.dbg.PushFunction(func() {
+					if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+						sk.EEPROM.Read()
+					} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+						vox.SaveKey.EEPROM.Read()
+					}
+				})
+			}
+		}
+
 	})
 }

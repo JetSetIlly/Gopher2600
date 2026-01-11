@@ -17,6 +17,7 @@ package savekey
 
 import (
 	"os"
+	"slices"
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -25,7 +26,11 @@ import (
 
 const saveKeyPath = "savekey"
 
-const eepromSize = 65536
+const (
+	EEPROMsize     = 0x8000
+	EEPROMpageSize = 0x40
+	EEPROMnumPages = EEPROMsize / EEPROMpageSize
+)
 
 // EEPROM represents the non-volatile memory in the SaveKey peripheral.
 type EEPROM struct {
@@ -40,15 +45,19 @@ type EEPROM struct {
 	// the data as it is on disk. data is mutable and we need a way of
 	// comparing what's on disk with what's in memory.
 	DiskData []uint8
+
+	// whether a page has been accessed
+	PageAccess []bool
 }
 
 // NewEeprom is the preferred metho of initialisation for the EEPROM type. This
 // function will initialise the memory and Read() any existing data from disk.
 func newEeprom(env *environment.Environment) *EEPROM {
 	ee := &EEPROM{
-		env:      env,
-		Data:     make([]uint8, eepromSize),
-		DiskData: make([]uint8, eepromSize),
+		env:        env,
+		Data:       make([]uint8, EEPROMsize),
+		DiskData:   make([]uint8, EEPROMsize),
+		PageAccess: make([]bool, EEPROMnumPages),
 	}
 
 	// initialise data with 0xff
@@ -66,9 +75,17 @@ func (ee *EEPROM) snapshot() *EEPROM {
 	cp := *ee
 	cp.Data = make([]uint8, len(ee.Data))
 	cp.DiskData = make([]uint8, len(ee.DiskData))
+	cp.PageAccess = make([]bool, len(ee.PageAccess))
 	copy(cp.Data, ee.Data)
 	copy(cp.DiskData, ee.DiskData)
+	copy(cp.PageAccess, ee.PageAccess)
 	return &cp
+}
+
+func (ee *EEPROM) plumb() {
+	// TODO: ee.DiskData should really be a mirror of what's on disk so we should save ee.DiskData
+	// on plumb. the problem is that plumb() can be called quite often so we really need a scheduler
+	// that is reset on every call to plumb() and then only save after a safe period
 }
 
 // Read EEPROM data from disk.
@@ -142,7 +159,7 @@ func (ee *EEPROM) Write() {
 
 	logger.Logf(ee.env, "savekey", "eeprom file saved to %s", fn)
 
-	// copy of data that's just bee written to disk
+	// copy of data that's just been written to disk
 	copy(ee.DiskData, ee.Data)
 }
 
@@ -169,4 +186,9 @@ func (ee *EEPROM) nextAddress() {
 	} else {
 		ee.Address++
 	}
+}
+
+// IsSaved returns true if disk data is the same as data
+func (ee *EEPROM) IsSaved() bool {
+	return slices.Compare(ee.Data, ee.DiskData) == 0
 }
