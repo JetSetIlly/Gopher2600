@@ -123,6 +123,7 @@ func (pan *Panel) ID() plugging.PeripheralID {
 
 // ResetHumanInput implements the Peripheral interface.
 func (pan *Panel) ResetHumanInput() {
+	pan.write()
 }
 
 // commit changes to RIOT memory
