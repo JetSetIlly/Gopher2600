@@ -71,11 +71,6 @@ func newEeprom(env *environment.Environment) *EEPROM {
 	return ee
 }
 
-func (ee *EEPROM) reset() {
-	clear(ee.PageAccess)
-	ee.Read()
-}
-
 func (ee *EEPROM) snapshot() *EEPROM {
 	cp := *ee
 	cp.Data = make([]uint8, len(ee.Data))

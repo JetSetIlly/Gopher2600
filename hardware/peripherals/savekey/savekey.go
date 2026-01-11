@@ -171,9 +171,9 @@ func (sk *SaveKey) ID() plugging.PeripheralID {
 	return plugging.PeriphSavekey
 }
 
-// Reset implements the ports.Peripheral interface.
-func (sk *SaveKey) Reset() {
-	sk.EEPROM.reset()
+// ResetHumanInput implements the ports.Peripheral interface.
+func (sk *SaveKey) ResetHumanInput() {
+	// there is no human input for the savekey
 }
 
 // the active bits in the SWCHA value.

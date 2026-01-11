@@ -51,9 +51,11 @@ type Peripheral interface {
 	// step is called every CPU clock. important for paddle devices
 	Step()
 
-	// reset state of peripheral. this has nothing to do with the reset switch
-	// on the VCS panel
-	Reset()
+	// reset state of peripheral. be careful how peripherals implement this. it's not like
+	// the cartridge reset function, for example, which is called on cartridge insertion. resetting
+	// a peripheral is more about putting the peripheral in a known state and is called much
+	// more frequently than the console reset
+	ResetHumanInput()
 
 	// whether the peripheral is currently "active"
 	IsActive() bool
@@ -157,7 +159,7 @@ func (_ peripheralNone) Update(chipbus.ChangedRegister) bool {
 func (_ peripheralNone) Step() {
 }
 
-func (_ peripheralNone) Reset() {
+func (_ peripheralNone) ResetHumanInput() {
 }
 
 func (_ peripheralNone) IsActive() bool {

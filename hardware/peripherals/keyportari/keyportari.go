@@ -120,9 +120,9 @@ func (kp *keyportari) Step() {
 	}
 }
 
-func (kp *keyportari) Reset() {
+func (kp *keyportari) ResetHumanInput() {
 	if kp.periph != nil {
-		kp.periph.Reset()
+		kp.periph.ResetHumanInput()
 	}
 	kp.keydown = false
 	kp.bus.WriteSWCHx(kp.port, 0xf0)

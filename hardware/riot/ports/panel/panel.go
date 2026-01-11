@@ -121,10 +121,8 @@ func (pan *Panel) ID() plugging.PeripheralID {
 	return plugging.PeriphPanel
 }
 
-// Reset implements the Peripheral interface.
-func (pan *Panel) Reset() {
-	// not changing panel settings on console reset
-	pan.write()
+// ResetHumanInput implements the Peripheral interface.
+func (pan *Panel) ResetHumanInput() {
 }
 
 // commit changes to RIOT memory

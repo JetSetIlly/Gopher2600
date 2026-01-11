@@ -205,10 +205,9 @@ func (vox *AtariVox) ID() plugging.PeripheralID {
 	return plugging.PeriphAtariVox
 }
 
-// Reset implements the ports.Peripheral interface.
-func (vox *AtariVox) Reset() {
-	// nothing to do for the atarivox but we forward the reset signal to the savekey
-	vox.SaveKey.Reset()
+// ResetHumanInput implements the ports.Peripheral interface.
+func (vox *AtariVox) ResetHumanInput() {
+	// there is no human input for the atarivox
 }
 
 // Restart implements the ports.RestartPeripheral interface.

@@ -250,8 +250,8 @@ func (stk *Stick) Step() {
 	}
 }
 
-// Reset implements the ports.Peripheral interface.
-func (stk *Stick) Reset() {
+// ResetHumanInput implements the ports.Peripheral interface.
+func (stk *Stick) ResetHumanInput() {
 	stk.axis = axisCenter
 	stk.button = stickNoFire
 	stk.bus.WriteSWCHx(stk.port, stk.axis)

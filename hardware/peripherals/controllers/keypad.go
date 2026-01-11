@@ -53,7 +53,7 @@ func NewKeypad(env *environment.Environment, port plugging.PortID, bus ports.Per
 		key.column = [3]chipbus.Register{chipbus.INPT2, chipbus.INPT3, chipbus.INPT5}
 	}
 
-	key.Reset()
+	key.ResetHumanInput()
 	return key
 }
 
@@ -253,8 +253,8 @@ func (key *Keypad) Step() {
 	// its state if it is active
 }
 
-// Reset implements the ports.Peripheral interface.
-func (key *Keypad) Reset() {
+// ResetHumanInput implements the ports.Peripheral interface.
+func (key *Keypad) ResetHumanInput() {
 	key.key = noKey
 }
 

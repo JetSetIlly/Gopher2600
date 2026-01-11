@@ -160,7 +160,7 @@ func (p *Ports) Plug(port plugging.PortID, create NewPeripheral) error {
 		if periph == nil {
 			return fmt.Errorf("can't attach peripheral to port (%v)", port)
 		}
-		periph.Reset()
+		periph.ResetHumanInput()
 	} else {
 		periph = &peripheralNone{port: port}
 	}
@@ -290,13 +290,13 @@ func (p *Ports) DisablePeripherals(disabled bool) {
 // ResetPeripherals to an initial state
 func (p *Ports) ResetPeripherals() {
 	if p.LeftPlayer != nil {
-		p.LeftPlayer.Reset()
+		p.LeftPlayer.ResetHumanInput()
 	}
 	if p.RightPlayer != nil {
-		p.RightPlayer.Reset()
+		p.RightPlayer.ResetHumanInput()
 	}
 	if p.Panel != nil {
-		p.Panel.Reset()
+		p.Panel.ResetHumanInput()
 	}
 }
 

@@ -299,8 +299,8 @@ func (pad *Gamepad) Step() {
 	}
 }
 
-// Reset implements the ports.Peripheral interface.
-func (pad *Gamepad) Reset() {
+// ResetHumanInput implements the ports.Peripheral interface.
+func (pad *Gamepad) ResetHumanInput() {
 	pad.axis = axisCenter
 	pad.button = stickNoFire
 	pad.second = secondNoFire

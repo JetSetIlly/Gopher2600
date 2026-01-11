@@ -277,8 +277,8 @@ func (pdl *Paddles) Step() {
 	pdl.setFire()
 }
 
-// Reset implements the ports.Peripheral interface.
-func (pdl *Paddles) Reset() {
+// ResetHumanInput implements the ports.Peripheral interface.
+func (pdl *Paddles) ResetHumanInput() {
 	for i := range pdl.paddles {
 		pdl.paddles[i].charge = 0
 		pdl.paddles[i].ticks = 0
