@@ -113,8 +113,8 @@ func (win *winSaveKeyEEPROM) draw() {
 		}
 
 		if drawByteGrid {
-			d := win.savekey.EEPROM.Data[origin:memtop]
-			dd := win.savekey.EEPROM.DiskData[origin:memtop]
+			d := win.savekey.EEPROM.Data[origin : memtop+1]
+			dd := win.savekey.EEPROM.DiskData[origin : memtop+1]
 			win.img.drawByteGridSimple(fmt.Sprintf("eepromPage%d", p), d, dd, win.img.cols.ValueDiff, uint32(origin),
 				func(idx int, data uint8) {
 					win.img.dbg.PushFunction(func() {
