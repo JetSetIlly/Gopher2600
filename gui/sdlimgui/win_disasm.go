@@ -450,6 +450,7 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 	defer imgui.EndChild()
 
 	if len(entries) == 0 {
+		imgui.Text("No executed instructions yet")
 		return
 	}
 
