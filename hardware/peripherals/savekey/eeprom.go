@@ -71,6 +71,11 @@ func newEeprom(env *environment.Environment) *EEPROM {
 	return ee
 }
 
+func (ee *EEPROM) reset() {
+	clear(ee.PageAccess)
+	ee.Read()
+}
+
 func (ee *EEPROM) snapshot() *EEPROM {
 	cp := *ee
 	cp.Data = make([]uint8, len(ee.Data))
@@ -168,13 +173,22 @@ func (ee *EEPROM) Poke(address uint16, data uint8) {
 	ee.Data[address] = data
 }
 
+func (ee *EEPROM) access() {
+	p := ee.Address / EEPROMpageSize
+	ee.PageAccess[p] = true
+}
+
 func (ee *EEPROM) put(v uint8) {
+	ee.access()
 	ee.Data[ee.Address] = v
 	ee.nextAddress()
 }
 
 func (ee *EEPROM) get() uint8 {
-	defer ee.nextAddress()
+	defer func() {
+		ee.nextAddress()
+		ee.access()
+	}()
 	return ee.Data[ee.Address]
 }
 

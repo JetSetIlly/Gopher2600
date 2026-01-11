@@ -46,14 +46,15 @@ type preferences struct {
 	recentROM prefs.String
 
 	// debugger preferences
-	terminalOnError       prefs.Bool
-	audioMuteDebugger     prefs.Bool
-	showTooltips          prefs.Bool
-	showTimelineThumbnail prefs.Bool
-	disasmColour          prefs.Bool
-	disasmSequential      prefs.Bool
-	disasmGroupScanlines  prefs.Bool
-	pxeColourIndicators   prefs.Bool
+	terminalOnError        prefs.Bool
+	audioMuteDebugger      prefs.Bool
+	showTooltips           prefs.Bool
+	showTimelineThumbnail  prefs.Bool
+	disasmColour           prefs.Bool
+	disasmSequential       prefs.Bool
+	disasmGroupScanlines   prefs.Bool
+	pxeColourIndicators    prefs.Bool
+	savekeyAccessPagesOnly prefs.Bool
 
 	// arm profiler preferences
 	armProfilerHideUnexecuted prefs.Bool
@@ -143,6 +144,10 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("sdlimgui.debugger.pxe.colorIndicators", &p.pxeColourIndicators)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.debugger.savekey.eeprom.accessedPagesOnly", &p.savekeyAccessPagesOnly)
 	if err != nil {
 		return nil, err
 	}
@@ -318,6 +323,10 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.saveOnExitDsk.Add("sdlimgui.debugger.savekey.eeprom.accessedPagesOnly", &p.savekeyAccessPagesOnly)
+	if err != nil {
+		return nil, err
+	}
 	err = p.saveOnExitDsk.Add("sdlimgui.debugger.armProfiler.hideUnexecuted", &p.armProfilerHideUnexecuted)
 	if err != nil {
 		return nil, err
@@ -360,6 +369,7 @@ func (p *preferences) setDefaults() {
 	p.disasmSequential.Set(false)
 	p.disasmGroupScanlines.Set(false)
 	p.pxeColourIndicators.Set(false)
+	p.savekeyAccessPagesOnly.Set(false)
 	p.armProfilerHideUnexecuted.Set(false)
 	p.armProfilerPercentile.Set(true)
 	p.armProfilerCumulative.Set(false)

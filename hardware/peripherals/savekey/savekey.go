@@ -173,6 +173,7 @@ func (sk *SaveKey) ID() plugging.PeripheralID {
 
 // Reset implements the ports.Peripheral interface.
 func (sk *SaveKey) Reset() {
+	sk.EEPROM.reset()
 }
 
 // the active bits in the SWCHA value.

@@ -39,6 +39,9 @@ type winSaveKeyEEPROM struct {
 
 	// scroll to scratchpad
 	scrollScratch bool
+
+	// whether to only show accessed pages
+	showAccessedOnly bool
 }
 
 func newWinSaveKeyEEPROM(img *SdlImgui) (window, error) {
@@ -81,7 +84,14 @@ func (win *winSaveKeyEEPROM) debuggerDraw() bool {
 func (win *winSaveKeyEEPROM) draw() {
 	imgui.BeginChildV("eepromData", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)
 
+	var pagesShown bool
+
 	for p := range savekey.EEPROMnumPages {
+		if win.showAccessedOnly && !win.savekey.EEPROM.PageAccess[p] {
+			continue
+		}
+		pagesShown = true
+
 		origin := p * savekey.EEPROMpageSize
 		memtop := origin + savekey.EEPROMpageSize - 1
 
@@ -91,7 +101,11 @@ func (win *winSaveKeyEEPROM) draw() {
 			header = fmt.Sprintf("%s Scratchpad %d", header, ((origin-0x3000)/savekey.EEPROMpageSize)+1)
 		}
 
-		drawByteGrid := imgui.CollapsingHeader(header)
+		var flgs imgui.TreeNodeFlags
+		if win.showAccessedOnly {
+			flgs = imgui.TreeNodeFlagsDefaultOpen
+		}
+		drawByteGrid := imgui.CollapsingHeaderV(header, flgs)
 
 		if scratch && win.scrollScratch {
 			win.scrollScratch = false
@@ -115,15 +129,27 @@ func (win *winSaveKeyEEPROM) draw() {
 		}
 	}
 
+	if !pagesShown {
+		imgui.Text("No pages accessed yet")
+	}
+
 	imgui.EndChild()
 
 	win.statusHeight = imguiMeasureHeight(func() {
 		imgui.Spacing()
 		imgui.Spacing()
 
-		if imgui.Button("Jump to Scratchpad") {
-			win.scrollScratch = true
+		win.showAccessedOnly = win.img.prefs.savekeyAccessPagesOnly.Get().(bool)
+		if imgui.Checkbox("Show Accessed Pages Only", &win.showAccessedOnly) {
+			win.img.prefs.savekeyAccessPagesOnly.Set(win.showAccessedOnly)
 		}
+		imgui.Spacing()
+
+		drawDisabled(win.showAccessedOnly, func() {
+			if imgui.Button("Jump to Scratchpad") {
+				win.scrollScratch = true
+			}
+		})
 
 		if !win.savekey.EEPROM.IsSaved() {
 			imgui.SameLineV(0, 20)
