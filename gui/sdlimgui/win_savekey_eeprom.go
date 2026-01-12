@@ -114,7 +114,7 @@ func (win *winSaveKeyEEPROM) draw() {
 
 		if drawByteGrid {
 			d := win.savekey.EEPROM.Data[origin : memtop+1]
-			dd := win.savekey.EEPROM.DiskData[origin : memtop+1]
+			dd := win.savekey.EEPROM.Disk[origin : memtop+1]
 			win.img.drawByteGridSimple(fmt.Sprintf("eepromPage%d", p), d, dd, win.img.cols.ValueDiff, uint32(origin),
 				func(idx int, data uint8) {
 					win.img.dbg.PushFunction(func() {
@@ -156,9 +156,9 @@ func (win *winSaveKeyEEPROM) draw() {
 			if imgui.Button("Save to disk") {
 				win.img.dbg.PushFunction(func() {
 					if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
-						sk.EEPROM.Write()
+						sk.EEPROM.Save()
 					} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
-						vox.SaveKey.EEPROM.Write()
+						vox.SaveKey.EEPROM.Save()
 					}
 				})
 			}
@@ -167,9 +167,9 @@ func (win *winSaveKeyEEPROM) draw() {
 			if imgui.Button("Reload") {
 				win.img.dbg.PushFunction(func() {
 					if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
-						sk.EEPROM.Read()
+						sk.EEPROM.Restore()
 					} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
-						vox.SaveKey.EEPROM.Read()
+						vox.SaveKey.EEPROM.Restore()
 					}
 				})
 			}

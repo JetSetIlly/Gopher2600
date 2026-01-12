@@ -16,6 +16,7 @@
 package savekey
 
 import (
+	"slices"
 	"strings"
 	"unicode"
 
@@ -114,6 +115,7 @@ func NewSaveKey(env *environment.Environment, port plugging.PortID, bus ports.Pe
 
 // Unplug implements the Peripheral interface.
 func (sk *SaveKey) Unplug() {
+	sk.EEPROM.unplug()
 }
 
 // Snapshot implements the Peripheral interface.
@@ -260,7 +262,7 @@ func (sk *SaveKey) Step() {
 	if sk.State != SaveKeyStopped && sk.SCL.Hi() && sk.SDA.Rising() {
 		logger.Log(sk.env, "savekey", "stopped message")
 		sk.State = SaveKeyStopped
-		sk.EEPROM.Write()
+		sk.EEPROM.dirty = slices.Equal(sk.EEPROM.Data, sk.EEPROM.Disk)
 		return
 	}
 
