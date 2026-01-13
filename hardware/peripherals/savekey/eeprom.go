@@ -76,10 +76,8 @@ func newEeprom(env *environment.Environment) *EEPROM {
 }
 
 func (ee *EEPROM) unplug() {
-	ee.Save()
-	if ee.dirty {
-		logger.Logf(ee.env, "savekey", "EEPROM data failed to save on exit. changes permanently lost")
-	}
+	msg := save(ee.Data)
+	logger.Log(ee.env, "savekey", msg)
 }
 
 func (ee *EEPROM) snapshot() *EEPROM {
