@@ -241,15 +241,41 @@ func (cart *atari) SetBank(bank string) error {
 	return nil
 }
 
+// the number of cycles required for SARA RAM to recover from an access. this value is assigned to
+// saraRecovery when RAM is accessed.
+//
+// the value is one more than required because we reduce saraRecovery() in the Step() function,
+// which comes after any access
+//
+// the reason for this value and for the "recovery" mecahnism at all, is because SARA ram is too
+// slow to supply data for consecutive cycles. the current working theory is that the RAM "reacts"
+// faster when moving from a CS disabled state than when CS is already enabled
+const saraCycles = 2
+
 // access implements the mapper.CartMapper interface. the bool return value is true if the address
 // has been recognised and serviced.
 func (cart *atari) access(addr uint16) (uint8, uint8, bool) {
 	if cart.state.ram != nil {
-		if addr <= 0x7f {
-			return 0, 0, true
-		}
-		if addr >= 0x80 && addr <= 0xff {
-			return cart.state.ram[addr-superchipSize], mapper.CartDrivenPins, true
+		if addr&0x0f00 == 0x0000 {
+			sara := cart.env.Prefs.Cartridge.EmulateSARA.Get().(bool)
+			if sara && cart.state.saraRecovery > 0 && addr&0x7f != cart.state.saraAddr {
+				cart.state.saraRecovery = saraCycles
+				return 0, 0, true
+			}
+
+			switch addr & 0x0f80 {
+			case 0x0000:
+				cart.state.saraRecovery = saraCycles
+				cart.state.saraAddr = addr & 0x7f
+				return 0, 0, true
+			case 0x0080:
+				if cart.state.sara && cart.state.saraRecovery > 0 && addr&0x7f != cart.state.saraAddr {
+					return 0, 0, true
+				}
+				cart.state.saraRecovery = saraCycles
+				cart.state.saraAddr = addr & 0x7f
+				return cart.state.ram[cart.state.saraAddr], mapper.CartDrivenPins, true
+			}
 		}
 	}
 	return 0, mapper.CartDrivenPins, false
@@ -258,15 +284,26 @@ func (cart *atari) access(addr uint16) (uint8, uint8, bool) {
 // accessVolatile implements the mapper.CartMapper interface.
 func (cart *atari) accessVolatile(addr uint16, data uint8, poke bool) error {
 	if cart.state.ram != nil {
-		if addr <= 0x7f {
-			cart.state.ram[addr] = data
-			return nil
+		if addr&0x0f00 == 0x0000 {
+			if poke {
+				cart.banks[cart.state.bank][addr&0x7f] = data
+				return nil
+			}
+			sara := cart.env.Prefs.Cartridge.EmulateSARA.Get().(bool)
+			if sara && cart.state.saraRecovery > 0 && addr&0x7f != cart.state.saraAddr {
+				cart.state.saraRecovery = saraCycles
+				return nil
+			}
+			switch addr & 0x0f80 {
+			case 0x0000:
+				cart.state.saraRecovery = saraCycles
+				cart.state.saraAddr = addr & 0x7f
+				cart.state.ram[cart.state.saraAddr] = data
+				return nil
+			case 0x0080:
+				return nil
+			}
 		}
-	}
-
-	if poke {
-		cart.banks[cart.state.bank][addr] = data
-		return nil
 	}
 
 	return nil
@@ -291,6 +328,9 @@ func (cart *atari) AccessPassive(addr uint16, data uint8) error {
 
 // Step implements the mapper.CartMapper interface.
 func (cart *atari) Step(_ float32) {
+	if cart.state != nil && cart.state.saraRecovery > 0 {
+		cart.state.saraRecovery--
+	}
 }
 
 // GetRAM implements the mapper.CartRAMBus interface.
@@ -301,10 +341,13 @@ func (cart *atari) GetRAM() []mapper.CartRAM {
 
 	r := make([]mapper.CartRAM, 1)
 	r[0] = mapper.CartRAM{
-		Label:  "Superchip",
-		Origin: 0x1080,
-		Data:   make([]uint8, len(cart.state.ram)),
-		Mapped: true,
+		Label:                "Superchip",
+		Origin:               0x1080,
+		Data:                 make([]uint8, len(cart.state.ram)),
+		Mapped:               true,
+		CycleSensitive:       true,
+		CycleSensitiveActive: cart.state.sara,
+		Cycles:               cart.state.saraRecovery,
 	}
 
 	copy(r[0].Data, cart.state.ram)
@@ -333,11 +376,17 @@ func (cart *atari) CopyBanks() []mapper.BankContent {
 }
 
 // AddSuperchip implements the mapper.OptionalSuperchip interface.
-func (cart *atari) AddSuperchip(force bool) {
+func (cart *atari) AddSuperchip(force bool, sara bool) {
 	if force || cart.needsSuperchip {
 		cart.mappingID = fmt.Sprintf("%s (SC)", cart.mappingID)
 		cart.state.ram = make([]uint8, superchipSize)
+		cart.state.sara = sara
 	}
+}
+
+// SetEmulateSARA implements the mapper.OptionalSuperchip interface.
+func (cart *atari) SetEmulateSARA(sara bool) {
+	cart.state.sara = sara
 }
 
 // atari4k is the original and most straightforward format:
@@ -862,6 +911,11 @@ type atariState struct {
 	// some atari ROMs support aditional RAM. this is sometimes referred to as
 	// the superchip. ram is only added when it is detected
 	ram []uint8
+
+	// the SARA chip was often used to implement additional RAM in basic atari like cartridges. see
+	// the comment for the saraCycles constant for more detail
+	saraRecovery int
+	saraAddr     uint16
 }
 
 func newAtariState() *atariState {

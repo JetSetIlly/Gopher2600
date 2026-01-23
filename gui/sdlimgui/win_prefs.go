@@ -391,6 +391,10 @@ func (win *winPrefs) drawVCS() {
 		}
 	}
 
+	if imgui.CollapsingHeaderV("SARA", imgui.TreeNodeFlagsNone) {
+		win.img.drawEmulateSARACheckbox()
+	}
+
 	imgui.Spacing()
 	if imgui.CollapsingHeaderV("Audio", imgui.TreeNodeFlagsNone) {
 		// enable options

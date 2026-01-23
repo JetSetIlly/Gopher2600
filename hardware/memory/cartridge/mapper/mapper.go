@@ -122,8 +122,10 @@ type PlumbFromDifferentEmulation interface {
 // an optional superchip. This shouldn't be used to decide if a cartridge has
 // additional RAM or not. Use the CartRAMbus interface for that.
 type OptionalSuperchip interface {
-	// the force argument causes the superchip to be added whether it needs it or not
-	AddSuperchip(force bool)
+	// the force argument causes the superchip to be added whether it needs it or not. the sara
+	// argument means the superchip will have the speed limitations of the sara chip
+	AddSuperchip(force bool, sara bool)
+	SetEmulateSARA(bool)
 }
 
 // CartRAMbus is implemented for catridge mappers that have an addressable RAM
@@ -157,6 +159,12 @@ type CartRAM struct {
 	Origin uint16
 	Data   []uint8
 	Mapped bool
+
+	// some cartridge RAM hardware implementations have restrictions on how quickly they can be
+	// accessed. (ie. SARA ram)
+	CycleSensitive       bool
+	CycleSensitiveActive bool
+	Cycles               int
 }
 
 // CartRegistersBus defines the operations required for a debugger to access

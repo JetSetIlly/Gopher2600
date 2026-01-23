@@ -371,3 +371,16 @@ func drawDisabled(disabled bool, f func()) {
 	f()
 	imgui.EndDisabled()
 }
+
+// like drawDisabled() but the widget is invisible
+func drawInvisible(invisble bool, f func()) {
+	if !invisble {
+		f()
+		return
+	}
+	imgui.BeginDisabled()
+	imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 0.0)
+	f()
+	imgui.PopStyleVar()
+	imgui.EndDisabled()
+}

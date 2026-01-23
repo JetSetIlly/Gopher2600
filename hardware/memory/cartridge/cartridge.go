@@ -372,13 +372,13 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	// RAM
 	if forceSuperchip {
 		if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
-			superchip.AddSuperchip(true)
+			superchip.AddSuperchip(true, cart.env.Prefs.EmulateSARA.Get().(bool))
 		} else {
 			logger.Logf(cart.env, "cartridge", "cannot add superchip to %s mapper", cart.ID())
 		}
 	} else if auto {
 		if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
-			superchip.AddSuperchip(false)
+			superchip.AddSuperchip(false, cart.env.Prefs.EmulateSARA.Get().(bool))
 		}
 	}
 
@@ -629,4 +629,11 @@ func (cart *Cartridge) Patch(offset int, data uint8) error {
 		return cart.Patch(offset, data)
 	}
 	return fmt.Errorf("cartridge is not patchable")
+}
+
+// Patch implements the mapper.OptionalSuperchip interface
+func (cart *Cartridge) SetEmulateSARA(v bool) {
+	if c, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
+		c.SetEmulateSARA(v)
+	}
 }

@@ -36,6 +36,11 @@ type Preferences struct {
 	// unwrap ACE binaries when possible and use a more direct emulation
 	UnwrapACE prefs.Bool
 
+	// emulate the cycle limitations of the SARA chip
+	// NOTE that this value is not hooked into the live emulate sara value in the atari mapper. it
+	// probably should be, although the GUI preferences window handles that for us
+	EmulateSARA prefs.Bool
+
 	// preferences used by the television
 	TV *TVPreferences
 
@@ -82,6 +87,10 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("hardware.emulateSARA", &p.EmulateSARA)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Load()
 	if err != nil {
 		return nil, err
@@ -121,6 +130,7 @@ func (p *Preferences) SetDefaults() {
 	p.RandomState.Set(false)
 	p.RandomPins.Set(false)
 	p.UnwrapACE.Set(true)
+	p.EmulateSARA.Set(false)
 }
 
 // Load current hardware preference from disk.

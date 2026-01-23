@@ -37,6 +37,7 @@ type winCartRAM struct {
 
 	// required dimensions of mapped/unmapped indicator
 	mappedIndicatorDim imgui.Vec2
+	readyIndicatorDim  imgui.Vec2
 }
 
 func newWinCartRAM(img *SdlImgui) (window, error) {
@@ -46,6 +47,7 @@ func newWinCartRAM(img *SdlImgui) (window, error) {
 
 func (win *winCartRAM) init() {
 	win.mappedIndicatorDim = imguiGetFrameDim(" mapped ", " unmapped ")
+	win.readyIndicatorDim = imguiGetFrameDim(" ready ", " not ready (x) ")
 }
 
 func (win *winCartRAM) id() string {
@@ -175,12 +177,34 @@ func (win *winCartRAM) draw(ram []mapper.CartRAM) {
 			// status line
 			win.statusHeight = imguiMeasureHeight(func() {
 				imgui.PushStyleVarFloat(imgui.StyleVarFrameRounding, readOnlyButtonRounding)
+				defer imgui.PopStyleVar()
+
 				if current.Mapped {
 					imguiColourButton(win.img.cols.True, " mapped ", win.mappedIndicatorDim)
 				} else {
 					imguiColourButton(win.img.cols.False, " unmapped ", win.mappedIndicatorDim)
 				}
-				imgui.PopStyleVar()
+
+				imgui.Spacing()
+
+				if current.CycleSensitive {
+					win.img.drawEmulateSARACheckbox()
+
+					imgui.SameLineV(0, 25)
+					drawInvisible(!current.CycleSensitiveActive, func() {
+						if current.Cycles > 0 {
+							var s string
+							if current.Cycles == 1 {
+								s = fmt.Sprintf(" %d cycle ", current.Cycles)
+							} else {
+								s = fmt.Sprintf(" %d cycles ", current.Cycles)
+							}
+							imguiColourButton(win.img.cols.False, s, win.readyIndicatorDim)
+						} else {
+							imguiColourButton(win.img.cols.True, " ready ", win.readyIndicatorDim)
+						}
+					})
+				}
 			})
 
 			imgui.EndTabItem()
