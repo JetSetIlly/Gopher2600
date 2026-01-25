@@ -1049,7 +1049,11 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 		dbg.traces.clear()
 	}
 
-	dbg.Disasm.Reset()
+	err = dbg.Disasm.Reset(true)
+	if err != nil {
+		return err
+	}
+
 	dbg.liveBankInfo = mapper.BankInfo{}
 	dbg.liveDisasmEntry = &disassembly.Entry{Result: execution.Result{Final: true}}
 	return nil
@@ -1096,7 +1100,7 @@ func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 		}
 
 		// (re)disassemble memory on TapeLoaded error signal
-		err = dbg.Disasm.FromMemory()
+		err = dbg.Disasm.FromMemory(true)
 		if err != nil {
 			return err
 		}
@@ -1119,7 +1123,7 @@ func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 		// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
 		// during loading. not completely necessary I don't think, but it would be
 		// nice to have.
-		err = dbg.Disasm.FromMemory()
+		err = dbg.Disasm.FromMemory(true)
 		if err != nil {
 			return err
 		}
@@ -1244,7 +1248,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	}
 
 	// perform disassembly in the background
-	dbg.Disasm.Background(cartload)
+	dbg.Disasm.FromMemory(true)
 
 	// check for cartridge ejection. if the NoEject option is set then return error
 	if dbg.opts.NoEject && dbg.vcs.Mem.Cart.IsEjected() {

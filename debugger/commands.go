@@ -612,7 +612,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		if ok {
 			switch arg {
 			case "REDUX":
-				err := dbg.Disasm.FromMemory()
+				err := dbg.Disasm.FromMemory(false)
 				if err != nil {
 					dbg.printLine(terminal.StyleFeedback, err.Error())
 				}

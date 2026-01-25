@@ -125,7 +125,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 	}
 
 	// do disassembly
-	err = dsm.FromMemory()
+	err = dsm.FromMemory(false)
 	if err != nil {
 		return nil, fmt.Errorf("disassembly: %w", err)
 	}
@@ -133,28 +133,35 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 	return dsm, nil
 }
 
-// Background performs a disassembly from memory but in the background
-func (dsm *Disassembly) Background(cartload cartridgeloader.Loader) {
-	go func() {
-		dsm.background.Store(true)
-		defer dsm.background.Store(false)
-		err := dsm.FromMemory()
-		if err != nil {
-			logger.Log(dsm.vcs.Env, "disassembly", err.Error())
-		}
-	}()
-}
-
-func (dsm *Disassembly) Reset() {
+// Reset disassembly. The disassembly will be recreated as though from new.
+func (dsm *Disassembly) Reset(background bool) error {
+	dsm.crit.Lock()
 	dsm.disasmEntries.Sequential = dsm.disasmEntries.Sequential[:0]
+	dsm.crit.Unlock()
+	return dsm.FromMemory(background)
 }
 
 // FromMemory disassembles an existing instance of cartridge memory using a
 // cpu with no flow control. Unlike the FromCartridge() function this function
 // requires an existing instance of Disassembly.
 //
-// Disassembly will start/assume the cartridge is in the correct starting bank.
-func (dsm *Disassembly) FromMemory() error {
+// Disassembly will assume the cartridge is in the correct starting bank.
+func (dsm *Disassembly) FromMemory(background bool) error {
+	if background {
+		go func() {
+			dsm.background.Store(true)
+			defer dsm.background.Store(false)
+			err := dsm.fromMemory()
+			if err != nil {
+				logger.Log(dsm.vcs.Env, "disassembly", err.Error())
+			}
+		}()
+		return nil
+	}
+	return dsm.fromMemory()
+}
+
+func (dsm *Disassembly) fromMemory() error {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
@@ -257,7 +264,9 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 			return e
 		}
 
-		// do not update disassembly if background disassembly is ongoing
+		// do not update disassembly if background disassembly is ongoing.
+		//
+		// NOTE that the updated result information will be lost from the disassembly
 		if dsm.background.Load() {
 			return e
 		}
