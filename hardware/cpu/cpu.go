@@ -284,8 +284,6 @@ func (mc *CPU) LoadPCIndirect(address uint16) error {
 		return fmt.Errorf("cpu: load PC invalid mid-instruction")
 	}
 
-	mc.PhantomMemAccess = false
-
 	lo, err := mc.mem.Read(address)
 	if err != nil {
 		return err
@@ -596,6 +594,8 @@ var ResetMidInstruction = errors.New("cpu: appears to have been reset mid-instru
 // The cycleCallback arugment should *never* be nil. Use the NilCycleCallback()
 // function in this package if you want a nil effect.
 func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
+	mc.PhantomMemAccess = false
+
 	// the CPU does nothing if it is in the KIL state. however, the other
 	// parts of the VCS continue
 	if mc.Killed {

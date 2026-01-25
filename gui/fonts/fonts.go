@@ -117,6 +117,7 @@ const (
 	MeterSegment           = '\uf04d'
 	RenderTime             = '\uf06a'
 	SelectedTick           = '\uf058'
+	Phantom                = '\uf6e2'
 )
 
 //go:embed "Gopher2600-Icons.ttf"

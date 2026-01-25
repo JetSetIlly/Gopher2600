@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/imgui-go/v5"
@@ -311,6 +312,10 @@ func (win *win6507Pinout) draw() {
 					imgui.Text("Writing")
 				} else {
 					imgui.Text("Reading")
+				}
+				if win.img.cache.VCS.CPU.PhantomMemAccess {
+					imgui.SameLineV(0, 5)
+					imgui.Text(string(fonts.Phantom))
 				}
 
 				imgui.EndTable()
