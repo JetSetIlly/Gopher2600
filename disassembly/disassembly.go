@@ -316,7 +316,7 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 				if !last.Result.Final {
 					dsm.disasmEntries.Sequential[len(dsm.disasmEntries.Sequential)-1] = e
 				} else {
-					if last.Result.Address == result.Address &&
+					if last.Result.Address == result.Address && result.Defn != nil &&
 						!(result.Defn.IsBranch() || result.Defn.Effect != instructions.Flow) {
 						dsm.disasmEntries.Sequential[len(dsm.disasmEntries.Sequential)-1] = e
 					} else {

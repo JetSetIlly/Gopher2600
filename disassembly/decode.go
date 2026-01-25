@@ -276,6 +276,11 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 			return false
 		}
 
+		// do not bless break instructions
+		if instruction.Operator == "brk" {
+			return false
+		}
+
 		// promote the entry
 		if commit {
 			hasCommitted = true
