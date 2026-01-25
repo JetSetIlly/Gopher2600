@@ -115,7 +115,7 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 
 	// PXE colour reflection
 	h[0].PXEColourWrite = false
-	if ref.vcs.CPU.LastResult.Defn.Effect == instructions.Write {
+	if ref.vcs.CPU.LastResult.Defn != nil && ref.vcs.CPU.LastResult.Defn.Effect == instructions.Write {
 		if ef, ok := ref.vcs.Mem.Cart.GetCoProcBus().(coprocessor.CartCoProcELF); ok {
 			colour := ref.vcs.Mem.LastCPUData
 			if ok, a := ef.LastPXEPalette(colour); ok {
