@@ -192,18 +192,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			dbg.running = false
 		}
 
-	case cmdReset:
-		// resetting in the middle of a CPU instruction requires the input loop
-		// to be unwound before continuing
-		dbg.unwindLoop(func() error {
-			// don't reset breakpoints, etc.
-			err := dbg.reset(false)
-			if err != nil {
-				return err
-			}
-			dbg.printLine(terminal.StyleFeedback, "machine reset")
-			return nil
-		})
+	case cmdReload:
+		end := make(chan bool)
+		dbg.PushReload(end)
+		go func() {
+			<-end
+			dbg.printLine(terminal.StyleFeedback, "machine reset and cartridge reloaded")
+		}()
 
 	case cmdRun:
 		dbg.ClearHaltReason()

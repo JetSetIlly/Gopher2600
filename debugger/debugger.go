@@ -1027,6 +1027,8 @@ func (dbg *Debugger) run() error {
 // the newCartridge flag will cause breakpoints, traces, etc. to be reset
 // as well. it is sometimes appropriate to reset these (eg. on new cartridge
 // insert)
+//
+// NOTE reset() should probably only be called from attachCartridge()
 func (dbg *Debugger) reset(newCartridge bool) error {
 	err := dbg.vcs.Reset()
 	if err != nil {
@@ -1056,14 +1058,6 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 
 	dbg.liveBankInfo = mapper.BankInfo{}
 	dbg.liveDisasmEntry = &disassembly.Entry{Result: execution.Result{Final: true}}
-	return nil
-}
-
-// PushNotify implements the notifications.Notify interface
-func (dbg *Debugger) PushNotify(notice notifications.Notice, data ...string) error {
-	dbg.PushFunction(func() {
-		dbg.Notify(notice, data...)
-	})
 	return nil
 }
 
@@ -1469,6 +1463,7 @@ func (dbg *Debugger) Plugged(port plugging.PortID, peripheral plugging.Periphera
 	}
 }
 
+// care should be taken that the debugger is not mid-instruction
 func (dbg *Debugger) reloadCartridge() error {
 	if dbg.cartload == nil {
 		return nil
@@ -1480,14 +1475,6 @@ func (dbg *Debugger) reloadCartridge() error {
 	}
 
 	return dbg.insertCartridge(dbg.cartload.Filename)
-}
-
-// ReloadCartridge inserts the current cartridge and states the emulation over.
-func (dbg *Debugger) ReloadCartridge() {
-	select {
-	case dbg.events.Signal <- syscall.SIGHUP:
-	default:
-	}
 }
 
 func (dbg *Debugger) insertCartridge(filename string) error {

@@ -83,8 +83,8 @@ func (wm *manager) drawMenu() {
 
 		imguiSeparator()
 
-		if imgui.Selectable("  Reset") {
-			wm.img.dbg.PushReset()
+		if imgui.Selectable("  Reload") {
+			wm.img.dbg.PushReload(nil)
 		}
 
 		// if imgui.Selectable("  Save ROM") {

@@ -20,8 +20,8 @@ import "github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 var helps = map[string]string{
 	commandline.HelpCommand: "Lists commands and provides help for individual commands.",
 
-	cmdReset: `Reset the emulated machine (including television) to its initial state. The
-debugger itself (breakpoints, etc.) will not be reset.`,
+	cmdReload: `Reset the emulated machine (including television) to its initial state by reloading the cartridge.
+The disassembly will also be recreated including any new symbols loaded. Breakpoints etc. are not reset.`,
 
 	cmdQuit: `Quit the debugger. If script is being recorded then QUIT will instead halt
 recording of the script and not cause the debugger to exit.`,

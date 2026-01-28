@@ -45,14 +45,18 @@ func preloadLimit(data []byte) []byte {
 type Loader struct {
 	io.ReadSeeker
 
-	// the name to use for the cartridge. in the case of embedded data the name
+	// whether the loader was created from a raw data load: ie. from NewLoaderFromData()
+	// controls what happens when data is reloaded
+	isRawData bool
+
+	// the name to use for the cartridge. in the case of raw data data the name
 	// will be the name provided to the NewLoaderFromData() function
 	Name string
 
 	// filename of cartridge being loaded. this is the absolute path that was
 	// used to load the cartridge
 	//
-	// in the case of embedded data the filename will be the name provided to
+	// in the case of raw data data the filename will be the name provided to
 	// the NewLoaderFromData() function
 	//
 	// use of the Filename can be useful, for example, for checking if the TV
@@ -91,9 +95,6 @@ type Loader struct {
 	//
 	// the preload data is used to create the hashes
 	preload []byte
-
-	// data was supplied through NewLoaderFromData()
-	embedded bool
 }
 
 // Properties is a minimal interface to the properties package
@@ -143,9 +144,10 @@ func NewLoaderFromFilename(filename string, mapping string, bank string, props P
 	}
 
 	ld := Loader{
-		Filename: filename,
-		Mapping:  mapping,
-		Bank:     bank,
+		isRawData: false,
+		Filename:  filename,
+		Mapping:   mapping,
+		Bank:      bank,
 	}
 
 	// decide what mapping to use if the requested mapping is AUTO
@@ -172,7 +174,7 @@ func NewLoaderFromFilename(filename string, mapping string, bank string, props P
 
 	err = ld.open()
 	if err != nil {
-		return Loader{}, err
+		return Loader{}, fmt.Errorf("loader: %w", err)
 	}
 
 	// decide on the name for this cartridge
@@ -219,15 +221,15 @@ func NewLoaderFromData(name string, data []byte, mapping string, bank string, pr
 	}
 
 	ld := Loader{
-		Filename: name,
-		Mapping:  mapping,
-		Bank:     bank,
-		preload:  preloadLimit(data),
-		data:     bytes.NewReader(data),
-		HashSHA1: fmt.Sprintf("%x", sha1.Sum(data)),
-		HashMD5:  fmt.Sprintf("%x", md5.Sum(data)),
-		size:     len(data),
-		embedded: true,
+		isRawData: true,
+		Filename:  name,
+		Mapping:   mapping,
+		Bank:      bank,
+		preload:   preloadLimit(data),
+		data:      bytes.NewReader(data),
+		HashSHA1:  fmt.Sprintf("%x", sha1.Sum(data)),
+		HashMD5:   fmt.Sprintf("%x", md5.Sum(data)),
+		size:      len(data),
 	}
 
 	// decide on the name for this cartridge
@@ -250,11 +252,15 @@ func NewLoaderFromData(name string, data []byte, mapping string, bank string, pr
 }
 
 func (ld *Loader) Reload() error {
-	err := ld.Close()
+	err := ld.open()
 	if err != nil {
-		return err
+		return fmt.Errorf("loader: %w", err)
 	}
-	return ld.open()
+	err = ld.Reset()
+	if err != nil {
+		return fmt.Errorf("loader: %w", err)
+	}
+	return nil
 }
 
 // Reset prepares the loader for fresh reading. Useful to call after data has
@@ -330,7 +336,14 @@ func (ld Loader) CountSkip(skip int, subslice []byte) int {
 // open the cartridge data. filenames with a valid schema will use that method
 // to load the data. currently supported schemes are HTTP and local files.
 func (ld *Loader) open() error {
-	_ = ld.Close()
+	err := ld.Close()
+	if err != nil {
+		return err
+	}
+
+	if ld.isRawData {
+		return nil
+	}
 
 	scheme := "file"
 	url, err := url.Parse(ld.Filename)
@@ -344,13 +357,13 @@ func (ld *Loader) open() error {
 	case "https":
 		resp, err := http.Get(ld.Filename)
 		if err != nil {
-			return fmt.Errorf("loader: %w", err)
+			return err
 		}
 		defer resp.Body.Close()
 
 		data, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return fmt.Errorf("loader: %w", err)
+			return err
 		}
 
 		ld.data = bytes.NewReader(data)
@@ -363,15 +376,15 @@ func (ld *Loader) open() error {
 	default:
 		r, sz, err := archivefs.Open(ld.Filename)
 		if err != nil {
-			return fmt.Errorf("loader: %w", err)
+			return err
 		}
 
 		ld.preload, err = io.ReadAll(io.LimitReader(r, maxPreloadLength))
 		if err != nil {
-			return fmt.Errorf("loader: %w", err)
+			return err
 		}
 		if _, err := r.Seek(0, io.SeekStart); err != nil {
-			return fmt.Errorf("loader: %w", err)
+			return err
 		}
 
 		ld.data = r

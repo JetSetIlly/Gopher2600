@@ -24,8 +24,8 @@ import (
 
 // debugger keywords
 const (
-	cmdReset = "RESET"
-	cmdQuit  = "QUIT"
+	cmdReload = "RELOAD"
+	cmdQuit   = "QUIT"
 
 	cmdRun        = "RUN"
 	cmdStep       = "STEP"
@@ -89,7 +89,7 @@ const (
 )
 
 var commandTemplate = []string{
-	cmdReset,
+	cmdReload,
 	cmdQuit,
 
 	cmdRun,
