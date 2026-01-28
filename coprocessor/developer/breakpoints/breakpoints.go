@@ -36,7 +36,7 @@ func NewBreakpoints() Breakpoints {
 // Write writes out the current callstack
 func (bp *Breakpoints) Write(w io.Writer) {
 	for b := range bp.breakpoints {
-		w.Write([]byte(fmt.Sprintf("%08x\n", b)))
+		fmt.Fprintf(w, "%08x\n", b)
 	}
 }
 

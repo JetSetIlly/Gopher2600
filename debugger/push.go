@@ -17,7 +17,6 @@ package debugger
 
 import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
-	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/notifications"
 )
@@ -63,15 +62,6 @@ func (dbg *Debugger) PushSetPause(paused bool) {
 	case govern.ModeDebugger:
 		logger.Log(logger.Allow, "debugger", "not reacting to SetPause() in debugger mode (use terminal input instead)")
 	}
-}
-
-// PushTogglePCBreak sets or unsets a PC break at the address rerpresented by the
-// disassembly entry.
-func (dbg *Debugger) PushTogglePCBreak(e *disassembly.Entry) {
-	f := e
-	dbg.PushFunction(func() {
-		dbg.halting.breakpoints.togglePCBreak(f)
-	})
 }
 
 // PushMemoryProfile forces a garbage collection event and takes a runtime

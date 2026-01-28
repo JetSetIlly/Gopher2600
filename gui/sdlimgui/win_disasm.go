@@ -520,7 +520,7 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 
 			// single click on the address entry toggles a PC breakpoint
 			if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
-				win.img.dbg.PushTogglePCBreak(entries[i])
+				win.img.term.pushCommand(fmt.Sprintf("BREAK TOGGLE BANK %d & PC %s", entries[i].Bank, entries[i].Address))
 			}
 
 			// tooltip information about the instruction

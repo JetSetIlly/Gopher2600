@@ -49,12 +49,30 @@ func (trm *mockTerm) testBreakpoints() {
 	trm.sndInput("BREAK SL 100 && CL 100")
 	trm.cmpOutput("already exists (Scanline->100 & Clock->100)")
 
-	// the following break is logically the same as the previous break but
-	// expressed differently. the debugger should not add it even though the
-	// expression is not exactly the same.
+	// the following break is logically the same as the previous break but expressed differently.
+	// the debugger should not add it even though the expression is not exactly the same because of
+	// the order of the AND statement.
 	trm.sndInput("BREAK CL 100 & SL 100")
 	trm.cmpOutput("already exists (Scanline->100 & Clock->100)")
 
+	// TOGGLE says to drop the breakpoint if it already exists
+	trm.sndInput("BREAK TOGGLE CL 100 & SL 100")
+	trm.cmpOutput("")
+
+	// the multi-line condition break has been removed (by toggling), leaving us with just the first
+	// breakpoint we added
+	trm.sndInput("LIST BREAKS")
+	trm.cmpOutput(" 0: Scanline->100")
+
+	// calling the BREAK TOGGLE command again adds the breakpoint if it doesn't exist.
+	// we also check the last line of the output of LIST BREAKS
+	trm.sndInput("BREAK TOGGLE CL 100 & SL 100")
+	trm.sndInput("LIST BREAKS")
+	trm.cmpOutput(" 1: Clock->100 & Scanline->100")
+
+	// this is a different breakpoint
 	trm.sndInput("BREAK CL 100")
 	trm.cmpOutput("")
+	trm.sndInput("LIST BREAKS")
+	trm.cmpOutput(" 2: Clock->100")
 }

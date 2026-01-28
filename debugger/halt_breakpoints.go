@@ -21,12 +21,12 @@ package debugger
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
-	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -260,7 +260,15 @@ func (bp breakpoints) list() {
 //
 // !!TODO: simplify breakpoints parser to match help description.
 func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
-	andBreaks := false
+	var andBreaks bool
+	var toggle bool
+
+	if peek, ok := tokens.Peek(); ok {
+		if peek == "TOGGLE" {
+			toggle = true
+			tokens.Get()
+		}
+	}
 
 	// default target of CPU PC. meaning that "BREAK n" will cause a breakpoint
 	// being set on the PC. breaking on PC is probably the most common type of
@@ -359,11 +367,12 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 			}
 
 			// possibly switch composition mode
-			if tok == "&" || tok == "&&" {
+			switch tok {
+			case "&", "&&":
 				andBreaks = true
-			} else if tok == "|" || tok == "||" {
+			case "|", "||":
 				andBreaks = false
-			} else {
+			default:
 				// if PC target has not been explicitly specified then add
 				// bank condition
 				addBankCondition = addBankCondition && strings.ToUpper(tok) != "PC"
@@ -412,9 +421,14 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 		}
 
 		if i := bp.checkBreaker(nb); i != noBreakEqualivalent {
-			return fmt.Errorf("already exists (%s)", bp.breaks[i])
+			if toggle {
+				bp.breaks = slices.Delete(bp.breaks, i, i+1)
+			} else {
+				return fmt.Errorf("already exists (%s)", bp.breaks[i])
+			}
+		} else {
+			bp.breaks = append(bp.breaks, nb)
 		}
-		bp.breaks = append(bp.breaks, nb)
 	}
 
 	return nil
@@ -476,35 +490,6 @@ func (bp breakpoints) HasPCBreak(addr uint16, bank int) (bool, int) {
 
 	// there is no breakpoint at that matches this disassembly entry
 	return false, noBreakEqualivalent
-}
-
-func (bp *breakpoints) togglePCBreak(e *disassembly.Entry) {
-	has, i := bp.HasPCBreak(e.Result.Address, e.Bank)
-
-	if i != noBreakEqualivalent && has {
-		_ = bp.drop(i) // ignoring errors
-		return
-	}
-
-	// no equivalent breakpoint existed so add one
-	ai := bp.dbg.dbgmem.GetAddressInfo(e.Result.Address, true)
-	nb := breaker{
-		target: bp.checkPcBreak,
-
-		// see above for casting commentary
-		value: int(ai.MappedAddress),
-	}
-
-	if bp.dbg.vcs.Mem.Cart.NumBanks() > 1 {
-		nb.next = &breaker{
-			target: bp.checkBankBreak,
-
-			// see above for casting commentary
-			value: e.Bank,
-		}
-	}
-
-	bp.breaks = append(bp.breaks, nb)
 }
 
 // CheckBreakpoints is a minimal interface to Breakpoints
