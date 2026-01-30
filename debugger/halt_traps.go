@@ -89,7 +89,7 @@ func (tr *traps) check() string {
 		trapValue := tr.traps[i].target.value()
 
 		if trapValue != tr.traps[i].origValue {
-			checkString.WriteString(fmt.Sprintf("trap on %s [%v->%v]\n", tr.traps[i].target.label, tr.traps[i].origValue, trapValue))
+			fmt.Fprintf(&checkString, "trap on %s [%v->%v]\n", tr.traps[i].target.label, tr.traps[i].origValue, trapValue)
 			tr.traps[i].origValue = trapValue
 		}
 	}

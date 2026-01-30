@@ -59,7 +59,7 @@ func testBreakpoints(t *testing.T, trm *mockTerm) {
 	// the debugger should not add it even though the expression is not exactly the same because of
 	// the order of the AND statement.
 	trm.command("BREAK CL 100 & SL 100")
-	test.ExpectEquality(t, trm.lastLine(), "already exists (Scanline->100 & Clock->100)")
+	test.ExpectEquality(t, trm.lastLine(), "already exists (Clock->100 & Scanline->100)")
 
 	// TOGGLE says to drop the breakpoint if it already exists
 	trm.command("BREAK TOGGLE CL 100 & SL 100")
@@ -73,6 +73,7 @@ func testBreakpoints(t *testing.T, trm *mockTerm) {
 	// calling the BREAK TOGGLE command again adds the breakpoint if it doesn't exist.
 	// we also check the last line of the output of LIST BREAKS
 	trm.command("BREAK TOGGLE CL 100 & SL 100")
+	test.ExpectEquality(t, trm.lastLine(), "")
 	trm.command("LIST BREAKS")
 	test.ExpectEquality(t, trm.lastLine(), " 1: Clock->100 & Scanline->100")
 
@@ -81,4 +82,38 @@ func testBreakpoints(t *testing.T, trm *mockTerm) {
 	test.ExpectEquality(t, trm.lastLine(), "")
 	trm.command("LIST BREAKS")
 	test.ExpectEquality(t, trm.lastLine(), " 2: Clock->100")
+
+	// clear all breakpoints and check that the list is empty
+	trm.command("CLEAR BREAKS")
+	test.ExpectEquality(t, trm.lastLine(), "breakpoints cleared")
+	trm.command("LIST BREAKS")
+	test.ExpectEquality(t, trm.lastLine(), "no breakpoints")
+}
+
+func testBreakpoints_drop(t *testing.T, trm *mockTerm) {
+	trm.command("BREAK DROP $1000")
+	test.ExpectEquality(t, trm.lastLine(), "no such breakpoint (PC->0x1000)")
+
+	trm.command("BREAK $1000")
+	test.ExpectEquality(t, trm.lastLine(), "")
+
+	trm.command("BREAK DROP $1000")
+	test.ExpectEquality(t, trm.lastLine(), "")
+
+	trm.command("LIST BREAKS")
+	test.ExpectEquality(t, trm.lastLine(), "no breakpoints")
+
+	trm.command("BREAK $1000")
+	test.ExpectEquality(t, trm.lastLine(), "")
+	trm.command("BREAK $3001")
+	test.ExpectEquality(t, trm.lastLine(), "")
+
+	trm.command("DROP BREAK 0")
+	test.ExpectEquality(t, trm.lastLine(), "breakpoint #0 dropped")
+
+	// the remaining breakpoint was set on 0x3001, which is a mirror of 0x1001.
+	// breakpoints on PC addresses are always normalised so LIST BREAKS will show
+	// the primary mirror address
+	trm.command("LIST BREAKS")
+	test.ExpectEquality(t, trm.lastLine(), " 0: PC->0x1001")
 }

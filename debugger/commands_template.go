@@ -139,7 +139,7 @@ var commandTemplate = []string{
 	cmdKeyportari + " (NONE|24CHAR|ASCII)",
 
 	// halt conditions
-	cmdBreak + " (TOGGLE) [%<address>S|%<target>S %<value>N] {& %<address>S|%<target>S %<value>S}",
+	cmdBreak + " (TOGGLE|DROP) [%<address>S|%<target>S %<value>N] {& %<address>S|%<target>S %<value>S}",
 	cmdTrap + " [%<address>S] {%<address>S}",
 	cmdWatch + " (READ|WRITE (CHANGED)) (STRICT) (PHANTOM|GHOST) [%<address>S] (%<value>S)",
 	cmdTrace + " (STRICT) (%<address>S)",

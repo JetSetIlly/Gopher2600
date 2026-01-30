@@ -128,6 +128,7 @@ func testSequence(t *testing.T, trm *mockTerm) {
 		trm.command("QUIT")
 	}()
 	testBreakpoints(t, trm)
+	testBreakpoints_drop(t, trm)
 	testTraps(t, trm)
 	testWatches(t, trm)
 }

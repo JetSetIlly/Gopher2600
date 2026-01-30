@@ -450,7 +450,10 @@ execution breaks on SL 10 & X 255. After resumption, the break will not apply
 until X changes from 255 to something else and then back again, or SL is hit on
 the next frame and X again (or still) has a value of 255.i
 
-Existing breakpoints can be reviewed with the LIST command and deleted with the
+TOGGLE and DROP can be used to affect already existing breakpoints. TOGGLE will add a
+breakpoint if one doesn't already exist.
+
+Existing breakpoints can be reviewed with the LIST command and also deleted with the
 DROP or CLEAR commands`,
 
 	cmdTrap: `Cause emulator to halt when specified machine component is touched and changed
