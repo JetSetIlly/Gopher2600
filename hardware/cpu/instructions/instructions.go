@@ -91,6 +91,24 @@ const (
 	Interrupt
 )
 
+func (e EffectCategory) String() string {
+	switch e {
+	case Read:
+		return "Read"
+	case Write:
+		return "Write"
+	case RMW:
+		return "RMW"
+	case Flow:
+		return "Flow"
+	case Subroutine:
+		return "Subroutine"
+	case Interrupt:
+		return "Interrupt"
+	}
+	return "unknown effect"
+}
+
 // Cycles is the number of cycles for the instruction. The Formatted value is
 // the Value field formatted as a string with the condition that branch instructions
 // are formatted as:
