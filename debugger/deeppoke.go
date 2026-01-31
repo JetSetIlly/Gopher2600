@@ -129,11 +129,11 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 		// writes to memory always use a register as the source of the write
 		var reg rune
 		switch searchState.VCS.CPU.LastResult.Defn.Operator {
-		case instructions.Sta:
+		case instructions.STA:
 			reg = 'A'
-		case instructions.Stx:
+		case instructions.STX:
 			reg = 'X'
-		case instructions.Sty:
+		case instructions.STY:
 			reg = 'Y'
 		default:
 			return deepPoking{}, fmt.Errorf("unexpected write sequence (%s)", searchState.VCS.CPU.LastResult.String())

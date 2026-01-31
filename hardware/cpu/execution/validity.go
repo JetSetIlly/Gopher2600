@@ -35,38 +35,23 @@ func (r Result) IsValid() error {
 
 	// byte count
 	if r.ByteCount != r.Defn.Bytes {
-		return fmt.Errorf("cpu: unexpected number of bytes read during decode (%d instead of %d)", r.ByteCount, r.Defn.Bytes)
+		return fmt.Errorf("cpu: unexpected number of bytes read: %d (%s)", r.ByteCount, r.Defn)
 	}
 
 	// if a bug has been triggered, don't perform the number of cycles check
 	if r.CPUBug == "" {
 		if r.Defn.IsBranch() {
-			if r.Cycles != r.Defn.Cycles.Value && r.Cycles != r.Defn.Cycles.Value+1 && r.Cycles != r.Defn.Cycles.Value+2 {
-				return fmt.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d or %d)",
-					r.Defn.OpCode,
-					r.Defn.Operator,
-					r.Cycles,
-					r.Defn.Cycles.Value,
-					r.Defn.Cycles.Value+1,
-					r.Defn.Cycles.Value+2)
+			if r.Cycles != r.Defn.Cycles && r.Cycles != r.Defn.Cycles+1 && r.Cycles != r.Defn.Cycles+2 {
+				return fmt.Errorf("cpu: number of cycles: %d (%s)", r.Cycles, r.Defn)
 			}
 		} else {
 			if r.Defn.PageSensitive {
-				if r.PageFault && r.Cycles != r.Defn.Cycles.Value && r.Cycles != r.Defn.Cycles.Value+1 {
-					return fmt.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d)",
-						r.Defn.OpCode,
-						r.Defn.Operator,
-						r.Cycles,
-						r.Defn.Cycles.Value,
-						r.Defn.Cycles.Value+1)
+				if r.PageFault && r.Cycles != r.Defn.Cycles && r.Cycles != r.Defn.Cycles+1 {
+					return fmt.Errorf("cpu: number of cycles [page fault]: %d (%s)", r.Cycles, r.Defn)
 				}
 			} else {
-				if r.Cycles != r.Defn.Cycles.Value {
-					return fmt.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d)",
-						r.Defn.OpCode,
-						r.Defn.Operator,
-						r.Cycles,
-						r.Defn.Cycles.Value)
+				if r.Cycles != r.Defn.Cycles {
+					return fmt.Errorf("cpu: number of cycles: %d (%s)", r.Cycles, r.Defn)
 				}
 			}
 		}

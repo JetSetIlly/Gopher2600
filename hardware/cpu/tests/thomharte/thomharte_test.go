@@ -274,7 +274,7 @@ func testThomHarte(t *testing.T, opcode uint8, force bool) {
 
 		// the number of entries in the cycles array is way too many in the tests. we don't test
 		// them because we are confident that the number executed by KIL is correct
-		if mc.LastResult.Defn.Operator.String() != "KIL" {
+		if mc.LastResult.Defn.Operator.String() != "kil" {
 			fail = !test.ExpectEquality(t, mc.LastResult.Cycles, len(s.Cycles), testFile, i, "cycle count") || fail
 		}
 

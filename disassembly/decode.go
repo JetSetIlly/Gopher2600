@@ -92,7 +92,7 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
 				// HeMan ROM. From bank 7 the following jumps to bank 5.
 				//
 				//	$fa03 JMP $f7e8
-				if e.Result.Defn.Operator == instructions.Jmp || e.Result.Defn.Operator == instructions.Jsr {
+				if e.Result.Defn.Operator == instructions.JMP || e.Result.Defn.Operator == instructions.JSR {
 					jmpAddress, area := memorymap.MapAddress(e.Result.InstructionData, true)
 
 					if area == memorymap.Cartridge {

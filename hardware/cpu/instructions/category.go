@@ -13,7 +13,41 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package instructions defines the complete instruction set of the 6507. The
-// Definition type is used to summarise the requirements and effects of each
-// entry set.
 package instructions
+
+// Category of an instruction describes its effect
+type Category int
+
+const (
+	Read Category = iota
+	Write
+	RMW
+
+	// the following three effects have a variable effect on the program
+	// counter, depending on the instruction's precise operand.
+
+	// flow consists of the Branch and JMP instructions. Branch instructions
+	// specifically can be distinguished by the AddressingMode.
+	Flow
+
+	Subroutine
+	Interrupt
+)
+
+func (e Category) String() string {
+	switch e {
+	case Read:
+		return "Read"
+	case Write:
+		return "Write"
+	case RMW:
+		return "RMW"
+	case Flow:
+		return "Flow"
+	case Subroutine:
+		return "Subroutine"
+	case Interrupt:
+		return "Interrupt"
+	}
+	return "unknown effect"
+}

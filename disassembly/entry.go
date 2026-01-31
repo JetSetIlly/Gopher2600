@@ -117,7 +117,7 @@ func (e *Entry) Cycles() string {
 	}
 
 	if e.Level < EntryLevelExecuted {
-		return e.Result.Defn.Cycles.Formatted
+		return fmt.Sprintf("%d", e.Result.Defn.Cycles)
 	}
 
 	if e.Result.Final {
@@ -126,7 +126,7 @@ func (e *Entry) Cycles() string {
 
 	// if entry hasn't been executed yet or if actual cycles is different to
 	// the cycles defined for the entry then return an annotated string
-	return fmt.Sprintf("%d of %s", e.Result.Cycles, e.Result.Defn.Cycles.Formatted)
+	return fmt.Sprintf("%d of %d", e.Result.Cycles, e.Result.Defn.Cycles)
 }
 
 // Notes returns a string returning notes about the most recent execution. The
