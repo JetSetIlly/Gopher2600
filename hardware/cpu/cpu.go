@@ -801,7 +801,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			}
 		}
 
-	case instructions.IndexedIndirect: // x indexing
+	case instructions.PreIndexed: // (ind,X)
 		// +1 cycle
 		err = mc.read8BitPC(loByte)
 		if err != nil {
@@ -834,7 +834,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// never a page fault wth pre-index indirect addressing
 
-	case instructions.IndirectIndexed: // y indexing
+	case instructions.PostIndexed: // (ind),Y
 		// +1 cycle
 		err = mc.read8BitPC(loByte)
 		if err != nil {

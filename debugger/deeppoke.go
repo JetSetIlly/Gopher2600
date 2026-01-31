@@ -249,7 +249,7 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 			default:
 				return deepPoking{}, fmt.Errorf("not deeppoking through non-RAM space (%s)", area)
 			}
-		case instructions.IndirectIndexed:
+		case instructions.PostIndexed:
 			pc := registers.NewProgramCounter(searchState.VCS.CPU.LastResult.InstructionData)
 			lo, err := searchState.VCS.Mem.Read(pc.Address())
 			if err != nil {

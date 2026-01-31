@@ -32,10 +32,10 @@ func (m AddressingMode) String() string {
 		return "ZeroPage"
 	case Indirect:
 		return "Indirect"
-	case IndexedIndirect:
-		return "IndexedIndirect"
-	case IndirectIndexed:
-		return "IndirectIndexed"
+	case PreIndexed:
+		return "PreIndexed"
+	case PostIndexed:
+		return "PostIndexed"
 	case AbsoluteIndexedX:
 		return "AbsoluteIndexedX"
 	case AbsoluteIndexedY:
@@ -55,8 +55,8 @@ const (
 	Absolute
 	ZeroPage
 	Indirect
-	IndexedIndirect  // (ind,X)
-	IndirectIndexed  // (ind), Y
+	PreIndexed       // (ind,X)
+	PostIndexed      // (ind), Y
 	AbsoluteIndexedX // abs,X
 	AbsoluteIndexedY // abs,Y
 	ZeroPageIndexedX // zpg,X

@@ -14,7 +14,7 @@
     "operator": "ora",
     "bytes": 2,
     "cycles": 6,
-    "addressingMode": "indexedindirect",
+    "addressingMode": "preindexed",
     "pageSensitive": false,
     "category": "read",
     "undocumented": false
@@ -34,7 +34,7 @@
     "operator": "slo",
     "bytes": 2,
     "cycles": 8,
-    "addressingMode": "indexedindirect",
+    "addressingMode": "preindexed",
     "pageSensitive": false,
     "category": "modify",
     "undocumented": true
@@ -174,7 +174,7 @@
     "operator": "ora",
     "bytes": 2,
     "cycles": 5,
-    "addressingMode": "indirectindexed",
+    "addressingMode": "postindexed",
     "pageSensitive": true,
     "category": "read",
     "undocumented": false
@@ -194,7 +194,7 @@
     "operator": "slo",
     "bytes": 2,
     "cycles": 8,
-    "addressingMode": "indirectindexed",
+    "addressingMode": "postindexed",
     "pageSensitive": false,
     "category": "modify",
     "undocumented": true
@@ -334,7 +334,7 @@
     "operator": "and",
     "bytes": 2,
     "cycles": 6,
-    "addressingMode": "indexedindirect",
+    "addressingMode": "preindexed",
     "pageSensitive": false,
     "category": "read",
     "undocumented": false
@@ -354,7 +354,7 @@
     "operator": "rla",
     "bytes": 2,
     "cycles": 8,
-    "addressingMode": "indexedindirect",
+    "addressingMode": "preindexed",
     "pageSensitive": false,
     "category": "modify",
     "undocumented": true
@@ -494,7 +494,7 @@
     "operator": "and",
     "bytes": 2,
     "cycles": 5,
-    "addressingMode": "indirectindexed",
+    "addressingMode": "postindexed",
     "pageSensitive": true,
     "category": "read",
     "undocumented": false
@@ -514,7 +514,7 @@
     "operator": "rla",
     "bytes": 2,
     "cycles": 8,
-    "addressingMode": "indirectindexed",
+    "addressingMode": "postindexed",
     "pageSensitive": false,
     "category": "modify",
     "undocumented": true
@@ -654,7 +654,7 @@
     "operator": "eor",
     "bytes": 2,
     "cycles": 6,
-    "addressingMode": "indexedindirect",
+    "addressingMode": "preindexed",
     "pageSensitive": false,
     "category": "read",
     "undocumented": false
@@ -674,7 +674,7 @@
     "operator": "sre",
     "bytes": 2,
     "cycles": 8,
-    "addressingMode": "indexedindirect",
+    "addressingMode": "preindexed",
     "pageSensitive": false,
     "category": "modify",
     "undocumented": true
@@ -814,7 +814,7 @@
     "operator": "eor",
     "bytes": 2,
     "cycles": 5,
-    "addressingMode": "indirectindexed",
+    "addressingMode": "postindexed",
     "pageSensitive": true,
     "category": "read",
     "undocumented": false
@@ -834,7 +834,7 @@
     "operator": "sre",
     "bytes": 2,
     "cycles": 8,
-    "addressingMode": "indirectindexed",
+    "addressingMode": "postindexed",
     "pageSensitive": false,
     "category": "modify",
     "undocumented": true
@@ -974,7 +974,7 @@
     "operator": "adc",
     "bytes": 2,
     "cycles": 6,
-    "addressingMode": "indexedindirect",
+    "addressingMode": "preindexed",
     "pageSensitive": false,
     "category": "read",
     "undocumented": false
@@ -994,7 +994,7 @@
     "operator": "rra",
     "bytes": 2,
     "cycles": 8,
-    "addressingMode": "indexedindirect",
+    "addressingMode": "preindexed",
     "pageSensitive": false,
     "category": "modify",
     "undocumented": true
@@ -1134,7 +1134,7 @@
     "operator": "adc",
     "bytes": 2,
     "cycles": 5,
-    "addressingMode": "indirectindexed",
+    "addressingMode": "postindexed",
     "pageSensitive": true,
     "category": "read",
     "undocumented": false
@@ -1154,7 +1154,7 @@
     "operator": "rra",
     "bytes": 2,
     "cycles": 8,
-    "addressingMode": "indirectindexed",
+    "addressingMode": "postindexed",
     "pageSensitive": false,
     "category": "modify",
     "undocumented": true
@@ -1294,7 +1294,7 @@
     "operator": "sta",
     "bytes": 2,
     "cycles": 6,
-    "addressingMode": "indexedindirect",
+    "addressingMode": "preindexed",
     "pageSensitive": false,
     "category": "write",
     "undocumented": false
@@ -1314,7 +1314,7 @@
     "operator": "sax",
     "bytes": 2,
     "cycles": 6,
-    "addressingMode": "indexedindirect",
+    "addressingMode": "preindexed",
     "pageSensitive": false,
     "category": "write",
     "undocumented": true
@@ -1454,7 +1454,7 @@
     "operator": "sta",
     "bytes": 2,
     "cycles": 6,
-    "addressingMode": "indirectindexed",
+    "addressingMode": "postindexed",
     "pageSensitive": false,
     "category": "write",
     "undocumented": false
@@ -1474,7 +1474,7 @@
     "operator": "ahx",
     "bytes": 2,
     "cycles": 6,
-    "addressingMode": "indirectindexed",
+    "addressingMode": "postindexed",
     "pageSensitive": false,
     "category": "write",
     "undocumented": true
@@ -1614,7 +1614,7 @@
     "operator": "lda",
     "bytes": 2,
     "cycles": 6,
-    "addressingMode": "indexedindirect",
+    "addressingMode": "preindexed",
     "pageSensitive": false,
     "category": "read",
     "undocumented": false
@@ -1634,7 +1634,7 @@
     "operator": "lax",
     "bytes": 2,
     "cycles": 6,
-    "addressingMode": "indexedindirect",
+    "addressingMode": "preindexed",
     "pageSensitive": false,
     "category": "read",
     "undocumented": true
@@ -1774,7 +1774,7 @@
     "operator": "lda",
     "bytes": 2,
     "cycles": 5,
-    "addressingMode": "indirectindexed",
+    "addressingMode": "postindexed",
     "pageSensitive": true,
     "category": "read",
     "undocumented": false
@@ -1794,7 +1794,7 @@
     "operator": "lax",
     "bytes": 2,
     "cycles": 5,
-    "addressingMode": "indirectindexed",
+    "addressingMode": "postindexed",
     "pageSensitive": true,
     "category": "read",
     "undocumented": true
@@ -1934,7 +1934,7 @@
     "operator": "cmp",
     "bytes": 2,
     "cycles": 6,
-    "addressingMode": "indexedindirect",
+    "addressingMode": "preindexed",
     "pageSensitive": false,
     "category": "read",
     "undocumented": false
@@ -1954,7 +1954,7 @@
     "operator": "dcp",
     "bytes": 2,
     "cycles": 8,
-    "addressingMode": "indexedindirect",
+    "addressingMode": "preindexed",
     "pageSensitive": false,
     "category": "modify",
     "undocumented": true
@@ -2094,7 +2094,7 @@
     "operator": "cmp",
     "bytes": 2,
     "cycles": 5,
-    "addressingMode": "indirectindexed",
+    "addressingMode": "postindexed",
     "pageSensitive": true,
     "category": "read",
     "undocumented": false
@@ -2114,7 +2114,7 @@
     "operator": "dcp",
     "bytes": 2,
     "cycles": 8,
-    "addressingMode": "indirectindexed",
+    "addressingMode": "postindexed",
     "pageSensitive": false,
     "category": "modify",
     "undocumented": true
@@ -2254,7 +2254,7 @@
     "operator": "sbc",
     "bytes": 2,
     "cycles": 6,
-    "addressingMode": "indexedindirect",
+    "addressingMode": "preindexed",
     "pageSensitive": false,
     "category": "read",
     "undocumented": false
@@ -2274,7 +2274,7 @@
     "operator": "isc",
     "bytes": 2,
     "cycles": 8,
-    "addressingMode": "indexedindirect",
+    "addressingMode": "preindexed",
     "pageSensitive": false,
     "category": "modify",
     "undocumented": true
@@ -2414,7 +2414,7 @@
     "operator": "sbc",
     "bytes": 2,
     "cycles": 5,
-    "addressingMode": "indirectindexed",
+    "addressingMode": "postindexed",
     "pageSensitive": true,
     "category": "read",
     "undocumented": false
@@ -2434,7 +2434,7 @@
     "operator": "isc",
     "bytes": 2,
     "cycles": 8,
-    "addressingMode": "indirectindexed",
+    "addressingMode": "postindexed",
     "pageSensitive": false,
     "category": "modify",
     "undocumented": true

@@ -249,10 +249,10 @@ func init() {
 			def.AddressingMode = ZeroPage
 		case "indirect":
 			def.AddressingMode = Indirect
-		case "indexedindirect":
-			def.AddressingMode = IndexedIndirect
-		case "indirectindexed":
-			def.AddressingMode = IndirectIndexed
+		case "preindexed":
+			def.AddressingMode = PreIndexed
+		case "postindexed":
+			def.AddressingMode = PostIndexed
 		case "absoluteindexedx":
 			def.AddressingMode = AbsoluteIndexedX
 		case "absoluteindexedy":
