@@ -859,8 +859,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.LastResult.PageFault = true
 		}
 
-		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.RMW {
-			// phantom read (always happens for Write and RMW)
+		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.Modify {
+			// phantom read (always happens for Write and Modify)
 			// +1 cycle
 			_, err = mc.read8Bit((indexedAddress&0xff00)|(address&0x00ff), true)
 			if err != nil {
@@ -887,8 +887,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// check for page fault
 		mc.LastResult.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
-		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.RMW {
-			// phantom read (always happens for Write and RMW)
+		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.Modify {
+			// phantom read (always happens for Write and Modify)
 			// +1 cycle
 			_, err := mc.read8Bit((indirectAddress&0xff00)|(address&0x00ff), true)
 			if err != nil {
@@ -915,8 +915,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// check for page fault
 		mc.LastResult.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
-		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.RMW {
-			// phantom read (always happens for Write and RMW)
+		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.Modify {
+			// phantom read (always happens for Write and Modify)
 			// +1 cycle
 			_, err := mc.read8Bit((indirectAddress&0xff00)|(address&0x00ff), true)
 			if err != nil {
@@ -997,7 +997,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			if err != nil {
 				return err
 			}
-		case instructions.RMW:
+		case instructions.Modify:
 			// +1 cycle
 			value, err = mc.read8Bit(address, false)
 			if err != nil {
@@ -1189,7 +1189,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case instructions.ASL:
 		var r *registers.Data
-		if defn.Effect == instructions.RMW {
+		if defn.Effect == instructions.Modify {
 			r = &mc.acc8
 			r.Load(value)
 		} else {
@@ -1202,7 +1202,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case instructions.LSR:
 		var r *registers.Data
-		if defn.Effect == instructions.RMW {
+		if defn.Effect == instructions.Modify {
 			r = &mc.acc8
 			r.Load(value)
 		} else {
@@ -1235,7 +1235,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 	case instructions.ROR:
-		if defn.Effect == instructions.RMW {
+		if defn.Effect == instructions.Modify {
 			mc.acc8.Load(value)
 			mc.Status.Carry = mc.acc8.ROR(mc.Status.Carry)
 			mc.Status.Zero = mc.acc8.IsZero()
@@ -1248,7 +1248,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 	case instructions.ROL:
-		if defn.Effect == instructions.RMW {
+		if defn.Effect == instructions.Modify {
 			mc.acc8.Load(value)
 			mc.Status.Carry = mc.acc8.ROL(mc.Status.Carry)
 			mc.Status.Zero = mc.acc8.IsZero()
@@ -1787,8 +1787,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		return fmt.Errorf("cpu: unknown operator (%s)", defn.Operator)
 	}
 
-	// for RMW instructions: write altered value back to memory
-	if defn.Effect == instructions.RMW {
+	// for Modify instructions: write altered value back to memory
+	if defn.Effect == instructions.Modify {
 		// +1 cycle
 		err = mc.write8Bit(address, value, false)
 		if err != nil {

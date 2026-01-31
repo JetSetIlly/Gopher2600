@@ -15,7 +15,7 @@
 
 package instructions
 
-// AddressingMode describes the method data for the instruction should be received.
+// AddressingMode describes the method of memory addressing used by an instruction
 type AddressingMode int
 
 func (m AddressingMode) String() string {
@@ -45,26 +45,20 @@ func (m AddressingMode) String() string {
 	case ZeroPageIndexedY:
 		return "ZeroPageIndexedY"
 	}
-
 	return "unknown addressing mode"
 }
 
-// List of supported addressing modes.
 const (
 	Implied AddressingMode = iota
 	Immediate
-	Relative // relative addressing is used for branch instructions
-
-	Absolute // abs
-	ZeroPage // zpg
-	Indirect // ind
-
-	IndexedIndirect // (ind,X)
-	IndirectIndexed // (ind), Y
-
+	Relative
+	Absolute
+	ZeroPage
+	Indirect
+	IndexedIndirect  // (ind,X)
+	IndirectIndexed  // (ind), Y
 	AbsoluteIndexedX // abs,X
 	AbsoluteIndexedY // abs,Y
-
 	ZeroPageIndexedX // zpg,X
 	ZeroPageIndexedY // zpg,Y
 )

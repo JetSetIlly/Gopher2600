@@ -116,9 +116,9 @@ func (wtc *watches) check() string {
 
 	// no check if access address & write flag haven't changed
 	//
-	// note that the write flag comparison is required otherwise RMW
+	// note that the write flag comparison is required otherwise Modify
 	// instructions will not be caught on the write signal (which would mean
-	// that a WRITE watch will never match a RMW instruction)
+	// that a WRITE watch will never match a Modify instruction)
 	if wtc.lastAddressAccessed == wtc.dbg.vcs.Mem.LastCPUAddressLiteral && wtc.lastAddressWrite == wtc.dbg.vcs.Mem.LastCPUWrite {
 		return ""
 	}

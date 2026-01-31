@@ -36,7 +36,7 @@
     "cycles": 8,
     "addressingMode": "indexedindirect",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -66,7 +66,7 @@
     "cycles": 5,
     "addressingMode": "zeropage",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -76,7 +76,7 @@
     "cycles": 5,
     "addressingMode": "zeropage",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -146,7 +146,7 @@
     "cycles": 6,
     "addressingMode": "absolute",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -156,7 +156,7 @@
     "cycles": 6,
     "addressingMode": "absolute",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -196,7 +196,7 @@
     "cycles": 8,
     "addressingMode": "indirectindexed",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -226,7 +226,7 @@
     "cycles": 6,
     "addressingMode": "zeropageindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -236,7 +236,7 @@
     "cycles": 6,
     "addressingMode": "zeropageindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -276,7 +276,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedy",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -306,7 +306,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -316,7 +316,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -356,7 +356,7 @@
     "cycles": 8,
     "addressingMode": "indexedindirect",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -386,7 +386,7 @@
     "cycles": 5,
     "addressingMode": "zeropage",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -396,7 +396,7 @@
     "cycles": 5,
     "addressingMode": "zeropage",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -466,7 +466,7 @@
     "cycles": 6,
     "addressingMode": "absolute",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -476,7 +476,7 @@
     "cycles": 6,
     "addressingMode": "absolute",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -516,7 +516,7 @@
     "cycles": 8,
     "addressingMode": "indirectindexed",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -546,7 +546,7 @@
     "cycles": 6,
     "addressingMode": "zeropageindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -556,7 +556,7 @@
     "cycles": 6,
     "addressingMode": "zeropageindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -596,7 +596,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedy",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -626,7 +626,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -636,7 +636,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -676,7 +676,7 @@
     "cycles": 8,
     "addressingMode": "indexedindirect",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -706,7 +706,7 @@
     "cycles": 5,
     "addressingMode": "zeropage",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -716,7 +716,7 @@
     "cycles": 5,
     "addressingMode": "zeropage",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -786,7 +786,7 @@
     "cycles": 6,
     "addressingMode": "absolute",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -796,7 +796,7 @@
     "cycles": 6,
     "addressingMode": "absolute",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -836,7 +836,7 @@
     "cycles": 8,
     "addressingMode": "indirectindexed",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -866,7 +866,7 @@
     "cycles": 6,
     "addressingMode": "zeropageindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -876,7 +876,7 @@
     "cycles": 6,
     "addressingMode": "zeropageindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -916,7 +916,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedy",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -946,7 +946,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -956,7 +956,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -996,7 +996,7 @@
     "cycles": 8,
     "addressingMode": "indexedindirect",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -1026,7 +1026,7 @@
     "cycles": 5,
     "addressingMode": "zeropage",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -1036,7 +1036,7 @@
     "cycles": 5,
     "addressingMode": "zeropage",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -1106,7 +1106,7 @@
     "cycles": 6,
     "addressingMode": "absolute",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -1116,7 +1116,7 @@
     "cycles": 6,
     "addressingMode": "absolute",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -1156,7 +1156,7 @@
     "cycles": 8,
     "addressingMode": "indirectindexed",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -1186,7 +1186,7 @@
     "cycles": 6,
     "addressingMode": "zeropageindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -1196,7 +1196,7 @@
     "cycles": 6,
     "addressingMode": "zeropageindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -1236,7 +1236,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedy",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -1266,7 +1266,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -1276,7 +1276,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -1956,7 +1956,7 @@
     "cycles": 8,
     "addressingMode": "indexedindirect",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -1986,7 +1986,7 @@
     "cycles": 5,
     "addressingMode": "zeropage",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -1996,7 +1996,7 @@
     "cycles": 5,
     "addressingMode": "zeropage",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -2066,7 +2066,7 @@
     "cycles": 6,
     "addressingMode": "absolute",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -2076,7 +2076,7 @@
     "cycles": 6,
     "addressingMode": "absolute",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -2116,7 +2116,7 @@
     "cycles": 8,
     "addressingMode": "indirectindexed",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -2146,7 +2146,7 @@
     "cycles": 6,
     "addressingMode": "zeropageindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -2156,7 +2156,7 @@
     "cycles": 6,
     "addressingMode": "zeropageindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -2196,7 +2196,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedy",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -2226,7 +2226,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -2236,7 +2236,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -2276,7 +2276,7 @@
     "cycles": 8,
     "addressingMode": "indexedindirect",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -2306,7 +2306,7 @@
     "cycles": 5,
     "addressingMode": "zeropage",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -2316,7 +2316,7 @@
     "cycles": 5,
     "addressingMode": "zeropage",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -2386,7 +2386,7 @@
     "cycles": 6,
     "addressingMode": "absolute",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -2396,7 +2396,7 @@
     "cycles": 6,
     "addressingMode": "absolute",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -2436,7 +2436,7 @@
     "cycles": 8,
     "addressingMode": "indirectindexed",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -2466,7 +2466,7 @@
     "cycles": 6,
     "addressingMode": "zeropageindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -2476,7 +2476,7 @@
     "cycles": 6,
     "addressingMode": "zeropageindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -2516,7 +2516,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedy",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   },
   {
@@ -2546,7 +2546,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": false
   },
   {
@@ -2556,7 +2556,7 @@
     "cycles": 7,
     "addressingMode": "absoluteindexedx",
     "pageSensitive": false,
-    "category": "rmw",
+    "category": "modify",
     "undocumented": true
   }
 ]

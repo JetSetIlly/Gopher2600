@@ -23,7 +23,7 @@ import (
 	"strings"
 )
 
-// Definition defines each instruction in the instruction set; one per instruction.
+// Definition defines each instruction in the instruction set; one per instruction
 type Definition struct {
 	OpCode         uint8
 	Operator       Operator
@@ -33,16 +33,16 @@ type Definition struct {
 	PageSensitive  bool
 	Effect         Category
 
-	// Whether instruction is "undocumented".
+	// Whether instruction is "undocumented"
 	Undocumented bool
 }
 
-// String returns a single instruction definition as a string.
+// String returns a single instruction definition as a string
 func (defn Definition) String() string {
 	return fmt.Sprintf("%02x %s +%dbytes (%d cycles) [mode=%s pagesens=%t effect=%s]", defn.OpCode, defn.Operator, defn.Bytes, defn.Cycles, defn.AddressingMode, defn.PageSensitive, defn.Effect)
 }
 
-// IsBranch returns true if instruction is a branch instruction.
+// IsBranch returns true if instruction is a branch instruction
 func (defn Definition) IsBranch() bool {
 	return defn.AddressingMode == Relative && defn.Effect == Flow
 }
@@ -61,7 +61,7 @@ type importDefinition struct {
 //go:embed "definitions.json"
 var definitions_json []byte
 
-// definitions of all the 6507 instructions
+// definitions of all the 256 instructions
 var Definitions []Definition
 
 func init() {
@@ -270,8 +270,8 @@ func init() {
 			def.Effect = Read
 		case "write":
 			def.Effect = Write
-		case "rmw":
-			def.Effect = RMW
+		case "modify":
+			def.Effect = Modify
 		case "flow":
 			def.Effect = Flow
 		case "subroutine":

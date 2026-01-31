@@ -302,7 +302,7 @@ func (op Operand) Resolve() string {
 		case instructions.Write:
 			fallthrough
 
-		case instructions.RMW:
+		case instructions.Modify:
 			if e, ok := op.dsm.Sym.GetWriteSymbol(data); ok {
 				res = addrModeDecoration(e.Symbol, op.result.Defn.AddressingMode)
 			}

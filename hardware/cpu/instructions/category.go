@@ -21,15 +21,8 @@ type Category int
 const (
 	Read Category = iota
 	Write
-	RMW
-
-	// the following three effects have a variable effect on the program
-	// counter, depending on the instruction's precise operand.
-
-	// flow consists of the Branch and JMP instructions. Branch instructions
-	// specifically can be distinguished by the AddressingMode.
+	Modify
 	Flow
-
 	Subroutine
 	Interrupt
 )
@@ -40,8 +33,8 @@ func (e Category) String() string {
 		return "Read"
 	case Write:
 		return "Write"
-	case RMW:
-		return "RMW"
+	case Modify:
+		return "Modify"
 	case Flow:
 		return "Flow"
 	case Subroutine:

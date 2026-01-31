@@ -17,11 +17,10 @@ package instructions
 
 import "fmt"
 
-// Operator defines which operation is performed by the opcode. Many opcodes
-// can perform the same operation.
+// Operator defines which operation is performed by the opcode. Many opcodes can perform the same
+// operation
 type Operator int
 
-// List of valid Operator values.
 const (
 	NOP Operator = iota
 	ADC
