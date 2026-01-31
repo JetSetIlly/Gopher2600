@@ -33,7 +33,7 @@ endif
 
 
 ### support targets
-.PHONY: all clean tidy generate glsl_validate readme_spell patch_file_integrity lint
+.PHONY: all clean tidy glsl_validate readme_spell patch_file_integrity lint
 .PHONY: check_glsl check_pandoc check_awk check_linters
 
 all:
@@ -50,9 +50,6 @@ tidy:
 # goimports is not part of the standard Go distribution so we won't won't
 # require this in any of the other targets
 	goimports -w .
-
-generate:
-	@$(goBinary) generate ./...
 
 check_glsl:
 ifeq (, $(shell which glslangValidator))
@@ -115,13 +112,13 @@ else
 	$(goBinary) test -count=1 ./...
 endif
 
-race: generate test
+race: test
 	$(goBinary) run -race gopher2600.go "$(rom)"
 
-race_debug: generate test
+race_debug: test
 	$(goBinary) run -race gopher2600.go debug "$(rom)"
 
-fuzz: generate test
+fuzz: test
 # fuzz testing cannot work with multiple packages so we must list the ones
 # we want to include
 	$(goBinary) test -fuzztime=30s -fuzz . ./crunched/
@@ -138,37 +135,37 @@ ldflags_profile = -X 'github.com/jetsetilly/gopher2600/version.number=profiling'
 profile:
 	@echo use make targets profile_cpu, profile_mem, etc.
 
-profile_cpu: generate test
+profile_cpu: test
 	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
 	@echo "performance mode running for 20s"
 	@./gopher2600 performance -profile=cpu -duration=20s "$(rom)"
 	@$(goBinary) tool pprof -http : ./gopher2600 performance_cpu.profile
 
-profile_mem : generate test
+profile_mem : test
 	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
 	@echo "performance mode running for 20s"
 	@./gopher2600 performance -profile=mem -duration=20s "$(rom)"
 	@$(goBinary) tool pprof -http : ./gopher2600 performance_mem.profile
 
-profile_trace: generate test
+profile_trace: test
 	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
 	@echo "performance mode running for 20s"
 	@./gopher2600 performance -profile=trace -duration=20s "$(rom)"
 	@$(goBinary) tool trace -http : performance_trace.profile
 
-profile_cpu_play: generate test
+profile_cpu_play: test
 	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
 	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
 	@./gopher2600 play -profile=cpu -dwarf=none "$(rom)"
 	@$(goBinary) tool pprof -http : ./gopher2600 play_cpu.profile
 
-profile_mem_play : generate test
+profile_mem_play : test
 	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
 	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
 	@./gopher2600 play -profile=mem -dwarf=none "$(rom)"
 	@$(goBinary) tool pprof -http : ./gopher2600 play_mem.profile
 
-profile_trace_play: generate test
+profile_trace_play: test
 	@$(goBinary) build -gcflags "$(gcflags)" -ldflags "$(ldflags_profile)"
 	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
 	@./gopher2600 play -profile=trace -dwarf=none "$(rom)"
@@ -187,7 +184,7 @@ ifneq ($(shell $(goBinary) version | grep -q "darwin/arm64"; echo $$?), 0)
 #fontrendering=imguifreetype
 endif
 
-build: fontrendering generate 
+build: fontrendering 
 	$(goBinary) build -pgo=auto -gcflags "$(gcflags)" -trimpath -ldflags "$(ldflags_version)" -tags="$(fontrendering) $(renderer)"
 
 ### release building
@@ -199,7 +196,7 @@ ifndef version
 	$(error version is undefined)
 endif
 
-release: version_check fontrendering generate 
+release: version_check fontrendering 
 	$(goBinary) build -pgo=auto -gcflags "$(gcflags)" -trimpath -ldflags "$(ldflags_version)" -tags="$(fontrendering) $(renderer) release"
 	mv gopher2600 gopher2600_$(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
 
@@ -215,17 +212,17 @@ endif
 windows_manifest: check_rscr
 	rsrc -ico .resources/256x256.ico,.resources/48x48.ico,.resources/32x32.ico,.resources/16x16.ico
 
-cross_windows_release: version_check windows_manifest generate
+cross_windows_release: version_check windows_manifest 
 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static -static-libgcc -static-libstdc++ -L/usr/local/x86_64-w64-mingw32/lib" $(goBinary) build -pgo=auto -tags "$(fontrendering) $(renderer) static release" -gcflags "$(gcflags)" -trimpath -ldflags "$(ldflags_version) -H=windowsgui" -o gopher2600_windows_amd64.exe .
 	rm rsrc_windows_amd64.syso
 
 # intentionally using ldflags and not ldflags for
 # cross_windows_development and cross_winconsole_development
 
-cross_windows_development: windows_manifest generate
+cross_windows_development: windows_manifest 
 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static -static-libgcc -static-libstdc++ -L/usr/local/x86_64-w64-mingw32/lib" $(goBinary) build -pgo=auto -tags "$(fontrendering) $(renderer) static release" -gcflags "$(gcflags)" -trimpath -ldflags "$(ldflags_version) -H=windowsgui" -o gopher2600_windows_amd64_$(shell git rev-parse --short HEAD).exe .
 	rm rsrc_windows_amd64.syso
 
-cross_winconsole_development: windows_manifest generate
+cross_winconsole_development: windows_manifest 
 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static -static-libgcc -static-libstdc++ -L/usr/local/x86_64-w64-mingw32/lib" $(goBinary) build -pgo=auto -tags "$(fontrendering) $(renderer) static release" -gcflags "$(gcflags)" -trimpath -ldflags "$(ldflags_version) -H=windows" -o gopher2600_winconsole_amd64_$(shell git rev-parse --short HEAD).exe .
 	rm rsrc_windows_amd64.syso
