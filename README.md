@@ -56,15 +56,11 @@ There is also a project [blog](https://jetsetilly.github.io/Gopher2600-Blog/) wh
 
 ## Resources used
 
-The Stella project (https://stella-emu.github.io/) was used as a visual
-reference for video output. In the absence of VCS hardware (which I didn't have
-during initial TIA development) Stella was a good alternative for checking
-the accuracy of video output.
+The Stella project (https://stella-emu.github.io/) was used as a visual reference for video output. In the absence of VCS hardware (which I didn't have during initial TIA development) Stella was a good alternative for checking the accuracy of video output.
 
 In addition, Stella was used as reference in the following areas:
 
-* During the development of the CDF cartridge formats. These recent formats don't
-seem to be documented anywhere accept in the Stella source.
+* During the development of the CDF cartridge formats. These recent formats don't seem to be documented anywhere accept in the Stella source.
 
 * Cartridge fingerprints for ParkerBros, Wickstead Design, SCABS, UA and JANE.
 
@@ -75,15 +71,11 @@ seem to be documented anywhere accept in the Stella source.
 
 In all these instances, primary sources of information could not be found.
 
-(Earlier revision of Gopher2600 used Stella a reference for the EF cartridge
-format. However, the implementation has been vastly simplified by declaring EF
-to be a nothing more than a 64k Atari ROM. The discussion that led to this
-revelation can be found in the link below.)
+(Earlier revision of Gopher2600 used Stella a reference for the EF cartridge format. However, the implementation has been vastly simplified by declaring EF to be a nothing more than a 64k Atari ROM. The discussion that led to this revelation can be found in the link below.)
 
 https://forums.atariage.com/topic/346341-64ksc-multi-sprite-roms-error-out-in-stella-for-me/page/2/#comment-5188396
 
-Many notes and clues from the AtariAge message boards. Most significantly the
-following threads proved very useful indeed:
+Many notes and clues from the AtariAge message boards. Most significantly the following threads proved very useful indeed:
 
 * "Cosmic Ark Star Field Revisited"
 * "Properly model NUSIZ during player decode and draw"
@@ -95,22 +87,17 @@ And from and old mailing list:
 
 * "Games that do bad things to HMOVE..." https://www.biglist.com/lists/stella/archives/199804/msg00198.html
 
-These mailing lists and forums have supplied me with many useful test ROMs. I
-aim to package these up and distribute them sometime in the future (assuming I
-can get the required permissions).
+These mailing lists and forums have supplied me with many useful test ROMs. I aim to package these up and distribute them sometime in the future (assuming I can get the required permissions).
 
-Extensive references have been made to Andrew Towers' "Atari 2600 TIA Hardware
-Notes v1.0"
+Extensive references have been made to Andrew Towers' "Atari 2600 TIA Hardware Notes v1.0".
 
-Cartridge format information was found in Kevin Horton's "Cart Information
-v6.0" file (sometimes named bankswitch_sizes.txt)
+Cartridge format information was found in Kevin Horton's "Cart Information v6.0" file (sometimes named bankswitch_sizes.txt)
 
 The WF8 format discussed here on AtariAge
 
 https://forums.atariage.com/topic/367157-smurf-rescue-alternative-rom-with-wf8-bankswitch-format/
 
-The "Stella Programmer's Guide" by Steve Wright is of course a key document,
-used frequently throughout development.
+The "Stella Programmer's Guide" by Steve Wright is of course a key document, used frequently throughout development.
 
 Colour value information for NTSC, PAL and SECAM palettes taken from (in versions prior to v0.40.0):
 
@@ -122,7 +109,7 @@ Ongoing work to improve palette handling with a new mathematical model is ongoin
 
 https://forums.atariage.com/topic/375698-how-are-ntsc-console-colors-really-set-up
 
-The TIA Audio implementation is based almost entirely on the work of Chris Brenner.
+The TIA Audio implementation is based almost entirely on the work of Chris Brenner:
 
 https://atariage.com/forums/topic/249865-tia-sounding-off-in-the-digital-domain/
 
@@ -130,22 +117,25 @@ Additional work on volume sampling a result of this thread:
 
 https://forums.atariage.com/topic/370460-8-bit-digital-audio-from-2600/
 
-Musical information as seen in the tracker window taken from Random Terrain.
+Musical information as seen in the tracker window taken from Random Terrain:
 
 https://www.randomterrain.com/atari-2600-memories-music-and-sound.html
 
-The 6507 information was taken from Leventhal's "6502 Assembly Language
-Programming" and the text file "64doc.txt" v1.0, by John West and Marko Makela.
+The 6507 information was taken from Leventhal's "6502 Assembly Language Programming" and the text file "64doc.txt" v1.0, by John West and Marko Makela.
 
-Undocumented 650x instructions and implementation details in "6502/6510/8500/8502 Opcode matrix" 
+Undocumented 650x instructions and implementation details in "6502/6510/8500/8502 Opcode matrix":
 
 http://www.oxyron.de/html/opcodes02.html
 
-6502 overflow flag
+And also "NMOS 6510 Unintended Opcodes" also known as "No More Secrets":
+
+https://hitmen.c02.at/files/docs/c64/NoMoreSecrets-NMOS6510UnintendedOpcodes-20162412.pdf
+
+Specific information about the 6502 overflow flag:
 
 https://www.righto.com/2012/12/the-6502-overflow-flag-explained.html
 
-Details about the 6502 decimal mode
+And information about the 6502 decimal mode:
 
 http://www.6502.org/tutorials/decimal_mode.html
 
@@ -153,14 +143,11 @@ https://forums.atariage.com/topic/163876-flags-on-decimal-mode-on-the-nmos-6502
 
 6502 functional tests from https://github.com/Klaus2m5/6502_65C02_functional_tests and single step tests from https://github.com/SingleStepTests/65x02/tree/main/6502
 
-US Patent Number 4,644,495 was referenced for the implementation of the DPC cartridge format
-(the format used in Pitfall 2) https://patents.google.com/patent/US4644495/en
+US Patent Number 4,644,495 was referenced for the implementation of the DPC cartridge format (the format used in Pitfall 2) https://patents.google.com/patent/US4644495/en
 
-US patent 4,485,457A was used to help implement the CBS cartridge format
-https://patents.google.com/patent/US4485457A/en
+US patent 4,485,457A was used to help implement the CBS cartridge format https://patents.google.com/patent/US4485457A/en
 
-European patent 84300730.3 was used to help implement the SCABS cartridge format
-https://worldwide.espacenet.com/patent/search/family/023848640/publication/EP0116455A2?q=84300730.3
+European patent 84300730.3 was used to help implement the SCABS cartridge format https://worldwide.espacenet.com/patent/search/family/023848640/publication/EP0116455A2?q=84300730.3
 
 DPC+ format implemented according to notes provided by Spiceware https://atariage.com/forums/topic/163495-harmony-dpc-programming and https://atariage.com/forums/blogs/entry/11811-dpcarm-part-6-dpc-cartridge-layout/
 
@@ -200,13 +187,11 @@ and the "ARMv7-M Architecture Reference Manual" can be found at:
 
 https://documentation-service.arm.com/static/606dc36485368c4c2b1bf62f
 
-Specific information about the STM32F407 used in the UnoCart and PlusCart can
-be found at:
+Specific information about the STM32F407 used in the UnoCart and PlusCart can be found at:
 
 https://www.st.com/resource/en/reference_manual/dm00031020-stm32f405-415-stm32f407-417-stm32f427-437-and-stm32f429-439-advanced-arm-based-32-bit-mcus-stmicroelectronics.pdf
 
-In relation to ARM development, information about the DWARF format is being
-taken from the DWARF2 and DWARF4 standards:
+In relation to ARM development, information about the DWARF format is being taken from the DWARF2 and DWARF4 standards:
 
 https://dwarfstd.org/doc/dwarf-2.0.0.pdf
 
