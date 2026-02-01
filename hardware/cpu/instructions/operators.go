@@ -24,13 +24,12 @@ type Operator int
 const (
 	NOP Operator = iota
 	ADC
-	AHX
+	SHA
 	ANC
 	AND
 	ARR
 	ASL
-	ASR
-	AXS
+	ALR
 	BCC
 	BCS
 	BEQ
@@ -59,7 +58,7 @@ const (
 	ISC
 	JMP
 	JSR
-	KIL
+	JAM
 	LAS
 	LAX
 	LDA
@@ -78,6 +77,7 @@ const (
 	RTI
 	RTS
 	SAX
+	SBX
 	SBC
 	SEC
 	SED
@@ -96,7 +96,7 @@ const (
 	TXA
 	TXS
 	TYA
-	XAA
+	ANE
 )
 
 func (operator Operator) String() string {
@@ -105,7 +105,7 @@ func (operator Operator) String() string {
 		return "nop"
 	case ADC:
 		return "adc"
-	case AHX:
+	case SHA:
 		return "ahx"
 	case ANC:
 		return "anc"
@@ -115,10 +115,8 @@ func (operator Operator) String() string {
 		return "arr"
 	case ASL:
 		return "asl"
-	case ASR:
+	case ALR:
 		return "asr"
-	case AXS:
-		return "axs"
 	case BCC:
 		return "bcc"
 	case BCS:
@@ -175,7 +173,7 @@ func (operator Operator) String() string {
 		return "jmp"
 	case JSR:
 		return "jsr"
-	case KIL:
+	case JAM:
 		return "kil"
 	case LAS:
 		return "las"
@@ -213,6 +211,8 @@ func (operator Operator) String() string {
 		return "rts"
 	case SAX:
 		return "sax"
+	case SBX:
+		return "sbx"
 	case SBC:
 		return "sbc"
 	case SEC:
@@ -249,7 +249,7 @@ func (operator Operator) String() string {
 		return "txs"
 	case TYA:
 		return "tya"
-	case XAA:
+	case ANE:
 		return "xaa"
 	default:
 		panic(fmt.Sprintf("unrecognised operator %d", operator))

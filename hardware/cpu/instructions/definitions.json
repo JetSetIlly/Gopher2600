@@ -21,7 +21,7 @@
   },
   {
     "opcode": 2,
-    "operator": "kil",
+    "operator": "jam",
     "bytes": 1,
     "cycles": 2,
     "addressingMode": "implied",
@@ -181,7 +181,7 @@
   },
   {
     "opcode": 18,
-    "operator": "kil",
+    "operator": "jam",
     "bytes": 1,
     "cycles": 2,
     "addressingMode": "implied",
@@ -341,7 +341,7 @@
   },
   {
     "opcode": 34,
-    "operator": "kil",
+    "operator": "jam",
     "bytes": 1,
     "cycles": 2,
     "addressingMode": "implied",
@@ -501,7 +501,7 @@
   },
   {
     "opcode": 50,
-    "operator": "kil",
+    "operator": "jam",
     "bytes": 1,
     "cycles": 2,
     "addressingMode": "implied",
@@ -661,7 +661,7 @@
   },
   {
     "opcode": 66,
-    "operator": "kil",
+    "operator": "jam",
     "bytes": 1,
     "cycles": 2,
     "addressingMode": "implied",
@@ -751,7 +751,7 @@
   },
   {
     "opcode": 75,
-    "operator": "asr",
+    "operator": "alr",
     "bytes": 2,
     "cycles": 2,
     "addressingMode": "immediate",
@@ -821,7 +821,7 @@
   },
   {
     "opcode": 82,
-    "operator": "kil",
+    "operator": "jam",
     "bytes": 1,
     "cycles": 2,
     "addressingMode": "implied",
@@ -981,7 +981,7 @@
   },
   {
     "opcode": 98,
-    "operator": "kil",
+    "operator": "jam",
     "bytes": 1,
     "cycles": 2,
     "addressingMode": "implied",
@@ -1141,7 +1141,7 @@
   },
   {
     "opcode": 114,
-    "operator": "kil",
+    "operator": "jam",
     "bytes": 1,
     "cycles": 2,
     "addressingMode": "implied",
@@ -1391,13 +1391,14 @@
   },
   {
     "opcode": 139,
-    "operator": "xaa",
+    "operator": "ane",
     "bytes": 2,
     "cycles": 2,
     "addressingMode": "immediate",
     "pageSensitive": false,
     "category": "read",
-    "undocumented": true
+    "undocumented": true,
+	"stability": "magic"
   },
   {
     "opcode": 140,
@@ -1461,7 +1462,7 @@
   },
   {
     "opcode": 146,
-    "operator": "kil",
+    "operator": "jam",
     "bytes": 1,
     "cycles": 2,
     "addressingMode": "implied",
@@ -1471,13 +1472,14 @@
   },
   {
     "opcode": 147,
-    "operator": "ahx",
+    "operator": "sha",
     "bytes": 2,
     "cycles": 6,
     "addressingMode": "postindexed",
     "pageSensitive": false,
     "category": "write",
-    "undocumented": true
+    "undocumented": true,
+	"stability": "unstable"
   },
   {
     "opcode": 148,
@@ -1557,7 +1559,8 @@
     "addressingMode": "absolutey",
     "pageSensitive": false,
     "category": "write",
-    "undocumented": true
+    "undocumented": true,
+	"stability": "unstable"
   },
   {
     "opcode": 156,
@@ -1567,7 +1570,8 @@
     "addressingMode": "absolutex",
     "pageSensitive": false,
     "category": "write",
-    "undocumented": true
+    "undocumented": true,
+	"stability": "unstable"
   },
   {
     "opcode": 157,
@@ -1587,17 +1591,19 @@
     "addressingMode": "absolutey",
     "pageSensitive": false,
     "category": "write",
-    "undocumented": true
+    "undocumented": true,
+	"stability": "unstable"
   },
   {
     "opcode": 159,
-    "operator": "ahx",
+    "operator": "sha",
     "bytes": 3,
     "cycles": 5,
     "addressingMode": "absolutey",
     "pageSensitive": false,
     "category": "write",
-    "undocumented": true
+    "undocumented": true,
+	"stability": "unstable"
   },
   {
     "opcode": 160,
@@ -1717,7 +1723,8 @@
     "addressingMode": "immediate",
     "pageSensitive": false,
     "category": "read",
-    "undocumented": true
+    "undocumented": true,
+	"stability": "magic"
   },
   {
     "opcode": 172,
@@ -1781,7 +1788,7 @@
   },
   {
     "opcode": 178,
-    "operator": "kil",
+    "operator": "jam",
     "bytes": 1,
     "cycles": 2,
     "addressingMode": "implied",
@@ -1877,7 +1884,8 @@
     "addressingMode": "absolutey",
     "pageSensitive": true,
     "category": "read",
-    "undocumented": true
+    "undocumented": true,
+	"stability": "unstable"
   },
   {
     "opcode": 188,
@@ -2031,7 +2039,7 @@
   },
   {
     "opcode": 203,
-    "operator": "axs",
+    "operator": "sbx",
     "bytes": 2,
     "cycles": 2,
     "addressingMode": "immediate",
@@ -2101,7 +2109,7 @@
   },
   {
     "opcode": 210,
-    "operator": "kil",
+    "operator": "jam",
     "bytes": 1,
     "cycles": 2,
     "addressingMode": "implied",
@@ -2421,7 +2429,7 @@
   },
   {
     "opcode": 242,
-    "operator": "kil",
+    "operator": "jam",
     "bytes": 1,
     "cycles": 2,
     "addressingMode": "implied",

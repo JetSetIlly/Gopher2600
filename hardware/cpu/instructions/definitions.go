@@ -32,9 +32,8 @@ type Definition struct {
 	AddressingMode AddressingMode
 	PageSensitive  bool
 	Effect         Category
-
-	// Whether instruction is "undocumented"
-	Undocumented bool
+	Undocumented   bool
+	Stability      Stability
 }
 
 // String returns a single instruction definition as a string
@@ -56,6 +55,7 @@ type importDefinition struct {
 	AddressingMode string `json:"addressingMode"`
 	Category       string `json:"category"`
 	Undocumented   bool   `json:"undocumented"`
+	Stability      string `json:"stability,omitempty"`
 }
 
 //go:embed "definitions.json"
@@ -66,7 +66,10 @@ var Definitions []Definition
 
 func init() {
 	var imported []importDefinition
-	json.Unmarshal(definitions_json, &imported)
+	err := json.Unmarshal(definitions_json, &imported)
+	if err != nil {
+		panic(fmt.Sprintf("CPU instruction defintions: %s", err.Error()))
+	}
 
 	if len(imported) != 256 {
 		panic("CPU instruction definitions is incomplete")
@@ -86,8 +89,8 @@ func init() {
 			def.Operator = NOP
 		case "adc":
 			def.Operator = ADC
-		case "ahx":
-			def.Operator = AHX
+		case "sha":
+			def.Operator = SHA
 		case "anc":
 			def.Operator = ANC
 		case "and":
@@ -96,10 +99,8 @@ func init() {
 			def.Operator = ARR
 		case "asl":
 			def.Operator = ASL
-		case "asr":
-			def.Operator = ASR
-		case "axs":
-			def.Operator = AXS
+		case "alr":
+			def.Operator = ALR
 		case "bcc":
 			def.Operator = BCC
 		case "bcs":
@@ -156,8 +157,8 @@ func init() {
 			def.Operator = JMP
 		case "jsr":
 			def.Operator = JSR
-		case "kil":
-			def.Operator = KIL
+		case "jam":
+			def.Operator = JAM
 		case "las":
 			def.Operator = LAS
 		case "lax":
@@ -194,6 +195,8 @@ func init() {
 			def.Operator = RTS
 		case "sax":
 			def.Operator = SAX
+		case "sbx":
+			def.Operator = SBX
 		case "sbc":
 			def.Operator = SBC
 		case "sec":
@@ -230,8 +233,8 @@ func init() {
 			def.Operator = TXS
 		case "tya":
 			def.Operator = TYA
-		case "xaa":
-			def.Operator = XAA
+		case "ane":
+			def.Operator = ANE
 		default:
 			panic(fmt.Sprintf("unknown operator: %s", imp.Operator))
 		}
@@ -274,6 +277,17 @@ func init() {
 			def.Effect = Interrupt
 		default:
 			panic(fmt.Sprintf("unknown cateogry: %s", imp.Category))
+		}
+
+		switch strings.ToLower(imp.Stability) {
+		case "stable", "":
+			def.Stability = Stable
+		case "unstable":
+			def.Stability = Unstable
+		case "magic":
+			def.Stability = Magic
+		default:
+			panic(fmt.Sprintf("unknown stability assessment: %s", imp.Stability))
 		}
 
 		Definitions = append(Definitions, def)

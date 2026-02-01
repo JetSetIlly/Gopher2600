@@ -1506,7 +1506,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = mc.acc8.IsZero()
 		mc.Status.Sign = mc.acc8.IsNegative()
 
-	case instructions.ASR:
+	case instructions.ALR:
 		mc.A.AND(value)
 
 		// ... then LSR the result
@@ -1514,7 +1514,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case instructions.XAA:
+	case instructions.ANE:
 		// description for "64doc.txt"
 		//
 		// "A = (A | #$EE) & X & #byte
@@ -1525,22 +1525,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// #$00. This occurs when the video chip starts DMA between the opcode fetch and the
 		// parameter fetch of the instruction.  The value probably depends on the data that was left
 		// on the bus by the VIC-II"
-		//
-		// note that XAA is referred to as ANE in 64doc.txt
 
 		mc.A.Load((mc.A.Value() | internalParameterXAA) & mc.X.Value() & value)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
-
-	case instructions.AXS:
-		mc.X.AND(mc.A.Value())
-
-		// axs subtract behaves like CMP as far as carry and overflow flags are
-		// concerned
-		mc.Status.Carry, _ = mc.X.Subtract(value, true)
-
-		mc.Status.Zero = mc.X.IsZero()
-		mc.Status.Sign = mc.X.IsNegative()
 
 	case instructions.SAX:
 		mc.acc8.Load(mc.A.Value())
@@ -1551,6 +1539,16 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
+
+	case instructions.SBX:
+		mc.X.AND(mc.A.Value())
+
+		// sbx subtract behaves like CMP as far as carry and overflow flags are
+		// concerned
+		mc.Status.Carry, _ = mc.X.Subtract(value, true)
+
+		mc.Status.Zero = mc.X.IsZero()
+		mc.Status.Sign = mc.X.IsNegative()
 
 	case instructions.ARR:
 		// description for "64doc.txt"
@@ -1689,7 +1687,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.Status.Sign = mc.A.IsNegative()
 		}
 
-	case instructions.AHX:
+	case instructions.SHA:
 		mc.acc8.Load(mc.A.Value())
 		mc.acc8.AND(mc.X.Value())
 		mc.acc8.AND(uint8(address>>8) + 1)
@@ -1739,7 +1737,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = mc.SP.IsZero()
 		mc.Status.Sign = mc.SP.IsNegative()
 
-	case instructions.KIL:
+	case instructions.JAM:
 		if !mc.NoFlowControl {
 			mc.Killed = true
 		}
