@@ -245,22 +245,16 @@ func init() {
 			def.AddressingMode = Relative
 		case "absolute":
 			def.AddressingMode = Absolute
-		case "zeropage":
-			def.AddressingMode = ZeroPage
 		case "indirect":
 			def.AddressingMode = Indirect
 		case "preindexed":
 			def.AddressingMode = PreIndexed
 		case "postindexed":
 			def.AddressingMode = PostIndexed
-		case "absoluteindexedx":
-			def.AddressingMode = AbsoluteIndexedX
-		case "absoluteindexedy":
-			def.AddressingMode = AbsoluteIndexedY
-		case "zeropageindexedx":
-			def.AddressingMode = ZeroPageIndexedX
-		case "zeropageindexedy":
-			def.AddressingMode = ZeroPageIndexedY
+		case "absolutex":
+			def.AddressingMode = AbsoluteX
+		case "absolutey":
+			def.AddressingMode = AbsoluteY
 		default:
 			panic(fmt.Sprintf("unknown addressing mode: %s", imp.AddressingMode))
 		}

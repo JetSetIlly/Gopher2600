@@ -168,87 +168,6 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 			default:
 				return deepPoking{}, fmt.Errorf("not deeppoking through non-RAM/Cartridge space (%s)", area)
 			}
-		case instructions.AbsoluteIndexedX:
-			ma, area := memorymap.MapAddress(searchState.VCS.CPU.LastResult.InstructionData, false)
-			switch area {
-			case memorymap.Cartridge:
-				pc := registers.NewProgramCounter(ma)
-				pc.Add(searchState.VCS.CPU.X.Address())
-				poking.addr = pc.Address()
-				poking.state = searchState
-				poking.area = area
-				return poking, nil
-			case memorymap.RAM:
-				pc := registers.NewProgramCounter(ma)
-				pc.Add(searchState.VCS.CPU.X.Address())
-				poking.addr = pc.Address()
-				poking.state = searchState
-				poking.area = area
-			default:
-				return deepPoking{}, fmt.Errorf("not deeppoking through non-RAM/Cartridge space (%s)", area)
-			}
-		case instructions.AbsoluteIndexedY:
-			ma, area := memorymap.MapAddress(searchState.VCS.CPU.LastResult.InstructionData, false)
-			switch area {
-			case memorymap.Cartridge:
-				pc := registers.NewProgramCounter(ma)
-				pc.Add(searchState.VCS.CPU.Y.Address())
-				poking.addr = pc.Address()
-				poking.state = searchState
-				poking.area = area
-				return poking, nil
-			case memorymap.RAM:
-				pc := registers.NewProgramCounter(ma)
-				pc.Add(searchState.VCS.CPU.Y.Address())
-				poking.addr = pc.Address()
-				poking.state = searchState
-				poking.area = area
-			default:
-				return deepPoking{}, fmt.Errorf("not deeppoking through non-RAM/Cartridge space (%s)", area)
-			}
-		case instructions.ZeroPage:
-			ma, area := memorymap.MapAddress(searchState.VCS.CPU.LastResult.InstructionData, false)
-			switch area {
-			case memorymap.RAM:
-				poking.addr = ma
-				poking.state = searchState
-				poking.area = area
-
-				// update the search address and continue with the search
-				searchAddr = poking.addr
-			default:
-				return deepPoking{}, fmt.Errorf("not deeppoking through non-RAM space (%s)", area)
-			}
-		case instructions.ZeroPageIndexedX:
-			ma, area := memorymap.MapAddress(searchState.VCS.CPU.LastResult.InstructionData, false)
-			switch area {
-			case memorymap.RAM:
-				pc := registers.NewProgramCounter(ma)
-				pc.Add(searchState.VCS.CPU.X.Address())
-				poking.addr = pc.Address()
-				poking.state = searchState
-				poking.area = area
-
-				// update the search address and continue with the search
-				searchAddr = poking.addr
-			default:
-				return deepPoking{}, fmt.Errorf("not deeppoking through non-RAM space (%s)", area)
-			}
-		case instructions.ZeroPageIndexedY:
-			ma, area := memorymap.MapAddress(searchState.VCS.CPU.LastResult.InstructionData, false)
-			switch area {
-			case memorymap.RAM:
-				pc := registers.NewProgramCounter(ma)
-				pc.Add(searchState.VCS.CPU.Y.Address())
-				poking.addr = pc.Address()
-				poking.state = searchState
-				poking.area = area
-
-				// update the search address and continue with the search
-				searchAddr = poking.addr
-			default:
-				return deepPoking{}, fmt.Errorf("not deeppoking through non-RAM space (%s)", area)
-			}
 		case instructions.PostIndexed:
 			pc := registers.NewProgramCounter(searchState.VCS.CPU.LastResult.InstructionData)
 			lo, err := searchState.VCS.Mem.Read(pc.Address())
@@ -279,6 +198,71 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 			}
 
 			fallthrough
+		case instructions.Absolute:
+			ma, area := memorymap.MapAddress(searchState.VCS.CPU.LastResult.InstructionData, false)
+			switch area {
+			case memorymap.RAM:
+				poking.addr = ma
+				poking.state = searchState
+				poking.area = area
+
+				// update the search address and continue with the search
+				searchAddr = poking.addr
+			default:
+				return deepPoking{}, fmt.Errorf("not deeppoking through non-RAM space (%s)", area)
+			}
+		case instructions.AbsoluteX:
+			ma, area := memorymap.MapAddress(searchState.VCS.CPU.LastResult.InstructionData, false)
+			switch area {
+			case memorymap.Cartridge:
+				pc := registers.NewProgramCounter(ma)
+				pc.Add(searchState.VCS.CPU.X.Address())
+				poking.addr = pc.Address()
+				poking.state = searchState
+				poking.area = area
+
+				// depending on whether this is a zero page address update the search address
+				// and continue with the search, or return poking value
+				if searchState.VCS.CPU.LastResult.Defn.Bytes == 2 {
+					searchAddr = poking.addr
+				} else {
+					return poking, nil
+				}
+			case memorymap.RAM:
+				pc := registers.NewProgramCounter(ma)
+				pc.Add(searchState.VCS.CPU.X.Address())
+				poking.addr = pc.Address()
+				poking.state = searchState
+				poking.area = area
+			default:
+				return deepPoking{}, fmt.Errorf("not deeppoking through non-RAM/Cartridge space (%s)", area)
+			}
+		case instructions.AbsoluteY:
+			ma, area := memorymap.MapAddress(searchState.VCS.CPU.LastResult.InstructionData, false)
+			switch area {
+			case memorymap.Cartridge:
+				pc := registers.NewProgramCounter(ma)
+				pc.Add(searchState.VCS.CPU.Y.Address())
+				poking.addr = pc.Address()
+				poking.state = searchState
+				poking.area = area
+
+				// depending on whether this is a zero page address update the search address
+				// and continue with the search, or return poking value
+				if searchState.VCS.CPU.LastResult.Defn.Bytes == 2 {
+					searchAddr = poking.addr
+				} else {
+					return poking, nil
+				}
+			case memorymap.RAM:
+				pc := registers.NewProgramCounter(ma)
+				pc.Add(searchState.VCS.CPU.Y.Address())
+				poking.addr = pc.Address()
+				poking.state = searchState
+				poking.area = area
+			default:
+				return deepPoking{}, fmt.Errorf("not deeppoking through non-RAM/Cartridge space (%s)", area)
+			}
 		default:
 			return deepPoking{}, fmt.Errorf("unsupported addressing mode (%s)", searchState.VCS.CPU.LastResult.String())
 		}

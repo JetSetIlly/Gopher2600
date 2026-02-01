@@ -723,28 +723,30 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		address = mc.LastResult.InstructionData
 
 	case instructions.Absolute:
-		if defn.Effect != instructions.Subroutine {
-			// +2 cycles
-			err := mc.read16BitPC()
+		switch defn.Bytes {
+		case 3:
+			if defn.Effect != instructions.Subroutine {
+				// +2 cycles
+				err := mc.read16BitPC()
+				if err != nil {
+					return err
+				}
+				address = mc.LastResult.InstructionData
+			}
+
+			// else... for JSR, addresses are read slightly differently so we defer
+			// this part of the operation to the operator switch below
+		case 2:
+			// +1 cycle
+			//
+			// while we must trest the value as an address (ie. as uint16) we
+			// actually only read an 8 bit value so we store the value as uint8
+			err = mc.read8BitPC(loByte)
 			if err != nil {
 				return err
 			}
 			address = mc.LastResult.InstructionData
 		}
-
-		// else... for JSR, addresses are read slightly differently so we defer
-		// this part of the operation to the operator switch below
-
-	case instructions.ZeroPage:
-		// +1 cycle
-		//
-		// while we must trest the value as an address (ie. as uint16) we
-		// actually only read an 8 bit value so we store the value as uint8
-		err = mc.read8BitPC(loByte)
-		if err != nil {
-			return err
-		}
-		address = mc.LastResult.InstructionData
 
 	case instructions.Indirect:
 		// indirect addressing (without indexing) is only used for the JMP command
@@ -872,110 +874,69 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.acc16.Add(indexedAddress & 0xff00)
 		address = mc.acc16.Address()
 
-	case instructions.AbsoluteIndexedX:
-		// +2 cycles
-		err = mc.read16BitPC()
-		if err != nil {
-			return err
+	case instructions.AbsoluteX, instructions.AbsoluteY:
+		var idxReg registers.Data
+
+		switch defn.AddressingMode {
+		case instructions.AbsoluteX:
+			idxReg = mc.X
+		case instructions.AbsoluteY:
+			idxReg = mc.Y
 		}
-		indirectAddress := mc.LastResult.InstructionData
 
-		// add index to LSB of address
-		mc.acc16.Load(mc.X.Address())
-		mc.acc16.Add(indirectAddress & 0x00ff)
-		address = mc.acc16.Address()
-
-		// check for page fault
-		mc.LastResult.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
-		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.Modify {
-			// phantom read (always happens for Write and Modify)
-			// +1 cycle
-			_, err := mc.read8Bit((indirectAddress&0xff00)|(address&0x00ff), true)
+		switch defn.Bytes {
+		case 3:
+			// +2 cycles
+			err = mc.read16BitPC()
 			if err != nil {
 				return err
 			}
-		}
+			indirectAddress := mc.LastResult.InstructionData
 
-		// fix MSB of address
-		mc.acc16.Add(indirectAddress & 0xff00)
-		address = mc.acc16.Address()
+			// add index to LSB of address
+			mc.acc16.Load(idxReg.Address())
+			mc.acc16.Add(indirectAddress & 0x00ff)
+			address = mc.acc16.Address()
 
-	case instructions.AbsoluteIndexedY:
-		// +2 cycles
-		err = mc.read16BitPC()
-		if err != nil {
-			return err
-		}
-		indirectAddress := mc.LastResult.InstructionData
+			// check for page fault
+			mc.LastResult.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
+			if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.Modify {
+				// phantom read (always happens for Write and Modify)
+				// +1 cycle
+				_, err := mc.read8Bit((indirectAddress&0xff00)|(address&0x00ff), true)
+				if err != nil {
+					return err
+				}
+			}
 
-		// add index to LSB of address
-		mc.acc16.Load(mc.Y.Address())
-		mc.acc16.Add(indirectAddress & 0x00ff)
-		address = mc.acc16.Address()
-
-		// check for page fault
-		mc.LastResult.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
-		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.Modify {
-			// phantom read (always happens for Write and Modify)
-			// +1 cycle
-			_, err := mc.read8Bit((indirectAddress&0xff00)|(address&0x00ff), true)
+			// fix MSB of address
+			mc.acc16.Add(indirectAddress & 0xff00)
+			address = mc.acc16.Address()
+		case 2:
+			// +1 cycles
+			err = mc.read8BitPC(loByte)
 			if err != nil {
 				return err
 			}
-		}
 
-		// fix MSB of address
-		mc.acc16.Add(indirectAddress & 0xff00)
-		address = mc.acc16.Address()
+			// phantom read from base address before index adjustment
+			// +1 cycles
+			_, err := mc.read8Bit(mc.LastResult.InstructionData, true)
+			if err != nil {
+				return err
+			}
 
-	case instructions.ZeroPageIndexedX:
-		// +1 cycles
-		err = mc.read8BitPC(loByte)
-		if err != nil {
-			return err
-		}
+			indirectAddress := uint8(mc.LastResult.InstructionData)
+			mc.acc8.Load(indirectAddress)
+			mc.acc8.Add(idxReg.Value(), false)
+			address = mc.acc8.Address()
 
-		// phantom read from base address before index adjustment
-		// +1 cycles
-		_, err := mc.read8Bit(mc.LastResult.InstructionData, true)
-		if err != nil {
-			return err
-		}
-
-		indirectAddress := uint8(mc.LastResult.InstructionData)
-		mc.acc8.Load(indirectAddress)
-		mc.acc8.Add(mc.X.Value(), false)
-		address = mc.acc8.Address()
-
-		// make a note of zero page index bug
-		if uint16(indirectAddress+mc.X.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
-			mc.LastResult.CPUBug = "zero page index bug"
-		}
-
-	case instructions.ZeroPageIndexedY:
-		// used exclusively for LDX ZeroPage,y
-
-		// +1 cycles
-		err = mc.read8BitPC(loByte)
-		if err != nil {
-			return err
-		}
-
-		// phantom read from base address before index adjustment
-		// +1 cycles
-		_, err := mc.read8Bit(mc.LastResult.InstructionData, true)
-		if err != nil {
-			return err
-		}
-
-		indirectAddress := uint8(mc.LastResult.InstructionData)
-		mc.acc8.Load(indirectAddress)
-		mc.acc8.Add(mc.Y.Value(), false)
-		address = mc.acc8.Address()
-
-		// make a note of zero page index bug
-		if uint16(indirectAddress+mc.Y.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
-			mc.LastResult.CPUBug = "zero page index bug"
+			// make a note of zero page index bug
+			if uint16(indirectAddress+idxReg.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
+				mc.LastResult.CPUBug = "zero page index bug"
+			}
+		default:
+			return fmt.Errorf("cpu: unknown byte code for %s with addressing mode %s", defn.Operator, defn.AddressingMode)
 		}
 
 	default:

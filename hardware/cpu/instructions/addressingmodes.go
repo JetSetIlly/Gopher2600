@@ -28,22 +28,16 @@ func (m AddressingMode) String() string {
 		return "Relative"
 	case Absolute:
 		return "Absolute"
-	case ZeroPage:
-		return "ZeroPage"
 	case Indirect:
 		return "Indirect"
 	case PreIndexed:
 		return "PreIndexed"
 	case PostIndexed:
 		return "PostIndexed"
-	case AbsoluteIndexedX:
-		return "AbsoluteIndexedX"
-	case AbsoluteIndexedY:
-		return "AbsoluteIndexedY"
-	case ZeroPageIndexedX:
-		return "ZeroPageIndexedX"
-	case ZeroPageIndexedY:
-		return "ZeroPageIndexedY"
+	case AbsoluteX:
+		return "AbsoluteX"
+	case AbsoluteY:
+		return "AbsoluteY"
 	}
 	return "unknown addressing mode"
 }
@@ -53,12 +47,9 @@ const (
 	Immediate
 	Relative
 	Absolute
-	ZeroPage
 	Indirect
-	PreIndexed       // (ind,X)
-	PostIndexed      // (ind), Y
-	AbsoluteIndexedX // abs,X
-	AbsoluteIndexedY // abs,Y
-	ZeroPageIndexedX // zpg,X
-	ZeroPageIndexedY // zpg,Y
+	PreIndexed  // (ind,X)
+	PostIndexed // (ind), Y
+	AbsoluteX   // abs,X
+	AbsoluteY   // abs,Y
 )

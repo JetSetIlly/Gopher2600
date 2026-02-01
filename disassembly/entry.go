@@ -176,20 +176,15 @@ func addrModeDecoration(operand string, mode instructions.AddressingMode) string
 		s = fmt.Sprintf("#%s", operand)
 	case instructions.Relative:
 	case instructions.Absolute:
-	case instructions.ZeroPage:
 	case instructions.Indirect:
 		s = fmt.Sprintf("(%s)", operand)
 	case instructions.PreIndexed:
 		s = fmt.Sprintf("(%s,X)", operand)
 	case instructions.PostIndexed:
 		s = fmt.Sprintf("(%s),Y", operand)
-	case instructions.AbsoluteIndexedX:
+	case instructions.AbsoluteX:
 		s = fmt.Sprintf("%s,X", operand)
-	case instructions.AbsoluteIndexedY:
-		s = fmt.Sprintf("%s,Y", operand)
-	case instructions.ZeroPageIndexedX:
-		s = fmt.Sprintf("%s,X", operand)
-	case instructions.ZeroPageIndexedY:
+	case instructions.AbsoluteY:
 		s = fmt.Sprintf("%s,Y", operand)
 	}
 
