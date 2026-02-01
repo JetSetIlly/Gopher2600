@@ -78,8 +78,8 @@ type CPU struct {
 	// Whether the last memory access by the CPU was a phantom access
 	PhantomMemAccess bool
 
-	// the cpu has encounted a KIL instruction. requires a Reset()
-	Killed bool
+	// the cpu has encounted a JAM instruction. requires a Reset()
+	Jammed bool
 }
 
 const (
@@ -221,7 +221,7 @@ type Random interface {
 // Reset CPU in either a random or non-random state. The random state is more accurate
 func (mc *CPU) Reset(rnd Random) error {
 	mc.LastResult.Reset()
-	mc.Killed = false
+	mc.Jammed = false
 	mc.cycleCallback = nil
 	mc.interruptDepth = 0
 	mc.interrupt = false
@@ -596,9 +596,9 @@ var ResetMidInstruction = errors.New("cpu: appears to have been reset mid-instru
 func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	mc.PhantomMemAccess = false
 
-	// the CPU does nothing if it is in the KIL state. however, the other
+	// the CPU does nothing if it is in the JAM state. however, the other
 	// parts of the VCS continue
-	if mc.Killed {
+	if mc.Jammed {
 		return cycleCallback()
 	}
 
@@ -1739,7 +1739,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case instructions.JAM:
 		if !mc.NoFlowControl {
-			mc.Killed = true
+			mc.Jammed = true
 		}
 
 	default:

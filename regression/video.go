@@ -255,16 +255,16 @@ func (reg *VideoRegression) regress(newRegression bool, messages io.Writer, tag 
 
 	// run emulation
 	err = vcs.RunForFrameCount(reg.NumFrames, func() (govern.State, error) {
-		// if the CPU is in the KIL state then the test will never end normally
-		if vcs.CPU.Killed {
-			return govern.Ending, fmt.Errorf("CPU in KIL state")
+		// if the CPU is in the JAM state then the test will never end normally
+		if vcs.CPU.Jammed {
+			return govern.Ending, fmt.Errorf("CPU in JAM state")
 		}
 
 		// display progress meter every 1 second
 		select {
 		case <-tck.C:
 			frame := vcs.TV.GetCoords().Frame
-			messages.Write([]byte(fmt.Sprintf("%s [%d/%d (%.1f%%)]", tag, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
+			fmt.Fprintf(messages, "%s [%d/%d (%.1f%%)]", tag, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))
 		default:
 		}
 

@@ -85,7 +85,7 @@ type imguiColors struct {
 	// cpu
 	CPURDY    imgui.Vec4
 	CPUNotRDY imgui.Vec4
-	CPUKIL    imgui.Vec4
+	CPUJAM    imgui.Vec4
 
 	// disassembly entry columns
 	DisasmLocation imgui.Vec4
@@ -311,7 +311,7 @@ func newColors() *imguiColors {
 		// cpu window
 		CPURDY:    imgui.Vec4{X: 0.3, Y: 0.6, Z: 0.3, W: 1.0},
 		CPUNotRDY: imgui.Vec4{X: 0.6, Y: 0.3, Z: 0.3, W: 1.0},
-		CPUKIL:    imgui.Vec4{X: 0.2, Y: 0.2, Z: 0.2, W: 1.0},
+		CPUJAM:    imgui.Vec4{X: 0.2, Y: 0.2, Z: 0.2, W: 1.0},
 
 		// disassembly entry columns
 		DisasmLocation: imgui.Vec4{X: 0.8, Y: 0.8, Z: 0.8, W: 1.0},

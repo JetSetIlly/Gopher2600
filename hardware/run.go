@@ -114,9 +114,8 @@ func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func() (govern.Sta
 
 	state := govern.Running
 	for state != govern.Ending {
-		// check if CPU has been killed. emulation will run forever if we don't
-		// check for this
-		if vcs.CPU.Killed {
+		// check if CPU has been jammed. emulation will run forever if we don't check for this
+		if vcs.CPU.Jammed {
 			return nil
 		}
 

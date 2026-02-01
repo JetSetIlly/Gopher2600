@@ -94,8 +94,8 @@ func (win *winCPU) draw() {
 		win.drawRegister(win.img.cache.VCS.CPU.PC)
 		imgui.TableNextColumn()
 		imgui.PushStyleVarFloat(imgui.StyleVarFrameRounding, readOnlyButtonRounding)
-		if win.img.cache.VCS.CPU.Killed {
-			_ = imguiColourButton(win.img.cols.CPUKIL, fmt.Sprintf("%c Killed", fonts.CPUKilled), fillWidth)
+		if win.img.cache.VCS.CPU.Jammed {
+			_ = imguiColourButton(win.img.cols.CPUJAM, fmt.Sprintf("%c Jammed", fonts.CPUJammed), fillWidth)
 		} else {
 			_ = imguiBooleanButton(win.img.cols.CPURDY, win.img.cols.CPUNotRDY, win.img.cache.VCS.CPU.RdyFlg, "RDY", fillWidth)
 		}

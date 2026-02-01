@@ -713,7 +713,7 @@ func testBRK(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	rtest.EquateRegisters(t, mc.PC, 0x00)
 }
 
-func testKIL(t *testing.T, mc *cpu.CPU, mem *testMem) {
+func testJAM(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	var origin uint16
 	var err error
 
@@ -724,7 +724,7 @@ func testKIL(t *testing.T, mc *cpu.CPU, mem *testMem) {
 	}
 
 	_ = mem.putInstructions(origin, 0x02, 0x69, 0x01)
-	step(t, mc) // KIL
+	step(t, mc) // JAM
 	rtest.EquateRegisters(t, mc.PC, 0x01)
 	step(t, mc) // ADC #$01
 	rtest.EquateRegisters(t, mc.PC, 0x01)
@@ -750,7 +750,7 @@ func TestCPU(t *testing.T) {
 	testSubroutineInstructions(t, mc, mem)
 	testDecimalMode(t, mc, mem)
 	testBRK(t, mc, mem)
-	testKIL(t, mc, mem)
+	testJAM(t, mc, mem)
 }
 
 func BenchmarkNOP(b *testing.B) {

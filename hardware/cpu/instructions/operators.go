@@ -174,7 +174,7 @@ func (operator Operator) String() string {
 	case JSR:
 		return "jsr"
 	case JAM:
-		return "kil"
+		return "jam"
 	case LAS:
 		return "las"
 	case LAX:
