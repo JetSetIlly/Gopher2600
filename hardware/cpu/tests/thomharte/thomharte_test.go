@@ -152,8 +152,7 @@ func TestThomHarte(t *testing.T) {
 		return
 	}
 
-	selected := strings.Split(env, ",")
-	for _, s := range selected {
+	for s := range strings.SplitSeq(env, ",") {
 		rng := strings.SplitN(s, "-", 2)
 		switch len(rng) {
 		case 1:
@@ -255,6 +254,11 @@ func testThomHarte(t *testing.T, opcode uint8, force bool) {
 		}
 
 		err := mc.ExecuteInstruction(hook)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = mc.LastResult.IsValid()
 		if err != nil {
 			t.Fatal(err)
 		}

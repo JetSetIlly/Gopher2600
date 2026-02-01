@@ -38,21 +38,19 @@ func (r Result) IsValid() error {
 		return fmt.Errorf("cpu: unexpected number of bytes read: %d (%s)", r.ByteCount, r.Defn)
 	}
 
-	// if a bug has been triggered, don't perform the number of cycles check
-	if r.CPUBug == "" {
-		if r.Defn.IsBranch() {
-			if r.Cycles != r.Defn.Cycles && r.Cycles != r.Defn.Cycles+1 && r.Cycles != r.Defn.Cycles+2 {
-				return fmt.Errorf("cpu: number of cycles: %d (%s)", r.Cycles, r.Defn)
+	// cycles check
+	if r.Defn.IsBranch() {
+		if r.Cycles != r.Defn.Cycles && r.Cycles != r.Defn.Cycles+1 && r.Cycles != r.Defn.Cycles+2 {
+			return fmt.Errorf("cpu: number of cycles: %d (%s)", r.Cycles, r.Defn)
+		}
+	} else {
+		if r.Defn.PageSensitive {
+			if r.PageFault && r.Cycles != r.Defn.Cycles && r.Cycles != r.Defn.Cycles+1 {
+				return fmt.Errorf("cpu: number of cycles [page fault]: %d (%s)", r.Cycles, r.Defn)
 			}
 		} else {
-			if r.Defn.PageSensitive {
-				if r.PageFault && r.Cycles != r.Defn.Cycles && r.Cycles != r.Defn.Cycles+1 {
-					return fmt.Errorf("cpu: number of cycles [page fault]: %d (%s)", r.Cycles, r.Defn)
-				}
-			} else {
-				if r.Cycles != r.Defn.Cycles {
-					return fmt.Errorf("cpu: number of cycles: %d (%s)", r.Cycles, r.Defn)
-				}
+			if r.Cycles != r.Defn.Cycles {
+				return fmt.Errorf("cpu: number of cycles: %d (%s)", r.Cycles, r.Defn)
 			}
 		}
 	}

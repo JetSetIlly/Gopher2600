@@ -90,6 +90,11 @@ func runTestBinary(t *testing.T, opt opts) {
 				t.Fatal(err)
 			}
 
+			err = mc.LastResult.IsValid()
+			if err != nil {
+				t.Fatal(err)
+			}
+
 			if trace {
 				copy(history[:], history[1:])
 				history[len(history)-1].mc = mc.Snapshot()
