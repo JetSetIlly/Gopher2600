@@ -752,3 +752,23 @@ func TestCPU(t *testing.T) {
 	testBRK(t, mc, mem)
 	testKIL(t, mc, mem)
 }
+
+func BenchmarkNOP(b *testing.B) {
+	mem := newTestMem()
+	mc := cpu.NewCPU(mem)
+	mem.Clear()
+	mc.Reset(nil)
+
+	// two instructions. a NOP and JMP to the NOP instruction
+	mem.internal[0] = 0xea
+	mem.internal[1] = 0x4c
+	mem.internal[2] = 0x00
+	mem.internal[3] = 0x00
+	mc.PC.Load(0x0000)
+
+	for b.Loop() {
+		// two instructions per benchmark loop
+		mc.ExecuteInstruction(cpu.NilCycleCallback)
+		mc.ExecuteInstruction(cpu.NilCycleCallback)
+	}
+}
