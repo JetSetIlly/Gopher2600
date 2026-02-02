@@ -149,7 +149,7 @@ var testsPath = filepath.Join("6502", "v1")
 func TestThomHarte(t *testing.T) {
 	var env = os.Getenv("GOPHER2600_SINGLESTEP_TEST")
 	if len(env) == 0 {
-		return
+		env = "0-ff"
 	}
 
 	for s := range strings.SplitSeq(env, ",") {
@@ -160,7 +160,10 @@ func TestThomHarte(t *testing.T) {
 			if err != nil {
 				t.Fatalf("opcode is malformed: %s: %v", s, err)
 			}
-			testThomHarte(t, uint8(n), true)
+			t.Run(fmt.Sprintf("opcode %02x", n), func(t *testing.T) {
+				t.Parallel()
+				testThomHarte(t, uint8(n), true)
+			})
 		case 2:
 			n, err := strconv.ParseUint(rng[0], 16, 8)
 			if err != nil {
@@ -174,7 +177,10 @@ func TestThomHarte(t *testing.T) {
 				t.Fatalf("opcode ranges should run from low to high: ie. %02x-%02x not %s", e, n, s)
 			}
 			for n <= e {
-				testThomHarte(t, uint8(n), false)
+				t.Run(fmt.Sprintf("opcode %02x", n), func(t *testing.T) {
+					t.Parallel()
+					testThomHarte(t, uint8(n), true)
+				})
 				n++
 			}
 		default:
