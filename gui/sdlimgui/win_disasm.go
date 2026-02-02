@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -362,7 +363,7 @@ func (win *winDisasm) drawBank(addr uint16, currBank mapper.BankInfo) {
 				case filterBank:
 					entries = append(entries, e)
 				case filterCPUBug:
-					if e.Result.CPUBug != "" {
+					if e.Result.Bug != execution.NoBug {
 						entries = append(entries, e)
 					}
 				case filterPageFault:

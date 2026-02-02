@@ -158,8 +158,8 @@ func (e *Entry) Notes() string {
 		}
 	}
 
-	if e.Result.CPUBug != "" {
-		s.WriteString(e.Result.CPUBug)
+	if e.Result.Bug != execution.NoBug {
+		s.WriteString(string(e.Result.Bug))
 	}
 
 	return s.String()

@@ -760,7 +760,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// handle indirect addressing JMP bug
 		if indirectAddress&0x00ff == 0x00ff {
-			mc.LastResult.CPUBug = "indirect addressing bug (JMP bug)"
+			mc.LastResult.Bug = execution.JmpIndirectAddressingBug
 
 			var lo, hi uint8
 
@@ -825,7 +825,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// make a note of indirect addressig bug
 		if uint16(indirectAddress+mc.X.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
-			mc.LastResult.CPUBug = "indirect addressing bug"
+			mc.LastResult.Bug = execution.IndexedIndirectAddressingBug
 		}
 
 		// +2 cycles
@@ -857,7 +857,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// check for page fault
 		if defn.PageSensitive && (address&0xff00 == 0x0100) {
-			mc.LastResult.CPUBug = "indirect addressing bug"
+			mc.LastResult.Bug = execution.IndexedIndirectAddressingBug
 			mc.LastResult.PageFault = true
 		}
 
@@ -933,7 +933,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 			// make a note of zero page index bug
 			if uint16(indirectAddress+idxReg.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
-				mc.LastResult.CPUBug = "zero page index bug"
+				mc.LastResult.Bug = execution.ZeroPageIndexBug
 			}
 		default:
 			return fmt.Errorf("cpu: unknown byte code for %s with addressing mode %s", defn.Operator, defn.AddressingMode)
