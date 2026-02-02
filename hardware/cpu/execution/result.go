@@ -102,9 +102,11 @@ func (r *Result) Reset() {
 	r.FromInterrupt = false
 }
 
-// very rough disassembly. it should not be used in preference to the
-// disassembly package if at all possible. none-the-less it is useful for
-// development purposes.
+// very rough disassembly. it should not be used in preference to the disassembly package if at all
+// possible. none-the-less it is useful for development purposes.
 func (r *Result) String() string {
+	if r.Defn == nil {
+		return "no result"
+	}
 	return fmt.Sprintf("%04x %s %s %04x", r.Address, r.Defn.Operator, r.Defn.AddressingMode, r.InstructionData)
 }
