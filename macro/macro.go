@@ -368,6 +368,26 @@ instructionLoop:
 				delete(variables, lp.countName)
 			}
 
+		case "FRAMEINFO":
+			if len(args) < 1 {
+				logf("FRAMEINFO requires at least one argument")
+				return
+			}
+			var s strings.Builder
+			for _, a := range args {
+				switch a {
+				case "NUMBER":
+					fmt.Fprintf(&s, "%d ", mcr.tv.GetFrameInfo().FrameNum)
+				case "SCANLINES":
+					fmt.Fprintf(&s, "%d ", mcr.tv.GetFrameInfo().TotalScanlines)
+				case "VSYNC":
+					fmt.Fprintf(&s, "%d ", mcr.tv.GetFrameInfo().VSYNCcount)
+				case "STABLE":
+					fmt.Fprintf(&s, "%v ", mcr.tv.GetFrameInfo().Stable)
+				}
+			}
+			fmt.Println(s.String())
+
 		case "WAIT":
 			switch len(args) {
 			case 1:
@@ -386,7 +406,7 @@ instructionLoop:
 					}
 				} else {
 					if !wait(n, nil) {
-						logf("%s argument is invalid", cmd, args[0])
+						logf("%s %s argument is invalid", cmd, args[0])
 						return
 					}
 				}
@@ -408,7 +428,7 @@ instructionLoop:
 					return
 				}
 				if ok {
-					s.WriteString(fmt.Sprintf("%d", v))
+					fmt.Fprintf(&s, "%d", v)
 				} else {
 					s.WriteString(c)
 				}
