@@ -21,7 +21,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/prefs"
@@ -133,20 +132,14 @@ func (win *winPrefs) draw() {
 		setDefLabel = "Rewind"
 	}
 
-	if imgui.BeginTabItem("ARM") {
-		win.drawARMTab()
+	if imgui.BeginTabItem("Cartridge") {
+		win.drawCartridge()
 		imgui.EndTabItem()
-		setDef = win.img.dbg.VCS().Env.Prefs.ARM.SetDefaults
 		setDefLabel = "ARM"
 	}
 
-	if imgui.BeginTabItem("PlusROM") {
-		win.drawPlusROMTab()
-		imgui.EndTabItem()
-	}
-
-	if imgui.BeginTabItem("UI") {
-		win.drawUITab()
+	if imgui.BeginTabItem("Fonts") {
+		win.drawFontsTab()
 		imgui.EndTabItem()
 	}
 
@@ -158,7 +151,7 @@ func (win *winPrefs) draw() {
 	// draw "Set Defaults" button
 	if setDef != nil {
 		imgui.SameLine()
-		if imgui.Button(fmt.Sprintf("Set %s Defaults", setDefLabel)) {
+		if win.setDefaultButton(fmt.Sprintf("Set %s Defaults", setDefLabel)) {
 			// some preferences are sensitive to the goroutine SetDefaults() is
 			// called within
 			win.img.dbg.PushFunction(setDef)
@@ -391,10 +384,6 @@ func (win *winPrefs) drawVCS() {
 		}
 	}
 
-	if imgui.CollapsingHeaderV("SARA", imgui.TreeNodeFlagsNone) {
-		win.img.drawEmulateSARACheckbox()
-	}
-
 	imgui.Spacing()
 	if imgui.CollapsingHeaderV("Audio", imgui.TreeNodeFlagsNone) {
 		// enable options
@@ -501,200 +490,94 @@ currently enabled.`)
 	}
 }
 
-func (win *winPrefs) drawARMTab() {
+func (win *winPrefs) drawFontsTab() {
 	imgui.Spacing()
 
-	if win.img.cache.VCS.Mem.Cart.GetCoProcBus() == nil {
-		imgui.Text("Current ROM does not have an ARM coprocessor")
-		imguiSeparator()
+	var resetFonts bool
+
+	const (
+		minFontSize = 8
+		maxFontSize = 30
+	)
+
+	// flags to be used in float slider
+	sliderFlags := imgui.SliderFlagsAlwaysClamp | imgui.SliderFlagsNoInput
+
+	// gui font
+	guiSize := int32(win.img.prefs.guiFontSize.Get().(int))
+	if imgui.SliderIntV("##guiFontSizeSlider", &guiSize, minFontSize, maxFontSize, "%dpt", sliderFlags) {
+		win.img.prefs.guiFontSize.Set(guiSize)
 	}
-
-	immediate := win.img.dbg.VCS().Env.Prefs.ARM.Immediate.Get().(bool)
-	if imgui.Checkbox("Immediate ARM Execution", &immediate) {
-		win.img.dbg.VCS().Env.Prefs.ARM.Immediate.Set(immediate)
+	if imgui.IsItemDeactivatedAfterEdit() {
+		resetFonts = true
 	}
-	win.img.imguiTooltipSimple("ARM program consumes no 6507 time")
+	imgui.SameLineV(0, 5)
 
-	drawDisabled(immediate, func() {
-		imgui.Spacing()
-
-		var mamState string
-		switch win.img.dbg.VCS().Env.Prefs.ARM.MAM.Get().(int) {
-		case -1:
-			mamState = "Driver"
-		case 0:
-			mamState = "Disabled"
-		case 1:
-			mamState = "Partial"
-		case 2:
-			mamState = "Full"
-		}
-		imgui.PushItemWidth(imguiGetFrameDim("Disabled").X + imgui.FrameHeight())
-		if imgui.BeginComboV("Default MAM State##mam", mamState, imgui.ComboFlagsNone) {
-			if imgui.Selectable("Driver") {
-				win.img.dbg.VCS().Env.Prefs.ARM.MAM.Set(-1)
+	guiSizeS := fmt.Sprintf("%d", guiSize)
+	if imguiDecimalInput("GUI Font Size##guiFontSize", 3, &guiSizeS) {
+		if sz, err := strconv.ParseInt(guiSizeS, 10, 32); err == nil {
+			if sz >= minFontSize && sz <= maxFontSize {
+				win.img.prefs.guiFontSize.Set(sz)
+				resetFonts = true
 			}
-			if imgui.Selectable("Disabled") {
-				win.img.dbg.VCS().Env.Prefs.ARM.MAM.Set(0)
-			}
-			if imgui.Selectable("Partial") {
-				win.img.dbg.VCS().Env.Prefs.ARM.MAM.Set(1)
-			}
-			if imgui.Selectable("Full") {
-				win.img.dbg.VCS().Env.Prefs.ARM.MAM.Set(2)
-			}
-			imgui.EndCombo()
 		}
-		imgui.PopItemWidth()
-		win.img.imguiTooltipSimple(`The MAM state at the start of the Thumb program.
-
-For most purposes, this should be set to 'Driver'. This means that the emulated driver
-for the cartridge mapper decides what the value should be.
-
-If the 'Default MAM State' value is not set to 'Driver' then the Thumb program will be
-prevented from changing the MAM state.
-
-The MAM should almost never be disabled completely.`)
-
-		imgui.Spacing()
-		imgui.Separator()
-		imgui.Spacing()
-
-		clk := float32(win.img.dbg.VCS().Env.Prefs.ARM.Clock.Get().(float64))
-		if imgui.SliderFloatV("Clock Speed", &clk, 50, 300, "%.0f Mhz", imgui.SliderFlagsNone) {
-			win.img.dbg.VCS().Env.Prefs.ARM.Clock.Set(float64(clk))
-		}
-
-		imgui.Spacing()
-
-		reg := float32(win.img.dbg.VCS().Env.Prefs.ARM.CycleRegulator.Get().(float64))
-		if imgui.SliderFloatV("Cycle Regulator", &reg, 0.5, 2.0, "%.02f", imgui.SliderFlagsNone) {
-			win.img.dbg.VCS().Env.Prefs.ARM.CycleRegulator.Set(float64(reg))
-		}
-		win.img.imguiTooltipSimple(`The cycle regulator is a way of adjusting the amount of
-time each instruction in the ARM program takes`)
-	})
+	}
 
 	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
 
-	abortOnMemoryFault := win.img.dbg.VCS().Env.Prefs.ARM.AbortOnMemoryFault.Get().(bool)
-	if imgui.Checkbox("Abort on Memory Fault", &abortOnMemoryFault) {
-		win.img.dbg.VCS().Env.Prefs.ARM.AbortOnMemoryFault.Set(abortOnMemoryFault)
+	// terminal font
+	terminalSize := int32(win.img.prefs.terminalFontSize.Get().(int))
+	if imgui.SliderIntV("##terminalFontSizeSlider", &terminalSize, minFontSize, maxFontSize, "%dpt", sliderFlags) {
+		win.img.prefs.terminalFontSize.Set(terminalSize)
 	}
-
-	undefinedSymbolWarning := win.img.dbg.VCS().Env.Prefs.ARM.UndefinedSymbolWarning.Get().(bool)
-	if imgui.Checkbox("Undefined Symbols Warning", &undefinedSymbolWarning) {
-		win.img.dbg.VCS().Env.Prefs.ARM.UndefinedSymbolWarning.Set(undefinedSymbolWarning)
+	if imgui.IsItemDeactivatedAfterEdit() {
+		resetFonts = true
 	}
-	win.img.imguiTooltipSimple(`It is possible to compile an ELF binary with undefined symbols.
-This option presents causes a warning to appear when such a binary is loaded`)
-}
+	imgui.SameLineV(0, 5)
 
-func (win *winPrefs) drawPlusROMTab() {
-	imgui.Spacing()
-
-	if _, ok := win.img.cache.VCS.Mem.Cart.GetContainer().(*plusrom.PlusROM); !ok {
-		imgui.Text("Current ROM is not a PlusROM")
-		imguiSeparator()
-	}
-
-	drawPlusROMNick(win.img)
-}
-
-func (win *winPrefs) drawUITab() {
-	imgui.Spacing()
-
-	if imgui.CollapsingHeaderV("Font Sizing and Spacing", imgui.TreeNodeFlagsDefaultOpen) {
-		imgui.Spacing()
-
-		var resetFonts bool
-
-		const (
-			minFontSize = 8
-			maxFontSize = 30
-		)
-
-		// flags to be used in float slider
-		sliderFlags := imgui.SliderFlagsAlwaysClamp | imgui.SliderFlagsNoInput
-
-		// gui font
-		guiSize := int32(win.img.prefs.guiFontSize.Get().(int))
-		if imgui.SliderIntV("##guiFontSizeSlider", &guiSize, minFontSize, maxFontSize, "%dpt", sliderFlags) {
-			win.img.prefs.guiFontSize.Set(guiSize)
-		}
-		if imgui.IsItemDeactivatedAfterEdit() {
-			resetFonts = true
-		}
-		imgui.SameLineV(0, 5)
-
-		guiSizeS := fmt.Sprintf("%d", guiSize)
-		if imguiDecimalInput("GUI Font Size##guiFontSize", 3, &guiSizeS) {
-			if sz, err := strconv.ParseInt(guiSizeS, 10, 32); err == nil {
-				if sz >= minFontSize && sz <= maxFontSize {
-					win.img.prefs.guiFontSize.Set(sz)
-					resetFonts = true
-				}
+	terminalSizeS := fmt.Sprintf("%d", terminalSize)
+	if imguiDecimalInput("Terminal Font Size##terminalFontSize", 3, &terminalSizeS) {
+		if sz, err := strconv.ParseInt(terminalSizeS, 10, 32); err == nil {
+			if sz >= minFontSize && sz <= maxFontSize {
+				win.img.prefs.terminalFontSize.Set(sz)
+				resetFonts = true
 			}
 		}
+	}
 
-		imgui.Spacing()
+	imgui.Spacing()
 
-		// terminal font
-		terminalSize := int32(win.img.prefs.terminalFontSize.Get().(int))
-		if imgui.SliderIntV("##terminalFontSizeSlider", &terminalSize, minFontSize, maxFontSize, "%dpt", sliderFlags) {
-			win.img.prefs.terminalFontSize.Set(terminalSize)
-		}
-		if imgui.IsItemDeactivatedAfterEdit() {
-			resetFonts = true
-		}
-		imgui.SameLineV(0, 5)
+	// code font
+	codeSize := int32(win.img.prefs.codeFontSize.Get().(int))
+	if imgui.SliderIntV("##codeFontSizeSlider", &codeSize, minFontSize, maxFontSize, "%dpt", sliderFlags) {
+		win.img.prefs.codeFontSize.Set(codeSize)
+	}
+	if imgui.IsItemDeactivatedAfterEdit() {
+		resetFonts = true
+	}
+	imgui.SameLineV(0, 5)
 
-		terminalSizeS := fmt.Sprintf("%d", terminalSize)
-		if imguiDecimalInput("Terminal Font Size##terminalFontSize", 3, &terminalSizeS) {
-			if sz, err := strconv.ParseInt(terminalSizeS, 10, 32); err == nil {
-				if sz >= minFontSize && sz <= maxFontSize {
-					win.img.prefs.terminalFontSize.Set(sz)
-					resetFonts = true
-				}
+	codeSizeS := fmt.Sprintf("%d", codeSize)
+	if imguiDecimalInput("Code Font Size##codeFontSize", 3, &codeSizeS) {
+		if sz, err := strconv.ParseInt(codeSizeS, 10, 32); err == nil {
+			if sz >= minFontSize && sz <= maxFontSize {
+				win.img.prefs.codeFontSize.Set(sz)
+				resetFonts = true
 			}
 		}
+	}
 
-		imgui.Spacing()
+	imgui.Spacing()
 
-		// code font
-		codeSize := int32(win.img.prefs.codeFontSize.Get().(int))
-		if imgui.SliderIntV("##codeFontSizeSlider", &codeSize, minFontSize, maxFontSize, "%dpt", sliderFlags) {
-			win.img.prefs.codeFontSize.Set(codeSize)
-		}
-		if imgui.IsItemDeactivatedAfterEdit() {
-			resetFonts = true
-		}
-		imgui.SameLineV(0, 5)
+	// code line spacing
+	lineSpacing := int32(win.img.prefs.codeFontLineSpacing.Get().(int))
+	if imgui.SliderInt("Line spacing in ARM Code window", &lineSpacing, 0, 5) {
+		win.img.prefs.codeFontLineSpacing.Set(lineSpacing)
+	}
 
-		codeSizeS := fmt.Sprintf("%d", codeSize)
-		if imguiDecimalInput("Code Font Size##codeFontSize", 3, &codeSizeS) {
-			if sz, err := strconv.ParseInt(codeSizeS, 10, 32); err == nil {
-				if sz >= minFontSize && sz <= maxFontSize {
-					win.img.prefs.codeFontSize.Set(sz)
-					resetFonts = true
-				}
-			}
-		}
-
-		imgui.Spacing()
-
-		// code line spacing
-		lineSpacing := int32(win.img.prefs.codeFontLineSpacing.Get().(int))
-		if imgui.SliderInt("Line spacing in ARM Code window", &lineSpacing, 0, 5) {
-			win.img.prefs.codeFontLineSpacing.Set(lineSpacing)
-		}
-
-		// reset fonts if prefs have changed
-		if resetFonts {
-			win.img.resetFonts = resetFontFrames
-		}
+	// reset fonts if prefs have changed
+	if resetFonts {
+		win.img.resetFonts = resetFontFrames
 	}
 }
 
@@ -811,6 +694,14 @@ func (win *winPrefs) drawDiskButtons() {
 
 		win.img.resetFonts = resetFontFrames
 	}
+}
+
+func (win *winPrefs) setDefaultButton(text string) bool {
+	imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.PrefsDefaultButton)
+	imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.PrefsDefaultButtonActive)
+	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.PrefsDefaultButtonHovered)
+	defer imgui.PopStyleColorV(3)
+	return imgui.Button(text)
 }
 
 func prefsCheckbox(p *prefs.Bool, id string) {

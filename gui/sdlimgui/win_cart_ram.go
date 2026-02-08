@@ -188,7 +188,7 @@ func (win *winCartRAM) draw(ram []mapper.CartRAM) {
 				imgui.Spacing()
 
 				if current.CycleSensitive {
-					win.img.drawEmulateSARACheckbox()
+					win.img.wm.windows[winPrefsID].(*winPrefs).drawSARA()
 
 					imgui.SameLineV(0, 25)
 					drawInvisible(!current.CycleSensitiveActive, func() {

@@ -574,16 +574,3 @@ func (img *SdlImgui) commitStaticMemory(address uint32, data uint8) {
 		img.dbg.VCS().Mem.Cart.GetStaticBus().ReferenceStatic().Write8bit(address, data)
 	})
 }
-
-func (img *SdlImgui) drawEmulateSARACheckbox() {
-	emulateSARA := img.dbg.VCS().Env.Prefs.EmulateSARA.Get().(bool)
-	if imgui.Checkbox("Emulate Cycle Limitations", &emulateSARA) {
-		img.dbg.VCS().Env.Prefs.EmulateSARA.Set(emulateSARA)
-
-		// the preference value does not automatically handle changing the current cartridge
-		// value, so we do it here from the GUI
-		img.dbg.PushFunctionImmediate(func() {
-			img.dbg.VCS().Mem.Cart.SetEmulateSARA(emulateSARA)
-		})
-	}
-}

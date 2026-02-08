@@ -49,6 +49,11 @@ type imguiColors struct {
 	HaltReasonHovered imgui.Vec4
 	HaltReasonActive  imgui.Vec4
 
+	// prefs window
+	PrefsDefaultButton        imgui.Vec4
+	PrefsDefaultButtonActive  imgui.Vec4
+	PrefsDefaultButtonHovered imgui.Vec4
+
 	// playscreen colors
 	PlayWindowBg     imgui.Vec4
 	PlayWindowBorder imgui.Vec4
@@ -276,6 +281,11 @@ func newColors() *imguiColors {
 		HaltReason:        imgui.Vec4{X: 0.6, Y: 0.3, Z: 0.3, W: 1.0},
 		HaltReasonHovered: imgui.Vec4{X: 0.65, Y: 0.3, Z: 0.3, W: 1.0},
 		HaltReasonActive:  imgui.Vec4{X: 0.65, Y: 0.3, Z: 0.3, W: 1.0},
+
+		// deferring prefs window PrefsDefaultButton
+		PrefsDefaultButton:        imgui.Vec4{X: 0.95, Y: 0.60, Z: 0.08, W: 0.4},
+		PrefsDefaultButtonActive:  imgui.Vec4{X: 0.95, Y: 0.60, Z: 0.08, W: 0.5},
+		PrefsDefaultButtonHovered: imgui.Vec4{X: 0.95, Y: 0.60, Z: 0.08, W: 0.6},
 
 		// playscreen colors
 		PlayWindowBg:     imgui.Vec4{X: 0.0, Y: 0.0, Z: 0.0, W: 1.0},

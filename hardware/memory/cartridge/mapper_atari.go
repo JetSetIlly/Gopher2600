@@ -375,10 +375,12 @@ func (cart *atari) CopyBanks() []mapper.BankContent {
 	return c
 }
 
+const SuperchipID = " (SC)"
+
 // AddSuperchip implements the mapper.OptionalSuperchip interface.
 func (cart *atari) AddSuperchip(force bool, sara bool) {
 	if force || cart.needsSuperchip {
-		cart.mappingID = fmt.Sprintf("%s (SC)", cart.mappingID)
+		cart.mappingID = fmt.Sprintf("%s %s", cart.mappingID, SuperchipID)
 		cart.state.ram = make([]uint8, superchipSize)
 		cart.state.sara = sara
 	}
