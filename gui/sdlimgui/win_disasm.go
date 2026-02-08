@@ -530,7 +530,7 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 					imgui.Spacing()
 					imgui.Text(fmt.Sprintf("%c %s", fonts.Label, lbl))
 				}
-				if imgui.BeginTableV("disasmtooltip", 4, imgui.TableFlagsBorders, imgui.Vec2{}, 0) {
+				if imgui.BeginTableV("disasmtooltip", 4, imgui.TableFlagsBordersInner, imgui.Vec2{}, 0) {
 					imgui.TableSetupColumn("Bytecode")
 					imgui.TableSetupColumn("Address")
 					imgui.TableSetupColumn("Operator")
