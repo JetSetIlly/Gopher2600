@@ -16,21 +16,12 @@
 package preferences
 
 import (
-	"fmt"
-
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
 )
 
-type InsertedCartridge interface {
-	SetEmulateSARA(v bool)
-}
-
 type Cartridge struct {
 	dsk *prefs.Disk
-
-	// interface to the actual cartridge
-	InsertedCartridge InsertedCartridge
 
 	// unwrap ACE binaries when possible and use a more direct emulation
 	UnwrapACE prefs.Bool
@@ -72,14 +63,6 @@ func newCartridgePreferences() (*Cartridge, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	p.EmulateSARA.SetHookPost(func(v prefs.Value) error {
-		if p.InsertedCartridge == nil {
-			return fmt.Errorf("cannot set SARA emulation")
-		}
-		p.InsertedCartridge.SetEmulateSARA(v.(bool))
-		return nil
-	})
 
 	p.ARM, err = newARMprefrences()
 	if err != nil {

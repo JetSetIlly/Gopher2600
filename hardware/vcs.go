@@ -95,12 +95,6 @@ func NewVCS(label environment.Label, tv *television.Television, notify notificat
 	}
 
 	vcs.Mem = memory.NewMemory(vcs.Env)
-
-	// late binding of InsertedCartridge interface but only for the main emulation
-	if vcs.Env.IsEmulation(environment.MainEmulation) {
-		env.Prefs.Cartridge.InsertedCartridge = vcs.Mem.Cart
-	}
-
 	vcs.CPU = cpu.NewCPU(vcs.Mem)
 	vcs.RIOT = riot.NewRIOT(vcs.Env, vcs.Mem.RIOT, vcs.Mem.TIA)
 

@@ -269,7 +269,7 @@ func (cart *atari) access(addr uint16) (uint8, uint8, bool) {
 				cart.state.saraAddr = addr & 0x7f
 				return 0, 0, true
 			case 0x0080:
-				if cart.state.sara && cart.state.saraRecovery > 0 && addr&0x7f != cart.state.saraAddr {
+				if sara && cart.state.saraRecovery > 0 && addr&0x7f != cart.state.saraAddr {
 					return 0, 0, true
 				}
 				cart.state.saraRecovery = saraCycles
@@ -346,7 +346,7 @@ func (cart *atari) GetRAM() []mapper.CartRAM {
 		Data:                 make([]uint8, len(cart.state.ram)),
 		Mapped:               true,
 		CycleSensitive:       true,
-		CycleSensitiveActive: cart.state.sara,
+		CycleSensitiveActive: cart.env.Prefs.Cartridge.EmulateSARA.Get().(bool),
 		Cycles:               cart.state.saraRecovery,
 	}
 
@@ -378,17 +378,11 @@ func (cart *atari) CopyBanks() []mapper.BankContent {
 const SuperchipID = " (SC)"
 
 // AddSuperchip implements the mapper.OptionalSuperchip interface.
-func (cart *atari) AddSuperchip(force bool, sara bool) {
+func (cart *atari) AddSuperchip(force bool) {
 	if force || cart.needsSuperchip {
 		cart.mappingID = fmt.Sprintf("%s %s", cart.mappingID, SuperchipID)
 		cart.state.ram = make([]uint8, superchipSize)
-		cart.state.sara = sara
 	}
-}
-
-// SetEmulateSARA implements the mapper.OptionalSuperchip interface.
-func (cart *atari) SetEmulateSARA(sara bool) {
-	cart.state.sara = sara
 }
 
 // atari4k is the original and most straightforward format:
