@@ -41,7 +41,6 @@ import (
 	"github.com/jetsetilly/gopher2600/performance"
 	"github.com/jetsetilly/gopher2600/recorder"
 	"github.com/jetsetilly/gopher2600/regression"
-	"github.com/jetsetilly/gopher2600/resources"
 	"github.com/jetsetilly/gopher2600/version"
 )
 
@@ -286,8 +285,6 @@ func launch(sync *mainSync, args []string) {
 	sync.state <- stateRequest{req: reqQuit, args: 0}
 }
 
-const defaultInitScript = "debuggerInit"
-
 // emulate is the main emulation launch function, shared by play and debug
 // modes. the other modes initialise and run the emulation differently.
 func emulate(mode string, sync *mainSync, args []string) error {
@@ -339,15 +336,7 @@ func emulate(mode string, sync *mainSync, args []string) error {
 
 	// debugger specific arguments
 	if emulationMode == govern.ModeDebugger {
-		// prepare the path to the initialisation script used by the debugger. we
-		// can name the file in the defaultInitScript const declaration but the
-		// construction of the path is platform sensitive so we must do it here
-		defInitScript, err := resources.JoinPath(defaultInitScript)
-		if err != nil {
-			return err
-		}
-
-		flgs.StringVar(&opts.InitScript, "initscript", defInitScript, "script to run on debugger start")
+		flgs.StringVar(&opts.Script, "script", "", "script to run on debugger start")
 		flgs.StringVar(&opts.TermType, "term", "IMGUI", "terminal type: IMGUI, COLOR, PLAIN")
 	} else {
 		// non debugger emulation is always of type IMGUI

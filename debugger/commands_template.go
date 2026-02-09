@@ -121,7 +121,7 @@ var commandTemplate = []string{
 	cmdTIA + " (HMOVE)",
 	cmdRIOT + " (PORTS|TIMER)",
 	cmdAudio,
-	cmdTV + fmt.Sprintf(" (FRAME|SPEC (%s))", strings.Join(specification.ReqSpecList, "|")),
+	cmdTV + fmt.Sprintf(" (FRAME|VSYNC|SPEC (%s))", strings.Join(specification.ReqSpecList, "|")),
 	cmdPlayer + " (0|1)",
 	cmdMissile + " (0|1)",
 	cmdBall,

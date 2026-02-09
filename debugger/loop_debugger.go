@@ -328,7 +328,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 			err = dbg.termRead(inputter)
 			if err != nil {
 				if errors.Is(err, script.ScriptEnd) {
-					dbg.printLine(terminal.StyleFeedback, err.Error())
 					return nil
 				}
 				return err

@@ -51,6 +51,6 @@ type CommandLineOptions struct {
 	Macro                string
 
 	// debugger only
-	InitScript string
-	TermType   string
+	Script   string
+	TermType string
 }

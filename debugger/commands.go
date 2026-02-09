@@ -1295,6 +1295,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				frameInfo := dbg.vcs.TV.GetFrameInfo()
 				dbg.printLine(terminal.StyleInstrument, frameInfo.String())
 
+			case "VSYNC":
+				frameInfo := dbg.vcs.TV.GetFrameInfo()
+				dbg.printLine(terminal.StyleInstrument, fmt.Sprintf("vsync scanline: %d, clock: %d, count: %d", frameInfo.VSYNCscanline, frameInfo.VSYNCclock, frameInfo.VSYNCcount))
+
 			case "SPEC":
 				spec, ok := tokens.Get()
 				if ok {

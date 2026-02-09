@@ -133,32 +133,6 @@ func testSequence(t *testing.T, trm *mockTerm) {
 	testWatches(t, trm)
 }
 
-func TestDebugger_withNonExistantInitScript(t *testing.T) {
-	var trm *mockTerm
-
-	create := func(dbg *debugger.Debugger) (gui.GUI, terminal.Terminal, error) {
-		trm = newMockTerm(t)
-		return &mockGUI{}, trm, nil
-	}
-
-	var opts debugger.CommandLineOptions
-
-	dbg, err := debugger.NewDebugger(opts, create)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	// panic on any error from start debugger function
-	go func() {
-		err := dbg.StartInDebugMode("")
-		if err != nil {
-			panic(err)
-		}
-	}()
-
-	testSequence(t, trm)
-}
-
 func TestDebugger(t *testing.T) {
 	var trm *mockTerm
 

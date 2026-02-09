@@ -714,17 +714,13 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 	}
 
 	// intialisation script because we're in debugger mode
-	if dbg.opts.InitScript != "" {
-		scr, err := script.RescribeScript(dbg.opts.InitScript)
+	if dbg.opts.Script != "" {
+		scr, err := script.RescribeScript(dbg.opts.Script)
 		if err == nil {
-			dbg.term.Silence(true)
 			err = dbg.inputLoop(scr, false)
 			if err != nil {
-				dbg.term.Silence(false)
 				return err
 			}
-
-			dbg.term.Silence(false)
 		}
 	}
 
