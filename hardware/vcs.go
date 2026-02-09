@@ -80,7 +80,8 @@ type VCS struct {
 // The Television argument should not be nil. The Notify and Preferences
 // argument may be nil if required.
 func NewVCS(label environment.Label, tv *television.Television, notify notifications.Notify, prefs *preferences.Preferences) (*VCS, error) {
-	// set up environment
+
+	// prefs will be allocated if necessary. don't use prefs after this point but env.Prefs will be fine
 	env, err := environment.NewEnvironment(label, tv, notify, prefs)
 	if err != nil {
 		return nil, err
@@ -94,6 +95,12 @@ func NewVCS(label environment.Label, tv *television.Television, notify notificat
 	}
 
 	vcs.Mem = memory.NewMemory(vcs.Env)
+
+	// late binding of InsertedCartridge interface but only for the main emulation
+	if vcs.Env.IsEmulation(environment.MainEmulation) {
+		env.Prefs.Cartridge.InsertedCartridge = vcs.Mem.Cart
+	}
+
 	vcs.CPU = cpu.NewCPU(vcs.Mem)
 	vcs.RIOT = riot.NewRIOT(vcs.Env, vcs.Mem.RIOT, vcs.Mem.TIA)
 

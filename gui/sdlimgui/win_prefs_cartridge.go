@@ -47,15 +47,9 @@ func (win *winPrefs) drawSARA() {
 
 	imgui.Spacing()
 
-	emulateSARA := win.img.dbg.VCS().Env.Prefs.EmulateSARA.Get().(bool)
+	emulateSARA := win.img.dbg.VCS().Env.Prefs.Cartridge.EmulateSARA.Get().(bool)
 	if imgui.Checkbox("Emulate Cycle Limitations", &emulateSARA) {
-		win.img.dbg.VCS().Env.Prefs.EmulateSARA.Set(emulateSARA)
-
-		// the preference value does not automatically handle changing the current cartridge
-		// value, so we do it here from the GUI
-		win.img.dbg.PushFunctionImmediate(func() {
-			win.img.dbg.VCS().Mem.Cart.SetEmulateSARA(emulateSARA)
-		})
+		win.img.dbg.VCS().Env.Prefs.Cartridge.EmulateSARA.Set(emulateSARA)
 	}
 }
 
@@ -67,9 +61,9 @@ func (win *winPrefs) drawARMTab() {
 		imguiSeparator()
 	}
 
-	immediate := win.img.dbg.VCS().Env.Prefs.ARM.Immediate.Get().(bool)
+	immediate := win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.Immediate.Get().(bool)
 	if imgui.Checkbox("Immediate ARM Execution", &immediate) {
-		win.img.dbg.VCS().Env.Prefs.ARM.Immediate.Set(immediate)
+		win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.Immediate.Set(immediate)
 	}
 	win.img.imguiTooltipSimple("ARM program consumes no 6507 time")
 
@@ -77,7 +71,7 @@ func (win *winPrefs) drawARMTab() {
 		imgui.Spacing()
 
 		var mamState string
-		switch win.img.dbg.VCS().Env.Prefs.ARM.MAM.Get().(int) {
+		switch win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.MAM.Get().(int) {
 		case -1:
 			mamState = "Driver"
 		case 0:
@@ -90,16 +84,16 @@ func (win *winPrefs) drawARMTab() {
 		imgui.PushItemWidth(imguiGetFrameDim("Disabled").X + imgui.FrameHeight())
 		if imgui.BeginComboV("Default MAM State##mam", mamState, imgui.ComboFlagsNone) {
 			if imgui.Selectable("Driver") {
-				win.img.dbg.VCS().Env.Prefs.ARM.MAM.Set(-1)
+				win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.MAM.Set(-1)
 			}
 			if imgui.Selectable("Disabled") {
-				win.img.dbg.VCS().Env.Prefs.ARM.MAM.Set(0)
+				win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.MAM.Set(0)
 			}
 			if imgui.Selectable("Partial") {
-				win.img.dbg.VCS().Env.Prefs.ARM.MAM.Set(1)
+				win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.MAM.Set(1)
 			}
 			if imgui.Selectable("Full") {
-				win.img.dbg.VCS().Env.Prefs.ARM.MAM.Set(2)
+				win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.MAM.Set(2)
 			}
 			imgui.EndCombo()
 		}
@@ -118,16 +112,16 @@ The MAM should almost never be disabled completely.`)
 		imgui.Separator()
 		imgui.Spacing()
 
-		clk := float32(win.img.dbg.VCS().Env.Prefs.ARM.Clock.Get().(float64))
+		clk := float32(win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.Clock.Get().(float64))
 		if imgui.SliderFloatV("Clock Speed", &clk, 50, 300, "%.0f Mhz", imgui.SliderFlagsNone) {
-			win.img.dbg.VCS().Env.Prefs.ARM.Clock.Set(float64(clk))
+			win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.Clock.Set(float64(clk))
 		}
 
 		imgui.Spacing()
 
-		reg := float32(win.img.dbg.VCS().Env.Prefs.ARM.CycleRegulator.Get().(float64))
+		reg := float32(win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.CycleRegulator.Get().(float64))
 		if imgui.SliderFloatV("Cycle Regulator", &reg, 0.5, 2.0, "%.02f", imgui.SliderFlagsNone) {
-			win.img.dbg.VCS().Env.Prefs.ARM.CycleRegulator.Set(float64(reg))
+			win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.CycleRegulator.Set(float64(reg))
 		}
 		win.img.imguiTooltipSimple(`The cycle regulator is a way of adjusting the amount of
 time each instruction in the ARM program takes`)
@@ -137,21 +131,21 @@ time each instruction in the ARM program takes`)
 	imgui.Separator()
 	imgui.Spacing()
 
-	abortOnMemoryFault := win.img.dbg.VCS().Env.Prefs.ARM.AbortOnMemoryFault.Get().(bool)
+	abortOnMemoryFault := win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.AbortOnMemoryFault.Get().(bool)
 	if imgui.Checkbox("Abort on Memory Fault", &abortOnMemoryFault) {
-		win.img.dbg.VCS().Env.Prefs.ARM.AbortOnMemoryFault.Set(abortOnMemoryFault)
+		win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.AbortOnMemoryFault.Set(abortOnMemoryFault)
 	}
 
-	undefinedSymbolWarning := win.img.dbg.VCS().Env.Prefs.ARM.UndefinedSymbolWarning.Get().(bool)
+	undefinedSymbolWarning := win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.UndefinedSymbolWarning.Get().(bool)
 	if imgui.Checkbox("Undefined Symbols Warning", &undefinedSymbolWarning) {
-		win.img.dbg.VCS().Env.Prefs.ARM.UndefinedSymbolWarning.Set(undefinedSymbolWarning)
+		win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.UndefinedSymbolWarning.Set(undefinedSymbolWarning)
 	}
 	win.img.imguiTooltipSimple(`It is possible to compile an ELF binary with undefined symbols.
 This option presents causes a warning to appear when such a binary is loaded`)
 
 	imgui.Spacing()
 	if win.setDefaultButton("Set ARM Defaults") {
-		win.img.dbg.PushFunction(win.img.dbg.VCS().Env.Prefs.ARM.SetDefaults)
+		win.img.dbg.PushFunction(win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.SetDefaults)
 	}
 }
 

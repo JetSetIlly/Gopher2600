@@ -245,7 +245,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	// if the fingerprint fails we just continue with original ACE mapping and let the actual ACE
 	// mapper deal with the error (as it would if unwrapACE preference is not enabled)
 	if mapping == "ACE" {
-		if cart.env.Prefs.UnwrapACE.Get().(bool) {
+		if cart.env.Prefs.Cartridge.UnwrapACE.Get().(bool) {
 			var ok bool
 			ok, mapping = fingerprintAce(cartload, true)
 			if ok {
@@ -372,13 +372,13 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	// RAM
 	if forceSuperchip {
 		if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
-			superchip.AddSuperchip(true, cart.env.Prefs.EmulateSARA.Get().(bool))
+			superchip.AddSuperchip(true, cart.env.Prefs.Cartridge.EmulateSARA.Get().(bool))
 		} else {
 			logger.Logf(cart.env, "cartridge", "cannot add superchip to %s mapper", cart.ID())
 		}
 	} else if auto {
 		if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
-			superchip.AddSuperchip(false, cart.env.Prefs.EmulateSARA.Get().(bool))
+			superchip.AddSuperchip(false, cart.env.Prefs.Cartridge.EmulateSARA.Get().(bool))
 		}
 	}
 

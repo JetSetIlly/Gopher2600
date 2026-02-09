@@ -279,19 +279,6 @@ func (win *winPrefs) drawPALPhase() {
 	}
 }
 
-func (win *winPrefs) drawEmulateSARA() {
-	emulateSARA := win.img.dbg.VCS().Env.Prefs.EmulateSARA.Get().(bool)
-	if imgui.Checkbox("Emulate Cycle Limitations", &emulateSARA) {
-		win.img.dbg.VCS().Env.Prefs.EmulateSARA.Set(emulateSARA)
-
-		// the preference value does not automatically handle changing the current cartridge
-		// value, so we do it here from the GUI
-		win.img.dbg.PushFunctionImmediate(func() {
-			win.img.dbg.VCS().Mem.Cart.SetEmulateSARA(emulateSARA)
-		})
-	}
-}
-
 func (win *winPrefs) drawVSYNC() {
 	var label string
 

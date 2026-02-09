@@ -54,7 +54,7 @@ func NewAce(env *environment.Environment) (mapper.CartMapper, error) {
 		return nil, fmt.Errorf("ACE: %w", err)
 	}
 
-	cart.mem, err = newAceMemory(env, data, cart.env.Prefs.ARM)
+	cart.mem, err = newAceMemory(env, data, cart.env.Prefs.Cartridge.ARM)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (cart *Ace) Reset() error {
 		return fmt.Errorf("ACE: %w", err)
 	}
 
-	cart.mem, err = newAceMemory(cart.env, data, cart.env.Prefs.ARM)
+	cart.mem, err = newAceMemory(cart.env, data, cart.env.Prefs.Cartridge.ARM)
 	if err != nil {
 		return fmt.Errorf("ACE: %w", err)
 	}
@@ -233,7 +233,7 @@ func (cart *Ace) AccessPassive(addr uint16, data uint8) error {
 // Step implements the mapper.CartMapper interface.
 func (cart *Ace) Step(clock float32) {
 	if cart.mem.cycles > 0 {
-		cart.mem.cycles -= float32(cart.env.Prefs.ARM.Clock.Get().(float64)) / clock
+		cart.mem.cycles -= float32(cart.env.Prefs.Cartridge.ARM.Clock.Get().(float64)) / clock
 	} else {
 		cart.arm.Step(clock)
 	}

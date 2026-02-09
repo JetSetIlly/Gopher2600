@@ -221,7 +221,7 @@ func (o *playscrOverlay) drawTopLeft(posMin imgui.Vec2, _ imgui.Vec2) {
 		imguiSeparator()
 
 		if coproc := o.img.cache.VCS.Mem.Cart.GetCoProc(); coproc != nil {
-			clk := float32(o.img.dbg.VCS().Env.Prefs.ARM.Clock.Get().(float64))
+			clk := float32(o.img.dbg.VCS().Env.Prefs.Cartridge.ARM.Clock.Get().(float64))
 			imgui.Text(fmt.Sprintf("%s Clock: %.0f Mhz", coproc.ProcessorID(), clk))
 			imguiSeparator()
 		}

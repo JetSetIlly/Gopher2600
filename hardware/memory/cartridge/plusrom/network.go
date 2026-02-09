@@ -142,8 +142,8 @@ func (n *network) transmit() {
 		ver, _, _ := version.Version()
 		id := fmt.Sprintf("agent=Gopher2600; ver=%s; id=%s; nick=%s",
 			ver,
-			n.env.Prefs.PlusROM.ID.String(),
-			n.env.Prefs.PlusROM.Nick.String(),
+			n.env.Prefs.Cartridge.PlusROM.ID.String(),
+			n.env.Prefs.Cartridge.PlusROM.Nick.String(),
 		)
 		req.Header.Set("PlusROM-Info", id)
 		logger.Logf(n.env, "plusrom [net]", "PlusROM-Info: %s", id)
@@ -162,7 +162,7 @@ func (n *network) transmit() {
 		// -----------------------------------------------
 
 		// whether to log HTTP transactions taken from the global preferences
-		httpLogging := n.env.Prefs.PlusROM.HTTPLogging.Get().(bool)
+		httpLogging := n.env.Prefs.Cartridge.PlusROM.HTTPLogging.Get().(bool)
 
 		// log of complete request
 		if httpLogging {

@@ -22,8 +22,8 @@ import (
 )
 
 func (img *SdlImgui) modalDrawPlusROMFirstInstallation() {
-	nick := img.dbg.VCS().Env.Prefs.PlusROM.Nick.String()
-	id := img.dbg.VCS().Env.Prefs.PlusROM.ID.String()
+	nick := img.dbg.VCS().Env.Prefs.Cartridge.PlusROM.Nick.String()
+	id := img.dbg.VCS().Env.Prefs.Cartridge.PlusROM.ID.String()
 
 	const popupTitle = "PlusROM First Installation"
 
@@ -44,11 +44,11 @@ func (img *SdlImgui) modalDrawPlusROMFirstInstallation() {
 		imgui.SameLine()
 
 		if imguiTextInput("##nick", plusnet.MaxNickLength, &nick, true) {
-			err := img.dbg.VCS().Env.Prefs.PlusROM.Nick.Set(nick)
+			err := img.dbg.VCS().Env.Prefs.Cartridge.PlusROM.Nick.Set(nick)
 			if err != nil {
 				logger.Logf(logger.Allow, "sdlimgui", "could not set plusrom nick: %v", err)
 			}
-			err = img.dbg.VCS().Env.Prefs.PlusROM.Save()
+			err = img.dbg.VCS().Env.Prefs.Cartridge.PlusROM.Save()
 			if err != nil {
 				logger.Logf(logger.Allow, "sdlimgui", "could not save preferences: %v", err)
 			}
@@ -65,11 +65,11 @@ func (img *SdlImgui) modalDrawPlusROMFirstInstallation() {
 
 		if len(nick) >= 1 {
 			if imgui.Button("I'm happy with my nick") {
-				err := img.dbg.VCS().Env.Prefs.PlusROM.Nick.Set(nick)
+				err := img.dbg.VCS().Env.Prefs.Cartridge.PlusROM.Nick.Set(nick)
 				if err != nil {
 					logger.Logf(logger.Allow, "sdlimgui", "could not set preference value: %v", err)
 				}
-				err = img.dbg.VCS().Env.Prefs.PlusROM.Save()
+				err = img.dbg.VCS().Env.Prefs.Cartridge.PlusROM.Save()
 				if err != nil {
 					logger.Logf(logger.Allow, "sdlimgui", "could not save preferences: %v", err)
 				}

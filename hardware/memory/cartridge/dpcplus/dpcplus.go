@@ -1013,7 +1013,7 @@ func (cart *dpcPlus) SetYieldHook(hook coprocessor.CartYieldHook) {
 
 func (cart *dpcPlus) runArm() coprocessor.CoProcYield {
 	yld, cycles := cart.arm.Run()
-	if cycles > 0 || cart.env.Prefs.ARM.ImmediateCorrection.Get().(bool) {
+	if cycles > 0 || cart.env.Prefs.Cartridge.ARM.ImmediateCorrection.Get().(bool) {
 		cart.state.callfn.Accumulate(cycles)
 	}
 	return yld

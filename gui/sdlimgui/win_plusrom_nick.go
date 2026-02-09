@@ -71,7 +71,7 @@ func (win *winPlusROMNick) debuggerDraw() bool {
 func (win *winPlusROMNick) draw() {
 	// if drawPlusROMNick has returned true then save the change to disk immediately
 	if drawPlusROMNick(win.img) {
-		err := win.img.dbg.VCS().Env.Prefs.PlusROM.Save()
+		err := win.img.dbg.VCS().Env.Prefs.Cartridge.PlusROM.Save()
 		if err != nil {
 			logger.Logf(logger.Allow, "sdlimgui", "could not save preferences: %v", err)
 		}
@@ -87,15 +87,15 @@ func (win *winPlusROMNick) draw() {
 func drawPlusROMNick(img *SdlImgui) bool {
 	var changed bool
 
-	nick := img.dbg.VCS().Env.Prefs.PlusROM.Nick.Get().(string)
-	id := img.dbg.VCS().Env.Prefs.PlusROM.ID.Get().(string)
+	nick := img.dbg.VCS().Env.Prefs.Cartridge.PlusROM.Nick.Get().(string)
+	id := img.dbg.VCS().Env.Prefs.Cartridge.PlusROM.ID.Get().(string)
 
 	imgui.AlignTextToFramePadding()
 	imgui.Text("Nick")
 	imgui.SameLine()
 
 	if imguiTextInput("##nick", plusnet.MaxNickLength, &nick, false) {
-		err := img.dbg.VCS().Env.Prefs.PlusROM.Nick.Set(nick)
+		err := img.dbg.VCS().Env.Prefs.Cartridge.PlusROM.Nick.Set(nick)
 		if err != nil {
 			logger.Logf(logger.Allow, "sdlimgui", "could not set plusrom nick: %v", err)
 		}

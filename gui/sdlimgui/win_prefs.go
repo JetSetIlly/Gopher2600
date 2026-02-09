@@ -608,17 +608,21 @@ func (win *winPrefs) drawDiskButtons() {
 			if err != nil {
 				logger.Logf(logger.Allow, "sdlimgui", "could not save (tv) preferences: %v", err)
 			}
-			err = win.img.dbg.VCS().Env.Prefs.ARM.Save()
+			err = win.img.dbg.VCS().Env.Prefs.Cartridge.Save()
+			if err != nil {
+				logger.Logf(logger.Allow, "sdlimgui", "could not save (cartridge) preferences: %v", err)
+			}
+			err = win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.Save()
 			if err != nil {
 				logger.Logf(logger.Allow, "sdlimgui", "could not save (arm) preferences: %v", err)
+			}
+			err = win.img.dbg.VCS().Env.Prefs.Cartridge.PlusROM.Save()
+			if err != nil {
+				logger.Logf(logger.Allow, "sdlimgui", "could not save (plusrom) preferences: %v", err)
 			}
 			err = win.img.dbg.VCS().Env.Prefs.AtariVox.Save()
 			if err != nil {
 				logger.Logf(logger.Allow, "sdlimgui", "could not save (atarivox) preferences: %v", err)
-			}
-			err = win.img.dbg.VCS().Env.Prefs.PlusROM.Save()
-			if err != nil {
-				logger.Logf(logger.Allow, "sdlimgui", "could not save (plusrom) preferences: %v", err)
 			}
 			err = win.img.dbg.VCS().Env.Prefs.Revision.Save()
 			if err != nil {
@@ -664,17 +668,21 @@ func (win *winPrefs) drawDiskButtons() {
 			if err != nil {
 				logger.Logf(logger.Allow, "sdlimgui", "could not restore (tv) preferences: %v", err)
 			}
-			err = win.img.dbg.VCS().Env.Prefs.ARM.Load()
+			err = win.img.dbg.VCS().Env.Prefs.Cartridge.Load()
+			if err != nil {
+				logger.Logf(logger.Allow, "sdlimgui", "could not restore (cartridge) preferences: %v", err)
+			}
+			err = win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.Load()
 			if err != nil {
 				logger.Logf(logger.Allow, "sdlimgui", "could not restore (arm) preferences: %v", err)
+			}
+			err = win.img.dbg.VCS().Env.Prefs.Cartridge.PlusROM.Load()
+			if err != nil {
+				logger.Logf(logger.Allow, "sdlimgui", "could not restore (plusrom) preferences: %v", err)
 			}
 			err = win.img.dbg.VCS().Env.Prefs.AtariVox.Load()
 			if err != nil {
 				logger.Logf(logger.Allow, "sdlimgui", "could not restore (atarivox) preferences: %v", err)
-			}
-			err = win.img.dbg.VCS().Env.Prefs.PlusROM.Load()
-			if err != nil {
-				logger.Logf(logger.Allow, "sdlimgui", "could not restore (plusrom) preferences: %v", err)
 			}
 			err = win.img.dbg.VCS().Env.Prefs.Revision.Load()
 			if err != nil {

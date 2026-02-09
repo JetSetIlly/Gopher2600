@@ -33,22 +33,10 @@ type Preferences struct {
 	// unused pins randomly on a read/peek"
 	RandomPins prefs.Bool
 
-	// unwrap ACE binaries when possible and use a more direct emulation
-	UnwrapACE prefs.Bool
-
-	// emulate the cycle limitations of the SARA chip
-	// NOTE that this value is not hooked into the live emulate sara value in the atari mapper. it
-	// probably should be, although the GUI preferences window handles that for us
-	EmulateSARA prefs.Bool
-
 	// preferences used by the television
 	TV *TVPreferences
 
-	// preferences used by the ARM sub-system
-	ARM *ARMPreferences
-
-	// preferences used by PlusROM cartridges
-	PlusROM *PlusROMPreferences
+	Cartridge *Cartridge
 
 	// preferences used by the TIA package in order to emulate different
 	// revisions of the TIA chip
@@ -83,14 +71,6 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("hardware.unwrapAce", &p.UnwrapACE)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("hardware.emulateSARA", &p.EmulateSARA)
-	if err != nil {
-		return nil, err
-	}
 	err = p.dsk.Load()
 	if err != nil {
 		return nil, err
@@ -101,12 +81,7 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 
-	p.ARM, err = newARMprefrences()
-	if err != nil {
-		return nil, err
-	}
-
-	p.PlusROM, err = newPlusROMpreferences()
+	p.Cartridge, err = newCartridgePreferences()
 	if err != nil {
 		return nil, err
 	}
@@ -126,11 +101,8 @@ func NewPreferences() (*Preferences, error) {
 
 // SetDefaults reverts all settings to default values.
 func (p *Preferences) SetDefaults() {
-	// initialise random number generator
 	p.RandomState.Set(false)
 	p.RandomPins.Set(false)
-	p.UnwrapACE.Set(true)
-	p.EmulateSARA.Set(false)
 }
 
 // Load current hardware preference from disk.

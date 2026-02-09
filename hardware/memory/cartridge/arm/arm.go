@@ -499,7 +499,7 @@ func (arm *ARM) resetRegisters() {
 // preference values are being used in the ARM emulation
 func (arm *ARM) updatePrefs() {
 	// update clock value from preferences
-	arm.Clk = float32(arm.env.Prefs.ARM.Clock.Get().(float64))
+	arm.Clk = float32(arm.env.Prefs.Cartridge.ARM.Clock.Get().(float64))
 
 	// update clkLen entries
 	for _, r := range arm.mmap.Regions {
@@ -518,12 +518,12 @@ func (arm *ARM) updatePrefs() {
 	}
 
 	// get clock regulator from preferences
-	arm.cycleRegulator = float32(arm.env.Prefs.ARM.CycleRegulator.Get().(float64))
+	arm.cycleRegulator = float32(arm.env.Prefs.Cartridge.ARM.CycleRegulator.Get().(float64))
 
 	arm.state.mam.updatePrefs()
 
 	// set cycle counting functions
-	arm.immediateMode = arm.env.Prefs.ARM.Immediate.Get().(bool)
+	arm.immediateMode = arm.env.Prefs.Cartridge.ARM.Immediate.Get().(bool)
 	if arm.immediateMode {
 		arm.Icycle = arm.iCycle_Stub
 		arm.Scycle = arm.sCycle_Stub
@@ -543,7 +543,7 @@ func (arm *ARM) updatePrefs() {
 		}
 	}
 
-	arm.abortOnMemoryFault = arm.env.Prefs.ARM.AbortOnMemoryFault.Get().(bool)
+	arm.abortOnMemoryFault = arm.env.Prefs.Cartridge.ARM.AbortOnMemoryFault.Get().(bool)
 }
 
 func (arm *ARM) String() string {
@@ -609,7 +609,7 @@ func (arm *ARM) logYield() {
 
 	// extended memory logging
 
-	if arm.env.Prefs.ARM.ExtendedMemoryFaultLogging.Get().(bool) == false {
+	if arm.env.Prefs.Cartridge.ARM.ExtendedMemoryFaultLogging.Get().(bool) == false {
 		return
 	}
 
