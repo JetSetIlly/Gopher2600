@@ -38,7 +38,7 @@ func (sym *Symbols) ListLabels(output io.Writer) {
 
 		if len(s) > 0 {
 			if len(sym.label) > 1 {
-				output.Write([]byte(fmt.Sprintf("Bank %d:\n", b)))
+				output.Write(fmt.Appendf(nil, "Bank %d:\n", b))
 			}
 			output.Write([]byte(s))
 		}

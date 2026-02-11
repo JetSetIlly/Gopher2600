@@ -14,7 +14,6 @@
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
 //go:build !windows
-// +build !windows
 
 package colorterm
 

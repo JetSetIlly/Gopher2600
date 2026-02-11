@@ -130,7 +130,7 @@ func (win *winCDFStreams) updateStreams(regs cdf.Registers, static mapper.CartSt
 			}
 
 			// plot pixels
-			for x := 0; x < 8; x++ {
+			for x := range 8 {
 				if y <= scanlines {
 					if (v<<x)&0x80 == 0x80 {
 						win.streamPixels[i].SetRGBA(x, y, col)
@@ -198,7 +198,7 @@ func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
 		// disable preview color. it will be turned on if drag and drop is being used this frame.
 		win.colouriser.active = false
 
-		for i := 0; i < len(win.streamTextures); i++ {
+		for i := range len(win.streamTextures) {
 			imgui.BeginGroup()
 
 			// styling for datastream buttons )including the image button)
@@ -315,14 +315,8 @@ func (win *winCDFStreams) draw(regs cdf.Registers, static mapper.CartStatic) {
 				const numOfAdditionalPeeks = 3
 
 				y := int(p.Y / scaling)
-				yTop := y - numOfAdditionalPeeks
-				if yTop < 0 {
-					yTop = 0
-				}
-				yBot := y + numOfAdditionalPeeks
-				if yBot >= int(win.scanlines) {
-					yBot = int(win.scanlines)
-				}
+				yTop := max(y-numOfAdditionalPeeks, 0)
+				yBot := min(y+numOfAdditionalPeeks, int(win.scanlines))
 
 				// test if mouse position intersects with the active part of
 				// the texture

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"math/bits"
+	"slices"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
@@ -214,12 +215,7 @@ func fingerprintParkerBros(loader cartridgeloader.Loader) bool {
 		{0xad, 0xed, 0xff}, // LDA $FFED
 		{0xad, 0xf3, 0xbf}, // LDA $BFF3
 	}
-	for _, f := range fingerprint {
-		if loader.Contains(f) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(fingerprint, loader.Contains)
 }
 
 func fingerprintDF(loader cartridgeloader.Loader) bool {
@@ -244,12 +240,7 @@ func fingerprintSCABS(loader cartridgeloader.Loader) bool {
 		{0xd0, 0xfB, 0x20, 0x73, 0xfe}, // BNE $FB; JSR $FE73
 		{0x20, 0x00, 0xf0, 0x84, 0xd6}, // JSR $F000; $84, $D6
 	}
-	for _, f := range fingerprint {
-		if loader.Contains(f) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(fingerprint, loader.Contains)
 }
 
 func fingerprintUA(loader cartridgeloader.Loader) bool {
@@ -262,12 +253,7 @@ func fingerprintUA(loader cartridgeloader.Loader) bool {
 		{0x8D, 0xC0, 0x02}, // STA $2C0 (Fathom, Vanguard)
 		{0xAD, 0xC0, 0x02}, // LDA $2C0 (Mickey)
 	}
-	for _, f := range fingerprint {
-		if loader.Contains(f) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(fingerprint, loader.Contains)
 }
 
 func fingerprintDPCplus(loader cartridgeloader.Loader) bool {
@@ -416,12 +402,7 @@ func fingerprintSB(loader cartridgeloader.Loader) bool {
 		{0xbd, 0x00, 0x08}, // LDA $0800,X
 		{0xad, 0x00, 0x08}, // LDA $0800
 	}
-	for _, f := range fingerprint {
-		if loader.Contains(f) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(fingerprint, loader.Contains)
 }
 
 func fingerprint8k(loader cartridgeloader.Loader) string {

@@ -144,7 +144,7 @@ func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, s
 	// calculate performance
 	numFrames := endFrame - startFrame
 	fps, accuracy := CalcFPS(tv, numFrames, dur.Seconds())
-	output.Write([]byte(fmt.Sprintf("%.2f fps (%d frames in %.2f seconds) %.1f%%\n", fps, numFrames, dur.Seconds(), accuracy)))
+	output.Write(fmt.Appendf(nil, "%.2f fps (%d frames in %.2f seconds) %.1f%%\n", fps, numFrames, dur.Seconds(), accuracy))
 
 	return nil
 }

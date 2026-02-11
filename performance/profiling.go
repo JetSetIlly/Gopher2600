@@ -139,8 +139,8 @@ func RunProfiler(profile Profile, filenameHeader string, run func() error) error
 func ParseProfileString(profile string) (Profile, error) {
 	p := ProfileNone
 
-	s := strings.Split(profile, ",")
-	for _, t := range s {
+	s := strings.SplitSeq(profile, ",")
+	for t := range s {
 		switch strings.TrimSpace(strings.ToLower(t)) {
 		case "none":
 		case "all":

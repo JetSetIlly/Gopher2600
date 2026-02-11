@@ -632,7 +632,7 @@ type DPCregisters struct {
 func (r DPCregisters) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("RNG: %#02x\n", r.RNG))
-	for f := 0; f < len(r.Fetcher); f++ {
+	for f := range len(r.Fetcher) {
 		s.WriteString(fmt.Sprintf("F%d: l:%#02x h:%#02x t:%#02x b:%#02x mm:%v", f,
 			r.Fetcher[f].Low,
 			r.Fetcher[f].Hi,

@@ -1435,7 +1435,7 @@ func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) error
 	commands := strings.Split(input, ";")
 
 	// loop through commands
-	for i := 0; i < len(commands); i++ {
+	for i := range commands {
 		// parse command
 		err = dbg.parseCommand(commands[i], interactive, !auto)
 		if err != nil {

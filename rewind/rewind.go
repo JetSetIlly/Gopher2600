@@ -214,10 +214,8 @@ func (r *Rewind) AddTimelineCounter(ctr TimelineCounter) {
 
 // AddSplicer to list of splicers
 func (r *Rewind) AddSplicer(s Splicer) {
-	for i := range r.splicers {
-		if r.splicers[i] == s {
-			return
-		}
+	if slices.Contains(r.splicers, s) {
+		return
 	}
 	r.splicers = append(r.splicers, s)
 }
@@ -609,10 +607,7 @@ func (r *Rewind) findFrameIndexExact(frame int) findResults {
 // the current state.
 func (r *Rewind) RerunLastNFrames(frames int, onSplice SpliceHook) error {
 	to := r.GetCurrentState()
-	ff := to.TV.GetCoords().Frame
-	if ff < 0 {
-		ff = 0
-	}
+	ff := max(to.TV.GetCoords().Frame, 0)
 
 	idx := r.findFrameIndex(ff).nearestIdx
 	err := r.setSplicePoint(idx, to.TV.GetCoords(), onSplice)

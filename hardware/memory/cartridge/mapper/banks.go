@@ -159,7 +159,7 @@ func SingleBankSelection(bank string) (BankSelection, error) {
 func SegmentedBankSelection(bank string) ([]BankSelection, error) {
 	var segments []BankSelection
 
-	for _, s := range strings.Split(bank, ":") {
+	for s := range strings.SplitSeq(bank, ":") {
 		b, err := SingleBankSelection(s)
 		if err != nil {
 			return []BankSelection{}, err

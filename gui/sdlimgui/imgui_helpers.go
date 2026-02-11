@@ -318,7 +318,7 @@ func drawRegister(id string, val uint8, mask uint8, col imgui.PackedColor, onWri
 	}
 
 	seq := newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, true)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		if mask<<i&0x80 == 0x80 {
 			if (val<<i)&0x80 != 0x80 {
 				seq.nextItemDepressed = true

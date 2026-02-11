@@ -70,7 +70,7 @@ func Stereo(channel0 uint8, channel1 uint8) (int16, int16) {
 }
 
 func init() {
-	for vol := 0; vol < len(mono); vol++ {
+	for vol := range len(mono) {
 		mono[vol] = int16(0x7fff * float32(vol) / float32(maxVolume) * (30 + 1*float32(maxVolume)) / (30 + 1*float32(vol)))
 	}
 }

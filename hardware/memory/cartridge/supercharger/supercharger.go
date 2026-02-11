@@ -333,7 +333,7 @@ func (cart *Supercharger) CopyBanks() []mapper.BankContent {
 		},
 	}
 
-	for b := 0; b < len(cart.state.ram); b++ {
+	for b := range len(cart.state.ram) {
 		c[b+1] = mapper.BankContent{Number: b + 1,
 			Data: cart.state.ram[b],
 			Origins: []uint16{
@@ -350,7 +350,7 @@ func (cart *Supercharger) CopyBanks() []mapper.BankContent {
 func (cart *Supercharger) GetRAM() []mapper.CartRAM {
 	r := make([]mapper.CartRAM, len(cart.state.ram))
 
-	for i := 0; i < len(cart.state.ram); i++ {
+	for i := range len(cart.state.ram) {
 		mapped := false
 		origin := uint16(0x1000)
 

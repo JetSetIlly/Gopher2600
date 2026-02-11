@@ -476,7 +476,7 @@ func (arm *ARM) resetPeripherals() {
 func (arm *ARM) resetRegisters() {
 	arm.state.status.reset()
 
-	for i := 0; i < rSP; i++ {
+	for i := range rSP {
 		arm.state.registers[i] = 0x00000000
 	}
 

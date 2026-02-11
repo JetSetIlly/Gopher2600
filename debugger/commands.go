@@ -548,7 +548,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					ram := bus.GetRAM()
 					if ram != nil {
 						s := &strings.Builder{}
-						for b := 0; b < len(ram); b++ {
+						for b := range ram {
 							s.WriteString(ram[b].Label + "\n")
 							s.WriteString(strings.Repeat("-", len(ram[b].Label)))
 							s.WriteString("\n")
@@ -785,7 +785,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		dbg.commandOnHalt = dbg.commandOnHalt[:0]
 
 		// tokenise commands to check for integrity
-		for _, s := range strings.Split(input, ",") {
+		for s := range strings.SplitSeq(input, ",") {
 			toks, err := dbg.tokeniseCommand(s, false, false)
 			if err != nil {
 				dbg.commandOnHalt = existingOnHalt
@@ -853,7 +853,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		dbg.commandOnStep = dbg.commandOnStep[:0]
 
 		// tokenise commands to check for integrity
-		for _, s := range strings.Split(input, ",") {
+		for s := range strings.SplitSeq(input, ",") {
 			toks, err := dbg.tokeniseCommand(s, false, false)
 			if err != nil {
 				dbg.commandOnStep = existingOnStep
@@ -920,7 +920,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		dbg.commandOnTrace = dbg.commandOnTrace[:0]
 
 		// tokenise commands to check for integrity
-		for _, s := range strings.Split(input, ",") {
+		for s := range strings.SplitSeq(input, ",") {
 			toks, err := dbg.tokeniseCommand(s, false, false)
 			if err != nil {
 				dbg.commandOnTrace = existingOnTrace
@@ -1681,7 +1681,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					dbg.printLine(terminal.StyleFeedback, g.String())
 					e := g.WriteDerivation(w)
 					if e != nil {
-						for _, s := range strings.Split(e.Error(), ":") {
+						for s := range strings.SplitSeq(e.Error(), ":") {
 							dbg.printLine(terminal.StyleError, fmt.Sprintf("\t%s", s))
 						}
 					}
@@ -1713,7 +1713,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					dbg.printLine(terminal.StyleFeedback, l.String())
 					e := l.WriteDerivation(w)
 					if e != nil {
-						for _, s := range strings.Split(e.Error(), ":") {
+						for s := range strings.SplitSeq(e.Error(), ":") {
 							dbg.printLine(terminal.StyleError, fmt.Sprintf("\t%s", s))
 						}
 					}

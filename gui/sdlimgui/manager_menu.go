@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"fmt"
 	"math"
+	"slices"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
@@ -353,11 +354,8 @@ func (wm *manager) drawMenuEntry(m menuEntry) {
 	// restrict bus
 	restrict := len(m.restrictMapper) > 0
 	if restrict {
-		for _, r := range m.restrictMapper {
-			if r == wm.img.cache.VCS.Mem.Cart.ID() {
-				restrict = false
-				break // for loop
-			}
+		if slices.Contains(m.restrictMapper, wm.img.cache.VCS.Mem.Cart.ID()) {
+			restrict = false // for loop
 		}
 		if restrict {
 			return

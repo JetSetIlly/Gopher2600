@@ -14,7 +14,6 @@
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
 //go:build windows
-// +build windows
 
 // Package colorterm is not available under windows.
 package colorterm

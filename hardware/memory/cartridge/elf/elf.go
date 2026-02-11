@@ -76,10 +76,7 @@ type elfReaderAt struct {
 func (r *elfReaderAt) ReadAt(p []byte, start int64) (n int, err error) {
 	start += r.offset
 
-	end := start + int64(len(p))
-	if end > int64(len(r.data)) {
-		end = int64(len(r.data))
-	}
+	end := min(start+int64(len(p)), int64(len(r.data)))
 	copy(p, r.data[start:end])
 
 	n = int(end - start)

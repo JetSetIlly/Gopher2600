@@ -985,7 +985,7 @@ func (cart *Moviecart) nextField() {
 	// if playback is paused and pauseStep is not zero then handle
 	// frame-by-frame stepping especially
 	if cart.state.paused && cart.state.pauseStep != 0 {
-		for fld := 0; fld < numFields; fld++ {
+		for fld := range numFields {
 			cart.state.streamChunk += cart.state.pauseStep
 			if cart.state.streamChunk < 0 {
 				cart.state.streamChunk = 0

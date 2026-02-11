@@ -127,7 +127,7 @@ func (db *Session) EndSession(commitChanges bool) error {
 
 			s.WriteString(recordHeader(k, v.EntryType()))
 
-			for i := 0; i < len(ser); i++ {
+			for i := range ser {
 				s.WriteString(fieldSep)
 				s.WriteString(ser[i])
 			}
@@ -173,7 +173,7 @@ func (db *Session) readDBFile() error {
 	// split entries
 	lines := strings.Split(string(buffer), entrySep)
 
-	for i := 0; i < len(lines); i++ {
+	for i := range lines {
 		lines[i] = strings.TrimSpace(lines[i])
 		if len(lines[i]) == 0 {
 			continue

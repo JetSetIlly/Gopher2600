@@ -79,7 +79,7 @@ func vcsInitBusStuffing(mem *elfMemory) {
 }
 
 func (str *strongArmState) updateLookupTables() {
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		if uint8(i)&str.correctionMaskHi == str.correctionMaskHi {
 			if uint8(i)&str.correctionMaskLo == str.correctionMaskLo {
 				str.opcodeLookup[i] = 0x84

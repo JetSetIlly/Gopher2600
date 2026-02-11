@@ -97,7 +97,7 @@ func RegressList(output io.Writer, keys []string) error {
 	defer db.EndSession(false)
 
 	onSelect := func(e database.Entry, key int) error {
-		output.Write([]byte(fmt.Sprintf("%03d %v\n", key, e)))
+		output.Write(fmt.Appendf(nil, "%03d %v\n", key, e))
 		return nil
 	}
 
@@ -137,7 +137,7 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 	}
 
 	output.Write([]byte(ansiClearLine))
-	output.Write([]byte(fmt.Sprintf("\radded: %s\n", reg)))
+	output.Write(fmt.Appendf(nil, "\radded: %s\n", reg))
 
 	return db.Add(reg)
 }
@@ -184,15 +184,15 @@ func RegressRedux(messages io.Writer, confirmation io.Reader, verbose bool, keys
 
 		old, err := reg.redux(messages, fmt.Sprintf("reduxing: %s", reg))
 		if err != nil {
-			messages.Write([]byte(fmt.Sprintf("\rfailure: %s\n", reg)))
+			messages.Write(fmt.Appendf(nil, "\rfailure: %s\n", reg))
 			if verbose {
-				messages.Write([]byte(fmt.Sprintf("  ^^ %s\n", err)))
+				messages.Write(fmt.Appendf(nil, "  ^^ %s\n", err))
 			}
 			return nil
 		}
 
 		messages.Write([]byte(ansiClearLine))
-		messages.Write([]byte(fmt.Sprintf("\rreduxed: %s\n", reg)))
+		messages.Write(fmt.Appendf(nil, "\rreduxed: %s\n", reg))
 
 		err = db.Replace(key, old, reg)
 		if err != nil {
@@ -288,7 +288,7 @@ func RegressCleanup(messages io.Writer, confirmation io.Reader) error {
 	numErrors := 0
 
 	defer func() {
-		messages.Write([]byte(fmt.Sprintf("regression cleanup: %d deleted, %d remain, %d errors\n", numDeleted, numRemain, numErrors)))
+		messages.Write(fmt.Appendf(nil, "regression cleanup: %d deleted, %d remain, %d errors\n", numDeleted, numRemain, numErrors))
 	}()
 
 	// delete any files on disk that are not referenced
@@ -300,32 +300,29 @@ func RegressCleanup(messages io.Writer, confirmation io.Reader) error {
 			return fmt.Errorf("regression: %w", err)
 		}
 
-		for _, f := range filesReferenced {
-			if f == n {
-				found = true
-				break // for range filesRefrenced
-			}
+		if slices.Contains(filesReferenced, n) {
+			found = true // for range filesRefrenced
 		}
 
 		if !found {
-			messages.Write([]byte(fmt.Sprintf("delete %s? (y/n): ", n)))
+			messages.Write(fmt.Appendf(nil, "delete %s? (y/n): ", n))
 			if confirm(confirmation) {
 				messages.Write([]byte(ansiClearLine))
 				err := os.Remove(n)
 				if err != nil {
-					messages.Write([]byte(fmt.Sprintf("\rerror deleting: %s (%s)\n", n, err)))
+					messages.Write(fmt.Appendf(nil, "\rerror deleting: %s (%s)\n", n, err))
 					numErrors++
 				} else {
-					messages.Write([]byte(fmt.Sprintf("\rdeleted: %s\n", n)))
+					messages.Write(fmt.Appendf(nil, "\rdeleted: %s\n", n))
 					numDeleted++
 					numRemain--
 				}
 			} else {
 				messages.Write([]byte(ansiClearLine))
-				messages.Write([]byte(fmt.Sprintf("\rnot deleting: %s\n", n)))
+				messages.Write(fmt.Appendf(nil, "\rnot deleting: %s\n", n))
 			}
 		} else {
-			messages.Write([]byte(fmt.Sprintf("\rkeeping: %s\n", n)))
+			messages.Write(fmt.Appendf(nil, "\rkeeping: %s\n", n))
 		}
 	}
 
@@ -363,13 +360,13 @@ func RegressDelete(messages io.Writer, confirmation io.Reader, key string) error
 		return fmt.Errorf("regression: %w", err)
 	}
 
-	messages.Write([]byte(fmt.Sprintf("%s\ndelete? (y/n): ", ent)))
+	messages.Write(fmt.Appendf(nil, "%s\ndelete? (y/n): ", ent))
 	if confirm(confirmation) {
 		err = db.Delete(v)
 		if err != nil {
 			return fmt.Errorf("regression: %w", err)
 		}
-		messages.Write([]byte(fmt.Sprintf("deleted test #%s from regression database\n", key)))
+		messages.Write(fmt.Appendf(nil, "deleted test #%s from regression database\n", key))
 	}
 
 	return nil
@@ -407,8 +404,8 @@ func RegressRun(messages io.Writer, opts RegressRunOptions) error {
 
 	startTime := time.Now()
 	defer func() {
-		messages.Write([]byte(fmt.Sprintf("regression tests: %d success, %d fail", len(successes), len(fails))))
-		messages.Write([]byte(fmt.Sprintf(" (elapsed %s)\n", time.Since(startTime).Round(time.Second))))
+		messages.Write(fmt.Appendf(nil, "regression tests: %d success, %d fail", len(successes), len(fails)))
+		messages.Write(fmt.Appendf(nil, " (elapsed %s)\n", time.Since(startTime).Round(time.Second)))
 	}()
 
 	// run tests concurrently if possible
@@ -427,13 +424,13 @@ func RegressRun(messages io.Writer, opts RegressRunOptions) error {
 		// print message depending on result of regress()
 		if err != nil {
 			fails = append(fails, strconv.Itoa(key))
-			messages.Write([]byte(fmt.Sprintf("\rfailure: %03d %s\n", key, reg)))
+			messages.Write(fmt.Appendf(nil, "\rfailure: %03d %s\n", key, reg))
 			if opts.Verbose {
-				messages.Write([]byte(fmt.Sprintf("  ^^ %s\n", err)))
+				messages.Write(fmt.Appendf(nil, "  ^^ %s\n", err))
 			}
 		} else {
 			successes = append(successes, strconv.Itoa(key))
-			messages.Write([]byte(fmt.Sprintf("\rsucceed: %03d %s\n", key, reg)))
+			messages.Write(fmt.Appendf(nil, "\rsucceed: %03d %s\n", key, reg))
 		}
 	}
 

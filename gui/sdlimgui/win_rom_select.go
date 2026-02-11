@@ -22,6 +22,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"golang.org/x/image/draw"
@@ -343,13 +344,7 @@ func (win *winSelectROM) draw() {
 		// ignore invalid file extensions unless showAll flags is set
 		ext := strings.ToUpper(filepath.Ext(e.Name))
 		if !win.showAll {
-			hasExt := false
-			for _, e := range cartridgeloader.FileExtensions {
-				if e == ext {
-					hasExt = true
-					break
-				}
-			}
+			hasExt := slices.Contains(cartridgeloader.FileExtensions, ext)
 			if !hasExt {
 				for _, e := range archivefs.ArchiveExtensions {
 					if e == ext {

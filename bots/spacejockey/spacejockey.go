@@ -388,7 +388,7 @@ func (bot *spaceJockeyBot) Feedback() *bots.Feedback {
 
 // block goroutine until n frames have passed
 func (bot *spaceJockeyBot) waitForFrames(n int) {
-	for i := 0; i < n; i++ {
+	for range n {
 		select {
 		case <-bot.obs.analysis:
 		case <-bot.quit:

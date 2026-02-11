@@ -76,7 +76,7 @@ func drawByteGrid(id string, data []uint8, origin uint32,
 		leftPad := imgui.CurrentStyle().FramePadding().X
 
 		// draw headers for each column
-		for i := 0; i < numColumns; i++ {
+		for i := range numColumns {
 			imgui.TableNextColumn()
 			pos := imgui.CursorPos()
 			pos.X += leftPad
@@ -129,7 +129,7 @@ func drawByteGrid(id string, data []uint8, origin uint32,
 
 			// add blank columns to first row as necessary
 			if firstRow {
-				for j := 0; j < leadingColumns; j++ {
+				for range leadingColumns {
 					imgui.TableNextColumn()
 					idx++
 					addr++

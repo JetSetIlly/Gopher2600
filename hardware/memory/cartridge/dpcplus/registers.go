@@ -45,7 +45,7 @@ func (r Registers) String() string {
 
 	s.WriteString("\nData Fetchers\n")
 	s.WriteString("-------------\n")
-	for f := 0; f < len(r.Fetcher); f++ {
+	for f := range len(r.Fetcher) {
 		s.WriteString(fmt.Sprintf("F%d: l:%#02x h:%#02x t:%#02x b:%#02x", f,
 			r.Fetcher[f].Low,
 			r.Fetcher[f].Hi,
@@ -57,7 +57,7 @@ func (r Registers) String() string {
 
 	s.WriteString("\nFractional Data Fetchers\n")
 	s.WriteString("------------------------\n")
-	for f := 0; f < len(r.FracFetcher); f++ {
+	for f := range len(r.FracFetcher) {
 		s.WriteString(fmt.Sprintf("F%d: l:%#02x h:%#02x i:%#02x c:%#02x", f,
 			r.FracFetcher[f].Low,
 			r.FracFetcher[f].Hi,
@@ -69,7 +69,7 @@ func (r Registers) String() string {
 
 	s.WriteString("\nMusic Fetchers\n")
 	s.WriteString("--------------\n")
-	for f := 0; f < len(r.MusicFetcher); f++ {
+	for f := range len(r.MusicFetcher) {
 		s.WriteString(fmt.Sprintf("F%d: w:%#02x f:%#02x c:%#02x", f,
 			r.MusicFetcher[f].Waveform,
 			r.MusicFetcher[f].Freq,

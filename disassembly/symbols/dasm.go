@@ -81,11 +81,11 @@ func (sym *Symbols) fromDasm(cart *cartridge.Cartridge) error {
 	if err != nil {
 		return fmt.Errorf("dasm: processing error: %w", err)
 	}
-	lines := strings.Split(string(data), "\n")
+	lines := strings.SplitSeq(string(data), "\n")
 
 	// find interesting lines in the symbols file and add to the Symbols
 	// instance.
-	for _, ln := range lines {
+	for ln := range lines {
 		// ignore uninteresting lines
 		p := strings.Fields(ln)
 		if len(p) < 2 || p[0] == "---" {

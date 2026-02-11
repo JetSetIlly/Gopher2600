@@ -70,9 +70,9 @@ func PushCommandLineStack(prefs string) {
 	cl := commandLineStack[len(commandLineStack)-1]
 
 	// divide prefs string into individual key/value pairs
-	o := strings.Split(prefs, ";")
+	o := strings.SplitSeq(prefs, ";")
 
-	for _, p := range o {
+	for p := range o {
 		// split key/value
 		kv := strings.Split(p, "::")
 

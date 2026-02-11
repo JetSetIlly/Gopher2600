@@ -352,8 +352,8 @@ func (bot *videoChessBot) cmpBlackPosition(col int, row int) bool {
 // from the bottom (white side) in chess.
 func (bot *videoChessBot) lookForCursor() (int, int) {
 	// counting from top-to-bottom and left-to-right
-	for row := 0; row < 8; row++ {
-		for col := 0; col < 8; col++ {
+	for row := range 8 {
+		for col := range 8 {
 			if bot.isCursor(bot.currentPosition, col, row) {
 				return col, 8 - row
 			}
@@ -529,7 +529,7 @@ func (bot *videoChessBot) moveCursor(moveCol int, moveRow int, shortcut bool) {
 
 // block goroutine until n frames have passed
 func (bot *videoChessBot) waitForFrames(n int) {
-	for i := 0; i < n; i++ {
+	for range n {
 		select {
 		case <-bot.obs.analysis:
 		case <-bot.quit:

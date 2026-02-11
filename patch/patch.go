@@ -195,7 +195,7 @@ func neoStyle(cart *cartridge.Cartridge, lines []string) error {
 
 		// split values into parts
 		values := strings.Split(p[1], " ")
-		for j := 0; j < len(values); j++ {
+		for j := range values {
 			// trim space around each value
 			values[j] = strings.TrimSpace(values[j])
 

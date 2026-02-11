@@ -87,7 +87,7 @@ func (win *winDPCregisters) draw(regs cartridge.DPCregisters) {
 	// loop over data fetchers
 	imgui.Text("Data Fetchers")
 	imgui.Spacing()
-	for i := 0; i < len(regs.Fetcher); i++ {
+	for i := range len(regs.Fetcher) {
 		f := i
 
 		imguiLabel(fmt.Sprintf("%d.", f))

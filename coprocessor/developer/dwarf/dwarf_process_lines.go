@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 
 	"github.com/jetsetilly/gopher2600/logger"
@@ -37,9 +38,7 @@ func addInstructionsToLines(src *Source, bld *build, symbols []elf.Symbol) error
 			symAddr = append(symAddr, sym.Value)
 		}
 	}
-	sort.Slice(symAddr, func(i, j int) bool {
-		return symAddr[i] < symAddr[j]
-	})
+	slices.Sort(symAddr)
 
 	// this function uses the symbol table to determine the end address of a line
 	// entry. if this is not possible, an address four bytes following the quoted

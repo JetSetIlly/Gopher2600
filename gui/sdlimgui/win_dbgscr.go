@@ -278,10 +278,7 @@ func (win *winDbgScr) draw() {
 						// scanline - this limiting effect is purely visual so accuracy
 						// isn't paramount)
 						if coords.Scanline >= win.img.screen.crit.frameInfo.TotalScanlines {
-							coords.Scanline = win.img.screen.crit.frameInfo.TotalScanlines - 1
-							if coords.Scanline < 0 {
-								coords.Scanline = 0
-							}
+							coords.Scanline = max(win.img.screen.crit.frameInfo.TotalScanlines-1, 0)
 						}
 
 						// match against the actual mouse.tv.Scanline not the adjusted scanline

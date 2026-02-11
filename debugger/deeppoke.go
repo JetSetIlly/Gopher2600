@@ -117,7 +117,7 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 	const maxSearchDepth = 10
 
 	// trace memory write as far back as we can
-	for depth := 0; depth < maxSearchDepth; depth++ {
+	for range maxSearchDepth {
 		searchState, err = dbg.Rewind.SearchMemoryWrite(searchState, searchAddr, value, valueMask)
 		if err != nil {
 			return deepPoking{}, err

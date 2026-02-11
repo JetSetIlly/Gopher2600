@@ -34,7 +34,7 @@ func memset(mem *elfMemory) {
 	if set != nil {
 		v := mem.strongarm.running.registers[1]
 		l := mem.strongarm.running.registers[2]
-		for i := uint32(0); i < l; i++ {
+		for i := range l {
 			(*set)[idx+i] = byte(v)
 		}
 	}
@@ -51,7 +51,7 @@ func memcpy(mem *elfMemory) {
 
 	if to != nil && from != nil {
 		l := mem.strongarm.running.registers[2]
-		for i := uint32(0); i < l; i++ {
+		for i := range l {
 			(*to)[toIdx+i] = (*from)[fromIdx+i]
 		}
 	}

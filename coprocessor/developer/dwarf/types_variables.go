@@ -196,7 +196,7 @@ func (varb *SourceVariable) WriteDerivation(derive io.Writer) error {
 	}
 
 	if varb.hasConstantValue {
-		derive.Write([]byte(fmt.Sprintf("constant value %08x", varb.constantValue)))
+		derive.Write(fmt.Appendf(nil, "constant value %08x", varb.constantValue))
 	}
 
 	if varb.loclist == nil {

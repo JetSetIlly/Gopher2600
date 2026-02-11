@@ -72,7 +72,7 @@ func new3ePlus(env *environment.Environment) (mapper.CartMapper, error) {
 	cart.banks = make([][]uint8, numBanks)
 
 	// partition binary
-	for k := 0; k < numBanks; k++ {
+	for k := range numBanks {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
@@ -365,7 +365,7 @@ func newM3ePlusState() *m3ePlusState {
 	const ramSize = 512
 
 	// allocate ram
-	for k := 0; k < len(s.ram); k++ {
+	for k := range len(s.ram) {
 		s.ram[k] = make([]uint8, ramSize)
 	}
 
@@ -376,7 +376,7 @@ func newM3ePlusState() *m3ePlusState {
 func (s *m3ePlusState) Snapshot() *m3ePlusState {
 	n := *s
 
-	for k := 0; k < len(s.ram); k++ {
+	for k := range len(s.ram) {
 		n.ram[k] = make([]uint8, len(s.ram[k]))
 		copy(n.ram[k], s.ram[k])
 	}

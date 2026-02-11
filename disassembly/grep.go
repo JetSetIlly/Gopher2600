@@ -65,7 +65,7 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 				if strings.Contains(m, search) {
 					if includeBankNumber && !bankNumberPrinted {
 						bankNumberPrinted = true
-						output.Write([]byte(fmt.Sprintf("Bank %d\n", b)))
+						output.Write(fmt.Appendf(nil, "Bank %d\n", b))
 					}
 					output.Write([]byte(e.StringColumnated(ColumnAttr{})))
 					output.Write([]byte("\n"))

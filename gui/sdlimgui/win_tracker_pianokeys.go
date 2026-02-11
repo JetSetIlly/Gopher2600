@@ -53,7 +53,7 @@ func (win *winTracker) drawPianoKeys(history *tracker.History) float32 {
 		c1 = tracker.NoPianoKey
 	}
 
-	for k := 0; k < numPianoKeys; k++ {
+	for k := range numPianoKeys {
 		col := win.whiteKeys
 		if k+1 == c0 {
 			col = strike0
@@ -85,7 +85,7 @@ func (win *winTracker) drawPianoKeys(history *tracker.History) float32 {
 		c1 *= -1
 	}
 
-	for k := 0; k < numPianoKeys; k++ {
+	for k := range numPianoKeys {
 		if hasBlack(k + 1) {
 			col := win.blackKeys
 			if k+1 == c0 {

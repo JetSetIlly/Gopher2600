@@ -68,8 +68,8 @@ func isHostValid(host string) bool {
 		return false
 	}
 
-	labels := strings.Split(host, ".")
-	for _, l := range labels {
+	labels := strings.SplitSeq(host, ".")
+	for l := range labels {
 		if len(l) < 1 || len(l) > maxHostElementLength {
 			return false
 		}

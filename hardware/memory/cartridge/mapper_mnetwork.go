@@ -388,7 +388,7 @@ func (cart *mnetwork) GetRAM() []mapper.CartRAM {
 	}
 	copy(r[0].Data, cart.state.ram1k)
 
-	for i := 0; i < mnetworkNum256byte; i++ {
+	for i := range mnetworkNum256byte {
 		r[i+1] = mapper.CartRAM{
 			Label:  fmt.Sprintf("256B [%d]", i),
 			Origin: 0x1900,

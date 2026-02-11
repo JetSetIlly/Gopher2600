@@ -79,7 +79,7 @@ func newTigervision(env *environment.Environment) (mapper.CartMapper, error) {
 	numBanks := len(data) / cart.bankSize
 	cart.banks = make([][]uint8, numBanks)
 
-	for k := 0; k < numBanks; k++ {
+	for k := range numBanks {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])

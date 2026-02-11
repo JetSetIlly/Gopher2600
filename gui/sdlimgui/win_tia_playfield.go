@@ -120,7 +120,7 @@ func (win *winTIA) drawPlayfield() {
 	imgui.SameLine()
 	seq := newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
 	pf0d := playfield.PF0
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		var col uint8
 		if (pf0d<<i)&0x80 == 0x80 {
 			col = playfield.ForegroundColor
@@ -144,7 +144,7 @@ func (win *winTIA) drawPlayfield() {
 	imgui.SameLine()
 	seq.start()
 	pf1d := playfield.PF1
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		var col uint8
 		if (pf1d<<i)&0x80 == 0x80 {
 			col = playfield.ForegroundColor
@@ -168,7 +168,7 @@ func (win *winTIA) drawPlayfield() {
 	imgui.SameLine()
 	seq.start()
 	pf2d := playfield.PF2
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		var col uint8
 		if (pf2d<<i)&0x80 == 0x80 {
 			col = playfield.ForegroundColor

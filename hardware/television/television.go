@@ -17,6 +17,7 @@ package television
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/environment"
@@ -371,10 +372,8 @@ func (tv *Television) AddPixelRenderer(r PixelRenderer) {
 		tv.rendererDisplay = r
 		tv.lmtr.SetDisplay(r)
 	}
-	for i := range tv.renderers {
-		if tv.renderers[i] == r {
-			return
-		}
+	if slices.Contains(tv.renderers, r) {
+		return
 	}
 	tv.renderers = append(tv.renderers, r)
 }
@@ -399,10 +398,8 @@ func (tv *Television) RemovePixelRenderer(r PixelRenderer) {
 
 // AddFrameTrigger adds an implementation of FrameTrigger.
 func (tv *Television) AddFrameTrigger(f FrameTrigger) {
-	for i := range tv.frameTriggers {
-		if tv.frameTriggers[i] == f {
-			return
-		}
+	if slices.Contains(tv.frameTriggers, f) {
+		return
 	}
 	tv.frameTriggers = append(tv.frameTriggers, f)
 }
@@ -421,10 +418,8 @@ func (tv *Television) RemoveFrameTrigger(f FrameTrigger) {
 
 // AddScanlineTrigger adds an implementation of ScanlineTrigger.
 func (tv *Television) AddScanlineTrigger(f ScanlineTrigger) {
-	for i := range tv.scanlineTriggers {
-		if tv.scanlineTriggers[i] == f {
-			return
-		}
+	if slices.Contains(tv.scanlineTriggers, f) {
+		return
 	}
 	tv.scanlineTriggers = append(tv.scanlineTriggers, f)
 }
@@ -449,10 +444,8 @@ func (tv *Television) SetRealTimeAudioMixer(m RealtimeAudioMixer) {
 
 // AddAudioMixer adds an implementation of AudioMixer.
 func (tv *Television) AddAudioMixer(m AudioMixer) {
-	for i := range tv.mixers {
-		if tv.mixers[i] == m {
-			return
-		}
+	if slices.Contains(tv.mixers, m) {
+		return
 	}
 	tv.mixers = append(tv.mixers, m)
 }

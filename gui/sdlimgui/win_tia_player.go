@@ -129,7 +129,7 @@ func (win *winTIA) drawPlayer(num int) {
 	imguiLabel("New Gfx")
 	ngfxSeq := newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
 	od := player.GfxDataNew
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		var col uint8
 		if (od<<i)&0x80 == 0x80 {
 			col = player.Color
@@ -155,7 +155,7 @@ func (win *winTIA) drawPlayer(num int) {
 	imguiLabel("Old Gfx")
 	ogfxSeq := newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
 	nd := player.GfxDataOld
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		var col uint8
 		if (nd<<i)&0x80 == 0x80 {
 			col = player.Color

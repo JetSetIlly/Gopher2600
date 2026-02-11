@@ -65,7 +65,7 @@ func new3e(env *environment.Environment) (mapper.CartMapper, error) {
 	cart.banks = make([][]uint8, numBanks)
 
 	// partition binary
-	for k := 0; k < numBanks; k++ {
+	for k := range numBanks {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
@@ -344,7 +344,7 @@ func newM3eState() *m3eState {
 	const ramSize = 1024
 
 	// allocate ram
-	for k := 0; k < len(s.ram); k++ {
+	for k := range len(s.ram) {
 		s.ram[k] = make([]uint8, ramSize)
 	}
 
@@ -354,7 +354,7 @@ func newM3eState() *m3eState {
 // Snapshot implements the mapper.CartMapper interface.
 func (s *m3eState) Snapshot() *m3eState {
 	n := *s
-	for k := 0; k < len(s.ram); k++ {
+	for k := range len(s.ram) {
 		n.ram[k] = make([]uint8, len(s.ram[k]))
 		copy(n.ram[k], s.ram[k])
 	}

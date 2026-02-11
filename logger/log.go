@@ -118,7 +118,7 @@ func (l *Logger) Log(perm Permission, tag string, detail any) {
 	now := time.Now()
 
 	// split multi-line log entries and log each separetely
-	for _, d := range strings.Split(detailConverted, "\n") {
+	for d := range strings.SplitSeq(detailConverted, "\n") {
 		d = strings.TrimSpace(d)
 		if len(d) == 0 {
 			continue

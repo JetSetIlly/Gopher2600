@@ -100,7 +100,7 @@ func (win *winDPCplusRegisters) draw(regs dpcplus.Registers) {
 	// loop over data fetchers
 	imgui.Text("Data Fetchers")
 	imgui.Spacing()
-	for i := 0; i < len(regs.Fetcher); i++ {
+	for i := range len(regs.Fetcher) {
 		f := i
 
 		imguiLabel(fmt.Sprintf("%d.", f))
@@ -157,7 +157,7 @@ func (win *winDPCplusRegisters) draw(regs dpcplus.Registers) {
 	// loop over fractional fetchers
 	imgui.Text("Fractional Fetchers")
 	imgui.Spacing()
-	for i := 0; i < len(regs.FracFetcher); i++ {
+	for i := range len(regs.FracFetcher) {
 		f := i
 
 		imguiLabel(fmt.Sprintf("%d.", f))
@@ -215,7 +215,7 @@ func (win *winDPCplusRegisters) draw(regs dpcplus.Registers) {
 	// loop over music fetchers
 	imgui.Text("Music Fetchers")
 	imgui.Spacing()
-	for i := 0; i < len(regs.MusicFetcher); i++ {
+	for i := range len(regs.MusicFetcher) {
 		f := i
 
 		imguiLabel(fmt.Sprintf("%d.", f))

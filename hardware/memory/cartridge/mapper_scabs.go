@@ -198,7 +198,7 @@ func (cart *scabs) Step(_ float32) {
 // CopyBanks implements the mapper.CartMapper interface.
 func (cart *scabs) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
-	for b := 0; b < len(cart.banks); b++ {
+	for b := range len(cart.banks) {
 		c[b] = mapper.BankContent{Number: b,
 			Data:    cart.banks[b],
 			Origins: []uint16{memorymap.OriginCart},

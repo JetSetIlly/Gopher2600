@@ -14,7 +14,6 @@
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
 //go:build !windows
-// +build !windows
 
 // Package colorterm implements the Terminal interface for the gopher2600
 // debugger. It supports color output, history and tab completion.
