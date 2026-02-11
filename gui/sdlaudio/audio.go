@@ -173,11 +173,9 @@ func (aud *Audio) SetSpec(spec specification.Spec) {
 	}
 
 	// start new request
-	aud.updateSync.Add(1)
 
-	go func() {
+	aud.updateSync.Go(func() {
 		// request always signals when it's done
-		defer aud.updateSync.Done()
 
 		// wait for cancel request or a timeout
 		select {
@@ -188,7 +186,7 @@ func (aud *Audio) SetSpec(spec specification.Spec) {
 			// audio goroutine
 			aud.updateCommit <- spec
 		}
-	}()
+	})
 }
 
 func (aud *Audio) setSpec(spec specification.Spec) {

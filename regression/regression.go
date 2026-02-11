@@ -446,11 +446,9 @@ func RegressRun(messages io.Writer, opts RegressRunOptions) error {
 			return nil
 		}
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			runTest(reg, key)
-		}()
+		})
 
 		return nil
 	}
