@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/disassembly/symbols"
@@ -54,9 +53,6 @@ type Disassembly struct {
 	// critical sectioning to protect disasmEntries. the symbols table has it's
 	// own critical section
 	crit sync.Mutex
-
-	// is true if background disassembly is active
-	background atomic.Bool
 }
 
 // DisasmEntries contains the individual disassembled entries of the current ROM.
@@ -84,7 +80,6 @@ func NewDisassembly(vcs *hardware.VCS) (*Disassembly, *symbols.Symbols, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("disassembly: %w", err)
 	}
-	dsm.background.Store(false)
 
 	return dsm, &dsm.Sym, nil
 }
@@ -147,48 +142,26 @@ func (dsm *Disassembly) Reset(background bool) error {
 //
 // Disassembly will assume the cartridge is in the correct starting bank.
 func (dsm *Disassembly) FromMemory(background bool) error {
-	if background {
-		go func() {
-			dsm.background.Store(true)
-			defer dsm.background.Store(false)
-			err := dsm.fromMemory()
-			if err != nil {
-				logger.Log(dsm.vcs.Env, "disassembly", err.Error())
-			}
-		}()
-		return nil
-	}
-	return dsm.fromMemory()
-}
-
-func (dsm *Disassembly) fromMemory() error {
-	dsm.crit.Lock()
-	defer dsm.crit.Unlock()
-
-	// create new memory
 	copiedBanks, err := dsm.vcs.Mem.Cart.CopyBanks()
 	if err != nil {
 		return fmt.Errorf("disassembly: %w", err)
 	}
 
+	// allocating memory is critical section
+	func() {
+		dsm.crit.Lock()
+		defer dsm.crit.Unlock()
+		dsm.disasmEntries.Entries = make([][]*Entry, len(copiedBanks))
+		for b := range dsm.disasmEntries.Entries {
+			dsm.disasmEntries.Entries[b] = make([]*Entry, memorymap.CartridgeBits+1)
+		}
+	}()
+
 	startingBank := dsm.vcs.Mem.Cart.GetBank(cpu.Reset).Number
 
-	mem := newDisasmMemory(startingBank, copiedBanks)
-	if mem == nil {
-		return fmt.Errorf("disassembly: %s", "could not create memory for disassembly")
-	}
-
-	// read symbols file
 	err = dsm.Sym.ReadDASMSymbolsFile(dsm.vcs.Mem.Cart)
 	if err != nil {
 		return err
-	}
-
-	// allocate memory for disassembly. the GUI may find itself trying to
-	// iterate through disassembly at the same time as we're doing this.
-	dsm.disasmEntries.Entries = make([][]*Entry, dsm.vcs.Mem.Cart.NumBanks())
-	for b := 0; b < len(dsm.disasmEntries.Entries); b++ {
-		dsm.disasmEntries.Entries[b] = make([]*Entry, memorymap.CartridgeBits+1)
 	}
 
 	// exit early if cartridge memory self reports as being ejected
@@ -196,12 +169,40 @@ func (dsm *Disassembly) fromMemory() error {
 		return nil
 	}
 
-	// create a new NoFlowControl CPU to help disassemble memory
-	mc := cpu.NewCPU(mem)
-	mc.NoFlowControl = true
+	if background {
+		go func() {
+			err := dsm.fromMemory(startingBank, copiedBanks)
+			if err != nil {
+				logger.Log(dsm.vcs.Env, "disassembly", err.Error())
+			}
+		}()
+		return nil
+	}
 
-	// disassemble cartridge binary
-	return dsm.disassemble(mc, mem)
+	return dsm.fromMemory(startingBank, copiedBanks)
+}
+
+func (dsm *Disassembly) fromMemory(startingBank int, copiedBanks []mapper.BankContent) error {
+	dec, err := newDecode(dsm, startingBank, copiedBanks)
+	if err != nil {
+		return fmt.Errorf("disassembly: %w", err)
+	}
+
+	// copy decoded entries to live copy
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
+
+	for b := range dec.disasmEntries.Entries {
+		for i, e := range dec.disasmEntries.Entries[b] {
+			if dsm.disasmEntries.Entries[b][i] == nil || dsm.disasmEntries.Entries[b][i].Level < EntryLevelExecuted {
+				dsm.disasmEntries.Entries[b] = append(dsm.disasmEntries.Entries[b], e)
+			}
+		}
+	}
+
+	dsm.setCartMirror()
+
+	return nil
 }
 
 // GetEntryByAddress returns the disassembly entry at the specified
@@ -219,7 +220,7 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 		return nil
 	}
 
-	return dsm.disasmEntries.Entries[bank.Number][address&memorymap.CartridgeBits]
+	return dsm.disasmEntries.Entries[bank.Number%len(dsm.disasmEntries.Entries)][address&memorymap.CartridgeBits]
 }
 
 // ExecutedEntry should be called after execution of a CPU instruction. In many
@@ -261,13 +262,6 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 		// check. there's no comment to say why this condition was added so leave
 		// it for now
 		if bank.Number >= len(dsm.disasmEntries.Entries) {
-			return e
-		}
-
-		// do not update disassembly if background disassembly is ongoing.
-		//
-		// NOTE that the updated result information will be lost from the disassembly
-		if dsm.background.Load() {
 			return e
 		}
 
@@ -360,6 +354,15 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 // If EntryLevel is EntryLevelExecuted then the disassembly will be updated but
 // only if result.Final is true.
 func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Result, level EntryLevel) *Entry {
+	return formatResult(dsm, dsm.vcs.TV, bank, result, level)
+}
+
+// formatResult requires a partial television implementation that can return television coordinates
+type tv interface {
+	GetCoords() coords.TelevisionCoords
+}
+
+func formatResult(dsm *Disassembly, tv tv, bank mapper.BankInfo, result execution.Result, level EntryLevel) *Entry {
 	e := &Entry{
 		dsm:    dsm,
 		Result: result,
@@ -375,7 +378,7 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 			result: result,
 			bank:   bank,
 		},
-		Coords: dsm.vcs.TV.GetCoords(),
+		Coords: tv.GetCoords(),
 	}
 
 	// address of instruction
@@ -463,10 +466,6 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 //
 // Should not be called from the emulation goroutine.
 func (dsm *Disassembly) BorrowDisasm(f func(*DisasmEntries)) bool {
-	if dsm.background.Load() {
-		return false
-	}
-
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 

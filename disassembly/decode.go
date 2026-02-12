@@ -20,44 +20,78 @@ import (
 
 	"github.com/jetsetilly/gopher2600/disassembly/symbols"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // IMPORTANT: all functions in this file should be called in the Dissasembly
 // critical section
 
-func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory) error {
-	// basic decoding pass
-	err := dsm.decode(mc, mem)
-	if err == nil {
-		// bless those entries which we're reasonably sure are real instructions
-		err = dsm.bless(mc, mem)
-		if err != nil {
-			return err
-		}
+type decode struct {
+	// symbols is thread safe
+	sym *symbols.Symbols
 
-		// convert addresses to preferred mirror
-		dsm.setCartMirror()
-	}
+	mc            *cpu.CPU
+	mem           *disasmMemory
+	disasmEntries DisasmEntries
 
-	return err
+	formatResult func(bank mapper.BankInfo, result execution.Result, level EntryLevel) *Entry
 }
 
-func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
+func (dec decode) GetCoords() coords.TelevisionCoords {
+	return coords.TelevisionCoords{}
+}
+
+func newDecode(dsm *Disassembly, startingBank int, copiedBanks []mapper.BankContent) (*decode, error) {
+	dec := decode{
+		sym: &dsm.Sym,
+	}
+
+	dec.formatResult = func(bank mapper.BankInfo, result execution.Result, level EntryLevel) *Entry {
+		return formatResult(dsm, dec, bank, result, level)
+	}
+
+	dec.mem = newDisasmMemory(startingBank, copiedBanks)
+	if dec.mem == nil {
+		return nil, fmt.Errorf("could not create memory for decoding")
+	}
+	dec.mc = cpu.NewCPU(dec.mem)
+	dec.mc.NoFlowControl = true
+
+	dec.disasmEntries.Entries = make([][]*Entry, len(copiedBanks))
+	for b := range copiedBanks {
+		dec.disasmEntries.Entries[b] = make([]*Entry, memorymap.CartridgeBits+1)
+	}
+
+	// basic decoding pass
+	err := dec.decode()
+	if err == nil {
+		// bless those entries which we're reasonably sure are real instructions
+		err = dec.bless()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &dec, nil
+}
+
+func (dec *decode) bless() error {
 	// bless from reset address for every bank
-	for b := range dsm.disasmEntries.Entries {
+	for b := range dec.disasmEntries.Entries {
 		// get reset address from starting bank, taking into account the
 		// possibility that bank is smalled thank 4096 bytes
-		resetVector := cpu.Reset & (uint16(len(mem.banks[b].Data) - 1))
-		resetAddr := (uint16(mem.banks[b].Data[resetVector+1]) << 8) | uint16(mem.banks[b].Data[resetVector])
+		resetVector := cpu.Reset & (uint16(len(dec.mem.banks[b].Data) - 1))
+		resetAddr := (uint16(dec.mem.banks[b].Data[resetVector+1]) << 8) | uint16(dec.mem.banks[b].Data[resetVector])
 
 		// make sure reset address is valid
 		_, area := memorymap.MapAddress(resetAddr, true)
 		if area == memorymap.Cartridge {
-			_ = dsm.blessSequence(b, resetAddr, true)
+			_ = dec.blessSequence(b, resetAddr, true)
 		}
 	}
 
@@ -75,9 +109,9 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
 
 		// loop through every bank in the cartridge and collate a list of blessings
 		// for the bank
-		for b := range dsm.disasmEntries.Entries {
-			for i := range dsm.disasmEntries.Entries[b] {
-				e := dsm.disasmEntries.Entries[b][i]
+		for b := range dec.disasmEntries.Entries {
+			for i := range dec.disasmEntries.Entries[b] {
+				e := dec.disasmEntries.Entries[b][i]
 
 				// ignore any non-blessed entry
 				if e.Level != EntryLevelBlessed {
@@ -96,17 +130,17 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
 					jmpAddress, area := memorymap.MapAddress(e.Result.InstructionData, true)
 
 					if area == memorymap.Cartridge {
-						l := jmpTargets(mem.banks, jmpAddress)
+						l := jmpTargets(dec.mem.banks, jmpAddress)
 
 						for _, jb := range l {
-							if dsm.blessSequence(jb, jmpAddress, false) {
-								if dsm.blessSequence(jb, jmpAddress, true) {
+							if dec.blessSequence(jb, jmpAddress, false) {
+								if dec.blessSequence(jb, jmpAddress, true) {
 									moreBlessing = true
 								}
 							}
 
 							// add label to the symbols table
-							dsm.Sym.AddLabelAuto(jb, jmpAddress)
+							dec.sym.AddLabelAuto(jb, jmpAddress)
 						}
 					}
 				} else {
@@ -115,25 +149,25 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
 					// to another bank
 					// !!TODO: find practical examples of interbank branch jumping
 					if e.Result.Defn.IsBranch() {
-						mc.PC.Load(e.Result.Address)
-						mc.PC.Add(uint16(e.Result.Defn.Bytes))
+						dec.mc.PC.Load(e.Result.Address)
+						dec.mc.PC.Add(uint16(e.Result.Defn.Bytes))
 						operand := e.Result.InstructionData
 						if operand&0x0080 == 0x0080 {
 							operand |= 0xff00
 						}
-						mc.PC.Add(operand)
+						dec.mc.PC.Add(operand)
 
-						pcAddress, area := memorymap.MapAddress(mc.PC.Value(), true)
+						pcAddress, area := memorymap.MapAddress(dec.mc.PC.Value(), true)
 
 						if area == memorymap.Cartridge {
-							if dsm.blessSequence(b, pcAddress, false) {
-								if dsm.blessSequence(b, pcAddress, true) {
+							if dec.blessSequence(b, pcAddress, false) {
+								if dec.blessSequence(b, pcAddress, true) {
 									moreBlessing = true
 								}
 							}
 
 							// add label to the symbols table
-							dsm.Sym.AddLabelAuto(b, pcAddress)
+							dec.sym.AddLabelAuto(b, pcAddress)
 						}
 					}
 				}
@@ -152,17 +186,17 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
 	// 3) remove the AUTO label
 	// and
 	// 4) move the DASM label to the previously labelled with the AUTO label
-	for b := range dsm.disasmEntries.Entries {
-		for i := range dsm.disasmEntries.Entries[b] {
-			if dsm.disasmEntries.Entries[b][i].Level >= EntryLevelBlessed {
-				addr := dsm.disasmEntries.Entries[b][i].Result.Address
-				if sym, ok := dsm.Sym.GetLabel(b, addr); ok && sym.Source == symbols.SourceAuto {
-					if i < len(dsm.disasmEntries.Entries[b]) {
-						postAddr := dsm.disasmEntries.Entries[b][i+1].Result.Address
-						if postSym, ok := dsm.Sym.GetLabel(b, postAddr); ok && postSym.Source == symbols.SourceDASM {
-							_ = dsm.Sym.RemoveLabel(symbols.SourceAuto, b, addr)
-							_ = dsm.Sym.RemoveLabel(symbols.SourceDASM, b, postAddr)
-							dsm.Sym.AddLabel(symbols.SourceDASM, b, addr, postSym.Symbol)
+	for b := range dec.disasmEntries.Entries {
+		for i := range dec.disasmEntries.Entries[b] {
+			if dec.disasmEntries.Entries[b][i].Level >= EntryLevelBlessed {
+				addr := dec.disasmEntries.Entries[b][i].Result.Address
+				if sym, ok := dec.sym.GetLabel(b, addr); ok && sym.Source == symbols.SourceAuto {
+					if i < len(dec.disasmEntries.Entries[b]) {
+						postAddr := dec.disasmEntries.Entries[b][i+1].Result.Address
+						if postSym, ok := dec.sym.GetLabel(b, postAddr); ok && postSym.Source == symbols.SourceDASM {
+							_ = dec.sym.RemoveLabel(symbols.SourceAuto, b, addr)
+							_ = dec.sym.RemoveLabel(symbols.SourceDASM, b, postAddr)
+							dec.sym.AddLabel(symbols.SourceDASM, b, addr, postSym.Symbol)
 						}
 					}
 				}
@@ -172,10 +206,10 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
 
 	// remove any auto-labels that have been added to entries that have not
 	// been blessed (these labels were added speculatively).
-	for b := range dsm.disasmEntries.Entries {
-		for i := range dsm.disasmEntries.Entries[b] {
-			if dsm.disasmEntries.Entries[b][i].Level < EntryLevelBlessed {
-				_ = dsm.Sym.RemoveLabel(symbols.SourceAuto, b, dsm.disasmEntries.Entries[b][i].Result.Address)
+	for b := range dec.disasmEntries.Entries {
+		for i := range dec.disasmEntries.Entries[b] {
+			if dec.disasmEntries.Entries[b][i].Level < EntryLevelBlessed {
+				_ = dec.sym.RemoveLabel(symbols.SourceAuto, b, dec.disasmEntries.Entries[b][i].Result.Address)
 			}
 		}
 	}
@@ -215,7 +249,7 @@ func jmpTargets(copiedBanks []mapper.BankContent, jmpAddress uint16) []int {
 // in the event of mistake
 //
 // it does not matter if addr is a normalised or unormalised address.
-func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
+func (dec *decode) blessSequence(bank int, addr uint16, commit bool) bool {
 	// mask address into indexable range
 	a := addr & memorymap.CartridgeBits
 
@@ -237,8 +271,8 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 	//  . an RTS instruction
 	//  . a branch instruction
 	//  . an interrupt
-	for a < uint16(len(dsm.disasmEntries.Entries[bank])) {
-		instruction := dsm.disasmEntries.Entries[bank][a]
+	for a < uint16(len(dec.disasmEntries.Entries[bank])) {
+		instruction := dec.disasmEntries.Entries[bank][a]
 
 		// end run if entry has already been blessed
 		if instruction.Level == EntryLevelBlessed {
@@ -303,9 +337,9 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 	return false
 }
 
-func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
-	for _, bank := range mem.banks {
-		mem.currentBank = bank.Number
+func (dec *decode) decode() error {
+	for _, bank := range dec.mem.banks {
+		dec.mem.currentBank = bank.Number
 
 		// try each bank in each possible segment - banks that are smaller than
 		// the cartridge addressing range can often be mapped into different
@@ -313,13 +347,13 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 		for _, origin := range bank.Origins {
 			// make sure origin address is rooted correctly. we'll convert all
 			// addresses to the preferred mirror at the end of the disassembly
-			mem.origin = (origin & memorymap.CartridgeBits) | memorymap.OriginCart
+			dec.mem.origin = (origin & memorymap.CartridgeBits) | memorymap.OriginCart
 
 			// the memtop for the bank
 			memtop := origin + uint16(len(bank.Data)) - 1
 
 			// reset CPU for each bank/origin
-			err := mc.Reset(nil)
+			err := dec.mc.Reset(nil)
 			if err != nil {
 				return fmt.Errorf("decode: %w", err)
 			}
@@ -330,7 +364,7 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 			// the bank space will have level == EntryLevelUnused
 			for address := memorymap.OriginCart; address <= memorymap.MemtopCart; address++ {
 				// continue if entry has already been decoded
-				e := dsm.disasmEntries.Entries[bank.Number][address&memorymap.CartridgeBits]
+				e := dec.disasmEntries.Entries[bank.Number][address&memorymap.CartridgeBits]
 				if e != nil && e.Level > EntryLevelUnmappable {
 					continue
 				}
@@ -344,27 +378,27 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 				}
 
 				// execute instruction at address
-				mc.PC.Load(address)
-				err := mc.ExecuteInstruction(cpu.NilCycleCallback)
+				dec.mc.PC.Load(address)
+				err := dec.mc.ExecuteInstruction(cpu.NilCycleCallback)
 				if err != nil {
 					return fmt.Errorf("decode: %w", err)
 				}
 
 				// error on invalid instruction execution
-				if err = mc.LastResult.IsValid(); err != nil {
+				if err = dec.mc.LastResult.IsValid(); err != nil {
 					return fmt.Errorf("decode: %w", err)
 				}
 
 				// add entry to disassembly
-				ent := dsm.FormatResult(mapper.BankInfo{Number: bank.Number}, mc.LastResult, entryLevel)
-				dsm.disasmEntries.Entries[bank.Number][address&memorymap.CartridgeBits] = ent
+				ent := dec.formatResult(mapper.BankInfo{Number: bank.Number}, dec.mc.LastResult, entryLevel)
+				dec.disasmEntries.Entries[bank.Number][address&memorymap.CartridgeBits] = ent
 			}
 		}
 	}
 
 	// sanity checks
-	for b := range dsm.disasmEntries.Entries {
-		for _, a := range dsm.disasmEntries.Entries[b] {
+	for b := range dec.disasmEntries.Entries {
+		for _, a := range dec.disasmEntries.Entries[b] {
 			if a == nil {
 				return fmt.Errorf("decode: not every address has been decoded")
 			}

@@ -23,40 +23,8 @@
 // will probably find it more useful however, to disassemble from the memory of
 // an already instantiated VCS.
 //
-//	disasm, _ := disassembly.FromMemory(cartMem, symbols.NewTable())
-//
-// The FromMemory() function takes an instance of a symbols.Table or nil. In
-// the example above, the result of NewTable() has been used, which is fine but
-// limits the potential of the disassembly package. For best results, the
-// symbols.ReadSymbolsFile() function should be used (see symbols package for
-// details). Note that the FromCartridge() function handles symbols files for
-// you.
-//
-// The Write() group of functions "print" disassambly entries of type
-// EntryTypeBlessed only. Useful for printing static disassemblies of a
-// cartridge but probably not much else.
-//
-// The iteration types provides a convenient way of iterating of the disassembly
-// entries. It takes care of empty entries and entries not of the correct entry
-// type. IterateAll() in particular is useful and flexible enough for many
-// applications.
-//
-// The Grep() function provides a quick way of searching the disassembly with a
-// scope directive. More complex search schemes can be written with the
-// iteration types.
-//
-// A Disassembly instance also keeps a reference to the symbols tables (see
-// symbols package). The GetSymbol() function can be used to get a reference
-// to the Symbol tables. This reference will be valid throughout the lifetime
-// of the Disassembly instance and will "survive" calls to the FromMemory() and
-// FromCartridge() functions.
-//
-// # Segmented Cartridges
-//
-// The disassembly package treats small bank sized (those less than 4k) by
-// performing the disassembly with the cartridge rooted at each origin point -
-// in each possible segment allowed by the mapper.
-//
-// Origin information is held in the mappers.BankContent type returned by the
-// cartridge.CopyBanks() function.
+// Disassemblies will be performed in the background. This helps with startup
+// speed but does mean that the display of disassembly may be delayed. Emulation
+// can go ahead while disassembly is being performed and the results merged with
+// disassembly once it has completed.
 package disassembly
