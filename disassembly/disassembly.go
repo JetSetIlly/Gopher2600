@@ -17,7 +17,6 @@ package disassembly
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
@@ -239,7 +238,7 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 // checkNextAddr should be false if the result does no represent a completed
 // instruction. in other words, if the instruction has only partially completed
 func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Result, checkNextAddr bool, nextAddr uint16) *Entry {
-	e := dsm.FormatResult(bank, result, EntryLevelExecuted)
+	e := dsm.formatResult(bank, result, EntryLevelExecuted)
 
 	// if co-processor is executing then whatever has been executed by the 6507
 	// will not relate to the permanent disassembly. format the result and
@@ -287,7 +286,7 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 			idx := nextAddr & memorymap.CartridgeBits
 			ne := dsm.disasmEntries.Entries[bank.Number][idx]
 			if ne == nil {
-				dsm.disasmEntries.Entries[bank.Number][idx] = dsm.FormatResult(bank, execution.Result{
+				dsm.disasmEntries.Entries[bank.Number][idx] = dsm.formatResult(bank, execution.Result{
 					Address: nextAddr,
 				}, EntryLevelBlessed)
 			} else if ne.Level < EntryLevelBlessed {
@@ -344,116 +343,6 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	if len(dsm.disasmEntries.Sequential) > maxLength {
 		dsm.disasmEntries.Sequential = dsm.disasmEntries.Sequential[len(dsm.disasmEntries.Sequential)-maxLength:]
 	}
-
-	return e
-}
-
-// FormatResult creates an Entry for supplied result/bank. It will be assigned
-// the specified EntryLevel.
-//
-// If EntryLevel is EntryLevelExecuted then the disassembly will be updated but
-// only if result.Final is true.
-func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Result, level EntryLevel) *Entry {
-	return formatResult(dsm, dsm.vcs.TV, bank, result, level)
-}
-
-// formatResult requires a partial television implementation that can return television coordinates
-type tv interface {
-	GetCoords() coords.TelevisionCoords
-}
-
-func formatResult(dsm *Disassembly, tv tv, bank mapper.BankInfo, result execution.Result, level EntryLevel) *Entry {
-	e := &Entry{
-		dsm:    dsm,
-		Result: result,
-		Level:  level,
-		Bank:   bank.Number,
-		Label: Label{
-			dsm:    dsm,
-			result: result,
-			bank:   bank,
-		},
-		Operand: Operand{
-			dsm:    dsm,
-			result: result,
-			bank:   bank,
-		},
-		Coords: tv.GetCoords(),
-	}
-
-	// address of instruction
-	e.Address = fmt.Sprintf("$%04x", result.Address)
-
-	// if definition is nil then set the operator field to ??? and return with no further formatting
-	if result.Defn == nil {
-		e.Operator = "???"
-		return e
-	}
-
-	// operator of instruction
-	e.Operator = result.Defn.Operator.String()
-
-	// bytecode and operand string is assembled depending on the number of
-	// expected bytes (result.Defn.Bytes) and the number of bytes read so far
-	// (result.ByteCount).
-	//
-	// the panics cover situations that should never exists. if result
-	// validation is active then the panic situations will have been caught
-	// then. if validation is not running then the code could theoretically
-	// panic but that's okay, they should have been caught in testing.
-	switch result.Defn.Bytes {
-	case 3:
-		switch result.ByteCount {
-		case 3:
-			operand := result.InstructionData
-			e.Operand.partial = fmt.Sprintf("$%04x", operand)
-			e.Bytecode = fmt.Sprintf("%02x %02x %02x", result.Defn.OpCode, operand&0x00ff, operand&0xff00>>8)
-		case 2:
-			operand := result.InstructionData
-			e.Operand.partial = fmt.Sprintf("$??%02x", result.InstructionData)
-			e.Bytecode = fmt.Sprintf("%02x %02x ?? ", result.Defn.OpCode, operand&0x00ff)
-		case 1:
-			e.Operand.partial = "$????"
-			e.Bytecode = fmt.Sprintf("%02x ?? ??", result.Defn.OpCode)
-		case 0:
-			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
-		default:
-			panic("we should not be able to read more bytes than the expected number (expected 3)")
-		}
-	case 2:
-		switch result.ByteCount {
-		case 2:
-			operand := result.InstructionData
-			e.Operand.partial = fmt.Sprintf("$%02x", operand)
-			e.Bytecode = fmt.Sprintf("%02x %02x", result.Defn.OpCode, operand&0x00ff)
-		case 1:
-			e.Operand.partial = "$??"
-			e.Bytecode = fmt.Sprintf("%02x ??", result.Defn.OpCode)
-		case 0:
-			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
-		default:
-			panic("we should not be able to read more bytes than the expected number (expected 2)")
-		}
-	case 1:
-		switch result.ByteCount {
-		case 1:
-			e.Bytecode = fmt.Sprintf("%02x", result.Defn.OpCode)
-		case 0:
-			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
-		default:
-			panic("we should not be able to read more bytes than the expected number (expected 1)")
-		}
-	case 0:
-		panic("instructions of zero bytes is not possible")
-	default:
-		panic("instructions of more than 3 bytes is not possible")
-	}
-	e.Bytecode = strings.TrimSpace(e.Bytecode)
-
-	// decorate operand with addressing mode indicators. this decorates the
-	// non-symbolic operand. we also call the decorate function from the
-	// Operand() function when a symbol has been found
-	e.Operand.partial = addrModeDecoration(e.Operand.partial, e.Result.Defn.AddressingMode)
 
 	return e
 }

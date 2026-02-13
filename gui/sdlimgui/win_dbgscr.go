@@ -21,7 +21,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
-	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
@@ -555,7 +554,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 	// get reflection information
 	ref := win.scr.crit.reflection[win.mouse.offset]
 
-	e := win.img.dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
+	e := win.img.dbg.Disasm.FormatResultAdHoc(ref.Bank, ref.CPU)
 
 	// the magnify tooltip needs to appear before anything else and we only
 	// want to draw it if there is no overlay and there is an instruction
