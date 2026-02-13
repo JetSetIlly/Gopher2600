@@ -141,6 +141,12 @@ func (dsm *Disassembly) Reset(background bool) error {
 //
 // Disassembly will assume the cartridge is in the correct starting bank.
 func (dsm *Disassembly) FromMemory(background bool) error {
+	// symbols first so that we always have a valid symbols instance
+	err := dsm.Sym.ReadDASMSymbolsFile(dsm.vcs.Mem.Cart)
+	if err != nil {
+		return err
+	}
+
 	copiedBanks, err := dsm.vcs.Mem.Cart.CopyBanks()
 	if err != nil {
 		return fmt.Errorf("disassembly: %w", err)
@@ -150,23 +156,22 @@ func (dsm *Disassembly) FromMemory(background bool) error {
 	func() {
 		dsm.crit.Lock()
 		defer dsm.crit.Unlock()
-		dsm.disasmEntries.Entries = make([][]*Entry, len(copiedBanks))
+
+		// allocate at least one bank. this is useful if there is no cartridge (ie. it's ejected)
+		// and therefore CopyBanks() likely returned an empty array
+		dsm.disasmEntries.Entries = make([][]*Entry, max(1, len(copiedBanks)))
+
 		for b := range dsm.disasmEntries.Entries {
 			dsm.disasmEntries.Entries[b] = make([]*Entry, memorymap.CartridgeBits+1)
 		}
 	}()
 
-	startingBank := dsm.vcs.Mem.Cart.GetBank(cpu.Reset).Number
-
-	err = dsm.Sym.ReadDASMSymbolsFile(dsm.vcs.Mem.Cart)
-	if err != nil {
-		return err
-	}
-
 	// exit early if cartridge memory self reports as being ejected
 	if dsm.vcs.Mem.Cart.IsEjected() {
 		return nil
 	}
+
+	startingBank := dsm.vcs.Mem.Cart.GetBank(cpu.Reset).Number
 
 	if background {
 		go func() {
@@ -194,7 +199,8 @@ func (dsm *Disassembly) fromMemory(startingBank int, copiedBanks []mapper.BankCo
 	for b := range dec.disasmEntries.Entries {
 		for i, e := range dec.disasmEntries.Entries[b] {
 			if dsm.disasmEntries.Entries[b][i] == nil || dsm.disasmEntries.Entries[b][i].Level < EntryLevelExecuted {
-				dsm.disasmEntries.Entries[b] = append(dsm.disasmEntries.Entries[b], e)
+				e.dsm = dsm
+				dsm.disasmEntries.Entries[b][i] = e
 			}
 		}
 	}
@@ -219,7 +225,7 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 		return nil
 	}
 
-	return dsm.disasmEntries.Entries[bank.Number%len(dsm.disasmEntries.Entries)][address&memorymap.CartridgeBits]
+	return dsm.disasmEntries.Entries[bank.Number][address&memorymap.CartridgeBits]
 }
 
 // ExecutedEntry should be called after execution of a CPU instruction. In many
