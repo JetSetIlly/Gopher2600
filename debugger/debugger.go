@@ -205,9 +205,6 @@ type Debugger struct {
 	// Quantum to use when stepping/running
 	quantum atomic.Value // govern.Quantum
 
-	// record user input to a script file
-	scriptScribe script.Scribe
-
 	// the Rewind system stores and restores machine state
 	Rewind *rewind.Rewind
 
@@ -235,9 +232,11 @@ type Debugger struct {
 	// buffer for user input
 	input []byte
 
-	// any remaining input from the parseInput() function. this is be processed before any further
-	// calls to TermRead()
-	remainingInput string
+	// the current script being read
+	scriptHandler script.Handler
+
+	// the current script being written to
+	scriptWrite script.Write
 
 	// any error from previous emulation step
 	lastStepError bool
@@ -718,12 +717,9 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 
 	// intialisation script because we're in debugger mode
 	if dbg.opts.Script != "" {
-		scr, err := script.RescribeScript(dbg.opts.Script)
-		if err == nil {
-			err = dbg.inputLoop(scr, false)
-			if err != nil {
-				return err
-			}
+		err := dbg.scriptHandler.Load(dbg.opts.Script)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -945,7 +941,7 @@ func (dbg *Debugger) run() error {
 	// end script recording gracefully. this way we don't have to worry too
 	// hard about script scribes
 	defer func() {
-		err := dbg.scriptScribe.EndSession()
+		err := dbg.scriptWrite.EndSession()
 		if err != nil {
 			logger.Log(logger.Allow, "debugger", err)
 		}
@@ -1432,32 +1428,20 @@ func (dbg *Debugger) parseInput(input string, interactive bool) (string, error) 
 	// normalise semi-colons with newlines
 	input = strings.ReplaceAll(input, ";", "\n")
 
-	var remaining string
-
 	// loop through lines
 	lns := strings.Split(input, "\n")
-	for i, ln := range lns {
-		ln = strings.TrimLeft(ln, " \t")
+	ln := strings.TrimLeft(lns[0], " \t")
 
-		// ignore comments at beginning of lines
-		if strings.HasPrefix(ln, "#") {
-			continue
-		}
-
+	// ignore comments at beginning of lines
+	if !strings.HasPrefix(ln, "#") {
 		err = dbg.parseCommand(ln, interactive, true)
 		if err != nil {
-			dbg.scriptScribe.Rollback()
+			dbg.scriptWrite.Rollback()
 			return "", err
-		}
-		if dbg.continueEmulation {
-			if i != len(lns)-1 {
-				remaining = strings.Join(lns[i+1:], "\n")
-			}
-			break
 		}
 	}
 
-	return remaining, nil
+	return strings.Join(lns[1:], "\n"), nil
 }
 
 // Plugged implements the plugging.PlugMonitor interface.

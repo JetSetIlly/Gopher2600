@@ -21,11 +21,11 @@ import (
 	"os"
 )
 
-// Scribe can be used again after a start()/end() cycle. isWriting()
+// Write can be used again after a start()/end() cycle. isWriting()
 // can be used to detect if a script is currently being captured but it is
 // safe not to do because most functions silently fail if there is no current
 // active session.
-type Scribe struct {
+type Write struct {
 	file       *os.File
 	scriptfile string
 
@@ -37,144 +37,144 @@ type Scribe struct {
 }
 
 // IsActive returns true if a script is currently being capture.
-func (scr Scribe) IsActive() bool {
-	return scr.file != nil
+func (w Write) IsActive() bool {
+	return w.file != nil
 }
 
 // StartSession a new script.
-func (scr *Scribe) StartSession(scriptfile string) error {
-	if scr.IsActive() {
-		return fmt.Errorf("scribe: already active")
+func (w *Write) StartSession(scriptfile string) error {
+	if w.IsActive() {
+		return fmt.Errorf("script: already active")
 	}
 
-	scr.scriptfile = scriptfile
+	w.scriptfile = scriptfile
 
 	_, err := os.Stat(scriptfile)
 	if os.IsNotExist(err) {
-		scr.file, err = os.Create(scriptfile)
+		w.file, err = os.Create(scriptfile)
 		if err != nil {
-			return fmt.Errorf("scribe: cannot create script file (%s)", scriptfile)
+			return fmt.Errorf("script: cannot create file (%s)", scriptfile)
 		}
 	} else {
-		return fmt.Errorf("scribe: script file already exists (%s)", scriptfile)
+		return fmt.Errorf("script: file already exists (%s)", scriptfile)
 	}
 
 	return nil
 }
 
-// EndSession the current scribe session.
-func (scr *Scribe) EndSession() (rerr error) {
-	if !scr.IsActive() {
+// EndSession the current write session.
+func (w *Write) EndSession() (rerr error) {
+	if !w.IsActive() {
 		return nil
 	}
 
 	defer func() {
-		scr.file = nil
-		scr.scriptfile = ""
-		scr.playbackDepth = 0
-		scr.inputLine = ""
-		scr.outputLine = ""
+		w.file = nil
+		w.scriptfile = ""
+		w.playbackDepth = 0
+		w.inputLine = ""
+		w.outputLine = ""
 	}()
 
 	defer func() {
-		err := scr.file.Close()
+		err := w.file.Close()
 		if err != nil {
-			rerr = fmt.Errorf("scribe: %w", err)
+			rerr = fmt.Errorf("script: %w", err)
 		}
 	}()
 
 	// make sure everything has been written to the output file
-	return scr.Commit()
+	return w.Commit()
 }
 
 // StartPlayback indicates that a replayed script has begun.
-func (scr *Scribe) StartPlayback() error {
-	if !scr.IsActive() {
+func (w *Write) StartPlayback() error {
+	if !w.IsActive() {
 		return nil
 	}
 
-	err := scr.Commit()
+	err := w.Commit()
 	if err != nil {
 		return err
 	}
 
-	scr.playbackDepth++
+	w.playbackDepth++
 
 	return nil
 }
 
 // EndPlayback indicates that a replayed script has finished.
-func (scr *Scribe) EndPlayback() error {
-	if !scr.IsActive() {
+func (w *Write) EndPlayback() error {
+	if !w.IsActive() {
 		return nil
 	}
 
-	err := scr.Commit()
+	err := w.Commit()
 	if err != nil {
 		return err
 	}
 
-	scr.playbackDepth--
+	w.playbackDepth--
 
 	return nil
 }
 
 // Rollback undoes calls to WriteInput() and WriteOutput since last Commit().
-func (scr *Scribe) Rollback() {
-	if !scr.IsActive() {
+func (w *Write) Rollback() {
+	if !w.IsActive() {
 		return
 	}
 
-	scr.inputLine = ""
-	scr.outputLine = ""
+	w.inputLine = ""
+	w.outputLine = ""
 }
 
 // WriteInput writes user-input to the open script file.
-func (scr *Scribe) WriteInput(command string) error {
-	if !scr.IsActive() || scr.playbackDepth > 0 {
+func (w *Write) WriteInput(command string) error {
+	if !w.IsActive() || w.playbackDepth > 0 {
 		return nil
 	}
 
-	err := scr.Commit()
+	err := w.Commit()
 	if err != nil {
 		return err
 	}
 
 	if command != "" {
-		scr.inputLine = fmt.Sprintf("%s\n", command)
+		w.inputLine = fmt.Sprintf("%s\n", command)
 	}
 
 	return nil
 }
 
 // Commit most recent calls to WriteInput() and WriteOutput().
-func (scr *Scribe) Commit() error {
-	if !scr.IsActive() {
+func (w *Write) Commit() error {
+	if !w.IsActive() {
 		return nil
 	}
 
 	defer func() {
-		scr.inputLine = ""
-		scr.outputLine = ""
+		w.inputLine = ""
+		w.outputLine = ""
 	}()
 
-	if scr.inputLine != "" {
-		n, err := io.WriteString(scr.file, scr.inputLine)
+	if w.inputLine != "" {
+		n, err := io.WriteString(w.file, w.inputLine)
 		if err != nil {
-			return fmt.Errorf("scribe: %w", err)
+			return fmt.Errorf("script: %w", err)
 		}
-		if n != len(scr.inputLine) {
-			return fmt.Errorf("scribe: output truncated")
+		if n != len(w.inputLine) {
+			return fmt.Errorf("script: output truncated")
 		}
 	}
 
-	if scr.outputLine != "" {
-		n, err := io.WriteString(scr.file, scr.outputLine)
+	if w.outputLine != "" {
+		n, err := io.WriteString(w.file, w.outputLine)
 		if err != nil {
-			return fmt.Errorf("scribe: %w", err)
+			return fmt.Errorf("script: %w", err)
 		}
-		if n != len(scr.outputLine) {
-			return fmt.Errorf("scribe: output truncated")
+		if n != len(w.outputLine) {
+			return fmt.Errorf("script: output truncated")
 		}
 	}
 

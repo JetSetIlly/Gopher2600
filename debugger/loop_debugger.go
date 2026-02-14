@@ -20,7 +20,6 @@ import (
 	"io"
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
-	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -327,9 +326,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 			// read input from terminal inputter and parse/run commands
 			err = dbg.termRead(inputter)
 			if err != nil {
-				if errors.Is(err, script.ScriptEnd) {
-					return nil
-				}
 				return err
 			}
 
@@ -544,16 +540,9 @@ func (dbg *Debugger) termRead(inputter terminal.Input) error {
 	var inputLen int
 	var err error
 
-	// again will be set to true if remainingInput is being used. the flag indicates that more input
-	// is required and the inputter should be checked for input with TermRead()
-	var again bool
-
 	// process remainingInput before get user input from terminal.Input implementatio
-	if len(dbg.remainingInput) > 0 {
-		input = []byte(dbg.remainingInput)
-		inputLen = len(dbg.remainingInput) + 1
-		dbg.remainingInput = ""
-		again = true
+	if s, ok := dbg.scriptHandler.Next(); ok {
+		input = []byte(s)
 	} else {
 		inputLen, err = inputter.TermRead(dbg.input, dbg.buildPrompt(), dbg.events)
 		input = dbg.input[:]
@@ -569,32 +558,32 @@ func (dbg *Debugger) termRead(inputter terminal.Input) error {
 	// if there was no error from TermRead parse input (leading to execution) of the command
 	if err == nil {
 		if inputLen > 0 {
-			dbg.remainingInput, err = dbg.parseInput(string(input[:inputLen-1]), inputter.IsInteractive())
+			s, err := dbg.parseInput(string(input[:inputLen]), inputter.IsInteractive())
 			if err != nil {
 				dbg.printLine(terminal.StyleError, "%s", err)
 			}
+			dbg.scriptHandler.Push(s)
 		}
-		return nil
-	}
-
-	if errors.Is(err, terminal.UserInterrupt) {
-		// user interrupts are used to quit or halt an operation
-		dbg.handleInterrupt(inputter)
-
-	} else if errors.Is(err, io.EOF) {
-		// an EOF error causes the emulation to exit immediately
-		dbg.running = false
-		dbg.continueEmulation = false
-		return nil
-
 	} else {
-		// all other errors are passed upwards to the calling function
-		return err
+		if errors.Is(err, terminal.UserInterrupt) {
+			// user interrupts are used to quit or halt an operation
+			dbg.handleInterrupt(inputter)
+
+		} else if errors.Is(err, io.EOF) {
+			// an EOF error causes the emulation to exit immediately
+			dbg.running = false
+			dbg.continueEmulation = false
+			return nil
+
+		} else {
+			// all other errors are passed upwards to the calling function
+			return err
+		}
 	}
 
 	// recurse into termRead() function if necessary
-	if again {
-		dbg.termRead(inputter)
+	if !dbg.continueEmulation && dbg.scriptHandler.More() {
+		return dbg.termRead(inputter)
 	}
 
 	return nil
@@ -604,7 +593,7 @@ func (dbg *Debugger) termRead(inputter terminal.Input) error {
 // what sort of terminal is being used.
 func (dbg *Debugger) handleInterrupt(inputter terminal.Input) {
 	// end script scribe (if one is running)
-	err := dbg.scriptScribe.EndSession()
+	err := dbg.scriptWrite.EndSession()
 	if err != nil {
 		logger.Log(logger.Allow, "debugger", err)
 	}
