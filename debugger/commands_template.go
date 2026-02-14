@@ -156,5 +156,4 @@ var commandTemplate = []string{
 // list of commands that should not be executed when recording/playing scripts.
 var scriptUnsafeTemplate = []string{
 	cmdScript + " [RECORD %S]",
-	cmdRun,
 }

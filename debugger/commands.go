@@ -81,21 +81,29 @@ func init() {
 }
 
 // parseCommand tokenises the input and processes the tokens.
-func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) error {
-	tokens, err := dbg.tokeniseCommand(cmd, scribe, echo)
+func (dbg *Debugger) parseCommand(cmd string, interactive bool, echo bool) error {
+	tokens, err := dbg.tokeniseCommand(cmd, interactive, echo)
 	if err != nil {
 		return err
+	}
+	if tokens == nil {
+		return nil
 	}
 	return dbg.processTokens(tokens)
 }
 
 // return tokenised command.
-func (dbg *Debugger) tokeniseCommand(cmd string, scribe bool, echo bool) (*commandline.Tokens, error) {
+func (dbg *Debugger) tokeniseCommand(cmd string, interactive bool, echo bool) (*commandline.Tokens, error) {
 	// tokenise input
 	tokens := commandline.TokeniseInput(cmd)
 
 	// if there are no tokens in the input then continue with a default action
 	if tokens.Remaining() == 0 {
+		// do not use blank input as a synonym for the STEP command for scripting and
+		// non-interactive input
+		if dbg.scriptScribe.IsActive() || !interactive {
+			return nil, nil
+		}
 		return dbg.tokeniseCommand("STEP", true, false)
 	}
 
@@ -112,20 +120,16 @@ func (dbg *Debugger) tokeniseCommand(cmd string, scribe bool, echo bool) (*comma
 	}
 
 	// test to see if command is allowed when recording/playing a script
-	if dbg.scriptScribe.IsActive() && scribe {
+	if dbg.scriptScribe.IsActive() || !interactive {
 		tokens.Reset()
-
-		err := scriptUnsafeCommands.ValidateTokens(tokens)
 
 		// fail when the tokens DO match the scriptUnsafe template (ie. when
 		// there is no err from the validate function)
+		err := scriptUnsafeCommands.ValidateTokens(tokens)
 		if err == nil {
-			return nil, fmt.Errorf("'%s' is unsafe to use in scripts", tokens.String())
+			return nil, fmt.Errorf("'%s' is unsafe to use non-interactively", tokens.String())
 		}
 
-		// record command if it auto is false (is not a result of an "auto" command
-		// eg. ONHALT). if there's an error then the script will be rolled back and
-		// the write removed.
 		dbg.scriptScribe.WriteInput(tokens.String())
 	}
 

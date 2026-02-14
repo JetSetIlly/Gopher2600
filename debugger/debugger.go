@@ -235,6 +235,10 @@ type Debugger struct {
 	// buffer for user input
 	input []byte
 
+	// any remaining input from the parseInput() function. this is be processed before any further
+	// calls to TermRead()
+	remainingInput string
+
 	// any error from previous emulation step
 	lastStepError bool
 
@@ -1410,41 +1414,50 @@ func (dbg *Debugger) endComparison() {
 	}
 }
 
-// parseInput splits the input into individual commands. each command is then
-// passed to parseCommand for processing
+// parseInput splits the input into individual commands. each command is then passed to parseCommand
+// for processing
 //
-// interactive argument should be true if  the input that has just come from
-// the user (ie. via an interactive terminal). only interactive input will be
-// added to a new script file.
+// interactive argument should be true if input source is an interactive terminal
 //
-// auto argument should be true if command is being run as part of ONHALT or
-// ONSTEP
-//
-// returns a boolean stating whether the emulation should continue with the
-// next step.
-func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) error {
+// returns a string with any remaining unprocessed commands. this will happen if a command causes
+// the emulation to continue. these remaining commands should be queued for the next parsing
+func (dbg *Debugger) parseInput(input string, interactive bool) (string, error) {
 	var err error
 
-	// ignore comments
-	if strings.HasPrefix(input, "#") {
-		return nil
-	}
+	// replace windows and mac line endings with unix line endings
+	input = strings.ReplaceAll(input, "\r\n", "\n")
+	input = strings.ReplaceAll(input, "\r", "\n")
 
-	// divide input if necessary
-	commands := strings.Split(input, ";")
+	// commands can be separated by semi-colons as well as newlines.
+	// normalise semi-colons with newlines
+	input = strings.ReplaceAll(input, ";", "\n")
 
-	// loop through commands
-	for i := range commands {
-		// parse command
-		err = dbg.parseCommand(commands[i], interactive, !auto)
+	var remaining string
+
+	// loop through lines
+	lns := strings.Split(input, "\n")
+	for i, ln := range lns {
+		ln = strings.TrimLeft(ln, " \t")
+
+		// ignore comments at beginning of lines
+		if strings.HasPrefix(ln, "#") {
+			continue
+		}
+
+		err = dbg.parseCommand(ln, interactive, true)
 		if err != nil {
-			// we don't want to record bad commands in script
 			dbg.scriptScribe.Rollback()
-			return err
+			return "", err
+		}
+		if dbg.continueEmulation {
+			if i != len(lns)-1 {
+				remaining = strings.Join(lns[i+1:], "\n")
+			}
+			break
 		}
 	}
 
-	return nil
+	return remaining, nil
 }
 
 // Plugged implements the plugging.PlugMonitor interface.

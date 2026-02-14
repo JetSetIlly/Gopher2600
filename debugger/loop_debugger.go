@@ -540,18 +540,36 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 // termRead uses the TermRead() function of the inputter and process the output
 // as required by the debugger.
 func (dbg *Debugger) termRead(inputter terminal.Input) error {
-	// get user input from terminal.Input implementatio
-	inputLen, err := inputter.TermRead(dbg.input, dbg.buildPrompt(), dbg.events)
+	var input []byte
+	var inputLen int
+	var err error
+
+	// again will be set to true if remainingInput is being used. the flag indicates that more input
+	// is required and the inputter should be checked for input with TermRead()
+	var again bool
+
+	// process remainingInput before get user input from terminal.Input implementatio
+	if len(dbg.remainingInput) > 0 {
+		input = []byte(dbg.remainingInput)
+		inputLen = len(dbg.remainingInput) + 1
+		dbg.remainingInput = ""
+		again = true
+	} else {
+		inputLen, err = inputter.TermRead(dbg.input, dbg.buildPrompt(), dbg.events)
+		input = dbg.input[:]
+	}
+
+	// sanity cap the input length
+	inputLen = min(inputLen, len(input))
 
 	if dbg.unwindLoopRestart != nil {
 		return nil
 	}
 
-	// if there was no error from TermRead parse input (leading to execution)
-	// of the command
+	// if there was no error from TermRead parse input (leading to execution) of the command
 	if err == nil {
 		if inputLen > 0 {
-			err = dbg.parseInput(string(dbg.input[:inputLen-1]), inputter.IsInteractive(), false)
+			dbg.remainingInput, err = dbg.parseInput(string(input[:inputLen-1]), inputter.IsInteractive())
 			if err != nil {
 				dbg.printLine(terminal.StyleError, "%s", err)
 			}
@@ -572,6 +590,11 @@ func (dbg *Debugger) termRead(inputter terminal.Input) error {
 	} else {
 		// all other errors are passed upwards to the calling function
 		return err
+	}
+
+	// recurse into termRead() function if necessary
+	if again {
+		dbg.termRead(inputter)
 	}
 
 	return nil
