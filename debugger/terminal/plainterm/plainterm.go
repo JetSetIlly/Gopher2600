@@ -24,21 +24,26 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
+	"golang.org/x/term"
 )
 
 // PlainTerminal is the default, most basic terminal interface. It keeps the
 // terminal in whatever mode it started, probably cooked mode. As such, it
 // offers only rudimentary editing facility and little control over output.
 type PlainTerminal struct {
-	input    io.Reader
-	output   io.Writer
-	silenced bool
+	input      io.Reader
+	output     io.Writer
+	realInput  bool
+	realOutput bool
+	silenced   bool
 }
 
 // Initialise perfoms any setting up required for the terminal.
 func (pt *PlainTerminal) Initialise() error {
 	pt.input = os.Stdin
 	pt.output = os.Stdout
+	pt.realInput = term.IsTerminal(int(os.Stdin.Fd()))
+	pt.realOutput = term.IsTerminal(int(os.Stdout.Fd()))
 	return nil
 }
 
@@ -82,7 +87,9 @@ func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, events *t
 	}
 
 	// insert prompt into output stream
-	pt.output.Write([]byte(prompt.String()))
+	if pt.realInput {
+		pt.output.Write([]byte(prompt.String()))
+	}
 
 	n, err := pt.input.Read(input)
 	if err != nil {
@@ -111,7 +118,7 @@ func (pt *PlainTerminal) TermReadCheck() bool {
 
 // IsInteractive implements the terminal.Input interface.
 func (pt *PlainTerminal) IsInteractive() bool {
-	return true
+	return pt.realInput && pt.realOutput
 }
 
 // IsRealTerminal implements the terminal.Input interface.

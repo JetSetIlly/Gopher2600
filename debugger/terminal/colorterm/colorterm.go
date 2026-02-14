@@ -20,10 +20,12 @@
 package colorterm
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm/easyterm"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
+	"golang.org/x/term"
 )
 
 // ColorTerminal implements debugger UI interface with a basic ANSI terminal.
@@ -43,6 +45,14 @@ type command struct {
 
 // Initialise perfoms any setting up required for the terminal.
 func (ct *ColorTerminal) Initialise() error {
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		return fmt.Errorf("colorterm: stdin is not a real terminal (use plain terminal)")
+	}
+
+	if !term.IsTerminal(int(os.Stdout.Fd())) {
+		return fmt.Errorf("colorterm: stdout is not a real terminal (use plain terminal)")
+	}
+
 	err := ct.EasyTerm.Initialise(os.Stdin, os.Stdout)
 	if err != nil {
 		return err
