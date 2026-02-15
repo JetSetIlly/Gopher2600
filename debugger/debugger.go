@@ -412,16 +412,16 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 		Signal:           make(chan os.Signal, 1),
 		SignalHandler: func(sig os.Signal) error {
 			switch sig {
+			case os.Interrupt:
+				return terminal.UserInterrupt
 			case syscall.SIGHUP:
 				return terminal.UserReload
-			case syscall.SIGINT:
-				return terminal.UserInterrupt
-			case syscall.SIGQUIT:
+			case syscall.SIGTERM:
+				// default signal from UNIX kill command
 				return terminal.UserQuit
-			case syscall.SIGKILL:
-				// we're unlikely to receive the kill signal, it normally being
-				// intercepted by the terminal, but in case we do we treat it
-				// like the QUIT signal
+			case syscall.SIGQUIT:
+				// catch signal sent by ctrl-\ because we don't want to produce a core dump. SIGABRT
+				// is still exposed if a core dump is required
 				return terminal.UserQuit
 			default:
 			}
@@ -431,9 +431,8 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 		PushedFunctionImmediate: make(chan func(), 4096),
 	}
 
-	// connect signals to dbg.events.Signal channel. we include the Kill signal
-	// but the chances are it'll never be seen
-	signal.Notify(dbg.events.Signal, os.Interrupt, os.Kill, syscall.SIGHUP, syscall.SIGQUIT)
+	// connect signals to dbg.events.Signal channel
+	signal.Notify(dbg.events.Signal, os.Interrupt, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGQUIT)
 
 	// allocate memory for user input
 	dbg.input = make([]byte, 255)

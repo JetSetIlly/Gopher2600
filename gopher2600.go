@@ -111,7 +111,8 @@ func main() {
 	// stateRequest
 	exitVal := 0
 
-	// ctrlc default handler. can be turned off with reqNoIntSig request
+	// default ctrl-c handler. can be turned off with reqNoIntSig request. the default handler is
+	// suitable for non-interactive emulator modes, like the REGRESS mode
 	intChan := make(chan os.Signal, 1)
 	signal.Notify(intChan, os.Interrupt)
 
@@ -138,6 +139,7 @@ func main() {
 	for !done {
 		select {
 		case <-intChan:
+			// default ctrl-c handle
 			fmt.Println("\r")
 			done = true
 
