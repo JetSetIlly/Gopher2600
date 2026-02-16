@@ -28,10 +28,11 @@ import (
 	"golang.org/x/term"
 )
 
-// ColorTerminal implements debugger UI interface with a basic ANSI terminal.
+// ColorTerminal implements debugger UI interface with a basic ANSI terminal
 type ColorTerminal struct {
 	easyterm.EasyTerm
 
+	buffer         []byte
 	reader         runeReader
 	commandHistory []command
 	tabCompletion  *commandline.TabCompletion
@@ -43,7 +44,7 @@ type command struct {
 	input []byte
 }
 
-// Initialise perfoms any setting up required for the terminal.
+// Initialise perfoms any setting up required for the terminal
 func (ct *ColorTerminal) Initialise() error {
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
 		return fmt.Errorf("colorterm: stdin is not a real terminal (use plain terminal)")
@@ -58,13 +59,14 @@ func (ct *ColorTerminal) Initialise() error {
 		return err
 	}
 
+	ct.buffer = make([]byte, 255)
 	ct.commandHistory = make([]command, 0)
 	ct.reader = initRuneReader(os.Stdin)
 
 	return nil
 }
 
-// CleanUp perfoms any cleaning up required for the terminal.
+// CleanUp perfoms any cleaning up required for the terminal
 func (ct *ColorTerminal) CleanUp() {
 	ct.EasyTerm.TermPrint("\r")
 	_ = ct.Flush()
@@ -75,17 +77,17 @@ func (ct *ColorTerminal) RegisterTabCompletion(tc *commandline.TabCompletion) {
 	ct.tabCompletion = tc
 }
 
-// IsInteractive satisfies the terminal.Input interface.
+// IsInteractive satisfies the terminal.Input interface
 func (ct *ColorTerminal) IsInteractive() bool {
 	return true
 }
 
-// IsRealTerminal implements the terminal.Input interface.
+// IsRealTerminal implements the terminal.Input interface
 func (ct *ColorTerminal) IsRealTerminal() bool {
 	return true
 }
 
-// Silence implements terminal.Terminal interface.
+// Silence implements terminal.Terminal interface
 func (ct *ColorTerminal) Silence(silenced bool) {
 	ct.silenced = silenced
 }

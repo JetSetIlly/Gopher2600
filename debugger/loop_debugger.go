@@ -536,20 +536,15 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 // termRead uses the TermRead() function of the inputter and process the output
 // as required by the debugger.
 func (dbg *Debugger) termRead(inputter terminal.Input) error {
-	var input []byte
-	var inputLen int
+	var input string
 	var err error
 
 	// process remainingInput before get user input from terminal.Input implementatio
 	if s, ok := dbg.scriptHandler.Next(); ok {
-		input = []byte(s)
+		input = s
 	} else {
-		inputLen, err = inputter.TermRead(dbg.input, dbg.buildPrompt(), dbg.events)
-		input = dbg.input[:]
+		input, err = inputter.TermRead(dbg.buildPrompt(), dbg.events)
 	}
-
-	// sanity cap the input length
-	inputLen = min(inputLen, len(input))
 
 	if dbg.unwindLoopRestart != nil {
 		return nil
@@ -557,8 +552,8 @@ func (dbg *Debugger) termRead(inputter terminal.Input) error {
 
 	// if there was no error from TermRead parse input (leading to execution) of the command
 	if err == nil {
-		if inputLen > 0 {
-			s, err := dbg.parseInput(string(input[:inputLen]), inputter.IsInteractive())
+		if len(input) > 0 {
+			s, err := dbg.parseInput(input, inputter.IsInteractive())
 			if err != nil {
 				dbg.printLine(terminal.StyleError, "%s", err)
 			}
@@ -621,26 +616,23 @@ func (dbg *Debugger) handleInterrupt(inputter terminal.Input) {
 	}
 
 	// terminal is interactive so we ask for quit confirmation
-	confirm := make([]byte, 1)
-	_, err = inputter.TermRead(confirm,
-		terminal.Prompt{
-			Content: "really quit (y/n) ",
-			Type:    terminal.PromptTypeConfirm,
-		},
-		dbg.events)
+	s, err := inputter.TermRead(terminal.Prompt{
+		Content: "really quit (y/n) ",
+		Type:    terminal.PromptTypeConfirm,
+	}, dbg.events)
 
 	if err != nil {
 		// another UserInterrupt has occurred. we treat a second UserInterrupt
 		// as thought 'y' was pressed
 		if errors.Is(err, terminal.UserInterrupt) {
-			confirm[0] = 'y'
+			s = "y"
 		} else {
 			dbg.printLine(terminal.StyleError, err.Error())
 		}
 	}
 
 	// check if confirmation has been confirmed
-	if confirm[0] == 'y' || confirm[0] == 'Y' {
+	if s == "y" || s == "Y" {
 		dbg.running = false
 	}
 }

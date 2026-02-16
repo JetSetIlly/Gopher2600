@@ -229,9 +229,6 @@ type Debugger struct {
 
 	// \/\/\/ debugger inputLoop \/\/\/
 
-	// buffer for user input
-	input []byte
-
 	// the current script being read
 	scriptHandler script.Handler
 
@@ -436,9 +433,6 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 
 	// connect signals to dbg.events.Signal channel
 	signal.Notify(dbg.events.Signal, os.Interrupt, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGQUIT)
-
-	// allocate memory for user input
-	dbg.input = make([]byte, 255)
 
 	// create GUI
 	dbg.gui, dbg.term, err = create(dbg)

@@ -107,7 +107,7 @@ func (trm *term) TermPrintLine(style terminal.Style, s string) {
 }
 
 // TermRead implements the terminal.Input interface.
-func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
+func (trm *term) TermRead(prompt terminal.Prompt, events *terminal.ReadEvents) (string, error) {
 	trm.promptChan <- prompt
 
 	// the debugger is waiting for input from the terminal but we still need to
@@ -115,27 +115,25 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 	for {
 		select {
 		case inp := <-trm.inputChan:
-			copy(buffer, inp+"\n")
-			return len(inp) + 1, nil
+			return inp, nil
 
 		case inp := <-trm.sideChan:
-			copy(buffer, inp+"\n")
-			return len(inp) + 1, nil
+			return inp, nil
 
 		case sig := <-events.Signal:
-			return 0, events.SignalHandler(sig)
+			return "", events.SignalHandler(sig)
 
 		case ev := <-events.PushedFunction:
 			ev()
 
 		case ev := <-events.PushedFunctionImmediate:
 			ev()
-			return 0, nil
+			return "", nil
 
 		case ev := <-events.UserInput:
 			err := events.UserInputHandler(ev)
 			if err != nil {
-				return 0, nil
+				return "", nil
 			}
 		}
 	}

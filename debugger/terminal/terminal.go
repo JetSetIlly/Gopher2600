@@ -35,7 +35,7 @@ type Input interface {
 	//
 	// Implementations that can't check ReadEvents will surely limit the
 	// functionality of the debugger.
-	TermRead(buffer []byte, prompt Prompt, events *ReadEvents) (int, error)
+	TermRead(prompt Prompt, events *ReadEvents) (string, error)
 
 	// TermReadCheck() returns true if there is input to be read. Not all
 	// implementations will be able return anything meaningful in which case a

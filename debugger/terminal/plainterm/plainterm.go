@@ -36,6 +36,7 @@ type PlainTerminal struct {
 	realInput  bool
 	realOutput bool
 	silenced   bool
+	buffer     []byte
 }
 
 // Initialise perfoms any setting up required for the terminal.
@@ -44,6 +45,7 @@ func (pt *PlainTerminal) Initialise() error {
 	pt.output = os.Stdout
 	pt.realInput = term.IsTerminal(int(os.Stdin.Fd()))
 	pt.realOutput = term.IsTerminal(int(os.Stdout.Fd()))
+	pt.buffer = make([]byte, 255)
 	return nil
 }
 
@@ -81,9 +83,9 @@ func (pt PlainTerminal) TermPrintLine(style terminal.Style, s string) {
 }
 
 // TermRead implements the terminal.Input interface.
-func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
+func (pt PlainTerminal) TermRead(prompt terminal.Prompt, events *terminal.ReadEvents) (string, error) {
 	if pt.silenced {
-		return 0, nil
+		return "", nil
 	}
 
 	// insert prompt into output stream
@@ -91,9 +93,9 @@ func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, events *t
 		pt.output.Write([]byte(prompt.String()))
 	}
 
-	n, err := pt.input.Read(input)
+	n, err := pt.input.Read(pt.buffer)
 	if err != nil {
-		return n, err
+		return "", err
 	}
 
 	// while we were waiting for the call to Read() to return we may have
@@ -104,11 +106,11 @@ func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, events *t
 	// debugger inputer loop elsewhere
 	select {
 	case sig := <-events.Signal:
-		return 0, events.SignalHandler(sig)
+		return "", events.SignalHandler(sig)
 	default:
 	}
 
-	return n, nil
+	return string(pt.buffer[:n]), nil
 }
 
 // TermReadCheck implements the terminal.Input interface.
