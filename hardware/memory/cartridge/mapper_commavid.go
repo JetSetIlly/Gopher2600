@@ -85,7 +85,7 @@ func newCommaVid(env *environment.Environment) (mapper.CartMapper, error) {
 
 // MappedBanks implements the mapper.CartMapper interface.
 func (cart *commavid) MappedBanks() string {
-	return fmt.Sprintf("Bank: 0")
+	return "Bank: 0"
 }
 
 // ID implements the mapper.CartMapper interface.
@@ -118,7 +118,7 @@ func (cart *commavid) Reset() error {
 
 // Access implements the mapper.CartMapper interface.
 func (cart *commavid) Access(addr uint16, _ bool) (uint8, uint8, error) {
-	if addr >= 0x0000 && addr <= 0x03ff {
+	if addr <= 0x03ff {
 		return cart.state.ram[addr], mapper.CartDrivenPins, nil
 	}
 	if addr >= 0x0400 && addr <= 0x07ff {

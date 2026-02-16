@@ -110,7 +110,7 @@ func (cart *parkerBros) Reset() error {
 // Access implements the mapper.CartMapper interface.
 func (cart *parkerBros) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	var data uint8
-	if addr >= 0x0000 && addr <= 0x03ff {
+	if addr <= 0x03ff {
 		data = cart.banks[cart.state.segment[0]][addr&0x03ff]
 	} else if addr >= 0x0400 && addr <= 0x07ff {
 		data = cart.banks[cart.state.segment[1]][addr&0x03ff]
@@ -136,7 +136,7 @@ func (cart *parkerBros) AccessVolatile(addr uint16, data uint8, poke bool) error
 	}
 
 	if poke {
-		if addr >= 0x0000 && addr <= 0x03ff {
+		if addr <= 0x03ff {
 			cart.banks[cart.state.segment[0]][addr&0x3ff] = data
 		} else if addr >= 0x0400 && addr <= 0x07ff {
 			cart.banks[cart.state.segment[1]][addr&0x3ff] = data
@@ -224,7 +224,7 @@ func (cart *parkerBros) NumBanks() int {
 // GetBank implements the mapper.CartMapper interface.
 func (cart *parkerBros) GetBank(addr uint16) mapper.BankInfo {
 	var seg int
-	if addr >= 0x0000 && addr <= 0x03ff {
+	if addr <= 0x03ff {
 		seg = 0
 	} else if addr >= 0x0400 && addr <= 0x07ff {
 		seg = 1

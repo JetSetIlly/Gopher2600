@@ -226,6 +226,4 @@ func newDbgScrOverlayShader(img *SdlImgui) shaderProgram {
 func (sh *dbgScrOverlayShader) setAttributes(env shaderEnvironment) {
 	sh.shader.setAttributes(env)
 	sh.dbgScrHelper.set(sh.img)
-	sh.img.screen.crit.section.Lock()
-	sh.img.screen.crit.section.Unlock()
 }

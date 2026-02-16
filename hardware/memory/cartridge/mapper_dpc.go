@@ -155,7 +155,7 @@ func (cart *dpc) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	// the first eight registers do not touch the data fetchers and therefore
 	// do not trigger any of the side-effects on the data fetchers's counter
 	// registers [see below]
-	if addr >= 0x0000 && addr <= 0x0003 {
+	if addr <= 0x0003 {
 		// RNG value
 		return cart.state.registers.RNG, mapper.CartDrivenPins, nil
 	} else if addr >= 0x0004 && addr <= 0x0007 {

@@ -177,7 +177,7 @@ func (cart *mnetwork) Reset() error {
 func (cart *mnetwork) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	var data uint8
 
-	if addr >= 0x0000 && addr <= 0x07ff {
+	if addr <= 0x07ff {
 		if addr <= 0x03ff && cart.state.use1kRAM {
 			return 0, 0, nil
 		}
@@ -217,7 +217,7 @@ func (cart *mnetwork) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		}
 	}
 
-	if addr >= 0x0000 && addr <= 0x07ff {
+	if addr <= 0x07ff {
 		if addr <= 0x03ff && cart.state.use1kRAM {
 			cart.state.ram1k[addr&0x03ff] = data
 			return nil
@@ -304,7 +304,7 @@ func (cart *mnetwork) NumBanks() int {
 
 // GetBank implements the mapper.CartMapper interface.
 func (cart *mnetwork) GetBank(addr uint16) mapper.BankInfo {
-	if addr >= 0x0000 && addr <= 0x07ff {
+	if addr <= 0x07ff {
 		if cart.state.use1kRAM {
 			return mapper.BankInfo{Number: cart.state.bank, IsRAM: true, IsSegmented: true, Segment: 0}
 		}

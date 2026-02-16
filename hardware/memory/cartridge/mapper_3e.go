@@ -172,7 +172,7 @@ func (cart *m3e) NumBanks() int {
 
 // GetBank implements the mapper.CartMapper interface.
 func (cart *m3e) GetBank(addr uint16) mapper.BankInfo {
-	if addr >= 0x0000 && addr <= 0x07ff {
+	if addr <= 0x07ff {
 		return mapper.BankInfo{Number: cart.state.segment[0], IsRAM: cart.state.segmentIsRAM[0], IsSegmented: true, Segment: 0}
 	}
 	return mapper.BankInfo{Number: cart.state.segment[1], IsRAM: cart.state.segmentIsRAM[1], IsSegmented: true, Segment: 1}

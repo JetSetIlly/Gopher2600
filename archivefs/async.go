@@ -68,9 +68,9 @@ func NewAsyncPath(setter FilenameSetter) AsyncPath {
 
 		// prep must be an unbuffered channel to make sure that content from
 		// the Entry channel comes after a new response from the results channel
-		prep:  make(chan AsyncResults, 0),
+		prep:  make(chan AsyncResults),
 		entry: make(chan Entry, 100),
-		err:   make(chan error, 0),
+		err:   make(chan error),
 	}
 
 	go func() {

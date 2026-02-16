@@ -134,7 +134,7 @@ func (cart *m3ePlus) Reset() error {
 func (cart *m3ePlus) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	var segment int
 
-	if addr >= 0x0000 && addr <= 0x03ff {
+	if addr <= 0x03ff {
 		segment = 0
 	} else if addr >= 0x0400 && addr <= 0x07ff {
 		segment = 1
@@ -162,7 +162,7 @@ func (cart *m3ePlus) Access(addr uint16, _ bool) (uint8, uint8, error) {
 func (cart *m3ePlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	var segment int
 
-	if addr >= 0x0000 && addr <= 0x03ff {
+	if addr <= 0x03ff {
 		segment = 0
 	} else if addr >= 0x0400 && addr <= 0x07ff {
 		segment = 1
@@ -196,7 +196,7 @@ func (cart *m3ePlus) NumBanks() int {
 // GetBank implements the mapper.CartMapper interface.
 func (cart *m3ePlus) GetBank(addr uint16) mapper.BankInfo {
 	var seg int
-	if addr >= 0x0000 && addr <= 0x03ff {
+	if addr <= 0x03ff {
 		seg = 0
 	} else if addr >= 0x0400 && addr <= 0x07ff {
 		seg = 1

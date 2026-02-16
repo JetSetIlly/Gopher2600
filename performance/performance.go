@@ -101,32 +101,29 @@ func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, s
 
 		// run until specified time elapses
 		err = vcs.Run(func() (govern.State, error) {
-			for {
-				performanceBrake++
-				if performanceBrake >= hardware.PerformanceBrake {
-					performanceBrake = 0
+			performanceBrake++
+			if performanceBrake >= hardware.PerformanceBrake {
+				performanceBrake = 0
 
-					select {
-					case v := <-timerChan:
-						// timerChan has returned true, which means measurement
-						// period has finished, return false to cause vcs.Run() to
-						// return
-						if v {
-							return govern.Ending, timedOut
-						}
-
-						// timerChan has returned false which indicates that the
-						// leadtime has concluded. this means the performance
-						// measurement has begun and we should record the start
-						// frame.
-						startFrame = tv.GetCoords().Frame
-					default:
-						return govern.Running, nil
+				select {
+				case v := <-timerChan:
+					// timerChan has returned true, which means measurement
+					// period has finished, return false to cause vcs.Run() to
+					// return
+					if v {
+						return govern.Ending, timedOut
 					}
-				}
 
-				return govern.Running, nil
+					// timerChan has returned false which indicates that the
+					// leadtime has concluded. this means the performance
+					// measurement has begun and we should record the start
+					// frame.
+					startFrame = tv.GetCoords().Frame
+				default:
+				}
 			}
+
+			return govern.Running, nil
 		})
 		return err
 	}

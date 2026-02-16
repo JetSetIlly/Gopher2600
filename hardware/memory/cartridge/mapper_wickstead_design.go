@@ -193,7 +193,7 @@ func (cart *wicksteadDesign) getBank(addr uint16) (int, int, uint16) {
 	var bank int
 	var idx uint16
 
-	if addr >= 0x0000 && addr <= 0x03ff {
+	if addr <= 0x03ff {
 		segment = 0
 		bank = cart.state.segments[0]
 		idx = addr

@@ -266,7 +266,7 @@ func launch(sync *mainSync, args []string) {
 	case "DISASM":
 		err = disasm(mode, args[1:])
 	case "PERFORMANCE":
-		err = perform(mode, sync, args[1:])
+		err = perform(mode, args[1:])
 	case "REGRESS":
 		err = regress(mode, args[1:])
 	case "VERSION":
@@ -545,7 +545,7 @@ func disasm(mode string, args []string) error {
 	return nil
 }
 
-func perform(mode string, sync *mainSync, args []string) error {
+func perform(mode string, args []string) error {
 	var mapping string
 	var bank string
 	var spec string

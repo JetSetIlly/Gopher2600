@@ -663,9 +663,7 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 		return fmt.Errorf("ARM7: trying to set registers SP, LR or PC")
 	}
 
-	for i := range args {
-		arm.state.registers[i] = args[i]
-	}
+	copy(arm.state.registers[:], args)
 
 	// fill the pipeline before yielding. this ensures that the PC is
 	// correct on the first call to Run()
