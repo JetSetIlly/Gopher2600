@@ -383,7 +383,18 @@ func fingerprintEF(loader cartridgeloader.Loader) (superchip bool, ok bool) {
 	if loader.Contains([]byte{'E', 'F', 'S', 'C'}) {
 		return true, true
 	}
-	return false, false
+
+	fingerprint := [][]byte{
+		{0x0c, 0xe0, 0xff}, // nop $ffe0
+		{0xad, 0xe0, 0xff}, // lda $ffe0
+		{0x0c, 0xe0, 0x1f}, // nop $1fe0
+		{0xad, 0xe0, 0x1f}, // lda $1fe0
+	}
+	if !slices.ContainsFunc(fingerprint, loader.Contains) {
+		return false, false
+	}
+
+	return hasSuperchipFromLoader(loader), true
 }
 
 func fingerprintBF(loader cartridgeloader.Loader) (superchip bool, ok bool) {
@@ -495,6 +506,15 @@ func fingerprint256k(loader cartridgeloader.Loader) string {
 		return "SB"
 	}
 	return unrecognisedMapper
+}
+
+func hasSuperchipFromLoader(loader cartridgeloader.Loader) bool {
+	for d := range loader.Slice(0x1000, 0x0, 0x100) {
+		if !bytes.Equal(d[:0x80], d[0x80:]) {
+			return false
+		}
+	}
+	return true
 }
 
 // check if dump data indidcates the presence of a SARA superchip in the cartridge

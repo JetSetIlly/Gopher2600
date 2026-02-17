@@ -316,10 +316,9 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	case "3E+":
 		cart.mapper, err = new3ePlus(cart.env)
 	case "EF":
-		cart.mapper, err = newEF(cart.env)
+		cart.mapper, err = newEF(cart.env, false)
 	case "EFSC":
-		cart.mapper, err = newEF(cart.env)
-		forceSuperchip = true
+		cart.mapper, err = newEF(cart.env, true)
 	case "BF":
 		cart.mapper, err = newBF(cart.env)
 	case "BFSC":

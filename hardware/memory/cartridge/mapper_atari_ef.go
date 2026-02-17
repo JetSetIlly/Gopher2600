@@ -29,7 +29,7 @@ type ef struct {
 }
 
 // newEF is the preferred method of initialisation for the ef type
-func newEF(env *environment.Environment) (mapper.CartMapper, error) {
+func newEF(env *environment.Environment, superchip bool) (mapper.CartMapper, error) {
 	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("EF: %w", err)
@@ -40,7 +40,7 @@ func newEF(env *environment.Environment) (mapper.CartMapper, error) {
 			env:            env,
 			bankSize:       4096,
 			mappingID:      "EF",
-			needsSuperchip: hasSuperchip(data),
+			needsSuperchip: superchip,
 			state:          newAtariState(),
 		},
 	}

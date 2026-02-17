@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -307,6 +308,18 @@ func (ld Loader) Seek(offset int64, whence int) (int64, error) {
 // Size returns the size of the cartridge data in bytes
 func (ld Loader) Size() int {
 	return ld.size
+}
+
+// Slice iterates over equally space chunks of preload data
+func (ld Loader) Slice(stride int, offset int, length int) iter.Seq[[]byte] {
+	return func(yield func([]byte) bool) {
+		for i := offset; i < len(ld.preload); i += stride {
+			j := min(i+length, len(ld.preload))
+			if !yield(ld.preload[i:j]) {
+				return
+			}
+		}
+	}
 }
 
 // Contains returns true if subslice appears anywhere in the preload data.
