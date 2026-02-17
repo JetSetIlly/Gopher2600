@@ -56,7 +56,7 @@ func (kp *KeyportariASCII) HandleEvent(event ports.Event, data ports.EventData) 
 		var v uint8
 		switch d.Key {
 		case "Return":
-			v = 0x0a
+			v = 0x0d
 		case "Backspace":
 			v = 0x7f
 		case "Space":
