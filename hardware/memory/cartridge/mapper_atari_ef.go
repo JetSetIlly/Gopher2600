@@ -37,11 +37,10 @@ func newEF(env *environment.Environment, superchip bool) (mapper.CartMapper, err
 
 	cart := &ef{
 		atari: atari{
-			env:            env,
-			bankSize:       4096,
-			mappingID:      "EF",
-			needsSuperchip: superchip,
-			state:          newAtariState(),
+			env:       env,
+			bankSize:  4096,
+			mappingID: "EF",
+			state:     newAtariState(),
 		},
 	}
 
@@ -54,6 +53,11 @@ func newEF(env *environment.Environment, superchip bool) (mapper.CartMapper, err
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
+	}
+
+	if superchip {
+		cart.mappingID = "EFSC"
+		cart.state.ram = make([]uint8, superchipSize)
 	}
 
 	return cart, nil

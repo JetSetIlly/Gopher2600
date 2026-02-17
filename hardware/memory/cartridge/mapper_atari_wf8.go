@@ -33,7 +33,7 @@ type wf8 struct {
 	atari
 }
 
-func newWF8(env *environment.Environment) (mapper.CartMapper, error) {
+func newWF8(env *environment.Environment, superchip bool) (mapper.CartMapper, error) {
 	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("WF8: %w", err)
@@ -41,11 +41,10 @@ func newWF8(env *environment.Environment) (mapper.CartMapper, error) {
 
 	cart := &wf8{
 		atari: atari{
-			env:            env,
-			bankSize:       4096,
-			mappingID:      "WF8",
-			needsSuperchip: hasSuperchip(data),
-			state:          newAtariState(),
+			env:       env,
+			bankSize:  4096,
+			mappingID: "WF8",
+			state:     newAtariState(),
 		},
 	}
 
@@ -58,6 +57,11 @@ func newWF8(env *environment.Environment) (mapper.CartMapper, error) {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
+	}
+
+	if superchip {
+		cart.mappingID = "WFSC"
+		cart.state.ram = make([]uint8, superchipSize)
 	}
 
 	return cart, nil

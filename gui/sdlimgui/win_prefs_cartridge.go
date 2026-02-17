@@ -16,9 +16,6 @@
 package sdlimgui
 
 import (
-	"strings"
-
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/imgui-go/v5"
 )
@@ -34,23 +31,22 @@ func (win *winPrefs) drawCartridge() {
 	}
 	imgui.Spacing()
 	if imgui.CollapsingHeader("SARA") {
+		if !win.img.cache.VCS.Mem.Cart.HasSuperchip() {
+			imgui.Spacing()
+			imgui.Text("Current ROM does not have a SARA chip")
+			imguiSeparator()
+		}
+		imgui.Spacing()
 		win.drawSARA()
 	}
 }
 
-func (win *winPrefs) drawSARA() {
-	if !strings.Contains(win.img.cache.VCS.Mem.Cart.ID(), cartridge.SuperchipID) {
-		imgui.Spacing()
-		imgui.Text("Current ROM does not have a SARA chip")
-		imguiSeparator()
-	}
-
-	imgui.Spacing()
-
+func (win *winPrefs) drawSARA() bool {
 	emulateSARA := win.img.dbg.VCS().Env.Prefs.Cartridge.EmulateSARA.Get().(bool)
 	if imgui.Checkbox("Emulate Cycle Limitations", &emulateSARA) {
 		win.img.dbg.VCS().Env.Prefs.Cartridge.EmulateSARA.Set(emulateSARA)
 	}
+	return emulateSARA
 }
 
 func (win *winPrefs) drawARMTab() {

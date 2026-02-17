@@ -30,7 +30,7 @@ type bf struct {
 }
 
 // newBF is the preferred method of initialisation for the ef type
-func newBF(env *environment.Environment) (mapper.CartMapper, error) {
+func newBF(env *environment.Environment, superchip bool) (mapper.CartMapper, error) {
 	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("BF: %w", err)
@@ -38,11 +38,10 @@ func newBF(env *environment.Environment) (mapper.CartMapper, error) {
 
 	cart := &bf{
 		atari: atari{
-			env:            env,
-			bankSize:       4096,
-			mappingID:      "BF",
-			needsSuperchip: hasSuperchip(data),
-			state:          newAtariState(),
+			env:       env,
+			bankSize:  4096,
+			mappingID: "BF",
+			state:     newAtariState(),
 		},
 	}
 
@@ -55,6 +54,11 @@ func newBF(env *environment.Environment) (mapper.CartMapper, error) {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
+	}
+
+	if superchip {
+		cart.mappingID = "BFSC"
+		cart.state.ram = make([]uint8, superchipSize)
 	}
 
 	return cart, nil

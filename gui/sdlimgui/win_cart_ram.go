@@ -187,17 +187,16 @@ func (win *winCartRAM) draw(ram []mapper.CartRAM) {
 
 				imgui.Spacing()
 
-				if current.CycleSensitive {
-					win.img.wm.windows[winPrefsID].(*winPrefs).drawSARA()
-
+				if win.img.cache.VCS.Mem.Cart.HasSuperchip() {
+					emulateSara := win.img.wm.windows[winPrefsID].(*winPrefs).drawSARA()
 					imgui.SameLineV(0, 25)
-					drawInvisible(!current.CycleSensitiveActive, func() {
-						if current.Cycles > 0 {
+					drawInvisible(!emulateSara, func() {
+						if current.Recovery > 0 {
 							var s string
-							if current.Cycles == 1 {
-								s = fmt.Sprintf(" %d cycle ", current.Cycles)
+							if current.Recovery == 1 {
+								s = fmt.Sprintf(" %d cycle ", current.Recovery)
 							} else {
-								s = fmt.Sprintf(" %d cycles ", current.Cycles)
+								s = fmt.Sprintf(" %d cycles ", current.Recovery)
 							}
 							imguiColourButton(win.img.cols.False, s, win.readyIndicatorDim)
 						} else {

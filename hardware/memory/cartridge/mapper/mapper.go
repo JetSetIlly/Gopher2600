@@ -118,14 +118,6 @@ type PlumbFromDifferentEmulation interface {
 	PlumbFromDifferentEmulation(*environment.Environment)
 }
 
-// OptionalSuperchip are implemented by CartMapper implementations that require
-// an optional superchip. This shouldn't be used to decide if a cartridge has
-// additional RAM or not. Use the CartRAMbus interface for that.
-type OptionalSuperchip interface {
-	// the force argument causes the superchip to be added whether it needs it or not
-	AddSuperchip(force bool)
-}
-
 // CartRAMbus is implemented for catridge mappers that have an addressable RAM
 // area. This differs from a Static area which is not addressable by the VCS.
 //
@@ -159,10 +151,9 @@ type CartRAM struct {
 	Mapped bool
 
 	// some cartridge RAM hardware implementations have restrictions on how quickly they can be
-	// accessed. (ie. SARA ram)
-	CycleSensitive       bool
-	CycleSensitiveActive bool
-	Cycles               int
+	// accessed (eg. SARA ram). the Recovery field indicates how many cycles until the RAM hardware
+	// is ready. it's ready if the value is zero
+	Recovery int
 }
 
 // CartRegistersBus defines the operations required for a debugger to access

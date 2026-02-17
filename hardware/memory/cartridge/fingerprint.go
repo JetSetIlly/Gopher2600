@@ -20,12 +20,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/bits"
 	"slices"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/hardware/cpu"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // if anwhere parameter is true then the ELF magic number can appear anywhere
@@ -376,12 +373,12 @@ func fingerprintWF8(loader cartridgeloader.Loader) bool {
 	return loader.HashMD5 == smurf || loader.HashMD5 == zaxxon
 }
 
-func fingerprintEF(loader cartridgeloader.Loader) (superchip bool, ok bool) {
+func fingerprintEF(loader cartridgeloader.Loader) bool {
 	if loader.Contains([]byte{'E', 'F', 'E', 'F'}) {
-		return false, true
+		return true
 	}
 	if loader.Contains([]byte{'E', 'F', 'S', 'C'}) {
-		return true, true
+		return true
 	}
 
 	fingerprint := [][]byte{
@@ -391,20 +388,20 @@ func fingerprintEF(loader cartridgeloader.Loader) (superchip bool, ok bool) {
 		{0xad, 0xe0, 0x1f}, // lda $1fe0
 	}
 	if !slices.ContainsFunc(fingerprint, loader.Contains) {
-		return false, false
+		return false
 	}
 
-	return hasSuperchipFromLoader(loader), true
+	return true
 }
 
-func fingerprintBF(loader cartridgeloader.Loader) (superchip bool, ok bool) {
+func fingerprintBF(loader cartridgeloader.Loader) bool {
 	if loader.Contains([]byte{'B', 'F', 'B', 'F'}) {
-		return false, true
+		return true
 	}
 	if loader.Contains([]byte{'B', 'F', 'S', 'C'}) {
-		return true, true
+		return true
 	}
-	return false, false
+	return false
 }
 
 func fingerprintSB(loader cartridgeloader.Loader) bool {
@@ -476,10 +473,7 @@ func fingerprint32k(loader cartridgeloader.Loader) string {
 }
 
 func fingerprint64k(loader cartridgeloader.Loader) string {
-	if sc, ok := fingerprintEF(loader); ok {
-		if sc {
-			return "EFSC"
-		}
+	if fingerprintEF(loader) {
 		return "EF"
 	}
 	return unrecognisedMapper
@@ -496,10 +490,7 @@ func fingerprint128k(loader cartridgeloader.Loader) string {
 }
 
 func fingerprint256k(loader cartridgeloader.Loader) string {
-	if sc, ok := fingerprintBF(loader); ok {
-		if sc {
-			return "BFSC"
-		}
+	if fingerprintBF(loader) {
 		return "BF"
 	}
 	if fingerprintSB(loader) {
@@ -508,63 +499,13 @@ func fingerprint256k(loader cartridgeloader.Loader) string {
 	return unrecognisedMapper
 }
 
-func hasSuperchipFromLoader(loader cartridgeloader.Loader) bool {
+func hasSuperchip(loader cartridgeloader.Loader) bool {
+	// for every "bank" in the cartridge dump check to see every byte in the range 0x00-0x7f mirror
+	// the bytes in the range 0x80-0xff. if they do not then this is almost certainly not a
+	// superchip dump
 	for d := range loader.Slice(0x1000, 0x0, 0x100) {
 		if !bytes.Equal(d[:0x80], d[0x80:]) {
 			return false
-		}
-	}
-	return true
-}
-
-// check if dump data indidcates the presence of a SARA superchip in the cartridge
-func hasSuperchip(d []uint8) bool {
-	// the data that is in the superchip area depends on how the ROM file was dumped
-	//
-	// in an ideal dump, the data will be all zeros or something like that. for example, the Fatal
-	// Run ROM (with the MD5 value of 85470dcb7989e5e856f36b962d815537) contains all 0xff values in
-	// the superchip area
-	//
-	// in some cases though, the data seems random. for example, the Dig Dug dump (with the MD5
-	// value of 6dda84fb8e442ecf34241ac0d1d91d69) contains seemingly random data
-	//
-	// we need a strategy to distinguish what looks like random data from real data
-
-	// before anything else, we want to reject dump lenths that are not 2k, 4k, 8k, etc. we are
-	// saying that the superchip is only ever present in regular sized cartridges
-	if bits.OnesCount(uint(len(d))) > 1 {
-		return false
-	}
-
-	// we can also say that a superchip is not present if the reset address is in the superchip
-	// address area
-
-	// to decide if this is the case we first need to acquire the reset vector and to mask it
-	// appropriately so it is within range of the dump data (the second step here is really only
-	// required for 2k dumps. it does nothing for 4k dumps and above)
-	resetVector := (cpu.Reset & memorymap.CartridgeBits)
-	resetVector &= uint16(len(d) - 1)
-
-	// we can now read the actual reset address and compare against the superchip address size. if
-	// the entry address is in the super chip address area then a superchip is not present
-	entryAddress := uint16(d[resetVector]) | (uint16(d[resetVector+1])<<8)&memorymap.CartridgeBits
-	if entryAddress < superchipAddressSize {
-		return false
-	}
-
-	// for every "bank" in the cartridge dump check to see every byte in the range 0x00-0x80 mirror
-	// the bytes in the range 0x81-0xff. if they do not then this is almost certainly not a
-	// superchip dump
-	//
-	// the min() directive is to make sure the loop iterates at least once. we want to check ROMs
-	// that are less than 4k in size and dividing the length of those dumps by 4k means no
-	// iterations
-	for p := range len(d) / min(len(d), 4096) {
-		pd := d[p*4096:]
-		for i, b := range pd[:superchipSize] {
-			if b != pd[i+superchipSize] {
-				return false
-			}
 		}
 	}
 
@@ -587,7 +528,6 @@ func hasSuperchip(d []uint8) bool {
 	// distinguishable. moreover, because we check the first page of every bank in the cartridge,
 	// the larger the cartridge the less likelihood there is for a false positive
 
-	// all the tests have passed so it seems likely that this is a superchip dump
 	return true
 }
 
