@@ -265,17 +265,17 @@ func (cart *Cartridge) Attach(loader cartridgeloader.Loader) error {
 		cart.mapper, err = newAtari16k(cart.env, auto && hasSuperchip(loader))
 	case "F4":
 		cart.mapper, err = newAtari32k(cart.env, auto && hasSuperchip(loader))
-	case "2KSC":
+	case "2KSC", "2K+":
 		cart.mapper, err = newAtari2k(cart.env, true)
-	case "4KSC":
+	case "4KSC", "4K+":
 		cart.mapper, err = newAtari4k(cart.env, true)
-	case "F8SC":
+	case "F8SC", "F8+":
 		cart.mapper, err = newAtari8k(cart.env, true)
 	case "WF8SC":
 		cart.mapper, err = newWF8(cart.env, true)
-	case "F6SC":
+	case "F6SC", "F6+":
 		cart.mapper, err = newAtari16k(cart.env, true)
-	case "F4SC":
+	case "F4SC", "F4+":
 		cart.mapper, err = newAtari32k(cart.env, true)
 	case "CV":
 		cart.mapper, err = newCommaVid(cart.env)
@@ -301,13 +301,7 @@ func (cart *Cartridge) Attach(loader cartridgeloader.Loader) error {
 		cart.mapper, err = newDF(cart.env)
 	case "3E":
 		cart.mapper, err = new3e(cart.env)
-	case "E3P":
-		// synonym for 3E+
-		fallthrough
-	case "E3+":
-		// synonym for 3E+
-		fallthrough
-	case "3E+":
+	case "E3P", "E3+", "3E+":
 		cart.mapper, err = new3ePlus(cart.env)
 	case "EF":
 		cart.mapper, err = newEF(cart.env, auto && hasSuperchip(loader))
