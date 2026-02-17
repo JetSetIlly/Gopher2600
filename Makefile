@@ -1,5 +1,5 @@
 
-version = v0.53.0
+version = v0.53.1
 final = true
 
 ifeq ($(final),false)
