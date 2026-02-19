@@ -301,6 +301,11 @@ func (cart *atari) accessVolatile(addr uint16, data uint8, poke bool) error {
 		}
 	}
 
+	if poke {
+		cart.banks[cart.state.bank][addr] = data
+		return nil
+	}
+
 	return nil
 }
 
