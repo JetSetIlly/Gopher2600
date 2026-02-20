@@ -41,10 +41,11 @@ func (dbg *Debugger) unwindLoop(onRestart func() error) {
 
 // catchupLoop is a special purpose loop designed to run inside of the inputLoop. it is called only
 // when catchupContinue has been set in CatchUpLoop(), which is called as a consequence of a rewind event.
-func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
+func (dbg *Debugger) catchupLoop(inpt terminal.Input) error {
 	var ended bool
 
 	callback := func(isCycle bool) error {
+		// check whether debugger loop needs to unwind before continuing
 		if dbg.unwindLoopRestart != nil {
 			return nil
 		}
@@ -73,13 +74,13 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 				// for QuantumCycle we need to pay attention to the isCycle flag
 				switch dbg.Quantum() {
 				case govern.QuantumInstruction:
-					return dbg.inputLoop(inputter, true)
+					return dbg.inputLoop(inpt, true)
 				case govern.QuantumCycle:
 					if isCycle {
-						return dbg.inputLoop(inputter, true)
+						return dbg.inputLoop(inpt, true)
 					}
 				case govern.QuantumClock:
-					return dbg.inputLoop(inputter, true)
+					return dbg.inputLoop(inpt, true)
 				}
 			}
 		} else if dbg.catchupContinue != nil && !dbg.catchupContinue() {
@@ -98,7 +99,7 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 				return nil
 			}
 
-			return dbg.inputLoop(inputter, true)
+			return dbg.inputLoop(inpt, true)
 		}
 
 		return nil
@@ -142,6 +143,7 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 		}
 		dbg.counter.Step(1, dbg.liveBankInfo)
 
+		// check whether debugger loop needs to unwind before continuing
 		if dbg.unwindLoopRestart != nil {
 			return nil
 		}
@@ -151,7 +153,7 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 }
 
 // inputLoop has two modes, defined by the nonInstructionQuantum argument.
-func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bool) error {
+func (dbg *Debugger) inputLoop(inpt terminal.Input, nonInstructionQuantum bool) error {
 	var err error
 
 	for dbg.running {
@@ -164,11 +166,12 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 				panic("refusing to run catchup loop inside a nonInstructionQuantum step")
 			}
 
-			err = dbg.catchupLoop(inputter)
+			err = dbg.catchupLoop(inpt)
 			if err != nil {
 				return err
 			}
 
+			// check whether debugger loop needs to unwind before continuing
 			if dbg.unwindLoopRestart != nil {
 				return nil
 			}
@@ -188,7 +191,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 			err = dbg.readEventsHandler()
 			if err != nil {
 				if errors.Is(err, terminal.UserInterrupt) {
-					dbg.handleInterrupt(inputter)
+					dbg.handleInterrupt(inpt)
 				} else if errors.Is(err, terminal.UserSignal) {
 					return err
 				} else {
@@ -207,18 +210,15 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 				break // dbg.running loop
 			}
 
-			// unwindLoopRestart or catchupContinue may have been set as a result
-			// of readEventsHandler()
-
+			// unwindLoopRestart or catchupContinue may have been set as a result of readEventsHandler()
 			if dbg.unwindLoopRestart != nil {
 				return nil
 			}
-
 			if dbg.catchupContinue != nil {
 				continue // dbg.running loop
 			}
 
-			checkTerm = inputter.TermReadCheck()
+			checkTerm = inpt.TermReadCheck()
 		default:
 		}
 
@@ -293,7 +293,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 
 			// take note of current machine state if the emulation was in a running
 			// state and is halting just now
-			if dbg.continueEmulation && inputter.IsInteractive() {
+			if dbg.continueEmulation {
 				dbg.Rewind.RecordExecutionCoords()
 			}
 
@@ -323,8 +323,8 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 				}
 			}
 
-			// read input from terminal inputter and parse/run commands
-			err = dbg.termRead(inputter)
+			// read input and parse/run commands
+			err = dbg.termRead(inpt)
 			if err != nil {
 				return err
 			}
@@ -334,10 +334,10 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 				return nil
 			}
 
+			// unwindLoopRestart or catchupContinue may have been set as a result of readEventsHandler()
 			if dbg.unwindLoopRestart != nil {
 				return nil
 			}
-
 			if dbg.catchupContinue != nil {
 				continue // dbg.running loop
 			}
@@ -352,7 +352,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 				// side-effects which would look ugly when we're only in fact
 				// stepping.
 				if dbg.halting.volatileTraps.isEmpty() {
-					if inputter.IsInteractive() {
+					if inpt.IsInteractive() {
 						dbg.setState(govern.Running, govern.Normal)
 					}
 				} else {
@@ -363,13 +363,13 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 				if !nonInstructionQuantum {
 					dbg.Rewind.UpdateComparison()
 				}
-			} else if inputter.IsInteractive() {
+			} else if inpt.IsInteractive() {
 				dbg.setState(govern.Stepping, govern.Normal)
 			}
 		}
 
 		if checkTerm {
-			err := dbg.termRead(inputter)
+			err := dbg.termRead(inpt)
 			if err != nil {
 				return err
 			}
@@ -396,7 +396,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 					return nil
 				}
 
-				err = dbg.step(inputter, false)
+				err = dbg.step(inpt, false)
 				if err != nil {
 					return err
 				}
@@ -404,7 +404,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 				// skip over WSYNC (CPU RDY flag is false) only if we're in instruction quantum
 				if dbg.Quantum() == govern.QuantumInstruction {
 					for !dbg.vcs.CPU.RdyFlg {
-						err = dbg.step(inputter, false)
+						err = dbg.step(inpt, false)
 						if err != nil {
 							return err
 						}
@@ -422,7 +422,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bo
 	return nil
 }
 
-func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
+func (dbg *Debugger) step(inpt terminal.Input, catchup bool) error {
 	callback := func(isCycle bool) error {
 		var err error
 
@@ -460,7 +460,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 
 		if q == govern.QuantumClock || (q == govern.QuantumCycle && isCycle) || !dbg.continueEmulation {
 			// start another inputLoop() with the clockCycle boolean set to true
-			return dbg.inputLoop(inputter, true)
+			return dbg.inputLoop(inpt, true)
 		}
 
 		return nil
@@ -533,52 +533,59 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 	return nil
 }
 
-// termRead uses the TermRead() function of the inputter and process the output
-// as required by the debugger.
-func (dbg *Debugger) termRead(inputter terminal.Input) error {
-	var input string
-	var err error
+// termRead handles script queue and terminal read as appropriate
+func (dbg *Debugger) termRead(inpt terminal.Input) error {
+	var ended bool
 
-	// process remainingInput before get user input from terminal.Input implementatio
-	if s, ok := dbg.scriptHandler.Next(); ok {
-		input = s
-	} else {
-		input, err = inputter.TermRead(dbg.buildPrompt(), dbg.events)
-	}
+	for !ended {
+		// careful use of error. we capture the error from inpt.TermRead but we don't test
+		// it until a little bit later
+		var err error
 
-	if dbg.unwindLoopRestart != nil {
-		return nil
-	}
-
-	// if there was no error from TermRead parse input (leading to execution) of the command
-	if err == nil {
-		if len(input) > 0 {
-			s, err := dbg.parseInput(input, inputter.IsInteractive())
-			if err != nil {
-				dbg.printLine(terminal.StyleError, "%s", err)
+		// get entry from script queue. if queue is empty then get input from terminal
+		line, ok := dbg.scriptQueue.Next()
+		if !ok {
+			// see note about err
+			var s string
+			s, err = inpt.TermRead(dbg.buildPrompt(), dbg.events)
+			if err == nil {
+				line, err = dbg.scriptQueue.Push(s)
 			}
-			dbg.scriptHandler.Push(s)
 		}
-	} else {
-		if errors.Is(err, terminal.UserInterrupt) {
-			// user interrupts are used to quit or halt an operation
-			dbg.handleInterrupt(inputter)
 
-		} else if errors.Is(err, io.EOF) {
-			// an EOF error causes the emulation to exit immediately
-			dbg.running = false
-			dbg.continueEmulation = false
+		// check whether debugger loop needs to unwind before continuing
+		if dbg.unwindLoopRestart != nil {
 			return nil
-
-		} else {
-			// all other errors are passed upwards to the calling function
-			return err
 		}
-	}
 
-	// recurse into termRead() function if necessary
-	if !dbg.continueEmulation && dbg.scriptHandler.More() {
-		return dbg.termRead(inputter)
+		// if there was no error from inp.TermRead()
+		if err == nil {
+			if len(line.Entry) > 0 {
+				err = dbg.parseCommand(line.Entry, inpt.IsInteractive(), true)
+				if err != nil {
+					dbg.printLine(terminal.StyleError, "%s", err)
+				}
+			}
+		} else {
+			if errors.Is(err, terminal.UserInterrupt) {
+				// user interrupts are used to quit or halt an operation
+				dbg.handleInterrupt(inpt)
+
+			} else if errors.Is(err, io.EOF) {
+				// an EOF error causes the emulation to exit immediately if the terminal is an
+				// interactive terminal
+				if inpt.IsInteractive() {
+					dbg.running = false
+					dbg.continueEmulation = false
+					return nil
+				}
+			} else {
+				// all other errors are passed upwards to the calling function
+				return err
+			}
+		}
+
+		ended = dbg.continueEmulation || !dbg.scriptQueue.More()
 	}
 
 	return nil
@@ -586,15 +593,15 @@ func (dbg *Debugger) termRead(inputter terminal.Input) error {
 
 // interrupt signals need some special care depending on the current state and
 // what sort of terminal is being used.
-func (dbg *Debugger) handleInterrupt(inputter terminal.Input) {
+func (dbg *Debugger) handleInterrupt(inp terminal.Input) {
 	// end script scribe (if one is running)
 	err := dbg.scriptWrite.EndSession()
 	if err != nil {
 		logger.Log(logger.Allow, "debugger", err)
 	}
 
-	// exit immediately if inputter is not a real terminal
-	if !inputter.IsRealTerminal() {
+	// exit immediately if terminal.Input is not real
+	if !inp.IsRealTerminal() {
 		dbg.running = false
 		dbg.continueEmulation = false
 		return
@@ -609,14 +616,14 @@ func (dbg *Debugger) handleInterrupt(inputter terminal.Input) {
 
 	// terminal is not interactive so we set running to false which will
 	// quit the debugger as soon as possible
-	if !inputter.IsInteractive() {
+	if !inp.IsInteractive() {
 		dbg.running = false
 		dbg.continueEmulation = false
 		return
 	}
 
 	// terminal is interactive so we ask for quit confirmation
-	s, err := inputter.TermRead(terminal.Prompt{
+	s, err := inp.TermRead(terminal.Prompt{
 		Content: "really quit (y/n) ",
 		Type:    terminal.PromptTypeConfirm,
 	}, dbg.events)

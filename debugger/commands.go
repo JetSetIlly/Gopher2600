@@ -56,7 +56,7 @@ import (
 )
 
 var debuggerCommands *commandline.Commands
-var scriptUnsafeCommands *commandline.Commands
+var batchUnsafeCommands *commandline.Commands
 
 // this init() function "compiles" the commandTemplate above into a more
 // usuable form. It will cause the program to fail if the template is invalid.
@@ -73,15 +73,15 @@ func init() {
 		panic(err)
 	}
 
-	scriptUnsafeCommands, err = commandline.ParseCommandTemplate(scriptUnsafeTemplate)
+	batchUnsafeCommands, err = commandline.ParseCommandTemplate(batchUnsafeTemplate)
 	if err != nil {
 		panic(err)
 	}
 }
 
 // parseCommand tokenises the input and processes the tokens.
-func (dbg *Debugger) parseCommand(cmd string, interactive bool, echo bool) error {
-	tokens, err := dbg.tokeniseCommand(cmd, interactive, echo)
+func (dbg *Debugger) parseCommand(cmd string, batch bool, echo bool) error {
+	tokens, err := dbg.tokeniseCommand(cmd, batch, echo)
 	if err != nil {
 		return err
 	}
@@ -92,15 +92,14 @@ func (dbg *Debugger) parseCommand(cmd string, interactive bool, echo bool) error
 }
 
 // return tokenised command.
-func (dbg *Debugger) tokeniseCommand(cmd string, interactive bool, echo bool) (*commandline.Tokens, error) {
+func (dbg *Debugger) tokeniseCommand(cmd string, batch bool, echo bool) (*commandline.Tokens, error) {
 	// tokenise input
 	tokens := commandline.TokeniseInput(cmd)
 
 	// if there are no tokens in the input then continue with a default action
 	if tokens.Remaining() == 0 {
-		// do not use blank input as a synonym for the STEP command for scripting and
-		// non-interactive input
-		if dbg.scriptWrite.IsActive() || !interactive {
+		// do not use blank input as a synonym for the STEP command for batch scripting
+		if dbg.scriptWrite.IsActive() || batch {
 			return nil, nil
 		}
 		return dbg.tokeniseCommand("STEP", true, false)
@@ -119,12 +118,12 @@ func (dbg *Debugger) tokeniseCommand(cmd string, interactive bool, echo bool) (*
 	}
 
 	// test to see if command is allowed when recording/playing a script
-	if dbg.scriptWrite.IsActive() || !interactive {
+	if dbg.scriptWrite.IsActive() || batch {
 		tokens.Reset()
 
 		// fail when the tokens DO match the scriptUnsafe template (ie. when
 		// there is no err from the validate function)
-		err := scriptUnsafeCommands.ValidateTokens(tokens)
+		err := batchUnsafeCommands.ValidateTokens(tokens)
 		if err == nil {
 			return nil, fmt.Errorf("'%s' is unsafe to use non-interactively", tokens.String())
 		}
@@ -371,7 +370,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			return dbg.scriptWrite.EndSession()
 
 		default:
-			err := dbg.scriptHandler.Load(option)
+			err := dbg.scriptQueue.Load(option)
 			if err != nil {
 				return err
 			}

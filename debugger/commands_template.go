@@ -153,7 +153,7 @@ var commandTemplate = []string{
 	cmdVersion + " (REVISION)",
 }
 
-// list of commands that should not be executed when recording/playing scripts.
-var scriptUnsafeTemplate = []string{
+// list of commands that should not be executed when recording/playing batch scripts.
+var batchUnsafeTemplate = []string{
 	cmdScript + " [RECORD %S]",
 }

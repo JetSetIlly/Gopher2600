@@ -23,7 +23,6 @@ import (
 	"os/signal"
 	"runtime"
 	"runtime/pprof"
-	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -229,8 +228,8 @@ type Debugger struct {
 
 	// \/\/\/ debugger inputLoop \/\/\/
 
-	// the current script being read
-	scriptHandler script.Handler
+	// queue of possible commands, possibly from a loaded script
+	scriptQueue script.Queue
 
 	// the current script being written to
 	scriptWrite script.Write
@@ -711,7 +710,7 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 
 	// intialisation script because we're in debugger mode
 	if dbg.opts.Script != "" {
-		err := dbg.scriptHandler.Load(dbg.opts.Script)
+		err := dbg.scriptQueue.Load(dbg.opts.Script)
 		if err != nil {
 			return err
 		}
@@ -1402,40 +1401,6 @@ func (dbg *Debugger) endComparison() {
 	if err != nil {
 		logger.Log(logger.Allow, "debugger", err)
 	}
-}
-
-// parseInput splits the input into individual commands. each command is then passed to parseCommand
-// for processing
-//
-// interactive argument should be true if input source is an interactive terminal
-//
-// returns a string with any remaining unprocessed commands. this will happen if a command causes
-// the emulation to continue. these remaining commands should be queued for the next parsing
-func (dbg *Debugger) parseInput(input string, interactive bool) (string, error) {
-	var err error
-
-	// replace windows and mac line endings with unix line endings
-	input = strings.ReplaceAll(input, "\r\n", "\n")
-	input = strings.ReplaceAll(input, "\r", "\n")
-
-	// commands can be separated by semi-colons as well as newlines.
-	// normalise semi-colons with newlines
-	input = strings.ReplaceAll(input, ";", "\n")
-
-	// loop through lines
-	lns := strings.Split(input, "\n")
-	ln := strings.TrimLeft(lns[0], " \t")
-
-	// ignore comments at beginning of lines
-	if !strings.HasPrefix(ln, "#") {
-		err = dbg.parseCommand(ln, interactive, true)
-		if err != nil {
-			dbg.scriptWrite.Rollback()
-			return "", err
-		}
-	}
-
-	return strings.Join(lns[1:], "\n"), nil
 }
 
 // Plugged implements the plugging.PlugMonitor interface.
