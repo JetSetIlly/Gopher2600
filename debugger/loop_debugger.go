@@ -543,7 +543,7 @@ func (dbg *Debugger) termRead(inpt terminal.Input) error {
 			var s string
 			s, err = inpt.TermRead(dbg.buildPrompt(), dbg.events)
 			if err == nil {
-				line, err = dbg.scriptQueue.Push(s)
+				line = dbg.scriptQueue.Push(s)
 			}
 		}
 
@@ -566,12 +566,10 @@ func (dbg *Debugger) termRead(inpt terminal.Input) error {
 				dbg.handleInterrupt(inpt)
 
 			} else if errors.Is(err, io.EOF) {
-				// an EOF error causes the emulation to exit immediately if the terminal is real terminal
-				if inpt.IsRealTerminal() {
-					dbg.running = false
-					dbg.continueEmulation = false
-					return nil
-				}
+				// an EOF error causes the emulation to exit immediately
+				dbg.running = false
+				dbg.continueEmulation = false
+				return nil
 			} else {
 				// all other errors are passed upwards to the calling function
 				return err
@@ -603,14 +601,6 @@ func (dbg *Debugger) handleInterrupt(inp terminal.Input) {
 	// if the emulation is currently running then stop emulation
 	if dbg.runUntilHalt {
 		dbg.runUntilHalt = false
-		dbg.continueEmulation = false
-		return
-	}
-
-	// terminal is not interactive so we set running to false which will
-	// quit the debugger as soon as possible
-	if !inp.IsRealTerminal() {
-		dbg.running = false
 		dbg.continueEmulation = false
 		return
 	}

@@ -49,12 +49,12 @@ func (q *Queue) Next() (Line, bool) {
 }
 
 // Push input line into queue. Input is normalised before the first command is returned
-func (q *Queue) Push(input string) (Line, error) {
+func (q *Queue) Push(input string) Line {
 	q.push(input, false)
 	if ln, ok := q.Next(); ok {
-		return ln, nil
+		return ln
 	}
-	return Line{}, io.EOF
+	return Line{}
 }
 
 func (q *Queue) push(input string, batch bool) {
