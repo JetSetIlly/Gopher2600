@@ -77,11 +77,6 @@ func (ct *ColorTerminal) RegisterTabCompletion(tc *commandline.TabCompletion) {
 	ct.tabCompletion = tc
 }
 
-// IsInteractive satisfies the terminal.Input interface
-func (ct *ColorTerminal) IsInteractive() bool {
-	return true
-}
-
 // IsRealTerminal implements the terminal.Input interface
 func (ct *ColorTerminal) IsRealTerminal() bool {
 	return true

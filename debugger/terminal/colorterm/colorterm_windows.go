@@ -43,11 +43,6 @@ func (ct *ColorTerminal) CleanUp() {
 func (ct *ColorTerminal) RegisterTabCompletion(tc *commandline.TabCompletion) {
 }
 
-// IsInteractive satisfies the terminal.Input interface.
-func (ct *ColorTerminal) IsInteractive() bool {
-	return false
-}
-
 // IsRealTerminal implements the terminal.Input interface.
 func (ct *ColorTerminal) IsRealTerminal() bool {
 	return true

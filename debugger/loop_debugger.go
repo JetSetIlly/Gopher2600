@@ -344,17 +344,11 @@ func (dbg *Debugger) inputLoop(inpt terminal.Input, nonInstructionQuantum bool) 
 
 			// unpause emulation if we're continuing emulation
 			if dbg.runUntilHalt {
-				// runUntilHalt is set to true when stepping by more than a
-				// clock (ie. by scanline of frame) but in those cases we want
-				// to set gui state to StateStepping and not StateRunning.
-				//
-				// Setting to StateRunning may have different graphical
-				// side-effects which would look ugly when we're only in fact
-				// stepping.
+				// runUntilHalt is set to true when stepping by more than a clock (ie. by scanline
+				// of frame) but in those cases we want to set gui state to StateStepping and not
+				// StateRunning.
 				if dbg.halting.volatileTraps.isEmpty() {
-					if inpt.IsInteractive() {
-						dbg.setState(govern.Running, govern.Normal)
-					}
+					dbg.setState(govern.Running, govern.Normal)
 				} else {
 					dbg.setState(govern.Stepping, govern.Normal)
 				}
@@ -363,7 +357,7 @@ func (dbg *Debugger) inputLoop(inpt terminal.Input, nonInstructionQuantum bool) 
 				if !nonInstructionQuantum {
 					dbg.Rewind.UpdateComparison()
 				}
-			} else if inpt.IsInteractive() {
+			} else {
 				dbg.setState(govern.Stepping, govern.Normal)
 			}
 		}
@@ -561,7 +555,7 @@ func (dbg *Debugger) termRead(inpt terminal.Input) error {
 		// if there was no error from inp.TermRead()
 		if err == nil {
 			if len(line.Entry) > 0 {
-				err = dbg.parseCommand(line.Entry, inpt.IsInteractive(), true)
+				err = dbg.parseCommand(line.Entry, line.Batch, true)
 				if err != nil {
 					dbg.printLine(terminal.StyleError, "%s", err)
 				}
@@ -572,9 +566,8 @@ func (dbg *Debugger) termRead(inpt terminal.Input) error {
 				dbg.handleInterrupt(inpt)
 
 			} else if errors.Is(err, io.EOF) {
-				// an EOF error causes the emulation to exit immediately if the terminal is an
-				// interactive terminal
-				if inpt.IsInteractive() {
+				// an EOF error causes the emulation to exit immediately if the terminal is real terminal
+				if inpt.IsRealTerminal() {
 					dbg.running = false
 					dbg.continueEmulation = false
 					return nil
@@ -616,7 +609,7 @@ func (dbg *Debugger) handleInterrupt(inp terminal.Input) {
 
 	// terminal is not interactive so we set running to false which will
 	// quit the debugger as soon as possible
-	if !inp.IsInteractive() {
+	if !inp.IsRealTerminal() {
 		dbg.running = false
 		dbg.continueEmulation = false
 		return

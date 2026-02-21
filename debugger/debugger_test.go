@@ -74,11 +74,6 @@ func (trm *mockTerm) TermReadCheck() bool {
 	return false
 }
 
-// IsInteractive implements the terminal.Output interface
-func (trm *mockTerm) IsInteractive() bool {
-	return false
-}
-
 // IsRealTerminal implements the terminal.Output interface
 func (trm *mockTerm) IsRealTerminal() bool {
 	return false
