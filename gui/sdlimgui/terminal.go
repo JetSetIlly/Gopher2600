@@ -146,6 +146,11 @@ func (trm *term) TermReadCheck() bool {
 	return len(trm.inputChan) > 0 || len(trm.sideChan) > 0
 }
 
+// IsInteractive implements the terminal.Input interface.
+func (trm *term) IsInteractive() bool {
+	return true
+}
+
 // IsRealTerminal implements the terminal.Input interface.
 func (trm *term) IsRealTerminal() bool {
 	return false

@@ -118,6 +118,11 @@ func (pt *PlainTerminal) TermReadCheck() bool {
 	return false
 }
 
+// IsInteractive implements the terminal.Input interface.
+func (pt *PlainTerminal) IsInteractive() bool {
+	return pt.realInput
+}
+
 // IsRealTerminal implements the terminal.Input interface.
 func (pt *PlainTerminal) IsRealTerminal() bool {
 	return pt.realInput && pt.realOutput

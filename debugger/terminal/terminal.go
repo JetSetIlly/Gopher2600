@@ -44,6 +44,9 @@ type Input interface {
 	// Note that TermReadCheck() does not check for events like TermRead().
 	TermReadCheck() bool
 
+	// IsInteractive returns true if the terminal is being used directly by a user.
+	IsInteractive() bool
+
 	// IsRealTerminal returns true if the terminal implementation is using a
 	// real terminal for Input.
 	IsRealTerminal() bool

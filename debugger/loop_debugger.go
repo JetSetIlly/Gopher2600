@@ -543,7 +543,7 @@ func (dbg *Debugger) termRead(inpt terminal.Input) error {
 			var s string
 			s, err = inpt.TermRead(dbg.buildPrompt(), dbg.events)
 			if err == nil {
-				line = dbg.scriptQueue.Push(s)
+				line = dbg.scriptQueue.Push(s, !inpt.IsInteractive())
 			}
 		}
 
@@ -554,11 +554,9 @@ func (dbg *Debugger) termRead(inpt terminal.Input) error {
 
 		// if there was no error from inp.TermRead()
 		if err == nil {
-			if len(line.Entry) > 0 {
-				err = dbg.parseCommand(line.Entry, line.Batch, true)
-				if err != nil {
-					dbg.printLine(terminal.StyleError, "%s", err)
-				}
+			err = dbg.parseCommand(line.Entry, line.Batch, true)
+			if err != nil {
+				dbg.printLine(terminal.StyleError, "%s", err)
 			}
 		} else {
 			if errors.Is(err, terminal.UserInterrupt) {

@@ -48,9 +48,10 @@ func (q *Queue) Next() (Line, bool) {
 	return Line{}, false
 }
 
-// Push input line into queue. Input is normalised before the first command is returned
-func (q *Queue) Push(input string) Line {
-	q.push(input, false)
+// Push input line into queue. Input is normalised before the first command is returned. The
+// fromTerminal argument indicates whether the input came from an interactive terminal.
+func (q *Queue) Push(input string, batch bool) Line {
+	q.push(input, batch)
 	if ln, ok := q.Next(); ok {
 		return ln
 	}
@@ -68,7 +69,7 @@ func (q *Queue) push(input string, batch bool) {
 
 	// loop through lines
 	for s := range strings.SplitSeq(input, "\n") {
-		if len(s) > 0 && !strings.HasPrefix(s, "#") {
+		if !strings.HasPrefix(s, "#") {
 			ln := Line{Entry: s, Batch: batch}
 			q.lines = append(q.lines, ln)
 		}
