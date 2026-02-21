@@ -65,8 +65,8 @@ index 8fc87b992..cbb4bf65b 100644
  	"github.com/jetsetilly/gopher2600/cartridgeloader"
  	"github.com/jetsetilly/gopher2600/debugger"
  	"github.com/jetsetilly/gopher2600/debugger/govern"
-@@ -343,6 +345,12 @@ func emulate(mode string, sync *mainSync, args []string) error {
- 		opts.TermType = "IMGUI"
+@@ -371,6 +373,12 @@ func emulate(mode string, sync *mainSync, args []string) error {
+ 		termType = "IMGUI"
  	}
  
 +	// statsviz option
@@ -78,7 +78,7 @@ index 8fc87b992..cbb4bf65b 100644
  	// parse args and get copy of remaining arguments
  	err := flgs.Parse(args)
  	if err != nil {
-@@ -372,6 +380,19 @@ func emulate(mode string, sync *mainSync, args []string) error {
+@@ -400,6 +408,19 @@ func emulate(mode string, sync *mainSync, args []string) error {
  	// turning the emulation's interrupt handler off
  	sync.state <- stateRequest{req: reqNoIntSig}
  

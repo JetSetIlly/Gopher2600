@@ -235,7 +235,7 @@ func launch(sync *mainSync, args []string) {
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			flgs.Usage()
-			fmt.Println("Execution Modes: RUN, DEBUG, DISASM, PERFORMANCE, REGRESS, VERSION")
+			fmt.Println("Execution Modes: RUN, DEBUG, HEADLESS, DISASM, PERFORMANCE, REGRESS, VERSION")
 			sync.state <- stateRequest{req: reqQuit, args: 0}
 			return
 		}
@@ -259,12 +259,10 @@ func launch(sync *mainSync, args []string) {
 	default:
 		mode = "RUN"
 		err = emulate(mode, sync, args)
-	case "RUN":
-		fallthrough
-	case "PLAY":
-		fallthrough
-	case "DEBUG":
+	case "RUN", "PLAY", "DEBUG":
 		err = emulate(mode, sync, args[1:])
+	case "HEADLESS":
+		err = headless(mode, sync, args[1:])
 	case "DISASM":
 		err = disasm(mode, args[1:])
 	case "PERFORMANCE":
@@ -287,6 +285,35 @@ func launch(sync *mainSync, args []string) {
 	sync.state <- stateRequest{req: reqQuit, args: 0}
 }
 
+func headless(mode string, sync *mainSync, args []string) error {
+	var opts debugger.CommandLineOptions
+	opts.Default()
+
+	flgs := flag.NewFlagSet(mode, flag.ContinueOnError)
+	err := flgs.Parse(args)
+	if err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			fmt.Fprintf(os.Stderr, "  pipe debugger commands to stdin\n")
+			return nil
+		}
+		return err
+	}
+	args = flgs.Args()
+
+	sync.state <- stateRequest{req: reqNoIntSig}
+
+	dbg, err := debugger.NewDebugger(opts, func(e *debugger.Debugger) (gui.GUI, terminal.Terminal, error) {
+		return &gui.Stub{}, &plainterm.PlainTerminal{}, nil
+	})
+
+	var romFile string
+	if len(args) != 0 {
+		romFile = args[0]
+	}
+
+	return dbg.StartInDebugMode(romFile)
+}
+
 // emulate is the main emulation launch function, shared by play and debug
 // modes. the other modes initialise and run the emulation differently.
 func emulate(mode string, sync *mainSync, args []string) error {
@@ -304,6 +331,7 @@ func emulate(mode string, sync *mainSync, args []string) error {
 
 	// opts collates the individual options that can be set by the command line
 	var opts debugger.CommandLineOptions
+	opts.Default()
 
 	// arguments common to both play and debugging modes
 	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
@@ -336,13 +364,15 @@ func emulate(mode string, sync *mainSync, args []string) error {
 		flgs.StringVar(&opts.Macro, "macro", "", "macro file to be run on trigger")
 	}
 
+	var termType string
+
 	// debugger specific arguments
 	if emulationMode == govern.ModeDebugger {
 		flgs.StringVar(&opts.Script, "script", "", "script to run on debugger start")
-		flgs.StringVar(&opts.TermType, "term", "IMGUI", "terminal type: IMGUI, COLOR, PLAIN")
+		flgs.StringVar(&termType, "term", "IMGUI", "terminal type: IMGUI, COLOR, PLAIN")
 	} else {
 		// non debugger emulation is always of type IMGUI
-		opts.TermType = "IMGUI"
+		termType = "IMGUI"
 	}
 
 	// parse args and get copy of remaining arguments
@@ -382,7 +412,7 @@ func emulate(mode string, sync *mainSync, args []string) error {
 		var scr gui.GUI
 
 		// create GUI as appropriate
-		if opts.TermType == "IMGUI" {
+		if termType == "IMGUI" {
 			sync.state <- stateRequest{req: reqCreateGUI,
 				args: guiCreate(func() (guiControl, error) {
 					return sdlimgui.NewSdlImgui(e)
@@ -410,9 +440,9 @@ func emulate(mode string, sync *mainSync, args []string) error {
 		// if the GUI does not supply a terminal then use a color or plain terminal
 		// as a fallback
 		if term == nil {
-			switch strings.ToUpper(opts.TermType) {
+			switch strings.ToUpper(termType) {
 			default:
-				logger.Logf(logger.Allow, "terminal", "unknown terminal: %s", opts.TermType)
+				logger.Logf(logger.Allow, "terminal", "unknown terminal: %s", termType)
 				logger.Log(logger.Allow, "terminal", "defaulting to plain")
 				term = &plainterm.PlainTerminal{}
 			case "PLAIN":
