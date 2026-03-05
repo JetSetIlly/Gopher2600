@@ -19,6 +19,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/userinput"
@@ -46,6 +47,13 @@ func (img *SdlImgui) Service() {
 			img.wm.hasInitialised = false
 		}
 		img.resetFonts--
+	}
+
+	// if mouse is captured in debugger mode then release the capture for any non-running state.
+	// this is useful if a breakpoint or other halting condition causes the debugger to pause. in
+	// that circumstance we want the mouse to be immediately available
+	if img.isCaptured() && img.dbg.Mode() == govern.ModeDebugger && img.dbg.State() != govern.Running {
+		img.setCapture(false)
 	}
 
 	// phantom input system must be reset before anything else is processed
