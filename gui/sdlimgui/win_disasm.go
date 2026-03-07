@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 
@@ -203,7 +203,7 @@ func (win *winDisasm) draw() {
 	}
 }
 
-func (win *winDisasm) drawSequential(currBank mapper.BankInfo) {
+func (win *winDisasm) drawSequential(currBank banking.Information) {
 	render := func(dsm *disassembly.DisasmEntries) {
 		if win.img.dbg.State() == govern.Rewinding {
 			win.drawEntries("sequential", win.sequenceCache, len(win.sequenceCache)-1, currBank, true)
@@ -223,13 +223,13 @@ func (win *winDisasm) drawSequential(currBank mapper.BankInfo) {
 	win.drawOptionsBar(currBank)
 }
 
-func (win *winDisasm) drawBanked(addr uint16, currBank mapper.BankInfo) {
+func (win *winDisasm) drawBanked(addr uint16, currBank banking.Information) {
 	win.drawBankSelection(currBank)
 	win.drawBank(addr, currBank)
 	win.drawOptionsBar(currBank)
 }
 
-func (win *winDisasm) drawBankSelection(currBank mapper.BankInfo) {
+func (win *winDisasm) drawBankSelection(currBank banking.Information) {
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
 	numColumns := 2
@@ -340,7 +340,7 @@ func (win *winDisasm) drawBankSelection(currBank mapper.BankInfo) {
 	imgui.Spacing()
 }
 
-func (win *winDisasm) drawBank(addr uint16, currBank mapper.BankInfo) {
+func (win *winDisasm) drawBank(addr uint16, currBank banking.Information) {
 	// render is called via a call to BorrowDisasm()
 	render := func(dsm *disassembly.DisasmEntries) {
 		// because we're running concurrently with the emulation there may be instances
@@ -386,7 +386,7 @@ func (win *winDisasm) drawBank(addr uint16, currBank mapper.BankInfo) {
 	}
 }
 
-func (win *winDisasm) drawOptionsBar(currBank mapper.BankInfo) {
+func (win *winDisasm) drawOptionsBar(currBank banking.Information) {
 	// draw options and status line. start height measurement
 	win.optionsHeight = imguiMeasureHeight(func() {
 		imgui.Spacing()
@@ -440,7 +440,7 @@ func (win *winDisasm) drawOptionsBar(currBank mapper.BankInfo) {
 
 // drawEntries is called from both drawBanked() and drawSequential()
 func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, current int,
-	currBank mapper.BankInfo, sequential bool) {
+	currBank banking.Information, sequential bool) {
 
 	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)

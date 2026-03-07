@@ -26,7 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -186,7 +186,7 @@ func (dsm *Disassembly) FromMemory(background bool) error {
 	return dsm.fromMemory(startingBank, copiedBanks)
 }
 
-func (dsm *Disassembly) fromMemory(startingBank int, copiedBanks []mapper.BankContent) error {
+func (dsm *Disassembly) fromMemory(startingBank int, copiedBanks []banking.Content) error {
 	dec, err := newDecode(dsm, startingBank, copiedBanks)
 	if err != nil {
 		return fmt.Errorf("disassembly: %w", err)
@@ -243,7 +243,7 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 //
 // checkNextAddr should be false if the result does no represent a completed
 // instruction. in other words, if the instruction has only partially completed
-func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Result, checkNextAddr bool, nextAddr uint16) *Entry {
+func (dsm *Disassembly) ExecutedEntry(bank banking.Information, result execution.Result, checkNextAddr bool, nextAddr uint16) *Entry {
 	e := dsm.formatResult(bank, result, EntryLevelExecuted)
 
 	// if co-processor is executing then whatever has been executed by the 6507

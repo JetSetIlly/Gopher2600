@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -151,16 +152,16 @@ func (cart *atari) reset() error {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *atari) GetBank(addr uint16) mapper.BankInfo {
+func (cart *atari) GetBank(addr uint16) banking.Information {
 	// because atari bank switching swaps out the entire memory space, every
 	// address points to whatever the current bank is. compare to parker bros.
 	// cartridges.
-	return mapper.BankInfo{Number: cart.state.bank, IsRAM: cart.state.ram != nil && addr >= 0x80 && addr <= 0xff}
+	return banking.Information{Number: cart.state.bank, IsRAM: cart.state.ram != nil && addr >= 0x80 && addr <= 0xff}
 }
 
 // SetBank implements the mapper.CartMapper interface.
 func (cart *atari) SetBank(bank string) error {
-	if mapper.IsAutoBankSelection(bank) {
+	if banking.IsAutoSelection(bank) {
 		// earlier revisions of this function handled the possibility of a different
 		// required starting bank for specific cartridges. however I now believe that the
 		// correct answer in all cases should be bank 0
@@ -219,7 +220,7 @@ func (cart *atari) SetBank(bank string) error {
 		return nil
 	}
 
-	b, err := mapper.SingleBankSelection(bank)
+	b, err := banking.SingleSelection(bank)
 	if err != nil {
 		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
@@ -362,10 +363,10 @@ func (cart *atari) PutRAM(_ int, idx int, data uint8) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *atari) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, len(cart.banks))
+func (cart *atari) CopyBanks() []banking.Content {
+	c := make([]banking.Content, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {
-		c[b] = mapper.BankContent{Number: b,
+		c[b] = banking.Content{Number: b,
 			Data:    cart.banks[b],
 			Origins: []uint16{memorymap.OriginCart},
 		}
@@ -525,9 +526,9 @@ func (cart *atari2k) Access(addr uint16, peek bool) (uint8, uint8, error) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *atari2k) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, 1)
-	c[0] = mapper.BankContent{Number: 0,
+func (cart *atari2k) CopyBanks() []banking.Content {
+	c := make([]banking.Content, 1)
+	c[0] = banking.Content{Number: 0,
 		Data:    cart.banks[0],
 		Origins: []uint16{memorymap.OriginCart, memorymap.OriginCart + uint16(cart.bankSize)},
 	}

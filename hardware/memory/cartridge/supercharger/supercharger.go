@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
@@ -229,55 +230,55 @@ func (cart *Supercharger) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *Supercharger) GetBank(addr uint16) mapper.BankInfo {
+func (cart *Supercharger) GetBank(addr uint16) banking.Information {
 	switch cart.state.registers.BankingMode {
 	case 0:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
+			return banking.Information{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
+		return banking.Information{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 1:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
+			return banking.Information{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 1, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
+		return banking.Information{Number: 1, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
 
 	case 2:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 1, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
+			return banking.Information{Number: 1, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
+		return banking.Information{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 3:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
+			return banking.Information{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 1, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
+		return banking.Information{Number: 1, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 4:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
+			return banking.Information{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
+		return banking.Information{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 5:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
+			return banking.Information{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 2, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
+		return banking.Information{Number: 2, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 6:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 2, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
+			return banking.Information{Number: 2, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
+		return banking.Information{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 7:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
+			return banking.Information{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 2, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
+		return banking.Information{Number: 2, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 	}
 
 	panic("supercharger: unknown banking method")
@@ -285,7 +286,7 @@ func (cart *Supercharger) GetBank(addr uint16) mapper.BankInfo {
 
 // SetBank implements the mapper.CartMapper interface.
 func (cart *Supercharger) SetBank(bank string) error {
-	if mapper.IsAutoBankSelection(bank) {
+	if banking.IsAutoSelection(bank) {
 		cart.state.registers.BankingMode = 0
 		return nil
 	}
@@ -293,7 +294,7 @@ func (cart *Supercharger) SetBank(bank string) error {
 	// supercharger uses predfined banking modes. we can use the single bank
 	// selection function for this
 
-	b, err := mapper.SingleBankSelection(bank)
+	b, err := banking.SingleSelection(bank)
 	if err != nil {
 		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
@@ -322,10 +323,10 @@ func (cart *Supercharger) Step(_ float32) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *Supercharger) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, len(cart.state.ram)+1)
+func (cart *Supercharger) CopyBanks() []banking.Content {
+	c := make([]banking.Content, len(cart.state.ram)+1)
 
-	c[0] = mapper.BankContent{Number: 0,
+	c[0] = banking.Content{Number: 0,
 		Data: cart.bios,
 		Origins: []uint16{
 			memorymap.OriginCart,
@@ -334,7 +335,7 @@ func (cart *Supercharger) CopyBanks() []mapper.BankContent {
 	}
 
 	for b := range len(cart.state.ram) {
-		c[b+1] = mapper.BankContent{Number: b + 1,
+		c[b+1] = banking.Content{Number: b + 1,
 			Data: cart.state.ram[b],
 			Origins: []uint16{
 				memorymap.OriginCart,

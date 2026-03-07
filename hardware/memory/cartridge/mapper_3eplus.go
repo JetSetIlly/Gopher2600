@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -194,7 +195,7 @@ func (cart *m3ePlus) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *m3ePlus) GetBank(addr uint16) mapper.BankInfo {
+func (cart *m3ePlus) GetBank(addr uint16) banking.Information {
 	var seg int
 	if addr <= 0x03ff {
 		seg = 0
@@ -207,14 +208,14 @@ func (cart *m3ePlus) GetBank(addr uint16) mapper.BankInfo {
 	}
 
 	if cart.state.segmentIsRAM[seg] {
-		return mapper.BankInfo{Number: cart.state.segment[seg], IsRAM: true, IsSegmented: true, Segment: seg}
+		return banking.Information{Number: cart.state.segment[seg], IsRAM: true, IsSegmented: true, Segment: seg}
 	}
-	return mapper.BankInfo{Number: cart.state.segment[seg], IsSegmented: true, Segment: seg}
+	return banking.Information{Number: cart.state.segment[seg], IsSegmented: true, Segment: seg}
 }
 
 // SetBank implements the mapper.CartMapper interface.
 func (cart *m3ePlus) SetBank(bank string) error {
-	if mapper.IsAutoBankSelection(bank) {
+	if banking.IsAutoSelection(bank) {
 		// The last 1K ROM ($FC00-$FFFF) segment in the 6502 address space (ie: $1C00-$1FFF)
 		// is initialised to point to the FIRST 1K of the ROM image, so the reset vectors
 		// must be placed at the end of the first 1K in the ROM image.
@@ -225,7 +226,7 @@ func (cart *m3ePlus) SetBank(bank string) error {
 		return nil
 	}
 
-	segs, err := mapper.SegmentedBankSelection(bank)
+	segs, err := banking.SegmentedSelection(bank)
 	if err != nil {
 		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
@@ -327,10 +328,10 @@ func (cart *m3ePlus) PutRAM(bank int, idx int, data uint8) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *m3ePlus) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, len(cart.banks))
+func (cart *m3ePlus) CopyBanks() []banking.Content {
+	c := make([]banking.Content, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {
-		c[b] = mapper.BankContent{Number: b,
+		c[b] = banking.Content{Number: b,
 			Data: cart.banks[b],
 			Origins: []uint16{
 				memorymap.OriginCart,

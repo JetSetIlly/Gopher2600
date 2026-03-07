@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -193,20 +194,20 @@ func (cart *cbs) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *cbs) GetBank(addr uint16) mapper.BankInfo {
+func (cart *cbs) GetBank(addr uint16) banking.Information {
 	// cbs cartridges are like atari cartridges in that the entire address
 	// space points to the selected bank
-	return mapper.BankInfo{Number: cart.state.bank, IsRAM: addr <= 0x00ff}
+	return banking.Information{Number: cart.state.bank, IsRAM: addr <= 0x00ff}
 }
 
 // SetBank implements the mapper.CartMapper interface.
 func (cart *cbs) SetBank(bank string) error {
-	if mapper.IsAutoBankSelection(bank) {
+	if banking.IsAutoSelection(bank) {
 		cart.state.bank = len(cart.banks) - 1
 		return nil
 	}
 
-	b, err := mapper.SingleBankSelection(bank)
+	b, err := banking.SingleSelection(bank)
 	if err != nil {
 		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
@@ -263,10 +264,10 @@ func (cart *cbs) PutRAM(_ int, idx int, data uint8) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *cbs) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, len(cart.banks))
+func (cart *cbs) CopyBanks() []banking.Content {
+	c := make([]banking.Content, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {
-		c[b] = mapper.BankContent{Number: b,
+		c[b] = banking.Content{Number: b,
 			Data:    cart.banks[b],
 			Origins: []uint16{memorymap.OriginCart},
 		}

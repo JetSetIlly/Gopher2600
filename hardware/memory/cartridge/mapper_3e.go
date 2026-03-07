@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -171,23 +172,23 @@ func (cart *m3e) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *m3e) GetBank(addr uint16) mapper.BankInfo {
+func (cart *m3e) GetBank(addr uint16) banking.Information {
 	if addr <= 0x07ff {
-		return mapper.BankInfo{Number: cart.state.segment[0], IsRAM: cart.state.segmentIsRAM[0], IsSegmented: true, Segment: 0}
+		return banking.Information{Number: cart.state.segment[0], IsRAM: cart.state.segmentIsRAM[0], IsSegmented: true, Segment: 0}
 	}
-	return mapper.BankInfo{Number: cart.state.segment[1], IsRAM: cart.state.segmentIsRAM[1], IsSegmented: true, Segment: 1}
+	return banking.Information{Number: cart.state.segment[1], IsRAM: cart.state.segmentIsRAM[1], IsSegmented: true, Segment: 1}
 }
 
 // SetBank implements the mapper.CartMapper interface.
 func (cart *m3e) SetBank(bank string) error {
-	if mapper.IsAutoBankSelection(bank) {
+	if banking.IsAutoSelection(bank) {
 		// the last segment always points to the last bank
 		cart.state.segment[0] = cart.NumBanks() - 2
 		cart.state.segment[1] = cart.NumBanks() - 1
 		return nil
 	}
 
-	segs, err := mapper.SegmentedBankSelection(bank)
+	segs, err := banking.SegmentedSelection(bank)
 	if err != nil {
 		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
@@ -298,11 +299,11 @@ func (cart *m3e) PutRAM(bank int, idx int, data uint8) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *m3e) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, len(cart.banks))
+func (cart *m3e) CopyBanks() []banking.Content {
+	c := make([]banking.Content, len(cart.banks))
 
 	for b := 0; b < len(cart.banks)-1; b++ {
-		c[b] = mapper.BankContent{Number: b,
+		c[b] = banking.Content{Number: b,
 			Data:    cart.banks[b],
 			Origins: []uint16{memorymap.OriginCart},
 		}
@@ -310,7 +311,7 @@ func (cart *m3e) CopyBanks() []mapper.BankContent {
 
 	// always points to the last segment
 	b := len(cart.banks) - 1
-	c[b] = mapper.BankContent{Number: b,
+	c[b] = banking.Content{Number: b,
 		Data:    cart.banks[b],
 		Origins: []uint16{memorymap.OriginCart + uint16(cart.bankSize)},
 	}

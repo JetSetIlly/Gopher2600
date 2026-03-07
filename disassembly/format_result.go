@@ -20,19 +20,19 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
 
 // formatResult it should only be called from the same goroutine as the main emulation. See
 // FormatResultAdHoc() or even the bare formatResult() if necessary
-func (dsm *Disassembly) formatResult(bank mapper.BankInfo, result execution.Result, level EntryLevel) *Entry {
+func (dsm *Disassembly) formatResult(bank banking.Information, result execution.Result, level EntryLevel) *Entry {
 	return formatResult(dsm, dsm.vcs.TV, bank, result, level)
 }
 
 // FormatResultAdHoc is like FormatResult but is intended to be used once and then discarded. The
 // returned entry will have level EntryLevelDecoded and the Coords field will be left uninitialised.
-func (dsm *Disassembly) FormatResultAdHoc(bank mapper.BankInfo, result execution.Result) *Entry {
+func (dsm *Disassembly) FormatResultAdHoc(bank banking.Information, result execution.Result) *Entry {
 	return formatResult(dsm, nil, bank, result, EntryLevelDecoded)
 }
 
@@ -46,7 +46,7 @@ type tv interface {
 //
 // If EntryLevel is EntryLevelExecuted then the disassembly will be updated but only if result.Final
 // is true.
-func formatResult(dsm *Disassembly, tv tv, bank mapper.BankInfo, result execution.Result, level EntryLevel) *Entry {
+func formatResult(dsm *Disassembly, tv tv, bank banking.Information, result execution.Result, level EntryLevel) *Entry {
 	e := &Entry{
 		dsm:    dsm,
 		Result: result,

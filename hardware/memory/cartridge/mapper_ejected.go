@@ -18,6 +18,7 @@ package cartridge
 import (
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 )
 
 // ejected implements the mapper.CartMapper interface.
@@ -69,8 +70,8 @@ func (cart *ejected) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *ejected) GetBank(_ uint16) mapper.BankInfo {
-	return mapper.BankInfo{Number: 0, IsRAM: false}
+func (cart *ejected) GetBank(_ uint16) banking.Information {
+	return banking.Information{Number: 0, IsRAM: false}
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
@@ -83,6 +84,6 @@ func (cart *ejected) Step(_ float32) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *ejected) CopyBanks() []mapper.BankContent {
+func (cart *ejected) CopyBanks() []banking.Content {
 	return nil
 }

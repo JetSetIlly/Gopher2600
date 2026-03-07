@@ -46,7 +46,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -161,7 +161,7 @@ type Debugger struct {
 	// the live disassembly entry. updated every CPU step or on halt (which may
 	// be mid instruction). it is also updated by the LAST command when the
 	// debugger is in the CLOCK quantum
-	liveBankInfo mapper.BankInfo
+	liveBankInfo banking.Information
 
 	// the television coords of the last CPU instruction
 	cpuBoundaryLastInstruction coords.TelevisionCoords
@@ -1051,7 +1051,7 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 		return err
 	}
 
-	dbg.liveBankInfo = mapper.BankInfo{}
+	dbg.liveBankInfo = banking.Information{}
 	dbg.liveDisasmEntry = &disassembly.Entry{Result: execution.Result{Final: true}}
 	return nil
 }

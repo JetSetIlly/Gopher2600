@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -222,7 +223,7 @@ func (cart *parkerBros) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *parkerBros) GetBank(addr uint16) mapper.BankInfo {
+func (cart *parkerBros) GetBank(addr uint16) banking.Information {
 	var seg int
 	if addr <= 0x03ff {
 		seg = 0
@@ -234,12 +235,12 @@ func (cart *parkerBros) GetBank(addr uint16) mapper.BankInfo {
 		seg = 3
 	}
 
-	return mapper.BankInfo{Number: cart.state.segment[seg], IsRAM: false, IsSegmented: true, Segment: seg}
+	return banking.Information{Number: cart.state.segment[seg], IsRAM: false, IsSegmented: true, Segment: seg}
 }
 
 // SetBank implements the mapper.CartMapper interface.
 func (cart *parkerBros) SetBank(bank string) error {
-	if mapper.IsAutoBankSelection(bank) {
+	if banking.IsAutoSelection(bank) {
 		cart.state.segment[0] = cart.NumBanks() - 4
 		cart.state.segment[1] = cart.NumBanks() - 3
 		cart.state.segment[2] = cart.NumBanks() - 2
@@ -247,7 +248,7 @@ func (cart *parkerBros) SetBank(bank string) error {
 		return nil
 	}
 
-	segs, err := mapper.SegmentedBankSelection(bank)
+	segs, err := banking.SegmentedSelection(bank)
 	if err != nil {
 		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
@@ -296,12 +297,12 @@ func (cart *parkerBros) Step(_ float32) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *parkerBros) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, len(cart.banks))
+func (cart *parkerBros) CopyBanks() []banking.Content {
+	c := make([]banking.Content, len(cart.banks))
 
 	// banks 0 to len-1 can occupy any of the three segments
 	for b := 0; b < len(cart.banks)-1; b++ {
-		c[b] = mapper.BankContent{Number: b,
+		c[b] = banking.Content{Number: b,
 			Data: cart.banks[b],
 			Origins: []uint16{
 				memorymap.OriginCart,
@@ -315,7 +316,7 @@ func (cart *parkerBros) CopyBanks() []mapper.BankContent {
 	// points to bank 7 but bank 7 can also be in another segment at the
 	// same time)
 	b := len(cart.banks) - 1
-	c[b] = mapper.BankContent{Number: b,
+	c[b] = banking.Content{Number: b,
 		Data: cart.banks[b],
 		Origins: []uint16{
 			memorymap.OriginCart,

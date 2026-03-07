@@ -18,7 +18,7 @@ package reflection
 import (
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
@@ -55,7 +55,7 @@ type Broker interface {
 type ReflectedVideoStep struct {
 	CPU          execution.Result
 	Collision    video.Collisions
-	Bank         mapper.BankInfo
+	Bank         banking.Information
 	Signal       signal.SignalAttributes
 	Hmove        Hmove
 	VideoElement video.Element

@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -83,7 +83,7 @@ func (ref *Reflector) SetEmulationState(state govern.State) {
 
 // Step should be called every video cycle to record a complete
 // reflection of the system.
-func (ref *Reflector) Step(bank mapper.BankInfo) error {
+func (ref *Reflector) Step(bank banking.Information) error {
 	sig := ref.vcs.TV.GetLastSignal()
 
 	// check that signal is not the NoSignal signal

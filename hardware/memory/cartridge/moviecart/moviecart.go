@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -376,8 +377,8 @@ func (cart *Moviecart) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *Moviecart) GetBank(addr uint16) mapper.BankInfo {
-	return mapper.BankInfo{}
+func (cart *Moviecart) GetBank(addr uint16) banking.Information {
+	return banking.Information{}
 }
 
 // AccessPassive implements the mapper.CartMapper interface.
@@ -391,11 +392,11 @@ func (cart *Moviecart) Step(clock float32) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *Moviecart) CopyBanks() []mapper.BankContent {
+func (cart *Moviecart) CopyBanks() []banking.Content {
 	// note that as it is, this will be a copy of the core program without any
 	// of the updates that happen as a result of playing a movie
-	c := make([]mapper.BankContent, len(cart.banks))
-	c[0] = mapper.BankContent{Number: 0,
+	c := make([]banking.Content, len(cart.banks))
+	c[0] = banking.Content{Number: 0,
 		Data:    cart.banks,
 		Origins: []uint16{memorymap.OriginCart},
 	}

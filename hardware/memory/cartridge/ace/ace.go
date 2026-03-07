@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -164,8 +165,8 @@ func (cart *Ace) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *Ace) GetBank(_ uint16) mapper.BankInfo {
-	return mapper.BankInfo{Sequential: true, Number: 0, IsRAM: false}
+func (cart *Ace) GetBank(_ uint16) banking.Information {
+	return banking.Information{Sequential: true, Number: 0, IsRAM: false}
 }
 
 func (cart *Ace) runARM() bool {
@@ -240,9 +241,9 @@ func (cart *Ace) Step(clock float32) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *Ace) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, 1)
-	c[0] = mapper.BankContent{Number: 0,
+func (cart *Ace) CopyBanks() []banking.Content {
+	c := make([]banking.Content, 1)
+	c[0] = banking.Content{Number: 0,
 		Data:    cart.mem.sram,
 		Origins: []uint16{memorymap.OriginCart},
 	}

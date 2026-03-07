@@ -30,6 +30,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/dpcplus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/elf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/moviecart"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
@@ -394,7 +395,7 @@ func (cart *Cartridge) NumBanks() int {
 
 // GetBank returns the current bank information for the specified address. See
 // documentation for memorymap.Bank for more information.
-func (cart *Cartridge) GetBank(addr uint16) mapper.BankInfo {
+func (cart *Cartridge) GetBank(addr uint16) banking.Information {
 	bank := cart.mapper.GetBank(addr & memorymap.CartridgeBits)
 	bank.NonCart = addr&memorymap.OriginCart != memorymap.OriginCart
 	return bank
@@ -543,9 +544,9 @@ func (cart *Cartridge) GetSuperchargerFastLoad() mapper.CartSuperChargerFastLoad
 
 // CopyBanks returns the sequence of banks in a cartridge. To return the
 // next bank in the sequence, call the function with the instance of
-// mapper.BankContent returned from the previous call. The end of the sequence is
+// banking.BankContent returned from the previous call. The end of the sequence is
 // indicated by the nil value. Start a new iteration with the nil argument.
-func (cart *Cartridge) CopyBanks() ([]mapper.BankContent, error) {
+func (cart *Cartridge) CopyBanks() ([]banking.Content, error) {
 	return cart.mapper.CopyBanks(), nil
 }
 

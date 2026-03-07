@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -215,9 +216,9 @@ func (cart *wicksteadDesign) getBank(addr uint16) (int, int, uint16) {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *wicksteadDesign) GetBank(addr uint16) mapper.BankInfo {
+func (cart *wicksteadDesign) GetBank(addr uint16) banking.Information {
 	segment, bank, _ := cart.getBank(addr)
-	return mapper.BankInfo{
+	return banking.Information{
 		Number:      bank,
 		IsRAM:       addr < 0x003f,
 		IsSegmented: true,
@@ -227,7 +228,7 @@ func (cart *wicksteadDesign) GetBank(addr uint16) mapper.BankInfo {
 
 // SetBank implements the mapper.CartMapper interface.
 func (cart *wicksteadDesign) SetBank(bank string) error {
-	if mapper.IsAutoBankSelection(bank) {
+	if banking.IsAutoSelection(bank) {
 		p, err := cart.segmentPattern(0)
 		if err != nil {
 			return err
@@ -239,7 +240,7 @@ func (cart *wicksteadDesign) SetBank(bank string) error {
 	// wickstead design uses a pattern selector. we can use the single bank
 	// selection function for this
 
-	b, err := mapper.SingleBankSelection(bank)
+	b, err := banking.SingleSelection(bank)
 	if err != nil {
 		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
@@ -340,10 +341,10 @@ func (cart *wicksteadDesign) PutRAM(_ int, idx int, data uint8) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *wicksteadDesign) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, len(cart.banks))
+func (cart *wicksteadDesign) CopyBanks() []banking.Content {
+	c := make([]banking.Content, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {
-		c[b] = mapper.BankContent{Number: b,
+		c[b] = banking.Content{Number: b,
 			Data:    cart.banks[b],
 			Origins: []uint16{memorymap.OriginCart},
 		}

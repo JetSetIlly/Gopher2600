@@ -20,6 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 )
@@ -76,7 +77,7 @@ type CartMapper interface {
 	AccessVolatile(addr uint16, data uint8, poke bool) error
 
 	NumBanks() int
-	GetBank(addr uint16) BankInfo
+	GetBank(addr uint16) banking.Information
 
 	// AccessPassive is called so that the cartridge can respond to changes to the
 	// address and data bus even when the data bus is not addressed to the cartridge.
@@ -93,7 +94,7 @@ type CartMapper interface {
 	// return copies of all banks in the cartridge. the disassembly process
 	// uses this to access cartridge data freely and without affecting the
 	// state of the cartridge.
-	CopyBanks() []BankContent
+	CopyBanks() []banking.Content
 }
 
 // SelectableBank is implemented by mappers that can have the selected bank

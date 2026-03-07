@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
@@ -59,7 +59,7 @@ type Entry struct {
 	dsm *Disassembly
 
 	// the bank this entry belongs to. note that this is just the bank number;
-	// we're not storing a copy of mapper.BankInfo. that's not needed for
+	// we're not storing a copy of banking.BankInfo. that's not needed for
 	// disassembly purposes
 	Bank int
 
@@ -218,7 +218,7 @@ func absoluteBranchDestination(addr uint16, operand uint16) uint16 {
 type Label struct {
 	dsm    *Disassembly
 	result execution.Result
-	bank   mapper.BankInfo
+	bank   banking.Information
 }
 
 // Resolve returns the address label as a symbol (if a symbol is available)
@@ -240,7 +240,7 @@ func (l Label) Resolve() string {
 type Operand struct {
 	dsm    *Disassembly
 	result execution.Result
-	bank   mapper.BankInfo
+	bank   banking.Information
 
 	// partial is the operand that will be used as the result from Resolve()
 	// when the execution result is not complete (ie. when not enough bytes have

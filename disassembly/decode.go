@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -39,19 +39,19 @@ type decode struct {
 	mem           *disasmMemory
 	disasmEntries DisasmEntries
 
-	formatResult func(bank mapper.BankInfo, result execution.Result, level EntryLevel) *Entry
+	formatResult func(bank banking.Information, result execution.Result, level EntryLevel) *Entry
 }
 
 func (dec decode) GetCoords() coords.TelevisionCoords {
 	return coords.TelevisionCoords{}
 }
 
-func newDecode(dsm *Disassembly, startingBank int, copiedBanks []mapper.BankContent) (*decode, error) {
+func newDecode(dsm *Disassembly, startingBank int, copiedBanks []banking.Content) (*decode, error) {
 	dec := decode{
 		sym: &dsm.Sym,
 	}
 
-	dec.formatResult = func(bank mapper.BankInfo, result execution.Result, level EntryLevel) *Entry {
+	dec.formatResult = func(bank banking.Information, result execution.Result, level EntryLevel) *Entry {
 		return formatResult(dsm, dec, bank, result, level)
 	}
 
@@ -219,7 +219,7 @@ func (dec *decode) bless() error {
 
 // jmpTargets returns a list of banks that a JMP or JSR target address may
 // feasibly be in.
-func jmpTargets(copiedBanks []mapper.BankContent, jmpAddress uint16) []int {
+func jmpTargets(copiedBanks []banking.Content, jmpAddress uint16) []int {
 	l := make([]int, 0, len(copiedBanks))
 
 	// only the significant bits of the jmp and origin addresses are compared.
@@ -390,7 +390,7 @@ func (dec *decode) decode() error {
 				}
 
 				// add entry to disassembly
-				ent := dec.formatResult(mapper.BankInfo{Number: bank.Number}, dec.mc.LastResult, entryLevel)
+				ent := dec.formatResult(banking.Information{Number: bank.Number}, dec.mc.LastResult, entryLevel)
 				dec.disasmEntries.Entries[bank.Number][address&memorymap.CartridgeBits] = ent
 			}
 		}
