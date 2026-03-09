@@ -221,18 +221,18 @@ func (p *Ports) Plug(port plugging.PortID, create NewPeripheral) error {
 
 func (p *Ports) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("SWCHA(W): %#02x ", p.swcha_w))
-	s.WriteString(fmt.Sprintf("SWACNT: %#02x ", p.riot.ChipRefer(chipbus.SWACNT)))
+	fmt.Fprintf(&s, "SWCHA(W): %#02x ", p.swcha_w)
+	fmt.Fprintf(&s, "SWACNT: %#02x ", p.riot.ChipRefer(chipbus.SWACNT))
 	swcha := p.riot.ChipRefer(chipbus.SWCHA)
-	s.WriteString(fmt.Sprintf("SWCHA: %#02x ", swcha))
+	fmt.Fprintf(&s, "SWCHA: %#02x ", swcha)
 	if swcha != p.deriveSWCHA() {
 		s.WriteString("[SWCHA has been poked] ")
 	}
 
-	s.WriteString(fmt.Sprintf("SWCHB(W): %#02x ", p.swchb_w))
-	s.WriteString(fmt.Sprintf("SWBCNT: %#02x ", p.riot.ChipRefer(chipbus.SWBCNT)))
+	fmt.Fprintf(&s, "SWCHB(W): %#02x ", p.swchb_w)
+	fmt.Fprintf(&s, "SWBCNT: %#02x ", p.riot.ChipRefer(chipbus.SWBCNT))
 	swchb := p.riot.ChipRefer(chipbus.SWCHB)
-	s.WriteString(fmt.Sprintf("SWCHB: %#02x ", swchb))
+	fmt.Fprintf(&s, "SWCHB: %#02x ", swchb)
 	if swchb != p.deriveSWCHB() {
 		s.WriteString("[SWCHB has been poked] ")
 	}
