@@ -66,9 +66,9 @@ func (kp *KeyportariASCII) HandleEvent(event ports.Event, data ports.EventData) 
 		case "Down":
 			v = 0x0a
 		case "Left":
-			v = 0x15
-		case "Right":
 			v = 0x08
+		case "Right":
+			v = 0x15
 		case "Escape":
 			v = 0x1b
 		default:
