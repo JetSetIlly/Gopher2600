@@ -22,6 +22,7 @@ import (
 	"unicode"
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -84,10 +85,13 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 		if img.isPlaymode() {
 			switch ev.Keysym.Scancode {
 			case sdl.SCANCODE_ESCAPE:
-				// the escape key is useful to the keyportari so we forward it to the main emulation
-				// unless the shift key is pressed
-				if !shift && (img.cache.VCS.RIOT.Ports.LeftPlayer.ID() == plugging.PeriphKeyportari ||
-					img.cache.VCS.RIOT.Ports.RightPlayer.ID() == plugging.PeriphKeyportari) {
+				lshim, lok := img.cache.VCS.RIOT.Ports.LeftPlayer.(ports.PeripheralShim)
+				rshim, rok := img.cache.VCS.RIOT.Ports.RightPlayer.(ports.PeripheralShim)
+				lok = lok && lshim.ShimID() == plugging.PeriphKeyportari
+				rok = rok && rshim.ShimID() == plugging.PeriphKeyportari
+
+				if !shift && (lok || rok) {
+					// swallow escape key event
 				} else {
 					if img.isCaptured() {
 						img.setCapture(false)
