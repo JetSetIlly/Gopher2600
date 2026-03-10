@@ -17,6 +17,7 @@ package supercharger
 
 import (
 	"fmt"
+	"io"
 	"math"
 
 	"github.com/jetsetilly/gopher2600/environment"
@@ -241,4 +242,8 @@ func (tap *SoundLoad) GetTapeState() (bool, mapper.CartTapeState) {
 	}
 
 	return true, state
+}
+
+func (tap *SoundLoad) romdump(w io.Writer) error {
+	return fmt.Errorf("dumping not supported by sound-loaded supercharger")
 }

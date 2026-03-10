@@ -43,7 +43,7 @@ type FastLoad struct {
 	state *state
 
 	// fastload binaries have a header which controls how the binary is read
-	blocks   []fastloadBlock
+	blocks   []fastLoadBlock
 	blockIdx int
 
 	// value of loadCt on last successful load. we use this to prevent endless
@@ -52,11 +52,17 @@ type FastLoad struct {
 }
 
 // a fastload binary can have several blocks
-const fastLoadHeaderOffset = 0x2000
-const fastLoadHeaderLen = 0x100
-const fastLoadBlockLen = fastLoadHeaderOffset + fastLoadHeaderLen
+const (
+	fastLoadHeaderOffset = 0x2000
+	fastLoadHeaderLen    = 0x100
+	fastLoadBlockLen     = fastLoadHeaderOffset + fastLoadHeaderLen
 
-type fastloadBlock struct {
+	// the page table is part of the header
+	fastLoadPageTableOffset = 0x10
+	fastLoadPageTableLen    = 0x18
+)
+
+type fastLoadBlock struct {
 	data []byte
 
 	// remainder of block is the "header"
@@ -83,6 +89,38 @@ type fastloadBlock struct {
 	pageTable []byte
 }
 
+func (b *fastLoadBlock) romdump(w io.Writer) error {
+	n, err := w.Write(b.data)
+	if err != nil {
+		return err
+	}
+	if n != len(b.data) {
+		return fmt.Errorf("data block is incomplete")
+	}
+
+	h := make([]byte, fastLoadHeaderLen)
+
+	h[0] = byte(b.startAddress)
+	h[1] = byte(b.startAddress >> 8)
+	h[2] = b.configByte
+	h[3] = b.numPages
+	h[4] = b.checksum
+	h[5] = b.multiload
+	h[6] = byte(b.progressSpeed)
+	h[7] = byte(b.progressSpeed >> 8)
+	copy(h[fastLoadPageTableOffset:fastLoadPageTableOffset+fastLoadPageTableLen], b.pageTable)
+
+	n, err = w.Write(h)
+	if err != nil {
+		return err
+	}
+	if n != len(h) {
+		return fmt.Errorf("block header is incomplete")
+	}
+
+	return nil
+}
+
 // newFastLoad is the preferred method of initialisation for the FastLoad type.
 func newFastLoad(env *environment.Environment, state *state) (tape, error) {
 	if env.Loader.Size()%fastLoadBlockLen != 0 {
@@ -94,7 +132,7 @@ func newFastLoad(env *environment.Environment, state *state) (tape, error) {
 		state: state,
 	}
 
-	fl.blocks = make([]fastloadBlock, env.Loader.Size()/fastLoadBlockLen)
+	fl.blocks = make([]fastLoadBlock, env.Loader.Size()/fastLoadBlockLen)
 	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, err
@@ -112,7 +150,7 @@ func newFastLoad(env *environment.Environment, state *state) (tape, error) {
 		fl.blocks[i].checksum = gameHeader[4]
 		fl.blocks[i].multiload = gameHeader[5]
 		fl.blocks[i].progressSpeed = (uint16(gameHeader[7]) << 8) | uint16(gameHeader[6])
-		fl.blocks[i].pageTable = gameHeader[0x10:0x28]
+		fl.blocks[i].pageTable = gameHeader[fastLoadPageTableOffset : fastLoadPageTableOffset+fastLoadPageTableLen]
 
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: start address: %#04x", i, fl.blocks[i].startAddress)
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: config byte: %#08b", i, fl.blocks[i].configByte)
@@ -120,7 +158,7 @@ func newFastLoad(env *environment.Environment, state *state) (tape, error) {
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: checksum: %#02x", i, fl.blocks[i].checksum)
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: multiload: %#02x", i, fl.blocks[i].multiload)
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: progress speed: %#02x", i, fl.blocks[i].progressSpeed)
-		logger.Logf(fl.env, "supercharger: fastload", "block %d: page-table: %v", i, fl.blocks[i].pageTable)
+		logger.Logf(fl.env, "supercharger: fastload", "block %d: page-table: % 02x", i, fl.blocks[i].pageTable)
 	}
 
 	return fl, nil
@@ -229,5 +267,15 @@ func (fl *FastLoad) Fastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error 
 	fl.state.registers.Value = fl.blocks[fl.blockIdx].configByte
 	fl.state.registers.Delay = 0
 
+	return nil
+}
+
+func (fl *FastLoad) romdump(w io.Writer) error {
+	for i, b := range fl.blocks {
+		err := b.romdump(w)
+		if err != nil {
+			return fmt.Errorf("block %d: %w", i, err)
+		}
+	}
 	return nil
 }

@@ -17,6 +17,8 @@ package supercharger
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 
 	"github.com/jetsetilly/gopher2600/environment"
@@ -26,6 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // supercharger has 6k of RAM in total.
@@ -45,6 +48,7 @@ type tape interface {
 	load() (uint8, error)
 	step()
 	end()
+	romdump(io.Writer) error
 }
 
 // Supercharger represents a supercharger cartridge.
@@ -477,4 +481,19 @@ func (cart *Supercharger) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 // WriteHotspots implements the mapper.CartHotspotsBus interface.
 func (cart *Supercharger) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return nil
+}
+
+func (cart *Supercharger) ROMDump(filename string) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("%s: %w", cart.mappingID, err)
+	}
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			logger.Logf(cart.env, "cartridge", "%s: %v", cart.mappingID, err)
+		}
+	}()
+
+	return cart.state.tape.romdump(f)
 }
