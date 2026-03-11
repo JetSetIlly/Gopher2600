@@ -509,7 +509,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					dbg.vcs.Mem.Cart.ContainerID(),
 				)
 
-			case "MAPPEDBANKS":
+			case "MAPPED":
 				dbg.printLine(
 					terminal.StyleInstrument,
 					dbg.vcs.Mem.Cart.MappedBanks(),
