@@ -158,7 +158,12 @@ func newFastLoad(env *environment.Environment, state *state) (tape, error) {
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: checksum: %#02x", i, fl.blocks[i].checksum)
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: multiload: %#02x", i, fl.blocks[i].multiload)
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: progress speed: %#02x", i, fl.blocks[i].progressSpeed)
-		logger.Logf(fl.env, "supercharger: fastload", "block %d: page-table: % 02x", i, fl.blocks[i].pageTable)
+
+		for b := range 3 {
+			logger.Logf(fl.env, "supercharger: fastload", "block %d: page-table: bank %d % 02x",
+				i, b, fl.blocks[i].pageTable[8*b:8*(b+1)],
+			)
+		}
 	}
 
 	return fl, nil
@@ -201,10 +206,7 @@ func (fl *FastLoad) Fastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error 
 		return fmt.Errorf("fastload %w", err)
 	}
 
-	// check whether the block is the one we want to load
-	//
-	// note the blockIdx we're starting off with so that we can prevent an
-	// infinite loop
+	// find the requested fastload block, making sure we don't loop forever
 	startBlockIdx := fl.blockIdx
 	for m != fl.blocks[fl.blockIdx].multiload {
 		fl.blockIdx++
@@ -232,10 +234,23 @@ func (fl *FastLoad) Fastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error 
 		copy(fl.state.ram[bank][ramOffset:ramOffset+0x100], fl.blocks[fl.blockIdx].data[dataOffset:dataOffset+0x100])
 	}
 
-	// poke values into RAM. these values would be the by-product of the
-	// tape-loading process. because we are short-circuiting that process
-	// however, by injecting the binary data into supercharger RAM
-	// directly, the necessary code will not be run.
+	// set the value to be used in the first instruction of the bootstrap program
+	fl.state.registers.Value = fl.blocks[fl.blockIdx].configByte
+	fl.state.registers.Delay = 0
+
+	// the remainder of this function replicates the pertinent side-effects of the BIOS. it's not
+	// certain if this is 100% of the side-effects we need to worry about
+
+	// clear RIOT RAM. we don't clear all of it because that will wreck the persistent state. a
+	// cursory examination of the BIOS shows that RAM $82 to $9d are cleared to zero
+	//
+	//  fd9f  ldx #$1b
+	//  fda1  sty $82, x
+	//  fda3  dex
+	//  fda4  bpl fda1
+	for i := uint16(0x0082); i <= 0x009d; i++ {
+		_ = ram.Poke(i, 0x00)
+	}
 
 	// RAM address 0x80 contains the initial configbyte
 	_ = ram.Poke(0x80, fl.blocks[fl.blockIdx].configByte)
@@ -253,8 +268,9 @@ func (fl *FastLoad) Fastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error 
 	// reset timer. in references to real tape loading, the number of ticks
 	// is the value at the moment the PC reaches address 0x00fa
 	tmr.PokeField("divider", timer.TIM64T)
-	tmr.PokeField("ticksRemaining", 0x1e)
+	tmr.PokeField("ticksRemaining", 0x1f)
 	tmr.PokeField("intim", uint8(0x0a))
+	tmr.PokeField("pa7", false)
 
 	// jump to VCS RAM location 0x00fa. a short bootstrap program has been
 	// poked there already
@@ -262,10 +278,6 @@ func (fl *FastLoad) Fastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error 
 	if err != nil {
 		return fmt.Errorf("fastload: %w", err)
 	}
-
-	// set the value to be used in the first instruction of the bootstrap program
-	fl.state.registers.Value = fl.blocks[fl.blockIdx].configByte
-	fl.state.registers.Delay = 0
 
 	return nil
 }
