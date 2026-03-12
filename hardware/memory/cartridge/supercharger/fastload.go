@@ -27,20 +27,13 @@ import (
 	"github.com/jetsetilly/gopher2600/notifications"
 )
 
-// FastLoad implements the Tape interface. It loads data from a binary file
+// FastLoad implements the tape interface. It loads data from a binary file
 // rather than a sound file.
 //
 // On success it returns the FastLoaded error. This must be interpreted by the
 // emulator driver and called with the arguments listed in the error type.
-//
-// Format information for fast-load binary rom mailing list post:
-//
-// Subject: Re: [stella] Supercharger BIN format
-// From: Eckhard Stolberg
-// Date: Fri, 08 Jan 1999.
 type FastLoad struct {
-	env   *environment.Environment
-	state *state
+	env *environment.Environment
 
 	// fastload binaries have a header which controls how the binary is read
 	blocks   []fastLoadBlock
@@ -68,7 +61,8 @@ type fastLoadBlock struct {
 	// remainder of block is the "header"
 
 	// PC address to jump to once loading has finished
-	startAddress uint16
+	startAddressLo uint8
+	startAddressHi uint8
 
 	// RAM config to be set after tape load
 	configByte uint8
@@ -89,6 +83,28 @@ type fastLoadBlock struct {
 	pageTable []byte
 }
 
+// from 'Stolberg': "checksum (the sum over all 8 game header bytes must be $55)"
+const fastloadChecksumBase = 0x55
+
+func (b *fastLoadBlock) setChecksum() {
+	b.checksum = fastloadChecksumBase
+	b.checksum -= b.startAddressLo + b.startAddressHi +
+		b.configByte + b.numPages + b.multiload +
+		uint8(b.progressSpeed) + uint8(b.progressSpeed>>8)
+
+	if !b.verifyChecksum() {
+		panic("error in checksum. this is a programming error in the setChecksum() function")
+	}
+}
+
+func (b *fastLoadBlock) verifyChecksum() bool {
+	checksum := b.checksum + b.startAddressLo + b.startAddressHi +
+		b.configByte + b.numPages + b.multiload +
+		uint8(b.progressSpeed) + uint8(b.progressSpeed>>8)
+
+	return checksum == fastloadChecksumBase
+}
+
 func (b *fastLoadBlock) romdump(w io.Writer) error {
 	n, err := w.Write(b.data)
 	if err != nil {
@@ -100,8 +116,8 @@ func (b *fastLoadBlock) romdump(w io.Writer) error {
 
 	h := make([]byte, fastLoadHeaderLen)
 
-	h[0] = byte(b.startAddress)
-	h[1] = byte(b.startAddress >> 8)
+	h[0] = b.startAddressLo
+	h[1] = b.startAddressHi
 	h[2] = b.configByte
 	h[3] = b.numPages
 	h[4] = b.checksum
@@ -122,14 +138,13 @@ func (b *fastLoadBlock) romdump(w io.Writer) error {
 }
 
 // newFastLoad is the preferred method of initialisation for the FastLoad type.
-func newFastLoad(env *environment.Environment, state *state) (tape, error) {
+func newFastLoad(env *environment.Environment) (tape, error) {
 	if env.Loader.Size()%fastLoadBlockLen != 0 {
 		return nil, fmt.Errorf("fastload: wrong number of bytes in cartridge data")
 	}
 
 	fl := &FastLoad{
-		env:   env,
-		state: state,
+		env: env,
 	}
 
 	fl.blocks = make([]fastLoadBlock, env.Loader.Size()/fastLoadBlockLen)
@@ -144,7 +159,8 @@ func newFastLoad(env *environment.Environment, state *state) (tape, error) {
 
 		// game header appears after main data
 		gameHeader := fl.blocks[i].data[fastLoadHeaderOffset : fastLoadHeaderOffset+fastLoadHeaderLen]
-		fl.blocks[i].startAddress = (uint16(gameHeader[1]) << 8) | uint16(gameHeader[0])
+		fl.blocks[i].startAddressLo = gameHeader[0]
+		fl.blocks[i].startAddressHi = gameHeader[1]
 		fl.blocks[i].configByte = gameHeader[2]
 		fl.blocks[i].numPages = gameHeader[3]
 		fl.blocks[i].checksum = gameHeader[4]
@@ -152,7 +168,13 @@ func newFastLoad(env *environment.Environment, state *state) (tape, error) {
 		fl.blocks[i].progressSpeed = (uint16(gameHeader[7]) << 8) | uint16(gameHeader[6])
 		fl.blocks[i].pageTable = gameHeader[fastLoadPageTableOffset : fastLoadPageTableOffset+fastLoadPageTableLen]
 
-		logger.Logf(fl.env, "supercharger: fastload", "block %d: start address: %#04x", i, fl.blocks[i].startAddress)
+		if fl.blocks[i].verifyChecksum() == false {
+			logger.Logf(fl.env, "supercharger: fastload", "block %d: checksum header incorrect", i)
+		}
+
+		logger.Logf(fl.env, "supercharger: fastload", "block %d: start address: %#04x", i,
+			uint16(fl.blocks[i].startAddressLo)|(uint16(fl.blocks[fl.blockIdx].startAddressHi)<<8),
+		)
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: config byte: %#08b", i, fl.blocks[i].configByte)
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: num pages: %d", i, fl.blocks[i].numPages)
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: checksum: %#02x", i, fl.blocks[i].checksum)
@@ -176,9 +198,8 @@ func (fl *FastLoad) snapshot() tape {
 }
 
 // plumb implements the tape interface.
-func (fl *FastLoad) plumb(state *state, env *environment.Environment) {
+func (fl *FastLoad) plumb(env *environment.Environment) {
 	fl.env = env
-	fl.state = state
 }
 
 // load implements the tape interface.
@@ -190,20 +211,20 @@ func (fl *FastLoad) load() (uint8, error) {
 	return 0, nil
 }
 
-// step implements the Tape interface.
+// step implements the tape interface.
 func (fl *FastLoad) step() {
 }
 
-// load implements the Tape interface.
+// load implements the tape interface.
 func (tap *FastLoad) end() {
 }
 
-// bootstrap implements the Tape interface
-func (fl *FastLoad) bootstrap(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
+// bootstrap implements the tape interface
+func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
 	// look up requested multiload address
-	m, err := ram.Peek(MutliloadByteAddress)
+	m, err := ram.Peek(MutliloadByteAddr)
 	if err != nil {
-		return fmt.Errorf("fastload %w", err)
+		return fmt.Errorf("fastload: %w", err)
 	}
 
 	// find the requested fastload block, making sure we don't loop forever
@@ -231,12 +252,12 @@ func (fl *FastLoad) bootstrap(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error
 		page := fl.blocks[fl.blockIdx].pageTable[i] >> 2
 		ramOffset := int(page) * 0x100
 		dataOffset := i * 0x100
-		copy(fl.state.ram[bank][ramOffset:ramOffset+0x100], fl.blocks[fl.blockIdx].data[dataOffset:dataOffset+0x100])
+		copy(state.ram[bank][ramOffset:ramOffset+0x100], fl.blocks[fl.blockIdx].data[dataOffset:dataOffset+0x100])
 	}
 
 	// set the value to be used in the first instruction of the bootstrap program
-	fl.state.registers.Value = fl.blocks[fl.blockIdx].configByte
-	fl.state.registers.Delay = 0
+	state.registers.Value = fl.blocks[fl.blockIdx].configByte
+	state.registers.Delay = 0
 
 	// the remainder of this function replicates the pertinent side-effects of the BIOS. it's not
 	// certain if this is 100% of the side-effects we need to worry about
@@ -262,8 +283,8 @@ func (fl *FastLoad) bootstrap(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error
 
 	// JMP <absolute address>
 	_ = ram.Poke(0xfd, 0x4c)
-	_ = ram.Poke(bootstrapAddressLo, uint8(fl.blocks[fl.blockIdx].startAddress))
-	_ = ram.Poke(bootstrapAddressHi, uint8(fl.blocks[fl.blockIdx].startAddress>>8))
+	_ = ram.Poke(jmpAddrLo, fl.blocks[fl.blockIdx].startAddressLo)
+	_ = ram.Poke(jmpAddrHi, fl.blocks[fl.blockIdx].startAddressHi)
 
 	// reset timer. in references to real tape loading, the number of ticks
 	// is the value at the moment the PC reaches address 0x00fa
@@ -286,7 +307,7 @@ func (fl *FastLoad) romdump(w io.Writer) error {
 	for i, b := range fl.blocks {
 		err := b.romdump(w)
 		if err != nil {
-			return fmt.Errorf("block %d: %w", i, err)
+			return fmt.Errorf("fastload: romdump: block %d: %w", i, err)
 		}
 	}
 	return nil

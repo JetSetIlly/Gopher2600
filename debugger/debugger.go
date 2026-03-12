@@ -1075,10 +1075,10 @@ func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 
 		// force multiload value for supercharger fastload
 		if dbg.opts.Multiload >= 0 {
-			dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(dbg.opts.Multiload))
+			dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddr, uint8(dbg.opts.Multiload))
 		}
 
-		// complete bootstrap procedure
+		// bootstrap procedure
 		bs := dbg.vcs.Mem.Cart.GetSuperchargerBootstrap()
 		if bs == nil {
 			return fmt.Errorf("NotifySuperchargerFastload sent from a non-Supercharger cartridge")
@@ -1096,25 +1096,25 @@ func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 	case notifications.NotifySuperchargerSoundloadStarted:
 		// force multiload value for supercharger soundload
 		if dbg.opts.Multiload >= 0 {
-			dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(dbg.opts.Multiload))
+			dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddr, uint8(dbg.opts.Multiload))
 		}
 
-		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundloadStarted)
-		if err != nil {
-			return err
-		}
-	case notifications.NotifySuperchargerSoundloadEnded:
-		// complete bootstrap procedure
+		// bootstrap procedure
 		bs := dbg.vcs.Mem.Cart.GetSuperchargerBootstrap()
 		if bs == nil {
-			return fmt.Errorf("NotifySuperchargerFastload sent from a non-Supercharger cartridge")
+			return fmt.Errorf("NotifySuperchargerSoundloadStarted sent from a non-Supercharger cartridge")
 		}
 		err := bs.Bootstrap(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer)
 		if err != nil {
 			return err
 		}
 
-		err = dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundloadEnded)
+		err = dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundloadStarted)
+		if err != nil {
+			return err
+		}
+	case notifications.NotifySuperchargerSoundloadEnded:
+		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundloadEnded)
 		if err != nil {
 			return err
 		}

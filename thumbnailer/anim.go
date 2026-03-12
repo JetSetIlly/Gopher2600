@@ -113,9 +113,9 @@ func NewAnim(prefs *preferences.Preferences, spec string) (*Anim, error) {
 func (thmb *Anim) String() string {
 	cart := thmb.vcs.Mem.Cart
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s (%s cartridge)", cart.ShortName, cart.ID()))
+	fmt.Fprintf(&s, "%s (%s cartridge)", cart.ShortName, cart.ID())
 	if cc := cart.GetContainer(); cc != nil {
-		s.WriteString(fmt.Sprintf(" [in %s]", cc.ContainerID()))
+		fmt.Fprintf(&s, " [in %s]", cc.ContainerID())
 	}
 	return s.String()
 }
@@ -179,17 +179,7 @@ func (thmb *Anim) Notify(notice notifications.Notice, data ...string) error {
 		// setting the Final flag to true.
 		thmb.vcs.CPU.LastResult.Final = true
 
-		// complete bootstrap procedure
-		fastload := thmb.vcs.Mem.Cart.GetSuperchargerBootstrap()
-		if fastload == nil {
-			return fmt.Errorf("NotifySuperchargerFastload sent from a non-Supercharger cartridge")
-		}
-		err := fastload.Bootstrap(thmb.vcs.CPU, thmb.vcs.Mem.RAM, thmb.vcs.RIOT.Timer)
-		if err != nil {
-			return err
-		}
-	case notifications.NotifySuperchargerSoundloadEnded:
-		// complete bootstrap procedure
+		// bootstrap procedure
 		bs := thmb.vcs.Mem.Cart.GetSuperchargerBootstrap()
 		if bs == nil {
 			return fmt.Errorf("NotifySuperchargerFastload sent from a non-Supercharger cartridge")
@@ -198,7 +188,17 @@ func (thmb *Anim) Notify(notice notifications.Notice, data ...string) error {
 		if err != nil {
 			return err
 		}
-
+	case notifications.NotifySuperchargerSoundloadStarted:
+		// bootstrap procedure
+		bs := thmb.vcs.Mem.Cart.GetSuperchargerBootstrap()
+		if bs == nil {
+			return fmt.Errorf("NotifySuperchargerSoundloadStarted sent from a non-Supercharger cartridge")
+		}
+		err := bs.Bootstrap(thmb.vcs.CPU, thmb.vcs.Mem.RAM, thmb.vcs.RIOT.Timer)
+		if err != nil {
+			return err
+		}
+	case notifications.NotifySuperchargerSoundloadEnded:
 		return thmb.vcs.TV.Reset(true)
 	}
 	return nil

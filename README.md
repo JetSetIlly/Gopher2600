@@ -155,7 +155,13 @@ DPC+ARM information on Spiceware's blog https://atariage.com/forums/blogs/entry/
 
 The "Mostly Inclusive Atari 2600 Mapper / Selected Hardware Document" (dated 03/04/12) by Kevin Horton
 
-Supercharger information from the Kevin Horton document above and also the `sctech.txt` document
+Supercharger information from the Kevin Horton document above and also the "sctech.txt" document
+
+https://web.archive.org/web/19990210092458/https://www.primenet.com/~nickb/sctech.txt
+
+And for the binary "fastload" supercharger format 
+
+https://www.biglist.com/lists/stella/archives/199901/msg00026.html
 
 Information about the SpeakJet chip found in the AtariVox peripheral
 https://people.ece.cornell.edu/land/courses/ece4760/Speech/speakjetusermanual.pdf

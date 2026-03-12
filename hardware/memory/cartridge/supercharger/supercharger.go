@@ -31,29 +31,34 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// supercharger has 6k of RAM in total.
-const numRAMBanks = 4
-const bankSize = 2048
+const (
+	// supercharger has 6k of RAM in total.
+	numRAMBanks = 4
+	bankSize    = 2048
 
-// The address in VCS RAM of the multiload byte. Tapes will not load unless the
-// encoded multibyte in the stream is the same as the value in this address.
-const MutliloadByteAddress = 0xfa
+	// The address in VCS RAM of the multiload byte. Tapes will not load unless the
+	// encoded multibyte in the stream is the same as the value in this address.
+	MutliloadByteAddr = uint16(0x00fa)
 
-// low and high address in RAM where the JMP address instruction is placed for the bootstrap
-const bootstrapAddressLo = 0xfe
-const bootstrapAddressHi = 0xff
+	// RAM location where the JMP address instruction is placed for the bootstrap
+	jmpAddrLo = uint16(0x00fe)
+	jmpAddrHi = uint16(0x00ff)
+
+	// location of config byte at moment of bootstrap
+	configByteAddr = uint16(0x0080)
+)
 
 // tape defines the operations required by the $fff9 tape loader. With this
 // interface, the Supercharger implementation supports both fast-loading
 // from a Stella bin file, and "slow" loading from a sound file.
 type tape interface {
 	snapshot() tape
-	plumb(*state, *environment.Environment)
+	plumb(*environment.Environment)
 	load() (uint8, error)
 	step()
 	end()
 	romdump(io.Writer) error
-	bootstrap(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error
+	bootstrap(*state, *cpu.CPU, *vcs.RAM, *timer.Timer) error
 }
 
 // Supercharger represents a supercharger cartridge.
@@ -91,7 +96,7 @@ func NewSupercharger(env *environment.Environment) (mapper.CartMapper, error) {
 	if env.Loader.IsSoundData {
 		cart.state.tape, err = newSoundLoad(env)
 	} else {
-		cart.state.tape, err = newFastLoad(env, cart.state)
+		cart.state.tape, err = newFastLoad(env)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("supercharger: %w", err)
@@ -120,7 +125,7 @@ func (cart *Supercharger) Snapshot() mapper.CartMapper {
 // Plumb implements the mapper.CartMapper interface.
 func (cart *Supercharger) Plumb(env *environment.Environment) {
 	cart.env = env
-	cart.state.tape.plumb(cart.state, env)
+	cart.state.tape.plumb(env)
 }
 
 // Reset implements the mapper.CartMapper interface.
@@ -305,14 +310,14 @@ func (cart *Supercharger) SetBank(bank string) error {
 
 	b, err := banking.SingleSelection(bank)
 	if err != nil {
-		return fmt.Errorf("%s: %w", cart.mappingID, err)
+		return fmt.Errorf("supercharger: %w", err)
 	}
 	if b.IsRAM {
-		return fmt.Errorf("%s: cartridge expects a pattern number between 0 and 7", cart.mappingID)
+		return fmt.Errorf("supercharger: cartridge expects a pattern number between 0 and 7")
 	}
 
 	if b.Number > 7 {
-		return fmt.Errorf("%s: invalid banking mode (%d)", cart.mappingID, b.Number)
+		return fmt.Errorf("supercharger: invalid banking mode (%d)", b.Number)
 	}
 
 	cart.state.registers.BankingMode = b.Number
@@ -458,7 +463,7 @@ func (cart *Supercharger) SetTapeCounter(c int) {
 
 // Bootstrap implements the mapper.CartSuperChargerBootstrap interface.
 func (cart *Supercharger) Bootstrap(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
-	return cart.state.tape.bootstrap(mc, ram, tmr)
+	return cart.state.tape.bootstrap(cart.state, mc, ram, tmr)
 }
 
 // GetTapeState implements the mapper.CartTapeBus interface
@@ -488,12 +493,12 @@ func (cart *Supercharger) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 func (cart *Supercharger) ROMDump(filename string) error {
 	f, err := os.Create(filename)
 	if err != nil {
-		return fmt.Errorf("%s: %w", cart.mappingID, err)
+		return fmt.Errorf("supercharger: %w", err)
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			logger.Logf(cart.env, "cartridge", "%s: %v", cart.mappingID, err)
+			logger.Logf(cart.env, "supercharger", "%v", err)
 		}
 	}()
 

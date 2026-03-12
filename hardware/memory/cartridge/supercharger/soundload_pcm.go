@@ -55,7 +55,7 @@ func getPCM(env *environment.Environment, cl cartridgeloader.Loader) (pcmData, e
 			return p, fmt.Errorf("wav: not a valid wav file")
 		}
 
-		logger.Log(env, soundloadLogTag, "loading from wav file")
+		logger.Log(env, "supercharger: soundload", "loading from wav file")
 
 		// load all data at once
 		buf, err := dec.FullPCMBuffer()
@@ -86,7 +86,7 @@ func getPCM(env *environment.Environment, cl cartridgeloader.Loader) (pcmData, e
 			return p, fmt.Errorf("mp3: %w", err)
 		}
 
-		logger.Log(env, soundloadLogTag, "loading from mp3 file")
+		logger.Log(env, "supercharger: soundload", "loading from mp3 file")
 
 		err = nil
 		chunk := make([]byte, 4096)
@@ -127,8 +127,8 @@ func getPCM(env *environment.Environment, cl cartridgeloader.Loader) (pcmData, e
 		p.totalTime = float64(len(p.data)) / p.sampleRate
 	}
 
-	logger.Logf(env, soundloadLogTag, "sample rate: %0.2fHz", p.sampleRate)
-	logger.Logf(env, soundloadLogTag, "total time: %.02fs", p.totalTime)
+	logger.Logf(env, "supercharger: soundload", "sample rate: %0.2fHz", p.sampleRate)
+	logger.Logf(env, "supercharger: soundload", "total time: %.02fs", p.totalTime)
 
 	return p, nil
 }

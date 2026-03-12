@@ -119,9 +119,9 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 func (cmp *Comparison) String() string {
 	cart := cmp.vcs.Mem.Cart
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s (%s cartridge)", cart.ShortName, cart.ID()))
+	fmt.Fprintf(&s, "%s (%s cartridge)", cart.ShortName, cart.ID())
 	if cc := cart.GetContainer(); cc != nil {
-		s.WriteString(fmt.Sprintf(" [in %s]", cc.ContainerID()))
+		fmt.Fprintf(&s, " [in %s]", cc.ContainerID())
 	}
 	return s.String()
 }
@@ -161,17 +161,7 @@ func (cmp *Comparison) Notify(notice notifications.Notice, data ...string) error
 		// setting the Final flag to true.
 		cmp.vcs.CPU.LastResult.Final = true
 
-		// call function to complete tape loading procedure
-		fastload := cmp.vcs.Mem.Cart.GetSuperchargerBootstrap()
-		if fastload == nil {
-			return fmt.Errorf("NotifySuperchargerFastload sent from a non-Supercharger cartridge")
-		}
-		err := fastload.Bootstrap(cmp.vcs.CPU, cmp.vcs.Mem.RAM, cmp.vcs.RIOT.Timer)
-		if err != nil {
-			return err
-		}
-	case notifications.NotifySuperchargerSoundloadEnded:
-		// complete bootstrap procedure
+		// bootstrap procedure
 		bs := cmp.vcs.Mem.Cart.GetSuperchargerBootstrap()
 		if bs == nil {
 			return fmt.Errorf("NotifySuperchargerFastload sent from a non-Supercharger cartridge")
@@ -180,7 +170,17 @@ func (cmp *Comparison) Notify(notice notifications.Notice, data ...string) error
 		if err != nil {
 			return err
 		}
-
+	case notifications.NotifySuperchargerSoundloadStarted:
+		// bootstrap procedure
+		bs := cmp.vcs.Mem.Cart.GetSuperchargerBootstrap()
+		if bs == nil {
+			return fmt.Errorf("NotifySuperchargerSoundloadStarted sent from a non-Supercharger cartridge")
+		}
+		err := bs.Bootstrap(cmp.vcs.CPU, cmp.vcs.Mem.RAM, cmp.vcs.RIOT.Timer)
+		if err != nil {
+			return err
+		}
+	case notifications.NotifySuperchargerSoundloadEnded:
 		return cmp.vcs.TV.Reset(true)
 	}
 

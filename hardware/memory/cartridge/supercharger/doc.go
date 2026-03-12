@@ -13,9 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package supercharger implements the tape based cartridge format. The
-// implementation is complex enough for it to be spread over more than one file
-// and so for purposes of clarity it has been placed in its own package.
+// Package supercharger implements the tape based cartridge format.
 //
 // The package supports both loading from a sound file (supporting most WAV and
 // MP3 files) or from a "fastload" file.
@@ -28,4 +26,14 @@
 //
 // Mutliload tapes are supported from both sound file and fastload binaries. In
 // the case of sound files the audio must be in a single file.
+//
+// Information about supercharger technology is found in the "sctech.txt" document.
+//
+// https://web.archive.org/web/19990210092458/https://www.primenet.com/~nickb/sctech.txt
+//
+// And for the fastload format, the best information is an old biglist email
+// from Eckhard Stolberg. This document will be referred to as 'Stolberg' in any
+// code comments.
+//
+// https://www.biglist.com/lists/stella/archives/199901/msg00026.html
 package supercharger
