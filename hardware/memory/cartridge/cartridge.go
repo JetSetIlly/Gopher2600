@@ -535,8 +535,8 @@ func (cart *Cartridge) GetCoProc() coprocessor.CartCoProc {
 	return nil
 }
 
-func (cart *Cartridge) GetSuperchargerFastLoad() mapper.CartSuperChargerFastLoad {
-	if c, ok := cart.mapper.(mapper.CartSuperChargerFastLoad); ok {
+func (cart *Cartridge) GetSuperchargerBootstrap() mapper.CartSuperChargerBootstrap {
+	if c, ok := cart.mapper.(mapper.CartSuperChargerBootstrap); ok {
 		return c
 	}
 	return nil

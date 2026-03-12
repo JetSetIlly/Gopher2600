@@ -21,7 +21,10 @@ import (
 	"math"
 
 	"github.com/jetsetilly/gopher2600/environment"
+	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
+	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/notifications"
 )
@@ -32,30 +35,26 @@ import (
 //
 // This is my current strategy:
 //
-// 1) Tape will play when address 1ff9 (or any of the cartridge mirrors) is
-//    read. The RAM write bit must also be set for the tape to start playing.
+// 1) Tape will play when address 1ff9 (or any of the cartridge mirrors) is read. The RAM write bit
+//    must also be set for the tape to start playing.
 //
-// 2) Tape will stop when address fa1a (specifically) is read. This is the
-//    point in the BIOS at which the program jumps to VCS RAM (at address
-//    0x00fa) and the loaded program begins.
+// 2) Tape will stop when address fa1a (specifically) is read. This is the point in the BIOS at
+//    which the program jumps to VCS RAM (at address 0x00fa) and the loaded program begins.
 //
-// 3) Rewinding: The "tape" is just a sound file (the emulator supports most
-//    WAV and MP3 files) so "playing" is nothing more than keeping track of how
-//    much of the file has been read and moving that progress pointer along
-//    every CPU cycle. "Rewinding" therefore, is just a case of resetting the
-//    progress pointer to zero when the end of the file has been reached.
+// 3) Rewinding: The "tape" is just a sound file (the emulator supports most WAV and MP3 files) so
+//    "playing" is nothing more than keeping track of how much of the file has been read and moving
+//    that progress pointer along every CPU cycle. "Rewinding" therefore, is just a case of
+//    resetting the progress pointer to zero when the end of the file has been reached.
 //
-// Eight bits of data is returned from the current tape position on every
-// subsequent read of address 1ff9. Decoding of the audio signal is handled by
-// the Supercharger BIOS.
+// Eight bits of data is returned from the current tape position on every subsequent read of address
+// 1ff9. Decoding of the audio signal is handled by the Supercharger BIOS.
 
 // tag string used in called to Log().
 const soundloadLogTag = "supercharger: soundload"
 
 // SoundLoad implements the Tape interface. It loads data from a sound file.
 //
-// Compared to FastLoad this method is more 'authentic' and uses the BIOS
-// correctly.
+// Compared to FastLoad this method is more 'authentic' and uses the BIOS correctly.
 type SoundLoad struct {
 	env *environment.Environment
 
@@ -68,21 +67,22 @@ type SoundLoad struct {
 	// is the tape currently playing
 	playing bool
 
-	// short delay before starting tape. allows the "rewind tape. press play"
-	// message to be visible momentarily, rather than disconcertingly flashing
-	// on and then off
+	// short delay before starting tape. allows the "rewind tape. press play" message to be visible
+	// momentarily, rather than disconcertingly flashing on and then off
 	playDelay int
 
-	// the speed at which the tape advances. the tape is advanced every call to step()
-	// which happens at a rate of 3.57MHz.
+	// the speed at which the tape advances. the tape is advanced every call to step() which happens
+	// at a rate of 3.57MHz.
 	regulator   int
 	regulatorCt int
 
-	// stepLimiter is used to limit the number of times step() can be called
-	// without load() being called and for the tape to continue "playing". once
-	// stepLimiter reaches the stepLimit value, the tape stops
+	// stepLimiter is used to limit the number of times step() can be called without load() being
+	// called and for the tape to continue "playing". once stepLimiter reaches the stepLimit value,
+	// the tape stops
 	stepLimiter int
 
+	// threshold value is the average value in the PCM data. it's used to decide whether the
+	// streamed bit is a 1 or a 0
 	threshold float32
 }
 
@@ -108,8 +108,8 @@ func newSoundLoad(env *environment.Environment) (tape, error) {
 	timePerSample := 1000000.0 / tap.pcm.sampleRate
 	logger.Logf(tap.env, soundloadLogTag, "time per sample: %.02fus", timePerSample)
 
-	// number of samples in a cycle for it to be interpreted as a zero or a one
-	// values taken from "Atari 2600 Mappers" document by Kevin Horton
+	// number of samples in a cycle for it to be interpreted as a zero or a one values taken from
+	// "Atari 2600 Mappers" document by Kevin Horton
 	logger.Logf(tap.env, soundloadLogTag, "min/opt/max samples for zero-bit: %d/%d/%d",
 		int(158.0/timePerSample), int(227.0/timePerSample), int(317.0/timePerSample))
 	logger.Logf(tap.env, soundloadLogTag, "min/opt/max samples for one-bit: %d/%d/%d",
@@ -117,9 +117,9 @@ func newSoundLoad(env *environment.Environment) (tape, error) {
 
 	// calculate tape regulator speed. 1190000 is the frequency at which step() is called (1.19MHz)
 	//
-	// TODO: for non-NTSC machine the frequency step is called will be
-	// different but it doesn't appear to have any effect on loading success so
-	// we won't complicate the code by allowing the regulator to change
+	// TODO: for non-NTSC machine the frequency step is called will be different but it doesn't
+	// appear to have any effect on loading success so we won't complicate the code by allowing the
+	// regulator to change
 	tap.regulator = int(math.Round(1190000.0 / tap.pcm.sampleRate))
 	logger.Logf(tap.env, soundloadLogTag, "tape regulator: %d", tap.regulator)
 
@@ -202,6 +202,10 @@ func (tap *SoundLoad) end() {
 	if err != nil {
 		logger.Log(tap.env, soundloadLogTag, err)
 	}
+}
+
+func (tap *SoundLoad) bootstrap(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
+	return nil
 }
 
 // Rewind implements the mapper.CartTapeBus interface.

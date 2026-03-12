@@ -1078,12 +1078,12 @@ func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 			dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(dbg.opts.Multiload))
 		}
 
-		// call commit function to complete tape loading procedure
-		fastload := dbg.vcs.Mem.Cart.GetSuperchargerFastLoad()
-		if fastload == nil {
-			return fmt.Errorf("NotifySuperchargerFastloadEnded sent from a non Supercharger fastload cartridge")
+		// complete bootstrap procedure
+		bs := dbg.vcs.Mem.Cart.GetSuperchargerBootstrap()
+		if bs == nil {
+			return fmt.Errorf("NotifySuperchargerFastload sent from a non-Supercharger cartridge")
 		}
-		err := fastload.Fastload(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer)
+		err := bs.Bootstrap(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer)
 		if err != nil {
 			return err
 		}
@@ -1104,7 +1104,17 @@ func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 			return err
 		}
 	case notifications.NotifySuperchargerSoundloadEnded:
-		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundloadEnded)
+		// complete bootstrap procedure
+		bs := dbg.vcs.Mem.Cart.GetSuperchargerBootstrap()
+		if bs == nil {
+			return fmt.Errorf("NotifySuperchargerFastload sent from a non-Supercharger cartridge")
+		}
+		err := bs.Bootstrap(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer)
+		if err != nil {
+			return err
+		}
+
+		err = dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundloadEnded)
 		if err != nil {
 			return err
 		}

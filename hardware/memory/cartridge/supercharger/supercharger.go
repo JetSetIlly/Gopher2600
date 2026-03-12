@@ -39,6 +39,10 @@ const bankSize = 2048
 // encoded multibyte in the stream is the same as the value in this address.
 const MutliloadByteAddress = 0xfa
 
+// low and high address in RAM where the JMP address instruction is placed for the bootstrap
+const bootstrapAddressLo = 0xfe
+const bootstrapAddressHi = 0xff
+
 // tape defines the operations required by the $fff9 tape loader. With this
 // interface, the Supercharger implementation supports both fast-loading
 // from a Stella bin file, and "slow" loading from a sound file.
@@ -49,6 +53,7 @@ type tape interface {
 	step()
 	end()
 	romdump(io.Writer) error
+	bootstrap(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error
 }
 
 // Supercharger represents a supercharger cartridge.
@@ -451,12 +456,9 @@ func (cart *Supercharger) SetTapeCounter(c int) {
 	}
 }
 
-// Fastload implements the mapper.CartSuperChargerFastLoad interface.
-func (cart *Supercharger) Fastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
-	if f, ok := cart.state.tape.(mapper.CartSuperChargerFastLoad); ok {
-		return f.Fastload(mc, ram, tmr)
-	}
-	return nil
+// Bootstrap implements the mapper.CartSuperChargerBootstrap interface.
+func (cart *Supercharger) Bootstrap(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
+	return cart.state.tape.bootstrap(mc, ram, tmr)
 }
 
 // GetTapeState implements the mapper.CartTapeBus interface

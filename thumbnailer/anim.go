@@ -179,13 +179,26 @@ func (thmb *Anim) Notify(notice notifications.Notice, data ...string) error {
 		// setting the Final flag to true.
 		thmb.vcs.CPU.LastResult.Final = true
 
-		// call function to complete tape loading procedure
-		fastload := thmb.vcs.Mem.Cart.GetSuperchargerFastLoad()
-		err := fastload.Fastload(thmb.vcs.CPU, thmb.vcs.Mem.RAM, thmb.vcs.RIOT.Timer)
+		// complete bootstrap procedure
+		fastload := thmb.vcs.Mem.Cart.GetSuperchargerBootstrap()
+		if fastload == nil {
+			return fmt.Errorf("NotifySuperchargerFastload sent from a non-Supercharger cartridge")
+		}
+		err := fastload.Bootstrap(thmb.vcs.CPU, thmb.vcs.Mem.RAM, thmb.vcs.RIOT.Timer)
 		if err != nil {
 			return err
 		}
 	case notifications.NotifySuperchargerSoundloadEnded:
+		// complete bootstrap procedure
+		bs := thmb.vcs.Mem.Cart.GetSuperchargerBootstrap()
+		if bs == nil {
+			return fmt.Errorf("NotifySuperchargerFastload sent from a non-Supercharger cartridge")
+		}
+		err := bs.Bootstrap(thmb.vcs.CPU, thmb.vcs.Mem.RAM, thmb.vcs.RIOT.Timer)
+		if err != nil {
+			return err
+		}
+
 		return thmb.vcs.TV.Reset(true)
 	}
 	return nil

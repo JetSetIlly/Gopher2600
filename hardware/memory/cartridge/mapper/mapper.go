@@ -289,10 +289,10 @@ type CartTapeState struct {
 	Data       []float32
 }
 
-// CartSuperChargerFastLoad defines the commit function required when loading
+// CartSuperChargerBootstrap defines the commit function required when loading
 // Supercharger 'Fastload' binaries
-type CartSuperChargerFastLoad interface {
-	Fastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error
+type CartSuperChargerBootstrap interface {
+	Bootstrap(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error
 }
 
 // CartLabelsBus will be implemented for cartridge mappers that want to report any

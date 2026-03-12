@@ -198,8 +198,8 @@ func (fl *FastLoad) step() {
 func (tap *FastLoad) end() {
 }
 
-// Fastload implements the mapper.CartSuperChargerFastLoad interface.
-func (fl *FastLoad) Fastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
+// bootstrap implements the Tape interface
+func (fl *FastLoad) bootstrap(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
 	// look up requested multiload address
 	m, err := ram.Peek(MutliloadByteAddress)
 	if err != nil {
@@ -262,8 +262,8 @@ func (fl *FastLoad) Fastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error 
 
 	// JMP <absolute address>
 	_ = ram.Poke(0xfd, 0x4c)
-	_ = ram.Poke(0xfe, uint8(fl.blocks[fl.blockIdx].startAddress))
-	_ = ram.Poke(0xff, uint8(fl.blocks[fl.blockIdx].startAddress>>8))
+	_ = ram.Poke(bootstrapAddressLo, uint8(fl.blocks[fl.blockIdx].startAddress))
+	_ = ram.Poke(bootstrapAddressHi, uint8(fl.blocks[fl.blockIdx].startAddress>>8))
 
 	// reset timer. in references to real tape loading, the number of ticks
 	// is the value at the moment the PC reaches address 0x00fa
