@@ -204,11 +204,11 @@ func (fl *FastLoad) plumb(env *environment.Environment) {
 
 // load implements the tape interface.
 func (fl *FastLoad) load() (uint8, error) {
-	if fl.env.Label == environment.MainEmulation {
-		// setup cartridge according to tape instructions
-		fl.env.Notifications.Notify(notifications.NotifySuperchargerFastload)
+	err := fl.env.Notifications.Notify(notifications.NotifySuperchargerFastload)
+	if err != nil {
+		return 0x00, fmt.Errorf("fastload: %w", err)
 	}
-	return 0, nil
+	return 0x00, nil
 }
 
 // step implements the tape interface.
