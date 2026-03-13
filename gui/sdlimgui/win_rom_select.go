@@ -76,11 +76,6 @@ type winSelectROM struct {
 	thmbDim       imgui.Vec2
 	thmbPosOffset imgui.Vec2
 
-	// the emulation thumbnail is placed inside a child of the following
-	// dimensions and which is sized according the the value in both
-	// listviewDim and thmbDim
-	thmbChildDim imgui.Vec2
-
 	// map of normalised ROM titles to box art images
 	boxart        []string
 	boxartTexture texture
@@ -121,9 +116,12 @@ func newSelectROM(img *SdlImgui) (window, error) {
 	win.thmbTexture = img.rnd.addTexture(shaderColor, true, true, nil)
 	win.thmbImage = image.NewRGBA(image.Rect(0, 0, 0, 0))
 	win.thmbDim = imgui.Vec2{X: specification.WidthTV, Y: specification.HeightTV}.Times(2.0)
+
+	// height of listview based on thumb dimensions
 	win.listviewDim = imgui.Vec2{X: 300, Y: win.thmbDim.Y * 1.4}
+
+	// vertical centering thumbnail animation
 	win.thmbPosOffset = imgui.Vec2{X: 0, Y: (win.listviewDim.Y - win.thmbDim.Y) / 2}
-	win.thmbChildDim = imgui.Vec2{X: win.thmbDim.X, Y: win.listviewDim.Y}
 
 	// load and normalise box art names
 	boxartPath, err := resources.JoinPath(namedBoxarts)
@@ -379,7 +377,16 @@ func (win *winSelectROM) draw() {
 
 	// emulation thumbnail is on the same line as the listview
 	imgui.SameLineV(0, 10)
-	imgui.BeginChildV("##emulation", win.thmbChildDim, true, 0)
+
+	// the actual child area where the thumbnail is needs to take into account how much additional
+	// padding is introduced by the child widget
+	const numBorders = 4
+	thmbChildDim := imgui.Vec2{
+		X: win.thmbDim.X + imgui.CurrentStyle().CellPadding().X*numBorders,
+		Y: win.listviewDim.Y,
+	}
+
+	imgui.BeginChildV("##emulation", thmbChildDim, true, 0)
 	imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.thmbPosOffset))
 	imgui.Image(imgui.TextureID(win.thmbTexture.getID()), win.thmbDim)
 	imgui.EndChild()
