@@ -16,6 +16,7 @@
 package supercharger
 
 import (
+	"crypto/md5"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -33,8 +34,9 @@ var biosFile = [...]string{
 	"supercharger_bios.bin",
 }
 
-// tag string used in called to Log().
-const biosLogTag = "supercharger: bios"
+const (
+	allowedBiosMD5 = "4565c1a7abce773e53c75b35414adefd"
+)
 
 // loadBIOS attempts to load BIOS from (in order of priority):
 //   - current working directory
@@ -53,7 +55,7 @@ func loadBIOS(env *environment.Environment, path string) ([]uint8, error) {
 			return nil, fmt.Errorf("bios: file (%s) is not 2k", b)
 		}
 
-		logger.Logf(env, biosLogTag, "using %s (from current working directory)", b)
+		logger.Logf(env, "supercharger: bios", "using %s (from current working directory)", b)
 		return d, nil
 	}
 
@@ -70,7 +72,7 @@ func loadBIOS(env *environment.Environment, path string) ([]uint8, error) {
 			return nil, fmt.Errorf("bios: file (%s) is not 2k", p)
 		}
 
-		logger.Logf(env, biosLogTag, "using %s (from the same path as the game ROM)", p)
+		logger.Logf(env, "supercharger: bios", "using %s (from the same path as the game ROM)", p)
 		return d, nil
 	}
 
@@ -91,7 +93,7 @@ func loadBIOS(env *environment.Environment, path string) ([]uint8, error) {
 			return nil, fmt.Errorf("bios: file (%s) is not 2k", p)
 		}
 
-		logger.Logf(env, biosLogTag, "using %s (from the resource path)", p)
+		logger.Logf(env, "supercharger: bios", "using %s (from the resource path)", p)
 		return d, nil
 	}
 
@@ -117,6 +119,12 @@ func _loadBIOS(biosFilePath string) ([]uint8, error) {
 	_, err = f.Read(data)
 	if err != nil {
 		return nil, err
+	}
+
+	// check that file is correct
+	h := fmt.Sprintf("%x", md5.Sum(data))
+	if h != allowedBiosMD5 {
+		return nil, fmt.Errorf("disallowed supercharger MD5 hash: %s", h)
 	}
 
 	return data, nil

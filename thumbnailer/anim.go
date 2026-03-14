@@ -170,7 +170,7 @@ func (thmb *Anim) PushNotify(notice notifications.Notice, data ...string) error 
 // Notify implements the notifications.Notify interface
 func (thmb *Anim) Notify(notice notifications.Notice, data ...string) error {
 	switch notice {
-	case notifications.NotifySuperchargerFastload:
+	case notifications.NotifySuperchargerFastLoad:
 		// the supercharger ROM will eventually start execution from the PC
 		// address given in the supercharger file
 
@@ -188,7 +188,7 @@ func (thmb *Anim) Notify(notice notifications.Notice, data ...string) error {
 		if err != nil {
 			return err
 		}
-	case notifications.NotifySuperchargerSoundloadStarted:
+	case notifications.NotifySuperchargerSoundLoadStarted:
 		// bootstrap procedure
 		bs := thmb.vcs.Mem.Cart.GetSuperchargerBootstrap()
 		if bs == nil {
@@ -198,7 +198,7 @@ func (thmb *Anim) Notify(notice notifications.Notice, data ...string) error {
 		if err != nil {
 			return err
 		}
-	case notifications.NotifySuperchargerSoundloadEnded:
+	case notifications.NotifySuperchargerSoundLoadEnded:
 		return thmb.vcs.TV.Reset(true)
 	}
 	return nil

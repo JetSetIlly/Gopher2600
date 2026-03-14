@@ -26,13 +26,13 @@ const (
 	NotifyScreenshot Notice = "NotifyScreenshot"
 
 	// notifications sent when supercharger is loading from a sound file (eg. mp3 file)
-	NotifySuperchargerSoundloadStarted Notice = "NotifySuperchargerSoundloadStarted"
-	NotifySuperchargerSoundloadEnded   Notice = "NotifySuperchargerSoundloadEnded"
-	NotifySuperchargerSoundloadRewind  Notice = "NotifySuperchargerSoundloadRewind"
+	NotifySuperchargerSoundLoadStarted Notice = "NotifySuperchargerSoundloadStarted"
+	NotifySuperchargerSoundLoadEnded   Notice = "NotifySuperchargerSoundloadEnded"
+	NotifySuperchargerSoundLoadRewind  Notice = "NotifySuperchargerSoundloadRewind"
 
 	// if Supercharger is loading from a fastload binary then this event is
 	// raised when the ROM requests the next block be loaded from the "tape
-	NotifySuperchargerFastload Notice = "NotifySuperchargerFastload"
+	NotifySuperchargerFastLoad Notice = "NotifySuperchargerFastload"
 
 	// notifications sent by plusrom
 	NotifyPlusROMNewInstall Notice = "NotifyPlusROMNewInstall"

@@ -1053,7 +1053,7 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 	switch notice {
 
-	case notifications.NotifySuperchargerFastload:
+	case notifications.NotifySuperchargerFastLoad:
 		// the supercharger ROM will eventually start execution from the PC
 		// address given in the supercharger file
 
@@ -1086,7 +1086,7 @@ func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 		if err != nil {
 			return err
 		}
-	case notifications.NotifySuperchargerSoundloadStarted:
+	case notifications.NotifySuperchargerSoundLoadStarted:
 		// force multiload value for supercharger soundload
 		if dbg.opts.Multiload >= 0 {
 			dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddr, uint8(dbg.opts.Multiload))
@@ -1102,12 +1102,12 @@ func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 			return err
 		}
 
-		err = dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundloadStarted)
+		err = dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundLoadStarted)
 		if err != nil {
 			return err
 		}
-	case notifications.NotifySuperchargerSoundloadEnded:
-		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundloadEnded)
+	case notifications.NotifySuperchargerSoundLoadEnded:
+		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundLoadEnded)
 		if err != nil {
 			return err
 		}
@@ -1121,8 +1121,8 @@ func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 		}
 
 		return dbg.vcs.TV.Reset(true)
-	case notifications.NotifySuperchargerSoundloadRewind:
-		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundloadRewind)
+	case notifications.NotifySuperchargerSoundLoadRewind:
+		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundLoadRewind)
 		if err != nil {
 			return err
 		}

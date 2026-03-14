@@ -118,13 +118,13 @@ func (o *playscrOverlay) set(v gui.FeatureReqData, args ...gui.FeatureReqData) {
 		}
 	case notifications.Notice:
 		switch n {
-		case notifications.NotifySuperchargerSoundloadStarted:
+		case notifications.NotifySuperchargerSoundLoadStarted:
 			o.cartridge = n
 			o.cartridgeLatch = overlayLatch{duration: overlayLatchPinned}
-		case notifications.NotifySuperchargerSoundloadEnded:
+		case notifications.NotifySuperchargerSoundLoadEnded:
 			o.cartridge = n
 			o.cartridgeLatch = overlayLatch{duration: overlayLatchShort}
-		case notifications.NotifySuperchargerSoundloadRewind:
+		case notifications.NotifySuperchargerSoundLoadRewind:
 			return
 
 		case notifications.NotifyPlusROMNetwork:
@@ -516,17 +516,17 @@ func (o *playscrOverlay) drawTopRight(posMin imgui.Vec2, posMax imgui.Vec2) {
 	var secondaryIcon string
 
 	switch o.cartridge {
-	case notifications.NotifySuperchargerSoundloadStarted:
+	case notifications.NotifySuperchargerSoundLoadStarted:
 		if o.img.prefs.superchargerNotifications.Get().(bool) {
 			icon = fmt.Sprintf("%c", fonts.Tape)
 			secondaryIcon = fmt.Sprintf("%c", fonts.TapePlay)
 		}
-	case notifications.NotifySuperchargerSoundloadEnded:
+	case notifications.NotifySuperchargerSoundLoadEnded:
 		if o.img.prefs.superchargerNotifications.Get().(bool) {
 			icon = fmt.Sprintf("%c", fonts.Tape)
 			secondaryIcon = fmt.Sprintf("%c", fonts.TapeStop)
 		}
-	case notifications.NotifySuperchargerSoundloadRewind:
+	case notifications.NotifySuperchargerSoundLoadRewind:
 		if o.img.prefs.superchargerNotifications.Get().(bool) {
 			icon = fmt.Sprintf("%c", fonts.Tape)
 			secondaryIcon = fmt.Sprintf("%c", fonts.TapeRewind)

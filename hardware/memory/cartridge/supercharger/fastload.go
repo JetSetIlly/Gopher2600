@@ -243,7 +243,7 @@ func (fl *FastLoad) plumb(env *environment.Environment) {
 
 // load implements the tape interface.
 func (fl *FastLoad) load() (uint8, error) {
-	err := fl.env.Notifications.Notify(notifications.NotifySuperchargerFastload)
+	err := fl.env.Notifications.Notify(notifications.NotifySuperchargerFastLoad)
 	if err != nil {
 		return 0x00, fmt.Errorf("fastload: %w", err)
 	}

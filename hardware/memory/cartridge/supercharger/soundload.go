@@ -158,7 +158,7 @@ func (tap *SoundLoad) load() (uint8, error) {
 			tap.playDelay++
 			return 0x00, nil
 		}
-		tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundloadStarted)
+		tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundLoadStarted)
 		tap.playing = true
 		tap.playDelay = 0
 		logger.Log(tap.env, "supercharger: soundload", "tape playing")
@@ -209,7 +209,7 @@ func (tap *SoundLoad) end() {
 		}
 	}
 
-	err := tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundloadEnded)
+	err := tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundLoadEnded)
 	if err != nil {
 		logger.Log(tap.env, "supercharger: soundload", err)
 	}
@@ -278,7 +278,7 @@ func (tap *SoundLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *ti
 // Rewind implements the mapper.CartTapeBus interface.
 func (tap *SoundLoad) Rewind() {
 	// rewinding happens instantaneously
-	tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundloadRewind)
+	tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundLoadRewind)
 	tap.pcmIdx = 0
 	logger.Log(tap.env, "supercharger: soundload", "tape rewound")
 	tap.stepLimiter = 0
