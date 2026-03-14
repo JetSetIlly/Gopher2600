@@ -50,9 +50,14 @@ const (
 	fastLoadHeaderLen    = 0x100
 	fastLoadBlockLen     = fastLoadHeaderOffset + fastLoadHeaderLen
 
+	fastLoadPageLen   = 0x100
+	fastLoadPageCount = 0x18
+
 	// the page table is part of the header
 	fastLoadPageTableOffset = 0x10
-	fastLoadPageTableLen    = 0x18
+
+	// the checksum table is part of the header
+	fastLoadPageChecksumTableOffset = 0x40
 )
 
 type fastLoadBlock struct {
@@ -70,8 +75,8 @@ type fastLoadBlock struct {
 	// number of pages to load
 	numPages uint8
 
-	// not using checksum in any meaningful way
-	checksum uint8
+	// checksum of fields in header (excluding pageTable and pageChecksums)
+	headerChecksum uint8
 
 	// we'll use this to check if the correct multiload is being read
 	multiload uint8
@@ -80,29 +85,53 @@ type fastLoadBlock struct {
 	progressSpeed uint16
 
 	// data is loaded according to page table
-	pageTable []byte
+	pageTable [fastLoadPageCount]byte
+
+	// pageChecksums of the pages in the data
+	pageChecksums [fastLoadPageCount]byte
 }
 
 // from 'Stolberg': "checksum (the sum over all 8 game header bytes must be $55)"
 const fastloadChecksumBase = 0x55
 
-func (b *fastLoadBlock) setChecksum() {
-	b.checksum = fastloadChecksumBase
-	b.checksum -= b.startAddressLo + b.startAddressHi +
+func (b *fastLoadBlock) setChecksums() {
+	b.headerChecksum = fastloadChecksumBase
+	b.headerChecksum -= b.startAddressLo + b.startAddressHi +
 		b.configByte + b.numPages + b.multiload +
 		uint8(b.progressSpeed) + uint8(b.progressSpeed>>8)
 
+	for c, p := range b.pageChecksums {
+		p = fastloadChecksumBase
+		for _, d := range b.data[c*fastLoadPageLen : (c+1)*fastLoadHeaderLen] {
+			p -= d
+		}
+		p -= b.pageTable[c]
+		b.pageChecksums[c] = p
+	}
+
 	if !b.verifyChecksum() {
-		panic("error in checksum. this is a programming error in the setChecksum() function")
+		panic("error in supercharger/fastload checksums. this is a programming error in the setChecksum() function")
 	}
 }
 
 func (b *fastLoadBlock) verifyChecksum() bool {
-	checksum := b.checksum + b.startAddressLo + b.startAddressHi +
+	var verified bool
+
+	headerChecksum := b.headerChecksum + b.startAddressLo + b.startAddressHi +
 		b.configByte + b.numPages + b.multiload +
 		uint8(b.progressSpeed) + uint8(b.progressSpeed>>8)
 
-	return checksum == fastloadChecksumBase
+	verified = headerChecksum == fastloadChecksumBase
+
+	for c, p := range b.pageChecksums {
+		for _, d := range b.data[c*fastLoadPageLen : (c+1)*fastLoadHeaderLen] {
+			p += d
+		}
+		p += b.pageTable[c]
+		verified = verified && p == fastloadChecksumBase
+	}
+
+	return verified
 }
 
 func (b *fastLoadBlock) romdump(w io.Writer) error {
@@ -120,11 +149,12 @@ func (b *fastLoadBlock) romdump(w io.Writer) error {
 	h[1] = b.startAddressHi
 	h[2] = b.configByte
 	h[3] = b.numPages
-	h[4] = b.checksum
+	h[4] = b.headerChecksum
 	h[5] = b.multiload
 	h[6] = byte(b.progressSpeed)
 	h[7] = byte(b.progressSpeed >> 8)
-	copy(h[fastLoadPageTableOffset:fastLoadPageTableOffset+fastLoadPageTableLen], b.pageTable)
+	copy(h[fastLoadPageTableOffset:fastLoadPageTableOffset+len(b.pageTable)], b.pageTable[:])
+	copy(h[fastLoadPageChecksumTableOffset:fastLoadPageChecksumTableOffset+len(b.pageChecksums)], b.pageChecksums[:])
 
 	n, err = w.Write(h)
 	if err != nil {
@@ -163,21 +193,18 @@ func newFastLoad(env *environment.Environment) (tape, error) {
 		fl.blocks[i].startAddressHi = gameHeader[1]
 		fl.blocks[i].configByte = gameHeader[2]
 		fl.blocks[i].numPages = gameHeader[3]
-		fl.blocks[i].checksum = gameHeader[4]
+		fl.blocks[i].headerChecksum = gameHeader[4]
 		fl.blocks[i].multiload = gameHeader[5]
 		fl.blocks[i].progressSpeed = (uint16(gameHeader[7]) << 8) | uint16(gameHeader[6])
-		fl.blocks[i].pageTable = gameHeader[fastLoadPageTableOffset : fastLoadPageTableOffset+fastLoadPageTableLen]
-
-		if fl.blocks[i].verifyChecksum() == false {
-			logger.Logf(fl.env, "supercharger: fastload", "block %d: checksum header incorrect", i)
-		}
+		copy(fl.blocks[i].pageTable[:], gameHeader[fastLoadPageTableOffset:fastLoadPageTableOffset+len(fl.blocks[i].pageTable)])
+		copy(fl.blocks[i].pageChecksums[:], gameHeader[fastLoadPageChecksumTableOffset:fastLoadPageChecksumTableOffset+len(fl.blocks[i].pageChecksums)])
 
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: start address: %#04x", i,
 			uint16(fl.blocks[i].startAddressLo)|(uint16(fl.blocks[fl.blockIdx].startAddressHi)<<8),
 		)
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: config byte: %#08b", i, fl.blocks[i].configByte)
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: num pages: %d", i, fl.blocks[i].numPages)
-		logger.Logf(fl.env, "supercharger: fastload", "block %d: checksum: %#02x", i, fl.blocks[i].checksum)
+		logger.Logf(fl.env, "supercharger: fastload", "block %d: checksum: %#02x", i, fl.blocks[i].headerChecksum)
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: multiload: %#02x", i, fl.blocks[i].multiload)
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: progress speed: %#02x", i, fl.blocks[i].progressSpeed)
 
@@ -186,6 +213,18 @@ func newFastLoad(env *environment.Environment) (tape, error) {
 				i, b, fl.blocks[i].pageTable[8*b:8*(b+1)],
 			)
 		}
+
+		for b := range 3 {
+			logger.Logf(fl.env, "supercharger: fastload", "block %d: page checksums: bank %d % 02x",
+				i, b, fl.blocks[i].pageChecksums[8*b:8*(b+1)],
+			)
+		}
+
+		if fl.blocks[i].verifyChecksum() == false {
+			logger.Logf(fl.env, "supercharger: fastload", "block %d: checksums incorrect (will now correct)", i)
+			fl.blocks[i].setChecksums()
+		}
+
 	}
 
 	return fl, nil

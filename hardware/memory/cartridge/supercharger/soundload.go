@@ -245,7 +245,7 @@ func (tap *SoundLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *ti
 		}
 		configByte &= 0x0f
 
-		pageTable := []byte{
+		pageTable := [fastLoadPageCount]byte{
 			0x00, 0x04, 0x08, 0x0c, 0x10, 0x14, 0x18, 0x1c,
 			0x01, 0x05, 0x09, 0x0d, 0x11, 0x15, 0x19, 0x1d,
 			0x02, 0x06, 0x0a, 0x0e, 0x12, 0x16, 0x1a, 0x1e,
@@ -260,15 +260,15 @@ func (tap *SoundLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *ti
 			progressSpeed:  548,
 			pageTable:      pageTable,
 		}
-		b.setChecksum()
 
 		for _, d := range state.ram {
 			b.data = append(b.data, d...)
 		}
 		b.data = append(b.data, make([]uint8, 2048)...)
 
-		tap.blocks[b.multiload] = b
+		b.setChecksums()
 
+		tap.blocks[b.multiload] = b
 		return nil
 	}
 
