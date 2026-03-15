@@ -107,14 +107,18 @@ func NewSaveKey(env *environment.Environment, port plugging.PortID, bus ports.Pe
 		EEPROM: newEeprom(env),
 	}
 
+	return sk
+}
+
+// Lug implements the Peripheral interface.
+func (sk *SaveKey) Plug() {
 	sk.bus.WriteSWCHx(sk.port, 0xf0)
 	logger.Logf(sk.env, "savekey", "attached [%v]", sk.port)
-
-	return sk
 }
 
 // Unplug implements the Peripheral interface.
 func (sk *SaveKey) Unplug() {
+	sk.bus.WriteSWCHx(sk.port, 0xf0)
 	sk.EEPROM.unplug()
 }
 

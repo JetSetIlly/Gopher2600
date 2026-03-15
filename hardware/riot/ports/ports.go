@@ -144,7 +144,13 @@ func (p *Ports) notifyPlugMonitor() {
 	}
 }
 
-// Plug connects a peripheral to a player port
+// Plug connects a peripheral to a player port. The create function should be an implementation of
+// the NewPeripheral function type or nil.
+//
+// A create function of nil can be used to remove a shim if one is inserted, leaving the
+// daisychained periperal inserted (which is probably what you want to happen).
+//
+// To remove a non-shim peripheral specify a create value of NewPeripheralNone.
 func (p *Ports) Plug(port plugging.PortID, create NewPeripheral) error {
 	// always trigger notifications and always make sure any new audio producing peripherals are
 	// aware of the mute state
@@ -153,65 +159,87 @@ func (p *Ports) Plug(port plugging.PortID, create NewPeripheral) error {
 		p.MutePeripherals(p.peripheralsMuted)
 	}()
 
-	// the new peripheadl
-	var periph Peripheral
-	if create != nil {
-		periph = create(p.env, port, p)
-		if periph == nil {
-			return fmt.Errorf("can't attach peripheral to port (%v)", port)
-		}
-		periph.ResetHumanInput()
-	} else {
-		periph = &peripheralNone{port: port}
-	}
-
 	// the existing peripheral on this port
-	var existing Peripheral
+	var existingPeriph Peripheral
 	switch port {
 	case plugging.PortPanel:
-		existing = p.Panel
+		existingPeriph = p.Panel
 	case plugging.PortLeft:
-		existing = p.LeftPlayer
+		existingPeriph = p.LeftPlayer
 	case plugging.PortRight:
-		existing = p.RightPlayer
+		existingPeriph = p.RightPlayer
 	default:
 		return fmt.Errorf("can't attach peripheral to port (%v)", port)
 	}
 
-	if existingShim, ok := existing.(PeripheralShim); ok {
-		if newShim, ok := periph.(PeripheralShim); ok {
-			// if existing both new peripheral and existing peripheral are shims then
-			// plug any child peripherals from the old shim into the new shim
-			newShim.Plug(existingShim.Periph())
-		} else if _, ok := periph.(*peripheralNone); ok {
-			periph = existingShim.Periph()
+	var newPeriph Peripheral
+
+	// if there is no create function then remove shim if one is present. do nothing if there is no
+	// shim then
+	if create == nil {
+		if existingShim, ok := existingPeriph.(PeripheralShim); ok {
+			newPeriph = existingShim.Periph()
 		} else {
-			// plug new peripheral into existing shim. we also set the redirect the periph value to
-			// the existing value. this means it will be correctly reinserted below, along with
-			// notifications
-			existingShim.Plug(periph)
 			return nil
 		}
-	} else if newShim, ok := periph.(PeripheralShim); ok {
-		// if new peripheral is a shim then plug existing peripheral into it. the new shim will then
-		// plugged into the correct console port. note that we've handled the situation where a new
-		// shim is replacing an existing shim above
-		newShim.Plug(existing)
-	} else if _, ok := periph.(*peripheralNone); ok {
-		// if the new peripheral is not a shim and is of type peripheralNone then do not change the
-		// plugging of the ports. this means the ports cannot ever be empty once a peripheral has
-		// been plugged in
-		return nil
 	}
+
+	// create new peripheral
+	if newPeriph == nil {
+		newPeriph = create(p.env, port, p)
+		if newPeriph == nil {
+			return fmt.Errorf("can't attach peripheral to port (%v)", port)
+		}
+
+		// what we do with the new and existing peripheral depends on whether we're dealing with shims
+		// or not. the logic is rather opaque and we sometimes make early returns, which isn't ideal
+
+		if existingShim, ok := existingPeriph.(PeripheralShim); ok {
+			if newPeriph.ID() == plugging.PeriphNone {
+				// (1) plugging in a PeriphNone in place of a shim causes the shim to be removed and
+				// replaced with the peripheral attached to it
+				newPeriph = existingShim.Periph()
+
+			} else if newShim, ok := newPeriph.(PeripheralShim); ok {
+				// (2) if both new peripheral and existing peripheral are shims then plug any child
+				// peripherals from the old shim into the new shim
+				newShim.Daisychain(existingShim.Periph())
+			} else {
+				// (3) plug new peripheral into existing shim. unplug the current periph and daisychain
+				// the new periph
+				existingShim.Periph().Unplug()
+				existingShim.Daisychain(newPeriph)
+				newPeriph.Plug()
+				newPeriph.ResetHumanInput()
+				return nil
+			}
+
+		} else if newShim, ok := newPeriph.(PeripheralShim); ok {
+			// (4) if new peripheral is a shim then plug existing peripheral into it. the new shim will
+			// then be plugged into the correct console port. note that we've handled the situation
+			// where a new shim is replacing an existing shim above, in condition (2)
+			newShim.Daisychain(existingPeriph)
+
+		} else {
+			// (5) if we're not dealing with a PeripheralShim or PeriphNone unplug the existing peripheral
+			existingPeriph.Unplug()
+		}
+	}
+
+	// if we reach this point we're either plugging in a new peripheral or a new shim. in the case
+	// of a shim existing peripherals will have been daisychained already
+
+	newPeriph.Plug()
+	newPeriph.ResetHumanInput()
 
 	// commit new peripheral to port
 	switch port {
 	case plugging.PortPanel:
-		p.Panel = periph
+		p.Panel = newPeriph
 	case plugging.PortLeft:
-		p.LeftPlayer = periph
+		p.LeftPlayer = newPeriph
 	case plugging.PortRight:
-		p.RightPlayer = periph
+		p.RightPlayer = newPeriph
 	default:
 		return fmt.Errorf("can't attach peripheral to port (%v)", port)
 	}

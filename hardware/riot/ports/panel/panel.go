@@ -53,6 +53,10 @@ func NewPanel(env *environment.Environment, id plugging.PortID, bus ports.Periph
 	return pan
 }
 
+// Plug implements the Peripheral interface.
+func (pan *Panel) Plug() {
+}
+
 // Unplug implements the Peripheral interface.
 func (pan *Panel) Unplug() {
 }

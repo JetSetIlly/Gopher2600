@@ -128,9 +128,8 @@ func (tia *TIA) Label() string {
 
 func (tia *TIA) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s %s",
-		tia.hsync, tia.PClk,
-	))
+	fmt.Fprintf(&s, "%s %s",
+		tia.hsync, tia.PClk)
 	return s.String()
 }
 

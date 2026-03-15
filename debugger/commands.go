@@ -1842,6 +1842,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			switch controller {
 			case "AUTO":
 				dbg.vcs.FingerprintPeripheral(id)
+			case "NONE":
+				err = dbg.vcs.RIOT.Ports.Plug(id, ports.NewPeripheralNone)
 			case "STICK":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewStick)
 			case "PADDLE", "PADDLES":

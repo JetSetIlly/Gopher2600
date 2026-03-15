@@ -57,6 +57,13 @@ func NewKeypad(env *environment.Environment, port plugging.PortID, bus ports.Per
 	return key
 }
 
+// Plug implements the Peripheral interface.
+func (key *Keypad) Plug() {
+	key.bus.WriteINPTx(key.column[0], 0x80)
+	key.bus.WriteINPTx(key.column[1], 0x80)
+	key.bus.WriteINPTx(key.column[2], 0x80)
+}
+
 // Unplug implements the Peripheral interface.
 func (key *Keypad) Unplug() {
 	key.bus.WriteINPTx(key.column[0], 0x00)

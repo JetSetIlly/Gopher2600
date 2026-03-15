@@ -86,6 +86,14 @@ func NewGamepad(env *environment.Environment, port plugging.PortID, bus ports.Pe
 	return pad
 }
 
+// Plug implements the Peripheral interface.
+func (pad *Gamepad) Plug() {
+	pad.bus.WriteSWCHx(pad.port, axisCenter)
+	pad.bus.WriteINPTx(pad.buttonInptx, stickNoFire)
+	pad.bus.WriteINPTx(pad.secondInptx, secondNoFire)
+	pad.bus.WriteINPTx(pad.insertedInptx, inserted)
+}
+
 // Unplug implements the Peripheral interface.
 func (pad *Gamepad) Unplug() {
 	pad.bus.WriteSWCHx(pad.port, axisCenter)

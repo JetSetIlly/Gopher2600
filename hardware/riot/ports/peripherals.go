@@ -27,6 +27,9 @@ type Peripheral interface {
 	// String should return information about the state of the peripheral
 	String() string
 
+	// Periperhal is being inserted into console (or another peripheral)
+	Plug()
+
 	// Periperhal is to be removed
 	Unplug()
 
@@ -63,9 +66,9 @@ type Peripheral interface {
 
 // PeripheralShim implementations allow other peripherals to be plugged into them
 type PeripheralShim interface {
-	// plug peripheral into shim. the implementation should handle the call to Unplug() for any
+	// Plug peripheral into shim. the implementation should handle the call to Unplug() for any
 	// existing peripheral
-	Plug(Peripheral)
+	Daisychain(Peripheral)
 
 	// the child of this peripheral
 	Periph() Peripheral
@@ -122,12 +125,24 @@ type PeripheralBus interface {
 	WriteSWCHx(id plugging.PortID, data uint8)
 }
 
+// periperhalNone represents the absence of a peripheral in a port
 type peripheralNone struct {
 	port plugging.PortID
 }
 
+// NewPeripheralNone creates a new instance of peripheralNone, which represents an absence of a
+// peripheral in a port.
+func NewPeripheralNone(_ *environment.Environment, port plugging.PortID, _ PeripheralBus) Peripheral {
+	return peripheralNone{
+		port: port,
+	}
+}
+
 func (_ peripheralNone) String() string {
 	return string(plugging.PeriphNone)
+}
+
+func (_ peripheralNone) Plug() {
 }
 
 func (_ peripheralNone) Unplug() {

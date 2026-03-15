@@ -21,7 +21,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
-	"github.com/jetsetilly/gopher2600/hardware/peripherals/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
@@ -40,21 +39,16 @@ func newKeyportari(env *environment.Environment, port plugging.PortID, bus ports
 		port: port,
 		bus:  bus,
 	}
-	if port == plugging.PortLeft {
-		kp.periph = controllers.NewStick(env, port, bus)
-	}
+	kp.Daisychain(ports.NewPeripheralNone(env, port, bus))
 	return kp
 }
 
-// Plug implements plugging.PeripheralShim
-func (kp *keyportari) Plug(periph ports.Peripheral) {
-	if kp.periph != nil {
-		kp.Unplug()
-	}
+// Daisychain implements plugging.PeripheralShim
+func (kp *keyportari) Daisychain(periph ports.Peripheral) {
 	kp.periph = periph
 }
 
-// Child implements plugging.PeripheralShim
+// Periph implements plugging.PeripheralShim
 func (kp *keyportari) Periph() ports.Peripheral {
 	return kp.periph
 }
@@ -69,6 +63,13 @@ func (kp *keyportari) String() string {
 		return kp.periph.String()
 	}
 	return "keyportari"
+}
+
+func (kp *keyportari) Plug() {
+	if kp.periph != nil {
+		kp.periph.Plug()
+	}
+	kp.bus.WriteSWCHx(kp.port, 0xf0)
 }
 
 func (kp *keyportari) Unplug() {

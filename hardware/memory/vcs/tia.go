@@ -132,8 +132,8 @@ func NewTIAMemory(env *environment.Environment) *TIAMemory {
 	chip.memory[chipbus.INPT1] = 0x00
 	chip.memory[chipbus.INPT2] = 0x00
 	chip.memory[chipbus.INPT3] = 0x00
-	chip.memory[chipbus.INPT4] = 0x80
-	chip.memory[chipbus.INPT5] = 0x80
+	chip.memory[chipbus.INPT4] = 0x00
+	chip.memory[chipbus.INPT5] = 0x00
 
 	return chip
 }

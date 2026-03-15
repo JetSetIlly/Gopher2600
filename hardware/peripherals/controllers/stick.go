@@ -69,6 +69,12 @@ func NewStick(env *environment.Environment, port plugging.PortID, bus ports.Peri
 	return stk
 }
 
+// Plug implements the Peripheral interface.
+func (stk *Stick) Plug() {
+	stk.bus.WriteSWCHx(stk.port, axisCenter)
+	stk.bus.WriteINPTx(stk.buttonInptx, stickNoFire)
+}
+
 // Unplug implements the Peripheral interface.
 func (stk *Stick) Unplug() {
 	stk.bus.WriteSWCHx(stk.port, axisCenter)
