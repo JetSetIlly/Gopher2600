@@ -51,6 +51,32 @@ type CommandLineOptions struct {
 	Macro                string
 
 	// debugger only
-	Script   string
-	TermType string
+	Script string
+}
+
+func (opts *CommandLineOptions) Default() {
+	opts.Log = false
+	opts.Spec = "AUTO"
+	opts.FpsCap = true
+	opts.Multiload = -1
+	opts.Mapping = "AUTO"
+	opts.Bank = "AUTO"
+	opts.Left = "AUTO"
+	opts.Right = "AUTO"
+	opts.SwapPorts = false
+	opts.Keyportari = "NONE"
+	opts.Profile = "none"
+	opts.DWARF = ""
+	opts.ComparisonROM = ""
+	opts.ComparisonPrefs = ""
+	opts.Record = false
+	opts.RecordFilename = ""
+	opts.PlaybackCheckROM = true
+	opts.PlaybackIgnoreDigest = false
+	opts.PatchFile = ""
+	opts.Wav = false
+	opts.Video = false
+	opts.NoEject = false
+	opts.Macro = ""
+	opts.Script = ""
 }

@@ -23,7 +23,6 @@ import (
 	"os/signal"
 	"runtime"
 	"runtime/pprof"
-	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -205,9 +204,6 @@ type Debugger struct {
 	// Quantum to use when stepping/running
 	quantum atomic.Value // govern.Quantum
 
-	// record user input to a script file
-	scriptScribe script.Scribe
-
 	// the Rewind system stores and restores machine state
 	Rewind *rewind.Rewind
 
@@ -232,8 +228,11 @@ type Debugger struct {
 
 	// \/\/\/ debugger inputLoop \/\/\/
 
-	// buffer for user input
-	input []byte
+	// queue of possible commands, possibly from a loaded script
+	scriptQueue script.Queue
+
+	// the current script being written to
+	scriptWrite script.Write
 
 	// any error from previous emulation step
 	lastStepError bool
@@ -433,9 +432,6 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 
 	// connect signals to dbg.events.Signal channel
 	signal.Notify(dbg.events.Signal, os.Interrupt, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGQUIT)
-
-	// allocate memory for user input
-	dbg.input = make([]byte, 255)
 
 	// create GUI
 	dbg.gui, dbg.term, err = create(dbg)
@@ -714,12 +710,9 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 
 	// intialisation script because we're in debugger mode
 	if dbg.opts.Script != "" {
-		scr, err := script.RescribeScript(dbg.opts.Script)
-		if err == nil {
-			err = dbg.inputLoop(scr, false)
-			if err != nil {
-				return err
-			}
+		err := dbg.scriptQueue.Load(dbg.opts.Script)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -941,7 +934,7 @@ func (dbg *Debugger) run() error {
 	// end script recording gracefully. this way we don't have to worry too
 	// hard about script scribes
 	defer func() {
-		err := dbg.scriptScribe.EndSession()
+		err := dbg.scriptWrite.EndSession()
 		if err != nil {
 			logger.Log(logger.Allow, "debugger", err)
 		}
@@ -1418,43 +1411,6 @@ func (dbg *Debugger) endComparison() {
 	if err != nil {
 		logger.Log(logger.Allow, "debugger", err)
 	}
-}
-
-// parseInput splits the input into individual commands. each command is then
-// passed to parseCommand for processing
-//
-// interactive argument should be true if  the input that has just come from
-// the user (ie. via an interactive terminal). only interactive input will be
-// added to a new script file.
-//
-// auto argument should be true if command is being run as part of ONHALT or
-// ONSTEP
-//
-// returns a boolean stating whether the emulation should continue with the
-// next step.
-func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) error {
-	var err error
-
-	// ignore comments
-	if strings.HasPrefix(input, "#") {
-		return nil
-	}
-
-	// divide input if necessary
-	commands := strings.Split(input, ";")
-
-	// loop through commands
-	for i := range commands {
-		// parse command
-		err = dbg.parseCommand(commands[i], interactive, !auto)
-		if err != nil {
-			// we don't want to record bad commands in script
-			dbg.scriptScribe.Rollback()
-			return err
-		}
-	}
-
-	return nil
 }
 
 // Plugged implements the plugging.PlugMonitor interface.

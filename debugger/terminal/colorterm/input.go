@@ -27,12 +27,10 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm/easyterm/ansi"
 )
 
-// #cursor #keys #tab #completion
-
-// TermRead implements the terminal.Input interface.
-func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
+// TermRead implements the terminal.Input interface
+func (ct *ColorTerminal) TermRead(prompt terminal.Prompt, events *terminal.ReadEvents) (string, error) {
 	if ct.silenced {
-		return 0, nil
+		return "", nil
 	}
 
 	if events == nil {
@@ -44,7 +42,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 	// easyterm.KeyInterrupt and easyterm.KeySuspend in particular.
 	err := ct.RawMode()
 	if err != nil {
-		return 0, fmt.Errorf("colorterm: %w", err)
+		return "", fmt.Errorf("colorterm: %w", err)
 	}
 	defer ct.CanonicalMode()
 
@@ -58,7 +56,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 	// liveBuffInput is used to store the latest input when we scroll through
 	// history - we don't want to lose what we've typed in case the user wants
 	// to resume where we left off
-	liveHistory := make([]byte, cap(input))
+	liveHistory := make([]byte, cap(ct.buffer))
 	liveHistoryLen := 0
 
 	// the method for cursor placement is as follows:
@@ -93,20 +91,20 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 
 		ct.EasyTerm.TermPrint(prompt.String())
 		ct.EasyTerm.TermPrint(ansi.NormalPen)
-		ct.EasyTerm.TermPrint(string(input[:inputLen]))
+		ct.EasyTerm.TermPrint(string(ct.buffer[:inputLen]))
 		ct.EasyTerm.TermPrint(ansi.CursorRestore)
 
 		// wait for an event and respond
 		select {
 		case sig := <-events.Signal:
-			return 0, events.SignalHandler(sig)
+			return "", events.SignalHandler(sig)
 
 		case ev := <-events.UserInput:
 			ct.EasyTerm.TermPrint(ansi.CursorStore)
 			err := events.UserInputHandler(ev)
 			ct.EasyTerm.TermPrint(ansi.CursorRestore)
 			if err != nil {
-				return inputLen + 1, err
+				return string(ct.buffer[:inputLen]), err
 			}
 
 		case ev := <-events.PushedFunction:
@@ -114,11 +112,11 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 
 		case ev := <-events.PushedFunctionImmediate:
 			ev()
-			return 0, nil
+			return "", nil
 
 		case readRune := <-ct.reader:
 			if readRune.err != nil {
-				return inputLen, readRune.err
+				return string(ct.buffer[:inputLen]), readRune.err
 			}
 
 			switch readRune.r {
@@ -136,33 +134,32 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 				} else {
 					// there is no input so return UserInterrupt error
 					ct.EasyTerm.TermPrint("\r\n")
-					return 0, terminal.UserInterrupt
+					return "", terminal.UserInterrupt
 				}
 
 			case easyterm.KeySuspend:
 				err := ct.CanonicalMode()
 				if err != nil {
-					return 0, fmt.Errorf("colorterm: %w", err)
+					return "", fmt.Errorf("colorterm: %w", err)
 				}
 				easyterm.SuspendProcess()
 				err = ct.RawMode()
 				if err != nil {
-					return 0, fmt.Errorf("colorterm: %w", err)
+					return "", fmt.Errorf("colorterm: %w", err)
 				}
 
 			case easyterm.KeyTab:
 				if ct.tabCompletion != nil {
-					s := ct.tabCompletion.Complete(string(input[:cursorPos]))
+					s := ct.tabCompletion.Complete(string(ct.buffer[:cursorPos]))
 
-					// the difference in the length of the new input and the old
-					// input
+					// the difference in the length of the new input and the old input
 					d := len(s) - cursorPos
 
-					if inputLen+d <= len(input) {
+					if inputLen+d <= len(ct.buffer) {
 						// append everything after the cursor to the new string and copy
 						// into input array
-						s += string(input[cursorPos:])
-						copy(input, s)
+						s += string(ct.buffer[cursorPos:])
+						copy(ct.buffer, s)
 
 						// advance character to end of completed word
 						ct.EasyTerm.TermPrint(ansi.CursorMove(d))
@@ -185,7 +182,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 						if len(lastHistoryEntry) == inputLen {
 							newEntry = false
 							for i := 0; i < inputLen; i++ {
-								if input[i] != lastHistoryEntry[i] {
+								if ct.buffer[i] != lastHistoryEntry[i] {
 									newEntry = true
 									break
 								}
@@ -198,25 +195,25 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 				// new entry to the history list
 				if newEntry {
 					nh := make([]byte, inputLen)
-					copy(nh, input[:inputLen])
+					copy(nh, ct.buffer[:inputLen])
 					ct.commandHistory = append(ct.commandHistory, command{input: nh})
 				}
 
 				ct.EasyTerm.TermPrint("\r\n")
-				return inputLen + 1, nil
+				return string(ct.buffer[:inputLen]), nil
 
 			case easyterm.KeyEsc:
 				// ESCAPE SEQUENCE BEGIN
 				readRune = <-ct.reader
 				if readRune.err != nil {
-					return inputLen, readRune.err
+					return string(ct.buffer[:inputLen]), readRune.err
 				}
 				switch readRune.r {
 				case easyterm.EscCursor:
 					// CURSOR KEY
 					readRune = <-ct.reader
 					if readRune.err != nil {
-						return inputLen, readRune.err
+						return string(ct.buffer[:inputLen]), readRune.err
 					}
 
 					switch readRune.r {
@@ -226,7 +223,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 							// if we're at the end of the command history then store
 							// the current input in liveBuffInput for possible later editing
 							if historyIdx == len(ct.commandHistory) {
-								copy(liveHistory, input[:inputLen])
+								copy(liveHistory, ct.buffer[:inputLen])
 								liveHistoryLen = inputLen
 							}
 
@@ -236,8 +233,8 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 
 								// length check in case input buffer is
 								// shorted from when history entry was added
-								if l < len(input) {
-									copy(input, ct.commandHistory[historyIdx].input)
+								if l < len(ct.buffer) {
+									copy(ct.buffer, ct.commandHistory[historyIdx].input)
 									inputLen = len(ct.commandHistory[historyIdx].input)
 									ct.EasyTerm.TermPrint(ansi.CursorMove(inputLen - cursorPos))
 									cursorPos = inputLen
@@ -250,8 +247,8 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 							if historyIdx < len(ct.commandHistory)-1 {
 								historyIdx++
 								l := len(ct.commandHistory[historyIdx].input)
-								if l < len(input) {
-									copy(input, ct.commandHistory[historyIdx].input)
+								if l < len(ct.buffer) {
+									copy(ct.buffer, ct.commandHistory[historyIdx].input)
 									inputLen = len(ct.commandHistory[historyIdx].input)
 									ct.EasyTerm.TermPrint(ansi.CursorMove(inputLen - cursorPos))
 									cursorPos = inputLen
@@ -262,8 +259,8 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 								// length check not really required because
 								// liveHistroy should not ever be greater
 								// in length than that of input buffer
-								if liveHistoryLen < len(input) {
-									copy(input, liveHistory)
+								if liveHistoryLen < len(ct.buffer) {
+									copy(ct.buffer, liveHistory)
 									inputLen = liveHistoryLen
 									ct.EasyTerm.TermPrint(ansi.CursorMove(inputLen - cursorPos))
 									cursorPos = inputLen
@@ -286,7 +283,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 					case easyterm.EscDelete:
 						// DELETE
 						if cursorPos < inputLen {
-							copy(input[cursorPos:], input[cursorPos+1:])
+							copy(ct.buffer[cursorPos:], ct.buffer[cursorPos+1:])
 							inputLen--
 							historyIdx = len(ct.commandHistory)
 						}
@@ -310,7 +307,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 			case easyterm.KeyBackspace:
 				// BACKSPACE
 				if cursorPos > 0 {
-					copy(input[cursorPos-1:], input[cursorPos:])
+					copy(ct.buffer[cursorPos-1:], ct.buffer[cursorPos:])
 					ct.EasyTerm.TermPrint(ansi.CursorBackwardOne)
 					cursorPos--
 					inputLen--
@@ -322,13 +319,13 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 					l := utf8.EncodeRune(er, readRune.r)
 
 					// make sure we don't overflow the input buffer
-					if cursorPos+l <= len(input) {
+					if cursorPos+l <= len(ct.buffer) {
 						ct.EasyTerm.TermPrint(ansi.CursorForwardOne)
 
 						// insert new character into input stream at current cursor
 						// position
-						copy(input[cursorPos+l:], input[cursorPos:])
-						copy(input[cursorPos:], er[:l])
+						copy(ct.buffer[cursorPos+l:], ct.buffer[cursorPos:])
+						copy(ct.buffer[cursorPos:], er[:l])
 						cursorPos++
 
 						inputLen += l
@@ -343,7 +340,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 	}
 }
 
-// TermReadCheck implements the terminal.Input interface.
+// TermReadCheck implements the terminal.Input interface
 func (ct *ColorTerminal) TermReadCheck() bool {
 	return false
 }

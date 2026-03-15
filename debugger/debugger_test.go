@@ -65,10 +65,8 @@ func (trm *mockTerm) Silence(silenced bool) {
 }
 
 // TermRead implements the terminal.Output interface
-func (trm *mockTerm) TermRead(buffer []byte, _ terminal.Prompt, _ *terminal.ReadEvents) (int, error) {
-	s := <-trm.inp
-	copy(buffer, s)
-	return len(s) + 1, nil
+func (trm *mockTerm) TermRead(_ terminal.Prompt, _ *terminal.ReadEvents) (string, error) {
+	return <-trm.inp, nil
 }
 
 // TermReadCheck implements the terminal.Output interface

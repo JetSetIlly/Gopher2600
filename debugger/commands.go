@@ -32,7 +32,6 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/faults"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
-	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/disassembly"
@@ -57,7 +56,7 @@ import (
 )
 
 var debuggerCommands *commandline.Commands
-var scriptUnsafeCommands *commandline.Commands
+var batchUnsafeCommands *commandline.Commands
 
 // this init() function "compiles" the commandTemplate above into a more
 // usuable form. It will cause the program to fail if the template is invalid.
@@ -74,28 +73,35 @@ func init() {
 		panic(err)
 	}
 
-	scriptUnsafeCommands, err = commandline.ParseCommandTemplate(scriptUnsafeTemplate)
+	batchUnsafeCommands, err = commandline.ParseCommandTemplate(batchUnsafeTemplate)
 	if err != nil {
 		panic(err)
 	}
 }
 
 // parseCommand tokenises the input and processes the tokens.
-func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) error {
-	tokens, err := dbg.tokeniseCommand(cmd, scribe, echo)
+func (dbg *Debugger) parseCommand(cmd string, batch bool, echo bool) error {
+	tokens, err := dbg.tokeniseCommand(cmd, batch, echo)
 	if err != nil {
 		return err
+	}
+	if tokens == nil {
+		return nil
 	}
 	return dbg.processTokens(tokens)
 }
 
 // return tokenised command.
-func (dbg *Debugger) tokeniseCommand(cmd string, scribe bool, echo bool) (*commandline.Tokens, error) {
+func (dbg *Debugger) tokeniseCommand(cmd string, batch bool, echo bool) (*commandline.Tokens, error) {
 	// tokenise input
 	tokens := commandline.TokeniseInput(cmd)
 
 	// if there are no tokens in the input then continue with a default action
 	if tokens.Remaining() == 0 {
+		// do not use blank input as a synonym for the STEP command for batch scripting
+		if dbg.scriptWrite.IsActive() || batch {
+			return nil, nil
+		}
 		return dbg.tokeniseCommand("STEP", true, false)
 	}
 
@@ -112,21 +118,17 @@ func (dbg *Debugger) tokeniseCommand(cmd string, scribe bool, echo bool) (*comma
 	}
 
 	// test to see if command is allowed when recording/playing a script
-	if dbg.scriptScribe.IsActive() && scribe {
+	if dbg.scriptWrite.IsActive() || batch {
 		tokens.Reset()
-
-		err := scriptUnsafeCommands.ValidateTokens(tokens)
 
 		// fail when the tokens DO match the scriptUnsafe template (ie. when
 		// there is no err from the validate function)
+		err := batchUnsafeCommands.ValidateTokens(tokens)
 		if err == nil {
-			return nil, fmt.Errorf("'%s' is unsafe to use in scripts", tokens.String())
+			return nil, fmt.Errorf("'%s' is unsafe to use non-interactively", tokens.String())
 		}
 
-		// record command if it auto is false (is not a result of an "auto" command
-		// eg. ONHALT). if there's an error then the script will be rolled back and
-		// the write removed.
-		dbg.scriptScribe.WriteInput(tokens.String())
+		dbg.scriptWrite.WriteInput(tokens.String())
 	}
 
 	return tokens, nil
@@ -176,18 +178,18 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 		// we don't want the HELP command to appear in the script
-		dbg.scriptScribe.Rollback()
+		dbg.scriptWrite.Rollback()
 
 		return nil
 
 	case cmdQuit:
-		if dbg.scriptScribe.IsActive() {
+		if dbg.scriptWrite.IsActive() {
 			dbg.printLine(terminal.StyleFeedback, "ending script recording")
 
 			// we don't want the QUIT command to appear in the script
-			dbg.scriptScribe.Rollback()
+			dbg.scriptWrite.Rollback()
 
-			return dbg.scriptScribe.EndSession()
+			return dbg.scriptWrite.EndSession()
 		} else {
 			dbg.running = false
 		}
@@ -351,45 +353,39 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		case "RECORD":
 			var err error
 			saveFile, _ := tokens.Get()
-			err = dbg.scriptScribe.StartSession(saveFile)
+			err = dbg.scriptWrite.StartSession(saveFile)
 			if err != nil {
 				return err
 			}
 
 			// we don't want SCRIPT RECORD command to appear in the script
-			dbg.scriptScribe.Rollback()
+			dbg.scriptWrite.Rollback()
 
 			return nil
 
 		case "END":
 			// we don't want SCRIPT END command to appear in the script
-			dbg.scriptScribe.Rollback()
+			dbg.scriptWrite.Rollback()
 
-			return dbg.scriptScribe.EndSession()
+			return dbg.scriptWrite.EndSession()
 
 		default:
-			// run a script
-			scr, err := script.RescribeScript(option)
+			err := dbg.scriptQueue.Load(option)
 			if err != nil {
 				return err
 			}
 
-			if dbg.scriptScribe.IsActive() {
+			if dbg.scriptWrite.IsActive() {
 				// if we're currently recording a script we want to write this
 				// command to the new script file but indicate that we'll be
 				// entering a new script and so don't want to repeat the
 				// commands from that script
-				err := dbg.scriptScribe.StartPlayback()
+				err := dbg.scriptWrite.StartPlayback()
 				if err != nil {
 					return err
 				}
 
-				defer dbg.scriptScribe.EndPlayback()
-			}
-
-			err = dbg.inputLoop(scr, false)
-			if err != nil {
-				return err
+				defer dbg.scriptWrite.EndPlayback()
 			}
 		}
 
