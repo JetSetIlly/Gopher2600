@@ -200,11 +200,15 @@ func (vcs *VCS) Reset() error {
 	vcs.Mem.TIA.SetPokeNotify(vcs.TIA)
 	vcs.Mem.RIOT.SetPokeNotify(vcs.RIOT)
 
+	// complete memory reset
 	err = vcs.Mem.Reset()
 	if err != nil {
 		return err
 	}
-	vcs.RIOT.Timer.Reset()
+
+	// resetting RIOT after memory reset. this is so that the ports can reference the reset values
+	// and also set them correctly according to the currently attached peripherals
+	vcs.RIOT.Reset()
 
 	if vcs.Env.Prefs.RandomState.Get().(bool) {
 		err = vcs.CPU.Reset(vcs.Env.Random)

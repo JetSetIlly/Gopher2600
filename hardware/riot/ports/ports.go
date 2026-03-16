@@ -90,6 +90,14 @@ func NewPorts(env *environment.Environment, riotMem chipbus.Memory, tiaMem chipb
 	return p
 }
 
+func (p *Ports) Reset() {
+	p.swcha_w = p.riot.ChipRefer(chipbus.SWCHA)
+	p.swchb_w = p.riot.ChipRefer(chipbus.SWCHB)
+	p.LeftPlayer.Plug()
+	p.RightPlayer.Plug()
+	p.RightPlayer.Plug()
+}
+
 func (p *Ports) End() {
 	if p.LeftPlayer != nil {
 		p.LeftPlayer.Unplug()
