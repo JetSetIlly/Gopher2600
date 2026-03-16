@@ -69,10 +69,12 @@ func NewStick(env *environment.Environment, port plugging.PortID, bus ports.Peri
 	return stk
 }
 
-// Plug implements the Peripheral interface.
-func (stk *Stick) Plug() {
-	stk.bus.WriteSWCHx(stk.port, axisCenter)
-	stk.bus.WriteINPTx(stk.buttonInptx, stickNoFire)
+// Reset implements the Peripheral interface.
+func (stk *Stick) Reset() {
+	stk.axis = axisCenter
+	stk.button = stickNoFire
+	stk.bus.WriteSWCHx(stk.port, stk.axis)
+	stk.bus.WriteINPTx(stk.buttonInptx, stk.button)
 }
 
 // Unplug implements the Peripheral interface.
@@ -254,14 +256,6 @@ func (stk *Stick) Step() {
 	if stk.axis != 0xf0 {
 		stk.bus.WriteSWCHx(stk.port, stk.axis)
 	}
-}
-
-// ResetHumanInput implements the ports.Peripheral interface.
-func (stk *Stick) ResetHumanInput() {
-	stk.axis = axisCenter
-	stk.button = stickNoFire
-	stk.bus.WriteSWCHx(stk.port, stk.axis)
-	stk.bus.WriteINPTx(stk.buttonInptx, stk.button)
 }
 
 // IsActive implements the ports.Peripheral interface.

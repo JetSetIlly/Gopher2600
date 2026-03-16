@@ -39,12 +39,12 @@ func newKeyportari(env *environment.Environment, port plugging.PortID, bus ports
 		port: port,
 		bus:  bus,
 	}
-	kp.Daisychain(ports.NewPeripheralNone(env, port, bus))
+	kp.Plug(ports.NewPeripheralNone(env, port, bus))
 	return kp
 }
 
-// Daisychain implements plugging.PeripheralShim
-func (kp *keyportari) Daisychain(periph ports.Peripheral) {
+// Plug implements plugging.PeripheralShim
+func (kp *keyportari) Plug(periph ports.Peripheral) {
 	kp.periph = periph
 }
 
@@ -65,10 +65,11 @@ func (kp *keyportari) String() string {
 	return "keyportari"
 }
 
-func (kp *keyportari) Plug() {
+func (kp *keyportari) Reset() {
 	if kp.periph != nil {
-		kp.periph.Plug()
+		kp.periph.Reset()
 	}
+	kp.keydown = false
 	kp.bus.WriteSWCHx(kp.port, 0xf0)
 }
 
@@ -119,14 +120,6 @@ func (kp *keyportari) Step() {
 	if kp.periph != nil {
 		kp.periph.Step()
 	}
-}
-
-func (kp *keyportari) ResetHumanInput() {
-	if kp.periph != nil {
-		kp.periph.ResetHumanInput()
-	}
-	kp.keydown = false
-	kp.bus.WriteSWCHx(kp.port, 0xf0)
 }
 
 func (kp *keyportari) IsActive() bool {

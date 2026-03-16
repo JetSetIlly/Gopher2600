@@ -160,11 +160,9 @@ func (vox *AtariVox) activateEngines() {
 }
 
 // Plug implements the ports.Peripheral interface.
-func (vox *AtariVox) Plug() {
-	vox.SaveKey.Plug()
-
+func (vox *AtariVox) Reset() {
+	vox.SaveKey.Reset()
 	vox.activateEngines()
-	logger.Logf(vox.env, "atarivox", "attached [%v]", vox.port)
 }
 
 // Unplug implements the ports.Peripheral interface.
@@ -208,11 +206,6 @@ func (vox *AtariVox) PortID() plugging.PortID {
 // ID implements the ports.Peripheral interface.
 func (vox *AtariVox) ID() plugging.PeripheralID {
 	return plugging.PeriphAtariVox
-}
-
-// ResetHumanInput implements the ports.Peripheral interface.
-func (vox *AtariVox) ResetHumanInput() {
-	vox.SaveKey.ResetHumanInput()
 }
 
 // Restart implements the ports.RestartPeripheral interface.

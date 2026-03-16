@@ -110,10 +110,9 @@ func NewSaveKey(env *environment.Environment, port plugging.PortID, bus ports.Pe
 	return sk
 }
 
-// Lug implements the Peripheral interface.
-func (sk *SaveKey) Plug() {
+// Plug implements the Peripheral interface.
+func (sk *SaveKey) Reset() {
 	sk.bus.WriteSWCHx(sk.port, 0xf0)
-	logger.Logf(sk.env, "savekey", "attached [%v]", sk.port)
 }
 
 // Unplug implements the Peripheral interface.
@@ -175,11 +174,6 @@ func (sk *SaveKey) PortID() plugging.PortID {
 // ID implements the ports.Peripheral interface.
 func (sk *SaveKey) ID() plugging.PeripheralID {
 	return plugging.PeriphSavekey
-}
-
-// ResetHumanInput implements the ports.Peripheral interface.
-func (sk *SaveKey) ResetHumanInput() {
-	// there is no human input for the savekey
 }
 
 // the active bits in the SWCHA value.

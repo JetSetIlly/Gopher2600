@@ -27,8 +27,19 @@ type Peripheral interface {
 	// String should return information about the state of the peripheral
 	String() string
 
-	// Periperhal is being inserted into console (or another peripheral)
-	Plug()
+	// Reset state of peripheral. be careful how peripherals implement this. it's not like the
+	// cartridge reset function, for example, which is called on cartridge insertion. resetting a
+	// peripheral is more about putting the peripheral in a known state and can be called much more
+	// frequently than the console reset.
+	//
+	// A good example of a peripheral were care needs to be taken, is the panel peripheral. There
+	// are stateful switches on the panel (eg. the colour switch). These should not be reset.
+	// However, those parts of the peripheral that require direct user interaction (eg. the reset
+	// switch) should be reset.
+	//
+	// For most peripherals there are not stateful inputs. In other words, all input requres direct
+	// user interaction.
+	Reset()
 
 	// Periperhal is to be removed
 	Unplug()
@@ -54,21 +65,14 @@ type Peripheral interface {
 	// step is called every CPU clock. important for paddle devices
 	Step()
 
-	// reset state of peripheral. be careful how peripherals implement this. it's not like
-	// the cartridge reset function, for example, which is called on cartridge insertion. resetting
-	// a peripheral is more about putting the peripheral in a known state and is called much
-	// more frequently than the console reset
-	ResetHumanInput()
-
 	// whether the peripheral is currently "active"
 	IsActive() bool
 }
 
 // PeripheralShim implementations allow other peripherals to be plugged into them
 type PeripheralShim interface {
-	// Plug peripheral into shim. the implementation should handle the call to Unplug() for any
-	// existing peripheral
-	Daisychain(Peripheral)
+	// Plug peripheral into shim
+	Plug(Peripheral)
 
 	// the child of this peripheral
 	Periph() Peripheral
@@ -84,18 +88,25 @@ type PeripheralShim interface {
 	Protocol() string
 }
 
-// RestartPeripheral is implemented by peripherals that can significantly
-// change configuration. For example, the AtariVox can make use of an external
-// program which might be changed during the emulation.
+// MutePeripheral is implemented by peripherals that produce audio independent of the emulators
+// sound output. This is useful for implementations that call on third-party applications/processes
+// to produce output.
+type MutePeripheral interface {
+	Mute(bool)
+}
+
+// RestartPeripheral is implemented by peripherals that can significantly change configuration. For
+// example, the AtariVox can make use of an external program which might be changed during the
+// emulation.
 //
-// Restarting is a special event and should not be called too often due to the
-// possible nature of configuration changes.
+// Implementations should be careful about restarting unecessarily. For example, only if the
+// underlying preference controlling the peripheral has changed.
 type RestartPeripheral interface {
 	Restart()
 }
 
-// DisablePeripheral is implemented by peripherals that can be disabled. This
-// is useful for peripherals that do not act well during rewinding.
+// DisablePeripheral is implemented by peripherals that can be disabled. This is useful for
+// peripherals that do not act well during rewinding.
 type DisablePeripheral interface {
 	Disable(bool)
 }
@@ -142,7 +153,7 @@ func (_ peripheralNone) String() string {
 	return string(plugging.PeriphNone)
 }
 
-func (_ peripheralNone) Plug() {
+func (_ peripheralNone) Reset() {
 }
 
 func (_ peripheralNone) Unplug() {
@@ -172,9 +183,6 @@ func (_ peripheralNone) Update(chipbus.ChangedRegister) bool {
 }
 
 func (_ peripheralNone) Step() {
-}
-
-func (_ peripheralNone) ResetHumanInput() {
 }
 
 func (_ peripheralNone) IsActive() bool {

@@ -93,9 +93,7 @@ func NewPorts(env *environment.Environment, riotMem chipbus.Memory, tiaMem chipb
 func (p *Ports) Reset() {
 	p.swcha_w = p.riot.ChipRefer(chipbus.SWCHA)
 	p.swchb_w = p.riot.ChipRefer(chipbus.SWCHB)
-	p.LeftPlayer.Plug()
-	p.RightPlayer.Plug()
-	p.RightPlayer.Plug()
+	p.ResetPeripherals()
 }
 
 func (p *Ports) End() {
@@ -211,14 +209,13 @@ func (p *Ports) Plug(port plugging.PortID, create NewPeripheral) error {
 			} else if newShim, ok := newPeriph.(PeripheralShim); ok {
 				// (2) if both new peripheral and existing peripheral are shims then plug any child
 				// peripherals from the old shim into the new shim
-				newShim.Daisychain(existingShim.Periph())
+				newShim.Plug(existingShim.Periph())
 			} else {
 				// (3) plug new peripheral into existing shim. unplug the current periph and daisychain
 				// the new periph
 				existingShim.Periph().Unplug()
-				existingShim.Daisychain(newPeriph)
-				newPeriph.Plug()
-				newPeriph.ResetHumanInput()
+				existingShim.Plug(newPeriph)
+				newPeriph.Reset()
 				return nil
 			}
 
@@ -226,7 +223,7 @@ func (p *Ports) Plug(port plugging.PortID, create NewPeripheral) error {
 			// (4) if new peripheral is a shim then plug existing peripheral into it. the new shim will
 			// then be plugged into the correct console port. note that we've handled the situation
 			// where a new shim is replacing an existing shim above, in condition (2)
-			newShim.Daisychain(existingPeriph)
+			newShim.Plug(existingPeriph)
 
 		} else {
 			// (5) if we're not dealing with a PeripheralShim or PeriphNone unplug the existing peripheral
@@ -237,8 +234,7 @@ func (p *Ports) Plug(port plugging.PortID, create NewPeripheral) error {
 	// if we reach this point we're either plugging in a new peripheral or a new shim. in the case
 	// of a shim existing peripherals will have been daisychained already
 
-	newPeriph.Plug()
-	newPeriph.ResetHumanInput()
+	newPeriph.Reset()
 
 	// commit new peripheral to port
 	switch port {
@@ -275,28 +271,19 @@ func (p *Ports) String() string {
 	return s.String()
 }
 
-// mutePeripheral is implemented by peripherals that produce audio independent
-// of the emulators sound output. This is useful for implementations that call
-// on third-party applications/processes to produce output
-//
-// used exclusively by the MutePeripherals() function
-type mutePeripheral interface {
-	Mute(bool)
-}
-
-// MutePeripherals sets the mute state of peripherals that implement the mutePeripheral interface
+// MutePeripherals sets the mute state of peripherals that implement the MutePeripheral interface
 func (p *Ports) MutePeripherals(muted bool) {
-	if r, ok := p.LeftPlayer.(mutePeripheral); ok {
+	if r, ok := p.LeftPlayer.(MutePeripheral); ok {
 		r.Mute(muted)
 	}
-	if r, ok := p.RightPlayer.(mutePeripheral); ok {
+	if r, ok := p.RightPlayer.(MutePeripheral); ok {
 		r.Mute(muted)
 	}
 	p.peripheralsMuted = muted
 }
 
-// RestartPeripherals calls restart on any attached peripherals that implement
-// that the RestartPeripheral interface
+// RestartPeripherals calls restart on any attached peripherals that implement that the
+// RestartPeripheral interface
 func (p *Ports) RestartPeripherals() {
 	if r, ok := p.LeftPlayer.(RestartPeripheral); ok {
 		r.Restart()
@@ -323,16 +310,16 @@ func (p *Ports) DisablePeripherals(disabled bool) {
 	}
 }
 
-// ResetPeripherals to an initial state
+// ResetPeripherals to the initial state
 func (p *Ports) ResetPeripherals() {
 	if p.LeftPlayer != nil {
-		p.LeftPlayer.ResetHumanInput()
+		p.LeftPlayer.Reset()
 	}
 	if p.RightPlayer != nil {
-		p.RightPlayer.ResetHumanInput()
+		p.RightPlayer.Reset()
 	}
 	if p.Panel != nil {
-		p.Panel.ResetHumanInput()
+		p.Panel.Reset()
 	}
 }
 

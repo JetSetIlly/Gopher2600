@@ -96,10 +96,16 @@ func NewPaddles(env *environment.Environment, port plugging.PortID, bus ports.Pe
 	return pdl
 }
 
-// Plug implements the Peripheral interface.
-func (pdl *Paddles) Plug() {
-	pdl.bus.WriteINPTx(pdl.insertedInptx, 0x80)
-	pdl.bus.WriteSWCHx(pdl.port, paddleNoFire)
+// Reset implements the Peripheral interface.
+func (pdl *Paddles) Reset() {
+	for i := range pdl.paddles {
+		pdl.paddles[i].charge = 0
+		pdl.paddles[i].ticks = 0
+		pdl.paddles[i].resistance = paddleMaxResistance
+		pdl.bus.WriteINPTx(pdl.paddles[i].inptx, pdl.paddles[i].charge)
+		pdl.paddles[i].fire = false
+	}
+	pdl.setFire()
 }
 
 // Unplug implements the Peripheral interface.
@@ -286,15 +292,6 @@ func (pdl *Paddles) Step() {
 	}
 
 	pdl.setFire()
-}
-
-// ResetHumanInput implements the ports.Peripheral interface.
-func (pdl *Paddles) ResetHumanInput() {
-	for i := range pdl.paddles {
-		pdl.paddles[i].charge = 0
-		pdl.paddles[i].ticks = 0
-		pdl.paddles[i].resistance = paddleMaxResistance
-	}
 }
 
 // IsActive implements the ports.Peripheral interface.

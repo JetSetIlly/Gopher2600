@@ -86,11 +86,14 @@ func NewGamepad(env *environment.Environment, port plugging.PortID, bus ports.Pe
 	return pad
 }
 
-// Plug implements the Peripheral interface.
-func (pad *Gamepad) Plug() {
-	pad.bus.WriteSWCHx(pad.port, axisCenter)
-	pad.bus.WriteINPTx(pad.buttonInptx, stickNoFire)
-	pad.bus.WriteINPTx(pad.secondInptx, secondNoFire)
+// Reset implements the Peripheral interface.
+func (pad *Gamepad) Reset() {
+	pad.axis = axisCenter
+	pad.button = stickNoFire
+	pad.second = secondNoFire
+	pad.bus.WriteSWCHx(pad.port, pad.axis)
+	pad.bus.WriteINPTx(pad.buttonInptx, pad.button)
+	pad.bus.WriteINPTx(pad.secondInptx, pad.second)
 	pad.bus.WriteINPTx(pad.insertedInptx, inserted)
 }
 
@@ -305,17 +308,6 @@ func (pad *Gamepad) Step() {
 	if pad.axis != 0xf0 {
 		pad.bus.WriteSWCHx(pad.port, pad.axis)
 	}
-}
-
-// ResetHumanInput implements the ports.Peripheral interface.
-func (pad *Gamepad) ResetHumanInput() {
-	pad.axis = axisCenter
-	pad.button = stickNoFire
-	pad.second = secondNoFire
-	pad.bus.WriteSWCHx(pad.port, pad.axis)
-	pad.bus.WriteINPTx(pad.buttonInptx, pad.button)
-	pad.bus.WriteINPTx(pad.secondInptx, pad.second)
-	pad.bus.WriteINPTx(pad.insertedInptx, inserted)
 }
 
 // IsActive implements the ports.Peripheral interface.

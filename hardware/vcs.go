@@ -219,10 +219,6 @@ func (vcs *VCS) Reset() error {
 		return err
 	}
 
-	// reset of ports must happen after reset of memory because ports will
-	// update memory to the current state of the peripherals
-	vcs.RIOT.Ports.ResetPeripherals()
-
 	// reset cart after loaded PC value. this seems unnecessary but some
 	// cartridge types may switch banks on LoadPCIndirect() - those that switch
 	// on Listen() - this is an artefact of the emulation method so we need to make

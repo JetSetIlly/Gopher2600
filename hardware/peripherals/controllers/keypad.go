@@ -53,12 +53,12 @@ func NewKeypad(env *environment.Environment, port plugging.PortID, bus ports.Per
 		key.column = [3]chipbus.Register{chipbus.INPT2, chipbus.INPT3, chipbus.INPT5}
 	}
 
-	key.ResetHumanInput()
 	return key
 }
 
-// Plug implements the Peripheral interface.
-func (key *Keypad) Plug() {
+// Reset implements the Peripheral interface.
+func (key *Keypad) Reset() {
+	key.key = noKey
 	key.bus.WriteINPTx(key.column[0], 0x80)
 	key.bus.WriteINPTx(key.column[1], 0x80)
 	key.bus.WriteINPTx(key.column[2], 0x80)
@@ -258,11 +258,6 @@ func (key *Keypad) Step() {
 	// keypad does not write to SWCHx so unlike the Stick and Paddle
 	// controller types there is no need to ensure the SWCHx register retains
 	// its state if it is active
-}
-
-// ResetHumanInput implements the ports.Peripheral interface.
-func (key *Keypad) ResetHumanInput() {
-	key.key = noKey
 }
 
 // IsActive implements the ports.Peripheral interface.
