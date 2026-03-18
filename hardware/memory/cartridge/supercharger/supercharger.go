@@ -175,6 +175,23 @@ func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
 			return 0, 0, nil
 		}
 
+		// the call to tape.load() is an emulation feature that we use to automatically play the
+		// tape or in the case of fastload, trigger a bootstrap
+		//
+		// to prevent erroneous calls to load() we check if the BIOS is mapped. it only makes sense
+		// to auto-start the tape if the BIOS is available
+		//
+		// there's an assumption here that no code in the other bank will access the tape load
+		// register. if that ever becomes a problem we can add a filter that counts the number of
+		// accesses of the register in a given number of cycles
+		//
+		// we need to do this because the starpath game, 'suicide mission', access the tape load
+		// register by accident with a phantom access when retrieving the instruction at address
+		// 0xfff8 in bank 3
+		if !cart.biosAvailable() {
+			return 0x00, mapper.CartDrivenPins, nil
+		}
+
 		v, err := cart.state.tape.load()
 		if err != nil {
 			err = fmt.Errorf("supercharger: %w", err)
@@ -236,6 +253,13 @@ func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
 // AccessVolatile implements the mapper.CartMapper interface.
 func (cart *Supercharger) AccessVolatile(addr uint16, data uint8, _ bool) error {
 	return nil
+}
+
+func (cart *Supercharger) biosAvailable() bool {
+	return cart.state.registers.BankingMode == 0 ||
+		cart.state.registers.BankingMode == 1 ||
+		cart.state.registers.BankingMode == 4 ||
+		cart.state.registers.BankingMode == 5
 }
 
 // NumBanks implements the mapper.CartMapper interface.
