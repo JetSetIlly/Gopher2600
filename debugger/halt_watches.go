@@ -118,7 +118,7 @@ func (wtc *watches) check() string {
 	//
 	// note that the write flag comparison is required otherwise Modify
 	// instructions will not be caught on the write signal (which would mean
-	// that a WRITE watch will never match a Modify instruction)
+	// that a WRITE watch will never match a RMW instruction)
 	if wtc.lastAddressAccessed == wtc.dbg.vcs.Mem.LastCPUAddressLiteral && wtc.lastAddressWrite == wtc.dbg.vcs.Mem.LastCPUWrite {
 		return ""
 	}
@@ -163,12 +163,11 @@ func (wtc *watches) check() string {
 		} else {
 			if wtc.dbg.vcs.Mem.LastCPUWrite {
 				fmt.Fprintf(&checkString, "watch at %s (written value %#02x)", lai, wtc.dbg.vcs.Mem.LastCPUData)
+			} else if wtc.dbg.vcs.CPU.PhantomMemAccess {
+				fmt.Fprintf(&checkString, "watch at %s (written value %#02x) phantom", lai, wtc.dbg.vcs.Mem.LastCPUData)
 			}
 		}
 
-		if wtc.dbg.vcs.CPU.PhantomMemAccess {
-			checkString.WriteString(" phantom")
-		}
 		if checkString.Len() > 0 {
 			checkString.WriteRune('\n')
 		}
