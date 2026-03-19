@@ -166,7 +166,7 @@ func (cmp *Comparison) Notify(notice notifications.Notice, data ...string) error
 		if bs == nil {
 			return fmt.Errorf("NotifySuperchargerFastload sent from a non-Supercharger cartridge")
 		}
-		err := bs.Bootstrap(cmp.vcs.CPU, cmp.vcs.Mem.RAM, cmp.vcs.RIOT.Timer)
+		err := bs.Bootstrap(cmp.vcs.CPU, cmp.vcs.Mem.RAM, cmp.vcs.RIOT.Timer, cmp.vcs.TIA)
 		if err != nil {
 			return err
 		}
@@ -176,7 +176,7 @@ func (cmp *Comparison) Notify(notice notifications.Notice, data ...string) error
 		if bs == nil {
 			return fmt.Errorf("NotifySuperchargerSoundloadStarted sent from a non-Supercharger cartridge")
 		}
-		err := bs.Bootstrap(cmp.vcs.CPU, cmp.vcs.Mem.RAM, cmp.vcs.RIOT.Timer)
+		err := bs.Bootstrap(cmp.vcs.CPU, cmp.vcs.Mem.RAM, cmp.vcs.RIOT.Timer, cmp.vcs.TIA)
 		if err != nil {
 			return err
 		}

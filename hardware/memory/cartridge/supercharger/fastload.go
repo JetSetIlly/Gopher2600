@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
+	"github.com/jetsetilly/gopher2600/hardware/tia"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/notifications"
 )
@@ -260,7 +261,7 @@ func (tap *FastLoad) end() {
 }
 
 // bootstrap implements the tape interface
-func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
+func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer, tia *tia.TIA) error {
 	// look up requested multiload address
 	m, err := ram.Peek(MutliloadByteAddr)
 	if err != nil {
@@ -332,6 +333,23 @@ func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *time
 	tmr.PokeField("ticksRemaining", 0x1f)
 	tmr.PokeField("intim", uint8(0x0a))
 	tmr.PokeField("pa7", false)
+
+	// suicide mission does not reset the vertical delay registers which will have been enabled at the
+	// start of the BIOS load routine and disabled somewhere in the part of the BIOS we skip
+	//
+	// even though this only affects suicide mission, it's still correct that we do this
+	tia.Video.Player0.SetVerticalDelay(false)
+	tia.Video.Player1.SetVerticalDelay(false)
+
+	// the other tia video components should also be reset to match the state at the end of the BIOS
+	// load routine. as far as I can tell none of these affect any starpath game but it may affect a
+	// non-original supercharger binary that's been converted to wav and then dumped to an AR file
+	tia.Video.Player0.SetNUSIZ(0)
+	tia.Video.Player1.SetNUSIZ(0)
+	tia.Video.Ball.Hmove = 8
+
+	// we should also set the positions of the tia video components but that's not convenient to do
+	// at the moment. but it's an improvement to consider for the future
 
 	// jump to VCS RAM location 0x00fa. a short bootstrap program has been
 	// poked there already

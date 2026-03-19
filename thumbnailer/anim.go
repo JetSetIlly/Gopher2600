@@ -184,7 +184,7 @@ func (thmb *Anim) Notify(notice notifications.Notice, data ...string) error {
 		if bs == nil {
 			return fmt.Errorf("NotifySuperchargerFastload sent from a non-Supercharger cartridge")
 		}
-		err := bs.Bootstrap(thmb.vcs.CPU, thmb.vcs.Mem.RAM, thmb.vcs.RIOT.Timer)
+		err := bs.Bootstrap(thmb.vcs.CPU, thmb.vcs.Mem.RAM, thmb.vcs.RIOT.Timer, thmb.vcs.TIA)
 		if err != nil {
 			return err
 		}
@@ -194,7 +194,7 @@ func (thmb *Anim) Notify(notice notifications.Notice, data ...string) error {
 		if bs == nil {
 			return fmt.Errorf("NotifySuperchargerSoundloadStarted sent from a non-Supercharger cartridge")
 		}
-		err := bs.Bootstrap(thmb.vcs.CPU, thmb.vcs.Mem.RAM, thmb.vcs.RIOT.Timer)
+		err := bs.Bootstrap(thmb.vcs.CPU, thmb.vcs.Mem.RAM, thmb.vcs.RIOT.Timer, thmb.vcs.TIA)
 		if err != nil {
 			return err
 		}

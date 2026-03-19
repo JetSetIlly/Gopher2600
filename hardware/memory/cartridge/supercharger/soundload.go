@@ -25,6 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
+	"github.com/jetsetilly/gopher2600/hardware/tia"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/notifications"
 )
@@ -216,7 +217,7 @@ func (tap *SoundLoad) end() {
 }
 
 // bootstrap implements the tape interface
-func (tap *SoundLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
+func (tap *SoundLoad) bootstrap(state *state, _ *cpu.CPU, ram *vcs.RAM, _ *timer.Timer, _ *tia.TIA) error {
 	multiload, err := ram.Peek(MutliloadByteAddr)
 	if err != nil {
 		return fmt.Errorf("soundload: %w", err)

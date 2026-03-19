@@ -1076,7 +1076,7 @@ func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 		if bs == nil {
 			return fmt.Errorf("NotifySuperchargerFastload sent from a non-Supercharger cartridge")
 		}
-		err := bs.Bootstrap(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer)
+		err := bs.Bootstrap(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer, dbg.vcs.TIA)
 		if err != nil {
 			return err
 		}
@@ -1097,7 +1097,7 @@ func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 		if bs == nil {
 			return fmt.Errorf("NotifySuperchargerSoundloadStarted sent from a non-Supercharger cartridge")
 		}
-		err := bs.Bootstrap(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer)
+		err := bs.Bootstrap(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer, dbg.vcs.TIA)
 		if err != nil {
 			return err
 		}

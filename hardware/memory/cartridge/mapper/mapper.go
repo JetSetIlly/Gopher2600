@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
+	"github.com/jetsetilly/gopher2600/hardware/tia"
 )
 
 // CartContainer is a special CartMapper type that wraps another CartMapper.
@@ -289,10 +290,15 @@ type CartTapeState struct {
 	Data       []float32
 }
 
-// CartSuperChargerBootstrap defines the commit function required when loading
+// CartSuperchargerBootstrap defines the commit function required when loading
 // Supercharger 'Fastload' binaries
-type CartSuperChargerBootstrap interface {
-	Bootstrap(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error
+//
+// It's not ideal that we expose so much of the machine to the supercharger in this way but it's
+// necessary for fastloading supercharger binaries in particular. For soundloading binaries only
+// access to RAM is required (and only then so that we can support cartridge dumping). However, we
+// use the single bootstrap function for bother types of Supercharger
+type CartSuperchargerBootstrap interface {
+	Bootstrap(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer, tia *tia.TIA) error
 }
 
 // CartLabelsBus will be implemented for cartridge mappers that want to report any
