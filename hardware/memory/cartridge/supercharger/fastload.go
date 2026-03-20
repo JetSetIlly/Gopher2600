@@ -260,6 +260,11 @@ func (fl *FastLoad) step() {
 func (tap *FastLoad) end() {
 }
 
+// whether to use a shim program in RAM as the start address for the bootstrap. this more closely
+// follows the behaviour of the real BIOS after the data has been loaded into supercharger RAM, but
+// it's not necessary
+const useRAMforBootstrap = true
+
 // bootstrap implements the tape interface
 func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer, tia *tia.TIA) error {
 	// look up requested multiload address
@@ -317,15 +322,29 @@ func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *time
 	// RAM address 0x80 contains the initial configbyte
 	_ = ram.Poke(0x80, fl.blocks[fl.blockIdx].configByte)
 
-	// CMP $fff8
-	_ = ram.Poke(0xfa, 0xcd)
-	_ = ram.Poke(0xfb, 0xf8)
-	_ = ram.Poke(0xfc, 0xff)
+	if useRAMforBootstrap {
+		// CMP $fff8
+		_ = ram.Poke(0xfa, 0xcd)
+		_ = ram.Poke(0xfb, 0xf8)
+		_ = ram.Poke(0xfc, 0xff)
 
-	// JMP <absolute address>
-	_ = ram.Poke(0xfd, 0x4c)
-	_ = ram.Poke(jmpAddrLo, fl.blocks[fl.blockIdx].startAddressLo)
-	_ = ram.Poke(jmpAddrHi, fl.blocks[fl.blockIdx].startAddressHi)
+		// JMP <absolute address>
+		_ = ram.Poke(0xfd, 0x4c)
+		_ = ram.Poke(jmpAddrLo, fl.blocks[fl.blockIdx].startAddressLo)
+		_ = ram.Poke(jmpAddrHi, fl.blocks[fl.blockIdx].startAddressHi)
+
+		// jump to VCS RAM location 0x00fa. a short bootstrap program has been
+		// poked there already
+		err = mc.LoadPC(0x00fa)
+		if err != nil {
+			return fmt.Errorf("fastload: %w", err)
+		}
+	} else {
+		jmpAddr := uint16(fl.blocks[fl.blockIdx].startAddressLo)
+		jmpAddr |= uint16(fl.blocks[fl.blockIdx].startAddressHi) << 8
+		mc.PC.Load(jmpAddr)
+		state.registers.setConfigByte(fl.blocks[fl.blockIdx].configByte)
+	}
 
 	// reset timer. in references to real tape loading, the number of ticks
 	// is the value at the moment the PC reaches address 0x00fa
@@ -350,13 +369,6 @@ func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *time
 
 	// we should also set the positions of the tia video components but that's not convenient to do
 	// at the moment. but it's an improvement to consider for the future
-
-	// jump to VCS RAM location 0x00fa. a short bootstrap program has been
-	// poked there already
-	err = mc.LoadPC(0x00fa)
-	if err != nil {
-		return fmt.Errorf("fastload: %w", err)
-	}
 
 	return nil
 }
