@@ -98,6 +98,10 @@ func NewPaddles(env *environment.Environment, port plugging.PortID, bus ports.Pe
 
 // Reset implements the Peripheral interface.
 func (pdl *Paddles) Reset() {
+	// a good test for if this is correct is the starpath version of frogger. if the game goes to
+	// the main play screen immediately after loading, then this function is incorrect
+	pdl.bus.WriteINPTx(pdl.insertedInptx, 0x80)
+
 	for i := range pdl.paddles {
 		pdl.paddles[i].charge = 0
 		pdl.paddles[i].ticks = 0
@@ -105,6 +109,7 @@ func (pdl *Paddles) Reset() {
 		pdl.bus.WriteINPTx(pdl.paddles[i].inptx, pdl.paddles[i].charge)
 		pdl.paddles[i].fire = false
 	}
+
 	pdl.setFire()
 }
 
