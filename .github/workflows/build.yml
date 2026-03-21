@@ -16,7 +16,7 @@ jobs:
         brew install go
         brew install sdl2
         brew install dylibbundler
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Extract version from Makefile
       id: version
       run: |
@@ -45,7 +45,7 @@ jobs:
         cd .package
         zip -vr Gopher2600.zip Gopher2600.app
     - name: Upload package
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: Gopher2600-macOS
         path: .package/Gopher2600.zip
