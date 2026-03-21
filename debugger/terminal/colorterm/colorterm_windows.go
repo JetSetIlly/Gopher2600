@@ -43,6 +43,11 @@ func (ct *ColorTerminal) CleanUp() {
 func (ct *ColorTerminal) RegisterTabCompletion(tc *commandline.TabCompletion) {
 }
 
+// IsInteractive implements the terminal.Input interface.
+func (ct *ColorTerminal) IsInteractive() bool {
+	return true
+}
+
 // IsRealTerminal implements the terminal.Input interface.
 func (ct *ColorTerminal) IsRealTerminal() bool {
 	return true
@@ -52,13 +57,9 @@ func (ct *ColorTerminal) IsRealTerminal() bool {
 func (ct *ColorTerminal) Silence(silenced bool) {
 }
 
-// note that the followinf Term*() functions are not implemented for the
-// unix version of ColorTerminal. this is because they are implemented by the
-// embedded EasyTerm type.
-
 // TermRead implements the terminal.Input interface.
-func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
-	return 0, nil
+func (ct *ColorTerminal) TermRead(prompt terminal.Prompt, events *terminal.ReadEvents) (string, error) {
+	return "", nil
 }
 
 // TermReadCheck implements the terminal.Input interface.
