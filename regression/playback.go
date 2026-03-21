@@ -101,10 +101,10 @@ func (reg PlaybackRegression) CleanUp() error {
 
 // String implements the regression.Regressor interface.
 func (reg PlaybackRegression) String() string {
-	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("[%s] %s", reg.EntryType(), filepath.Base(reg.Script)))
+	var s strings.Builder
+	fmt.Fprintf(&s, "[%s] %s", reg.EntryType(), filepath.Base(reg.Script))
 	if reg.Notes != "" {
-		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
+		fmt.Fprintf(&s, " [%s]", reg.Notes)
 	}
 	return s.String()
 }

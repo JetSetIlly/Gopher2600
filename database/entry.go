@@ -17,6 +17,7 @@ package database
 
 import (
 	"fmt"
+	"strings"
 )
 
 // Deserialiser extracts/converts fields from a SerialisedEntry.
@@ -47,4 +48,12 @@ func (db *Session) RegisterEntryType(id string, des Deserialiser) error {
 	}
 	db.entryTypes[id] = des
 	return nil
+}
+
+func encode(s string) string {
+	return strings.ReplaceAll(s, ",", "\\;")
+}
+
+func decode(s string) string {
+	return strings.ReplaceAll(s, "\\;", ",")
 }

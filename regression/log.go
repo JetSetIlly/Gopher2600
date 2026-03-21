@@ -109,13 +109,13 @@ func (reg LogRegression) CleanUp() error {
 
 // String implements the regressions.Regressor interface
 func (reg LogRegression) String() string {
-	s := strings.Builder{}
+	var s strings.Builder
 
-	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d", reg.EntryType(),
+	fmt.Fprintf(&s, "[%s] %s [%s] frames=%d", reg.EntryType(),
 		cartridgeloader.NameFromFilename(reg.Cartridge),
-		reg.TVtype, reg.NumFrames))
+		reg.TVtype, reg.NumFrames)
 	if reg.Notes != "" {
-		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
+		fmt.Fprintf(&s, " [%s]", reg.Notes)
 	}
 	return s.String()
 }

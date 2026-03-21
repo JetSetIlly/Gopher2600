@@ -38,7 +38,6 @@ const ansiClearLine = "\033[2K"
 const regressionPath = "regression"
 const regressionDBFile = "db"
 const regressionScripts = "scripts"
-const fails = "fails"
 
 // Regressor is the generic entry type in the regressionDB.
 type Regressor interface {

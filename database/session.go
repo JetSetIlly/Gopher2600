@@ -129,7 +129,7 @@ func (db *Session) EndSession(commitChanges bool) error {
 
 			for i := range ser {
 				s.WriteString(fieldSep)
-				s.WriteString(ser[i])
+				s.WriteString(encode(ser[i]))
 			}
 
 			s.WriteString(entrySep)
@@ -203,7 +203,12 @@ func (db *Session) readDBFile() error {
 			return fmt.Errorf("unrecognised entry type (%s) [line %d]", fields[leaderFieldID], i+1)
 		}
 
-		ent, err = deserialise(strings.Split(fields[numLeaderFields], ","))
+		l := strings.Split(fields[numLeaderFields], ",")
+		for i := range l {
+			l[i] = decode(l[i])
+		}
+
+		ent, err = deserialise(l)
 		if err != nil {
 			return fmt.Errorf("%w [line %d]", err, i+1)
 		}

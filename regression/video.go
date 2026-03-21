@@ -156,7 +156,7 @@ func (reg VideoRegression) CleanUp() error {
 
 // String implements the regression.Regressor interface
 func (reg VideoRegression) String() string {
-	s := strings.Builder{}
+	var s strings.Builder
 
 	state := ""
 	switch reg.State {
@@ -174,11 +174,11 @@ func (reg VideoRegression) String() string {
 		state = " [with state]"
 	}
 
-	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d%s", reg.EntryType(),
+	fmt.Fprintf(&s, "[%s] %s [%s] frames=%d%s", reg.EntryType(),
 		cartridgeloader.NameFromFilename(reg.Cartridge),
-		reg.TVtype, reg.NumFrames, state))
+		reg.TVtype, reg.NumFrames, state)
 	if reg.Notes != "" {
-		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
+		fmt.Fprintf(&s, " [%s]", reg.Notes)
 	}
 	return s.String()
 }
