@@ -18,7 +18,6 @@ package sdlimgui
 import (
 	"fmt"
 	"runtime"
-	"strings"
 	"time"
 
 	"github.com/jetsetilly/gopher2600/logger"
@@ -35,7 +34,7 @@ type closeController interface {
 
 type controller struct {
 	closeController
-	isStelladaptor bool
+	isJoystick bool
 }
 
 // global control of gamepad support
@@ -206,7 +205,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 				logger.Logf(logger.Allow, "sdl", "joystick: %s", joy.Name())
 				plt.joysticks = append(plt.joysticks, controller{
 					closeController: joy,
-					isStelladaptor:  strings.Contains(strings.ToLower(joy.Name()), "stelladaptor"),
+					isJoystick:      true,
 				})
 			}
 		}

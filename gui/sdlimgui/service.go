@@ -314,7 +314,7 @@ func (img *SdlImgui) Service() {
 			}
 
 		case *sdl.JoyAxisEvent:
-			if img.plt.joysticks[ev.Which].isStelladaptor {
+			if img.plt.joysticks[ev.Which].isJoystick {
 				joy := sdl.JoystickFromInstanceID(ev.Which)
 				select {
 				case input <- userinput.EventStelladaptor{
