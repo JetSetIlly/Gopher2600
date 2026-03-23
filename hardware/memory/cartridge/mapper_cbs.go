@@ -275,18 +275,13 @@ func (cart *cbs) CopyBanks() []banking.Content {
 	return c
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *cbs) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *cbs) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff8: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1ff9: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
 		0x1ffa: {Symbol: "BANK2", Action: mapper.HotspotBankSwitch},
 	}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *cbs) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return cart.ReadHotspots()
 }
 
 // rewindable state for the CBS cartridge.

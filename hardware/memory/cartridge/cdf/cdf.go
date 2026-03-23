@@ -581,8 +581,8 @@ func (cart *cdf) Labels() mapper.CartLabels {
 	}
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *cdf) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *cdf) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff5: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1ff6: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
@@ -591,23 +591,10 @@ func (cart *cdf) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 		0x1ff9: {Symbol: "BANK4", Action: mapper.HotspotBankSwitch},
 		0x1ffa: {Symbol: "BANK5", Action: mapper.HotspotBankSwitch},
 		0x1ffb: {Symbol: "BANK6", Action: mapper.HotspotBankSwitch},
-	}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *cdf) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return map[uint16]mapper.CartHotspotInfo{
-		0x1ff0: {Symbol: "DSWRITE", Action: mapper.HotspotRegister},
-		0x1ff1: {Symbol: "DSPTR", Action: mapper.HotspotRegister},
-		0x1ff2: {Symbol: "SETMODE", Action: mapper.HotspotRegister},
+		0x1ff0: {Symbol: "DSWRITE", Action: mapper.HotspotWriteRegister},
+		0x1ff1: {Symbol: "DSPTR", Action: mapper.HotspotWriteRegister},
+		0x1ff2: {Symbol: "SETMODE", Action: mapper.HotspotWriteRegister},
 		0x1ff3: {Symbol: "CALLFN", Action: mapper.HotspotFunction},
-		0x1ff5: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
-		0x1ff6: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
-		0x1ff7: {Symbol: "BANK2", Action: mapper.HotspotBankSwitch},
-		0x1ff8: {Symbol: "BANK3", Action: mapper.HotspotBankSwitch},
-		0x1ff9: {Symbol: "BANK4", Action: mapper.HotspotBankSwitch},
-		0x1ffa: {Symbol: "BANK5", Action: mapper.HotspotBankSwitch},
-		0x1ffb: {Symbol: "BANK6", Action: mapper.HotspotBankSwitch},
 	}
 }
 

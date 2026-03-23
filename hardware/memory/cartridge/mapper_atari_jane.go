@@ -122,17 +122,12 @@ func (cart *jane) bankswitch(addr uint16, data uint8) bool {
 	return false
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *jane) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *jane) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff0: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1ff1: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
 		0x1ff8: {Symbol: "BANK2", Action: mapper.HotspotBankSwitch},
 		0x1ff9: {Symbol: "BANK3", Action: mapper.HotspotBankSwitch},
 	}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *jane) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return cart.ReadHotspots()
 }

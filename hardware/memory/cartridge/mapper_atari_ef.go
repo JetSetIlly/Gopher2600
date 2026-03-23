@@ -118,8 +118,8 @@ func (cart *ef) NumBanks() int {
 	return 16
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *ef) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *ef) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1fe0: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1fe1: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
@@ -138,9 +138,4 @@ func (cart *ef) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 		0x1fee: {Symbol: "BANK14", Action: mapper.HotspotBankSwitch},
 		0x1fef: {Symbol: "BANK15", Action: mapper.HotspotBankSwitch},
 	}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *ef) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return cart.ReadHotspots()
 }

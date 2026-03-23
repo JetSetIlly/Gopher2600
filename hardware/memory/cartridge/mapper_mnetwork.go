@@ -431,8 +431,8 @@ func (cart *mnetwork) CopyBanks() []banking.Content {
 	return c
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *mnetwork) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *mnetwork) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1fe0: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1fe1: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
@@ -447,11 +447,6 @@ func (cart *mnetwork) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 		0x1fea: {Symbol: "RAM2", Action: mapper.HotspotBankSwitch},
 		0x1feb: {Symbol: "RAM3", Action: mapper.HotspotBankSwitch},
 	}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *mnetwork) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return cart.ReadHotspots()
 }
 
 type mnetworkState struct {

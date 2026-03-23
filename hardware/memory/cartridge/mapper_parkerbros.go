@@ -328,8 +328,8 @@ func (cart *parkerBros) CopyBanks() []banking.Content {
 	return c
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *parkerBros) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *parkerBros) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		// segment 0
 		0x1fe0: {Symbol: "B0S0", Action: mapper.HotspotBankSwitch},
@@ -361,11 +361,6 @@ func (cart *parkerBros) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 		0x1ff6: {Symbol: "B6S2", Action: mapper.HotspotBankSwitch},
 		0x1ff7: {Symbol: "B7S2", Action: mapper.HotspotBankSwitch},
 	}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *parkerBros) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return cart.ReadHotspots()
 }
 
 // rewindable state for the parker bros. cartridges.

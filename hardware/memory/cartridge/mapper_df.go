@@ -303,8 +303,8 @@ func (cart *df) CopyBanks() []banking.Content {
 	return c
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *df) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *df) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1fc0: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1fc1: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
@@ -339,11 +339,6 @@ func (cart *df) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 		0x1fde: {Symbol: "BANK30", Action: mapper.HotspotBankSwitch},
 		0x1fdf: {Symbol: "BANK31", Action: mapper.HotspotBankSwitch},
 	}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *df) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return cart.ReadHotspots()
 }
 
 // rewindable state for the cartridge type.

@@ -324,8 +324,7 @@ type CartLabels map[uint16]string
 // range. For normality, this should be in the primary cartridge mirror (ie.
 // 0x1000 to 0x1fff).
 type CartHotspotsBus interface {
-	ReadHotspots() map[uint16]CartHotspotInfo
-	WriteHotspots() map[uint16]CartHotspotInfo
+	Hotspots() map[uint16]CartHotspotInfo
 }
 
 // CartHotspotAction defines the action of a hotspot address.
@@ -337,14 +336,15 @@ const (
 	// the bank/segment is switched when the address is read/write.
 	HotspotBankSwitch CartHotspotAction = iota
 
-	// some cartridge mappers have additional registers.
-	HotspotRegister
-
 	// a function is a catch all category that describes any hotspot address
 	// that has some other than or more complex than just bank switching. for
 	// example, the Supercharger CONFIG address causes bank-switching to take
 	// place but is none-the-less defined as a HotspotFunction.
 	HotspotFunction
+
+	// some cartridge mappers have additional registers.
+	HotspotReadRegister
+	HotspotWriteRegister
 
 	// some hotspots will be defined but be unused or reserved by the
 	// cartridge.

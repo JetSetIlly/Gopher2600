@@ -119,12 +119,7 @@ func (cart *bf) NumBanks() int {
 	return 64
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *bf) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *bf) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *bf) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return cart.ReadHotspots()
 }

@@ -641,17 +641,12 @@ func (cart *atari8k) bankswitch(addr uint16) bool {
 	return false
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *atari8k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *atari8k) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff8: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1ff9: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
 	}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *atari8k) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return cart.ReadHotspots()
 }
 
 // atari16k (F6):
@@ -760,19 +755,14 @@ func (cart *atari16k) bankswitch(addr uint16) bool {
 	return false
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *atari16k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *atari16k) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff6: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1ff7: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
 		0x1ff8: {Symbol: "BANK2", Action: mapper.HotspotBankSwitch},
 		0x1ff9: {Symbol: "BANK3", Action: mapper.HotspotBankSwitch},
 	}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *atari16k) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return cart.ReadHotspots()
 }
 
 // atari32k (F8)
@@ -889,8 +879,8 @@ func (cart *atari32k) bankswitch(addr uint16) bool {
 	return false
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *atari32k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *atari32k) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff4: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1ff5: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
@@ -901,11 +891,6 @@ func (cart *atari32k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 		0x1ffa: {Symbol: "BANK6", Action: mapper.HotspotBankSwitch},
 		0x1ffb: {Symbol: "BANK7", Action: mapper.HotspotBankSwitch},
 	}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *atari32k) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return cart.ReadHotspots()
 }
 
 // rewindable state for all atari cartridges.

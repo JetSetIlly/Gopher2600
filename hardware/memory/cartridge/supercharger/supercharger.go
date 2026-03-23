@@ -502,17 +502,12 @@ func (cart *Supercharger) GetTapeState() (bool, mapper.CartTapeState) {
 	return false, mapper.CartTapeState{}
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *Supercharger) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *Supercharger) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff8: {Symbol: "CONFIG", Action: mapper.HotspotFunction},
 		0x1ff9: {Symbol: "TAPE", Action: mapper.HotspotFunction},
 	}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *Supercharger) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return nil
 }
 
 func (cart *Supercharger) ROMDump(filename string) error {

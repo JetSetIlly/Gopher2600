@@ -17,6 +17,7 @@ package symbols
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -63,20 +64,22 @@ func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
 
 	hb := cart.GetCartHotspotsBus()
 	if hb != nil {
-		for k, v := range hb.ReadHotspots() {
+		for k, v := range hb.Hotspots() {
 			ma, area := memorymap.MapAddress(k, true)
 			if area != memorymap.Cartridge {
 				logger.Logf(logger.Allow, "symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
 			}
-			sym.read.add(SourceCartridge, ma, v.Symbol)
+
+			switch v.Action {
+			case mapper.HotspotReadRegister:
+				sym.read.add(SourceCartridge, ma, v.Symbol)
+			case mapper.HotspotWriteRegister:
+				sym.write.add(SourceCartridge, ma, v.Symbol)
+			default:
+				sym.read.add(SourceCartridge, ma, v.Symbol)
+				sym.write.add(SourceCartridge, ma, v.Symbol)
+			}
 		}
 
-		for k, v := range hb.WriteHotspots() {
-			ma, area := memorymap.MapAddress(k, false)
-			if area != memorymap.Cartridge {
-				logger.Logf(logger.Allow, "symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
-			}
-			sym.write.add(SourceCartridge, ma, v.Symbol)
-		}
 	}
 }
