@@ -121,5 +121,14 @@ func (cart *bf) NumBanks() int {
 
 // Hotspots implements the mapper.CartHotspotsBus interface.
 func (cart *bf) Hotspots() map[uint16]mapper.CartHotspotInfo {
-	return map[uint16]mapper.CartHotspotInfo{}
+	hotspots := make(map[uint16]mapper.CartHotspotInfo)
+	for i := uint16(0x0f80); i <= uint16(0x0fbf); i++ {
+		bank := int(i - 0x0f80)
+		addr := uint16(0x1000) | i
+		hotspots[addr] = mapper.CartHotspotInfo{
+			Symbol: fmt.Sprintf("BANK%d", bank),
+			Action: mapper.HotspotBankSwitch,
+		}
+	}
+	return hotspots
 }
