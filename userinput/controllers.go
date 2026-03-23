@@ -472,12 +472,6 @@ func (c *Controllers) gamepadThumbstick(ev EventGamepadThumbstick) (bool, error)
 		return c.handleEvents(c.handlePortSwap(ev.ID), ports.Up, ports.DataStickSet)
 	}
 
-	// never report that the centre event has been handled by the emulated
-	// machine.
-	//
-	// for example, it prevents deadzone signals causing the emulation to unpause
-	//
-	// this might be wrong behaviour in some situations.
 	_, err := c.handleEvents(c.handlePortSwap(ev.ID), ports.Centre, nil)
 	return false, err
 }
@@ -510,7 +504,8 @@ func (c *Controllers) joystickAxis(ev EventJoystickAxis) (bool, error) {
 	} else if ev.Vert == up {
 		return c.handleEvents(c.handlePortSwap(ev.ID), ports.Up, ports.DataStickSet)
 	}
-	return c.handleEvents(c.handlePortSwap(ev.ID), ports.Centre, ports.DataStickSet)
+
+	return c.handleEvents(c.handlePortSwap(ev.ID), ports.Centre, nil)
 }
 
 func (c *Controllers) stelladaptor(ev EventStelladaptor) (bool, error) {

@@ -305,6 +305,8 @@ func (img *SdlImgui) Service() {
 
 		case *sdl.JoyAxisEvent:
 			if img.plt.joysticks[ev.Which].isJoystick {
+				img.smartCursorVisibility(true)
+
 				joy := sdl.JoystickFromInstanceID(ev.Which)
 				if img.plt.joysticks[ev.Which].isStelladapter {
 					select {
