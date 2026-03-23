@@ -482,6 +482,37 @@ func (c *Controllers) gamepadThumbstick(ev EventGamepadThumbstick) (bool, error)
 	return false, err
 }
 
+// joystick axis values observed from testing of a Hyperkin Trooper 2 owned by "Mike_at_AEI"
+func (c *Controllers) joystickAxis(ev EventJoystickAxis) (bool, error) {
+	const (
+		left  = -32768
+		right = 32767
+		up    = -32768
+		down  = 32767
+	)
+
+	if ev.Horiz == right {
+		if ev.Vert == down {
+			return c.handleEvents(c.handlePortSwap(ev.ID), ports.RightDown, ports.DataStickSet)
+		} else if ev.Vert == up {
+			return c.handleEvents(c.handlePortSwap(ev.ID), ports.RightUp, ports.DataStickSet)
+		}
+		return c.handleEvents(c.handlePortSwap(ev.ID), ports.Right, ports.DataStickSet)
+	} else if ev.Horiz == left {
+		if ev.Vert == down {
+			return c.handleEvents(c.handlePortSwap(ev.ID), ports.LeftDown, ports.DataStickSet)
+		} else if ev.Vert == up {
+			return c.handleEvents(c.handlePortSwap(ev.ID), ports.LeftUp, ports.DataStickSet)
+		}
+		return c.handleEvents(c.handlePortSwap(ev.ID), ports.Left, ports.DataStickSet)
+	} else if ev.Vert == down {
+		return c.handleEvents(c.handlePortSwap(ev.ID), ports.Down, ports.DataStickSet)
+	} else if ev.Vert == up {
+		return c.handleEvents(c.handlePortSwap(ev.ID), ports.Up, ports.DataStickSet)
+	}
+	return c.handleEvents(c.handlePortSwap(ev.ID), ports.Centre, ports.DataStickSet)
+}
+
 func (c *Controllers) stelladaptor(ev EventStelladaptor) (bool, error) {
 	switch c.inputHandler.PeripheralID(ev.ID) {
 	case plugging.PeriphStick:
@@ -496,6 +527,9 @@ func (c *Controllers) stelladaptor(ev EventStelladaptor) (bool, error) {
 		// 0x007f = at rest
 		// 0x7fff = down (vert axis) right (horiz axis)
 		// 0x8000 = up (vert axis) left (horiz axis)
+		//
+		// OR/ maybe this could be replaced with a call to joystickAxis(). not tested because I
+		// don't have access to the hardware and I'm not confident in the values
 		const boundaryValue = 255
 
 		if ev.Horiz > boundaryValue {
@@ -516,8 +550,8 @@ func (c *Controllers) stelladaptor(ev EventStelladaptor) (bool, error) {
 			return c.handleEvents(c.handlePortSwap(ev.ID), ports.Down, ports.DataStickSet)
 		} else if ev.Vert < -boundaryValue {
 			return c.handleEvents(c.handlePortSwap(ev.ID), ports.Up, ports.DataStickSet)
-		}
 
+		}
 		return c.handleEvents(c.handlePortSwap(ev.ID), ports.Centre, nil)
 
 	case plugging.PeriphPaddles:
@@ -553,6 +587,8 @@ func (c *Controllers) HandleUserInput(ev Event) (bool, error) {
 		return c.gamepadThumbstick(ev)
 	case EventGamepadTrigger:
 		// not using trigger
+	case EventJoystickAxis:
+		c.joystickAxis(ev)
 	case EventStelladaptor:
 		return c.stelladaptor(ev)
 	default:

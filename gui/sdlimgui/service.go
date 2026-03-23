@@ -306,13 +306,24 @@ func (img *SdlImgui) Service() {
 		case *sdl.JoyAxisEvent:
 			if img.plt.joysticks[ev.Which].isJoystick {
 				joy := sdl.JoystickFromInstanceID(ev.Which)
-				select {
-				case input <- userinput.EventStelladaptor{
-					ID:    plugging.PortLeft,
-					Horiz: joy.Axis(0),
-					Vert:  joy.Axis(1),
-				}:
-				default:
+				if img.plt.joysticks[ev.Which].isStelladapter {
+					select {
+					case input <- userinput.EventStelladaptor{
+						ID:    plugging.PortLeft,
+						Horiz: joy.Axis(0),
+						Vert:  joy.Axis(1),
+					}:
+					default:
+					}
+				} else {
+					select {
+					case input <- userinput.EventJoystickAxis{
+						ID:    plugging.PortLeft,
+						Horiz: joy.Axis(0),
+						Vert:  joy.Axis(1),
+					}:
+					default:
+					}
 				}
 			} else {
 				pad := sdl.GameControllerFromInstanceID(ev.Which)
