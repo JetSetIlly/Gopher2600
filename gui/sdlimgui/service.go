@@ -21,7 +21,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
-	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/userinput"
 
 	"github.com/jetsetilly/imgui-go/v5"
@@ -118,7 +117,6 @@ func (img *SdlImgui) Service() {
 					Key: txt,
 				}:
 				default:
-					logger.Log(logger.Allow, "sdlimgui", "dropped text event")
 				}
 			}
 
@@ -197,11 +195,6 @@ func (img *SdlImgui) Service() {
 					Button: button,
 					Down:   ev.Type == sdl.MOUSEBUTTONDOWN}:
 				default:
-					if ev.Type == sdl.MOUSEBUTTONDOWN {
-						logger.Log(logger.Allow, "sdlimgui", "dropped mouse down event")
-					} else {
-						logger.Log(logger.Allow, "sdlimgui", "dropped mouse up event")
-					}
 				}
 			}
 
@@ -237,7 +230,6 @@ func (img *SdlImgui) Service() {
 						Mod:   getKeyMod(),
 					}:
 					default:
-						logger.Log(logger.Allow, "sdlimgui", "dropped mouse wheel event")
 					}
 				} else {
 					imgui.CurrentIO().AddMouseWheelDelta(-deltaX/4, deltaY/4)
@@ -273,7 +265,6 @@ func (img *SdlImgui) Service() {
 					Down:   ev.State == 1,
 				}:
 				default:
-					logger.Log(logger.Allow, "sdlimgui", "dropped gamepad button event")
 				}
 			}
 
@@ -309,7 +300,6 @@ func (img *SdlImgui) Service() {
 					Direction: dir,
 				}:
 				default:
-					logger.Log(logger.Allow, "sdlimgui", "dropped gamepad dpad event")
 				}
 			}
 
@@ -323,7 +313,6 @@ func (img *SdlImgui) Service() {
 					Vert:  joy.Axis(1),
 				}:
 				default:
-					logger.Log(logger.Allow, "sdlimgui", "dropped stelladaptor event")
 				}
 			} else {
 				pad := sdl.GameControllerFromInstanceID(ev.Which)
@@ -346,7 +335,6 @@ func (img *SdlImgui) Service() {
 						Vert:       pad.Axis(1),
 					}:
 					default:
-						logger.Log(logger.Allow, "sdlimgui", "dropped gamepad axis event")
 					}
 				case 3:
 					fallthrough
@@ -359,7 +347,6 @@ func (img *SdlImgui) Service() {
 						Vert:       pad.Axis(4),
 					}:
 					default:
-						logger.Log(logger.Allow, "sdlimgui", "dropped gamepad axis event")
 					}
 				default:
 				}
@@ -380,7 +367,6 @@ func (img *SdlImgui) Service() {
 						Amount:  ev.Value,
 					}:
 					default:
-						logger.Log(logger.Allow, "sdlimgui", "dropped gamepad axis event")
 					}
 				}
 			}
@@ -394,7 +380,6 @@ func (img *SdlImgui) Service() {
 			X: int16(mouseMotionX), Y: int16(mouseMotionY),
 		}:
 		default:
-			logger.Log(logger.Allow, "sdlimgui", "dropped mouse motion event")
 		}
 	}
 }
