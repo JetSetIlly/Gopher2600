@@ -151,22 +151,22 @@ func (cart *Supercharger) Reset() error {
 }
 
 // Access implements the mapper.CartMapper interface.
-func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
+func (cart *Supercharger) access(addr uint16, peek bool) (uint8, uint8, error) {
 	// what bank to read. bank zero refers to the BIOS. bank 1 to 3 refer to
 	// one of the RAM banks
 	bank := cart.GetBank(addr).Number
 
-	bios := false
-	switch bank {
-	case 0:
-		bios = true
-	default:
-		// RAM banks are indexed from 0 to 2
-		bank--
-	}
+	// use bios data rather than ram data if bank number is zero
+	bios := bank == 0
+
+	// RAM banks are indexed from 0 to 2. this also has the effect of making the bank value to be
+	// unsuitable for use as an index number in the case of the address pointing to the bios. that's
+	// okay because it will cause a program panic, which is what we want
+	bank--
 
 	// tape load register has been read
-	if addr == 0x0ff9 {
+	switch addr {
+	case 0x0ff9:
 		// turn is loading state and call vcs hook if this is the first recent
 		// read of the tape. we assume that the isLoading state will be
 		// sustained until the BIOS is "touched" as described below
@@ -202,18 +202,12 @@ func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
 			err = fmt.Errorf("supercharger: %w", err)
 		}
 		return v, mapper.CartDrivenPins, err
-	}
 
-	// control register has been read. I've opted to return the value at the
-	// address before the bank switch. I think this is correct but I'm not
-	// sure.
-	if addr == 0x0ff8 {
-		b := cart.state.ram[bank][addr&0x07ff]
+	case 0x0ff8:
 		if !peek {
 			cart.state.registers.setConfigByte(cart.state.registers.Value)
 			cart.state.registers.Delay = 0
 		}
-		return b, mapper.CartDrivenPins, nil
 	}
 
 	// note address to be used as the next value in the control register
@@ -237,11 +231,10 @@ func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
 				cart.state.isLoading = false
 				cart.state.tape.end()
 			}
-
 			return cart.bios[addr&0x07ff], mapper.CartDrivenPins, nil
 		}
 
-		return 0, 0, fmt.Errorf("supercharger: ROM is powered off")
+		return 0, mapper.CartDrivenPins, fmt.Errorf("supercharger: ROM is powered off")
 	}
 
 	if !peek && cart.state.registers.Delay == 1 {
@@ -255,9 +248,24 @@ func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	return cart.state.ram[bank][addr&0x07ff], mapper.CartDrivenPins, nil
 }
 
+func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
+	return cart.access(addr, peek)
+}
+
 // AccessVolatile implements the mapper.CartMapper interface.
-func (cart *Supercharger) AccessVolatile(addr uint16, data uint8, _ bool) error {
-	return nil
+func (cart *Supercharger) AccessVolatile(addr uint16, data uint8, poke bool) error {
+	if poke {
+		bank := cart.GetBank(addr).Number
+		switch bank {
+		case 0:
+			cart.bios[addr&0x07ff] = data
+		default:
+			cart.state.ram[bank-1][addr&0x07ff] = data
+		}
+		return nil
+	}
+	_, _, err := cart.access(addr, false)
+	return err
 }
 
 func (cart *Supercharger) biosAvailable() bool {
