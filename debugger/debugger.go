@@ -1121,11 +1121,6 @@ func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 		}
 
 		return dbg.vcs.TV.Reset(true)
-	case notifications.NotifySuperchargerSoundLoadRewind:
-		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundLoadRewind)
-		if err != nil {
-			return err
-		}
 	case notifications.NotifyPlusROMNewInstall:
 		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifyPlusROMNewInstall)
 		if err != nil {

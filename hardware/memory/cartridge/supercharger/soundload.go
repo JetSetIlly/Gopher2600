@@ -152,14 +152,22 @@ func (tap *SoundLoad) plumb(env *environment.Environment) {
 	tap.env = env
 }
 
+const (
+	autoStart = 30000
+	autoStop  = 100000
+)
+
 func (tap *SoundLoad) load() (uint8, error) {
 	tap.stepLimiter = 0
 	if !tap.playing {
-		if tap.playDelay < 30000 {
+		if tap.playDelay < autoStart {
 			tap.playDelay++
 			return 0x00, nil
 		}
-		tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundLoadStarted)
+		err := tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundLoadStarted)
+		if err != nil {
+			logger.Log(tap.env, "supercharger: soundload", err)
+		}
 		tap.playing = true
 		tap.playDelay = 0
 		logger.Logf(tap.env, "supercharger: soundload", "tape playing from position %d/%d", tap.pcmIdx, len(tap.pcm.data))
@@ -178,10 +186,13 @@ func (tap *SoundLoad) step() {
 	}
 
 	// auto-stop tape if load() has not been called "recently"
-	const stepLimit = 100000
-	if tap.stepLimiter < stepLimit {
+	if tap.stepLimiter < autoStop {
 		tap.stepLimiter++
-		if tap.stepLimiter == stepLimit {
+		if tap.stepLimiter == autoStop {
+			err := tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundLoadEnded)
+			if err != nil {
+				logger.Log(tap.env, "supercharger: soundload", err)
+			}
 			tap.playing = false
 			logger.Logf(tap.env, "supercharger: soundload", "tape stopped at position %d/%d", tap.pcmIdx, len(tap.pcm.data))
 			return
@@ -209,11 +220,6 @@ func (tap *SoundLoad) end() {
 		if err != nil {
 			logger.Log(tap.env, "supercharger: soundload", err)
 		}
-	}
-
-	err := tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundLoadEnded)
-	if err != nil {
-		logger.Log(tap.env, "supercharger: soundload", err)
 	}
 }
 
@@ -279,10 +285,7 @@ func (tap *SoundLoad) bootstrap(state *state, _ *cpu.CPU, ram *vcs.RAM, _ *timer
 
 // Rewind implements the mapper.CartTapeBus interface.
 func (tap *SoundLoad) Rewind() {
-	// rewinding happens instantaneously
-	tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundLoadRewind)
 	tap.pcmIdx = 0
-	logger.Logf(tap.env, "supercharger: soundload", "tape rewound to position 0/%d", len(tap.pcm.data))
 	tap.stepLimiter = 0
 }
 

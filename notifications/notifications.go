@@ -28,7 +28,6 @@ const (
 	// notifications sent when supercharger is loading from a sound file (eg. mp3 file)
 	NotifySuperchargerSoundLoadStarted Notice = "NotifySuperchargerSoundloadStarted"
 	NotifySuperchargerSoundLoadEnded   Notice = "NotifySuperchargerSoundloadEnded"
-	NotifySuperchargerSoundLoadRewind  Notice = "NotifySuperchargerSoundloadRewind"
 
 	// if Supercharger is loading from a fastload binary then this event is
 	// raised when the ROM requests the next block be loaded from the "tape

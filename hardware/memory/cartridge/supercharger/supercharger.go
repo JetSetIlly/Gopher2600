@@ -164,36 +164,30 @@ func (cart *Supercharger) access(addr uint16, peek bool) (uint8, uint8, error) {
 	// okay because it will cause a program panic, which is what we want
 	bank--
 
+	// always record access addresss for later comparison
+	defer func() {
+		cart.state.recentAddresses[1] = cart.state.recentAddresses[0]
+		cart.state.recentAddresses[0] = addr
+	}()
+
 	// tape load register has been read
 	switch addr {
 	case 0x0ff9:
-		// turn is loading state and call vcs hook if this is the first recent
-		// read of the tape. we assume that the isLoading state will be
-		// sustained until the BIOS is "touched" as described below
-		if !cart.state.isLoading {
-			cart.state.isLoading = true
-		}
+		// for a long time, we chose to do nothing with the tape load request unless 'RAM Write' was
+		// enabled. however this isn't correct because it's possible for non-BIOS code to want to
+		// read data from the tape
 
-		// call load() whenever address is touched, although do not allow
-		// it if RAMwrite is false
-		if peek || !cart.state.registers.RAMwrite {
-			return 0, 0, nil
-		}
+		// it's possible for the tape register to be triggered by a phantom access. this isn't a
+		// problem for soundloud but it is a problem for fastload because a call to the tape.load()
+		// function will immediately send the FastLoad notificatoin resulting in a call to the
+		// bootstrap() function
+		//
+		// this happens with the original starpath game 'suicide mission'. the following filter
+		// prevents calls to the tape.load() function while preserving the ability of ROMs to
+		// intentionally load data from a tape
+		if (cart.state.recentAddresses[0] == 0x0ff9 || cart.state.recentAddresses[0] == 0x0ff8) &&
+			cart.state.recentAddresses[1] == 0x0ff8 {
 
-		// the call to tape.load() is an emulation feature that we use to automatically play the
-		// tape or in the case of fastload, trigger a bootstrap
-		//
-		// to prevent erroneous calls to load() we check if the BIOS is mapped. it only makes sense
-		// to auto-start the tape if the BIOS is available
-		//
-		// there's an assumption here that no code in the other bank will access the tape load
-		// register. if that ever becomes a problem we can add a filter that counts the number of
-		// accesses of the register in a given number of cycles
-		//
-		// we need to do this because the starpath game, 'suicide mission', access the tape load
-		// register by accident with a phantom access when retrieving the instruction at address
-		// 0xfff8 in bank 3
-		if !cart.biosAvailable() {
 			return 0x00, mapper.CartDrivenPins, nil
 		}
 
@@ -201,6 +195,7 @@ func (cart *Supercharger) access(addr uint16, peek bool) (uint8, uint8, error) {
 		if err != nil {
 			err = fmt.Errorf("supercharger: %w", err)
 		}
+
 		return v, mapper.CartDrivenPins, err
 
 	case 0x0ff8:
@@ -226,9 +221,7 @@ func (cart *Supercharger) access(addr uint16, peek bool) (uint8, uint8, error) {
 			// touched. note that this method means that the notification will
 			// be sent whatever the context the address is read and not just
 			// when the PC is at the address.
-			if addr == 0x0a1a {
-				// end tape is loading state
-				cart.state.isLoading = false
+			if addr == loadEndedAddress {
 				cart.state.tape.end()
 			}
 			return cart.bios[addr&0x07ff], mapper.CartDrivenPins, nil

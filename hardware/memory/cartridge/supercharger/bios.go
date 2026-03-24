@@ -130,6 +130,8 @@ func _loadBIOS(biosFilePath string) ([]uint8, error) {
 	return data, nil
 }
 
+const loadEndedAddress = 0x0a1a
+
 // fastloadOnlyBIOS is the minimum amount of code required to load a fastload ROM
 func fastloadOnlyBIOS() []uint8 {
 	b := make([]uint8, 2048)

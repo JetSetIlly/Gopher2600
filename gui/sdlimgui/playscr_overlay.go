@@ -124,17 +124,12 @@ func (o *playscrOverlay) set(v gui.FeatureReqData, args ...gui.FeatureReqData) {
 		case notifications.NotifySuperchargerSoundLoadEnded:
 			o.cartridge = n
 			o.cartridgeLatch = overlayLatch{duration: overlayLatchShort}
-		case notifications.NotifySuperchargerSoundLoadRewind:
-			return
-
 		case notifications.NotifyPlusROMNetwork:
 			o.cartridge = n
 			o.cartridgeLatch = overlayLatch{duration: overlayLatchShort}
-
 		case notifications.NotifyScreenshot:
 			o.event = n
 			o.eventLatch = overlayLatch{duration: overlayLatchShort}
-
 		default:
 			return
 		}
@@ -525,11 +520,6 @@ func (o *playscrOverlay) drawTopRight(posMin imgui.Vec2, posMax imgui.Vec2) {
 		if o.img.prefs.superchargerNotifications.Get().(bool) {
 			icon = fmt.Sprintf("%c", fonts.Tape)
 			secondaryIcon = fmt.Sprintf("%c", fonts.TapeStop)
-		}
-	case notifications.NotifySuperchargerSoundLoadRewind:
-		if o.img.prefs.superchargerNotifications.Get().(bool) {
-			icon = fmt.Sprintf("%c", fonts.Tape)
-			secondaryIcon = fmt.Sprintf("%c", fonts.TapeRewind)
 		}
 	case notifications.NotifyPlusROMNetwork:
 		if o.img.prefs.plusromNotifications.Get().(bool) {
