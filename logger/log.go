@@ -36,10 +36,10 @@ func (e *Entry) String() string {
 	if len(e.Tag) == 0 {
 		s.WriteString(e.Detail)
 	} else {
-		s.WriteString(fmt.Sprintf("%s: %s", e.Tag, e.Detail))
+		fmt.Fprintf(&s, "%s: %s", e.Tag, e.Detail)
 	}
 	if e.Repeated > 0 {
-		s.WriteString(fmt.Sprintf(" (repeat x%d)", e.Repeated+1))
+		fmt.Fprintf(&s, " (repeat x%d)", e.Repeated+1)
 	}
 	return s.String()
 }
@@ -133,9 +133,9 @@ func (l *Logger) Log(perm Permission, tag string, detail any) {
 		if last.Tag == e.Tag && last.Detail == e.Detail {
 			l.entries[len(l.entries)-1].Repeated++
 			return
-		} else {
-			l.entries = append(l.entries, e)
 		}
+
+		l.entries = append(l.entries, e)
 
 		if len(l.entries) > l.maxEntries {
 			l.recentStart -= l.maxEntries - len(l.entries)
@@ -144,6 +144,7 @@ func (l *Logger) Log(perm Permission, tag string, detail any) {
 			}
 		}
 
+		// repeated log entires will not be echoed
 		if l.echo != nil {
 			l.echo.Write([]byte(e.String()))
 			l.echo.Write([]byte("\n"))

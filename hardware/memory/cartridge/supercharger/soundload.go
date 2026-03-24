@@ -162,7 +162,7 @@ func (tap *SoundLoad) load() (uint8, error) {
 		tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundLoadStarted)
 		tap.playing = true
 		tap.playDelay = 0
-		logger.Log(tap.env, "supercharger: soundload", "tape playing")
+		logger.Logf(tap.env, "supercharger: soundload", "tape playing from position %d/%d", tap.pcmIdx, len(tap.pcm.data))
 	}
 
 	if tap.pcm.data[tap.pcmIdx] > tap.threshold {
@@ -183,6 +183,7 @@ func (tap *SoundLoad) step() {
 		tap.stepLimiter++
 		if tap.stepLimiter == stepLimit {
 			tap.playing = false
+			logger.Logf(tap.env, "supercharger: soundload", "tape stopped at position %d/%d", tap.pcmIdx, len(tap.pcm.data))
 			return
 		}
 	}
@@ -281,7 +282,7 @@ func (tap *SoundLoad) Rewind() {
 	// rewinding happens instantaneously
 	tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundLoadRewind)
 	tap.pcmIdx = 0
-	logger.Log(tap.env, "supercharger: soundload", "tape rewound")
+	logger.Logf(tap.env, "supercharger: soundload", "tape rewound to position 0/%d", len(tap.pcm.data))
 	tap.stepLimiter = 0
 }
 
