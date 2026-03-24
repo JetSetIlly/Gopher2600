@@ -259,10 +259,9 @@ func (fl *FastLoad) step() {
 func (tap *FastLoad) end() {
 }
 
-// whether to use a shim program in RAM as the start address for the bootstrap. this more closely
-// follows the behaviour of the real BIOS after the data has been loaded into supercharger RAM, but
-// it's not necessary
-const useRAMforBootstrap = true
+// whether to boot the loaded program directly or to use a shim program in RAM. a program in RAM
+// more closely follows the side-effect of the real BIOS loading process
+const quickBootstrap = true
 
 // bootstrap implements the tape interface
 func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer, tia *tia.TIA) error {
@@ -307,7 +306,7 @@ func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *time
 	// the remainder of this function replicates the pertinent side-effects of the BIOS. it's not
 	// certain if this is 100% of the side-effects we need to worry about
 
-	// clear RIOT RAM. we don't clear all of it because that will wreck the persistent state. a
+	// clear RIOT RAM. we don't clear all of it because that will wreck any persistent state. a
 	// cursory examination of the BIOS shows that RAM $82 to $9d are cleared to zero
 	//
 	//  fd9f  ldx #$1b
@@ -321,7 +320,12 @@ func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *time
 	// RAM address 0x80 contains the initial configbyte
 	_ = ram.Poke(0x80, fl.blocks[fl.blockIdx].configByte)
 
-	if useRAMforBootstrap {
+	if quickBootstrap {
+		jmpAddr := uint16(fl.blocks[fl.blockIdx].startAddressLo)
+		jmpAddr |= uint16(fl.blocks[fl.blockIdx].startAddressHi) << 8
+		mc.PC.Load(jmpAddr)
+		state.registers.setConfigByte(fl.blocks[fl.blockIdx].configByte)
+	} else {
 		// CMP $fff8
 		_ = ram.Poke(0xfa, 0xcd)
 		_ = ram.Poke(0xfb, 0xf8)
@@ -338,11 +342,6 @@ func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *time
 		if err != nil {
 			return fmt.Errorf("fastload: %w", err)
 		}
-	} else {
-		jmpAddr := uint16(fl.blocks[fl.blockIdx].startAddressLo)
-		jmpAddr |= uint16(fl.blocks[fl.blockIdx].startAddressHi) << 8
-		mc.PC.Load(jmpAddr)
-		state.registers.setConfigByte(fl.blocks[fl.blockIdx].configByte)
 	}
 
 	// reset timer. in references to real tape loading, the number of ticks
