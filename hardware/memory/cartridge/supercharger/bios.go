@@ -129,3 +129,23 @@ func _loadBIOS(biosFilePath string) ([]uint8, error) {
 
 	return data, nil
 }
+
+// fastloadOnlyBIOS is the minimum amount of code required to load a fastload ROM
+func fastloadOnlyBIOS() []uint8 {
+	b := make([]uint8, 2048)
+
+	// touch the tape load register
+	b[0] = 0xad
+	b[1] = 0xf9
+	b[2] = 0x1f
+
+	// CPU jump table
+	b[2042] = 0x00
+	b[2043] = 0x18
+	b[2044] = 0x00
+	b[2045] = 0x18
+	b[2046] = 0x00
+	b[2047] = 0x18
+
+	return b
+}

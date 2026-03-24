@@ -248,7 +248,6 @@ func (fl *FastLoad) load() (uint8, error) {
 	if err != nil {
 		return 0x00, fmt.Errorf("fastload: %w", err)
 	}
-
 	return 0x00, nil
 }
 

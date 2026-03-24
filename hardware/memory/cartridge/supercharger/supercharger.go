@@ -88,9 +88,13 @@ func NewSupercharger(env *environment.Environment) (mapper.CartMapper, error) {
 	var err error
 
 	// load bios and activate
-	cart.bios, err = loadBIOS(env, filepath.Dir(env.Loader.Filename))
-	if err != nil {
-		return nil, fmt.Errorf("supercharger: %w", err)
+	if env.Loader.IsSoundData {
+		cart.bios, err = loadBIOS(env, filepath.Dir(env.Loader.Filename))
+		if err != nil {
+			return nil, fmt.Errorf("supercharger: %w", err)
+		}
+	} else {
+		cart.bios = fastloadOnlyBIOS()
 	}
 
 	// set up tape
