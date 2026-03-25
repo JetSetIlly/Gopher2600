@@ -354,6 +354,9 @@ func (mc *CPU) write8Bit(address uint16, value uint8, phantom bool) error {
 // side-effects:
 //   - calls cycleCallback after each 8bit read
 func (mc *CPU) read16Bit(address uint16) (uint16, error) {
+	// 16 bit reads are never phantom
+	mc.PhantomMemAccess = false
+
 	lo, err := mc.mem.Read(address)
 	if err != nil {
 		return 0, err
