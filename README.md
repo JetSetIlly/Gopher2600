@@ -266,6 +266,7 @@ http://www.festvox.org/docs/manual-2.4.0/festival_toc.html
 	* James O'Brien (ZeroPageHomebrew)
 	* John Champeau (Champ Games)
 	* Marco Johannes (MarcoJ)
+    * Michael Scott Bachman (Mike_at_AEI)
 	* MrSQL
 	* Rob Bairos
 	* Rob Tuccitto (Trebor)
