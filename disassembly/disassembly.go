@@ -257,6 +257,9 @@ func (dsm *Disassembly) ExecutedEntry(bank banking.Information, result execution
 		return e
 	}
 
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
+
 	// if executed entry is in non-cartridge space then there's nothing we an do other than updating
 	// the sequential disaasembly
 	if !bank.NonCart {
@@ -273,8 +276,6 @@ func (dsm *Disassembly) ExecutedEntry(bank banking.Information, result execution
 		// updating an entry can happen at the same time as iteration which is
 		// probably being run from a different goroutine. acknowledge the critical
 		// section
-		dsm.crit.Lock()
-		defer dsm.crit.Unlock()
 
 		// add/update entry to disassembly
 		idx := result.Address & memorymap.CartridgeBits
