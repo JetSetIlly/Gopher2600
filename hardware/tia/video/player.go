@@ -426,6 +426,8 @@ func (ps *PlayerSprite) resetPosition() {
 	// reset pixel (approx. 9 pixels after the start of STA RESP0)."
 	delay := 4
 
+	// we might change the value of hblank for the purposes of specific TIA revision. if we weren't
+	// concerned with that we would just reference *ps.tia.hblank directly
 	hblank := *ps.tia.hblank
 
 	// RESPx responding late to the end of HBLANK is dependent on heat. The
@@ -458,24 +460,19 @@ func (ps *PlayerSprite) resetPosition() {
 		// this tricky branch happens when reset is triggered inside the
 		// HBLANK period and HMOVE is active in some way.
 
-		if ps.tia.hmove.Ripple > 0 {
+		if ps.tia.hmove.IsActive() {
 			// HMOVE is currently rippling note that HMOVE does not need to
 			// have been latched for this to be true
 			delay = 2
 
 			// if HMOVE ripple has just started then check the TIA revision for a longer delay
-			if ps.tia.hmove.Ripple == 15 {
+			if ps.tia.hmove.JustStarted() {
 				if ps.tia.env.Prefs.Revision.Live.LateRESPx.Load().(bool) {
 					delay = 3
 				}
 			}
 		} else if ps.tia.hmove.Latch {
 			// HMOVE has been activated this scanline but not currently rippling.
-			//
-			// maybe surprisingly, this is comparatively unusual. many ROMs if
-			// the reset the player during the HBLANK at all will have called
-			// HMOVE straight after the WSYNC, as advised by the Stella
-			// Programmer's Guide.
 			//
 			// a good examples of where it is required is Midnight Madness
 			// (there is a gap in the crossbar of the T of 'Midnite')

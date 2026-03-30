@@ -279,10 +279,12 @@ func (bs *BallSprite) resetPosition() {
 		// and also Activision's Seaquest. The scuba divers are drawn with the ball sprite in
 		// that game. a delay of 2 causes the diver to just be visible on the right of the
 		// screen (in the wings, as it were)
-		if bs.tia.hmove.Ripple > 0 {
+		if bs.tia.hmove.IsActive() {
 			delay = 2
-		} else {
+		} else if bs.tia.hmove.Latch {
 			delay = 3
+		} else {
+			delay = 2
 		}
 	}
 

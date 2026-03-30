@@ -74,6 +74,19 @@ func (hm *Hmove) Reset() {
 	hm.Future.Drop()
 }
 
+func (hm *Hmove) JustStarted() bool {
+	return hm.Ripple == 15
+}
+
+// IsActive returns true if HMOVE is "active".
+//
+// I'm not sure what to call this really. It tests if HMOVE is currently rippling but
+// not at the point when the ripple value is zero. HMOVE is also considered to be active if the
+// ripple has *just* finished.
+func (hm *Hmove) IsActive() bool {
+	return hm.Ripple > 0 && (hm.Ripple != 0xff || hm.RippleJustEnded)
+}
+
 func (hm *Hmove) String() string {
 	s := strings.Builder{}
 
@@ -82,7 +95,7 @@ func (hm *Hmove) String() string {
 	}
 
 	if hm.Future.IsActive() {
-		s.WriteString(fmt.Sprintf(" HMOVE latching %d", hm.Future.Remaining()))
+		fmt.Fprintf(&s, " HMOVE latching %d", hm.Future.Remaining())
 	} else if hm.Latch {
 		s.WriteString(" HMOVE latched")
 	} else {
@@ -90,7 +103,7 @@ func (hm *Hmove) String() string {
 	}
 
 	if hm.Ripple <= 15 {
-		s.WriteString(fmt.Sprintf(" (ripple count %d)", hm.Ripple))
+		fmt.Fprintf(&s, " (ripple count %d)", hm.Ripple)
 	} else if hm.RippleJustEnded {
 		s.WriteString(" (ripple just ended)")
 	}
