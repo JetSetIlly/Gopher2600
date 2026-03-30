@@ -72,6 +72,9 @@ type SoundLoad struct {
 	// momentarily, rather than disconcertingly flashing on and then off
 	playDelay int
 
+	// short delay before rewinding tape
+	rewindDelay int
+
 	// the speed at which the tape advances. the tape is advanced every call to step() which happens
 	// at a rate of 3.57MHz.
 	regulator   int
@@ -153,8 +156,9 @@ func (tap *SoundLoad) plumb(env *environment.Environment) {
 }
 
 const (
-	autoStart = 30000
-	autoStop  = 100000
+	autoStart  = 30000
+	autoStop   = 100000
+	autoRewind = 40000
 )
 
 func (tap *SoundLoad) load() (uint8, error) {
@@ -207,7 +211,14 @@ func (tap *SoundLoad) step() {
 
 	// make sure we don't try to read past end of tape
 	if tap.pcmIdx >= len(tap.pcm.data)-1 {
+		if tap.rewindDelay < autoRewind {
+			tap.rewindDelay++
+			if tap.rewindDelay < autoRewind {
+				return
+			}
+		}
 		tap.Rewind()
+		tap.rewindDelay = 0
 		return
 	}
 	tap.pcmIdx++
