@@ -458,14 +458,13 @@ func (ps *PlayerSprite) resetPosition() {
 		// this tricky branch happens when reset is triggered inside the
 		// HBLANK period and HMOVE is active in some way.
 
-		if ps.tia.hmove.Ripple >= 1 && ps.tia.hmove.Ripple <= 15 {
+		if ps.tia.hmove.Ripple > 0 {
 			// HMOVE is currently rippling note that HMOVE does not need to
 			// have been latched for this to be true
 			delay = 2
 
-			// if HMOVE is latched or ripple has just started then check the
-			// TIA revision for a longer delay
-			if ps.tia.hmove.Latch || ps.tia.hmove.Ripple == 15 {
+			// if HMOVE ripple has just started then check the TIA revision for a longer delay
+			if ps.tia.hmove.Ripple == 15 {
 				if ps.tia.env.Prefs.Revision.Live.LateRESPx.Load().(bool) {
 					delay = 3
 				}
