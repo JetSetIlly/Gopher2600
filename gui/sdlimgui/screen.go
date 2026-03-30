@@ -644,10 +644,10 @@ func (scr *screen) reflectionColor(ref *reflection.ReflectedVideoStep) color.RGB
 		}
 	case reflection.OverlayLabels[reflection.OverlayHMOVE]:
 		// HmoveCt counts to -1 (or 255 for a uint8)
-		if ref.Hmove.Delay {
+		if ref.Hmove.Future.IsActive() {
 			return reflectionColors[reflection.HMOVEdelay]
 		} else if ref.Hmove.Latch {
-			if ref.Hmove.RippleCt != 255 {
+			if ref.Hmove.Ripple != 0xff {
 				return reflectionColors[reflection.HMOVEripple]
 			} else {
 				return reflectionColors[reflection.HMOVElatched]

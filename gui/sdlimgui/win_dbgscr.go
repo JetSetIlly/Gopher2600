@@ -705,11 +705,11 @@ func (win *winDbgScr) drawReflectionTooltip() {
 			}
 		case reflection.OverlayLabels[reflection.OverlayHMOVE]:
 			imguiSeparator()
-			if ref.Hmove.Delay {
-				imgui.Text(fmt.Sprintf("HMOVE delay: %d", ref.Hmove.DelayCt))
+			if ref.Hmove.Future.IsActive() {
+				imgui.Text(fmt.Sprintf("HMOVE delay: %d", ref.Hmove.FutureLatch.Remaining()))
 			} else if ref.Hmove.Latch {
-				if ref.Hmove.RippleCt != 255 {
-					imgui.Text(fmt.Sprintf("HMOVE ripple: %d", ref.Hmove.RippleCt))
+				if ref.Hmove.Ripple != 0xff {
+					imgui.Text(fmt.Sprintf("HMOVE ripple: %d", ref.Hmove.FutureLatch.Remaining()))
 				} else {
 					imgui.Text("HMOVE latched")
 				}

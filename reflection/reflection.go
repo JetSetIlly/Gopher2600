@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/tia/hmove"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 )
 
@@ -57,7 +58,7 @@ type ReflectedVideoStep struct {
 	Collision    video.Collisions
 	Bank         banking.Information
 	Signal       signal.SignalAttributes
-	Hmove        Hmove
+	Hmove        hmove.Hmove
 	VideoElement video.Element
 	WSYNC        bool
 	IsRAM        bool
