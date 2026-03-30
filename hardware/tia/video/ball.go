@@ -185,7 +185,7 @@ func (bs *BallSprite) rsync(adjustment int) {
 
 func (bs *BallSprite) tickHBLANK() bool {
 	// check to see if there is more movement required for this sprite
-	bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(bs.tia.hmove.Ripple, bs.Hmove)
+	bs.MoreHMOVE = bs.MoreHMOVE && bs.tia.hmove.Compare(bs.Hmove)
 	if !bs.MoreHMOVE {
 		return false
 	}
@@ -203,7 +203,7 @@ func (bs *BallSprite) tickHBLANK() bool {
 
 func (bs *BallSprite) tickHMOVE() bool {
 	// check to see if there is more movement required for this sprite
-	bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(bs.tia.hmove.Ripple, bs.Hmove)
+	bs.MoreHMOVE = bs.MoreHMOVE && bs.tia.hmove.Compare(bs.Hmove)
 
 	// cancel motion clock if necessary
 	if bs.MoreHMOVE && bs.tia.env.Prefs.Revision.Live.LostMOTCK.Load().(bool) {

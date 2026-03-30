@@ -265,7 +265,7 @@ func (ps *PlayerSprite) rsync(adjustment int) {
 
 func (ps *PlayerSprite) tickHBLANK() bool {
 	// check to see if there is more movement required for this sprite
-	ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.tia.hmove.Ripple, ps.Hmove)
+	ps.MoreHMOVE = ps.MoreHMOVE && ps.tia.hmove.Compare(ps.Hmove)
 	if !ps.MoreHMOVE {
 		return false
 	}
@@ -281,7 +281,7 @@ func (ps *PlayerSprite) tickHBLANK() bool {
 
 func (ps *PlayerSprite) tickHMOVE() bool {
 	// check to see if there is more movement required for this sprite
-	ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.tia.hmove.Ripple, ps.Hmove)
+	ps.MoreHMOVE = ps.MoreHMOVE && ps.tia.hmove.Compare(ps.Hmove)
 
 	// cancel motion clock if necessary
 	if ps.MoreHMOVE && ps.tia.env.Prefs.Revision.Live.LostMOTCK.Load().(bool) {

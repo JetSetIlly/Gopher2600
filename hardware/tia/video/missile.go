@@ -213,7 +213,7 @@ func (ms *MissileSprite) rsync(adjustment int) {
 
 func (ms *MissileSprite) tickHBLANK() bool {
 	// check to see if there is more movement required for this sprite
-	ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.tia.hmove.Ripple, ms.Hmove)
+	ms.MoreHMOVE = ms.MoreHMOVE && ms.tia.hmove.Compare(ms.Hmove)
 	if !ms.MoreHMOVE {
 		return false
 	}
@@ -231,7 +231,7 @@ func (ms *MissileSprite) tickHBLANK() bool {
 
 func (ms *MissileSprite) tickHMOVE() bool {
 	// check to see if there is more movement required for this sprite
-	ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.tia.hmove.Ripple, ms.Hmove)
+	ms.MoreHMOVE = ms.MoreHMOVE && ms.tia.hmove.Compare(ms.Hmove)
 
 	// cancel motion clock if necessary
 	if ms.MoreHMOVE && ms.tia.env.Prefs.Revision.Live.LostMOTCK.Load().(bool) {
