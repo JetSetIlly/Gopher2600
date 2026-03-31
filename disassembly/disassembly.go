@@ -113,7 +113,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 
 	// ignore errors caused by loading of symbols table - we always get a
 	// standard symbols table even in the event of an error
-	err = dsm.Sym.ReadDASMSymbolsFile(vcs.Mem.Cart)
+	err = dsm.Sym.InitialiseFromCartridge(vcs.Mem.Cart)
 	if err != nil {
 		return nil, fmt.Errorf("disassembly: %w", err)
 	}
@@ -135,14 +135,17 @@ func (dsm *Disassembly) Reset(background bool) error {
 	return dsm.FromMemory(background)
 }
 
-// FromMemory disassembles an existing instance of cartridge memory using a
-// cpu with no flow control. Unlike the FromCartridge() function this function
-// requires an existing instance of Disassembly.
+// FromMemory disassembles an existing instance of cartridge memory using a cpu with no flow
+// control. Unlike the FromCartridge() function this function requires an existing instance of
+// Disassembly.
 //
 // Disassembly will assume the cartridge is in the correct starting bank.
+//
+// Unlike FromCartridge() disassembly specific errors will only be logged and not returned as
+// errors.
 func (dsm *Disassembly) FromMemory(background bool) error {
 	// symbols first so that we always have a valid symbols instance
-	err := dsm.Sym.ReadDASMSymbolsFile(dsm.vcs.Mem.Cart)
+	err := dsm.Sym.InitialiseFromCartridge(dsm.vcs.Mem.Cart)
 	if err != nil {
 		return err
 	}
@@ -183,7 +186,12 @@ func (dsm *Disassembly) FromMemory(background bool) error {
 		return nil
 	}
 
-	return dsm.fromMemory(startingBank, copiedBanks)
+	err = dsm.fromMemory(startingBank, copiedBanks)
+	if err != nil {
+		logger.Log(dsm.vcs.Env, "disassembly", err.Error())
+	}
+
+	return nil
 }
 
 func (dsm *Disassembly) fromMemory(startingBank int, copiedBanks []banking.Content) error {
