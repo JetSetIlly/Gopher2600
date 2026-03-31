@@ -198,7 +198,7 @@ func (dsm *Disassembly) fromMemory(startingBank int, copiedBanks []banking.Conte
 
 	for b := range dec.disasmEntries.Entries {
 		for i, e := range dec.disasmEntries.Entries[b] {
-			if dsm.disasmEntries.Entries[b][i] == nil || dsm.disasmEntries.Entries[b][i].Level < EntryLevelExecuted {
+			if e != nil && e.Level < EntryLevelExecuted {
 				e.dsm = dsm
 				dsm.disasmEntries.Entries[b][i] = e
 			}
