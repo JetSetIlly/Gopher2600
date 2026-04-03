@@ -592,6 +592,12 @@ func (scr *screen) plotOverlay() {
 	var col color.RGBA
 	var offset int
 
+	// select correct element palette (light or dark)
+	elements := elementColors
+	if scr.img.prefs.lightBackgroundDebugColor.Get().(bool) {
+		elements = lightElementColors
+	}
+
 	for i := range scr.crit.reflection {
 		// end of pixel queue reached but there are still signals to process.
 		// return immediately to simplify bounds issues. this shouldn't ever be
@@ -608,7 +614,7 @@ func (scr *screen) plotOverlay() {
 		s[2] = col.B
 		s[3] = col.A
 
-		col = altColors[scr.crit.reflection[i].VideoElement]
+		col = elements[scr.crit.reflection[i].VideoElement][scr.crit.reflection[i].VideoElementCt]
 		s = scr.crit.elementPixels.Pix[offset : offset+3 : offset+3]
 		s[0] = col.R
 		s[1] = col.G
@@ -833,14 +839,9 @@ func (scr *screen) copyPixelsPlaymode() {
 
 			// undo frame advancement by restoring an older index
 			//
-			// for television that have a similar refresh rates to the monitor
-			// we choose the the frame previous to the frame shown on the last
-			// render. this helps to smooth out graphical glitches caused by
-			// flicker kernels
-			//
-			// it also may mean that there will be visible jump of graphical
-			// elements in some situations. but hopefully they are not
-			// noticeable
+			// for television that have a similar refresh rates to the monitor we choose the the
+			// frame previous to the frame shown on the last render. this helps to smooth out
+			// graphical glitches caused by flicker kernels
 			if !tooSlow && scr.crit.monitorSyncSimilar {
 				scr.crit.renderIdx = scr.crit.prevRenderIdx[1]
 			} else {

@@ -134,9 +134,9 @@ func (bs *BallSprite) String() string {
 	s := strings.Builder{}
 	s.WriteString(bs.label)
 	s.WriteString(": ")
-	s.WriteString(fmt.Sprintf("%s %s [%03d ", bs.position, bs.pclk, bs.ResetPixel))
-	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
-	s.WriteString(fmt.Sprintf(" %03d", bs.HmovedPixel))
+	fmt.Fprintf(&s, "%s %s [%03d ", bs.position, bs.pclk, bs.ResetPixel)
+	fmt.Fprintf(&s, "> %#1x >", normalisedHmove)
+	fmt.Fprintf(&s, " %03d", bs.HmovedPixel)
 	if bs.MoreHMOVE {
 		s.WriteString("*]")
 	} else {
@@ -154,11 +154,11 @@ func (bs *BallSprite) String() string {
 	s.WriteString(",")
 
 	if bs.MoreHMOVE {
-		s.WriteString(fmt.Sprintf(" hmoving [%04b],", bs.Hmove))
+		fmt.Fprintf(&s, " hmoving [%04b],", bs.Hmove)
 	}
 
 	if bs.Enclockifier.Active {
-		s.WriteString(fmt.Sprintf(" drw %s,", bs.Enclockifier.String()))
+		fmt.Fprintf(&s, " drw %s,", bs.Enclockifier.String())
 	}
 
 	if !bs.Enabled {

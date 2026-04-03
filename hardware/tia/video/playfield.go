@@ -149,9 +149,9 @@ func (pf *Playfield) Label() string {
 
 func (pf *Playfield) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%04b", pf.PF0>>4))
-	s.WriteString(fmt.Sprintf(" %08b", pf.PF1))
-	s.WriteString(fmt.Sprintf(" %08b", pf.PF2))
+	fmt.Fprintf(&s, "%04b", pf.PF0>>4)
+	fmt.Fprintf(&s, " %08b", pf.PF1)
+	fmt.Fprintf(&s, " %08b", pf.PF2)
 
 	notes := false
 
@@ -255,6 +255,25 @@ func (pf *Playfield) latchRegionData() {
 	} else {
 		pf.Data = &pf.ReflectedData
 	}
+}
+
+func (pf *Playfield) PFxFromIdx() int {
+	if pf.Reflected && pf.Region == RegionRight {
+		if pf.Idx >= 16 && pf.Idx <= 19 {
+			return 0
+		}
+		if pf.Idx >= 8 && pf.Idx <= 15 {
+			return 1
+		}
+		return 2
+	}
+	if pf.Idx >= 0 && pf.Idx <= 3 {
+		return 0
+	}
+	if pf.Idx >= 4 && pf.Idx <= 11 {
+		return 1
+	}
+	return 2
 }
 
 // SetPF0 sets the playfield PF0 bits.

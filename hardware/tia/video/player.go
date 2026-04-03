@@ -184,9 +184,9 @@ func (ps *PlayerSprite) String() string {
 	s := strings.Builder{}
 	s.WriteString(ps.label)
 	s.WriteString(": ")
-	s.WriteString(fmt.Sprintf("%s %s [%03d ", ps.position, ps.pclk, ps.ResetPixel))
-	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
-	s.WriteString(fmt.Sprintf(" %03d", ps.HmovedPixel))
+	fmt.Fprintf(&s, "%s %s [%03d ", ps.position, ps.pclk, ps.ResetPixel)
+	fmt.Fprintf(&s, "> %#1x >", normalisedHmove)
+	fmt.Fprintf(&s, " %03d", ps.HmovedPixel)
 	if ps.MoreHMOVE {
 		s.WriteString("*]")
 	} else {
@@ -204,27 +204,27 @@ func (ps *PlayerSprite) String() string {
 	}
 	playerSize := playerSizesBrief[ps.SizeAndCopies]
 	if playerSize != "" {
-		s.WriteString(fmt.Sprintf(" %s", playerSize))
+		fmt.Fprintf(&s, " %s", playerSize)
 	}
 
 	// hmove information
 	if ps.MoreHMOVE {
-		s.WriteString(fmt.Sprintf(" hmoving [%04b],", ps.Hmove))
+		fmt.Fprintf(&s, " hmoving [%04b],", ps.Hmove)
 	}
 
 	// drawing or latching information
 	if ps.ScanCounter.IsActive() {
-		s.WriteString(fmt.Sprintf(" drw (px %d", ps.ScanCounter.Pixel))
+		fmt.Fprintf(&s, " drw (px %d", ps.ScanCounter.Pixel)
 
 		// add "sub-pixel" information. this happens when the player sprite is
 		// being stretched by NUSIZ
 		if ps.ScanCounter.count > 0 {
-			s.WriteString(fmt.Sprintf(".%d", ps.ScanCounter.count))
+			fmt.Fprintf(&s, ".%d", ps.ScanCounter.count)
 		}
 
 		s.WriteString("),")
 	} else if ps.ScanCounter.IsLatching() {
-		s.WriteString(fmt.Sprintf(" latch (drw in %d),", ps.ScanCounter.latch))
+		fmt.Fprintf(&s, " latch (drw in %d),", ps.ScanCounter.latch)
 	}
 
 	// copy information if drawing or latching and nusiz is a multiple copy

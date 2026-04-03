@@ -138,9 +138,9 @@ func (ms *MissileSprite) String() string {
 	s := strings.Builder{}
 	s.WriteString(ms.label)
 	s.WriteString(": ")
-	s.WriteString(fmt.Sprintf("%s %s [%03d ", ms.position, ms.pclk, ms.ResetPixel))
-	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
-	s.WriteString(fmt.Sprintf(" %03d", ms.HmovedPixel))
+	fmt.Fprintf(&s, "%s %s [%03d ", ms.position, ms.pclk, ms.ResetPixel)
+	fmt.Fprintf(&s, "> %#1x >", normalisedHmove)
+	fmt.Fprintf(&s, " %03d", ms.HmovedPixel)
 	if ms.MoreHMOVE {
 		s.WriteString("*] ")
 	} else {
@@ -182,11 +182,11 @@ func (ms *MissileSprite) String() string {
 	}
 
 	if ms.MoreHMOVE {
-		s.WriteString(fmt.Sprintf(" hmoving [%04b],", ms.Hmove))
+		fmt.Fprintf(&s, " hmoving [%04b],", ms.Hmove)
 	}
 
 	if ms.Enclockifier.Active {
-		s.WriteString(fmt.Sprintf(" drw %s,", ms.Enclockifier.String()))
+		fmt.Fprintf(&s, " drw %s,", ms.Enclockifier.String())
 	}
 
 	if !ms.Enabled {

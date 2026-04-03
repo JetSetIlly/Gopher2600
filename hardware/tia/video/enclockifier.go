@@ -50,14 +50,14 @@ type enclockifier struct {
 func (en *enclockifier) String() string {
 	s := strings.Builder{}
 	if en.Active {
-		s.WriteString(fmt.Sprintf("%d", en.Ticks))
+		fmt.Fprintf(&s, "%d", en.Ticks)
 		if en.SecondHalf {
 			s.WriteString("/2nd")
 		}
 		s.WriteString(")")
 
 		if en.Cpy > 0 {
-			s.WriteString(fmt.Sprintf("+%d", en.Cpy))
+			fmt.Fprintf(&s, "+%d", en.Cpy)
 		}
 	}
 	return s.String()

@@ -313,6 +313,11 @@ func (win *winPrefs) drawDebuggerTab() {
 		win.img.prefs.showTimelineThumbnail.Set(showTimelineThumbnail)
 	}
 
+	lightBackgroundDebugColor := win.img.prefs.lightBackgroundDebugColor.Get().(bool)
+	if imgui.Checkbox("Light Background for Debug Colours", &lightBackgroundDebugColor) {
+		win.img.prefs.lightBackgroundDebugColor.Set(lightBackgroundDebugColor)
+	}
+
 	imgui.Spacing()
 
 	if imgui.CollapsingHeader("6507 Disassembly") {

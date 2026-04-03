@@ -531,15 +531,51 @@ var reflectionColors = []color.RGBA{
 	reflection.CoProcActive:   {R: 200, G: 50, B: 200, A: 255},
 }
 
-// altColors lists the colors to be used when displaying TIA video in a
-// debugger's "debug colors" mode. these colors are the same as the the debug
-// colors found in the Stella emulator.
-var altColors = []color.RGBA{
-	video.ElementBackground: {R: 17, G: 17, B: 17, A: 255},
-	video.ElementBall:       {R: 132, G: 200, B: 252, A: 255},
-	video.ElementPlayfield:  {R: 146, G: 70, B: 192, A: 255},
-	video.ElementPlayer0:    {R: 144, G: 28, B: 0, A: 255},
-	video.ElementPlayer1:    {R: 232, G: 232, B: 74, A: 255},
-	video.ElementMissile0:   {R: 213, G: 130, B: 74, A: 255},
-	video.ElementMissile1:   {R: 50, G: 132, B: 50, A: 255},
+// elementColors lists the colors to be used when displaying TIA video in a debugger's "debug colors"
+// mode. these colors are the same as the the debug colors found in the Stella emulator with the
+// exception of the background element which is dark
+var elementColors = [][]color.RGBA{
+	video.ElementBackground: {
+		{R: 17, G: 17, B: 17, A: 255},
+	},
+	video.ElementBall: {
+		{R: 132, G: 200, B: 252, A: 255},
+	},
+	video.ElementPlayfield: {
+		{R: 114, G: 39, B: 164, A: 255},
+		{R: 136, G: 59, B: 185, A: 255},
+		{R: 155, G: 78, B: 202, A: 255},
+	},
+	video.ElementPlayer0: {
+		{R: 158, G: 18, B: 19, A: 255},
+		{R: 133, G: 12, B: 12, A: 255},
+		{R: 177, G: 40, B: 39, A: 255},
+	},
+	video.ElementPlayer1: {
+		{R: 230, G: 230, B: 62, A: 255},
+		{R: 205, G: 205, B: 52, A: 255},
+		{R: 253, G: 253, B: 72, A: 255},
+	},
+	video.ElementMissile0: {
+		{R: 209, G: 119, B: 62, A: 255},
+		{R: 192, G: 97, B: 47, A: 255},
+		{R: 224, G: 141, B: 77, A: 255},
+	},
+	video.ElementMissile1: {
+		{R: 61, G: 151, B: 60, A: 255},
+		{R: 40, G: 121, B: 39, A: 255},
+		{R: 81, G: 179, B: 80, A: 255},
+	},
+}
+
+// lightElementColors is a light background variation of elementColors
+var lightElementColors = [][]color.RGBA{}
+
+func init() {
+	for _, c := range elementColors {
+		lightElementColors = append(lightElementColors, c)
+	}
+	lightElementColors[video.ElementBackground] = []color.RGBA{
+		{R: 100, G: 100, B: 99, A: 255},
+	}
 }

@@ -54,18 +54,19 @@ type Broker interface {
 // Note that ordering of the structure is important. There's a saving of about
 // 2MB per frame compared to the unoptimal ordering.
 type ReflectedVideoStep struct {
-	CPU          execution.Result
-	Collision    video.Collisions
-	Bank         banking.Information
-	Signal       signal.SignalAttributes
-	Hmove        hmove.Hmove
-	VideoElement video.Element
-	WSYNC        bool
-	IsRAM        bool
-	CoProcSync   coprocessor.CoProcSynchronisation
-	IsHblank     bool
-	RSYNCalign   bool
-	RSYNCreset   bool
+	CPU            execution.Result
+	Collision      video.Collisions
+	Bank           banking.Information
+	Signal         signal.SignalAttributes
+	Hmove          hmove.Hmove
+	VideoElement   video.Element
+	VideoElementCt int
+	WSYNC          bool
+	IsRAM          bool
+	CoProcSync     coprocessor.CoProcSynchronisation
+	IsHblank       bool
+	RSYNCalign     bool
+	RSYNCreset     bool
 
 	// All the fields in this struct are copy()able. An array of this type
 	// therefore should also be copyable and safe to use in other goroutines.

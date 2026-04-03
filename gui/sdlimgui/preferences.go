@@ -46,15 +46,16 @@ type preferences struct {
 	recentROM prefs.String
 
 	// debugger preferences
-	terminalOnError        prefs.Bool
-	audioMuteDebugger      prefs.Bool
-	showTooltips           prefs.Bool
-	showTimelineThumbnail  prefs.Bool
-	disasmColour           prefs.Bool
-	disasmSequential       prefs.Bool
-	disasmGroupScanlines   prefs.Bool
-	pxeColourIndicators    prefs.Bool
-	savekeyAccessPagesOnly prefs.Bool
+	terminalOnError           prefs.Bool
+	audioMuteDebugger         prefs.Bool
+	showTooltips              prefs.Bool
+	showTimelineThumbnail     prefs.Bool
+	lightBackgroundDebugColor prefs.Bool
+	disasmColour              prefs.Bool
+	disasmSequential          prefs.Bool
+	disasmGroupScanlines      prefs.Bool
+	pxeColourIndicators       prefs.Bool
+	savekeyAccessPagesOnly    prefs.Bool
 
 	// arm profiler preferences
 	armProfilerHideUnexecuted prefs.Bool
@@ -131,6 +132,16 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	err = p.dsk.Add("sdlimgui.debugger.lightBackgroundDebugColor", &p.lightBackgroundDebugColor)
+	if err != nil {
+		return nil, err
+	}
+	p.lightBackgroundDebugColor.SetHookPost(func(_ prefs.Value) error {
+		p.img.screen.plotOverlay()
+		return nil
+	})
+
 	err = p.dsk.Add("sdlimgui.debugger.disasm.color", &p.disasmColour)
 	if err != nil {
 		return nil, err
@@ -365,6 +376,7 @@ func (p *preferences) setDefaults() {
 	p.audioMuteDebugger.Set(true)
 	p.showTooltips.Set(true)
 	p.showTimelineThumbnail.Set(false)
+	p.lightBackgroundDebugColor.Set(false)
 	p.disasmColour.Set(true)
 	p.disasmSequential.Set(false)
 	p.disasmGroupScanlines.Set(false)

@@ -101,6 +101,7 @@ func (ref *Reflector) Step(bank banking.Information) error {
 	h[0].WSYNC = !ref.vcs.CPU.RdyFlg
 	h[0].Bank = bank
 	h[0].VideoElement = ref.vcs.TIA.Video.LastElement
+	h[0].VideoElementCt = ref.vcs.TIA.Video.LastElementCt
 	h[0].Signal = sig
 	h[0].Collision = *ref.vcs.TIA.Video.Collisions
 	h[0].IsHblank = ref.vcs.TIA.Hblank

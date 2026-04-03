@@ -26,8 +26,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 )
 
-// Element is used to record from which video sub-system the pixel
-// was generated, taking video priority into account.
+// Element is used to record from which video sub-system the pixel was generated, taking video
+// priority into account.
 type Element int
 
 // List of valid Element Signals.
@@ -84,10 +84,11 @@ type Video struct {
 	Missile1 *MissileSprite
 	Ball     *BallSprite
 
-	// LastElement records from which TIA video sub-system the most recent
-	// pixel was generated, taking priority into account. see Pixel() function
-	// for details
-	LastElement Element
+	// LastElement records from which TIA video sub-system the most recent pixel was generated,
+	// taking priority into account. LastSubElement is further information about the element. For
+	// example which PFx register was used. see Pixel() function for details
+	LastElement   Element
+	LastElementCt int
 
 	// keep track of whether any tia element has changed since last colour clock
 	//
@@ -331,24 +332,31 @@ func (vd *Video) Pixel(vblank bool) {
 		if vd.Playfield.colorLatch { // priority 1
 			vd.PixelColor = vd.Playfield.color
 			vd.LastElement = ElementPlayfield
+			vd.LastElementCt = vd.Playfield.PFxFromIdx()
 		} else if vd.Ball.pixelOn { // priority 1 (ball is same color as playfield)
 			vd.PixelColor = vd.Ball.Color
 			vd.LastElement = ElementBall
+			vd.LastElementCt = 0
 		} else if vd.Player0.pixelOn { // priority 2
 			vd.PixelColor = vd.Player0.Color
 			vd.LastElement = ElementPlayer0
+			vd.LastElementCt = vd.Player0.ScanCounter.Cpy
 		} else if vd.Missile0.pixelOn { // priority 2 (missile 0 is same color as player 0)
 			vd.PixelColor = vd.Missile0.Color
 			vd.LastElement = ElementMissile0
+			vd.LastElementCt = vd.Missile0.Enclockifier.Cpy
 		} else if vd.Player1.pixelOn { // priority 3
 			vd.PixelColor = vd.Player1.Color
 			vd.LastElement = ElementPlayer1
+			vd.LastElementCt = vd.Player1.ScanCounter.Cpy
 		} else if vd.Missile1.pixelOn { // priority 3 (missile 1 is same color as player 1)
 			vd.PixelColor = vd.Missile1.Color
 			vd.LastElement = ElementMissile1
+			vd.LastElementCt = vd.Missile1.Enclockifier.Cpy
 		} else {
 			vd.PixelColor = vd.Playfield.BackgroundColor
 			vd.LastElement = ElementBackground
+			vd.LastElementCt = 0
 		}
 	} else if vd.Playfield.Scoremode { // scoremode applies when priority bit os not set
 		switch vd.Playfield.Region {
@@ -358,71 +366,92 @@ func (vd *Video) Pixel(vblank bool) {
 			if vd.Playfield.colorLatch { // priority 1 (playfield takes color of player 0)
 				vd.PixelColor = vd.Player0.Color
 				vd.LastElement = ElementPlayfield
+				vd.LastElementCt = vd.Playfield.PFxFromIdx()
 			} else if vd.Player0.pixelOn { // priority 1 (same color as playfield)
 				vd.PixelColor = vd.Player0.Color
 				vd.LastElement = ElementPlayer0
+				vd.LastElementCt = vd.Player0.ScanCounter.Cpy
 			} else if vd.Missile0.pixelOn { // priority 1 same color as playfield)
 				vd.PixelColor = vd.Missile0.Color
 				vd.LastElement = ElementMissile0
+				vd.LastElementCt = vd.Missile0.Enclockifier.Cpy
 			} else if vd.Player1.pixelOn { // priority 2
 				vd.PixelColor = vd.Player1.Color
 				vd.LastElement = ElementPlayer1
+				vd.LastElementCt = vd.Player1.ScanCounter.Cpy
 			} else if vd.Missile1.pixelOn { // priority 2 (missile 1 is same color as player 1)
 				vd.PixelColor = vd.Missile1.Color
 				vd.LastElement = ElementMissile1
+				vd.LastElementCt = vd.Missile1.Enclockifier.Cpy
 			} else if vd.Ball.pixelOn { // priority 3
 				vd.PixelColor = vd.Ball.Color
 				vd.LastElement = ElementBall
+				vd.LastElementCt = 0
 			} else {
 				vd.PixelColor = vd.Playfield.BackgroundColor
 				vd.LastElement = ElementBackground
+				vd.LastElementCt = 0
 			}
 		case RegionRight:
 			if vd.Player0.pixelOn { // priority 1
 				vd.PixelColor = vd.Player0.Color
 				vd.LastElement = ElementPlayer0
+				vd.LastElementCt = vd.Player0.ScanCounter.Cpy
 			} else if vd.Missile0.pixelOn { // priority 1 (missile 0 is same colour as player 0)
 				vd.PixelColor = vd.Missile0.Color
 				vd.LastElement = ElementMissile0
+				vd.LastElementCt = vd.Missile0.Enclockifier.Cpy
 			} else if vd.Player1.pixelOn { // priority 2
 				vd.PixelColor = vd.Player1.Color
 				vd.LastElement = ElementPlayer1
+				vd.LastElementCt = vd.Player1.ScanCounter.Cpy
 			} else if vd.Missile1.pixelOn { // priority 2 (missile 1 is same colour as player 1)
 				vd.PixelColor = vd.Missile1.Color
 				vd.LastElement = ElementMissile1
+				vd.LastElementCt = vd.Missile1.Enclockifier.Cpy
 			} else if vd.Playfield.colorLatch { // priority 2 (playfield takes color of player 1)
 				vd.PixelColor = vd.Player1.Color
 				vd.LastElement = ElementPlayfield
+				vd.LastElementCt = vd.Playfield.PFxFromIdx()
 			} else if vd.Ball.pixelOn { // priority 3
 				vd.PixelColor = vd.Ball.Color
 				vd.LastElement = ElementBall
+				vd.LastElementCt = 0
 			} else {
 				vd.PixelColor = vd.Playfield.BackgroundColor
 				vd.LastElement = ElementBackground
+				vd.LastElementCt = 0
 			}
 		}
 	} else { // normal priority
 		if vd.Player0.pixelOn { // priority 1
 			vd.PixelColor = vd.Player0.Color
 			vd.LastElement = ElementPlayer0
+			vd.LastElementCt = vd.Player0.ScanCounter.Cpy
 		} else if vd.Missile0.pixelOn { // priority 1 (missile 0 is same color as player 0)
 			vd.PixelColor = vd.Missile0.Color
 			vd.LastElement = ElementMissile0
+			vd.LastElementCt = vd.Missile0.Enclockifier.Cpy
 		} else if vd.Player1.pixelOn { // priority 2
 			vd.PixelColor = vd.Player1.Color
 			vd.LastElement = ElementPlayer1
+			vd.LastElementCt = vd.Player1.ScanCounter.Cpy
 		} else if vd.Missile1.pixelOn { // priority 2 (missile 1 is same color as player 1)
 			vd.PixelColor = vd.Missile1.Color
 			vd.LastElement = ElementMissile1
+			vd.LastElementCt = vd.Missile1.Enclockifier.Cpy
 		} else if vd.Ball.pixelOn { // priority 3
 			vd.PixelColor = vd.Ball.Color
 			vd.LastElement = ElementBall
+			vd.LastElementCt = 0
 		} else if vd.Playfield.colorLatch { // priority 3 (playfield is same color as ball)
 			vd.PixelColor = vd.Playfield.color
 			vd.LastElement = ElementPlayfield
+			vd.LastElementCt = vd.Playfield.PFxFromIdx()
 		} else {
 			vd.PixelColor = vd.Playfield.BackgroundColor
 			vd.LastElement = ElementBackground
+			vd.LastElementCt = 0
 		}
 	}
 }
