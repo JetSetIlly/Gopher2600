@@ -66,10 +66,8 @@ func (sym *Symbols) InitialiseFromCartridge(cart *cartridge.Cartridge) error {
 
 	// prefer default symbol for an address over any symbol that has been specified in the symbols
 	// file. we always do this even in the event of there being no symbols file.
-	defer func() {
-		sym.canonise(cart)
-		sym.resort()
-	}()
+	sym.canonise(cart)
+	defer sym.resort()
 
 	// try to load dasm symbols
 	err := sym.fromDasm(cart)
@@ -185,16 +183,32 @@ func (sym *Symbols) GetWriteSymbol(val uint16) (Entry, bool) {
 }
 
 // SymbolSource identifies the source of the symbol.
-type SymbolSource string
+type SymbolSource int
 
 // List of valid SymbolSource values.
 const (
-	SourceDASM      SymbolSource = "DASM"
-	SourceAuto      SymbolSource = "Auto"
-	SourceSystem    SymbolSource = "System"
-	SourceCartridge SymbolSource = "Cartridge"
-	SourceCustom    SymbolSource = "Custom"
+	SourceDASM SymbolSource = iota
+	SourceAuto
+	SourceSystem
+	SourceCartridge
+	SourceCustom
 )
+
+func (s SymbolSource) String() string {
+	switch s {
+	case SourceDASM:
+		return "DASM"
+	case SourceAuto:
+		return "Auto"
+	case SourceSystem:
+		return "System"
+	case SourceCartridge:
+		return "Cartridge"
+	case SourceCustom:
+		return "Custom"
+	}
+	panic(fmt.Sprintf("unknown symbol source: %d", s))
+}
 
 // Add symbol to label table. Symbol will be modified so that it is unique in
 // the label table.

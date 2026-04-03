@@ -28,6 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+// load symbols from dasm .sym file if it exists
 func (sym *Symbols) fromDasm(cart *cartridge.Cartridge) error {
 	// if this is the empty cartridge then this error is expected. return
 	// the empty symbol table
@@ -62,23 +63,28 @@ func (sym *Symbols) fromDasm(cart *cartridge.Cartridge) error {
 	// find interesting lines in the symbols file and add to the Symbols
 	// instance.
 	for ln := range lines {
-		// ignore uninteresting lines
+		// ignore unintersting lines
+		if !strings.HasSuffix(ln, "(R )") {
+			continue // for loop
+		}
+
 		p := strings.Fields(ln)
 		if len(p) < 2 || p[0] == "---" {
 			continue // for loop
 		}
 
 		// get address
-		address, err := strconv.ParseUint(p[1], 16, 16)
+		a, err := strconv.ParseUint(p[1], 16, 16)
 		if err != nil {
 			continue // for loop
 		}
+		address := uint16(a)
 
 		// add symbol to label list or read/write list
 
 		// get symbol and mapped address and memory area
 		symbol := p[0]
-		ma, area := memorymap.MapAddress(uint16(address), true)
+		ma, area := memorymap.MapAddress(address, true)
 
 		// remove leading digits if they are present. these digits have
 		// been added by DASM for the symbols file
@@ -87,18 +93,20 @@ func (sym *Symbols) fromDasm(cart *cartridge.Cartridge) error {
 			symbol = symbol[len(sp[0]):]
 		}
 
-		if area == memorymap.Cartridge {
+		switch area {
+		case memorymap.Cartridge:
 			// adding label for address in every bank for now
-			// !!TODO: more selecting adding of label from symbols file
+			// !!TODO: more selective adding of label from symbols file
 			for b := range sym.label {
 				sym.label[b].add(SourceDASM, ma, symbol)
 			}
-		} else {
-			// (non-label) symbols are both a read and write symbol. compare to
-			// canonical vcs symbols which are specific to a read or write
-			// context
-			sym.read.add(SourceDASM, uint16(address), symbol)
-			sym.write.add(SourceDASM, uint16(address), symbol)
+
+		case memorymap.RAM:
+			sym.read.add(SourceDASM, address, symbol)
+			sym.write.add(SourceDASM, address, symbol)
+
+		default:
+			// we do no allow the symbol file to define symbols for other memory areas
 		}
 	}
 

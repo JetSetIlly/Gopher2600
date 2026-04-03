@@ -101,7 +101,7 @@ func (t table) String() string {
 	s := strings.Builder{}
 	for _, addr := range t.index {
 		e := t.symbols[addr]
-		s.WriteString(fmt.Sprintf("%#04x -> %s [%s]\n", e.Address, e.Symbol, e.Source))
+		fmt.Fprintf(&s, "%#04x -> %s [%s]\n", e.Address, e.Symbol, e.Source)
 	}
 	return s.String()
 }
@@ -142,11 +142,10 @@ func (t *table) add(source SymbolSource, addr uint16, symbol string) bool {
 	symbol = t.normaliseSymbol(symbol)
 
 	// check for duplicate
-	if _, ok := t.symbols[addr]; ok {
-		return false
-	}
-	if _, ok := t.bySymbol[symbol]; ok {
-		return false
+	if s, ok := t.symbols[addr]; ok {
+		if s.Source >= source {
+			return false
+		}
 	}
 
 	e := Entry{
