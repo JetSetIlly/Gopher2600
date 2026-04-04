@@ -545,12 +545,7 @@ func (img *SdlImgui) setReasonableWindowConstraints() {
 
 func (img *SdlImgui) getTVColour(col uint8) imgui.PackedColor {
 	c := img.cache.TV.GetFrameInfo().Spec.GetColor(signal.ColorSignal(col))
-	v := imgui.Vec4{
-		X: float32(c.R) / 255,
-		Y: float32(c.G) / 255,
-		Z: float32(c.B) / 255,
-		W: float32(c.A) / 255,
-	}
+	v := colorRGBAtoVec4(c)
 	return imgui.PackedColorFromVec4(v)
 }
 

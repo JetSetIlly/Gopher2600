@@ -605,11 +605,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		}
 
 		spec := win.img.cache.TV.GetFrameInfo().Spec
-		rgba := spec.GetColor(px)
-		col := imgui.Vec4{
-			X: float32(rgba.R) / 255, Y: float32(rgba.G) / 255, Z: float32(rgba.B) / 255, W: float32(rgba.A) / 255,
-		}
-		imgui.PushStyleColor(imgui.StyleColorText, col)
+		imgui.PushStyleColor(imgui.StyleColorText, colorRGBAtoVec4(spec.GetColor(px)))
 		imgui.Text(string(fonts.ColorSwatch))
 		imgui.PopStyleColor()
 		imgui.SameLine()

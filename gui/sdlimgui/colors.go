@@ -464,8 +464,7 @@ func newColors() *imguiColors {
 	// reflection colors in imgui.Vec4 and imgui.PackedColor formats
 	cols.reflectionColors = make([]imgui.Vec4, len(reflectionColors))
 	for i, v := range reflectionColors {
-		c := imgui.Vec4{X: float32(v.R) / 255.0, Y: float32(v.G) / 255.0, Z: float32(v.B) / 255.0, W: float32(v.A) / 255.0}
-		cols.reflectionColors[i] = c
+		cols.reflectionColors[i] = colorRGBAtoVec4(v)
 	}
 
 	// we deferred setting of some colours. set them now.
@@ -577,5 +576,14 @@ func init() {
 	}
 	lightElementColors[video.ElementBackground] = []color.RGBA{
 		{R: 100, G: 100, B: 99, A: 255},
+	}
+}
+
+func colorRGBAtoVec4(c color.RGBA) imgui.Vec4 {
+	return imgui.Vec4{
+		X: float32(c.R) / 255.0,
+		Y: float32(c.G) / 255.0,
+		Z: float32(c.B) / 255.0,
+		W: float32(c.A) / 255.0,
 	}
 }
