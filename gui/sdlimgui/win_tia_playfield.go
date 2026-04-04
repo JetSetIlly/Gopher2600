@@ -28,6 +28,10 @@ func (win *winTIA) drawPlayfield() {
 	player0 := win.img.cache.VCS.TIA.Video.Player0
 	player1 := win.img.cache.VCS.TIA.Video.Player1
 
+	// which PFx register is being used and the index into that register
+	// used for drawing the index pointer
+	pfx, pfxIdx := playfield.PFxIdxFromIdx()
+
 	imgui.Spacing()
 
 	// foreground color indicator. when clicked popup palette is requested. on
@@ -138,6 +142,9 @@ func (win *winTIA) drawPlayfield() {
 		seq.sameLine()
 	}
 	seq.end()
+	if playfield.Region != video.RegionOffScreen && pfx == 0 {
+		win.drawPlayfieldIndexPointer(pfxIdx, seq)
+	}
 
 	imgui.SameLine()
 	imguiLabel("PF1")
@@ -162,6 +169,9 @@ func (win *winTIA) drawPlayfield() {
 		seq.sameLine()
 	}
 	seq.end()
+	if playfield.Region != video.RegionOffScreen && pfx == 1 {
+		win.drawPlayfieldIndexPointer(pfxIdx, seq)
+	}
 
 	imgui.SameLine()
 	imguiLabel("PF2")
@@ -186,6 +196,9 @@ func (win *winTIA) drawPlayfield() {
 		seq.sameLine()
 	}
 	seq.end()
+	if playfield.Region != video.RegionOffScreen && pfx == 2 {
+		win.drawPlayfieldIndexPointer(pfxIdx, seq)
+	}
 
 	imgui.EndGroup()
 
@@ -230,21 +243,8 @@ func (win *winTIA) drawPlayfield() {
 		seq.sameLine()
 	}
 	seq.end()
-
-	// playfield index pointer
 	if playfield.Region != video.RegionOffScreen {
-		idx := playfield.Idx
-		if playfield.Region == video.RegionRight {
-			idx += len(*playfield.LeftData)
-		}
-
-		p1 := imgui.Vec2{
-			X: seq.offsetX(idx),
-			Y: imgui.CursorScreenPos().Y,
-		}
-
-		dl := imgui.WindowDrawList()
-		dl.AddCircleFilled(p1, imgui.FontSize()*0.20, win.img.cols.tiaPointer)
+		win.drawPlayfieldIndexPointer(playfield.Idx, seq)
 	}
 	imgui.EndGroup()
 
@@ -253,4 +253,14 @@ func (win *winTIA) drawPlayfield() {
 		imgui.Spacing()
 		imgui.Text("(the scoremode flag affects the color of the playfield)")
 	}
+}
+
+func (win *winTIA) drawPlayfieldIndexPointer(idx int, seq *drawlistSequence) {
+	p1 := imgui.Vec2{
+		X: seq.offsetX(idx),
+		Y: imgui.CursorScreenPos().Y,
+	}
+
+	dl := imgui.WindowDrawList()
+	dl.AddCircleFilled(p1, imgui.FontSize()*0.20, win.img.cols.tiaPointer)
 }

@@ -51,7 +51,7 @@ type Playfield struct {
 	// SetPF*() is called and on the screen region boundaries.
 	//
 	// RegionLeft always uses RegularData and RegionRight uses either
-	// RegularDat or ReflectedData depending on the state of the reflected bit
+	// RegularData or ReflectedData depending on the state of the reflected bit
 	// at either:
 	//	- the start of the region
 	//	- when PF bits are changed
@@ -257,6 +257,7 @@ func (pf *Playfield) latchRegionData() {
 	}
 }
 
+// Which PFx register is the current Idx value pointing to
 func (pf *Playfield) PFxFromIdx() int {
 	if pf.Reflected && pf.Region == RegionRight {
 		if pf.Idx >= 16 && pf.Idx <= 19 {
@@ -274,6 +275,26 @@ func (pf *Playfield) PFxFromIdx() int {
 		return 1
 	}
 	return 2
+}
+
+// Like PfxFromIdx but also returns the specific index for the field
+func (pf *Playfield) PFxIdxFromIdx() (int, int) {
+	if pf.Reflected && pf.Region == RegionRight {
+		if pf.Idx >= 16 && pf.Idx <= 19 {
+			return 0, (19 - pf.Idx) - 16
+		}
+		if pf.Idx >= 8 && pf.Idx <= 15 {
+			return 1, (19 - pf.Idx) - 8
+		}
+		return 2, (19 - pf.Idx) - 12
+	}
+	if pf.Idx >= 0 && pf.Idx <= 3 {
+		return 0, pf.Idx
+	}
+	if pf.Idx >= 4 && pf.Idx <= 11 {
+		return 1, pf.Idx - 4
+	}
+	return 2, pf.Idx - 12
 }
 
 // SetPF0 sets the playfield PF0 bits.
