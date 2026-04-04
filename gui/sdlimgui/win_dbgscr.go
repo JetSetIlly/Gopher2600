@@ -27,6 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/imgui-go/v5"
 )
@@ -567,7 +568,6 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		}, false, win.magnifyTooltip.showInTooltip)
 	}
 
-	// draw tooltip
 	win.img.imguiTooltip(func() {
 		// separator if we've drawn the magnification
 		if win.magnifyTooltip.showInTooltip {
@@ -584,32 +584,45 @@ func (win *winDbgScr) drawReflectionTooltip() {
 
 		imguiSeparator()
 
-		// if mouse is over a pixel from the previous frame then show a note
-		// if win.img.dbg.State() == govern.Paused {
-		// 	if win.mouse.tv.Scanline > win.img.screen.crit.lastScanline ||
-		// 		(win.mouse.tv.Scanline == win.img.screen.crit.lastScanline && win.mouse.tv.Clock > win.img.screen.crit.lastClock) {
-		// 		imgui.Text("From previous frame")
-		// 		imguiSeparator()
-		// 	}
-		// }
+		spec := win.img.cache.TV.GetFrameInfo().Spec
 
 		// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
 		var px signal.ColorSignal
-		var label string
 		if (ref.IsHblank || ref.Signal.VBlank || px == signal.ZeroBlack) && !win.elements {
-			px = signal.ZeroBlack
-			label = "No color signal"
+			imguiColorLabelSimple(
+				"No color signal",
+				colorRGBAtoVec4(spec.GetColor(signal.ZeroBlack)),
+			)
 		} else {
-			px = ref.Signal.Color
-			label = ref.VideoElement.String()
+			switch ref.VideoElement {
+			case video.ElementPlayfield:
+				imguiColorLabelSimple(
+					fmt.Sprintf("%s [PF%d]", ref.VideoElement.String(), ref.VideoElementCt),
+					colorRGBAtoVec4(spec.GetColor(ref.Signal.Color)),
+				)
+			case video.ElementPlayer0, video.ElementPlayer1, video.ElementMissile0, video.ElementMissile1:
+				var tag string
+				switch ref.VideoElementCt {
+				case 0:
+					tag = " [1st copy]"
+				case 1:
+					tag = " [2nd copy]"
+				case 2:
+					tag = " [3rd copy]"
+				}
+				imguiColorLabelSimple(
+					fmt.Sprintf("%s%s", ref.VideoElement.String(), tag),
+					colorRGBAtoVec4(spec.GetColor(ref.Signal.Color)),
+				)
+			default:
+				imguiColorLabelSimple(
+					ref.VideoElement.String(),
+					colorRGBAtoVec4(spec.GetColor(ref.Signal.Color)),
+				)
+			}
 		}
 
-		spec := win.img.cache.TV.GetFrameInfo().Spec
-		imgui.PushStyleColor(imgui.StyleColorText, colorRGBAtoVec4(spec.GetColor(px)))
-		imgui.Text(string(fonts.ColorSwatch))
-		imgui.PopStyleColor()
 		imgui.SameLine()
-		imgui.Text(label)
 
 		// instruction information
 		imgui.Spacing()
