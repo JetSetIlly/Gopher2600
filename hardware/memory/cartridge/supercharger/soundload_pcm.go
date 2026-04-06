@@ -100,18 +100,10 @@ func getPCM(env *environment.Environment, cl cartridgeloader.Loader) (pcmData, e
 			// index increment of 4 because:
 			//  - two bytes per sample per channel
 			//  - we only want the left channel
-			//  - if we only wanted the right channel we could start with an
-			//		index of 2
-			for i := 2; i < chunkLen; i += 4 {
-				// little endian 16 bit sample
-				f := int(chunk[i]) | (int((chunk[i+1])) << 8)
-
-				// adjust value if it is not zero (same as interpreting
-				// as two's complement)
-				if f != 0 {
-					f -= 32768
-				}
-
+			//  - if we only wanted the right channel we could start with an index of 2
+			for i := 0; i < chunkLen; i += 4 {
+				// little endian 16 bit samples (signed)
+				f := int16(chunk[i]) | (int16((chunk[i+1])) << 8)
 				p.data = append(p.data, float32(f))
 			}
 		}
