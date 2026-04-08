@@ -3,7 +3,7 @@
 # the -nightly and -preview tags are added automatically there is no need
 # to include them in the version number
 version = v0.55.0
-final = false
+final = true
 
 ifeq ($(final),false)
   tag = nightly
