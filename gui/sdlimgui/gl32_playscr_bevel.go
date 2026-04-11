@@ -39,7 +39,7 @@ func newBevelShader(img *SdlImgui) shading.Program {
 	sh := &bevelShader{
 		img: img,
 	}
-	sh.CreateProgram(string(shaders.StraightVertexShader), string(shaders.CRTBevel))
+	sh.CreateProgram(string(shaders.CRTBevel))
 	sh.time = sh.GetUniformLocation("Time")
 	sh.rim = sh.GetUniformLocation("Rim")
 	sh.screen = sh.GetUniformLocation("Screen")

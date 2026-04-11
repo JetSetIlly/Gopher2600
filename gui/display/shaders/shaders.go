@@ -17,9 +17,6 @@ package shaders
 
 import _ "embed"
 
-//go:embed "straight.vert"
-var StraightVertexShader []byte
-
 //go:embed "gui.frag"
 var GUIShader []byte
 

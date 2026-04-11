@@ -71,7 +71,7 @@ func newEffectsShader(isScrsht isScreenshotting) shading.Program {
 		isScrsht: isScrsht,
 	}
 
-	sh.CreateProgram(string(shaders.StraightVertexShader), string(shaders.CRTEffectsFragShader))
+	sh.CreateProgram(string(shaders.CRTEffectsFragShader))
 
 	sh.screenDim = sh.GetUniformLocation("ScreenDim")
 	sh.numScanlines = sh.GetUniformLocation("NumScanlines")

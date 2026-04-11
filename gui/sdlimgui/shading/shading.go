@@ -16,6 +16,7 @@
 package shading
 
 import (
+	_ "embed"
 	"strings"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
@@ -110,8 +111,11 @@ func (sh *Base) SetAttributes(env Environment) {
 // version string to attach to all shaders
 const glslVersion = "#version 150\n"
 
+//go:embed "straight.vert"
+var vertexProgram []byte
+
 // CreateProgram compiles a links vertex and fragment shaders
-func (sh *Base) CreateProgram(vertProgram string, fragProgram ...string) {
+func (sh *Base) CreateProgram(fragProgram ...string) {
 	sh.Destroy()
 
 	sh.Handle = gl.CreateProgram()
@@ -134,7 +138,7 @@ func (sh *Base) CreateProgram(vertProgram string, fragProgram ...string) {
 	}
 
 	// vertex and fragment glsl source defined in shaders.go (a generated file)
-	glShaderSource(vertHandle, vertProgram)
+	glShaderSource(vertHandle, string(vertexProgram))
 	glShaderSource(fragHandle, fragProgram...)
 
 	gl.CompileShader(vertHandle)
@@ -156,13 +160,18 @@ func (sh *Base) CreateProgram(vertProgram string, fragProgram ...string) {
 	gl.DeleteShader(fragHandle)
 	gl.DeleteShader(vertHandle)
 
-	// get references to shader attributes and uniforms variables
+	// get handle to the vertex shader uniforms/attribs
 	sh.projMtx = sh.GetUniformLocation("ProjMtx")
 	sh.flipY = sh.GetUniformLocation("FlipY")
 	sh.position = sh.GetAttribLocation("Position")
 	sh.uv = sh.GetAttribLocation("UV")
 	sh.color = sh.GetAttribLocation("Color")
+
+	// all fragment shaders should have a Texture uniform
 	sh.texture = sh.GetUniformLocation("Texture")
+	if sh.texture == -1 {
+		panic("does fragment shaders have the required Textures uniform")
+	}
 }
 
 func (sh *Base) GetUniformLocation(name string) int32 {

@@ -29,7 +29,7 @@ type colorShader struct {
 
 func newColorShader() shading.Program {
 	sh := &colorShader{}
-	sh.CreateProgram(string(shaders.StraightVertexShader), string(shaders.ColorShader))
+	sh.CreateProgram(string(shaders.ColorShader))
 	return sh
 }
 
@@ -41,7 +41,7 @@ type phosphorShader struct {
 
 func newPhosphorShader() shading.Program {
 	sh := &phosphorShader{}
-	sh.CreateProgram(string(shaders.StraightVertexShader), string(shaders.CRTPhosphorFragShader))
+	sh.CreateProgram(string(shaders.CRTPhosphorFragShader))
 	sh.newFrame = sh.GetUniformLocation("NewFrame")
 	sh.latency = sh.GetUniformLocation("Latency")
 	return sh
@@ -62,7 +62,7 @@ type blurShader struct {
 
 func newBlurShader() shading.Program {
 	sh := &blurShader{}
-	sh.CreateProgram(string(shaders.StraightVertexShader), string(shaders.CRTBlurFragShader))
+	sh.CreateProgram(string(shaders.CRTBlurFragShader))
 	sh.blur = sh.GetUniformLocation("Blur")
 	return sh
 }
@@ -82,7 +82,7 @@ type sharpenShader struct {
 
 func newSharpenShader() shading.Program {
 	sh := &sharpenShader{}
-	sh.CreateProgram(string(shaders.StraightVertexShader), string(shaders.SharpenShader))
+	sh.CreateProgram(string(shaders.SharpenShader))
 	sh.sharpness = sh.GetUniformLocation("Sharpness")
 	return sh
 }
@@ -98,6 +98,6 @@ type guiShader struct {
 
 func newGUIShader() shading.Program {
 	sh := &guiShader{}
-	sh.CreateProgram(string(shaders.StraightVertexShader), string(shaders.GUIShader))
+	sh.CreateProgram(string(shaders.GUIShader))
 	return sh
 }

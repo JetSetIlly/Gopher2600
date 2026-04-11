@@ -154,7 +154,7 @@ func newDbgScrShader(img *SdlImgui) shading.Program {
 		sequence: framebuffer.NewFlip(true),
 		sharpen:  newSharpenShader(),
 	}
-	sh.Base.CreateProgram(string(shaders.StraightVertexShader), string(shaders.DbgScrHelpersShader), string(shaders.DbgScrShader))
+	sh.Base.CreateProgram(string(shaders.DbgScrHelpersShader), string(shaders.DbgScrShader))
 	sh.dbgScrHelper.get(sh.Base)
 
 	return sh
@@ -224,11 +224,7 @@ func newDbgScrOverlayShader(img *SdlImgui) shading.Program {
 		img: img,
 	}
 
-	sh.CreateProgram(
-		string(shaders.StraightVertexShader),
-		string(shaders.DbgScrHelpersShader),
-		string(shaders.DbgScrOverlayShader),
-	)
+	sh.CreateProgram(string(shaders.DbgScrHelpersShader), string(shaders.DbgScrOverlayShader))
 	sh.dbgScrHelper.get(sh.Base)
 
 	return sh
