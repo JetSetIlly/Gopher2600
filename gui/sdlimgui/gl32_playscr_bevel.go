@@ -22,10 +22,11 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/jetsetilly/gopher2600/gui/display/shaders"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/shading"
 )
 
 type bevelShader struct {
-	shader
+	shading.Base
 	img                 *SdlImgui
 	time                int32 // uniform
 	rim                 int32 // uniform
@@ -34,20 +35,20 @@ type bevelShader struct {
 	ambientTintStrength int32 // uniform
 }
 
-func newBevelShader(img *SdlImgui) shaderProgram {
+func newBevelShader(img *SdlImgui) shading.Program {
 	sh := &bevelShader{
 		img: img,
 	}
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTBevel))
-	sh.time = gl.GetUniformLocation(sh.handle, gl.Str("Time"+"\x00"))
-	sh.rim = gl.GetUniformLocation(sh.handle, gl.Str("Rim"+"\x00"))
-	sh.screen = gl.GetUniformLocation(sh.handle, gl.Str("Screen"+"\x00"))
-	sh.ambientTint = gl.GetUniformLocation(sh.handle, gl.Str("AmbientTint"+"\x00"))
-	sh.ambientTintStrength = gl.GetUniformLocation(sh.handle, gl.Str("AmbientTintStrength"+"\x00"))
+	sh.CreateProgram(string(shaders.StraightVertexShader), string(shaders.CRTBevel))
+	sh.time = sh.GetUniformLocation("Time")
+	sh.rim = sh.GetUniformLocation("Rim")
+	sh.screen = sh.GetUniformLocation("Screen")
+	sh.ambientTint = sh.GetUniformLocation("AmbientTint")
+	sh.ambientTintStrength = sh.GetUniformLocation("AmbientTintStrength")
 	return sh
 }
 
-func (sh *bevelShader) setAttributes(env shaderEnvironment) {
+func (sh *bevelShader) setAttributes(env shading.Environment) {
 	if !sh.img.isPlaymode() {
 		return
 	}
@@ -56,33 +57,33 @@ func (sh *bevelShader) setAttributes(env shaderEnvironment) {
 		return
 	}
 
-	env.width = int32(sh.img.playScr.bevelPosMax.X - sh.img.playScr.bevelPosMin.X)
-	env.height = int32(sh.img.playScr.bevelPosMax.Y - sh.img.playScr.bevelPosMin.Y)
+	env.Width = int32(sh.img.playScr.bevelPosMax.X - sh.img.playScr.bevelPosMin.X)
+	env.Height = int32(sh.img.playScr.bevelPosMax.Y - sh.img.playScr.bevelPosMin.Y)
 
 	// set scissor and viewport
 	gl.Viewport(int32(-sh.img.playScr.bevelPosMin.X),
 		int32(-sh.img.playScr.bevelPosMin.Y),
-		env.width+(int32(sh.img.playScr.bevelPosMin.X*2)),
-		env.height+(int32(sh.img.playScr.bevelPosMin.Y*2)),
+		env.Width+(int32(sh.img.playScr.bevelPosMin.X*2)),
+		env.Height+(int32(sh.img.playScr.bevelPosMin.Y*2)),
 	)
 	gl.Scissor(int32(-sh.img.playScr.bevelPosMin.X),
 		int32(-sh.img.playScr.bevelPosMin.Y),
-		env.width+(int32(sh.img.playScr.bevelPosMin.X*2)),
-		env.height+(int32(sh.img.playScr.bevelPosMin.Y*2)),
+		env.Width+(int32(sh.img.playScr.bevelPosMin.X*2)),
+		env.Height+(int32(sh.img.playScr.bevelPosMin.Y*2)),
 	)
 
-	sh.shader.setAttributes(env)
+	sh.Base.SetAttributes(env)
 
 	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
-	if rim, ok := env.config.(bool); ok {
-		gl.Uniform1i(sh.rim, boolToInt32(rim))
+	if rim, ok := env.Config.(bool); ok {
+		gl.Uniform1i(sh.rim, shading.BoolToInt32(rim))
 		gl.ActiveTexture(gl.TEXTURE1)
 		gl.BindTexture(gl.TEXTURE_2D, sh.img.playScr.screenTexture.getID())
 		gl.Uniform1i(sh.screen, 1)
 	} else {
-		gl.Uniform1i(sh.rim, boolToInt32(false))
+		gl.Uniform1i(sh.rim, shading.BoolToInt32(false))
 	}
 
-	gl.Uniform1i(sh.ambientTint, boolToInt32(sh.img.crt.ambientTint.Get().(bool)))
+	gl.Uniform1i(sh.ambientTint, shading.BoolToInt32(sh.img.crt.ambientTint.Get().(bool)))
 	gl.Uniform1f(sh.ambientTintStrength, float32(sh.img.crt.ambientTintStrength.Get().(float64)))
 }

@@ -22,6 +22,7 @@ import (
 	"image"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/shading"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/video"
 	"github.com/jetsetilly/imgui-go/v5"
@@ -41,7 +42,7 @@ type gl32 struct {
 	elementsHandle uint32
 
 	textures map[uint32]gl32Texture
-	shaders  map[shaderType]shaderProgram
+	shaders  map[shaderType]shading.Program
 
 	scrsht *gl32Screenshot
 	video  *video.FFMPEG
@@ -56,7 +57,7 @@ func newRenderer(img *SdlImgui) renderer {
 	rnd := &gl32{
 		img:      img,
 		textures: make(map[uint32]gl32Texture),
-		shaders:  make(map[shaderType]shaderProgram),
+		shaders:  make(map[shaderType]shading.Program),
 		scrsht:   newGl32Screenshot(),
 	}
 	rnd.video = video.NewFFMPEG(rnd, img.dbg.TV())
@@ -111,7 +112,7 @@ func (rnd *gl32) destroy() {
 
 	for i := range rnd.shaders {
 		if rnd.shaders[i] != nil {
-			rnd.shaders[i].destroy()
+			rnd.shaders[i].Destroy()
 		}
 	}
 
@@ -160,11 +161,12 @@ func (rnd *gl32) render() {
 	gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
 
 	// the environment used by the shader
-	env := shaderEnvironment{}
+	var env shading.Environment
+	env.SetVertexBufferLayout(imgui.VertexBufferLayout)
 
 	// Our visible imgui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right).
 	// DisplayMin is typically (0,0) for single viewport apps.
-	env.projMtx = [4][4]float32{
+	env.ProjMtx = [4][4]float32{
 		{2.0 / winw, 0.0, 0.0, 0.0},
 		{0.0, 2.0 / -winh, 0.0, 0.0},
 		{0.0, 0.0, -1.0, 0.0},
@@ -204,41 +206,41 @@ func (rnd *gl32) render() {
 				} else {
 					// texture id
 					id := cmd.TextureID()
-					env.textureID = uint32(id)
+					env.TextureID = uint32(id)
 
 					// select shader program to use
-					var shader shaderProgram
+					var shader shading.Program
 
 					switch pass {
 					case 0:
-						if !(env.textureID == rnd.img.playScr.screenTexture.getID() ||
-							env.textureID == rnd.img.playScr.bevelTexture.getID() ||
-							env.textureID == rnd.img.playScr.bevelRimTexture.getID()) {
+						if !(env.TextureID == rnd.img.playScr.screenTexture.getID() ||
+							env.TextureID == rnd.img.playScr.bevelTexture.getID() ||
+							env.TextureID == rnd.img.playScr.bevelRimTexture.getID()) {
 							continue
 						}
 					case 1:
-						if env.textureID == rnd.img.playScr.screenTexture.getID() ||
-							env.textureID == rnd.img.playScr.bevelTexture.getID() ||
-							env.textureID == rnd.img.playScr.bevelRimTexture.getID() {
+						if env.TextureID == rnd.img.playScr.screenTexture.getID() ||
+							env.TextureID == rnd.img.playScr.bevelTexture.getID() ||
+							env.TextureID == rnd.img.playScr.bevelRimTexture.getID() {
 							continue
 						}
 					}
 
-					if tex, ok := rnd.textures[env.textureID]; ok {
+					if tex, ok := rnd.textures[env.TextureID]; ok {
 						shader = rnd.shaders[tex.typ]
-						env.config = tex.config
+						env.Config = tex.config
 					}
 
 					if shader == nil {
 						panic("no shader found for texture")
 					}
 
-					env.draw = func() {
+					env.Draw = func() {
 						gl.DrawElementsWithOffset(gl.TRIANGLES, int32(cmd.ElementCount()), uint32(drawType), indexBufferOffset)
 					}
 
 					// set attributes for the selected shader
-					shader.setAttributes(env)
+					shader.SetAttributes(env)
 
 					// draw using the currently selected shader to the real framebuffer
 					gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
@@ -250,7 +252,7 @@ func (rnd *gl32) render() {
 					gl.Scissor(int32(clipRect.X), int32(fbh)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
 
 					// process
-					env.draw()
+					env.Draw()
 				}
 				indexBufferOffset += uintptr(cmd.ElementCount() * indexSize)
 			}

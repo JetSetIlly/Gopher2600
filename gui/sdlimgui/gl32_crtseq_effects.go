@@ -22,11 +22,12 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/jetsetilly/gopher2600/gui/display/shaders"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/shading"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 type effectsShader struct {
-	shader
+	shading.Base
 
 	screenDim    int32
 	numScanlines int32
@@ -65,77 +66,77 @@ type isScreenshotting interface {
 	isScreenshotting() bool
 }
 
-func newEffectsShader(isScrsht isScreenshotting) shaderProgram {
+func newEffectsShader(isScrsht isScreenshotting) shading.Program {
 	sh := &effectsShader{
 		isScrsht: isScrsht,
 	}
 
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTEffectsFragShader))
+	sh.CreateProgram(string(shaders.StraightVertexShader), string(shaders.CRTEffectsFragShader))
 
-	sh.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
-	sh.numScanlines = gl.GetUniformLocation(sh.handle, gl.Str("NumScanlines"+"\x00"))
-	sh.numClocks = gl.GetUniformLocation(sh.handle, gl.Str("NumClocks"+"\x00"))
+	sh.screenDim = sh.GetUniformLocation("ScreenDim")
+	sh.numScanlines = sh.GetUniformLocation("NumScanlines")
+	sh.numClocks = sh.GetUniformLocation("NumClocks")
 
-	sh.curve = gl.GetUniformLocation(sh.handle, gl.Str("Curve"+"\x00"))
-	sh.curveAmount = gl.GetUniformLocation(sh.handle, gl.Str("CurveAmount"+"\x00"))
+	sh.curve = sh.GetUniformLocation("Curve")
+	sh.curveAmount = sh.GetUniformLocation("CurveAmount")
 
-	sh.roundedCorners = gl.GetUniformLocation(sh.handle, gl.Str("RoundedCorners"+"\x00"))
-	sh.roundedCornersAmount = gl.GetUniformLocation(sh.handle, gl.Str("RoundedCornersAmount"+"\x00"))
+	sh.roundedCorners = sh.GetUniformLocation("RoundedCorners")
+	sh.roundedCornersAmount = sh.GetUniformLocation("RoundedCornersAmount")
 
-	sh.scanlines = gl.GetUniformLocation(sh.handle, gl.Str("Scanlines"+"\x00"))
-	sh.scanlinesIntensity = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesIntensity"+"\x00"))
-	sh.mask = gl.GetUniformLocation(sh.handle, gl.Str("ShadowMask"+"\x00"))
-	sh.maskIntensity = gl.GetUniformLocation(sh.handle, gl.Str("MaskIntensity"+"\x00"))
+	sh.scanlines = sh.GetUniformLocation("Scanlines")
+	sh.scanlinesIntensity = sh.GetUniformLocation("ScanlinesIntensity")
+	sh.mask = sh.GetUniformLocation("ShadowMask")
+	sh.maskIntensity = sh.GetUniformLocation("MaskIntensity")
 
-	sh.rfInterference = gl.GetUniformLocation(sh.handle, gl.Str("RFInterference"+"\x00"))
-	sh.rfNoiseLevel = gl.GetUniformLocation(sh.handle, gl.Str("RFNoiseLevel"+"\x00"))
-	sh.rfGhostingLevel = gl.GetUniformLocation(sh.handle, gl.Str("RFGhostingLevel"+"\x00"))
+	sh.rfInterference = sh.GetUniformLocation("RFInterference")
+	sh.rfNoiseLevel = sh.GetUniformLocation("RFNoiseLevel")
+	sh.rfGhostingLevel = sh.GetUniformLocation("RFGhostingLevel")
 
-	sh.chromaticAberration = gl.GetUniformLocation(sh.handle, gl.Str("ChromaticAberration"+"\x00"))
-	sh.shine = gl.GetUniformLocation(sh.handle, gl.Str("Shine"+"\x00"))
-	sh.blackLevel = gl.GetUniformLocation(sh.handle, gl.Str("BlackLevel"+"\x00"))
-	sh.gamma = gl.GetUniformLocation(sh.handle, gl.Str("Gamma"+"\x00"))
+	sh.chromaticAberration = sh.GetUniformLocation("ChromaticAberration")
+	sh.shine = sh.GetUniformLocation("Shine")
+	sh.blackLevel = sh.GetUniformLocation("BlackLevel")
+	sh.gamma = sh.GetUniformLocation("Gamma")
 
-	sh.rotation = gl.GetUniformLocation(sh.handle, gl.Str("Rotation"+"\x00"))
-	sh.screenshot = gl.GetUniformLocation(sh.handle, gl.Str("Screenshot"+"\x00"))
-	sh.time = gl.GetUniformLocation(sh.handle, gl.Str("Time"+"\x00"))
+	sh.rotation = sh.GetUniformLocation("Rotation")
+	sh.screenshot = sh.GetUniformLocation("Screenshot")
+	sh.time = sh.GetUniformLocation("Time")
 
 	return sh
 }
 
 // most shader attributes can be discerened automatically but number of
 // scanlines, clocks and whether to add noise to the image is context sensitive.
-func (sh *effectsShader) setAttributesArgs(env shaderEnvironment, numScanlines int, numClocks int,
+func (sh *effectsShader) setAttributesArgs(env shading.Environment, numScanlines int, numClocks int,
 	prefs crtSeqPrefs, rotation specification.Rotation,
 	screenshot bool) {
 
-	sh.shader.setAttributes(env)
+	sh.Base.SetAttributes(env)
 
-	gl.Uniform2f(sh.screenDim, float32(env.width), float32(env.height))
+	gl.Uniform2f(sh.screenDim, float32(env.Width), float32(env.Height))
 	gl.Uniform1i(sh.numScanlines, int32(numScanlines))
 	gl.Uniform1i(sh.numClocks, int32(numClocks))
 
-	gl.Uniform1i(sh.curve, boolToInt32(prefs.curve))
+	gl.Uniform1i(sh.curve, shading.BoolToInt32(prefs.curve))
 	gl.Uniform1f(sh.curveAmount, float32(prefs.curveAmount))
-	gl.Uniform1i(sh.roundedCorners, boolToInt32(prefs.roundedCorners))
+	gl.Uniform1i(sh.roundedCorners, shading.BoolToInt32(prefs.roundedCorners))
 	gl.Uniform1f(sh.roundedCornersAmount, float32(prefs.roundedCornersAmount))
 
-	gl.Uniform1i(sh.scanlines, boolToInt32(prefs.scanlines))
+	gl.Uniform1i(sh.scanlines, shading.BoolToInt32(prefs.scanlines))
 	gl.Uniform1f(sh.scanlinesIntensity, float32(prefs.scanlinesIntensity))
-	gl.Uniform1i(sh.mask, boolToInt32(prefs.mask))
+	gl.Uniform1i(sh.mask, shading.BoolToInt32(prefs.mask))
 	gl.Uniform1f(sh.maskIntensity, float32(prefs.maskIntensity))
 
-	gl.Uniform1i(sh.rfInterference, boolToInt32(prefs.rfInterference))
+	gl.Uniform1i(sh.rfInterference, shading.BoolToInt32(prefs.rfInterference))
 	gl.Uniform1f(sh.rfNoiseLevel, float32(prefs.rfNoiseLevel))
 	gl.Uniform1f(sh.rfGhostingLevel, float32(prefs.rfGhostingLevel))
 
 	gl.Uniform1f(sh.chromaticAberration, float32(prefs.chromaticAberration))
-	gl.Uniform1i(sh.shine, boolToInt32(prefs.shine))
+	gl.Uniform1i(sh.shine, shading.BoolToInt32(prefs.shine))
 	gl.Uniform1f(sh.blackLevel, float32(prefs.blackLevel))
 	gl.Uniform1f(sh.gamma, float32(prefs.gamma))
 
 	gl.Uniform1i(sh.rotation, int32(rotation))
-	gl.Uniform1i(sh.screenshot, boolToInt32(screenshot))
+	gl.Uniform1i(sh.screenshot, shading.BoolToInt32(screenshot))
 	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
 
 	// no noise when a screenshot is taking place

@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/display/shaders"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/framebuffer"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/shading"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -45,24 +46,24 @@ type dbgScrHelper struct {
 	topScanline    int32 // uniform
 }
 
-func (attr *dbgScrHelper) get(sh shader) {
-	attr.isCropped = gl.GetUniformLocation(sh.handle, gl.Str("IsCropped"+"\x00"))
-	attr.showCursor = gl.GetUniformLocation(sh.handle, gl.Str("ShowCursor"+"\x00"))
-	attr.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
-	attr.scalingX = gl.GetUniformLocation(sh.handle, gl.Str("ScalingX"+"\x00"))
-	attr.scalingY = gl.GetUniformLocation(sh.handle, gl.Str("ScalingY"+"\x00"))
-	attr.lastX = gl.GetUniformLocation(sh.handle, gl.Str("LastX"+"\x00"))
-	attr.lastY = gl.GetUniformLocation(sh.handle, gl.Str("LastY"+"\x00"))
-	attr.hblank = gl.GetUniformLocation(sh.handle, gl.Str("Hblank"+"\x00"))
-	attr.totalScanlines = gl.GetUniformLocation(sh.handle, gl.Str("TotalScanlines"+"\x00"))
-	attr.topScanline = gl.GetUniformLocation(sh.handle, gl.Str("TopScanline"+"\x00"))
-	attr.visibleTop = gl.GetUniformLocation(sh.handle, gl.Str("VisibleTop"+"\x00"))
-	attr.visibleBottom = gl.GetUniformLocation(sh.handle, gl.Str("VisibleBottom"+"\x00"))
-	attr.magShow = gl.GetUniformLocation(sh.handle, gl.Str("MagShow"+"\x00"))
-	attr.magXmin = gl.GetUniformLocation(sh.handle, gl.Str("MagXmin"+"\x00"))
-	attr.magXmax = gl.GetUniformLocation(sh.handle, gl.Str("MagXmax"+"\x00"))
-	attr.magYmin = gl.GetUniformLocation(sh.handle, gl.Str("MagYmin"+"\x00"))
-	attr.magYmax = gl.GetUniformLocation(sh.handle, gl.Str("MagYmax"+"\x00"))
+func (attr *dbgScrHelper) get(sh shading.Base) {
+	attr.isCropped = sh.GetUniformLocation("IsCropped")
+	attr.showCursor = sh.GetUniformLocation("ShowCursor")
+	attr.screenDim = sh.GetUniformLocation("ScreenDim")
+	attr.scalingX = sh.GetUniformLocation("ScalingX")
+	attr.scalingY = sh.GetUniformLocation("ScalingY")
+	attr.lastX = sh.GetUniformLocation("LastX")
+	attr.lastY = sh.GetUniformLocation("LastY")
+	attr.hblank = sh.GetUniformLocation("Hblank")
+	attr.totalScanlines = sh.GetUniformLocation("TotalScanlines")
+	attr.topScanline = sh.GetUniformLocation("TopScanline")
+	attr.visibleTop = sh.GetUniformLocation("VisibleTop")
+	attr.visibleBottom = sh.GetUniformLocation("VisibleBottom")
+	attr.magShow = sh.GetUniformLocation("MagShow")
+	attr.magXmin = sh.GetUniformLocation("MagXmin")
+	attr.magXmax = sh.GetUniformLocation("MagXmax")
+	attr.magYmin = sh.GetUniformLocation("MagYmin")
+	attr.magYmax = sh.GetUniformLocation("MagYmax")
 }
 
 func (attr *dbgScrHelper) set(img *SdlImgui) {
@@ -88,10 +89,10 @@ func (attr *dbgScrHelper) set(img *SdlImgui) {
 	// if crt preview is enabled then force cropping
 	if img.wm.dbgScr.cropped {
 		gl.Uniform1f(attr.lastX, float32(cursorX-specification.ClksHBlank)*xscaling)
-		gl.Uniform1i(attr.isCropped, boolToInt32(true))
+		gl.Uniform1i(attr.isCropped, shading.BoolToInt32(true))
 	} else {
 		gl.Uniform1f(attr.lastX, float32(cursorX)*xscaling)
-		gl.Uniform1i(attr.isCropped, boolToInt32(false))
+		gl.Uniform1i(attr.isCropped, shading.BoolToInt32(false))
 	}
 	gl.Uniform1f(attr.lastY, float32(cursorY)*yscaling)
 
@@ -115,7 +116,7 @@ func (attr *dbgScrHelper) set(img *SdlImgui) {
 		magXmax = float32(img.wm.dbgScr.magnifyWindow.clip.Max.X) * xscaling
 		magYmax = float32(img.wm.dbgScr.magnifyWindow.clip.Max.Y) * yscaling
 	}
-	gl.Uniform1i(attr.magShow, boolToInt32(img.wm.dbgScr.magnifyWindow.open))
+	gl.Uniform1i(attr.magShow, shading.BoolToInt32(img.wm.dbgScr.magnifyWindow.open))
 	gl.Uniform1f(attr.magXmin, magXmin)
 	gl.Uniform1f(attr.magYmin, magYmin)
 	gl.Uniform1f(attr.magXmax, magXmax)
@@ -138,92 +139,102 @@ func (attr *dbgScrHelper) set(img *SdlImgui) {
 }
 
 type dbgScrShader struct {
-	shader
+	shading.Base
 	dbgScrHelper
 
 	img *SdlImgui
 
 	sequence *framebuffer.Flip
-	sharpen  shaderProgram
+	sharpen  shading.Program
 }
 
-func newDbgScrShader(img *SdlImgui) shaderProgram {
+func newDbgScrShader(img *SdlImgui) shading.Program {
 	sh := &dbgScrShader{
 		img:      img,
 		sequence: framebuffer.NewFlip(true),
 		sharpen:  newSharpenShader(),
 	}
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.DbgScrHelpersShader), string(shaders.DbgScrShader))
-	sh.dbgScrHelper.get(sh.shader)
+	sh.Base.CreateProgram(string(shaders.StraightVertexShader), string(shaders.DbgScrHelpersShader), string(shaders.DbgScrShader))
+	sh.dbgScrHelper.get(sh.Base)
 
 	return sh
 }
 
-func (sh *dbgScrShader) destroy() {
+func (sh *dbgScrShader) Destroy() {
 	sh.sequence.Destroy()
-	sh.sharpen.destroy()
+	sh.sharpen.Destroy()
 }
 
-func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
-	env.width = int32(sh.img.wm.dbgScr.scaledWidth)
-	env.height = int32(sh.img.wm.dbgScr.scaledHeight)
+func (sh *dbgScrShader) SetAttributes(env shading.Environment) {
+	env.Width = int32(sh.img.wm.dbgScr.scaledWidth)
+	env.Height = int32(sh.img.wm.dbgScr.scaledHeight)
 
 	if sh.img.wm.dbgScr.elements {
-		env.textureID = sh.img.wm.dbgScr.elementsTexture.getID()
+		env.TextureID = sh.img.wm.dbgScr.elementsTexture.getID()
 	} else {
-		env.textureID = sh.img.wm.dbgScr.displayTexture.getID()
+		env.TextureID = sh.img.wm.dbgScr.displayTexture.getID()
 	}
 
 	gl.Viewport(-int32(sh.img.wm.dbgScr.screenOrigin.X),
 		-int32(sh.img.wm.dbgScr.screenOrigin.Y),
-		env.width+int32(sh.img.wm.dbgScr.screenOrigin.X),
-		env.height+int32(sh.img.wm.dbgScr.screenOrigin.Y),
+		env.Width+int32(sh.img.wm.dbgScr.screenOrigin.X),
+		env.Height+int32(sh.img.wm.dbgScr.screenOrigin.Y),
 	)
 	gl.Scissor(-int32(sh.img.wm.dbgScr.screenOrigin.X),
 		-int32(sh.img.wm.dbgScr.screenOrigin.Y),
-		env.width+int32(sh.img.wm.dbgScr.screenOrigin.X),
-		env.height+int32(sh.img.wm.dbgScr.screenOrigin.Y),
+		env.Width+int32(sh.img.wm.dbgScr.screenOrigin.X),
+		env.Height+int32(sh.img.wm.dbgScr.screenOrigin.Y),
 	)
 
-	projMtx := env.projMtx
-	env.projMtx = [4][4]float32{
+	projMtx := env.ProjMtx
+	env.ProjMtx = [4][4]float32{
 		{2.0 / (sh.img.wm.dbgScr.scaledWidth + sh.img.wm.dbgScr.screenOrigin.X), 0.0, 0.0, 0.0},
 		{0.0, -2.0 / (sh.img.wm.dbgScr.scaledHeight + sh.img.wm.dbgScr.screenOrigin.Y), 0.0, 0.0},
 		{0.0, 0.0, -1.0, 0.0},
 		{-1.0, 1.0, 0.0, 1.0},
 	}
 
-	env.flipY = true
-	sh.sequence.Setup(env.width, env.height)
-	env.textureID = sh.sequence.Process(func() {
+	env.FlipY = true
+	sh.sequence.Setup(env.Width, env.Height)
+	env.TextureID = sh.sequence.Process(func() {
 		sh.sharpen.(*sharpenShader).process(env, 2)
-		env.draw()
+		env.Draw()
 	})
-	env.flipY = false
 
-	env.projMtx = projMtx
-	sh.shader.setAttributes(env)
-	sh.dbgScrHelper.set(sh.img)
+	env.TextureID = sh.sequence.Process(func() {
+		sh.Base.SetAttributes(env)
+		sh.dbgScrHelper.set(sh.img)
+		env.Draw()
+	})
+	env.FlipY = false
+
+	env.ProjMtx = projMtx
+	sh.sharpen.(*sharpenShader).process(env, 2)
+	sh.sharpen.SetAttributes(env)
 }
 
 type dbgScrOverlayShader struct {
-	shader
+	shading.Base
 	dbgScrHelper
 	img *SdlImgui
 }
 
-func newDbgScrOverlayShader(img *SdlImgui) shaderProgram {
+func newDbgScrOverlayShader(img *SdlImgui) shading.Program {
 	sh := &dbgScrOverlayShader{
 		img: img,
 	}
 
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.DbgScrHelpersShader), string(shaders.DbgScrOverlayShader))
-	sh.dbgScrHelper.get(sh.shader)
+	sh.CreateProgram(
+		string(shaders.StraightVertexShader),
+		string(shaders.DbgScrHelpersShader),
+		string(shaders.DbgScrOverlayShader),
+	)
+	sh.dbgScrHelper.get(sh.Base)
 
 	return sh
 }
 
-func (sh *dbgScrOverlayShader) setAttributes(env shaderEnvironment) {
-	sh.shader.setAttributes(env)
+func (sh *dbgScrOverlayShader) SetAttributes(env shading.Environment) {
+	sh.Base.SetAttributes(env)
 	sh.dbgScrHelper.set(sh.img)
 }
