@@ -37,12 +37,6 @@ const (
 	HMOVElatched
 	RSYNCalign
 	RSYNCreset
-
-	// for graphical purposes we only distinguish between active and inactive
-	// coprocessor states. the underlying states as defined in the mapper
-	// package (mapper.CoProcSynchronisation) are used to decided whether the
-	// coproc is active or inactive
-	CoProcInactive
 	CoProcActive
 )
 

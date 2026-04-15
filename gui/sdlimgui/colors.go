@@ -525,9 +525,7 @@ var reflectionColors = []color.RGBA{
 	reflection.HMOVElatched:      {R: 50, G: 50, B: 150, A: 255},
 	reflection.RSYNCalign:        {R: 50, G: 50, B: 200, A: 255},
 	reflection.RSYNCreset:        {R: 50, G: 200, B: 200, A: 255},
-
-	reflection.CoProcInactive: {R: 0, G: 0, B: 0, A: 0},
-	reflection.CoProcActive:   {R: 200, G: 50, B: 200, A: 255},
+	reflection.CoProcActive:      {R: 200, G: 50, B: 200, A: 255},
 }
 
 // elementColors lists the colors to be used when displaying TIA video in a debugger's "debug colors"

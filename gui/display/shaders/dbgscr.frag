@@ -112,11 +112,12 @@ void main()
 	}
 
 
-	// painting effect but if the emulation is still on the first line of
-	// the TV frame
+	// painting effect but if the emulation is still on the first line of the TV frame
 	if (ShowCursor == 1) {
-		if (LastY > 0) {
-			Out_Color = paintingEffect(Frag_UV, Out_Color);
+		if ((LastY > 0) || (LastY== 0 && LastX >= 3)) {
+			if (Frag_UV.y > lastY+texelY || (isNearEqual(Frag_UV.y, lastY+texelY, texelY) && Frag_UV.x > lastX+texelX)) {
+				Out_Color = mix(Out_Color, vec4(Out_Color.rgb, 0.0), 0.5);
+			}
 		}
 	}
 }

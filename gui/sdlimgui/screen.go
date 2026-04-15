@@ -662,11 +662,11 @@ func (scr *screen) reflectionColor(ref *reflection.ReflectedVideoStep) color.RGB
 	case reflection.OverlayLabels[reflection.OverlayCoproc]:
 		switch ref.CoProcSync {
 		case coprocessor.CoProcIdle:
-			return reflectionColors[reflection.CoProcInactive]
+			return color.RGBA{}
 		case coprocessor.CoProcNOPFeed:
 			return reflectionColors[reflection.CoProcActive]
 		case coprocessor.CoProcStrongARMFeed:
-			return reflectionColors[reflection.CoProcInactive]
+			return color.RGBA{}
 		case coprocessor.CoProcParallel:
 			return reflectionColors[reflection.CoProcActive]
 		}

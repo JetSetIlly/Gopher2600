@@ -6,5 +6,7 @@ out vec4 Out_Color;
 void main()
 {
 	Out_Color = Frag_Color * texture(Texture, Frag_UV);
-	Out_Color = paintingEffect(Frag_UV, Out_Color);
+	if (Out_Color.a > 0.0) {
+		Out_Color.a = 0.3;
+	}
 }

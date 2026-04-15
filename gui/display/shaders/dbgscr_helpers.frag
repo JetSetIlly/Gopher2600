@@ -48,10 +48,3 @@ bool isNearEqual(float x, float y, float epsilon)
 {
 	return abs(x - y) <= epsilon;
 }
-
-vec4 paintingEffect(vec2 uv, vec4 col) {
-	if (uv.y > lastY+texelY || (isNearEqual(uv.y, lastY+texelY, texelY) && uv.x > lastX+texelX)) {
-		col = mix(col, vec4(col.rgb, 0.0), 0.5);
-	}
-	return col;
-}
