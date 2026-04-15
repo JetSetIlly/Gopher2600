@@ -58,6 +58,9 @@ type winDbgScr struct {
 	// was captured on)
 	mouse dbgScrMouse
 
+	// whether the mouse buttom (numbered 0=left, 1=right, 2=middle) is being held from last frame
+	mouseDragging [3]bool
+
 	// height of tool bar at bottom of window. valid after first frame.
 	toolbarHeight float32
 
@@ -128,7 +131,7 @@ func (win *winDbgScr) id() string {
 	return winDbgScrID
 }
 
-const breakMenuPopupID = "dbgScreenBreakMenu"
+const contextMenu = "dbgScreenContextMenu"
 
 func (win *winDbgScr) debuggerDraw() bool {
 	if !win.debuggerOpen {
@@ -183,8 +186,8 @@ func (win *winDbgScr) draw() {
 	// corner of the screen.
 	win.screenOrigin = imgui.CursorScreenPos()
 
-	// get mouse position if breakmenu is not open
-	if !imgui.IsPopupOpen(breakMenuPopupID) {
+	// get mouse position if context menu is not open
+	if !imgui.IsPopupOpen(contextMenu) {
 		win.mouse = win.currentMouse()
 	}
 
@@ -220,11 +223,12 @@ func (win *winDbgScr) draw() {
 	//
 	// we only call OpenPopup() if it's not already open. also, care taken to
 	// avoid menu opening when releasing a captured mouse.
-	if !win.isCaptured && imgui.IsItemHovered() && imgui.IsMouseDown(1) {
-		imgui.OpenPopup(breakMenuPopupID)
+	if !win.isCaptured && (win.mouseDragging[1] || (imageHovered && imgui.IsMouseClicked(1))) {
+		win.mouseDragging[1] = imgui.IsMouseDown(1)
+		imgui.OpenPopup(contextMenu)
 	}
 
-	if imgui.BeginPopup(breakMenuPopupID) {
+	if imgui.BeginPopup(contextMenu) {
 		imgui.Text("Break on TV Coords")
 		imguiSeparator()
 		if imgui.Selectable(fmt.Sprintf("Scanline %d", win.mouse.tv.Scanline)) {
@@ -249,46 +253,33 @@ func (win *winDbgScr) draw() {
 		win.drawReflectionTooltip()
 	}
 
-	// if mouse is over tv image then accept mouse clicks
-	// . middle mouse button will control zoom window
-	// . left button button will control rewinding of frame when emulation is paused
-	if imageHovered {
-		if imgui.IsMouseDown(2) {
-			if win.magnifyWindow.open {
-				win.magnifyWindow.setClipCenter(win.mouse)
-			} else if imgui.IsMouseDoubleClicked(2) {
-				win.magnifyWindow.open = true
-				win.magnifyWindow.setClipCenter(win.mouse)
-			}
-		} else {
-			if imgui.IsWindowFocused() {
-				// mouse click will cause the rewind goto coords to run only when the
-				// emulation is paused
-				if win.img.dbg.State() == govern.Paused {
-					if imgui.IsMouseDown(0) {
-						current := win.img.cache.TV.GetCoords()
-						to := coords.TelevisionCoords{
-							Frame:    win.img.cache.TV.GetCoords().Frame,
-							Scanline: win.mouse.tv.Scanline,
-							Clock:    win.mouse.tv.Clock,
-						}
+	// left-mouse button will cause the rewind goto coords to run only when the emulation is paused
+	if imgui.IsWindowFocused() && win.img.dbg.State() == govern.Paused {
+		// handle dragging outside of display boundaries
+		if win.mouseDragging[0] || (imageHovered && imgui.IsMouseClicked(0)) {
+			win.mouseDragging[0] = imgui.IsMouseDown(0)
 
-						// if mouse is off the end of the screen then adjust the
-						// scanline (we want to goto) to just before the end of the
-						// screen (the actual end of the screen might be a half
-						// scanline - this limiting effect is purely visual so accuracy
-						// isn't paramount)
-						if to.Scanline >= win.img.screen.crit.frameInfo.TotalScanlines {
-							to.Scanline = max(win.img.screen.crit.frameInfo.TotalScanlines-1, 0)
-						}
-
-						// match against the actual mouse.tv.Scanline not the adjusted scanline
-						if !coords.Equal(current, to) {
-							win.img.dbg.GotoCoords(to)
-						}
-					}
-				}
+			current := win.img.cache.TV.GetCoords()
+			to := coords.TelevisionCoords{
+				Frame:    current.Frame,
+				Scanline: win.mouse.tv.Scanline,
+				Clock:    win.mouse.tv.Clock,
 			}
+
+			if !coords.Equal(current, to) {
+				win.img.dbg.GotoCoords(to)
+			}
+		}
+	}
+
+	// move pivot point with middle mouse button. handle dragging outside of display boundaries
+	if win.mouseDragging[2] || (imageHovered && imgui.IsMouseClicked(2)) {
+		win.mouseDragging[2] = imgui.IsMouseDown(2)
+		if win.magnifyWindow.open {
+			win.magnifyWindow.setClipCenter(win.mouse)
+		} else if imgui.IsMouseDoubleClicked(2) {
+			win.magnifyWindow.open = true
+			win.magnifyWindow.setClipCenter(win.mouse)
 		}
 	}
 
