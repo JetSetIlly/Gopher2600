@@ -140,37 +140,33 @@ func (mag *dbgScrMagnifyWindow) draw(cols *imguiColors) {
 		imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{X: 0.0, Y: 0.0})
 		imgui.ImageButton("magnify", imgui.TextureID(mag.texture.getID()), sz)
 
-		if imgui.IsItemHovered() || mag.isDragging {
+		if imgui.IsItemHovered() {
 			// adjust zoom with mouse wheel
 			_, delta := imgui.CurrentIO().MouseWheel()
 			if delta != 0 {
 				mag.adjustZoom(delta)
 			}
+		}
 
-			// drag magnified area with mouse drag - left button or middle button
-			if imgui.IsMouseDown(0) || imgui.IsMouseDown(2) {
-				pos := imgui.MousePos()
-				scaledPos := dbgScrMousePos{
-					x: int(pos.X / pixelSize),
-					y: int(pos.Y / pixelSize * pixelWidth),
-				}
-
-				if mag.isDragging {
-					drag := dbgScrMousePos{
-						x: mag.lastDragPoint.x - scaledPos.x,
-						y: mag.lastDragPoint.y - scaledPos.y,
-					}
-					mag.adjustClip(drag)
-				} else {
-					mag.isDragging = true
-				}
-
-				mag.lastDragPoint = scaledPos
-			} else {
-				mag.isDragging = false
+		// drag magnified area with mouse drag - left button or middle button
+		if mag.isDragging || (imgui.IsItemHovered() && (imgui.IsMouseClicked(0) || imgui.IsMouseClicked(2))) {
+			pos := imgui.MousePos()
+			scaledPos := dbgScrMousePos{
+				x: int(pos.X / pixelSize),
+				y: int(pos.Y / pixelSize * pixelWidth),
 			}
-		} else {
-			mag.isDragging = false
+
+			if mag.isDragging {
+				drag := dbgScrMousePos{
+					x: mag.lastDragPoint.x - scaledPos.x,
+					y: mag.lastDragPoint.y - scaledPos.y,
+				}
+				mag.adjustClip(drag)
+			}
+
+			mag.lastDragPoint = scaledPos
+
+			mag.isDragging = imgui.IsMouseDown(0) || imgui.IsMouseDown(2)
 		}
 
 		imgui.PopStyleVar()
