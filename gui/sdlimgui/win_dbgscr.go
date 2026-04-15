@@ -266,7 +266,8 @@ func (win *winDbgScr) draw() {
 				// emulation is paused
 				if win.img.dbg.State() == govern.Paused {
 					if imgui.IsMouseDown(0) {
-						coords := coords.TelevisionCoords{
+						current := win.img.cache.TV.GetCoords()
+						to := coords.TelevisionCoords{
 							Frame:    win.img.cache.TV.GetCoords().Frame,
 							Scanline: win.mouse.tv.Scanline,
 							Clock:    win.mouse.tv.Clock,
@@ -277,15 +278,13 @@ func (win *winDbgScr) draw() {
 						// screen (the actual end of the screen might be a half
 						// scanline - this limiting effect is purely visual so accuracy
 						// isn't paramount)
-						if coords.Scanline >= win.img.screen.crit.frameInfo.TotalScanlines {
-							coords.Scanline = max(win.img.screen.crit.frameInfo.TotalScanlines-1, 0)
+						if to.Scanline >= win.img.screen.crit.frameInfo.TotalScanlines {
+							to.Scanline = max(win.img.screen.crit.frameInfo.TotalScanlines-1, 0)
 						}
 
 						// match against the actual mouse.tv.Scanline not the adjusted scanline
-						if win.img.screen.gotoCoordsX != win.mouse.tv.Clock || win.img.screen.gotoCoordsY != win.img.wm.dbgScr.mouse.tv.Scanline {
-							win.img.screen.gotoCoordsX = win.mouse.tv.Clock
-							win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouse.tv.Scanline
-							win.img.dbg.GotoCoords(coords)
+						if !coords.Equal(current, to) {
+							win.img.dbg.GotoCoords(to)
 						}
 					}
 				}

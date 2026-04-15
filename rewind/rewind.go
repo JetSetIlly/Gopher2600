@@ -298,20 +298,20 @@ func (r *Rewind) String() string {
 		for i := r.start; i < r.next; i++ {
 			e := r.entries[i]
 			if e != nil {
-				s.WriteString(fmt.Sprintf("%s ", e.String()))
+				fmt.Fprintf(&s, "%s ", e.String())
 			}
 		}
 	} else {
 		for i := r.start; i < len(r.entries); i++ {
 			e := r.entries[i]
 			if e != nil {
-				s.WriteString(fmt.Sprintf("%s ", e.String()))
+				fmt.Fprintf(&s, "%s ", e.String())
 			}
 		}
 		for i := 0; i < r.next; i++ {
 			e := r.entries[i]
 			if e != nil {
-				s.WriteString(fmt.Sprintf("%s ", e.String()))
+				fmt.Fprintf(&s, "%s ", e.String())
 			}
 		}
 	}
@@ -698,14 +698,14 @@ func (r *Rewind) Peephole() string {
 	f := func(i, j int) {
 		for k, e := range r.entries[i:j] {
 			if k+i == r.splice {
-				b.WriteString(fmt.Sprintf("(%s) ", e))
+				fmt.Fprintf(&b, "(%s) ", e)
 			} else {
-				b.WriteString(fmt.Sprintf("%s ", e))
+				fmt.Fprintf(&b, "%s ", e)
 			}
 		}
 	}
 
-	b.WriteString(fmt.Sprintf("[%03d] ", peepi))
+	fmt.Fprintf(&b, "[%03d] ", peepi)
 	if split {
 		f(peepi, len(r.entries))
 		b.WriteString("| ")
@@ -714,7 +714,7 @@ func (r *Rewind) Peephole() string {
 		b.WriteString("  ")
 		f(peepi, peepj)
 	}
-	b.WriteString(fmt.Sprintf("[%03d]\n", peepj))
+	fmt.Fprintf(&b, "[%03d]\n", peepj)
 
 	return b.String()
 }

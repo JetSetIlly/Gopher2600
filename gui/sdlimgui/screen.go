@@ -71,11 +71,6 @@ type screen struct {
 	emuWait    chan bool
 	emuWaitAck chan bool
 
-	// the mouse coords used in the most recent call to PushGotoCoords(). only
-	// read/write by the GUI thread so doesn't need to be in critical section.
-	gotoCoordsX int
-	gotoCoordsY int
-
 	// the number of frames the emulation currently is ahead
 	frameQueueSlack int
 
@@ -182,10 +177,9 @@ type screenCrit struct {
 	// the cropped view of the screen pixels. note that these instances are
 	// created through the SubImage() command and should not be written to
 	// directly
-	cropPixels           *image.RGBA
-	cropElementPixels    *image.RGBA
-	cropOverlayPixels    *image.RGBA
-	cropScreenrollPixels *image.RGBA
+	cropPixels        *image.RGBA
+	cropElementPixels *image.RGBA
+	cropOverlayPixels *image.RGBA
 
 	// the selected overlay
 	overlay string
