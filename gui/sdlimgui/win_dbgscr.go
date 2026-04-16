@@ -160,8 +160,164 @@ func (win *winDbgScr) debuggerDraw() bool {
 
 	// we don't want to ever show scrollbars
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNoScrollbar) {
-		win.draw()
+		// note size of remaining window and content area
+		win.screenRegion = imgui.ContentRegionAvail()
+		win.screenRegion.Y -= win.toolbarHeight
+
+		// screen image, overlays, menus and tooltips
+		imgui.BeginChildV("##image", imgui.Vec2{X: win.screenRegion.X, Y: win.screenRegion.Y}, false, imgui.ChildFlagsNone)
+
+		// add horiz/vert padding around screen image
+		imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
+
+		// note the current cursor position. we'll use this to everything to the
+		// corner of the screen.
+		win.screenOrigin = imgui.CursorScreenPos()
+
+		// get mouse position if context menu is not open
+		if !imgui.IsPopupOpen(contextMenu) {
+			win.mouse = win.currentMouse()
+		}
+
+		// push style info for screen and overlay ImageButton(). we're using
+		// ImageButton because an Image will not capture mouse events and pass them
+		// to the parent window. this means that a click-drag on the screen/overlay
+		// will move the window, which we don't want.
+		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.Transparent)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
+		imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{X: 0.0, Y: 0.0})
+
+		imgui.PushStyleColor(imgui.StyleColorDragDropTarget, win.img.cols.Transparent)
+
+		if win.elements {
+			imgui.ImageButton("elements", imgui.TextureID(win.elementsTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
+		} else {
+			imgui.ImageButton("display", imgui.TextureID(win.displayTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
+		}
+
+		win.mouseHover = imgui.IsItemHovered()
+
+		win.paintDragAndDrop()
+		imgui.PopStyleColor()
+
+		imageHovered := imgui.IsItemHovered()
+
+		// overlay texture on top of screen texture
+		imgui.SetCursorScreenPos(win.screenOrigin)
+		imgui.ImageButton("overlay", imgui.TextureID(win.overlayTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
+
+		// popup menu on right mouse button
+		//
+		// we only call OpenPopup() if it's not already open. also, care taken to
+		// avoid menu opening when releasing a captured mouse.
+		if !win.isCaptured && (win.mouseDragging[1] || (imageHovered && imgui.IsMouseClicked(1))) {
+			win.mouseDragging[1] = imgui.IsMouseDown(1)
+			imgui.OpenPopup(contextMenu)
+		}
+
+		if imgui.BeginPopup(contextMenu) {
+			imgui.Text("Break on TV Coords")
+			imguiSeparator()
+			if imgui.Selectable(fmt.Sprintf("Scanline %d", win.mouse.tv.Scanline)) {
+				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.mouse.tv.Scanline))
+			}
+			if imgui.Selectable(fmt.Sprintf("Clock %d", win.mouse.tv.Clock)) {
+				win.img.term.pushCommand(fmt.Sprintf("BREAK CL %d", win.mouse.tv.Clock))
+			}
+			if imgui.Selectable(fmt.Sprintf("Scanline %d & Clock %d", win.mouse.tv.Scanline, win.mouse.tv.Clock)) {
+				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & CL %d", win.mouse.tv.Scanline, win.mouse.tv.Clock))
+			}
+			imguiSeparator()
+			if imgui.Selectable(fmt.Sprintf("%c Magnify in Window", fonts.MagnifyingGlass)) {
+				win.magnifyWindow.open = true
+				win.magnifyWindow.setClipCenter(win.mouse)
+			}
+			imgui.EndPopup()
+		}
+
+		// draw tool tip
+		if imgui.IsItemHovered() {
+			win.drawReflectionTooltip()
+		}
+
+		// left-mouse button will cause the rewind goto coords to run only when the emulation is paused
+		if imgui.IsWindowFocused() && win.img.dbg.State() == govern.Paused {
+			// handle dragging outside of display boundaries
+			if win.mouseDragging[0] || (imageHovered && imgui.IsMouseClicked(0)) {
+				win.mouseDragging[0] = imgui.IsMouseDown(0)
+
+				current := win.img.cache.TV.GetCoords()
+				to := coords.TelevisionCoords{
+					Frame:    current.Frame,
+					Scanline: win.mouse.tv.Scanline,
+					Clock:    win.mouse.tv.Clock,
+				}
+
+				if !coords.Equal(current, to) {
+					win.img.dbg.GotoCoords(to)
+				}
+			}
+		}
+
+		// move pivot point with middle mouse button. handle dragging outside of display boundaries
+		if win.mouseDragging[2] || (imageHovered && imgui.IsMouseClicked(2)) {
+			win.mouseDragging[2] = imgui.IsMouseDown(2)
+			if win.magnifyWindow.open {
+				win.magnifyWindow.setClipCenter(win.mouse)
+			} else if imgui.IsMouseDoubleClicked(2) {
+				win.magnifyWindow.open = true
+				win.magnifyWindow.setClipCenter(win.mouse)
+			}
+		}
+
+		// pop style info for screen and overlay textures
+		imgui.PopStyleVar()
+		imgui.PopStyleColorV(3)
+
+		// end of screen image
+		imgui.EndChild()
+
+		// toolbar at bottom of window
+		win.toolbarHeight = imguiMeasureHeight(func() {
+			// status line
+			imgui.Spacing()
+
+			// imgui.SetCursorPos(imgui.CursorPos().Plus(imgui.Vec2{X: win.imagePadding.X, Y: 0.0}))
+			win.drawCoordsLine()
+
+			// options line
+			imgui.Spacing()
+			imgui.Spacing()
+
+			// tv spec
+			win.drawSpecCombo()
+
+			// scaling indicator
+			imgui.SameLineV(0, 15)
+			imgui.AlignTextToFramePadding()
+			imgui.Text(fmt.Sprintf("%.1fx", win.yscaling))
+
+			// debugging toggles
+			imgui.SameLineV(0, 15)
+			imgui.Checkbox("Debug Colours", &win.elements)
+
+			imgui.SameLineV(0, 15)
+			if imgui.Checkbox("Cropping", &win.cropped) {
+				win.resize()
+			}
+
+			imgui.SameLineV(0, 15)
+			win.drawOverlayCombo()
+
+			if win.img.screen.crit.overlay == reflection.OverlayLabels[reflection.OverlayNone] {
+				imgui.SameLineV(0, 15)
+				imgui.Checkbox("Magnify on hover", &win.magnifyTooltip.showInTooltip)
+				win.img.imguiTooltipSimple(fmt.Sprintf("Show magnification in tooltip\n%c Mouse wheel to adjust zoom", fonts.Mouse))
+			}
+		})
 	}
+
 	win.debuggerGeom.update()
 	imgui.End()
 
@@ -169,166 +325,6 @@ func (win *winDbgScr) debuggerDraw() bool {
 	win.magnifyWindow.draw(win.img.cols)
 
 	return true
-}
-
-func (win *winDbgScr) draw() {
-	// note size of remaining window and content area
-	win.screenRegion = imgui.ContentRegionAvail()
-	win.screenRegion.Y -= win.toolbarHeight
-
-	// screen image, overlays, menus and tooltips
-	imgui.BeginChildV("##image", imgui.Vec2{X: win.screenRegion.X, Y: win.screenRegion.Y}, false, imgui.ChildFlagsNone)
-
-	// add horiz/vert padding around screen image
-	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
-
-	// note the current cursor position. we'll use this to everything to the
-	// corner of the screen.
-	win.screenOrigin = imgui.CursorScreenPos()
-
-	// get mouse position if context menu is not open
-	if !imgui.IsPopupOpen(contextMenu) {
-		win.mouse = win.currentMouse()
-	}
-
-	// push style info for screen and overlay ImageButton(). we're using
-	// ImageButton because an Image will not capture mouse events and pass them
-	// to the parent window. this means that a click-drag on the screen/overlay
-	// will move the window, which we don't want.
-	imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)
-	imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.Transparent)
-	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
-	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{X: 0.0, Y: 0.0})
-
-	imgui.PushStyleColor(imgui.StyleColorDragDropTarget, win.img.cols.Transparent)
-
-	if win.elements {
-		imgui.ImageButton("elements", imgui.TextureID(win.elementsTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
-	} else {
-		imgui.ImageButton("display", imgui.TextureID(win.displayTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
-	}
-
-	win.mouseHover = imgui.IsItemHovered()
-
-	win.paintDragAndDrop()
-	imgui.PopStyleColor()
-
-	imageHovered := imgui.IsItemHovered()
-
-	// overlay texture on top of screen texture
-	imgui.SetCursorScreenPos(win.screenOrigin)
-	imgui.ImageButton("overlay", imgui.TextureID(win.overlayTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
-
-	// popup menu on right mouse button
-	//
-	// we only call OpenPopup() if it's not already open. also, care taken to
-	// avoid menu opening when releasing a captured mouse.
-	if !win.isCaptured && (win.mouseDragging[1] || (imageHovered && imgui.IsMouseClicked(1))) {
-		win.mouseDragging[1] = imgui.IsMouseDown(1)
-		imgui.OpenPopup(contextMenu)
-	}
-
-	if imgui.BeginPopup(contextMenu) {
-		imgui.Text("Break on TV Coords")
-		imguiSeparator()
-		if imgui.Selectable(fmt.Sprintf("Scanline %d", win.mouse.tv.Scanline)) {
-			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.mouse.tv.Scanline))
-		}
-		if imgui.Selectable(fmt.Sprintf("Clock %d", win.mouse.tv.Clock)) {
-			win.img.term.pushCommand(fmt.Sprintf("BREAK CL %d", win.mouse.tv.Clock))
-		}
-		if imgui.Selectable(fmt.Sprintf("Scanline %d & Clock %d", win.mouse.tv.Scanline, win.mouse.tv.Clock)) {
-			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & CL %d", win.mouse.tv.Scanline, win.mouse.tv.Clock))
-		}
-		imguiSeparator()
-		if imgui.Selectable(fmt.Sprintf("%c Magnify in Window", fonts.MagnifyingGlass)) {
-			win.magnifyWindow.open = true
-			win.magnifyWindow.setClipCenter(win.mouse)
-		}
-		imgui.EndPopup()
-	}
-
-	// draw tool tip
-	if imgui.IsItemHovered() {
-		win.drawReflectionTooltip()
-	}
-
-	// left-mouse button will cause the rewind goto coords to run only when the emulation is paused
-	if imgui.IsWindowFocused() && win.img.dbg.State() == govern.Paused {
-		// handle dragging outside of display boundaries
-		if win.mouseDragging[0] || (imageHovered && imgui.IsMouseClicked(0)) {
-			win.mouseDragging[0] = imgui.IsMouseDown(0)
-
-			current := win.img.cache.TV.GetCoords()
-			to := coords.TelevisionCoords{
-				Frame:    current.Frame,
-				Scanline: win.mouse.tv.Scanline,
-				Clock:    win.mouse.tv.Clock,
-			}
-
-			if !coords.Equal(current, to) {
-				win.img.dbg.GotoCoords(to)
-			}
-		}
-	}
-
-	// move pivot point with middle mouse button. handle dragging outside of display boundaries
-	if win.mouseDragging[2] || (imageHovered && imgui.IsMouseClicked(2)) {
-		win.mouseDragging[2] = imgui.IsMouseDown(2)
-		if win.magnifyWindow.open {
-			win.magnifyWindow.setClipCenter(win.mouse)
-		} else if imgui.IsMouseDoubleClicked(2) {
-			win.magnifyWindow.open = true
-			win.magnifyWindow.setClipCenter(win.mouse)
-		}
-	}
-
-	// pop style info for screen and overlay textures
-	imgui.PopStyleVar()
-	imgui.PopStyleColorV(3)
-
-	// end of screen image
-	imgui.EndChild()
-
-	// start of tool bar
-	win.toolbarHeight = imguiMeasureHeight(func() {
-		// status line
-		imgui.Spacing()
-
-		// imgui.SetCursorPos(imgui.CursorPos().Plus(imgui.Vec2{X: win.imagePadding.X, Y: 0.0}))
-		win.drawCoordsLine()
-
-		// options line
-		imgui.Spacing()
-		imgui.Spacing()
-
-		// tv spec
-		win.drawSpecCombo()
-
-		// scaling indicator
-		imgui.SameLineV(0, 15)
-		imgui.AlignTextToFramePadding()
-		imgui.Text(fmt.Sprintf("%.1fx", win.yscaling))
-
-		// debugging toggles
-		imgui.SameLineV(0, 15)
-		imgui.Checkbox("Debug Colours", &win.elements)
-
-		imgui.SameLineV(0, 15)
-		if imgui.Checkbox("Cropping", &win.cropped) {
-			win.resize()
-		}
-
-		imgui.SameLineV(0, 15)
-		win.drawOverlayCombo()
-		win.drawOverlayComboTooltip()
-
-		if win.img.screen.crit.overlay == reflection.OverlayLabels[reflection.OverlayNone] {
-			imgui.SameLineV(0, 15)
-			imgui.Checkbox("Magnify on hover", &win.magnifyTooltip.showInTooltip)
-			win.img.imguiTooltipSimple(fmt.Sprintf("Show magnification in tooltip\n%c Mouse wheel to adjust zoom", fonts.Mouse))
-		}
-	})
 }
 
 func (win *winDbgScr) drawSpecCombo() {
@@ -477,9 +473,8 @@ func (win *winDbgScr) drawOverlayCombo() {
 		imgui.EndCombo()
 	}
 	imgui.PopItemWidth()
-}
 
-func (win *winDbgScr) drawOverlayComboTooltip() {
+	// draw tooltip for overlay combo
 	switch win.img.screen.crit.overlay {
 	case reflection.OverlayLabels[reflection.OverlayVBLANK_VSYNC]:
 		win.img.imguiTooltip(func() {
@@ -849,7 +844,6 @@ func (win *winDbgScr) render() {
 
 // must be called from with a critical section.
 func (win *winDbgScr) setScaling() {
-
 	// aspectBias transforms the scaling factor for the X axis. in other words,
 	// for width of every pixel is height of every pixel multiplied by the
 	// aspect bias
