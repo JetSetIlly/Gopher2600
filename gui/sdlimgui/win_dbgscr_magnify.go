@@ -83,8 +83,10 @@ type dbgScrMagnifyWindow struct {
 	lastDragPoint dbgScrMousePos
 }
 
-func (mag *dbgScrMagnifyWindow) setClipCenter(centre dbgScrMouse) {
-	mag.centerPoint = centre.scaled
+// setClipCenter includes a bound in outside of which the centre cannot go
+func (mag *dbgScrMagnifyWindow) setClipCenter(centre dbgScrMouse, bound image.Rectangle) {
+	mag.centerPoint.x = max(bound.Min.X, min(centre.scaled.x, bound.Max.X))
+	mag.centerPoint.y = max(bound.Min.Y, min(centre.scaled.y, bound.Max.Y))
 	mag.setClip()
 }
 

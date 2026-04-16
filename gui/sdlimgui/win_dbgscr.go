@@ -231,7 +231,7 @@ func (win *winDbgScr) debuggerDraw() bool {
 			imguiSeparator()
 			if imgui.Selectable(fmt.Sprintf("%c Magnify in Window", fonts.MagnifyingGlass)) {
 				win.magnifyWindow.open = true
-				win.magnifyWindow.setClipCenter(win.mouse)
+				win.magnifyWindow.setClipCenter(win.mouse, win.scr.crit.presentationPixels.Bounds())
 			}
 			imgui.EndPopup()
 		}
@@ -264,10 +264,10 @@ func (win *winDbgScr) debuggerDraw() bool {
 		if win.mouseDragging[2] || (imageHovered && imgui.IsMouseClicked(2)) {
 			win.mouseDragging[2] = imgui.IsMouseDown(2)
 			if win.magnifyWindow.open {
-				win.magnifyWindow.setClipCenter(win.mouse)
+				win.magnifyWindow.setClipCenter(win.mouse, win.scr.crit.presentationPixels.Bounds())
 			} else if imgui.IsMouseDoubleClicked(2) {
 				win.magnifyWindow.open = true
-				win.magnifyWindow.setClipCenter(win.mouse)
+				win.magnifyWindow.setClipCenter(win.mouse, win.scr.crit.presentationPixels.Bounds())
 			}
 		}
 
