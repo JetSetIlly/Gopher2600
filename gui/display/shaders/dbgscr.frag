@@ -72,46 +72,6 @@ void main()
 		}
 	}
 
-	// magnification guide
-	if (MagShow == 1) {
-		float xmin = pixelX * MagXmin;
-		float xmax = pixelX * MagXmax;
-		float ymin = pixelY * MagYmin;
-		float ymax = pixelY * MagYmax;
-
-		// fade out magnified area
-		if (Frag_UV.x > xmin && Frag_UV.x < xmax && Frag_UV.y > ymin && Frag_UV.y < ymax) {
-		 		Out_Color.r += 0.1;
-		 		Out_Color.g += 0.1;
-		 		Out_Color.b += 0.1;
-				Out_Color.a = 0.5;
-		}
-
-		// pixel thickness of dotted outline
-		#define pixelThickness 0.0
-
-		if (pixelThickness > 0.0) {
-			// dotted line around magnification area
-			if (Frag_UV.x > xmin && Frag_UV.x < xmax && (isNearEqual(Frag_UV.y, ymin, pixelY*pixelThickness) || isNearEqual(Frag_UV.y, ymax, pixelY*pixelThickness)) ) {
-				if (mod(floor(gl_FragCoord.x), 8) < 5.0) {
-					Out_Color.r = 0.8;
-					Out_Color.g = 0.8;
-					Out_Color.b = 0.8;
-					Out_Color.a = 1.0;
-				}
-			}
-			if (Frag_UV.y > ymin && Frag_UV.y < ymax && (isNearEqual(Frag_UV.x, xmin, pixelX*pixelThickness) || isNearEqual(Frag_UV.x, xmax, pixelX*pixelThickness))) {
-				if (mod(floor(gl_FragCoord.y), 8) < 5.0) {
-					Out_Color.r = 0.8;
-					Out_Color.g = 0.8;
-					Out_Color.b = 0.8;
-					Out_Color.a = 1.0;
-				}
-			}
-		}
-	}
-
-
 	// painting effect but if the emulation is still on the first line of the TV frame
 	if (ShowCursor == 1) {
 		if ((LastY > 0) || (LastY== 0 && LastX >= 3)) {

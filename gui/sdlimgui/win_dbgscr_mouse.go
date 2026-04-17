@@ -57,13 +57,15 @@ func (m dbgScrMouse) String() string {
 }
 
 func (win *winDbgScr) mouseFromVec2(pos imgui.Vec2) dbgScrMouse {
+	view := &win.view
+
 	mouse := dbgScrMouse{}
 	mouse.pos.x = int(pos.X)
 	mouse.pos.y = int(pos.Y)
 
 	// scaled mouse position coordinates
-	mouse.scaled.x = int(pos.X / win.xscaling)
-	mouse.scaled.y = int(pos.Y / win.yscaling)
+	mouse.scaled.x = int(pos.X / view.xscaling)
+	mouse.scaled.y = int(pos.Y / view.yscaling)
 
 	// corresponding clock and scanline values for scaled mouse coordinates
 	mouse.tv.Clock = mouse.scaled.x
@@ -73,7 +75,7 @@ func (win *winDbgScr) mouseFromVec2(pos imgui.Vec2) dbgScrMouse {
 	mouse.tv.Frame = coords.FrameIsUndefined
 
 	// adjust depending on whether screen is cropped
-	if win.cropped {
+	if view.cropped {
 		mouse.scaled.x += specification.ClksHBlank
 		mouse.scaled.y += win.scr.crit.frameInfo.VisibleTop
 		mouse.tv.Scanline += win.scr.crit.frameInfo.VisibleTop
@@ -97,5 +99,5 @@ func (win *winDbgScr) mouseFromVec2(pos imgui.Vec2) dbgScrMouse {
 }
 
 func (win *winDbgScr) currentMouse() dbgScrMouse {
-	return win.mouseFromVec2(imgui.MousePos().Minus(win.screenOrigin))
+	return win.mouseFromVec2(imgui.MousePos().Minus(win.view.screenOrigin))
 }

@@ -37,11 +37,6 @@ type dbgScrHelper struct {
 	hblank         int32 // uniform
 	visibleTop     int32 // uniform
 	visibleBottom  int32 // uniform
-	magShow        int32 // uniform
-	magXmin        int32 // uniform
-	magXmax        int32 // uniform
-	magYmin        int32 // uniform
-	magYmax        int32 // uniform
 	totalScanlines int32 // uniform
 	topScanline    int32 // uniform
 }
@@ -59,68 +54,36 @@ func (attr *dbgScrHelper) get(sh shading.Base) {
 	attr.topScanline = sh.GetUniformLocation("TopScanline")
 	attr.visibleTop = sh.GetUniformLocation("VisibleTop")
 	attr.visibleBottom = sh.GetUniformLocation("VisibleBottom")
-	attr.magShow = sh.GetUniformLocation("MagShow")
-	attr.magXmin = sh.GetUniformLocation("MagXmin")
-	attr.magXmax = sh.GetUniformLocation("MagXmax")
-	attr.magYmin = sh.GetUniformLocation("MagYmin")
-	attr.magYmax = sh.GetUniformLocation("MagYmax")
 }
 
-func (attr *dbgScrHelper) set(img *SdlImgui) {
-	// dimensions of screen
-	width := img.wm.dbgScr.scaledWidth
-	height := img.wm.dbgScr.scaledHeight
-
-	// scaling of screen
-	yscaling := img.wm.dbgScr.yscaling
-	xscaling := img.wm.dbgScr.xscaling
-
+func (attr *dbgScrHelper) set(img *SdlImgui, view *winDbgScrView) {
 	// critical section
 	img.screen.crit.section.Lock()
 
-	gl.Uniform1f(attr.scalingX, img.wm.dbgScr.xscaling)
-	gl.Uniform1f(attr.scalingY, img.wm.dbgScr.yscaling)
-	gl.Uniform2f(attr.screenDim, width, height)
+	gl.Uniform1f(attr.scalingX, view.xscaling)
+	gl.Uniform1f(attr.scalingY, view.yscaling)
+	gl.Uniform2f(attr.screenDim, view.scaledWidth, view.scaledHeight)
 
 	// cursor is the coordinates of the *most recent* pixel to be drawn
 	cursorX := img.screen.crit.lastX
 	cursorY := img.screen.crit.lastY
 
 	// if crt preview is enabled then force cropping
-	if img.wm.dbgScr.cropped {
-		gl.Uniform1f(attr.lastX, float32(cursorX-specification.ClksHBlank)*xscaling)
+	if view.cropped {
+		gl.Uniform1f(attr.lastX, float32(cursorX-specification.ClksHBlank)*view.xscaling)
 		gl.Uniform1i(attr.isCropped, shading.BoolToInt32(true))
 	} else {
-		gl.Uniform1f(attr.lastX, float32(cursorX)*xscaling)
+		gl.Uniform1f(attr.lastX, float32(cursorX)*view.xscaling)
 		gl.Uniform1i(attr.isCropped, shading.BoolToInt32(false))
 	}
-	gl.Uniform1f(attr.lastY, float32(cursorY)*yscaling)
+	gl.Uniform1f(attr.lastY, float32(cursorY)*view.yscaling)
 
 	// screen geometry
-	gl.Uniform1f(attr.hblank, (specification.ClksHBlank)*xscaling)
-	gl.Uniform1f(attr.visibleTop, float32(img.screen.crit.frameInfo.VisibleTop)*yscaling)
-	gl.Uniform1f(attr.visibleBottom, float32(img.screen.crit.frameInfo.VisibleBottom)*yscaling)
-	gl.Uniform1f(attr.totalScanlines, float32(img.screen.crit.frameInfo.TotalScanlines)*yscaling)
-	gl.Uniform1f(attr.topScanline, float32(img.screen.crit.frameInfo.TopScanline)*yscaling)
-
-	// window magnification
-	var magXmin, magYmin, magXmax, magYmax float32
-	if img.wm.dbgScr.cropped {
-		magXmin = float32(img.wm.dbgScr.magnifyWindow.clip.Min.X-specification.ClksHBlank) * xscaling
-		magYmin = float32(img.wm.dbgScr.magnifyWindow.clip.Min.Y-img.screen.crit.frameInfo.VisibleTop) * yscaling
-		magXmax = float32(img.wm.dbgScr.magnifyWindow.clip.Max.X-specification.ClksHBlank) * xscaling
-		magYmax = float32(img.wm.dbgScr.magnifyWindow.clip.Max.Y-img.screen.crit.frameInfo.VisibleTop) * yscaling
-	} else {
-		magXmin = float32(img.wm.dbgScr.magnifyWindow.clip.Min.X) * xscaling
-		magYmin = float32(img.wm.dbgScr.magnifyWindow.clip.Min.Y) * yscaling
-		magXmax = float32(img.wm.dbgScr.magnifyWindow.clip.Max.X) * xscaling
-		magYmax = float32(img.wm.dbgScr.magnifyWindow.clip.Max.Y) * yscaling
-	}
-	gl.Uniform1i(attr.magShow, shading.BoolToInt32(img.wm.dbgScr.magnifyWindow.open))
-	gl.Uniform1f(attr.magXmin, magXmin)
-	gl.Uniform1f(attr.magYmin, magYmin)
-	gl.Uniform1f(attr.magXmax, magXmax)
-	gl.Uniform1f(attr.magYmax, magYmax)
+	gl.Uniform1f(attr.hblank, (specification.ClksHBlank)*view.xscaling)
+	gl.Uniform1f(attr.visibleTop, float32(img.screen.crit.frameInfo.VisibleTop)*view.yscaling)
+	gl.Uniform1f(attr.visibleBottom, float32(img.screen.crit.frameInfo.VisibleBottom)*view.yscaling)
+	gl.Uniform1f(attr.totalScanlines, float32(img.screen.crit.frameInfo.TotalScanlines)*view.yscaling)
+	gl.Uniform1f(attr.topScanline, float32(img.screen.crit.frameInfo.TopScanline)*view.yscaling)
 
 	img.screen.crit.section.Unlock()
 	// end of critical section
@@ -166,30 +129,26 @@ func (sh *dbgScrShader) Destroy() {
 }
 
 func (sh *dbgScrShader) SetAttributes(env shading.Environment) {
-	env.Width = int32(sh.img.wm.dbgScr.scaledWidth)
-	env.Height = int32(sh.img.wm.dbgScr.scaledHeight)
+	view := env.Config.(*winDbgScrView)
 
-	if sh.img.wm.dbgScr.elements {
-		env.TextureID = sh.img.wm.dbgScr.elementsTexture.getID()
-	} else {
-		env.TextureID = sh.img.wm.dbgScr.displayTexture.getID()
-	}
+	env.Width = int32(view.scaledWidth)
+	env.Height = int32(view.scaledHeight)
 
-	gl.Viewport(-int32(sh.img.wm.dbgScr.screenOrigin.X),
-		-int32(sh.img.wm.dbgScr.screenOrigin.Y),
-		env.Width+int32(sh.img.wm.dbgScr.screenOrigin.X),
-		env.Height+int32(sh.img.wm.dbgScr.screenOrigin.Y),
+	gl.Viewport(-int32(view.screenOrigin.X),
+		-int32(view.screenOrigin.Y),
+		env.Width+int32(view.screenOrigin.X),
+		env.Height+int32(view.screenOrigin.Y),
 	)
-	gl.Scissor(-int32(sh.img.wm.dbgScr.screenOrigin.X),
-		-int32(sh.img.wm.dbgScr.screenOrigin.Y),
-		env.Width+int32(sh.img.wm.dbgScr.screenOrigin.X),
-		env.Height+int32(sh.img.wm.dbgScr.screenOrigin.Y),
+	gl.Scissor(-int32(view.screenOrigin.X),
+		-int32(view.screenOrigin.Y),
+		env.Width+int32(view.screenOrigin.X),
+		env.Height+int32(view.screenOrigin.Y),
 	)
 
 	projMtx := env.ProjMtx
 	env.ProjMtx = [4][4]float32{
-		{2.0 / (sh.img.wm.dbgScr.scaledWidth + sh.img.wm.dbgScr.screenOrigin.X), 0.0, 0.0, 0.0},
-		{0.0, -2.0 / (sh.img.wm.dbgScr.scaledHeight + sh.img.wm.dbgScr.screenOrigin.Y), 0.0, 0.0},
+		{2.0 / (view.scaledWidth + view.screenOrigin.X), 0.0, 0.0, 0.0},
+		{0.0, -2.0 / (view.scaledHeight + view.screenOrigin.Y), 0.0, 0.0},
 		{0.0, 0.0, -1.0, 0.0},
 		{-1.0, 1.0, 0.0, 1.0},
 	}
@@ -203,7 +162,7 @@ func (sh *dbgScrShader) SetAttributes(env shading.Environment) {
 
 	env.TextureID = sh.sequence.Process(func() {
 		sh.Base.SetAttributes(env)
-		sh.dbgScrHelper.set(sh.img)
+		sh.dbgScrHelper.set(sh.img, view)
 		env.Draw()
 	})
 	env.FlipY = false
@@ -231,6 +190,7 @@ func newDbgScrOverlayShader(img *SdlImgui) shading.Program {
 }
 
 func (sh *dbgScrOverlayShader) SetAttributes(env shading.Environment) {
+	view := env.Config.(*winDbgScrView)
 	sh.Base.SetAttributes(env)
-	sh.dbgScrHelper.set(sh.img)
+	sh.dbgScrHelper.set(sh.img, view)
 }

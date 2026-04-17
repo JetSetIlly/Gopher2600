@@ -14,12 +14,6 @@ uniform float TopScanline;
 uniform float VisibleTop;
 uniform float VisibleBottom;
 
-uniform int MagShow;
-uniform float MagXmin; 
-uniform float MagXmax; 
-uniform float MagYmin; 
-uniform float MagYmax; 
-
 // value of one pixel
 float pixelX;
 float pixelY;

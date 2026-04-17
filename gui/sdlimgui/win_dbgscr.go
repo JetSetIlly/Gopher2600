@@ -34,6 +34,20 @@ import (
 
 const winDbgScrID = "TV Screen"
 
+type winDbgScrView struct {
+	// origin (position) of image on the screen
+	screenOrigin imgui.Vec2
+
+	// scaling of texture and calculated dimensions
+	xscaling     float32
+	yscaling     float32
+	scaledWidth  float32
+	scaledHeight float32
+
+	// whether the HBLANK/VBLANK areas are cropped
+	cropped bool
+}
+
 type winDbgScr struct {
 	debuggerWin
 
@@ -42,14 +56,16 @@ type winDbgScr struct {
 	// reference to screen data
 	scr *screen
 
+	// view is required by the dbgscr shader
+	view winDbgScrView
+
 	// textures
-	displayTexture  texture
+	displayTeture   texture
 	elementsTexture texture
 	overlayTexture  texture
 
-	// how to present the screen in the window
+	// whether to use debug colours for the screen
 	elements bool
-	cropped  bool
 
 	// the tv screen has captured mouse input
 	isCaptured bool
@@ -67,16 +83,8 @@ type winDbgScr struct {
 	// additional padding for the image so that it is centred in its content space
 	imagePadding imgui.Vec2
 
-	// size of area available to the screen image and origin (position) of
-	// image on the screen
+	// size of area available to the screen image
 	screenRegion imgui.Vec2
-	screenOrigin imgui.Vec2
-
-	// scaling of texture and calculated dimensions
-	xscaling     float32
-	yscaling     float32
-	scaledWidth  float32
-	scaledHeight float32
 
 	// the dimensions required for the combo widgets
 	specComboDim    imgui.Vec2
@@ -95,9 +103,11 @@ type winDbgScr struct {
 
 func newWinDbgScr(img *SdlImgui) (window, error) {
 	win := &winDbgScr{
-		img:     img,
-		scr:     img.screen,
-		cropped: true,
+		img: img,
+		scr: img.screen,
+		view: winDbgScrView{
+			cropped: true,
+		},
 		magnifyTooltip: dbgScrMagnifyTooltip{
 			zoom: magnifyDef,
 		},
@@ -108,9 +118,9 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	win.debuggerGeom.noFocusTracking = true
 
 	// set texture, creation of textures will be done after every call to resize()
-	win.displayTexture = img.rnd.addTexture(shaderDbgScr, true, true, nil)
-	win.overlayTexture = img.rnd.addTexture(shaderDbgScrOverlay, false, false, nil)
-	win.elementsTexture = img.rnd.addTexture(shaderDbgScr, true, true, nil)
+	win.displayTeture = img.rnd.addTexture(shaderDbgScr, true, true, &win.view)
+	win.elementsTexture = img.rnd.addTexture(shaderDbgScr, true, true, &win.view)
+	win.overlayTexture = img.rnd.addTexture(shaderDbgScrOverlay, false, false, &win.view)
 	win.magnifyTooltip.texture = img.rnd.addTexture(shaderColor, false, false, nil)
 	win.magnifyWindow.texture = img.rnd.addTexture(shaderColor, false, false, nil)
 
@@ -172,7 +182,7 @@ func (win *winDbgScr) debuggerDraw() bool {
 
 		// note the current cursor position. we'll use this to everything to the
 		// corner of the screen.
-		win.screenOrigin = imgui.CursorScreenPos()
+		win.view.screenOrigin = imgui.CursorScreenPos()
 
 		// get mouse position if context menu is not open
 		if !imgui.IsPopupOpen(contextMenu) {
@@ -191,9 +201,9 @@ func (win *winDbgScr) debuggerDraw() bool {
 		imgui.PushStyleColor(imgui.StyleColorDragDropTarget, win.img.cols.Transparent)
 
 		if win.elements {
-			imgui.ImageButton("elements", imgui.TextureID(win.elementsTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
+			imgui.ImageButton("elements", imgui.TextureID(win.elementsTexture.getID()), imgui.Vec2{X: win.view.scaledWidth, Y: win.view.scaledHeight})
 		} else {
-			imgui.ImageButton("display", imgui.TextureID(win.displayTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
+			imgui.ImageButton("display", imgui.TextureID(win.displayTeture.getID()), imgui.Vec2{X: win.view.scaledWidth, Y: win.view.scaledHeight})
 		}
 
 		win.mouseHover = imgui.IsItemHovered()
@@ -204,8 +214,8 @@ func (win *winDbgScr) debuggerDraw() bool {
 		imageHovered := imgui.IsItemHovered()
 
 		// overlay texture on top of screen texture
-		imgui.SetCursorScreenPos(win.screenOrigin)
-		imgui.ImageButton("overlay", imgui.TextureID(win.overlayTexture.getID()), imgui.Vec2{X: win.scaledWidth, Y: win.scaledHeight})
+		imgui.SetCursorScreenPos(win.view.screenOrigin)
+		imgui.ImageButton("overlay", imgui.TextureID(win.overlayTexture.getID()), imgui.Vec2{X: win.view.scaledWidth, Y: win.view.scaledHeight})
 
 		// popup menu on right mouse button
 		//
@@ -296,14 +306,14 @@ func (win *winDbgScr) debuggerDraw() bool {
 			// scaling indicator
 			imgui.SameLineV(0, 15)
 			imgui.AlignTextToFramePadding()
-			imgui.Text(fmt.Sprintf("%.1fx", win.yscaling))
+			imgui.Text(fmt.Sprintf("%.1fx", win.view.yscaling))
 
 			// debugging toggles
 			imgui.SameLineV(0, 15)
 			imgui.Checkbox("Debug Colours", &win.elements)
 
 			imgui.SameLineV(0, 15)
-			if imgui.Checkbox("Cropping", &win.cropped) {
+			if imgui.Checkbox("Cropping", &win.view.cropped) {
 				win.resize()
 			}
 
@@ -743,7 +753,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 
 // resize() implements the textureRenderer interface.
 func (win *winDbgScr) resize() {
-	win.displayTexture.markForCreation()
+	win.displayTeture.markForCreation()
 	win.elementsTexture.markForCreation()
 	win.overlayTexture.markForCreation()
 
@@ -761,12 +771,12 @@ func (win *winDbgScr) updateRefreshRate() {
 // render is called by service loop (via screen.render()). must be inside
 // screen critical section.
 func (win *winDbgScr) render() {
-	if win.cropped {
-		win.displayTexture.render(win.scr.crit.cropPixels)
+	if win.view.cropped {
+		win.displayTeture.render(win.scr.crit.cropPixels)
 		win.elementsTexture.render(win.scr.crit.cropElementPixels)
 		win.overlayTexture.render(win.scr.crit.cropOverlayPixels)
 	} else {
-		win.displayTexture.render(win.scr.crit.presentationPixels)
+		win.displayTeture.render(win.scr.crit.presentationPixels)
 		win.elementsTexture.render(win.scr.crit.elementPixels)
 		win.overlayTexture.render(win.scr.crit.overlayPixels)
 	}
@@ -852,7 +862,7 @@ func (win *winDbgScr) setScaling() {
 	var w float32
 	var h float32
 
-	if win.cropped {
+	if win.view.cropped {
 		w = float32(win.scr.crit.cropPixels.Bounds().Size().X)
 		h = float32(win.scr.crit.cropPixels.Bounds().Size().Y)
 	} else {
@@ -884,10 +894,10 @@ func (win *winDbgScr) setScaling() {
 		Y: float32(int((win.screenRegion.Y - (h * scaling)) / 2)),
 	}
 
-	win.yscaling = scaling
-	win.xscaling = scaling * pixelWidth * float32(aspectBias)
-	win.scaledWidth = w * win.xscaling
-	win.scaledHeight = h * win.yscaling
+	win.view.yscaling = scaling
+	win.view.xscaling = scaling * pixelWidth * float32(aspectBias)
+	win.view.scaledWidth = w * win.view.xscaling
+	win.view.scaledHeight = h * win.view.yscaling
 
 	// get numscanlines while we're in critical section
 	win.numScanlines = win.scr.crit.frameInfo.VisibleBottom - win.scr.crit.frameInfo.VisibleTop
