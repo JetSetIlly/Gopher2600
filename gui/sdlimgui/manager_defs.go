@@ -49,7 +49,7 @@ var windowDefs = [...]windowDef{
 	{create: newWinCPU, menu: menuEntry{group: menuVCS}, defaultOpen: true},
 	{create: newWinDisasm, menu: menuEntry{group: menuVCS}, defaultOpen: true},
 	{create: func(img *SdlImgui) (window, error) {
-		return newWinDbgScr(img, winDbgScrNormal)
+		return newWinDbgScr(img, winDbgScrNormal, nil)
 	}, menu: menuEntry{group: menuVCS}, defaultOpen: true},
 	{create: newWinRAM, menu: menuEntry{group: menuVCS}, defaultOpen: true},
 	{create: newWinPeripherals, menu: menuEntry{group: menuVCS}},

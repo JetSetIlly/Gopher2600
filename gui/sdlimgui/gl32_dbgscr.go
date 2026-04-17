@@ -35,10 +35,12 @@ type dbgScrHelper struct {
 	lastX          int32 // uniform
 	lastY          int32 // uniform
 	hblank         int32 // uniform
-	visibleTop     int32 // uniform
-	visibleBottom  int32 // uniform
 	totalScanlines int32 // uniform
 	topScanline    int32 // uniform
+	visibleTop     int32 // uniform
+	visibleBottom  int32 // uniform
+	zoom           int32 // uniform
+	pivot          int32 // uniform
 }
 
 func (attr *dbgScrHelper) get(sh shading.Base) {
@@ -54,6 +56,8 @@ func (attr *dbgScrHelper) get(sh shading.Base) {
 	attr.topScanline = sh.GetUniformLocation("TopScanline")
 	attr.visibleTop = sh.GetUniformLocation("VisibleTop")
 	attr.visibleBottom = sh.GetUniformLocation("VisibleBottom")
+	attr.zoom = sh.GetUniformLocation("Zoom")
+	attr.pivot = sh.GetUniformLocation("Pivot")
 }
 
 func (attr *dbgScrHelper) set(img *SdlImgui, view *winDbgScrView) {
@@ -84,6 +88,10 @@ func (attr *dbgScrHelper) set(img *SdlImgui, view *winDbgScrView) {
 	gl.Uniform1f(attr.visibleBottom, float32(img.screen.crit.frameInfo.VisibleBottom)*view.yscaling)
 	gl.Uniform1f(attr.totalScanlines, float32(img.screen.crit.frameInfo.TotalScanlines)*view.yscaling)
 	gl.Uniform1f(attr.topScanline, float32(img.screen.crit.frameInfo.TopScanline)*view.yscaling)
+
+	// zoom and pivot
+	gl.Uniform1f(attr.zoom, view.scaledZoom())
+	gl.Uniform2f(attr.pivot, view.pivot.X, view.pivot.Y)
 
 	img.screen.crit.section.Unlock()
 	// end of critical section

@@ -45,6 +45,11 @@ const (
 	winDbgScrTooltip
 )
 
+const (
+	minWinDbgScrZoom = 1.25
+	maxWinDbgScrZoom = 2.5
+)
+
 type winDbgScrView struct {
 	mode winDbgScrMode
 
@@ -59,6 +64,40 @@ type winDbgScrView struct {
 
 	// whether the HBLANK/VBLANK areas are cropped
 	cropped bool
+
+	// zoom and pivot control how much the view is magnified and on which point the magnification is centered
+	//
+	// the amount of visual zoom should be controlled by the amount of scaling of the parent. in
+	// which case, the correct value to use is very often returned by the scaledZoom() function,
+	// rather than the raw value of the zoom field
+	//
+	// after changing the pivot value it is good practice to normalise the value with normalisePivot()
+	zoom  float32
+	pivot imgui.Vec2
+
+	// the view of the parent instance of winDbgScr
+	parent parentWinDbgScrView
+}
+
+type parentWinDbgScrView interface {
+	scaling() float32
+}
+
+// after changing the pivot value it is good practice to normalise the value with normalisePivot()
+func (v *winDbgScrView) normalisePivot() {
+	v.pivot.X = min(max(v.pivot.X, 0.0), 1.0)
+	v.pivot.Y = min(max(v.pivot.Y, 0.0), 1.0)
+}
+
+func (v winDbgScrView) scaling() float32 {
+	return v.yscaling
+}
+
+func (v winDbgScrView) scaledZoom() float32 {
+	if v.parent == nil {
+		return v.zoom
+	}
+	return v.parent.scaling() * v.zoom
 }
 
 type winDbgScr struct {
@@ -83,9 +122,11 @@ type winDbgScr struct {
 	// the tv screen has captured mouse input
 	isCaptured bool
 
-	// the current position of the actual mouse (not reliable after the frame it
-	// was captured on)
+	// the current position of the actual mouse (not reliable after the frame it was captured on)
 	mouse dbgScrMouse
+
+	// the mouse details on the last frame. used to help dragging
+	mouseLastFrame dbgScrMouse
 
 	// whether the mouse buttom (numbered 0=left, 1=right, 2=middle) is being held from last frame
 	mouseDragging [3]bool
@@ -114,21 +155,27 @@ type winDbgScr struct {
 	showMagnifyInTooltip bool
 }
 
-func newWinDbgScr(img *SdlImgui, mode winDbgScrMode) (*winDbgScr, error) {
+func newWinDbgScr(img *SdlImgui, mode winDbgScrMode, parent *winDbgScr) (*winDbgScr, error) {
 	win := &winDbgScr{
 		img: img,
 		scr: img.screen,
 		view: winDbgScrView{
 			mode:    mode,
 			cropped: true,
+			zoom:    1.0,
+			pivot:   imgui.Vec2{X: 0.5, Y: 0.5},
 		},
 	}
 	win.debuggerGeom.noFocusTracking = true
 
+	if parent != nil {
+		win.view.parent = &parent.view
+	}
+
 	// set texture, creation of textures will be done after every call to resize()
 	win.displayTeture = img.rnd.addTexture(shaderDbgScr, true, true, &win.view)
 	win.elementsTexture = img.rnd.addTexture(shaderDbgScr, true, true, &win.view)
-	win.overlayTexture = img.rnd.addTexture(shaderDbgScrOverlay, false, false, &win.view)
+	win.overlayTexture = img.rnd.addTexture(shaderDbgScrOverlay, false, true, &win.view)
 
 	// call setScaling() now so that render() has something to work with - even
 	// though setScaling() is called every draw if the window is open it will
@@ -138,16 +185,21 @@ func newWinDbgScr(img *SdlImgui, mode winDbgScrMode) (*winDbgScr, error) {
 	// create magnify window if this is a normal mode winDbgScr
 	if win.view.mode == winDbgScrNormal {
 		var err error
-		win.magnifyWindow, err = newWinDbgScr(img, winDbgScrMagnify)
+		win.magnifyWindow, err = newWinDbgScr(img, winDbgScrMagnify, win)
 		if err != nil {
 			return nil, err
 		}
 	}
 
+	// set minZoom for non-normal winDbgScr
+	if win.view.mode != winDbgScrNormal {
+		win.view.zoom = minWinDbgScrZoom
+	}
+
 	// create magnify tooltip for all modes except a tooltip
 	if win.view.mode != winDbgScrTooltip {
 		var err error
-		win.magnifyTooltip, err = newWinDbgScr(img, winDbgScrTooltip)
+		win.magnifyTooltip, err = newWinDbgScr(img, winDbgScrTooltip, win)
 		if err != nil {
 			return nil, err
 		}
@@ -236,6 +288,14 @@ func (win *winDbgScr) debuggerDraw() bool {
 		// get mouse position if context menu is not open
 		if !imgui.IsPopupOpen(contextMenu) {
 			win.mouse = currentDbgScrMouse(win.scr, win.view)
+			defer func() {
+				win.mouseLastFrame = win.mouse
+			}()
+		}
+
+		// change pivot of tooltip magnification
+		if win.magnifyTooltip != nil && win.showMagnifyInTooltip {
+			win.magnifyTooltip.view.pivot = win.mouse.pivot(win.view)
 		}
 
 		// popup menu on right mouse button
@@ -264,16 +324,25 @@ func (win *winDbgScr) debuggerDraw() bool {
 				if imgui.Selectable(fmt.Sprintf("%c Magnify in Window", fonts.MagnifyingGlass)) {
 					if win.magnifyWindow != nil {
 						win.magnifyWindow.debuggerSetOpen(true)
-						// win.magnifyWindow.setClipCenter(win.mouse, win.scr.crit.presentationPixels.Bounds())
+						win.magnifyWindow.view.pivot = win.mouse.pivot(win.view)
 					}
 				}
 			}
 			imgui.EndPopup()
 		}
 
-		// draw tool tip
-		if imgui.IsItemHovered() {
-			win.drawReflectionTooltip()
+		// change zoom level with mouse wheel
+		if imageHovered {
+			_, delta := imgui.CurrentIO().MouseWheel()
+			if win.view.mode == winDbgScrMagnify {
+				if delta != 0 {
+					win.view.zoom = min(maxWinDbgScrZoom, max(win.view.zoom+(delta/3), minWinDbgScrZoom))
+				}
+			}
+			if win.magnifyTooltip != nil {
+				win.magnifyTooltip.view.zoom = min(maxWinDbgScrZoom,
+					max(win.magnifyTooltip.view.zoom+(delta/3), minWinDbgScrZoom))
+			}
 		}
 
 		// left-mouse button will cause the rewind goto coords to run only when the emulation is paused
@@ -298,10 +367,28 @@ func (win *winDbgScr) debuggerDraw() bool {
 		// move pivot point with middle mouse button. handle dragging outside of display boundaries
 		if win.mouseDragging[2] || (imageHovered && imgui.IsMouseClicked(2)) {
 			win.mouseDragging[2] = imgui.IsMouseDown(2)
-			if win.magnifyWindow != nil {
+
+			// if window allows magnification and is not zoomable itself, then open the
+			// magnification window centered on the mouse
+			if win.view.mode == winDbgScrNormal {
 				win.magnifyWindow.debuggerSetOpen(true)
-				// win.magnifyWindow.setClipCenter(win.mouse, win.scr.crit.presentationPixels.Bounds())
+				win.magnifyWindow.view.pivot = win.mouse.pivot(win.view)
+				win.magnifyWindow.view.normalisePivot()
 			}
+
+			// for windows that are actually zoomed movement is relative to the current pivot position
+			if win.view.zoom > 1.0 {
+				x := (win.mouseLastFrame.pos.x - win.mouse.pos.x)
+				y := (win.mouseLastFrame.pos.y - win.mouse.pos.y)
+				win.view.pivot.X -= float32(x) / win.view.scaledWidth
+				win.view.pivot.Y -= float32(y) / win.view.scaledHeight
+				win.view.normalisePivot()
+			}
+		}
+
+		// draw reflection tooltip if no mouse is being pressed
+		if imageHovered && !imgui.IsAnyMouseDown() {
+			win.drawReflectionTooltip()
 		}
 
 		// end of screen image
@@ -353,11 +440,9 @@ func (win *winDbgScr) debuggerDraw() bool {
 				imgui.SameLineV(0, 15)
 				win.drawOverlayCombo()
 
-				if win.img.screen.crit.overlay == reflection.OverlayLabels[reflection.OverlayNone] {
-					imgui.SameLineV(0, 15)
-					if imgui.Checkbox("Magnify on hover", &win.showMagnifyInTooltip) {
-						win.magnifyTooltip.debuggerSetOpen(win.showMagnifyInTooltip)
-					}
+				imgui.SameLineV(0, 15)
+				if imgui.Checkbox("Magnify on hover", &win.showMagnifyInTooltip) {
+					win.magnifyTooltip.debuggerSetOpen(win.showMagnifyInTooltip)
 				}
 			})
 		}
@@ -374,17 +459,14 @@ func (win *winDbgScr) drawView() bool {
 	// corner of the screen.
 	win.view.screenOrigin = imgui.CursorScreenPos()
 
-	// push style info for screen and overlay ImageButton(). we're using
-	// ImageButton because an Image will not capture mouse events and pass them
-	// to the parent window. this means that a click-drag on the screen/overlay
-	// will move the window, which we don't want.
+	// push style info for screen and overlay ImageButton(). we're using ImageButton because an
+	// Image will not capture mouse events and pass them to the parent window
 	imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{X: 0.0, Y: 0.0})
-
-	defer imgui.PopStyleVar()
 	defer imgui.PopStyleColorV(3)
+	defer imgui.PopStyleVar()
 
 	var textureID uint32
 	if win.elements {
@@ -618,6 +700,12 @@ func (win *winDbgScr) drawReflectionTooltip() {
 
 	e := win.img.dbg.Disasm.FormatResultAdHoc(ref.Bank, ref.CPU)
 
+	// magnification in tooltip
+	imguiTooltip(func() {
+		win.magnifyTooltip.debuggerDraw()
+		imguiSeparator()
+	}, false, win.showMagnifyInTooltip)
+
 	win.img.imguiTooltip(func() {
 		imgui.Text(fmt.Sprintf("Scanline: %d", win.mouse.tv.Scanline))
 		imgui.Text(fmt.Sprintf("Clock: %d", win.mouse.tv.Clock))
@@ -799,18 +887,6 @@ func (win *winDbgScr) drawReflectionTooltip() {
 			win.img.wm.windows[winPXEColoursID].(*winPXEColours).setArrow(sref.PXEPaletteAddr)
 		}
 	}, false)
-
-	// the magnify tooltip needs to appear before anything else and we only
-	// want to draw it if there is no overlay and there is an instruction
-	// behind the pixel
-	if e.Address != "" && win.scr.crit.overlay == reflection.OverlayLabels[reflection.OverlayNone] {
-		// we also want to show it regardless of the global tooltip preference
-		// if the magnify show tooltip field is true
-		imguiTooltip(func() {
-			imguiSeparator()
-			win.magnifyTooltip.debuggerDraw()
-		}, false, win.showMagnifyInTooltip)
-	}
 }
 
 // resize() implements the textureRenderer interface.
@@ -917,4 +993,8 @@ func (win *winDbgScr) setScaling() {
 
 	// get numscanlines while we're in critical section
 	win.numScanlines = win.scr.crit.frameInfo.VisibleBottom - win.scr.crit.frameInfo.VisibleTop
+}
+
+func (win *winDbgScr) scaling() float32 {
+	return win.view.yscaling
 }

@@ -56,6 +56,14 @@ func (m dbgScrMouse) String() string {
 	return m.tv.String()
 }
 
+// pivot returns UV position of the mouse
+func (m dbgScrMouse) pivot(v winDbgScrView) imgui.Vec2 {
+	return imgui.Vec2{
+		X: float32(m.pos.x) / v.scaledWidth,
+		Y: float32(m.pos.y) / v.scaledHeight,
+	}
+}
+
 func currentDbgScrMouse(scr *screen, view winDbgScrView) dbgScrMouse {
 	pos := imgui.MousePos().Minus(view.screenOrigin)
 
@@ -63,9 +71,21 @@ func currentDbgScrMouse(scr *screen, view winDbgScrView) dbgScrMouse {
 	mouse.pos.x = int(pos.X)
 	mouse.pos.y = int(pos.Y)
 
+	// convert to UV
+	u := pos.X / view.scaledWidth
+	v := pos.Y / view.scaledHeight
+
+	// zoom UV (pivot is in UV space already)
+	u = view.pivot.X + (u-view.pivot.X)/view.scaledZoom()
+	v = view.pivot.Y + (v-view.pivot.Y)/view.scaledZoom()
+
+	// convert from UV back to pixels
+	x := u * view.scaledWidth
+	y := v * view.scaledHeight
+
 	// scaled mouse position coordinates
-	mouse.scaled.x = int(pos.X / view.xscaling)
-	mouse.scaled.y = int(pos.Y / view.yscaling)
+	mouse.scaled.x = int(x / view.xscaling)
+	mouse.scaled.y = int(y / view.yscaling)
 
 	// corresponding clock and scanline values for scaled mouse coordinates
 	mouse.tv.Clock = mouse.scaled.x
