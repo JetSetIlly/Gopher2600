@@ -48,7 +48,9 @@ var windowDefs = [...]windowDef{
 	{create: newWinControl, menu: menuEntry{group: menuVCS}, defaultOpen: true},
 	{create: newWinCPU, menu: menuEntry{group: menuVCS}, defaultOpen: true},
 	{create: newWinDisasm, menu: menuEntry{group: menuVCS}, defaultOpen: true},
-	{create: newWinDbgScr, menu: menuEntry{group: menuVCS}, defaultOpen: true},
+	{create: func(img *SdlImgui) (window, error) {
+		return newWinDbgScr(img, winDbgScrNormal)
+	}, menu: menuEntry{group: menuVCS}, defaultOpen: true},
 	{create: newWinRAM, menu: menuEntry{group: menuVCS}, defaultOpen: true},
 	{create: newWinPeripherals, menu: menuEntry{group: menuVCS}},
 	{create: newWinPorts, menu: menuEntry{group: menuVCS}},

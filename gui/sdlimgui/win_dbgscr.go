@@ -32,9 +32,23 @@ import (
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
-const winDbgScrID = "TV Screen"
+const (
+	winDbgScrID        = "TV Screen"
+	winDbgScrMagnifyID = "TV Screen Magnify"
+	winDbgScrTooltipID = "##tvscreentooltip"
+)
+
+type winDbgScrMode int
+
+const (
+	winDbgScrNormal winDbgScrMode = iota
+	winDbgScrMagnify
+	winDbgScrTooltip
+)
 
 type winDbgScrView struct {
+	mode winDbgScrMode
+
 	// origin (position) of image on the screen
 	screenOrigin imgui.Vec2
 
@@ -101,11 +115,12 @@ type winDbgScr struct {
 	mouseHover bool
 }
 
-func newWinDbgScr(img *SdlImgui) (window, error) {
+func newWinDbgScr(img *SdlImgui, mode winDbgScrMode) (*winDbgScr, error) {
 	win := &winDbgScr{
 		img: img,
 		scr: img.screen,
 		view: winDbgScrView{
+			mode:    mode,
 			cropped: true,
 		},
 		magnifyTooltip: dbgScrMagnifyTooltip{
@@ -138,7 +153,15 @@ func (win *winDbgScr) init() {
 }
 
 func (win *winDbgScr) id() string {
-	return winDbgScrID
+	switch win.view.mode {
+	case winDbgScrNormal:
+		return winDbgScrID
+	case winDbgScrMagnify:
+		return winDbgScrMagnifyID
+	case winDbgScrTooltip:
+		return winDbgScrTooltipID
+	}
+	panic("unknown winDbgScr mode")
 }
 
 const contextMenu = "dbgScreenContextMenu"
