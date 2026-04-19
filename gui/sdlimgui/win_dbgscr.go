@@ -391,8 +391,13 @@ func (win *winDbgScr) debuggerDraw() bool {
 		}
 
 		// toolbar at bottom of window
-		if win.view.mode == winDbgScrNormal {
-			win.toolbarHeight = imguiMeasureHeight(func() {
+		win.toolbarHeight = imguiMeasureHeight(func() {
+			switch win.view.mode {
+			case winDbgScrMagnify:
+				imgui.Spacing()
+				imgui.Textf("TV screen window magnified by %.0f%%", ((win.view.zoom*win.view.yscaling)-1.0)*100)
+
+			case winDbgScrNormal:
 				// status line
 				imgui.Spacing()
 				win.drawCoordsLine()
@@ -438,8 +443,8 @@ func (win *winDbgScr) debuggerDraw() bool {
 				if imgui.Checkbox("Magnify on hover", &win.showMagnifyInTooltip) {
 					win.magnifyTooltip.debuggerSetOpen(win.showMagnifyInTooltip)
 				}
-			})
-		}
+			}
+		})
 	}
 
 	win.debuggerGeom.update()
