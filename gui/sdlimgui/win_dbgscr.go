@@ -268,13 +268,12 @@ func (win *winDbgScr) debuggerDraw() bool {
 	imgui.SetNextWindowSizeV(imgui.Vec2{X: 637, Y: 431}, imgui.ConditionFirstUseEver)
 
 	// we don't want to ever show scrollbars
-	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNoScrollbar) {
+	flgs := imgui.WindowFlagsNoScrollbar | imgui.WindowFlagsNoScrollWithMouse
+
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, flgs) {
 		// note size of remaining window and content area
 		win.screenRegion = imgui.ContentRegionAvail()
 		win.screenRegion.Y -= win.toolbarHeight
-
-		// screen image, overlays, menus and tooltips
-		imgui.BeginChildV("##image", imgui.Vec2{X: win.screenRegion.X, Y: win.screenRegion.Y}, false, imgui.ChildFlagsNone)
 
 		// add horiz/vert padding around screen image
 		imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
@@ -391,16 +390,11 @@ func (win *winDbgScr) debuggerDraw() bool {
 			win.drawReflectionTooltip()
 		}
 
-		// end of screen image
-		imgui.EndChild()
-
 		// toolbar at bottom of window
 		if win.view.mode == winDbgScrNormal {
 			win.toolbarHeight = imguiMeasureHeight(func() {
 				// status line
 				imgui.Spacing()
-
-				// imgui.SetCursorPos(imgui.CursorPos().Plus(imgui.Vec2{X: win.imagePadding.X, Y: 0.0}))
 				win.drawCoordsLine()
 
 				// options line
