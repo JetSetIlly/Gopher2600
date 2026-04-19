@@ -23,7 +23,6 @@ import (
 
 var tooltipColor = imgui.Vec4{X: 0.08, Y: 0.08, Z: 0.08, W: 1.0}
 var tooltipBorder = imgui.Vec4{X: 0.03, Y: 0.03, Z: 0.03, W: 1.0}
-var tooltipAlpha = 0.83
 
 // shows simple tooltip but without global preferences test
 //
@@ -32,10 +31,6 @@ var tooltipAlpha = 0.83
 // have shown
 func imguiTooltipSimple(tooltip string, show bool) bool {
 	var displayed bool
-
-	// we always want to draw tooltips with the tooltip alpha
-	imgui.PushStyleVarFloat(imgui.StyleVarAlpha, float32(tooltipAlpha))
-	defer imgui.PopStyleVar()
 
 	// split string on newline and display with separate calls to imgui.Text()
 	tooltip = strings.TrimSpace(tooltip)
@@ -65,10 +60,6 @@ func imguiTooltipSimple(tooltip string, show bool) bool {
 // have shown
 func imguiTooltip(f func(), hoverTest bool, show bool) bool {
 	var displayed bool
-
-	// we always want to draw tooltips with the tooltip alpha
-	imgui.PushStyleVarFloat(imgui.StyleVarAlpha, float32(tooltipAlpha))
-	defer imgui.PopStyleVar()
 
 	if !hoverTest || imgui.IsItemHovered() {
 		displayed = true
