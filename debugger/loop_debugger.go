@@ -88,9 +88,9 @@ func (dbg *Debugger) catchupLoop(inpt terminal.Input) error {
 			dbg.catchupEnd()
 
 			// always enter the inputLoop() immediately if catchupContext is catchupGotoCoords
-			if dbg.catchupContext == catchupGotoCoords {
-				return dbg.inputLoop(inpt, !dbg.vcs.CPU.LastResult.Final)
-			}
+			// if dbg.catchupContext == catchupGotoCoords {
+			// 	return dbg.inputLoop(inpt, !dbg.vcs.CPU.LastResult.Final)
+			// }
 
 			// small optimisation if the catchup context is rewind to frame. we
 			// never want to call the input loop in this case
