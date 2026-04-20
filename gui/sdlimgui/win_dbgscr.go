@@ -154,6 +154,9 @@ type winDbgScr struct {
 
 	// whether to show the magnify tooltip
 	showMagnifyInTooltip bool
+
+	// close the context menu after N frames
+	contextMenuCloseCt int
 }
 
 func newWinDbgScr(img *SdlImgui, mode winDbgScrMode, parent *winDbgScr) (*winDbgScr, error) {
@@ -308,6 +311,14 @@ func (win *winDbgScr) debuggerDraw() bool {
 		}
 
 		if imgui.BeginPopup(contextMenu) {
+			// close context menu after count has expired
+			if win.contextMenuCloseCt > 0 {
+				win.contextMenuCloseCt--
+				if win.contextMenuCloseCt == 0 {
+					imgui.CloseCurrentPopup()
+				}
+			}
+
 			imgui.Text("Break on TV Coords")
 			imguiSeparator()
 			if imgui.Selectable(fmt.Sprintf("Scanline %d", win.mouse.tv.Scanline)) {
@@ -333,7 +344,7 @@ func (win *winDbgScr) debuggerDraw() bool {
 				v := win.img.prefs.reverseDragMagnification.Get().(bool)
 				if imgui.Checkbox("Reverse Drag Direction", &v) {
 					win.img.prefs.reverseDragMagnification.Set(v)
-					imgui.CloseCurrentPopup()
+					win.contextMenuCloseCt = 5
 				}
 			}
 			imgui.EndPopup()
