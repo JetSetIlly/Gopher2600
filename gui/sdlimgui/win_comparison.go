@@ -114,8 +114,8 @@ func (win *winComparison) draw() {
 	imgui.Image(imgui.TextureID(win.cmpTexture.getID()), sz)
 	imgui.Image(imgui.TextureID(win.diffTexture.getID()), sz)
 	if win.audioIsDifferent {
-		imguiColorLabelSimple("Audio is different", win.img.cols.False)
+		imguiColorLabel("Audio is different", win.img.cols.False)
 	} else {
-		imguiColorLabelSimple("Audio is the same", win.img.cols.True)
+		imguiColorLabel("Audio is the same", win.img.cols.True)
 	}
 }

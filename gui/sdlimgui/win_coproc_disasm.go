@@ -265,11 +265,11 @@ func (win *winCoProcDisasm) drawEntry(src *dwarf.Source, e arm.DisasmEntry) {
 	imgui.TableNextColumn()
 	switch e.MAMCR {
 	case 0:
-		imguiColorLabelSimple("", win.img.cols.CoProcMAM0)
+		imguiColorLabel("", win.img.cols.CoProcMAM0)
 	case 1:
-		imguiColorLabelSimple("", win.img.cols.CoProcMAM1)
+		imguiColorLabel("", win.img.cols.CoProcMAM1)
 	case 2:
-		imguiColorLabelSimple("", win.img.cols.CoProcMAM2)
+		imguiColorLabel("", win.img.cols.CoProcMAM2)
 	}
 
 	imgui.TableNextColumn()
@@ -291,14 +291,14 @@ func (win *winCoProcDisasm) drawEntry(src *dwarf.Source, e arm.DisasmEntry) {
 	imgui.TableNextColumn()
 	switch e.BranchTrail {
 	case arm.BranchTrailUsed:
-		imguiColorLabelSimple("", win.img.cols.CoProcBranchTrailUsed)
+		imguiColorLabel("", win.img.cols.CoProcBranchTrailUsed)
 	case arm.BranchTrailFlushed:
-		imguiColorLabelSimple("", win.img.cols.CoProcBranchTrailFlushed)
+		imguiColorLabel("", win.img.cols.CoProcBranchTrailFlushed)
 	}
 
 	imgui.TableNextColumn()
 	if e.MergedIS {
-		imguiColorLabelSimple("", win.img.cols.CoProcMergedIS)
+		imguiColorLabel("", win.img.cols.CoProcMergedIS)
 	}
 
 	// cycle sequence
@@ -378,22 +378,22 @@ func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry, ln *dwarf.Source
 
 		switch e.MAMCR {
 		case 0:
-			imguiColorLabelSimple("MAM-0", win.img.cols.CoProcMAM0)
+			imguiColorLabel("MAM-0", win.img.cols.CoProcMAM0)
 		case 1:
-			imguiColorLabelSimple("MAM-1", win.img.cols.CoProcMAM1)
+			imguiColorLabel("MAM-1", win.img.cols.CoProcMAM1)
 		case 2:
-			imguiColorLabelSimple("MAM-2", win.img.cols.CoProcMAM2)
+			imguiColorLabel("MAM-2", win.img.cols.CoProcMAM2)
 		}
 
 		if e.MergedIS {
-			imguiColorLabelSimple("Merged I/S Cycle", win.img.cols.CoProcMergedIS)
+			imguiColorLabel("Merged I/S Cycle", win.img.cols.CoProcMergedIS)
 		}
 
 		switch e.BranchTrail {
 		case arm.BranchTrailUsed:
-			imguiColorLabelSimple("Branch Trail Used", win.img.cols.CoProcBranchTrailUsed)
+			imguiColorLabel("Branch Trail Used", win.img.cols.CoProcBranchTrailUsed)
 		case arm.BranchTrailFlushed:
-			imguiColorLabelSimple("Branch Trail Flushed", win.img.cols.CoProcBranchTrailFlushed)
+			imguiColorLabel("Branch Trail Flushed", win.img.cols.CoProcBranchTrailFlushed)
 		}
 
 		if ln != nil {

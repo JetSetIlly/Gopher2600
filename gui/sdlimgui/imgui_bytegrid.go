@@ -199,7 +199,7 @@ func (img *SdlImgui) drawByteGridSimple(id string, data []uint8, diff []uint8, d
 	after := func(idx int) {
 		if a != b {
 			img.imguiTooltip(func() {
-				imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", b, fonts.ByteChange, a), diffCol)
+				imguiColorLabel(fmt.Sprintf("%02x %c %02x", b, fonts.ByteChange, a), diffCol)
 			}, true)
 		}
 

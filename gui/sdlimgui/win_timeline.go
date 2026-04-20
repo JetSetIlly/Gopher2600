@@ -226,28 +226,28 @@ func (win *winTimeline) drawToolbar() {
 	} else {
 		imgui.Text(fmt.Sprintf("Rewind between %d and %d", timeline.AvailableStart, timeline.AvailableEnd))
 		imgui.SameLineV(0, 15)
-		imguiColorLabelSimple(fmt.Sprintf("Comparing frame %d", win.img.cache.Rewind.Comparison.State.TV.GetCoords().Frame), win.img.cols.TimelineComparison)
+		imguiColorLabel(fmt.Sprintf("Comparing frame %d", win.img.cache.Rewind.Comparison.State.TV.GetCoords().Frame), win.img.cols.TimelineComparison)
 
 		if win.isHovered || win.isScrubbingValid() {
 			imgui.SameLineV(0, 15)
 			imgui.Text(fmt.Sprintf("Frame %d", win.img.cache.Rewind.Timeline.FrameNum[win.hoverIdx]))
 
 			imgui.SameLineV(0, 15)
-			imguiColorLabelSimple(fmt.Sprintf("%d Scanlines", win.img.cache.Rewind.Timeline.FrameInfo[win.hoverIdx].TotalScanlines), win.img.cols.TimelineScanlines)
+			imguiColorLabel(fmt.Sprintf("%d Scanlines", win.img.cache.Rewind.Timeline.FrameInfo[win.hoverIdx].TotalScanlines), win.img.cols.TimelineScanlines)
 
 			imgui.SameLineV(0, 15)
 			if timeline.FrameInfo[win.hoverIdx].FromVSYNC {
-				imguiColorLabelSimple(fmt.Sprintf("%d+%d VSYNC", win.img.cache.Rewind.Timeline.FrameInfo[win.hoverIdx].VSYNCscanline, win.img.cache.Rewind.Timeline.FrameInfo[win.hoverIdx].VSYNCcount), win.img.cols.TimelineVSYNC)
+				imguiColorLabel(fmt.Sprintf("%d+%d VSYNC", win.img.cache.Rewind.Timeline.FrameInfo[win.hoverIdx].VSYNCscanline, win.img.cache.Rewind.Timeline.FrameInfo[win.hoverIdx].VSYNCcount), win.img.cols.TimelineVSYNC)
 			} else {
-				imguiColorLabelSimple("No VSYNC", win.img.cols.TimelineVSYNC)
+				imguiColorLabel("No VSYNC", win.img.cols.TimelineVSYNC)
 			}
 
 			imgui.SameLineV(0, 15)
-			imguiColorLabelSimple(fmt.Sprintf("%.02f%% WSYNC", win.img.cache.Rewind.Timeline.Ratios[win.hoverIdx].WSYNC*100), win.img.cols.TimelineWSYNC)
+			imguiColorLabel(fmt.Sprintf("%.02f%% WSYNC", win.img.cache.Rewind.Timeline.Ratios[win.hoverIdx].WSYNC*100), win.img.cols.TimelineWSYNC)
 
 			if win.img.cache.VCS.Mem.Cart.GetCoProcBus() != nil {
 				imgui.SameLineV(0, 15)
-				imguiColorLabelSimple(fmt.Sprintf("%.02f%% Coproc", win.img.cache.Rewind.Timeline.Ratios[win.hoverIdx].CoProc*100), win.img.cols.TimelineCoProc)
+				imguiColorLabel(fmt.Sprintf("%.02f%% Coproc", win.img.cache.Rewind.Timeline.Ratios[win.hoverIdx].CoProc*100), win.img.cols.TimelineCoProc)
 			}
 		}
 	}

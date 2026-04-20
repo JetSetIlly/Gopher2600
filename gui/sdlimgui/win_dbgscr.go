@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"image/color"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
@@ -649,39 +650,39 @@ func (win *winDbgScr) drawOverlayCombo() {
 	switch win.img.screen.crit.overlay {
 	case reflection.OverlayLabels[reflection.OverlayVBLANK_VSYNC]:
 		win.img.imguiTooltip(func() {
-			imguiColorLabelSimple("VBLANK", win.img.cols.reflectionColors[reflection.VBLANK])
+			imguiColorLabel("VBLANK", win.img.cols.reflectionColors[reflection.VBLANK])
 			imgui.Spacing()
-			imguiColorLabelSimple("VSYNC", win.img.cols.reflectionColors[reflection.VSYNC_WITH_VBLANK])
+			imguiColorLabel("VSYNC", win.img.cols.reflectionColors[reflection.VSYNC_WITH_VBLANK])
 			imgui.Spacing()
-			imguiColorLabelSimple("VSYNC without VBLANK", win.img.cols.reflectionColors[reflection.VSYNC_NO_VBLANK])
+			imguiColorLabel("VSYNC without VBLANK", win.img.cols.reflectionColors[reflection.VSYNC_NO_VBLANK])
 		}, true)
 	case reflection.OverlayLabels[reflection.OverlayWSYNC]:
 		win.img.imguiTooltip(func() {
-			imguiColorLabelSimple("WSYNC", win.img.cols.reflectionColors[reflection.WSYNC])
+			imguiColorLabel("WSYNC", win.img.cols.reflectionColors[reflection.WSYNC])
 		}, true)
 	case reflection.OverlayLabels[reflection.OverlayWSYNC]:
 		win.img.imguiTooltip(func() {
-			imguiColorLabelSimple("WSYNC", win.img.cols.reflectionColors[reflection.WSYNC])
+			imguiColorLabel("WSYNC", win.img.cols.reflectionColors[reflection.WSYNC])
 		}, true)
 	case reflection.OverlayLabels[reflection.OverlayCollision]:
 		win.img.imguiTooltip(func() {
-			imguiColorLabelSimple("Collision", win.img.cols.reflectionColors[reflection.Collision])
+			imguiColorLabel("Collision", win.img.cols.reflectionColors[reflection.Collision])
 			imgui.Spacing()
-			imguiColorLabelSimple("CXCLR", win.img.cols.reflectionColors[reflection.CXCLR])
+			imguiColorLabel("CXCLR", win.img.cols.reflectionColors[reflection.CXCLR])
 		}, true)
 	case reflection.OverlayLabels[reflection.OverlayHMOVE]:
 		win.img.imguiTooltip(func() {
-			imguiColorLabelSimple("Delay", win.img.cols.reflectionColors[reflection.HMOVEdelay])
+			imguiColorLabel("Delay", win.img.cols.reflectionColors[reflection.HMOVEdelay])
 			imgui.Spacing()
-			imguiColorLabelSimple("Ripple", win.img.cols.reflectionColors[reflection.HMOVEripple])
+			imguiColorLabel("Ripple", win.img.cols.reflectionColors[reflection.HMOVEripple])
 			imgui.Spacing()
-			imguiColorLabelSimple("Latch", win.img.cols.reflectionColors[reflection.HMOVElatched])
+			imguiColorLabel("Latch", win.img.cols.reflectionColors[reflection.HMOVElatched])
 		}, true)
 	case reflection.OverlayLabels[reflection.OverlayRSYNC]:
 		win.img.imguiTooltip(func() {
-			imguiColorLabelSimple("Align", win.img.cols.reflectionColors[reflection.RSYNCalign])
+			imguiColorLabel("Align", win.img.cols.reflectionColors[reflection.RSYNCalign])
 			imgui.Spacing()
-			imguiColorLabelSimple("Reset", win.img.cols.reflectionColors[reflection.RSYNCreset])
+			imguiColorLabel("Reset", win.img.cols.reflectionColors[reflection.RSYNCreset])
 		}, true)
 	case reflection.OverlayLabels[reflection.OverlayCoproc]:
 		win.img.imguiTooltip(func() {
@@ -690,7 +691,7 @@ func (win *winDbgScr) drawOverlayCombo() {
 				imgui.Text("no coprocessor")
 			} else {
 				key := fmt.Sprintf("parallel %s", coproc.ProcessorID())
-				imguiColorLabelSimple(key, win.img.cols.reflectionColors[reflection.CoProcActive])
+				imguiColorLabel(key, win.img.cols.reflectionColors[reflection.CoProcActive])
 			}
 		}, true)
 	}
@@ -732,19 +733,20 @@ func (win *winDbgScr) drawReflectionTooltip() {
 
 		spec := win.img.cache.TV.GetFrameInfo().Spec
 
+		var col color.RGBA
+
 		// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
 		var px signal.ColorSignal
 		if (ref.IsHblank || ref.Signal.VBlank || px == signal.ZeroBlack) && !win.elements {
-			imguiColorLabelSimple(
-				"No color signal",
-				colorRGBAtoVec4(spec.GetColor(signal.ZeroBlack)),
-			)
+			col = spec.GetColor(signal.ZeroBlack)
+			imguiColorLabel("No color signal", colorRGBAtoVec4(col))
 		} else {
+			col = spec.GetColor(ref.Signal.Color)
 			switch ref.VideoElement {
 			case video.ElementPlayfield:
-				imguiColorLabelSimple(
+				imguiColorLabel(
 					fmt.Sprintf("%s [PF%d]", ref.VideoElement.String(), ref.VideoElementCt),
-					colorRGBAtoVec4(spec.GetColor(ref.Signal.Color)),
+					colorRGBAtoVec4(col),
 				)
 			case video.ElementPlayer0, video.ElementPlayer1, video.ElementMissile0, video.ElementMissile1:
 				var tag string
@@ -756,19 +758,21 @@ func (win *winDbgScr) drawReflectionTooltip() {
 				case 2:
 					tag = " [3rd copy]"
 				}
-				imguiColorLabelSimple(
+				imguiColorLabel(
 					fmt.Sprintf("%s%s", ref.VideoElement.String(), tag),
-					colorRGBAtoVec4(spec.GetColor(ref.Signal.Color)),
+					colorRGBAtoVec4(col),
 				)
 			default:
-				imguiColorLabelSimple(
+				imguiColorLabel(
 					ref.VideoElement.String(),
-					colorRGBAtoVec4(spec.GetColor(ref.Signal.Color)),
+					colorRGBAtoVec4(col),
 				)
 			}
 		}
 
-		imgui.SameLine()
+		// include hex representation of colour
+		imgui.SameLineV(0, 10)
+		imguiColorText(fmt.Sprintf("#%02x%02x%02x", col.R, col.G, col.B), colorRGBAtoVec4(col))
 
 		// instruction information
 		imgui.Spacing()

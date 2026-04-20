@@ -211,9 +211,9 @@ func imguiSeparator() {
 	imgui.Spacing()
 }
 
-// imguiColorLabelSimple displays a coloured icon (fonts.ColorSwatch) with a label.
+// imguiColorLabel displays a coloured icon (fonts.ColorSwatch) with a label.
 // useful for generating color keys.
-func imguiColorLabelSimple(label string, col imgui.Vec4) {
+func imguiColorLabel(label string, col imgui.Vec4) {
 	imgui.BeginGroup()
 	imgui.PushStyleColor(imgui.StyleColorText, col)
 	imgui.Text(string(fonts.ColorSwatch))
@@ -223,17 +223,45 @@ func imguiColorLabelSimple(label string, col imgui.Vec4) {
 	imgui.EndGroup()
 }
 
-// imguiColorLabel displays a coloured icon (fonts.ColorSwatch) with a label.
-// unlike imguiColorLabelSimple(), the label is produced by the supplied
-// function.
-func imguiColorLabel(f func(), col imgui.Vec4) {
+func imguiBrightnessFromVec4(c imgui.Vec4) float32 {
+	r := float64(c.X)
+	g := float64(c.Y)
+	b := float64(c.Z)
+
+	// perceived luminance
+	//
+	// NTSC constants taken from the "NTSC 1953 colorimetry" section of:
+	// https://en.wikipedia.org/w/index.php?title=YIQ&oldid=1220238306
+	//
+	// not worried about any small differences for PAL/SECAM
+	y := 0.299*r + 0.587*g + 0.114*b
+
+	return float32(y)
+}
+
+func imguiColorText(label string, col imgui.Vec4) {
+	d := imgui.CalcTextSize(label, false, 0)
+
 	imgui.BeginGroup()
-	imgui.PushStyleColor(imgui.StyleColorText, col)
-	imgui.Text(string(fonts.ColorSwatch))
-	imgui.PopStyleColor()
-	imgui.SameLine()
-	f()
-	imgui.EndGroup()
+	defer imgui.EndGroup()
+
+	var inv imgui.Vec4
+	imguiBrightnessFromVec4(col)
+	if imguiBrightnessFromVec4(col) < 0.35 {
+		inv = imgui.Vec4{X: 0.9, Y: 0.9, Z: 0.9, W: 1.0}
+	} else {
+		inv = imgui.Vec4{X: 0.0, Y: 0.0, Z: 0.0, W: 1.0}
+	}
+
+	pos := imgui.CursorScreenPos()
+	pad := imgui.CurrentStyle().FramePadding()
+
+	dl := imgui.WindowDrawList()
+	dl.AddRectFilled(pos.Minus(pad), pos.Plus(d).Plus(pad), imgui.PackedColorFromVec4(col))
+
+	imgui.PushStyleColor(imgui.StyleColorText, inv)
+	defer imgui.PopStyleColor()
+	imgui.Text(label)
 }
 
 // returns a Vec2 suitable for use as a position vector when opening a imgui

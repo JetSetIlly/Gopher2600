@@ -260,7 +260,7 @@ func (win *win6507Pinout) draw() {
 
 				imgui.TableNextRow()
 				imgui.TableNextColumn()
-				imguiColorLabelSimple("Address", win.addressBus)
+				imguiColorLabel("Address", win.addressBus)
 
 				imgui.TableNextColumn()
 				imgui.PushStyleColor(imgui.StyleColorText, win.addressBus)
@@ -276,7 +276,7 @@ func (win *win6507Pinout) draw() {
 
 				imgui.TableNextRow()
 				imgui.TableNextColumn()
-				imguiColorLabelSimple("Data", win.dataBus)
+				imguiColorLabel("Data", win.dataBus)
 
 				imgui.TableNextColumn()
 				if win.img.cache.VCS.Mem.DataBusDriven != 0xff {

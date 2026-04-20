@@ -68,14 +68,14 @@ func drawI2C(A i2c.Trace, B i2c.Trace, dim imgui.Vec2, cols *imguiColors, tips t
 		i := int((x-xpad)/(plotWidth+gap)) + origin
 		if i > 0 && i < traceLength {
 			if A.Activity[i] {
-				imguiColorLabelSimple(fmt.Sprintf("%s high", A.Label), cols.I2COscA)
+				imguiColorLabel(fmt.Sprintf("%s high", A.Label), cols.I2COscA)
 			} else {
-				imguiColorLabelSimple(fmt.Sprintf("%s low", A.Label), cols.I2COscA)
+				imguiColorLabel(fmt.Sprintf("%s low", A.Label), cols.I2COscA)
 			}
 			if B.Activity[i] {
-				imguiColorLabelSimple(fmt.Sprintf("%s high", B.Label), cols.I2COscB)
+				imguiColorLabel(fmt.Sprintf("%s high", B.Label), cols.I2COscB)
 			} else {
-				imguiColorLabelSimple(fmt.Sprintf("%s low", B.Label), cols.I2COscB)
+				imguiColorLabel(fmt.Sprintf("%s low", B.Label), cols.I2COscB)
 			}
 		}
 	}, true)
