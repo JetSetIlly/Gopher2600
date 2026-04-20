@@ -167,10 +167,9 @@ func (sh *Base) CreateProgram(fragProgram ...string) {
 	sh.uv = sh.GetAttribLocation("UV")
 	sh.color = sh.GetAttribLocation("Color")
 
-	// all fragment shaders should have a Texture uniform
 	sh.texture = sh.GetUniformLocation("Texture")
 	if sh.texture == -1 {
-		panic("does fragment shaders have the required Textures uniform")
+		panic("does fragment shader have the required Texture uniform? it may have been deadcode eliminated if the shader does not reference it")
 	}
 }
 
