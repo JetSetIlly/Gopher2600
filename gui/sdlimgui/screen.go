@@ -123,8 +123,8 @@ type screenCrit struct {
 	// whether monitor refresh rate is similar to the emulated TV's refresh rate
 	monitorSyncSimilar bool
 
-	// the presentationPixels array is used in the presentation texture of the play and debug screen.
-	presentationPixels *image.RGBA
+	// the pixels image is used in the presentation texture of the play and debug screen.
+	pixels *image.RGBA
 
 	// frameQueue are what we plot pixels to while we wait for a frame to complete.
 	// - the larger the queue the greater the input lag
@@ -210,7 +210,7 @@ func newScreen(img *SdlImgui) *screen {
 	scr.crit.overlay = reflection.OverlayLabels[reflection.OverlayNone]
 	scr.crit.fpsCapped = true
 
-	scr.crit.presentationPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
+	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 
@@ -355,9 +355,9 @@ func (scr *screen) clearPixels() {
 	}
 
 	// clear pixels
-	for y := 0; y < scr.crit.presentationPixels.Bounds().Size().Y; y++ {
-		for x := 0; x < scr.crit.presentationPixels.Bounds().Size().X; x++ {
-			scr.crit.presentationPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+	for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
+		for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
+			scr.crit.pixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 			scr.crit.elementPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 			scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 		}
@@ -411,7 +411,7 @@ func (scr *screen) resize() {
 
 	// create cropped image(s)
 	crop := scr.crit.frameInfo.Crop()
-	scr.crit.cropPixels = scr.crit.presentationPixels.SubImage(crop).(*image.RGBA)
+	scr.crit.cropPixels = scr.crit.pixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropElementPixels = scr.crit.elementPixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropOverlayPixels = scr.crit.overlayPixels.SubImage(crop).(*image.RGBA)
 
@@ -718,7 +718,7 @@ func (scr *screen) generatePresentationPixels(idx int) {
 
 		// small cap improves performance, see https://golang.org/issue/27857
 		// alpha channel never changes
-		s := scr.crit.presentationPixels.Pix[offset : offset+3 : offset+3]
+		s := scr.crit.pixels.Pix[offset : offset+3 : offset+3]
 		s[0] = col.R
 		s[1] = col.G
 		s[2] = col.B
