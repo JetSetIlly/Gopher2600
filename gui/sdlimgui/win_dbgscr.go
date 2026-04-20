@@ -318,13 +318,21 @@ func (win *winDbgScr) debuggerDraw() bool {
 			if imgui.Selectable(fmt.Sprintf("Scanline %d & Clock %d", win.mouse.tv.Scanline, win.mouse.tv.Clock)) {
 				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & CL %d", win.mouse.tv.Scanline, win.mouse.tv.Clock))
 			}
-			if win.view.mode == winDbgScrNormal {
+			switch win.view.mode {
+			case winDbgScrNormal:
 				imguiSeparator()
 				if imgui.Selectable(fmt.Sprintf("%c Magnify in Window", fonts.MagnifyingGlass)) {
 					if win.magnifyWindow != nil {
 						win.magnifyWindow.debuggerSetOpen(true)
 						win.magnifyWindow.view.pivot = win.mouse.pivot(win.view)
 					}
+				}
+			case winDbgScrMagnify:
+				imguiSeparator()
+				v := win.img.prefs.reverseDragMagnification.Get().(bool)
+				if imgui.Checkbox("Reverse Drag Direction", &v) {
+					win.img.prefs.reverseDragMagnification.Set(v)
+					imgui.CloseCurrentPopup()
 				}
 			}
 			imgui.EndPopup()
@@ -379,8 +387,14 @@ func (win *winDbgScr) debuggerDraw() bool {
 			if win.view.zoom > 1.0 {
 				x := (win.mouseLastFrame.pos.x - win.mouse.pos.x)
 				y := (win.mouseLastFrame.pos.y - win.mouse.pos.y)
-				win.view.pivot.X -= float32(x) / win.view.scaledWidth
-				win.view.pivot.Y -= float32(y) / win.view.scaledHeight
+				var direction float32
+				if win.img.prefs.reverseDragMagnification.Get().(bool) {
+					direction = -1.0
+				} else {
+					direction = 1.0
+				}
+				win.view.pivot.X -= (float32(x) / win.view.scaledWidth) * direction
+				win.view.pivot.Y -= (float32(y) / win.view.scaledHeight) * direction
 				win.view.normalisePivot()
 			}
 		}

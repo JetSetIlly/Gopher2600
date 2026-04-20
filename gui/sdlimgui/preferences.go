@@ -56,6 +56,7 @@ type preferences struct {
 	disasmGroupScanlines      prefs.Bool
 	pxeColourIndicators       prefs.Bool
 	savekeyAccessPagesOnly    prefs.Bool
+	reverseDragMagnification  prefs.Bool
 
 	// arm profiler preferences
 	armProfilerHideUnexecuted prefs.Bool
@@ -159,6 +160,10 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("sdlimgui.debugger.savekey.eeprom.accessedPagesOnly", &p.savekeyAccessPagesOnly)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.debugger.reverseDragMagnification", &p.reverseDragMagnification)
 	if err != nil {
 		return nil, err
 	}
@@ -338,6 +343,10 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.saveOnExitDsk.Add("sdlimgui.debugger.reverseDragMagnification", &p.reverseDragMagnification)
+	if err != nil {
+		return nil, err
+	}
 	err = p.saveOnExitDsk.Add("sdlimgui.debugger.armProfiler.hideUnexecuted", &p.armProfilerHideUnexecuted)
 	if err != nil {
 		return nil, err
@@ -382,6 +391,7 @@ func (p *preferences) setDefaults() {
 	p.disasmGroupScanlines.Set(false)
 	p.pxeColourIndicators.Set(false)
 	p.savekeyAccessPagesOnly.Set(false)
+	p.reverseDragMagnification.Set(false)
 	p.armProfilerHideUnexecuted.Set(false)
 	p.armProfilerPercentile.Set(true)
 	p.armProfilerCumulative.Set(false)
