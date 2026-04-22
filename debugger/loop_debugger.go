@@ -573,8 +573,8 @@ func (dbg *Debugger) termRead(inpt terminal.Input) error {
 				dbg.running = false
 				dbg.continueEmulation = false
 				return nil
-			} else {
-				// all other errors are passed upwards to the calling function
+			} else if !errors.Is(err, terminal.TermNoAction) {
+				// filter out TermNoAction errors
 				return err
 			}
 		}
@@ -619,6 +619,8 @@ func (dbg *Debugger) handleInterrupt(inp terminal.Input) {
 		// as thought 'y' was pressed
 		if errors.Is(err, terminal.UserInterrupt) {
 			s = "y"
+		} else if errors.Is(err, terminal.TermNoAction) {
+			s = "n"
 		} else {
 			dbg.printLine(terminal.StyleError, err.Error())
 		}

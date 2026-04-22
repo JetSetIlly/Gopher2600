@@ -422,9 +422,8 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 				// catch signal sent by ctrl-\ because we don't want to produce a core dump. SIGABRT
 				// is still exposed if a core dump is required
 				return terminal.UserQuit
-			default:
 			}
-			return nil
+			return terminal.TermNoAction
 		},
 		PushedFunction:          make(chan func(), 4096),
 		PushedFunctionImmediate: make(chan func(), 4096),

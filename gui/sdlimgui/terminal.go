@@ -128,12 +128,12 @@ func (trm *term) TermRead(prompt terminal.Prompt, events *terminal.ReadEvents) (
 
 		case ev := <-events.PushedFunctionImmediate:
 			ev()
-			return "", nil
+			return "", terminal.TermNoAction
 
 		case ev := <-events.UserInput:
 			err := events.UserInputHandler(ev)
 			if err != nil {
-				return "", nil
+				return "", terminal.TermNoAction
 			}
 		}
 	}

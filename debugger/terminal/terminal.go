@@ -24,31 +24,33 @@ import (
 	"github.com/jetsetilly/gopher2600/userinput"
 )
 
-// Input defines the operations required by an interface that allows input.
+// Input defines the operations required by an interface that allows input
 type Input interface {
-	// TermRead will return the number of characters inserted into the buffer,
-	// or an error, when completed.
+	// TermRead will return the number of characters inserted into the buffer, or an error, when
+	// completed
 	//
-	// If possible the TermRead() implementation should regularly check the
-	// ReadEvents channels for activity. Not all implementations will be able
-	// to do so because of the context in which they operate.
+	// If possible the TermRead() implementation should regularly check the ReadEvents channels for
+	// activity. Not all implementations will be able to do so because of the context in which they
+	// operate
 	//
-	// Implementations that can't check ReadEvents will surely limit the
-	// functionality of the debugger.
+	// Implementations that can't check ReadEvents will surely limit the functionality of the
+	// debugger
+	//
+	// Because the empty string can have a meaning to the debugger (an implicit STEP command for
+	// interactive terminals), implementations of the Input interface should return the TermNoAction
+	// error to indicate that nothing should be done with the returned string
 	TermRead(prompt Prompt, events *ReadEvents) (string, error)
 
-	// TermReadCheck() returns true if there is input to be read. Not all
-	// implementations will be able return anything meaningful in which case a
-	// return value of false is fine.
+	// TermReadCheck() returns true if there is input to be read. Not all implementations will be
+	// able return anything meaningful in which case a return value of false is fine
 	//
-	// Note that TermReadCheck() does not check for events like TermRead().
+	// Note that TermReadCheck() does not check for events like TermRead()
 	TermReadCheck() bool
 
-	// IsInteractive returns true if the terminal is being used directly by a user.
+	// IsInteractive returns true if the terminal is being used directly by a user
 	IsInteractive() bool
 
-	// IsRealTerminal returns true if the terminal implementation is using a
-	// real terminal for Input.
+	// IsRealTerminal returns true if the terminal implementation is using a real terminal for Input
 	IsRealTerminal() bool
 }
 
@@ -60,56 +62,59 @@ var (
 	UserReload    = fmt.Errorf("%w: reload", UserSignal)
 )
 
-// ReadEvents *must* be monitored during a TermRead().
+// sentinal error for TermRead() to indicate that nothing should be done with the returned string
+var TermNoAction = errors.New("term no action")
+
+// ReadEvents *must* be monitored during a TermRead()
 type ReadEvents struct {
-	// user input events. these are the inputs into the emulation
-	// (ie. joystick, paddle, etc.)
+	// user input events. these are the inputs into the emulation (ie. joystick, paddle, etc.)
 	UserInput        chan userinput.Event
 	UserInputHandler func(userinput.Event) error
 
 	// signals from the operating system
-	Signal        chan os.Signal
+	Signal chan os.Signal
+
+	// SignalHandler should return TermNoAction if it does not regonise or support the signal
 	SignalHandler func(os.Signal) error
 
-	// PushedFunction allows functions to be pushed into the debugger goroutine.
-	// errors are not returned by PushedFunction so errors should be logged
+	// PushedFunction allows functions to be pushed into the debugger goroutine. errors are not
+	// returned by PushedFunction so errors should be logged
 	PushedFunction chan func()
 
-	// PushedFunctionImmediate is the same as PushedFunctions but handlers
-	// must return control to the inputloop after the function has run
+	// PushedFunctionImmediate is the same as PushedFunctions but handlers must return control to
+	// the inputloop after the function has run
 	PushedFunctionImmediate chan func()
 }
 
-// Output defines the operations required by an interface that allows output.
+// Output defines the operations required by an interface that allows output
 type Output interface {
 	TermPrintLine(Style, string)
 }
 
-// Terminal defines the operations required by the debugger's command line interface.
+// Terminal defines the operations required by the debugger's command line interface
 type Terminal interface {
-	// Terminal implementation also implement the Input and Output interfaces.
+	// Terminal implementation also implement the Input and Output interfaces
 	Input
 	Output
 
-	// Initialise the terminal. not all terminal implementations will need to
-	// do anything.
+	// Initialise the terminal. not all terminal implementations will need to do anything
 	Initialise() error
 
-	// Restore the terminal to it's original state, if possible. for example,
-	// we could use this to make sure the terminal is returned to canonical
-	// mode. not all terminal implementations will need to do anything.
+	// Restore the terminal to it's original state, if possible. for example, we could use this to
+	// make sure the terminal is returned to canonical mode. not all terminal implementations will
+	// need to do anything
 	CleanUp()
 
-	// Register a tab completion implementation to use with the terminal. Not
-	// all implementations need to respond meaningfully to this.
+	// Register a tab completion implementation to use with the terminal. Not all implementations
+	// need to respond meaningfully to this
 	RegisterTabCompletion(*commandline.TabCompletion)
 
-	// Silence all input and output except error messages. In other words,
-	// TermPrintLine() should display error messages even if silenced is true.
+	// Silence all input and output except error messages. In other words, TermPrintLine() should
+	// display error messages even if silenced is true
 	Silence(silenced bool)
 }
 
-// Broker implementations can identify a terminal.
+// Broker implementations can identify a terminal
 type Broker interface {
 	GetTerminal() Terminal
 }

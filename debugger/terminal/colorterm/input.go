@@ -112,7 +112,7 @@ func (ct *ColorTerminal) TermRead(prompt terminal.Prompt, events *terminal.ReadE
 
 		case ev := <-events.PushedFunctionImmediate:
 			ev()
-			return "", nil
+			return "", terminal.TermNoAction
 
 		case readRune := <-ct.reader:
 			if readRune.err != nil {
