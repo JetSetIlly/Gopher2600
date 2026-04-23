@@ -270,6 +270,9 @@ func (win *winTracker) draw() {
 										win.img.dbg.GotoCoords(entry.Coords)
 									}
 								}
+								if imgui.Selectable("Export to .tia") {
+									history.Export(tracker.ExportTIA, win.img.cache.VCS.Mem.Cart.ShortName)
+								}
 								imgui.EndPopup()
 							}
 						}
@@ -343,4 +346,5 @@ func (win *winTracker) draw() {
 		imgui.EndChild()
 		win.isHovered = win.isHovered || imgui.IsItemHovered()
 	})
+
 }

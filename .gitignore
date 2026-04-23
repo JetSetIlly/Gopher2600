@@ -43,3 +43,4 @@ rsrc_windows_amd64.syso
 !hardware/cpu/tests/klaus2m5/**/*.lst
 !hardware/cpu/tests/klaus2m5/**/*.bin
 *.mp4
+*.tia
