@@ -153,7 +153,7 @@ func (win *winTracker) draw() {
 
 	// get number of entries before anything else
 	var numEntries int
-	win.img.dbg.Tracker.BorrowTracker(func(history *tracker.History) {
+	win.img.dbg.Tracker.BorrowTracker(func(history *tracker.Listing) {
 		numEntries = len(history.Entries)
 	})
 
@@ -168,7 +168,7 @@ func (win *winTracker) draw() {
 		win.drawReplayButton()
 	}
 
-	win.img.dbg.Tracker.BorrowTracker(func(history *tracker.History) {
+	win.img.dbg.Tracker.BorrowTracker(func(history *tracker.Listing) {
 		// new child that contains the main scrollable table
 		if imgui.BeginChildV("##trackerscroller", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.pianoKeysHeight}, false, 0) {
 			if numEntries == 0 {

@@ -15,30 +15,101 @@
 
 package tracker
 
-import (
-	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
+import "github.com/jetsetilly/gopher2600/hardware/tia/audio"
+
+// VolumeChange indicates whether the volume of the channel is rising or falling or
+// staying steady
+type VolumeChange int
+
+// List of values for the Volume type
+const (
+	VolumeSteady VolumeChange = iota
+	VolumeRising
+	VolumeFalling
 )
 
-// MusicalNote defines the musical note (C#, D, D#, etc.) of an TIA audio
-// channel register group.
+func (v VolumeChange) String() string {
+	switch v {
+	case VolumeSteady:
+		return "volume is steady"
+	case VolumeRising:
+		return "volume is rising"
+	case VolumeFalling:
+		return "volume is falling"
+	}
+	panic("unknown VolumeChange value")
+}
+
+// Distortion describes the type of "distortion" created by the AUDC register of the channel
+type Distortion string
+
+// lookupDistortion converts the control register value into a text description.
+//
+// Descriptions taken from Random Terrain's "The Atari 2600 Music and Sound
+// Page"
+//
+// https://www.randomterrain.com/atari-2600-memories-music-and-sound.html
+func lookupDistortion(reg audio.Registers) Distortion {
+	switch reg.Control {
+	case 0:
+		return "-"
+	case 1:
+		return "Buzzy"
+	case 2:
+		return "Rumble"
+	case 3:
+		return "Flangy"
+	case 4:
+		return "Pure"
+	case 5:
+		// same as 4
+		return "Pure"
+	case 6:
+		return "Buzzy/Pure"
+	case 7:
+		return "Reedy"
+	case 8:
+		return "White Noise"
+	case 9:
+		// same as 7
+		return "Reedy"
+	case 10:
+		// same as 6
+		return "Buzzy/Pure"
+	case 11:
+		// same as 0
+		return "-"
+	case 12:
+		return "Pure (low)"
+	case 13:
+		// same as 12
+		return "Pure (low)"
+	case 14:
+		return "Electronic"
+	case 15:
+		return "Electronic"
+	}
+
+	return ""
+}
+
+// MusicalNote defines the musical note (C#, D, D#, etc.) of an TIA audio channel register group.
 type MusicalNote string
 
-// Preset values that the MusicalNote can be. Other values should be musical
-// notation. eg. "C4, D#4", etc.
+// Preset values that the MusicalNote can be. Other values should be musical notation. eg. "C4,
+// D#4", etc.
 const (
 	Noise   = MusicalNote("*")
 	Silence = "-"
 	Low     = "L"
 )
 
-// LookupMusicalNote converts the current register values for a channel into a
-// musical note.
+// lookupMusicalNote converts the current register values for a channel into a musical note.
 //
-// Descriptions taken from Random Terrain's "The Atari 2600 Music and Sound
-// Page"
+// Descriptions taken from Random Terrain's "The Atari 2600 Music and Sound Page"
 //
 // https://www.randomterrain.com/atari-2600-memories-music-and-sound.html
-func LookupMusicalNote(tv Television, reg audio.Registers) MusicalNote {
+func lookupMusicalNote(tv Television, reg audio.Registers) MusicalNote {
 	switch tv.GetFrameInfo().Spec.ID {
 	case "NTSC":
 		switch reg.Control {

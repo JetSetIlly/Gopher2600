@@ -16,8 +16,6 @@
 package tracker
 
 import (
-	"sync"
-
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -39,84 +37,26 @@ type Emulation interface {
 	State() govern.State
 }
 
-// VolumeChange indicates whether the volume of the channel is rising or falling or
-// staying steady
-type VolumeChange int
-
-// List of values for the Volume type
-const (
-	VolumeSteady VolumeChange = iota
-	VolumeRising
-	VolumeFalling
-)
-
-func (v VolumeChange) String() string {
-	switch v {
-	case VolumeSteady:
-		return "volume is steady"
-	case VolumeRising:
-		return "volume is rising"
-	case VolumeFalling:
-		return "volume is falling"
-	}
-	panic("unknown VolumeChange value")
-}
-
-// Entry represents a single change of audio for a channel
-type Entry struct {
-	// the (TV) time the change occurred
-	Coords coords.TelevisionCoords
-
-	// which channel the Registers field refers to
-	Channel   int
-	Registers audio.Registers
-
-	// description of the change. the Registers field by comparison contains the
-	// numeric information of the audio change
-	Distortion  string
-	MusicalNote MusicalNote
-	PianoKey    PianoKey
-	Volume      VolumeChange
-}
-
-// IsMusical returns true if entry represents a musical note
-func (e Entry) IsMusical() bool {
-	return e.MusicalNote != Noise && e.MusicalNote != Silence && e.MusicalNote != Low
-}
-
-const maxTrackerEntries = 1024
-
-type History struct {
-	// critical sectioning
-	section sync.Mutex
-
-	// list of tracker Entries. length is capped to maxTrackerEntries
-	Entries []Entry
-
-	// the most recent information for each channel. the entries do no need to
-	// have happened at the same time. ie. Recent[0] might refer to an audio
-	// change on frame 10 and Recent[1] on frame 20
-	Recent [2]Entry
-}
-
-// Tracker implements the audio.Tracker interface and keeps a history of the
-// audio registers over time
+// Tracker implements the audio.Tracker interface and keeps a history of the audio registers over
+// time
 type Tracker struct {
 	emulation Emulation
 	tv        Television
 	rewind    Rewind
 
 	// contentious fields are in the trackerCrit type
-	crit History
+	crit Listing
 
-	// previous register values so we can compare to see whether the registers
-	// have change and thus worth recording
+	// previous register values so we can compare to see whether the registers have change and thus
+	// worth recording
 	prev [2]audio.Registers
 
-	// emulation used for replaying tracker entries. it wil be created on demand
-	// on the first call to Replay()
+	// emulation used for replaying tracker entries. it wil be created on demand on the first call
+	// to Replay()
 	replayEmulation *hardware.VCS
 }
+
+const maxTrackerEntries = 1024
 
 // NewTracker is the preferred method of initialisation for the Tracker type
 func NewTracker(emulation Emulation, tv Television, rewind Rewind) *Tracker {
@@ -124,7 +64,7 @@ func NewTracker(emulation Emulation, tv Television, rewind Rewind) *Tracker {
 		emulation: emulation,
 		tv:        tv,
 		rewind:    rewind,
-		crit: History{
+		crit: Listing{
 			Entries: make([]Entry, 0, maxTrackerEntries),
 		},
 	}
@@ -154,15 +94,15 @@ func (tr *Tracker) AudioTick(env audio.TrackerEnvironment, channel int, reg audi
 		Coords:      tr.tv.GetCoords(),
 		Channel:     channel,
 		Registers:   reg,
-		Distortion:  LookupDistortion(reg),
-		MusicalNote: LookupMusicalNote(tr.tv, reg),
+		Distortion:  lookupDistortion(reg),
+		MusicalNote: lookupMusicalNote(tr.tv, reg),
 	}
 
 	e.PianoKey = NoteToPianoKey(e.MusicalNote)
 
-	if e.Registers.Volume > tr.crit.Recent[channel].Registers.Volume {
+	if e.Registers.Volume > tr.crit.Current[channel].Registers.Volume {
 		e.Volume = VolumeRising
-	} else if e.Registers.Volume < tr.crit.Recent[channel].Registers.Volume {
+	} else if e.Registers.Volume < tr.crit.Current[channel].Registers.Volume {
 		e.Volume = VolumeFalling
 	} else {
 		e.Volume = VolumeSteady
@@ -187,14 +127,14 @@ func (tr *Tracker) AudioTick(env audio.TrackerEnvironment, channel int, reg audi
 	}
 
 	// store entry in lastEntry reference
-	tr.crit.Recent[channel] = e
+	tr.crit.Current[channel] = e
 }
 
-// BorrowTracker will lock the Tracker history for the duration of the supplied
-// function, which will be exectued with the History structure as an argument.
+// BorrowTracker will lock the Tracker history for the duration of the supplied function, which will
+// be exectued with the History structure as an argument.
 //
 // Should not be called from the emulation goroutine.
-func (tr *Tracker) BorrowTracker(f func(*History)) {
+func (tr *Tracker) BorrowTracker(f func(*Listing)) {
 	tr.crit.section.Lock()
 	defer tr.crit.section.Unlock()
 	f(&tr.crit)

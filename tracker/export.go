@@ -29,7 +29,7 @@ const (
 	ExportTIA ExportFormat = iota
 )
 
-func (h *History) Export(format ExportFormat, title string) error {
+func (h *Listing) Export(format ExportFormat, title string) error {
 	switch format {
 	case ExportTIA:
 		return h.exportTIA(title)
@@ -37,7 +37,7 @@ func (h *History) Export(format ExportFormat, title string) error {
 	panic("unknown tracker export format")
 }
 
-func (h *History) exportTIA(title string) error {
+func (h *Listing) exportTIA(title string) error {
 	if len(h.Entries) == 0 {
 		return nil
 	}
