@@ -16,6 +16,7 @@
 package tracker
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -31,14 +32,16 @@ type Entry struct {
 	Channel   int
 	Registers audio.Registers
 
-	// description of the current state. the Registers field contains the numeric information of the
-	// audio change
 	Distortion  Distortion
 	MusicalNote MusicalNote
 	Volume      VolumeChange
 
 	// the piano key associated with the musical note
 	PianoKey PianoKey
+}
+
+func (e Entry) ID() string {
+	return fmt.Sprintf("%s%d", e.Coords, e.Channel)
 }
 
 // IsMusical returns true if entry represents a musical note

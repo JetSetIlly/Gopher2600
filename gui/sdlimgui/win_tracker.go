@@ -21,7 +21,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
-	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/tracker"
 	"github.com/jetsetilly/imgui-go/v5"
@@ -35,8 +34,6 @@ type winTracker struct {
 
 	img *SdlImgui
 
-	contextMenu coords.TelevisionCoords
-
 	// piano keys
 	blackKeys       imgui.PackedColor
 	whiteKeys       imgui.PackedColor
@@ -47,6 +44,8 @@ type winTracker struct {
 
 	// is the tracker area or piano keys are hovered over
 	isHovered bool
+
+	contextMenu string
 }
 
 func newWinTracker(img *SdlImgui) (window, error) {
@@ -257,21 +256,25 @@ func (win *winTracker) draw() {
 
 							if imgui.IsMouseDown(1) {
 								imgui.OpenPopup(trackerContextMenuID)
-								win.contextMenu = entry.Coords
+								win.contextMenu = entry.ID()
 							}
 						}
-						if entry.Coords == win.contextMenu {
+
+						if win.contextMenu == entry.ID() {
 							if imgui.BeginPopup(trackerContextMenuID) {
 								if imgui.Selectable("Clear note history") {
 									win.img.dbg.PushFunction(win.img.dbg.Tracker.Reset)
 								}
-								if !win.img.isPlaymode() {
+								if imgui.Selectable("Export to .tia") {
+									history.Export(tracker.ExportTIA, win.img.cache.VCS.Mem.Cart.ShortName)
+								}
+								if !win.img.isPlaymode() && win.img.dbg.State() == govern.Paused {
+									imgui.Spacing()
+									imgui.Separator()
+									imgui.Spacing()
 									if imgui.Selectable(fmt.Sprintf("Rewind (to %s)", entry.Coords)) {
 										win.img.dbg.GotoCoords(entry.Coords)
 									}
-								}
-								if imgui.Selectable("Export to .tia") {
-									history.Export(tracker.ExportTIA, win.img.cache.VCS.Mem.Cart.ShortName)
 								}
 								imgui.EndPopup()
 							}
@@ -293,11 +296,11 @@ func (win *winTracker) draw() {
 						}
 
 						imgui.TableNextColumn()
-						imgui.Text(fmt.Sprintf("%04b", entry.Registers.Control&0x0f))
+						imgui.Text(fmt.Sprintf("%04b", entry.Registers.Control))
 						imgui.TableNextColumn()
 						imgui.Text(fmt.Sprintf("%s", entry.Distortion))
 						imgui.TableNextColumn()
-						imgui.Text(fmt.Sprintf("%05b", entry.Registers.Freq&0x1f))
+						imgui.Text(fmt.Sprintf("%05b", entry.Registers.Freq))
 						imgui.TableNextColumn()
 
 						// convert musical note into something worth showing
@@ -325,7 +328,7 @@ func (win *winTracker) draw() {
 							volumeArrow = fonts.VolumeFalling
 						}
 
-						imgui.Text(fmt.Sprintf("%02d %c", entry.Registers.Volume&0x4b, volumeArrow))
+						imgui.Text(fmt.Sprintf("%02d %c", entry.Registers.Volume, volumeArrow))
 					})
 
 					if win.img.dbg.State() == govern.Running {

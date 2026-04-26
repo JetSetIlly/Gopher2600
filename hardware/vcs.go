@@ -185,8 +185,7 @@ func (vcs *VCS) Reset() error {
 
 	// easiest way of resetting the TIA is to just create new one
 	//
-	// 27/10/21 - we do want to save the audio though in order to keep any
-	// attached trackers
+	// 27/10/21 - we do want to save the audio though in order to keep any attached trackers
 	//
 	// TODO: proper Reset() function for the TIA
 	audio := vcs.TIA.Audio

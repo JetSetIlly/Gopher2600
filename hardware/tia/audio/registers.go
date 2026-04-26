@@ -56,24 +56,22 @@ func (au *Audio) ReadMemRegisters(data chipbus.ChangedRegister) bool {
 	switch data.Register {
 	case cpubus.AUDC0:
 		au.channel0.registers.Control = data.Value & 0x0f
-		au.channel0.registersChanged = true
+		au.tracker.AUDCx(au.env, 0, au.channel0.registers.Control)
 	case cpubus.AUDC1:
 		au.channel1.registers.Control = data.Value & 0x0f
-		au.channel1.registersChanged = true
+		au.tracker.AUDCx(au.env, 1, au.channel1.registers.Control)
 	case cpubus.AUDF0:
 		au.channel0.registers.Freq = data.Value & 0x1f
-		au.channel0.registersChanged = true
+		au.tracker.AUDFx(au.env, 0, au.channel0.registers.Freq)
 	case cpubus.AUDF1:
 		au.channel1.registers.Freq = data.Value & 0x1f
-		au.channel1.registersChanged = true
+		au.tracker.AUDFx(au.env, 1, au.channel1.registers.Freq)
 	case cpubus.AUDV0:
 		au.channel0.registers.Volume = data.Value & 0x0f
-		au.channel0.volumeChanged = true
-		au.channel0.registersChanged = true
+		au.tracker.AUDVx(au.env, 0, au.channel0.registers.Volume)
 	case cpubus.AUDV1:
 		au.channel1.registers.Volume = data.Value & 0x0f
-		au.channel0.volumeChanged = true
-		au.channel1.registersChanged = true
+		au.tracker.AUDVx(au.env, 1, au.channel1.registers.Volume)
 	default:
 		return true
 	}

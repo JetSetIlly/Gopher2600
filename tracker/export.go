@@ -64,13 +64,15 @@ func (h *Listing) exportTIA(title string) error {
 	startFrame := h.Entries[0].Coords.Frame
 	endFrame := h.Entries[len(h.Entries)-1].Coords.Frame
 
+	const leadFrames = 5
+
 	// song information
 	output := song{
 		Version:       1,
 		Title:         title,
 		FramesPerStep: 1,
 		GridDiv:       1,
-		Measures:      endFrame - startFrame,
+		Measures:      endFrame - startFrame + leadFrames,
 		DefaultVol:    0,
 	}
 
@@ -86,7 +88,7 @@ func (h *Listing) exportTIA(title string) error {
 		duration := -1
 		for _, f := range h.Entries[i+1:] {
 			if f.Channel == e.Channel {
-				duration = f.Coords.Frame - e.Coords.Frame - 1
+				duration = f.Coords.Frame - e.Coords.Frame
 				break
 			}
 		}
@@ -96,7 +98,7 @@ func (h *Listing) exportTIA(title string) error {
 
 		n := note{
 			Row:  int(e.Registers.Freq & 0x1f),
-			Col:  e.Coords.Frame - startFrame,
+			Col:  e.Coords.Frame - startFrame + leadFrames,
 			Len:  duration,
 			AudC: int(e.Registers.Control & 0x0f),
 			Vol:  int(e.Registers.Volume & 0x0f),
@@ -109,18 +111,18 @@ func (h *Listing) exportTIA(title string) error {
 	// marshall and save file
 	d, err := json.MarshalIndent(output, "", "\t")
 	if err != nil {
-		return fmt.Errorf("exportTIA: %w", err)
+		return fmt.Errorf("tracker: export: %w", err)
 	}
 
 	f, err := os.Create(fmt.Sprintf("%s.tia", title))
 	if err != nil {
-		return fmt.Errorf("exportTIA: %w", err)
+		return fmt.Errorf("tracker: export: %w", err)
 	}
 	defer f.Close()
 
 	_, err = f.Write(d)
 	if err != nil {
-		return fmt.Errorf("exportTIA: %w", err)
+		return fmt.Errorf("tracker: export: %w", err)
 	}
 
 	return nil
