@@ -49,13 +49,12 @@ func (tr *Tracker) createReplayEmulation(mixer television.AudioMixer) error {
 	return nil
 }
 
-// Replay audio from start to end indexes
+// Replay audio from start to end indexes. The onEnd function will run when the replay has
+// concluded
 //
-// The onEnd argument is a function to run when the replay has concluded
+// the replay will run even if the master emulation is running. this may cause audible issues
+// with the hardware audio mixing
 func (tr *Tracker) Replay(start int, end int, mixer television.AudioMixer, onEnd func()) {
-	// the replay will run even if the master emulation is running. this may
-	// cause audible issues with the hardware audio mixing
-
 	tr.createReplayEmulation(mixer)
 
 	tr.crit.section.Lock()
