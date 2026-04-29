@@ -16,6 +16,8 @@
 package tracker
 
 import (
+	"slices"
+
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -41,9 +43,9 @@ type Emulation interface {
 type analysis struct {
 	entry Entry
 	frame int
-	audc  int
-	audf  int
-	audv  int
+	audc  uint8
+	audf  uint8
+	audv  uint8
 }
 
 // Tracker implements the audio.Tracker interface and keeps a history of the audio registers over
@@ -56,6 +58,7 @@ type Tracker struct {
 	// contentious fields are in the trackerCrit type
 	crit Listing
 
+	// analysis is used to help make correct decisions about what to do with each AUDxx() function call
 	analysis [2]analysis
 
 	// previous register values so we can compare to see whether the registers have change and thus
@@ -154,6 +157,11 @@ func (tr *Tracker) AUDVx(env audio.TrackerEnvironment, channel int, data uint8) 
 
 // commit the current entry to the listing if appropriate
 func (tr *Tracker) commit(env audio.TrackerEnvironment, channel int) {
+	// do not add tracker entries if the emulation is rewinding
+	if tr.emulation.State() == govern.Rewinding {
+		return
+	}
+
 	// add entry to list of entries only if we're not in the tracker emulation
 	if env.IsEmulation(trackerReplayLabel) {
 		return
@@ -194,19 +202,10 @@ func (tr *Tracker) commit(env audio.TrackerEnvironment, channel int) {
 	tr.crit.section.Lock()
 	defer tr.crit.section.Unlock()
 
-	if tr.emulation.State() != govern.Rewinding {
-		// find splice point in tracker
-		splice := len(tr.crit.Entries) - 1
-		for splice > 0 && !coords.GreaterThanOrEqual(tr.analysis[channel].entry.Coords, tr.crit.Entries[splice].Coords) {
-			splice--
-		}
-		tr.crit.Entries = tr.crit.Entries[:splice+1]
-
-		// add new entry and limit number of entries
-		tr.crit.Entries = append(tr.crit.Entries, tr.analysis[channel].entry)
-		if len(tr.crit.Entries) > maxTrackerEntries {
-			tr.crit.Entries = tr.crit.Entries[1:]
-		}
+	// add new entry and limit number of entries
+	tr.crit.Entries = append(tr.crit.Entries, tr.analysis[channel].entry)
+	if len(tr.crit.Entries) > maxTrackerEntries {
+		tr.crit.Entries = tr.crit.Entries[1:]
 	}
 
 	// store entry in lastEntry reference
@@ -221,4 +220,48 @@ func (tr *Tracker) BorrowTracker(f func(*Listing)) {
 	tr.crit.section.Lock()
 	defer tr.crit.section.Unlock()
 	f(&tr.crit)
+}
+
+// Splice implements the rewinder.Splicer interface
+func (tr *Tracker) Splice(c coords.TelevisionCoords) {
+	tr.crit.section.Lock()
+	defer tr.crit.section.Unlock()
+
+	// find splice point in tracker
+	splice := len(tr.crit.Entries) - 1
+	for splice > 0 && !coords.GreaterThanOrEqual(c, tr.crit.Entries[splice].Coords) {
+		splice--
+	}
+	tr.crit.Entries = tr.crit.Entries[:splice+1]
+
+	// initialise current, prev and analysis fields in case one of the channels has never been used
+	// in the remaining history - we search the history and update these fields as appropriate below
+	tr.crit.Current[0] = Entry{}
+	tr.crit.Current[1] = Entry{}
+	tr.prev[0] = audio.Registers{}
+	tr.prev[1] = audio.Registers{}
+	tr.analysis = [2]analysis{
+		{entry: Entry{Channel: 0}},
+		{entry: Entry{Channel: 1}},
+	}
+
+	// find most recent entries for each channel
+	var done [2]bool
+	for _, e := range slices.Backward(tr.crit.Entries) {
+		if !done[e.Channel] {
+			tr.crit.Current[e.Channel] = e
+			tr.prev[e.Channel] = e.Registers
+			tr.analysis[e.Channel] = analysis{
+				entry: e,
+				frame: e.Coords.Frame,
+				audc:  e.Registers.Control,
+				audf:  e.Registers.Freq,
+				audv:  e.Registers.Volume,
+			}
+			done[e.Channel] = true
+		}
+		if done[0] && done[1] {
+			break
+		}
+	}
 }

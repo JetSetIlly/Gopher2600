@@ -460,7 +460,8 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	dbg.counter = counter.NewCounter(dbg.vcs)
 	dbg.Rewind.AddTimelineCounter(dbg.counter)
 
-	// add disassembly to rewind system. this is for the sequential disassembly listing
+	// add disassembly to rewind system. this is so the the sequential disassembly listing does not
+	// include entries that haven't happened yet
 	dbg.Rewind.AddSplicer(dbg.Disasm)
 
 	// adding TV frame triggers in setMode(). what the TV triggers on depending
@@ -470,6 +471,9 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	// add audio tracker
 	dbg.Tracker = tracker.NewTracker(dbg, dbg.vcs.TV, dbg.Rewind)
 	dbg.vcs.TIA.Audio.SetTracker(dbg.Tracker)
+
+	// add tracker to rewind system for similar reasons to why we added the disassembly instance
+	dbg.Rewind.AddSplicer(dbg.Tracker)
 
 	// add plug monitor
 	dbg.vcs.RIOT.Ports.AttachPlugMonitor(dbg)
