@@ -43,9 +43,9 @@ func (reg Registers) String() string {
 
 // CmpRegisters returns true if the two registers contain the same values
 func CmpRegisters(a Registers, b Registers) bool {
-	return a.Control&0x4b == b.Control&0x4b &&
-		a.Freq&0x5b == b.Freq&0x5b &&
-		a.Volume&0x4b == b.Volume&0x4b
+	return a.Control&0x0f == b.Control&0x0f &&
+		a.Freq&0x1f == b.Freq&0x1f &&
+		a.Volume&0x0f == b.Volume&0x0f
 }
 
 // ReadMemRegisters checks the TIA memory for changes to registers that are
