@@ -326,9 +326,11 @@ func (win *winTracker) drawListing(history *tracker.Listing) {
 					if imgui.Selectable("Clear note history") {
 						win.img.dbg.PushFunction(win.img.dbg.Tracker.Reset)
 					}
-					if imgui.Selectable("Export to .tia") {
-						history.Export(tracker.ExportTIA, win.img.cache.VCS.Mem.Cart.ShortName)
-					}
+					drawDisabled(history.Stable && history.Balanced, func() {
+						if imgui.Selectable("Export to .tia") {
+							history.Export(tracker.ExportTIA, win.img.cache.VCS.Mem.Cart.ShortName)
+						}
+					})
 					if win.contextEntry != nil {
 						if !win.img.isPlaymode() && win.img.dbg.State() == govern.Paused {
 							imgui.Spacing()

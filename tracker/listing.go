@@ -59,4 +59,8 @@ type Listing struct {
 	// the most recent information for each channel. the entries do not need to have happened at the
 	// same time
 	Current [2]Entry
+
+	// whether the entries are stable and balanced across both channels
+	Stable   bool
+	Balanced bool
 }

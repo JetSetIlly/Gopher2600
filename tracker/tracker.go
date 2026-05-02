@@ -43,9 +43,14 @@ type Emulation interface {
 type analysis struct {
 	entry Entry
 	frame int
-	audc  uint8
-	audf  uint8
-	audv  uint8
+
+	audc uint8
+	audf uint8
+	audv uint8
+
+	interval  int
+	lastFrame int
+	stable    bool
 }
 
 // Tracker implements the audio.Tracker interface and keeps a history of the audio registers over
@@ -173,6 +178,19 @@ func (tr *Tracker) commit(env audio.TrackerEnvironment, channel int) {
 		return
 	}
 
+	// update interval and interval stability
+	if tr.analysis[channel].lastFrame != 0 {
+		i := tr.analysis[channel].interval
+		tr.analysis[channel].interval = c.Frame - tr.analysis[channel].interval
+		tr.analysis[channel].stable = i == tr.analysis[channel].interval
+	}
+	tr.analysis[channel].lastFrame = c.Frame
+
+	// update global stable and balanced flags
+	tr.crit.Stable = tr.analysis[0].stable && tr.analysis[1].stable
+	tr.crit.Balanced = tr.analysis[0].interval == tr.analysis[1].interval
+
+	// reset channel analysis
 	tr.analysis[channel].entry.Coords.Frame = c.Frame
 	tr.analysis[channel].entry.Coords.Scanline = 0
 	tr.analysis[channel].entry.Coords.Clock = 0
