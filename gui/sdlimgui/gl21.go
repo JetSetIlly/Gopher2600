@@ -214,7 +214,7 @@ func (rnd *gl21) isScreenshotting() bool {
 	return false
 }
 
-func (rnd *gl21) record(enable bool, conf video.Config) error {
+func (rnd *gl21) record(enable bool, conf video.Session) error {
 	return rnd.video.Enable(enable, conf)
 }
 
