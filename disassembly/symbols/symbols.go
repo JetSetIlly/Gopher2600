@@ -210,13 +210,16 @@ func (s SymbolSource) String() string {
 	panic(fmt.Sprintf("unknown symbol source: %d", s))
 }
 
-// Add symbol to label table. Symbol will be modified so that it is unique in
-// the label table.
+// Add symbol to label table. Symbol will be modified so that it is unique in the label table.
 func (sym *Symbols) AddLabel(source SymbolSource, bank int, addr uint16, symbol string) bool {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
 	if bank >= len(sym.label) {
+		return false
+	}
+
+	if sym.label[bank].symbols[addr].Source < source {
 		return false
 	}
 

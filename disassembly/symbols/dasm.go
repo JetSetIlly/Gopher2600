@@ -93,6 +93,10 @@ func (sym *Symbols) fromDasm(cart *cartridge.Cartridge) error {
 			symbol = symbol[len(sp[0]):]
 		}
 
+		// this happens after canonisation but before any decoding. we therefore don't need to make
+		// any checks for source priority when calling the add function below (ie. if SourceDASM is
+		// greater in priority than an existing symbol)
+
 		switch area {
 		case memorymap.Cartridge:
 			// adding label for address in every bank for now
