@@ -48,7 +48,7 @@ func newBevelShader(img *SdlImgui) shading.Program {
 	return sh
 }
 
-func (sh *bevelShader) setAttributes(env shading.Environment) {
+func (sh *bevelShader) SetAttributes(env shading.Environment) {
 	if !sh.img.isPlaymode() {
 		return
 	}
