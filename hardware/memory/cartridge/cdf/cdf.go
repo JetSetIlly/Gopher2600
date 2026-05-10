@@ -264,7 +264,7 @@ func (cart *cdf) Access(addr uint16, peek bool) (uint8, uint8, error) {
 		}
 
 		// music fetchers
-		if data == byte(cart.version.amplitudeRegister) {
+		if data == byte(cart.version.amplitudeRegister)+cart.version.datastreamOffset {
 			if cart.state.registers.SampleMode {
 				addr := cart.readMusicFetcher(0)
 				addr += cart.state.registers.MusicFetcher[0].Count >> (cart.version.musicFetcherShift + 1)
