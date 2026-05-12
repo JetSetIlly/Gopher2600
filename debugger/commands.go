@@ -1995,6 +1995,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		case "NORIGHT":
 			event = ports.Right
 			data = ports.DataStickFalse
+
+		case "SECOND":
+			event = ports.SecondFire
+			data = true
+		case "NOSECOND":
+			event = ports.SecondFire
+			data = false
 		}
 
 		switch port {

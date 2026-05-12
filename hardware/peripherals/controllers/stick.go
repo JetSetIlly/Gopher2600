@@ -262,3 +262,13 @@ func (stk *Stick) Step() {
 func (stk *Stick) IsActive() bool {
 	return stk.button == stickFire || stk.axis != axisCenter
 }
+
+// State returns the four axis states and the fire button state
+func (stk *Stick) State() ([4]bool, bool) {
+	return [4]bool{
+		stk.axis&axisUp != axisUp,
+		stk.axis&axisLeft != axisLeft,
+		stk.axis&axisRight != axisRight,
+		stk.axis&axisDown != axisDown,
+	}, stk.button&stickNoFire != stickNoFire
+}

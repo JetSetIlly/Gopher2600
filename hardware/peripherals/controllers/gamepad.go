@@ -314,3 +314,13 @@ func (pad *Gamepad) Step() {
 func (pad *Gamepad) IsActive() bool {
 	return pad.button == stickFire || pad.axis != axisCenter || pad.second == secondFire
 }
+
+// State returns the four axis states and the fire button state
+func (pad *Gamepad) State() ([4]bool, bool, bool) {
+	return [4]bool{
+		pad.axis&axisUp != axisUp,
+		pad.axis&axisLeft != axisLeft,
+		pad.axis&axisRight != axisRight,
+		pad.axis&axisDown != axisDown,
+	}, pad.button&stickNoFire != stickNoFire, pad.second&secondNoFire != secondNoFire
+}
