@@ -397,12 +397,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			// stop emulation on rewind
 			dbg.runUntilHalt = false
 
-			if arg == "LAST" {
+			switch arg {
+			case "LAST":
 				dbg.setState(govern.Rewinding, govern.RewindingForwards)
 				dbg.unwindLoop(dbg.Rewind.GotoLast)
-			} else if arg == "SUMMARY" {
+			case "SUMMARY":
 				dbg.printLine(terminal.StyleInstrument, dbg.Rewind.Peephole())
-			} else {
+			default:
 				frame, _ := strconv.Atoi(arg)
 				coords := dbg.TV().GetCoords()
 				if frame != coords.Frame {
@@ -975,7 +976,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		s := strings.Builder{}
 
 		if dbg.vcs.Mem.Cart.NumBanks() > 1 {
-			s.WriteString(fmt.Sprintf("[%s] ", dbg.liveBankInfo))
+			fmt.Fprintf(&s, "[%s] ", dbg.liveBankInfo)
 		}
 		s.WriteString(dbg.liveDisasmEntry.GetField(disassembly.FldAddress))
 		s.WriteString(" ")
@@ -1016,13 +1017,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				hasMapped = true
 				s.WriteString("Read:\n")
 				if ai.Address != ai.MappedAddress {
-					s.WriteString(fmt.Sprintf("  %#04x maps to %#04x ", ai.Address, ai.MappedAddress))
+					fmt.Fprintf(&s, "  %#04x maps to %#04x ", ai.Address, ai.MappedAddress)
 				} else {
-					s.WriteString(fmt.Sprintf("  %#04x ", ai.Address))
+					fmt.Fprintf(&s, "  %#04x ", ai.Address)
 				}
 				s.WriteString(fmt.Sprintf("in area %s\n", ai.Area.String()))
 				if ai.Symbol != "" {
-					s.WriteString(fmt.Sprintf("  labelled as %s\n", ai.Symbol))
+					fmt.Fprintf(&s, "  labelled as %s\n", ai.Symbol)
 				}
 			}
 			ai = dbg.dbgmem.GetAddressInfo(address, false)
@@ -1030,13 +1031,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				hasMapped = true
 				s.WriteString("Write:\n")
 				if ai.Address != ai.MappedAddress {
-					s.WriteString(fmt.Sprintf("  %#04x maps to %#04x ", ai.Address, ai.MappedAddress))
+					fmt.Fprintf(&s, "  %#04x maps to %#04x ", ai.Address, ai.MappedAddress)
 				} else {
-					s.WriteString(fmt.Sprintf("  %#04x ", ai.Address))
+					fmt.Fprintf(&s, "  %#04x ", ai.Address)
 				}
 				s.WriteString(fmt.Sprintf("in area %s\n", ai.Area.String()))
 				if ai.Symbol != "" {
-					s.WriteString(fmt.Sprintf("  labelled as %s\n", ai.Symbol))
+					fmt.Fprintf(&s, "  labelled as %s\n", ai.Symbol)
 				}
 			}
 
@@ -1252,7 +1253,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		case "STACK":
 			var s strings.Builder
 			for i := int((dbg.vcs.CPU.SP.Value() + 1) & 0x7f); i <= 0x7f; i++ {
-				s.WriteString(fmt.Sprintf("%02x ", dbg.vcs.Mem.RAM.RAM[i]))
+				fmt.Fprintf(&s, "%02x ", dbg.vcs.Mem.RAM.RAM[i])
 			}
 			dbg.printLine(terminal.StyleInstrument, s.String())
 		default:
@@ -1567,9 +1568,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 						return
 					}
 					if group.Formatted {
-						s.WriteString(fmt.Sprintf("%s: %s [%08x]\t", group.Label(r), f, v))
+						fmt.Fprintf(&s, "%s: %s [%08x]\t", group.Label(r), f, v)
 					} else {
-						s.WriteString(fmt.Sprintf("%s: %08x\t", group.Label(r), v))
+						fmt.Fprintf(&s, "%s: %08x\t", group.Label(r), v)
 					}
 
 					if (r-group.Start+1)%3 == 0 {
@@ -1960,48 +1961,48 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		action, _ := tokens.Get()
 
 		var event ports.Event
-		var value ports.EventData
+		var data ports.EventData
 
 		switch strings.ToUpper(action) {
 		case "FIRE":
 			event = ports.Fire
-			value = ports.DataStickTrue
+			data = true
 		case "UP":
 			event = ports.Up
-			value = ports.DataStickTrue
+			data = ports.DataStickTrue
 		case "DOWN":
 			event = ports.Down
-			value = ports.DataStickTrue
+			data = ports.DataStickTrue
 		case "LEFT":
 			event = ports.Left
-			value = ports.DataStickTrue
+			data = ports.DataStickTrue
 		case "RIGHT":
 			event = ports.Right
-			value = ports.DataStickTrue
+			data = ports.DataStickTrue
 
 		case "NOFIRE":
 			event = ports.Fire
-			value = ports.DataStickFalse
+			data = false
 		case "NOUP":
 			event = ports.Up
-			value = ports.DataStickFalse
+			data = ports.DataStickFalse
 		case "NODOWN":
 			event = ports.Down
-			value = ports.DataStickFalse
+			data = ports.DataStickFalse
 		case "NOLEFT":
 			event = ports.Left
-			value = ports.DataStickFalse
+			data = ports.DataStickFalse
 		case "NORIGHT":
 			event = ports.Right
-			value = ports.DataStickFalse
+			data = ports.DataStickFalse
 		}
 
 		switch port {
 		case "LEFT":
-			inp := ports.InputEvent{Port: plugging.PortLeft, Ev: event, D: value}
+			inp := ports.InputEvent{Port: plugging.PortLeft, Ev: event, D: data}
 			_, err = dbg.vcs.Input.HandleInputEvent(inp)
 		case "RIGHT":
-			inp := ports.InputEvent{Port: plugging.PortRight, Ev: event, D: value}
+			inp := ports.InputEvent{Port: plugging.PortRight, Ev: event, D: data}
 			_, err = dbg.vcs.Input.HandleInputEvent(inp)
 		}
 
@@ -2242,10 +2243,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 			s := strings.Builder{}
 
-			s.WriteString(fmt.Sprintf("Alloc = %v MB\n", m.Alloc/1048576))
-			s.WriteString(fmt.Sprintf("  TotalAlloc = %v MB\n", m.TotalAlloc/1048576))
-			s.WriteString(fmt.Sprintf("  Sys = %v MB\n", m.Sys/1048576))
-			s.WriteString(fmt.Sprintf("  NumGC = %v", m.NumGC))
+			fmt.Fprintf(&s, "Alloc = %v MB\n", m.Alloc/1048576)
+			fmt.Fprintf(&s, "  TotalAlloc = %v MB\n", m.TotalAlloc/1048576)
+			fmt.Fprintf(&s, "  Sys = %v MB\n", m.Sys/1048576)
+			fmt.Fprintf(&s, "  NumGC = %v", m.NumGC)
 
 			dbg.printLine(terminal.StyleLog, s.String())
 		}
