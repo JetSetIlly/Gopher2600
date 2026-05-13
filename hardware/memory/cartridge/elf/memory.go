@@ -437,6 +437,12 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 
 							// flag presence of unresolved symbols
 							mem.unresolvedSymbols = true
+						} else if sym.Section == elf.SHN_ABS {
+							logger.Logf(mem.env, "ELF", "absolute value for %s", sym.Name)
+						} else if sym.Section >= elf.SHN_LORESERVE {
+							logger.Logf(mem.env, "ELF", "unsupported reserved section (%d) for %s", sym.Section, sym.Name)
+						} else if int(sym.Section) >= len(ef.Sections) {
+							return fmt.Errorf("invalid section (%s) while relocating %s", sym.Section, sym.Name)
 						} else {
 							n := ef.Sections[sym.Section].Name
 							if sec, ok := mem.sectionsByName[n]; !ok {
