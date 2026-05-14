@@ -44,20 +44,21 @@ type breakpoints struct {
 	checkBankBreak *target
 }
 
-// breaker defines a specific break condition.
+// breaker defines a specific break condition. breakers can be joined with an AND to create more
+// complex breakpoints
 type breaker struct {
 	target *target
 
 	// the requested value to break on
 	value targetValue
 
-	// skipNext indicates that a break success should be skipped or ignored
+	// skip indicates that a break success should be skipped or ignored
 	// because the target value isn't new. in other words, we only break when
 	// the target has changed *to* the value not when it already *is* the value
 	//
 	// without this we risk the user becoming trapped in a perpetual break
 	// condition, which probably isn't what the user wants or expects
-	skipNext bool
+	skip bool
 
 	// single linked list ANDs breakers together
 	next *breaker
@@ -125,31 +126,38 @@ type checkResult int
 const (
 	checkMatch checkResult = iota
 	checkNoMatch
-	checkIgnoredValue
+	checkSkipped
 )
 
 // check checks the specific break condition with the current value of
 // the break target.
 func (bk *breaker) check() checkResult {
 	if bk.target.value() != bk.value {
-		bk.skipNext = false
+		bk.skip = false
 		return checkNoMatch
 	}
 
-	// target value matches break value but it hasn't changed since the
-	// previous check. we don't want to break if this is true
-	if bk.skipNext {
-		return checkIgnoredValue
-	}
+	// skipping a breakpoint needs to consider the AND conditions represented by the next pointer.
+	// we begin with the skip flag for this node
+	skipped := bk.skip
 
 	if bk.next != nil {
-		if bk.next.check() == checkNoMatch {
+		m := bk.next.check()
+		if m == checkNoMatch {
 			return checkNoMatch
 		}
+
+		// whether we skip the breakpoint partly depends on the result of the AND conditions
+		skipped = skipped && m == checkSkipped
 	}
 
 	// this is a match. we should skip the next match.
-	bk.skipNext = true
+	bk.skip = true
+
+	// if all AND conditions in the breakpoint say skipped then we return checkSkipped
+	if skipped {
+		return checkSkipped
+	}
 
 	return checkMatch
 }
@@ -426,7 +434,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 					target: bankTarget(bp.dbg),
 					value:  bp.dbg.vcs.Mem.Cart.GetBank(bp.dbg.vcs.CPU.PC.Address()).Number,
 				}
-				nb.next.skipNext = true
+				nb.next.skip = true
 			}
 		}
 
