@@ -69,12 +69,14 @@ func newDecode(dsm *Disassembly, startingBank int, copiedBanks []banking.Content
 
 	// basic decoding pass
 	err := dec.decode()
-	if err == nil {
-		// bless those entries which we're reasonably sure are real instructions
-		err = dec.bless()
-		if err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, err
+	}
+
+	// bless those entries which we're reasonably sure are real instructions
+	err = dec.bless()
+	if err != nil {
+		return nil, err
 	}
 
 	return &dec, nil
@@ -358,11 +360,16 @@ func (dec *decode) decode() error {
 				return fmt.Errorf("decode: %w", err)
 			}
 
-			// loop over entire address space for cartridge. even then bank
-			// sizes are smaller than the address space it makes things easier
-			// later if we put a valid entry at every index. entries outside of
-			// the bank space will have level == EntryLevelUnused
-			for address := memorymap.OriginCart; address <= memorymap.MemtopCart; address++ {
+			// loop over entire address space for cartridge. even then bank sizes are smaller than
+			// the address space it makes things easier later if we put a valid entry at every
+			// index. entries outside of the bank space will have level == EntryLevelUnused
+			//
+			// using signed integers rather than unsigned 16bit values because the origin and memtop
+			// values could feasibly be the full 16 bit range. we don't want to overflow and create
+			// and infinite loop
+			for idx := int(memorymap.OriginCart); idx <= int(memorymap.MemtopCart); idx++ {
+				address := uint16(idx)
+
 				// continue if entry has already been decoded
 				e := dec.disasmEntries.Entries[bank.Number][address&memorymap.CartridgeBits]
 				if e != nil && e.Level > EntryLevelUnmappable {
