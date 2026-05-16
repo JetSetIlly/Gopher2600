@@ -116,9 +116,9 @@ func (cart *Cartridge) Reset() error {
 // the ContainerID() function.
 func (cart *Cartridge) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s (%s)", cart.ShortName, cart.ID()))
+	fmt.Fprintf(&s, "%s (%s)", cart.ShortName, cart.ID())
 	if cc := cart.GetContainer(); cc != nil {
-		s.WriteString(fmt.Sprintf(" [%s]", cc.ContainerID()))
+		fmt.Fprintf(&s, " [%s]", cc.ContainerID())
 	}
 	return s.String()
 }
@@ -145,23 +145,39 @@ func (cart *Cartridge) ContainerID() string {
 
 // Peek is an implementation of memory.DebugBus. Address must be normalised.
 func (cart *Cartridge) Peek(addr uint16) (uint8, error) {
-	v, _, err := cart.mapper.Access(addr&memorymap.CartridgeBits, true)
+	// we must mask the address to the 12 bits of the cartridge bus, unless the cartridge is of type FlatID
+	if cart.ID() != FlatID {
+		addr &= memorymap.CartridgeBits
+	}
+	v, _, err := cart.mapper.Access(addr, true)
 	return v, err
 }
 
 // Poke is an implementation of memory.DebugBus. Address must be normalised.
 func (cart *Cartridge) Poke(addr uint16, data uint8) error {
-	return cart.mapper.AccessVolatile(addr&memorymap.CartridgeBits, data, true)
+	// we must mask the address to the 12 bits of the cartridge bus, unless the cartridge is of type FlatID
+	if cart.ID() != FlatID {
+		addr &= memorymap.CartridgeBits
+	}
+	return cart.mapper.AccessVolatile(addr, data, true)
 }
 
 // Read is an implementation of memory.CPUBus.
 func (cart *Cartridge) Read(addr uint16) (uint8, uint8, error) {
-	return cart.mapper.Access(addr&memorymap.CartridgeBits, false)
+	// we must mask the address to the 12 bits of the cartridge bus, unless the cartridge is of type FlatID
+	if cart.ID() != FlatID {
+		addr &= memorymap.CartridgeBits
+	}
+	return cart.mapper.Access(addr, false)
 }
 
 // Write is an implementation of memory.CPUBus.
 func (cart *Cartridge) Write(addr uint16, data uint8) error {
-	return cart.mapper.AccessVolatile(addr&memorymap.CartridgeBits, data, false)
+	// we must mask the address to the 12 bits of the cartridge bus, unless the cartridge is of type FlatID
+	if cart.ID() != FlatID {
+		addr &= memorymap.CartridgeBits
+	}
+	return cart.mapper.AccessVolatile(addr, data, false)
 }
 
 // Eject removes memory from cartridge space and unlike the real hardware,
@@ -254,6 +270,8 @@ func (cart *Cartridge) Attach(loader cartridgeloader.Loader) error {
 	}
 
 	switch mapping {
+	case "FLAT":
+		cart.mapper, err = newFlat(cart.env)
 	case "2K":
 		cart.mapper, err = newAtari2k(cart.env, auto && hasSuperchip(loader))
 	case "4K":

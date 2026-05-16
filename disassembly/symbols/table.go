@@ -35,8 +35,7 @@ func (e *Entry) IsRAMSymbol() bool {
 // table maps a symbol to an address. it also keeps track of the widest symbol
 // in the table.
 type table struct {
-	// symbols indexed by address. addresses should be mapped before indexing
-	// takes place
+	// symbols indexed by address
 	symbols map[uint16]Entry
 
 	// addresses by symbol. useful when checking for duplicate symbols

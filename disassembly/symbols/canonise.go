@@ -53,9 +53,7 @@ func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
 
 	lb := cart.GetCartLabelsBus()
 	if lb != nil {
-		// not mirroring address
 		for addr, symbol := range lb.Labels() {
-			// add label for every cartridge bank
 			for _, l := range sym.label {
 				l.add(SourceCartridge, addr, symbol)
 			}

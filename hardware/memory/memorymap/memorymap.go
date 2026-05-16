@@ -81,7 +81,7 @@ const (
 
 // Memtop is the top most address of memory in the VCS. It is the same as the
 // cartridge memtop.
-const Memtop = uint16(0x1fff)
+const Memtop = MemtopCart
 
 // CartridgeBits identifies the bits in an address that are relevant to the
 // cartridge address. Useful for discounting those bits that determine the
@@ -102,8 +102,7 @@ const (
 // The masks to apply to an address to bring any address into the primary
 // range. Prefer to use MapAddress() for ease of use.
 const (
-	maskCart = MemtopCart
-	maskRAM  = MemtopRAM
+	maskRAM = MemtopRAM
 
 	maskWriteTIA = MemtopTIA
 	maskReadTIA  = uint16(0x000f)
@@ -116,17 +115,29 @@ const (
 	// registers - INTIM and TIMINT
 	maskReadRIOT_timer            = uint16(0x284)
 	maskReadRIOT_timer_correction = uint16(0x285)
+
+	// maskCart is no longer used. but it can used to ensure a cartridge address is in the primary
+	// mirror (ie. $1xxx rather than for example $fxxx)
+	maskCart = MemtopCart
 )
 
-// MapAddress translates the address argument from mirror space to primary
-// space.  Generally, an address should be passed through this function before
-// accessing memory.
+// MapAddress translates the address argument from mirror space to primary space, with the exception
+// of cartridge addresses which much be handled appropriately by the cartridge implementation.
+//
+// Generally, an address should be passed through this function before accessing memory.
 func MapAddress(address uint16, read bool) (uint16, Area) {
 	// note that the order of these filters is important
 
 	// cartridge addresses
 	if address&OriginCart == OriginCart {
-		return address & maskCart, Cartridge
+		// no longer masking address with maskCart value. this should affect anything because the
+		// address is still a cartridge address even if it's a mirror. the cartridge implementation
+		// should be careful however, to ensure the address is masked appropriately
+		//
+		// we do this (not masking to the primary mirror) so that we can support alternative
+		// cartridge bus architectures that have more than 13 address line. the so-called Flat
+		// mapper is an example of this
+		return address, Cartridge
 	}
 
 	// RIOT addresses

@@ -115,5 +115,5 @@ func testBreakpoints_drop(t *testing.T, trm *mockTerm) {
 	// breakpoints on PC addresses are always normalised so LIST BREAKS will show
 	// the primary mirror address
 	trm.command("LIST BREAKS")
-	test.ExpectEquality(t, trm.lastLine(), " 0: PC->0x1001")
+	test.ExpectEquality(t, trm.lastLine(), " 0: PC->0x3001")
 }

@@ -130,16 +130,12 @@ func (mem *Memory) GetArea(area memorymap.Area) Area {
 func (mem *Memory) Read(address uint16) (uint8, error) {
 	var err error
 
-	// the address bus value is the literal address masked to the 13 bits
-	// available to the 6507
-	addressBus := address & memorymap.Memtop
-
-	ma, ar := memorymap.MapAddress(addressBus, true)
+	ma, ar := memorymap.MapAddress(address, true)
 	area := mem.GetArea(ar)
 
 	// update address bus if it has changed
-	if mem.AddressBus != addressBus {
-		mem.AddressBus = addressBus
+	if address != mem.AddressBus {
+		mem.AddressBus = address
 
 		// if the address bus has changed then we indicate that to the cartridge
 		//
@@ -158,7 +154,11 @@ func (mem *Memory) Read(address uint16) (uint8, error) {
 	// note that we're using the previous value on the databus. this is because
 	// the 6507 is not driving the data bus
 	if ar == memorymap.Cartridge {
-		err = mem.Cart.Write(mem.AddressBus, mem.DataBus)
+		// the Flat mapper represents an architecture in which there is a R/W line on the cartridge
+		// bus. in this instance we do not want to trigger a write event
+		if mem.Cart.ID() != cartridge.FlatID {
+			err = mem.Cart.Write(mem.AddressBus, mem.DataBus)
+		}
 	}
 
 	// read data from area. if there is an error, we can just ignore it until
@@ -209,11 +209,7 @@ func (mem *Memory) Read(address uint16) (uint8, error) {
 }
 
 func (mem *Memory) Write(address uint16, data uint8) error {
-	// the address bus value is the literal address masked to the 13 bits
-	// available to the 6507
-	addressBus := address & memorymap.Memtop
-
-	ma, ar := memorymap.MapAddress(addressBus, false)
+	ma, ar := memorymap.MapAddress(address, false)
 	area := mem.GetArea(ar)
 
 	// drive pins from cartridge
@@ -226,8 +222,8 @@ func (mem *Memory) Write(address uint16, data uint8) error {
 	mem.DataBusDriven = 0xff
 
 	// service changes to address bus
-	if addressBus != mem.AddressBus {
-		mem.AddressBus = addressBus
+	if address != mem.AddressBus {
+		mem.AddressBus = address
 		err := mem.Cart.AccessPassive(mem.AddressBus, mem.DataBus)
 		if err != nil {
 			return err
