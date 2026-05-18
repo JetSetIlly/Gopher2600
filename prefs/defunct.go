@@ -105,6 +105,7 @@ var defunct = []string{
 	"hardware.arm7.MisalignedAccessIsFault", // replaced with hardware.arm7.abortOnMisalignedAccess
 	"hardware.arm7.unwrapACE",               // replaced with hardware.unwrapACE
 	"hardware.unwrapAce",                    // replaced with hardware.cartridge.unwrapACE
+	"disassembly.fxxxMirror",
 }
 
 // returns true if string is in list of defunct values.

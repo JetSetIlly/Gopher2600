@@ -383,7 +383,7 @@ func (cart *mnetwork) GetRAM() []mapper.CartRAM {
 
 	r[0] = mapper.CartRAM{
 		Label:  "1k",
-		Origin: 0x1000,
+		Origin: 0xf000,
 		Data:   make([]uint8, len(cart.state.ram1k)),
 		Mapped: cart.state.use1kRAM,
 	}
@@ -392,7 +392,7 @@ func (cart *mnetwork) GetRAM() []mapper.CartRAM {
 	for i := range mnetworkNum256byte {
 		r[i+1] = mapper.CartRAM{
 			Label:  fmt.Sprintf("256B [%d]", i),
-			Origin: 0x1900,
+			Origin: 0xf900,
 			Data:   make([]uint8, len(cart.state.ram256byte[i])),
 			Mapped: cart.state.ram256byteIdx == i,
 		}
@@ -418,7 +418,7 @@ func (cart *mnetwork) CopyBanks() []banking.Content {
 	for b := 0; b < len(cart.banks)-1; b++ {
 		c[b] = banking.Content{Number: b,
 			Data:    cart.banks[b],
-			Origins: []uint16{memorymap.OriginCart},
+			Origins: []uint16{memorymap.OriginCartFxxx},
 		}
 	}
 
@@ -426,7 +426,7 @@ func (cart *mnetwork) CopyBanks() []banking.Content {
 	b := len(cart.banks) - 1
 	c[b] = banking.Content{Number: b,
 		Data:    cart.banks[b],
-		Origins: []uint16{memorymap.OriginCart + uint16(cart.bankSize)},
+		Origins: []uint16{memorymap.OriginCartFxxx + uint16(cart.bankSize)},
 	}
 	return c
 }

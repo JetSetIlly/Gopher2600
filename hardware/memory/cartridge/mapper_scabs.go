@@ -202,7 +202,7 @@ func (cart *scabs) CopyBanks() []banking.Content {
 	for b := range len(cart.banks) {
 		c[b] = banking.Content{Number: b,
 			Data:    cart.banks[b],
-			Origins: []uint16{memorymap.OriginCart},
+			Origins: []uint16{memorymap.OriginCartFxxx},
 		}
 	}
 	return c

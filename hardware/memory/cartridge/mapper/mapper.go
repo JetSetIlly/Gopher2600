@@ -392,7 +392,7 @@ type CartPatchable interface {
 // 7800 but with the possibility of accessing more memory than is possible with the 2600
 type CartDevBus interface {
 	// the width of the bus expressed as a bit mask
-	AddressBits() uint16
+	CartridgeBits() uint16
 
 	// ReadWriteLine() returns true if the cartridge requires the R/W line to be present
 	ReadWriteLine() bool

@@ -205,7 +205,7 @@ func vcsSta3(mem *elfMemory) {
 func snoopDataBus(mem *elfMemory) {
 	addrIn := uint16(mem.gpio.data[ADDR_IDR])
 	addrIn |= uint16(mem.gpio.data[ADDR_IDR+1]) << 8
-	addrIn &= memorymap.Memtop
+	addrIn &= memorymap.MemtopCart
 
 	if addrIn == mem.strongarm.nextRomAddress {
 		// setting return value
@@ -241,7 +241,7 @@ func snoopDataBus_streaming(mem *elfMemory, addr uint16) {
 // uint8_t vcsRead4(uint16_t address)
 func vcsRead4(mem *elfMemory) {
 	address := uint16(mem.strongarm.running.registers[0])
-	address &= memorymap.Memtop
+	address &= memorymap.MemtopCart
 
 	switch mem.strongarm.running.state {
 	case 0:
@@ -268,7 +268,7 @@ func vcsRead4(mem *elfMemory) {
 // uint8_t vcsRead6(uint16_t address)
 func vcsRead6(mem *elfMemory) {
 	address := uint16(mem.strongarm.running.registers[0])
-	address &= memorymap.Memtop
+	address &= memorymap.MemtopCart
 
 	switch mem.strongarm.running.state {
 	case 0:
@@ -729,7 +729,7 @@ func vcsPla4Ex(mem *elfMemory) {
 func vcsWaitForAddress(mem *elfMemory) {
 	addrIn := uint16(mem.gpio.data[ADDR_IDR])
 	addrIn |= uint16(mem.gpio.data[ADDR_IDR+1]) << 8
-	addrIn &= memorymap.Memtop
+	addrIn &= memorymap.MemtopCart
 	address := uint16(mem.strongarm.running.registers[0])
 	if addrIn == address {
 		mem.endStrongArmFunction()

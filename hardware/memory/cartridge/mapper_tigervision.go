@@ -251,9 +251,9 @@ func (cart *tigervision) CopyBanks() []banking.Content {
 		c[b] = banking.Content{Number: b,
 			Data: cart.banks[b],
 			Origins: []uint16{
-				memorymap.OriginCart,
-				memorymap.OriginCart + uint16(cart.bankSize),
-				memorymap.OriginCart + uint16(cart.bankSize)*2,
+				memorymap.OriginCartFxxx,
+				memorymap.OriginCartFxxx + uint16(cart.bankSize),
+				memorymap.OriginCartFxxx + uint16(cart.bankSize)*2,
 			},
 		}
 	}
@@ -263,9 +263,9 @@ func (cart *tigervision) CopyBanks() []banking.Content {
 	c[b] = banking.Content{Number: b,
 		Data: cart.banks[b],
 		Origins: []uint16{
-			memorymap.OriginCart + uint16(cart.bankSize),
-			memorymap.OriginCart + uint16(cart.bankSize)*2,
-			memorymap.OriginCart + uint16(cart.bankSize)*3,
+			memorymap.OriginCartFxxx + uint16(cart.bankSize),
+			memorymap.OriginCartFxxx + uint16(cart.bankSize)*2,
+			memorymap.OriginCartFxxx + uint16(cart.bankSize)*3,
 		},
 	}
 	return c

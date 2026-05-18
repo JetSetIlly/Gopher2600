@@ -278,7 +278,7 @@ func (cart *df) GetRAM() []mapper.CartRAM {
 	r := make([]mapper.CartRAM, 1)
 	r[0] = mapper.CartRAM{
 		Label:  "DF+RAM",
-		Origin: 0x1080,
+		Origin: 0xf080,
 		Data:   make([]uint8, len(cart.state.ram)),
 		Mapped: true,
 	}
@@ -297,7 +297,7 @@ func (cart *df) CopyBanks() []banking.Content {
 	for b := 0; b < len(cart.banks); b++ {
 		c[b] = banking.Content{Number: b,
 			Data:    cart.banks[b],
-			Origins: []uint16{memorymap.OriginCart},
+			Origins: []uint16{memorymap.OriginCartFxxx},
 		}
 	}
 	return c

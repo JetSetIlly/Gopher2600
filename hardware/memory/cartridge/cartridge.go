@@ -62,7 +62,7 @@ type Cartridge struct {
 	coprocBus    coprocessor.CartCoProcBus
 
 	hasDevBus     bool
-	addressMask   uint16
+	cartridgeBits uint16
 	readWriteLine bool
 }
 
@@ -98,11 +98,11 @@ func (cart *Cartridge) Plumb(env *environment.Environment, fromDifferentEmulatio
 
 	if devBus, ok := cart.mapper.(mapper.CartDevBus); ok {
 		cart.hasDevBus = true
-		cart.addressMask = devBus.AddressBits()
+		cart.cartridgeBits = devBus.CartridgeBits()
 		cart.readWriteLine = devBus.ReadWriteLine()
 	} else {
 		cart.hasDevBus = false
-		cart.addressMask = memorymap.CartridgeBits
+		cart.cartridgeBits = memorymap.CartridgeBits
 		cart.readWriteLine = false
 	}
 
@@ -159,23 +159,23 @@ func (cart *Cartridge) ContainerID() string {
 
 // Peek is an implementation of memory.DebugBus. Address must be normalised.
 func (cart *Cartridge) Peek(addr uint16) (uint8, error) {
-	v, _, err := cart.mapper.Access(addr&cart.addressMask, true)
+	v, _, err := cart.mapper.Access(addr&cart.cartridgeBits, true)
 	return v, err
 }
 
 // Poke is an implementation of memory.DebugBus. Address must be normalised.
 func (cart *Cartridge) Poke(addr uint16, data uint8) error {
-	return cart.mapper.AccessVolatile(addr&cart.addressMask, data, true)
+	return cart.mapper.AccessVolatile(addr&cart.cartridgeBits, data, true)
 }
 
 // Read is an implementation of memory.CPUBus.
 func (cart *Cartridge) Read(addr uint16) (uint8, uint8, error) {
-	return cart.mapper.Access(addr&cart.addressMask, false)
+	return cart.mapper.Access(addr&cart.cartridgeBits, false)
 }
 
 // Write is an implementation of memory.CPUBus.
 func (cart *Cartridge) Write(addr uint16, data uint8) error {
-	return cart.mapper.AccessVolatile(addr&cart.addressMask, data, false)
+	return cart.mapper.AccessVolatile(addr&cart.cartridgeBits, data, false)
 }
 
 // Eject removes memory from cartridge space and unlike the real hardware,
@@ -229,11 +229,11 @@ func (cart *Cartridge) Attach(loader cartridgeloader.Loader) error {
 		// get the cartridge bus width required for the cartridge type
 		if devBus, ok := cart.mapper.(mapper.CartDevBus); ok {
 			cart.hasDevBus = true
-			cart.addressMask = devBus.AddressBits()
+			cart.cartridgeBits = devBus.CartridgeBits()
 			cart.readWriteLine = devBus.ReadWriteLine()
 		} else {
 			cart.hasDevBus = false
-			cart.addressMask = memorymap.CartridgeBits
+			cart.cartridgeBits = memorymap.CartridgeBits
 			cart.readWriteLine = false
 		}
 
@@ -423,7 +423,7 @@ func (cart *Cartridge) NumBanks() int {
 // GetBank returns the current bank information for the specified address. See
 // documentation for memorymap.Bank for more information.
 func (cart *Cartridge) GetBank(addr uint16) banking.Information {
-	bank := cart.mapper.GetBank(addr & cart.addressMask)
+	bank := cart.mapper.GetBank(addr & cart.cartridgeBits)
 	bank.NonCart = addr&memorymap.OriginCart != memorymap.OriginCart
 	return bank
 }
@@ -573,6 +573,8 @@ func (cart *Cartridge) GetSuperchargerBootstrap() mapper.CartSuperchargerBootstr
 // next bank in the sequence, call the function with the instance of
 // banking.BankContent returned from the previous call. The end of the sequence is
 // indicated by the nil value. Start a new iteration with the nil argument.
+//
+// The length of the returned array value can be zero.
 func (cart *Cartridge) CopyBanks() ([]banking.Content, error) {
 	return cart.mapper.CopyBanks(), nil
 }
@@ -650,4 +652,10 @@ func (cart *Cartridge) HasDevBus() bool {
 // read/write line
 func (cart *Cartridge) HasReadWriteLine() bool {
 	return cart.readWriteLine
+}
+
+// CartridgeBits() returns the number of address bits available to the cartridge. Prefer this
+// function over memorymap.CartridgeBits
+func (cart *Cartridge) CartridgeBits() uint16 {
+	return cart.cartridgeBits
 }

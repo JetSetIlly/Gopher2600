@@ -327,7 +327,7 @@ func (cart *wicksteadDesign) GetRAM() []mapper.CartRAM {
 	r := make([]mapper.CartRAM, 1)
 	r[0] = mapper.CartRAM{
 		Label:  "Wickstead Design",
-		Origin: 0x1000,
+		Origin: 0xf000,
 		Data:   make([]uint8, len(cart.state.ram)),
 		Mapped: true,
 	}
@@ -346,7 +346,7 @@ func (cart *wicksteadDesign) CopyBanks() []banking.Content {
 	for b := 0; b < len(cart.banks); b++ {
 		c[b] = banking.Content{Number: b,
 			Data:    cart.banks[b],
-			Origins: []uint16{memorymap.OriginCart},
+			Origins: []uint16{memorymap.OriginCartFxxx},
 		}
 	}
 	return c

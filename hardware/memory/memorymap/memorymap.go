@@ -42,13 +42,11 @@ const (
 	Cartridge
 )
 
-// The origin and memory top for each area of memory. Checking which area an
-// address falls within and forcing the address into the normalised range is
-// all handled by the MapAddress() function.
+// The origin and memory top for each area of memory. Checking which area an address falls within
+// and forcing the address into the normalised range is all handled by the MapAddress() function.
 //
-// Implementations of the different memory areas may need to drag the address
-// down further into the the range of the memory array. This is best done with
-// (address^origin) rather than subtraction.
+// Implementations of the different memory areas may need to drag the address down further into the
+// the range of the memory array. This is best done with (address^origin) rather than subtraction.
 const (
 	OriginTIA = uint16(0x0000)
 	MemtopTIA = uint16(0x003f)
@@ -60,32 +58,20 @@ const (
 
 	MemtopChipRegisters = MemtopRIOT
 
-	OriginCart     = uint16(0x1000)
-	MemtopCart     = uint16(0x1fff)
-	OriginAbsolute = uint16(0x0000)
-	MemtopAbsolute = uint16(0xffff)
+	OriginCart = uint16(0x1000)
+	MemtopCart = uint16(0x1fff)
 )
 
-// Cartridge memory is mirrored in a number of places in the address space. The
-// most useful mirror is the Fxxx mirror which many programmers use when
-// writing assembly programs. The following constants are used by the
-// disassembly package to reference the disassembly to the Fxxx mirror.
-//
-// Be extra careful when looping with MemtopCartFxxxMirror because it is at the
-// very edge of uint16. Limit detection may need to consider the overflow
-// conditions.
+// Cartridge memory is mirrored in a number of places in the address space. The most useful mirror
+// is the Fxxx mirror which many programmers use when writing assembly programs. We use this value
+// when speficying origins in CopyBanks() functions
 const (
-	OriginCartFxxxMirror = uint16(0xf000)
-	MemtopCartFxxxMirror = uint16(0xffff)
+	OriginCartFxxx = uint16(0xf000)
 )
 
-// Memtop is the top most address of memory in the VCS. It is the same as the
-// cartridge memtop.
-const Memtop = MemtopCart
-
-// CartridgeBits identifies the bits in an address that are relevant to the
-// cartridge address. Useful for discounting those bits that determine the
-// cartridge mirror. For example, the following will be true:
+// CartridgeBits identifies the bits in an address that are relevant to the cartridge address.
+// Useful for discounting those bits that determine the cartridge mirror. For example, the following
+// will be true:
 //
 //	0x1123 & CartridgeBits == 0xf123 & CartridgeBits
 //

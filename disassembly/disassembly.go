@@ -56,7 +56,7 @@ type Disassembly struct {
 
 // DisasmEntries contains the individual disassembled entries of the current ROM.
 type DisasmEntries struct {
-	// indexed by bank and address. address should be masked with memorymap.CartridgeBits before access
+	// indexed by bank and address. address should be masked with cartridge.CartridgeBits() before access
 	Entries [][]*Entry
 
 	// executed entries in order of execution
@@ -160,12 +160,19 @@ func (dsm *Disassembly) FromMemory(background bool) error {
 		dsm.crit.Lock()
 		defer dsm.crit.Unlock()
 
-		// allocate at least one bank. this is useful if there is no cartridge (ie. it's ejected)
-		// and therefore CopyBanks() likely returned an empty array
-		dsm.disasmEntries.Entries = make([][]*Entry, max(1, len(copiedBanks)))
-
-		for b := range dsm.disasmEntries.Entries {
-			dsm.disasmEntries.Entries[b] = make([]*Entry, memorymap.CartridgeBits+1)
+		// the cartridge can return an empty array from CopyBanks(). this can happen when the
+		// cartridge has been ejected or if the cartridge does not have a static block of bank
+		// memory (eg. ELF) that can be disassembled
+		//
+		// in the case of the empty array we allocate a single bank of cartridge addresses
+		if len(copiedBanks) == 0 {
+			dsm.disasmEntries.Entries = make([][]*Entry, 1)
+			dsm.disasmEntries.Entries[0] = make([]*Entry, memorymap.MemtopCart-memorymap.OriginCart+1)
+		} else {
+			dsm.disasmEntries.Entries = make([][]*Entry, len(copiedBanks))
+			for b := range dsm.disasmEntries.Entries {
+				dsm.disasmEntries.Entries[b] = make([]*Entry, len(copiedBanks[b].Data))
+			}
 		}
 	}()
 
@@ -213,8 +220,6 @@ func (dsm *Disassembly) fromMemory(startingBank int, copiedBanks []banking.Conte
 		}
 	}
 
-	dsm.setCartMirror()
-
 	return nil
 }
 
@@ -233,7 +238,7 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 		return nil
 	}
 
-	return dsm.disasmEntries.Entries[bank.Number][address&memorymap.CartridgeBits]
+	return dsm.disasmEntries.Entries[bank.Number][address&dsm.vcs.Mem.Cart.CartridgeBits()]
 }
 
 // ExecutedEntry should be called after execution of a CPU instruction. In many
@@ -286,7 +291,7 @@ func (dsm *Disassembly) ExecutedEntry(bank banking.Information, result execution
 		// section
 
 		// add/update entry to disassembly
-		idx := result.Address & memorymap.CartridgeBits
+		idx := result.Address & dsm.vcs.Mem.Cart.CartridgeBits()
 		o := dsm.disasmEntries.Entries[bank.Number][idx]
 		if o != nil && o.Result.Final {
 			e.updateExecutionEntry(result)
@@ -298,7 +303,7 @@ func (dsm *Disassembly) ExecutedEntry(bank banking.Information, result execution
 		// current bank, so we have to call the GetBank() function.
 		if checkNextAddr && result.Final {
 			bank = dsm.vcs.Mem.Cart.GetBank(nextAddr)
-			idx := nextAddr & memorymap.CartridgeBits
+			idx := nextAddr & dsm.vcs.Mem.Cart.CartridgeBits()
 			ne := dsm.disasmEntries.Entries[bank.Number][idx]
 			if ne == nil {
 				dsm.disasmEntries.Entries[bank.Number][idx] = dsm.formatResult(bank, execution.Result{

@@ -114,14 +114,14 @@ func (cart *DevCard) Step(clock float32) {
 func (cart *DevCard) CopyBanks() []banking.Content {
 	c := make([]banking.Content, cart.NumBanks())
 	c[0].Number = 0
-	c[0].Origins = []uint16{0x5000}
-	c[0].Data = make([]uint8, 0xb000)
-	copy(c[0].Data[0x0000:0x1000], cart.mem[0x0000:0x1000])
-	copy(c[0].Data[0x2000:0x3000], cart.mem[0x1000:0x2000])
-	copy(c[0].Data[0x4000:0x5000], cart.mem[0x2000:0x3000])
-	copy(c[0].Data[0x6000:0x7000], cart.mem[0x3000:0x4000])
-	copy(c[0].Data[0x8000:0x9000], cart.mem[0x4000:0x5000])
-	copy(c[0].Data[0xa000:0xb000], cart.mem[0x5000:0x6000])
+	c[0].Origins = []uint16{0x0000}
+	c[0].Data = make([]uint8, 0x10000)
+	copy(c[0].Data[0x5000:0x6000], cart.mem[0x0000:0x1000])
+	copy(c[0].Data[0x7000:0x8000], cart.mem[0x1000:0x2000])
+	copy(c[0].Data[0x9000:0xa000], cart.mem[0x2000:0x3000])
+	copy(c[0].Data[0xb000:0xc000], cart.mem[0x3000:0x4000])
+	copy(c[0].Data[0xd000:0xe000], cart.mem[0x4000:0x5000])
+	copy(c[0].Data[0xf000:0x10000], cart.mem[0x5000:0x6000])
 	return c
 }
 
@@ -146,8 +146,8 @@ func (cart *DevCard) ROMDump(filename string) error {
 	return nil
 }
 
-// AddressBits implements the CartDevBus interface
-func (cart *DevCard) AddressBits() uint16 {
+// CartridgeBits implements the CartDevBus interface
+func (cart *DevCard) CartridgeBits() uint16 {
 	return 0xffff
 }
 

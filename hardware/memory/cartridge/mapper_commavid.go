@@ -179,7 +179,7 @@ func (cart *commavid) GetRAM() []mapper.CartRAM {
 	r := make([]mapper.CartRAM, 1)
 	r[0] = mapper.CartRAM{
 		Label:  "CommaVid",
-		Origin: 0x1000,
+		Origin: 0xf000,
 		Data:   make([]uint8, len(cart.state.ram)),
 		Mapped: true,
 	}
@@ -197,7 +197,7 @@ func (cart *commavid) CopyBanks() []banking.Content {
 	c := make([]banking.Content, 1)
 	c[0] = banking.Content{Number: 0,
 		Data:    cart.bankData,
-		Origins: []uint16{memorymap.OriginCart},
+		Origins: []uint16{memorymap.OriginCartFxxx},
 	}
 	return c
 }

@@ -373,8 +373,8 @@ func (cart *Supercharger) CopyBanks() []banking.Content {
 	c[0] = banking.Content{Number: 0,
 		Data: cart.bios,
 		Origins: []uint16{
-			memorymap.OriginCart,
-			memorymap.OriginCart + uint16(cart.bankSize),
+			memorymap.OriginCartFxxx,
+			memorymap.OriginCartFxxx + uint16(cart.bankSize),
 		},
 	}
 
@@ -382,8 +382,8 @@ func (cart *Supercharger) CopyBanks() []banking.Content {
 		c[b+1] = banking.Content{Number: b + 1,
 			Data: cart.state.ram[b],
 			Origins: []uint16{
-				memorymap.OriginCart,
-				memorymap.OriginCart + uint16(cart.bankSize),
+				memorymap.OriginCartFxxx,
+				memorymap.OriginCartFxxx + uint16(cart.bankSize),
 			},
 		}
 	}

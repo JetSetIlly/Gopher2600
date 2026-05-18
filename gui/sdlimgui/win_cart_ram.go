@@ -93,12 +93,6 @@ func (win *winCartRAM) draw(ram []mapper.CartRAM) {
 		if imgui.BeginTabItem(current.Label) {
 			imgui.BeginChildV("cartram", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)
 
-			// show cartridge origin for mapped RAM banks
-			origin := current.Origin
-			if win.img.dbg.Disasm.Prefs.FxxxMirror.Get().(bool) {
-				origin = (origin & memorymap.CartridgeBits) | memorymap.OriginCartFxxxMirror
-			}
-
 			// pos is retreived in before() and used in after()
 			var pos imgui.Vec2
 
@@ -171,7 +165,7 @@ func (win *winCartRAM) draw(ram []mapper.CartRAM) {
 				})
 			}
 
-			drawByteGrid("cartRamByteGrid", current.Data, uint32(origin), before, after, commit)
+			drawByteGrid("cartRamByteGrid", current.Data, uint32(current.Origin), before, after, commit)
 			imgui.EndChild()
 
 			// status line

@@ -114,7 +114,7 @@ func (cf *CallFn) Check(addr uint16) (uint8, bool) {
 	// the problem with this is that the cartridge mirror specified by the
 	// address may be "wrong". not a problem from an execution point of view
 	// but it might seem odd to someone monitoring closely in the debugger.
-	cf.ResumeAddr = (addr | memorymap.OriginCartFxxxMirror) + 1
+	cf.ResumeAddr = (addr | memorymap.OriginCart) + 1
 
 	return 0, false
 }
