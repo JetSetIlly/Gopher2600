@@ -60,6 +60,10 @@ type Cartridge struct {
 	busStuff     mapper.CartBusStuff
 	hasCoProcBus bool
 	coprocBus    coprocessor.CartCoProcBus
+
+	hasDevBus     bool
+	addressMask   uint16
+	readWriteLine bool
 }
 
 // sentinal error returned if operation is on the ejected cartridge type.
@@ -91,6 +95,16 @@ func (cart *Cartridge) Plumb(env *environment.Environment, fromDifferentEmulatio
 	cart.env = env
 	cart.busStuff, cart.hasBusStuff = cart.mapper.(mapper.CartBusStuff)
 	cart.coprocBus, cart.hasCoProcBus = cart.mapper.(coprocessor.CartCoProcBus)
+
+	if devBus, ok := cart.mapper.(mapper.CartDevBus); ok {
+		cart.hasDevBus = true
+		cart.addressMask = devBus.AddressBits()
+		cart.readWriteLine = devBus.ReadWriteLine()
+	} else {
+		cart.hasDevBus = false
+		cart.addressMask = memorymap.CartridgeBits
+		cart.readWriteLine = false
+	}
 
 	if fromDifferentEmulation {
 		if m, ok := cart.mapper.(mapper.PlumbFromDifferentEmulation); ok {
@@ -145,39 +159,23 @@ func (cart *Cartridge) ContainerID() string {
 
 // Peek is an implementation of memory.DebugBus. Address must be normalised.
 func (cart *Cartridge) Peek(addr uint16) (uint8, error) {
-	// we must mask the address to the 12 bits of the cartridge bus, unless the cartridge is of type FlatID
-	if cart.ID() != FlatID {
-		addr &= memorymap.CartridgeBits
-	}
-	v, _, err := cart.mapper.Access(addr, true)
+	v, _, err := cart.mapper.Access(addr&cart.addressMask, true)
 	return v, err
 }
 
 // Poke is an implementation of memory.DebugBus. Address must be normalised.
 func (cart *Cartridge) Poke(addr uint16, data uint8) error {
-	// we must mask the address to the 12 bits of the cartridge bus, unless the cartridge is of type FlatID
-	if cart.ID() != FlatID {
-		addr &= memorymap.CartridgeBits
-	}
-	return cart.mapper.AccessVolatile(addr, data, true)
+	return cart.mapper.AccessVolatile(addr&cart.addressMask, data, true)
 }
 
 // Read is an implementation of memory.CPUBus.
 func (cart *Cartridge) Read(addr uint16) (uint8, uint8, error) {
-	// we must mask the address to the 12 bits of the cartridge bus, unless the cartridge is of type FlatID
-	if cart.ID() != FlatID {
-		addr &= memorymap.CartridgeBits
-	}
-	return cart.mapper.Access(addr, false)
+	return cart.mapper.Access(addr&cart.addressMask, false)
 }
 
 // Write is an implementation of memory.CPUBus.
 func (cart *Cartridge) Write(addr uint16, data uint8) error {
-	// we must mask the address to the 12 bits of the cartridge bus, unless the cartridge is of type FlatID
-	if cart.ID() != FlatID {
-		addr &= memorymap.CartridgeBits
-	}
-	return cart.mapper.AccessVolatile(addr, data, false)
+	return cart.mapper.AccessVolatile(addr&cart.addressMask, data, false)
 }
 
 // Eject removes memory from cartridge space and unlike the real hardware,
@@ -228,6 +226,17 @@ func (cart *Cartridge) Attach(loader cartridgeloader.Loader) error {
 		cart.busStuff, cart.hasBusStuff = cart.mapper.(mapper.CartBusStuff)
 		cart.coprocBus, cart.hasCoProcBus = cart.mapper.(coprocessor.CartCoProcBus)
 
+		// get the cartridge bus width required for the cartridge type
+		if devBus, ok := cart.mapper.(mapper.CartDevBus); ok {
+			cart.hasDevBus = true
+			cart.addressMask = devBus.AddressBits()
+			cart.readWriteLine = devBus.ReadWriteLine()
+		} else {
+			cart.hasDevBus = false
+			cart.addressMask = memorymap.CartridgeBits
+			cart.readWriteLine = false
+		}
+
 		if _, ok := cart.mapper.(*ejected); !ok {
 			logger.Logf(cart.env, "cartridge", "inserted %s", cart.mapper.ID())
 		}
@@ -270,8 +279,8 @@ func (cart *Cartridge) Attach(loader cartridgeloader.Loader) error {
 	}
 
 	switch mapping {
-	case "FLAT":
-		cart.mapper, err = newFlat(cart.env)
+	case "DEVCARD", "DEVKIT":
+		cart.mapper, err = newDevCard(cart.env)
 	case "2K":
 		cart.mapper, err = newAtari2k(cart.env, auto && hasSuperchip(loader))
 	case "4K":
@@ -414,7 +423,7 @@ func (cart *Cartridge) NumBanks() int {
 // GetBank returns the current bank information for the specified address. See
 // documentation for memorymap.Bank for more information.
 func (cart *Cartridge) GetBank(addr uint16) banking.Information {
-	bank := cart.mapper.GetBank(addr & memorymap.CartridgeBits)
+	bank := cart.mapper.GetBank(addr & cart.addressMask)
 	bank.NonCart = addr&memorymap.OriginCart != memorymap.OriginCart
 	return bank
 }
@@ -630,4 +639,15 @@ func (cart *Cartridge) HasSuperchip() bool {
 		return sc.HasSuperchip()
 	}
 	return false
+}
+
+// HasDevBus() returns true if the cartridge is using a non-standard 2600 bus
+func (cart *Cartridge) HasDevBus() bool {
+	return cart.hasDevBus
+}
+
+// HasReadWriteLine() returns true if the cartridge is using a non-standard 2600 bus with a
+// read/write line
+func (cart *Cartridge) HasReadWriteLine() bool {
+	return cart.readWriteLine
 }

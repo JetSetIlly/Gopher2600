@@ -166,6 +166,12 @@ https://www.biglist.com/lists/stella/archives/199901/msg00026.html
 Information about the SpeakJet chip found in the AtariVox peripheral
 https://people.ece.cornell.edu/land/courses/ece4760/Speech/speakjetusermanual.pdf
 
+DevCart/DevKit information
+
+http://www.atari7800.org/manuals/Devcard.htm
+
+https://github.com/OpenSourcedGames/Atari-7800/blob/master/7800DEVSYS/7800DEVSYS/DISK1/README.1ST
+
 Reference for the ARM7TDMI-S, as used in the Harmony cartridge formats:
 
 https://developer.arm.com/documentation/ddi0234/b

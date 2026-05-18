@@ -145,20 +145,20 @@ func (mem *Memory) Read(address uint16) (uint8, error) {
 		mem.Cart.AccessPassive(mem.AddressBus, mem.DataBus)
 	}
 
-	// if the area is cartridge then we need to consider what happens to
-	// cartridge addresses that are volatile. ie. RAM locations and "hotspots".
+	// if the area is cartridge then we need to consider what happens to cartridge addresses that
+	// are volatile. ie. RAM locations and "hotspots".
 	//
-	// what is happening here is probably not an intentional act by the 6507
-	// program but it still needs to be accounted for
+	// what is happening here is probably not an intentional act by the 6507 program but it still
+	// needs to be accounted for
 	//
-	// note that we're using the previous value on the databus. this is because
-	// the 6507 is not driving the data bus
-	if ar == memorymap.Cartridge {
-		// the Flat mapper represents an architecture in which there is a R/W line on the cartridge
-		// bus. in this instance we do not want to trigger a write event
-		if mem.Cart.ID() != cartridge.FlatID {
-			err = mem.Cart.Write(mem.AddressBus, mem.DataBus)
-		}
+	// note that we're using the previous value on the databus. this is because the 6507 is not
+	// driving the data bus
+	//
+	// we also consider whether the cartridge has access to the CPU's read/write line. in a normal
+	// architecture the cartridge does not and is the reason why a "read" can cause a "write" for
+	// "volatile addresses
+	if ar == memorymap.Cartridge && !mem.Cart.HasReadWriteLine() {
+		err = mem.Cart.Write(mem.AddressBus, mem.DataBus)
 	}
 
 	// read data from area. if there is an error, we can just ignore it until

@@ -462,6 +462,13 @@ func fingerprint16k(loader cartridgeloader.Loader) string {
 	return "F6"
 }
 
+func fingerprint24k(loader cartridgeloader.Loader) string {
+	if fingerprintFA2(loader) {
+		return "FA2"
+	}
+	return "DEVCARD"
+}
+
 func fingerprint32k(loader cartridgeloader.Loader) string {
 	if fingerprintFA2(loader) {
 		return "FA2"
@@ -598,7 +605,7 @@ func (cart *Cartridge) fingerprint(loader cartridgeloader.Loader) (string, error
 		return fingerprint16k(loader), nil
 
 	case 24576:
-		return "FA2", nil
+		return fingerprint24k(loader), nil
 
 	case 28672:
 		return "FA2", nil

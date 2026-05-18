@@ -135,7 +135,7 @@ func MapAddress(address uint16, read bool) (uint16, Area) {
 		// should be careful however, to ensure the address is masked appropriately
 		//
 		// we do this (not masking to the primary mirror) so that we can support alternative
-		// cartridge bus architectures that have more than 13 address line. the so-called Flat
+		// cartridge bus architectures that have more than 13 address line. the so-called DevCart
 		// mapper is an example of this
 		return address, Cartridge
 	}

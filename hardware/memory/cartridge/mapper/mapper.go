@@ -384,3 +384,16 @@ type CartPatchable interface {
 	// data structure as appropriate.
 	Patch(offset int, data uint8) error
 }
+
+// CartDevBus is implemented by mappers that require a cartridge bus different to what is available
+// on the standard 2600
+//
+// This allows support for the 7800 DevCard, which can be used to develop 2600 games on the
+// 7800 but with the possibility of accessing more memory than is possible with the 2600
+type CartDevBus interface {
+	// the width of the bus expressed as a bit mask
+	AddressBits() uint16
+
+	// ReadWriteLine() returns true if the cartridge requires the R/W line to be present
+	ReadWriteLine() bool
+}
