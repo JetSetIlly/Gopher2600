@@ -288,8 +288,7 @@ type Moviecart struct {
 	specID    string
 	mappingID string
 
-	data  io.ReadSeeker
-	banks []byte
+	data io.ReadSeeker
 
 	state *state
 }
@@ -302,22 +301,12 @@ func NewMoviecart(env *environment.Environment) (mapper.CartMapper, error) {
 	}
 
 	cart.state = newState()
-	cart.banks = make([]byte, 4096)
 
 	// shorten title card sequence if this is not the main emulation
 	if !env.IsEmulation(environment.MainEmulation) {
 		cart.state.shortTitleCard = true
 		cart.state.initialise()
 	}
-
-	// put core data into bank ROM. this is so that we have something to
-	// disassemble.
-	//
-	// TODO: get rid of the banks[] array and just use the state.sram array
-	copy(cart.banks, coreData)
-	copy(cart.banks[len(coreData):], coreData)
-	copy(cart.banks[len(coreData)*2:], coreData)
-	copy(cart.banks[len(coreData)*3:], coreData)
 
 	// field starts off in the end position
 	cart.state.streamIndex = 1
@@ -393,13 +382,24 @@ func (cart *Moviecart) Step(clock float32) {
 
 // CopyBanks implements the mapper.CartMapper interface.
 func (cart *Moviecart) CopyBanks() []banking.Content {
-	// note that as it is, this will be a copy of the core program without any
-	// of the updates that happen as a result of playing a movie
-	c := make([]banking.Content, len(cart.banks))
+	// there are only tens lines of addresses in the movie cart, totalling just 1024 bytes of
+	// addressable memory. this means we must copy sram four times into a 4096 block.
+	d := make([]byte, 4096)
+	copy(d, cart.state.sram)
+	copy(d[1024:], cart.state.sram)
+	copy(d[2048:], cart.state.sram)
+	copy(d[3072:], cart.state.sram)
+
+	// note that using the Origins field to indicate the presence of four segments is not
+	// appropriate here because this isn't really a segmented banking scheme; it is just a
+	// reduced address space
+
+	c := make([]banking.Content, 1)
 	c[0] = banking.Content{Number: 0,
-		Data:    cart.banks,
+		Data:    d,
 		Origins: []uint16{memorymap.OriginCart},
 	}
+
 	return c
 }
 
