@@ -284,7 +284,7 @@ func (cart *Cartridge) Attach(loader cartridgeloader.Loader) error {
 	}
 
 	switch mapping {
-	case "DEVCARD", "DEVKIT":
+	case "DEVCARD", "DEVKIT", "DEVC":
 		cart.mapper, err = newDevCard(cart.env)
 	case "2K":
 		cart.mapper, err = newAtari2k(cart.env, auto && hasSuperchip(loader))
