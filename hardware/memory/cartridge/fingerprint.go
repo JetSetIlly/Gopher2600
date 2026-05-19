@@ -342,6 +342,66 @@ func fingerprintFA2(loader cartridgeloader.Loader) bool {
 	return ok && loader.CountSkip(29696, []byte{0x00}) == 3072
 }
 
+func fingerprintDevCard(loader cartridgeloader.Loader) bool {
+	// DevCard supports a maximum of 24k
+	if loader.Size() > 0x6000 {
+		return false
+	}
+
+	lockSequence := []byte{0xa9, 0xfd, 0x85, 0x08}
+
+	// if the loader does not contain the lock sequence at all then it is not a devcard file
+	if !loader.Contains(lockSequence) {
+		return false
+	}
+
+	buffer := make([]uint8, 4)
+
+	// read reset address
+	loader.Seek(int64(loader.Size())-4, io.SeekStart)
+	_, err := loader.Read(buffer)
+	if err != nil {
+		return false
+	}
+	resetAddr := uint16(buffer[0]) | uint16(buffer[1])<<8
+
+	// adjust resetAddr to account for absence of some 4k blocks in the data
+	bank := (((resetAddr & 0xf000) >> 12) - 5) >> 1
+	resetAddr = (resetAddr & 0x0fff) | bank<<12
+
+	// adjust resetAddr for file size
+	resetAddr -= 0x6000 - uint16(loader.Size())
+
+	// if reset address is not within bounds of file then the loader is not a devcard file
+	if resetAddr > uint16(loader.Size()) {
+		return false
+	}
+
+	// if the lock sequence does not appear with N bytes of the reset address then the loader is
+	// not a devcard file
+	const lockSequenceCt = 10
+
+	// the process is simple and doesn't take into jump or branches into consideration. however,
+	// this seems to be okay because it prevents false positives from occuring for games that
+	// contain the lock sequence (because they were developed on the devcard) but which were then
+	// converted to a real bank switching format
+	//
+	// some games that contain the lock sequence but will not satisfy the following loop are:
+	// Road Runner, Rampage, Desert Falcon
+	for ct := range int64(lockSequenceCt) {
+		loader.Seek(int64(resetAddr)+ct, io.SeekStart)
+		_, err := loader.Read(buffer)
+		if err != nil {
+			return false
+		}
+		if bytes.Equal(buffer, lockSequence) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func fingerprintTigervision(loader cartridgeloader.Loader) bool {
 	// tigervision cartridges change banks by writing to memory address 0x3f. we
 	// can hypothesise that these types of cartridges will have that instruction
@@ -466,7 +526,7 @@ func fingerprint24k(loader cartridgeloader.Loader) string {
 	if fingerprintFA2(loader) {
 		return "FA2"
 	}
-	return "DEVCARD"
+	return unrecognisedMapper
 }
 
 func fingerprint32k(loader cartridgeloader.Loader) string {
@@ -567,6 +627,10 @@ func (cart *Cartridge) fingerprint(loader cartridgeloader.Loader) (string, error
 		return "DPC+", nil
 	}
 
+	if fingerprintDevCard(loader) {
+		return "DEVCARD", nil
+	}
+
 	if fingerprintSuperchargerFastLoad(loader) {
 		return "AR", nil
 	}
@@ -606,9 +670,6 @@ func (cart *Cartridge) fingerprint(loader cartridgeloader.Loader) (string, error
 
 	case 24576:
 		return fingerprint24k(loader), nil
-
-	case 28672:
-		return "FA2", nil
 
 	case 32768:
 		return fingerprint32k(loader), nil

@@ -43,6 +43,15 @@ func newDevCard(env *environment.Environment) (mapper.CartMapper, error) {
 		return nil, fmt.Errorf("%s: %w", DevCardID, err)
 	}
 
+	if len(data) > 0x6000 {
+		return nil, fmt.Errorf("%s: file is %d bytes. maximum size is 24k", DevCardID, len(data))
+	}
+
+	// pad out file if loader data is less than 24k
+	if len(data) < 0x6000 {
+		data = append(make([]uint8, 0x6000-len(data)), data...)
+	}
+
 	cart.mem = make([]uint8, 0x6000)
 	copy(cart.mem, data)
 
