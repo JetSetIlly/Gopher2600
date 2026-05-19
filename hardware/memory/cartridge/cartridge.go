@@ -63,6 +63,7 @@ type Cartridge struct {
 
 	hasDevBus     bool
 	cartridgeBits uint16
+	cartridgeMask uint16
 	readWriteLine bool
 }
 
@@ -99,10 +100,12 @@ func (cart *Cartridge) Plumb(env *environment.Environment, fromDifferentEmulatio
 	if devBus, ok := cart.mapper.(mapper.CartDevBus); ok {
 		cart.hasDevBus = true
 		cart.cartridgeBits = devBus.CartridgeBits()
+		cart.cartridgeMask = cart.cartridgeBits | memorymap.CartridgeSelectLine
 		cart.readWriteLine = devBus.ReadWriteLine()
 	} else {
 		cart.hasDevBus = false
 		cart.cartridgeBits = memorymap.CartridgeBits
+		cart.cartridgeMask = cart.cartridgeBits | memorymap.CartridgeSelectLine
 		cart.readWriteLine = false
 	}
 
@@ -230,10 +233,12 @@ func (cart *Cartridge) Attach(loader cartridgeloader.Loader) error {
 		if devBus, ok := cart.mapper.(mapper.CartDevBus); ok {
 			cart.hasDevBus = true
 			cart.cartridgeBits = devBus.CartridgeBits()
+			cart.cartridgeMask = cart.cartridgeBits | memorymap.CartridgeSelectLine
 			cart.readWriteLine = devBus.ReadWriteLine()
 		} else {
 			cart.hasDevBus = false
 			cart.cartridgeBits = memorymap.CartridgeBits
+			cart.cartridgeMask = cart.cartridgeBits | memorymap.CartridgeSelectLine
 			cart.readWriteLine = false
 		}
 
@@ -471,7 +476,7 @@ func (cart *Cartridge) ParseCommand(w io.Writer, command string) error {
 // Similarly, the CBS (FA) mapper will switch banks on cartridge addresses 1ff8
 // to 1ffa (and mirrors) but only if the data bus has the low bit set to one.
 func (cart *Cartridge) AccessPassive(addr uint16, data uint8) error {
-	return cart.mapper.AccessPassive(addr, data)
+	return cart.mapper.AccessPassive(addr&cart.cartridgeMask, data)
 }
 
 // Step should be called every CPU cycle. The attached cartridge may or may not

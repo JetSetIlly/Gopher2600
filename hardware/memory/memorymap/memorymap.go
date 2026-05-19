@@ -62,27 +62,29 @@ const (
 	MemtopCart = uint16(0x1fff)
 )
 
-// Cartridge memory is mirrored in a number of places in the address space. The most useful mirror
-// is the Fxxx mirror which many programmers use when writing assembly programs. We use this value
-// when speficying origins in CopyBanks() functions
 const (
+	// Cartridge memory is mirrored in a number of places in the address space. The most useful mirror
+	// is the Fxxx mirror which many programmers use when writing assembly programs. We use this value
+	// when speficying origins in CopyBanks() functions
 	OriginCartFxxx = uint16(0xf000)
-)
 
-// CartridgeBits identifies the bits in an address that are relevant to the cartridge address.
-// Useful for discounting those bits that determine the cartridge mirror. For example, the following
-// will be true:
-//
-//	0x1123 & CartridgeBits == 0xf123 & CartridgeBits
-//
-// Alternatively, the following is an effective way to index an array:
-//
-//	addr := 0xf000
-//	mem[addr & CartridgeBits] = 0xff
-//
-// In the example, index zero of the mem array is assigned the value 0xff.
-const (
+	// CartridgeBits identifies the bits in an address that are relevant to the cartridge address.
+	// Useful for discounting those bits that determine the cartridge mirror. For example, the following
+	// will be true:
+	//
+	//	0x1123 & CartridgeBits == 0xf123 & CartridgeBits
+	//
+	// Alternatively, the following is an effective way to index an array:
+	//
+	//	addr := 0xf000
+	//	mem[addr & CartridgeBits] = 0xff
+	//
+	// In the example, index zero of the mem array is assigned the value 0xff.
 	CartridgeBits = OriginCart ^ MemtopCart
+
+	// CartridgeSelectLine is the bit that indicates the address is a cartridge address. This is
+	// equivalent to the OriginCart value but in some contexts CartridgeSelectLine is a clearer name
+	CartridgeSelectLine = OriginCart
 )
 
 // The masks to apply to an address to bring any address into the primary
@@ -101,14 +103,11 @@ const (
 	// registers - INTIM and TIMINT
 	maskReadRIOT_timer            = uint16(0x284)
 	maskReadRIOT_timer_correction = uint16(0x285)
-
-	// maskCart is no longer used. but it can used to ensure a cartridge address is in the primary
-	// mirror (ie. $1xxx rather than for example $fxxx)
-	maskCart = MemtopCart
 )
 
 // MapAddress translates the address argument from mirror space to primary space, with the exception
-// of cartridge addresses which much be handled appropriately by the cartridge implementation.
+// of cartridge addresses which much be handled appropriately by the cartridge implementation or
+// anywhere else that consumes cartridge addresses.
 //
 // Generally, an address should be passed through this function before accessing memory.
 func MapAddress(address uint16, read bool) (uint16, Area) {
