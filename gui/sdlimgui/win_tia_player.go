@@ -261,7 +261,7 @@ func (win *winTIA) drawPlayer(num int) {
 	imgui.Spacing()
 
 	// horizontal positioning
-	imgui.Text(fmt.Sprintf("Last reset at clock %03d. First copy draws at clock %03d", player.ResetPixel, player.HmovedPixel))
+	imgui.Text(fmt.Sprintf("Last reset at clock %03d. First copy draws at clock %03d", player.ResetClock, player.HmovedClock))
 
 	if player.MoreHMOVE {
 		imgui.SameLine()

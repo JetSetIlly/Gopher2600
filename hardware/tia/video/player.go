@@ -78,17 +78,17 @@ type PlayerSprite struct {
 	// the name of the sprite instance (eg. "player 0")
 	label string
 
-	// the pixel at which the sprite was reset. in the case of the ball and
-	// missile sprites the scan counter starts at the ResetPixel. for the
+	// the clock at which the sprite was reset. in the case of the ball and
+	// missile sprites the scan counter starts at the ResetClock. for the
 	// player sprite however, there is additional latching to consider. rather
 	// than introducing an additional variable keeping track of the start
-	// pixel, the ResetPixel is modified according to the player sprite's
+	// clock, the ResetClock is modified according to the player sprite's
 	// current NUSIZ.
-	ResetPixel int
+	ResetClock int
 
-	// the pixel at which the sprite was reset plus any HMOVE modification see
-	// prepareForHMOVE() for a note on the presentation of HmovedPixel
-	HmovedPixel int
+	// the clock at which the sprite was reset plus any HMOVE modification see
+	// prepareForHMOVE() for a note on the presentation of HmovedClock
+	HmovedClock int
 
 	// ^^^ the above are common to all sprite types ^^^
 
@@ -184,9 +184,9 @@ func (ps *PlayerSprite) String() string {
 	s := strings.Builder{}
 	s.WriteString(ps.label)
 	s.WriteString(": ")
-	fmt.Fprintf(&s, "%s %s [%03d ", ps.position, ps.pclk, ps.ResetPixel)
+	fmt.Fprintf(&s, "%s %s [%03d ", ps.position, ps.pclk, ps.ResetClock)
 	fmt.Fprintf(&s, "> %#1x >", normalisedHmove)
-	fmt.Fprintf(&s, " %03d", ps.HmovedPixel)
+	fmt.Fprintf(&s, " %03d", ps.HmovedClock)
 	if ps.MoreHMOVE {
 		s.WriteString("*]")
 	} else {
@@ -253,13 +253,13 @@ func (ps *PlayerSprite) String() string {
 }
 
 func (ps *PlayerSprite) rsync(adjustment int) {
-	ps.ResetPixel -= adjustment
-	ps.HmovedPixel -= adjustment
-	if ps.ResetPixel < 0 {
-		ps.ResetPixel += specification.ClksVisible
+	ps.ResetClock -= adjustment
+	ps.HmovedClock -= adjustment
+	if ps.ResetClock < 0 {
+		ps.ResetClock += specification.ClksVisible
 	}
-	if ps.HmovedPixel < 0 {
-		ps.HmovedPixel += specification.ClksVisible
+	if ps.HmovedClock < 0 {
+		ps.HmovedClock += specification.ClksVisible
 	}
 }
 
@@ -270,10 +270,10 @@ func (ps *PlayerSprite) tickHBLANK() bool {
 		return false
 	}
 
-	// update hmoved pixel value & adjust for screen boundary
-	ps.HmovedPixel--
-	if ps.HmovedPixel < 0 {
-		ps.HmovedPixel += specification.ClksVisible
+	// update hmoved clock value & adjust for screen boundary
+	ps.HmovedClock--
+	if ps.HmovedClock < 0 {
+		ps.HmovedClock += specification.ClksVisible
 	}
 
 	return ps.tick()
@@ -342,7 +342,7 @@ func (ps *PlayerSprite) tick() bool {
 			// the scan counter
 			//
 			// note that the additional latching has an impact of what we
-			// report as being the reset pixel.
+			// report as being the reset clock.
 
 			// "... The START decodes are ANDed with flags from the NUSIZ register
 			// before being latched, to determine whether to draw that copy."
@@ -403,14 +403,14 @@ func (ps *PlayerSprite) prepareForHMOVE() {
 	ps.MoreHMOVE = true
 
 	if *ps.tia.hblank {
-		// adjust hmovedPixel value. this value is subject to further change so
+		// adjust hmoved clock value. this value is subject to further change so
 		// long as moreHMOVE is true. the String() function this value is
 		// annotated with a "*" to indicate that HMOVE is still in progress
-		ps.HmovedPixel += 8
+		ps.HmovedClock += 8
 
 		// adjust for screen boundary
-		if ps.HmovedPixel > specification.ClksVisible {
-			ps.HmovedPixel -= specification.ClksVisible
+		if ps.HmovedClock > specification.ClksVisible {
+			ps.HmovedClock -= specification.ClksVisible
 		}
 	}
 }
@@ -512,38 +512,38 @@ func (ps *PlayerSprite) resetPosition() {
 }
 
 func (ps *PlayerSprite) _futureResetPosition(_ uint8) {
-	// the pixel at which the sprite has been reset, in relation to the
+	// the clock at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	ps.ResetPixel = ps.tia.tv.GetCoords().Clock
+	ps.ResetClock = ps.tia.tv.GetCoords().Clock
 
-	if ps.ResetPixel >= 0 {
-		// resetPixel adjusted by +1 because the tv is not yet in the correct.
+	if ps.ResetClock >= 0 {
+		// reset clock adjusted by +1 because the tv is not yet in the correct.
 		// position. and another +1 because of the latching required before
 		// player sprites begin drawing
-		ps.ResetPixel += 2
+		ps.ResetClock += 2
 
-		// if size is 2x or 4x then we need an additional reset pixel
+		// if size is 2x or 4x then we need an additional reset clock
 		//
-		// note that we need to monkey with resetPixel whenever NUSIZ changes.
+		// note that we need to monkey with reset clock whenever NUSIZ changes.
 		// see setNUSIZ() function below
 		if ps.SizeAndCopies == 0x05 || ps.SizeAndCopies == 0x07 {
-			ps.ResetPixel++
+			ps.ResetClock++
 		}
 
-		// adjust resetPixel for screen boundaries
-		if ps.ResetPixel > specification.ClksVisible {
-			ps.ResetPixel -= specification.ClksVisible
+		// adjust reset clock for screen boundaries
+		if ps.ResetClock > specification.ClksVisible {
+			ps.ResetClock -= specification.ClksVisible
 		}
 
-		// by definition the current pixel is the same as the reset pixel at
+		// by definition the current clock is the same as the reset clock at
 		// the moment of reset
-		ps.HmovedPixel = ps.ResetPixel
+		ps.HmovedClock = ps.ResetClock
 	} else {
-		// if reset occurs off-screen then force reset pixel to be zero
+		// if reset occurs off-screen then force reset clock to be zero
 		// (see commentary in ball sprite for detailed reasoning of this
 		// branch)
-		ps.ResetPixel = 0
-		ps.HmovedPixel = 7
+		ps.ResetClock = 0
+		ps.HmovedClock = 7
 	}
 
 	// reset both sprite position and clock
@@ -715,13 +715,13 @@ func (ps *PlayerSprite) _futureSetNUSIZ(v uint8) {
 
 // SetNUSIZ is called when the NUSIZ register changes, after a delay. It should
 // also be used to set the NUSIZ value from a debugger for immediate effect.
-// Setting the value directly will upset reset/hmove pixel information.
+// Setting the value directly will upset reset/hmove clock information.
 func (ps *PlayerSprite) SetNUSIZ(value uint8) {
-	// if size is 2x or 4x currently then take off the additional pixel. we'll
+	// if size is 2x or 4x currently then take off the additional clock. we'll
 	// add it back on afterwards if needs be
 	if ps.SizeAndCopies == 0x05 || ps.SizeAndCopies == 0x07 {
-		ps.ResetPixel--
-		ps.HmovedPixel--
+		ps.ResetClock--
+		ps.HmovedClock--
 	}
 
 	// note raw NUSIZ value
@@ -731,19 +731,19 @@ func (ps *PlayerSprite) SetNUSIZ(value uint8) {
 	// value
 	ps.SizeAndCopies = value & 0x07
 
-	// if size is 2x or 4x then we need to record an additional pixel on the
+	// if size is 2x or 4x then we need to record an additional clock on the
 	// reset point value
 	if ps.SizeAndCopies == 0x05 || ps.SizeAndCopies == 0x07 {
-		ps.ResetPixel++
-		ps.HmovedPixel++
+		ps.ResetClock++
+		ps.HmovedClock++
 	}
 
-	// adjust reset pixel for screen boundaries
-	if ps.ResetPixel > specification.ClksVisible {
-		ps.ResetPixel -= specification.ClksVisible
+	// adjust reset clock for screen boundaries
+	if ps.ResetClock > specification.ClksVisible {
+		ps.ResetClock -= specification.ClksVisible
 	}
-	if ps.HmovedPixel > specification.ClksVisible {
-		ps.HmovedPixel -= specification.ClksVisible
+	if ps.HmovedClock > specification.ClksVisible {
+		ps.HmovedClock -= specification.ClksVisible
 	}
 }
 

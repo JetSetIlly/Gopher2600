@@ -25,7 +25,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
-	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -646,7 +645,7 @@ func (r *Rewind) GotoLast() error {
 
 // GotoFrame is a special case of GotoCoords that requires the frame number only.
 func (r *Rewind) GotoFrame(frame int) error {
-	return r.GotoCoords(coords.TelevisionCoords{Frame: frame, Clock: -specification.ClksHBlank})
+	return r.GotoCoords(coords.TelevisionCoords{Frame: frame})
 }
 
 // NewFrame is in an implementation of television.FrameTrigger.

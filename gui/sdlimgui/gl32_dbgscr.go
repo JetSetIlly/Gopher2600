@@ -72,7 +72,6 @@ func (attr *dbgScrHelper) set(img *SdlImgui, view *winDbgScrView) {
 	cursorX := img.screen.crit.lastX
 	cursorY := img.screen.crit.lastY
 
-	// if crt preview is enabled then force cropping
 	if view.cropped {
 		gl.Uniform1f(attr.lastX, float32(cursorX-specification.ClksHBlank)*view.xscaling)
 		gl.Uniform1i(attr.isCropped, shading.BoolToInt32(true))

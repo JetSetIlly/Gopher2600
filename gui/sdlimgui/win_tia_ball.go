@@ -158,7 +158,7 @@ func (win *winTIA) drawBall() {
 
 	// horizontal positioning
 	imgui.BeginGroup()
-	imgui.Text(fmt.Sprintf("Last reset at clock %03d. Draws at clock %03d", ball.ResetPixel, ball.HmovedPixel))
+	imgui.Text(fmt.Sprintf("Last reset at clock %03d. Draws at clock %03d", ball.ResetClock, ball.HmovedClock))
 	if ball.MoreHMOVE {
 		imgui.SameLine()
 		imgui.Text("[currently moving]")

@@ -87,25 +87,23 @@ func currentDbgScrMouse(scr *screen, view winDbgScrView) dbgScrMouse {
 	mouse.scaled.x = int(x / view.xscaling)
 	mouse.scaled.y = int(y / view.yscaling)
 
+	// adjust depending on whether screen is cropped
+	if view.cropped {
+		mouse.scaled.x += specification.ClksHBlank
+		mouse.scaled.y += scr.crit.frameInfo.VisibleTop
+		mouse.scaled.x = max(min(specification.ClksVisible-1, mouse.scaled.x), specification.ClksHBlank-1)
+		mouse.scaled.y = max(min(scr.crit.frameInfo.TotalScanlines-1, mouse.scaled.y), 0)
+	} else {
+		mouse.scaled.x = max(min(specification.ClksScanline-1, mouse.scaled.x), -specification.ClksHBlank)
+		mouse.scaled.y = max(min(scr.crit.frameInfo.TotalScanlines-1, mouse.scaled.y), 0)
+	}
+
 	// corresponding clock and scanline values for scaled mouse coordinates
 	mouse.tv.Clock = mouse.scaled.x
 	mouse.tv.Scanline = mouse.scaled.y
 
 	// frame field of the coordinates field is undefined in this context
 	mouse.tv.Frame = coords.FrameIsUndefined
-
-	// adjust depending on whether screen is cropped
-	if view.cropped {
-		mouse.scaled.x += specification.ClksHBlank
-		mouse.scaled.y += scr.crit.frameInfo.VisibleTop
-		mouse.tv.Scanline += scr.crit.frameInfo.VisibleTop
-	} else {
-		mouse.tv.Clock -= specification.ClksHBlank
-	}
-
-	// limit clock/scanline values after cropped adjustment
-	mouse.tv.Clock = max(min(specification.ClksVisible-1, mouse.tv.Clock), -specification.ClksHBlank)
-	mouse.tv.Scanline = max(min(scr.crit.frameInfo.TotalScanlines-1, mouse.tv.Scanline), 0)
 
 	// offset is number of pixels from top-left of screen counting left-to-right
 	// and top-to-bottom

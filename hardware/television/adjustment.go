@@ -36,7 +36,7 @@ func (tv *Television) AdjCoords(adj Adj, amount int) coords.TelevisionCoords {
 		if coords.Clock >= specification.ClksScanline {
 			coords.Clock -= specification.ClksScanline
 			coords.Scanline++
-		} else if coords.Clock < -specification.ClksHBlank {
+		} else if coords.Clock < 0 {
 			coords.Clock += specification.ClksScanline
 			coords.Scanline--
 		}
@@ -48,7 +48,7 @@ func (tv *Television) AdjCoords(adj Adj, amount int) coords.TelevisionCoords {
 			coords.Frame--
 		}
 	case AdjScanline:
-		coords.Clock = -specification.ClksHBlank
+		coords.Clock = 0
 		coords.Scanline += amount
 		if coords.Scanline > tv.state.frameInfo.TotalScanlines {
 			coords.Scanline -= tv.state.frameInfo.TotalScanlines
@@ -58,7 +58,7 @@ func (tv *Television) AdjCoords(adj Adj, amount int) coords.TelevisionCoords {
 			coords.Frame--
 		}
 	case AdjFrame:
-		coords.Clock = -specification.ClksHBlank
+		coords.Clock = 0
 		coords.Scanline = 0
 		coords.Frame += amount
 	}
@@ -67,7 +67,7 @@ func (tv *Television) AdjCoords(adj Adj, amount int) coords.TelevisionCoords {
 	if coords.Frame < 0 {
 		coords.Frame = 0
 		coords.Scanline = 0
-		coords.Clock = -specification.ClksHBlank
+		coords.Clock = 0
 	}
 
 	return coords

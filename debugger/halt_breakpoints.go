@@ -363,8 +363,8 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 					return fmt.Errorf("scanline value must be less than or equal to %d", specification.AbsoluteMaxScanlines)
 				}
 			case "Clock":
-				if val.(int) < -specification.ClksHBlank {
-					return fmt.Errorf("clock value must be greater than or equal to %d", -specification.ClksHBlank)
+				if val.(int) < 0 {
+					return fmt.Errorf("clock value must be greater than or equal to 0")
 				}
 				if val.(int) > specification.ClksVisible {
 					return fmt.Errorf("scanline value must be less than or equal to %d", specification.ClksVisible)

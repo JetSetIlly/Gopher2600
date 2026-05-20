@@ -98,7 +98,7 @@ func (s *State) String() string {
 	// TV state will fail with it added.
 	//
 	// !!TODO: consider adding lastSignal information to TV state string.
-	return fmt.Sprintf("FR=%04d SL=%03d CL=%03d", s.frameNum, s.scanline, s.clock-specification.ClksHBlank)
+	return fmt.Sprintf("FR=%04d SL=%03d CL=%03d", s.frameNum, s.scanline, s.clock)
 }
 
 // Snapshot makes a copy of the television state.
@@ -168,7 +168,7 @@ func (s *State) GetCoords() coords.TelevisionCoords {
 	return coords.TelevisionCoords{
 		Frame:    s.frameNum,
 		Scanline: s.scanline,
-		Clock:    s.clock - specification.ClksHBlank,
+		Clock:    s.clock,
 	}
 }
 

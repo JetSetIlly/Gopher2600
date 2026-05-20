@@ -102,7 +102,7 @@ func Diff(a, b TelevisionCoords, scanlinesPerFrame int) TelevisionCoords {
 		Clock:    a.Clock - b.Clock,
 	}
 
-	if D.Clock < specification.ClksHBlank {
+	if D.Clock < 0 {
 		D.Scanline--
 		D.Clock += specification.ClksScanline
 	}

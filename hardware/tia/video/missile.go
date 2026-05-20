@@ -63,8 +63,8 @@ type MissileSprite struct {
 	// the following attributes are used for information purposes only:
 
 	label       string
-	ResetPixel  int
-	HmovedPixel int
+	ResetClock  int
+	HmovedClock int
 
 	// note whether the last tick was as a result of a HMOVE stuffing tick
 	// which left MoreHMOVE in a true state
@@ -138,9 +138,9 @@ func (ms *MissileSprite) String() string {
 	s := strings.Builder{}
 	s.WriteString(ms.label)
 	s.WriteString(": ")
-	fmt.Fprintf(&s, "%s %s [%03d ", ms.position, ms.pclk, ms.ResetPixel)
+	fmt.Fprintf(&s, "%s %s [%03d ", ms.position, ms.pclk, ms.ResetClock)
 	fmt.Fprintf(&s, "> %#1x >", normalisedHmove)
-	fmt.Fprintf(&s, " %03d", ms.HmovedPixel)
+	fmt.Fprintf(&s, " %03d", ms.HmovedClock)
 	if ms.MoreHMOVE {
 		s.WriteString("*] ")
 	} else {
@@ -201,13 +201,13 @@ func (ms *MissileSprite) String() string {
 }
 
 func (ms *MissileSprite) rsync(adjustment int) {
-	ms.ResetPixel -= adjustment
-	ms.HmovedPixel -= adjustment
-	if ms.ResetPixel < 0 {
-		ms.ResetPixel += specification.ClksVisible
+	ms.ResetClock -= adjustment
+	ms.HmovedClock -= adjustment
+	if ms.ResetClock < 0 {
+		ms.ResetClock += specification.ClksVisible
 	}
-	if ms.HmovedPixel < 0 {
-		ms.HmovedPixel += specification.ClksVisible
+	if ms.HmovedClock < 0 {
+		ms.HmovedClock += specification.ClksVisible
 	}
 }
 
@@ -218,10 +218,10 @@ func (ms *MissileSprite) tickHBLANK() bool {
 		return false
 	}
 
-	// update hmoved pixel value & adjust for screen boundary
-	ms.HmovedPixel--
-	if ms.HmovedPixel < 0 {
-		ms.HmovedPixel += specification.ClksVisible
+	// update hmoved clock value & adjust for screen boundary
+	ms.HmovedClock--
+	if ms.HmovedClock < 0 {
+		ms.HmovedClock += specification.ClksVisible
 	}
 
 	ms.lastTickFromHmove = ms.MoreHMOVE
@@ -255,8 +255,8 @@ func (ms *MissileSprite) tick() bool {
 		ms.pclk = phaseclock.ResetValue
 
 		// missile-to-player also resets position information
-		ms.ResetPixel = ms.tia.tv.GetCoords().Clock
-		ms.HmovedPixel = ms.ResetPixel
+		ms.ResetClock = ms.tia.tv.GetCoords().Clock
+		ms.HmovedClock = ms.ResetClock
 	}
 
 	ms.pclk++
@@ -321,14 +321,14 @@ func (ms *MissileSprite) prepareForHMOVE() {
 	ms.MoreHMOVE = true
 
 	if *ms.tia.hblank {
-		// adjust hmovedPixel value. this value is subject to further change so
+		// adjust hmoved clock value. this value is subject to further change so
 		// long as moreHMOVE is true. the String() function this value is
 		// annotated with a "*" to indicate that HMOVE is still in progress
-		ms.HmovedPixel += 8
+		ms.HmovedClock += 8
 
 		// adjust for screen boundary
-		if ms.HmovedPixel > specification.ClksVisible {
-			ms.HmovedPixel -= specification.ClksVisible
+		if ms.HmovedClock > specification.ClksVisible {
+			ms.HmovedClock -= specification.ClksVisible
 		}
 	}
 }
@@ -376,29 +376,29 @@ func (ms *MissileSprite) resetPosition() {
 }
 
 func (ms *MissileSprite) _futureResetPosition(_ uint8) {
-	// the pixel at which the sprite has been reset, in relation to the
+	// the clock at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	ms.ResetPixel = ms.tia.tv.GetCoords().Clock
+	ms.ResetClock = ms.tia.tv.GetCoords().Clock
 
-	if ms.ResetPixel >= 0 {
-		// resetPixel adjusted by 1 because the tv is not yet in the correct
+	if ms.ResetClock >= 0 {
+		// reset clock adjusted by 1 because the tv is not yet in the correct
 		// position
-		ms.ResetPixel++
+		ms.ResetClock++
 
-		// adjust resetPixel for screen boundaries
-		if ms.ResetPixel > specification.ClksVisible {
-			ms.ResetPixel -= specification.ClksVisible
+		// adjust reset clock for screen boundaries
+		if ms.ResetClock > specification.ClksVisible {
+			ms.ResetClock -= specification.ClksVisible
 		}
 
-		// by definition the current pixel is the same as the reset pixel at
+		// by definition the current clock is the same as the reset clock at
 		// the moment of reset
-		ms.HmovedPixel = ms.ResetPixel
+		ms.HmovedClock = ms.ResetClock
 	} else {
-		// if reset occurs off-screen then force reset pixel to be zero
+		// if reset occurs off-screen then force reset clock to be zero
 		// (see commentary in ball sprite for detailed reasoning of this
 		// branch)
-		ms.ResetPixel = 0
-		ms.HmovedPixel = 7
+		ms.ResetClock = 0
+		ms.HmovedClock = 7
 	}
 
 	// reset both sprite position and clock

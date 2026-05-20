@@ -56,8 +56,8 @@ type BallSprite struct {
 	// the following attributes are used for information purposes only:
 
 	label       string
-	ResetPixel  int
-	HmovedPixel int
+	ResetClock  int
+	HmovedClock int
 
 	// note whether the last tick was as a result of a HMOVE stuffing tick
 	// which left MoreHMOVE in a true state
@@ -134,9 +134,9 @@ func (bs *BallSprite) String() string {
 	s := strings.Builder{}
 	s.WriteString(bs.label)
 	s.WriteString(": ")
-	fmt.Fprintf(&s, "%s %s [%03d ", bs.position, bs.pclk, bs.ResetPixel)
+	fmt.Fprintf(&s, "%s %s [%03d ", bs.position, bs.pclk, bs.ResetClock)
 	fmt.Fprintf(&s, "> %#1x >", normalisedHmove)
-	fmt.Fprintf(&s, " %03d", bs.HmovedPixel)
+	fmt.Fprintf(&s, " %03d", bs.HmovedClock)
 	if bs.MoreHMOVE {
 		s.WriteString("*]")
 	} else {
@@ -173,13 +173,13 @@ func (bs *BallSprite) String() string {
 }
 
 func (bs *BallSprite) rsync(adjustment int) {
-	bs.ResetPixel -= adjustment
-	bs.HmovedPixel -= adjustment
-	if bs.ResetPixel < 0 {
-		bs.ResetPixel += specification.ClksVisible
+	bs.ResetClock -= adjustment
+	bs.HmovedClock -= adjustment
+	if bs.ResetClock < 0 {
+		bs.ResetClock += specification.ClksVisible
 	}
-	if bs.HmovedPixel < 0 {
-		bs.HmovedPixel += specification.ClksVisible
+	if bs.HmovedClock < 0 {
+		bs.HmovedClock += specification.ClksVisible
 	}
 }
 
@@ -190,10 +190,10 @@ func (bs *BallSprite) tickHBLANK() bool {
 		return false
 	}
 
-	// update hmoved pixel value & adjust for screen boundary
-	bs.HmovedPixel--
-	if bs.HmovedPixel < 0 {
-		bs.HmovedPixel += specification.ClksVisible
+	// update hmoved clock value & adjust for screen boundary
+	bs.HmovedClock--
+	if bs.HmovedClock < 0 {
+		bs.HmovedClock += specification.ClksVisible
 	}
 
 	bs.lastTickFromHmove = bs.MoreHMOVE
@@ -255,14 +255,14 @@ func (bs *BallSprite) prepareForHMOVE() {
 	bs.MoreHMOVE = true
 
 	if *bs.tia.hblank {
-		// adjust hmovedPixel value. this value is subject to further change so
+		// adjust hmoved clock value. this value is subject to further change so
 		// long as moreHMOVE is true. the String() function this value is
 		// annotated with a "*" to indicate that HMOVE is still in progress
-		bs.HmovedPixel += 8
+		bs.HmovedClock += 8
 
 		// adjust for screen boundary
-		if bs.HmovedPixel > specification.ClksVisible {
-			bs.HmovedPixel -= specification.ClksVisible
+		if bs.HmovedClock > specification.ClksVisible {
+			bs.HmovedClock -= specification.ClksVisible
 		}
 	}
 }
@@ -318,32 +318,32 @@ func (bs *BallSprite) _futureResetPosition(_ uint8) {
 		bs.futureStart.Drop()
 	}
 
-	// the pixel at which the sprite has been reset, in relation to the
+	// the clock at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	bs.ResetPixel = bs.tia.tv.GetCoords().Clock
+	bs.ResetClock = bs.tia.tv.GetCoords().Clock
 
-	if bs.ResetPixel >= 0 {
-		// resetPixel adjusted by 1 because the tv is not yet in the correct
+	if bs.ResetClock >= 0 {
+		// reset clock adjusted by 1 because the tv is not yet in the correct
 		// position
-		bs.ResetPixel++
+		bs.ResetClock++
 
-		// adjust resetPixel for screen boundaries
-		if bs.ResetPixel > specification.ClksVisible {
-			bs.ResetPixel -= specification.ClksVisible
+		// adjust reset clock for screen boundaries
+		if bs.ResetClock > specification.ClksVisible {
+			bs.ResetClock -= specification.ClksVisible
 		}
 
-		// by definition the current pixel is the same as the reset pixel at
+		// by definition the current clock is the same as the reset clock at
 		// the moment of reset
-		bs.HmovedPixel = bs.ResetPixel
+		bs.HmovedClock = bs.ResetClock
 	} else {
-		// if reset occurs off-screen then force reset pixel to be zero
-		bs.ResetPixel = 0
+		// if reset occurs off-screen then force reset clock to be zero
+		bs.ResetClock = 0
 
 		// a reset of this kind happens when the reset register has been
 		// strobed but not completed before the HBLANK period, and a HMOVE
 		// forces the reset to occur.
 
-		// setting hmovedPixel below: I'm not sure about the value of 7 at
+		// setting hmoved clock below: I'm not sure about the value of 7 at
 		// all; but I couldn't figure out how to derive it algorithmically.
 		//
 		// observation of Keystone Kapers suggests that it's okay
@@ -352,7 +352,7 @@ func (bs *BallSprite) _futureResetPosition(_ uint8) {
 		//
 		// also a very rough test ROM tries a couple of things to the same
 		// effect: test/my_test_roms/ball/late_reset.bin
-		bs.HmovedPixel = 7
+		bs.HmovedClock = 7
 	}
 
 	// reset both sprite position and clock
