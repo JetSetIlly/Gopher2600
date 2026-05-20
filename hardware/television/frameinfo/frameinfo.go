@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"image"
 
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -187,4 +188,24 @@ func (info Current) AtariSafe() bool {
 // the screen might still not be settled in a synchronised state.
 func (info Current) IsSynced() bool {
 	return info.TopScanline == 0 && info.FromVSYNC
+}
+
+// Position converts television coordinates into a visual position based on the current frame information
+func (info Current) Position(coords coords.TelevisionCoords) (int, int) {
+	return coords.Clock - specification.ClksHBlank, coords.Scanline - info.VisibleTop
+}
+
+// VertPosition returns the visual position of a scanline value.
+func (info Current) VertPosition(scanline int) int {
+	return scanline - info.VisibleTop
+}
+
+// HorizPosition returns the visual position of a clock value.
+//
+// Note how this function is not attached to the frameinfo type. This is because the position in
+// relation to the clock is not dependent on the current frame. Placing it in the frameinfo package
+// however keeps it together with the Position() and VertPosition() functions, which do need to be
+// associated with the current frame information.
+func HorizPosition(clock int) int {
+	return clock - specification.ClksHBlank
 }

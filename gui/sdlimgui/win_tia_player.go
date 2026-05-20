@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
 	"github.com/jetsetilly/imgui-go/v5"
@@ -261,7 +262,9 @@ func (win *winTIA) drawPlayer(num int) {
 	imgui.Spacing()
 
 	// horizontal positioning
-	imgui.Text(fmt.Sprintf("Last reset at clock %03d. First copy draws at clock %03d", player.ResetClock, player.HmovedClock))
+	resetX := frameinfo.HorizPosition(player.ResetClock)
+	hmoveX := frameinfo.HorizPosition(player.HmovedClock)
+	imgui.Text(fmt.Sprintf("Last reset at position %03d. First copy draws at position %03d", resetX, hmoveX))
 
 	if player.MoreHMOVE {
 		imgui.SameLine()

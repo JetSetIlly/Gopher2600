@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
 	"github.com/jetsetilly/imgui-go/v5"
@@ -194,7 +195,9 @@ func (win *winTIA) drawMissile(num int) {
 
 	// horizontal positioning
 	imgui.BeginGroup()
-	imgui.Text(fmt.Sprintf("Last reset at clock %03d. First copy draws at clock %03d", missile.ResetClock, missile.HmovedClock))
+	resetX := frameinfo.HorizPosition(missile.ResetClock)
+	hmoveX := frameinfo.HorizPosition(missile.HmovedClock)
+	imgui.Textf("Last reset at position %03d. First copy draws at position %03d", resetX, hmoveX)
 	if missile.MoreHMOVE {
 		imgui.SameLine()
 		imgui.Text("[currently moving]")

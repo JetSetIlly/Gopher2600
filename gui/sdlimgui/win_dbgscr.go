@@ -537,11 +537,12 @@ func (win *winDbgScr) drawSpecCombo() {
 func (win *winDbgScr) drawCoordsLine() {
 	flgs := imgui.TableFlagsSizingFixedFit
 	flgs |= imgui.TableFlagsBordersInnerV
-	if imgui.BeginTableV("tvcoords", 5, imgui.TableFlagsSizingFixedFit, imgui.Vec2{X: 0.0, Y: 0.0}, 0.0) {
+	if imgui.BeginTableV("tvcoords", 6, imgui.TableFlagsSizingFixedFit, imgui.Vec2{X: 0.0, Y: 0.0}, 0.0) {
 		imgui.TableSetupColumnV("##tvcoords_icon", imgui.TableColumnFlagsNone, imguiTextWidth(2), 0)
 		imgui.TableSetupColumnV("##tvcoords_frame", imgui.TableColumnFlagsNone, imguiTextWidth(10), 1)
 		imgui.TableSetupColumnV("##tvcoords_scanline", imgui.TableColumnFlagsNone, imguiTextWidth(13), 2)
 		imgui.TableSetupColumnV("##tvcoords_clock", imgui.TableColumnFlagsNone, imguiTextWidth(10), 3)
+		imgui.TableSetupColumnV("##tvcoords_position", imgui.TableColumnFlagsNone, imguiTextWidth(10), 4)
 
 		imgui.TableNextRow()
 
@@ -596,13 +597,17 @@ func (win *winDbgScr) drawCoordsLine() {
 		coords := win.img.cache.TV.GetCoords()
 
 		imgui.TableNextColumn()
-		imgui.Text(fmt.Sprintf("Frame: %d", coords.Frame))
+		imgui.Textf("Frame: %d", coords.Frame)
 
 		imgui.TableNextColumn()
-		imgui.Text(fmt.Sprintf("Scanline: %d", coords.Scanline))
+		imgui.Textf("Scanline: %d", coords.Scanline)
 
 		imgui.TableNextColumn()
-		imgui.Text(fmt.Sprintf("Clock: %d", coords.Clock))
+		imgui.Textf("Clock: %d", coords.Clock)
+
+		imgui.TableNextColumn()
+		posX, posY := win.scr.crit.frameInfo.Position(coords)
+		imgui.Textf("(%d/%d)", posX, posY)
 
 		imgui.TableNextColumn()
 		signal := fmt.Sprintf("%s", win.img.cache.TV.GetLastSignal().String())
@@ -732,8 +737,9 @@ func (win *winDbgScr) drawReflectionTooltip() {
 	}, false, win.showMagnifyInTooltip)
 
 	win.img.imguiTooltip(func() {
-		imgui.Text(fmt.Sprintf("Scanline: %d", win.mouse.tv.Scanline))
-		imgui.Text(fmt.Sprintf("Clock: %d", win.mouse.tv.Clock))
+		posX, posY := win.img.screen.crit.frameInfo.Position(win.mouseLastFrame.tv)
+		imgui.Textf("Scanline: %d (%d)", win.mouse.tv.Scanline, posY)
+		imgui.Textf("Clock: %d (%d)", win.mouse.tv.Clock, posX)
 
 		// early return if there is no instruction behind this pixel
 		if e.Address == "" {

@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
 	"github.com/jetsetilly/imgui-go/v5"
@@ -158,7 +159,9 @@ func (win *winTIA) drawBall() {
 
 	// horizontal positioning
 	imgui.BeginGroup()
-	imgui.Text(fmt.Sprintf("Last reset at clock %03d. Draws at clock %03d", ball.ResetClock, ball.HmovedClock))
+	resetX := frameinfo.HorizPosition(ball.ResetClock)
+	hmoveX := frameinfo.HorizPosition(ball.HmovedClock)
+	imgui.Textf("Last reset at position %03d. Draws at position %03d", resetX, hmoveX)
 	if ball.MoreHMOVE {
 		imgui.SameLine()
 		imgui.Text("[currently moving]")
