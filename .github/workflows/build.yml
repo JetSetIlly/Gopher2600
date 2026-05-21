@@ -176,13 +176,18 @@ jobs:
       run: |
         plutil -insert CFBundleExecutable -string "$BINARY_NAME" .package/Gopher2600.app/Contents/Info.plist
         plutil -insert CFBundleShortVersionString -string "${{ steps.version.outputs.version }}" .package/Gopher2600.app/Contents/Info.plist
-    - name: Fix dylib paths in universal binary
+    - name: Fix dylib install names
       run: |
         for lib in .package/Gopher2600.app/Contents/libs/*.dylib; do
           libname=$(basename "$lib")
-          install_name_tool -change "@executable_path/../libs/$libname" "@executable_path/../libs/$libname" ".package/Gopher2600.app/Contents/MacOS/$BINARY_NAME" 2>/dev/null || true
-          install_name_tool -id "@executable_path/../libs/$libname" "$lib" 2>/dev/null || true
+          install_name_tool -id "@executable_path/../libs/$libname" "$lib"
         done
+    - name: Codesign app bundle
+      run: |
+        for lib in .package/Gopher2600.app/Contents/libs/*.dylib; do
+          codesign --force -s - "$lib"
+        done
+        codesign --force -s - .package/Gopher2600.app
     - name: Zip package
       run: |
         cd .package
