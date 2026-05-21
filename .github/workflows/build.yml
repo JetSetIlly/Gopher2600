@@ -154,6 +154,7 @@ jobs:
     - name: Create universal binary
       run: |
         lipo -create intel/gopher2600_darwin_amd64 arm/gopher2600_darwin_arm64 -output "$BINARY_NAME"
+        chmod +x "$BINARY_NAME"
     - name: Create universal libs
       run: |
         mkdir -p universal-libs
