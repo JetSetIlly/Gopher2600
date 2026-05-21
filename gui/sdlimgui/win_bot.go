@@ -153,7 +153,7 @@ func (win *winBot) draw() {
 	if imgui.BeginChildV("##log", imgui.Vec2{}, true, imgui.ChildFlagsNone) {
 		imgui.ListClipperAll(len(win.diagnostics), func(i int) {
 			imgui.Text(win.diagnostics[i].Group)
-			for _, s := range strings.Split(win.diagnostics[i].Diagnostic, "\n") {
+			for s := range strings.SplitSeq(win.diagnostics[i].Diagnostic, "\n") {
 				imgui.SameLine()
 				imgui.Text(s)
 			}

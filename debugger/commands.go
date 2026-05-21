@@ -32,7 +32,6 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/faults"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
-	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/disassembly"
@@ -43,6 +42,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/controllers"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/keyportari"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -56,7 +56,7 @@ import (
 )
 
 var debuggerCommands *commandline.Commands
-var scriptUnsafeCommands *commandline.Commands
+var batchUnsafeCommands *commandline.Commands
 
 // this init() function "compiles" the commandTemplate above into a more
 // usuable form. It will cause the program to fail if the template is invalid.
@@ -73,28 +73,35 @@ func init() {
 		panic(err)
 	}
 
-	scriptUnsafeCommands, err = commandline.ParseCommandTemplate(scriptUnsafeTemplate)
+	batchUnsafeCommands, err = commandline.ParseCommandTemplate(batchUnsafeTemplate)
 	if err != nil {
 		panic(err)
 	}
 }
 
 // parseCommand tokenises the input and processes the tokens.
-func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) error {
-	tokens, err := dbg.tokeniseCommand(cmd, scribe, echo)
+func (dbg *Debugger) parseCommand(cmd string, batch bool, echo bool) error {
+	tokens, err := dbg.tokeniseCommand(cmd, batch, echo)
 	if err != nil {
 		return err
+	}
+	if tokens == nil {
+		return nil
 	}
 	return dbg.processTokens(tokens)
 }
 
 // return tokenised command.
-func (dbg *Debugger) tokeniseCommand(cmd string, scribe bool, echo bool) (*commandline.Tokens, error) {
+func (dbg *Debugger) tokeniseCommand(cmd string, batch bool, echo bool) (*commandline.Tokens, error) {
 	// tokenise input
 	tokens := commandline.TokeniseInput(cmd)
 
 	// if there are no tokens in the input then continue with a default action
 	if tokens.Remaining() == 0 {
+		// do not use blank input as a synonym for the STEP command for batch scripting
+		if dbg.scriptWrite.IsActive() || batch {
+			return nil, nil
+		}
 		return dbg.tokeniseCommand("STEP", true, false)
 	}
 
@@ -111,21 +118,17 @@ func (dbg *Debugger) tokeniseCommand(cmd string, scribe bool, echo bool) (*comma
 	}
 
 	// test to see if command is allowed when recording/playing a script
-	if dbg.scriptScribe.IsActive() && scribe {
+	if dbg.scriptWrite.IsActive() || batch {
 		tokens.Reset()
-
-		err := scriptUnsafeCommands.ValidateTokens(tokens)
 
 		// fail when the tokens DO match the scriptUnsafe template (ie. when
 		// there is no err from the validate function)
+		err := batchUnsafeCommands.ValidateTokens(tokens)
 		if err == nil {
-			return nil, fmt.Errorf("'%s' is unsafe to use in scripts", tokens.String())
+			return nil, fmt.Errorf("'%s' is unsafe to use non-interactively", tokens.String())
 		}
 
-		// record command if it auto is false (is not a result of an "auto" command
-		// eg. ONHALT). if there's an error then the script will be rolled back and
-		// the write removed.
-		dbg.scriptScribe.WriteInput(tokens.String())
+		dbg.scriptWrite.WriteInput(tokens.String())
 	}
 
 	return tokens, nil
@@ -175,34 +178,29 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 		// we don't want the HELP command to appear in the script
-		dbg.scriptScribe.Rollback()
+		dbg.scriptWrite.Rollback()
 
 		return nil
 
 	case cmdQuit:
-		if dbg.scriptScribe.IsActive() {
+		if dbg.scriptWrite.IsActive() {
 			dbg.printLine(terminal.StyleFeedback, "ending script recording")
 
 			// we don't want the QUIT command to appear in the script
-			dbg.scriptScribe.Rollback()
+			dbg.scriptWrite.Rollback()
 
-			return dbg.scriptScribe.EndSession()
+			return dbg.scriptWrite.EndSession()
 		} else {
 			dbg.running = false
 		}
 
-	case cmdReset:
-		// resetting in the middle of a CPU instruction requires the input loop
-		// to be unwound before continuing
-		dbg.unwindLoop(func() error {
-			// don't reset breakpoints, etc.
-			err := dbg.reset(false)
-			if err != nil {
-				return err
-			}
-			dbg.printLine(terminal.StyleFeedback, "machine reset")
-			return nil
-		})
+	case cmdReload:
+		end := make(chan bool)
+		dbg.PushReload(end)
+		go func() {
+			<-end
+			dbg.printLine(terminal.StyleFeedback, "machine reset and cartridge reloaded")
+		}()
 
 	case cmdRun:
 		dbg.ClearHaltReason()
@@ -355,45 +353,39 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		case "RECORD":
 			var err error
 			saveFile, _ := tokens.Get()
-			err = dbg.scriptScribe.StartSession(saveFile)
+			err = dbg.scriptWrite.StartSession(saveFile)
 			if err != nil {
 				return err
 			}
 
 			// we don't want SCRIPT RECORD command to appear in the script
-			dbg.scriptScribe.Rollback()
+			dbg.scriptWrite.Rollback()
 
 			return nil
 
 		case "END":
 			// we don't want SCRIPT END command to appear in the script
-			dbg.scriptScribe.Rollback()
+			dbg.scriptWrite.Rollback()
 
-			return dbg.scriptScribe.EndSession()
+			return dbg.scriptWrite.EndSession()
 
 		default:
-			// run a script
-			scr, err := script.RescribeScript(option)
+			err := dbg.scriptQueue.Load(option)
 			if err != nil {
 				return err
 			}
 
-			if dbg.scriptScribe.IsActive() {
+			if dbg.scriptWrite.IsActive() {
 				// if we're currently recording a script we want to write this
 				// command to the new script file but indicate that we'll be
 				// entering a new script and so don't want to repeat the
 				// commands from that script
-				err := dbg.scriptScribe.StartPlayback()
+				err := dbg.scriptWrite.StartPlayback()
 				if err != nil {
 					return err
 				}
 
-				defer dbg.scriptScribe.EndPlayback()
-			}
-
-			err = dbg.inputLoop(scr, false)
-			if err != nil {
-				return err
+				defer dbg.scriptWrite.EndPlayback()
 			}
 		}
 
@@ -405,12 +397,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			// stop emulation on rewind
 			dbg.runUntilHalt = false
 
-			if arg == "LAST" {
+			switch arg {
+			case "LAST":
 				dbg.setState(govern.Rewinding, govern.RewindingForwards)
 				dbg.unwindLoop(dbg.Rewind.GotoLast)
-			} else if arg == "SUMMARY" {
+			case "SUMMARY":
 				dbg.printLine(terminal.StyleInstrument, dbg.Rewind.Peephole())
-			} else {
+			default:
 				frame, _ := strconv.Atoi(arg)
 				coords := dbg.TV().GetCoords()
 				if frame != coords.Frame {
@@ -513,7 +506,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					dbg.vcs.Mem.Cart.ContainerID(),
 				)
 
-			case "MAPPEDBANKS":
+			case "MAPPED":
 				dbg.printLine(
 					terminal.StyleInstrument,
 					dbg.vcs.Mem.Cart.MappedBanks(),
@@ -552,7 +545,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					ram := bus.GetRAM()
 					if ram != nil {
 						s := &strings.Builder{}
-						for b := 0; b < len(ram); b++ {
+						for b := range ram {
 							s.WriteString(ram[b].Label + "\n")
 							s.WriteString(strings.Repeat("-", len(ram[b].Label)))
 							s.WriteString("\n")
@@ -611,7 +604,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		if ok {
 			switch arg {
 			case "REDUX":
-				err := dbg.Disasm.FromMemory()
+				err := dbg.Disasm.FromMemory(false)
 				if err != nil {
 					dbg.printLine(terminal.StyleFeedback, err.Error())
 				}
@@ -789,7 +782,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		dbg.commandOnHalt = dbg.commandOnHalt[:0]
 
 		// tokenise commands to check for integrity
-		for _, s := range strings.Split(input, ",") {
+		for s := range strings.SplitSeq(input, ",") {
 			toks, err := dbg.tokeniseCommand(s, false, false)
 			if err != nil {
 				dbg.commandOnHalt = existingOnHalt
@@ -857,7 +850,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		dbg.commandOnStep = dbg.commandOnStep[:0]
 
 		// tokenise commands to check for integrity
-		for _, s := range strings.Split(input, ",") {
+		for s := range strings.SplitSeq(input, ",") {
 			toks, err := dbg.tokeniseCommand(s, false, false)
 			if err != nil {
 				dbg.commandOnStep = existingOnStep
@@ -924,7 +917,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		dbg.commandOnTrace = dbg.commandOnTrace[:0]
 
 		// tokenise commands to check for integrity
-		for _, s := range strings.Split(input, ",") {
+		for s := range strings.SplitSeq(input, ",") {
 			toks, err := dbg.tokeniseCommand(s, false, false)
 			if err != nil {
 				dbg.commandOnTrace = existingOnTrace
@@ -983,7 +976,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		s := strings.Builder{}
 
 		if dbg.vcs.Mem.Cart.NumBanks() > 1 {
-			s.WriteString(fmt.Sprintf("[%s] ", dbg.liveBankInfo))
+			fmt.Fprintf(&s, "[%s] ", dbg.liveBankInfo)
 		}
 		s.WriteString(dbg.liveDisasmEntry.GetField(disassembly.FldAddress))
 		s.WriteString(" ")
@@ -1024,13 +1017,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				hasMapped = true
 				s.WriteString("Read:\n")
 				if ai.Address != ai.MappedAddress {
-					s.WriteString(fmt.Sprintf("  %#04x maps to %#04x ", ai.Address, ai.MappedAddress))
+					fmt.Fprintf(&s, "  %#04x maps to %#04x ", ai.Address, ai.MappedAddress)
 				} else {
-					s.WriteString(fmt.Sprintf("  %#04x ", ai.Address))
+					fmt.Fprintf(&s, "  %#04x ", ai.Address)
 				}
 				s.WriteString(fmt.Sprintf("in area %s\n", ai.Area.String()))
 				if ai.Symbol != "" {
-					s.WriteString(fmt.Sprintf("  labelled as %s\n", ai.Symbol))
+					fmt.Fprintf(&s, "  labelled as %s\n", ai.Symbol)
 				}
 			}
 			ai = dbg.dbgmem.GetAddressInfo(address, false)
@@ -1038,13 +1031,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				hasMapped = true
 				s.WriteString("Write:\n")
 				if ai.Address != ai.MappedAddress {
-					s.WriteString(fmt.Sprintf("  %#04x maps to %#04x ", ai.Address, ai.MappedAddress))
+					fmt.Fprintf(&s, "  %#04x maps to %#04x ", ai.Address, ai.MappedAddress)
 				} else {
-					s.WriteString(fmt.Sprintf("  %#04x ", ai.Address))
+					fmt.Fprintf(&s, "  %#04x ", ai.Address)
 				}
 				s.WriteString(fmt.Sprintf("in area %s\n", ai.Area.String()))
 				if ai.Symbol != "" {
-					s.WriteString(fmt.Sprintf("  labelled as %s\n", ai.Symbol))
+					fmt.Fprintf(&s, "  labelled as %s\n", ai.Symbol)
 				}
 			}
 
@@ -1260,7 +1253,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		case "STACK":
 			var s strings.Builder
 			for i := int((dbg.vcs.CPU.SP.Value() + 1) & 0x7f); i <= 0x7f; i++ {
-				s.WriteString(fmt.Sprintf("%02x ", dbg.vcs.Mem.RAM.RAM[i]))
+				fmt.Fprintf(&s, "%02x ", dbg.vcs.Mem.RAM.RAM[i])
 			}
 			dbg.printLine(terminal.StyleInstrument, s.String())
 		default:
@@ -1298,6 +1291,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			case "FRAME":
 				frameInfo := dbg.vcs.TV.GetFrameInfo()
 				dbg.printLine(terminal.StyleInstrument, frameInfo.String())
+
+			case "VSYNC":
+				frameInfo := dbg.vcs.TV.GetFrameInfo()
+				dbg.printLine(terminal.StyleInstrument, fmt.Sprintf("vsync scanline: %d, clock: %d, count: %d", frameInfo.VSYNCscanline, frameInfo.VSYNCclock, frameInfo.VSYNCcount))
 
 			case "SPEC":
 				spec, ok := tokens.Get()
@@ -1389,21 +1386,21 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		switch option {
 		case "NICK":
 			nick, _ := tokens.Get()
-			err := dbg.vcs.Env.Prefs.PlusROM.Nick.Set(nick)
+			err := dbg.vcs.Env.Prefs.Cartridge.PlusROM.Nick.Set(nick)
 			if err != nil {
 				return err
 			}
-			err = dbg.vcs.Env.Prefs.PlusROM.Save()
+			err = dbg.vcs.Env.Prefs.Cartridge.PlusROM.Save()
 			if err != nil {
 				return err
 			}
 		case "ID":
 			id, _ := tokens.Get()
-			err := dbg.vcs.Env.Prefs.PlusROM.ID.Set(id)
+			err := dbg.vcs.Env.Prefs.Cartridge.PlusROM.ID.Set(id)
 			if err != nil {
 				return err
 			}
-			err = dbg.vcs.Env.Prefs.PlusROM.Save()
+			err = dbg.vcs.Env.Prefs.Cartridge.PlusROM.Save()
 			if err != nil {
 				return err
 			}
@@ -1416,8 +1413,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			path, _ := tokens.Get()
 			plusrom.SetAddrInfo(ai.Host, path)
 		default:
-			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("Nick: %s", dbg.vcs.Env.Prefs.PlusROM.Nick.String()))
-			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("ID: %s", dbg.vcs.Env.Prefs.PlusROM.ID.String()))
+			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("Nick: %s", dbg.vcs.Env.Prefs.Cartridge.PlusROM.Nick.String()))
+			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("ID: %s", dbg.vcs.Env.Prefs.Cartridge.PlusROM.ID.String()))
 			ai := plusrom.GetAddrInfo()
 			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("Host: %s", ai.Host))
 			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("Path: %s", ai.Path))
@@ -1571,9 +1568,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 						return
 					}
 					if group.Formatted {
-						s.WriteString(fmt.Sprintf("%s: %s [%08x]\t", group.Label(r), f, v))
+						fmt.Fprintf(&s, "%s: %s [%08x]\t", group.Label(r), f, v)
 					} else {
-						s.WriteString(fmt.Sprintf("%s: %08x\t", group.Label(r), v))
+						fmt.Fprintf(&s, "%s: %08x\t", group.Label(r), v)
 					}
 
 					if (r-group.Start+1)%3 == 0 {
@@ -1681,7 +1678,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					dbg.printLine(terminal.StyleFeedback, g.String())
 					e := g.WriteDerivation(w)
 					if e != nil {
-						for _, s := range strings.Split(e.Error(), ":") {
+						for s := range strings.SplitSeq(e.Error(), ":") {
 							dbg.printLine(terminal.StyleError, fmt.Sprintf("\t%s", s))
 						}
 					}
@@ -1713,7 +1710,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					dbg.printLine(terminal.StyleFeedback, l.String())
 					e := l.WriteDerivation(w)
 					if e != nil {
-						for _, s := range strings.Split(e.Error(), ":") {
+						for s := range strings.SplitSeq(e.Error(), ":") {
 							dbg.printLine(terminal.StyleError, fmt.Sprintf("\t%s", s))
 						}
 					}
@@ -1846,9 +1843,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			switch controller {
 			case "AUTO":
 				dbg.vcs.FingerprintPeripheral(id)
+			case "NONE":
+				err = dbg.vcs.RIOT.Ports.Plug(id, ports.NewPeripheralNone)
 			case "STICK":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewStick)
-			case "PADDLE":
+			case "PADDLE", "PADDLES":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewPaddles)
 			case "KEYPAD":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewKeypad)
@@ -1859,7 +1858,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			case "ATARIVOX":
 				err = dbg.vcs.RIOT.Ports.Plug(id, atarivox.NewAtariVox)
 			}
-
 			if err != nil {
 				return err
 			}
@@ -1963,48 +1961,55 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		action, _ := tokens.Get()
 
 		var event ports.Event
-		var value ports.EventData
+		var data ports.EventData
 
 		switch strings.ToUpper(action) {
 		case "FIRE":
 			event = ports.Fire
-			value = ports.DataStickTrue
+			data = true
 		case "UP":
 			event = ports.Up
-			value = ports.DataStickTrue
+			data = ports.DataStickTrue
 		case "DOWN":
 			event = ports.Down
-			value = ports.DataStickTrue
+			data = ports.DataStickTrue
 		case "LEFT":
 			event = ports.Left
-			value = ports.DataStickTrue
+			data = ports.DataStickTrue
 		case "RIGHT":
 			event = ports.Right
-			value = ports.DataStickTrue
+			data = ports.DataStickTrue
 
 		case "NOFIRE":
 			event = ports.Fire
-			value = ports.DataStickFalse
+			data = false
 		case "NOUP":
 			event = ports.Up
-			value = ports.DataStickFalse
+			data = ports.DataStickFalse
 		case "NODOWN":
 			event = ports.Down
-			value = ports.DataStickFalse
+			data = ports.DataStickFalse
 		case "NOLEFT":
 			event = ports.Left
-			value = ports.DataStickFalse
+			data = ports.DataStickFalse
 		case "NORIGHT":
 			event = ports.Right
-			value = ports.DataStickFalse
+			data = ports.DataStickFalse
+
+		case "SECOND":
+			event = ports.SecondFire
+			data = true
+		case "NOSECOND":
+			event = ports.SecondFire
+			data = false
 		}
 
 		switch port {
 		case "LEFT":
-			inp := ports.InputEvent{Port: plugging.PortLeft, Ev: event, D: value}
+			inp := ports.InputEvent{Port: plugging.PortLeft, Ev: event, D: data}
 			_, err = dbg.vcs.Input.HandleInputEvent(inp)
 		case "RIGHT":
-			inp := ports.InputEvent{Port: plugging.PortRight, Ev: event, D: value}
+			inp := ports.InputEvent{Port: plugging.PortRight, Ev: event, D: data}
 			_, err = dbg.vcs.Input.HandleInputEvent(inp)
 		}
 
@@ -2040,6 +2045,52 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		if err != nil {
 			return err
 		}
+
+	case cmdKeyportari:
+		var f ports.NewPeripheral
+		var create bool
+
+		if protocol, ok := tokens.Get(); ok {
+			switch protocol {
+			case "24CHAR":
+				f = keyportari.NewKeyportari24char
+				create = true
+			case "ASCII":
+				f = keyportari.NewKeyportariASCII
+				create = true
+			case "NONE":
+				f = nil
+				create = true
+			}
+		}
+
+		if create {
+			err := dbg.vcs.RIOT.Ports.Plug(plugging.PortLeft, f)
+			if err != nil {
+				return err
+			}
+			err = dbg.vcs.RIOT.Ports.Plug(plugging.PortRight, f)
+			if err != nil {
+				return err
+			}
+		}
+
+		if shim, ok := dbg.vcs.RIOT.Ports.LeftPlayer.(ports.PeripheralShim); ok {
+			protocol := shim.Protocol()
+			if create {
+				dbg.printLine(terminal.StyleFeedback, "KEYPORTARI (%s) inserted", protocol)
+			} else {
+				dbg.printLine(terminal.StyleFeedback, "KEYPORTARI (%s)", protocol)
+			}
+		} else {
+			if create {
+				dbg.printLine(terminal.StyleFeedback, "KEYPORTARI removed")
+			} else {
+				dbg.printLine(terminal.StyleFeedback, "KEYPORTARI absent")
+			}
+		}
+
+		return nil
 
 	case cmdBreak:
 		err := dbg.halting.breakpoints.parseCommand(tokens)
@@ -2199,10 +2250,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 			s := strings.Builder{}
 
-			s.WriteString(fmt.Sprintf("Alloc = %v MB\n", m.Alloc/1048576))
-			s.WriteString(fmt.Sprintf("  TotalAlloc = %v MB\n", m.TotalAlloc/1048576))
-			s.WriteString(fmt.Sprintf("  Sys = %v MB\n", m.Sys/1048576))
-			s.WriteString(fmt.Sprintf("  NumGC = %v", m.NumGC))
+			fmt.Fprintf(&s, "Alloc = %v MB\n", m.Alloc/1048576)
+			fmt.Fprintf(&s, "  TotalAlloc = %v MB\n", m.TotalAlloc/1048576)
+			fmt.Fprintf(&s, "  Sys = %v MB\n", m.Sys/1048576)
+			fmt.Fprintf(&s, "  NumGC = %v", m.NumGC)
 
 			dbg.printLine(terminal.StyleLog, s.String())
 		}

@@ -23,7 +23,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/input"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals"
-	"github.com/jetsetilly/gopher2600/hardware/peripherals/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/panel"
@@ -81,7 +80,8 @@ type VCS struct {
 // The Television argument should not be nil. The Notify and Preferences
 // argument may be nil if required.
 func NewVCS(label environment.Label, tv *television.Television, notify notifications.Notify, prefs *preferences.Preferences) (*VCS, error) {
-	// set up environment
+
+	// prefs will be allocated if necessary. don't use prefs after this point but env.Prefs will be fine
 	env, err := environment.NewEnvironment(label, tv, notify, prefs)
 	if err != nil {
 		return nil, err
@@ -101,16 +101,6 @@ func NewVCS(label environment.Label, tv *television.Television, notify notificat
 	vcs.Input = input.NewInput(vcs.TV, vcs.RIOT.Ports)
 
 	vcs.TIA, err = tia.NewTIA(vcs.Env, vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
-	if err != nil {
-		return nil, err
-	}
-
-	err = vcs.RIOT.Ports.Plug(plugging.PortLeft, controllers.NewStick)
-	if err != nil {
-		return nil, err
-	}
-
-	err = vcs.RIOT.Ports.Plug(plugging.PortRight, controllers.NewStick)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +136,7 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader, hook func()) (r
 			return err
 		}
 
-		// fingerprint new peripherals. peripherals are not changed if option is not set
+		// fingerprint new peripherals. this may be superceded by the hook() function
 		err = vcs.FingerprintPeripheral(plugging.PortLeft)
 		if err != nil {
 			return err
@@ -155,7 +145,6 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader, hook func()) (r
 		if err != nil {
 			return err
 		}
-
 	}
 
 	if hook != nil {
@@ -196,8 +185,7 @@ func (vcs *VCS) Reset() error {
 
 	// easiest way of resetting the TIA is to just create new one
 	//
-	// 27/10/21 - we do want to save the audio though in order to keep any
-	// attached trackers
+	// 27/10/21 - we do want to save the audio though in order to keep any attached trackers
 	//
 	// TODO: proper Reset() function for the TIA
 	audio := vcs.TIA.Audio
@@ -211,11 +199,15 @@ func (vcs *VCS) Reset() error {
 	vcs.Mem.TIA.SetPokeNotify(vcs.TIA)
 	vcs.Mem.RIOT.SetPokeNotify(vcs.RIOT)
 
+	// complete memory reset
 	err = vcs.Mem.Reset()
 	if err != nil {
 		return err
 	}
-	vcs.RIOT.Timer.Reset()
+
+	// resetting RIOT after memory reset. this is so that the ports can reference the reset values
+	// and also set them correctly according to the currently attached peripherals
+	vcs.RIOT.Reset()
 
 	if vcs.Env.Prefs.RandomState.Get().(bool) {
 		err = vcs.CPU.Reset(vcs.Env.Random)
@@ -225,10 +217,6 @@ func (vcs *VCS) Reset() error {
 	if err != nil {
 		return err
 	}
-
-	// reset of ports must happen after reset of memory because ports will
-	// update memory to the current state of the peripherals
-	vcs.RIOT.Ports.ResetPeripherals()
 
 	// reset cart after loaded PC value. this seems unnecessary but some
 	// cartridge types may switch banks on LoadPCIndirect() - those that switch

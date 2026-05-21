@@ -16,7 +16,7 @@
 package disassembly
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -28,13 +28,13 @@ type disasmMemory struct {
 
 	// current bank to index the banks array
 	currentBank int
-	banks       []mapper.BankContent
+	banks       []banking.Content
 
 	// the current origin for the mapped bank
 	origin uint16
 }
 
-func newDisasmMemory(startingBank int, copiedBanks []mapper.BankContent) *disasmMemory {
+func newDisasmMemory(startingBank int, copiedBanks []banking.Content) *disasmMemory {
 	dismem := &disasmMemory{
 		startingBank: startingBank,
 		currentBank:  startingBank,

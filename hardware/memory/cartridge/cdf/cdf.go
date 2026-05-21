@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -94,7 +95,7 @@ func NewCDF(env *environment.Environment, version string) (mapper.CartMapper, er
 		return nil, fmt.Errorf("CDF: not enough bytes in cartridge data")
 	}
 
-	cart.version, err = newVersion(env.Prefs.ARM.Model.Get().(string), version, data)
+	cart.version, err = newVersion(env.Prefs.Cartridge.ARM.Model.Get().(string), version, data)
 	if err != nil {
 		return nil, fmt.Errorf("CDF: %w", err)
 	}
@@ -263,7 +264,7 @@ func (cart *cdf) Access(addr uint16, peek bool) (uint8, uint8, error) {
 		}
 
 		// music fetchers
-		if data == byte(cart.version.amplitudeRegister) {
+		if data == byte(cart.version.amplitudeRegister)+cart.version.datastreamOffset {
 			if cart.state.registers.SampleMode {
 				addr := cart.readMusicFetcher(0)
 				addr += cart.state.registers.MusicFetcher[0].Count >> (cart.version.musicFetcherShift + 1)
@@ -472,8 +473,8 @@ func (cart *cdf) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *cdf) GetBank(addr uint16) mapper.BankInfo {
-	return mapper.BankInfo{
+func (cart *cdf) GetBank(addr uint16) banking.Information {
+	return banking.Information{
 		Number:                cart.state.bank,
 		IsRAM:                 false,
 		ExecutingCoprocessor:  cart.state.callfn.IsActive(),
@@ -483,7 +484,7 @@ func (cart *cdf) GetBank(addr uint16) mapper.BankInfo {
 
 // SetBank implements the mapper.CartMapper interface.
 func (cart *cdf) SetBank(bank string) error {
-	if mapper.IsAutoBankSelection(bank) {
+	if banking.IsAutoSelection(bank) {
 		if cart.version.submapping == "CDFJ+" {
 			cart.state.bank = 0
 		} else {
@@ -492,7 +493,7 @@ func (cart *cdf) SetBank(bank string) error {
 		return nil
 	}
 
-	b, err := mapper.SingleBankSelection(bank)
+	b, err := banking.SingleSelection(bank)
 	if err != nil {
 		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
@@ -561,10 +562,10 @@ func (cart *cdf) Step(clock float32) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *cdf) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, len(cart.banks))
+func (cart *cdf) CopyBanks() []banking.Content {
+	c := make([]banking.Content, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {
-		c[b] = mapper.BankContent{Number: b,
+		c[b] = banking.Content{Number: b,
 			Data:    cart.banks[b],
 			Origins: []uint16{memorymap.OriginCart},
 		}
@@ -580,8 +581,8 @@ func (cart *cdf) Labels() mapper.CartLabels {
 	}
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *cdf) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *cdf) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff5: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1ff6: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
@@ -590,23 +591,10 @@ func (cart *cdf) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 		0x1ff9: {Symbol: "BANK4", Action: mapper.HotspotBankSwitch},
 		0x1ffa: {Symbol: "BANK5", Action: mapper.HotspotBankSwitch},
 		0x1ffb: {Symbol: "BANK6", Action: mapper.HotspotBankSwitch},
-	}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *cdf) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return map[uint16]mapper.CartHotspotInfo{
-		0x1ff0: {Symbol: "DSWRITE", Action: mapper.HotspotRegister},
-		0x1ff1: {Symbol: "DSPTR", Action: mapper.HotspotRegister},
-		0x1ff2: {Symbol: "SETMODE", Action: mapper.HotspotRegister},
+		0x1ff0: {Symbol: "DSWRITE", Action: mapper.HotspotWriteRegister},
+		0x1ff1: {Symbol: "DSPTR", Action: mapper.HotspotWriteRegister},
+		0x1ff2: {Symbol: "SETMODE", Action: mapper.HotspotWriteRegister},
 		0x1ff3: {Symbol: "CALLFN", Action: mapper.HotspotFunction},
-		0x1ff5: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
-		0x1ff6: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
-		0x1ff7: {Symbol: "BANK2", Action: mapper.HotspotBankSwitch},
-		0x1ff8: {Symbol: "BANK3", Action: mapper.HotspotBankSwitch},
-		0x1ff9: {Symbol: "BANK4", Action: mapper.HotspotBankSwitch},
-		0x1ffa: {Symbol: "BANK5", Action: mapper.HotspotBankSwitch},
-		0x1ffb: {Symbol: "BANK6", Action: mapper.HotspotBankSwitch},
 	}
 }
 
@@ -729,7 +717,7 @@ func (cart *cdf) SetYieldHook(hook coprocessor.CartYieldHook) {
 func (cart *cdf) runArm() coprocessor.CoProcYield {
 	yld, cycles := cart.arm.Run()
 
-	if cycles > 0 || cart.env.Prefs.ARM.ImmediateCorrection.Get().(bool) {
+	if cycles > 0 || cart.env.Prefs.Cartridge.ARM.ImmediateCorrection.Get().(bool) {
 		cart.state.callfn.Accumulate(cycles)
 	}
 

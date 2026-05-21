@@ -17,9 +17,10 @@ package sdlimgui
 
 import (
 	"time"
+	"unicode/utf8"
 
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
-	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/userinput"
 
 	"github.com/jetsetilly/imgui-go/v5"
@@ -45,6 +46,13 @@ func (img *SdlImgui) Service() {
 			img.wm.hasInitialised = false
 		}
 		img.resetFonts--
+	}
+
+	// if mouse is captured in debugger mode then release the capture for any non-running state.
+	// this is useful if a breakpoint or other halting condition causes the debugger to pause. in
+	// that circumstance we want the mouse to be immediately available
+	if img.isCaptured() && img.dbg.Mode() == govern.ModeDebugger && img.dbg.State() != govern.Running {
+		img.setCapture(false)
 	}
 
 	// phantom input system must be reset before anything else is processed
@@ -93,14 +101,23 @@ func (img *SdlImgui) Service() {
 			// via an event filter
 
 		case *sdl.TextInputEvent:
-			if !img.modalActive() || !img.isCaptured() {
-				imgui.CurrentIO().AddInputCharacters(string(ev.Text[:]))
+			if !img.suppressTextInput && (!img.modalActive() || !img.isCaptured()) {
+				txt := ev.GetText()
+				imgui.CurrentIO().AddInputCharacters(txt)
 
 				// text input events are perfect for indicating the
 				// addition of a phantom rune. backspaces are handled in
 				// the serviceKeyboard() function
 				img.phantomInput = phantomInputRune
-				img.phantomInputRune = rune(ev.Text[0])
+				img.phantomInputRune, _ = utf8.DecodeRuneInString(txt)
+
+				// forward to userinput.Event channel
+				select {
+				case img.dbg.UserInput() <- userinput.EventText{
+					Key: txt,
+				}:
+				default:
+				}
 			}
 
 		case *sdl.KeyboardEvent:
@@ -178,11 +195,6 @@ func (img *SdlImgui) Service() {
 					Button: button,
 					Down:   ev.Type == sdl.MOUSEBUTTONDOWN}:
 				default:
-					if ev.Type == sdl.MOUSEBUTTONDOWN {
-						logger.Log(logger.Allow, "sdlimgui", "dropped mouse down event")
-					} else {
-						logger.Log(logger.Allow, "sdlimgui", "dropped mouse up event")
-					}
 				}
 			}
 
@@ -218,7 +230,6 @@ func (img *SdlImgui) Service() {
 						Mod:   getKeyMod(),
 					}:
 					default:
-						logger.Log(logger.Allow, "sdlimgui", "dropped mouse wheel event")
 					}
 				} else {
 					imgui.CurrentIO().AddMouseWheelDelta(-deltaX/4, deltaY/4)
@@ -254,7 +265,6 @@ func (img *SdlImgui) Service() {
 					Down:   ev.State == 1,
 				}:
 				default:
-					logger.Log(logger.Allow, "sdlimgui", "dropped gamepad button event")
 				}
 			}
 
@@ -290,21 +300,32 @@ func (img *SdlImgui) Service() {
 					Direction: dir,
 				}:
 				default:
-					logger.Log(logger.Allow, "sdlimgui", "dropped gamepad dpad event")
 				}
 			}
 
 		case *sdl.JoyAxisEvent:
-			if img.plt.joysticks[ev.Which].isStelladaptor {
+			if img.plt.joysticks[ev.Which].isJoystick {
+				img.smartCursorVisibility(true)
+
 				joy := sdl.JoystickFromInstanceID(ev.Which)
-				select {
-				case input <- userinput.EventStelladaptor{
-					ID:    plugging.PortLeft,
-					Horiz: joy.Axis(0),
-					Vert:  joy.Axis(1),
-				}:
-				default:
-					logger.Log(logger.Allow, "sdlimgui", "dropped stelladaptor event")
+				if img.plt.joysticks[ev.Which].isStelladapter {
+					select {
+					case input <- userinput.EventStelladaptor{
+						ID:    plugging.PortLeft,
+						Horiz: joy.Axis(0),
+						Vert:  joy.Axis(1),
+					}:
+					default:
+					}
+				} else {
+					select {
+					case input <- userinput.EventJoystickAxis{
+						ID:    plugging.PortLeft,
+						Horiz: joy.Axis(0),
+						Vert:  joy.Axis(1),
+					}:
+					default:
+					}
 				}
 			} else {
 				pad := sdl.GameControllerFromInstanceID(ev.Which)
@@ -327,7 +348,6 @@ func (img *SdlImgui) Service() {
 						Vert:       pad.Axis(1),
 					}:
 					default:
-						logger.Log(logger.Allow, "sdlimgui", "dropped gamepad axis event")
 					}
 				case 3:
 					fallthrough
@@ -340,7 +360,6 @@ func (img *SdlImgui) Service() {
 						Vert:       pad.Axis(4),
 					}:
 					default:
-						logger.Log(logger.Allow, "sdlimgui", "dropped gamepad axis event")
 					}
 				default:
 				}
@@ -361,7 +380,6 @@ func (img *SdlImgui) Service() {
 						Amount:  ev.Value,
 					}:
 					default:
-						logger.Log(logger.Allow, "sdlimgui", "dropped gamepad axis event")
 					}
 				}
 			}
@@ -375,7 +393,6 @@ func (img *SdlImgui) Service() {
 			X: int16(mouseMotionX), Y: int16(mouseMotionY),
 		}:
 		default:
-			logger.Log(logger.Allow, "sdlimgui", "dropped mouse motion event")
 		}
 	}
 }

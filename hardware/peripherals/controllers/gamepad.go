@@ -86,6 +86,17 @@ func NewGamepad(env *environment.Environment, port plugging.PortID, bus ports.Pe
 	return pad
 }
 
+// Reset implements the Peripheral interface.
+func (pad *Gamepad) Reset() {
+	pad.axis = axisCenter
+	pad.button = stickNoFire
+	pad.second = secondNoFire
+	pad.bus.WriteSWCHx(pad.port, pad.axis)
+	pad.bus.WriteINPTx(pad.buttonInptx, pad.button)
+	pad.bus.WriteINPTx(pad.secondInptx, pad.second)
+	pad.bus.WriteINPTx(pad.insertedInptx, inserted)
+}
+
 // Unplug implements the Peripheral interface.
 func (pad *Gamepad) Unplug() {
 	pad.bus.WriteSWCHx(pad.port, axisCenter)
@@ -299,18 +310,17 @@ func (pad *Gamepad) Step() {
 	}
 }
 
-// Reset implements the ports.Peripheral interface.
-func (pad *Gamepad) Reset() {
-	pad.axis = axisCenter
-	pad.button = stickNoFire
-	pad.second = secondNoFire
-	pad.bus.WriteSWCHx(pad.port, pad.axis)
-	pad.bus.WriteINPTx(pad.buttonInptx, pad.button)
-	pad.bus.WriteINPTx(pad.secondInptx, pad.second)
-	pad.bus.WriteINPTx(pad.insertedInptx, inserted)
-}
-
 // IsActive implements the ports.Peripheral interface.
 func (pad *Gamepad) IsActive() bool {
 	return pad.button == stickFire || pad.axis != axisCenter || pad.second == secondFire
+}
+
+// State returns the four axis states and the fire button state
+func (pad *Gamepad) State() ([4]bool, bool, bool) {
+	return [4]bool{
+		pad.axis&axisUp != axisUp,
+		pad.axis&axisLeft != axisLeft,
+		pad.axis&axisRight != axisRight,
+		pad.axis&axisDown != axisDown,
+	}, pad.button&stickNoFire != stickNoFire, pad.second&secondNoFire != secondNoFire
 }

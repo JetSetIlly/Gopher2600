@@ -17,8 +17,8 @@ package debugger
 
 import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
-	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/notifications"
 )
 
 // PushFunction onto the event queue. Used to ensure that the events are
@@ -64,15 +64,6 @@ func (dbg *Debugger) PushSetPause(paused bool) {
 	}
 }
 
-// PushTogglePCBreak sets or unsets a PC break at the address rerpresented by the
-// disassembly entry.
-func (dbg *Debugger) PushTogglePCBreak(e *disassembly.Entry) {
-	f := e
-	dbg.PushFunction(func() {
-		dbg.halting.breakpoints.togglePCBreak(f)
-	})
-}
-
 // PushMemoryProfile forces a garbage collection event and takes a runtime
 // memory profile and saves it to the working directory
 func (dbg *Debugger) PushMemoryProfile() {
@@ -86,9 +77,33 @@ func (dbg *Debugger) PushMemoryProfile() {
 	})
 }
 
-// ReloadCartridge inserts the current cartridge and states the emulation over.
-func (dbg *Debugger) PushReset() {
+// PushReload re-inserts the current cartridge and restarts the emulation
+func (dbg *Debugger) PushReload(end chan<- bool) {
+	if dbg.Mode() == govern.ModeDebugger {
+		dbg.PushFunctionImmediate(func() {
+			// resetting in the middle of a CPU instruction requires the input loop to be unwound before continuing
+			dbg.unwindLoop(func() error {
+				err := dbg.reloadCartridge()
+				if err != nil {
+					return err
+				}
+				if end != nil {
+					end <- true
+				}
+				return nil
+			})
+		})
+	} else {
+		dbg.PushFunction(func() {
+			dbg.reloadCartridge()
+		})
+	}
+}
+
+// PushNotify implements the notifications.Notify interface
+func (dbg *Debugger) PushNotify(notice notifications.Notice, data ...string) error {
 	dbg.PushFunction(func() {
-		dbg.reset(false)
+		dbg.Notify(notice, data...)
 	})
+	return nil
 }

@@ -56,27 +56,36 @@ func (m dbgScrMouse) String() string {
 	return m.tv.String()
 }
 
-func (win *winDbgScr) mouseFromVec2(pos imgui.Vec2) dbgScrMouse {
+// pivot returns UV position of the mouse
+func (m dbgScrMouse) pivot(v winDbgScrView) imgui.Vec2 {
+	return imgui.Vec2{
+		X: float32(m.pos.x) / v.scaledWidth,
+		Y: float32(m.pos.y) / v.scaledHeight,
+	}
+}
+
+func currentDbgScrMouse(scr *screen, view winDbgScrView) dbgScrMouse {
+	pos := imgui.MousePos().Minus(view.screenOrigin)
+
 	mouse := dbgScrMouse{}
 	mouse.pos.x = int(pos.X)
 	mouse.pos.y = int(pos.Y)
 
+	// convert to UV
+	u := pos.X / view.scaledWidth
+	v := pos.Y / view.scaledHeight
+
+	// zoom UV (pivot is in UV space already)
+	u = view.pivot.X + (u-view.pivot.X)/view.scaledZoom()
+	v = view.pivot.Y + (v-view.pivot.Y)/view.scaledZoom()
+
+	// convert from UV back to pixels
+	x := u * view.scaledWidth
+	y := v * view.scaledHeight
+
 	// scaled mouse position coordinates
-	mouse.scaled.x = int(pos.X / win.xscaling)
-	mouse.scaled.y = int(pos.Y / win.yscaling)
-
-	// offset is number of pixels from top-left of screen counting left-to-right
-	// and top-to-bottom
-	mouse.offset = win.mouse.scaled.x + win.mouse.scaled.y*specification.ClksScanline
-
-	// check validity of mouse position
-	mouse.valid = win.mouse.pos.x >= 0.0 && win.mouse.pos.y >= 0.0 &&
-		mouse.offset >= 0 && mouse.offset < len(win.scr.crit.reflection)
-
-	// mouse position is not in debug screen area
-	if !mouse.valid {
-		return mouse
-	}
+	mouse.scaled.x = int(x / view.xscaling)
+	mouse.scaled.y = int(y / view.yscaling)
 
 	// corresponding clock and scanline values for scaled mouse coordinates
 	mouse.tv.Clock = mouse.scaled.x
@@ -86,17 +95,25 @@ func (win *winDbgScr) mouseFromVec2(pos imgui.Vec2) dbgScrMouse {
 	mouse.tv.Frame = coords.FrameIsUndefined
 
 	// adjust depending on whether screen is cropped
-	if win.cropped {
+	if view.cropped {
 		mouse.scaled.x += specification.ClksHBlank
-		mouse.scaled.y += win.scr.crit.frameInfo.VisibleTop
-		mouse.tv.Scanline += win.scr.crit.frameInfo.VisibleTop
+		mouse.scaled.y += scr.crit.frameInfo.VisibleTop
+		mouse.tv.Scanline += scr.crit.frameInfo.VisibleTop
 	} else {
 		mouse.tv.Clock -= specification.ClksHBlank
 	}
 
-	return mouse
-}
+	// limit clock/scanline values after cropped adjustment
+	mouse.tv.Clock = max(min(specification.ClksVisible-1, mouse.tv.Clock), -specification.ClksHBlank)
+	mouse.tv.Scanline = max(min(scr.crit.frameInfo.TotalScanlines-1, mouse.tv.Scanline), 0)
 
-func (win *winDbgScr) currentMouse() dbgScrMouse {
-	return win.mouseFromVec2(imgui.MousePos().Minus(win.screenOrigin))
+	// offset is number of pixels from top-left of screen counting left-to-right
+	// and top-to-bottom
+	mouse.offset = mouse.scaled.x + mouse.scaled.y*specification.ClksScanline
+
+	// check validity of mouse position
+	mouse.valid = mouse.pos.x >= 0 && mouse.pos.y >= 0 &&
+		mouse.offset >= 0 && mouse.offset < len(scr.crit.reflection)
+
+	return mouse
 }

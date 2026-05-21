@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -110,7 +111,7 @@ func (cart *parkerBros) Reset() error {
 // Access implements the mapper.CartMapper interface.
 func (cart *parkerBros) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	var data uint8
-	if addr >= 0x0000 && addr <= 0x03ff {
+	if addr <= 0x03ff {
 		data = cart.banks[cart.state.segment[0]][addr&0x03ff]
 	} else if addr >= 0x0400 && addr <= 0x07ff {
 		data = cart.banks[cart.state.segment[1]][addr&0x03ff]
@@ -136,7 +137,7 @@ func (cart *parkerBros) AccessVolatile(addr uint16, data uint8, poke bool) error
 	}
 
 	if poke {
-		if addr >= 0x0000 && addr <= 0x03ff {
+		if addr <= 0x03ff {
 			cart.banks[cart.state.segment[0]][addr&0x3ff] = data
 		} else if addr >= 0x0400 && addr <= 0x07ff {
 			cart.banks[cart.state.segment[1]][addr&0x3ff] = data
@@ -222,9 +223,9 @@ func (cart *parkerBros) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *parkerBros) GetBank(addr uint16) mapper.BankInfo {
+func (cart *parkerBros) GetBank(addr uint16) banking.Information {
 	var seg int
-	if addr >= 0x0000 && addr <= 0x03ff {
+	if addr <= 0x03ff {
 		seg = 0
 	} else if addr >= 0x0400 && addr <= 0x07ff {
 		seg = 1
@@ -234,12 +235,12 @@ func (cart *parkerBros) GetBank(addr uint16) mapper.BankInfo {
 		seg = 3
 	}
 
-	return mapper.BankInfo{Number: cart.state.segment[seg], IsRAM: false, IsSegmented: true, Segment: seg}
+	return banking.Information{Number: cart.state.segment[seg], IsRAM: false, IsSegmented: true, Segment: seg}
 }
 
 // SetBank implements the mapper.CartMapper interface.
 func (cart *parkerBros) SetBank(bank string) error {
-	if mapper.IsAutoBankSelection(bank) {
+	if banking.IsAutoSelection(bank) {
 		cart.state.segment[0] = cart.NumBanks() - 4
 		cart.state.segment[1] = cart.NumBanks() - 3
 		cart.state.segment[2] = cart.NumBanks() - 2
@@ -247,7 +248,7 @@ func (cart *parkerBros) SetBank(bank string) error {
 		return nil
 	}
 
-	segs, err := mapper.SegmentedBankSelection(bank)
+	segs, err := banking.SegmentedSelection(bank)
 	if err != nil {
 		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
@@ -296,12 +297,12 @@ func (cart *parkerBros) Step(_ float32) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *parkerBros) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, len(cart.banks))
+func (cart *parkerBros) CopyBanks() []banking.Content {
+	c := make([]banking.Content, len(cart.banks))
 
 	// banks 0 to len-1 can occupy any of the three segments
 	for b := 0; b < len(cart.banks)-1; b++ {
-		c[b] = mapper.BankContent{Number: b,
+		c[b] = banking.Content{Number: b,
 			Data: cart.banks[b],
 			Origins: []uint16{
 				memorymap.OriginCart,
@@ -315,7 +316,7 @@ func (cart *parkerBros) CopyBanks() []mapper.BankContent {
 	// points to bank 7 but bank 7 can also be in another segment at the
 	// same time)
 	b := len(cart.banks) - 1
-	c[b] = mapper.BankContent{Number: b,
+	c[b] = banking.Content{Number: b,
 		Data: cart.banks[b],
 		Origins: []uint16{
 			memorymap.OriginCart,
@@ -327,8 +328,8 @@ func (cart *parkerBros) CopyBanks() []mapper.BankContent {
 	return c
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *parkerBros) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *parkerBros) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		// segment 0
 		0x1fe0: {Symbol: "B0S0", Action: mapper.HotspotBankSwitch},
@@ -360,11 +361,6 @@ func (cart *parkerBros) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 		0x1ff6: {Symbol: "B6S2", Action: mapper.HotspotBankSwitch},
 		0x1ff7: {Symbol: "B7S2", Action: mapper.HotspotBankSwitch},
 	}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *parkerBros) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return cart.ReadHotspots()
 }
 
 // rewindable state for the parker bros. cartridges.

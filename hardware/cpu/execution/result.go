@@ -66,8 +66,8 @@ type Result struct {
 	// whether an extra cycle was required because of 8 bit adder overflow
 	PageFault bool
 
-	// whether a known buggy code path (in the emulated CPU) was triggered
-	CPUBug string
+	// whether a known bug (in the emulated CPU) was triggered
+	Bug Bug
 
 	// whether branch instruction test passed (ie. branched) or not. testing of
 	// this field should be used in conjunction with Defn.IsBranch()
@@ -97,14 +97,16 @@ func (r *Result) Reset() {
 	r.InstructionData = 0
 	r.Cycles = 0
 	r.PageFault = false
-	r.CPUBug = ""
+	r.Bug = NoBug
 	r.Final = false
 	r.FromInterrupt = false
 }
 
-// very rough disassembly. it should not be used in preference to the
-// disassembly package if at all possible. none-the-less it is useful for
-// development purposes.
+// very rough disassembly. it should not be used in preference to the disassembly package if at all
+// possible. none-the-less it is useful for development purposes.
 func (r *Result) String() string {
+	if r.Defn == nil {
+		return "no result"
+	}
 	return fmt.Sprintf("%04x %s %s %04x", r.Address, r.Defn.Operator, r.Defn.AddressingMode, r.InstructionData)
 }

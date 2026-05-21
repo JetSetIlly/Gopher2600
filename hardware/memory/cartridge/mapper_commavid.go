@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -85,7 +86,7 @@ func newCommaVid(env *environment.Environment) (mapper.CartMapper, error) {
 
 // MappedBanks implements the mapper.CartMapper interface.
 func (cart *commavid) MappedBanks() string {
-	return fmt.Sprintf("Bank: 0")
+	return "Bank: 0"
 }
 
 // ID implements the mapper.CartMapper interface.
@@ -118,7 +119,7 @@ func (cart *commavid) Reset() error {
 
 // Access implements the mapper.CartMapper interface.
 func (cart *commavid) Access(addr uint16, _ bool) (uint8, uint8, error) {
-	if addr >= 0x0000 && addr <= 0x03ff {
+	if addr <= 0x03ff {
 		return cart.state.ram[addr], mapper.CartDrivenPins, nil
 	}
 	if addr >= 0x0400 && addr <= 0x07ff {
@@ -149,10 +150,10 @@ func (cart *commavid) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *commavid) GetBank(addr uint16) mapper.BankInfo {
+func (cart *commavid) GetBank(addr uint16) banking.Information {
 	// commavid cartridges are like atari cartridges in that the entire address
 	// space points to the selected bank
-	return mapper.BankInfo{Number: 0, IsRAM: addr <= 0x07ff}
+	return banking.Information{Number: 0, IsRAM: addr <= 0x07ff}
 }
 
 // Patch implements the mapper.CartPatchable interface
@@ -192,9 +193,9 @@ func (cart *commavid) PutRAM(_ int, idx int, data uint8) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *commavid) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, 1)
-	c[0] = mapper.BankContent{Number: 0,
+func (cart *commavid) CopyBanks() []banking.Content {
+	c := make([]banking.Content, 1)
+	c[0] = banking.Content{Number: 0,
 		Data:    cart.bankData,
 		Origins: []uint16{memorymap.OriginCart},
 	}

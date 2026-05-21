@@ -61,6 +61,9 @@ type Paddles struct {
 
 	// maximum of two paddles per paddles pair
 	paddles [2]paddle
+
+	// paddles seem to be wired such that INPT4 or INPT5 are held high when inserted
+	insertedInptx chipbus.Register
 }
 
 // NewPaddles is the preferred method of initialisation for the PaddlePair
@@ -77,10 +80,12 @@ func NewPaddles(env *environment.Environment, port plugging.PortID, bus ports.Pe
 		// paddle player 0 and 1
 		pdl.paddles[0].inptx = chipbus.INPT0
 		pdl.paddles[1].inptx = chipbus.INPT1
+		pdl.insertedInptx = chipbus.INPT4
 	case plugging.PortRight:
 		// paddle player 2 and 3
 		pdl.paddles[0].inptx = chipbus.INPT2
 		pdl.paddles[1].inptx = chipbus.INPT3
+		pdl.insertedInptx = chipbus.INPT5
 	}
 
 	// button masks are the same for left and right ports. WriteSWCHx() will
@@ -91,15 +96,32 @@ func NewPaddles(env *environment.Environment, port plugging.PortID, bus ports.Pe
 	return pdl
 }
 
+// Reset implements the Peripheral interface.
+func (pdl *Paddles) Reset() {
+	// a good test for if this is correct is the starpath version of frogger. if the game goes to
+	// the main play screen immediately after loading, then this function is incorrect
+	pdl.bus.WriteINPTx(pdl.insertedInptx, 0x80)
+
+	for i := range pdl.paddles {
+		pdl.paddles[i].charge = 0
+		pdl.paddles[i].ticks = 0
+		pdl.paddles[i].resistance = paddleMaxResistance
+		pdl.bus.WriteINPTx(pdl.paddles[i].inptx, pdl.paddles[i].charge)
+		pdl.paddles[i].fire = false
+	}
+
+	pdl.setFire()
+}
+
 // Unplug implements the Peripheral interface.
 func (pdl *Paddles) Unplug() {
-	// no need to go through the paddles specific writeSWCHx()
-	pdl.bus.WriteSWCHx(pdl.port, paddleNoFire)
+	pdl.bus.WriteSWCHx(pdl.port, paddleNoFire^0xf0)
 
-	// write no charge value to inptx
 	for i := range pdl.paddles {
 		pdl.bus.WriteINPTx(pdl.paddles[i].inptx, 0x00)
 	}
+
+	pdl.bus.WriteINPTx(pdl.insertedInptx, 0x00)
 }
 
 // Snapshot implements the Peripheral interface.
@@ -117,7 +139,7 @@ func (pdl *Paddles) Plumb(bus ports.PeripheralBus) {
 func (pdl *Paddles) String() string {
 	var s strings.Builder
 	for i := range pdl.paddles {
-		s.WriteString(fmt.Sprintf("paddle: button=%v charge=%d resistance=%d\n", pdl.paddles[i].fire, pdl.paddles[i].charge, pdl.paddles[i].resistance))
+		fmt.Fprintf(&s, "paddle: button=%v charge=%d resistance=%d\n", pdl.paddles[i].fire, pdl.paddles[i].charge, pdl.paddles[i].resistance)
 	}
 	return s.String()
 }
@@ -139,7 +161,7 @@ func (pdl *Paddles) setFire() {
 			fire |= pdl.paddles[i].buttonMask
 		}
 	}
-	pdl.bus.WriteSWCHx(pdl.port, ^fire)
+	pdl.bus.WriteSWCHx(pdl.port, fire^0xf0)
 }
 
 // HandleEvent implements the ports.Peripheral interface.
@@ -275,15 +297,6 @@ func (pdl *Paddles) Step() {
 	}
 
 	pdl.setFire()
-}
-
-// Reset implements the ports.Peripheral interface.
-func (pdl *Paddles) Reset() {
-	for i := range pdl.paddles {
-		pdl.paddles[i].charge = 0
-		pdl.paddles[i].ticks = 0
-		pdl.paddles[i].resistance = paddleMaxResistance
-	}
 }
 
 // IsActive implements the ports.Peripheral interface.

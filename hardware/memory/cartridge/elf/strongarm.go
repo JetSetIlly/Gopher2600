@@ -160,15 +160,11 @@ func (mem *elfMemory) setStrongArmFunction(f strongArmFunction, args ...uint32) 
 	copy(mem.strongarm.running.registers[:], args)
 }
 
-// runStrongArmFunction initialises the next function to run and immediatly
-// executes it
-//
-// it differs to setStrongArmFunction in that the function does not cause the
-// ARM to yield to the VCS
+// runStrongArmFunction sets the next strongarm function and immediatly executes it. the function
+// doesn't run to completion (unless it's a support function)
 func (mem *elfMemory) runStrongArmFunction(f strongArmFunction, args ...uint32) {
-	mem.strongarm.running.registers = mem.arm.CoreRegisters()
-	copy(mem.strongarm.running.registers[:], args)
-	f(mem)
+	mem.setStrongArmFunction(f, args...)
+	mem.strongarm.running.function(mem)
 }
 
 // a strongArmFunction should always end with a call to endFunction() no matter

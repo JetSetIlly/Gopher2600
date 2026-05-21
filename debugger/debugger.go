@@ -23,7 +23,6 @@ import (
 	"os/signal"
 	"runtime"
 	"runtime/pprof"
-	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -46,7 +45,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -161,7 +160,7 @@ type Debugger struct {
 	// the live disassembly entry. updated every CPU step or on halt (which may
 	// be mid instruction). it is also updated by the LAST command when the
 	// debugger is in the CLOCK quantum
-	liveBankInfo mapper.BankInfo
+	liveBankInfo banking.Information
 
 	// the television coords of the last CPU instruction
 	cpuBoundaryLastInstruction coords.TelevisionCoords
@@ -205,9 +204,6 @@ type Debugger struct {
 	// Quantum to use when stepping/running
 	quantum atomic.Value // govern.Quantum
 
-	// record user input to a script file
-	scriptScribe script.Scribe
-
 	// the Rewind system stores and restores machine state
 	Rewind *rewind.Rewind
 
@@ -232,8 +228,11 @@ type Debugger struct {
 
 	// \/\/\/ debugger inputLoop \/\/\/
 
-	// buffer for user input
-	input []byte
+	// queue of possible commands, possibly from a loaded script
+	scriptQueue script.Queue
+
+	// the current script being written to
+	scriptWrite script.Write
 
 	// any error from previous emulation step
 	lastStepError bool
@@ -412,31 +411,26 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 		Signal:           make(chan os.Signal, 1),
 		SignalHandler: func(sig os.Signal) error {
 			switch sig {
+			case os.Interrupt:
+				return terminal.UserInterrupt
 			case syscall.SIGHUP:
 				return terminal.UserReload
-			case syscall.SIGINT:
-				return terminal.UserInterrupt
+			case syscall.SIGTERM:
+				// default signal from UNIX kill command
+				return terminal.UserQuit
 			case syscall.SIGQUIT:
+				// catch signal sent by ctrl-\ because we don't want to produce a core dump. SIGABRT
+				// is still exposed if a core dump is required
 				return terminal.UserQuit
-			case syscall.SIGKILL:
-				// we're unlikely to receive the kill signal, it normally being
-				// intercepted by the terminal, but in case we do we treat it
-				// like the QUIT signal
-				return terminal.UserQuit
-			default:
 			}
-			return nil
+			return terminal.TermNoAction
 		},
 		PushedFunction:          make(chan func(), 4096),
 		PushedFunctionImmediate: make(chan func(), 4096),
 	}
 
-	// connect signals to dbg.events.Signal channel. we include the Kill signal
-	// but the chances are it'll never be seen
-	signal.Notify(dbg.events.Signal, os.Interrupt, os.Kill, syscall.SIGHUP, syscall.SIGQUIT)
-
-	// allocate memory for user input
-	dbg.input = make([]byte, 255)
+	// connect signals to dbg.events.Signal channel
+	signal.Notify(dbg.events.Signal, os.Interrupt, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGQUIT)
 
 	// create GUI
 	dbg.gui, dbg.term, err = create(dbg)
@@ -466,7 +460,8 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	dbg.counter = counter.NewCounter(dbg.vcs)
 	dbg.Rewind.AddTimelineCounter(dbg.counter)
 
-	// add disassembly to rewind system. this is for the sequential disassembly listing
+	// add disassembly to rewind system. this is so the the sequential disassembly listing does not
+	// include entries that haven't happened yet
 	dbg.Rewind.AddSplicer(dbg.Disasm)
 
 	// adding TV frame triggers in setMode(). what the TV triggers on depending
@@ -476,6 +471,9 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	// add audio tracker
 	dbg.Tracker = tracker.NewTracker(dbg, dbg.vcs.TV, dbg.Rewind)
 	dbg.vcs.TIA.Audio.SetTracker(dbg.Tracker)
+
+	// add tracker to rewind system for similar reasons to why we added the disassembly instance
+	dbg.Rewind.AddSplicer(dbg.Tracker)
 
 	// add plug monitor
 	dbg.vcs.RIOT.Ports.AttachPlugMonitor(dbg)
@@ -708,28 +706,16 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 		return fmt.Errorf("debugger: %w", err)
 	}
 
-	err = dbg.setPeripheralsOnStartup()
-	if err != nil {
-		return fmt.Errorf("debugger: %w", err)
-	}
-
 	err = dbg.setMode(govern.ModeDebugger)
 	if err != nil {
 		return fmt.Errorf("debugger: %w", err)
 	}
 
 	// intialisation script because we're in debugger mode
-	if dbg.opts.InitScript != "" {
-		scr, err := script.RescribeScript(dbg.opts.InitScript)
-		if err == nil {
-			dbg.term.Silence(true)
-			err = dbg.inputLoop(scr, false)
-			if err != nil {
-				dbg.term.Silence(false)
-				return err
-			}
-
-			dbg.term.Silence(false)
+	if dbg.opts.Script != "" {
+		err := dbg.scriptQueue.Load(dbg.opts.Script)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -746,7 +732,7 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 	return nil
 }
 
-func (dbg *Debugger) setPeripheralsOnStartup() error {
+func (dbg *Debugger) setPeripherals() error {
 	dbg.term.Silence(true)
 	defer dbg.term.Silence(false)
 
@@ -760,10 +746,15 @@ func (dbg *Debugger) setPeripheralsOnStartup() error {
 	}
 
 	if dbg.opts.SwapPorts {
-		err = dbg.parseCommand(fmt.Sprintf("PERIPHERAL SWAP"), false, false)
+		err = dbg.parseCommand("PERIPHERAL SWAP", false, false)
 		if err != nil {
 			return err
 		}
+	}
+
+	err = dbg.parseCommand(fmt.Sprintf("KEYPORTARI %s", dbg.opts.Keyportari), false, false)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -794,11 +785,6 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 		// cartload is should be passed to attachCartridge() almost immediately. the
 		// closure of cartload will then be handled for us
 		err = dbg.attachCartridge(cartload)
-		if err != nil {
-			return fmt.Errorf("debugger: %w", err)
-		}
-
-		err = dbg.setPeripheralsOnStartup()
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
 		}
@@ -951,7 +937,7 @@ func (dbg *Debugger) run() error {
 	// end script recording gracefully. this way we don't have to worry too
 	// hard about script scribes
 	defer func() {
-		err := dbg.scriptScribe.EndSession()
+		err := dbg.scriptWrite.EndSession()
 		if err != nil {
 			logger.Log(logger.Allow, "debugger", err)
 		}
@@ -1032,6 +1018,8 @@ func (dbg *Debugger) run() error {
 // the newCartridge flag will cause breakpoints, traces, etc. to be reset
 // as well. it is sometimes appropriate to reset these (eg. on new cartridge
 // insert)
+//
+// NOTE reset() should probably only be called from attachCartridge()
 func (dbg *Debugger) reset(newCartridge bool) error {
 	err := dbg.vcs.Reset()
 	if err != nil {
@@ -1054,17 +1042,13 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 		dbg.traces.clear()
 	}
 
-	dbg.Disasm.Reset()
-	dbg.liveBankInfo = mapper.BankInfo{}
-	dbg.liveDisasmEntry = &disassembly.Entry{Result: execution.Result{Final: true}}
-	return nil
-}
+	err = dbg.Disasm.Reset(true)
+	if err != nil {
+		return err
+	}
 
-// PushNotify implements the notifications.Notify interface
-func (dbg *Debugger) PushNotify(notice notifications.Notice, data ...string) error {
-	dbg.PushFunction(func() {
-		dbg.Notify(notice, data...)
-	})
+	dbg.liveBankInfo = banking.Information{}
+	dbg.liveDisasmEntry = &disassembly.Entry{Result: execution.Result{Final: true}}
 	return nil
 }
 
@@ -1072,7 +1056,7 @@ func (dbg *Debugger) PushNotify(notice notifications.Notice, data ...string) err
 func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 	switch notice {
 
-	case notifications.NotifySuperchargerFastload:
+	case notifications.NotifySuperchargerFastLoad:
 		// the supercharger ROM will eventually start execution from the PC
 		// address given in the supercharger file
 
@@ -1087,36 +1071,46 @@ func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 
 		// force multiload value for supercharger fastload
 		if dbg.opts.Multiload >= 0 {
-			dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(dbg.opts.Multiload))
+			dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddr, uint8(dbg.opts.Multiload))
 		}
 
-		// call commit function to complete tape loading procedure
-		fastload := dbg.vcs.Mem.Cart.GetSuperchargerFastLoad()
-		if fastload == nil {
-			return fmt.Errorf("NotifySuperchargerFastloadEnded sent from a non Supercharger fastload cartridge")
+		// bootstrap procedure
+		bs := dbg.vcs.Mem.Cart.GetSuperchargerBootstrap()
+		if bs == nil {
+			return fmt.Errorf("NotifySuperchargerFastload sent from a non-Supercharger cartridge")
 		}
-		err := fastload.Fastload(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer)
+		err := bs.Bootstrap(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer, dbg.vcs.TIA)
 		if err != nil {
 			return err
 		}
 
 		// (re)disassemble memory on TapeLoaded error signal
-		err = dbg.Disasm.FromMemory()
+		err = dbg.Disasm.FromMemory(true)
 		if err != nil {
 			return err
 		}
-	case notifications.NotifySuperchargerSoundloadStarted:
+	case notifications.NotifySuperchargerSoundLoadStarted:
 		// force multiload value for supercharger soundload
 		if dbg.opts.Multiload >= 0 {
-			dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(dbg.opts.Multiload))
+			dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddr, uint8(dbg.opts.Multiload))
 		}
 
-		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundloadStarted)
+		// bootstrap procedure
+		bs := dbg.vcs.Mem.Cart.GetSuperchargerBootstrap()
+		if bs == nil {
+			return fmt.Errorf("NotifySuperchargerSoundloadStarted sent from a non-Supercharger cartridge")
+		}
+		err := bs.Bootstrap(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer, dbg.vcs.TIA)
 		if err != nil {
 			return err
 		}
-	case notifications.NotifySuperchargerSoundloadEnded:
-		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundloadEnded)
+
+		err = dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundLoadStarted)
+		if err != nil {
+			return err
+		}
+	case notifications.NotifySuperchargerSoundLoadEnded:
+		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundLoadEnded)
 		if err != nil {
 			return err
 		}
@@ -1124,17 +1118,12 @@ func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 		// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
 		// during loading. not completely necessary I don't think, but it would be
 		// nice to have.
-		err = dbg.Disasm.FromMemory()
+		err = dbg.Disasm.FromMemory(true)
 		if err != nil {
 			return err
 		}
 
 		return dbg.vcs.TV.Reset(true)
-	case notifications.NotifySuperchargerSoundloadRewind:
-		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifySuperchargerSoundloadRewind)
-		if err != nil {
-			return err
-		}
 	case notifications.NotifyPlusROMNewInstall:
 		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifyPlusROMNewInstall)
 		if err != nil {
@@ -1215,8 +1204,13 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	dbg.cartload = &cartload
 
 	attachHook := func() {
+		err := dbg.setPeripherals()
+		if err != nil {
+			logger.Log(logger.Allow, "debugger", err)
+		}
+
 		dbg.CoProcDisasm.AttachCartridge(dbg.vcs.Mem.Cart)
-		err := dbg.CoProcDev.AttachCartridge(dbg.vcs.Mem.Cart, cartload.Filename, dbg.opts.DWARF)
+		err = dbg.CoProcDev.AttachCartridge(dbg.vcs.Mem.Cart, cartload.Filename, dbg.opts.DWARF)
 		if err != nil {
 			logger.Log(logger.Allow, "debugger", err)
 			if errors.Is(err, coproc_dwarf.UnsupportedDWARF) {
@@ -1244,7 +1238,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	}
 
 	// perform disassembly in the background
-	dbg.Disasm.Background(cartload)
+	dbg.Disasm.FromMemory(true)
 
 	// check for cartridge ejection. if the NoEject option is set then return error
 	if dbg.opts.NoEject && dbg.vcs.Mem.Cart.IsEjected() {
@@ -1417,43 +1411,6 @@ func (dbg *Debugger) endComparison() {
 	}
 }
 
-// parseInput splits the input into individual commands. each command is then
-// passed to parseCommand for processing
-//
-// interactive argument should be true if  the input that has just come from
-// the user (ie. via an interactive terminal). only interactive input will be
-// added to a new script file.
-//
-// auto argument should be true if command is being run as part of ONHALT or
-// ONSTEP
-//
-// returns a boolean stating whether the emulation should continue with the
-// next step.
-func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) error {
-	var err error
-
-	// ignore comments
-	if strings.HasPrefix(input, "#") {
-		return nil
-	}
-
-	// divide input if necessary
-	commands := strings.Split(input, ";")
-
-	// loop through commands
-	for i := 0; i < len(commands); i++ {
-		// parse command
-		err = dbg.parseCommand(commands[i], interactive, !auto)
-		if err != nil {
-			// we don't want to record bad commands in script
-			dbg.scriptScribe.Rollback()
-			return err
-		}
-	}
-
-	return nil
-}
-
 // Plugged implements the plugging.PlugMonitor interface.
 func (dbg *Debugger) Plugged(port plugging.PortID, peripheral plugging.PeripheralID) {
 	if dbg.vcs.Mem.Cart.IsEjected() {
@@ -1465,22 +1422,26 @@ func (dbg *Debugger) Plugged(port plugging.PortID, peripheral plugging.Periphera
 	}
 }
 
+// care should be taken that the debugger is not mid-instruction
 func (dbg *Debugger) reloadCartridge() error {
 	if dbg.cartload == nil {
 		return nil
 	}
 
-	// reset macro to beginning
-	if dbg.macro != nil {
-		dbg.macro.Reset()
+	err := dbg.insertCartridge(dbg.cartload.Filename)
+	if err != nil {
+		return err
 	}
 
-	return dbg.insertCartridge(dbg.cartload.Filename)
-}
+	// reset macro to beginning
+	if dbg.macro != nil {
+		err := dbg.macro.Reset()
+		if err != nil {
+			logger.Logf(logger.Allow, "debugger", "cannot reload macro: %s", err.Error())
+		}
+	}
 
-// ReloadCartridge inserts the current cartridge and states the emulation over.
-func (dbg *Debugger) ReloadCartridge() {
-	dbg.events.Signal <- syscall.SIGHUP
+	return nil
 }
 
 func (dbg *Debugger) insertCartridge(filename string) error {

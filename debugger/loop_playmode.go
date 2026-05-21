@@ -106,14 +106,14 @@ func (dbg *Debugger) playLoop() error {
 		// paused or not. if emulation is paused then we halt until an event is
 		// received. this reduces CPU usage when paused
 		if dbg.state.Load().(govern.State) == govern.Paused {
-			select {
-			case <-dbg.readEventsPulse.C:
-				err := dbg.readEventsHandler()
-				if err != nil {
-					return govern.Ending, err
-				}
+			// we wait forever for a read events pulse when emulation is paused
+			<-dbg.readEventsPulse.C
+			err := dbg.readEventsHandler()
+			if err != nil {
+				return govern.Ending, err
 			}
 		} else {
+			// we DO NOT wait forever for a read events pulse when emulation is paused
 			select {
 			case <-dbg.readEventsPulse.C:
 				err := dbg.readEventsHandler()
@@ -121,6 +121,7 @@ func (dbg *Debugger) playLoop() error {
 					return govern.Ending, err
 				}
 			default:
+				// do not wait forever for read events pulse
 			}
 		}
 

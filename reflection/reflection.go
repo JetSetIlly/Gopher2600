@@ -18,9 +18,10 @@ package reflection
 import (
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/tia/hmove"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 )
 
@@ -53,18 +54,19 @@ type Broker interface {
 // Note that ordering of the structure is important. There's a saving of about
 // 2MB per frame compared to the unoptimal ordering.
 type ReflectedVideoStep struct {
-	CPU          execution.Result
-	Collision    video.Collisions
-	Bank         mapper.BankInfo
-	Signal       signal.SignalAttributes
-	Hmove        Hmove
-	VideoElement video.Element
-	WSYNC        bool
-	IsRAM        bool
-	CoProcSync   coprocessor.CoProcSynchronisation
-	IsHblank     bool
-	RSYNCalign   bool
-	RSYNCreset   bool
+	CPU            execution.Result
+	Collision      video.Collisions
+	Bank           banking.Information
+	Signal         signal.SignalAttributes
+	Hmove          hmove.Hmove
+	VideoElement   video.Element
+	VideoElementCt int
+	WSYNC          bool
+	IsRAM          bool
+	CoProcSync     coprocessor.CoProcSynchronisation
+	IsHblank       bool
+	RSYNCalign     bool
+	RSYNCreset     bool
 
 	// All the fields in this struct are copy()able. An array of this type
 	// therefore should also be copyable and safe to use in other goroutines.

@@ -78,7 +78,7 @@ func (win *winCDFRegisters) draw(regs cdf.Registers) {
 	imgui.BeginGroup()
 	imgui.Text("Pointers")
 	imgui.Spacing()
-	for i := 0; i < len(regs.Datastream); i++ {
+	for i := range len(regs.Datastream) {
 		if i%2 != 0 {
 			imgui.SameLine()
 		}
@@ -100,7 +100,7 @@ func (win *winCDFRegisters) draw(regs cdf.Registers) {
 	imgui.BeginGroup()
 	imgui.Text("Increments")
 	imgui.Spacing()
-	for i := 0; i < len(regs.Datastream); i++ {
+	for i := range len(regs.Datastream) {
 		if i%2 != 0 {
 			imgui.SameLine()
 		}
@@ -144,7 +144,7 @@ func (win *winCDFRegisters) draw(regs cdf.Registers) {
 	// loop over music fetchers
 	imgui.Text("Music Fetchers")
 	imgui.Spacing()
-	for i := 0; i < len(regs.MusicFetcher); i++ {
+	for i := range len(regs.MusicFetcher) {
 		f := i
 
 		imguiLabel(fmt.Sprintf("%d.", f))

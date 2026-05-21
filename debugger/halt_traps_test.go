@@ -15,20 +15,26 @@
 
 package debugger_test
 
-func (trm *mockTerm) testTraps() {
+import (
+	"testing"
+
+	"github.com/jetsetilly/gopher2600/test"
+)
+
+func testTraps(t *testing.T, trm *mockTerm) {
 	// debugger starts off with no traps
-	trm.sndInput("LIST TRAPS")
-	trm.cmpOutput("no traps")
+	trm.command("LIST TRAPS")
+	test.ExpectEquality(t, trm.lastLine(), "no traps")
 
 	// add a trap. there should be no output.
-	trm.sndInput("TRAP a")
-	trm.cmpOutput("")
+	trm.command("TRAP a")
+	test.ExpectEquality(t, trm.lastLine(), "")
 
 	// add same trap again. using uppercase this time.
-	trm.sndInput("TRAP A")
-	trm.cmpOutput("trap exists (A)")
+	trm.command("TRAP A")
+	test.ExpectEquality(t, trm.lastLine(), "trap exists (A)")
 
 	// list traps. compare last line.
-	trm.sndInput("LIST TRAPS")
-	trm.cmpOutput(" 0: A")
+	trm.command("LIST TRAPS")
+	test.ExpectEquality(t, trm.lastLine(), " 0: A")
 }

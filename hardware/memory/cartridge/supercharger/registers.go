@@ -58,14 +58,14 @@ func (r *Registers) setConfigByte(v uint8) {
 func (r Registers) String() string {
 	s := strings.Builder{}
 
-	s.WriteString(fmt.Sprintf("Value: %#02x  Delay: %d\n", r.Value, r.Delay))
+	fmt.Fprintf(&s, "Value: %#02x  Delay: %d\n", r.Value, r.Delay)
 
 	if r.LastWriteAddress > 0x000 {
-		s.WriteString(fmt.Sprintf("   last write %#02x to %#04x\n", r.LastWriteValue, r.LastWriteAddress))
+		fmt.Fprintf(&s, "   last write %#02x to %#04x\n", r.LastWriteValue, r.LastWriteAddress)
 	}
 
-	s.WriteString(fmt.Sprintf("RAM write: %v", r.RAMwrite))
-	s.WriteString(fmt.Sprintf("  ROM power: %v\n", r.ROMpower))
+	fmt.Fprintf(&s, "RAM write: %v", r.RAMwrite)
+	fmt.Fprintf(&s, "  ROM power: %v\n", r.ROMpower)
 
 	s.WriteString(r.MappedBanks())
 

@@ -134,9 +134,9 @@ func (bs *BallSprite) String() string {
 	s := strings.Builder{}
 	s.WriteString(bs.label)
 	s.WriteString(": ")
-	s.WriteString(fmt.Sprintf("%s %s [%03d ", bs.position, bs.pclk, bs.ResetPixel))
-	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
-	s.WriteString(fmt.Sprintf(" %03d", bs.HmovedPixel))
+	fmt.Fprintf(&s, "%s %s [%03d ", bs.position, bs.pclk, bs.ResetPixel)
+	fmt.Fprintf(&s, "> %#1x >", normalisedHmove)
+	fmt.Fprintf(&s, " %03d", bs.HmovedPixel)
 	if bs.MoreHMOVE {
 		s.WriteString("*]")
 	} else {
@@ -154,11 +154,11 @@ func (bs *BallSprite) String() string {
 	s.WriteString(",")
 
 	if bs.MoreHMOVE {
-		s.WriteString(fmt.Sprintf(" hmoving [%04b],", bs.Hmove))
+		fmt.Fprintf(&s, " hmoving [%04b],", bs.Hmove)
 	}
 
 	if bs.Enclockifier.Active {
-		s.WriteString(fmt.Sprintf(" drw %s,", bs.Enclockifier.String()))
+		fmt.Fprintf(&s, " drw %s,", bs.Enclockifier.String())
 	}
 
 	if !bs.Enabled {
@@ -185,7 +185,7 @@ func (bs *BallSprite) rsync(adjustment int) {
 
 func (bs *BallSprite) tickHBLANK() bool {
 	// check to see if there is more movement required for this sprite
-	bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(bs.tia.hmove.Ripple, bs.Hmove)
+	bs.MoreHMOVE = bs.MoreHMOVE && bs.tia.hmove.Compare(bs.Hmove)
 	if !bs.MoreHMOVE {
 		return false
 	}
@@ -203,7 +203,7 @@ func (bs *BallSprite) tickHBLANK() bool {
 
 func (bs *BallSprite) tickHMOVE() bool {
 	// check to see if there is more movement required for this sprite
-	bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(bs.tia.hmove.Ripple, bs.Hmove)
+	bs.MoreHMOVE = bs.MoreHMOVE && bs.tia.hmove.Compare(bs.Hmove)
 
 	// cancel motion clock if necessary
 	if bs.MoreHMOVE && bs.tia.env.Prefs.Revision.Live.LostMOTCK.Load().(bool) {
@@ -279,10 +279,12 @@ func (bs *BallSprite) resetPosition() {
 		// and also Activision's Seaquest. The scuba divers are drawn with the ball sprite in
 		// that game. a delay of 2 causes the diver to just be visible on the right of the
 		// screen (in the wings, as it were)
-		if bs.tia.hmove.Ripple > 0 {
+		if bs.tia.hmove.IsActive() {
 			delay = 2
-		} else {
+		} else if bs.tia.hmove.Latch {
 			delay = 3
+		} else {
+			delay = 2
 		}
 	}
 

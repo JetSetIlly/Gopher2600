@@ -101,10 +101,10 @@ func (reg PlaybackRegression) CleanUp() error {
 
 // String implements the regression.Regressor interface.
 func (reg PlaybackRegression) String() string {
-	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("[%s] %s", reg.EntryType(), filepath.Base(reg.Script)))
+	var s strings.Builder
+	fmt.Fprintf(&s, "[%s] %s", reg.EntryType(), filepath.Base(reg.Script))
 	if reg.Notes != "" {
-		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
+		fmt.Fprintf(&s, " [%s]", reg.Notes)
 	}
 	return s.String()
 }
@@ -204,9 +204,9 @@ func (reg *PlaybackRegression) regress(newRegression bool, messages io.Writer, t
 
 	// run emulation
 	err = vcs.Run(func() (govern.State, error) {
-		// if the CPU is in the KIL state then the test will never end normally
-		if vcs.CPU.Killed {
-			return govern.Ending, fmt.Errorf("CPU in KIL state")
+		// if the CPU is in the JAM state then the test will never end normally
+		if vcs.CPU.Jammed {
+			return govern.Ending, fmt.Errorf("CPU in JAM state")
 		}
 
 		hasEnded, err := plb.IsEndFrame()
@@ -220,7 +220,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, messages io.Writer, t
 		// display progress meter every 1 second
 		select {
 		case <-tck.C:
-			messages.Write([]byte(fmt.Sprintf("\r%s [%s]", tag, plb)))
+			fmt.Fprintf(messages, "\r%s [%s]", tag, plb)
 		default:
 		}
 		return govern.Running, nil

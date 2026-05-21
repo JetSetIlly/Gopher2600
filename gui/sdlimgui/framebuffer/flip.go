@@ -53,11 +53,6 @@ func NewFlip(clearOnRender bool) *Flip {
 	return fb
 }
 
-// id implements the FBO interface
-func (fb *Flip) id() uint32 {
-	return fb.fbo
-}
-
 // Destroy should be called when the Flip is no longer required
 func (fb *Flip) Destroy() {
 	gl.DeleteFramebuffers(1, &fb.fbo)

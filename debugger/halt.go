@@ -105,9 +105,9 @@ func (h *haltCoordination) reset() {
 // check for a halt condition and set the halt flag if found. returns true if
 // emulation should continue and false if the emulation should halt
 func (h *haltCoordination) check() bool {
-	if h.dbg.vcs.CPU.Killed && !h.dbg.vcs.Mem.Cart.IsEjected() {
+	if h.dbg.vcs.CPU.Jammed && !h.dbg.vcs.Mem.Cart.IsEjected() {
 		h.haltReason = HaltReason{
-			Reason: "CPU KIL",
+			Reason: "CPU Jammed",
 			Coords: h.dbg.vcs.TV.GetCoords(),
 		}
 		h.halt = true

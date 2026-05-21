@@ -17,7 +17,7 @@ package counter
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/rewind"
@@ -39,7 +39,7 @@ func NewCounter(vcs *hardware.VCS) *Counter {
 // Accumulate count values at end of CPU cycle. The clocks argument says how
 // many color clocks the Step() represents. Count values will be increased by
 // that amount.
-func (ct *Counter) Step(clocks int, bank mapper.BankInfo) {
+func (ct *Counter) Step(clocks int, bank banking.Information) {
 	t := ct.vcs.TV.GetCoords()
 	if coords.GreaterThan(t, ct.mostRecentStep) {
 		if !ct.vcs.CPU.RdyFlg {

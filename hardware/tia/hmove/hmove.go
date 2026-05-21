@@ -74,6 +74,19 @@ func (hm *Hmove) Reset() {
 	hm.Future.Drop()
 }
 
+func (hm *Hmove) JustStarted() bool {
+	return hm.Ripple == 15
+}
+
+// IsActive returns true if HMOVE is "active".
+//
+// I'm not sure what to call this really. It tests if HMOVE is currently rippling but
+// not at the point when the ripple value is zero. HMOVE is also considered to be active if the
+// ripple has *just* finished.
+func (hm *Hmove) IsActive() bool {
+	return hm.Ripple > 0 && (hm.Ripple != 0xff || hm.RippleJustEnded)
+}
+
 func (hm *Hmove) String() string {
 	s := strings.Builder{}
 
@@ -82,7 +95,7 @@ func (hm *Hmove) String() string {
 	}
 
 	if hm.Future.IsActive() {
-		s.WriteString(fmt.Sprintf(" HMOVE latching %d", hm.Future.Remaining()))
+		fmt.Fprintf(&s, " HMOVE latching %d", hm.Future.Remaining())
 	} else if hm.Latch {
 		s.WriteString(" HMOVE latched")
 	} else {
@@ -90,10 +103,31 @@ func (hm *Hmove) String() string {
 	}
 
 	if hm.Ripple <= 15 {
-		s.WriteString(fmt.Sprintf(" (ripple count %d)", hm.Ripple))
+		fmt.Fprintf(&s, " (ripple count %d)", hm.Ripple)
 	} else if hm.RippleJustEnded {
 		s.WriteString(" (ripple just ended)")
 	}
 
 	return strings.TrimSpace(s.String())
+}
+
+// CompareHMOVE tests two variables of type uint8 and checks to see if any of
+// the bits in the lower nibble differ. returns false if no bits are the same,
+// true otherwise
+//
+// returns true if any corresponding bits in the lower nibble are the same.
+// from TIA_HW_Notes.txt:
+//
+// "When the comparator for a given object detects that none of the 4 bits
+// match the bits in the counter state, it clears this latch".
+func (hm *Hmove) Compare(v uint8) bool {
+	return hm.Ripple&0x08 == v&0x08 || hm.Ripple&0x04 == v&0x04 || hm.Ripple&0x02 == v&0x02 || hm.Ripple&0x01 == v&0x01
+
+	// at first flush the quotation above appears to be saying the following:
+	//
+	//	return hm.Ripple & v & 0x0f != 0
+	//
+	// but it does not. this simpler construct does not check whether zero bits
+	// are the same. the actual comparison, which we're using, compares one and
+	// zero bits equally.
 }

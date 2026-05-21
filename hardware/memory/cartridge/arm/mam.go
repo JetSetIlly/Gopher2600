@@ -64,7 +64,7 @@ func (m *mam) Plumb(env *environment.Environment) {
 }
 
 func (m *mam) updatePrefs() {
-	m.pref = m.env.Prefs.ARM.MAM.Get().(int)
+	m.pref = m.env.Prefs.Cartridge.ARM.MAM.Get().(int)
 	if m.pref == preferences.MAMDriver {
 		m.mamcr = m.mmap.PreferredMAMCR
 		m.mamtim = 4.0

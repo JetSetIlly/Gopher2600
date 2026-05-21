@@ -226,7 +226,7 @@ func (win *winCartStatic) draw(static mapper.CartStatic) {
 									imgui.Spacing()
 									imgui.Separator()
 									imgui.Spacing()
-									imguiColorLabelSimple(fmt.Sprintf("%s %c %s", compValue, fonts.ByteChange, currValue), win.img.cols.ValueDiff)
+									imguiColorLabel(fmt.Sprintf("%s %c %s", compValue, fonts.ByteChange, currValue), win.img.cols.ValueDiff)
 								}
 							}, true)
 						} else {
@@ -234,7 +234,7 @@ func (win *winCartStatic) draw(static mapper.CartStatic) {
 							b := currData[idx]
 							if a != b {
 								win.img.imguiTooltip(func() {
-									imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
+									imguiColorLabel(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
 								}, true)
 							}
 						}

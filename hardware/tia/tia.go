@@ -128,9 +128,8 @@ func (tia *TIA) Label() string {
 
 func (tia *TIA) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s %s",
-		tia.hsync, tia.PClk,
-	))
+	fmt.Fprintf(&s, "%s %s",
+		tia.hsync, tia.PClk)
 	return s.String()
 }
 
@@ -563,7 +562,7 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister, ct int) {
 	}
 
 	// resolve video pixels
-	tia.Video.Pixel()
+	tia.Video.Pixel(tia.sig.VBlank)
 	if tia.Hblank {
 		// if hblank is on then we don't sent the resolved color but the
 		// zeroblack signal instead
@@ -748,7 +747,7 @@ func (tia *TIA) QuickStep(ct int) {
 	}
 
 	// resolve video pixels
-	tia.Video.Pixel()
+	tia.Video.Pixel(tia.sig.VBlank)
 	if tia.Hblank {
 		// if hblank is on then we don't sent the resolved color but the
 		// zeroblack signal instead

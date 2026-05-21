@@ -1,6 +1,6 @@
 module github.com/jetsetilly/gopher2600
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/go-audio/audio v1.0.0
@@ -11,11 +11,12 @@ require (
 	github.com/pkg/term v1.1.0
 	github.com/sahilm/fuzzy v0.1.0
 	github.com/veandco/go-sdl2 v0.4.35
-	golang.org/x/image v0.18.0
-	golang.org/x/sys v0.8.0
+	golang.org/x/image v0.38.0
+	golang.org/x/sys v0.42.0
 )
 
 require (
 	github.com/go-audio/riff v1.0.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
+	golang.org/x/term v0.40.0 // indirect
 )

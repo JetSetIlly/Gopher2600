@@ -127,9 +127,9 @@ func (db *Session) EndSession(commitChanges bool) error {
 
 			s.WriteString(recordHeader(k, v.EntryType()))
 
-			for i := 0; i < len(ser); i++ {
+			for i := range ser {
 				s.WriteString(fieldSep)
-				s.WriteString(ser[i])
+				s.WriteString(encode(ser[i]))
 			}
 
 			s.WriteString(entrySep)
@@ -173,7 +173,7 @@ func (db *Session) readDBFile() error {
 	// split entries
 	lines := strings.Split(string(buffer), entrySep)
 
-	for i := 0; i < len(lines); i++ {
+	for i := range lines {
 		lines[i] = strings.TrimSpace(lines[i])
 		if len(lines[i]) == 0 {
 			continue
@@ -203,7 +203,12 @@ func (db *Session) readDBFile() error {
 			return fmt.Errorf("unrecognised entry type (%s) [line %d]", fields[leaderFieldID], i+1)
 		}
 
-		ent, err = deserialise(strings.Split(fields[numLeaderFields], ","))
+		l := strings.Split(fields[numLeaderFields], ",")
+		for i := range l {
+			l[i] = decode(l[i])
+		}
+
+		ent, err = deserialise(l)
 		if err != nil {
 			return fmt.Errorf("%w [line %d]", err, i+1)
 		}

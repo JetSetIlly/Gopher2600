@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -84,21 +85,16 @@ type atari struct {
 
 	// rewindable state
 	state *atariState
-
-	// binary file has empty area(s). we use this to decide whether
-	// the cartridge RAM should be allocated
-	//
-	// the superchip is not added automatically
-	needsSuperchip bool
 }
 
 // size of superchip RAM. the origin of the superchip addresses is at the beginning of the cartridge
 // area so we only need to think about size
 const superchipSize = 128
 
-// a cartridge with a superchip contains seperate read and write addresses, which means that the
-// number of addresses that access the superchip is double the superchip size
-const superchipAddressSize = superchipSize << 1
+// HasSuperchip returns true if cartridge has superchip cartridge RAM
+func (cart *atari) HasSuperchip() bool {
+	return len(cart.state.ram) > 0
+}
 
 // ROMDump implements the mapper.CartROMDump interface.
 func (cart *atari) ROMDump(filename string) error {
@@ -156,16 +152,16 @@ func (cart *atari) reset() error {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *atari) GetBank(addr uint16) mapper.BankInfo {
+func (cart *atari) GetBank(addr uint16) banking.Information {
 	// because atari bank switching swaps out the entire memory space, every
 	// address points to whatever the current bank is. compare to parker bros.
 	// cartridges.
-	return mapper.BankInfo{Number: cart.state.bank, IsRAM: cart.state.ram != nil && addr >= 0x80 && addr <= 0xff}
+	return banking.Information{Number: cart.state.bank, IsRAM: cart.state.ram != nil && addr >= 0x80 && addr <= 0xff}
 }
 
 // SetBank implements the mapper.CartMapper interface.
 func (cart *atari) SetBank(bank string) error {
-	if mapper.IsAutoBankSelection(bank) {
+	if banking.IsAutoSelection(bank) {
 		// earlier revisions of this function handled the possibility of a different
 		// required starting bank for specific cartridges. however I now believe that the
 		// correct answer in all cases should be bank 0
@@ -224,7 +220,7 @@ func (cart *atari) SetBank(bank string) error {
 		return nil
 	}
 
-	b, err := mapper.SingleBankSelection(bank)
+	b, err := banking.SingleSelection(bank)
 	if err != nil {
 		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
@@ -241,15 +237,41 @@ func (cart *atari) SetBank(bank string) error {
 	return nil
 }
 
+// the number of cycles required for SARA RAM to recover from an access. this value is assigned to
+// saraRecovery when RAM is accessed.
+//
+// the value is one more than required because we reduce saraRecovery() in the Step() function,
+// which comes after any access
+//
+// the reason for this value and for the "recovery" mecahnism at all, is because SARA ram is too
+// slow to supply data for consecutive cycles. the current working theory is that the RAM "reacts"
+// faster when moving from a CS disabled state than when CS is already enabled
+const saraCycles = 2
+
 // access implements the mapper.CartMapper interface. the bool return value is true if the address
 // has been recognised and serviced.
 func (cart *atari) access(addr uint16) (uint8, uint8, bool) {
 	if cart.state.ram != nil {
-		if addr <= 0x7f {
-			return 0, 0, true
-		}
-		if addr >= 0x80 && addr <= 0xff {
-			return cart.state.ram[addr-superchipSize], mapper.CartDrivenPins, true
+		if addr&0x0f00 == 0x0000 {
+			sara := cart.env.Prefs.Cartridge.EmulateSARA.Get().(bool)
+			if sara && cart.state.saraRecovery > 0 && addr&0x7f != cart.state.saraAddr {
+				cart.state.saraRecovery = saraCycles
+				return 0, 0, true
+			}
+
+			switch addr & 0x0f80 {
+			case 0x0000:
+				cart.state.saraRecovery = saraCycles
+				cart.state.saraAddr = addr & 0x7f
+				return 0, 0, true
+			case 0x0080:
+				if sara && cart.state.saraRecovery > 0 && addr&0x7f != cart.state.saraAddr {
+					return 0, 0, true
+				}
+				cart.state.saraRecovery = saraCycles
+				cart.state.saraAddr = addr & 0x7f
+				return cart.state.ram[cart.state.saraAddr], mapper.CartDrivenPins, true
+			}
 		}
 	}
 	return 0, mapper.CartDrivenPins, false
@@ -258,9 +280,25 @@ func (cart *atari) access(addr uint16) (uint8, uint8, bool) {
 // accessVolatile implements the mapper.CartMapper interface.
 func (cart *atari) accessVolatile(addr uint16, data uint8, poke bool) error {
 	if cart.state.ram != nil {
-		if addr <= 0x7f {
-			cart.state.ram[addr] = data
-			return nil
+		if addr&0x0f00 == 0x0000 {
+			if poke {
+				cart.banks[cart.state.bank][addr&0x7f] = data
+				return nil
+			}
+			sara := cart.env.Prefs.Cartridge.EmulateSARA.Get().(bool)
+			if sara && cart.state.saraRecovery > 0 && addr&0x7f != cart.state.saraAddr {
+				cart.state.saraRecovery = saraCycles
+				return nil
+			}
+			switch addr & 0x0f80 {
+			case 0x0000:
+				cart.state.saraRecovery = saraCycles
+				cart.state.saraAddr = addr & 0x7f
+				cart.state.ram[cart.state.saraAddr] = data
+				return nil
+			case 0x0080:
+				return nil
+			}
 		}
 	}
 
@@ -291,6 +329,9 @@ func (cart *atari) AccessPassive(addr uint16, data uint8) error {
 
 // Step implements the mapper.CartMapper interface.
 func (cart *atari) Step(_ float32) {
+	if cart.state != nil && cart.state.saraRecovery > 0 {
+		cart.state.saraRecovery--
+	}
 }
 
 // GetRAM implements the mapper.CartRAMBus interface.
@@ -301,10 +342,11 @@ func (cart *atari) GetRAM() []mapper.CartRAM {
 
 	r := make([]mapper.CartRAM, 1)
 	r[0] = mapper.CartRAM{
-		Label:  "Superchip",
-		Origin: 0x1080,
-		Data:   make([]uint8, len(cart.state.ram)),
-		Mapped: true,
+		Label:    "Superchip",
+		Origin:   0x1080,
+		Data:     make([]uint8, len(cart.state.ram)),
+		Mapped:   true,
+		Recovery: cart.state.saraRecovery,
 	}
 
 	copy(r[0].Data, cart.state.ram)
@@ -321,23 +363,15 @@ func (cart *atari) PutRAM(_ int, idx int, data uint8) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *atari) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, len(cart.banks))
+func (cart *atari) CopyBanks() []banking.Content {
+	c := make([]banking.Content, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {
-		c[b] = mapper.BankContent{Number: b,
+		c[b] = banking.Content{Number: b,
 			Data:    cart.banks[b],
 			Origins: []uint16{memorymap.OriginCart},
 		}
 	}
 	return c
-}
-
-// AddSuperchip implements the mapper.OptionalSuperchip interface.
-func (cart *atari) AddSuperchip(force bool) {
-	if force || cart.needsSuperchip {
-		cart.mappingID = fmt.Sprintf("%s (SC)", cart.mappingID)
-		cart.state.ram = make([]uint8, superchipSize)
-	}
 }
 
 // atari4k is the original and most straightforward format:
@@ -349,7 +383,7 @@ type atari4k struct {
 	atari
 }
 
-func newAtari4k(env *environment.Environment) (mapper.CartMapper, error) {
+func newAtari4k(env *environment.Environment, superchip bool) (mapper.CartMapper, error) {
 	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("4k: %w", err)
@@ -357,21 +391,25 @@ func newAtari4k(env *environment.Environment) (mapper.CartMapper, error) {
 
 	cart := &atari4k{
 		atari: atari{
-			env:            env,
-			bankSize:       4096,
-			mappingID:      "4k",
-			banks:          make([][]uint8, 1),
-			state:          newAtariState(),
-			needsSuperchip: hasSuperchip(data),
+			env:       env,
+			bankSize:  4096,
+			mappingID: "4K",
+			banks:     make([][]uint8, 1),
+			state:     newAtariState(),
 		},
 	}
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, fmt.Errorf("4k: wrong number of bytes in the cartridge data")
+		return nil, fmt.Errorf("4K: wrong number of bytes in the cartridge data")
 	}
 
 	cart.banks[0] = make([]uint8, cart.bankSize)
 	copy(cart.banks[0], data)
+
+	if superchip {
+		cart.mappingID = "4KSC"
+		cart.state.ram = make([]uint8, superchipSize)
+	}
 
 	return cart, nil
 }
@@ -424,31 +462,35 @@ type atari2k struct {
 	mask uint16
 }
 
-func newAtari2k(env *environment.Environment) (mapper.CartMapper, error) {
+func newAtari2k(env *environment.Environment, superchip bool) (mapper.CartMapper, error) {
 	data, err := io.ReadAll(env.Loader)
 	if err != nil {
-		return nil, fmt.Errorf("2k: %w", err)
+		return nil, fmt.Errorf("2K: %w", err)
 	}
 
 	// support any size less than 4096 bytes that is a power of two
 	if len(data) >= 4096 || bits.OnesCount(uint(len(data))) != 1 {
-		return nil, fmt.Errorf("atari: unsupported cartridge size")
+		return nil, fmt.Errorf("2K: unsupported cartridge size")
 	}
 
 	cart := &atari2k{
 		atari: atari{
-			env:            env,
-			bankSize:       len(data),
-			mappingID:      "2k",
-			banks:          make([][]uint8, 1),
-			needsSuperchip: false,
-			state:          newAtariState(),
+			env:       env,
+			bankSize:  len(data),
+			mappingID: "2K",
+			banks:     make([][]uint8, 1),
+			state:     newAtariState(),
 		},
 		mask: uint16(len(data) - 1),
 	}
 
 	cart.banks[0] = make([]uint8, cart.bankSize)
 	copy(cart.banks[0], data)
+
+	if superchip {
+		cart.mappingID = "2KSC"
+		cart.state.ram = make([]uint8, superchipSize)
+	}
 
 	return cart, nil
 }
@@ -484,9 +526,9 @@ func (cart *atari2k) Access(addr uint16, peek bool) (uint8, uint8, error) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *atari2k) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, 1)
-	c[0] = mapper.BankContent{Number: 0,
+func (cart *atari2k) CopyBanks() []banking.Content {
+	c := make([]banking.Content, 1)
+	c[0] = banking.Content{Number: 0,
 		Data:    cart.banks[0],
 		Origins: []uint16{memorymap.OriginCart, memorymap.OriginCart + uint16(cart.bankSize)},
 	}
@@ -506,7 +548,7 @@ type atari8k struct {
 	atari
 }
 
-func newAtari8k(env *environment.Environment) (mapper.CartMapper, error) {
+func newAtari8k(env *environment.Environment, superchip bool) (mapper.CartMapper, error) {
 	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("F8: %w", err)
@@ -514,11 +556,10 @@ func newAtari8k(env *environment.Environment) (mapper.CartMapper, error) {
 
 	cart := &atari8k{
 		atari: atari{
-			env:            env,
-			bankSize:       4096,
-			mappingID:      "F8",
-			needsSuperchip: hasSuperchip(data),
-			state:          newAtariState(),
+			env:       env,
+			bankSize:  4096,
+			mappingID: "F8",
+			state:     newAtariState(),
 		},
 	}
 
@@ -531,6 +572,11 @@ func newAtari8k(env *environment.Environment) (mapper.CartMapper, error) {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
+	}
+
+	if superchip {
+		cart.mappingID = "F8SC"
+		cart.state.ram = make([]uint8, superchipSize)
 	}
 
 	return cart, nil
@@ -595,17 +641,12 @@ func (cart *atari8k) bankswitch(addr uint16) bool {
 	return false
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *atari8k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *atari8k) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff8: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1ff9: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
 	}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *atari8k) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return cart.ReadHotspots()
 }
 
 // atari16k (F6):
@@ -617,7 +658,7 @@ type atari16k struct {
 	atari
 }
 
-func newAtari16k(env *environment.Environment) (mapper.CartMapper, error) {
+func newAtari16k(env *environment.Environment, superchip bool) (mapper.CartMapper, error) {
 	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("F6: %w", err)
@@ -625,11 +666,10 @@ func newAtari16k(env *environment.Environment) (mapper.CartMapper, error) {
 
 	cart := &atari16k{
 		atari: atari{
-			env:            env,
-			bankSize:       4096,
-			mappingID:      "F6",
-			needsSuperchip: hasSuperchip(data),
-			state:          newAtariState(),
+			env:       env,
+			bankSize:  4096,
+			mappingID: "F6",
+			state:     newAtariState(),
 		},
 	}
 
@@ -642,6 +682,11 @@ func newAtari16k(env *environment.Environment) (mapper.CartMapper, error) {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
+	}
+
+	if superchip {
+		cart.mappingID = "F6SC"
+		cart.state.ram = make([]uint8, superchipSize)
 	}
 
 	return cart, nil
@@ -710,19 +755,14 @@ func (cart *atari16k) bankswitch(addr uint16) bool {
 	return false
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *atari16k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *atari16k) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff6: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1ff7: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
 		0x1ff8: {Symbol: "BANK2", Action: mapper.HotspotBankSwitch},
 		0x1ff9: {Symbol: "BANK3", Action: mapper.HotspotBankSwitch},
 	}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *atari16k) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return cart.ReadHotspots()
 }
 
 // atari32k (F8)
@@ -734,7 +774,7 @@ type atari32k struct {
 	atari
 }
 
-func newAtari32k(env *environment.Environment) (mapper.CartMapper, error) {
+func newAtari32k(env *environment.Environment, superchip bool) (mapper.CartMapper, error) {
 	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("F4: %w", err)
@@ -742,11 +782,10 @@ func newAtari32k(env *environment.Environment) (mapper.CartMapper, error) {
 
 	cart := &atari32k{
 		atari: atari{
-			env:            env,
-			bankSize:       4096,
-			mappingID:      "F4",
-			needsSuperchip: hasSuperchip(data),
-			state:          newAtariState(),
+			env:       env,
+			bankSize:  4096,
+			mappingID: "F4",
+			state:     newAtariState(),
 		},
 	}
 
@@ -759,6 +798,11 @@ func newAtari32k(env *environment.Environment) (mapper.CartMapper, error) {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
+	}
+
+	if superchip {
+		cart.mappingID = "F4SC"
+		cart.state.ram = make([]uint8, superchipSize)
 	}
 
 	return cart, nil
@@ -835,8 +879,8 @@ func (cart *atari32k) bankswitch(addr uint16) bool {
 	return false
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *atari32k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *atari32k) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff4: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1ff5: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
@@ -849,11 +893,6 @@ func (cart *atari32k) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	}
 }
 
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *atari32k) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return cart.ReadHotspots()
-}
-
 // rewindable state for all atari cartridges.
 type atariState struct {
 	// identifies the currently selected bank
@@ -862,6 +901,11 @@ type atariState struct {
 	// some atari ROMs support aditional RAM. this is sometimes referred to as
 	// the superchip. ram is only added when it is detected
 	ram []uint8
+
+	// the SARA chip was often used to implement additional RAM in basic atari like cartridges. see
+	// the comment for the saraCycles constant for more detail
+	saraRecovery int
+	saraAddr     uint16
 }
 
 func newAtariState() *atariState {

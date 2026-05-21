@@ -79,10 +79,7 @@ func (fpu *FPU) FPRound(value float64, N int, fpscr FPSCR) uint64 {
 	// "Start creating the exponent value for the result. Start by biasing the actual exponent
 	// so that the minimum exponent becomes 1, lower values 0 (indicating possible underflow)"
 
-	biasedExp := exponent - minExp + 1
-	if biasedExp < 0 {
-		biasedExp = 0
-	}
+	biasedExp := max(exponent-minExp+1, 0)
 	if biasedExp == 0 {
 		mantissa /= math.Pow(2, float64(minExp-exponent))
 	}

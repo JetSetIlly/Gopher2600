@@ -30,6 +30,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/dpcplus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/elf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/moviecart"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
@@ -185,16 +186,16 @@ func (cart *Cartridge) IsEjected() bool {
 // Much of the implementation details have been cribbed from Kevin Horton's
 // "Cart Information" document [sizes.txt]. Other sources of information noted
 // as appropriate.
-func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
+func (cart *Cartridge) Attach(loader cartridgeloader.Loader) error {
 	var err error
 
-	cart.Filename = cartload.Filename
-	cart.ShortName = cartload.Name
-	cart.Hash = cartload.HashSHA1
+	cart.Filename = loader.Filename
+	cart.ShortName = loader.Name
+	cart.Hash = loader.HashSHA1
 	cart.mapper = newEjected()
 
 	// reset loader stream before we go any further
-	err = cartload.Reset()
+	err = loader.Reset()
 	if err != nil {
 		return fmt.Errorf("cartridge: %w", err)
 	}
@@ -220,21 +221,18 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	// so that we don't add a superchip if it wasn't expressly asked for
 	var auto bool
 
-	// specifying a mapper will sometimes imply the adding of a superchip
-	var forceSuperchip bool
-
-	mapping := strings.ToUpper(cartload.Mapping)
+	mapping := strings.ToUpper(loader.Mapping)
 
 	// automatic fingerprinting of cartridge
 	if mapping == "" || mapping == "AUTO" {
 		auto = true
-		mapping, err = cart.fingerprint(cartload)
+		mapping, err = cart.fingerprint(loader)
 		if err != nil {
 			return fmt.Errorf("cartridge: %w", err)
 		}
 
 		// reset loader stream after fingerprinting
-		err = cartload.Reset()
+		err = loader.Reset()
 		if err != nil {
 			return fmt.Errorf("cartridge: %w", err)
 		}
@@ -245,44 +243,41 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	// if the fingerprint fails we just continue with original ACE mapping and let the actual ACE
 	// mapper deal with the error (as it would if unwrapACE preference is not enabled)
 	if mapping == "ACE" {
-		if cart.env.Prefs.UnwrapACE.Get().(bool) {
+		if cart.env.Prefs.Cartridge.UnwrapACE.Get().(bool) {
 			var ok bool
-			ok, mapping = fingerprintAce(cartload, true)
+			ok, mapping = fingerprintAce(loader, true)
 			if ok {
 				logger.Logf(cart.env, "cartridge", "ACE wrapping suggested but %s preferred", mapping)
-				cartload.Mapping = mapping
+				loader.Mapping = mapping
 			}
 		}
 	}
 
 	switch mapping {
 	case "2K":
-		cart.mapper, err = newAtari2k(cart.env)
+		cart.mapper, err = newAtari2k(cart.env, auto && hasSuperchip(loader))
 	case "4K":
-		cart.mapper, err = newAtari4k(cart.env)
+		cart.mapper, err = newAtari4k(cart.env, auto && hasSuperchip(loader))
 	case "F8":
-		cart.mapper, err = newAtari8k(cart.env)
+		cart.mapper, err = newAtari8k(cart.env, auto && hasSuperchip(loader))
 	case "WF8":
-		cart.mapper, err = newWF8(cart.env)
+		cart.mapper, err = newWF8(cart.env, auto && hasSuperchip(loader))
 	case "F6":
-		cart.mapper, err = newAtari16k(cart.env)
+		cart.mapper, err = newAtari16k(cart.env, auto && hasSuperchip(loader))
 	case "F4":
-		cart.mapper, err = newAtari32k(cart.env)
-	case "2KSC":
-		cart.mapper, err = newAtari2k(cart.env)
-		forceSuperchip = true
-	case "4KSC":
-		cart.mapper, err = newAtari4k(cart.env)
-		forceSuperchip = true
-	case "F8SC":
-		cart.mapper, err = newAtari8k(cart.env)
-		forceSuperchip = true
-	case "F6SC":
-		cart.mapper, err = newAtari16k(cart.env)
-		forceSuperchip = true
-	case "F4SC":
-		cart.mapper, err = newAtari32k(cart.env)
-		forceSuperchip = true
+		cart.mapper, err = newAtari32k(cart.env, auto && hasSuperchip(loader))
+	case "2KSC", "2K+":
+		cart.mapper, err = newAtari2k(cart.env, true)
+	case "4KSC", "4K+":
+		cart.mapper, err = newAtari4k(cart.env, true)
+	case "F8SC", "F8+":
+		cart.mapper, err = newAtari8k(cart.env, true)
+	case "WF8SC":
+		cart.mapper, err = newWF8(cart.env, true)
+	case "F6SC", "F6+":
+		cart.mapper, err = newAtari16k(cart.env, true)
+	case "F4SC", "F4+":
+		cart.mapper, err = newAtari32k(cart.env, true)
 	case "CV":
 		cart.mapper, err = newCommaVid(cart.env)
 	case "FA":
@@ -307,30 +302,22 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newDF(cart.env)
 	case "3E":
 		cart.mapper, err = new3e(cart.env)
-	case "E3P":
-		// synonym for 3E+
-		fallthrough
-	case "E3+":
-		// synonym for 3E+
-		fallthrough
-	case "3E+":
+	case "E3P", "E3+", "3E+":
 		cart.mapper, err = new3ePlus(cart.env)
 	case "EF":
-		cart.mapper, err = newEF(cart.env)
+		cart.mapper, err = newEF(cart.env, auto && hasSuperchip(loader))
 	case "EFSC":
-		cart.mapper, err = newEF(cart.env)
-		forceSuperchip = true
+		cart.mapper, err = newEF(cart.env, true)
 	case "BF":
-		cart.mapper, err = newBF(cart.env)
+		cart.mapper, err = newBF(cart.env, auto && hasSuperchip(loader))
 	case "BFSC":
-		cart.mapper, err = newBF(cart.env)
-		forceSuperchip = true
+		cart.mapper, err = newBF(cart.env, true)
 	case "SB":
 		cart.mapper, err = newSuperbank(cart.env)
 	case "WD":
 		cart.mapper, err = newWicksteadDesign(cart.env)
 	case "DPC":
-		cart.mapper, err = newDPC(cart.env, cartload)
+		cart.mapper, err = newDPC(cart.env, loader)
 	case "DPC+":
 		cart.mapper, err = dpcplus.NewDPCplus(cart.env, "DPC+")
 	case "DPCP":
@@ -367,21 +354,6 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		return fmt.Errorf("cartridge: %w", err)
 	}
 
-	// if the forceSuperchip flag has been raised or if cartridge mapper
-	// implements the optionalSuperChip interface then try to add the additional
-	// RAM
-	if forceSuperchip {
-		if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
-			superchip.AddSuperchip(true)
-		} else {
-			logger.Logf(cart.env, "cartridge", "cannot add superchip to %s mapper", cart.ID())
-		}
-	} else if auto {
-		if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
-			superchip.AddSuperchip(false)
-		}
-	}
-
 	// if this is a moviecart cartridge then return now without checking for plusrom
 	if _, ok := cart.mapper.(*moviecart.Moviecart); ok {
 		return nil
@@ -390,8 +362,8 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	// in addition to the regular fingerprint we also check to see if this
 	// is PlusROM cartridge (which can be combined with a regular cartridge
 	// format)
-	if cart.fingerprintPlusROM(cartload) {
-		plus, err := plusrom.NewPlusROM(cart.env, cart.mapper, cartload)
+	if cart.fingerprintPlusROM(loader) {
+		plus, err := plusrom.NewPlusROM(cart.env, cart.mapper, loader)
 
 		if err != nil {
 			if errors.Is(err, plusrom.NotAPlusROM) {
@@ -423,7 +395,7 @@ func (cart *Cartridge) NumBanks() int {
 
 // GetBank returns the current bank information for the specified address. See
 // documentation for memorymap.Bank for more information.
-func (cart *Cartridge) GetBank(addr uint16) mapper.BankInfo {
+func (cart *Cartridge) GetBank(addr uint16) banking.Information {
 	bank := cart.mapper.GetBank(addr & memorymap.CartridgeBits)
 	bank.NonCart = addr&memorymap.OriginCart != memorymap.OriginCart
 	return bank
@@ -563,8 +535,8 @@ func (cart *Cartridge) GetCoProc() coprocessor.CartCoProc {
 	return nil
 }
 
-func (cart *Cartridge) GetSuperchargerFastLoad() mapper.CartSuperChargerFastLoad {
-	if c, ok := cart.mapper.(mapper.CartSuperChargerFastLoad); ok {
+func (cart *Cartridge) GetSuperchargerBootstrap() mapper.CartSuperchargerBootstrap {
+	if c, ok := cart.mapper.(mapper.CartSuperchargerBootstrap); ok {
 		return c
 	}
 	return nil
@@ -572,9 +544,9 @@ func (cart *Cartridge) GetSuperchargerFastLoad() mapper.CartSuperChargerFastLoad
 
 // CopyBanks returns the sequence of banks in a cartridge. To return the
 // next bank in the sequence, call the function with the instance of
-// mapper.BankContent returned from the previous call. The end of the sequence is
+// banking.BankContent returned from the previous call. The end of the sequence is
 // indicated by the nil value. Start a new iteration with the nil argument.
-func (cart *Cartridge) CopyBanks() ([]mapper.BankContent, error) {
+func (cart *Cartridge) CopyBanks() ([]banking.Content, error) {
 	return cart.mapper.CopyBanks(), nil
 }
 
@@ -629,4 +601,15 @@ func (cart *Cartridge) Patch(offset int, data uint8) error {
 		return cart.Patch(offset, data)
 	}
 	return fmt.Errorf("cartridge is not patchable")
+}
+
+// HasSuperchip returns true if cartridge has superchip cartridge RAM
+func (cart *Cartridge) HasSuperchip() bool {
+	type hasSuperchip interface {
+		HasSuperchip() bool
+	}
+	if sc, ok := cart.mapper.(hasSuperchip); ok {
+		return sc.HasSuperchip()
+	}
+	return false
 }

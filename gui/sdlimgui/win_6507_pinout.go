@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/imgui-go/v5"
@@ -134,7 +135,7 @@ func (win *win6507Pinout) draw() {
 
 		// left pins
 		pinX := chipPos.X - pinSize
-		for i := 0; i < 14; i++ {
+		for i := range 14 {
 			col := win.pinOff
 			label := ""
 			switch i {
@@ -181,7 +182,7 @@ func (win *win6507Pinout) draw() {
 		}
 
 		pinX = chipPos.X + chipDim.X
-		for i := 0; i < 14; i++ {
+		for i := range 14 {
 			col := win.pinOff
 			label := ""
 			switch i {
@@ -259,7 +260,7 @@ func (win *win6507Pinout) draw() {
 
 				imgui.TableNextRow()
 				imgui.TableNextColumn()
-				imguiColorLabelSimple("Address", win.addressBus)
+				imguiColorLabel("Address", win.addressBus)
 
 				imgui.TableNextColumn()
 				imgui.PushStyleColor(imgui.StyleColorText, win.addressBus)
@@ -275,7 +276,7 @@ func (win *win6507Pinout) draw() {
 
 				imgui.TableNextRow()
 				imgui.TableNextColumn()
-				imguiColorLabelSimple("Data", win.dataBus)
+				imguiColorLabel("Data", win.dataBus)
 
 				imgui.TableNextColumn()
 				if win.img.cache.VCS.Mem.DataBusDriven != 0xff {
@@ -284,11 +285,11 @@ func (win *win6507Pinout) draw() {
 					s2 := strings.Builder{}
 					for i := 7; i >= 0; i-- {
 						if (win.img.cache.VCS.Mem.DataBusDriven>>i)&0x01 == 0x01 {
-							s1.WriteString(fmt.Sprintf("%d", (win.img.cache.VCS.Mem.DataBus>>i)&0x01))
+							fmt.Fprintf(&s1, "%d", (win.img.cache.VCS.Mem.DataBus>>i)&0x01)
 							s2.WriteRune(' ')
 						} else {
 							s1.WriteRune(' ')
-							s2.WriteString(fmt.Sprintf("%d", (win.img.cache.VCS.Mem.DataBus>>i)&0x01))
+							fmt.Fprintf(&s2, "%d", (win.img.cache.VCS.Mem.DataBus>>i)&0x01)
 						}
 					}
 					imgui.PushStyleColor(imgui.StyleColorText, win.dataBus)
@@ -311,6 +312,10 @@ func (win *win6507Pinout) draw() {
 					imgui.Text("Writing")
 				} else {
 					imgui.Text("Reading")
+				}
+				if win.img.cache.VCS.CPU.PhantomMemAccess {
+					imgui.SameLineV(0, 5)
+					imgui.Text(string(fonts.Phantom))
 				}
 
 				imgui.EndTable()

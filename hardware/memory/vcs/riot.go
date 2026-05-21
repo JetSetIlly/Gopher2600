@@ -60,10 +60,6 @@ func NewRIOTMemory(env *environment.Environment) *RIOTMemory {
 	// allocate the minimal amount of memory
 	chip.memory = make([]uint8, memorymap.MemtopRIOT-memorymap.OriginRIOT+1)
 
-	// SWCHA should be set when a peripheral is attached
-
-	// SWCHB is set in panel peripheral
-
 	return chip
 }
 

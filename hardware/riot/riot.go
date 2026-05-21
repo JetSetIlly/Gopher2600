@@ -42,6 +42,12 @@ func NewRIOT(env *environment.Environment, mem chipbus.Memory, tiaMem chipbus.Me
 	}
 }
 
+// Reset the I/O and Timer parts of the RIOT
+func (riot *RIOT) Reset() {
+	riot.Ports.Reset()
+	riot.Timer.Reset()
+}
+
 // Snapshot creates a copy of the RIOT in its current state.
 func (riot *RIOT) Snapshot() *RIOT {
 	n := *riot

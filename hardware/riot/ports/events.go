@@ -61,6 +61,11 @@ const (
 	KeypadDown Event = "KeypadDown" // rune
 	KeypadUp   Event = "KeypadUp"   // nil
 
+	// keyportari
+	KeyportariDown Event = "KeyportariDown" // EventDataKeyportari
+	KeyportariText Event = "KeyportariText" // EventDataKeyportari
+	KeyportariUp   Event = "KeyportariUp"   // EventDataKeyportari
+
 	// panel
 	PanelSelect Event = "PanelSelect" // bool
 	PanelReset  Event = "PanelReset"  // bool
@@ -101,6 +106,12 @@ type EventDataPaddle struct {
 	Paddle   int // 0 or 1 or -1
 	Motion   int16
 	Relative bool
+}
+
+// Event data for keyportari adapters
+type EventDataKeyportari struct {
+	Key   string
+	Shift bool
 }
 
 // String implements the string.Stringer interface and is intended to be used

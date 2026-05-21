@@ -16,13 +16,14 @@
 package tracker
 
 import (
-	"sync"
+	"slices"
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/rewind"
 )
 
@@ -39,84 +40,46 @@ type Emulation interface {
 	State() govern.State
 }
 
-// VolumeChange indicates whether the volume of the channel is rising or falling or
-// staying steady
-type VolumeChange int
+type analysis struct {
+	entry Entry
+	frame int
 
-// List of values for the Volume type
-const (
-	VolumeSteady VolumeChange = iota
-	VolumeRising
-	VolumeFalling
-)
+	audc uint8
+	audf uint8
+	audv uint8
 
-func (v VolumeChange) String() string {
-	switch v {
-	case VolumeSteady:
-		return "volume is steady"
-	case VolumeRising:
-		return "volume is rising"
-	case VolumeFalling:
-		return "volume is falling"
-	}
-	panic("unknown VolumeChange value")
+	interval  int
+	lastFrame int
+	stable    bool
 }
 
-// Entry represents a single change of audio for a channel
-type Entry struct {
-	// the (TV) time the change occurred
-	Coords coords.TelevisionCoords
-
-	// which channel the Registers field refers to
-	Channel   int
-	Registers audio.Registers
-
-	// description of the change. the Registers field by comparison contains the
-	// numeric information of the audio change
-	Distortion  string
-	MusicalNote MusicalNote
-	PianoKey    PianoKey
-	Volume      VolumeChange
-}
-
-// IsMusical returns true if entry represents a musical note
-func (e Entry) IsMusical() bool {
-	return e.MusicalNote != Noise && e.MusicalNote != Silence && e.MusicalNote != Low
-}
-
-const maxTrackerEntries = 1024
-
-type History struct {
-	// critical sectioning
-	section sync.Mutex
-
-	// list of tracker Entries. length is capped to maxTrackerEntries
-	Entries []Entry
-
-	// the most recent information for each channel. the entries do no need to
-	// have happened at the same time. ie. Recent[0] might refer to an audio
-	// change on frame 10 and Recent[1] on frame 20
-	Recent [2]Entry
-}
-
-// Tracker implements the audio.Tracker interface and keeps a history of the
-// audio registers over time
+// Tracker implements the audio.Tracker interface and keeps a history of the audio registers over
+// time
 type Tracker struct {
 	emulation Emulation
 	tv        Television
 	rewind    Rewind
 
 	// contentious fields are in the trackerCrit type
-	crit History
+	crit Listing
 
-	// previous register values so we can compare to see whether the registers
-	// have change and thus worth recording
+	// analysis is used to help make correct decisions about what to do with each AUDxx() function call
+	analysis [2]analysis
+
+	// previous register values so we can compare to see whether the registers have change and thus
+	// worth recording
 	prev [2]audio.Registers
 
-	// emulation used for replaying tracker entries. it wil be created on demand
-	// on the first call to Replay()
+	// emulation used for replaying tracker entries. it wil be created on demand on the first call
+	// to Replay()
 	replayEmulation *hardware.VCS
+
+	// records whether the audio registers are updated more than once per frame. the tracker package
+	// doesn't work well with multiple changes per frame
+	moreThanOneChangePerPeriod bool
 }
+
+const maxTrackerEntries = 1024
 
 // NewTracker is the preferred method of initialisation for the Tracker type
 func NewTracker(emulation Emulation, tv Television, rewind Rewind) *Tracker {
@@ -124,8 +87,12 @@ func NewTracker(emulation Emulation, tv Television, rewind Rewind) *Tracker {
 		emulation: emulation,
 		tv:        tv,
 		rewind:    rewind,
-		crit: History{
+		crit: Listing{
 			Entries: make([]Entry, 0, maxTrackerEntries),
+		},
+		analysis: [2]analysis{
+			{entry: Entry{Channel: 0}},
+			{entry: Entry{Channel: 1}},
 		},
 	}
 }
@@ -136,66 +103,183 @@ func (tr *Tracker) Reset() {
 	defer tr.crit.section.Unlock()
 
 	tr.crit.Entries = tr.crit.Entries[:0]
+	tr.analysis[0].entry.Coords = coords.TelevisionCoords{}
+	tr.analysis[1].entry.Coords = coords.TelevisionCoords{}
 }
 
-// AudioTick implements the audio.Tracker interface
-func (tr *Tracker) AudioTick(env audio.TrackerEnvironment, channel int, reg audio.Registers) {
-	// do nothing if register hasn't changed
-	match := audio.CmpRegisters(reg, tr.prev[channel])
-	tr.prev[channel] = reg
-	if match {
+func (tr *Tracker) AUDCx(env audio.TrackerEnvironment, channel int, data uint8) {
+	if !tr.tv.GetFrameInfo().Stable {
 		return
 	}
 
-	tr.crit.section.Lock()
-	defer tr.crit.section.Unlock()
+	tr.commit(env, channel)
+	tr.analysis[channel].entry.Registers.Control = data
+	tr.analysis[channel].audc++
 
-	e := Entry{
-		Coords:      tr.tv.GetCoords(),
-		Channel:     channel,
-		Registers:   reg,
-		Distortion:  LookupDistortion(reg),
-		MusicalNote: LookupMusicalNote(tr.tv, reg),
+	if tr.analysis[channel].audc > 1 {
+		if !tr.moreThanOneChangePerPeriod {
+			tr.moreThanOneChangePerPeriod = true
+			logger.Logf(env, "tracker", "AUDC%d changed more than once in a frame", channel)
+		}
+	}
+}
+
+func (tr *Tracker) AUDFx(env audio.TrackerEnvironment, channel int, data uint8) {
+	if !tr.tv.GetFrameInfo().Stable {
+		return
 	}
 
-	e.PianoKey = NoteToPianoKey(e.MusicalNote)
+	tr.commit(env, channel)
+	tr.analysis[channel].entry.Registers.Freq = data
+	tr.analysis[channel].audf++
 
-	if e.Registers.Volume > tr.crit.Recent[channel].Registers.Volume {
-		e.Volume = VolumeRising
-	} else if e.Registers.Volume < tr.crit.Recent[channel].Registers.Volume {
-		e.Volume = VolumeFalling
-	} else {
-		e.Volume = VolumeSteady
+	// see AUDCx()
+	if tr.analysis[channel].audf > 1 {
+		if !tr.moreThanOneChangePerPeriod {
+			tr.moreThanOneChangePerPeriod = true
+			logger.Logf(env, "tracker", "AUDF%d changed more than once in a frame", channel)
+		}
+	}
+}
+
+func (tr *Tracker) AUDVx(env audio.TrackerEnvironment, channel int, data uint8) {
+	if !tr.tv.GetFrameInfo().Stable {
+		return
+	}
+
+	tr.commit(env, channel)
+	tr.analysis[channel].entry.Registers.Volume = data
+	tr.analysis[channel].audv++
+
+	// see AUDCx()
+	if tr.analysis[channel].audv > 1 {
+		if !tr.moreThanOneChangePerPeriod {
+			tr.moreThanOneChangePerPeriod = true
+			logger.Logf(env, "tracker", "AUDV%d changed more than once in a frame. sampled audio playback?", channel)
+		}
+	}
+}
+
+// commit the current entry to the listing if appropriate
+func (tr *Tracker) commit(env audio.TrackerEnvironment, channel int) {
+	// do not add tracker entries if the emulation is rewinding
+	if tr.emulation.State() == govern.Rewinding {
+		return
 	}
 
 	// add entry to list of entries only if we're not in the tracker emulation
-	if !env.IsEmulation(replayLabel) {
-		if tr.emulation.State() != govern.Rewinding {
-			// find splice point in tracker
-			splice := len(tr.crit.Entries) - 1
-			for splice > 0 && !coords.GreaterThan(e.Coords, tr.crit.Entries[splice].Coords) {
-				splice--
-			}
-			tr.crit.Entries = tr.crit.Entries[:splice+1]
+	if env.IsEmulation(trackerReplayLabel) {
+		return
+	}
 
-			// add new entry and limit number of entries
-			tr.crit.Entries = append(tr.crit.Entries, e)
-			if len(tr.crit.Entries) > maxTrackerEntries {
-				tr.crit.Entries = tr.crit.Entries[1:]
-			}
-		}
+	// do nothing if frame hasn't changed
+	c := tr.tv.GetCoords()
+	if c.Frame <= tr.analysis[channel].entry.Coords.Frame {
+		return
+	}
+
+	// update interval and interval stability
+	if tr.analysis[channel].lastFrame != 0 {
+		i := tr.analysis[channel].interval
+		tr.analysis[channel].interval = c.Frame - tr.analysis[channel].interval
+		tr.analysis[channel].stable = i == tr.analysis[channel].interval
+	}
+	tr.analysis[channel].lastFrame = c.Frame
+
+	// update global stable and balanced flags
+	tr.crit.Stable = tr.analysis[0].stable && tr.analysis[1].stable
+	tr.crit.Balanced = tr.analysis[0].interval == tr.analysis[1].interval
+
+	// reset channel analysis
+	tr.analysis[channel].entry.Coords.Frame = c.Frame
+	tr.analysis[channel].entry.Coords.Scanline = 0
+	tr.analysis[channel].entry.Coords.Clock = 0
+	tr.analysis[channel].audc = 0
+	tr.analysis[channel].audf = 0
+	tr.analysis[channel].audv = 0
+
+	// do nothing if registers haven't changed
+	if audio.CmpRegisters(tr.prev[channel], tr.analysis[channel].entry.Registers) {
+		return
+	}
+	tr.prev[channel] = tr.analysis[channel].entry.Registers
+
+	// add descriptive information
+	tr.analysis[channel].entry.Distortion = lookupDistortion(tr.analysis[channel].entry.Registers)
+	tr.analysis[channel].entry.MusicalNote = lookupMusicalNote(tr.tv, tr.analysis[channel].entry.Registers)
+	tr.analysis[channel].entry.PianoKey = NoteToPianoKey(tr.analysis[channel].entry.MusicalNote)
+
+	if tr.analysis[channel].entry.Registers.Volume > tr.crit.Current[channel].Registers.Volume {
+		tr.analysis[channel].entry.Volume = VolumeRising
+	} else if tr.analysis[channel].entry.Registers.Volume < tr.crit.Current[channel].Registers.Volume {
+		tr.analysis[channel].entry.Volume = VolumeFalling
+	} else {
+		tr.analysis[channel].entry.Volume = VolumeSteady
+	}
+
+	tr.crit.section.Lock()
+	defer tr.crit.section.Unlock()
+
+	// add new entry and limit number of entries
+	tr.crit.Entries = append(tr.crit.Entries, tr.analysis[channel].entry)
+	if len(tr.crit.Entries) > maxTrackerEntries {
+		tr.crit.Entries = tr.crit.Entries[1:]
 	}
 
 	// store entry in lastEntry reference
-	tr.crit.Recent[channel] = e
+	tr.crit.Current[channel] = tr.analysis[channel].entry
 }
 
-// BorrowTracker will lock the Tracker history for the duration of the supplied
-// function, which will be exectued with the History structure as an argument.
+// BorrowTracker will lock the Tracker history for the duration of the supplied function, which will
+// be exectued with the History structure as an argument.
 //
 // Should not be called from the emulation goroutine.
-func (tr *Tracker) BorrowTracker(f func(*History)) {
+func (tr *Tracker) BorrowTracker(f func(*Listing)) {
 	tr.crit.section.Lock()
 	defer tr.crit.section.Unlock()
 	f(&tr.crit)
+}
+
+// Splice implements the rewinder.Splicer interface
+func (tr *Tracker) Splice(c coords.TelevisionCoords) {
+	tr.crit.section.Lock()
+	defer tr.crit.section.Unlock()
+
+	// find splice point in tracker
+	splice := len(tr.crit.Entries) - 1
+	for splice > 0 && !coords.GreaterThanOrEqual(c, tr.crit.Entries[splice].Coords) {
+		splice--
+	}
+	tr.crit.Entries = tr.crit.Entries[:splice+1]
+
+	// initialise current, prev and analysis fields in case one of the channels has never been used
+	// in the remaining history - we search the history and update these fields as appropriate below
+	tr.crit.Current[0] = Entry{}
+	tr.crit.Current[1] = Entry{}
+	tr.prev[0] = audio.Registers{}
+	tr.prev[1] = audio.Registers{}
+	tr.analysis = [2]analysis{
+		{entry: Entry{Channel: 0}},
+		{entry: Entry{Channel: 1}},
+	}
+
+	// find most recent entries for each channel
+	var done [2]bool
+	for _, e := range slices.Backward(tr.crit.Entries) {
+		if !done[e.Channel] {
+			tr.crit.Current[e.Channel] = e
+			tr.prev[e.Channel] = e.Registers
+			tr.analysis[e.Channel] = analysis{
+				entry: e,
+				frame: e.Coords.Frame,
+				audc:  e.Registers.Control,
+				audf:  e.Registers.Freq,
+				audv:  e.Registers.Volume,
+			}
+			done[e.Channel] = true
+		}
+		if done[0] && done[1] {
+			break
+		}
+	}
 }

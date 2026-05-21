@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -79,7 +80,7 @@ func newTigervision(env *environment.Environment) (mapper.CartMapper, error) {
 	numBanks := len(data) / cart.bankSize
 	cart.banks = make([][]uint8, numBanks)
 
-	for k := 0; k < numBanks; k++ {
+	for k := range numBanks {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
@@ -119,7 +120,7 @@ func (cart *tigervision) Reset() error {
 // Access implements the mapper.CartMapper interface.
 func (cart *tigervision) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	var data uint8
-	if addr >= 0x0000 && addr <= 0x07ff {
+	if addr <= 0x07ff {
 		data = cart.banks[cart.state.segment[0]][addr&0x07ff]
 	} else if addr >= 0x0800 && addr <= 0x0fff {
 		data = cart.banks[cart.state.segment[1]][addr&0x07ff]
@@ -130,7 +131,7 @@ func (cart *tigervision) Access(addr uint16, _ bool) (uint8, uint8, error) {
 // AccessVolatile implements the mapper.CartMapper interface.
 func (cart *tigervision) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	if poke {
-		if addr >= 0x0000 && addr <= 0x07ff {
+		if addr <= 0x07ff {
 			cart.banks[cart.state.segment[0]][addr&0x07ff] = data
 		} else if addr >= 0x0800 && addr <= 0x0fff {
 			cart.banks[cart.state.segment[1]][addr&0x07ff] = data
@@ -145,23 +146,23 @@ func (cart *tigervision) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *tigervision) GetBank(addr uint16) mapper.BankInfo {
-	if addr >= 0x0000 && addr <= 0x07ff {
-		return mapper.BankInfo{Number: cart.state.segment[0], IsRAM: false, IsSegmented: true, Segment: 0}
+func (cart *tigervision) GetBank(addr uint16) banking.Information {
+	if addr <= 0x07ff {
+		return banking.Information{Number: cart.state.segment[0], IsRAM: false, IsSegmented: true, Segment: 0}
 	}
-	return mapper.BankInfo{Number: cart.state.segment[1], IsRAM: false, IsSegmented: true, Segment: 1}
+	return banking.Information{Number: cart.state.segment[1], IsRAM: false, IsSegmented: true, Segment: 1}
 }
 
 // SetBank implements the mapper.CartMapper interface.
 func (cart *tigervision) SetBank(bank string) error {
-	if mapper.IsAutoBankSelection(bank) {
+	if banking.IsAutoSelection(bank) {
 		// the last segment always points to the last bank
 		cart.state.segment[0] = cart.NumBanks() - 2
 		cart.state.segment[1] = cart.NumBanks() - 1
 		return nil
 	}
 
-	segs, err := mapper.SegmentedBankSelection(bank)
+	segs, err := banking.SegmentedSelection(bank)
 	if err != nil {
 		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
@@ -242,12 +243,12 @@ func (cart *tigervision) Step(_ float32) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *tigervision) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, len(cart.banks))
+func (cart *tigervision) CopyBanks() []banking.Content {
+	c := make([]banking.Content, len(cart.banks))
 
 	// banks 0 to len-1 can occupy any of the first three segments
 	for b := 0; b < len(cart.banks)-1; b++ {
-		c[b] = mapper.BankContent{Number: b,
+		c[b] = banking.Content{Number: b,
 			Data: cart.banks[b],
 			Origins: []uint16{
 				memorymap.OriginCart,
@@ -259,7 +260,7 @@ func (cart *tigervision) CopyBanks() []mapper.BankContent {
 
 	// last bank cannot point to the first segment
 	b := len(cart.banks) - 1
-	c[b] = mapper.BankContent{Number: b,
+	c[b] = banking.Content{Number: b,
 		Data: cart.banks[b],
 		Origins: []uint16{
 			memorymap.OriginCart + uint16(cart.bankSize),

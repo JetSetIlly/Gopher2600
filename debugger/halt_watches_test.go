@@ -15,57 +15,63 @@
 
 package debugger_test
 
-func (trm *mockTerm) testWatches() {
+import (
+	"testing"
+
+	"github.com/jetsetilly/gopher2600/test"
+)
+
+func testWatches(t *testing.T, trm *mockTerm) {
 	// debugger starts off with no watches
-	trm.sndInput("LIST WATCHES")
-	trm.cmpOutput("no watches")
+	trm.command("LIST WATCHES")
+	test.ExpectEquality(t, trm.lastLine(), "no watches")
 
 	// add read watch. there should be no output.
-	trm.sndInput("WATCH READ 0x80")
-	trm.cmpOutput("")
+	trm.command("WATCH READ 0x80")
+	test.ExpectEquality(t, trm.lastLine(), "")
 
 	// try to re-add the same watch
-	trm.sndInput("WATCH READ 0x80")
-	trm.cmpOutput("already being watched (0x0080 (RAM) read)")
+	trm.command("WATCH READ 0x80")
+	test.ExpectEquality(t, trm.lastLine(), "already being watched (0x0080 (RAM) read)")
 
 	// list watches
-	trm.sndInput("LIST WATCHES")
-	trm.cmpOutput(" 0: 0x0080 (RAM) read")
+	trm.command("LIST WATCHES")
+	test.ExpectEquality(t, trm.lastLine(), " 0: 0x0080 (RAM) read")
 
 	// try to re-add the same watch but with a different event selector
-	trm.sndInput("WATCH WRITE 0x80")
-	trm.cmpOutput("")
+	trm.command("WATCH WRITE 0x80")
+	test.ExpectEquality(t, trm.lastLine(), "")
 
 	// list watches
-	trm.sndInput("LIST WATCHES")
-	trm.cmpOutput(" 1: 0x0080 (RAM) write")
+	trm.command("LIST WATCHES")
+	test.ExpectEquality(t, trm.lastLine(), " 1: 0x0080 (RAM) write")
 
 	// clear watches
-	trm.sndInput("CLEAR WATCHES")
-	trm.cmpOutput("watches cleared")
+	trm.command("CLEAR WATCHES")
+	test.ExpectEquality(t, trm.lastLine(), "watches cleared")
 
 	// no watches after successful clear
-	trm.sndInput("LIST WATCHES")
-	trm.cmpOutput("no watches")
+	trm.command("LIST WATCHES")
+	test.ExpectEquality(t, trm.lastLine(), "no watches")
 
 	// try adding an invalid read address by symbol
-	trm.sndInput("WATCH READ VSYNC")
-	trm.cmpOutput("invalid watch address (VSYNC) expecting 16-bit address or a read symbol")
+	trm.command("WATCH READ VSYNC")
+	test.ExpectEquality(t, trm.lastLine(), "invalid watch address (VSYNC) expecting 16-bit address or a read symbol")
 
 	// add address by symbol. no read/write modifier means it tries
-	trm.sndInput("WATCH WRITE VSYNC")
-	trm.cmpOutput("")
+	trm.command("WATCH WRITE VSYNC")
+	test.ExpectEquality(t, trm.lastLine(), "")
 
 	// last item in list watches should be the new entry
-	trm.sndInput("LIST WATCHES")
-	trm.cmpOutput(" 0: 0x0000 (VSYNC) (TIA) write")
+	trm.command("LIST WATCHES")
+	test.ExpectEquality(t, trm.lastLine(), " 0: 0x0000 (VSYNC) (TIA) write")
 
 	// add address by symbol. no read/write modifier means it tries
 	// plus a specific value
-	trm.sndInput("WATCH WRITE VSYNC 0x1")
-	trm.cmpOutput("")
+	trm.command("WATCH WRITE VSYNC 0x1")
+	test.ExpectEquality(t, trm.lastLine(), "")
 
 	// last item in list watches should be the new entry
-	trm.sndInput("LIST WATCHES")
-	trm.cmpOutput(" 1: 0x0000 (VSYNC) (TIA) write (value=0x01)")
+	trm.command("LIST WATCHES")
+	test.ExpectEquality(t, trm.lastLine(), " 1: 0x0000 (VSYNC) (TIA) write (value=0x01)")
 }

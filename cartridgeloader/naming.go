@@ -24,15 +24,9 @@ import (
 // use information in the Loader instance to decide how the cartridge should be
 // referred to by code outside of the package
 func decideOnName(ld Loader) string {
-	if ld.embedded {
+	if ld.isRawData {
 		return ld.Filename
 	}
-
-	// return the empty string if filename is undefined
-	if len(strings.TrimSpace(ld.Filename)) == 0 {
-		return ""
-	}
-
 	return NameFromFilename(ld.Filename)
 }
 

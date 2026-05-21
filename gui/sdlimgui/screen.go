@@ -71,11 +71,6 @@ type screen struct {
 	emuWait    chan bool
 	emuWaitAck chan bool
 
-	// the mouse coords used in the most recent call to PushGotoCoords(). only
-	// read/write by the GUI thread so doesn't need to be in critical section.
-	gotoCoordsX int
-	gotoCoordsY int
-
 	// the number of frames the emulation currently is ahead
 	frameQueueSlack int
 
@@ -128,8 +123,8 @@ type screenCrit struct {
 	// whether monitor refresh rate is similar to the emulated TV's refresh rate
 	monitorSyncSimilar bool
 
-	// the presentationPixels array is used in the presentation texture of the play and debug screen.
-	presentationPixels *image.RGBA
+	// the pixels image is used in the presentation texture of the play and debug screen.
+	pixels *image.RGBA
 
 	// frameQueue are what we plot pixels to while we wait for a frame to complete.
 	// - the larger the queue the greater the input lag
@@ -182,10 +177,9 @@ type screenCrit struct {
 	// the cropped view of the screen pixels. note that these instances are
 	// created through the SubImage() command and should not be written to
 	// directly
-	cropPixels           *image.RGBA
-	cropElementPixels    *image.RGBA
-	cropOverlayPixels    *image.RGBA
-	cropScreenrollPixels *image.RGBA
+	cropPixels        *image.RGBA
+	cropElementPixels *image.RGBA
+	cropOverlayPixels *image.RGBA
 
 	// the selected overlay
 	overlay string
@@ -216,7 +210,7 @@ func newScreen(img *SdlImgui) *screen {
 	scr.crit.overlay = reflection.OverlayLabels[reflection.OverlayNone]
 	scr.crit.fpsCapped = true
 
-	scr.crit.presentationPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
+	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 
@@ -361,9 +355,9 @@ func (scr *screen) clearPixels() {
 	}
 
 	// clear pixels
-	for y := 0; y < scr.crit.presentationPixels.Bounds().Size().Y; y++ {
-		for x := 0; x < scr.crit.presentationPixels.Bounds().Size().X; x++ {
-			scr.crit.presentationPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+	for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
+		for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
+			scr.crit.pixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 			scr.crit.elementPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 			scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 		}
@@ -417,7 +411,7 @@ func (scr *screen) resize() {
 
 	// create cropped image(s)
 	crop := scr.crit.frameInfo.Crop()
-	scr.crit.cropPixels = scr.crit.presentationPixels.SubImage(crop).(*image.RGBA)
+	scr.crit.cropPixels = scr.crit.pixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropElementPixels = scr.crit.elementPixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropOverlayPixels = scr.crit.overlayPixels.SubImage(crop).(*image.RGBA)
 
@@ -592,6 +586,12 @@ func (scr *screen) plotOverlay() {
 	var col color.RGBA
 	var offset int
 
+	// select correct element palette (light or dark)
+	elements := elementColors
+	if scr.img.prefs.lightBackgroundDebugColor.Get().(bool) {
+		elements = lightElementColors
+	}
+
 	for i := range scr.crit.reflection {
 		// end of pixel queue reached but there are still signals to process.
 		// return immediately to simplify bounds issues. this shouldn't ever be
@@ -608,7 +608,7 @@ func (scr *screen) plotOverlay() {
 		s[2] = col.B
 		s[3] = col.A
 
-		col = altColors[scr.crit.reflection[i].VideoElement]
+		col = elements[scr.crit.reflection[i].VideoElement][scr.crit.reflection[i].VideoElementCt]
 		s = scr.crit.elementPixels.Pix[offset : offset+3 : offset+3]
 		s[0] = col.R
 		s[1] = col.G
@@ -644,10 +644,10 @@ func (scr *screen) reflectionColor(ref *reflection.ReflectedVideoStep) color.RGB
 		}
 	case reflection.OverlayLabels[reflection.OverlayHMOVE]:
 		// HmoveCt counts to -1 (or 255 for a uint8)
-		if ref.Hmove.Delay {
+		if ref.Hmove.Future.IsActive() {
 			return reflectionColors[reflection.HMOVEdelay]
 		} else if ref.Hmove.Latch {
-			if ref.Hmove.RippleCt != 255 {
+			if ref.Hmove.Ripple != 0xff {
 				return reflectionColors[reflection.HMOVEripple]
 			} else {
 				return reflectionColors[reflection.HMOVElatched]
@@ -662,11 +662,11 @@ func (scr *screen) reflectionColor(ref *reflection.ReflectedVideoStep) color.RGB
 	case reflection.OverlayLabels[reflection.OverlayCoproc]:
 		switch ref.CoProcSync {
 		case coprocessor.CoProcIdle:
-			return reflectionColors[reflection.CoProcInactive]
+			return color.RGBA{}
 		case coprocessor.CoProcNOPFeed:
 			return reflectionColors[reflection.CoProcActive]
 		case coprocessor.CoProcStrongARMFeed:
-			return reflectionColors[reflection.CoProcInactive]
+			return color.RGBA{}
 		case coprocessor.CoProcParallel:
 			return reflectionColors[reflection.CoProcActive]
 		}
@@ -718,7 +718,7 @@ func (scr *screen) generatePresentationPixels(idx int) {
 
 		// small cap improves performance, see https://golang.org/issue/27857
 		// alpha channel never changes
-		s := scr.crit.presentationPixels.Pix[offset : offset+3 : offset+3]
+		s := scr.crit.pixels.Pix[offset : offset+3 : offset+3]
 		s[0] = col.R
 		s[1] = col.G
 		s[2] = col.B
@@ -833,14 +833,9 @@ func (scr *screen) copyPixelsPlaymode() {
 
 			// undo frame advancement by restoring an older index
 			//
-			// for television that have a similar refresh rates to the monitor
-			// we choose the the frame previous to the frame shown on the last
-			// render. this helps to smooth out graphical glitches caused by
-			// flicker kernels
-			//
-			// it also may mean that there will be visible jump of graphical
-			// elements in some situations. but hopefully they are not
-			// noticeable
+			// for television that have a similar refresh rates to the monitor we choose the the
+			// frame previous to the frame shown on the last render. this helps to smooth out
+			// graphical glitches caused by flicker kernels
 			if !tooSlow && scr.crit.monitorSyncSimilar {
 				scr.crit.renderIdx = scr.crit.prevRenderIdx[1]
 			} else {

@@ -98,8 +98,9 @@ func (env *Environment) Normalise() {
 	env.Random.ZeroSeed = true
 	env.Prefs.SetDefaults()
 	env.Prefs.TV.SetDefaults()
-	env.Prefs.ARM.SetDefaults()
-	env.Prefs.PlusROM.SetDefaults()
+	env.Prefs.Cartridge.SetDefaults()
+	env.Prefs.Cartridge.ARM.SetDefaults()
+	env.Prefs.Cartridge.PlusROM.SetDefaults()
 	env.Prefs.Revision.SetDefaults()
 	env.Prefs.AtariVox.SetDefaults()
 }

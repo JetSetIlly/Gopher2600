@@ -20,8 +20,8 @@ type state struct {
 	registers Registers
 	ram       [3][]uint8
 
-	// is the tape currently in the process of being loaded
-	isLoading bool
+	// record recent addresses to help filter out phantom access of the tape read register
+	recentAddresses [2]uint16
 }
 
 func newState() *state {

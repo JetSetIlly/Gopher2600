@@ -149,11 +149,10 @@ var testsPath = filepath.Join("6502", "v1")
 func TestThomHarte(t *testing.T) {
 	var env = os.Getenv("GOPHER2600_SINGLESTEP_TEST")
 	if len(env) == 0 {
-		return
+		env = "0-ff"
 	}
 
-	selected := strings.Split(env, ",")
-	for _, s := range selected {
+	for s := range strings.SplitSeq(env, ",") {
 		rng := strings.SplitN(s, "-", 2)
 		switch len(rng) {
 		case 1:
@@ -161,7 +160,10 @@ func TestThomHarte(t *testing.T) {
 			if err != nil {
 				t.Fatalf("opcode is malformed: %s: %v", s, err)
 			}
-			testThomHarte(t, uint8(n), true)
+			t.Run(fmt.Sprintf("opcode %02x", n), func(t *testing.T) {
+				t.Parallel()
+				testThomHarte(t, uint8(n), true)
+			})
 		case 2:
 			n, err := strconv.ParseUint(rng[0], 16, 8)
 			if err != nil {
@@ -175,7 +177,10 @@ func TestThomHarte(t *testing.T) {
 				t.Fatalf("opcode ranges should run from low to high: ie. %02x-%02x not %s", e, n, s)
 			}
 			for n <= e {
-				testThomHarte(t, uint8(n), false)
+				t.Run(fmt.Sprintf("opcode %02x", n), func(t *testing.T) {
+					t.Parallel()
+					testThomHarte(t, uint8(n), true)
+				})
 				n++
 			}
 		default:
@@ -259,6 +264,11 @@ func testThomHarte(t *testing.T, opcode uint8, force bool) {
 			t.Fatal(err)
 		}
 
+		err = mc.LastResult.IsValid()
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		var fail bool
 
 		fail = !test.ExpectEquality(t, mc.PC.Value(), uint16(s.Final.PC), testFile, i, "PC") || fail
@@ -273,8 +283,8 @@ func testThomHarte(t *testing.T, opcode uint8, force bool) {
 		}
 
 		// the number of entries in the cycles array is way too many in the tests. we don't test
-		// them because we are confident that the number executed by KIL is correct
-		if mc.LastResult.Defn.Operator.String() != "KIL" {
+		// them because we are confident that the number executed by JAM is correct
+		if mc.LastResult.Defn.Operator.String() != "jam" {
 			fail = !test.ExpectEquality(t, mc.LastResult.Cycles, len(s.Cycles), testFile, i, "cycle count") || fail
 		}
 

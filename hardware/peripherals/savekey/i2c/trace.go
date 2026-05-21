@@ -15,19 +15,19 @@
 
 package i2c
 
-// Trace records the state of electrical line, whether it is high or low, and
-// also whether the immediately previous state is also high or low.
+// Trace records the state of the electrical line, whether it is high or low, and also whether the
+// immediately previous state is also high or low.
 //
-// moving from one state to the other is done with tick(bool) where a boolean
-// value of true indicates a high voltage state.
+// Moving from one state to the other is done with Tick(bool) where a boolean value of true
+// indicates a high voltage state.
 //
-// the function hi2lo() returns true if the line voltage has moved from a high
-// state to low state; and low2hi() returns true if the opposite is true.
+// The function Falling() returns true if the line voltage has moved from a high state to low state;
+// and Rising() returns true if the opposite is true.
 //
-// deriving conditions from two traces is convenient. for example, give two
-// traces A and B, a condition for event E might be:
+// Deriving conditions from two traces is convenient. For example, given two traces A and B, a
+// condition for event E might be:
 //
-//	 if A.hi() && B.lo2hi() {
+//	 if A.Hi() && B.Rising() {
 //			E()
 //	 }
 type Trace struct {
@@ -41,11 +41,6 @@ type Trace struct {
 }
 
 const (
-	traceHi = true
-	traceLo = false
-)
-
-const (
 	activityLength = 64
 )
 
@@ -55,7 +50,7 @@ func NewTrace(label string) Trace {
 		Activity: make([]bool, activityLength),
 	}
 	for i := range tr.Activity {
-		tr.Activity[i] = traceHi
+		tr.Activity[i] = true
 	}
 	return tr
 }

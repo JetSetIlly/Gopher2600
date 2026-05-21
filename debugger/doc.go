@@ -48,13 +48,8 @@
 // purposes this will be instance createed with television.NewTelevision(), but
 // other implementations are possible if not yet available.
 //
-// Once initialised, the debugger can be started with the Start() function.
-//
-//	dbg.Start(initScript, cartloader)
-//
-// The initscript is a script previously created either by the script.Scribe
-// package or by hand. The cartloader argument must be an instance of
-// cartloader.
+// Once initialised, the debugger can be started with the StartInDebugMode() or
+// StartinPlayMode()
 //
 // Interaction with the debugger for both user and programs that use the
 // debugger, is through the Terminal interface (see terminal package). Where

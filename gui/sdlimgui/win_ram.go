@@ -118,17 +118,17 @@ func (win *winRAM) draw(isPXE bool) {
 
 			if okr && okw && read.Symbol == write.Symbol {
 				win.img.imguiTooltip(func() {
-					imguiColorLabelSimple(read.Symbol, win.img.cols.ValueSymbol)
+					imguiColorLabel(read.Symbol, win.img.cols.ValueSymbol)
 				}, true)
 			} else {
 				if okr {
 					win.img.imguiTooltip(func() {
-						imguiColorLabelSimple(read.Symbol, win.img.cols.ValueSymbol)
+						imguiColorLabel(read.Symbol, win.img.cols.ValueSymbol)
 					}, true)
 				}
 				if okw {
 					win.img.imguiTooltip(func() {
-						imguiColorLabelSimple(write.Symbol, win.img.cols.ValueSymbol)
+						imguiColorLabel(write.Symbol, win.img.cols.ValueSymbol)
 					}, true)
 				}
 			}
@@ -138,7 +138,7 @@ func (win *winRAM) draw(isPXE bool) {
 		b := win.img.cache.VCS.Mem.RAM.RAM[idx]
 		if a != b {
 			win.img.imguiTooltip(func() {
-				imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
+				imguiColorLabel(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
 			}, true)
 		}
 
@@ -149,7 +149,7 @@ func (win *winRAM) draw(isPXE bool) {
 		// idx is based on original values of type uint16 so the type conversion is safe
 		if sp-memorymap.OriginRAM < uint16(idx) {
 			win.img.imguiTooltip(func() {
-				imguiColorLabelSimple("in stack", win.img.cols.ValueStack)
+				imguiColorLabel("in stack", win.img.cols.ValueStack)
 				if v, ok := win.img.cache.VCS.CPU.PredictRTS(); ok {
 					imgui.Spacing()
 					imgui.Text(fmt.Sprintf("PC address in event of RTS: %04x", v))

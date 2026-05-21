@@ -116,7 +116,7 @@ func (wtc *watches) check() string {
 
 	// no check if access address & write flag haven't changed
 	//
-	// note that the write flag comparison is required otherwise RMW
+	// note that the write flag comparison is required otherwise Modify
 	// instructions will not be caught on the write signal (which would mean
 	// that a WRITE watch will never match a RMW instruction)
 	if wtc.lastAddressAccessed == wtc.dbg.vcs.Mem.LastCPUAddressLiteral && wtc.lastAddressWrite == wtc.dbg.vcs.Mem.LastCPUWrite {
@@ -158,17 +158,16 @@ func (wtc *watches) check() string {
 
 		if w.ai.Read {
 			if !wtc.dbg.vcs.Mem.LastCPUWrite {
-				checkString.WriteString(fmt.Sprintf("watch at %s (read value %#02x)", lai, wtc.dbg.vcs.Mem.LastCPUData))
+				fmt.Fprintf(&checkString, "watch at %s (read value %#02x)", lai, wtc.dbg.vcs.Mem.LastCPUData)
 			}
 		} else {
 			if wtc.dbg.vcs.Mem.LastCPUWrite {
-				checkString.WriteString(fmt.Sprintf("watch at %s (written value %#02x)", lai, wtc.dbg.vcs.Mem.LastCPUData))
+				fmt.Fprintf(&checkString, "watch at %s (written value %#02x)", lai, wtc.dbg.vcs.Mem.LastCPUData)
+			} else if wtc.dbg.vcs.CPU.PhantomMemAccess {
+				fmt.Fprintf(&checkString, "watch at %s (written value %#02x) phantom", lai, wtc.dbg.vcs.Mem.LastCPUData)
 			}
 		}
 
-		if wtc.dbg.vcs.CPU.PhantomMemAccess {
-			checkString.WriteString(" phantom")
-		}
 		if checkString.Len() > 0 {
 			checkString.WriteRune('\n')
 		}

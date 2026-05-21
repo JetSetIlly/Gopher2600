@@ -43,37 +43,19 @@ type PeripheralID string
 
 // List of valid PeripheralID values.
 const (
-	PeriphNone     PeripheralID = "None"
-	PeriphPanel    PeripheralID = "Panel"
-	PeriphStick    PeripheralID = "Stick"
-	PeriphGamepad  PeripheralID = "Gamepad"
-	PeriphPaddles  PeripheralID = "Paddles"
-	PeriphKeypad   PeripheralID = "Keypad"
-	PeriphSavekey  PeripheralID = "Savekey"
-	PeriphAtariVox PeripheralID = "AtariVox"
+	PeriphNone       PeripheralID = "None"
+	PeriphPanel      PeripheralID = "Panel"
+	PeriphStick      PeripheralID = "Stick"
+	PeriphGamepad    PeripheralID = "Gamepad"
+	PeriphPaddles    PeripheralID = "Paddles"
+	PeriphKeypad     PeripheralID = "Keypad"
+	PeriphSavekey    PeripheralID = "Savekey"
+	PeriphAtariVox   PeripheralID = "AtariVox"
+	PeriphKeyportari PeripheralID = "Keyportari"
 )
 
 // PlugMonitor interface implementations will be notified of newly plugged
 // peripherals.
 type PlugMonitor interface {
 	Plugged(port PortID, peripheral PeripheralID)
-}
-
-// Monitorable implementations are capable of having a PlugMonitor attached to
-// it. The VCS Ports themselves are monitorable but we also use this mechanism
-// in the "auto" controller type and in the future, devices like the Quadtari
-// will be implemented similarly.
-//
-// It is expected that such implementations will call PlugMonitor.Plugged() as
-// required. Note that PlugMonitor.Plugged() should not be called on the event
-// of AttachPlugMonitor except in the special case of the ports.Ports type
-//
-// Implementations of Monitorable should also test peripherals that are
-// daisy-chained and call AttachPlusMonitor() as appropriate.
-//
-//	if a, ok := periph.daisychain.(pluggin.Monitorable); ok {
-//		a.AttachPlugMonitor(m)
-//	}
-type Monitorable interface {
-	AttachPlugMonitor(m PlugMonitor)
 }

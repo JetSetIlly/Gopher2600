@@ -37,6 +37,7 @@ type winCartRAM struct {
 
 	// required dimensions of mapped/unmapped indicator
 	mappedIndicatorDim imgui.Vec2
+	readyIndicatorDim  imgui.Vec2
 }
 
 func newWinCartRAM(img *SdlImgui) (window, error) {
@@ -46,6 +47,7 @@ func newWinCartRAM(img *SdlImgui) (window, error) {
 
 func (win *winCartRAM) init() {
 	win.mappedIndicatorDim = imguiGetFrameDim(" mapped ", " unmapped ")
+	win.readyIndicatorDim = imguiGetFrameDim(" ready ", " not ready (x) ")
 }
 
 func (win *winCartRAM) id() string {
@@ -138,17 +140,17 @@ func (win *winCartRAM) draw(ram []mapper.CartRAM) {
 
 				if okr && okw && read.Symbol == write.Symbol {
 					win.img.imguiTooltip(func() {
-						imguiColorLabelSimple(read.Symbol, win.img.cols.ValueSymbol)
+						imguiColorLabel(read.Symbol, win.img.cols.ValueSymbol)
 					}, true)
 				} else {
 					if okr {
 						win.img.imguiTooltip(func() {
-							imguiColorLabelSimple(read.Symbol, win.img.cols.ValueSymbol)
+							imguiColorLabel(read.Symbol, win.img.cols.ValueSymbol)
 						}, true)
 					}
 					if okw {
 						win.img.imguiTooltip(func() {
-							imguiColorLabelSimple(write.Symbol, win.img.cols.ValueSymbol)
+							imguiColorLabel(write.Symbol, win.img.cols.ValueSymbol)
 						}, true)
 					}
 				}
@@ -157,7 +159,7 @@ func (win *winCartRAM) draw(ram []mapper.CartRAM) {
 				b := current.Data[idx]
 				if a != b {
 					win.img.imguiTooltip(func() {
-						imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
+						imguiColorLabel(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
 					}, true)
 				}
 			}
@@ -175,12 +177,33 @@ func (win *winCartRAM) draw(ram []mapper.CartRAM) {
 			// status line
 			win.statusHeight = imguiMeasureHeight(func() {
 				imgui.PushStyleVarFloat(imgui.StyleVarFrameRounding, readOnlyButtonRounding)
+				defer imgui.PopStyleVar()
+
 				if current.Mapped {
 					imguiColourButton(win.img.cols.True, " mapped ", win.mappedIndicatorDim)
 				} else {
 					imguiColourButton(win.img.cols.False, " unmapped ", win.mappedIndicatorDim)
 				}
-				imgui.PopStyleVar()
+
+				imgui.Spacing()
+
+				if win.img.cache.VCS.Mem.Cart.HasSuperchip() {
+					emulateSara := win.img.wm.windows[winPrefsID].(*winPrefs).drawSARA()
+					imgui.SameLineV(0, 25)
+					drawInvisible(!emulateSara, func() {
+						if current.Recovery > 0 {
+							var s string
+							if current.Recovery == 1 {
+								s = fmt.Sprintf(" %d cycle ", current.Recovery)
+							} else {
+								s = fmt.Sprintf(" %d cycles ", current.Recovery)
+							}
+							imguiColourButton(win.img.cols.False, s, win.readyIndicatorDim)
+						} else {
+							imguiColourButton(win.img.cols.True, " ready ", win.readyIndicatorDim)
+						}
+					})
+				}
 			})
 
 			imgui.EndTabItem()

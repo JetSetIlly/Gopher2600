@@ -16,8 +16,11 @@
 package audio
 
 type channel struct {
-	registers        Registers
-	registersChanged bool
+	// the addition of a tracker is not required
+	tracker Tracker
+
+	// registers for this channel
+	registers Registers
 
 	clockEnable      bool
 	noiseFeedback    bool
@@ -27,19 +30,10 @@ type channel struct {
 	divCounter   uint8
 	pulseCounter uint8
 	noiseCounter uint8
-
-	volumeChanged bool
 }
 
 func (ch *channel) String() string {
 	return ch.registers.String()
-}
-
-// tick should be called at a frequency of 30Khz. when the 10Khz clock is
-// required, the frequency clock is increased by a factor of three.
-func (ch *channel) tick() {
-	ch.phase0()
-	ch.phase1()
 }
 
 func (ch *channel) phase0() {

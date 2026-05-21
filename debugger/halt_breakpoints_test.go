@@ -15,46 +15,105 @@
 
 package debugger_test
 
-func (trm *mockTerm) testBreakpoints() {
+import (
+	"testing"
+
+	"github.com/jetsetilly/gopher2600/test"
+)
+
+func testBreakpoints(t *testing.T, trm *mockTerm) {
 	// debugger starts off with no breakpoints
-	trm.sndInput("LIST BREAKS")
-	trm.cmpOutput("no breakpoints")
+	trm.command("LIST BREAKS")
+	test.ExpectEquality(t, trm.lastLine(), "no breakpoints")
 
 	// add a break. this should be successful so there should be no feedback
-	trm.sndInput("BREAK SL 100")
-	trm.cmpOutput("")
+	trm.command("BREAK SL 100")
+	test.ExpectEquality(t, trm.lastLine(), "")
 
 	// list breaks and check last line of output
-	trm.sndInput("LIST BREAKS")
-	trm.cmpOutput(" 0: Scanline->100")
+	trm.command("LIST BREAKS")
+	test.ExpectEquality(t, trm.lastLine(), " 0: Scanline->100")
 
 	// try to add same break. check error feedback
-	trm.sndInput("BREAK SL 100")
-	trm.cmpOutput("already exists (Scanline->100)")
+	trm.command("BREAK SL 100")
+	test.ExpectEquality(t, trm.lastLine(), "already exists (Scanline->100)")
 
 	// add multi-condition break
-	trm.sndInput("BREAK SL 100 & CL 100")
-	trm.cmpOutput("")
+	trm.command("BREAK SL 100 & CL 100")
+	test.ExpectEquality(t, trm.lastLine(), "")
 
 	// check last line of list breaks. we've already added a break so this new
 	// break should be number "1" (rather than number "0")
-	trm.sndInput("LIST BREAKS")
-	trm.cmpOutput(" 1: Scanline->100 & Clock->100")
+	trm.command("LIST BREAKS")
+	test.ExpectEquality(t, trm.lastLine(), " 1: Scanline->100 & Clock->100")
 
 	// try to add exactly the same breakpoint. expect failure
-	trm.sndInput("BREAK SL 100 & CL 100")
-	trm.cmpOutput("already exists (Scanline->100 & Clock->100)")
+	trm.command("BREAK SL 100 & CL 100")
+	test.ExpectEquality(t, trm.lastLine(), "already exists (Scanline->100 & Clock->100)")
 
 	// as above but with alternative && connection
-	trm.sndInput("BREAK SL 100 && CL 100")
-	trm.cmpOutput("already exists (Scanline->100 & Clock->100)")
+	trm.command("BREAK SL 100 && CL 100")
+	test.ExpectEquality(t, trm.lastLine(), "already exists (Scanline->100 & Clock->100)")
 
-	// the following break is logically the same as the previous break but
-	// expressed differently. the debugger should not add it even though the
-	// expression is not exactly the same.
-	trm.sndInput("BREAK CL 100 & SL 100")
-	trm.cmpOutput("already exists (Scanline->100 & Clock->100)")
+	// the following break is logically the same as the previous break but expressed differently.
+	// the debugger should not add it even though the expression is not exactly the same because of
+	// the order of the AND statement.
+	trm.command("BREAK CL 100 & SL 100")
+	test.ExpectEquality(t, trm.lastLine(), "already exists (Clock->100 & Scanline->100)")
 
-	trm.sndInput("BREAK CL 100")
-	trm.cmpOutput("")
+	// TOGGLE says to drop the breakpoint if it already exists
+	trm.command("BREAK TOGGLE CL 100 & SL 100")
+	test.ExpectEquality(t, trm.lastLine(), "")
+
+	// the multi-line condition break has been removed (by toggling), leaving us with just the first
+	// breakpoint we added
+	trm.command("LIST BREAKS")
+	test.ExpectEquality(t, trm.lastLine(), " 0: Scanline->100")
+
+	// calling the BREAK TOGGLE command again adds the breakpoint if it doesn't exist.
+	// we also check the last line of the output of LIST BREAKS
+	trm.command("BREAK TOGGLE CL 100 & SL 100")
+	test.ExpectEquality(t, trm.lastLine(), "")
+	trm.command("LIST BREAKS")
+	test.ExpectEquality(t, trm.lastLine(), " 1: Clock->100 & Scanline->100")
+
+	// this is a different breakpoint
+	trm.command("BREAK CL 100")
+	test.ExpectEquality(t, trm.lastLine(), "")
+	trm.command("LIST BREAKS")
+	test.ExpectEquality(t, trm.lastLine(), " 2: Clock->100")
+
+	// clear all breakpoints and check that the list is empty
+	trm.command("CLEAR BREAKS")
+	test.ExpectEquality(t, trm.lastLine(), "breakpoints cleared")
+	trm.command("LIST BREAKS")
+	test.ExpectEquality(t, trm.lastLine(), "no breakpoints")
+}
+
+func testBreakpoints_drop(t *testing.T, trm *mockTerm) {
+	trm.command("BREAK DROP $1000")
+	test.ExpectEquality(t, trm.lastLine(), "no such breakpoint (PC->0x1000)")
+
+	trm.command("BREAK $1000")
+	test.ExpectEquality(t, trm.lastLine(), "")
+
+	trm.command("BREAK DROP $1000")
+	test.ExpectEquality(t, trm.lastLine(), "")
+
+	trm.command("LIST BREAKS")
+	test.ExpectEquality(t, trm.lastLine(), "no breakpoints")
+
+	trm.command("BREAK $1000")
+	test.ExpectEquality(t, trm.lastLine(), "")
+	trm.command("BREAK $3001")
+	test.ExpectEquality(t, trm.lastLine(), "")
+
+	trm.command("DROP BREAK 0")
+	test.ExpectEquality(t, trm.lastLine(), "breakpoint #0 dropped")
+
+	// the remaining breakpoint was set on 0x3001, which is a mirror of 0x1001.
+	// breakpoints on PC addresses are always normalised so LIST BREAKS will show
+	// the primary mirror address
+	trm.command("LIST BREAKS")
+	test.ExpectEquality(t, trm.lastLine(), " 0: PC->0x1001")
 }

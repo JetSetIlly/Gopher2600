@@ -29,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/notifications"
 )
@@ -76,10 +77,7 @@ type elfReaderAt struct {
 func (r *elfReaderAt) ReadAt(p []byte, start int64) (n int, err error) {
 	start += r.offset
 
-	end := start + int64(len(p))
-	if end > int64(len(r.data)) {
-		end = int64(len(r.data))
-	}
+	end := min(start+int64(len(p)), int64(len(r.data)))
 	copy(p, r.data[start:end])
 
 	n = int(end - start)
@@ -179,7 +177,7 @@ func NewElf(env *environment.Environment, inACE bool) (mapper.CartMapper, error)
 
 	// send notification that some symbols in the ELF remain unresolved
 	if cart.mem.unresolvedSymbols {
-		if cart.env.Prefs.ARM.UndefinedSymbolWarning.Get().(bool) {
+		if cart.env.Prefs.Cartridge.ARM.UndefinedSymbolWarning.Get().(bool) {
 			cart.env.Notifications.Notify(notifications.NotifyElfUndefinedSymbols)
 		}
 	}
@@ -309,7 +307,8 @@ func (cart *Elf) reset() {
 		systemType = argSystemType_NTSC
 	}
 
-	flags := argFlags_NoExit
+	var flags int
+	flags |= argFlags_NVStorage
 
 	binary.LittleEndian.PutUint32(cart.mem.args[argAddrSystemType-argOrigin:], uint32(systemType))
 	binary.LittleEndian.PutUint32(cart.mem.args[argAddrClockHz-argOrigin:], uint32(cart.arm.Clk))
@@ -345,8 +344,8 @@ func (cart *Elf) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *Elf) GetBank(_ uint16) mapper.BankInfo {
-	return mapper.BankInfo{Sequential: true, Number: 0, IsRAM: false}
+func (cart *Elf) GetBank(_ uint16) banking.Information {
+	return banking.Information{Sequential: true, Number: 0, IsRAM: false}
 }
 
 func (cart *Elf) runARM(addr uint16) bool {
@@ -473,7 +472,7 @@ func (cart *Elf) Step(clock float32) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *Elf) CopyBanks() []mapper.BankContent {
+func (cart *Elf) CopyBanks() []banking.Content {
 	return nil
 }
 

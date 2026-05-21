@@ -47,37 +47,44 @@ func newMockTerm(t *testing.T) *mockTerm {
 	return trm
 }
 
+// Initialise implements the terminal.Output interface
 func (trm *mockTerm) Initialise() error {
 	return nil
 }
 
+// CleanUp implements the terminal.Output interface
 func (trm *mockTerm) CleanUp() {
 }
 
+// RegisterTabCompletion implements the terminal.Output interface
 func (trm *mockTerm) RegisterTabCompletion(_ *commandline.TabCompletion) {
 }
 
+// Silence implements the terminal.Output interface
 func (trm *mockTerm) Silence(silenced bool) {
 }
 
-func (trm *mockTerm) TermRead(buffer []byte, _ terminal.Prompt, _ *terminal.ReadEvents) (int, error) {
-	s := <-trm.inp
-	copy(buffer, s)
-	return len(s) + 1, nil
+// TermRead implements the terminal.Output interface
+func (trm *mockTerm) TermRead(_ terminal.Prompt, _ *terminal.ReadEvents) (string, error) {
+	return <-trm.inp, nil
 }
 
+// TermReadCheck implements the terminal.Output interface
 func (trm *mockTerm) TermReadCheck() bool {
 	return false
 }
 
+// IsInteractive implements the terminal.Output interface
 func (trm *mockTerm) IsInteractive() bool {
 	return false
 }
 
+// IsRealTerminal implements the terminal.Output interface
 func (trm *mockTerm) IsRealTerminal() bool {
 	return false
 }
 
+// TermPrintLine implements the terminal.Output interface
 func (trm *mockTerm) TermPrintLine(sty terminal.Style, s string) {
 	if sty == terminal.StyleEcho {
 		return
@@ -86,12 +93,12 @@ func (trm *mockTerm) TermPrintLine(sty terminal.Style, s string) {
 	trm.out <- s
 }
 
-func (trm *mockTerm) sndInput(s string) {
+func (trm *mockTerm) command(s string) {
 	trm.output = make([]string, 0, 10)
 	trm.inp <- s
 }
 
-func (trm *mockTerm) rcvOutput() {
+func (trm *mockTerm) response() {
 	empty := false
 	for !empty {
 		select {
@@ -106,57 +113,22 @@ func (trm *mockTerm) rcvOutput() {
 	}
 }
 
-// cmpOutput compares the string argument with the *last line* of the most
-// recent output. it can easily be adapted to compare the whole output if
-// necessary.
-func (trm *mockTerm) cmpOutput(s string) {
-	trm.rcvOutput()
-
+func (trm *mockTerm) lastLine() string {
+	trm.response()
 	if len(trm.output) == 0 {
-		if len(s) != 0 {
-			trm.t.Errorf("unexpected debugger output (nothing) should be (%s)", s)
-			return
-		}
-		return
+		return ""
 	}
-
-	l := len(trm.output) - 1
-
-	if trm.output[l] == s {
-		return
-	}
-
-	trm.t.Errorf("unexpected debugger output (%s) should be (%s)", trm.output[l], s)
+	return trm.output[len(trm.output)-1]
 }
 
-func (trm *mockTerm) testSequence() {
-	defer func() { trm.sndInput("QUIT") }()
-	trm.testBreakpoints()
-	trm.testTraps()
-	trm.testWatches()
-}
-
-func TestDebugger_withNonExistantInitScript(t *testing.T) {
-	var trm *mockTerm
-
-	create := func(dbg *debugger.Debugger) (gui.GUI, terminal.Terminal, error) {
-		trm = newMockTerm(t)
-		return &mockGUI{}, trm, nil
-	}
-
-	var opts debugger.CommandLineOptions
-
-	dbg, err := debugger.NewDebugger(opts, create)
-	if err != nil {
-		t.Fatal(err.Error())
-	}
-
-	go trm.testSequence()
-
-	err = dbg.StartInDebugMode("")
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+func testSequence(t *testing.T, trm *mockTerm) {
+	defer func() {
+		trm.command("QUIT")
+	}()
+	testBreakpoints(t, trm)
+	testBreakpoints_drop(t, trm)
+	testTraps(t, trm)
+	testWatches(t, trm)
 }
 
 func TestDebugger(t *testing.T) {
@@ -174,10 +146,13 @@ func TestDebugger(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	go trm.testSequence()
+	// panic on any error from start debugger function
+	go func() {
+		err := dbg.StartInDebugMode("")
+		if err != nil {
+			panic(err)
+		}
+	}()
 
-	err = dbg.StartInDebugMode("")
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+	testSequence(t, trm)
 }

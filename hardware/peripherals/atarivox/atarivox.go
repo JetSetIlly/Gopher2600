@@ -122,9 +122,6 @@ func NewAtariVox(env *environment.Environment, port plugging.PortID, bus ports.P
 		State:         AtariVoxStopped,
 	}
 
-	vox.activateEngines()
-	logger.Logf(env, "atarivox", "attached [%v]", vox.port)
-
 	// attach savekey to same port
 	vox.SaveKey = savekey.NewSaveKey(env, port, bus).(*savekey.SaveKey)
 
@@ -160,6 +157,12 @@ func (vox *AtariVox) activateEngines() {
 		vox.subtitler.Quit()
 		vox.subtitler = nil
 	}
+}
+
+// Plug implements the ports.Peripheral interface.
+func (vox *AtariVox) Reset() {
+	vox.SaveKey.Reset()
+	vox.activateEngines()
 }
 
 // Unplug implements the ports.Peripheral interface.
@@ -203,12 +206,6 @@ func (vox *AtariVox) PortID() plugging.PortID {
 // ID implements the ports.Peripheral interface.
 func (vox *AtariVox) ID() plugging.PeripheralID {
 	return plugging.PeriphAtariVox
-}
-
-// Reset implements the ports.Peripheral interface.
-func (vox *AtariVox) Reset() {
-	// nothing to do for the atarivox but we forward the reset signal to the savekey
-	vox.SaveKey.Reset()
 }
 
 // Restart implements the ports.RestartPeripheral interface.

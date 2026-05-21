@@ -138,9 +138,9 @@ func (ms *MissileSprite) String() string {
 	s := strings.Builder{}
 	s.WriteString(ms.label)
 	s.WriteString(": ")
-	s.WriteString(fmt.Sprintf("%s %s [%03d ", ms.position, ms.pclk, ms.ResetPixel))
-	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
-	s.WriteString(fmt.Sprintf(" %03d", ms.HmovedPixel))
+	fmt.Fprintf(&s, "%s %s [%03d ", ms.position, ms.pclk, ms.ResetPixel)
+	fmt.Fprintf(&s, "> %#1x >", normalisedHmove)
+	fmt.Fprintf(&s, " %03d", ms.HmovedPixel)
 	if ms.MoreHMOVE {
 		s.WriteString("*] ")
 	} else {
@@ -182,11 +182,11 @@ func (ms *MissileSprite) String() string {
 	}
 
 	if ms.MoreHMOVE {
-		s.WriteString(fmt.Sprintf(" hmoving [%04b],", ms.Hmove))
+		fmt.Fprintf(&s, " hmoving [%04b],", ms.Hmove)
 	}
 
 	if ms.Enclockifier.Active {
-		s.WriteString(fmt.Sprintf(" drw %s,", ms.Enclockifier.String()))
+		fmt.Fprintf(&s, " drw %s,", ms.Enclockifier.String())
 	}
 
 	if !ms.Enabled {
@@ -213,7 +213,7 @@ func (ms *MissileSprite) rsync(adjustment int) {
 
 func (ms *MissileSprite) tickHBLANK() bool {
 	// check to see if there is more movement required for this sprite
-	ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.tia.hmove.Ripple, ms.Hmove)
+	ms.MoreHMOVE = ms.MoreHMOVE && ms.tia.hmove.Compare(ms.Hmove)
 	if !ms.MoreHMOVE {
 		return false
 	}
@@ -231,7 +231,7 @@ func (ms *MissileSprite) tickHBLANK() bool {
 
 func (ms *MissileSprite) tickHMOVE() bool {
 	// check to see if there is more movement required for this sprite
-	ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.tia.hmove.Ripple, ms.Hmove)
+	ms.MoreHMOVE = ms.MoreHMOVE && ms.tia.hmove.Compare(ms.Hmove)
 
 	// cancel motion clock if necessary
 	if ms.MoreHMOVE && ms.tia.env.Prefs.Revision.Live.LostMOTCK.Load().(bool) {
@@ -337,12 +337,12 @@ func (ms *MissileSprite) resetPosition() {
 	// see player sprite resetPosition() for commentary on delay values
 	delay := 4
 	if *ms.tia.hblank {
-		// the condition to differentiate a delay of 2 and three is taken from
-		// the ball sprite. there are better tests for the ball sprite
-		if ms.tia.hmove.Ripple > 0 {
+		if ms.tia.hmove.IsActive() {
 			delay = 2
-		} else {
+		} else if ms.tia.hmove.Latch {
 			delay = 3
+		} else {
+			delay = 2
 		}
 	}
 

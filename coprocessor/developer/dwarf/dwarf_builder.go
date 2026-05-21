@@ -261,7 +261,7 @@ func (bld *build) buildTypes(src *Source) error {
 	}
 
 	// three passes over more complex types
-	for pass := 0; pass < 3; pass++ {
+	for range 3 {
 		err := resolveTypeDefs()
 		if err != nil {
 			return err

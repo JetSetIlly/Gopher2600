@@ -35,7 +35,8 @@ type closeController interface {
 
 type controller struct {
 	closeController
-	isStelladaptor bool
+	isJoystick     bool
+	isStelladapter bool
 }
 
 // global control of gamepad support
@@ -206,7 +207,8 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 				logger.Logf(logger.Allow, "sdl", "joystick: %s", joy.Name())
 				plt.joysticks = append(plt.joysticks, controller{
 					closeController: joy,
-					isStelladaptor:  strings.Contains(strings.ToLower(joy.Name()), "stelladaptor"),
+					isJoystick:      true,
+					isStelladapter:  strings.Contains(strings.ToLower(joy.Name()), "stelladaptor"),
 				})
 			}
 		}

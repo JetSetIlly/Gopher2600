@@ -48,9 +48,20 @@ func NewPanel(env *environment.Environment, id plugging.PortID, bus ports.Periph
 		bus:   bus,
 		color: true,
 	}
-	pan.write()
-
 	return pan
+}
+
+// Reset implements the Peripheral interface.
+func (pan *Panel) Reset() {
+	// p0pro, p1pro and color are toggles and shouldn't be reset because the user might have
+	// changed them intentionally
+
+	// select and reset are switches that need to be held by the user. the reset should cause these
+	// switches to be released
+	pan.selectPressed = false
+	pan.resetPressed = false
+
+	pan.write()
 }
 
 // Unplug implements the Peripheral interface.
@@ -119,12 +130,6 @@ func (pan *Panel) PortID() plugging.PortID {
 // ID implements the Peripheral interface.
 func (pan *Panel) ID() plugging.PeripheralID {
 	return plugging.PeriphPanel
-}
-
-// Reset implements the Peripheral interface.
-func (pan *Panel) Reset() {
-	// not changing panel settings on console reset
-	pan.write()
 }
 
 // commit changes to RIOT memory

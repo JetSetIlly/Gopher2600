@@ -41,14 +41,12 @@ type winCoProcProfiling struct {
 	focus         profiling.Focus
 	focusComboDim imgui.Vec2
 
-	// whether to present performance figures as raw counts or as percentages
+	// local preference values. read from preferences every frame. the values are controlled by
+	// checkboxes but are referenced in other parts of the profiling window
+	hideUnexecuted    bool
 	percentileFigures bool
-
-	// for the function tab, show cumulative values rather than flat values
-	cumulative bool
-
-	// show the number of times the function has been called in the current frame
-	cyclesPerCall bool
+	cumulative        bool
+	cyclesPerCall     bool
 
 	// whether the sort criteria as specified in the window has changed (ie.
 	// focus has changed)
@@ -57,9 +55,6 @@ type winCoProcProfiling struct {
 	// the currently selected tab. used to dirty the sort flag when a new tab
 	// is selected
 	tabSelected string
-
-	// whether to included unexecuted entries (functions or lines) in the list
-	hideUnusedEntries bool
 
 	// scale load statistics in function filters to the function level (as
 	// opposed to the program level)
@@ -109,9 +104,8 @@ func (tv *coProcProfilingTV) NewFrame(_ frameinfo.Current) error {
 
 func newWinCoProcProfiling(img *SdlImgui) (window, error) {
 	win := &winCoProcProfiling{
-		img:               img,
-		focus:             profiling.FocusAll,
-		percentileFigures: true,
+		img:   img,
+		focus: profiling.FocusAll,
 	}
 
 	win.tv.initialise(img)
@@ -154,6 +148,11 @@ func (win *winCoProcProfiling) debuggerDraw() bool {
 }
 
 func (win *winCoProcProfiling) draw(coproc coprocessor.CartCoProc) {
+	win.hideUnexecuted = win.img.prefs.armProfilerHideUnexecuted.Get().(bool)
+	win.percentileFigures = win.img.prefs.armProfilerPercentile.Get().(bool)
+	win.cyclesPerCall = win.img.prefs.armProfilerCyclesPerCall.Get().(bool)
+	win.cumulative = win.img.prefs.armProfilerCumulative.Get().(bool)
+
 	// safely iterate over top execution information
 	win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 		if src == nil {
@@ -285,23 +284,28 @@ func (win *winCoProcProfiling) draw(coproc coprocessor.CartCoProc) {
 
 			imgui.Spacing()
 
-			imgui.Checkbox("Hide Unexecuted Items", &win.hideUnusedEntries)
+			if imgui.Checkbox("Hide Unexecuted Items", &win.hideUnexecuted) {
+				win.img.prefs.armProfilerHideUnexecuted.Set(win.hideUnexecuted)
+			}
 
 			if win.tabSelected == functionTab {
 				imgui.SameLineV(0, 15)
 				if imgui.Checkbox("Percentile Figures", &win.percentileFigures) {
+					win.img.prefs.armProfilerPercentile.Set(win.percentileFigures)
 					win.windowSortSpecDirty = true
 				}
 
 				drawDisabled(win.cyclesPerCall, func() {
 					imgui.SameLineV(0, 15)
 					if imgui.Checkbox("Cumulative Figures", &win.cumulative) {
+						win.img.prefs.armProfilerCumulative.Set(win.cumulative)
 						win.windowSortSpecDirty = true
 					}
 				})
 
 				imgui.SameLineV(0, 15)
 				if imgui.Checkbox("Cycles/Call", &win.cyclesPerCall) {
+					win.img.prefs.armProfilerCyclesPerCall.Set(win.cyclesPerCall)
 					win.windowSortSpecDirty = true
 				}
 			}
@@ -421,7 +425,7 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 			return
 		}
 	} else {
-		if win.hideUnusedEntries && !src.Cycles.Overall.HasExecuted() {
+		if win.hideUnexecuted && !src.Cycles.Overall.HasExecuted() {
 			imgui.Text("No functions have been executed yet")
 			return
 		}
@@ -502,7 +506,7 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 
 		// using flat stats even if cumulative option is set - it amounts to
 		// the same thing in this case
-		if win.hideUnusedEntries && !fn.Cycles.Overall.HasExecuted() {
+		if win.hideUnexecuted && !fn.Cycles.Overall.HasExecuted() {
 			continue
 		}
 
@@ -719,7 +723,7 @@ func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 			return
 		}
 	} else {
-		if win.hideUnusedEntries && !src.Cycles.Overall.HasExecuted() {
+		if win.hideUnexecuted && !src.Cycles.Overall.HasExecuted() {
 			imgui.Text("No lines have been executed yet")
 			return
 		}
@@ -773,7 +777,7 @@ func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 			continue
 		}
 
-		if win.hideUnusedEntries && !ln.Cycles.Overall.HasExecuted() {
+		if win.hideUnexecuted && !ln.Cycles.Overall.HasExecuted() {
 			continue
 		}
 
@@ -912,7 +916,7 @@ func (win *winCoProcProfiling) drawFunctionFilter(src *dwarf.Source, functionFil
 			return
 		}
 	} else {
-		if win.hideUnusedEntries && !src.Cycles.Overall.HasExecuted() {
+		if win.hideUnexecuted && !src.Cycles.Overall.HasExecuted() {
 			imgui.Text("Ths function has not been executed yet")
 			return
 		}
@@ -989,7 +993,7 @@ thean to the program as a whole.`)
 			continue
 		}
 
-		if win.hideUnusedEntries && !ln.Cycles.Overall.HasExecuted() {
+		if win.hideUnexecuted && !ln.Cycles.Overall.HasExecuted() {
 			continue
 		}
 

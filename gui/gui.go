@@ -51,7 +51,7 @@ const (
 	// activity from a PlusROM cartridge.
 	ReqNotification FeatureReq = "ReqNotification" // notifications.Notify
 
-	// peripheral has been changed for one of the ports.
+	// peripheral has been changed for one of the ports
 	ReqPeripheralPlugged FeatureReq = "ReqPeripheralPlugging" // plugging.PortID, plugging.PeripheralID
 
 	// request for a comparison window to be opened.

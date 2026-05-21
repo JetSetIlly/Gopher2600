@@ -15,6 +15,8 @@
 
 package prefs
 
+import "slices"
+
 // list of preference values that are no longer used.
 var defunct = []string{
 	"debugger.randpins",
@@ -102,14 +104,10 @@ var defunct = []string{
 	"television.color.legacy",               // replaced with television.color.legacy.enabled
 	"hardware.arm7.MisalignedAccessIsFault", // replaced with hardware.arm7.abortOnMisalignedAccess
 	"hardware.arm7.unwrapACE",               // replaced with hardware.unwrapACE
+	"hardware.unwrapAce",                    // replaced with hardware.cartridge.unwrapACE
 }
 
 // returns true if string is in list of defunct values.
 func isDefunct(s string) bool {
-	for _, m := range defunct {
-		if s == m {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(defunct, s)
 }

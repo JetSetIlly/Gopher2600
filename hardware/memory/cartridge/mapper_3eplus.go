@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -72,7 +73,7 @@ func new3ePlus(env *environment.Environment) (mapper.CartMapper, error) {
 	cart.banks = make([][]uint8, numBanks)
 
 	// partition binary
-	for k := 0; k < numBanks; k++ {
+	for k := range numBanks {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
@@ -134,7 +135,7 @@ func (cart *m3ePlus) Reset() error {
 func (cart *m3ePlus) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	var segment int
 
-	if addr >= 0x0000 && addr <= 0x03ff {
+	if addr <= 0x03ff {
 		segment = 0
 	} else if addr >= 0x0400 && addr <= 0x07ff {
 		segment = 1
@@ -162,7 +163,7 @@ func (cart *m3ePlus) Access(addr uint16, _ bool) (uint8, uint8, error) {
 func (cart *m3ePlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	var segment int
 
-	if addr >= 0x0000 && addr <= 0x03ff {
+	if addr <= 0x03ff {
 		segment = 0
 	} else if addr >= 0x0400 && addr <= 0x07ff {
 		segment = 1
@@ -194,9 +195,9 @@ func (cart *m3ePlus) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *m3ePlus) GetBank(addr uint16) mapper.BankInfo {
+func (cart *m3ePlus) GetBank(addr uint16) banking.Information {
 	var seg int
-	if addr >= 0x0000 && addr <= 0x03ff {
+	if addr <= 0x03ff {
 		seg = 0
 	} else if addr >= 0x0400 && addr <= 0x07ff {
 		seg = 1
@@ -207,14 +208,14 @@ func (cart *m3ePlus) GetBank(addr uint16) mapper.BankInfo {
 	}
 
 	if cart.state.segmentIsRAM[seg] {
-		return mapper.BankInfo{Number: cart.state.segment[seg], IsRAM: true, IsSegmented: true, Segment: seg}
+		return banking.Information{Number: cart.state.segment[seg], IsRAM: true, IsSegmented: true, Segment: seg}
 	}
-	return mapper.BankInfo{Number: cart.state.segment[seg], IsSegmented: true, Segment: seg}
+	return banking.Information{Number: cart.state.segment[seg], IsSegmented: true, Segment: seg}
 }
 
 // SetBank implements the mapper.CartMapper interface.
 func (cart *m3ePlus) SetBank(bank string) error {
-	if mapper.IsAutoBankSelection(bank) {
+	if banking.IsAutoSelection(bank) {
 		// The last 1K ROM ($FC00-$FFFF) segment in the 6502 address space (ie: $1C00-$1FFF)
 		// is initialised to point to the FIRST 1K of the ROM image, so the reset vectors
 		// must be placed at the end of the first 1K in the ROM image.
@@ -225,7 +226,7 @@ func (cart *m3ePlus) SetBank(bank string) error {
 		return nil
 	}
 
-	segs, err := mapper.SegmentedBankSelection(bank)
+	segs, err := banking.SegmentedSelection(bank)
 	if err != nil {
 		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
@@ -327,10 +328,10 @@ func (cart *m3ePlus) PutRAM(bank int, idx int, data uint8) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *m3ePlus) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, len(cart.banks))
+func (cart *m3ePlus) CopyBanks() []banking.Content {
+	c := make([]banking.Content, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {
-		c[b] = mapper.BankContent{Number: b,
+		c[b] = banking.Content{Number: b,
 			Data: cart.banks[b],
 			Origins: []uint16{
 				memorymap.OriginCart,
@@ -365,7 +366,7 @@ func newM3ePlusState() *m3ePlusState {
 	const ramSize = 512
 
 	// allocate ram
-	for k := 0; k < len(s.ram); k++ {
+	for k := range len(s.ram) {
 		s.ram[k] = make([]uint8, ramSize)
 	}
 
@@ -376,7 +377,7 @@ func newM3ePlusState() *m3ePlusState {
 func (s *m3ePlusState) Snapshot() *m3ePlusState {
 	n := *s
 
-	for k := 0; k < len(s.ram); k++ {
+	for k := range len(s.ram) {
 		n.ram[k] = make([]uint8, len(s.ram[k]))
 		copy(n.ram[k], s.ram[k])
 	}

@@ -236,7 +236,7 @@ func (fr *frameSection) framebaseForAddr(addr uint32, derive io.Writer) (uint64,
 	tab.addRow()
 
 	if derive != nil {
-		derive.Write([]byte(fmt.Sprintf("looking for address %08x\n", addr)))
+		derive.Write(fmt.Appendf(nil, "looking for address %08x\n", addr))
 	}
 
 	var fde *frameSectionFDE
@@ -265,12 +265,12 @@ func (fr *frameSection) framebaseForAddr(addr uint32, derive io.Writer) (uint64,
 		ptr += r.length
 
 		if derive != nil {
-			derive.Write([]byte(fmt.Sprintf("CIE %v\n", r)))
+			derive.Write(fmt.Appendf(nil, "CIE %v\n", r))
 		}
 	}
 
 	if derive != nil {
-		derive.Write([]byte(fmt.Sprintf("trying FDE Block: %v\n", fde)))
+		derive.Write(fmt.Appendf(nil, "trying FDE Block: %v\n", fde))
 	}
 
 	ptr = 0
@@ -285,7 +285,7 @@ func (fr *frameSection) framebaseForAddr(addr uint32, derive io.Writer) (uint64,
 		ptr += r.length
 
 		if derive != nil {
-			derive.Write([]byte(fmt.Sprintf("FDE %v [%08x]\n", r, tab.rows[0].location)))
+			derive.Write(fmt.Appendf(nil, "FDE %v [%08x]\n", r, tab.rows[0].location))
 		}
 
 		// we've found the row of the call frame table we need

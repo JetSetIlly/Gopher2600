@@ -22,7 +22,8 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 
@@ -202,7 +203,7 @@ func (win *winDisasm) draw() {
 	}
 }
 
-func (win *winDisasm) drawSequential(currBank mapper.BankInfo) {
+func (win *winDisasm) drawSequential(currBank banking.Information) {
 	render := func(dsm *disassembly.DisasmEntries) {
 		if win.img.dbg.State() == govern.Rewinding {
 			win.drawEntries("sequential", win.sequenceCache, len(win.sequenceCache)-1, currBank, true)
@@ -222,13 +223,13 @@ func (win *winDisasm) drawSequential(currBank mapper.BankInfo) {
 	win.drawOptionsBar(currBank)
 }
 
-func (win *winDisasm) drawBanked(addr uint16, currBank mapper.BankInfo) {
+func (win *winDisasm) drawBanked(addr uint16, currBank banking.Information) {
 	win.drawBankSelection(currBank)
 	win.drawBank(addr, currBank)
 	win.drawOptionsBar(currBank)
 }
 
-func (win *winDisasm) drawBankSelection(currBank mapper.BankInfo) {
+func (win *winDisasm) drawBankSelection(currBank banking.Information) {
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
 	numColumns := 2
@@ -295,7 +296,12 @@ func (win *winDisasm) drawBankSelection(currBank mapper.BankInfo) {
 		for n := 0; n < win.img.cache.VCS.Mem.Cart.NumBanks(); n++ {
 			if imgui.Selectable(fmt.Sprintf("View bank %d", n)) {
 				win.filter = filterBank
-				win.selectedBank = n
+
+				// if a new bank has been selected then update scroll
+				if n != win.selectedBank {
+					win.scroll.active = numScrollFrames
+					win.selectedBank = n
+				}
 			}
 
 			// set scroll on the first frame that the combo is open
@@ -334,13 +340,13 @@ func (win *winDisasm) drawBankSelection(currBank mapper.BankInfo) {
 	imgui.Spacing()
 }
 
-func (win *winDisasm) drawBank(addr uint16, currBank mapper.BankInfo) {
+func (win *winDisasm) drawBank(addr uint16, currBank banking.Information) {
 	// render is called via a call to BorrowDisasm()
 	render := func(dsm *disassembly.DisasmEntries) {
 		// because we're running concurrently with the emulation there may be instances
 		// current bank number is out of date when compared to the disassembly. this can
 		// happen when loading a new ROM with fewer banks than the previous ROM
-		if currBank.Number >= len(dsm.Entries) {
+		if win.selectedBank >= len(dsm.Entries) {
 			return
 		}
 
@@ -348,7 +354,7 @@ func (win *winDisasm) drawBank(addr uint16, currBank mapper.BankInfo) {
 
 		// pre-filter blessed entries
 		var entries []*disassembly.Entry
-		for _, e := range dsm.Entries[currBank.Number] {
+		for _, e := range dsm.Entries[win.selectedBank] {
 			if e == nil {
 				continue
 			}
@@ -357,7 +363,7 @@ func (win *winDisasm) drawBank(addr uint16, currBank mapper.BankInfo) {
 				case filterBank:
 					entries = append(entries, e)
 				case filterCPUBug:
-					if e.Result.CPUBug != "" {
+					if e.Result.Bug != execution.NoBug {
 						entries = append(entries, e)
 					}
 				case filterPageFault:
@@ -380,7 +386,7 @@ func (win *winDisasm) drawBank(addr uint16, currBank mapper.BankInfo) {
 	}
 }
 
-func (win *winDisasm) drawOptionsBar(currBank mapper.BankInfo) {
+func (win *winDisasm) drawOptionsBar(currBank banking.Information) {
 	// draw options and status line. start height measurement
 	win.optionsHeight = imguiMeasureHeight(func() {
 		imgui.Spacing()
@@ -434,7 +440,7 @@ func (win *winDisasm) drawOptionsBar(currBank mapper.BankInfo) {
 
 // drawEntries is called from both drawBanked() and drawSequential()
 func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, current int,
-	currBank mapper.BankInfo, sequential bool) {
+	currBank banking.Information, sequential bool) {
 
 	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
@@ -445,6 +451,7 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 	defer imgui.EndChild()
 
 	if len(entries) == 0 {
+		imgui.Text("No executed instructions yet")
 		return
 	}
 
@@ -486,7 +493,7 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 		// does this entry/address have a PC break applied to it
 		var hasPCbreak bool
 		if win.img.cache.Dbg.Breakpoints != nil {
-			hasPCbreak, _ = win.img.cache.Dbg.Breakpoints.HasPCBreak(entries[i].Result.Address, currBank.Number)
+			hasPCbreak, _ = win.img.cache.Dbg.Breakpoints.HasPCBreak(entries[i].Result.Address, win.selectedBank)
 		}
 
 		// group entries by scanline
@@ -503,17 +510,18 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 
 		imgui.TableNextRow()
 		if imgui.TableNextColumn() {
+			selected := i == current && currBank.Number == win.selectedBank
 			if hasPCbreak {
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
-				imgui.SelectableV(string(fonts.Breakpoint), i == current, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
+				imgui.SelectableV(string(fonts.Breakpoint), selected, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
 				imgui.PopStyleColor()
 			} else {
-				imgui.SelectableV("", i == current, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
+				imgui.SelectableV("", selected, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
 			}
 
 			// single click on the address entry toggles a PC breakpoint
 			if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
-				win.img.dbg.PushTogglePCBreak(entries[i])
+				win.img.term.pushCommand(fmt.Sprintf("BREAK TOGGLE BANK %d & PC %s", entries[i].Bank, entries[i].Address))
 			}
 
 			// tooltip information about the instruction
@@ -522,7 +530,7 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 					imgui.Spacing()
 					imgui.Text(fmt.Sprintf("%c %s", fonts.Label, lbl))
 				}
-				if imgui.BeginTableV("disasmtooltip", 4, imgui.TableFlagsBorders, imgui.Vec2{}, 0) {
+				if imgui.BeginTableV("disasmtooltip", 4, imgui.TableFlagsBordersInner, imgui.Vec2{}, 0) {
 					imgui.TableSetupColumn("Bytecode")
 					imgui.TableSetupColumn("Address")
 					imgui.TableSetupColumn("Operator")

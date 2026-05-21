@@ -16,7 +16,6 @@
 package dwarf
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -196,7 +195,7 @@ func (varb *SourceVariable) WriteDerivation(derive io.Writer) error {
 	}
 
 	if varb.hasConstantValue {
-		derive.Write([]byte(fmt.Sprintf("constant value %08x", varb.constantValue)))
+		derive.Write(fmt.Appendf(nil, "constant value %08x", varb.constantValue))
 	}
 
 	if varb.loclist == nil {
@@ -228,7 +227,7 @@ func (varb *SourceVariable) resolve(derive io.Writer) loclistResult {
 	if r.hasAddress {
 		v, ok := varb.loclist.coproc.Peek(uint32(r.address))
 		if !ok {
-			varb.Error = errors.New(fmt.Sprintf("error resolving address %08x", r.address))
+			varb.Error = fmt.Errorf("error resolving address %08x", r.address)
 			return loclistResult{}
 		}
 		r.value = v

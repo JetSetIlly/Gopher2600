@@ -45,8 +45,10 @@ type fontAtlas struct {
 	veryLargeFontAwesomeSize float32
 
 	// custom icons for controllers and other peripherals
-	gopher2600Icons     imgui.Font
-	gopher2600IconsSize float32
+	gopher2600Icons          imgui.Font
+	gopher2600IconsSize      float32
+	smallGopher2600Icons     imgui.Font
+	smallGopher2600IconsSize float32
 
 	// annotation of diagrams
 	diagram     imgui.Font
@@ -214,6 +216,25 @@ func (atlas *fontAtlas) loadFonts(display fontDisplay, renderer renderer, prefs 
 
 		if err != nil {
 			return fmt.Errorf("gopher2600 icons font: %w", err)
+		}
+	}
+	if atlas.smallGopher2600Icons == 0 {
+		cfg := imgui.NewFontConfig()
+		defer cfg.Delete()
+		cfg.SetPixelSnapH(true)
+		cfg.SetGlyphOffsetY(1.0)
+
+		atlas.smallGopher2600IconsSize = 30.0
+
+		var err error
+		atlas.smallGopher2600Icons, err = atlas.loadFont(fontSpec{
+			FontSpec: fonts.Gopher2600Icons,
+			size:     atlas.smallGopher2600IconsSize,
+			cfg:      cfg,
+		})
+
+		if err != nil {
+			return fmt.Errorf("small gopher2600 icons font: %w", err)
 		}
 	}
 

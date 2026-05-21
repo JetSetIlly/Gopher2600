@@ -42,8 +42,8 @@ func (dbg *Debugger) printLine(sty terminal.Style, s string, a ...any) {
 	}
 
 	// split string if necessary
-	t := strings.Split(s, "\n")
-	for _, s := range t {
+	t := strings.SplitSeq(s, "\n")
+	for s := range t {
 		dbg.term.TermPrintLine(sty, s)
 	}
 }

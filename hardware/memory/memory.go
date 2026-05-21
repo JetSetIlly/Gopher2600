@@ -223,6 +223,7 @@ func (mem *Memory) Write(address uint16, data uint8) error {
 
 	// update data bus
 	mem.DataBus = data
+	mem.DataBusDriven = 0xff
 
 	// service changes to address bus
 	if addressBus != mem.AddressBus {

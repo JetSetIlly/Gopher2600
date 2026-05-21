@@ -41,7 +41,6 @@ import (
 	"github.com/jetsetilly/gopher2600/performance"
 	"github.com/jetsetilly/gopher2600/recorder"
 	"github.com/jetsetilly/gopher2600/regression"
-	"github.com/jetsetilly/gopher2600/resources"
 	"github.com/jetsetilly/gopher2600/version"
 )
 
@@ -112,7 +111,8 @@ func main() {
 	// stateRequest
 	exitVal := 0
 
-	// ctrlc default handler. can be turned off with reqNoIntSig request
+	// default ctrl-c handler. can be turned off with reqNoIntSig request. the default handler is
+	// suitable for non-interactive emulator modes, like the REGRESS mode
 	intChan := make(chan os.Signal, 1)
 	signal.Notify(intChan, os.Interrupt)
 
@@ -139,6 +139,7 @@ func main() {
 	for !done {
 		select {
 		case <-intChan:
+			// default ctrl-c handle
 			fmt.Println("\r")
 			done = true
 
@@ -234,7 +235,7 @@ func launch(sync *mainSync, args []string) {
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			flgs.Usage()
-			fmt.Println("Execution Modes: RUN, DEBUG, DISASM, PERFORMANCE, REGRESS, VERSION")
+			fmt.Println("Execution Modes: RUN, DEBUG, HEADLESS, DISASM, PERFORMANCE, REGRESS, VERSION")
 			sync.state <- stateRequest{req: reqQuit, args: 0}
 			return
 		}
@@ -258,16 +259,14 @@ func launch(sync *mainSync, args []string) {
 	default:
 		mode = "RUN"
 		err = emulate(mode, sync, args)
-	case "RUN":
-		fallthrough
-	case "PLAY":
-		fallthrough
-	case "DEBUG":
+	case "RUN", "PLAY", "DEBUG":
 		err = emulate(mode, sync, args[1:])
+	case "HEADLESS":
+		err = headless(mode, sync, args[1:])
 	case "DISASM":
 		err = disasm(mode, args[1:])
 	case "PERFORMANCE":
-		err = perform(mode, sync, args[1:])
+		err = perform(mode, args[1:])
 	case "REGRESS":
 		err = regress(mode, args[1:])
 	case "VERSION":
@@ -286,7 +285,34 @@ func launch(sync *mainSync, args []string) {
 	sync.state <- stateRequest{req: reqQuit, args: 0}
 }
 
-const defaultInitScript = "debuggerInit"
+func headless(mode string, sync *mainSync, args []string) error {
+	var opts debugger.CommandLineOptions
+	opts.Default()
+
+	flgs := flag.NewFlagSet(mode, flag.ContinueOnError)
+	err := flgs.Parse(args)
+	if err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			fmt.Fprintf(os.Stderr, "  pipe debugger commands to stdin\n")
+			return nil
+		}
+		return err
+	}
+	args = flgs.Args()
+
+	sync.state <- stateRequest{req: reqNoIntSig}
+
+	dbg, err := debugger.NewDebugger(opts, func(e *debugger.Debugger) (gui.GUI, terminal.Terminal, error) {
+		return &gui.Stub{}, &plainterm.PlainTerminal{}, nil
+	})
+
+	var romFile string
+	if len(args) != 0 {
+		romFile = args[0]
+	}
+
+	return dbg.StartInDebugMode(romFile)
+}
 
 // emulate is the main emulation launch function, shared by play and debug
 // modes. the other modes initialise and run the emulation differently.
@@ -305,6 +331,7 @@ func emulate(mode string, sync *mainSync, args []string) error {
 
 	// opts collates the individual options that can be set by the command line
 	var opts debugger.CommandLineOptions
+	opts.Default()
 
 	// arguments common to both play and debugging modes
 	flgs := flag.NewFlagSet(mode, flag.ExitOnError)
@@ -316,8 +343,9 @@ func emulate(mode string, sync *mainSync, args []string) error {
 	flgs.StringVar(&opts.Mapping, "mapping", "AUTO", "force cartridge mapper selection")
 	flgs.StringVar(&opts.Bank, "bank", "AUTO", "selected cartridge bank on reset")
 	flgs.StringVar(&opts.Left, "left", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD")
-	flgs.StringVar(&opts.Right, "right", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD")
+	flgs.StringVar(&opts.Right, "right", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD, SAVEKEY, ATARIVOX")
 	flgs.BoolVar(&opts.SwapPorts, "swap", false, "swap player ports")
+	flgs.StringVar(&opts.Keyportari, "keyportari", "NONE", "protocol to use for keyportari: NONE, ASCII, 24CHAR")
 	flgs.StringVar(&opts.Profile, "profile", "none", "run performance check with profiling: CPU, MEM, TRACE, ALL (comma sep)")
 	flgs.StringVar(&opts.DWARF, "dwarf", "", "path to DWARF file. only valid for some coproc supporting ROMs")
 
@@ -336,21 +364,15 @@ func emulate(mode string, sync *mainSync, args []string) error {
 		flgs.StringVar(&opts.Macro, "macro", "", "macro file to be run on trigger")
 	}
 
+	var termType string
+
 	// debugger specific arguments
 	if emulationMode == govern.ModeDebugger {
-		// prepare the path to the initialisation script used by the debugger. we
-		// can name the file in the defaultInitScript const declaration but the
-		// construction of the path is platform sensitive so we must do it here
-		defInitScript, err := resources.JoinPath(defaultInitScript)
-		if err != nil {
-			return err
-		}
-
-		flgs.StringVar(&opts.InitScript, "initscript", defInitScript, "script to run on debugger start")
-		flgs.StringVar(&opts.TermType, "term", "IMGUI", "terminal type: IMGUI, COLOR, PLAIN")
+		flgs.StringVar(&opts.Script, "script", "", "script to run on debugger start")
+		flgs.StringVar(&termType, "term", "IMGUI", "terminal type: IMGUI, COLOR, PLAIN")
 	} else {
 		// non debugger emulation is always of type IMGUI
-		opts.TermType = "IMGUI"
+		termType = "IMGUI"
 	}
 
 	// parse args and get copy of remaining arguments
@@ -390,7 +412,7 @@ func emulate(mode string, sync *mainSync, args []string) error {
 		var scr gui.GUI
 
 		// create GUI as appropriate
-		if opts.TermType == "IMGUI" {
+		if termType == "IMGUI" {
 			sync.state <- stateRequest{req: reqCreateGUI,
 				args: guiCreate(func() (guiControl, error) {
 					return sdlimgui.NewSdlImgui(e)
@@ -418,9 +440,9 @@ func emulate(mode string, sync *mainSync, args []string) error {
 		// if the GUI does not supply a terminal then use a color or plain terminal
 		// as a fallback
 		if term == nil {
-			switch strings.ToUpper(opts.TermType) {
+			switch strings.ToUpper(termType) {
 			default:
-				logger.Logf(logger.Allow, "terminal", "unknown terminal: %s", opts.TermType)
+				logger.Logf(logger.Allow, "terminal", "unknown terminal: %s", termType)
 				logger.Log(logger.Allow, "terminal", "defaulting to plain")
 				term = &plainterm.PlainTerminal{}
 			case "PLAIN":
@@ -555,7 +577,7 @@ func disasm(mode string, args []string) error {
 	return nil
 }
 
-func perform(mode string, sync *mainSync, args []string) error {
+func perform(mode string, args []string) error {
 	var mapping string
 	var bank string
 	var spec string

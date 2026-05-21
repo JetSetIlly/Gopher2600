@@ -270,6 +270,7 @@ func (tmr *Timer) Step() {
 //	timint (uint8)
 //	ticksRemainging (int)
 //	divider (timer.Divider)
+//	pa7 (bool)
 func (tmr *Timer) PeekState(fld string) any {
 	switch fld {
 	case "intim":
@@ -280,6 +281,8 @@ func (tmr *Timer) PeekState(fld string) any {
 		return tmr.ticksRemaining
 	case "divider":
 		return tmr.divider
+	case "pa7":
+		return tmr.pa7
 	}
 	panic(fmt.Sprintf("timer peek state: unknown field: %s", fld))
 }
@@ -300,6 +303,8 @@ func (tmr *Timer) PokeField(fld string, v any) {
 		tmr.ticksRemaining = v.(int)
 	case "divider":
 		tmr.divider = v.(Divider)
+	case "pa7":
+		tmr.pa7 = v.(bool)
 	default:
 		panic(fmt.Sprintf("timer poke state: unknown field: %s", fld))
 	}

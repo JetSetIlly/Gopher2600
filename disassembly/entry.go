@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
@@ -59,7 +59,7 @@ type Entry struct {
 	dsm *Disassembly
 
 	// the bank this entry belongs to. note that this is just the bank number;
-	// we're not storing a copy of mapper.BankInfo. that's not needed for
+	// we're not storing a copy of banking.BankInfo. that's not needed for
 	// disassembly purposes
 	Bank int
 
@@ -117,7 +117,7 @@ func (e *Entry) Cycles() string {
 	}
 
 	if e.Level < EntryLevelExecuted {
-		return e.Result.Defn.Cycles.Formatted
+		return fmt.Sprintf("%d", e.Result.Defn.Cycles)
 	}
 
 	if e.Result.Final {
@@ -126,7 +126,7 @@ func (e *Entry) Cycles() string {
 
 	// if entry hasn't been executed yet or if actual cycles is different to
 	// the cycles defined for the entry then return an annotated string
-	return fmt.Sprintf("%d of %s", e.Result.Cycles, e.Result.Defn.Cycles.Formatted)
+	return fmt.Sprintf("%d of %d", e.Result.Cycles, e.Result.Defn.Cycles)
 }
 
 // Notes returns a string returning notes about the most recent execution. The
@@ -158,8 +158,8 @@ func (e *Entry) Notes() string {
 		}
 	}
 
-	if e.Result.CPUBug != "" {
-		s.WriteString(e.Result.CPUBug)
+	if e.Result.Bug != execution.NoBug {
+		s.WriteString(string(e.Result.Bug))
 	}
 
 	return s.String()
@@ -176,20 +176,15 @@ func addrModeDecoration(operand string, mode instructions.AddressingMode) string
 		s = fmt.Sprintf("#%s", operand)
 	case instructions.Relative:
 	case instructions.Absolute:
-	case instructions.ZeroPage:
 	case instructions.Indirect:
 		s = fmt.Sprintf("(%s)", operand)
-	case instructions.IndexedIndirect:
+	case instructions.PreIndexed:
 		s = fmt.Sprintf("(%s,X)", operand)
-	case instructions.IndirectIndexed:
+	case instructions.PostIndexed:
 		s = fmt.Sprintf("(%s),Y", operand)
-	case instructions.AbsoluteIndexedX:
+	case instructions.AbsoluteX:
 		s = fmt.Sprintf("%s,X", operand)
-	case instructions.AbsoluteIndexedY:
-		s = fmt.Sprintf("%s,Y", operand)
-	case instructions.ZeroPageIndexedX:
-		s = fmt.Sprintf("%s,X", operand)
-	case instructions.ZeroPageIndexedY:
+	case instructions.AbsoluteY:
 		s = fmt.Sprintf("%s,Y", operand)
 	}
 
@@ -223,7 +218,7 @@ func absoluteBranchDestination(addr uint16, operand uint16) uint16 {
 type Label struct {
 	dsm    *Disassembly
 	result execution.Result
-	bank   mapper.BankInfo
+	bank   banking.Information
 }
 
 // Resolve returns the address label as a symbol (if a symbol is available)
@@ -245,7 +240,7 @@ func (l Label) Resolve() string {
 type Operand struct {
 	dsm    *Disassembly
 	result execution.Result
-	bank   mapper.BankInfo
+	bank   banking.Information
 
 	// partial is the operand that will be used as the result from Resolve()
 	// when the execution result is not complete (ie. when not enough bytes have
@@ -302,7 +297,7 @@ func (op Operand) Resolve() string {
 		case instructions.Write:
 			fallthrough
 
-		case instructions.RMW:
+		case instructions.Modify:
 			if e, ok := op.dsm.Sym.GetWriteSymbol(data); ok {
 				res = addrModeDecoration(e.Symbol, op.result.Defn.AddressingMode)
 			}

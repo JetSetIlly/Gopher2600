@@ -23,6 +23,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/notifications"
 )
@@ -138,7 +139,7 @@ func NewPlusROM(env *environment.Environment, child mapper.CartMapper, romfile i
 	// log success
 	logger.Logf(env, "plusrom", "will connect to %s", cart.net.ai.String())
 
-	if cart.env.Prefs.PlusROM.NewInstallation {
+	if cart.env.Prefs.Cartridge.PlusROM.NewInstallation {
 		err := cart.env.Notifications.Notify(notifications.NotifyPlusROMNewInstall)
 		if err != nil {
 			return nil, fmt.Errorf("plusrom %w:", err)
@@ -230,7 +231,7 @@ func (cart *PlusROM) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *PlusROM) GetBank(addr uint16) mapper.BankInfo {
+func (cart *PlusROM) GetBank(addr uint16) banking.Information {
 	return cart.state.child.GetBank(addr)
 }
 
@@ -254,7 +255,7 @@ func (cart *PlusROM) Step(clock float32) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *PlusROM) CopyBanks() []mapper.BankContent {
+func (cart *PlusROM) CopyBanks() []banking.Content {
 	return cart.state.child.CopyBanks()
 }
 

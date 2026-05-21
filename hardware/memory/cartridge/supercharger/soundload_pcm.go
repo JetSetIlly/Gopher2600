@@ -55,7 +55,7 @@ func getPCM(env *environment.Environment, cl cartridgeloader.Loader) (pcmData, e
 			return p, fmt.Errorf("wav: not a valid wav file")
 		}
 
-		logger.Log(env, soundloadLogTag, "loading from wav file")
+		logger.Log(env, "supercharger: soundload", "loading from wav file")
 
 		// load all data at once
 		buf, err := dec.FullPCMBuffer()
@@ -86,7 +86,7 @@ func getPCM(env *environment.Environment, cl cartridgeloader.Loader) (pcmData, e
 			return p, fmt.Errorf("mp3: %w", err)
 		}
 
-		logger.Log(env, soundloadLogTag, "loading from mp3 file")
+		logger.Log(env, "supercharger: soundload", "loading from mp3 file")
 
 		err = nil
 		chunk := make([]byte, 4096)
@@ -100,18 +100,10 @@ func getPCM(env *environment.Environment, cl cartridgeloader.Loader) (pcmData, e
 			// index increment of 4 because:
 			//  - two bytes per sample per channel
 			//  - we only want the left channel
-			//  - if we only wanted the right channel we could start with an
-			//		index of 2
-			for i := 2; i < chunkLen; i += 4 {
-				// little endian 16 bit sample
-				f := int(chunk[i]) | (int((chunk[i+1])) << 8)
-
-				// adjust value if it is not zero (same as interpreting
-				// as two's complement)
-				if f != 0 {
-					f -= 32768
-				}
-
+			//  - if we only wanted the right channel we could start with an index of 2
+			for i := 0; i < chunkLen; i += 4 {
+				// little endian 16 bit samples (signed)
+				f := int16(chunk[i]) | (int16((chunk[i+1])) << 8)
 				p.data = append(p.data, float32(f))
 			}
 		}
@@ -127,8 +119,8 @@ func getPCM(env *environment.Environment, cl cartridgeloader.Loader) (pcmData, e
 		p.totalTime = float64(len(p.data)) / p.sampleRate
 	}
 
-	logger.Logf(env, soundloadLogTag, "sample rate: %0.2fHz", p.sampleRate)
-	logger.Logf(env, soundloadLogTag, "total time: %.02fs", p.totalTime)
+	logger.Logf(env, "supercharger: soundload", "sample rate: %0.2fHz", p.sampleRate)
+	logger.Logf(env, "supercharger: soundload", "total time: %.02fs", p.totalTime)
 
 	return p, nil
 }

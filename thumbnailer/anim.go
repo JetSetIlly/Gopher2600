@@ -113,9 +113,9 @@ func NewAnim(prefs *preferences.Preferences, spec string) (*Anim, error) {
 func (thmb *Anim) String() string {
 	cart := thmb.vcs.Mem.Cart
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s (%s cartridge)", cart.ShortName, cart.ID()))
+	fmt.Fprintf(&s, "%s (%s cartridge)", cart.ShortName, cart.ID())
 	if cc := cart.GetContainer(); cc != nil {
-		s.WriteString(fmt.Sprintf(" [in %s]", cc.ContainerID()))
+		fmt.Fprintf(&s, " [in %s]", cc.ContainerID())
 	}
 	return s.String()
 }
@@ -170,7 +170,7 @@ func (thmb *Anim) PushNotify(notice notifications.Notice, data ...string) error 
 // Notify implements the notifications.Notify interface
 func (thmb *Anim) Notify(notice notifications.Notice, data ...string) error {
 	switch notice {
-	case notifications.NotifySuperchargerFastload:
+	case notifications.NotifySuperchargerFastLoad:
 		// the supercharger ROM will eventually start execution from the PC
 		// address given in the supercharger file
 
@@ -179,13 +179,26 @@ func (thmb *Anim) Notify(notice notifications.Notice, data ...string) error {
 		// setting the Final flag to true.
 		thmb.vcs.CPU.LastResult.Final = true
 
-		// call function to complete tape loading procedure
-		fastload := thmb.vcs.Mem.Cart.GetSuperchargerFastLoad()
-		err := fastload.Fastload(thmb.vcs.CPU, thmb.vcs.Mem.RAM, thmb.vcs.RIOT.Timer)
+		// bootstrap procedure
+		bs := thmb.vcs.Mem.Cart.GetSuperchargerBootstrap()
+		if bs == nil {
+			return fmt.Errorf("NotifySuperchargerFastload sent from a non-Supercharger cartridge")
+		}
+		err := bs.Bootstrap(thmb.vcs.CPU, thmb.vcs.Mem.RAM, thmb.vcs.RIOT.Timer, thmb.vcs.TIA)
 		if err != nil {
 			return err
 		}
-	case notifications.NotifySuperchargerSoundloadEnded:
+	case notifications.NotifySuperchargerSoundLoadStarted:
+		// bootstrap procedure
+		bs := thmb.vcs.Mem.Cart.GetSuperchargerBootstrap()
+		if bs == nil {
+			return fmt.Errorf("NotifySuperchargerSoundloadStarted sent from a non-Supercharger cartridge")
+		}
+		err := bs.Bootstrap(thmb.vcs.CPU, thmb.vcs.Mem.RAM, thmb.vcs.RIOT.Timer, thmb.vcs.TIA)
+		if err != nil {
+			return err
+		}
+	case notifications.NotifySuperchargerSoundLoadEnded:
 		return thmb.vcs.TV.Reset(true)
 	}
 	return nil

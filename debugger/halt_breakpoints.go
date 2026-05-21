@@ -21,12 +21,12 @@ package debugger
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
-	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -44,20 +44,21 @@ type breakpoints struct {
 	checkBankBreak *target
 }
 
-// breaker defines a specific break condition.
+// breaker defines a specific break condition. breakers can be joined with an AND to create more
+// complex breakpoints
 type breaker struct {
 	target *target
 
 	// the requested value to break on
 	value targetValue
 
-	// skipNext indicates that a break success should be skipped or ignored
+	// skip indicates that a break success should be skipped or ignored
 	// because the target value isn't new. in other words, we only break when
 	// the target has changed *to* the value not when it already *is* the value
 	//
 	// without this we risk the user becoming trapped in a perpetual break
 	// condition, which probably isn't what the user wants or expects
-	skipNext bool
+	skip bool
 
 	// single linked list ANDs breakers together
 	next *breaker
@@ -65,10 +66,10 @@ type breaker struct {
 
 func (bk breaker) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s->%s", bk.target.label, bk.target.stringValue(bk.value)))
+	fmt.Fprintf(&s, "%s->%s", bk.target.label, bk.target.stringValue(bk.value))
 	n := bk.next
 	for n != nil {
-		s.WriteString(fmt.Sprintf(" & %s->%s", n.target.label, n.target.stringValue(n.value)))
+		fmt.Fprintf(&s, " & %s->%s", n.target.label, n.target.stringValue(n.value))
 		n = n.next
 	}
 	return s.String()
@@ -125,31 +126,38 @@ type checkResult int
 const (
 	checkMatch checkResult = iota
 	checkNoMatch
-	checkIgnoredValue
+	checkSkipped
 )
 
 // check checks the specific break condition with the current value of
 // the break target.
 func (bk *breaker) check() checkResult {
 	if bk.target.value() != bk.value {
-		bk.skipNext = false
+		bk.skip = false
 		return checkNoMatch
 	}
 
-	// target value matches break value but it hasn't changed since the
-	// previous check. we don't want to break if this is true
-	if bk.skipNext {
-		return checkIgnoredValue
-	}
+	// skipping a breakpoint needs to consider the AND conditions represented by the next pointer.
+	// we begin with the skip flag for this node
+	skipped := bk.skip
 
 	if bk.next != nil {
-		if bk.next.check() == checkNoMatch {
+		m := bk.next.check()
+		if m == checkNoMatch {
 			return checkNoMatch
 		}
+
+		// whether we skip the breakpoint partly depends on the result of the AND conditions
+		skipped = skipped && m == checkSkipped
 	}
 
 	// this is a match. we should skip the next match.
-	bk.skipNext = true
+	bk.skip = true
+
+	// if all AND conditions in the breakpoint say skipped then we return checkSkipped
+	if skipped {
+		return checkSkipped
+	}
 
 	return checkMatch
 }
@@ -223,7 +231,7 @@ func (bp *breakpoints) check() string {
 		}
 
 		if bp.breaks[i].check() == checkMatch {
-			checkString.WriteString(fmt.Sprintf("break on %s\n", bp.breaks[i]))
+			fmt.Fprintf(&checkString, "break on %s\n", bp.breaks[i])
 		}
 	}
 	return checkString.String()
@@ -260,7 +268,25 @@ func (bp breakpoints) list() {
 //
 // !!TODO: simplify breakpoints parser to match help description.
 func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
-	andBreaks := false
+	var andBreaks bool
+
+	const (
+		modeAdd = iota
+		modeToggle
+		modeDrop
+	)
+	var mode int
+
+	if peek, ok := tokens.Peek(); ok {
+		switch peek {
+		case "TOGGLE":
+			mode = modeToggle
+			tokens.Get()
+		case "DROP":
+			mode = modeDrop
+			tokens.Get()
+		}
+	}
 
 	// default target of CPU PC. meaning that "BREAK n" will cause a breakpoint
 	// being set on the PC. breaking on PC is probably the most common type of
@@ -277,8 +303,8 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 	resolvedTarget := true
 
 	// we don't add new breakpoints to the main list straight away. we append
-	// them to newBreaks first and then check that we aren't adding duplicates
-	newBreaks := make([]breaker, 0, 10)
+	// them to parsedBreaks first and then check that we aren't adding duplicates
+	parsedBreaks := make([]breaker, 0, 10)
 
 	// whether to add a bank condition to a singular PC BREAK target
 	addBankCondition := true
@@ -346,10 +372,10 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 			}
 
 			if andBreaks {
-				newBreaks[len(newBreaks)-1].add(&breaker{target: tgt, value: val})
+				parsedBreaks[len(parsedBreaks)-1].add(&breaker{target: tgt, value: val})
 				resolvedTarget = true
 			} else {
-				newBreaks = append(newBreaks, breaker{target: tgt, value: val})
+				parsedBreaks = append(parsedBreaks, breaker{target: tgt, value: val})
 				resolvedTarget = true
 			}
 		} else {
@@ -359,11 +385,12 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 			}
 
 			// possibly switch composition mode
-			if tok == "&" || tok == "&&" {
+			switch tok {
+			case "&", "&&":
 				andBreaks = true
-			} else if tok == "|" || tok == "||" {
+			case "|", "||":
 				andBreaks = false
-			} else {
+			default:
 				// if PC target has not been explicitly specified then add
 				// bank condition
 				addBankCondition = addBankCondition && strings.ToUpper(tok) != "PC"
@@ -387,9 +414,9 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 		switch tgt.value().(type) {
 		case bool:
 			if andBreaks {
-				newBreaks[len(newBreaks)-1].add(&breaker{target: tgt, value: true})
+				parsedBreaks[len(parsedBreaks)-1].add(&breaker{target: tgt, value: true})
 			} else {
-				newBreaks = append(newBreaks, breaker{target: tgt, value: true})
+				parsedBreaks = append(parsedBreaks, breaker{target: tgt, value: true})
 			}
 		default:
 			return fmt.Errorf("need a value (%T) to break on (%s)", tgt.value(), tgt.label)
@@ -397,7 +424,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 
 	}
 
-	for _, nb := range newBreaks {
+	for _, nb := range parsedBreaks {
 		// if the break is a singular, undecorated PC target then add a BANK
 		// condition for the current BANK. this is arguably what the user
 		// intends to happen.
@@ -407,14 +434,27 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 					target: bankTarget(bp.dbg),
 					value:  bp.dbg.vcs.Mem.Cart.GetBank(bp.dbg.vcs.CPU.PC.Address()).Number,
 				}
-				nb.next.skipNext = true
+				nb.next.skip = true
 			}
 		}
 
-		if i := bp.checkBreaker(nb); i != noBreakEqualivalent {
-			return fmt.Errorf("already exists (%s)", bp.breaks[i])
+		if mode == modeDrop {
+			if i := bp.checkBreaker(nb); i != noBreakEqualivalent {
+				bp.breaks = slices.Delete(bp.breaks, i, i+1)
+			} else {
+				return fmt.Errorf("no such breakpoint (%s)", nb)
+			}
+		} else {
+			if i := bp.checkBreaker(nb); i != noBreakEqualivalent {
+				if mode == modeToggle {
+					bp.breaks = slices.Delete(bp.breaks, i, i+1)
+				} else {
+					return fmt.Errorf("already exists (%s)", nb)
+				}
+			} else {
+				bp.breaks = append(bp.breaks, nb)
+			}
 		}
-		bp.breaks = append(bp.breaks, nb)
 	}
 
 	return nil
@@ -476,35 +516,6 @@ func (bp breakpoints) HasPCBreak(addr uint16, bank int) (bool, int) {
 
 	// there is no breakpoint at that matches this disassembly entry
 	return false, noBreakEqualivalent
-}
-
-func (bp *breakpoints) togglePCBreak(e *disassembly.Entry) {
-	has, i := bp.HasPCBreak(e.Result.Address, e.Bank)
-
-	if i != noBreakEqualivalent && has {
-		_ = bp.drop(i) // ignoring errors
-		return
-	}
-
-	// no equivalent breakpoint existed so add one
-	ai := bp.dbg.dbgmem.GetAddressInfo(e.Result.Address, true)
-	nb := breaker{
-		target: bp.checkPcBreak,
-
-		// see above for casting commentary
-		value: int(ai.MappedAddress),
-	}
-
-	if bp.dbg.vcs.Mem.Cart.NumBanks() > 1 {
-		nb.next = &breaker{
-			target: bp.checkBankBreak,
-
-			// see above for casting commentary
-			value: e.Bank,
-		}
-	}
-
-	bp.breaks = append(bp.breaks, nb)
 }
 
 // CheckBreakpoints is a minimal interface to Breakpoints

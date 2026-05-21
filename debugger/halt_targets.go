@@ -205,6 +205,15 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				},
 			}
 
+		case "MAPPED":
+			trg = &target{
+				label: "Mapped",
+				value: func() targetValue {
+					return dbg.vcs.Mem.Cart.MappedBanks()
+				},
+				instructionBoundary: true,
+			}
+
 		case "BANK":
 			trg = bankTarget(dbg)
 
@@ -269,7 +278,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 					trg = &target{
 						label: "CPU Bug",
 						value: func() targetValue {
-							s := dbg.vcs.CPU.LastResult.CPUBug
+							s := string(dbg.vcs.CPU.LastResult.Bug)
 							if s == "" {
 								return "ok"
 							}

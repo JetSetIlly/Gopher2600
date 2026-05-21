@@ -73,7 +73,7 @@ func TestArchivefsPath(t *testing.T) {
 	test.ExpectSuccess(t, !afs.IsDir())
 	test.ExpectSuccess(t, !afs.InArchive())
 
-	// calling List() when path is set to a file type (ie not a direcotry) the
+	// calling List() when path is set to a file type (ie not a directory) the
 	// list returned should be of the containing directory
 	entries, err = afs.List()
 	test.ExpectSuccess(t, err)

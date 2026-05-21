@@ -14,7 +14,6 @@
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
 //go:build windows
-// +build windows
 
 // Package colorterm is not available under windows.
 package colorterm
@@ -44,9 +43,9 @@ func (ct *ColorTerminal) CleanUp() {
 func (ct *ColorTerminal) RegisterTabCompletion(tc *commandline.TabCompletion) {
 }
 
-// IsInteractive satisfies the terminal.Input interface.
+// IsInteractive implements the terminal.Input interface.
 func (ct *ColorTerminal) IsInteractive() bool {
-	return false
+	return true
 }
 
 // IsRealTerminal implements the terminal.Input interface.
@@ -58,13 +57,9 @@ func (ct *ColorTerminal) IsRealTerminal() bool {
 func (ct *ColorTerminal) Silence(silenced bool) {
 }
 
-// note that the followinf Term*() functions are not implemented for the
-// unix version of ColorTerminal. this is because they are implemented by the
-// embedded EasyTerm type.
-
 // TermRead implements the terminal.Input interface.
-func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
-	return 0, nil
+func (ct *ColorTerminal) TermRead(prompt terminal.Prompt, events *terminal.ReadEvents) (string, error) {
+	return "", nil
 }
 
 // TermReadCheck implements the terminal.Input interface.

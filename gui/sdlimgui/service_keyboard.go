@@ -22,6 +22,8 @@ import (
 	"unicode"
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/userinput"
@@ -46,64 +48,81 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 	alt := ev.Keysym.Mod&sdl.KMOD_LALT == sdl.KMOD_LALT || ev.Keysym.Mod&sdl.KMOD_RALT == sdl.KMOD_RALT
 	shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
 
-	// enable window searching based on keyboard modifiers
+	// enable window searching based on keyboard modifiers. this means that ctrl and shift cannot be
+	// used as a key combo for anything else
 	img.wm.searchActive = ctrl && shift
 
-	if ev.Type == sdl.KEYUP {
-		// special handling if window searching is enabled
-		if img.wm.searchActive {
-			switch ev.Keysym.Scancode {
-			case sdl.SCANCODE_BACKSPACE:
-				if len(img.wm.searchString) > 0 {
-					img.wm.searchString = img.wm.searchString[:len(img.wm.searchString)-1]
-				}
-			case sdl.SCANCODE_SPACE:
-				// dont allow leading space
-				if len(img.wm.searchString) > 0 {
-					img.wm.searchString = fmt.Sprintf("%s ", img.wm.searchString)
-				}
-			default:
-				key := sdl.GetKeyFromScancode(ev.Keysym.Scancode)
-				if unicode.IsPrint(rune(key)) {
-					name := sdl.GetScancodeName(ev.Keysym.Scancode)
-					img.wm.searchString = fmt.Sprintf("%s%s", img.wm.searchString, strings.ToLower(name))
-				}
+	// special handling if window searching is enabled. only printable characters, space and
+	// backspace are recongnised by search active
+	if img.wm.searchActive && ev.Type == sdl.KEYUP {
+		switch ev.Keysym.Scancode {
+		case sdl.SCANCODE_BACKSPACE:
+			if len(img.wm.searchString) > 0 {
+				img.wm.searchString = img.wm.searchString[:len(img.wm.searchString)-1]
 			}
-			return
+		case sdl.SCANCODE_SPACE:
+			// dont allow leading space
+			if len(img.wm.searchString) > 0 {
+				img.wm.searchString = fmt.Sprintf("%s ", img.wm.searchString)
+			}
+		default:
+			key := sdl.GetKeyFromScancode(ev.Keysym.Scancode)
+			if unicode.IsPrint(rune(key)) {
+				name := sdl.GetScancodeName(ev.Keysym.Scancode)
+				img.wm.searchString = fmt.Sprintf("%s%s", img.wm.searchString, strings.ToLower(name))
+			}
 		}
+		return
+	}
 
-		handled := true
+	// if a key press has been handled we return early and cut out later parts of the input handling
+	var handled bool
+
+	if ev.Type == sdl.KEYUP {
+		// text input suppression always ends on key up
+		img.suppressTextInput = false
 
 		if img.isPlaymode() {
 			switch ev.Keysym.Scancode {
 			case sdl.SCANCODE_ESCAPE:
-				if img.isCaptured() {
-					img.setCapture(false)
-				} else if img.wm.playmodeWindows[winSelectROMID].playmodeIsOpen() {
-					img.wm.playmodeWindows[winSelectROMID].playmodeSetOpen(false)
+				lshim, lok := img.cache.VCS.RIOT.Ports.LeftPlayer.(ports.PeripheralShim)
+				rshim, rok := img.cache.VCS.RIOT.Ports.RightPlayer.(ports.PeripheralShim)
+				lok = lok && lshim.ShimID() == plugging.PeriphKeyportari
+				rok = rok && rshim.ShimID() == plugging.PeriphKeyportari
+
+				if !shift && (lok || rok) {
+					// swallow escape key event
 				} else {
-					img.quit()
+					if img.isCaptured() {
+						img.setCapture(false)
+					} else if img.wm.playmodeWindows[winSelectROMID].playmodeIsOpen() {
+						img.wm.playmodeWindows[winSelectROMID].playmodeSetOpen(false)
+					} else {
+						img.quit()
+					}
+					handled = true
 				}
 
 			case sdl.SCANCODE_LEFT:
 				if alt {
 					img.screen.SetRotation(specification.LeftRotation)
+					handled = true
 				}
 			case sdl.SCANCODE_RIGHT:
 				if alt {
 					img.screen.SetRotation(specification.RightRotation)
+					handled = true
 				}
 			case sdl.SCANCODE_UP:
 				if alt {
 					img.screen.SetRotation(specification.NormalRotation)
+					handled = true
 				}
 			case sdl.SCANCODE_DOWN:
 				if alt {
 					img.screen.SetRotation(specification.FlippedRotation)
+					handled = true
 				}
-
-			default:
-				handled = false
 			}
 		}
 
@@ -111,13 +130,11 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			switch ev.Keysym.Scancode {
 			case sdl.SCANCODE_TAB:
 				if !img.isPlaymode() && imgui.IsAnyItemActive() {
-					// in debugger mode do not handle if an imgui widget is active
-					// (see the sdl.KEYDOWN branch below for opposite condition and
-					// explanation)
-					handled = false
+					// in debugger mode do not handle if an imgui widget is active (see the
+					// sdl.KEYDOWN branch below for opposite condition and explanation)
 				} else {
 					if ctrl {
-						img.dbg.ReloadCartridge()
+						img.dbg.PushReload(nil)
 					} else {
 						// only open ROM selector if window has been focused for a
 						// while. see windowFocusedTime declaration for an explanation
@@ -125,6 +142,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 							img.wm.toggleOpen(winSelectROMID)
 						}
 					}
+					handled = true
 				}
 
 			case sdl.SCANCODE_GRAVE:
@@ -133,25 +151,117 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				} else {
 					img.dbg.PushSetMode(govern.ModePlay)
 				}
+				handled = true
 
+			case sdl.SCANCODE_A:
+				if ctrl {
+					img.wm.arrangeBySize = 1
+					handled = true
+				}
+
+			case sdl.SCANCODE_R:
+				if ctrl {
+					img.dbg.PushReload(nil)
+					handled = true
+				}
+
+			case sdl.SCANCODE_M:
+				if ctrl {
+					if alt {
+						img.dbg.PushMemoryProfile()
+					} else {
+						img.toggleAudioMute()
+					}
+					handled = true
+				}
+			}
+		}
+	} // end of sdl.KEYUP
+
+	if ev.Type == sdl.KEYDOWN {
+		if !img.modalActive() {
+			switch ev.Keysym.Scancode {
+			case sdl.SCANCODE_TAB:
+				if !imgui.IsAnyItemActive() {
+					return
+				}
+			case sdl.SCANCODE_ESCAPE:
+				// for debugger mode we test for the ESC key press on the down event
+				// and not the up event. this is because imgui widgets react to the ESC
+				// key on the down event and we only want to perform our special ESC
+				// key handling if no widget is active
+				//
+				// if we perform out special handling on the up stroke then the active
+				// widget will be unselected and then the special handling perfomed on
+				// every ESC KEY press. we don't want that. we want the active widget
+				// to be deselected and for the special handling to require a
+				// completely separate key press
+				if !img.isPlaymode() && !imgui.IsAnyItemActive() {
+					img.setCapturedRunning(!img.isCapturedRunning())
+				}
+			case sdl.SCANCODE_GRAVE:
+				// this is the key we use to switch between playmode & debugger. we don't want the
+				// grave key to ever appear in text input widgets
+				img.suppressTextInput = true
+			default:
+				handled = false
+			}
+		}
+	} // end of sdl.KEYUP
+
+	// early return if keypress has been handled
+	if handled {
+		return
+	}
+
+	// forward keypresses to userinput.Event channel
+	if img.isCaptured() || (img.isPlaymode() && !imgui.IsAnyItemActive()) {
+		key := sdl.GetScancodeName(ev.Keysym.Scancode)
+
+		select {
+		case img.dbg.UserInput() <- userinput.EventKeyboard{
+			Key:  key,
+			Down: ev.Type == sdl.KEYDOWN,
+			Mod:  getKeyMod(),
+		}:
+		default:
+			logger.Log(logger.Allow, "sdlimgui", "dropped keyboard event")
+		}
+	}
+
+	// return if userinput.Event keyboard has already been handled by the userinput.Event system
+	// because some keyboard (keyportari) protocols use them
+	if handled {
+		return
+	}
+
+	// second look at the keyboard
+	if !handled && ev.Type == sdl.KEYUP {
+		if !img.modalActive() {
+			switch ev.Keysym.Scancode {
 			case sdl.SCANCODE_F7:
 				if img.isPlaymode() {
 					fps := img.prefs.fpsDetail.Get().(bool)
 					img.prefs.fpsDetail.Set(!fps)
+					handled = true
 				}
 
 			case sdl.SCANCODE_F8:
 				w := img.wm.playmodeWindows[winBotID]
 				w.playmodeSetOpen(!w.playmodeIsOpen())
+				handled = true
 
 			case sdl.SCANCODE_F9:
 				img.wm.toggleOpen(winTrackerID)
+				handled = true
 
 			case sdl.SCANCODE_F10:
 				img.wm.toggleOpen(winPrefsID)
+				handled = true
 
 			case sdl.SCANCODE_F11:
 				img.prefs.fullScreen.Set(!img.prefs.fullScreen.Get().(bool))
+				handled = true
 
 			case sdl.SCANCODE_F12:
 				if alt && !ctrl && !shift {
@@ -163,11 +273,13 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				} else {
 					img.screenshot(modeSingle, "")
 				}
+				handled = true
 
 			case sdl.SCANCODE_F14:
 				fallthrough
 			case sdl.SCANCODE_SCROLLLOCK:
 				img.setCapture(!img.isCaptured())
+				handled = true
 
 			case sdl.SCANCODE_F15:
 				fallthrough
@@ -185,90 +297,14 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 						img.setCapturedRunning(false)
 					}
 				}
-
-			case sdl.SCANCODE_A:
-				if ctrl {
-					img.wm.arrangeBySize = 1
-				} else {
-					handled = false
-				}
-
-			case sdl.SCANCODE_R:
-				if ctrl {
-					img.dbg.ReloadCartridge()
-				} else {
-					handled = false
-				}
-
-			case sdl.SCANCODE_M:
-				if ctrl {
-					if alt {
-						img.dbg.PushMemoryProfile()
-					} else {
-						img.toggleAudioMute()
-					}
-				} else {
-					handled = false
-				}
-
-			default:
-				handled = false
-			}
-
-			if handled {
-				return
+				handled = true
 			}
 		}
-	} else if ev.Type == sdl.KEYDOWN {
-		// for debugger mode we test for the ESC key press on the down event
-		// and not the up event. this is because imgui widgets react to the ESC
-		// key on the down event and we only want to perform our special ESC
-		// key handling if no widget is active
-		//
-		// if we perform out special handling on the up stroke then the active
-		// widget will be unselected and then the special handling perfomed on
-		// every ESC KEY press. we don't want that. we want the active widget
-		// to be deselected and for the special handling to require a
-		// completely separate key press
+	} // end of sdl.KEYUP (second look)
 
-		if !img.isPlaymode() && !img.modalActive() {
-			switch ev.Keysym.Scancode {
-			case sdl.SCANCODE_TAB:
-				// in debugger mode do not handle if an imgui widget is not
-				// active (see the sdl.KEYUP branch above for opposite
-				// condition)
-				//
-				// this prevents a KEYDOWN being forwarded to imgui and without
-				// the corresponding KEYUP if the TAB key was consumed becaue
-				// IsAnyItemActive() was true at time of KEYUP. without this
-				// check imgui thinks the TAB key is being held down
-				if !imgui.IsAnyItemActive() {
-					return
-				}
-			case sdl.SCANCODE_ESCAPE:
-				if !imgui.IsAnyItemActive() {
-					img.setCapturedRunning(!img.isCapturedRunning())
-				}
-			}
-		}
-	}
-
-	// forward keypresses to userinput.Event channel
-	if img.isCaptured() || (img.isPlaymode() && !imgui.IsAnyItemActive()) {
-		switch ev.Type {
-		case sdl.KEYDOWN:
-			fallthrough
-		case sdl.KEYUP:
-			select {
-			case img.dbg.UserInput() <- userinput.EventKeyboard{
-				Key:  sdl.GetScancodeName(ev.Keysym.Scancode),
-				Down: ev.Type == sdl.KEYDOWN,
-				Mod:  getKeyMod(),
-			}:
-			default:
-				logger.Log(logger.Allow, "sdlimgui", "dropped keyboard event")
-			}
-		}
+	// skip imgui io system if handled
+	if handled {
+		return
 	}
 
 	// remaining keypresses forwarded to imgui io system

@@ -37,7 +37,7 @@ import (
 // Comparison type runs a parallel emulation with the intention of comparing
 // the output with the driver emulation.
 type Comparison struct {
-	VCS *hardware.VCS
+	vcs *hardware.VCS
 
 	frameInfo frameinfo.Current
 
@@ -85,7 +85,7 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 	tv.SetFPSLimit(false)
 
 	// create a new VCS emulation
-	cmp.VCS, err = hardware.NewVCS(comparisonLabel, tv, cmp, driverVCS.Env.Prefs)
+	cmp.vcs, err = hardware.NewVCS(comparisonLabel, tv, cmp, driverVCS.Env.Prefs)
 	if err != nil {
 		return nil, fmt.Errorf("comparison: %w", err)
 	}
@@ -104,7 +104,7 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 
 	// synchronise RIOT ports
 	sync := make(chan ports.TimedInputEvent, 32)
-	err = cmp.VCS.Input.AttachPassenger(sync)
+	err = cmp.vcs.Input.AttachPassenger(sync)
 	if err != nil {
 		return nil, fmt.Errorf("comparison: %w", err)
 	}
@@ -117,11 +117,11 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 }
 
 func (cmp *Comparison) String() string {
-	cart := cmp.VCS.Mem.Cart
+	cart := cmp.vcs.Mem.Cart
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s (%s cartridge)", cart.ShortName, cart.ID()))
+	fmt.Fprintf(&s, "%s (%s cartridge)", cart.ShortName, cart.ID())
 	if cc := cart.GetContainer(); cc != nil {
-		s.WriteString(fmt.Sprintf(" [in %s]", cc.ContainerID()))
+		fmt.Fprintf(&s, " [in %s]", cc.ContainerID())
 	}
 	return s.String()
 }
@@ -152,23 +152,36 @@ func (cmp *Comparison) PushNotify(notice notifications.Notice, data ...string) e
 // Notify implements the notifications.Notify interface
 func (cmp *Comparison) Notify(notice notifications.Notice, data ...string) error {
 	switch notice {
-	case notifications.NotifySuperchargerFastload:
+	case notifications.NotifySuperchargerFastLoad:
 		// the supercharger ROM will eventually start execution from the PC
 		// address given in the supercharger file
 
 		// the interrupted CPU means it never got a chance to
 		// finalise the result. we force that here by simply
 		// setting the Final flag to true.
-		cmp.VCS.CPU.LastResult.Final = true
+		cmp.vcs.CPU.LastResult.Final = true
 
-		// call function to complete tape loading procedure
-		fastload := cmp.VCS.Mem.Cart.GetSuperchargerFastLoad()
-		err := fastload.Fastload(cmp.VCS.CPU, cmp.VCS.Mem.RAM, cmp.VCS.RIOT.Timer)
+		// bootstrap procedure
+		bs := cmp.vcs.Mem.Cart.GetSuperchargerBootstrap()
+		if bs == nil {
+			return fmt.Errorf("NotifySuperchargerFastload sent from a non-Supercharger cartridge")
+		}
+		err := bs.Bootstrap(cmp.vcs.CPU, cmp.vcs.Mem.RAM, cmp.vcs.RIOT.Timer, cmp.vcs.TIA)
 		if err != nil {
 			return err
 		}
-	case notifications.NotifySuperchargerSoundloadEnded:
-		return cmp.VCS.TV.Reset(true)
+	case notifications.NotifySuperchargerSoundLoadStarted:
+		// bootstrap procedure
+		bs := cmp.vcs.Mem.Cart.GetSuperchargerBootstrap()
+		if bs == nil {
+			return fmt.Errorf("NotifySuperchargerSoundloadStarted sent from a non-Supercharger cartridge")
+		}
+		err := bs.Bootstrap(cmp.vcs.CPU, cmp.vcs.Mem.RAM, cmp.vcs.RIOT.Timer, cmp.vcs.TIA)
+		if err != nil {
+			return err
+		}
+	case notifications.NotifySuperchargerSoundLoadEnded:
+		return cmp.vcs.TV.Reset(true)
 	}
 
 	return nil
@@ -189,7 +202,7 @@ func (cmp *Comparison) CreateFromLoader(cartload cartridgeloader.Loader) error {
 		}()
 
 		// not using setup system to attach cartridge. maybe we should?
-		err := cmp.VCS.AttachCartridge(cartload, nil)
+		err := cmp.vcs.AttachCartridge(cartload, nil)
 		if err != nil {
 			cmp.driver.quit <- err
 			return
@@ -218,7 +231,7 @@ func (cmp *Comparison) CreateFromLoader(cartload cartridgeloader.Loader) error {
 			return
 		}
 
-		err = cmp.VCS.Run(func() (govern.State, error) {
+		err = cmp.vcs.Run(func() (govern.State, error) {
 			select {
 			case <-cmp.emulationQuit:
 				return govern.Ending, nil

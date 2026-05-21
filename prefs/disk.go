@@ -19,6 +19,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"sort"
 	"strings"
@@ -118,9 +119,7 @@ func (dsk *Disk) Save() (rerr error) {
 
 	// copy live values to entryMap, overwriting existing entries
 	// if they already exists
-	for k, v := range dsk.entries {
-		entries[k] = v
-	}
+	maps.Copy(entries, dsk.entries)
 
 	// create a new prefs file
 	f, err := fs.Create(dsk.path)

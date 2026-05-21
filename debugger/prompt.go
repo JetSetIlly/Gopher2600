@@ -30,14 +30,14 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 		e := dbg.Disasm.GetEntryByAddress(dbg.liveBankInfo.CoprocessorResumeAddr)
 		return terminal.Prompt{
 			Content:   fmt.Sprintf("* %s", e.String()),
-			Recording: dbg.scriptScribe.IsActive(),
+			Recording: dbg.scriptWrite.IsActive(),
 		}
 	}
 
 	if dbg.liveBankInfo.Sequential {
 		return terminal.Prompt{
 			Content:   fmt.Sprintf("$%04x", dbg.vcs.CPU.PC.Address()),
-			Recording: dbg.scriptScribe.IsActive(),
+			Recording: dbg.scriptWrite.IsActive(),
 		}
 	}
 
@@ -72,7 +72,7 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 
 	p := terminal.Prompt{
 		Content:   s.String(),
-		Recording: dbg.scriptScribe.IsActive(),
+		Recording: dbg.scriptWrite.IsActive(),
 	}
 
 	if coproc := dbg.vcs.Mem.Cart.GetCoProcBus(); coproc != nil {

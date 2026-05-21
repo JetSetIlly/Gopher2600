@@ -185,19 +185,24 @@ func (afs *Path) list(listEnt chan Entry, listErr chan error, listCancel chan bo
 
 			// using os.Stat() to get file information otherwise links to
 			// directories do not have the IsDir() property
-			fi, err := os.Stat(filepath.Join(path, d.Name()))
+			p := filepath.Join(path, d.Name())
+			fi, err := os.Stat(p)
 			if err != nil {
 				continue
 			}
 
+			// filter out irregular files that are not directories (such as named pipes and sockets)
 			if fi.IsDir() {
 				listEnt <- Entry{
 					Name:  d.Name(),
 					IsDir: true,
 				}
-			} else {
-				p := filepath.Join(path, d.Name())
-				_, err := zip.OpenReader(p)
+			} else if fi.Mode().IsRegular() {
+				// test to see if file is a zip file
+				f, err := zip.OpenReader(p)
+				if f != nil {
+					f.Close()
+				}
 				if err == nil {
 					listEnt <- Entry{
 						Name:      d.Name(),
@@ -331,6 +336,11 @@ func (afs *Path) Set(path string, fallback bool) error {
 
 			afs.isDir = fi.IsDir()
 			if afs.isDir {
+				continue
+			}
+
+			// filter out non-regular files (pipes, sockets, etc.)
+			if !fi.Mode().IsRegular() {
 				continue
 			}
 

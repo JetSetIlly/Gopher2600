@@ -195,6 +195,13 @@ type elfMemory struct {
 	// the inhibitStrongAccess boolean controls how the MapAddress() function
 	// will react to the accessing of strongarm addresses
 	inhibitStrongarmAccess bool
+
+	// followSnoopBusWithNOP exists only to help vcsRead6(). if there is ever a need to do something
+	// other than a NOP after a snoopDataBus we can think about a more generalised mechanism
+	followSnoopBusWithNOP bool
+
+	// non-volatile memory
+	nv nonVolatileMem
 }
 
 func newElfMemory(env *environment.Environment) *elfMemory {
@@ -430,6 +437,12 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 
 							// flag presence of unresolved symbols
 							mem.unresolvedSymbols = true
+						} else if sym.Section == elf.SHN_ABS {
+							logger.Logf(mem.env, "ELF", "absolute value for %s", sym.Name)
+						} else if sym.Section >= elf.SHN_LORESERVE {
+							logger.Logf(mem.env, "ELF", "unsupported reserved section (%d) for %s", sym.Section, sym.Name)
+						} else if int(sym.Section) >= len(ef.Sections) {
+							return fmt.Errorf("invalid section (%s) while relocating %s", sym.Section, sym.Name)
 						} else {
 							n := ef.Sections[sym.Section].Name
 							if sec, ok := mem.sectionsByName[n]; !ok {
@@ -471,7 +484,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				}
 
 				// log relocation address. note that in the case of strongarm
-				// functions, because of how BLX works, the target address
+				// functions, because of how BLX works, the arget address
 				// printed below is not the address the execution will start at
 				name := sym.Name
 				if name == "" {

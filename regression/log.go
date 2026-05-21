@@ -109,13 +109,13 @@ func (reg LogRegression) CleanUp() error {
 
 // String implements the regressions.Regressor interface
 func (reg LogRegression) String() string {
-	s := strings.Builder{}
+	var s strings.Builder
 
-	s.WriteString(fmt.Sprintf("[%s] %s [%s] frames=%d", reg.EntryType(),
+	fmt.Fprintf(&s, "[%s] %s [%s] frames=%d", reg.EntryType(),
 		cartridgeloader.NameFromFilename(reg.Cartridge),
-		reg.TVtype, reg.NumFrames))
+		reg.TVtype, reg.NumFrames)
 	if reg.Notes != "" {
-		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
+		fmt.Fprintf(&s, " [%s]", reg.Notes)
 	}
 	return s.String()
 }
@@ -180,16 +180,16 @@ func (reg *LogRegression) regress(newRegression bool, messages io.Writer, tag st
 
 	// run emulation
 	err = vcs.RunForFrameCount(reg.NumFrames, func() (govern.State, error) {
-		// if the CPU is in the KIL state then the test will never end normally
-		if vcs.CPU.Killed {
-			return govern.Ending, fmt.Errorf("CPU in KIL state")
+		// if the CPU is in the JAM state then the test will never end normally
+		if vcs.CPU.Jammed {
+			return govern.Ending, fmt.Errorf("CPU in JAM state")
 		}
 
 		// display progress meter every 1 second
 		select {
 		case <-tck.C:
 			frame := vcs.TV.GetCoords().Frame
-			messages.Write([]byte(fmt.Sprintf("\r%s [%d/%d (%.1f%%)]", tag, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))))
+			fmt.Fprintf(messages, "\r%s [%d/%d (%.1f%%)]", tag, frame, reg.NumFrames, 100*(float64(frame)/float64(reg.NumFrames)))
 		default:
 		}
 

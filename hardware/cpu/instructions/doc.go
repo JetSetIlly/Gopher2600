@@ -13,9 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package instructions defines the table of instruction for the 6507. The
+// Package instructions defines the complete instruction set of the 6507. The
 // Definition type is used to summarise the requirements and effects of each
-// entry in the table.
-//
-// The table is generated programatically by the generator sub-package.
+// entry set.
 package instructions

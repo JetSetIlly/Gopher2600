@@ -27,12 +27,15 @@ import (
 )
 
 func (win *winDbgScr) paintDragAndDrop() {
+	imgui.PushStyleColor(imgui.StyleColorDragDropTarget, win.img.cols.Transparent)
+	defer imgui.PopStyleColor()
+
 	// each datastream image can also be dropped onto
 	if imgui.BeginDragDropTarget() {
 		// drag and drop has ended on a legitimate target
 		payload := imgui.AcceptDragDropPayload(painDragDrop, imgui.DragDropFlagsNone)
 		if payload != nil {
-			mouse := win.currentMouse()
+			mouse := currentDbgScrMouse(win.scr, win.view)
 			if mouse.valid {
 				ref := win.scr.crit.reflection[mouse.offset]
 

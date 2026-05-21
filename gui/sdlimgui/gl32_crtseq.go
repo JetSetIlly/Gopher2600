@@ -20,6 +20,7 @@ package sdlimgui
 import (
 	"github.com/jetsetilly/gopher2600/gui/display/bevels"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/framebuffer"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/shading"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -87,11 +88,11 @@ type crtSequencer struct {
 	sequence *framebuffer.Flip
 	phosphor *framebuffer.Flip
 
-	sharpenShader  shaderProgram
-	phosphorShader shaderProgram
-	blurShader     shaderProgram
-	effectsShader  shaderProgram
-	colorShader    shaderProgram
+	sharpenShader  shading.Program
+	phosphorShader shading.Program
+	blurShader     shading.Program
+	effectsShader  shading.Program
+	colorShader    shading.Program
 
 	// the pixel pefect setting at the most recent pass of the crt sequencer. if
 	// the setting changes then we clear the phosphor buffer
@@ -115,11 +116,11 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 func (sh *crtSequencer) destroy() {
 	sh.sequence.Destroy()
 	sh.phosphor.Destroy()
-	sh.sharpenShader.destroy()
-	sh.phosphorShader.destroy()
-	sh.blurShader.destroy()
-	sh.effectsShader.destroy()
-	sh.colorShader.destroy()
+	sh.sharpenShader.Destroy()
+	sh.phosphorShader.Destroy()
+	sh.blurShader.Destroy()
+	sh.effectsShader.Destroy()
+	sh.colorShader.Destroy()
 }
 
 const crtSeqPhosphor = 0
@@ -133,7 +134,7 @@ func (sh *crtSequencer) flushPhosphor() {
 // debugger TV Screen window should have a windowed value of true
 //
 // returns the textureID of the processed image
-func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
+func (sh *crtSequencer) process(env shading.Environment, textureID uint32,
 	numScanlines int, numClocks int,
 	prefs crtSeqPrefs, rotation specification.Rotation, screenshot bool) uint32 {
 
@@ -141,7 +142,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 	phosphorPasses := 1
 
 	// make sure sequence fraembuffers are correct size
-	sh.sequence.Setup(env.width, env.height)
+	sh.sequence.Setup(env.Width, env.Height)
 
 	// clear phosphor is enabled state has changed
 	if prefs.pixelPerfect != sh.mostRecentPixelPerfect {
@@ -152,7 +153,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 	sh.mostRecentPixelPerfect = prefs.pixelPerfect
 
 	// also make sure our phosphor framebuffer is correct
-	if sh.phosphor.Setup(env.width, env.height) {
+	if sh.phosphor.Setup(env.Width, env.Height) {
 		// if the change in framebuffer size is significant then graphical
 		// artefacts can sometimes be seen. a possible solution to this is to
 		// curtail the processing and return from the function here but this
@@ -161,22 +162,22 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 		phosphorPasses = 3
 	}
 
-	env.textureID = textureID
+	env.TextureID = textureID
 
 	// sharpen image
-	env.textureID = sh.sequence.Process(func() {
+	env.TextureID = sh.sequence.Process(func() {
 		sh.sharpenShader.(*sharpenShader).process(env, 2)
-		env.draw()
+		env.Draw()
 	})
 
 	// neutral shader to keep frame buffer oriented correctly
-	env.textureID = sh.sequence.Process(func() {
-		sh.colorShader.setAttributes(env)
-		env.draw()
+	env.TextureID = sh.sequence.Process(func() {
+		sh.colorShader.SetAttributes(env)
+		env.Draw()
 	})
 
 	// the newly copied texture will be used for the phosphor blending
-	newFrameForPhosphor := env.textureID
+	newFrameForPhosphor := env.TextureID
 
 	// apply "phosphor". how this is done depends on whether the CRT effects are
 	// enabled. if they are not then the treatment is slightly different
@@ -186,50 +187,50 @@ func (sh *crtSequencer) process(env shaderEnvironment, textureID uint32,
 			// the correct orientation. if we don't have this then we can see
 			// inverted graphical artefacts when we switch between pixelperfect
 			// and CRT rendering
-			env.textureID = sh.phosphor.TextureID()
-			env.textureID = sh.phosphor.Process(func() {
-				sh.colorShader.(*colorShader).setAttributes(env)
-				env.draw()
+			env.TextureID = sh.phosphor.TextureID()
+			env.TextureID = sh.phosphor.Process(func() {
+				sh.colorShader.(*colorShader).SetAttributes(env)
+				env.Draw()
 			})
 
 			// add new frame to phosphor buffer (using phosphor buffer for pixel perfect fade)
-			env.textureID = sh.phosphor.TextureID()
-			env.textureID = sh.phosphor.Process(func() {
+			env.TextureID = sh.phosphor.TextureID()
+			env.TextureID = sh.phosphor.Process(func() {
 				sh.phosphorShader.(*phosphorShader).process(env, float32(prefs.pixelPerfectFade), newFrameForPhosphor)
-				env.draw()
+				env.Draw()
 			})
 		} else {
 			if prefs.phosphor {
 				// use blur shader to add bloom to previous phosphor
-				env.textureID = sh.phosphor.TextureID()
-				env.textureID = sh.phosphor.Process(func() {
+				env.TextureID = sh.phosphor.TextureID()
+				env.TextureID = sh.phosphor.Process(func() {
 					sh.blurShader.(*blurShader).process(env, float32(prefs.phosphorBloom))
-					env.draw()
+					env.Draw()
 				})
 			}
 
 			// add new frame to phosphor buffer
-			env.textureID = sh.phosphor.Process(func() {
+			env.TextureID = sh.phosphor.Process(func() {
 				sh.phosphorShader.(*phosphorShader).process(env, float32(prefs.phosphorLatency), newFrameForPhosphor)
-				env.draw()
+				env.Draw()
 			})
 		}
 	}
 
 	if !prefs.pixelPerfect {
 		// sharpness value
-		env.textureID = sh.sequence.Process(func() {
+		env.TextureID = sh.sequence.Process(func() {
 			sh.blurShader.(*blurShader).process(env, float32(prefs.sharpness))
-			env.draw()
+			env.Draw()
 		})
 
 		// apply the actual crt effects shader
-		env.textureID = sh.sequence.Process(func() {
+		env.TextureID = sh.sequence.Process(func() {
 			sh.effectsShader.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks,
 				prefs, rotation, screenshot)
-			env.draw()
+			env.Draw()
 		})
 	}
 
-	return env.textureID
+	return env.TextureID
 }

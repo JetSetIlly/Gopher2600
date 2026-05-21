@@ -17,33 +17,49 @@ package supercharger
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
+	"github.com/jetsetilly/gopher2600/hardware/tia"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// supercharger has 6k of RAM in total.
-const numRAMBanks = 4
-const bankSize = 2048
+const (
+	// supercharger has 6k of RAM in total.
+	numRAMBanks = 4
+	bankSize    = 2048
 
-// The address in VCS RAM of the multiload byte. Tapes will not load unless the
-// encoded multibyte in the stream is the same as the value in this address.
-const MutliloadByteAddress = 0xfa
+	// The address in VCS RAM of the multiload byte. Tapes will not load unless the
+	// encoded multibyte in the stream is the same as the value in this address.
+	MutliloadByteAddr = uint16(0x00fa)
+
+	// RAM location where the JMP address instruction is placed for the bootstrap
+	jmpAddrLo = uint16(0x00fe)
+	jmpAddrHi = uint16(0x00ff)
+
+	// location of config byte at moment of bootstrap
+	configByteAddr = uint16(0x0080)
+)
 
 // tape defines the operations required by the $fff9 tape loader. With this
 // interface, the Supercharger implementation supports both fast-loading
 // from a Stella bin file, and "slow" loading from a sound file.
 type tape interface {
 	snapshot() tape
-	plumb(*state, *environment.Environment)
+	plumb(*environment.Environment)
 	load() (uint8, error)
 	step()
 	end()
+	romdump(io.Writer) error
+	bootstrap(*state, *cpu.CPU, *vcs.RAM, *timer.Timer, *tia.TIA) error
 }
 
 // Supercharger represents a supercharger cartridge.
@@ -72,16 +88,20 @@ func NewSupercharger(env *environment.Environment) (mapper.CartMapper, error) {
 	var err error
 
 	// load bios and activate
-	cart.bios, err = loadBIOS(env, filepath.Dir(env.Loader.Filename))
-	if err != nil {
-		return nil, fmt.Errorf("supercharger: %w", err)
+	if env.Loader.IsSoundData {
+		cart.bios, err = loadBIOS(env, filepath.Dir(env.Loader.Filename))
+		if err != nil {
+			return nil, fmt.Errorf("supercharger: %w", err)
+		}
+	} else {
+		cart.bios = fastloadOnlyBIOS()
 	}
 
 	// set up tape
 	if env.Loader.IsSoundData {
 		cart.state.tape, err = newSoundLoad(env)
 	} else {
-		cart.state.tape, err = newFastLoad(env, cart.state)
+		cart.state.tape, err = newFastLoad(env)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("supercharger: %w", err)
@@ -110,7 +130,7 @@ func (cart *Supercharger) Snapshot() mapper.CartMapper {
 // Plumb implements the mapper.CartMapper interface.
 func (cart *Supercharger) Plumb(env *environment.Environment) {
 	cart.env = env
-	cart.state.tape.plumb(cart.state, env)
+	cart.state.tape.plumb(env)
 }
 
 // Reset implements the mapper.CartMapper interface.
@@ -131,52 +151,58 @@ func (cart *Supercharger) Reset() error {
 }
 
 // Access implements the mapper.CartMapper interface.
-func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
+func (cart *Supercharger) access(addr uint16, peek bool) (uint8, uint8, error) {
 	// what bank to read. bank zero refers to the BIOS. bank 1 to 3 refer to
 	// one of the RAM banks
 	bank := cart.GetBank(addr).Number
 
-	bios := false
-	switch bank {
-	case 0:
-		bios = true
-	default:
-		// RAM banks are indexed from 0 to 2
-		bank--
-	}
+	// use bios data rather than ram data if bank number is zero
+	bios := bank == 0
+
+	// RAM banks are indexed from 0 to 2. this also has the effect of making the bank value to be
+	// unsuitable for use as an index number in the case of the address pointing to the bios. that's
+	// okay because it will cause a program panic, which is what we want
+	bank--
+
+	// always record access addresss for later comparison
+	defer func() {
+		cart.state.recentAddresses[1] = cart.state.recentAddresses[0]
+		cart.state.recentAddresses[0] = addr
+	}()
 
 	// tape load register has been read
-	if addr == 0x0ff9 {
-		// turn is loading state and call vcs hook if this is the first recent
-		// read of the tape. we assume that the isLoading state will be
-		// sustained until the BIOS is "touched" as described below
-		if !cart.state.isLoading {
-			cart.state.isLoading = true
-		}
+	switch addr {
+	case 0x0ff9:
+		// for a long time, we chose to do nothing with the tape load request unless 'RAM Write' was
+		// enabled. however this isn't correct because it's possible for non-BIOS code to want to
+		// read data from the tape
 
-		// call load() whenever address is touched, although do not allow
-		// it if RAMwrite is false
-		if peek || !cart.state.registers.RAMwrite {
-			return 0, 0, nil
+		// it's possible for the tape register to be triggered by a phantom access. this isn't a
+		// problem for soundloud but it is a problem for fastload because a call to the tape.load()
+		// function will immediately send the FastLoad notificatoin resulting in a call to the
+		// bootstrap() function
+		//
+		// this happens with the original starpath game 'suicide mission'. the following filter
+		// prevents calls to the tape.load() function while preserving the ability of ROMs to
+		// intentionally load data from a tape
+		if (cart.state.recentAddresses[0] == 0x0ff9 || cart.state.recentAddresses[0] == 0x0ff8) &&
+			cart.state.recentAddresses[1] == 0x0ff8 {
+
+			return 0x00, mapper.CartDrivenPins, nil
 		}
 
 		v, err := cart.state.tape.load()
 		if err != nil {
 			err = fmt.Errorf("supercharger: %w", err)
 		}
-		return v, mapper.CartDrivenPins, err
-	}
 
-	// control register has been read. I've opted to return the value at the
-	// address before the bank switch. I think this is correct but I'm not
-	// sure.
-	if addr == 0x0ff8 {
-		b := cart.state.ram[bank][addr&0x07ff]
+		return v, mapper.CartDrivenPins, err
+
+	case 0x0ff8:
 		if !peek {
 			cart.state.registers.setConfigByte(cart.state.registers.Value)
 			cart.state.registers.Delay = 0
 		}
-		return b, mapper.CartDrivenPins, nil
 	}
 
 	// note address to be used as the next value in the control register
@@ -195,16 +221,13 @@ func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
 			// touched. note that this method means that the notification will
 			// be sent whatever the context the address is read and not just
 			// when the PC is at the address.
-			if addr == 0x0a1a {
-				// end tape is loading state
-				cart.state.isLoading = false
+			if addr == loadEndedAddress {
 				cart.state.tape.end()
 			}
-
 			return cart.bios[addr&0x07ff], mapper.CartDrivenPins, nil
 		}
 
-		return 0, 0, fmt.Errorf("supercharger: ROM is powered off")
+		return 0, mapper.CartDrivenPins, fmt.Errorf("supercharger: ROM is powered off")
 	}
 
 	if !peek && cart.state.registers.Delay == 1 {
@@ -218,9 +241,31 @@ func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	return cart.state.ram[bank][addr&0x07ff], mapper.CartDrivenPins, nil
 }
 
+func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
+	return cart.access(addr, peek)
+}
+
 // AccessVolatile implements the mapper.CartMapper interface.
-func (cart *Supercharger) AccessVolatile(addr uint16, data uint8, _ bool) error {
-	return nil
+func (cart *Supercharger) AccessVolatile(addr uint16, data uint8, poke bool) error {
+	if poke {
+		bank := cart.GetBank(addr).Number
+		switch bank {
+		case 0:
+			cart.bios[addr&0x07ff] = data
+		default:
+			cart.state.ram[bank-1][addr&0x07ff] = data
+		}
+		return nil
+	}
+	_, _, err := cart.access(addr, false)
+	return err
+}
+
+func (cart *Supercharger) biosAvailable() bool {
+	return cart.state.registers.BankingMode == 0 ||
+		cart.state.registers.BankingMode == 1 ||
+		cart.state.registers.BankingMode == 4 ||
+		cart.state.registers.BankingMode == 5
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -229,55 +274,55 @@ func (cart *Supercharger) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *Supercharger) GetBank(addr uint16) mapper.BankInfo {
+func (cart *Supercharger) GetBank(addr uint16) banking.Information {
 	switch cart.state.registers.BankingMode {
 	case 0:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
+			return banking.Information{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
+		return banking.Information{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 1:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
+			return banking.Information{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 1, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
+		return banking.Information{Number: 1, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
 
 	case 2:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 1, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
+			return banking.Information{Number: 1, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
+		return banking.Information{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 3:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
+			return banking.Information{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 1, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
+		return banking.Information{Number: 1, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 4:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
+			return banking.Information{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
+		return banking.Information{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 5:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
+			return banking.Information{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 2, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
+		return banking.Information{Number: 2, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 6:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 2, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
+			return banking.Information{Number: 2, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
+		return banking.Information{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 7:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
+			return banking.Information{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 2, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
+		return banking.Information{Number: 2, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 	}
 
 	panic("supercharger: unknown banking method")
@@ -285,7 +330,7 @@ func (cart *Supercharger) GetBank(addr uint16) mapper.BankInfo {
 
 // SetBank implements the mapper.CartMapper interface.
 func (cart *Supercharger) SetBank(bank string) error {
-	if mapper.IsAutoBankSelection(bank) {
+	if banking.IsAutoSelection(bank) {
 		cart.state.registers.BankingMode = 0
 		return nil
 	}
@@ -293,16 +338,16 @@ func (cart *Supercharger) SetBank(bank string) error {
 	// supercharger uses predfined banking modes. we can use the single bank
 	// selection function for this
 
-	b, err := mapper.SingleBankSelection(bank)
+	b, err := banking.SingleSelection(bank)
 	if err != nil {
-		return fmt.Errorf("%s: %w", cart.mappingID, err)
+		return fmt.Errorf("supercharger: %w", err)
 	}
 	if b.IsRAM {
-		return fmt.Errorf("%s: cartridge expects a pattern number between 0 and 7", cart.mappingID)
+		return fmt.Errorf("supercharger: cartridge expects a pattern number between 0 and 7")
 	}
 
 	if b.Number > 7 {
-		return fmt.Errorf("%s: invalid banking mode (%d)", cart.mappingID, b.Number)
+		return fmt.Errorf("supercharger: invalid banking mode (%d)", b.Number)
 	}
 
 	cart.state.registers.BankingMode = b.Number
@@ -322,10 +367,10 @@ func (cart *Supercharger) Step(_ float32) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *Supercharger) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, len(cart.state.ram)+1)
+func (cart *Supercharger) CopyBanks() []banking.Content {
+	c := make([]banking.Content, len(cart.state.ram)+1)
 
-	c[0] = mapper.BankContent{Number: 0,
+	c[0] = banking.Content{Number: 0,
 		Data: cart.bios,
 		Origins: []uint16{
 			memorymap.OriginCart,
@@ -333,8 +378,8 @@ func (cart *Supercharger) CopyBanks() []mapper.BankContent {
 		},
 	}
 
-	for b := 0; b < len(cart.state.ram); b++ {
-		c[b+1] = mapper.BankContent{Number: b + 1,
+	for b := range len(cart.state.ram) {
+		c[b+1] = banking.Content{Number: b + 1,
 			Data: cart.state.ram[b],
 			Origins: []uint16{
 				memorymap.OriginCart,
@@ -350,7 +395,7 @@ func (cart *Supercharger) CopyBanks() []mapper.BankContent {
 func (cart *Supercharger) GetRAM() []mapper.CartRAM {
 	r := make([]mapper.CartRAM, len(cart.state.ram))
 
-	for i := 0; i < len(cart.state.ram); i++ {
+	for i := range len(cart.state.ram) {
 		mapped := false
 		origin := uint16(0x1000)
 
@@ -446,12 +491,9 @@ func (cart *Supercharger) SetTapeCounter(c int) {
 	}
 }
 
-// Fastload implements the mapper.CartSuperChargerFastLoad interface.
-func (cart *Supercharger) Fastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
-	if f, ok := cart.state.tape.(mapper.CartSuperChargerFastLoad); ok {
-		return f.Fastload(mc, ram, tmr)
-	}
-	return nil
+// Bootstrap implements the mapper.CartSuperchargerBootstrap interface.
+func (cart *Supercharger) Bootstrap(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer, tia *tia.TIA) error {
+	return cart.state.tape.bootstrap(cart.state, mc, ram, tmr, tia)
 }
 
 // GetTapeState implements the mapper.CartTapeBus interface
@@ -465,15 +507,25 @@ func (cart *Supercharger) GetTapeState() (bool, mapper.CartTapeState) {
 	return false, mapper.CartTapeState{}
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *Supercharger) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *Supercharger) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1ff8: {Symbol: "CONFIG", Action: mapper.HotspotFunction},
 		0x1ff9: {Symbol: "TAPE", Action: mapper.HotspotFunction},
 	}
 }
 
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *Supercharger) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return nil
+func (cart *Supercharger) ROMDump(filename string) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("supercharger: %w", err)
+	}
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			logger.Logf(cart.env, "supercharger", "%v", err)
+		}
+	}()
+
+	return cart.state.tape.romdump(f)
 }

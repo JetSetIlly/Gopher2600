@@ -83,8 +83,10 @@ type dbgScrMagnifyWindow struct {
 	lastDragPoint dbgScrMousePos
 }
 
-func (mag *dbgScrMagnifyWindow) setClipCenter(centre dbgScrMouse) {
-	mag.centerPoint = centre.scaled
+// setClipCenter includes a bound in outside of which the centre cannot go
+func (mag *dbgScrMagnifyWindow) setClipCenter(centre dbgScrMouse, bound image.Rectangle) {
+	mag.centerPoint.x = max(bound.Min.X, min(centre.scaled.x, bound.Max.X))
+	mag.centerPoint.y = max(bound.Min.Y, min(centre.scaled.y, bound.Max.Y))
 	mag.setClip()
 }
 
@@ -140,37 +142,33 @@ func (mag *dbgScrMagnifyWindow) draw(cols *imguiColors) {
 		imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{X: 0.0, Y: 0.0})
 		imgui.ImageButton("magnify", imgui.TextureID(mag.texture.getID()), sz)
 
-		if imgui.IsItemHovered() || mag.isDragging {
+		if imgui.IsItemHovered() {
 			// adjust zoom with mouse wheel
 			_, delta := imgui.CurrentIO().MouseWheel()
 			if delta != 0 {
 				mag.adjustZoom(delta)
 			}
+		}
 
-			// drag magnified area with mouse drag - left button or middle button
-			if imgui.IsMouseDown(0) || imgui.IsMouseDown(2) {
-				pos := imgui.MousePos()
-				scaledPos := dbgScrMousePos{
-					x: int(pos.X / pixelSize),
-					y: int(pos.Y / pixelSize * pixelWidth),
-				}
-
-				if mag.isDragging {
-					drag := dbgScrMousePos{
-						x: mag.lastDragPoint.x - scaledPos.x,
-						y: mag.lastDragPoint.y - scaledPos.y,
-					}
-					mag.adjustClip(drag)
-				} else {
-					mag.isDragging = true
-				}
-
-				mag.lastDragPoint = scaledPos
-			} else {
-				mag.isDragging = false
+		// drag magnified area with mouse drag - left button or middle button
+		if mag.isDragging || (imgui.IsItemHovered() && (imgui.IsMouseClicked(0) || imgui.IsMouseClicked(2))) {
+			pos := imgui.MousePos()
+			scaledPos := dbgScrMousePos{
+				x: int(pos.X / pixelSize),
+				y: int(pos.Y / pixelSize * pixelWidth),
 			}
-		} else {
-			mag.isDragging = false
+
+			if mag.isDragging {
+				drag := dbgScrMousePos{
+					x: mag.lastDragPoint.x - scaledPos.x,
+					y: mag.lastDragPoint.y - scaledPos.y,
+				}
+				mag.adjustClip(drag)
+			}
+
+			mag.lastDragPoint = scaledPos
+
+			mag.isDragging = imgui.IsMouseDown(0) || imgui.IsMouseDown(2)
 		}
 
 		imgui.PopStyleVar()

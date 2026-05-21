@@ -17,9 +17,7 @@ package disassembly
 
 import (
 	"fmt"
-	"strings"
 	"sync"
-	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/disassembly/symbols"
@@ -28,7 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -54,9 +52,6 @@ type Disassembly struct {
 	// critical sectioning to protect disasmEntries. the symbols table has it's
 	// own critical section
 	crit sync.Mutex
-
-	// is true if background disassembly is active
-	background atomic.Bool
 }
 
 // DisasmEntries contains the individual disassembled entries of the current ROM.
@@ -84,7 +79,6 @@ func NewDisassembly(vcs *hardware.VCS) (*Disassembly, *symbols.Symbols, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("disassembly: %w", err)
 	}
-	dsm.background.Store(false)
 
 	return dsm, &dsm.Sym, nil
 }
@@ -119,13 +113,13 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 
 	// ignore errors caused by loading of symbols table - we always get a
 	// standard symbols table even in the event of an error
-	err = dsm.Sym.ReadDASMSymbolsFile(vcs.Mem.Cart)
+	err = dsm.Sym.InitialiseFromCartridge(vcs.Mem.Cart)
 	if err != nil {
 		return nil, fmt.Errorf("disassembly: %w", err)
 	}
 
 	// do disassembly
-	err = dsm.FromMemory()
+	err = dsm.FromMemory(false)
 	if err != nil {
 		return nil, fmt.Errorf("disassembly: %w", err)
 	}
@@ -133,68 +127,95 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 	return dsm, nil
 }
 
-// Background performs a disassembly from memory but in the background
-func (dsm *Disassembly) Background(cartload cartridgeloader.Loader) {
-	go func() {
-		dsm.background.Store(true)
-		defer dsm.background.Store(false)
-		err := dsm.FromMemory()
-		if err != nil {
-			logger.Log(dsm.vcs.Env, "disassembly", err.Error())
-		}
-	}()
-}
-
-func (dsm *Disassembly) Reset() {
-	dsm.disasmEntries.Sequential = dsm.disasmEntries.Sequential[:0]
-}
-
-// FromMemory disassembles an existing instance of cartridge memory using a
-// cpu with no flow control. Unlike the FromCartridge() function this function
-// requires an existing instance of Disassembly.
-//
-// Disassembly will start/assume the cartridge is in the correct starting bank.
-func (dsm *Disassembly) FromMemory() error {
+// Reset disassembly. The disassembly will be recreated as though from new.
+func (dsm *Disassembly) Reset(background bool) error {
 	dsm.crit.Lock()
-	defer dsm.crit.Unlock()
+	dsm.disasmEntries.Sequential = dsm.disasmEntries.Sequential[:0]
+	dsm.crit.Unlock()
+	return dsm.FromMemory(background)
+}
 
-	// create new memory
+// FromMemory disassembles an existing instance of cartridge memory using a cpu with no flow
+// control. Unlike the FromCartridge() function this function requires an existing instance of
+// Disassembly.
+//
+// Disassembly will assume the cartridge is in the correct starting bank.
+//
+// Unlike FromCartridge() disassembly specific errors will only be logged and not returned as
+// errors.
+func (dsm *Disassembly) FromMemory(background bool) error {
+	// symbols first so that we always have a valid symbols instance
+	err := dsm.Sym.InitialiseFromCartridge(dsm.vcs.Mem.Cart)
+	if err != nil {
+		return err
+	}
+
 	copiedBanks, err := dsm.vcs.Mem.Cart.CopyBanks()
 	if err != nil {
 		return fmt.Errorf("disassembly: %w", err)
 	}
 
-	startingBank := dsm.vcs.Mem.Cart.GetBank(cpu.Reset).Number
+	// allocating memory is critical section
+	func() {
+		dsm.crit.Lock()
+		defer dsm.crit.Unlock()
 
-	mem := newDisasmMemory(startingBank, copiedBanks)
-	if mem == nil {
-		return fmt.Errorf("disassembly: %s", "could not create memory for disassembly")
-	}
+		// allocate at least one bank. this is useful if there is no cartridge (ie. it's ejected)
+		// and therefore CopyBanks() likely returned an empty array
+		dsm.disasmEntries.Entries = make([][]*Entry, max(1, len(copiedBanks)))
 
-	// read symbols file
-	err = dsm.Sym.ReadDASMSymbolsFile(dsm.vcs.Mem.Cart)
-	if err != nil {
-		return err
-	}
-
-	// allocate memory for disassembly. the GUI may find itself trying to
-	// iterate through disassembly at the same time as we're doing this.
-	dsm.disasmEntries.Entries = make([][]*Entry, dsm.vcs.Mem.Cart.NumBanks())
-	for b := 0; b < len(dsm.disasmEntries.Entries); b++ {
-		dsm.disasmEntries.Entries[b] = make([]*Entry, memorymap.CartridgeBits+1)
-	}
+		for b := range dsm.disasmEntries.Entries {
+			dsm.disasmEntries.Entries[b] = make([]*Entry, memorymap.CartridgeBits+1)
+		}
+	}()
 
 	// exit early if cartridge memory self reports as being ejected
 	if dsm.vcs.Mem.Cart.IsEjected() {
 		return nil
 	}
 
-	// create a new NoFlowControl CPU to help disassemble memory
-	mc := cpu.NewCPU(mem)
-	mc.NoFlowControl = true
+	startingBank := dsm.vcs.Mem.Cart.GetBank(cpu.Reset).Number
 
-	// disassemble cartridge binary
-	return dsm.disassemble(mc, mem)
+	if background {
+		go func() {
+			err := dsm.fromMemory(startingBank, copiedBanks)
+			if err != nil {
+				logger.Log(dsm.vcs.Env, "disassembly", err.Error())
+			}
+		}()
+		return nil
+	}
+
+	err = dsm.fromMemory(startingBank, copiedBanks)
+	if err != nil {
+		logger.Log(dsm.vcs.Env, "disassembly", err.Error())
+	}
+
+	return nil
+}
+
+func (dsm *Disassembly) fromMemory(startingBank int, copiedBanks []banking.Content) error {
+	dec, err := newDecode(dsm, startingBank, copiedBanks)
+	if err != nil {
+		return fmt.Errorf("disassembly: %w", err)
+	}
+
+	// copy decoded entries to live copy
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
+
+	for b := range dec.disasmEntries.Entries {
+		for i, e := range dec.disasmEntries.Entries[b] {
+			if e != nil && e.Level < EntryLevelExecuted {
+				e.dsm = dsm
+				dsm.disasmEntries.Entries[b][i] = e
+			}
+		}
+	}
+
+	dsm.setCartMirror()
+
+	return nil
 }
 
 // GetEntryByAddress returns the disassembly entry at the specified
@@ -230,8 +251,8 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 //
 // checkNextAddr should be false if the result does no represent a completed
 // instruction. in other words, if the instruction has only partially completed
-func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Result, checkNextAddr bool, nextAddr uint16) *Entry {
-	e := dsm.FormatResult(bank, result, EntryLevelExecuted)
+func (dsm *Disassembly) ExecutedEntry(bank banking.Information, result execution.Result, checkNextAddr bool, nextAddr uint16) *Entry {
+	e := dsm.formatResult(bank, result, EntryLevelExecuted)
 
 	// if co-processor is executing then whatever has been executed by the 6507
 	// will not relate to the permanent disassembly. format the result and
@@ -243,6 +264,9 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	if bank.ExecutingCoprocessor {
 		return e
 	}
+
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
 
 	// if executed entry is in non-cartridge space then there's nothing we an do other than updating
 	// the sequential disaasembly
@@ -257,16 +281,9 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 			return e
 		}
 
-		// do not update disassembly if background disassembly is ongoing
-		if dsm.background.Load() {
-			return e
-		}
-
 		// updating an entry can happen at the same time as iteration which is
 		// probably being run from a different goroutine. acknowledge the critical
 		// section
-		dsm.crit.Lock()
-		defer dsm.crit.Unlock()
 
 		// add/update entry to disassembly
 		idx := result.Address & memorymap.CartridgeBits
@@ -284,7 +301,7 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 			idx := nextAddr & memorymap.CartridgeBits
 			ne := dsm.disasmEntries.Entries[bank.Number][idx]
 			if ne == nil {
-				dsm.disasmEntries.Entries[bank.Number][idx] = dsm.FormatResult(bank, execution.Result{
+				dsm.disasmEntries.Entries[bank.Number][idx] = dsm.formatResult(bank, execution.Result{
 					Address: nextAddr,
 				}, EntryLevelBlessed)
 			} else if ne.Level < EntryLevelBlessed {
@@ -316,7 +333,7 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 				if !last.Result.Final {
 					dsm.disasmEntries.Sequential[len(dsm.disasmEntries.Sequential)-1] = e
 				} else {
-					if last.Result.Address == result.Address &&
+					if last.Result.Address == result.Address && result.Defn != nil &&
 						!(result.Defn.IsBranch() || result.Defn.Effect != instructions.Flow) {
 						dsm.disasmEntries.Sequential[len(dsm.disasmEntries.Sequential)-1] = e
 					} else {
@@ -345,107 +362,6 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	return e
 }
 
-// FormatResult creates an Entry for supplied result/bank. It will be assigned
-// the specified EntryLevel.
-//
-// If EntryLevel is EntryLevelExecuted then the disassembly will be updated but
-// only if result.Final is true.
-func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Result, level EntryLevel) *Entry {
-	e := &Entry{
-		dsm:    dsm,
-		Result: result,
-		Level:  level,
-		Bank:   bank.Number,
-		Label: Label{
-			dsm:    dsm,
-			result: result,
-			bank:   bank,
-		},
-		Operand: Operand{
-			dsm:    dsm,
-			result: result,
-			bank:   bank,
-		},
-		Coords: dsm.vcs.TV.GetCoords(),
-	}
-
-	// address of instruction
-	e.Address = fmt.Sprintf("$%04x", result.Address)
-
-	// if definition is nil then set the operator field to ??? and return with no further formatting
-	if result.Defn == nil {
-		e.Operator = "???"
-		return e
-	}
-
-	// operator of instruction
-	e.Operator = result.Defn.Operator.String()
-
-	// bytecode and operand string is assembled depending on the number of
-	// expected bytes (result.Defn.Bytes) and the number of bytes read so far
-	// (result.ByteCount).
-	//
-	// the panics cover situations that should never exists. if result
-	// validation is active then the panic situations will have been caught
-	// then. if validation is not running then the code could theoretically
-	// panic but that's okay, they should have been caught in testing.
-	switch result.Defn.Bytes {
-	case 3:
-		switch result.ByteCount {
-		case 3:
-			operand := result.InstructionData
-			e.Operand.partial = fmt.Sprintf("$%04x", operand)
-			e.Bytecode = fmt.Sprintf("%02x %02x %02x", result.Defn.OpCode, operand&0x00ff, operand&0xff00>>8)
-		case 2:
-			operand := result.InstructionData
-			e.Operand.partial = fmt.Sprintf("$??%02x", result.InstructionData)
-			e.Bytecode = fmt.Sprintf("%02x %02x ?? ", result.Defn.OpCode, operand&0x00ff)
-		case 1:
-			e.Operand.partial = "$????"
-			e.Bytecode = fmt.Sprintf("%02x ?? ??", result.Defn.OpCode)
-		case 0:
-			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
-		default:
-			panic("we should not be able to read more bytes than the expected number (expected 3)")
-		}
-	case 2:
-		switch result.ByteCount {
-		case 2:
-			operand := result.InstructionData
-			e.Operand.partial = fmt.Sprintf("$%02x", operand)
-			e.Bytecode = fmt.Sprintf("%02x %02x", result.Defn.OpCode, operand&0x00ff)
-		case 1:
-			e.Operand.partial = "$??"
-			e.Bytecode = fmt.Sprintf("%02x ??", result.Defn.OpCode)
-		case 0:
-			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
-		default:
-			panic("we should not be able to read more bytes than the expected number (expected 2)")
-		}
-	case 1:
-		switch result.ByteCount {
-		case 1:
-			e.Bytecode = fmt.Sprintf("%02x", result.Defn.OpCode)
-		case 0:
-			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
-		default:
-			panic("we should not be able to read more bytes than the expected number (expected 1)")
-		}
-	case 0:
-		panic("instructions of zero bytes is not possible")
-	default:
-		panic("instructions of more than 3 bytes is not possible")
-	}
-	e.Bytecode = strings.TrimSpace(e.Bytecode)
-
-	// decorate operand with addressing mode indicators. this decorates the
-	// non-symbolic operand. we also call the decorate function from the
-	// Operand() function when a symbol has been found
-	e.Operand.partial = addrModeDecoration(e.Operand.partial, e.Result.Defn.AddressingMode)
-
-	return e
-}
-
 // BorrowDisasm will lock the DisasmEntries structure for the durction of the
 // supplied function, which will be executed with the disasm structure as an
 // argument.
@@ -454,10 +370,6 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 //
 // Should not be called from the emulation goroutine.
 func (dsm *Disassembly) BorrowDisasm(f func(*DisasmEntries)) bool {
-	if dsm.background.Load() {
-		return false
-	}
-
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 

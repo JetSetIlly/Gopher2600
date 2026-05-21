@@ -79,12 +79,21 @@ type Ports struct {
 // NewPorts is the preferred method of initialisation of the Ports type
 func NewPorts(env *environment.Environment, riotMem chipbus.Memory, tiaMem chipbus.Memory) *Ports {
 	p := &Ports{
-		env:   env,
-		riot:  riotMem,
-		tia:   tiaMem,
-		latch: false,
+		env:         env,
+		riot:        riotMem,
+		tia:         tiaMem,
+		latch:       false,
+		LeftPlayer:  &peripheralNone{port: plugging.PortLeft},
+		RightPlayer: &peripheralNone{port: plugging.PortRight},
+		Panel:       &peripheralNone{port: plugging.PortPanel},
 	}
 	return p
+}
+
+func (p *Ports) Reset() {
+	p.swcha_w = p.riot.ChipRefer(chipbus.SWCHA)
+	p.swchb_w = p.riot.ChipRefer(chipbus.SWCHB)
+	p.ResetPeripherals()
 }
 
 func (p *Ports) End() {
@@ -125,93 +134,156 @@ func (p *Ports) Plumb(riotMem chipbus.Memory, tiaMem chipbus.Memory) {
 	}
 }
 
-// Plug connects a peripheral to a player port
-func (p *Ports) Plug(port plugging.PortID, c NewPeripheral) error {
-	periph := c(p.env, port, p)
-	if periph == nil {
-		return fmt.Errorf("can't attach peripheral to port (%v)", port)
+func (p *Ports) notifyPlugMonitor() {
+	if p.monitor == nil {
+		return
 	}
-
-	// notify monitor of plug event
-	if p.monitor != nil {
-		p.monitor.Plugged(port, periph.ID())
+	if shim, ok := p.LeftPlayer.(PeripheralShim); ok {
+		p.monitor.Plugged(plugging.PortLeft, shim.ShimID())
+	} else {
+		p.monitor.Plugged(plugging.PortLeft, p.LeftPlayer.ID())
 	}
-
-	// attach any existing monitors to the new player peripheral
-	if a, ok := periph.(plugging.Monitorable); ok {
-		a.AttachPlugMonitor(p.monitor)
+	if shim, ok := p.RightPlayer.(PeripheralShim); ok {
+		p.monitor.Plugged(plugging.PortRight, shim.ShimID())
+	} else {
+		p.monitor.Plugged(plugging.PortRight, p.RightPlayer.ID())
 	}
+}
 
+// Plug connects a peripheral to a player port. The create function should be an implementation of
+// the NewPeripheral function type or nil.
+//
+// A create function of nil can be used to remove a shim if one is inserted, leaving the
+// daisychained periperal inserted (which is probably what you want to happen).
+//
+// To remove a non-shim peripheral specify a create value of NewPeripheralNone.
+func (p *Ports) Plug(port plugging.PortID, create NewPeripheral) error {
+	// always trigger notifications and always make sure any new audio producing peripherals are
+	// aware of the mute state
+	defer func() {
+		p.notifyPlugMonitor()
+		p.MutePeripherals(p.peripheralsMuted)
+	}()
+
+	// the existing peripheral on this port
+	var existingPeriph Peripheral
 	switch port {
 	case plugging.PortPanel:
-		if p.Panel != nil {
-			p.Panel.Unplug()
-		}
-		p.Panel = periph
+		existingPeriph = p.Panel
 	case plugging.PortLeft:
-		if p.LeftPlayer != nil {
-			p.LeftPlayer.Unplug()
-		}
-		p.LeftPlayer = periph
+		existingPeriph = p.LeftPlayer
 	case plugging.PortRight:
-		if p.RightPlayer != nil {
-			p.RightPlayer.Unplug()
-		}
-		p.RightPlayer = periph
+		existingPeriph = p.RightPlayer
 	default:
 		return fmt.Errorf("can't attach peripheral to port (%v)", port)
 	}
 
-	periph.Reset()
+	var newPeriph Peripheral
 
-	// make sure any new audio producing peripherals are aware of the mute state
-	p.MutePeripherals(p.peripheralsMuted)
+	// if there is no create function then remove shim if one is present. do nothing if there is no
+	// shim then
+	if create == nil {
+		if existingShim, ok := existingPeriph.(PeripheralShim); ok {
+			newPeriph = existingShim.Periph()
+		} else {
+			return nil
+		}
+	}
+
+	// create new peripheral
+	if newPeriph == nil {
+		newPeriph = create(p.env, port, p)
+		if newPeriph == nil {
+			return fmt.Errorf("can't attach peripheral to port (%v)", port)
+		}
+
+		// what we do with the new and existing peripheral depends on whether we're dealing with shims
+		// or not. the logic is rather opaque and we sometimes make early returns, which isn't ideal
+
+		if existingShim, ok := existingPeriph.(PeripheralShim); ok {
+			if newPeriph.ID() == plugging.PeriphNone {
+				// (1) plugging in a PeriphNone in place of a shim causes the shim to be removed and
+				// replaced with the peripheral attached to it
+				newPeriph = existingShim.Periph()
+
+			} else if newShim, ok := newPeriph.(PeripheralShim); ok {
+				// (2) if both new peripheral and existing peripheral are shims then plug any child
+				// peripherals from the old shim into the new shim
+				newShim.Plug(existingShim.Periph())
+			} else {
+				// (3) plug new peripheral into existing shim. unplug the current periph and daisychain
+				// the new periph
+				existingShim.Periph().Unplug()
+				existingShim.Plug(newPeriph)
+				newPeriph.Reset()
+				return nil
+			}
+
+		} else if newShim, ok := newPeriph.(PeripheralShim); ok {
+			// (4) if new peripheral is a shim then plug existing peripheral into it. the new shim will
+			// then be plugged into the correct console port. note that we've handled the situation
+			// where a new shim is replacing an existing shim above, in condition (2)
+			newShim.Plug(existingPeriph)
+
+		} else {
+			// (5) if we're not dealing with a PeripheralShim or PeriphNone unplug the existing peripheral
+			existingPeriph.Unplug()
+		}
+	}
+
+	// if we reach this point we're either plugging in a new peripheral or a new shim. in the case
+	// of a shim existing peripherals will have been daisychained already
+
+	newPeriph.Reset()
+
+	// commit new peripheral to port
+	switch port {
+	case plugging.PortPanel:
+		p.Panel = newPeriph
+	case plugging.PortLeft:
+		p.LeftPlayer = newPeriph
+	case plugging.PortRight:
+		p.RightPlayer = newPeriph
+	default:
+		return fmt.Errorf("can't attach peripheral to port (%v)", port)
+	}
 
 	return nil
 }
 
 func (p *Ports) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("SWCHA(W): %#02x ", p.swcha_w))
-	s.WriteString(fmt.Sprintf("SWACNT: %#02x ", p.riot.ChipRefer(chipbus.SWACNT)))
+	fmt.Fprintf(&s, "SWCHA(W): %#02x ", p.swcha_w)
+	fmt.Fprintf(&s, "SWACNT: %#02x ", p.riot.ChipRefer(chipbus.SWACNT))
 	swcha := p.riot.ChipRefer(chipbus.SWCHA)
-	s.WriteString(fmt.Sprintf("SWCHA: %#02x ", swcha))
+	fmt.Fprintf(&s, "SWCHA: %#02x ", swcha)
 	if swcha != p.deriveSWCHA() {
 		s.WriteString("[SWCHA has been poked] ")
 	}
 
-	s.WriteString(fmt.Sprintf("SWCHB(W): %#02x ", p.swchb_w))
-	s.WriteString(fmt.Sprintf("SWBCNT: %#02x ", p.riot.ChipRefer(chipbus.SWBCNT)))
+	fmt.Fprintf(&s, "SWCHB(W): %#02x ", p.swchb_w)
+	fmt.Fprintf(&s, "SWBCNT: %#02x ", p.riot.ChipRefer(chipbus.SWBCNT))
 	swchb := p.riot.ChipRefer(chipbus.SWCHB)
-	s.WriteString(fmt.Sprintf("SWCHB: %#02x ", swchb))
+	fmt.Fprintf(&s, "SWCHB: %#02x ", swchb)
 	if swchb != p.deriveSWCHB() {
 		s.WriteString("[SWCHB has been poked] ")
 	}
 	return s.String()
 }
 
-// mutePeripheral is implemented by peripherals that produce audio independent
-// of the emulators sound output. This is useful for implementations that call
-// on third-party applications/processes to produce output
-//
-// used exclusively by the MutePeripherals() function
-type mutePeripheral interface {
-	Mute(bool)
-}
-
-// MutePeripherals sets the mute state of peripherals that implement the mutePeripheral interface
+// MutePeripherals sets the mute state of peripherals that implement the MutePeripheral interface
 func (p *Ports) MutePeripherals(muted bool) {
-	if r, ok := p.LeftPlayer.(mutePeripheral); ok {
+	if r, ok := p.LeftPlayer.(MutePeripheral); ok {
 		r.Mute(muted)
 	}
-	if r, ok := p.RightPlayer.(mutePeripheral); ok {
+	if r, ok := p.RightPlayer.(MutePeripheral); ok {
 		r.Mute(muted)
 	}
 	p.peripheralsMuted = muted
 }
 
-// RestartPeripherals calls restart on any attached peripherals that implement
-// that the RestartPeripheral interface
+// RestartPeripherals calls restart on any attached peripherals that implement that the
+// RestartPeripheral interface
 func (p *Ports) RestartPeripherals() {
 	if r, ok := p.LeftPlayer.(RestartPeripheral); ok {
 		r.Restart()
@@ -238,7 +310,7 @@ func (p *Ports) DisablePeripherals(disabled bool) {
 	}
 }
 
-// ResetPeripherals to an initial state
+// ResetPeripherals to the initial state
 func (p *Ports) ResetPeripherals() {
 	if p.LeftPlayer != nil {
 		p.LeftPlayer.Reset()
@@ -329,23 +401,7 @@ func (p *Ports) Step() {
 // AttchPlugMonitor implements the plugging.Monitorable interface
 func (p *Ports) AttachPlugMonitor(m plugging.PlugMonitor) {
 	p.monitor = m
-
-	// make sure any already attached peripherals know about the new monitor
-	if a, ok := p.LeftPlayer.(plugging.Monitorable); ok {
-		a.AttachPlugMonitor(m)
-	}
-	if a, ok := p.RightPlayer.(plugging.Monitorable); ok {
-		a.AttachPlugMonitor(m)
-	}
-	if a, ok := p.Panel.(plugging.Monitorable); ok {
-		a.AttachPlugMonitor(m)
-	}
-
-	// notify monitor of currently plugged peripherals
-	if p.monitor != nil {
-		p.monitor.Plugged(plugging.PortLeft, p.LeftPlayer.ID())
-		p.monitor.Plugged(plugging.PortRight, p.RightPlayer.ID())
-	}
+	p.notifyPlugMonitor()
 }
 
 // PeripheralID returns the ID of the peripheral in the identified port

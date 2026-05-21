@@ -21,19 +21,6 @@ import (
 	"github.com/jetsetilly/gopher2600/environment"
 )
 
-// TrackerEnvironment defines the subset of the Environment type required
-// by a Tracker implementation
-type TrackerEnvironment interface {
-	IsEmulation(environment.Label) bool
-}
-
-// Tracker implementations display or otherwise record the state of the audio
-// registers for each channel.
-type Tracker interface {
-	// AudioTick is called every video cycle
-	AudioTick(env TrackerEnvironment, channel int, reg Registers)
-}
-
 // The TIA emulation takes two samples per scanline, so by definition the sample
 // frequency is double the horizontal scan rate for the machine
 //
@@ -84,6 +71,7 @@ func NewAudio(env *environment.Environment) *Audio {
 	au := &Audio{
 		env:       env,
 		sampleSum: make([]int, 2),
+		tracker:   trackerStub{},
 	}
 
 	return au
@@ -97,6 +85,8 @@ func (au *Audio) Plumb(env *environment.Environment) {
 // SetTracker adds a Tracker implementation to the Audio sub-system.
 func (au *Audio) SetTracker(tracker Tracker) {
 	au.tracker = tracker
+	au.channel0.tracker = tracker
+	au.channel1.tracker = tracker
 }
 
 // Snapshot creates a copy of the TIA Audio sub-system in its current state.
@@ -122,17 +112,6 @@ func (au *Audio) UpdateTracker() {
 // Step the audio on one TIA clock. The step will be filtered to produce a
 // 30Khz clock.
 func (au *Audio) Step() bool {
-	if au.tracker != nil {
-		// it's impossible for both channels to have changed in a single video cycle
-		if au.channel0.registersChanged {
-			au.tracker.AudioTick(au.env, 0, au.channel0.registers)
-			au.channel0.registersChanged = false
-		} else if au.channel1.registersChanged {
-			au.tracker.AudioTick(au.env, 1, au.channel1.registers)
-			au.channel1.registersChanged = false
-		}
-	}
-
 	var changed bool
 
 	// sum volume bits

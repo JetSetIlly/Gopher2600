@@ -14,7 +14,6 @@
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
 //go:build !wasm
-// +build !wasm
 
 package fs
 

@@ -20,6 +20,7 @@ package sdlimgui
 import (
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/jetsetilly/gopher2600/gui/display/bevels"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/shading"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -28,7 +29,7 @@ type playscrShader struct {
 	crt *crtSequencer
 }
 
-func newPlayscrShader(img *SdlImgui) shaderProgram {
+func newPlayscrShader(img *SdlImgui) shading.Program {
 	sh := &playscrShader{
 		img: img,
 		crt: newCRTSequencer(img),
@@ -36,36 +37,36 @@ func newPlayscrShader(img *SdlImgui) shaderProgram {
 	return sh
 }
 
-func (sh *playscrShader) destroy() {
+func (sh *playscrShader) Destroy() {
 	sh.crt.destroy()
 }
 
-func (sh *playscrShader) setAttributes(env shaderEnvironment) {
+func (sh *playscrShader) SetAttributes(env shading.Environment) {
 	if !sh.img.isPlaymode() {
 		return
 	}
 
-	env.width = int32(sh.img.playScr.screenWidth)
-	env.height = int32(sh.img.playScr.screenHeight)
+	env.Width = int32(sh.img.playScr.screenWidth)
+	env.Height = int32(sh.img.playScr.screenHeight)
 
 	// set scissor and viewport
 	gl.Viewport(int32(-sh.img.playScr.screenPosMin.X),
 		int32(-sh.img.playScr.screenPosMin.Y),
-		env.width+(int32(sh.img.playScr.screenPosMin.X*2)),
-		env.height+(int32(sh.img.playScr.screenPosMin.Y*2)),
+		env.Width+(int32(sh.img.playScr.screenPosMin.X*2)),
+		env.Height+(int32(sh.img.playScr.screenPosMin.Y*2)),
 	)
 	gl.Scissor(int32(-sh.img.playScr.screenPosMin.X),
 		int32(-sh.img.playScr.screenPosMin.Y),
-		env.width+(int32(sh.img.playScr.screenPosMin.X*2)),
-		env.height+(int32(sh.img.playScr.screenPosMin.Y*2)),
+		env.Width+(int32(sh.img.playScr.screenPosMin.X*2)),
+		env.Height+(int32(sh.img.playScr.screenPosMin.Y*2)),
 	)
 
-	env.textureID = sh.crt.process(env, sh.img.playScr.screenTexture.getID(),
+	env.TextureID = sh.crt.process(env, sh.img.playScr.screenTexture.getID(),
 		sh.img.playScr.visibleScanlines, specification.ClksVisible,
 		newCrtSeqPrefs(sh.img.crt), sh.img.screen.rotation.Load().(specification.Rotation), false)
 
 	if sh.img.playScr.usingBevel {
-		env.flipY = true
+		env.FlipY = true
 
 		f := sh.img.playScr.bevelHeight / sh.img.playScr.screenWidth
 		f *= bevels.SolidState.Scale
@@ -74,11 +75,11 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 		wwr := ww / sh.img.playScr.bevelWidth
 		whr := wh / sh.img.playScr.bevelHeight
 
-		env.projMtx[0][0] *= f
-		env.projMtx[1][1] *= f
-		env.projMtx[3][0] = -f + (bevels.SolidState.OffsetX / wwr)
-		env.projMtx[3][1] = f + (bevels.SolidState.OffsetY / whr)
+		env.ProjMtx[0][0] *= f
+		env.ProjMtx[1][1] *= f
+		env.ProjMtx[3][0] = -f + (bevels.SolidState.OffsetX / wwr)
+		env.ProjMtx[3][1] = f + (bevels.SolidState.OffsetY / whr)
 
-		sh.crt.colorShader.setAttributes(env)
+		sh.crt.colorShader.SetAttributes(env)
 	}
 }

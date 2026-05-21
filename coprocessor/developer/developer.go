@@ -387,7 +387,7 @@ func (dev *Developer) SearchStaticMemory(output io.Writer, data uint32, width in
 					return fmt.Errorf("address %08x not found in segment (it should be)", addr)
 				}
 				if v == uint8(data) {
-					output.Write([]byte(fmt.Sprintf("%s %08x", seg.Name, addr)))
+					output.Write(fmt.Appendf(nil, "%s %08x", seg.Name, addr))
 				}
 			case 2:
 				v, ok := mem.Read16bit(addr)
@@ -395,7 +395,7 @@ func (dev *Developer) SearchStaticMemory(output io.Writer, data uint32, width in
 					return fmt.Errorf("address %08x not found in segment (it should be)", addr)
 				}
 				if v == uint16(data) {
-					output.Write([]byte(fmt.Sprintf("%s %08x", seg.Name, addr)))
+					output.Write(fmt.Appendf(nil, "%s %08x", seg.Name, addr))
 				}
 			case 4:
 				v, ok := mem.Read32bit(addr)
@@ -403,7 +403,7 @@ func (dev *Developer) SearchStaticMemory(output io.Writer, data uint32, width in
 					return fmt.Errorf("address %08x not found in segment (it should be)", addr)
 				}
 				if v == data {
-					output.Write([]byte(fmt.Sprintf("%s %08x", seg.Name, addr)))
+					output.Write(fmt.Appendf(nil, "%s %08x", seg.Name, addr))
 				}
 			}
 		}

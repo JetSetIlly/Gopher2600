@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -83,7 +83,7 @@ func (ref *Reflector) SetEmulationState(state govern.State) {
 
 // Step should be called every video cycle to record a complete
 // reflection of the system.
-func (ref *Reflector) Step(bank mapper.BankInfo) error {
+func (ref *Reflector) Step(bank banking.Information) error {
 	sig := ref.vcs.TV.GetLastSignal()
 
 	// check that signal is not the NoSignal signal
@@ -101,21 +101,17 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 	h[0].WSYNC = !ref.vcs.CPU.RdyFlg
 	h[0].Bank = bank
 	h[0].VideoElement = ref.vcs.TIA.Video.LastElement
+	h[0].VideoElementCt = ref.vcs.TIA.Video.LastElementCt
 	h[0].Signal = sig
 	h[0].Collision = *ref.vcs.TIA.Video.Collisions
 	h[0].IsHblank = ref.vcs.TIA.Hblank
 	h[0].CoProcSync = ref.vcs.Mem.Cart.CoProcExecutionState().Sync
-
-	h[0].Hmove.Delay = ref.vcs.TIA.Hmove.Future.IsActive()
-	h[0].Hmove.DelayCt = ref.vcs.TIA.Hmove.Future.Remaining()
-	h[0].Hmove.Latch = ref.vcs.TIA.Hmove.Latch
-	h[0].Hmove.RippleCt = ref.vcs.TIA.Hmove.Ripple
-
+	h[0].Hmove = ref.vcs.TIA.Hmove
 	h[0].RSYNCalign, h[0].RSYNCreset = ref.vcs.TIA.RSYNCstate()
 
 	// PXE colour reflection
 	h[0].PXEColourWrite = false
-	if ref.vcs.CPU.LastResult.Defn.Effect == instructions.Write {
+	if ref.vcs.CPU.LastResult.Defn != nil && ref.vcs.CPU.LastResult.Defn.Effect == instructions.Write {
 		if ef, ok := ref.vcs.Mem.Cart.GetCoProcBus().(coprocessor.CartCoProcELF); ok {
 			colour := ref.vcs.Mem.LastCPUData
 			if ok, a := ef.LastPXEPalette(colour); ok {

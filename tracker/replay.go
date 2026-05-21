@@ -26,7 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/rewind"
 )
 
-const replayLabel = environment.Label("tracker_replay")
+const trackerReplayLabel = environment.Label("tracker_replay")
 
 // create replay emulation if it has not been created already
 func (tr *Tracker) createReplayEmulation(mixer television.AudioMixer) error {
@@ -40,7 +40,7 @@ func (tr *Tracker) createReplayEmulation(mixer television.AudioMixer) error {
 	}
 	tv.AddAudioMixer(mixer)
 
-	tr.replayEmulation, err = hardware.NewVCS(replayLabel, tv, nil, nil)
+	tr.replayEmulation, err = hardware.NewVCS(trackerReplayLabel, tv, nil, nil)
 	if err != nil {
 		return fmt.Errorf("tracker: create replay emulation: %w", err)
 	}
@@ -49,13 +49,12 @@ func (tr *Tracker) createReplayEmulation(mixer television.AudioMixer) error {
 	return nil
 }
 
-// Replay audio from start to end indexes
+// Replay audio from start to end indexes. The onEnd function will run when the replay has
+// concluded
 //
-// The onEnd argument is a function to run when the replay has concluded
+// the replay will run even if the master emulation is running. this may cause audible issues
+// with the hardware audio mixing
 func (tr *Tracker) Replay(start int, end int, mixer television.AudioMixer, onEnd func()) {
-	// the replay will run even if the master emulation is running. this may
-	// cause audible issues with the hardware audio mixing
-
 	tr.createReplayEmulation(mixer)
 
 	tr.crit.section.Lock()

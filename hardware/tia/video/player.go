@@ -184,9 +184,9 @@ func (ps *PlayerSprite) String() string {
 	s := strings.Builder{}
 	s.WriteString(ps.label)
 	s.WriteString(": ")
-	s.WriteString(fmt.Sprintf("%s %s [%03d ", ps.position, ps.pclk, ps.ResetPixel))
-	s.WriteString(fmt.Sprintf("> %#1x >", normalisedHmove))
-	s.WriteString(fmt.Sprintf(" %03d", ps.HmovedPixel))
+	fmt.Fprintf(&s, "%s %s [%03d ", ps.position, ps.pclk, ps.ResetPixel)
+	fmt.Fprintf(&s, "> %#1x >", normalisedHmove)
+	fmt.Fprintf(&s, " %03d", ps.HmovedPixel)
 	if ps.MoreHMOVE {
 		s.WriteString("*]")
 	} else {
@@ -204,27 +204,27 @@ func (ps *PlayerSprite) String() string {
 	}
 	playerSize := playerSizesBrief[ps.SizeAndCopies]
 	if playerSize != "" {
-		s.WriteString(fmt.Sprintf(" %s", playerSize))
+		fmt.Fprintf(&s, " %s", playerSize)
 	}
 
 	// hmove information
 	if ps.MoreHMOVE {
-		s.WriteString(fmt.Sprintf(" hmoving [%04b],", ps.Hmove))
+		fmt.Fprintf(&s, " hmoving [%04b],", ps.Hmove)
 	}
 
 	// drawing or latching information
 	if ps.ScanCounter.IsActive() {
-		s.WriteString(fmt.Sprintf(" drw (px %d", ps.ScanCounter.Pixel))
+		fmt.Fprintf(&s, " drw (px %d", ps.ScanCounter.Pixel)
 
 		// add "sub-pixel" information. this happens when the player sprite is
 		// being stretched by NUSIZ
 		if ps.ScanCounter.count > 0 {
-			s.WriteString(fmt.Sprintf(".%d", ps.ScanCounter.count))
+			fmt.Fprintf(&s, ".%d", ps.ScanCounter.count)
 		}
 
 		s.WriteString("),")
 	} else if ps.ScanCounter.IsLatching() {
-		s.WriteString(fmt.Sprintf(" latch (drw in %d),", ps.ScanCounter.latch))
+		fmt.Fprintf(&s, " latch (drw in %d),", ps.ScanCounter.latch)
 	}
 
 	// copy information if drawing or latching and nusiz is a multiple copy
@@ -265,7 +265,7 @@ func (ps *PlayerSprite) rsync(adjustment int) {
 
 func (ps *PlayerSprite) tickHBLANK() bool {
 	// check to see if there is more movement required for this sprite
-	ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.tia.hmove.Ripple, ps.Hmove)
+	ps.MoreHMOVE = ps.MoreHMOVE && ps.tia.hmove.Compare(ps.Hmove)
 	if !ps.MoreHMOVE {
 		return false
 	}
@@ -281,7 +281,7 @@ func (ps *PlayerSprite) tickHBLANK() bool {
 
 func (ps *PlayerSprite) tickHMOVE() bool {
 	// check to see if there is more movement required for this sprite
-	ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.tia.hmove.Ripple, ps.Hmove)
+	ps.MoreHMOVE = ps.MoreHMOVE && ps.tia.hmove.Compare(ps.Hmove)
 
 	// cancel motion clock if necessary
 	if ps.MoreHMOVE && ps.tia.env.Prefs.Revision.Live.LostMOTCK.Load().(bool) {
@@ -426,6 +426,8 @@ func (ps *PlayerSprite) resetPosition() {
 	// reset pixel (approx. 9 pixels after the start of STA RESP0)."
 	delay := 4
 
+	// we might change the value of hblank for the purposes of specific TIA revision. if we weren't
+	// concerned with that we would just reference *ps.tia.hblank directly
 	hblank := *ps.tia.hblank
 
 	// RESPx responding late to the end of HBLANK is dependent on heat. The
@@ -458,25 +460,19 @@ func (ps *PlayerSprite) resetPosition() {
 		// this tricky branch happens when reset is triggered inside the
 		// HBLANK period and HMOVE is active in some way.
 
-		if ps.tia.hmove.Ripple >= 1 && ps.tia.hmove.Ripple <= 15 {
+		if ps.tia.hmove.IsActive() {
 			// HMOVE is currently rippling note that HMOVE does not need to
 			// have been latched for this to be true
 			delay = 2
 
-			// if HMOVE is latched or ripple has just started then check the
-			// TIA revision for a longer delay
-			if ps.tia.hmove.Latch || ps.tia.hmove.Ripple == 15 {
+			// if HMOVE ripple has just started then check the TIA revision for a longer delay
+			if ps.tia.hmove.JustStarted() {
 				if ps.tia.env.Prefs.Revision.Live.LateRESPx.Load().(bool) {
 					delay = 3
 				}
 			}
 		} else if ps.tia.hmove.Latch {
 			// HMOVE has been activated this scanline but not currently rippling.
-			//
-			// maybe surprisingly, this is comparatively unusual. many ROMs if
-			// the reset the player during the HBLANK at all will have called
-			// HMOVE straight after the WSYNC, as advised by the Stella
-			// Programmer's Guide.
 			//
 			// a good examples of where it is required is Midnight Madness
 			// (there is a gap in the crossbar of the T of 'Midnite')

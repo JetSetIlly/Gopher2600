@@ -20,8 +20,10 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
+	"github.com/jetsetilly/gopher2600/hardware/tia"
 )
 
 // CartContainer is a special CartMapper type that wraps another CartMapper.
@@ -76,7 +78,7 @@ type CartMapper interface {
 	AccessVolatile(addr uint16, data uint8, poke bool) error
 
 	NumBanks() int
-	GetBank(addr uint16) BankInfo
+	GetBank(addr uint16) banking.Information
 
 	// AccessPassive is called so that the cartridge can respond to changes to the
 	// address and data bus even when the data bus is not addressed to the cartridge.
@@ -93,7 +95,7 @@ type CartMapper interface {
 	// return copies of all banks in the cartridge. the disassembly process
 	// uses this to access cartridge data freely and without affecting the
 	// state of the cartridge.
-	CopyBanks() []BankContent
+	CopyBanks() []banking.Content
 }
 
 // SelectableBank is implemented by mappers that can have the selected bank
@@ -116,14 +118,6 @@ type TerminalCommand interface {
 // the normal Plumb().
 type PlumbFromDifferentEmulation interface {
 	PlumbFromDifferentEmulation(*environment.Environment)
-}
-
-// OptionalSuperchip are implemented by CartMapper implementations that require
-// an optional superchip. This shouldn't be used to decide if a cartridge has
-// additional RAM or not. Use the CartRAMbus interface for that.
-type OptionalSuperchip interface {
-	// the force argument causes the superchip to be added whether it needs it or not
-	AddSuperchip(force bool)
 }
 
 // CartRAMbus is implemented for catridge mappers that have an addressable RAM
@@ -157,6 +151,11 @@ type CartRAM struct {
 	Origin uint16
 	Data   []uint8
 	Mapped bool
+
+	// some cartridge RAM hardware implementations have restrictions on how quickly they can be
+	// accessed (eg. SARA ram). the Recovery field indicates how many cycles until the RAM hardware
+	// is ready. it's ready if the value is zero
+	Recovery int
 }
 
 // CartRegistersBus defines the operations required for a debugger to access
@@ -291,10 +290,15 @@ type CartTapeState struct {
 	Data       []float32
 }
 
-// CartSuperChargerFastLoad defines the commit function required when loading
+// CartSuperchargerBootstrap defines the commit function required when loading
 // Supercharger 'Fastload' binaries
-type CartSuperChargerFastLoad interface {
-	Fastload(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error
+//
+// It's not ideal that we expose so much of the machine to the supercharger in this way but it's
+// necessary for fastloading supercharger binaries in particular. For soundloading binaries only
+// access to RAM is required (and only then so that we can support cartridge dumping). However, we
+// use the single bootstrap function for bother types of Supercharger
+type CartSuperchargerBootstrap interface {
+	Bootstrap(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer, tia *tia.TIA) error
 }
 
 // CartLabelsBus will be implemented for cartridge mappers that want to report any
@@ -320,8 +324,7 @@ type CartLabels map[uint16]string
 // range. For normality, this should be in the primary cartridge mirror (ie.
 // 0x1000 to 0x1fff).
 type CartHotspotsBus interface {
-	ReadHotspots() map[uint16]CartHotspotInfo
-	WriteHotspots() map[uint16]CartHotspotInfo
+	Hotspots() map[uint16]CartHotspotInfo
 }
 
 // CartHotspotAction defines the action of a hotspot address.
@@ -333,14 +336,15 @@ const (
 	// the bank/segment is switched when the address is read/write.
 	HotspotBankSwitch CartHotspotAction = iota
 
-	// some cartridge mappers have additional registers.
-	HotspotRegister
-
 	// a function is a catch all category that describes any hotspot address
 	// that has some other than or more complex than just bank switching. for
 	// example, the Supercharger CONFIG address causes bank-switching to take
 	// place but is none-the-less defined as a HotspotFunction.
 	HotspotFunction
+
+	// some cartridge mappers have additional registers.
+	HotspotReadRegister
+	HotspotWriteRegister
 
 	// some hotspots will be defined but be unused or reserved by the
 	// cartridge.

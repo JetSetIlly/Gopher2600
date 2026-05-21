@@ -68,18 +68,18 @@ func (elf *Elf) ParseCommand(w io.Writer, command string) error {
 				}
 			case "NEXT":
 				if elf.mem.stream.drain {
-					w.Write([]byte(fmt.Sprintf("%s", elf.mem.stream.stream[elf.mem.stream.drainPtr])))
+					w.Write(fmt.Appendf(nil, "%s", elf.mem.stream.stream[elf.mem.stream.drainPtr]))
 				} else {
 					w.Write([]byte("ELF stream is not currently draining"))
 				}
 			}
 		} else {
 			if elf.mem.stream.drain {
-				w.Write([]byte(fmt.Sprintf("ELF stream draining: %d remaining",
-					elf.mem.stream.drainTop-elf.mem.stream.drainPtr)))
+				w.Write(fmt.Appendf(nil, "ELF stream draining: %d remaining",
+					elf.mem.stream.drainTop-elf.mem.stream.drainPtr))
 			} else {
-				w.Write([]byte(fmt.Sprintf("ELF stream length: %d",
-					elf.mem.stream.ptr)))
+				w.Write(fmt.Appendf(nil, "ELF stream length: %d",
+					elf.mem.stream.ptr))
 			}
 		}
 	}

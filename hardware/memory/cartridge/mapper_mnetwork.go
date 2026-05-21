@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -177,7 +178,7 @@ func (cart *mnetwork) Reset() error {
 func (cart *mnetwork) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	var data uint8
 
-	if addr >= 0x0000 && addr <= 0x07ff {
+	if addr <= 0x07ff {
 		if addr <= 0x03ff && cart.state.use1kRAM {
 			return 0, 0, nil
 		}
@@ -217,7 +218,7 @@ func (cart *mnetwork) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		}
 	}
 
-	if addr >= 0x0000 && addr <= 0x07ff {
+	if addr <= 0x07ff {
 		if addr <= 0x03ff && cart.state.use1kRAM {
 			cart.state.ram1k[addr&0x03ff] = data
 			return nil
@@ -303,31 +304,31 @@ func (cart *mnetwork) NumBanks() int {
 }
 
 // GetBank implements the mapper.CartMapper interface.
-func (cart *mnetwork) GetBank(addr uint16) mapper.BankInfo {
-	if addr >= 0x0000 && addr <= 0x07ff {
+func (cart *mnetwork) GetBank(addr uint16) banking.Information {
+	if addr <= 0x07ff {
 		if cart.state.use1kRAM {
-			return mapper.BankInfo{Number: cart.state.bank, IsRAM: true, IsSegmented: true, Segment: 0}
+			return banking.Information{Number: cart.state.bank, IsRAM: true, IsSegmented: true, Segment: 0}
 		}
-		return mapper.BankInfo{Number: cart.state.bank, IsRAM: false, IsSegmented: true, Segment: 0}
+		return banking.Information{Number: cart.state.bank, IsRAM: false, IsSegmented: true, Segment: 0}
 	}
 
 	if addr >= 0x0800 && addr <= 0x08ff {
-		return mapper.BankInfo{Number: cart.state.ram256byteIdx, IsRAM: true, IsSegmented: true, Segment: 1}
+		return banking.Information{Number: cart.state.ram256byteIdx, IsRAM: true, IsSegmented: true, Segment: 1}
 	}
 
-	return mapper.BankInfo{Number: cart.NumBanks() - 1, IsRAM: false, IsSegmented: true, Segment: 1}
+	return banking.Information{Number: cart.NumBanks() - 1, IsRAM: false, IsSegmented: true, Segment: 1}
 }
 
 // SetBank implements the mapper.CartMapper interface.
 func (cart *mnetwork) SetBank(bank string) error {
-	if mapper.IsAutoBankSelection(bank) {
+	if banking.IsAutoSelection(bank) {
 		cart.state.bank = 0
 		cart.state.use1kRAM = false
 		cart.state.ram256byteIdx = 0
 		return nil
 	}
 
-	segs, err := mapper.SegmentedBankSelection(bank)
+	segs, err := banking.SegmentedSelection(bank)
 	if err != nil {
 		return fmt.Errorf("%s: %w", cart.mappingID, err)
 	}
@@ -388,7 +389,7 @@ func (cart *mnetwork) GetRAM() []mapper.CartRAM {
 	}
 	copy(r[0].Data, cart.state.ram1k)
 
-	for i := 0; i < mnetworkNum256byte; i++ {
+	for i := range mnetworkNum256byte {
 		r[i+1] = mapper.CartRAM{
 			Label:  fmt.Sprintf("256B [%d]", i),
 			Origin: 0x1900,
@@ -411,11 +412,11 @@ func (cart *mnetwork) PutRAM(bank int, idx int, data uint8) {
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
-func (cart *mnetwork) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, len(cart.banks))
+func (cart *mnetwork) CopyBanks() []banking.Content {
+	c := make([]banking.Content, len(cart.banks))
 
 	for b := 0; b < len(cart.banks)-1; b++ {
-		c[b] = mapper.BankContent{Number: b,
+		c[b] = banking.Content{Number: b,
 			Data:    cart.banks[b],
 			Origins: []uint16{memorymap.OriginCart},
 		}
@@ -423,15 +424,15 @@ func (cart *mnetwork) CopyBanks() []mapper.BankContent {
 
 	// always points to the last segment
 	b := len(cart.banks) - 1
-	c[b] = mapper.BankContent{Number: b,
+	c[b] = banking.Content{Number: b,
 		Data:    cart.banks[b],
 		Origins: []uint16{memorymap.OriginCart + uint16(cart.bankSize)},
 	}
 	return c
 }
 
-// ReadHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *mnetwork) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
+// Hotspots implements the mapper.CartHotspotsBus interface.
+func (cart *mnetwork) Hotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		0x1fe0: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
 		0x1fe1: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
@@ -446,11 +447,6 @@ func (cart *mnetwork) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 		0x1fea: {Symbol: "RAM2", Action: mapper.HotspotBankSwitch},
 		0x1feb: {Symbol: "RAM3", Action: mapper.HotspotBankSwitch},
 	}
-}
-
-// WriteHotspots implements the mapper.CartHotspotsBus interface.
-func (cart *mnetwork) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
-	return cart.ReadHotspots()
 }
 
 type mnetworkState struct {

@@ -24,8 +24,8 @@ import (
 
 // debugger keywords
 const (
-	cmdReset = "RESET"
-	cmdQuit  = "QUIT"
+	cmdReload = "RELOAD"
+	cmdQuit   = "QUIT"
 
 	cmdRun        = "RUN"
 	cmdStep       = "STEP"
@@ -71,6 +71,7 @@ const (
 	cmdPanel      = "PANEL"
 	cmdStick      = "STICK"
 	cmdKeypad     = "KEYPAD"
+	cmdKeyportari = "KEYPORTARI"
 
 	// halt conditions
 	cmdBreak = "BREAK"
@@ -88,7 +89,7 @@ const (
 )
 
 var commandTemplate = []string{
-	cmdReset,
+	cmdReload,
 	cmdQuit,
 
 	cmdRun,
@@ -101,7 +102,7 @@ var commandTemplate = []string{
 	cmdGoto + " [%<clock>N] (%<scanline>N) (%<frame>N)",
 
 	cmdInsert + " %<cartridge>F",
-	cmdCartridge + " (PATH|NAME|MAPPER|CONTAINER|MAPPEDBANKS|HASH|STATIC|REGISTERS|RAM|DUMP|SETBANK %<bank>S|{%<mapper specific>X})",
+	cmdCartridge + " (PATH|NAME|MAPPER|CONTAINER|MAPPED|HASH|STATIC|REGISTERS|RAM|DUMP|SETBANK %<bank>S|{%<mapper specific>X})",
 	cmdPatch + " %<patch file>S",
 	cmdDisasm + " (BYTECODE|REDUX|SEQUENTIAL)",
 	cmdGrep + " (OPERATOR|OPERAND|COPROC) %<search>S",
@@ -120,7 +121,7 @@ var commandTemplate = []string{
 	cmdTIA + " (HMOVE)",
 	cmdRIOT + " (PORTS|TIMER)",
 	cmdAudio,
-	cmdTV + fmt.Sprintf(" (FRAME|SPEC (%s))", strings.Join(specification.ReqSpecList, "|")),
+	cmdTV + fmt.Sprintf(" (FRAME|VSYNC|SPEC (%s))", strings.Join(specification.ReqSpecList, "|")),
 	cmdPlayer + " (0|1)",
 	cmdMissile + " (0|1)",
 	cmdBall,
@@ -131,13 +132,14 @@ var commandTemplate = []string{
 	cmdDWARF + " [FUNCTIONS|GLOBALS (DERIVATION)|LOCALS {DERIVATION|RANGES}|FRAMEBASE (DERIVATION)|LINE %<file:line>S|CALLSTACK|CALLERS %<function>S]",
 
 	// user input
-	cmdPeripheral + " ([LEFT|RIGHT] (AUTO|STICK|PADDLE|KEYPAD|GAMEPAD|SAVEKEY|ATARIVOX)|SWAP)",
+	cmdPeripheral + " ([LEFT|RIGHT] (AUTO|NONE|STICK|PADDLE|PADDLES|KEYPAD|GAMEPAD|SAVEKEY|ATARIVOX)|SWAP)",
 	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL]|[HOLD|RELEASE] [SELECT|RESET])",
-	cmdStick + " [LEFT|RIGHT] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
+	cmdStick + " [LEFT|RIGHT] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE|SECOND|NOSECOND]",
 	cmdKeypad + " [LEFT|RIGHT] [NONE|0|1|2|3|4|5|6|7|8|9|*|#]",
+	cmdKeyportari + " (NONE|24CHAR|ASCII)",
 
 	// halt conditions
-	cmdBreak + " [%<address>S|%<target>S %<value>N] {& %<address>S|%<target>S %<value>S}",
+	cmdBreak + " (TOGGLE|DROP) [%<address>S|%<target>S %<value>N] {& %<address>S|%<target>S %<value>S}",
 	cmdTrap + " [%<address>S] {%<address>S}",
 	cmdWatch + " (READ|WRITE (CHANGED)) (STRICT) (PHANTOM|GHOST) [%<address>S] (%<value>S)",
 	cmdTrace + " (STRICT) (%<address>S)",
@@ -151,8 +153,7 @@ var commandTemplate = []string{
 	cmdVersion + " (REVISION)",
 }
 
-// list of commands that should not be executed when recording/playing scripts.
-var scriptUnsafeTemplate = []string{
+// list of commands that should not be executed when recording/playing batch scripts.
+var batchUnsafeTemplate = []string{
 	cmdScript + " [RECORD %S]",
-	cmdRun,
 }

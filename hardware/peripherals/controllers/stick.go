@@ -69,6 +69,14 @@ func NewStick(env *environment.Environment, port plugging.PortID, bus ports.Peri
 	return stk
 }
 
+// Reset implements the Peripheral interface.
+func (stk *Stick) Reset() {
+	stk.axis = axisCenter
+	stk.button = stickNoFire
+	stk.bus.WriteSWCHx(stk.port, stk.axis)
+	stk.bus.WriteINPTx(stk.buttonInptx, stk.button)
+}
+
 // Unplug implements the Peripheral interface.
 func (stk *Stick) Unplug() {
 	stk.bus.WriteSWCHx(stk.port, axisCenter)
@@ -250,15 +258,17 @@ func (stk *Stick) Step() {
 	}
 }
 
-// Reset implements the ports.Peripheral interface.
-func (stk *Stick) Reset() {
-	stk.axis = axisCenter
-	stk.button = stickNoFire
-	stk.bus.WriteSWCHx(stk.port, stk.axis)
-	stk.bus.WriteINPTx(stk.buttonInptx, stk.button)
-}
-
 // IsActive implements the ports.Peripheral interface.
 func (stk *Stick) IsActive() bool {
 	return stk.button == stickFire || stk.axis != axisCenter
+}
+
+// State returns the four axis states and the fire button state
+func (stk *Stick) State() ([4]bool, bool) {
+	return [4]bool{
+		stk.axis&axisUp != axisUp,
+		stk.axis&axisLeft != axisLeft,
+		stk.axis&axisRight != axisRight,
+		stk.axis&axisDown != axisDown,
+	}, stk.button&stickNoFire != stickNoFire
 }

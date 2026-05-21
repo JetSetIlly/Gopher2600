@@ -66,7 +66,7 @@ const (
 	Camera                 = '\uf030'
 	Chip                   = '\uf2db'
 	Unlocked               = '\uf13e'
-	CPUKilled              = '\uf714'
+	CPUJammed              = '\uf714'
 	CoProcBug              = '\uf188'
 	ExecutionNotes         = '\uf02b'
 	Label                  = '\uf22d'
@@ -117,6 +117,7 @@ const (
 	MeterSegment           = '\uf04d'
 	RenderTime             = '\uf06a'
 	SelectedTick           = '\uf058'
+	Phantom                = '\uf6e2'
 )
 
 //go:embed "Gopher2600-Icons.ttf"
@@ -125,19 +126,20 @@ var gopher2600Icons []byte
 var Gopher2600Icons FontSpec = FontSpec{
 	Data: gopher2600Icons,
 	Min:  '\ue000',
-	Max:  '\ue007',
+	Max:  '\ue008',
 }
 
 // Unicode points in AtariIcons for icons used in the application.
 const (
-	Stick    = '\ue000'
-	Paddle   = '\ue001'
-	Keypad   = '\ue002'
-	Tape     = '\ue003'
-	Wifi     = '\ue004'
-	Savekey  = '\ue005'
-	Gamepad  = '\ue006'
-	AtariVox = '\ue007'
+	Stick      = '\ue000'
+	Paddle     = '\ue001'
+	Keypad     = '\ue002'
+	Tape       = '\ue003'
+	Wifi       = '\ue004'
+	Savekey    = '\ue005'
+	Gamepad    = '\ue006'
+	AtariVox   = '\ue007'
+	Keyportari = '\ue008'
 )
 
 //go:embed "Hack-Regular.ttf"

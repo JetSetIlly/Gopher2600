@@ -13,6 +13,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package shaders contains the shader source for displaying GUI elements on
-// the screen. CRT shaders are found in the gui/crtshaders package
+// Package shaders contains the fragment shader source for the Gopher2600
+// project.
 package shaders

@@ -78,8 +78,8 @@ type CPU struct {
 	// Whether the last memory access by the CPU was a phantom access
 	PhantomMemAccess bool
 
-	// the cpu has encounted a KIL instruction. requires a Reset()
-	Killed bool
+	// the cpu has encounted a JAM instruction. requires a Reset()
+	Jammed bool
 }
 
 const (
@@ -221,7 +221,7 @@ type Random interface {
 // Reset CPU in either a random or non-random state. The random state is more accurate
 func (mc *CPU) Reset(rnd Random) error {
 	mc.LastResult.Reset()
-	mc.Killed = false
+	mc.Jammed = false
 	mc.cycleCallback = nil
 	mc.interruptDepth = 0
 	mc.interrupt = false
@@ -283,8 +283,6 @@ func (mc *CPU) LoadPCIndirect(address uint16) error {
 	if !mc.LastResult.Final {
 		return fmt.Errorf("cpu: load PC invalid mid-instruction")
 	}
-
-	mc.PhantomMemAccess = false
 
 	lo, err := mc.mem.Read(address)
 	if err != nil {
@@ -356,6 +354,9 @@ func (mc *CPU) write8Bit(address uint16, value uint8, phantom bool) error {
 // side-effects:
 //   - calls cycleCallback after each 8bit read
 func (mc *CPU) read16Bit(address uint16) (uint16, error) {
+	// 16 bit reads are never phantom
+	mc.PhantomMemAccess = false
+
 	lo, err := mc.mem.Read(address)
 	if err != nil {
 		return 0, err
@@ -428,7 +429,7 @@ func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 
 	case newOpcode:
 		// look up definition
-		mc.LastResult.Defn = instructions.Definitions[v]
+		mc.LastResult.Defn = &instructions.Definitions[v]
 
 		// even though all opcodes are defined we'll leave this error check in
 		// just in case something goes wrong with the instruction generator
@@ -596,9 +597,11 @@ var ResetMidInstruction = errors.New("cpu: appears to have been reset mid-instru
 // The cycleCallback arugment should *never* be nil. Use the NilCycleCallback()
 // function in this package if you want a nil effect.
 func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
-	// the CPU does nothing if it is in the KIL state. however, the other
+	mc.PhantomMemAccess = false
+
+	// the CPU does nothing if it is in the JAM state. however, the other
 	// parts of the VCS continue
-	if mc.Killed {
+	if mc.Jammed {
 		return cycleCallback()
 	}
 
@@ -680,7 +683,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// implied mode does not use any additional bytes. however, the next
 		// instruction is read but the PC is not incremented
 
-		if defn.Operator == instructions.Brk {
+		if defn.Operator == instructions.BRK {
 			// BRK is unusual in that it increases the PC by two bytes despite
 			// being an implied addressing instruction
 			// +1 cycle
@@ -723,28 +726,30 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		address = mc.LastResult.InstructionData
 
 	case instructions.Absolute:
-		if defn.Effect != instructions.Subroutine {
-			// +2 cycles
-			err := mc.read16BitPC()
+		switch defn.Bytes {
+		case 3:
+			if defn.Effect != instructions.Subroutine {
+				// +2 cycles
+				err := mc.read16BitPC()
+				if err != nil {
+					return err
+				}
+				address = mc.LastResult.InstructionData
+			}
+
+			// else... for JSR, addresses are read slightly differently so we defer
+			// this part of the operation to the operator switch below
+		case 2:
+			// +1 cycle
+			//
+			// while we must trest the value as an address (ie. as uint16) we
+			// actually only read an 8 bit value so we store the value as uint8
+			err = mc.read8BitPC(loByte)
 			if err != nil {
 				return err
 			}
 			address = mc.LastResult.InstructionData
 		}
-
-		// else... for JSR, addresses are read slightly differently so we defer
-		// this part of the operation to the operator switch below
-
-	case instructions.ZeroPage:
-		// +1 cycle
-		//
-		// while we must trest the value as an address (ie. as uint16) we
-		// actually only read an 8 bit value so we store the value as uint8
-		err = mc.read8BitPC(loByte)
-		if err != nil {
-			return err
-		}
-		address = mc.LastResult.InstructionData
 
 	case instructions.Indirect:
 		// indirect addressing (without indexing) is only used for the JMP command
@@ -758,7 +763,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// handle indirect addressing JMP bug
 		if indirectAddress&0x00ff == 0x00ff {
-			mc.LastResult.CPUBug = "indirect addressing bug (JMP bug)"
+			mc.LastResult.Bug = execution.JmpIndirectAddressingBug
 
 			var lo, hi uint8
 
@@ -801,7 +806,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			}
 		}
 
-	case instructions.IndexedIndirect: // x indexing
+	case instructions.PreIndexed: // (ind,X)
 		// +1 cycle
 		err = mc.read8BitPC(loByte)
 		if err != nil {
@@ -823,7 +828,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// make a note of indirect addressig bug
 		if uint16(indirectAddress+mc.X.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
-			mc.LastResult.CPUBug = "indirect addressing bug"
+			mc.LastResult.Bug = execution.IndexedIndirectAddressingBug
 		}
 
 		// +2 cycles
@@ -834,7 +839,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// never a page fault wth pre-index indirect addressing
 
-	case instructions.IndirectIndexed: // y indexing
+	case instructions.PostIndexed: // (ind),Y
 		// +1 cycle
 		err = mc.read8BitPC(loByte)
 		if err != nil {
@@ -855,12 +860,12 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// check for page fault
 		if defn.PageSensitive && (address&0xff00 == 0x0100) {
-			mc.LastResult.CPUBug = "indirect addressing bug"
+			mc.LastResult.Bug = execution.IndexedIndirectAddressingBug
 			mc.LastResult.PageFault = true
 		}
 
-		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.RMW {
-			// phantom read (always happens for Write and RMW)
+		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.Modify {
+			// phantom read (always happens for Write and Modify)
 			// +1 cycle
 			_, err = mc.read8Bit((indexedAddress&0xff00)|(address&0x00ff), true)
 			if err != nil {
@@ -872,110 +877,69 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.acc16.Add(indexedAddress & 0xff00)
 		address = mc.acc16.Address()
 
-	case instructions.AbsoluteIndexedX:
-		// +2 cycles
-		err = mc.read16BitPC()
-		if err != nil {
-			return err
+	case instructions.AbsoluteX, instructions.AbsoluteY:
+		var idxReg registers.Data
+
+		switch defn.AddressingMode {
+		case instructions.AbsoluteX:
+			idxReg = mc.X
+		case instructions.AbsoluteY:
+			idxReg = mc.Y
 		}
-		indirectAddress := mc.LastResult.InstructionData
 
-		// add index to LSB of address
-		mc.acc16.Load(mc.X.Address())
-		mc.acc16.Add(indirectAddress & 0x00ff)
-		address = mc.acc16.Address()
-
-		// check for page fault
-		mc.LastResult.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
-		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.RMW {
-			// phantom read (always happens for Write and RMW)
-			// +1 cycle
-			_, err := mc.read8Bit((indirectAddress&0xff00)|(address&0x00ff), true)
+		switch defn.Bytes {
+		case 3:
+			// +2 cycles
+			err = mc.read16BitPC()
 			if err != nil {
 				return err
 			}
-		}
+			indirectAddress := mc.LastResult.InstructionData
 
-		// fix MSB of address
-		mc.acc16.Add(indirectAddress & 0xff00)
-		address = mc.acc16.Address()
+			// add index to LSB of address
+			mc.acc16.Load(idxReg.Address())
+			mc.acc16.Add(indirectAddress & 0x00ff)
+			address = mc.acc16.Address()
 
-	case instructions.AbsoluteIndexedY:
-		// +2 cycles
-		err = mc.read16BitPC()
-		if err != nil {
-			return err
-		}
-		indirectAddress := mc.LastResult.InstructionData
+			// check for page fault
+			mc.LastResult.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
+			if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.Modify {
+				// phantom read (always happens for Write and Modify)
+				// +1 cycle
+				_, err := mc.read8Bit((indirectAddress&0xff00)|(address&0x00ff), true)
+				if err != nil {
+					return err
+				}
+			}
 
-		// add index to LSB of address
-		mc.acc16.Load(mc.Y.Address())
-		mc.acc16.Add(indirectAddress & 0x00ff)
-		address = mc.acc16.Address()
-
-		// check for page fault
-		mc.LastResult.PageFault = defn.PageSensitive && (address&0xff00 == 0x0100)
-		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.RMW {
-			// phantom read (always happens for Write and RMW)
-			// +1 cycle
-			_, err := mc.read8Bit((indirectAddress&0xff00)|(address&0x00ff), true)
+			// fix MSB of address
+			mc.acc16.Add(indirectAddress & 0xff00)
+			address = mc.acc16.Address()
+		case 2:
+			// +1 cycles
+			err = mc.read8BitPC(loByte)
 			if err != nil {
 				return err
 			}
-		}
 
-		// fix MSB of address
-		mc.acc16.Add(indirectAddress & 0xff00)
-		address = mc.acc16.Address()
+			// phantom read from base address before index adjustment
+			// +1 cycles
+			_, err := mc.read8Bit(mc.LastResult.InstructionData, true)
+			if err != nil {
+				return err
+			}
 
-	case instructions.ZeroPageIndexedX:
-		// +1 cycles
-		err = mc.read8BitPC(loByte)
-		if err != nil {
-			return err
-		}
+			indirectAddress := uint8(mc.LastResult.InstructionData)
+			mc.acc8.Load(indirectAddress)
+			mc.acc8.Add(idxReg.Value(), false)
+			address = mc.acc8.Address()
 
-		// phantom read from base address before index adjustment
-		// +1 cycles
-		_, err := mc.read8Bit(mc.LastResult.InstructionData, true)
-		if err != nil {
-			return err
-		}
-
-		indirectAddress := uint8(mc.LastResult.InstructionData)
-		mc.acc8.Load(indirectAddress)
-		mc.acc8.Add(mc.X.Value(), false)
-		address = mc.acc8.Address()
-
-		// make a note of zero page index bug
-		if uint16(indirectAddress+mc.X.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
-			mc.LastResult.CPUBug = "zero page index bug"
-		}
-
-	case instructions.ZeroPageIndexedY:
-		// used exclusively for LDX ZeroPage,y
-
-		// +1 cycles
-		err = mc.read8BitPC(loByte)
-		if err != nil {
-			return err
-		}
-
-		// phantom read from base address before index adjustment
-		// +1 cycles
-		_, err := mc.read8Bit(mc.LastResult.InstructionData, true)
-		if err != nil {
-			return err
-		}
-
-		indirectAddress := uint8(mc.LastResult.InstructionData)
-		mc.acc8.Load(indirectAddress)
-		mc.acc8.Add(mc.Y.Value(), false)
-		address = mc.acc8.Address()
-
-		// make a note of zero page index bug
-		if uint16(indirectAddress+mc.Y.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
-			mc.LastResult.CPUBug = "zero page index bug"
+			// make a note of zero page index bug
+			if uint16(indirectAddress+idxReg.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
+				mc.LastResult.Bug = execution.ZeroPageIndexBug
+			}
+		default:
+			return fmt.Errorf("cpu: unknown byte code for %s with addressing mode %s", defn.Operator, defn.AddressingMode)
 		}
 
 	default:
@@ -997,7 +961,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			if err != nil {
 				return err
 			}
-		case instructions.RMW:
+		case instructions.Modify:
 			// +1 cycle
 			value, err = mc.read8Bit(address, false)
 			if err != nil {
@@ -1015,31 +979,31 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	// actually perform instruction based on operator group
 	switch defn.Operator {
-	case instructions.Nop:
+	case instructions.NOP:
 		// does nothing
 
-	case instructions.Cli:
+	case instructions.CLI:
 		mc.Status.InterruptDisable = false
 
-	case instructions.Sei:
+	case instructions.SEI:
 		mc.Status.InterruptDisable = true
 
-	case instructions.Clc:
+	case instructions.CLC:
 		mc.Status.Carry = false
 
-	case instructions.Sec:
+	case instructions.SEC:
 		mc.Status.Carry = true
 
-	case instructions.Cld:
+	case instructions.CLD:
 		mc.Status.DecimalMode = false
 
-	case instructions.Sed:
+	case instructions.SED:
 		mc.Status.DecimalMode = true
 
-	case instructions.Clv:
+	case instructions.CLV:
 		mc.Status.Overflow = false
 
-	case instructions.Pha:
+	case instructions.PHA:
 		// +1 cycle
 		err = mc.write8Bit(mc.SP.Address(), mc.A.Value(), false)
 		if err != nil {
@@ -1047,7 +1011,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 		mc.SP.Add(0xff, false)
 
-	case instructions.Pla:
+	case instructions.PLA:
 		// +1 cycle
 		value, err = mc.read8Bit(mc.SP.Address(), true)
 		if err != nil {
@@ -1064,7 +1028,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case instructions.Php:
+	case instructions.PHP:
 		// +1 cycle
 		err = mc.write8Bit(mc.SP.Address(), mc.Status.Value(), false)
 		if err != nil {
@@ -1072,7 +1036,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 		mc.SP.Add(0xff, false)
 
-	case instructions.Plp:
+	case instructions.PLP:
 		// +1 cycle
 		value, err = mc.read8Bit(mc.SP.Address(), true)
 		if err != nil {
@@ -1087,109 +1051,109 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 		mc.Status.Load(value)
 
-	case instructions.Txa:
+	case instructions.TXA:
 		mc.A.Load(mc.X.Value())
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case instructions.Tax:
+	case instructions.TAX:
 		mc.X.Load(mc.A.Value())
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
 
-	case instructions.Tay:
+	case instructions.TAY:
 		mc.Y.Load(mc.A.Value())
 		mc.Status.Zero = mc.Y.IsZero()
 		mc.Status.Sign = mc.Y.IsNegative()
 
-	case instructions.Tya:
+	case instructions.TYA:
 		mc.A.Load(mc.Y.Value())
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case instructions.Tsx:
+	case instructions.TSX:
 		mc.X.Load(mc.SP.Value())
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
 
-	case instructions.Txs:
+	case instructions.TXS:
 		mc.SP.Load(mc.X.Value())
 		// does not affect status register
 
-	case instructions.Eor:
+	case instructions.EOR:
 		mc.A.EOR(value)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case instructions.Ora:
+	case instructions.ORA:
 		mc.A.ORA(value)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case instructions.And:
+	case instructions.AND:
 		mc.A.AND(value)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case instructions.Lda:
+	case instructions.LDA:
 		mc.A.Load(value)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case instructions.Ldx:
+	case instructions.LDX:
 		mc.X.Load(value)
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
 
-	case instructions.Ldy:
+	case instructions.LDY:
 		mc.Y.Load(value)
 		mc.Status.Zero = mc.Y.IsZero()
 		mc.Status.Sign = mc.Y.IsNegative()
 
-	case instructions.Sta:
+	case instructions.STA:
 		// +1 cycle
 		err = mc.write8Bit(address, mc.A.Value(), false)
 		if err != nil {
 			return err
 		}
 
-	case instructions.Stx:
+	case instructions.STX:
 		// +1 cycle
 		err = mc.write8Bit(address, mc.X.Value(), false)
 		if err != nil {
 			return err
 		}
 
-	case instructions.Sty:
+	case instructions.STY:
 		// +1 cycle
 		err = mc.write8Bit(address, mc.Y.Value(), false)
 		if err != nil {
 			return err
 		}
 
-	case instructions.Inx:
+	case instructions.INX:
 		mc.X.Add(1, false)
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
 
-	case instructions.Iny:
+	case instructions.INY:
 		mc.Y.Add(1, false)
 		mc.Status.Zero = mc.Y.IsZero()
 		mc.Status.Sign = mc.Y.IsNegative()
 
-	case instructions.Dex:
+	case instructions.DEX:
 		mc.X.Add(0xff, false)
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
 
-	case instructions.Dey:
+	case instructions.DEY:
 		mc.Y.Add(0xff, false)
 		mc.Status.Zero = mc.Y.IsZero()
 		mc.Status.Sign = mc.Y.IsNegative()
 
-	case instructions.Asl:
+	case instructions.ASL:
 		var r *registers.Data
-		if defn.Effect == instructions.RMW {
+		if defn.Effect == instructions.Modify {
 			r = &mc.acc8
 			r.Load(value)
 		} else {
@@ -1200,9 +1164,9 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Sign = r.IsNegative()
 		value = r.Value()
 
-	case instructions.Lsr:
+	case instructions.LSR:
 		var r *registers.Data
-		if defn.Effect == instructions.RMW {
+		if defn.Effect == instructions.Modify {
 			r = &mc.acc8
 			r.Load(value)
 		} else {
@@ -1213,7 +1177,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Sign = r.IsNegative()
 		value = r.Value()
 
-	case instructions.Adc:
+	case instructions.ADC:
 		if mc.Status.DecimalMode {
 			mc.Status.Carry, mc.Status.Zero, mc.Status.Overflow, mc.Status.Sign = mc.A.AddDecimal(value, mc.Status.Carry)
 		} else {
@@ -1223,11 +1187,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 	case instructions.SBC:
-		// SBC is an undocumented sbc. not sure why it's undocumented because
-		// it's the same as the regular sbc instruction
-		fallthrough
-
-	case instructions.Sbc:
 		if mc.Status.DecimalMode {
 			mc.Status.Carry,
 				mc.Status.Zero,
@@ -1239,8 +1198,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.Status.Sign = mc.A.IsNegative()
 		}
 
-	case instructions.Ror:
-		if defn.Effect == instructions.RMW {
+	case instructions.ROR:
+		if defn.Effect == instructions.Modify {
 			mc.acc8.Load(value)
 			mc.Status.Carry = mc.acc8.ROR(mc.Status.Carry)
 			mc.Status.Zero = mc.acc8.IsZero()
@@ -1252,8 +1211,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.Status.Sign = mc.A.IsNegative()
 		}
 
-	case instructions.Rol:
-		if defn.Effect == instructions.RMW {
+	case instructions.ROL:
+		if defn.Effect == instructions.Modify {
 			mc.acc8.Load(value)
 			mc.Status.Carry = mc.acc8.ROL(mc.Status.Carry)
 			mc.Status.Zero = mc.acc8.IsZero()
@@ -1265,21 +1224,21 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.Status.Sign = mc.A.IsNegative()
 		}
 
-	case instructions.Inc:
+	case instructions.INC:
 		mc.acc8.Load(value)
 		mc.acc8.Add(1, false)
 		mc.Status.Zero = mc.acc8.IsZero()
 		mc.Status.Sign = mc.acc8.IsNegative()
 		value = mc.acc8.Value()
 
-	case instructions.Dec:
+	case instructions.DEC:
 		mc.acc8.Load(value)
 		mc.acc8.Add(0xff, false)
 		mc.Status.Zero = mc.acc8.IsZero()
 		mc.Status.Sign = mc.acc8.IsNegative()
 		value = mc.acc8.Value()
 
-	case instructions.Cmp:
+	case instructions.CMP:
 		mc.acc8.Load(mc.A.Value())
 
 		// maybe surprisingly, CMP can be implemented with binary subtract even
@@ -1288,79 +1247,79 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = mc.acc8.IsZero()
 		mc.Status.Sign = mc.acc8.IsNegative()
 
-	case instructions.Cpx:
+	case instructions.CPX:
 		mc.acc8.Load(mc.X.Value())
 		mc.Status.Carry, _ = mc.acc8.Subtract(value, true)
 		mc.Status.Zero = mc.acc8.IsZero()
 		mc.Status.Sign = mc.acc8.IsNegative()
 
-	case instructions.Cpy:
+	case instructions.CPY:
 		mc.acc8.Load(mc.Y.Value())
 		mc.Status.Carry, _ = mc.acc8.Subtract(value, true)
 		mc.Status.Zero = mc.acc8.IsZero()
 		mc.Status.Sign = mc.acc8.IsNegative()
 
-	case instructions.Bit:
+	case instructions.BIT:
 		mc.acc8.Load(value)
 		mc.Status.Sign = mc.acc8.IsNegative()
 		mc.Status.Overflow = mc.acc8.IsBitV()
 		mc.acc8.AND(mc.A.Value())
 		mc.Status.Zero = mc.acc8.IsZero()
 
-	case instructions.Jmp:
+	case instructions.JMP:
 		if !mc.NoFlowControl {
 			mc.PC.Load(address)
 		}
 
-	case instructions.Bcc:
+	case instructions.BCC:
 		err = mc.branch(!mc.Status.Carry, address)
 		if err != nil {
 			return err
 		}
 
-	case instructions.Bcs:
+	case instructions.BCS:
 		err = mc.branch(mc.Status.Carry, address)
 		if err != nil {
 			return err
 		}
 
-	case instructions.Beq:
+	case instructions.BEQ:
 		err = mc.branch(mc.Status.Zero, address)
 		if err != nil {
 			return err
 		}
 
-	case instructions.Bmi:
+	case instructions.BMI:
 		err = mc.branch(mc.Status.Sign, address)
 		if err != nil {
 			return err
 		}
 
-	case instructions.Bne:
+	case instructions.BNE:
 		err = mc.branch(!mc.Status.Zero, address)
 		if err != nil {
 			return err
 		}
 
-	case instructions.Bpl:
+	case instructions.BPL:
 		err = mc.branch(!mc.Status.Sign, address)
 		if err != nil {
 			return err
 		}
 
-	case instructions.Bvc:
+	case instructions.BVC:
 		err = mc.branch(!mc.Status.Overflow, address)
 		if err != nil {
 			return err
 		}
 
-	case instructions.Bvs:
+	case instructions.BVS:
 		err = mc.branch(mc.Status.Overflow, address)
 		if err != nil {
 			return err
 		}
 
-	case instructions.Jsr:
+	case instructions.JSR:
 		// +1 cycle
 		err = mc.read8BitPC(loByte)
 		if err != nil {
@@ -1406,7 +1365,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.PC.Load(address)
 		}
 
-	case instructions.Rts:
+	case instructions.RTS:
 		// dummy read of address at current SP before the pointer
 		// is advanced for the real 16bit read
 		//
@@ -1432,7 +1391,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		_, err = mc.read8Bit(mc.PC.Address(), false)
 		mc.PC.Add(1)
 
-	case instructions.Brk:
+	case instructions.BRK:
 		// push PC onto register (same effect as JSR)
 		err := mc.write8Bit(mc.SP.Address(), uint8(mc.PC.Address()>>8), false)
 		if err != nil {
@@ -1474,7 +1433,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.PC.Load(brkAddress)
 		}
 
-	case instructions.Rti:
+	case instructions.RTI:
 		// software breaks (the BRK instruction) can be distinguished from
 		// hardware interrupts by the break flag
 		if mc.Status.Break {
@@ -1527,9 +1486,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	// undocumented instructions
 
-	case instructions.NOP:
-		// does nothing (2 byte nop)
-
 	case instructions.LAX:
 		if defn.AddressingMode == instructions.Immediate {
 			mc.A.Load((mc.A.Value() | internalParameterLAX) & value)
@@ -1553,7 +1509,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = mc.acc8.IsZero()
 		mc.Status.Sign = mc.acc8.IsNegative()
 
-	case instructions.ASR:
+	case instructions.ALR:
 		mc.A.AND(value)
 
 		// ... then LSR the result
@@ -1561,7 +1517,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case instructions.XAA:
+	case instructions.ANE:
 		// description for "64doc.txt"
 		//
 		// "A = (A | #$EE) & X & #byte
@@ -1572,22 +1528,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// #$00. This occurs when the video chip starts DMA between the opcode fetch and the
 		// parameter fetch of the instruction.  The value probably depends on the data that was left
 		// on the bus by the VIC-II"
-		//
-		// note that XAA is referred to as ANE in 64doc.txt
 
 		mc.A.Load((mc.A.Value() | internalParameterXAA) & mc.X.Value() & value)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
-
-	case instructions.AXS:
-		mc.X.AND(mc.A.Value())
-
-		// axs subtract behaves like CMP as far as carry and overflow flags are
-		// concerned
-		mc.Status.Carry, _ = mc.X.Subtract(value, true)
-
-		mc.Status.Zero = mc.X.IsZero()
-		mc.Status.Sign = mc.X.IsNegative()
 
 	case instructions.SAX:
 		mc.acc8.Load(mc.A.Value())
@@ -1598,6 +1542,16 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
+
+	case instructions.SBX:
+		mc.X.AND(mc.A.Value())
+
+		// sbx subtract behaves like CMP as far as carry and overflow flags are
+		// concerned
+		mc.Status.Carry, _ = mc.X.Subtract(value, true)
+
+		mc.Status.Zero = mc.X.IsZero()
+		mc.Status.Sign = mc.X.IsNegative()
 
 	case instructions.ARR:
 		// description for "64doc.txt"
@@ -1736,7 +1690,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.Status.Sign = mc.A.IsNegative()
 		}
 
-	case instructions.AHX:
+	case instructions.SHA:
 		mc.acc8.Load(mc.A.Value())
 		mc.acc8.AND(mc.X.Value())
 		mc.acc8.AND(uint8(address>>8) + 1)
@@ -1786,17 +1740,17 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = mc.SP.IsZero()
 		mc.Status.Sign = mc.SP.IsNegative()
 
-	case instructions.KIL:
+	case instructions.JAM:
 		if !mc.NoFlowControl {
-			mc.Killed = true
+			mc.Jammed = true
 		}
 
 	default:
 		return fmt.Errorf("cpu: unknown operator (%s)", defn.Operator)
 	}
 
-	// for RMW instructions: write altered value back to memory
-	if defn.Effect == instructions.RMW {
+	// for Modify instructions: write altered value back to memory
+	if defn.Effect == instructions.Modify {
 		// +1 cycle
 		err = mc.write8Bit(address, value, false)
 		if err != nil {

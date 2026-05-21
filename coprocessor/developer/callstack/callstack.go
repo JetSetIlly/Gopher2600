@@ -16,7 +16,6 @@
 package callstack
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -52,7 +51,7 @@ func (cs CallStack) WriteCallStack(w io.Writer) {
 func (cs CallStack) WriteCallers(function string, w io.Writer) error {
 	callers, ok := cs.Callers[function]
 	if !ok {
-		return errors.New(fmt.Sprintf("no function named %s has ever been called", function))
+		return fmt.Errorf("no function named %s has ever been called", function)
 	}
 
 	const maxDepth = 15
@@ -60,16 +59,16 @@ func (cs CallStack) WriteCallers(function string, w io.Writer) error {
 	var f func(lines []*dwarf.SourceLine, depth int) error
 	f = func(lines []*dwarf.SourceLine, depth int) error {
 		indent := strings.Builder{}
-		for i := 0; i < depth; i++ {
+		for range depth {
 			indent.WriteString(" ")
 		}
 
 		if depth > maxDepth {
-			return errors.New(fmt.Sprintf("%stoo deep", indent.String()))
+			return fmt.Errorf("%stoo deep", indent.String())
 		}
 
 		for _, ln := range lines {
-			w.Write([]byte(fmt.Sprintf("%s%s", indent.String(), ln.Function.Name)))
+			w.Write(fmt.Appendf(nil, "%s%s", indent.String(), ln.Function.Name))
 			if l, ok := cs.Callers[ln.Function.Name]; ok {
 				err := f(l, depth+1)
 				if err != nil {

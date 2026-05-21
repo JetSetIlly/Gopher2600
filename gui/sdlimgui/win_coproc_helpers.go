@@ -49,7 +49,7 @@ func (img *SdlImgui) drawDisasmForCoProc(id string, disasm []*dwarf.SourceInstru
 	// draw disassembly, colouring the text according to whether the disassembly entry
 	// is associated with the current line (ie. the one the mouse is over)
 	yldLine := 0
-	for i := 0; i < len(disasm); i++ {
+	for i := range disasm {
 		d := disasm[i]
 		if d.Addr == yldAddress {
 			yldLine = i
@@ -68,14 +68,8 @@ func (img *SdlImgui) drawDisasmForCoProc(id string, disasm []*dwarf.SourceInstru
 		end = len(disasm)
 	} else {
 		// maximum the number of lines to show in the 'window'
-		start = yldLine - (windowSize / 2)
-		if start < 0 {
-			start = 0
-		}
-		end = start + windowSize
-		if end > len(disasm) {
-			end = len(disasm)
-		}
+		start = max(yldLine-(windowSize/2), 0)
+		end = min(start+windowSize, len(disasm))
 	}
 
 	// add prelude elipses if the 'window' is not placed at the beginning of the list
