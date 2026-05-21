@@ -47,6 +47,70 @@ jobs:
     - name: Upload package
       uses: actions/upload-artifact@v6
       with:
-        name: Gopher2600-macOS
+        name: Gopher2600-macOS-Intel
         path: .package/Gopher2600.zip
+    - name: Upload binary for universal build
+      uses: actions/upload-artifact@v6
+      with:
+        name: binary-intel
+        path: .package/Gopher2600.app/Contents/MacOS/${{ env.BINARY_NAME }}
+    - name: Upload libs for universal build
+      uses: actions/upload-artifact@v6
+      with:
+        name: libs-intel
+        path: .package/Gopher2600.app/Contents/libs/
 
+  build-macos-arm:
+    runs-on: macos-15
+    env:
+      MACOSX_DEPLOYMENT_TARGET: 11.0
+      BINARY_NAME: gopher2600_darwin_arm64
+    steps:
+    - name: Install dependencies
+      run: |
+        brew install go
+        brew install sdl2
+        brew install dylibbundler
+    - uses: actions/checkout@v6
+    - name: Extract version from Makefile
+      id: version
+      run: |
+        VERSION=$(awk -F ' = ' '/^version = / {print $2; exit}' Makefile)
+        if [ -z "$VERSION" ]; then
+          echo "Failed to extract version from Makefile" >&2
+          exit 1
+        fi
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+    - name: Build Gopher2600 (ARM64)
+      run: make release
+    - name: Copy executable to package
+      run: |
+        mkdir -p .package/Gopher2600.app/Contents/MacOS
+        cp "$BINARY_NAME" .package/Gopher2600.app/Contents/MacOS/
+    - name: Set plist metadata
+      run: |
+        plutil -insert CFBundleExecutable -string "$BINARY_NAME" .package/Gopher2600.app/Contents/Info.plist
+        plutil -insert CFBundleShortVersionString -string "${{ steps.version.outputs.version }}" .package/Gopher2600.app/Contents/Info.plist
+    - name: Run dylibbundler
+      run: |
+        export DYLD_LIBRARY_PATH="$(brew --prefix sdl2)/lib"
+        dylibbundler -x ".package/Gopher2600.app/Contents/MacOS/$BINARY_NAME" -b -cd -d .package/Gopher2600.app/Contents/libs
+    - name: Zip package
+      run: |
+        cd .package
+        zip -vr Gopher2600.zip Gopher2600.app
+    - name: Upload package
+      uses: actions/upload-artifact@v6
+      with:
+        name: Gopher2600-macOS-AppleSilicon
+        path: .package/Gopher2600.zip
+    - name: Upload binary for universal build
+      uses: actions/upload-artifact@v6
+      with:
+        name: binary-arm
+        path: .package/Gopher2600.app/Contents/MacOS/${{ env.BINARY_NAME }}
+    - name: Upload libs for universal build
+      uses: actions/upload-artifact@v6
+      with:
+        name: libs-arm
+        path: .package/Gopher2600.app/Contents/libs/
