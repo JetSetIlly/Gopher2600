@@ -15,15 +15,6 @@
 
 package television
 
-// NudgeFPSLimiter stops the FPS limiter for the specified number of frames. A value
-// of zero (or less) will stop any existing nudge
-func (tv *Television) NudgeFPSLimiter(frames int) {
-	if frames < 0 {
-		frames = 0
-	}
-	tv.lmtr.Nudge.Store(int32(frames))
-}
-
 // SetFPSLimit whether the emulation should wait for FPS limiter. Returns the
 // setting as it was previously.
 func (tv *Television) SetFPSLimit(limit bool) bool {

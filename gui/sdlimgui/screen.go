@@ -32,11 +32,6 @@ import (
 	"github.com/jetsetilly/gopher2600/reflection"
 )
 
-// alllow nudging of the TV. nudging causes the emulation to uncap itself for a
-// short number of frames. the benefit of this is of dubious value so it has
-// been disabled for now. maybe removed in the future
-const allowNudging = false
-
 // textureRenderers should consider that the timing of the VCS produces
 // "pixels" of two pixels across.
 //
@@ -776,22 +771,8 @@ func (scr *screen) copyPixelsPlaymode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	// whether to nudge the TV or not
-	var nudge bool
-
-	// whether the frame queue can tolerate nudging. the value can/should be
-	// supplemented with the monitorSyncHigher or monitorSyncSlower value
-	canNudge := allowNudging && scr.crit.frameInfo.Stable && scr.crit.frameQueueLen > 2
-
 	// measure frame queue slack
 	scr.frameQueueSlack = (scr.crit.renderIdx - scr.crit.plotIdx + scr.crit.frameQueueLen) % scr.crit.frameQueueLen
-
-	// set nudge to true if frame slack is too small
-	if canNudge && scr.crit.monitorSyncSimilar {
-		if scr.frameQueueSlack < scr.crit.frameQueueLen/2 {
-			nudge = true
-		}
-	}
 
 	// show pause frames
 	if scr.img.dbg.State() == govern.Paused {
@@ -842,9 +823,6 @@ func (scr *screen) copyPixelsPlaymode() {
 				scr.crit.renderIdx = scr.crit.prevRenderIdx[0]
 			}
 
-			// set nudge flag
-			nudge = canNudge && scr.crit.monitorSyncSimilar
-
 			// adjust frame queue increase counter
 			if scr.crit.frameQueueAuto && scr.crit.frameInfo.Stable && scr.crit.frameQueueLen < maxFrameQueue {
 				scr.crit.frameQueueIncCt += frameQueueAutoInc
@@ -875,11 +853,6 @@ func (scr *screen) copyPixelsPlaymode() {
 	}
 
 	scr.generatePresentationPixels(scr.crit.renderIdx)
-
-	// nudge fps cap to try to bring the plot and render indexes back into equilibrium
-	if nudge {
-		scr.img.dbg.VCS().TV.NudgeFPSLimiter(1)
-	}
 }
 
 // DisplayRefreshRate implements the television.PixelRendererRotation interface

@@ -80,9 +80,6 @@ type Limiter struct {
 	// is not set if SetRate() is called directly
 	syncWithRefreshRateDelay int
 
-	// nudge the limiter so that it doesn't wait for the specified number of frames
-	Nudge atomic.Int32
-
 	// the display the limiter is working for
 	display Display
 }
@@ -172,16 +169,11 @@ func (lmtr *Limiter) SetLimit(fps float32) {
 func (lmtr *Limiter) CheckFrame() {
 	lmtr.measureCt++
 
-	nudge := lmtr.Nudge.Load()
-	if nudge > 0 {
-		lmtr.Nudge.Store(nudge - 1)
-	} else {
-		if lmtr.Active {
-			lmtr.pulseCt++
-			if lmtr.pulseCt >= lmtr.pulseCtLimit {
-				lmtr.pulseCt = 0
-				<-lmtr.pulse.C
-			}
+	if lmtr.Active {
+		lmtr.pulseCt++
+		if lmtr.pulseCt >= lmtr.pulseCtLimit {
+			lmtr.pulseCt = 0
+			<-lmtr.pulse.C
 		}
 	}
 
