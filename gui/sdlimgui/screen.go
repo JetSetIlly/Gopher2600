@@ -73,19 +73,9 @@ type screen struct {
 	lastVideoFrame atomic.Int64
 }
 
-const (
-	// these values indicate that the frame queue should be extended when there
-	// are two consecutive frames when the frame queue is full
-	frameQueueAutoInc          = 20
-	frameQueueAutoIncThreshold = 40
-
-	// a small decay value means that a flurry of slow frames, that are not
-	// necessarily consecutive, will be detected and cause the queuen to grow
-	frameQueueAutoIncDecay = 1
-
-	// the frame queue should never be longer than this
-	maxFrameQueue = 10
-)
+// number of frames in the queue. a value of three is optimal. any more and input lag becomes
+// noticeable
+const frameQueueLen = 3
 
 type frameQueueEntry struct {
 	sigs []signal.SignalAttributes
@@ -121,25 +111,9 @@ type screenCrit struct {
 	// the pixels image is used in the presentation texture of the play and debug screen.
 	pixels *image.RGBA
 
-	// frameQueue are what we plot pixels to while we wait for a frame to complete.
-	// - the larger the queue the greater the input lag
-	// - a three to five frame queue seems good. ten frames can feel very laggy
-	frameQueue [maxFrameQueue]frameQueueEntry
-
-	// local copies of frame queue preferences values. updated by setFrameQueue()
-	// which is called when the underlying preference is changed
-	prefsFrameQueueAuto bool
-	prefsFrameQueueLen  int
-
-	// the actual frame queue value depends on whether FPS is capped or not
-	frameQueueAuto bool
-	frameQueueLen  int
-
-	// frame queue count is increased on every dropped frame and decreased on
-	// every on-time frame. when it reaches a predetermined threshold the
-	// length of the frame queue is increased (up to a maximum value). see
-	// frameQueueInc* constant values
-	frameQueueIncCt int
+	// frameQueue are what we plot pixels to while we wait for a frame to complete. helps smooth out
+	// inconsistent frame emulation times
+	frameQueue [frameQueueLen]frameQueueEntry
 
 	// the number of frames after rewinding/pausing before resuming "normal"
 	// queue traversal
@@ -275,8 +249,6 @@ func (scr *screen) setSyncPolicy(tvRefreshRate float32) {
 func (scr *screen) setFrameQueue(auto bool, length int) {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
-	scr.crit.prefsFrameQueueAuto = auto
-	scr.crit.prefsFrameQueueLen = length
 	scr.updateFrameQueue()
 }
 
@@ -287,22 +259,6 @@ func (scr *screen) updateFrameQueue() {
 	if scr.img.dbg.State() == govern.Rewinding {
 		return
 	}
-
-	// make local copies of frame queue preferences if fpsCapped is enabled
-	if scr.crit.fpsCapped {
-		scr.crit.frameQueueAuto = scr.crit.prefsFrameQueueAuto
-		if scr.crit.frameQueueAuto {
-			scr.crit.frameQueueLen = 1
-		} else {
-			scr.crit.frameQueueLen = scr.crit.prefsFrameQueueLen
-		}
-	} else {
-		scr.crit.frameQueueAuto = false
-		scr.crit.frameQueueLen = 1
-	}
-
-	// set queue recovery
-	scr.crit.queueRecovery = scr.crit.frameQueueLen
 
 	// restore previous plot frame to all entries in the queue
 	var old *frameQueueEntry
@@ -492,7 +448,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 			wait = true
 			fallthrough
 		case govern.Paused:
-			scr.crit.queueRecovery = scr.crit.frameQueueLen
+			scr.crit.queueRecovery = frameQueueLen
 			scr.crit.renderIdx = scr.crit.plotIdx
 		case govern.Running:
 			if scr.crit.queueRecovery > 0 {
@@ -500,13 +456,13 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 			}
 
 			scr.crit.plotIdx++
-			if scr.crit.plotIdx >= scr.crit.frameQueueLen || scr.crit.plotIdx >= len(scr.crit.frameQueue) {
+			if scr.crit.plotIdx >= frameQueueLen {
 				scr.crit.plotIdx = 0
 			}
 
 			// if plot index has crashed into the render index then set wait flag
 			// ** screen update not keeping up with emulation **
-			wait = scr.crit.plotIdx == scr.crit.renderIdx && scr.crit.frameQueueLen > 2
+			wait = scr.crit.plotIdx == scr.crit.renderIdx
 		}
 	}
 
@@ -772,7 +728,7 @@ func (scr *screen) copyPixelsPlaymode() {
 	defer scr.crit.section.Unlock()
 
 	// measure frame queue slack
-	scr.frameQueueSlack = (scr.crit.renderIdx - scr.crit.plotIdx + scr.crit.frameQueueLen) % scr.crit.frameQueueLen
+	scr.frameQueueSlack = (scr.crit.renderIdx - scr.crit.plotIdx + frameQueueLen) % frameQueueLen
 
 	// show pause frames
 	if scr.img.dbg.State() == govern.Paused {
@@ -804,7 +760,7 @@ func (scr *screen) copyPixelsPlaymode() {
 
 		// advance render index
 		scr.crit.renderIdx++
-		if scr.crit.renderIdx >= scr.crit.frameQueueLen || scr.crit.renderIdx >= len(scr.crit.frameQueue) {
+		if scr.crit.renderIdx >= frameQueueLen {
 			scr.crit.renderIdx = 0
 		}
 
@@ -821,33 +777,6 @@ func (scr *screen) copyPixelsPlaymode() {
 				scr.crit.renderIdx = scr.crit.prevRenderIdx[1]
 			} else {
 				scr.crit.renderIdx = scr.crit.prevRenderIdx[0]
-			}
-
-			// adjust frame queue increase counter
-			if scr.crit.frameQueueAuto && scr.crit.frameInfo.Stable && scr.crit.frameQueueLen < maxFrameQueue {
-				scr.crit.frameQueueIncCt += frameQueueAutoInc
-				if scr.crit.frameQueueIncCt >= frameQueueAutoIncThreshold {
-					scr.crit.frameQueueIncCt = 0
-
-					// increase frame queue length depending on whether monitor
-					// sync is similar to TV. if it is not we limit the frame
-					// queue length to the manual preference value
-					//
-					// this prevents, for example, queues immediately growing to
-					// a maximum size for PAL50 TVs on 60Hz monitors
-					if scr.crit.monitorSyncSimilar {
-						scr.crit.frameQueueLen++
-					} else {
-						if scr.crit.frameQueueLen < scr.crit.prefsFrameQueueLen {
-							scr.crit.frameQueueLen++
-						}
-					}
-				}
-			}
-		} else {
-			// adjust frame queue increase counter
-			if scr.crit.frameQueueIncCt > 0 {
-				scr.crit.frameQueueIncCt -= frameQueueAutoIncDecay
 			}
 		}
 	}

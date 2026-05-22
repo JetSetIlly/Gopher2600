@@ -260,31 +260,6 @@ when the mouse is captured (with the right mouse button)`)
 		imgui.Spacing()
 		win.drawGlSwapInterval()
 	}
-
-	imgui.Spacing()
-
-	if imgui.CollapsingHeader("Frame Queue") {
-		imgui.Spacing()
-
-		// the values we show in the preferences window are the current values
-		// as known by the screen type. we do no show the values in the
-		// underlying preference type directly
-		win.img.screen.crit.section.Lock()
-		fpsCapped := win.img.screen.crit.fpsCapped
-		frameQueueAuto := win.img.screen.crit.frameQueueAuto
-		frameQueueLen := int32(win.img.screen.crit.frameQueueLen)
-		win.img.screen.crit.section.Unlock()
-
-		drawDisabled(!fpsCapped, func() {
-			if imgui.Checkbox("Automatic Frame Queue Length", &frameQueueAuto) {
-				win.img.prefs.frameQueueLenAuto.Set(frameQueueAuto)
-			}
-			imgui.Spacing()
-			if imgui.SliderInt("Frame Queue Length", &frameQueueLen, 1, maxFrameQueue) {
-				win.img.prefs.frameQueueLen.Set(frameQueueLen)
-			}
-		})
-	}
 }
 
 func (win *winPrefs) drawDebuggerTab() {

@@ -276,7 +276,7 @@ func (o *playscrOverlay) drawTopLeft(posMin imgui.Vec2, _ imgui.Vec2) {
 			}
 
 			imgui.PushStyleColor(imgui.StyleColorText, o.img.cols.FrameQueueSlackInactive)
-			for range o.playscr.scr.crit.frameQueueLen - o.playscr.scr.frameQueueSlack {
+			for range frameQueueLen - o.playscr.scr.frameQueueSlack {
 				imgui.Text(string(fonts.MeterSegment))
 				imgui.SameLineV(0, 0)
 			}

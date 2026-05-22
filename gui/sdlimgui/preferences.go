@@ -87,9 +87,7 @@ type preferences struct {
 	codeFontLineSpacing prefs.Int
 
 	// display
-	frameQueueLenAuto prefs.Bool
-	frameQueueLen     prefs.Int
-	glSwapInterval    prefs.Int
+	glSwapInterval prefs.Int
 
 	// window preferences are split over two prefs.Disk instances, to allow
 	// geometry to be saved at a different time to the fullscreen preference
@@ -254,25 +252,6 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	}
 
 	// display options
-
-	err = p.dsk.Add("sdlimgui.display.frameQueueLen", &p.frameQueueLen)
-	if err != nil {
-		return nil, err
-	}
-	p.frameQueueLen.SetHookPost(func(v prefs.Value) error {
-		p.img.screen.setFrameQueue(p.frameQueueLenAuto.Get().(bool), v.(int))
-		return nil
-	})
-
-	err = p.dsk.Add("sdlimgui.display.frameQueueLenAuto", &p.frameQueueLenAuto)
-	if err != nil {
-		return nil, err
-	}
-	p.frameQueueLenAuto.SetHookPost(func(v prefs.Value) error {
-		p.img.screen.setFrameQueue(v.(bool), p.frameQueueLen.Get().(int))
-		return nil
-	})
-
 	err = p.dsk.Add("sdlimgui.display.glswapinterval", &p.glSwapInterval)
 	if err != nil {
 		return nil, err
@@ -412,8 +391,6 @@ func (p *preferences) setDefaults() {
 	p.terminalFontSize.Set(12)
 	p.codeFontSize.Set(15)
 	p.codeFontLineSpacing.Set(2.0)
-	p.frameQueueLenAuto.Set(false)
-	p.frameQueueLen.Set(3)
 	p.glSwapInterval.Set(1)
 }
 
