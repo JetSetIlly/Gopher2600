@@ -17,6 +17,7 @@ package television
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
+	"github.com/jetsetilly/gopher2600/hardware/television/limiter"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -96,11 +97,7 @@ type PixelRenderer interface {
 // implemented by a renderer that works with a hardware display.
 type PixelRendererDisplay interface {
 	PixelRenderer
-
-	// returns refresh rate of display and whether the limiter should quantise the emulated frame
-	// rate to the monitor speed. the boolean indicates whether the current purpose of the display
-	// is suitable for quantisation by a frame limiter
-	DisplayRefreshRate() (float32, bool)
+	limiter.Display
 }
 
 // PixelRendererRotation is an extension to the PixelRenderer interface. Pixel

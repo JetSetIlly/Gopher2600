@@ -23,7 +23,13 @@ import (
 )
 
 type Display interface {
+	// returns refresh rate of display and whether the limiter should quantise the emulated frame
+	// rate to the monitor speed. the boolean indicates whether the current purpose of the display
+	// is suitable for quantisation by a frame limiter
 	DisplayRefreshRate() (float32, bool)
+
+	// returns true is display is relying on the limiter
+	WaitingForLimiter() bool
 }
 
 type Limiter struct {
@@ -169,7 +175,7 @@ func (lmtr *Limiter) SetLimit(fps float32) {
 func (lmtr *Limiter) CheckFrame() {
 	lmtr.measureCt++
 
-	if lmtr.Active {
+	if lmtr.Active && lmtr.display == nil || (lmtr.display != nil && lmtr.display.WaitingForLimiter()) {
 		lmtr.pulseCt++
 		if lmtr.pulseCt >= lmtr.pulseCtLimit {
 			lmtr.pulseCt = 0

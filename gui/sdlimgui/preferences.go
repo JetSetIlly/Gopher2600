@@ -88,6 +88,7 @@ type preferences struct {
 
 	// display
 	glSwapInterval prefs.Int
+	monitorSync    prefs.Bool
 
 	// window preferences are split over two prefs.Disk instances, to allow
 	// geometry to be saved at a different time to the fullscreen preference
@@ -267,6 +268,15 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	})
 	p.glSwapInterval.SetHookPost(func(v prefs.Value) error {
 		p.img.plt.setSwapInterval(v.(int))
+		return nil
+	})
+
+	err = p.dsk.Add("sdlimgui.display.monitorSync", &p.monitorSync)
+	if err != nil {
+		return nil, err
+	}
+	p.monitorSync.SetHookPost(func(v prefs.Value) error {
+		p.img.screen.monitorSync.Store(v.(bool))
 		return nil
 	})
 

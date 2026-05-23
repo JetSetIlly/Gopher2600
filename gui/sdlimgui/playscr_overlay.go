@@ -206,11 +206,20 @@ func (o *playscrOverlay) drawTopLeft(posMin imgui.Vec2, _ imgui.Vec2) {
 		o.updateRefreshRate()
 
 		imgui.Textf("Emulation: %s", o.fps)
+		if o.img.screen.monitorSync.Load() {
+			imgui.SameLine()
+			imgui.Text(string(fonts.TimelineComparisonLock))
+		}
 		r := imgui.CurrentIO().Framerate()
 		if r == 0.0 {
 			imgui.Text("Rendering: waiting")
 		} else {
 			imgui.Textf("Rendering: %03.2f fps", r)
+		}
+
+		if o.img.screen.monitorSyncLower.Load() {
+			imgui.Spacing()
+			imgui.Text("Monitor is too slow!")
 		}
 
 		imguiSeparator()

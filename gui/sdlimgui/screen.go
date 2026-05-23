@@ -71,6 +71,13 @@ type screen struct {
 
 	// the frame number of the last frame generated for video recording
 	lastVideoFrame atomic.Int64
+
+	monitorSync atomic.Bool
+
+	// monitor refresh rate in relation to emulated television refresh rate
+	monitorSyncSimilar atomic.Bool
+	monitorSyncHigher  atomic.Bool
+	monitorSyncLower   atomic.Bool
 }
 
 // number of frames in the queue. a value of three is optimal. any more and input lag becomes
@@ -101,12 +108,6 @@ type screenCrit struct {
 	// screen implementation uses this to decide whether to sync with monitor
 	// refresh rate
 	fpsCapped bool
-
-	// whether monitor refresh rate is higher than the emulated TV's refresh rate
-	monitorSyncHigher bool
-
-	// whether monitor refresh rate is similar to the emulated TV's refresh rate
-	monitorSyncSimilar bool
 
 	// the pixels image is used in the presentation texture of the play and debug screen.
 	pixels *image.RGBA
@@ -226,30 +227,17 @@ func (scr *screen) SetFPSLimit(limit bool) {
 	defer scr.crit.section.Unlock()
 
 	scr.crit.fpsCapped = limit
-	scr.setSyncPolicy(scr.crit.frameInfo.RefreshRate)
+	scr.setRefreshRate(scr.crit.frameInfo.RefreshRate)
 	scr.updateFrameQueue()
 }
 
-// setSyncPolicy decides on the monitor/tv syncing policy, based on the
-// TV refresh rate and the refresh rate of the monitor
-//
 // must be called from inside a critical section.
-func (scr *screen) setSyncPolicy(tvRefreshRate float32) {
+func (scr *screen) setRefreshRate(tvRefreshRate float32) {
 	high := float32(scr.img.plt.mode.RefreshRate) * 1.02
 	low := float32(scr.img.plt.mode.RefreshRate) * 0.98
-
-	scr.crit.monitorSyncHigher = scr.crit.fpsCapped && high >= tvRefreshRate
-	scr.crit.monitorSyncSimilar = scr.crit.fpsCapped && high >= tvRefreshRate && low <= tvRefreshRate
-}
-
-// setFrameQueue is called when frame queue preferences are changed. the screen
-// type keeps its own copies of these values
-//
-// must NOT be called from inside a critical section
-func (scr *screen) setFrameQueue(auto bool, length int) {
-	scr.crit.section.Lock()
-	defer scr.crit.section.Unlock()
-	scr.updateFrameQueue()
+	scr.monitorSyncSimilar.Store(scr.crit.fpsCapped && high >= tvRefreshRate && low <= tvRefreshRate)
+	scr.monitorSyncHigher.Store(scr.crit.fpsCapped && high >= tvRefreshRate)
+	scr.monitorSyncLower.Store(scr.crit.fpsCapped && low <= tvRefreshRate)
 }
 
 // updateFrameQueue() after a reset of a frame queue value is changed
@@ -288,7 +276,7 @@ func (scr *screen) Reset() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	scr.setSyncPolicy(scr.crit.frameInfo.RefreshRate)
+	scr.setRefreshRate(scr.crit.frameInfo.RefreshRate)
 	scr.clearPixels()
 	scr.updateFrameQueue()
 }
@@ -386,7 +374,7 @@ func (scr *screen) NewFrame(frameInfo frameinfo.Current) error {
 
 	// set sync policy if refresh rate has changed
 	if scr.crit.frameInfo.RefreshRate != frameInfo.RefreshRate {
-		scr.setSyncPolicy(frameInfo.RefreshRate)
+		scr.setRefreshRate(frameInfo.RefreshRate)
 		for _, r := range scr.renderers {
 			r.updateRefreshRate()
 		}
@@ -483,8 +471,8 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	scr.crit.section.Unlock()
 
 	// slow emulation until screen has caught up
-	// * wait should only be set to true in playmode
-	if wait && scr.crit.monitorSyncHigher {
+	// * wait should only have been set to true in playmode
+	if wait && scr.monitorSyncHigher.Load() || scr.monitorSync.Load() {
 		scr.emuWait <- true
 		<-scr.emuWaitAck
 	}
@@ -773,7 +761,7 @@ func (scr *screen) copyPixelsPlaymode() {
 			// for television that have a similar refresh rates to the monitor we choose the the
 			// frame previous to the frame shown on the last render. this helps to smooth out
 			// graphical glitches caused by flicker kernels
-			if !tooSlow && scr.crit.monitorSyncSimilar {
+			if !tooSlow && scr.monitorSyncSimilar.Load() {
 				scr.crit.renderIdx = scr.crit.prevRenderIdx[1]
 			} else {
 				scr.crit.renderIdx = scr.crit.prevRenderIdx[0]
@@ -784,7 +772,12 @@ func (scr *screen) copyPixelsPlaymode() {
 	scr.generatePresentationPixels(scr.crit.renderIdx)
 }
 
-// DisplayRefreshRate implements the television.PixelRendererRotation interface
+// DisplayRefreshRate implements the limiter.Display interface
 func (scr *screen) DisplayRefreshRate() (float32, bool) {
 	return float32(scr.img.plt.mode.RefreshRate), false
+}
+
+// WaitingForLimiter implements the limiter.Display interface
+func (scr *screen) WaitingForLimiter() bool {
+	return !scr.monitorSync.Load()
 }

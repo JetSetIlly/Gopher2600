@@ -159,7 +159,14 @@ func (win *winPrefs) draw() {
 	}
 }
 
-func (win *winPrefs) drawGlSwapInterval() {
+func (win *winPrefs) drawDisplay() {
+	monitorSync := win.img.prefs.monitorSync.Get().(bool)
+	if imgui.Checkbox("Monitor Sync", &monitorSync) {
+		win.img.prefs.monitorSync.Set(monitorSync)
+	}
+
+	imgui.Spacing()
+
 	var glSwapInterval string
 
 	const (
@@ -256,9 +263,9 @@ when the mouse is captured (with the right mouse button)`)
 	}
 
 	imgui.Spacing()
-	if imgui.CollapsingHeader("OpenGL Settings") {
+	if imgui.CollapsingHeader("Display") {
 		imgui.Spacing()
-		win.drawGlSwapInterval()
+		win.drawDisplay()
 	}
 }
 
@@ -311,12 +318,6 @@ func (win *winPrefs) drawDebuggerTab() {
 		if imgui.Checkbox("Listing in Colour", &colorDisasm) {
 			win.img.prefs.disasmColour.Set(colorDisasm)
 		}
-	}
-
-	imgui.Spacing()
-	if imgui.CollapsingHeader("OpenGL Settings") {
-		imgui.Spacing()
-		win.drawGlSwapInterval()
 	}
 }
 
