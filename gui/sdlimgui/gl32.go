@@ -164,8 +164,7 @@ func (rnd *gl32) render() {
 	var env shading.Environment
 	env.SetVertexBufferLayout(imgui.VertexBufferLayout)
 
-	// Our visible imgui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right).
-	// DisplayMin is typically (0,0) for single viewport apps.
+	// projection matrix changes depending on which texture is being rendered
 	env.ProjMtx = [4][4]float32{
 		{2.0 / winw, 0.0, 0.0, 0.0},
 		{0.0, 2.0 / -winh, 0.0, 0.0},
@@ -229,6 +228,13 @@ func (rnd *gl32) render() {
 					if tex, ok := rnd.textures[env.TextureID]; ok {
 						shader = rnd.shaders[tex.typ]
 						env.Config = tex.config
+
+						switch tex.typ {
+						case shaderGUI:
+							env.ProjMtx[3] = [4]float32{-1.0, 1.0, 0.0, 1.0}
+						default:
+							env.ProjMtx[3] = [4]float32{-1.0 + (1.0 / winw), 1.0 - (1.0 / winh), 0.0, 1.0}
+						}
 					}
 
 					if shader == nil {

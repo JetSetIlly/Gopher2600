@@ -179,29 +179,29 @@ func (win *playScr) setScalingBevel() {
 	bh := float32(sz.Y)
 	bRatio := bw / bh
 
-	winW, winH := win.img.plt.windowSize()
-	winRatio := winW / winH
+	winw, winh := win.img.plt.windowSize()
+	winRatio := winw / winh
 
 	var scaling float32
 
 	// place bevel in middle of window as best as we can
 	if bRatio < winRatio {
-		scaling = winH / bh
+		scaling = winh / bh
 		win.bevelPosMin = imgui.Vec2{
-			X: float32(int((winW - (bw * scaling)) / 2)),
+			X: float32(int((winw - (bw * scaling)) / 2)),
 			Y: 0,
 		}
 	} else {
-		scaling = winW / bw
+		scaling = winw / bw
 		win.bevelPosMin = imgui.Vec2{
 			X: 0,
-			Y: float32(int((winH - (bh * scaling)) / 2)),
+			Y: float32(int((winh - (bh * scaling)) / 2)),
 		}
 	}
 
 	win.bevelPosMax = imgui.Vec2{
-		X: winW - win.bevelPosMin.X,
-		Y: winH - win.bevelPosMin.Y,
+		X: winw - win.bevelPosMin.X,
+		Y: winh - win.bevelPosMin.Y,
 	}
 
 	win.bevelWidth = bw * scaling
@@ -217,8 +217,8 @@ func (win *playScr) setScalingDisplay() {
 		tvH *= bevels.SolidState.BiasY
 	}
 
-	winW, winH := win.img.plt.windowSize()
-	winRatio := winW / winH
+	winw, winh := win.img.plt.windowSize()
+	winRatio := winw / winh
 
 	// handle screen rotation
 	rotation := win.scr.rotation.Load().(specification.Rotation)
@@ -232,10 +232,10 @@ func (win *playScr) setScalingDisplay() {
 	// calculate required scaling
 	if tvRatio < winRatio {
 		// window wider than TV screen
-		win.scaling = winH / tvH
+		win.scaling = winh / tvH
 	} else {
 		// TV screen wider than window
-		win.scaling = winW / tvW
+		win.scaling = winw / tvW
 	}
 
 	// limit scaling to 1x
@@ -245,12 +245,12 @@ func (win *playScr) setScalingDisplay() {
 
 	// place display in middle of window as best as we can
 	win.screenPosMin = imgui.Vec2{
-		X: float32(int((winW - (tvW * win.scaling)) / 2)),
-		Y: float32(int((winH - (tvH * win.scaling)) / 2)),
+		X: float32(int((winw - (tvW * win.scaling)) / 2)),
+		Y: float32(int((winh - (tvH * win.scaling)) / 2)),
 	}
 	win.screenPosMax = imgui.Vec2{
-		X: winW - win.screenPosMin.X,
-		Y: winH - win.screenPosMin.Y,
+		X: winw - win.screenPosMin.X,
+		Y: winh - win.screenPosMin.Y,
 	}
 
 	win.screenWidth = tvW * win.scaling

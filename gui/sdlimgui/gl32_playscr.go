@@ -71,14 +71,12 @@ func (sh *playscrShader) SetAttributes(env shading.Environment) {
 		f := sh.img.playScr.bevelHeight / sh.img.playScr.screenWidth
 		f *= bevels.SolidState.Scale
 
-		ww, wh := sh.img.plt.windowSize()
-		wwr := ww / sh.img.playScr.bevelWidth
-		whr := wh / sh.img.playScr.bevelHeight
+		winw, winh := sh.img.plt.windowSize()
 
 		env.ProjMtx[0][0] *= f
 		env.ProjMtx[1][1] *= f
-		env.ProjMtx[3][0] = -f + (bevels.SolidState.OffsetX / wwr)
-		env.ProjMtx[3][1] = f + (bevels.SolidState.OffsetY / whr)
+		env.ProjMtx[3][0] = -f + (bevels.SolidState.OffsetX / winw * sh.img.playScr.bevelWidth)
+		env.ProjMtx[3][1] = f + (bevels.SolidState.OffsetY / winh * sh.img.playScr.bevelHeight)
 
 		sh.crt.colorShader.SetAttributes(env)
 	}

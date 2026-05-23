@@ -327,8 +327,8 @@ func (atlas *fontAtlas) resize(display fontDisplay) error {
 	if err != nil {
 		return fmt.Errorf("font: %w", err)
 	}
-	_, h := display.windowSize()
-	sz := float32(h * 0.05)
+	_, winh := display.windowSize()
+	sz := float32(winh * 0.05)
 	sz = scaleFontForDPI(sz, dpi)
 	for i := range len(atlas.subtitlesSize) {
 		if sz >= atlas.subtitlesSize[i] {

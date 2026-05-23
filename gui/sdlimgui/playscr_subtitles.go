@@ -30,8 +30,8 @@ type playscrSubtitles struct {
 }
 
 func (psub *playscrSubtitles) draw() {
-	w, h := psub.img.plt.windowSize()
-	h *= 0.85
+	winw, winh := psub.img.plt.windowSize()
+	winh *= 0.85
 
 	// only show the most recent subtitle 'sentence'
 	sub := strings.TrimSpace(psub.subtitles.String())
@@ -51,9 +51,9 @@ func (psub *playscrSubtitles) draw() {
 	imgui.PushStyleVarVec2(imgui.StyleVarWindowPadding, imgui.Vec2{})
 	defer imgui.PopStyleVarV(1)
 
-	p := imgui.Vec2{X: 0.0, Y: h}
+	p := imgui.Vec2{X: 0.0, Y: winh}
 	imgui.SetNextWindowPos(p)
-	imgui.SetNextWindowSize(imgui.Vec2{X: w, Y: h})
+	imgui.SetNextWindowSize(imgui.Vec2{X: winw, Y: winh})
 
 	imgui.BeginV("##subtitles", nil, imgui.WindowFlagsAlwaysAutoResize|
 		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
@@ -68,7 +68,7 @@ func (psub *playscrSubtitles) draw() {
 
 	sz := imgui.CalcTextSize(sub, false, 0.0)
 	p = imgui.CursorScreenPos()
-	p.X = (w - sz.X) / 2
+	p.X = (winw - sz.X) / 2
 	imgui.SetCursorScreenPos(p)
 
 	p = p.Plus(imgui.Vec2{X: -padding, Y: padding / 2})
