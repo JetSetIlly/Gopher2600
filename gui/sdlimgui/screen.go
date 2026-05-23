@@ -449,7 +449,6 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 			}
 
 			// if plot index has crashed into the render index then set wait flag
-			// ** screen update not keeping up with emulation **
 			wait = scr.crit.plotIdx == scr.crit.renderIdx
 		}
 	}
@@ -471,7 +470,9 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	scr.crit.section.Unlock()
 
 	// slow emulation until screen has caught up
-	// * wait should only have been set to true in playmode
+	// wait will only have been set to true in playmode
+	//
+	// ** screen update not keeping up with limiter **
 	if wait && scr.monitorSyncHigher.Load() || scr.monitorSync.Load() {
 		scr.emuWait <- true
 		<-scr.emuWaitAck
@@ -754,14 +755,14 @@ func (scr *screen) copyPixelsPlaymode() {
 
 		// render index has bumped into the plotting index. revert render index
 		if scr.crit.renderIdx == scr.crit.plotIdx {
-			// ** emulation not keeping up with screen update **
+			// ** limiter not keeping up with screen update **
 
 			// undo frame advancement by restoring an older index
 			//
 			// for television that have a similar refresh rates to the monitor we choose the the
 			// frame previous to the frame shown on the last render. this helps to smooth out
 			// graphical glitches caused by flicker kernels
-			if !tooSlow && scr.monitorSyncSimilar.Load() {
+			if !tooSlow && !scr.monitorSync.Load() {
 				scr.crit.renderIdx = scr.crit.prevRenderIdx[1]
 			} else {
 				scr.crit.renderIdx = scr.crit.prevRenderIdx[0]
