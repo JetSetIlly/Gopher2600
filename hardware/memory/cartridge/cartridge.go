@@ -97,7 +97,7 @@ func (cart *Cartridge) Plumb(env *environment.Environment, fromDifferentEmulatio
 	cart.busStuff, cart.hasBusStuff = cart.mapper.(mapper.CartBusStuff)
 	cart.coprocBus, cart.hasCoProcBus = cart.mapper.(coprocessor.CartCoProcBus)
 
-	if devBus, ok := cart.mapper.(mapper.CartDevBus); ok {
+	if devBus, ok := cart.mapper.(mapper.CartConnection); ok {
 		cart.hasDevBus = true
 		cart.cartridgeBits = devBus.CartridgeBits()
 		cart.cartridgeMask = cart.cartridgeBits | memorymap.CartridgeSelectLine
@@ -230,7 +230,7 @@ func (cart *Cartridge) Attach(loader cartridgeloader.Loader) error {
 		cart.coprocBus, cart.hasCoProcBus = cart.mapper.(coprocessor.CartCoProcBus)
 
 		// get the cartridge bus width required for the cartridge type
-		if devBus, ok := cart.mapper.(mapper.CartDevBus); ok {
+		if devBus, ok := cart.mapper.(mapper.CartConnection); ok {
 			cart.hasDevBus = true
 			cart.cartridgeBits = devBus.CartridgeBits()
 			cart.cartridgeMask = cart.cartridgeBits | memorymap.CartridgeSelectLine

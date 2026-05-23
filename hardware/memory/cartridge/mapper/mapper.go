@@ -385,12 +385,14 @@ type CartPatchable interface {
 	Patch(offset int, data uint8) error
 }
 
-// CartDevBus is implemented by mappers that require a cartridge bus different to what is available
-// on the standard 2600
+// CartConnection is implemented by mappers that require use a cartridge connection different to the
+// normal 12bit read-only connector. For example, 2k cartridges have 11bit connectors.
 //
-// This allows support for the 7800 DevCard, which can be used to develop 2600 games on the
-// 7800 but with the possibility of accessing more memory than is possible with the 2600
-type CartDevBus interface {
+// It can also be used to emulate cartridges that use a completely different type of bus to the
+// standard 2600 architecture. For example, CartConnection also allows support for the 7800 DevCard,
+// which can be used to develop 2600 games on the 7800 and allows the CPU to address more memory
+// than is possible with the normal architecture.
+type CartConnection interface {
 	// the width of the bus expressed as a bit mask
 	CartridgeBits() uint16
 

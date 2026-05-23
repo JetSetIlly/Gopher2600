@@ -540,6 +540,16 @@ func (cart *atari2k) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	return cart.atari.accessVolatile(addr, data, poke)
 }
 
+// AccessVolatile implements the mapper.CartConnection interface.
+func (cart *atari2k) CartridgeBits() uint16 {
+	return 0x07ff
+}
+
+// AccessVolatile implements the mapper.CartConnection interface.
+func (cart *atari2k) ReadWriteLine() bool {
+	return false
+}
+
 // atari8k (F8):
 //   - ET
 //   - Krull

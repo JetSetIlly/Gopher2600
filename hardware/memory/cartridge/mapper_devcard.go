@@ -155,12 +155,12 @@ func (cart *DevCard) ROMDump(filename string) error {
 	return nil
 }
 
-// CartridgeBits implements the CartDevBus interface
+// CartridgeBits implements the CartConnection interface
 func (cart *DevCard) CartridgeBits() uint16 {
 	return 0xffff
 }
 
-// ReadWriteLine implements the CartDevBus interface
+// ReadWriteLine implements the CartConnection interface
 func (cart *DevCard) ReadWriteLine() bool {
 	return true
 }
