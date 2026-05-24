@@ -17,32 +17,10 @@ package debugger
 
 import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
-	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/userinput"
 )
 
 func (dbg *Debugger) playLoop() error {
-	// if forcedROMSelection is active (is not nil) then the event loop is
-	// simplified for the duration (until it is set to nil)
-	for dbg.forcedROMselection != nil {
-		select {
-		case sig := <-dbg.events.Signal:
-			return dbg.events.SignalHandler(sig)
-		case ev := <-dbg.events.PushedFunction:
-			ev()
-		case ev := <-dbg.events.PushedFunctionImmediate:
-			ev()
-			return nil
-		case ev := <-dbg.events.UserInput:
-			if _, ok := ev.(userinput.EventQuit); ok {
-				return terminal.UserQuit
-			}
-		case <-dbg.forcedROMselection:
-			dbg.forcedROMselection = nil
-		}
-	}
-
 	// only check for end of measurement period every PerformanceBrake CPU
 	// instructions
 	performanceBrake := 0

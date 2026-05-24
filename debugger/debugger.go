@@ -82,13 +82,6 @@ type Debugger struct {
 	// current mode of the emulation. use setMode() to set the value
 	mode atomic.Value // emulation.Mode
 
-	// when playmode is entered without a ROM specified we send the GUI a
-	// ReqROMSelector request. we create the forcedROMselection channel and
-	// wait for a response from the InsertCartridge() function. sending and
-	// receiving on this channel occur in the same goroutine so the channel
-	// must be buffered
-	forcedROMselection chan bool
-
 	// state is an atomic value because we need to be able to read it from the
 	// GUI thread (see State() function)
 	state    atomic.Value // emulation.State
@@ -1459,10 +1452,6 @@ func (dbg *Debugger) insertCartridge(filename string) error {
 	err = dbg.attachCartridge(cartload)
 	if err != nil {
 		return fmt.Errorf("debugger: %w", err)
-	}
-
-	if dbg.forcedROMselection != nil {
-		dbg.forcedROMselection <- true
 	}
 
 	return nil
