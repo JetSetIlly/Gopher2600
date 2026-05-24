@@ -165,6 +165,20 @@ func (win *winPrefs) drawDisplay() {
 		win.img.prefs.monitorSync.Set(monitorSync)
 	}
 
+	if monitorSync {
+		imgui.SameLineV(0, 5)
+		imgui.Text(string(fonts.MonitorSpeedWarning))
+		if win.img.plt.mode.RefreshRate >= 59 && win.img.plt.mode.RefreshRate <= 61 {
+			win.img.imguiTooltipSimple(fmt.Sprintf("Monitor is running at %dHz which is generally fine for\nwell behaved NTSC or PAL60 games. PAL or SECAM games\nwill run too fast", win.img.plt.mode.RefreshRate))
+		} else if win.img.plt.mode.RefreshRate >= 49 && win.img.plt.mode.RefreshRate <= 51 {
+			win.img.imguiTooltipSimple(fmt.Sprintf("Monitor is running at %dHz which is generally fine for\nwell behaved PAL or SECAM games. NTSC or PAL60 games\nwill run too slowly", win.img.plt.mode.RefreshRate))
+		} else if win.img.plt.mode.RefreshRate > 61 {
+			win.img.imguiTooltipSimple(fmt.Sprintf("Monitor is running at %dHz which is too fast for\nany well behaved game (NTSC, PAL, PAL60 or SECAM)", win.img.plt.mode.RefreshRate))
+		} else {
+			win.img.imguiTooltipSimple(fmt.Sprintf("Monitor is running at %dHz which is too slow for\nany well behaved game (NTSC, PAL, PAL60 or SECAM) ", win.img.plt.mode.RefreshRate))
+		}
+	}
+
 	imgui.Spacing()
 
 	var glSwapInterval string

@@ -174,6 +174,14 @@ func (o *playscrOverlay) updateRefreshRate() {
 	} else {
 		o.refreshRate = fmt.Sprintf("%03.2fhz", refreshRate)
 	}
+
+	if o.img.prefs.monitorSync.Get().(bool) {
+		high := float32(o.img.plt.mode.RefreshRate) * 1.02
+		low := float32(o.img.plt.mode.RefreshRate) * 0.98
+		if high <= refreshRate || low >= refreshRate {
+			o.refreshRate = fmt.Sprintf("%s %s", o.refreshRate, string(fonts.MonitorSpeedWarning))
+		}
+	}
 }
 
 // information in the top left corner of the overlay are about the emulation.
@@ -208,18 +216,13 @@ func (o *playscrOverlay) drawTopLeft(posMin imgui.Vec2, _ imgui.Vec2) {
 		imgui.Textf("Emulation: %s", o.fps)
 		if o.img.screen.monitorSync.Load() {
 			imgui.SameLine()
-			imgui.Text(string(fonts.TimelineComparisonLock))
+			imgui.Text(string(fonts.MonitorSync))
 		}
 		r := imgui.CurrentIO().Framerate()
 		if r == 0.0 {
 			imgui.Text("Rendering: waiting")
 		} else {
 			imgui.Textf("Rendering: %03.2f fps", r)
-		}
-
-		if o.img.screen.monitorSyncLower.Load() {
-			imgui.Spacing()
-			imgui.Text("Monitor is too slow!")
 		}
 
 		imguiSeparator()

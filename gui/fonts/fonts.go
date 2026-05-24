@@ -118,6 +118,8 @@ const (
 	RenderTime             = '\uf06a'
 	SelectedTick           = '\uf058'
 	Phantom                = '\uf6e2'
+	MonitorSync            = '\uf023'
+	MonitorSpeedWarning    = '\uf071'
 )
 
 //go:embed "Gopher2600-Icons.ttf"
