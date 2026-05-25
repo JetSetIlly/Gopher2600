@@ -122,7 +122,7 @@ func (f *filter) draw(id string) {
 				}
 				return 1
 			}
-			imgui.InputTextV("", &f.text, imgui.InputTextFlagsCallbackCharFilter, cb)
+			imgui.InputTextV(fmt.Sprintf("filter%s", id), &f.text, imgui.InputTextFlagsCallbackCharFilter, cb)
 
 			imgui.PopItemWidth()
 		}
