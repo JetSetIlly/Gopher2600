@@ -136,9 +136,11 @@ func (cart *Supercharger) Plumb(env *environment.Environment) {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *Supercharger) Reset() error {
-	for b := range cart.state.ram {
-		for i := range cart.state.ram[b] {
-			cart.state.ram[b][i] = uint8(cart.env.Random.Intn(0xff))
+	if cart.env.Prefs.RandomState.Get().(bool) {
+		for b := range cart.state.ram {
+			for i := range cart.state.ram[b] {
+				cart.state.ram[b][i] = uint8(cart.env.Random.Intn(0xff))
+			}
 		}
 	}
 

@@ -98,7 +98,7 @@ type SoundLoad struct {
 }
 
 // newSoundLoad is the preferred method of initialisation for the SoundLoad type.
-func newSoundLoad(env *environment.Environment) (tape, error) {
+func newSoundLoad(env *environment.Environment) (*SoundLoad, error) {
 	tap := &SoundLoad{
 		env:    env,
 		blocks: make(map[uint8]fastLoadBlock),
@@ -107,7 +107,7 @@ func newSoundLoad(env *environment.Environment) (tape, error) {
 	var err error
 
 	// get PCM data from data loaded from file
-	tap.pcm, err = getPCM(env, env.Loader)
+	tap.pcm, err = getPCM(env)
 	if err != nil {
 		return nil, fmt.Errorf("soundload: %w", err)
 	}

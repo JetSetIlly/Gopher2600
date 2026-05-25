@@ -25,7 +25,6 @@ import (
 	"github.com/go-audio/wav"
 
 	"github.com/hajimehoshi/go-mp3"
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -39,14 +38,14 @@ type pcmData struct {
 	data []float32
 }
 
-func getPCM(env *environment.Environment, cl cartridgeloader.Loader) (pcmData, error) {
+func getPCM(env *environment.Environment) (pcmData, error) {
 	p := pcmData{
 		data: make([]float32, 0),
 	}
 
-	switch strings.ToLower(filepath.Ext(cl.Filename)) {
+	switch strings.ToLower(filepath.Ext(env.Loader.Filename)) {
 	case ".wav":
-		dec := wav.NewDecoder(cl)
+		dec := wav.NewDecoder(env.Loader)
 		if dec == nil {
 			return p, fmt.Errorf("wav: error decoding")
 		}
@@ -81,7 +80,7 @@ func getPCM(env *environment.Environment, cl cartridgeloader.Loader) (pcmData, e
 		p.totalTime = dur.Seconds()
 
 	case ".mp3":
-		dec, err := mp3.NewDecoder(cl)
+		dec, err := mp3.NewDecoder(env.Loader)
 		if err != nil {
 			return p, fmt.Errorf("mp3: %w", err)
 		}

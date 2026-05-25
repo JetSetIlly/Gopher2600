@@ -62,7 +62,7 @@ const (
 )
 
 // newFastLoad is the preferred method of initialisation for the FastLoad type.
-func newFastLoad(env *environment.Environment) (tape, error) {
+func newFastLoad(env *environment.Environment) (*FastLoad, error) {
 	if env.Loader.Size()%fastLoadBlockLen != 0 {
 		return nil, fmt.Errorf("fastload: wrong number of bytes in cartridge data")
 	}
