@@ -48,6 +48,9 @@ type winCoProcGlobals struct {
 	filter            filter
 
 	openNodes map[string]bool
+
+	// which variable is being hovered over
+	hoveredVarb *dwarf.SourceVariable
 }
 
 func newWinCoProcGlobals(img *SdlImgui) (window, error) {
@@ -168,6 +171,27 @@ func (win *winCoProcGlobals) draw() {
 			win.firstOpen = false
 		}
 
+		if src.Hotlist.Len() != 0 {
+			imgui.BeginTabBar("##globalvarbtabbar")
+			if imgui.BeginTabItem("Globals") {
+				win.drawList(src, false)
+				imgui.EndTabItem()
+			}
+			if imgui.BeginTabItem("Hotlist") {
+				win.drawList(src, true)
+				imgui.EndTabItem()
+			}
+			imgui.EndTabBar()
+		} else {
+			win.drawList(src, false)
+		}
+	})
+}
+
+// the hostlist flag says whether to work with the globals list or the hotlist
+func (win *winCoProcGlobals) drawList(src *dwarf.Source, hotlist bool) {
+	// draw file selector only when not working with the hotlist and when showAllGlobals is disabled
+	if !hotlist {
 		if !win.showAllGlobals {
 			win.drawFileSelection(src)
 			imgui.Separator()
@@ -177,78 +201,130 @@ func (win *winCoProcGlobals) draw() {
 		if win.updateSelectedFile {
 			win.selectedFile = src.FilesByShortname[win.selectedShortFileName]
 		}
+	}
 
-		// global variable table for the selected file
+	const numColumns = 4
 
-		const numColumns = 4
+	flgs := imgui.TableFlagsScrollY
+	flgs |= imgui.TableFlagsSizingStretchProp
+	flgs |= imgui.TableFlagsSortable
+	flgs |= imgui.TableFlagsResizable
 
-		flgs := imgui.TableFlagsScrollY
-		flgs |= imgui.TableFlagsSizingStretchProp
-		flgs |= imgui.TableFlagsSortable
-		flgs |= imgui.TableFlagsResizable
+	// the current variable that is being hoveredVarb
+	var hoveredVarb *dwarf.SourceVariable
 
-		if imgui.BeginTableV("##globalsTable", numColumns, flgs, imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, 0.0) {
+	if imgui.BeginTableV("##globalsTable", numColumns, flgs, imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, 0.0) {
 
-			// setup columns. the labelling column 2 depends on whether the coprocessor
-			// development instance has source available to it
-			width := imgui.ContentRegionAvail().X
-			imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsPreferSortDescending|imgui.TableColumnFlagsDefaultSort, width*0.40, 0)
-			imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNoSort, width*0.20, 1)
-			imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsPreferSortDescending, width*0.15, 2)
-			imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNoSort, width*0.20, 3)
+		// setup columns. the labelling column 2 depends on whether the coprocessor
+		// development instance has source available to it
+		width := imgui.ContentRegionAvail().X
+		imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsPreferSortDescending|imgui.TableColumnFlagsDefaultSort, width*0.40, 0)
+		imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNoSort, width*0.20, 1)
+		imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsPreferSortDescending, width*0.15, 2)
+		imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNoSort, width*0.20, 3)
 
-			imgui.TableSetupScrollFreeze(0, 1)
-			imgui.TableHeadersRow()
+		imgui.TableSetupScrollFreeze(0, 1)
+		imgui.TableHeadersRow()
 
+		// iterate over the appropriate list depending on hotlist function argument
+		if hotlist {
+			for i, varb := range src.Hotlist.Sorted.Variables {
+				h := win.drawVariable(src, varb, 0, false, fmt.Sprint(i))
+				if hoveredVarb == nil {
+					hoveredVarb = h
+				}
+			}
+		} else {
 			for i, varb := range src.SortedGlobals.Variables {
 				if !win.filter.isFiltered(varb.Name) {
 					if win.showAllGlobals || varb.DeclLine.File.Filename == win.selectedFile.Filename {
-						win.drawVariable(src, varb, 0, false, fmt.Sprint(i))
+						h := win.drawVariable(src, varb, 0, false, fmt.Sprint(i))
+						if hoveredVarb == nil {
+							hoveredVarb = h
+						}
 					}
 				}
 			}
+		}
 
-			sort := imgui.TableGetSortSpecs()
-			if sort.SpecsDirty() {
-				for _, s := range sort.Specs() {
-					switch s.ColumnUserID {
-					case 0:
+		sort := imgui.TableGetSortSpecs()
+		if sort.SpecsDirty() {
+			for _, s := range sort.Specs() {
+				switch s.ColumnUserID {
+				case 0:
+					if hotlist {
+						src.Hotlist.Sorted.Sort(dwarf.SortVariablesName, s.SortDirection == imgui.SortDirectionAscending)
+					} else {
 						src.SortedGlobals.Sort(dwarf.SortVariablesName, s.SortDirection == imgui.SortDirectionAscending)
-					case 2:
+					}
+				case 2:
+					if hotlist {
+						src.Hotlist.Sorted.Sort(dwarf.SortVariablesAddress, s.SortDirection == imgui.SortDirectionAscending)
+					} else {
 						src.SortedGlobals.Sort(dwarf.SortVariablesAddress, s.SortDirection == imgui.SortDirectionAscending)
 					}
 				}
-				sort.ClearSpecsDirty()
+			}
+			sort.ClearSpecsDirty()
+		}
+
+		imgui.EndTable()
+
+		if imgui.IsMouseDown(1) && imgui.IsItemHovered() {
+			imgui.OpenPopup(globalsPopupID)
+		}
+
+		win.optionsHeight = imguiMeasureHeight(func() {
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+
+			if !hotlist {
+				imgui.Checkbox("List all globals (all files)", &win.showAllGlobals)
+				imgui.SameLineV(0, 15)
 			}
 
-			imgui.EndTable()
+			imgui.Checkbox("Hide unlocatable variables", &win.showLocatableOnly)
+			win.img.imguiTooltipSimple("A unlocatable variable is a variable has been\nremoved by the compiler's optimisation process")
 
-			if imgui.IsMouseDown(1) && imgui.IsItemHovered() {
-				imgui.OpenPopup(globalsPopupID)
+			if !hotlist {
+				win.filter.draw("##globalsFilter")
 			}
+		})
 
-			win.optionsHeight = imguiMeasureHeight(func() {
+		// update windows hovered field if no popup is open
+		if !imgui.IsPopupOpenV("", imgui.PopupFlagsAnyPopupId) {
+			win.hoveredVarb = hoveredVarb
+		}
+
+		if imgui.BeginPopup(globalsPopupID) {
+			if win.hoveredVarb != nil {
+				if src.Hotlist.In(win.hoveredVarb) {
+					if imgui.Selectable("Remove from hot list") {
+						src.Hotlist.Remove(win.hoveredVarb)
+					}
+				} else {
+					if imgui.Selectable("Add to hot list") {
+						src.Hotlist.Add(win.hoveredVarb)
+					}
+				}
 				imgui.Spacing()
 				imgui.Separator()
 				imgui.Spacing()
-				imgui.Checkbox("List all globals (all files)", &win.showAllGlobals)
-
-				imgui.SameLineV(0, 15)
-				imgui.Checkbox("Hide unlocatable variables", &win.showLocatableOnly)
-				win.img.imguiTooltipSimple(`A unlocatable variable is a variable has been
-removed by the compiler's optimisation process`)
-
-				win.filter.draw("##globalsFilter")
-			})
-
-			if imgui.BeginPopup(globalsPopupID) {
-				if imgui.Selectable(fmt.Sprintf("%c Save Globals to CSV", fonts.Disk)) {
-					win.saveToCSV(src)
-				}
-				imgui.EndPopup()
 			}
+
+			if hotlist {
+				if imgui.Selectable(fmt.Sprintf("%c Save Hotlist to CSV", fonts.Disk)) {
+					win.saveToCSV(src.Hotlist.Sorted, "hotlist")
+				}
+			} else {
+				if imgui.Selectable(fmt.Sprintf("%c Save Globals to CSV", fonts.Disk)) {
+					win.saveToCSV(src.SortedGlobals, "globals")
+				}
+			}
+			imgui.EndPopup()
 		}
-	})
+	}
 }
 
 func drawVariableTooltipShort(varb *dwarf.SourceVariable, cols *imguiColors) {
@@ -383,7 +459,7 @@ func drawVariableTooltip(varb *dwarf.SourceVariable, value uint32, cols *imguiCo
 }
 
 func (win *winCoProcGlobals) drawVariable(src *dwarf.Source, varb *dwarf.SourceVariable,
-	indentLevel int, unnamed bool, nodeID string) {
+	indentLevel int, unnamed bool, nodeID string) *dwarf.SourceVariable {
 
 	const IndentDepth = 2
 
@@ -396,7 +472,7 @@ func (win *winCoProcGlobals) drawVariable(src *dwarf.Source, varb *dwarf.SourceV
 
 	if !varb.IsValid() {
 		if win.showLocatableOnly {
-			return
+			return nil
 		}
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotVisible)
 		defer imgui.PopStyleColor()
@@ -414,7 +490,13 @@ func (win *winCoProcGlobals) drawVariable(src *dwarf.Source, varb *dwarf.SourceV
 		imgui.Text(varb.Type.Name)
 		imgui.TableNextColumn()
 		imgui.Text("not locatable")
-		return
+		return nil
+	}
+
+	// is this row/variable being hovered over?
+	var hoveredVarb *dwarf.SourceVariable
+	if imgui.IsItemHovered() {
+		hoveredVarb = varb
 	}
 
 	if varb.NumChildren() > 0 {
@@ -457,7 +539,12 @@ func (win *winCoProcGlobals) drawVariable(src *dwarf.Source, varb *dwarf.SourceV
 
 			if win.openNodes[nodeID] {
 				for i := 0; i < varb.NumChildren(); i++ {
-					win.drawVariable(src, varb.Child(i), indentLevel+1, false, fmt.Sprint(nodeID, i))
+					// iterate into drawVariable() function and if the returned variable is not nil
+					// then assign it to the hoveredVarb variable
+					h := win.drawVariable(src, varb.Child(i), indentLevel+1, false, fmt.Sprint(nodeID, i))
+					if hoveredVarb == nil && h != nil {
+						hoveredVarb = h
+					}
 				}
 			}
 		}
@@ -491,17 +578,18 @@ func (win *winCoProcGlobals) drawVariable(src *dwarf.Source, varb *dwarf.SourceV
 			imgui.Text(fmt.Sprintf(varb.Type.Hex(), varb.Value()))
 		}
 	}
+
+	return hoveredVarb
 }
 
-// save all variables in the curent view to a CSV file in the working
-// directory. filename will be of the form:
+// save all SortedVariables to a CSV file in the working directory. filename will be of the form:
 //
-// globals_<cart name>_<timestamp>.csv
+// <name>_<cart name>_<timestamp>.csv
 //
-// all entries in the current view are saved, including closed nodes.
-func (win *winCoProcGlobals) saveToCSV(src *dwarf.Source) {
+// all entries in the supplied SortedVariables are saved, including closed nodes.
+func (win *winCoProcGlobals) saveToCSV(varbs dwarf.SortedVariables, name string) {
 	// open unique file
-	fn := unique.Filename("globals", win.img.cache.VCS.Mem.Cart.ShortName)
+	fn := unique.Filename(name, win.img.cache.VCS.Mem.Cart.ShortName)
 	fn = fmt.Sprintf("%s.csv", fn)
 	f, err := os.Create(fn)
 	if err != nil {
@@ -517,15 +605,15 @@ func (win *winCoProcGlobals) saveToCSV(src *dwarf.Source) {
 
 	// write variable to file
 	writeVarb := func(varb *dwarf.SourceVariable) {
-		f.WriteString(fmt.Sprintf("%s,", varb.Name))
-		f.WriteString(fmt.Sprintf("%s,", varb.Type.Name))
+		fmt.Fprintf(f, "%s,", varb.Name)
+		fmt.Fprintf(f, "%s,", varb.Type.Name)
 		if a, ok := varb.Address(); ok {
-			f.WriteString(fmt.Sprintf("%08x,", a))
+			fmt.Fprintf(f, "%08x,", a)
 		} else {
 			f.WriteString(",")
 		}
 
-		f.WriteString(fmt.Sprintf(varb.Type.Hex(), varb.Value()))
+		fmt.Fprintf(f, varb.Type.Hex(), varb.Value())
 		f.WriteString("\n")
 	}
 
@@ -533,7 +621,7 @@ func (win *winCoProcGlobals) saveToCSV(src *dwarf.Source) {
 	// structure to the drawVariable() function above
 	var buildEntry func(*dwarf.SourceVariable, string)
 	buildEntry = func(varb *dwarf.SourceVariable, parent string) {
-		f.WriteString(fmt.Sprintf("%s,", parent))
+		fmt.Fprintf(f, "%s,", parent)
 
 		// how we write the line differs depending on whether the variable has
 		// children or not
@@ -557,7 +645,7 @@ func (win *winCoProcGlobals) saveToCSV(src *dwarf.Source) {
 	f.WriteString("Parent, Name, Type, Address, Value\n")
 
 	// process every variable in the current view
-	for _, varb := range src.SortedGlobals.Variables {
-		buildEntry(varb, "")
+	for _, v := range varbs.Variables {
+		buildEntry(v, "")
 	}
 }

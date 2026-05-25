@@ -93,6 +93,9 @@ type Source struct {
 	GlobalsByAddress map[uint64]*SourceVariable
 	SortedGlobals    SortedVariables
 
+	// all hotlisted global variables
+	Hotlist Hotlist
+
 	// all local variables in all compile units
 	SortedLocals SortedVariablesLocal
 
@@ -142,6 +145,12 @@ func NewSource(cart coprocessor.CartCoProcBus, romFile string, elfFile string, y
 		GlobalsByAddress: make(map[uint64]*SourceVariable),
 		SortedGlobals: SortedVariables{
 			Variables: make([]*SourceVariable, 0, 100),
+		},
+		Hotlist: Hotlist{
+			byAddress: make(map[uint64]*SourceVariable),
+			Sorted: SortedVariables{
+				Variables: make([]*SourceVariable, 0, 100),
+			},
 		},
 		SortedFunctions: SortedFunctions{
 			Functions: make([]*SourceFunction, 0, 100),
