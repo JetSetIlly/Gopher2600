@@ -302,13 +302,22 @@ func (win *winCoProcGlobals) drawList(src *dwarf.Source, hotlist bool) {
 		if imgui.BeginPopup(globalsPopupID) {
 			if win.hoveredVarb != nil {
 				if src.Hotlist.In(win.hoveredVarb) {
-					if imgui.Selectable("Remove from hotlist") {
+					if imgui.Selectable("Remove from Hotlist") {
 						src.Hotlist.Remove(win.hoveredVarb)
 					}
 				} else {
-					if imgui.Selectable("Add to hotlist") {
+					if imgui.Selectable("Add to Hotlist") {
 						src.Hotlist.Add(win.hoveredVarb)
 					}
+				}
+				imgui.Spacing()
+				imgui.Separator()
+				imgui.Spacing()
+			}
+
+			if hotlist {
+				if imgui.Selectable("Clear Hotlist") {
+					src.Hotlist.Clear()
 				}
 				imgui.Spacing()
 				imgui.Separator()

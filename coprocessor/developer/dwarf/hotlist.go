@@ -32,6 +32,11 @@ func (h *Hotlist) In(varb *SourceVariable) bool {
 	return false
 }
 
+func (h *Hotlist) Clear() {
+	clear(h.byAddress)
+	h.Sorted.Variables = h.Sorted.Variables[:0]
+}
+
 func (h *Hotlist) Add(varb *SourceVariable) {
 	if addr, ok := varb.Address(); ok {
 		if _, ok := h.byAddress[addr]; !ok {
