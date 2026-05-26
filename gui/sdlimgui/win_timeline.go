@@ -299,6 +299,12 @@ func (win *winTimeline) drawTrace() {
 		traceOffset = win.prevTraceOffset
 	}
 
+	// if the trace offset value ever exceeds the length of the timeline then reset the traceOffset values
+	if len(timeline.FrameNum) < traceOffset {
+		traceOffset = 0
+		win.prevTraceOffset = 0
+	}
+
 	// similar to traceOffset, rewindOffset adjusts the placement of the rewind
 	// range and frame indicators
 	rewindOffset := traceOffset
