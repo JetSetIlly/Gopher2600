@@ -183,58 +183,58 @@ func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries, lastExecu
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
 	flgs |= imgui.TableFlagsRowBg
-	imgui.BeginTableV("disasmTable", numColumns, flgs, imgui.Vec2{}, 0)
-	defer imgui.EndTable()
+	if imgui.BeginTableV("disasmTable", numColumns, flgs, imgui.Vec2{}, 0) {
+		// first column is a dummy column so that Selectable (span all columns) works correctly
+		width := imgui.ContentRegionAvail().X
+		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0.00, 0)
+		imgui.TableSetupColumnV("MAM", imgui.TableColumnFlagsNone, width*0.025, 1)
+		imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.15, 2)
+		imgui.TableSetupColumnV("Operator", imgui.TableColumnFlagsNone, width*0.07, 3)
+		imgui.TableSetupColumnV("Operands", imgui.TableColumnFlagsNone, width*0.23, 4)
+		imgui.TableSetupColumnV("Branch Trail", imgui.TableColumnFlagsNone, width*0.025, 5)
+		imgui.TableSetupColumnV("MergedIS", imgui.TableColumnFlagsNone, width*0.025, 5)
+		imgui.TableSetupColumnV("Cycle Profile", imgui.TableColumnFlagsNone, width*0.30, 6)
+		imgui.TableSetupColumnV("Cycle Count", imgui.TableColumnFlagsNone, width*0.025, 7)
 
-	// first column is a dummy column so that Selectable (span all columns) works correctly
-	width := imgui.ContentRegionAvail().X
-	imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0.00, 0)
-	imgui.TableSetupColumnV("MAM", imgui.TableColumnFlagsNone, width*0.025, 1)
-	imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.15, 2)
-	imgui.TableSetupColumnV("Operator", imgui.TableColumnFlagsNone, width*0.07, 3)
-	imgui.TableSetupColumnV("Operands", imgui.TableColumnFlagsNone, width*0.23, 4)
-	imgui.TableSetupColumnV("Branch Trail", imgui.TableColumnFlagsNone, width*0.025, 5)
-	imgui.TableSetupColumnV("MergedIS", imgui.TableColumnFlagsNone, width*0.025, 5)
-	imgui.TableSetupColumnV("Cycle Profile", imgui.TableColumnFlagsNone, width*0.30, 6)
-	imgui.TableSetupColumnV("Cycle Count", imgui.TableColumnFlagsNone, width*0.025, 7)
+		// set neutral colors for table rows by default. we'll change it to
+		// something more meaningful as appropriate (eg. entry at PC address)
+		imgui.PushStyleColor(imgui.StyleColorTableRowBg, win.img.cols.WindowBg)
+		imgui.PushStyleColor(imgui.StyleColorTableRowBgAlt, win.img.cols.WindowBg)
+		defer imgui.PopStyleColorV(2)
 
-	// set neutral colors for table rows by default. we'll change it to
-	// something more meaningful as appropriate (eg. entry at PC address)
-	imgui.PushStyleColor(imgui.StyleColorTableRowBg, win.img.cols.WindowBg)
-	imgui.PushStyleColor(imgui.StyleColorTableRowBgAlt, win.img.cols.WindowBg)
-	defer imgui.PopStyleColorV(2)
+		win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
+			var results imgui.ListClipper
 
-	win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
-		var results imgui.ListClipper
+			if lastExecution {
+				imgui.Text("State of execution has recently changed. Last execution details currently unavailable.")
+				imgui.ListClipperAll(len(dsm.LastExecution), func(i int) {
+					if i >= len(dsm.LastExecution) {
+						imgui.Text("")
+						return
+					}
+					e := dsm.LastExecution[i]
+					win.drawEntry(src, e.(arm.DisasmEntry))
+				})
+			} else {
+				imgui.ListClipperAll(len(dsm.Entries), func(i int) {
+					if i >= len(dsm.Keys) {
+						imgui.Text("")
+						return
+					}
+					k := dsm.Keys[i]
+					e := dsm.Entries[k]
+					win.drawEntry(src, e.(arm.DisasmEntry))
+				})
+			}
 
-		if lastExecution {
-			imgui.Text("State of execution has recently changed. Last execution details currently unavailable.")
-			imgui.ListClipperAll(len(dsm.LastExecution), func(i int) {
-				if i >= len(dsm.LastExecution) {
-					imgui.Text("")
-					return
-				}
-				e := dsm.LastExecution[i]
-				win.drawEntry(src, e.(arm.DisasmEntry))
-			})
-		} else {
-			imgui.ListClipperAll(len(dsm.Entries), func(i int) {
-				if i >= len(dsm.Keys) {
-					imgui.Text("")
-					return
-				}
-				k := dsm.Keys[i]
-				e := dsm.Entries[k]
-				win.drawEntry(src, e.(arm.DisasmEntry))
-			})
-		}
-
-		// scroll window with the last item, if the last item was visible on the last frame
-		if win.lastItemVisible {
-			imgui.SetScrollY(imgui.ScrollMaxY())
-		}
-		win.lastItemVisible = results.DisplayEnd >= len(dsm.Entries) && win.img.dbg.State() == govern.Running
-	})
+			// scroll window with the last item, if the last item was visible on the last frame
+			if win.lastItemVisible {
+				imgui.SetScrollY(imgui.ScrollMaxY())
+			}
+			win.lastItemVisible = results.DisplayEnd >= len(dsm.Entries) && win.img.dbg.State() == govern.Running
+		})
+		imgui.EndTable()
+	}
 }
 
 func (win *winCoProcDisasm) drawEntry(src *dwarf.Source, e arm.DisasmEntry) {

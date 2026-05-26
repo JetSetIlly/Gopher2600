@@ -99,115 +99,116 @@ func (win *winCoProcFaults) draw(flt *faults.Faults, src *dwarf.Source) {
 	flgs |= imgui.TableFlagsSizingStretchSame
 	flgs |= imgui.TableFlagsResizable
 
-	imgui.BeginTableV("##coprocFaultsTable", numColumns, flgs, imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, 0.0)
+	if imgui.BeginTableV("##coprocFaultsTable", numColumns, flgs, imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, 0.0) {
 
-	// setup columns. the labelling column 2 depends on whether the coprocessor
-	// development instance has source available to it
-	width := imgui.ContentRegionAvail().X
-	imgui.TableSetupColumnV("Category", imgui.TableColumnFlagsNone, width*0.25, 0)
-	imgui.TableSetupColumnV("Event", imgui.TableColumnFlagsNone, width*0.25, 1)
-	imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.15, 2)
-	if src == nil {
-		imgui.TableSetupColumnV("Instruction Address", imgui.TableColumnFlagsNone, width*0.35, 3)
-	} else {
-		imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.35, 3)
-	}
-
-	imgui.TableSetupScrollFreeze(0, 1)
-	imgui.TableHeadersRow()
-
-	for i := 0; i < len(flt.Log); i++ {
-		e := flt.Log[i]
-
-		var ln *dwarf.SourceLine
-		if src != nil {
-			ln = src.SourceLineByAddr(e.InstructionAddr)
+		// setup columns. the labelling column 2 depends on whether the coprocessor
+		// development instance has source available to it
+		width := imgui.ContentRegionAvail().X
+		imgui.TableSetupColumnV("Category", imgui.TableColumnFlagsNone, width*0.25, 0)
+		imgui.TableSetupColumnV("Event", imgui.TableColumnFlagsNone, width*0.25, 1)
+		imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.15, 2)
+		if src == nil {
+			imgui.TableSetupColumnV("Instruction Address", imgui.TableColumnFlagsNone, width*0.35, 3)
+		} else {
+			imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.35, 3)
 		}
 
-		imgui.TableNextRow()
+		imgui.TableSetupScrollFreeze(0, 1)
+		imgui.TableHeadersRow()
 
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
-		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
-		imgui.SelectableV(string(e.Category), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
-		imgui.PopStyleColorV(2)
+		for i := 0; i < len(flt.Log); i++ {
+			e := flt.Log[i]
 
-		// source on tooltip
-		win.img.imguiTooltip(func() {
-			imgui.Text("Instruction Address:")
-			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcFaultsAddress)
-			imgui.Text(fmt.Sprintf("%08x", e.InstructionAddr))
-			imgui.PopStyleColor()
-
-			if e.Category == faults.NullDereference {
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcFaultsNotes)
-				imgui.Text("likely null pointer dereference")
-				imgui.PopStyleColor()
+			var ln *dwarf.SourceLine
+			if src != nil {
+				ln = src.SourceLineByAddr(e.InstructionAddr)
 			}
 
-			imgui.Text("Frequency:")
-			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcFaultsFrequency)
-			imgui.Text(fmt.Sprintf("%d", e.Count))
-			imgui.PopStyleColor()
+			imgui.TableNextRow()
 
-			if win.showSrcInTooltip && ln != nil {
-				if !ln.IsStub() {
-					imgui.Spacing()
-					imgui.Separator()
-					imgui.Spacing()
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
+			imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
+			imgui.SelectableV(string(e.Category), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
+			imgui.PopStyleColorV(2)
 
-					win.img.drawFilenameAndLineNumber(ln.File.Filename, ln.LineNumber, -1)
+			// source on tooltip
+			win.img.imguiTooltip(func() {
+				imgui.Text("Instruction Address:")
+				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcFaultsAddress)
+				imgui.Text(fmt.Sprintf("%08x", e.InstructionAddr))
+				imgui.PopStyleColor()
 
-					imgui.Spacing()
-					imgui.Separator()
-					imgui.Spacing()
-					win.img.drawSourceLine(ln, true)
-					if len(ln.Instruction) > 0 {
+				if e.Category == faults.NullDereference {
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcFaultsNotes)
+					imgui.Text("likely null pointer dereference")
+					imgui.PopStyleColor()
+				}
+
+				imgui.Text("Frequency:")
+				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcFaultsFrequency)
+				imgui.Text(fmt.Sprintf("%d", e.Count))
+				imgui.PopStyleColor()
+
+				if win.showSrcInTooltip && ln != nil {
+					if !ln.IsStub() {
 						imgui.Spacing()
 						imgui.Separator()
 						imgui.Spacing()
-						win.img.drawDisasmForCoProc("coprocFaults", ln.Instruction, ln, false, false, 0)
+
+						win.img.drawFilenameAndLineNumber(ln.File.Filename, ln.LineNumber, -1)
+
+						imgui.Spacing()
+						imgui.Separator()
+						imgui.Spacing()
+						win.img.drawSourceLine(ln, true)
+						if len(ln.Instruction) > 0 {
+							imgui.Spacing()
+							imgui.Separator()
+							imgui.Spacing()
+							win.img.drawDisasmForCoProc("coprocFaults", ln.Instruction, ln, false, false, 0)
+						}
+					} else {
+						imgui.Spacing()
+						imgui.Separator()
+						imgui.Spacing()
+						imgui.Text("No source for this instruction")
 					}
-				} else {
-					imgui.Spacing()
-					imgui.Separator()
-					imgui.Spacing()
-					imgui.Text("No source for this instruction")
+				}
+			}, true)
+
+			// open source window on click
+			if imgui.IsItemClicked() && ln != nil {
+				if !ln.IsStub() {
+					srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
+					srcWin.gotoSourceLine(ln)
 				}
 			}
-		}, true)
 
-		// open source window on click
-		if imgui.IsItemClicked() && ln != nil {
-			if !ln.IsStub() {
-				srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
-				srcWin.gotoSourceLine(ln)
-			}
-		}
+			imgui.TableNextColumn()
+			imgui.Text(e.Event)
 
-		imgui.TableNextColumn()
-		imgui.Text(e.Event)
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcFaultsAddress)
+			imgui.Text(fmt.Sprintf("%08x", e.AccessAddr))
+			imgui.PopStyleColor()
 
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcFaultsAddress)
-		imgui.Text(fmt.Sprintf("%08x", e.AccessAddr))
-		imgui.PopStyleColor()
-
-		imgui.TableNextColumn()
-		if src == nil {
-			imgui.Text(fmt.Sprintf("%#08x", e.InstructionAddr))
-		} else {
-			if ln != nil {
-				imgui.Text(ln.Function.Name)
+			imgui.TableNextColumn()
+			if src == nil {
+				imgui.Text(fmt.Sprintf("%#08x", e.InstructionAddr))
 			} else {
-				imgui.Text("-")
+				if ln != nil {
+					imgui.Text(ln.Function.Name)
+				} else {
+					imgui.Text("-")
+				}
 			}
 		}
-	}
 
-	imgui.EndTable()
+		imgui.EndTable()
+	}
 
 	// options toolbar at foot of window
 	win.optionsHeight = imguiMeasureHeight(func() {

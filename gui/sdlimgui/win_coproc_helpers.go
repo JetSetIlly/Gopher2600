@@ -43,97 +43,97 @@ func (img *SdlImgui) drawRegistersForCoProcDisasmEntry(id string, e arm.DisasmEn
 func (img *SdlImgui) drawDisasmForCoProc(id string, disasm []*dwarf.SourceInstruction, ln *dwarf.SourceLine,
 	multiline bool, showYield bool, yldAddress uint32) {
 
-	imgui.BeginTable(fmt.Sprintf("%s##disasmTable", id), 4)
-	defer imgui.EndTable()
-
-	// draw disassembly, colouring the text according to whether the disassembly entry
-	// is associated with the current line (ie. the one the mouse is over)
-	yldLine := 0
-	for i := range disasm {
-		d := disasm[i]
-		if d.Addr == yldAddress {
-			yldLine = i
-			break
-		}
-	}
-
-	// find window limits
-	var start, end int
-
-	// number of entries shown
-	const windowSize = 10
-
-	if windowSize < 0 || multiline {
-		start = 0
-		end = len(disasm)
-	} else {
-		// maximum the number of lines to show in the 'window'
-		start = max(yldLine-(windowSize/2), 0)
-		end = min(start+windowSize, len(disasm))
-	}
-
-	// add prelude elipses if the 'window' is not placed at the beginning of the list
-	if start > 0 {
-		imgui.TableNextRow()
-		imgui.TableNextColumn()
-		imgui.TableNextColumn()
-		imgui.TableNextColumn()
-		imgui.TableNextColumn()
-		imgui.Text("...")
-	}
-
-	for i := start; i < end; i++ {
-		d := disasm[i]
-
-		imgui.TableNextRow()
-
-		imgui.TableNextColumn()
-		if d.Line.LineNumber == ln.LineNumber {
-			imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceDisasmAddr)
-		} else {
-			imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceDisasmAddrFade)
-		}
-		imgui.Text(fmt.Sprintf("%08x", d.Addr))
-
-		imgui.PopStyleColor()
-
-		imgui.TableNextColumn()
-		if showYield {
-			// simple way of making sure the yield column doesn't change width
-			// is to always print the icon but to use an the window backtround
-			// colour if the icon is to be invisible
+	if imgui.BeginTable(fmt.Sprintf("%s##disasmTable", id), 4) {
+		// draw disassembly, colouring the text according to whether the disassembly entry
+		// is associated with the current line (ie. the one the mouse is over)
+		yldLine := 0
+		for i := range disasm {
+			d := disasm[i]
 			if d.Addr == yldAddress {
-				imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceYield)
+				yldLine = i
+				break
+			}
+		}
+
+		// find window limits
+		var start, end int
+
+		// number of entries shown
+		const windowSize = 10
+
+		if windowSize < 0 || multiline {
+			start = 0
+			end = len(disasm)
+		} else {
+			// maximum the number of lines to show in the 'window'
+			start = max(yldLine-(windowSize/2), 0)
+			end = min(start+windowSize, len(disasm))
+		}
+
+		// add prelude elipses if the 'window' is not placed at the beginning of the list
+		if start > 0 {
+			imgui.TableNextRow()
+			imgui.TableNextColumn()
+			imgui.TableNextColumn()
+			imgui.TableNextColumn()
+			imgui.TableNextColumn()
+			imgui.Text("...")
+		}
+
+		for i := start; i < end; i++ {
+			d := disasm[i]
+
+			imgui.TableNextRow()
+
+			imgui.TableNextColumn()
+			if d.Line.LineNumber == ln.LineNumber {
+				imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceDisasmAddr)
 			} else {
-				imgui.PushStyleColor(imgui.StyleColorText, img.cols.WindowBg)
+				imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceDisasmAddrFade)
+			}
+			imgui.Text(fmt.Sprintf("%08x", d.Addr))
+
+			imgui.PopStyleColor()
+
+			imgui.TableNextColumn()
+			if showYield {
+				// simple way of making sure the yield column doesn't change width
+				// is to always print the icon but to use an the window backtround
+				// colour if the icon is to be invisible
+				if d.Addr == yldAddress {
+					imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceYield)
+				} else {
+					imgui.PushStyleColor(imgui.StyleColorText, img.cols.WindowBg)
+				}
+
+				imgui.Text(string(fonts.Breakpoint))
+				imgui.PopStyleColor()
 			}
 
-			imgui.Text(string(fonts.Breakpoint))
+			imgui.TableNextColumn()
+			if d.Line.LineNumber == ln.LineNumber {
+				imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceDisasmOpcode)
+			} else {
+				imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceDisasmOpcodeFade)
+			}
+			imgui.Text(d.Opcode())
+			imgui.PopStyleColor()
+
+			imgui.TableNextColumn()
+			if d.Line.LineNumber == ln.LineNumber {
+				imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceDisasm)
+			} else {
+				imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceDisasmFade)
+			}
+			imgui.Text(d.Disasm.String())
 			imgui.PopStyleColor()
 		}
 
-		imgui.TableNextColumn()
-		if d.Line.LineNumber == ln.LineNumber {
-			imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceDisasmOpcode)
-		} else {
-			imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceDisasmOpcodeFade)
+		// add epilogue elipses if the 'window' does not reach the end of the list
+		if end < len(disasm) {
+			imgui.Text("...")
 		}
-		imgui.Text(d.Opcode())
-		imgui.PopStyleColor()
-
-		imgui.TableNextColumn()
-		if d.Line.LineNumber == ln.LineNumber {
-			imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceDisasm)
-		} else {
-			imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceDisasmFade)
-		}
-		imgui.Text(d.Disasm.String())
-		imgui.PopStyleColor()
-	}
-
-	// add epilogue elipses if the 'window' does not reach the end of the list
-	if end < len(disasm) {
-		imgui.Text("...")
+		imgui.EndTable()
 	}
 }
 

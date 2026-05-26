@@ -233,107 +233,109 @@ func (win *winDisasm) drawBankSelection(currBank banking.Information) {
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
 	numColumns := 2
-	imgui.BeginTableV("##controlBar", numColumns, flgs, imgui.Vec2{}, 0)
 
-	bankWidth := imgui.ContentRegionAvail().X - imgui.CurrentStyle().ItemSpacing().X*float32(numColumns)
-	bankWidth -= win.widthScrollToCurrent
-	imgui.TableSetupColumnV("scroll", imgui.TableColumnFlagsNone, win.widthScrollToCurrent, 0)
-	imgui.TableSetupColumnV("bank", imgui.TableColumnFlagsNone, bankWidth, 1)
+	if imgui.BeginTableV("##controlBar", numColumns, flgs, imgui.Vec2{}, 0) {
 
-	imgui.TableNextRow()
+		bankWidth := imgui.ContentRegionAvail().X - imgui.CurrentStyle().ItemSpacing().X*float32(numColumns)
+		bankWidth -= win.widthScrollToCurrent
+		imgui.TableSetupColumnV("scroll", imgui.TableColumnFlagsNone, win.widthScrollToCurrent, 0)
+		imgui.TableSetupColumnV("bank", imgui.TableColumnFlagsNone, bankWidth, 1)
 
-	// scroll to (focus on) current CPU address
-	imgui.TableNextColumn()
-	imgui.AlignTextToFramePadding()
-	imgui.Text(string(fonts.DisasmFocusCurrent))
-	if imgui.IsItemHovered() {
-		if imgui.IsItemClicked() {
-			win.scroll.active = numScrollFrames
-			win.selectedBank = currBank.Number
-			win.filter = filterBank
-		} else {
-			win.img.imguiTooltip(func() {
-				if currBank.ExecutingCoprocessor {
-					imgui.Text("Scroll to 6507 resume address")
-				} else {
-					if currBank.NonCart {
-						imgui.Text("Non-Cartridge execution. No disassembly.")
+		imgui.TableNextRow()
+
+		// scroll to (focus on) current CPU address
+		imgui.TableNextColumn()
+		imgui.AlignTextToFramePadding()
+		imgui.Text(string(fonts.DisasmFocusCurrent))
+		if imgui.IsItemHovered() {
+			if imgui.IsItemClicked() {
+				win.scroll.active = numScrollFrames
+				win.selectedBank = currBank.Number
+				win.filter = filterBank
+			} else {
+				win.img.imguiTooltip(func() {
+					if currBank.ExecutingCoprocessor {
+						imgui.Text("Scroll to 6507 resume address")
 					} else {
-						imgui.Text("Scroll to PC address")
-						imgui.SameLine()
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
-						imgui.Text(fmt.Sprintf("$%04x", win.img.cache.VCS.CPU.PC.Address()))
-						imgui.PopStyleColor()
-
-						if win.img.cache.VCS.Mem.Cart.NumBanks() > 1 {
+						if currBank.NonCart {
+							imgui.Text("Non-Cartridge execution. No disassembly.")
+						} else {
+							imgui.Text("Scroll to PC address")
 							imgui.SameLine()
-							imgui.Text("bank")
-							imgui.SameLine()
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBank)
-							imgui.Text(currBank.String())
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
+							imgui.Text(fmt.Sprintf("$%04x", win.img.cache.VCS.CPU.PC.Address()))
 							imgui.PopStyleColor()
+
+							if win.img.cache.VCS.Mem.Cart.NumBanks() > 1 {
+								imgui.SameLine()
+								imgui.Text("bank")
+								imgui.SameLine()
+								imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBank)
+								imgui.Text(currBank.String())
+								imgui.PopStyleColor()
+							}
 						}
 					}
-				}
-			}, true)
-		}
-	}
-
-	// bank selector / information
-	imgui.TableNextColumn()
-	comboPreview := ""
-	switch win.filter {
-	case filterBank:
-		comboPreview = fmt.Sprintf("Viewing bank %d", win.selectedBank)
-	case filterCPUBug:
-		comboPreview = fmt.Sprintf("Viewing %c CPU Bugs", fonts.CPUBug)
-	case filterPageFault:
-		comboPreview = fmt.Sprintf("Viewing %c Page Faults", fonts.PageFault)
-	}
-
-	imgui.PushItemWidth(imgui.ContentRegionAvail().X)
-	if imgui.BeginComboV("##filter", comboPreview, imgui.ComboFlagsHeightLargest) {
-		for n := 0; n < win.img.cache.VCS.Mem.Cart.NumBanks(); n++ {
-			if imgui.Selectable(fmt.Sprintf("View bank %d", n)) {
-				win.filter = filterBank
-
-				// if a new bank has been selected then update scroll
-				if n != win.selectedBank {
-					win.scroll.active = numScrollFrames
-					win.selectedBank = n
-				}
-			}
-
-			// set scroll on the first frame that the combo is open
-			if !win.selectedBankComboOpen && n == win.selectedBank {
-				imgui.SetScrollHereY(0.0)
+				}, true)
 			}
 		}
 
-		imgui.Spacing()
-		imgui.Separator()
-		imgui.Spacing()
-
-		if imgui.Selectable(fmt.Sprintf("View %c CPU Bugs", fonts.CPUBug)) {
-			win.filter = filterCPUBug
+		// bank selector / information
+		imgui.TableNextColumn()
+		comboPreview := ""
+		switch win.filter {
+		case filterBank:
+			comboPreview = fmt.Sprintf("Viewing bank %d", win.selectedBank)
+		case filterCPUBug:
+			comboPreview = fmt.Sprintf("Viewing %c CPU Bugs", fonts.CPUBug)
+		case filterPageFault:
+			comboPreview = fmt.Sprintf("Viewing %c Page Faults", fonts.PageFault)
 		}
 
-		imgui.Spacing()
+		imgui.PushItemWidth(imgui.ContentRegionAvail().X)
+		if imgui.BeginComboV("##filter", comboPreview, imgui.ComboFlagsHeightLargest) {
+			for n := 0; n < win.img.cache.VCS.Mem.Cart.NumBanks(); n++ {
+				if imgui.Selectable(fmt.Sprintf("View bank %d", n)) {
+					win.filter = filterBank
 
-		if imgui.Selectable(fmt.Sprintf("View %c Page Faults", fonts.PageFault)) {
-			win.filter = filterPageFault
+					// if a new bank has been selected then update scroll
+					if n != win.selectedBank {
+						win.scroll.active = numScrollFrames
+						win.selectedBank = n
+					}
+				}
+
+				// set scroll on the first frame that the combo is open
+				if !win.selectedBankComboOpen && n == win.selectedBank {
+					imgui.SetScrollHereY(0.0)
+				}
+			}
+
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+
+			if imgui.Selectable(fmt.Sprintf("View %c CPU Bugs", fonts.CPUBug)) {
+				win.filter = filterCPUBug
+			}
+
+			imgui.Spacing()
+
+			if imgui.Selectable(fmt.Sprintf("View %c Page Faults", fonts.PageFault)) {
+				win.filter = filterPageFault
+			}
+
+			imgui.EndCombo()
+
+			// note that combo is open *after* it has been drawn
+			win.selectedBankComboOpen = true
+		} else {
+			win.selectedBankComboOpen = false
 		}
+		imgui.PopItemWidth()
 
-		imgui.EndCombo()
-
-		// note that combo is open *after* it has been drawn
-		win.selectedBankComboOpen = true
-	} else {
-		win.selectedBankComboOpen = false
+		imgui.EndTable()
 	}
-	imgui.PopItemWidth()
-
-	imgui.EndTable()
 
 	imgui.Spacing()
 	imgui.Separator()

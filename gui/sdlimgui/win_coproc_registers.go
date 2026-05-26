@@ -80,33 +80,33 @@ func (win *winCoProcRegisters) draw() {
 
 	for _, regs := range spec {
 		drawRegGroup := func() {
-			imgui.BeginTable(fmt.Sprintf("##coprocRegistersTable%s", regs.Name), 2)
-			defer imgui.EndTable()
+			if imgui.BeginTable(fmt.Sprintf("##coprocRegistersTable%s", regs.Name), 2) {
+				for r := regs.Start; r <= regs.End; r++ {
+					if (r-regs.Start)%2 == 0 {
+						imgui.TableNextRow()
+					}
+					imgui.TableNextColumn()
 
-			for r := regs.Start; r <= regs.End; r++ {
-				if (r-regs.Start)%2 == 0 {
-					imgui.TableNextRow()
-				}
-				imgui.TableNextColumn()
-
-				if v, f, ok := coproc.RegisterFormatted(r); ok {
-					s := fmt.Sprintf("%08x", v)
-					label := regs.Label(r)
-					imguiLabel(label)
-					if imguiHexInput(fmt.Sprintf("##%s", label), 8, &s) {
-						reg := r
-						n, err := strconv.ParseUint(s, 16, 32)
-						if err == nil {
-							win.img.dbg.PushFunction(func() {
-								coproc := win.img.dbg.VCS().Mem.Cart.GetCoProc()
-								coproc.RegisterSet(reg, uint32(n))
-							})
+					if v, f, ok := coproc.RegisterFormatted(r); ok {
+						s := fmt.Sprintf("%08x", v)
+						label := regs.Label(r)
+						imguiLabel(label)
+						if imguiHexInput(fmt.Sprintf("##%s", label), 8, &s) {
+							reg := r
+							n, err := strconv.ParseUint(s, 16, 32)
+							if err == nil {
+								win.img.dbg.PushFunction(func() {
+									coproc := win.img.dbg.VCS().Mem.Cart.GetCoProc()
+									coproc.RegisterSet(reg, uint32(n))
+								})
+							}
+						}
+						if regs.Formatted {
+							win.img.imguiTooltipSimple(f)
 						}
 					}
-					if regs.Formatted {
-						win.img.imguiTooltipSimple(f)
-					}
 				}
+				imgui.EndTable()
 			}
 		}
 

@@ -446,257 +446,257 @@ func (win *winCoProcProfiling) drawFunctions(src *dwarf.Source) {
 	// with the option
 	title := "##coprocProfilingTableFunctions"
 
-	imgui.BeginTableV(title, numColumns, flgs, imgui.Vec2{}, 0.0)
+	if imgui.BeginTableV(title, numColumns, flgs, imgui.Vec2{}, 0.0) {
+		// first column is a dummy column so that Selectable (span all columns) works correctly
+		width := imgui.ContentRegionAvail().X
+		imgui.TableSetupColumnV("File", imgui.TableColumnFlagsPreferSortDescending, width*0.275, 0)
+		imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNoSort, width*0.05, 1)
+		imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsPreferSortDescending, width*0.320, 2)
+		imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 3)
+		imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
+		imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 5)
+		imgui.TableSetupColumnV(string(fonts.CoProcKernel), imgui.TableColumnFlagsNoSort, width*0.05, 6)
 
-	// first column is a dummy column so that Selectable (span all columns) works correctly
-	width := imgui.ContentRegionAvail().X
-	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsPreferSortDescending, width*0.275, 0)
-	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNoSort, width*0.05, 1)
-	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsPreferSortDescending, width*0.320, 2)
-	imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 3)
-	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
-	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 5)
-	imgui.TableSetupColumnV(string(fonts.CoProcKernel), imgui.TableColumnFlagsNoSort, width*0.05, 6)
+		imgui.TableSetupScrollFreeze(0, 1)
+		imgui.TableHeadersRow()
 
-	imgui.TableSetupScrollFreeze(0, 1)
-	imgui.TableHeadersRow()
-
-	win.sort(src, func(sort imgui.TableSortSpecs) {
-		for _, s := range sort.Specs() {
-			switch s.ColumnUserID {
-			case 0:
-				src.SortedFunctions.Sort(dwarf.SortFunctionsFile, false,
-					false, s.SortDirection == imgui.SortDirectionAscending, win.focus)
-			case 2:
-				src.SortedFunctions.Sort(dwarf.SortFunctionsName, win.cumulative,
-					false, s.SortDirection == imgui.SortDirectionAscending, win.focus)
-			case 3:
-				if win.cyclesPerCall {
-					src.SortedFunctions.Sort(dwarf.SortFunctionsFrameCyclesPerCall, false,
-						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
-				} else {
-					src.SortedFunctions.Sort(dwarf.SortFunctionsFrameCycles, win.cumulative,
-						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
-				}
-			case 4:
-				if win.cyclesPerCall {
-					src.SortedFunctions.Sort(dwarf.SortFunctionsAverageCyclesPerCall, false,
-						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
-				} else {
-					src.SortedFunctions.Sort(dwarf.SortFunctionsAverageCycles, win.cumulative,
-						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
-				}
-			case 5:
-				if win.cyclesPerCall {
-					src.SortedFunctions.Sort(dwarf.SortFunctionsMaxCyclesPerCall, false,
-						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
-				} else {
-					src.SortedFunctions.Sort(dwarf.SortFunctionsMaxCycles, win.cumulative,
-						win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
+		win.sort(src, func(sort imgui.TableSortSpecs) {
+			for _, s := range sort.Specs() {
+				switch s.ColumnUserID {
+				case 0:
+					src.SortedFunctions.Sort(dwarf.SortFunctionsFile, false,
+						false, s.SortDirection == imgui.SortDirectionAscending, win.focus)
+				case 2:
+					src.SortedFunctions.Sort(dwarf.SortFunctionsName, win.cumulative,
+						false, s.SortDirection == imgui.SortDirectionAscending, win.focus)
+				case 3:
+					if win.cyclesPerCall {
+						src.SortedFunctions.Sort(dwarf.SortFunctionsFrameCyclesPerCall, false,
+							win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
+					} else {
+						src.SortedFunctions.Sort(dwarf.SortFunctionsFrameCycles, win.cumulative,
+							win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
+					}
+				case 4:
+					if win.cyclesPerCall {
+						src.SortedFunctions.Sort(dwarf.SortFunctionsAverageCyclesPerCall, false,
+							win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
+					} else {
+						src.SortedFunctions.Sort(dwarf.SortFunctionsAverageCycles, win.cumulative,
+							win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
+					}
+				case 5:
+					if win.cyclesPerCall {
+						src.SortedFunctions.Sort(dwarf.SortFunctionsMaxCyclesPerCall, false,
+							win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
+					} else {
+						src.SortedFunctions.Sort(dwarf.SortFunctionsMaxCycles, win.cumulative,
+							win.percentileFigures, s.SortDirection != imgui.SortDirectionAscending, win.focus)
+					}
 				}
 			}
-		}
-		sort.ClearSpecsDirty()
-	})
+			sort.ClearSpecsDirty()
+		})
 
-	for _, fn := range src.SortedFunctions.Functions {
-		if fn.Kernel&win.focus != win.focus {
-			continue
-		}
+		for _, fn := range src.SortedFunctions.Functions {
+			if fn.Kernel&win.focus != win.focus {
+				continue
+			}
 
-		// using flat stats even if cumulative option is set - it amounts to
-		// the same thing in this case
-		if win.hideUnexecuted && !fn.Cycles.Overall.HasExecuted() {
-			continue
-		}
+			// using flat stats even if cumulative option is set - it amounts to
+			// the same thing in this case
+			if win.hideUnexecuted && !fn.Cycles.Overall.HasExecuted() {
+				continue
+			}
 
-		// is the function is a stub or not. some facilities are not available
-		// without source
-		isStub := fn.IsStub()
+			// is the function is a stub or not. some facilities are not available
+			// without source
+			isStub := fn.IsStub()
 
-		// select which stats to focus on
-		var cyclesGroup profiling.Cycles
-		if win.cumulative {
-			cyclesGroup = fn.CumulativeCycles
-		} else {
-			cyclesGroup = fn.Cycles
-		}
+			// select which stats to focus on
+			var cyclesGroup profiling.Cycles
+			if win.cumulative {
+				cyclesGroup = fn.CumulativeCycles
+			} else {
+				cyclesGroup = fn.Cycles
+			}
 
-		var cycles profiling.CyclesScope
-		var calls profiling.CallsScope
-		var cyclesPerCall profiling.CyclesPerCallScope
-		if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
-			cycles = cyclesGroup.VBLANK
-			calls = fn.NumCalls.VBLANK
-			cyclesPerCall = fn.CyclesPerCall.VBLANK
-		} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
-			cycles = cyclesGroup.Screen
-			calls = fn.NumCalls.Screen
-			cyclesPerCall = fn.CyclesPerCall.Screen
-		} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
-			cycles = cyclesGroup.Overscan
-			calls = fn.NumCalls.Overscan
-			cyclesPerCall = fn.CyclesPerCall.Overscan
-		} else {
-			cycles = cyclesGroup.Overall
-			calls = fn.NumCalls.Overall
-			cyclesPerCall = fn.CyclesPerCall.Overall
-		}
+			var cycles profiling.CyclesScope
+			var calls profiling.CallsScope
+			var cyclesPerCall profiling.CyclesPerCallScope
+			if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
+				cycles = cyclesGroup.VBLANK
+				calls = fn.NumCalls.VBLANK
+				cyclesPerCall = fn.CyclesPerCall.VBLANK
+			} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
+				cycles = cyclesGroup.Screen
+				calls = fn.NumCalls.Screen
+				cyclesPerCall = fn.CyclesPerCall.Screen
+			} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
+				cycles = cyclesGroup.Overscan
+				calls = fn.NumCalls.Overscan
+				cyclesPerCall = fn.CyclesPerCall.Overscan
+			} else {
+				cycles = cyclesGroup.Overall
+				calls = fn.NumCalls.Overall
+				cyclesPerCall = fn.CyclesPerCall.Overall
+			}
 
-		imgui.TableNextRow()
+			imgui.TableNextRow()
 
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
-		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceFilename)
-		if isStub {
-			imgui.SelectableV("-", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
-		} else {
-			imgui.SelectableV(fn.DeclLine.File.ShortFilename, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
-		}
-		imgui.PopStyleColorV(3)
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
+			imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceFilename)
+			if isStub {
+				imgui.SelectableV("-", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
+			} else {
+				imgui.SelectableV(fn.DeclLine.File.ShortFilename, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
+			}
+			imgui.PopStyleColorV(3)
 
-		// whether to show the optimisation warning for a function
-		optimisedWarning := win.cumulative && fn.OptimisedCallStack
+			// whether to show the optimisation warning for a function
+			optimisedWarning := win.cumulative && fn.OptimisedCallStack
 
-		// tooltip
-		win.tooltip(fn, fn.DeclLine, false)
+			// tooltip
+			win.tooltip(fn, fn.DeclLine, false)
 
-		if optimisedWarning {
-			win.img.imguiTooltip(func() {
-				imgui.Spacing()
-				imgui.Separator()
-				imgui.Spacing()
+			if optimisedWarning {
+				win.img.imguiTooltip(func() {
+					imgui.Spacing()
+					imgui.Separator()
+					imgui.Spacing()
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
+					imgui.Text(string(fonts.Warning))
+					imgui.PopStyleColor()
+					imgui.SameLineV(0, 5)
+					imgui.Text("This function has been called as part of a call stack that could")
+					imgui.Text("not be discerned accurately. The figures will be inaccurate.")
+				}, true)
+			}
+
+			// open/select function filter on click
+			if imgui.IsItemClicked() && !isStub {
+				win.windowSortSpecDirty = true
+				src.AddFunctionFilter(fn.Name)
+				win.functionTabSelect = fn.Name
+			}
+
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+			if isStub {
+				imgui.Text("-")
+			} else {
+				imgui.Text(fmt.Sprintf("%d", fn.DeclLine.LineNumber))
+			}
+			imgui.PopStyleColor()
+
+			imgui.TableNextColumn()
+
+			if optimisedWarning {
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
 				imgui.Text(string(fonts.Warning))
 				imgui.PopStyleColor()
 				imgui.SameLineV(0, 5)
-				imgui.Text("This function has been called as part of a call stack that could")
-				imgui.Text("not be discerned accurately. The figures will be inaccurate.")
-			}, true)
-		}
+				imgui.Text(fn.Name)
+			} else {
+				imgui.Text(fn.Name)
+			}
 
-		// open/select function filter on click
-		if imgui.IsItemClicked() && !isStub {
-			win.windowSortSpecDirty = true
-			src.AddFunctionFilter(fn.Name)
-			win.functionTabSelect = fn.Name
-		}
+			_ = calls
 
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-		if isStub {
-			imgui.Text("-")
-		} else {
-			imgui.Text(fmt.Sprintf("%d", fn.DeclLine.LineNumber))
-		}
-		imgui.PopStyleColor()
-
-		imgui.TableNextColumn()
-
-		if optimisedWarning {
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
-			imgui.Text(string(fonts.Warning))
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
+			if win.cyclesPerCall {
+				if cyclesPerCall.FrameValid {
+					if win.percentileFigures {
+						imgui.Text(fmt.Sprintf("%.02f", cyclesPerCall.FrameLoad))
+					} else {
+						imgui.Text(fmt.Sprintf("%.0f", cyclesPerCall.FrameCount))
+					}
+				} else {
+					imgui.Text("-")
+				}
+			} else {
+				if cycles.CyclesProgram.FrameValid {
+					if win.percentileFigures {
+						imgui.Text(fmt.Sprintf("%.02f", cycles.CyclesProgram.FrameLoad))
+					} else {
+						imgui.Text(fmt.Sprintf("%.0f", cycles.CyclesProgram.FrameCount))
+					}
+				} else {
+					imgui.Text("-")
+				}
+			}
 			imgui.PopStyleColor()
-			imgui.SameLineV(0, 5)
-			imgui.Text(fn.Name)
-		} else {
-			imgui.Text(fn.Name)
+
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
+			if win.cyclesPerCall {
+				if cyclesPerCall.AverageValid {
+					if win.percentileFigures {
+						imgui.Text(fmt.Sprintf("%0.02f", cyclesPerCall.AverageLoad))
+					} else {
+						imgui.Text(fmt.Sprintf("%0.0f", cyclesPerCall.AverageCount))
+					}
+				} else {
+					imgui.Text("-")
+				}
+			} else {
+				if cycles.CyclesProgram.AverageValid {
+					if win.percentileFigures {
+						imgui.Text(fmt.Sprintf("%.02f", cycles.CyclesProgram.AverageLoad))
+					} else {
+						imgui.Text(fmt.Sprintf("%.0f", cycles.CyclesProgram.AverageCount))
+					}
+				} else {
+					imgui.Text("-")
+				}
+			}
+			imgui.PopStyleColor()
+
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
+			if win.cyclesPerCall {
+				if cyclesPerCall.MaxValid {
+					if win.percentileFigures {
+						imgui.Text(fmt.Sprintf("%.02f", cyclesPerCall.MaxLoad))
+					} else {
+						imgui.Text(fmt.Sprintf("%.0f", cyclesPerCall.MaxCount))
+					}
+				} else {
+					imgui.Text("-")
+				}
+			} else {
+				if cycles.CyclesProgram.MaxValid {
+					if win.percentileFigures {
+						imgui.Text(fmt.Sprintf("%.02f", cycles.CyclesProgram.MaxLoad))
+					} else {
+						imgui.Text(fmt.Sprintf("%.0f", cycles.CyclesProgram.MaxCount))
+					}
+				} else {
+					imgui.Text("-")
+				}
+			}
+			imgui.PopStyleColor()
+
+			imgui.TableNextColumn()
+			if fn.Kernel&profiling.FocusVBLANK == profiling.FocusVBLANK {
+				imgui.Text("V")
+				imgui.SameLineV(0, 1)
+			}
+			if fn.Kernel&profiling.FocusScreen == profiling.FocusScreen {
+				imgui.Text("S")
+				imgui.SameLineV(0, 1)
+			}
+			if fn.Kernel&profiling.FocusOverscan == profiling.FocusOverscan {
+				imgui.Text("O")
+				imgui.SameLineV(0, 1)
+			}
 		}
 
-		_ = calls
-
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if win.cyclesPerCall {
-			if cyclesPerCall.FrameValid {
-				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", cyclesPerCall.FrameLoad))
-				} else {
-					imgui.Text(fmt.Sprintf("%.0f", cyclesPerCall.FrameCount))
-				}
-			} else {
-				imgui.Text("-")
-			}
-		} else {
-			if cycles.CyclesProgram.FrameValid {
-				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", cycles.CyclesProgram.FrameLoad))
-				} else {
-					imgui.Text(fmt.Sprintf("%.0f", cycles.CyclesProgram.FrameCount))
-				}
-			} else {
-				imgui.Text("-")
-			}
-		}
-		imgui.PopStyleColor()
-
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if win.cyclesPerCall {
-			if cyclesPerCall.AverageValid {
-				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%0.02f", cyclesPerCall.AverageLoad))
-				} else {
-					imgui.Text(fmt.Sprintf("%0.0f", cyclesPerCall.AverageCount))
-				}
-			} else {
-				imgui.Text("-")
-			}
-		} else {
-			if cycles.CyclesProgram.AverageValid {
-				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", cycles.CyclesProgram.AverageLoad))
-				} else {
-					imgui.Text(fmt.Sprintf("%.0f", cycles.CyclesProgram.AverageCount))
-				}
-			} else {
-				imgui.Text("-")
-			}
-		}
-		imgui.PopStyleColor()
-
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if win.cyclesPerCall {
-			if cyclesPerCall.MaxValid {
-				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", cyclesPerCall.MaxLoad))
-				} else {
-					imgui.Text(fmt.Sprintf("%.0f", cyclesPerCall.MaxCount))
-				}
-			} else {
-				imgui.Text("-")
-			}
-		} else {
-			if cycles.CyclesProgram.MaxValid {
-				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", cycles.CyclesProgram.MaxLoad))
-				} else {
-					imgui.Text(fmt.Sprintf("%.0f", cycles.CyclesProgram.MaxCount))
-				}
-			} else {
-				imgui.Text("-")
-			}
-		}
-		imgui.PopStyleColor()
-
-		imgui.TableNextColumn()
-		if fn.Kernel&profiling.FocusVBLANK == profiling.FocusVBLANK {
-			imgui.Text("V")
-			imgui.SameLineV(0, 1)
-		}
-		if fn.Kernel&profiling.FocusScreen == profiling.FocusScreen {
-			imgui.Text("S")
-			imgui.SameLineV(0, 1)
-		}
-		if fn.Kernel&profiling.FocusOverscan == profiling.FocusOverscan {
-			imgui.Text("O")
-			imgui.SameLineV(0, 1)
-		}
+		imgui.EndTable()
 	}
-
-	imgui.EndTable()
 }
 
 func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
@@ -737,156 +737,157 @@ func (win *winCoProcProfiling) drawSourceLines(src *dwarf.Source) {
 	flgs |= imgui.TableFlagsResizable
 	flgs |= imgui.TableFlagsHideable
 
-	imgui.BeginTableV("##coprocProfilingTableSourceLines", numColumns, flgs, imgui.Vec2{}, 0.0)
+	if imgui.BeginTableV("##coprocProfilingTableSourceLines", numColumns, flgs, imgui.Vec2{}, 0.0) {
 
-	// first column is a dummy column so that Selectable (span all columns) works correctly
-	width := imgui.ContentRegionAvail().X
-	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsPreferSortDescending, width*0.20, 0)
-	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNoSort, width*0.05, 1)
-	imgui.TableSetupColumnV("Content", imgui.TableColumnFlagsNoSort, width*0.30, 2)
-	imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.07, 3)
-	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.07, 4)
-	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.07, 5)
-	imgui.TableSetupColumnV(string(fonts.CoProcKernel), imgui.TableColumnFlagsNoSort, width*0.05, 6)
+		// first column is a dummy column so that Selectable (span all columns) works correctly
+		width := imgui.ContentRegionAvail().X
+		imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsPreferSortDescending, width*0.20, 0)
+		imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNoSort, width*0.05, 1)
+		imgui.TableSetupColumnV("Content", imgui.TableColumnFlagsNoSort, width*0.30, 2)
+		imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.07, 3)
+		imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.07, 4)
+		imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.07, 5)
+		imgui.TableSetupColumnV(string(fonts.CoProcKernel), imgui.TableColumnFlagsNoSort, width*0.05, 6)
 
-	imgui.TableSetupScrollFreeze(0, 1)
-	imgui.TableHeadersRow()
+		imgui.TableSetupScrollFreeze(0, 1)
+		imgui.TableHeadersRow()
 
-	win.sort(src, func(sort imgui.TableSortSpecs) {
-		for _, s := range sort.Specs() {
-			switch s.ColumnUserID {
-			case 0:
-				src.SortedLines.Sort(dwarf.SortLinesFunction, true,
-					false, s.SortDirection == imgui.SortDirectionAscending, win.focus)
-			case 3:
-				src.SortedLines.Sort(dwarf.SortLinesFrameCycles, true,
-					win.percentileFigures, true, win.focus)
-			case 4:
-				src.SortedLines.Sort(dwarf.SortLinesAverageCycles, true,
-					win.percentileFigures, true, win.focus)
-			case 5:
-				src.SortedLines.Sort(dwarf.SortLinesMaxCycles, true,
-					win.percentileFigures, true, win.focus)
+		win.sort(src, func(sort imgui.TableSortSpecs) {
+			for _, s := range sort.Specs() {
+				switch s.ColumnUserID {
+				case 0:
+					src.SortedLines.Sort(dwarf.SortLinesFunction, true,
+						false, s.SortDirection == imgui.SortDirectionAscending, win.focus)
+				case 3:
+					src.SortedLines.Sort(dwarf.SortLinesFrameCycles, true,
+						win.percentileFigures, true, win.focus)
+				case 4:
+					src.SortedLines.Sort(dwarf.SortLinesAverageCycles, true,
+						win.percentileFigures, true, win.focus)
+				case 5:
+					src.SortedLines.Sort(dwarf.SortLinesMaxCycles, true,
+						win.percentileFigures, true, win.focus)
+				}
 			}
-		}
-		sort.ClearSpecsDirty()
-	})
+			sort.ClearSpecsDirty()
+		})
 
-	for _, ln := range src.SortedLines.Lines {
-		if ln.Kernel&win.focus != win.focus {
-			continue
-		}
+		for _, ln := range src.SortedLines.Lines {
+			if ln.Kernel&win.focus != win.focus {
+				continue
+			}
 
-		if win.hideUnexecuted && !ln.Cycles.Overall.HasExecuted() {
-			continue
-		}
+			if win.hideUnexecuted && !ln.Cycles.Overall.HasExecuted() {
+				continue
+			}
 
-		// is the line is a stub or not. some facilities are not available
-		// without source
-		isStub := ln.IsStub()
+			// is the line is a stub or not. some facilities are not available
+			// without source
+			isStub := ln.IsStub()
 
-		// select which stats to focus on
-		var stats profiling.CyclesScope
-		if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
-			stats = ln.Cycles.VBLANK
-		} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
-			stats = ln.Cycles.Screen
-		} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
-			stats = ln.Cycles.Overscan
-		} else {
-			stats = ln.Cycles.Overall
-		}
-
-		imgui.TableNextRow()
-
-		imgui.TableNextColumn()
-
-		// selectable across entire width of table
-		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
-		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
-		imgui.SelectableV(ln.Function.Name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
-		imgui.PopStyleColorV(2)
-
-		// tooltip
-		if isStub {
-			win.img.imguiTooltipSimple(fmt.Sprintf("This entry represent all lines of code in %s", ln.Function.Name))
-		} else {
-			win.tooltip(ln.Function, ln, true)
-		}
-
-		// open source window on click
-		if !isStub && imgui.IsItemClicked() {
-			srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
-			srcWin.gotoSourceLine(ln)
-		}
-
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-		if isStub {
-			imgui.Text("-")
-		} else {
-			imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
-		}
-		imgui.PopStyleColor()
-
-		imgui.TableNextColumn()
-		win.img.drawSourceLine(ln, true)
-
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if stats.CyclesProgram.FrameValid {
-			if win.percentileFigures {
-				imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.FrameLoad))
+			// select which stats to focus on
+			var stats profiling.CyclesScope
+			if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
+				stats = ln.Cycles.VBLANK
+			} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
+				stats = ln.Cycles.Screen
+			} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
+				stats = ln.Cycles.Overscan
 			} else {
-				imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.FrameCount))
+				stats = ln.Cycles.Overall
 			}
-		} else {
-			imgui.Text("-")
-		}
-		imgui.PopStyleColor()
 
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if stats.CyclesProgram.AverageValid {
-			if win.percentileFigures {
-				imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.AverageLoad))
+			imgui.TableNextRow()
+
+			imgui.TableNextColumn()
+
+			// selectable across entire width of table
+			imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
+			imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
+			imgui.SelectableV(ln.Function.Name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
+			imgui.PopStyleColorV(2)
+
+			// tooltip
+			if isStub {
+				win.img.imguiTooltipSimple(fmt.Sprintf("This entry represent all lines of code in %s", ln.Function.Name))
 			} else {
-				imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.AverageCount))
+				win.tooltip(ln.Function, ln, true)
 			}
-		} else {
-			imgui.Text("-")
-		}
-		imgui.PopStyleColor()
 
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if stats.CyclesProgram.MaxValid {
-			if win.percentileFigures {
-				imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.MaxLoad))
+			// open source window on click
+			if !isStub && imgui.IsItemClicked() {
+				srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
+				srcWin.gotoSourceLine(ln)
+			}
+
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+			if isStub {
+				imgui.Text("-")
 			} else {
-				imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.MaxCount))
+				imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
 			}
-		} else {
-			imgui.Text("-")
-		}
-		imgui.PopStyleColor()
+			imgui.PopStyleColor()
 
-		imgui.TableNextColumn()
-		if ln.Kernel&profiling.FocusVBLANK == profiling.FocusVBLANK {
-			imgui.Text("V")
-			imgui.SameLineV(0, 1)
+			imgui.TableNextColumn()
+			win.img.drawSourceLine(ln, true)
+
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
+			if stats.CyclesProgram.FrameValid {
+				if win.percentileFigures {
+					imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.FrameLoad))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.FrameCount))
+				}
+			} else {
+				imgui.Text("-")
+			}
+			imgui.PopStyleColor()
+
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
+			if stats.CyclesProgram.AverageValid {
+				if win.percentileFigures {
+					imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.AverageLoad))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.AverageCount))
+				}
+			} else {
+				imgui.Text("-")
+			}
+			imgui.PopStyleColor()
+
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
+			if stats.CyclesProgram.MaxValid {
+				if win.percentileFigures {
+					imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.MaxLoad))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.MaxCount))
+				}
+			} else {
+				imgui.Text("-")
+			}
+			imgui.PopStyleColor()
+
+			imgui.TableNextColumn()
+			if ln.Kernel&profiling.FocusVBLANK == profiling.FocusVBLANK {
+				imgui.Text("V")
+				imgui.SameLineV(0, 1)
+			}
+			if ln.Kernel&profiling.FocusScreen == profiling.FocusScreen {
+				imgui.Text("S")
+				imgui.SameLineV(0, 1)
+			}
+			if ln.Kernel&profiling.FocusOverscan == profiling.FocusOverscan {
+				imgui.Text("O")
+				imgui.SameLineV(0, 1)
+			}
 		}
-		if ln.Kernel&profiling.FocusScreen == profiling.FocusScreen {
-			imgui.Text("S")
-			imgui.SameLineV(0, 1)
-		}
-		if ln.Kernel&profiling.FocusOverscan == profiling.FocusOverscan {
-			imgui.Text("O")
-			imgui.SameLineV(0, 1)
-		}
+
+		imgui.EndTable()
 	}
-
-	imgui.EndTable()
 }
 
 func (win *winCoProcProfiling) drawFunctionFilter(src *dwarf.Source, functionFilter *dwarf.FunctionFilter) {
@@ -955,182 +956,183 @@ thean to the program as a whole.`)
 	flgs |= imgui.TableFlagsResizable
 	flgs |= imgui.TableFlagsHideable
 
-	imgui.BeginTableV("##coprocProfilingTableFunctionFilter", numColumns, flgs, imgui.Vec2{}, 0.0)
+	if imgui.BeginTableV("##coprocProfilingTableFunctionFilter", numColumns, flgs, imgui.Vec2{}, 0.0) {
 
-	// first column is a dummy column so that Selectable (span all columns) works correctly
-	width := imgui.ContentRegionAvail().X
-	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsPreferSortDescending, width*0.05, 0)
-	imgui.TableSetupColumnV("Source", imgui.TableColumnFlagsNoSort, width*0.55, 1)
-	imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 2)
-	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 3)
-	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
-	imgui.TableSetupColumnV(string(fonts.CoProcKernel), imgui.TableColumnFlagsNoSort, width*0.05, 6)
+		// first column is a dummy column so that Selectable (span all columns) works correctly
+		width := imgui.ContentRegionAvail().X
+		imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsPreferSortDescending, width*0.05, 0)
+		imgui.TableSetupColumnV("Source", imgui.TableColumnFlagsNoSort, width*0.55, 1)
+		imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 2)
+		imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 3)
+		imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
+		imgui.TableSetupColumnV(string(fonts.CoProcKernel), imgui.TableColumnFlagsNoSort, width*0.05, 6)
 
-	imgui.TableSetupScrollFreeze(0, 1)
-	imgui.TableHeadersRow()
+		imgui.TableSetupScrollFreeze(0, 1)
+		imgui.TableHeadersRow()
 
-	win.sort(src, func(sort imgui.TableSortSpecs) {
-		for _, s := range sort.Specs() {
-			switch s.ColumnUserID {
-			case 0:
-				functionFilter.Lines.Sort(dwarf.SortLinesNumber, !win.functionTabScale,
-					win.percentileFigures, s.SortDirection == imgui.SortDirectionAscending, win.focus)
-			case 2:
-				functionFilter.Lines.Sort(dwarf.SortLinesFrameCycles, !win.functionTabScale, win.percentileFigures,
-					true, win.focus)
-			case 3:
-				functionFilter.Lines.Sort(dwarf.SortLinesAverageCycles, !win.functionTabScale,
-					win.percentileFigures, true, win.focus)
-			case 4:
-				functionFilter.Lines.Sort(dwarf.SortLinesMaxCycles, !win.functionTabScale,
-					win.percentileFigures, true, win.focus)
+		win.sort(src, func(sort imgui.TableSortSpecs) {
+			for _, s := range sort.Specs() {
+				switch s.ColumnUserID {
+				case 0:
+					functionFilter.Lines.Sort(dwarf.SortLinesNumber, !win.functionTabScale,
+						win.percentileFigures, s.SortDirection == imgui.SortDirectionAscending, win.focus)
+				case 2:
+					functionFilter.Lines.Sort(dwarf.SortLinesFrameCycles, !win.functionTabScale, win.percentileFigures,
+						true, win.focus)
+				case 3:
+					functionFilter.Lines.Sort(dwarf.SortLinesAverageCycles, !win.functionTabScale,
+						win.percentileFigures, true, win.focus)
+				case 4:
+					functionFilter.Lines.Sort(dwarf.SortLinesMaxCycles, !win.functionTabScale,
+						win.percentileFigures, true, win.focus)
+				}
 			}
-		}
-	})
+		})
 
-	for _, ln := range functionFilter.Lines.Lines {
-		if ln.Kernel&win.focus != win.focus {
-			continue
-		}
+		for _, ln := range functionFilter.Lines.Lines {
+			if ln.Kernel&win.focus != win.focus {
+				continue
+			}
 
-		if win.hideUnexecuted && !ln.Cycles.Overall.HasExecuted() {
-			continue
-		}
+			if win.hideUnexecuted && !ln.Cycles.Overall.HasExecuted() {
+				continue
+			}
 
-		if ln.IsStub() {
-			continue
-		}
+			if ln.IsStub() {
+				continue
+			}
 
-		// select which stats to focus on
-		var stats profiling.CyclesScope
-		if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
-			stats = ln.Cycles.VBLANK
-		} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
-			stats = ln.Cycles.Screen
-		} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
-			stats = ln.Cycles.Overscan
-		} else {
-			stats = ln.Cycles.Overall
-		}
+			// select which stats to focus on
+			var stats profiling.CyclesScope
+			if win.focus&profiling.FocusVBLANK == profiling.FocusVBLANK {
+				stats = ln.Cycles.VBLANK
+			} else if win.focus&profiling.FocusScreen == profiling.FocusScreen {
+				stats = ln.Cycles.Screen
+			} else if win.focus&profiling.FocusOverscan == profiling.FocusOverscan {
+				stats = ln.Cycles.Overscan
+			} else {
+				stats = ln.Cycles.Overall
+			}
 
-		imgui.TableNextRow()
+			imgui.TableNextRow()
 
-		imgui.TableNextColumn()
+			imgui.TableNextColumn()
 
-		// selectable across entire width of table
-		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
-		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-		imgui.SelectableV(fmt.Sprintf("%d", ln.LineNumber), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
-		imgui.PopStyleColorV(3)
+			// selectable across entire width of table
+			imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHoverLine)
+			imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHoverLine)
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+			imgui.SelectableV(fmt.Sprintf("%d", ln.LineNumber), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
+			imgui.PopStyleColorV(3)
 
-		// source on tooltip
-		if win.functionTabScale {
-			win.tooltip(ln.Function, ln, true)
-		} else {
-			win.tooltip(ln.Function, ln, true)
-		}
+			// source on tooltip
+			if win.functionTabScale {
+				win.tooltip(ln.Function, ln, true)
+			} else {
+				win.tooltip(ln.Function, ln, true)
+			}
 
-		// open source window on click
-		if imgui.IsItemClicked() {
-			srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
-			srcWin.gotoSourceLine(ln)
-		}
+			// open source window on click
+			if imgui.IsItemClicked() {
+				srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
+				srcWin.gotoSourceLine(ln)
+			}
 
-		imgui.TableNextColumn()
-		win.img.drawSourceLine(ln, true)
+			imgui.TableNextColumn()
+			win.img.drawSourceLine(ln, true)
 
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if win.functionTabScale {
-			if stats.CyclesFunction.FrameValid {
-				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.CyclesFunction.FrameLoad))
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
+			if win.functionTabScale {
+				if stats.CyclesFunction.FrameValid {
+					if win.percentileFigures {
+						imgui.Text(fmt.Sprintf("%.02f", stats.CyclesFunction.FrameLoad))
+					} else {
+						imgui.Text(fmt.Sprintf("%.0f", stats.CyclesFunction.FrameCount))
+					}
 				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.CyclesFunction.FrameCount))
+					imgui.Text("-")
 				}
 			} else {
-				imgui.Text("-")
-			}
-		} else {
-			if stats.CyclesProgram.FrameValid {
-				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.FrameLoad))
+				if stats.CyclesProgram.FrameValid {
+					if win.percentileFigures {
+						imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.FrameLoad))
+					} else {
+						imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.FrameCount))
+					}
 				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.FrameCount))
+					imgui.Text("-")
 				}
-			} else {
-				imgui.Text("-")
 			}
-		}
-		imgui.PopStyleColor()
+			imgui.PopStyleColor()
 
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if win.functionTabScale {
-			if stats.CyclesFunction.AverageValid {
-				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.CyclesFunction.AverageLoad))
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
+			if win.functionTabScale {
+				if stats.CyclesFunction.AverageValid {
+					if win.percentileFigures {
+						imgui.Text(fmt.Sprintf("%.02f", stats.CyclesFunction.AverageLoad))
+					} else {
+						imgui.Text(fmt.Sprintf("%.0f", stats.CyclesFunction.AverageCount))
+					}
 				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.CyclesFunction.AverageCount))
+					imgui.Text("-")
 				}
 			} else {
-				imgui.Text("-")
-			}
-		} else {
-			if stats.CyclesProgram.AverageValid {
-				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.AverageLoad))
+				if stats.CyclesProgram.AverageValid {
+					if win.percentileFigures {
+						imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.AverageLoad))
+					} else {
+						imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.AverageCount))
+					}
 				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.AverageCount))
+					imgui.Text("-")
 				}
-			} else {
-				imgui.Text("-")
 			}
-		}
-		imgui.PopStyleColor()
+			imgui.PopStyleColor()
 
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if win.functionTabScale {
-			if stats.CyclesFunction.MaxValid {
-				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.CyclesFunction.MaxLoad))
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
+			if win.functionTabScale {
+				if stats.CyclesFunction.MaxValid {
+					if win.percentileFigures {
+						imgui.Text(fmt.Sprintf("%.02f", stats.CyclesFunction.MaxLoad))
+					} else {
+						imgui.Text(fmt.Sprintf("%.0f", stats.CyclesFunction.MaxCount))
+					}
 				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.CyclesFunction.MaxCount))
+					imgui.Text("-")
 				}
 			} else {
-				imgui.Text("-")
-			}
-		} else {
-			if stats.CyclesProgram.MaxValid {
-				if win.percentileFigures {
-					imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.MaxLoad))
+				if stats.CyclesProgram.MaxValid {
+					if win.percentileFigures {
+						imgui.Text(fmt.Sprintf("%.02f", stats.CyclesProgram.MaxLoad))
+					} else {
+						imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.MaxCount))
+					}
 				} else {
-					imgui.Text(fmt.Sprintf("%.0f", stats.CyclesProgram.MaxCount))
+					imgui.Text("-")
 				}
-			} else {
-				imgui.Text("-")
 			}
-		}
-		imgui.PopStyleColor()
+			imgui.PopStyleColor()
 
-		imgui.TableNextColumn()
-		if ln.Kernel&profiling.FocusVBLANK == profiling.FocusVBLANK {
-			imgui.Text("V")
-			imgui.SameLineV(0, 1)
+			imgui.TableNextColumn()
+			if ln.Kernel&profiling.FocusVBLANK == profiling.FocusVBLANK {
+				imgui.Text("V")
+				imgui.SameLineV(0, 1)
+			}
+			if ln.Kernel&profiling.FocusScreen == profiling.FocusScreen {
+				imgui.Text("S")
+				imgui.SameLineV(0, 1)
+			}
+			if ln.Kernel&profiling.FocusOverscan == profiling.FocusOverscan {
+				imgui.Text("O")
+				imgui.SameLineV(0, 1)
+			}
 		}
-		if ln.Kernel&profiling.FocusScreen == profiling.FocusScreen {
-			imgui.Text("S")
-			imgui.SameLineV(0, 1)
-		}
-		if ln.Kernel&profiling.FocusOverscan == profiling.FocusOverscan {
-			imgui.Text("O")
-			imgui.SameLineV(0, 1)
-		}
+
+		imgui.EndTable()
 	}
-
-	imgui.EndTable()
 }
 
 // single tooltip for all the different contexts in the performance window
