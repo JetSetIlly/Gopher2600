@@ -29,6 +29,40 @@ import (
 // The function creates all folders necessary to reach the end of sub-path. It
 // does not otherwise touch or create the file.
 func JoinPath(path ...string) (string, error) {
+	p, err := joinPath(path...)
+	if err != nil {
+		return "", err
+	}
+
+	// check if path already exists
+	if _, err := os.Stat(p); err == nil {
+		return p, nil
+	}
+
+	// create path if necessary and if the flag is true
+	if err := fs.MkdirAll(filepath.Dir(p), 0700); err != nil {
+		return "", err
+	}
+
+	return p, nil
+}
+
+// JoinLoadPath is like JoinPath but will not create the path if it isn't present.
+func JoinLoadPath(path ...string) (string, error) {
+	p, err := joinPath(path...)
+	if err != nil {
+		return "", err
+	}
+
+	// check if path already exists
+	if _, err := os.Stat(p); err != nil {
+		return "", err
+	}
+
+	return p, nil
+}
+
+func joinPath(path ...string) (string, error) {
 	// join supplied path
 	p := filepath.Join(path...)
 
@@ -50,16 +84,6 @@ func JoinPath(path ...string) (string, error) {
 	// do not prepend base path if it is already present
 	if !strings.HasPrefix(p, b) {
 		p = filepath.Join(b, filepath.Join(path...))
-	}
-
-	// check if path already exists
-	if _, err := os.Stat(p); err == nil {
-		return p, nil
-	}
-
-	// create path if necessary
-	if err := fs.MkdirAll(filepath.Dir(p), 0700); err != nil {
-		return "", err
 	}
 
 	return p, nil

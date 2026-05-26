@@ -42,4 +42,8 @@ func TestJoinPath(t *testing.T) {
 	pth, err = resources.JoinPath("", "")
 	test.ExpectEquality(t, err, nil)
 	test.ExpectEquality(t, pth, ".gopher2600")
+
+	pth, err = resources.JoinLoadPath("bar/qux")
+	test.ExpectInequality(t, err, nil)
+	test.ExpectEquality(t, pth, "")
 }
