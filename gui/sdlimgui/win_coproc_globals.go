@@ -171,20 +171,16 @@ func (win *winCoProcGlobals) draw() {
 			win.firstOpen = false
 		}
 
-		if src.Hotlist.Len() != 0 {
-			imgui.BeginTabBar("##globalvarbtabbar")
-			if imgui.BeginTabItem("Globals") {
-				win.drawList(src, false)
-				imgui.EndTabItem()
-			}
-			if imgui.BeginTabItem("Hotlist") {
-				win.drawList(src, true)
-				imgui.EndTabItem()
-			}
-			imgui.EndTabBar()
-		} else {
+		imgui.BeginTabBar("##globalvarbtabbar")
+		if imgui.BeginTabItem("Globals") {
 			win.drawList(src, false)
+			imgui.EndTabItem()
 		}
+		if imgui.BeginTabItem("Hotlist") {
+			win.drawList(src, true)
+			imgui.EndTabItem()
+		}
+		imgui.EndTabBar()
 	})
 }
 
@@ -201,6 +197,12 @@ func (win *winCoProcGlobals) drawList(src *dwarf.Source, hotlist bool) {
 		if win.updateSelectedFile {
 			win.selectedFile = src.FilesByShortname[win.selectedShortFileName]
 		}
+	}
+
+	if hotlist && len(src.Hotlist.Sorted.Variables) == 0 {
+		imgui.AlignTextToFramePadding()
+		imgui.Text("No global variables have been added to the hotlist")
+		return
 	}
 
 	const numColumns = 4
@@ -300,11 +302,11 @@ func (win *winCoProcGlobals) drawList(src *dwarf.Source, hotlist bool) {
 		if imgui.BeginPopup(globalsPopupID) {
 			if win.hoveredVarb != nil {
 				if src.Hotlist.In(win.hoveredVarb) {
-					if imgui.Selectable("Remove from hot list") {
+					if imgui.Selectable("Remove from hotlist") {
 						src.Hotlist.Remove(win.hoveredVarb)
 					}
 				} else {
-					if imgui.Selectable("Add to hot list") {
+					if imgui.Selectable("Add to hotlist") {
 						src.Hotlist.Add(win.hoveredVarb)
 					}
 				}
