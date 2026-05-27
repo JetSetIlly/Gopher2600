@@ -16,6 +16,7 @@
 package dwarf
 
 import (
+	"crypto/md5"
 	"debug/elf"
 	"errors"
 	"fmt"
@@ -90,6 +91,7 @@ type Source struct {
 	SortedFunctions SortedFunctions
 
 	// all global variables in all compile units
+	GlobalsByName    map[string]*SourceVariable
 	GlobalsByAddress map[uint64]*SourceVariable
 	SortedGlobals    SortedVariables
 
@@ -142,15 +144,10 @@ func NewSource(cart coprocessor.CartCoProcBus, romFile string, elfFile string, y
 		ShortFilenames:   make([]string, 0, 10),
 		Functions:        make(map[string]*SourceFunction),
 		FunctionNames:    make([]string, 0, 10),
+		GlobalsByName:    make(map[string]*SourceVariable),
 		GlobalsByAddress: make(map[uint64]*SourceVariable),
 		SortedGlobals: SortedVariables{
 			Variables: make([]*SourceVariable, 0, 100),
-		},
-		Hotlist: Hotlist{
-			byAddress: make(map[uint64]*SourceVariable),
-			Sorted: SortedVariables{
-				Variables: make([]*SourceVariable, 0, 100),
-			},
 		},
 		SortedFunctions: SortedFunctions{
 			Functions: make([]*SourceFunction, 0, 100),
@@ -160,6 +157,15 @@ func NewSource(cart coprocessor.CartCoProcBus, romFile string, elfFile string, y
 			Lines: make([]*SourceLine, 0, 100),
 		},
 		ProfilingDirty: true,
+	}
+
+	// initialise Hotlist needs reference to src
+	src.Hotlist = Hotlist{
+		byAddress: make(map[uint64]*SourceVariable),
+		Sorted: SortedVariables{
+			Variables: make([]*SourceVariable, 0, 100),
+		},
+		src: src,
 	}
 
 	ef, ok := cart.(coprocessor.CartCoProcELF)
@@ -312,12 +318,12 @@ func NewSource(cart coprocessor.CartCoProcBus, romFile string, elfFile string, y
 	src.SortedFunctions.Sort(SortFunctionsName, false, false, false, profiling.FocusAll)
 	sort.Strings(src.FunctionNames)
 
-	// sorted variables
+	// global/local variables
 	for _, g := range bld.globals {
+		src.GlobalsByName[g.Name] = g
 		src.GlobalsByAddress[g.resolve(nil).address] = g
 		src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, g)
 	}
-
 	for _, l := range bld.locals {
 		src.SortedLocals.Variables = append(src.SortedLocals.Variables, l)
 	}
@@ -329,6 +335,9 @@ func NewSource(cart coprocessor.CartCoProcBus, romFile string, elfFile string, y
 
 	// update global variables
 	src.UpdateGlobalVariables()
+
+	// load hotlisted global variables
+	src.Hotlist.LoadProject()
 
 	// determine highest address occupied by the program
 	findHighAddress(src)
@@ -660,4 +669,8 @@ func (src *Source) SourceLineByAddr(addr uint32) *SourceLine {
 		ln = CreateStubLine(nil)
 	}
 	return ln
+}
+
+func (src *Source) projectID() string {
+	return fmt.Sprintf("%x", md5.Sum([]byte(src.path)))
 }

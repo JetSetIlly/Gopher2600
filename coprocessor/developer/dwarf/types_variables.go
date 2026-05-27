@@ -69,6 +69,9 @@ type SourceVariable struct {
 	// child variables of this variable. this includes array elements, struct
 	// members and dereferenced variables
 	children []*SourceVariable
+
+	// the parent of this variable
+	parent *SourceVariable
 }
 
 func (varb *SourceVariable) String() string {
@@ -173,6 +176,12 @@ func (varb *SourceVariable) Child(i int) *SourceVariable {
 	return varb.children[i]
 }
 
+// Parent returns the parent variable and whether the parent is valid. A variable can have a parent
+// if it is an array element, part of a composite, or the parent is a pointer
+func (varb *SourceVariable) Parent() (*SourceVariable, bool) {
+	return varb.parent, varb.parent != nil
+}
+
 // Update variable. It should be called periodically before using the return
 // value from Address() or Value()
 //
@@ -266,6 +275,7 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistDecoder) {
 				})
 			}
 
+			elem.parent = varb
 			varb.children = append(varb.children, elem)
 			elem.addVariableChildren(debug_loc)
 		}
@@ -319,6 +329,7 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistDecoder) {
 				})
 			}
 
+			memb.parent = varb
 			varb.children = append(varb.children, memb)
 			memb.addVariableChildren(debug_loc)
 		}
@@ -342,6 +353,7 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistDecoder) {
 			operator: "pointer dereference",
 		})
 
+		deref.parent = varb
 		varb.children = append(varb.children, deref)
 		deref.addVariableChildren(debug_loc)
 	}

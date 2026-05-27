@@ -15,7 +15,20 @@
 
 package dwarf
 
+import (
+	"fmt"
+	"io"
+	"os"
+	"slices"
+	"strings"
+
+	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/resources"
+)
+
+// Hotlist can be used to more closely monitor specific global variables
 type Hotlist struct {
+	src       *Source
 	byAddress map[uint64]*SourceVariable
 	Sorted    SortedVariables
 }
@@ -35,9 +48,10 @@ func (h *Hotlist) In(varb *SourceVariable) bool {
 func (h *Hotlist) Clear() {
 	clear(h.byAddress)
 	h.Sorted.Variables = h.Sorted.Variables[:0]
+	h.SaveProject()
 }
 
-func (h *Hotlist) Add(varb *SourceVariable) {
+func (h *Hotlist) add(varb *SourceVariable) {
 	if addr, ok := varb.Address(); ok {
 		if _, ok := h.byAddress[addr]; !ok {
 			h.byAddress[addr] = varb
@@ -50,6 +64,11 @@ func (h *Hotlist) Add(varb *SourceVariable) {
 	if len(h.byAddress) != len(h.Sorted.Variables) {
 		panic("coprocessor developer: hotlist field are inconsistent")
 	}
+}
+
+func (h *Hotlist) Add(varb *SourceVariable) {
+	h.add(varb)
+	h.SaveProject()
 }
 
 func (h *Hotlist) Remove(varb *SourceVariable) {
@@ -72,5 +91,117 @@ func (h *Hotlist) Remove(varb *SourceVariable) {
 
 	if len(h.byAddress) != len(h.Sorted.Variables) {
 		panic("coprocessor developer: hotlist field are inconsistent")
+	}
+
+	h.SaveProject()
+}
+
+// file format of hotlist project file
+//
+// 1) variables separated by newlines
+// 2) if a variable is a child of another variable the parent will be listed after "<-"
+// 3) the path of parent variables will continue until a variable has no parent
+
+const (
+	hotlistRecordSep = "\n"
+	hotlistFieldSep  = "<-"
+)
+
+func (h *Hotlist) SaveProject() {
+	pth, err := resources.JoinPath("developer", h.src.projectID(), "hotlist")
+	if err != nil {
+		logger.Log(logger.Allow, "dwarf", err.Error())
+		return
+	}
+
+	f, err := os.Create(pth)
+	if err != nil {
+		logger.Log(logger.Allow, "dwarf", err.Error())
+		return
+	}
+
+	for _, v := range h.byAddress {
+		f.WriteString(v.Name)
+
+		// record variable path
+		for v.parent != nil {
+			v = v.parent
+			fmt.Fprintf(f, "%s%s", hotlistFieldSep, v.Name)
+		}
+
+		f.WriteString(hotlistRecordSep)
+	}
+
+	err = f.Close()
+	if err != nil {
+		logger.Log(logger.Allow, "dwarf", err.Error())
+		return
+	}
+}
+
+func (h *Hotlist) LoadProject() {
+	pth, err := resources.JoinLoadPath("developer", h.src.projectID(), "hotlist")
+	if err != nil {
+		logger.Log(logger.Allow, "dwarf", err.Error())
+		return
+	}
+	f, err := os.Open(pth)
+	if err != nil {
+		logger.Log(logger.Allow, "dwarf", err.Error())
+		return
+	}
+	defer func() {
+		err = f.Close()
+		if err != nil {
+			logger.Log(logger.Allow, "dwarf", err.Error())
+			return
+		}
+	}()
+
+	d, err := io.ReadAll(f)
+	if err != nil {
+		logger.Log(logger.Allow, "dwarf", err.Error())
+		return
+	}
+
+	// not worrying about possibility of \r\n
+
+	for s := range strings.SplitSeq(string(d), hotlistRecordSep) {
+		s = strings.TrimSpace(s)
+		if len(s) > 0 {
+			r := strings.Split(s, hotlistFieldSep)
+
+			// the variable path was saved in an order reversed to what we might expect
+			slices.Reverse(r)
+
+			// first entry in reversed record will be the base parent (or the actual variable)
+			v, ok := h.src.GlobalsByName[r[0]]
+			if !ok {
+				logger.Logf(logger.Allow, "dwarf", "hotlist: dropped %s: not in current source", r[0])
+				continue
+			}
+
+			// traverse the variable path
+			for _, s := range r[1:] {
+				var found bool
+				for _, c := range v.children {
+					if s == c.Name {
+						found = true
+						v = c
+						break
+					}
+				}
+				if !found {
+					v = nil
+					break
+				}
+			}
+
+			if v != nil {
+				h.add(v)
+			} else {
+				logger.Logf(logger.Allow, "dwarf", "hotlist: dropped %s: not in current source", r[len(r)-1])
+			}
+		}
 	}
 }
