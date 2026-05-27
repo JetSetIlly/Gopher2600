@@ -216,7 +216,7 @@ func (win *winCoProcSource) draw() {
 		// source code view
 		imgui.BeginGroup()
 		win.img.dbg.CoProcDev.BorrowBreakpoints(func(bp breakpoints.Breakpoints) {
-			win.drawSource(src, bp)
+			win.drawSource(bp)
 		})
 		imgui.EndGroup()
 
@@ -248,7 +248,7 @@ func (win *winCoProcSource) draw() {
 
 		if imgui.BeginPopup(sourcePopupID) {
 			if imgui.Selectable(fmt.Sprintf("%c Save Source to CSV", fonts.Disk)) {
-				win.saveToCSV(src)
+				win.saveToCSV()
 			}
 			imgui.EndPopup()
 		}
@@ -331,7 +331,7 @@ func (win *winCoProcSource) gotoSourceLine(ln *dwarf.SourceLine) {
 	win.updateSelectedFile = true
 }
 
-func (win *winCoProcSource) saveToCSV(src *dwarf.Source) {
+func (win *winCoProcSource) saveToCSV() {
 	// open unique file
 	fn := unique.Filename("source", win.img.cache.VCS.Mem.Cart.ShortName)
 	fn = fmt.Sprintf("%s.csv", fn)
@@ -356,11 +356,11 @@ func (win *winCoProcSource) saveToCSV(src *dwarf.Source) {
 	for _, ln := range win.selectedFile.Content.Lines {
 		s := strings.Builder{}
 		if ln.Cycles.Overall.CyclesProgram.FrameValid {
-			s.WriteString(fmt.Sprintf("%.02f", ln.Cycles.Overall.CyclesProgram.FrameLoad))
+			fmt.Fprintf(&s, "%.02f", ln.Cycles.Overall.CyclesProgram.FrameLoad)
 		} else if ln.Cycles.Overall.CyclesProgram.AverageValid {
-			s.WriteString(fmt.Sprintf("%.02f", ln.Cycles.Overall.CyclesProgram.AverageLoad))
+			fmt.Fprintf(&s, "%.02f", ln.Cycles.Overall.CyclesProgram.AverageLoad)
 		} else if ln.Cycles.Overall.CyclesProgram.MaxValid {
-			s.WriteString(fmt.Sprintf("%.02f", ln.Cycles.Overall.CyclesProgram.MaxLoad))
+			fmt.Fprintf(&s, "%.02f", ln.Cycles.Overall.CyclesProgram.MaxLoad)
 		} else {
 			s.WriteString(" -")
 		}
@@ -375,7 +375,7 @@ func (win *winCoProcSource) saveToCSV(src *dwarf.Source) {
 	}
 }
 
-func (win *winCoProcSource) drawSource(src *dwarf.Source, bp breakpoints.Breakpoints) {
+func (win *winCoProcSource) drawSource(bp breakpoints.Breakpoints) {
 	// new child that contains the main scrollable table
 	imgui.BeginChildV("##coprocSourceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 	defer imgui.EndChild()
@@ -494,7 +494,7 @@ func (win *winCoProcSource) drawSource(src *dwarf.Source, bp breakpoints.Breakpo
 						}
 					}
 
-					if imgui.IsMouseDragging(0, 0.0) {
+					if imgui.IsMouseDragging(0, 10.0) {
 						win.selection.drag(ln.LineNumber)
 						win.selectionRange.Clear()
 						s, e := win.selection.limits()
