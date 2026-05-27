@@ -301,6 +301,11 @@ func (win *winCoProcGlobals) drawList(src *dwarf.Source, hotlist bool) {
 
 		if imgui.BeginPopup(globalsPopupID) {
 			if win.hoveredVarb != nil {
+				if imgui.Selectable("Goto Definition") {
+					srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
+					srcWin.gotoSourceLine(win.hoveredVarb.DeclLine)
+				}
+
 				if src.Hotlist.In(win.hoveredVarb) {
 					if imgui.Selectable("Remove from Hotlist") {
 						src.Hotlist.Remove(win.hoveredVarb)
@@ -496,6 +501,11 @@ func (win *winCoProcGlobals) drawVariable(src *dwarf.Source, varb *dwarf.SourceV
 	imgui.SelectableV(name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{X: 0, Y: 0})
 	imgui.PopStyleColorV(2)
 
+	if imgui.IsItemClicked() && imgui.IsMouseDoubleClicked(0) && varb.NumChildren() == 0 {
+		srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
+		srcWin.gotoSourceLine(varb.DeclLine)
+	}
+
 	if !varb.IsValid() {
 		imgui.TableNextColumn()
 		imgui.Text(varb.Type.Name)
@@ -588,6 +598,7 @@ func (win *winCoProcGlobals) drawVariable(src *dwarf.Source, varb *dwarf.SourceV
 		} else {
 			imgui.Text(fmt.Sprintf(varb.Type.Hex(), varb.Value()))
 		}
+
 	}
 
 	return hoveredVarb

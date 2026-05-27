@@ -113,10 +113,6 @@ func (win *winCoProcLocals) draw() {
 		ln := src.SourceLineByAddr(viewedAddr)
 		imgui.AlignTextToFramePadding()
 		imgui.Text(fmt.Sprintf("%s line %d", ln.File.ShortFilename, ln.LineNumber))
-		if imgui.IsItemClicked() && imgui.IsMouseDoubleClicked(0) {
-			srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
-			srcWin.gotoSourceLine(ln)
-		}
 		imgui.SameLineV(0, 15)
 		if yieldState.Strobe {
 			if imgui.Button("Remove Strobe") {
@@ -221,6 +217,11 @@ func (win *winCoProcLocals) drawVariable(varb *dwarf.SourceVariable, indentLevel
 		imgui.TableNextColumn()
 		imgui.Text("not locatable")
 		return
+	}
+
+	if imgui.IsItemClicked() && imgui.IsMouseDoubleClicked(0) && varb.NumChildren() == 0 {
+		srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
+		srcWin.gotoSourceLine(varb.DeclLine)
 	}
 
 	if varb.NumChildren() > 0 {
