@@ -57,7 +57,7 @@ func newLoclistDecoder(data []uint8, byteOrder binary.ByteOrder, coproc coproces
 // framebaseResolver provides context to the location list. implemented by
 // SourceVariable, SourceFunction and the frame section.
 type framebaseResolver interface {
-	resolveFramebase(derive io.Writer) (uint64, error)
+	resolveFramebase(derivation io.Writer) (uint64, error)
 }
 
 type loclistStackClass int
@@ -267,7 +267,7 @@ func (loc *loclist) addOperator(r loclistOperator) {
 	loc.list = append(loc.list, r)
 }
 
-func (loc *loclist) resolve(derive io.Writer) (loclistResult, error) {
+func (loc *loclist) resolve(derivation io.Writer) (loclistResult, error) {
 	if loc.fb == nil {
 		return loclistResult{}, fmt.Errorf("no context [%x]", loc.ptr)
 	}
@@ -285,13 +285,13 @@ func (loc *loclist) resolve(derive io.Writer) (loclistResult, error) {
 
 	// resolve every entry in the loclist
 	for i := range loc.list {
-		s, err := loc.list[i].resolve(loc, derive)
+		s, err := loc.list[i].resolve(loc, derivation)
 		if err != nil {
 			return loclistResult{}, fmt.Errorf("%s: %w", loc.list[i].operator, err)
 		}
 
-		if derive != nil {
-			fmt.Fprintf(derive, "%s %08x\n", loc.list[i].operator, s.value)
+		if derivation != nil {
+			fmt.Fprintf(derivation, "%s %08x\n", loc.list[i].operator, s.value)
 		}
 
 		// process result according to the result class

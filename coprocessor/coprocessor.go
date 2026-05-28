@@ -271,6 +271,9 @@ type CartCoProcDeveloper interface {
 	// checks if address has a breakpoint assigned to it
 	CheckBreakpoint(addr uint32) bool
 
+	// update strobed variables
+	UpdateStrobe(addr uint32)
+
 	// returns a map that can be used to count cycles for each PC address
 	Profiling() *CartCoProcProfiler
 

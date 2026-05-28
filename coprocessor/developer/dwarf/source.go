@@ -133,7 +133,7 @@ type Source struct {
 }
 
 // NewSource is the preferred method of initialisation for the Source type.
-func NewSource(cart coprocessor.CartCoProcBus, romFile string, elfFile string, yld YieldAddress) (*Source, error) {
+func NewSource(cart coprocessor.CartCoProcBus, romFile string, elfFile string, base BaseAddress) (*Source, error) {
 	src := &Source{
 		cart:             cart,
 		path:             simplifyPath(filepath.Dir(romFile)),
@@ -202,7 +202,7 @@ func NewSource(cart coprocessor.CartCoProcBus, romFile string, elfFile string, y
 	// ignoring the boolean return value because the newFrameSection() will
 	// warn about an empty data section
 	data, _ := ef.Section(".debug_frame")
-	src.debugFrame, err = newFrameSection(data, ef.ByteOrder(), cart.GetCoProc(), yld, nil)
+	src.debugFrame, err = newFrameSection(data, ef.ByteOrder(), cart.GetCoProc(), base, nil)
 	if err != nil {
 		logger.Log(logger.Allow, "dwarf", err)
 	}
@@ -632,8 +632,8 @@ func (src *Source) GetLocalVariables(ln *SourceLine, addr uint32) []*SourceVaria
 }
 
 // FramebaseCurrent returns the current framebase value
-func (src *Source) FramebaseCurrent(derive io.Writer) (uint64, error) {
-	return src.debugFrame.resolveFramebase(derive)
+func (src *Source) FramebaseCurrent(derivation io.Writer) (uint64, error) {
+	return src.debugFrame.resolveFramebase(derivation)
 }
 
 func simplifyPath(path string) string {

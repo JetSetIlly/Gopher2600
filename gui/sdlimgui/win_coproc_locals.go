@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/imgui-go/v5"
 )
@@ -84,8 +85,13 @@ func (win *winCoProcLocals) debuggerDraw() bool {
 func (win *winCoProcLocals) draw() {
 	// take copy of yield state before borrowing the source
 	var yieldState yield.State
-	win.img.dbg.CoProcDev.BorrowYieldState(func(yld yield.State) {
-		yieldState = yld
+	win.img.dbg.CoProcDev.BorrowYieldState(func(yld *yield.State) {
+		yieldState = *yld
+	})
+
+	var strobe yield.Strobe
+	win.img.dbg.CoProcDev.BorrowStrobe(func(stb *yield.Strobe) {
+		strobe = *stb
 	})
 
 	// borrow source only so that we can check if whether to draw the window fully
@@ -96,10 +102,17 @@ func (win *winCoProcLocals) draw() {
 			return
 		}
 
-		// the local variables list we use depends on whether the emulation is
-		// running and whether a strobe is active. we use the LocalVariableView()
-		// function for this
-		viewedAddr, viewedLocals := yieldState.LocalVariableView(win.img.dbg.State())
+		// the local variables list we use depends on whether the emulation is running and whether a
+		// strobe is active
+		var viewedAddr uint32
+		var viewedLocals []*dwarf.SourceVariableLocal
+		if win.img.dbg.State() != govern.Running {
+			viewedAddr = yieldState.Address
+			viewedLocals = yieldState.LocalVariables
+		} else if strobe.Enabled {
+			viewedAddr = strobe.Address
+			viewedLocals = strobe.LocalVariables
+		}
 
 		// exit draw early leaving a message to indicate that there are no local
 		// variables available to display
@@ -114,7 +127,7 @@ func (win *winCoProcLocals) draw() {
 		imgui.AlignTextToFramePadding()
 		imgui.Text(fmt.Sprintf("%s line %d", ln.File.ShortFilename, ln.LineNumber))
 		imgui.SameLineV(0, 15)
-		if yieldState.Strobe {
+		if strobe.Enabled {
 			if imgui.Button("Remove Strobe") {
 				win.img.dbg.CoProcDev.EnableStrobe(false, viewedAddr)
 			}
@@ -123,7 +136,7 @@ func (win *winCoProcLocals) draw() {
 			// point. for the tooltip however, we want to use the strobe addr
 			//
 			// if strobe line is different to yield line then show the tooltip
-			sln := src.SourceLineByAddr(yieldState.StrobeAddr)
+			sln := src.SourceLineByAddr(strobe.Address)
 			if sln != ln {
 				win.img.imguiTooltipSimple(fmt.Sprintf("Strobe is currently set to:\n%s line %d", sln.File.ShortFilename, sln.LineNumber))
 			}
@@ -183,14 +196,19 @@ func (win *winCoProcLocals) drawVariableLocal(local *dwarf.SourceVariableLocal, 
 }
 
 func (win *winCoProcLocals) drawVariable(varb *dwarf.SourceVariable, indentLevel int, nodeID string) {
-	// update variable. this is good because it means variables are updated if
-	// the actual memory location has been edited. there's probably a more
-	// efficient way of doing it but this is fine for now
-	win.img.dbg.PushFunction(func() {
-		win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
-			varb.Update()
+	// update variable. this is good because it means variables are updated if the actual memory
+	// location has been edited. there's probably a more efficient way of doing it but this is fine
+	// for now
+	//
+	// we limit the update to when the emulation is not running. apart from adding some efficiency
+	// it also prevents strobed variables from being updated when they are out of scope
+	if win.img.dbg.State() != govern.Running {
+		win.img.dbg.PushFunction(func() {
+			win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
+				varb.Update()
+			})
 		})
-	})
+	}
 
 	const IndentDepth = 2
 

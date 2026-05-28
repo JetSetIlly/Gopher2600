@@ -19,5 +19,5 @@
 //
 // It also handles the strobed viewed of the coprocessor and builds the strobed
 // local variables list. Strobing allows the developer to see local variables
-// when the emulation is running (see govern pacakge).
+// when the emulation is running (see govern package).
 package yield

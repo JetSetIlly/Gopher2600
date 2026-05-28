@@ -1701,7 +1701,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				}
 			})
 
-			dbg.CoProcDev.BorrowYieldState(func(yld yield.State) {
+			dbg.CoProcDev.BorrowYieldState(func(yld *yield.State) {
 				var w io.Writer
 				if derivation {
 					w = dbg.writerInStyle(terminal.StyleFeedbackSecondary, "\t")
@@ -2122,7 +2122,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		switch list {
 		case "BREAKS":
 			dbg.halting.breakpoints.list()
-			dbg.CoProcDev.BorrowBreakpoints(func(bp coproc_breakpoints.Breakpoints) {
+			dbg.CoProcDev.BorrowBreakpoints(func(bp *coproc_breakpoints.Breakpoints) {
 				w := dbg.writerInStyle(terminal.StyleFeedback)
 				bp.Write(w)
 			})

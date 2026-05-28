@@ -122,9 +122,9 @@ func (win *winCoProcSource) debuggerDraw() bool {
 	}
 
 	// check yield state and open the window if necessary
-	win.img.dbg.CoProcDev.BorrowYieldState(func(yld yield.State) {
+	win.img.dbg.CoProcDev.BorrowYieldState(func(yld *yield.State) {
 		if !yld.Cmp(win.yieldState) {
-			win.yieldState = yld
+			win.yieldState = *yld
 
 			// open window and focus on yield line if the yield is a breakpoint
 			if yld.Reason != coprocessor.YieldSyncWithVCS && yld.Reason != coprocessor.YieldProgramEnded {
@@ -177,7 +177,7 @@ func (win *winCoProcSource) draw() {
 		}
 
 		// find yield line
-		win.yieldLine = src.FindSourceLine(win.yieldState.Addr)
+		win.yieldLine = src.FindSourceLine(win.yieldState.Address)
 
 		// focus on yield line (or main function if we don't have a yield line)
 		// but only if emulation is paused
@@ -215,7 +215,7 @@ func (win *winCoProcSource) draw() {
 
 		// source code view
 		imgui.BeginGroup()
-		win.img.dbg.CoProcDev.BorrowBreakpoints(func(bp breakpoints.Breakpoints) {
+		win.img.dbg.CoProcDev.BorrowBreakpoints(func(bp *breakpoints.Breakpoints) {
 			win.drawSource(bp)
 		})
 		imgui.EndGroup()
@@ -375,7 +375,7 @@ func (win *winCoProcSource) saveToCSV() {
 	}
 }
 
-func (win *winCoProcSource) drawSource(bp breakpoints.Breakpoints) {
+func (win *winCoProcSource) drawSource(bp *breakpoints.Breakpoints) {
 	// new child that contains the main scrollable table
 	imgui.BeginChildV("##coprocSourceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 	defer imgui.EndChild()
@@ -543,7 +543,7 @@ func (win *winCoProcSource) drawSource(bp breakpoints.Breakpoints) {
 								disasm = win.selectionRange.Instructions
 							}
 
-							win.img.drawDisasmForCoProc("coprocSource", disasm, ln, multiline, true, win.yieldState.Addr)
+							win.img.drawDisasmForCoProc("coprocSource", disasm, ln, multiline, true, win.yieldState.Address)
 
 							if ln.Function.IsInlined() {
 								imgui.Spacing()

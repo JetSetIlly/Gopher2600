@@ -198,24 +198,24 @@ func (varb *SourceVariable) Update() {
 //
 // Note that the basic information about the variable is not output by this
 // function. The String() function provides that information
-func (varb *SourceVariable) WriteDerivation(derive io.Writer) error {
-	if derive == nil {
+func (varb *SourceVariable) WriteDerivation(derivation io.Writer) error {
+	if derivation == nil {
 		return nil
 	}
 
 	if varb.hasConstantValue {
-		derive.Write(fmt.Appendf(nil, "constant value %08x", varb.constantValue))
+		derivation.Write(fmt.Appendf(nil, "constant value %08x", varb.constantValue))
 	}
 
 	if varb.loclist == nil {
 		return nil
 	}
-	varb.resolve(derive)
+	varb.resolve(derivation)
 	return varb.Error
 }
 
 // resolve address/value
-func (varb *SourceVariable) resolve(derive io.Writer) loclistResult {
+func (varb *SourceVariable) resolve(derivation io.Writer) loclistResult {
 	if varb.hasConstantValue {
 		return loclistResult{
 			value: varb.constantValue,
@@ -227,7 +227,7 @@ func (varb *SourceVariable) resolve(derive io.Writer) loclistResult {
 		return loclistResult{}
 	}
 
-	r, err := varb.loclist.resolve(derive)
+	r, err := varb.loclist.resolve(derivation)
 	if err != nil {
 		varb.Error = err
 		return loclistResult{}
@@ -360,12 +360,12 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistDecoder) {
 }
 
 // resolveFramebase implements the loclistResolver interface
-func (varb *SourceVariable) resolveFramebase(derviation io.Writer) (uint64, error) {
+func (varb *SourceVariable) resolveFramebase(derivation io.Writer) (uint64, error) {
 	if varb.DeclLine == nil || varb.DeclLine.Function == nil {
 		return 0, fmt.Errorf("no framebase")
 	}
 
-	fb, err := varb.DeclLine.Function.resolveFramebase(derviation)
+	fb, err := varb.DeclLine.Function.resolveFramebase(derivation)
 	if err != nil {
 		return 0, fmt.Errorf("framebase for %s: %w", varb.DeclLine.Function.Name, err)
 	}

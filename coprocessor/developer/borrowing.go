@@ -23,9 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/faults"
 )
 
-// BorrowSource will lock the source code structure for the durction of the
-// supplied function, which will be executed with the source code structure as
-// an argument.
+// BorrowSource will lock the source code structure for the durction of the supplied function.
 //
 // May return nil.
 func (dev *Developer) BorrowSource(f func(*dwarf.Source)) {
@@ -34,9 +32,7 @@ func (dev *Developer) BorrowSource(f func(*dwarf.Source)) {
 	f(dev.source)
 }
 
-// BorrowCallStack will lock the callstack structure for the durction of the
-// supplied function, which will be executed with the callstack structure as
-// an argument.
+// BorrowCallStack will lock the callstack structure for the durction of the supplied function.
 //
 // In some situations BorrowCallStack may need to be wrapped in a BorrowSource
 // call in order to prevent a race condition
@@ -46,32 +42,34 @@ func (dev *Developer) BorrowCallStack(f func(callstack.CallStack)) {
 	f(dev.callstack)
 }
 
-// BorrowBreakpoints will lock the breakpoints structure for the durction of the
-// supplied function, which will be executed with the breakpoints structure as
-// an argument.
-func (dev *Developer) BorrowBreakpoints(f func(breakpoints.Breakpoints)) {
+// BorrowBreakpoints will lock the breakpoints structure for the durction of the supplied function.
+func (dev *Developer) BorrowBreakpoints(f func(*breakpoints.Breakpoints)) {
 	dev.breakpointsLock.Lock()
 	defer dev.breakpointsLock.Unlock()
-	f(dev.breakpoints)
+	f(&dev.breakpoints)
 }
 
-// BorrowYieldState will lock the illegal access log for the duration of the
-// supplied fucntion, which will be executed with the illegal access log as an
-// argument.
+// BorrowYieldState will lock the yield state for the duration of the supplied function.
 //
-// In some situations BorrowYieldState may need to be wrapped in a BorrowSource
-// call in order to prevent a race condition
-func (dev *Developer) BorrowYieldState(f func(yield.State)) {
+// If the LocalVariables field is accessed then the access should occur within BorrowSource()
+func (dev *Developer) BorrowYieldState(f func(*yield.State)) {
 	dev.yieldStateLock.Lock()
 	defer dev.yieldStateLock.Unlock()
-	f(dev.yieldState)
+	f(&dev.yieldState)
 }
 
-// BorrowFaults will lock the illegal access log for the duration of the
-// supplied fucntion, which will be executed with the illegal access log as an
-// argument.
+// BorrowFaults will lock the illegal access log for the duration of the supplied fucntion.
 func (dev *Developer) BorrowFaults(f func(*faults.Faults)) {
 	dev.faultsLock.Lock()
 	defer dev.faultsLock.Unlock()
 	f(&dev.faults)
+}
+
+// BorrowStrobe will lock the strobe for the duration of the supplied function.
+//
+// If the LocalVariables field is accessed then the access should occur within BorrowSource()
+func (dev *Developer) BorrowStrobe(f func(*yield.Strobe)) {
+	dev.strobeLock.Lock()
+	defer dev.strobeLock.Unlock()
+	f(&dev.strobe)
 }

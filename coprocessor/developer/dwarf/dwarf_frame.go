@@ -52,28 +52,27 @@ type frameSectionCIE struct {
 
 func (c *frameSectionCIE) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("version: %d; ", c.version))
-	s.WriteString(fmt.Sprintf("code alignment: %d; ", c.codeAlignment))
-	s.WriteString(fmt.Sprintf("data alignment: %d; ", c.dataAlignment))
-	s.WriteString(fmt.Sprintf("ret addr reg: %0d; ", c.returnAddressReg))
-	s.WriteString(fmt.Sprintf("instructions : % 02x", c.instructions))
+	fmt.Fprintf(&s, "version: %d; ", c.version)
+	fmt.Fprintf(&s, "code alignment: %d; ", c.codeAlignment)
+	fmt.Fprintf(&s, "data alignment: %d; ", c.dataAlignment)
+	fmt.Fprintf(&s, "ret addr reg: %0d; ", c.returnAddressReg)
+	fmt.Fprintf(&s, "instructions : % 02x", c.instructions)
 	return s.String()
 }
 
-// It is important that the framebased uses the current yield address. This is
-// because the list of (local) variables is based on that address, rather than
-// the address of the current PC. The yield address will be based on the most
-// recent instruction address which could be 1 or 2 words behind the PC value,
-// or maybe completely different in the case of a branch instruction.
-type YieldAddress interface {
-	YieldAddress() uint32
+// It is important that a frame uses an up-to-date base address. This is because local variables are
+// based on that address, rather than the address of the current PC. For example, The base address
+// may be 1 or 2 steps words behind the PC value, or in the case of a branch instruction, completely
+// different.
+type BaseAddress interface {
+	BaseAddress() uint32
 }
 
 // information about the structure of call frame information can be found in
 // the "DWARF-4 Specification" in section 6.4
 type frameSection struct {
 	coproc coprocessor.CartCoProc
-	yld    YieldAddress
+	base   BaseAddress
 
 	cie map[uint32]*frameSectionCIE
 	fde []*frameSectionFDE
@@ -87,7 +86,7 @@ type frameSectionRelocate struct {
 	origin uint32
 }
 
-func newFrameSectionFromFile(ef *elf.File, coproc coprocessor.CartCoProc, yld YieldAddress,
+func newFrameSectionFromFile(ef *elf.File, coproc coprocessor.CartCoProc, base BaseAddress,
 	rel *frameSectionRelocate) (*frameSection, error) {
 
 	sec := ef.Section(".debug_frame")
@@ -98,15 +97,15 @@ func newFrameSectionFromFile(ef *elf.File, coproc coprocessor.CartCoProc, yld Yi
 	if err != nil {
 		return nil, err
 	}
-	return newFrameSection(data, ef.ByteOrder, coproc, yld, rel)
+	return newFrameSection(data, ef.ByteOrder, coproc, base, rel)
 }
 
 func newFrameSection(data []uint8, byteOrder binary.ByteOrder,
-	coproc coprocessor.CartCoProc, yld YieldAddress, rel *frameSectionRelocate) (*frameSection, error) {
+	coproc coprocessor.CartCoProc, base BaseAddress, rel *frameSectionRelocate) (*frameSection, error) {
 
 	frm := &frameSection{
 		coproc:    coproc,
-		yld:       yld,
+		base:      base,
 		cie:       make(map[uint32]*frameSectionCIE),
 		byteOrder: byteOrder,
 	}
@@ -223,20 +222,20 @@ func newFrameSection(data []uint8, byteOrder binary.ByteOrder,
 var noFDE = errors.New("no FDE")
 
 // coproc implements the loclistResolver interface
-func (fr *frameSection) resolveFramebase(derive io.Writer) (uint64, error) {
-	if fr.yld == nil {
+func (fr *frameSection) resolveFramebase(derivation io.Writer) (uint64, error) {
+	if fr.base == nil {
 		return 0, fmt.Errorf("cannot retrieve current yield address for coprocessor")
 	}
-	addr := fr.yld.YieldAddress()
-	return fr.framebaseForAddr(addr, derive)
+	addr := fr.base.BaseAddress()
+	return fr.framebaseForAddr(addr, derivation)
 }
 
-func (fr *frameSection) framebaseForAddr(addr uint32, derive io.Writer) (uint64, error) {
+func (fr *frameSection) framebaseForAddr(addr uint32, derivation io.Writer) (uint64, error) {
 	var tab frameTable
 	tab.addRow()
 
-	if derive != nil {
-		derive.Write(fmt.Appendf(nil, "looking for address %08x\n", addr))
+	if derivation != nil {
+		derivation.Write(fmt.Appendf(nil, "looking for address %08x\n", addr))
 	}
 
 	var fde *frameSectionFDE
@@ -264,13 +263,13 @@ func (fr *frameSection) framebaseForAddr(addr uint32, derive io.Writer) (uint64,
 		}
 		ptr += r.length
 
-		if derive != nil {
-			derive.Write(fmt.Appendf(nil, "CIE %v\n", r))
+		if derivation != nil {
+			derivation.Write(fmt.Appendf(nil, "CIE %v\n", r))
 		}
 	}
 
-	if derive != nil {
-		derive.Write(fmt.Appendf(nil, "trying FDE Block: %v\n", fde))
+	if derivation != nil {
+		derivation.Write(fmt.Appendf(nil, "trying FDE Block: %v\n", fde))
 	}
 
 	ptr = 0
@@ -284,8 +283,8 @@ func (fr *frameSection) framebaseForAddr(addr uint32, derive io.Writer) (uint64,
 		}
 		ptr += r.length
 
-		if derive != nil {
-			derive.Write(fmt.Appendf(nil, "FDE %v [%08x]\n", r, tab.rows[0].location))
+		if derivation != nil {
+			derivation.Write(fmt.Appendf(nil, "FDE %v [%08x]\n", r, tab.rows[0].location))
 		}
 
 		// we've found the row of the call frame table we need

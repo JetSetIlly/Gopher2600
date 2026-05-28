@@ -930,8 +930,8 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// stack pointer as the PC changes)"
 		offset, n := leb128.DecodeSLEB128(expr[1:])
 		return loclistOperator{
-			resolve: func(loc *loclist, derive io.Writer) (loclistStack, error) {
-				fb, err := loc.fb.resolveFramebase(derive)
+			resolve: func(loc *loclist, derivation io.Writer) (loclistStack, error) {
+				fb, err := loc.fb.resolveFramebase(derivation)
 				if err != nil {
 					return loclistStack{}, err
 				}
@@ -1077,8 +1077,8 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// "The DW_OP_call_frame_cfa operation pushes the value of the CFA, obtained from the Call
 		// Frame Information"
 		return loclistOperator{
-			resolve: func(loc *loclist, derive io.Writer) (loclistStack, error) {
-				fb, err := loc.fb.resolveFramebase(derive)
+			resolve: func(loc *loclist, derivation io.Writer) (loclistStack, error) {
+				fb, err := loc.fb.resolveFramebase(derivation)
 				if err != nil {
 					return loclistStack{}, err
 				}

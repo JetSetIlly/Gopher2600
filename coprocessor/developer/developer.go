@@ -82,6 +82,10 @@ type Developer struct {
 	breakNextInstruction bool
 	breakAddress         uint32
 
+	strobe       yield.Strobe
+	strobeLock   sync.Mutex
+	strobeTicker *time.Ticker
+
 	// profiler instance. measures cycles counts for executed address
 	profiler coprocessor.CartCoProcProfiler
 
@@ -98,11 +102,9 @@ type Developer struct {
 // NewDeveloper is the preferred method of initialisation for the Developer type.
 func NewDeveloper(state Emulation, tv TV) Developer {
 	return Developer{
-		emulation: state,
-		tv:        tv,
-		yieldState: yield.State{
-			StrobeTicker: time.NewTicker(100 * time.Microsecond),
-		},
+		emulation:    state,
+		tv:           tv,
+		strobeTicker: time.NewTicker(100 * time.Microsecond),
 	}
 }
 
@@ -186,6 +188,49 @@ func (dev *Developer) HighAddress() uint32 {
 	return uint32(dev.source.HighAddress)
 }
 
+// UpdateStrobe implements the coprocessor.CartCoProcDeveloper interface.
+func (dev *Developer) UpdateStrobe(addr uint32) {
+	if dev.source == nil {
+		return
+	}
+
+	if !dev.strobe.Enabled || addr != dev.strobe.Address {
+		return
+	}
+
+	dev.strobeLock.Lock()
+	defer dev.strobeLock.Unlock()
+
+	select {
+	case <-dev.strobeTicker.C:
+		dev.BorrowSource(func(src *dwarf.Source) {
+			if src == nil {
+				return
+			}
+
+			ln := src.FindSourceLine(addr)
+			if ln == nil {
+				return
+			}
+
+			locals := src.GetLocalVariables(ln, addr)
+			dev.strobe.LocalVariables = dev.strobe.LocalVariables[:0]
+			dev.strobe.LocalVariables = append(dev.strobe.LocalVariables, locals...)
+
+			// update address field because the value is required by the BaseAddress() interface
+			dev.yieldStateLock.Lock()
+			dev.yieldState.Address = addr
+			dev.yieldStateLock.Unlock()
+
+			for _, local := range locals {
+				local.Update()
+			}
+		})
+	default:
+		return
+	}
+}
+
 // CheckBreakpoint implements the coprocessor.CartCoProcDeveloper interface.
 func (dev *Developer) CheckBreakpoint(addr uint32) bool {
 	if dev.source == nil {
@@ -247,13 +292,11 @@ func (dev *Developer) NewFrame(frameInfo frameinfo.Current) error {
 	return nil
 }
 
-// EnableStrobe sets the yield strobe to the specified enable state and the
+// EnableStrobe sets the strobe to the specified enable state and the
 // specified address
 func (dev *Developer) EnableStrobe(enable bool, addr uint32) {
-	dev.yieldStateLock.Lock()
-	defer dev.yieldStateLock.Unlock()
-	dev.yieldState.Strobe = enable
-	dev.yieldState.StrobeAddr = addr
+	dev.strobe.Enabled = enable
+	dev.strobe.Address = addr
 }
 
 // OnYield implements the coprocessor.CartCoProcDeveloper interface.
@@ -261,54 +304,32 @@ func (dev *Developer) OnYield(addr uint32, yield coprocessor.CoProcYield) {
 	dev.yieldStateLock.Lock()
 	defer dev.yieldStateLock.Unlock()
 
-	dev.yieldState.Addr = addr
+	dev.yieldState.Address = addr
 	dev.yieldState.Reason = yield.Type
 	dev.yieldState.LocalVariables = dev.yieldState.LocalVariables[:0]
-
-	// buildLocalsList() depends on the type of yield and whether a strobe is active
-	buildLocalsList := func(locals []*dwarf.SourceVariableLocal) {
-		dev.yieldState.LocalVariables = append(dev.yieldState.LocalVariables, locals...)
-	}
-
-	if yield.Type == coprocessor.YieldSyncWithVCS {
-		if !dev.yieldState.Strobe || addr != dev.yieldState.StrobeAddr {
-			return
-		}
-
-		select {
-		case <-dev.yieldState.StrobeTicker.C:
-			buildLocalsList = func(locals []*dwarf.SourceVariableLocal) {
-				dev.yieldState.StrobedLocalVariables = dev.yieldState.StrobedLocalVariables[:0]
-				dev.yieldState.StrobedLocalVariables = append(dev.yieldState.StrobedLocalVariables, locals...)
-			}
-		default:
-			return
-		}
-	}
 
 	dev.BorrowSource(func(src *dwarf.Source) {
 		if src == nil {
 			return
 		}
 
-		ln := src.FindSourceLine(dev.yieldState.Addr)
+		ln := src.FindSourceLine(dev.yieldState.Address)
 		if ln == nil {
 			return
 		}
 
 		locals := src.GetLocalVariables(ln, addr)
-		buildLocalsList(locals)
+		dev.yieldState.LocalVariables = append(dev.yieldState.LocalVariables, locals...)
 
-		if yield.Type.Bug() {
-			ln.Bug = true
-		}
-
-		// update local variables
 		for _, local := range locals {
 			local.Update()
 		}
 
 		src.UpdateGlobalVariables()
+
+		if yield.Type.Bug() {
+			ln.Bug = true
+		}
 	})
 }
 
@@ -343,15 +364,18 @@ func (dev *Developer) SetEmulationState(state govern.State) {
 				return
 			}
 
-			ln := src.FindSourceLine(dev.yieldState.Addr)
+			ln := src.FindSourceLine(dev.yieldState.Address)
 			if ln == nil {
 				return
 			}
 
-			locals := src.GetLocalVariables(ln, dev.yieldState.Addr)
-
+			locals := src.GetLocalVariables(ln, dev.yieldState.Address)
 			dev.yieldState.LocalVariables = dev.yieldState.LocalVariables[:0]
 			dev.yieldState.LocalVariables = append(dev.yieldState.LocalVariables, locals...)
+
+			for _, local := range locals {
+				local.Update()
+			}
 
 			src.UpdateGlobalVariables()
 		default:

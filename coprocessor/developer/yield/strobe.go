@@ -16,30 +16,11 @@
 package yield
 
 import (
-	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
-	"github.com/jetsetilly/gopher2600/debugger/govern"
 )
 
-// State records the most recent yield
-type State struct {
+type Strobe struct {
+	Enabled        bool
 	Address        uint32
-	Reason         coprocessor.CoProcYieldType
 	LocalVariables []*dwarf.SourceVariableLocal
-}
-
-// Cmp returns true if two YieldStates are equal
-func (yld State) Cmp(w State) bool {
-	return yld.Address == w.Address && yld.Reason == w.Reason
-}
-
-// LocalVariableView returns either the LocalVariables or StrobedLocalVariables
-// array depending on the running state and whether a strobe is active
-func (yld State) LocalVariableView(state govern.State) (uint32, []*dwarf.SourceVariableLocal) {
-	return yld.Address, yld.LocalVariables
-}
-
-// BaseAddress implements the dwarf.BaseAddress interface
-func (yld State) BaseAddress() uint32 {
-	return yld.Address
 }

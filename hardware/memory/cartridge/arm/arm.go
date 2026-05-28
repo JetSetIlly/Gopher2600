@@ -886,6 +886,11 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 			}
 		}
 
+		// update strobe
+		if arm.dev != nil {
+			arm.dev.UpdateStrobe(arm.state.executingPC)
+		}
+
 		memIdx := int(arm.state.executingPC - arm.state.programMemoryOrigin)
 
 		// check that we're not crashing into the end of the program memory
