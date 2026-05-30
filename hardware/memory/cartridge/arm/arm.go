@@ -327,9 +327,6 @@ type ARM struct {
 
 	// profiler for executed instructions. measures cycles counts
 	profiler *coprocessor.CartCoProcProfiler
-
-	// enable breakpoint checking
-	breakpointsEnabled bool
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
@@ -789,12 +786,6 @@ func (arm *ARM) StackFrame() uint32 {
 	return arm.state.stackFrame
 }
 
-// BreakpointsEnable implements the coprocessor.CartCoProc interface. Enables
-// breakpoint checking for the duration that disable is true.
-func (arm *ARM) BreakpointsEnable(enable bool) {
-	arm.breakpointsEnabled = enable
-}
-
 func (arm *ARM) checkProgramMemory(force bool) {
 	// the address to use for program memory lookup
 	//
@@ -879,7 +870,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 		}
 
 		// check breakpoints
-		if arm.breakpointsEnabled {
+		if arm.dev != nil {
 			arm.checkBreakpoints()
 			if arm.state.yield.Type != coprocessor.YieldRunning {
 				break // for loop
@@ -1039,7 +1030,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 func (arm *ARM) checkBreakpoints() {
 	// check breakpoints unless they are disabled. we also don't want to match
 	// if we're in the middle of decoding a 32bit instruction
-	if arm.dev != nil && !arm.state.instruction32bitDecoding {
+	if !arm.state.instruction32bitDecoding {
 		var addr uint32
 
 		if arm.state.branchedExecution {

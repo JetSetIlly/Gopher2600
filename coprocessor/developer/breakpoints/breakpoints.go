@@ -40,6 +40,11 @@ func (bp *Breakpoints) Write(w io.Writer) {
 	}
 }
 
+// Count returns the number of breakpoints
+func (bp *Breakpoints) Count() int {
+	return len(bp.breakpoints)
+}
+
 // HasBreakpoint returns true if there is a breakpoint on the specified line
 func (bp *Breakpoints) Check(addr uint32) bool {
 	return bp.breakpoints[addr]

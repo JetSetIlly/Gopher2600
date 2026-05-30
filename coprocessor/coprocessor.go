@@ -156,9 +156,6 @@ type CartCoProc interface {
 	SetDisassembler(CartCoProcDisassembler)
 	SetDeveloper(CartCoProcDeveloper)
 
-	// breakpoint control of coprocessor
-	BreakpointsEnable(bool)
-
 	// RegisterSpec returns the specification for the registers visible in the
 	// coprocessor. Implementations should ensure that these conform to the
 	// DWARF extended register specification for the processor type (if

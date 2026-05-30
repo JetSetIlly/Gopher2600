@@ -79,6 +79,7 @@ type Developer struct {
 
 	breakpoints          breakpoints.Breakpoints
 	breakpointsLock      sync.Mutex
+	breakpointsInhibit   bool
 	breakNextInstruction bool
 	breakAddress         uint32
 
@@ -237,10 +238,21 @@ func (dev *Developer) CheckBreakpoint(addr uint32) bool {
 		return false
 	}
 
+	if dev.breakpointsInhibit {
+		return false
+	}
+
 	if dev.breakNextInstruction && dev.breakAddress != addr {
 		dev.breakNextInstruction = false
 		dev.breakAddress = addr
 		return true
+	}
+
+	dev.breakpointsLock.Lock()
+	defer dev.breakpointsLock.Unlock()
+
+	if dev.breakpoints.Count() == 0 {
+		return false
 	}
 
 	dev.sourceLock.Lock()
@@ -250,11 +262,7 @@ func (dev *Developer) CheckBreakpoint(addr uint32) bool {
 	if ln == dev.prevBreakpointCheck {
 		return false
 	}
-
 	dev.prevBreakpointCheck = ln
-
-	dev.breakpointsLock.Lock()
-	defer dev.breakpointsLock.Unlock()
 
 	if dev.breakpoints.Check(addr) {
 		dev.breakAddress = addr
@@ -343,22 +351,14 @@ func (dev *Developer) MemoryFault(event string, fault faults.Category, instructi
 
 // SetEmulationState is called by the emulation whenever state changes
 func (dev *Developer) SetEmulationState(state govern.State) {
-	if dev.cart != nil {
-		switch state {
-		case govern.Rewinding:
-			dev.cart.GetCoProcBus().GetCoProc().BreakpointsEnable(false)
-		default:
-			// breakpoints only work when source is available so there's no need
-			// to enable breakpoint checking if there is no source
-			dev.cart.GetCoProcBus().GetCoProc().BreakpointsEnable(dev.source != nil)
-		}
-	}
-
 	dev.BorrowSource(func(src *dwarf.Source) {
 		dev.yieldStateLock.Lock()
 		defer dev.yieldStateLock.Unlock()
 
 		switch state {
+		case govern.Rewinding:
+			dev.breakpointsInhibit = true
+
 		case govern.Paused:
 			if src == nil {
 				return
@@ -380,6 +380,7 @@ func (dev *Developer) SetEmulationState(state govern.State) {
 			src.UpdateGlobalVariables()
 		default:
 			dev.yieldState.LocalVariables = dev.yieldState.LocalVariables[:0]
+			dev.breakpointsInhibit = false
 		}
 	})
 }
