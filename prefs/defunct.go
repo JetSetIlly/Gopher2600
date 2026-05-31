@@ -107,6 +107,7 @@ var defunct = []string{
 	"hardware.unwrapAce",                    // replaced with hardware.cartridge.unwrapACE
 	"sdlimgui.display.frameQueueLen",
 	"sdlimgui.display.frameQueueLenAuto",
+	"disassembly.fxxxMirror",
 }
 
 // returns true if string is in list of defunct values.

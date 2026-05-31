@@ -305,7 +305,7 @@ func (cart *m3e) CopyBanks() []banking.Content {
 	for b := 0; b < len(cart.banks)-1; b++ {
 		c[b] = banking.Content{Number: b,
 			Data:    cart.banks[b],
-			Origins: []uint16{memorymap.OriginCart},
+			Origins: []uint16{memorymap.OriginCartFxxx},
 		}
 	}
 
@@ -313,7 +313,7 @@ func (cart *m3e) CopyBanks() []banking.Content {
 	b := len(cart.banks) - 1
 	c[b] = banking.Content{Number: b,
 		Data:    cart.banks[b],
-		Origins: []uint16{memorymap.OriginCart + uint16(cart.bankSize)},
+		Origins: []uint16{memorymap.OriginCartFxxx + uint16(cart.bankSize)},
 	}
 	return c
 }

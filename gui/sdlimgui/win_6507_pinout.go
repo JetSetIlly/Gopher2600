@@ -106,6 +106,11 @@ func (win *win6507Pinout) debuggerDraw() bool {
 }
 
 func (win *win6507Pinout) draw() {
+	if win.img.cache.VCS.Mem.Cart.HasDevBus() {
+		imgui.Text("Cartridge is using a non-standard cartridge bus")
+		return
+	}
+
 	avail := imgui.ContentRegionAvail()
 	avail.Y -= win.busInfoHeight
 	p := imgui.CursorScreenPos()

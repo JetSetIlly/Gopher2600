@@ -318,10 +318,6 @@ func (win *winPrefs) drawDebuggerTab() {
 
 	if imgui.CollapsingHeader("6507 Disassembly") {
 		imgui.Spacing()
-		usefxxmirror := win.img.dbg.Disasm.Prefs.FxxxMirror.Get().(bool)
-		if imgui.Checkbox("Use Fxxx Mirror", &usefxxmirror) {
-			win.img.dbg.Disasm.Prefs.FxxxMirror.Set(usefxxmirror)
-		}
 
 		usesymbols := win.img.dbg.Disasm.Prefs.Symbols.Get().(bool)
 		if imgui.Checkbox("Use Symbols", &usesymbols) {

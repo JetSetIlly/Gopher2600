@@ -16,9 +16,6 @@
 package disassembly
 
 import (
-	"fmt"
-
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
 )
@@ -27,13 +24,8 @@ type Preferences struct {
 	dsm *Disassembly
 	dsk *prefs.Disk
 
-	// whether to apply the high mirror bits to the displayed address
-	FxxxMirror prefs.Bool
-	Symbols    prefs.Bool
-
-	// the lowest value to use when formatting address values. changed by the
-	// preferences system
-	mirrorOrigin uint16
+	// whether to show symbols
+	Symbols prefs.Bool
 }
 
 func (p *Preferences) String() string {
@@ -43,18 +35,6 @@ func (p *Preferences) String() string {
 // newPreferences is the preferred method of initialisation for the Preferences type.
 func newPreferences(dsm *Disassembly) (*Preferences, error) {
 	p := &Preferences{dsm: dsm}
-
-	p.FxxxMirror.SetHookPost(func(v prefs.Value) error {
-		if v.(bool) {
-			p.mirrorOrigin = memorymap.OriginCartFxxxMirror
-		} else {
-			p.mirrorOrigin = memorymap.OriginCart
-		}
-		dsm.crit.Lock()
-		defer dsm.crit.Unlock()
-		dsm.setCartMirror()
-		return nil
-	})
 
 	p.SetDefaults()
 
@@ -68,10 +48,6 @@ func newPreferences(dsm *Disassembly) (*Preferences, error) {
 		return nil, err
 	}
 
-	err = p.dsk.Add("disassembly.fxxxMirror", &p.FxxxMirror)
-	if err != nil {
-		return nil, err
-	}
 	err = p.dsk.Add("disassembly.symbols", &p.Symbols)
 	if err != nil {
 		return nil, err
@@ -87,9 +63,7 @@ func newPreferences(dsm *Disassembly) (*Preferences, error) {
 
 // SetDefaults reverts all settings to default values.
 func (p *Preferences) SetDefaults() {
-	p.FxxxMirror.Set(true)
 	p.Symbols.Set(true)
-	p.mirrorOrigin = memorymap.OriginCartFxxxMirror
 }
 
 // Load disassembly preferences and apply to the current disassembly.
@@ -100,32 +74,4 @@ func (p *Preferences) Load() error {
 // Save current disassembly preferences to disk.
 func (p *Preferences) Save() error {
 	return p.dsk.Save()
-}
-
-// setCartMirror sets the mirror bits to the user's preference. called by the
-// FxxxMirror callback.
-//
-// must be called inside the Disassembly critical section
-func (dsm *Disassembly) setCartMirror() {
-	for b := range dsm.disasmEntries.Entries {
-		for _, e := range dsm.disasmEntries.Entries[b] {
-			if e == nil {
-				continue
-			}
-
-			// mask off bits that indicate the cartridge/segment origin and reset
-			// them with the chosen origin
-			a := e.Result.Address&memorymap.CartridgeBits | dsm.Prefs.mirrorOrigin
-			e.Address = fmt.Sprintf("$%04x", a)
-
-			// branch instructions need special handling because for readability we
-			// translate the offset to an absolute address, which has changed.
-			if e.Result.Defn != nil && e.Result.Defn.IsBranch() {
-				// mask off bits that indicate the cartridge/segment origin and reset
-				// them with the chosen origin
-				a := e.Result.Address&memorymap.CartridgeBits | dsm.Prefs.mirrorOrigin
-				e.Operand.partial = fmt.Sprintf("$%04x", absoluteBranchDestination(a, e.Result.InstructionData))
-			}
-		}
-	}
 }

@@ -42,13 +42,11 @@ const (
 	Cartridge
 )
 
-// The origin and memory top for each area of memory. Checking which area an
-// address falls within and forcing the address into the normalised range is
-// all handled by the MapAddress() function.
+// The origin and memory top for each area of memory. Checking which area an address falls within
+// and forcing the address into the normalised range is all handled by the MapAddress() function.
 //
-// Implementations of the different memory areas may need to drag the address
-// down further into the the range of the memory array. This is best done with
-// (address^origin) rather than subtraction.
+// Implementations of the different memory areas may need to drag the address down further into the
+// the range of the memory array. This is best done with (address^origin) rather than subtraction.
 const (
 	OriginTIA = uint16(0x0000)
 	MemtopTIA = uint16(0x003f)
@@ -60,50 +58,39 @@ const (
 
 	MemtopChipRegisters = MemtopRIOT
 
-	OriginCart     = uint16(0x1000)
-	MemtopCart     = uint16(0x1fff)
-	OriginAbsolute = uint16(0x0000)
-	MemtopAbsolute = uint16(0xffff)
+	OriginCart = uint16(0x1000)
+	MemtopCart = uint16(0x1fff)
 )
 
-// Cartridge memory is mirrored in a number of places in the address space. The
-// most useful mirror is the Fxxx mirror which many programmers use when
-// writing assembly programs. The following constants are used by the
-// disassembly package to reference the disassembly to the Fxxx mirror.
-//
-// Be extra careful when looping with MemtopCartFxxxMirror because it is at the
-// very edge of uint16. Limit detection may need to consider the overflow
-// conditions.
 const (
-	OriginCartFxxxMirror = uint16(0xf000)
-	MemtopCartFxxxMirror = uint16(0xffff)
-)
+	// Cartridge memory is mirrored in a number of places in the address space. The most useful mirror
+	// is the Fxxx mirror which many programmers use when writing assembly programs. We use this value
+	// when speficying origins in CopyBanks() functions
+	OriginCartFxxx = uint16(0xf000)
 
-// Memtop is the top most address of memory in the VCS. It is the same as the
-// cartridge memtop.
-const Memtop = uint16(0x1fff)
-
-// CartridgeBits identifies the bits in an address that are relevant to the
-// cartridge address. Useful for discounting those bits that determine the
-// cartridge mirror. For example, the following will be true:
-//
-//	0x1123 & CartridgeBits == 0xf123 & CartridgeBits
-//
-// Alternatively, the following is an effective way to index an array:
-//
-//	addr := 0xf000
-//	mem[addr & CartridgeBits] = 0xff
-//
-// In the example, index zero of the mem array is assigned the value 0xff.
-const (
+	// CartridgeBits identifies the bits in an address that are relevant to the cartridge address.
+	// Useful for discounting those bits that determine the cartridge mirror. For example, the following
+	// will be true:
+	//
+	//	0x1123 & CartridgeBits == 0xf123 & CartridgeBits
+	//
+	// Alternatively, the following is an effective way to index an array:
+	//
+	//	addr := 0xf000
+	//	mem[addr & CartridgeBits] = 0xff
+	//
+	// In the example, index zero of the mem array is assigned the value 0xff.
 	CartridgeBits = OriginCart ^ MemtopCart
+
+	// CartridgeSelectLine is the bit that indicates the address is a cartridge address. This is
+	// equivalent to the OriginCart value but in some contexts CartridgeSelectLine is a clearer name
+	CartridgeSelectLine = OriginCart
 )
 
 // The masks to apply to an address to bring any address into the primary
 // range. Prefer to use MapAddress() for ease of use.
 const (
-	maskCart = MemtopCart
-	maskRAM  = MemtopRAM
+	maskRAM = MemtopRAM
 
 	maskWriteTIA = MemtopTIA
 	maskReadTIA  = uint16(0x000f)
@@ -118,15 +105,24 @@ const (
 	maskReadRIOT_timer_correction = uint16(0x285)
 )
 
-// MapAddress translates the address argument from mirror space to primary
-// space.  Generally, an address should be passed through this function before
-// accessing memory.
+// MapAddress translates the address argument from mirror space to primary space, with the exception
+// of cartridge addresses which much be handled appropriately by the cartridge implementation or
+// anywhere else that consumes cartridge addresses.
+//
+// Generally, an address should be passed through this function before accessing memory.
 func MapAddress(address uint16, read bool) (uint16, Area) {
 	// note that the order of these filters is important
 
 	// cartridge addresses
 	if address&OriginCart == OriginCart {
-		return address & maskCart, Cartridge
+		// no longer masking address with maskCart value. this should affect anything because the
+		// address is still a cartridge address even if it's a mirror. the cartridge implementation
+		// should be careful however, to ensure the address is masked appropriately
+		//
+		// we do this (not masking to the primary mirror) so that we can support alternative
+		// cartridge bus architectures that have more than 13 address line. the so-called DevCart
+		// mapper is an example of this
+		return address, Cartridge
 	}
 
 	// RIOT addresses

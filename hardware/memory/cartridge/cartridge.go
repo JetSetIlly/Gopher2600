@@ -60,6 +60,11 @@ type Cartridge struct {
 	busStuff     mapper.CartBusStuff
 	hasCoProcBus bool
 	coprocBus    coprocessor.CartCoProcBus
+
+	hasDevBus     bool
+	cartridgeBits uint16
+	cartridgeMask uint16
+	readWriteLine bool
 }
 
 // sentinal error returned if operation is on the ejected cartridge type.
@@ -92,6 +97,18 @@ func (cart *Cartridge) Plumb(env *environment.Environment, fromDifferentEmulatio
 	cart.busStuff, cart.hasBusStuff = cart.mapper.(mapper.CartBusStuff)
 	cart.coprocBus, cart.hasCoProcBus = cart.mapper.(coprocessor.CartCoProcBus)
 
+	if devBus, ok := cart.mapper.(mapper.CartConnection); ok {
+		cart.hasDevBus = true
+		cart.cartridgeBits = devBus.CartridgeBits()
+		cart.cartridgeMask = cart.cartridgeBits | memorymap.CartridgeSelectLine
+		cart.readWriteLine = devBus.ReadWriteLine()
+	} else {
+		cart.hasDevBus = false
+		cart.cartridgeBits = memorymap.CartridgeBits
+		cart.cartridgeMask = cart.cartridgeBits | memorymap.CartridgeSelectLine
+		cart.readWriteLine = false
+	}
+
 	if fromDifferentEmulation {
 		if m, ok := cart.mapper.(mapper.PlumbFromDifferentEmulation); ok {
 			m.PlumbFromDifferentEmulation(cart.env)
@@ -116,9 +133,9 @@ func (cart *Cartridge) Reset() error {
 // the ContainerID() function.
 func (cart *Cartridge) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s (%s)", cart.ShortName, cart.ID()))
+	fmt.Fprintf(&s, "%s (%s)", cart.ShortName, cart.ID())
 	if cc := cart.GetContainer(); cc != nil {
-		s.WriteString(fmt.Sprintf(" [%s]", cc.ContainerID()))
+		fmt.Fprintf(&s, " [%s]", cc.ContainerID())
 	}
 	return s.String()
 }
@@ -145,23 +162,23 @@ func (cart *Cartridge) ContainerID() string {
 
 // Peek is an implementation of memory.DebugBus. Address must be normalised.
 func (cart *Cartridge) Peek(addr uint16) (uint8, error) {
-	v, _, err := cart.mapper.Access(addr&memorymap.CartridgeBits, true)
+	v, _, err := cart.mapper.Access(addr&cart.cartridgeBits, true)
 	return v, err
 }
 
 // Poke is an implementation of memory.DebugBus. Address must be normalised.
 func (cart *Cartridge) Poke(addr uint16, data uint8) error {
-	return cart.mapper.AccessVolatile(addr&memorymap.CartridgeBits, data, true)
+	return cart.mapper.AccessVolatile(addr&cart.cartridgeBits, data, true)
 }
 
 // Read is an implementation of memory.CPUBus.
 func (cart *Cartridge) Read(addr uint16) (uint8, uint8, error) {
-	return cart.mapper.Access(addr&memorymap.CartridgeBits, false)
+	return cart.mapper.Access(addr&cart.cartridgeBits, false)
 }
 
 // Write is an implementation of memory.CPUBus.
 func (cart *Cartridge) Write(addr uint16, data uint8) error {
-	return cart.mapper.AccessVolatile(addr&memorymap.CartridgeBits, data, false)
+	return cart.mapper.AccessVolatile(addr&cart.cartridgeBits, data, false)
 }
 
 // Eject removes memory from cartridge space and unlike the real hardware,
@@ -212,6 +229,19 @@ func (cart *Cartridge) Attach(loader cartridgeloader.Loader) error {
 		cart.busStuff, cart.hasBusStuff = cart.mapper.(mapper.CartBusStuff)
 		cart.coprocBus, cart.hasCoProcBus = cart.mapper.(coprocessor.CartCoProcBus)
 
+		// get the cartridge bus width required for the cartridge type
+		if devBus, ok := cart.mapper.(mapper.CartConnection); ok {
+			cart.hasDevBus = true
+			cart.cartridgeBits = devBus.CartridgeBits()
+			cart.cartridgeMask = cart.cartridgeBits | memorymap.CartridgeSelectLine
+			cart.readWriteLine = devBus.ReadWriteLine()
+		} else {
+			cart.hasDevBus = false
+			cart.cartridgeBits = memorymap.CartridgeBits
+			cart.cartridgeMask = cart.cartridgeBits | memorymap.CartridgeSelectLine
+			cart.readWriteLine = false
+		}
+
 		if _, ok := cart.mapper.(*ejected); !ok {
 			logger.Logf(cart.env, "cartridge", "inserted %s", cart.mapper.ID())
 		}
@@ -254,6 +284,8 @@ func (cart *Cartridge) Attach(loader cartridgeloader.Loader) error {
 	}
 
 	switch mapping {
+	case "DEVCARD", "DEVKIT", "DEVC":
+		cart.mapper, err = newDevCard(cart.env)
 	case "2K":
 		cart.mapper, err = newAtari2k(cart.env, auto && hasSuperchip(loader))
 	case "4K":
@@ -396,7 +428,7 @@ func (cart *Cartridge) NumBanks() int {
 // GetBank returns the current bank information for the specified address. See
 // documentation for memorymap.Bank for more information.
 func (cart *Cartridge) GetBank(addr uint16) banking.Information {
-	bank := cart.mapper.GetBank(addr & memorymap.CartridgeBits)
+	bank := cart.mapper.GetBank(addr & cart.cartridgeBits)
 	bank.NonCart = addr&memorymap.OriginCart != memorymap.OriginCart
 	return bank
 }
@@ -444,7 +476,7 @@ func (cart *Cartridge) ParseCommand(w io.Writer, command string) error {
 // Similarly, the CBS (FA) mapper will switch banks on cartridge addresses 1ff8
 // to 1ffa (and mirrors) but only if the data bus has the low bit set to one.
 func (cart *Cartridge) AccessPassive(addr uint16, data uint8) error {
-	return cart.mapper.AccessPassive(addr, data)
+	return cart.mapper.AccessPassive(addr&cart.cartridgeMask, data)
 }
 
 // Step should be called every CPU cycle. The attached cartridge may or may not
@@ -546,6 +578,8 @@ func (cart *Cartridge) GetSuperchargerBootstrap() mapper.CartSuperchargerBootstr
 // next bank in the sequence, call the function with the instance of
 // banking.BankContent returned from the previous call. The end of the sequence is
 // indicated by the nil value. Start a new iteration with the nil argument.
+//
+// The length of the returned array value can be zero.
 func (cart *Cartridge) CopyBanks() ([]banking.Content, error) {
 	return cart.mapper.CopyBanks(), nil
 }
@@ -612,4 +646,21 @@ func (cart *Cartridge) HasSuperchip() bool {
 		return sc.HasSuperchip()
 	}
 	return false
+}
+
+// HasDevBus() returns true if the cartridge is using a non-standard 2600 bus
+func (cart *Cartridge) HasDevBus() bool {
+	return cart.hasDevBus
+}
+
+// HasReadWriteLine() returns true if the cartridge is using a non-standard 2600 bus with a
+// read/write line
+func (cart *Cartridge) HasReadWriteLine() bool {
+	return cart.readWriteLine
+}
+
+// CartridgeBits() returns the number of address bits available to the cartridge. Prefer this
+// function over memorymap.CartridgeBits
+func (cart *Cartridge) CartridgeBits() uint16 {
+	return cart.cartridgeBits
 }

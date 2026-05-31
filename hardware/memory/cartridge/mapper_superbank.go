@@ -193,7 +193,7 @@ func (cart *superbank) CopyBanks() []banking.Content {
 	for b := 0; b < len(cart.banks); b++ {
 		c[b] = banking.Content{Number: b,
 			Data:    cart.banks[b],
-			Origins: []uint16{memorymap.OriginCart},
+			Origins: []uint16{memorymap.OriginCartFxxx},
 		}
 	}
 	return c

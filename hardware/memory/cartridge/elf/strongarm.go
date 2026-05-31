@@ -76,7 +76,7 @@ var strongArmStub = []byte{
 }
 
 func (mem *elfMemory) setNextRomAddress(addr uint16) {
-	mem.strongarm.nextRomAddress = addr & memorymap.Memtop
+	mem.strongarm.nextRomAddress = addr & memorymap.MemtopCart
 }
 
 func (mem *elfMemory) injectRomByte(data uint8) bool {
@@ -91,7 +91,7 @@ func (mem *elfMemory) injectRomByte(data uint8) bool {
 
 	addrIn := uint16(mem.gpio.data[ADDR_IDR])
 	addrIn |= uint16(mem.gpio.data[ADDR_IDR+1]) << 8
-	addrIn &= memorymap.Memtop
+	addrIn &= memorymap.MemtopCart
 
 	if addrIn != mem.strongarm.nextRomAddress {
 		return false
@@ -123,7 +123,7 @@ func (mem *elfMemory) yieldDataBus(addr uint16) bool {
 
 	addrIn := uint16(mem.gpio.data[ADDR_IDR])
 	addrIn |= uint16(mem.gpio.data[ADDR_IDR+1]) << 8
-	addrIn &= memorymap.Memtop
+	addrIn &= memorymap.MemtopCart
 
 	if addrIn != addr {
 		return false
@@ -139,7 +139,7 @@ func (mem *elfMemory) yieldDataBusToStack() bool {
 
 	addrIn := uint16(mem.gpio.data[ADDR_IDR])
 	addrIn |= uint16(mem.gpio.data[ADDR_IDR+1]) << 8
-	addrIn &= memorymap.Memtop
+	addrIn &= memorymap.MemtopCart
 
 	if addrIn&0xfe00 != 0 {
 		return false

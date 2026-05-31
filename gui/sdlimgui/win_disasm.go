@@ -24,7 +24,6 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 
 	"github.com/jetsetilly/imgui-go/v5"
@@ -188,14 +187,14 @@ func (win *winDisasm) draw() {
 		if currBank.ExecutingCoprocessor {
 			// if coprocessor is running then jam the address value at the point the CPU will resume
 			// from once the coprocessor has finished.
-			addr = currBank.CoprocessorResumeAddr & memorymap.CartridgeBits
+			addr = currBank.CoprocessorResumeAddr & win.img.cache.VCS.Mem.Cart.CartridgeBits()
 		} else {
 			// address depends on if we're in the middle of an CPU instruction or not. special
 			// condition for freshly reset CPUs
 			if win.img.cache.Dbg.LiveDisasmEntry.Result.Final {
-				addr = win.img.cache.VCS.CPU.PC.Address() & memorymap.CartridgeBits
+				addr = win.img.cache.VCS.CPU.PC.Address() & win.img.cache.VCS.Mem.Cart.CartridgeBits()
 			} else {
-				addr = win.img.cache.Dbg.LiveDisasmEntry.Result.Address & memorymap.CartridgeBits
+				addr = win.img.cache.Dbg.LiveDisasmEntry.Result.Address & win.img.cache.VCS.Mem.Cart.CartridgeBits()
 			}
 		}
 
@@ -375,7 +374,7 @@ func (win *winDisasm) drawBank(addr uint16, currBank banking.Information) {
 				}
 			}
 
-			if e.Result.Address&memorymap.CartridgeBits == addr {
+			if e.Result.Address&win.img.cache.VCS.Mem.Cart.CartridgeBits() == addr {
 				current = len(entries) - 1
 			}
 		}

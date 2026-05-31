@@ -31,14 +31,18 @@ type disasmMemory struct {
 	banks       []banking.Content
 
 	// the current origin for the mapped bank
-	origin uint16
+	currentOrigin uint16
+
+	// the relevant bits in a cartridge address. used to mask away mirror address information
+	cartridgeBits uint16
 }
 
-func newDisasmMemory(startingBank int, copiedBanks []banking.Content) *disasmMemory {
+func newDisasmMemory(startingBank int, copiedBanks []banking.Content, cartridgeBits uint16) *disasmMemory {
 	dismem := &disasmMemory{
-		startingBank: startingBank,
-		currentBank:  startingBank,
-		banks:        copiedBanks,
+		startingBank:  startingBank,
+		currentBank:   startingBank,
+		banks:         copiedBanks,
+		cartridgeBits: cartridgeBits,
 	}
 	return dismem
 }
@@ -47,25 +51,8 @@ func (dismem *disasmMemory) Read(address uint16) (uint8, error) {
 	// map address
 	address, area := memorymap.MapAddress(address, true)
 	if area == memorymap.Cartridge {
-		// bring address into range. if it's still outside of range return a
-		// zero byte (with no error)
-		//
-		// the alternative to this strategy is to use a mask based on the
-		// actual length of the bank. in most cases this will be the same as
-		// memorymap.CartridgeBits but some cartridge mappers use banks that
-		// are smaller than that:
-		//
-		// address = address & uint16(len(dismem.banks[0].Data)-1)
-		//
-		// the problem with this is that the Read() function will return a byte
-		// which may be misleading to the disassembler. using the strategy
-		// below a value of zero is returned.
-		//
-		// no error is returned, even though it might seem we should, because
-		// it would only cause the CPU to halt mid-instruction, which would
-		// only cause other complications.
-		address = (address - dismem.origin) & memorymap.CartridgeBits
-		if address >= uint16(len(dismem.banks[dismem.currentBank].Data)) {
+		address = (address - dismem.currentOrigin) & dismem.cartridgeBits
+		if int(address) >= len(dismem.banks[dismem.currentBank].Data) {
 			return 0, nil
 		}
 		return dismem.banks[dismem.currentBank].Data[address], nil

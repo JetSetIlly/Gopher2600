@@ -343,7 +343,7 @@ func (cart *atari) GetRAM() []mapper.CartRAM {
 	r := make([]mapper.CartRAM, 1)
 	r[0] = mapper.CartRAM{
 		Label:    "Superchip",
-		Origin:   0x1080,
+		Origin:   0xf080,
 		Data:     make([]uint8, len(cart.state.ram)),
 		Mapped:   true,
 		Recovery: cart.state.saraRecovery,
@@ -368,7 +368,7 @@ func (cart *atari) CopyBanks() []banking.Content {
 	for b := 0; b < len(cart.banks); b++ {
 		c[b] = banking.Content{Number: b,
 			Data:    cart.banks[b],
-			Origins: []uint16{memorymap.OriginCart},
+			Origins: []uint16{memorymap.OriginCartFxxx},
 		}
 	}
 	return c
@@ -530,7 +530,7 @@ func (cart *atari2k) CopyBanks() []banking.Content {
 	c := make([]banking.Content, 1)
 	c[0] = banking.Content{Number: 0,
 		Data:    cart.banks[0],
-		Origins: []uint16{memorymap.OriginCart, memorymap.OriginCart + uint16(cart.bankSize)},
+		Origins: []uint16{memorymap.OriginCartFxxx, memorymap.OriginCartFxxx + uint16(cart.bankSize)},
 	}
 	return c
 }
@@ -538,6 +538,16 @@ func (cart *atari2k) CopyBanks() []banking.Content {
 // AccessVolatile implements the mapper.CartMapper interface.
 func (cart *atari2k) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	return cart.atari.accessVolatile(addr, data, poke)
+}
+
+// AccessVolatile implements the mapper.CartConnection interface.
+func (cart *atari2k) CartridgeBits() uint16 {
+	return 0x07ff
+}
+
+// AccessVolatile implements the mapper.CartConnection interface.
+func (cart *atari2k) ReadWriteLine() bool {
+	return false
 }
 
 // atari8k (F8):

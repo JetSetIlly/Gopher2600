@@ -106,8 +106,8 @@ func (sym *Symbols) fromDasm(cart *cartridge.Cartridge) error {
 			}
 
 		case memorymap.RAM:
-			sym.read.add(SourceDASM, address, symbol)
-			sym.write.add(SourceDASM, address, symbol)
+			sym.read.add(SourceDASM, ma, symbol)
+			sym.write.add(SourceDASM, ma, symbol)
 
 		default:
 			// we do no allow the symbol file to define symbols for other memory areas

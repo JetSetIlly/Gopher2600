@@ -40,6 +40,9 @@ type decode struct {
 	disasmEntries DisasmEntries
 
 	formatResult func(bank banking.Information, result execution.Result, level EntryLevel) *Entry
+
+	// the relevant bits in a cartridge address. used to mask away mirror address information
+	cartridgeBits uint16
 }
 
 func (dec decode) GetCoords() coords.TelevisionCoords {
@@ -48,14 +51,15 @@ func (dec decode) GetCoords() coords.TelevisionCoords {
 
 func newDecode(dsm *Disassembly, startingBank int, copiedBanks []banking.Content) (*decode, error) {
 	dec := decode{
-		sym: &dsm.Sym,
+		sym:           &dsm.Sym,
+		cartridgeBits: dsm.vcs.Mem.Cart.CartridgeBits(),
 	}
 
 	dec.formatResult = func(bank banking.Information, result execution.Result, level EntryLevel) *Entry {
 		return formatResult(dsm, dec, bank, result, level)
 	}
 
-	dec.mem = newDisasmMemory(startingBank, copiedBanks)
+	dec.mem = newDisasmMemory(startingBank, copiedBanks, dec.cartridgeBits)
 	if dec.mem == nil {
 		return nil, fmt.Errorf("could not create memory for decoding")
 	}
@@ -64,7 +68,7 @@ func newDecode(dsm *Disassembly, startingBank int, copiedBanks []banking.Content
 
 	dec.disasmEntries.Entries = make([][]*Entry, len(copiedBanks))
 	for b := range copiedBanks {
-		dec.disasmEntries.Entries[b] = make([]*Entry, memorymap.CartridgeBits+1)
+		dec.disasmEntries.Entries[b] = make([]*Entry, len(copiedBanks[b].Data))
 	}
 
 	// basic decoding pass
@@ -132,7 +136,7 @@ func (dec *decode) bless() error {
 					jmpAddress, area := memorymap.MapAddress(e.Result.InstructionData, true)
 
 					if area == memorymap.Cartridge {
-						l := jmpTargets(dec.mem.banks, jmpAddress)
+						l := dec.jmpTargets(jmpAddress)
 
 						for _, jb := range l {
 							if dec.blessSequence(jb, jmpAddress, false) {
@@ -219,21 +223,20 @@ func (dec *decode) bless() error {
 	return nil
 }
 
-// jmpTargets returns a list of banks that a JMP or JSR target address may
-// feasibly be in.
-func jmpTargets(copiedBanks []banking.Content, jmpAddress uint16) []int {
-	l := make([]int, 0, len(copiedBanks))
+// jmpTargets returns a list of banks that a JMP or JSR target address may feasibly be in
+func (dec *decode) jmpTargets(jmpAddress uint16) []int {
+	l := make([]int, 0, len(dec.mem.banks))
 
 	// only the significant bits of the jmp and origin addresses are compared.
 	// this is the easiest way of handling different cartridge mirrors
-	jmpAddress &= memorymap.CartridgeBits
+	jmpAddress &= dec.cartridgeBits
 
 	// find banks which can be mapped to cover the supplied jmpAddress
-	for _, b := range copiedBanks {
+	for _, b := range dec.mem.banks {
 		for _, o := range b.Origins {
-			o &= memorymap.CartridgeBits
+			o &= dec.cartridgeBits
 
-			if jmpAddress >= o && jmpAddress <= o+uint16(len(b.Data)) {
+			if int(jmpAddress) >= int(o) && int(jmpAddress) <= int(o)+len(b.Data) {
 				l = append(l, b.Number)
 				break
 			}
@@ -253,7 +256,7 @@ func jmpTargets(copiedBanks []banking.Content, jmpAddress uint16) []int {
 // it does not matter if addr is a normalised or unormalised address.
 func (dec *decode) blessSequence(bank int, addr uint16, commit bool) bool {
 	// mask address into indexable range
-	a := addr & memorymap.CartridgeBits
+	a := int(addr & dec.cartridgeBits)
 
 	hasCommitted := false
 
@@ -273,7 +276,7 @@ func (dec *decode) blessSequence(bank int, addr uint16, commit bool) bool {
 	//  . an RTS instruction
 	//  . a branch instruction
 	//  . an interrupt
-	for a < uint16(len(dec.disasmEntries.Entries[bank])) {
+	for a < len(dec.disasmEntries.Entries[bank]) {
 		instruction := dec.disasmEntries.Entries[bank][a]
 
 		// end run if entry has already been blessed
@@ -283,10 +286,10 @@ func (dec *decode) blessSequence(bank int, addr uint16, commit bool) bool {
 			return true
 		}
 
-		next := a + uint16(instruction.Result.ByteCount)
+		next := a + instruction.Result.ByteCount
 
 		// break if address has looped around
-		if next > next&memorymap.CartridgeBits {
+		if next > next&int(dec.cartridgeBits) {
 			if hasCommitted {
 				logger.Logf(logger.Allow, "disassembly", "blessSequence has blessed an instruction in a false sequence. discovered at bank %d: %s", bank, instruction.String())
 			}
@@ -347,9 +350,7 @@ func (dec *decode) decode() error {
 		// the cartridge addressing range can often be mapped into different
 		// "segments" of cartridge memory
 		for _, origin := range bank.Origins {
-			// make sure origin address is rooted correctly. we'll convert all
-			// addresses to the preferred mirror at the end of the disassembly
-			dec.mem.origin = (origin & memorymap.CartridgeBits) | memorymap.OriginCart
+			dec.mem.currentOrigin = origin & dec.cartridgeBits
 
 			// the memtop for the bank
 			memtop := origin + uint16(len(bank.Data)) - 1
@@ -367,11 +368,11 @@ func (dec *decode) decode() error {
 			// using signed integers rather than unsigned 16bit values because the origin and memtop
 			// values could feasibly be the full 16 bit range. we don't want to overflow and create
 			// and infinite loop
-			for idx := int(memorymap.OriginCart); idx <= int(memorymap.MemtopCart); idx++ {
-				address := uint16(idx)
+			for idx := 0; idx < len(dec.disasmEntries.Entries[bank.Number]); idx++ {
+				address := uint16(idx) + origin
 
 				// continue if entry has already been decoded
-				e := dec.disasmEntries.Entries[bank.Number][address&memorymap.CartridgeBits]
+				e := dec.disasmEntries.Entries[bank.Number][idx]
 				if e != nil && e.Level > EntryLevelUnmappable {
 					continue
 				}
@@ -398,7 +399,7 @@ func (dec *decode) decode() error {
 
 				// add entry to disassembly
 				ent := dec.formatResult(banking.Information{Number: bank.Number}, dec.mc.LastResult, entryLevel)
-				dec.disasmEntries.Entries[bank.Number][address&memorymap.CartridgeBits] = ent
+				dec.disasmEntries.Entries[bank.Number][idx] = ent
 			}
 		}
 	}

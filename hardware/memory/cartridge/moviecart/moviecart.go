@@ -397,7 +397,7 @@ func (cart *Moviecart) CopyBanks() []banking.Content {
 	c := make([]banking.Content, 1)
 	c[0] = banking.Content{Number: 0,
 		Data:    d,
-		Origins: []uint16{memorymap.OriginCart},
+		Origins: []uint16{memorymap.OriginCartFxxx},
 	}
 
 	return c
