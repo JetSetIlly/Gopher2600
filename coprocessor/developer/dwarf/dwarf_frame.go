@@ -63,7 +63,8 @@ func (c *frameSectionCIE) String() string {
 // It is important that a frame uses an up-to-date base address. This is because local variables are
 // based on that address, rather than the address of the current PC. For example, The base address
 // may be 1 or 2 steps words behind the PC value, or in the case of a branch instruction, completely
-// different.
+// different. Using a base address of the current PC value may work but will definitely fail in the
+// edge cases.
 type BaseAddress interface {
 	BaseAddress() uint32
 }

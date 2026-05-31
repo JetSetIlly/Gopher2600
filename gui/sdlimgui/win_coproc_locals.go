@@ -202,6 +202,11 @@ func (win *winCoProcLocals) drawVariable(varb *dwarf.SourceVariable, indentLevel
 	//
 	// we limit the update to when the emulation is not running. apart from adding some efficiency
 	// it also prevents strobed variables from being updated when they are out of scope
+	//
+	// I'm also a bit nervous of how this plays with the developer.baseAddress implementation of the
+	// dwarf.BaseAddress interface. so long as the developer.baseAddress returns the correct base
+	// address for the situation (which it will be when state if !Running) then we'll be okay. but it
+	// feels a bit loose and I don't really want to expose any function or fields in developer.baseAddress
 	if win.img.dbg.State() != govern.Running {
 		win.img.dbg.PushFunction(func() {
 			win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {

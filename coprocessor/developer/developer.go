@@ -74,6 +74,8 @@ type Developer struct {
 	yieldState     yield.State
 	yieldStateLock sync.Mutex
 
+	base baseAddress
+
 	callstack     callstack.CallStack
 	callstackLock sync.Mutex
 
@@ -160,7 +162,7 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, dwarfFile 
 	}
 
 	dev.sourceLock.Lock()
-	dev.source, err = dwarf.NewSource(coprocBus, romFile, dwarfFile, &dev.yieldState)
+	dev.source, err = dwarf.NewSource(coprocBus, romFile, dwarfFile, &dev.base)
 	dev.sourceLock.Unlock()
 
 	if err != nil {
@@ -218,11 +220,7 @@ func (dev *Developer) UpdateStrobe(addr uint32) {
 			dev.strobe.LocalVariables = dev.strobe.LocalVariables[:0]
 			dev.strobe.LocalVariables = append(dev.strobe.LocalVariables, locals...)
 
-			// update address field because the value is required by the BaseAddress() interface
-			dev.yieldStateLock.Lock()
-			dev.yieldState.Address = addr
-			dev.yieldStateLock.Unlock()
-
+			dev.base.address = addr
 			for _, local := range locals {
 				local.Update()
 			}
@@ -329,6 +327,7 @@ func (dev *Developer) OnYield(addr uint32, yield coprocessor.CoProcYield) {
 		locals := src.GetLocalVariables(ln, addr)
 		dev.yieldState.LocalVariables = append(dev.yieldState.LocalVariables, locals...)
 
+		dev.base.address = addr
 		for _, local := range locals {
 			local.Update()
 		}
@@ -373,6 +372,7 @@ func (dev *Developer) SetEmulationState(state govern.State) {
 			dev.yieldState.LocalVariables = dev.yieldState.LocalVariables[:0]
 			dev.yieldState.LocalVariables = append(dev.yieldState.LocalVariables, locals...)
 
+			dev.base.address = dev.yieldState.Address
 			for _, local := range locals {
 				local.Update()
 			}

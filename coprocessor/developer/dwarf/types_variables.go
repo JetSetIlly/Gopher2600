@@ -182,8 +182,10 @@ func (varb *SourceVariable) Parent() (*SourceVariable, bool) {
 	return varb.parent, varb.parent != nil
 }
 
-// Update variable. It should be called periodically before using the return
-// value from Address() or Value()
+// Update variable. It should be called periodically before using the return value from Address() or
+// Value(). For local variables where the framebase is important, the BaseAddress implementation
+// provided to the Source type on creation *must* be updated with the correct address before calling
+// Update().
 //
 // Be careful to only call this from the emulation goroutine.
 func (varb *SourceVariable) Update() {

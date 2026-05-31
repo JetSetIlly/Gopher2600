@@ -13,21 +13,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package yield
+package developer
 
-import (
-	"github.com/jetsetilly/gopher2600/coprocessor"
-	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
-)
-
-// State records the most recent yield
-type State struct {
-	Address        uint32
-	Reason         coprocessor.CoProcYieldType
-	LocalVariables []*dwarf.SourceVariableLocal
+// baseAddress is an implementation of dwarf.BaseAddress. the address field should be updated prior
+// to updating local variables that rely on an accurate address value
+type baseAddress struct {
+	address uint32
 }
 
-// Cmp returns true if two YieldStates are equal
-func (yld State) Cmp(w State) bool {
-	return yld.Address == w.Address && yld.Reason == w.Reason
+// BaseAddress implements the dwarf.BaseAddress interface
+func (b baseAddress) BaseAddress() uint32 {
+	return b.address
 }
