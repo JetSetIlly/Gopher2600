@@ -334,7 +334,7 @@ func NewSource(cart coprocessor.CartCoProcBus, romFile string, elfFile string, b
 	addVariableChildren(src)
 
 	// update global variables
-	src.UpdateGlobalVariables()
+	src.UpdateGlobalVariables(nil)
 
 	// load hotlisted global variables
 	src.Hotlist.LoadProject()
@@ -578,9 +578,14 @@ func (src *Source) FindSourceLine(addr uint32) *SourceLine {
 
 // UpdateGlobalVariables using the current state of the emulated coprocessor.
 // Local variables are updated when coprocessor yields (see OnYield() function)
-func (src *Source) UpdateGlobalVariables() {
+//
+// The optional function can be used to work with each updated variable in turn.
+func (src *Source) UpdateGlobalVariables(f func(varb *SourceVariable)) {
 	for _, varb := range src.SortedGlobals.Variables {
 		varb.Update()
+		if f != nil {
+			f(varb)
+		}
 	}
 }
 

@@ -332,7 +332,7 @@ func (dev *Developer) OnYield(addr uint32, yield coprocessor.CoProcYield) {
 			local.Update()
 		}
 
-		src.UpdateGlobalVariables()
+		src.UpdateGlobalVariables(nil)
 
 		if yield.Type.Bug() {
 			ln.Bug = true
@@ -377,7 +377,7 @@ func (dev *Developer) SetEmulationState(state govern.State) {
 				local.Update()
 			}
 
-			src.UpdateGlobalVariables()
+			src.UpdateGlobalVariables(nil)
 		default:
 			dev.yieldState.LocalVariables = dev.yieldState.LocalVariables[:0]
 			dev.breakpointsInhibit = false

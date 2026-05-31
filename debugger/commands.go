@@ -1673,16 +1673,15 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					return
 				}
 
-				for _, g := range src.SortedGlobals.Variables {
-					g.Update()
-					dbg.printLine(terminal.StyleFeedback, g.String())
-					e := g.WriteDerivation(w)
+				src.UpdateGlobalVariables(func(varb *dwarf.SourceVariable) {
+					dbg.printLine(terminal.StyleFeedback, varb.String())
+					e := varb.WriteDerivation(w)
 					if e != nil {
 						for s := range strings.SplitSeq(e.Error(), ":") {
 							dbg.printLine(terminal.StyleError, fmt.Sprintf("\t%s", s))
 						}
 					}
-				}
+				})
 			})
 		case "LOCALS":
 			var derivation bool
