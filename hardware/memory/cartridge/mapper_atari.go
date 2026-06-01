@@ -399,12 +399,19 @@ func newAtari4k(env *environment.Environment, superchip bool) (mapper.CartMapper
 		},
 	}
 
-	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, fmt.Errorf("4K: wrong number of bytes in the cartridge data")
+	if len(data) > cart.bankSize*cart.NumBanks() {
+		return nil, fmt.Errorf("4K: too many bytes in the cartridge data")
 	}
 
 	cart.banks[0] = make([]uint8, cart.bankSize)
-	copy(cart.banks[0], data)
+
+	if len(data) < cart.bankSize*cart.NumBanks() {
+		logger.Logf(env, "cartridge", "4K: not enough bytes in the cartridge data. padding to 4k")
+	}
+
+	// copy data to single 4k bank. if the amount of data is less than 4k then copy the data such
+	// that the data is aligned with memtop
+	copy(cart.banks[0][cart.bankSize-len(data):], data)
 
 	if superchip {
 		cart.mappingID = "4KSC"
