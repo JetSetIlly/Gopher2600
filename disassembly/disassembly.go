@@ -170,8 +170,9 @@ func (dsm *Disassembly) FromMemory(background bool) error {
 			dsm.disasmEntries.Entries[0] = make([]*Entry, memorymap.MemtopCart-memorymap.OriginCart+1)
 		} else {
 			dsm.disasmEntries.Entries = make([][]*Entry, len(copiedBanks))
+			l := int(dsm.vcs.Mem.Cart.CartridgeBits()) + 1
 			for b := range dsm.disasmEntries.Entries {
-				dsm.disasmEntries.Entries[b] = make([]*Entry, len(copiedBanks[b].Data))
+				dsm.disasmEntries.Entries[b] = make([]*Entry, l)
 			}
 		}
 	}()

@@ -68,7 +68,7 @@ func newDecode(dsm *Disassembly, startingBank int, copiedBanks []banking.Content
 
 	dec.disasmEntries.Entries = make([][]*Entry, len(copiedBanks))
 	for b := range copiedBanks {
-		dec.disasmEntries.Entries[b] = make([]*Entry, len(copiedBanks[b].Data))
+		dec.disasmEntries.Entries[b] = make([]*Entry, int(dec.cartridgeBits)+1)
 	}
 
 	// basic decoding pass
@@ -256,7 +256,10 @@ func (dec *decode) jmpTargets(jmpAddress uint16) []int {
 // it does not matter if addr is a normalised or unormalised address.
 func (dec *decode) blessSequence(bank int, addr uint16, commit bool) bool {
 	// mask address into indexable range
-	a := int(addr & dec.cartridgeBits)
+	//
+	// using uint32 type instead of uint16 to avoid wrap-around errors. DevCard uses the full 16 bit
+	// range and will wrap around to zero during the loop below, causing a bless sequence failure
+	a := uint32(addr & dec.cartridgeBits)
 
 	hasCommitted := false
 
@@ -276,7 +279,7 @@ func (dec *decode) blessSequence(bank int, addr uint16, commit bool) bool {
 	//  . an RTS instruction
 	//  . a branch instruction
 	//  . an interrupt
-	for a < len(dec.disasmEntries.Entries[bank]) {
+	for a < uint32(len(dec.disasmEntries.Entries[bank])) {
 		instruction := dec.disasmEntries.Entries[bank][a]
 
 		// end run if entry has already been blessed
@@ -286,10 +289,10 @@ func (dec *decode) blessSequence(bank int, addr uint16, commit bool) bool {
 			return true
 		}
 
-		next := a + instruction.Result.ByteCount
+		next := a + uint32(instruction.Result.ByteCount)
 
 		// break if address has looped around
-		if next > next&int(dec.cartridgeBits) {
+		if next > next&uint32(dec.cartridgeBits) {
 			if hasCommitted {
 				logger.Logf(logger.Allow, "disassembly", "blessSequence has blessed an instruction in a false sequence. discovered at bank %d: %s", bank, instruction.String())
 			}
@@ -350,6 +353,7 @@ func (dec *decode) decode() error {
 		// the cartridge addressing range can often be mapped into different
 		// "segments" of cartridge memory
 		for _, origin := range bank.Origins {
+			// set origin for disassembly memory
 			dec.mem.currentOrigin = origin & dec.cartridgeBits
 
 			// the memtop for the bank
@@ -372,7 +376,7 @@ func (dec *decode) decode() error {
 				address := uint16(idx) + origin
 
 				// continue if entry has already been decoded
-				e := dec.disasmEntries.Entries[bank.Number][idx]
+				e := dec.disasmEntries.Entries[bank.Number][address&dec.cartridgeBits]
 				if e != nil && e.Level > EntryLevelUnmappable {
 					continue
 				}
@@ -399,7 +403,7 @@ func (dec *decode) decode() error {
 
 				// add entry to disassembly
 				ent := dec.formatResult(banking.Information{Number: bank.Number}, dec.mc.LastResult, entryLevel)
-				dec.disasmEntries.Entries[bank.Number][idx] = ent
+				dec.disasmEntries.Entries[bank.Number][address&dec.cartridgeBits] = ent
 			}
 		}
 	}
