@@ -2,8 +2,8 @@
 # version number and whether it's the final release or a preview release.
 # the -nightly and -preview tags are added automatically there is no need
 # to include them in the version number
-version = v0.57.0
-final = false
+version = v0.56.1
+final = true
 
 ifeq ($(final),false)
   tag = nightly
