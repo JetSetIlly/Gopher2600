@@ -245,7 +245,7 @@ func (win *winPeripherals) drawPeripheral(right bool, drawNoVisualisation bool) 
 	}
 
 	if drawNoVisualisation {
-		imgui.Text("no visualisation")
+		imgui.Text(p.String())
 		imgui.SameLine()
 		x = imgui.CursorScreenPos().X - x
 		return x, false

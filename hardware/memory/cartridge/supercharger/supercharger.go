@@ -103,7 +103,7 @@ func NewSupercharger(env *environment.Environment) (mapper.CartMapper, error) {
 		cart.state.tape, err = newSoundLoad(env)
 	} else {
 		if env.Loader.HashMD5 == SchweberHash {
-			cart.state.tape, err = newSchweber(env)
+			cart.state.tape, err = newDemoUnit(env)
 		} else {
 			cart.state.tape, err = newFastLoad(env)
 		}

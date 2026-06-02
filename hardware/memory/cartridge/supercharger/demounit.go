@@ -23,22 +23,26 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
 	"github.com/jetsetilly/gopher2600/notifications"
 )
 
-type Schweber struct {
+type DemoUnit struct {
 	env        *environment.Environment
+	schweber   []uint8
 	bootloader []uint8
 	jmpAddrLo  uint8
 	jmpAddrHi  uint8
 	configByte uint8
+	controller *demoUnit_controller
 }
 
 const SchweberHash = "0a98bc3d53a0965de87fc77377b5a0db"
 
-func newSchweber(env *environment.Environment) (*Schweber, error) {
+func newDemoUnit(env *environment.Environment) (*DemoUnit, error) {
 	if env.Loader.HashMD5 != SchweberHash {
 		return nil, fmt.Errorf("demo unit: exepected 'Schweber OQ' ROM dump")
 	}
@@ -48,31 +52,37 @@ func newSchweber(env *environment.Environment) (*Schweber, error) {
 		return nil, fmt.Errorf("demo unit: %w", err)
 	}
 
-	fl := &Schweber{
+	dem := &DemoUnit{
 		env:        env,
+		schweber:   data[:],
 		bootloader: data[0x300:0x400],
 		jmpAddrLo:  data[0x301],
 		jmpAddrHi:  data[0x302],
 		configByte: data[0x303],
 	}
 
-	return fl, nil
+	return dem, nil
 }
 
 // snapshot implements the tape interface.
-func (fl *Schweber) snapshot() tape {
-	n := *fl
+func (dem *DemoUnit) snapshot() tape {
+	n := *dem
 	return &n
 }
 
 // plumb implements the tape interface.
-func (fl *Schweber) plumb(env *environment.Environment) {
-	fl.env = env
+func (dem *DemoUnit) plumb(env *environment.Environment) {
+	dem.env = env
 }
 
 // load implements the tape interface.
-func (fl *Schweber) load() (uint8, error) {
-	err := fl.env.Notifications.Notify(notifications.NotifySuperchargerFastLoad)
+func (dem *DemoUnit) load() (uint8, error) {
+	// if controller has already been attached then just return a zero byte
+	if dem.controller != nil {
+		return 0x00, nil
+	}
+
+	err := dem.env.Notifications.Notify(notifications.NotifySuperchargerFastLoad)
 	if err != nil {
 		return 0x00, fmt.Errorf("fastload: %w", err)
 	}
@@ -80,45 +90,45 @@ func (fl *Schweber) load() (uint8, error) {
 }
 
 // step implements the tape interface.
-func (fl *Schweber) step() {
+func (dem *DemoUnit) step() {
 }
 
 // load implements the tape interface.
-func (tap *Schweber) end() {
+func (tap *DemoUnit) end() {
 }
 
 // bootstrap implements the tape interface
-func (fl *Schweber) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, riot *riot.RIOT, tia *tia.TIA) error {
+func (dem *DemoUnit) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, riot *riot.RIOT, tia *tia.TIA) error {
 	// copy bootloader to correct location, such that the start instruction is at $ffc0
 	clear(state.ram[0])
 	clear(state.ram[1])
 	clear(state.ram[2])
-	copy(state.ram[1][0x6f5:], fl.bootloader)
+	copy(state.ram[1][0x6f5:], dem.bootloader)
 
 	// same RAM initialisation as fastload
 	for i := uint16(0x0082); i <= 0x009d; i++ {
 		_ = ram.Poke(i, 0x00)
 	}
-	_ = ram.Poke(0x80, fl.configByte)
+	_ = ram.Poke(0x80, dem.configByte)
 
 	// same boot intialisation sequence as fastload
 	_ = ram.Poke(0xfa, 0xcd)
 	_ = ram.Poke(0xfb, 0xf8)
 	_ = ram.Poke(0xfc, 0xff)
 	_ = ram.Poke(0xfd, 0x4c)
-	_ = ram.Poke(jmpAddrLo, fl.jmpAddrLo)
-	_ = ram.Poke(jmpAddrHi, fl.jmpAddrHi)
+	_ = ram.Poke(jmpAddrLo, dem.jmpAddrLo)
+	_ = ram.Poke(jmpAddrHi, dem.jmpAddrHi)
 
 	// same quickBootstrap choice as fastload
 	if quickBootstrap {
-		mc.PC.Load(uint16(fl.jmpAddrLo) | uint16(fl.jmpAddrHi)<<8)
-		state.registers.setConfigByte(fl.configByte)
+		mc.PC.Load(uint16(dem.jmpAddrLo) | uint16(dem.jmpAddrHi)<<8)
+		state.registers.setConfigByte(dem.configByte)
 	} else {
 		err := mc.LoadPC(0x00fa)
 		if err != nil {
 			return fmt.Errorf("demo unit: %w", err)
 		}
-		state.registers.Value = fl.configByte
+		state.registers.Value = dem.configByte
 		state.registers.Delay = 0
 	}
 
@@ -133,13 +143,31 @@ func (fl *Schweber) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, riot *rio
 	tia.Video.Player1.SetNUSIZ(0)
 	tia.Video.Ball.Hmove = 8
 
+	// the demo unit is also plugged into the console's joystick port
+	err := riot.Ports.Plug(plugging.PortRight,
+		func(env *environment.Environment, id plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
+			p := newDemoUnitController(env, id, bus, dem.schweber)
+			dem.controller = p.(*demoUnit_controller)
+			return p
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("demo unit: %w", err)
+	}
+
+	// unplug left peripheral
+	// err = riot.Ports.Plug(plugging.PortLeft, ports.NewPeripheralNone)
+	// if err != nil {
+	// 	return fmt.Errorf("demo unit: %w", err)
+	// }
+
 	return nil
 }
 
-func (fl *Schweber) romdump(w io.Writer) error {
+func (dem *DemoUnit) romdump(w io.Writer) error {
 	return fmt.Errorf("demo unit: romdump: unsupported")
 }
 
-func (fl *Schweber) jmpAddr() uint16 {
-	return uint16(fl.jmpAddrLo) | uint16(fl.jmpAddrHi)<<8
+func (dem *DemoUnit) jmpAddr() uint16 {
+	return uint16(dem.jmpAddrLo) | uint16(dem.jmpAddrHi)<<8
 }
