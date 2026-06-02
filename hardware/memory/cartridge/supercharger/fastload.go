@@ -152,7 +152,7 @@ func (tap *FastLoad) end() {
 
 // whether to boot the loaded program directly or to use a shim program in RAM. a program in RAM
 // more closely follows the side-effect of the real BIOS loading process
-const quickBootstrap = true
+const quickBootstrap = false
 
 // bootstrap implements the tape interface
 func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer, tia *tia.TIA) error {
@@ -190,10 +190,6 @@ func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *time
 		copy(state.ram[bank][ramOffset:ramOffset+0x100], fl.blocks[fl.blockIdx].data[dataOffset:dataOffset+0x100])
 	}
 
-	// set the value to be used in the first instruction of the bootstrap program
-	state.registers.Value = fl.blocks[fl.blockIdx].configByte
-	state.registers.Delay = 0
-
 	// the remainder of this function replicates the pertinent side-effects of the BIOS. it's not
 	// certain if this is 100% of the side-effects we need to worry about
 
@@ -211,26 +207,32 @@ func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *time
 	// RAM address 0x80 contains the initial configbyte
 	_ = ram.Poke(0x80, fl.blocks[fl.blockIdx].configByte)
 
+	// poke initialisation sequence into RAM. whether we use this depends on the quickBootstrap constant
+
+	// CMP $fff8
+	_ = ram.Poke(0xfa, 0xcd)
+	_ = ram.Poke(0xfb, 0xf8)
+	_ = ram.Poke(0xfc, 0xff)
+
+	// JMP <absolute address>
+	_ = ram.Poke(0xfd, 0x4c)
+	_ = ram.Poke(jmpAddrLo, fl.blocks[fl.blockIdx].startAddressLo)
+	_ = ram.Poke(jmpAddrHi, fl.blocks[fl.blockIdx].startAddressHi)
+
 	if quickBootstrap {
 		mc.PC.Load(fl.jmpAddr())
 		state.registers.setConfigByte(fl.blocks[fl.blockIdx].configByte)
 	} else {
-		// CMP $fff8
-		_ = ram.Poke(0xfa, 0xcd)
-		_ = ram.Poke(0xfb, 0xf8)
-		_ = ram.Poke(0xfc, 0xff)
-
-		// JMP <absolute address>
-		_ = ram.Poke(0xfd, 0x4c)
-		_ = ram.Poke(jmpAddrLo, fl.blocks[fl.blockIdx].startAddressLo)
-		_ = ram.Poke(jmpAddrHi, fl.blocks[fl.blockIdx].startAddressHi)
-
 		// jump to VCS RAM location 0x00fa. a short bootstrap program has been
 		// poked there already
 		err = mc.LoadPC(0x00fa)
 		if err != nil {
 			return fmt.Errorf("fastload: %w", err)
 		}
+
+		// set the value to be used in the first CMP instruction of the bootstrap program
+		state.registers.Value = fl.blocks[fl.blockIdx].configByte
+		state.registers.Delay = 0
 	}
 
 	// reset timer. in references to real tape loading, the number of ticks
