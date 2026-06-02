@@ -17,6 +17,8 @@ package banking
 
 import (
 	"fmt"
+
+	"github.com/jetsetilly/gopher2600/hardware/cpu"
 )
 
 // Content contains data and ID of a cartridge bank. Used by CopyBanks()
@@ -45,6 +47,25 @@ type Content struct {
 	// cartridge addresses and should in the primary cartridge mirror range
 	// (ie. 0x1000 to 0x1fff)j
 	Origins []uint16
+
+	// some cartridge mappers do not have a normal entry point address embedded in the data
+	// for these mappers the entryPointSpecial flag is set and the entryPoint field assigned
+	// the appropriate value
+	entryPointSpecial bool
+	entryPoint        uint16
+}
+
+func (c *Content) SetDisassemblyEntryPoint(addr uint16) {
+	c.entryPointSpecial = true
+	c.entryPoint = addr
+}
+
+func (c Content) DisassemblyEntryPoint() uint16 {
+	if c.entryPointSpecial {
+		return c.entryPoint
+	}
+	resetVector := cpu.Reset & (uint16(len(c.Data) - 1))
+	return (uint16(c.Data[resetVector+1]) << 8) | uint16(c.Data[resetVector])
 }
 
 // Information is used to identify a cartridge bank. In some instance a bank can

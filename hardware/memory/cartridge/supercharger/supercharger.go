@@ -60,6 +60,7 @@ type tape interface {
 	end()
 	romdump(io.Writer) error
 	bootstrap(*state, *cpu.CPU, *vcs.RAM, *timer.Timer, *tia.TIA) error
+	jmpAddr() uint16
 }
 
 // Supercharger represents a supercharger cartridge.
@@ -378,6 +379,8 @@ func (cart *Supercharger) CopyBanks() []banking.Content {
 		},
 	}
 
+	// the entry point for the BIOS is normal (ie. it is found at the CPU reset vector)
+
 	for b := range len(cart.state.ram) {
 		c[b+1] = banking.Content{Number: b + 1,
 			Data: cart.state.ram[b],
@@ -386,6 +389,7 @@ func (cart *Supercharger) CopyBanks() []banking.Content {
 				memorymap.OriginCartFxxx + uint16(cart.bankSize),
 			},
 		}
+		c[b+1].SetDisassemblyEntryPoint(cart.state.tape.jmpAddr())
 	}
 
 	return c

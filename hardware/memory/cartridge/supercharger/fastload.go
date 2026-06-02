@@ -93,9 +93,7 @@ func newFastLoad(env *environment.Environment) (tape, error) {
 		copy(fl.blocks[i].pageTable[:], gameHeader[fastLoadPageTableOffset:fastLoadPageTableOffset+len(fl.blocks[i].pageTable)])
 		copy(fl.blocks[i].pageChecksums[:], gameHeader[fastLoadPageChecksumTableOffset:fastLoadPageChecksumTableOffset+len(fl.blocks[i].pageChecksums)])
 
-		logger.Logf(fl.env, "supercharger: fastload", "block %d: start address: %#04x", i,
-			uint16(fl.blocks[i].startAddressLo)|(uint16(fl.blocks[fl.blockIdx].startAddressHi)<<8),
-		)
+		logger.Logf(fl.env, "supercharger: fastload", "block %d: start address: %#04x", i, fl.jmpAddr())
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: config byte: %#08b", i, fl.blocks[i].configByte)
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: num pages: %d", i, fl.blocks[i].numPages)
 		logger.Logf(fl.env, "supercharger: fastload", "block %d: checksum: %#02x", i, fl.blocks[i].headerChecksum)
@@ -214,9 +212,7 @@ func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *time
 	_ = ram.Poke(0x80, fl.blocks[fl.blockIdx].configByte)
 
 	if quickBootstrap {
-		jmpAddr := uint16(fl.blocks[fl.blockIdx].startAddressLo)
-		jmpAddr |= uint16(fl.blocks[fl.blockIdx].startAddressHi) << 8
-		mc.PC.Load(jmpAddr)
+		mc.PC.Load(fl.jmpAddr())
 		state.registers.setConfigByte(fl.blocks[fl.blockIdx].configByte)
 	} else {
 		// CMP $fff8
@@ -272,4 +268,8 @@ func (fl *FastLoad) romdump(w io.Writer) error {
 		}
 	}
 	return nil
+}
+
+func (fl *FastLoad) jmpAddr() uint16 {
+	return uint16(fl.blocks[fl.blockIdx].startAddressLo) | uint16(fl.blocks[fl.blockIdx].startAddressHi)<<8
 }

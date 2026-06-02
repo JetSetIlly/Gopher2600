@@ -89,15 +89,12 @@ func newDecode(dsm *Disassembly, startingBank int, copiedBanks []banking.Content
 func (dec *decode) bless() error {
 	// bless from reset address for every bank
 	for b := range dec.disasmEntries.Entries {
-		// get reset address from starting bank, taking into account the
-		// possibility that bank is smalled thank 4096 bytes
-		resetVector := cpu.Reset & (uint16(len(dec.mem.banks[b].Data) - 1))
-		resetAddr := (uint16(dec.mem.banks[b].Data[resetVector+1]) << 8) | uint16(dec.mem.banks[b].Data[resetVector])
+		entry := dec.mem.banks[b].DisassemblyEntryPoint()
 
 		// make sure reset address is valid
-		_, area := memorymap.MapAddress(resetAddr, true)
+		_, area := memorymap.MapAddress(entry, true)
 		if area == memorymap.Cartridge {
-			_ = dec.blessSequence(b, resetAddr, true)
+			_ = dec.blessSequence(b, entry, true)
 		}
 	}
 

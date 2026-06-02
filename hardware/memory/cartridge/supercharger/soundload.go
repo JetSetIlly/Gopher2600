@@ -56,6 +56,10 @@ import (
 type SoundLoad struct {
 	env *environment.Environment
 
+	// the address to which execution jumps after booting
+	jmpAddrLo uint8
+	jmpAddrHi uint8
+
 	// fastload block equivalents. indexed by multiload value
 	blocks map[uint8]fastLoadBlock
 
@@ -258,6 +262,9 @@ func (tap *SoundLoad) bootstrap(state *state, _ *cpu.CPU, ram *vcs.RAM, _ *timer
 			return fmt.Errorf("soundload: %w", err)
 		}
 
+		tap.jmpAddrLo = startAddressLo
+		tap.jmpAddrHi = startAddressHi
+
 		configByte, err := ram.Peek(configByteAddr)
 		if err != nil {
 			return fmt.Errorf("soundload: %w", err)
@@ -341,4 +348,8 @@ func (tap *SoundLoad) romdump(w io.Writer) error {
 		}
 	}
 	return nil
+}
+
+func (tap *SoundLoad) jmpAddr() uint16 {
+	return uint16(tap.jmpAddrLo) | uint16(tap.jmpAddrHi)<<8
 }
