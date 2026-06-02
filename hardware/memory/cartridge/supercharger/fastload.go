@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
+	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -155,7 +156,7 @@ func (tap *FastLoad) end() {
 const quickBootstrap = false
 
 // bootstrap implements the tape interface
-func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer, tia *tia.TIA) error {
+func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, riot *riot.RIOT, tia *tia.TIA) error {
 	// look up requested multiload address
 	m, err := ram.Peek(MutliloadByteAddr)
 	if err != nil {
@@ -237,10 +238,10 @@ func (fl *FastLoad) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *time
 
 	// reset timer. in references to real tape loading, the number of ticks
 	// is the value at the moment the PC reaches address 0x00fa
-	tmr.PokeField("divider", timer.TIM64T)
-	tmr.PokeField("ticksRemaining", 0x1f)
-	tmr.PokeField("intim", uint8(0x0a))
-	tmr.PokeField("pa7", false)
+	riot.Timer.PokeField("divider", timer.TIM64T)
+	riot.Timer.PokeField("ticksRemaining", 0x1f)
+	riot.Timer.PokeField("intim", uint8(0x0a))
+	riot.Timer.PokeField("pa7", false)
 
 	// suicide mission does not reset the vertical delay registers which will have been enabled at the
 	// start of the BIOS load routine and disabled somewhere in the part of the BIOS we skip

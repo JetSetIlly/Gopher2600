@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
-	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
+	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
 )
 
@@ -298,7 +298,7 @@ type CartTapeState struct {
 // access to RAM is required (and only then so that we can support cartridge dumping). However, we
 // use the single bootstrap function for bother types of Supercharger
 type CartSuperchargerBootstrap interface {
-	Bootstrap(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer, tia *tia.TIA) error
+	Bootstrap(*cpu.CPU, *vcs.RAM, *riot.RIOT, *tia.TIA) error
 }
 
 // CartLabelsBus will be implemented for cartridge mappers that want to report any

@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
+	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
 	"github.com/jetsetilly/gopher2600/notifications"
@@ -87,7 +88,7 @@ func (tap *Schweber) end() {
 }
 
 // bootstrap implements the tape interface
-func (fl *Schweber) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer, tia *tia.TIA) error {
+func (fl *Schweber) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, riot *riot.RIOT, tia *tia.TIA) error {
 	// copy bootloader to correct location, such that the start instruction is at $ffc0
 	clear(state.ram[0])
 	clear(state.ram[1])
@@ -122,10 +123,10 @@ func (fl *Schweber) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, tmr *time
 	}
 
 	// same state changes as what we discovered for fastload
-	tmr.PokeField("divider", timer.TIM64T)
-	tmr.PokeField("ticksRemaining", 0x1f)
-	tmr.PokeField("intim", uint8(0x0a))
-	tmr.PokeField("pa7", false)
+	riot.Timer.PokeField("divider", timer.TIM64T)
+	riot.Timer.PokeField("ticksRemaining", 0x1f)
+	riot.Timer.PokeField("intim", uint8(0x0a))
+	riot.Timer.PokeField("pa7", false)
 	tia.Video.Player0.SetVerticalDelay(false)
 	tia.Video.Player1.SetVerticalDelay(false)
 	tia.Video.Player0.SetNUSIZ(0)

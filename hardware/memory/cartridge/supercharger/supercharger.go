@@ -27,7 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
-	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
+	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -59,7 +59,7 @@ type tape interface {
 	step()
 	end()
 	romdump(io.Writer) error
-	bootstrap(*state, *cpu.CPU, *vcs.RAM, *timer.Timer, *tia.TIA) error
+	bootstrap(*state, *cpu.CPU, *vcs.RAM, *riot.RIOT, *tia.TIA) error
 	jmpAddr() uint16
 }
 
@@ -502,8 +502,8 @@ func (cart *Supercharger) SetTapeCounter(c int) {
 }
 
 // Bootstrap implements the mapper.CartSuperchargerBootstrap interface.
-func (cart *Supercharger) Bootstrap(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer, tia *tia.TIA) error {
-	return cart.state.tape.bootstrap(cart.state, mc, ram, tmr, tia)
+func (cart *Supercharger) Bootstrap(mc *cpu.CPU, ram *vcs.RAM, riot *riot.RIOT, tia *tia.TIA) error {
+	return cart.state.tape.bootstrap(cart.state, mc, ram, riot, tia)
 }
 
 // GetTapeState implements the mapper.CartTapeBus interface
