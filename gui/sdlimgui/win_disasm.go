@@ -219,6 +219,7 @@ func (win *winDisasm) drawSequential(currBank banking.Information) {
 	}
 
 	win.drawOptionsBar(currBank)
+
 }
 
 func (win *winDisasm) drawBanked(addr uint16, currBank banking.Information) {
@@ -411,6 +412,12 @@ func (win *winDisasm) drawOptionsBar(currBank banking.Information) {
 			win.sequential = win.img.prefs.disasmSequential.Get().(bool)
 			if imgui.Checkbox("Show Sequential", &win.sequential) {
 				win.img.prefs.disasmSequential.Set(win.sequential)
+
+				// scroll to the correct position in the disasm list when sequential option changes
+				if win.followCPU {
+					win.scroll.active = numScrollFrames
+					win.selectedBank = currBank.Number
+				}
 			}
 		}
 
@@ -428,12 +435,11 @@ func (win *winDisasm) drawOptionsBar(currBank banking.Information) {
 			imgui.AlignTextToFramePadding()
 			imgui.Text(string(fonts.CoProcExecution))
 			win.img.imguiTooltipSimple("Coprocessor is executing")
-		}
-		if currBank.NonCart {
+		} else if currBank.NonCart {
 			imgui.SameLineV(0, 15)
 			imgui.AlignTextToFramePadding()
 			imgui.Text(string(fonts.NonCartExecution))
-			win.img.imguiTooltipSimple("Executing a non-cartridge address!")
+			win.img.imguiTooltipSimple("Executing non-cartridge addresses!")
 		}
 	})
 }
@@ -451,7 +457,12 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 	defer imgui.EndChild()
 
 	if len(entries) == 0 {
-		imgui.Text("No executed instructions yet")
+		imgui.Spacing()
+		if currBank.NonCart {
+			imgui.Text("Executing non-cartridge addresses!")
+		} else {
+			imgui.Text("Nothing in disassembly yet")
+		}
 		return
 	}
 
@@ -613,8 +624,8 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 		}
 	})
 
-	if win.scroll.active > 0 {
-		// scrolling for sequential disassembly is different then for normal disassembly
+	if win.scroll.active > 0 && (!currBank.NonCart || sequential) {
+		// scrolling for sequential disassembly is different than for normal disassembly
 		if win.sequential || currBank.Sequential {
 			imgui.SetScrollY(imgui.ScrollMaxY())
 		} else {
