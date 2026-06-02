@@ -102,7 +102,11 @@ func NewSupercharger(env *environment.Environment) (mapper.CartMapper, error) {
 	if env.Loader.IsSoundData {
 		cart.state.tape, err = newSoundLoad(env)
 	} else {
-		cart.state.tape, err = newFastLoad(env)
+		if env.Loader.HashMD5 == SchweberHash {
+			cart.state.tape, err = newSchweber(env)
+		} else {
+			cart.state.tape, err = newFastLoad(env)
+		}
 	}
 	if err != nil {
 		return nil, fmt.Errorf("supercharger: %w", err)
