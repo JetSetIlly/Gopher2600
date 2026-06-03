@@ -316,6 +316,12 @@ func (dsm *Disassembly) ExecutedEntry(bank banking.Information, result execution
 		}
 	}
 
+	// this condition prevents continuous consecutive BRK instructions from being added to the
+	// sequential list
+	if nextAddr == result.Address {
+		return e
+	}
+
 	// add to sequential list or ammend the last entry as appropriate
 	if len(dsm.disasmEntries.Sequential) != 0 {
 		last := dsm.disasmEntries.Sequential[len(dsm.disasmEntries.Sequential)-1]
