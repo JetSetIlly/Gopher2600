@@ -41,6 +41,12 @@ type tv interface {
 	GetCoords() coords.TelevisionCoords
 }
 
+// formatResultQuick is a special case for the formatResult() function. useful for formatting
+// execution results with no real context
+func formatResultQuick(result execution.Result, level EntryLevel) *Entry {
+	return formatResult(nil, nil, banking.Information{NonCart: true}, result, level)
+}
+
 // formatResult creates an Entry for supplied result/bank. It will be assigned the specified
 // EntryLevel.
 //
