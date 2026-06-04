@@ -81,9 +81,9 @@ type Playfield struct {
 	// Region keeps track of which part of the screen we're currently in
 	Region ScreenRegion
 
-	// Idx is the index into the data field - interpreted depending on
+	// idx is the index into the data field - interpreted depending on
 	// screenRegion and reflection settings
-	Idx int
+	idx int
 
 	// state of playfield "pixel"
 
@@ -214,15 +214,15 @@ func (pf *Playfield) tick() bool {
 			pf.color = pf.BackgroundColor
 			return pf.colorLatch != pf.prevColorLatch
 		case RegionLeft:
-			pf.Idx = int(*pf.tia.hsync) - 17
+			pf.idx = int(*pf.tia.hsync) - 17
 		case RegionRight:
-			pf.Idx = int(*pf.tia.hsync) - 37
+			pf.idx = int(*pf.tia.hsync) - 37
 		}
 
 		// if region is RegionOffScreen then we've returned already
 
-		if pf.Idx >= 0 {
-			pf.colorLatch = (*pf.Data)[pf.Idx]
+		if pf.idx >= 0 {
+			pf.colorLatch = (*pf.Data)[pf.idx]
 		}
 	} else {
 		// do nothing if we're in the off screen region
@@ -257,44 +257,54 @@ func (pf *Playfield) latchRegionData() {
 	}
 }
 
-// Which PFx register is the current Idx value pointing to
-func (pf *Playfield) PFxFromIdx() int {
+// Which PFx register is the currently being drawn
+func (pf *Playfield) CurrrentPFx() int {
 	if pf.Reflected && pf.Region == RegionRight {
-		if pf.Idx >= 16 && pf.Idx <= 19 {
+		if pf.idx >= 16 && pf.idx <= 19 {
 			return 0
 		}
-		if pf.Idx >= 8 && pf.Idx <= 15 {
+		if pf.idx >= 8 && pf.idx <= 15 {
 			return 1
 		}
 		return 2
 	}
-	if pf.Idx >= 0 && pf.Idx <= 3 {
+	if pf.idx >= 0 && pf.idx <= 3 {
 		return 0
 	}
-	if pf.Idx >= 4 && pf.Idx <= 11 {
+	if pf.idx >= 4 && pf.idx <= 11 {
 		return 1
 	}
 	return 2
 }
 
-// Like PfxFromIdx but also returns the specific index for the field
-func (pf *Playfield) PFxIdxFromIdx() (int, int) {
-	if pf.Reflected && pf.Region == RegionRight {
-		if pf.Idx >= 16 && pf.Idx <= 19 {
-			return 0, (19 - pf.Idx) - 16
+// Indexes returns the PFx number; the index within the PFx; and the index for the scanline
+func (pf *Playfield) Indexes() (int, int, int) {
+	if pf.Region == RegionRight {
+		if pf.Reflected {
+			if pf.idx >= 16 && pf.idx <= 19 {
+				return 0, pf.idx - 16, pf.idx + 20
+			}
+			if pf.idx >= 8 && pf.idx <= 15 {
+				return 1, 15 - pf.idx, pf.idx + 20
+			}
+			return 2, pf.idx, pf.idx + 20
+		} else {
+			if pf.idx >= 0 && pf.idx <= 3 {
+				return 0, 3 - pf.idx, pf.idx + 20
+			}
+			if pf.idx >= 4 && pf.idx <= 11 {
+				return 1, pf.idx - 4, pf.idx + 20
+			}
+			return 2, 19 - pf.idx, pf.idx + 20
 		}
-		if pf.Idx >= 8 && pf.Idx <= 15 {
-			return 1, (19 - pf.Idx) - 8
-		}
-		return 2, (19 - pf.Idx) - 12
 	}
-	if pf.Idx >= 0 && pf.Idx <= 3 {
-		return 0, pf.Idx
+	if pf.idx >= 0 && pf.idx <= 3 {
+		return 0, 3 - pf.idx, pf.idx
 	}
-	if pf.Idx >= 4 && pf.Idx <= 11 {
-		return 1, pf.Idx - 4
+	if pf.idx >= 4 && pf.idx <= 11 {
+		return 1, pf.idx - 4, pf.idx
 	}
-	return 2, pf.Idx - 12
+	return 2, 19 - pf.idx, pf.idx
 }
 
 // SetPF0 sets the playfield PF0 bits.

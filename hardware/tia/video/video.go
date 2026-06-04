@@ -332,7 +332,7 @@ func (vd *Video) Pixel(vblank bool) {
 		if vd.Playfield.colorLatch { // priority 1
 			vd.PixelColor = vd.Playfield.color
 			vd.LastElement = ElementPlayfield
-			vd.LastElementCt = vd.Playfield.PFxFromIdx()
+			vd.LastElementCt = vd.Playfield.CurrrentPFx()
 		} else if vd.Ball.pixelOn { // priority 1 (ball is same color as playfield)
 			vd.PixelColor = vd.Ball.Color
 			vd.LastElement = ElementBall
@@ -366,7 +366,7 @@ func (vd *Video) Pixel(vblank bool) {
 			if vd.Playfield.colorLatch { // priority 1 (playfield takes color of player 0)
 				vd.PixelColor = vd.Player0.Color
 				vd.LastElement = ElementPlayfield
-				vd.LastElementCt = vd.Playfield.PFxFromIdx()
+				vd.LastElementCt = vd.Playfield.CurrrentPFx()
 			} else if vd.Player0.pixelOn { // priority 1 (same color as playfield)
 				vd.PixelColor = vd.Player0.Color
 				vd.LastElement = ElementPlayer0
@@ -412,7 +412,7 @@ func (vd *Video) Pixel(vblank bool) {
 			} else if vd.Playfield.colorLatch { // priority 2 (playfield takes color of player 1)
 				vd.PixelColor = vd.Player1.Color
 				vd.LastElement = ElementPlayfield
-				vd.LastElementCt = vd.Playfield.PFxFromIdx()
+				vd.LastElementCt = vd.Playfield.CurrrentPFx()
 			} else if vd.Ball.pixelOn { // priority 3
 				vd.PixelColor = vd.Ball.Color
 				vd.LastElement = ElementBall
@@ -447,7 +447,7 @@ func (vd *Video) Pixel(vblank bool) {
 		} else if vd.Playfield.colorLatch { // priority 3 (playfield is same color as ball)
 			vd.PixelColor = vd.Playfield.color
 			vd.LastElement = ElementPlayfield
-			vd.LastElementCt = vd.Playfield.PFxFromIdx()
+			vd.LastElementCt = vd.Playfield.CurrrentPFx()
 		} else {
 			vd.PixelColor = vd.Playfield.BackgroundColor
 			vd.LastElement = ElementBackground

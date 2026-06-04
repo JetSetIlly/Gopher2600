@@ -30,7 +30,7 @@ func (win *winTIA) drawPlayfield() {
 
 	// which PFx register is being used and the index into that register
 	// used for drawing the index pointer
-	pfx, pfxIdx := playfield.PFxIdxFromIdx()
+	pfx, pfxIdx, scanlineIdx := playfield.Indexes()
 
 	imgui.Spacing()
 
@@ -244,7 +244,7 @@ func (win *winTIA) drawPlayfield() {
 	}
 	seq.end()
 	if playfield.Region != video.RegionOffScreen {
-		win.drawPlayfieldIndexPointer(playfield.Idx, seq)
+		win.drawPlayfieldIndexPointer(scanlineIdx, seq)
 	}
 	imgui.EndGroup()
 
