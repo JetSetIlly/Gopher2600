@@ -16,7 +16,6 @@
 package cartridge
 
 import (
-	"crypto/sha1"
 	"fmt"
 	"io"
 
@@ -43,7 +42,7 @@ type ua struct {
 	swappedHotspots bool
 }
 
-func newUA(env *environment.Environment) (mapper.CartMapper, error) {
+func newUA(env *environment.Environment, swappedHotspots bool) (mapper.CartMapper, error) {
 	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("UA: %w", err)
@@ -53,11 +52,15 @@ func newUA(env *environment.Environment) (mapper.CartMapper, error) {
 		env:             env,
 		mappingID:       "UA",
 		bankSize:        4096,
-		swappedHotspots: false,
+		swappedHotspots: swappedHotspots,
+	}
+
+	if swappedHotspots {
+		cart.mappingID = "UASW"
 	}
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, fmt.Errorf("UA: wrong number of bytes in the cartridge data")
+		return nil, fmt.Errorf("%s: wrong number of bytes in the cartridge data", cart.mappingID)
 	}
 
 	cart.banks = make([][]uint8, cart.NumBanks())
@@ -69,9 +72,15 @@ func newUA(env *environment.Environment) (mapper.CartMapper, error) {
 	}
 
 	// only one cartridge dump is known to have swapped hotspots
-	if fmt.Sprintf("%0x", sha1.Sum(data)) == "6d4a94c2348bbd8e9c73b73d8f3389196d42fd54" {
-		cart.swappedHotspots = true
-		logger.Log(env, "UA", "swapping hotspot address for this cartridge (Sorcerer's Apprentice)")
+	if !cart.swappedHotspots {
+		switch env.Loader.HashSHA1 {
+		case "6d4a94c2348bbd8e9c73b73d8f3389196d42fd54":
+			cart.swappedHotspots = true
+			logger.Log(env, cart.mappingID, "swapping hotspot address for this cartridge: Sorcerer's Apprentice")
+		case "e38fa80640137fa9db3d2b1bb87e710435baf107":
+			cart.swappedHotspots = true
+			logger.Log(env, cart.mappingID, "swapping hotspot address for this cartridge: Beamrider (Digivision JVP) (Brazil)")
+		}
 	}
 
 	return cart, nil
@@ -191,7 +200,7 @@ func (cart *ua) CopyBanks() []banking.Content {
 // Patch implements the mapper.CartPatchable interface
 func (cart *ua) Patch(offset int, data uint8) error {
 	if offset >= cart.bankSize*len(cart.banks) {
-		return fmt.Errorf("UA: patch offset too high (%d)", offset)
+		return fmt.Errorf("%s: patch offset too high (%d)", cart.mappingID, offset)
 	}
 
 	bank := offset / cart.bankSize

@@ -243,12 +243,13 @@ func fingerprintSCABS(loader cartridgeloader.Loader) bool {
 func fingerprintUA(loader cartridgeloader.Loader) bool {
 	// ua fingerprint taken from Stella
 	fingerprint := [][]byte{
-		{0x8D, 0x40, 0x02}, // STA $240 (Funky Fish, Pleiades)
-		{0xAD, 0x40, 0x02}, // LDA $240 (???)
-		{0xBD, 0x1F, 0x02}, // LDA $21F,X (Gingerbread Man)
-		{0x2C, 0xC0, 0x02}, // BIT $2C0 (Time Pilot)
-		{0x8D, 0xC0, 0x02}, // STA $2C0 (Fathom, Vanguard)
-		{0xAD, 0xC0, 0x02}, // LDA $2C0 (Mickey)
+		{0x8d, 0x40, 0x02}, // STA $240 (Funky Fish, Pleiades)
+		{0xad, 0x40, 0x02}, // LDA $240 (???)
+		{0xbd, 0x1f, 0x02}, // LDA $21F,X (Gingerbread Man)
+		{0x2c, 0xc0, 0x02}, // BIT $2C0 (Time Pilot)
+		{0x8d, 0xc0, 0x02}, // STA $2C0 (Fathom, Vanguard)
+		{0xad, 0xc0, 0x02}, // LDA $2C0 (Mickey)
+		{0x2c, 0xb0, 0x0f}, // BIT $FB0 (Digivision Beamrider)
 	}
 	return slices.ContainsFunc(fingerprint, loader.Contains)
 }

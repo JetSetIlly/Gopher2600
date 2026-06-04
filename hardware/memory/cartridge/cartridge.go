@@ -327,7 +327,9 @@ func (cart *Cartridge) Attach(loader cartridgeloader.Loader) error {
 	case "3F":
 		cart.mapper, err = newTigervision(cart.env)
 	case "UA":
-		cart.mapper, err = newUA(cart.env)
+		cart.mapper, err = newUA(cart.env, false)
+	case "UASW":
+		cart.mapper, err = newUA(cart.env, true)
 	case "AR":
 		cart.mapper, err = supercharger.NewSupercharger(cart.env)
 	case "DF":
