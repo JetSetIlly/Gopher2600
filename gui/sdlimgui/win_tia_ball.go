@@ -136,7 +136,7 @@ func (win *winTIA) drawBall() {
 				realBall := win.img.dbg.VCS().TIA.Video.Ball
 				realBall.SetCTRLPF(uint8(v))
 				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
-				realPlayfield.SetCTRLPF(uint8(v))
+				realPlayfield.SetCTRLPF(uint8(v), true)
 			})
 		}
 	}

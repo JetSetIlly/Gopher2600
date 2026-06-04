@@ -19,14 +19,14 @@ package video
 // be used to keep only the relevant bits from the value that has been written
 // to the register.
 const (
-	CTRLPFPriorityMask  = 0x04
-	CTRLPFScoremodeMask = 0x02
-	CTRLPFReflectedMask = 0x01
-	REFPxMask           = 0x08
-	VDELPxMask          = 0x01
-	RESMPxMask          = 0x02
-	ENAxxMask           = 0x02
-	HMxxMask            = 0xf0
-	NUSIZxCopiesMask    = 0x07
-	NUSIZxSizeMask      = 0x03
+	CTRLPFPriorityMask  uint8 = 0x04
+	CTRLPFScoremodeMask uint8 = 0x02
+	CTRLPFReflectedMask uint8 = 0x01
+	REFPxMask           uint8 = 0x08
+	VDELPxMask          uint8 = 0x01
+	RESMPxMask          uint8 = 0x02
+	ENAxxMask           uint8 = 0x02
+	HMxxMask            uint8 = 0xf0
+	NUSIZxCopiesMask    uint8 = 0x07
+	NUSIZxSizeMask      uint8 = 0x03
 )

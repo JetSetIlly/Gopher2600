@@ -75,8 +75,12 @@ func (win *winTIA) drawPlayfield() {
 	ref := playfield.Reflected
 	if imgui.Checkbox("##reflected", &ref) {
 		win.img.dbg.PushFunction(func() {
-			realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
-			realPlayfield.Reflected = ref
+			pf := win.img.dbg.VCS().TIA.Video.Playfield
+			ctrlpf := pf.Ctrlpf & ^video.CTRLPFReflectedMask
+			if ref {
+				ctrlpf |= video.CTRLPFReflectedMask
+			}
+			pf.SetCTRLPF(ctrlpf, true)
 		})
 	}
 	imgui.SameLine()
@@ -84,8 +88,12 @@ func (win *winTIA) drawPlayfield() {
 	sm := playfield.Scoremode
 	if imgui.Checkbox("##scoremode", &sm) {
 		win.img.dbg.PushFunction(func() {
-			realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
-			realPlayfield.Scoremode = sm
+			pf := win.img.dbg.VCS().TIA.Video.Playfield
+			ctrlpf := pf.Ctrlpf & ^video.CTRLPFScoremodeMask
+			if ref {
+				ctrlpf |= video.CTRLPFScoremodeMask
+			}
+			pf.SetCTRLPF(ctrlpf, true)
 		})
 	}
 	imgui.SameLine()
@@ -93,8 +101,12 @@ func (win *winTIA) drawPlayfield() {
 	pri := playfield.Priority
 	if imgui.Checkbox("##priority", &pri) {
 		win.img.dbg.PushFunction(func() {
-			realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
-			realPlayfield.Priority = pri
+			pf := win.img.dbg.VCS().TIA.Video.Playfield
+			ctrlpf := pf.Ctrlpf & ^video.CTRLPFPriorityMask
+			if ref {
+				ctrlpf |= video.CTRLPFPriorityMask
+			}
+			pf.SetCTRLPF(ctrlpf, true)
 		})
 	}
 
@@ -107,7 +119,7 @@ func (win *winTIA) drawPlayfield() {
 			win.img.dbg.PushFunction(func() {
 				// update ball copy of CTRLPF too in addition to the playfield copy
 				realPlayfield := win.img.dbg.VCS().TIA.Video.Playfield
-				realPlayfield.SetCTRLPF(uint8(v))
+				realPlayfield.SetCTRLPF(uint8(v), true)
 				realBall := win.img.dbg.VCS().TIA.Video.Ball
 				realBall.SetCTRLPF(uint8(v))
 			})

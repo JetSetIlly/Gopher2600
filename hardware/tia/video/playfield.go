@@ -71,12 +71,19 @@ type Playfield struct {
 	PF1 uint8
 	PF2 uint8
 
-	// for convenience we store the raw CTRLPF register value and the
-	// normalised control bits specific to the playfield
+	// for convenience we store the raw CTRLPF register value and the normalised control bits
+	// specific to the playfield
+	//
+	// these fields can be read but should be set with SetCTRLPF()
 	Ctrlpf    uint8
 	Reflected bool
 	Priority  bool
 	Scoremode bool
+
+	// the reflected flag does not take effect until the screen region changes.
+	// this latched flag allows us to change the Reflected flag without affecting
+	// the results of the Indexes() and CurrentPFx() functions that return values
+	// depending on the screen region and the (latched) reflection flag
 
 	// Region keeps track of which part of the screen we're currently in
 	Region ScreenRegion
@@ -259,7 +266,7 @@ func (pf *Playfield) latchRegionData() {
 
 // Which PFx register is the currently being drawn
 func (pf *Playfield) CurrrentPFx() int {
-	if pf.Reflected && pf.Region == RegionRight {
+	if pf.Region == RegionRight && pf.Reflected {
 		if pf.idx >= 16 && pf.idx <= 19 {
 			return 0
 		}
@@ -374,11 +381,27 @@ func (pf *Playfield) setPF2(v uint8) {
 	pf.SetPF2(v)
 }
 
-func (pf *Playfield) SetCTRLPF(value uint8) {
+func (pf *Playfield) SetCTRLPF(value uint8, latchImmediately bool) {
 	pf.Ctrlpf = value
 	pf.Scoremode = value&CTRLPFScoremodeMask == CTRLPFScoremodeMask
 	pf.Priority = value&CTRLPFPriorityMask == CTRLPFPriorityMask
 	pf.Reflected = value&CTRLPFReflectedMask == CTRLPFReflectedMask
+
+	// latching immediately is not done under normal conditions but should be done
+	// when interacting with the playfield via a debugger. latching immediately means
+	// we update the region data and also the colour-latch and output colour
+	if latchImmediately {
+		pf.latchRegionData()
+
+		if pf.idx >= 0 {
+			pf.colorLatch = (*pf.Data)[pf.idx]
+		}
+		if pf.colorLatch {
+			pf.color = pf.ForegroundColor
+		} else {
+			pf.color = pf.BackgroundColor
+		}
+	}
 }
 
 func (pf *Playfield) setColor(col uint8) {

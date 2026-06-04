@@ -684,7 +684,7 @@ func (vd *Video) UpdateSpriteVariations(data chipbus.ChangedRegister) bool {
 	switch data.Register {
 	case cpubus.CTRLPF:
 		vd.Ball.SetCTRLPF(data.Value)
-		vd.Playfield.SetCTRLPF(data.Value)
+		vd.Playfield.SetCTRLPF(data.Value, false)
 	case cpubus.VDELP0:
 		vd.Player0.SetVerticalDelay(data.Value&VDELPxMask == VDELPxMask)
 	case cpubus.VDELP1:
