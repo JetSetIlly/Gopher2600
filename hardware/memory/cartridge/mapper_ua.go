@@ -55,10 +55,6 @@ func newUA(env *environment.Environment, swappedHotspots bool) (mapper.CartMappe
 		swappedHotspots: swappedHotspots,
 	}
 
-	if swappedHotspots {
-		cart.mappingID = "UASW"
-	}
-
 	if len(data) != cart.bankSize*cart.NumBanks() {
 		return nil, fmt.Errorf("%s: wrong number of bytes in the cartridge data", cart.mappingID)
 	}
@@ -81,6 +77,10 @@ func newUA(env *environment.Environment, swappedHotspots bool) (mapper.CartMappe
 			cart.swappedHotspots = true
 			logger.Log(env, cart.mappingID, "swapping hotspot address for this cartridge: Beamrider (Digivision JVP) (Brazil)")
 		}
+	}
+
+	if cart.swappedHotspots {
+		cart.mappingID = "UASW"
 	}
 
 	return cart, nil
