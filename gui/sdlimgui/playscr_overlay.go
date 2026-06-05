@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
@@ -79,9 +80,9 @@ type playscrOverlay struct {
 	subState   govern.SubState
 	stateLatch overlayLatch
 
-	// events are user-activated events and require immediate feedback
-	event      notifications.Notice
-	eventLatch overlayLatch
+	// events are user-activated events and require immediate feedback.
+	event      []notifications.Notice
+	eventLatch []overlayLatch
 
 	// icons in the top-left corner of the overlay are drawn according to a
 	// priority. the iconQueue list the icons to be drawn in order
@@ -128,8 +129,19 @@ func (o *playscrOverlay) set(v gui.FeatureReqData, args ...gui.FeatureReqData) {
 			o.cartridge = n
 			o.cartridgeLatch = overlayLatch{duration: overlayLatchShort}
 		case notifications.NotifyScreenshot:
-			o.event = n
-			o.eventLatch = overlayLatch{duration: overlayLatchShort}
+			o.event = append(o.event, n)
+			o.eventLatch = append(o.eventLatch, overlayLatch{duration: overlayLatchShort})
+		case notifications.NotifyVideo:
+			if args[1].(bool) {
+				o.event = append(o.event, n)
+				o.eventLatch = append(o.eventLatch, overlayLatch{duration: overlayLatchPinned})
+			} else {
+				for i := range slices.Backward(o.event) {
+					if o.event[i] == notifications.NotifyVideo {
+						o.eventLatch[i] = overlayLatch{duration: overlayLatchBrief}
+					}
+				}
+			}
 		default:
 			return
 		}
@@ -376,13 +388,13 @@ func (o *playscrOverlay) drawTopLeft(posMin imgui.Vec2, _ imgui.Vec2) {
 		imgui.Spacing()
 		p := imgui.CursorScreenPos()
 		imgui.Text("")
+		p.X += 2
 		imgui.SetCursorScreenPos(p)
 
 		// draw developer icon if BorrowSource() returns a non-nil value
 		o.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 			if src != nil {
 				imgui.Text(string(fonts.Developer))
-				imgui.SameLine()
 			}
 		})
 
@@ -472,10 +484,17 @@ func (o *playscrOverlay) drawTopLeft(posMin imgui.Vec2, _ imgui.Vec2) {
 	// events have the highest priority. we can think of these as user activated
 	// events, such as the triggering of a screenshot. we therefore want to give
 	// the user confirmation feedback immediately over other icons
-	if o.eventLatch.tick() {
-		switch o.event {
-		case notifications.NotifyScreenshot:
-			o.iconQueue = append(o.iconQueue, fonts.Camera)
+	if len(o.event) > 0 {
+		if o.eventLatch[len(o.eventLatch)-1].tick() {
+			switch o.event[len(o.event)-1] {
+			case notifications.NotifyScreenshot:
+				o.iconQueue = append(o.iconQueue, fonts.Camera)
+			case notifications.NotifyVideo:
+				o.iconQueue = append(o.iconQueue, fonts.Film)
+			}
+		} else {
+			o.event = o.event[:len(o.event)-1]
+			o.eventLatch = o.eventLatch[:len(o.eventLatch)-1]
 		}
 	}
 

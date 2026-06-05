@@ -23,12 +23,14 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/caching"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/resources"
 	"github.com/jetsetilly/gopher2600/userinput"
@@ -556,8 +558,23 @@ func (img *SdlImgui) enableVideoRecording(enable bool, conf video.Session) error
 	if err != nil {
 		return err
 	}
-	img.screen.Reset()
+	if !enable {
+		img.screen.Reset()
+	}
+
+	go img.SetFeature(gui.ReqNotification, notifications.NotifyVideo, enable)
+
 	return nil
+}
+
+// calls enableVideoRecording with either true or false
+func (img *SdlImgui) toggleVideoRecording(conf video.Session) error {
+	if img.rnd.isRecording() {
+		logger.Log(logger.Allow, "sdlimgui", "ending video recording")
+		return img.enableVideoRecording(false, conf)
+	}
+	logger.Log(logger.Allow, "sdlimgui", "starting video recording")
+	return img.enableVideoRecording(true, conf)
 }
 
 // commit data to address in static memory. should onlybe called if you know for a fact that

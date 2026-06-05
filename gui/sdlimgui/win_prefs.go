@@ -230,6 +230,12 @@ of the ROM.`)
 	win.img.imguiTooltipSimple(`The left player be given a paddle automatically
 when the mouse is captured (with the right mouse button)`)
 
+	enableVideoHotkey := win.img.prefs.enableVideoHotkey.Get().(bool)
+	if imgui.Checkbox("Enable Video Recording Hotkey", &enableVideoHotkey) {
+		win.img.prefs.enableVideoHotkey.Set(enableVideoHotkey)
+	}
+	win.img.imguiTooltipSimple(`Toggle video recording with CTRL+V`)
+
 	imgui.Spacing()
 	if imgui.CollapsingHeader("Notifications") {
 		controllerNotifications := win.img.prefs.controllerNotifcations.Get().(bool)

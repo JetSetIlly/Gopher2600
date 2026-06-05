@@ -25,6 +25,9 @@ const (
 	// a screen shot is taking place
 	NotifyScreenshot Notice = "NotifyScreenshot"
 
+	// video recording is taking place
+	NotifyVideo Notice = "NotifyVideo"
+
 	// notifications sent when supercharger is loading from a sound file (eg. mp3 file)
 	NotifySuperchargerSoundLoadStarted Notice = "NotifySuperchargerSoundloadStarted"
 	NotifySuperchargerSoundLoadEnded   Notice = "NotifySuperchargerSoundloadEnded"

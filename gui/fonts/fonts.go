@@ -64,6 +64,7 @@ const (
 	VolumeRising           = '\uf062'
 	VolumeFalling          = '\uf063'
 	Camera                 = '\uf030'
+	Film                   = '\uf008'
 	Chip                   = '\uf2db'
 	Unlocked               = '\uf13e'
 	CPUJammed              = '\uf714'

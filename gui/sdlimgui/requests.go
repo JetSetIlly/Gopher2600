@@ -98,9 +98,9 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 						img.playScr.subtitles.set(notice, request.args[1:])
 					}
 				default:
-					err = argLen(request.args, 1, 1)
+					err = argLen(request.args, 1, 2)
 					if err == nil {
-						img.playScr.overlay.set(notice)
+						img.playScr.overlay.set(notice, request.args...)
 					}
 				}
 			}

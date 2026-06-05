@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 	"unicode"
@@ -27,6 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/userinput"
+	"github.com/jetsetilly/gopher2600/video"
 	"github.com/jetsetilly/imgui-go/v5"
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -163,6 +165,17 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				if ctrl {
 					img.dbg.PushReload(nil)
 					handled = true
+				}
+
+			case sdl.SCANCODE_V:
+				if ctrl {
+					if img.prefs.enableVideoHotkey.Get().(bool) {
+						img.toggleVideoRecording(video.Session{
+							Log:     os.Stdout,
+							Profile: video.ProfileFast,
+						})
+						handled = true
+					}
 				}
 
 			case sdl.SCANCODE_M:

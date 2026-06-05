@@ -69,6 +69,7 @@ type preferences struct {
 	fpsDetail            prefs.Bool
 	activePause          prefs.Bool
 	paddleOnMouseCapture prefs.Bool
+	enableVideoHotkey    prefs.Bool
 
 	// playmode notifications
 	controllerNotifcations    prefs.Bool
@@ -199,6 +200,12 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("sdlimgui.playmode.enabledVideoHotkey", &p.enableVideoHotkey)
+	if err != nil {
+		return nil, err
+	}
+
+	// notifications
 	err = p.dsk.Add("sdlimgui.playmode.controllerNotifcations", &p.controllerNotifcations)
 	if err != nil {
 		return nil, err
@@ -388,6 +395,7 @@ func (p *preferences) setDefaults() {
 	p.fpsDetail.Set(false)
 	p.activePause.Set(false)
 	p.paddleOnMouseCapture.Set(true)
+	p.enableVideoHotkey.Set(false)
 	p.audioMutePlaymode.Set(false)
 	p.controllerNotifcations.Set(true)
 	p.plusromNotifications.Set(true)
