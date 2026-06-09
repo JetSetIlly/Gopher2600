@@ -1,5 +1,4 @@
 // This file is part of Gopher2600.
-//
 // Gopher2600 is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -93,7 +92,9 @@ func NewPorts(env *environment.Environment, riotMem chipbus.Memory, tiaMem chipb
 func (p *Ports) Reset() {
 	p.swcha_w = p.riot.ChipRefer(chipbus.SWCHA)
 	p.swchb_w = p.riot.ChipRefer(chipbus.SWCHB)
-	p.ResetPeripherals()
+	p.Panel.Reset()
+	p.LeftPlayer.Reset()
+	p.RightPlayer.Reset()
 }
 
 func (p *Ports) End() {
@@ -131,6 +132,24 @@ func (p *Ports) Plumb(riotMem chipbus.Memory, tiaMem chipbus.Memory) {
 	}
 	if p.RightPlayer != nil {
 		p.RightPlayer.Plumb(p)
+	}
+
+	// reset peripherals after new state has been plumbed. without this, controllers can feel odd if
+	// the newly plumbed state has left RIOT memory in a latched state.
+	if p.LeftPlayer != nil {
+		if r, ok := p.LeftPlayer.(NoResetPeripheral); !ok || !r.NoResetOnPlumb() {
+			p.LeftPlayer.Reset()
+		}
+	}
+	if p.RightPlayer != nil {
+		if r, ok := p.RightPlayer.(NoResetPeripheral); !ok || !r.NoResetOnPlumb() {
+			p.RightPlayer.Reset()
+		}
+	}
+	if p.Panel != nil {
+		if r, ok := p.Panel.(NoResetPeripheral); !ok || !r.NoResetOnPlumb() {
+			p.Panel.Reset()
+		}
 	}
 }
 
@@ -307,19 +326,6 @@ func (p *Ports) DisablePeripherals(disabled bool) {
 	}
 	if r, ok := p.Panel.(DisablePeripheral); ok {
 		r.Disable(disabled)
-	}
-}
-
-// ResetPeripherals to the initial state
-func (p *Ports) ResetPeripherals() {
-	if p.LeftPlayer != nil {
-		p.LeftPlayer.Reset()
-	}
-	if p.RightPlayer != nil {
-		p.RightPlayer.Reset()
-	}
-	if p.Panel != nil {
-		p.Panel.Reset()
 	}
 }
 

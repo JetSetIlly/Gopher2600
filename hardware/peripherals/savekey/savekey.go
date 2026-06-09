@@ -110,7 +110,12 @@ func NewSaveKey(env *environment.Environment, port plugging.PortID, bus ports.Pe
 	return sk
 }
 
-// Plug implements the Peripheral interface.
+// NoResetOnPlumb implements the NoResetPeripheral interface.
+func (sk *SaveKey) NoResetOnPlumb() bool {
+	return true
+}
+
+// Reset implements the Peripheral interface.
 func (sk *SaveKey) Reset() {
 	sk.bus.WriteSWCHx(sk.port, 0xf0)
 }

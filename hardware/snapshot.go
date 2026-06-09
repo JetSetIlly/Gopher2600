@@ -75,10 +75,5 @@ func (vcs *VCS) Plumb(state *State, fromDifferentEmulation bool) {
 	vcs.RIOT.Plumb(vcs.Env, vcs.Mem.RIOT, vcs.Mem.TIA)
 	vcs.TIA.Plumb(vcs.Env, vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
 
-	// reset peripherals after new state has been plumbed. without this,
-	// controllers can feel odd if the newly plumbed state has left RIOT memory
-	// in a latched state
-	vcs.RIOT.Ports.ResetPeripherals()
-
 	vcs.Input.Plumb(vcs.TV, vcs.RIOT.Ports)
 }

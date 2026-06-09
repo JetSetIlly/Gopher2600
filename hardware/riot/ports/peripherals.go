@@ -69,6 +69,18 @@ type Peripheral interface {
 	IsActive() bool
 }
 
+// NoResetPeripheral will be implemented for peripherals that should not be reset on plumbing after
+// a rewind event. The reset is really intended only for the controller sub-class of peripherals,
+// where it is important that the physical state of the controller matches the internaal state (we
+// assume the user is not holding the controller in a non-reset position). For peripherals like the
+// Savekey, resetting is not what we want.
+//
+// The function can return false or no implementation not include the function at all if the reset
+// should take place as normal.
+type NoResetPeripheral interface {
+	NoResetOnPlumb() bool
+}
+
 // PeripheralShim implementations allow other peripherals to be plugged into them
 type PeripheralShim interface {
 	// Plug peripheral into shim
