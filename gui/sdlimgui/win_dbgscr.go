@@ -535,84 +535,86 @@ func (win *winDbgScr) drawSpecCombo() {
 }
 
 func (win *winDbgScr) drawCoordsLine() {
-	flgs := imgui.TableFlagsSizingFixedFit
-	flgs |= imgui.TableFlagsBordersInnerV
-	if imgui.BeginTableV("tvcoords", 5, imgui.TableFlagsSizingFixedFit, imgui.Vec2{X: 0.0, Y: 0.0}, 0.0) {
-		imgui.TableSetupColumnV("##tvcoords_icon", imgui.TableColumnFlagsNone, imguiTextWidth(2), 0)
-		imgui.TableSetupColumnV("##tvcoords_frame", imgui.TableColumnFlagsNone, imguiTextWidth(10), 1)
-		imgui.TableSetupColumnV("##tvcoords_scanline", imgui.TableColumnFlagsNone, imguiTextWidth(13), 2)
-		imgui.TableSetupColumnV("##tvcoords_clock", imgui.TableColumnFlagsNone, imguiTextWidth(10), 3)
+	imgui.Text(string(fonts.TV))
 
-		imgui.TableNextRow()
+	// show geometry tooltip if this isn't frame zero
+	frameInfo := win.img.screen.crit.frameInfo
+	if frameInfo.FrameNum != 0 || win.img.cache.TV.GetCoords().Frame != 0 {
+		win.img.imguiTooltip(func() {
+			frameInfo := win.img.screen.crit.frameInfo
+			flgs := imgui.TableFlagsSizingFixedFit
 
-		imgui.TableNextColumn()
-		imgui.Text(string(fonts.TV))
+			imgui.Text("TV Screen Geometry")
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
 
-		// show geometry tooltip if this isn't frame zero
-		frameInfo := win.img.screen.crit.frameInfo
-		if frameInfo.FrameNum != 0 || win.img.cache.TV.GetCoords().Frame != 0 {
-			win.img.imguiTooltip(func() {
-				frameInfo := win.img.screen.crit.frameInfo
-				flgs := imgui.TableFlagsSizingFixedFit
+			if imgui.BeginTableV("geometry_tooltip", 2, flgs, imgui.Vec2{X: 0.0, Y: 0.0}, 0.0) {
+				imgui.TableSetupColumnV("##geometry_tooltip_desc", imgui.TableColumnFlagsNone, imguiTextWidth(9), 0)
+				imgui.TableSetupColumnV("##geometry_tooltip_val", imgui.TableColumnFlagsNone, imguiTextWidth(3), 1)
 
-				imgui.Text("TV Screen Geometry")
-				imgui.Spacing()
-				imgui.Separator()
-				imgui.Spacing()
+				imgui.TableNextRow()
+				imgui.TableNextColumn()
+				imgui.Text("Scanlines")
+				imgui.TableNextColumn()
+				imgui.Text(fmt.Sprintf("%d", frameInfo.TotalScanlines))
 
-				if imgui.BeginTableV("geometry_tooltip", 2, flgs, imgui.Vec2{X: 0.0, Y: 0.0}, 0.0) {
-					imgui.TableSetupColumnV("##geometry_tooltip_desc", imgui.TableColumnFlagsNone, imguiTextWidth(9), 0)
-					imgui.TableSetupColumnV("##geometry_tooltip_val", imgui.TableColumnFlagsNone, imguiTextWidth(3), 1)
+				imgui.TableNextRow()
+				imgui.TableNextColumn()
+				imgui.Text("Top")
+				imgui.TableNextColumn()
+				imgui.Text(fmt.Sprintf("%d", frameInfo.VisibleTop))
 
-					imgui.TableNextRow()
-					imgui.TableNextColumn()
-					imgui.Text("Scanlines")
-					imgui.TableNextColumn()
-					imgui.Text(fmt.Sprintf("%d", frameInfo.TotalScanlines))
+				imgui.TableNextRow()
+				imgui.TableNextColumn()
+				imgui.Text("Bottom")
+				imgui.TableNextColumn()
+				imgui.Text(fmt.Sprintf("%d", frameInfo.VisibleBottom))
 
-					imgui.TableNextRow()
-					imgui.TableNextColumn()
-					imgui.Text("Top")
-					imgui.TableNextColumn()
-					imgui.Text(fmt.Sprintf("%d", frameInfo.VisibleTop))
+				imgui.EndTable()
+			}
 
-					imgui.TableNextRow()
-					imgui.TableNextColumn()
-					imgui.Text("Bottom")
-					imgui.TableNextColumn()
-					imgui.Text(fmt.Sprintf("%d", frameInfo.VisibleBottom))
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
 
-					imgui.EndTable()
-				}
-
-				imgui.Spacing()
-				imgui.Separator()
-				imgui.Spacing()
-
-				imgui.Text(fmt.Sprintf("for Frame %d", frameInfo.FrameNum))
-			}, true)
-		}
-
-		coords := win.img.cache.TV.GetCoords()
-
-		imgui.TableNextColumn()
-		imgui.Text(fmt.Sprintf("Frame: %d", coords.Frame))
-
-		imgui.TableNextColumn()
-		imgui.Text(fmt.Sprintf("Scanline: %d", coords.Scanline))
-
-		imgui.TableNextColumn()
-		imgui.Text(fmt.Sprintf("Clock: %d", coords.Clock))
-
-		imgui.TableNextColumn()
-		signal := fmt.Sprintf("%s", win.img.cache.TV.GetLastSignal().String())
-		if !win.scr.crit.frameInfo.FromVSYNC {
-			signal = fmt.Sprintf("%sUNSYNCED", signal)
-		}
-		imgui.Text(signal)
-
-		imgui.EndTable()
+			imgui.Text(fmt.Sprintf("for Frame %d", frameInfo.FrameNum))
+		}, true)
 	}
+
+	coords := win.img.cache.TV.GetCoords()
+
+	imgui.SameLineV(0, 20)
+	imguiColorText("Frame", win.img.cols.CoordsTitle)
+	imgui.SameLineV(0, 5)
+	imguiColorText(fmt.Sprintf("% 4d", coords.Frame), win.img.cols.CoordsValue)
+
+	imgui.SameLineV(0, 20)
+	imguiColorText("Scanline", win.img.cols.CoordsTitle)
+	imgui.SameLineV(0, 5)
+	imguiColorText(fmt.Sprintf("% 4d", coords.Scanline), win.img.cols.CoordsValue)
+
+	imgui.SameLineV(0, 20)
+	imguiColorText("Clock", win.img.cols.CoordsTitle)
+	imgui.SameLineV(0, 5)
+	imguiColorText(fmt.Sprintf("% 4d", coords.Clock), win.img.cols.CoordsValue)
+
+	imgui.SameLineV(0, 20)
+	imguiColorText("Cycle", win.img.cols.CoordsTitle)
+	imgui.SameLineV(0, 5)
+	cycles, remaining := coords.Cycles()
+	if remaining == 0 {
+		imguiColorText(fmt.Sprintf("% 4d", cycles), win.img.cols.CoordsValue)
+	} else {
+		imguiColorText(fmt.Sprintf("% 4d/%d", cycles, remaining), win.img.cols.CoordsValue)
+	}
+
+	imgui.SameLineV(0, 20)
+	signal := fmt.Sprintf("%s", win.img.cache.TV.GetLastSignal().String())
+	if !win.scr.crit.frameInfo.FromVSYNC {
+		signal = fmt.Sprintf("%sUNSYNCED", signal)
+	}
+	imgui.Text(signal)
 }
 
 func (win *winDbgScr) drawOverlayCombo() {
@@ -732,8 +734,20 @@ func (win *winDbgScr) drawReflectionTooltip() {
 	}, false, win.showMagnifyInTooltip)
 
 	win.img.imguiTooltip(func() {
-		imgui.Text(fmt.Sprintf("Scanline: %d", win.mouse.tv.Scanline))
-		imgui.Text(fmt.Sprintf("Clock: %d", win.mouse.tv.Clock))
+		imguiColorText("Scanline", win.img.cols.CoordsTitle)
+		imgui.SameLineV(0, 5)
+		imguiColorText(fmt.Sprintf("% 4d", win.mouse.tv.Scanline), win.img.cols.CoordsValue)
+		imguiColorText("Clock   ", win.img.cols.CoordsTitle)
+		imgui.SameLineV(0, 5)
+		imguiColorText(fmt.Sprintf("% 4d", win.mouse.tv.Clock), win.img.cols.CoordsValue)
+		imguiColorText("Cycle   ", win.img.cols.CoordsTitle)
+		imgui.SameLineV(0, 5)
+		cycles, remaining := win.mouse.tv.Cycles()
+		if remaining == 0 {
+			imguiColorText(fmt.Sprintf("% 4d", cycles), win.img.cols.CoordsValue)
+		} else {
+			imguiColorText(fmt.Sprintf("% 4d/%d", cycles, remaining), win.img.cols.CoordsValue)
+		}
 
 		// early return if there is no instruction behind this pixel
 		if e.Address == "" {

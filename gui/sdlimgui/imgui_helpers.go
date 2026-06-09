@@ -253,8 +253,8 @@ func imguiColorText(label string, col imgui.Vec4) {
 		inv = imgui.Vec4{X: 0.0, Y: 0.0, Z: 0.0, W: 1.0}
 	}
 
-	pos := imgui.CursorScreenPos()
 	pad := imgui.CurrentStyle().FramePadding()
+	pos := imgui.CursorScreenPos()
 
 	dl := imgui.WindowDrawList()
 	dl.AddRectFilled(pos.Minus(pad), pos.Plus(d).Plus(pad), imgui.PackedColorFromVec4(col))
@@ -262,6 +262,8 @@ func imguiColorText(label string, col imgui.Vec4) {
 	imgui.PushStyleColor(imgui.StyleColorText, inv)
 	defer imgui.PopStyleColor()
 	imgui.Text(label)
+	imgui.SetCursorScreenPos(pos.Plus(d).Plus(pad))
+	imgui.Dummy(imgui.Vec2{})
 }
 
 // returns a Vec2 suitable for use as a position vector when opening a imgui

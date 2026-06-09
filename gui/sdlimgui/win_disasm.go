@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/disassembly"
@@ -566,13 +565,35 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 				} else {
 					imgui.Spacing()
 					draw(fmt.Sprintf("last took %s cycles", entries[i].Cycles()), win.img.cols.DisasmCycles)
-				}
-				if nts != "" {
+
 					imgui.Spacing()
-					draw(fmt.Sprintf("%c %s", fonts.Notes, nts), win.img.cols.DisasmNotes)
+					imgui.Separator()
 					imgui.Spacing()
+					imguiColorText("Scanline", win.img.cols.CoordsTitle)
+					imgui.SameLineV(0, 5)
+					imguiColorText(fmt.Sprintf("% 4d", entries[i].Coords.Scanline), win.img.cols.CoordsValue)
+					imgui.SameLineV(0, 10)
+					imguiColorText("Clock", win.img.cols.CoordsTitle)
+					imgui.SameLineV(0, 5)
+					imguiColorText(fmt.Sprintf("% 4d", entries[i].Coords.Clock), win.img.cols.CoordsValue)
+					imgui.SameLineV(0, 10)
+					imguiColorText("Cycle", win.img.cols.CoordsTitle)
+					imgui.SameLineV(0, 5)
+					cycles, remaining := entries[i].Coords.Cycles()
+					if remaining == 0 {
+						imguiColorText(fmt.Sprintf("% 4d", cycles), win.img.cols.CoordsValue)
+					} else {
+						imguiColorText(fmt.Sprintf("% 4d/%d", cycles, remaining), win.img.cols.CoordsValue)
+					}
+
+					if nts != "" {
+						imgui.Spacing()
+						imgui.Separator()
+						imgui.Spacing()
+						draw(fmt.Sprintf("%c %s", fonts.Notes, nts), win.img.cols.DisasmNotes)
+						imgui.Spacing()
+					}
 				}
-				draw(strings.ToLower(entries[i].Coords.String()), win.img.cols.DisasmCoords)
 			}, true)
 		}
 		if imgui.TableNextColumn() {

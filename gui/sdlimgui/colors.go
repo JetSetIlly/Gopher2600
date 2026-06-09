@@ -54,6 +54,10 @@ type imguiColors struct {
 	PrefsDefaultButtonActive  imgui.Vec4
 	PrefsDefaultButtonHovered imgui.Vec4
 
+	// debug tv screen
+	CoordsTitle imgui.Vec4
+	CoordsValue imgui.Vec4
+
 	// playscreen colors
 	PlayWindowBg     imgui.Vec4
 	PlayWindowBorder imgui.Vec4
@@ -286,6 +290,10 @@ func newColors() *imguiColors {
 		PrefsDefaultButton:        imgui.Vec4{X: 0.95, Y: 0.60, Z: 0.08, W: 0.4},
 		PrefsDefaultButtonActive:  imgui.Vec4{X: 0.95, Y: 0.60, Z: 0.08, W: 0.5},
 		PrefsDefaultButtonHovered: imgui.Vec4{X: 0.95, Y: 0.60, Z: 0.08, W: 0.6},
+
+		// debug tv screen
+		CoordsTitle: imgui.Vec4{X: 0.12, Y: 0.12, Z: 0.12, W: 1.0},
+		CoordsValue: imgui.Vec4{X: 0.10, Y: 0.10, Z: 0.10, W: 1.0},
 
 		// playscreen colors
 		PlayWindowBg:     imgui.Vec4{X: 0.0, Y: 0.0, Z: 0.0, W: 1.0},

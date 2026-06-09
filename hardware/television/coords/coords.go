@@ -51,6 +51,10 @@ func (c TelevisionCoords) String() string {
 	return fmt.Sprintf("Frame: %d  Scanline: %03d  Clock: %03d", c.Frame, c.Scanline, c.Clock)
 }
 
+func (c TelevisionCoords) Cycles() (int, int) {
+	return (c.Clock + specification.ClksHBlank) / 3, (c.Clock + specification.ClksHBlank) % 3
+}
+
 // Equal compares two instances of TelevisionCoords and return true if both are
 // equal.
 //
