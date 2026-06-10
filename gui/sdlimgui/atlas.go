@@ -20,6 +20,7 @@ import (
 	"math"
 
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
@@ -129,147 +130,48 @@ func (atlas *fontAtlas) loadFonts(display fontDisplay, renderer renderer, prefs 
 	if err != nil {
 		return fmt.Errorf("font: %w", err)
 	}
+	logger.Logf(logger.Allow, "fonts", "using dpi value of %v", dpi)
 
 	// the first font we load will be the default font
 	sz := float32(prefs.guiFontSize.Get().(int))
 	sz = scaleFontForDPI(sz, dpi)
 	if sz != atlas.guiSize {
-		atlas.guiSize = sz
 		var err error
+
+		atlas.guiSize = sz
 		atlas.gui, err = atlas.loadFont(fontSpec{
 			FontSpec: fonts.JetBrainsMono,
 			size:     atlas.guiSize,
 			merge:    true,
 		})
-
 		if err != nil {
 			return fmt.Errorf("gui font: %w", err)
 		}
+		logger.Logf(logger.Allow, "fonts", "gui font size of %v", atlas.guiSize)
 
 		// load small gui font based on the size of the normal gui font
-		atlas.smallerGuiSize = sz * 0.85
-		atlas.smallerGuiSize = scaleFontForDPI(atlas.smallerGuiSize, dpi)
-
+		atlas.smallerGuiSize = atlas.guiSize * 0.95
 		atlas.smallerGui, err = atlas.loadFont(fontSpec{
 			FontSpec: fonts.JetBrainsMono,
 			size:     atlas.smallerGuiSize,
 			merge:    true,
 		})
+		if err != nil {
+			return fmt.Errorf("smaller gui font: %w", err)
+		}
+		logger.Logf(logger.Allow, "fonts", "smaller gui font size of %v", atlas.smallerGuiSize)
 
 		// load tiny small gui font based on the size of the normal gui font
-		atlas.tinyGuiSize = sz * 0.75
-		atlas.tinyGuiSize = scaleFontForDPI(atlas.tinyGuiSize, dpi)
-
+		atlas.tinyGuiSize = atlas.guiSize * 0.87
 		atlas.tinyGui, err = atlas.loadFont(fontSpec{
 			FontSpec: fonts.JetBrainsMono,
 			size:     atlas.tinyGuiSize,
 			merge:    true,
 		})
-
 		if err != nil {
-			return fmt.Errorf("gui font: %w", err)
+			return fmt.Errorf("tiny gui font: %w", err)
 		}
-	}
-
-	// load large font awesome
-	if atlas.largeFontAwesome == 0 {
-		cfg := imgui.NewFontConfig()
-		defer cfg.Delete()
-		cfg.SetPixelSnapH(true)
-
-		atlas.largeFontAwesomeSize = 22.0
-
-		var err error
-		atlas.largeFontAwesome, err = atlas.loadFont(fontSpec{
-			FontSpec: fonts.FontAwesome,
-			size:     atlas.largeFontAwesomeSize,
-			cfg:      cfg,
-		})
-
-		if err != nil {
-			return fmt.Errorf("large font awesome: %w", err)
-		}
-	}
-
-	// load very-large font awesome
-	if atlas.veryLargeFontAwesome == 0 {
-		cfg := imgui.NewFontConfig()
-		defer cfg.Delete()
-		cfg.SetPixelSnapH(true)
-
-		atlas.veryLargeFontAwesomeSize = 44.0
-
-		var err error
-		atlas.veryLargeFontAwesome, err = atlas.loadFont(fontSpec{
-			FontSpec: fonts.FontAwesome,
-			size:     atlas.veryLargeFontAwesomeSize,
-			cfg:      cfg,
-		})
-
-		if err != nil {
-			return fmt.Errorf("very large font awesome: %w", err)
-		}
-	}
-
-	// load gopher icons
-	if atlas.gopher2600Icons == 0 {
-		cfg := imgui.NewFontConfig()
-		defer cfg.Delete()
-		cfg.SetPixelSnapH(true)
-		cfg.SetGlyphOffsetY(1.0)
-
-		atlas.gopher2600IconsSize = 60.0
-
-		var err error
-		atlas.gopher2600Icons, err = atlas.loadFont(fontSpec{
-			FontSpec: fonts.Gopher2600Icons,
-			size:     atlas.gopher2600IconsSize,
-			cfg:      cfg,
-		})
-
-		if err != nil {
-			return fmt.Errorf("gopher2600 icons font: %w", err)
-		}
-	}
-	if atlas.smallGopher2600Icons == 0 {
-		cfg := imgui.NewFontConfig()
-		defer cfg.Delete()
-		cfg.SetPixelSnapH(true)
-		cfg.SetGlyphOffsetY(1.0)
-
-		atlas.smallGopher2600IconsSize = 30.0
-
-		var err error
-		atlas.smallGopher2600Icons, err = atlas.loadFont(fontSpec{
-			FontSpec: fonts.Gopher2600Icons,
-			size:     atlas.smallGopher2600IconsSize,
-			cfg:      cfg,
-		})
-
-		if err != nil {
-			return fmt.Errorf("small gopher2600 icons font: %w", err)
-		}
-	}
-
-	// load diagram font
-	if atlas.diagram == 0 {
-		cfg := imgui.NewFontConfig()
-		defer cfg.Delete()
-		cfg.SetPixelSnapH(true)
-
-		atlas.diagramSize = scaleFontForDPI(10.0, dpi)
-
-		var err error
-		atlas.diagram, err = atlas.loadFont(fontSpec{
-			FontSpec: fonts.Hack,
-			size:     atlas.diagramSize,
-			cfg:      cfg,
-			merge:    true,
-		})
-
-		if err != nil {
-			return fmt.Errorf("diagram font: %w", err)
-		}
+		logger.Logf(logger.Allow, "fonts", "tiny gui font size of %v", atlas.tinyGuiSize)
 	}
 
 	// load terminal font
@@ -284,10 +186,10 @@ func (atlas *fontAtlas) loadFonts(display fontDisplay, renderer renderer, prefs 
 			size:     atlas.terminalSize,
 			merge:    true,
 		})
-
 		if err != nil {
-			return fmt.Errorf("code font: %w", err)
+			return fmt.Errorf("terminal font: %w", err)
 		}
+		logger.Logf(logger.Allow, "fonts", "terminal font size of %v", atlas.terminalSize)
 	}
 
 	// load code font
@@ -302,32 +204,128 @@ func (atlas *fontAtlas) loadFonts(display fontDisplay, renderer renderer, prefs 
 			size:     atlas.codeSize,
 			merge:    true,
 		})
-
 		if err != nil {
 			return fmt.Errorf("code font: %w", err)
 		}
+		logger.Logf(logger.Allow, "fonts", "code font size of %v", atlas.codeSize)
 	}
 
 	// load a range of subtitle sizes
+	var subtitlesChanged bool
 	for i := range len(atlas.subtitlesSize) {
 		const baseSubtitleSize = 10
 		sz := float32(baseSubtitleSize * (i + 1))
 		sz = scaleFontForDPI(sz, dpi)
 		if sz != atlas.subtitlesSize[i] {
+			subtitlesChanged = true
 			atlas.subtitlesSize[i] = sz
 			atlas.subtitles[i], err = atlas.loadFont(fontSpec{
 				FontSpec: fonts.JetBrainsMonoBold_ReducedRange,
 				size:     atlas.subtitlesSize[i],
 			})
-
 			if err != nil {
-				return fmt.Errorf("code font: %w", err)
+				return fmt.Errorf("subtitle font: %w", err)
 			}
 		}
 	}
-	atlas.resize(display)
+	if subtitlesChanged {
+		logger.Logf(logger.Allow, "fonts", "subtitle font sizes of %v to %v",
+			atlas.subtitlesSize[0],
+			atlas.subtitlesSize[len(atlas.subtitlesSize)-1])
+	}
+
+	// the remaining fonts require finessing with config changes
+	// altering SetPixelSnapH() and SetGlyphOffsetY()
+	cfg := imgui.NewFontConfig()
+	defer cfg.Delete()
+
+	// load diagram font
+	sz = atlas.guiSize * 0.75
+	if sz != atlas.diagramSize {
+		cfg.SetPixelSnapH(true)
+		cfg.SetGlyphOffsetY(0.0)
+		atlas.diagramSize = sz
+		atlas.diagram, err = atlas.loadFont(fontSpec{
+			FontSpec: fonts.Hack,
+			size:     atlas.diagramSize,
+			cfg:      cfg,
+			merge:    true,
+		})
+		logger.Logf(logger.Allow, "fonts", "diagram font size of %v", atlas.diagramSize)
+		if err != nil {
+			return fmt.Errorf("diagram font: %w", err)
+		}
+	}
+
+	// load large font awesome icons
+	sz = 22.0 // not DPI adjusted
+	if sz != atlas.largeFontAwesomeSize {
+		cfg.SetPixelSnapH(true)
+		cfg.SetGlyphOffsetY(0.0)
+		atlas.largeFontAwesomeSize = sz
+		atlas.largeFontAwesome, err = atlas.loadFont(fontSpec{
+			FontSpec: fonts.FontAwesome,
+			size:     atlas.largeFontAwesomeSize,
+			cfg:      cfg,
+		})
+		if err != nil {
+			return fmt.Errorf("large font awesome: %w", err)
+		}
+		logger.Logf(logger.Allow, "fonts", "large icon size of %v", atlas.largeFontAwesomeSize)
+	}
+
+	// load very-large font awesome icons
+	sz = 44.0 // not DPI adjusted
+	if sz != atlas.veryLargeFontAwesomeSize {
+		cfg.SetPixelSnapH(true)
+		atlas.veryLargeFontAwesomeSize = sz
+		atlas.veryLargeFontAwesome, err = atlas.loadFont(fontSpec{
+			FontSpec: fonts.FontAwesome,
+			size:     atlas.veryLargeFontAwesomeSize,
+			cfg:      cfg,
+		})
+		if err != nil {
+			return fmt.Errorf("very large font awesome: %w", err)
+		}
+		logger.Logf(logger.Allow, "fonts", "very large icon size of %v", atlas.veryLargeFontAwesomeSize)
+	}
+
+	// load gopher icons
+	sz = 60.0 // not DPI adjusted
+	if sz != atlas.gopher2600IconsSize {
+		cfg.SetPixelSnapH(true)
+		cfg.SetGlyphOffsetY(1.0)
+		atlas.gopher2600IconsSize = sz
+		atlas.gopher2600Icons, err = atlas.loadFont(fontSpec{
+			FontSpec: fonts.Gopher2600Icons,
+			size:     atlas.gopher2600IconsSize,
+			cfg:      cfg,
+		})
+		if err != nil {
+			return fmt.Errorf("gopher2600 icons font: %w", err)
+		}
+		logger.Logf(logger.Allow, "fonts", "gopher2600 icon size of %v", atlas.gopher2600IconsSize)
+	}
+
+	// load small gopher icons
+	sz = 30.0 // not DPI adjusted
+	if sz != atlas.smallGopher2600IconsSize {
+		cfg.SetPixelSnapH(true)
+		cfg.SetGlyphOffsetY(1.0)
+		atlas.smallGopher2600IconsSize = sz
+		atlas.smallGopher2600Icons, err = atlas.loadFont(fontSpec{
+			FontSpec: fonts.Gopher2600Icons,
+			size:     atlas.smallGopher2600IconsSize,
+			cfg:      cfg,
+		})
+		logger.Logf(logger.Allow, "fonts", "small gopher2600 icon size of %v", atlas.smallGopher2600IconsSize)
+		if err != nil {
+			return fmt.Errorf("small gopher2600 icons font: %w", err)
+		}
+	}
 
 	// create textures and register with imgui
+	atlas.resize(display)
 	tex := renderer.addFontTexture(imgui.CurrentIO().Fonts())
 	imgui.CurrentIO().Fonts().SetTextureID(imgui.TextureID(tex.getID()))
 
