@@ -569,22 +569,7 @@ func (win *winDisasm) drawEntries(id string, entries []*disassembly.Entry, curre
 					imgui.Spacing()
 					imgui.Separator()
 					imgui.Spacing()
-					imguiColorText("Scanline", win.img.cols.CoordsTitle)
-					imgui.SameLineV(0, 5)
-					imguiColorText(fmt.Sprintf("% 4d", entries[i].Coords.Scanline), win.img.cols.CoordsValue)
-					imgui.SameLineV(0, 10)
-					imguiColorText("Clock", win.img.cols.CoordsTitle)
-					imgui.SameLineV(0, 5)
-					imguiColorText(fmt.Sprintf("% 4d", entries[i].Coords.Clock), win.img.cols.CoordsValue)
-					imgui.SameLineV(0, 10)
-					imguiColorText("Cycle", win.img.cols.CoordsTitle)
-					imgui.SameLineV(0, 5)
-					cycles, remaining := entries[i].Coords.Cycles()
-					if remaining == 0 {
-						imguiColorText(fmt.Sprintf("% 4d", cycles), win.img.cols.CoordsValue)
-					} else {
-						imguiColorText(fmt.Sprintf("% 4d/%d", cycles, remaining), win.img.cols.CoordsValue)
-					}
+					win.img.drawCoordinates(entries[i].Coords, false, true, true)
 
 					if nts != "" {
 						imgui.Spacing()

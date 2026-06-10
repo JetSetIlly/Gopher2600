@@ -582,32 +582,9 @@ func (win *winDbgScr) drawCoordsLine() {
 		}, true)
 	}
 
+	imgui.SameLineV(0, 20)
 	coords := win.img.cache.TV.GetCoords()
-
-	imgui.SameLineV(0, 20)
-	imguiColorText("Frame", win.img.cols.CoordsTitle)
-	imgui.SameLineV(0, 5)
-	imguiColorText(fmt.Sprintf("% 4d", coords.Frame), win.img.cols.CoordsValue)
-
-	imgui.SameLineV(0, 20)
-	imguiColorText("Scanline", win.img.cols.CoordsTitle)
-	imgui.SameLineV(0, 5)
-	imguiColorText(fmt.Sprintf("% 4d", coords.Scanline), win.img.cols.CoordsValue)
-
-	imgui.SameLineV(0, 20)
-	imguiColorText("Clock", win.img.cols.CoordsTitle)
-	imgui.SameLineV(0, 5)
-	imguiColorText(fmt.Sprintf("% 4d", coords.Clock), win.img.cols.CoordsValue)
-
-	imgui.SameLineV(0, 20)
-	imguiColorText("Cycle", win.img.cols.CoordsTitle)
-	imgui.SameLineV(0, 5)
-	cycles, remaining := coords.Cycles()
-	if remaining == 0 {
-		imguiColorText(fmt.Sprintf("% 4d", cycles), win.img.cols.CoordsValue)
-	} else {
-		imguiColorText(fmt.Sprintf("% 4d/%d", cycles, remaining), win.img.cols.CoordsValue)
-	}
+	win.img.drawCoordinates(coords, true, true, false)
 
 	imgui.SameLineV(0, 20)
 	signal := fmt.Sprintf("%s", win.img.cache.TV.GetLastSignal().String())
@@ -734,20 +711,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 	}, false, win.showMagnifyInTooltip)
 
 	win.img.imguiTooltip(func() {
-		imguiColorText("Scanline", win.img.cols.CoordsTitle)
-		imgui.SameLineV(0, 5)
-		imguiColorText(fmt.Sprintf("% 4d", win.mouse.tv.Scanline), win.img.cols.CoordsValue)
-		imguiColorText("Clock   ", win.img.cols.CoordsTitle)
-		imgui.SameLineV(0, 5)
-		imguiColorText(fmt.Sprintf("% 4d", win.mouse.tv.Clock), win.img.cols.CoordsValue)
-		imguiColorText("Cycle   ", win.img.cols.CoordsTitle)
-		imgui.SameLineV(0, 5)
-		cycles, remaining := win.mouse.tv.Cycles()
-		if remaining == 0 {
-			imguiColorText(fmt.Sprintf("% 4d", cycles), win.img.cols.CoordsValue)
-		} else {
-			imguiColorText(fmt.Sprintf("% 4d/%d", cycles, remaining), win.img.cols.CoordsValue)
-		}
+		win.img.drawCoordinates(win.mouse.tv, false, false, false)
 
 		// early return if there is no instruction behind this pixel
 		if e.Address == "" {

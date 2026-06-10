@@ -36,6 +36,9 @@ type fontAtlas struct {
 	smallGui     imgui.Font
 	smallGuiSize float32
 
+	tinyGui     imgui.Font
+	tinyGuiSize float32
+
 	// used for notifications (eg. network access, etc.)
 	largeFontAwesome     imgui.Font
 	largeFontAwesomeSize float32
@@ -150,6 +153,16 @@ func (atlas *fontAtlas) loadFonts(display fontDisplay, renderer renderer, prefs 
 		atlas.smallGui, err = atlas.loadFont(fontSpec{
 			FontSpec: fonts.JetBrainsMono,
 			size:     atlas.smallGuiSize,
+			merge:    true,
+		})
+
+		// load small gui font based on the size of the normal gui font
+		atlas.tinyGuiSize = sz * 0.75
+		atlas.tinyGuiSize = scaleFontForDPI(atlas.tinyGuiSize, dpi)
+
+		atlas.tinyGui, err = atlas.loadFont(fontSpec{
+			FontSpec: fonts.JetBrainsMono,
+			size:     atlas.tinyGuiSize,
 			merge:    true,
 		})
 

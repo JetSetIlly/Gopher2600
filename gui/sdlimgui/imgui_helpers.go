@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
@@ -240,6 +241,10 @@ func imguiBrightnessFromVec4(c imgui.Vec4) float32 {
 }
 
 func imguiColorText(label string, col imgui.Vec4) {
+	imguiColorTextV(label, col, true, true)
+}
+
+func imguiColorTextV(label string, col imgui.Vec4, leftPad bool, rightPad bool) {
 	d := imgui.CalcTextSize(label, false, 0)
 
 	imgui.BeginGroup()
@@ -255,14 +260,22 @@ func imguiColorText(label string, col imgui.Vec4) {
 
 	pad := imgui.CurrentStyle().FramePadding()
 	pos := imgui.CursorScreenPos()
+	startPos := pos.Minus(pad)
+	if !leftPad {
+		startPos.X += pad.X
+	}
+	endPos := pos.Plus(d).Plus(pad)
+	if !rightPad {
+		endPos.X -= pad.X
+	}
 
 	dl := imgui.WindowDrawList()
-	dl.AddRectFilled(pos.Minus(pad), pos.Plus(d).Plus(pad), imgui.PackedColorFromVec4(col))
+	dl.AddRectFilled(startPos, endPos, imgui.PackedColorFromVec4(col))
 
 	imgui.PushStyleColor(imgui.StyleColorText, inv)
 	defer imgui.PopStyleColor()
 	imgui.Text(label)
-	imgui.SetCursorScreenPos(pos.Plus(d).Plus(pad))
+	imgui.SetCursorScreenPos(endPos)
 	imgui.Dummy(imgui.Vec2{})
 }
 
@@ -413,4 +426,60 @@ func drawInvisible(invisble bool, f func()) {
 	f()
 	imgui.PopStyleVar()
 	imgui.EndDisabled()
+}
+
+func (img *SdlImgui) drawCoordinates(coords coords.TelevisionCoords, frame bool, horizontal bool, tight bool) {
+	var horizSep float32
+	if horizontal {
+		if tight {
+			horizSep = 10
+		} else {
+			horizSep = 20
+		}
+	}
+
+	if frame {
+		imguiColorText("Frame", img.cols.CoordsTitle)
+		imgui.SameLineV(0, 5)
+		imguiColorText(fmt.Sprintf("% 4d", coords.Frame), img.cols.CoordsValue)
+
+		if horizontal {
+			imgui.SameLineV(0, horizSep)
+		}
+	}
+
+	imguiColorText("Scanline", img.cols.CoordsTitle)
+	imgui.SameLineV(0, 5)
+	imguiColorText(fmt.Sprintf("% 4d", coords.Scanline), img.cols.CoordsValue)
+
+	if horizontal {
+		imgui.SameLineV(0, horizSep)
+	}
+
+	if horizontal {
+		imguiColorText("Clock", img.cols.CoordsTitle)
+	} else {
+		imguiColorText("Clock   ", img.cols.CoordsTitle)
+	}
+	imgui.SameLineV(0, 5)
+	imguiColorText(fmt.Sprintf("% 4d", coords.Clock), img.cols.CoordsValue)
+
+	if horizontal {
+		imgui.SameLineV(0, horizSep)
+	}
+
+	if horizontal {
+		imguiColorText("Cycle", img.cols.CoordsTitle)
+	} else {
+		imguiColorText("Cycle   ", img.cols.CoordsTitle)
+	}
+	imgui.SameLineV(0, 5)
+	cycles, remaining := coords.Cycles()
+	imguiColorTextV(fmt.Sprintf("% 4d", cycles), img.cols.CoordsValue, true, remaining == 0)
+	if remaining != 0 {
+		imgui.SameLineV(0, 0)
+		imgui.PushFont(img.fonts.tinyGui)
+		imguiColorTextV(fmt.Sprintf("+%1d", remaining), img.cols.CoordsValue, false, false)
+		imgui.PopFont()
+	}
 }
