@@ -87,7 +87,7 @@ func (win *winPrefs) drawUsingBevel() bool {
 	if imgui.Checkbox("Use Bevel##bevel", &bvl) {
 		win.img.crt.useBevel.Set(bvl)
 	}
-	imgui.PushFont(win.img.fonts.smallGui)
+	imgui.PushFont(win.img.fonts.smallerGui)
 	imgui.PushTextWrapPos()
 	imgui.Text("There is currently only one bevel available. Future versions will allow a wider selection")
 	imgui.PopTextWrapPos()

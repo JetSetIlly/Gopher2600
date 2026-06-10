@@ -276,7 +276,6 @@ func (wm *manager) drawMenu() {
 
 	// tooltip control
 	func() {
-		wm.img.tooltipIndicator = false
 		showTooltips := wm.img.prefs.showTooltips.Get().(bool)
 		if !showTooltips {
 			if !wm.img.tooltipIndicator {
@@ -290,6 +289,7 @@ func (wm *manager) drawMenu() {
 				wm.img.prefs.showTooltips.Set(!showTooltips)
 			}
 		})
+		wm.img.tooltipIndicator = false
 	}()
 
 	// halt reason

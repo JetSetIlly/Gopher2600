@@ -33,8 +33,8 @@ type fontAtlas struct {
 	gui     imgui.Font
 	guiSize float32
 
-	smallGui     imgui.Font
-	smallGuiSize float32
+	smallerGui     imgui.Font
+	smallerGuiSize float32
 
 	tinyGui     imgui.Font
 	tinyGuiSize float32
@@ -147,16 +147,16 @@ func (atlas *fontAtlas) loadFonts(display fontDisplay, renderer renderer, prefs 
 		}
 
 		// load small gui font based on the size of the normal gui font
-		atlas.smallGuiSize = sz * 0.85
-		atlas.smallGuiSize = scaleFontForDPI(atlas.smallGuiSize, dpi)
+		atlas.smallerGuiSize = sz * 0.85
+		atlas.smallerGuiSize = scaleFontForDPI(atlas.smallerGuiSize, dpi)
 
-		atlas.smallGui, err = atlas.loadFont(fontSpec{
+		atlas.smallerGui, err = atlas.loadFont(fontSpec{
 			FontSpec: fonts.JetBrainsMono,
-			size:     atlas.smallGuiSize,
+			size:     atlas.smallerGuiSize,
 			merge:    true,
 		})
 
-		// load small gui font based on the size of the normal gui font
+		// load tiny small gui font based on the size of the normal gui font
 		atlas.tinyGuiSize = sz * 0.75
 		atlas.tinyGuiSize = scaleFontForDPI(atlas.tinyGuiSize, dpi)
 

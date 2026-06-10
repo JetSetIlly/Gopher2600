@@ -24,59 +24,6 @@ import (
 var tooltipColor = imgui.Vec4{X: 0.08, Y: 0.08, Z: 0.08, W: 1.0}
 var tooltipBorder = imgui.Vec4{X: 0.03, Y: 0.03, Z: 0.03, W: 1.0}
 
-// shows simple tooltip but without global preferences test
-//
-// returns true if the tooltip would have been displayed except for the show
-// flag. ie. if show is false the function only tests whether the tooltip would
-// have shown
-func imguiTooltipSimple(tooltip string, show bool) bool {
-	var displayed bool
-
-	// split string on newline and display with separate calls to imgui.Text()
-	tooltip = strings.TrimSpace(tooltip)
-	if tooltip != "" && imgui.IsItemHovered() {
-		displayed = true
-
-		if show {
-			s := strings.Split(tooltip, "\n")
-			imgui.PushStyleColor(imgui.StyleColorPopupBg, tooltipColor)
-			imgui.PushStyleColor(imgui.StyleColorBorder, tooltipBorder)
-			imgui.BeginTooltip()
-			for _, t := range s {
-				imgui.Text(t)
-			}
-			imgui.EndTooltip()
-			imgui.PopStyleColorV(2)
-		}
-	}
-
-	return displayed
-}
-
-// shows tooltip but without global preferences test
-//
-// returns true if the tooltip would have been displayed except for the show
-// flag. ie. if show is false the function only tests whether the tooltip would
-// have shown
-func imguiTooltip(f func(), hoverTest bool, show bool) bool {
-	var displayed bool
-
-	if !hoverTest || imgui.IsItemHovered() {
-		displayed = true
-
-		if show {
-			imgui.PushStyleColor(imgui.StyleColorPopupBg, tooltipColor)
-			imgui.PushStyleColor(imgui.StyleColorBorder, tooltipBorder)
-			imgui.BeginTooltip()
-			f()
-			imgui.EndTooltip()
-			imgui.PopStyleColorV(2)
-		}
-	}
-
-	return displayed
-}
-
 type tooltips interface {
 	imguiTooltipSimple(tooltip string)
 	imguiTooltip(f func(), hoverTest bool)
@@ -85,8 +32,31 @@ type tooltips interface {
 // shows tooltip on hover of the previous imgui digest/group. useful for simple
 // tooltips.
 func (img *SdlImgui) imguiTooltipSimple(tooltip string) {
-	show := img.prefs.showTooltips.Get().(bool) || imgui.CurrentIO().KeyCtrlPressed()
-	img.tooltipIndicator = imguiTooltipSimple(tooltip, show) || img.tooltipIndicator
+	var displayed bool
+
+	// split string on newline and display with separate calls to imgui.Text()
+	tooltip = strings.TrimSpace(tooltip)
+	if tooltip != "" && imgui.IsItemHovered() {
+		displayed = true
+
+		if img.prefs.showTooltips.Get().(bool) || imgui.CurrentIO().KeyCtrlPressed() {
+			s := strings.Split(tooltip, "\n")
+			imgui.PushStyleColor(imgui.StyleColorPopupBg, tooltipColor)
+			imgui.PushStyleColor(imgui.StyleColorBorder, tooltipBorder)
+			imgui.PushFont(img.fonts.smallerGui)
+
+			imgui.BeginTooltip()
+			for _, t := range s {
+				imgui.Text(t)
+			}
+			imgui.EndTooltip()
+
+			imgui.PopFont()
+			imgui.PopStyleColorV(2)
+		}
+	}
+
+	img.tooltipIndicator = displayed || img.tooltipIndicator
 }
 
 // shows tooltip that require more complex formatting than a single string.
@@ -96,6 +66,24 @@ func (img *SdlImgui) imguiTooltipSimple(tooltip string) {
 // this argument is false then it implies that the decision to show the tooltip
 // has already been made by the calling function.
 func (img *SdlImgui) imguiTooltip(f func(), hoverTest bool) {
-	show := img.prefs.showTooltips.Get().(bool) || imgui.CurrentIO().KeyCtrlPressed()
-	img.tooltipIndicator = imguiTooltip(f, hoverTest, show) || img.tooltipIndicator
+	var displayed bool
+
+	if !hoverTest || imgui.IsItemHovered() {
+		displayed = true
+
+		if img.prefs.showTooltips.Get().(bool) || imgui.CurrentIO().KeyCtrlPressed() {
+			imgui.PushStyleColor(imgui.StyleColorPopupBg, tooltipColor)
+			imgui.PushStyleColor(imgui.StyleColorBorder, tooltipBorder)
+			imgui.PushFont(img.fonts.smallerGui)
+
+			imgui.BeginTooltip()
+			f()
+			imgui.EndTooltip()
+
+			imgui.PopFont()
+			imgui.PopStyleColorV(2)
+		}
+	}
+
+	img.tooltipIndicator = displayed || img.tooltipIndicator
 }

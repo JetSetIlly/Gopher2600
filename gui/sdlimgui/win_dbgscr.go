@@ -705,10 +705,12 @@ func (win *winDbgScr) drawReflectionTooltip() {
 	e := win.img.dbg.Disasm.FormatResultAdHoc(ref.Bank, ref.CPU)
 
 	// magnification in tooltip
-	imguiTooltip(func() {
-		win.magnifyTooltip.debuggerDraw()
-		imguiSeparator()
-	}, false, win.showMagnifyInTooltip)
+	if win.showMagnifyInTooltip {
+		win.img.imguiTooltip(func() {
+			win.magnifyTooltip.debuggerDraw()
+			imguiSeparator()
+		}, false)
+	}
 
 	win.img.imguiTooltip(func() {
 		win.img.drawCoordinates(win.mouse.tv, false, false, false)
