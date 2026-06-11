@@ -51,6 +51,8 @@ func (c TelevisionCoords) String() string {
 	return fmt.Sprintf("Frame: %d  Scanline: %03d  Clock: %03d", c.Frame, c.Scanline, c.Clock)
 }
 
+// Cycles converts the Clock value into an equivalent number of CPU (6507) cycles. The second
+// returned value is the number of clocks since the last whole cycle.
 func (c TelevisionCoords) Cycles() (int, int) {
 	return (c.Clock + specification.ClksHBlank) / 3, (c.Clock + specification.ClksHBlank) % 3
 }
