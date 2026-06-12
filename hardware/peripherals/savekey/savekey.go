@@ -200,6 +200,9 @@ func (sk *SaveKey) Update(data chipbus.ChangedRegister) bool {
 			sk.swcha = (data.Value & 0x0f) << 4
 		}
 
+		// push the savekey's current swcha value to the console
+		sk.bus.WriteSWCHx(sk.port, sk.swcha)
+
 	default:
 		return true
 	}
