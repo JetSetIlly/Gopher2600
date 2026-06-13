@@ -138,53 +138,68 @@ type PeripheralBus interface {
 
 // periperhalNone represents the absence of a peripheral in a port
 type peripheralNone struct {
+	bus  PeripheralBus
 	port plugging.PortID
 }
 
 // NewPeripheralNone creates a new instance of peripheralNone, which represents an absence of a
 // peripheral in a port.
-func NewPeripheralNone(_ *environment.Environment, port plugging.PortID, _ PeripheralBus) Peripheral {
-	return peripheralNone{
+func NewPeripheralNone(_ *environment.Environment, port plugging.PortID, bus PeripheralBus) Peripheral {
+	return &peripheralNone{
+		bus:  bus,
 		port: port,
 	}
 }
 
-func (_ peripheralNone) String() string {
+func (_ *peripheralNone) String() string {
 	return string(plugging.PeriphNone)
 }
 
-func (_ peripheralNone) Reset() {
+func (p *peripheralNone) Reset() {
+	switch p.port {
+	case plugging.PortLeft:
+		p.bus.WriteINPTx(chipbus.INPT4, 0x80)
+	case plugging.PortRight:
+		p.bus.WriteINPTx(chipbus.INPT5, 0x80)
+	}
 }
 
-func (_ peripheralNone) Unplug() {
+func (p *peripheralNone) Unplug() {
+	switch p.port {
+	case plugging.PortLeft:
+		p.bus.WriteINPTx(chipbus.INPT4, 0x00)
+	case plugging.PortRight:
+		p.bus.WriteINPTx(chipbus.INPT5, 0x00)
+	}
 }
 
-func (p peripheralNone) Snapshot() Peripheral {
-	return p
+func (p *peripheralNone) Snapshot() Peripheral {
+	n := *p
+	return &n
 }
 
-func (_ peripheralNone) Plumb(PeripheralBus) {
+func (_ *peripheralNone) Plumb(PeripheralBus) {
 }
 
-func (p peripheralNone) PortID() plugging.PortID {
+func (p *peripheralNone) PortID() plugging.PortID {
 	return p.port
 }
 
-func (_ peripheralNone) ID() plugging.PeripheralID {
+func (_ *peripheralNone) ID() plugging.PeripheralID {
 	return plugging.PeriphNone
 }
 
-func (_ peripheralNone) HandleEvent(Event, EventData) (bool, error) {
+func (_ *peripheralNone) HandleEvent(Event, EventData) (bool, error) {
 	return false, nil
 }
 
-func (_ peripheralNone) Update(chipbus.ChangedRegister) bool {
+func (_ *peripheralNone) Update(chipbus.ChangedRegister) bool {
 	return false
 }
 
-func (_ peripheralNone) Step() {
+func (_ *peripheralNone) Step() {
 }
 
-func (_ peripheralNone) IsActive() bool {
+func (_ *peripheralNone) IsActive() bool {
 	return false
 }

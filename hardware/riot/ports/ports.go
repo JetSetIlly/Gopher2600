@@ -79,14 +79,15 @@ type Ports struct {
 // NewPorts is the preferred method of initialisation of the Ports type
 func NewPorts(env *environment.Environment, riotMem chipbus.Memory, tiaMem chipbus.Memory) *Ports {
 	p := &Ports{
-		env:         env,
-		riot:        riotMem,
-		tia:         tiaMem,
-		latch:       false,
-		LeftPlayer:  &peripheralNone{port: plugging.PortLeft},
-		RightPlayer: &peripheralNone{port: plugging.PortRight},
-		Panel:       &peripheralNone{port: plugging.PortPanel},
+		env:   env,
+		riot:  riotMem,
+		tia:   tiaMem,
+		latch: false,
 	}
+	p.LeftPlayer = NewPeripheralNone(env, plugging.PortLeft, p)
+	p.RightPlayer = NewPeripheralNone(env, plugging.PortRight, p)
+	p.Panel = NewPeripheralNone(env, plugging.PortPanel, p)
+	p.Reset()
 	return p
 }
 
