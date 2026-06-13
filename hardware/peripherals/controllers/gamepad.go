@@ -57,7 +57,6 @@ const (
 	secondFire   = 0x00
 	secondNoFire = 0x80
 	inserted     = 0x80
-	notInserted  = 0x00
 )
 
 // NewGamepad is the preferred method of initialisation for the Gamepad type
@@ -100,9 +99,10 @@ func (pad *Gamepad) Reset() {
 // Unplug implements the Peripheral interface.
 func (pad *Gamepad) Unplug() {
 	pad.bus.WriteSWCHx(pad.port, axisCenter)
-	pad.bus.WriteINPTx(pad.buttonInptx, stickFire)
-	pad.bus.WriteINPTx(pad.secondInptx, secondFire)
-	pad.bus.WriteINPTx(pad.insertedInptx, notInserted)
+	pad.bus.WriteINPTx(pad.buttonInptx, stickNoFire)
+
+	// secondInptx and insertedInptx will be one of INPT0, INPT1, INPT2 or INPT3, depending on the
+	// player port. these registers are not reset on unplug
 }
 
 // Snapshot implements the Peripheral interface.

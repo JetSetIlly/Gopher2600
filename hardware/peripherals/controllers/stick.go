@@ -80,7 +80,7 @@ func (stk *Stick) Reset() {
 // Unplug implements the Peripheral interface.
 func (stk *Stick) Unplug() {
 	stk.bus.WriteSWCHx(stk.port, axisCenter)
-	stk.bus.WriteINPTx(stk.buttonInptx, stickFire)
+	stk.bus.WriteINPTx(stk.buttonInptx, stickNoFire)
 }
 
 // Snapshot implements the Peripheral interface.

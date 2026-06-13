@@ -66,9 +66,11 @@ func (key *Keypad) Reset() {
 
 // Unplug implements the Peripheral interface.
 func (key *Keypad) Unplug() {
-	key.bus.WriteINPTx(key.column[0], 0x00)
-	key.bus.WriteINPTx(key.column[1], 0x00)
-	key.bus.WriteINPTx(key.column[2], 0x00)
+	// column 2 will be one of INPT4 or INPT5, depending on the player port
+	key.bus.WriteINPTx(key.column[2], 0x80)
+
+	// column 0 and column 1 will be one of INPT0, INPT1, INPT2 or INPT3, depending of players
+	// port. these registers are not reset on unplug
 }
 
 // Snapshot implements the Peripheral interface.

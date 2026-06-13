@@ -41,7 +41,12 @@ type Peripheral interface {
 	// user interaction.
 	Reset()
 
-	// Periperhal is to be removed
+	// Periperhal is to be removed. This should be used to clean up any resources used by the
+	// peripheral (closing external files, etc.)
+	//
+	// It should also make sure the INPTx registers are left in a suitable state for an unplugged
+	// device. For example, INPT4 and INPT5 should be reset to 0x80 because that is the null state
+	// for those registers. INPT0 to INPT3 however, should not be reset
 	Unplug()
 
 	// Snapshot the instance of the Peripheral
@@ -167,9 +172,9 @@ func (p *peripheralNone) Reset() {
 func (p *peripheralNone) Unplug() {
 	switch p.port {
 	case plugging.PortLeft:
-		p.bus.WriteINPTx(chipbus.INPT4, 0x00)
+		p.bus.WriteINPTx(chipbus.INPT4, 0x80)
 	case plugging.PortRight:
-		p.bus.WriteINPTx(chipbus.INPT5, 0x00)
+		p.bus.WriteINPTx(chipbus.INPT5, 0x80)
 	}
 }
 

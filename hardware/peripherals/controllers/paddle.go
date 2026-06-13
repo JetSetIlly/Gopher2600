@@ -115,13 +115,11 @@ func (pdl *Paddles) Reset() {
 
 // Unplug implements the Peripheral interface.
 func (pdl *Paddles) Unplug() {
-	pdl.bus.WriteSWCHx(pdl.port, paddleNoFire^0xf0)
+	// the insertedInptx field will be one of INPT4 or INPT5
+	pdl.bus.WriteINPTx(pdl.insertedInptx, 0x80)
 
-	for i := range pdl.paddles {
-		pdl.bus.WriteINPTx(pdl.paddles[i].inptx, 0x00)
-	}
-
-	pdl.bus.WriteINPTx(pdl.insertedInptx, 0x00)
+	// the paddles will be connected to INPT0, INPT1, INPT2 or INPT3, depending on player port.
+	// these registers are not reset on unplug
 }
 
 // Snapshot implements the Peripheral interface.
