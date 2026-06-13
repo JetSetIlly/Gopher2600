@@ -40,9 +40,9 @@ type Ports struct {
 
 	// local copies of key chip memory registers
 
-	// the latch bit represents the value of bit 6 of the VBLANK register. used
-	// to affect how INPTx registers are written. see WriteINPTx() function
-	latch bool
+	// vblank contains information about latching and grounding
+	Latch  bool
+	Ground bool
 
 	// the swcha_w field is a copy of the SWCHA register as it was written
 	// by the CPU. it is not necessarily the value of SWCHA as written by the
@@ -79,10 +79,9 @@ type Ports struct {
 // NewPorts is the preferred method of initialisation of the Ports type
 func NewPorts(env *environment.Environment, riotMem chipbus.Memory, tiaMem chipbus.Memory) *Ports {
 	p := &Ports{
-		env:   env,
-		riot:  riotMem,
-		tia:   tiaMem,
-		latch: false,
+		env:  env,
+		riot: riotMem,
+		tia:  tiaMem,
 	}
 	p.LeftPlayer = NewPeripheralNone(env, plugging.PortLeft, p)
 	p.RightPlayer = NewPeripheralNone(env, plugging.PortRight, p)
@@ -330,7 +329,8 @@ func (p *Ports) ResetPeripherals() {
 func (p *Ports) Update(data chipbus.ChangedRegister) bool {
 	switch data.Register {
 	case cpubus.VBLANK:
-		p.latch = data.Value&0x40 == 0x40
+		p.Latch = data.Value&0x40 == 0x40
+		p.Ground = data.Value&0x80 == 0x80
 
 		// peripheral update
 		_ = p.LeftPlayer.Update(data)
@@ -445,7 +445,7 @@ func (p *Ports) WriteINPTx(inptx chipbus.Register, data uint8) {
 	// the VBLANK latch bit only applies to INPT4 and INPT5
 	latch := false
 	if inptx == chipbus.INPT4 || inptx == chipbus.INPT5 {
-		latch = p.latch
+		latch = p.Latch
 	}
 
 	// write memory if button is pressed or it is not and the button latch

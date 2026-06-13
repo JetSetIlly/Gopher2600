@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/imgui-go/v5"
@@ -278,4 +279,41 @@ func (win *winPorts) draw() {
 	// poking chip registers may not have the effect the user
 	// expects (compare to poking CPU registers for example)
 	// !!TODO: warning/help text for chip registers window
+
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+
+	// draw the latch and ground state in the ports window
+
+	latch := win.img.cache.VCS.RIOT.Ports.Latch
+	ground := win.img.cache.VCS.RIOT.Ports.Ground
+
+	updateVBLANK := func() {
+		data := chipbus.ChangedRegister{
+			Address:  cpubus.WriteAddressByRegister[cpubus.VBLANK],
+			Register: cpubus.VBLANK,
+		}
+		if ground {
+			data.Value |= 0x80
+		}
+		if latch {
+			data.Value |= 0x40
+		}
+		win.img.dbg.PushFunction(func() {
+			// only notifying RIOT of the change to the VBLANK bits. we're not touching the actual
+			// VBLANK bit and the TIA is not interested in the ground and latched bits
+			win.img.dbg.VCS().RIOT.Ports.Update(data)
+		})
+	}
+
+	if imgui.Checkbox("Latch", &latch) {
+		updateVBLANK()
+	}
+
+	imgui.SameLineV(0, 20)
+
+	if imgui.Checkbox("Ground", &ground) {
+		updateVBLANK()
+	}
 }
