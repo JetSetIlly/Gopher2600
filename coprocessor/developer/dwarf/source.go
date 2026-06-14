@@ -18,12 +18,14 @@ package dwarf
 import (
 	"crypto/md5"
 	"debug/elf"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -678,4 +680,53 @@ func (src *Source) SourceLineByAddr(addr uint32) *SourceLine {
 
 func (src *Source) projectID() string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(src.path)))
+}
+
+func (src *Source) SaveFunctionCyclesAsJSON() error {
+	type outputFunction struct {
+		FileName  string
+		Name      string
+		MaxCycles string
+	}
+
+	type output struct {
+		Functions []outputFunction
+	}
+
+	var out output
+	for _, fn := range src.Functions {
+		if !(fn.IsStub() || fn.DeclLine.File.IsStub()) {
+			if fn.Cycles.Overall.CyclesProgram.MaxValid {
+				outfn := outputFunction{
+					FileName:  fn.DeclLine.File.Filename,
+					Name:      fn.Name,
+					MaxCycles: fmt.Sprintf("%.0f", fn.Cycles.Overall.CyclesProgram.MaxCount),
+				}
+				out.Functions = append(out.Functions, outfn)
+			}
+		}
+	}
+
+	slices.SortStableFunc(out.Functions, func(a outputFunction, b outputFunction) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+
+	d, err := json.MarshalIndent(out, "", "\t")
+	if err != nil {
+		return fmt.Errorf("DWARF: export cycles: %w", err)
+	}
+
+	pth := filepath.Join(src.path, "function_max_cycles.json")
+	f, err := os.Create(pth)
+	if err != nil {
+		return fmt.Errorf("DWARF: export cycles: %w", err)
+	}
+	defer f.Close()
+
+	_, err = f.Write(d)
+	if err != nil {
+		return fmt.Errorf("DWARF: export cycles: %w", err)
+	}
+
+	return nil
 }

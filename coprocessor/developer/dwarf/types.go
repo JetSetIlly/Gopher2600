@@ -163,9 +163,9 @@ func (ln *SourceLine) String() string {
 		return ""
 	}
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s:%d", ln.File.ShortFilename, ln.LineNumber))
+	fmt.Fprintf(&s, "%s:%d", ln.File.ShortFilename, ln.LineNumber)
 	if !ln.Function.IsStub() {
-		s.WriteString(fmt.Sprintf(" [%s]", ln.Function.Name))
+		fmt.Fprintf(&s, " [%s]", ln.Function.Name)
 	}
 	return s.String()
 }
@@ -244,7 +244,7 @@ func (fn *SourceFunction) String() string {
 	s.WriteString(fn.Name)
 	s.WriteString("\n  ")
 	for _, r := range fn.Range {
-		s.WriteString(fmt.Sprintf(" %s", r))
+		fmt.Fprintf(&s, " %s", r)
 	}
 	return s.String()
 }
@@ -322,7 +322,7 @@ type SourceType struct {
 func (typ *SourceType) String() string {
 	s := strings.Builder{}
 	s.WriteString(typ.Name)
-	s.WriteString(fmt.Sprintf(" %dbytes", typ.Size))
+	fmt.Fprintf(&s, " %dbytes", typ.Size)
 	if typ.Constant {
 		s.WriteString(" is constant")
 	}

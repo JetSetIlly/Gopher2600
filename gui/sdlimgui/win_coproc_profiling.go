@@ -26,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
@@ -121,6 +122,8 @@ func (win *winCoProcProfiling) id() string {
 	return winCoProcProfilingID
 }
 
+const profilingContextMenu = "profilingContextMenu"
+
 func (win *winCoProcProfiling) debuggerDraw() bool {
 	if !win.debuggerOpen {
 		return false
@@ -183,7 +186,22 @@ func (win *winCoProcProfiling) draw(coproc coprocessor.CartCoProc) {
 				win.tabSelected = functionTab
 				win.windowSortSpecDirty = true
 			}
+
 			win.drawFunctions(src)
+
+			if imgui.IsMouseClicked(1) {
+				imgui.OpenPopup(profilingContextMenu)
+			}
+			if imgui.BeginPopup(profilingContextMenu) {
+				if imgui.Selectable("Export Max Function Cycles to JSON") {
+					err := src.SaveFunctionCyclesAsJSON()
+					if err != nil {
+						logger.Log(logger.Allow, "%s", err.Error())
+					}
+				}
+				imgui.EndPopup()
+			}
+
 			imgui.EndTabItem()
 		}
 
