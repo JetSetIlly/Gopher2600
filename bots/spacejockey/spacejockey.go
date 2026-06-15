@@ -130,7 +130,7 @@ func (obs *observer) SetPixels(sig []signal.SignalAttributes, last int) error {
 		if sig[i].VBlank || sig[i].Index == signal.NoSignal {
 			col = obs.frameInfo.Spec.GetColor(signal.ZeroBlack)
 		} else {
-			col = obs.frameInfo.Spec.GetColor(sig[i].Color)
+			col = obs.frameInfo.Spec.GetColorScreen(sig, i, specification.ClksScanline)
 		}
 
 		// small cap improves performance, see https://golang.org/issue/27857
