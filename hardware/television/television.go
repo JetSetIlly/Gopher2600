@@ -177,6 +177,9 @@ func (s *State) GetCoords() coords.TelevisionCoords {
 type Television struct {
 	env *environment.Environment
 
+	// the specification used at the creation of the television
+	creationSpec string
+
 	// vcs will be nil unless AttachVCS() has been called
 	vcs VCS
 
@@ -248,7 +251,8 @@ func NewTelevision(spec string) (*Television, error) {
 	}
 
 	tv := &Television{
-		signals: make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
+		creationSpec: spec,
+		signals:      make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
 		state: &State{
 			resetSpec: spec,
 		},
@@ -273,6 +277,10 @@ func (tv *Television) String() string {
 
 func (tv *Television) SpecString() string {
 	return fmt.Sprintf("current=%s reset=%s", tv.state.frameInfo.Spec.ID, tv.state.resetSpec)
+}
+
+func (tv *Television) CreationSpec() string {
+	return tv.creationSpec
 }
 
 // Reset the television to an initial state.

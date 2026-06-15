@@ -686,7 +686,8 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 	if filename == "" {
 		cartload = cartridgeloader.Loader{}
 	} else {
-		cartload, err = cartridgeloader.NewLoaderFromFilename(filename, dbg.opts.Mapping, dbg.opts.Bank, dbg.Properties)
+		cartload, err = cartridgeloader.NewLoaderFromFilename(filename, dbg.opts.Mapping, dbg.opts.Bank,
+			dbg.Properties, dbg.vcs.TV)
 		if err != nil {
 			return fmt.Errorf("debugger: %w", err)
 		}
@@ -769,7 +770,8 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 		if filename == "" {
 			cartload = cartridgeloader.Loader{}
 		} else {
-			cartload, err = cartridgeloader.NewLoaderFromFilename(filename, dbg.opts.Mapping, dbg.opts.Bank, dbg.Properties)
+			cartload, err = cartridgeloader.NewLoaderFromFilename(filename, dbg.opts.Mapping, dbg.opts.Bank,
+				dbg.Properties, dbg.vcs.TV)
 			if err != nil {
 				return fmt.Errorf("debugger: %w", err)
 			}
@@ -1318,7 +1320,8 @@ func (dbg *Debugger) startPlayback(filename string) error {
 	}
 
 	// new cartridge loader using the information found in the playback file
-	cartload, err := cartridgeloader.NewLoaderFromFilename(plb.Cartridge, "AUTO", "AUTO", dbg.Properties)
+	cartload, err := cartridgeloader.NewLoaderFromFilename(plb.Cartridge, "AUTO", "AUTO",
+		dbg.Properties, dbg.vcs.TV)
 	if err != nil {
 		return fmt.Errorf("debugger: %w", err)
 	}
@@ -1373,7 +1376,8 @@ func (dbg *Debugger) startComparison(comparisonROM string, comparisonPrefs strin
 		return err
 	}
 
-	cartload, err := cartridgeloader.NewLoaderFromFilename(comparisonROM, "AUTO", "AUTO", dbg.Properties)
+	cartload, err := cartridgeloader.NewLoaderFromFilename(comparisonROM, "AUTO", "AUTO",
+		dbg.Properties, dbg.vcs.TV)
 	if err != nil {
 		return err
 	}
@@ -1442,7 +1446,8 @@ func (dbg *Debugger) insertCartridge(filename string) error {
 		filename = dbg.cartload.Filename
 	}
 
-	cartload, err := cartridgeloader.NewLoaderFromFilename(filename, dbg.opts.Mapping, dbg.opts.Bank, dbg.Properties)
+	cartload, err := cartridgeloader.NewLoaderFromFilename(filename, dbg.opts.Mapping, dbg.opts.Bank,
+		dbg.Properties, dbg.vcs.TV)
 	if err != nil {
 		return fmt.Errorf("debugger: %w", err)
 	}

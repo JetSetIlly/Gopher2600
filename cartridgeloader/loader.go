@@ -103,6 +103,11 @@ type Properties interface {
 	Lookup(md5Hash string) properties.Entry
 }
 
+// Television is a minimal interface to the television type
+type Television interface {
+	CreationSpec() string
+}
+
 // sentinal error for when it is attempted to create a loader with no filename
 var NoFilename = errors.New("no filename")
 
@@ -124,7 +129,7 @@ var NoFilename = errors.New("no filename")
 //
 // Filenames can contain whitespace, including leading and trailing whitespace,
 // but cannot consist only of whitespace.
-func NewLoaderFromFilename(filename string, mapping string, bank string, props Properties) (Loader, error) {
+func NewLoaderFromFilename(filename string, mapping string, bank string, props Properties, tv Television) (Loader, error) {
 	// check filename but don't change it. we don't want to allow the empty
 	// string or a string only consisting of whitespace, but we *do* want to
 	// allow filenames with leading/trailing spaces
@@ -187,7 +192,9 @@ func NewLoaderFromFilename(filename string, mapping string, bank string, props P
 	}
 
 	// decide on TV specification
-	if ld.Property.IsValid() {
+	if tv != nil && tv.CreationSpec() != "AUTO" {
+		ld.ReqSpec = tv.CreationSpec()
+	} else if ld.Property.IsValid() {
 		ld.ReqSpec = specification.SearchReqSpec(ld.Property.Name)
 	}
 	if ld.ReqSpec == "" {
@@ -206,7 +213,7 @@ func NewLoaderFromFilename(filename string, mapping string, bank string, props P
 //
 // The name argument should not include a file extension because it won't be
 // used.
-func NewLoaderFromData(name string, data []byte, mapping string, bank string, props Properties) (Loader, error) {
+func NewLoaderFromData(name string, data []byte, mapping string, bank string, props Properties, tv Television) (Loader, error) {
 	if len(data) == 0 {
 		return Loader{}, fmt.Errorf("loader: data is empty")
 	}
@@ -242,7 +249,9 @@ func NewLoaderFromData(name string, data []byte, mapping string, bank string, pr
 	}
 
 	// decide on TV specification
-	if ld.Property.IsValid() {
+	if tv != nil && tv.CreationSpec() != "AUTO" {
+		ld.ReqSpec = tv.CreationSpec()
+	} else if ld.Property.IsValid() {
 		ld.ReqSpec = specification.SearchReqSpec(ld.Property.Name)
 	}
 	if ld.ReqSpec == "" {

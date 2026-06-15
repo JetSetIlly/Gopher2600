@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/properties"
 	"github.com/jetsetilly/gopher2600/test"
 )
 
@@ -74,7 +73,7 @@ func TestDPCRNG(t *testing.T) {
 	// create an empty file and load it as a DPC cartridge. the file is empty
 	// but that doesn't matter for our purposes because we'll be testing the
 	// RNG directly
-	ld, err := cartridgeloader.NewLoaderFromData("dpc_test", make([]byte, 10240), "DPC", "", properties.Properties{})
+	ld, err := cartridgeloader.NewLoaderFromData("dpc_test", make([]byte, 10240), "DPC", "", nil, nil)
 	test.ExpectSuccess(t, err)
 	cart, err := newDPC(nil, ld)
 	test.ExpectSuccess(t, err)
@@ -138,7 +137,7 @@ func TestDPCRNG_Distribution(t *testing.T) {
 	// create an empty file and load it as a DPC cartridge. the file is empty
 	// but that doesn't matter for our purposes because we'll be testing the
 	// RNG directly
-	ld, err := cartridgeloader.NewLoaderFromData("dpc_test", make([]byte, 10240), "DPC", "", properties.Properties{})
+	ld, err := cartridgeloader.NewLoaderFromData("dpc_test", make([]byte, 10240), "DPC", "", nil, nil)
 	test.ExpectSuccess(t, err)
 	cart, err := newDPC(nil, ld)
 	test.ExpectSuccess(t, err)

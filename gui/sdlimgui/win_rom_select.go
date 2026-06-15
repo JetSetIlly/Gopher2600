@@ -638,7 +638,8 @@ func (win *winSelectROM) SetSelectedFilename(filename string) {
 	}
 
 	// create cartridge loader and start thumbnail emulation
-	cartload, err := cartridgeloader.NewLoaderFromFilename(filename, "AUTO", "AUTO", win.img.dbg.Properties)
+	cartload, err := cartridgeloader.NewLoaderFromFilename(filename, "AUTO", "AUTO",
+		win.img.dbg.Properties, win.img.dbg.TV())
 	if err != nil {
 		logger.Log(logger.Allow, "ROM Select", err)
 		return
