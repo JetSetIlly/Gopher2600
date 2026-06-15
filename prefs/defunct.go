@@ -108,6 +108,13 @@ var defunct = []string{
 	"sdlimgui.display.frameQueueLen",
 	"sdlimgui.display.frameQueueLenAuto",
 	"disassembly.fxxxMirror",
+	"television.color.legacy.enabled",
+	"television.color.brightness",
+	"television.color.contrast",
+	"television.color.saturation",
+	"television.color.hue",
+	"television.color.ntscphase",
+	"television.color.palphase",
 }
 
 // returns true if string is in list of defunct values.

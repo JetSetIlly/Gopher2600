@@ -48,31 +48,9 @@ func (win *winPrefs) drawTelevision() {
 	win.drawVSYNC()
 }
 
-// allow selection of colour model in preferences window
-const allowColourModelSelection = false
-
 func (win *winPrefs) drawColour() {
-	var legacy bool
-	if allowColourModelSelection {
-		legacy = specification.ColourGen.LegacyEnabled.Get().(bool)
-		if imgui.Checkbox("Legacy Colour Model", &legacy) {
-			specification.ColourGen.LegacyEnabled.Set(legacy)
-		}
-
-		imgui.Spacing()
-		imgui.Separator()
-		imgui.Spacing()
-	} else {
-		legacy = true
-	}
-
 	// select which adjustments settings to use
-	var adjust *colourgen.Adjust
-	if legacy {
-		adjust = &specification.ColourGen.LegacyAdjust
-	} else {
-		adjust = &specification.ColourGen.Adjust
-	}
+	adjust := &specification.ColourGen.LegacyAdjust
 
 	win.drawBrightness(adjust)
 	imgui.Spacing()
@@ -87,21 +65,13 @@ func (win *winPrefs) drawColour() {
 		imgui.Spacing()
 		if imgui.CollapsingHeader("NTSC Colour Signal") {
 			imgui.Spacing()
-			if legacy {
-				win.drawNTSCPhaseAdj()
-			} else {
-				win.drawNTSCPhase()
-			}
+			win.drawNTSCPhaseAdj()
 		}
 	case specification.SpecPAL.ID:
 		imgui.Spacing()
 		if imgui.CollapsingHeader("PAL Colour Signal") {
 			imgui.Spacing()
-			if legacy {
-				win.drawPALPhaseAdj()
-			} else {
-				win.drawPALPhase()
-			}
+			win.drawPALPhaseAdj()
 		}
 	}
 }
@@ -203,79 +173,6 @@ func (win *winPrefs) drawPALPhaseAdj() {
 
 	if imgui.SliderFloatV("##palphaseadj", &f, -10, 10, "%0.2f", imgui.SliderFlagsNone) {
 		specification.ColourGen.LegacyAdjust.PALPhase.Set(f)
-	}
-}
-
-func (win *winPrefs) drawNTSCPhase() {
-	imgui.BeginGroup()
-	defer imgui.EndGroup()
-
-	f := float32(specification.ColourGen.Adjust.NTSCPhase.Get().(float64))
-
-	imgui.AlignTextToFramePadding()
-	imgui.Text("Phase")
-	imgui.SameLineV(0, 5)
-
-	label := fmt.Sprintf("%.1f\u00b0", f)
-	changed := imgui.SliderFloatV("##ntsc_phase", &f, 20.0, 30.0, label, imgui.SliderFlagsNone)
-
-	// round to one decimal place so that the selected value can
-	// better match the preset value as required
-	f = float32(math.Round(float64(f)*10) / 10)
-
-	// commit change to NTSC phase
-	if changed {
-		specification.ColourGen.Adjust.NTSCPhase.Set(f)
-	}
-
-	// the colourgen preset values should have been rounded to 1 decimal place
-	// so that the comparison to the rounded f value can work
-	switch f {
-	case colourgen.NTSCFieldService:
-		label = colourgen.NTSCFieldSericeLabel
-	case colourgen.NTSCVideoSoft:
-		label = colourgen.NTSCVidoSoftLabel
-	case colourgen.NTSCIdealDistribution:
-		label = colourgen.NTSCIdealDistributionLabel
-	default:
-		label = "Custom"
-	}
-
-	imgui.Spacing()
-	imgui.AlignTextToFramePadding()
-	imgui.Text("Preset")
-	imgui.SameLineV(0, 5)
-
-	if imgui.BeginComboV("##ntscpreset", label, imgui.ComboFlagsNone) {
-		if imgui.Selectable(colourgen.NTSCFieldSericeLabel) {
-			specification.ColourGen.Adjust.NTSCPhase.Set(colourgen.NTSCFieldService)
-		}
-		if imgui.Selectable(colourgen.NTSCVidoSoftLabel) {
-			specification.ColourGen.Adjust.NTSCPhase.Set(colourgen.NTSCVideoSoft)
-		}
-		if imgui.Selectable(colourgen.NTSCIdealDistributionLabel) {
-			specification.ColourGen.Adjust.NTSCPhase.Set(colourgen.NTSCIdealDistribution)
-		}
-		imgui.EndCombo()
-	}
-}
-
-func (win *winPrefs) drawPALPhase() {
-	imgui.BeginGroup()
-	defer imgui.EndGroup()
-
-	f := float32(specification.ColourGen.Adjust.PALPhase.Get().(float64))
-
-	imgui.AlignTextToFramePadding()
-	imgui.Text("Phase")
-	imgui.SameLineV(0, 5)
-
-	label := fmt.Sprintf("%.1f\u00b0", f)
-	if imgui.SliderFloatV("##pal_phase", &f, 10.0, 30.0, label, imgui.SliderFlagsNone) {
-		// round to one decimal place. this matches what we do in the NTSC phase
-		// widget, although we don't have presets like we do with NTSC
-		f := math.Round(float64(f)*10) / 10
-		specification.ColourGen.Adjust.PALPhase.Set(f)
 	}
 }
 

@@ -19,7 +19,6 @@ import (
 	"image/color"
 	"math"
 
-	"github.com/jetsetilly/gopher2600/hardware/clocks"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
@@ -41,9 +40,7 @@ type ColourGen struct {
 
 	dsk *prefs.Disk
 
-	LegacyEnabled prefs.Bool
-	LegacyAdjust  Adjust
-	Adjust        Adjust
+	LegacyAdjust Adjust
 
 	// gamma is the same for both legacy and non-legacy models
 	Gamma prefs.Float
@@ -69,10 +66,6 @@ func NewColourGen() (*ColourGen, error) {
 		return nil, err
 	}
 
-	err = c.dsk.Add("television.color.legacy.enabled", &c.LegacyEnabled)
-	if err != nil {
-		return nil, err
-	}
 	err = c.dsk.Add("television.color.legacy.brightness", &c.LegacyAdjust.Brightness)
 	if err != nil {
 		return nil, err
@@ -90,23 +83,6 @@ func NewColourGen() (*ColourGen, error) {
 		return nil, err
 	}
 
-	err = c.dsk.Add("television.color.brightness", &c.Adjust.Brightness)
-	if err != nil {
-		return nil, err
-	}
-	err = c.dsk.Add("television.color.contrast", &c.Adjust.Contrast)
-	if err != nil {
-		return nil, err
-	}
-	err = c.dsk.Add("television.color.saturation", &c.Adjust.Saturation)
-	if err != nil {
-		return nil, err
-	}
-	err = c.dsk.Add("television.color.hue", &c.Adjust.Hue)
-	if err != nil {
-		return nil, err
-	}
-
 	// the cache of generated colours are always cleared when most adjustment
 	// settings are changed
 	//
@@ -120,16 +96,10 @@ func NewColourGen() (*ColourGen, error) {
 		return nil
 	}
 
-	c.LegacyEnabled.SetHookPost(f)
 	c.LegacyAdjust.Brightness.SetHookPost(f)
 	c.LegacyAdjust.Contrast.SetHookPost(f)
 	c.LegacyAdjust.Saturation.SetHookPost(f)
 	c.LegacyAdjust.Hue.SetHookPost(f)
-
-	c.Adjust.Brightness.SetHookPost(f)
-	c.Adjust.Contrast.SetHookPost(f)
-	c.Adjust.Saturation.SetHookPost(f)
-	c.Adjust.Hue.SetHookPost(f)
 
 	err = c.dsk.Add("television.color.legacy.ntscphase", &c.LegacyAdjust.NTSCPhase)
 	if err != nil {
@@ -151,26 +121,6 @@ func NewColourGen() (*ColourGen, error) {
 		return nil
 	})
 
-	err = c.dsk.Add("television.color.ntscphase", &c.Adjust.NTSCPhase)
-	if err != nil {
-		return nil, err
-	}
-	c.Adjust.NTSCPhase.SetHookPost(func(_ prefs.Value) error {
-		clear(c.ntsc)
-		c.zeroBlack.generated = false
-		return nil
-	})
-
-	err = c.dsk.Add("television.color.palphase", &c.Adjust.PALPhase)
-	if err != nil {
-		return nil, err
-	}
-	c.Adjust.PALPhase.SetHookPost(func(_ prefs.Value) error {
-		clear(c.pal)
-		c.zeroBlack.generated = false
-		return nil
-	})
-
 	// gamma is the same for every variation of colour generation
 	err = c.dsk.Add("television.color.gamma", &c.Gamma)
 	if err != nil {
@@ -187,20 +137,12 @@ func NewColourGen() (*ColourGen, error) {
 }
 
 func (c *ColourGen) SetDefaults() {
-	c.LegacyEnabled.Set(true)
 	c.LegacyAdjust.Brightness.Set(1.196)
 	c.LegacyAdjust.Contrast.Set(1.000)
 	c.LegacyAdjust.Saturation.Set(0.963)
 	c.LegacyAdjust.Hue.Set(0.0)
 	c.LegacyAdjust.NTSCPhase.Set(0.0)
 	c.LegacyAdjust.PALPhase.Set(0.0)
-
-	c.Adjust.Brightness.Set(0.949)
-	c.Adjust.Contrast.Set(1.205)
-	c.Adjust.Saturation.Set(0.874)
-	c.Adjust.Hue.Set(0.0)
-	c.Adjust.NTSCPhase.Set(NTSCFieldService)
-	c.Adjust.PALPhase.Set(PALDefault)
 
 	// I used to think that the different TV specifications had a specific
 	// gamma. NTSC has an inherent gamma of 2.2 and PAL has 2.8. I no longer
@@ -256,24 +198,14 @@ func (c *ColourGen) generateZeroBlack() color.RGBA {
 		return c.zeroBlack.col
 	}
 
-	legacy := c.LegacyEnabled.Get().(bool)
-
-	var Y float64
-
-	if legacy {
-		Y, _, _ = c.LegacyAdjust.yiq(videoBlack, 0, 0)
-	} else {
-		Y, _, _ = c.Adjust.yiq(videoBlack, 0, 0)
-	}
+	Y, _, _ := c.LegacyAdjust.yiq(videoBlack, 0, 0)
 
 	y := uint8(clamp(Y) * 255)
 	c.zeroBlack.col = color.RGBA{R: y, G: y, B: y, A: 255}
 	c.zeroBlack.generated = true
 
-	if legacy {
-		gamma := c.Gamma.Get().(float64)
-		c.zeroBlack.col = gammaCorrectRGB(c.zeroBlack.col, gamma)
-	}
+	gamma := c.Gamma.Get().(float64)
+	c.zeroBlack.col = gammaCorrectRGB(c.zeroBlack.col, gamma)
 
 	return c.zeroBlack.col
 }
@@ -311,67 +243,12 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal, _ signal.ColorSignal, _
 	}
 
 	// Y, phi and saturation is all that's needed to create the RGB value
-	var Y, phi, saturation float64
+	Y := legacyNTSC_yiq[hue][lum].y
+	phi := legacyNTSC_yiq[hue][lum].phi
+	saturation := legacyNTSC_yiq[hue][lum].saturation
 
-	if c.LegacyEnabled.Get().(bool) {
-		Y = legacyNTSC_yiq[hue][lum].y
-		phi = legacyNTSC_yiq[hue][lum].phi
-		saturation = legacyNTSC_yiq[hue][lum].saturation
-
-		// stretch phi by a fraction of the phase setting
-		phi -= (float64(hue - 1)) * c.LegacyAdjust.NTSCPhase.Get().(float64) * math.Pi / 180
-	} else {
-		// NTSC creates a grayscale for hue 0
-		if hue == 0x00 {
-			saturation = 0.0
-		} else {
-			saturation = 0.3
-		}
-
-		// Y value in the range minY to MaxY based on the lum value
-		Y = minY + (float64(lum)/8)*(maxY-minY)
-
-		// the colour component indicates a point on the 'colour wheel'
-		phi = (float64(hue - 1)) * -c.Adjust.NTSCPhase.Get().(float64)
-
-		// angle of the colour burst reference is 180 by defintion
-		const phiBurst = 180
-		phi += phiBurst
-
-		// however, from the "Stella Programmer's Guide" (page 28):
-		//
-		// "Binary code 0 selects no color. Code 1 selects gold (same phase as
-		// color burst)"
-		//
-		// what "gold" means is subjective. indeed the JAN programming guide says it
-		// is light orange. but whatever the precise colour, we can say that hue 1
-		// should be more in the orange section of the colour wheel than the green
-		// section, which it would be if we left it at 180°
-		//
-		// from page 28 of the "Stella Programmer's Guide":
-		//
-		// "A hardware counter on this chip produces all horizontal timing (such as
-		// sync, blank, burst) independent of the microprocessor, This counter is
-		// driven from an external 3.58 Mhz oscillator and has a total count of 228.
-		// Blank is decoded as 68 counts and sync and color burst as 16 counts."
-		//
-		// (NOTE: I really don't know if the following is correct. It produces
-		// pleasing results but I can't really justify the logic behind it. either
-		// way it doesn't really matter - the end result is for hue 1 to be "gold"
-		// or "light orange" so even if the colour being created here isn't the
-		// 'natural' colour burst value the user will be adjusting the TV's hue so
-		// that it is gold/orange. all we're doing is making the zero hue adjustment
-		// the 'correct' value)
-		//
-		// using the values on page 28 of the guide: 16 multipled by 3.58 is 57.28.
-		// if we subtract this from 180 we get an angle that is in the gold/orange
-		// section of the colour wheel
-		const phiAdjBurst = -(clocks.NTSC_TIA * 16)
-		phi += phiAdjBurst
-
-		// phi has been calculated in degrees but the math functions require radians
-		phi *= math.Pi / 180
-	}
+	// stretch phi by a fraction of the phase setting
+	phi -= (float64(hue - 1)) * c.LegacyAdjust.NTSCPhase.Get().(float64) * math.Pi / 180
 
 	// (IQ used to by multplied by the luminance (Y) value but I no longer
 	// believe this is correct)
@@ -379,11 +256,7 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal, _ signal.ColorSignal, _
 	Q := saturation * math.Cos(phi)
 
 	// apply brightness/constrast/saturation/hue settings to YIQ
-	if c.LegacyEnabled.Get().(bool) {
-		Y, I, Q = c.LegacyAdjust.yiq(Y, I, Q)
-	} else {
-		Y, I, Q = c.Adjust.yiq(Y, I, Q)
-	}
+	Y, I, Q = c.LegacyAdjust.yiq(Y, I, Q)
 
 	// YIQ to RGB conversion
 	//
@@ -444,52 +317,15 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal, _ signal.ColorSignal, _ 
 	}
 
 	// Y, phi and saturation is all that's needed to create the RGB value
-	var Y, phi, saturation float64
+	Y := legacyPAL_yuv[hue][lum].y
+	phi := legacyPAL_yuv[hue][lum].phi
+	saturation := legacyPAL_yuv[hue][lum].saturation
 
-	if c.LegacyEnabled.Get().(bool) {
-		Y = legacyPAL_yuv[hue][lum].y
-		phi = legacyPAL_yuv[hue][lum].phi
-		saturation = legacyPAL_yuv[hue][lum].saturation
-
-		// stretch phi by a fraction of the phase setting
-		if hue&0x01 == 0x01 {
-			phi -= float64(hue) * c.LegacyAdjust.PALPhase.Get().(float64) * math.Pi / 180
-		} else {
-			phi += (float64(hue) - 2) * c.LegacyAdjust.PALPhase.Get().(float64) * math.Pi / 180
-		}
+	// stretch phi by a fraction of the phase setting
+	if hue&0x01 == 0x01 {
+		phi -= float64(hue) * c.LegacyAdjust.PALPhase.Get().(float64) * math.Pi / 180
 	} else {
-		// PAL creates a grayscale for hues 0, 1, 14 and 15
-		if hue <= 0x01 || hue >= 0x0e {
-			saturation = 0.0
-		} else {
-			saturation = 0.3
-		}
-
-		// Y value in the range minY to MaxY based on the lum value
-		Y = minY + (float64(lum)/8)*(maxY-minY)
-
-		// even-numbered hue numbers go in the opposite direction for some reason
-		if hue&0x01 == 0x01 {
-			// green to lilac
-			phi = float64(hue) * -c.Adjust.PALPhase.Get().(float64)
-		} else {
-			// gold to purple
-			phi = (float64(hue) - 2) * c.Adjust.PALPhase.Get().(float64)
-		}
-
-		// angle of the colour burst reference is 180 by defintion
-		const phiBurst = 180
-		phi += phiBurst
-
-		// see comments in generateNTSC for/how why we apply the adjustment and
-		// burst value to the calculated phi. we use the PAL clock rather than the
-		// NTSC clock of course. and rather than hue 1 being gold/orange it is hue 2
-		// that must be that colour
-		const phiAdjBurst = -(clocks.PAL_TIA * 16)
-		phi += phiAdjBurst
-
-		// phi has been calculated in degrees but the math functions require radians
-		phi *= math.Pi / 180
+		phi += (float64(hue) - 2) * c.LegacyAdjust.PALPhase.Get().(float64) * math.Pi / 180
 	}
 
 	// (UV used to by multplied by the luminance (Y) value but I no longer
@@ -498,11 +334,7 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal, _ signal.ColorSignal, _ 
 	V := saturation * -math.Cos(phi)
 
 	// apply brightness/constrast/saturation/hue settings to YUV
-	if c.LegacyEnabled.Get().(bool) {
-		Y, U, V = c.LegacyAdjust.yuv(Y, U, V)
-	} else {
-		Y, U, V = c.Adjust.yuv(Y, U, V)
-	}
+	Y, U, V = c.LegacyAdjust.yuv(Y, U, V)
 
 	// YUV to RGB conversion
 	//
@@ -548,9 +380,6 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal, store signal.ColorSign
 		return c.secam[idx].col
 	}
 
-	// Y, phi and saturation is all that's needed to create the RGB value
-	var Y, phi, saturation float64
-
 	// special case for luminance of zero (both luminance values are added together)
 	if lum+storeLum == 0x00 {
 		c.secam[idx].col = c.generateZeroBlack()
@@ -558,66 +387,16 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal, store signal.ColorSign
 		return c.secam[idx].col
 	}
 
-	// the stored colour signal is decoded separately
-	var storePhi, storeSaturation float64
+	// Y, phi and saturation can be looked up based on lum
+	Y := legacySECAM_yuv[lum].y
+	phi := legacySECAM_yuv[lum].phi
+	saturation := legacySECAM_yuv[lum].saturation
 
-	if c.LegacyEnabled.Get().(bool) {
-		Y = legacySECAM_yuv[lum].y
-		phi = legacySECAM_yuv[lum].phi
-		saturation = legacySECAM_yuv[lum].saturation
-		storePhi = legacySECAM_yuv[storeLum].phi
-		storeSaturation = legacySECAM_yuv[storeLum].saturation
-	} else {
-		// SECAM lum 7 is completely desaturated
-		if lum == 7 {
-			saturation = 0.0
-		} else {
-			saturation = 0.3
-		}
+	// phi and saturation only for stored signal
+	storePhi := legacySECAM_yuv[storeLum].phi
+	storeSaturation := legacySECAM_yuv[storeLum].saturation
 
-		// Y value in the range minY to MaxY based on the lum value
-		Y = minY + (float64(lum)/8)*(maxY-minY)
-
-		switch lum {
-		case 1:
-			phi = 225
-		case 2:
-			phi = 135
-		case 3:
-			phi = 180
-		case 4:
-			phi = 45
-		case 5:
-			phi = 270
-		case 6:
-			phi = 90
-		}
-
-		// SECAM lum 7 is completely desaturated
-		if storeLum == 7 {
-			storeSaturation = 0.0
-		} else {
-			storeSaturation = 0.3
-		}
-
-		switch storeLum {
-		case 1:
-			storePhi = 225
-		case 2:
-			storePhi = 135
-		case 3:
-			storePhi = 180
-		case 4:
-			storePhi = 45
-		case 5:
-			storePhi = 270
-		case 6:
-			storePhi = 90
-		}
-	}
-
-	// (U and V used to by multplied by the luminance (Y) value but I no longer believe this is
-	// correct)
+	// (U and V used to by multplied by the luminance (Y) value but I no longer believe this is correct)
 	var U, V float64
 	if odd {
 		U = saturation * -math.Sin(phi)
@@ -628,11 +407,7 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal, store signal.ColorSign
 	}
 
 	// apply brightness/constrast/saturation/hue settings to YUV
-	if c.LegacyEnabled.Get().(bool) {
-		Y, U, V = c.LegacyAdjust.yuv(Y, U, V)
-	} else {
-		Y, V, V = c.Adjust.yuv(Y, U, V)
-	}
+	Y, U, V = c.LegacyAdjust.yuv(Y, U, V)
 
 	// YUV to RGB conversion
 	//
