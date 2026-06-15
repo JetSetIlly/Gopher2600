@@ -115,6 +115,10 @@ var defunct = []string{
 	"television.color.hue",
 	"television.color.ntscphase",
 	"television.color.palphase",
+	"television.color.legacy.brightness",
+	"television.color.legacy.contrast",
+	"television.color.legacy.saturation",
+	"television.color.legacy.hue",
 }
 
 // returns true if string is in list of defunct values.

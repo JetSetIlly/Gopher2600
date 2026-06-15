@@ -103,11 +103,7 @@ type Adjust struct {
 	Contrast   prefs.Float
 	Saturation prefs.Float
 	Hue        prefs.Float
-
-	// phase values are either absolute or relative values depending on the
-	// colour model
-	NTSCPhase prefs.Float
-	PALPhase  prefs.Float
+	Phase      prefs.Float
 }
 
 func (c *Adjust) rgb(col color.RGBA) color.RGBA {

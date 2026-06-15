@@ -98,7 +98,7 @@ func (win *winPrefs) draw() {
 		win.drawTelevision()
 		imgui.EndTabItem()
 		setDef = func() {
-			specification.ColourGen.SetDefaults()
+			specification.ColourGen.SetDefaults(false, win.img.cache.TV.GetFrameInfo().Spec.ID)
 			win.img.dbg.VCS().Env.Prefs.TV.SetDefaults()
 		}
 		setDefLabel = "Television"

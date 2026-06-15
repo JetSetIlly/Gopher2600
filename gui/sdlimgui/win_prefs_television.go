@@ -49,16 +49,38 @@ func (win *winPrefs) drawTelevision() {
 }
 
 func (win *winPrefs) drawColour() {
+	var adjust *colourgen.Adjust
+	var drawHue bool
+
 	// select which adjustments settings to use
-	adjust := &specification.ColourGen.LegacyAdjust
+	switch win.img.cache.TV.GetFrameInfo().Spec.ID {
+	case specification.SpecNTSC.ID:
+		adjust = &specification.ColourGen.AdjustNTSC
+		drawHue = true
+	case specification.SpecPAL.ID:
+		adjust = &specification.ColourGen.AdjustPAL
+		drawHue = true
+	case specification.SpecSECAM.ID:
+		adjust = &specification.ColourGen.AdjustSECAM
+		drawHue = false
+	}
+
+	imgui.PushFont(win.img.fonts.smallerGui)
+	imgui.Textf("Colour adjustments are specific to %s", win.img.cache.TV.GetFrameInfo().Spec.ID)
+	imgui.PopFont()
+	imgui.Spacing()
+	imgui.Spacing()
 
 	win.drawBrightness(adjust)
 	imgui.Spacing()
 	win.drawContrast(adjust)
 	imgui.Spacing()
 	win.drawSaturation(adjust)
-	imgui.Spacing()
-	win.drawHue(adjust)
+
+	if drawHue {
+		imgui.Spacing()
+		win.drawHue(adjust)
+	}
 
 	switch win.img.cache.TV.GetFrameInfo().Spec.ID {
 	case specification.SpecNTSC.ID:
@@ -150,14 +172,14 @@ func (win *winPrefs) drawNTSCPhaseAdj() {
 	imgui.BeginGroup()
 	defer imgui.EndGroup()
 
-	f := float32(specification.ColourGen.LegacyAdjust.NTSCPhase.Get().(float64))
+	f := float32(specification.ColourGen.AdjustNTSC.Phase.Get().(float64))
 
 	imgui.AlignTextToFramePadding()
 	imgui.Text("Phase Adjust")
 	imgui.SameLineV(0, 5)
 
 	if imgui.SliderFloatV("##ntscphaseadj", &f, -10, 10, "%0.2f", imgui.SliderFlagsNone) {
-		specification.ColourGen.LegacyAdjust.NTSCPhase.Set(f)
+		specification.ColourGen.AdjustNTSC.Phase.Set(f)
 	}
 }
 
@@ -165,14 +187,14 @@ func (win *winPrefs) drawPALPhaseAdj() {
 	imgui.BeginGroup()
 	defer imgui.EndGroup()
 
-	f := float32(specification.ColourGen.LegacyAdjust.PALPhase.Get().(float64))
+	f := float32(specification.ColourGen.AdjustPAL.Phase.Get().(float64))
 
 	imgui.AlignTextToFramePadding()
 	imgui.Text("Phase Adjust")
 	imgui.SameLineV(0, 5)
 
 	if imgui.SliderFloatV("##palphaseadj", &f, -10, 10, "%0.2f", imgui.SliderFlagsNone) {
-		specification.ColourGen.LegacyAdjust.PALPhase.Set(f)
+		specification.ColourGen.AdjustPAL.Phase.Set(f)
 	}
 }
 
