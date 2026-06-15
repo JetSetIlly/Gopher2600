@@ -27,15 +27,23 @@ import (
 )
 
 // list of allowed filenames for the supercharger BIOS.
-var biosFile = [...]string{
+var ntscBiosFile = []string{
 	"Supercharger BIOS.bin",
 	"Supercharger.BIOS.bin",
 	"Supercharger_BIOS.bin",
 	"supercharger_bios.bin",
+	"SUPERCHARGER_BIOS.bin",
+}
+
+var palBiosFile = []string{
+	"Supercharger BIOS PAL.bin",
+	"Supercharger_BIOS_PAL.bin",
+	"SUPERCHARGER_BIOS_PAL.bin",
 }
 
 const (
-	allowedBiosMD5 = "4565c1a7abce773e53c75b35414adefd"
+	ntscAllowedBiosMD5 = "4565c1a7abce773e53c75b35414adefd"
+	palAllowedBiosMD5  = "4a8c743396b8ad69d97e6fd3dd3e3132"
 )
 
 // loadBIOS attempts to load BIOS from (in order of priority):
@@ -43,9 +51,16 @@ const (
 //   - the same directory as the tape/bin file
 //   - the emulator's resource path
 func loadBIOS(env *environment.Environment, path string) ([]uint8, error) {
+	biosFile := ntscBiosFile
+	md5sum := ntscAllowedBiosMD5
+	if env.Loader.ReqSpec == "PAL" {
+		biosFile = palBiosFile
+		md5sum = palAllowedBiosMD5
+	}
+
 	// current working directory
 	for _, b := range biosFile {
-		d, err := _loadBIOS(b)
+		d, err := _loadBIOS(b, md5sum)
 		if err != nil {
 			continue
 		}
@@ -62,7 +77,7 @@ func loadBIOS(env *environment.Environment, path string) ([]uint8, error) {
 	// the same directory as the tape/bin file
 	for _, b := range biosFile {
 		p := filepath.Join(path, b)
-		d, err := _loadBIOS(p)
+		d, err := _loadBIOS(p, md5sum)
 		if err != nil {
 			continue
 		}
@@ -83,7 +98,7 @@ func loadBIOS(env *environment.Environment, path string) ([]uint8, error) {
 			return nil, err
 		}
 
-		d, err := _loadBIOS(p)
+		d, err := _loadBIOS(p, md5sum)
 		if err != nil {
 			continue
 		}
@@ -100,7 +115,7 @@ func loadBIOS(env *environment.Environment, path string) ([]uint8, error) {
 	return nil, fmt.Errorf("bios: can't find any suitable file")
 }
 
-func _loadBIOS(biosFilePath string) ([]uint8, error) {
+func _loadBIOS(biosFilePath string, md5sum string) ([]uint8, error) {
 	f, err := os.Open(biosFilePath)
 	if err != nil {
 		return nil, err
@@ -123,7 +138,7 @@ func _loadBIOS(biosFilePath string) ([]uint8, error) {
 
 	// check that file is correct
 	h := fmt.Sprintf("%x", md5.Sum(data))
-	if h != allowedBiosMD5 {
+	if h != md5sum {
 		return nil, fmt.Errorf("disallowed supercharger MD5 hash: %s", h)
 	}
 
