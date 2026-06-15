@@ -115,7 +115,7 @@ func (drv *driver) SetPixels(sig []signal.SignalAttributes, last int) error {
 		if sig[i].VBlank || sig[i].Index == signal.NoSignal {
 			col = drv.frameInfo.Spec.GetColor(signal.ZeroBlack)
 		} else {
-			col = drv.frameInfo.Spec.GetColor(sig[i].Color)
+			col = drv.frameInfo.Spec.GetColorScreen(sig, i, specification.ClksScanline)
 		}
 
 		// small cap improves performance, see https://golang.org/issue/27857

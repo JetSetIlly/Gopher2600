@@ -177,17 +177,32 @@ type Spec struct {
 	ExtendedVisibleTop    int
 	ExtendedVisibleBottom int
 
-	colourGen func(col signal.ColorSignal, store signal.ColorSignal, odd bool) color.RGBA
+	colourGen func(col signal.ColorSignal, prev signal.ColorSignal, odd bool) color.RGBA
 }
 
-// GetColor translates a signals to the color type. The RGB is not gamma
-// corrected but must should be before display
+// GetColor translates a signals to the color type. The RGB is not gamma corrected. Prefer
+// GetColorScreen() whenever possible.
 func (spec Spec) GetColor(col signal.ColorSignal) color.RGBA {
 	return spec.colourGen(col, col, false)
 }
 
-func (spec Spec) GetColorCorrect(col signal.ColorSignal, store signal.ColorSignal, odd bool) color.RGBA {
-	return spec.colourGen(col, store, odd)
+// GetColorScreen is like GetColor but works with an array of SignalAttributes and an index value.
+// This produces better results for SECAM when in the context of a complete screen. There is is no
+// harm in using GetColorScreen for non-SECAM signals.
+//
+// The value for the stride parameter will likely always be specification.ClksScanline
+func (spec Spec) GetColorScreen(sig []signal.SignalAttributes, idx int, stride int) color.RGBA {
+	col := sig[idx].Color
+	odd := (idx/stride)%2 != 0
+
+	var prev signal.ColorSignal
+	if idx > stride {
+		prev = sig[idx-stride].Color
+	} else {
+		prev = col
+	}
+
+	return spec.colourGen(col, prev, odd)
 }
 
 // From the Stella Programmer's Guide:

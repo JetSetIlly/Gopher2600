@@ -413,17 +413,17 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal, _ signal.ColorSignal, _ 
 	return c.pal[idx].col
 }
 
-func (c *ColourGen) GenerateSECAM(col signal.ColorSignal, store signal.ColorSignal, odd bool) color.RGBA {
+func (c *ColourGen) GenerateSECAM(col signal.ColorSignal, prev signal.ColorSignal, odd bool) color.RGBA {
 	if col == signal.ZeroBlack {
 		return c.generateZeroBlack(c.AdjustSECAM)
 	}
 
 	// the hue nibble of the two signal.ColourSignal values is ignored by SECAM
 	lum := (col & 0x0e) >> 1
-	storeLum := (store & 0x0e) >> 1
+	prevLum := (prev & 0x0e) >> 1
 
 	// index is based on lum value of the two colour signals
-	idx := (int(lum) | (int(storeLum) << 7)) << 1
+	idx := (int(lum) | (int(prevLum) << 7)) << 1
 	if odd {
 		idx |= 1
 	}
@@ -434,7 +434,7 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal, store signal.ColorSign
 	}
 
 	// special case for luminance of zero (both luminance values are added together)
-	if lum+storeLum == 0x00 {
+	if lum+prevLum == 0x00 {
 		c.secam[idx].col = c.generateZeroBlack(c.AdjustSECAM)
 		c.secam[idx].generated = true
 		return c.secam[idx].col
@@ -445,17 +445,17 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal, store signal.ColorSign
 	phi := legacySECAM_yuv[lum].phi
 	saturation := legacySECAM_yuv[lum].saturation
 
-	// phi and saturation only for stored signal
-	storePhi := legacySECAM_yuv[storeLum].phi
-	storeSaturation := legacySECAM_yuv[storeLum].saturation
+	// phi and saturation only for prev signal. there is no need for Y
+	prevPhi := legacySECAM_yuv[prevLum].phi
+	prevSaturation := legacySECAM_yuv[prevLum].saturation
 
 	// (U and V used to by multplied by the luminance (Y) value but I no longer believe this is correct)
 	var U, V float64
 	if odd {
 		U = saturation * -math.Sin(phi)
-		V = storeSaturation * -math.Cos(storePhi)
+		V = prevSaturation * -math.Cos(prevPhi)
 	} else {
-		U = storeSaturation * -math.Sin(storePhi)
+		U = prevSaturation * -math.Sin(prevPhi)
 		V = saturation * -math.Cos(phi)
 	}
 

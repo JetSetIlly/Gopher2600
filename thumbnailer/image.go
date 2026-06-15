@@ -227,7 +227,7 @@ func (thmb *Image) SetPixels(sig []signal.SignalAttributes, last int) error {
 		if sig[i].VBlank || sig[i].Index == signal.NoSignal {
 			col = thmb.frameInfo.Spec.GetColor(signal.ZeroBlack)
 		} else {
-			col = thmb.frameInfo.Spec.GetColor(sig[i].Color)
+			col = thmb.frameInfo.Spec.GetColorScreen(sig, i, specification.ClksScanline)
 		}
 
 		// small cap improves performance, see https://golang.org/issue/27857
