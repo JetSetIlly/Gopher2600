@@ -54,7 +54,7 @@ func NewColourGen() (*ColourGen, error) {
 	c := &ColourGen{
 		ntsc:  make([]entry, 128),
 		pal:   make([]entry, 128),
-		secam: make([]entry, 128),
+		secam: make([]entry, 2048),
 	}
 
 	c.SetDefaults()
@@ -288,7 +288,7 @@ const (
 
 // GenerateNTSC creates the RGB values for the ColorSignal using the current
 // colour generation preferences and for the NTSC television system
-func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
+func (c *ColourGen) GenerateNTSC(col signal.ColorSignal, _ signal.ColorSignal, _ bool) color.RGBA {
 	if col == signal.ZeroBlack {
 		return c.generateZeroBlack()
 	}
@@ -421,7 +421,7 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal) color.RGBA {
 
 // GeneratePAL creates the RGB values for the ColorSignal using the current
 // colour generation preferences and for the PAL television system
-func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
+func (c *ColourGen) GeneratePAL(col signal.ColorSignal, _ signal.ColorSignal, _ bool) color.RGBA {
 	if col == signal.ZeroBlack {
 		return c.generateZeroBlack()
 	}
@@ -528,35 +528,45 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal) color.RGBA {
 	return c.pal[idx].col
 }
 
-func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
+func (c *ColourGen) GenerateSECAM(col signal.ColorSignal, store signal.ColorSignal, odd bool) color.RGBA {
 	if col == signal.ZeroBlack {
 		return c.generateZeroBlack()
 	}
 
-	idx := uint8(col) >> 1
+	// the hue nibble of the two signal.ColourSignal values is ignored by SECAM
+	lum := (col & 0x0e) >> 1
+	storeLum := (store & 0x0e) >> 1
 
-	if c.secam[idx].generated == true {
-		return c.secam[idx].col
+	// index is based on lum value of the two colour signals
+	idx := (int(lum) | (int(storeLum) << 7)) << 1
+	if odd {
+		idx |= 1
 	}
 
-	// the hue nibble of the signal.ColourSignal value is ignored by SECAM
-	// consoles
-	lum := (col & 0x0e) >> 1
-
-	// special case for luminance of zero
-	if lum == 0x00 {
-		c.pal[idx].col = c.generateZeroBlack()
-		c.pal[idx].generated = true
-		return c.pal[idx].col
+	// use indexed colour if available
+	if c.secam[idx].generated == true {
+		return c.secam[idx].col
 	}
 
 	// Y, phi and saturation is all that's needed to create the RGB value
 	var Y, phi, saturation float64
 
+	// special case for luminance of zero (both luminance values are added together)
+	if lum+storeLum == 0x00 {
+		c.secam[idx].col = c.generateZeroBlack()
+		c.secam[idx].generated = true
+		return c.secam[idx].col
+	}
+
+	// the stored colour signal is decoded separately
+	var storePhi, storeSaturation float64
+
 	if c.LegacyEnabled.Get().(bool) {
 		Y = legacySECAM_yuv[lum].y
 		phi = legacySECAM_yuv[lum].phi
 		saturation = legacySECAM_yuv[lum].saturation
+		storePhi = legacySECAM_yuv[storeLum].phi
+		storeSaturation = legacySECAM_yuv[storeLum].saturation
 	} else {
 		// SECAM lum 7 is completely desaturated
 		if lum == 7 {
@@ -582,12 +592,40 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal) color.RGBA {
 		case 6:
 			phi = 90
 		}
+
+		// SECAM lum 7 is completely desaturated
+		if storeLum == 7 {
+			storeSaturation = 0.0
+		} else {
+			storeSaturation = 0.3
+		}
+
+		switch storeLum {
+		case 1:
+			storePhi = 225
+		case 2:
+			storePhi = 135
+		case 3:
+			storePhi = 180
+		case 4:
+			storePhi = 45
+		case 5:
+			storePhi = 270
+		case 6:
+			storePhi = 90
+		}
 	}
 
-	// (UV used to by multplied by the luminance (Y) value but I no longer
-	// believe this is correct)
-	U := saturation * -math.Sin(phi)
-	V := saturation * -math.Cos(phi)
+	// (U and V used to by multplied by the luminance (Y) value but I no longer believe this is
+	// correct)
+	var U, V float64
+	if odd {
+		U = saturation * -math.Sin(phi)
+		V = storeSaturation * -math.Cos(storePhi)
+	} else {
+		U = storeSaturation * -math.Sin(storePhi)
+		V = saturation * -math.Cos(phi)
+	}
 
 	// apply brightness/constrast/saturation/hue settings to YUV
 	if c.LegacyEnabled.Get().(bool) {

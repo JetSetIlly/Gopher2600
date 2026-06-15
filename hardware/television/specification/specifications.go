@@ -177,13 +177,17 @@ type Spec struct {
 	ExtendedVisibleTop    int
 	ExtendedVisibleBottom int
 
-	colourGen func(signal.ColorSignal) color.RGBA
+	colourGen func(col signal.ColorSignal, store signal.ColorSignal, odd bool) color.RGBA
 }
 
 // GetColor translates a signals to the color type. The RGB is not gamma
 // corrected but must should be before display
 func (spec Spec) GetColor(col signal.ColorSignal) color.RGBA {
-	return spec.colourGen(col)
+	return spec.colourGen(col, col, false)
+}
+
+func (spec Spec) GetColorCorrect(col signal.ColorSignal, store signal.ColorSignal, odd bool) color.RGBA {
+	return spec.colourGen(col, store, odd)
 }
 
 // From the Stella Programmer's Guide:

@@ -653,7 +653,11 @@ func (scr *screen) generatePresentationPixels(idx int) {
 		if sig[i].VBlank || sig[i].Index == signal.NoSignal {
 			col = scr.crit.frameInfo.Spec.GetColor(signal.ZeroBlack)
 		} else {
-			col = scr.crit.frameInfo.Spec.GetColor(sig[i].Color)
+			var prev signal.SignalAttributes
+			if i > specification.ClksScanline {
+				prev = sig[i-specification.ClksScanline]
+			}
+			col = scr.crit.frameInfo.Spec.GetColorCorrect(sig[i].Color, prev.Color, (i/specification.ClksScanline)%2 != 0)
 		}
 
 		// small cap improves performance, see https://golang.org/issue/27857
