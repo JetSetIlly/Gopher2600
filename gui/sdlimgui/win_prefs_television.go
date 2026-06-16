@@ -65,35 +65,41 @@ func (win *winPrefs) drawColour() {
 		drawHue = false
 	}
 
-	imgui.PushFont(win.img.fonts.smallerGui)
-	imgui.Textf("Colour adjustments are specific to %s", win.img.cache.TV.GetFrameInfo().Spec.ID)
-	imgui.PopFont()
 	imgui.Spacing()
+	grayscale := specification.ColourGen.Grayscale.Get().(bool)
+	if imgui.Checkbox("Black & White", &grayscale) {
+		specification.ColourGen.Grayscale.Set(grayscale)
+	}
+	imgui.Spacing()
+	imgui.Separator()
 	imgui.Spacing()
 
 	win.drawBrightness(adjust)
 	imgui.Spacing()
 	win.drawContrast(adjust)
 	imgui.Spacing()
-	win.drawSaturation(adjust)
 
-	if drawHue {
-		imgui.Spacing()
-		win.drawHue(adjust)
-	}
+	if !grayscale {
+		win.drawSaturation(adjust)
 
-	switch win.img.cache.TV.GetFrameInfo().Spec.ID {
-	case specification.SpecNTSC.ID:
-		imgui.Spacing()
-		if imgui.CollapsingHeader("NTSC Colour Signal") {
+		if drawHue {
 			imgui.Spacing()
-			win.drawNTSCPhaseAdj()
+			win.drawHue(adjust)
 		}
-	case specification.SpecPAL.ID:
-		imgui.Spacing()
-		if imgui.CollapsingHeader("PAL Colour Signal") {
+
+		switch win.img.cache.TV.GetFrameInfo().Spec.ID {
+		case specification.SpecNTSC.ID:
 			imgui.Spacing()
-			win.drawPALPhaseAdj()
+			if imgui.CollapsingHeader("NTSC Colour Signal") {
+				imgui.Spacing()
+				win.drawNTSCPhaseAdj()
+			}
+		case specification.SpecPAL.ID:
+			imgui.Spacing()
+			if imgui.CollapsingHeader("PAL Colour Signal") {
+				imgui.Spacing()
+				win.drawPALPhaseAdj()
+			}
 		}
 	}
 }

@@ -46,6 +46,9 @@ type ColourGen struct {
 
 	// gamma is the same for both legacy and non-legacy models
 	Gamma prefs.Float
+
+	// grayscale is common to all TV types
+	Grayscale prefs.Bool
 }
 
 // NewColourGen is the preferred method of intialisation for the ColourGen type.
@@ -119,12 +122,23 @@ func NewColourGen() (*ColourGen, error) {
 		return nil, err
 	}
 
-	// the cache of generated colours are always cleared when most adjustment
-	// settings are changed
-	//
-	// the only exceptions are the phase values that only need to clear NTSC or
-	// PAL depending on which phase is being adjusted
-	f := func(_ prefs.Value) error {
+	// the cache of generated colours are always cleared when the adjustment settings are changed
+	clearNtsc := func(_ prefs.Value) error {
+		clear(c.ntsc)
+		c.zeroBlack.generated = false
+		return nil
+	}
+	clearPal := func(_ prefs.Value) error {
+		clear(c.pal)
+		c.zeroBlack.generated = false
+		return nil
+	}
+	clearSecam := func(_ prefs.Value) error {
+		clear(c.secam)
+		c.zeroBlack.generated = false
+		return nil
+	}
+	clearAll := func(_ prefs.Value) error {
 		clear(c.ntsc)
 		clear(c.pal)
 		clear(c.secam)
@@ -132,45 +146,43 @@ func NewColourGen() (*ColourGen, error) {
 		return nil
 	}
 
-	c.AdjustNTSC.Brightness.SetHookPost(f)
-	c.AdjustNTSC.Contrast.SetHookPost(f)
-	c.AdjustNTSC.Saturation.SetHookPost(f)
-	c.AdjustNTSC.Hue.SetHookPost(f)
-	c.AdjustPAL.Brightness.SetHookPost(f)
-	c.AdjustPAL.Contrast.SetHookPost(f)
-	c.AdjustPAL.Saturation.SetHookPost(f)
-	c.AdjustPAL.Hue.SetHookPost(f)
-	c.AdjustSECAM.Brightness.SetHookPost(f)
-	c.AdjustSECAM.Contrast.SetHookPost(f)
-	c.AdjustSECAM.Saturation.SetHookPost(f)
-	c.AdjustSECAM.Hue.SetHookPost(f)
+	c.AdjustNTSC.Brightness.SetHookPost(clearNtsc)
+	c.AdjustNTSC.Contrast.SetHookPost(clearNtsc)
+	c.AdjustNTSC.Saturation.SetHookPost(clearNtsc)
+	c.AdjustNTSC.Hue.SetHookPost(clearNtsc)
+	c.AdjustPAL.Brightness.SetHookPost(clearPal)
+	c.AdjustPAL.Contrast.SetHookPost(clearPal)
+	c.AdjustPAL.Saturation.SetHookPost(clearPal)
+	c.AdjustPAL.Hue.SetHookPost(clearPal)
+	c.AdjustSECAM.Brightness.SetHookPost(clearSecam)
+	c.AdjustSECAM.Contrast.SetHookPost(clearSecam)
+	c.AdjustSECAM.Saturation.SetHookPost(clearSecam)
+	c.AdjustSECAM.Hue.SetHookPost(clearSecam)
 
 	err = c.dsk.Add("television.color.ntsc.phase", &c.AdjustNTSC.Phase)
 	if err != nil {
 		return nil, err
 	}
-	c.AdjustNTSC.Phase.SetHookPost(func(_ prefs.Value) error {
-		clear(c.ntsc)
-		c.zeroBlack.generated = false
-		return nil
-	})
+	c.AdjustNTSC.Phase.SetHookPost(clearNtsc)
 
 	err = c.dsk.Add("television.color.pal.phase", &c.AdjustPAL.Phase)
 	if err != nil {
 		return nil, err
 	}
-	c.AdjustPAL.Phase.SetHookPost(func(_ prefs.Value) error {
-		clear(c.pal)
-		c.zeroBlack.generated = false
-		return nil
-	})
+	c.AdjustPAL.Phase.SetHookPost(clearPal)
 
 	// gamma is the same for every variation of colour generation
 	err = c.dsk.Add("television.color.gamma", &c.Gamma)
 	if err != nil {
 		return nil, err
 	}
-	c.Gamma.SetHookPost(f)
+	c.Gamma.SetHookPost(clearAll)
+
+	err = c.dsk.Add("television.color.grayscale", &c.Gamma)
+	if err != nil {
+		return nil, err
+	}
+	c.Grayscale.SetHookPost(clearAll)
 
 	err = c.dsk.Load()
 	if err != nil {
@@ -212,6 +224,9 @@ func (c *ColourGen) SetDefaults(all bool, spec string) {
 	// this is currently 2.2 and if the user wants to change it, they need to
 	// change the preference file
 	c.Gamma.Set(Gamma)
+
+	// colour TV by default
+	c.Grayscale.Set(false)
 }
 
 // Load colour values from disk
@@ -303,8 +318,7 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal, _ signal.ColorSignal, _
 	// stretch phi by a fraction of the phase setting
 	phi -= (float64(hue - 1)) * c.AdjustNTSC.Phase.Get().(float64) * math.Pi / 180
 
-	// (IQ used to by multplied by the luminance (Y) value but I no longer
-	// believe this is correct)
+	// (I and Q used to by multplied by the luminance (Y) value but I no longer believe this is correct)
 	I := saturation * math.Sin(phi)
 	Q := saturation * math.Cos(phi)
 
@@ -315,9 +329,16 @@ func (c *ColourGen) GenerateNTSC(col signal.ColorSignal, _ signal.ColorSignal, _
 	//
 	// YIQ conversion values taken from the "NTSC 1953 colorimetry" section
 	// of: https://en.wikipedia.org/w/index.php?title=YIQ&oldid=1220238306
-	R := clamp(Y + (0.956 * I) + (0.619 * Q))
-	G := clamp(Y - (0.272 * I) - (0.647 * Q))
-	B := clamp(Y - (1.106 * I) + (1.703 * Q))
+	var R, G, B float64
+	if c.Grayscale.Get().(bool) {
+		R = Y
+		G = Y
+		B = Y
+	} else {
+		R = clamp(Y + (0.956 * I) + (0.619 * Q))
+		G = clamp(Y - (0.272 * I) - (0.647 * Q))
+		B = clamp(Y - (1.106 * I) + (1.703 * Q))
+	}
 
 	// from the "FCC NTSC Standard (SMPTE C)" of the same wikipedia article
 	// 	R := clamp(Y + (0.9469 * I) + (0.6236 * Q))
@@ -381,8 +402,7 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal, _ signal.ColorSignal, _ 
 		phi += (float64(hue) - 2) * c.AdjustPAL.Phase.Get().(float64) * math.Pi / 180
 	}
 
-	// (UV used to by multplied by the luminance (Y) value but I no longer
-	// believe this is correct)
+	// (U and V used to by multplied by the luminance (Y) value but I no longer believe this is correct)
 	U := saturation * -math.Sin(phi)
 	V := saturation * -math.Cos(phi)
 
@@ -393,9 +413,16 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal, _ signal.ColorSignal, _ 
 	//
 	// YUV conversion values taken from the "SDTV with BT.470" section of:
 	// https://en.wikipedia.org/w/index.php?title=Y%E2%80%B2UV&oldid=1249546174
-	R := clamp(Y + (1.140 * V))
-	G := clamp(Y - (0.395 * U) - (0.581 * V))
-	B := clamp(Y + (2.033 * U))
+	var R, G, B float64
+	if c.Grayscale.Get().(bool) {
+		R = Y
+		G = Y
+		B = Y
+	} else {
+		R = clamp(Y + (1.140 * V))
+		G = clamp(Y - (0.395 * U) - (0.581 * V))
+		B = clamp(Y + (2.033 * U))
+	}
 
 	// gamma correction
 	gamma := c.Gamma.Get().(float64)
@@ -466,9 +493,16 @@ func (c *ColourGen) GenerateSECAM(col signal.ColorSignal, prev signal.ColorSigna
 	//
 	// YUV conversion values taken from the "SDTV with BT.470" section of:
 	// https://en.wikipedia.org/w/index.php?title=Y%E2%80%B2UV&oldid=1249546174
-	R := clamp(Y + (1.140 * V))
-	G := clamp(Y - (0.395 * U) - (0.581 * V))
-	B := clamp(Y + (2.033 * U))
+	var R, G, B float64
+	if c.Grayscale.Get().(bool) {
+		R = Y
+		G = Y
+		B = Y
+	} else {
+		R = clamp(Y + (1.140 * V))
+		G = clamp(Y - (0.395 * U) - (0.581 * V))
+		B = clamp(Y + (2.033 * U))
+	}
 
 	// gamma correction
 	gamma := c.Gamma.Get().(float64)
