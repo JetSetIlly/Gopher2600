@@ -202,8 +202,8 @@ func (c *ColourGen) SetDefaults(all bool, spec string) {
 	}
 
 	if spec == "PAL" || all {
-		c.AdjustPAL.Brightness.Set(1.196)
-		c.AdjustPAL.Contrast.Set(1.000)
+		c.AdjustPAL.Brightness.Set(1.177)
+		c.AdjustPAL.Contrast.Set(0.962)
 		c.AdjustPAL.Saturation.Set(0.963)
 		c.AdjustPAL.Hue.Set(0.0)
 		c.AdjustPAL.Phase.Set(0.0)
@@ -407,7 +407,7 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal, _ signal.ColorSignal, _ 
 	V := saturation * -math.Cos(phi)
 
 	// apply brightness/constrast/saturation/hue settings to YUV
-	Y, U, V = c.AdjustNTSC.yuv(Y, U, V)
+	Y, U, V = c.AdjustPAL.yuv(Y, U, V)
 
 	// YUV to RGB conversion
 	//
