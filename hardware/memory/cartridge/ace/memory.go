@@ -80,6 +80,12 @@ type aceMemory struct {
 	sramOrigin uint32
 	sramMemtop uint32
 
+	// sramStack follows on exactly after sram. the advantage of keeping the block separate to the
+	// main sram block, is easier detection for when the stack pointer wanders into program memory
+	sramStack       []byte
+	sramStackOrigin uint32
+	sramStackMemtop uint32
+
 	// minimal interface to the ARM
 	arm            interruptARM
 	armInterruptCt int
@@ -179,11 +185,6 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 	}
 	mem.flashMemtop = mem.flashOrigin + uint32(len(mem.flash))
 
-	// the placement of data in memory revolves around the ARM entry point
-	mem.resetPC = arm.AlignTo16bits(mem.flashOrigin + mem.header.entry)
-	mem.resetLR = mem.resetPC
-	mem.resetSP = mem.ccmMemtop - 3
-
 	// note the real entry point
 	logger.Logf(mem.env, "ACE", "actual entrypoint: %08x", mem.resetPC)
 
@@ -221,11 +222,6 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 
 	logger.Logf(mem.env, "ACE", "null function place at %08x", nullFunctionAddress)
 
-	// generous amount for SRAM to accomodate DPCP
-	// mem.sram = make([]byte, 0x20000)
-	// mem.sramOrigin = mem.model.Regions["SRAM"].Origin
-	// mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram)-1)
-
 	// choose size for the remainder of the flash memory and place at the flash
 	// origin value for architecture
 	const sramOverhead = 64000
@@ -244,6 +240,17 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 	mem.sram = make([]byte, sramSize)
 	mem.sramOrigin = mem.model.Regions["SRAM"].Origin
 	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram)-1)
+
+	// stack is part of sram but we keep it in a separate block
+	const sramStackSize = 0x800
+	mem.sramStack = make([]byte, sramStackSize)
+	mem.sramStackOrigin = mem.sramMemtop + 1
+	mem.sramStackMemtop = mem.sramStackOrigin + uint32(len(mem.sramStack)-1)
+
+	// the placement of data in memory revolves around the ARM entry point
+	mem.resetPC = arm.AlignTo16bits(mem.flashOrigin + mem.header.entry)
+	mem.resetLR = mem.resetPC
+	mem.resetSP = mem.sramStackMemtop - 3
 
 	// set virtual argument. detailed information in the PlusCart firmware
 	// source:
@@ -331,6 +338,9 @@ func (mem *aceMemory) MapAddress(addr uint32, write bool, executing bool) (*[]by
 	if addr >= mem.sramOrigin && addr <= mem.sramMemtop {
 		return &mem.sram, mem.sramOrigin
 	}
+	if addr >= mem.sramStackOrigin && addr <= mem.sramStackMemtop {
+		return &mem.sramStack, mem.sramStackOrigin
+	}
 	if addr >= mem.flashOrigin && addr <= mem.flashMemtop {
 		return &mem.flash, mem.flashOrigin
 	}
@@ -365,6 +375,11 @@ func (a *aceMemory) Segments() []mapper.CartStaticSegment {
 			Memtop: a.sramMemtop,
 		},
 		{
+			Name:   "SRAM (stack)",
+			Origin: a.sramStackOrigin,
+			Memtop: a.sramStackMemtop,
+		},
+		{
 			Name:   "CCM",
 			Origin: a.ccmOrigin,
 			Memtop: a.ccmMemtop,
@@ -381,6 +396,8 @@ func (a *aceMemory) Reference(segment string) ([]uint8, bool) {
 		return a.flash, true
 	case "SRAM":
 		return a.sram, true
+	case "SRAM (stack)":
+		return a.sramStack, true
 	case "CCM":
 		return a.ccm, true
 	}
