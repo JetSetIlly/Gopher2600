@@ -201,7 +201,8 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "JITTER",
 				value: func() targetValue {
-					return dbg.vcs.TV.GetFrameInfo().Jitter
+					f := dbg.vcs.TV.GetFrameInfo()
+					return f.Stable && f.Jitter
 				},
 			}
 
