@@ -113,10 +113,11 @@ func (win *winSaveKeyEEPROM) draw() {
 		}
 
 		if drawByteGrid {
-			d := win.savekey.EEPROM.Data[origin : memtop+1]
-			dd := win.savekey.EEPROM.Disk[origin : memtop+1]
-			win.img.drawByteGridSimple(fmt.Sprintf("eepromPage%d", p), d, dd, win.img.cols.ValueDiff, uint32(origin),
-				func(idx int, data uint8) {
+			win.img.drawByteGrid(fmt.Sprintf("eepromPage%dByteGrid", p), byteGridConfig{
+				origin: uint32(origin),
+				data:   win.savekey.EEPROM.Data[origin : memtop+1],
+				diff:   win.savekey.EEPROM.Disk[origin : memtop+1],
+				commit: func(idx int, data uint8) {
 					win.img.dbg.PushFunction(func() {
 						if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
 							sk.EEPROM.Poke(uint16(origin+idx), data)
@@ -125,7 +126,7 @@ func (win *winSaveKeyEEPROM) draw() {
 						}
 					})
 				},
-			)
+			})
 		}
 	}
 

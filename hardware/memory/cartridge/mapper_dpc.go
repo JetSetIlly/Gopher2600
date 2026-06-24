@@ -755,7 +755,7 @@ func (stc *dpcStatic) Segments() []mapper.CartStaticSegment {
 		{
 			Name:   stc.name,
 			Origin: 0,
-			Memtop: uint32(len(stc.data)),
+			Memtop: uint32(len(stc.data) - 1),
 		},
 	}
 }

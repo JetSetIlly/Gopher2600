@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/coprocessor"
-	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/imgui-go/v5"
 )
@@ -71,32 +70,24 @@ func (win *winRAM) draw(isPXE bool) {
 		diff = win.img.cache.VCS.Mem.RAM.RAM
 	}
 
-	// pos is retreived in before() and used in after()
 	var pos imgui.Vec2
-
-	// number of colors to pop in afer()
-	popColor := 0
+	var highlight bool
 
 	before := func(idx int) {
 		pos = imgui.CursorScreenPos()
-
-		a := diff[idx]
-		b := win.img.cache.VCS.Mem.RAM.RAM[idx]
-		if a != b {
-			imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.ValueDiff)
-			popColor++
-		}
-
-		// idx is based on original values of type uint16 so the type conversion is safe
 		if uint16(win.img.cache.VCS.CPU.SP.Value())-memorymap.OriginRAM < uint16(idx) {
 			imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.ValueStack)
-			popColor++
+			highlight = true
 		}
 	}
 
-	after := func(idx int) {
-		imgui.PopStyleColorV(popColor)
-		popColor = 0
+	after := func(idx int) bool {
+		var tooltipDrawn bool
+
+		if highlight {
+			imgui.PopStyleColor()
+			highlight = false
+		}
 
 		// idx is based on original values of type uint16 so the type conversion is safe
 		addr := memorymap.OriginRAM + uint16(idx)
@@ -120,26 +111,21 @@ func (win *winRAM) draw(isPXE bool) {
 				win.img.imguiTooltip(func() {
 					imguiColorLabel(read.Symbol, win.img.cols.ValueSymbol)
 				}, true)
+				tooltipDrawn = true
 			} else {
 				if okr {
 					win.img.imguiTooltip(func() {
 						imguiColorLabel(read.Symbol, win.img.cols.ValueSymbol)
 					}, true)
+					tooltipDrawn = true
 				}
 				if okw {
 					win.img.imguiTooltip(func() {
 						imguiColorLabel(write.Symbol, win.img.cols.ValueSymbol)
 					}, true)
+					tooltipDrawn = true
 				}
 			}
-		}
-
-		a := diff[idx]
-		b := win.img.cache.VCS.Mem.RAM.RAM[idx]
-		if a != b {
-			win.img.imguiTooltip(func() {
-				imguiColorLabel(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
-			}, true)
 		}
 
 		// not using Address() function because the stackpointer is hardwired to
@@ -155,7 +141,10 @@ func (win *winRAM) draw(isPXE bool) {
 					imgui.Text(fmt.Sprintf("PC address in event of RTS: %04x", v))
 				}
 			}, true)
+			tooltipDrawn = true
 		}
+
+		return tooltipDrawn
 	}
 
 	commit := func(idx int, data uint8) {
@@ -164,5 +153,12 @@ func (win *winRAM) draw(isPXE bool) {
 		})
 	}
 
-	drawByteGrid("ramByteGrid", win.img.cache.VCS.Mem.RAM.RAM, uint32(memorymap.OriginRAM), before, after, commit)
+	win.img.drawByteGrid("ramByteGrid", byteGridConfig{
+		origin: uint32(memorymap.OriginRAM),
+		data:   win.img.cache.VCS.Mem.RAM.RAM,
+		diff:   diff,
+		commit: commit,
+		before: before,
+		after:  after,
+	})
 }

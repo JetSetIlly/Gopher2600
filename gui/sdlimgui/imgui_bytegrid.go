@@ -19,29 +19,35 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
-// draw grid of bytes with before and after functions in addition to commit function.
-func drawByteGrid(id string, data []uint8, origin uint32,
-	before func(idx int), after func(idx int), commit func(idx int, value uint8)) {
+type byteGridConfig struct {
+	origin uint32
+	data   []uint8
+	commit func(idx int, value uint8)
 
-	// the origin and memtop as a string
-	originString := fmt.Sprintf("%08x", origin)
-	memtopString := fmt.Sprintf("%08x", origin+uint32(len(data)-1))
+	// the remaining fields can be nil
 
-	// find first non-matching digit of origin and memtop strings
-	columnCrop := 0
-	for i := 0; i < len(originString); i++ {
-		if originString[i] != memtopString[i] {
-			columnCrop = i
-			break // for loop
-		}
-	}
+	// if diff is provided then the byte entry is highlighted to illustrate whether the byte has
+	// changed since the comparision point
+	diff []uint8
 
-	// the width of the row heading column
-	rowHeadingWidth := len(originString) - columnCrop
+	// hook to be called before the drawing of the byte entry
+	before func(idx int)
+
+	// hook to be called after the drawing of the byte entry. returns true if the function drew
+	// something to the tooltip. this will affect the drawing of a standard tooltip
+	after func(idx int) bool
+
+	// hooks to be called if the text that titles each row is not standard
+	rowTitle func(addr uint32)
+}
+
+func (img *SdlImgui) drawByteGrid(id string, cfg byteGridConfig) {
+	// the number of characters in an address. used to decide on the width of the first column in
+	// the table
+	addressLength := len(fmt.Sprintf("%x", cfg.origin+uint32(len(cfg.data)-1)))
 
 	spacing := imgui.Vec2{X: 0.5, Y: 0.5}
 	imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, spacing)
@@ -49,7 +55,8 @@ func drawByteGrid(id string, data []uint8, origin uint32,
 
 	const numColumns = 16
 
-	flgs := imgui.TableFlagsSizingFixedFit
+	flgs := imgui.TableFlagsScrollY
+	flgs |= imgui.TableFlagsSizingFixedFit
 
 	if imgui.BeginTableV(id, numColumns+1, flgs, imgui.Vec2{}, 0.0) {
 		// in some situations we will return early from the drawByteGrid()
@@ -59,11 +66,11 @@ func drawByteGrid(id string, data []uint8, origin uint32,
 		imgui.TableSetupScrollFreeze(0, 1)
 
 		// set up columns
-		width := imguiTextWidth(rowHeadingWidth)
-		imgui.TableSetupColumnV(fmt.Sprintf("%p_column0", data), imgui.TableColumnFlagsNone, width, 0)
+		width := imguiTextWidth(addressLength - 1)
+		imgui.TableSetupColumnV(fmt.Sprintf("%p_column0", cfg.data), imgui.TableColumnFlagsNone, width, 0)
 		width = imguiTextWidth(2)
 		for i := 1; i < numColumns+1; i++ {
-			imgui.TableSetupColumnV(fmt.Sprintf("%p_column%d", data, i), imgui.TableColumnFlagsNone, width, 0)
+			imgui.TableSetupColumnV(fmt.Sprintf("%p_column%d", cfg.data, i), imgui.TableColumnFlagsNone, width, 0)
 		}
 
 		// header row
@@ -94,7 +101,7 @@ func drawByteGrid(id string, data []uint8, origin uint32,
 		// we need to account for these leading columns when:
 		// a) calculating the clipper length value
 		// b) setting the idx and address values at the start of every row
-		leadingColumns := int(origin % numColumns)
+		leadingColumns := int(cfg.origin % numColumns)
 
 		// first row requires special handling in order to account for blank
 		// columns on the first row
@@ -110,18 +117,22 @@ func drawByteGrid(id string, data []uint8, origin uint32,
 		//
 		// note that this strategy requires a check that offset does not exceed
 		// the actual length of the data
-		clipperLen := len(data) + numColumns + leadingColumns - 1
+		clipperLen := len(cfg.data) + numColumns + leadingColumns - 1
 
 		// offset and address will be increased as we draw each column
 
 		imgui.ListClipperAll(clipperLen/numColumns, func(i int) {
 			idx := (i * numColumns) - leadingColumns
-			addr := origin + uint32(idx)
+			addr := cfg.origin + uint32(idx)
 
 			imgui.TableNextRow()
 			imgui.TableNextColumn()
 			imgui.AlignTextToFramePadding()
-			imgui.Text(fmt.Sprintf("%08x-", addr/16)[columnCrop+1:])
+			if cfg.rowTitle == nil {
+				imgui.Textf("%x-", addr/16)
+			} else {
+				cfg.rowTitle(addr)
+			}
 
 			// column limit for row changes depending on the requirements
 			// of the first row
@@ -140,28 +151,51 @@ func drawByteGrid(id string, data []uint8, origin uint32,
 
 			for j := 0; j < columnLimitForRow; j++ {
 				// check that offset hasn't gone beyond the end of data
-				if idx >= len(data) {
+				if idx >= len(cfg.data) {
 					break
 				}
 
 				imgui.TableNextColumn()
 
-				if before != nil {
-					before(idx)
+				// editable byte
+				b := cfg.data[idx]
+
+				// compare current RAM value with value in comparison snapshot and use
+				// highlight color if it is different
+				var highlight bool
+				if cfg.diff != nil {
+					highlight = b != cfg.diff[idx]
+					if highlight {
+						imgui.PushStyleColor(imgui.StyleColorFrameBg, img.cols.ValueDiff)
+					}
 				}
 
-				// editable byte
-				b := data[idx]
+				if cfg.before != nil {
+					cfg.before(idx)
+				}
 
 				s := fmt.Sprintf("%02x", b)
 				if imguiHexInput(fmt.Sprintf("%s##%08x", id, addr), 2, &s) {
 					if v, err := strconv.ParseUint(s, 16, 8); err == nil {
-						commit(idx, uint8(v))
+						cfg.commit(idx, uint8(v))
 					}
 				}
 
-				if after != nil {
-					after(idx)
+				var tooltipDrawn bool
+				if cfg.after != nil {
+					tooltipDrawn = cfg.after(idx)
+				}
+
+				if highlight {
+					imgui.PopStyleColor()
+					img.imguiTooltip(func() {
+						if tooltipDrawn {
+							imgui.Spacing()
+							imgui.Separator()
+							imgui.Spacing()
+						}
+						imguiColorLabel(fmt.Sprintf("previously $%02x, now $%02x", cfg.diff[idx], b), img.cols.ValueDiff)
+					}, true)
 				}
 
 				// advance offset and addr by one
@@ -170,44 +204,4 @@ func drawByteGrid(id string, data []uint8, origin uint32,
 			}
 		})
 	}
-}
-
-// draw grid of bytes with automated diff highlighting and tooltip handling
-//
-// see drawByteGrid() for more flexible alternative.
-func (img *SdlImgui) drawByteGridSimple(id string, data []uint8, diff []uint8, diffCol imgui.Vec4, origin uint32,
-	commit func(int, uint8)) {
-
-	var a uint8
-	var b uint8
-
-	before := func(idx int) {
-		// editable byte
-		a = data[idx]
-
-		// compare current RAM value with value in comparison snapshot and use
-		// highlight color if it is different
-		b = a
-		if diff != nil {
-			b = diff[idx]
-		}
-		if a != b {
-			imgui.PushStyleColor(imgui.StyleColorFrameBg, diffCol)
-		}
-	}
-
-	after := func(idx int) {
-		if a != b {
-			img.imguiTooltip(func() {
-				imguiColorLabel(fmt.Sprintf("%02x %c %02x", b, fonts.ByteChange, a), diffCol)
-			}, true)
-		}
-
-		// undo any color changes
-		if a != b {
-			imgui.PopStyleColor()
-		}
-	}
-
-	drawByteGrid(id, data, origin, before, after, commit)
 }

@@ -101,26 +101,29 @@ func (win *winPlusROMNetwork) draw(plus *plusrom.PlusROM) {
 
 	imguiSeparator()
 
-	disabledAlpha := imgui.CurrentStyle().DisabledAlpha()
-
 	if imgui.CollapsingHeaderV("Send Buffer", imgui.TreeNodeFlagsDefaultOpen) {
 		// whether we've pushed an alpha value onto the style stack. this is used to (a) pop the
 		// value and (b) make sure we don't push it more than once
-		alpha := false
+		var alpha bool
 
 		before := func(idx int) {
-		}
-
-		after := func(idx int) {
 			if send.Cycles > 0 {
-				if !alpha && idx == int(send.SendLen) {
-					imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+				if idx >= int(send.SendLen) {
+					imgui.PushStyleVarFloat(imgui.StyleVarAlpha, imgui.CurrentStyle().DisabledAlpha())
 					alpha = true
 				}
-			} else if !alpha && idx == int(send.WritePtr) {
-				imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+			} else if idx >= int(send.WritePtr) {
+				imgui.PushStyleVarFloat(imgui.StyleVarAlpha, imgui.CurrentStyle().DisabledAlpha())
 				alpha = true
 			}
+		}
+
+		after := func(idx int) bool {
+			if alpha {
+				imgui.PopStyleVar()
+				alpha = false
+			}
+			return false
 		}
 
 		commit := func(idx int, value uint8) {
@@ -129,9 +132,11 @@ func (win *winPlusROMNetwork) draw(plus *plusrom.PlusROM) {
 			})
 		}
 
-		drawByteGrid("pluscartsendbuffer", send.Buffer[:], 0, before, after, commit)
-		if alpha {
-			imgui.PopStyleVar()
-		}
+		win.img.drawByteGrid("plusCartSendBuffer", byteGridConfig{
+			data:   send.Buffer[:],
+			commit: commit,
+			before: before,
+			after:  after,
+		})
 	}
 }

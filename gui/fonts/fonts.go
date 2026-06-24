@@ -89,7 +89,6 @@ const (
 	CaretRight             = '\uf0da'
 	TreeOpen               = '\uf0d7'
 	TreeClosed             = '\uf0da'
-	ByteChange             = '\uf30b'
 	Trash                  = '\uf1f8'
 	Pointer                = '\uf30b'
 	PaintRoller            = '\uf5aa'

@@ -18,7 +18,6 @@ package sdlimgui
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/imgui-go/v5"
@@ -86,35 +85,26 @@ func (win *winCartRAM) draw(ram []mapper.CartRAM) {
 	// safe to get StaticData from.
 	comp := win.img.cache.Rewind.Comparison.State.VCS.Mem.Cart.GetRAMbus().GetRAM()
 
+	// drawlist is used to draw variable triangle indicators
+	dl := imgui.WindowDrawList()
+
 	imgui.BeginTabBarV("", imgui.TabBarFlagsFittingPolicyScroll)
 	for bank := range ram {
 		current := ram[bank]
 		diff := comp[bank]
+
 		if imgui.BeginTabItem(current.Label) {
 			imgui.BeginChildV("cartram", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)
 
 			// pos is retreived in before() and used in after()
 			var pos imgui.Vec2
 
-			// number of colors to pop in afer()
-			popColor := 0
-
 			before := func(idx int) {
 				pos = imgui.CursorScreenPos()
-
-				a := diff.Data[idx]
-				b := current.Data[idx]
-				if a != b {
-					imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.ValueDiff)
-					popColor++
-				}
 			}
 
-			after := func(idx int) {
-				imgui.PopStyleColorV(popColor)
-				popColor = 0
-
-				dl := imgui.WindowDrawList()
+			after := func(idx int) bool {
+				var tooltipDrawn bool
 
 				// idx is based on original values of type uint16 so the type conversion is safe
 				addr := memorymap.OriginCart + uint16(idx)
@@ -136,26 +126,23 @@ func (win *winCartRAM) draw(ram []mapper.CartRAM) {
 					win.img.imguiTooltip(func() {
 						imguiColorLabel(read.Symbol, win.img.cols.ValueSymbol)
 					}, true)
+					tooltipDrawn = true
 				} else {
 					if okr {
 						win.img.imguiTooltip(func() {
 							imguiColorLabel(read.Symbol, win.img.cols.ValueSymbol)
 						}, true)
+						tooltipDrawn = true
 					}
 					if okw {
 						win.img.imguiTooltip(func() {
 							imguiColorLabel(write.Symbol, win.img.cols.ValueSymbol)
 						}, true)
+						tooltipDrawn = true
 					}
 				}
 
-				a := diff.Data[idx]
-				b := current.Data[idx]
-				if a != b {
-					win.img.imguiTooltip(func() {
-						imguiColorLabel(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
-					}, true)
-				}
+				return tooltipDrawn
 			}
 
 			commitBank := bank
@@ -165,7 +152,25 @@ func (win *winCartRAM) draw(ram []mapper.CartRAM) {
 				})
 			}
 
-			drawByteGrid("cartRamByteGrid", current.Data, uint32(current.Origin), before, after, commit)
+			rowTitle := func(addr uint32) {
+				s := fmt.Sprintf("%x-", addr/16)
+				if current.Mapped {
+					imgui.Text(s)
+				} else {
+					imgui.Textf("x%s", s[1:])
+				}
+			}
+
+			win.img.drawByteGrid("cartRamByteGrid", byteGridConfig{
+				origin:   uint32(current.Origin),
+				data:     current.Data,
+				diff:     diff.Data,
+				commit:   commit,
+				before:   before,
+				after:    after,
+				rowTitle: rowTitle,
+			})
+
 			imgui.EndChild()
 
 			// status line
@@ -173,8 +178,11 @@ func (win *winCartRAM) draw(ram []mapper.CartRAM) {
 				imgui.PushStyleVarFloat(imgui.StyleVarFrameRounding, readOnlyButtonRounding)
 				defer imgui.PopStyleVar()
 
+				imgui.Spacing()
 				if current.Mapped {
 					imguiColourButton(win.img.cols.True, " mapped ", win.mappedIndicatorDim)
+					imgui.SameLineV(0, 10)
+					imgui.Textf("$%04x to $%04x", ram[bank].Origin, ram[bank].Origin+uint16(len(ram[bank].Data))-1)
 				} else {
 					imguiColourButton(win.img.cols.False, " unmapped ", win.mappedIndicatorDim)
 				}
