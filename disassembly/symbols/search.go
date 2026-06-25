@@ -16,8 +16,6 @@
 package symbols
 
 import (
-	"strings"
-
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -50,12 +48,10 @@ func (sym *Symbols) SearchBySymbol(symbol string, table SearchTable) *SearchResu
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	symbolUpper := strings.TrimSpace(strings.ToUpper(symbol))
-
 	switch table {
 	case SearchLabel:
 		for _, l := range sym.label {
-			if e, addr, ok := l.search(symbolUpper); ok {
+			if e, addr, ok := l.search(symbol); ok {
 				return &SearchResults{
 					Table:   SearchLabel,
 					Entry:   e,
@@ -64,7 +60,7 @@ func (sym *Symbols) SearchBySymbol(symbol string, table SearchTable) *SearchResu
 			}
 		}
 	case SearchRead:
-		if e, addr, ok := sym.read.search(symbolUpper); ok {
+		if e, addr, ok := sym.read.search(symbol); ok {
 			return &SearchResults{
 				Table:   SearchRead,
 				Entry:   e,
@@ -72,7 +68,7 @@ func (sym *Symbols) SearchBySymbol(symbol string, table SearchTable) *SearchResu
 			}
 		}
 	case SearchWrite:
-		if e, addr, ok := sym.write.search(symbolUpper); ok {
+		if e, addr, ok := sym.write.search(symbol); ok {
 			return &SearchResults{
 				Table:   SearchWrite,
 				Entry:   e,
