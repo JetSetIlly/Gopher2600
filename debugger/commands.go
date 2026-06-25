@@ -722,13 +722,17 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			}
 
 			aiRead := dbg.dbgmem.GetAddressInfo(symbol, true)
-			if aiRead != nil {
-				dbg.printLine(terminal.StyleFeedback, "%s [READ]", aiRead.String())
-			}
-
 			aiWrite := dbg.dbgmem.GetAddressInfo(symbol, false)
-			if aiWrite != nil {
-				dbg.printLine(terminal.StyleFeedback, "%s [WRITE]", aiWrite.String())
+
+			if aiRead != nil && aiWrite != nil {
+				dbg.printLine(terminal.StyleFeedback, "%s [R/W]", aiWrite.String())
+			} else {
+				if aiRead != nil {
+					dbg.printLine(terminal.StyleFeedback, "%s [READ]", aiRead.String())
+				}
+				if aiWrite != nil {
+					dbg.printLine(terminal.StyleFeedback, "%s [WRITE]", aiWrite.String())
+				}
 			}
 
 			if symSearch == nil && aiRead == nil && aiWrite == nil {
