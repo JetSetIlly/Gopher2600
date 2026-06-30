@@ -194,7 +194,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			dbg.running = false
 		}
 
-	case cmdReload:
+	case cmdReload, cmdReset:
 		end := make(chan bool)
 		dbg.PushReload(end)
 		go func() {
