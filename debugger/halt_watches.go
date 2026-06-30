@@ -158,13 +158,13 @@ func (wtc *watches) check() string {
 
 		if w.ai.Read {
 			if !wtc.dbg.vcs.Mem.LastCPUWrite {
-				fmt.Fprintf(&checkString, "watch at %s (read value %#02x)", lai, wtc.dbg.vcs.Mem.LastCPUData)
+				fmt.Fprintf(&checkString, "watch at %s (read value %#02x), instruction at $%04x", lai, wtc.dbg.vcs.Mem.LastCPUData, wtc.dbg.vcs.CPU.LastResult.Address)
 			}
 		} else {
 			if wtc.dbg.vcs.Mem.LastCPUWrite {
-				fmt.Fprintf(&checkString, "watch at %s (written value %#02x)", lai, wtc.dbg.vcs.Mem.LastCPUData)
+				fmt.Fprintf(&checkString, "watch at %s (written value %#02x), instruction at $%04x", lai, wtc.dbg.vcs.Mem.LastCPUData, wtc.dbg.vcs.CPU.LastResult.Address)
 			} else if wtc.dbg.vcs.CPU.PhantomMemAccess {
-				fmt.Fprintf(&checkString, "watch at %s (written value %#02x) phantom", lai, wtc.dbg.vcs.Mem.LastCPUData)
+				fmt.Fprintf(&checkString, "watch at %s (written value %#02x) phantom, instruction at $%04x", lai, wtc.dbg.vcs.Mem.LastCPUData, wtc.dbg.vcs.CPU.LastResult.Address)
 			}
 		}
 
