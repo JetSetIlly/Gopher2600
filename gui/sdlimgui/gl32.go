@@ -268,8 +268,7 @@ func (rnd *gl32) render() {
 				if rnd.img.isPlaymode() {
 					err := rnd.video.Preprocess(
 						rnd.img.cache.VCS.Mem.Cart.ShortName,
-						int32(fbw), int32(fbh), float32(rnd.img.plt.mode.RefreshRate),
-						video.ProfileFast)
+						int32(fbw), int32(fbh), video.ProfileFast)
 					if err != nil {
 						logger.Log(logger.Allow, "gl32", err.Error())
 					}

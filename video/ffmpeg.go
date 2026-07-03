@@ -262,10 +262,19 @@ func (vid *FFMPEG) Destroy() {
 	}
 }
 
-func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz float32, profile Profile) error {
+func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, profile Profile) error {
 	if !vid.enabled {
 		vid.Destroy()
 		return nil
+	}
+
+	fi := vid.tv.GetFrameInfo()
+
+	if vid.hz == 0 {
+		if !fi.Stable {
+			return nil
+		}
+		vid.hz = fi.RefreshRate
 	}
 
 	if vid.pipe != nil {
@@ -273,17 +282,12 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 			vid.Destroy()
 			return fmt.Errorf("ffmpeg: size of frame has changed")
 		}
-		if vid.hz != hz {
-			vid.Destroy()
-			return fmt.Errorf("ffmpeg: refresh rate of monitor has changed")
-		}
 		return nil
 	}
 
 	vid.cartName = cartName
 	vid.width = width
 	vid.height = height
-	vid.hz = hz
 	vid.profile = profile
 
 	// the base for the output file's name. we append .mp4 for the video file and .wav for the audio file
@@ -296,7 +300,7 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 		"-f", "rawvideo",
 		"-pix_fmt", "rgba",
 		"-s", fmt.Sprintf("%dx%d", vid.width, vid.height),
-		"-r", fmt.Sprintf("%.02f", hz), // incoming frame rate
+		"-r", fmt.Sprintf("%.02f", vid.hz), // incoming frame rate
 		"-i", "-", // stdin pipe created below
 	}
 
