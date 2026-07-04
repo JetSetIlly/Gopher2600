@@ -34,6 +34,7 @@ type WavWriter struct {
 	filename   string
 	buffer     []int16
 	sampleRate int
+	ended      bool
 }
 
 // New is the preferred method of initialisation for the WavWriter type
@@ -51,6 +52,9 @@ func NewWavWriter(filename string, sampleRate int) (*WavWriter, error) {
 
 // SetAudio implements the television.AudioMixer interface.
 func (aw *WavWriter) SetAudio(sig []signal.AudioSignalAttributes) error {
+	if aw.ended {
+		return nil
+	}
 	for _, s := range sig {
 		v0 := s.AudioChannel0
 		v1 := s.AudioChannel1
@@ -67,6 +71,11 @@ const bitDepth = 16
 
 // EndMixing implements the television.AudioMixer interface
 func (aw *WavWriter) EndMixing() error {
+	if aw.ended {
+		return nil
+	}
+	aw.ended = true
+
 	f, err := os.Create(aw.filename)
 	if err != nil {
 		return fmt.Errorf("wavwriter: %w", err)
