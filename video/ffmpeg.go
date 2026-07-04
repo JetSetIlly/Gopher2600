@@ -122,6 +122,8 @@ func (vid *FFMPEG) Destroy() {
 	}
 
 	if vid.wavs != nil {
+		// wav writer may have been ended already by the television shutting down. but the wavwriter
+		// package makes sure it can only end once
 		if err := vid.wavs.EndMixing(); err != nil {
 			if vid.conf.Log != nil {
 				fmt.Fprintln(vid.conf.Log, err.Error())
@@ -188,7 +190,7 @@ func (vid *FFMPEG) Destroy() {
 	}
 	probeResult = []byte(strings.TrimSpace(string(probeResult)))
 
-	videoRate, err := strconv.ParseFloat(string(probeResult), 64)
+	videoDuration, err := strconv.ParseFloat(string(probeResult), 64)
 	if err != nil {
 		if vid.conf.Log != nil {
 			fmt.Fprintln(vid.conf.Log, err.Error())
@@ -211,7 +213,7 @@ func (vid *FFMPEG) Destroy() {
 	}
 	probeResult = []byte(strings.TrimSpace(string(probeResult)))
 
-	audioRate, err := strconv.ParseFloat(string(probeResult), 64)
+	audioDuration, err := strconv.ParseFloat(string(probeResult), 64)
 	if err != nil {
 		if vid.conf.Log != nil {
 			fmt.Fprintln(vid.conf.Log, err.Error())
@@ -219,11 +221,10 @@ func (vid *FFMPEG) Destroy() {
 		return
 	}
 
-	// calculate stretch value
-	stretch := audioRate / videoRate
-
+	// log duration of video and audio parts
 	if vid.conf.Log != nil {
-		fmt.Fprintf(vid.conf.Log, "stretching audio by a factor of %0.2f\n", 1.0/stretch)
+		fmt.Fprintf(vid.conf.Log, "video duration is %.01fs, audio duration is %.01fs\n", videoDuration, audioDuration)
+		fmt.Fprintf(vid.conf.Log, "audio is %0.2f%% of video duration\n", 100*audioDuration/videoDuration)
 	}
 
 	// muxing with ffmpeg using the probed and calculated rates
@@ -234,8 +235,7 @@ func (vid *FFMPEG) Destroy() {
 	muxer := exec.Command("ffmpeg",
 		"-v", "error",
 		"-i", vid.tempVideoFilename, "-i", vid.tempAudioFilename,
-		"-vcodec", "copy", "-acodec", "mp3",
-		"-filter:a", fmt.Sprintf("atempo=%f", stretch),
+		"-vcodec", "copy", "-acodec", "mp3", "-shortest",
 		vid.finalVideoFilename)
 
 	// using Run() function because we want to wait for ffmpeg to complete
