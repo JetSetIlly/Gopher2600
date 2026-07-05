@@ -89,7 +89,7 @@ type FFMPEG struct {
 	lastFrameRendered int
 
 	// we record audio to a separate file and then mux it with the video in a final step
-	wavs television.AudioMixer
+	audio television.AudioMixer
 }
 
 func NewFFMPEG(rnd Renderer, tv Television) *FFMPEG {
@@ -97,7 +97,6 @@ func NewFFMPEG(rnd Renderer, tv Television) *FFMPEG {
 		rnd: rnd,
 		tv:  tv,
 	}
-
 	return vid
 }
 
@@ -121,16 +120,16 @@ func (vid *FFMPEG) Destroy() {
 		muxVideo = true
 	}
 
-	if vid.wavs != nil {
+	if vid.audio != nil {
 		// wav writer may have been ended already by the television shutting down. but the wavwriter
 		// package makes sure it can only end once
-		if err := vid.wavs.EndMixing(); err != nil {
+		if err := vid.audio.EndMixing(); err != nil {
 			if vid.conf.Log != nil {
 				fmt.Fprintln(vid.conf.Log, err.Error())
 			}
 		}
-		vid.tv.RemoveAudioMixer(vid.wavs)
-		vid.wavs = nil
+		vid.tv.RemoveAudioMixer(vid.audio)
+		vid.audio = nil
 		muxAudio = true
 	}
 
@@ -223,7 +222,10 @@ func (vid *FFMPEG) Destroy() {
 
 	// log duration of video and audio parts
 	if vid.conf.Log != nil {
-		fmt.Fprintf(vid.conf.Log, "video duration is %.01fs, audio duration is %.01fs\n", videoDuration, audioDuration)
+		fmt.Fprintf(vid.conf.Log, "video duration is %s, audio duration is %s\n",
+			time.Millisecond*time.Duration(videoDuration*1000),
+			time.Millisecond*time.Duration(audioDuration*1000),
+		)
 		fmt.Fprintf(vid.conf.Log, "audio is %0.2f%% of video duration\n", 100*audioDuration/videoDuration)
 	}
 
@@ -235,7 +237,10 @@ func (vid *FFMPEG) Destroy() {
 	muxer := exec.Command("ffmpeg",
 		"-v", "error",
 		"-i", vid.tempVideoFilename, "-i", vid.tempAudioFilename,
-		"-vcodec", "copy", "-acodec", "mp3", "-shortest",
+		"-map", "0:v:0", "-map", "1:a:0",
+		"-c:v", "copy", "-c:a", "aac",
+		"-af", "aresample=async=1",
+		"-shortest",
 		vid.finalVideoFilename)
 
 	// using Run() function because we want to wait for ffmpeg to complete
@@ -381,11 +386,11 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, profil
 	vid.pixels = make([]uint8, vid.width*vid.height*4)
 
 	// create wavwriter via local audio type
-	vid.wavs, err = newAudio(vid.tempAudioFilename, vid.tv.GetFrameInfo().Spec)
+	vid.audio, err = newAudio(vid.tempAudioFilename, vid.tv.GetFrameInfo().Spec)
 	if err != nil {
 		return fmt.Errorf("ffmpeg: %w", err)
 	}
-	vid.tv.AddAudioMixer(vid.wavs)
+	vid.tv.AddAudioMixer(vid.audio)
 
 	if vid.conf.Log != nil {
 		fmt.Fprintln(vid.conf.Log, "recording video")
