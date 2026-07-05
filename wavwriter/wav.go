@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
-	tia "github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio/mix"
 
 	"github.com/go-audio/audio"
@@ -82,7 +81,7 @@ func (aw *WavWriter) EndMixing() error {
 	}
 	defer f.Close()
 
-	enc := wav.NewEncoder(f, tia.AverageSampleFreq, bitDepth, numChannels, 1)
+	enc := wav.NewEncoder(f, aw.sampleRate, bitDepth, numChannels, 1)
 	if enc == nil {
 		return fmt.Errorf("wavwriter: bad parameters for wav encoding")
 	}
