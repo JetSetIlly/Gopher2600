@@ -30,6 +30,12 @@ import (
 	"github.com/jetsetilly/gopher2600/notifications"
 )
 
+// The Supercharger demo unit is a device that plugs into the supercharger and also the right player
+// port of the 2600. Emulation of the device is therefore split over two mechanisms. This DemoUnit
+// type handles the initial loading of the bootloader via the normal Supercharger method. It also
+// handle the plugging in on the controller.
+//
+// https://forums.atariage.com/topic/390261-starpath-demonstration-unit-rom-dump/
 type DemoUnit struct {
 	env        *environment.Environment
 	schweber   []uint8
@@ -147,6 +153,9 @@ func (dem *DemoUnit) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, riot *ri
 	err := riot.Ports.Plug(plugging.PortRight,
 		func(env *environment.Environment, id plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 			p := newDemoUnitController(env, id, bus, dem.schweber)
+			if p == nil {
+				return nil
+			}
 			dem.controller = p.(*demoUnit_controller)
 			return p
 		},
@@ -154,12 +163,6 @@ func (dem *DemoUnit) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, riot *ri
 	if err != nil {
 		return fmt.Errorf("demo unit: %w", err)
 	}
-
-	// unplug left peripheral
-	// err = riot.Ports.Plug(plugging.PortLeft, ports.NewPeripheralNone)
-	// if err != nil {
-	// 	return fmt.Errorf("demo unit: %w", err)
-	// }
 
 	return nil
 }

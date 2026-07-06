@@ -90,10 +90,6 @@ type demoUnit_controller struct {
 
 	hold int
 
-	// the most recently written value to INPT5. used to help the String() function. we don't need
-	// the concomitant value written to SWCHA
-	inpt5 uint8
-
 	state demoUnitState
 	sync  int
 
@@ -119,8 +115,50 @@ func (t section) isEnded() bool {
 }
 
 func (t section) String() string {
-	return fmt.Sprintf("%d: %d blocks (%d bytes) from %04x of bank %d, delay %d",
-		t.entry, t.blocks, len(t.data), t.startAddr, t.bank, t.delay)
+	var s strings.Builder
+	if n, ok := demoUnitSections[t.entry]; ok {
+		fmt.Fprintf(&s, "'%s'", n)
+	} else {
+		fmt.Fprintf(&s, "%d", t.entry)
+	}
+	fmt.Fprintf(&s, ": %d blocks (%d bytes) from %04x of bank %d, delay %d",
+		t.blocks, len(t.data), t.startAddr, t.bank, t.delay)
+	return s.String()
+
+}
+
+// descriptions taken from SDEMCTRL.ASM
+var demoUnitSections = map[int]string{
+	0:   "count down timer",
+	6:   "starpath logo",
+	12:  "firework thing",
+	18:  "play advanced games",
+	23:  "play advanced games",
+	29:  "phaser patrol demo",
+	35:  "p.p. try it",
+	41:  "p.p. game proper",
+	47:  "supercharger upgrades",
+	53:  "expands RAM",
+	59:  "mindmaster plug",
+	64:  "mindmaster plug",
+	70:  "mindmaster demo",
+	76:  "multiload plug",
+	82:  "dragonstomper plug",
+	88:  "dragonstomper demo",
+	94:  "commie mutants plug",
+	100: "commie mutants demo",
+	106: "c.m. try it",
+	111: "c.m. try it",
+	117: "c.m. game proper",
+	122: "c.m. game proper",
+	128: "games on cass/cheap",
+	134: "play killer sat/s.m.",
+	140: "fireball plug",
+	146: "fireball demo",
+	152: "use w/ any tape player",
+	158: "electronic games plug",
+	163: "electronic games plug",
+	168: "electronic games plug",
 }
 
 func newDemoUnitController(env *environment.Environment, id plugging.PortID, bus ports.PeripheralBus, schweber []uint8) ports.Peripheral {
@@ -162,62 +200,10 @@ func newDemoUnitController(env *environment.Environment, id plugging.PortID, bus
 }
 
 func (con *demoUnit_controller) String() string {
-	var s strings.Builder
-	if n, ok := demoUnitSections[con.transfer.entry]; ok {
-		fmt.Fprintf(&s, "%s", n)
-	} else {
-		fmt.Fprintf(&s, "unknown section")
-	}
-	s.WriteString("\n\n")
-	if con.waitForHi {
-		s.WriteString("_*-._ ")
-	} else {
-		s.WriteString("_.-*_ ")
-	}
-	fmt.Fprintf(&s, "\nstate=%s", con.state)
-	if con.inpt5&0x80 == 0x80 {
-		s.WriteString("\nstop")
-	} else {
-		s.WriteString("\ncont")
-	}
-	fmt.Fprintf(&s, "\nhold=%dclks", con.hold)
-	return s.String()
+	return con.transfer.String()
 }
 
 func (con *demoUnit_controller) Reset() {
-}
-
-var demoUnitSections = map[int]string{
-	0:   "count down timer",
-	6:   "starpath logo",
-	12:  "firework thing",
-	18:  "play advanced games",
-	23:  "play advanced games",
-	29:  "phaser patrol demo",
-	35:  "p.p. try it",
-	41:  "p.p. game proper",
-	47:  "supercharger upgrades",
-	53:  "expands RAM",
-	59:  "mindmaster plug",
-	64:  "mindmaster plug",
-	70:  "mindmaster demo",
-	76:  "multiload plug",
-	82:  "dragonstomper plug",
-	88:  "dragonstomper demo",
-	94:  "commie mutants plug",
-	100: "commie mutants demo",
-	106: "c.m. try it",
-	111: "c.m. try it",
-	117: "c.m. game proper",
-	122: "c.m. game proper",
-	128: "games on cass/cheap",
-	134: "play killer sat/s.m.",
-	140: "fireball plug",
-	146: "fireball demo",
-	152: "use w/ any tape player",
-	158: "electronic games plug",
-	163: "electronic games plug",
-	168: "electronic games plug",
 }
 
 func (con *demoUnit_controller) nextTransfer() bool {
@@ -309,9 +295,9 @@ func (con *demoUnit_controller) HandleEvent(ports.Event, ports.EventData) (bool,
 
 func (con *demoUnit_controller) write(value uint8) {
 	swcha := (value & 0x0e) << 3
-	con.inpt5 = (value & 0x01) << 7
+	inpt5 := (value & 0x01) << 7
 	con.bus.WriteSWCHx(con.id, 0x80|swcha)
-	con.bus.WriteINPTx(chipbus.INPT5, con.inpt5)
+	con.bus.WriteINPTx(chipbus.INPT5, inpt5)
 
 	// a hold of 42 is approximately 12µs assuming a NTSC clock
 	con.hold = 42

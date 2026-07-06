@@ -164,7 +164,6 @@ func NewLoaderFromFilename(filename string, mapping string, bank string, props P
 		} else if slices.Contains(explicitFileExtensions, extension) {
 			ld.Mapping = extension[1:]
 		} else if slices.Contains(audioFileExtensions, extension) {
-			ld.Mapping = "AR"
 			ld.IsSoundData = true
 		}
 	}

@@ -23,6 +23,7 @@ import (
 	"slices"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 )
 
 // if anwhere parameter is true then the ELF magic number can appear anywhere
@@ -325,7 +326,13 @@ func fingerprintCDF(loader cartridgeloader.Loader) (bool, string) {
 	return false, ""
 }
 
-func fingerprintSuperchargerFastLoad(cartload cartridgeloader.Loader) bool {
+func fingerprintSupercharger(cartload cartridgeloader.Loader) bool {
+	if cartload.IsSoundData {
+		return true
+	}
+	if cartload.HashMD5 == supercharger.SchweberHash {
+		return true
+	}
 	return cartload.Size() > 0 && cartload.Size()%8448 == 0
 }
 
@@ -632,7 +639,7 @@ func (cart *Cartridge) fingerprint(loader cartridgeloader.Loader) (string, error
 		return "DEVCARD", nil
 	}
 
-	if fingerprintSuperchargerFastLoad(loader) {
+	if fingerprintSupercharger(loader) {
 		return "AR", nil
 	}
 

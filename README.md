@@ -163,6 +163,10 @@ And for the binary "fastload" supercharger format
 
 https://www.biglist.com/lists/stella/archives/199901/msg00026.html
 
+All information about the Supercharger Demo Unit from
+
+https://forums.atariage.com/topic/390261-starpath-demonstration-unit-rom-dump/
+
 Information about the SpeakJet chip found in the AtariVox peripheral
 https://people.ece.cornell.edu/land/courses/ece4760/Speech/speakjetusermanual.pdf
 
