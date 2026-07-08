@@ -267,19 +267,16 @@ func (vid *FFMPEG) Destroy() {
 	}
 }
 
-func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, profile Profile) error {
+func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz float32, profile Profile) error {
 	if !vid.enabled {
 		vid.Destroy()
 		return nil
 	}
 
-	fi := vid.tv.GetFrameInfo()
-
+	// frame rate for the video is only set when the video has not current value, which happens at
+	// the outset of the recording
 	if vid.hz == 0 {
-		if !fi.Stable {
-			return nil
-		}
-		vid.hz = fi.RefreshRate
+		vid.hz = hz
 	}
 
 	if vid.pipe != nil {

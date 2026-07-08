@@ -266,14 +266,23 @@ func (rnd *gl32) render() {
 			// do screenshots and video processing at the end of the first pass
 			if pass == 0 {
 				if rnd.img.isPlaymode() {
-					err := rnd.video.Preprocess(
-						rnd.img.cache.VCS.Mem.Cart.ShortName,
-						int32(fbw), int32(fbh), video.ProfileFast)
-					if err != nil {
-						logger.Log(logger.Allow, "gl32", err.Error())
+					rnd.img.screen.crit.section.Lock()
+					frameInfo := rnd.img.screen.crit.frameInfo
+					rnd.img.screen.crit.section.Unlock()
+
+					// process video if frame is stable
+					if frameInfo.Stable {
+						err := rnd.video.Preprocess(
+							rnd.img.cache.VCS.Mem.Cart.ShortName,
+							int32(fbw), int32(fbh), frameInfo.RefreshRate,
+							video.ProfileFast)
+						if err != nil {
+							logger.Log(logger.Allow, "gl32", err.Error())
+						}
+						rnd.video.Process(int(rnd.img.screen.lastVideoFrame.Load()))
 					}
+
 					rnd.scrsht.process(int32(fbw), int32(fbh))
-					rnd.video.Process(int(rnd.img.screen.lastVideoFrame.Load()))
 				}
 			}
 		}
