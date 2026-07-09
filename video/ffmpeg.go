@@ -430,10 +430,17 @@ func (vid *FFMPEG) Process(framenum int) {
 		return
 	}
 
-	if framenum != -1 && framenum <= vid.lastFrameRendered {
+	if framenum == -1 {
 		return
 	}
-	vid.lastFrameRendered = framenum
+
+	if framenum == vid.lastFrameRendered {
+		return
+	} else if framenum < vid.lastFrameRendered {
+		vid.lastFrameRendered = 0
+	} else {
+		vid.lastFrameRendered = framenum
+	}
 
 	if vid.conf.Log != nil {
 		if framenum > vid.conf.LastFrame {
