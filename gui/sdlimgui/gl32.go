@@ -295,12 +295,12 @@ func (rnd *gl32) isScreenshotting() bool {
 	return !rnd.scrsht.finished()
 }
 
-func (rnd *gl32) record(enable bool, conf video.Session) error {
+func (rnd *gl32) enableRecording(enable bool, conf video.Session) error {
 	return rnd.video.Enable(enable, conf)
 }
 
 func (rnd *gl32) isRecording() bool {
-	return rnd.video.IsRecording()
+	return rnd.video.IsEnabled()
 }
 
 // glState stores GL state with the intention of restoration after a short period.

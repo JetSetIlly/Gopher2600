@@ -38,12 +38,6 @@ type gl21 struct {
 	img      *SdlImgui
 	textures map[uint32]gl21Texture
 	font     gl21Texture
-	video    *video.FFMPEG
-}
-
-// ReadPixels implements the video.Renderer interface
-func (rnd *gl21) ReadPixels(width int32, height int32, pix []uint8) {
-	gl.ReadPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(pix))
 }
 
 func newRenderer(img *SdlImgui) renderer {
@@ -51,7 +45,6 @@ func newRenderer(img *SdlImgui) renderer {
 		img:      img,
 		textures: make(map[uint32]gl21Texture),
 	}
-	rnd.video = video.NewFFMPEG(rnd, img.dbg.TV())
 	return rnd
 }
 
@@ -82,7 +75,6 @@ func (rnd *gl21) destroy() {
 		gl.DeleteTextures(1, &tex.id)
 	}
 	clear(rnd.textures)
-	rnd.video.Destroy()
 }
 
 func (rnd *gl21) preRender() {
@@ -103,19 +95,6 @@ func (rnd *gl21) render() {
 		X: fbw / winw,
 		Y: fbh / winh,
 	})
-
-	if rnd.img.isPlaymode() {
-		err := rnd.video.Preprocess(
-			rnd.img.cache.VCS.Mem.Cart.ShortName,
-			int32(fbw), int32(fbh), float32(rnd.img.plt.mode.RefreshRate),
-			video.Profile1080)
-		if err != nil {
-			logger.Log(logger.Allow, "gl21", err.Error())
-		}
-		defer func() {
-			rnd.video.Process(int(rnd.img.screen.lastVideoFrame.Load()))
-		}()
-	}
 
 	// Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled, vertex/texcoord/color pointers, polygon fill.
 	var lastTexture int32
@@ -214,12 +193,12 @@ func (rnd *gl21) isScreenshotting() bool {
 	return false
 }
 
-func (rnd *gl21) record(enable bool, conf video.Session) error {
-	return rnd.video.Enable(enable, conf)
+func (rnd *gl21) enableRecording(enable bool, conf video.Session) error {
+	return nil
 }
 
 func (rnd *gl21) isRecording() bool {
-	return rnd.video.IsRecording()
+	return false
 }
 
 func (rnd *gl21) addTexture(_ shaderType, linear bool, clamp bool, config any) texture {

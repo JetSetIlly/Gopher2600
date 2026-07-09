@@ -233,14 +233,11 @@ type Television struct {
 	currentSignalIdx int
 	firstSignalIdx   int
 
-	audioSignals     []signal.AudioSignalAttributes
-	audioSignalLimit int
+	audioSignals []signal.AudioSignalAttributes
 
 	// state of emulation
 	emulationState govern.State
 }
-
-const baselineAudioSignalLimit = 200
 
 // NewTelevision creates a new instance of the television type, satisfying the
 // Television interface.
@@ -315,6 +312,7 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	}
 	tv.currentSignalIdx = 0
 	tv.firstSignalIdx = 0
+	tv.flushAudioSignal()
 
 	tv.setRefreshRate(tv.state.frameInfo.Spec.RefreshRate)
 	tv.state.resizer.reset(tv.state.frameInfo.Spec)
@@ -496,24 +494,28 @@ func (tv *Television) End() error {
 func (tv *Television) AudioSignal(sig signal.AudioSignalAttributes) {
 	tv.audioSignals = append(tv.audioSignals, sig)
 	if len(tv.audioSignals) >= tv.state.frameInfo.TotalScanlines {
-		if tv.realTimeMixer != nil {
-			err := tv.realTimeMixer.SetAudio(tv.audioSignals[:])
-			if err != nil {
-				logger.Log(tv.env, "TV", err)
-			}
-		}
-
-		// update normal mixers
-		for _, m := range tv.mixers {
-			err := m.SetAudio(tv.audioSignals[:])
-			if err != nil {
-				logger.Log(tv.env, "TV", err)
-			}
-		}
-
-		// flush audio signal after both realtime and normal mixers have been processed
-		tv.audioSignals = tv.audioSignals[:0]
+		tv.flushAudioSignal()
 	}
+}
+
+func (tv *Television) flushAudioSignal() {
+	if tv.realTimeMixer != nil {
+		err := tv.realTimeMixer.SetAudio(tv.audioSignals[:])
+		if err != nil {
+			logger.Log(tv.env, "TV", err)
+		}
+	}
+
+	// update normal mixers
+	for _, m := range tv.mixers {
+		err := m.SetAudio(tv.audioSignals[:])
+		if err != nil {
+			logger.Log(tv.env, "TV", err)
+		}
+	}
+
+	// empty audio signals after both realtime and normal mixers have been processed
+	tv.audioSignals = tv.audioSignals[:0]
 }
 
 // Signal updates the current state of the television.
@@ -963,7 +965,6 @@ func (tv *Television) setRefreshRate(rate float32) {
 	if tv.vcs != nil {
 		tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec)
 	}
-	tv.audioSignalLimit = baselineAudioSignalLimit
 }
 
 // SetEmulationState is called by emulation whenever state changes. How we

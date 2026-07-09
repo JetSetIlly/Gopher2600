@@ -23,7 +23,8 @@ import (
 )
 
 type audio struct {
-	wavs *wavwriter.WavWriter
+	wavs    *wavwriter.WavWriter
+	enabled bool
 }
 
 func newAudio(tempAudioFilename string, spec specification.Spec) (*audio, error) {
@@ -33,12 +34,16 @@ func newAudio(tempAudioFilename string, spec specification.Spec) (*audio, error)
 		return nil, err
 	}
 	return &audio{
-		wavs: wavs,
+		wavs:    wavs,
+		enabled: true,
 	}, nil
 }
 
 // SetAudio implements the television.AudioMixer interface
 func (au *audio) SetAudio(sig []signal.AudioSignalAttributes) error {
+	if !au.enabled {
+		return nil
+	}
 	return au.wavs.SetAudio(sig)
 }
 

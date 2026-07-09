@@ -77,6 +77,9 @@ type FFMPEG struct {
 	// is video recording enabled
 	enabled bool
 
+	// whether the ffmpeg tools have been checked for availability
+	toolsChecked bool
+
 	// the time the recording started
 	start time.Time
 
@@ -89,7 +92,7 @@ type FFMPEG struct {
 	lastFrameRendered int
 
 	// we record audio to a separate file and then mux it with the video in a final step
-	audio television.AudioMixer
+	audio *audio
 }
 
 func NewFFMPEG(rnd Renderer, tv Television) *FFMPEG {
@@ -269,14 +272,7 @@ func (vid *FFMPEG) Destroy() {
 
 func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz float32, profile Profile) error {
 	if !vid.enabled {
-		vid.Destroy()
 		return nil
-	}
-
-	// frame rate for the video is only set when the video has not current value, which happens at
-	// the outset of the recording
-	if vid.hz == 0 {
-		vid.hz = hz
 	}
 
 	if vid.pipe != nil {
@@ -291,6 +287,7 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 	vid.width = width
 	vid.height = height
 	vid.profile = profile
+	vid.hz = hz
 
 	// the base for the output file's name. we append .mp4 for the video file and .wav for the audio file
 	outputFilenameBase := unique.Filename("video", cartName)
@@ -399,14 +396,17 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 func (vid *FFMPEG) Enable(enable bool, conf Session) error {
 	vid.conf = conf
 	vid.enabled = enable
+	if vid.audio != nil {
+		vid.audio.enabled = enable
+	}
 	vid.start = time.Now()
 
-	if vid.conf.Log != nil {
-		fmt.Fprintln(vid.conf.Log, "testing for ffmpeg and ffprobe")
-	}
-
 	// check that both ffprobe and ffmpeg are available in the executable path
-	if vid.enabled {
+	if vid.enabled && !vid.toolsChecked {
+		if vid.conf.Log != nil {
+			fmt.Fprintln(vid.conf.Log, "testing for ffmpeg and ffprobe")
+		}
+
 		if _, err := exec.LookPath("ffmpeg"); err != nil {
 			vid.enabled = false
 			return fmt.Errorf("ffmpeg not installed")
@@ -416,31 +416,39 @@ func (vid *FFMPEG) Enable(enable bool, conf Session) error {
 				return fmt.Errorf("ffprobe not installed")
 			}
 		}
+		vid.toolsChecked = true
 	}
 
 	return nil
 }
 
-func (vid *FFMPEG) IsRecording() bool {
-	return vid.pipe != nil
+func (vid *FFMPEG) IsEnabled() bool {
+	return vid.enabled
 }
 
 func (vid *FFMPEG) Process(framenum int) {
+	if !vid.enabled {
+		return
+	}
+
 	if vid.pipe == nil {
 		return
 	}
 
 	if framenum == -1 {
+		vid.audio.enabled = false
 		return
 	}
 
 	if framenum == vid.lastFrameRendered {
 		return
 	} else if framenum < vid.lastFrameRendered {
-		vid.lastFrameRendered = 0
+		vid.lastFrameRendered = 1
 	} else {
 		vid.lastFrameRendered = framenum
 	}
+
+	vid.audio.enabled = true
 
 	if vid.conf.Log != nil {
 		if framenum > vid.conf.LastFrame {

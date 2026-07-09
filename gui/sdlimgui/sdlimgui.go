@@ -554,15 +554,18 @@ func (img *SdlImgui) getTVColour(col uint8) imgui.PackedColor {
 // video recording inhibits overlay drawing and gui windows. video recording is not disabled when
 // emulation is switched to debugger mode. video recording will resume if playmode is resumed
 func (img *SdlImgui) enableVideoRecording(enable bool, conf video.Session) error {
-	err := img.rnd.record(enable, conf)
+	err := img.rnd.enableRecording(enable, conf)
 	if err != nil {
 		return err
 	}
 	if !enable {
 		img.screen.Reset()
 	}
-
-	go img.SetFeature(gui.ReqNotification, notifications.NotifyVideo, enable)
+	if img.rnd.isRecording() {
+		go img.SetFeature(gui.ReqNotification, notifications.NotifyVideo, true)
+	} else {
+		go img.SetFeature(gui.ReqNotification, notifications.NotifyVideo, false)
+	}
 
 	return nil
 }
