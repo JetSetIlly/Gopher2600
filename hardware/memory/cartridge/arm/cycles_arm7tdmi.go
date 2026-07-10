@@ -86,8 +86,17 @@ func (arm *ARM) nCycle_ARM7TDMI(bus busAccess, addr uint32) {
 	// (extending the clock cycle) for nonsequential accesses. This is to allow
 	// time for full address decoding or to latch both a row and column address
 	// into DRAM."
-	mclkFlash := 1.0
-	mclkNonFlash := 1.0
+	var mclkFlash float32
+	var mclkNonFlash float32
+
+	// approximate penalty for back-to-back N cycles. values are attained through best-guess and observation
+	// ARM7TDMI specifies that additional delay may occur but does not define these ratios
+	const (
+		flashSequentialAccess = 1.0
+		ramSequentialAccess   = 1.0
+		flashRepeatedNAccess  = 1.3
+		ramRepeatedNAccess    = 1.8
+	)
 
 	// "3.3.1 Nonsequential cycles" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	//
@@ -97,8 +106,11 @@ func (arm *ARM) nCycle_ARM7TDMI(bus busAccess, addr uint32) {
 	// memory system is unable to cope with this case, you must use the CLKEN signal to
 	// extend the bus cycle to allow sufficient cycles for the memory system."
 	if arm.state.lastCycle == N {
-		mclkFlash = 1.3
-		mclkNonFlash = 1.8
+		mclkFlash = flashRepeatedNAccess
+		mclkNonFlash = ramRepeatedNAccess
+	} else {
+		mclkFlash = flashSequentialAccess
+		mclkNonFlash = ramSequentialAccess
 	}
 
 	// the use of a fractional number for MCLK modulation is at odds with the

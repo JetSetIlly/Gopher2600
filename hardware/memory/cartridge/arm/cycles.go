@@ -37,10 +37,6 @@ func (q *cycleOrder) reset() {
 	q.idx = 0
 }
 
-func (q cycleOrder) len() int {
-	return q.idx
-}
-
 func (q *cycleOrder) add(c cycleType) {
 	q.queue[q.idx] = c
 	q.idx++
@@ -84,19 +80,20 @@ const (
 // returns false if address isn't latched. this means theat the bus access is
 // subject to latency.
 //
-// dows not handle the decision about whether the MAM latches should be
+// does not handle the decision about whether the MAM latches should be
 // checked. for example, if MAMCR is zero than don't call this function at all.
 // see Scycle() and Ncycle() for those decisions.
 func (arm *ARM) isLatched(cycle cycleType, bus busAccess, addr uint32) bool {
-	latch := addr & 0xffffff80
+	// MAM buffers are 128 bit aligned blocks. chapter three of "UM10161"
+	latch := addr & 0xfffffff0
 
 	switch bus {
 	case prefetch:
-		if latch == arm.state.mam.prefectchLatch {
+		if latch == arm.state.mam.prefetchLatch {
 			return true
 		}
 
-		arm.state.mam.prefectchLatch = latch
+		arm.state.mam.prefetchLatch = latch
 
 		// we'll assume MAMTIM is set adequately
 		if cycle == S && !arm.state.mam.prefectchAborted {
@@ -126,7 +123,7 @@ func (arm *ARM) isLatched(cycle cycleType, bus busAccess, addr uint32) bool {
 }
 
 // called whenever PC changes unexpectedly (by a branch instruction for example).
-func (arm *ARM) fillPipeline() {
+func (arm *ARM) fillPipelineAfterBranch() {
 	arm.Ncycle(branch, arm.state.registers[rPC])
 	arm.Scycle(prefetch, arm.state.registers[rPC]+2)
 }

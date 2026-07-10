@@ -60,25 +60,12 @@ const cycleLimit = 1500000
 // running in immediate mode
 const instructionsLimit = 1300000
 
-// The latency above which the memory is considered slow for cycle counting purposes
-const slowMemoryLatency = 25.0
-
 // stepFunction variations are a result of different ARM architectures
 type stepFunction func(opcode uint16, memIdx int)
 
 // decodeFunction represents one of the functions that decodes a specific group
-// of ARM instructions
-//
-// decodeFunctions can be called in one of two ways:
-//
-//	(1) when the ARM argument is *not* nil it indicates that the function should
-//	   affect the registers and memory of the emulated ARM as appropriate
-//	(2) when the argument *is* nil it indicates that the function should decode
-//	   the opcode only so far as is required to produce a DisasmEntry
-//
-// the return value for decodeFunction can be an instance of DisasmEntry or nil.
-// in the case of (1) it is always nil but in the case of (2) nil indicates an
-// error
+// of ARM instructions. the decodeOnly flag in the ARM type controls how the function
+// operates
 type decodeFunction func() *DisasmEntry
 
 type ARMState struct {
@@ -553,12 +540,12 @@ func (arm *ARM) String() string {
 				s.WriteString("\t\t")
 			}
 		}
-		s.WriteString(fmt.Sprintf("R%-2d: %08x", i, r))
+		fmt.Fprintf(&s, "R%-2d: %08x", i, r)
 	}
 	s.WriteString("\n")
 	s.WriteString(arm.state.status.String())
 	if arm.mmap.ARMArchitecture == architecture.ARMv7_M {
-		s.WriteString(fmt.Sprintf("\tIT: cond=%04b mask=%04b", arm.state.status.itCond, arm.state.status.itMask))
+		fmt.Fprintf(&s, "\tIT: cond=%04b mask=%04b", arm.state.status.itCond, arm.state.status.itMask)
 	}
 	return s.String()
 }
@@ -920,7 +907,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 		if !arm.immediateMode {
 			// add additional cycles required to fill pipeline before next iteration
 			if arm.state.branchedExecution {
-				arm.fillPipeline()
+				arm.fillPipelineAfterBranch()
 			}
 
 			// prefetch cycle for next instruction is associated with and counts

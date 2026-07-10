@@ -39,8 +39,8 @@ type mam struct {
 	pref int
 
 	// the address of the last prefetch and data read
-	prefectchLatch uint32
-	dataLatch      uint32
+	prefetchLatch uint32
+	dataLatch     uint32
 
 	// the address of the last branch. implements the branch trail buffer.
 	// if an unexpected PC value is the same as lastBranchAddress then there is

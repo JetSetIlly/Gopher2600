@@ -47,9 +47,11 @@ const (
 
 // Regions of memory in the architecture's map
 type MemoryRegion struct {
-	Name    string
-	Origin  uint32
-	Memtop  uint32
+	Name   string
+	Origin uint32
+	Memtop uint32
+
+	// memory latency in nanosecond
 	Latency float64
 
 	// whether the memory region is subject to MAM. the architecture might not have MAM at all
