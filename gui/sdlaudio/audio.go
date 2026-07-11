@@ -16,6 +16,7 @@
 package sdlaudio
 
 import (
+	"encoding/binary"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -221,7 +222,7 @@ func (aud *Audio) setSpec(spec specification.Spec) {
 
 	request := &sdl.AudioSpec{
 		Freq:     int32(sampleFreq),
-		Format:   sdl.AUDIO_S16MSB,
+		Format:   sdl.AUDIO_S16SYS,
 		Channels: 2,
 		Samples:  uint16(len(aud.buffer)),
 	}
@@ -355,26 +356,16 @@ func (aud *Audio) SetAudio(sig []signal.AudioSignalAttributes) error {
 			}
 
 			for range stretch {
-				aud.buffer[aud.bufferCt] = uint8(s0>>8) + aud.spec.Silence
-				aud.bufferCt++
-				aud.buffer[aud.bufferCt] = uint8(s0) + aud.spec.Silence
-				aud.bufferCt++
-				aud.buffer[aud.bufferCt] = uint8(s1>>8) + aud.spec.Silence
-				aud.bufferCt++
-				aud.buffer[aud.bufferCt] = uint8(s1) + aud.spec.Silence
-				aud.bufferCt++
+				binary.LittleEndian.PutUint16(aud.buffer[aud.bufferCt:], uint16(s0))
+				binary.LittleEndian.PutUint16(aud.buffer[aud.bufferCt+2:], uint16(s1))
+				aud.bufferCt += 4
 			}
 		} else {
 			m := mix.Mono(v0, v1)
 			for range stretch {
-				aud.buffer[aud.bufferCt] = uint8(m>>8) + aud.spec.Silence
-				aud.bufferCt++
-				aud.buffer[aud.bufferCt] = uint8(m) + aud.spec.Silence
-				aud.bufferCt++
-				aud.buffer[aud.bufferCt] = uint8(m>>8) + aud.spec.Silence
-				aud.bufferCt++
-				aud.buffer[aud.bufferCt] = uint8(m) + aud.spec.Silence
-				aud.bufferCt++
+				binary.LittleEndian.PutUint16(aud.buffer[aud.bufferCt:], uint16(m))
+				binary.LittleEndian.PutUint16(aud.buffer[aud.bufferCt+2:], uint16(m))
+				aud.bufferCt += 4
 			}
 		}
 
