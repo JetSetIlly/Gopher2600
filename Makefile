@@ -52,7 +52,7 @@ clean:
 tidy:
 # goimports is not part of the standard Go distribution so we won't won't
 # require this in any of the other targets
-	goimports -w .
+	goimports -w -format-only .
 
 check_glsl:
 ifeq (, $(shell which glslangValidator))
