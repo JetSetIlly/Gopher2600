@@ -828,7 +828,8 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 			endFrame = dbg.playback.EndFrame()
 		}
 		err := dbg.gui.SetFeature(gui.ReqVideoRecord, true, video.Session{
-			Log:       os.Stdout,
+			Log:       logger.Writer(),
+			Verbose:   false,
 			LastFrame: endFrame,
 			Profile:   video.ProfileFast,
 		})

@@ -41,6 +41,7 @@ const (
 // Session is used to configure the FFMPEG process on the call to Enable()
 type Session struct {
 	Log       io.Writer
+	Verbose   bool
 	LastFrame int
 	Profile   Profile
 }
@@ -115,7 +116,7 @@ func (vid *FFMPEG) Destroy() {
 		vid.pipe.Close()
 		if err := vid.encoder.Wait(); err != nil {
 			if vid.conf.Log != nil {
-				fmt.Fprintln(vid.conf.Log, err.Error())
+				fmt.Fprintf(vid.conf.Log, "video: %s\n", err.Error())
 			}
 		}
 		vid.pipe = nil
@@ -128,7 +129,7 @@ func (vid *FFMPEG) Destroy() {
 		// package makes sure it can only end once
 		if err := vid.audio.EndMixing(); err != nil {
 			if vid.conf.Log != nil {
-				fmt.Fprintln(vid.conf.Log, err.Error())
+				fmt.Fprintf(vid.conf.Log, "video: %s\n", err.Error())
 			}
 		}
 		vid.tv.RemoveAudioMixer(vid.audio)
@@ -169,12 +170,12 @@ func (vid *FFMPEG) Destroy() {
 			}
 		}
 
-		fmt.Fprintf(vid.conf.Log, "%d frames recorded in%s (%.02f fps)\n", vid.lastFrameRendered, dur.String(), fps)
+		fmt.Fprintf(vid.conf.Log, "video: %d frames recorded in%s (%.02f fps)\n", vid.lastFrameRendered, dur.String(), fps)
 	}
 
 	// probe temporary files before muxing
 	if vid.conf.Log != nil {
-		fmt.Fprintln(vid.conf.Log, "probing intermediary video and audio files")
+		fmt.Fprintln(vid.conf.Log, "video: probing intermediary video and audio files")
 	}
 
 	// duration of video file
@@ -186,7 +187,7 @@ func (vid *FFMPEG) Destroy() {
 	probeResult, err := probeVideo.Output()
 	if err != nil {
 		if vid.conf.Log != nil {
-			fmt.Fprintln(vid.conf.Log, err.Error())
+			fmt.Fprintf(vid.conf.Log, "video: %s\n", err.Error())
 		}
 		return
 	}
@@ -195,7 +196,7 @@ func (vid *FFMPEG) Destroy() {
 	videoDuration, err := strconv.ParseFloat(string(probeResult), 64)
 	if err != nil {
 		if vid.conf.Log != nil {
-			fmt.Fprintln(vid.conf.Log, err.Error())
+			fmt.Fprintf(vid.conf.Log, "video: %s\n", err.Error())
 		}
 		return
 	}
@@ -209,7 +210,7 @@ func (vid *FFMPEG) Destroy() {
 	probeResult, err = probeAudio.Output()
 	if err != nil {
 		if vid.conf.Log != nil {
-			fmt.Fprintln(vid.conf.Log, err.Error())
+			fmt.Fprintf(vid.conf.Log, "video: %s\n", err.Error())
 		}
 		return
 	}
@@ -218,23 +219,23 @@ func (vid *FFMPEG) Destroy() {
 	audioDuration, err := strconv.ParseFloat(string(probeResult), 64)
 	if err != nil {
 		if vid.conf.Log != nil {
-			fmt.Fprintln(vid.conf.Log, err.Error())
+			fmt.Fprintf(vid.conf.Log, "video: %s\n", err.Error())
 		}
 		return
 	}
 
 	// log duration of video and audio parts
 	if vid.conf.Log != nil {
-		fmt.Fprintf(vid.conf.Log, "video duration is %s, audio duration is %s\n",
+		fmt.Fprintf(vid.conf.Log, "video: duration is %s, audio duration is %s\n",
 			time.Millisecond*time.Duration(videoDuration*1000),
 			time.Millisecond*time.Duration(audioDuration*1000),
 		)
-		fmt.Fprintf(vid.conf.Log, "audio is %0.2f%% of video duration\n", 100*audioDuration/videoDuration)
+		fmt.Fprintf(vid.conf.Log, "video: audio is %0.2f%% of video duration\n", 100*audioDuration/videoDuration)
 	}
 
 	// muxing with ffmpeg using the probed and calculated rates
 	if vid.conf.Log != nil {
-		fmt.Fprintf(vid.conf.Log, "muxing final output file: %s\n", vid.finalVideoFilename)
+		fmt.Fprintf(vid.conf.Log, "video: muxing final output file: %s\n", vid.finalVideoFilename)
 	}
 
 	muxer := exec.Command("ffmpeg",
@@ -250,7 +251,7 @@ func (vid *FFMPEG) Destroy() {
 	err = muxer.Run()
 	if err != nil {
 		if vid.conf.Log != nil {
-			fmt.Fprintln(vid.conf.Log, err.Error())
+			fmt.Fprintf(vid.conf.Log, "video: %s\n", err.Error())
 		}
 		return
 	}
@@ -259,13 +260,13 @@ func (vid *FFMPEG) Destroy() {
 	err = os.Remove(vid.tempVideoFilename)
 	if err != nil {
 		if vid.conf.Log != nil {
-			fmt.Fprintln(vid.conf.Log, err.Error())
+			fmt.Fprintf(vid.conf.Log, "video: %s\n", err.Error())
 		}
 	}
 	err = os.Remove(vid.tempAudioFilename)
 	if err != nil {
 		if vid.conf.Log != nil {
-			fmt.Fprintln(vid.conf.Log, err.Error())
+			fmt.Fprintf(vid.conf.Log, "video: %s\n", err.Error())
 		}
 	}
 }
@@ -276,10 +277,8 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 	}
 
 	if vid.pipe != nil {
-		if vid.width != width || vid.height != height {
-			vid.Destroy()
-			return fmt.Errorf("ffmpeg: size of frame has changed")
-		}
+		// if framebuffer size changes then we'll just silently accept it. the results aren't great
+		// but I think it's better than just ending the recording
 		return nil
 	}
 
@@ -387,13 +386,18 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 	vid.tv.AddAudioMixer(vid.audio)
 
 	if vid.conf.Log != nil {
-		fmt.Fprintln(vid.conf.Log, "recording video")
+		fmt.Fprintln(vid.conf.Log, "video: recording started")
 	}
 
 	return nil
 }
 
 func (vid *FFMPEG) Enable(enable bool, conf Session) error {
+	if !enable {
+		vid.Destroy()
+		return nil
+	}
+
 	vid.conf = conf
 	vid.enabled = enable
 	if vid.audio != nil {
@@ -404,16 +408,16 @@ func (vid *FFMPEG) Enable(enable bool, conf Session) error {
 	// check that both ffprobe and ffmpeg are available in the executable path
 	if vid.enabled && !vid.toolsChecked {
 		if vid.conf.Log != nil {
-			fmt.Fprintln(vid.conf.Log, "testing for ffmpeg and ffprobe")
+			fmt.Fprintln(vid.conf.Log, "video: testing for ffmpeg and ffprobe")
 		}
 
 		if _, err := exec.LookPath("ffmpeg"); err != nil {
 			vid.enabled = false
-			return fmt.Errorf("ffmpeg not installed")
+			return fmt.Errorf("video: ffmpeg not installed")
 		} else {
 			if _, err := exec.LookPath("ffprobe"); err != nil {
 				vid.enabled = false
-				return fmt.Errorf("ffprobe not installed")
+				return fmt.Errorf("video: ffprobe not installed")
 			}
 		}
 		vid.toolsChecked = true
@@ -450,7 +454,7 @@ func (vid *FFMPEG) Process(framenum int) {
 
 	vid.audio.enabled = true
 
-	if vid.conf.Log != nil {
+	if vid.conf.Log != nil && vid.conf.Verbose {
 		if framenum > vid.conf.LastFrame {
 			fmt.Fprintf(vid.conf.Log, "frame %d\r", framenum)
 		} else {
@@ -464,7 +468,7 @@ func (vid *FFMPEG) Process(framenum int) {
 	_, err := vid.pipe.Write(vid.pixels)
 	if err != nil {
 		if vid.conf.Log != nil {
-			fmt.Fprintln(vid.conf.Log, err.Error())
+			fmt.Fprintf(vid.conf.Log, "video: %s\n", err.Error())
 		}
 		vid.Destroy()
 	}

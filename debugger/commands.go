@@ -2220,14 +2220,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				dbg.printLine(terminal.StyleLog, s.String())
 			case "RECENT":
 				s := &strings.Builder{}
-				logger.WriteRecent(s)
+				logger.DumpRecent(s)
 				dbg.printLine(terminal.StyleLog, s.String())
 			case "CLEAR":
 				logger.Clear()
 			}
 		} else {
 			s := &strings.Builder{}
-			logger.Write(s)
+			logger.Dump(s)
 			if s.Len() == 0 {
 				dbg.printLine(terminal.StyleFeedback, "log is empty")
 			} else {

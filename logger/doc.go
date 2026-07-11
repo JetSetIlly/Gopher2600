@@ -29,5 +29,12 @@
 // The Colorizer type can be used with SetEcho() to output a simply coloured
 // log entries (using ANSI control codes).
 //
+// The Logger type implements the io.Writer interface. The implemntation of
+// Write() will split the message at the first colon and use the left-part as
+// the logger tag. If there is no tag then no tag is used.
+//
+// To access the central logger for use in an io.Writer context, the Writer()
+// function returns the instance.
+//
 // The logger package should not be used inside any init() function.
 package logger

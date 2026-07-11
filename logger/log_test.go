@@ -31,11 +31,11 @@ func TestCentralLogger(t *testing.T) {
 	log := logger.NewLogger(100)
 	w := &strings.Builder{}
 
-	log.Write(w)
+	log.Dump(w)
 	test.ExpectEquality(t, w.String(), "")
 
 	log.Log(logger.Allow, "test", "this is a test")
-	log.Write(w)
+	log.Dump(w)
 	test.ExpectEquality(t, w.String(), "test: this is a test\n")
 
 	// clear the test.Writer buffer before continuing, makes comparisons easier
@@ -43,7 +43,7 @@ func TestCentralLogger(t *testing.T) {
 	w.Reset()
 
 	log.Log(logger.Allow, "test2", "this is another test")
-	log.Write(w)
+	log.Dump(w)
 	test.ExpectEquality(t, w.String(), "test: this is a test\ntest2: this is another test\n")
 
 	// asking for too many entries in a Tail() should be okay
@@ -89,7 +89,7 @@ func TestPermissions(t *testing.T) {
 		log.Clear()
 		w.Reset()
 		log.Log(p, "tag", "detail")
-		log.Write(w)
+		log.Dump(w)
 		if p.AllowLogging() {
 			test.ExpectEquality(t, w.String(), "tag: detail\n")
 		} else {
@@ -106,7 +106,7 @@ func TestErrorLogging(t *testing.T) {
 	err := errors.New("test error")
 
 	log.Log(logger.Allow, "tag", err)
-	log.Write(w)
+	log.Dump(w)
 	fmt.Println(w.String())
 	test.ExpectEquality(t, w.String(), "tag: test error\n")
 
@@ -115,7 +115,7 @@ func TestErrorLogging(t *testing.T) {
 
 	// test "wrapping" of errors using the %v verb
 	log.Logf(logger.Allow, "tag", "wrapped: %v", err)
-	log.Write(w)
+	log.Dump(w)
 	fmt.Println(w.String())
 	test.ExpectEquality(t, w.String(), "tag: wrapped: test error\n")
 }
@@ -132,7 +132,7 @@ func TestStringerLogging(t *testing.T) {
 	w := &strings.Builder{}
 
 	log.Log(logger.Allow, "tag", stringerTest{})
-	log.Write(w)
+	log.Dump(w)
 	test.ExpectEquality(t, w.String(), "tag: stringer test\n")
 }
 
@@ -143,6 +143,6 @@ func TestIntLogging(t *testing.T) {
 	w := &strings.Builder{}
 
 	log.Log(logger.Allow, "tag", 100)
-	log.Write(w)
+	log.Dump(w)
 	test.ExpectEquality(t, w.String(), "tag: 100\n")
 }

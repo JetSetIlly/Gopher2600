@@ -167,8 +167,8 @@ func (l *Logger) Clear() {
 	l.recentStart = 0
 }
 
-// Write contents of central logger to io.Writer
-func (l *Logger) Write(output io.Writer) {
+// Dump contents of central logger to io.Writer
+func (l *Logger) Dump(output io.Writer) {
 	if output == nil {
 		return
 	}
@@ -182,8 +182,8 @@ func (l *Logger) Write(output io.Writer) {
 	}
 }
 
-// WriteRecent returns only the entries added since the last call to CopyRecent
-func (l *Logger) WriteRecent(output io.Writer) {
+// DumpRecent returns only the entries added since the last call to CopyRecent
+func (l *Logger) DumpRecent(output io.Writer) {
 	l.crit.Lock()
 	defer l.crit.Unlock()
 
@@ -227,7 +227,7 @@ func (l *Logger) SetEcho(output io.Writer, writeRecent bool) {
 	l.crit.Unlock()
 
 	if writeRecent {
-		l.WriteRecent(output)
+		l.DumpRecent(output)
 	}
 }
 
@@ -238,4 +238,18 @@ func (l *Logger) BorrowLog(f func([]Entry)) {
 	defer l.crit.Unlock()
 
 	f(l.entries)
+}
+
+// Write implements the io.Writer interface
+func (l *Logger) Write(b []byte) (int, error) {
+	s := string(b)
+	p := strings.SplitN(s, ":", 2)
+	switch len(p) {
+	case 0:
+	case 1:
+		l.Log(Allow, "", s)
+	default:
+		l.Log(Allow, p[0], strings.Join(p[1:], ":"))
+	}
+	return len(b), nil
 }

@@ -46,15 +46,15 @@ func Clear() {
 	central.Clear()
 }
 
-// Write contents of central logger to io.Writer
-func Write(output io.Writer) {
-	central.Write(output)
+// Dump contents of central logger to io.Writer
+func Dump(output io.Writer) {
+	central.Dump(output)
 }
 
-// WriteRecent returns only the entries in the central logger added since the
-// last call to WriteRecent
-func WriteRecent(output io.Writer) {
-	central.WriteRecent(output)
+// DumpRecent returns only the entries in the central logger added since the
+// last call to DumpRecent
+func DumpRecent(output io.Writer) {
+	central.DumpRecent(output)
 }
 
 // Tail writes the last N entries in the central logger to io.Writer. A number
@@ -72,4 +72,9 @@ func SetEcho(output io.Writer, writeRecent bool) {
 // list of log entries
 func BorrowLog(f func([]Entry)) {
 	central.BorrowLog(f)
+}
+
+// The logger returned as an io.Writer
+func Writer() io.Writer {
+	return central
 }
