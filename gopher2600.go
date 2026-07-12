@@ -37,6 +37,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	hdls "github.com/jetsetilly/gopher2600/headless"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/performance"
 	"github.com/jetsetilly/gopher2600/recorder"
@@ -302,8 +303,8 @@ func headless(mode string, sync *mainSync, args []string) error {
 
 	sync.state <- stateRequest{req: reqNoIntSig}
 
-	dbg, err := debugger.NewDebugger(opts, func(e *debugger.Debugger) (gui.GUI, terminal.Terminal, error) {
-		return &gui.Stub{}, &plainterm.PlainTerminal{}, nil
+	dbg, err := debugger.NewDebugger(opts, func(dbg *debugger.Debugger) (gui.GUI, terminal.Terminal, error) {
+		return hdls.NewHeadless(dbg), &plainterm.PlainTerminal{}, nil
 	})
 
 	var romFile string
@@ -407,7 +408,7 @@ func emulate(mode string, sync *mainSync, args []string) error {
 	// prepare new debugger, supplying a debugger.CreateUserInterface function.
 	// this function will be called by NewDebugger() and in turn will send a
 	// GUI create message to the main goroutine
-	dbg, err := debugger.NewDebugger(opts, func(e *debugger.Debugger) (gui.GUI, terminal.Terminal, error) {
+	dbg, err := debugger.NewDebugger(opts, func(dbg *debugger.Debugger) (gui.GUI, terminal.Terminal, error) {
 		var term terminal.Terminal
 		var scr gui.GUI
 
@@ -415,7 +416,7 @@ func emulate(mode string, sync *mainSync, args []string) error {
 		if termType == "IMGUI" {
 			sync.state <- stateRequest{req: reqCreateGUI,
 				args: guiCreate(func() (guiControl, error) {
-					return sdlimgui.NewSdlImgui(e)
+					return sdlimgui.NewSdlImgui(dbg)
 				}),
 			}
 
