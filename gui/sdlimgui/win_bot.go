@@ -60,14 +60,14 @@ type winBot struct {
 
 // width of bot image never changes
 const botImageScaling = 1.0
-const botImageWidth = botImageScaling * specification.ClksScanline * pixelWidth
+const botImageWidth = botImageScaling * specification.ClksScanline * specification.PixelWidth
 const botImageHeight = botImageScaling * specification.AbsoluteMaxScanlines
 
 func newWinBot(img *SdlImgui) (window, error) {
 	win := &winBot{
 		img:            img,
 		diagnostics:    make([]bots.Diagnostic, 0, 1024),
-		screenScalingX: botImageScaling * pixelWidth,
+		screenScalingX: botImageScaling * specification.PixelWidth,
 		screenScalingY: botImageScaling,
 	}
 

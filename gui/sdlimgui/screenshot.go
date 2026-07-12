@@ -16,18 +16,29 @@
 package sdlimgui
 
 import (
-	"fmt"
-	"image"
-	"image/jpeg"
-	"os"
-
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/gui/screenshot"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/notifications"
-	"github.com/jetsetilly/gopher2600/resources/unique"
 )
 
-func (img *SdlImgui) screenshot(mode screenshotMode, filenameSuffix string) {
+func (img *SdlImgui) screenshot(mode screenshotMode, path string) {
+	if img.mode.Load().(govern.Mode) != govern.ModePlay {
+		img.screen.crit.section.Lock()
+		defer img.screen.crit.section.Unlock()
+
+		scaled := screenshot.ScaleRawPixels(img.screen.crit.cropPixels)
+
+		// save image to file as a JPEG
+		if path == "" {
+			path = screenshot.GenerateFilename(img.cache.VCS.Mem.Cart.ShortName, "", "debug")
+		}
+		screenshot.SaveJPEG(scaled, path)
+
+		return
+	}
+
 	finish := make(chan screenshotResult, 1)
 	img.rnd.screenshot(mode, finish)
 
@@ -47,42 +58,10 @@ func (img *SdlImgui) screenshot(mode screenshotMode, filenameSuffix string) {
 			return
 		}
 
-		// prepare file path for when the image needs to be saved
-		var path string
-
-		if len(filenameSuffix) == 0 {
-			path = unique.Filename("scrshot", cartName)
-		} else {
-			path = fmt.Sprintf("%s_%s", cartName, filenameSuffix)
-		}
-		path = fmt.Sprintf("%s_%s.jpg", path, res.description)
-
 		// save image to file as a JPEG
-		saveJPEG(res.image, path)
+		if path == "" {
+			path = screenshot.GenerateFilename(cartName, "", res.description)
+		}
+		screenshot.SaveJPEG(res.image, path)
 	}()
-}
-
-// saveJPEG writes the texture to the specified path.
-func saveJPEG(rgba *image.RGBA, path string) {
-	f, err := os.Create(path)
-	if err != nil {
-		logger.Logf(logger.Allow, "screenshot", "save failed: %v", err)
-		return
-	}
-
-	err = jpeg.Encode(f, rgba, &jpeg.Options{Quality: 100})
-	if err != nil {
-		logger.Logf(logger.Allow, "screenshot", "save failed: %v", err)
-		_ = f.Close()
-		return
-	}
-
-	err = f.Close()
-	if err != nil {
-		logger.Logf(logger.Allow, "screenshot", "save failed: %v", err)
-		return
-	}
-
-	// indicate success
-	logger.Logf(logger.Allow, "screenshot", "saved: %s", path)
 }

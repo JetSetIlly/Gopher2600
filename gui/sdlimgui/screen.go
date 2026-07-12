@@ -32,13 +32,6 @@ import (
 	"github.com/jetsetilly/gopher2600/reflection"
 )
 
-// textureRenderers should consider that the timing of the VCS produces
-// "pixels" of two pixels across.
-//
-// this value can be ignored if texture is being drawn in a fixed aperture. for
-// example when using specification.WidthTV and specification.HeightTV
-const pixelWidth = 2
-
 // textureRenderers can share the underlying pixels of the screen type instance. both of these functions
 // should be called inside the screen critical section.
 type textureRenderer interface {

@@ -389,6 +389,8 @@ if execution has not broken inside the coprocessor program.
 The optional DERIVATION switch to the LOCAL argument prints out the location list derivation for that
 variable. Normal Atari 2600 developers do not need to worry about location lists.`,
 
+	cmdScreenshot: `Screenshot most recent complete frame to a file. A filename is an optional argument.`,
+
 	// user input
 	cmdPeripheral: `Change the current peripheral for the specified player port. Can also be used
 to swap the ports so that the left player in the emulator controls what would be the right player

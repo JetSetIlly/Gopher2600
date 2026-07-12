@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"image"
 
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
@@ -52,9 +53,9 @@ func (mag *dbgScrMagnifyTooltip) draw(mouse dbgScrMouse) {
 	}
 
 	mag.clip = image.Rect(mouse.scaled.x-mag.zoom,
-		mouse.scaled.y-mag.zoom*pixelWidth,
+		mouse.scaled.y-mag.zoom*specification.PixelWidth,
 		mouse.scaled.x+mag.zoom,
-		mouse.scaled.y+mag.zoom*pixelWidth)
+		mouse.scaled.y+mag.zoom*specification.PixelWidth)
 
 	// the magnify texture should be opaque
 	imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 1.0)
@@ -92,9 +93,9 @@ func (mag *dbgScrMagnifyWindow) setClipCenter(centre dbgScrMouse, bound image.Re
 
 func (mag *dbgScrMagnifyWindow) setClip() {
 	mag.clip.Min.X = mag.centerPoint.x - mag.zoom
-	mag.clip.Min.Y = mag.centerPoint.y - mag.zoom*pixelWidth
+	mag.clip.Min.Y = mag.centerPoint.y - mag.zoom*specification.PixelWidth
 	mag.clip.Max.X = mag.centerPoint.x + mag.zoom
-	mag.clip.Max.Y = mag.centerPoint.y + mag.zoom*pixelWidth
+	mag.clip.Max.Y = mag.centerPoint.y + mag.zoom*specification.PixelWidth
 }
 
 func (mag *dbgScrMagnifyWindow) adjustZoom(delta float32) {
@@ -155,7 +156,7 @@ func (mag *dbgScrMagnifyWindow) draw(cols *imguiColors) {
 			pos := imgui.MousePos()
 			scaledPos := dbgScrMousePos{
 				x: int(pos.X / pixelSize),
-				y: int(pos.Y / pixelSize * pixelWidth),
+				y: int(pos.Y / pixelSize * specification.PixelWidth),
 			}
 
 			if mag.isDragging {

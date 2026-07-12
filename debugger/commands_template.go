@@ -67,6 +67,8 @@ const (
 	cmdCoProc  = "COPROC"
 	cmdDWARF   = "DWARF"
 
+	cmdScreenshot = "SCREENSHOT"
+
 	// user input
 	cmdPeripheral = "PERIPHERAL"
 	cmdPanel      = "PANEL"
@@ -132,6 +134,8 @@ var commandTemplate = []string{
 	cmdPlusROM + " (NICK [%<name>S]|ID [%<id>S]|HOST [%<host>S]|PATH [%<path>S])",
 	cmdCoProc + " (ID|LIST [FAULTS|SOURCEFILES|FUNCTIONS]|TOP (%<top>N)|MEM [DUMP {%<area>S}|SEARCH {%<value>N} {%<bitwidth>N}]|REGS %<group>S|SET %<register>N %<value>N|STEP)",
 	cmdDWARF + " [FUNCTIONS|GLOBALS (DERIVATION)|LOCALS {DERIVATION|RANGES}|FRAMEBASE (DERIVATION)|LINE %<file:line>S|CALLSTACK|CALLERS %<function>S]",
+
+	cmdScreenshot + "(%<filename>S)",
 
 	// user input
 	cmdPeripheral + " ([LEFT|RIGHT] (AUTO|NONE|STICK|PADDLE|PADDLES|KEYPAD|GAMEPAD|SAVEKEY|ATARIVOX)|SWAP)",

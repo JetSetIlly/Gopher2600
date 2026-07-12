@@ -954,9 +954,7 @@ func (win *winDbgScr) setScaling() {
 		win.magnifyTooltip.setScaling()
 	}
 
-	// aspectBias transforms the scaling factor for the X axis. in other words,
-	// for width of every pixel is height of every pixel multiplied by the
-	// aspect bias
+	// aspectBias transforms the scaling factor for the X axis
 	const aspectBias = 0.91
 
 	var w float32
@@ -969,7 +967,7 @@ func (win *winDbgScr) setScaling() {
 		w = float32(win.scr.crit.pixels.Bounds().Size().X)
 		h = float32(win.scr.crit.pixels.Bounds().Size().Y)
 	}
-	adjW := w * pixelWidth * float32(aspectBias)
+	adjW := w * specification.PixelWidth * float32(aspectBias)
 
 	var scaling float32
 
@@ -995,7 +993,7 @@ func (win *winDbgScr) setScaling() {
 	}
 
 	win.view.yscaling = scaling
-	win.view.xscaling = scaling * pixelWidth * float32(aspectBias)
+	win.view.xscaling = scaling * specification.PixelWidth * float32(aspectBias)
 	win.view.scaledWidth = w * win.view.xscaling
 	win.view.scaledHeight = h * win.view.yscaling
 

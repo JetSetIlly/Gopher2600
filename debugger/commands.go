@@ -1821,6 +1821,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			})
 		}
 
+	case cmdScreenshot:
+		filename, _ := tokens.Get()
+		dbg.printLine(terminal.StyleFeedback, "saving screenshot")
+		dbg.gui.SetFeature(gui.ReqScreenshot, filename)
+
 	case cmdPeripheral:
 		player, _ := tokens.Get()
 		player = strings.ToUpper(player)

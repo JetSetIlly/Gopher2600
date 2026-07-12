@@ -27,6 +27,9 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
+// VCS generates "pixels" that are two montor pixels wide. This value can be used for scaling
+const PixelWidth = 2
+
 // SpecList is the list of specifications that the television may adopt.
 var SpecList = []string{"NTSC", "PAL", "PAL60", "PAL-M", "SECAM"}
 
