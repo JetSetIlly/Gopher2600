@@ -30,7 +30,7 @@ const (
 
 	// these are general "memory faults"
 	NullDereference Category = "null dereference"
-	StackError      Category = "stack collision"
+	StackCollision  Category = "stack collision"
 	IllegalAddress  Category = "illegal address"
 
 	// these are memory faults but are usually treated as warnings
@@ -121,7 +121,7 @@ func (flt *Faults) NewEntry(event string, category Category, instructionAddr uin
 	e.Count++
 
 	// if this is a stack collision then record that fact
-	if category == StackError {
+	if category == StackCollision {
 		flt.HasStackCollision = true
 	}
 }

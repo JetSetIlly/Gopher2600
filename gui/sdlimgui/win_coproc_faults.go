@@ -234,8 +234,7 @@ func (win *winCoProcFaults) draw(flt *faults.Faults, src *dwarf.Source) {
 			imgui.AlignTextToFramePadding()
 			imgui.Text("Stack collision detected")
 			win.img.imguiTooltip(func() {
-				imgui.Text("Results of memory access is unreliable after a stack collision")
-				imgui.Text("and so memory faults are no longer being logged.")
+				imgui.Text("Results of memory access are unreliable after a stack collision")
 			}, true)
 		}
 	})

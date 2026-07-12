@@ -61,7 +61,7 @@ func (arm *ARM) stackProtectCheckSP() {
 	arm.state.stackHasErrors = true
 
 	if arm.dev != nil {
-		arm.dev.MemoryFault(arm.state.yield.Error.Error(), faults.StackError, arm.state.executingPC, arm.state.registers[rSP])
+		arm.dev.MemoryFault(arm.state.yield.Error.Error(), faults.StackCollision, arm.state.executingPC, arm.state.registers[rSP])
 	}
 }
 
@@ -83,6 +83,6 @@ func (arm *ARM) stackProtectCheckProgramMemory() {
 	arm.state.stackHasErrors = true
 
 	if arm.dev != nil {
-		arm.dev.MemoryFault(arm.state.yield.Error.Error(), faults.StackError, arm.state.executingPC, arm.state.registers[rSP])
+		arm.dev.MemoryFault(arm.state.yield.Error.Error(), faults.StackCollision, arm.state.executingPC, arm.state.registers[rSP])
 	}
 }

@@ -753,7 +753,25 @@ func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 		return arm.state.yield, 0
 	}
 
-	return arm.run()
+	// monitor the stack pointer to make sure it hasn't been tampered with
+	expectedSP := arm.state.registers[rSP]
+
+	yld, cycles := arm.run()
+
+	// perform the expected SP check only when the program has ended. for other yield types the
+	// stack pointer may well have changed
+	if yld.Type == coprocessor.YieldProgramEnded {
+		if arm.state.registers[rSP] != expectedSP {
+			arm.memoryFault("stack position tampered with", faults.StackCollision, arm.state.registers[rSP])
+			if arm.abortOnMemoryFault {
+				yld = arm.state.yield
+			} else {
+				arm.resetYield()
+			}
+		}
+	}
+
+	return yld, cycles
 }
 
 // Interrupt indicates that the ARM execution should cease after the current
