@@ -160,10 +160,6 @@ type ARMState struct {
 	// - required for disasm only
 	cycleOrder cycleOrder
 
-	// whether a branch has used the branch trail latches or not
-	// - required for disasm only
-	branchTrail BranchTrail
-
 	// whether an I cycle that is followed by an S cycle has been merged
 	// - required for disasm only
 	mergedIS bool
@@ -991,7 +987,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 
 		// reset cycle information
 		if !arm.immediateMode {
-			arm.state.branchTrail = BranchTrailNotUsed
+			arm.state.mam.branchTrail = BranchTrailNotUsed
 			arm.state.mergedIS = false
 			arm.state.stretchedCycles = 0
 

@@ -127,7 +127,7 @@ func (arm *ARM) completeDisasmEntry(e *DisasmEntry, opcode uint16, includeLiveIn
 		e.Registers = arm.state.registers
 		e.CyclesSequence = arm.state.cycleOrder.String()
 		e.MAMCR = int(arm.state.mam.mamcr)
-		e.BranchTrail = arm.state.branchTrail
+		e.BranchTrail = arm.state.mam.branchTrail
 		e.MergedIS = arm.state.mergedIS
 		e.ImmediateMode = arm.immediateMode
 	}
