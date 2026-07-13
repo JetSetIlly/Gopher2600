@@ -135,7 +135,7 @@ type Source struct {
 }
 
 // NewSource is the preferred method of initialisation for the Source type.
-func NewSource(cart coprocessor.CartCoProcBus, romFile string, elfFile string, base BaseAddress) (*Source, error) {
+func NewSource(cart coprocessor.CartCoProcBus, romFile string, dwarfFile string, base BaseAddress) (*Source, error) {
 	src := &Source{
 		cart:             cart,
 		path:             simplifyPath(filepath.Dir(romFile)),
@@ -172,13 +172,13 @@ func NewSource(cart coprocessor.CartCoProcBus, romFile string, elfFile string, b
 
 	ef, ok := cart.(coprocessor.CartCoProcELF)
 	if !ok {
-		if elfFile == "" {
+		if dwarfFile == "" {
 			ef = findELF(romFile)
 			if ef == nil {
 				return nil, fmt.Errorf("dwarf: cannot obtain elf information")
 			}
 		} else {
-			f, err := elf.Open(elfFile)
+			f, err := elf.Open(dwarfFile)
 			if err != nil {
 				return nil, fmt.Errorf("dwarf: %w", err)
 			}
