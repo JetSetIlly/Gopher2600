@@ -62,6 +62,14 @@ func (hdls *Headless) SetFeature(request gui.FeatureReq, args ...gui.FeatureReqD
 }
 
 func (hdls *Headless) screenshot(filename string) {
+	// clear image first (keeping alpha channel unchanged)
+	for i := 0; i < len(hdls.pixels.Pix); i += 4 {
+		s := hdls.pixels.Pix[i : i+3 : i+3]
+		s[0] = 0
+		s[1] = 0
+		s[2] = 0
+	}
+
 	var col color.RGBA
 	var offset int
 
@@ -108,7 +116,7 @@ func (hdls *Headless) NewScanline(scanline int) error {
 
 // SetPixels implements the television.PixelRenderer interface.
 func (hdls *Headless) SetPixels(sig []signal.SignalAttributes, last int) error {
-	hdls.sig = sig[:]
+	hdls.sig = sig[:last]
 	return nil
 }
 
