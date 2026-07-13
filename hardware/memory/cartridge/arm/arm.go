@@ -18,7 +18,6 @@ package arm
 import (
 	"encoding/binary"
 	"fmt"
-	"math"
 	"os"
 	"strings"
 
@@ -153,8 +152,8 @@ type ARMState struct {
 	// total number of cycles for the entire program
 	cyclesTotal float32
 
-	// number of cycles with CLKLEN modulation applied
-	stretchedCycles float32
+	// number of cycles (with memory latency taken into account)
+	instructionCycles float32
 
 	// record the order in which cycles happen for a single instruction
 	// - required for disasm only
@@ -198,8 +197,9 @@ func (s *ARMState) Plumb(env *environment.Environment) {
 
 // precalculated clock length values for each memory region
 type clkLen struct {
-	length float32
-	useMAM bool
+	sequentialCycles    float32
+	nonSequentialCycles float32
+	useMAM              bool
 }
 
 // ARM implements the ARM7TDMI-S LPC2103 processor.
@@ -487,17 +487,17 @@ func (arm *ARM) updatePrefs() {
 	// update clkLen entries
 	for _, r := range arm.mmap.Regions {
 		id := arm.mmap.RegionID(r.Origin)
-		latencyInMhz := (1 / (r.Latency / 1000000000)) / 1000000
 		arm.clkLen[id] = clkLen{
-			length: float32(math.Ceil(float64(arm.Clk) / latencyInMhz)),
-			useMAM: r.UseMAM,
+			sequentialCycles:    float32(float64(r.SequentialLatency) * float64(arm.Clk) / 1000.0),
+			nonSequentialCycles: float32(float64(r.NonSequentialLatency) * float64(arm.Clk) / 1000.0),
+			useMAM:              r.UseMAM,
 		}
 	}
 
 	// default clk length
-	latencyInMhz := (1 / (1.0 / 1000000000)) / 1000000
 	arm.clkLen[0] = clkLen{
-		length: float32(math.Ceil(float64(arm.Clk) / latencyInMhz)),
+		sequentialCycles:    float32(float64(1.0) * float64(arm.Clk) / 1000.0),
+		nonSequentialCycles: float32(float64(1.0) * float64(arm.Clk) / 1000.0),
 	}
 
 	// get clock regulator from preferences
@@ -941,10 +941,10 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 			arm.state.prefetchCycle = S
 
 			// increases total number of program cycles by the stretched cycles for this instruction
-			arm.state.cyclesTotal += arm.state.stretchedCycles
+			arm.state.cyclesTotal += arm.state.instructionCycles
 
 			// update clock
-			arm.clock(arm.state.stretchedCycles)
+			arm.clock(arm.state.instructionCycles)
 		} else if arm.immediateModeCycle {
 			// nominal amount of cycles when in immediate mode
 			arm.clock(1.1)
@@ -984,7 +984,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 		if arm.profiler != nil {
 			arm.profiler.Entries = append(arm.profiler.Entries, coprocessor.CartCoProcProfileEntry{
 				Addr:   arm.state.instructionPC,
-				Cycles: arm.state.stretchedCycles,
+				Cycles: arm.state.instructionCycles,
 			})
 		}
 
@@ -992,7 +992,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 		if !arm.immediateMode {
 			arm.state.mam.branchTrail = BranchTrailNotUsed
 			arm.state.mergedIS = false
-			arm.state.stretchedCycles = 0
+			arm.state.instructionCycles = 0
 
 			// reset cycle order if we're not currently decoding a 32bit
 			// instruction

@@ -19,11 +19,14 @@ func (arm *ARM) iCycle_ARM7TDMI() {
 	if arm.disasm != nil {
 		arm.state.cycleOrder.add(I)
 	}
-	arm.state.stretchedCycles++
+	arm.state.instructionCycles++
 	arm.state.lastCycle = I
+	arm.state.mam.prefetchAborted = false
 }
 
 func (arm *ARM) sCycle_ARM7TDMI(bus busAccess, addr uint32) {
+	arm.state.mam.prefetchAborted = bus == dataRead || bus == dataWrite || bus == branch
+
 	// "Merged I-S cycles
 	// Where possible, the ARM7TDMI-S processor performs an optimization on the bus to
 	// allow extra time for memory decode. When this happens, the address of the next
@@ -35,7 +38,7 @@ func (arm *ARM) sCycle_ARM7TDMI(bus busAccess, addr uint32) {
 	//
 	// page 3-8 of the "ARM7TDMI-S Technical Reference Manual r4p3"
 	if arm.state.lastCycle == I {
-		arm.state.stretchedCycles--
+		arm.state.instructionCycles--
 		arm.state.mergedIS = true
 	}
 
@@ -47,51 +50,42 @@ func (arm *ARM) sCycle_ARM7TDMI(bus busAccess, addr uint32) {
 	id := arm.mmap.RegionID(addr)
 	clkLen := arm.clkLen[id]
 	if !clkLen.useMAM {
-		arm.state.stretchedCycles++
+		arm.state.instructionCycles += clkLen.sequentialCycles
 		return
 	}
 
 	switch arm.state.mam.mamcr {
 	default:
-		arm.state.stretchedCycles += clkLen.length
+		arm.state.instructionCycles += clkLen.sequentialCycles
 	case 0:
-		arm.state.stretchedCycles += clkLen.length
+		arm.state.instructionCycles += clkLen.sequentialCycles
 	case 1:
 		// for MAM-1, we go to flash memory only if it's a program access (ie. not a data access)
-		if bus.isDataAccess() {
-			arm.state.stretchedCycles += clkLen.length
+		if bus == dataRead || bus == dataWrite {
+			arm.state.instructionCycles += clkLen.sequentialCycles
 		} else if arm.state.mam.isLatched(S, bus, addr) {
-			arm.state.stretchedCycles++
+			arm.state.instructionCycles++
 		} else {
-			arm.state.stretchedCycles += clkLen.length
+			arm.state.instructionCycles += clkLen.sequentialCycles
 		}
 	case 2:
 		if arm.state.mam.isLatched(S, bus, addr) {
-			arm.state.stretchedCycles++
+			arm.state.instructionCycles++
 		} else {
-			arm.state.stretchedCycles += clkLen.length
+			arm.state.instructionCycles += clkLen.sequentialCycles
 		}
 	}
 }
 
 func (arm *ARM) nCycle_ARM7TDMI(bus busAccess, addr uint32) {
+	arm.state.mam.prefetchAborted = bus == dataRead || bus == dataWrite || bus == branch
+
 	// "3.3.1 Nonsequential cycles" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	//
 	// "It is not uncommon for a memory system to require a longer access time
 	// (extending the clock cycle) for nonsequential accesses. This is to allow
 	// time for full address decoding or to latch both a row and column address
 	// into DRAM."
-	var mclkFlash float32
-	var mclkNonFlash float32
-
-	// approximate penalty for back-to-back N cycles. values are attained through best-guess and observation
-	// ARM7TDMI specifies that additional delay may occur but does not define these ratios
-	const (
-		flashSequentialAccess = 1.0
-		ramSequentialAccess   = 1.0
-		flashRepeatedNAccess  = 1.3
-		ramRepeatedNAccess    = 1.8
-	)
 
 	// "3.3.1 Nonsequential cycles" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	//
@@ -100,13 +94,6 @@ func (arm *ARM) nCycle_ARM7TDMI(bus busAccess, addr uint32) {
 	// If you are designing a memory controller for the ARM7TDMI-S processor, and your
 	// memory system is unable to cope with this case, you must use the CLKEN signal to
 	// extend the bus cycle to allow sufficient cycles for the memory system."
-	if arm.state.lastCycle == N {
-		mclkFlash = flashRepeatedNAccess
-		mclkNonFlash = ramRepeatedNAccess
-	} else {
-		mclkFlash = flashSequentialAccess
-		mclkNonFlash = ramSequentialAccess
-	}
 
 	// the use of a fractional number for MCLK modulation is at odds with the
 	// stretching required for flash access, which is a whole number. again, it
@@ -129,22 +116,22 @@ func (arm *ARM) nCycle_ARM7TDMI(bus busAccess, addr uint32) {
 	id := arm.mmap.RegionID(addr)
 	clkLen := arm.clkLen[id]
 	if !clkLen.useMAM {
-		arm.state.stretchedCycles++
+		arm.state.instructionCycles += clkLen.nonSequentialCycles
 		return
 	}
 
 	switch arm.state.mam.mamcr {
 	default:
-		arm.state.stretchedCycles += clkLen.length * float32(mclkFlash)
+		arm.state.instructionCycles += clkLen.nonSequentialCycles
 	case 0:
-		arm.state.stretchedCycles += clkLen.length * float32(mclkFlash)
+		arm.state.instructionCycles += clkLen.nonSequentialCycles
 	case 1:
-		arm.state.stretchedCycles += clkLen.length * float32(mclkFlash)
+		arm.state.instructionCycles += clkLen.nonSequentialCycles
 	case 2:
 		if arm.state.mam.isLatched(N, bus, addr) {
-			arm.state.stretchedCycles += float32(mclkNonFlash)
+			arm.state.instructionCycles++
 		} else {
-			arm.state.stretchedCycles += clkLen.length * float32(mclkFlash)
+			arm.state.instructionCycles += clkLen.nonSequentialCycles
 		}
 	}
 }

@@ -21,7 +21,7 @@ func (arm *ARM) iCycle_ARMv7_M() {
 	if arm.disasm != nil {
 		arm.state.cycleOrder.add(I)
 	}
-	arm.state.stretchedCycles++
+	arm.state.instructionCycles++
 	arm.state.lastCycle = I
 }
 
@@ -29,7 +29,7 @@ func (arm *ARM) sCycle_ARMv7_M(_ busAccess, addr uint32) {
 	// comments in cycles_arm7tdmi.go
 
 	if arm.state.lastCycle == I {
-		arm.state.stretchedCycles--
+		arm.state.instructionCycles--
 		arm.state.mergedIS = true
 	}
 
@@ -39,19 +39,11 @@ func (arm *ARM) sCycle_ARMv7_M(_ busAccess, addr uint32) {
 	arm.state.lastCycle = S
 
 	id := arm.mmap.RegionID(addr)
-	arm.state.stretchedCycles += arm.clkLen[id].length
+	arm.state.instructionCycles += arm.clkLen[id].sequentialCycles
 }
 
 func (arm *ARM) nCycle_ARMv7_M(_ busAccess, addr uint32) {
 	// comments in cycles_arm7tdmi.go
-
-	mclkFlash := 1.0
-	mclkNonFlash := 1.0
-
-	if arm.state.lastCycle == N {
-		mclkFlash = 1.3
-		mclkNonFlash = 1.8
-	}
 
 	if arm.disasm != nil {
 		arm.state.cycleOrder.add(N)
@@ -61,9 +53,9 @@ func (arm *ARM) nCycle_ARMv7_M(_ busAccess, addr uint32) {
 	id := arm.mmap.RegionID(addr)
 	clkLen := arm.clkLen[id]
 	if !clkLen.useMAM {
-		arm.state.stretchedCycles += float32(mclkNonFlash)
+		arm.state.instructionCycles += clkLen.nonSequentialCycles
 		return
 	}
 
-	arm.state.stretchedCycles += clkLen.length * float32(mclkFlash)
+	arm.state.instructionCycles += clkLen.nonSequentialCycles
 }
