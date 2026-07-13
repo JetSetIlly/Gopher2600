@@ -62,12 +62,6 @@ const (
 	dataWrite
 )
 
-// is bus access an instruction or data read. equivalent in ARM terms, to
-// asking if Prot0 is 0 or 1.
-func (bt busAccess) isDataAccess() bool {
-	return bt == dataRead || bt == dataWrite
-}
-
 // the type of cycle being executed.
 type cycleType rune
 
@@ -94,8 +88,8 @@ func (arm *ARM) storeRegisterCycles(addr uint32) {
 // definitely only an estimate.
 func (arm *ARM) armInterruptCycles(i ARMinterruptReturn) {
 	// not taking into account latency of memory access
-	arm.state.stretchedCycles += float32(i.NumMemAccess)
-	arm.state.stretchedCycles += float32(i.NumAdditionalCycles)
+	arm.state.instructionCycles += float32(i.NumMemAccess)
+	arm.state.instructionCycles += float32(i.NumAdditionalCycles)
 }
 
 // stub function for when the execution doesn't require cycle counting

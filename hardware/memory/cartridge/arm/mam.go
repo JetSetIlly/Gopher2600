@@ -35,7 +35,7 @@ type mam struct {
 	// respectively, as "disable", "partial" and "full"
 	mamcr architecture.MAMCR
 
-	// NOTE: not used ye
+	// NOTE: not used yet
 	mamtim uint32
 
 	// the preference value
@@ -146,10 +146,7 @@ func (m *mam) isLatched(cycle cycleType, bus busAccess, addr uint32) bool {
 			return true
 		}
 
-		m.prefetchAborted = false
-
 	case branch:
-		m.prefetchAborted = true
 		if latch == m.branchLatch {
 			m.branchTrail = BranchTrailUsed
 			return true
@@ -158,7 +155,6 @@ func (m *mam) isLatched(cycle cycleType, bus busAccess, addr uint32) bool {
 		m.branchTrail = BranchTrailFlushed
 
 	case dataRead:
-		m.prefetchAborted = true
 		if latch == m.dataLatch {
 			return true
 		}
@@ -166,7 +162,6 @@ func (m *mam) isLatched(cycle cycleType, bus busAccess, addr uint32) bool {
 
 	case dataWrite:
 		m.dataLatch = 0x0
-		m.prefetchAborted = true
 	}
 
 	return false

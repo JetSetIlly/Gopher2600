@@ -52,7 +52,8 @@ type MemoryRegion struct {
 	Memtop uint32
 
 	// memory latency in nanosecond
-	Latency float64
+	SequentialLatency    float64
+	NonSequentialLatency float64
 
 	// whether the memory region is subject to MAM. the architecture might not have MAM at all
 	UseMAM bool
@@ -139,17 +140,19 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.MisalignedAccesses = false
 
 		mmap.Regions["Flash"] = &MemoryRegion{
-			Name:    "Flash",
-			Origin:  0x00000000,
-			Memtop:  0x0fffffff,
-			Latency: 50.0,
-			UseMAM:  true,
+			Name:                 "Flash",
+			Origin:               0x00000000,
+			Memtop:               0x0fffffff,
+			SequentialLatency:    43.0,
+			NonSequentialLatency: 100.0,
+			UseMAM:               true,
 		}
 		mmap.Regions["SRAM"] = &MemoryRegion{
-			Name:    "SRAM",
-			Origin:  0x40000000,
-			Memtop:  0x4fffffff,
-			Latency: 10.0,
+			Name:                 "SRAM",
+			Origin:               0x40000000,
+			Memtop:               0x4fffffff,
+			SequentialLatency:    14.29,
+			NonSequentialLatency: 14.29,
 		}
 
 		mmap.RegionMask = 0xf0000000
@@ -200,22 +203,25 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.MisalignedAccesses = true
 
 		mmap.Regions["Flash"] = &MemoryRegion{
-			Name:    "Flash",
-			Origin:  0x08020000,
-			Memtop:  0x0802ffff,
-			Latency: 1.0,
+			Name:                 "Flash",
+			Origin:               0x08020000,
+			Memtop:               0x0802ffff,
+			SequentialLatency:    1.0,
+			NonSequentialLatency: 1.0,
 		}
 		mmap.Regions["SRAM"] = &MemoryRegion{
-			Name:    "SRAM",
-			Origin:  0x20000000,
-			Memtop:  0x2fffffff,
-			Latency: 1.0,
+			Name:                 "SRAM",
+			Origin:               0x20000000,
+			Memtop:               0x2fffffff,
+			SequentialLatency:    1.0,
+			NonSequentialLatency: 1.0,
 		}
 		mmap.Regions["CCM"] = &MemoryRegion{
-			Name:    "CCM",
-			Origin:  0x10000000,
-			Memtop:  0x1fffffff,
-			Latency: 1.0,
+			Name:                 "CCM",
+			Origin:               0x10000000,
+			Memtop:               0x1fffffff,
+			SequentialLatency:    1.0,
+			NonSequentialLatency: 1.0,
 		}
 
 		mmap.RegionMask = 0xf0000000
