@@ -21,12 +21,9 @@ func (arm *ARM) iCycle_ARM7TDMI() {
 	}
 	arm.state.stretchedCycles++
 	arm.state.lastCycle = I
-	arm.state.mam.prefectchAborted = false
 }
 
 func (arm *ARM) sCycle_ARM7TDMI(bus busAccess, addr uint32) {
-	arm.state.mam.prefectchAborted = bus.isDataAccess()
-
 	// "Merged I-S cycles
 	// Where possible, the ARM7TDMI-S processor performs an optimization on the bus to
 	// allow extra time for memory decode. When this happens, the address of the next
@@ -63,13 +60,13 @@ func (arm *ARM) sCycle_ARM7TDMI(bus busAccess, addr uint32) {
 		// for MAM-1, we go to flash memory only if it's a program access (ie. not a data access)
 		if bus.isDataAccess() {
 			arm.state.stretchedCycles += clkLen.length
-		} else if arm.isLatched(S, bus, addr) {
+		} else if arm.state.mam.isLatched(S, bus, addr) {
 			arm.state.stretchedCycles++
 		} else {
 			arm.state.stretchedCycles += clkLen.length
 		}
 	case 2:
-		if arm.isLatched(S, bus, addr) {
+		if arm.state.mam.isLatched(S, bus, addr) {
 			arm.state.stretchedCycles++
 		} else {
 			arm.state.stretchedCycles += clkLen.length
@@ -78,8 +75,6 @@ func (arm *ARM) sCycle_ARM7TDMI(bus busAccess, addr uint32) {
 }
 
 func (arm *ARM) nCycle_ARM7TDMI(bus busAccess, addr uint32) {
-	arm.state.mam.prefectchAborted = bus.isDataAccess()
-
 	// "3.3.1 Nonsequential cycles" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	//
 	// "It is not uncommon for a memory system to require a longer access time
@@ -146,7 +141,7 @@ func (arm *ARM) nCycle_ARM7TDMI(bus busAccess, addr uint32) {
 	case 1:
 		arm.state.stretchedCycles += clkLen.length * float32(mclkFlash)
 	case 2:
-		if arm.isLatched(N, bus, addr) {
+		if arm.state.mam.isLatched(N, bus, addr) {
 			arm.state.stretchedCycles += float32(mclkNonFlash)
 		} else {
 			arm.state.stretchedCycles += clkLen.length * float32(mclkFlash)

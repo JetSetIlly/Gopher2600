@@ -77,51 +77,6 @@ const (
 	S cycleType = 'S'
 )
 
-// returns false if address isn't latched. this means theat the bus access is
-// subject to latency.
-//
-// does not handle the decision about whether the MAM latches should be
-// checked. for example, if MAMCR is zero than don't call this function at all.
-// see Scycle() and Ncycle() for those decisions.
-func (arm *ARM) isLatched(cycle cycleType, bus busAccess, addr uint32) bool {
-	// MAM buffers are 128 bit aligned blocks. chapter three of "UM10161"
-	latch := addr & 0xfffffff0
-
-	switch bus {
-	case prefetch:
-		if latch == arm.state.mam.prefetchLatch {
-			return true
-		}
-
-		arm.state.mam.prefetchLatch = latch
-
-		// we'll assume MAMTIM is set adequately
-		if cycle == S && !arm.state.mam.prefectchAborted {
-			return true
-		}
-
-	case branch:
-		if latch == arm.state.mam.branchLatch {
-			arm.state.branchTrail = BranchTrailUsed
-			return true
-		}
-		arm.state.mam.branchLatch = latch
-		arm.state.branchTrail = BranchTrailFlushed
-
-	case dataRead:
-		if latch == arm.state.mam.dataLatch {
-			return true
-		}
-		arm.state.mam.dataLatch = latch
-
-	case dataWrite:
-		// invalidate data latch
-		arm.state.mam.dataLatch = 0x0
-	}
-
-	return false
-}
-
 // called whenever PC changes unexpectedly (by a branch instruction for example).
 func (arm *ARM) fillPipelineAfterBranch() {
 	arm.Ncycle(branch, arm.state.registers[rPC])
