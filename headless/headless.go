@@ -34,6 +34,7 @@ type Headless struct {
 	dbg       *debugger.Debugger
 	frameInfo frameinfo.Current
 	sig       []signal.SignalAttributes
+	prevSig   []signal.SignalAttributes
 	pixels    *image.RGBA
 }
 
@@ -42,6 +43,9 @@ func NewHeadless(dbg *debugger.Debugger) *Headless {
 		dbg: dbg,
 	}
 	hdls.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
+	for i := 0; i < len(hdls.pixels.Pix); i += 4 {
+		hdls.pixels.Pix[i+3] = 255
+	}
 	dbg.TV().AddPixelRenderer(hdls)
 	return hdls
 }
@@ -70,16 +74,23 @@ func (hdls *Headless) screenshot(filename string) {
 		s[2] = 0
 	}
 
+	// decide which set of signals to use. the current set or if there are less than one scanlines
+	// worth of signals, use the previous set
+	sig := hdls.sig
+	if len(sig) <= specification.ClksScanline {
+		sig = hdls.prevSig
+	}
+
 	var col color.RGBA
 	var offset int
 
-	for i := range hdls.sig {
+	for i := range sig {
 		// handle VBLANK by setting pixels to black. we also manually handle
 		// NoSignal in the same way
-		if hdls.sig[i].VBlank || hdls.sig[i].Index == signal.NoSignal {
+		if sig[i].VBlank || sig[i].Index == signal.NoSignal {
 			col = hdls.frameInfo.Spec.GetColor(signal.ZeroBlack)
 		} else {
-			col = hdls.frameInfo.Spec.GetColorScreen(hdls.sig, i, specification.ClksScanline)
+			col = hdls.frameInfo.Spec.GetColorScreen(sig, i, specification.ClksScanline)
 		}
 
 		// small cap improves performance, see https://golang.org/issue/27857
@@ -100,12 +111,13 @@ func (hdls *Headless) screenshot(filename string) {
 	if filename == "" {
 		filename = screenshot.GenerateFilename(hdls.dbg.VCS().Mem.Cart.ShortName, "", "headless")
 	}
-	screenshot.SaveJPEG(scaled, filename)
+	screenshot.Save(scaled, filename)
 }
 
 // NewFrame implements the television.PixelRenderer interface.
 func (hdls *Headless) NewFrame(frameinfo frameinfo.Current) error {
 	hdls.frameInfo = frameinfo
+	hdls.prevSig = hdls.sig
 	return nil
 }
 

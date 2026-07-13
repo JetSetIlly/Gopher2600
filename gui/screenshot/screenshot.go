@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -72,29 +73,61 @@ func GenerateFilename(cartName string, id string, desc string) string {
 	return path
 }
 
-// SaveJPEG writes the texture to the specified path.
-func SaveJPEG(rgba *image.RGBA, path string) {
-	ext := strings.ToLower(filepath.Ext(path))
-	if ext != ".jpg" && ext != ".jpeg" {
-		path = fmt.Sprintf("%s.jpg", path)
+// Save writes the image to the specified path.
+func Save(rgba *image.RGBA, path string) {
+	ext := filepath.Ext(path)
+	switch strings.ToLower(ext) {
+	case ".png":
+		savePNG(rgba, path)
+	case ".jpg", ".jpeg":
+		saveJPEG(rgba, path)
+	default:
+		path = strings.TrimSuffix(path, ext)
+		saveJPEG(rgba, fmt.Sprintf("%s.jpg", path))
 	}
+}
 
+func saveJPEG(rgba *image.RGBA, path string) {
 	f, err := os.Create(path)
 	if err != nil {
-		logger.Logf(logger.Allow, "screenshot", "save failed: %v", err)
+		logger.Logf(logger.Allow, "screenshot", "jpeg save failed: %v", err)
 		return
 	}
 
 	err = jpeg.Encode(f, rgba, &jpeg.Options{Quality: 100})
 	if err != nil {
-		logger.Logf(logger.Allow, "screenshot", "save failed: %v", err)
+		logger.Logf(logger.Allow, "screenshot", "jpeg save failed: %v", err)
 		_ = f.Close()
 		return
 	}
 
 	err = f.Close()
 	if err != nil {
-		logger.Logf(logger.Allow, "screenshot", "save failed: %v", err)
+		logger.Logf(logger.Allow, "screenshot", "jpeg save failed: %v", err)
+		return
+	}
+
+	// indicate success
+	logger.Logf(logger.Allow, "screenshot", "saved: %s", path)
+}
+
+func savePNG(rgba *image.RGBA, path string) {
+	f, err := os.Create(path)
+	if err != nil {
+		logger.Logf(logger.Allow, "screenshot", "png save failed: %v", err)
+		return
+	}
+
+	err = png.Encode(f, rgba)
+	if err != nil {
+		logger.Logf(logger.Allow, "screenshot", "png save failed: %v", err)
+		_ = f.Close()
+		return
+	}
+
+	err = f.Close()
+	if err != nil {
+		logger.Logf(logger.Allow, "screenshot", "png save failed: %v", err)
 		return
 	}
 

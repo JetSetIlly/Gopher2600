@@ -16,6 +16,8 @@
 package sdlimgui
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/screenshot"
@@ -34,7 +36,7 @@ func (img *SdlImgui) screenshot(mode screenshotMode, path string) {
 		if path == "" {
 			path = screenshot.GenerateFilename(img.cache.VCS.Mem.Cart.ShortName, "", "debug")
 		}
-		screenshot.SaveJPEG(scaled, path)
+		screenshot.Save(scaled, path)
 
 		return
 	}
@@ -58,10 +60,10 @@ func (img *SdlImgui) screenshot(mode screenshotMode, path string) {
 			return
 		}
 
-		// save image to file as a JPEG
+		// save image according to file extension
 		if path == "" {
 			path = screenshot.GenerateFilename(cartName, "", res.description)
 		}
-		screenshot.SaveJPEG(res.image, path)
+		screenshot.Save(res.image, fmt.Sprintf("%s.jpg", path))
 	}()
 }
