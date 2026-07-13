@@ -263,13 +263,15 @@ func (win *winCoProcDisasm) drawEntry(src *dwarf.Source, e arm.DisasmEntry) {
 	}
 
 	imgui.TableNextColumn()
-	switch e.MAMCR {
-	case 0:
-		imguiColorLabel("", win.img.cols.CoProcMAM0)
-	case 1:
-		imguiColorLabel("", win.img.cols.CoProcMAM1)
-	case 2:
-		imguiColorLabel("", win.img.cols.CoProcMAM2)
+	if e.MAM {
+		switch e.MAMCR {
+		case 0:
+			imguiColorLabel("", win.img.cols.CoProcMAMDisabled)
+		case 1:
+			imguiColorLabel("", win.img.cols.CoProcMAMPartial)
+		case 2:
+			imguiColorLabel("", win.img.cols.CoProcMAMFull)
+		}
 	}
 
 	imgui.TableNextColumn()
@@ -287,15 +289,18 @@ func (win *winCoProcDisasm) drawEntry(src *dwarf.Source, e arm.DisasmEntry) {
 	imgui.Text(e.Operand)
 	imgui.PopStyleColor()
 
-	// branch trail and merged IS indicator
+	// branch trail indicator
 	imgui.TableNextColumn()
-	switch e.BranchTrail {
-	case arm.BranchTrailUsed:
-		imguiColorLabel("", win.img.cols.CoProcBranchTrailUsed)
-	case arm.BranchTrailFlushed:
-		imguiColorLabel("", win.img.cols.CoProcBranchTrailFlushed)
+	if e.MAM {
+		switch e.MAMBranchTrail {
+		case arm.BranchTrailUsed:
+			imguiColorLabel("", win.img.cols.CoProcMAMBranchTrailUsed)
+		case arm.BranchTrailFlushed:
+			imguiColorLabel("", win.img.cols.CoProcMAMBranchTrailFlushed)
+		}
 	}
 
+	// merged IS indicator
 	imgui.TableNextColumn()
 	if e.MergedIS {
 		imguiColorLabel("", win.img.cols.CoProcMergedIS)
@@ -376,24 +381,26 @@ func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry, ln *dwarf.Source
 		imgui.Separator()
 		imgui.Spacing()
 
-		switch e.MAMCR {
-		case 0:
-			imguiColorLabel("MAM-0", win.img.cols.CoProcMAM0)
-		case 1:
-			imguiColorLabel("MAM-1", win.img.cols.CoProcMAM1)
-		case 2:
-			imguiColorLabel("MAM-2", win.img.cols.CoProcMAM2)
-		}
-
 		if e.MergedIS {
 			imguiColorLabel("Merged I/S Cycle", win.img.cols.CoProcMergedIS)
 		}
 
-		switch e.BranchTrail {
-		case arm.BranchTrailUsed:
-			imguiColorLabel("Branch Trail Used", win.img.cols.CoProcBranchTrailUsed)
-		case arm.BranchTrailFlushed:
-			imguiColorLabel("Branch Trail Flushed", win.img.cols.CoProcBranchTrailFlushed)
+		if e.MAM {
+			switch e.MAMCR {
+			case architecture.MAMdisabled:
+				imguiColorLabel("MAM-0", win.img.cols.CoProcMAMDisabled)
+			case architecture.MAMpartial:
+				imguiColorLabel("MAM-1", win.img.cols.CoProcMAMPartial)
+			case architecture.MAMfull:
+				imguiColorLabel("MAM-2", win.img.cols.CoProcMAMFull)
+			}
+
+			switch e.MAMBranchTrail {
+			case arm.BranchTrailUsed:
+				imguiColorLabel("Branch Trail Used", win.img.cols.CoProcMAMBranchTrailUsed)
+			case arm.BranchTrailFlushed:
+				imguiColorLabel("Branch Trail Flushed", win.img.cols.CoProcMAMBranchTrailFlushed)
+			}
 		}
 
 		if ln != nil {

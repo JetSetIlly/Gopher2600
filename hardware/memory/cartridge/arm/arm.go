@@ -330,16 +330,19 @@ func NewARM(env *environment.Environment, mmap architecture.Map, mem SharedMemor
 		arm.disasm = &coprocessor.CartCoProcDisassemblerStderr{}
 	}
 
+	arm.state.mam = newMam(arm.env, arm.mmap)
+
 	switch arm.mmap.ARMArchitecture {
 	case architecture.ARM7TDMI:
 		arm.stepFunction = arm.stepARM7TDMI
+		arm.state.mam.enabled = true
 	case architecture.ARMv7_M:
 		arm.stepFunction = arm.stepARM7_M
+		arm.state.mam.enabled = false
 	default:
 		panic(fmt.Sprintf("unhandled ARM architecture: cannot set %s", arm.mmap.ARMArchitecture))
 	}
 
-	arm.state.mam = newMam(arm.env, arm.mmap)
 	arm.state.rng = rng.NewRNG(arm.env, arm.mmap)
 	if arm.mmap.HasT1 {
 		arm.state.t1 = timer.NewT1(arm.mmap)

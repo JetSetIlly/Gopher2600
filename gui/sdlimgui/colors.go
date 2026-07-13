@@ -147,12 +147,12 @@ type imguiColors struct {
 	CoProcVariablesNotVisible    imgui.Vec4
 
 	// coprocessor last execution
-	CoProcMAM0               imgui.Vec4
-	CoProcMAM1               imgui.Vec4
-	CoProcMAM2               imgui.Vec4
-	CoProcBranchTrailUsed    imgui.Vec4
-	CoProcBranchTrailFlushed imgui.Vec4
-	CoProcMergedIS           imgui.Vec4
+	CoProcMAMDisabled           imgui.Vec4
+	CoProcMAMPartial            imgui.Vec4
+	CoProcMAMFull               imgui.Vec4
+	CoProcMAMBranchTrailUsed    imgui.Vec4
+	CoProcMAMBranchTrailFlushed imgui.Vec4
+	CoProcMergedIS              imgui.Vec4
 
 	// datastream window
 	DataStreamNumLabel imgui.Vec4
@@ -382,12 +382,12 @@ func newColors() *imguiColors {
 		CoProcVariablesNotVisible:    imgui.Vec4{X: 0.4, Y: 0.4, Z: 0.4, W: 1.0},
 
 		// coprocessor disassembly
-		CoProcMAM0:               imgui.Vec4{X: 0.6, Y: 0.3, Z: 0.3, W: 1.0},
-		CoProcMAM1:               imgui.Vec4{X: 0.6, Y: 0.6, Z: 0.3, W: 1.0},
-		CoProcMAM2:               imgui.Vec4{X: 0.3, Y: 0.6, Z: 0.3, W: 1.0},
-		CoProcBranchTrailFlushed: imgui.Vec4{X: 0.6, Y: 0.3, Z: 0.3, W: 1.0},
-		CoProcBranchTrailUsed:    imgui.Vec4{X: 0.3, Y: 0.6, Z: 0.3, W: 1.0},
-		CoProcMergedIS:           imgui.Vec4{X: 0.3, Y: 0.3, Z: 0.6, W: 1.0},
+		CoProcMAMDisabled:           imgui.Vec4{X: 0.6, Y: 0.3, Z: 0.3, W: 1.0},
+		CoProcMAMPartial:            imgui.Vec4{X: 0.6, Y: 0.6, Z: 0.3, W: 1.0},
+		CoProcMAMFull:               imgui.Vec4{X: 0.3, Y: 0.6, Z: 0.3, W: 1.0},
+		CoProcMAMBranchTrailFlushed: imgui.Vec4{X: 0.6, Y: 0.3, Z: 0.3, W: 1.0},
+		CoProcMAMBranchTrailUsed:    imgui.Vec4{X: 0.3, Y: 0.6, Z: 0.3, W: 1.0},
+		CoProcMergedIS:              imgui.Vec4{X: 0.3, Y: 0.3, Z: 0.6, W: 1.0},
 
 		// datastream window
 		DataStreamNumLabel: imgui.Vec4{X: 0.7, Y: 0.7, Z: 0.7, W: 1.0},

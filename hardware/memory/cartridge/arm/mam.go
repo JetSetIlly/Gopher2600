@@ -28,11 +28,14 @@ type mam struct {
 	env  *environment.Environment
 	mmap architecture.Map
 
+	// whether the mam is actually being used by the ARM architecture
+	enabled bool
+
 	// valid values for mamcr are 0, 1 or 2 are valid. we can think of these
 	// respectively, as "disable", "partial" and "full"
 	mamcr architecture.MAMCR
 
-	// NOTE: not used yet
+	// NOTE: not used ye
 	mamtim uint32
 
 	// the preference value

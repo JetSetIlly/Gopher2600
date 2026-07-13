@@ -18,6 +18,8 @@ package arm
 import (
 	"fmt"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 )
 
 // The string that will be in the Operator field in the case of a decoding error
@@ -66,9 +68,12 @@ type DisasmEntry struct {
 	CyclesSequence string
 
 	// cycle details
-	MAMCR       int
-	BranchTrail BranchTrail
-	MergedIS    bool
+	MergedIS bool
+
+	// mam details (not all architectures)
+	MAM            bool
+	MAMCR          architecture.MAMCR
+	MAMBranchTrail BranchTrail
 
 	// whether this entry was executed in immediate mode. if this field is true
 	// then the Cycles and "cycle details" fields will be zero
@@ -126,8 +131,11 @@ func (arm *ARM) completeDisasmEntry(e *DisasmEntry, opcode uint16, includeLiveIn
 	if includeLiveInformation {
 		e.Registers = arm.state.registers
 		e.CyclesSequence = arm.state.cycleOrder.String()
-		e.MAMCR = int(arm.state.mam.mamcr)
-		e.BranchTrail = arm.state.mam.branchTrail
+		e.MAM = arm.state.mam.enabled
+		if e.MAM {
+			e.MAMCR = arm.state.mam.mamcr
+			e.MAMBranchTrail = arm.state.mam.branchTrail
+		}
 		e.MergedIS = arm.state.mergedIS
 		e.ImmediateMode = arm.immediateMode
 	}
