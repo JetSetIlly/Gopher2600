@@ -389,7 +389,12 @@ if execution has not broken inside the coprocessor program.
 The optional DERIVATION switch to the LOCAL argument prints out the location list derivation for that
 variable. Normal Atari 2600 developers do not need to worry about location lists.`,
 
-	cmdScreenshot: `Screenshot most recent complete frame to a file. A filename is an optional argument.`,
+	cmdScreenshot: `create a screenshot of most frame to a file. A filename is an optional argument.
+
+Incomplete frames will be saved if the emulator position is past the first scanline after the start
+of a new frame (a new frame created either by a valid VSYNC signal or a natural flyback).
+
+Format of the saved image determined by the file extension. Support extensions are '.png', '.jpg', '.jpeg'.`,
 
 	// user input
 	cmdPeripheral: `Change the current peripheral for the specified player port. Can also be used
