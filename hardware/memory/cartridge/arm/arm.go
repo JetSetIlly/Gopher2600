@@ -482,27 +482,31 @@ func (arm *ARM) resetRegisters() {
 // preference values are being used in the ARM emulation
 func (arm *ARM) updatePrefs() {
 	// update clock value from preferences
-	arm.Clk = float32(arm.env.Prefs.Cartridge.ARM.Clock.Get().(float64))
+	clk := float32(arm.env.Prefs.Cartridge.ARM.Clock.Get().(float64))
+	if clk != arm.Clk {
+		arm.Clk = clk
 
-	// update clkLen entries
-	for _, r := range arm.mmap.Regions {
-		id := arm.mmap.RegionID(r.Origin)
-		arm.clkLen[id] = clkLen{
-			sequentialCycles:    float32(float64(r.SequentialLatency) * float64(arm.Clk) / 1000.0),
-			nonSequentialCycles: float32(float64(r.NonSequentialLatency) * float64(arm.Clk) / 1000.0),
-			useMAM:              r.UseMAM,
+		// update clkLen entries if clock value has changed
+		for _, r := range arm.mmap.Regions {
+			id := arm.mmap.RegionID(r.Origin)
+			arm.clkLen[id] = clkLen{
+				sequentialCycles:    float32(float64(r.SequentialLatency) * float64(arm.Clk) / 1000.0),
+				nonSequentialCycles: float32(float64(r.NonSequentialLatency) * float64(arm.Clk) / 1000.0),
+				useMAM:              r.UseMAM,
+			}
 		}
-	}
 
-	// default clk length
-	arm.clkLen[0] = clkLen{
-		sequentialCycles:    float32(float64(1.0) * float64(arm.Clk) / 1000.0),
-		nonSequentialCycles: float32(float64(1.0) * float64(arm.Clk) / 1000.0),
+		// default clk length
+		arm.clkLen[0] = clkLen{
+			sequentialCycles:    float32(float64(1.0) * float64(arm.Clk) / 1000.0),
+			nonSequentialCycles: float32(float64(1.0) * float64(arm.Clk) / 1000.0),
+		}
 	}
 
 	// get clock regulator from preferences
 	arm.cycleRegulator = float32(arm.env.Prefs.Cartridge.ARM.CycleRegulator.Get().(float64))
 
+	// update mam (not all ARM architectures have a MAM)
 	arm.state.mam.updatePrefs()
 
 	// set cycle counting functions
