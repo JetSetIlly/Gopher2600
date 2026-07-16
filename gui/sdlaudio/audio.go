@@ -39,6 +39,9 @@ type Audio struct {
 	buffer   []uint8
 	bufferCt int
 
+	// samples per second
+	sampleFreq int32
+
 	// stereo buffers are used to mix a stereo output
 	stereoCh0Buffer []uint8
 	stereoCh1Buffer []uint8
@@ -75,6 +78,7 @@ type Audio struct {
 	// running
 	queuedBytesMeasure *time.Ticker
 	QueuedBytes        atomic.Int32
+	QueuedTime         atomic.Int32 // milliseconds
 }
 
 const (
@@ -216,12 +220,12 @@ func (aud *Audio) setSpec(spec specification.Spec) {
 		sdl.CloseAudioDevice(aud.id)
 	}
 
-	sampleFreq := float32(spec.HorizontalScanRate) * audio.SamplesPerScanline
-	logger.Logf(logger.Allow, "sdlaudio", "calculated frequency: %.2f * %d = %.2f",
-		spec.HorizontalScanRate, audio.SamplesPerScanline, sampleFreq)
+	aud.sampleFreq = int32(spec.HorizontalScanRate) * audio.SamplesPerScanline
+	logger.Logf(logger.Allow, "sdlaudio", "calculated frequency: %.2f * %d = %d",
+		spec.HorizontalScanRate, audio.SamplesPerScanline, aud.sampleFreq)
 
 	request := &sdl.AudioSpec{
-		Freq:     int32(sampleFreq),
+		Freq:     aud.sampleFreq,
 		Format:   sdl.AUDIO_S16SYS,
 		Channels: 2,
 		Samples:  uint16(len(aud.buffer)),
@@ -236,7 +240,7 @@ func (aud *Audio) setSpec(spec specification.Spec) {
 	}
 	aud.spec = actual
 
-	logger.Logf(logger.Allow, "sdlaudio", "requested frequency: %d samples/sec", int(sampleFreq))
+	logger.Logf(logger.Allow, "sdlaudio", "requested frequency: %d samples/sec", aud.sampleFreq)
 	logger.Logf(logger.Allow, "sdlaudio", "actual frequency: %d samples/sec", aud.spec.Freq)
 	logger.Logf(logger.Allow, "sdlaudio", "buffer size: %d samples", len(aud.buffer))
 
@@ -264,6 +268,13 @@ const (
 	QueueWarning = 8000
 )
 
+func (aud *Audio) storeQueueInformation(b int32) {
+	// rounded millisecond values
+	ms := (b*1000 + aud.sampleFreq/2) / aud.sampleFreq
+	aud.QueuedTime.Store(ms)
+	aud.QueuedBytes.Store(b)
+}
+
 // SetAudio implements the television.AudioMixer interface.
 func (aud *Audio) SetAudio(sig []signal.AudioSignalAttributes) error {
 	if len(sig) > specification.AbsoluteMaxScanlines*audio.SamplesPerScanline {
@@ -287,12 +298,8 @@ func (aud *Audio) SetAudio(sig []signal.AudioSignalAttributes) error {
 	// update queuedBytes value less frequently
 	select {
 	case <-aud.queuedBytesMeasure.C:
-		aud.QueuedBytes.Store(b)
+		aud.storeQueueInformation(b)
 	default:
-		// update queuedBytes immediately if it's running low
-		if b < rateRepeat {
-			aud.QueuedBytes.Store(b)
-		}
 	}
 
 	// regulate rate by either flushing the queue (which we only do as a last
@@ -300,7 +307,7 @@ func (aud *Audio) SetAudio(sig []signal.AudioSignalAttributes) error {
 	if b > rateReset {
 		logger.Logf(logger.Allow, "sdlaudio", "flushed audio queue: %d", b)
 		sdl.ClearQueuedAudio(aud.id)
-		aud.QueuedBytes.Store(int32(sdl.GetQueuedAudioSize(aud.id)))
+		aud.storeQueueInformation(int32(sdl.GetQueuedAudioSize(aud.id)))
 	} else if b > rateDrop {
 		// drop samples. the number of samples is so small that we won't audibly miss them
 		return nil

@@ -322,60 +322,59 @@ func (o *playscrOverlay) drawTopLeft(posMin imgui.Vec2, _ imgui.Vec2) {
 		}
 
 		if o.img.prefs.audioQueueMeterInOverlay.Get().(bool) {
-			// draw separator if there is no frame queue meter
-			if !o.img.prefs.frameQueueMeterInOverlay.Get().(bool) {
-				imguiSeparator()
-			} else {
-				imgui.Spacing()
-			}
-
-			queuedBytes := o.img.audio.QueuedBytes.Load()
-
-			if queuedBytes == 0 {
-				imgui.PushStyleColor(imgui.StyleColorText, o.img.cols.AudioQueueInactive)
-				imgui.Text(string(fonts.MeterSegment))
-				imgui.SameLineV(0, 0)
-				imgui.Text(string(fonts.MeterSegment))
-				imgui.SameLineV(0, 0)
-				imgui.Text(string(fonts.MeterSegment))
-				imgui.SameLineV(0, 0)
-				imgui.PopStyleColor()
-			} else if queuedBytes < sdlaudio.QueueOkay {
-				imgui.PushStyleColor(imgui.StyleColorText, o.img.cols.AudioQueueActive)
-				imgui.Text(string(fonts.MeterSegment))
-				imgui.SameLineV(0, 0)
-				imgui.PushStyleColor(imgui.StyleColorText, o.img.cols.AudioQueueInactive)
-				imgui.Text(string(fonts.MeterSegment))
-				imgui.SameLineV(0, 0)
-				imgui.Text(string(fonts.MeterSegment))
-				imgui.SameLineV(0, 0)
-				imgui.PopStyleColorV(2)
-			} else if queuedBytes < sdlaudio.QueueWarning {
-				imgui.PushStyleColor(imgui.StyleColorText, o.img.cols.AudioQueueActive)
-				imgui.Text(string(fonts.MeterSegment))
-				imgui.SameLineV(0, 0)
-				imgui.Text(string(fonts.MeterSegment))
-				imgui.SameLineV(0, 0)
-				imgui.PushStyleColor(imgui.StyleColorText, o.img.cols.AudioQueueInactive)
-				imgui.Text(string(fonts.MeterSegment))
-				imgui.SameLineV(0, 0)
-				imgui.PopStyleColorV(2)
-			} else {
-				imgui.PushStyleColor(imgui.StyleColorText, o.img.cols.AudioQueueActive)
-				imgui.Text(string(fonts.MeterSegment))
-				imgui.SameLineV(0, 0)
-				imgui.Text(string(fonts.MeterSegment))
-				imgui.SameLineV(0, 0)
-				imgui.Text(string(fonts.MeterSegment))
-				imgui.SameLineV(0, 0)
-				imgui.PopStyleColor()
-			}
-
-			imgui.Spacing()
 			if !o.img.prefs.audioMutePlaymode.Get().(bool) {
-				imgui.Textf("%dkb audio queue", queuedBytes/1024)
+				// draw separator if there is no frame queue meter
+				if !o.img.prefs.frameQueueMeterInOverlay.Get().(bool) {
+					imguiSeparator()
+				} else {
+					imgui.Spacing()
+				}
+
+				queuedBytes := o.img.audio.QueuedBytes.Load()
+
+				if queuedBytes == 0 {
+					imgui.PushStyleColor(imgui.StyleColorText, o.img.cols.AudioQueueInactive)
+					imgui.Text(string(fonts.MeterSegment))
+					imgui.SameLineV(0, 0)
+					imgui.Text(string(fonts.MeterSegment))
+					imgui.SameLineV(0, 0)
+					imgui.Text(string(fonts.MeterSegment))
+					imgui.PopStyleColor()
+				} else if queuedBytes < sdlaudio.QueueOkay {
+					imgui.PushStyleColor(imgui.StyleColorText, o.img.cols.AudioQueueActive)
+					imgui.Text(string(fonts.MeterSegment))
+					imgui.SameLineV(0, 0)
+					imgui.PushStyleColor(imgui.StyleColorText, o.img.cols.AudioQueueInactive)
+					imgui.Text(string(fonts.MeterSegment))
+					imgui.SameLineV(0, 0)
+					imgui.Text(string(fonts.MeterSegment))
+					imgui.PopStyleColorV(2)
+				} else if queuedBytes < sdlaudio.QueueWarning {
+					imgui.PushStyleColor(imgui.StyleColorText, o.img.cols.AudioQueueActive)
+					imgui.Text(string(fonts.MeterSegment))
+					imgui.SameLineV(0, 0)
+					imgui.Text(string(fonts.MeterSegment))
+					imgui.SameLineV(0, 0)
+					imgui.PushStyleColor(imgui.StyleColorText, o.img.cols.AudioQueueInactive)
+					imgui.Text(string(fonts.MeterSegment))
+					imgui.PopStyleColorV(2)
+				} else {
+					imgui.PushStyleColor(imgui.StyleColorText, o.img.cols.AudioQueueActive)
+					imgui.Text(string(fonts.MeterSegment))
+					imgui.SameLineV(0, 0)
+					imgui.Text(string(fonts.MeterSegment))
+					imgui.SameLineV(0, 0)
+					imgui.Text(string(fonts.MeterSegment))
+					imgui.PopStyleColor()
+				}
+
+				imgui.Spacing()
+				queuedTime := o.img.audio.QueuedTime.Load()
+				imgui.Textf("%dms audio queue", queuedTime)
 			}
 		}
+
+		imguiSeparator()
 
 		if o.img.prefs.memoryUsageInOverlay.Get().(bool) {
 			o.img.metrics.draw()
