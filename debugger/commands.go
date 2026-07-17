@@ -1325,6 +1325,16 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			dbg.printLine(terminal.StyleInstrument, dbg.vcs.TV.String())
 		}
 
+	case cmdScreenshot:
+		path, _ := tokens.Get()
+		frameInfo, err := dbg.capture.save(path)
+		if err != nil {
+			return err
+		}
+		size := dbg.capture.completed.Bounds().Size()
+		dbg.printLine(terminal.StyleFeedback, "screenshot: %s (frame=%d, spec=%s, size=%dx%d)",
+			path, frameInfo.FrameNum, frameInfo.Spec.ID, size.X, size.Y)
+
 	// information about the machine (sprites, playfield)
 	case cmdPlayer:
 		plyr := -1
