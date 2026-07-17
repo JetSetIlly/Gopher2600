@@ -322,6 +322,10 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 		r.Reset()
 	}
 
+	if tv.realTimeMixer != nil {
+		tv.realTimeMixer.Reset()
+	}
+
 	for _, m := range tv.mixers {
 		m.Reset()
 	}
