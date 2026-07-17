@@ -285,7 +285,7 @@ func (aud *Audio) SetAudio(sig []signal.AudioSignalAttributes) error {
 		return nil
 	}
 
-	// resolve specifcation committal
+	// resolve specification committal
 	select {
 	case u := <-aud.updateCommit:
 		aud.setSpec(u)
@@ -307,7 +307,6 @@ func (aud *Audio) SetAudio(sig []signal.AudioSignalAttributes) error {
 	if b > rateReset {
 		logger.Logf(logger.Allow, "sdlaudio", "flushed audio queue: %d", b)
 		sdl.ClearQueuedAudio(aud.id)
-		aud.storeQueueInformation(int32(sdl.GetQueuedAudioSize(aud.id)))
 	} else if b > rateDrop {
 		// drop samples. the number of samples is so small that we won't audibly miss them
 		return nil

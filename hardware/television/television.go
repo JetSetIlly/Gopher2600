@@ -26,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/limiter"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -497,7 +498,7 @@ func (tv *Television) End() error {
 // AudioSignal updates the audio stream.
 func (tv *Television) AudioSignal(sig signal.AudioSignalAttributes) {
 	tv.audioSignals = append(tv.audioSignals, sig)
-	if len(tv.audioSignals) >= tv.state.frameInfo.TotalScanlines {
+	if len(tv.audioSignals) >= tv.state.frameInfo.TotalScanlines*audio.SamplesPerScanline {
 		tv.flushAudioSignal()
 	}
 }

@@ -1119,7 +1119,7 @@ func (dbg *Debugger) Notify(notice notifications.Notice, data ...string) error {
 			return err
 		}
 
-		return dbg.vcs.TV.Reset(true)
+		return nil
 	case notifications.NotifyPlusROMNewInstall:
 		err := dbg.gui.SetFeature(gui.ReqNotification, notifications.NotifyPlusROMNewInstall)
 		if err != nil {
