@@ -481,6 +481,15 @@ func fingerprintSB(loader cartridgeloader.Loader) bool {
 	return slices.ContainsFunc(fingerprint, loader.Contains)
 }
 
+func fingerprintCV(loader cartridgeloader.Loader) bool {
+	// CV fingerprint taken from Stella
+	fingerprint := [][]byte{
+		{0x9d, 0xff, 0xf3}, // STA $F3FF,X  MagiCard
+		{0x99, 0x00, 0xF4}, // STA $F400,Y  Video Life
+	}
+	return slices.ContainsFunc(fingerprint, loader.Contains)
+}
+
 func fingerprint8k(loader cartridgeloader.Loader) string {
 	if fingerprintWF8(loader) {
 		return "WF8"
@@ -652,7 +661,16 @@ func (cart *Cartridge) fingerprint(loader cartridgeloader.Loader) (string, error
 	}
 
 	switch loader.Size() {
+	case 2048:
+		if fingerprintCV(loader) {
+			return "CV", nil
+		}
+		return "2K", nil
+
 	case 4096:
+		if fingerprintCV(loader) {
+			return "CV", nil
+		}
 		return "4K", nil
 
 	case 8195:
@@ -692,8 +710,5 @@ func (cart *Cartridge) fingerprint(loader cartridgeloader.Loader) (string, error
 		return fingerprint256k(loader), nil
 	}
 
-	if loader.Size() >= 4096 {
-		return "", fmt.Errorf("unrecognised size (%d bytes)", loader.Size())
-	}
-	return "2K", nil
+	return "", fmt.Errorf("unrecognised size (%d bytes)", loader.Size())
 }
