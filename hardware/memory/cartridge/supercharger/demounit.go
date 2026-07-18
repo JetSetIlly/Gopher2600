@@ -16,6 +16,8 @@
 package supercharger
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 
@@ -27,7 +29,9 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/notifications"
+	"github.com/jetsetilly/supercharge/supercharge"
 )
 
 // The Supercharger demo unit is a device that plugs into the supercharger and also the right player
@@ -44,11 +48,14 @@ type DemoUnit struct {
 	jmpAddrHi  uint8
 	configByte uint8
 	controller *demoUnit_controller
+
+	// the soundloud instance is only used for the bootloader program
+	soundload *SoundLoad
 }
 
 const SchweberHash = "0a98bc3d53a0965de87fc77377b5a0db"
 
-func newDemoUnit(env *environment.Environment) (*DemoUnit, error) {
+func newDemoUnit(env *environment.Environment, soundload bool) (*DemoUnit, error) {
 	if env.Loader.HashMD5 != SchweberHash {
 		return nil, fmt.Errorf("demo unit: exepected 'Schweber OQ' ROM dump")
 	}
@@ -67,22 +74,57 @@ func newDemoUnit(env *environment.Environment) (*DemoUnit, error) {
 		configByte: data[0x303],
 	}
 
+	// try to use the soundload type. if there's an error we just log it and continue with the
+	// fastload method
+	if soundload {
+		var b bytes.Buffer
+		w := bufio.NewWriter(&b)
+
+		// bootloader needs to be centered on 0x6f5 of the supercharger bank
+		bootloader := make([]byte, bankSize)
+		copy(bootloader[0x06f5:], dem.bootloader)
+
+		// convert using the supercharge module
+		_ = supercharge.Convert(bootloader, uint16(dem.jmpAddrLo)|(uint16(dem.jmpAddrHi)<<8),
+			dem.configByte, 0x0162, w)
+
+		pcm, err := getPCMFromWavData(bytes.NewReader(b.Bytes()))
+		if err != nil {
+			logger.Log(env, "demo unit", err.Error())
+		} else {
+			dem.soundload, err = newSoundLoad(env, pcm)
+			if err != nil {
+				logger.Log(env, "demo unit", err.Error())
+			}
+		}
+	}
+
 	return dem, nil
 }
 
 // snapshot implements the tape interface.
 func (dem *DemoUnit) snapshot() tape {
 	n := *dem
+	if dem.soundload != nil {
+		n.soundload = dem.soundload.snapshot().(*SoundLoad)
+	}
 	return &n
 }
 
 // plumb implements the tape interface.
 func (dem *DemoUnit) plumb(env *environment.Environment) {
+	if dem.soundload != nil {
+		dem.soundload.plumb(env)
+	}
 	dem.env = env
 }
 
 // load implements the tape interface.
 func (dem *DemoUnit) load() (uint8, error) {
+	if dem.soundload != nil {
+		return dem.soundload.load()
+	}
+
 	// if controller has already been attached then just return a zero byte
 	if dem.controller != nil {
 		return 0x00, nil
@@ -90,21 +132,36 @@ func (dem *DemoUnit) load() (uint8, error) {
 
 	err := dem.env.Notifications.Notify(notifications.NotifySuperchargerFastLoad)
 	if err != nil {
-		return 0x00, fmt.Errorf("fastload: %w", err)
+		return 0x00, fmt.Errorf("demo unit: %w", err)
 	}
 	return 0x00, nil
 }
 
 // step implements the tape interface.
 func (dem *DemoUnit) step() {
+	if dem.soundload != nil {
+		dem.soundload.step()
+	}
 }
 
 // load implements the tape interface.
-func (tap *DemoUnit) end() {
+func (dem *DemoUnit) end() {
+	if dem.soundload != nil {
+		dem.soundload.end()
+	}
 }
 
 // bootstrap implements the tape interface
 func (dem *DemoUnit) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, riot *riot.RIOT, tia *tia.TIA) error {
+	// use the soundload bootstrap if available
+	if dem.soundload != nil {
+		err := dem.soundload.bootstrap(state, mc, ram, riot, tia)
+		if err != nil {
+			return fmt.Errorf("demo unit: %w", err)
+		}
+		return dem.boostrap_addController(riot)
+	}
+
 	// copy bootloader to correct location, such that the start instruction is at $ffc0
 	clear(state.ram[0])
 	clear(state.ram[1])
@@ -149,6 +206,11 @@ func (dem *DemoUnit) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, riot *ri
 	tia.Video.Player1.SetNUSIZ(0)
 	tia.Video.Ball.Hmove = 8
 
+	return dem.boostrap_addController(riot)
+}
+
+// bootstrap_addController is called at the end of the bootstrap() function, either the fastload or soundload method
+func (dem *DemoUnit) boostrap_addController(riot *riot.RIOT) error {
 	// the demo unit is also plugged into the console's joystick port
 	err := riot.Ports.Plug(plugging.PortRight,
 		func(env *environment.Environment, id plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
@@ -163,7 +225,6 @@ func (dem *DemoUnit) bootstrap(state *state, mc *cpu.CPU, ram *vcs.RAM, riot *ri
 	if err != nil {
 		return fmt.Errorf("demo unit: %w", err)
 	}
-
 	return nil
 }
 

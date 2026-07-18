@@ -108,19 +108,13 @@ func (r *Registers) MappedBanks() string {
 }
 
 func (r *Registers) transitionCount(addr uint16) {
-	// Kevin Horton in the "Mostly Inclusive Atari 2600 Mapper / Selected
-	// Hardware Document" clarifies what is meant by "transition":
+	// Kevin Horton in the "Mostly Inclusive Atari 2600 Mapper / Selected Hardware Document"
+	// clarifies what is meant by "transition":
 	//
-	// "Note that when I say 'transition', I am talking about when one or more
-	// of the 13 address lines changes."
+	// "Note that when I say 'transition', I am talking about when one or more of the 13 address
+	// lines changes."
 	//
-	// In other words, if the address hasn't changed then it does not count as
-	// a transition.
-	//
-	// we don't strictly need to keep track of this because this function will
-	// only be called as a result of cartridge.Listen() being called by the
-	// memory sub-system - and that only happens if the address bus has
-	// transitioned
+	// In other words, if the address hasn't changed then it does not count as a transition.
 	if addr != r.transitionAddress {
 		if r.Delay > 0 {
 			r.Delay--

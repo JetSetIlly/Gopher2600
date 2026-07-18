@@ -82,7 +82,7 @@ patch_file_integrity: *.patch
 	@echo "patch file integrity"
 	@for file in $^; do \
 		echo "  $$file"; \
-		git apply --check $$file; \
+        patch -p1 --dry-run < "$$file"; \
 	done
 	@echo "patch files are fine"
 

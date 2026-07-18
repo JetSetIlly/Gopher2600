@@ -79,37 +79,32 @@ type SoundLoad struct {
 	// short delay before rewinding tape
 	rewindDelay int
 
+	// called and for the tape to continue "playing". once stopDelay reaches the autoStop value,
+	// the tape stops
+	stopDelay int
+
 	// the speed at which the tape advances. the tape is advanced every call to step() which happens
 	// at a rate of 3.57MHz.
 	regulator   int
 	regulatorCt int
 
-	// stepLimiter is used to limit the number of times step() can be called without load() being
-	// called and for the tape to continue "playing". once stepLimiter reaches the stepLimit value,
-	// the tape stops
-	stepLimiter int
-
+	// stopDelay is used to limit the number of times step() can be called without load() being
 	// threshold value is the average value in the PCM data. it's used to decide whether the
 	// streamed bit is a 1 or a 0
 	threshold float32
 
-	// function to run at end of bootstrap (when tape stops)
+	// function to run at end of bootstrap (when tape stops) this is only really used to support ROM
+	// dumping. the requirement of a real BIOS for soundloud means that the BIOS does all the
+	// necessary work
 	bootstrapEnd func() error
 }
 
 // newSoundLoad is the preferred method of initialisation for the SoundLoad type.
-func newSoundLoad(env *environment.Environment) (*SoundLoad, error) {
+func newSoundLoad(env *environment.Environment, pcm pcmData) (*SoundLoad, error) {
 	tap := &SoundLoad{
 		env:    env,
 		blocks: make(map[uint8]fastLoadBlock),
-	}
-
-	var err error
-
-	// get PCM data from data loaded from file
-	tap.pcm, err = getPCM(env)
-	if err != nil {
-		return nil, fmt.Errorf("soundload: %w", err)
+		pcm:    pcm,
 	}
 
 	if len(tap.pcm.data) == 0 {
@@ -166,7 +161,8 @@ const (
 )
 
 func (tap *SoundLoad) load() (uint8, error) {
-	tap.stepLimiter = 0
+	tap.stopDelay = 0
+
 	if !tap.playing {
 		if tap.playDelay < autoStart {
 			tap.playDelay++
@@ -184,6 +180,7 @@ func (tap *SoundLoad) load() (uint8, error) {
 	if tap.pcm.data[tap.pcmIdx] > tap.threshold {
 		return 0x01, nil
 	}
+
 	return 0x00, nil
 }
 
@@ -194,13 +191,14 @@ func (tap *SoundLoad) step() {
 	}
 
 	// auto-stop tape if load() has not been called "recently"
-	if tap.stepLimiter < autoStop {
-		tap.stepLimiter++
-		if tap.stepLimiter == autoStop {
+	if tap.stopDelay < autoStop {
+		tap.stopDelay++
+		if tap.stopDelay == autoStop {
 			err := tap.env.Notifications.Notify(notifications.NotifySuperchargerSoundLoadEnded)
 			if err != nil {
 				logger.Log(tap.env, "supercharger: soundload", err)
 			}
+			tap.stopDelay = 0
 			tap.playing = false
 			logger.Logf(tap.env, "supercharger: soundload", "tape stopped at position %d/%d", tap.pcmIdx, len(tap.pcm.data))
 			return
@@ -222,9 +220,9 @@ func (tap *SoundLoad) step() {
 			}
 		}
 		tap.Rewind()
-		tap.rewindDelay = 0
 		return
 	}
+
 	tap.pcmIdx++
 }
 
@@ -304,7 +302,9 @@ func (tap *SoundLoad) bootstrap(state *state, _ *cpu.CPU, ram *vcs.RAM, _ *riot.
 // Rewind implements the mapper.CartTapeBus interface.
 func (tap *SoundLoad) Rewind() {
 	tap.pcmIdx = 0
-	tap.stepLimiter = 0
+	tap.stopDelay = 0
+	tap.playDelay = 0
+	tap.rewindDelay = 0
 }
 
 // SetTapeCounter implements the mapper.CartTapeBus interface.

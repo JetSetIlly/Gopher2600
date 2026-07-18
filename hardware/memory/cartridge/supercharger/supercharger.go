@@ -71,6 +71,7 @@ type Supercharger struct {
 
 	bankSize int
 	bios     []uint8
+	realBios bool
 
 	// rewindable state
 	state *state
@@ -94,22 +95,29 @@ func NewSupercharger(env *environment.Environment) (mapper.CartMapper, error) {
 		if err != nil {
 			return nil, fmt.Errorf("supercharger: %w", err)
 		}
+		cart.realBios = true
+
+		// get PCM data from data loaded from file
+		pcm, err := getPCM(env)
+		if err != nil {
+			return nil, fmt.Errorf("supercharger: %w", err)
+		}
+		cart.state.tape, err = newSoundLoad(env, pcm)
+
+	} else if env.Loader.HashMD5 == SchweberHash {
+		cart.bios, err = loadBIOS(env, filepath.Dir(env.Loader.Filename))
+		if err != nil {
+			cart.bios = fastloadOnlyBIOS()
+			cart.realBios = false
+		} else {
+			cart.realBios = true
+		}
+		cart.state.tape, err = newDemoUnit(env, cart.realBios)
+
 	} else {
 		cart.bios = fastloadOnlyBIOS()
-	}
-
-	// set up tape
-	if env.Loader.IsSoundData {
-		cart.state.tape, err = newSoundLoad(env)
-	} else {
-		if env.Loader.HashMD5 == SchweberHash {
-			cart.state.tape, err = newDemoUnit(env)
-		} else {
-			cart.state.tape, err = newFastLoad(env)
-		}
-	}
-	if err != nil {
-		return nil, fmt.Errorf("supercharger: %w", err)
+		cart.realBios = false
+		cart.state.tape, err = newFastLoad(env)
 	}
 
 	return cart, nil

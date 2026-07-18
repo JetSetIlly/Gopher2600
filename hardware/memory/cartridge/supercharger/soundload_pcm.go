@@ -16,6 +16,7 @@
 package supercharger
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -36,6 +37,46 @@ type pcmData struct {
 	// data is mono data (taken from the left channel in the case of stero
 	// source files)
 	data []float32
+}
+
+func getPCMFromWavData(data *bytes.Reader) (pcmData, error) {
+	p := pcmData{
+		data: make([]float32, 0),
+	}
+
+	dec := wav.NewDecoder(data)
+	if dec == nil {
+		return p, fmt.Errorf("wav: error decoding")
+	}
+
+	if !dec.IsValidFile() {
+		return p, fmt.Errorf("wav: not a valid wav file")
+	}
+
+	// load all data at once
+	buf, err := dec.FullPCMBuffer()
+	if err != nil {
+		return p, fmt.Errorf("soundload: wav: %w", err)
+	}
+	floatBuf := buf.AsFloat32Buffer()
+
+	// copy first channel only of data stream
+	p.data = make([]float32, 0, len(floatBuf.Data)/int(dec.NumChans))
+	for i := 0; i < len(floatBuf.Data); i += int(dec.NumChans) {
+		p.data = append(p.data, floatBuf.Data[i])
+	}
+
+	// sample rate
+	p.sampleRate = float64(dec.SampleRate)
+
+	// total time of recording in seconds
+	dur, err := dec.Duration()
+	if err != nil {
+		return p, fmt.Errorf("wav: %w", err)
+	}
+	p.totalTime = dur.Seconds()
+
+	return p, nil
 }
 
 func getPCM(env *environment.Environment) (pcmData, error) {
