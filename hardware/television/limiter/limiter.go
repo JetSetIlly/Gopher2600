@@ -86,6 +86,11 @@ type Limiter struct {
 	// is not set if SetRate() is called directly
 	syncWithRefreshRateDelay int
 
+	// protectRateChange is reset on every call to SetRefreshRate(). it prevents
+	// an immediate change of the refresh rate is the function is called again with
+	// rateChangeProtection frames
+	protectRateChange int
+
 	// the display the limiter is working for
 	display Display
 }
@@ -114,13 +119,21 @@ func (lmtr *Limiter) SetDisplay(display Display) {
 	lmtr.SetLimit(lmtr.requestedFPS.Load().(float32))
 }
 
+// number of frames required between SetRefreshRate() before an immediate rate change is allowed
+const rateChangeProtection = 2
+
 // Set the refresh rate for the limiter. This is equivalent to the refresh rate
 // of the television. It is distinict from the limit value but is related and
 // the limit value (see SetLimit() function) will usually equal the refresh rate
 func (lmtr *Limiter) SetRefreshRate(refreshRate float32) {
 	lmtr.RefreshRate.Store(refreshRate)
 	if lmtr.requestMatchRefreshRate.Load().(bool) {
-		lmtr.syncWithRefreshRateDelay = int(refreshRate / 2)
+		if lmtr.protectRateChange == 0 {
+			lmtr.SetLimit(MatchRefreshRate)
+		} else {
+			lmtr.syncWithRefreshRateDelay = int(refreshRate / 2)
+		}
+		lmtr.protectRateChange = rateChangeProtection
 	}
 }
 
@@ -179,7 +192,9 @@ func (lmtr *Limiter) CheckFrame() {
 		lmtr.pulseCt++
 		if lmtr.pulseCt >= lmtr.pulseCtLimit {
 			lmtr.pulseCt = 0
-			<-lmtr.pulse.C
+			if lmtr.syncWithRefreshRateDelay == 0 {
+				<-lmtr.pulse.C
+			}
 		}
 	}
 
@@ -189,6 +204,10 @@ func (lmtr *Limiter) CheckFrame() {
 		if lmtr.syncWithRefreshRateDelay == 0 {
 			lmtr.SetLimit(MatchRefreshRate)
 		}
+	}
+
+	if lmtr.protectRateChange > 0 {
+		lmtr.protectRateChange--
 	}
 }
 
