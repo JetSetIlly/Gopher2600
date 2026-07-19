@@ -30,7 +30,8 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// eight ROM dumps of 8192 bytes each
+// we support the original ROM dumps of the eight individual chips (plus Schweber) in addition to
+// a monolithic ROM dump
 const demoUnitRomCount = 8
 
 var demoUnitRoms = [demoUnitRomCount]string{
@@ -161,13 +162,12 @@ var demoUnitSections = map[int]string{
 	168: "electronic games plug",
 }
 
-func newDemoUnitController(env *environment.Environment, id plugging.PortID, bus ports.PeripheralBus, schweber []uint8) ports.Peripheral {
+func newDemoUnitController(env *environment.Environment, id plugging.PortID, bus ports.PeripheralBus, data []uint8) ports.Peripheral {
 	con := &demoUnit_controller{
 		env:           env,
 		id:            id,
 		bus:           bus,
-		transferTable: schweber[0x200:0x2b0],
-		schweber:      schweber[:],
+		transferTable: data[0x200:0x2b0],
 	}
 
 	if id != plugging.PortRight {
@@ -177,19 +177,26 @@ func newDemoUnitController(env *environment.Environment, id plugging.PortID, bus
 
 	pth := filepath.Dir(env.Loader.Filename)
 
-	for i := range demoUnitRomCount {
-		f := filepath.Join(pth, demoUnitRoms[i])
-		d, err := os.ReadFile(f)
-		if err != nil {
-			logger.Log(env, "demo unit", err.Error())
-			return nil
-		}
-		if len(d) != 8192 {
-			logger.Logf(env, "demo unit", "%s is not the correct size (should be 8192 bytes)", demoUnitRoms[i])
-			return nil
-		}
-		for n := range len(d) / demoUnitBankSize {
-			con.data = append(con.data, d[n*demoUnitBankSize:(n+1)*demoUnitBankSize]...)
+	if len(data) > 2048 {
+		// demo unit ROM dumps look to be in a single file
+		con.schweber = data[:2048]
+		con.data = data[2048:]
+	} else {
+		// the data we've used so far looks to be the Schweber chip only. try loading the other ROM
+		// files using specific filenames
+		con.schweber = data[:]
+		for i := range demoUnitRomCount {
+			f := filepath.Join(pth, demoUnitRoms[i])
+			d, err := os.ReadFile(f)
+			if err != nil {
+				logger.Log(env, "demo unit", err.Error())
+				return nil
+			}
+			if len(d) != 8192 {
+				logger.Logf(env, "demo unit", "%s is not the correct size (should be 8192 bytes)", demoUnitRoms[i])
+				return nil
+			}
+			con.data = append(con.data, d...)
 		}
 	}
 
@@ -238,9 +245,14 @@ func (con *demoUnit_controller) nextTransfer() bool {
 		// other ROM chips
 		idx := startAddr - 0x1000
 		idx += bank * demoUnitBankSize
+		end := idx + (blocks * demoUnitBlockSize)
+
+		if end >= len(con.data) {
+			return false
+		}
 
 		// cloning slices of the data because we will be reversing the blocks below
-		con.transfer.data = slices.Clone(con.data[idx : idx+(blocks*demoUnitBlockSize)])
+		con.transfer.data = slices.Clone(con.data[idx:end])
 	}
 
 	// reverse blocks

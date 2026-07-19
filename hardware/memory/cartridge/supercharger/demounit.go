@@ -18,6 +18,7 @@ package supercharger
 import (
 	"bufio"
 	"bytes"
+	"crypto/md5"
 	"fmt"
 	"io"
 
@@ -42,7 +43,7 @@ import (
 // https://forums.atariage.com/topic/390261-starpath-demonstration-unit-rom-dump/
 type DemoUnit struct {
 	env        *environment.Environment
-	schweber   []uint8
+	data       []uint8
 	bootloader []uint8
 	jmpAddrLo  uint8
 	jmpAddrHi  uint8
@@ -53,13 +54,31 @@ type DemoUnit struct {
 	soundload *SoundLoad
 }
 
-const SchweberHash = "0a98bc3d53a0965de87fc77377b5a0db"
+// md5 hash of the Schweber ROM
+const schweberBootloaderHash = "31d32f7fb53ff608b4abdf1ff73b7837"
 
-func newDemoUnit(env *environment.Environment, soundload bool) (*DemoUnit, error) {
-	if env.Loader.HashMD5 != SchweberHash {
-		return nil, fmt.Errorf("demo unit: exepected 'Schweber OQ' ROM dump")
+func IsDemoUnit(r io.ReadSeeker) bool {
+	o, err := r.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return false
 	}
 
+	n, err := r.Seek(0x300, io.SeekStart)
+	if err != nil || n != 0x300 {
+		return false
+	}
+	defer r.Seek(o, io.SeekStart)
+
+	b := make([]byte, 0x100)
+	l, err := r.Read(b)
+	if err != nil || l != 0x100 {
+		return false
+	}
+
+	return fmt.Sprintf("%x", md5.Sum(b)) == schweberBootloaderHash
+}
+
+func newDemoUnit(env *environment.Environment, soundload bool) (*DemoUnit, error) {
 	data, err := io.ReadAll(env.Loader)
 	if err != nil {
 		return nil, fmt.Errorf("demo unit: %w", err)
@@ -67,7 +86,7 @@ func newDemoUnit(env *environment.Environment, soundload bool) (*DemoUnit, error
 
 	dem := &DemoUnit{
 		env:        env,
-		schweber:   data[:],
+		data:       data[:],
 		bootloader: data[0x300:0x400],
 		jmpAddrLo:  data[0x301],
 		jmpAddrHi:  data[0x302],
@@ -214,7 +233,7 @@ func (dem *DemoUnit) boostrap_addController(riot *riot.RIOT) error {
 	// the demo unit is also plugged into the console's joystick port
 	err := riot.Ports.Plug(plugging.PortRight,
 		func(env *environment.Environment, id plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
-			p := newDemoUnitController(env, id, bus, dem.schweber)
+			p := newDemoUnitController(env, id, bus, dem.data)
 			if p == nil {
 				return nil
 			}

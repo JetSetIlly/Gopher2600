@@ -104,7 +104,7 @@ func NewSupercharger(env *environment.Environment) (mapper.CartMapper, error) {
 		}
 		cart.state.tape, err = newSoundLoad(env, pcm)
 
-	} else if env.Loader.HashMD5 == SchweberHash {
+	} else if IsDemoUnit(env.Loader) {
 		cart.bios, err = loadBIOS(env, filepath.Dir(env.Loader.Filename))
 		if err != nil {
 			cart.bios = fastloadOnlyBIOS()

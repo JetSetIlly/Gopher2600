@@ -330,7 +330,7 @@ func fingerprintSupercharger(cartload cartridgeloader.Loader) bool {
 	if cartload.IsSoundData {
 		return true
 	}
-	if cartload.HashMD5 == supercharger.SchweberHash {
+	if supercharger.IsDemoUnit(cartload) {
 		return true
 	}
 	return cartload.Size() > 0 && cartload.Size()%8448 == 0
