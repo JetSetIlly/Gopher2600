@@ -349,7 +349,7 @@ func (bld *build) buildTypes(src *Source) error {
 
 				// members are basically like variables but with special address
 				// handling
-				memb, err := bld.resolveVariableDeclaration(e, nil, src)
+				memb, err := bld.resolveVariableDeclaration(e, src)
 				if err != nil {
 					return err
 				}
@@ -522,105 +522,99 @@ func (bld *build) resolveType(v *dwarf.Entry) (*SourceType, error) {
 	return typ, nil
 }
 
-func (bld *build) resolveVariableDeclaration(v *dwarf.Entry, t *dwarf.Entry, src *Source) (*SourceVariable, error) {
-	resolveSpec := func(v *dwarf.Entry) (*SourceVariable, error) {
+func (bld *build) resolveVariableDeclaration(e *dwarf.Entry, src *Source) (*SourceVariable, error) {
+	var es []*dwarf.Entry
+	es = append(es, e)
+
+	var d *dwarf.Entry
+	d = e
+	for {
+		// check for abstract origin field or specification field
+		//
+		// if either is present we resolve the abstract declartion otherwise we
+		// resolve using the current entry
+		fld := d.AttrField(dwarf.AttrAbstractOrigin)
+		if fld == nil {
+			fld = d.AttrField(dwarf.AttrSpecification)
+		}
+
+		if fld == nil {
+			break // for loop
+		}
+
+		e, ok := bld.idx[fld.Val.(dwarf.Offset)]
+		if !ok {
+			return nil, fmt.Errorf("found concrete variable without abstract")
+		}
+
+		es = append(es, e)
+		d = e
+	}
+
+	resolveSpec := func() (*SourceVariable, error) {
 		var varb SourceVariable
 
-		// variable name
-		fld := v.AttrField(dwarf.AttrName)
-		if fld == nil {
-			return nil, nil
-		}
-		varb.Name = fld.Val.(string)
-
-		// variable type
-		var err error
-
-		// prefer type from 't' entry
-		if t != nil {
-			varb.Type, err = bld.resolveType(t)
-			if err != nil {
-				return nil, err
+		for _, v := range es {
+			fld := v.AttrField(dwarf.AttrName)
+			if fld != nil {
+				varb.Name = fld.Val.(string)
 			}
 		}
 
-		// if type has not been resolved use 'v' entry
-		if varb.Type == nil {
+		for _, v := range es {
+			var err error
 			varb.Type, err = bld.resolveType(v)
 			if err != nil {
 				return nil, err
 			}
-
-			// return nothing if there is still no type field
-			if varb.Type == nil {
-				return nil, nil
+			if varb.Type != nil {
+				break
 			}
 		}
-
 		return &varb, nil
 	}
 
-	var varb SourceVariable
-
-	// check for specification field. if it is present we resolve the
-	// specification using with the DWARF entry indicated by the field.
-	// otherwise we resolve using the current entry
-	fld := v.AttrField(dwarf.AttrSpecification)
-	if fld != nil {
-		var ok bool
-
-		spec, ok := bld.idx[fld.Val.(dwarf.Offset)]
-		if !ok {
-			return nil, nil
-		}
-
-		s, err := resolveSpec(spec)
-		if err != nil {
-			return nil, err
-		}
-		if s == nil {
-			return nil, nil
-		}
-		varb.Name = s.Name
-		varb.Type = s.Type
-	} else {
-		s, err := resolveSpec(v)
-		if err != nil {
-			return nil, err
-		}
-		if s == nil {
-			return nil, nil
-		}
-		varb.Name = s.Name
-		varb.Type = s.Type
-	}
-
-	// variable location in the source
-	fld = v.AttrField(dwarf.AttrDeclFile)
-	if fld == nil {
-		return nil, nil
-	}
-	declFile := fld.Val.(int64)
-
-	fld = v.AttrField(dwarf.AttrDeclLine)
-	if fld == nil {
-		return nil, nil
-	}
-	declLine := fld.Val.(int64)
-
-	lr, err := bld.dwrf.LineReader(bld.parent[v.Offset].e)
+	varb, err := resolveSpec()
 	if err != nil {
 		return nil, err
 	}
-	files := lr.Files()
-
-	file := src.Files[files[declFile].Name]
-	if file == nil {
+	if varb == nil {
 		return nil, nil
 	}
-	varb.DeclLine = file.Content.Lines[declLine-1]
+	if varb.Type == nil {
+		return nil, nil
+	}
 
-	return &varb, nil
+	for _, v := range es {
+		// variable location in the source
+		fld := v.AttrField(dwarf.AttrDeclFile)
+		if fld == nil {
+			continue
+		}
+		declFile := fld.Val.(int64)
+
+		fld = v.AttrField(dwarf.AttrDeclLine)
+		if fld == nil {
+			continue
+		}
+		declLine := fld.Val.(int64)
+
+		lr, err := bld.dwrf.LineReader(bld.parent[v.Offset].e)
+		if err != nil {
+			continue
+		}
+		files := lr.Files()
+
+		file := src.Files[files[declFile].Name]
+		if file == nil {
+			continue
+		}
+		varb.DeclLine = file.Content.Lines[declLine-1]
+
+		break
+	}
+
+	return varb, nil
 }
 
 // buildVariables populates variables map in the *Source tree. local variables
@@ -672,30 +666,9 @@ func (bld *build) buildVariables(src *Source) error {
 		var varb *SourceVariable
 		var err error
 
-		// check for abstract origin field or specification field
-		//
-		// if either is present we resolve the abstract declartion otherwise we
-		// resolve using the current entry
-		fld := e.AttrField(dwarf.AttrAbstractOrigin)
-		if fld == nil {
-			fld = e.AttrField(dwarf.AttrSpecification)
-		}
-
-		if fld != nil {
-			v, ok := bld.idx[fld.Val.(dwarf.Offset)]
-			if !ok {
-				return fmt.Errorf("found concrete variable without abstract")
-			}
-
-			varb, err = bld.resolveVariableDeclaration(v, e, src)
-			if err != nil {
-				return err
-			}
-		} else {
-			varb, err = bld.resolveVariableDeclaration(e, nil, src)
-			if err != nil {
-				return err
-			}
+		varb, err = bld.resolveVariableDeclaration(e, src)
+		if err != nil {
+			return err
 		}
 
 		// nothing found when resolving the declaration
