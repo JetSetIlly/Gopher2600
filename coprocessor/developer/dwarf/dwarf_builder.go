@@ -614,6 +614,10 @@ func (bld *build) resolveVariableDeclaration(e *dwarf.Entry, src *Source) (*Sour
 		break
 	}
 
+	if varb.DeclLine == nil {
+		return nil, nil
+	}
+
 	return varb, nil
 }
 
