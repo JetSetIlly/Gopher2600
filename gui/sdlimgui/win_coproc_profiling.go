@@ -189,7 +189,7 @@ func (win *winCoProcProfiling) draw(coproc coprocessor.CartCoProc) {
 
 			win.drawFunctions(src)
 
-			if imgui.IsMouseClicked(1) {
+			if imgui.IsItemHovered() && imgui.IsMouseClicked(1) {
 				imgui.OpenPopup(profilingContextMenu)
 			}
 			if imgui.BeginPopup(profilingContextMenu) {
