@@ -291,6 +291,7 @@ func headless(mode string, sync *mainSync, args []string) error {
 	opts.Default()
 
 	flgs := flag.NewFlagSet(mode, flag.ContinueOnError)
+	flgs.StringVar(&opts.DWARF, "dwarf", "", "path to DWARF file. only valid for some coproc supporting ROMs")
 	err := flgs.Parse(args)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
