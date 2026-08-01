@@ -465,7 +465,17 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						result = arm.state.registers[Rn] | (arm.state.registers[Rm] >> imm5)
 					case 0b10:
 						// with arithmetic right shift
-						panic("unimplemented arithmetic right shift for ORR instruction")
+
+						// carry bit
+						m := uint32(0x01) << (imm5 - 1)
+						carry = arm.state.registers[Rm]&m == m
+
+						// perform shift (with sign extension)
+						signExtend := (arm.state.registers[Rm] & 0x80000000) >> 31
+						result = arm.state.registers[Rm] >> imm5
+						if signExtend == 0x01 {
+							result |= ^uint32(0) << (31 - imm5)
+						}
 					default:
 						panic("impossible shift for ORR instruction")
 					}
