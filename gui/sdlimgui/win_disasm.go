@@ -183,7 +183,7 @@ func (win *winDisasm) draw() {
 		// the value of address depends on the state of the CPU. if the Final state of the CPU's last
 		// execution result is true then we can be sure the PC value is valid and points to a real
 		// instruction. we need this because we can never be sure when we are going to draw this window
-		if currBank.ExecutingCoprocessor {
+		if currBank.ExecutingCoprocessor && currBank.CoprocessorNOPs {
 			// if coprocessor is running then jam the address value at the point the CPU will resume
 			// from once the coprocessor has finished.
 			addr = currBank.CoprocessorResumeAddr & win.img.cache.VCS.Mem.Cart.CartridgeBits()

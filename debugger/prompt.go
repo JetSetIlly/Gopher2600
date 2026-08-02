@@ -26,7 +26,7 @@ import (
 func (dbg *Debugger) buildPrompt() terminal.Prompt {
 	s := strings.Builder{}
 
-	if dbg.liveBankInfo.ExecutingCoprocessor {
+	if dbg.liveBankInfo.ExecutingCoprocessor && dbg.liveBankInfo.CoprocessorNOPs {
 		e := dbg.Disasm.GetEntryByAddress(dbg.liveBankInfo.CoprocessorResumeAddr)
 		return terminal.Prompt{
 			Content:   fmt.Sprintf("* %s", e.String()),

@@ -98,16 +98,21 @@ type Information struct {
 	// procedure, where execution happens (briefly) inside the main VCS RAM
 	NonCart bool
 
-	// the cartridge is currently feeding NOP bytes onto the data bus and
-	// therefore the data from this bank should not be considered predictable.
-	//
-	// this flag has been added to support the ARM coprocessor found in
-	// conjunction with CDF* and DPC+ mappers. future coprocessors may work
-	// differently.
+	// the three Coprocessor fields below give detail about the current state of any
+	// coprocessor in the cartridge
+
+	// the coprocessor is currently executing. the meaning of this flag is slightly
+	// different depending on the mapper. for DPC+ and CDFJ mappers it means the
+	// 6502 has been stalled and executing NOPs. in thoses case the CoprocessorNOPs
+	// flag will be set to true
 	ExecutingCoprocessor bool
 
-	// if ExecutingCoprocessor is valid then we also record the address the
-	// processor will resume from.
+	// if ExecutingCoprocessor is set to true then this field will be set to true for
+	// those mappers that feed NOPs while the coprocessor is active
+	CoprocessorNOPs bool
+
+	// if ExecutingCoprocessor and CoprocessorNOPs is true then this field indicates
+	// which address the 6502 will resume at
 	CoprocessorResumeAddr uint16
 }
 
