@@ -414,7 +414,10 @@ func fingerprintTigervision(loader cartridgeloader.Loader) bool {
 	// tigervision cartridges change banks by writing to memory address 0x3f. we
 	// can hypothesise that these types of cartridges will have that instruction
 	// sequence "85 3f" many times in a ROM whereas other cartridge types will not
-	threshold := 5
+	//
+	// setting threshold to two. five is too high for some new Tigervision demo ROMs.
+	// for example, rossum's midi demos
+	const threshold = 2
 	return loader.Count([]byte{0x85, 0x3f}) > threshold
 }
 
