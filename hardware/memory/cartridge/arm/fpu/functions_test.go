@@ -208,46 +208,44 @@ func TestImmediate(t *testing.T) {
 }
 
 func TestSaturation(t *testing.T) {
-	var fp fpu.FPU
-
 	var r uint64
 
 	// unsigned saturation
-	r, _ = fp.UnsignedSatQ(0, 32)
+	r, _ = fpu.UnsignedSatQ(0, 32)
 	test.ExpectEquality(t, r, 0)
 
-	r, _ = fp.UnsignedSatQ(-1000, 32)
+	r, _ = fpu.UnsignedSatQ(-1000, 32)
 	test.ExpectEquality(t, r, 0)
 
-	r, _ = fp.UnsignedSatQ(1000, 32)
+	r, _ = fpu.UnsignedSatQ(1000, 32)
 	test.ExpectEquality(t, r, 1000)
 
-	r, _ = fp.UnsignedSatQ(-4294967295, 32)
+	r, _ = fpu.UnsignedSatQ(-4294967295, 32)
 	test.ExpectEquality(t, r, 0)
 
-	r, _ = fp.UnsignedSatQ(-4294967295-1000, 32)
+	r, _ = fpu.UnsignedSatQ(-4294967295-1000, 32)
 	test.ExpectEquality(t, r, 0)
 
-	r, _ = fp.UnsignedSatQ(4294967295, 32)
+	r, _ = fpu.UnsignedSatQ(4294967295, 32)
 	test.ExpectEquality(t, r, 4294967295)
 
-	r, _ = fp.UnsignedSatQ(4294967295+1000, 32)
+	r, _ = fpu.UnsignedSatQ(4294967295+1000, 32)
 	test.ExpectEquality(t, r, 4294967295)
 
 	// signed saturation
-	r, _ = fp.SignedSatQ(0, 32)
+	r, _ = fpu.SignedSatQ(0, 32)
 	test.ExpectEquality(t, r, 0)
 
-	r, _ = fp.SignedSatQ(-1000, 32)
+	r, _ = fpu.SignedSatQ(-1000, 32)
 	test.ExpectEquality(t, r, 0xfffffc18)
 
-	r, _ = fp.SignedSatQ(4294967295, 32)
+	r, _ = fpu.SignedSatQ(4294967295, 32)
 	test.ExpectEquality(t, r, 2147483647)
 
-	r, _ = fp.SignedSatQ(4294967295+1000, 32)
+	r, _ = fpu.SignedSatQ(4294967295+1000, 32)
 	test.ExpectEquality(t, r, 2147483647)
 
-	r, _ = fp.SignedSatQ(-4294967295, 32)
+	r, _ = fpu.SignedSatQ(-4294967295, 32)
 	test.ExpectEquality(t, r, 0x80000000)
 }
 

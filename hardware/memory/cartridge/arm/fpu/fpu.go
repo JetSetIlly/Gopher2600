@@ -13,6 +13,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
+// Package fpu implements an ARM FPU.
+//
+// Note that some helper functions can be used even when an FPU is not present. For example the
+// saturate functions can be helpful for some non-FPU instructions.
 package fpu
 
 type FPU struct {

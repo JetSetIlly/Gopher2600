@@ -116,6 +116,10 @@ func (sr *status) setOverflow(a bool) {
 	sr.overflow = a
 }
 
+func (sr *status) setSaturation(a bool) {
+	sr.saturation = a
+}
+
 // conditional execution information from "A7.3 Conditional execution" in "ARMv7-M"
 func (sr *status) condition(cond uint8) (bool, string) {
 	var mnemonic string

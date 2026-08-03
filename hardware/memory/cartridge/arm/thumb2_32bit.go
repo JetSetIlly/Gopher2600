@@ -20,6 +20,8 @@ package arm
 import (
 	"fmt"
 	"math/bits"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/fpu"
 )
 
 func is32BitThumb2(opcode uint16) bool {
@@ -2267,6 +2269,44 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 				// insert bits from source register
 				v := arm.state.registers[Rn] & maskInsert
 				arm.state.registers[Rd] = arm.state.registers[Rd] | (v << lsbit)
+
+				return nil
+			}
+
+		case 0b100:
+			// "4.6.216 USAT" of "Thumb-2 Supplement"
+			Rn := arm.state.instruction32bitOpcodeHi & 0x000f
+			imm3 := (opcode & 0x7000) >> 12
+			Rd := (opcode & 0x0f00) >> 8
+			imm2 := (opcode & 0x00c0) >> 6
+			sat_imm := opcode & 0x001f
+			imm5 := (imm3 << 2) | imm2
+
+			return func() *DisasmEntry {
+				// disassembly only
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "USAT",
+						Operand:  fmt.Sprintf("R%d, #%d, R%d", Rd, imm5, Rn),
+					}
+				}
+
+				// logical shift left
+				//
+				// the Thumb-2 Supplement pseudo-code includes the call to DecodeImmShift() but it's
+				// only ever called with 0x00 as the shift type, which is logical shift left
+				//
+				// also, we don't need to worry about any output carry bit
+				shifted := arm.state.registers[Rn] << imm5
+
+				// saturate result (using helper function from fpu package even though this is not
+				// an FPU instruction)
+				result, sat := fpu.UnsignedSatQ(int(shifted), int(sat_imm))
+				arm.state.registers[Rd] = uint32(result)
+
+				// set saturation flag
+				arm.state.status.setSaturation(sat)
 
 				return nil
 			}
