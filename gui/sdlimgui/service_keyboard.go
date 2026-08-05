@@ -22,6 +22,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -124,6 +125,15 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				if alt {
 					img.screen.SetRotation(specification.FlippedRotation)
 					handled = true
+				}
+			}
+		} else {
+			switch ev.Keysym.Scancode {
+			case sdl.SCANCODE_G:
+				if ctrl {
+					img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
+						saveVarbsToCSV(src.SortedGlobals, "globals", img.cache.VCS.Mem.Cart.ShortName)
+					})
 				}
 			}
 		}

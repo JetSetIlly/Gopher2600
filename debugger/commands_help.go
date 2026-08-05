@@ -386,8 +386,10 @@ GLOBALS prints the list of global variables and LOCALS prints the list of local 
 is in scope at the current breakpoint. Note that the list of local variables will usually be empty
 if execution has not broken inside the coprocessor program.
 
-The optional DERIVATION switch to the LOCAL argument prints out the location list derivation for that
-variable. Normal Atari 2600 developers do not need to worry about location lists.`,
+The DUMP switch to the GLOBAL option will save the list of global variables to a CSV file.
+
+The optional DERIVATION switch to the GLOBALS, LOCAL and FRAMEBASE options prints out the location list
+derivations. Normal Atari 2600 developers do not need to worry about location lists.`,
 
 	cmdScreenshot: `create a screenshot of most frame to a file. A filename is an optional argument.
 

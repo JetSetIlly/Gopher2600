@@ -17,13 +17,11 @@ package sdlimgui
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/resources/unique"
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
@@ -333,11 +331,11 @@ func (win *winCoProcGlobals) drawList(src *dwarf.Source, hotlist bool) {
 
 			if hotlist {
 				if imgui.Selectable(fmt.Sprintf("%c Save Hotlist to CSV", fonts.Disk)) {
-					win.saveToCSV(src.Hotlist.Sorted, "hotlist")
+					saveVarbsToCSV(src.Hotlist.Sorted, "hotlist", win.img.cache.VCS.Mem.Cart.ShortName)
 				}
 			} else {
 				if imgui.Selectable(fmt.Sprintf("%c Save Globals to CSV", fonts.Disk)) {
-					win.saveToCSV(src.SortedGlobals, "globals")
+					saveVarbsToCSV(src.SortedGlobals, "globals", win.img.cache.VCS.Mem.Cart.ShortName)
 				}
 			}
 			imgui.EndPopup()
@@ -606,70 +604,11 @@ func (win *winCoProcGlobals) drawVariable(src *dwarf.Source, varb *dwarf.SourceV
 	return hoveredVarb
 }
 
-// save all SortedVariables to a CSV file in the working directory. filename will be of the form:
-//
-// <name>_<cart name>_<timestamp>.csv
-//
-// all entries in the supplied SortedVariables are saved, including closed nodes.
-func (win *winCoProcGlobals) saveToCSV(varbs dwarf.SortedVariables, name string) {
-	// open unique file
-	fn := unique.Filename(name, win.img.cache.VCS.Mem.Cart.ShortName)
-	fn = fmt.Sprintf("%s.csv", fn)
-	f, err := os.Create(fn)
+func saveVarbsToCSV(varbs dwarf.SortedVariables, name string, cartName string) {
+	fn, err := dwarf.SaveToCSV(varbs, name, cartName)
 	if err != nil {
-		logger.Logf(logger.Allow, "sdlimgui", "could not save globals CSV: %v", err)
-		return
-	}
-	defer func() {
-		err := f.Close()
-		if err != nil {
-			logger.Logf(logger.Allow, "sdlimgui", "error saving globals CSV: %v", err)
-		}
-	}()
-
-	// write variable to file
-	writeVarb := func(varb *dwarf.SourceVariable) {
-		fmt.Fprintf(f, "%s,", varb.Name)
-		fmt.Fprintf(f, "%s,", varb.Type.Name)
-		if a, ok := varb.Address(); ok {
-			fmt.Fprintf(f, "%08x,", a)
-		} else {
-			f.WriteString(",")
-		}
-
-		fmt.Fprintf(f, varb.Type.Hex(), varb.Value())
-		f.WriteString("\n")
-	}
-
-	// the builEntry function is recursive and will is very similar in
-	// structure to the drawVariable() function above
-	var buildEntry func(*dwarf.SourceVariable, string)
-	buildEntry = func(varb *dwarf.SourceVariable, parent string) {
-		fmt.Fprintf(f, "%s,", parent)
-
-		// how we write the line differs depending on whether the variable has
-		// children or not
-		if varb.NumChildren() > 0 {
-			if parent != "" {
-				parent = fmt.Sprintf("%s->%s", parent, varb.Name)
-			} else {
-				parent = varb.Name
-				writeVarb(varb)
-			}
-
-			for i := 0; i < varb.NumChildren(); i++ {
-				buildEntry(varb.Child(i), parent)
-			}
-		} else {
-			writeVarb(varb)
-		}
-	}
-
-	// write header to CSV file
-	f.WriteString("Parent, Name, Type, Address, Value\n")
-
-	// process every variable in the current view
-	for _, v := range varbs.Variables {
-		buildEntry(v, "")
+		logger.Log(logger.Allow, "sdlimgui", err.Error())
+	} else {
+		logger.Logf(logger.Allow, "sdlimgui", "%s saved to %s", name, fn)
 	}
 }

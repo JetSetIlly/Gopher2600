@@ -1666,8 +1666,19 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		case "GLOBALS":
 			var w io.Writer
 			if option, ok := tokens.Get(); ok {
-				if option == "DERIVATION" {
+				switch option {
+				case "DERIVATION":
 					w = dbg.writerInStyle(terminal.StyleFeedbackSecondary, "\t")
+				case "DUMP":
+					dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
+						fn, err := dwarf.SaveToCSV(src.SortedGlobals, "globals", dbg.vcs.Mem.Cart.ShortName)
+						if err != nil {
+							dbg.printLine(terminal.StyleError, err.Error())
+						} else {
+							dbg.printLine(terminal.StyleFeedback, "globals saved to %s", fn)
+						}
+					})
+					return nil
 				}
 			}
 
