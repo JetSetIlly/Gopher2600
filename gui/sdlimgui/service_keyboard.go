@@ -127,15 +127,6 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 					handled = true
 				}
 			}
-		} else {
-			switch ev.Keysym.Scancode {
-			case sdl.SCANCODE_G:
-				if ctrl {
-					img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
-						saveVarbsToCSV(src.SortedGlobals, "globals", img.cache.VCS.Mem.Cart.ShortName)
-					})
-				}
-			}
 		}
 
 		if !img.modalActive() {
@@ -196,6 +187,13 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 						img.toggleAudioMute()
 					}
 					handled = true
+				}
+
+			case sdl.SCANCODE_G:
+				if ctrl {
+					img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
+						saveVarbsToCSV(src.SortedGlobals, "globals", img.cache.VCS.Mem.Cart.ShortName)
+					})
 				}
 			}
 		}
