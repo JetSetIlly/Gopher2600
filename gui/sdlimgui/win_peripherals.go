@@ -157,6 +157,11 @@ func (win *winPeripherals) drawPeripheral(right bool, drawNoVisualisation bool) 
 		port = "LEFT"
 	}
 
+	// handle when peripheral is a shim
+	if sh, ok := p.(ports.PeripheralShim); ok {
+		p = sh.Periph()
+	}
+
 	switch p.ID() {
 	case plugging.PeriphStick, plugging.PeriphGamepad:
 		var axis [4]bool
