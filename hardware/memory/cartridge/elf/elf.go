@@ -311,7 +311,7 @@ func (cart *Elf) reset() {
 	flags |= argFlags_NVStorage
 
 	binary.LittleEndian.PutUint32(cart.mem.args[argAddrSystemType-argOrigin:], uint32(systemType))
-	binary.LittleEndian.PutUint32(cart.mem.args[argAddrClockHz-argOrigin:], uint32(cart.arm.Clk))
+	binary.LittleEndian.PutUint32(cart.mem.args[argAddrClockHz-argOrigin:], uint32(cart.arm.Clk)*1000000)
 	binary.LittleEndian.PutUint32(cart.mem.args[argAddrFlags-argOrigin:], uint32(flags))
 
 	cart.arm.SetInitialRegisters(argOrigin)
