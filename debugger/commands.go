@@ -402,9 +402,36 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				dbg.setState(govern.Rewinding, govern.RewindingForwards)
 				dbg.unwindLoop(dbg.Rewind.GotoLast)
 			case "SUMMARY":
+				start, last := dbg.Rewind.FrameLimits()
+				dbg.printLine(terminal.StyleInstrument, "%d to %d", start, last)
+			case "PEEPHOLE":
 				dbg.printLine(terminal.StyleInstrument, dbg.Rewind.Peephole())
 			default:
-				frame, _ := strconv.Atoi(arg)
+				var frame int
+
+				switch arg[0] {
+				case '+':
+					if len(arg) == 1 {
+						dbg.printLine(terminal.StyleError, "relative frame should be numeric")
+						return nil
+					}
+					relativeFrame, _ := strconv.Atoi(arg[1:])
+					currFrame := dbg.vcs.TV.GetCoords().Frame
+					_, last := dbg.Rewind.FrameLimits()
+					frame = min(last, currFrame+relativeFrame)
+				case '-':
+					if len(arg) == 1 {
+						dbg.printLine(terminal.StyleError, "relative frame should be numeric")
+						return nil
+					}
+					relativeFrame, _ := strconv.Atoi(arg[1:])
+					currFrame := dbg.vcs.TV.GetCoords().Frame
+					start, _ := dbg.Rewind.FrameLimits()
+					frame = max(start, currFrame-relativeFrame)
+				default:
+					frame, _ = strconv.Atoi(arg)
+				}
+
 				coords := dbg.TV().GetCoords()
 				if frame != coords.Frame {
 					if frame < coords.Frame {

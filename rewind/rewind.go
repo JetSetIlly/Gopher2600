@@ -718,3 +718,8 @@ func (r *Rewind) Peephole() string {
 
 	return b.String()
 }
+
+// FrameLimits returns the frame number of the oldest and newest frames in the rewind history.
+func (r *Rewind) FrameLimits() (int, int) {
+	return r.entries[r.start].TV.GetCoords().Frame, r.entries[r.lastEntryIdx()].TV.GetCoords().Frame
+}

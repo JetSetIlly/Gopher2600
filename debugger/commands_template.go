@@ -101,7 +101,7 @@ var commandTemplate = []string{
 	cmdHalt,
 	cmdQuantum + " (INSTRUCTION|CYCLE|CLOCK)",
 	cmdScript + " [RECORD %<new file>F|END|%<file>F]",
-	cmdRewind + " [%<frame>N|LAST|SUMMARY]",
+	cmdRewind + " [%<frame>N|(+|-)%<relative_frame>N|LAST|SUMMARY|PEEPHOLE]",
 	cmdComparison + " [%<frame>N|LOCK|UNLOCK]",
 	cmdGoto + " [%<clock>N] (%<scanline>N) (%<frame>N)",
 
