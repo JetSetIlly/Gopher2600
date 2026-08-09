@@ -20,6 +20,7 @@ import (
 	"image"
 	"os"
 
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -62,7 +63,7 @@ type winTimeline struct {
 	hoverFrame int
 
 	// mouse is being used to scrub the timeline area. see isScrubbingValid()
-	// for a function that is a more likely to provide a useful value
+	// for a function that is a more likely to provide a useful/safer value
 	scrubbing bool
 
 	// the following two fields are used to help understand what to do when the
@@ -203,10 +204,9 @@ func (win *winTimeline) debuggerDraw() bool {
 			select {
 			case win.thmbRunning <- true:
 				win.thmbFrame = win.hoverFrame
-				hoverFrame := win.hoverFrame
 				win.img.dbg.PushFunction(func() {
 					// thumbnailer must be run in the same goroutine as the main emulation
-					win.thmb.Create(win.img.dbg.Rewind.GetState(hoverFrame))
+					win.thmb.Create(win.img.dbg.Rewind.GetState(win.hoverFrame))
 					<-win.thmbRunning
 				})
 			default:
@@ -220,9 +220,13 @@ func (win *winTimeline) debuggerDraw() bool {
 }
 
 func (win *winTimeline) drawToolbar() {
+	// forward/backward controls will always be disabled unless the emulation is paused
+	disabledControls := win.img.dbg.State() != govern.Paused
+
 	timeline := win.img.cache.Rewind.Timeline
 	if timeline.AvailableStart == timeline.AvailableEnd && timeline.AvailableStart == 0 {
 		imgui.Text("No rewind history")
+		disabledControls = true
 	} else {
 		imgui.Text(fmt.Sprintf("Rewind between %d and %d", timeline.AvailableStart, timeline.AvailableEnd))
 		imgui.SameLineV(0, 15)
@@ -251,6 +255,20 @@ func (win *winTimeline) drawToolbar() {
 			}
 		}
 	}
+
+	currFrame := win.img.cache.TV.GetCoords().Frame
+	imgui.Spacing()
+	drawDisabled(disabledControls || currFrame <= timeline.AvailableStart, func() {
+		if imgui.Button("Backward") {
+			win.img.term.pushCommand("REWIND -1")
+		}
+	})
+	imgui.SameLine()
+	drawDisabled(disabledControls || currFrame >= timeline.AvailableEnd, func() {
+		if imgui.Button("Forward") {
+			win.img.term.pushCommand("REWIND +1")
+		}
+	})
 }
 
 func (win *winTimeline) drawTrace() {
@@ -581,12 +599,13 @@ func (win *winTimeline) drawTrace() {
 	// index and frame number for hover position
 	win.hoverIdx = int(rewindX/plotWidth) + traceOffset
 	win.hoverFrame = int(rewindX/plotWidth) + rewindOffset
+	win.hoverFrame = min(max(win.hoverFrame, rewindStartFrame), rewindEndFrame)
 
 	// mouse handling
 	if imgui.IsMouseDown(1) && imgui.IsItemHovered() {
 		imgui.OpenPopup(timelinePopupID)
 
-	} else if win.isScrubbingValid() {
+	} else if win.scrubbing {
 		coords := win.img.cache.TV.GetCoords()
 
 		// making sure we only call PushRewind() when we need to. also,
@@ -633,13 +652,13 @@ func (win *winTimeline) saveToCSV() {
 
 	timeline := win.img.cache.Rewind.Timeline
 	for i, n := range timeline.FrameNum {
-		f.WriteString(fmt.Sprintf("%d,", n))
-		f.WriteString(fmt.Sprintf("%d,", timeline.FrameInfo[i].TotalScanlines))
-		f.WriteString(fmt.Sprintf("%d,", timeline.Counts[i].CoProc))
-		f.WriteString(fmt.Sprintf("%d,", timeline.Counts[i].WSYNC))
-		f.WriteString(fmt.Sprintf("%v,", timeline.LeftPlayerInput[i]))
-		f.WriteString(fmt.Sprintf("%v,", timeline.RightPlayerInput[i]))
-		f.WriteString(fmt.Sprintf("%v,", timeline.PanelInput[i]))
-		f.WriteString("\n")
+		fmt.Fprintf(f, "%d,", n)
+		fmt.Fprintf(f, "%d,", timeline.FrameInfo[i].TotalScanlines)
+		fmt.Fprintf(f, "%d,", timeline.Counts[i].CoProc)
+		fmt.Fprintf(f, "%d,", timeline.Counts[i].WSYNC)
+		fmt.Fprintf(f, "%v,", timeline.LeftPlayerInput[i])
+		fmt.Fprintf(f, "%v,", timeline.RightPlayerInput[i])
+		fmt.Fprintf(f, "%v,", timeline.PanelInput[i])
+		fmt.Fprintln(f, "")
 	}
 }
