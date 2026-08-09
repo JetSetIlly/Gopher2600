@@ -53,8 +53,8 @@ type Playback struct {
 	vcs    *hardware.VCS
 	digest *digest.Video
 
-	// whether to ignore video digest for each playback input
-	ignoreDigest bool
+	// whether to check video hashes at each playback step
+	checkHashes bool
 
 	// the last frame where an event occurs
 	endFrame int
@@ -83,13 +83,13 @@ func (plb Playback) EndFrame() int {
 //
 // The returned playback must be attached to the VCS input system (with
 // AttachToVCSInput() function) for it it to be useful.
-func NewPlayback(transcript string, ignoreDigest bool) (*Playback, error) {
+func NewPlayback(transcript string, checkIntegrity bool) (*Playback, error) {
 	var err error
 
 	plb := &Playback{
-		transcript:   transcript,
-		sequence:     make([]playbackEntry, 0),
-		ignoreDigest: ignoreDigest,
+		transcript:  transcript,
+		sequence:    make([]playbackEntry, 0),
+		checkHashes: checkIntegrity,
 	}
 
 	tf, err := os.Open(transcript)
@@ -248,7 +248,7 @@ func (plb *Playback) GetPlayback() (ports.TimedInputEvent, error) {
 	entry := plb.sequence[plb.seqCt]
 	if coords.Equal(entry.event.Time, c) {
 		plb.seqCt++
-		if !plb.ignoreDigest && entry.hash != plb.digest.Hash() {
+		if plb.checkHashes && entry.hash != plb.digest.Hash() {
 			return ports.TimedInputEvent{
 				Time: c,
 				InputEvent: ports.InputEvent{

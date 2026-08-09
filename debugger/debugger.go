@@ -1314,7 +1314,7 @@ func (dbg *Debugger) endRecording() {
 }
 
 func (dbg *Debugger) startPlayback(filename string) error {
-	plb, err := recorder.NewPlayback(filename, dbg.opts.PlaybackIgnoreDigest)
+	plb, err := recorder.NewPlayback(filename, dbg.opts.PlaybackCheckHashes)
 	if err != nil {
 		return err
 	}
