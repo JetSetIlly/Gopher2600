@@ -16,6 +16,8 @@
 package keyportari
 
 import (
+	"strings"
+
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -51,10 +53,23 @@ func (kp *KeyportariASCII) HandleEvent(event ports.Event, data ports.EventData) 
 		return true, nil
 
 	case ports.KeyportariDown:
-		d := data.(ports.EventDataKeyportari)
+		var key string
+
+		switch d := data.(type) {
+		case ports.EventDataKeyportari:
+			key = d.Key
+		case ports.EventDataPlayback:
+			s := strings.TrimSuffix(strings.TrimPrefix(string(d), "{"), "}")
+			flds := strings.Fields(s)
+			if len(flds) != 2 || flds[1] != "false" {
+				return true, nil
+			}
+			key = flds[0]
+		}
+
 		kp.keydown = true
 		var v uint8
-		switch d.Key {
+		switch key {
 		case "Return":
 			v = 0x0d
 		case "Backspace":
@@ -78,8 +93,17 @@ func (kp *KeyportariASCII) HandleEvent(event ports.Event, data ports.EventData) 
 		return true, nil
 
 	case ports.KeyportariText:
-		d := data.(ports.EventDataKeyportari)
-		if r, ok := kp.isPrint(d.Key); ok {
+		var txt string
+
+		switch d := data.(type) {
+		case ports.EventDataKeyportari:
+			txt = d.Key
+		case ports.EventDataPlayback:
+			flds := strings.Fields(string(d))
+			txt = flds[0][1:]
+		}
+
+		if r, ok := kp.isPrint(txt); ok {
 			kp.writeSWCHx(uint8(r))
 		}
 		return true, nil
