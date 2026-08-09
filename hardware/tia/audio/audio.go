@@ -84,6 +84,11 @@ func (au *Audio) Plumb(env *environment.Environment) {
 
 // SetTracker adds a Tracker implementation to the Audio sub-system.
 func (au *Audio) SetTracker(tracker Tracker) {
+	// don't allow a nil tracker. replace it with an instance of trackerStub
+	if tracker == nil {
+		tracker = trackerStub{}
+	}
+
 	au.tracker = tracker
 	au.channel0.tracker = tracker
 	au.channel1.tracker = tracker
@@ -102,11 +107,6 @@ func (au *Audio) String() string {
 	s.WriteString("  ch1: ")
 	s.WriteString(au.channel1.String())
 	return s.String()
-}
-
-// UpdateTracker changes the state of the attached tracker. Should be called
-// whenever any of the audio registers have changed.
-func (au *Audio) UpdateTracker() {
 }
 
 // Step the audio on one TIA clock. The step will be filtered to produce a
