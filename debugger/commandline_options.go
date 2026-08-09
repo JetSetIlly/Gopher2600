@@ -38,17 +38,17 @@ type CommandLineOptions struct {
 	DWARF      string
 
 	// playmode only
-	ComparisonROM        string
-	ComparisonPrefs      string
-	Record               bool
-	RecordFilename       string
-	PlaybackCheckROM     bool
-	PlaybackIgnoreDigest bool
-	PatchFile            string
-	Wav                  bool
-	Video                bool
-	NoEject              bool
-	Macro                string
+	ComparisonROM       string
+	ComparisonPrefs     string
+	Record              bool
+	RecordFilename      string
+	PlaybackCheckROM    bool
+	PlaybackCheckHashes bool
+	PatchFile           string
+	Wav                 bool
+	Video               bool
+	NoEject             bool
+	Macro               string
 
 	// debugger only
 	Script string
@@ -72,7 +72,7 @@ func (opts *CommandLineOptions) Default() {
 	opts.Record = false
 	opts.RecordFilename = ""
 	opts.PlaybackCheckROM = true
-	opts.PlaybackIgnoreDigest = false
+	opts.PlaybackCheckHashes = false
 	opts.PatchFile = ""
 	opts.Wav = false
 	opts.Video = false
