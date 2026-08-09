@@ -47,6 +47,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper/banking"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -958,6 +959,10 @@ func (dbg *Debugger) run() error {
 					err = dbg.reloadCartridge()
 					if err != nil {
 						logger.Log(logger.Allow, "debugger", err)
+					}
+				} else if errors.Is(err, ports.PowerOff) {
+					if dbg.playback == nil || dbg.opts.PlaybackPowerOff {
+						return err
 					}
 				} else {
 					return err

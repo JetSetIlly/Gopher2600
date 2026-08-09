@@ -44,6 +44,7 @@ type CommandLineOptions struct {
 	RecordFilename      string
 	PlaybackCheckROM    bool
 	PlaybackCheckHashes bool
+	PlaybackPowerOff    bool
 	PatchFile           string
 	Wav                 bool
 	Video               bool
