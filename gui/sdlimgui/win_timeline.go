@@ -34,6 +34,7 @@ const winTimelineID = "Timeline"
 
 type winTimeline struct {
 	debuggerWin
+	repeaterButton
 
 	img *SdlImgui
 
@@ -82,8 +83,9 @@ type winTimeline struct {
 
 func newWinTimeline(img *SdlImgui) (window, error) {
 	win := &winTimeline{
-		img:         img,
-		thmbRunning: make(chan bool, 1),
+		repeaterButton: repeaterButton{img: img},
+		img:            img,
+		thmbRunning:    make(chan bool, 1),
 	}
 
 	var err error
@@ -221,7 +223,7 @@ func (win *winTimeline) debuggerDraw() bool {
 
 func (win *winTimeline) drawToolbar() {
 	// forward/backward controls will always be disabled unless the emulation is paused
-	disabledControls := win.img.dbg.State() != govern.Paused
+	disabledControls := win.img.dbg.State() == govern.Running
 
 	timeline := win.img.cache.Rewind.Timeline
 	if timeline.AvailableStart == timeline.AvailableEnd && timeline.AvailableStart == 0 {
@@ -259,15 +261,25 @@ func (win *winTimeline) drawToolbar() {
 	currFrame := win.img.cache.TV.GetCoords().Frame
 	imgui.Spacing()
 	drawDisabled(disabledControls || currFrame <= timeline.AvailableStart, func() {
-		if imgui.Button("Backward") {
-			win.img.term.pushCommand("REWIND -1")
+		// repeatButton function does nothing if emulation is in a rewinding state. this prevents
+		// successive forward/backward events from accumulating while the previous event is resolving.
+		f := func() {}
+		if win.img.dbg.State() != govern.Rewinding {
+			f = func() {
+				win.img.term.pushCommand("REWIND -1")
+			}
 		}
+		win.repeatButton("Backward", f)
 	})
 	imgui.SameLine()
 	drawDisabled(disabledControls || currFrame >= timeline.AvailableEnd, func() {
-		if imgui.Button("Forward") {
-			win.img.term.pushCommand("REWIND +1")
+		f := func() {}
+		if win.img.dbg.State() != govern.Rewinding {
+			f = func() {
+				win.img.term.pushCommand("REWIND +1")
+			}
 		}
+		win.repeatButton("Forward", f)
 	})
 }
 

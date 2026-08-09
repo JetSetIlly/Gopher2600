@@ -17,8 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"sync/atomic"
-	"time"
 
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
@@ -30,17 +28,14 @@ const winControlID = "Control"
 
 type winControl struct {
 	debuggerWin
-
+	repeaterButton
 	img *SdlImgui
-
-	repeatID         string
-	repeatTime       time.Time
-	repeatFPSLimiter atomic.Value // bool
 }
 
 func newWinControl(img *SdlImgui) (window, error) {
 	win := &winControl{
-		img: img,
+		repeaterButton: repeaterButton{img: img},
+		img:            img,
 	}
 	win.debuggerGeom.noFocusTracking = true
 	return win, nil
@@ -51,37 +46,6 @@ func (win *winControl) init() {
 
 func (win *winControl) id() string {
 	return winControlID
-}
-
-func (win *winControl) repeatButton(id string, f func()) {
-	win.repeatButtonV(id, f, imgui.Vec2{})
-}
-
-func (win *winControl) repeatButtonV(id string, f func(), fill imgui.Vec2) {
-	imgui.ButtonV(id, fill)
-	if imgui.IsItemActive() {
-		if id != win.repeatID {
-			win.img.dbg.PushFunction(func() {
-				v := win.img.dbg.VCS().TV.SetFPSLimit(false)
-				win.repeatFPSLimiter.Store(v)
-			})
-			win.repeatID = id
-			win.repeatTime = time.Now()
-			f()
-			return
-		}
-
-		dur := time.Since(win.repeatTime)
-		if dur > 5e+8 { // half a second in nanoseconds
-			f()
-		}
-	} else if imgui.IsItemDeactivated() {
-		win.repeatID = ""
-		win.img.dbg.PushFunction(func() {
-			v := win.repeatFPSLimiter.Load().(bool)
-			win.img.dbg.VCS().TV.SetFPSLimit(v)
-		})
-	}
 }
 
 func (win *winControl) debuggerDraw() bool {
