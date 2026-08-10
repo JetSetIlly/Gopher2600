@@ -60,15 +60,6 @@ type Timeline struct {
 	LeftPlayerInput  []bool
 	RightPlayerInput []bool
 	PanelInput       []bool
-
-	// will be updated if reflection has been attached
-
-	// These two "available" fields state the earliest and latest frames that
-	// are available in the rewind history.
-	//
-	// The earliest information in the Timeline array fields may be different.
-	AvailableStart int
-	AvailableEnd   int
 }
 
 const timelineLength = 1000
@@ -139,23 +130,6 @@ func (r *Rewind) GetTimeline() Timeline {
 	if err := r.timeline.checkIntegrity(); err != nil {
 		panic(err)
 	}
-
-	e := r.lastEntryIdx()
-
-	// because of how we generate visual state we cannot generate the image for
-	// the first frame in the history unless the first entry represents a
-	// machine reset
-	//
-	// this has a consequence when the first time the circular array wraps
-	// around for the first time (the number of available entries drops by one)
-	sf := r.entries[r.start].TV.GetCoords().Frame
-	if r.entries[r.start].level != levelReset {
-		sf++
-	}
-
-	r.timeline.AvailableStart = sf
-	r.timeline.AvailableEnd = r.entries[e].TV.GetCoords().Frame
-
 	return r.timeline
 }
 

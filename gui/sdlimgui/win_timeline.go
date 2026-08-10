@@ -225,12 +225,12 @@ func (win *winTimeline) drawToolbar() {
 	// forward/backward controls will always be disabled unless the emulation is paused
 	disabledControls := win.img.dbg.State() == govern.Running
 
-	timeline := win.img.cache.Rewind.Timeline
-	if timeline.AvailableStart == timeline.AvailableEnd && timeline.AvailableStart == 0 {
+	rewind := win.img.cache.Rewind
+	if rewind.Start == rewind.End && rewind.Start == 0 {
 		imgui.Text("No rewind history")
 		disabledControls = true
 	} else {
-		imgui.Text(fmt.Sprintf("Rewind between %d and %d", timeline.AvailableStart, timeline.AvailableEnd))
+		imgui.Text(fmt.Sprintf("Rewind between %d and %d", rewind.Start, rewind.End))
 		imgui.SameLineV(0, 15)
 		imguiColorLabel(fmt.Sprintf("Comparing frame %d", win.img.cache.Rewind.Comparison.State.TV.GetCoords().Frame), win.img.cols.TimelineComparison)
 
@@ -242,7 +242,7 @@ func (win *winTimeline) drawToolbar() {
 			imguiColorLabel(fmt.Sprintf("%d Scanlines", win.img.cache.Rewind.Timeline.FrameInfo[win.hoverIdx].TotalScanlines), win.img.cols.TimelineScanlines)
 
 			imgui.SameLineV(0, 15)
-			if timeline.FrameInfo[win.hoverIdx].FromVSYNC {
+			if rewind.Timeline.FrameInfo[win.hoverIdx].FromVSYNC {
 				imguiColorLabel(fmt.Sprintf("%d+%d VSYNC", win.img.cache.Rewind.Timeline.FrameInfo[win.hoverIdx].VSYNCscanline, win.img.cache.Rewind.Timeline.FrameInfo[win.hoverIdx].VSYNCcount), win.img.cols.TimelineVSYNC)
 			} else {
 				imguiColorLabel("No VSYNC", win.img.cols.TimelineVSYNC)
@@ -260,7 +260,7 @@ func (win *winTimeline) drawToolbar() {
 
 	currFrame := win.img.cache.TV.GetCoords().Frame
 	imgui.Spacing()
-	drawDisabled(disabledControls || currFrame <= timeline.AvailableStart, func() {
+	drawDisabled(disabledControls || currFrame <= rewind.Start, func() {
 		// repeatButton function does nothing if emulation is in a rewinding state. this prevents
 		// successive forward/backward events from accumulating while the previous event is resolving.
 		f := func() {}
@@ -272,7 +272,7 @@ func (win *winTimeline) drawToolbar() {
 		win.repeatButton("Backward", f)
 	})
 	imgui.SameLine()
-	drawDisabled(disabledControls || currFrame >= timeline.AvailableEnd, func() {
+	drawDisabled(disabledControls || currFrame >= rewind.End, func() {
 		f := func() {}
 		if win.img.dbg.State() != govern.Rewinding {
 			f = func() {
@@ -284,7 +284,7 @@ func (win *winTimeline) drawToolbar() {
 }
 
 func (win *winTimeline) drawTrace() {
-	timeline := win.img.cache.Rewind.Timeline
+	rewind := win.img.cache.Rewind
 	dl := imgui.WindowDrawList()
 
 	// size of trace area elements. the size of the graph depends on the size of
@@ -320,8 +320,8 @@ func (win *winTimeline) drawTrace() {
 	//
 	// we also don't want to decrease the traceoffset from a previous high value
 	var traceOffset int
-	if len(timeline.FrameNum)*plotWidth >= int(availableWidth) {
-		traceOffset = len(timeline.FrameNum) - availableWidthInFrames
+	if len(rewind.Timeline.FrameNum)*plotWidth >= int(availableWidth) {
+		traceOffset = len(rewind.Timeline.FrameNum) - availableWidthInFrames
 	}
 	if win.pushing || traceOffset > win.prevTraceOffset {
 		win.prevTraceOffset = traceOffset
@@ -330,7 +330,7 @@ func (win *winTimeline) drawTrace() {
 	}
 
 	// if the trace offset value ever exceeds the length of the timeline then reset the traceOffset values
-	if len(timeline.FrameNum) < traceOffset {
+	if len(rewind.Timeline.FrameNum) < traceOffset {
 		traceOffset = 0
 		win.prevTraceOffset = 0
 	}
@@ -338,8 +338,8 @@ func (win *winTimeline) drawTrace() {
 	// similar to traceOffset, rewindOffset adjusts the placement of the rewind
 	// range and frame indicators
 	rewindOffset := traceOffset
-	if len(timeline.FrameNum) > 0 {
-		rewindOffset += timeline.FrameNum[0]
+	if len(rewind.Timeline.FrameNum) > 0 {
+		rewindOffset += rewind.Timeline.FrameNum[0]
 	}
 
 	// list of scanline jitter points to indicate. these will be found during
@@ -362,19 +362,19 @@ func (win *winTimeline) drawTrace() {
 	yPos := rootPos.Y + gap
 
 	// rewind start/end X positions
-	rewindStartX := rootPos.X + float32((timeline.AvailableStart-rewindOffset)*plotWidth)
+	rewindStartX := rootPos.X + float32((rewind.Start-rewindOffset)*plotWidth)
 	if rewindStartX < rootPos.X {
 		rewindStartX = rootPos.X
 	}
-	rewindEndX := rootPos.X + float32((timeline.AvailableEnd-rewindOffset)*plotWidth)
+	rewindEndX := rootPos.X + float32((rewind.End-rewindOffset)*plotWidth)
 
 	// draw frame guides
 	const guideFrameCount = 20
 	imgui.PushFont(win.img.fonts.diagram)
 
 	var guideStart int
-	if len(timeline.FrameNum) > 0 {
-		guideStart = timeline.FrameNum[traceOffset]
+	if len(rewind.Timeline.FrameNum) > 0 {
+		guideStart = rewind.Timeline.FrameNum[traceOffset]
 	}
 
 	guideX := rootPos.X
@@ -429,7 +429,7 @@ func (win *winTimeline) drawTrace() {
 
 	// draw main trace plot
 	plotX := rootPos.X
-	for i := range timeline.FrameNum[traceOffset:] {
+	for i := range rewind.Timeline.FrameNum[traceOffset:] {
 		// adjust index by starting point
 		i += traceOffset
 
@@ -437,14 +437,14 @@ func (win *winTimeline) drawTrace() {
 		plotY := yPos + graphHeight
 
 		// scale TotalScanlines value so that it covers the entire height of traceSize
-		plotY -= float32(timeline.FrameInfo[i].TotalScanlines) * graphHeight / specification.AbsoluteMaxScanlines
+		plotY -= float32(rewind.Timeline.FrameInfo[i].TotalScanlines) * graphHeight / specification.AbsoluteMaxScanlines
 
 		// add jitter to trace to indicate changes in value through exaggeration
 		if i > 0 {
-			if timeline.FrameInfo[i].TotalScanlines != timeline.FrameInfo[i-1].TotalScanlines {
-				if timeline.FrameInfo[i].TotalScanlines < timeline.FrameInfo[i-1].TotalScanlines {
+			if rewind.Timeline.FrameInfo[i].TotalScanlines != rewind.Timeline.FrameInfo[i-1].TotalScanlines {
+				if rewind.Timeline.FrameInfo[i].TotalScanlines < rewind.Timeline.FrameInfo[i-1].TotalScanlines {
 					plotY++
-				} else if timeline.FrameInfo[i].TotalScanlines > timeline.FrameInfo[i-1].TotalScanlines {
+				} else if rewind.Timeline.FrameInfo[i].TotalScanlines > rewind.Timeline.FrameInfo[i-1].TotalScanlines {
 					plotY--
 				}
 
@@ -463,15 +463,15 @@ func (win *winTimeline) drawTrace() {
 			win.img.cols.timelineScanlines)
 
 		// VSYNC TRACE
-		if timeline.FrameInfo[i].FromVSYNC {
-			vsyncCount := min(timeline.FrameInfo[i].VSYNCcount, 6)
+		if rewind.Timeline.FrameInfo[i].FromVSYNC {
+			vsyncCount := min(rewind.Timeline.FrameInfo[i].VSYNCcount, 6)
 
 			plotY = yPos + (graphHeight * 0.75)
-			plotY -= float32(timeline.FrameInfo[i].VSYNCscanline) * (graphHeight * 0.75) / specification.AbsoluteMaxScanlines
+			plotY -= float32(rewind.Timeline.FrameInfo[i].VSYNCscanline) * (graphHeight * 0.75) / specification.AbsoluteMaxScanlines
 
 			// add jitter to trace to indicate changes in value through exaggeration
 			if i > 0 {
-				diff := timeline.FrameInfo[i].VSYNCscanline - timeline.FrameInfo[i-1].VSYNCscanline
+				diff := rewind.Timeline.FrameInfo[i].VSYNCscanline - rewind.Timeline.FrameInfo[i-1].VSYNCscanline
 				if diff > 0 && diff < vsyncCount {
 					plotY--
 				} else if diff < 0 && diff > -vsyncCount {
@@ -488,13 +488,13 @@ func (win *winTimeline) drawTrace() {
 
 		// plot WSYNC from the bottom
 		plotY = yPos + graphHeight
-		plotY -= float32(timeline.Counts[i].WSYNC) * graphHeight / specification.AbsoluteMaxClks
+		plotY -= float32(rewind.Timeline.Counts[i].WSYNC) * graphHeight / specification.AbsoluteMaxClks
 
 		// add jitter to trace to indicate changes in value through exaggeration
 		if i > 0 {
-			if timeline.Counts[i].WSYNC < timeline.Counts[i-1].WSYNC {
+			if rewind.Timeline.Counts[i].WSYNC < rewind.Timeline.Counts[i-1].WSYNC {
 				plotY++
-			} else if timeline.Counts[i].WSYNC > timeline.Counts[i-1].WSYNC {
+			} else if rewind.Timeline.Counts[i].WSYNC > rewind.Timeline.Counts[i-1].WSYNC {
 				plotY--
 			}
 		}
@@ -508,13 +508,13 @@ func (win *winTimeline) drawTrace() {
 		// plot coprocessor from the top
 		if win.img.cache.VCS.Mem.Cart.GetCoProcBus() != nil {
 			plotY = yPos
-			plotY += float32(timeline.Counts[i].CoProc) * graphHeight / specification.AbsoluteMaxClks
+			plotY += float32(rewind.Timeline.Counts[i].CoProc) * graphHeight / specification.AbsoluteMaxClks
 
 			// add jitter to trace to indicate changes in value through exaggeration
 			if i > 0 {
-				if timeline.Counts[i].CoProc < timeline.Counts[i-1].CoProc {
+				if rewind.Timeline.Counts[i].CoProc < rewind.Timeline.Counts[i-1].CoProc {
 					plotY++
-				} else if timeline.Counts[i].CoProc > timeline.Counts[i-1].CoProc {
+				} else if rewind.Timeline.Counts[i].CoProc > rewind.Timeline.Counts[i-1].CoProc {
 					plotY--
 				}
 			}
@@ -531,9 +531,9 @@ func (win *winTimeline) drawTrace() {
 	// input trace
 	// TODO: right player and panel input
 	plotX = rootPos.X
-	for i := range timeline.FrameNum[traceOffset:] {
+	for i := range rewind.Timeline.FrameNum[traceOffset:] {
 		i += traceOffset
-		if timeline.LeftPlayerInput[i] {
+		if rewind.Timeline.LeftPlayerInput[i] {
 			dl.AddRectFilled(imgui.Vec2{X: plotX, Y: yPos},
 				imgui.Vec2{X: plotX + plotWidth, Y: yPos + inputTrace},
 				win.img.cols.timelineLeftPlayer)
@@ -555,7 +555,7 @@ func (win *winTimeline) drawTrace() {
 	}
 
 	// comparison frame indicator
-	if win.img.cache.Rewind.Comparison.State != nil && len(timeline.FrameNum) > 0 {
+	if win.img.cache.Rewind.Comparison.State != nil && len(rewind.Timeline.FrameNum) > 0 {
 		fr := win.img.cache.Rewind.Comparison.State.TV.GetCoords().Frame - rewindOffset
 
 		if fr < 0 {
@@ -605,13 +605,11 @@ func (win *winTimeline) drawTrace() {
 
 	// rewind support
 	rewindX := win.hoverX - rootPos.X
-	rewindStartFrame := win.img.cache.Rewind.Timeline.AvailableStart
-	rewindEndFrame := win.img.cache.Rewind.Timeline.AvailableEnd
 
 	// index and frame number for hover position
 	win.hoverIdx = int(rewindX/plotWidth) + traceOffset
 	win.hoverFrame = int(rewindX/plotWidth) + rewindOffset
-	win.hoverFrame = min(max(win.hoverFrame, rewindStartFrame), rewindEndFrame)
+	win.hoverFrame = min(max(win.hoverFrame, rewind.Start), rewind.End)
 
 	// mouse handling
 	if imgui.IsMouseDown(1) && imgui.IsItemHovered() {
@@ -623,16 +621,16 @@ func (win *winTimeline) drawTrace() {
 		// making sure we only call PushRewind() when we need to. also,
 		// allowing mouse to travel beyond the rewind boundaries (and without
 		// calling PushRewind() too often)
-		if win.hoverFrame >= rewindEndFrame {
-			if coords.Frame < rewindEndFrame {
+		if win.hoverFrame >= rewind.End {
+			if coords.Frame < rewind.End {
 				win.img.dbg.RewindToFrame(win.hoverFrame, true)
 			}
-		} else if win.hoverFrame <= rewindStartFrame {
-			if coords.Frame > rewindStartFrame {
+		} else if win.hoverFrame <= rewind.Start {
+			if coords.Frame > rewind.Start {
 				win.img.dbg.RewindToFrame(win.hoverFrame, false)
 			}
 		} else if win.hoverFrame != coords.Frame {
-			win.img.dbg.RewindToFrame(win.hoverFrame, win.hoverFrame == rewindEndFrame)
+			win.img.dbg.RewindToFrame(win.hoverFrame, win.hoverFrame == rewind.End)
 		}
 	}
 }

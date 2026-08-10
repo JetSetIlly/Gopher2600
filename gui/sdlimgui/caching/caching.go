@@ -72,6 +72,8 @@ func (vcs cachedVCS) GetAtariVox() *atarivox.AtariVox {
 type cachedRewind struct {
 	Timeline   rewind.Timeline
 	Comparison rewind.ComparisonState
+	Start      int
+	End        int
 }
 
 // cachedDebugger contains the cached components of the debugger
@@ -120,10 +122,15 @@ func (c *Cache) Update(vcs *hardware.VCS, rewind *rewind.Rewind, dbg *debugger.D
 			Prefs: vcs.Env.Prefs,
 			// no television required for gui purposes
 		},
-		Rewind: cachedRewind{
-			Timeline:   rewind.GetTimeline(),
-			Comparison: rewind.GetComparisonState(),
-		},
+		Rewind: func() cachedRewind {
+			start, end := rewind.FrameLimits()
+			return cachedRewind{
+				Timeline:   rewind.GetTimeline(),
+				Comparison: rewind.GetComparisonState(),
+				Start:      start,
+				End:        end,
+			}
+		}(),
 		Dbg: cachedDebugger{
 			LiveDisasmEntry: dbg.GetLiveDisasmEntry(),
 			Breakpoints:     dbg.GetBreakpoints(),

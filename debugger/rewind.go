@@ -43,16 +43,16 @@ func (dbg *Debugger) RewindByAmount(amount int) {
 	switch dbg.Mode() {
 	case govern.ModePlay:
 		fn := dbg.vcs.TV.GetCoords().Frame
-		tl := dbg.Rewind.GetTimeline()
+		start, end := dbg.Rewind.FrameLimits()
 
 		if amount > 0 {
-			if fn+1 > tl.AvailableEnd {
+			if fn+1 > end {
 				dbg.setState(govern.Paused, govern.PausedAtEnd)
 				return
 			}
 			dbg.setState(govern.Rewinding, govern.RewindingForwards)
 		} else {
-			if fn-1 < tl.AvailableStart {
+			if fn-1 < start {
 				dbg.setState(govern.Paused, govern.PausedAtStart)
 				return
 			}
