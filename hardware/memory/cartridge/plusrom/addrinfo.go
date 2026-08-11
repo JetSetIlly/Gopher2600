@@ -17,8 +17,6 @@ package plusrom
 
 import (
 	"fmt"
-	"net/url"
-	"strings"
 	"unicode"
 )
 
@@ -64,25 +62,16 @@ const (
 )
 
 func isHostValid(host string) bool {
-	if len(host) > maxHostLength {
+	if len(host) == 0 || len(host) > maxHostLength {
 		return false
 	}
 
-	labels := strings.SplitSeq(host, ".")
-	for l := range labels {
-		if len(l) < 1 || len(l) > maxHostElementLength {
-			return false
-		}
-
-		// check for valid characters: letters (upper/lower), digits or hyphen
-		for _, c := range l {
-			if !isValidHostRune(c) {
-				return false
-			}
-		}
-
-		// a hostname may not start with a hyphen
-		if l[0] == '-' {
+	// overly strict host names but we don't want to be too permissive
+	for _, r := range host {
+		if !(('a' <= r && r <= 'z') ||
+			('A' <= r && r <= 'Z') ||
+			('0' <= r && r <= '9') ||
+			r == '-' || r == '.') {
 			return false
 		}
 	}
@@ -91,13 +80,23 @@ func isHostValid(host string) bool {
 }
 
 func isPathValid(path string) bool {
-	if len(path) > maxPathLength {
+	if len(path) == 0 || len(path) > maxPathLength {
 		return false
 	}
 
-	enc := url.PathEscape(path)
-	dec, err := url.PathUnescape(enc)
-	return err == nil && dec == path
+	for _, r := range path {
+		// not nulls or newline/returns
+		if r == '\x00' || r == '\r' || r == '\n' {
+			return false
+		}
+
+		// printable ASCII only
+		if r < ' ' || r > '~' {
+			return false
+		}
+	}
+
+	return true
 }
 
 func isValidHostRune(c rune) bool {
