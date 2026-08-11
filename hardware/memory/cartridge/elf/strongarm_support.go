@@ -56,3 +56,35 @@ func memcpy(mem *elfMemory) {
 		}
 	}
 }
+
+func idiv(mem *elfMemory) {
+	a := int32(mem.strongarm.running.registers[0])
+	b := int32(mem.strongarm.running.registers[1])
+	mem.strongarm.running.registers[0] = uint32(a / b)
+}
+
+func uidiv(mem *elfMemory) {
+	a := mem.strongarm.running.registers[0]
+	b := mem.strongarm.running.registers[1]
+	mem.strongarm.running.registers[0] = a / b
+}
+
+func idivmod(mem *elfMemory) {
+	a := int32(mem.strongarm.running.registers[0])
+	b := int32(mem.strongarm.running.registers[1])
+	if b == 0 {
+		return
+	}
+	mem.strongarm.running.registers[0] = uint32(a / b)
+	mem.strongarm.running.registers[1] = uint32(a % b)
+}
+
+func uidivmod(mem *elfMemory) {
+	a := mem.strongarm.running.registers[0]
+	b := mem.strongarm.running.registers[1]
+	if b == 0 {
+		return
+	}
+	mem.strongarm.running.registers[0] = a / b
+	mem.strongarm.running.registers[1] = a % b
+}
