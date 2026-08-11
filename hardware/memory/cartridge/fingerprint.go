@@ -94,7 +94,7 @@ func (cart *Cartridge) fingerprintPlusROM(loader cartridgeloader.Loader) bool {
 	// which the URL is checked. if the URL is not valid then the PlusROM will
 	// be rejected
 	loader.Seek(0, io.SeekStart)
-	return loader.Contains([]byte{0x8d, 0xf1, 0x1f})
+	return loader.Count([]byte{0x8d, 0xf1, 0x1f}) >= 2
 }
 
 func fingerprint3e(loader cartridgeloader.Loader) bool {
