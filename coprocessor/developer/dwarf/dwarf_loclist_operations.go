@@ -1142,6 +1142,13 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 			},
 			operator: "DW_OP_stack_value",
 		}, 1, nil
+
+	case 0xf0:
+		// DW_OP_GNU_uninit
+		//
+		// this is the only GNU DWARF extension we implement. we do so because this operator is
+		// sometimes emitted even when -gstrict-dwarf is specified when compiling
+		return loclistOperator{}, 0, nil
 	}
 
 	return loclistOperator{}, 0, fmt.Errorf("%w: unsupported expression operator %02x", UnsupportedDWARF, expr[0])
