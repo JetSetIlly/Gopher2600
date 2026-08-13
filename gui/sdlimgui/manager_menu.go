@@ -129,9 +129,7 @@ func (wm *manager) drawMenu() {
 	}
 
 	// cartridge menu. include test to see if menu should appear at all.
-	if wm.img.cache.VCS.Mem.Cart.GetRAMbus() != nil || wm.img.cache.VCS.Mem.Cart.GetRegistersBus() != nil ||
-		wm.img.cache.VCS.Mem.Cart.GetStaticBus() != nil || wm.img.cache.VCS.Mem.Cart.GetTapeBus() != nil {
-
+	if slices.ContainsFunc(wm.menu[menuCart], wm.useMenuEntry) {
 		if imgui.BeginMenu("Cartridge") {
 			for _, m := range wm.menu[menuCart] {
 				wm.drawMenuEntry(m)
@@ -324,28 +322,28 @@ func (wm *manager) drawMenu() {
 	}
 }
 
-func (wm *manager) drawMenuEntry(m menuEntry) {
+func (wm *manager) useMenuEntry(m menuEntry) bool {
 	// restriction bus
 	switch m.restrictBus {
 	case menuRestrictRAM:
 		if wm.img.cache.VCS.Mem.Cart.GetRAMbus() == nil {
-			return
+			return false
 		}
 	case menuRestrictRegister:
 		if wm.img.cache.VCS.Mem.Cart.GetRegistersBus() == nil {
-			return
+			return false
 		}
 	case menuRestrictStatic:
 		if wm.img.cache.VCS.Mem.Cart.GetStaticBus() == nil {
-			return
+			return false
 		}
 	case menuRestrictTape:
 		// additional test required for tape bus because of shortcomings in how
 		// supercharger tapes/binary ROMs are implemented
 		if bus := wm.img.cache.VCS.Mem.Cart.GetTapeBus(); bus == nil {
-			return
+			return false
 		} else if ok, _ := bus.GetTapeState(); !ok {
-			return
+			return false
 		}
 	default:
 		// no restrictions
@@ -358,8 +356,16 @@ func (wm *manager) drawMenuEntry(m menuEntry) {
 			restrict = false // for loop
 		}
 		if restrict {
-			return
+			return false
 		}
+	}
+
+	return true
+}
+
+func (wm *manager) drawMenuEntry(m menuEntry) {
+	if !wm.useMenuEntry(m) {
+		return
 	}
 
 	// the window that the menu entry refers to
