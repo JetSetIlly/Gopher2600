@@ -148,6 +148,10 @@ func (n *network) transmit() {
 		req.Header.Set("PlusROM-Info", id)
 		logger.Logf(n.env, "plusrom [net]", "PlusROM-Info: %s", id)
 
+		// the default User-Agent string "Go-http-client/1.1" is blacklisted by some sites,
+		// including the web service used by pcart.firmaplus.de
+		req.Header.Set("User-Agent", "gopher2600-plusnet-client")
+
 		// -----------------------------------------------
 		// PlusCart firmware earlier han v2.1.1
 		//
