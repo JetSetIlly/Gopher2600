@@ -220,6 +220,13 @@ selected TV specification. Supplying an argument to the TV SPEC command will set
 specification. AUTO indicates that the specification will change if the condition of the TV signal
 suggest that it should.`,
 
+	cmdScreenshot: `Save the most recently completed TV frame as a PNG image. The image is cropped
+to the active visible area and is written synchronously, so a successful command result means the
+file is ready for inspection.
+
+The command does not capture a partial frame. Run emulation to a frame breakpoint before using
+SCREENSHOT.`,
+
 	cmdPlayer: `Display the current state of the player sprites. The player information to
 display can be selected with 0 or 1 arguments. Omitting this argument will show
 information for both players.
