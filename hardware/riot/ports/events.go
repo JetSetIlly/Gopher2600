@@ -108,12 +108,6 @@ type EventDataPaddle struct {
 	Relative bool
 }
 
-// Event data for keyportari adapters
-type EventDataKeyportari struct {
-	Key   string
-	Shift bool
-}
-
 // String implements the string.Stringer interface and is intended to be used
 // when writing to a playback file
 func (ev EventDataPaddle) String() string {
@@ -145,6 +139,44 @@ func (ev *EventDataPaddle) FromString(s string) error {
 		ev.Relative = true
 	case "false":
 		ev.Relative = false
+	default:
+		return fmt.Errorf("illegal value in paddle string")
+	}
+
+	return nil
+}
+
+// Event data for keyportari adapters
+type EventDataKeyportari struct {
+	Key   string
+	Shift bool
+}
+
+// String implements the string.Stringer interface and is intended to be used
+// when writing to a playback file
+func (ev EventDataKeyportari) String() string {
+	return fmt.Sprintf("'%s';%v", ev.Key, ev.Shift)
+}
+
+// FromString is the inverse of the String() function
+func (ev *EventDataKeyportari) FromString(s string) error {
+	sp := strings.Split(s, ";")
+
+	if len(sp) != 2 {
+		return fmt.Errorf("wrong number of values in keyportari string")
+	}
+
+	if sp[0][0] != '\'' || sp[0][len(sp[0])-1] != '\'' {
+		return fmt.Errorf("wrong number of values in keyportari string")
+	}
+
+	ev.Key = sp[0][1 : len(sp[0])-1]
+
+	switch sp[1] {
+	case "true":
+		ev.Shift = true
+	case "false":
+		ev.Shift = false
 	default:
 		return fmt.Errorf("illegal value in paddle string")
 	}
