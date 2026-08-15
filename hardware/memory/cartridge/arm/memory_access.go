@@ -62,7 +62,6 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 	// adjust address so that it can be used as an index
 	idx := addr - origin
 	return (*mem)[idx]
-
 }
 
 func (arm *ARM) write8bit(addr uint32, val uint8) {

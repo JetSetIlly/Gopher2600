@@ -210,6 +210,9 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 	mem.flash = append(mem.flash, nullFunction...)
 	mem.flashMemtop += uint32(len(nullFunction))
 
+	// adjust flash memtop once all the appending has been done
+	mem.flashMemtop -= 1
+
 	// although the code location of the null function is on a 16bit boundary
 	// (see above), the code is reached by interwork branching. we're using the
 	// Thumb-2 instruction set so this means that the zero bit of the address
@@ -239,7 +242,7 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 
 	mem.sram = make([]byte, sramSize)
 	mem.sramOrigin = mem.model.Regions["SRAM"].Origin
-	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram)-1)
+	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram)) - 1
 
 	// stack is part of sram but we keep it in a separate block
 	const sramStackSize = 0x800
