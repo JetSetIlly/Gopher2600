@@ -16,8 +16,6 @@
 package keyportari
 
 import (
-	"strings"
-
 	"github.com/jetsetilly/gopher2600/environment"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -59,12 +57,9 @@ func (kp *KeyportariASCII) HandleEvent(event ports.Event, data ports.EventData) 
 		case ports.EventDataKeyportari:
 			key = d.Key
 		case ports.EventDataPlayback:
-			s := strings.TrimSuffix(strings.TrimPrefix(string(d), "{"), "}")
-			flds := strings.Fields(s)
-			if len(flds) != 2 || flds[1] != "false" {
-				return true, nil
-			}
-			key = flds[0]
+			var ev ports.EventDataKeyportari
+			ev.FromString(string(d))
+			key = ev.Key
 		}
 
 		kp.keydown = true
@@ -99,8 +94,9 @@ func (kp *KeyportariASCII) HandleEvent(event ports.Event, data ports.EventData) 
 		case ports.EventDataKeyportari:
 			txt = d.Key
 		case ports.EventDataPlayback:
-			flds := strings.Fields(string(d))
-			txt = flds[0][1:]
+			var ev ports.EventDataKeyportari
+			ev.FromString(string(d))
+			txt = ev.Key
 		}
 
 		if r, ok := kp.isPrint(txt); ok {
