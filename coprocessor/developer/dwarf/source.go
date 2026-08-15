@@ -136,6 +136,12 @@ type Source struct {
 
 // NewSource is the preferred method of initialisation for the Source type.
 func NewSource(cart coprocessor.CartCoProcBus, romFile string, dwarfFile string, base BaseAddress) (*Source, error) {
+	// skip source loading if dwarfFile indicates that any DWARF data should not be used
+	switch strings.ToLower(dwarfFile) {
+	case "none", "false":
+		return nil, nil
+	}
+
 	src := &Source{
 		cart:             cart,
 		path:             simplifyPath(filepath.Dir(romFile)),
