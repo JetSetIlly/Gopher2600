@@ -73,6 +73,8 @@ type Developer struct {
 
 	yieldState     yield.State
 	yieldStateLock sync.Mutex
+	yieldBrake     *time.Ticker
+	yieldCatchup   *time.Timer
 
 	base baseAddress
 
@@ -102,12 +104,20 @@ type Developer struct {
 	prevProfileLine *dwarf.SourceLine
 }
 
+const (
+	strobeTicker = 100 * time.Microsecond
+	yieldBrake   = 1 * time.Second
+	yieldCatchup = yieldBrake + 500*time.Millisecond
+)
+
 // NewDeveloper is the preferred method of initialisation for the Developer type.
 func NewDeveloper(state Emulation, tv TV) Developer {
 	return Developer{
 		emulation:    state,
 		tv:           tv,
-		strobeTicker: time.NewTicker(100 * time.Microsecond),
+		strobeTicker: time.NewTicker(strobeTicker),
+		yieldBrake:   time.NewTicker(yieldBrake),
+		yieldCatchup: time.NewTimer(yieldCatchup),
 	}
 }
 
@@ -307,37 +317,49 @@ func (dev *Developer) EnableStrobe(enable bool, addr uint32) {
 
 // OnYield implements the coprocessor.CartCoProcDeveloper interface.
 func (dev *Developer) OnYield(addr uint32, yield coprocessor.CoProcYield) {
-	dev.yieldStateLock.Lock()
-	defer dev.yieldStateLock.Unlock()
+	f := func() {
+		dev.BorrowSource(func(src *dwarf.Source) {
+			dev.yieldStateLock.Lock()
+			defer dev.yieldStateLock.Unlock()
 
-	dev.yieldState.Address = addr
-	dev.yieldState.Reason = yield.Type
-	dev.yieldState.LocalVariables = dev.yieldState.LocalVariables[:0]
+			dev.yieldState.Address = addr
+			dev.yieldState.Reason = yield.Type
+			dev.yieldState.LocalVariables = dev.yieldState.LocalVariables[:0]
 
-	dev.BorrowSource(func(src *dwarf.Source) {
-		if src == nil {
-			return
-		}
+			if src == nil {
+				return
+			}
 
-		ln := src.FindSourceLine(dev.yieldState.Address)
-		if ln == nil {
-			return
-		}
+			ln := src.FindSourceLine(dev.yieldState.Address)
+			if ln == nil {
+				return
+			}
 
-		locals := src.GetLocalVariables(ln, addr)
-		dev.yieldState.LocalVariables = append(dev.yieldState.LocalVariables, locals...)
+			locals := src.GetLocalVariables(ln, addr)
+			dev.yieldState.LocalVariables = append(dev.yieldState.LocalVariables, locals...)
 
-		dev.base.address = addr
-		for _, local := range locals {
-			local.Update()
-		}
+			dev.base.address = addr
+			for _, local := range locals {
+				local.Update()
+			}
 
-		src.UpdateGlobalVariables(nil)
+			src.UpdateGlobalVariables(nil)
 
-		if yield.Type.Bug() {
-			ln.Bug = true
-		}
-	})
+			if yield.Type.Bug() {
+				ln.Bug = true
+			}
+		})
+	}
+
+	dev.yieldCatchup.Stop()
+
+	select {
+	case <-dev.yieldBrake.C:
+		go f()
+	default:
+		dev.yieldCatchup = time.AfterFunc(yieldCatchup, func() { go f() })
+		return
+	}
 }
 
 // MemoryFault implements the coprocessor.CartCoProcDeveloper interface.
