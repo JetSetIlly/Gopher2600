@@ -147,10 +147,7 @@ func (win *winCoProcGlobals) draw() {
 			return
 		}
 
-		// update all global variables on every frame
-		win.img.dbg.PushFunction(func() {
-			src.UpdateGlobalVariables(nil)
-		})
+		src.UpdateGlobalVariables(nil)
 
 		if win.firstOpen {
 			// assume source entry point is a function called "main"
