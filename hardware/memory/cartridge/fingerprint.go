@@ -242,7 +242,10 @@ func fingerprintSCABS(loader cartridgeloader.Loader) bool {
 }
 
 func fingerprintUA(loader cartridgeloader.Loader) bool {
-	// ua fingerprint taken from Stella
+	// UA fingerprint taken from Stella. we've divided the sequences into those that require
+	// multiple appearances
+
+	// these sequences only need to appear once
 	fingerprint := [][]byte{
 		{0x8d, 0x40, 0x02}, // STA $240 (Funky Fish, Pleiades)
 		{0xad, 0x40, 0x02}, // LDA $240 (???)
@@ -250,9 +253,19 @@ func fingerprintUA(loader cartridgeloader.Loader) bool {
 		{0x2c, 0xc0, 0x02}, // BIT $2C0 (Time Pilot)
 		{0x8d, 0xc0, 0x02}, // STA $2C0 (Fathom, Vanguard)
 		{0xad, 0xc0, 0x02}, // LDA $2C0 (Mickey)
+	}
+	if slices.ContainsFunc(fingerprint, loader.Contains) {
+		return true
+	}
+
+	// these sequences need to appear more than once
+	fingerprint = [][]byte{
 		{0x2c, 0xb0, 0x0f}, // BIT $FB0 (Digivision Beamrider)
 	}
-	return slices.ContainsFunc(fingerprint, loader.Contains)
+	return slices.ContainsFunc(fingerprint,
+		func(b []byte) bool {
+			return loader.Count(b) > 1
+		})
 }
 
 func fingerprintDPCplus(loader cartridgeloader.Loader) bool {
