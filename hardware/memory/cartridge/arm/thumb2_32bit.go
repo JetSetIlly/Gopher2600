@@ -903,7 +903,15 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 					// with logical right shift
 					shifted = arm.state.registers[Rm] >> imm5
 				case 0b10:
-					panic("unimplemented arithmetic right shift for RSB (register) instruction")
+					// with arithmetic right shift
+					// (no need to worry about carry just yet)
+
+					// perform shift (with sign extension)
+					signExtend := (arm.state.registers[Rm] & 0x80000000) >> 31
+					shifted = arm.state.registers[Rm] >> imm5
+					if signExtend == 0x01 {
+						shifted |= ^uint32(0) << (31 - imm5)
+					}
 				default:
 					panic("impossible shift for RSB (register) instruction")
 				}
@@ -1374,6 +1382,42 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 					return nil
 				}
 			}
+		} else if op == 0b001 && op2 == 0b0010 {
+			// "4.6.154 SSAT" of "Thumb-2 Supplement"
+			sat_imm := opcode & 0x000f
+			imm3 := (opcode & 0x7000) >> 12
+			imm2 := (opcode & 0x00c0) >> 6
+			imm5 := (imm3 << 2) | imm2
+
+			return func() *DisasmEntry {
+				// disassembly only
+				if arm.decodeOnly {
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "SSAT",
+						Operand:  fmt.Sprintf("R%d, #%d, R%d", Rd, imm5, Rn),
+					}
+				}
+
+				// logical shift left
+				//
+				// the Thumb-2 Supplement pseudo-code includes the call to DecodeImmShift() but it's
+				// only ever called with 0x00 as the shift type, which is logical shift left
+				//
+				// also, we don't need to worry about any output carry bit
+				shifted := arm.state.registers[Rn] << imm5
+
+				// saturate result (using helper function from fpu package even though this is not
+				// an FPU instruction)
+				result, sat := fpu.SignedSatQ(int(shifted), int(sat_imm))
+				arm.state.registers[Rd] = uint32(result)
+
+				// set saturation flag
+				arm.state.status.setSaturation(sat)
+
+				return nil
+			}
+
 		} else {
 			panic(fmt.Sprintf("unimplemented data processing instructions, non immediate (32bit multiplies) (%03b) (%04b)", op, op2))
 		}
