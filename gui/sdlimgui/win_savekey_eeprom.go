@@ -126,6 +126,7 @@ func (win *winSaveKeyEEPROM) draw() {
 						}
 					})
 				},
+				noScroll: true,
 			})
 		}
 	}

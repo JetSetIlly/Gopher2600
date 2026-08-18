@@ -42,6 +42,10 @@ type byteGridConfig struct {
 
 	// hooks to be called if the text that titles each row is not standard
 	rowTitle func(addr uint32)
+
+	// for some uses, making the table scrollable will interfere with a containing scrollable
+	// element. for example the save key EEPROM view
+	noScroll bool
 }
 
 func (img *SdlImgui) drawByteGrid(id string, cfg byteGridConfig) {
@@ -55,8 +59,10 @@ func (img *SdlImgui) drawByteGrid(id string, cfg byteGridConfig) {
 
 	const numColumns = 16
 
-	flgs := imgui.TableFlagsScrollY
-	flgs |= imgui.TableFlagsSizingFixedFit
+	flgs := imgui.TableFlagsSizingFixedFit
+	if !cfg.noScroll {
+		flgs |= imgui.TableFlagsScrollY
+	}
 
 	if imgui.BeginTableV(id, numColumns+1, flgs, imgui.Vec2{}, 0.0) {
 		// in some situations we will return early from the drawByteGrid()
