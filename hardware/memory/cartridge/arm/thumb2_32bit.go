@@ -812,7 +812,12 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						// with logical right shift
 						shifted = arm.state.registers[Rm] >> imm5
 					case 0b10:
-						panic("unimplemented arithmetic right shift for CMP (register) instruction")
+						// with arithmetic right shift
+						signExtend := (arm.state.registers[Rm] & 0x80000000) >> 31
+						shifted = arm.state.registers[Rm] >> imm5
+						if signExtend == 0x01 {
+							shifted |= ^uint32(0) << (31 - imm5)
+						}
 					default:
 						panic("impossible shift for CMP (register) instruction")
 					}
