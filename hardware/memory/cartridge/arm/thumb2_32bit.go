@@ -474,7 +474,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 
 						// perform shift (with sign extension)
 						signExtend := (arm.state.registers[Rm] & 0x80000000) >> 31
-						result = arm.state.registers[Rm] >> imm5
+						result = arm.state.registers[Rn] | arm.state.registers[Rm]>>imm5
 						if signExtend == 0x01 {
 							result |= ^uint32(0) << (31 - imm5)
 						}
