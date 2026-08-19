@@ -1414,7 +1414,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 
 				// saturate result (using helper function from fpu package even though this is not
 				// an FPU instruction)
-				result, sat := fpu.SignedSatQ(int(shifted), int(sat_imm))
+				result, sat := fpu.SignedSatQ(int(shifted), int(sat_imm)+1)
 				arm.state.registers[Rd] = uint32(result)
 
 				// set saturation flag
