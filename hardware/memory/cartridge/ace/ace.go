@@ -148,10 +148,7 @@ func (cart *Ace) Plumb(env *environment.Environment) {
 
 // Access implements the mapper.CartMapper interface.
 func (cart *Ace) Access(addr uint16, _ bool) (uint8, uint8, error) {
-	if cart.mem.isDataModeOut() {
-		return cart.mem.gpio[DATA_ODR-cart.mem.gpioOrigin], mapper.CartDrivenPins, nil
-	}
-	return 0, 0, nil
+	return cart.mem.gpio[DATA_ODR-cart.mem.gpioOrigin], mapper.CartDrivenPins, nil
 }
 
 // AccessVolatile implements the mapper.CartMapper interface.
