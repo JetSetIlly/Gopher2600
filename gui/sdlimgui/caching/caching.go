@@ -25,6 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
 	"github.com/jetsetilly/gopher2600/rewind"
@@ -48,14 +49,22 @@ func (vcs cachedVCS) plumb(env *environment.Environment) {
 
 // GetSaveKey returns nil if no savekey is present
 func (vcs cachedVCS) GetSaveKey() *savekey.SaveKey {
-	sk, savekeyActive := vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey)
+	p := vcs.RIOT.Ports.RightPlayer
+
+	if s, ok := vcs.RIOT.Ports.RightPlayer.(ports.PeripheralShim); ok {
+		p = s.Periph()
+	}
+
+	sk, savekeyActive := p.(*savekey.SaveKey)
 	if savekeyActive {
 		return sk
 	}
-	vox, savekeyActive := vcs.RIOT.Ports.RightPlayer.(*atarivox.AtariVox)
+
+	vox, savekeyActive := p.(*atarivox.AtariVox)
 	if savekeyActive {
 		return vox.SaveKey
 	}
+
 	return nil
 }
 
