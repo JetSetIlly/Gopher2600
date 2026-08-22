@@ -2106,19 +2106,17 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				create = true
 			case "NONE":
 				f = nil
-				create = true
+				create = false
 			}
 		}
 
-		if create {
-			err := dbg.vcs.RIOT.Ports.Plug(plugging.PortLeft, f)
-			if err != nil {
-				return err
-			}
-			err = dbg.vcs.RIOT.Ports.Plug(plugging.PortRight, f)
-			if err != nil {
-				return err
-			}
+		err := dbg.vcs.RIOT.Ports.Plug(plugging.PortLeft, f)
+		if err != nil {
+			return err
+		}
+		err = dbg.vcs.RIOT.Ports.Plug(plugging.PortRight, f)
+		if err != nil {
+			return err
 		}
 
 		if shim, ok := dbg.vcs.RIOT.Ports.LeftPlayer.(ports.PeripheralShim); ok {

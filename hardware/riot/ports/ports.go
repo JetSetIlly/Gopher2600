@@ -201,7 +201,7 @@ func (p *Ports) Plug(port plugging.PortID, create NewPeripheral) error {
 		// or not. the logic is rather opaque and we sometimes make early returns, which isn't ideal
 
 		if existingShim, ok := existingPeriph.(PeripheralShim); ok {
-			if newPeriph.ID() == plugging.PeriphNone {
+			if existingShim.ShimID() == plugging.PeriphNone {
 				// (1) plugging in a PeriphNone in place of a shim causes the shim to be removed and
 				// replaced with the peripheral attached to it
 				newPeriph = existingShim.Periph()
