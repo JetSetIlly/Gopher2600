@@ -164,16 +164,11 @@ func (wm *manager) drawMenu() {
 			for _, m := range wm.menu[menuAtariVox] {
 				wm.drawMenuEntry(m)
 			}
-			imgui.Spacing()
-			imgui.Separator()
-			imgui.Spacing()
-			imgui.Text("SaveKey")
-			for _, m := range wm.menu[menuSaveKey] {
-				wm.drawMenuEntry(m)
-			}
 			imgui.EndMenu()
 		}
-	} else if wm.img.cache.VCS.GetSaveKey() != nil {
+	}
+
+	if wm.img.cache.VCS.GetSaveKey() != nil {
 		if imgui.BeginMenu("SaveKey") {
 			for _, m := range wm.menu[menuSaveKey] {
 				wm.drawMenuEntry(m)
