@@ -47,27 +47,35 @@ func ThumbExpandImm_C(imm12 uint32, carry bool) (uint32, bool) {
 			return imm12 & 0xff, carry
 		case 0b01:
 			if imm12&0xff == 0x00 {
-				panic("unpredicatable zero expansion")
+				panic("unpredictable zero expansion")
 			}
 			return ((imm12 & 0xff) << 16) | (imm12 & 0xff), carry
 		case 0b10:
 			if imm12&0xff == 0x00 {
-				panic("unpredicatable zero expansion")
+				panic("unpredictable zero expansion")
 			}
 			return ((imm12 & 0xff) << 24) | ((imm12 & 0xff) << 8), carry
 		case 0b11:
 			if imm12&0xff == 0x00 {
-				panic("unpredicatable zero expansion")
+				panic("unpredictable zero expansion")
 			}
 			return ((imm12 & 0xff) << 24) | ((imm12 & 0xff) << 16) | ((imm12 & 0xff) << 8) | (imm12 & 0xff), carry
 		}
 	}
 
 	unrotatedValue := (0x01 << 7) | (imm12 & 0x7f)
-	return ROR_C(unrotatedValue, (imm12&0xf80)>>7)
+	rot := (imm12 & 0xf80) >> 7
+	if rot == 0 {
+		return unrotatedValue, carry
+	}
+	return ROR_C(unrotatedValue, rot)
 }
 
 func ROR_C(imm32 uint32, shift uint32) (uint32, bool) {
+	if shift == 0 {
+		panic("shift with zero is not supported")
+	}
+
 	// Page A2-27 or "ARMv7-M"
 	//
 	// (bits(N), bit) ROR_C(bits(N) x, integer shift)
@@ -81,7 +89,7 @@ func ROR_C(imm32 uint32, shift uint32) (uint32, bool) {
 
 	m := shift % 32
 	result := (imm32 >> m) | (imm32 << (32 - m))
-	return result, result&0x80000000 == 0x80000000
+	return result, result>>31 != 0
 }
 
 func RRX_C(imm32 uint32, carryIn bool) (uint32, bool) {
@@ -103,22 +111,12 @@ func RRX_C(imm32 uint32, carryIn bool) (uint32, bool) {
 
 // returns result, carry, overflow
 func AddWithCarry(a uint32, b uint32, c uint32) (uint32, bool, bool) {
+	if c > 0x00000001 {
+		panic("carry must be 0 or 1")
+	}
+
 	// the implementation code below is taken from the the isOverflow() and
 	// isCarry() functions used by the plain 16bit Thumb functions.
-	//
-	// the following code is more like the pseudo-code found in the ARMv7-M
-	// references:
-	//
-	// usum := uint64(a) + uint64(b) + uint64(c)
-	// ssum := int32(a) + int32(b) + int32(c)
-	// result := uint32(usum)
-	// carry := uint64(result) != usum
-	// overflow := int32(result) != ssum
-	// return result, carry, overflow
-	//
-	// I prefer the actual implementation code below because there is less type
-	// manipulation, which I think is clearer. None-the-less the reference code
-	// above will work equally well
 
 	d := (a & 0x7fffffff) + (b & 0x7fffffff) + c
 	d = (d >> 31) + (a >> 31) + (b >> 31)
