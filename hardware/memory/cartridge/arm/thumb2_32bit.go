@@ -299,12 +299,14 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 								}
 							}
 
-							// isolate carry bit information
-							m := uint32(0x01) << (31 - imm5)
-							carry := arm.state.registers[Rm]&m == m
-
-							// perform shift
-							arm.state.registers[Rd] = arm.state.registers[Rm] << imm5
+							var carry bool
+							if imm5 == 0 {
+								carry = arm.state.status.carry
+								arm.state.registers[Rd] = arm.state.registers[Rm]
+							} else {
+								carry = arm.state.registers[Rm]&(uint32(1)<<(32-imm5)) != 0
+								arm.state.registers[Rd] = arm.state.registers[Rm] << imm5
+							}
 
 							// change status register
 							if setFlags {
@@ -422,8 +424,14 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 								}
 							}
 
-							// perform rotation
-							result, carry := ROR_C(arm.state.registers[Rm], uint32(imm5))
+							var carry bool
+							var result uint32
+
+							if imm5 == 0 {
+								result = arm.state.registers[Rm]
+							} else {
+								result, carry = ROR_C(arm.state.registers[Rm], uint32(imm5))
+							}
 							arm.state.registers[Rd] = result
 
 							// change status register
@@ -622,7 +630,11 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 					if imm5 == 0b00000 {
 						result, carry = RRX_C(arm.state.registers[Rm], arm.state.status.carry)
 					} else {
-						result, carry = ROR_C(arm.state.registers[Rm], uint32(imm5))
+						if imm5 == 0 {
+							result = arm.state.registers[Rm]
+						} else {
+							result, carry = ROR_C(arm.state.registers[Rm], uint32(imm5))
+						}
 					}
 				}
 
@@ -959,19 +971,30 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						}
 					}
 
-					// whether to set carry bit
-					shift := arm.state.registers[Rm] & 0x00ff
-					m := uint32(0x01) << (31 - shift)
-					carry := arm.state.registers[Rn]&m == m
+					shift := arm.state.registers[Rm] & 0xff
+					result := arm.state.registers[Rn] << shift
+					arm.state.registers[Rd] = result
 
-					// perform actual shift
-					arm.state.registers[Rd] = arm.state.registers[Rn] << shift
-
-					// change status register
 					if setFlags {
-						arm.state.status.isNegative(arm.state.registers[Rd])
-						arm.state.status.isZero(arm.state.registers[Rd])
-						arm.state.status.setCarry(carry)
+						arm.state.status.isNegative(result)
+						arm.state.status.isZero(result)
+
+						switch {
+						case shift == 0:
+							// carry is unchanged
+
+						case shift < 32:
+							carry := arm.state.registers[Rn]&(uint32(1)<<(32-shift)) != 0
+							arm.state.status.setCarry(carry)
+
+						case shift == 32:
+							carry := arm.state.registers[Rn]&1 != 0
+							arm.state.status.setCarry(carry)
+
+						default:
+							arm.state.status.setCarry(false)
+						}
+
 						// overflow unchanged
 					}
 
@@ -1069,7 +1092,12 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 							}
 						}
 
-						v, _ := ROR_C(arm.state.registers[Rm], uint32(rot))
+						var v uint32
+						if rot == 0 {
+							v = arm.state.registers[Rm]
+						} else {
+							v, _ = ROR_C(arm.state.registers[Rm], uint32(rot))
+						}
 						arm.state.registers[Rd] = v & 0x0000ffff
 						if arm.state.registers[Rd]&0x8000 == 0x8000 {
 							arm.state.registers[Rd] |= 0xffff0000
@@ -1088,7 +1116,12 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 							}
 						}
 
-						v, _ := ROR_C(arm.state.registers[Rm], uint32(rot))
+						var v uint32
+						if rot == 0 {
+							v = arm.state.registers[Rm]
+						} else {
+							v, _ = ROR_C(arm.state.registers[Rm], uint32(rot))
+						}
 						arm.state.registers[Rd] = arm.state.registers[Rn] + (v & 0x0000ffff)
 						if arm.state.registers[Rd]&0x8000 == 0x8000 {
 							arm.state.registers[Rd] |= 0xffff0000
@@ -1110,7 +1143,12 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 							}
 						}
 
-						v, _ := ROR_C(arm.state.registers[Rm], uint32(rot))
+						var v uint32
+						if rot == 0 {
+							v = arm.state.registers[Rm]
+						} else {
+							v, _ = ROR_C(arm.state.registers[Rm], uint32(rot))
+						}
 						arm.state.registers[Rd] = v & 0x0000ffff
 
 						return nil
@@ -1126,7 +1164,12 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 							}
 						}
 
-						v, _ := ROR_C(arm.state.registers[Rm], uint32(rot))
+						var v uint32
+						if rot == 0 {
+							v = arm.state.registers[Rm]
+						} else {
+							v, _ = ROR_C(arm.state.registers[Rm], uint32(rot))
+						}
 						arm.state.registers[Rd] = arm.state.registers[Rn] + (v & 0x0000ffff)
 
 						return nil
@@ -1144,7 +1187,12 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 							}
 						}
 
-						v, _ := ROR_C(arm.state.registers[Rm], uint32(rot))
+						var v uint32
+						if rot == 0 {
+							v = arm.state.registers[Rm]
+						} else {
+							v, _ = ROR_C(arm.state.registers[Rm], uint32(rot))
+						}
 						arm.state.registers[Rd] = v & 0x000000ff
 
 						return nil
@@ -1160,8 +1208,13 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 							}
 						}
 
-						v, _ := ROR_C(arm.state.registers[Rm], uint32(rot))
-						arm.state.registers[Rd] = arm.state.registers[Rn] + (v & 0x000000ff)
+						var v uint32
+						if rot == 0 {
+							v = arm.state.registers[Rm]
+						} else {
+							v, _ = ROR_C(arm.state.registers[Rm], uint32(rot))
+						}
+						arm.state.registers[Rd] = v & 0x000000ff
 
 						return nil
 					}
@@ -1179,7 +1232,12 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 							}
 						}
 
-						v, _ := ROR_C(arm.state.registers[Rm], uint32(rot))
+						var v uint32
+						if rot == 0 {
+							v = arm.state.registers[Rm]
+						} else {
+							v, _ = ROR_C(arm.state.registers[Rm], uint32(rot))
+						}
 						arm.state.registers[Rd] = v & 0x000000ff
 						if arm.state.registers[Rd]&0x80 == 0x80 {
 							arm.state.registers[Rd] |= 0xffffff00
@@ -1198,8 +1256,13 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 							}
 						}
 
-						v, _ := ROR_C(arm.state.registers[Rm], uint32(rot))
-						arm.state.registers[Rd] = arm.state.registers[Rn] + (v & 0x000000ff)
+						var v uint32
+						if rot == 0 {
+							v = arm.state.registers[Rm]
+						} else {
+							v, _ = ROR_C(arm.state.registers[Rm], uint32(rot))
+						}
+						arm.state.registers[Rd] = v & 0x000000ff
 						if arm.state.registers[Rd]&0x80 == 0x80 {
 							arm.state.registers[Rd] |= 0xffffff00
 						}
@@ -1280,8 +1343,8 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						}
 					}
 
-					result := int(arm.state.registers[Rn]) * int(arm.state.registers[Rm])
-					result += int(arm.state.registers[Ra])
+					result := uint64(arm.state.registers[Rn]) * uint64(arm.state.registers[Rm])
+					result += uint64(arm.state.registers[Ra])
 					arm.state.registers[Rd] = uint32(result)
 
 					return nil
@@ -1512,7 +1575,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 				}
 
 				result := uint64(arm.state.registers[Rn]) * uint64(arm.state.registers[Rm])
-				result += uint64(arm.state.registers[RdHi] + arm.state.registers[RdLo])
+				result += uint64(arm.state.registers[RdHi]) + uint64(arm.state.registers[RdLo])
 				arm.state.registers[RdHi] = uint32(result >> 32)
 				arm.state.registers[RdLo] = uint32(result)
 
@@ -2553,7 +2616,7 @@ func (arm *ARM) decode32bitThumb2LoadStoreSingle(opcode uint16) decodeFunction {
 			if l {
 				if s {
 					// "4.6.59 LDRSB (immediate)" of "Thumb-2 Supplement"
-					// T2 encoding
+					// T1 encoding
 					return func() *DisasmEntry {
 						if arm.decodeOnly {
 							return &DisasmEntry{
