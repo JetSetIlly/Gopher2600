@@ -20,6 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
@@ -119,9 +120,13 @@ func (win *winSaveKeyEEPROM) draw() {
 				diff:   win.savekey.EEPROM.Disk[origin : memtop+1],
 				commit: func(idx int, data uint8) {
 					win.img.dbg.PushFunction(func() {
-						if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+						p := win.img.dbg.VCS().RIOT.Ports.RightPlayer
+						if s, ok := p.(ports.PeripheralShim); ok {
+							p = s.Periph()
+						}
+						if sk, ok := p.(*savekey.SaveKey); ok {
 							sk.EEPROM.Poke(uint16(origin+idx), data)
-						} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+						} else if vox, ok := p.(*atarivox.AtariVox); ok {
 							vox.SaveKey.EEPROM.Poke(uint16(origin+idx), data)
 						}
 					})
@@ -157,9 +162,13 @@ func (win *winSaveKeyEEPROM) draw() {
 			imgui.SameLineV(0, 20)
 			if imgui.Button("Save to disk") {
 				win.img.dbg.PushFunction(func() {
-					if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+					p := win.img.dbg.VCS().RIOT.Ports.RightPlayer
+					if s, ok := p.(ports.PeripheralShim); ok {
+						p = s.Periph()
+					}
+					if sk, ok := p.(*savekey.SaveKey); ok {
 						sk.EEPROM.Save()
-					} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+					} else if vox, ok := p.(*atarivox.AtariVox); ok {
 						vox.SaveKey.EEPROM.Save()
 					}
 				})
@@ -168,9 +177,13 @@ func (win *winSaveKeyEEPROM) draw() {
 			imgui.SameLineV(0, 5)
 			if imgui.Button("Reload") {
 				win.img.dbg.PushFunction(func() {
-					if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+					p := win.img.dbg.VCS().RIOT.Ports.RightPlayer
+					if s, ok := p.(ports.PeripheralShim); ok {
+						p = s.Periph()
+					}
+					if sk, ok := p.(*savekey.SaveKey); ok {
 						sk.EEPROM.Restore()
-					} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+					} else if vox, ok := p.(*atarivox.AtariVox); ok {
 						vox.SaveKey.EEPROM.Restore()
 					}
 				})

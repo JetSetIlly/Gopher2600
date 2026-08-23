@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
@@ -121,9 +122,13 @@ func (win *winSaveKeyActivity) drawACK() {
 	imgui.SameLine()
 	if imgui.Checkbox("##savekeyACK", &v) {
 		win.img.dbg.PushFunction(func() {
-			if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+			p := win.img.dbg.VCS().RIOT.Ports.RightPlayer
+			if s, ok := p.(ports.PeripheralShim); ok {
+				p = s.Periph()
+			}
+			if sk, ok := p.(*savekey.SaveKey); ok {
 				sk.Ack = v
-			} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+			} else if vox, ok := p.(*atarivox.AtariVox); ok {
 				vox.SaveKey.Ack = v
 			}
 		})
@@ -150,9 +155,13 @@ func (win *winSaveKeyActivity) drawBits() {
 			panic(err)
 		}
 		win.img.dbg.PushFunction(func() {
-			if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+			p := win.img.dbg.VCS().RIOT.Ports.RightPlayer
+			if s, ok := p.(ports.PeripheralShim); ok {
+				p = s.Periph()
+			}
+			if sk, ok := p.(*savekey.SaveKey); ok {
 				sk.Bits = uint8(v)
-			} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+			} else if vox, ok := p.(*atarivox.AtariVox); ok {
 				vox.SaveKey.Bits = uint8(v)
 			}
 		})
@@ -168,9 +177,13 @@ func (win *winSaveKeyActivity) drawBits() {
 		if seq.rectFill(win.img.cols.saveKeyBit) {
 			v := bits ^ (0x80 >> i)
 			win.img.dbg.PushFunction(func() {
-				if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+				p := win.img.dbg.VCS().RIOT.Ports.RightPlayer
+				if s, ok := p.(ports.PeripheralShim); ok {
+					p = s.Periph()
+				}
+				if sk, ok := p.(*savekey.SaveKey); ok {
 					sk.Bits = v
-				} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+				} else if vox, ok := p.(*atarivox.AtariVox); ok {
 					vox.SaveKey.Bits = v
 				}
 			})
@@ -198,9 +211,13 @@ func (win *winSaveKeyActivity) drawAddress() {
 			panic(err)
 		}
 		win.img.dbg.PushFunction(func() {
-			if sk, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+			p := win.img.dbg.VCS().RIOT.Ports.RightPlayer
+			if s, ok := p.(ports.PeripheralShim); ok {
+				p = s.Periph()
+			}
+			if sk, ok := p.(*savekey.SaveKey); ok {
 				sk.EEPROM.Address = uint16(v)
-			} else if vox, ok := win.img.dbg.VCS().RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+			} else if vox, ok := p.(*atarivox.AtariVox); ok {
 				vox.SaveKey.EEPROM.Address = uint16(v)
 			}
 		})

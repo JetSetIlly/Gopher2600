@@ -50,21 +50,17 @@ func (vcs cachedVCS) plumb(env *environment.Environment) {
 // GetSaveKey returns nil if no savekey is present
 func (vcs cachedVCS) GetSaveKey() *savekey.SaveKey {
 	p := vcs.RIOT.Ports.RightPlayer
-
 	if s, ok := vcs.RIOT.Ports.RightPlayer.(ports.PeripheralShim); ok {
 		p = s.Periph()
 	}
-
 	sk, savekeyActive := p.(*savekey.SaveKey)
 	if savekeyActive {
 		return sk
 	}
-
 	vox, savekeyActive := p.(*atarivox.AtariVox)
 	if savekeyActive {
 		return vox.SaveKey
 	}
-
 	return nil
 }
 
