@@ -121,56 +121,62 @@ func (fp *fragmentParser) codeBlock(l *SourceLine, s string) {
 
 	var sp []string
 
-	// check for comment block start
-	sp = strings.SplitN(s, `/*`, 2)
-	if len(sp) > 1 {
-		// add code to fragments
-		l.Fragments = append(l.Fragments, SourceLineFragment{
-			Type:    FragmentCode,
-			Content: sp[0],
-		})
+	if !fp.inCommentBlock {
+		// check for single-line comment
+		sp = strings.SplitN(s, `//`, 2)
+		if len(sp) > 1 {
+			// if the first half of the split contains an open block comment string then the
+			// block comment takes precedence
+			if !strings.Contains(sp[0], "/*") {
+				if len(sp[0]) > 0 {
+					fp.codeBlock(l, sp[0])
+				}
 
-		fp.inCommentBlock = true
-		l.Fragments = append(l.Fragments, SourceLineFragment{
-			Type:    FragmentComment,
-			Content: `/*`,
-		})
+				l.Fragments = append(l.Fragments, SourceLineFragment{
+					Type:    FragmentComment,
+					Content: `//`,
+				})
 
-		fp.codeBlock(l, sp[1])
-		return
-	}
+				l.Fragments = append(l.Fragments, SourceLineFragment{
+					Type:    FragmentComment,
+					Content: sp[1],
+				})
 
-	// check for single-line comment
-	sp = strings.SplitN(s, `//`, 2)
-	if len(sp) > 1 {
-		// add code to fragments
-		l.Fragments = append(l.Fragments, SourceLineFragment{
-			Type:    FragmentCode,
-			Content: sp[0],
-		})
+				return
+			}
+		}
 
-		l.Fragments = append(l.Fragments, SourceLineFragment{
-			Type:    FragmentComment,
-			Content: `//`,
-		})
+		// check for comment block start
+		sp = strings.SplitN(s, `/*`, 2)
+		if len(sp) > 1 {
+			if len(sp[0]) > 0 {
+				if len(sp[0]) > 0 {
+					fp.codeBlock(l, sp[0])
+				}
+			}
 
-		l.Fragments = append(l.Fragments, SourceLineFragment{
-			Type:    FragmentComment,
-			Content: sp[1],
-		})
+			fp.inCommentBlock = true
+			l.Fragments = append(l.Fragments, SourceLineFragment{
+				Type:    FragmentComment,
+				Content: `/*`,
+			})
 
-		return
+			fp.codeBlock(l, sp[1])
+			return
+		}
 	}
 
 	// check for string block start. care taken not to match a single "
 	// contained in a character literal
 	sp = strings.SplitN(s, `"`, 2)
 	if len(sp) > 1 && !strings.HasSuffix(sp[0], `'`) {
-		// add code to fragments
-		l.Fragments = append(l.Fragments, SourceLineFragment{
-			Type:    FragmentCode,
-			Content: sp[0],
-		})
+		if len(sp[0]) > 0 {
+			// an empty code block does not need to be added
+			l.Fragments = append(l.Fragments, SourceLineFragment{
+				Type:    FragmentCode,
+				Content: sp[0],
+			})
+		}
 
 		fp.inStringBlock = true
 		l.Fragments = append(l.Fragments, SourceLineFragment{
