@@ -82,12 +82,16 @@ func findELF(romFile string) coprocessor.CartCoProcELF {
 	// the file is not an ELF file so the remainder of the function will work
 	// with the path component of the ROM file only
 	pathToROM := filepath.Dir(romFile)
+	if filepath.Base(pathToROM) == "output" {
+		pathToROM = filepath.Dir(pathToROM)
+	}
 
 	filenames := []string{
 		"armcode.elf",
 		"custom2.elf",
 		"main.elf",
 		"ACE_debugging.elf",
+		"cdfj+.elf",
 	}
 
 	subpaths := []string{
