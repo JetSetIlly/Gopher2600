@@ -242,13 +242,16 @@ func (dev *Developer) UpdateStrobe(addr uint32) {
 
 // CheckBreakpoint implements the coprocessor.CartCoProcDeveloper interface.
 func (dev *Developer) CheckBreakpoint(addr uint32) bool {
+	if dev.breakpointsInhibit {
+		return false
+	}
+
 	if dev.source == nil {
 		return false
 	}
 
-	if dev.breakpointsInhibit {
-		return false
-	}
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
 
 	if dev.breakNextInstruction && dev.breakAddress != addr {
 		dev.breakNextInstruction = false
@@ -262,9 +265,6 @@ func (dev *Developer) CheckBreakpoint(addr uint32) bool {
 	if dev.breakpoints.Count() == 0 {
 		return false
 	}
-
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
 
 	ln := dev.source.LinesByAddress[uint64(addr)]
 	if ln == dev.prevBreakpointCheck {
