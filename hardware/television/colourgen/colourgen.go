@@ -45,7 +45,8 @@ type ColourGen struct {
 	AdjustSECAM Adjust
 
 	// gamma is the same for both legacy and non-legacy models
-	Gamma prefs.Float
+	Gamma      prefs.Float
+	NaiveSECAM prefs.Bool
 
 	// grayscale is common to all TV types
 	Grayscale prefs.Bool
@@ -178,6 +179,13 @@ func NewColourGen() (*ColourGen, error) {
 	}
 	c.Gamma.SetHookPost(clearAll)
 
+	// gamma is the same for every variation of colour generation
+	err = c.dsk.Add("television.color.secam.naive", &c.NaiveSECAM)
+	if err != nil {
+		return nil, err
+	}
+	c.NaiveSECAM.SetHookPost(clearAll)
+
 	err = c.dsk.Add("television.color.grayscale", &c.Gamma)
 	if err != nil {
 		return nil, err
@@ -227,6 +235,9 @@ func (c *ColourGen) SetDefaults(all bool, spec string) {
 
 	// colour TV by default
 	c.Grayscale.Set(false)
+
+	// naive SECAM decoding
+	c.NaiveSECAM.Set(true)
 }
 
 // Load colour values from disk
@@ -443,6 +454,10 @@ func (c *ColourGen) GeneratePAL(col signal.ColorSignal, _ signal.ColorSignal, _ 
 func (c *ColourGen) GenerateSECAM(col signal.ColorSignal, prev signal.ColorSignal, odd bool) color.RGBA {
 	if col == signal.ZeroBlack {
 		return c.generateZeroBlack(c.AdjustSECAM)
+	}
+
+	if c.NaiveSECAM.Get().(bool) {
+		prev = col
 	}
 
 	// the hue nibble of the two signal.ColourSignal values is ignored by SECAM
