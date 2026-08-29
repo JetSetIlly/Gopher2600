@@ -100,6 +100,12 @@ func (win *winPrefs) drawColour() {
 				imgui.Spacing()
 				win.drawPALPhaseAdj()
 			}
+		case specification.SpecSECAM.ID:
+			imgui.Spacing()
+			naive := specification.ColourGen.NaiveSECAM.Get().(bool)
+			if imgui.Checkbox("Naive SECAM Signal", &naive) {
+				specification.ColourGen.NaiveSECAM.Set(naive)
+			}
 		}
 	}
 }
