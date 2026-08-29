@@ -42,6 +42,12 @@ jobs:
         export DYLD_LIBRARY_PATH="$(brew --prefix sdl2)/lib"
         dylibbundler -x ".package/Gopher2600.app/Contents/MacOS/$BINARY_NAME" -b -cd -d .package/Gopher2600.app/Contents/libs
         cp "$(brew --prefix sdl3)/lib/libSDL3.dylib" .package/Gopher2600.app/Contents/libs/
+    - name: Sign app bundle
+      run: |
+        codesign --force --sign - .package/Gopher2600.app/Contents/libs/*.dylib
+        codesign --force --sign - ".package/Gopher2600.app/Contents/MacOS/$BINARY_NAME"
+        codesign --force --sign - .package/Gopher2600.app
+        codesign --verify --deep --strict --verbose=2 .package/Gopher2600.app
     - name: Zip package
       run: |
         cd .package
@@ -99,6 +105,12 @@ jobs:
         export DYLD_LIBRARY_PATH="$(brew --prefix sdl2)/lib"
         dylibbundler -x ".package/Gopher2600.app/Contents/MacOS/$BINARY_NAME" -b -cd -d .package/Gopher2600.app/Contents/libs
         cp "$(brew --prefix sdl3)/lib/libSDL3.dylib" .package/Gopher2600.app/Contents/libs/
+    - name: Sign app bundle
+      run: |
+        codesign --force --sign - .package/Gopher2600.app/Contents/libs/*.dylib
+        codesign --force --sign - ".package/Gopher2600.app/Contents/MacOS/$BINARY_NAME"
+        codesign --force --sign - .package/Gopher2600.app
+        codesign --verify --deep --strict --verbose=2 .package/Gopher2600.app
     - name: Zip package
       run: |
         cd .package
