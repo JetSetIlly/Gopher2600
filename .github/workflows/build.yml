@@ -14,7 +14,7 @@ jobs:
     - name: Install dependencies
       run: |
         brew install go
-        brew install sdl2
+        brew install sdl3
         brew install dylibbundler
     - uses: actions/checkout@v6
     - name: Extract version from Makefile
@@ -38,7 +38,7 @@ jobs:
         plutil -insert CFBundleShortVersionString -string "${{ steps.version.outputs.version }}" .package/Gopher2600.app/Contents/Info.plist
     - name: Run dylibbundler
       run: |
-        export DYLD_LIBRARY_PATH="$(brew --prefix sdl2)/lib"
+        export DYLD_LIBRARY_PATH="$(brew --prefix sdl3)/lib"
         dylibbundler -x ".package/Gopher2600.app/Contents/MacOS/$BINARY_NAME" -b -cd -d .package/Gopher2600.app/Contents/libs
     - name: Zip package
       run: |
@@ -69,7 +69,7 @@ jobs:
     - name: Install dependencies
       run: |
         brew install go
-        brew install sdl2
+        brew install sdl3
         brew install dylibbundler
     - uses: actions/checkout@v6
     - name: Extract version from Makefile
@@ -93,7 +93,7 @@ jobs:
         plutil -insert CFBundleShortVersionString -string "${{ steps.version.outputs.version }}" .package/Gopher2600.app/Contents/Info.plist
     - name: Run dylibbundler
       run: |
-        export DYLD_LIBRARY_PATH="$(brew --prefix sdl2)/lib"
+        export DYLD_LIBRARY_PATH="$(brew --prefix sdl3)/lib"
         dylibbundler -x ".package/Gopher2600.app/Contents/MacOS/$BINARY_NAME" -b -cd -d .package/Gopher2600.app/Contents/libs
     - name: Zip package
       run: |
