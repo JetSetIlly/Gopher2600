@@ -349,6 +349,11 @@ func (t CoProcYieldType) Normal() bool {
 	return t == YieldRunning || t == YieldProgramEnded || t == YieldSyncWithVCS
 }
 
+// IsInBreak returns true if the yield type is a result of a breakpoint
+func (t CoProcYieldType) IsInBreak() bool {
+	return t == YieldBreakpoint
+}
+
 // Bug returns true if the yield type indicates a likely bug
 func (t CoProcYieldType) Bug() bool {
 	return t == YieldUndefinedBehaviour || t == YieldUnimplementedFeature ||
