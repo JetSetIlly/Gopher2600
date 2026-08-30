@@ -18,6 +18,8 @@ package sdlimgui
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/coprocessor"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 
@@ -184,6 +186,23 @@ func (win *winControl) drawStep() {
 
 		imgui.EndTable()
 	}
+
+	win.img.dbg.CoProcDev.BorrowYieldState(func(yld *yield.State) {
+		if yld == nil {
+			return
+		}
+		if yld.Reason == coprocessor.YieldBreakpoint {
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+			id := win.img.cache.VCS.Mem.Cart.GetCoProc().ProcessorID()
+			win.repeatButtonV(fmt.Sprintf("%s Step Instruction", id), func() {
+				if win.img.dbg.State() == govern.Paused {
+					win.img.term.pushCommand("COPROC STEP")
+				}
+			}, fillWidth)
+		}
+	})
 }
 
 func (win *winControl) drawFPS() {
