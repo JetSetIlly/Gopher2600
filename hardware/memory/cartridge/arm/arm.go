@@ -61,7 +61,7 @@ const cycleLimit = 1500000
 const instructionsLimit = 1300000
 
 // stepFunction variations are a result of different ARM architectures
-type stepFunction func(opcode uint16, memIdx int)
+type stepFunction func(opcode uint16, memIdx int) bool
 
 // decodeFunction represents one of the functions that decodes a specific group
 // of ARM instructions. the decodeOnly flag in the ARM type controls how the function
@@ -913,7 +913,9 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 		expectedSP := arm.state.registers[rSP]
 
 		// execute instruction
-		arm.stepFunction(opcode, memIdx)
+		if !arm.stepFunction(opcode, memIdx) {
+			break // for loop
+		}
 
 		// if program counter is not what we expect then that means we have hit a branch
 		arm.state.branchedExecution = expectedPC != arm.state.registers[rPC]
@@ -1057,10 +1059,15 @@ func (arm *ARM) checkBreakpoints() {
 	}
 }
 
-func (arm *ARM) stepARM7TDMI(opcode uint16, memIdx int) {
+func (arm *ARM) stepARM7TDMI(opcode uint16, memIdx int) bool {
 	df := arm.state.currentExecutionCache[memIdx]
 	if df == nil {
 		df = arm.decodeThumb(opcode)
+		if df == nil {
+			arm.state.yield.Type = coprocessor.YieldExecutionError
+			arm.state.yield.Error = fmt.Errorf("%04x is not a valid ARM Thumb instruction", opcode)
+			return false
+		}
 		arm.state.currentExecutionCache[memIdx] = df
 	}
 
@@ -1080,9 +1087,10 @@ func (arm *ARM) stepARM7TDMI(opcode uint16, memIdx int) {
 	}
 
 	df()
+	return true
 }
 
-func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
+func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) bool {
 	// decode function to execute
 	var df decodeFunction
 
@@ -1118,30 +1126,44 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 	// new 32bit functions always execute
 	// if the opcode indicates that this is a 32bit thumb instruction
 	// then we need to resolve that regardless of any IT block
-	if arm.state.status.itMask != 0b0000 && !arm.state.instruction32bitDecoding {
-		r, _ := arm.state.status.condition(arm.state.status.itCond)
+	if !arm.state.instruction32bitDecoding {
+		if arm.state.status.itMask != 0b0000 {
+			r, _ := arm.state.status.condition(arm.state.status.itCond)
 
-		if r {
-			if df != nil {
+			if r {
+				if df == nil {
+					arm.state.yield.Type = coprocessor.YieldExecutionError
+					arm.state.yield.Error = fmt.Errorf("%04x %04x is not a valid ARM Thumb instruction",
+						arm.state.instruction32bitOpcodeHi, opcode)
+					return false
+				}
 				df()
+			} else {
+				// "A7.3.2: Conditional execution of undefined instructions
+				//
+				// If an undefined instruction fails a condition check in Armv7-M, the instruction
+				// behaves as a NOP and does not cause an exception"
+				//
+				// page A7-179 of the "ARMv7-M Architecture Reference Manual"
 			}
+
+			// update IT conditions only if the opcode is not a 32bit opcode
+			// update LSB of IT condition by copying the MSB of the IT mask
+			arm.state.status.itCond &= 0b1110
+			arm.state.status.itCond |= (arm.state.status.itMask >> 3)
+
+			// shift IT mask
+			arm.state.status.itMask = (arm.state.status.itMask << 1) & 0b1111
 		} else {
-			// "A7.3.2: Conditional execution of undefined instructions
-			//
-			// If an undefined instruction fails a condition check in Armv7-M, the instruction
-			// behaves as a NOP and does not cause an exception"
-			//
-			// page A7-179 of the "ARMv7-M Architecture Reference Manual"
+			if df == nil {
+				arm.state.yield.Type = coprocessor.YieldExecutionError
+				arm.state.yield.Error = fmt.Errorf("%04x %04x is not a valid ARM Thumb instruction",
+					arm.state.instruction32bitOpcodeHi, opcode)
+				return false
+			}
+			df()
 		}
-
-		// update IT conditions only if the opcode is not a 32bit opcode
-		// update LSB of IT condition by copying the MSB of the IT mask
-		arm.state.status.itCond &= 0b1110
-		arm.state.status.itCond |= (arm.state.status.itMask >> 3)
-
-		// shift IT mask
-		arm.state.status.itMask = (arm.state.status.itMask << 1) & 0b1111
-	} else if df != nil {
-		df()
 	}
+
+	return true
 }
