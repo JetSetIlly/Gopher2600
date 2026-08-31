@@ -16,6 +16,8 @@
 package debugger
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -115,9 +117,13 @@ func (h *haltCoordination) check() bool {
 	}
 
 	if !h.cartridgeYield.Type.Normal() {
+		id := h.dbg.vcs.Mem.Cart.GetCoProc().ProcessorID()
 		h.haltReason = HaltReason{
-			Reason: string(h.cartridgeYield.Type),
+			Reason: fmt.Sprintf("%s %s", id, h.cartridgeYield.Type),
 			Coords: h.dbg.vcs.TV.GetCoords(),
+		}
+		if h.cartridgeYield.Error != nil {
+			h.haltReason.Detail = h.cartridgeYield.Error.Error()
 		}
 		h.halt = true
 		return false
