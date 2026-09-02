@@ -179,3 +179,28 @@ func (img *SdlImgui) drawFilenameAndLineNumber(filename string, lineStart int, l
 	}
 	imgui.PopStyleColor()
 }
+
+// add a warning symbol with tooltip that indicates potential problems when interpreting the
+// coprocessor source information (eg. profiling data)
+//
+// colour of symbol is red if 'immediate mode' is enabled and yellow if an optimised compilation is
+// detected. symbol is not present if neither case is true
+func (img *SdlImgui) drawCoprocSourceWarning(src *dwarf.Source) {
+	immediate := img.dbg.VCS().Env.Prefs.Cartridge.ARM.Immediate.Get().(bool)
+	warning := immediate || src.Optimisation
+	if warning {
+		if immediate {
+			imgui.PushStyleColor(imgui.StyleColorText, img.cols.Danger)
+		} else {
+			imgui.PushStyleColor(imgui.StyleColorText, img.cols.Warning)
+		}
+		imgui.Text(string(fonts.Warning))
+		imgui.PopStyleColor()
+
+		if immediate {
+			img.imguiTooltipSimple("Emulation in 'immediate ARM execution' mode. Profiling unavailable")
+		} else if src.Optimisation {
+			img.imguiTooltipSimple("Source compiled with optimisation. Some profiling results may be misleading")
+		}
+	}
+}

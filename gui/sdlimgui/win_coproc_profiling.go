@@ -332,16 +332,8 @@ func (win *winCoProcProfiling) draw(coproc coprocessor.CartCoProc) {
 			imgui.Separator()
 			imgui.Spacing()
 
-			if src.Optimisation {
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
-				imgui.Text(string(fonts.Warning))
-				imgui.PopStyleColor()
-
-				win.img.imguiTooltipSimple(`Source compiled with optimisation. Some figures may be misleading`)
-
-				imgui.SameLineV(0, 15)
-			}
-
+			win.img.drawCoprocSourceWarning(src)
+			imgui.SameLineV(0, 15)
 			win.drawFrameStats(coproc)
 		})
 	})

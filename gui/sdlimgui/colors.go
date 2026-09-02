@@ -42,6 +42,7 @@ type imguiColors struct {
 	TrueFalse   imgui.Vec4
 	Transparent imgui.Vec4
 	Warning     imgui.Vec4
+	Danger      imgui.Vec4
 	Cancel      imgui.Vec4
 
 	// menu bar colours
@@ -278,7 +279,8 @@ func newColors() *imguiColors {
 		False:       imgui.Vec4{X: 0.6, Y: 0.3, Z: 0.3, W: 1.0},
 		TrueFalse:   imgui.Vec4{X: 0.6, Y: 0.6, Z: 0.3, W: 1.0},
 		Transparent: imgui.Vec4{X: 0.0, Y: 0.0, Z: 0.0, W: 0.0},
-		Warning:     imgui.Vec4{X: 1.0, Y: 0.2, Z: 0.2, W: 1.0},
+		Warning:     imgui.Vec4{X: 1.0, Y: 1.0, Z: 0.2, W: 1.0},
+		Danger:      imgui.Vec4{X: 1.0, Y: 0.2, Z: 0.2, W: 1.0},
 		Cancel:      imgui.Vec4{X: 1.0, Y: 0.2, Z: 0.2, W: 1.0},
 
 		// menu bar colours
