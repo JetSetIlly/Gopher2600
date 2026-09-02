@@ -244,6 +244,9 @@ func (win *winCoProcSource) draw() {
 			}
 			imgui.SameLineV(0, 20)
 			imgui.Checkbox("Highlight Comments & String Literals", &win.syntaxHighlighting)
+
+			imgui.SameLineV(0, 20)
+			win.img.drawCoprocSourceWarning(src)
 		})
 
 		if imgui.BeginPopup(sourcePopupID) {
