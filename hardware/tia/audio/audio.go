@@ -55,8 +55,8 @@ type Audio struct {
 	//
 	// "There are two audio circuits for generating sound. They are identical but
 	// completely independent and can be operated simultaneously [...]"
-	channel0 channel
-	channel1 channel
+	Channel0 channel
+	Channel1 channel
 
 	// the volume output for each channel
 	Vol0 uint8
@@ -90,8 +90,8 @@ func (au *Audio) SetTracker(tracker Tracker) {
 	}
 
 	au.tracker = tracker
-	au.channel0.tracker = tracker
-	au.channel1.tracker = tracker
+	au.Channel0.tracker = tracker
+	au.Channel1.tracker = tracker
 }
 
 // Snapshot creates a copy of the TIA Audio sub-system in its current state.
@@ -103,9 +103,9 @@ func (au *Audio) Snapshot() *Audio {
 func (au *Audio) String() string {
 	s := strings.Builder{}
 	s.WriteString("ch0: ")
-	s.WriteString(au.channel0.String())
+	s.WriteString(au.Channel0.String())
 	s.WriteString("  ch1: ")
-	s.WriteString(au.channel1.String())
+	s.WriteString(au.Channel1.String())
 	return s.String()
 }
 
@@ -115,18 +115,18 @@ func (au *Audio) Step() bool {
 	var changed bool
 
 	// sum volume bits
-	au.sampleSum[0] += int(au.channel0.actualVolume())
-	au.sampleSum[1] += int(au.channel1.actualVolume())
+	au.sampleSum[0] += int(au.Channel0.actualVolume())
+	au.sampleSum[1] += int(au.Channel1.actualVolume())
 	au.sampleSumCt++
 
 	if (au.clock228 >= 8 && au.clock228 <= 10) || (au.clock228 >= 80 && au.clock228 <= 82) {
-		au.channel0.phase0()
-		au.channel1.phase0()
+		au.Channel0.phase0()
+		au.Channel1.phase0()
 	}
 
 	if (au.clock228 >= 36 && au.clock228 <= 38) || (au.clock228 >= 148 && au.clock228 <= 150) {
-		au.channel0.phase1()
-		au.channel1.phase1()
+		au.Channel0.phase1()
+		au.Channel1.phase1()
 
 		// take average of sum of volume bits
 		au.Vol0 = uint8(au.sampleSum[0]/au.sampleSumCt) & 0x0f
@@ -151,5 +151,5 @@ func (au *Audio) Step() bool {
 // no equivalent PokeChannels() function. Poking can be done via the normal
 // memory poke mechanism
 func (au *Audio) PeekChannels() [2]Registers {
-	return [2]Registers{au.channel0.registers, au.channel1.registers}
+	return [2]Registers{au.Channel0.Registers, au.Channel1.Registers}
 }
