@@ -19,8 +19,8 @@ type channel struct {
 	// the addition of a tracker is not required
 	tracker Tracker
 
-	// registers for this channel
-	registers Registers
+	// Registers for this channel
+	Registers Registers
 
 	clockEnable      bool
 	noiseFeedback    bool
@@ -33,7 +33,7 @@ type channel struct {
 }
 
 func (ch *channel) String() string {
-	return ch.registers.String()
+	return ch.Registers.String()
 }
 
 func (ch *channel) phase0() {
@@ -42,7 +42,7 @@ func (ch *channel) phase0() {
 	if ch.clockEnable {
 		ch.noiseCounterBit4 = ch.noiseCounter&0x01 != 0x00
 
-		switch ch.registers.Control & 0x03 {
+		switch ch.Registers.Control & 0x03 {
 		case 0x00:
 			fallthrough
 		case 0x01:
@@ -53,11 +53,11 @@ func (ch *channel) phase0() {
 			ch.pulseCounterHold = !ch.noiseCounterBit4
 		}
 
-		switch ch.registers.Control & 0x03 {
+		switch ch.Registers.Control & 0x03 {
 		case 0x00:
 			ch.noiseFeedback = (((ch.pulseCounter ^ ch.noiseCounter) & 0x01) != 0x00) ||
 				!(ch.noiseCounter != 0x00 || ch.pulseCounter != 0x0a) ||
-				(ch.registers.Control&0x0c == 0x00)
+				(ch.Registers.Control&0x0c == 0x00)
 		default:
 			var n uint8
 			if ch.noiseCounter&0x04 != 0x00 {
@@ -67,9 +67,9 @@ func (ch *channel) phase0() {
 		}
 	}
 
-	ch.clockEnable = ch.divCounter == ch.registers.Freq
+	ch.clockEnable = ch.divCounter == ch.Registers.Freq
 
-	if ch.divCounter == ch.registers.Freq || ch.divCounter == 0x1f {
+	if ch.divCounter == ch.Registers.Freq || ch.divCounter == 0x1f {
 		ch.divCounter = 0
 	} else {
 		ch.divCounter++
@@ -82,7 +82,7 @@ func (ch *channel) phase1() {
 	if ch.clockEnable {
 		pulseFeedback := false
 
-		switch ch.registers.Control >> 2 {
+		switch ch.Registers.Control >> 2 {
 		case 0x00:
 			var n uint8
 			if ch.pulseCounter&0x02 != 0x00 {
@@ -90,7 +90,7 @@ func (ch *channel) phase1() {
 			}
 			pulseFeedback = (n^(ch.pulseCounter&0x01) != 0x00) &&
 				(ch.pulseCounter != 0x0a) &&
-				(ch.registers.Control&0x03 != 0x00)
+				(ch.Registers.Control&0x03 != 0x00)
 		case 0x01:
 			pulseFeedback = ch.pulseCounter&0x08 == 0x00
 		case 0x02:
@@ -119,5 +119,5 @@ func (ch *channel) phase1() {
 // the lower bit of the pulsecounter. this is then used in combination with the
 // volume of the other channel to get the actual output volume
 func (ch *channel) actualVolume() uint8 {
-	return (ch.pulseCounter & 0x01) * ch.registers.Volume
+	return (ch.pulseCounter & 0x01) * ch.Registers.Volume
 }

@@ -55,23 +55,23 @@ func CmpRegisters(a Registers, b Registers) bool {
 func (au *Audio) ReadMemRegisters(data chipbus.ChangedRegister) bool {
 	switch data.Register {
 	case cpubus.AUDC0:
-		au.channel0.registers.Control = data.Value & 0x0f
-		au.tracker.AUDCx(au.env, 0, au.channel0.registers.Control)
+		au.Channel0.Registers.Control = data.Value & 0x0f
+		au.tracker.AUDCx(au.env, 0, au.Channel0.Registers.Control)
 	case cpubus.AUDC1:
-		au.channel1.registers.Control = data.Value & 0x0f
-		au.tracker.AUDCx(au.env, 1, au.channel1.registers.Control)
+		au.Channel1.Registers.Control = data.Value & 0x0f
+		au.tracker.AUDCx(au.env, 1, au.Channel1.Registers.Control)
 	case cpubus.AUDF0:
-		au.channel0.registers.Freq = data.Value & 0x1f
-		au.tracker.AUDFx(au.env, 0, au.channel0.registers.Freq)
+		au.Channel0.Registers.Freq = data.Value & 0x1f
+		au.tracker.AUDFx(au.env, 0, au.Channel0.Registers.Freq)
 	case cpubus.AUDF1:
-		au.channel1.registers.Freq = data.Value & 0x1f
-		au.tracker.AUDFx(au.env, 1, au.channel1.registers.Freq)
+		au.Channel1.Registers.Freq = data.Value & 0x1f
+		au.tracker.AUDFx(au.env, 1, au.Channel1.Registers.Freq)
 	case cpubus.AUDV0:
-		au.channel0.registers.Volume = data.Value & 0x0f
-		au.tracker.AUDVx(au.env, 0, au.channel0.registers.Volume)
+		au.Channel0.Registers.Volume = data.Value & 0x0f
+		au.tracker.AUDVx(au.env, 0, au.Channel0.Registers.Volume)
 	case cpubus.AUDV1:
-		au.channel1.registers.Volume = data.Value & 0x0f
-		au.tracker.AUDVx(au.env, 1, au.channel1.registers.Volume)
+		au.Channel1.Registers.Volume = data.Value & 0x0f
+		au.tracker.AUDVx(au.env, 1, au.Channel1.Registers.Volume)
 	default:
 		return true
 	}
