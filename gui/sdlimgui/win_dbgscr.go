@@ -650,10 +650,6 @@ func (win *winDbgScr) drawOverlayCombo() {
 		win.img.imguiTooltip(func() {
 			imguiColorLabel("WSYNC", win.img.cols.reflectionColors[reflection.WSYNC])
 		}, true)
-	case reflection.OverlayLabels[reflection.OverlayWSYNC]:
-		win.img.imguiTooltip(func() {
-			imguiColorLabel("WSYNC", win.img.cols.reflectionColors[reflection.WSYNC])
-		}, true)
 	case reflection.OverlayLabels[reflection.OverlayCollision]:
 		win.img.imguiTooltip(func() {
 			imguiColorLabel("Collision", win.img.cols.reflectionColors[reflection.Collision])
