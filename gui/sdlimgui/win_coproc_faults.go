@@ -168,7 +168,7 @@ func (win *winCoProcFaults) draw(flt *faults.Faults, src *dwarf.Source) {
 							imgui.Spacing()
 							imgui.Separator()
 							imgui.Spacing()
-							win.img.drawDisasmForCoProc("coprocFaults", ln.Instruction, ln, false, false, 0)
+							win.img.drawDisasmForCoProc("coprocFaults", ln.Instruction, ln, false, 0, true)
 						}
 					} else {
 						imgui.Spacing()

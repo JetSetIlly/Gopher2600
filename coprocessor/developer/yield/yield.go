@@ -31,3 +31,13 @@ type State struct {
 func (yld State) Cmp(w State) bool {
 	return yld.Address == w.Address && yld.Reason == w.Reason
 }
+
+// AddressInLine returns true if yield address belongs to the supplied source line
+func (yld State) AddressInLine(ln *dwarf.SourceLine) bool {
+	for _, a := range ln.Instruction {
+		if yld.Address == a.Addr {
+			return true
+		}
+	}
+	return false
+}
