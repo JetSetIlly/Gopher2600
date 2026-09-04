@@ -1048,12 +1048,7 @@ func (arm *ARM) checkBreakpoints() {
 
 		if arm.dev.CheckBreakpoint(addr) {
 			arm.state.yield.Type = coprocessor.YieldBreakpoint
-			arm.state.yield.Error = fmt.Errorf("%08x", addr)
-
-			// we call OnYield here with the address you used to check for the
-			// breakpoint not sure if this is correct or whether we should
-			// simply call OnYield() in the normal way (at the end of the Run()
-			// function)
+			arm.state.yield.Error = fmt.Errorf("Break at %08x", addr)
 			arm.dev.OnYield(addr, arm.state.yield)
 		}
 	}

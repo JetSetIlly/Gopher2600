@@ -120,6 +120,7 @@ const (
 	Phantom                = '\uf6e2'
 	MonitorSync            = '\uf023'
 	MonitorSpeedWarning    = '\uf071'
+	CursorRight            = '\uf105' // same as TermPrompt
 )
 
 //go:embed "Gopher2600-Icons.ttf"

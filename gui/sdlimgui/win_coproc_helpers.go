@@ -41,15 +41,14 @@ func (img *SdlImgui) drawRegistersForCoProcDisasmEntry(id string, e arm.DisasmEn
 }
 
 func (img *SdlImgui) drawDisasmForCoProc(id string, disasm []*dwarf.SourceInstruction, ln *dwarf.SourceLine,
-	multiline bool, showYield bool, yldAddress uint32) {
+	indicator bool, address uint32, tooltip bool) {
 
-	if imgui.BeginTable(fmt.Sprintf("%s##disasmTable", id), 4) {
-		// draw disassembly, colouring the text according to whether the disassembly entry
-		// is associated with the current line (ie. the one the mouse is over)
+	flgs := imgui.TableFlagsSizingFixedFit
+	if imgui.BeginTableV(fmt.Sprintf("%s##disasmTable", id), 4, flgs, imgui.Vec2{}, 1.0) {
 		yldLine := 0
 		for i := range disasm {
 			d := disasm[i]
-			if d.Addr == yldAddress {
+			if d.Addr == address {
 				yldLine = i
 				break
 			}
@@ -57,21 +56,18 @@ func (img *SdlImgui) drawDisasmForCoProc(id string, disasm []*dwarf.SourceInstru
 
 		// find window limits
 		var start, end int
+		start = 0
+		end = len(disasm)
 
-		// number of entries shown
-		const windowSize = 10
-
-		if windowSize < 0 || multiline {
-			start = 0
-			end = len(disasm)
-		} else {
-			// maximum the number of lines to show in the 'window'
+		// the maximum the number of lines to show in the 'window' depends on the tooltip flag
+		if tooltip {
+			const windowSize = 10
 			start = max(yldLine-(windowSize/2), 0)
 			end = min(start+windowSize, len(disasm))
 		}
 
 		// add prelude elipses if the 'window' is not placed at the beginning of the list
-		if start > 0 {
+		if tooltip && start > 0 {
 			imgui.TableNextRow()
 			imgui.TableNextColumn()
 			imgui.TableNextColumn()
@@ -96,18 +92,12 @@ func (img *SdlImgui) drawDisasmForCoProc(id string, disasm []*dwarf.SourceInstru
 			imgui.PopStyleColor()
 
 			imgui.TableNextColumn()
-			if showYield {
-				// simple way of making sure the yield column doesn't change width
-				// is to always print the icon but to use an the window backtround
-				// colour if the icon is to be invisible
-				if d.Addr == yldAddress {
+			if indicator {
+				if d.Addr == address {
 					imgui.PushStyleColor(imgui.StyleColorText, img.cols.CoProcSourceYield)
-				} else {
-					imgui.PushStyleColor(imgui.StyleColorText, img.cols.WindowBg)
+					imgui.Text(string(fonts.TermPrompt))
+					imgui.PopStyleColor()
 				}
-
-				imgui.Text(string(fonts.Breakpoint))
-				imgui.PopStyleColor()
 			}
 
 			imgui.TableNextColumn()
@@ -130,7 +120,7 @@ func (img *SdlImgui) drawDisasmForCoProc(id string, disasm []*dwarf.SourceInstru
 		}
 
 		// add epilogue elipses if the 'window' does not reach the end of the list
-		if end < len(disasm) {
+		if tooltip && end < len(disasm) {
 			imgui.Text("...")
 		}
 		imgui.EndTable()
