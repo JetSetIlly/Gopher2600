@@ -18,8 +18,8 @@
 package plainterm
 
 import (
+	"bufio"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
@@ -31,26 +31,25 @@ import (
 // terminal in whatever mode it started, probably cooked mode. As such, it
 // offers only rudimentary editing facility and little control over output.
 type PlainTerminal struct {
-	input      io.Reader
-	output     io.Writer
+	input      *bufio.Reader
+	output     *bufio.Writer
 	realInput  bool
 	realOutput bool
 	silenced   bool
-	buffer     []byte
 }
 
 // Initialise perfoms any setting up required for the terminal.
 func (pt *PlainTerminal) Initialise() error {
-	pt.input = os.Stdin
-	pt.output = os.Stdout
+	pt.input = bufio.NewReader(os.Stdin)
+	pt.output = bufio.NewWriter(os.Stdout)
 	pt.realInput = term.IsTerminal(int(os.Stdin.Fd()))
 	pt.realOutput = term.IsTerminal(int(os.Stdout.Fd()))
-	pt.buffer = make([]byte, 255)
 	return nil
 }
 
 // CleanUp perfoms any cleaning up required for the terminal.
 func (pt *PlainTerminal) CleanUp() {
+	pt.output.Flush()
 }
 
 // RegisterTabCompletion adds an implementation of TabCompletion to the terminal.
@@ -78,8 +77,9 @@ func (pt PlainTerminal) TermPrintLine(style terminal.Style, s string) {
 		s = fmt.Sprintf("* %s", s)
 	}
 
-	pt.output.Write([]byte(s))
-	pt.output.Write([]byte("\n"))
+	pt.output.WriteString(s)
+	pt.output.WriteString("\n")
+	pt.output.Flush()
 }
 
 // TermRead implements the terminal.Input interface.
@@ -93,8 +93,11 @@ func (pt PlainTerminal) TermRead(prompt terminal.Prompt, events *terminal.ReadEv
 		pt.output.Write([]byte(prompt.String()))
 	}
 
-	n, err := pt.input.Read(pt.buffer)
+	s, err := pt.input.ReadString('\n')
 	if err != nil {
+		// from the ReadString docs: "ReadString returns err != nil if and only if the returned data
+		// does not end in delim". we never want to process partially read commands so we always
+		// return on error regardless of the error type or the amount of data read
 		return "", err
 	}
 
@@ -110,7 +113,7 @@ func (pt PlainTerminal) TermRead(prompt terminal.Prompt, events *terminal.ReadEv
 	default:
 	}
 
-	return string(pt.buffer[:n]), nil
+	return s, nil
 }
 
 // TermReadCheck implements the terminal.Input interface.
