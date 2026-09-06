@@ -18,7 +18,6 @@ package sdlimgui
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
@@ -191,7 +190,7 @@ func (win *winControl) drawStep() {
 		if yld == nil {
 			return
 		}
-		if yld.Reason == coprocessor.YieldBreakpoint {
+		if yld.Reason.UserInitiated() {
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()

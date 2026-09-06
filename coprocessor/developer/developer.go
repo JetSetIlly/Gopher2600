@@ -241,42 +241,49 @@ func (dev *Developer) UpdateStrobe(addr uint32) {
 }
 
 // CheckBreakpoint implements the coprocessor.CartCoProcDeveloper interface.
-func (dev *Developer) CheckBreakpoint(addr uint32) bool {
+func (dev *Developer) CheckBreakpoint(addr uint32) (bool, coprocessor.CoProcYield) {
 	if dev.breakpointsInhibit {
-		return false
+		return false, coprocessor.CoProcYield{}
 	}
 
 	if dev.source == nil {
-		return false
+		return false, coprocessor.CoProcYield{}
 	}
 
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
+	// check temporary "next instruction" breakpoint
 	if dev.breakNextInstruction && dev.breakAddress != addr {
 		dev.breakNextInstruction = false
 		dev.breakAddress = addr
-		return true
+		return true, coprocessor.CoProcYield{
+			Type:  coprocessor.YieldUserStep,
+			Error: fmt.Errorf("Stepped to %08x", addr),
+		}
 	}
 
 	dev.breakpointsLock.Lock()
 	defer dev.breakpointsLock.Unlock()
 
 	if dev.breakpoints.Count() == 0 {
-		return false
+		return false, coprocessor.CoProcYield{}
 	}
 
 	ln := dev.source.LinesByAddress[uint64(addr)]
 	if ln == dev.prevBreakpointCheck {
-		return false
+		return false, coprocessor.CoProcYield{}
 	}
 	dev.prevBreakpointCheck = ln
 
 	if dev.breakpoints.Check(addr) {
 		dev.breakAddress = addr
-		return true
+		return true, coprocessor.CoProcYield{
+			Type:  coprocessor.YieldUserBreakpoint,
+			Error: fmt.Errorf("Break at %08x", addr),
+		}
 	}
-	return false
+	return false, coprocessor.CoProcYield{}
 }
 
 // HasSource returns true if source information has been found.
