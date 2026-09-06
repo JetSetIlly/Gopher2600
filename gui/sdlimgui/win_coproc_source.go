@@ -535,7 +535,7 @@ func (win *winCoProcSource) drawSource(selectedFile *dwarf.SourceFile, yieldLine
 
 						// the nature of the coproc disassembly depends on the yield state
 						if len(ln.Instruction) > 0 {
-							if win.yieldState.Reason == coprocessor.YieldBreakpoint {
+							if win.yieldState.Reason.UserInitiated() {
 								win.img.drawDisasmForCoProc("coprocSource", disasm, ln, true, win.yieldState.Address, true)
 							} else {
 								win.img.drawDisasmForCoProc("coprocSource", disasm, ln, false, ln.Instruction[0].Addr, true)
@@ -616,7 +616,7 @@ func (win *winCoProcSource) drawSource(selectedFile *dwarf.SourceFile, yieldLine
 
 			// assembly view for lines at a breakpoint yield
 			win.img.dbg.CoProcDev.BorrowYieldState(func(yld *yield.State) {
-				if yld.Reason != coprocessor.YieldBreakpoint {
+				if !yld.Reason.UserInitiated() {
 					return
 				}
 				if len(ln.Instruction) > 0 && yld.AddressInLine(ln) {

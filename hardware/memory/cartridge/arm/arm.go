@@ -685,8 +685,8 @@ func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 		defer func() {
 			// I used to call t1 and tim2 resolve() but that's no longer necessary
 
-			// breakpoints handle OnYield slightly differently
-			if arm.state.yield.Type != coprocessor.YieldBreakpoint {
+			// OnYield is used slightly differently when yield has been user initiated
+			if !arm.state.yield.Type.UserInitiated() {
 				arm.logYield()
 
 				// instructionPC is the correct value to use with the OnYield()
@@ -1046,9 +1046,8 @@ func (arm *ARM) checkBreakpoints() {
 			addr = arm.state.executingPC
 		}
 
-		if arm.dev.CheckBreakpoint(addr) {
-			arm.state.yield.Type = coprocessor.YieldBreakpoint
-			arm.state.yield.Error = fmt.Errorf("Break at %08x", addr)
+		if ok, yld := arm.dev.CheckBreakpoint(addr); ok {
+			arm.state.yield = yld
 			arm.dev.OnYield(addr, arm.state.yield)
 		}
 	}

@@ -266,7 +266,7 @@ type CartCoProcDeveloper interface {
 	HighAddress() uint32
 
 	// checks if address has a breakpoint assigned to it
-	CheckBreakpoint(addr uint32) bool
+	CheckBreakpoint(addr uint32) (bool, CoProcYield)
 
 	// update strobed variables
 	UpdateStrobe(addr uint32)
@@ -315,9 +315,6 @@ const (
 	// Expected YieldReason for ACE and ELF type ROMs
 	YieldSyncWithVCS CoProcYieldType = "Sync with VCS"
 
-	// a user supplied breakpoint has been encountered
-	YieldBreakpoint CoProcYieldType = "Breakpoint"
-
 	// the program has triggered undefined behaviour in the coprocessor
 	YieldUndefinedBehaviour CoProcYieldType = "Undefined Behaviour"
 
@@ -341,6 +338,14 @@ const (
 
 	// the coprocessor has not yet yielded and is still running
 	YieldRunning CoProcYieldType = "Running"
+
+	// user initiated yields
+
+	// a user supplied breakpoint has been encountered
+	YieldUserBreakpoint CoProcYieldType = "Breakpoint"
+
+	// user has asked to step an instruction
+	YieldUserStep CoProcYieldType = "Step"
 )
 
 // Normal returns true if yield type is expected during normal operation of the
@@ -349,15 +354,15 @@ func (t CoProcYieldType) Normal() bool {
 	return t == YieldRunning || t == YieldProgramEnded || t == YieldSyncWithVCS
 }
 
-// IsInBreak returns true if the yield type is a result of a breakpoint
-func (t CoProcYieldType) IsInBreak() bool {
-	return t == YieldBreakpoint
-}
-
 // Bug returns true if the yield type indicates a likely bug
 func (t CoProcYieldType) Bug() bool {
 	return t == YieldUndefinedBehaviour || t == YieldUnimplementedFeature ||
 		t == YieldExecutionError || t == YieldMemoryFault
+}
+
+// UserInitiated returns true if yield type is in the user intiated group
+func (t CoProcYieldType) UserInitiated() bool {
+	return t == YieldUserBreakpoint || t == YieldUserStep
 }
 
 // CartCoProcDisasmSummary represents a summary of a coprocessor execution.
