@@ -546,14 +546,11 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 		case 254:
 			fallthrough
 		case 255:
-			runArm := func() {
-				cart.arm.StartProfiling()
-				defer cart.arm.ProcessProfiling()
-				cart.state.yield = cart.runArm()
-			}
+			cart.arm.StartProfiling()
+			defer cart.arm.ProcessProfiling()
 
 			// keep calling runArm() for as long as program has not ended
-			runArm()
+			cart.runArm()
 			for cart.state.yield.Type != coprocessor.YieldProgramEnded {
 				// the ARM should never return YieldSyncWithVCS when executing code
 				// from the DPC+ type. if it does then it is an error and we should yield
@@ -563,10 +560,16 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 					cart.state.yield.Error = fmt.Errorf("DPC+ does not support SyncWithVCS yield type")
 				}
 
-				if cart.yieldHook.CartYield(cart.state.yield) == coprocessor.YieldHookEnd {
-					break
+				// treat infinite loops like a YieldProgramEnded
+				if cart.state.yield.Type == coprocessor.YieldInfiniteLoop {
+					break // for loop
 				}
-				runArm()
+
+				if cart.yieldHook.CartYield(cart.state.yield) == coprocessor.YieldHookEnd {
+					break // for loop
+				}
+
+				cart.runArm()
 			}
 		}
 
@@ -1000,10 +1003,10 @@ func (cart *dpcPlus) SetYieldHook(hook coprocessor.CartYieldHook) {
 	cart.yieldHook = hook
 }
 
-func (cart *dpcPlus) runArm() coprocessor.CoProcYield {
-	yld, cycles := cart.arm.Run()
+func (cart *dpcPlus) runArm() {
+	var cycles float32
+	cart.state.yield, cycles = cart.arm.Run()
 	if cycles > 0 || cart.env.Prefs.Cartridge.ARM.ImmediateCorrection.Get().(bool) {
 		cart.state.callfn.Accumulate(cycles)
 	}
-	return yld
 }

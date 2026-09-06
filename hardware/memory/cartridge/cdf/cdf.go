@@ -388,14 +388,11 @@ func (cart *cdf) AccessVolatile(addr uint16, data uint8, poke bool) error {
 			// generate interrupt to update AUDV0 while running ARM code
 			fallthrough
 		case 0xff:
-			runArm := func() {
-				cart.arm.StartProfiling()
-				defer cart.arm.ProcessProfiling()
-				cart.state.yield = cart.runArm()
-			}
+			cart.arm.StartProfiling()
+			defer cart.arm.ProcessProfiling()
 
 			// keep calling runArm() for as long as program has not ended
-			runArm()
+			cart.runArm()
 			for cart.state.yield.Type != coprocessor.YieldProgramEnded {
 				// the ARM should never return YieldSyncWithVCS when executing code
 				// from the CDFJ type. if it does then it is an error and we should yield
@@ -405,10 +402,16 @@ func (cart *cdf) AccessVolatile(addr uint16, data uint8, poke bool) error {
 					cart.state.yield.Error = fmt.Errorf("%s does not support SyncWithVCS yield type", cart.mappingID)
 				}
 
-				if cart.yieldHook.CartYield(cart.state.yield) == coprocessor.YieldHookEnd {
-					break
+				// treat infinite loops like a YieldProgramEnded
+				if cart.state.yield.Type == coprocessor.YieldInfiniteLoop {
+					break // for loop
 				}
-				runArm()
+
+				if cart.yieldHook.CartYield(cart.state.yield) == coprocessor.YieldHookEnd {
+					break // for loop
+				}
+
+				cart.runArm()
 			}
 		}
 
@@ -714,8 +717,9 @@ func (cart *cdf) SetYieldHook(hook coprocessor.CartYieldHook) {
 	cart.yieldHook = hook
 }
 
-func (cart *cdf) runArm() coprocessor.CoProcYield {
-	yld, cycles := cart.arm.Run()
+func (cart *cdf) runArm() {
+	var cycles float32
+	cart.state.yield, cycles = cart.arm.Run()
 
 	if cycles > 0 || cart.env.Prefs.Cartridge.ARM.ImmediateCorrection.Get().(bool) {
 		cart.state.callfn.Accumulate(cycles)
@@ -728,6 +732,4 @@ func (cart *cdf) runArm() coprocessor.CoProcYield {
 		cart.state.registers.Datastream[i].Increment = cart.readDatastreamIncrement(i)
 		cart.state.registers.Datastream[i].AfterCALLFN = cart.readDatastreamPointer(i)
 	}
-
-	return yld
 }
