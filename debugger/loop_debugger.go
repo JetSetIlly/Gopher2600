@@ -383,37 +383,34 @@ func (dbg *Debugger) inputLoop(inpt terminal.Input, nonInstructionQuantum bool) 
 		}
 
 		if dbg.continueEmulation {
-			// make sure we still want to continue after the call to resumAfterHalt()
-			if dbg.continueEmulation {
-				// input loops with the isVideoStep flag must never execute another
-				// call to vcs.Step() under any circumstances
-				//
-				// we also don't allow this call to inputLoop() to loop. if there
-				// is any more nonInstructionQuantum steps to handle, the function will be called
-				// again
-				if nonInstructionQuantum {
-					return nil
-				}
+			// input loops with the isVideoStep flag must never execute another
+			// call to vcs.Step() under any circumstances
+			//
+			// we also don't allow this call to inputLoop() to loop. if there
+			// is any more nonInstructionQuantum steps to handle, the function will be called
+			// again
+			if nonInstructionQuantum {
+				return nil
+			}
 
-				err = dbg.step(inpt, false)
-				if err != nil {
-					return err
-				}
+			err = dbg.step(inpt, false)
+			if err != nil {
+				return err
+			}
 
-				// skip over WSYNC (CPU RDY flag is false) only if we're in instruction quantum
-				if dbg.Quantum() == govern.QuantumInstruction {
-					for !dbg.vcs.CPU.RdyFlg {
-						err = dbg.step(inpt, false)
-						if err != nil {
-							return err
-						}
+			// skip over WSYNC (CPU RDY flag is false) only if we're in instruction quantum
+			if dbg.Quantum() == govern.QuantumInstruction {
+				for !dbg.vcs.CPU.RdyFlg {
+					err = dbg.step(inpt, false)
+					if err != nil {
+						return err
 					}
 				}
+			}
 
-				// check for unwind loop
-				if dbg.unwindLoopRestart != nil {
-					return nil
-				}
+			// check for unwind loop
+			if dbg.unwindLoopRestart != nil {
+				return nil
 			}
 		}
 	}
