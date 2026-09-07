@@ -138,7 +138,12 @@ func (dev *Developer) AttachCartridge(cart Cartridge, romFile string, dwarfFile 
 
 	dev.breakpointsLock.Lock()
 	dev.breakpoints = breakpoints.NewBreakpoints()
+	dev.breakNextInstruction = false
 	dev.breakpointsLock.Unlock()
+
+	dev.yieldStateLock.Lock()
+	dev.yieldState = yield.State{}
+	dev.yieldStateLock.Unlock()
 
 	dev.framesSinceLastUpdate = 0
 
