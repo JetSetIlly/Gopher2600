@@ -33,31 +33,28 @@ type winCoProcGlobals struct {
 
 	img *SdlImgui
 
-	firstOpen bool
-
-	selectedFileFuzzy     fuzzyFilter
-	selectedShortFileName string
-	selectedFile          *dwarf.SourceFile
-	updateSelectedFile    bool
-
 	optionsHeight     float32
-	showAllGlobals    bool
 	showLocatableOnly bool
 	filter            filter
 
+	// any variables which are arrays, etc. are collapsed by default. any that are open will be
+	// recorded in this map. entries that are closed after being open will be deleted from the map
+	//
+	// there is an anomoly which will cause a node to appear open if a new ROM is loaded with a
+	// variable with the same name as the previous ROM and that variable has been expanded
 	openNodes map[string]bool
 
-	// which variable is being hovered over
-	hoveredVarb *dwarf.SourceVariable
+	// which variable is being hovered over and being referenced by the popup menu. this is
+	// necessary because once the popup menu is open the hover information cannot be attained with
+	// the IsItemHovered() function
+	popupMenuVarb *dwarf.SourceVariable
 }
 
 func newWinCoProcGlobals(img *SdlImgui) (window, error) {
 	win := &winCoProcGlobals{
-		img:            img,
-		firstOpen:      true,
-		showAllGlobals: true,
-		filter:         newFilter(img, filterFlagsVariableNamesC),
-		openNodes:      make(map[string]bool),
+		img:       img,
+		filter:    newFilter(img, filterFlagsVariableNamesC),
+		openNodes: make(map[string]bool),
 	}
 	return win, nil
 }
@@ -97,42 +94,6 @@ func (win *winCoProcGlobals) debuggerDraw() bool {
 	return true
 }
 
-func (win *winCoProcGlobals) drawFileSelection(src *dwarf.Source) {
-	if imgui.Button(string(fonts.Disk)) {
-		mp := imgui.MousePos()
-		mp.X += imgui.FontSize()
-		mp.Y -= imgui.FontSize() * 2
-		imgui.SetNextWindowPos(mp)
-		imgui.OpenPopup("##filefuzzyPopup")
-	}
-
-	imgui.SameLineV(0, 15)
-	imgui.AlignTextToFramePadding()
-	if win.selectedShortFileName == "" {
-		imgui.Text("No File Selected")
-	} else {
-		imgui.Text(win.selectedShortFileName)
-	}
-
-	w := imgui.WindowWidth()
-
-	if imgui.BeginPopup("##filefuzzyPopup") {
-		imgui.PushItemWidth(w)
-
-		fuzzyFileHook := func(i int) {
-			win.selectedShortFileName = src.ShortFilenames[i]
-			win.updateSelectedFile = true
-		}
-
-		if !win.selectedFileFuzzy.draw("##selectedFileFuzzy", src.ShortFilenames, fuzzyFileHook, true) {
-			imgui.CloseCurrentPopup()
-		}
-
-		imgui.PopItemWidth()
-		imgui.EndPopup()
-	}
-}
-
 func (win *winCoProcGlobals) draw() {
 	win.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 		if src == nil || len(src.Filenames) == 0 {
@@ -149,25 +110,6 @@ func (win *winCoProcGlobals) draw() {
 
 		src.UpdateGlobalVariables(nil)
 
-		if win.firstOpen {
-			// assume source entry point is a function called "main"
-			if m, ok := src.Functions["main"]; ok {
-				win.selectedFile = m.DeclLine.File
-				win.selectedShortFileName = win.selectedFile.ShortFilename
-			} else {
-				// if main does not exists then open at the first file in the list
-				for _, fn := range src.Filenames {
-					if src.Files[fn].HasGlobals {
-						win.selectedFile = src.Files[fn]
-						win.selectedShortFileName = win.selectedFile.ShortFilename
-						break // for loop
-					}
-				}
-			}
-
-			win.firstOpen = false
-		}
-
 		imgui.BeginTabBar("##globalvarbtabbar")
 		if imgui.BeginTabItem("Globals") {
 			win.drawList(src, false)
@@ -183,19 +125,6 @@ func (win *winCoProcGlobals) draw() {
 
 // the hostlist flag says whether to work with the globals list or the hotlist
 func (win *winCoProcGlobals) drawList(src *dwarf.Source, hotlist bool) {
-	// draw file selector only when not working with the hotlist and when showAllGlobals is disabled
-	if !hotlist {
-		if !win.showAllGlobals {
-			win.drawFileSelection(src)
-			imgui.Separator()
-		}
-
-		// change selectedFile
-		if win.updateSelectedFile {
-			win.selectedFile = src.FilesByShortname[win.selectedShortFileName]
-		}
-	}
-
 	if hotlist && len(src.Hotlist.Sorted.Variables) == 0 {
 		imgui.AlignTextToFramePadding()
 		imgui.Text("No global variables have been added to the hotlist")
@@ -236,11 +165,9 @@ func (win *winCoProcGlobals) drawList(src *dwarf.Source, hotlist bool) {
 		} else {
 			for i, varb := range src.SortedGlobals.Variables {
 				if !win.filter.isFiltered(varb.Name) {
-					if win.showAllGlobals || varb.DeclLine.File.Filename == win.selectedFile.Filename {
-						h := win.drawVariable(src, varb, 0, false, fmt.Sprint(i))
-						if hoveredVarb == nil {
-							hoveredVarb = h
-						}
+					h := win.drawVariable(src, varb, 0, false, fmt.Sprint(i))
+					if hoveredVarb == nil {
+						hoveredVarb = h
 					}
 				}
 			}
@@ -278,11 +205,6 @@ func (win *winCoProcGlobals) drawList(src *dwarf.Source, hotlist bool) {
 			imgui.Separator()
 			imgui.Spacing()
 
-			if !hotlist {
-				imgui.Checkbox("List all globals (all files)", &win.showAllGlobals)
-				imgui.SameLineV(0, 15)
-			}
-
 			imgui.Checkbox("Hide unlocatable variables", &win.showLocatableOnly)
 			win.img.imguiTooltipSimple("A unlocatable variable is a variable has been\nremoved by the compiler's optimisation process")
 
@@ -293,23 +215,28 @@ func (win *winCoProcGlobals) drawList(src *dwarf.Source, hotlist bool) {
 
 		// update windows hovered field if no popup is open
 		if !imgui.IsPopupOpenV("", imgui.PopupFlagsAnyPopupId) {
-			win.hoveredVarb = hoveredVarb
+			win.popupMenuVarb = hoveredVarb
 		}
 
 		if imgui.BeginPopup(globalsPopupID) {
-			if win.hoveredVarb != nil {
+			imgui.Text(win.popupMenuVarb.Name)
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+
+			if win.popupMenuVarb != nil {
 				if imgui.Selectable("Goto Definition") {
 					srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
-					srcWin.gotoSourceLine(win.hoveredVarb.DeclLine)
+					srcWin.gotoSourceLine(win.popupMenuVarb.DeclLine)
 				}
 
-				if src.Hotlist.In(win.hoveredVarb) {
+				if src.Hotlist.In(win.popupMenuVarb) {
 					if imgui.Selectable("Remove from Hotlist") {
-						src.Hotlist.Remove(win.hoveredVarb)
+						src.Hotlist.Remove(win.popupMenuVarb)
 					}
 				} else {
 					if imgui.Selectable("Add to Hotlist") {
-						src.Hotlist.Add(win.hoveredVarb)
+						src.Hotlist.Add(win.popupMenuVarb)
 					}
 				}
 				imgui.Spacing()
@@ -527,6 +454,9 @@ func (win *winCoProcGlobals) drawVariable(src *dwarf.Source, varb *dwarf.SourceV
 
 		if imgui.IsItemClicked() {
 			win.openNodes[nodeID] = !win.openNodes[nodeID]
+			if !win.openNodes[nodeID] {
+				delete(win.openNodes, nodeID)
+			}
 		}
 
 		imgui.TableNextColumn()
