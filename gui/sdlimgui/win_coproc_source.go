@@ -52,14 +52,12 @@ type winCoProcSource struct {
 	selectedFileFuzzy     fuzzyFilter
 	selectedShortFileName string
 
-	// selectedFile will change whenever updateSelectedFile is true
-	updateSelectedFile bool
-	selectedFile       *dwarf.SourceFile
+	// reset scroll position is set after a new file is selected
+	resetScrollPosition bool
 
 	// yield state is checked on every draw whether window is open or not. the
 	// window will open if the yield state is new
 	yieldState yield.State
-	yieldLine  *dwarf.SourceLine
 
 	// focus source view on current yield line
 	focusYieldLine bool
@@ -177,25 +175,23 @@ func (win *winCoProcSource) draw() {
 		}
 
 		// find yield line
-		win.yieldLine = src.FindSourceLine(win.yieldState.Address)
+		yieldLine := src.FindSourceLine(win.yieldState.Address)
 
 		// focus on yield line (or main function if we don't have a yield line)
 		// but only if emulation is paused
 		if win.focusYieldLine {
 			if win.img.dbg.State() == govern.Paused || win.focusYieldLineManual {
-				focusLine := win.yieldLine
-
 				// focusLine is the same as yieldLine. if yieldLine is invalid
 				// we instead focus on the main function
-				if focusLine == nil || focusLine.IsStub() {
-					focusLine = src.MainFunction.DeclLine
+				if yieldLine == nil || yieldLine.IsStub() {
+					yieldLine = src.MainFunction.DeclLine
 				}
 
 				// double check validity of focusLine
-				if focusLine != nil && !focusLine.IsStub() {
-					win.selectedShortFileName = focusLine.File.ShortFilename
-					win.selection.single(focusLine.LineNumber)
-					win.updateSelectedFile = true
+				if yieldLine != nil && !yieldLine.IsStub() {
+					win.selectedShortFileName = yieldLine.File.ShortFilename
+					win.selection.single(yieldLine.LineNumber)
+					win.resetScrollPosition = true
 				}
 
 				// focus has been dealt with
@@ -208,23 +204,14 @@ func (win *winCoProcSource) draw() {
 		win.drawFileSelection(src)
 		imgui.Separator()
 
-		// change selectedFile if update flag is set
-		if win.updateSelectedFile {
-			win.selectedFile = src.FilesByShortname[win.selectedShortFileName]
-		}
+		selectedFile := src.FilesByShortname[win.selectedShortFileName]
 
 		// source code view
 		imgui.BeginGroup()
 		win.img.dbg.CoProcDev.BorrowBreakpoints(func(bp *breakpoints.Breakpoints) {
-			win.drawSource(bp)
+			win.drawSource(selectedFile, yieldLine, bp)
 		})
 		imgui.EndGroup()
-
-		// we don't need updateSelectedFile after the call to drawSource() so
-		// it is safe to reset
-		if win.updateSelectedFile {
-			win.updateSelectedFile = false
-		}
 
 		if imgui.IsMouseDown(1) && imgui.IsItemHovered() {
 			imgui.OpenPopup(sourcePopupID)
@@ -251,7 +238,7 @@ func (win *winCoProcSource) draw() {
 
 		if imgui.BeginPopup(sourcePopupID) {
 			if imgui.Selectable(fmt.Sprintf("%c Save Source to CSV", fonts.Disk)) {
-				win.saveToCSV()
+				win.saveToCSV(selectedFile)
 			}
 			imgui.EndPopup()
 		}
@@ -283,7 +270,7 @@ func (win *winCoProcSource) drawFileSelection(src *dwarf.Source) {
 		fuzzyFileHook := func(i int) {
 			win.selectedShortFileName = src.ShortFilenames[i]
 			win.selection.clear()
-			win.updateSelectedFile = true
+			win.resetScrollPosition = true
 		}
 
 		if !win.selectedFileFuzzy.draw("##selectedFileFuzzy", src.ShortFilenames, fuzzyFileHook, true) {
@@ -331,10 +318,10 @@ func (win *winCoProcSource) gotoSourceLine(ln *dwarf.SourceLine) {
 	win.selectedShortFileName = ln.File.ShortFilename
 	win.selection.single(ln.LineNumber)
 	win.uncollapseNext = true
-	win.updateSelectedFile = true
+	win.resetScrollPosition = true
 }
 
-func (win *winCoProcSource) saveToCSV() {
+func (win *winCoProcSource) saveToCSV(selectedFile *dwarf.SourceFile) {
 	// open unique file
 	fn := unique.Filename("source", win.img.cache.VCS.Mem.Cart.ShortName)
 	fn = fmt.Sprintf("%s.csv", fn)
@@ -356,7 +343,7 @@ func (win *winCoProcSource) saveToCSV() {
 		f.WriteString("\n")
 	}
 
-	for _, ln := range win.selectedFile.Content.Lines {
+	for _, ln := range selectedFile.Content.Lines {
 		s := strings.Builder{}
 		if ln.Cycles.Overall.CyclesProgram.FrameValid {
 			fmt.Fprintf(&s, "%.02f", ln.Cycles.Overall.CyclesProgram.FrameLoad)
@@ -378,12 +365,12 @@ func (win *winCoProcSource) saveToCSV() {
 	}
 }
 
-func (win *winCoProcSource) drawSource(bp *breakpoints.Breakpoints) {
+func (win *winCoProcSource) drawSource(selectedFile *dwarf.SourceFile, yieldLine *dwarf.SourceLine, bp *breakpoints.Breakpoints) {
 	// new child that contains the main scrollable table
 	imgui.BeginChildV("##coprocSourceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 	defer imgui.EndChild()
 
-	if win.selectedFile == nil {
+	if selectedFile == nil {
 		imgui.Text("No source file selected")
 		return
 	}
@@ -424,7 +411,7 @@ func (win *winCoProcSource) drawSource(bp *breakpoints.Breakpoints) {
 		// selected file. this is so that the horizontal scroll bar doesn't
 		// change size as we scroll
 		var w float32
-		w = imguiTextWidth(win.selectedFile.Content.MaxLineWidth)
+		w = imguiTextWidth(selectedFile.Content.MaxLineWidth)
 		imgui.TableSetupColumnV("Content", imgui.TableColumnFlagsNone, w, 4)
 
 		// draw execution indicator
@@ -448,21 +435,21 @@ func (win *winCoProcSource) drawSource(bp *breakpoints.Breakpoints) {
 			executionIndicatorCol = col
 		}
 
-		clipper := imgui.ListClipperAll(win.selectedFile.Content.Len(), func(i int) {
-			if i >= win.selectedFile.Content.Len() {
+		clipper := imgui.ListClipperAll(selectedFile.Content.Len(), func(i int) {
+			if i >= selectedFile.Content.Len() {
 				return
 			}
 
-			ln := win.selectedFile.Content.Lines[i]
+			ln := selectedFile.Content.Lines[i]
 			imgui.TableNextRow()
 
 			// highlight line
 			if win.selection.inRange(ln.LineNumber) {
 				imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceSelectedLine)
 			}
-			if win.yieldLine != nil && win.yieldLine.File != nil {
-				if win.yieldLine.LineNumber == ln.LineNumber && win.yieldLine.File == win.selectedFile {
-					if win.yieldLine.Bug {
+			if yieldLine != nil && yieldLine.File != nil {
+				if yieldLine.LineNumber == ln.LineNumber && yieldLine.File == selectedFile {
+					if yieldLine.Bug {
 						imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceYieldBugLine)
 					} else {
 						imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceYieldLine)
@@ -502,7 +489,7 @@ func (win *winCoProcSource) drawSource(bp *breakpoints.Breakpoints) {
 					win.selectionRange.Clear()
 					s, e := win.selection.limits()
 					for i := s; i <= e; i++ {
-						win.selectionRange.Add(win.selectedFile.Content.Lines[i-1])
+						win.selectionRange.Add(selectedFile.Content.Lines[i-1])
 					}
 				}
 
@@ -640,10 +627,10 @@ func (win *winCoProcSource) drawSource(bp *breakpoints.Breakpoints) {
 			})
 		})
 
-		// scroll to correct line
-		if win.updateSelectedFile {
+		if win.resetScrollPosition {
 			s, _ := win.selection.limits()
 			imgui.SetScrollY(clipper.ItemsHeight * float32(s-10))
+			win.resetScrollPosition = false
 		}
 
 		imgui.EndTable()
