@@ -105,9 +105,9 @@ type Developer struct {
 }
 
 const (
-	strobeTicker = 100 * time.Microsecond
-	yieldBrake   = 1 * time.Second
-	yieldCatchup = yieldBrake + 500*time.Millisecond
+	strobeTicker = 100 * time.Millisecond
+	yieldBrake   = 100 * time.Millisecond
+	yieldCatchup = yieldBrake * 2
 )
 
 // NewDeveloper is the preferred method of initialisation for the Developer type.
