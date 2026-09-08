@@ -703,20 +703,17 @@ func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 
 	// only reset registers if the previous yield was one that indicated the end
 	// of the program execution
-	if arm.state.yield.Type == coprocessor.YieldProgramEnded {
+	switch arm.state.yield.Type {
+	case coprocessor.YieldProgramEnded:
 		arm.resetRegisters()
-	}
-
-	// reset cycles count
-	arm.state.cyclesTotal = 0
-
-	// arm.state.prefetchCycle reset in reset() function. we don't want to change
-	// the value if we're resuming from a yield
-
-	// fill pipeline cannot happen immediately after resetRegisters()
-	if arm.state.yield.Type == coprocessor.YieldProgramEnded {
+		arm.state.cyclesTotal = 0
 		arm.state.registers[rPC] += 2
+	case coprocessor.YieldSyncWithVCS:
+		arm.state.cyclesTotal = 0
 	}
+
+	// arm.state.prefetchCycle reset in resetRegisters() function. we don't want to change
+	// the value if we're resuming from a yield
 
 	// reset disassembly as approprite for the previous yield type
 	if arm.disasm != nil {
@@ -1038,21 +1035,22 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 }
 
 func (arm *ARM) checkBreakpoints() {
-	// check breakpoints unless they are disabled. we also don't want to match
-	// if we're in the middle of decoding a 32bit instruction
-	if !arm.state.instruction32bitDecoding {
-		var addr uint32
+	// don't check if we're in the middle of decoding a 32bit instruction
+	if arm.state.instruction32bitDecoding {
+		return
+	}
 
-		if arm.state.branchedExecution {
-			addr = arm.state.registers[rPC] - 2
-		} else {
-			addr = arm.state.executingPC
-		}
+	var addr uint32
 
-		if ok, yld := arm.dev.CheckBreakpoint(addr); ok {
-			arm.state.yield = yld
-			arm.dev.OnYield(addr, arm.state.yield)
-		}
+	if arm.state.branchedExecution {
+		addr = arm.state.registers[rPC] - 2
+	} else {
+		addr = arm.state.executingPC
+	}
+
+	if ok, yld := arm.dev.CheckBreakpoint(addr); ok {
+		arm.state.yield = yld
+		arm.dev.OnYield(addr, arm.state.yield)
 	}
 }
 

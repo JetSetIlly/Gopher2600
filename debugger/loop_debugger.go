@@ -383,12 +383,14 @@ func (dbg *Debugger) inputLoop(inpt terminal.Input, nonInstructionQuantum bool) 
 		}
 
 		if dbg.continueEmulation {
-			// input loops with the isVideoStep flag must never execute another
-			// call to vcs.Step() under any circumstances
+			// input loops with the isVideoStep flag must never execute another call to vcs.Step()
+			// under any circumstances
 			//
-			// we also don't allow this call to inputLoop() to loop. if there
-			// is any more nonInstructionQuantum steps to handle, the function will be called
-			// again
+			// we also don't allow this call to inputLoop() to loop. if there is any more
+			// nonInstructionQuantum steps to handle, the function will be called again
+			//
+			// this also catches instances where execution has broken inside a coprocessor program
+			// and inputLoop() has been called by CartYield()
 			if nonInstructionQuantum {
 				return nil
 			}
