@@ -926,6 +926,9 @@ func (dbg *Debugger) CartYield(yield coprocessor.CoProcYield) coprocessor.YieldH
 		dbg.inputLoop(dbg.term, true)
 	}
 
+	if dbg.continueEmulation {
+		return coprocessor.YieldHookContinue
+	}
 	return coprocessor.YieldHookEnd
 }
 
