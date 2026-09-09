@@ -112,6 +112,9 @@ type ARMState struct {
 	// with the YieldProgramEnded type
 	expectedReturnAddress uint32
 
+	// expected SP value when YieldProgramEnded is encountered at the end of the Run() function
+	expectedSP uint32
+
 	// the area the PC covers. once assigned we'll assume that the program
 	// never reads outside this area. the value is assigned on reset()
 	programMemory *[]uint8
@@ -740,6 +743,12 @@ func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 	}
 	arm.state.protectVariableMemTop = arm.dev != nil
 
+	// monitor the stack pointer to make sure it hasn't been tampered with. only do this if the previous
+	// state says the program had ended
+	if arm.state.yield.Type == coprocessor.YieldProgramEnded {
+		arm.state.expectedSP = arm.state.registers[rSP]
+	}
+
 	// reset yield. we do this as late as possible because we want to use
 	// information about the previous yield during the above preparations
 	arm.resetYield()
@@ -750,15 +759,11 @@ func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 		return arm.state.yield, 0
 	}
 
-	// monitor the stack pointer to make sure it hasn't been tampered with
-	expectedSP := arm.state.registers[rSP]
-
 	yld, cycles := arm.run()
 
-	// perform the expected SP check only when the program has ended. for other yield types the
-	// stack pointer may well have changed
+	// perform the expected SP check only when the program has ended
 	if yld.Type == coprocessor.YieldProgramEnded {
-		if arm.state.registers[rSP] != expectedSP {
+		if arm.state.registers[rSP] != arm.state.expectedSP {
 			arm.memoryFault("stack position tampered with", faults.StackCollision, arm.state.registers[rSP])
 			if arm.abortOnMemoryFault {
 				yld = arm.state.yield
