@@ -123,7 +123,7 @@ func addInstructionsToLines(src *Source, bld *build, symbols []elf.Symbol) error
 
 						// add source line to list of lines by address if the
 						// address has not been allocated a line already
-						if x := src.LinesByAddress[addr]; x == nil {
+						if x := src.LinesByAddress[addr]; x == nil || x.IsStub() {
 							src.LinesByAddress[addr] = ln
 						} else {
 							addressConflicts++
