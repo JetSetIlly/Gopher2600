@@ -167,6 +167,15 @@ All information about the Supercharger Demo Unit from
 
 https://forums.atariage.com/topic/390261-starpath-demonstration-unit-rom-dump/
 
+SaveKey information taken from "AtariVox Programmer's Guide" (16/11/04) by Alex
+Herbert. A variation of that document can be founc on the 7800 8bitdev wiki.
+
+https://7800.8bitdev.org/index.php/AtariVox_for_the_7800
+
+Datasheet for the 26LC256 used in the SaveKey.
+
+https://ww1.microchip.com/downloads/aemDocuments/documents/MPD/ProductDocuments/DataSheets/25LCXXXX-8K-256K-SPI-Serial-EEPROM-High-Temp-Family-Data-Sheet-DS20002131.pdf
+
 Information about the SpeakJet chip found in the AtariVox peripheral
 https://people.ece.cornell.edu/land/courses/ece4760/Speech/speakjetusermanual.pdf
 

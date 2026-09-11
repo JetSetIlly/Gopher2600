@@ -105,25 +105,34 @@ func (ee *EEPROM) access() {
 func (ee *EEPROM) put(v uint8) {
 	ee.access()
 	ee.Data[ee.Address] = v
-	ee.nextAddress()
+	// from the 26LC256 datasheet:
+	//
+	// "If a Page Write command attempts to write across a physical page boundary, the result is
+	// that the data wrap around to the beginning of the current page (overwriting data previously
+	// stored there), instead of being written to the next page as might be expected."
+	if ee.Address&(EEPROMpageSize-1) == EEPROMpageSize-1 {
+		ee.Address ^= (EEPROMpageSize - 1)
+	} else {
+		ee.Address++
+	}
 }
 
 func (ee *EEPROM) get() uint8 {
 	defer func() {
-		ee.nextAddress()
-		ee.access()
+		// from the 26LC256 datasheet:
+		//
+		// "The internal Address Pointer is automatically incremented to the next higher address
+		// after each byte of data is shifted out. When the highest address is reached, the address
+		// counter rolls over to address 0000h allowing the read cycle to be continued
+		// indefinitely."
+		if ee.Address&(EEPROMsize-1) == EEPROMsize-1 {
+			ee.Address = 0
+		} else {
+			ee.Address++
+		}
 	}()
+	ee.access()
 	return ee.Data[ee.Address]
-}
-
-func (ee *EEPROM) nextAddress() {
-	// nextAddress makes sure the address if kept on the same page, by looping back
-	// to the start of the current page.
-	if ee.Address&0x3f == 0x3f {
-		ee.Address ^= 0x3f
-	} else {
-		ee.Address++
-	}
 }
 
 // Poke a value into EEPROM.
