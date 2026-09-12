@@ -19,6 +19,7 @@ package arm
 
 import (
 	"fmt"
+	"math"
 	"math/bits"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/fpu"
@@ -1388,19 +1389,19 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						}
 					}
 
-					var operand1 uint16
+					var operand1 int16
 
 					if nHigh {
-						operand1 = uint16(arm.state.registers[Rn] >> 16)
+						operand1 = int16(arm.state.registers[Rn] >> 16)
 					} else {
-						operand1 = uint16(arm.state.registers[Rn])
+						operand1 = int16(arm.state.registers[Rn])
 					}
 
-					var operand2 uint16
+					var operand2 int16
 					if mHigh {
-						operand2 = uint16(arm.state.registers[Rm] >> 16)
+						operand2 = int16(arm.state.registers[Rm] >> 16)
 					} else {
-						operand2 = uint16(arm.state.registers[Rm])
+						operand2 = int16(arm.state.registers[Rm])
 					}
 
 					arm.state.registers[Rd] = uint32(int32(operand1) * int32(operand2))
@@ -1429,23 +1430,29 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						}
 					}
 
-					var operand1 uint16
+					var operand1 int16
 					if nHigh {
-						operand1 = uint16(arm.state.registers[Rn] >> 16)
+						operand1 = int16(arm.state.registers[Rn] >> 16)
 					} else {
-						operand1 = uint16(arm.state.registers[Rn])
+						operand1 = int16(arm.state.registers[Rn])
 					}
 
-					var operand2 uint16
+					var operand2 int16
 					if mHigh {
-						operand2 = uint16(arm.state.registers[Rm] >> 16)
+						operand2 = int16(arm.state.registers[Rm] >> 16)
 					} else {
-						operand2 = uint16(arm.state.registers[Rm])
+						operand2 = int16(arm.state.registers[Rm])
 					}
 
-					result := int64(operand1)*int64(operand2) + int64(arm.state.registers[Ra])
+					// sign extend accumulator for 64bit
+					accumulator := int64(int32(arm.state.registers[Ra]))
+
+					// multiply and add operation
+					result := int64(operand1)*int64(operand2) + accumulator
 					arm.state.registers[Rd] = uint32(result)
-					arm.state.status.saturation = int64(arm.state.registers[Rd]) != result&0xffff
+
+					// set Q flag as appropriate
+					arm.state.status.saturation = result < math.MinInt32 || result > math.MaxInt32
 
 					return nil
 				}
