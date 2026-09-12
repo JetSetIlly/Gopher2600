@@ -1383,7 +1383,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						}
 						return &DisasmEntry{
 							Is32bit:  true,
-							Operator: fmt.Sprintf("SMUL%x%x", x, y),
+							Operator: fmt.Sprintf("SMUL%c%c", x, y),
 							Operand:  fmt.Sprintf("R%d, R%d, R%d", Rd, Rn, Rm),
 						}
 					}
@@ -1452,18 +1452,26 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 			}
 		} else if op == 0b001 && op2 == 0b0010 {
 			// "4.6.154 SSAT" of "Thumb-2 Supplement"
-			sat_imm := opcode & 0x000f
+			sat_imm := opcode & 0x001f
 			imm3 := (opcode & 0x7000) >> 12
 			imm2 := (opcode & 0x00c0) >> 6
 			imm5 := (imm3 << 2) | imm2
+			sh := arm.state.instruction32bitOpcodeHi&0x0020 != 0x0020
+			if sh && imm5 == 0 {
+				panic("decoding error: SSAT with sh bit of 0 and imm5 of 0 is not possible")
+			}
 
 			return func() *DisasmEntry {
 				// disassembly only
 				if arm.decodeOnly {
+					operand := fmt.Sprintf("R%d, #%d, R%d", Rd, sat_imm, Rn)
+					if sh {
+						operand = fmt.Sprintf("%s, LSL %d", operand, imm5)
+					}
 					return &DisasmEntry{
 						Is32bit:  true,
 						Operator: "SSAT",
-						Operand:  fmt.Sprintf("R%d, #%d, R%d", Rd, imm5, Rn),
+						Operand:  operand,
 					}
 				}
 
@@ -1473,7 +1481,10 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 				// only ever called with 0x00 as the shift type, which is logical shift left
 				//
 				// also, we don't need to worry about any output carry bit
-				shifted := arm.state.registers[Rn] << imm5
+				shifted := arm.state.registers[Rn]
+				if sh {
+					shifted <<= imm5
+				}
 
 				// saturate result (using helper function from fpu package even though this is not
 				// an FPU instruction)
@@ -2393,14 +2404,22 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 			imm2 := (opcode & 0x00c0) >> 6
 			sat_imm := opcode & 0x001f
 			imm5 := (imm3 << 2) | imm2
+			sh := arm.state.instruction32bitOpcodeHi&0x0020 != 0x0020
+			if sh && imm5 == 0 {
+				panic("decoding error: USAT with sh bit of 0 and imm5 of 0 is not possible")
+			}
 
 			return func() *DisasmEntry {
 				// disassembly only
 				if arm.decodeOnly {
+					operand := fmt.Sprintf("R%d, #%d, R%d", Rd, sat_imm, Rn)
+					if sh {
+						operand = fmt.Sprintf("%s, LSL %d", operand, imm5)
+					}
 					return &DisasmEntry{
 						Is32bit:  true,
 						Operator: "USAT",
-						Operand:  fmt.Sprintf("R%d, #%d, R%d", Rd, imm5, Rn),
+						Operand:  operand,
 					}
 				}
 
@@ -2410,7 +2429,10 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 				// only ever called with 0x00 as the shift type, which is logical shift left
 				//
 				// also, we don't need to worry about any output carry bit
-				shifted := arm.state.registers[Rn] << imm5
+				shifted := arm.state.registers[Rn]
+				if sh {
+					shifted <<= imm5
+				}
 
 				// saturate result (using helper function from fpu package even though this is not
 				// an FPU instruction)
