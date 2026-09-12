@@ -1365,7 +1365,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 
 				return nil
 			}
-		} else if op == 0b001 && op2 == 0b0000 {
+		} else if op == 0b001 && op2&0b1100 == 0b0000 {
 			if Ra == 0b1111 {
 				// "4.6.149 SMULBB, SMULBT, SMULTB, SMULTT" of "Thumb-2 Supplement"
 				nHigh := opcode&0x0020 == 0x0020
@@ -1424,7 +1424,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						}
 						return &DisasmEntry{
 							Is32bit:  true,
-							Operator: fmt.Sprintf("SMLA%x%x", x, y),
+							Operator: fmt.Sprintf("SMLA%c%c", x, y),
 							Operand:  fmt.Sprintf("R%d, R%d, R%d, R%d", Rd, Rn, Rm, Ra),
 						}
 					}
@@ -1445,56 +1445,10 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 
 					result := int64(operand1)*int64(operand2) + int64(arm.state.registers[Ra])
 					arm.state.registers[Rd] = uint32(result)
-					arm.state.status.saturation = result != result&0xffff
+					arm.state.status.saturation = int64(arm.state.registers[Rd]) != result&0xffff
 
 					return nil
 				}
-			}
-		} else if op == 0b001 && op2 == 0b0010 {
-			// "4.6.154 SSAT" of "Thumb-2 Supplement"
-			sat_imm := opcode & 0x001f
-			imm3 := (opcode & 0x7000) >> 12
-			imm2 := (opcode & 0x00c0) >> 6
-			imm5 := (imm3 << 2) | imm2
-			sh := arm.state.instruction32bitOpcodeHi&0x0020 != 0x0020
-			if sh && imm5 == 0 {
-				panic("decoding error: SSAT with sh bit of 0 and imm5 of 0 is not possible")
-			}
-
-			return func() *DisasmEntry {
-				// disassembly only
-				if arm.decodeOnly {
-					operand := fmt.Sprintf("R%d, #%d, R%d", Rd, sat_imm, Rn)
-					if sh {
-						operand = fmt.Sprintf("%s, LSL %d", operand, imm5)
-					}
-					return &DisasmEntry{
-						Is32bit:  true,
-						Operator: "SSAT",
-						Operand:  operand,
-					}
-				}
-
-				// logical shift left
-				//
-				// the Thumb-2 Supplement pseudo-code includes the call to DecodeImmShift() but it's
-				// only ever called with 0x00 as the shift type, which is logical shift left
-				//
-				// also, we don't need to worry about any output carry bit
-				shifted := arm.state.registers[Rn]
-				if sh {
-					shifted <<= imm5
-				}
-
-				// saturate result (using helper function from fpu package even though this is not
-				// an FPU instruction)
-				result, sat := fpu.SignedSatQ(int(shifted), int(sat_imm)+1)
-				arm.state.registers[Rd] = uint32(result)
-
-				// set saturation flag
-				arm.state.status.setSaturation(sat)
-
-				return nil
 			}
 
 		} else {
@@ -2338,6 +2292,53 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 		imm2 := (opcode & 0x00c0) >> 6
 
 		switch op {
+		case 0b000:
+			// "4.6.154 SSAT" of "Thumb-2 Supplement"
+			// signed saturate, LSL
+			sat_imm := opcode & 0x001f
+			imm3 := (opcode & 0x7000) >> 12
+			imm2 := (opcode & 0x00c0) >> 6
+			imm5 := (imm3 << 2) | imm2
+			sh := arm.state.instruction32bitOpcodeHi&0x0020 != 0x0020
+			if sh && imm5 == 0 {
+				panic("decoding error: SSAT with sh bit of 0 and imm5 of 0 is not possible")
+			}
+
+			return func() *DisasmEntry {
+				// disassembly only
+				if arm.decodeOnly {
+					operand := fmt.Sprintf("R%d, #%d, R%d", Rd, sat_imm, Rn)
+					if sh {
+						operand = fmt.Sprintf("%s, LSL %d", operand, imm5)
+					}
+					return &DisasmEntry{
+						Is32bit:  true,
+						Operator: "SSAT",
+						Operand:  operand,
+					}
+				}
+
+				// logical shift left
+				//
+				// the Thumb-2 Supplement pseudo-code includes the call to DecodeImmShift() but it's
+				// only ever called with 0x00 as the shift type, which is logical shift left
+				//
+				// also, we don't need to worry about any output carry bit
+				shifted := arm.state.registers[Rn]
+				if sh {
+					shifted <<= imm5
+				}
+
+				// saturate result (using helper function from fpu package even though this is not
+				// an FPU instruction)
+				result, sat := fpu.SignedSatQ(int(shifted), int(sat_imm)+1)
+				arm.state.registers[Rd] = uint32(result)
+
+				// set saturation flag
+				arm.state.status.setSaturation(sat)
+
+				return nil
+			}
 		case 0b010:
 			// "4.6.125 SBFX" of "Thumb-2 Supplement"
 			widthm1 := opcode & 0x001f
@@ -2398,6 +2399,7 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 
 		case 0b100:
 			// "4.6.216 USAT" of "Thumb-2 Supplement"
+			// unsigned saturate, LSL
 			Rn := arm.state.instruction32bitOpcodeHi & 0x000f
 			imm3 := (opcode & 0x7000) >> 12
 			Rd := (opcode & 0x0f00) >> 8
