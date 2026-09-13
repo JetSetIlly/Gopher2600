@@ -16,7 +16,6 @@
 package dwarf
 
 import (
-	"debug/elf"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -29,15 +28,6 @@ type loclistDecoder struct {
 	coproc    coprocessor.CartCoProc
 	byteOrder binary.ByteOrder
 	data      []uint8
-}
-
-func newLoclistDecoderFromFile(ef *elf.File, coproc coprocessor.CartCoProc) (*loclistDecoder, error) {
-	var data []uint8
-	sec := ef.Section(".debug_loc")
-	if sec != nil {
-		data, _ = sec.Data()
-	}
-	return newLoclistDecoder(data, ef.ByteOrder, coproc)
 }
 
 // newLoclistDecoder will always return a new instance of loclistDecoder but it
@@ -60,18 +50,21 @@ type framebaseResolver interface {
 	resolveFramebase(derivation io.Writer) (uint64, error)
 }
 
-type loclistStackClass int
+type loclistStackItemClass int
 
 const (
-	stackClassNOP loclistStackClass = iota
-	stackClassPush
-	stackClassIsValue
-	stackClassSingleAddress
-	stackClassPiece
+	stackItemClassNOP loclistStackItemClass = iota
+	stackItemClassPush
+	stackItemClassValue
+	stackItemClassAddress
+	stackItemClassPiece
+	stackItemClassBranch
 )
 
-type loclistStack struct {
-	class loclistStackClass
+type loclistStackItem struct {
+	class loclistStackItemClass
+
+	// meaning of value depends on the value of the class field
 	value uint32
 }
 
@@ -83,7 +76,10 @@ type loclistPiece struct {
 
 type loclistOperator struct {
 	operator string
-	resolve  func(*loclist, io.Writer) (loclistStack, error)
+	size     int
+
+	// resoluve function returns an item to put on the stack and an error
+	resolve func(*loclist, io.Writer) (loclistStackItem, error)
 }
 
 type loclistResult struct {
@@ -100,7 +96,7 @@ type loclistClass int
 const (
 	classExpr loclistClass = iota
 	classPtr
-	classJustCtx
+	classFramebase
 )
 
 type loclist struct {
@@ -109,7 +105,7 @@ type loclist struct {
 
 	list []loclistOperator
 
-	stack  []loclistStack
+	stack  []loclistStackItem
 	pieces []loclistPiece
 
 	class loclistClass
@@ -120,22 +116,28 @@ func (sec *loclistDecoder) newLoclistJustFramebase(fb framebaseResolver) *loclis
 	return &loclist{
 		coproc: sec.coproc,
 		fb:     fb,
-		class:  classJustCtx,
+		class:  classFramebase,
 	}
 }
 
+// newLoclistFromExpr only supports single operator expressions for now (because that's all I've
+// encountered)
 func (sec *loclistDecoder) newLoclistFromExpr(fb framebaseResolver, expr []uint8) (*loclist, error) {
 	loc := &loclist{
 		coproc: sec.coproc,
 		fb:     fb,
 		class:  classExpr,
 	}
-	op, n, err := sec.decodeLoclistOperation(expr)
+	op, err := sec.decodeLoclistOperation(expr)
 	if err != nil {
 		return nil, err
 	}
-	if n == 0 {
-		return nil, fmt.Errorf("unhandled expression operator %02x", expr[0])
+	if op.size == 0 {
+		return nil, fmt.Errorf("unhandled expression operator %#02x", expr[0])
+	}
+	if op.size*8 < len(expr) {
+		// only expressions with one operator are supported for now
+		return nil, fmt.Errorf("unexpected number of bytes in loclist expression: %d", len(expr))
 	}
 	loc.list = append(loc.list, op)
 	return loc, nil
@@ -219,22 +221,22 @@ func (sec *loclistDecoder) newLoclistFromPtr(fb framebaseResolver, ptr int64,
 
 			// loop through stack operations
 			for length > 0 {
-				r, n, err := sec.decodeLoclistOperation(sec.data[ptr:])
+				op, err := sec.decodeLoclistOperation(sec.data[ptr:])
 				if err != nil {
 					return err
 				}
-				if n == 0 {
-					return fmt.Errorf("unhandled expression operator %02x", sec.data[ptr])
+				if op.size == 0 {
+					return fmt.Errorf("unhandled expression operator %#02x", sec.data[ptr])
 				}
 
 				// add resolver to variable
-				loc.addOperator(r)
+				loc.addOperator(op)
 
 				// reduce length value
-				length -= n
+				length -= op.size
 
 				// advance sec pointer by length value
-				ptr += int64(n)
+				ptr += int64(op.size)
 			}
 
 			// "A location list entry (but not a base address selection or end of list entry) whose beginning
@@ -284,7 +286,8 @@ func (loc *loclist) resolve(derivation io.Writer) (loclistResult, error) {
 	var isValue bool
 
 	// resolve every entry in the loclist
-	for i := range loc.list {
+	var i int
+	for i < len(loc.list) {
 		s, err := loc.list[i].resolve(loc, derivation)
 		if err != nil {
 			return loclistResult{}, fmt.Errorf("%s: %w", loc.list[i].operator, err)
@@ -296,14 +299,17 @@ func (loc *loclist) resolve(derivation io.Writer) (loclistResult, error) {
 
 		// process result according to the result class
 		switch s.class {
-		case stackClassNOP:
+		case stackItemClassNOP:
 			// do nothing
-		case stackClassPush:
-			loc.stack = append(loc.stack, s)
-		case stackClassIsValue:
-			loc.stack = append(loc.stack, s)
+
+		case stackItemClassPush:
+			loc.push(s)
+
+		case stackItemClassValue:
+			loc.push(s)
 			isValue = true
-		case stackClassSingleAddress:
+
+		case stackItemClassAddress:
 			r := loclistResult{
 				address:    uint64(s.value),
 				hasAddress: true,
@@ -316,8 +322,41 @@ func (loc *loclist) resolve(derivation io.Writer) (loclistResult, error) {
 			}
 
 			return r, nil
-		case stackClassPiece:
+
+		case stackItemClassPiece:
 			// all functionality of a piece operation is contained in the actual loclistOperator implementation
+
+		case stackItemClassBranch:
+			jmp := int(int16(s.value))
+			j := i + 1
+			for j < len(loc.list) {
+				jmp -= loc.list[j].size
+				j++
+				if jmp == 0 {
+					break // for loop
+				}
+				if jmp < 0 {
+					return loclistResult{}, fmt.Errorf("%s: unusable value for branch [%d]", loc.list[i].operator, jmp)
+				}
+			}
+			if jmp != 0 {
+				return loclistResult{}, fmt.Errorf("%s: unexpected end for branch [%d]", loc.list[i].operator, jmp)
+			}
+			if j == i {
+				return loclistResult{}, fmt.Errorf("%s: branch jumps back to itself", loc.list[i].operator)
+			}
+			if j >= len(loc.list) {
+				return loclistResult{}, fmt.Errorf("%s: branch has jumped too far", loc.list[i].operator)
+			}
+			i = j
+
+		default:
+			return loclistResult{}, fmt.Errorf("%s: unhandled stackItemClass [%d]", loc.list[i].operator, s.class)
+		}
+
+		// i has already been set for branches
+		if s.class != stackItemClassBranch {
+			i++
 		}
 	}
 
@@ -358,19 +397,23 @@ func (loc *loclist) resolve(derivation io.Writer) (loclistResult, error) {
 	}, nil
 }
 
-func (loc *loclist) peek() loclistStack {
-	if len(loc.stack) == 0 {
-		return loclistStack{}
+func (loc *loclist) peek(n int) (loclistStackItem, bool) {
+	if n < len(loc.stack) {
+		return loc.stack[len(loc.stack)-n], true
 	}
-	return loc.stack[len(loc.stack)-1]
+	return loclistStackItem{}, false
 }
 
-func (loc *loclist) pop() (loclistStack, bool) {
+func (loc *loclist) pop() (loclistStackItem, bool) {
 	l := len(loc.stack)
 	if l == 0 {
-		return loclistStack{}, false
+		return loclistStackItem{}, false
 	}
 	s := loc.stack[l-1]
 	loc.stack = loc.stack[:l-1]
 	return s, true
+}
+
+func (loc *loclist) push(b loclistStackItem) {
+	loc.stack = append(loc.stack, b)
 }

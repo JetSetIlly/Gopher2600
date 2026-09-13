@@ -22,49 +22,16 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf/leb128"
 )
 
-// decode loclist DWARF operation but adjust decoding addresses with an origin value.
-// there's only one operator (DW_OP_addr) that needs this special handling and
-// only then when the expression appears outside of a location list
-//
-// returns empty loclistOperator and zero if expression cannot be handled
-func (sec *loclistDecoder) decodeLoclistOperationWithOrigin(expr []uint8, origin uint64) (loclistOperator, int, error) {
-	switch expr[0] {
-	case 0x03:
-		// DW_OP_addr
-		// (literal encoding)
-		// "The DW_OP_addr operation has a single operand that encodes a machine address and whose
-		// size is the size of an address on the target machine."
-		address := sec.byteOrder.Uint32(expr[1:])
-		address += uint32(origin)
-		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
-				return loclistStack{
-					class: stackClassSingleAddress,
-					value: address,
-				}, nil
-			},
-			operator: "DW_OP_addr",
-		}, 5, nil
-	}
-
-	// other operators do not need the special handling
-	return sec.decodeLoclistOperation(expr)
-}
-
 // decode loclist DWARF expression operation. the expr argument is the operation
 // stream. the first entry in the slice is the operator, remaining entries in
 // the slice contain the operands for the operator. entries in the slice may be
 // unused.
 //
-// the simpleLocDesc argument indicates that the operator is expected to be
-// used in a context of being a single location description. the function will
-// resolve the stack as appropriate if this argument is true.
-//
 // the function returns a resolver function and the number of bytes consumed in
 // the expr slice
 //
 // returns empty loclistOperator and zero if expression cannot be handled
-func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator, int, error) {
+func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator, error) {
 	// expression location operators reference
 	//
 	// "DWARF Debugging Information Format Version 4", page 17 to 24
@@ -79,14 +46,15 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// size is the size of an address on the target machine."
 		address := sec.byteOrder.Uint32(expr[1:])
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
-				return loclistStack{
-					class: stackClassPush,
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: address,
 				}, nil
 			},
+			size:     5,
 			operator: "DW_OP_addr",
-		}, 5, nil
+		}, nil
 
 	case 0x06:
 		// DW_OP_deref
@@ -95,19 +63,20 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// value retrieved from that address is pushed. The size of the data retrieved from the
 		// dereferenced address is the size of an address on the target machine"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				value, ok := sec.coproc.Peek(a.value)
 				if !ok {
-					return loclistStack{}, fmt.Errorf("unknown address: %08x", a.value)
+					return loclistStackItem{}, fmt.Errorf("unknown address: %08x", a.value)
 				}
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_deref",
-		}, 1, nil
+		}, nil
 
 	case 0x08:
 		// DW_OP_const1u
@@ -116,14 +85,15 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// integer constant, respectively"
 		cons := uint32(expr[1])
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
-				return loclistStack{
-					class: stackClassPush,
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: cons,
 				}, nil
 			},
+			size:     2,
 			operator: "DW_OP_const1u",
-		}, 2, nil
+		}, nil
 
 	case 0x09:
 		// DW_OP_const1s
@@ -135,28 +105,30 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 			cons |= 0xffffff00
 		}
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
-				return loclistStack{
-					class: stackClassPush,
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: cons,
 				}, nil
 			},
+			size:     2,
 			operator: "DW_OP_const1s",
-		}, 2, nil
+		}, nil
 
 	case 0x0a:
 		// DW_OP_const2u
 		// (literal encoding)
 		cons := uint32(sec.byteOrder.Uint16(expr[1:]))
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
-				return loclistStack{
-					class: stackClassPush,
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: cons,
 				}, nil
 			},
+			size:     3,
 			operator: "DW_OP_const2u",
-		}, 3, nil
+		}, nil
 
 	case 0x0b:
 		// DW_OP_const2s
@@ -166,42 +138,45 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 			cons |= 0xffff0000
 		}
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
-				return loclistStack{
-					class: stackClassPush,
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: cons,
 				}, nil
 			},
+			size:     3,
 			operator: "DW_OP_const2s",
-		}, 3, nil
+		}, nil
 
 	case 0x0c:
 		// DW_OP_const4u
 		// (literal encoding)
 		cons := sec.byteOrder.Uint32(expr[1:])
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
-				return loclistStack{
-					class: stackClassPush,
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: cons,
 				}, nil
 			},
+			size:     5,
 			operator: "DW_OP_const4u",
-		}, 5, nil
+		}, nil
 
 	case 0x0d:
 		// DW_OP_const4s
 		// (literal encoding)
 		cons := sec.byteOrder.Uint32(expr[1:])
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
-				return loclistStack{
-					class: stackClassPush,
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: cons,
 				}, nil
 			},
+			size:     5,
 			operator: "DW_OP_const4s",
-		}, 5, nil
+		}, nil
 
 	case 0x10:
 		// DW_OP_constu
@@ -210,14 +185,15 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// constant"
 		value, n := leb128.DecodeULEB128(expr[1:])
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
-				return loclistStack{
-					class: stackClassPush,
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: uint32(value),
 				}, nil
 			},
+			size:     n + 1,
 			operator: "DW_OP_constu",
-		}, n + 1, nil
+		}, nil
 
 	case 0x11:
 		// DW_OP_consts
@@ -226,34 +202,126 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// constant"
 		value, n := leb128.DecodeSLEB128(expr[1:])
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
-				return loclistStack{
-					class: stackClassPush,
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: uint32(value),
 				}, nil
 			},
+			size:     n + 1,
 			operator: "DW_OP_consts",
-		}, n + 1, nil
+		}, nil
 
 	case 0x12:
 		// DW_OP_dup
 		// (stack operations)
 		// "The DW_OP_dup operation duplicates the value at the top of the stack"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
-				return loc.peek(), nil
-			}}, 1, nil
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				a, _ := loc.pop()
+				loc.push(a)
+				return loclistStackItem{
+					class: stackItemClassNOP,
+				}, nil
+			},
+			size:     1,
+			operator: "DW_OP_dup",
+		}, nil
 
 	case 0x13:
-		fallthrough
+		// DW_OP_drop
+		// (stack operations)
+		// "The DW_OP_drop operation pops the value at the top of the stack"
+		return loclistOperator{
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				_, _ = loc.pop()
+				return loclistStackItem{
+					class: stackItemClassNOP,
+				}, nil
+			},
+			size:     1,
+			operator: "DW_OP_drop",
+		}, nil
+
 	case 0x14:
-		fallthrough
+		// DW_OP_over
+		// (stack operations)
+		// "The DW_OP_over operation duplicates the entry currently second in the stack at the top of
+		// the stack. This is equivalent to a DW_OP_pick operation, with index 1"
+		return loclistOperator{
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				a, _ := loc.pop()
+				b, _ := loc.pop()
+				loc.push(b)
+				loc.push(a)
+				loc.push(b)
+				return loclistStackItem{
+					class: stackItemClassNOP,
+				}, nil
+			},
+			size:     1,
+			operator: "DW_OP_over",
+		}, nil
+
 	case 0x15:
-		fallthrough
+		// DW_OP_pick
+		// (stack operations)
+		// "The single operand of the DW_OP_pick operation provides a 1-byte index. A copy of the
+		// stack entry with the specified index (0 through 255, inclusive) is pushed onto the stack"
+		n := int(expr[1]) // depth of pick
+		return loclistOperator{
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				if a, ok := loc.peek(n); ok {
+					loc.push(a)
+				}
+				return loclistStackItem{
+					class: stackItemClassNOP,
+				}, nil
+			},
+			size:     2,
+			operator: "DW_OP_pick",
+		}, nil
+
 	case 0x16:
-		fallthrough
+		// DW_OP_swap
+		// (stack operations)
+		// "The DW_OP_swap operation swaps the top two stack entries. The entry at the top of the
+		// stack becomes the second stack entry, and the second entry becomes the top of the stack"
+		return loclistOperator{
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				a, _ := loc.pop()
+				b, _ := loc.pop()
+				loc.push(a)
+				loc.push(b)
+				return loclistStackItem{
+					class: stackItemClassNOP,
+				}, nil
+			},
+			size:     1,
+			operator: "DW_OP_swap",
+		}, nil
+
 	case 0x17:
-		return loclistOperator{}, 0, nil
+		// DW_OP_rot
+		// (stack operations)
+		// "The DW_OP_rot operation rotates the first three stack entries. The entry at the top of
+		// the stack becomes the third stack entry, the second entry becomes the top of the stack,
+		// and the third entry becomes the second entry"
+		return loclistOperator{
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				a, _ := loc.pop()
+				b, _ := loc.pop()
+				c, _ := loc.pop()
+				loc.push(a)
+				loc.push(c)
+				loc.push(b)
+				return loclistStackItem{
+					class: stackItemClassNOP,
+				}, nil
+			},
+			size:     1,
+			operator: "DW_OP_swap",
+		}, nil
 
 	case 0x18:
 		// DW_OP_xderef
@@ -265,7 +333,7 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// implementation-defined address calculation and pushed as the new stack top. The size of
 		// the data retrieved from the dereferenced address is the size of an address on the target
 		// machine"
-		return loclistOperator{}, 0, nil
+		return loclistOperator{}, nil
 
 	case 0x19:
 		// DW_OP_abs
@@ -274,33 +342,35 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// pushes its absolute value. If the absolute value cannot be represented, the result is
 		// undefined"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				value := a.value & 0x7fffffff
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_abs",
-		}, 1, nil
+		}, nil
 
 	case 0x1a:
 		// DW_OP_and
 		// (arithmetic and logic operations)
 		// "The DW_OP_and operation pops the top two stack values, performs a bitwise and operation"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				value := b.value & a.value
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_and",
-		}, 1, nil
+		}, nil
 
 	case 0x1b:
 		// DW_OP_div
@@ -308,17 +378,18 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// "The DW_OP_div operation pops the top two stack values, divides the former second entry
 		// by the former top of the stack using signed division, and pushes the result"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				value := b.value / a.value
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_div",
-		}, 1, nil
+		}, nil
 
 	case 0x1c:
 		// DW_OP_minus
@@ -326,17 +397,18 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// "The DW_OP_minus operation pops the top two stack values, subtracts the former top of the
 		// stack from the former second entry, and pushes the result"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				value := b.value - a.value
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_minus",
-		}, 1, nil
+		}, nil
 
 	case 0x1d:
 		// DW_OP_mod
@@ -344,17 +416,18 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// "The DW_OP_mod operation pops the top two stack values and pushes the result of the
 		// calculation: former second stack entry modulo the former top of the stack"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				value := b.value % a.value
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_mod",
-		}, 1, nil
+		}, nil
 
 	case 0x1e:
 		// DW_OP_mul
@@ -362,17 +435,18 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// "The DW_OP_mul operation pops the top two stack entries, multiplies them together, and
 		// pushes the result"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				value := b.value * a.value
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_mul",
-		}, 1, nil
+		}, nil
 
 	case 0x1f:
 		// DW_OP_neg
@@ -380,32 +454,34 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// "The DW_OP_neg operation pops the top stack entry, interprets it as a signed value and
 		// pushes its negation. If the negation cannot be represented, the result is undefined"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				value := uint32(-int32(a.value))
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_neg",
-		}, 1, nil
+		}, nil
 
 	case 0x20:
 		// DW_OP_not
 		// (arithmetic and logic operations)
 		// "The DW_OP_not operation pops the top stack entry, and pushes its bitwise complement"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				value := ^a.value
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_not",
-		}, 1, nil
+		}, nil
 
 	case 0x21:
 		// DW_OP_or
@@ -413,34 +489,36 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// "The DW_OP_or operation pops the top two stack entries, performs a bitwise or operation
 		// on the two, and pushes the result"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				value := b.value | a.value
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_or",
-		}, 1, nil
+		}, nil
 
 	case 0x22:
 		// DW_OP_plus
 		// (arithmetic and logic operations)
 		// "The DW_OP_plus operation pops the top two stack entries, adds them together, and pushes"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				value := b.value + a.value
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_plus",
-		}, 1, nil
+		}, nil
 
 	case 0x23:
 		// DW_OP_plus_uconst
@@ -449,15 +527,16 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// constant operand and pushes the result"
 		value, n := leb128.DecodeULEB128(expr[1:])
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: uint32(value) + a.value,
 				}, nil
 			},
+			size:     n + 1,
 			operator: "DW_OP_plus_uconst",
-		}, n + 1, nil
+		}, nil
 
 	case 0x24:
 		// DW_OP_shl
@@ -465,17 +544,18 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// "The DW_OP_shl operation pops the top two stack entries, shifts the former second entry
 		// left"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				value := b.value << a.value
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_shl",
-		}, 1, nil
+		}, nil
 
 	case 0x25:
 		// DW_OP_shr
@@ -484,17 +564,18 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// right logically (filling with zero bits) by the number of bits specified by the former
 		// top of the stack, and pushes the result"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				value := b.value >> a.value
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_shr",
-		}, 1, nil
+		}, nil
 
 	case 0x26:
 		// DW_OP_shra
@@ -504,7 +585,7 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// the number of bits specified by the former top of the stack, and pushes the result"
 		// "DWARF4 Standard"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				signExtend := (b.value & 0x80000000) >> 31
@@ -512,13 +593,14 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 				if signExtend == 0x01 {
 					value |= ^uint32(0) << (32 - a.value)
 				}
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_shra",
-		}, 1, nil
+		}, nil
 
 	case 0x27:
 		// DW_OP_xor
@@ -526,134 +608,174 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// "The DW_OP_xor operation pops the top two stack entries, performs a bitwise exclusive-or
 		// operation on the two, and pushes the result"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				value := b.value ^ a.value
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_xor",
-		}, 1, nil
+		}, nil
 
 	case 0x28:
 		// DW_OP_bra
 		// (control flow operations)
-		return loclistOperator{}, 0, nil
+		// "DW_OP_bra is a conditional branch. Its single operand is a 2-byte signed integer
+		// constant. This operation pops the top of stack. If the value popped is not the constant
+		// 0, the 2-byte constant operand is the number of bytes of the DWARF expression to skip
+		// forward or backward from the current operation, beginning after the 2-byte constant"
+		jmp := int32(int16(sec.byteOrder.Uint16(expr[1:])))
+		return loclistOperator{
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				a, _ := loc.pop()
+				if a.value == 0 {
+					b, _ := loc.pop()
+					return b, nil
+				}
+				return loclistStackItem{
+					class: stackItemClassBranch,
+					value: uint32(jmp),
+				}, nil
+			},
+			size:     3,
+			operator: "DW_OP_bra",
+		}, nil
+
 	case 0x29:
 		// DW_OP_eq
 		// (control flow operations)
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				var value uint32
 				if int32(b.value) == int32(a.value) {
 					value = 1
 				}
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_eq",
-		}, 1, nil
+		}, nil
 	case 0x2a:
 		// DW_OP_ge
 		// (control flow operations)
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				var value uint32
 				if int32(b.value) >= int32(a.value) {
 					value = 1
 				}
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_ge",
-		}, 1, nil
+		}, nil
 	case 0x2b:
 		// DW_OP_gt
 		// (control flow operations)
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				var value uint32
 				if int32(b.value) > int32(a.value) {
 					value = 1
 				}
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_gt",
-		}, 1, nil
+		}, nil
 	case 0x2c:
 		// DW_OP_le
 		// (control flow operations)
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				var value uint32
 				if int32(b.value) <= int32(a.value) {
 					value = 1
 				}
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_le",
-		}, 1, nil
+		}, nil
 	case 0x2d:
 		// DW_OP_lt
 		// (control flow operations)
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				var value uint32
 				if int32(b.value) < int32(a.value) {
 					value = 1
 				}
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_lt",
-		}, 1, nil
+		}, nil
 	case 0x2e:
 		// DW_OP_ne
 		// (control flow operations)
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
 				var value uint32
 				if int32(b.value) != int32(a.value) {
 					value = 1
 				}
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_ne",
-		}, 1, nil
+		}, nil
 	case 0x2f:
 		// DW_OP_skip
 		// (control flow operations)
-		return loclistOperator{}, 0, nil
+		// "DW_OP_skip is an unconditional branch. Its single operand is a 2-byte signed integer
+		// constant. The 2-byte constant is the number of bytes of the DWARF expression to skip
+		// forward or backward from the current operation, beginning after the 2-byte constant"
+		jmp := int32(int16(sec.byteOrder.Uint16(expr[1:])))
+		return loclistOperator{
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				return loclistStackItem{
+					class: stackItemClassBranch,
+					value: uint32(jmp),
+				}, nil
+			},
+			size:     3,
+			operator: "DW_OP_skip",
+		}, nil
 
 	case 0x30:
 		fallthrough
@@ -724,14 +846,15 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// inclusive"
 		lit := uint32(expr[0] - 0x30)
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
-				return loclistStack{
-					class: stackClassPush,
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: lit,
 				}, nil
 			},
+			size:     1,
 			operator: fmt.Sprintf("DW_OP_lit%d", lit),
-		}, 1, nil
+		}, nil
 
 	case 0x50:
 		fallthrough
@@ -802,18 +925,19 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// through 31, inclusive. The object addressed is in register n"
 		reg := expr[0] - 0x50
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				value, ok := sec.coproc.Register(int(reg))
 				if !ok {
-					return loclistStack{}, fmt.Errorf("unknown register: %d", reg)
+					return loclistStackItem{}, fmt.Errorf("unknown register: %d", reg)
 				}
-				return loclistStack{
-					class: stackClassIsValue,
+				return loclistStackItem{
+					class: stackItemClassValue,
 					value: value,
 				}, nil
 			},
+			size:     1,
 			operator: fmt.Sprintf("DW_OP_reg%d", reg),
-		}, 1, nil
+		}, nil
 
 	case 0x70:
 		fallthrough
@@ -885,20 +1009,21 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		reg := expr[0] - 0x70
 		offset, n := leb128.DecodeSLEB128(expr[1:])
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				regVal, ok := sec.coproc.Register(int(reg))
 				if !ok {
-					return loclistStack{}, fmt.Errorf("unknown register: %d", reg)
+					return loclistStackItem{}, fmt.Errorf("unknown register: %d", reg)
 				}
 				address := uint32(int64(regVal) + offset)
 
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: address,
 				}, nil
 			},
+			size:     n + 1,
 			operator: fmt.Sprintf("DW_OP_breg%d", reg),
-		}, n + 1, nil
+		}, nil
 
 	case 0x90:
 		// DW_OP_regx
@@ -907,18 +1032,19 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// name of a register"
 		reg, n := leb128.DecodeULEB128(expr[1:])
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				value, ok := sec.coproc.Register(int(reg))
 				if !ok {
-					return loclistStack{}, fmt.Errorf("unknown register: %d", reg)
+					return loclistStackItem{}, fmt.Errorf("unknown register: %d", reg)
 				}
-				return loclistStack{
-					class: stackClassIsValue,
+				return loclistStackItem{
+					class: stackItemClassValue,
 					value: value,
 				}, nil
 			},
+			size:     n + 1,
 			operator: "DW_OP_regx",
-		}, n + 1, nil
+		}, nil
 
 	case 0x91:
 		// DW_OP_fbreg
@@ -930,20 +1056,21 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// stack pointer as the PC changes)"
 		offset, n := leb128.DecodeSLEB128(expr[1:])
 		return loclistOperator{
-			resolve: func(loc *loclist, derivation io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, derivation io.Writer) (loclistStackItem, error) {
 				fb, err := loc.fb.resolveFramebase(derivation)
 				if err != nil {
-					return loclistStack{}, err
+					return loclistStackItem{}, err
 				}
 				address := int64(fb) + offset
 
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: uint32(address),
 				}, nil
 			},
+			size:     n + 1,
 			operator: "DW_OP_fbreg",
-		}, n + 1, nil
+		}, nil
 
 	case 0x92:
 		// DW_OP_bregx
@@ -954,20 +1081,21 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		reg, n := leb128.DecodeULEB128(expr[1:])
 		offset, m := leb128.DecodeSLEB128(expr[1:])
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				regVal, ok := sec.coproc.Register(int(reg))
 				if !ok {
-					return loclistStack{}, fmt.Errorf("unknown register: %d", reg)
+					return loclistStackItem{}, fmt.Errorf("unknown register: %d", reg)
 				}
 				address := uint32(int64(regVal) + offset)
 
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: address,
 				}, nil
 			},
+			size:     m + n + 1,
 			operator: "DW_OP_bregx",
-		}, m + n + 1, nil
+		}, nil
 
 	case 0x93:
 		// DW_OP_piece
@@ -978,7 +1106,7 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// register, the placement of the piece within that register is defined by the ABI"
 		size, n := leb128.DecodeULEB128(expr[1:])
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				v := a.value
 				switch size {
@@ -991,7 +1119,7 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 				case 4:
 					v &= 0xffffffff
 				default:
-					return loclistStack{}, fmt.Errorf("unknown piece size %d", size)
+					return loclistStackItem{}, fmt.Errorf("unknown piece size %d", size)
 				}
 
 				p := loclistPiece{
@@ -1001,24 +1129,25 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 
 				// set isAddress flag
 				switch a.class {
-				case stackClassNOP:
-				case stackClassPush:
+				case stackItemClassNOP:
+				case stackItemClassPush:
 					p.isAddress = true
-				case stackClassIsValue:
+				case stackItemClassValue:
 					p.isAddress = false
 				default:
-					return loclistStack{}, fmt.Errorf("unhandled stack entry: %v", a.class)
+					return loclistStackItem{}, fmt.Errorf("unhandled stack entry: %v", a.class)
 				}
 
 				// add to list of pieces
 				loc.pieces = append(loc.pieces, p)
 
-				return loclistStack{
-					class: stackClassPiece,
+				return loclistStackItem{
+					class: stackItemClassPiece,
 				}, nil
 			},
+			size:     n + 1,
 			operator: "DW_OP_piece",
-		}, n + 1, nil
+		}, nil
 
 	case 0x94:
 		// DW_OP_deref_size
@@ -1032,30 +1161,31 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// target machine before being pushed onto the expression stack."
 		size := expr[1] // in bytes
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				address := uint64(a.value)
 
 				value, ok := sec.coproc.Peek(uint32(address))
 				if !ok {
-					return loclistStack{}, fmt.Errorf("unknown address: %08x", address)
+					return loclistStackItem{}, fmt.Errorf("unknown address: %08x", address)
 				}
 
 				mask := ^((^int32(0)) << (size * 8))
 				value &= uint32(mask)
 
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: value,
 				}, nil
 			},
+			size:     2,
 			operator: "DW_OP_deref_size",
-		}, 2, nil
+		}, nil
 
 	case 0x95:
 		// DW_OP_xdref_size
 		// (stack operations)
-		return loclistOperator{}, 0, nil
+		return loclistOperator{}, nil
 
 	case 0x96:
 		// DW_OP_nop
@@ -1063,13 +1193,14 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// "The DW_OP_nop operation is a place holder. It has no effect on the location stack or any
 		// of its values"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
-				return loclistStack{
-					class: stackClassNOP,
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				return loclistStackItem{
+					class: stackItemClassNOP,
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_nop",
-		}, 1, nil
+		}, nil
 
 	case 0x9c:
 		// DW_OP_call_frame_cfa
@@ -1077,22 +1208,23 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// "The DW_OP_call_frame_cfa operation pushes the value of the CFA, obtained from the Call
 		// Frame Information"
 		return loclistOperator{
-			resolve: func(loc *loclist, derivation io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, derivation io.Writer) (loclistStackItem, error) {
 				fb, err := loc.fb.resolveFramebase(derivation)
 				if err != nil {
-					return loclistStack{}, err
+					return loclistStackItem{}, err
 				}
-				return loclistStack{
-					class: stackClassPush,
+				return loclistStackItem{
+					class: stackItemClassPush,
 					value: uint32(fb),
 				}, nil
 			},
+			size:     1,
 			operator: "DW_OP_call_frame_cfa",
-		}, 1, nil
+		}, nil
 
 	case 0x9d:
 		// DW_OP_bit_piece
-		return loclistOperator{}, 0, nil
+		return loclistOperator{}, nil
 
 	case 0x9e:
 		// DW_OP_implicit_value
@@ -1111,17 +1243,18 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		case 4:
 			val = sec.byteOrder.Uint32(expr[1+n:])
 		default:
-			return loclistOperator{}, 0, fmt.Errorf("unsupported length value for DW_OP_implicit_value")
+			return loclistOperator{}, fmt.Errorf("unsupported length value for DW_OP_implicit_value")
 		}
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
-				return loclistStack{
-					class: stackClassIsValue,
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+				return loclistStackItem{
+					class: stackItemClassValue,
 					value: val,
 				}, nil
 			},
+			size:     int(length) + n + 1,
 			operator: "DW_OP_implicit_value",
-		}, int(length) + n + 1, nil
+		}, nil
 
 	case 0x9f:
 		// DW_OP_stack_value
@@ -1132,24 +1265,25 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// object, rather than its location. The DW_OP_stack_value operation terminates the
 		// expression"
 		return loclistOperator{
-			resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
+			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				res, ok := loc.pop()
 				if !ok {
-					return loclistStack{}, fmt.Errorf("stack empty")
+					return loclistStackItem{}, fmt.Errorf("stack empty")
 				}
-				res.class = stackClassIsValue
+				res.class = stackItemClassValue
 				return res, nil
 			},
+			size:     1,
 			operator: "DW_OP_stack_value",
-		}, 1, nil
+		}, nil
 
 	case 0xf0:
 		// DW_OP_GNU_uninit
 		//
 		// this is the only GNU DWARF extension we implement. we do so because this operator is
 		// sometimes emitted even when -gstrict-dwarf is specified when compiling
-		return loclistOperator{}, 0, nil
+		return loclistOperator{}, nil
 	}
 
-	return loclistOperator{}, 0, fmt.Errorf("%w: unsupported expression operator %02x", UnsupportedDWARF, expr[0])
+	return loclistOperator{}, fmt.Errorf("%w: unsupported expression operator %#02x", UnsupportedDWARF, expr[0])
 }

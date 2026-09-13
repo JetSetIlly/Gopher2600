@@ -369,9 +369,9 @@ func (bld *build) buildTypes(src *Source) error {
 						memb.loclist = src.debugLoc.newLoclistJustFramebase(memb)
 						address := fld.Val.(int64)
 						memb.loclist.addOperator(loclistOperator{
-							resolve: func(loc *loclist, _ io.Writer) (loclistStack, error) {
-								return loclistStack{
-									class: stackClassIsValue,
+							resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
+								return loclistStackItem{
+									class: stackItemClassValue,
 									value: uint32(address),
 								}, nil
 							},
@@ -380,12 +380,12 @@ func (bld *build) buildTypes(src *Source) error {
 					case dwarf.ClassExprLoc:
 						memb.loclist = src.debugLoc.newLoclistJustFramebase(memb)
 						expr := fld.Val.([]uint8)
-						r, n, err := src.debugLoc.decodeLoclistOperation(expr)
+						r, err := src.debugLoc.decodeLoclistOperation(expr)
 						if err != nil {
 							return err
 						}
-						if n == 0 {
-							return fmt.Errorf("unhandled expression operator %02x", expr[0])
+						if r.size == 0 {
+							return fmt.Errorf("unhandled expression operator %#02x", expr[0])
 						}
 						memb.loclist.addOperator(r)
 					default:
