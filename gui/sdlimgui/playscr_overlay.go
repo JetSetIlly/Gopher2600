@@ -209,6 +209,9 @@ func (o *playscrOverlay) drawTopLeft(posMin imgui.Vec2, _ imgui.Vec2) {
 	// FPS overlay is being used we use the space to draw smaller icons
 	var useIconQueue bool
 
+	// start a new icons queue
+	o.iconQueue = o.iconQueue[:0]
+
 	// draw FPS information if it's enabled
 	if o.img.prefs.fpsDetail.Get().(bool) {
 		// it's easier if we put topleft of overlay in a window because the window
@@ -380,29 +383,18 @@ func (o *playscrOverlay) drawTopLeft(posMin imgui.Vec2, _ imgui.Vec2) {
 			o.img.metrics.draw()
 		}
 
-		// create space in the window for any icons that we might want to draw.
-		// what's good about this is that it makes sure that the window is large
-		// enough from frame-to-frame. without this, there will be a visble
-		// delay when the window is resized
 		imgui.Spacing()
-		p := imgui.CursorScreenPos()
-		imgui.Text("")
-		p.X += 2
-		imgui.SetCursorScreenPos(p)
 
 		// draw developer icon if BorrowSource() returns a non-nil value
 		o.img.dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 			if src != nil {
-				imgui.Text(string(fonts.Developer))
+				o.iconQueue = append(o.iconQueue, fonts.Developer)
 			}
 		})
 
 		// we can draw multiple icons if required
 		useIconQueue = true
 	}
-
-	// start a new icons queue
-	o.iconQueue = o.iconQueue[:0]
 
 	// mute is likely to be the icon visible the longest so has the lowest priority
 	if o.img.prefs.audioMutePlaymode.Get().(bool) && o.img.prefs.audioMuteNotification.Get().(bool) {
