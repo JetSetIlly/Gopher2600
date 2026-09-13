@@ -266,14 +266,14 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistDecoder) {
 			if varb.loclist != nil {
 				o := i
 				elem.loclist.addOperator(loclistOperator{
-					resolve: func(_ *loclist, _ io.Writer) (loclistStack, error) {
+					resolve: func(_ *loclist, _ io.Writer) (loclistStackItem, error) {
 						address, ok := varb.Address()
 						if !ok {
-							return loclistStack{}, fmt.Errorf("no base address for array")
+							return loclistStackItem{}, fmt.Errorf("no base address for array")
 						}
 						address += uint64(o * varb.Type.ElementType.Size)
-						return loclistStack{
-							class: stackClassSingleAddress,
+						return loclistStackItem{
+							class: stackItemClassAddress,
 							value: uint32(address),
 						}, nil
 					},
@@ -300,34 +300,34 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistDecoder) {
 				offset := m.resolve(nil).value
 				idx := i
 				memb.loclist.addOperator(loclistOperator{
-					resolve: func(_ *loclist, _ io.Writer) (loclistStack, error) {
+					resolve: func(_ *loclist, _ io.Writer) (loclistStackItem, error) {
 						np := varb.hasPieces()
 						if np == 0 {
 							address, ok := varb.Address()
 							if !ok {
-								return loclistStack{}, fmt.Errorf("no base address for composite variable")
+								return loclistStackItem{}, fmt.Errorf("no base address for composite variable")
 							}
 							address += uint64(offset)
-							return loclistStack{
-								class: stackClassSingleAddress,
+							return loclistStackItem{
+								class: stackItemClassAddress,
 								value: uint32(address),
 							}, nil
 						}
 
 						p, ok := varb.piece(idx)
 						if !ok {
-							return loclistStack{}, fmt.Errorf("no piece information for this member")
+							return loclistStackItem{}, fmt.Errorf("no piece information for this member")
 						}
 
 						if p.isAddress {
-							return loclistStack{
-								class: stackClassSingleAddress,
+							return loclistStackItem{
+								class: stackItemClassAddress,
 								value: p.value,
 							}, nil
 						}
 
-						return loclistStack{
-							class: stackClassIsValue,
+						return loclistStackItem{
+							class: stackItemClassValue,
 							value: p.value,
 						}, nil
 					},
@@ -350,9 +350,9 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistDecoder) {
 		deref.loclist = debug_loc.newLoclistJustFramebase(varb)
 
 		deref.loclist.addOperator(loclistOperator{
-			resolve: func(_ *loclist, _ io.Writer) (loclistStack, error) {
-				return loclistStack{
-					class: stackClassSingleAddress,
+			resolve: func(_ *loclist, _ io.Writer) (loclistStackItem, error) {
+				return loclistStackItem{
+					class: stackItemClassAddress,
 					value: varb.Value(),
 				}, nil
 			},

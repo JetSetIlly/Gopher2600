@@ -382,9 +382,9 @@ number rather than the display number.
 
 	cmdDWARF: `Debugging information for cartridge types that support DWARF debugging.
 
-GLOBALS prints the list of global variables and LOCALS prints the list of local variables that
-is in scope at the current breakpoint. Note that the list of local variables will usually be empty
-if execution has not broken inside the coprocessor program.
+GLOBALS prints the list of global variables and LOCALS prints the list of local variables that is in
+scope at the current breakpoint. Note that the list of local variables will be empty if execution
+has not broken inside the coprocessor program and only then when local variables are within scope.
 
 The DUMP switch to the GLOBAL option will save the list of global variables to a CSV file.
 
