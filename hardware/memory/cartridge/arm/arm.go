@@ -762,21 +762,16 @@ func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 		return arm.state.yield, 0
 	}
 
-	yld, cycles := arm.run()
+	cycles := arm.run()
 
 	// perform the expected SP check only when the program has ended
-	if yld.Type == coprocessor.YieldProgramEnded {
+	if arm.state.yield.Type == coprocessor.YieldProgramEnded {
 		if arm.state.registers[rSP] != arm.state.expectedSP {
 			arm.memoryFault("stack position tampered with", faults.StackCollision, arm.state.registers[rSP])
-			if arm.abortOnMemoryFault {
-				yld = arm.state.yield
-			} else {
-				arm.resetYield()
-			}
 		}
 	}
 
-	return yld, cycles
+	return arm.state.yield, cycles
 }
 
 // Interrupt indicates that the ARM execution should cease after the current
@@ -841,7 +836,17 @@ func (arm *ARM) checkProgramMemory(force bool) {
 	arm.stackProtectCheckProgramMemory()
 }
 
-func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
+func (arm *ARM) run() float32 {
+	defer func() {
+		// there are panics for unsupported conditions in the instruction implementations. this
+		// construct should probably be replaced with errors returned by the decode functions. panic
+		// recovery is fine though for the time being
+		if r := recover(); r != nil {
+			arm.state.yield.Type = coprocessor.YieldExecutionError
+			arm.state.yield.Error = fmt.Errorf("PC at %08x: %s", arm.state.executingPC, r)
+		}
+	}()
+
 	arm.updatePrefs()
 
 	// number of iterations. only used when in immediate mode
@@ -1036,7 +1041,7 @@ func (arm *ARM) run() (coprocessor.CoProcYield, float32) {
 	}
 
 	// cycles are stretched by the cycle regulator
-	return arm.state.yield, arm.state.cyclesTotal * arm.cycleRegulator
+	return arm.state.cyclesTotal * arm.cycleRegulator
 }
 
 func (arm *ARM) checkBreakpoints() {
