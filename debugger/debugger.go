@@ -901,14 +901,10 @@ func (dbg *Debugger) CartYield(yield coprocessor.CoProcYield) coprocessor.YieldH
 		return coprocessor.YieldHookContinue
 	}
 
-	// if emulation is in the intialisation state then we cause coprocessor
-	// execution to end unless it's a memory or access erorr
+	// treat yield differently when emulation is in the intialisation state
 	//
-	// this is an area that's likely to change. it's of particular interest to
-	// ACE and ELF ROMs in which the coprocessor is run very early in order to
-	// retrive the 6507 reset address
-	//
-	// a deferred YeildHookEnd might be a better option
+	// this is an area that's likely to change. it's of particular interest to ACE and ELF ROMs in
+	// which the coprocessor is run very early in order to retrive the 6507 reset address
 	if dbg.State() == govern.Initialising {
 		dbg.halting.deferredCartridgeYield = true
 		return coprocessor.YieldHookContinue
