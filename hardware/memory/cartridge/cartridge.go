@@ -274,11 +274,10 @@ func (cart *Cartridge) Attach(loader cartridgeloader.Loader) error {
 	// mapper deal with the error (as it would if unwrapACE preference is not enabled)
 	if mapping == "ACE" {
 		if cart.env.Prefs.Cartridge.UnwrapACE.Get().(bool) {
-			var ok bool
-			ok, mapping = fingerprintAce(loader, true)
+			ok, m := fingerprintAce(loader, true)
 			if ok {
-				logger.Logf(cart.env, "cartridge", "ACE wrapping suggested but %s preferred", mapping)
-				loader.Mapping = mapping
+				logger.Logf(cart.env, "cartridge", "ACE wrapping suggested but %s preferred", m)
+				mapping = m
 			}
 		}
 	}
