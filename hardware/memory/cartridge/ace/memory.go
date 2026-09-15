@@ -248,7 +248,7 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 	mem.sramStackMemtop = mem.sramStackOrigin + uint32(len(mem.sramStack)-1)
 
 	// the placement of data in memory revolves around the ARM entry point
-	mem.resetPC = arm.AlignTo16bits(mem.flashOrigin + mem.header.entry)
+	mem.resetPC = arm.AlignTo16bits(mem.flashOrigin + mem.header.entry + 1)
 	mem.resetLR = mem.resetPC
 	mem.resetSP = mem.sramStackMemtop - 3
 
