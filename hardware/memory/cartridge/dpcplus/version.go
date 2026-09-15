@@ -84,7 +84,7 @@ func newVersion(id string) (mmap, error) {
 			randomSeed:      0x2b435044, // '+CPD'
 		}, nil
 
-	case "DPCP":
+	case "DPCp":
 		arch = architecture.NewMap(architecture.PlusCart)
 		return mmap{
 			arch:            arch,

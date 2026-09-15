@@ -355,7 +355,7 @@ func (cart *Cartridge) Attach(loader cartridgeloader.Loader) error {
 	case "DPC+":
 		cart.mapper, err = dpcplus.NewDPCplus(cart.env, "DPC+")
 	case "DPCP":
-		cart.mapper, err = dpcplus.NewDPCplus(cart.env, "DPCP")
+		cart.mapper, err = dpcplus.NewDPCplus(cart.env, "DPCp")
 
 	case "CDF":
 		cart.mapper, err = cdf.NewCDF(cart.env, "CDFJ")
