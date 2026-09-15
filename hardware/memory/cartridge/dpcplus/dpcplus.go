@@ -73,7 +73,7 @@ const (
 func NewDPCplus(env *environment.Environment, version string) (mapper.CartMapper, error) {
 	data, err := io.ReadAll(env.Loader)
 	if err != nil {
-		return nil, fmt.Errorf("DPC+: %w", err)
+		return nil, fmt.Errorf("%s: %w", version, err)
 	}
 
 	cart := &dpcPlus{
@@ -100,7 +100,7 @@ func NewDPCplus(env *environment.Environment, version string) (mapper.CartMapper
 	// create addresses
 	cart.version, err = newVersion(version)
 	if err != nil {
-		return nil, fmt.Errorf("DPC+: %s", err.Error())
+		return nil, fmt.Errorf("%s: %s", version, err.Error())
 	}
 
 	// amount of data used for cartridges
@@ -108,7 +108,7 @@ func NewDPCplus(env *environment.Environment, version string) (mapper.CartMapper
 
 	// size check
 	if bankLen <= 0 || bankLen%cart.bankSize != 0 {
-		return nil, fmt.Errorf("DPC+: wrong number of bytes in cartridge data")
+		return nil, fmt.Errorf("%s: wrong number of bytes in cartridge data", version)
 	}
 
 	// allocate enough banks
@@ -125,7 +125,7 @@ func NewDPCplus(env *environment.Environment, version string) (mapper.CartMapper
 	// initialise static memory
 	cart.state.static, err = cart.newDPCplusStatic(cart.version, data)
 	if err != nil {
-		return nil, fmt.Errorf("DPC+: %s", err.Error())
+		return nil, fmt.Errorf("%s: %s", version, err.Error())
 	}
 
 	// initialise ARM processor
@@ -557,7 +557,7 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 				// with YieldExecutionError
 				if cart.state.yield.Type == coprocessor.YieldSyncWithVCS {
 					cart.state.yield.Type = coprocessor.YieldExecutionError
-					cart.state.yield.Error = fmt.Errorf("DPC+ does not support SyncWithVCS yield type")
+					cart.state.yield.Error = fmt.Errorf("%s does not support SyncWithVCS yield type", cart.mappingID)
 				}
 
 				// treat infinite loops like a YieldProgramEnded

@@ -255,7 +255,7 @@ func (cart *dpcPlus) PutRegister(register string, data string) {
 	case "datafetcher":
 		f, err := strconv.Atoi(r[1])
 		if err != nil || f > len(cart.state.registers.Fetcher) {
-			panic(fmt.Sprintf("DPC+: unrecognised fetcher [%s]", register))
+			panic(fmt.Sprintf("%s: unrecognised fetcher [%s]", cart.mappingID, register))
 		}
 		switch r[2] {
 		case "hi":
@@ -267,12 +267,12 @@ func (cart *dpcPlus) PutRegister(register string, data string) {
 		case "bottom":
 			cart.state.registers.Fetcher[f].Bottom = uint8(d8)
 		default:
-			panic(fmt.Sprintf("DPC+: unrecognised register [%s]", register))
+			panic(fmt.Sprintf("%s: unrecognised register [%s]", cart.mappingID, register))
 		}
 	case "fractional":
 		f, err := strconv.Atoi(r[1])
 		if err != nil || f > len(cart.state.registers.FracFetcher) {
-			panic(fmt.Sprintf("DPC+: unrecognised register [%s]", register))
+			panic(fmt.Sprintf("%s: unrecognised register [%s]", cart.mappingID, register))
 		}
 		switch r[2] {
 		case "hi":
@@ -284,12 +284,12 @@ func (cart *dpcPlus) PutRegister(register string, data string) {
 		case "count":
 			cart.state.registers.FracFetcher[f].Count = uint8(d8)
 		default:
-			panic(fmt.Sprintf("DPC+: unrecognised register [%s]", register))
+			panic(fmt.Sprintf("%s: unrecognised register [%s]", cart.mappingID, register))
 		}
 	case "music":
 		f, err := strconv.Atoi(r[1])
 		if err != nil || f > len(cart.state.registers.MusicFetcher) {
-			panic(fmt.Sprintf("DPC+: unrecognised fetcher [%s]", register))
+			panic(fmt.Sprintf("%s: unrecognised fetcher [%s]", cart.mappingID, register))
 		}
 		switch r[2] {
 		case "waveform":
@@ -299,7 +299,7 @@ func (cart *dpcPlus) PutRegister(register string, data string) {
 		case "increment":
 			cart.state.registers.MusicFetcher[f].Count = uint32(d32)
 		default:
-			panic(fmt.Sprintf("DPC+: unrecognised variable [%s]", register))
+			panic(fmt.Sprintf("%s: unrecognised variable [%s]", cart.mappingID, register))
 		}
 	case "rng":
 		cart.state.registers.RNG.Value = uint32(d32)
@@ -310,9 +310,9 @@ func (cart *dpcPlus) PutRegister(register string, data string) {
 		case "false":
 			cart.state.registers.FastFetch = false
 		default:
-			panic(fmt.Sprintf("DPC+: unrecognised boolean state [%s]", data))
+			panic(fmt.Sprintf("%s: unrecognised boolean state [%s]", cart.mappingID, data))
 		}
 	default:
-		panic(fmt.Sprintf("DPC+: unrecognised variable [%s]", register))
+		panic(fmt.Sprintf("%s: unrecognised variable [%s]", cart.mappingID, register))
 	}
 }
