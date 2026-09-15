@@ -709,11 +709,14 @@ func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 	switch arm.state.yield.Type {
 	case coprocessor.YieldProgramEnded:
 		arm.resetRegisters()
-		arm.state.cyclesTotal = 0
 		arm.state.registers[rPC] += 2
 	case coprocessor.YieldSyncWithVCS:
-		arm.state.cyclesTotal = 0
 	}
+
+	// always reset cyclesTotal. always resetting regards of previous yield type allows
+	// malfunctioning programs to actually run and possibly generate informative errors other than
+	// an exceeded cycles message
+	arm.state.cyclesTotal = 0
 
 	// arm.state.prefetchCycle reset in resetRegisters() function. we don't want to change
 	// the value if we're resuming from a yield
