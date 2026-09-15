@@ -185,9 +185,6 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 	}
 	mem.flashMemtop = mem.flashOrigin + uint32(len(mem.flash))
 
-	// note the real entry point
-	logger.Logf(mem.env, "ACE", "actual entrypoint: %08x", mem.resetPC)
-
 	// define the Thumb-2 bytecode for a function whose only purpose is to jump
 	// back to where it came from bytecode is for instruction "BX LR" with a
 	// "true" value in R0
@@ -254,6 +251,9 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 	mem.resetPC = arm.AlignTo16bits(mem.flashOrigin + mem.header.entry)
 	mem.resetLR = mem.resetPC
 	mem.resetSP = mem.sramStackMemtop - 3
+
+	// note the real entry point
+	logger.Logf(mem.env, "ACE", "actual entrypoint: %08x", mem.resetPC)
 
 	// set virtual argument. detailed information in the PlusCart firmware
 	// source:
