@@ -59,8 +59,7 @@ type SourceVariable struct {
 	// variable can never be located
 	loclist *loclist
 
-	// if Error is not nil then an error was enountered during a resolve()
-	// sequence. the error will be logged when the field is first set to true
+	// if Error is not nil then an error was enountered during a resolve() sequence
 	Error error
 
 	// most recent resolved value retrieved from emulation
@@ -243,6 +242,11 @@ func (varb *SourceVariable) resolve(derivation io.Writer) loclistResult {
 		}
 		r.value = v
 	}
+
+	// if we reach this point any existing error should be cleared. for example, when a pointer that
+	// was previously pointing to a nonsense address is updated to a valid address, the previous
+	// error should be cleared
+	varb.Error = nil
 
 	return r
 }
