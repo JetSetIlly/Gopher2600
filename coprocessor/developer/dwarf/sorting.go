@@ -319,7 +319,7 @@ func (v SortedVariables) Len() int {
 func (v SortedVariables) Less(i int, j int) bool {
 	switch v.method {
 	case SortVariablesName:
-		return strings.ToUpper(v.Variables[i].Name) <= strings.ToUpper(v.Variables[j].Name) != v.descending
+		return strings.ToUpper(v.Variables[i].id()) <= strings.ToUpper(v.Variables[j].id()) != v.descending
 	case SortVariablesAddress:
 		ia, _ := v.Variables[i].Address()
 		ja, _ := v.Variables[j].Address()
