@@ -40,6 +40,10 @@ type term struct {
 	// output to the terminal window to present in the main output window
 	outputChan chan terminalOutput
 
+	// the print channel is monitored by an anonyous goroutine, launched in newTerm(),
+	// and ensures that TermPrintLine() never blocks if outputChan is full
+	printChan chan terminalOutput
+
 	// the state of the last call to Silence()
 	silenced bool
 
@@ -62,9 +66,35 @@ func newTerm() *term {
 		// promptChan must not block
 		promptChan: make(chan terminal.Prompt, 1),
 
-		// generous buffer for output channel
-		outputChan: make(chan terminalOutput, 4096),
+		// generous buffer for output and print channels. this is for speed as much
+		// as anything else
+		outputChan: make(chan terminalOutput, 100),
+		printChan:  make(chan terminalOutput, 100),
 	}
+
+	go func() {
+		var queue []terminalOutput
+		for {
+			if len(queue) == 0 {
+				s, ok := <-trm.printChan
+				if !ok {
+					return
+				}
+				queue = append(queue, s)
+			}
+			select {
+			case s, ok := <-trm.printChan:
+				if !ok {
+					return
+				}
+				queue = append(queue, s)
+			case trm.outputChan <- queue[0]:
+				queue = queue[1:]
+			default:
+			}
+		}
+	}()
+
 	trm.sideChanLast.Store(false)
 	return trm
 }
@@ -76,6 +106,7 @@ func (trm *term) Initialise() error {
 
 // CleanUp implements the terminal.Terminal interface.
 func (trm *term) CleanUp() {
+	close(trm.printChan)
 }
 
 // RegisterTabCompletion implements the terminal.Terminal interface.
@@ -103,7 +134,7 @@ func (trm *term) TermPrintLine(style terminal.Style, s string) {
 		return
 	}
 
-	trm.outputChan <- terminalOutput{style: style, text: s}
+	trm.printChan <- terminalOutput{style: style, text: s}
 }
 
 // TermRead implements the terminal.Input interface.
