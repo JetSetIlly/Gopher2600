@@ -91,6 +91,7 @@ func (pt PlainTerminal) TermRead(prompt terminal.Prompt, events *terminal.ReadEv
 	// insert prompt into output stream
 	if pt.realInput {
 		pt.output.Write([]byte(prompt.String()))
+		pt.output.Flush()
 	}
 
 	s, err := pt.input.ReadString('\n')
