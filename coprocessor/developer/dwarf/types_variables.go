@@ -31,14 +31,14 @@ type SourceVariableLocal struct {
 	Range SourceRange
 }
 
-// the set of local variables can share a name but they cannot share a name and
-// a declaration line. id() returns an identifier for the local variable
-//
-// note however that there may be multiple variables with the same id, these
-// are the same variable but with different resolution information (resolve
-// start/end and loclist)
-func (local *SourceVariableLocal) id() string {
-	return fmt.Sprintf("%s %s", local.Name, local.DeclLine)
+// id combines the name and declaration line string into a single string. this is particular useful
+// for sorting local variables where its possible to have multiple variables with the same name.
+// appending the declaration line effectively adds a secondary sort key to the variable
+func (varb *SourceVariable) id() string {
+	if varb.DeclLine == nil {
+		return varb.Name
+	}
+	return fmt.Sprintf("%s %s", varb.Name, varb.DeclLine)
 }
 
 // SourceVariable is a single variable identified by the DWARF data.
@@ -209,7 +209,7 @@ func (varb *SourceVariable) WriteDerivation(derivation io.Writer) error {
 	}
 
 	if varb.loclist == nil {
-		return nil
+		return fmt.Errorf("no loclist")
 	}
 	varb.resolve(derivation)
 	return varb.Error

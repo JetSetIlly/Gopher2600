@@ -1728,11 +1728,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		case "LOCALS":
 			var derivation bool
 			var ranges bool
+			var all bool
 
 			option, ok := tokens.Get()
 			for ok {
 				derivation = derivation || option == "DERIVATION"
 				ranges = ranges || option == "RANGES"
+				all = all || option == "ALL"
 				option, ok = tokens.Get()
 			}
 
@@ -1742,24 +1744,53 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				}
 			})
 
-			dbg.CoProcDev.BorrowYieldState(func(yld *yield.State) {
-				var w io.Writer
-				if derivation {
-					w = dbg.writerInStyle(terminal.StyleFeedbackSecondary, "\t")
+			var w io.Writer
+			if derivation {
+				w = dbg.writerInStyle(terminal.StyleFeedbackSecondary, "\t")
+			}
+
+			rangesAndDerivations := func(v *dwarf.SourceVariableLocal) {
+				dbg.printLine(terminal.StyleFeedback, v.String())
+				if ranges {
+					dbg.printLine(terminal.StyleFeedbackSecondary, fmt.Sprintf("\t%s", v.Range.String()))
 				}
-				for _, l := range yld.LocalVariables {
-					dbg.printLine(terminal.StyleFeedback, l.String())
-					e := l.WriteDerivation(w)
-					if e != nil {
-						for s := range strings.SplitSeq(e.Error(), ":") {
-							dbg.printLine(terminal.StyleError, fmt.Sprintf("\t%s", s))
+				err := v.WriteDerivation(w)
+				if err != nil {
+					dbg.printLine(terminal.StyleError, fmt.Sprintf("\t%s", err.Error()))
+				}
+			}
+
+			if all {
+				dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
+					if len(src.SortedLocals.Variables) == 0 {
+						dbg.printLine(terminal.StyleFeedback, "no local variables anywhere in the program")
+						return
+					}
+
+					var prevl string
+					for _, v := range src.SortedLocals.Variables {
+						l := fmt.Sprintf("%s %s @ %s", v.Type.Name, v.Name, v.DeclLine)
+						if l == prevl && !derivation && !ranges {
+							continue // for loop
 						}
+						prevl = l
+						dbg.printLine(terminal.StyleFeedback, l)
+						rangesAndDerivations(v)
 					}
-					if ranges {
-						dbg.printLine(terminal.StyleFeedbackSecondary, fmt.Sprintf("\t%s", l.Range.String()))
+				})
+			} else {
+				dbg.CoProcDev.BorrowYieldState(func(yld *yield.State) {
+					if len(yld.LocalVariables) == 0 {
+						dbg.printLine(terminal.StyleFeedback, "no local variables in scope")
+						return
 					}
-				}
-			})
+					for _, v := range yld.LocalVariables {
+						dbg.printLine(terminal.StyleFeedback, v.String())
+						rangesAndDerivations(v)
+					}
+				})
+			}
+
 		case "FRAMEBASE":
 			dbg.CoProcDev.BorrowSource(func(src *dwarf.Source) {
 				if src == nil {
