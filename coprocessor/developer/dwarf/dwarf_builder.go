@@ -816,20 +816,22 @@ func (bld *build) buildVariables(src *Source) error {
 			if locfld != nil {
 				switch locfld.Class {
 				case dwarf.ClassLocListPtr:
-					ptrCommit := func(start, end uint64, loc *loclist) {
+					commit := func(start, end uint64, loc *loclist) {
 						cp := *varb
 						cp.loclist = loc
-						local := &SourceVariableLocal{
-							SourceVariable: &cp,
-							Range: SourceRange{
-								Start: start,
-								End:   end,
-							},
+						if !addGlobal(&cp) {
+							local := &SourceVariableLocal{
+								SourceVariable: &cp,
+								Range: SourceRange{
+									Start: start,
+									End:   end,
+								},
+							}
+							bld.locals = append(bld.locals, local)
 						}
-						bld.locals = append(bld.locals, local)
 					}
 
-					err := src.debugLoc.newLoclistFromPtr(varb, locfld.Val.(int64), compilationUnitAddress, ptrCommit)
+					err := src.debugLoc.newLoclistFromPtr(varb, locfld.Val.(int64), compilationUnitAddress, commit)
 					if err != nil {
 						if errors.Is(err, UnsupportedDWARF) {
 							return err
@@ -837,9 +839,7 @@ func (bld *build) buildVariables(src *Source) error {
 						logger.Logf(logger.Allow, "dwarf", "%s: %v", varb.Name, err)
 					}
 
-					if !addGlobal(varb) {
-						addLocal(varb)
-					}
+					// adding to global or local list happens in the commit() function above
 
 				case dwarf.ClassExprLoc:
 					// Single location description "They are sufficient for describing the location of any object
