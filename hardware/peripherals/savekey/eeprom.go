@@ -103,6 +103,9 @@ func (ee *EEPROM) access() {
 }
 
 func (ee *EEPROM) put(v uint8) {
+	if ee.Address >= EEPROMsize {
+		return
+	}
 	ee.access()
 	ee.Data[ee.Address] = v
 	// from the 26LC256 datasheet:
@@ -118,6 +121,9 @@ func (ee *EEPROM) put(v uint8) {
 }
 
 func (ee *EEPROM) get() uint8 {
+	if ee.Address >= EEPROMsize {
+		return 0
+	}
 	defer func() {
 		// from the 26LC256 datasheet:
 		//
@@ -137,6 +143,9 @@ func (ee *EEPROM) get() uint8 {
 
 // Poke a value into EEPROM.
 func (ee *EEPROM) Poke(address uint16, data uint8) {
+	if address >= EEPROMsize {
+		return
+	}
 	if ee.Data[address] != data {
 		ee.dirty = true
 		ee.Data[address] = data
