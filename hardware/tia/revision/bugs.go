@@ -92,6 +92,11 @@ const (
 	// Example ROM: 2/3 sprite demo (labelled bin00004.bin)
 	//
 	// https://www.biglist.com/lists/stella/archives/199901/msg00089.html
+	//
+	// A description and video describing how this demo binary relates to temperature
+	// on this page
+	//
+	// https://www.ataricompendium.com/faq/vcs_tia/vcs_tia.html
 	RESPxHBLANK
 )
 
