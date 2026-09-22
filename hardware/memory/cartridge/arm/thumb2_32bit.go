@@ -2377,13 +2377,22 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 			// "4.6.14 BFI" of "Thumb-2 Supplement"
 			msbit := opcode & 0x001f // labelled msb in the instruction specification
 			lsbit := (imm3 << 2) | imm2
-			width := msbit - lsbit + 1
-			maskRemove := uint32(^(((1 << msbit) - 1) << lsbit))
-			maskInsert := uint32(((1 << width) - 1) << 1)
 
 			if msbit < lsbit {
-				panic("invalid BFI")
+				panic("invalid BFI: msbit value is less than lsbit value")
 			}
+
+			width := msbit - lsbit + 1
+
+			var mask uint32
+			if width == 32 {
+				mask = ^uint32(0)
+			} else {
+				mask = (uint32(1) << width) - 1
+			}
+
+			maskRemove := ^(mask << lsbit)
+			maskInsert := mask
 
 			return func() *DisasmEntry {
 				if arm.decodeOnly {
