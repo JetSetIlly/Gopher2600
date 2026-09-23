@@ -1988,36 +1988,30 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 					return nil
 				}
 			} else {
-				if arm.state.instruction32bitOpcodeHi&0x100 == 0x100 {
-					// "4.6.3 ADD (immediate)" of "Thumb-2 Supplement"
-					// T3 encoding
-					return func() *DisasmEntry {
-						if arm.decodeOnly {
-							return &DisasmEntry{
-								Is32bit:  true,
-								Operator: fmt.Sprintf("ADD%s", setFlagsMnemonic(setFlags)),
-								Operand:  fmt.Sprintf("R%d, R%d, #$%08x", Rd, Rn, imm32),
-							}
+				// "4.6.3 ADD (immediate)" of "Thumb-2 Supplement"
+				// T3 encoding
+				return func() *DisasmEntry {
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: fmt.Sprintf("ADD%s", setFlagsMnemonic(setFlags)),
+							Operand:  fmt.Sprintf("R%d, R%d, #$%08x", Rd, Rn, imm32),
 						}
-
-						// perform addition and store result
-						result, carry, overflow := AddWithCarry(arm.state.registers[Rn], imm32, 0)
-						arm.state.registers[Rd] = result
-
-						// change status register
-						if setFlags {
-							arm.state.status.isNegative(result)
-							arm.state.status.isZero(result)
-							arm.state.status.setCarry(carry)
-							arm.state.status.setOverflow(overflow)
-						}
-
-						return nil
 					}
-				} else {
-					// "4.6.3 ADD (immediate)" of "Thumb-2 Supplement"
-					// T4 encoding
-					panic("unimplemented 'ADD (immediate)' T4 encoding")
+
+					// perform addition and store result
+					result, carry, overflow := AddWithCarry(arm.state.registers[Rn], imm32, 0)
+					arm.state.registers[Rd] = result
+
+					// change status register
+					if setFlags {
+						arm.state.status.isNegative(result)
+						arm.state.status.isZero(result)
+						arm.state.status.setCarry(carry)
+						arm.state.status.setOverflow(overflow)
+					}
+
+					return nil
 				}
 			}
 
@@ -2199,6 +2193,7 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 						}
 					}
 
+					// T4 encoding does NOT set flags
 					result, _, _ := AddWithCarry(arm.state.registers[Rn], imm32, 0)
 					arm.state.registers[Rd] = result
 					return nil
@@ -2221,6 +2216,7 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 						}
 					}
 
+					// T4 encoding does NOT set flags
 					result, _, _ := AddWithCarry(arm.state.registers[Rn], ^imm32, 1)
 					arm.state.registers[Rd] = result
 					return nil
