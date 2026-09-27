@@ -117,6 +117,11 @@ type dbgScrShader struct {
 
 	sequence *framebuffer.Flip
 	sharpen  shading.Program
+
+	crt *crtSequencer
+
+	// the frame number of the most recent frame to be rendered. used to help control phosphor
+	lastFrameNum int
 }
 
 func newDbgScrShader(img *SdlImgui) shading.Program {
@@ -124,6 +129,7 @@ func newDbgScrShader(img *SdlImgui) shading.Program {
 		img:      img,
 		sequence: framebuffer.NewFlip(true),
 		sharpen:  newSharpenShader(),
+		crt:      newCRTSequencer(img),
 	}
 	sh.Base.CreateProgram(string(shaders.DbgScrHelpersShader), string(shaders.DbgScrShader))
 	sh.dbgScrHelper.get(sh.Base)
@@ -134,6 +140,7 @@ func newDbgScrShader(img *SdlImgui) shading.Program {
 func (sh *dbgScrShader) Destroy() {
 	sh.sequence.Destroy()
 	sh.sharpen.Destroy()
+	sh.crt.destroy()
 }
 
 func (sh *dbgScrShader) SetAttributes(env shading.Environment) {
@@ -167,6 +174,36 @@ func (sh *dbgScrShader) SetAttributes(env shading.Environment) {
 		sh.sharpen.(*sharpenShader).process(env, 2)
 		env.Draw()
 	})
+
+	frameNum := int(sh.img.screen.lastVideoFrame.Load())
+	defer func() { sh.lastFrameNum = frameNum }()
+
+	if sh.img.wm.dbgScr.view.cropped && !sh.img.wm.dbgScr.elements {
+		prefs := newCrtSeqPrefs(sh.img.crt)
+		prefs.pixelPerfect = true
+		prefs.pixelPerfectFade = 0.7
+
+		// controlling the phosphor according to the state of the emulation and how it
+		// relates to previous frames
+		phspCtrl := phosphorKeep
+		if frameNum != sh.lastFrameNum {
+			phspCtrl = phosphorAdvance
+			switch sh.img.dbg.State() {
+			case govern.Paused:
+				phspCtrl = phosphorKeep
+			case govern.Rewinding:
+				if sh.lastFrameNum > frameNum+1 || sh.lastFrameNum < frameNum-1 {
+					phspCtrl = phosphorClear
+				} else if sh.img.dbg.SubState() == govern.RewindingScreenScrub {
+					phspCtrl = phosphorKeep
+				}
+			}
+		}
+
+		env.TextureID = sh.crt.process(env, env.TextureID,
+			sh.img.playScr.visibleScanlines, specification.ClksVisible,
+			prefs, specification.NormalRotation, false, phspCtrl)
+	}
 
 	env.TextureID = sh.sequence.Process(func() {
 		sh.Base.SetAttributes(env)
