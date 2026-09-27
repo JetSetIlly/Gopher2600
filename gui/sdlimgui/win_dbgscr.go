@@ -235,7 +235,7 @@ func (win *winDbgScr) id() string {
 	panic("unknown winDbgScr mode")
 }
 
-const contextMenu = "dbgScreenContextMenu"
+const dbgScrContextMenu = "dbgScreenContextMenu"
 
 func (win *winDbgScr) debuggerDraw() bool {
 	// if window isn't open then child windows are not drawn either
@@ -289,7 +289,7 @@ func (win *winDbgScr) debuggerDraw() bool {
 		win.paintDragAndDrop()
 
 		// get mouse position if context menu is not open
-		if !imgui.IsPopupOpen(contextMenu) {
+		if !imgui.IsPopupOpen(dbgScrContextMenu) {
 			win.mouse = currentDbgScrMouse(win.scr, win.view)
 			defer func() {
 				win.mouseLastFrame = win.mouse
@@ -307,10 +307,10 @@ func (win *winDbgScr) debuggerDraw() bool {
 		// avoid menu opening when releasing a captured mouse.
 		if !win.isCaptured && (win.mouseDragging[1] || (imageHovered && imgui.IsMouseClicked(1))) {
 			win.mouseDragging[1] = imgui.IsMouseDown(1)
-			imgui.OpenPopup(contextMenu)
+			imgui.OpenPopup(dbgScrContextMenu)
 		}
 
-		if imgui.BeginPopup(contextMenu) {
+		if imgui.BeginPopup(dbgScrContextMenu) {
 			// close context menu after count has expired
 			if win.contextMenuCloseCt > 0 {
 				win.contextMenuCloseCt--

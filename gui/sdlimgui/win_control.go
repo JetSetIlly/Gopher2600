@@ -31,12 +31,18 @@ type winControl struct {
 	debuggerWin
 	repeaterButton
 	img *SdlImgui
+
+	frameStep        int
+	frameText        string
+	frameCommand     string
+	frameBackCommand string
 }
 
 func newWinControl(img *SdlImgui) (window, error) {
 	win := &winControl{
 		repeaterButton: repeaterButton{img: img},
 		img:            img,
+		frameStep:      -1,
 	}
 	win.debuggerGeom.noFocusTracking = true
 	return win, nil
@@ -57,6 +63,7 @@ func (win *winControl) debuggerDraw() bool {
 	imgui.SetNextWindowPosV(imgui.Vec2{X: 699, Y: 45}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
 	imgui.SetNextWindowSize(imgui.Vec2{X: imguiTextWidth(36), Y: -1})
 	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
+		win.setFrameAmount(win.img.prefs.frameStepCount.Get().(int))
 		win.draw()
 	}
 
@@ -95,6 +102,35 @@ func (win *winControl) drawRunButton() {
 		}
 	}
 }
+
+func (win *winControl) setFrameAmount(n int) {
+	if win.frameStep == n {
+		return
+	}
+	switch n {
+	case 0:
+		n = 1
+		fallthrough
+	case 1:
+		win.frameText = "Frame"
+		win.frameCommand = "STEP FRAME"
+		win.frameBackCommand = "STEP BACK FRAME"
+	case 2:
+		win.frameText = fmt.Sprintf("Frame [+%d]", n)
+		win.frameCommand = "STEP FRAME; STEP FRAME"
+		win.frameBackCommand = "STEP BACK FRAME; STEP BACK FRAME"
+	case 3:
+		win.frameText = fmt.Sprintf("Frame [+%d]", n)
+		win.frameCommand = "STEP FRAME; STEP FRAME; STEP FRAME"
+		win.frameBackCommand = "STEP BACK FRAME; STEP BACK FRAME; STEP BACK FRAME"
+	default:
+		panic("setFrameAmount() only allows values of 1, 2 or 3")
+	}
+	win.frameStep = n
+	win.img.prefs.frameStepCount.Set(n)
+}
+
+const controlContextMenu = "controlContextMenu"
 
 func (win *winControl) drawStep() {
 	fillWidth := imgui.Vec2{X: -1, Y: imgui.FrameHeight()}
@@ -156,16 +192,36 @@ func (win *winControl) drawStep() {
 		imgui.BeginGroup()
 		win.repeatButton(fmt.Sprintf("%c ##Frame", fonts.UpArrowDouble), func() {
 			if win.img.dbg.State() == govern.Paused {
-				win.img.term.pushCommand("STEP BACK FRAME")
+				win.img.term.pushCommand(win.frameBackCommand)
 			}
 		})
 		imgui.SameLineV(0.0, 0.0)
-		win.repeatButtonV("Frame", func() {
+		win.repeatButtonV(win.frameText, func() {
 			if win.img.dbg.State() == govern.Paused {
-				win.img.term.pushCommand("STEP FRAME")
+				win.img.term.pushCommand(win.frameCommand)
 			}
 		}, fillWidth)
 		imgui.EndGroup()
+
+		if imgui.IsItemHovered() && imgui.IsMouseClicked(1) {
+			imgui.OpenPopup(controlContextMenu)
+		}
+		if imgui.BeginPopup(controlContextMenu) {
+			imgui.Text("Number of frames")
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+			if imgui.MenuItemV("One", "", win.frameStep == 1, true) {
+				win.setFrameAmount(1)
+			}
+			if imgui.MenuItemV("Two", "", win.frameStep == 2, true) {
+				win.setFrameAmount(2)
+			}
+			if imgui.MenuItemV("Three", "", win.frameStep == 3, true) {
+				win.setFrameAmount(3)
+			}
+			imgui.EndPopup()
+		}
 
 		imgui.TableNextColumn()
 
