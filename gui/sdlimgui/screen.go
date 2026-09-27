@@ -62,7 +62,12 @@ type screen struct {
 	// the number of frames the emulation currently is ahead
 	frameQueueSlack int
 
-	// the frame number of the last frame generated for video recording
+	// the frame number of the last frame generated. the meaning differs depending on mode. for
+	// playmode the value is the number of the frame from the frame queue that was most recently
+	// rendered. for the debugger, the value is the last frame sent by the television.
+	//
+	// for playmade, the value is used for video recording. the the debugger, the value is used
+	// to help control the phosphor
 	lastVideoFrame atomic.Int64
 
 	monitorSync atomic.Bool
@@ -665,6 +670,8 @@ func (scr *screen) copyPixelsDebugmode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 	scr.generatePresentationPixels(scr.crit.plotIdx)
+
+	scr.lastVideoFrame.Store(int64(scr.crit.frameInfo.FrameNum))
 
 	// update pxe colours window with information about the current cursor location
 	ref := scr.crit.reflection[scr.crit.lastIdx]
