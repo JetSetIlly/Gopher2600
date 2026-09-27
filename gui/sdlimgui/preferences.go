@@ -57,6 +57,7 @@ type preferences struct {
 	pxeColourIndicators       prefs.Bool
 	savekeyAccessPagesOnly    prefs.Bool
 	reverseDragMagnification  prefs.Bool
+	frameStepCount            prefs.Int
 
 	// arm profiler preferences
 	armProfilerHideUnexecuted prefs.Bool
@@ -164,6 +165,10 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("sdlimgui.debugger.reverseDragMagnification", &p.reverseDragMagnification)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.debugger.frameStepCount", &p.frameStepCount)
 	if err != nil {
 		return nil, err
 	}
@@ -343,6 +348,10 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.saveOnExitDsk.Add("sdlimgui.debugger.frameStepCount", &p.frameStepCount)
+	if err != nil {
+		return nil, err
+	}
 	err = p.saveOnExitDsk.Add("sdlimgui.debugger.armProfiler.hideUnexecuted", &p.armProfilerHideUnexecuted)
 	if err != nil {
 		return nil, err
@@ -388,6 +397,7 @@ func (p *preferences) setDefaults() {
 	p.pxeColourIndicators.Set(false)
 	p.savekeyAccessPagesOnly.Set(false)
 	p.reverseDragMagnification.Set(false)
+	p.frameStepCount.Set(0)
 	p.armProfilerHideUnexecuted.Set(false)
 	p.armProfilerPercentile.Set(true)
 	p.armProfilerCumulative.Set(false)
