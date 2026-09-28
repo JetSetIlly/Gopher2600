@@ -204,6 +204,10 @@ Specific information about UXP ARM7TDMI-S
 
 https://www.nxp.com/docs/en/user-guide/UM10161.pdf
 
+Also used was the "The Insider's Guide To The Philips ARM7-Based Microcontrollers"
+
+https://archive.org/details/lpc-ARM-book_srn
+
 Thumb-2 information in the ARM Architecture Reference Manual Thumb-2 Supplement
 
 https://documentation-service.arm.com/static/5f1066ca0daa596235e7e90a
