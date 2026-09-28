@@ -94,6 +94,8 @@ type Map struct {
 	HasT1 bool
 	T1TCR uint32
 	T1TC  uint32
+	T1PR  uint32
+	T1PC  uint32
 
 	HasTIM2 bool
 	TIM2CR1 uint32
@@ -116,7 +118,7 @@ type Map struct {
 	IllegalAccessValue uint32
 
 	// the divisor to apply to the main clock when ticking peripherals (eg. timers)
-	ClkDiv float32
+	ClkDiv float64
 
 	// list of unimplemented address ranges that should be ignored
 	Unimplemented []MemoryRegion
@@ -175,6 +177,8 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.HasT1 = true
 		mmap.T1TCR = 0xe0008004
 		mmap.T1TC = 0xe0008008
+		mmap.T1PR = 0xe000800c
+		mmap.T1PC = 0xe0008010
 
 		mmap.APBDIV = 0xe01fc100
 

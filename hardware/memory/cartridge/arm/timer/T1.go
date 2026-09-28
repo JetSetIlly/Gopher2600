@@ -32,7 +32,10 @@ type T1 struct {
 
 	// storing the counter register as a float because it makes cycle counting
 	// easier.  the value is truncated to a uint32 only when the T1TC register is read
-	counter float32
+	//
+	// storing the accumulated counter value as a float64. this gives us access to a far
+	// longer time period than float32
+	counter float64
 
 	// the enabled and reset fields reflect the corresponding bits in the control register
 	control uint32
@@ -61,7 +64,9 @@ func (t *T1) Step(cycles float32) {
 	if !t.enabled {
 		return
 	}
-	t.counter += cycles
+
+	// the conversion from float32 to float64 should be very cheap
+	t.counter += float64(cycles)
 }
 
 // Read implementes the Timer interface
@@ -74,6 +79,12 @@ func (t *T1) Read(addr uint32) (uint32, bool) {
 		val = t.control
 	case t.mmap.T1TC:
 		val = uint32(t.counter / t.mmap.ClkDiv)
+	case t.mmap.T1PR:
+		// unimplemented for now
+		return 0, false
+	case t.mmap.T1PC:
+		// unimplemented for now
+		return 0, false
 	default:
 		return 0, false
 	}
@@ -90,7 +101,13 @@ func (t *T1) Write(addr uint32, val uint32) bool {
 		t.enabled = val&0x01 == 0x01
 		t.reset = val&0x02 == 0x02
 	case t.mmap.T1TC:
-		t.counter = float32(val)
+		t.counter = float64(val)
+	case t.mmap.T1PR:
+		// unimplemented for now
+		return false
+	case t.mmap.T1PC:
+		// unimplemented for now
+		return false
 	default:
 		return false
 	}
