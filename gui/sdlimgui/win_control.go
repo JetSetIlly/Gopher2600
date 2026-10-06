@@ -114,15 +114,15 @@ func (win *winControl) setFrameAmount(n int) {
 	case 1:
 		win.frameText = "Frame"
 		win.frameCommand = "STEP FRAME"
-		win.frameBackCommand = "STEP BACK FRAME"
+		win.frameBackCommand = "REWIND -1"
 	case 2:
 		win.frameText = fmt.Sprintf("Frame [+%d]", n)
 		win.frameCommand = "STEP FRAME; STEP FRAME"
-		win.frameBackCommand = "STEP BACK FRAME; STEP BACK FRAME"
+		win.frameBackCommand = "REWIND -2"
 	case 3:
 		win.frameText = fmt.Sprintf("Frame [+%d]", n)
 		win.frameCommand = "STEP FRAME; STEP FRAME; STEP FRAME"
-		win.frameBackCommand = "STEP BACK FRAME; STEP BACK FRAME; STEP BACK FRAME"
+		win.frameBackCommand = "REWIND -3"
 	default:
 		panic("setFrameAmount() only allows values of 1, 2 or 3")
 	}
