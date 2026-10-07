@@ -176,9 +176,7 @@ func (dbg *Debugger) GotoCoords(toCoords coords.TelevisionCoords) bool {
 			// remembering that we must do it in the debugger goroutine)
 
 			fromCoords := dbg.vcs.TV.GetCoords()
-			if fromCoords.Frame == toCoords.Frame {
-				dbg.setState(govern.Rewinding, govern.RewindingScreenScrub)
-			} else if coords.GreaterThan(toCoords, fromCoords) {
+			if coords.GreaterThan(toCoords, fromCoords) {
 				dbg.setState(govern.Rewinding, govern.RewindingForwards)
 			} else {
 				dbg.setState(govern.Rewinding, govern.RewindingBackwards)
