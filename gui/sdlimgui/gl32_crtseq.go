@@ -123,13 +123,11 @@ func (sh *crtSequencer) destroy() {
 	sh.colorShader.Destroy()
 }
 
-type phosphorControl int
+const crtSeqPhosphor = 0
 
-const (
-	phosphorAdvance phosphorControl = iota
-	phosphorKeep
-	phosphorClear
-)
+func (sh *crtSequencer) flushPhosphor() {
+	sh.phosphor.Clear()
+}
 
 // windowed says that the texture being processed is inside an imgui window and
 // not drawn directly onto the background. for example, the crt image in the
@@ -138,8 +136,7 @@ const (
 // returns the textureID of the processed image
 func (sh *crtSequencer) process(env shading.Environment, textureID uint32,
 	numScanlines int, numClocks int,
-	prefs crtSeqPrefs, rotation specification.Rotation, screenshot bool,
-	phspCtrl phosphorControl) uint32 {
+	prefs crtSeqPrefs, rotation specification.Rotation, screenshot bool) uint32 {
 
 	// phosphor draw
 	phosphorPasses := 1
@@ -156,7 +153,7 @@ func (sh *crtSequencer) process(env shading.Environment, textureID uint32,
 	sh.mostRecentPixelPerfect = prefs.pixelPerfect
 
 	// also make sure our phosphor framebuffer is correct
-	if sh.phosphor.Setup(env.Width, env.Height) || phspCtrl == phosphorClear {
+	if sh.phosphor.Setup(env.Width, env.Height) {
 		// if the change in framebuffer size is significant then graphical
 		// artefacts can sometimes be seen. a possible solution to this is to
 		// curtail the processing and return from the function here but this
@@ -184,43 +181,39 @@ func (sh *crtSequencer) process(env shading.Environment, textureID uint32,
 
 	// apply "phosphor". how this is done depends on whether the CRT effects are
 	// enabled. if they are not then the treatment is slightly different
-	if phspCtrl == phosphorKeep {
-		env.TextureID = sh.phosphor.TextureID()
-	} else {
-		for i := 0; i < phosphorPasses; i++ {
-			if prefs.pixelPerfect {
-				// this draw doesn't do anything except keep the phosphor textures
-				// the correct orientation. if we don't have this then we can see
-				// inverted graphical artefacts when we switch between pixelperfect
-				// and CRT rendering
+	for i := 0; i < phosphorPasses; i++ {
+		if prefs.pixelPerfect {
+			// this draw doesn't do anything except keep the phosphor textures
+			// the correct orientation. if we don't have this then we can see
+			// inverted graphical artefacts when we switch between pixelperfect
+			// and CRT rendering
+			env.TextureID = sh.phosphor.TextureID()
+			env.TextureID = sh.phosphor.Process(func() {
+				sh.colorShader.(*colorShader).SetAttributes(env)
+				env.Draw()
+			})
+
+			// add new frame to phosphor buffer (using phosphor buffer for pixel perfect fade)
+			env.TextureID = sh.phosphor.TextureID()
+			env.TextureID = sh.phosphor.Process(func() {
+				sh.phosphorShader.(*phosphorShader).process(env, float32(prefs.pixelPerfectFade), newFrameForPhosphor)
+				env.Draw()
+			})
+		} else {
+			if prefs.phosphor {
+				// use blur shader to add bloom to previous phosphor
 				env.TextureID = sh.phosphor.TextureID()
 				env.TextureID = sh.phosphor.Process(func() {
-					sh.colorShader.(*colorShader).SetAttributes(env)
-					env.Draw()
-				})
-
-				// add new frame to phosphor buffer (using phosphor buffer for pixel perfect fade)
-				env.TextureID = sh.phosphor.TextureID()
-				env.TextureID = sh.phosphor.Process(func() {
-					sh.phosphorShader.(*phosphorShader).process(env, float32(prefs.pixelPerfectFade), newFrameForPhosphor)
-					env.Draw()
-				})
-			} else {
-				if prefs.phosphor {
-					// use blur shader to add bloom to previous phosphor
-					env.TextureID = sh.phosphor.TextureID()
-					env.TextureID = sh.phosphor.Process(func() {
-						sh.blurShader.(*blurShader).process(env, float32(prefs.phosphorBloom))
-						env.Draw()
-					})
-				}
-
-				// add new frame to phosphor buffer
-				env.TextureID = sh.phosphor.Process(func() {
-					sh.phosphorShader.(*phosphorShader).process(env, float32(prefs.phosphorLatency), newFrameForPhosphor)
+					sh.blurShader.(*blurShader).process(env, float32(prefs.phosphorBloom))
 					env.Draw()
 				})
 			}
+
+			// add new frame to phosphor buffer
+			env.TextureID = sh.phosphor.Process(func() {
+				sh.phosphorShader.(*phosphorShader).process(env, float32(prefs.phosphorLatency), newFrameForPhosphor)
+				env.Draw()
+			})
 		}
 	}
 

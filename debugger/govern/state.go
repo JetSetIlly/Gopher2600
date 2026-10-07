@@ -67,7 +67,6 @@ const (
 	Normal SubState = iota
 	RewindingBackwards
 	RewindingForwards
-	RewindingScreenScrub
 	PausedAtStart
 	PausedAtEnd
 )
@@ -78,8 +77,6 @@ func (s SubState) String() string {
 		return "Backwards"
 	case RewindingForwards:
 		return "Forwards"
-	case RewindingScreenScrub:
-		return "Screen scrub"
 	case PausedAtStart:
 		return "Paused at start"
 	case PausedAtEnd:
@@ -93,19 +90,19 @@ func (s SubState) String() string {
 //
 // Rules:
 //
-//  1. Normal can coexist with any state
+//  1. NoSubState can coexist with any state
 //
 //  2. PausedAtStart and PausedAtEnd can only be paired with the Paused State
 //
-//  3. RewindingBackwards, RewindingForwards and RewindingScreenScrub can only be paired
-//     with the Rewinding state
+//  3. RewindingBackwards and RewindingForwards can only be paired with the
+//     Rewinding state
 func StateIntegrity(state State, subState SubState) bool {
 	if subState == Normal {
 		return true
 	}
 	switch state {
 	case Rewinding:
-		if subState == RewindingBackwards || subState == RewindingForwards || subState == RewindingScreenScrub {
+		if subState == RewindingBackwards || subState == RewindingForwards {
 			return true
 		}
 	case Paused:
