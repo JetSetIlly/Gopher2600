@@ -1044,15 +1044,17 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 				}
 			}
 
-			addr := arm.state.registers[Rn]
-			if P {
-				if U {
-					addr += imm32
-				} else {
-					addr -= imm32
+			base := arm.state.registers[Rn]
+			addr := base
+
+			if U {
+				if P {
+					addr += 4
 				}
-				if W {
-					arm.state.registers[Rn] = addr
+			} else {
+				addr -= imm32
+				if !P {
+					addr += 4
 				}
 			}
 
@@ -1067,16 +1069,16 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 
 				for i := uint16(0); i < regs; i++ {
 					arm.write32bit(addr, arm.state.fpu.Registers[d+i], true)
-					if U {
-						addr += 4
-					} else {
-						addr -= 4
-					}
+					addr += 4
 				}
 			}
 
-			if !P && W && Rn != rPC {
-				arm.state.registers[Rn] = addr
+			if W && Rn != rPC {
+				if U {
+					arm.state.registers[Rn] = base + imm32
+				} else {
+					arm.state.registers[Rn] = base - imm32
+				}
 			}
 
 			return nil
@@ -1295,7 +1297,6 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 
 	if maskedOp == 0b10011 || (maskedOp == 0b01011 && Rn != 0b1101) {
 		// "A7.7.235 VLDM" of "ARMv7-M"
-
 		P := arm.state.instruction32bitOpcodeHi&0x0100 == 0x0100
 		U := arm.state.instruction32bitOpcodeHi&0x0080 == 0x0080
 		D := (arm.state.instruction32bitOpcodeHi & 0x0040) >> 6
@@ -1334,15 +1335,17 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 				}
 			}
 
-			addr := arm.state.registers[Rn]
-			if P {
-				if U {
-					addr += imm32
-				} else {
-					addr -= imm32
+			base := arm.state.registers[Rn]
+			addr := base
+
+			if U {
+				if P {
+					addr += 4
 				}
-				if W {
-					arm.state.registers[Rn] = addr
+			} else {
+				addr -= imm32
+				if !P {
+					addr += 4
 				}
 			}
 
@@ -1357,16 +1360,16 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 
 				for i := uint16(0); i < regs; i++ {
 					arm.state.fpu.Registers[d+i] = arm.read32bit(addr, true)
-					if U {
-						addr += 4
-					} else {
-						addr -= 4
-					}
+					addr += 4
 				}
 			}
 
-			if !P && W && Rn != rPC {
-				arm.state.registers[Rn] = addr
+			if W && Rn != rPC {
+				if U {
+					arm.state.registers[Rn] = base + imm32
+				} else {
+					arm.state.registers[Rn] = base - imm32
+				}
 			}
 
 			return nil
