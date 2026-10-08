@@ -2302,16 +2302,21 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 			imm3 := (opcode & 0x7000) >> 12
 			imm2 := (opcode & 0x00c0) >> 6
 			imm5 := (imm3 << 2) | imm2
-			sh := arm.state.instruction32bitOpcodeHi&0x0020 != 0x0020
+			sh := arm.state.instruction32bitOpcodeHi&0x0020 == 0x0020
 			if sh && imm5 == 0 {
-				panic("decoding error: SSAT with sh bit of 0 and imm5 of 0 is not possible")
+				panic("decoding error: SSAT with sh bit of 1 (ASR) and imm5 of 0 is SSAT16")
 			}
+
+			// for SSAT the sat_imm value is added to 1 for the actual 'saturation to' value
+			sat_to := int(sat_imm + 1)
 
 			return func() *DisasmEntry {
 				// disassembly only
 				if arm.decodeOnly {
-					operand := fmt.Sprintf("R%d, #%d, R%d", Rd, sat_imm, Rn)
+					operand := fmt.Sprintf("R%d, #%d, R%d", Rd, sat_to, Rn)
 					if sh {
+						operand = fmt.Sprintf("%s, ASR %d", operand, imm5)
+					} else if imm5 != 0 {
 						operand = fmt.Sprintf("%s, LSL %d", operand, imm5)
 					}
 					return &DisasmEntry{
@@ -2321,24 +2326,29 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 					}
 				}
 
-				// logical shift left
-				//
-				// the Thumb-2 Supplement pseudo-code includes the call to DecodeImmShift() but it's
-				// only ever called with 0x00 as the shift type, which is logical shift left
-				//
-				// also, we don't need to worry about any output carry bit
-				shifted := arm.state.registers[Rn]
+				// we don't need to worry about any output carry bit when shifting
+				var shifted uint32
 				if sh {
-					shifted <<= imm5
+					// with arithmetic right shift
+					signExtend := (arm.state.registers[Rn] & 0x80000000) >> 31
+					shifted = arm.state.registers[Rn] >> imm5
+					if signExtend == 0x01 {
+						shifted |= ^uint32(0) << (31 - imm5)
+					}
+				} else {
+					// with logical left shift
+					shifted = arm.state.registers[Rn] << imm5
 				}
 
 				// saturate result (using helper function from fpu package even though this is not
 				// an FPU instruction)
-				result, sat := fpu.SignedSatQ(int(shifted), int(sat_imm)+1)
+				result, sat := fpu.SignedSatQ(int(int32(shifted)), sat_to)
 				arm.state.registers[Rd] = uint32(result)
 
-				// set saturation flag
-				arm.state.status.setSaturation(sat)
+				// set saturation flag to true. the flag is not reset if the instruction has not saturated
+				if sat {
+					arm.state.status.setSaturation(true)
+				}
 
 				return nil
 			}
@@ -2418,16 +2428,23 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 			imm2 := (opcode & 0x00c0) >> 6
 			sat_imm := opcode & 0x001f
 			imm5 := (imm3 << 2) | imm2
-			sh := arm.state.instruction32bitOpcodeHi&0x0020 != 0x0020
+			sh := arm.state.instruction32bitOpcodeHi&0x0020 == 0x0020
 			if sh && imm5 == 0 {
-				panic("decoding error: USAT with sh bit of 0 and imm5 of 0 is not possible")
+				panic("decoding error: USAT with sh bit of 1 (ASR) and imm5 of 0 is USAT16")
 			}
+
+			// for USAT the sat_to value is the same as the sat_imm value extracted from the instruction
+			// comparte to the SSAT instruction where sat_to is adjusted by one. we use this form
+			// in the USAT instruction only so that it matches the form of SSAT
+			sat_to := int(sat_imm)
 
 			return func() *DisasmEntry {
 				// disassembly only
 				if arm.decodeOnly {
-					operand := fmt.Sprintf("R%d, #%d, R%d", Rd, sat_imm, Rn)
+					operand := fmt.Sprintf("R%d, #%d, R%d", Rd, sat_to, Rn)
 					if sh {
+						operand = fmt.Sprintf("%s, ASR %d", operand, imm5)
+					} else if imm5 != 0 {
 						operand = fmt.Sprintf("%s, LSL %d", operand, imm5)
 					}
 					return &DisasmEntry{
@@ -2437,24 +2454,29 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 					}
 				}
 
-				// logical shift left
-				//
-				// the Thumb-2 Supplement pseudo-code includes the call to DecodeImmShift() but it's
-				// only ever called with 0x00 as the shift type, which is logical shift left
-				//
-				// also, we don't need to worry about any output carry bit
-				shifted := arm.state.registers[Rn]
+				// we don't need to worry about any output carry bit when shifting
+				var shifted uint32
 				if sh {
-					shifted <<= imm5
+					// with arithmetic right shift
+					signExtend := (arm.state.registers[Rn] & 0x80000000) >> 31
+					shifted = arm.state.registers[Rn] >> imm5
+					if signExtend == 0x01 {
+						shifted |= ^uint32(0) << (31 - imm5)
+					}
+				} else {
+					// with logical left shift
+					shifted = arm.state.registers[Rn] << imm5
 				}
 
 				// saturate result (using helper function from fpu package even though this is not
 				// an FPU instruction)
-				result, sat := fpu.UnsignedSatQ(int(shifted), int(sat_imm))
+				result, sat := fpu.UnsignedSatQ(int(int32(shifted)), sat_to)
 				arm.state.registers[Rd] = uint32(result)
 
-				// set saturation flag
-				arm.state.status.setSaturation(sat)
+				// set saturation flag to true. the flag is not reset if the instruction has not saturated
+				if sat {
+					arm.state.status.setSaturation(true)
+				}
 
 				return nil
 			}
