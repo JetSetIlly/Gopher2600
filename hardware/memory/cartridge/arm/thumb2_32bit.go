@@ -1601,7 +1601,7 @@ func (arm *ARM) decode32bitThumb2LoadStoreDoubleEtc(opcode uint16) decodeFunctio
 		return func() *DisasmEntry {
 			addr := arm.state.registers[Rn]
 			if Rn == rPC {
-				addr = AlignTo32bits(addr)
+				addr = AlignTo32bits(addr - 2)
 			}
 
 			if p {
