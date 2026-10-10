@@ -1,6 +1,6 @@
 module github.com/jetsetilly/gopher2600
 
-go 1.25.0
+go 1.27.2
 
 require (
 	github.com/go-audio/audio v1.0.0
