@@ -53,6 +53,8 @@ type Renderer interface {
 type Television interface {
 	AddAudioMixer(m television.AudioMixer)
 	RemoveAudioMixer(m television.AudioMixer)
+	AddFrameTrigger(f television.FrameTrigger)
+	RemoveFrameTrigger(f television.FrameTrigger)
 	GetFrameInfo() frameinfo.Current
 }
 
@@ -94,6 +96,14 @@ type FFMPEG struct {
 
 	// we record audio to a separate file and then mux it with the video in a final step
 	audio *audio
+
+	// the audio is the clock for the video. there should be one video frame for every
+	// samplesPerFrame audio samples. clockBase is the difference between the two counts when the
+	// first frame is timed by the audio
+	samplesPerFrame int
+	framesWritten   int
+	clockBase       int
+	clockSynced     bool
 }
 
 func NewFFMPEG(rnd Renderer, tv Television) *FFMPEG {
@@ -133,6 +143,7 @@ func (vid *FFMPEG) Destroy() {
 			}
 		}
 		vid.tv.RemoveAudioMixer(vid.audio)
+		vid.tv.RemoveFrameTrigger(vid.audio)
 		vid.audio = nil
 		muxAudio = true
 	}
@@ -294,11 +305,18 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 	vid.tempVideoFilename = fmt.Sprintf("_tmp_%s.mp4", outputFilenameBase)
 	vid.tempAudioFilename = fmt.Sprintf("_tmp_%s.wav", outputFilenameBase)
 
+	// the video is timed by the audio (see Process()) so the frame rate is the console's own: the
+	// audio sample rate divided by the number of audio samples in a frame of the specification's
+	// length. the output frame rate is the same as the incoming frame rate
+	spec := vid.tv.GetFrameInfo().Spec
+	vid.samplesPerFrame = samplesPerFrame(spec)
+	frameRate := fmt.Sprintf("%d/%d", audioRate(spec), vid.samplesPerFrame)
+
 	var ffmpegInput = []string{
 		"-f", "rawvideo",
 		"-pix_fmt", "rgba",
 		"-s", fmt.Sprintf("%dx%d", vid.width, vid.height),
-		"-r", fmt.Sprintf("%.02f", vid.hz), // incoming frame rate
+		"-r", frameRate, // incoming frame rate
 		"-i", "-", // stdin pipe created below
 	}
 
@@ -306,7 +324,6 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 		"-crf", "18", // amount of compression. 12 and higher starts to lose colour fidelity
 		"-preset", "fast", // the amount of time spent optimising compression between frames
 		"-vf", "vflip", // the data read from the OpenGL buffer is flipped
-		"-r", "60", // output is always 60fps
 	}
 
 	var ffmpeg1080p = []string{
@@ -314,7 +331,6 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 		// the default and fastest pix_fmt is yuv420p and we
 		"-preset", "medium", // the amount of time spent optimising compression between frames
 		"-vf", "vflip,scale=-2:1080,pad=1920:1080:(ow-iw)/2:(oh-ih)/2",
-		"-r", "60", // output is always 60fps
 	}
 
 	var ffmpegYouTube1080 = []string{
@@ -324,7 +340,6 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 		"-crf", "15", // amount of compression. 15 is a good value for yuv420p10le
 		"-profile:v", "high10",
 		"-vf", "vflip,scale=-2:1080,pad=1920:1080:(ow-iw)/2:(oh-ih)/2",
-		"-r", "60", // output is always 60fps
 	}
 
 	var ffmpegYouTube4k = []string{
@@ -334,7 +349,6 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 		"-crf", "15", // amount of compression. 15 is a good value for yuv420p10le
 		"-profile:v", "high10",
 		"-vf", "vflip,scale=-2:2160,pad=3840:2160:(ow-iw)/2:(oh-ih)/2",
-		"-r", "60", // output is always 60fps
 	}
 
 	var ffmpegOutput = []string{
@@ -379,11 +393,15 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 	vid.pixels = make([]uint8, vid.width*vid.height*4)
 
 	// create wavwriter via local audio type
-	vid.audio, err = newAudio(vid.tempAudioFilename, vid.tv.GetFrameInfo().Spec)
+	vid.audio, err = newAudio(vid.tempAudioFilename, spec)
 	if err != nil {
 		return fmt.Errorf("ffmpeg: %w", err)
 	}
 	vid.tv.AddAudioMixer(vid.audio)
+	vid.tv.AddFrameTrigger(vid.audio)
+
+	vid.framesWritten = 0
+	vid.clockSynced = false
 
 	if vid.conf.Log != nil {
 		fmt.Fprintln(vid.conf.Log, "video: recording started")
@@ -462,14 +480,35 @@ func (vid *FFMPEG) Process(framenum int) {
 		}
 	}
 
+	// the number of audio samples recorded by the end of the previous frame says how many video
+	// frames there should be by now. a frame with more scanlines than the specification is
+	// sometimes written twice and a frame with fewer is sometimes not written at all. the video and
+	// audio files will then be the same length however many scanlines there are in each frame
+	copies := 1
+	if samples, ok := vid.audio.samplesAtFrame(framenum); ok {
+		due := samples / vid.samplesPerFrame
+		if !vid.clockSynced {
+			vid.clockBase = vid.framesWritten - due
+			vid.clockSynced = true
+		}
+		copies = vid.clockBase + due + 1 - vid.framesWritten
+	}
+	if copies < 1 {
+		return
+	}
+
 	// get pixel data for frame and forward it to the running command
 	vid.rnd.ReadPixels(vid.width, vid.height, vid.pixels)
 
-	_, err := vid.pipe.Write(vid.pixels)
-	if err != nil {
-		if vid.conf.Log != nil {
-			fmt.Fprintf(vid.conf.Log, "video: %s\n", err.Error())
+	for range copies {
+		_, err := vid.pipe.Write(vid.pixels)
+		if err != nil {
+			if vid.conf.Log != nil {
+				fmt.Fprintf(vid.conf.Log, "video: %s\n", err.Error())
+			}
+			vid.Destroy()
+			return
 		}
-		vid.Destroy()
+		vid.framesWritten++
 	}
 }
