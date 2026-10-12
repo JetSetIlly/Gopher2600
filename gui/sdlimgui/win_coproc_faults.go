@@ -116,7 +116,7 @@ func (win *winCoProcFaults) draw(flt *faults.Faults, src *dwarf.Source) {
 		imgui.TableSetupScrollFreeze(0, 1)
 		imgui.TableHeadersRow()
 
-		for i := 0; i < len(flt.Log); i++ {
+		imgui.ListClipperAll(len(flt.Log), func(i int) {
 			e := flt.Log[i]
 
 			var ln *dwarf.SourceLine
@@ -205,7 +205,7 @@ func (win *winCoProcFaults) draw(flt *faults.Faults, src *dwarf.Source) {
 					imgui.Text("-")
 				}
 			}
-		}
+		})
 
 		imgui.EndTable()
 	}
