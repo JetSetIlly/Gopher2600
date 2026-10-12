@@ -129,6 +129,10 @@ func (mem *aceMemory) setDataMode(out bool) {
 }
 
 func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferences.ARMPreferences) (*aceMemory, error) {
+	if len(data) < aceStartOfVCSProgram {
+		return nil, fmt.Errorf("ACE: not enough data in file")
+	}
+
 	mem := &aceMemory{
 		env:   env,
 		model: architecture.NewMap(architecture.PlusCart),
