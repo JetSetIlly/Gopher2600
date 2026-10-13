@@ -271,7 +271,7 @@ func (vid *FFMPEG) Destroy() {
 	}
 }
 
-func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz float32, profile Profile) error {
+func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, frameInfo frameinfo.Current, profile Profile) error {
 	if !vid.enabled {
 		return nil
 	}
@@ -286,7 +286,7 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 	vid.width = width
 	vid.height = height
 	vid.profile = profile
-	vid.hz = hz
+	vid.hz = frameInfo.RefreshRate
 
 	// the base for the output file's name. we append .mp4 for the video file and .wav for the audio file
 	outputFilenameBase := unique.Filename("video", cartName)
@@ -379,7 +379,7 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 	vid.pixels = make([]uint8, vid.width*vid.height*4)
 
 	// create wavwriter via local audio type
-	vid.audio, err = newAudio(vid.tempAudioFilename, vid.tv.GetFrameInfo().Spec)
+	vid.audio, err = newAudio(vid.tempAudioFilename, frameInfo)
 	if err != nil {
 		return fmt.Errorf("ffmpeg: %w", err)
 	}
