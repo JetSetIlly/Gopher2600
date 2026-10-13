@@ -25,6 +25,8 @@ import (
 type audio struct {
 	wavs    *wavwriter.WavWriter
 	enabled bool
+	clip    int
+	sig     []signal.AudioSignalAttributes
 }
 
 func newAudio(tempAudioFilename string, frameInfo frameinfo.Current) (*audio, error) {
@@ -36,6 +38,7 @@ func newAudio(tempAudioFilename string, frameInfo frameinfo.Current) (*audio, er
 	return &audio{
 		wavs:    wavs,
 		enabled: true,
+		clip:    tiaaudio.SamplesPerScanline * frameInfo.TotalScanlines,
 	}, nil
 }
 
@@ -44,6 +47,19 @@ func (au *audio) SetAudio(sig []signal.AudioSignalAttributes) error {
 	if !au.enabled {
 		return nil
 	}
+	au.sig = append(au.sig, sig...)
+	return nil
+}
+
+func (au *audio) NewFrame(frameInfo frameinfo.Current) error {
+	sig := au.sig[:]
+	if len(sig) > au.clip {
+		sig = sig[:au.clip]
+	} else if len(sig) < au.clip {
+		sig = append(sig, make([]signal.AudioSignalAttributes, au.clip-len(sig))...)
+	}
+	au.sig = au.sig[:0]
+
 	return au.wavs.SetAudio(sig)
 }
 
