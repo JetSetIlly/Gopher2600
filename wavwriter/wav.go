@@ -65,6 +65,14 @@ func (aw *WavWriter) SetAudio(sig []signal.AudioSignalAttributes) error {
 	return nil
 }
 
+// AddSamples adds samples that have already been mixed. it can be used instead of SetAudio()
+func (aw *WavWriter) AddSamples(samples []int16) {
+	if aw.ended {
+		return
+	}
+	aw.buffer = append(aw.buffer, samples...)
+}
+
 const numChannels = 1
 const bitDepth = 16
 

@@ -55,6 +55,8 @@ type Television interface {
 	RemoveAudioMixer(m television.AudioMixer)
 	AddFrameTrigger(f television.FrameTrigger)
 	RemoveFrameTrigger(f television.FrameTrigger)
+	AddScanlineTrigger(f television.ScanlineTrigger)
+	RemoveScanlineTrigger(f television.ScanlineTrigger)
 	GetFrameInfo() frameinfo.Current
 }
 
@@ -97,13 +99,8 @@ type FFMPEG struct {
 	// we record audio to a separate file and then mux it with the video in a final step
 	audio *audio
 
-	// the audio is the clock for the video. there should be one video frame for every
-	// samplesPerFrame audio samples. clockBase is the difference between the two counts when the
-	// first frame is timed by the audio
-	samplesPerFrame int
-	framesWritten   int
-	clockBase       int
-	clockSynced     bool
+	// the number of frames sent to the running command
+	framesWritten int
 }
 
 func NewFFMPEG(rnd Renderer, tv Television) *FFMPEG {
@@ -135,15 +132,28 @@ func (vid *FFMPEG) Destroy() {
 	}
 
 	if vid.audio != nil {
-		// wav writer may have been ended already by the television shutting down. but the wavwriter
-		// package makes sure it can only end once
-		if err := vid.audio.EndMixing(); err != nil {
+		// the audio is written here and not when the television shuts down because a picture can
+		// still be sent to the video encoder after the television has shut down
+		if err := vid.audio.end(); err != nil {
 			if vid.conf.Log != nil {
 				fmt.Fprintf(vid.conf.Log, "video: %s\n", err.Error())
 			}
 		}
+		if vid.conf.Log != nil {
+			fit := vid.audio.summary()
+			if fit.maxLength > 0 {
+				// a frame longer than the specification has its sound squeezed, so it plays faster
+				spf := float64(vid.audio.samplesPerFrame)
+				fmt.Fprintf(vid.conf.Log, "video: sound fitted to %d frames, speed %+.2f%% to %+.2f%%\n",
+					fit.pictures, 100*(fit.minLength/spf-1), 100*(fit.maxLength/spf-1))
+			}
+			if fit.noSound > 0 {
+				fmt.Fprintf(vid.conf.Log, "video: %d frames without sound\n", fit.noSound)
+			}
+		}
 		vid.tv.RemoveAudioMixer(vid.audio)
 		vid.tv.RemoveFrameTrigger(vid.audio)
+		vid.tv.RemoveScanlineTrigger(vid.audio)
 		vid.audio = nil
 		muxAudio = true
 	}
@@ -255,7 +265,8 @@ func (vid *FFMPEG) Destroy() {
 		"-map", "0:v:0", "-map", "1:a:0",
 		"-c:v", "copy", "-c:a", "aac",
 		"-af", "aresample=async=1",
-		"-shortest",
+		// the audio is fitted to the video (see audio.fit()) so the two are the same length. the
+		// -shortest option is not used because it can cut the last few frames of video
 		vid.finalVideoFilename)
 
 	// using Run() function because we want to wait for ffmpeg to complete
@@ -305,12 +316,12 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 	vid.tempVideoFilename = fmt.Sprintf("_tmp_%s.mp4", outputFilenameBase)
 	vid.tempAudioFilename = fmt.Sprintf("_tmp_%s.wav", outputFilenameBase)
 
-	// the video is timed by the audio (see Process()) so the frame rate is the console's own: the
-	// audio sample rate divided by the number of audio samples in a frame of the specification's
-	// length. the output frame rate is the same as the incoming frame rate
+	// every frame of the emulation is one frame of video and its sound is fitted to the length of a
+	// frame of the specification (see audio.fit()). the frame rate is therefore the console's own:
+	// the audio sample rate divided by the number of audio samples in a frame of the
+	// specification's length. the output frame rate is the same as the incoming frame rate
 	spec := vid.tv.GetFrameInfo().Spec
-	vid.samplesPerFrame = samplesPerFrame(spec)
-	frameRate := fmt.Sprintf("%d/%d", audioRate(spec), vid.samplesPerFrame)
+	frameRate := fmt.Sprintf("%d/%d", audioRate(spec), samplesPerFrame(spec))
 
 	var ffmpegInput = []string{
 		"-f", "rawvideo",
@@ -397,11 +408,13 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, hz flo
 	if err != nil {
 		return fmt.Errorf("ffmpeg: %w", err)
 	}
-	vid.tv.AddAudioMixer(vid.audio)
+	// the audio counts scanlines and frames (see audio.fit()). the counting should start before the
+	// first audio is received
+	vid.tv.AddScanlineTrigger(vid.audio)
 	vid.tv.AddFrameTrigger(vid.audio)
+	vid.tv.AddAudioMixer(vid.audio)
 
 	vid.framesWritten = 0
-	vid.clockSynced = false
 
 	if vid.conf.Log != nil {
 		fmt.Fprintln(vid.conf.Log, "video: recording started")
@@ -418,9 +431,6 @@ func (vid *FFMPEG) Enable(enable bool, conf Session) error {
 
 	vid.conf = conf
 	vid.enabled = enable
-	if vid.audio != nil {
-		vid.audio.enabled = enable
-	}
 	vid.start = time.Now()
 
 	// check that both ffprobe and ffmpeg are available in the executable path
@@ -458,7 +468,6 @@ func (vid *FFMPEG) Process(framenum int) {
 	}
 
 	if framenum == -1 {
-		vid.audio.enabled = false
 		return
 	}
 
@@ -470,7 +479,12 @@ func (vid *FFMPEG) Process(framenum int) {
 		vid.lastFrameRendered = framenum
 	}
 
-	vid.audio.enabled = true
+	// the screen numbers a frame's pixels with the number of the frame before it. the first picture
+	// waits until that frame has ended in the recorded audio, so that the start of the picture's
+	// audio is known
+	if vid.framesWritten == 0 && !vid.audio.ready(framenum) {
+		return
+	}
 
 	if vid.conf.Log != nil && vid.conf.Verbose {
 		if framenum > vid.conf.LastFrame {
@@ -480,35 +494,19 @@ func (vid *FFMPEG) Process(framenum int) {
 		}
 	}
 
-	// the number of audio samples recorded by the end of the previous frame says how many video
-	// frames there should be by now. a frame with more scanlines than the specification is
-	// sometimes written twice and a frame with fewer is sometimes not written at all. the video and
-	// audio files will then be the same length however many scanlines there are in each frame
-	copies := 1
-	if samples, ok := vid.audio.samplesAtFrame(framenum); ok {
-		due := samples / vid.samplesPerFrame
-		if !vid.clockSynced {
-			vid.clockBase = vid.framesWritten - due
-			vid.clockSynced = true
-		}
-		copies = vid.clockBase + due + 1 - vid.framesWritten
-	}
-	if copies < 1 {
-		return
-	}
-
 	// get pixel data for frame and forward it to the running command
 	vid.rnd.ReadPixels(vid.width, vid.height, vid.pixels)
 
-	for range copies {
-		_, err := vid.pipe.Write(vid.pixels)
-		if err != nil {
-			if vid.conf.Log != nil {
-				fmt.Fprintf(vid.conf.Log, "video: %s\n", err.Error())
-			}
-			vid.Destroy()
-			return
+	_, err := vid.pipe.Write(vid.pixels)
+	if err != nil {
+		if vid.conf.Log != nil {
+			fmt.Fprintf(vid.conf.Log, "video: %s\n", err.Error())
 		}
-		vid.framesWritten++
+		vid.Destroy()
+		return
 	}
+	vid.framesWritten++
+
+	// the audio for the frame is fitted to the picture when the recording ends
+	vid.audio.addPicture(framenum + 1)
 }
