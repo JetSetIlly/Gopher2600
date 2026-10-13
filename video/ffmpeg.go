@@ -53,7 +53,8 @@ type Renderer interface {
 type Television interface {
 	AddAudioMixer(m television.AudioMixer)
 	RemoveAudioMixer(m television.AudioMixer)
-	GetFrameInfo() frameinfo.Current
+	AddFrameTrigger(f television.FrameTrigger)
+	RemoveFrameTrigger(f television.FrameTrigger)
 }
 
 type FFMPEG struct {
@@ -133,6 +134,7 @@ func (vid *FFMPEG) Destroy() {
 			}
 		}
 		vid.tv.RemoveAudioMixer(vid.audio)
+		vid.tv.RemoveFrameTrigger(vid.audio)
 		vid.audio = nil
 		muxAudio = true
 	}
@@ -384,6 +386,7 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, frameI
 		return fmt.Errorf("ffmpeg: %w", err)
 	}
 	vid.tv.AddAudioMixer(vid.audio)
+	vid.tv.AddFrameTrigger(vid.audio)
 
 	if vid.conf.Log != nil {
 		fmt.Fprintln(vid.conf.Log, "video: recording started")
