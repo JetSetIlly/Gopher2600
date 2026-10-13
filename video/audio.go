@@ -16,8 +16,8 @@
 package video
 
 import (
+	"github.com/jetsetilly/gopher2600/hardware/television/frameinfo"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
-	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	tiaaudio "github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/wavwriter"
 )
@@ -27,8 +27,8 @@ type audio struct {
 	enabled bool
 }
 
-func newAudio(tempAudioFilename string, spec specification.Spec) (*audio, error) {
-	rate := spec.HorizontalScanRate * float32(tiaaudio.SamplesPerScanline)
+func newAudio(tempAudioFilename string, frameInfo frameinfo.Current) (*audio, error) {
+	rate := frameInfo.Spec.HorizontalScanRate * float32(tiaaudio.SamplesPerScanline)
 	wavs, err := wavwriter.NewWavWriter(tempAudioFilename, int(rate))
 	if err != nil {
 		return nil, err
