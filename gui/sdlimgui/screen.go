@@ -676,13 +676,15 @@ func (scr *screen) copyPixelsDebugmode() {
 // copy pixels from queue to the live copy.
 func (scr *screen) copyPixelsPlaymode() {
 	if scr.img.rnd.isRecording() {
+		// the emulation is allowed to continue only once the lock is held. it can then not write the
+		// next frame over this one before the pixels have been generated
+		scr.crit.section.Lock()
+		defer scr.crit.section.Unlock()
 		select {
 		case <-scr.emuWait:
 			scr.emuWaitAck <- true
 		default:
 		}
-		scr.crit.section.Lock()
-		defer scr.crit.section.Unlock()
 		scr.crit.renderIdx = scr.crit.plotIdx
 		scr.generatePresentationPixels(scr.crit.renderIdx)
 
