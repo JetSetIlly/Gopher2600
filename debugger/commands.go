@@ -1164,8 +1164,36 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 	case cmdBus:
-		dbg.printLine(terminal.StyleInstrument, dbg.vcs.Mem.String())
 		action, ok := tokens.Get()
+		if ok && strings.ToUpper(action) == "LOG" {
+			// end any log that is already running. this is the only thing to do if the OFF
+			// argument has been given
+			if dbg.busLog != nil {
+				err := dbg.busLog.end()
+				dbg.busLog = nil
+				if err != nil {
+					return err
+				}
+				dbg.printLine(terminal.StyleFeedback, "bus log ended")
+			}
+
+			filename, _ := tokens.Get()
+			if strings.ToUpper(filename) == "OFF" {
+				return nil
+			}
+
+			var err error
+			dbg.busLog, err = newBusLog(dbg, filename)
+			if err != nil {
+				return err
+			}
+			if filename != "" {
+				dbg.printLine(terminal.StyleFeedback, "bus log started: %s", filename)
+			}
+			return nil
+		}
+
+		dbg.printLine(terminal.StyleInstrument, dbg.vcs.Mem.String())
 		if ok {
 			switch strings.ToUpper(action) {
 			case "DETAIL":

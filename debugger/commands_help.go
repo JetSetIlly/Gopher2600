@@ -164,7 +164,13 @@ about the address will be displayed.`,
 	cmdCPU: `Display the current state of the CPU. The SET argument can be used to change the
 contents of the CPU registers.`,
 
-	cmdBus: `Display the state of the address and data bus.`,
+	cmdBus: `Display the state of the address and data bus.
+
+The LOG argument records the state of the buses after every CPU cycle, for as long as the emulation
+runs, until BUS LOG OFF. The log is written to the named file or, if no file is named, to the
+terminal. Each line gives the coordinates, the address, the data, the data pins being driven, the
+type of access, whether the access is a phantom access, the memory area and the cartridge bank.
+Cycles where the CPU is halted by the RDY line are included.`,
 
 	cmdPeek: `Inspect memory addresses for content. Addresses can be specified by symbolically
 or numerically.
