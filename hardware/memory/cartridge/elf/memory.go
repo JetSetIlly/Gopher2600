@@ -223,7 +223,7 @@ func newElfMemory(env *environment.Environment) *elfMemory {
 	const sramSize = 0x10000 // 64kb of SRAM
 	mem.sram = crunched.NewQuick(sramSize)
 	mem.sramOrigin = mem.model.Regions["SRAM"].Origin
-	mem.sramMemtop = mem.sramOrigin + sramSize
+	mem.sramMemtop = mem.sramOrigin + sramSize - 1
 
 	// randomise sram data
 	if mem.env.Prefs.RandomState.Get().(bool) {

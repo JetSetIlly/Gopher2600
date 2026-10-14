@@ -61,6 +61,16 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 
 	// adjust address so that it can be used as an index
 	idx := addr - origin
+
+	// ensure we're not accessing past the end of memory. this is a belt&braces check because we
+	// should not have been given valid results from MapAddress(). the checks in the 16/32bit
+	// are more necessary because MapAddress() is not made aware of whether the access is more than
+	// 8bit and so can return a valid result for the very last address of a memory area
+	if idx >= uint32(len(*mem)-1) {
+		arm.illegalAccess("Read 8bit", addr)
+		return uint8(arm.mmap.IllegalAccessValue)
+	}
+
 	return (*mem)[idx]
 }
 
@@ -106,6 +116,16 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 
 	// adjust address so that it can be used as an index
 	idx := addr - origin
+
+	// ensure we're not accessing past the end of memory. this is a belt&braces check because we
+	// should not have been given valid results from MapAddress(). the checks in the 16/32bit are
+	// more necessary because MapAddress() is not made aware of whether the access is more than 8bit
+	// and so can return a valid result for the very last address of a memory area
+	if idx >= uint32(len(*mem)-1) {
+		arm.illegalAccess("Write 8bit", addr)
+		return
+	}
+
 	(*mem)[idx] = val
 }
 
@@ -186,7 +206,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 
 	// check 16 bit alignment
 	if (requiresAlignment || !arm.mmap.MisalignedAccesses) && !IsAlignedTo16bits(addr) {
-		arm.misalignedAccess("Read 16bit", addr)
+		arm.misalignedAccess("Write 16bit", addr)
 		if !arm.mmap.MisalignedAccesses {
 			addr = AlignTo16bits(addr)
 		}
@@ -363,7 +383,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 func (arm *ARM) Peek(addr uint32) (uint32, bool) {
 	mem, origin := arm.mem.MapAddress(addr, false, false)
 	addr -= origin
-	if mem == nil || addr >= uint32(len(*mem)-3) {
+	if mem == nil || len(*mem) < 4 || addr >= uint32(len(*mem)-3) {
 		return 0, false
 	}
 	return arm.byteOrder.Uint32((*mem)[addr:]), true
