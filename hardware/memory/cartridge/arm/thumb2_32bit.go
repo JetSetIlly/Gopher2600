@@ -1389,19 +1389,18 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						}
 					}
 
-					var operand1 int16
-
+					var operand1 uint32
 					if nHigh {
-						operand1 = int16(arm.state.registers[Rn] >> 16)
+						operand1 = arm.state.registers[Rn] >> 16
 					} else {
-						operand1 = int16(arm.state.registers[Rn])
+						operand1 = arm.state.registers[Rn] & 0xffff
 					}
 
-					var operand2 int16
+					var operand2 uint32
 					if mHigh {
-						operand2 = int16(arm.state.registers[Rm] >> 16)
+						operand2 = arm.state.registers[Rm] >> 16
 					} else {
-						operand2 = int16(arm.state.registers[Rm])
+						operand2 = arm.state.registers[Rm] & 0xffff
 					}
 
 					arm.state.registers[Rd] = uint32(int32(operand1) * int32(operand2))
@@ -1430,18 +1429,18 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						}
 					}
 
-					var operand1 int16
+					var operand1 uint32
 					if nHigh {
-						operand1 = int16(arm.state.registers[Rn] >> 16)
+						operand1 = arm.state.registers[Rn] >> 16
 					} else {
-						operand1 = int16(arm.state.registers[Rn])
+						operand1 = arm.state.registers[Rn] & 0xffff
 					}
 
-					var operand2 int16
+					var operand2 uint32
 					if mHigh {
-						operand2 = int16(arm.state.registers[Rm] >> 16)
+						operand2 = arm.state.registers[Rm] >> 16
 					} else {
-						operand2 = int16(arm.state.registers[Rm])
+						operand2 = arm.state.registers[Rm] & 0xffff
 					}
 
 					// sign extend accumulator for 64bit
@@ -1567,7 +1566,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 					}
 				}
 
-				result := int64(arm.state.registers[Rn]) * int64(arm.state.registers[Rm])
+				result := int64(int32(arm.state.registers[Rn])) * int64(int32(arm.state.registers[Rm]))
 				arm.state.registers[RdHi] = uint32(result >> 32)
 				arm.state.registers[RdLo] = uint32(result)
 
