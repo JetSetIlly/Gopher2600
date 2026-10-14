@@ -91,6 +91,8 @@ const (
 	cmdVersion  = "VERSION"
 )
 
+const cmdScreenshot = "SCREENSHOT"
+
 var commandTemplate = []string{
 	cmdReload,
 	cmdReset,
@@ -126,6 +128,7 @@ var commandTemplate = []string{
 	cmdRIOT + " (PORTS|TIMER)",
 	cmdAudio,
 	cmdTV + fmt.Sprintf(" (FRAME|VSYNC|SPEC (%s))", strings.Join(specification.ReqSpecList, "|")),
+	cmdScreenshot + " %<file>F",
 	cmdPlayer + " (0|1)",
 	cmdMissile + " (0|1)",
 	cmdBall,
