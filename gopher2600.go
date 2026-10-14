@@ -292,10 +292,11 @@ func headless(mode string, sync *mainSync, args []string) error {
 
 	flgs := flag.NewFlagSet(mode, flag.ContinueOnError)
 	flgs.StringVar(&opts.DWARF, "dwarf", "", "path to DWARF file. only valid for some coproc supporting ROMs")
+	flgs.BoolVar(&opts.FpsCap, "fpscap", false, "cap FPS to emulation TV (defaults to false)")
 	err := flgs.Parse(args)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
-			fmt.Fprintf(os.Stderr, "  pipe debugger commands to stdin\n")
+			fmt.Fprintf(os.Stderr, "pipe debugger commands to stdin\n")
 			return nil
 		}
 		return err
