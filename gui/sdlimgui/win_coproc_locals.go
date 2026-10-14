@@ -301,7 +301,7 @@ func (win *winCoProcLocals) drawVariable(varb *dwarf.SourceVariable, indentLevel
 		if varb.Error != nil {
 			imgui.Text(string(fonts.CoProcBug))
 		} else if varb.Type.Conversion != nil {
-			c, _ := varb.Type.Conversion(varb.Value())
+			c := varb.Type.Conversion(varb.Value())
 			imgui.Text(c)
 		} else {
 			imgui.Text(fmt.Sprintf(varb.Type.Hex(), varb.Value()))

@@ -480,8 +480,8 @@ func (bld *build) buildTypes(src *Source) error {
 	conversion = func(typ *SourceType) {
 		if strings.Contains(typ.Name, "float") {
 			if typ.Conversion == nil {
-				typ.Conversion = func(v uint32) (string, any) {
-					return "%f", math.Float32frombits(v)
+				typ.Conversion = func(v uint32) string {
+					return fmt.Sprintf("%f", math.Float32frombits(v))
 				}
 			}
 		}
