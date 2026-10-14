@@ -92,7 +92,7 @@ func (varb *SourceVariable) String() string {
 	} else {
 		s.WriteString(" = ")
 		if varb.Type.Conversion != nil {
-			c, _ := varb.Type.Conversion(varb.Value())
+			c := varb.Type.Conversion(varb.Value())
 			s.WriteString(c)
 		} else {
 			fmt.Fprintf(&s, varb.Type.Hex(), varb.Value())
