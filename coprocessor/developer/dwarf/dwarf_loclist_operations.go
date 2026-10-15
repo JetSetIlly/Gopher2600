@@ -381,7 +381,12 @@ func (sec *loclistDecoder) decodeLoclistOperation(expr []uint8) (loclistOperator
 			resolve: func(loc *loclist, _ io.Writer) (loclistStackItem, error) {
 				a, _ := loc.pop()
 				b, _ := loc.pop()
-				value := b.value / a.value
+
+				var value uint32
+				if a.value != 0 {
+					value = b.value / a.value
+				}
+
 				return loclistStackItem{
 					class: stackItemClassPush,
 					value: value,
