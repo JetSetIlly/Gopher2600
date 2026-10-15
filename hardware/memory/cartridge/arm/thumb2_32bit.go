@@ -2371,10 +2371,16 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 					}
 				}
 
-				arm.state.registers[Rd] = (arm.state.registers[Rn] >> uint32(lsbit)) & ((1 << width) - 1)
-				if arm.state.registers[Rd]>>widthm1 == 0x01 {
-					arm.state.registers[Rd] = arm.state.registers[Rd] | ^((1 << width) - 1)
+				// starting with uint64 to construct the mask. a shift of 32 would overflow a uint32
+				mask := uint32((uint64(1) << width) - 1)
+				value := (arm.state.registers[Rn] >> uint32(lsbit)) & mask
+
+				// sign extension
+				if value&(uint32(1)<<(width-1)) != 0 {
+					value |= ^mask
 				}
+
+				arm.state.registers[Rd] = value
 
 				return nil
 			}
@@ -2505,7 +2511,10 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 					}
 				}
 
-				arm.state.registers[Rd] = (arm.state.registers[Rn] >> uint32(lsbit)) & ((1 << width) - 1)
+				// starting with uint64 to construct the mask. a shift of 32 would overflow a uint32
+				mask := uint32((uint64(1) << width) - 1)
+				arm.state.registers[Rd] = (arm.state.registers[Rn] >> uint32(lsbit)) & mask
+
 				return nil
 			}
 		default:
