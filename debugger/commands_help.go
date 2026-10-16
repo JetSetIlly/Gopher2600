@@ -548,9 +548,14 @@ The ONTRACE command can be used to supplement the TRACE output with contextual i
 	// meta
 	cmdLog: `Print log to terminal. The LAST argument will cause the most recent log entry to be printed.
 
-Note that while "ONSTEP LOG LAST" is a valid construct it may not print what you expect - it will always print the last
-log entry after every step, even if the last log entry is not new. "ONSTEP LOG LAST; LOG CLEAR" is maybe more intuitive
-but with the maybe unwanted side effect of clearing the log.`,
+Note that while "ONSTEP LOG LAST" is a valid construct it may not print what you expect - it will
+always print the last log entry after every step, even if the last log entry is not new.
+
+"ONSTEP LOG LAST; LOG CLEAR" is maybe more intuitive but with the maybe unwanted side effect of
+clearing the log.
+
+LOG RECENT outputs the new log entries since the last call to LOG RECENT. A call TO LOG RECENT
+without any intervening log messages will print nothing.`,
 
 	cmdMemUsage: `Print memory usage information. The PROFILE option will save a pprof file in
 the working directory.`,
