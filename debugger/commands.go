@@ -28,6 +28,7 @@ import (
 	coproc_breakpoints "github.com/jetsetilly/gopher2600/coprocessor/developer/breakpoints"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/callstack"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/profiling"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/yield"
 	"github.com/jetsetilly/gopher2600/coprocessor/faults"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
@@ -1480,9 +1481,29 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					return
 				}
 
-				for i := 0; i < top; i++ {
-					f := src.SortedFunctions.Functions[i]
-					dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("%02d: %s", i, f.Name))
+				srt := src.NewSortedFunctions()
+				srt.Sort(dwarf.SortFunctionsFrameCycles, false, true, true, profiling.FocusAll)
+
+				valid := false
+				i := 0
+				for range top {
+					f := srt.Functions[i]
+					if f.Cycles.Overall.CyclesProgram.FrameValid {
+						// we want to index the sorted functions at i but number from i+1
+						// incrementing the index here only, when the functions cycles information
+						// is valid, has that effect
+						i++
+						valid = true
+						dbg.printLine(terminal.StyleFeedback,
+							fmt.Sprintf("%02d: %s %0.0f [%0.2f%%]", i, f.Name,
+								f.Cycles.Overall.CyclesProgram.FrameCount,
+								f.Cycles.Overall.CyclesProgram.FrameLoad,
+							),
+						)
+					}
+				}
+				if !valid {
+					dbg.printLine(terminal.StyleError, "no functions executed yet")
 				}
 			})
 
