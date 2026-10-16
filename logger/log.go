@@ -118,7 +118,8 @@ func (l *Logger) Log(perm Permission, tag string, detail any) {
 	now := time.Now()
 
 	// split multi-line log entries and log each separetely
-	for d := range strings.SplitSeq(detailConverted, "\n") {
+	newEntries := strings.Split(detailConverted, "\n")
+	for _, d := range newEntries {
 		d = strings.TrimSpace(d)
 		if len(d) == 0 {
 			continue
@@ -137,18 +138,17 @@ func (l *Logger) Log(perm Permission, tag string, detail any) {
 
 		l.entries = append(l.entries, e)
 
-		if len(l.entries) > l.maxEntries {
-			l.recentStart -= l.maxEntries - len(l.entries)
-			if l.recentStart < 0 {
-				l.recentStart = 0
-			}
-		}
-
 		// repeated log entires will not be echoed
 		if l.echo != nil {
 			l.echo.Write([]byte(e.String()))
 			l.echo.Write([]byte("\n"))
 		}
+	}
+
+	// crop log entries
+	if len(l.entries) > l.maxEntries {
+		l.entries = l.entries[len(newEntries):]
+		l.recentStart = max(0, l.recentStart-len(newEntries))
 	}
 }
 
