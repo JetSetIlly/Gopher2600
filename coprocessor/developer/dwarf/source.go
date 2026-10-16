@@ -134,6 +134,16 @@ type Source struct {
 	ProfilingDirty bool
 }
 
+func (src *Source) NewSortedFunctions() SortedFunctions {
+	srt := SortedFunctions{
+		Functions: make([]*SourceFunction, 0, 100),
+	}
+	for _, fn := range src.Functions {
+		srt.Functions = append(srt.Functions, fn)
+	}
+	return srt
+}
+
 // NewSource is the preferred method of initialisation for the Source type.
 func NewSource(cart coprocessor.CartCoProcBus, romFile string, dwarfFile string, base BaseAddress) (*Source, error) {
 	// skip source loading if dwarfFile indicates that any DWARF data should not be used
@@ -156,9 +166,6 @@ func NewSource(cart coprocessor.CartCoProcBus, romFile string, dwarfFile string,
 		GlobalsByAddress: make(map[uint64]*SourceVariable),
 		SortedGlobals: SortedVariables{
 			Variables: make([]*SourceVariable, 0, 100),
-		},
-		SortedFunctions: SortedFunctions{
-			Functions: make([]*SourceFunction, 0, 100),
 		},
 		LinesByAddress: make(map[uint64]*SourceLine),
 		SortedLines: SortedLines{
@@ -280,9 +287,7 @@ func NewSource(cart coprocessor.CartCoProcBus, romFile string, dwarfFile string,
 	assignFunctionsToLines(src)
 
 	// assemble sorted functions list
-	for _, fn := range src.Functions {
-		src.SortedFunctions.Functions = append(src.SortedFunctions.Functions, fn)
-	}
+	src.SortedFunctions = src.NewSortedFunctions()
 
 	// assemble sorted source lines
 	//
