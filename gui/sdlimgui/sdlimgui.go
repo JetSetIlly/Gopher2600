@@ -164,6 +164,10 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	imgui.CurrentIO().SetIniFilename(iniPath)
 	imgui.CurrentIO().SetHighlightIdConflicts(false)
 
+	// key repeat speed. significant for backspace in InputText() widgets
+	imgui.CurrentIO().SetKeyRepeatDelay(0.2)
+	imgui.CurrentIO().SetKeyRepeatRate(0.02)
+
 	// define colors
 	img.cols = newColors()
 
