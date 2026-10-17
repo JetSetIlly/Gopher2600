@@ -7,7 +7,7 @@ require (
 	github.com/go-audio/wav v1.1.0
 	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6
 	github.com/hajimehoshi/go-mp3 v0.3.4
-	github.com/jetsetilly/imgui-go/v5 v5.0.3
+	github.com/jetsetilly/imgui-go/v5 v5.1.0
 	github.com/jetsetilly/supercharge v0.3.0
 	github.com/pkg/term v1.1.0
 	github.com/sahilm/fuzzy v0.1.0
