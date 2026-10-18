@@ -174,6 +174,17 @@ type RealtimeAudioMixer interface {
 	SetSpec(specification.Spec)
 }
 
+// AuxAudio is implemented by audio mixers that can process audio from an auxiliary audio source,
+// such as the AtariVox (see speakjet.go)
+type AuxAudio interface {
+	OpenAuxAudio(sampleRate int, bufferLen int) error
+	CloseAuxAudio() error
+
+	// samples are mono, in the range -1 to 1, at the given sample rate. they
+	// are produced in emulation time and arrive in the order they were produced
+	PushAuxAudio(samples []float32, rate int) error
+}
+
 // VCS is used to send information from the TV back to the parent console
 type VCS interface {
 	SetClockSpeed(specification.Spec)

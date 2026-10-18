@@ -29,3 +29,12 @@ type AtariVoxEngine interface {
 	// Flush any outstanding instructions from previous calls to SpeakJet()
 	Flush()
 }
+
+// AtariVoxEngineRealtime is implemented by engines that run in emulation time
+type AtariVoxEngineRealtime interface {
+	// BufferHalfFull is the state of the SpeakJet's Buffer Half Full line
+	BufferHalfFull() bool
+
+	// Step is called every CPU cycle
+	Step()
+}

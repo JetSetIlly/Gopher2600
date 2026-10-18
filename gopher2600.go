@@ -362,7 +362,7 @@ func emulate(mode string, sync *mainSync, args []string) error {
 		flgs.BoolVar(&opts.PlaybackCheckHashes, "playbackCheckHashes", true, "check video hashes at each playback step. playback files only")
 		flgs.BoolVar(&opts.PlaybackPowerOff, "playbackPowerOff", true, "obey power off instructions. playback files only")
 		flgs.StringVar(&opts.PatchFile, "patch", "", "patch to apply to emulation (not playback files)")
-		flgs.BoolVar(&opts.Wav, "wav", false, "record audio to wav file")
+		flgs.BoolVar(&opts.Wav, "wav", false, "record TIA audio to wav file (auxiliary audio not recorded)")
 		flgs.BoolVar(&opts.Video, "video", false, "record video to mp4 file")
 		flgs.BoolVar(&opts.NoEject, "noeject", false, "emulator will not quit is noeject is true")
 		flgs.StringVar(&opts.Macro, "macro", "", "macro file to be run on trigger")

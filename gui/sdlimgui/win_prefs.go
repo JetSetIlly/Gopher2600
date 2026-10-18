@@ -438,46 +438,55 @@ func (win *winPrefs) drawVCS() {
 
 	imgui.Spacing()
 	if imgui.CollapsingHeader("AtariVox") {
-
 		imgui.Spacing()
-		enabled := win.img.dbg.VCS().Env.Prefs.AtariVox.FestivalEnabled.Get().(bool)
-		if imgui.Checkbox("Enable Festival Output", &enabled) {
-			win.img.dbg.VCS().Env.Prefs.AtariVox.FestivalEnabled.Set(enabled)
+		speakjet := win.img.dbg.VCS().Env.Prefs.AtariVox.SpeakJetEnabled.Get().(bool)
+		if imgui.Checkbox("SpeakJet Emulation", &speakjet) {
+			win.img.dbg.VCS().Env.Prefs.AtariVox.SpeakJetEnabled.Set(speakjet)
 			win.img.dbg.PushFunction(win.img.dbg.VCS().RIOT.Ports.RestartPeripherals)
 		}
-		win.img.imguiTooltipSimple(`AtariVox output is currently only available
-via the Festival voice synthsizer`)
 
-		var warning bool
+		var festival bool
+		drawDisabled(speakjet, func() {
+			imgui.Spacing()
+			festival = win.img.dbg.VCS().Env.Prefs.AtariVox.FestivalEnabled.Get().(bool)
+			if imgui.Checkbox("Use Festival Output", &festival) {
+				win.img.dbg.VCS().Env.Prefs.AtariVox.FestivalEnabled.Set(festival)
+				win.img.dbg.PushFunction(win.img.dbg.VCS().RIOT.Ports.RestartPeripherals)
+			}
 
-		switch win.img.mode.Load().(govern.Mode) {
-		case govern.ModePlay:
-			warning = win.img.prefs.audioMutePlaymode.Get().(bool)
-		case govern.ModeDebugger:
-			warning = win.img.prefs.audioMuteDebugger.Get().(bool)
-		}
+			if festival {
+				imgui.Spacing()
+				imguiLabel("Festival Path")
+				binary := win.img.dbg.VCS().Env.Prefs.AtariVox.FestivalBinary.Get().(string)
+				if imgui.InputTextV("##festivalbinary", &binary, imgui.InputTextFlagsEnterReturnsTrue, nil) {
+					win.img.dbg.VCS().Env.Prefs.AtariVox.FestivalBinary.Set(binary)
+					win.img.dbg.PushFunction(win.img.dbg.VCS().RIOT.Ports.RestartPeripherals)
+				}
+			}
+		})
 
-		if warning && enabled {
-			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
-			imgui.AlignTextToFramePadding()
-			imgui.Text(fmt.Sprintf(" %c", fonts.Warning))
-			imgui.PopStyleColor()
-			win.img.imguiTooltipSimple(`Emulation audio is currently muted. There will
+		// muted warning
+		if speakjet || festival {
+			var muted bool
+			switch win.img.mode.Load().(govern.Mode) {
+			case govern.ModePlay:
+				muted = win.img.prefs.audioMutePlaymode.Get().(bool)
+			case govern.ModeDebugger:
+				muted = win.img.prefs.audioMuteDebugger.Get().(bool)
+			}
+			if muted {
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
+				imgui.AlignTextToFramePadding()
+				imgui.Text(fmt.Sprintf(" %c", fonts.Warning))
+				imgui.PopStyleColor()
+				imgui.SameLine()
+				imgui.Text(`Emulation audio is currently muted. There will
 be no AtariVox output even though the engine is
 currently enabled.`)
-		}
-
-		if enabled {
-			imgui.Spacing()
-			imguiLabel("Festival Path")
-			binary := win.img.dbg.VCS().Env.Prefs.AtariVox.FestivalBinary.Get().(string)
-			if imgui.InputTextV("##festivalbinary", &binary, imgui.InputTextFlagsEnterReturnsTrue, nil) {
-				win.img.dbg.VCS().Env.Prefs.AtariVox.FestivalBinary.Set(binary)
-				win.img.dbg.PushFunction(win.img.dbg.VCS().RIOT.Ports.RestartPeripherals)
 			}
 		}
 
+		// subtitling
 		imgui.Spacing()
 		subtitles := win.img.dbg.VCS().Env.Prefs.AtariVox.SubtitlesEnabled.Get().(bool)
 		if imgui.Checkbox("Phonetic Subtitles", &subtitles) {

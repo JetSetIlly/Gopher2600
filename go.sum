@@ -11,10 +11,12 @@ github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6/go.mod h1:9YTyiznxEY1fVin
 github.com/hajimehoshi/go-mp3 v0.3.4 h1:NUP7pBYH8OguP4diaTZ9wJbUbk3tC0KlfzsEpWmYj68=
 github.com/hajimehoshi/go-mp3 v0.3.4/go.mod h1:fRtZraRFcWb0pu7ok0LqyFhCUrPeMsGRSVop0eemFmo=
 github.com/hajimehoshi/oto/v2 v2.3.1/go.mod h1:seWLbgHH7AyUMYKfKYT9pg7PhUu9/SisyJvNTT+ASQo=
-github.com/jetsetilly/imgui-go/v5 v5.0.3 h1:Sk7aM0elptxYQvQRwD42wFYLa9yBm1KhMKsDEDl7UC8=
-github.com/jetsetilly/imgui-go/v5 v5.0.3/go.mod h1:UZOMPCKlp2QbTjkvPYh5tZ5z4kiKmtCtMmW21m0/dps=
 github.com/jetsetilly/imgui-go/v5 v5.1.0 h1:4CCALgBuu1lX4bBYRgaUs1Q0sKv1U7IhihXiVrHro+U=
 github.com/jetsetilly/imgui-go/v5 v5.1.0/go.mod h1:UZOMPCKlp2QbTjkvPYh5tZ5z4kiKmtCtMmW21m0/dps=
+github.com/jetsetilly/speakjet v0.1.0 h1:O9ix+Sx8g2SlpsFZedtFQaL4YY1tcwj/MKCF/J3cagM=
+github.com/jetsetilly/speakjet v0.1.0/go.mod h1:xcHT8AOH5xMpxDp5y86EuyXyx07fCGdG3jC875882x0=
+github.com/jetsetilly/speakjet v0.1.1 h1:Kil/bE/t8+IlDK688EyAXV+GMR39EKjT8rhcU2PY6gk=
+github.com/jetsetilly/speakjet v0.1.1/go.mod h1:fe1Qs7/mEVVnAk0iWJVwEfsJsavkMXE4m6WluQY765w=
 github.com/jetsetilly/supercharge v0.3.0 h1:Yqi0Y4ZTUPnmd3iZr7h4N0Wa7AEB9PTVdSWeKZdWUwU=
 github.com/jetsetilly/supercharge v0.3.0/go.mod h1:rkyz+BCLit8qzDAhzy8qpWwFNKAOctd2Y6gJGZDzqnw=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
