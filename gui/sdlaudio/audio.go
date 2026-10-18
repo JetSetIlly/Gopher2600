@@ -79,6 +79,9 @@ type Audio struct {
 	queuedBytesMeasure *time.Ticker
 	QueuedBytes        atomic.Int32
 	QueuedTime         atomic.Int32 // milliseconds
+
+	// auxiliary audio is implemented as a separate SDL audio device
+	auxAudio
 }
 
 const (

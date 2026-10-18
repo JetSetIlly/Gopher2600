@@ -73,6 +73,14 @@ type AtariVox struct {
 	// text-to-speech engine
 	speech engines.AtariVoxEngine
 
+	// the level last driven on the READY line and whether it needs driving again
+	ready      bool
+	readyStale bool
+
+	// the port's SWACNT bits, normalised like swcha. used by the SpeakJet
+	// emulation to see the serial line as the hardware does (see Update())
+	swacnt uint8
+
 	// subtitler engine
 	subtitler engines.AtariVoxEngine
 
@@ -133,19 +141,39 @@ func (vox *AtariVox) activateEngines() {
 		return
 	}
 
-	var err error
-
-	// add festival engine according to preferences
-	if vox.env.Prefs.AtariVox.FestivalEnabled.Get().(bool) {
-		if vox.speech == nil {
-			vox.speech, err = engines.NewFestival(vox.env)
-			if err != nil {
-				logger.Log(vox.env, "atarivox", err)
-			}
-		}
-	} else if vox.speech != nil {
+	// quit previous instance of engine
+	if vox.speech != nil {
 		vox.speech.Quit()
 		vox.speech = nil
+	}
+
+	var err error
+
+	// the built-in SpeakJet emulation, when its preference is set, is used
+	// instead of festival. changing the preference quits whichever engine is
+	// running
+	if vox.env.Prefs.AtariVox.SpeakJetEnabled.Get().(bool) {
+		vox.speech, err = engines.NewSpeakJet(vox.env)
+		if err != nil {
+			logger.Log(vox.env, "atarivox", err)
+			vox.speech = nil
+		}
+		if vox.speech != nil {
+			vox.readyStale = true
+		}
+
+		// the serial line idles high (the console's pull-up) until the program
+		// first writes to the port. starting it low decodes as a stream of
+		// start bits, and the first port write mid-frame completes one as a
+		// stray 0xfe -- the "WOW" sound effect -- spoken at power-on
+		vox.swcha |= maskSpeakJetDATA
+
+	} else if vox.env.Prefs.AtariVox.FestivalEnabled.Get().(bool) {
+		// add festival engine according to preferences
+		vox.speech, err = engines.NewFestival(vox.env)
+		if err != nil {
+			logger.Log(vox.env, "atarivox", err)
+		}
 	}
 
 	// add subtitles engine
@@ -252,6 +280,31 @@ func (vox *AtariVox) Update(data chipbus.ChangedRegister) bool {
 			vox.swcha = (data.Value & 0x0f) << 4
 		}
 
+		if _, ok := vox.speech.(engines.AtariVoxEngineRealtime); ok {
+			// a SWCHA write reaches peripherals masked by SWACNT, so a pin set
+			// as an input reads low. on the console an input pin is pulled
+			// high, and the SpeakJet's serial line idles high. without this,
+			// each SWCHA write by the savekey's I2C code looks like a start
+			// bit and is decoded as a stray byte (at boot, a 0xfe -- the
+			// "WOW" sound effect -- before the program's first phrase)
+			if vox.swacnt&maskSpeakJetDATA == 0 {
+				vox.swcha |= maskSpeakJetDATA
+			}
+
+			// the savekey has just driven the port lines from this value,
+			// which may have changed the READY line
+			vox.readyStale = true
+		}
+
+	case cpubus.SWACNT:
+		switch vox.port {
+		case plugging.PortLeft:
+			vox.swacnt = data.Value & 0xf0
+		case plugging.PortRight:
+			vox.swacnt = (data.Value & 0x0f) << 4
+		}
+		return true
+
 	default:
 		return true
 	}
@@ -284,7 +337,18 @@ func (vox *AtariVox) resetBits() {
 func (vox *AtariVox) Step() {
 	vox.SaveKey.Step()
 
+	// engines that run in emulation time are stepped every cycle, whatever the
+	// state of the serial line or the savekey
+	if e, ok := vox.speech.(engines.AtariVoxEngineRealtime); ok {
+		e.Step()
+	}
+
 	if vox.SaveKey.IsActive() {
+		// the savekey drives the port lines while it is active (SpeakJet
+		// emulation only)
+		if _, ok := vox.speech.(engines.AtariVoxEngineRealtime); ok {
+			vox.readyStale = true
+		}
 		return
 	}
 
@@ -295,6 +359,28 @@ func (vox *AtariVox) Step() {
 		return
 	}
 	vox.baudCount = 0
+
+	// updateReady drives the READY line from the speech engine's Buffer Half Full
+	// speech, when the engine emulates it. READY is high when the SpeakJet can
+	// accept more data, which is the sense in which AtariVox programs test it
+	// (speakjet.inc sends a byte only when the line is high)
+	//
+	// the savekey drives the same port, so the line is only driven while the
+	// savekey is idle and is driven again whenever the savekey may have changed it
+	if e, ok := vox.speech.(engines.AtariVoxEngineRealtime); ok {
+		ready := !e.BufferHalfFull()
+		if ready == vox.ready && !vox.readyStale {
+			return
+		}
+		vox.ready = ready
+		vox.readyStale = false
+
+		v := vox.swcha &^ maskSpeakJetREADY
+		if ready {
+			v |= maskSpeakJetREADY
+		}
+		vox.bus.WriteSWCHx(vox.port, v)
+	}
 
 	// update atarivox i2c state
 	vox.SpeakJetDATA.Tick(vox.swcha&maskSpeakJetDATA == maskSpeakJetDATA)

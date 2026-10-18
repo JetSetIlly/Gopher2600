@@ -51,15 +51,28 @@ func NewWavWriter(filename string, sampleRate int) (*WavWriter, error) {
 
 // SetAudio implements the television.AudioMixer interface.
 func (aw *WavWriter) SetAudio(sig []signal.AudioSignalAttributes) error {
+	return aw.SetAudioWithAux(sig, nil)
+}
+
+// aux audio at full scale (-1 to 1) is as loud as the loudest TIA output
+const auxScale = 0x7fff >> 1
+
+// SetAudioWithAux is the same as SetAudio() but adds sound form an aux audio source (see
+// television.AuxAudio). aux is at the same sample rate as sig and lines up with its start. it can
+// be shorter than sig
+func (aw *WavWriter) SetAudioWithAux(sig []signal.AudioSignalAttributes, aux []float32) error {
 	if aw.ended {
 		return nil
 	}
-	for _, s := range sig {
+	for i, s := range sig {
 		v0 := s.AudioChannel0
 		v1 := s.AudioChannel1
 
-		m := mix.Mono(v0, v1)
-		aw.buffer = append(aw.buffer, m)
+		m := int32(mix.Mono(v0, v1))
+		if i < len(aux) {
+			m += int32(aux[i] * auxScale)
+		}
+		aw.buffer = append(aw.buffer, int16(max(-0x8000, min(0x7fff, m))))
 	}
 
 	return nil

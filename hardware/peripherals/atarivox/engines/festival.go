@@ -25,16 +25,6 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-type speakJetAction int
-
-const (
-	noAction speakJetAction = iota
-	unsupported
-	speed
-	pitch
-	volume
-)
-
 type phonemes struct {
 	env *environment.Environment
 	strings.Builder

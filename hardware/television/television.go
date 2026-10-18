@@ -464,11 +464,65 @@ func (tv *Television) AddAudioMixer(m AudioMixer) {
 // RemoveAudioMixer removes a single AudioMixer implementation from the
 // list of mixers. Order is not maintained.
 func (tv *Television) RemoveAudioMixer(m AudioMixer) {
+	err := tv.CloseAuxAudio()
+	if err != nil {
+		logger.Log(logger.Allow, "television", err)
+	}
 	for i := range tv.mixers {
 		if tv.mixers[i] == m {
 			tv.mixers[i] = tv.mixers[len(tv.mixers)-1]
 			tv.mixers = tv.mixers[:len(tv.mixers)-1]
 			return
+		}
+	}
+}
+
+// OpenAuxAudio adds an auxiliary audio source to all supporting audio mixers.
+func (tv *Television) OpenAuxAudio(sampleRate int, bufferLen int) error {
+	if a, ok := tv.realTimeMixer.(AuxAudio); ok {
+		if err := a.OpenAuxAudio(sampleRate, bufferLen); err != nil {
+			logger.Log(logger.Allow, "television", err)
+		}
+	}
+	for _, m := range tv.mixers {
+		if a, ok := m.(AuxAudio); ok {
+			if err := a.OpenAuxAudio(sampleRate, bufferLen); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// CloseAuxAudio removes a previously opened auxiliary audio source from all supporting audio mixers.
+func (tv *Television) CloseAuxAudio() error {
+	if a, ok := tv.realTimeMixer.(AuxAudio); ok {
+		if err := a.CloseAuxAudio(); err != nil {
+			logger.Log(logger.Allow, "television", err)
+		}
+	}
+	for _, m := range tv.mixers {
+		if a, ok := m.(AuxAudio); ok {
+			if err := a.CloseAuxAudio(); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// PushAuxAudio passes sound produced outside the TIA to all audio mixers that implement AuxAudio.
+func (tv *Television) PushAuxAudio(samples []float32, rate int) {
+	if a, ok := tv.realTimeMixer.(AuxAudio); ok {
+		if err := a.PushAuxAudio(samples, rate); err != nil {
+			logger.Log(logger.Allow, "television", err)
+		}
+	}
+	for _, m := range tv.mixers {
+		if a, ok := m.(AuxAudio); ok {
+			if err := a.PushAuxAudio(samples, rate); err != nil {
+				logger.Log(logger.Allow, "television", err)
+			}
 		}
 	}
 }
