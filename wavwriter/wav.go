@@ -55,7 +55,7 @@ func (aw *WavWriter) SetAudio(sig []signal.AudioSignalAttributes) error {
 }
 
 // aux audio at full scale (-1 to 1) is as loud as the loudest TIA output
-const auxScale = 0x7fff >> 1
+const auxScale = 0x7fff
 
 // SetAudioWithAux is the same as SetAudio() but adds sound form an aux audio source (see
 // television.AuxAudio). aux is at the same sample rate as sig and lines up with its start. it can

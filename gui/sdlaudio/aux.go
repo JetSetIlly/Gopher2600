@@ -95,9 +95,13 @@ func (aud *Audio) PushAuxAudio(samples []float32, rate int) error {
 			queue(aud.auxSilence)
 		}
 	}
+
+	// aux audio at full scale (-1 to 1) is as loud as the loudest TIA output
+	const auxScale = 0x7fff
+
 	if queued < uint32(aud.auxMaxQueue) {
 		for i, v := range samples {
-			aud.auxOut[i] = int16(v * 32000)
+			aud.auxOut[i] = int16(v * auxScale)
 		}
 		b := unsafe.Slice((*byte)(unsafe.Pointer(&aud.auxOut[0])), len(samples)*2)
 		if err := sdl.QueueAudio(aud.auxId, b); err != nil {
