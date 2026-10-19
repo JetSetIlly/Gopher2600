@@ -121,7 +121,7 @@ func TestAuxAudio(t *testing.T) {
 	for _, v := range x {
 		peak = max(peak, v, -v)
 	}
-	want := int(math.Round(amplitude * (0x7fff >> 1)))
+	want := int(math.Round(amplitude * 0x7fff))
 	if math.Abs(float64(peak-want)) > float64(want)/50 {
 		t.Errorf("peak level is %d, expected about %d", peak, want)
 	}
