@@ -17,6 +17,7 @@ package sdlaudio
 
 import (
 	"fmt"
+	"math"
 	"unsafe"
 
 	"github.com/jetsetilly/gopher2600/logger"
@@ -96,12 +97,9 @@ func (aud *Audio) PushAuxAudio(samples []float32, rate int) error {
 		}
 	}
 
-	// aux audio at full scale (-1 to 1) is as loud as the loudest TIA output
-	const auxScale = 0x7fff
-
 	if queued < uint32(aud.auxMaxQueue) {
 		for i, v := range samples {
-			aud.auxOut[i] = int16(v * auxScale)
+			aud.auxOut[i] = int16(max(math.MinInt16, min(math.MaxInt16, v*math.MaxInt16)))
 		}
 		b := unsafe.Slice((*byte)(unsafe.Pointer(&aud.auxOut[0])), len(samples)*2)
 		if err := sdl.QueueAudio(aud.auxId, b); err != nil {
