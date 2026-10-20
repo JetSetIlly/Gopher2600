@@ -22,11 +22,10 @@ import (
 )
 
 const (
-	// samples rendered at a time. each chunk is passed to the television (for
-	// video recording) and, if there is any sound in it, to the audio device
+	// the amount of data to buffer before pushing to the television
 	speakJetBufferLen = 128
 
-	// output gain. the chip's output peaks at about 0.5
+	// the volume gain
 	speakJetGain = 1.8
 )
 
@@ -43,7 +42,8 @@ type speakJetEngine struct {
 }
 
 // NewSpeakJet creates an engine that emulates the SpeakJet chip. it runs in
-// emulation time: the AtariVox steps it every CPU cycle (AtariVoxClocked)
+// emulation time: the AtariVox steps it every CPU cycle (via the
+// AtariVoxRealtime interface)
 func NewSpeakJet(env *environment.Environment) (AtariVoxEngine, error) {
 	err := env.TV.OpenAuxAudio(speakjet.SampleRate, speakJetBufferLen)
 	if err != nil {
@@ -54,18 +54,18 @@ func NewSpeakJet(env *environment.Environment) (AtariVoxEngine, error) {
 		env:  env,
 		chip: speakjet.NewSpeakJet(),
 	}
+	sj.chip.Gain = speakJetGain
 	sj.setClock()
 
 	return sj, nil
 }
 
-// the CPU clock follows the television specification, which can change while
-// the emulation runs. 76 CPU cycles per scanline
 func (sj *speakJetEngine) setClock() {
+	// horizontal scan rate is approximately the same as the actual clock speed of the CPU
 	sj.cpuClock = int(sj.env.TV.GetFrameInfo().Spec.HorizontalScanRate * 76)
 }
 
-// Step implements the AtariVoxClocked interface.
+// Step implements the AtariVoxRealtime interface.
 func (sj *speakJetEngine) Step() {
 	sj.clock += speakjet.SampleRate
 	if sj.clock < sj.cpuClock {
@@ -75,18 +75,14 @@ func (sj *speakJetEngine) Step() {
 
 	sample := sj.buffer[sj.bufferIdx : sj.bufferIdx+1]
 	_ = sj.chip.Render(sample)
-	sample[0] = max(-1, min(1, sample[0]*speakJetGain))
+	sample[0] = max(-1, min(1, sample[0]))
 
 	sj.bufferIdx++
 	if sj.bufferIdx == speakJetBufferLen {
-		sj.endChunk()
+		sj.env.TV.PushAuxAudio(sj.buffer[:], speakjet.SampleRate)
+		sj.bufferIdx = 0
+		sj.setClock()
 	}
-}
-
-func (sj *speakJetEngine) endChunk() {
-	sj.env.TV.PushAuxAudio(sj.buffer[:], speakjet.SampleRate)
-	sj.bufferIdx = 0
-	sj.setClock()
 }
 
 // Quit implements the AtariVoxEngine interface.
@@ -104,12 +100,12 @@ func (sj *speakJetEngine) SpeakJet(command uint8, data uint8) {
 	}
 }
 
-// Flush implements the AtariVoxEngine interface. the SpeakJet speaks as the
-// bytes arrive so there is nothing to flush
+// Flush implements the AtariVoxEngine interface.
 func (sj *speakJetEngine) Flush() {
+	// in the case of the SpeakJet implementation there is no need to flush
 }
 
-// BufferHalfFull implements the AtariVoxStatus interface.
+// BufferHalfFull implements the AtariVoxRealtime interface.
 func (sj *speakJetEngine) BufferHalfFull() bool {
 	return sj.chip.BufferHalfFull()
 }
