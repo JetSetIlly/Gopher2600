@@ -407,9 +407,16 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 
 			switch elf.R_ARM(relType) {
 			case elf.R_ARM_TARGET1, elf.R_ARM_ABS32:
-				ok, tgt, err := getStrongArmDefinition(mem, sym.Name)
-				if err != nil {
-					return fmt.Errorf("%s: %w", sym.Name, err)
+				var (
+					ok  bool
+					tgt uint32
+					err error
+				)
+				if sym.Section == elf.SHN_UNDEF {
+					ok, tgt, err = getStrongArmDefinition(mem, sym.Name)
+					if err != nil {
+						return fmt.Errorf("%s: %w", sym.Name, err)
+					}
 				}
 				if !ok {
 					switch sym.Name {
@@ -509,10 +516,16 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 				// the branch offset, bits 0-10 of the next instruction word the 11
 				// least significant bits. The unit is 2-byte Thumb instructions."
 				// page 32 of "SWS ESPC 0003 A-08"
-
-				ok, tgt, err := getStrongArmDefinition(mem, sym.Name)
-				if err != nil {
-					return fmt.Errorf("%s: %w", sym.Name, err)
+				var (
+					ok  bool
+					tgt uint32
+					err error
+				)
+				if sym.Section == elf.SHN_UNDEF {
+					ok, tgt, err = getStrongArmDefinition(mem, sym.Name)
+					if err != nil {
+						return fmt.Errorf("%s: %w", sym.Name, err)
+					}
 				}
 				if !ok {
 					if sym.Section == elf.SHN_UNDEF {
