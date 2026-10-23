@@ -241,9 +241,27 @@ func (win *winTerm) draw() {
 
 			win.input = strings.TrimSpace(win.input)
 
-			// send input to inputChan even if it is the empty string because
-			// the empty string might mean something to the received (it does)
-			win.term.inputChan <- win.input
+			// sending input to inputChan even if it is the empty string because the empty
+			// string might mean something to the receiving goroutine (it does in the case of
+			// the current debugger)
+			//
+			// putting this in a goroutine so that we don't deadlock, which is possible because
+			// the receiving goroutine might be sending to the featureSet channel at the same
+			// time we're pushing to the inputChan
+			//
+			// the need for this was absent for a long time because we used to create inputChan
+			// with a large buffer but even then, there is a possibility of a bug. pushing to the
+			// channel in a goroutine solves the problem correctly
+			//
+			// the deadlock problem is particularly noticeable if we send multiple RELOAD commands.
+			// as part of the RELOAD process, requests are sent to featureSet while we're trying to
+			// send more RELOAD commands to inputChan
+			{
+				input := win.input
+				go func() {
+					win.term.inputChan <- input
+				}()
+			}
 
 			// only add input to history if it is not empty
 			if win.input != "" {
