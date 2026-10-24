@@ -306,13 +306,13 @@ func (reg *VideoRegression) regress(newRegression bool, messages io.Writer, tag 
 
 			// check that the filename is unique
 			nf, _ := os.Open(reg.stateFile)
+			defer nf.Close()
 
 			// no need to bother with returned error. nf tells us everything we
 			// need
 			if nf != nil {
 				return fmt.Errorf("state recording file already exists (%s)", reg.stateFile)
 			}
-			nf.Close()
 
 			// create new file
 			nf, err = os.Create(reg.stateFile)

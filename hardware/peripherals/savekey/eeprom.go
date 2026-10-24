@@ -179,7 +179,7 @@ func (ee *EEPROM) IsSaved() bool {
 }
 
 // save returns a string that should be used as a log message
-func save(data []uint8) string {
+func save(data []uint8) (msg string) {
 	fn, err := resources.JoinPath(saveKeyPath)
 	if err != nil {
 		return fmt.Sprintf("could not write eeprom file: %v", err)
@@ -190,14 +190,16 @@ func save(data []uint8) string {
 		return fmt.Sprintf("could not write eeprom file: %v", err)
 	}
 
+	defer func() {
+		err = f.Close()
+		if err != nil {
+			msg = fmt.Sprintf("could not close eeprom file: %v", err)
+		}
+	}()
+
 	n, err := f.Write(data)
 	if err != nil {
 		return fmt.Sprintf("could not write eeprom file: %v", err)
-	}
-
-	err = f.Close()
-	if err != nil {
-		return fmt.Sprintf("could not close eeprom file: %v", err)
 	}
 
 	if n != len(data) {
