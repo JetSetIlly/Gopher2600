@@ -83,7 +83,7 @@ func (plb Playback) EndFrame() int {
 //
 // The returned playback must be attached to the VCS input system (with
 // AttachToVCSInput() function) for it it to be useful.
-func NewPlayback(transcript string, checkIntegrity bool) (*Playback, error) {
+func NewPlayback(transcript string, checkIntegrity bool) (rplb *Playback, rerr error) {
 	var err error
 
 	plb := &Playback{
@@ -96,11 +96,16 @@ func NewPlayback(transcript string, checkIntegrity bool) (*Playback, error) {
 	if err != nil {
 		return nil, fmt.Errorf("playback: %w", err)
 	}
+
+	defer func() {
+		err = tf.Close()
+		if err != nil {
+			rplb = nil
+			rerr = fmt.Errorf("playback: %w", err)
+		}
+	}()
+
 	buffer, err := io.ReadAll(tf)
-	if err != nil {
-		return nil, fmt.Errorf("playback: %w", err)
-	}
-	err = tf.Close()
 	if err != nil {
 		return nil, fmt.Errorf("playback: %w", err)
 	}

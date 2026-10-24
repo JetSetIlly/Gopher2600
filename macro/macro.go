@@ -95,16 +95,20 @@ func NewMacro(filename string, emulation Emulation, input Input, tv TV, gui GUI)
 	return mcr, nil
 }
 
-func (mcr *Macro) readFile() error {
+func (mcr *Macro) readFile() (rerr error) {
 	f, err := os.Open(mcr.filename)
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		err = f.Close()
+		if err != nil {
+			rerr = err
+		}
+	}()
+
 	buffer, err := io.ReadAll(f)
-	if err != nil {
-		return err
-	}
-	err = f.Close()
 	if err != nil {
 		return err
 	}
