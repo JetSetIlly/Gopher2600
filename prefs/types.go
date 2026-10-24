@@ -29,6 +29,8 @@ type Value any
 // types support by the prefs system must implement the pref interface.
 type pref interface {
 	fmt.Stringer
+	setKey(string)
+	getKey() string
 	Set(value Value) error
 	Get() Value
 	Reset() error
@@ -37,6 +39,7 @@ type pref interface {
 // Bool implements a boolean type in the prefs system.
 type Bool struct {
 	pref
+	key        string
 	value      atomic.Value // bool
 	constraint func(value Value) any
 	hookPre    func(value Value) error
@@ -49,6 +52,14 @@ func (p *Bool) String() string {
 		return "false"
 	}
 	return fmt.Sprintf("%v", ov.(bool))
+}
+
+func (p *Bool) setKey(k string) {
+	p.key = k
+}
+
+func (p *Bool) getKey() string {
+	return p.key
 }
 
 // Set new value to Bool type. New value must be of type bool or string. A
@@ -138,11 +149,20 @@ func (p *Bool) SetHookPost(f func(value Value) error) {
 // String implements a string type in the prefs system.
 type String struct {
 	pref
+	key        string
 	maxLen     int
 	value      atomic.Value // string
 	constraint func(value Value) any
 	hookPre    func(value Value) error
 	hookPost   func(value Value) error
+}
+
+func (p *String) setKey(k string) {
+	p.key = k
+}
+
+func (p *String) getKey() string {
+	return p.key
 }
 
 func (p *String) String() string {
@@ -243,10 +263,19 @@ func (p *String) SetHookPost(f func(value Value) error) {
 // Int implements a string type in the prefs system.
 type Int struct {
 	pref
+	key        string
 	value      atomic.Value // int
 	constraint func(value Value) any
 	hookPre    func(value Value) error
 	hookPost   func(value Value) error
+}
+
+func (p *Int) setKey(k string) {
+	p.key = k
+}
+
+func (p *Int) getKey() string {
+	return p.key
 }
 
 func (p *Int) String() string {
@@ -345,10 +374,19 @@ func (p *Int) SetHookPost(f func(value Value) error) {
 // Int implements a string type in the prefs system.
 type Float struct {
 	pref
+	key        string
 	value      atomic.Value // float64
 	constraint func(value Value) any
 	hookPre    func(value Value) error
 	hookPost   func(value Value) error
+}
+
+func (p *Float) setKey(k string) {
+	p.key = k
+}
+
+func (p *Float) getKey() string {
+	return p.key
 }
 
 func (p *Float) String() string {
@@ -454,12 +492,21 @@ func (p *Float) SetHookPost(f func(value Value) error) {
 // value).
 type Generic struct {
 	pref
+	key  string
 	crit sync.Mutex
 	set  func(Value) error
 	get  func() Value
 
 	// the last value sent to set() function
 	mostRecentSetValue Value
+}
+
+func (p *Generic) setKey(k string) {
+	p.key = k
+}
+
+func (p *Generic) getKey() string {
+	return p.key
 }
 
 // GenericGetValueUndefined is a special return value for the get() function

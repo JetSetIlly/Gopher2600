@@ -57,7 +57,7 @@ func PopCommandLineStack() string {
 
 	s := strings.Builder{}
 	for _, key := range keys {
-		s.WriteString(fmt.Sprintf("%s::%v; ", key, popped[key]))
+		fmt.Fprintf(&s, "%s::%v; ", key, popped[key])
 	}
 
 	// return prefs string
