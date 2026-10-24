@@ -52,13 +52,13 @@ func (e entryMap) String() string {
 
 	for _, k := range sorted {
 		v := e[k]
-		s.WriteString(fmt.Sprintf("%s%s%s\n", k, KeySep, v))
+		fmt.Fprintf(&s, "%s%s%s\n", k, KeySep, v)
 	}
 
 	return s.String()
 }
 
-// Disk represents preference values as stored on disk.
+// Disk collates preference values that are to be stored on disk.
 type Disk struct {
 	path    string
 	entries entryMap
@@ -78,19 +78,48 @@ func NewDisk(path string) (*Disk, error) {
 	return dsk, nil
 }
 
-// Add preference value to list of values to store/load from Disk. The key
-// value is used to identify the preference value on disk and should only
-// consist of alphabetic characters or the period character. The program will
-// panic if these constraints are not met.
+// Add preference value to list of values to store/load from Disk. The key value is used to identify
+// the preference value on disk and should only consist of alphabetic characters or the period
+// character. The program will panic if these constraints are not met.
+//
+// A preference value cannot be added twice to the same Disk object.
+//
+// A preference value that has been previously been added can be added to another disk but it must
+// have the same key as previously used. Add will return an error if the key value has changed. The
+// Copy function is a good way of making sure the same key value is used when adding a preference to
+// different Disk objects.
 func (dsk *Disk) Add(key string, p pref) error {
+	key = strings.TrimSpace(key)
+	existingKey := p.getKey()
+
 	for _, r := range key {
 		if !(r == '.' || r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)) {
 			return fmt.Errorf("prefs: illegal character [%c] in key string [%s]", r, key)
 		}
 	}
 
+	if existingKey != "" && existingKey != key {
+		return fmt.Errorf("prefs: key for preference value cannot change. [%s -> %s]", existingKey, key)
+	}
+
+	if _, ok := dsk.entries[key]; ok {
+		return fmt.Errorf("prefs: key [%s] is already present in this disk object", key)
+	}
+
+	p.setKey(key)
 	dsk.entries[key] = p
+
 	return nil
+}
+
+// Copy adds a preference value to the Disk object. Copy will return an error if the value has not
+// previously been added to another Disk object.
+func (dsk *Disk) Copy(p pref) error {
+	key := p.getKey()
+	if key == "" {
+		return fmt.Errorf("prefs: cannot make a copy of a pref value that has no key")
+	}
+	return dsk.Add(key, p)
 }
 
 // Reset all preferences to the default values. In other words, the value they
@@ -175,21 +204,20 @@ func (dsk *Disk) Load() error {
 	return nil
 }
 
-// underlying function to load preference value froms disk. the limit boolean
-// controls whether to load all valid preference values from the file or to
-// ignore those values not already in the entryMap. limit=false is used by the
-// save() function in order to avoid clobbering unknown entries.
+// underlying function to load preference value froms disk. the limit boolean controls whether to
+// load all valid preference values from the file or to ignore those values not already in the
+// entryMap. limit=false is used by the save() function in order to avoid clobbering unknown
+// entries.
 //
-// it returns the number of entries loaded from disk. if limit is false then
-// the number returned is the total number of entries in the file.
+// it returns the number of entries loaded from disk. if limit is false then the number returned is
+// the total number of entries in the file.
 func load(path string, entries *entryMap, limit bool) (int, error) {
 	var numLoaded int
 
 	// open existing prefs file
 	f, err := fs.Open(path)
 	if err != nil {
-		var pathError *os.PathError
-		if errors.As(err, &pathError) {
+		if _, ok := errors.AsType[*os.PathError](err); ok {
 			return 0, nil
 		}
 		return numLoaded, fmt.Errorf("prefs: %w", err)
@@ -201,6 +229,9 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 
 	// check validity of file by checking the first line
 	scanner.Scan()
+	if err := scanner.Err(); err != nil {
+		return numLoaded, fmt.Errorf("prefs: %w", err)
+	}
 	if len(scanner.Text()) > 0 && scanner.Text() != WarningBoilerPlate {
 		return 0, fmt.Errorf("prefs: not a valid prefs file (%s)", path)
 	}
@@ -211,6 +242,10 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 
 	// loop through file until EOF
 	for scanner.Scan() {
+		if err := scanner.Err(); err != nil {
+			return numLoaded, fmt.Errorf("prefs: %w", err)
+		}
+
 		// split line into key/value pair
 		spt := strings.SplitN(scanner.Text(), KeySep, 2)
 

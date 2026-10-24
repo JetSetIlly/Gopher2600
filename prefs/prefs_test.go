@@ -56,8 +56,7 @@ func delTmpPrefFile(t *testing.T, fn string) {
 	if err := os.Remove(fn); err != nil {
 		// not worrying about path errors; these are returned if
 		// file doesn't exist
-		var pathError *os.PathError
-		if !errors.As(err, &pathError) {
+		if _, ok := errors.AsType[*os.PathError](err); !ok {
 			t.Errorf("error removing tmp pref file: %v", err)
 		}
 	}
@@ -359,4 +358,48 @@ func TestMaxStringLength(t *testing.T) {
 	err = s.Set("abcdefghi")
 	test.ExpectSuccess(t, err)
 	test.ExpectEquality(t, s.String(), "abc")
+}
+
+func TestCopySuccess(t *testing.T) {
+	fn := getTmpPrefFile(t)
+	defer delTmpPrefFile(t, fn)
+
+	dsk, err := prefs.NewDisk(fn)
+	if err != nil {
+		t.Errorf("error preparing disk: %v", err)
+		return
+	}
+
+	var s prefs.String
+	err = dsk.Add("test", &s)
+	test.ExpectSuccess(t, err)
+
+	// make another disk object and copy existing preference value
+	copyfn := getTmpPrefFile(t)
+	defer delTmpPrefFile(t, copyfn)
+
+	copyDisk, err := prefs.NewDisk(copyfn)
+	if err != nil {
+		t.Errorf("error preparing disk: %v", err)
+		return
+	}
+	err = copyDisk.Add("test", &s)
+	test.ExpectSuccess(t, err)
+}
+
+func TestCopyFail(t *testing.T) {
+	fn := getTmpPrefFile(t)
+	defer delTmpPrefFile(t, fn)
+
+	dsk, err := prefs.NewDisk(fn)
+	if err != nil {
+		t.Errorf("error preparing disk: %v", err)
+		return
+	}
+
+	// a preference value that hasn't been added to a disk yet has no key value.
+	// copying such a value will fail
+	var s prefs.String
+	err = dsk.Copy(&s)
+	test.ExpectFailure(t, err)
 }

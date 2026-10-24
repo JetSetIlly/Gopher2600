@@ -316,67 +316,67 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.emulation.recentrom", &p.recentROM)
+	err = p.saveOnExitDsk.Copy(&p.recentROM)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.debugger.showTooltips", &p.showTooltips)
+	err = p.saveOnExitDsk.Copy(&p.showTooltips)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.debugger.disasm.color", &p.disasmColour)
+	err = p.saveOnExitDsk.Copy(&p.disasmColour)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.debugger.disasm.sequential", &p.disasmSequential)
+	err = p.saveOnExitDsk.Copy(&p.disasmSequential)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.debugger.disasm.groupScanlines", &p.disasmGroupScanlines)
+	err = p.saveOnExitDsk.Copy(&p.disasmGroupScanlines)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.debugger.pxe.colorIndicators", &p.pxeColourIndicators)
+	err = p.saveOnExitDsk.Copy(&p.pxeColourIndicators)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.debugger.savekey.eeprom.accessedPagesOnly", &p.savekeyAccessPagesOnly)
+	err = p.saveOnExitDsk.Copy(&p.savekeyAccessPagesOnly)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.debugger.reverseDragMagnification", &p.reverseDragMagnification)
+	err = p.saveOnExitDsk.Copy(&p.reverseDragMagnification)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.debugger.frameStepCount", &p.frameStepCount)
+	err = p.saveOnExitDsk.Copy(&p.frameStepCount)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.debugger.armProfiler.hideUnexecuted", &p.armProfilerHideUnexecuted)
+	err = p.saveOnExitDsk.Copy(&p.armProfilerHideUnexecuted)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.debugger.armProfiler.percentile", &p.armProfilerPercentile)
+	err = p.saveOnExitDsk.Copy(&p.armProfilerPercentile)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.debugger.armProfiler.cumulative", &p.armProfilerCumulative)
+	err = p.saveOnExitDsk.Copy(&p.armProfilerCumulative)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.debugger.armProfiler.cyclesPerCall", &p.armProfilerCyclesPerCall)
+	err = p.saveOnExitDsk.Copy(&p.armProfilerCyclesPerCall)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.playmode.fpsDetail", &p.fpsDetail)
+	err = p.saveOnExitDsk.Copy(&p.fpsDetail)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.debugger.audioMute", &p.audioMuteDebugger)
+	err = p.saveOnExitDsk.Copy(&p.audioMuteDebugger)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.playmode.audioMute", &p.audioMutePlaymode)
+	err = p.saveOnExitDsk.Copy(&p.audioMutePlaymode)
 	if err != nil {
 		return nil, err
 	}
