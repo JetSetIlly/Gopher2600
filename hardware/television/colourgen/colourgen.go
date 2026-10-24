@@ -186,7 +186,7 @@ func NewColourGen() (*ColourGen, error) {
 	}
 	c.NaiveSECAM.SetHookPost(clearAll)
 
-	err = c.dsk.Add("television.color.grayscale", &c.Gamma)
+	err = c.dsk.Add("television.color.grayscale", &c.Grayscale)
 	if err != nil {
 		return nil, err
 	}
