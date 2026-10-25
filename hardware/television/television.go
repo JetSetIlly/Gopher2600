@@ -479,13 +479,13 @@ func (tv *Television) RemoveAudioMixer(m AudioMixer) {
 
 // OpenAuxAudio adds an auxiliary audio source to all supporting audio mixers.
 func (tv *Television) OpenAuxAudio(sampleRate int, bufferLen int) error {
-	if a, ok := tv.realTimeMixer.(AuxAudio); ok {
+	if a, ok := tv.realTimeMixer.(AuxAudioSetup); ok {
 		if err := a.OpenAuxAudio(sampleRate, bufferLen); err != nil {
 			logger.Log(logger.Allow, "television", err)
 		}
 	}
 	for _, m := range tv.mixers {
-		if a, ok := m.(AuxAudio); ok {
+		if a, ok := m.(AuxAudioSetup); ok {
 			if err := a.OpenAuxAudio(sampleRate, bufferLen); err != nil {
 				return err
 			}
@@ -496,13 +496,13 @@ func (tv *Television) OpenAuxAudio(sampleRate int, bufferLen int) error {
 
 // CloseAuxAudio removes a previously opened auxiliary audio source from all supporting audio mixers.
 func (tv *Television) CloseAuxAudio() error {
-	if a, ok := tv.realTimeMixer.(AuxAudio); ok {
+	if a, ok := tv.realTimeMixer.(AuxAudioSetup); ok {
 		if err := a.CloseAuxAudio(); err != nil {
 			logger.Log(logger.Allow, "television", err)
 		}
 	}
 	for _, m := range tv.mixers {
-		if a, ok := m.(AuxAudio); ok {
+		if a, ok := m.(AuxAudioSetup); ok {
 			if err := a.CloseAuxAudio(); err != nil {
 				return err
 			}
@@ -511,16 +511,16 @@ func (tv *Television) CloseAuxAudio() error {
 	return nil
 }
 
-// PushAuxAudio passes sound produced outside the TIA to all audio mixers that implement AuxAudio.
-func (tv *Television) PushAuxAudio(samples []float32, rate int) {
+// SetAuxAudio passes sound produced outside the TIA to all audio mixers that implement AuxAudio.
+func (tv *Television) SetAuxAudio(samples []float32, rate int) {
 	if a, ok := tv.realTimeMixer.(AuxAudio); ok {
-		if err := a.PushAuxAudio(samples, rate); err != nil {
+		if err := a.SetAuxAudio(samples, rate); err != nil {
 			logger.Log(logger.Allow, "television", err)
 		}
 	}
 	for _, m := range tv.mixers {
 		if a, ok := m.(AuxAudio); ok {
-			if err := a.PushAuxAudio(samples, rate); err != nil {
+			if err := a.SetAuxAudio(samples, rate); err != nil {
 				logger.Log(logger.Allow, "television", err)
 			}
 		}

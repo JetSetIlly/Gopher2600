@@ -41,9 +41,7 @@ type speakJetEngine struct {
 	bufferIdx int
 }
 
-// NewSpeakJet creates an engine that emulates the SpeakJet chip. it runs in
-// emulation time: the AtariVox steps it every CPU cycle (via the
-// AtariVoxRealtime interface)
+// NewSpeakJet creates an engine that emulates the SpeakJet chip.
 func NewSpeakJet(env *environment.Environment) (AtariVoxEngine, error) {
 	err := env.TV.OpenAuxAudio(speakjet.SampleRate, speakJetBufferLen)
 	if err != nil {
@@ -79,7 +77,7 @@ func (sj *speakJetEngine) Step() {
 
 	sj.bufferIdx++
 	if sj.bufferIdx == speakJetBufferLen {
-		sj.env.TV.PushAuxAudio(sj.buffer[:], speakjet.SampleRate)
+		sj.env.TV.SetAuxAudio(sj.buffer[:], speakjet.SampleRate)
 		sj.bufferIdx = 0
 		sj.setClock()
 	}
