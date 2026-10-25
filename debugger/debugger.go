@@ -820,6 +820,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 			return fmt.Errorf("debugger: %w", err)
 		}
 		dbg.vcs.TV.AddAudioMixer(ww)
+		dbg.vcs.TV.AddFrameTrigger(ww)
 	}
 
 	// record video

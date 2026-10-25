@@ -64,7 +64,7 @@ func TestAuxAudio(t *testing.T) {
 			}
 			buf = append(buf, v)
 		}
-		if err := au.PushAuxAudio(buf, srcRate); err != nil {
+		if err := au.SetAuxAudio(buf, srcRate); err != nil {
 			t.Fatal(err)
 		}
 		if err := au.NewFrame(fi); err != nil {

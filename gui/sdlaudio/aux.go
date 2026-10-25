@@ -75,8 +75,8 @@ func (aud *Audio) CloseAuxAudio() error {
 	return nil
 }
 
-// PushAuxAudio implements the television.AuxAudio interface
-func (aud *Audio) PushAuxAudio(samples []float32, rate int) error {
+// SetAuxAudio implements the television.AuxAudio interface
+func (aud *Audio) SetAuxAudio(samples []float32, rate int) error {
 	if !aud.aux {
 		return nil
 	}
