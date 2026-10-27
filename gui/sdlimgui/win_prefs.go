@@ -445,6 +445,13 @@ func (win *winPrefs) drawVCS() {
 			win.img.dbg.PushFunction(win.img.dbg.VCS().RIOT.Ports.RestartPeripherals)
 		}
 
+		drawDisabled(!speakjet, func() {
+			gain := float32(win.img.dbg.VCS().Env.Prefs.AtariVox.SpeakJetGain.Get().(float64))
+			if imgui.SliderFloatV("Volume Gain", &gain, 1.0, 5.0, "%.1f", imgui.SliderFlagsNone) {
+				win.img.dbg.VCS().Env.Prefs.AtariVox.SpeakJetGain.Set(gain)
+			}
+		})
+
 		var festival bool
 		drawDisabled(speakjet, func() {
 			imgui.Spacing()

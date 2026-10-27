@@ -24,9 +24,6 @@ import (
 const (
 	// the amount of data to buffer before pushing to the television
 	speakJetBufferLen = 128
-
-	// the volume gain
-	speakJetGain = 1.8
 )
 
 type speakJetEngine struct {
@@ -52,10 +49,14 @@ func NewSpeakJet(env *environment.Environment) (AtariVoxEngine, error) {
 		env:  env,
 		chip: speakjet.NewSpeakJet(),
 	}
-	sj.chip.Gain = speakJetGain
+	sj.setGain()
 	sj.setClock()
 
 	return sj, nil
+}
+
+func (sj *speakJetEngine) setGain() {
+	sj.chip.Gain = float32(sj.env.Prefs.AtariVox.SpeakJetGain.Get().(float64))
 }
 
 func (sj *speakJetEngine) setClock() {
@@ -90,6 +91,7 @@ func (sj *speakJetEngine) Quit() {
 
 // SpeakJet implements the AtariVoxEngine interface.
 func (sj *speakJetEngine) SpeakJet(command uint8, data uint8) {
+	sj.setGain()
 	if command >= 200 && command <= 254 {
 		logger.Logf(sj.env, "speakjet", "sound effect: %#02x", command)
 	}

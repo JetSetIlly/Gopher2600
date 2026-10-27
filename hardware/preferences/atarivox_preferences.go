@@ -25,6 +25,7 @@ type AtariVoxPreferences struct {
 
 	// the built-in SpeakJet emulation, used instead of festival when set
 	SpeakJetEnabled prefs.Bool
+	SpeakJetGain    prefs.Float
 
 	FestivalEnabled  prefs.Bool
 	FestivalBinary   prefs.String
@@ -47,6 +48,11 @@ func newAtariVoxPreferences() (*AtariVoxPreferences, error) {
 	}
 
 	err = p.dsk.Add("peripherals.atarivox.speakjet.enabled", &p.SpeakJetEnabled)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.dsk.Add("peripherals.atarivox.speakjet.gain", &p.SpeakJetGain)
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +83,7 @@ func newAtariVoxPreferences() (*AtariVoxPreferences, error) {
 // SetDefaults reverts all settings to default values.
 func (p *AtariVoxPreferences) SetDefaults() {
 	p.SpeakJetEnabled.Set(true)
+	p.SpeakJetGain.Set(2.0)
 	p.FestivalEnabled.Set(false)
 	p.FestivalBinary.Set(p.binary())
 	p.SubtitlesEnabled.Set(false)
