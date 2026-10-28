@@ -1246,32 +1246,157 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 		if opcode&0x0080 == 0x0000 {
 			// "SIMD add and subtract"
 			// page 3-21 of "Thumb-2 Supplement"
-			panic("unimplemented SIMD add and subtract")
+			op := (arm.state.instruction32bitOpcodeHi & 0x0070) >> 4
+			prefix := (opcode & 0x0070) >> 4
+			switch op {
+			case 0b100:
+				switch prefix {
+				case 0b000:
+					// "4.6.158 SSUB8" of "Thumb-2 Supplement"
+					return func() *DisasmEntry {
+						if arm.decodeOnly {
+							return &DisasmEntry{
+								Is32bit:  true,
+								Operator: "SSUB8",
+								Operand:  fmt.Sprintf("R%d, R%d, R%d", Rd, Rn, Rm),
+							}
+						}
+						var result uint32
+						for i := range 4 {
+							shift := uint(i * 8)
+							a := int8(arm.state.registers[Rn] >> shift)
+							b := int8(arm.state.registers[Rm] >> shift)
+							diff := int16(a) - int16(b)
+							result |= (uint32(diff) & 0xff) << shift
+							arm.state.status.greaterThanEqual[i] = diff >= 0
+						}
+						arm.state.registers[Rd] = result
+						return nil
+					}
+				case 0b001:
+					// "4.6.109 QSUB8" of "Thumb-2 Supplement"
+					return func() *DisasmEntry {
+						if arm.decodeOnly {
+							return &DisasmEntry{
+								Is32bit:  true,
+								Operator: "QSUB8",
+								Operand:  fmt.Sprintf("R%d, R%d, R%d", Rd, Rn, Rm),
+							}
+						}
+						var result uint32
+						for i := range 4 {
+							shift := uint(i * 8)
+							a := int8(arm.state.registers[Rn] >> shift)
+							b := int8(arm.state.registers[Rm] >> shift)
+							diff := int16(a) - int16(b)
+							s, _ := fpu.SignedSatQ(int(diff), 8)
+							result |= (uint32(uint8(s)) & 0xff) << shift
+						}
+						arm.state.registers[Rd] = result
+						return nil
+					}
+				case 0b100:
+					// "4.6.220 USUB8" of "Thumb-2 Supplement"
+					return func() *DisasmEntry {
+						if arm.decodeOnly {
+							return &DisasmEntry{
+								Is32bit:  true,
+								Operator: "USUB8",
+								Operand:  fmt.Sprintf("R%d, R%d, R%d", Rd, Rn, Rm),
+							}
+						}
+						var result uint32
+						for i := range 4 {
+							shift := uint(i * 8)
+							a := uint8(arm.state.registers[Rn] >> shift)
+							b := uint8(arm.state.registers[Rm] >> shift)
+							diff := int16(a) - int16(b)
+							result |= (uint32(diff) & 0xff) << shift
+							arm.state.status.greaterThanEqual[i] = diff >= 0
+						}
+						arm.state.registers[Rd] = result
+						return nil
+					}
+				case 0b101:
+					// "4.6.213 UQSUB8" of "Thumb-2 Supplement"
+					return func() *DisasmEntry {
+						if arm.decodeOnly {
+							return &DisasmEntry{
+								Is32bit:  true,
+								Operator: "UQSUB8",
+								Operand:  fmt.Sprintf("R%d, R%d, R%d", Rd, Rn, Rm),
+							}
+						}
+						var result uint32
+						for i := range 4 {
+							shift := uint(i * 8)
+							a := uint8(arm.state.registers[Rn] >> shift)
+							b := uint8(arm.state.registers[Rm] >> shift)
+							diff := int16(a) - int16(b)
+							s, _ := fpu.UnsignedSatQ(int(diff), 8)
+							result |= (uint32(uint8(s)) & 0xff) << shift
+						}
+						arm.state.registers[Rd] = result
+						return nil
+					}
+				}
+			}
+
+			panic(fmt.Sprintf("unimplemented SIMD add and subtract (op=%03b) (prefix=%03b)", op, prefix))
 		} else {
 			// "Other three-register data processing instructions"
 			// page 3-23 of "Thumb-2 Supplement"
 			op := (arm.state.instruction32bitOpcodeHi & 0x70) >> 4
 			op2 := (opcode & 0x0070) >> 4
-			if op == 0b011 && op2 == 0b000 {
-				// "4.6.26 CLZ" of "Thumb-2 Supplement"
-				// T1 encoding
-				return func() *DisasmEntry {
-					if arm.decodeOnly {
-						return &DisasmEntry{
-							Is32bit:  true,
-							Operator: "CLZ",
-							Operand:  fmt.Sprintf("R%d, R%d", Rd, Rm),
+			switch op {
+			case 0b010:
+				switch op2 {
+				case 0b000:
+					// "4.6.127 SEL" of "Thumb-2 Supplement"
+					return func() *DisasmEntry {
+						if arm.decodeOnly {
+							return &DisasmEntry{
+								Is32bit:  true,
+								Operator: "SEL",
+								Operand:  fmt.Sprintf("R%d, R%d, R%d", Rd, Rn, Rm),
+							}
 						}
+
+						var result uint32
+						for i := range 4 {
+							shift := uint(i * 8)
+							if arm.state.status.greaterThanEqual[i] {
+								result |= ((arm.state.registers[Rn] >> shift) & 0xff) << shift
+							} else {
+								result |= ((arm.state.registers[Rm] >> shift) & 0xff) << shift
+							}
+						}
+						arm.state.registers[Rd] = result
+						return nil
 					}
-
-					c := bits.LeadingZeros32(arm.state.registers[Rm])
-					arm.state.registers[Rd] = uint32(c)
-
-					return nil
 				}
-			} else {
-				panic("unimplemented 'three-register data processing instruction'")
+			case 0b011:
+				switch op2 {
+				case 0b000:
+					// "4.6.26 CLZ" of "Thumb-2 Supplement"
+					// T1 encoding
+					return func() *DisasmEntry {
+						if arm.decodeOnly {
+							return &DisasmEntry{
+								Is32bit:  true,
+								Operator: "CLZ",
+								Operand:  fmt.Sprintf("R%d, R%d", Rd, Rm),
+							}
+						}
+
+						c := bits.LeadingZeros32(arm.state.registers[Rm])
+						arm.state.registers[Rd] = uint32(c)
+
+						return nil
+					}
+				}
 			}
+			panic(fmt.Sprintf("unimplemented three-register data processing instruction (op=%03b) (op2=%03b)", op, op2))
 		}
 	} else if arm.state.instruction32bitOpcodeHi&0xff80 == 0xfb00 {
 		// "32-bit multiplies and sum of absolute differences, with or without accumulate"
@@ -1423,8 +1548,69 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 				}
 			}
 
+		} else if op == 0b111 && op2 == 0b000 {
+			if Ra == 0x0f {
+				// "4.6.214 USAD8" of "Thumb-2 Supplement"
+				return func() *DisasmEntry {
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "USAD8",
+							Operand:  fmt.Sprintf("R%d, R%d, R%d", Rd, Rn, Rm),
+						}
+					}
+
+					var result uint32
+
+					for i := range 4 {
+						shift := uint(i * 8)
+
+						a := uint8(arm.state.registers[Rn] >> shift)
+						b := uint8(arm.state.registers[Rm] >> shift)
+
+						if a >= b {
+							result += uint32(a - b)
+						} else {
+							result += uint32(b - a)
+						}
+					}
+
+					arm.state.registers[Rd] = result
+					return nil
+				}
+			} else {
+				// "4.6.215 USADA8" of "Thumb-2 Supplement"
+				return func() *DisasmEntry {
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "USADA8",
+							Operand:  fmt.Sprintf("R%d, R%d, R%d, R%d", Rd, Rn, Rm, Ra),
+						}
+					}
+
+					var result uint32 = arm.state.registers[Ra]
+
+					for i := range 4 {
+						shift := uint(i * 8)
+
+						a := uint8(arm.state.registers[Rn] >> shift)
+						b := uint8(arm.state.registers[Rm] >> shift)
+
+						if a >= b {
+							result += uint32(a - b)
+						} else {
+							result += uint32(b - a)
+						}
+					}
+
+					arm.state.registers[Rd] = result
+					return nil
+				}
+			}
+
 		} else {
-			panic(fmt.Sprintf("unimplemented data processing instructions, non immediate (32bit multiplies) (%03b) (%04b)", op, op2))
+			panic(fmt.Sprintf("unimplemented data processing instructions, non immediate (32bit multiplies) (op=%03b) (op2=%04b)", op, op2))
 		}
 	} else if arm.state.instruction32bitOpcodeHi&0xff80 == 0xfb80 {
 		op := (arm.state.instruction32bitOpcodeHi & 0x0070) >> 4

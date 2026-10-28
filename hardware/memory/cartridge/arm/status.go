@@ -34,6 +34,9 @@ type status struct {
 	overflow   bool
 	saturation bool
 
+	// SIMD oriented flags
+	greaterThanEqual [4]bool
+
 	// mask and firstcond bits of most recent IT instruction. rather than
 	// maintaining a single itState value, the condition and mask are split
 	// into two. this is for clarity and performance (checking itMask to see if
