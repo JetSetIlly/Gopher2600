@@ -3735,7 +3735,7 @@ func (arm *ARM) decode32bitThumb2BranchesORMiscControl(opcode uint16) decodeFunc
 	} else if arm.state.instruction32bitOpcodeHi&0xfff0 == 0xf3c0 {
 		panic("branch, change to java")
 	} else if arm.state.instruction32bitOpcodeHi&0xfff0 == 0xf3b0 {
-		panic("special control operations")
+		return arm.decode32bitThumb2SpecialControl(opcode)
 	} else if arm.state.instruction32bitOpcodeHi&0xfff0 == 0xf3a0 {
 		imodM := (opcode & 0x0700) >> 8
 		if imodM == 0b000 {
@@ -3750,6 +3750,70 @@ func (arm *ARM) decode32bitThumb2BranchesORMiscControl(opcode uint16) decodeFunc
 	}
 
 	panic("unimplemented branches, miscellaneous control instructions")
+}
+
+func (arm *ARM) decode32bitThumb2SpecialControl(opcode uint16) decodeFunction {
+	op := (opcode & 0x00f0) >> 4
+	switch op {
+	case 0b0010:
+		// "4.6.25 CLREX" of "Thumb-2 Supplement"
+		//
+		// Clear exclusive access record
+		return func() *DisasmEntry {
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "CLREX",
+				}
+			}
+			return nil
+		}
+		// intentionally doing nothing
+	case 0b0100:
+		// "4.6.35 DSB" of "Thumb-2 Supplement"
+		//
+		// Data synchronisation barrier
+		return func() *DisasmEntry {
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "DSB",
+				}
+			}
+			return nil
+		}
+		// intentionally doing nothing
+	case 0b0101:
+		// "4.6.34 DMB" of "Thumb-2 Supplement"
+		//
+		// Data memory barrier
+		return func() *DisasmEntry {
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "DMB",
+				}
+			}
+			return nil
+		}
+		// intentionally doing nothing
+	case 0b0110:
+		// "4.6.38 ISB" of "Thumb-2 Supplement"
+		//
+		// Instruction synchronization barrier
+		return func() *DisasmEntry {
+			if arm.decodeOnly {
+				return &DisasmEntry{
+					Is32bit:  true,
+					Operator: "ISB",
+				}
+			}
+			return nil
+		}
+		// intentionally doing nothing
+	}
+
+	panic("unimplemented special control operation instruction")
 }
 
 func (arm *ARM) decode32bitThumb2Branches(opcode uint16) decodeFunction {
