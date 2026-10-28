@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/dwarf"
 	"github.com/jetsetilly/gopher2600/coprocessor/disassembly"
@@ -24,6 +25,8 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
+	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/resources/unique"
 	"github.com/jetsetilly/imgui-go/v5"
 )
 
@@ -167,12 +170,73 @@ func (win *winCoProcDisasm) draw() {
 			}
 		})
 	})
+
+}
+
+func (win *winCoProcDisasm) saveOutput(dsm *disassembly.DisasmEntries, lastExecution bool) {
+	var fn string
+
+	if lastExecution {
+		fn = unique.Filename("coproc_last", "")
+	} else {
+		fn = unique.Filename("coproc_disasm", "")
+	}
+
+	f, err := os.Create(fn)
+	if err != nil {
+		logger.Logf(logger.Allow, "sdlimgui", "error saving coproc disasm: %v", err)
+		return
+	}
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			logger.Logf(logger.Allow, "sdlimgui", "error saving coproc disasm: %v", err)
+		}
+	}()
+
+	if lastExecution {
+		for _, v := range dsm.LastExecution {
+			e := v.(arm.DisasmEntry)
+			f.WriteString(e.Address)
+			f.WriteString(" ")
+			if e.Is32bit {
+				fmt.Fprintf(f, " %04x %04x ", e.OpcodeHi, e.Opcode)
+			} else {
+				fmt.Fprintf(f, "      %04x ", e.Opcode)
+			}
+			f.WriteString(e.String())
+			f.Write([]byte("\n"))
+			for r := range e.Registers {
+				fmt.Fprintf(f, "   R%02d: %08x\n", r, e.Registers[r])
+			}
+		}
+	} else {
+		for _, k := range dsm.Keys {
+			e := dsm.Entries[k].(arm.DisasmEntry)
+			f.WriteString(e.Address)
+			if e.Is32bit {
+				fmt.Fprintf(f, " %04x %04x ", e.OpcodeHi, e.Opcode)
+			} else {
+				fmt.Fprintf(f, "      %04x ", e.Opcode)
+			}
+			f.WriteString(e.String())
+			f.Write([]byte("\n"))
+		}
+	}
 }
 
 func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries, lastExecution bool) {
 	height := imguiRemainingWinHeight()
 	imgui.BeginChildV("disasm", imgui.Vec2{X: 0, Y: height}, false, 0)
-	defer imgui.EndChild()
+	defer func() {
+		imgui.EndChild()
+		if imgui.BeginPopupContextItem() {
+			if imgui.Selectable("Save output to file") {
+				win.saveOutput(dsm, lastExecution)
+			}
+			imgui.EndPopup()
+		}
+	}()
 
 	if dsm == nil {
 		return

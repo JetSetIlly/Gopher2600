@@ -148,7 +148,7 @@ func (dsm *Disassembly) Start() {
 		dsm.disasm.LastStart = dsm.tv.AdjCoords(television.AdjCycle, 1)
 	}
 
-	dsm.disasm.LastExecution = dsm.disasm.LastExecution[:0]
+	// dsm.disasm.LastExecution = dsm.disasm.LastExecution[:0]
 }
 
 // Step implements the CartCoProcDisassembler interface.
