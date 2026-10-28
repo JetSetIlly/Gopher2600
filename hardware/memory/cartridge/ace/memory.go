@@ -233,12 +233,8 @@ func newAceMemory(env *environment.Environment, data []byte, armPrefs *preferenc
 
 	if len(data) < 128000-sramOverhead {
 		sramSize = 128000
-	} else if len(data) < 256000-sramOverhead {
-		sramSize = 256000
-	} else if len(data) < 512000-sramOverhead {
-		sramSize = 512000
 	} else {
-		sramSize = sramOverhead
+		sramSize = 256000
 	}
 
 	mem.sram = make([]byte, sramSize)
