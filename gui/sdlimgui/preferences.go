@@ -510,7 +510,7 @@ func (p *preferences) loadWindowPreferences() error {
 
 		return nil
 	})
-	err = p.dskWinFullScreen.Add(fmt.Sprintf("%s.fullscreen", group), &p.fullScreen)
+	err = p.dskWinFullScreen.Change(fmt.Sprintf("%s.fullscreen", group), &p.fullScreen)
 	if err != nil {
 		return err
 	}

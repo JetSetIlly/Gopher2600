@@ -89,6 +89,29 @@ func NewDisk(path string) (*Disk, error) {
 // Copy function is a good way of making sure the same key value is used when adding a preference to
 // different Disk objects.
 func (dsk *Disk) Add(key string, p pref) error {
+	return dsk.add(key, p, false)
+}
+
+// Change is like Add() but with the ability for the key for the preference type to change. Use
+// sparingly for situations were the key can definitely change safely. Good to use when the use of
+// two Disk instances are mutually exclusive.
+func (dsk *Disk) Change(key string, p pref) error {
+	return dsk.add(key, p, true)
+}
+
+// Copy adds a preference value to the Disk object. Copy will return an error if the value has not
+// previously been added to another Disk object.
+func (dsk *Disk) Copy(p pref) error {
+	key := p.getKey()
+	if key == "" {
+		return fmt.Errorf("prefs: cannot make a copy of a pref value that has no key")
+	}
+	return dsk.add(key, p, false)
+}
+
+// add is the main function behind Add(), Change() and Copy(). it allows callers to specify the
+// behaviour of keys with the allowKeyChange parameter
+func (dsk *Disk) add(key string, p pref, allowKeyChange bool) error {
 	key = strings.TrimSpace(key)
 	existingKey := p.getKey()
 
@@ -98,8 +121,10 @@ func (dsk *Disk) Add(key string, p pref) error {
 		}
 	}
 
-	if existingKey != "" && existingKey != key {
-		return fmt.Errorf("prefs: key for preference value cannot change. [%s -> %s]", existingKey, key)
+	if !allowKeyChange {
+		if existingKey != "" && existingKey != key {
+			return fmt.Errorf("prefs: key for preference value cannot change. [%s -> %s]", existingKey, key)
+		}
 	}
 
 	if _, ok := dsk.entries[key]; ok {
@@ -110,16 +135,6 @@ func (dsk *Disk) Add(key string, p pref) error {
 	dsk.entries[key] = p
 
 	return nil
-}
-
-// Copy adds a preference value to the Disk object. Copy will return an error if the value has not
-// previously been added to another Disk object.
-func (dsk *Disk) Copy(p pref) error {
-	key := p.getKey()
-	if key == "" {
-		return fmt.Errorf("prefs: cannot make a copy of a pref value that has no key")
-	}
-	return dsk.Add(key, p)
 }
 
 // Reset all preferences to the default values. In other words, the value they
