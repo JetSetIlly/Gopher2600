@@ -46,6 +46,8 @@ var defunct = []string{
 	"sdlimgui.playmode.windowSize",
 	"sdlimgui.playmode.windowPos",
 	"sdlimgui.playmode.audioEnabled",
+	"sdlimgui.debugger.windowsize",
+	"sdlimgui.debugger.windowpos",
 	"sdlimgui.debugger.windowSize",
 	"sdlimgui.debugger.windowPos",
 	"sdlimgui.debugger.audioEnabled",
