@@ -117,6 +117,15 @@ type Map struct {
 	// the divisor to apply to the main clock when ticking peripherals (eg. timers)
 	ClkDiv float32
 
+	// AccessHook is a way of adding adhoc addresses that you want to absorb and don't want to
+	// trigger a memory error. it is intended for addresses where the value returned is a constant.
+	// for write events, the function will return true for recognised addresses and there will be no
+	// side-effects
+	//
+	// the AccessHook function is consulted before the Unimplemented field so addresses handled by
+	// the function can be within any unimplemented memory region
+	AccessHook func(uint32) (uint32, bool)
+
 	// list of unimplemented address ranges that should be ignored
 	Unimplemented []MemoryRegion
 }
@@ -195,6 +204,9 @@ func NewMap(cart CartArchitecture) Map {
 		// understand better what is happening
 		mmap.ClkDiv = 1
 
+		// no access hook
+		mmap.AccessHook = func(addr uint32) (uint32, bool) { return 0, false }
+
 	case PlusCart:
 		mmap.ARMArchitecture = ARMv7_M
 		mmap.MisalignedAccesses = true
@@ -257,9 +269,63 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.ClkDiv = 2
 
 		mmap.Unimplemented = []MemoryRegion{
+			{Name: "Flash Interface", Origin: 0x40023c00, Memtop: 0x40023fff},
 			{Name: "RCC", Origin: 0x40023800, Memtop: 0x4002388c},
 			{Name: "DMA1", Origin: 0x40026000, Memtop: 0x400263ff},
 			{Name: "DMA2", Origin: 0x40026400, Memtop: 0x400267ff},
+		}
+
+		mmap.AccessHook = func(addr uint32) (uint32, bool) {
+			switch addr {
+			case 0x40023804:
+				// RCC_PLLCFGR
+				const (
+					// Main PLL (PLL) division factor for USB OTG FS, SDIO and random number generator clocks
+					PLLQ = 0b0000
+
+					// Main PLL(PLL) and audio PLL (PLLI2S) entry clock source
+					PLLSRC = 0b0 // 0 = 16, 1 = 8
+
+					// Main PLL (PLL) division factor for main system clock
+					PLLP = 0b01
+
+					// Main PLL (PLL) multiplication factor for VCO
+					PLLN = 0b000110110 // 54
+
+					// Division factor for the main PLL (PLL) and audio PLL (PLLI2S) input clock
+					PLLM = 0b000001
+				)
+				const PLLCFGR = PLLQ<<24 | PLLSRC<<22 | PLLP<<16 | PLLN<<6 | PLLM
+				return PLLCFGR, true
+
+			case 0x40023808:
+				// RCC_CFGR
+				return 0x2 << 2, true
+
+			case 0xe0042000:
+				// MCU ID
+				const (
+					STM32F407 = 0x413
+					STM32F429 = 0x419
+				)
+				return STM32F407, true
+
+			case 0xe000ed88:
+				// Coprocessor Access Control Register (CPACR)
+				return 0x0, true
+
+			case 0x1fff7a22:
+				// Flash Memory Size
+				// not that this is a hardcoded response of 1024k. the real
+				// amount of flash in the emulation may be different
+				const (
+					m1024k = 0x400
+				)
+				return m1024k, true
+
+			}
+
+			return 0, false
 		}
 	}
 

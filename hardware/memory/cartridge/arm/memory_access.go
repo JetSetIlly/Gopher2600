@@ -50,6 +50,10 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 			return uint8(0)
 		}
 
+		if v, ok := arm.mmap.AccessHook(addr); ok {
+			return uint8(v)
+		}
+
 		if ok, name := arm.mmap.IsUnimplemented(addr); ok {
 			arm.unimplemented(fmt.Sprintf("Read 8bit: %s", name), addr)
 			return uint8(arm.mmap.IllegalAccessValue)
@@ -102,6 +106,10 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 			}
 		}
 		if addr == arm.mmap.APBDIV {
+			return
+		}
+
+		if _, ok := arm.mmap.AccessHook(addr); ok {
 			return
 		}
 
@@ -178,6 +186,10 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 			return uint16(0)
 		}
 
+		if v, ok := arm.mmap.AccessHook(addr); ok {
+			return uint16(v)
+		}
+
 		if ok, name := arm.mmap.IsUnimplemented(addr); ok {
 			arm.unimplemented(fmt.Sprintf("Read 16bit: %s", name), addr)
 			return uint16(arm.mmap.IllegalAccessValue)
@@ -235,6 +247,10 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 			}
 		}
 		if addr == arm.mmap.APBDIV {
+			return
+		}
+
+		if _, ok := arm.mmap.AccessHook(addr); ok {
 			return
 		}
 
@@ -298,6 +314,10 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 			return uint32(0)
 		}
 
+		if v, ok := arm.mmap.AccessHook(addr); ok {
+			return v
+		}
+
 		if ok, name := arm.mmap.IsUnimplemented(addr); ok {
 			arm.unimplemented(fmt.Sprintf("Read 32bit: %s", name), addr)
 			return arm.mmap.IllegalAccessValue
@@ -355,6 +375,10 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 			}
 		}
 		if addr == arm.mmap.APBDIV {
+			return
+		}
+
+		if _, ok := arm.mmap.AccessHook(addr); ok {
 			return
 		}
 
