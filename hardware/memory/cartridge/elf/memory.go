@@ -19,6 +19,7 @@ import (
 	"debug/elf"
 	"encoding/binary"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -116,6 +117,9 @@ type elfMemory struct {
 	sections       []*elfSection
 	sectionNames   []string
 	sectionsByName map[string]*elfSection
+
+	// a sorted copy of the sections field
+	sectionsSorted []*elfSection
 
 	// .bbpxe section if available
 	pxe pxe
@@ -344,6 +348,12 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 			logger.Logf(mem.env, "ELF", "PXE section found")
 		}
 	}
+
+	// create sorted copy of the sections slice (ascending order)
+	mem.sectionsSorted = slices.Clone(mem.sections)
+	slices.SortFunc(mem.sectionsSorted, func(a, b *elfSection) int {
+		return int(a.origin) - int(b.origin)
+	})
 
 	// sort section names
 	sort.Strings(mem.sectionNames)
@@ -902,10 +912,11 @@ func (mem *elfMemory) mapAddress(addr uint32, write bool) (*[]byte, uint32) {
 		return mem.sram.Data(), mem.sramOrigin
 	}
 
-	for _, s := range mem.sections {
-		if s.isEmpty() || !s.inMemory() {
-			continue // for loop
-		}
+	// binary search sections for address
+	lo, hi := 0, len(mem.sectionsSorted)-1
+	for lo <= hi {
+		m := lo + (hi-lo)/2
+		s := mem.sectionsSorted[m]
 
 		// special condition for executable sections to handle instances when
 		// the address being mapped is at the very beginning of the memory block
@@ -914,7 +925,11 @@ func (mem *elfMemory) mapAddress(addr uint32, write bool) (*[]byte, uint32) {
 			adjust = 1
 		}
 
-		if addr >= s.origin-adjust && addr <= s.memtop {
+		if addr < s.origin-adjust {
+			hi = m - 1
+		} else if addr > s.memtop {
+			lo = m + 1
+		} else {
 			if write && s.readOnly() {
 				mem.lastMappedAddress = addr
 				mem.lastMappedExecutable = false
