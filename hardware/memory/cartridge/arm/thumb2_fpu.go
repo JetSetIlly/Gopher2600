@@ -350,27 +350,27 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 			}
 		}
 		if opc2&0b1111 == 0b0001 {
+			D := (arm.state.instruction32bitOpcodeHi & 0x40) >> 6
+			Vd := (opcode & 0xf000) >> 12
+			M := (opcode & 0x0020) >> 5
+			Vm := opcode & 0x000f
+
+			var d uint16
+			var m uint16
+			var regPrefix rune
+
+			if sz {
+				d = (D << 4) | Vd
+				m = (M << 4) | Vm
+				regPrefix = 'D'
+			} else {
+				d = (Vd << 1) | D
+				m = (Vm << 1) | M
+				regPrefix = 'S'
+			}
+
 			if opc3&0b11 == 0b01 {
 				// "A7.7.249 VNEG" of "ARMv7-M"
-				D := (arm.state.instruction32bitOpcodeHi & 0x40) >> 6
-				Vd := (opcode & 0xf000) >> 12
-				M := (opcode & 0x0020) >> 5
-				Vm := opcode & 0x000f
-
-				var d uint16
-				var m uint16
-				var regPrefix rune
-
-				if sz {
-					d = (D << 4) | Vd
-					m = (M << 4) | Vm
-					regPrefix = 'D'
-				} else {
-					d = (Vd << 1) | D
-					m = (Vm << 1) | M
-					regPrefix = 'S'
-				}
-
 				return func() *DisasmEntry {
 					if arm.decodeOnly {
 						return &DisasmEntry{
@@ -389,7 +389,24 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 					return nil
 				}
 			} else {
-				panic("VSQRT")
+				// "A7.7.257 VSQRT" of "ARMv7-M"
+				return func() *DisasmEntry {
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "VSQRT",
+							Operand:  fmt.Sprintf("%c%d, %c%d", regPrefix, d, regPrefix, m),
+						}
+					}
+
+					if sz {
+						panic("double precision VSQRT")
+					} else {
+						arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPSqrt(uint64(arm.state.fpu.Registers[m]), 32))
+					}
+
+					return nil
+				}
 			}
 		}
 		if opc2&0b1111 == 0b0000 {
