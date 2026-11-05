@@ -230,8 +230,9 @@ type ARM struct {
 	// state of the ARM. saveable and restorable
 	state *ARMState
 
-	// updated on every call to run()
-	abortOnMemoryFault bool
+	// copies preference values. updated on every call to run()
+	abortOnMemoryFault    bool
+	executableMemoryCheck bool
 
 	// the speed at which the arm is running at and the required stretching for
 	// access to flash memory. speed is in MHz. Access latency of Flash memory is
@@ -531,6 +532,7 @@ func (arm *ARM) updatePrefs() {
 	}
 
 	arm.abortOnMemoryFault = arm.env.Prefs.Cartridge.ARM.AbortOnMemoryFault.Get().(bool)
+	arm.executableMemoryCheck = arm.env.Prefs.Cartridge.ARM.ExecutableMemoryCheck.Get().(bool)
 }
 
 func (arm *ARM) String() string {
@@ -701,6 +703,9 @@ func (arm *ARM) Run() (coprocessor.CoProcYield, float32) {
 		}()
 	}
 
+	// update early to make sure any change in preferences are used
+	arm.updatePrefs()
+
 	// only reset registers if the previous yield was one that indicated the end
 	// of the program execution
 	switch arm.state.yield.Type {
@@ -817,7 +822,7 @@ func (arm *ARM) checkProgramMemory(force bool) {
 		return
 	}
 
-	if !arm.mem.IsExecutable(addr) {
+	if arm.executableMemoryCheck && !arm.mem.IsExecutable(addr) {
 		arm.memoryFault("program memory not executable", faults.ProgramMemory, addr)
 		arm.state.programMemory = nil
 		return
@@ -846,8 +851,6 @@ func (arm *ARM) run() float32 {
 			arm.state.yield.Error = fmt.Errorf("PC at %08x: %s", arm.state.executingPC, r)
 		}
 	}()
-
-	arm.updatePrefs()
 
 	// number of iterations. only used when in immediate mode
 	var iterations int

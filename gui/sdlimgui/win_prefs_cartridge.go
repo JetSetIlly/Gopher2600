@@ -131,6 +131,14 @@ time each instruction in the ARM program takes`)
 	if imgui.Checkbox("Abort on Memory Fault", &abortOnMemoryFault) {
 		win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.AbortOnMemoryFault.Set(abortOnMemoryFault)
 	}
+	win.img.imguiTooltipSimple(`Any memory fault causes execution to abort to debugger`)
+
+	executableMemoryCheck := win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.ExecutableMemoryCheck.Get().(bool)
+	if imgui.Checkbox("Exectuable Memory Check", &executableMemoryCheck) {
+		win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.ExecutableMemoryCheck.Set(executableMemoryCheck)
+	}
+	win.img.imguiTooltipSimple(`Check that program instructions are only executed from memory marked as
+'executable'. A failed check always causes the program to abort.`)
 
 	undefinedSymbolWarning := win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.UndefinedSymbolWarning.Get().(bool)
 	if imgui.Checkbox("Undefined Symbols Warning", &undefinedSymbolWarning) {

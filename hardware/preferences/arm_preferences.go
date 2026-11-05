@@ -59,6 +59,9 @@ type ARMPreferences struct {
 	// abort conditions for memory faults
 	AbortOnMemoryFault prefs.Bool
 
+	// check that program memory is in an executable memory section
+	ExecutableMemoryCheck prefs.Bool
+
 	// include disassembly and register details when logging memory faults
 	ExtendedMemoryFaultLogging prefs.Bool
 
@@ -110,6 +113,10 @@ func newARMprefrences() (*ARMPreferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("hardware.arm7.executableMemoryCheck", &p.ExecutableMemoryCheck)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("hardware.arm7.extendedMemoryFaultLogging", &p.ExtendedMemoryFaultLogging)
 	if err != nil {
 		return nil, err
@@ -136,6 +143,7 @@ func (p *ARMPreferences) SetDefaults() {
 	p.ImmediateCorrection.Set(false)
 	p.MAM.Set(-1)
 	p.AbortOnMemoryFault.Set(false)
+	p.ExecutableMemoryCheck.Set(false)
 	p.ExtendedMemoryFaultLogging.Set(false)
 	p.UndefinedSymbolWarning.Set(false)
 }
