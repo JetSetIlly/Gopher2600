@@ -385,13 +385,7 @@ func (ps *PlayerSprite) tick() bool {
 }
 
 func (ps *PlayerSprite) _futureStartDrawingEvent(v uint8) {
-	// it is useful for debugging to know which copy of the sprite is
-	// currently being drawn. we'll update this value in the switch
-	// below, taking great care to note the value of ms.copies at each
-	// trigger point
-	//
-	// this is used by the missile sprites when in reset-to-player
-	// mode
+	// it is useful for debugging to know which copy of the sprite is currently being drawn
 	ps.ScanCounter.Cpy = int(v)
 	ps.ScanCounter.start()
 }

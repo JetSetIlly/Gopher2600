@@ -145,7 +145,7 @@ time each instruction in the ARM program takes`)
 		win.img.dbg.VCS().Env.Prefs.Cartridge.ARM.UndefinedSymbolWarning.Set(undefinedSymbolWarning)
 	}
 	win.img.imguiTooltipSimple(`It is possible to compile an ELF binary with undefined symbols.
-This option presents causes a warning to appear when such a binary is loaded`)
+This option causes a warning to appear when such a binary is loaded`)
 
 	imgui.Spacing()
 	if win.setDefaultButton("Set ARM Defaults") {
