@@ -194,10 +194,8 @@ func TestImmediate(t *testing.T) {
 
 	a = fp.VFPExpandImm(0x00, 32)
 	b = math.Float32frombits(uint32(a))
-	test.ExpectEquality(t, b, 0.0)
+	test.ExpectEquality(t, b, 2.0)
 
-	// tests taken from an real world example of a VMOV (immediate) instruction.
-	// the GCC objdump indiates that a value of 0x50 should expand to 0.25
 	a = fp.VFPExpandImm(0x50, 32)
 	b = math.Float32frombits(uint32(a))
 	test.ExpectEquality(t, b, 0.25)

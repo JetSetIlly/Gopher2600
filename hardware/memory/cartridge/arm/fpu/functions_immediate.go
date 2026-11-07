@@ -33,8 +33,8 @@ func (fpu *FPU) VFPExpandImm(imm8 uint8, N int) uint64 {
 	F := N - E - 1
 
 	// NOT(imm8<6>):Replicate(imm8<6>, E-3):imm8<5:4>
-	bit6 := (imm8 & 0x40) >> 6
-	exp := uint64(^bit6) << E
+	bit6 := (imm8 >> 6) & 1
+	exp := uint64(bit6^1) << (E - 1)
 	for i := 0; i < E-3; i++ {
 		exp |= uint64(bit6) << (E - 2 - i)
 	}
