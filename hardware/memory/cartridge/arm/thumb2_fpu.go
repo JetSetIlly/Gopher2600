@@ -205,8 +205,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 							if U {
 								panic("single precision VCVT (to floating point, unsigned)")
 							} else {
-								v := arm.state.fpu.Registers[d] & 0xfffffffe
-								r := arm.state.fpu.FixedToFP(uint64(v), 32, int(fracBits), U, false, true)
+								r := arm.state.fpu.FixedToFP(uint64(arm.state.fpu.Registers[d]), 32, int(fracBits), U, false, true)
 								arm.state.fpu.Registers[d] = uint32(r)
 							}
 						}
