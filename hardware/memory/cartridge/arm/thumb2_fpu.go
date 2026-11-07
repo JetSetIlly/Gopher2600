@@ -380,7 +380,10 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 					}
 
 					if sz {
-						arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPNeg(uint64(arm.state.fpu.Registers[m]), 64))
+						v := uint64(arm.state.registers[m])<<32 | uint64(arm.state.registers[m+1])
+						v = arm.state.fpu.FPNeg(v, 64)
+						arm.state.fpu.Registers[d] = uint32(v)
+						arm.state.fpu.Registers[d+1] = uint32(v >> 32)
 					} else {
 						arm.state.fpu.Registers[d] = uint32(arm.state.fpu.FPNeg(uint64(arm.state.fpu.Registers[m]), 32))
 					}
@@ -1204,7 +1207,8 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 
 			if sz {
 				// 64bit floats (T1 encoding)
-				if regs == 0 || regs > 16 || regs+d > 32 {
+				dRegs := regs >> 1
+				if dRegs == 0 || d+dRegs > 16 {
 					panic("too many registers for VPUSH")
 				}
 
@@ -1436,7 +1440,8 @@ func (arm *ARM) decodeThumb2FPURegisterLoadStore(opcode uint16) decodeFunction {
 
 			if sz {
 				// 64bit floats (T1 encoding)
-				if regs == 0 || regs > 16 || regs+d > 32 {
+				dRegs := regs >> 1
+				if dRegs == 0 || d+dRegs > 16 {
 					panic("too many registers for VPOP")
 				}
 
