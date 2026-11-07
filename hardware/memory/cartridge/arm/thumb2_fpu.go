@@ -698,7 +698,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 							return &DisasmEntry{
 								Is32bit:  true,
 								Operator: "VNMLS",
-								Operand:  fmt.Sprintf("%c%d, %c%d, %c%d", regPrefix, Vd, regPrefix, Vn, regPrefix, Vm),
+								Operand:  fmt.Sprintf("%c%d, %c%d, %c%d", regPrefix, d, regPrefix, n, regPrefix, m),
 							}
 						}
 						typ = fpu.VFPNegMul_VNMLS
@@ -707,7 +707,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 							return &DisasmEntry{
 								Is32bit:  true,
 								Operator: "VNMLA",
-								Operand:  fmt.Sprintf("%c%d, %c%d, %c%d", regPrefix, Vd, regPrefix, Vn, regPrefix, Vm),
+								Operand:  fmt.Sprintf("%c%d, %c%d, %c%d", regPrefix, d, regPrefix, n, regPrefix, m),
 							}
 						}
 						typ = fpu.VFPNegMul_VNMLA
@@ -718,7 +718,7 @@ func (arm *ARM) decodeThumb2FPUDataProcessing(opcode uint16) decodeFunction {
 							return &DisasmEntry{
 								Is32bit:  true,
 								Operator: "VNMUL",
-								Operand:  fmt.Sprintf("%c%d, %c%d, %c%d", regPrefix, Vd, regPrefix, Vn, regPrefix, Vm),
+								Operand:  fmt.Sprintf("%c%d, %c%d, %c%d", regPrefix, d, regPrefix, n, regPrefix, m),
 							}
 						}
 						typ = fpu.VFPNegMul_VNMNUL
