@@ -318,6 +318,8 @@ func (arm *ARM) decodeThumb2CompareAndBranchOnNonZero(opcode uint16) decodeFunct
 	Rn := opcode & 0x0007
 	i := (opcode & 0x0200) >> 9
 	imm5 := (opcode & 0x00f8) >> 3
+
+	// CBZ and CBNZ can only jump forward. there is no need for sign extension here
 	imm32 := (imm5 << 1) | (i << 6)
 
 	if nonZero {

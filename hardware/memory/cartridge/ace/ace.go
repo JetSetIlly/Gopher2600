@@ -139,7 +139,7 @@ func (cart *Ace) PlumbFromDifferentEmulation(env *environment.Environment) {
 func (cart *Ace) Plumb(env *environment.Environment) {
 	cart.env = env
 	if cart.armState == nil {
-		panic("cannot plumb this ELF instance because the ARM state is nil")
+		panic("cannot plumb this ACE instance because the ARM state is nil")
 	}
 	cart.mem.Plumb(cart.arm)
 	cart.arm.Plumb(cart.env, cart.armState, cart.mem, cart)
