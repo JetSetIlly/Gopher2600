@@ -1731,7 +1731,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 				}
 
 				result := uint64(arm.state.registers[Rn]) * uint64(arm.state.registers[Rm])
-				result += uint64(arm.state.registers[RdHi]) + uint64(arm.state.registers[RdLo])
+				result += uint64(arm.state.registers[RdHi])<<32 | uint64(arm.state.registers[RdLo])
 				arm.state.registers[RdHi] = uint32(result >> 32)
 				arm.state.registers[RdLo] = uint32(result)
 
