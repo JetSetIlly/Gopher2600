@@ -23,6 +23,8 @@ github.com/jetsetilly/speakjet v0.3.0 h1:HJ1qmVDxYCBlnfpgU88maFKkURYTQDtdeKrwSli
 github.com/jetsetilly/speakjet v0.3.0/go.mod h1:fe1Qs7/mEVVnAk0iWJVwEfsJsavkMXE4m6WluQY765w=
 github.com/jetsetilly/speakjet v0.4.0 h1:Nsz4Y25qn27FDIhyWt8CEe4SCEvjzukp2GTBd685OGM=
 github.com/jetsetilly/speakjet v0.4.0/go.mod h1:fe1Qs7/mEVVnAk0iWJVwEfsJsavkMXE4m6WluQY765w=
+github.com/jetsetilly/speakjet v0.4.3 h1:BvJETHic3d7SQyr6WPHjqWotNLaEtmm1SH7jp+ADrH0=
+github.com/jetsetilly/speakjet v0.4.3/go.mod h1:fe1Qs7/mEVVnAk0iWJVwEfsJsavkMXE4m6WluQY765w=
 github.com/jetsetilly/supercharge v0.3.0 h1:Yqi0Y4ZTUPnmd3iZr7h4N0Wa7AEB9PTVdSWeKZdWUwU=
 github.com/jetsetilly/supercharge v0.3.0/go.mod h1:rkyz+BCLit8qzDAhzy8qpWwFNKAOctd2Y6gJGZDzqnw=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
