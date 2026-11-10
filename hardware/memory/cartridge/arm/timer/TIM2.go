@@ -145,17 +145,13 @@ func (t *TIM2) resolve() {
 	// number of counter ticks required
 	t.prescalerCounter += cycles
 
-	// adjust prescaler and find number of ticks to accumulate counter by
-	var counterTicks uint32
-	if t.prescalerShadow > 0 {
-		for t.prescalerCounter >= t.prescalerShadow {
-			counterTicks++
-			t.prescalerCounter -= t.prescalerShadow
-		}
-	} else {
-		counterTicks += t.prescalerCounter
-		t.prescalerCounter = 0
-	}
+	// "the prescaler can divide the counter clock frequency by any factor between 1 and 65536"
+	// prescalar is a 16 bit value between zero and 65535. the correct range therefore is achieved
+	// by adding one (to the uint32 value)
+	divisor := t.prescalerShadow + 1
+
+	counterTicks := t.prescalerCounter / divisor
+	t.prescalerCounter %= divisor
 
 	if counterTicks == 0 {
 		return
@@ -164,8 +160,8 @@ func (t *TIM2) resolve() {
 	if t.downcounting {
 		c := t.counter - counterTicks
 
+		// counter underflow
 		if c == 0 || c > t.counter {
-			// counter underflow
 			t.updateEvent()
 		} else {
 			t.counter = c
@@ -173,8 +169,8 @@ func (t *TIM2) resolve() {
 	} else {
 		c := t.counter + counterTicks
 
+		// counter overflow
 		if c >= t.autoreloadShadow || c < t.counter {
-			// counter overflow
 			t.updateEvent()
 		} else {
 			t.counter = c
