@@ -52,10 +52,10 @@ type TIM2 struct {
 	// 2) at an update event
 	autoreloadShadow uint32
 
-	// prescalarShadow is the prescaler register value that is being used
+	// prescalerShadow is the prescaler register value that is being used
 	// currently. the prescaler register can change but the prescalerCounter
-	// will still be ticking towards the prescalarShadow value
-	prescalarShadow  uint32
+	// will still be ticking towards the prescalerShadow value
+	prescalerShadow  uint32
 	prescalerCounter uint32
 }
 
@@ -70,11 +70,20 @@ func NewTIM2(mmap architecture.Map) *TIM2 {
 
 // Reset implementes the Timer interface
 func (t *TIM2) Reset() {
-	t.setControlRegister(0x00000000)
-	t.prescaler = 0x0
+	t.setControlRegister(0)
+
+	t.prescaler = 0
+	t.prescalerShadow = 0
+
 	t.autoreload = 0xffffffff
-	t.counter = 0.0
-	t.cycles.resolve()
+	t.autoreloadShadow = 0xffffffff
+
+	t.counter = 0
+	t.prescalerCounter = 0
+	t.status = 0
+
+	t.cycles.reset()
+	t.cycles.stepCount = 0
 }
 
 func (t *TIM2) setControlRegister(val uint32) {
@@ -138,10 +147,10 @@ func (t *TIM2) resolve() {
 
 	// adjust prescaler and find number of ticks to accumulate counter by
 	var counterTicks uint32
-	if t.prescalarShadow > 0 {
-		for t.prescalerCounter >= t.prescalarShadow {
+	if t.prescalerShadow > 0 {
+		for t.prescalerCounter >= t.prescalerShadow {
 			counterTicks++
-			t.prescalerCounter -= t.prescalarShadow
+			t.prescalerCounter -= t.prescalerShadow
 		}
 	} else {
 		counterTicks += t.prescalerCounter
@@ -175,7 +184,7 @@ func (t *TIM2) resolve() {
 
 func (t *TIM2) updateEvent() {
 	if !t.updateEventDisabled {
-		t.prescalarShadow = t.prescaler
+		t.prescalerShadow = t.prescaler
 		t.autoreloadShadow = t.autoreload
 
 		// set update interupt flag of status register
