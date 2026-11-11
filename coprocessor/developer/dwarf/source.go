@@ -186,7 +186,7 @@ func NewSource(cart coprocessor.CartCoProcBus, romFile string, dwarfFile string,
 	ef, ok := cart.(coprocessor.CartCoProcELF)
 	if !ok {
 		if dwarfFile == "" {
-			ef = findELF(romFile)
+			ef = findDWARF(romFile)
 			if ef == nil {
 				return nil, fmt.Errorf("dwarf: cannot obtain elf information")
 			}

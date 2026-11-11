@@ -70,10 +70,9 @@ func (ef *elfShim) LastPXEPalette(_ uint8) (bool, uint32) {
 	return false, 0
 }
 
-// find the corresponding ELF file for the specified rom file. the ELF file may
-// or may not have DWARF data, the DWARF() function will return an error if not
-func findELF(romFile string) coprocessor.CartCoProcELF {
-	// try the ROM file itself. it might be an ELF file
+// find the corresponding DWARF information for the specified rom file
+func findDWARF(romFile string) coprocessor.CartCoProcELF {
+	// try the ROM file itself. it might be an ELF file that contains DWARF data
 	ef, err := elf.Open(romFile)
 	if err == nil {
 		return &elfShim{ef: ef}
@@ -92,6 +91,7 @@ func findELF(romFile string) coprocessor.CartCoProcELF {
 		"main.elf",
 		"ACE_debugging.elf",
 		"cdfj+.elf",
+		"ACE.elf",
 	}
 
 	subpaths := []string{
@@ -100,6 +100,7 @@ func findELF(romFile string) coprocessor.CartCoProcELF {
 		filepath.Join("main", "bin"),
 		filepath.Join("custom", "bin"),
 		"arm",
+		"Src",
 	}
 
 	for _, p := range subpaths {
