@@ -1599,7 +1599,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 						dbg.CoProcDev.SearchStaticMemory(dbg.writerInStyle(terminal.StyleFeedback), uint32(val), int(bitwidth)/8)
 					}
 				}
-			default:
+			case "SUMMARY":
 				for _, seg := range static.Segments() {
 					s := fmt.Sprintf("%s: %08x to %08x", seg.Name, seg.Origin, seg.Memtop)
 					dbg.printLine(terminal.StyleFeedback, s)
