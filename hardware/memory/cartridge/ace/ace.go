@@ -64,9 +64,9 @@ func NewAce(env *environment.Environment) (mapper.CartMapper, error) {
 	cart.arm.CycleDuringImmediateMode(true)
 	cart.mem.Plumb(cart.arm)
 
-	logger.Logf(env, "ACE", "ccm: %08x to %08x", cart.mem.ccmOrigin, cart.mem.ccmMemtop)
 	logger.Logf(env, "ACE", "flash: %08x to %08x", cart.mem.flashOrigin, cart.mem.flashMemtop)
-	logger.Logf(env, "ACE", "buffer: %08x to %08x", cart.mem.sramOrigin, cart.mem.sramMemtop)
+	logger.Logf(env, "ACE", "sram: %08x to %08x", cart.mem.sramOrigin, cart.mem.sramMemtop)
+	logger.Logf(env, "ACE", "ccm: %08x to %08x", cart.mem.ccmOrigin, cart.mem.ccmMemtop)
 	logger.Logf(env, "ACE", "gpio: %08x to %08x", cart.mem.gpioOrigin, cart.mem.gpioMemtop)
 
 	return cart, nil
