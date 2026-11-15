@@ -2620,12 +2620,9 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 					}
 				}
 
-				// remove bits from destination register
-				arm.state.registers[Rd] = arm.state.registers[Rd] & maskRemove
-
-				// insert bits from source register
-				v := arm.state.registers[Rn] & maskInsert
-				arm.state.registers[Rd] = arm.state.registers[Rd] | (v << lsbit)
+				dst := arm.state.registers[Rd]
+				src := arm.state.registers[Rn]
+				arm.state.registers[Rd] = (dst & maskRemove) | ((src & maskInsert) << lsbit)
 
 				return nil
 			}
