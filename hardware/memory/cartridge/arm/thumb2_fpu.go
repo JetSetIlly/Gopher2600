@@ -890,7 +890,8 @@ func (arm *ARM) decodeThumb2FPU32bitTransfer(opcode uint16) decodeFunction {
 	A := (arm.state.instruction32bitOpcodeHi & 0x00e0) >> 5
 	B := (opcode & 0x0060) >> 5
 
-	if A == 0b000 {
+	switch A {
+	case 0b000:
 		if C {
 			panic("undefined 32bit FPU transfer")
 		}
@@ -925,7 +926,7 @@ func (arm *ARM) decodeThumb2FPU32bitTransfer(opcode uint16) decodeFunction {
 			return nil
 		}
 
-	} else if A == 0b111 {
+	case 0b111:
 		if C {
 			panic("undefined 32bit FPU transfer")
 		}
