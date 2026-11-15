@@ -89,7 +89,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 			// "4.6.9 AND (register)" of "Thumb-2 Supplement"
 
 			// whether this is a TST instruction or not
-			tst := Rd == rPC && setFlags
+			tst := Rd == 0b1111 && setFlags
 
 			return func() *DisasmEntry {
 				// disassembly only
@@ -584,7 +584,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 			// T2 encoding
 
 			return func() *DisasmEntry {
-				if Rd == rPC && setFlags {
+				if Rd == 0b1111 && setFlags {
 					if arm.decodeOnly {
 						return &DisasmEntry{
 							Is32bit:  true,
@@ -642,7 +642,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 				}
 
 				// perform EOR or do nothing if this is just a TST
-				if !(Rd == rPC && setFlags) {
+				if !(Rd == 0b1111 && setFlags) {
 					arm.state.registers[Rd] = result
 				}
 
@@ -658,9 +658,46 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 			}
 
 		case 0b1000:
-			if Rd == rPC {
+			if Rd == 0b1111 && setFlags {
 				// "4.6.28 CMN (register)" of "Thumb-2 Supplement"
-				panic("unimplemented CMN (register) instruction")
+				// T2 encoding
+				return func() *DisasmEntry {
+					if arm.decodeOnly {
+						return &DisasmEntry{
+							Is32bit:  true,
+							Operator: "CMN",
+							Operand:  fmt.Sprintf("R%d, R%d", Rn, Rm),
+						}
+					}
+
+					var shifted uint32
+
+					switch typ {
+					case 0b00:
+						// with logical left shift
+						shifted = arm.state.registers[Rm] << imm5
+					case 0b01:
+						// with logical right shift
+						shifted = arm.state.registers[Rm] >> imm5
+					case 0b10:
+						// with arithmetic right shift
+						// (no need to worry about carry just yet)
+
+						// perform shift (with sign extension)
+						shifted = uint32(int32(arm.state.registers[Rm]) >> imm5)
+					default:
+						panic("impossible shift for ADD (register) instruction")
+					}
+
+					// perform comparison and change stateus register
+					result, carry, overflow := AddWithCarry(arm.state.registers[Rn], shifted, 0)
+					arm.state.status.isNegative(result)
+					arm.state.status.isZero(result)
+					arm.state.status.setCarry(carry)
+					arm.state.status.setOverflow(overflow)
+
+					return nil
+				}
 			} else {
 				// "4.6.4 ADD (register)" of "Thumb-2 Supplement"
 				return func() *DisasmEntry {
@@ -801,7 +838,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 			}
 
 		case 0b1101:
-			if Rd == rPC {
+			if Rd == 0b1111 {
 				// "4.6.30 CMP (register)" of "Thumb-2 Supplement"
 				// T3 encoding
 				return func() *DisasmEntry {
@@ -1221,7 +1258,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 				}
 
 			case 0b100:
-				if Rn == 0b1111 {
+				if Rn == rPC {
 					// "4.6.185 SXTB" of "Thumb-2 Supplement"
 					return func() *DisasmEntry {
 						if arm.decodeOnly {
@@ -1937,8 +1974,8 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 		switch op {
 		case 0b0000:
 			if Rd == 0b1111 && setFlags {
+				// "4.6.192 TST (immediate)" of "Thumb-2 Supplement"
 				return func() *DisasmEntry {
-					// "4.6.192 TST (immediate)" of "Thumb-2 Supplement"
 					if arm.decodeOnly {
 						return &DisasmEntry{
 							Is32bit:  true,
