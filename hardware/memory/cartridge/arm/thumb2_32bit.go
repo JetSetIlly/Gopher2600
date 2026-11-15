@@ -1135,10 +1135,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						} else {
 							v, _ = ROR_C(arm.state.registers[Rm], uint32(rot))
 						}
-						arm.state.registers[Rd] = v & 0x0000ffff
-						if arm.state.registers[Rd]&0x8000 == 0x8000 {
-							arm.state.registers[Rd] |= 0xffff0000
-						}
+						arm.state.registers[Rd] = uint32(int32(int16(v & 0x0000ffff)))
 
 						return nil
 					}
@@ -1159,10 +1156,9 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						} else {
 							v, _ = ROR_C(arm.state.registers[Rm], uint32(rot))
 						}
-						arm.state.registers[Rd] = arm.state.registers[Rn] + (v & 0x0000ffff)
-						if arm.state.registers[Rd]&0x8000 == 0x8000 {
-							arm.state.registers[Rd] |= 0xffff0000
-						}
+
+						// sign-extend the extracted halfword
+						arm.state.registers[Rd] = arm.state.registers[Rn] + uint32(int32(int16(v&0x0000ffff)))
 
 						return nil
 					}
@@ -1251,7 +1247,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						} else {
 							v, _ = ROR_C(arm.state.registers[Rm], uint32(rot))
 						}
-						arm.state.registers[Rd] = v & 0x000000ff
+						arm.state.registers[Rd] = arm.state.registers[Rn] + (v & 0x000000ff)
 
 						return nil
 					}
@@ -1275,10 +1271,7 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						} else {
 							v, _ = ROR_C(arm.state.registers[Rm], uint32(rot))
 						}
-						arm.state.registers[Rd] = v & 0x000000ff
-						if arm.state.registers[Rd]&0x80 == 0x80 {
-							arm.state.registers[Rd] |= 0xffffff00
-						}
+						arm.state.registers[Rd] = uint32(int32(int8(v & 0xff)))
 
 						return nil
 					}
@@ -1299,10 +1292,9 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						} else {
 							v, _ = ROR_C(arm.state.registers[Rm], uint32(rot))
 						}
-						arm.state.registers[Rd] = v & 0x000000ff
-						if arm.state.registers[Rd]&0x80 == 0x80 {
-							arm.state.registers[Rd] |= 0xffffff00
-						}
+
+						// extract and sign-extend the lowest byte
+						arm.state.registers[Rd] = arm.state.registers[Rn] + uint32(int32(int8(v&0xff)))
 
 						return nil
 					}
@@ -2593,12 +2585,8 @@ func (arm *ARM) decode32bitThumb2DataProcessing(opcode uint16) decodeFunction {
 				mask := uint32((uint64(1) << width) - 1)
 				value := (arm.state.registers[Rn] >> uint32(lsbit)) & mask
 
-				// sign extension
-				if value&(uint32(1)<<(width-1)) != 0 {
-					value |= ^mask
-				}
-
-				arm.state.registers[Rd] = value
+				// with sign extension
+				arm.state.registers[Rd] = uint32(int32(value<<uint32(32-width)) >> uint32(32-width))
 
 				return nil
 			}
