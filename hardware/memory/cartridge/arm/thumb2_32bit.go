@@ -1542,18 +1542,18 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						}
 					}
 
-					var operand1 uint32
+					var operand1 int16
 					if nHigh {
-						operand1 = arm.state.registers[Rn] >> 16
+						operand1 = int16(arm.state.registers[Rn] >> 16)
 					} else {
-						operand1 = arm.state.registers[Rn] & 0xffff
+						operand1 = int16(arm.state.registers[Rn] & 0xffff)
 					}
 
-					var operand2 uint32
+					var operand2 int16
 					if mHigh {
-						operand2 = arm.state.registers[Rm] >> 16
+						operand2 = int16(arm.state.registers[Rm] >> 16)
 					} else {
-						operand2 = arm.state.registers[Rm] & 0xffff
+						operand2 = int16(arm.state.registers[Rm] & 0xffff)
 					}
 
 					arm.state.registers[Rd] = uint32(int32(operand1) * int32(operand2))
@@ -1581,29 +1581,27 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 							Operand:  fmt.Sprintf("R%d, R%d, R%d, R%d", Rd, Rn, Rm, Ra),
 						}
 					}
-
-					var operand1 uint32
+					var operand1 int16
 					if nHigh {
-						operand1 = arm.state.registers[Rn] >> 16
+						operand1 = int16(arm.state.registers[Rn] >> 16)
 					} else {
-						operand1 = arm.state.registers[Rn] & 0xffff
+						operand1 = int16(arm.state.registers[Rn] & 0xffff)
 					}
 
-					var operand2 uint32
+					var operand2 int16
 					if mHigh {
-						operand2 = arm.state.registers[Rm] >> 16
+						operand2 = int16(arm.state.registers[Rm] >> 16)
 					} else {
-						operand2 = arm.state.registers[Rm] & 0xffff
+						operand2 = int16(arm.state.registers[Rm] & 0xffff)
 					}
 
-					// sign extend accumulator for 64bit
+					// sign-extend accumulator
 					accumulator := int64(int32(arm.state.registers[Ra]))
 
-					// multiply and add operation
+					// signed multiply and accumulate
 					result := int64(operand1)*int64(operand2) + accumulator
-					arm.state.registers[Rd] = uint32(result)
 
-					// set Q flag as appropriate
+					arm.state.registers[Rd] = uint32(result)
 					arm.state.status.saturation = result < math.MinInt32 || result > math.MaxInt32
 
 					return nil
