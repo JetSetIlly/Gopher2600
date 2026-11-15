@@ -1570,13 +1570,32 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					}
 				}
 
-				if arg, ok := tokens.Get(); ok {
-					dump(arg)
+				if area, ok := tokens.Get(); ok {
+					dump(area)
 				} else {
 					for _, seg := range static.Segments() {
 						dump(seg.Name)
 					}
 				}
+
+			case "LOAD":
+				area, _ := tokens.Get()
+				filename, _ := tokens.Get()
+
+				b, err := os.ReadFile(filename)
+				if err != nil {
+					dbg.printLine(terminal.StyleError, fmt.Sprintf("error loading dump file: %s", err.Error()))
+					return nil
+				}
+
+				for i := range b {
+					if !bus.PutStatic(area, i, b[i]) {
+						dbg.printLine(terminal.StyleError, fmt.Sprintf("error loading dump file to %s", area))
+						return nil
+					}
+				}
+				dbg.printLine(terminal.StyleFeedback, "memory dump loaded to %s", area)
+
 			case "SEARCH":
 				if v, ok := tokens.Get(); ok {
 					val, err := strconv.ParseUint(v, 0, 32)
