@@ -49,16 +49,10 @@ const (
 	NumCoreRegisters
 )
 
-// the maximum number of cycles allowed in a single ARM program execution.
-// no idea if this value is sufficient.
-//
-// 03/02/2022 - raised to 1000000 to accomodate CDFJBoulderDash development
-// 17/09/2022 - raised to 1500000 for marcoj's RPG game
-const cycleLimit = 1500000
-
-// the maximum number of instructions to execute. like cycleLimit but for when
-// running in immediate mode
-const instructionsLimit = 1300000
+// the maximum number of cycles per Mhz of clock. in other words, 'clockLimitBase * clock speed' is
+// the cycle limit for the processor. also used as the base value for the iteration limit that's
+// used when running in immediate mode
+const limitBase = 20000
 
 // stepFunction variations are a result of different ARM architectures
 type stepFunction func(opcode uint16, memIdx int) bool
@@ -266,6 +260,13 @@ type ARM struct {
 	// little gain and honestly, if we're worrying about the cycle limit the
 	// ARM program is running out of spec in any case
 	cycleRegulator float32
+
+	// the value limitBase multiplied by the clock speed
+	cycleLimit float32
+
+	// like cycleLimit but for iterations when running in immediate mode. in reality this is just
+	// the cycleLimit converted to an integer so that we're not dealing with floats in immediate mode
+	iterationsLimit int
 
 	// collection of functionMap instances. indexed by programMemoryOffset to
 	// retrieve a functionMap
@@ -488,6 +489,10 @@ func (arm *ARM) resetRegisters() {
 func (arm *ARM) updatePrefs() {
 	// update clock value from preferences
 	arm.Clk = float32(arm.env.Prefs.Cartridge.ARM.Clock.Get().(float64))
+
+	// update cycle limit value and base it on clock speed
+	arm.cycleLimit = arm.Clk * limitBase
+	arm.iterationsLimit = int(arm.cycleLimit)
 
 	// update clkLen entries
 	for _, r := range arm.mmap.Regions {
@@ -1017,12 +1022,12 @@ func (arm *ARM) run() float32 {
 			}
 
 			// limit the number of cycles used by the ARM program
-			if arm.state.cyclesTotal >= cycleLimit {
+			if arm.state.cyclesTotal >= arm.cycleLimit {
 				arm.state.yield.Type = coprocessor.YieldCycleLimit
 			}
 		} else {
 			iterations++
-			if iterations > instructionsLimit {
+			if iterations > arm.iterationsLimit {
 				arm.state.yield.Type = coprocessor.YieldCycleLimit
 			}
 		}
