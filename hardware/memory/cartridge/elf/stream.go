@@ -72,6 +72,13 @@ func (s *stream) startDrain() {
 	s.drainPtr = 0
 }
 
+func (s *stream) remaining() int {
+	if s.drain {
+		return max(0, s.drainTop-s.drainPtr)
+	}
+	return 0
+}
+
 func (s *stream) push(e streamEntry) {
 	s.stream[s.ptr] = e
 	s.ptr++

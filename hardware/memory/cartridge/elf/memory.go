@@ -175,6 +175,9 @@ type elfMemory struct {
 	// most recent yield from the coprocessor
 	yield coprocessor.CoProcYield
 
+	// count of cycles accumulated
+	cycles float32
+
 	// byte stream support
 	stream stream
 
@@ -887,10 +890,15 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool, executing bool) (*[]by
 			// note that we must also adjust the address by the strongArmOrigin
 			// value because strongArmFunctions is a sparse array and not a map
 			if f := mem.strongArmFunctions[addr-mem.strongArmOrigin-1]; f != nil {
+				const estimatedCycleOverhead = 150
 				if f.support {
+					if mem.stream.active {
+						mem.cycles += estimatedCycleOverhead
+					}
 					mem.runStrongArmFunction(f.function)
 				} else {
 					if mem.stream.active {
+						mem.cycles += estimatedCycleOverhead
 						mem.setStrongArmFunction(f.function)
 						for mem.strongarm.running.function != nil {
 							mem.strongarm.running.function(mem)

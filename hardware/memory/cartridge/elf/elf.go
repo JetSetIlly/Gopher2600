@@ -63,6 +63,9 @@ type Elf struct {
 	//
 	// set on Elf create and also after a successful reset
 	resetInhibit int
+
+	// the number of ARM cycles per tick of the 2600. updated in Step() function
+	cyclesPerClock float32
 }
 
 // elfReaderAt is an implementation of io.ReaderAt and is used with elf.NewFile()
@@ -203,6 +206,7 @@ func (cart *Elf) Reset() error {
 	cart.arm.Plumb(cart.env, cart.resetStateARM, cart.mem, cart)
 	cart.yieldHook = &coprocessor.StubCartYieldHook{}
 	cart.resetInhibit = 1
+	cart.cyclesPerClock = 0
 	return nil
 }
 
@@ -239,6 +243,7 @@ func (cart *Elf) Snapshot() mapper.CartMapper {
 	}
 
 	n.mem = cart.mem.Snapshot()
+	n.cyclesPerClock = cart.cyclesPerClock
 	return &n
 }
 
@@ -321,8 +326,11 @@ func (cart *Elf) reset() {
 func (cart *Elf) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	if cart.mem.stream.active {
 		if !cart.mem.stream.drain {
-			_ = cart.runARM(addr)
+			if !cart.runARM(addr) {
+				return 0, 0, nil
+			}
 		}
+
 		if addr == cart.mem.stream.peek().addr&memorymap.CartridgeBits {
 			e := cart.mem.stream.pull()
 			cart.mem.gpio.data[DATA_ODR] = e.data
@@ -372,7 +380,9 @@ func (cart *Elf) runARM(addr uint16) bool {
 	defer cart.arm.ProcessProfiling()
 
 	// call arm once and then check for yield conditions
-	cart.mem.yield, _ = cart.arm.Run()
+	var cycles float32
+	cart.mem.yield, cycles = cart.arm.Run()
+	cart.mem.cycles += cycles
 
 	// keep calling runArm() for as long as program does not need to sync with the VCS
 	for cart.mem.yield.Type != coprocessor.YieldSyncWithVCS {
@@ -393,7 +403,8 @@ func (cart *Elf) runARM(addr uint16) bool {
 		case coprocessor.YieldHookEnd:
 			return false
 		case coprocessor.YieldHookContinue:
-			cart.mem.yield, _ = cart.arm.Run()
+			cart.mem.yield, cycles = cart.arm.Run()
+			cart.mem.cycles += cycles
 		}
 	}
 
@@ -402,9 +413,17 @@ func (cart *Elf) runARM(addr uint16) bool {
 
 // AccessPassive implements the mapper.CartMapper interface.
 func (cart *Elf) AccessPassive(addr uint16, data uint8) error {
-	if cart.mem.stream.active && cart.mem.stream.drain {
+	if cart.mem.stream.active {
+		if cart.mem.stream.drain {
+			return nil
+		}
+	}
+
+	// test remaining cycles before making another coprocessor run
+	if cart.cyclesPerClock > 0 && cart.mem.cycles > cart.cyclesPerClock {
 		return nil
 	}
+	cart.mem.cycles = 0
 
 	// if memory access is not a cartridge address (ie. a TIA or RIOT address)
 	// then the ARM is running in parallel (ie. no synchronisation)
@@ -474,7 +493,14 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) error {
 
 // Step implements the mapper.CartMapper interface.
 func (cart *Elf) Step(clock float32) {
-	cart.arm.Step(clock)
+	// only update cyclesPerClock when the stream is not draining. this allows the remaining cycles
+	// check in AccessPassive() to use the correct cyclesPerClock value for the stream
+	if cart.mem.stream.remaining() == 0 {
+		cart.cyclesPerClock = cart.arm.Clk / clock
+	}
+	if cart.mem.cycles > 0 {
+		cart.mem.cycles -= cart.cyclesPerClock
+	}
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
