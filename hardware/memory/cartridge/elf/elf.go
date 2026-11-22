@@ -66,6 +66,11 @@ type Elf struct {
 
 	// the number of ARM cycles per tick of the 2600. updated in Step() function
 	cyclesPerClock float32
+
+	// some ROMs will accumulate a tremendous amount of cycles before the 2600 starts getting
+	// involved. the checkDelay field is used to prevent the cycle check in AccessPassive() from
+	// occurring too soon. a good test case for this TinyELF Basic
+	checkDelay int
 }
 
 // elfReaderAt is an implementation of io.ReaderAt and is used with elf.NewFile()
@@ -190,6 +195,8 @@ func NewElf(env *environment.Environment, inACE bool) (mapper.CartMapper, error)
 	cart.resetStateMem = cart.mem.Snapshot()
 	cart.resetInhibit = 4
 
+	_ = cart.reset()
+
 	return cart, nil
 }
 
@@ -204,9 +211,14 @@ func (cart *Elf) Reset() error {
 	cart.mem = cart.resetStateMem.Snapshot()
 	cart.mem.Plumb(cart.env, cart.arm)
 	cart.arm.Plumb(cart.env, cart.resetStateARM, cart.mem, cart)
-	cart.yieldHook = &coprocessor.StubCartYieldHook{}
 	cart.resetInhibit = 1
+	return cart.reset()
+}
+
+func (cart *Elf) reset() error {
+	cart.yieldHook = &coprocessor.StubCartYieldHook{}
 	cart.cyclesPerClock = 0
+	cart.checkDelay = 5
 	return nil
 }
 
@@ -277,9 +289,9 @@ func (cart *Elf) Plumb(env *environment.Environment) {
 	cart.armState = nil
 }
 
-// reset is distinct from Reset(). this reset function is implied by the
-// reading of the reset address.
-func (cart *Elf) reset() {
+// resetAddress is distinct from Reset(). this reset function is implied by the reading
+// of the reset address
+func (cart *Elf) resetAddress() {
 	// stream bytes rather than injecting them into the VCS as they arrive
 	cart.mem.stream.active = !cart.mem.stream.disabled
 
@@ -420,8 +432,12 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) error {
 	}
 
 	// test remaining cycles before making another coprocessor run
-	if cart.cyclesPerClock > 0 && cart.mem.cycles > cart.cyclesPerClock {
-		return nil
+	if cart.checkDelay <= 0 {
+		if cart.cyclesPerClock > 0 && cart.mem.cycles > cart.cyclesPerClock {
+			return nil
+		}
+	} else {
+		cart.checkDelay--
 	}
 	cart.mem.cycles = 0
 
@@ -436,7 +452,7 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) error {
 	if (addr&memorymap.CartridgeBits)|memorymap.OriginCart == resetAddrAnyMirror {
 		// after this call to cart reset, the cartridge will be wanting to run
 		// the vcsEmulationInit() strongarm function
-		cart.reset()
+		cart.resetAddress()
 	}
 
 	// set GPIO data and address information
@@ -496,7 +512,12 @@ func (cart *Elf) Step(clock float32) {
 	// only update cyclesPerClock when the stream is not draining. this allows the remaining cycles
 	// check in AccessPassive() to use the correct cyclesPerClock value for the stream
 	if cart.mem.stream.remaining() == 0 {
-		cart.cyclesPerClock = cart.arm.Clk / clock
+		// if cyclesPerClock has changed then update the argAddrClockHz memory location
+		cyclesPerClock := cart.arm.Clk / clock
+		if cyclesPerClock != cart.cyclesPerClock {
+			binary.LittleEndian.PutUint32(cart.mem.args[argAddrClockHz-argOrigin:], uint32(cart.arm.Clk)*1000000)
+			cart.cyclesPerClock = cyclesPerClock
+		}
 	}
 	if cart.mem.cycles > 0 {
 		cart.mem.cycles -= cart.cyclesPerClock
