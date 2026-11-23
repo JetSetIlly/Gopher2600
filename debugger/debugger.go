@@ -93,6 +93,9 @@ type Debugger struct {
 	// components may change (during rewind for example)
 	vcs *hardware.VCS
 
+	// software TV renderer used to save completed frames without a GUI
+	capture *frameCapture
+
 	// keep a reference to the current cartridgeloader to make sure Close() is called
 	cartload *cartridgeloader.Loader
 
@@ -346,6 +349,8 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	if err != nil {
 		return nil, fmt.Errorf("debugger: %w", err)
 	}
+	dbg.capture = newFrameCapture(dbg.vcs.TV)
+	dbg.vcs.TV.AddPixelRenderer(dbg.capture)
 
 	// create userinput/controllers handler
 	dbg.controllers = userinput.NewControllers(dbg.vcs.Input)
