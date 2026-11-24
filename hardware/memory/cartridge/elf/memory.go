@@ -259,6 +259,12 @@ func (mem *elfMemory) Snapshot() *elfMemory {
 		m.sectionsByName[mem.sections[i].name] = m.sections[i]
 	}
 
+	// at this point the section field is invalid and pointing to the sections
+	// in the original instance of elfMemory. the copied sections will be restored
+	// in Plumb() as appropriate. to indicate that the field is invalid we set it to
+	// zero length
+	m.sectionsSorted = m.sectionsSorted[:0]
+
 	// sram is likely to have changed
 	m.sram = mem.sram.Snapshot()
 
@@ -278,6 +284,15 @@ func (mem *elfMemory) Snapshot() *elfMemory {
 func (mem *elfMemory) Plumb(env *environment.Environment, arm elfMemoryARM) {
 	mem.env = env
 	mem.arm = arm
+	mem.sortSections()
+}
+
+// create sorted copy of the sections slice (ascending order)
+func (mem *elfMemory) sortSections() {
+	mem.sectionsSorted = slices.Clone(mem.sections)
+	slices.SortFunc(mem.sectionsSorted, func(a, b *elfSection) int {
+		return int(a.origin) - int(b.origin)
+	})
 }
 
 func (mem *elfMemory) decode(ef *elf.File) error {
@@ -350,10 +365,7 @@ func (mem *elfMemory) decode(ef *elf.File) error {
 	}
 
 	// create sorted copy of the sections slice (ascending order)
-	mem.sectionsSorted = slices.Clone(mem.sections)
-	slices.SortFunc(mem.sectionsSorted, func(a, b *elfSection) int {
-		return int(a.origin) - int(b.origin)
-	})
+	mem.sortSections()
 
 	// sort section names
 	sort.Strings(mem.sectionNames)
