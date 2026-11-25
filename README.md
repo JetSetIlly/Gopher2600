@@ -284,6 +284,7 @@ http://www.festvox.org/docs/manual-2.4.0/festival_toc.html
 	* Fred Quimby (Batari)
 	* James O'Brien (ZeroPageHomebrew)
 	* John Champeau (Champ Games)
+    * Juan Sanchez
 	* Marco Johannes (MarcoJ)
     * Michael Scott Bachman (Mike_at_AEI)
 	* MrSQL
