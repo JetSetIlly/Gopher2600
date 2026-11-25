@@ -260,6 +260,9 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 func (dsm *Disassembly) ExecutedEntry(bank banking.Information, result execution.Result, checkNextAddr bool, nextAddr uint16) *Entry {
 	e := dsm.formatResult(bank, result, EntryLevelExecuted)
 
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
+
 	// if co-processor is executing then whatever has been executed by the 6507
 	// will not relate to the permanent disassembly. format the result and
 	// return
@@ -268,53 +271,51 @@ func (dsm *Disassembly) ExecutedEntry(bank banking.Information, result execution
 	// co-processor/mapper being used we can just return a predefined NOP
 	// disassembly)
 	if bank.ExecutingCoprocessor {
-		return e
-	}
 
-	dsm.crit.Lock()
-	defer dsm.crit.Unlock()
+		// do not add non-cartridge addresses to permanant disassembly
+		if !bank.NonCart {
 
-	// if executed entry is in non-cartridge space then there's nothing we an do other than updating
-	// the sequential disaasembly
-	if !bank.NonCart {
-		// similarly, if bank number is outside the banks we've already decoded
-		// then format the result and return
-		//
-		// I'm not sure when this would apply. maybe it's just a belt-and-braces
-		// check. there's no comment to say why this condition was added so leave
-		// it for now
-		if bank.Number >= len(dsm.disasmEntries.Entries) {
-			return e
-		}
+			// similarly, if bank number is outside the banks we've already decoded
+			// then format the result and return
+			//
+			// I'm not sure when this would apply. maybe it's just a belt-and-braces
+			// check. there's no comment to say why this condition was added so leave
+			// it for now
+			if bank.Number >= len(dsm.disasmEntries.Entries) {
+				return e
+			}
 
-		// updating an entry can happen at the same time as iteration which is
-		// probably being run from a different goroutine. acknowledge the critical
-		// section
+			// updating an entry can happen at the same time as iteration which is
+			// probably being run from a different goroutine. acknowledge the critical
+			// section
 
-		// add/update entry to disassembly
-		idx := result.Address & dsm.vcs.Mem.Cart.CartridgeBits()
-		o := dsm.disasmEntries.Entries[bank.Number][idx]
-		if o != nil && o.Result.Final {
-			e.updateExecutionEntry(result)
-		}
-		dsm.disasmEntries.Entries[bank.Number][idx] = e
+			// add/update entry to disassembly
+			idx := result.Address & dsm.vcs.Mem.Cart.CartridgeBits()
+			o := dsm.disasmEntries.Entries[bank.Number][idx]
+			if o != nil && o.Result.Final {
+				e.updateExecutionEntry(result)
+			}
+			dsm.disasmEntries.Entries[bank.Number][idx] = e
 
-		// bless next entry in case it was missed by the original decoding. there's
-		// no guarantee that the bank for the next address will be the same as the
-		// current bank, so we have to call the GetBank() function.
-		if checkNextAddr && result.Final {
-			bank = dsm.vcs.Mem.Cart.GetBank(nextAddr)
-			idx := nextAddr & dsm.vcs.Mem.Cart.CartridgeBits()
-			ne := dsm.disasmEntries.Entries[bank.Number][idx]
-			if ne == nil {
-				dsm.disasmEntries.Entries[bank.Number][idx] = dsm.formatResult(bank, execution.Result{
-					Address: nextAddr,
-				}, EntryLevelBlessed)
-			} else if ne.Level < EntryLevelBlessed {
-				ne.Level = EntryLevelBlessed
+			// bless next entry in case it was missed by the original decoding. there's
+			// no guarantee that the bank for the next address will be the same as the
+			// current bank, so we have to call the GetBank() function.
+			if checkNextAddr && result.Final {
+				bank = dsm.vcs.Mem.Cart.GetBank(nextAddr)
+				idx := nextAddr & dsm.vcs.Mem.Cart.CartridgeBits()
+				ne := dsm.disasmEntries.Entries[bank.Number][idx]
+				if ne == nil {
+					dsm.disasmEntries.Entries[bank.Number][idx] = dsm.formatResult(bank, execution.Result{
+						Address: nextAddr,
+					}, EntryLevelBlessed)
+				} else if ne.Level < EntryLevelBlessed {
+					ne.Level = EntryLevelBlessed
+				}
 			}
 		}
 	}
+
+	// the remainder of the function deals with the sequential list
 
 	// this condition prevents continuous consecutive BRK instructions from being added to the
 	// sequential list
