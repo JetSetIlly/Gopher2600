@@ -309,6 +309,7 @@ func (vid *FFMPEG) Preprocess(cartName string, width int32, height int32, frameI
 		"-preset", "fast", // the amount of time spent optimising compression between frames
 		"-vf", "vflip", // the data read from the OpenGL buffer is flipped
 		"-r", "60", // output is always 60fps
+		"-pix_fmt", "yuv420p", // default colour format of yuv444 is not compatible with the windows codec
 	}
 
 	var ffmpeg1080p = []string{
