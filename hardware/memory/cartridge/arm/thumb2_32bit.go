@@ -1457,6 +1457,26 @@ func (arm *ARM) decode32bitThumb2DataProcessingNonImmediate(opcode uint16) decod
 						return nil
 					}
 				}
+			case 0b001:
+				switch op2 {
+				case 0b001:
+					// "4.6.112 REV16" of "Thumb-2 Supplement"
+					// T2 encoding
+					return func() *DisasmEntry {
+						if arm.decodeOnly {
+							return &DisasmEntry{
+								Is32bit:  true,
+								Operator: "REV16",
+								Operand:  fmt.Sprintf("R%d, R%d", Rd, Rm),
+							}
+						}
+
+						v := arm.state.registers[Rm]
+						r := ((v & 0x00ff0000) << 8) | ((v & 0xff000000) >> 8) | ((v & 0x000000ff) << 8) | ((v & 0x0000ff00) >> 8)
+						arm.state.registers[Rd] = r
+						return nil
+					}
+				}
 			}
 			panic(fmt.Sprintf("unimplemented three-register data processing instruction (op=%03b) (op2=%03b)", op, op2))
 		}

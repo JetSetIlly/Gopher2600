@@ -206,6 +206,7 @@ func (arm *ARM) decodeThumb2ReverseBytes(opcode uint16) decodeFunction {
 	case 0b01:
 		return func() *DisasmEntry {
 			// "4.6.112 REV16" of "Thumb-2 Supplement"
+			// T1 encoding
 			if arm.decodeOnly {
 				return &DisasmEntry{
 					Operator: "REV16",
