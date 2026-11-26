@@ -80,7 +80,7 @@ func (cart *m3e) MappedBanks() string {
 	s := strings.Builder{}
 	s.WriteString("segments: ")
 	for i := range cart.state.segment {
-		s.WriteString(fmt.Sprintf("%d", cart.state.segment[i]))
+		fmt.Fprintf(&s, "%d", cart.state.segment[i])
 		if cart.state.segmentIsRAM[i] {
 			s.WriteString("R ")
 		} else {

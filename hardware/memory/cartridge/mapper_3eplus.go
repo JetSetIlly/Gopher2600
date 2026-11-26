@@ -70,6 +70,9 @@ func new3ePlus(env *environment.Environment) (mapper.CartMapper, error) {
 	}
 
 	numBanks := len(data) / cart.bankSize
+	if numBanks > 64 {
+		return nil, fmt.Errorf("3E+: cartridge is too big. maximum size is 64k")
+	}
 	cart.banks = make([][]uint8, numBanks)
 
 	// partition binary
@@ -87,7 +90,7 @@ func (cart *m3ePlus) MappedBanks() string {
 	s := strings.Builder{}
 	s.WriteString("segments: ")
 	for i := range cart.state.segment {
-		s.WriteString(fmt.Sprintf("%d", cart.state.segment[i]))
+		fmt.Fprintf(&s, "%d", cart.state.segment[i])
 		if cart.state.segmentIsRAM[i] {
 			s.WriteString("R ")
 		} else {
@@ -266,12 +269,13 @@ func (cart *m3ePlus) AccessPassive(addr uint16, data uint8) error {
 	// AccessPassive() mechanism. see the tigervision commentary for details
 
 	// bankswitch on hotspot access
-	if addr == 0x3f {
+	switch addr {
+	case 0x3f:
 		segment := data >> 6
 		romBank := (data & 0x3f) % uint8(cart.NumBanks())
 		cart.state.segment[segment] = int(romBank)
 		cart.state.segmentIsRAM[segment] = false
-	} else if addr == 0x3e {
+	case 0x3e:
 		segment := data >> 6
 		ramBank := (data & 0x3f) % uint8(len(cart.state.ram))
 		cart.state.segment[segment] = int(ramBank)
