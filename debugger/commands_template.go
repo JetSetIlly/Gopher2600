@@ -117,7 +117,7 @@ var commandTemplate = []string{
 	cmdLast + " (DEFN|BYTECODE)",
 	cmdMemMap + " (%<address>S)",
 	cmdCPU + " (STATUS ([SET|UNSET|TOGGLE] [S|O|B|D|I|Z|C])|(SET [PC|A|X|Y|SP] [%<register value>S]))",
-	cmdBus + " (DETAIL)",
+	cmdBus + " (DETAIL|LOG (OFF|%<file>F))",
 	cmdPeek + " [%<address>S] {%<addresses>S}",
 	cmdPoke + " %<address>S [%<value>N] {%<values>N}",
 	cmdSwap + " %<address>S %<address>S",

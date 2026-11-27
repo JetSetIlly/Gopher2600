@@ -195,6 +195,10 @@ type Debugger struct {
 	commandOnTrace       []*commandline.Tokens
 	commandOnTraceStored []*commandline.Tokens
 
+	// busLog records the state of the address and data buses after every CPU
+	// cycle. nil if the BUS LOG command is not active
+	busLog *busLog
+
 	// Quantum to use when stepping/running
 	quantum atomic.Value // govern.Quantum
 
@@ -664,6 +668,14 @@ func (dbg *Debugger) end() {
 		dbg.macro.Quit()
 	}
 	dbg.bots.Quit()
+
+	if dbg.busLog != nil {
+		err := dbg.busLog.end()
+		if err != nil {
+			logger.Log(logger.Allow, "debugger", err)
+		}
+		dbg.busLog = nil
+	}
 
 	dbg.vcs.End()
 

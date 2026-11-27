@@ -429,6 +429,11 @@ func (dbg *Debugger) step(inpt terminal.Input, catchup bool) error {
 			return nil
 		}
 
+		// record the state of the buses at the end of every CPU cycle
+		if isCycle && !catchup && dbg.busLog != nil {
+			dbg.busLog.step()
+		}
+
 		// we do need to update the reflection however
 		err = dbg.ref.Step(dbg.liveBankInfo)
 		if err != nil {
